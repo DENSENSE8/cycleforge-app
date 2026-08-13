@@ -21,6 +21,7 @@ import {
   WORKBENCH_SHEET_HOST,
   WorkbenchChromeHeader,
 } from '@/components/dashboard/workbench-shell';
+import { WorkbenchInspectorToggle } from '@/components/dashboard/workbench-inspector-toggle';
 import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import type { RowGroup } from '@/lib/group-rows';
@@ -85,8 +86,6 @@ export function UnfoundQueueTable() {
     handlePushedToZendesk,
   } = useUnfoundQueueTable();
 
-  // ▦ portals into Band-1 controls (find / kind pills live in the admin sidebar).
-  const [controlsEl, setControlsEl] = useState<HTMLDivElement | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const {
@@ -147,7 +146,12 @@ export function UnfoundQueueTable() {
           tabs={[{ id: 'queue', label: 'Queue' }]}
           activeTab="queue"
           onTabChange={() => undefined}
-          controlsSlotRef={setControlsEl}
+          trailing={
+            <WorkbenchInspectorToggle
+              open={openRow != null}
+              testId="unfound-inspector-toggle"
+            />
+          }
           className="rounded-none border-l-0 border-t-0 shadow-sm"
         />
       </div>
@@ -180,7 +184,7 @@ export function UnfoundQueueTable() {
           searchEmptyMessage="No unfound items match these filters."
           isSearching={isSearching && !error}
           scrollRef={scrollRef}
-          columnTriggerPortalTarget={controlsEl}
+          columnTriggerPortalTarget={null}
           renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
             <UnfoundGridColumnHeader
               columns={visible}

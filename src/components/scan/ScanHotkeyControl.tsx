@@ -14,6 +14,8 @@ import {
 } from '@/lib/scan-hotkey/store';
 import { useScanHotkey } from '@/lib/scan-hotkey/useScanHotkey';
 import { cn } from '@/utils/_cn';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+
 
 interface ScanHotkeyControlProps {
   /** The bar's contextual left icon (scan glyph / mode indicator) shown at rest. */
@@ -126,7 +128,7 @@ export function ScanHotkeyControl({ children }: ScanHotkeyControlProps) {
           aria-label={`Next scan ${NEXT_SCAN_CHORD_LABEL}. Reclaim focus is ${hotkey}. Click for scan-bar hotkeys.`}
           className={cn(
             'ds-raw-button',
-            'absolute inset-0 inline-flex items-center justify-center rounded-md text-text-soft transition-opacity duration-150 hover:text-blue-600 focus-visible:opacity-100 focus-visible:outline-none',
+            cn('absolute inset-0 inline-flex items-center justify-center rounded-md text-text-soft transition-opacity duration-150 hover:text-blue-600 focus-visible:opacity-100', focusRing('control', 'neutral')),
             open
               ? 'pointer-events-auto opacity-100 text-blue-600'
               : 'pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100',

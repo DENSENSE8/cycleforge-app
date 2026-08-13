@@ -128,29 +128,29 @@ async function rankUnboxMruReceivingIds(
 }
 
 /**
- * Hydrate the recents rail with the SELECTED carton only.
+ * Hydrate the recents rail with the full paint window (not one row).
  *
  * Pairs with {@link rankUnboxMruReceivingIds}: rank on the cheap indexed column,
- * then hydrate ONLY that carton (`?receiving_id_in=`). Measured on the dogfood
- * org: the unrestricted rail query is 2.2s / 274,539 shared buffers; the
- * pre-limited one is 55ms / 9,032 for 50 rows, and a single row is cheaper still.
+ * then hydrate those ids (`?receiving_id_in=`). Measured on the dogfood org: the
+ * unrestricted rail query is 2.2s / 274,539 shared buffers; the pre-limited
+ * 50-row window is ~55ms / 9,032.
  *
- * **One row, not fifty, and that is a paint decision — not a data limit.**
- * The operator's paint order is *selected rail row → middle → right edge → the
- * rest of the rail*, so only the selected row is on the critical path. Seeding
- * the whole 50-row window put ~150KB of JSON in the RSC payload ahead of first
- * paint to render 49 rows nobody is reading yet, which delayed the one row they
- * are. The remaining rows arrive from the client fetch that already exists.
+ * **Whole window + fresh timestamp.** A one-row seed with `updatedAt: 0` forced
+ * an immediate client refetch of ~155KB that stole LCP (~7s) when a later-
+ * painted title outgrew the seeded one. A fresh stamp keeps `staleTime` honest
+ * so the rail does not refetch on mount.
  *
- * **Seeded deliberately STALE (`updatedAt: 0`).** The rail's `useQuery` runs at
- * `staleTime: 20_000`, so a normally-stamped seed would be considered fresh and
- * the rail would sit at one row for twenty seconds. Age-zero data still renders
- * immediately — it just also refetches on mount, which is exactly the handoff
- * ("the rest of the rail" last).
+ * **Wire shape via {@link toWireRows}.** RSC serialization preserves `Date`;
+ * the HTTP route stringifies. Client code doing `(row.x || '').trim()` crashed
+ * on seeded Dates — round-trip JSON so the seed matches the wire path.
  *
- * Seeds the exact key `SidebarRailShell` mounts with, so the selected row is in
- * the first HTML instead of behind a client fetch.
+ * Seeds the exact key `SidebarRailShell` mounts with, so rows are in the first
+ * HTML instead of behind a client fetch.
  */
+function toWireRows<T>(rows: T): T {
+  return JSON.parse(JSON.stringify(rows)) as T;
+}
+
 async function seedUnboxRecentRail(
   queryClient: QueryClient,
   orgId: OrgId,
@@ -162,7 +162,7 @@ async function seedUnboxRecentRail(
   try {
     const rows = await readUnboxOpenedRows(orgId, receivingIds);
     if (rows.length === 0) return;
-    queryClient.setQueryData(key, transformUnboxOpenedRows(rows), { updatedAt: 0 });
+    queryClient.setQueryData(key, toWireRows(transformUnboxOpenedRows(rows)));
   } catch (error) {
     console.error('seedUnboxRecentRail failed; client will fetch', error);
   }
@@ -278,7 +278,7 @@ async function seedMruCartonLines(
       (row as unknown as Record<string, unknown>).serials =
         serialsByLine.get((row as unknown as { id: number }).id) ?? [];
     }
-    const envelope = { success: true as const, receiving_lines: lines };
+    const envelope = toWireRows({ success: true as const, receiving_lines: lines });
     queryClient.setQueryData(['receiving-siblings', Number(receivingId)], envelope);
     queryClient.setQueryData(
       ['receiving-siblings-serials', Number(receivingId)],
@@ -294,14 +294,13 @@ async function seedMruCartonLines(
 /**
  * Station seed for bare `/unbox`, in the operator's stated priority order:
  *
- *   1. the SELECTED rail row — the carton you were last on, in the first HTML
- *      and already marked selected;
- *   2. the middle — its lines, warmed into the cache the workspace mounts with,
- *      so the skeleton hands off as soon as React hydrates;
- *   3. the right edge and 4. the rest of the rail follow client-side.
+ *   1. the recents rail window — full `UNBOX_SIDEBAR_LIMIT`, wire-shaped, fresh;
+ *   2. the middle — MRU carton lines, warmed into the cache the workspace
+ *      mounts with, so SSR can paint the open record during render;
+ *   3. the right edge follows client-side.
  *
  * Both seeds are cheap by construction: rank the cartons on the indexed column
- * alone, then hydrate only those (see {@link rankUnboxMruReceivingIds} /
+ * alone, then hydrate those ids (see {@link rankUnboxMruReceivingIds} /
  * {@link seedUnboxRecentRail}). The rail and the carton lines are independent
  * once the ranking is known, so they run in PARALLEL — the seed costs about one
  * round trip, not two.
@@ -318,9 +317,7 @@ export async function seedUnboxStation(): Promise<UnboxStationSeed> {
   const orgId = user?.organizationId as OrgId | undefined;
   if (!orgId) return { state: dehydrate(queryClient), mruReceivingId: null };
 
-  // One id is all the critical path needs: it IS the selected row and it IS the
-  // carton the middle opens. Ranking is the same 0.32ms read either way.
-  const rankedIds = await rankUnboxMruReceivingIds(orgId, 1);
+  const rankedIds = await rankUnboxMruReceivingIds(orgId, UNBOX_SIDEBAR_LIMIT);
   const mruReceivingId = rankedIds[0] ?? null;
   if (mruReceivingId == null) {
     return { state: dehydrate(queryClient), mruReceivingId: null };

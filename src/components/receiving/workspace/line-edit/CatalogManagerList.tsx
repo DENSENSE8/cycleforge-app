@@ -36,6 +36,10 @@ import { useInvalidateCatalog } from '@/hooks/useCatalog';
 import { platformPaintFromHex } from '@/lib/color-contrast';
 import { SOURCE_PLATFORM_OPTS, RECEIVING_TYPE_OPTS } from '@/components/sidebar/receiving/receiving-sidebar-shared';
 import { TypeBindingsEditor } from './TypeBindingsEditor';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 export type CatalogKind = 'platform' | 'type';
 
@@ -45,7 +49,7 @@ const API_BASE: Record<CatalogKind, string> = {
 };
 
 const TEXT_INPUT =
-  'w-full rounded-lg border border-border-soft bg-surface-card inset-cozy text-role-caption text-text-default outline-none transition-colors focus:border-blue-500';
+  cn('w-full rounded-lg border border-border-soft bg-surface-card inset-cozy text-role-caption text-text-default transition-colors', focusRing('field', 'accent'));
 
 /** Accessible mid-saturation presets for platform origin tags. */
 const PLATFORM_COLOR_PRESETS: ReadonlyArray<ColorSwatch> = [

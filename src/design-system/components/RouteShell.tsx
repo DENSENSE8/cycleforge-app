@@ -83,10 +83,13 @@ export function RouteShell({
   );
 
   if (!isMobile) {
+    // First mount must be instant — `presence.initial` ships
+    // `opacity:0;transform:translateY(…)` into the SSR HTML, which hides the
+    // work pane from FCP/LCP no matter how early the server produced it.
     return (
       <div className={cn('flex min-h-0 w-full flex-1 flex-col overflow-hidden', className)}>
         <motion.div
-          initial={presence.initial}
+          initial={false}
           animate={presence.animate}
           transition={transition}
           className="flex min-h-0 flex-1 flex-col overflow-hidden"

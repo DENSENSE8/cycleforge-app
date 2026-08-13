@@ -14,6 +14,8 @@ import type {
     TsnLinkRow,
     UnitPhotoRow,
 } from './types';
+import { Panel } from '@/design-system/primitives';
+
 
 interface ByUnitViewProps {
     /** Either a numeric serial_units.id or a serial_number string. */
@@ -123,7 +125,7 @@ export function ByUnitView({ ref }: ByUnitViewProps) {
             </header>
 
             {/* Current state */}
-            <section className="rounded-lg border border-border-soft bg-surface-card shadow-sm">
+            <Panel radius="lg" padding="none">
                 <header className="border-b border-border-hairline px-6 py-4">
                     <h2 className="text-lg font-medium text-text-default">Current state</h2>
                 </header>
@@ -157,7 +159,7 @@ export function ByUnitView({ ref }: ByUnitViewProps) {
                         <p className="mt-1 whitespace-pre-wrap">{unit.notes}</p>
                     </div>
                 ) : null}
-            </section>
+            </Panel>
 
             {/* Item Journey — shared cross-spine trail (search deep-link target). */}
             {unit.serial_number ? (
@@ -169,7 +171,7 @@ export function ByUnitView({ ref }: ByUnitViewProps) {
             ) : null}
 
             {/* Raw inventory_events ledger (debug / full payload) */}
-            <section className="rounded-lg border border-border-soft bg-surface-card shadow-sm">
+            <Panel radius="lg" padding="none">
                 <header className="flex items-center justify-between border-b border-border-hairline px-6 py-4">
                     <h2 className="text-lg font-medium text-text-default">inventory_events ledger</h2>
                     <span className="text-xs text-text-soft">{events.length} events</span>
@@ -233,11 +235,11 @@ export function ByUnitView({ ref }: ByUnitViewProps) {
                         ))}
                     </ol>
                 )}
-            </section>
+            </Panel>
 
             {/* Condition history */}
             {conditions.length > 0 ? (
-                <section className="rounded-lg border border-border-soft bg-surface-card shadow-sm">
+                <Panel radius="lg" padding="none">
                     <header className="border-b border-border-hairline px-6 py-4">
                         <h2 className="text-lg font-medium text-text-default">Condition history</h2>
                     </header>
@@ -267,12 +269,12 @@ export function ByUnitView({ ref }: ByUnitViewProps) {
                             </li>
                         ))}
                     </ol>
-                </section>
+                </Panel>
             ) : null}
 
             {/* Allocations */}
             {allocations.length > 0 ? (
-                <section className="rounded-lg border border-border-soft bg-surface-card shadow-sm">
+                <Panel radius="lg" padding="none">
                     <header className="border-b border-border-hairline px-6 py-4">
                         <h2 className="text-lg font-medium text-text-default">Order allocations</h2>
                     </header>
@@ -310,12 +312,12 @@ export function ByUnitView({ ref }: ByUnitViewProps) {
                             </tbody>
                         </table>
                     </div>
-                </section>
+                </Panel>
             ) : null}
 
             {/* TSN cross-refs */}
             {tsnLinks.length > 0 ? (
-                <section className="rounded-lg border border-border-soft bg-surface-card shadow-sm">
+                <Panel radius="lg" padding="none">
                     <header className="border-b border-border-hairline px-6 py-4">
                         <h2 className="text-lg font-medium text-text-default">tech_serial_numbers links</h2>
                         <p className="mt-1 text-xs text-text-soft">
@@ -350,7 +352,7 @@ export function ByUnitView({ ref }: ByUnitViewProps) {
                             </tbody>
                         </table>
                     </div>
-                </section>
+                </Panel>
             ) : null}
         </div>
     );

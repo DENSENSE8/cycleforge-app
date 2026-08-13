@@ -1,6 +1,7 @@
 import React from 'react';
 import { Search, Clipboard, Printer } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
+import { SkeletonBase } from '@/design-system/components/Skeletons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { LabelPreviewCard } from '@/components/labels/LabelPreviewCard';
 import type { ProductLabelDraft } from '@/components/labels/ProductLabelEditPopover';
@@ -159,7 +160,7 @@ export function ProductContextCard({ title, stock, imageUrl, isLoading }: Produc
     <section className="flex items-start gap-4 rounded-2xl bg-surface-card p-5 shadow-sm ring-1 ring-border-soft/60">
       <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-surface-canvas ring-1 ring-border-soft">
         {isLoading ? (
-          <div className="h-full w-full animate-pulse bg-surface-strong" />
+          <SkeletonBase className="h-full w-full rounded-none bg-surface-strong" />
         ) : imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -180,8 +181,8 @@ export function ProductContextCard({ title, stock, imageUrl, isLoading }: Produc
       <div className="min-w-0 flex-1">
         {isLoading ? (
           <div className="space-y-2">
-            <div className="h-4 w-3/4 animate-pulse rounded bg-surface-strong" />
-            <div className="h-3 w-1/2 animate-pulse rounded bg-surface-sunken" />
+            <SkeletonBase width="75%" height="1rem" className="bg-surface-strong" />
+            <SkeletonBase width="50%" height="0.75rem" className="bg-surface-sunken" />
           </div>
         ) : (
           <p className="text-base font-semibold leading-snug text-text-default">

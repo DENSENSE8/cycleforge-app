@@ -4,6 +4,10 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Button } from '@/design-system/primitives';
 import { RepairOrderLinkSearch } from './RepairOrderLinkSearch';
 import type { RepairDetailsController } from './useRepairDetailsPanel';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 /** Manual pairing editor — order / inbound tracking / serial / catalog SKU. */
 export function RepairLinkageSection({ c }: { c: RepairDetailsController }) {
@@ -48,7 +52,7 @@ export function RepairLinkageSection({ c }: { c: RepairDetailsController }) {
               onChange={(e) => f.set(e.target.value)}
               placeholder={f.placeholder}
               disabled={c.savingLink}
-              className="w-full px-3 py-2 border border-border-soft rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all disabled:opacity-50"
+              className={cn("w-full px-3 py-2 border border-border-soft rounded-lg text-sm font-mono transition-all disabled:opacity-50", focusRing('field', 'accent'))}
             />
           </div>
         ))}

@@ -13,6 +13,10 @@ import {
 import { useRealtimeToasts } from '@/hooks/useRealtimeToasts';
 import { useNasConfig } from '@/hooks/useNasConfig';
 import {
+  INCOMING_EMPTY_HINT,
+  INCOMING_EMPTY_TITLE,
+} from '@/components/receiving/incoming/IncomingFirstPaint';
+import {
   MobilePackageGroup,
   MobileReceivingUnitCard,
   type ReceivingCardCallbacks,
@@ -208,11 +212,11 @@ export function MobileReceivingList({
         getId={(entry) => entry.key}
         empty={
           <div className="flex h-full flex-col items-center justify-center gap-2 bg-surface-card px-6 text-center">
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-text-muted">No packages yet</p>
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-text-muted">{INCOMING_EMPTY_TITLE}</p>
             <p className="max-w-[260px] text-role-caption font-semibold text-text-soft">
               {surface === 'triage'
                 ? 'Scan a tracking number below to start an arrival.'
-                : 'Scan a tracking number on the desktop to drop one in here.'}
+                : INCOMING_EMPTY_HINT}
             </p>
           </div>
         }

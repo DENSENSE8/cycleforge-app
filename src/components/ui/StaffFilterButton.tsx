@@ -7,6 +7,10 @@ import { Check, ChevronDown, User } from '@/components/Icons';
 import { ToolbarButton } from '@/components/ui/ToolbarButton';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { STAFF_FILTER_PARAM, useStaffFilter } from '@/hooks/useStaffFilter';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 /**
  * `StaffFilterButton` — the ONE shared all-staff ↔ single-staff header control
@@ -150,7 +154,7 @@ export function StaffFilterButton({
         <Popover.Content
           align={align}
           sideOffset={6}
-          className="z-dropdown max-h-[60vh] w-52 overflow-y-auto rounded-lg border border-border-soft bg-surface-card p-1 shadow-lg ring-1 ring-black/5 focus:outline-none"
+          className={cn("z-dropdown max-h-[60vh] w-52 overflow-y-auto rounded-lg border border-border-soft bg-surface-card p-1 shadow-lg ring-1 ring-black/5", focusRing('field', 'accent'))}
         >
           <Row id={null} name={allLabel} />
           {options.length > 0 ? <div className="my-1 h-px bg-surface-sunken" /> : null}

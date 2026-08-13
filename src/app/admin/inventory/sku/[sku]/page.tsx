@@ -3,6 +3,8 @@ import { queryRaw, queryOne } from '@/lib/neon-client';
 import { unitStatusBadgeClass } from '@/lib/unit-status';
 import Link from 'next/link';
 import { DataTable, type DataTableColumn } from '@/design-system/components/DataTable';
+import { Panel } from '@/design-system/primitives';
+
 
 export const dynamic = 'force-dynamic';
 
@@ -521,7 +523,7 @@ export default async function SkuDetailPage({ params }: { params: Promise<{ sku:
 
         {/* Catalog identifiers */}
         {catalog ? (
-          <section className="rounded-lg border border-border-soft bg-surface-card shadow-sm">
+          <Panel radius="lg" padding="none">
             <header className="border-b border-border-hairline px-6 py-4">
               <h2 className="text-lg font-medium text-text-default">Catalog</h2>
             </header>
@@ -531,11 +533,11 @@ export default async function SkuDetailPage({ params }: { params: Promise<{ sku:
               <Field label="UPC">{catalog.upc ?? '—'}</Field>
               <Field label="EAN">{catalog.ean ?? '—'}</Field>
             </dl>
-          </section>
+          </Panel>
         ) : null}
 
         {/* Stock summary */}
-        <section className="rounded-lg border border-border-soft bg-surface-card shadow-sm">
+        <Panel radius="lg" padding="none">
           <header className="flex items-center justify-between border-b border-border-hairline px-6 py-4">
             <h2 className="text-lg font-medium text-text-default">Current stock</h2>
             {stock?.updated_at ? (
@@ -571,7 +573,7 @@ export default async function SkuDetailPage({ params }: { params: Promise<{ sku:
               </div>
             </div>
           ) : null}
-        </section>
+        </Panel>
 
         {/* Bin distribution */}
         <section className="space-y-3">

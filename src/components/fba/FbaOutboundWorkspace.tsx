@@ -79,7 +79,6 @@ export function FbaOutboundWorkspace() {
   // Band 2 here is a raw strip, not a snap-collapsible KPI band, so there is no
   // per-staff collapse preference to read — see the `band2` slot below.
   const chrome = useWorkbenchSheetChrome();
-  const readyControlsEl = chrome.controlsEl;
 
   const handleSelectTab = useCallback(
     (tab: FbaMode) => {
@@ -199,7 +198,7 @@ export function FbaOutboundWorkspace() {
               className="relative flex min-w-0 flex-col"
             >
               {isReady ? (
-                <ReadyWorkspaceBody columnTriggerPortalTarget={readyControlsEl} />
+                <ReadyWorkspaceBody columnTriggerPortalTarget={null} />
               ) : error ? (
                 <FbaErrorState message={error} onRetry={fetchBoard} theme={stationTheme} />
               ) : activeMode === 'shipped' ? (

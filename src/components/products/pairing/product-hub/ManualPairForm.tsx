@@ -4,6 +4,10 @@ import { Button, IconButton } from '@/design-system/primitives';
 import { PRODUCT_HUB_PLATFORMS } from '../product-hub-platforms';
 import { sourcePlatformLabel } from '@/lib/source-platform';
 import { manualAddPairing } from './sku-pair-api';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 /**
  * Inline "pair a SKU by hand" form. Posts a single inline-create accept entry to
@@ -78,7 +82,7 @@ export function ManualPairForm({ skuCatalogId, onAdded }: { skuCatalogId: number
           <select
             value={platform}
             onChange={(e) => setPlatform(e.target.value)}
-            className="rounded-md border border-border-default bg-surface-card px-2 py-1.5 text-xs font-semibold text-text-default focus:border-blue-400 focus:outline-none"
+            className={cn("rounded-md border border-border-default bg-surface-card px-2 py-1.5 text-xs font-semibold text-text-default", focusRing('field', 'accent'))}
           >
             {PRODUCT_HUB_PLATFORMS.map((p) => (
               <option key={p} value={p}>
@@ -99,7 +103,7 @@ export function ManualPairForm({ skuCatalogId, onAdded }: { skuCatalogId: number
               }
             }}
             placeholder="e.g. 01815"
-            className="w-full rounded-md border border-border-default bg-surface-card px-2 py-1.5 font-mono text-xs text-text-default focus:border-blue-400 focus:outline-none"
+            className={cn("w-full rounded-md border border-border-default bg-surface-card px-2 py-1.5 font-mono text-xs text-text-default", focusRing('field', 'accent'))}
           />
         </label>
         <label className="flex min-w-[7rem] flex-1 flex-col gap-0.5">
@@ -110,7 +114,7 @@ export function ManualPairForm({ skuCatalogId, onAdded }: { skuCatalogId: number
             value={account}
             onChange={(e) => setAccount(e.target.value)}
             placeholder="e.g. DRAGONH"
-            className="w-full rounded-md border border-border-default bg-surface-card px-2 py-1.5 text-xs text-text-default focus:border-blue-400 focus:outline-none"
+            className={cn("w-full rounded-md border border-border-default bg-surface-card px-2 py-1.5 text-xs text-text-default", focusRing('field', 'accent'))}
           />
         </label>
         <Button

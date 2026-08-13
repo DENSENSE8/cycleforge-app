@@ -18,6 +18,10 @@ import {
   DialogTitle,
 } from '@/design-system/components/Dialog';
 import { FILTER_DROPDOWN_SELECT_CLASS } from '@/design-system/components/FilterDropdownSelect';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 interface AddStaffDialogProps {
   open: boolean;
@@ -93,7 +97,7 @@ export function AddStaffDialog({ open, onClose, onCreated }: AddStaffDialogProps
               value={name}
               onChange={(e) => setName(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') void submit(); }}
-              className="mt-1 w-full rounded-md border border-border-default inset-cozy text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15"
+              className={cn("mt-1 w-full rounded-md border border-border-default inset-cozy text-sm", focusRing('field', 'accent'))}
               placeholder="Jane Doe"
             />
           </label>
@@ -112,7 +116,7 @@ export function AddStaffDialog({ open, onClose, onCreated }: AddStaffDialogProps
             <input
               value={code}
               onChange={(e) => setCode(e.target.value)}
-              className="mt-1 w-full rounded-md border border-border-default inset-cozy text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15"
+              className={cn("mt-1 w-full rounded-md border border-border-default inset-cozy text-sm", focusRing('field', 'accent'))}
               placeholder="EMP-001"
             />
           </label>

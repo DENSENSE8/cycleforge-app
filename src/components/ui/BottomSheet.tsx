@@ -5,6 +5,10 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useMediaQuery } from '@/hooks/_ui';
 import { zIndex as zLayer } from '@/design-system/tokens/z-index';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 /**
  * Responsive overlay primitive.
@@ -339,7 +343,7 @@ export function PromptSheet({
           if (e.key === 'Escape') onClose();
         }}
         autoComplete="off"
-        className="mb-4 h-12 w-full rounded-2xl border border-border-default bg-surface-canvas px-4 text-sm font-semibold text-text-default outline-none transition-colors focus:border-blue-500 focus:bg-surface-card focus:ring-2 focus:ring-blue-200"
+        className={cn("mb-4 h-12 w-full rounded-2xl border border-border-default bg-surface-canvas px-4 text-sm font-semibold text-text-default transition-colors focus:bg-surface-card", focusRing('field', 'accent'))}
       />
       <div className="flex flex-col gap-2 sm:flex-row-reverse sm:gap-3">
         {/* ds-raw-button: full-width gradient sheet CTA (h-12, blue gradient + shadow) — DS Button has no gradient variant */}

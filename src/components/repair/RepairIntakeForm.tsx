@@ -22,6 +22,10 @@ import { useRepairCustomerSearch, type ExistingCustomer } from './useRepairCusto
 import { buildDraftFromFavorite, favoriteToSelectedItems, fetchFavoriteIntakeContext } from './repair-favorite-intake';
 import { buildRepairIntakeReceiptProps } from '@/lib/repair/repair-intake-receipt';
 import { formatRepairSubmittedChromeLabel } from '@/lib/repair/repair-paper-ticket';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 /** What the submit handler resolves with on a successful post, so the form can
  *  show the printable paper instead of dropping back to the walk-in dashboard. */
@@ -674,7 +678,7 @@ export function RepairIntakeForm({ onClose, onSubmit, initialData, favoriteSkuId
                                         }));
                                     }}
                                     disabled={loadingTechs}
-                                    className="h-11 w-full rounded-xl border border-border-soft bg-surface-card px-3.5 text-sm font-semibold text-text-default outline-none transition-all focus:border-border-strong focus:ring-2 focus:ring-border-strong/10 disabled:opacity-50"
+                                    className={cn("h-11 w-full rounded-xl border border-border-soft bg-surface-card px-3.5 text-sm font-semibold text-text-default transition-all disabled:opacity-50", focusRing('field', 'neutral'))}
                                 >
                                     <option value="">Unassigned</option>
                                     {techs.map(tech => (

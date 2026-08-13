@@ -58,7 +58,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
 
     return NextResponse.json({
       found: true,
-      orderId: row.order_id || 'N/A',
+      orderId: row.order_id || 'N/A', // ds-allow-na: order-verify API payload writer
       productTitle: row.product_title || 'Unknown Product',
       condition: row.condition || '',
       tracking: row.tracking,

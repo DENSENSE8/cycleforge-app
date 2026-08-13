@@ -93,6 +93,8 @@ export interface Email {
 // the hook from this module and silently pull the panel back into the sidebar's
 // chunk, which is the exact fan-in the split removed.
 import type { TodoItem, TodoResponse } from '@/components/receiving/incoming-todo-shared';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+
 
 /**
  * Heuristic status tag from the email subject + pile. The worklist row has no
@@ -262,7 +264,7 @@ const CHIP_CLASS =
   'inline-flex items-center gap-1 rounded inset-chip text-role-eyebrow uppercase leading-none tracking-widest ring-1 ring-inset';
 
 const ROW_ACTION_CLASS =
-  'flex h-7 w-7 items-center justify-center rounded-md text-text-faint transition-colors hover:bg-surface-sunken hover:text-text-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 disabled:opacity-50';
+  cn('flex h-7 w-7 items-center justify-center rounded-md text-text-faint transition-colors hover:bg-surface-sunken hover:text-text-muted disabled:opacity-50', focusRing('control', 'accent'));
 
 const rowMotion = {
   hidden: { opacity: 0, y: 4 },

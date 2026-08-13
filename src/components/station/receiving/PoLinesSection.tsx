@@ -16,7 +16,7 @@ import {
 } from '@/components/station/receiving-constants';
 import { conditionGradeTextClass } from '@/lib/condition-tone';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { Button } from '@/design-system/primitives';
+import { Panel, Button } from '@/design-system/primitives';
 
 interface ReceivingLine {
   id: number;
@@ -204,11 +204,11 @@ export function PoLinesSection({ receivingId, trackingNumber }: PoLinesSectionPr
           )}
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-border-soft bg-surface-card">
+        <Panel radius="xl" padding="none" className="overflow-hidden">
           {lines.map((line) => (
             <PoLineRow key={line.id} line={line} />
           ))}
-        </div>
+        </Panel>
       )}
     </div>
   );

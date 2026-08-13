@@ -13,7 +13,7 @@ import { EventTimeline } from '@/components/ui/EventTimeline';
 import { cycleForgeStepsToTimeline, type CycleForgeStepRow } from '@/lib/timeline/cycle-forge';
 import { MasterPlanView } from '@/components/forge/MasterPlanView';
 import { Loader2, ChevronDown, ChevronUp } from '@/components/Icons';
-import { Button } from '@/design-system/primitives';
+import { Panel, Button } from '@/design-system/primitives';
 import { cn } from '@/utils/_cn';
 
 export interface ForgeRunRow {
@@ -85,7 +85,7 @@ function RunHistoryAdvanced({
             </p>
           )}
           {runs.map((run) => (
-            <section key={run.id} className="rounded-lg border border-border-soft bg-surface-card p-3">
+            <Panel radius="lg" padding="sm" key={run.id}>
               <div className="mb-2 flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <p className="truncate text-role-caption font-semibold text-text-default">
@@ -110,7 +110,7 @@ function RunHistoryAdvanced({
                 density="compact"
                 emptyMessage="No stages recorded yet."
               />
-            </section>
+            </Panel>
           ))}
         </div>
       ) : null}

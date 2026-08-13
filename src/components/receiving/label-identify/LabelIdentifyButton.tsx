@@ -3,7 +3,7 @@
 import { useRef } from 'react';
 import { Camera, Loader2, Check, AlertTriangle, RotateCcw } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { Button } from '@/design-system/primitives';
+import { Panel, Button } from '@/design-system/primitives';
 import { useLabelIdentify } from './useLabelIdentify';
 import type { LabelCandidate } from '@/lib/vision-identify';
 
@@ -84,7 +84,7 @@ export function LabelIdentifyButton({
       )}
 
       {status === 'results' && (
-        <div className="mt-2 space-y-2 rounded-lg border border-border-soft bg-surface-card p-2">
+        <Panel radius="lg" padding="none" className="mt-2 space-y-2 p-2">
           <div className="px-1 text-xs font-medium uppercase tracking-wide text-text-soft">
             Confirm the product
           </div>
@@ -107,7 +107,7 @@ export function LabelIdentifyButton({
           >
             Retake
           </Button>
-        </div>
+        </Panel>
       )}
     </div>
   );

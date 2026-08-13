@@ -15,8 +15,10 @@
  * inspector). A `RightRailHost` peek is an inspector; "Displays" is the station
  * scan push column.
  *
- * **Honest absence:** a surface with no desk peek passes no `trailing` at all.
- * Do not mount this to make a band look symmetrical.
+ * **Empty rail opens Column display.** When nothing is on the right edge and
+ * the caller did not pass {@link onOpenEmpty}, the toggle pushes
+ * `detail:grid-column-details` — Band 3 no longer paints ▦. Unbox / To-ship
+ * pass their own View-only shell opener and keep that door.
  *
  * Hotkeys (opt-in, default on): **⌘\\** and bare **]**. Never ⌘] — Station
  * Displays owns that chord. The bare key stands down inside an editable target,
@@ -31,6 +33,11 @@ import { useCallback, useEffect, useState } from 'react';
 import { ColumnsTwo } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IconButton } from '@/design-system/primitives';
+import {
+  GRID_COLUMN_DETAILS_RAIL_ID,
+  requestOpenGridColumnDetails,
+} from '@/design-system/components/grid/grid-column-details-open';
+import { useRightRailOccupantOpen } from '@/components/right-rail/useRightRailOccupant';
 import {
   DETAIL_INSPECTOR_COLLAPSE_EVENT,
   getDetailInspectorCollapsed,
@@ -121,9 +128,10 @@ export function WorkbenchInspectorToggle({
   /** Per-surface testid — the goldens keep their historical ids. */
   testId?: string;
 }) {
+  const columnDisplayOpen = useRightRailOccupantOpen(GRID_COLUMN_DETAILS_RAIL_ID);
   const { showing, label, toggle } = useWorkbenchInspectorToggle({
-    open,
-    onOpenEmpty,
+    open: open || columnDisplayOpen,
+    onOpenEmpty: onOpenEmpty ?? requestOpenGridColumnDetails,
     hotkeys,
     enabled,
   });

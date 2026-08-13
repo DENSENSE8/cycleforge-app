@@ -2,17 +2,13 @@
 
 import { useRef, type ReactNode, type RefObject } from 'react';
 import { sectionLabel, SkeletonList } from '@/design-system';
-import { useUIModeOptional } from '@/design-system/providers/UIModeProvider';
 import { Button } from '@/design-system/primitives';
 import { Loader2 } from '@/components/Icons';
 import DateRangeHeader from '@/components/ui/DateRangeHeader';
-import { DateGroupHeader } from '@/components/ui/DateGroupHeader';
 import { OrderSearchEmptyState } from '@/components/dashboard/OrderSearchEmptyState';
 import { QueueTableBanner } from '@/components/dashboard/orders-queue/QueueTableBanner';
-import { StationRowColumnHeader } from '@/components/dashboard/queue-table';
 import {
   LedgerGrid,
-  TableStickyXScroll,
   type GridSurfaceCapabilities,
 } from '@/design-system/components/grid';
 import type { WeekRange } from '@/components/dashboard/orders-queue/helpers';
@@ -22,11 +18,11 @@ import { cn } from '@/utils/_cn';
 
 /**
  * `StationListTable<TRecord>` — day-banded station/history list shell.
- * Virtualized path composes the Workbench spreadsheet SoT {@link LedgerGrid}
- * (sticky column guide + {@link VirtualGroupedSections}). Dense path keeps an
- * inline day map for small auto-height embeds. Sibling of outbound
- * {@link OrdersGridHost}: week/banner chrome stays here; row + grouping are
- * injected (`renderRow` / `renderGroup`).
+ * Always composes the Workbench spreadsheet SoT {@link LedgerGrid}
+ * (sticky day headers + {@link VirtualGroupedSections}). The retired dense
+ * `role="grid"` fallback and `StationRowColumnHeader` guide are gone.
+ * Sibling of outbound {@link OrdersGridHost}: week/banner chrome stays here;
+ * row + grouping are injected (`renderRow` / `renderGroup`).
  */
 export interface StationListTableProps<TRecord> {
   loading: boolean;
@@ -75,16 +71,11 @@ export interface StationListTableProps<TRecord> {
    * a neighbour's feature set by accident.
    */
   capabilities: GridSurfaceCapabilities;
-  /** Multi-select mode — forwarded to the station column guide when enabled. */
+  /** Multi-select mode — reserved for a future factory header. */
   selectMode?: boolean;
-  /** Render the shared station row column guide above the scroll body. */
-  showStationColumnHeader?: boolean;
-  /** Meta `rest` label on the column guide (e.g. Unboxed / Scanned / Stage). */
-  columnHeaderStageLabel?: string;
-  /** Hide serial chip column on the guide (Incoming omits serials). */
-  columnHeaderIncludeSerial?: boolean;
 
   // Body sizing / virtualization.
+  /** @deprecated Always virtualized via LedgerGrid. Kept so call sites compile. */
   virtualized?: boolean;
   /** Stacked SwimlaneBoard lane: window against this shared ancestor scroll region. */
   scrollParentRef?: RefObject<HTMLElement | null>;
@@ -136,7 +127,6 @@ export function StationListTable<TRecord>({
   bannerTitle,
   bannerSubtitle,
   bannerCompact = false,
-  virtualized = false,
   scrollParentRef,
   autoHeight = false,
   maxBodyHeightClass,
@@ -154,12 +144,7 @@ export function StationListTable<TRecord>({
   clearSearchLabel = 'Show all',
   footer,
   capabilities,
-  selectMode = false,
-  showStationColumnHeader = false,
-  columnHeaderStageLabel = 'Stage',
-  columnHeaderIncludeSerial = true,
 }: StationListTableProps<TRecord>) {
-  const { isMobile } = useUIModeOptional();
   const scrollRef = useRef<HTMLDivElement>(null);
   const allowHorizontalScroll = !noHorizontalScroll;
 
@@ -181,18 +166,7 @@ export function StationListTable<TRecord>({
 
   const dayBands = orderGroupsByDate ?? daySections ?? [];
   const isEmpty = dayBands.length === 0;
-  // A surface that did not declare multi-select must not render the select
-  // gutter — the gutter is the affordance, so drawing it on a surface with no
-  // selection wiring is the "inert gutter" the workbench law bans.
-  const canSelect = selectMode && capabilities.multiSelect;
-  const columnHeader =
-    showStationColumnHeader && !isMobile ? (
-      <StationRowColumnHeader
-        selectMode={canSelect}
-        includeSerial={columnHeaderIncludeSerial}
-        stageLabel={columnHeaderStageLabel}
-      />
-    ) : null;
+  void capabilities;
 
   if (loading) {
     return (
@@ -237,8 +211,6 @@ export function StationListTable<TRecord>({
           />
         )}
 
-        {!virtualized || isEmpty ? columnHeader : null}
-
         {isEmpty ? (
           <div ref={scrollRef} data-testid="column-table-body" className={bodyScrollClass} style={bodyScrollStyle}>
             <div className={`flex flex-col items-center justify-center ${emptyPadClass} text-center`}>
@@ -269,14 +241,14 @@ export function StationListTable<TRecord>({
               )}
             </div>
           </div>
-        ) : virtualized ? (
+        ) : (
           <LedgerGrid<TRecord>
             orderGroupsByDate={orderGroupsByDate}
             daySections={daySections}
             showDayHeaders
             scrollX={allowHorizontalScroll}
             aria-label={ariaLabel ?? bannerTitle}
-            columnHeader={columnHeader}
+            columnHeader={null}
             renderRow={renderRow}
             renderGroup={renderGroup}
             getRowKey={getRowKey}
@@ -287,67 +259,9 @@ export function StationListTable<TRecord>({
             className={cn(autoHeight && bodyScrollClass)}
             data-testid="column-table-body"
           />
-        ) : (
-          <TableStickyXScroll
-            enabled={allowHorizontalScroll}
-            className={cn(!autoHeight && 'min-h-0 flex-1')}
-            bodyClassName={bodyScrollClass}
-            bodyStyle={bodyScrollStyle}
-            bodyRef={scrollRef}
-          >
-            <div data-testid="column-table-body" className="flex w-full flex-col">
-              {dayBands.map(([date, groupsOrRows]) => (
-                <DenseDaySection<TRecord>
-                  key={date}
-                  date={date}
-                  groupsOrRows={groupsOrRows}
-                  renderRow={renderRow}
-                  renderGroup={renderGroup}
-                />
-              ))}
-            </div>
-          </TableStickyXScroll>
         )}
         {footer}
       </div>
     </div>
   );
-}
-
-/** Dense (non-virtualized) day section — header + groups OR flat rows. */
-function DenseDaySection<TRecord>({
-  date,
-  groupsOrRows,
-  renderRow,
-  renderGroup,
-}: {
-  date: string;
-  groupsOrRows: RowGroup<TRecord>[] | TRecord[];
-  renderRow: (record: TRecord, stripeIndex: number) => ReactNode;
-  renderGroup?: (group: RowGroup<TRecord>, baseStripeIndex: number) => ReactNode;
-}) {
-  const isGrouped = renderGroup != null && groupsOrRows.length > 0 && isRowGroup(groupsOrRows[0]);
-  const dayTotal = isGrouped
-    ? (groupsOrRows as RowGroup<TRecord>[]).reduce((sum, g) => sum + g.rows.length, 0)
-    : groupsOrRows.length;
-
-  // One stripe slot per top-level group — collapsed multi-child folds still
-  // paint as a single visible row (see group-stripe-index.ts).
-  let stripeIndex = 0;
-  return (
-    <div className="flex flex-col">
-      <DateGroupHeader date={date} total={dayTotal} />
-      {isGrouped
-        ? (groupsOrRows as RowGroup<TRecord>[]).map((group) => {
-            const base = stripeIndex;
-            stripeIndex += 1;
-            return <div key={`g:${group.key}`}>{renderGroup!(group, base)}</div>;
-          })
-        : (groupsOrRows as TRecord[]).map((record, i) => <div key={`r:${i}`}>{renderRow(record, i)}</div>)}
-    </div>
-  );
-}
-
-function isRowGroup<TRecord>(value: RowGroup<TRecord> | TRecord): value is RowGroup<TRecord> {
-  return typeof value === 'object' && value != null && 'rows' in value && Array.isArray((value as RowGroup<TRecord>).rows);
 }

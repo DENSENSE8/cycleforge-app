@@ -27,6 +27,7 @@ import {
 import {
   WorkbenchChromeHeader,
 } from '@/components/dashboard/workbench-shell';
+import { WorkbenchInspectorToggle } from '@/components/dashboard/workbench-inspector-toggle';
 import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
@@ -161,11 +162,16 @@ export function UnitsWorkspaceView() {
               tabs={[{ id: 'units', label: 'Units' }]}
               activeTab="units"
               onTabChange={() => {}}
-              controlsSlotRef={chrome.controlsSlotRef ?? undefined}
+              trailing={
+                <WorkbenchInspectorToggle
+                  open={Boolean(selection)}
+                  testId="units-inspector-toggle"
+                />
+              }
             />
         )}
       >
-        {({ controlsEl }) => (
+        {() => (
           <>
           <NonlinearTableHost<UnitsOverviewRow, UnitsGridColumnKey, UnitsGridColumn>
             binding={UNITS_TABLE_BINDING}
@@ -180,7 +186,7 @@ export function UnitsWorkspaceView() {
             searchEmptyMessage="No units match the current filters."
             isSearching={isSearching}
             scrollRef={scrollRef}
-            columnTriggerPortalTarget={controlsEl}
+            columnTriggerPortalTarget={null}
             renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
               <UnitsGridColumnHeader
                 columns={visible}

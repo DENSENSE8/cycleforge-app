@@ -10,6 +10,10 @@ import { LETTERS } from './room-detail-shared';
 import { BigZoneTile } from './RoomDetailPieces';
 import { RoomStatsCard } from './RoomStatsCard';
 import type { RoomDetailController } from './useRoomDetailForm';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 /** The room edit / create form body (shown when `?room=` or `?new=1`). */
 export function RoomEditForm({ c }: { c: RoomDetailController }) {
@@ -63,8 +67,8 @@ export function RoomEditForm({ c }: { c: RoomDetailController }) {
           autoComplete="off"
           className={`h-12 w-full rounded-2xl border bg-surface-canvas px-4 text-base font-semibold text-text-default outline-none transition-colors focus:bg-surface-card focus:ring-2 ${
             (nameTaken || renameTaken)
-              ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
-              : 'border-border-soft focus:border-blue-500 focus:ring-blue-200'
+              ? cn('border-red-300', focusRing('field', 'danger'))
+              : cn('border-border-soft', focusRing('field', 'accent'))
           }`}
         />
         {(nameTaken || renameTaken) && (
@@ -128,7 +132,7 @@ export function RoomEditForm({ c }: { c: RoomDetailController }) {
           onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
           rows={3}
           placeholder="Add a short note…"
-          className="w-full resize-none rounded-2xl border border-border-soft bg-surface-canvas px-4 py-3 text-role-body text-text-default outline-none transition-colors focus:border-blue-500 focus:bg-surface-card focus:ring-2 focus:ring-blue-200"
+          className={cn("w-full resize-none rounded-2xl border border-border-soft bg-surface-canvas px-4 py-3 text-role-body text-text-default transition-colors focus:bg-surface-card", focusRing('field', 'accent'))}
         />
         {!creating && (
           <p className="mt-1 text-role-micro text-text-faint">

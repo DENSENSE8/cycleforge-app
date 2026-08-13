@@ -16,6 +16,8 @@ import { settingsForPage, SETTING_PAGES } from '@/lib/settings/registry';
 import type { ResolvedSetting, SettingDef, SettingPage, SettingValue } from '@/lib/settings/types';
 import { usePageSettings } from '@/hooks/useSettings';
 import { SettingControl } from './controls/SettingControl';
+import { Panel } from '@/design-system/primitives';
+
 
 /** Lowest plan that unlocks each gated feature — shown on the upgrade badge. */
 const FEATURE_PLAN: Record<string, string> = {
@@ -116,7 +118,7 @@ function PanelSection({ title, subtitle, defs, byKey, variant, onChange }: Secti
       </header>
       <div className="space-y-4">
         {groups.map(({ group, defs: groupDefsList }) => (
-          <div key={group} className="rounded-2xl border border-border-soft bg-surface-card px-5 shadow-sm">
+          <Panel radius="2xl" padding="none" className="px-5" key={group}>
             <div className="border-b border-border-hairline py-2.5">
               <span className="text-role-eyebrow uppercase tracking-widest text-text-faint">{group}</span>
             </div>
@@ -142,7 +144,7 @@ function PanelSection({ title, subtitle, defs, byKey, variant, onChange }: Secti
                 );
               })}
             </div>
-          </div>
+          </Panel>
         ))}
       </div>
     </section>

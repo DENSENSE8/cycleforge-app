@@ -25,9 +25,12 @@
     "src/lib/tenancy",
     "src/lib/routing",
     "src/lib/source-platform.ts",
+    "src/lib/perf",
+    "src/lib/keyboard",
+    "src/lib/orders-sync",
     "src/hooks"
   ],
-  "count": 2504,
+  "count": 2662,
   "entries": [
     {
       "job": "Station: Scan pane + Displays push",
@@ -186,6 +189,19 @@
       "snippet": "`RightRailHost` · `src/components/right-rail/RightRailHost.tsx`"
     },
     {
+      "job": "Workbench: Right inspector lifecycle",
+      "sot": "usePanelStore",
+      "path": "src/lib/right-rail/panel-store.ts",
+      "guard": null,
+      "symbols": [
+        "usePanelStore"
+      ],
+      "kind": "table",
+      "source": "AGENTS.md",
+      "line": 32,
+      "snippet": "`usePanelStore` · `src/lib/right-rail/panel-store.ts`"
+    },
+    {
       "job": "Monitor: Page shell",
       "sot": "MonitorPageShell",
       "path": "src/design-system/components/monitor/MonitorPageShell.tsx",
@@ -195,7 +211,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 32,
+      "line": 33,
       "snippet": "`MonitorPageShell` · `src/design-system/components/monitor/MonitorPageShell.tsx`"
     },
     {
@@ -208,7 +224,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 33,
+      "line": 34,
       "snippet": "`OpsKpiBand` · `src/design-system/components/monitor/`"
     },
     {
@@ -221,7 +237,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 34,
+      "line": 35,
       "snippet": "`StudioShell` · `src/components/studio/`"
     },
     {
@@ -234,7 +250,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 35,
+      "line": 36,
       "snippet": "`MIN_WORK_SURFACE_PX` · `src/lib/right-rail/frame.ts`"
     },
     {
@@ -247,7 +263,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 36,
+      "line": 37,
       "snippet": "`ContextPanelLayout` · `src/components/sidebar/ContextPanelLayout.tsx`"
     },
     {
@@ -260,7 +276,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 37,
+      "line": 38,
       "snippet": "`RouteShell` · `src/design-system/components/RouteShell.tsx`"
     },
     {
@@ -274,7 +290,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 43,
+      "line": 44,
       "snippet": "`Button` · `Panel` · `src/design-system/primitives/`"
     },
     {
@@ -287,7 +303,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 44,
+      "line": 45,
       "snippet": "`LedgerGridSurface` · `src/design-system/components/grid/`"
     },
     {
@@ -300,7 +316,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 45,
+      "line": 46,
       "snippet": "`resolveGridColumnAlign` · `src/design-system/components/grid/`"
     },
     {
@@ -313,7 +329,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 46,
+      "line": 47,
       "snippet": "`motionRole` · `src/design-system/motion/`"
     },
     {
@@ -326,7 +342,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 47,
+      "line": 48,
       "snippet": "`cornerClass` · `src/design-system/tokens/`"
     },
     {
@@ -339,7 +355,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 48,
+      "line": 49,
       "snippet": "`CopyChip` · `src/components/ui/CopyChip.tsx`"
     },
     {
@@ -352,7 +368,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 49,
+      "line": 50,
       "snippet": "`PlatformMark` · `src/lib/source-platform.ts`"
     },
     {
@@ -365,7 +381,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 50,
+      "line": 51,
       "snippet": "`StackedRowIdentity` · `src/components/ui/StackedRowIdentity.tsx`"
     },
     {
@@ -378,8 +394,60 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 51,
+      "line": 52,
       "snippet": "`CompactActivityRow` · `src/components/ui/CompactActivityRow.tsx`"
+    },
+    {
+      "job": "Order warranty card",
+      "sot": "OrderWarrantySummary",
+      "path": "src/components/order-record/OrderWarrantySummary.tsx",
+      "guard": null,
+      "symbols": [
+        "OrderWarrantySummary"
+      ],
+      "kind": "table",
+      "source": "AGENTS.md",
+      "line": 53,
+      "snippet": "`OrderWarrantySummary` · `src/components/order-record/OrderWarrantySummary.tsx`"
+    },
+    {
+      "job": "Label-builder numeric step",
+      "sot": "NumericStep",
+      "path": "src/components/barcode/bin-label-printer/NumericStep.tsx",
+      "guard": null,
+      "symbols": [
+        "NumericStep"
+      ],
+      "kind": "table",
+      "source": "AGENTS.md",
+      "line": 54,
+      "snippet": "`NumericStep` · `src/components/barcode/bin-label-printer/NumericStep.tsx`"
+    },
+    {
+      "job": "Station carton Macro host",
+      "sot": "StationDisplaysActionFloor",
+      "path": "src/components/station/displays/StationDisplaysActionFloor.tsx",
+      "guard": null,
+      "symbols": [
+        "StationDisplaysActionFloor"
+      ],
+      "kind": "table",
+      "source": "AGENTS.md",
+      "line": 55,
+      "snippet": "`StationDisplaysActionFloor` · `src/components/station/displays/StationDisplaysActionFloor.tsx`"
+    },
+    {
+      "job": "Station carton Macro verbs",
+      "sot": "CartonDisplaysActionFloor",
+      "path": "src/components/station/displays/CartonDisplaysActionFloor.tsx",
+      "guard": null,
+      "symbols": [
+        "CartonDisplaysActionFloor"
+      ],
+      "kind": "table",
+      "source": "AGENTS.md",
+      "line": 56,
+      "snippet": "`CartonDisplaysActionFloor` · `src/components/station/displays/CartonDisplaysActionFloor.tsx`"
     },
     {
       "job": "Tooltips (no native title attr)",
@@ -391,8 +459,159 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 52,
+      "line": 57,
       "snippet": "`HoverTooltip` · `src/components/ui/HoverTooltip.tsx`"
+    },
+    {
+      "job": "Conversation message card",
+      "sot": "ConversationMessageCard",
+      "path": "src/design-system/primitives/ConversationMessageCard.tsx",
+      "guard": null,
+      "symbols": [
+        "ConversationMessageCard"
+      ],
+      "kind": "table",
+      "source": "AGENTS.md",
+      "line": 58,
+      "snippet": "`ConversationMessageCard` · `src/design-system/primitives/ConversationMessageCard.tsx`"
+    },
+    {
+      "job": "Conversation chrome tokens",
+      "sot": "conversation-chrome.ts",
+      "path": "src/design-system/primitives/conversation-chrome.ts",
+      "guard": null,
+      "symbols": [],
+      "kind": "table",
+      "source": "AGENTS.md",
+      "line": 59,
+      "snippet": "`conversation-chrome` · `src/design-system/primitives/conversation-chrome.ts`"
+    },
+    {
+      "job": "Conversation header actions",
+      "sot": "ConversationHeaderActionButton",
+      "path": "src/design-system/primitives/ConversationHeaderActionButton.tsx",
+      "guard": null,
+      "symbols": [
+        "ConversationHeaderActionButton"
+      ],
+      "kind": "table",
+      "source": "AGENTS.md",
+      "line": 60,
+      "snippet": "`ConversationHeaderActionButton` · `src/design-system/primitives/ConversationHeaderActionButton.tsx`"
+    },
+    {
+      "job": "Chat / note composer shell",
+      "sot": "OmnichannelComposerDock",
+      "path": "src/design-system/primitives/OmnichannelComposerDock.tsx",
+      "guard": null,
+      "symbols": [
+        "OmnichannelComposerDock"
+      ],
+      "kind": "table",
+      "source": "AGENTS.md",
+      "line": 61,
+      "snippet": "`OmnichannelComposerDock` · `src/design-system/primitives/OmnichannelComposerDock.tsx`"
+    },
+    {
+      "job": "HID barcode wedge",
+      "sot": "createWedgeKeyListener",
+      "path": "src/lib/keyboard/wedge-scan-listener.ts",
+      "guard": null,
+      "symbols": [
+        "createWedgeKeyListener"
+      ],
+      "kind": "table",
+      "source": "AGENTS.md",
+      "line": 62,
+      "snippet": "`createWedgeKeyListener` · `src/lib/keyboard/wedge-scan-listener.ts`"
+    },
+    {
+      "job": "Main-thread yield (INP)",
+      "sot": "yieldToInput",
+      "path": "src/lib/perf/yield-to-input.ts",
+      "guard": null,
+      "symbols": [
+        "yieldToInput"
+      ],
+      "kind": "table",
+      "source": "AGENTS.md",
+      "line": 63,
+      "snippet": "`yieldToInput` · `src/lib/perf/yield-to-input.ts`"
+    },
+    {
+      "job": "NDJSON / Ably paint budget",
+      "sot": "streamNdjson",
+      "path": "src/lib/orders-sync/client.ts",
+      "guard": null,
+      "symbols": [
+        "streamNdjson",
+        "applyStreamBudget"
+      ],
+      "kind": "table",
+      "source": "AGENTS.md",
+      "line": 64,
+      "snippet": "`streamNdjson` · `applyStreamBudget` · `src/lib/orders-sync/client.ts` · `src/lib/perf/stream-apply.ts`"
+    },
+    {
+      "job": "Grid first-paint window",
+      "sot": "LEDGER_GRID_OVERSCAN",
+      "path": "src/design-system/components/grid/",
+      "guard": null,
+      "symbols": [
+        "LEDGER_GRID_OVERSCAN",
+        "LEDGER_GRID_ROW_CONTAIN"
+      ],
+      "kind": "table",
+      "source": "AGENTS.md",
+      "line": 65,
+      "snippet": "`LEDGER_GRID_OVERSCAN` · `LEDGER_GRID_ROW_CONTAIN` · `src/design-system/components/grid/`"
+    },
+    {
+      "job": "Compose from the named SoT first; grow it when wrong.",
+      "sot": "WorkbenchSheetView",
+      "path": null,
+      "guard": null,
+      "symbols": [
+        "WorkbenchSheetView",
+        "StationScanPaneHost",
+        "StationPanelRoot",
+        "DashboardScrollShell",
+        "ScanStationUtilityRail",
+        "StationAmbientWash"
+      ],
+      "kind": "law",
+      "source": "AGENTS.md",
+      "line": 73,
+      "snippet": "**Compose from the named SoT first; grow it when wrong.** Never fork a page-local twin. Lookup: `node scripts/sot-lookup.mjs \"<job>\"`. New AST-similar copies fail `jscpd` within an interaction contract; station-vs-support clones are filter…"
+    },
+    {
+      "job": "Do not paint over primitives.",
+      "sot": "className",
+      "path": "button-variants.ts",
+      "guard": null,
+      "symbols": [
+        "className"
+      ],
+      "kind": "law",
+      "source": "AGENTS.md",
+      "line": 74,
+      "snippet": "**Do not paint over primitives.** `<Button>` fills and `<Panel>` radii resolve through semantic variants (`variant`, `radius`) — never `className` hue/radius overrides. Grow `button-variants.ts` instead."
+    },
+    {
+      "job": "New feature assemblies declare @domain-job.",
+      "sot": "Station",
+      "path": null,
+      "guard": "src/lib/governance/domain-job.guard.test.ts",
+      "symbols": [
+        "Station",
+        "Workbench",
+        "Monitor",
+        "Canvas"
+      ],
+      "kind": "law",
+      "source": "AGENTS.md",
+      "line": 75,
+      "snippet": "**New feature assemblies declare `@domain-job`.** Plus `@hardware-target` (`Station` · `Workbench` · `Monitor` · `Canvas`), `@density` (`floor` · `ops` · `monitor` · `studio`), and `@justification` (why the named host cannot be reused). Gu…"
     },
     {
       "job": "Frame budgets",
@@ -406,8 +625,24 @@
       ],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 61,
+      "line": 76,
       "snippet": "**Frame budgets** live in `src/lib/right-rail/frame.ts` — desk center ≥ `MIN_WORK_SURFACE_PX` (784); station Displays keep center ≥ `STATION_PUSH_CENTER_FLOOR_PX` (720); gutters `0`. Right edge **pushes** via `RightRailHost` (`modal={false…"
+    },
+    {
+      "job": "Right-rail dismiss is host-owned.",
+      "sot": "RightRailHost",
+      "path": null,
+      "guard": null,
+      "symbols": [
+        "RightRailHost",
+        "closeAndCachePanel",
+        "draftData",
+        "handlePanelStoreKeydown"
+      ],
+      "kind": "law",
+      "source": "AGENTS.md",
+      "line": 77,
+      "snippet": "**Right-rail dismiss is host-owned.** `RightRailHost` paints the single `→|` and `closeAndCachePanel()` unmounts the occupant, caches `draftData`, and toasts Resume. Child views never mount a second close. Esc and Mod+Shift+R live in `hand…"
     },
     {
       "job": "Ops chrome is flush-square",
@@ -419,7 +654,7 @@
       ],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 62,
+      "line": 78,
       "snippet": "**Ops chrome is flush-square** — `WORKBENCH_CHROME_PILL_CLASS` = `cornerClass('flush')` in `workbench-shell.tsx`."
     },
     {
@@ -433,7 +668,7 @@
       ],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 63,
+      "line": 79,
       "snippet": "**Workbench spreadsheets** mount via the table definition registry + `NonlinearTableHost` over `LedgerGridSurface` — never a new `*GridView` twin."
     },
     {
@@ -444,7 +679,7 @@
       "symbols": [],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 64,
+      "line": 80,
       "snippet": "**Motion** only via `@/design-system/motion` + `motionRole.*`. Only `src/design-system/motion/framer.ts` may import `motion/react` or `framer-motion`."
     },
     {
@@ -455,7 +690,7 @@
       "symbols": [],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 65,
+      "line": 81,
       "snippet": "**Color, spacing, type, elevation, focus, and named z-index tokens** come from `@/design-system/tokens` — no page-local hex; no ad-hoc numeric stacking."
     },
     {
@@ -471,7 +706,7 @@
       ],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 66,
+      "line": 82,
       "snippet": "**Platform / order identity** resolves from `source-platform.ts` + chip family (`OrderIdChip` / `PoChip` / `TrackingChip` / `PlatformMark`) — never prose platform names as the channel face."
     },
     {
@@ -485,7 +720,7 @@
       ],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 67,
+      "line": 83,
       "snippet": "**Mount-gated URL opens** paint via `useOptimisticUrlParam` / `resolveOptimisticParam` (`src/hooks/useOptimisticUrlParam.ts`, `src/lib/routing/optimistic-url-param.ts`)."
     },
     {
@@ -496,7 +731,7 @@
       "symbols": [],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 68,
+      "line": 84,
       "snippet": "**Status changes only via `transition()`** (`src/lib/inventory/state-machine.ts`) — never a raw status UPDATE outside the state machine."
     },
     {
@@ -510,7 +745,7 @@
       ],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 69,
+      "line": 85,
       "snippet": "**`orgId` comes from `ctx`**, never the body; org-scoped writes go through `withTenantTransaction` (`src/lib/tenancy/db.ts`)."
     },
     {
@@ -523,8 +758,50 @@
       ],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 70,
+      "line": 86,
       "snippet": "**Cross-entity urgency** resolves only in `promoteUrgency()` (`src/lib/urgency/`)."
+    },
+    {
+      "job": "Conversation bubbles / chat cards",
+      "sot": "ConversationMessageCard",
+      "path": "src/design-system/primitives/",
+      "guard": null,
+      "symbols": [
+        "ConversationMessageCard"
+      ],
+      "kind": "law",
+      "source": "AGENTS.md",
+      "line": 88,
+      "snippet": "**Conversation bubbles / chat cards** compose `ConversationMessageCard` + `conversation-chrome` (`src/design-system/primitives/`) — never a page-local bubble twin, 75% chat bubble, or Lock-icon internal chip. Helpdesk tickets and entity th…"
+    },
+    {
+      "job": "HID wedge scans",
+      "sot": "createWedgeKeyListener",
+      "path": null,
+      "guard": null,
+      "symbols": [
+        "createWedgeKeyListener",
+        "onKeyDown"
+      ],
+      "kind": "law",
+      "source": "AGENTS.md",
+      "line": 89,
+      "snippet": "**HID wedge scans** attach via `createWedgeKeyListener` (native capture `keydown`, yield-before-React). Never a React synthetic `onKeyDown` for scanner input; never drop focus; never run scan side-effects on the keydown stack."
+    },
+    {
+      "job": "Live NDJSON / Ably paints",
+      "sot": "applyStreamBudget",
+      "path": null,
+      "guard": null,
+      "symbols": [
+        "applyStreamBudget",
+        "createFrameCoalescer",
+        "setState"
+      ],
+      "kind": "law",
+      "source": "AGENTS.md",
+      "line": 90,
+      "snippet": "**Live NDJSON / Ably paints** apply through `applyStreamBudget` / `createFrameCoalescer` — never `setState` per stream line or per Ably message during a burst. Orthogonal exception dimensions (SCANNED + PROBLEM) stay on the row payload."
     },
     {
       "job": "Export: BulkFlagDialog",
@@ -1437,19 +1714,6 @@
       "snippet": "export QueueTableToolbar from src/components/dashboard/queue-table/QueueTableToolbar.tsx"
     },
     {
-      "job": "Export: StationRowColumnHeader",
-      "sot": "StationRowColumnHeader",
-      "path": "src/components/dashboard/queue-table/StationRowColumnHeader.tsx",
-      "guard": null,
-      "symbols": [
-        "StationRowColumnHeader"
-      ],
-      "kind": "code",
-      "source": "src/components/dashboard/queue-table/StationRowColumnHeader.tsx",
-      "line": 27,
-      "snippet": "export StationRowColumnHeader from src/components/dashboard/queue-table/StationRowColumnHeader.tsx"
-    },
-    {
       "job": "Export: QueueSortSwitch",
       "sot": "QueueSortSwitch",
       "path": "src/components/dashboard/QueueSortSwitch.tsx",
@@ -1498,7 +1762,7 @@
       ],
       "kind": "code",
       "source": "src/components/dashboard/workbench-chrome-cube-menu.tsx",
-      "line": 34,
+      "line": 36,
       "snippet": "export WorkbenchChromeMenuTab from src/components/dashboard/workbench-chrome-cube-menu.tsx"
     },
     {
@@ -1511,7 +1775,7 @@
       ],
       "kind": "code",
       "source": "src/components/dashboard/workbench-chrome-cube-menu.tsx",
-      "line": 41,
+      "line": 43,
       "snippet": "export WorkbenchChromeCubeMenu from src/components/dashboard/workbench-chrome-cube-menu.tsx"
     },
     {
@@ -1563,7 +1827,7 @@
       ],
       "kind": "code",
       "source": "src/components/dashboard/workbench-filter-popover.tsx",
-      "line": 39,
+      "line": 41,
       "snippet": "export WorkbenchFilterPopover from src/components/dashboard/workbench-filter-popover.tsx"
     },
     {
@@ -1576,7 +1840,7 @@
       ],
       "kind": "code",
       "source": "src/components/dashboard/workbench-filter-popover.tsx",
-      "line": 163,
+      "line": 165,
       "snippet": "export WorkbenchFilterHotChip from src/components/dashboard/workbench-filter-popover.tsx"
     },
     {
@@ -1589,7 +1853,7 @@
       ],
       "kind": "code",
       "source": "src/components/dashboard/workbench-filter-popover.tsx",
-      "line": 186,
+      "line": 188,
       "snippet": "export WorkbenchFilterGroupLabel from src/components/dashboard/workbench-filter-popover.tsx"
     },
     {
@@ -1602,7 +1866,7 @@
       ],
       "kind": "code",
       "source": "src/components/dashboard/workbench-filter-popover.tsx",
-      "line": 196,
+      "line": 198,
       "snippet": "export WorkbenchFilterDivider from src/components/dashboard/workbench-filter-popover.tsx"
     },
     {
@@ -1615,7 +1879,7 @@
       ],
       "kind": "code",
       "source": "src/components/dashboard/workbench-filter-popover.tsx",
-      "line": 207,
+      "line": 209,
       "snippet": "export WorkbenchFilterMenuRow from src/components/dashboard/workbench-filter-popover.tsx"
     },
     {
@@ -1628,7 +1892,7 @@
       ],
       "kind": "code",
       "source": "src/components/dashboard/workbench-filter-popover.tsx",
-      "line": 285,
+      "line": 287,
       "snippet": "export WorkbenchRefineFacetTabs from src/components/dashboard/workbench-filter-popover.tsx"
     },
     {
@@ -1641,7 +1905,7 @@
       ],
       "kind": "code",
       "source": "src/components/dashboard/workbench-filter-popover.tsx",
-      "line": 339,
+      "line": 341,
       "snippet": "export WORKBENCH_REFINE_BODY_CLASS from src/components/dashboard/workbench-filter-popover.tsx"
     },
     {
@@ -1654,7 +1918,7 @@
       ],
       "kind": "code",
       "source": "src/components/dashboard/workbench-inspector-toggle.tsx",
-      "line": 110,
+      "line": 117,
       "snippet": "export WorkbenchInspectorToggle from src/components/dashboard/workbench-inspector-toggle.tsx"
     },
     {
@@ -1719,7 +1983,7 @@
       ],
       "kind": "code",
       "source": "src/components/dashboard/workbench-shell.tsx",
-      "line": 41,
+      "line": 42,
       "snippet": "export WORKBENCH_SHEET_HOST from src/components/dashboard/workbench-shell.tsx"
     },
     {
@@ -1732,7 +1996,7 @@
       ],
       "kind": "code",
       "source": "src/components/dashboard/workbench-shell.tsx",
-      "line": 49,
+      "line": 50,
       "snippet": "export WORKBENCH_SHEET_CHROME from src/components/dashboard/workbench-shell.tsx"
     },
     {
@@ -1745,7 +2009,7 @@
       ],
       "kind": "code",
       "source": "src/components/dashboard/workbench-shell.tsx",
-      "line": 81,
+      "line": 82,
       "snippet": "export WorkbenchTriageBand from src/components/dashboard/workbench-shell.tsx"
     },
     {
@@ -1758,7 +2022,7 @@
       ],
       "kind": "code",
       "source": "src/components/dashboard/workbench-shell.tsx",
-      "line": 170,
+      "line": 177,
       "snippet": "export withScopeDivider from src/components/dashboard/workbench-shell.tsx"
     },
     {
@@ -1771,7 +2035,7 @@
       ],
       "kind": "code",
       "source": "src/components/dashboard/workbench-shell.tsx",
-      "line": 208,
+      "line": 215,
       "snippet": "export WORKBENCH_CHROME_PILL_CLASS from src/components/dashboard/workbench-shell.tsx"
     },
     {
@@ -1784,7 +2048,7 @@
       ],
       "kind": "code",
       "source": "src/components/dashboard/workbench-shell.tsx",
-      "line": 245,
+      "line": 252,
       "snippet": "export WorkbenchTrailingCluster from src/components/dashboard/workbench-shell.tsx"
     },
     {
@@ -1797,7 +2061,7 @@
       ],
       "kind": "code",
       "source": "src/components/dashboard/workbench-shell.tsx",
-      "line": 272,
+      "line": 279,
       "snippet": "export WorkbenchChromeHeaderProps from src/components/dashboard/workbench-shell.tsx"
     },
     {
@@ -1810,7 +2074,7 @@
       ],
       "kind": "code",
       "source": "src/components/dashboard/workbench-shell.tsx",
-      "line": 344,
+      "line": 351,
       "snippet": "export WorkbenchChromeHeader from src/components/dashboard/workbench-shell.tsx"
     },
     {
@@ -1914,7 +2178,7 @@
       ],
       "kind": "code",
       "source": "src/components/right-rail/DeskRailChromeRow.tsx",
-      "line": 44,
+      "line": 48,
       "snippet": "export DeskRailChromeRow from src/components/right-rail/DeskRailChromeRow.tsx"
     },
     {
@@ -1981,6 +2245,19 @@
       "source": "src/components/right-rail/InspectorActionFloor.tsx",
       "line": 198,
       "snippet": "export FloorOverflowButton from src/components/right-rail/InspectorActionFloor.tsx"
+    },
+    {
+      "job": "Export: InspectorColumnDisplayButton",
+      "sot": "InspectorColumnDisplayButton",
+      "path": "src/components/right-rail/InspectorColumnDisplayButton.tsx",
+      "guard": null,
+      "symbols": [
+        "InspectorColumnDisplayButton"
+      ],
+      "kind": "code",
+      "source": "src/components/right-rail/InspectorColumnDisplayButton.tsx",
+      "line": 16,
+      "snippet": "export InspectorColumnDisplayButton from src/components/right-rail/InspectorColumnDisplayButton.tsx"
     },
     {
       "job": "Export: InspectorFlushDelete",
@@ -2083,7 +2360,7 @@
       ],
       "kind": "code",
       "source": "src/components/right-rail/RightRailHost.tsx",
-      "line": 95,
+      "line": 142,
       "snippet": "export RightRailHost from src/components/right-rail/RightRailHost.tsx"
     },
     {
@@ -2135,7 +2412,7 @@
       ],
       "kind": "code",
       "source": "src/components/saved-views/SavedViewsList.tsx",
-      "line": 43,
+      "line": 45,
       "snippet": "export SavedViewsList from src/components/saved-views/SavedViewsList.tsx"
     },
     {
@@ -3032,7 +3309,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/dashboard-management/OrdersImportCard.tsx",
-      "line": 10,
+      "line": 14,
       "snippet": "export OrdersImportCard from src/components/sidebar/dashboard-management/OrdersImportCard.tsx"
     },
     {
@@ -3071,7 +3348,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/dashboard-management/useOrdersImport.ts",
-      "line": 294,
+      "line": 307,
       "snippet": "export OrdersImportController from src/components/sidebar/dashboard-management/useOrdersImport.ts"
     },
     {
@@ -3188,7 +3465,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/favorites/FavoriteForm.tsx",
-      "line": 9,
+      "line": 13,
       "snippet": "export FavoriteForm from src/components/sidebar/favorites/FavoriteForm.tsx"
     },
     {
@@ -3426,19 +3703,6 @@
       "snippet": "export GoalsSidebarPanel from src/components/sidebar/GoalsSidebarPanel.tsx"
     },
     {
-      "job": "Export: HomeContextPanel",
-      "sot": "HomeContextPanel",
-      "path": "src/components/sidebar/HomeContextPanel.tsx",
-      "guard": null,
-      "symbols": [
-        "HomeContextPanel"
-      ],
-      "kind": "code",
-      "source": "src/components/sidebar/HomeContextPanel.tsx",
-      "line": 38,
-      "snippet": "export HomeContextPanel from src/components/sidebar/HomeContextPanel.tsx"
-    },
-    {
       "job": "Export: useActiveStaffDirectory",
       "sot": "useActiveStaffDirectory",
       "path": "src/components/sidebar/hooks.ts",
@@ -3504,19 +3768,6 @@
       "snippet": "export SidebarNavList from src/components/sidebar/master-nav/SidebarNavList.tsx"
     },
     {
-      "job": "Export: TopDestinationPins",
-      "sot": "TopDestinationPins",
-      "path": "src/components/sidebar/master-nav/SpineTopPins.tsx",
-      "guard": null,
-      "symbols": [
-        "TopDestinationPins"
-      ],
-      "kind": "code",
-      "source": "src/components/sidebar/master-nav/SpineTopPins.tsx",
-      "line": 72,
-      "snippet": "export TopDestinationPins from src/components/sidebar/master-nav/SpineTopPins.tsx"
-    },
-    {
       "job": "Export: SpineTopPins",
       "sot": "SpineTopPins",
       "path": "src/components/sidebar/master-nav/SpineTopPins.tsx",
@@ -3526,7 +3777,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/master-nav/SpineTopPins.tsx",
-      "line": 134,
+      "line": 63,
       "snippet": "export SpineTopPins from src/components/sidebar/master-nav/SpineTopPins.tsx"
     },
     {
@@ -3604,7 +3855,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/operations/HistoryBrowseFilters.tsx",
-      "line": 102,
+      "line": 106,
       "snippet": "export HistoryBrowseFilters from src/components/sidebar/operations/HistoryBrowseFilters.tsx"
     },
     {
@@ -3864,7 +4115,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/OperationsSidebarPanel.tsx",
-      "line": 83,
+      "line": 85,
       "snippet": "export OperationsSidebarPanel from src/components/sidebar/OperationsSidebarPanel.tsx"
     },
     {
@@ -4709,7 +4960,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/incoming-details/EbayTab.tsx",
-      "line": 41,
+      "line": 45,
       "snippet": "export EbayTab from src/components/sidebar/receiving/incoming-details/EbayTab.tsx"
     },
     {
@@ -4943,7 +5194,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/incoming-details/IncomingDetailsHeader.tsx",
-      "line": 171,
+      "line": 172,
       "snippet": "export incomingDetailsHeaderMeta from src/components/sidebar/receiving/incoming-details/IncomingDetailsHeader.tsx"
     },
     {
@@ -4956,7 +5207,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/incoming-details/IncomingDetailsHeader.tsx",
-      "line": 202,
+      "line": 203,
       "snippet": "export INCOMING_DETAILS_RAIL_ID from src/components/sidebar/receiving/incoming-details/IncomingDetailsHeader.tsx"
     },
     {
@@ -4969,7 +5220,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/incoming-details/IncomingDetailsHeader.tsx",
-      "line": 205,
+      "line": 206,
       "snippet": "export incomingDetailsAriaLabel from src/components/sidebar/receiving/incoming-details/IncomingDetailsHeader.tsx"
     },
     {
@@ -4982,7 +5233,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/incoming-details/NotesTab.tsx",
-      "line": 6,
+      "line": 10,
       "snippet": "export NotesTab from src/components/sidebar/receiving/incoming-details/NotesTab.tsx"
     },
     {
@@ -5138,7 +5389,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/incoming/incoming-tiles.ts",
-      "line": 10,
+      "line": 12,
       "snippet": "export TileSpec from src/components/sidebar/receiving/incoming/incoming-tiles.ts"
     },
     {
@@ -5151,7 +5402,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/incoming/incoming-tiles.ts",
-      "line": 30,
+      "line": 32,
       "snippet": "export TILES from src/components/sidebar/receiving/incoming/incoming-tiles.ts"
     },
     {
@@ -5164,7 +5415,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/incoming/incoming-tiles.ts",
-      "line": 53,
+      "line": 55,
       "snippet": "export TONE from src/components/sidebar/receiving/incoming/incoming-tiles.ts"
     },
     {
@@ -5203,7 +5454,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/incoming/IncomingChromeActions.tsx",
-      "line": 22,
+      "line": 24,
       "snippet": "export IncomingChromeActions from src/components/sidebar/receiving/incoming/IncomingChromeActions.tsx"
     },
     {
@@ -5216,7 +5467,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/incoming/IncomingImportCsvOverlay.tsx",
-      "line": 22,
+      "line": 28,
       "snippet": "export IncomingImportCsvOverlay from src/components/sidebar/receiving/incoming/IncomingImportCsvOverlay.tsx"
     },
     {
@@ -5762,7 +6013,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/receiving-sidebar-shared.ts",
-      "line": 401,
+      "line": 405,
       "snippet": "export pendingScanReconcileKey from src/components/sidebar/receiving/receiving-sidebar-shared.ts"
     },
     {
@@ -5775,7 +6026,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/receiving-sidebar-shared.ts",
-      "line": 427,
+      "line": 431,
       "snippet": "export buildPendingScanStubRow from src/components/sidebar/receiving/receiving-sidebar-shared.ts"
     },
     {
@@ -5788,7 +6039,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/receiving-sidebar-shared.ts",
-      "line": 472,
+      "line": 476,
       "snippet": "export buildOptimisticUnmatchedPaneStub from src/components/sidebar/receiving/receiving-sidebar-shared.ts"
     },
     {
@@ -5801,7 +6052,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/receiving-sidebar-shared.ts",
-      "line": 512,
+      "line": 516,
       "snippet": "export isOptimisticUnmatchedPaneStub from src/components/sidebar/receiving/receiving-sidebar-shared.ts"
     },
     {
@@ -5814,7 +6065,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/receiving-sidebar-shared.ts",
-      "line": 532,
+      "line": 536,
       "snippet": "export isPendingTriageScanRow from src/components/sidebar/receiving/receiving-sidebar-shared.ts"
     },
     {
@@ -5827,7 +6078,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/receiving-sidebar-shared.ts",
-      "line": 552,
+      "line": 556,
       "snippet": "export buildUnmatchedStubRow from src/components/sidebar/receiving/receiving-sidebar-shared.ts"
     },
     {
@@ -5840,7 +6091,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/receiving-sidebar-shared.ts",
-      "line": 598,
+      "line": 602,
       "snippet": "export buildUnboxRailUnmatchedRow from src/components/sidebar/receiving/receiving-sidebar-shared.ts"
     },
     {
@@ -5853,7 +6104,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/receiving-sidebar-shared.ts",
-      "line": 630,
+      "line": 634,
       "snippet": "export buildMatchedStubRow from src/components/sidebar/receiving/receiving-sidebar-shared.ts"
     },
     {
@@ -7153,7 +7404,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/SidebarContextPanel.tsx",
-      "line": 40,
+      "line": 39,
       "snippet": "export SidebarContextPanel from src/components/sidebar/SidebarContextPanel.tsx"
     },
     {
@@ -7283,7 +7534,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/StudioSidebarPanel.tsx",
-      "line": 60,
+      "line": 62,
       "snippet": "export StudioSidebarPanel from src/components/sidebar/StudioSidebarPanel.tsx"
     },
     {
@@ -7751,7 +8002,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/WarehouseSidebarPanel.tsx",
-      "line": 35,
+      "line": 37,
       "snippet": "export WarehouseSidebarPanel from src/components/sidebar/WarehouseSidebarPanel.tsx"
     },
     {
@@ -7974,6 +8225,19 @@
       "source": "src/components/station/displays/armed-cursor-face.ts",
       "line": 53,
       "snippet": "export ARMED_CURSOR_MARKER_PULSE_CLASS from src/components/station/displays/armed-cursor-face.ts"
+    },
+    {
+      "job": "Export: CartonDisplaysActionFloor",
+      "sot": "CartonDisplaysActionFloor",
+      "path": "src/components/station/displays/CartonDisplaysActionFloor.tsx",
+      "guard": null,
+      "symbols": [
+        "CartonDisplaysActionFloor"
+      ],
+      "kind": "code",
+      "source": "src/components/station/displays/CartonDisplaysActionFloor.tsx",
+      "line": 87,
+      "snippet": "export CartonDisplaysActionFloor from src/components/station/displays/CartonDisplaysActionFloor.tsx"
     },
     {
       "job": "Export: STATION_DISPLAY_INDEX",
@@ -8505,7 +8769,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/displays/StationDisplaysActionFloor.tsx",
-      "line": 23,
+      "line": 24,
       "snippet": "export StationDisplaysActionFloor from src/components/station/displays/StationDisplaysActionFloor.tsx"
     },
     {
@@ -9042,58 +9306,6 @@
       "snippet": "export WORKSPACE_MODES from src/components/station/entity-context/workspace-mode-registry.ts"
     },
     {
-      "job": "Export: incomingDateCell",
-      "sot": "incomingDateCell",
-      "path": "src/components/station/incoming-grid/cells/index.tsx",
-      "guard": null,
-      "symbols": [
-        "incomingDateCell"
-      ],
-      "kind": "code",
-      "source": "src/components/station/incoming-grid/cells/index.tsx",
-      "line": 50,
-      "snippet": "export incomingDateCell from src/components/station/incoming-grid/cells/index.tsx"
-    },
-    {
-      "job": "Export: displayProductTitle",
-      "sot": "displayProductTitle",
-      "path": "src/components/station/incoming-grid/cells/index.tsx",
-      "guard": null,
-      "symbols": [
-        "displayProductTitle"
-      ],
-      "kind": "code",
-      "source": "src/components/station/incoming-grid/cells/index.tsx",
-      "line": 64,
-      "snippet": "export displayProductTitle from src/components/station/incoming-grid/cells/index.tsx"
-    },
-    {
-      "job": "Export: IncomingGridCellCtx",
-      "sot": "IncomingGridCellCtx",
-      "path": "src/components/station/incoming-grid/cells/index.tsx",
-      "guard": null,
-      "symbols": [
-        "IncomingGridCellCtx"
-      ],
-      "kind": "code",
-      "source": "src/components/station/incoming-grid/cells/index.tsx",
-      "line": 74,
-      "snippet": "export IncomingGridCellCtx from src/components/station/incoming-grid/cells/index.tsx"
-    },
-    {
-      "job": "Export: renderIncomingGridCell",
-      "sot": "renderIncomingGridCell",
-      "path": "src/components/station/incoming-grid/cells/index.tsx",
-      "guard": null,
-      "symbols": [
-        "renderIncomingGridCell"
-      ],
-      "kind": "code",
-      "source": "src/components/station/incoming-grid/cells/index.tsx",
-      "line": 106,
-      "snippet": "export renderIncomingGridCell from src/components/station/incoming-grid/cells/index.tsx"
-    },
-    {
       "job": "Export: INCOMING_GRID_CAPABILITIES",
       "sot": "INCOMING_GRID_CAPABILITIES",
       "path": "src/components/station/incoming-grid/incoming-grid-descriptor.ts",
@@ -9129,7 +9341,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/incoming-grid/incoming-table-definition.ts",
-      "line": 33,
+      "line": 34,
       "snippet": "export INCOMING_TABLE_DEFINITION from src/components/station/incoming-grid/incoming-table-definition.ts"
     },
     {
@@ -9142,7 +9354,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/incoming-grid/incoming-table-definition.ts",
-      "line": 47,
+      "line": 48,
       "snippet": "export INCOMING_TABLE_BINDING from src/components/station/incoming-grid/incoming-table-definition.ts"
     },
     {
@@ -9183,19 +9395,6 @@
       "source": "src/components/station/incoming-grid/IncomingGridRow.tsx",
       "line": 64,
       "snippet": "export IncomingGridRow from src/components/station/incoming-grid/IncomingGridRow.tsx"
-    },
-    {
-      "job": "Export: IncomingGridStatusCell",
-      "sot": "IncomingGridStatusCell",
-      "path": "src/components/station/incoming-grid/IncomingGridStatusCell.tsx",
-      "guard": null,
-      "symbols": [
-        "IncomingGridStatusCell"
-      ],
-      "kind": "code",
-      "source": "src/components/station/incoming-grid/IncomingGridStatusCell.tsx",
-      "line": 29,
-      "snippet": "export IncomingGridStatusCell from src/components/station/incoming-grid/IncomingGridStatusCell.tsx"
     },
     {
       "job": "Export: IncomingAttachTrackingButton",
@@ -9519,7 +9718,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/receiving-grid/cells/index.tsx",
-      "line": 38,
+      "line": 45,
       "snippet": "export renderReceivingGridCell from src/components/station/receiving-grid/cells/index.tsx"
     },
     {
@@ -9532,7 +9731,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/receiving-grid/cells/receiving-grid-cell-types.ts",
-      "line": 27,
+      "line": 28,
       "snippet": "export ReceivingActivityDateCell from src/components/station/receiving-grid/cells/receiving-grid-cell-types.ts"
     },
     {
@@ -9545,8 +9744,21 @@
       ],
       "kind": "code",
       "source": "src/components/station/receiving-grid/cells/receiving-grid-cell-types.ts",
-      "line": 32,
+      "line": 33,
       "snippet": "export ReceivingGridCellCtx from src/components/station/receiving-grid/cells/receiving-grid-cell-types.ts"
+    },
+    {
+      "job": "Export: ReceivingGridCellColumn",
+      "sot": "ReceivingGridCellColumn",
+      "path": "src/components/station/receiving-grid/cells/receiving-grid-cell-types.ts",
+      "guard": null,
+      "symbols": [
+        "ReceivingGridCellColumn"
+      ],
+      "kind": "code",
+      "source": "src/components/station/receiving-grid/cells/receiving-grid-cell-types.ts",
+      "line": 114,
+      "snippet": "export ReceivingGridCellColumn from src/components/station/receiving-grid/cells/receiving-grid-cell-types.ts"
     },
     {
       "job": "Export: ReceivingGridCellProps",
@@ -9558,7 +9770,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/receiving-grid/cells/receiving-grid-cell-types.ts",
-      "line": 99,
+      "line": 116,
       "snippet": "export ReceivingGridCellProps from src/components/station/receiving-grid/cells/receiving-grid-cell-types.ts"
     },
     {
@@ -9571,7 +9783,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/receiving-grid/cells/receiving-grid-cell-types.ts",
-      "line": 106,
+      "line": 123,
       "snippet": "export receivingDataCellClass from src/components/station/receiving-grid/cells/receiving-grid-cell-types.ts"
     },
     {
@@ -9584,7 +9796,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/receiving-grid/cells/receiving-grid-cell-types.ts",
-      "line": 120,
+      "line": 137,
       "snippet": "export receivingDataCellStyle from src/components/station/receiving-grid/cells/receiving-grid-cell-types.ts"
     },
     {
@@ -9597,7 +9809,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/receiving-grid/cells/receiving-grid-cell-types.ts",
-      "line": 134,
+      "line": 151,
       "snippet": "export receivingDataCellHighlightStyle from src/components/station/receiving-grid/cells/receiving-grid-cell-types.ts"
     },
     {
@@ -9610,7 +9822,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/receiving-grid/cells/receiving-grid-cell-types.ts",
-      "line": 142,
+      "line": 159,
       "snippet": "export receivingFrozenEdgeProps from src/components/station/receiving-grid/cells/receiving-grid-cell-types.ts"
     },
     {
@@ -9623,8 +9835,21 @@
       ],
       "kind": "code",
       "source": "src/components/station/receiving-grid/cells/receiving-grid-cell-types.ts",
-      "line": 149,
+      "line": 168,
       "snippet": "export receivingCellWantsChip from src/components/station/receiving-grid/cells/receiving-grid-cell-types.ts"
+    },
+    {
+      "job": "Export: incomingDateCell",
+      "sot": "incomingDateCell",
+      "path": "src/components/station/receiving-grid/cells/receiving-grid-row-helpers.ts",
+      "guard": null,
+      "symbols": [
+        "incomingDateCell"
+      ],
+      "kind": "code",
+      "source": "src/components/station/receiving-grid/cells/receiving-grid-row-helpers.ts",
+      "line": 15,
+      "snippet": "export incomingDateCell from src/components/station/receiving-grid/cells/receiving-grid-row-helpers.ts"
     },
     {
       "job": "Export: displayReceivingProductTitle",
@@ -9636,7 +9861,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/receiving-grid/cells/receiving-grid-row-helpers.ts",
-      "line": 9,
+      "line": 29,
       "snippet": "export displayReceivingProductTitle from src/components/station/receiving-grid/cells/receiving-grid-row-helpers.ts"
     },
     {
@@ -9649,7 +9874,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/receiving-grid/cells/receiving-grid-row-helpers.ts",
-      "line": 19,
+      "line": 39,
       "snippet": "export receivingStageTooltip from src/components/station/receiving-grid/cells/receiving-grid-row-helpers.ts"
     },
     {
@@ -9662,8 +9887,21 @@
       ],
       "kind": "code",
       "source": "src/components/station/receiving-grid/cells/receiving-grid-row-helpers.ts",
-      "line": 58,
+      "line": 78,
       "snippet": "export receivingHistoryStatusTooltip from src/components/station/receiving-grid/cells/receiving-grid-row-helpers.ts"
+    },
+    {
+      "job": "Export: ReceivingAgeCell",
+      "sot": "ReceivingAgeCell",
+      "path": "src/components/station/receiving-grid/cells/ReceivingAgeCell.tsx",
+      "guard": null,
+      "symbols": [
+        "ReceivingAgeCell"
+      ],
+      "kind": "code",
+      "source": "src/components/station/receiving-grid/cells/ReceivingAgeCell.tsx",
+      "line": 11,
+      "snippet": "export ReceivingAgeCell from src/components/station/receiving-grid/cells/ReceivingAgeCell.tsx"
     },
     {
       "job": "Export: ReceivingChipValue",
@@ -9705,6 +9943,19 @@
       "snippet": "export ReceivingDateCell from src/components/station/receiving-grid/cells/ReceivingDateCell.tsx"
     },
     {
+      "job": "Export: ReceivingDeliveryStatusCell",
+      "sot": "ReceivingDeliveryStatusCell",
+      "path": "src/components/station/receiving-grid/cells/ReceivingDeliveryStatusCell.tsx",
+      "guard": null,
+      "symbols": [
+        "ReceivingDeliveryStatusCell"
+      ],
+      "kind": "code",
+      "source": "src/components/station/receiving-grid/cells/ReceivingDeliveryStatusCell.tsx",
+      "line": 32,
+      "snippet": "export ReceivingDeliveryStatusCell from src/components/station/receiving-grid/cells/ReceivingDeliveryStatusCell.tsx"
+    },
+    {
       "job": "Export: ReceivingLocationCell",
       "sot": "ReceivingLocationCell",
       "path": "src/components/station/receiving-grid/cells/ReceivingLocationCell.tsx",
@@ -9731,6 +9982,19 @@
       "snippet": "export ReceivingOrderCell from src/components/station/receiving-grid/cells/ReceivingOrderCell.tsx"
     },
     {
+      "job": "Export: ReceivingPlatformCell",
+      "sot": "ReceivingPlatformCell",
+      "path": "src/components/station/receiving-grid/cells/ReceivingPlatformCell.tsx",
+      "guard": null,
+      "symbols": [
+        "ReceivingPlatformCell"
+      ],
+      "kind": "code",
+      "source": "src/components/station/receiving-grid/cells/ReceivingPlatformCell.tsx",
+      "line": 11,
+      "snippet": "export ReceivingPlatformCell from src/components/station/receiving-grid/cells/ReceivingPlatformCell.tsx"
+    },
+    {
       "job": "Export: ReceivingPriceCell",
       "sot": "ReceivingPriceCell",
       "path": "src/components/station/receiving-grid/cells/ReceivingPriceCell.tsx",
@@ -9755,6 +10019,19 @@
       "source": "src/components/station/receiving-grid/cells/ReceivingQtyCell.tsx",
       "line": 12,
       "snippet": "export ReceivingQtyCell from src/components/station/receiving-grid/cells/ReceivingQtyCell.tsx"
+    },
+    {
+      "job": "Export: ReceivingRemovedCell",
+      "sot": "ReceivingRemovedCell",
+      "path": "src/components/station/receiving-grid/cells/ReceivingRemovedCell.tsx",
+      "guard": null,
+      "symbols": [
+        "ReceivingRemovedCell"
+      ],
+      "kind": "code",
+      "source": "src/components/station/receiving-grid/cells/ReceivingRemovedCell.tsx",
+      "line": 13,
+      "snippet": "export ReceivingRemovedCell from src/components/station/receiving-grid/cells/ReceivingRemovedCell.tsx"
     },
     {
       "job": "Export: ReceivingSelectCell",
@@ -10416,7 +10693,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/ReceivingLinesTable.tsx",
-      "line": 165,
+      "line": 164,
       "snippet": "export ReceivingLinesTableProps from src/components/station/ReceivingLinesTable.tsx"
     },
     {
@@ -10546,7 +10823,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/scan-bar/tokens.ts",
-      "line": 34,
+      "line": 36,
       "snippet": "export STATION_SCAN_BAR_ICON_SLOT_CLASS from src/components/station/scan-bar/tokens.ts"
     },
     {
@@ -10559,7 +10836,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/scan-bar/tokens.ts",
-      "line": 37,
+      "line": 39,
       "snippet": "export STATION_SCAN_BAR_DEFAULT_ICON_CLASS from src/components/station/scan-bar/tokens.ts"
     },
     {
@@ -10572,7 +10849,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/scan-bar/tokens.ts",
-      "line": 40,
+      "line": 42,
       "snippet": "export STATION_SCAN_BAR_PAD_LEFT_CLASS from src/components/station/scan-bar/tokens.ts"
     },
     {
@@ -10585,7 +10862,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/scan-bar/tokens.ts",
-      "line": 42,
+      "line": 44,
       "snippet": "export STATION_SCAN_BAR_PAD_LEFT_NONE_ICON_CLASS from src/components/station/scan-bar/tokens.ts"
     },
     {
@@ -10598,7 +10875,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/scan-bar/tokens.ts",
-      "line": 49,
+      "line": 51,
       "snippet": "export STATION_SCAN_BAR_INPUT_CLASS from src/components/station/scan-bar/tokens.ts"
     },
     {
@@ -10611,7 +10888,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/scan-bar/tokens.ts",
-      "line": 55,
+      "line": 57,
       "snippet": "export STATION_SCAN_BAR_DEFAULT_BOTTOM_RULE_CLASS from src/components/station/scan-bar/tokens.ts"
     },
     {
@@ -10624,7 +10901,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/scan-bar/tokens.ts",
-      "line": 62,
+      "line": 64,
       "snippet": "export STATION_SCAN_BAR_SESSION_CAPTURE_BOTTOM_RULE_CLASS from src/components/station/scan-bar/tokens.ts"
     },
     {
@@ -10637,7 +10914,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/scan-bar/tokens.ts",
-      "line": 66,
+      "line": 68,
       "snippet": "export STATION_SCAN_BAR_BOTTOM_RULE_CLASS from src/components/station/scan-bar/tokens.ts"
     },
     {
@@ -10650,7 +10927,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/scan-bar/tokens.ts",
-      "line": 82,
+      "line": 84,
       "snippet": "export STATION_SCAN_BAR_RIGHT_SLOT_CLASS from src/components/station/scan-bar/tokens.ts"
     },
     {
@@ -10663,7 +10940,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/scan-bar/tokens.ts",
-      "line": 89,
+      "line": 91,
       "snippet": "export STATION_SCAN_BAR_RIGHT_FADE_CLASS from src/components/station/scan-bar/tokens.ts"
     },
     {
@@ -10676,7 +10953,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/scan-bar/tokens.ts",
-      "line": 96,
+      "line": 98,
       "snippet": "export STATION_SCAN_BAR_RAIL_PEEK_PX from src/components/station/scan-bar/tokens.ts"
     },
     {
@@ -10689,7 +10966,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/scan-bar/tokens.ts",
-      "line": 99,
+      "line": 101,
       "snippet": "export STATION_SCAN_BAR_RAIL_PAD_FALLBACK_PX from src/components/station/scan-bar/tokens.ts"
     },
     {
@@ -10702,7 +10979,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/scan-bar/tokens.ts",
-      "line": 105,
+      "line": 107,
       "snippet": "export STATION_SCAN_BAR_MODE_GLYPH_CLASS from src/components/station/scan-bar/tokens.ts"
     },
     {
@@ -10715,7 +10992,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/scan-bar/tokens.ts",
-      "line": 112,
+      "line": 114,
       "snippet": "export STATION_SCAN_BAR_RIGHT_CELL from src/components/station/scan-bar/tokens.ts"
     },
     {
@@ -10728,7 +11005,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/scan-bar/tokens.ts",
-      "line": 116,
+      "line": 118,
       "snippet": "export STATION_SCAN_BAR_MODE_BTN from src/components/station/scan-bar/tokens.ts"
     },
     {
@@ -10741,7 +11018,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/scan-bar/tokens.ts",
-      "line": 120,
+      "line": 122,
       "snippet": "export STATION_SCAN_BAR_MODE_BTN_COMPACT from src/components/station/scan-bar/tokens.ts"
     },
     {
@@ -10754,7 +11031,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/scan-bar/tokens.ts",
-      "line": 124,
+      "line": 126,
       "snippet": "export STATION_SCAN_BAR_MODE_BTN_INACTIVE from src/components/station/scan-bar/tokens.ts"
     },
     {
@@ -10767,7 +11044,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/scan-bar/tokens.ts",
-      "line": 132,
+      "line": 134,
       "snippet": "export STATION_SCAN_BAR_MODE_BTN_ARMED from src/components/station/scan-bar/tokens.ts"
     },
     {
@@ -10780,7 +11057,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/scan-bar/tokens.ts",
-      "line": 136,
+      "line": 138,
       "snippet": "export STATION_SCAN_BAR_SUBMIT_TRACE_CLASS from src/components/station/scan-bar/tokens.ts"
     },
     {
@@ -10793,7 +11070,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/scan-bar/tokens.ts",
-      "line": 147,
+      "line": 149,
       "snippet": "export STATION_SCAN_BAR_DEFAULT_SUBMIT_TRACE_CLASS from src/components/station/scan-bar/tokens.ts"
     },
     {
@@ -10806,7 +11083,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/scan-bar/tokens.ts",
-      "line": 153,
+      "line": 155,
       "snippet": "export STATION_SCAN_BAR_COLLAPSE_HOVER_CLASS from src/components/station/scan-bar/tokens.ts"
     },
     {
@@ -10819,7 +11096,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/scan-bar/tokens.ts",
-      "line": 164,
+      "line": 166,
       "snippet": "export STATION_SCAN_BAR_COLLAPSE_HOVER_DEFAULT_CLASS from src/components/station/scan-bar/tokens.ts"
     },
     {
@@ -10832,7 +11109,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/scan-bar/tokens.ts",
-      "line": 168,
+      "line": 170,
       "snippet": "export stationScanBarFocusInputClass from src/components/station/scan-bar/tokens.ts"
     },
     {
@@ -10901,6 +11178,32 @@
       "snippet": "export STATION_HISTORY_GRID_CAPABILITIES from src/components/station/station-history-capabilities.ts"
     },
     {
+      "job": "Export: makeStationHistoryGridDescriptor",
+      "sot": "makeStationHistoryGridDescriptor",
+      "path": "src/components/station/station-history-grid/station-history-grid-descriptor.ts",
+      "guard": null,
+      "symbols": [
+        "makeStationHistoryGridDescriptor"
+      ],
+      "kind": "code",
+      "source": "src/components/station/station-history-grid/station-history-grid-descriptor.ts",
+      "line": 18,
+      "snippet": "export makeStationHistoryGridDescriptor from src/components/station/station-history-grid/station-history-grid-descriptor.ts"
+    },
+    {
+      "job": "Export: STATION_HISTORY_TABLE_BINDING",
+      "sot": "STATION_HISTORY_TABLE_BINDING",
+      "path": "src/components/station/station-history-grid/station-history-table-definition.ts",
+      "guard": null,
+      "symbols": [
+        "STATION_HISTORY_TABLE_BINDING"
+      ],
+      "kind": "code",
+      "source": "src/components/station/station-history-grid/station-history-table-definition.ts",
+      "line": 32,
+      "snippet": "export STATION_HISTORY_TABLE_BINDING from src/components/station/station-history-grid/station-history-table-definition.ts"
+    },
+    {
       "job": "Export: isDetailsReopen",
       "sot": "isDetailsReopen",
       "path": "src/components/station/station-table-logic.ts",
@@ -10962,7 +11265,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/StationHistoryTable.tsx",
-      "line": 45,
+      "line": 50,
       "snippet": "export StationHistoryTableProps from src/components/station/StationHistoryTable.tsx"
     },
     {
@@ -10975,7 +11278,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/StationHistoryTable.tsx",
-      "line": 93,
+      "line": 98,
       "snippet": "export StationHistoryTable from src/components/station/StationHistoryTable.tsx"
     },
     {
@@ -10988,7 +11291,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/StationListTable.tsx",
-      "line": 31,
+      "line": 27,
       "snippet": "export StationListTableProps from src/components/station/StationListTable.tsx"
     },
     {
@@ -11001,7 +11304,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/StationListTable.tsx",
-      "line": 118,
+      "line": 109,
       "snippet": "export StationListTable from src/components/station/StationListTable.tsx"
     },
     {
@@ -12288,7 +12591,7 @@
       ],
       "kind": "code",
       "source": "src/components/studio/canvas/StudioCanvasNodes.tsx",
-      "line": 30,
+      "line": 34,
       "snippet": "export ProcessNode from src/components/studio/canvas/StudioCanvasNodes.tsx"
     },
     {
@@ -12301,7 +12604,7 @@
       ],
       "kind": "code",
       "source": "src/components/studio/canvas/StudioCanvasNodes.tsx",
-      "line": 407,
+      "line": 411,
       "snippet": "export DepartmentNode from src/components/studio/canvas/StudioCanvasNodes.tsx"
     },
     {
@@ -12314,7 +12617,7 @@
       ],
       "kind": "code",
       "source": "src/components/studio/canvas/StudioCanvasNodes.tsx",
-      "line": 436,
+      "line": 440,
       "snippet": "export AnnotationNode from src/components/studio/canvas/StudioCanvasNodes.tsx"
     },
     {
@@ -12327,7 +12630,7 @@
       ],
       "kind": "code",
       "source": "src/components/studio/canvas/StudioCanvasNodes.tsx",
-      "line": 474,
+      "line": 478,
       "snippet": "export NODE_TYPES from src/components/studio/canvas/StudioCanvasNodes.tsx"
     },
     {
@@ -12340,7 +12643,7 @@
       ],
       "kind": "code",
       "source": "src/components/studio/CatalogReviewWorkbench.tsx",
-      "line": 56,
+      "line": 58,
       "snippet": "export CatalogReviewWorkbench from src/components/studio/CatalogReviewWorkbench.tsx"
     },
     {
@@ -12366,7 +12669,7 @@
       ],
       "kind": "code",
       "source": "src/components/studio/CommunityCatalogWorkbench.tsx",
-      "line": 41,
+      "line": 43,
       "snippet": "export CommunityCatalogWorkbench from src/components/studio/CommunityCatalogWorkbench.tsx"
     },
     {
@@ -12405,7 +12708,7 @@
       ],
       "kind": "code",
       "source": "src/components/studio/NodeConfigForm.tsx",
-      "line": 38,
+      "line": 42,
       "snippet": "export NodeConfigSchema from src/components/studio/NodeConfigForm.tsx"
     },
     {
@@ -12418,7 +12721,7 @@
       ],
       "kind": "code",
       "source": "src/components/studio/NodeConfigForm.tsx",
-      "line": 43,
+      "line": 47,
       "snippet": "export NodeConfigOption from src/components/studio/NodeConfigForm.tsx"
     },
     {
@@ -12431,7 +12734,7 @@
       ],
       "kind": "code",
       "source": "src/components/studio/NodeConfigForm.tsx",
-      "line": 100,
+      "line": 104,
       "snippet": "export NodeConfigForm from src/components/studio/NodeConfigForm.tsx"
     },
     {
@@ -12925,7 +13228,7 @@
       ],
       "kind": "code",
       "source": "src/components/studio/StudioUpgradePrompt.tsx",
-      "line": 15,
+      "line": 17,
       "snippet": "export StudioUpgradePrompt from src/components/studio/StudioUpgradePrompt.tsx"
     },
     {
@@ -13029,7 +13332,7 @@
       ],
       "kind": "code",
       "source": "src/components/tables/NonlinearTableHost.tsx",
-      "line": 125,
+      "line": 127,
       "snippet": "export NonlinearTableHost from src/components/tables/NonlinearTableHost.tsx"
     },
     {
@@ -13042,7 +13345,7 @@
       ],
       "kind": "code",
       "source": "src/components/tables/registered-bindings.ts",
-      "line": 57,
+      "line": 58,
       "snippet": "export REGISTERED_BINDINGS from src/components/tables/registered-bindings.ts"
     },
     {
@@ -13133,7 +13436,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/BottomSheet.tsx",
-      "line": 46,
+      "line": 50,
       "snippet": "export BottomSheet from src/components/ui/BottomSheet.tsx"
     },
     {
@@ -13146,7 +13449,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/BottomSheet.tsx",
-      "line": 237,
+      "line": 241,
       "snippet": "export ConfirmSheet from src/components/ui/BottomSheet.tsx"
     },
     {
@@ -13159,7 +13462,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/BottomSheet.tsx",
-      "line": 298,
+      "line": 302,
       "snippet": "export PromptSheet from src/components/ui/BottomSheet.tsx"
     },
     {
@@ -13354,7 +13657,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/CopyChip.tsx",
-      "line": 236,
+      "line": 237,
       "snippet": "export CopyChip from src/components/ui/CopyChip.tsx"
     },
     {
@@ -13367,7 +13670,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/CopyChip.tsx",
-      "line": 392,
+      "line": 393,
       "snippet": "export OrderIdChip from src/components/ui/CopyChip.tsx"
     },
     {
@@ -13380,7 +13683,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/CopyChip.tsx",
-      "line": 442,
+      "line": 443,
       "snippet": "export OrderIdChipPlaceholder from src/components/ui/CopyChip.tsx"
     },
     {
@@ -13393,7 +13696,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/CopyChip.tsx",
-      "line": 459,
+      "line": 460,
       "snippet": "export PoChip from src/components/ui/CopyChip.tsx"
     },
     {
@@ -13406,7 +13709,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/CopyChip.tsx",
-      "line": 516,
+      "line": 517,
       "snippet": "export TrackingChip from src/components/ui/CopyChip.tsx"
     },
     {
@@ -13419,7 +13722,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/CopyChip.tsx",
-      "line": 589,
+      "line": 590,
       "snippet": "export ListingUrlChip from src/components/ui/CopyChip.tsx"
     },
     {
@@ -13432,7 +13735,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/CopyChip.tsx",
-      "line": 631,
+      "line": 632,
       "snippet": "export SkuScanRefChip from src/components/ui/CopyChip.tsx"
     },
     {
@@ -13445,7 +13748,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/CopyChip.tsx",
-      "line": 667,
+      "line": 668,
       "snippet": "export EmptySkuChipFace from src/components/ui/CopyChip.tsx"
     },
     {
@@ -13458,7 +13761,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/CopyChip.tsx",
-      "line": 701,
+      "line": 702,
       "snippet": "export UnitPriceChip from src/components/ui/CopyChip.tsx"
     },
     {
@@ -13471,7 +13774,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/CopyChip.tsx",
-      "line": 751,
+      "line": 752,
       "snippet": "export PoTotalChip from src/components/ui/CopyChip.tsx"
     },
     {
@@ -13484,7 +13787,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/CopyChip.tsx",
-      "line": 788,
+      "line": 789,
       "snippet": "export ConditionGradeChip from src/components/ui/CopyChip.tsx"
     },
     {
@@ -13497,7 +13800,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/CopyChip.tsx",
-      "line": 818,
+      "line": 819,
       "snippet": "export TrackingOrSkuScanChip from src/components/ui/CopyChip.tsx"
     },
     {
@@ -13510,7 +13813,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/CopyChip.tsx",
-      "line": 871,
+      "line": 872,
       "snippet": "export SerialChip from src/components/ui/CopyChip.tsx"
     },
     {
@@ -13523,7 +13826,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/CopyChip.tsx",
-      "line": 931,
+      "line": 932,
       "snippet": "export SerialChipSkeleton from src/components/ui/CopyChip.tsx"
     },
     {
@@ -13536,7 +13839,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/CopyChip.tsx",
-      "line": 964,
+      "line": 965,
       "snippet": "export SkuSerialChip from src/components/ui/CopyChip.tsx"
     },
     {
@@ -13549,7 +13852,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/CopyChip.tsx",
-      "line": 983,
+      "line": 984,
       "snippet": "export TicketChip from src/components/ui/CopyChip.tsx"
     },
     {
@@ -13562,7 +13865,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/CopyChip.tsx",
-      "line": 1005,
+      "line": 1006,
       "snippet": "export BinChip from src/components/ui/CopyChip.tsx"
     },
     {
@@ -13575,7 +13878,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/CopyChip.tsx",
-      "line": 1028,
+      "line": 1029,
       "snippet": "export FnskuChip from src/components/ui/CopyChip.tsx"
     },
     {
@@ -13588,7 +13891,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/CopyChip.tsx",
-      "line": 1032,
+      "line": 1033,
       "snippet": "export SourceOrderChip from src/components/ui/CopyChip.tsx"
     },
     {
@@ -13601,7 +13904,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/CopyChip.tsx",
-      "line": 1066,
+      "line": 1067,
       "snippet": "export AddValueChipFace from src/components/ui/CopyChip.tsx"
     },
     {
@@ -13614,7 +13917,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/CopyChip.tsx",
-      "line": 1100,
+      "line": 1101,
       "snippet": "export PlatformChip from src/components/ui/CopyChip.tsx"
     },
     {
@@ -13627,7 +13930,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/CopyChip.tsx",
-      "line": 1177,
+      "line": 1178,
       "snippet": "export CopyableCellValue from src/components/ui/CopyChip.tsx"
     },
     {
@@ -13718,7 +14021,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/DateRangeHeader.tsx",
-      "line": 24,
+      "line": 26,
       "snippet": "export DateRangePreset from src/components/ui/DateRangeHeader.tsx"
     },
     {
@@ -13731,7 +14034,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/DateRangeHeader.tsx",
-      "line": 71,
+      "line": 73,
       "snippet": "export DateRangePickerPill from src/components/ui/DateRangeHeader.tsx"
     },
     {
@@ -13744,7 +14047,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/EventTimeline.tsx",
-      "line": 279,
+      "line": 283,
       "snippet": "export TimelineGroupMode from src/components/ui/EventTimeline.tsx"
     },
     {
@@ -13757,7 +14060,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/EventTimeline.tsx",
-      "line": 281,
+      "line": 285,
       "snippet": "export EventTimelineProps from src/components/ui/EventTimeline.tsx"
     },
     {
@@ -13770,7 +14073,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/EventTimeline.tsx",
-      "line": 370,
+      "line": 374,
       "snippet": "export TimelineGroupView from src/components/ui/EventTimeline.tsx"
     },
     {
@@ -13783,7 +14086,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/EventTimeline.tsx",
-      "line": 449,
+      "line": 453,
       "snippet": "export EventTimeline from src/components/ui/EventTimeline.tsx"
     },
     {
@@ -14680,7 +14983,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/StaffFilterButton.tsx",
-      "line": 28,
+      "line": 32,
       "snippet": "export StaffFilterButton from src/components/ui/StaffFilterButton.tsx"
     },
     {
@@ -14693,7 +14996,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/StatusLegend.tsx",
-      "line": 8,
+      "line": 12,
       "snippet": "export StatusLegendMeta from src/components/ui/StatusLegend.tsx"
     },
     {
@@ -14706,7 +15009,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/StatusLegend.tsx",
-      "line": 16,
+      "line": 20,
       "snippet": "export StatusLegendItem from src/components/ui/StatusLegend.tsx"
     },
     {
@@ -14719,7 +15022,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/StatusLegend.tsx",
-      "line": 36,
+      "line": 40,
       "snippet": "export StatusLegend from src/components/ui/StatusLegend.tsx"
     },
     {
@@ -14927,7 +15230,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/table-options/TableOptionsMenu.tsx",
-      "line": 33,
+      "line": 37,
       "snippet": "export TableOptionsMenuProps from src/components/ui/table-options/TableOptionsMenu.tsx"
     },
     {
@@ -14940,7 +15243,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/table-options/TableOptionsMenu.tsx",
-      "line": 151,
+      "line": 155,
       "snippet": "export TableOptionsMenu from src/components/ui/table-options/TableOptionsMenu.tsx"
     },
     {
@@ -15893,6 +16196,19 @@
       "snippet": "export ledgerGridRowShellClass from src/design-system/components/grid/grid-cell-chrome.ts"
     },
     {
+      "job": "Export: LEDGER_GRID_ROW_CONTAIN",
+      "sot": "LEDGER_GRID_ROW_CONTAIN",
+      "path": "src/design-system/components/grid/grid-cell-chrome.ts",
+      "guard": null,
+      "symbols": [
+        "LEDGER_GRID_ROW_CONTAIN"
+      ],
+      "kind": "code",
+      "source": "src/design-system/components/grid/grid-cell-chrome.ts",
+      "line": 90,
+      "snippet": "export LEDGER_GRID_ROW_CONTAIN from src/design-system/components/grid/grid-cell-chrome.ts"
+    },
+    {
       "job": "Export: LEDGER_GRID_WIDTH_VAR",
       "sot": "LEDGER_GRID_WIDTH_VAR",
       "path": "src/design-system/components/grid/grid-cell-chrome.ts",
@@ -15902,7 +16218,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/components/grid/grid-cell-chrome.ts",
-      "line": 84,
+      "line": 93,
       "snippet": "export LEDGER_GRID_WIDTH_VAR from src/design-system/components/grid/grid-cell-chrome.ts"
     },
     {
@@ -15915,7 +16231,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/components/grid/grid-cell-chrome.ts",
-      "line": 91,
+      "line": 100,
       "snippet": "export ledgerGridWidthVarValue from src/design-system/components/grid/grid-cell-chrome.ts"
     },
     {
@@ -15956,6 +16272,45 @@
       "source": "src/design-system/components/grid/grid-column-applied-widths.ts",
       "line": 85,
       "snippet": "export gridColumnWidthVars from src/design-system/components/grid/grid-column-applied-widths.ts"
+    },
+    {
+      "job": "Export: GRID_COLUMN_DETAILS_RAIL_ID",
+      "sot": "GRID_COLUMN_DETAILS_RAIL_ID",
+      "path": "src/design-system/components/grid/grid-column-details-open.ts",
+      "guard": null,
+      "symbols": [
+        "GRID_COLUMN_DETAILS_RAIL_ID"
+      ],
+      "kind": "code",
+      "source": "src/design-system/components/grid/grid-column-details-open.ts",
+      "line": 15,
+      "snippet": "export GRID_COLUMN_DETAILS_RAIL_ID from src/design-system/components/grid/grid-column-details-open.ts"
+    },
+    {
+      "job": "Export: GRID_COLUMN_DETAILS_OPEN_EVENT",
+      "sot": "GRID_COLUMN_DETAILS_OPEN_EVENT",
+      "path": "src/design-system/components/grid/grid-column-details-open.ts",
+      "guard": null,
+      "symbols": [
+        "GRID_COLUMN_DETAILS_OPEN_EVENT"
+      ],
+      "kind": "code",
+      "source": "src/design-system/components/grid/grid-column-details-open.ts",
+      "line": 17,
+      "snippet": "export GRID_COLUMN_DETAILS_OPEN_EVENT from src/design-system/components/grid/grid-column-details-open.ts"
+    },
+    {
+      "job": "Export: requestOpenGridColumnDetails",
+      "sot": "requestOpenGridColumnDetails",
+      "path": "src/design-system/components/grid/grid-column-details-open.ts",
+      "guard": null,
+      "symbols": [
+        "requestOpenGridColumnDetails"
+      ],
+      "kind": "code",
+      "source": "src/design-system/components/grid/grid-column-details-open.ts",
+      "line": 20,
+      "snippet": "export requestOpenGridColumnDetails from src/design-system/components/grid/grid-column-details-open.ts"
     },
     {
       "job": "Export: GridColumnHighlight",
@@ -16569,6 +16924,45 @@
       "snippet": "export applyGridOverflowXClasses from src/design-system/components/grid/grid-overflow-x.ts"
     },
     {
+      "job": "Export: LEDGER_GRID_OVERSCAN",
+      "sot": "LEDGER_GRID_OVERSCAN",
+      "path": "src/design-system/components/grid/grid-paint.ts",
+      "guard": null,
+      "symbols": [
+        "LEDGER_GRID_OVERSCAN"
+      ],
+      "kind": "code",
+      "source": "src/design-system/components/grid/grid-paint.ts",
+      "line": 14,
+      "snippet": "export LEDGER_GRID_OVERSCAN from src/design-system/components/grid/grid-paint.ts"
+    },
+    {
+      "job": "Export: LEDGER_GRID_ROW_ESTIMATE_PX",
+      "sot": "LEDGER_GRID_ROW_ESTIMATE_PX",
+      "path": "src/design-system/components/grid/grid-paint.ts",
+      "guard": null,
+      "symbols": [
+        "LEDGER_GRID_ROW_ESTIMATE_PX"
+      ],
+      "kind": "code",
+      "source": "src/design-system/components/grid/grid-paint.ts",
+      "line": 17,
+      "snippet": "export LEDGER_GRID_ROW_ESTIMATE_PX from src/design-system/components/grid/grid-paint.ts"
+    },
+    {
+      "job": "Export: LEDGER_GRID_HEADER_ESTIMATE_PX",
+      "sot": "LEDGER_GRID_HEADER_ESTIMATE_PX",
+      "path": "src/design-system/components/grid/grid-paint.ts",
+      "guard": null,
+      "symbols": [
+        "LEDGER_GRID_HEADER_ESTIMATE_PX"
+      ],
+      "kind": "code",
+      "source": "src/design-system/components/grid/grid-paint.ts",
+      "line": 20,
+      "snippet": "export LEDGER_GRID_HEADER_ESTIMATE_PX from src/design-system/components/grid/grid-paint.ts"
+    },
+    {
       "job": "Export: GRID_HEADER_ROW_INDEX",
       "sot": "GRID_HEADER_ROW_INDEX",
       "path": "src/design-system/components/grid/grid-row-index.ts",
@@ -16812,7 +17206,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/components/grid/GridColumnDetailsTrigger.tsx",
-      "line": 63,
+      "line": 60,
       "snippet": "export useOpenGridColumnDetails from src/design-system/components/grid/GridColumnDetailsTrigger.tsx"
     },
     {
@@ -16825,7 +17219,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/components/grid/GridColumnDetailsTrigger.tsx",
-      "line": 68,
+      "line": 65,
       "snippet": "export useGridColumnFieldsApi from src/design-system/components/grid/GridColumnDetailsTrigger.tsx"
     },
     {
@@ -16838,7 +17232,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/components/grid/GridColumnDetailsTrigger.tsx",
-      "line": 83,
+      "line": 80,
       "snippet": "export GridColumnGutter from src/design-system/components/grid/GridColumnDetailsTrigger.tsx"
     },
     {
@@ -16851,7 +17245,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/components/grid/GridColumnDetailsTrigger.tsx",
-      "line": 162,
+      "line": 167,
       "snippet": "export GridColumnDetailsTrigger from src/design-system/components/grid/GridColumnDetailsTrigger.tsx"
     },
     {
@@ -17280,7 +17674,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/components/grid/LedgerGridSurface.tsx",
-      "line": 278,
+      "line": 280,
       "snippet": "export LedgerGridSurface from src/design-system/components/grid/LedgerGridSurface.tsx"
     },
     {
@@ -17514,7 +17908,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/components/grid/VirtualGroupedSections.tsx",
-      "line": 101,
+      "line": 106,
       "snippet": "export VirtualGroupedSections from src/design-system/components/grid/VirtualGroupedSections.tsx"
     },
     {
@@ -19559,17 +19953,30 @@
       "snippet": "export AppTopBar from src/design-system/primitives/AppTopBar.tsx"
     },
     {
+      "job": "Export: BUTTON_VARIANTS",
+      "sot": "BUTTON_VARIANTS",
+      "path": "src/design-system/primitives/button-variants.ts",
+      "guard": null,
+      "symbols": [
+        "BUTTON_VARIANTS"
+      ],
+      "kind": "code",
+      "source": "src/design-system/primitives/button-variants.ts",
+      "line": 10,
+      "snippet": "export BUTTON_VARIANTS from src/design-system/primitives/button-variants.ts"
+    },
+    {
       "job": "Export: ButtonVariant",
       "sot": "ButtonVariant",
-      "path": "src/design-system/primitives/Button.tsx",
+      "path": "src/design-system/primitives/button-variants.ts",
       "guard": null,
       "symbols": [
         "ButtonVariant"
       ],
       "kind": "code",
-      "source": "src/design-system/primitives/Button.tsx",
-      "line": 13,
-      "snippet": "export ButtonVariant from src/design-system/primitives/Button.tsx"
+      "source": "src/design-system/primitives/button-variants.ts",
+      "line": 25,
+      "snippet": "export ButtonVariant from src/design-system/primitives/button-variants.ts"
     },
     {
       "job": "Export: ButtonSize",
@@ -19581,7 +19988,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/primitives/Button.tsx",
-      "line": 14,
+      "line": 16,
       "snippet": "export ButtonSize from src/design-system/primitives/Button.tsx"
     },
     {
@@ -19594,7 +20001,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/primitives/Button.tsx",
-      "line": 16,
+      "line": 18,
       "snippet": "export ButtonProps from src/design-system/primitives/Button.tsx"
     },
     {
@@ -19607,7 +20014,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/primitives/Button.tsx",
-      "line": 98,
+      "line": 94,
       "snippet": "export Button from src/design-system/primitives/Button.tsx"
     },
     {
@@ -19687,6 +20094,292 @@
       "source": "src/design-system/primitives/ConditionText.tsx",
       "line": 38,
       "snippet": "export ConditionText from src/design-system/primitives/ConditionText.tsx"
+    },
+    {
+      "job": "Export: CONVERSATION_DETAIL_SURFACE",
+      "sot": "CONVERSATION_DETAIL_SURFACE",
+      "path": "src/design-system/primitives/conversation-chrome.ts",
+      "guard": null,
+      "symbols": [
+        "CONVERSATION_DETAIL_SURFACE"
+      ],
+      "kind": "code",
+      "source": "src/design-system/primitives/conversation-chrome.ts",
+      "line": 17,
+      "snippet": "export CONVERSATION_DETAIL_SURFACE from src/design-system/primitives/conversation-chrome.ts"
+    },
+    {
+      "job": "Export: CONVERSATION_HEADER_ACTION_BTN",
+      "sot": "CONVERSATION_HEADER_ACTION_BTN",
+      "path": "src/design-system/primitives/conversation-chrome.ts",
+      "guard": null,
+      "symbols": [
+        "CONVERSATION_HEADER_ACTION_BTN"
+      ],
+      "kind": "code",
+      "source": "src/design-system/primitives/conversation-chrome.ts",
+      "line": 23,
+      "snippet": "export CONVERSATION_HEADER_ACTION_BTN from src/design-system/primitives/conversation-chrome.ts"
+    },
+    {
+      "job": "Export: CONVERSATION_HEADER_ACTION_BTN_ACTIVE",
+      "sot": "CONVERSATION_HEADER_ACTION_BTN_ACTIVE",
+      "path": "src/design-system/primitives/conversation-chrome.ts",
+      "guard": null,
+      "symbols": [
+        "CONVERSATION_HEADER_ACTION_BTN_ACTIVE"
+      ],
+      "kind": "code",
+      "source": "src/design-system/primitives/conversation-chrome.ts",
+      "line": 26,
+      "snippet": "export CONVERSATION_HEADER_ACTION_BTN_ACTIVE from src/design-system/primitives/conversation-chrome.ts"
+    },
+    {
+      "job": "Export: CONVERSATION_HEADER_ACTION_GLYPH",
+      "sot": "CONVERSATION_HEADER_ACTION_GLYPH",
+      "path": "src/design-system/primitives/conversation-chrome.ts",
+      "guard": null,
+      "symbols": [
+        "CONVERSATION_HEADER_ACTION_GLYPH"
+      ],
+      "kind": "code",
+      "source": "src/design-system/primitives/conversation-chrome.ts",
+      "line": 29,
+      "snippet": "export CONVERSATION_HEADER_ACTION_GLYPH from src/design-system/primitives/conversation-chrome.ts"
+    },
+    {
+      "job": "Export: CONVERSATION_COMPOSER_PAD",
+      "sot": "CONVERSATION_COMPOSER_PAD",
+      "path": "src/design-system/primitives/conversation-chrome.ts",
+      "guard": null,
+      "symbols": [
+        "CONVERSATION_COMPOSER_PAD"
+      ],
+      "kind": "code",
+      "source": "src/design-system/primitives/conversation-chrome.ts",
+      "line": 32,
+      "snippet": "export CONVERSATION_COMPOSER_PAD from src/design-system/primitives/conversation-chrome.ts"
+    },
+    {
+      "job": "Export: CONVERSATION_COMPOSER_DOCK_INTERNAL",
+      "sot": "CONVERSATION_COMPOSER_DOCK_INTERNAL",
+      "path": "src/design-system/primitives/conversation-chrome.ts",
+      "guard": null,
+      "symbols": [
+        "CONVERSATION_COMPOSER_DOCK_INTERNAL"
+      ],
+      "kind": "code",
+      "source": "src/design-system/primitives/conversation-chrome.ts",
+      "line": 41,
+      "snippet": "export CONVERSATION_COMPOSER_DOCK_INTERNAL from src/design-system/primitives/conversation-chrome.ts"
+    },
+    {
+      "job": "Export: CONVERSATION_STREAM",
+      "sot": "CONVERSATION_STREAM",
+      "path": "src/design-system/primitives/conversation-chrome.ts",
+      "guard": null,
+      "symbols": [
+        "CONVERSATION_STREAM"
+      ],
+      "kind": "code",
+      "source": "src/design-system/primitives/conversation-chrome.ts",
+      "line": 45,
+      "snippet": "export CONVERSATION_STREAM from src/design-system/primitives/conversation-chrome.ts"
+    },
+    {
+      "job": "Export: CONVERSATION_DAY_HEADER",
+      "sot": "CONVERSATION_DAY_HEADER",
+      "path": "src/design-system/primitives/conversation-chrome.ts",
+      "guard": null,
+      "symbols": [
+        "CONVERSATION_DAY_HEADER"
+      ],
+      "kind": "code",
+      "source": "src/design-system/primitives/conversation-chrome.ts",
+      "line": 48,
+      "snippet": "export CONVERSATION_DAY_HEADER from src/design-system/primitives/conversation-chrome.ts"
+    },
+    {
+      "job": "Export: CONVERSATION_ROW",
+      "sot": "CONVERSATION_ROW",
+      "path": "src/design-system/primitives/conversation-chrome.ts",
+      "guard": null,
+      "symbols": [
+        "CONVERSATION_ROW"
+      ],
+      "kind": "code",
+      "source": "src/design-system/primitives/conversation-chrome.ts",
+      "line": 51,
+      "snippet": "export CONVERSATION_ROW from src/design-system/primitives/conversation-chrome.ts"
+    },
+    {
+      "job": "Export: CONVERSATION_SHELL",
+      "sot": "CONVERSATION_SHELL",
+      "path": "src/design-system/primitives/conversation-chrome.ts",
+      "guard": null,
+      "symbols": [
+        "CONVERSATION_SHELL"
+      ],
+      "kind": "code",
+      "source": "src/design-system/primitives/conversation-chrome.ts",
+      "line": 58,
+      "snippet": "export CONVERSATION_SHELL from src/design-system/primitives/conversation-chrome.ts"
+    },
+    {
+      "job": "Export: CONVERSATION_SHELL_INTERNAL",
+      "sot": "CONVERSATION_SHELL_INTERNAL",
+      "path": "src/design-system/primitives/conversation-chrome.ts",
+      "guard": null,
+      "symbols": [
+        "CONVERSATION_SHELL_INTERNAL"
+      ],
+      "kind": "code",
+      "source": "src/design-system/primitives/conversation-chrome.ts",
+      "line": 61,
+      "snippet": "export CONVERSATION_SHELL_INTERNAL from src/design-system/primitives/conversation-chrome.ts"
+    },
+    {
+      "job": "Export: conversationShell",
+      "sot": "conversationShell",
+      "path": "src/design-system/primitives/conversation-chrome.ts",
+      "guard": null,
+      "symbols": [
+        "conversationShell"
+      ],
+      "kind": "code",
+      "source": "src/design-system/primitives/conversation-chrome.ts",
+      "line": 64,
+      "snippet": "export conversationShell from src/design-system/primitives/conversation-chrome.ts"
+    },
+    {
+      "job": "Export: CONVERSATION_MARK",
+      "sot": "CONVERSATION_MARK",
+      "path": "src/design-system/primitives/conversation-chrome.ts",
+      "guard": null,
+      "symbols": [
+        "CONVERSATION_MARK"
+      ],
+      "kind": "code",
+      "source": "src/design-system/primitives/conversation-chrome.ts",
+      "line": 68,
+      "snippet": "export CONVERSATION_MARK from src/design-system/primitives/conversation-chrome.ts"
+    },
+    {
+      "job": "Export: CONVERSATION_MARK_BOX",
+      "sot": "CONVERSATION_MARK_BOX",
+      "path": "src/design-system/primitives/conversation-chrome.ts",
+      "guard": null,
+      "symbols": [
+        "CONVERSATION_MARK_BOX"
+      ],
+      "kind": "code",
+      "source": "src/design-system/primitives/conversation-chrome.ts",
+      "line": 71,
+      "snippet": "export CONVERSATION_MARK_BOX from src/design-system/primitives/conversation-chrome.ts"
+    },
+    {
+      "job": "Export: CONVERSATION_BODY",
+      "sot": "CONVERSATION_BODY",
+      "path": "src/design-system/primitives/conversation-chrome.ts",
+      "guard": null,
+      "symbols": [
+        "CONVERSATION_BODY"
+      ],
+      "kind": "code",
+      "source": "src/design-system/primitives/conversation-chrome.ts",
+      "line": 74,
+      "snippet": "export CONVERSATION_BODY from src/design-system/primitives/conversation-chrome.ts"
+    },
+    {
+      "job": "Export: CONVERSATION_META",
+      "sot": "CONVERSATION_META",
+      "path": "src/design-system/primitives/conversation-chrome.ts",
+      "guard": null,
+      "symbols": [
+        "CONVERSATION_META"
+      ],
+      "kind": "code",
+      "source": "src/design-system/primitives/conversation-chrome.ts",
+      "line": 77,
+      "snippet": "export CONVERSATION_META from src/design-system/primitives/conversation-chrome.ts"
+    },
+    {
+      "job": "Export: CONVERSATION_AUTHOR",
+      "sot": "CONVERSATION_AUTHOR",
+      "path": "src/design-system/primitives/conversation-chrome.ts",
+      "guard": null,
+      "symbols": [
+        "CONVERSATION_AUTHOR"
+      ],
+      "kind": "code",
+      "source": "src/design-system/primitives/conversation-chrome.ts",
+      "line": 80,
+      "snippet": "export CONVERSATION_AUTHOR from src/design-system/primitives/conversation-chrome.ts"
+    },
+    {
+      "job": "Export: CONVERSATION_AGE",
+      "sot": "CONVERSATION_AGE",
+      "path": "src/design-system/primitives/conversation-chrome.ts",
+      "guard": null,
+      "symbols": [
+        "CONVERSATION_AGE"
+      ],
+      "kind": "code",
+      "source": "src/design-system/primitives/conversation-chrome.ts",
+      "line": 83,
+      "snippet": "export CONVERSATION_AGE from src/design-system/primitives/conversation-chrome.ts"
+    },
+    {
+      "job": "Export: CONVERSATION_INTERNAL_CHIP",
+      "sot": "CONVERSATION_INTERNAL_CHIP",
+      "path": "src/design-system/primitives/conversation-chrome.ts",
+      "guard": null,
+      "symbols": [
+        "CONVERSATION_INTERNAL_CHIP"
+      ],
+      "kind": "code",
+      "source": "src/design-system/primitives/conversation-chrome.ts",
+      "line": 85,
+      "snippet": "export CONVERSATION_INTERNAL_CHIP from src/design-system/primitives/conversation-chrome.ts"
+    },
+    {
+      "job": "Export: formatConversationAge",
+      "sot": "formatConversationAge",
+      "path": "src/design-system/primitives/conversation-chrome.ts",
+      "guard": null,
+      "symbols": [
+        "formatConversationAge"
+      ],
+      "kind": "code",
+      "source": "src/design-system/primitives/conversation-chrome.ts",
+      "line": 91,
+      "snippet": "export formatConversationAge from src/design-system/primitives/conversation-chrome.ts"
+    },
+    {
+      "job": "Export: ConversationHeaderActionButton",
+      "sot": "ConversationHeaderActionButton",
+      "path": "src/design-system/primitives/ConversationHeaderActionButton.tsx",
+      "guard": null,
+      "symbols": [
+        "ConversationHeaderActionButton"
+      ],
+      "kind": "code",
+      "source": "src/design-system/primitives/ConversationHeaderActionButton.tsx",
+      "line": 16,
+      "snippet": "export ConversationHeaderActionButton from src/design-system/primitives/ConversationHeaderActionButton.tsx"
+    },
+    {
+      "job": "Export: ConversationMessageCard",
+      "sot": "ConversationMessageCard",
+      "path": "src/design-system/primitives/ConversationMessageCard.tsx",
+      "guard": null,
+      "symbols": [
+        "ConversationMessageCard"
+      ],
+      "kind": "code",
+      "source": "src/design-system/primitives/ConversationMessageCard.tsx",
+      "line": 23,
+      "snippet": "export ConversationMessageCard from src/design-system/primitives/ConversationMessageCard.tsx"
     },
     {
       "job": "Export: CopyIconButton",
@@ -23069,6 +23762,19 @@
       "snippet": "export useTechTableController from src/hooks/station/useTechTableController.ts"
     },
     {
+      "job": "Export: UseAblyChannelOptions",
+      "sot": "UseAblyChannelOptions",
+      "path": "src/hooks/useAblyChannel.ts",
+      "guard": null,
+      "symbols": [
+        "UseAblyChannelOptions"
+      ],
+      "kind": "code",
+      "source": "src/hooks/useAblyChannel.ts",
+      "line": 7,
+      "snippet": "export UseAblyChannelOptions from src/hooks/useAblyChannel.ts"
+    },
+    {
       "job": "Export: useAblyChannel",
       "sot": "useAblyChannel",
       "path": "src/hooks/useAblyChannel.ts",
@@ -23078,7 +23784,7 @@
       ],
       "kind": "code",
       "source": "src/hooks/useAblyChannel.ts",
-      "line": 11,
+      "line": 22,
       "snippet": "export useAblyChannel from src/hooks/useAblyChannel.ts"
     },
     {
@@ -25004,6 +25710,19 @@
       "source": "src/hooks/usePanelActions.tsx",
       "line": 48,
       "snippet": "export usePanelActions from src/hooks/usePanelActions.tsx"
+    },
+    {
+      "job": "Export: usePanelStoreKeyboard",
+      "sot": "usePanelStoreKeyboard",
+      "path": "src/hooks/usePanelStoreKeyboard.ts",
+      "guard": null,
+      "symbols": [
+        "usePanelStoreKeyboard"
+      ],
+      "kind": "code",
+      "source": "src/hooks/usePanelStoreKeyboard.ts",
+      "line": 20,
+      "snippet": "export usePanelStoreKeyboard from src/hooks/usePanelStoreKeyboard.ts"
     },
     {
       "job": "Export: usePhoneScanBridge",
@@ -27251,7 +27970,7 @@
       ],
       "kind": "code",
       "source": "src/hooks/useWedgeScanner.ts",
-      "line": 23,
+      "line": 30,
       "snippet": "export UseWedgeScannerOptions from src/hooks/useWedgeScanner.ts"
     },
     {
@@ -27264,7 +27983,7 @@
       ],
       "kind": "code",
       "source": "src/hooks/useWedgeScanner.ts",
-      "line": 36,
+      "line": 43,
       "snippet": "export useWedgeScanner from src/hooks/useWedgeScanner.ts"
     },
     {
@@ -29686,6 +30405,1085 @@
       "snippet": "export writeLedgerDelta from src/lib/inventory/write-ledger-delta.ts"
     },
     {
+      "job": "Export: isEditableKeyTarget",
+      "sot": "isEditableKeyTarget",
+      "path": "src/lib/keyboard/is-editable-key-target.ts",
+      "guard": null,
+      "symbols": [
+        "isEditableKeyTarget"
+      ],
+      "kind": "code",
+      "source": "src/lib/keyboard/is-editable-key-target.ts",
+      "line": 11,
+      "snippet": "export isEditableKeyTarget from src/lib/keyboard/is-editable-key-target.ts"
+    },
+    {
+      "job": "Export: isEditableActiveElement",
+      "sot": "isEditableActiveElement",
+      "path": "src/lib/keyboard/is-editable-key-target.ts",
+      "guard": null,
+      "symbols": [
+        "isEditableActiveElement"
+      ],
+      "kind": "code",
+      "source": "src/lib/keyboard/is-editable-key-target.ts",
+      "line": 27,
+      "snippet": "export isEditableActiveElement from src/lib/keyboard/is-editable-key-target.ts"
+    },
+    {
+      "job": "Export: KEYBOARD_REGION_ATTR",
+      "sot": "KEYBOARD_REGION_ATTR",
+      "path": "src/lib/keyboard/keyboard-region-owner.ts",
+      "guard": null,
+      "symbols": [
+        "KEYBOARD_REGION_ATTR"
+      ],
+      "kind": "code",
+      "source": "src/lib/keyboard/keyboard-region-owner.ts",
+      "line": 19,
+      "snippet": "export KEYBOARD_REGION_ATTR from src/lib/keyboard/keyboard-region-owner.ts"
+    },
+    {
+      "job": "Export: KEYBOARD_REGION_ACTIVE_ATTR",
+      "sot": "KEYBOARD_REGION_ACTIVE_ATTR",
+      "path": "src/lib/keyboard/keyboard-region-owner.ts",
+      "guard": null,
+      "symbols": [
+        "KEYBOARD_REGION_ACTIVE_ATTR"
+      ],
+      "kind": "code",
+      "source": "src/lib/keyboard/keyboard-region-owner.ts",
+      "line": 21,
+      "snippet": "export KEYBOARD_REGION_ACTIVE_ATTR from src/lib/keyboard/keyboard-region-owner.ts"
+    },
+    {
+      "job": "Export: getKeyboardRegionOwner",
+      "sot": "getKeyboardRegionOwner",
+      "path": "src/lib/keyboard/keyboard-region-owner.ts",
+      "guard": null,
+      "symbols": [
+        "getKeyboardRegionOwner"
+      ],
+      "kind": "code",
+      "source": "src/lib/keyboard/keyboard-region-owner.ts",
+      "line": 30,
+      "snippet": "export getKeyboardRegionOwner from src/lib/keyboard/keyboard-region-owner.ts"
+    },
+    {
+      "job": "Export: getServerKeyboardRegionOwner",
+      "sot": "getServerKeyboardRegionOwner",
+      "path": "src/lib/keyboard/keyboard-region-owner.ts",
+      "guard": null,
+      "symbols": [
+        "getServerKeyboardRegionOwner"
+      ],
+      "kind": "code",
+      "source": "src/lib/keyboard/keyboard-region-owner.ts",
+      "line": 35,
+      "snippet": "export getServerKeyboardRegionOwner from src/lib/keyboard/keyboard-region-owner.ts"
+    },
+    {
+      "job": "Export: setKeyboardRegionOwner",
+      "sot": "setKeyboardRegionOwner",
+      "path": "src/lib/keyboard/keyboard-region-owner.ts",
+      "guard": null,
+      "symbols": [
+        "setKeyboardRegionOwner"
+      ],
+      "kind": "code",
+      "source": "src/lib/keyboard/keyboard-region-owner.ts",
+      "line": 39,
+      "snippet": "export setKeyboardRegionOwner from src/lib/keyboard/keyboard-region-owner.ts"
+    },
+    {
+      "job": "Export: subscribeKeyboardRegionOwner",
+      "sot": "subscribeKeyboardRegionOwner",
+      "path": "src/lib/keyboard/keyboard-region-owner.ts",
+      "guard": null,
+      "symbols": [
+        "subscribeKeyboardRegionOwner"
+      ],
+      "kind": "code",
+      "source": "src/lib/keyboard/keyboard-region-owner.ts",
+      "line": 45,
+      "snippet": "export subscribeKeyboardRegionOwner from src/lib/keyboard/keyboard-region-owner.ts"
+    },
+    {
+      "job": "Export: isKeyboardRegionOwner",
+      "sot": "isKeyboardRegionOwner",
+      "path": "src/lib/keyboard/keyboard-region-owner.ts",
+      "guard": null,
+      "symbols": [
+        "isKeyboardRegionOwner"
+      ],
+      "kind": "code",
+      "source": "src/lib/keyboard/keyboard-region-owner.ts",
+      "line": 50,
+      "snippet": "export isKeyboardRegionOwner from src/lib/keyboard/keyboard-region-owner.ts"
+    },
+    {
+      "job": "Export: LIST_KEY_OWNER_ATTR",
+      "sot": "LIST_KEY_OWNER_ATTR",
+      "path": "src/lib/keyboard/list-key-scope.ts",
+      "guard": null,
+      "symbols": [
+        "LIST_KEY_OWNER_ATTR"
+      ],
+      "kind": "code",
+      "source": "src/lib/keyboard/list-key-scope.ts",
+      "line": 29,
+      "snippet": "export LIST_KEY_OWNER_ATTR from src/lib/keyboard/list-key-scope.ts"
+    },
+    {
+      "job": "Export: LIST_KEY_REGION_OPEN_ATTR",
+      "sot": "LIST_KEY_REGION_OPEN_ATTR",
+      "path": "src/lib/keyboard/list-key-scope.ts",
+      "guard": null,
+      "symbols": [
+        "LIST_KEY_REGION_OPEN_ATTR"
+      ],
+      "kind": "code",
+      "source": "src/lib/keyboard/list-key-scope.ts",
+      "line": 43,
+      "snippet": "export LIST_KEY_REGION_OPEN_ATTR from src/lib/keyboard/list-key-scope.ts"
+    },
+    {
+      "job": "Export: focusWithinListKeyOwner",
+      "sot": "focusWithinListKeyOwner",
+      "path": "src/lib/keyboard/list-key-scope.ts",
+      "guard": null,
+      "symbols": [
+        "focusWithinListKeyOwner"
+      ],
+      "kind": "code",
+      "source": "src/lib/keyboard/list-key-scope.ts",
+      "line": 57,
+      "snippet": "export focusWithinListKeyOwner from src/lib/keyboard/list-key-scope.ts"
+    },
+    {
+      "job": "Export: isListKeyRegionOpen",
+      "sot": "isListKeyRegionOpen",
+      "path": "src/lib/keyboard/list-key-scope.ts",
+      "guard": null,
+      "symbols": [
+        "isListKeyRegionOpen"
+      ],
+      "kind": "code",
+      "source": "src/lib/keyboard/list-key-scope.ts",
+      "line": 68,
+      "snippet": "export isListKeyRegionOpen from src/lib/keyboard/list-key-scope.ts"
+    },
+    {
+      "job": "Export: KeyboardShortcutsCheatSheet",
+      "sot": "KeyboardShortcutsCheatSheet",
+      "path": "src/lib/keyboard/nav-keys/KeyboardShortcutsCheatSheet.tsx",
+      "guard": null,
+      "symbols": [
+        "KeyboardShortcutsCheatSheet"
+      ],
+      "kind": "code",
+      "source": "src/lib/keyboard/nav-keys/KeyboardShortcutsCheatSheet.tsx",
+      "line": 132,
+      "snippet": "export KeyboardShortcutsCheatSheet from src/lib/keyboard/nav-keys/KeyboardShortcutsCheatSheet.tsx"
+    },
+    {
+      "job": "Export: NAV_KEY_HINT_CLASS",
+      "sot": "NAV_KEY_HINT_CLASS",
+      "path": "src/lib/keyboard/nav-keys/nav-key-face.ts",
+      "guard": null,
+      "symbols": [
+        "NAV_KEY_HINT_CLASS"
+      ],
+      "kind": "code",
+      "source": "src/lib/keyboard/nav-keys/nav-key-face.ts",
+      "line": 16,
+      "snippet": "export NAV_KEY_HINT_CLASS from src/lib/keyboard/nav-keys/nav-key-face.ts"
+    },
+    {
+      "job": "Export: NavMode",
+      "sot": "NavMode",
+      "path": "src/lib/keyboard/nav-keys/nav-leader-machine.ts",
+      "guard": null,
+      "symbols": [
+        "NavMode"
+      ],
+      "kind": "code",
+      "source": "src/lib/keyboard/nav-keys/nav-leader-machine.ts",
+      "line": 22,
+      "snippet": "export NavMode from src/lib/keyboard/nav-keys/nav-leader-machine.ts"
+    },
+    {
+      "job": "Export: NAV_IDLE",
+      "sot": "NAV_IDLE",
+      "path": "src/lib/keyboard/nav-keys/nav-leader-machine.ts",
+      "guard": null,
+      "symbols": [
+        "NAV_IDLE"
+      ],
+      "kind": "code",
+      "source": "src/lib/keyboard/nav-keys/nav-leader-machine.ts",
+      "line": 43,
+      "snippet": "export NAV_IDLE from src/lib/keyboard/nav-keys/nav-leader-machine.ts"
+    },
+    {
+      "job": "Export: navReduce",
+      "sot": "navReduce",
+      "path": "src/lib/keyboard/nav-keys/nav-leader-machine.ts",
+      "guard": null,
+      "symbols": [
+        "navReduce"
+      ],
+      "kind": "code",
+      "source": "src/lib/keyboard/nav-keys/nav-leader-machine.ts",
+      "line": 45,
+      "snippet": "export navReduce from src/lib/keyboard/nav-keys/nav-leader-machine.ts"
+    },
+    {
+      "job": "Export: registerNavRegion",
+      "sot": "registerNavRegion",
+      "path": "src/lib/keyboard/nav-keys/nav-leader-store.ts",
+      "guard": null,
+      "symbols": [
+        "registerNavRegion"
+      ],
+      "kind": "code",
+      "source": "src/lib/keyboard/nav-keys/nav-leader-store.ts",
+      "line": 183,
+      "snippet": "export registerNavRegion from src/lib/keyboard/nav-keys/nav-leader-store.ts"
+    },
+    {
+      "job": "Export: subscribeNavMode",
+      "sot": "subscribeNavMode",
+      "path": "src/lib/keyboard/nav-keys/nav-leader-store.ts",
+      "guard": null,
+      "symbols": [
+        "subscribeNavMode"
+      ],
+      "kind": "code",
+      "source": "src/lib/keyboard/nav-keys/nav-leader-store.ts",
+      "line": 195,
+      "snippet": "export subscribeNavMode from src/lib/keyboard/nav-keys/nav-leader-store.ts"
+    },
+    {
+      "job": "Export: getNavMode",
+      "sot": "getNavMode",
+      "path": "src/lib/keyboard/nav-keys/nav-leader-store.ts",
+      "guard": null,
+      "symbols": [
+        "getNavMode"
+      ],
+      "kind": "code",
+      "source": "src/lib/keyboard/nav-keys/nav-leader-store.ts",
+      "line": 201,
+      "snippet": "export getNavMode from src/lib/keyboard/nav-keys/nav-leader-store.ts"
+    },
+    {
+      "job": "Export: getServerNavMode",
+      "sot": "getServerNavMode",
+      "path": "src/lib/keyboard/nav-keys/nav-leader-store.ts",
+      "guard": null,
+      "symbols": [
+        "getServerNavMode"
+      ],
+      "kind": "code",
+      "source": "src/lib/keyboard/nav-keys/nav-leader-store.ts",
+      "line": 206,
+      "snippet": "export getServerNavMode from src/lib/keyboard/nav-keys/nav-leader-store.ts"
+    },
+    {
+      "job": "Export: NavRegionId",
+      "sot": "NavRegionId",
+      "path": "src/lib/keyboard/nav-keys/nav-regions.ts",
+      "guard": null,
+      "symbols": [
+        "NavRegionId"
+      ],
+      "kind": "code",
+      "source": "src/lib/keyboard/nav-keys/nav-regions.ts",
+      "line": 14,
+      "snippet": "export NavRegionId from src/lib/keyboard/nav-keys/nav-regions.ts"
+    },
+    {
+      "job": "Export: NAV_REGIONS",
+      "sot": "NAV_REGIONS",
+      "path": "src/lib/keyboard/nav-keys/nav-regions.ts",
+      "guard": null,
+      "symbols": [
+        "NAV_REGIONS"
+      ],
+      "kind": "code",
+      "source": "src/lib/keyboard/nav-keys/nav-regions.ts",
+      "line": 24,
+      "snippet": "export NAV_REGIONS from src/lib/keyboard/nav-keys/nav-regions.ts"
+    },
+    {
+      "job": "Export: regionForKey",
+      "sot": "regionForKey",
+      "path": "src/lib/keyboard/nav-keys/nav-regions.ts",
+      "guard": null,
+      "symbols": [
+        "regionForKey"
+      ],
+      "kind": "code",
+      "source": "src/lib/keyboard/nav-keys/nav-regions.ts",
+      "line": 33,
+      "snippet": "export regionForKey from src/lib/keyboard/nav-keys/nav-regions.ts"
+    },
+    {
+      "job": "Export: NavRegionPickHud",
+      "sot": "NavRegionPickHud",
+      "path": "src/lib/keyboard/nav-keys/NavRegionPickHud.tsx",
+      "guard": null,
+      "symbols": [
+        "NavRegionPickHud"
+      ],
+      "kind": "code",
+      "source": "src/lib/keyboard/nav-keys/NavRegionPickHud.tsx",
+      "line": 20,
+      "snippet": "export NavRegionPickHud from src/lib/keyboard/nav-keys/NavRegionPickHud.tsx"
+    },
+    {
+      "job": "Export: resolveNavKeymap",
+      "sot": "resolveNavKeymap",
+      "path": "src/lib/keyboard/nav-keys/resolveNavKeymap.ts",
+      "guard": null,
+      "symbols": [
+        "resolveNavKeymap"
+      ],
+      "kind": "code",
+      "source": "src/lib/keyboard/nav-keys/resolveNavKeymap.ts",
+      "line": 60,
+      "snippet": "export resolveNavKeymap from src/lib/keyboard/nav-keys/resolveNavKeymap.ts"
+    },
+    {
+      "job": "Export: matchNavKey",
+      "sot": "matchNavKey",
+      "path": "src/lib/keyboard/nav-keys/resolveNavKeymap.ts",
+      "guard": null,
+      "symbols": [
+        "matchNavKey"
+      ],
+      "kind": "code",
+      "source": "src/lib/keyboard/nav-keys/resolveNavKeymap.ts",
+      "line": 97,
+      "snippet": "export matchNavKey from src/lib/keyboard/nav-keys/resolveNavKeymap.ts"
+    },
+    {
+      "job": "Export: useNavRegion",
+      "sot": "useNavRegion",
+      "path": "src/lib/keyboard/nav-keys/useNavRegion.ts",
+      "guard": null,
+      "symbols": [
+        "useNavRegion"
+      ],
+      "kind": "code",
+      "source": "src/lib/keyboard/nav-keys/useNavRegion.ts",
+      "line": 38,
+      "snippet": "export useNavRegion from src/lib/keyboard/nav-keys/useNavRegion.ts"
+    },
+    {
+      "job": "Export: segmentChordIndexFromEvent",
+      "sot": "segmentChordIndexFromEvent",
+      "path": "src/lib/keyboard/segment-chords.ts",
+      "guard": null,
+      "symbols": [
+        "segmentChordIndexFromEvent"
+      ],
+      "kind": "code",
+      "source": "src/lib/keyboard/segment-chords.ts",
+      "line": 27,
+      "snippet": "export segmentChordIndexFromEvent from src/lib/keyboard/segment-chords.ts"
+    },
+    {
+      "job": "Export: segmentChordHint",
+      "sot": "segmentChordHint",
+      "path": "src/lib/keyboard/segment-chords.ts",
+      "guard": null,
+      "symbols": [
+        "segmentChordHint"
+      ],
+      "kind": "code",
+      "source": "src/lib/keyboard/segment-chords.ts",
+      "line": 38,
+      "snippet": "export segmentChordHint from src/lib/keyboard/segment-chords.ts"
+    },
+    {
+      "job": "Export: isSegmentChordEditableTarget",
+      "sot": "isSegmentChordEditableTarget",
+      "path": "src/lib/keyboard/segment-chords.ts",
+      "guard": null,
+      "symbols": [
+        "isSegmentChordEditableTarget"
+      ],
+      "kind": "code",
+      "source": "src/lib/keyboard/segment-chords.ts",
+      "line": 44,
+      "snippet": "export isSegmentChordEditableTarget from src/lib/keyboard/segment-chords.ts"
+    },
+    {
+      "job": "Export: nudgeUnboxPrintReceive",
+      "sot": "nudgeUnboxPrintReceive",
+      "path": "src/lib/keyboard/shortcut-nudge.ts",
+      "guard": null,
+      "symbols": [
+        "nudgeUnboxPrintReceive"
+      ],
+      "kind": "code",
+      "source": "src/lib/keyboard/shortcut-nudge.ts",
+      "line": 53,
+      "snippet": "export nudgeUnboxPrintReceive from src/lib/keyboard/shortcut-nudge.ts"
+    },
+    {
+      "job": "Export: useKeyboardRegionOwner",
+      "sot": "useKeyboardRegionOwner",
+      "path": "src/lib/keyboard/useKeyboardRegionOwner.ts",
+      "guard": null,
+      "symbols": [
+        "useKeyboardRegionOwner"
+      ],
+      "kind": "code",
+      "source": "src/lib/keyboard/useKeyboardRegionOwner.ts",
+      "line": 16,
+      "snippet": "export useKeyboardRegionOwner from src/lib/keyboard/useKeyboardRegionOwner.ts"
+    },
+    {
+      "job": "Export: useSegmentChords",
+      "sot": "useSegmentChords",
+      "path": "src/lib/keyboard/useSegmentChords.ts",
+      "guard": null,
+      "symbols": [
+        "useSegmentChords"
+      ],
+      "kind": "code",
+      "source": "src/lib/keyboard/useSegmentChords.ts",
+      "line": 17,
+      "snippet": "export useSegmentChords from src/lib/keyboard/useSegmentChords.ts"
+    },
+    {
+      "job": "Export: WedgeKeyEvent",
+      "sot": "WedgeKeyEvent",
+      "path": "src/lib/keyboard/wedge-scan-listener.ts",
+      "guard": null,
+      "symbols": [
+        "WedgeKeyEvent"
+      ],
+      "kind": "code",
+      "source": "src/lib/keyboard/wedge-scan-listener.ts",
+      "line": 31,
+      "snippet": "export WedgeKeyEvent from src/lib/keyboard/wedge-scan-listener.ts"
+    },
+    {
+      "job": "Export: CreateWedgeKeyListenerOptions",
+      "sot": "CreateWedgeKeyListenerOptions",
+      "path": "src/lib/keyboard/wedge-scan-listener.ts",
+      "guard": null,
+      "symbols": [
+        "CreateWedgeKeyListenerOptions"
+      ],
+      "kind": "code",
+      "source": "src/lib/keyboard/wedge-scan-listener.ts",
+      "line": 41,
+      "snippet": "export CreateWedgeKeyListenerOptions from src/lib/keyboard/wedge-scan-listener.ts"
+    },
+    {
+      "job": "Export: WedgeKeyListener",
+      "sot": "WedgeKeyListener",
+      "path": "src/lib/keyboard/wedge-scan-listener.ts",
+      "guard": null,
+      "symbols": [
+        "WedgeKeyListener"
+      ],
+      "kind": "code",
+      "source": "src/lib/keyboard/wedge-scan-listener.ts",
+      "line": 53,
+      "snippet": "export WedgeKeyListener from src/lib/keyboard/wedge-scan-listener.ts"
+    },
+    {
+      "job": "Export: createWedgeKeyListener",
+      "sot": "createWedgeKeyListener",
+      "path": "src/lib/keyboard/wedge-scan-listener.ts",
+      "guard": null,
+      "symbols": [
+        "createWedgeKeyListener"
+      ],
+      "kind": "code",
+      "source": "src/lib/keyboard/wedge-scan-listener.ts",
+      "line": 60,
+      "snippet": "export createWedgeKeyListener from src/lib/keyboard/wedge-scan-listener.ts"
+    },
+    {
+      "job": "Export: attachWedgeKeyListener",
+      "sot": "attachWedgeKeyListener",
+      "path": "src/lib/keyboard/wedge-scan-listener.ts",
+      "guard": null,
+      "symbols": [
+        "attachWedgeKeyListener"
+      ],
+      "kind": "code",
+      "source": "src/lib/keyboard/wedge-scan-listener.ts",
+      "line": 144,
+      "snippet": "export attachWedgeKeyListener from src/lib/keyboard/wedge-scan-listener.ts"
+    },
+    {
+      "job": "Export: WEDGE_MAX_INTER_KEY_MS",
+      "sot": "WEDGE_MAX_INTER_KEY_MS",
+      "path": "src/lib/keyboard/wedge-scan-machine.ts",
+      "guard": null,
+      "symbols": [
+        "WEDGE_MAX_INTER_KEY_MS"
+      ],
+      "kind": "code",
+      "source": "src/lib/keyboard/wedge-scan-machine.ts",
+      "line": 15,
+      "snippet": "export WEDGE_MAX_INTER_KEY_MS from src/lib/keyboard/wedge-scan-machine.ts"
+    },
+    {
+      "job": "Export: WEDGE_IDLE_FLUSH_MS",
+      "sot": "WEDGE_IDLE_FLUSH_MS",
+      "path": "src/lib/keyboard/wedge-scan-machine.ts",
+      "guard": null,
+      "symbols": [
+        "WEDGE_IDLE_FLUSH_MS"
+      ],
+      "kind": "code",
+      "source": "src/lib/keyboard/wedge-scan-machine.ts",
+      "line": 16,
+      "snippet": "export WEDGE_IDLE_FLUSH_MS from src/lib/keyboard/wedge-scan-machine.ts"
+    },
+    {
+      "job": "Export: WEDGE_MIN_LENGTH",
+      "sot": "WEDGE_MIN_LENGTH",
+      "path": "src/lib/keyboard/wedge-scan-machine.ts",
+      "guard": null,
+      "symbols": [
+        "WEDGE_MIN_LENGTH"
+      ],
+      "kind": "code",
+      "source": "src/lib/keyboard/wedge-scan-machine.ts",
+      "line": 17,
+      "snippet": "export WEDGE_MIN_LENGTH from src/lib/keyboard/wedge-scan-machine.ts"
+    },
+    {
+      "job": "Export: WedgeScanState",
+      "sot": "WedgeScanState",
+      "path": "src/lib/keyboard/wedge-scan-machine.ts",
+      "guard": null,
+      "symbols": [
+        "WedgeScanState"
+      ],
+      "kind": "code",
+      "source": "src/lib/keyboard/wedge-scan-machine.ts",
+      "line": 19,
+      "snippet": "export WedgeScanState from src/lib/keyboard/wedge-scan-machine.ts"
+    },
+    {
+      "job": "Export: WEDGE_IDLE",
+      "sot": "WEDGE_IDLE",
+      "path": "src/lib/keyboard/wedge-scan-machine.ts",
+      "guard": null,
+      "symbols": [
+        "WEDGE_IDLE"
+      ],
+      "kind": "code",
+      "source": "src/lib/keyboard/wedge-scan-machine.ts",
+      "line": 24,
+      "snippet": "export WEDGE_IDLE from src/lib/keyboard/wedge-scan-machine.ts"
+    },
+    {
+      "job": "Export: WedgeKeyInput",
+      "sot": "WedgeKeyInput",
+      "path": "src/lib/keyboard/wedge-scan-machine.ts",
+      "guard": null,
+      "symbols": [
+        "WedgeKeyInput"
+      ],
+      "kind": "code",
+      "source": "src/lib/keyboard/wedge-scan-machine.ts",
+      "line": 26,
+      "snippet": "export WedgeKeyInput from src/lib/keyboard/wedge-scan-machine.ts"
+    },
+    {
+      "job": "Export: WedgeScanOpts",
+      "sot": "WedgeScanOpts",
+      "path": "src/lib/keyboard/wedge-scan-machine.ts",
+      "guard": null,
+      "symbols": [
+        "WedgeScanOpts"
+      ],
+      "kind": "code",
+      "source": "src/lib/keyboard/wedge-scan-machine.ts",
+      "line": 35,
+      "snippet": "export WedgeScanOpts from src/lib/keyboard/wedge-scan-machine.ts"
+    },
+    {
+      "job": "Export: WedgeScanStep",
+      "sot": "WedgeScanStep",
+      "path": "src/lib/keyboard/wedge-scan-machine.ts",
+      "guard": null,
+      "symbols": [
+        "WedgeScanStep"
+      ],
+      "kind": "code",
+      "source": "src/lib/keyboard/wedge-scan-machine.ts",
+      "line": 40,
+      "snippet": "export WedgeScanStep from src/lib/keyboard/wedge-scan-machine.ts"
+    },
+    {
+      "job": "Export: wedgeReduce",
+      "sot": "wedgeReduce",
+      "path": "src/lib/keyboard/wedge-scan-machine.ts",
+      "guard": null,
+      "symbols": [
+        "wedgeReduce"
+      ],
+      "kind": "code",
+      "source": "src/lib/keyboard/wedge-scan-machine.ts",
+      "line": 51,
+      "snippet": "export wedgeReduce from src/lib/keyboard/wedge-scan-machine.ts"
+    },
+    {
+      "job": "Export: wedgeValueAcceptable",
+      "sot": "wedgeValueAcceptable",
+      "path": "src/lib/keyboard/wedge-scan-machine.ts",
+      "guard": null,
+      "symbols": [
+        "wedgeValueAcceptable"
+      ],
+      "kind": "code",
+      "source": "src/lib/keyboard/wedge-scan-machine.ts",
+      "line": 86,
+      "snippet": "export wedgeValueAcceptable from src/lib/keyboard/wedge-scan-machine.ts"
+    },
+    {
+      "job": "Export: StreamNdjsonOptions",
+      "sot": "StreamNdjsonOptions",
+      "path": "src/lib/orders-sync/client.ts",
+      "guard": null,
+      "symbols": [
+        "StreamNdjsonOptions"
+      ],
+      "kind": "code",
+      "source": "src/lib/orders-sync/client.ts",
+      "line": 30,
+      "snippet": "export StreamNdjsonOptions from src/lib/orders-sync/client.ts"
+    },
+    {
+      "job": "Export: StreamNdjsonHandler",
+      "sot": "StreamNdjsonHandler",
+      "path": "src/lib/orders-sync/client.ts",
+      "guard": null,
+      "symbols": [
+        "StreamNdjsonHandler"
+      ],
+      "kind": "code",
+      "source": "src/lib/orders-sync/client.ts",
+      "line": 40,
+      "snippet": "export StreamNdjsonHandler from src/lib/orders-sync/client.ts"
+    },
+    {
+      "job": "Export: streamNdjson",
+      "sot": "streamNdjson",
+      "path": "src/lib/orders-sync/client.ts",
+      "guard": null,
+      "symbols": [
+        "streamNdjson"
+      ],
+      "kind": "code",
+      "source": "src/lib/orders-sync/client.ts",
+      "line": 54,
+      "snippet": "export streamNdjson from src/lib/orders-sync/client.ts"
+    },
+    {
+      "job": "Export: NdjsonConsumeResult",
+      "sot": "NdjsonConsumeResult",
+      "path": "src/lib/orders-sync/parse-ndjson.ts",
+      "guard": null,
+      "symbols": [
+        "NdjsonConsumeResult"
+      ],
+      "kind": "code",
+      "source": "src/lib/orders-sync/parse-ndjson.ts",
+      "line": 8,
+      "snippet": "export NdjsonConsumeResult from src/lib/orders-sync/parse-ndjson.ts"
+    },
+    {
+      "job": "Export: consumeNdjsonBuffer",
+      "sot": "consumeNdjsonBuffer",
+      "path": "src/lib/orders-sync/parse-ndjson.ts",
+      "guard": null,
+      "symbols": [
+        "consumeNdjsonBuffer"
+      ],
+      "kind": "code",
+      "source": "src/lib/orders-sync/parse-ndjson.ts",
+      "line": 14,
+      "snippet": "export consumeNdjsonBuffer from src/lib/orders-sync/parse-ndjson.ts"
+    },
+    {
+      "job": "Export: consumeNdjsonTrailing",
+      "sot": "consumeNdjsonTrailing",
+      "path": "src/lib/orders-sync/parse-ndjson.ts",
+      "guard": null,
+      "symbols": [
+        "consumeNdjsonTrailing"
+      ],
+      "kind": "code",
+      "source": "src/lib/orders-sync/parse-ndjson.ts",
+      "line": 39,
+      "snippet": "export consumeNdjsonTrailing from src/lib/orders-sync/parse-ndjson.ts"
+    },
+    {
+      "job": "Export: malformedToErrorEvent",
+      "sot": "malformedToErrorEvent",
+      "path": "src/lib/orders-sync/parse-ndjson.ts",
+      "guard": null,
+      "symbols": [
+        "malformedToErrorEvent"
+      ],
+      "kind": "code",
+      "source": "src/lib/orders-sync/parse-ndjson.ts",
+      "line": 52,
+      "snippet": "export malformedToErrorEvent from src/lib/orders-sync/parse-ndjson.ts"
+    },
+    {
+      "job": "Export: createNdjsonStream",
+      "sot": "createNdjsonStream",
+      "path": "src/lib/orders-sync/streaming.ts",
+      "guard": null,
+      "symbols": [
+        "createNdjsonStream"
+      ],
+      "kind": "code",
+      "source": "src/lib/orders-sync/streaming.ts",
+      "line": 22,
+      "snippet": "export createNdjsonStream from src/lib/orders-sync/streaming.ts"
+    },
+    {
+      "job": "Export: ndjsonResponseHeaders",
+      "sot": "ndjsonResponseHeaders",
+      "path": "src/lib/orders-sync/streaming.ts",
+      "guard": null,
+      "symbols": [
+        "ndjsonResponseHeaders"
+      ],
+      "kind": "code",
+      "source": "src/lib/orders-sync/streaming.ts",
+      "line": 77,
+      "snippet": "export ndjsonResponseHeaders from src/lib/orders-sync/streaming.ts"
+    },
+    {
+      "job": "Export: TransferOrderDetail",
+      "sot": "TransferOrderDetail",
+      "path": "src/lib/orders-sync/types.ts",
+      "guard": null,
+      "symbols": [
+        "TransferOrderDetail"
+      ],
+      "kind": "code",
+      "source": "src/lib/orders-sync/types.ts",
+      "line": 1,
+      "snippet": "export TransferOrderDetail from src/lib/orders-sync/types.ts"
+    },
+    {
+      "job": "Export: TransferOrderDetails",
+      "sot": "TransferOrderDetails",
+      "path": "src/lib/orders-sync/types.ts",
+      "guard": null,
+      "symbols": [
+        "TransferOrderDetails"
+      ],
+      "kind": "code",
+      "source": "src/lib/orders-sync/types.ts",
+      "line": 18,
+      "snippet": "export TransferOrderDetails from src/lib/orders-sync/types.ts"
+    },
+    {
+      "job": "Export: TransferSkippedRow",
+      "sot": "TransferSkippedRow",
+      "path": "src/lib/orders-sync/types.ts",
+      "guard": null,
+      "symbols": [
+        "TransferSkippedRow"
+      ],
+      "kind": "code",
+      "source": "src/lib/orders-sync/types.ts",
+      "line": 51,
+      "snippet": "export TransferSkippedRow from src/lib/orders-sync/types.ts"
+    },
+    {
+      "job": "Export: OrderExceptionResolutionDetail",
+      "sot": "OrderExceptionResolutionDetail",
+      "path": "src/lib/orders-sync/types.ts",
+      "guard": null,
+      "symbols": [
+        "OrderExceptionResolutionDetail"
+      ],
+      "kind": "code",
+      "source": "src/lib/orders-sync/types.ts",
+      "line": 61,
+      "snippet": "export OrderExceptionResolutionDetail from src/lib/orders-sync/types.ts"
+    },
+    {
+      "job": "Export: SyncTaskStatus",
+      "sot": "SyncTaskStatus",
+      "path": "src/lib/orders-sync/types.ts",
+      "guard": null,
+      "symbols": [
+        "SyncTaskStatus"
+      ],
+      "kind": "code",
+      "source": "src/lib/orders-sync/types.ts",
+      "line": 68,
+      "snippet": "export SyncTaskStatus from src/lib/orders-sync/types.ts"
+    },
+    {
+      "job": "Export: TransferTabState",
+      "sot": "TransferTabState",
+      "path": "src/lib/orders-sync/types.ts",
+      "guard": null,
+      "symbols": [
+        "TransferTabState"
+      ],
+      "kind": "code",
+      "source": "src/lib/orders-sync/types.ts",
+      "line": 70,
+      "snippet": "export TransferTabState from src/lib/orders-sync/types.ts"
+    },
+    {
+      "job": "Export: ExceptionsTabState",
+      "sot": "ExceptionsTabState",
+      "path": "src/lib/orders-sync/types.ts",
+      "guard": null,
+      "symbols": [
+        "ExceptionsTabState"
+      ],
+      "kind": "code",
+      "source": "src/lib/orders-sync/types.ts",
+      "line": 96,
+      "snippet": "export ExceptionsTabState from src/lib/orders-sync/types.ts"
+    },
+    {
+      "job": "Export: SyncPhase",
+      "sot": "SyncPhase",
+      "path": "src/lib/orders-sync/types.ts",
+      "guard": null,
+      "symbols": [
+        "SyncPhase"
+      ],
+      "kind": "code",
+      "source": "src/lib/orders-sync/types.ts",
+      "line": 111,
+      "snippet": "export SyncPhase from src/lib/orders-sync/types.ts"
+    },
+    {
+      "job": "Export: SyncStreamEvent",
+      "sot": "SyncStreamEvent",
+      "path": "src/lib/orders-sync/types.ts",
+      "guard": null,
+      "symbols": [
+        "SyncStreamEvent"
+      ],
+      "kind": "code",
+      "source": "src/lib/orders-sync/types.ts",
+      "line": 128,
+      "snippet": "export SyncStreamEvent from src/lib/orders-sync/types.ts"
+    },
+    {
+      "job": "Export: SyncProgress",
+      "sot": "SyncProgress",
+      "path": "src/lib/orders-sync/types.ts",
+      "guard": null,
+      "symbols": [
+        "SyncProgress"
+      ],
+      "kind": "code",
+      "source": "src/lib/orders-sync/types.ts",
+      "line": 136,
+      "snippet": "export SyncProgress from src/lib/orders-sync/types.ts"
+    },
+    {
+      "job": "Export: FrameCoalesceMode",
+      "sot": "FrameCoalesceMode",
+      "path": "src/lib/perf/coalesce-frame.ts",
+      "guard": null,
+      "symbols": [
+        "FrameCoalesceMode"
+      ],
+      "kind": "code",
+      "source": "src/lib/perf/coalesce-frame.ts",
+      "line": 13,
+      "snippet": "export FrameCoalesceMode from src/lib/perf/coalesce-frame.ts"
+    },
+    {
+      "job": "Export: FrameCoalescer",
+      "sot": "FrameCoalescer",
+      "path": "src/lib/perf/coalesce-frame.ts",
+      "guard": null,
+      "symbols": [
+        "FrameCoalescer"
+      ],
+      "kind": "code",
+      "source": "src/lib/perf/coalesce-frame.ts",
+      "line": 15,
+      "snippet": "export FrameCoalescer from src/lib/perf/coalesce-frame.ts"
+    },
+    {
+      "job": "Export: CreateFrameCoalescerOptions",
+      "sot": "CreateFrameCoalescerOptions",
+      "path": "src/lib/perf/coalesce-frame.ts",
+      "guard": null,
+      "symbols": [
+        "CreateFrameCoalescerOptions"
+      ],
+      "kind": "code",
+      "source": "src/lib/perf/coalesce-frame.ts",
+      "line": 21,
+      "snippet": "export CreateFrameCoalescerOptions from src/lib/perf/coalesce-frame.ts"
+    },
+    {
+      "job": "Export: createFrameCoalescer",
+      "sot": "createFrameCoalescer",
+      "path": "src/lib/perf/coalesce-frame.ts",
+      "guard": null,
+      "symbols": [
+        "createFrameCoalescer"
+      ],
+      "kind": "code",
+      "source": "src/lib/perf/coalesce-frame.ts",
+      "line": 28,
+      "snippet": "export createFrameCoalescer from src/lib/perf/coalesce-frame.ts"
+    },
+    {
+      "job": "Export: ScanCommitQueue",
+      "sot": "ScanCommitQueue",
+      "path": "src/lib/perf/scan-commit-queue.ts",
+      "guard": null,
+      "symbols": [
+        "ScanCommitQueue"
+      ],
+      "kind": "code",
+      "source": "src/lib/perf/scan-commit-queue.ts",
+      "line": 12,
+      "snippet": "export ScanCommitQueue from src/lib/perf/scan-commit-queue.ts"
+    },
+    {
+      "job": "Export: ScanCommitQueueOptions",
+      "sot": "ScanCommitQueueOptions",
+      "path": "src/lib/perf/scan-commit-queue.ts",
+      "guard": null,
+      "symbols": [
+        "ScanCommitQueueOptions"
+      ],
+      "kind": "code",
+      "source": "src/lib/perf/scan-commit-queue.ts",
+      "line": 19,
+      "snippet": "export ScanCommitQueueOptions from src/lib/perf/scan-commit-queue.ts"
+    },
+    {
+      "job": "Export: createScanCommitQueue",
+      "sot": "createScanCommitQueue",
+      "path": "src/lib/perf/scan-commit-queue.ts",
+      "guard": null,
+      "symbols": [
+        "createScanCommitQueue"
+      ],
+      "kind": "code",
+      "source": "src/lib/perf/scan-commit-queue.ts",
+      "line": 24,
+      "snippet": "export createScanCommitQueue from src/lib/perf/scan-commit-queue.ts"
+    },
+    {
+      "job": "Export: STREAM_APPLY_BATCH_SIZE",
+      "sot": "STREAM_APPLY_BATCH_SIZE",
+      "path": "src/lib/perf/stream-apply.ts",
+      "guard": null,
+      "symbols": [
+        "STREAM_APPLY_BATCH_SIZE"
+      ],
+      "kind": "code",
+      "source": "src/lib/perf/stream-apply.ts",
+      "line": 20,
+      "snippet": "export STREAM_APPLY_BATCH_SIZE from src/lib/perf/stream-apply.ts"
+    },
+    {
+      "job": "Export: STREAM_APPLY_TIME_BUDGET_MS",
+      "sot": "STREAM_APPLY_TIME_BUDGET_MS",
+      "path": "src/lib/perf/stream-apply.ts",
+      "guard": null,
+      "symbols": [
+        "STREAM_APPLY_TIME_BUDGET_MS"
+      ],
+      "kind": "code",
+      "source": "src/lib/perf/stream-apply.ts",
+      "line": 22,
+      "snippet": "export STREAM_APPLY_TIME_BUDGET_MS from src/lib/perf/stream-apply.ts"
+    },
+    {
+      "job": "Export: ApplyStreamBudgetOptions",
+      "sot": "ApplyStreamBudgetOptions",
+      "path": "src/lib/perf/stream-apply.ts",
+      "guard": null,
+      "symbols": [
+        "ApplyStreamBudgetOptions"
+      ],
+      "kind": "code",
+      "source": "src/lib/perf/stream-apply.ts",
+      "line": 24,
+      "snippet": "export ApplyStreamBudgetOptions from src/lib/perf/stream-apply.ts"
+    },
+    {
+      "job": "Export: isSyncControlEvent",
+      "sot": "isSyncControlEvent",
+      "path": "src/lib/perf/stream-apply.ts",
+      "guard": null,
+      "symbols": [
+        "isSyncControlEvent"
+      ],
+      "kind": "code",
+      "source": "src/lib/perf/stream-apply.ts",
+      "line": 33,
+      "snippet": "export isSyncControlEvent from src/lib/perf/stream-apply.ts"
+    },
+    {
+      "job": "Export: applyStreamBudget",
+      "sot": "applyStreamBudget",
+      "path": "src/lib/perf/stream-apply.ts",
+      "guard": null,
+      "symbols": [
+        "applyStreamBudget"
+      ],
+      "kind": "code",
+      "source": "src/lib/perf/stream-apply.ts",
+      "line": 42,
+      "snippet": "export applyStreamBudget from src/lib/perf/stream-apply.ts"
+    },
+    {
+      "job": "Export: YieldToInputDeps",
+      "sot": "YieldToInputDeps",
+      "path": "src/lib/perf/yield-to-input.ts",
+      "guard": null,
+      "symbols": [
+        "YieldToInputDeps"
+      ],
+      "kind": "code",
+      "source": "src/lib/perf/yield-to-input.ts",
+      "line": 13,
+      "snippet": "export YieldToInputDeps from src/lib/perf/yield-to-input.ts"
+    },
+    {
+      "job": "Export: yieldToInput",
+      "sot": "yieldToInput",
+      "path": "src/lib/perf/yield-to-input.ts",
+      "guard": null,
+      "symbols": [
+        "yieldToInput"
+      ],
+      "kind": "code",
+      "source": "src/lib/perf/yield-to-input.ts",
+      "line": 46,
+      "snippet": "export yieldToInput from src/lib/perf/yield-to-input.ts"
+    },
+    {
       "job": "Export: RIGHT_RAIL_GUTTER_PX",
       "sot": "RIGHT_RAIL_GUTTER_PX",
       "path": "src/lib/right-rail/frame.ts",
@@ -29803,6 +31601,19 @@
       "snippet": "export stationContextSashMaxPx from src/lib/right-rail/frame.ts"
     },
     {
+      "job": "Export: stationDisplaysOpenWouldParkRail",
+      "sot": "stationDisplaysOpenWouldParkRail",
+      "path": "src/lib/right-rail/frame.ts",
+      "guard": null,
+      "symbols": [
+        "stationDisplaysOpenWouldParkRail"
+      ],
+      "kind": "code",
+      "source": "src/lib/right-rail/frame.ts",
+      "line": 475,
+      "snippet": "export stationDisplaysOpenWouldParkRail from src/lib/right-rail/frame.ts"
+    },
+    {
       "job": "Export: subscribeRightRailFrame",
       "sot": "subscribeRightRailFrame",
       "path": "src/lib/right-rail/frame.ts",
@@ -29812,7 +31623,7 @@
       ],
       "kind": "code",
       "source": "src/lib/right-rail/frame.ts",
-      "line": 466,
+      "line": 489,
       "snippet": "export subscribeRightRailFrame from src/lib/right-rail/frame.ts"
     },
     {
@@ -29825,7 +31636,7 @@
       ],
       "kind": "code",
       "source": "src/lib/right-rail/frame.ts",
-      "line": 471,
+      "line": 494,
       "snippet": "export getRightRailFrame from src/lib/right-rail/frame.ts"
     },
     {
@@ -29838,7 +31649,7 @@
       ],
       "kind": "code",
       "source": "src/lib/right-rail/frame.ts",
-      "line": 475,
+      "line": 498,
       "snippet": "export getServerRightRailFrame from src/lib/right-rail/frame.ts"
     },
     {
@@ -29851,7 +31662,7 @@
       ],
       "kind": "code",
       "source": "src/lib/right-rail/frame.ts",
-      "line": 480,
+      "line": 503,
       "snippet": "export setRightRailFrameWidth from src/lib/right-rail/frame.ts"
     },
     {
@@ -29864,7 +31675,7 @@
       ],
       "kind": "code",
       "source": "src/lib/right-rail/frame.ts",
-      "line": 487,
+      "line": 510,
       "snippet": "export setRightRailContextRail from src/lib/right-rail/frame.ts"
     },
     {
@@ -29877,7 +31688,7 @@
       ],
       "kind": "code",
       "source": "src/lib/right-rail/frame.ts",
-      "line": 503,
+      "line": 526,
       "snippet": "export setRightRailDemand from src/lib/right-rail/frame.ts"
     },
     {
@@ -29890,7 +31701,7 @@
       ],
       "kind": "code",
       "source": "src/lib/right-rail/frame.ts",
-      "line": 518,
+      "line": 541,
       "snippet": "export setStationPushDemand from src/lib/right-rail/frame.ts"
     },
     {
@@ -29903,7 +31714,7 @@
       ],
       "kind": "code",
       "source": "src/lib/right-rail/frame.ts",
-      "line": 539,
+      "line": 562,
       "snippet": "export setStationDisplaysSashDragging from src/lib/right-rail/frame.ts"
     },
     {
@@ -29916,7 +31727,7 @@
       ],
       "kind": "code",
       "source": "src/lib/right-rail/frame.ts",
-      "line": 551,
+      "line": 574,
       "snippet": "export setStationDisplaysSashArmed from src/lib/right-rail/frame.ts"
     },
     {
@@ -29929,7 +31740,7 @@
       ],
       "kind": "code",
       "source": "src/lib/right-rail/frame.ts",
-      "line": 561,
+      "line": 584,
       "snippet": "export setStationContextSashArmed from src/lib/right-rail/frame.ts"
     },
     {
@@ -29942,7 +31753,7 @@
       ],
       "kind": "code",
       "source": "src/lib/right-rail/frame.ts",
-      "line": 577,
+      "line": 600,
       "snippet": "export subscribeStationFarRailRequest from src/lib/right-rail/frame.ts"
     },
     {
@@ -29955,7 +31766,7 @@
       ],
       "kind": "code",
       "source": "src/lib/right-rail/frame.ts",
-      "line": 587,
+      "line": 610,
       "snippet": "export requestStationCollapseContext from src/lib/right-rail/frame.ts"
     },
     {
@@ -29968,7 +31779,7 @@
       ],
       "kind": "code",
       "source": "src/lib/right-rail/frame.ts",
-      "line": 592,
+      "line": 615,
       "snippet": "export requestStationCloseDisplays from src/lib/right-rail/frame.ts"
     },
     {
@@ -29981,7 +31792,7 @@
       ],
       "kind": "code",
       "source": "src/lib/right-rail/frame.ts",
-      "line": 597,
+      "line": 620,
       "snippet": "export contextRailCostPx from src/lib/right-rail/frame.ts"
     },
     {
@@ -29994,7 +31805,7 @@
       ],
       "kind": "code",
       "source": "src/lib/right-rail/frame.ts",
-      "line": 602,
+      "line": 625,
       "snippet": "export getStationPushActive from src/lib/right-rail/frame.ts"
     },
     {
@@ -30007,7 +31818,7 @@
       ],
       "kind": "code",
       "source": "src/lib/right-rail/frame.ts",
-      "line": 612,
+      "line": 635,
       "snippet": "export UNBOX_STATION_PUSH_MAX_WIDTH_PAD_PX from src/lib/right-rail/frame.ts"
     },
     {
@@ -30061,6 +31872,253 @@
       "source": "src/lib/right-rail/order-compare-model.ts",
       "line": 201,
       "snippet": "export buildOrderCompare from src/lib/right-rail/order-compare-model.ts"
+    },
+    {
+      "job": "Export: PANEL_DRAFT_RESUME_HOTKEY",
+      "sot": "PANEL_DRAFT_RESUME_HOTKEY",
+      "path": "src/lib/right-rail/panel-store-keyboard.ts",
+      "guard": null,
+      "symbols": [
+        "PANEL_DRAFT_RESUME_HOTKEY"
+      ],
+      "kind": "code",
+      "source": "src/lib/right-rail/panel-store-keyboard.ts",
+      "line": 14,
+      "snippet": "export PANEL_DRAFT_RESUME_HOTKEY from src/lib/right-rail/panel-store-keyboard.ts"
+    },
+    {
+      "job": "Export: PanelStoreKeyEvent",
+      "sot": "PanelStoreKeyEvent",
+      "path": "src/lib/right-rail/panel-store-keyboard.ts",
+      "guard": null,
+      "symbols": [
+        "PanelStoreKeyEvent"
+      ],
+      "kind": "code",
+      "source": "src/lib/right-rail/panel-store-keyboard.ts",
+      "line": 20,
+      "snippet": "export PanelStoreKeyEvent from src/lib/right-rail/panel-store-keyboard.ts"
+    },
+    {
+      "job": "Export: handlePanelStoreKeydown",
+      "sot": "handlePanelStoreKeydown",
+      "path": "src/lib/right-rail/panel-store-keyboard.ts",
+      "guard": null,
+      "symbols": [
+        "handlePanelStoreKeydown"
+      ],
+      "kind": "code",
+      "source": "src/lib/right-rail/panel-store-keyboard.ts",
+      "line": 48,
+      "snippet": "export handlePanelStoreKeydown from src/lib/right-rail/panel-store-keyboard.ts"
+    },
+    {
+      "job": "Export: RightRailViewPayload",
+      "sot": "RightRailViewPayload",
+      "path": "src/lib/right-rail/panel-store.ts",
+      "guard": null,
+      "symbols": [
+        "RightRailViewPayload"
+      ],
+      "kind": "code",
+      "source": "src/lib/right-rail/panel-store.ts",
+      "line": 19,
+      "snippet": "export RightRailViewPayload from src/lib/right-rail/panel-store.ts"
+    },
+    {
+      "job": "Export: RightRailDraftCache",
+      "sot": "RightRailDraftCache",
+      "path": "src/lib/right-rail/panel-store.ts",
+      "guard": null,
+      "symbols": [
+        "RightRailDraftCache"
+      ],
+      "kind": "code",
+      "source": "src/lib/right-rail/panel-store.ts",
+      "line": 24,
+      "snippet": "export RightRailDraftCache from src/lib/right-rail/panel-store.ts"
+    },
+    {
+      "job": "Export: PanelStoreSnapshot",
+      "sot": "PanelStoreSnapshot",
+      "path": "src/lib/right-rail/panel-store.ts",
+      "guard": null,
+      "symbols": [
+        "PanelStoreSnapshot"
+      ],
+      "kind": "code",
+      "source": "src/lib/right-rail/panel-store.ts",
+      "line": 30,
+      "snippet": "export PanelStoreSnapshot from src/lib/right-rail/panel-store.ts"
+    },
+    {
+      "job": "Export: resetPanelStore",
+      "sot": "resetPanelStore",
+      "path": "src/lib/right-rail/panel-store.ts",
+      "guard": null,
+      "symbols": [
+        "resetPanelStore"
+      ],
+      "kind": "code",
+      "source": "src/lib/right-rail/panel-store.ts",
+      "line": 107,
+      "snippet": "export resetPanelStore from src/lib/right-rail/panel-store.ts"
+    },
+    {
+      "job": "Export: setPanelStoreNotifyDeps",
+      "sot": "setPanelStoreNotifyDeps",
+      "path": "src/lib/right-rail/panel-store.ts",
+      "guard": null,
+      "symbols": [
+        "setPanelStoreNotifyDeps"
+      ],
+      "kind": "code",
+      "source": "src/lib/right-rail/panel-store.ts",
+      "line": 114,
+      "snippet": "export setPanelStoreNotifyDeps from src/lib/right-rail/panel-store.ts"
+    },
+    {
+      "job": "Export: restorePanelStoreNotifyDeps",
+      "sot": "restorePanelStoreNotifyDeps",
+      "path": "src/lib/right-rail/panel-store.ts",
+      "guard": null,
+      "symbols": [
+        "restorePanelStoreNotifyDeps"
+      ],
+      "kind": "code",
+      "source": "src/lib/right-rail/panel-store.ts",
+      "line": 118,
+      "snippet": "export restorePanelStoreNotifyDeps from src/lib/right-rail/panel-store.ts"
+    },
+    {
+      "job": "Export: setPanelDraftCapture",
+      "sot": "setPanelDraftCapture",
+      "path": "src/lib/right-rail/panel-store.ts",
+      "guard": null,
+      "symbols": [
+        "setPanelDraftCapture"
+      ],
+      "kind": "code",
+      "source": "src/lib/right-rail/panel-store.ts",
+      "line": 127,
+      "snippet": "export setPanelDraftCapture from src/lib/right-rail/panel-store.ts"
+    },
+    {
+      "job": "Export: setPanelDraftData",
+      "sot": "setPanelDraftData",
+      "path": "src/lib/right-rail/panel-store.ts",
+      "guard": null,
+      "symbols": [
+        "setPanelDraftData"
+      ],
+      "kind": "code",
+      "source": "src/lib/right-rail/panel-store.ts",
+      "line": 132,
+      "snippet": "export setPanelDraftData from src/lib/right-rail/panel-store.ts"
+    },
+    {
+      "job": "Export: openPanel",
+      "sot": "openPanel",
+      "path": "src/lib/right-rail/panel-store.ts",
+      "guard": null,
+      "symbols": [
+        "openPanel"
+      ],
+      "kind": "code",
+      "source": "src/lib/right-rail/panel-store.ts",
+      "line": 152,
+      "snippet": "export openPanel from src/lib/right-rail/panel-store.ts"
+    },
+    {
+      "job": "Export: syncPanelOccupant",
+      "sot": "syncPanelOccupant",
+      "path": "src/lib/right-rail/panel-store.ts",
+      "guard": null,
+      "symbols": [
+        "syncPanelOccupant"
+      ],
+      "kind": "code",
+      "source": "src/lib/right-rail/panel-store.ts",
+      "line": 165,
+      "snippet": "export syncPanelOccupant from src/lib/right-rail/panel-store.ts"
+    },
+    {
+      "job": "Export: closeAndCachePanel",
+      "sot": "closeAndCachePanel",
+      "path": "src/lib/right-rail/panel-store.ts",
+      "guard": null,
+      "symbols": [
+        "closeAndCachePanel"
+      ],
+      "kind": "code",
+      "source": "src/lib/right-rail/panel-store.ts",
+      "line": 181,
+      "snippet": "export closeAndCachePanel from src/lib/right-rail/panel-store.ts"
+    },
+    {
+      "job": "Export: reopenDraft",
+      "sot": "reopenDraft",
+      "path": "src/lib/right-rail/panel-store.ts",
+      "guard": null,
+      "symbols": [
+        "reopenDraft"
+      ],
+      "kind": "code",
+      "source": "src/lib/right-rail/panel-store.ts",
+      "line": 211,
+      "snippet": "export reopenDraft from src/lib/right-rail/panel-store.ts"
+    },
+    {
+      "job": "Export: getPanelStore",
+      "sot": "getPanelStore",
+      "path": "src/lib/right-rail/panel-store.ts",
+      "guard": null,
+      "symbols": [
+        "getPanelStore"
+      ],
+      "kind": "code",
+      "source": "src/lib/right-rail/panel-store.ts",
+      "line": 226,
+      "snippet": "export getPanelStore from src/lib/right-rail/panel-store.ts"
+    },
+    {
+      "job": "Export: usePanelStore",
+      "sot": "usePanelStore",
+      "path": "src/lib/right-rail/panel-store.ts",
+      "guard": null,
+      "symbols": [
+        "usePanelStore"
+      ],
+      "kind": "code",
+      "source": "src/lib/right-rail/panel-store.ts",
+      "line": 235,
+      "snippet": "export usePanelStore from src/lib/right-rail/panel-store.ts"
+    },
+    {
+      "job": "Export: useRestoredPanelDraft",
+      "sot": "useRestoredPanelDraft",
+      "path": "src/lib/right-rail/panel-store.ts",
+      "guard": null,
+      "symbols": [
+        "useRestoredPanelDraft"
+      ],
+      "kind": "code",
+      "source": "src/lib/right-rail/panel-store.ts",
+      "line": 240,
+      "snippet": "export useRestoredPanelDraft from src/lib/right-rail/panel-store.ts"
+    },
+    {
+      "job": "Export: usePanelDraft",
+      "sot": "usePanelDraft",
+      "path": "src/lib/right-rail/panel-store.ts",
+      "guard": null,
+      "symbols": [
+        "usePanelDraft"
+      ],
+      "kind": "code",
+      "source": "src/lib/right-rail/panel-store.ts",
+      "line": 251,
+      "snippet": "export usePanelDraft from src/lib/right-rail/panel-store.ts"
     },
     {
       "job": "Export: publishRailActions",
@@ -30306,7 +32364,7 @@
       ],
       "kind": "code",
       "source": "src/lib/right-rail/store.ts",
-      "line": 43,
+      "line": 44,
       "snippet": "export RIGHT_RAIL_PRIORITY from src/lib/right-rail/store.ts"
     },
     {
@@ -30319,7 +32377,7 @@
       ],
       "kind": "code",
       "source": "src/lib/right-rail/store.ts",
-      "line": 50,
+      "line": 51,
       "snippet": "export RightRailPanel from src/lib/right-rail/store.ts"
     },
     {
@@ -30332,7 +32390,7 @@
       ],
       "kind": "code",
       "source": "src/lib/right-rail/store.ts",
-      "line": 167,
+      "line": 169,
       "snippet": "export registerRightRailPanel from src/lib/right-rail/store.ts"
     },
     {
@@ -30345,7 +32403,7 @@
       ],
       "kind": "code",
       "source": "src/lib/right-rail/store.ts",
-      "line": 214,
+      "line": 216,
       "snippet": "export updateRightRailPanelNode from src/lib/right-rail/store.ts"
     },
     {
@@ -30358,7 +32416,7 @@
       ],
       "kind": "code",
       "source": "src/lib/right-rail/store.ts",
-      "line": 270,
+      "line": 272,
       "snippet": "export subscribeRightRail from src/lib/right-rail/store.ts"
     },
     {
@@ -30371,8 +32429,21 @@
       ],
       "kind": "code",
       "source": "src/lib/right-rail/store.ts",
-      "line": 275,
+      "line": 277,
       "snippet": "export getRightRailTop from src/lib/right-rail/store.ts"
+    },
+    {
+      "job": "Export: getRightRailTopSkipping",
+      "sot": "getRightRailTopSkipping",
+      "path": "src/lib/right-rail/store.ts",
+      "guard": null,
+      "symbols": [
+        "getRightRailTopSkipping"
+      ],
+      "kind": "code",
+      "source": "src/lib/right-rail/store.ts",
+      "line": 286,
+      "snippet": "export getRightRailTopSkipping from src/lib/right-rail/store.ts"
     },
     {
       "job": "Export: getServerRightRailTop",
@@ -30384,7 +32455,7 @@
       ],
       "kind": "code",
       "source": "src/lib/right-rail/store.ts",
-      "line": 280,
+      "line": 303,
       "snippet": "export getServerRightRailTop from src/lib/right-rail/store.ts"
     },
     {

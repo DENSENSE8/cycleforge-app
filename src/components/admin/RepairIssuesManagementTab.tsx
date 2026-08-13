@@ -15,6 +15,8 @@ import { mainStickyHeaderClass, mainStickyHeaderShellRowClass } from '@/componen
 import { toast } from '@/lib/toast';
 import { sectionLabel, fieldLabel, tableHeader, tableCell } from '@/design-system/tokens/typography/presets';
 import { cn } from '@/utils/_cn';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+
 
 /** Mirrors a row from GET /api/repair/issues (RepairIssueTemplate). */
 interface RepairIssueRecord {
@@ -42,7 +44,7 @@ const DEFAULT_FORM_STATE: IssueFormState = {
 };
 
 const inputClass =
-  'h-10 w-full border border-border-soft bg-surface-card px-3 text-sm font-semibold text-text-default outline-none transition-colors focus:border-border-emphasis';
+  cn('h-10 w-full border border-border-soft bg-surface-card px-3 text-sm font-semibold text-text-default transition-colors', focusRing('field', 'neutral'));
 
 /**
  * Manage GLOBAL repair issue templates (favorite_sku_id IS NULL) — the default
@@ -198,7 +200,7 @@ export function RepairIssuesManagementTab() {
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
               placeholder="Filter label / category"
-              className="h-8 w-64 border border-border-soft bg-surface-card px-3 text-xs font-medium text-text-default outline-none focus:border-border-emphasis"
+              className={cn("h-8 w-64 border border-border-soft bg-surface-card px-3 text-xs font-medium text-text-default", focusRing('field', 'neutral'))}
             />
             <Button variant="secondary" size="sm" onClick={openAdd} icon={<Plus />}>
               Add Issue

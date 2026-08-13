@@ -1,6 +1,8 @@
 import { PRIMARY_CHROME_ROW_FACE } from '@/components/layout/header-shell';
 import type { StationTheme } from '@/utils/staff-colors';
 import { cn } from '@/utils/_cn';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+
 
 /**
  * Canonical geometry + chrome for every station scan bar. Change padding,
@@ -114,11 +116,11 @@ export const STATION_SCAN_BAR_RIGHT_CELL =
 
 /** Full-band mode segment — default width. */
 export const STATION_SCAN_BAR_MODE_BTN =
-  'flex h-full w-9 shrink-0 items-center justify-center rounded-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-border-emphasis/60';
+  cn('flex h-full w-9 shrink-0 items-center justify-center rounded-none transition-colors', focusRing('cell', 'neutral'));
 
 /** Full-band mode segment — tighter width for 3–4 mode rails. */
 export const STATION_SCAN_BAR_MODE_BTN_COMPACT =
-  'flex h-full w-8 shrink-0 items-center justify-center rounded-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-border-emphasis/60';
+  cn('flex h-full w-8 shrink-0 items-center justify-center rounded-none transition-colors', focusRing('cell', 'neutral'));
 
 /** Idle mode — transparent on chrome; hover only. */
 export const STATION_SCAN_BAR_MODE_BTN_INACTIVE =
@@ -166,5 +168,5 @@ export const STATION_SCAN_BAR_COLLAPSE_HOVER_DEFAULT_CLASS =
 
 /** Focus brightens the same bottom rule — no second ring language. */
 export function stationScanBarFocusInputClass(theme: StationTheme): string {
-  return `focus:border-b-${theme}-600 focus:ring-0`;
+  return `focus:border-b-${theme}-600 focus:ring-0`; // ds-allow-focus: identity/one-off hue or ring-0
 }

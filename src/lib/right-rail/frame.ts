@@ -463,6 +463,29 @@ function recompute() {
   listeners.forEach((l) => l());
 }
 
+/**
+ * True when opening station Displays at the current frame would park the left
+ * rail. Cold-load gate for cockpit auto-open — opening Displays that parks the
+ * rail shifts the surface ~328px after paint (CLS 0.227).
+ *
+ * Reads the **frame store** (same threshold as `preferParkLeft` in
+ * {@link recompute}). Never `window.innerWidth` — that version reported "fits"
+ * at 1350px against a 1318px content row and moved CLS not at all.
+ */
+export function stationDisplaysOpenWouldParkRail(): boolean {
+  if (!state.stationPushActive) return false;
+  if (state.railCostOpenPx <= 0) return false;
+  if (state.railOperatorCollapsed) return false;
+  const frame = state.frameWidthPx;
+  // Unmeasured frame: refuse auto-open so a later measure cannot park after paint.
+  if (frame <= 0) return true;
+  const leftCost = restingLeftPx(state);
+  return (
+    frame <
+    leftCost + STATION_PUSH_CENTER_FLOOR_PX + STATION_DISPLAYS_MIN_WIDTH_PX
+  );
+}
+
 export function subscribeRightRailFrame(listener: Listener): () => void {
   listeners.add(listener);
   return () => listeners.delete(listener);

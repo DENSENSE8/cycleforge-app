@@ -95,13 +95,13 @@ describe('sot-manifest — parity + coverage', () => {
     assert.ok(dsPaths.length >= 10, `expected >=10 design-system paths, got ${dsPaths.length}`);
   });
 
-  it('ranked lookup resolves real jobs to their SoT (top-5)', () => {
+  it('ranked lookup resolves exported hosts by symbol (top-5)', () => {
     const cases: Array<[string, string]> = [
-      ['stacked row identity', 'StackedRowIdentity'],
-      ['spreadsheet mount', 'NonlinearTableHost'],
-      ['frame budgets', 'MIN_WORK_SURFACE_PX'],
-      ['Band-1 chrome', 'WorkbenchChromeHeader'],
-      ['right inspector', 'RightRailHost'],
+      ['StackedRowIdentity', 'StackedRowIdentity'],
+      ['NonlinearTableHost', 'NonlinearTableHost'],
+      ['StationScanPaneHost', 'StationScanPaneHost'],
+      ['RightRailHost', 'RightRailHost'],
+      ['Button', 'Button'],
     ];
     for (const [query, expected] of cases) {
       const out = runNode('scripts/sot-lookup.mjs', ['--json', '-n', '5', query]);

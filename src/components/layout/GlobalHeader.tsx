@@ -81,10 +81,8 @@ export function GlobalHeader({
             onToggleSidebar={onToggleSidebar}
           />
         ) : null}
-        {/* Home · Search · Media · Plans · Chat live in the spine band when open
-            (`SpineTopPins`). When collapsed, `SidebarCollapseControl` peeks the
-            same `TopDestinationPins` on hover/focus — never a permanent second
-            door in this cluster while the spine is open. */}
+        {/* Home · Search · Media · Plans · Chat live in the open spine band
+            (`SpineTopPins`). The toggle is click-only — no collapsed hover peek. */}
         <HeaderPinsSwitcher />
         <HeaderRecentsSwitcher />
         <HeaderPageSwitcher />

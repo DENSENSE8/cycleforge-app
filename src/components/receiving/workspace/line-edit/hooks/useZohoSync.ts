@@ -15,7 +15,7 @@ export type InventoryDossierRefreshResult =
 
 function isLocallyReceived(row: ReceivingLineRow): boolean {
   return (
-    Boolean((row.received_done_at || '').trim()) ||
+    Boolean(String(row.received_done_at ?? '').trim()) ||
     String(row.workflow_status || '').trim().toUpperCase() === 'DONE'
   );
 }

@@ -24,19 +24,23 @@ import {
 import { SupportPhotoLibraryPicker } from './SupportPhotoLibraryPicker';
 import { TicketReplyPresetsBar } from './TicketReplyPresetsBar';
 import type { TicketReplyPreset } from '@/lib/support/ticket-reply-presets';
-import { TICKET_COMPOSER_PAD } from './ticket-bubble-chrome';
+import {
+  CONVERSATION_COMPOSER_DOCK_INTERNAL,
+  CONVERSATION_COMPOSER_PAD,
+} from '@/design-system/primitives/conversation-chrome';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /**
- * Chat composer — public reply / internal note toggle, CC collaborators, photo
+ * Chat composer — public reply / internal note channel, CC collaborators, photo
  * attach (via the ticket-level drop overlay or the Attach control), Enter to send.
  * Internal notes auto-sign with the current staffer's name for attribution.
  * Posts through {@link useSupportReply} (the shared photo→ticket pipeline).
  *
- * Always uses {@link OmnichannelComposerDock} — same elevated white shell as carton
- * notes. Station compound docks pass `trailingAction` (terminal CTA replaces
- * blue Send; Enter still commits).
+ * Always uses {@link OmnichannelComposerDock} — same elevated shell as carton
+ * notes. When Internal is selected the dock washes amber (Zendesk yellow
+ * composer). Station compound docks pass `trailingAction` (terminal CTA
+ * replaces blue Send; Enter still commits).
  */
 export function SupportChatComposer({
   ticketId,
@@ -339,7 +343,7 @@ export function SupportChatComposer({
   const busy = !canPost || reply.isPending || staging.uploading;
 
   const dock = (
-    <>
+    <div data-composer-channel={isPublic ? 'public' : 'internal'}>
       {ccStrip}
       {stagedThumbs}
       {libraryPicker}
@@ -374,15 +378,17 @@ export function SupportChatComposer({
         trailingAction={trailingAction}
         textareaRef={composerRef}
         animateMount={stationDock}
+        className={!isPublic ? CONVERSATION_COMPOSER_DOCK_INTERNAL : undefined}
       />
-    </>
+    </div>
   );
 
   if (stationDock) {
     return <div className="w-full">{dock}</div>;
   }
 
-  // Floating composer: elevated bubble on transparent air. Pad + gutter live in
-  // {@link TICKET_COMPOSER_PAD} (shared with every Ticket Displays host).
-  return <div className={TICKET_COMPOSER_PAD}>{dock}</div>;
+  // Floating composer: elevated card on transparent air. Pad + gutter live in
+  // {@link CONVERSATION_COMPOSER_PAD} (shared with every Ticket Displays host).
+  // Internal channel tints the dock shell (Zendesk yellow composer).
+  return <div className={CONVERSATION_COMPOSER_PAD}>{dock}</div>;
 }

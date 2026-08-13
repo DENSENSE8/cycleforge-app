@@ -21,6 +21,8 @@ import {
   type SavedSerial,
   type SerialScanFieldHandle,
 } from './SerialScanField';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+
 
 export type { SavedSerial };
 
@@ -314,7 +316,7 @@ export function SerialCard({
             onBlur={onNotesBlur}
             rows={2}
             placeholder="PO-line notes (saved on off click)"
-            className="mt-1 w-full resize-none rounded-xl border border-border-soft bg-surface-card inset-field text-role-caption font-medium leading-snug text-text-default placeholder:text-text-faint focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            className={cn("mt-1 w-full resize-none rounded-xl border border-border-soft bg-surface-card inset-field text-role-caption font-medium leading-snug text-text-default placeholder:text-text-faint", focusRing('field', 'accent'))}
           />
         </div>
       ) : null}

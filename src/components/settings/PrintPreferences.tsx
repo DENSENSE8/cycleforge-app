@@ -33,6 +33,10 @@ import { isSilentPrintEnabled, setSilentPrintEnabled } from '@/lib/print/printMo
 import { friendlyPrintError } from '@/lib/print/printErrors';
 import { Button, IconButton, Switch } from '@/design-system/primitives';
 import { FILTER_DROPDOWN_SELECT_CLASS } from '@/design-system/components/FilterDropdownSelect';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 interface PrintPreferencesProps {
   onClose?: () => void;
@@ -40,8 +44,8 @@ interface PrintPreferencesProps {
 
 const FIELD_CLS =
   'w-full rounded-xl border border-border-default bg-surface-card px-3 py-2 text-sm text-text-default ' +
-  'placeholder:text-text-faint focus:border-blue-500 focus:outline-none focus:ring-2 ' +
-  'focus:ring-blue-500/20';
+  cn('placeholder:text-text-faint', focusRing('field', 'accent')) +
+  focusRing('field', 'accent');
 
 const LANGUAGES: { id: LabelLanguage; label: string }[] = [
   { id: 'tspl', label: 'TSPL (TSC / generic thermal)' },
@@ -306,7 +310,7 @@ function ProfileCard({
         <input
           value={profile.name}
           onChange={(e) => set('name', e.target.value)}
-          className="min-w-0 flex-1 rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-sm font-semibold text-text-default hover:border-border-default focus:border-blue-500 focus:outline-none"
+          className={cn("min-w-0 flex-1 rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-sm font-semibold text-text-default hover:border-border-default", focusRing('field', 'accent'))}
         />
         <span className="shrink-0 text-role-caption text-text-faint">{profileSummary(profile)}</span>
       </div>

@@ -16,9 +16,11 @@ import {
 } from '@/design-system/components';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+
 
 const NOTES_TEXTAREA_FOCUS =
-  'focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
+  focusRing('field', 'accent');
 
 const FLUSH_HOST_CLASS = cn('min-w-0', cornerClass('flush'));
 

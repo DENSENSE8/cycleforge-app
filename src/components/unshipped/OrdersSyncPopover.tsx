@@ -15,6 +15,8 @@ import {
 import { TableImportFileButton } from '@/components/tables/import/TableImportFileButton';
 import { ORDER_IMPORT_DESCRIPTOR } from '@/lib/orders/order-import-descriptor';
 import { cn } from '@/utils/_cn';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+
 
 const CTA_FACE = cn(
   WORKBENCH_CHROME_PILL_CLASS,
@@ -63,7 +65,7 @@ export function OrdersSyncPopover({ onRefresh }: { onRefresh?: () => void }) {
             value={sync.manualSheetName}
             onChange={(e) => sync.setManualSheetName(e.target.value)}
             placeholder="e.g., Sheet_01_14_2026"
-            className="w-full rounded-xl border border-border-soft bg-surface-card px-3 py-2 font-mono text-role-caption text-text-default outline-none transition-all focus:border-border-accent"
+            className={cn("w-full rounded-xl border border-border-soft bg-surface-card px-3 py-2 font-mono text-role-caption text-text-default transition-all", focusRing('field', 'accent'))}
             disabled={sync.isTransferring}
           />
           {sync.isTransferring ? (

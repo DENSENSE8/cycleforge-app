@@ -71,11 +71,11 @@ export async function findOrderByShipment(
 export function buildOrderPayload(row: any, overrides: Record<string, unknown> = {}) {
   return {
     id: row?.id ?? null,
-    orderId: row?.order_id || 'N/A',
+    orderId: row?.order_id || '—',
     productTitle: row?.product_title || 'Unknown Product',
     itemNumber: row?.item_number || null,
-    sku: row?.sku || 'N/A',
-    condition: row?.condition || 'N/A',
+    sku: row?.sku || '—',
+    condition: row?.condition || '—',
     notes: row?.notes || '',
     tracking: row?.shipping_tracking_number || '',
     serialNumbers: [] as string[],

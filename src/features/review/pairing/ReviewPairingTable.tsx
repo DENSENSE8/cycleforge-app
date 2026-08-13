@@ -117,7 +117,7 @@ export function ReviewPairingTable({ onOpenOrder, onCloseOrder }: ReviewPairingT
             queueMode="staged"
             sort="newest"
             selectionScope={DASHBOARD_ORDERS_SELECTION_SCOPE}
-            columnTriggerPortalTarget={controlsEl}
+            columnTriggerPortalTarget={null}
             data-testid="review-pairing-grid-body"
             onOpenRecord={onOpenOrder}
             onCloseRecord={() => onCloseOrder()}

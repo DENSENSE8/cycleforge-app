@@ -78,7 +78,7 @@ export function FnskuSearchModal({
               value={query}
               onChange={(e) => onQueryChange(e.target.value)}
               placeholder="Search Amazon SKU, ASIN, SKU, or product title..."
-              className="w-full rounded-xl border border-border-soft bg-surface-card py-2.5 pl-10 pr-3 text-sm font-semibold text-text-default outline-none transition-all placeholder:text-text-faint focus:border-purple-400 focus:ring-2 focus:ring-purple-400/30"
+              className={"w-full rounded-xl border border-border-soft bg-surface-card py-2.5 pl-10 pr-3 text-sm font-semibold text-text-default outline-none transition-all placeholder:text-text-faint focus:border-purple-400 focus:ring-2 focus:ring-purple-400/30" /* ds-allow-focus: identity/one-off hue or ring-0 */}
             />
           </div>
         </DialogHeader>

@@ -4,6 +4,10 @@ import { IconButton } from '@/design-system/primitives/IconButton';
 import { sectionLabel } from '@/design-system/tokens/typography/presets';
 import type { SkuDetailData } from './sku-detail-types';
 import type { SkuDetailController } from './useSkuDetailView';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 /** Location card — shows assigned locations, or a room-grouped editor on Change. */
 export function SkuLocationCard({ c, data }: { c: SkuDetailController; data: SkuDetailData }) {
@@ -42,7 +46,7 @@ export function SkuLocationCard({ c, data }: { c: SkuDetailController; data: Sku
           <select
             value={c.selectedLocation}
             onChange={(e) => c.setSelectedLocation(e.target.value)}
-            className="h-10 flex-1 rounded-lg border border-border-default px-3 text-sm font-semibold focus:border-blue-500"
+            className={cn("h-10 flex-1 rounded-lg border border-border-default px-3 text-sm font-semibold", focusRing('field', 'accent'))}
           >
             <option value="">Select location...</option>
             {Object.entries(locationsByRoom).map(([room, locs]) => (
@@ -58,7 +62,7 @@ export function SkuLocationCard({ c, data }: { c: SkuDetailController; data: Sku
             value={c.selectedLocation}
             onChange={(e) => c.setSelectedLocation(e.target.value)}
             placeholder="Or type custom..."
-            className="h-10 w-40 rounded-lg border border-border-default px-3 text-sm font-semibold focus:border-blue-500"
+            className={cn("h-10 w-40 rounded-lg border border-border-default px-3 text-sm font-semibold", focusRing('field', 'accent'))}
           />
           <button
             onClick={c.handleLocationSave}

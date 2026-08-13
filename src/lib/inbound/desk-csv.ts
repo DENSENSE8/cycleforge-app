@@ -1,8 +1,20 @@
 /**
  * Pure CSV → desk import row mapping (client + server safe).
+ *
+ * Supports:
+ * - Cycle Forge desk CSV (kind, source, order_id, sku, …)
+ * - Native Amazon Manage Returns / GET_FLAT_FILE_RETURNS_DATA_BY_RETURN_DATE
+ *   (space or hyphen headers; ASIN is the catalog match key)
  */
 
 export type DeskInboundKind = 'purchase' | 'return';
+
+/** Why an Amazon returns row was not imported (client + server). */
+export type AmazonReturnSkipReason =
+  | 'cancelled'
+  | 'no_asin'
+  | 'no_order_id'
+  | 'no_catalog_asin';
 
 export interface DeskImportRow {
   kind: DeskInboundKind;
@@ -31,6 +43,15 @@ export interface DeskImportRow {
   returnReason?: string | null;
   rmaId?: string | null;
   conditionGrade?: string | null;
+  /**
+   * True when the row came from a native Amazon Manage Returns export.
+   * Desk-import gates these on sku_catalog.sku = ASIN.
+   */
+  amazonNativeReturn?: boolean;
+  /** Pre-ingest skip (e.g. Cancelled status) — no DB write. */
+  skipReason?: AmazonReturnSkipReason | null;
+  /** Full CSV record for inbound_purchase_order_mirror.raw_payload. */
+  rawPayload?: Record<string, string> | null;
 }
 
 /** Map UI / CSV platform token → registered ingest `source_type`. */
@@ -52,19 +73,123 @@ export function inboundSourcePlatformForRaw(raw: string): string | null {
   return p;
 }
 
+/** Case-insensitive header lookup with space/hyphen/underscore folding. */
+function normalizeHeaderKey(key: string): string {
+  return key.trim().toLowerCase().replace(/[\s_-]+/g, '');
+}
+
+function cell(
+  record: Record<string, string>,
+  ...aliases: string[]
+): string | null {
+  const entries = Object.entries(record);
+  for (const alias of aliases) {
+    const want = normalizeHeaderKey(alias);
+    const hit = entries.find(([hk]) => normalizeHeaderKey(hk) === want);
+    if (hit && hit[1]?.trim()) return hit[1].trim();
+  }
+  return null;
+}
+
+function hasHeader(record: Record<string, string>, ...aliases: string[]): boolean {
+  const keys = Object.keys(record).map(normalizeHeaderKey);
+  return aliases.some((a) => keys.includes(normalizeHeaderKey(a)));
+}
+
+/**
+ * Detect Seller Central Manage Returns / flat-file returns export.
+ * Requires ASIN + Order ID + (Amazon RMA ID or Tracking ID).
+ */
+export function isAmazonNativeReturnsRecord(
+  record: Record<string, string>,
+): boolean {
+  const hasAsin = hasHeader(record, 'ASIN');
+  const hasOrder = hasHeader(record, 'Order ID', 'Order-ID');
+  const hasRmaOrTracking = hasHeader(
+    record,
+    'Amazon RMA ID',
+    'Amazon-RMA-ID',
+    'Tracking ID',
+    'Tracking-ID',
+  );
+  // Cycle Forge desk CSV uses `order_id` + `sku` / `kind` — not native Amazon.
+  if (hasHeader(record, 'kind', 'source', 'source_type', 'platform')
+    && hasHeader(record, 'order_id', 'order_number')) {
+    return false;
+  }
+  return hasAsin && hasOrder && hasRmaOrTracking;
+}
+
+/** Build listing URL from ASIN when the CSV has none. */
+export function amazonListingUrlForAsin(asin: string): string {
+  return `https://www.amazon.com/dp/${asin.trim().toUpperCase()}`;
+}
+
+/**
+ * Map one native Amazon returns CSV row → DeskImportRow.
+ * Cancelled rows get skipReason=cancelled (no ingest).
+ */
+function deskRowFromAmazonReturnsRecord(
+  record: Record<string, string>,
+): DeskImportRow {
+  const orderId = cell(record, 'Order ID', 'Order-ID') || '';
+  const asin = cell(record, 'ASIN');
+  const rmaId = cell(record, 'Amazon RMA ID', 'Amazon-RMA-ID');
+  const status = (cell(record, 'Return request status', 'Return-request-status') || '')
+    .toLowerCase();
+  const qtyRaw = cell(record, 'Return quantity', 'Return-quantity');
+  const quantity = qtyRaw ? Math.max(1, Math.floor(Number(qtyRaw)) || 1) : 1;
+  const itemName = cell(record, 'Item Name', 'Item-Name');
+  const trackingNumber = cell(record, 'Tracking ID', 'Tracking-ID');
+  const carrierCode = cell(record, 'Return carrier', 'Return-carrier');
+  const returnReason = cell(record, 'Return Reason', 'Return-Reason');
+
+  let skipReason: AmazonReturnSkipReason | null = null;
+  if (status === 'cancelled' || status === 'canceled') {
+    skipReason = 'cancelled';
+  } else if (!asin) {
+    skipReason = 'no_asin';
+  } else if (!orderId) {
+    skipReason = 'no_order_id';
+  }
+
+  const lineItemId =
+    asin && rmaId
+      ? `${rmaId}:${asin}`
+      : asin
+        ? asin
+        : rmaId || null;
+
+  return {
+    kind: 'return',
+    sourceType: 'amazon',
+    sourcePlatform: 'amazon',
+    receivingType: 'RETURN',
+    orderId,
+    lineItemId,
+    sku: asin,
+    itemName,
+    quantity,
+    trackingNumber,
+    carrierCode,
+    listingUrl: asin ? amazonListingUrlForAsin(asin) : null,
+    rmaId,
+    returnReason,
+    amazonNativeReturn: true,
+    skipReason,
+    rawPayload: record,
+  };
+}
+
 /** Normalize a CSV cell map into a desk import row (column names are flexible). */
 export function deskRowFromCsvRecord(
   record: Record<string, string>,
 ): DeskImportRow {
-  const get = (...keys: string[]) => {
-    for (const k of keys) {
-      const hit = Object.entries(record).find(
-        ([hk]) => hk.trim().toLowerCase() === k.toLowerCase(),
-      );
-      if (hit && hit[1]?.trim()) return hit[1].trim();
-    }
-    return null;
-  };
+  if (isAmazonNativeReturnsRecord(record)) {
+    return deskRowFromAmazonReturnsRecord(record);
+  }
+
+  const get = (...keys: string[]) => cell(record, ...keys);
 
   const kindRaw = (get('kind', 'type', 'intake') || 'purchase').toLowerCase();
   const receivingTypeRaw = get('receiving_type', 'intake_type');

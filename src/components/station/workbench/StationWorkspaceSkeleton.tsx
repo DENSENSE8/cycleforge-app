@@ -172,7 +172,7 @@ function UnboxLabelCard() {
         className={cn(WORKSPACE_NESTED_FIELD, WORKSPACE_NESTED_FIELD_PAD)}
         aria-hidden
       >
-        <div className="mx-auto aspect-[2/1] w-full max-w-[480px] overflow-hidden rounded-sm bg-white ring-1 ring-border-soft/60">
+        <div className="mx-auto aspect-[2/1] w-full max-w-[480px] overflow-hidden rounded-sm bg-white ring-1 ring-border-soft/60"> {/* ds-allow-raw-neutral: print-preview paper face */}
           <div className="flex h-full items-stretch gap-1 p-1.5">
             <div className="flex min-w-0 flex-1 flex-col justify-between py-0.5">
               <div className="flex items-start justify-between gap-2">

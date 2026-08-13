@@ -235,7 +235,7 @@ if (verbose && dbOnly.length) {
 }
 
 // ── Ratchet ────────────────────────────────────────────────────────────────
-// Baselines only shrink (.claude/rules/verify.md). Known pre-existing drift is
+// Baselines only shrink (AGENTS.md / verify gate). Known pre-existing drift is
 // allowlisted with a reason; anything NOT on the list fails. And an entry that
 // no longer drifts fails too — so fixing one forces its line to be deleted and
 // the list can never quietly outlive the debt it records.
@@ -269,7 +269,7 @@ if (unexpected.length) {
     '\nA modeled-but-absent column throws at runtime the first time any query, view or\n' +
       'TRIGGER names it — and a fire-and-forget caller will swallow that throw, which is\n' +
       'how the ops_events spine went silent for four days (2026-08-02b). Add the migration\n' +
-      '(expand lands FIRST — .claude/rules/backend-patterns.md), or delete the declaration\n' +
+      '(expand lands FIRST — AGENTS.md / schema migrate before code), or delete the declaration\n' +
       'from src/lib/drizzle/schema.ts if the column is genuinely not wanted.\n',
   );
 }

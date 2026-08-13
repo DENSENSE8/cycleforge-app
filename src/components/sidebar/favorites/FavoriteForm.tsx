@@ -4,6 +4,10 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { tableHeader } from '@/design-system/tokens/typography/presets';
 import { matchesSkuSuffix } from './favorites-search';
 import type { FavoritesWorkspaceController } from './useFavoritesWorkspace';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 /** Shared create/edit form: Ecwid product search + selection + label/notes. */
 export function FavoriteForm({ f }: { f: FavoritesWorkspaceController }) {
@@ -84,7 +88,7 @@ export function FavoriteForm({ f }: { f: FavoritesWorkspaceController }) {
         value={draft.label}
         onChange={(e) => setDraft((prev) => ({ ...prev, label: e.target.value }))}
         placeholder="Label"
-        className="w-full rounded-xl border border-border-soft bg-surface-card px-3 py-2.5 text-role-caption font-semibold text-text-default outline-none focus:border-blue-300"
+        className={cn("w-full rounded-xl border border-border-soft bg-surface-card px-3 py-2.5 text-role-caption font-semibold text-text-default", focusRing('field', 'accent'))}
       />
 
       {allowRepairDefaults && (
@@ -92,7 +96,7 @@ export function FavoriteForm({ f }: { f: FavoritesWorkspaceController }) {
           value={draft.issueTemplate}
           onChange={(e) => setDraft((prev) => ({ ...prev, issueTemplate: e.target.value }))}
           placeholder="Issue template"
-          className="w-full rounded-xl border border-border-soft bg-surface-card px-3 py-2.5 text-role-caption font-semibold text-text-default outline-none focus:border-blue-300"
+          className={cn("w-full rounded-xl border border-border-soft bg-surface-card px-3 py-2.5 text-role-caption font-semibold text-text-default", focusRing('field', 'accent'))}
         />
       )}
 
@@ -101,7 +105,7 @@ export function FavoriteForm({ f }: { f: FavoritesWorkspaceController }) {
         onChange={(e) => setDraft((prev) => ({ ...prev, notes: e.target.value }))}
         placeholder="Notes"
         rows={2}
-        className="w-full resize-none rounded-xl border border-border-soft bg-surface-card px-3 py-2.5 text-role-caption font-semibold text-text-default outline-none focus:border-blue-300"
+        className={cn("w-full resize-none rounded-xl border border-border-soft bg-surface-card px-3 py-2.5 text-role-caption font-semibold text-text-default", focusRing('field', 'accent'))}
       />
 
       {/* Footer */}

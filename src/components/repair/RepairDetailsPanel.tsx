@@ -16,7 +16,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Clock, Pencil, PrinterAlt, Receipt } from '../Icons';
+import { Clock, Pencil, PrinterAlt, Receipt, ColumnsThree } from '../Icons';
 import { RepairPickupFlow } from '@/components/repair/RepairPickupFlow';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
 import {
@@ -43,6 +43,7 @@ import { useRepairDetailsPanel } from './details-panel/useRepairDetailsPanel';
 import { RepairLinkageSection } from './details-panel/RepairLinkageSection';
 import { RepairOverviewTab } from './details-panel/RepairOverviewTab';
 import { ShippedNotesComposer } from '@/components/shipped/details-panel/ShippedNotesComposer';
+import { requestOpenGridColumnDetails } from '@/design-system/components/grid/grid-column-details-open';
 
 function getRepairStatusTone(status: string | null | undefined) {
   if (!status) return 'neutral' as const;
@@ -130,6 +131,12 @@ export function RepairDetailsPanel({
               className="w-full px-0 py-0"
               actions={[
                 {
+                  key: 'column-display',
+                  label: 'Column display',
+                  icon: <ColumnsThree className="h-3.5 w-3.5" />,
+                  onClick: requestOpenGridColumnDetails,
+                },
+                {
                   key: 'edit-ticket',
                   label: 'Edit ticket number',
                   icon: <Pencil className="h-4 w-4" />,
@@ -208,7 +215,7 @@ export function RepairDetailsPanel({
                             c.setIsEditingTicket(false);
                           }
                         }}
-                        className="w-full border-none bg-transparent p-0 text-sm font-semibold uppercase tracking-tight text-text-default focus:ring-0"
+                        className={"w-full border-none bg-transparent p-0 text-sm font-semibold uppercase tracking-tight text-text-default focus:ring-0" /* ds-allow-focus: identity/one-off hue or ring-0 */}
                         placeholder="TK Number"
                         disabled={c.isSavingTicket}
                       />

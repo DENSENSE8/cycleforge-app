@@ -1,26 +1,64 @@
 'use client';
 
 import type { SyncStreamEvent } from '@/lib/orders-sync/types';
+import {
+  consumeNdjsonBuffer,
+  consumeNdjsonTrailing,
+  malformedToErrorEvent,
+} from '@/lib/orders-sync/parse-ndjson';
+import {
+  applyStreamBudget,
+  STREAM_APPLY_BATCH_SIZE,
+} from '@/lib/perf/stream-apply';
+import { yieldToInput, type YieldToInputDeps } from '@/lib/perf/yield-to-input';
 
 /**
- * Fetches an NDJSON endpoint and invokes `onEvent` for each parsed event.
+ * Fetches an NDJSON endpoint and invokes `onEvent` / `onBatch` for parsed
+ * events. Each line of the response body is one JSON-encoded event. The
+ * server keeps the connection open until the job finishes.
  *
- * Each line of the response body is one JSON-encoded event. The server keeps
- * the connection open until the job finishes, so events arrive incrementally —
- * this lets the UI update per phase / per row without waiting for the whole job
- * to complete.
+ * Default path still calls `onEvent` per line (call-site compatible) but
+ * yields to input between {@link STREAM_APPLY_BATCH_SIZE} events so a 400-row
+ * exceptions stream cannot lock the main thread. Prefer `onBatch` for React
+ * — one setState per window, not per line.
  *
  * Defaults to the orders-sync `SyncStreamEvent` contract but is generic so
  * other feeds (e.g. carrier-sync) can reuse it with their own event union;
  * transport-level failures are surfaced as a `{ type: 'error', error }` line,
  * which every such union includes.
  */
+export interface StreamNdjsonOptions<T> {
+  onEvent?: (event: T) => void;
+  /** Prefer this for React — one paint per budgeted window. */
+  onBatch?: (events: T[]) => void;
+  batchSize?: number;
+  yieldBetweenBatches?: boolean;
+  yieldToInput?: (deps?: YieldToInputDeps) => Promise<void>;
+  fetch?: typeof fetch;
+}
+
+export type StreamNdjsonHandler<T> = ((event: T) => void) | StreamNdjsonOptions<T>;
+
+function resolveHandler<T>(handler: StreamNdjsonHandler<T>): StreamNdjsonOptions<T> {
+  return typeof handler === 'function' ? { onEvent: handler } : handler;
+}
+
+function dispatchBatch<T>(events: T[], opts: StreamNdjsonOptions<T>): void {
+  if (events.length === 0) return;
+  if (opts.onBatch) opts.onBatch(events);
+  if (opts.onEvent) {
+    for (const event of events) opts.onEvent(event);
+  }
+}
+
 export async function streamNdjson<T = SyncStreamEvent>(
   url: string,
   init: RequestInit,
-  onEvent: (event: T) => void,
+  handler: StreamNdjsonHandler<T>,
 ): Promise<void> {
-  const response = await fetch(url, init);
+  const opts = resolveHandler(handler);
+  const fetchImpl = opts.fetch ?? fetch;
+  const response = await fetchImpl(url, init);
   if (!response.ok || !response.body) {
     // Surface server-side errors as a single `error` event so callers don't
     // need to special-case non-streaming failures.
@@ -30,43 +68,41 @@ export async function streamNdjson<T = SyncStreamEvent>(
     } catch {
       // ignore
     }
-    onEvent({ type: 'error', error: text || `HTTP ${response.status}` } as T);
+    dispatchBatch([{ type: 'error', error: text || `HTTP ${response.status}` } as T], opts);
     return;
   }
 
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = '';
+  const yieldFn =
+    opts.yieldBetweenBatches === false
+      ? async () => undefined
+      : (opts.yieldToInput ?? yieldToInput);
+  const batchSize = opts.batchSize ?? STREAM_APPLY_BATCH_SIZE;
+
+  const emitParsed = async (parsed: T[], malformed: string[], trailing = false) => {
+    const events: T[] = [...parsed];
+    for (const line of malformed) {
+      events.push(malformedToErrorEvent<T>(line, trailing));
+    }
+    if (events.length === 0) return;
+    await applyStreamBudget(events, {
+      apply: (batch) => dispatchBatch(batch, opts),
+      batchSize,
+      yieldToInput: yieldFn,
+    });
+  };
 
   while (true) {
     const { value, done } = await reader.read();
     if (done) break;
     buffer += decoder.decode(value, { stream: true });
-
-    let newlineIdx = buffer.indexOf('\n');
-    while (newlineIdx !== -1) {
-      const line = buffer.slice(0, newlineIdx).trim();
-      buffer = buffer.slice(newlineIdx + 1);
-      if (line) {
-        try {
-          onEvent(JSON.parse(line) as T);
-        } catch {
-          // Malformed line — surface as an error event but keep reading so a
-          // single bad line doesn't kill the rest of the stream.
-          onEvent({ type: 'error', error: `Malformed sync event: ${line.slice(0, 120)}` } as T);
-        }
-      }
-      newlineIdx = buffer.indexOf('\n');
-    }
+    const { events, rest, malformed } = consumeNdjsonBuffer<T>(buffer);
+    buffer = rest;
+    await emitParsed(events, malformed, false);
   }
 
-  // Flush trailing partial line, if any.
-  const trailing = buffer.trim();
-  if (trailing) {
-    try {
-      onEvent(JSON.parse(trailing) as T);
-    } catch {
-      onEvent({ type: 'error', error: `Malformed trailing sync event` } as T);
-    }
-  }
+  const trailing = consumeNdjsonTrailing<T>(buffer);
+  await emitParsed(trailing.events, trailing.malformed, true);
 }

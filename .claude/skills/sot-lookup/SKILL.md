@@ -10,7 +10,7 @@ allowed-tools: Bash, Read, Grep
 
 The design system is consolidated at the primitive layer and **drifts at the assembly /
 chrome / structure layer** because authors re-fork what they can't find. This skill closes
-that gap: it turns the SoT knowledge scattered across `AGENTS.md` + `.claude/rules/**` into
+that gap: it turns the SoT knowledge in `AGENTS.md` + live design-system/feature hosts into
 a searchable catalog so you find the one shell/waist **before** writing a second one.
 
 ## When to use
@@ -18,8 +18,8 @@ a searchable catalog so you find the one shell/waist **before** writing a second
 Run this **first** whenever the task touches a recurring UI surface:
 chrome CTAs / Band-1 actions · workbench tables & column headers · KPI bands · right-edge
 inspectors & headers · card/surface shells · station Displays · focus rings · honest-absence ·
-motion roles · row identity · action floors. If the SoT exists, compose it (or grow it —
-[`pattern-evolution.md`](../../rules/pattern-evolution.md)). **Never fork a page-local twin.**
+motion roles · row identity · action floors. If the SoT exists, compose it (or grow it via `AGENTS.md` / the named SoT module).
+**Never fork a page-local twin.**
 
 ## How
 
@@ -54,6 +54,6 @@ The catalog is `sot-manifest.json`, a **deterministic projection** of the rule f
 regenerate**:
 
 ```bash
-node scripts/build-sot-manifest.mjs        # regenerate after editing .claude/rules/** or AGENTS.md
+node scripts/build-sot-manifest.mjs        # regenerate after editing AGENTS.md or SoT hosts
 node scripts/build-sot-manifest.mjs --check # CI-style staleness check (exit 1 if out of date)
 ```

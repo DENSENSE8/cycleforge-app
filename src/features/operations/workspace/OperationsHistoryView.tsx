@@ -25,7 +25,7 @@ import {
 } from '@/components/ui/CopyChip';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { TimelineSection } from '@/components/ui/TimelineSection';
-import { Button, IconButton } from '@/design-system/primitives';
+import { Panel, Button, IconButton } from '@/design-system/primitives';
 import { IdentifierToggle } from '@/components/ui/IdentifierToggle';
 import { SerialProvenanceHeader } from '@/components/operations/SerialProvenanceHeader';
 
@@ -220,7 +220,7 @@ export function OperationsHistoryView() {
             transition={paneTransition}
           >
             {region === 'browse' ? (
-              <section className="rounded-2xl border border-border-soft bg-surface-card p-5 sm:p-6">
+              <Panel radius="2xl" padding="lg" className="sm:">
                 {browse.isError ? (
                   <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-10 text-center">
                     <p className="text-role-caption font-semibold text-rose-600">
@@ -286,9 +286,9 @@ export function OperationsHistoryView() {
                     ) : null}
                   </>
                 )}
-              </section>
+              </Panel>
             ) : (
-              <section className="rounded-2xl border border-border-soft bg-surface-card p-5 sm:p-6">
+              <Panel radius="2xl" padding="lg" className="sm:">
                 {!focused ? (
                   <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-12 text-center">
                     <History className="mx-auto h-7 w-7 text-text-faint" />
@@ -381,7 +381,7 @@ export function OperationsHistoryView() {
                     }
                   />
                 )}
-              </section>
+              </Panel>
             )}
           </motion.div>
         </AnimatePresence>

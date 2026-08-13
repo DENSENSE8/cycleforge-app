@@ -64,7 +64,7 @@ export function ReceivingBoxChromeActions({
       </Button>
       <Button
         size="sm"
-        variant="primary"
+        variant="success"
         icon={<Plus className="h-3.5 w-3.5" />}
         ariaLabel="Add inbound purchase or return"
         onClick={onAdd}

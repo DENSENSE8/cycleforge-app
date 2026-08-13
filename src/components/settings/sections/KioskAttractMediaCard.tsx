@@ -12,6 +12,10 @@ import { useRef, useState } from 'react';
 import { Button } from '@/design-system/primitives';
 import { Loader2 } from '@/components/Icons';
 import { ATTRACT_ACCEPT } from '@/lib/kiosk/attract-media';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 function isVideoUrl(url: string): boolean {
   return /\.(mp4|webm|ogg)(\?|$)/i.test(url);
@@ -154,7 +158,7 @@ export function KioskAttractMediaCard({
             onChange={(e) => onUrlChange(e.target.value)}
             className={
               'w-full rounded-xl border border-border-default bg-surface-card px-3 py-2 text-sm text-text-default ' +
-              'placeholder:text-text-faint focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20'
+              cn('placeholder:text-text-faint', focusRing('field', 'accent'))
             }
             placeholder="https://…"
           />

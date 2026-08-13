@@ -115,7 +115,8 @@ function subtitleOf(parts: unknown[]): string | null {
  * Loader row contract (worker SQL):
  *   id, order_id, product_title, sku, account_source, status, condition,
  *   notes, order_date, created_at, serials (STRING_AGG of
- *   tech_serial_numbers.serial_number), tracking_number (stn raw), carrier
+ *   tech_serial_numbers.serial_number), tracking_number (primary STN raw),
+ *   linked_trackings (shipment_links STNs, space-joined), carrier
  *   (stn.carrier, UNKNOWN→null).
  */
 function buildOrderDoc(row: SearchSourceRow): BuiltSearchDoc {
@@ -129,6 +130,7 @@ function buildOrderDoc(row: SearchSourceRow): BuiltSearchDoc {
       row.sku,
       row.serials,
       row.tracking_number,
+      row.linked_trackings,
       row.account_source,
       row.status,
       row.condition,

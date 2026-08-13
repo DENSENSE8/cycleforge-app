@@ -6,9 +6,10 @@ import type { ZendeskTicket } from '@/lib/zendesk';
 import { useUpdateTicket } from '@/hooks/useZendeskQueries';
 import { formatDateTimePST } from '@/utils/date';
 import { cn } from '@/utils/_cn';
-import { Layers } from '@/components/Icons';
-import { IconButton } from '@/design-system/primitives';
+import { Info } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { Panel, ConversationHeaderActionButton } from '@/design-system/primitives';
+import { CONVERSATION_HEADER_ACTION_GLYPH } from '@/design-system/primitives/conversation-chrome';
 import { supportTicketIdFace } from '@/lib/support/ticket-refs';
 import { TagInput } from '../TagInput';
 import { priorityBadge, statusBadge } from '../badges';
@@ -35,8 +36,9 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
  * button. Holds secondary ticket detail: Details (requester, id, status/priority,
  * assignment, timestamps) and Tags (the ONLY place ticket tags are shown/edited).
  *
- * `density="station"` matches {@link StationMoreDetails} peers (`IconButton` sm).
- * `density="header"` keeps the denser chat-header ring control.
+ * `density` is retained for call-site clarity (`station` = `/support` pane;
+ * `header` = Unbox / chat identity band) — both densities share the circular
+ * {@link ConversationHeaderActionButton} face so every ticket display matches.
  *
  * `fields` decides whether status / priority / assignment are **editable here**,
  * and it must be answered per host, because the rule is one editable home per
@@ -70,55 +72,31 @@ export function SupportDetailsStack({
   // Same last-8 / no-`#` face as {@link SupportTicketIdMark}.
   const ticketFace = supportTicketIdFace(String(ticket.id));
 
-  const trigger =
-    density === 'station' ? (
-      <HoverTooltip label="Ticket details">
-        <IconButton
-          size="sm"
-          icon={<Layers className="h-3.5 w-3.5" />}
-          ariaLabel="Ticket details"
-          aria-expanded={open}
-          onClick={() => setOpen((o) => !o)}
-          className={cn(open ? 'bg-blue-50 text-blue-700' : undefined)}
-        />
-      </HoverTooltip>
-    ) : (
-      <HoverTooltip label="Ticket details" asChild>
-        <button
-          type="button"
-          onClick={() => setOpen((o) => !o)}
-          aria-label="Ticket details"
-          aria-expanded={open}
-          className={cn(
-            'ds-raw-button relative inline-flex h-8 w-9 shrink-0 items-center justify-center rounded-lg ring-1 ring-inset transition',
-            open
-              ? 'bg-blue-50 text-blue-700 ring-blue-200'
-              : 'bg-surface-card text-text-muted ring-border-soft hover:bg-surface-hover hover:text-text-default',
-          )}
-        >
-          <Layers className="h-4 w-4" />
-          {tagCount > 0 ? (
-            <span className="absolute -right-1 -top-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-surface-inverse-raised px-1 text-role-micro text-white">
-              {tagCount}
-            </span>
-          ) : null}
-        </button>
-      </HoverTooltip>
-    );
+  const trigger = (
+    <ConversationHeaderActionButton
+      label="Ticket details"
+      icon={<Info className={CONVERSATION_HEADER_ACTION_GLYPH} aria-hidden />}
+      onClick={() => setOpen((o) => !o)}
+      active={open}
+      expanded={open}
+      data-testid="support-ticket-details"
+      data-density={density}
+    />
+  );
 
   return (
     <>
       <span ref={anchorRef} className="relative inline-flex shrink-0">
         {trigger}
-        {density === 'station' && tagCount > 0 ? (
-          <span className="pointer-events-none absolute -right-0.5 -top-0.5 flex h-3 min-w-3 items-center justify-center rounded-full bg-surface-inverse-raised px-0.5 text-role-micro text-white">
+        {tagCount > 0 ? (
+          <span className="pointer-events-none absolute -right-0.5 -top-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-surface-inverse-raised px-1 text-role-micro text-white">
             {tagCount}
           </span>
         ) : null}
       </span>
 
       <AnchoredLayer open={open} onClose={() => setOpen(false)} anchorRef={anchorRef} placement="bottom-end" gap={4}>
-        <div className="w-72 overflow-hidden rounded-xl border border-border-soft bg-surface-card shadow-xl">
+        <Panel radius="xl" padding="none" elevation="md" className="w-72 overflow-hidden">
           <div className="flex border-b border-border-hairline">
             {(['details', 'tags'] as const).map((t) => (
               <button
@@ -198,7 +176,7 @@ export function SupportDetailsStack({
               </div>
             )}
           </div>
-        </div>
+        </Panel>
       </AnchoredLayer>
     </>
   );

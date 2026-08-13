@@ -21,6 +21,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/design-system/primitives/Button';
 import { AlertCircle, Boxes, Check, Loader2, Sparkles } from '@/components/Icons';
 import type { StudioTemplateSummary } from '@/components/studio/studio-types';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+import { Panel } from '@/design-system/primitives';
+
+
+
 
 /** Where the owner lands after their ops SOP is installed. */
 const AFTER_CONFIRM_HREF = '/dashboard';
@@ -145,7 +151,7 @@ export default function OnboardingTemplatePage() {
             rows={3}
             maxLength={4000}
             placeholder="Describe how your shop runs — what you sell, and your steps from intake to shipping…"
-            className="w-full resize-none rounded-lg border border-border-soft bg-surface-canvas px-3 py-2 text-role-caption text-text-default placeholder:text-text-faint focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-blue-400"
+            className={cn("w-full resize-none rounded-lg border border-border-soft bg-surface-canvas px-3 py-2 text-role-caption text-text-default placeholder:text-text-faint", focusRing('field', 'accent'))}
           />
           <div className="flex items-center justify-between gap-3">
             {recommend.isError ? (
@@ -188,12 +194,12 @@ export default function OnboardingTemplatePage() {
               </p>
             </div>
           ) : !templates || templates.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-border-soft bg-surface-card px-4 py-6 text-center">
+            <Panel radius="xl" padding="none" className="border-dashed px-4 py-6 text-center">
               <Boxes className="mx-auto h-4 w-4 text-text-faint" />
               <p className="mt-1 text-role-caption font-semibold text-text-soft">
                 No workflow templates are available yet.
               </p>
-            </div>
+            </Panel>
           ) : (
             <ul className="divide-y divide-border-hairline overflow-hidden rounded-xl border border-border-hairline bg-surface-card">
               {templates.map((t) => {

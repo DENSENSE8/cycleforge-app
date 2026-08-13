@@ -3,8 +3,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/design-system/primitives';
 import {
-  WORKBENCH_SHEET_CHROME,
-  WORKBENCH_SHEET_HOST,
+  WorkbenchSheetView,
+  useWorkbenchSheetChrome,
+} from '@/components/dashboard/WorkbenchSheetView';
+import {
   WorkbenchChromeHeader,
   WorkbenchTrailingCluster,
   WorkbenchTriageBand,
@@ -14,7 +16,6 @@ import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import type { RowGroup } from '@/lib/group-rows';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
-import { cn } from '@/utils/_cn';
 import { TrackingExceptionEditDialog } from './TrackingExceptionEditDialog';
 import { TRACKING_EXCEPTIONS_TABLE_BINDING } from './grid/tracking-exceptions-table-definition';
 import { TrackingExceptionsGridColumnHeader } from './grid/TrackingExceptionsGridColumnHeader';
@@ -94,8 +95,7 @@ export function TrackingExceptionsTable() {
   const [statusTab, setStatusTab] = useState<TrackingExceptionStatusFilter>('open');
   const [search, setSearch] = useState('');
   const [editing, setEditing] = useState<TrackingExceptionRow | null>(null);
-  // ▦ portals into Band-3 controls beside find / reload.
-  const [controlsEl, setControlsEl] = useState<HTMLDivElement | null>(null);
+  const chrome = useWorkbenchSheetChrome();
 
   const {
     rows,
@@ -153,93 +153,89 @@ export function TrackingExceptionsTable() {
     />
   );
 
-  const chrome = (
-    <div className={cn(WORKBENCH_SHEET_CHROME, 'flex flex-col gap-0')}>
-      <WorkbenchChromeHeader
-        density="band"
-        tabs={STATUS_TABS}
-        activeTab={statusTab}
-        onTabChange={(id) => setStatusTab(id as TrackingExceptionStatusFilter)}
-        trailing={
-          <WorkbenchTrailingCluster
-            actions={
-              <Button
-                type="button"
-                size="sm"
-                variant="brand"
-                onClick={() => void fetchRows()}
-                disabled={loading}
-                aria-label="Reload list"
-              >
-                {loading ? 'Loading…' : 'Reload'}
-              </Button>
-            }
-          />
-        }
-        className="rounded-none border-l-0 border-t-0 shadow-sm"
-      />
-      <WorkbenchTriageBand
-        controlsSlotRef={setControlsEl}
-        search={
-          <TechRailSearchBar
-            variant="chrome"
-            value={search}
-            onChange={setSearch}
-            placeholder="Search tracking…"
-            className="min-w-0 flex-1"
-          />
-        }
-        right={
-          <span className="text-role-micro uppercase tracking-widest text-text-soft">
-            {total} rows
-          </span>
-        }
-      />
-    </div>
-  );
-
-  if (error && rows.length === 0 && !loading) {
-    return (
-      <div className="flex h-full min-h-0 flex-col">
-        {chrome}
-        <div className="flex flex-1 items-center justify-center bg-surface-canvas p-8">
-          <div className="rounded-xl border border-dashed border-border-danger bg-surface-danger px-4 py-6 text-center">
-            <p className="text-sm font-semibold text-text-danger">{error}</p>
-            <Button
-              type="button"
-              size="sm"
-              variant="secondary"
-              className="mt-3"
-              onClick={() => void fetchRows()}
-            >
-              Retry
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   // Search is the only refinement that changes the empty answer — status tabs
   // still mean "nothing in this view", not "clear your search".
   const isSearching = Boolean(search.trim());
+  const emptyError = Boolean(error && rows.length === 0 && !loading);
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      {chrome}
-
-      {error ? (
-        <div className="border-b border-red-200 bg-red-50 px-6 py-2 text-role-caption font-semibold text-red-700">
-          {error}
-        </div>
-      ) : null}
-
-      <div className={cn(WORKBENCH_SHEET_HOST, 'flex min-h-0 flex-1 flex-col bg-surface-canvas')}>
-        <NonlinearTableHost<
-          TrackingExceptionRow,
-          TrackingExceptionsGridColumnKey,
-          TrackingExceptionsGridColumn
-        >
+    <>
+      <WorkbenchSheetView
+        chrome={chrome}
+        className="h-full"
+        tabs={({ className }) => (
+          <WorkbenchChromeHeader
+            density="band"
+            tabs={STATUS_TABS}
+            activeTab={statusTab}
+            onTabChange={(id) => setStatusTab(id as TrackingExceptionStatusFilter)}
+            trailing={
+              <WorkbenchTrailingCluster
+                actions={
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="brand"
+                    onClick={() => void fetchRows()}
+                    disabled={loading}
+                    aria-label="Reload list"
+                  >
+                    {loading ? 'Loading…' : 'Reload'}
+                  </Button>
+                }
+              />
+            }
+            className={className}
+          />
+        )}
+        triage={({ controlsSlotRef }) => (
+          <WorkbenchTriageBand
+            controlsSlotRef={controlsSlotRef}
+            search={
+              <TechRailSearchBar
+                variant="chrome"
+                value={search}
+                onChange={setSearch}
+                placeholder="Search tracking…"
+                className="min-w-0 flex-1"
+              />
+            }
+            right={
+              <span className="text-role-micro uppercase tracking-widest text-text-soft">
+                {total} rows
+              </span>
+            }
+          />
+        )}
+      >
+        {() =>
+          emptyError ? (
+            <div className="flex flex-1 items-center justify-center bg-surface-canvas p-8">
+              <div className="rounded-xl border border-dashed border-border-danger bg-surface-danger px-4 py-6 text-center">
+                <p className="text-sm font-semibold text-text-danger">{error}</p>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  className="mt-3"
+                  onClick={() => void fetchRows()}
+                >
+                  Retry
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <>
+              {error ? (
+                <div className="border-b border-red-200 bg-red-50 px-6 py-2 text-role-caption font-semibold text-red-700">
+                  {error}
+                </div>
+              ) : null}
+              <NonlinearTableHost<
+                TrackingExceptionRow,
+                TrackingExceptionsGridColumnKey,
+                TrackingExceptionsGridColumn
+              >
           binding={TRACKING_EXCEPTIONS_TABLE_BINDING}
           orderGroupsByDate={orderGroupsByDate}
           rows={rows}
@@ -252,7 +248,7 @@ export function TrackingExceptionsTable() {
           searchEmptyMessage="No exceptions match this search."
           isSearching={isSearching}
           scrollRef={scrollRef}
-          columnTriggerPortalTarget={controlsEl}
+          columnTriggerPortalTarget={null}
           renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
             <TrackingExceptionsGridColumnHeader
               columns={visible}
@@ -268,7 +264,10 @@ export function TrackingExceptionsTable() {
           )}
           renderRow={(row, _stripe, { columns: visible }) => renderLeaf(row, visible)}
         />
-      </div>
+            </>
+          )
+        }
+      </WorkbenchSheetView>
 
       {editing ? (
         <TrackingExceptionEditDialog
@@ -284,6 +283,6 @@ export function TrackingExceptionsTable() {
           }}
         />
       ) : null}
-    </div>
+    </>
   );
 }

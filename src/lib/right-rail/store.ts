@@ -34,6 +34,7 @@
  */
 
 import type { ReactNode } from 'react';
+import { syncPanelOccupant } from '@/lib/right-rail/panel-store';
 
 /**
  * Precedence tiers for the right slot. A detail panel (a specific record the
@@ -146,6 +147,7 @@ function recomputeTop(): void {
     }
   }
   topSnapshot = top;
+  syncPanelOccupant(top && top.node != null ? top.id : null);
 }
 
 function emit(): void {
@@ -274,6 +276,27 @@ export function subscribeRightRail(listener: () => void): () => void {
 
 export function getRightRailTop(): RightRailPanel | null {
   return topSnapshot;
+}
+
+/**
+ * Occupancy top excluding `skipId` — used when the operator dismissed a detail
+ * via closeAndCachePanel so a lower-priority occupant (assistant) can paint
+ * without unregistering the cached view.
+ */
+export function getRightRailTopSkipping(skipId: string | null): RightRailPanel | null {
+  if (!skipId) return topSnapshot;
+  let top: RightRailPanel | null = null;
+  for (const p of panels.values()) {
+    if (p.id === skipId) continue;
+    if (
+      !top ||
+      p.priority > top.priority ||
+      (p.priority === top.priority && p.seq > top.seq)
+    ) {
+      top = p;
+    }
+  }
+  return top;
 }
 
 /** Server snapshot: the rail is client-only chrome, so nothing renders on SSR. */

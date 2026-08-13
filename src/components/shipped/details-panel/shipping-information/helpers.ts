@@ -1,6 +1,6 @@
 import { ShippedOrder } from '@/lib/neon/orders-queries';
 import { normalizeTrackingKey } from '@/lib/tracking-format';
-import { toPSTDateKey, formatDateTimePST, getDaysLateNumber } from '@/utils/date';
+import { formatDateTimePST, getDaysLateNumber } from '@/utils/date';
 import { getStaffName } from '@/utils/staff';
 import { parseSerialRows } from '../serial-helpers';
 import type { EditableShippingFields, FlatTrackingRow, TrackingRow } from './types';
@@ -21,16 +21,6 @@ export function normalizeTrackingRows(raw: unknown): TrackingRow[] {
     });
   }
   return out;
-}
-
-export function normalizeShipByDraft(value: string | null | undefined): string {
-  const trimmed = String(value || '').trim();
-  if (!trimmed) return '';
-  if (/^\d{1,2}-\d{1,2}(?:-\d{2,4})?$/.test(trimmed)) return trimmed;
-  const pstDateKey = toPSTDateKey(trimmed);
-  if (!pstDateKey) return '';
-  const [year, month, day] = pstDateKey.split('-').map(Number);
-  return `${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}-${String(year % 100).padStart(2, '0')}`;
 }
 
 /**
@@ -137,7 +127,7 @@ export function deriveShippingDisplayMeta(
   const packedAtSource =
     (shipped.pack_activity_at && shipped.pack_activity_at !== '1' ? shipped.pack_activity_at : null)
     ?? (shipped.packed_at && shipped.packed_at !== '1' ? shipped.packed_at : null);
-  const shippedAtDisplay = packedAtSource ? formatDateTimePST(packedAtSource) : 'N/A';
+  const shippedAtDisplay = packedAtSource ? formatDateTimePST(packedAtSource) : '—';
   // An order can be tested via serial scans (test_date_time = MIN scan time) OR
   // via a test station-activity/event with no serial rows. Fall through all
   // three so a tested order always resolves a stamp (fixes the missing "Tested"
@@ -147,12 +137,12 @@ export function deriveShippingDisplayMeta(
     s(shipped.test_date_time)
     ?? s((shipped as { test_activity_at?: string | null }).test_activity_at)
     ?? s((shipped as { test_event_at?: string | null }).test_event_at);
-  const testedAtDateTimeDisplay = testedAtSource ? formatDateTimePST(testedAtSource) : 'N/A';
+  const testedAtDateTimeDisplay = testedAtSource ? formatDateTimePST(testedAtSource) : '—';
 
   const isScannedOut = Boolean(shipped.ship_confirmed_at && shipped.ship_confirmed_at !== '1');
   const scannedOutDisplay = isScannedOut
     ? formatDateTimePST(shipped.ship_confirmed_at as string)
-    : 'N/A';
+    : '—';
   // Who scanned it out at the dock — SAL SHIP_CONFIRM staff, surfaced for parity
   // with the Packed / Tested By rows (and for staff reporting).
   const scannedOutByDisplay = isScannedOut
@@ -175,11 +165,11 @@ export function deriveShippingDisplayMeta(
   ).trim() || 'Not specified';
 
   const returnsCopyText = [
-    `Order ID: ${shipped.order_id || 'N/A'}`,
-    `Serials: ${serialNumberRows.length ? serialNumberRows.join(', ') : 'N/A'}`,
+    `Order ID: ${shipped.order_id || '—'}`,
+    `Serials: ${serialNumberRows.length ? serialNumberRows.join(', ') : '—'}`,
     `Tested By: ${techNameDisplay} ${testedAtDateTimeDisplay}`,
     `Packed By: ${packerNameDisplay} ${shippedAtDisplay}`,
-    `Scanned Out: ${scannedOutByDisplay ?? 'N/A'} ${scannedOutDisplay}`,
+    `Scanned Out: ${scannedOutByDisplay ?? '—'} ${scannedOutDisplay}`,
   ].join('\n');
 
   return {

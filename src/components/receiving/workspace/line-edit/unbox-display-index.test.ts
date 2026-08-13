@@ -109,6 +109,16 @@ test('ticket / photos / linkage / classify subtitles + tones', () => {
   assert.equal(ok.find((r) => r.id === 'tracking')?.tone, 'ok');
 });
 
+test('Prebox with serials is quiet (no unit-ready chip / no action tone)', () => {
+  const empty = buildUnboxDisplayIndexRows(MATCHED, BASE_SIGNALS);
+  assert.equal(empty.find((r) => r.id === 'prebox')?.subtitle, 'Need serials');
+  assert.equal(empty.find((r) => r.id === 'prebox')?.tone, 'neutral');
+
+  const ready = buildUnboxDisplayIndexRows(MATCHED, { ...BASE_SIGNALS, serialCount: 1 });
+  assert.equal(ready.find((r) => r.id === 'prebox')?.subtitle, '');
+  assert.equal(ready.find((r) => r.id === 'prebox')?.tone, 'ok');
+});
+
 test('return intake marks Timeline as action', () => {
   const rows = buildUnboxDisplayIndexRows(MATCHED, {
     ...BASE_SIGNALS,

@@ -8,6 +8,8 @@ import { useZendeskTickets } from '@/hooks/useZendeskQueries';
 import { cn } from '@/utils/_cn';
 import { priorityBadge, statusBadge } from '../badges';
 import type { PickedTicket } from './claim-types';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+
 
 /**
  * Search + pick an existing ticket (Update mode) for the Photo Library /
@@ -80,7 +82,7 @@ export function ClaimTicketPicker({
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="Search tickets by subject or #id…"
-          className="w-full rounded-xl border border-border-default bg-surface-card py-2.5 pl-9 pr-9 text-role-data outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+          className={cn("w-full rounded-xl border border-border-default bg-surface-card py-2.5 pl-9 pr-9 text-role-data transition", focusRing('field', 'accent'))}
         />
         {isLoading ? (
           <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-text-faint" />

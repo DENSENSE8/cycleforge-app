@@ -151,7 +151,7 @@ export function orderRowConditionTone(condition: string | null | undefined): str
     .trim()
     .toUpperCase()
     .replace(/\s+/g, '_');
-  if (!normalized || normalized === 'N/A' || normalized === '--' || normalized === '—' || normalized === '---') {
+  if (!normalized || normalized === 'N/A' || normalized === '--' || normalized === '—' || normalized === '---') { // ds-allow-na: condition empty-vocab reader
     return 'text-text-muted';
   }
   if (normalized === 'NEW' || normalized === 'BRAND_NEW') return 'text-text-warning';

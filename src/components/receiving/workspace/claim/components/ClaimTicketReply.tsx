@@ -6,6 +6,8 @@ import { cn } from '@/utils/_cn';
 import type { FiledTicket } from '../claim-types';
 import type { UseClaimTicketReply } from '../hooks/useClaimTicketReply';
 import { CcEmailField } from './CcEmailField';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+
 
 interface Props {
   reply: UseClaimTicketReply;
@@ -125,7 +127,7 @@ export function ClaimTicketReply({
           if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && showInlineSend) void send();
         }}
         className={cn(
-          'rounded-none border-0 border-b border-border-hairline bg-surface-sunken focus-within:ring-0',
+          cn('rounded-none border-0 border-b border-border-hairline bg-surface-sunken', focusRing('wrapper', 'accent')),
           isPublic ? 'ring-inset' : '',
         )}
         textareaClassName="inset-field text-role-caption font-medium leading-snug"

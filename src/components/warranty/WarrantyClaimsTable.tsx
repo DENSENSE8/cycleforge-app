@@ -7,6 +7,7 @@ import {
   WORKBENCH_SHEET_HOST,
   WorkbenchChromeHeader,
 } from '@/components/dashboard/workbench-shell';
+import { WorkbenchInspectorToggle } from '@/components/dashboard/workbench-inspector-toggle';
 import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
 import { useWarrantyClaims, useWarrantyUrlState } from '@/hooks/useWarrantyClaims';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
@@ -87,8 +88,6 @@ export function WarrantyClaimsTable() {
 
   const { data: claims = [], isLoading, error } = useWarrantyClaims({ status, search, expiringSoon });
 
-  // ▦ portals into Band-1 controls (find lives in Support sidebar — Units recipe).
-  const [controlsEl, setControlsEl] = useState<HTMLDivElement | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const {
@@ -164,7 +163,12 @@ export function WarrantyClaimsTable() {
           tabs={[{ id: 'claims', label: 'Claims' }]}
           activeTab="claims"
           onTabChange={() => undefined}
-          controlsSlotRef={setControlsEl}
+          trailing={
+            <WorkbenchInspectorToggle
+              open={openClaimId != null}
+              testId="warranty-inspector-toggle"
+            />
+          }
           className="rounded-none border-l-0 border-t-0 shadow-sm"
         />
       </div>
@@ -182,7 +186,7 @@ export function WarrantyClaimsTable() {
           searchEmptyMessage="No warranty claims match these filters."
           isSearching={isSearching}
           scrollRef={scrollRef}
-          columnTriggerPortalTarget={controlsEl}
+          columnTriggerPortalTarget={null}
           renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
             <WarrantyGridColumnHeader
               columns={visible}

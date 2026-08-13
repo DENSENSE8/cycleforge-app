@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback } from 'react';
+import { startTransition, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useWedgeScanner } from '@/hooks/useWedgeScanner';
 import { routeScan } from '@/lib/barcode-routing';
@@ -48,8 +48,12 @@ export function useGlobalWedgeScanner(): void {
       // Action-plane sink (dock / serial / station bar) before URL navigation.
       if (dispatchScanToActiveSink(value)) return;
 
-      if (route?.redirect) {
-        router.push(route.redirect);
+      const redirect = route?.redirect;
+      if (redirect) {
+        // Navigation is a transition — never block the next wedge char.
+        startTransition(() => {
+          router.push(redirect);
+        });
       }
     },
     [router],

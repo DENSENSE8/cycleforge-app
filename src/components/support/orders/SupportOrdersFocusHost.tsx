@@ -42,7 +42,6 @@ import { SupportContextHub } from '@/components/support/context';
 import { ShippedDetailsPanelContent } from '@/components/shipped/ShippedDetailsPanelContent';
 import { ShippedPanelEditorDock } from '@/components/shipped/details-panel/ShippedPanelEditorDock';
 import {
-  useShippedCopyActions,
   useShippedDetailState,
 } from '@/components/shipped/details-panel/shipped-details-hooks';
 import { deriveShippedHeaderMeta } from '@/components/shipped/details-panel/shipped-details-logic';
@@ -130,7 +129,6 @@ function SupportOrderFocus({
   }, [canCreateTicket, openCreateTicket, pathname, router, searchParams, shipped.id]);
 
   const meta = deriveShippedHeaderMeta(shipped);
-  const { copiedAll, handleCopyAll } = useShippedCopyActions(shipped, meta.orderIdDisplay);
 
   const orderAnchor = useMemo(
     () => ({
@@ -147,8 +145,6 @@ function SupportOrderFocus({
         <ShippedDetailsPanelContent
           shipped={shipped}
           durationData={{}}
-          copiedAll={copiedAll}
-          onCopyAll={handleCopyAll}
           onUpdate={onReload}
           showPackingPhotos
           showSerialNumber
@@ -180,8 +176,6 @@ function SupportOrderFocus({
     ),
     [
       shipped,
-      copiedAll,
-      handleCopyAll,
       onReload,
       orderNumber,
       itemNumber,

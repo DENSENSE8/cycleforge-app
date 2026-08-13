@@ -23,6 +23,8 @@ import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getStaffColorHex } from '@/utils/staff-colors';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { Panel } from '@/design-system/primitives';
+
 
 interface ShiftRow {
   id: number;
@@ -115,7 +117,7 @@ export function StaffScheduleBoard({
   }, [data]);
 
   return (
-    <div className="overflow-hidden rounded-3xl border border-border-soft bg-surface-card shadow-md shadow-gray-200/40">
+    <Panel radius="2xl" padding="none" elevation="md" className="overflow-hidden shadow-gray-200/40">
       {/* Header bar */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border-hairline px-5 py-3.5">
         <div className="flex items-center gap-2.5">
@@ -182,7 +184,7 @@ export function StaffScheduleBoard({
           );
         })}
       </div>
-    </div>
+    </Panel>
   );
 }
 

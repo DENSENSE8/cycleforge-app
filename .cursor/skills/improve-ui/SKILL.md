@@ -30,9 +30,7 @@ design guidance — it routes to the right ones and enforces the approval gate.
 5. **One region contract per region** — never blend station / workbench / monitor / canvas.
 6. **Data shape → primary surface** — detail pane is optional context, not identity.
 7. **Presentation SoTs** — condition, chips, dates, capabilities, `SearchHit`; views stay dumb.
-8. **Pattern evolution + compound DS** (`AGENTS.md`): user prompt is a floor. Scan for
-   stronger *house* patterns, recommend promotions, grow single-consumer SoTs — do not
-   invent foreign aesthetics or page-local shells. Prefer changes that increase reuse.
+8. **Pattern evolution** — user prompt is a floor. Scan for stronger *house* patterns; do not invent foreign aesthetics or page-local shells.
 
 ---
 
@@ -52,13 +50,11 @@ Do this once per session for the target. Do not skip.
    `context.mjs` may print `NO_PRODUCT_MD` when `PRODUCT.md` is absent; that is **not**
    a blocker when `.impeccable.md` exists. Continue with `.impeccable.md` + house rules.
 3. **Read house rules:**
-   - `AGENTS.md` → **Kinetic Ledger** + Pattern evolution + Compound design system
-   - `.claude/rules/ui-design-system.md`
-   - `.claude/rules/contextual-display.md` (contract → data shape → density)
+   - `AGENTS.md` (hard laws)
+   - `.impeccable.md` (product design context)
    - `src/design-system/DESIGN_SYSTEM.md` (north star)
-   - If any region is **Monitor rollup**: also `.claude/rules/display/monitor-rollup-blocks.md`
-     and compose `@/design-system/components/monitor` (or grow that registry — never invent
-     page-local card shells).
+   - If any region is **Monitor rollup**: compose `@/design-system/components/monitor`
+     (or grow that registry — never invent page-local card shells).
 4. **Read one representative sibling** in the same feature area (so normalize matches
    local patterns, not a foreign aesthetic). For Monitor rollup, prefer
    `OperationsAnalyticsView.tsx` as the golden composition.
@@ -100,7 +96,7 @@ singleton transient → station card · singleton durable → fact stack · many
 | Sidebar / `?mode=` / `SidebarShell` / mode rail (master–detail recipe) | `.claude/skills/sidebar-mode/SKILL.md` |
 | Station blocks / scan bar / `src/lib/stations` | `.claude/skills/station-block/SKILL.md` |
 | Operations Studio / node graph / workflow canvas | `.claude/skills/ops-studio/SKILL.md` |
-| KPI strip / analytics / rollup dashboard / Monitor | `.claude/rules/display/monitor-rollup-blocks.md` + design-system `monitor/` |
+| KPI strip / analytics / rollup dashboard / Monitor | `AGENTS.md` Monitor hosts + design-system `monitor/` |
 
 **Record** (carry into the audit report):
 
@@ -224,7 +220,7 @@ Follow the normalize skill workflow (house design system first):
 
 
 Load normalize guidance from the available normalize skill path (project or user skills).
-If none is present, apply `.claude/rules/ui-design-system.md` as the normalize checklist.
+If none is present, apply `src/design-system/DESIGN_SYSTEM.md` as the normalize checklist.
 
 ### Grow SoT when approved compound items require it
 
@@ -245,7 +241,7 @@ When an approved item is “unify / promote / grow primitive”:
 | Token / gray-on-color / flat palette | `.claude/skills/impeccable/reference/colorize.md` |
 | Breakpoints / touch targets | `.claude/skills/impeccable/reference/adapt.md` |
 | Labels / empty / error copy | `.claude/skills/impeccable/reference/clarify.md` |
-| Missing motion / wrong crossfade | `.claude/skills/impeccable/reference/animate.md` **and** `.claude/rules/display/motion-crossfade.md` (use `useMotionTransition` / `useMotionPresence`) |
+| Missing motion / wrong crossfade | `.claude/skills/impeccable/reference/animate.md` + `@/design-system/motion` (`useMotionTransition` / `useMotionPresence`) |
 
 Do **not** invent new design-system components when an existing primitive covers the need.
 Do **extend** an existing primitive when the approved better pattern is a growth of that family.

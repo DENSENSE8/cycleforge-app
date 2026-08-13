@@ -30,6 +30,8 @@ import {
   type ProviderState,
   type AccountSummary,
 } from './registry';
+import { Panel } from '@/design-system/primitives';
+
 
 interface OrgRow {
   provider: string;
@@ -222,9 +224,9 @@ export default async function IntegrationsPage({
 
         <section className="space-y-3">
           <h2 className="text-role-caption font-semibold uppercase tracking-[0.18em] text-text-faint">Import</h2>
-          <div className="rounded-xl border border-border-soft bg-surface-card p-4">
+          <Panel radius="xl" padding="sm">
             <CsvOrderImport />
-          </div>
+          </Panel>
         </section>
         </div>
       </main>

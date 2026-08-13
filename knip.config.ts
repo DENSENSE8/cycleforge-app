@@ -104,6 +104,7 @@ const config: KnipConfig = {
     '@types/*',
     // Keep these even if currently unused — they are part of the dev/CI surface
     'knip',
+    'jscpd',
     'dependency-cruiser',
     'eslint-plugin-unused-imports',
     '@playwright/test',

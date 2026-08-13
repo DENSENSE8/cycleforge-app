@@ -35,6 +35,8 @@ import { ToolbarButton } from '@/components/ui/ToolbarButton';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { ToolbarListboxOption } from '@/design-system/primitives';
 import { cn } from '@/utils/_cn';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+
 
 export function WorkbenchFilterPopover({
   open,
@@ -144,7 +146,7 @@ export function WorkbenchFilterPopover({
           className={cn(
             // Panel chrome matches the house `Popover` the sibling toolbar
             // dropdowns use (p-0.5 + shadow-md), so the three read as one menu.
-            'z-dropdown overflow-hidden rounded-lg border border-border-soft bg-surface-card p-0.5 shadow-md ring-1 ring-black/5 focus:outline-none',
+            cn('z-dropdown overflow-hidden rounded-lg border border-border-soft bg-surface-card p-0.5 shadow-md ring-1 ring-black/5', focusRing('field', 'accent')),
             contentClassName ?? 'w-56',
           )}
         >

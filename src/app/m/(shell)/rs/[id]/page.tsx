@@ -8,7 +8,7 @@ import { AddRepairActionSheet } from '@/components/repair/mobile/AddRepairAction
 import { NetworkChip } from '@/components/mobile/NetworkChip';
 import { useActivityInboxOptional } from '@/contexts/ActivityInboxContext';
 import { repairStatusBadgeClass } from '@/lib/repair-status';
-import { IconButton } from '@/design-system/primitives';
+import { Panel, IconButton } from '@/design-system/primitives';
 
 const STATUS_OPTIONS = [
   'Awaiting Parts',
@@ -171,7 +171,7 @@ function RepairMobilePageInner() {
 
         {!loading && repair && (
           <>
-            <section className="rounded-lg border border-border-soft bg-surface-card shadow-sm">
+            <Panel radius="lg" padding="none">
               <Row label="Issue" value={repair.issue || '—'} />
               <Row
                 label="Serial"
@@ -213,7 +213,7 @@ function RepairMobilePageInner() {
               {repair.notes && (
                 <Row label="Customer notes" value={repair.notes} />
               )}
-            </section>
+            </Panel>
 
             <RepairActionTimeline
               repairId={repairId}

@@ -1,6 +1,10 @@
 'use client';
 
 import { HorizontalButtonSlider, type HorizontalSliderItem } from '@/components/ui/HorizontalButtonSlider';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 /**
  * One-row corner control for a label editor: a value input on the left and the
@@ -35,7 +39,7 @@ export function CornerField({
         onChange={(e) => onValueChange(e.target.value)}
         placeholder={placeholder}
         inputMode={inputMode}
-        className="min-w-0 flex-1 rounded-lg border border-border-soft bg-surface-card px-2.5 py-1.5 text-role-caption text-text-default outline-none transition-colors focus:border-blue-500"
+        className={cn("min-w-0 flex-1 rounded-lg border border-border-soft bg-surface-card px-2.5 py-1.5 text-role-caption text-text-default transition-colors", focusRing('field', 'accent'))}
       />
       <div className="shrink-0">
         <HorizontalButtonSlider

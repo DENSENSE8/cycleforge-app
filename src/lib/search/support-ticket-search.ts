@@ -60,8 +60,14 @@ export async function resolveSupportTicketSearchHit(
   const [hit] = await searchSupportTickets(orgId, query, deps);
   if (!hit) return null;
   return {
-    ...hit,
+    id: hit.id,
+    entityType: 'receiving',
+    title: hit.title,
+    subtitle: hit.subtitle,
+    href: hit.href,
+    matchField: hit.matchField,
     score: 2000,
     chips: [{ label: 'ticket', tone: 'blue' }],
+    facets: hit.facets,
   };
 }

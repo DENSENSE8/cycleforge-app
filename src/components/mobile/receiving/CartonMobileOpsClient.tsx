@@ -20,7 +20,7 @@ import { useCapabilityProviderLabel } from '@/hooks/useCapabilityProviderLabel';
 import { NetworkChip } from '@/components/mobile/NetworkChip';
 import { ReceivingQaActionSheet } from '@/components/mobile/receiving/ReceivingQaActionSheet';
 import { ScanAgainBar } from '@/components/mobile/receiving/ScanAgainBar';
-import { Button } from '@/design-system/primitives';
+import { Panel, Button } from '@/design-system/primitives';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -257,7 +257,7 @@ function CartonPageInner() {
 
         {/* ─── Carton metadata block ─── */}
         {!loading && carton && (
-          <section className="rounded-lg border border-border-soft bg-surface-card shadow-sm divide-y divide-border-hairline">
+          <Panel radius="lg" padding="none" className="divide-y divide-border-hairline">
             <Row
               label="Tracking"
               value={
@@ -311,7 +311,7 @@ function CartonPageInner() {
                 hint={carton.condition_grade?.replace(/_/g, ' ') ?? null}
               />
             )}
-          </section>
+          </Panel>
         )}
 
         {/* ─── Lines (the bundle split — one card per part) ─── */}
@@ -415,7 +415,7 @@ function CartonPageInner() {
 
         {/* ─── Recent activity timeline ─── */}
         {!loading && events.length > 0 && (
-          <section className="rounded-lg border border-border-soft bg-surface-card p-3 shadow-sm">
+          <Panel radius="lg" padding="sm">
             <p className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-text-soft">
               Recent activity ({events.length})
             </p>
@@ -450,7 +450,7 @@ function CartonPageInner() {
                 </li>
               ))}
             </ul>
-          </section>
+          </Panel>
         )}
       </main>
 

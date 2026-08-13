@@ -911,11 +911,10 @@ export function SidebarNavList({
   return (
     <div role="menu" aria-label="Pages" className={cn('flex h-full min-h-0 flex-col', className)}>
       {/* Home / Search / Media / Chat used to pin here as four full rows. They
-          are icons in the spine's 40px top band (`SpineTopPins`) when open, and
-          peek from the collapsed sidebar toggle (`SidebarCollapseControl`) on
-          hover/focus — they cost 137px of the map as rows, which was five
-          sections below the fold vs one. They stay `kind:'top'` in the registry
-          so ⌘K and the flat search still rank them. */}
+          are icons in the spine's 40px top band (`SpineTopPins`) when open —
+          they cost 137px of the map as rows, which was five sections below the
+          fold vs one. They stay `kind:'top'` in the registry so ⌘K and the flat
+          search still rank them. */}
       {/* `data-spine-scrollport` is the geometry probe's handle. The map's
           height against THIS box is the question every spine layout change has
           to answer, and `.claude/rules/verify.md` requires that answer to come

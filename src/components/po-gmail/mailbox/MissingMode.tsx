@@ -1,7 +1,11 @@
 import { Loader2, Search } from '@/components/Icons';
-import { Button } from '@/design-system/primitives';
+import { Panel, Button } from '@/design-system/primitives';
 import { MISSING_STATUS_TABS, type MissingResponse, type MissingStatus } from './po-mailbox-types';
 import { StatusChip } from './mailbox-shared';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 /** Missing-from-Zoho worklist: scan controls + status filter + actionable rows. */
 export function MissingMode({
@@ -25,7 +29,7 @@ export function MissingMode({
   return (
     <div className="space-y-3">
       {/* Scan controls — run a fresh reconcile to populate the worklist */}
-      <div className="flex flex-wrap items-end gap-3 rounded-lg border border-border-soft bg-surface-card p-3 shadow-sm">
+      <Panel radius="lg" padding="sm" className="flex flex-wrap items-end gap-3">
         <label className="flex-1 min-w-[220px]">
           <span className="block text-role-caption font-medium text-text-muted">Mailbox query</span>
           <input
@@ -33,7 +37,7 @@ export function MissingMode({
             value={scanQuery}
             onChange={(e) => setScanQuery(e.target.value)}
             placeholder="is:unread"
-            className="mt-1 w-full rounded-md border border-border-default px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className={cn("mt-1 w-full rounded-md border border-border-default px-2 py-1.5 text-sm", focusRing('field', 'accent'))}
           />
         </label>
         <label>
@@ -44,7 +48,7 @@ export function MissingMode({
             max={50}
             value={scanLimit}
             onChange={(e) => setScanLimit(Math.min(50, Math.max(1, Number(e.target.value) || 25)))}
-            className="mt-1 w-20 rounded-md border border-border-default px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className={cn("mt-1 w-20 rounded-md border border-border-default px-2 py-1.5 text-sm", focusRing('field', 'accent'))}
           />
         </label>
         <Button
@@ -65,7 +69,7 @@ export function MissingMode({
         >
           Refresh list
         </Button>
-      </div>
+      </Panel>
 
       {/* Status filter pills */}
       <div className="flex flex-wrap items-center gap-2 text-role-caption">
@@ -91,15 +95,15 @@ export function MissingMode({
 
       {/* List */}
       {loading && !missing ? (
-        <div className="rounded-md border border-border-soft bg-surface-card px-4 py-8 text-center text-sm text-text-soft">
+        <Panel radius="lg" padding="none" className="px-4 py-8 text-center text-sm text-text-soft">
           <Loader2 className="mx-auto h-5 w-5 animate-spin text-text-faint" />
-        </div>
+        </Panel>
       ) : !missing || missing.items.length === 0 ? (
-        <div className="rounded-md border border-dashed border-border-soft bg-surface-card px-4 py-8 text-center text-sm text-text-soft">
+        <Panel radius="lg" padding="none" className="border-dashed px-4 py-8 text-center text-sm text-text-soft">
           {statusFilter === 'pending'
             ? 'Nothing missing — every scanned email matched a PO in Zoho.'
             : `No ${statusFilter} rows.`}
-        </div>
+        </Panel>
       ) : (
         <ul className="divide-y divide-border-hairline rounded-md border border-border-soft bg-surface-card">
           {missing.items.map((row) => {

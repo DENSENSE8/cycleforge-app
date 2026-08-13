@@ -29,7 +29,7 @@ import { StatusChips } from './StatusChip';
 import { ExternalLink, Printer } from '@/components/Icons';
 import { FLOOR_DELETE_PEER_CLASS, InspectorActionFloor } from '@/components/right-rail/InspectorActionFloor';
 import { InspectorFlushDelete } from '@/components/right-rail/InspectorFlushDelete';
-import { IconButton } from '@/design-system/primitives';
+import { Panel, IconButton } from '@/design-system/primitives';
 import {
   isSpecialBinBarcode,
   printSpecialBinLabelFromRow,
@@ -114,6 +114,7 @@ export function BinDetailFlyout({ row, onClose, onDeleted }: Props) {
           <DeskRailChromeRow
             onClose={onClose}
             closeTitle="Close bin detail"
+            columnDisplay
             trailing={
               row.barcode ? (
                 <div className="flex items-center gap-1">
@@ -167,7 +168,7 @@ export function BinDetailFlyout({ row, onClose, onDeleted }: Props) {
         <div className="min-h-0 flex-1 overflow-y-auto">
           <div className="space-y-4 p-4">
             {/* Summary */}
-            <section className="rounded-2xl border border-border-soft bg-surface-card p-3">
+            <Panel radius="2xl" padding="sm">
               <div className="grid grid-cols-3 gap-3 text-center">
                 <Stat label="Total qty" value={String(row.total_qty)} />
                 <Stat label="SKUs" value={String(row.sku_count)} />
@@ -184,7 +185,7 @@ export function BinDetailFlyout({ row, onClose, onDeleted }: Props) {
                   is_stale={row.is_stale}
                 />
               </div>
-            </section>
+            </Panel>
 
             {/* Contents */}
             <section>
@@ -192,14 +193,14 @@ export function BinDetailFlyout({ row, onClose, onDeleted }: Props) {
                 Contents
               </h3>
               {loading && (
-                <div className="rounded-xl border border-border-soft bg-surface-card p-3 text-xs text-text-faint">
+                <Panel radius="xl" padding="sm" className="text-xs text-text-faint">
                   Loading…
-                </div>
+                </Panel>
               )}
               {!loading && contents.length === 0 && (
-                <div className="rounded-xl border border-dashed border-border-soft bg-surface-card p-4 text-center text-xs text-text-faint">
+                <Panel radius="xl" padding="sm" className="border-dashed text-center text-xs text-text-faint">
                   No SKUs in this bin.
-                </div>
+                </Panel>
               )}
               {!loading && contents.length > 0 && (
                 <ul className="divide-y divide-border-hairline rounded-xl border border-border-soft bg-surface-card">

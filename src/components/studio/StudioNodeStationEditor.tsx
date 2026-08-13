@@ -23,7 +23,7 @@
 import { useCallback } from 'react';
 import { toast } from '@/lib/toast';
 import { icons } from 'lucide-react';
-import { Button, IconButton } from '@/design-system/primitives';
+import { Panel, Button, IconButton } from '@/design-system/primitives';
 import { GripVertical, Plus, Settings, X } from '@/components/Icons';
 import {
   DndContext,
@@ -240,9 +240,9 @@ export function StudioNodeStationEditor({
             </div>
 
             {e.instances.length === 0 && !e.editing ? (
-              <div className="rounded-xl border border-dashed border-border-soft bg-surface-card px-4 py-6 text-center text-xs text-text-soft">
+              <Panel radius="xl" padding="none" className="border-dashed px-4 py-6 text-center text-xs text-text-soft">
                 No blocks in this station yet. Click “{station ? 'Edit station' : 'Bind a station'}” to compose it.
-              </div>
+              </Panel>
             ) : (
               <div className="space-y-2">
                 {e.editing ? (
@@ -260,9 +260,9 @@ export function StudioNodeStationEditor({
                   </DndContext>
                 ) : (
                   e.instances.map((inst) => (
-                    <div key={inst.id} className="rounded-xl border border-border-soft bg-surface-card p-1 shadow-sm">
+                    <Panel radius="xl" padding="none" className="p-1" key={inst.id}>
                       <BlockRenderer instance={inst} />
-                    </div>
+                    </Panel>
                   ))
                 )}
 

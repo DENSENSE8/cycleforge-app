@@ -13,7 +13,7 @@
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { Button } from '@/design-system/primitives';
+import { Panel, Button } from '@/design-system/primitives';
 import { LabelFacePreview } from '@/components/labels/LabelFacePreview';
 import { useSetting } from '@/hooks/useSettings';
 import { DEFAULT_RETURNS_TEST_BIN_BARCODE } from '@/lib/inventory/returns-test-bin-symbol';
@@ -72,9 +72,9 @@ function SpecialBinPrintBody() {
         </p>
       </div>
 
-      <div className="rounded-2xl border border-border-soft bg-surface-card p-4">
+      <Panel radius="2xl" padding="sm">
         <LabelFacePreview model={face} />
-      </div>
+      </Panel>
 
       <div className="flex flex-wrap items-center gap-3">
         <Button variant="primary" size="sm" onClick={print}>

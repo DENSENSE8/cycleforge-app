@@ -28,9 +28,6 @@ const STATION_ROUTES = ['/unbox', '/triage', '/shipping/labels', '/test', '/pack
  * scope + capture day), so it is no longer the panel-less case.
  */
 const SIDEBAR_ROUTES = [
-  // `/` (Home → Today) joined 2026-08-01: the Today workbench grew a saved-views
-  // rail, so it reserves a column like any other panel route.
-  '/',
   '/dashboard',
   '/products',
   '/operations',
@@ -126,6 +123,12 @@ test.describe('sidebar spine — one grammar, a push column, no empty columns', 
     expect(await residentColumnWidth(page)).toBe(0);
 
     await gotoSurface(page, '/incoming?lane=docked');
+    await expect(page.locator(CONTEXT_PANEL)).toHaveCount(0);
+    expect(await residentColumnWidth(page)).toBe(0);
+  });
+
+  test('/: Home → Today is rail-less (Pattern E)', async ({ page }) => {
+    await gotoSurface(page, '/');
     await expect(page.locator(CONTEXT_PANEL)).toHaveCount(0);
     expect(await residentColumnWidth(page)).toBe(0);
   });

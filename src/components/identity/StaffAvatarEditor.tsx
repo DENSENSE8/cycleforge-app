@@ -32,7 +32,7 @@ import { RoleColorPicker } from '@/components/admin/roles/RoleColorPicker';
 import { StaffAvatar } from '@/components/identity/StaffAvatar';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { AnchoredLayer } from '@/design-system';
-import { Button, IconButton } from '@/design-system/primitives';
+import { Panel, Button, IconButton } from '@/design-system/primitives';
 import { Loader2, Pencil } from '@/components/Icons';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStaffColorVersion } from '@/contexts/StaffColorsProvider';
@@ -186,7 +186,7 @@ export function StaffAvatarEditor({
           aria-expanded={open}
           aria-haspopup="dialog"
           className={cn(
-            'ds-raw-button shrink-0 rounded-full transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-strong',
+            cn('ds-raw-button shrink-0 rounded-full transition hover:opacity-90', focusRing('control', 'neutral')),
             className,
           )}
         >
@@ -206,10 +206,7 @@ export function StaffAvatarEditor({
         placement="top-start"
         gap={4}
       >
-        <div
-          aria-label="Your name, color and photo"
-          className="w-[220px] overflow-hidden rounded-lg border border-border-soft bg-surface-card p-2 shadow-md"
-        >
+        <Panel radius="lg" padding="none" elevation="md" className="w-[220px] overflow-hidden p-2" aria-label="Your name, color and photo">
           <div className="mb-2 flex items-center gap-2">
             {/* `md` (36px) — the house default. The mark was bumped to `lg`
                 only to counterbalance a `role-display` name; now that the name
@@ -350,7 +347,7 @@ export function StaffAvatarEditor({
               {error}
             </p>
           ) : null}
-        </div>
+        </Panel>
       </AnchoredLayer>
     </>
   );

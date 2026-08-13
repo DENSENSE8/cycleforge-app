@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import QRCode from 'react-qr-code';
 import { Smartphone } from '@/components/Icons';
-import { IconButton, type IconButtonSize } from '@/design-system/primitives';
+import { Panel, IconButton, type IconButtonSize } from '@/design-system/primitives';
 import {
   Dialog,
   DialogContent,
@@ -52,13 +52,13 @@ export function PhoneSignInQrDialog({
             Point your camera at the code
           </DialogTitle>
         </DialogHeader>
-        <div className="mx-auto rounded-2xl border border-border-soft bg-surface-card p-3 shadow-inner shadow-gray-900/[0.03]">
+        <Panel radius="2xl" padding="sm" className="mx-auto shadow-inner shadow-gray-900/[0.03]">
           {url ? (
             <QRCode value={url} size={220} level="M" />
           ) : (
             <div className="h-[220px] w-[220px] animate-pulse rounded-lg bg-surface-sunken" />
           )}
-        </div>
+        </Panel>
         <p className="w-full break-all rounded-lg bg-surface-canvas px-3 py-2 text-center text-role-micro font-mono text-text-soft">
           {url || ' '}
         </p>

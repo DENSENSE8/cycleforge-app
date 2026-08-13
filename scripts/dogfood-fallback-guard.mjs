@@ -4,7 +4,7 @@
  *
  * Fails when 'DOGFOOD_ORG_ID' or 'transitionalDogfoodOrgId' appears in any file under
  * src/app/api/** that is NOT in the allowlist below. House law
- * (.claude/rules/backend-patterns.md): orgId comes from ctx (withAuth), never
+ * (AGENTS.md): orgId comes from ctx (withAuth), never
  * from the body and never via a hardcoded dogfood-org fallback — new routes must not
  * import DOGFOOD_ORG_ID or add `?? DOGFOOD_ORG_ID`.
  *
@@ -99,7 +99,7 @@ if (violations.length > 0) {
   }
   console.error(
     '\nFix: take orgId from ctx.organizationId (withAuth) — never import DOGFOOD_ORG_ID or add\n' +
-      "`?? DOGFOOD_ORG_ID` in a route (.claude/rules/backend-patterns.md). The allowlist in\n" +
+      "`?? DOGFOOD_ORG_ID` in a route (AGENTS.md). The allowlist in\n" +
       'scripts/dogfood-fallback-guard.mjs is a burn-down of legacy offenders only — never grow it.',
   );
   process.exit(1);

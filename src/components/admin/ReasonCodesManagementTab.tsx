@@ -18,6 +18,8 @@ import { sectionLabel, fieldLabel, tableHeader, tableCell } from '@/design-syste
 import { cn } from '@/utils/_cn';
 import { STATION_COMMAND_FLOW_CONTEXT } from '@/lib/stations/station-command-codes';
 import { printStationCommandLabel } from '@/lib/print/printStationCommandLabel';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+
 
 /** Mirrors the rows returned by GET /api/reason-codes. */
 interface ReasonCodeRecord {
@@ -92,7 +94,7 @@ const DEFAULT_FORM_STATE: ReasonCodeFormState = {
 };
 
 const inputClass =
-  'h-10 w-full border border-border-soft bg-surface-card px-3 text-sm font-semibold text-text-default outline-none transition-colors focus:border-border-emphasis';
+  cn('h-10 w-full border border-border-soft bg-surface-card px-3 text-sm font-semibold text-text-default transition-colors', focusRing('field', 'neutral'));
 
 export function ReasonCodesManagementTab() {
   const queryClient = useQueryClient();
@@ -294,7 +296,7 @@ export function ReasonCodesManagementTab() {
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
               placeholder="Filter code / label / category"
-              className="h-8 w-64 border border-border-soft bg-surface-card px-3 text-xs font-medium text-text-default outline-none focus:border-border-emphasis"
+              className={cn("h-8 w-64 border border-border-soft bg-surface-card px-3 text-xs font-medium text-text-default", focusRing('field', 'neutral'))}
             />
             <Button variant="secondary" size="sm" icon={<Plus />} onClick={openAdd}>
               Add Code

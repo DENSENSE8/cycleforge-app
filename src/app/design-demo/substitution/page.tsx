@@ -12,6 +12,8 @@ import { useState } from 'react';
 import { SubstitutePanel, type SubstitutePayload } from '@/components/fulfillment/SubstitutePanel';
 import { OrderAmendmentsSection } from '@/components/fulfillment/OrderAmendmentsSection';
 import type { AmendmentTimelineRow } from '@/lib/timeline';
+import { Panel } from '@/design-system/primitives';
+
 
 const AMENDMENTS: AmendmentTimelineRow[] = [
   {
@@ -86,14 +88,14 @@ export default function SubstitutionDemoPage() {
             />
           </div>
 
-          <div className="rounded-xl border border-border-soft bg-surface-card p-4">
+          <Panel radius="xl" padding="sm">
             <OrderAmendmentsSection rows={AMENDMENTS} />
-          </div>
+          </Panel>
 
-          <div className="rounded-xl border border-border-soft bg-surface-card p-4">
+          <Panel radius="xl" padding="sm">
             <p className="mb-2 text-role-eyebrow uppercase tracking-widest text-text-faint">Empty state</p>
             <OrderAmendmentsSection rows={[]} />
-          </div>
+          </Panel>
         </div>
       </div>
     </div>

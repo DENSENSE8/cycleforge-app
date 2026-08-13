@@ -63,7 +63,7 @@ export function RepairTechnicalSection({ repair }: { repair: RSRecord }) {
         </div>
         <div>
           <span className="text-xs text-text-soft font-semibold block mb-1">Serial Number</span>
-          <p className="font-mono text-sm text-text-default font-semibold">{repair.serial_number || 'N/A'}</p>
+          <p className="font-mono text-sm text-text-default font-semibold">{repair.serial_number || '—'}</p>
         </div>
       </div>
     </section>

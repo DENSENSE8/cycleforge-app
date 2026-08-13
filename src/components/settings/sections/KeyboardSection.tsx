@@ -24,6 +24,8 @@ import { NEXT_SCAN_CHORD_LABEL } from '@/lib/scan-hotkey/store';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
+import { Panel } from '@/design-system/primitives';
+
 
 const FLUSH = cornerClass('flush');
 
@@ -79,7 +81,7 @@ export function KeyboardSection() {
       </header>
 
       {/* Focus-scan hotkey — the one remappable global key. */}
-      <section className="rounded-2xl border border-border-soft bg-surface-card p-5 shadow-sm">
+      <Panel radius="2xl">
         <h3 className="text-base font-semibold text-text-default">Focus-scan hotkey</h3>
         <p className="mt-1 text-xs text-text-soft">
           Reclaims focus on the active station scan field without clearing typed text.
@@ -171,10 +173,10 @@ export function KeyboardSection() {
             </>
           )}
         </p>
-      </section>
+      </Panel>
 
       {/* Reference + wedge-safe policy — pointer, not a second binder. */}
-      <section className="rounded-2xl border border-border-soft bg-surface-card p-5 shadow-sm">
+      <Panel radius="2xl">
         <h3 className="text-base font-semibold text-text-default">Shortcuts reference</h3>
         <ul className="mt-3 space-y-2 text-xs text-text-soft">
           <li className="flex items-baseline gap-2">
@@ -200,7 +202,7 @@ export function KeyboardSection() {
             </span>
           </li>
         </ul>
-      </section>
+      </Panel>
     </div>
   );
 }

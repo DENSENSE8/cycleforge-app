@@ -62,6 +62,8 @@ import {
 } from '@/lib/photos/library-filter-state';
 import { toast } from '@/lib/toast';
 import { cn } from '@/utils/_cn';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+
 
 export function PhotoLibraryScopeBand({ className }: { className?: string }) {
   const { filters, patch } = usePhotoLibraryUrlState();
@@ -214,7 +216,7 @@ function PhotoMediaTypePopover({
           align="start"
           sideOffset={6}
           className={cn(
-            'z-dropdown w-64 border border-border-soft bg-surface-card p-1 shadow-lg ring-1 ring-black/5 focus:outline-none',
+            cn('z-dropdown w-64 border border-border-soft bg-surface-card p-1 shadow-lg ring-1 ring-black/5', focusRing('field', 'accent')),
             cornerClass('flush'),
           )}
         >
@@ -267,7 +269,7 @@ function PhotoMediaTypePopover({
                 aria-label="New media type name"
                 data-testid="photo-media-type-name"
                 className={cn(
-                  'w-full border border-border-soft bg-surface-card px-2 py-1 text-role-caption text-text-default outline-none focus:border-blue-400',
+                  cn('w-full border border-border-soft bg-surface-card px-2 py-1 text-role-caption text-text-default', focusRing('field', 'accent')),
                   cornerClass('flush'),
                 )}
               />

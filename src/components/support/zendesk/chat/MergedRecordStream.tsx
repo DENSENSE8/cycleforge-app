@@ -1,70 +1,35 @@
 'use client';
 
 /**
- * The ticket's MERGED RECORD STREAM — helpdesk messages, optionally interleaved
- * with warehouse / carrier events, over one shared `TimelineItem` waist.
+ * The ticket conversation stream — helpdesk messages (optionally interleaved
+ * with warehouse / carrier events) over one shared `TimelineItem` waist.
  *
- * **Two row shells, one job discriminator (read vs select):**
- *
- * - `variant="ledger"` (default) — flat rows on one shared left reading edge
- *   (`divide-y`, leading mark). Correct when the stream is **scanned / selected**
- *   (dense triage — `/support` service workspace). Direction is the mark, never
- *   a fill.
- * - `variant="bubble"` — conversation bubbles (inbound vs outbound by shell).
- *   Correct when the surface is **read + reply** — station Ticket Displays
- *   (`TicketDisplayHost` → `SupportTicketDetail` `streamVariant="bubble"`).
- *   Opted in there only; never derive from `embedded` alone (`/support` focus
- *   is also embedded and stays ledger). Never a third renderer
- *   (`SupportChatThread` stays deleted).
+ * **One face everywhere.** Unbox · Arrival · Testing Ticket Displays and
+ * `/support` share this bubble chrome ({@link ./ticket-bubble-chrome}). No
+ * ledger shell or variant prop — `SupportChatThread` stays deleted.
  *
  * **Station Ticket Displays omit `events`** (messages only). Floor spine lives
  * on the peer Timeline Displays tab (`EventTimeline` / `WorkspaceTimelineTab`).
  * Support service workspace may still pass a collapsed event spine via
  * `mergeFloorTimeline` until an explicit Floor toggle ships.
  *
- * ## It is a SIBLING of `EventTimeline`, not a fork of it — and not a third one
+ * ## Sibling of `EventTimeline`, not a fork
  *
- * `reference-timeline.md` sanctions exactly one fork (`AuditTimeline`) and
- * forbids growing another, so this needs its reason stated rather than assumed:
+ * Every row is a `TimelineItem` from `src/lib/timeline/` adapters. Merge / sort /
+ * day-key logic is shared. Only the message **shell** is conversation chrome
+ * (block markdown + attachments do not fit `EventTimeline`'s title + subtitle).
  *
- *  - **The data waist is shared, and that is the part that matters.** Every row
- *    here is a `TimelineItem` produced by an adapter in `src/lib/timeline/` —
- *    `zendeskCommentsToTimeline` for messages, the existing `*ToTimeline`
- *    adapters (via `bundle.timeline`) for events. Merge / sort / day-key logic is
- *    the house's. Nothing about a domain is re-derived here.
- *  - **Only the ROW SHELL diverges.** Ledger uses the house one-row anatomy
- *    (40px leading mark, `divide-y`, day bands via {@link DateGroupHeader}).
- *    Bubble keeps the same adapters / day bands / markdown / attachments — only
- *    the message shell changes for a read surface.
- *  - **Body still cannot live in `EventTimeline`.** A message is *block
- *    markdown* + attachments; that does not fit `title` + `subtitle`.
+ * ## Reading direction is ASCENDING
  *
- * ## Reading direction is ASCENDING, and that is not the timeline default
+ * Composer docks at the bottom → newest adjacent → sort oldest → newest and
+ * scroll to the end. `collapseTimeline` runs on the EVENT spine only (never
+ * messages — consecutive same-author replies must not fold).
  *
- * Every `EventTimeline` consumer reads newest-first. A conversation does not:
- * the composer that answers it is docked at the bottom, so the newest message
- * must be adjacent to it and the eye path is body → last message → input. The
- * stream therefore sorts oldest → newest and rests scrolled to the end.
+ * ## Scroll + gutter
  *
- * ## `collapseTimeline` runs on the EVENT spine only
- *
- * That helper folds adjacent rows with an equal `title + ref + actor + tone`
- * signature. Every message from one author shares a title and an actor, so
- * running it across the merged list would fold two consecutive replies into one
- * and silently delete a customer's words. The caller hands us an
- * already-collapsed event list; messages are never collapsed.
- *
- * ## Scroll ownership
- *
- * This is CONTENT. The host owns the port (`SupportTicketDetail`'s
- * `min-h-0 flex-1 overflow-y-auto`); the stream adds no `overflow-*`, no
- * `flex-1`, no height floor.
- *
- * ## Displays gutter
- *
- * On `variant="bubble"` chrome comes from {@link ./ticket-bubble-chrome} —
- * stream + composer share `DISPLAYS_BODY_INSET`, one white shell face, micro
- * body type, left-aligned capped width. Host stays flush (`DISPLAYS_FLUSH_HOST`).
+ * Host owns the scroll port (`SupportTicketDetail`). Chrome from
+ * {@link ./ticket-bubble-chrome}: stream + composer share `DISPLAYS_BODY_INSET`.
+ * Host stays flush (`DISPLAYS_FLUSH_HOST`).
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -87,23 +52,19 @@ import { IdentityMark, StaffAvatar } from '@/components/identity';
 import { staffInitials } from '@/design-system/components/StaffBadge';
 import { Button, Spinner } from '@/design-system/primitives';
 import { DISPLAYS_BODY_INSET } from '@/design-system/shells/detail-stack';
-import { Lock } from '@/components/Icons';
 import { formatDateTimePST, toPSTDateKey } from '@/utils/date';
 import { useTimeFormat } from '@/lib/time-format/useTimeFormat';
-import { timeAgo } from '@/utils/_date';
 import { cn } from '@/utils/_cn';
 import { renderBlockMarkdown } from '@/lib/support/markdown';
+import { ConversationMessageCard } from '@/design-system/primitives/ConversationMessageCard';
 import { resolveAuthor } from './support-chat-utils';
 import {
   TICKET_BUBBLE_BODY,
-  TICKET_BUBBLE_INTERNAL_CHIP,
+  TICKET_BUBBLE_DAY_HEADER,
   TICKET_BUBBLE_MARK,
   TICKET_BUBBLE_MARK_BOX,
   TICKET_BUBBLE_META,
-  TICKET_BUBBLE_ROW,
-  TICKET_BUBBLE_SHELL,
   TICKET_BUBBLE_STREAM,
-  TICKET_LEDGER_BODY,
   formatTicketBubbleAge,
 } from './ticket-bubble-chrome';
 
@@ -118,8 +79,6 @@ import {
  * that must be on screen) is always mounted.
  */
 const STREAM_PAGE = 60;
-
-type MergedRecordStreamVariant = 'ledger' | 'bubble';
 
 interface ZAttachmentWire {
   id: number;
@@ -152,52 +111,35 @@ function atMs(at: string | null): number {
   return Number.isFinite(t) ? t : 0;
 }
 
-/** Relative in the row, absolute on hover — never `title=`. */
-function RowTime({ at, dense }: { at: string | null; dense?: boolean }) {
-  // Subscribe so a 12h↔24h flip re-renders the absolute face immediately.
+/** Relative in the row (`N hrs`), absolute on hover — never `title=`. */
+function RowTime({ at }: { at: string | null }) {
   useTimeFormat();
-  if (!at) return <span className="text-text-faint">—</span>;
-  const face = dense ? formatTicketBubbleAge(at) ?? '—' : timeAgo(at);
+  if (!at) return <span className="shrink-0 text-text-faint">—</span>;
   return (
     <HoverTooltip label={formatDateTimePST(at)} focusable={false}>
-      <span className="shrink-0 text-text-faint">{face}</span>
+      <span className="shrink-0 text-text-faint">{formatTicketBubbleAge(at) ?? '—'}</span>
     </HoverTooltip>
   );
 }
 
 /**
- * The leading mark — author's identity for a message, station glyph for an event.
+ * Leading mark — author's identity for a message, station glyph for an event.
  *
  * Messages use {@link IdentityMark} with the helpdesk roster photo rather than
- * {@link StaffAvatar}: a helpdesk comment carries an agent id, not a `staff.id`,
- * and an avatar is never guessed from a display name.
- *
- * Bubble rows pass `dense` — quieter xs mark via {@link TICKET_BUBBLE_MARK}.
+ * {@link StaffAvatar}: a helpdesk comment carries an agent id, not a `staff.id`.
  */
-function RowMark({
-  item,
-  compact,
-  dense,
-}: {
-  item: MergedRecordItem;
-  compact: boolean;
-  dense?: boolean;
-}) {
-  const size = dense || compact ? 'xs' : 'sm';
-  const box = dense ? TICKET_BUBBLE_MARK_BOX : compact ? 'flex w-7 shrink-0 justify-start pt-0.5' : 'flex w-10 shrink-0 justify-start pt-0.5';
-  const quiet = dense ? TICKET_BUBBLE_MARK : undefined;
-
+function RowMark({ item }: { item: MergedRecordItem }) {
   if (item.message) {
     const { authorName, authorPhoto } = item.message;
     return (
-      <div className={box}>
+      <div className={TICKET_BUBBLE_MARK_BOX}>
         <IdentityMark
           initials={staffInitials(authorName)}
           src={authorPhoto}
-          size={size}
+          size="xs"
           ring={false}
           alt={authorName}
-          className={quiet}
+          className={TICKET_BUBBLE_MARK}
         />
       </div>
     );
@@ -205,13 +147,13 @@ function RowMark({
 
   if (item.actorStaffId) {
     return (
-      <div className={box}>
+      <div className={TICKET_BUBBLE_MARK_BOX}>
         <StaffAvatar
           staffId={item.actorStaffId}
           name={item.actor}
-          size={size}
+          size="xs"
           ring={false}
-          className={quiet}
+          className={TICKET_BUBBLE_MARK}
         />
       </div>
     );
@@ -220,15 +162,10 @@ function RowMark({
   const glyph = resolveTimelineGlyph(item.sourceEventType);
   const Icon = TIMELINE_GLYPH_ICONS[glyph.id];
   return (
-    <div className={box}>
+    <div className={TICKET_BUBBLE_MARK_BOX}>
       <HoverTooltip label={glyph.tooltip} focusable={false}>
-        <span
-          className={cn(
-            'flex items-center justify-center rounded-full bg-surface-canvas text-text-soft',
-            dense || compact ? 'h-5 w-5' : 'h-7 w-7',
-          )}
-        >
-          <Icon className={dense || compact ? 'h-3 w-3' : 'h-3.5 w-3.5'} />
+        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-surface-canvas text-text-soft">
+          <Icon className="h-3 w-3" />
         </span>
       </HoverTooltip>
     </div>
@@ -238,24 +175,19 @@ function RowMark({
 function Attachments({
   atts,
   onOpenPhoto,
-  compact,
 }: {
   atts: TicketAttachment[];
   onOpenPhoto?: (url: string) => void;
-  compact: boolean;
 }) {
   if (!atts.length) return null;
   return (
-    <div className={cn('flex flex-wrap', compact ? 'gap-1' : 'gap-1.5')}>
+    <div className="flex flex-wrap gap-1">
       {atts.map((a) => (
         <button
           key={a.id}
           type="button"
           onClick={() => onOpenPhoto?.(a.contentUrl)}
-          className={cn(
-            'ds-raw-button block overflow-hidden rounded-lg ring-1 ring-inset ring-border-soft transition hover:opacity-90 hover:ring-blue-300',
-            compact ? 'h-14 w-14' : 'h-20 w-20',
-          )}
+          className="ds-raw-button block h-14 w-14 overflow-hidden rounded-lg ring-1 ring-inset ring-border-soft transition hover:opacity-90 hover:ring-blue-300"
         >
           <img
             src={a.thumbnailUrl || a.contentUrl}
@@ -273,51 +205,19 @@ function Attachments({
 function MetaLine({
   item,
   msg,
-  internal,
-  compact,
-  dense,
 }: {
   item: MergedRecordItem;
   msg: TicketMessageDetail | undefined;
-  internal: boolean;
-  compact: boolean;
-  /** Station Ticket bubble — micro meta + `N hrs` age. */
-  dense?: boolean;
 }) {
   return (
-    <div
-      className={
-        dense
-          ? TICKET_BUBBLE_META
-          : 'flex min-w-0 items-center gap-1.5 text-role-eyebrow uppercase tracking-widest text-text-soft'
-      }
-    >
-      <span className="truncate text-text-muted">{msg ? msg.authorName : item.actor || ''}</span>
-      {msg?.authorEmail && msg.authorEmail !== msg.authorName && !compact ? (
-        <span className="min-w-0 truncate normal-case tracking-normal text-text-faint">
-          {msg.authorEmail}
-        </span>
-      ) : null}
+    <div className={TICKET_BUBBLE_META}>
+      <span className="truncate font-semibold text-text-default">
+        {msg ? msg.authorName : item.actor || ''}
+      </span>
       <span aria-hidden className="text-text-faint">
         ·
       </span>
-      <RowTime at={item.at} dense={dense} />
-      {internal ? (
-        <>
-          <span aria-hidden className="text-text-faint">
-            ·
-          </span>
-          <span
-            className={
-              dense
-                ? TICKET_BUBBLE_INTERNAL_CHIP
-                : 'inline-flex shrink-0 items-center gap-1 rounded bg-amber-100 px-1 py-px text-amber-700'
-            }
-          >
-            <Lock className="h-2.5 w-2.5" /> Internal
-          </span>
-        </>
-      ) : null}
+      <RowTime at={item.at} />
     </div>
   );
 }
@@ -326,27 +226,21 @@ function MessageBody({
   msg,
   item,
   onOpenPhoto,
-  compact,
-  dense,
 }: {
   msg: TicketMessageDetail | undefined;
   item: MergedRecordItem;
   onOpenPhoto?: (url: string) => void;
-  compact: boolean;
-  /** Station Ticket bubble — micro density from {@link TICKET_BUBBLE_BODY}. */
-  dense?: boolean;
 }) {
   const refs = item.refs?.length ? item.refs : item.ref ? [item.ref] : [];
-  const bodyRole = dense ? TICKET_BUBBLE_BODY : TICKET_LEDGER_BODY;
   return (
     <>
       {msg ? (
-        <div className={bodyRole}>
+        <div className={TICKET_BUBBLE_BODY}>
           {renderBlockMarkdown(msg.body, { onOpenPhoto })}
         </div>
       ) : (
         <div className="stack-tight">
-          <p className={bodyRole}>{item.title}</p>
+          <p className={TICKET_BUBBLE_BODY}>{item.title}</p>
           {item.subtitle ? (
             <p className="text-role-caption text-text-soft">{item.subtitle}</p>
           ) : null}
@@ -362,7 +256,7 @@ function MessageBody({
       ) : null}
 
       {msg?.attachments.length ? (
-        <Attachments atts={msg.attachments} onOpenPhoto={onOpenPhoto} compact={compact} />
+        <Attachments atts={msg.attachments} onOpenPhoto={onOpenPhoto} />
       ) : null}
     </>
   );
@@ -371,72 +265,36 @@ function MessageBody({
 function StreamRow({
   item,
   onOpenPhoto,
-  compact,
-  variant,
 }: {
   item: MergedRecordItem;
   onOpenPhoto?: (url: string) => void;
-  compact: boolean;
-  variant: MergedRecordStreamVariant;
 }) {
   const msg: TicketMessageDetail | undefined = item.message;
   const internal = Boolean(msg?.internal);
   const ours = Boolean(msg?.ours);
 
-  if (variant === 'bubble' && msg) {
+  if (msg) {
     return (
-      <div
-        data-stream-row="message"
-        data-stream-shell="bubble"
-        data-internal={internal ? 'true' : undefined}
-        data-ours={ours ? 'true' : undefined}
-        className={TICKET_BUBBLE_ROW}
+      <ConversationMessageCard
+        internal={internal}
+        mark={<RowMark item={item} />}
+        author={msg.authorName}
+        at={item.at}
+        atAbsolute={item.at ? formatDateTimePST(item.at) : null}
+        data-testid={ours ? 'ticket-message-ours' : 'ticket-message'}
       >
-        <RowMark item={item} compact={compact} dense />
-        <div className={TICKET_BUBBLE_SHELL}>
-          <MetaLine
-            item={item}
-            msg={msg}
-            internal={internal}
-            compact={compact}
-            dense
-          />
-          <MessageBody
-            msg={msg}
-            item={item}
-            onOpenPhoto={onOpenPhoto}
-            compact={compact}
-            dense
-          />
-        </div>
-      </div>
+        <MessageBody msg={msg} item={item} onOpenPhoto={onOpenPhoto} />
+      </ConversationMessageCard>
     );
   }
 
-  // Ledger (default) — and non-message rows even when the stream is bubble.
+  // Floor / carrier events (optional merge) — quiet flat row, same mark density.
   return (
-    <div
-      data-stream-row={msg ? 'message' : 'event'}
-      data-stream-shell="ledger"
-      data-internal={internal ? 'true' : undefined}
-      className={cn(
-        'flex gap-2',
-        // Bubble list already owns DISPLAYS_BODY_INSET — vertical pad only.
-        variant === 'bubble'
-          ? 'py-1.5'
-          : compact
-            ? 'px-2.5 py-2'
-            : 'px-4 py-3',
-        // A tint, never a bubble — and never the ONLY carrier of "internal":
-        // the row also says so in words on the meta line.
-        internal && variant === 'ledger' ? 'bg-surface-sunken' : null,
-      )}
-    >
-      <RowMark item={item} compact={compact} />
-
+    <div data-stream-row="event" data-stream-shell="event" className="flex gap-1.5 py-1">
+      <RowMark item={item} />
       <div className="min-w-0 flex-1 stack-tight">
-        <MetaLine item={item} msg={msg} internal={internal} compact={compact} />
-        <MessageBody msg={msg} item={item} onOpenPhoto={onOpenPhoto} compact={compact} />
+        <MetaLine item={item} msg={undefined} />
+        <MessageBody msg={undefined} item={item} onOpenPhoto={onOpenPhoto} />
       </div>
     </div>
   );
@@ -449,8 +307,6 @@ export function MergedRecordStream({
   requesterEmail,
   onOpenPhoto,
   events,
-  compact = false,
-  variant = 'ledger',
 }: {
   ticketId: number;
   requesterId?: number;
@@ -458,20 +314,11 @@ export function MergedRecordStream({
   requesterEmail?: string | null;
   onOpenPhoto?: (url: string) => void;
   /**
-   * The warehouse / carrier spine for this ticket — `SupportContextBundle.timeline`,
-   * already merged, sorted and **collapsed** by `mergeSupportContextTimeline`.
-   * Omit ⇒ messages only (the stream still renders; it just has one spine).
+   * Warehouse / carrier spine — `SupportContextBundle.timeline`, already merged,
+   * sorted and collapsed. Omit ⇒ messages only.
    */
   events?: TimelineItem[];
-  /** Station / carton push — denser chrome. Ledger body stays data; bubble uses {@link TICKET_BUBBLE_BODY}. */
-  compact?: boolean;
-  /**
-   * Row shell. `ledger` = flat selectable/scannable list (default, `/support`).
-   * `bubble` = read-a-conversation on station Ticket Displays.
-   */
-  variant?: MergedRecordStreamVariant;
 }) {
-  const bubble = variant === 'bubble';
   const { data, isLoading, error } = useTicketComments(ticketId);
   const { data: agents = [] } = useZendeskAgents();
   const agentsById = useMemo(
@@ -481,7 +328,6 @@ export function MergedRecordStream({
 
   const comments = useMemo(() => data?.comments ?? [], [data]);
 
-  // Resolve non-agent authors only when the bundle/comments route did not already enrich them.
   const userIds = useMemo(
     () =>
       comments
@@ -518,16 +364,12 @@ export function MergedRecordStream({
       };
     });
 
-    // Messages are never collapsed (see the docblock); `events` arrives already
-    // collapsed from `mergeSupportContextTimeline`.
     return [...zendeskCommentsToTimeline(commentRows), ...(events ?? [])].sort(
       (a, b) => atMs(a.at) - atMs(b.at),
     );
   }, [comments, agentsById, usersById, requesterId, requesterName, requesterEmail, events]);
 
   const [windowSize, setWindowSize] = useState(STREAM_PAGE);
-  // A new ticket restarts at the tail — otherwise arrowing to a short ticket
-  // would keep a previous ticket's expanded window.
   useEffect(() => setWindowSize(STREAM_PAGE), [ticketId]);
 
   const hiddenCount = Math.max(0, rows.length - windowSize);
@@ -540,53 +382,28 @@ export function MergedRecordStream({
 
   if (isLoading) {
     return (
-      <div
-        className={cn(
-          'flex items-center justify-center py-16',
-          bubble && DISPLAYS_BODY_INSET,
-        )}
-      >
+      <div className={cn('flex items-center justify-center py-16', DISPLAYS_BODY_INSET)}>
         <Spinner />
       </div>
     );
   }
   if (error) {
     return (
-      <p
-        className={cn(
-          'text-center text-rose-600',
-          bubble
-            ? cn(DISPLAYS_BODY_INSET, 'py-4 text-role-micro')
-            : compact
-              ? 'px-3 py-4 text-role-micro'
-              : 'px-5 py-6 text-role-caption',
-        )}
-      >
+      <p className={cn(DISPLAYS_BODY_INSET, 'py-4 text-center text-role-micro text-rose-600')}>
         Couldn’t load the conversation.
       </p>
     );
   }
   if (!rows.length) {
     return (
-      <div
-        className={cn(
-          'text-center',
-          bubble
-            ? cn(DISPLAYS_BODY_INSET, 'py-10')
-            : compact
-              ? 'px-3 py-10'
-              : 'px-5 py-16',
-        )}
-      >
-        <p className={cn('text-text-faint', compact ? 'text-role-micro' : 'text-role-caption')}>
+      <div className={cn(DISPLAYS_BODY_INSET, 'py-10 text-center')}>
+        <p className="text-role-micro text-text-faint">
           No messages yet — start the conversation below.
         </p>
       </div>
     );
   }
 
-  // Day-band counts come from the whole (visible) window, so a band never
-  // advertises a total the operator cannot see.
   const dayTotals = new Map<string, number>();
   for (const r of visible) {
     const key = toPSTDateKey(r.at);
@@ -598,18 +415,11 @@ export function MergedRecordStream({
   return (
     <div
       data-testid="support-merged-stream"
-      data-stream-variant={variant}
-      className={cn(
-        bubble ? TICKET_BUBBLE_STREAM : 'divide-y divide-border-hairline',
-      )}
+      data-stream-shell="bubble"
+      className={TICKET_BUBBLE_STREAM}
     >
       {hiddenCount > 0 ? (
-        <div
-          className={cn(
-            'flex justify-center',
-            bubble ? 'py-2' : compact ? 'px-2.5 py-2' : 'px-4 py-3',
-          )}
-        >
+        <div className="flex justify-center py-2">
           <Button
             size="sm"
             variant="ghost"
@@ -630,16 +440,10 @@ export function MergedRecordStream({
               <DateGroupHeader
                 date={dayKey}
                 total={dayTotals.get(dayKey) ?? 0}
-                // Bubble list already owns DISPLAYS_BODY_INSET — drop QUEUE_ROW.px.
-                className={bubble ? 'px-0' : undefined}
+                className={TICKET_BUBBLE_DAY_HEADER}
               />
             ) : null}
-            <StreamRow
-              item={item}
-              onOpenPhoto={onOpenPhoto}
-              compact={compact}
-              variant={variant}
-            />
+            <StreamRow item={item} onOpenPhoto={onOpenPhoto} />
           </div>
         );
       })}

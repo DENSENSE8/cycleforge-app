@@ -12,6 +12,10 @@ import {
   type TriageRow,
 } from '@/components/po-triage/types';
 import { Section, Row, FieldRow } from './details-primitives';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 interface ExtractTabProps {
   detail: TriageDetail;
@@ -150,7 +154,7 @@ export function ExtractTab({ detail, rowId, patchTriage, onRowUpdated }: Extract
           onChange={(e) => setZohoUploaded(e.target.value)}
           onBlur={onZohoBlur}
           placeholder="e.g. PO-44821"
-          className="w-full rounded-md border border-border-soft bg-surface-card inset-cozy text-role-caption outline-none focus:border-blue-500"
+          className={cn("w-full rounded-md border border-border-soft bg-surface-card inset-cozy text-role-caption", focusRing('field', 'accent'))}
         />
       </Section>
 
@@ -161,7 +165,7 @@ export function ExtractTab({ detail, rowId, patchTriage, onRowUpdated }: Extract
           onChange={(e) => setNotes(e.target.value)}
           onBlur={onNotesBlur}
           placeholder="Anything the next reviewer needs to know…"
-          className="w-full resize-none rounded-md border border-border-soft bg-surface-card inset-cozy text-role-caption outline-none focus:border-blue-500"
+          className={cn("w-full resize-none rounded-md border border-border-soft bg-surface-card inset-cozy text-role-caption", focusRing('field', 'accent'))}
         />
       </Section>
     </div>

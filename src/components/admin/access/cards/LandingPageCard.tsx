@@ -8,6 +8,10 @@
  */
 
 import { APP_SIDEBAR_NAV } from '@/lib/sidebar-navigation';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 // Mirrors the pages that exist under src/app/m/ — keep in sync.
 const MOBILE_LANDING_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
@@ -76,7 +80,7 @@ export function LandingPageCard({
             value={desktopPath ?? ''}
             onChange={(e) => onSave({ defaultHomePath: e.target.value === '' ? null : e.target.value })}
             disabled={busy}
-            className="h-9 rounded-lg border border-border-soft bg-surface-card px-2 text-sm text-text-default outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15 disabled:opacity-60"
+            className={cn("h-9 rounded-lg border border-border-soft bg-surface-card px-2 text-sm text-text-default transition disabled:opacity-60", focusRing('field', 'accent'))}
           >
             <option value="">Use role default ({desktopDefault})</option>
             {desktopList.map((o) => (
@@ -95,7 +99,7 @@ export function LandingPageCard({
             value={mobilePath ?? ''}
             onChange={(e) => onSave({ defaultHomePathMobile: e.target.value === '' ? null : e.target.value })}
             disabled={busy}
-            className="h-9 rounded-lg border border-border-soft bg-surface-card px-2 text-sm text-text-default outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15 disabled:opacity-60"
+            className={cn("h-9 rounded-lg border border-border-soft bg-surface-card px-2 text-sm text-text-default transition disabled:opacity-60", focusRing('field', 'accent'))}
           >
             <option value="">Use role default ({mobileDefault})</option>
             {mobileList.map((o) => (

@@ -73,8 +73,6 @@ export function TicketDisplayHost({
               hideRequesterBand={false}
               // Messages only — floor spine lives on the Timeline Displays tab.
               mergeFloorTimeline={false}
-              // Station Ticket Displays = read + reply → conversation bubbles.
-              streamVariant="bubble"
               showReplyPresets={showReplyPresets}
             />
           </div>

@@ -81,6 +81,10 @@ import { useClaimTicketReply } from '@/components/receiving/workspace/claim/hook
 import type { FiledTicket } from '@/components/receiving/workspace/claim/claim-types';
 import { refreshDomains } from '@/lib/refresh/bus';
 import { REFRESH_BUNDLES } from '@/lib/refresh/domains';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
 
@@ -429,7 +433,7 @@ function OrderSearchRow({
             }}
             placeholder="Return #…"
             disabled={disabled}
-            className="min-h-11 w-full min-w-0 rounded-none border-0 bg-surface-card px-3 text-role-caption font-semibold text-text-default ring-1 ring-inset ring-border-soft placeholder:text-text-faint focus:outline-none focus:ring-2 focus:ring-border-soft"
+            className={cn("min-h-11 w-full min-w-0 rounded-none border-0 bg-surface-card px-3 text-role-caption font-semibold text-text-default ring-1 ring-inset ring-border-soft placeholder:text-text-faint", focusRing('field', 'neutral'))}
           />
         </div>
         {/* Rightmost search icon — runs the read-only serial compare. */}
@@ -1003,7 +1007,7 @@ function TicketCreateInline({
         onChange={(e) => setBody(e.target.value)}
         rows={5}
         placeholder="Ticket details…"
-        className="block w-full resize-y rounded-none border border-border-default bg-surface-card inset-field text-role-caption font-medium leading-snug text-text-default outline-none focus:border-border-emphasis focus:ring-2 focus:ring-text-soft/20"
+        className={cn("block w-full resize-y rounded-none border border-border-default bg-surface-card inset-field text-role-caption font-medium leading-snug text-text-default", focusRing('field', 'neutral'))}
       />
       <div className="flex items-center justify-between gap-2">
         <p className="text-role-micro font-semibold text-text-faint">

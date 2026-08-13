@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { ShippedOrder } from '@/lib/neon/orders-queries';
-import { buildShippedCopyInfo } from '@/utils/copyallshipped';
 import { useDeleteOrderRow } from '@/hooks';
 import { useOrderFieldSave } from '@/hooks/useOrderFieldSave';
 import type { ShippedActiveSection } from '@/components/shipped/ShippedDetailsPanelContent';
@@ -246,27 +245,4 @@ export function useShippedDeletion(shipped: ShippedOrder, onUpdate: () => void) 
   }, [shipped, isDeleteArmed, deleteOrderMutation, onUpdate]);
 
   return { isDeleteArmed, isDeleting: deleteOrderMutation.isPending, handleDelete };
-}
-
-/** Transient "copied ✓" feedback for the copy-all and copy-order-id actions. */
-export function useShippedCopyActions(shipped: ShippedOrder, orderIdDisplay: string) {
-  const [copiedAll, setCopiedAll] = useState(false);
-  const [copiedOrderId, setCopiedOrderId] = useState(false);
-
-  const handleCopyAll = useCallback(() => {
-    const allInfo = buildShippedCopyInfo(shipped);
-    navigator.clipboard.writeText(allInfo);
-    setCopiedAll(true);
-    setTimeout(() => setCopiedAll(false), 2000);
-  }, [shipped]);
-
-  const handleCopyOrderId = useCallback(() => {
-    const value = orderIdDisplay.trim();
-    if (!value) return;
-    navigator.clipboard.writeText(value);
-    setCopiedOrderId(true);
-    setTimeout(() => setCopiedOrderId(false), 1500);
-  }, [orderIdDisplay]);
-
-  return { copiedAll, copiedOrderId, handleCopyAll, handleCopyOrderId };
 }

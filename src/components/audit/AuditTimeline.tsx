@@ -11,6 +11,8 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { Panel } from '@/design-system/primitives';
+
 
 interface EntityAuditEvent {
   id: string;
@@ -168,9 +170,9 @@ export function AuditTimeline(props: Props) {
       )}
 
       {loading && (
-        <div className="rounded-lg border border-border-soft bg-surface-card p-3 text-xs text-text-soft">
+        <Panel radius="lg" padding="sm" className="text-xs text-text-soft">
           Loading history…
-        </div>
+        </Panel>
       )}
 
       {err && (
@@ -180,9 +182,9 @@ export function AuditTimeline(props: Props) {
       )}
 
       {!loading && !err && events.length === 0 && (
-        <div className="rounded-lg border border-border-soft bg-surface-card p-3 text-xs text-text-faint">
+        <Panel radius="lg" padding="sm" className="text-xs text-text-faint">
           No history yet.
-        </div>
+        </Panel>
       )}
 
       {!loading && !err && events.length > 0 && (

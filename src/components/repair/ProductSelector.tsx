@@ -1,11 +1,36 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight } from '../Icons';
+import { Check, ChevronLeft, ChevronRight } from '../Icons';
 import { Button, IconButton, TextField } from '@/design-system/primitives';
 import { StackedRowIdentity } from '@/components/ui/StackedRowIdentity';
 import { cornerClass } from '@/design-system/tokens/radius';
-import { KIOSK_PANE_FOOTER_BAND } from '@/app/kiosk/kiosk-chrome';
+import {
+  KIOSK_META,
+  KIOSK_PANE_FOOTER_BAND,
+  KIOSK_PANE_HEADER_BAND,
+  KIOSK_PANE_HEADER_TITLE,
+  KIOSK_TILE_TITLE,
+} from '@/app/kiosk/kiosk-chrome';
+import {
+  KIOSK_POS_BROWSE_SCROLL,
+  KIOSK_POS_CANVAS,
+  KIOSK_POS_CARD,
+  KIOSK_POS_CARD_CAPTION,
+  KIOSK_POS_CARD_CHECK,
+  KIOSK_POS_CARD_SELECTED,
+  KIOSK_POS_CATEGORY,
+  KIOSK_POS_CATEGORY_ACTIVE,
+  KIOSK_POS_CATEGORY_IDLE,
+  KIOSK_POS_CATEGORY_LABEL,
+  KIOSK_POS_CATEGORY_STACK,
+  KIOSK_POS_GRID,
+  KIOSK_POS_IMAGE_WELL,
+  KIOSK_POS_SEARCH_HOST,
+  KIOSK_POS_SEARCH_INPUT,
+  KIOSK_POS_SIDEBAR,
+  KIOSK_POS_SIDEBAR_BODY,
+} from '@/app/kiosk/kiosk-pos-surface';
 import { cn } from '@/utils/_cn';
 
 export interface ProductSelection {
@@ -45,13 +70,15 @@ interface ProductSelectorProps {
    */
   flowInPage?: boolean;
   /**
-   * `flush` = kiosk V2 edge-to-edge catalog (square chrome, full-bleed rows).
+   * `flush` = stacked edge-to-edge chrome (square rows). Ignored when
+   * `layout="kiosk-split"` — that path uses the floating-card POS surface.
    * Staff intake keeps the soft `default` cards.
    */
   appearance?: 'default' | 'flush';
   /**
    * `stacked` = staff / legacy single column.
-   * `kiosk-split` = left category+cart sidebar · right browse (or `stageContent`).
+   * `kiosk-split` = left category+cart sidebar · right browse (or `stageContent`)
+   * with Square/Shopify floating-card POS chrome (`kiosk-pos-surface`).
    */
   layout?: 'stacked' | 'kiosk-split';
   /** Browse vs checkout — checkout replaces the products stage with `stageContent`. */
@@ -66,6 +93,14 @@ interface ProductSelectorProps {
   stageContent?: React.ReactNode;
   /** Optional title band for the browse stage (right). */
   browseHeader?: React.ReactNode;
+  /**
+   * Controlled catalog search. The kiosk spine + browse bar share this one
+   * engine — do not add a second index. Uncontrolled when omitted (staff).
+   */
+  searchQuery?: string;
+  onSearchQueryChange?: (value: string) => void;
+  /** Hide the browse-stage search when the expanded spine hosts it. */
+  hideBrowseSearch?: boolean;
 }
 
 interface CategoryNode {
@@ -134,9 +169,15 @@ export function ProductSelector({
   sidebarHeader,
   stageContent,
   browseHeader,
+  searchQuery,
+  onSearchQueryChange,
+  hideBrowseSearch = false,
 }: ProductSelectorProps) {
-  const flush = appearance === 'flush';
   const kioskSplit = layout === 'kiosk-split';
+  /** Floating-card POS chrome — only the kiosk-split catalog path. */
+  const pos = kioskSplit;
+  /** Stacked flush chrome — staff/legacy; never when POS split is active. */
+  const flush = appearance === 'flush' && !pos;
   const [categories, setCategories] = useState<CategoryNode[]>([]);
   const [products, setProducts] = useState<EcwidProduct[]>([]);
   const [rootName, setRootName] = useState('Bose Repair Service');
@@ -145,7 +186,13 @@ export function ProductSelector({
   const [loadingCategories, setLoadingCategories] = useState(true);
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [search, setSearch] = useState('');
+  const [internalSearch, setInternalSearch] = useState('');
+  const searchControlled = searchQuery !== undefined;
+  const search = searchControlled ? searchQuery : internalSearch;
+  const setSearch = (value: string) => {
+    if (!searchControlled) setInternalSearch(value);
+    onSearchQueryChange?.(value);
+  };
   const [internalItems, setInternalItems] = useState<SelectedItem[]>([]);
   const selectedItems = controlledItems ?? internalItems;
   const setSelectedItems = (updater: SelectedItem[] | ((prev: SelectedItem[]) => SelectedItem[])) => {
@@ -200,9 +247,9 @@ export function ProductSelector({
     setProductsOffset(0);
     setHasMoreProducts(false);
     setSearch('');
-    // Root clears the browse grid; drills keep prior products until the next
-    // product fetch replaces them (no empty flash on the right stage).
-    if (!parentId) setProducts([]);
+    // Root clears the browse grid on staff stacked; kiosk-split keeps the prior
+    // grid until fetchAllProducts replaces it (no empty flash on the right stage).
+    if (!parentId && !kioskSplit) setProducts([]);
 
     try {
       const query = parentId ? `?parentId=${encodeURIComponent(parentId)}` : '';
@@ -227,9 +274,16 @@ export function ProductSelector({
         ...prev,
         [categoryLevelKey(parentId)]: rows,
       }));
+      const alreadyHydrated = categoriesHydratedRef.current;
       categoriesHydratedRef.current = true;
 
-      if (parentId) void fetchProducts(parentId, 0, false);
+      if (parentId) {
+        void fetchProducts(parentId, 0, false);
+      } else if (kioskSplit && alreadyHydrated) {
+        // Mount already started the root catalog fetch in parallel. Subsequent
+        // returns to root still refresh the grid.
+        void fetchAllProducts(0, false);
+      }
     } catch (err) {
       if (gen !== categoryFetchGen.current) return;
       setError(err instanceof Error ? err.message : 'Failed to load categories');
@@ -297,7 +351,12 @@ export function ProductSelector({
     }
   };
 
-  useEffect(() => { void fetchCategoryLevel(null); }, []);
+  useEffect(() => {
+    // Don't block first paint on the category waterfall — rail + search +
+    // skeleton grid paint immediately; the catalog fills in when ready.
+    if (kioskSplit) void fetchAllProducts(0, false);
+    void fetchCategoryLevel(null);
+  }, []);
 
   // Lazy-load the full catalog once, on the first root-level keystroke. The
   // server response is Redis-cached, so this is a single cheap round trip and
@@ -410,14 +469,21 @@ export function ProductSelector({
 
   const categoryRowClass = (opts?: { active?: boolean; depth?: number }) =>
     cn(
-      'flex w-full items-center justify-between gap-3 text-left transition-all',
-      flush
+      pos
         ? cn(
-            'bg-surface-card px-4 py-3.5 hover:bg-surface-sunken active:bg-surface-sunken',
-            cornerClass('flush'),
-            opts?.active && 'bg-surface-sunken',
+            KIOSK_POS_CATEGORY,
+            opts?.active ? KIOSK_POS_CATEGORY_ACTIVE : KIOSK_POS_CATEGORY_IDLE,
           )
-        : 'rounded-xl border border-border-soft bg-surface-card p-3.5 hover:border-blue-300 hover:bg-blue-50 active:bg-blue-100',
+        : cn(
+            'flex w-full items-center justify-between gap-3 text-left transition-all',
+            flush
+              ? cn(
+                  'bg-surface-card px-4 py-3.5 hover:bg-surface-sunken active:bg-surface-sunken',
+                  cornerClass('flush'),
+                  opts?.active && 'bg-surface-sunken',
+                )
+              : 'rounded-xl border border-border-soft bg-surface-card p-3.5 hover:border-blue-300 hover:bg-blue-50 active:bg-blue-100',
+          ),
     );
 
   const filterLevelCategories = (rows: CategoryNode[]) => {
@@ -449,15 +515,13 @@ export function ProductSelector({
           <ChevronRight className="h-4 w-4 flex-shrink-0 text-text-faint" />
         </button>
       ))}
-      {isAtRoot && (
+      {isAtRoot && !kioskSplit && (
         // ds-raw-button: full-width nav row card (title + chevron), not a Button shape
+        // Staff stacked only — kiosk-split loads all products on the right stage.
         <button
           type="button"
           onClick={() => void fetchAllProducts()}
-          className={cn(
-            categoryRowClass({ active: showAllProducts, depth: nested ? 1 : 0 }),
-            flush && !showAllProducts && 'bg-surface-sunken hover:bg-blue-50 active:bg-blue-50',
-          )}
+          className={categoryRowClass({ active: showAllProducts, depth: nested ? 1 : 0 })}
           style={nested && flush ? { paddingLeft: '32px' } : undefined}
         >
           <span className="truncate text-xs font-semibold text-text-default">
@@ -482,8 +546,12 @@ export function ProductSelector({
     return (
       <div
         className={cn(
-          'divide-y divide-border-hairline',
-          depth > 0 && 'border-t border-border-hairline bg-surface-sunken/40',
+          pos
+            ? cn(KIOSK_POS_CATEGORY_STACK, depth > 0 && 'pl-2')
+            : cn(
+                'divide-y divide-border-hairline',
+                depth > 0 && 'border-t border-border-hairline bg-surface-sunken/40',
+              ),
         )}
       >
         {siblings.map((cat) => {
@@ -492,15 +560,30 @@ export function ProductSelector({
           const childKey = cat.id;
           const hasCachedChildren = (categoryLevelsByParent[childKey]?.length ?? 0) > 0;
           return (
-            <div key={cat.id}>
+            <div key={cat.id} className={pos ? KIOSK_POS_CATEGORY_STACK : undefined}>
               {/* ds-raw-button: accordion sibling tab — stays visible when another sibling is selected */}
               <button
                 type="button"
                 onClick={() => void fetchCategoryLevel(cat.id)}
                 className={categoryRowClass({ active: onPath || isCurrent })}
-                style={depth > 0 ? { paddingLeft: `${16 + depth * 12}px` } : undefined}
+                style={
+                  depth > 0 && !pos
+                    ? { paddingLeft: `${16 + depth * 12}px` }
+                    : depth > 0 && pos
+                      ? { paddingLeft: `${12 + depth * 12}px` }
+                      : undefined
+                }
               >
-                <span className="truncate text-xs font-semibold text-text-default">
+                {pos && (onPath || isCurrent) && (
+                  <Check className="h-4 w-4 shrink-0 text-text-default" aria-hidden />
+                )}
+                <span
+                  className={
+                    pos
+                      ? KIOSK_POS_CATEGORY_LABEL
+                      : cn('min-w-0 flex-1 truncate text-text-default', 'text-xs font-semibold')
+                  }
+                >
                   {cat.name}
                 </span>
                 {(onPath || hasCachedChildren) && (
@@ -519,48 +602,42 @@ export function ProductSelector({
             </div>
           );
         })}
-        {parentKey === CATEGORY_ROOT_KEY && depth === 0 && (
-          // ds-raw-button: All Repairs stays a peer tab of root siblings
-          <button
-            type="button"
-            onClick={() => void fetchAllProducts()}
-            className={cn(
-              categoryRowClass({ active: showAllProducts }),
-              flush && !showAllProducts && 'bg-surface-sunken hover:bg-blue-50 active:bg-blue-50',
-            )}
-          >
-            <span className="truncate text-xs font-semibold text-text-default">
-              Pick Your Repair - All Repairs
-            </span>
-            <ChevronRight className="h-4 w-4 flex-shrink-0 text-text-faint" />
-          </button>
-        )}
       </div>
     );
   };
 
   /** Path accordion — selected trail expands; sibling tabs at each level stay visible. */
   const renderCategoryAccordion = () => (
-    <div className="gap-0" data-kiosk-catalog-sidebar>
-      <p
+    <div className={pos ? KIOSK_POS_CATEGORY_STACK : 'gap-0'} data-kiosk-catalog-sidebar>
+      <div
         className={cn(
-          'text-role-eyebrow uppercase tracking-[0.15em] text-text-faint',
-          flush && 'border-b border-border-hairline px-4 py-2',
+          pos
+            ? KIOSK_POS_CATEGORY_STACK
+            : 'divide-y divide-border-hairline border-b border-border-hairline',
         )}
       >
-        Categories
-      </p>
-      <div className="divide-y divide-border-hairline border-b border-border-hairline">
         {/* Root always visible — tap resets to top level; does not clear the sibling cache */}
         {/* ds-raw-button: accordion ancestor row */}
         <button
           type="button"
           onClick={() => void fetchCategoryLevel(null)}
           className={categoryRowClass({
-            active: isAtRoot && !showAllProducts,
+            // Kiosk root keeps the all-products stage; treat that as selected.
+            active: isAtRoot && (!showAllProducts || kioskSplit),
           })}
         >
-          <span className="truncate text-xs font-semibold text-text-default">{rootName}</span>
+          {pos && isAtRoot && (!showAllProducts || kioskSplit) && (
+            <Check className="h-4 w-4 shrink-0 text-text-default" aria-hidden />
+          )}
+          <span
+            className={
+              pos
+                ? KIOSK_POS_CATEGORY_LABEL
+                : cn('min-w-0 flex-1 truncate text-text-default', 'text-xs font-semibold')
+            }
+          >
+            {rootName}
+          </span>
           {(breadcrumbs.length > 1 || Object.keys(categoryLevelsByParent).length > 0) && (
             <ChevronRight className="h-4 w-4 flex-shrink-0 rotate-90 text-text-faint" />
           )}
@@ -604,9 +681,11 @@ export function ProductSelector({
       ref={searchInputHostRef}
       className={cn(
         'flex items-stretch',
-        flush
-          ? 'gap-0 border-b border-border-hairline bg-surface-sunken'
-          : 'items-center gap-2',
+        pos
+          ? KIOSK_POS_SEARCH_HOST
+          : flush
+            ? 'gap-0 border-b border-border-hairline bg-surface-sunken'
+            : 'items-center gap-2',
       )}
     >
       {!kioskSplit && (
@@ -635,6 +714,7 @@ export function ProductSelector({
         className="flex-1"
         tone="blue"
         appearance={flush ? 'flush' : 'default'}
+        inputClassName={pos ? KIOSK_POS_SEARCH_INPUT : undefined}
       />
     </div>
   );
@@ -642,25 +722,53 @@ export function ProductSelector({
   const renderProductsGrid = () => (
     <>
       {(loadingProducts || loadingRootSearch || filteredProducts.length > 0) && (
-        <div className={flush ? 'gap-0' : 'space-y-2'} data-kiosk-product-browse>
-          <p
-            className={cn(
-              'text-role-eyebrow uppercase tracking-[0.15em] text-text-faint',
-              flush && 'border-b border-border-hairline px-4 py-2',
+        <div
+          className={cn(pos ? 'space-y-4' : flush ? 'gap-0' : 'space-y-2')}
+          data-kiosk-product-browse
+        >
+          {!pos && (
+            <p
+              className={cn(
+                'text-role-eyebrow uppercase tracking-[0.15em] text-text-faint',
+                flush && 'border-b border-border-hairline px-4 py-2',
+              )}
+            >
+              {loadingProducts || loadingRootSearch
+                ? filteredProducts.length > 0
+                  ? 'Updating products…'
+                  : 'Loading products...'
+                : 'Products'}
+            </p>
+          )}
+          {pos &&
+            (loadingProducts || loadingRootSearch) &&
+            filteredProducts.length === 0 && (
+              <div
+                className={KIOSK_POS_GRID}
+                style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(148px, 1fr))' }}
+                aria-busy="true"
+                aria-label="Loading products"
+              >
+                {Array.from({ length: 8 }, (_, i) => (
+                  <div key={i} className={KIOSK_POS_CARD} aria-hidden>
+                    <div className={KIOSK_POS_IMAGE_WELL} />
+                    <div className={KIOSK_POS_CARD_CAPTION}>
+                      <div className="h-4 w-3/4 bg-surface-sunken" />
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
-          >
-            {loadingProducts || loadingRootSearch
-              ? filteredProducts.length > 0
-                ? 'Updating products…'
-                : 'Loading products...'
-              : 'Products'}
-          </p>
           {/* Keep the prior grid mounted while a fetch is in flight — never blank the stage. */}
           {filteredProducts.length > 0 && (
             <div
               className={cn(
-                flush ? 'grid gap-0 border-b border-border-hairline' : 'grid gap-2',
-                (loadingProducts || loadingRootSearch) && 'opacity-70',
+                pos
+                  ? KIOSK_POS_GRID
+                  : flush
+                    ? 'grid gap-0 border-b border-border-hairline'
+                    : 'grid gap-2',
+                (loadingProducts || loadingRootSearch) && 'opacity-90',
               )}
               style={{
                 gridTemplateColumns: 'repeat(auto-fill, minmax(148px, 1fr))',
@@ -674,25 +782,35 @@ export function ProductSelector({
                     key={product.id}
                     type="button"
                     onClick={() => toggleProduct(product)}
-                    className={cn(
-                      'relative flex flex-col overflow-hidden text-left transition-all',
-                      flush
-                        ? cn(
-                            'border border-border-hairline',
-                            cornerClass('flush'),
-                            selected
-                              ? 'border-blue-500 bg-blue-50'
-                              : 'hover:bg-surface-sunken',
-                          )
+                    className={
+                      pos
+                        ? cn(KIOSK_POS_CARD, selected && KIOSK_POS_CARD_SELECTED)
                         : cn(
-                            'rounded-xl border-2',
-                            selected
-                              ? 'border-blue-500 shadow-md shadow-blue-500/20'
-                              : 'border-border-soft hover:border-blue-300 hover:shadow-sm',
-                          ),
-                    )}
+                            'relative flex flex-col overflow-hidden text-left transition-all',
+                            flush
+                              ? cn(
+                                  'border border-border-hairline',
+                                  cornerClass('flush'),
+                                  selected
+                                    ? 'border-blue-500 bg-blue-50'
+                                    : 'hover:bg-surface-sunken',
+                                )
+                              : cn(
+                                  'rounded-xl border-2',
+                                  selected
+                                    ? 'border-blue-500 shadow-md shadow-blue-500/20'
+                                    : 'border-border-soft hover:border-blue-300 hover:shadow-sm',
+                                ),
+                          )
+                    }
                   >
-                    <div className="relative aspect-square w-full flex-shrink-0 overflow-hidden bg-surface-sunken">
+                    <div
+                      className={
+                        pos
+                          ? KIOSK_POS_IMAGE_WELL
+                          : 'relative aspect-square w-full flex-shrink-0 overflow-hidden bg-surface-sunken'
+                      }
+                    >
                       {product.thumbnailUrl ? (
                         <img
                           src={product.thumbnailUrl}
@@ -700,19 +818,31 @@ export function ProductSelector({
                           className="h-full w-full object-cover"
                           loading="lazy"
                           decoding="async"
+                          width={400}
+                          height={400}
                         />
                       ) : (
-                        <div className="flex h-full w-full items-center justify-center text-role-eyebrow uppercase tracking-widest text-text-faint">
+                        <div
+                          className={cn(
+                            'flex h-full w-full items-center justify-center uppercase tracking-widest',
+                            KIOSK_META,
+                            'text-text-faint',
+                          )}
+                        >
                           No Image
                         </div>
                       )}
 
                       {selected && (
                         <div
-                          className={cn(
-                            'absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center bg-blue-600',
-                            flush ? cornerClass('flush') : 'rounded-full',
-                          )}
+                          className={
+                            pos
+                              ? KIOSK_POS_CARD_CHECK
+                              : cn(
+                                  'absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center bg-blue-600',
+                                  flush ? cornerClass('flush') : 'rounded-full',
+                                )
+                          }
                         >
                           <svg className="h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
@@ -721,23 +851,44 @@ export function ProductSelector({
                       )}
                     </div>
 
-                    <div className={`flex flex-1 flex-col justify-between gap-1.5 p-2.5 ${selected ? 'bg-blue-600' : 'bg-surface-card'}`}>
-                      <p className={`text-xs font-semibold leading-tight ${selected ? 'text-white' : 'text-text-default'}`}>
-                        {product.name}
-                      </p>
-                      <div className="flex items-end justify-between gap-1">
-                        <span className={`text-sm font-semibold ${
-                          selected ? 'text-blue-100' : product.price !== null ? 'text-emerald-600' : 'text-text-faint'
-                        }`}>
-                          {product.price !== null ? `$${product.price.toFixed(2)}` : '--'}
-                        </span>
-                        {product.sku && (
-                          <span className={`max-w-[55%] truncate text-right text-role-eyebrow font-semibold ${selected ? 'text-blue-200' : 'text-text-faint'}`}>
-                            {product.sku}
+                    {pos ? (
+                      <div className={KIOSK_POS_CARD_CAPTION}>
+                        <p className={KIOSK_TILE_TITLE}>{product.name}</p>
+                        <div className="flex items-end justify-between gap-1">
+                          <span
+                            className={cn(
+                              'text-sm font-semibold',
+                              product.price !== null ? 'text-emerald-600' : 'text-text-faint',
+                            )}
+                          >
+                            {product.price !== null ? `$${product.price.toFixed(2)}` : '--'}
                           </span>
-                        )}
+                          {product.sku && (
+                            <span className={cn('max-w-[55%] truncate text-right', KIOSK_META)}>
+                              {product.sku}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                    </div>
+                    ) : (
+                      <div className={`flex flex-1 flex-col justify-between gap-1.5 p-2.5 ${selected ? 'bg-blue-600' : 'bg-surface-card'}`}>
+                        <p className={`text-xs font-semibold leading-tight ${selected ? 'text-white' : 'text-text-default'}`}>
+                          {product.name}
+                        </p>
+                        <div className="flex items-end justify-between gap-1">
+                          <span className={`text-sm font-semibold ${
+                            selected ? 'text-blue-100' : product.price !== null ? 'text-emerald-600' : 'text-text-faint'
+                          }`}>
+                            {product.price !== null ? `$${product.price.toFixed(2)}` : '--'}
+                          </span>
+                          {product.sku && (
+                            <span className={`max-w-[55%] truncate text-right text-role-eyebrow font-semibold ${selected ? 'text-blue-200' : 'text-text-faint'}`}>
+                              {product.sku}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </button>
                 );
               })}
@@ -750,7 +901,10 @@ export function ProductSelector({
               size="sm"
               onClick={loadMoreProducts}
               disabled={loadingMoreProducts}
-              className={cn('w-full', flush ? cn('mt-0', cornerClass('flush')) : 'mt-2')}
+              className={cn(
+                'w-full',
+                pos ? 'mt-2' : flush ? cn('mt-0', cornerClass('flush')) : 'mt-2',
+              )}
             >
               {loadingMoreProducts ? 'Loading More...' : `Load ${PRODUCT_PAGE_SIZE} More`}
             </Button>
@@ -762,9 +916,11 @@ export function ProductSelector({
         <div
           className={cn(
             'text-xs font-semibold text-amber-700',
-            flush
-              ? 'border-b border-border-hairline bg-amber-50 px-4 py-3.5'
-              : 'rounded-xl border border-amber-200 bg-amber-50 p-4',
+            pos
+              ? 'rounded-xl bg-amber-50 px-4 py-3.5'
+              : flush
+                ? 'border-b border-border-hairline bg-amber-50 px-4 py-3.5'
+                : 'rounded-xl border border-amber-200 bg-amber-50 p-4',
           )}
         >
           {search.trim() ? 'No results match your search.' : 'No items found at this level.'}
@@ -775,12 +931,14 @@ export function ProductSelector({
 
   const renderCartTray = (opts?: { withActions?: boolean }) => {
     if (selectedItems.length === 0 && !opts?.withActions) return null;
-    const kioskActions = Boolean(opts?.withActions && flush);
+    // Instrument floor stays flush on POS split and stacked-flush alike.
+    const instrument = pos || flush;
+    const kioskActions = Boolean(opts?.withActions && instrument);
     return (
       // Selected items tray — StackedRowIdentity (title → SKU keys)
       <div
         className={cn(
-          flush
+          instrument
             ? cn('mt-auto shrink-0', !kioskActions && 'border-t border-border-soft', cornerClass('flush'))
             : 'overflow-hidden rounded-xl bg-blue-600 p-3 shadow-lg shadow-blue-500/20',
         )}
@@ -789,7 +947,7 @@ export function ProductSelector({
         {selectedItems.length > 0 && (
           <div
             className={cn(
-              flush
+              instrument
                 ? cn(
                     'divide-y divide-border-hairline border-t border-border-soft bg-surface-card',
                     kioskActions && 'max-h-40 overflow-y-auto',
@@ -801,7 +959,7 @@ export function ProductSelector({
               <div
                 key={item.id}
                 className={cn(
-                  flush
+                  instrument
                     ? 'bg-surface-card px-4 py-2.5'
                     : 'rounded-lg bg-surface-card px-3 py-2',
                 )}
@@ -829,7 +987,7 @@ export function ProductSelector({
                         onClick={() => removeItem(item.id)}
                         className={cn(
                           'flex h-5 w-5 items-center justify-center bg-surface-sunken transition-colors hover:bg-red-100',
-                          flush ? cornerClass('flush') : 'rounded-md',
+                          instrument ? cornerClass('flush') : 'rounded-md',
                         )}
                         ariaLabel="Remove item"
                         icon={
@@ -1005,6 +1163,15 @@ export function ProductSelector({
 
   // ─── Kiosk split: left sidebar (categories + cart) · right stage (browse | checkout)
   if (kioskSplit) {
+    const isSalesCatalog = apiBasePath.includes('/sales');
+    const browseTitle =
+      currentCategoryId && breadcrumbs.length > 0
+        ? breadcrumbs[breadcrumbs.length - 1]?.name ??
+          (isSalesCatalog ? 'All items' : 'All repairs')
+        : isSalesCatalog
+          ? 'All items'
+          : 'All repairs';
+
     return (
       <div
         className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden md:flex-row"
@@ -1012,22 +1179,28 @@ export function ProductSelector({
       >
         <aside
           className={cn(
-            'flex min-h-0 flex-col border-border-soft bg-surface-card',
-            'max-h-[40vh] w-full border-b md:max-h-none md:w-1/3 md:min-w-80 md:max-w-md md:border-b-0 md:border-r',
+            'flex min-h-0 flex-col border-border-soft',
+            KIOSK_POS_CANVAS,
+            KIOSK_POS_SIDEBAR,
           )}
         >
           {sidebarHeader}
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
             {/* Categories always stay on screen — cart/footer may not eat the whole column. */}
-            <div className="min-h-0 flex-1 overflow-y-auto p-0 [min-height:9rem]">
+            <div
+              className={cn(
+                'min-h-0 flex-1 overflow-y-auto [min-height:9rem]',
+                KIOSK_POS_SIDEBAR_BODY,
+              )}
+            >
               {/* Cold start only — never replace a hydrated accordion with Loading… */}
               {loading && !categoriesHydratedRef.current && (
-                <div className="border-b border-border-hairline px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-text-faint">
+                <div className="px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-text-faint">
                   Loading...
                 </div>
               )}
               {error && (
-                <div className="border-b border-border-hairline bg-red-50 px-4 py-3.5 text-xs font-semibold text-red-700">
+                <div className="rounded-lg bg-red-50 px-4 py-3.5 text-xs font-semibold text-red-700">
                   {error}
                 </div>
               )}
@@ -1038,14 +1211,18 @@ export function ProductSelector({
           </div>
         </aside>
 
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-surface-canvas">
+        <div className={cn('flex min-h-0 min-w-0 flex-1 flex-col', KIOSK_POS_CANVAS)}>
           {catalogPhase === 'checkout' && stageContent ? (
             stageContent
           ) : (
             <>
-              {browseHeader}
-              <div className="min-h-0 flex-1 overflow-y-auto p-0">
-                {renderSearchBar()}
+              {browseHeader ?? (
+                <div className={KIOSK_PANE_HEADER_BAND}>
+                  <h2 className={KIOSK_PANE_HEADER_TITLE}>{browseTitle}</h2>
+                </div>
+              )}
+              <div className={KIOSK_POS_BROWSE_SCROLL}>
+                {!hideBrowseSearch && renderSearchBar()}
                 {renderProductsGrid()}
               </div>
             </>

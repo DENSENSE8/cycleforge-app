@@ -3,6 +3,10 @@
 import type { ReactNode } from 'react';
 import { Loader2 } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 /** Minimal shape a legend needs from a state-meta map (dot color + tooltip copy). */
 export interface StatusLegendMeta {
@@ -84,7 +88,7 @@ export function StatusLegend<K extends string>({
       {onSelectAll ? (
         <HoverTooltip
           label={allActive ? 'Showing all · click a status to filter' : 'Show all statuses'}
-          className="inline-flex shrink-0 rounded outline-none focus-visible:ring-2 focus-visible:ring-blue-400/40"
+          className={cn("inline-flex shrink-0 rounded", focusRing('control', 'accent'))}
         >
           <button
             type="button"
@@ -131,7 +135,7 @@ export function StatusLegend<K extends string>({
           <HoverTooltip
             key={state}
             label={`${m.label} — ${m.description}${interactive ? (active ? ' · click to clear' : ' · click to filter') : ''}`}
-            className="inline-flex shrink-0 rounded outline-none focus-visible:ring-2 focus-visible:ring-blue-400/40"
+            className={cn("inline-flex shrink-0 rounded", focusRing('control', 'accent'))}
           >
             {interactive ? (
               <button

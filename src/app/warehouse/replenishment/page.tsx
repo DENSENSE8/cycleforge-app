@@ -11,7 +11,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { NetworkChip } from '@/components/mobile/NetworkChip';
 import { replenishmentStatusBadgeClass } from '@/lib/replenishment-status';
-import { Button } from '@/design-system/primitives';
+import { Panel, Button } from '@/design-system/primitives';
 
 interface TaskRow {
   id: number;
@@ -181,7 +181,7 @@ interface SectionProps {
 function Section({ title, count, tone, tasks, actionLabel, onAction, onCancel, working }: SectionProps) {
   const dotTone = tone === 'amber' ? 'bg-amber-500' : 'bg-blue-500';
   return (
-    <section className="mb-6 rounded-3xl border border-border-soft bg-surface-card shadow-sm">
+    <Panel radius="2xl" padding="none" className="mb-6">
       <header className="flex items-center gap-2 border-b border-border-hairline px-5 py-3">
         <span className={`h-2 w-2 rounded-full ${dotTone}`} aria-hidden="true" />
         <h2 className="text-sm font-semibold text-text-default">{title}</h2>
@@ -246,7 +246,7 @@ function Section({ title, count, tone, tasks, actionLabel, onAction, onCancel, w
           ))}
         </ul>
       )}
-    </section>
+    </Panel>
   );
 }
 
@@ -268,9 +268,9 @@ function EmptyState() {
 
 function LoadingRow() {
   return (
-    <div className="rounded-3xl border border-border-soft bg-surface-card p-6 text-center text-sm text-text-soft">
+    <Panel radius="2xl" padding="lg" className="text-center text-sm text-text-soft">
       <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-blue-200 border-t-blue-600 align-middle" />
       <span className="ml-2 align-middle">Loading tasks…</span>
-    </div>
+    </Panel>
   );
 }

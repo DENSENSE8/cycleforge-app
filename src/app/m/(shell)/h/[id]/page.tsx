@@ -29,7 +29,11 @@ import { unwrapScannedSerial } from '@/lib/barcode-routing';
 import { printHandlingUnitLabel } from '@/lib/print/printHandlingUnitLabel';
 import { HandlingUnitChip } from '@/components/receiving/HandlingUnitChip';
 import { ChevronLeft, Check, X, Printer, Plus, Package } from '@/components/Icons';
-import { IconButton } from '@/design-system/primitives';
+import { Panel, IconButton } from '@/design-system/primitives';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 interface Member {
   id: number;
@@ -213,7 +217,7 @@ export default function MobileHandlingUnitPage() {
       {box && (
         <>
           {/* Rollup + meta */}
-          <div className="mx-3 mt-3 rounded-xl border border-border-soft bg-surface-card p-3">
+          <Panel radius="xl" padding="sm" className="mx-3 mt-3">
             <div className="flex items-center justify-between gap-2">
               <div className="text-sm font-semibold text-text-muted">
                 {box.rollup.tested}/{box.rollup.total} tested
@@ -228,7 +232,7 @@ export default function MobileHandlingUnitPage() {
                 }}
               />
             </div>
-          </div>
+          </Panel>
 
           {/* Add-unit scan bar */}
           <div className="mx-3 mt-3 flex gap-2">
@@ -239,7 +243,7 @@ export default function MobileHandlingUnitPage() {
                 if (e.key === 'Enter') submitAdd();
               }}
               placeholder="Scan unit (U-… / serial) to add"
-              className="flex-1 rounded-lg border border-border-default px-3 py-2 text-sm focus:border-teal-500 focus:outline-none"
+              className={cn("flex-1 rounded-lg border border-border-default px-3 py-2 text-sm", focusRing('field', 'success'))}
               autoCapitalize="characters"
               autoCorrect="off"
             />
@@ -261,10 +265,7 @@ export default function MobileHandlingUnitPage() {
               </div>
             )}
             {box.units.map((u) => (
-              <div
-                key={u.id}
-                className="flex items-center gap-2 rounded-xl border border-border-soft bg-surface-card px-3 py-2"
-              >
+              <Panel radius="xl" padding="none" className="flex items-center gap-2 px-3 py-2" key={u.id}>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5">
                     <span className="font-mono text-sm font-semibold text-text-default">
@@ -287,7 +288,7 @@ export default function MobileHandlingUnitPage() {
                   icon={<X className="h-4 w-4 text-text-faint" />}
                   className="rounded-lg p-1.5 active:bg-surface-sunken disabled:opacity-40"
                 />
-              </div>
+              </Panel>
             ))}
           </div>
         </>

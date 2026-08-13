@@ -648,7 +648,8 @@ export function useUnboxLineController(
   // failed Zoho receive parks a line there ("inventory committed, Zoho
   // pending"). Both must keep the Receive CTA — the first was never received,
   // the second needs a retry.
-  const isReceived = Boolean((row.received_done_at || '').trim());
+  // Stamp may still be a Date on a stale client patch — coerce before trim.
+  const isReceived = Boolean(String(row.received_done_at ?? '').trim());
   // Zoho receive is only valid for matched cartons; unfound stays local-only.
   const canZohoReceive = canReceiveReview && !isUnfound;
   // Optional org gate: Receive stays blocked until the operator captures a serial

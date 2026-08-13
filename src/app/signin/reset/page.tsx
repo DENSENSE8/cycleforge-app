@@ -15,6 +15,10 @@ import { Suspense, useCallback, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Button, Panel } from '@/design-system/primitives';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 function ResetInner() {
   const router = useRouter();
@@ -137,7 +141,7 @@ function ResetInner() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full rounded-lg border border-border-default px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
+                className={cn("w-full rounded-lg border border-border-default px-3 py-2 text-sm", focusRing('field', 'accent'))}
                 placeholder="you@company.com"
               />
             </div>
@@ -165,7 +169,7 @@ function ResetInner() {
                 minLength={8}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-lg border border-border-default px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
+                className={cn("w-full rounded-lg border border-border-default px-3 py-2 text-sm", focusRing('field', 'accent'))}
                 placeholder="At least 8 characters"
               />
             </div>
@@ -180,7 +184,7 @@ function ResetInner() {
                 required
                 value={confirm}
                 onChange={(e) => setConfirm(e.target.value)}
-                className="w-full rounded-lg border border-border-default px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
+                className={cn("w-full rounded-lg border border-border-default px-3 py-2 text-sm", focusRing('field', 'accent'))}
                 placeholder="Re-enter password"
               />
               {passwordMismatch && <p className="text-xs text-rose-600">Passwords do not match.</p>}

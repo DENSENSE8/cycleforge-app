@@ -9,17 +9,17 @@
  *   collection→ `LedgerGridSurface` `surface="sheet"` (mounted via NonlinearTableHost)
  *   record    → `RightRailHost` (non-modal) via `MyDayTaskInspectorRail`
  *               or `MyDayWatchRail` (`?watch=1` — ticket / tracking intake)
- *   rail      → `HomeContextPanel` (saved views), via the `home` route key
+ *   rail      → none (Pattern E, 2026-08-12). Saved views sit on Band 3
+ *               `WorkbenchViewsMenu`, same door as Incoming / To-ship.
  *   feed      → `useMyDayFeed`, still the one client of `GET /api/my-day`
  *
- * **No lane sidebar.** The lanes were a resident 280px column whose entire job
+ * **No left sidebar.** Lanes were a resident 280px column whose entire job
  * was a four-way filter over the table beside it — a facet that belongs in the
  * table's own chrome, where every other workbench puts it
  * (`WorkbenchChromeHeader` tabs: Unbox's Queue/Viewed/History, History's
- * All/Unfound). Deleting it gave the grid back ~280px, which is what the
- * Due/Status tracks needed. The rail Today has now holds SAVED VIEWS — operator-
- * defined combinations, which is the one thing chrome cannot own
- * (`display/workbench.md` → Tabs vs. saved views).
+ * All/Unfound). The saved-views rail that replaced it was the same altitude
+ * mismatch: a one-section column for a control Band 3 already owns. Deleting
+ * both gave the grid the width the Due/Status tracks needed.
  *
  * **The body is the table, and nothing else (2026-08-01 chrome-altitude pass).**
  * Two things left this file:
@@ -46,15 +46,17 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { WorkbenchInspectorToggle } from '@/components/dashboard/workbench-inspector-toggle';
 import { useRightRailOccupantOpen } from '@/components/right-rail/useRightRailOccupant';
 import {
-  WORKBENCH_SHEET_CHROME,
-  WORKBENCH_SHEET_HOST,
+  WorkbenchSheetView,
+  useWorkbenchSheetChrome,
+} from '@/components/dashboard/WorkbenchSheetView';
+import {
   WorkbenchChromeHeader,
   WorkbenchTrailingCluster,
   WorkbenchTriageBand,
   withScopeDivider,
 } from '@/components/dashboard/workbench-shell';
 import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
-import { cn } from '@/utils/_cn';
+import { WorkbenchViewsMenu } from '@/components/saved-views/WorkbenchViewsMenu';
 import { MyDayDueHorizonChips } from './MyDayDueHorizonChips';
 import { MyDayOnboardingPanel } from './MyDayOnboardingPanel';
 import { MyDayTaskInspectorRail } from './MyDayTaskInspector';
@@ -75,6 +77,10 @@ import { MyDayGridColumnHeader } from './grid/MyDayGridColumnHeader';
 import { MyDayGridRow } from './grid/MyDayGridRow';
 import { useMyDayFeed } from './useMyDayFeed';
 import { useMyDayView } from './useMyDayView';
+import {
+  MY_DAY_SAVED_VIEWS_KEY,
+  MY_DAY_VIEW_PARAMS,
+} from '@/lib/my-day/my-day-saved-views';
 import {
   MY_DAY_LANE_FILTERS,
   filterMyDayTasks,
@@ -137,8 +143,8 @@ export function MyDayWorkspace() {
     closeWatch,
   } = useMyDayView();
 
-  const [controlsEl, setControlsEl] = useState<HTMLDivElement | null>(null);
   const taskInspectorOpen = useRightRailOccupantOpen('detail:my-day');
+  const chrome = useWorkbenchSheetChrome();
 
   const tasks = useMemo(() => myDayTasksFromFeed(data), [data]);
   const counts = useMemo(() => myDayLaneCounts(tasks), [tasks]);
@@ -220,84 +226,71 @@ export function MyDayWorkspace() {
   }, [visibleTasks, columnSort, sortDir]);
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-surface-canvas text-text-default">
-      <div className={cn(WORKBENCH_SHEET_CHROME, 'flex flex-col gap-0')}>
-        <WorkbenchChromeHeader
-          density="band"
-          className="rounded-none border-l-0 border-t-0 shadow-sm"
-          tabs={tabs}
-          activeTab={lane}
-          onTabChange={(id) => setLane(id as MyDayLaneFilter)}
-          solidTone="accent"
-          // Trailing = solid Add CTA (opens Watch rail — ticket or tracking).
-          // Sort stays on the grid header (`?colsort=`); column display stays on
-          // the grid lip — neither belongs in this cluster.
-          trailing={
-            <WorkbenchTrailingCluster
-              actions={<MyDayWatchTicketAction onOpen={openWatch} />}
-            />
-          }
-        />
-        {/*
-          Band 3 — find-only command row: dominant find LEFT (always-open
-          TechRailSearchBar — filter+paste, not icon-first expand), inspector
-          park far-right.
-
-          The due-horizon chips DO narrow the rows, so the 2026-08-08 find-only
-          rule would normally move them in-field. They stay in `right` as a
-          documented resident: they are a compound cluster carrying live counts
-          per horizon, not a single field-density glyph, and `trailingSuffix`
-          is a one-glyph slot (`display/workbench-ops-queue.md` → Find-only
-          Band 3: "Compound clusters that are not a single field-density glyph
-          stay in the right zone until they grow one"). Same standing as
-          `OutboundExactFilters` on Shipping / Pack / Labels.
-        */}
-        <WorkbenchTriageBand
-          search={
-            <TechRailSearchBar
-              variant="chrome"
-              value={query}
-              onChange={(v) => setQuery(v.trim())}
-              placeholder="Filter tasks…"
-              className="min-w-0 flex-1"
-            />
-          }
-          right={
-            !isError ? (
-              <MyDayDueHorizonChips
-                counts={horizonCounts}
-                loading={isLoading}
-                active={horizon}
-                onToggle={toggleHorizon}
+    <>
+      <WorkbenchSheetView
+        chrome={chrome}
+        className="h-full bg-transparent"
+        tabs={({ className }) => (
+          <WorkbenchChromeHeader
+            density="band"
+            className={className}
+            tabs={tabs}
+            activeTab={lane}
+            onTabChange={(id) => setLane(id as MyDayLaneFilter)}
+            solidTone="accent"
+            trailing={
+              <WorkbenchTrailingCluster
+                actions={<MyDayWatchTicketAction onOpen={openWatch} />}
               />
-            ) : null
-          }
-          trailing={
-            <WorkbenchInspectorToggle open={taskInspectorOpen} testId="my-day-inspector-toggle" />
-          }
-          controlsSlotRef={setControlsEl}
-        />
-      </div>
-
-      {/*
-        The body is onboarding + the table. The due-horizon refine used to sit
-        here as a KPI band; moving it into the chrome's `right` slot did NOT
-        create the stacked-sticky bug `display/workbench.md` names, because it
-        joined the SINGLE existing chrome band rather than adding a second one —
-        the chrome is still one non-scrolling layer outside the scroll port, and
-        the grid still owns the only sticky layer inside it.
-      */}
-      <div className={cn(WORKBENCH_SHEET_HOST, 'min-h-0')}>
-        <MyDayOnboardingPanel />
-
-        {isError ? (
-          <div className="mx-4 my-6 rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-6 text-center">
-            <p className="text-role-caption font-semibold text-rose-700">
-              Could not load My Day. Try refreshing.
-            </p>
-          </div>
-        ) : (
-          <NonlinearTableHost<MyDayTask, MyDayGridColumnKey, MyDayGridColumn>
+            }
+          />
+        )}
+        triage={({ controlsSlotRef }) => (
+          <WorkbenchTriageBand
+            controlsSlotRef={controlsSlotRef}
+            search={
+              <TechRailSearchBar
+                variant="chrome"
+                value={query}
+                onChange={(v) => setQuery(v.trim())}
+                placeholder="Filter tasks…"
+                className="min-w-0 flex-1"
+              />
+            }
+            views={
+              <WorkbenchViewsMenu
+                storageKey={MY_DAY_SAVED_VIEWS_KEY}
+                paramKeys={MY_DAY_VIEW_PARAMS}
+                emptyHint="No saved views yet — filter Today (lane, search, column sort), then save it here."
+              />
+            }
+            right={
+              !isError ? (
+                <MyDayDueHorizonChips
+                  counts={horizonCounts}
+                  loading={isLoading}
+                  active={horizon}
+                  onToggle={toggleHorizon}
+                />
+              ) : null
+            }
+            trailing={
+              <WorkbenchInspectorToggle open={taskInspectorOpen} testId="my-day-inspector-toggle" />
+            }
+          />
+        )}
+      >
+        {() => (
+          <>
+            <MyDayOnboardingPanel />
+            {isError ? (
+              <div className="mx-4 my-6 rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-6 text-center">
+                <p className="text-role-caption font-semibold text-rose-700">
+                  Could not load My Day. Try refreshing.
+                </p>
+              </div>
+            ) : (
+              <NonlinearTableHost<MyDayTask, MyDayGridColumnKey, MyDayGridColumn>
             binding={MY_DAY_TABLE_BINDING}
             orderGroupsByDate={orderGroupsByDate}
             rows={visibleTasks}
@@ -305,7 +298,7 @@ export function MyDayWorkspace() {
             sort={columnSort}
             dir={sortDir}
             onSortChange={setSort}
-            columnTriggerPortalTarget={controlsEl}
+            columnTriggerPortalTarget={null}
             loading={isLoading}
             // Settled-with-nothing on a "what needs me" queue is an ALL-CLEAR,
             // not an absence — say so rather than showing a create prompt.
@@ -350,11 +343,13 @@ export function MyDayWorkspace() {
               />
             )}
           />
+            )}
+          </>
         )}
-      </div>
+      </WorkbenchSheetView>
 
       <MyDayTaskInspectorRail task={selectedTask} onClose={() => setTaskId(null)} />
       <MyDayWatchRail open={watchOpen} onClose={closeWatch} />
-    </div>
+    </>
   );
 }

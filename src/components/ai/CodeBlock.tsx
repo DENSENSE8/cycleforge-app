@@ -2,6 +2,8 @@
 
 import { useRef, useState, type ReactNode } from 'react';
 import { Copy } from '@/components/Icons';
+import { Panel } from '@/design-system/primitives';
+
 
 /**
  * Fenced code block chrome for chat answers: a language label + copy button
@@ -23,7 +25,7 @@ export default function CodeBlock({ language, children }: { language?: string; c
   };
 
   return (
-    <div className="my-2 overflow-hidden rounded-lg border border-border-soft bg-surface-card">
+    <Panel radius="lg" padding="none" className="my-2 overflow-hidden">
       <div className="flex items-center justify-between border-b border-border-soft bg-surface-canvas px-3 py-1.5">
         <span className="text-role-micro font-semibold uppercase tracking-wider text-text-soft">{language || 'code'}</span>
         <button
@@ -41,6 +43,6 @@ export default function CodeBlock({ language, children }: { language?: string; c
           {children}
         </code>
       </pre>
-    </div>
+    </Panel>
   );
 }

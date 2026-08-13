@@ -127,10 +127,9 @@ function unitsRow(signals: UnboxDisplayIndexSignals): Pick<DisplayIndexRow, 'sub
 function preboxRow(signals: UnboxDisplayIndexSignals): Pick<DisplayIndexRow, 'subtitle' | 'tone'> {
   const n = signals.serialCount;
   if (n <= 0) return { subtitle: 'Need serials', tone: 'neutral' };
-  return {
-    subtitle: n === 1 ? '1 unit ready' : `${n} units ready`,
-    tone: 'action',
-  };
+  // Quiet when serials exist — no "unit ready" chip and no Assets "N pending"
+  // trailer (action tone drives the group summary).
+  return { subtitle: '', tone: 'ok' };
 }
 
 function listingsRow(): Pick<DisplayIndexRow, 'subtitle' | 'tone'> {

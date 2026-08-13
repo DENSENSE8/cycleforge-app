@@ -92,7 +92,7 @@ export function ShippingWorkspaceView({ techId }: ShippingWorkspaceViewProps) {
               toolbarPortalTarget={controlsEl}
             />
           ) : shipTab === 'all' ? (
-            <TechAllTriageTable scope="shipping" columnTriggerPortalTarget={controlsEl} />
+            <TechAllTriageTable scope="shipping" columnTriggerPortalTarget={null} />
           ) : (
             <UnshippedTable
               strictSearchScope

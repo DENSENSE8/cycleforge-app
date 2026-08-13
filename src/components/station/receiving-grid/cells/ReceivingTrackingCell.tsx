@@ -38,6 +38,8 @@ export function ReceivingTrackingCell({ col, rule, ctx }: ReceivingGridCellProps
             onEdit={onEditTracking}
           />
         </span>
+      ) : ctx.trackingAction ? (
+        ctx.trackingAction
       ) : (
         <GridCellDash />
       )}

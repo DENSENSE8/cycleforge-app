@@ -1,5 +1,11 @@
 import { FileText, Loader2, Plus, Search } from '@/components/Icons';
 import { useManualPicker } from './useManualPicker';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+import { Panel } from '@/design-system/primitives';
+
+
+
 
 /** Inline manuals-library search + pair picker. */
 export function ManualPicker({
@@ -13,17 +19,17 @@ export function ManualPicker({
 
   return (
     <div className="mb-3 rounded-none border border-border-soft/70 bg-surface-canvas/60 p-2">
-      <div className="flex items-center gap-2 rounded-md border border-border-soft bg-surface-card px-2 py-1.5">
+      <Panel radius="lg" padding="none" className="flex items-center gap-2 px-2 py-1.5">
         <Search className="h-4 w-4 shrink-0 text-text-faint" />
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           autoFocus
           placeholder="Search manuals library…"
-          className="w-full bg-transparent text-role-caption font-medium text-text-default placeholder:text-text-faint focus:outline-none"
+          className={cn("w-full bg-transparent text-role-caption font-medium text-text-default placeholder:text-text-faint", focusRing('field', 'accent'))}
         />
         {searching ? <Loader2 className="h-4 w-4 shrink-0 animate-spin text-text-faint" /> : null}
-      </div>
+      </Panel>
       {results.length > 0 ? (
         <ul className="mt-1.5 flex max-h-56 flex-col gap-1 overflow-y-auto">
           {results.map((m) => {

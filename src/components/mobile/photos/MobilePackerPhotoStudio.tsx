@@ -18,6 +18,10 @@ import { useScopedPackerPhotos } from '@/hooks/useScopedPackerPhotos';
 import { PACK_SLIP_PHOTO_TYPE, PACK_BOX_PHOTO_TYPE } from '@/lib/photos/types';
 import { submitPackVerification, extractTrackingCandidate } from '@/lib/packing/pack-verify-flow';
 import { safeRandomUUID } from '@/lib/safe-uuid';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 type GuidedCaptureStep = 'slip' | 'box';
 
@@ -302,7 +306,7 @@ function PackVerifyConfirm({
             autoCorrect="off"
             spellCheck={false}
             placeholder="Scan or type the tracking #"
-            className="w-full rounded-xl border border-white/15 bg-white/5 px-3 py-3 font-mono text-role-body text-white placeholder:text-white/30 focus:border-white/40 focus:outline-none"
+            className={cn("w-full rounded-xl border border-white/15 bg-white/5 px-3 py-3 font-mono text-role-body text-white placeholder:text-white/30", focusRing('field', 'accent'))} // ds-allow-raw-neutral: photo-stage overlay field
           />
         </label>
         {canScan ? (

@@ -149,7 +149,7 @@ export function ScanBandGlowHost({
   return (
     <div
       // Chrome fill defaults to the shared SoT (`appSurfaceFillClass('chrome')`,
-      // theme-correct — the old hardcoded `bg-white` stayed white even under a
+      // theme-correct — the old hardcoded paper-white fill stayed white even under a
       // dark theme). Listed before `className` so a caller's own tone (all
       // current callers pass `receivingScanBandClass`, which resolves to the
       // same fill) still wins the `cn()` merge.

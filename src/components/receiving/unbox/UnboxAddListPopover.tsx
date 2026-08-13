@@ -32,6 +32,8 @@ import {
   UNBOX_PINNED_EXTRA_TABS_MAX,
   type UnboxExtraTabDef,
 } from '@/lib/receiving/unbox-extra-tabs';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+
 
 export function UnboxAddListPopover({
   available,
@@ -69,7 +71,7 @@ export function UnboxAddListPopover({
           align="start"
           sideOffset={6}
           className={cn(
-            'z-dropdown w-64 overflow-hidden border border-border-soft bg-surface-card p-1 shadow-lg ring-1 ring-black/5 focus:outline-none',
+            cn('z-dropdown w-64 overflow-hidden border border-border-soft bg-surface-card p-1 shadow-lg ring-1 ring-black/5', focusRing('field', 'accent')),
             cornerClass('flush'),
           )}
         >

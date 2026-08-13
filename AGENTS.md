@@ -29,6 +29,7 @@ Regions are I/O contracts (`MotionRegion`: `station` · `workbench` · `monitor`
 | Workbench | Table registry | `TABLE_DEFINITIONS` · `src/components/tables/table-definition-registry.ts` |
 | Workbench | Band-3 Views | `WorkbenchViewsMenu` · `src/components/saved-views/WorkbenchViewsMenu.tsx` |
 | Workbench | Right inspector | `RightRailHost` · `src/components/right-rail/RightRailHost.tsx` |
+| Workbench | Right inspector lifecycle | `usePanelStore` · `src/lib/right-rail/panel-store.ts` |
 | Monitor | Page shell | `MonitorPageShell` · `src/design-system/components/monitor/MonitorPageShell.tsx` |
 | Monitor | KPI / blocks | `OpsKpiBand` · `src/design-system/components/monitor/` |
 | Canvas | Studio shell | `StudioShell` · `src/components/studio/` |
@@ -49,7 +50,19 @@ Regions are I/O contracts (`MotionRegion`: `station` · `workbench` · `monitor`
 | Platform face | `PlatformMark` · `src/lib/source-platform.ts` |
 | Stacked row identity | `StackedRowIdentity` · `src/components/ui/StackedRowIdentity.tsx` |
 | Compact activity row | `CompactActivityRow` · `src/components/ui/CompactActivityRow.tsx` |
+| Order warranty card | `OrderWarrantySummary` · `src/components/order-record/OrderWarrantySummary.tsx` |
+| Label-builder numeric step | `NumericStep` · `src/components/barcode/bin-label-printer/NumericStep.tsx` |
+| Station carton Macro host | `StationDisplaysActionFloor` · `src/components/station/displays/StationDisplaysActionFloor.tsx` |
+| Station carton Macro verbs | `CartonDisplaysActionFloor` · `src/components/station/displays/CartonDisplaysActionFloor.tsx` |
 | Tooltips (no native title attr) | `HoverTooltip` · `src/components/ui/HoverTooltip.tsx` |
+| Conversation message card | `ConversationMessageCard` · `src/design-system/primitives/ConversationMessageCard.tsx` |
+| Conversation chrome tokens | `conversation-chrome` · `src/design-system/primitives/conversation-chrome.ts` |
+| Conversation header actions | `ConversationHeaderActionButton` · `src/design-system/primitives/ConversationHeaderActionButton.tsx` |
+| Chat / note composer shell | `OmnichannelComposerDock` · `src/design-system/primitives/OmnichannelComposerDock.tsx` |
+| HID barcode wedge | `createWedgeKeyListener` · `src/lib/keyboard/wedge-scan-listener.ts` |
+| Main-thread yield (INP) | `yieldToInput` · `src/lib/perf/yield-to-input.ts` |
+| NDJSON / Ably paint budget | `streamNdjson` · `applyStreamBudget` · `src/lib/orders-sync/client.ts` · `src/lib/perf/stream-apply.ts` |
+| Grid first-paint window | `LEDGER_GRID_OVERSCAN` · `LEDGER_GRID_ROW_CONTAIN` · `src/design-system/components/grid/` |
 
 ## Hard laws (active in code)
 
@@ -57,8 +70,11 @@ Regions are I/O contracts (`MotionRegion`: `station` · `workbench` · `monitor`
 - **Never start, restart, or kill a dev server.** Attach to the user's on `:3050`.
 - **The user manages commits.** Never `git stash`; stage only your files; commit/push only when asked.
 - **Stay on the checkout's branch.** The worktree is the branch.
-- **Compose from the named SoT first; grow it when wrong.** Never fork a page-local twin. Lookup: `node scripts/sot-lookup.mjs "<job>"`.
+- **Compose from the named SoT first; grow it when wrong.** Never fork a page-local twin. Lookup: `node scripts/sot-lookup.mjs "<job>"`. New AST-similar copies fail `jscpd` within an interaction contract; station-vs-support clones are filtered, not merged. Feature routes import the assembly (`WorkbenchSheetView`, `StationScanPaneHost`, `StationPanelRoot`) not its internals (`DashboardScrollShell`, `ScanStationUtilityRail`, `StationAmbientWash`).
+- **Do not paint over primitives.** `<Button>` fills and `<Panel>` radii resolve through semantic variants (`variant`, `radius`) — never `className` hue/radius overrides. Grow `button-variants.ts` instead.
+- **New feature assemblies declare `@domain-job`.** Plus `@hardware-target` (`Station` · `Workbench` · `Monitor` · `Canvas`), `@density` (`floor` · `ops` · `monitor` · `studio`), and `@justification` (why the named host cannot be reused). Guard: `src/lib/governance/domain-job.guard.test.ts`.
 - **Frame budgets** live in `src/lib/right-rail/frame.ts` — desk center ≥ `MIN_WORK_SURFACE_PX` (784); station Displays keep center ≥ `STATION_PUSH_CENTER_FLOOR_PX` (720); gutters `0`. Right edge **pushes** via `RightRailHost` (`modal={false}`); never a floating card over the work.
+- **Right-rail dismiss is host-owned.** `RightRailHost` paints the single `→|` and `closeAndCachePanel()` unmounts the occupant, caches `draftData`, and toasts Resume. Child views never mount a second close. Esc and Mod+Shift+R live in `handlePanelStoreKeydown`.
 - **Ops chrome is flush-square** — `WORKBENCH_CHROME_PILL_CLASS` = `cornerClass('flush')` in `workbench-shell.tsx`.
 - **Workbench spreadsheets** mount via the table definition registry + `NonlinearTableHost` over `LedgerGridSurface` — never a new `*GridView` twin.
 - **Motion** only via `@/design-system/motion` + `motionRole.*`. Only `src/design-system/motion/framer.ts` may import `motion/react` or `framer-motion`.
@@ -69,11 +85,13 @@ Regions are I/O contracts (`MotionRegion`: `station` · `workbench` · `monitor`
 - **`orgId` comes from `ctx`**, never the body; org-scoped writes go through `withTenantTransaction` (`src/lib/tenancy/db.ts`).
 - **Cross-entity urgency** resolves only in `promoteUrgency()` (`src/lib/urgency/`).
 - **Never build a second search engine, audit API, or status transition** outside the SoT modules.
-- **`npm run verify` before done** — lint · typecheck · unit · knip · route-auth · schema drift. Never raise a ratchet baseline to pass.
+- **Conversation bubbles / chat cards** compose `ConversationMessageCard` + `conversation-chrome` (`src/design-system/primitives/`) — never a page-local bubble twin, 75% chat bubble, or Lock-icon internal chip. Helpdesk tickets and entity threads share that face.
+- **HID wedge scans** attach via `createWedgeKeyListener` (native capture `keydown`, yield-before-React). Never a React synthetic `onKeyDown` for scanner input; never drop focus; never run scan side-effects on the keydown stack.
+- **Live NDJSON / Ably paints** apply through `applyStreamBudget` / `createFrameCoalescer` — never `setState` per stream line or per Ably message during a burst. Orthogonal exception dimensions (SCANNED + PROBLEM) stay on the row payload.
+- **`npm run verify` before done** — lint · typecheck · unit · knip · jscpd · depcruise · route-auth · schema drift. Never raise a ratchet baseline to pass.
 - **E2E asserts against the QA org**, not the dogfood tenant.
 
 ## Workflow
 
-Lanes, ports, secrets, and commit discipline: see archived notes under
-`.claude/legacy-rules-archive/workflow-safety.md` only when you need history —
-live law is this file + `.claude/settings.json` hooks.
+Lanes, ports, secrets, and commit discipline: live law is this file +
+`.claude/settings.json` hooks.

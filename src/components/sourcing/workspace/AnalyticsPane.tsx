@@ -28,6 +28,8 @@ import {
 } from '../sourcing-shared';
 import type { SourcingAnalyticsData } from './sourcing-workspace-types';
 import { Centered, Empty } from './WorkspaceShared';
+import { Panel } from '@/design-system/primitives';
+
 
 function formatDays(days: number | null): string {
   if (days == null) return '—';
@@ -36,20 +38,20 @@ function formatDays(days: number | null): string {
 
 function StatTile({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <div className="rounded-xl border border-border-soft bg-surface-card p-3">
+    <Panel radius="xl" padding="sm">
       <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">{label}</p>
       <p className="mt-1 text-lg font-semibold text-text-default">{value}</p>
       {sub ? <p className="text-role-caption text-text-faint">{sub}</p> : null}
-    </div>
+    </Panel>
   );
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-xl border border-border-soft bg-surface-card p-4">
+    <Panel radius="xl" padding="sm">
       <p className="mb-3 text-role-eyebrow uppercase tracking-widest text-text-soft">{title}</p>
       {children}
-    </section>
+    </Panel>
   );
 }
 

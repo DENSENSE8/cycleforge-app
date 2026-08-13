@@ -148,7 +148,7 @@ export function LabelFacePreview({
       {/* Width host — measures available width; L/R gutters stay transparent. */}
       <div ref={hostRef} className="w-full min-w-0">
         <div
-          className="relative mx-auto overflow-hidden bg-white shadow-sm ring-1 ring-border-soft/60"
+          className="relative mx-auto overflow-hidden bg-white shadow-sm ring-1 ring-border-soft/60" // ds-allow-raw-neutral: print label paper face
           style={{ width: scaledW, height: scaledH, maxWidth: '100%' }}
           data-label-sticker
         >

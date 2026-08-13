@@ -14,6 +14,8 @@ import { cn } from '@/utils/_cn';
 import { useSkuCatalogSearch, type SkuCatalogItem } from '@/hooks/useSkuCatalogSearch';
 import { useSkuChildren, useSkuParents, useSkuRelationshipMutations } from './useSkuGraph';
 import type { RelationshipDirection } from './types';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+
 
 interface SkuGraphCrudModalProps {
   focused: { sku_id: number; sku: string; product_title: string };
@@ -103,7 +105,7 @@ export function SkuGraphCrudModal({ focused, onClose }: SkuGraphCrudModalProps) 
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder={`Search SKU to add as ${direction}…`}
-                  className="h-9 w-full rounded-xl border border-border-soft bg-surface-canvas pl-8 pr-3 text-role-data outline-none focus:border-blue-400 focus:bg-surface-card"
+                  className={cn("h-9 w-full rounded-xl border border-border-soft bg-surface-canvas pl-8 pr-3 text-role-data focus:bg-surface-card", focusRing('field', 'accent'))}
                 />
                 {query.trim().length > 0 && results.length > 0 && (
                   <ul className="absolute z-10 mt-1 max-h-56 w-full overflow-y-auto rounded-xl border border-border-soft bg-surface-card py-1 shadow-lg">
@@ -135,14 +137,14 @@ export function SkuGraphCrudModal({ focused, onClose }: SkuGraphCrudModalProps) 
                   min={1}
                   value={qty}
                   onChange={(e) => setQty(Math.max(1, Number(e.target.value) || 1))}
-                  className="h-8 w-16 rounded-lg border border-border-soft px-2 text-role-data tabular-nums outline-none focus:border-blue-400"
+                  className={cn("h-8 w-16 rounded-lg border border-border-soft px-2 text-role-data tabular-nums", focusRing('field', 'accent'))}
                 />
               </label>
               <input
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Notes (optional)"
-                className="h-8 flex-1 rounded-lg border border-border-soft px-2.5 text-role-data outline-none focus:border-blue-400"
+                className={cn("h-8 flex-1 rounded-lg border border-border-soft px-2.5 text-role-data", focusRing('field', 'accent'))}
               />
             </div>
 
@@ -183,7 +185,7 @@ export function SkuGraphCrudModal({ focused, onClose }: SkuGraphCrudModalProps) 
                               const next = Math.max(1, Number(e.target.value) || 1);
                               if (next !== it.qty) update.mutate({ id: it.relationship_id, qty: next });
                             }}
-                            className="h-7 w-14 rounded-md border border-border-soft px-1.5 text-role-caption tabular-nums outline-none focus:border-blue-400"
+                            className={cn("h-7 w-14 rounded-md border border-border-soft px-1.5 text-role-caption tabular-nums", focusRing('field', 'accent'))}
                           />
                           <IconButton
                             type="button"

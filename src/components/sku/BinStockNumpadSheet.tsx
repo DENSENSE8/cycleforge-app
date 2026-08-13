@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Layer } from '@/design-system';
-import { Button, IconButton } from '@/design-system/primitives';
+import { Panel, Button, IconButton } from '@/design-system/primitives';
 import { Check, Loader2, X } from '@/components/Icons';
 import { useAuth } from '@/contexts/AuthContext';
 import { ReasonCodePicker, type ReasonCode } from '@/components/sku/ReasonCodePicker';
@@ -14,6 +14,10 @@ import {
 } from '@/components/mobile/station/MobilePackerSpamCamera';
 import { compressPhotoForUpload } from '@/lib/image/compress-for-upload';
 import { safeRandomUUID } from '@/lib/safe-uuid';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -327,7 +331,7 @@ export function BinStockNumpadSheet({
         </div>
 
         {/* Current vs projected */}
-        <div className="mx-auto grid w-full max-w-sm grid-cols-3 items-center gap-2 rounded-lg border border-border-soft bg-surface-card px-4 py-4 shadow-sm">
+        <Panel radius="lg" padding="none" className="mx-auto grid w-full max-w-sm grid-cols-3 items-center gap-2 px-4 py-4">
           <div className="text-center">
             <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
               On hand
@@ -357,10 +361,10 @@ export function BinStockNumpadSheet({
               {projected}
             </p>
           </div>
-        </div>
+        </Panel>
 
         {/* Reason + optional note */}
-        <div className="mx-auto w-full max-w-sm space-y-2 rounded-lg border border-border-soft bg-surface-card p-3 shadow-sm">
+        <Panel radius="lg" padding="sm" className="mx-auto w-full max-w-sm space-y-2">
           <ReasonCodePicker
             direction={mode === 'minus' ? 'out' : 'in'}
             value={reason?.id ?? null}
@@ -374,7 +378,7 @@ export function BinStockNumpadSheet({
               placeholder="Reason note (required)"
               value={noteDraft}
               onChange={(e) => setNoteDraft(e.target.value)}
-              className="w-full rounded-md border border-amber-300 bg-amber-50 px-2 py-1.5 text-role-caption font-semibold text-text-default placeholder:font-medium placeholder:text-amber-700/70 focus:border-amber-500 focus:outline-none"
+              className={cn("w-full rounded-md border border-amber-300 bg-amber-50 px-2 py-1.5 text-role-caption font-semibold text-text-default placeholder:font-medium placeholder:text-amber-700/70", focusRing('field', 'warning'))}
             />
           )}
           {reason?.requires_photo && (
@@ -415,7 +419,7 @@ export function BinStockNumpadSheet({
               )}
             </div>
           )}
-        </div>
+        </Panel>
 
         {/* Numpad */}
         <div className="mx-auto grid w-full max-w-sm grid-cols-3 gap-2">

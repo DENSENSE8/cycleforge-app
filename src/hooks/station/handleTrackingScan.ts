@@ -115,11 +115,11 @@ export async function handleTrackingScan(
           shipping_tracking_number: data.order.tracking ?? '',
           serial_number: '',
           tested_by: data.order.testedBy ?? null,
-          order_id: data.order.orderId !== 'N/A' ? data.order.orderId : null,
+          order_id: data.order.orderId !== 'N/A' && data.order.orderId !== '—' ? data.order.orderId : null, // ds-allow-na: scan payload empty reader
           product_title: data.order.productTitle ?? null,
           item_number: data.order.itemNumber ?? null,
-          sku: data.order.sku !== 'N/A' ? data.order.sku : null,
-          condition: data.order.condition !== 'N/A' ? data.order.condition : null,
+          sku: data.order.sku !== 'N/A' && data.order.sku !== '—' ? data.order.sku : null, // ds-allow-na: scan payload empty reader
+          condition: data.order.condition !== 'N/A' && data.order.condition !== '—' ? data.order.condition : null, // ds-allow-na: scan payload empty reader
           status: data.order.status ?? null,
           status_history: data.order.statusHistory ?? [],
           notes: data.order.notes ?? null,

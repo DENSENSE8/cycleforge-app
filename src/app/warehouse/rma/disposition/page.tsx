@@ -45,6 +45,10 @@ import { conditionLabel } from '@/lib/conditions';
 import { unitStatusBadgeTone } from '@/components/station/receiving-constants';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStationTheme } from '@/hooks/useStationTheme';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 type DispositionCode = 'ACCEPT' | 'HOLD' | 'RTV' | 'REWORK' | 'SCRAP';
 
@@ -292,7 +296,7 @@ function DispositionStationInner() {
                     onChange={(e) => setNotes(e.target.value)}
                     rows={2}
                     placeholder="Notes (optional)"
-                    className="mt-3 w-full resize-none rounded-xl border border-border-soft bg-surface-card px-3 py-2 text-role-caption text-text-default placeholder:text-text-faint focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    className={cn("mt-3 w-full resize-none rounded-xl border border-border-soft bg-surface-card px-3 py-2 text-role-caption text-text-default placeholder:text-text-faint", focusRing('field', 'accent'))}
                   />
 
                   <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-5">

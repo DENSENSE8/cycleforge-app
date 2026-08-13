@@ -1,9 +1,14 @@
 /**
- * Ticket bubble age face — compact lane age expanded to `N hrs` / `N mins`.
+ * Ticket bubble age face — aliases over DS conversation-chrome.
  */
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { formatTicketBubbleAge } from './ticket-bubble-chrome';
+import {
+  formatTicketBubbleAge,
+  TICKET_BUBBLE_SHELL,
+  TICKET_BUBBLE_SHELL_INTERNAL,
+  ticketBubbleShell,
+} from './ticket-bubble-chrome';
 
 describe('formatTicketBubbleAge', () => {
   const now = Date.parse('2026-08-12T06:00:00.000Z');
@@ -31,5 +36,23 @@ describe('formatTicketBubbleAge', () => {
   it('returns null for empty', () => {
     assert.equal(formatTicketBubbleAge(null, now), null);
     assert.equal(formatTicketBubbleAge('', now), null);
+  });
+});
+
+describe('ticketBubbleShell', () => {
+  it('public cards are gray (canvas) without amber wash', () => {
+    const cls = ticketBubbleShell(false);
+    assert.match(cls, /bg-surface-canvas/);
+    assert.ok(!cls.includes('bg-amber-50'));
+    assert.ok(!cls.includes('bg-surface-card'));
+    assert.match(cls, /flex-1/);
+  });
+
+  it('internal cards wash amber', () => {
+    const cls = ticketBubbleShell(true);
+    assert.match(cls, /bg-amber-50/);
+    assert.match(cls, /border-amber-200/);
+    assert.ok(cls.includes(TICKET_BUBBLE_SHELL.split(' ')[0]));
+    assert.ok(TICKET_BUBBLE_SHELL_INTERNAL.includes('bg-amber-50'));
   });
 });

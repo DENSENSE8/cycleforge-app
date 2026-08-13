@@ -82,6 +82,7 @@ import { useUnboxProcedureArrowKeys } from './line-edit/useUnboxProcedureArrowKe
 import { useUnboxProcedureSteps } from './line-edit/useUnboxProcedureSteps';
 import { useUnboxMiddleCartonNav } from './line-edit/useUnboxMiddleCartonNav';
 import { nudgeUnboxPrintReceive } from '@/lib/keyboard/shortcut-nudge';
+import { stationDisplaysOpenWouldParkRail } from '@/lib/right-rail/frame';
 import { emitReceiving } from '@/components/receiving/receiving-events';
 import { useReceivingEvents } from '@/hooks/useReceivingEvents';
 import { scheduleFocusUnboxCaptureSerial } from './line-edit/focus-unbox-capture-serial';
@@ -446,6 +447,13 @@ export function LineEditPanel({
 
     if (cockpitClosedForCartonRef.current === cartonKey) return;
     if (!railLeaf) return; // reference-less step — its reference is the work plane
+
+    // Cold-load CLS gate: auto-opening Displays that would park the left rail
+    // shifts the surface ~328px after paint. Skip the open when the frame store
+    // says it won't fit beside an open rail.
+    if (cartonChanged && !showDisplays && stationDisplaysOpenWouldParkRail()) {
+      return;
+    }
 
     const ticketCtx = resolveUnboxTicketContextOpen(row, hasTicketId);
     if (ticketCtx.open) {

@@ -15,6 +15,8 @@ import { useSavedViews, type UseSavedViewsResult } from '@/hooks/useSavedViews';
 import { NAV_ROW } from '@/components/ui/queue-row-chrome';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { cn } from '@/utils/_cn';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+
 
 const EYEBROW = 'text-role-eyebrow uppercase tracking-widest text-text-soft';
 
@@ -191,7 +193,7 @@ function SavedViewsListView({
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
                 placeholder="Name this view…"
-                className="min-w-0 flex-1 rounded-md border border-border-soft bg-surface-card px-2 py-1.5 text-role-caption text-text-default outline-none focus:border-blue-400"
+                className={cn("min-w-0 flex-1 rounded-md border border-border-soft bg-surface-card px-2 py-1.5 text-role-caption text-text-default", focusRing('field', 'accent'))}
               />
               <button
                 type="submit"

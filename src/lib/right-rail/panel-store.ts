@@ -1,0 +1,258 @@
+'use client';
+
+/**
+ * Right-rail panel lifecycle — singleton dismiss / draft cache / resume.
+ *
+ * Occupancy (`store.ts`) still answers "who is registered for the slot".
+ * This store answers the operator gesture the host owns:
+ *
+ *   open → paint · →| / Esc → unmount + cache draft + toast · Resume / Mod+Shift+R → remount
+ *
+ * House store shape (subscribe/emit + cached snapshot), not Zustand — same
+ * idiom as `store.ts` / `overlay-stack`. `usePanelStore` is the React waist.
+ */
+
+import { useEffect, useSyncExternalStore } from 'react';
+import { toast } from '@/lib/toast';
+
+/** Payload the host treats as "the view in the slot". */
+export interface RightRailViewPayload {
+  id: string;
+}
+
+/** Cached unsaved state from the last dismissed view. */
+export interface RightRailDraftCache {
+  viewId: string;
+  data: unknown;
+  capturedAt: number;
+}
+
+export interface PanelStoreSnapshot {
+  /** Occupant the operator last opened. Stays set while dismissed so Resume can remount. */
+  activeView: RightRailViewPayload | null;
+  /** Unsaved form/view cache. Null until the first closeAndCachePanel. */
+  draftData: RightRailDraftCache | null;
+  /** True after closeAndCachePanel until Resume / a new openPanel. Host skips painting this id. */
+  dismissed: boolean;
+  /** True while the "Draft saved." toast is live — arms Mod+Shift+R. */
+  draftToastArmed: boolean;
+}
+
+interface PanelStoreNotifyDeps {
+  now: () => number;
+  notifyDraftSaved: (input: { onResume: () => void; onDismiss: () => void }) => void;
+  dismissToast: () => void;
+}
+
+const EMPTY: PanelStoreSnapshot = {
+  activeView: null,
+  draftData: null,
+  dismissed: false,
+  draftToastArmed: false,
+};
+
+const DRAFT_TOAST_MS = 8_000;
+
+const defaultNotifyDeps: PanelStoreNotifyDeps = {
+  now: () => Date.now(),
+  notifyDraftSaved: ({ onResume, onDismiss }) => {
+    toast.success('Draft saved.', {
+      action: {
+        label: 'Resume',
+        onClick: () => {
+          onResume();
+        },
+      },
+      duration: DRAFT_TOAST_MS,
+      closeButton: false,
+      onDismiss,
+      onAutoClose: onDismiss,
+      classNames: {
+        toast: 'rounded-none',
+        actionButton:
+          'mt-0 rounded-none border border-current/20 bg-transparent px-2 py-1 text-role-micro font-medium hover:bg-surface-sunken',
+      },
+    });
+  },
+  dismissToast: () => {
+    toast.dismiss();
+  },
+};
+
+let notifyDeps: PanelStoreNotifyDeps = defaultNotifyDeps;
+let draftCapture: (() => unknown) | null = null;
+let liveDraft: unknown = undefined;
+
+let snapshot: PanelStoreSnapshot = EMPTY;
+const listeners = new Set<() => void>();
+
+function emit(): void {
+  for (const l of listeners) l();
+}
+
+function replace(next: PanelStoreSnapshot): void {
+  if (
+    snapshot.activeView?.id === next.activeView?.id &&
+    snapshot.draftData === next.draftData &&
+    snapshot.dismissed === next.dismissed &&
+    snapshot.draftToastArmed === next.draftToastArmed
+  ) {
+    return;
+  }
+  snapshot = next;
+  emit();
+}
+
+/** Test / host-unmount waist. Production: `RightRailHost` cleanup. */
+export function resetPanelStore(): void {
+  draftCapture = null;
+  liveDraft = undefined;
+  snapshot = EMPTY;
+  emit();
+}
+
+export function setPanelStoreNotifyDeps(deps: Partial<PanelStoreNotifyDeps>): void {
+  notifyDeps = { ...notifyDeps, ...deps };
+}
+
+export function restorePanelStoreNotifyDeps(): void {
+  notifyDeps = defaultNotifyDeps;
+}
+
+/**
+ * Views with unsaved fields register a getter. closeAndCachePanel snapshots it
+ * at dismiss so the view can unmount (destroying wedge / keydown listeners)
+ * without losing the draft.
+ */
+export function setPanelDraftCapture(fn: (() => unknown) | null): void {
+  draftCapture = fn;
+}
+
+/** Incremental cache while the view is mounted — fallback if no capture getter. */
+export function setPanelDraftData(data: unknown): void {
+  liveDraft = data;
+}
+
+function captureDraft(): unknown {
+  if (draftCapture) {
+    try {
+      return draftCapture();
+    } catch {
+      return liveDraft ?? {};
+    }
+  }
+  return liveDraft ?? {};
+}
+
+/**
+ * Mount (or override) the singleton view. A new id clears dismiss so the host
+ * paints immediately — picking another row never leaves a stale parked draft
+ * on screen.
+ */
+export function openPanel(view: RightRailViewPayload): void {
+  replace({
+    ...snapshot,
+    activeView: { id: view.id },
+    dismissed: false,
+  });
+}
+
+/**
+ * Occupancy sync: a newly registered occupant is an implicit openPanel.
+ * Re-registering the same id while dismissed must NOT undismiss (the toast
+ * still owns Resume). An empty slot clears activeView only when not dismissed.
+ */
+export function syncPanelOccupant(id: string | null): void {
+  if (id == null) {
+    if (!snapshot.dismissed && snapshot.activeView != null) {
+      replace({ ...snapshot, activeView: null });
+    }
+    return;
+  }
+  if (snapshot.activeView?.id !== id) {
+    openPanel({ id });
+  }
+}
+
+/**
+ * →| / Esc. Snapshot dirty state, unmount the view (host skips its occupant
+ * id), toast "Draft saved." with Resume.
+ */
+export function closeAndCachePanel(): void {
+  const view = snapshot.activeView;
+  if (!view || snapshot.dismissed) return;
+  if (view.id === 'assistant') return;
+
+  const data = captureDraft();
+  liveDraft = undefined;
+  draftCapture = null;
+  replace({
+    activeView: view,
+    draftData: {
+      viewId: view.id,
+      data,
+      capturedAt: notifyDeps.now(),
+    },
+    dismissed: true,
+    draftToastArmed: true,
+  });
+  notifyDeps.notifyDraftSaved({
+    onResume: () => reopenDraft(),
+    onDismiss: () => disarmDraftToast(),
+  });
+}
+
+function disarmDraftToast(): void {
+  if (!snapshot.draftToastArmed) return;
+  replace({ ...snapshot, draftToastArmed: false });
+}
+
+/** Toast Resume · Mod+Shift+R. Remounts the cached view; host paints again. */
+export function reopenDraft(): void {
+  if (!snapshot.dismissed && !snapshot.draftData) return;
+  notifyDeps.dismissToast();
+  replace({
+    ...snapshot,
+    dismissed: false,
+    draftToastArmed: false,
+  });
+}
+
+function subscribePanelStore(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
+export function getPanelStore(): PanelStoreSnapshot {
+  return snapshot;
+}
+
+function getServerPanelStore(): PanelStoreSnapshot {
+  return EMPTY;
+}
+
+/** React waist — the named `usePanelStore` the host and views subscribe through. */
+export function usePanelStore(): PanelStoreSnapshot {
+  return useSyncExternalStore(subscribePanelStore, getPanelStore, getServerPanelStore);
+}
+
+/** Hydrate a remounted view from the last closeAndCachePanel snapshot. */
+export function useRestoredPanelDraft<T = unknown>(): T | undefined {
+  const snap = usePanelStore();
+  if (!snap.draftData) return undefined;
+  if (snap.activeView && snap.draftData.viewId !== snap.activeView.id) return undefined;
+  return snap.draftData.data as T;
+}
+
+/**
+ * View opt-in: pass `getDraft` to snapshot unsaved fields on →| / Esc.
+ * Omit it to only read the restored cache (what the host occupant body does).
+ */
+export function usePanelDraft<T = unknown>(getDraft?: () => T): T | undefined {
+  useEffect(() => {
+    if (!getDraft) return undefined;
+    setPanelDraftCapture(getDraft);
+    return () => setPanelDraftCapture(null);
+  }, [getDraft]);
+  return useRestoredPanelDraft<T>();
+}

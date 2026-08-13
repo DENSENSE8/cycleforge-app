@@ -14,6 +14,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { getBlock, listDataSourceMeta, actionsForSource } from '@/lib/stations';
 import type { BlockInstanceConfig, DataSourceMeta } from '@/lib/stations/contract';
 import { StationIcon } from './station-icons';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 type Tab = 'source' | 'display' | 'actions';
 
@@ -25,7 +29,7 @@ interface BlockConfigSheetProps {
 }
 
 const selectClass =
-  'h-8 w-full cursor-pointer appearance-none rounded-md border border-border-soft bg-surface-card px-2 text-role-caption font-semibold text-text-default focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
+  cn('h-8 w-full cursor-pointer appearance-none rounded-md border border-border-soft bg-surface-card px-2 text-role-caption font-semibold text-text-default', focusRing('field', 'accent'));
 const labelClass = 'mb-1 block text-role-eyebrow uppercase tracking-wider text-text-soft';
 
 /** Pre-fill role→field mapping by kind match, falling back to the first field. */

@@ -2,7 +2,11 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { ChevronRight, Loader2, Plus, Check, Search, X } from '@/components/Icons';
-import { Button, IconButton } from '@/design-system/primitives';
+import { Panel, Button, IconButton } from '@/design-system/primitives';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 /**
  * Folder navigator for picking (or creating) a manual's `folder_path`.
@@ -209,7 +213,7 @@ export function FolderPathPicker({ value, onChange }: FolderPathPickerProps) {
   const isSearching = !!search.trim();
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border-soft bg-surface-card">
+    <Panel radius="xl" padding="none" className="overflow-hidden">
       {/* Search across every folder at every depth. Bypasses the drill-down
           view when active — operators with deep trees shouldn't have to
           click through 5 levels to find a known folder. */}
@@ -220,7 +224,7 @@ export function FolderPathPicker({ value, onChange }: FolderPathPickerProps) {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search all folders…"
-          className="w-full rounded-md border border-border-soft bg-surface-canvas py-1.5 pl-8 pr-7 text-role-caption text-text-default placeholder:text-text-faint focus:border-blue-300 focus:bg-surface-card focus:outline-none focus:ring-2 focus:ring-blue-100"
+          className={cn("w-full rounded-md border border-border-soft bg-surface-canvas py-1.5 pl-8 pr-7 text-role-caption text-text-default placeholder:text-text-faint focus:bg-surface-card", focusRing('field', 'accent'))}
         />
         {search && (
           <IconButton
@@ -349,7 +353,7 @@ export function FolderPathPicker({ value, onChange }: FolderPathPickerProps) {
               }
             }}
             placeholder="New folder at this level"
-            className="min-w-0 flex-1 rounded-md border border-border-soft bg-surface-card px-2 py-1 text-role-caption text-text-default placeholder:text-text-faint focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-100"
+            className={cn("min-w-0 flex-1 rounded-md border border-border-soft bg-surface-card px-2 py-1 text-role-caption text-text-default placeholder:text-text-faint", focusRing('field', 'accent'))}
           />
           <Button
             type="button"
@@ -364,7 +368,7 @@ export function FolderPathPicker({ value, onChange }: FolderPathPickerProps) {
           </Button>
         </div>
       )}
-    </div>
+    </Panel>
   );
 }
 

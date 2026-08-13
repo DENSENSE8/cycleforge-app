@@ -22,6 +22,10 @@ import { Search, Loader2, Check, X, ExternalLink } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { OrderIdChip, getLast8 } from '@/components/ui/CopyChip';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 interface OrderCandidate {
   ecwidOrderId: string;
@@ -206,7 +210,7 @@ export function RepairOrderLinkSearch({ value, onChange, disabled }: RepairOrder
           onKeyDown={onKeyDown}
           placeholder="Search store order # / customer…"
           disabled={disabled}
-          className="w-full rounded-lg border border-border-soft py-2 pl-8 pr-8 text-sm transition-all focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+          className={cn("w-full rounded-lg border border-border-soft py-2 pl-8 pr-8 text-sm transition-all disabled:opacity-50", focusRing('field', 'accent'))}
         />
         {isFetching ? (
           <Loader2 className="absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 animate-spin text-text-faint" />

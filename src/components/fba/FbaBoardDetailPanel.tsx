@@ -70,6 +70,7 @@ export function FbaBoardDetailPanel({
           nextDisabled={disableMoveDown}
           prevTitle="Move up a row"
           nextTitle="Move down a row"
+          columnDisplay
           actions={
             panelActions.length ? (
               <PaneHeaderActionBar

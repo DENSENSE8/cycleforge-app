@@ -6,6 +6,8 @@ import { Check } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import { cn } from '@/utils/_cn';
 import { QuickAccessPanelShell } from './QuickAccessPanelShell';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+
 
 type IssueType = 'bug' | 'suggestion' | 'question';
 type Phase = 'open' | 'submitting' | 'success' | 'error';
@@ -18,7 +20,7 @@ const TYPE_OPTS: { value: IssueType; label: string }[] = [
 
 const FIELD_CLS =
   'w-full rounded-lg border border-border-soft bg-surface-card px-3 text-sm text-text-default ' +
-  'placeholder:text-text-faint outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20';
+  cn('placeholder:text-text-faint transition-colors', focusRing('field', 'accent'));
 
 interface FeedbackFormProps {
   onSuccess: () => void;
