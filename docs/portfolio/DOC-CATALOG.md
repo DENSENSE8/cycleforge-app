@@ -1,7 +1,7 @@
 # DOC catalog — machine-generated SoT
 
 > **Do not hand-edit.** Regenerate: `node scripts/portfolio-sot-sync.mjs`  
-> Generated: `2026-08-12T15:08:23.328Z` · Files: **652** · Repo: `cycleforge-app`  
+> Generated: `2026-08-13T01:48:10.514Z` · Files: **653** · Repo: `cycleforge-app`  
 > Parent index: [INDEX.md](./INDEX.md)
 
 Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*** id  
@@ -13,21 +13,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 
 | WT-ID | Absolute path | Branch | HEAD (short) | Exists |
 |-------|---------------|--------|--------------|--------|
-| `main` | `/Users/icecube/repos/cycleforge-app` | `main` | `ace38c6c3` | yes |
-| `ai-chat` | `/Users/icecube/repos/cycleforge-ai-chat` | `topic/ai-chat` | `3f55b275e` | yes |
-| `fba` | `/Users/icecube/repos/cycleforge-fba` | `topic/fba` | `3f55b275e` | yes |
-| `glass` | `/Users/icecube/repos/cycleforge-glass` | `glass-design-system` | `a331b1247` | yes |
-| `home` | `/Users/icecube/repos/cycleforge-home` | `topic/home` | `dfd5f517f` | yes |
-| `inventory` | `/Users/icecube/repos/cycleforge-inventory` | `topic/inventory` | `3f55b275e` | yes |
-| `journey-hops` | `/Users/icecube/repos/cycleforge-journey-hops` | `topic/journey-hops` | `74d1dd5f6` | yes |
-| `note-grain` | `/Users/icecube/repos/cycleforge-note-grain` | `topic/note-grain` | `5c331b60a` | yes |
-| `photo` | `/Users/icecube/repos/cycleforge-photo` | `topic/photo` | `6b7aab4ce` | yes |
-| `review` | `/Users/icecube/repos/cycleforge-review` | `topic/review` | `b766dd58f` | yes |
-| `sourcing` | `/Users/icecube/repos/cycleforge-sourcing` | `topic/sourcing` | `3f55b275e` | yes |
-| `tables` | `/Users/icecube/repos/cycleforge-tables` | `topic/tables` | `5d94aad3a` | yes |
-| `tasks` | `/Users/icecube/repos/cycleforge-tasks` | `topic/tasks` | `e881fd2ad` | yes |
-| `unbox` | `/Users/icecube/repos/cycleforge-unbox` | `unbox-work` | `e627e3d3e` | yes |
-| `warehouse` | `/Users/icecube/repos/cycleforge-warehouse` | `topic/warehouse` | `3f55b275e` | yes |
+| `main` | `/workspace` | `cursor/to-ship-ledgergrid-fork-6e64` | `bb5463017` | yes |
 
 ---
 
@@ -155,6 +141,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 | `DOC-ROOT-TEMPLATE-205D` | `WS-DOCS-MISC` | [`agent-fs/contracts/TEMPLATE.md`](../agent-fs/contracts/TEMPLATE.md) |
 | `DOC-ROOT-TESTING-VS-RECEIVING-ISOLATION-C2D2` | `WS-RECV` | [`testing-vs-receiving-isolation.md`](../testing-vs-receiving-isolation.md) |
 | `DOC-ROOT-TIER0-GO-LIVE-RUNBOOK-0230` | `WS-PLATFORM` | [`tier0-go-live-runbook.md`](../tier0-go-live-runbook.md) |
+| `DOC-ROOT-TO-SHIP-LEDGERGRID-FORK-AB5F` | `WS-DOCS-MISC` | [`refactors/to-ship-ledgergrid-fork.md`](../refactors/to-ship-ledgergrid-fork.md) |
 | `DOC-ROOT-UNBOX-UNIT-EVIDENCE-REDESIGN-B6AA` | `WS-RECV` | [`prototypes/unbox-unit-evidence-redesign.html`](../prototypes/unbox-unit-evidence-redesign.html) |
 | `DOC-ROOT-UNIFIED-GLOBAL-SEARCH-CONSOLIDATION-PLAN-9E96` | `WS-SEARCH` | [`unified-global-search-consolidation-plan.md`](../unified-global-search-consolidation-plan.md) |
 | `DOC-ROOT-UNIT-EVENT-BACKFILL-PLAN-33B0` | `WS-SEARCH` | [`unit-event-backfill-plan.md`](../unit-event-backfill-plan.md) |
@@ -740,7 +727,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 - `DOC-DIAG-14-FBA-STATION-TRACE-81AB` — [`diagrams/14-fba-station-trace.md`](../diagrams/14-fba-station-trace.md)
 - `DOC-DIAG-README-5821` — [`diagrams/README.md`](../diagrams/README.md)
 
-### `WS-DOCS-MISC` (12)
+### `WS-DOCS-MISC` (13)
 
 - `DOC-ROOT-BASELINE-2026-07-19-A64A` — [`performance/baseline-2026-07-19.md`](../performance/baseline-2026-07-19.md)
 - `DOC-ROOT-FABLE5-DS-PRUNE-REPORT-7D88` — [`audit/fable5-ds-prune-report.md`](../audit/fable5-ds-prune-report.md)
@@ -753,6 +740,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 - `DOC-ROOT-README-F6D4` — [`agent-fs/contracts/README.md`](../agent-fs/contracts/README.md)
 - `DOC-ROOT-RESULTS-2026-07-19-27F7` — [`performance/results-2026-07-19.md`](../performance/results-2026-07-19.md)
 - `DOC-ROOT-TEMPLATE-205D` — [`agent-fs/contracts/TEMPLATE.md`](../agent-fs/contracts/TEMPLATE.md)
+- `DOC-ROOT-TO-SHIP-LEDGERGRID-FORK-AB5F` — [`refactors/to-ship-ledgergrid-fork.md`](../refactors/to-ship-ledgergrid-fork.md)
 - `DOC-ROOT-VERIFIER-4F0C` — [`agent-fs/contracts/verifier.md`](../agent-fs/contracts/verifier.md)
 
 ### `WS-DS` (2)
