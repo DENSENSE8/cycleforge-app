@@ -15,7 +15,8 @@ const ROOT = process.cwd();
 const GATE = join(ROOT, 'scripts/jscpd-gate.mjs');
 const BASELINE = join(ROOT, 'jscpd-baseline.json');
 const CONFIG = join(ROOT, '.jscpd.json');
-const PROBE = join(ROOT, 'src/jscpd-clone-probe.ts');
+const PROBE_A = join(ROOT, 'src/jscpd-clone-probe-a.ts');
+const PROBE_B = join(ROOT, 'src/jscpd-clone-probe-b.ts');
 
 function runGate(): { status: number; out: string } {
   try {
@@ -60,17 +61,21 @@ describe('jscpd shrink-only clone baseline', () => {
   });
 
   it('a new near-duplicate clone fails the gate', () => {
-    const body = Array.from({ length: 20 }, (_, i) => `  const n${i} = ${i} * ${i + 3};`).join('\n');
-    const src = `export function jscpdProbeAlpha(x: number): number {\n${body}\n  return x;\n}\nexport function jscpdProbeBeta(x: number): number {\n${body}\n  return x;\n}\n`;
-    writeFileSync(PROBE, src);
-    execFileSync('git', ['add', '-f', PROBE], { cwd: ROOT });
+    const body = Array.from({ length: 30 }, (_, i) => `  const n${i} = ${i} * ${i + 3};`).join('\n');
+    const fn = (name: string) =>
+      `export function ${name}(x: number): number {\n${body}\n  return x;\n}\n`;
+    writeFileSync(PROBE_A, fn('jscpdProbeAlpha'));
+    writeFileSync(PROBE_B, fn('jscpdProbeBeta'));
+    execFileSync('git', ['add', '-f', PROBE_A, PROBE_B], { cwd: ROOT });
     try {
       const { status, out } = runGate();
       assert.notEqual(status, 0, 'expected the new clone to fail the shrink-only baseline');
       assert.match(out, /clones grew|jscpd-gate/);
     } finally {
-      if (existsSync(PROBE)) unlinkSync(PROBE);
-      execFileSync('git', ['reset', '-q', 'HEAD', '--', PROBE], { cwd: ROOT });
+      for (const probe of [PROBE_A, PROBE_B]) {
+        if (existsSync(probe)) unlinkSync(probe);
+      }
+      execFileSync('git', ['reset', '-q', 'HEAD', '--', PROBE_A, PROBE_B], { cwd: ROOT });
     }
   });
 

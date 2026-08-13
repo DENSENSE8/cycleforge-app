@@ -54,6 +54,7 @@ Regions are I/O contracts (`MotionRegion`: `station` · `workbench` · `monitor`
 | Label-builder numeric step | `NumericStep` · `src/components/barcode/bin-label-printer/NumericStep.tsx` |
 | Station carton Macro host | `StationDisplaysActionFloor` · `src/components/station/displays/StationDisplaysActionFloor.tsx` |
 | Station carton Macro verbs | `CartonDisplaysActionFloor` · `src/components/station/displays/CartonDisplaysActionFloor.tsx` |
+| Staff PIN numpad theme | `THEME_NUMPAD` · `src/components/auth/theme-numpad.ts` |
 | Tooltips (no native title attr) | `HoverTooltip` · `src/components/ui/HoverTooltip.tsx` |
 | Conversation message card | `ConversationMessageCard` · `src/design-system/primitives/ConversationMessageCard.tsx` |
 | Conversation chrome tokens | `conversation-chrome` · `src/design-system/primitives/conversation-chrome.ts` |
