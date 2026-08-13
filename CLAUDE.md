@@ -3,8 +3,7 @@
 @AGENTS.md
 
 **`AGENTS.md` is the constitution** — product frame, region hosts, SoT tables, and
-hard laws. Deep historical detail lives in `.claude/legacy-rules-archive/` (not
-loaded). For a job, run `node scripts/sot-lookup.mjs "<job>"` before composing UI.
+hard laws. For a job, run `node scripts/sot-lookup.mjs "<job>"` before composing UI.
 
 ## Claude-only
 

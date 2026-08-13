@@ -21,7 +21,7 @@ import { test, expect } from '@playwright/test';
  * rule a reseller breaks by design (one product, many listings).
  */
 
-// The chrome popover (OrdersSyncPopover → useOrdersSync) drives the connector
+// The ingest rail (OrderIngestRail → useOrdersSync) drives the connector
 // seam, NOT the legacy NDJSON route at /api/google-sheets/transfer-orders that
 // the sidebar's useOrdersImport still uses. Watch the one the UI actually calls.
 const IMPORT_ROUTE = '/api/integrations/google_sheets/sync';
@@ -44,13 +44,15 @@ test.describe('google sheets order import', () => {
       }
     });
 
-    await page.goto('/dashboard');
+    await page.goto('/shipping/orders');
 
-    // The import entry point is the chrome split-button chevron ("Import orders"),
-    // which opens a flat menu. "Import latest orders" fires channel sync.
-    await page.getByRole('button', { name: /Import orders/i }).click();
+    // The import entry point is Band-1 Add → ingest index → Import latest orders.
+    await page.getByRole('button', { name: 'Add orders' }).click();
+    const ingest = page.getByRole('region', { name: /add orders/i });
+    await expect(ingest).toBeVisible({ timeout: 20_000 });
+    await ingest.getByTestId('station-displays-index-sync').click();
 
-    const importButton = page.getByRole('menuitem', { name: /Import latest orders/i });
+    const importButton = page.getByTestId('order-ingest-import-latest');
     await expect(importButton).toBeVisible({ timeout: 20_000 });
 
     // Arm the wait BEFORE clicking, so a fast job cannot finish between the

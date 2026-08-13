@@ -11,7 +11,7 @@
 
 ## 1. Why this happened (do not repeat)
 
-1. Mid-session, `git status` showed hundreds of `D` paths (rules + guard tests). Something else had already deleted/moved them (rules also appeared under `.claude/legacy-rules-archive/`).
+1. Mid-session, `git status` showed hundreds of `D` paths (rules + guard tests). Something else had already deleted/moved them (historical rule prose was later deleted, not restored).
 2. Agent tried to recover with `git checkout HEAD -- .` — **wrong tool**. That restores deleted files **and** discards every other unstaged modification on tracked files.
 3. Agent then pulled some paths from Cursor local History. Several snapshots were **older than HEAD** (ticket chrome, spine seed, etc.) and briefly **regressed** good tree state; those bad restores were reverted to HEAD.
 4. Remaining deletions were later cleared with path-scoped `git restore --source=HEAD --worktree --staged -- <paths>` until `git diff --name-only --diff-filter=D HEAD` was empty.
@@ -70,7 +70,7 @@ Cursor History root: `~/Library/Application Support/Cursor/User/History/*/entrie
 - `src/lib/queries/unshipped-seed-gate.ts` (+ test)
 - `src/lib/queries/ready-to-pack-shell-seed.server.ts`
 - `src/lib/photos/queries/receiving-photo-row.ts`
-- `.claude/legacy-rules-archive/` (archive copy — rules themselves must live again under `.claude/rules/`)
+- (historical rule archive deleted — live law is `AGENTS.md` only)
 
 ---
 
@@ -80,8 +80,7 @@ Cursor History root: `~/Library/Application Support/Cursor/User/History/*/entrie
    ```bash
    git diff --name-only --diff-filter=D HEAD
    # expect: empty
-   test -f .claude/rules/source-of-truth.md
-   test -f .claude/rules/workflow-safety.md
+   test -f AGENTS.md
    test -f src/components/support/zendesk/chat/ticket-chat-displays-gutter.guard.test.ts
    ```
    If any deleted: `git restore --source=HEAD --worktree --staged -- <path>` only.

@@ -8,8 +8,8 @@ import { test, expect } from '@playwright/test';
  * no body scroll lock, queue stays hit-testable underneath.
  *
  * Covers:
- *   (1) Add Order (`detail:new-order`) via `?new=true`
- *   (2) Order sync progress (`detail:order-sync`) after starting Import
+ *   (1) Add Order (`detail:order-ingest`) via `?new=true` (manual leaf)
+ *   (2) Order sync progress (`detail:order-sync`) after starting Import latest
  *       (API hung so the panel stays open without needing a live sheet)
  */
 
@@ -19,12 +19,12 @@ test.describe('Import / Add Order — non-modal right rail', () => {
   const BACKDROP_SELECTOR = '[class*="z-panelBackdrop"], [class*="z-detailStackBackdrop"]';
 
   test('Add Order opens as a named region without scrim or scroll lock', async ({ page }) => {
-    await page.goto('/dashboard?unshipped&new=true');
+    await page.goto('/shipping/orders?new=true');
 
     const table = page.locator('[data-testid="pending-grid-body"]').first();
     await expect(table).toBeVisible({ timeout: 20_000 });
 
-    const intake = page.locator('aside[role="region"][aria-label="New order entry"]');
+    const intake = page.locator('aside[role="region"][aria-label="Add orders"]');
     await expect(intake).toBeVisible({ timeout: 20_000 });
 
     expect(await intake.getAttribute('aria-modal')).toBeNull();
@@ -54,6 +54,8 @@ test.describe('Import / Add Order — non-modal right rail', () => {
     );
     expect(hit).toEqual({ inGrid: true, inAside: false });
 
+    // Leaf Esc pops to the index; a second Esc lets the host dismiss the rail.
+    await page.keyboard.press('Escape');
     await page.keyboard.press('Escape');
     await expect(intake).toBeHidden({ timeout: 10_000 });
   });
@@ -67,18 +69,18 @@ test.describe('Import / Add Order — non-modal right rail', () => {
       await new Promise(() => {});
     });
 
-    await page.goto('/dashboard?unshipped');
+    await page.goto('/shipping/orders');
 
     const table = page.locator('[data-testid="pending-grid-body"]').first();
     await expect(table).toBeVisible({ timeout: 20_000 });
 
-    const importBtn = page.getByRole('button', { name: /Import orders/i });
-    await expect(importBtn).toBeVisible({ timeout: 20_000 });
-    await importBtn.click();
-
-    const startImport = page.getByRole('menuitem', { name: /Import latest orders/i });
-    test.skip(!(await startImport.isVisible().catch(() => false)), 'no orders.import permission');
-    await startImport.click();
+    await page.getByRole('button', { name: 'Add orders' }).click();
+    const ingest = page.getByRole('region', { name: /add orders/i });
+    await expect(ingest).toBeVisible({ timeout: 20_000 });
+    const syncRow = ingest.getByTestId('station-displays-index-sync');
+    test.skip(!(await syncRow.isVisible().catch(() => false)), 'no orders.import permission');
+    await syncRow.click();
+    await page.getByTestId('order-ingest-import-latest').click();
 
     const sync = page.locator('aside[role="region"][aria-label="Order import progress"]');
     await expect(sync).toBeVisible({ timeout: 20_000 });
@@ -102,7 +104,7 @@ test.describe('Import / Add Order — non-modal right rail', () => {
   });
 
   test('opening Add Order while an order inspector is open keeps one region', async ({ page }) => {
-    await page.goto('/dashboard?unshipped');
+    await page.goto('/shipping/orders');
 
     const table = page.locator('[data-testid="pending-grid-body"]').first();
     await expect(table).toBeVisible({ timeout: 20_000 });
@@ -113,10 +115,10 @@ test.describe('Import / Add Order — non-modal right rail', () => {
     const orderInspector = page.locator('aside[role="region"][aria-label^="Order "]');
     await expect(orderInspector).toBeVisible({ timeout: 20_000 });
 
-    // Import + Add are one Band-1 split: primary Add opens new-order entry.
-    await page.getByRole('button', { name: 'New order entry' }).click();
+    // Band-1 Add opens the ingest index (methods live on the rail, not a dropdown).
+    await page.getByRole('button', { name: 'Add orders' }).click();
 
-    const intake = page.locator('aside[role="region"][aria-label="New order entry"]');
+    const intake = page.locator('aside[role="region"][aria-label="Add orders"]');
     await expect(intake).toBeVisible({ timeout: 20_000 });
     // One aside region at a time — store top-occupant exclusivity.
     await expect(page.locator('aside[role="region"]')).toHaveCount(1);

@@ -23,7 +23,7 @@ import type { TableImportDescriptor } from '@/lib/tables/import/types';
 
 /**
  * File-pick mechanism for a table import — shared by the labeled button and
- * by a split-button menu item. Presentation stays with the caller.
+ * by ingest-rail / chrome callers. Presentation stays with the caller.
  */
 export function useTableImportFilePicker<TField extends string, TRowView>(
   descriptor: TableImportDescriptor<TField, TRowView>,

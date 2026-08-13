@@ -27,7 +27,7 @@
     "src/lib/source-platform.ts",
     "src/hooks"
   ],
-  "count": 2511,
+  "count": 2508,
   "entries": [
     {
       "job": "Station: Scan pane + Displays push",
@@ -186,6 +186,19 @@
       "snippet": "`RightRailHost` · `src/components/right-rail/RightRailHost.tsx`"
     },
     {
+      "job": "Workbench: Ingest picker (Add / Import methods)",
+      "sot": "DeskInspectorIndexShell",
+      "path": "src/components/right-rail/DeskInspectorIndexShell.tsx",
+      "guard": null,
+      "symbols": [
+        "DeskInspectorIndexShell"
+      ],
+      "kind": "table",
+      "source": "AGENTS.md",
+      "line": 32,
+      "snippet": "`DeskInspectorIndexShell` · `src/components/right-rail/DeskInspectorIndexShell.tsx`"
+    },
+    {
       "job": "Monitor: Page shell",
       "sot": "MonitorPageShell",
       "path": "src/design-system/components/monitor/MonitorPageShell.tsx",
@@ -195,7 +208,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 32,
+      "line": 33,
       "snippet": "`MonitorPageShell` · `src/design-system/components/monitor/MonitorPageShell.tsx`"
     },
     {
@@ -208,7 +221,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 33,
+      "line": 34,
       "snippet": "`OpsKpiBand` · `src/design-system/components/monitor/`"
     },
     {
@@ -221,7 +234,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 34,
+      "line": 35,
       "snippet": "`StudioShell` · `src/components/studio/`"
     },
     {
@@ -234,7 +247,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 35,
+      "line": 36,
       "snippet": "`MIN_WORK_SURFACE_PX` · `src/lib/right-rail/frame.ts`"
     },
     {
@@ -247,7 +260,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 36,
+      "line": 37,
       "snippet": "`ContextPanelLayout` · `src/components/sidebar/ContextPanelLayout.tsx`"
     },
     {
@@ -260,7 +273,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 37,
+      "line": 38,
       "snippet": "`RouteShell` · `src/design-system/components/RouteShell.tsx`"
     },
     {
@@ -274,7 +287,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 43,
+      "line": 44,
       "snippet": "`Button` · `Panel` · `src/design-system/primitives/`"
     },
     {
@@ -287,7 +300,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 44,
+      "line": 45,
       "snippet": "`LedgerGridSurface` · `src/design-system/components/grid/`"
     },
     {
@@ -300,7 +313,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 45,
+      "line": 46,
       "snippet": "`resolveGridColumnAlign` · `src/design-system/components/grid/`"
     },
     {
@@ -313,7 +326,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 46,
+      "line": 47,
       "snippet": "`motionRole` · `src/design-system/motion/`"
     },
     {
@@ -326,7 +339,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 47,
+      "line": 48,
       "snippet": "`cornerClass` · `src/design-system/tokens/`"
     },
     {
@@ -339,7 +352,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 48,
+      "line": 49,
       "snippet": "`CopyChip` · `src/components/ui/CopyChip.tsx`"
     },
     {
@@ -352,7 +365,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 49,
+      "line": 50,
       "snippet": "`PlatformMark` · `src/lib/source-platform.ts`"
     },
     {
@@ -365,7 +378,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 50,
+      "line": 51,
       "snippet": "`StackedRowIdentity` · `src/components/ui/StackedRowIdentity.tsx`"
     },
     {
@@ -378,7 +391,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 51,
+      "line": 52,
       "snippet": "`CompactActivityRow` · `src/components/ui/CompactActivityRow.tsx`"
     },
     {
@@ -391,7 +404,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 52,
+      "line": 53,
       "snippet": "`HoverTooltip` · `src/components/ui/HoverTooltip.tsx`"
     },
     {
@@ -406,8 +419,23 @@
       ],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 61,
+      "line": 62,
       "snippet": "**Frame budgets** live in `src/lib/right-rail/frame.ts` — desk center ≥ `MIN_WORK_SURFACE_PX` (784); station Displays keep center ≥ `STATION_PUSH_CENTER_FLOOR_PX` (720); gutters `0`. Right edge **pushes** via `RightRailHost` (`modal={false…"
+    },
+    {
+      "job": "Workbench ingest pickers",
+      "sot": "RightRailHost",
+      "path": null,
+      "guard": null,
+      "symbols": [
+        "RightRailHost",
+        "DeskInspectorIndexShell",
+        "DisplaysIndexLeafStage"
+      ],
+      "kind": "law",
+      "source": "AGENTS.md",
+      "line": 63,
+      "snippet": "**Workbench ingest pickers** (Add / Import methods) open as `RightRailHost` index→leaf via `DeskInspectorIndexShell` (Unbox `DisplaysIndexLeafStage` waist) — never a Band-1 dropdown of workspaces."
     },
     {
       "job": "Ops chrome is flush-square",
@@ -419,7 +447,7 @@
       ],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 62,
+      "line": 64,
       "snippet": "**Ops chrome is flush-square** — `WORKBENCH_CHROME_PILL_CLASS` = `cornerClass('flush')` in `workbench-shell.tsx`."
     },
     {
@@ -433,7 +461,7 @@
       ],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 63,
+      "line": 65,
       "snippet": "**Workbench spreadsheets** mount via the table definition registry + `NonlinearTableHost` over `LedgerGridSurface` — never a new `*GridView` twin."
     },
     {
@@ -444,7 +472,7 @@
       "symbols": [],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 64,
+      "line": 66,
       "snippet": "**Motion** only via `@/design-system/motion` + `motionRole.*`. Only `src/design-system/motion/framer.ts` may import `motion/react` or `framer-motion`."
     },
     {
@@ -455,7 +483,7 @@
       "symbols": [],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 65,
+      "line": 67,
       "snippet": "**Color, spacing, type, elevation, focus, and named z-index tokens** come from `@/design-system/tokens` — no page-local hex; no ad-hoc numeric stacking."
     },
     {
@@ -471,7 +499,7 @@
       ],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 66,
+      "line": 68,
       "snippet": "**Platform / order identity** resolves from `source-platform.ts` + chip family (`OrderIdChip` / `PoChip` / `TrackingChip` / `PlatformMark`) — never prose platform names as the channel face."
     },
     {
@@ -485,7 +513,7 @@
       ],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 67,
+      "line": 69,
       "snippet": "**Mount-gated URL opens** paint via `useOptimisticUrlParam` / `resolveOptimisticParam` (`src/hooks/useOptimisticUrlParam.ts`, `src/lib/routing/optimistic-url-param.ts`)."
     },
     {
@@ -496,7 +524,7 @@
       "symbols": [],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 68,
+      "line": 70,
       "snippet": "**Status changes only via `transition()`** (`src/lib/inventory/state-machine.ts`) — never a raw status UPDATE outside the state machine."
     },
     {
@@ -510,7 +538,7 @@
       ],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 69,
+      "line": 71,
       "snippet": "**`orgId` comes from `ctx`**, never the body; org-scoped writes go through `withTenantTransaction` (`src/lib/tenancy/db.ts`)."
     },
     {
@@ -523,7 +551,7 @@
       ],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 70,
+      "line": 72,
       "snippet": "**Cross-entity urgency** resolves only in `promoteUrgency()` (`src/lib/urgency/`)."
     },
     {
@@ -1342,7 +1370,7 @@
       ],
       "kind": "code",
       "source": "src/components/dashboard/OutboundOrderChromeActions.tsx",
-      "line": 45,
+      "line": 30,
       "snippet": "export OutboundOrderChromeActions from src/components/dashboard/OutboundOrderChromeActions.tsx"
     },
     {
@@ -1368,7 +1396,7 @@
       ],
       "kind": "code",
       "source": "src/components/dashboard/OutboundWorkspaceHeader.tsx",
-      "line": 63,
+      "line": 64,
       "snippet": "export OutboundWorkspaceHeaderProps from src/components/dashboard/OutboundWorkspaceHeader.tsx"
     },
     {
@@ -1381,7 +1409,7 @@
       ],
       "kind": "code",
       "source": "src/components/dashboard/OutboundWorkspaceHeader.tsx",
-      "line": 73,
+      "line": 74,
       "snippet": "export OutboundWorkspaceHeader from src/components/dashboard/OutboundWorkspaceHeader.tsx"
     },
     {
@@ -1394,7 +1422,7 @@
       ],
       "kind": "code",
       "source": "src/components/dashboard/OutboundWorkspaceHeader.tsx",
-      "line": 219,
+      "line": 220,
       "snippet": "export OutboundTriageBand from src/components/dashboard/OutboundWorkspaceHeader.tsx"
     },
     {
@@ -18697,7 +18725,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/components/sidebar-intake/SidebarIntakeFormShell.tsx",
-      "line": 33,
+      "line": 38,
       "snippet": "export SidebarIntakeFormShell from src/design-system/components/sidebar-intake/SidebarIntakeFormShell.tsx"
     },
     {
@@ -20415,84 +20443,6 @@
       "source": "src/design-system/primitives/Spinner.tsx",
       "line": 17,
       "snippet": "export Spinner from src/design-system/primitives/Spinner.tsx"
-    },
-    {
-      "job": "Export: SplitButtonItem",
-      "sot": "SplitButtonItem",
-      "path": "src/design-system/primitives/SplitButton.tsx",
-      "guard": null,
-      "symbols": [
-        "SplitButtonItem"
-      ],
-      "kind": "code",
-      "source": "src/design-system/primitives/SplitButton.tsx",
-      "line": 29,
-      "snippet": "export SplitButtonItem from src/design-system/primitives/SplitButton.tsx"
-    },
-    {
-      "job": "Export: SPLIT_BUTTON_GROUP_CLASS",
-      "sot": "SPLIT_BUTTON_GROUP_CLASS",
-      "path": "src/design-system/primitives/SplitButton.tsx",
-      "guard": null,
-      "symbols": [
-        "SPLIT_BUTTON_GROUP_CLASS"
-      ],
-      "kind": "code",
-      "source": "src/design-system/primitives/SplitButton.tsx",
-      "line": 37,
-      "snippet": "export SPLIT_BUTTON_GROUP_CLASS from src/design-system/primitives/SplitButton.tsx"
-    },
-    {
-      "job": "Export: SPLIT_BUTTON_DIVIDER_CLASS",
-      "sot": "SPLIT_BUTTON_DIVIDER_CLASS",
-      "path": "src/design-system/primitives/SplitButton.tsx",
-      "guard": null,
-      "symbols": [
-        "SPLIT_BUTTON_DIVIDER_CLASS"
-      ],
-      "kind": "code",
-      "source": "src/design-system/primitives/SplitButton.tsx",
-      "line": 40,
-      "snippet": "export SPLIT_BUTTON_DIVIDER_CLASS from src/design-system/primitives/SplitButton.tsx"
-    },
-    {
-      "job": "Export: SPLIT_MENU_CONTENT_CLASS",
-      "sot": "SPLIT_MENU_CONTENT_CLASS",
-      "path": "src/design-system/primitives/SplitButton.tsx",
-      "guard": null,
-      "symbols": [
-        "SPLIT_MENU_CONTENT_CLASS"
-      ],
-      "kind": "code",
-      "source": "src/design-system/primitives/SplitButton.tsx",
-      "line": 49,
-      "snippet": "export SPLIT_MENU_CONTENT_CLASS from src/design-system/primitives/SplitButton.tsx"
-    },
-    {
-      "job": "Export: SPLIT_MENU_ITEM_CLASS",
-      "sot": "SPLIT_MENU_ITEM_CLASS",
-      "path": "src/design-system/primitives/SplitButton.tsx",
-      "guard": null,
-      "symbols": [
-        "SPLIT_MENU_ITEM_CLASS"
-      ],
-      "kind": "code",
-      "source": "src/design-system/primitives/SplitButton.tsx",
-      "line": 53,
-      "snippet": "export SPLIT_MENU_ITEM_CLASS from src/design-system/primitives/SplitButton.tsx"
-    },
-    {
-      "job": "Export: SplitButton",
-      "sot": "SplitButton",
-      "path": "src/design-system/primitives/SplitButton.tsx",
-      "guard": null,
-      "symbols": [
-        "SplitButton"
-      ],
-      "kind": "code",
-      "source": "src/design-system/primitives/SplitButton.tsx",
-      "line": 56,
-      "snippet": "export SplitButton from src/design-system/primitives/SplitButton.tsx"
     },
     {
       "job": "Export: StackSpace",
@@ -23784,6 +23734,19 @@
       "snippet": "export ShippedTypeFilter from src/hooks/useDashboardSearchController.ts"
     },
     {
+      "job": "Export: OutboundIngestMode",
+      "sot": "OutboundIngestMode",
+      "path": "src/hooks/useDashboardSearchController.ts",
+      "guard": null,
+      "symbols": [
+        "OutboundIngestMode"
+      ],
+      "kind": "code",
+      "source": "src/hooks/useDashboardSearchController.ts",
+      "line": 24,
+      "snippet": "export OutboundIngestMode from src/hooks/useDashboardSearchController.ts"
+    },
+    {
       "job": "Export: useDashboardSearchController",
       "sot": "useDashboardSearchController",
       "path": "src/hooks/useDashboardSearchController.ts",
@@ -23793,7 +23756,7 @@
       ],
       "kind": "code",
       "source": "src/hooks/useDashboardSearchController.ts",
-      "line": 23,
+      "line": 26,
       "snippet": "export useDashboardSearchController from src/hooks/useDashboardSearchController.ts"
     },
     {

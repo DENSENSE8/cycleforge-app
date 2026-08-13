@@ -3,7 +3,8 @@
 /**
  * Outbound workspace chrome — To-ship Sheets flush stack (Unbox History recipe):
  *
- *   Band 1 — fixed lifecycle system tabs + Add split (Import in the chevron menu)
+ *   Band 1 — fixed lifecycle system tabs + Add (ingest methods on the right rail)
+
  *   Band 2 — KPI (DashboardOrdersView)
  *   Band 3 — find-only command row + Views + Show/Hide inspector (View topics on rail)
  *
@@ -79,7 +80,7 @@ export function OutboundWorkspaceHeader({
   const searchParams = useSearchParams();
   const staffId = parseStaffParam(searchParams.get('staff')) ?? undefined;
   const { data: queueCounts } = useQuery(unshippedQueueCountsQuery({ staffId }));
-  const { openIntakeForm } = useDashboardSearchController();
+  const { openIngestIndex } = useDashboardSearchController();
 
   const fromCombos = fulfillmentCountsFromCombos(queueCounts?.combos ?? []);
   const pendingCount =
@@ -118,10 +119,10 @@ export function OutboundWorkspaceHeader({
       className={className}
       trailing={
         <WorkbenchTrailingCluster
-          // Band 1 trailing is the Add split (Import lives in the chevron menu).
+          // Band 1 trailing is one Add — ingest methods live on the right rail.
           // No sort rail here — Priority / refine live on the inspector View cluster.
           divide={false}
-          actions={<OutboundOrderChromeActions layout="split" onNewOrder={openIntakeForm} />}
+          actions={<OutboundOrderChromeActions layout="ingest" onNewOrder={openIngestIndex} />}
         />
       }
     />

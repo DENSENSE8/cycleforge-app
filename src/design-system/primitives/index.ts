@@ -2,7 +2,6 @@ export * from './ActionButtonGroup';
 export * from './AnchoredLayer';
 export * from './AppTopBar';
 export * from './Button';
-export * from './SplitButton';
 export * from './CardShell';
 export * from './ChevronToggle';
 export * from './Checkbox';

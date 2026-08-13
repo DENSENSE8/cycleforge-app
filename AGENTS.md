@@ -29,6 +29,7 @@ Regions are I/O contracts (`MotionRegion`: `station` · `workbench` · `monitor`
 | Workbench | Table registry | `TABLE_DEFINITIONS` · `src/components/tables/table-definition-registry.ts` |
 | Workbench | Band-3 Views | `WorkbenchViewsMenu` · `src/components/saved-views/WorkbenchViewsMenu.tsx` |
 | Workbench | Right inspector | `RightRailHost` · `src/components/right-rail/RightRailHost.tsx` |
+| Workbench | Ingest picker (Add / Import methods) | `DeskInspectorIndexShell` · `src/components/right-rail/DeskInspectorIndexShell.tsx` |
 | Monitor | Page shell | `MonitorPageShell` · `src/design-system/components/monitor/MonitorPageShell.tsx` |
 | Monitor | KPI / blocks | `OpsKpiBand` · `src/design-system/components/monitor/` |
 | Canvas | Studio shell | `StudioShell` · `src/components/studio/` |
@@ -59,6 +60,7 @@ Regions are I/O contracts (`MotionRegion`: `station` · `workbench` · `monitor`
 - **Stay on the checkout's branch.** The worktree is the branch.
 - **Compose from the named SoT first; grow it when wrong.** Never fork a page-local twin. Lookup: `node scripts/sot-lookup.mjs "<job>"`.
 - **Frame budgets** live in `src/lib/right-rail/frame.ts` — desk center ≥ `MIN_WORK_SURFACE_PX` (784); station Displays keep center ≥ `STATION_PUSH_CENTER_FLOOR_PX` (720); gutters `0`. Right edge **pushes** via `RightRailHost` (`modal={false}`); never a floating card over the work.
+- **Workbench ingest pickers** (Add / Import methods) open as `RightRailHost` index→leaf via `DeskInspectorIndexShell` (Unbox `DisplaysIndexLeafStage` waist) — never a Band-1 dropdown of workspaces.
 - **Ops chrome is flush-square** — `WORKBENCH_CHROME_PILL_CLASS` = `cornerClass('flush')` in `workbench-shell.tsx`.
 - **Workbench spreadsheets** mount via the table definition registry + `NonlinearTableHost` over `LedgerGridSurface` — never a new `*GridView` twin.
 - **Motion** only via `@/design-system/motion` + `motionRole.*`. Only `src/design-system/motion/framer.ts` may import `motion/react` or `framer-motion`.
@@ -74,6 +76,5 @@ Regions are I/O contracts (`MotionRegion`: `station` · `workbench` · `monitor`
 
 ## Workflow
 
-Lanes, ports, secrets, and commit discipline: see archived notes under
-`.claude/legacy-rules-archive/workflow-safety.md` only when you need history —
-live law is this file + `.claude/settings.json` hooks.
+Live law is this file + `.claude/settings.json` hooks. Do not restore deleted
+rule files into the always-on prompt — grow a one-line hard law here instead.

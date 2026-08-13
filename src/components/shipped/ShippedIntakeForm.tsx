@@ -24,6 +24,14 @@ const DEFAULT_CONDITION = 'USED_B';
 interface ShippedIntakeFormProps {
   onClose: () => void;
   onSubmit: (data: ShippedFormData) => void;
+  /** Leaf-embedded: skip hero close/title (Displays leaf header owns the name). */
+  embedded?: boolean;
+  initialTab?: 'replacement' | 'add_order';
+  hideModeTabs?: boolean;
+  /** Flush classify cell above the fields (platform combobox). */
+  classifySlot?: React.ReactNode;
+  /** Overrides `account_source` on add-order submit. */
+  accountSource?: string;
 }
 
 interface ReplacementShippedFormData {
@@ -43,13 +51,23 @@ interface AddOrderShippedFormData {
   product_title: string;
   condition: string;
   sku: string;
+  /** Channel label written to `orders.account_source`. Defaults to Manual. */
+  accountSource?: string;
 }
 
 export type ShippedFormData = ReplacementShippedFormData | AddOrderShippedFormData;
 
 type LookupStatus = 'idle' | 'searching' | 'found' | 'not-found';
 
-export function ShippedIntakeForm({ onClose, onSubmit }: ShippedIntakeFormProps) {
+export function ShippedIntakeForm({
+  onClose,
+  onSubmit,
+  embedded = false,
+  initialTab = 'replacement',
+  hideModeTabs = false,
+  classifySlot,
+  accountSource,
+}: ShippedIntakeFormProps) {
   const router = useRouter();
   const pathname = usePathname();
 
@@ -61,14 +79,15 @@ export function ShippedIntakeForm({ onClose, onSubmit }: ShippedIntakeFormProps)
     }
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
-    if (!params.has('new')) return;
+    if (!params.has('new') && !params.has('ingest')) return;
     params.delete('new');
+    params.delete('ingest');
     const path = pathname || window.location.pathname || '/dashboard';
     const qs = params.toString();
     router.replace(qs ? `${path}?${qs}` : path);
   }, [onClose, pathname, router]);
 
-  const [activeTab, setActiveTab] = useState<'replacement' | 'add_order'>('replacement');
+  const [activeTab, setActiveTab] = useState<'replacement' | 'add_order'>(initialTab);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [lookupStatus, setLookupStatus] = useState<LookupStatus>('idle');
 
@@ -150,7 +169,13 @@ export function ShippedIntakeForm({ onClose, onSubmit }: ShippedIntakeFormProps)
     addOrderData.condition.trim();
 
   const handleSubmit = async () => {
-    const submitData: ShippedFormData = activeTab === 'replacement' ? replacementData : addOrderData;
+    const submitData: ShippedFormData =
+      activeTab === 'replacement'
+        ? replacementData
+        : {
+            ...addOrderData,
+            accountSource: accountSource?.trim() || addOrderData.accountSource,
+          };
     const canSubmit = activeTab === 'replacement' ? canSubmitReplacement : canSubmitAddOrder;
     if (!canSubmit) return;
 
@@ -169,14 +194,22 @@ export function ShippedIntakeForm({ onClose, onSubmit }: ShippedIntakeFormProps)
       subtitle="Order Information"
       subtitleAccent="green"
       onClose={handleClose}
+      hideHeader={embedded}
       bandBelowHeader={
-        <HorizontalButtonSlider
-          items={INTAKE_MODE_ITEMS}
-          value={activeTab}
-          onChange={(tab) => setActiveTab(tab as 'replacement' | 'add_order')}
-          variant="nav"
-          aria-label="Intake mode"
-        />
+        hideModeTabs ? (
+          classifySlot
+        ) : (
+          <>
+            {classifySlot}
+            <HorizontalButtonSlider
+              items={INTAKE_MODE_ITEMS}
+              value={activeTab}
+              onChange={(tab) => setActiveTab(tab as 'replacement' | 'add_order')}
+              variant="nav"
+              aria-label="Intake mode"
+            />
+          </>
+        )
       }
       footer={
         <Button
