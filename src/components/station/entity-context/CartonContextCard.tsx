@@ -451,11 +451,7 @@ export function CartonContextCard({
   const classifyCluster = showClassifyControls ? (
     <div
       data-testid="carton-context-classify-pills"
-      className={cn(
-        STATION_IDENTITY_GROUP_CLASS,
-        'shrink-0',
-        STATION_CHROME_SEAM_HAIRLINE,
-      )}
+      className={cn(STATION_IDENTITY_GROUP_CLASS, 'shrink-0')}
     >
       {showStaffPhotoRow ? (
         <InlinePillPicker
@@ -547,14 +543,14 @@ export function CartonContextCard({
 
   /* Tracking# — last-8 copy chip. Edit stays on IdentityLinkChip when wired. */
   const trackingSlot = isLocalPickup ? (
-    <div className="flex h-full shrink-0 items-stretch border-l border-border-soft">
+    <div className="flex h-full shrink-0 items-stretch">
       <FulfillmentPickupPill
         variant="rail"
         tooltip="Fulfilled in person — no tracking number"
       />
     </div>
   ) : onEditTracking ? (
-    <div className="flex h-full shrink-0 items-stretch border-l border-border-soft">
+    <div className="flex h-full shrink-0 items-stretch">
       <IdentityLinkChip
         openHref={trackingOpenHref}
         openTitle="Open carrier tracking"
@@ -584,7 +580,7 @@ export function CartonContextCard({
       ) : null}
     </div>
   ) : (
-    <div className="flex h-full shrink-0 items-stretch border-l border-border-soft">
+    <div className="flex h-full shrink-0 items-stretch">
       <TrackingChip
         value={primaryTrackingTrimmed}
         display={
@@ -672,7 +668,7 @@ export function CartonContextCard({
 
   const ticketInline =
     showStaffPhotoRow && zendeskTrimmed && !overflowSet.has('claim') ? (
-      <div className={cn(STATION_CHROME_CELL_CLASS, 'border-l border-border-soft')}>
+      <div className={STATION_CHROME_CELL_CLASS}>
       <ReceivingTicketChip
         value={zendeskTrimmed}
         display={zendeskChipDisplay}
@@ -791,7 +787,7 @@ export function CartonContextCard({
       className={cn(
         STATION_CHROME_CELL_CLASS,
         STATION_CHROME_CELL_PAD,
-        'gap-0.5 border-l border-border-soft font-mono text-role-caption tabular-nums text-text-muted',
+        'gap-0.5 font-mono text-role-caption tabular-nums text-text-muted',
       )}
       data-testid="carton-context-price"
     >
@@ -806,14 +802,14 @@ export function CartonContextCard({
     <div
       ref={barRef}
       className={cn(
-        'flex w-full min-w-0 flex-nowrap items-stretch overflow-hidden',
+        'flex w-full min-w-0 flex-nowrap items-stretch overflow-visible',
         STATION_CHROME_ROW_FACE,
         STATION_CHROME_SEAM_HAIRLINE,
       )}
       data-testid="carton-context-one-row"
     >
       {/* Left — identity (always visible) */}
-      <div className="flex min-w-0 shrink-0 items-stretch border-r border-border-soft">
+      <div className="flex min-w-0 shrink-0 items-stretch">
         {exitControl ? (
           <div className={STATION_IDENTITY_LEAD_COL_CLASS}>{exitControl}</div>
         ) : null}
@@ -822,7 +818,7 @@ export function CartonContextCard({
           {orderChip}
           {trackingSlot}
           {qty ? (
-            <div className={cn(STATION_CHROME_CELL_CLASS, 'border-l border-border-soft')}>
+            <div className={STATION_CHROME_CELL_CLASS}>
               <GridQtyFractionValue received={qty.received} expected={qty.expected} />
             </div>
           ) : null}
@@ -831,7 +827,7 @@ export function CartonContextCard({
 
       {/* Middle — classify (collapses first) */}
       {classifyCluster ? (
-        <div className="flex min-w-0 flex-1 items-stretch justify-center overflow-hidden border-r border-border-soft">
+        <div className="flex min-w-0 flex-1 items-stretch justify-center overflow-visible">
           {classifyCluster}
         </div>
       ) : null}
@@ -847,5 +843,5 @@ export function CartonContextCard({
     </div>
   );
 
-  return <div className="w-full min-w-0 overflow-hidden">{oneRowBar}</div>;
+  return <div className="w-full min-w-0 overflow-visible">{oneRowBar}</div>;
 }
