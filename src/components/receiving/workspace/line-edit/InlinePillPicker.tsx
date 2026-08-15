@@ -178,7 +178,7 @@ export function InlinePillPicker({
    * `icon` — locked `h-8 w-8` identity face.
    * `iconLabel` — identity face + name (banner / options).
    */
-  collapsedFace?: 'label' | 'icon' | 'iconLabel';
+  collapsedFace?: 'label' | 'icon' | 'iconLabel' | 'dot';
   /** How expanded options render (inline presentation). */
   expandedFace?: 'label' | 'icon' | 'iconLabel';
   /**
@@ -240,7 +240,7 @@ export function InlinePillPicker({
         };
 
   const collapsedShell =
-    collapsedFace === 'icon'
+    collapsedFace === 'icon' || collapsedFace === 'dot'
       ? INLINE_PILL_ICON_FACE
       : collapsedFace === 'iconLabel'
         ? isBookmark
@@ -265,6 +265,8 @@ export function InlinePillPicker({
       <span className="grid place-items-center" aria-hidden>
         {identityFace}
       </span>
+      ) : collapsedFace === 'dot' ? (
+      <IdentityDot opt={active} />
       ) : collapsedFace === 'iconLabel' ? (
         <>
           <span className="grid h-4 w-4 shrink-0 place-items-center overflow-hidden" aria-hidden>
@@ -338,7 +340,7 @@ export function InlinePillPicker({
               align="start"
               side="bottom"
               sideOffset={4}
-              className="min-w-[10rem] max-w-[18rem]"
+              className="min-w-[10rem] max-w-[18rem] border border-border-soft"
               aria-label={ariaLabel}
             >
               {options.map((opt) => {

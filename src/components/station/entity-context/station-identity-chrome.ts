@@ -71,7 +71,7 @@ export const stationUtilityPanelClass =
  */
 export const stationIdentityPadClass = 'px-0';
 
-/* ── Two-row identity rhythm ──────────────────────────────────────────────── */
+/* ── Identity rhythm (one-row carton bar; stacked tokens kept for overlays) ─ */
 
 /**
  * Station chrome seam — alias of {@link PRIMARY_CHROME_ROW_FACE} (28px scan bar

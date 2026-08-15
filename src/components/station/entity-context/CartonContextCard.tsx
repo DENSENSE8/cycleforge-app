@@ -1,12 +1,22 @@
 'use client';
 
-import { useState } from 'react';
-import { ChevronLeft } from '@/components/Icons';
-import { getLast8, PoTotalChip, resolveChipDisplay } from '@/components/ui/CopyChip';
+import { useRef, useState } from 'react';
+import { ChevronLeft, ExternalLink, MoreHorizontal, Ticket } from '@/components/Icons';
+import {
+  getLast8,
+  OrderIdChip,
+  resolveChipDisplay,
+  TrackingChip,
+} from '@/components/ui/CopyChip';
 import { GridQtyFractionValue } from '@/components/ui/grid-cells';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { PlatformMark } from '@/components/ui/PlatformMark';
-import { Button } from '@/design-system/primitives';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  IconButton,
+} from '@/design-system/primitives';
 import { ReceivingPhotoButton } from '@/components/receiving/workspace/line-edit/ReceivingPhotoButton';
 import { IdentityLinkChip } from '@/components/receiving/workspace/line-edit/IdentityLinkChip';
 import { ReceivingTicketChip } from '@/components/receiving/workspace/line-edit/ReceivingTicketChip';
@@ -24,23 +34,25 @@ import {
 import { priorityOverrideTier } from '@/lib/receiving/priority-override';
 import { usePlatformCatalog, useReceivingTypeCatalog, usePlatformMeta } from '@/hooks/useCatalog';
 import {
-  formatListingLinkMenuOptions,
   type CartonListingLink,
 } from '@/lib/receiving/listing-links';
 import { platformMetaIconTone } from '@/lib/source-platform';
 import { cn } from '@/utils/_cn';
 import {
-  STATION_CONTEXT_CLAIM_PILL_CLASS,
+  STATION_CONTEXT_BOXED_CUBE_CLASS,
   STATION_CONTEXT_EXIT_PILL_CLASS,
-  STATION_CONTEXT_STATUS_PILL_CLASS,
 } from './station-context-action-pill';
 import {
-  STATION_IDENTITY_COMMERCE_ROW_CLASS,
+  STATION_CHROME_ROW_FACE,
+  STATION_CHROME_SEAM_HAIRLINE,
   STATION_IDENTITY_GROUP_CLASS,
   STATION_IDENTITY_LEAD_COL_CLASS,
-  STATION_IDENTITY_ROW_CLASS,
-  STATION_IDENTITY_ROW_STACK_CLASS,
 } from './station-identity-chrome';
+import { CartonClassifyColorPopover } from './CartonClassifyColorPopover';
+import {
+  useCartonContextBarLayout,
+  type CartonContextActionId,
+} from './useCartonContextBarLayout';
 
 
 /**
@@ -54,31 +66,30 @@ import {
  * (tracking/listings), not below-row drawers. PO is copy/open when linked;
  * unfound / no real Zoho PO id can pass `onEditPo` → Package Pairing (PO tab).
  *
- * **ONE face for every scan station** (ruled 2026-08-04): TWO semantic rows
- * filling the floating {@link StationContextBar} identity column (no card
- * chrome of its own). Pair hosts with
- * `StationWorkbench reserveIdentityClearance="stacked"`.
+ * **ONE face for every scan station**: ONE semantic row filling the floating
+ * {@link StationContextBar} identity column (no card chrome of its own).
+ * Pair hosts with `StationWorkbench reserveIdentityClearance={false}` (in-flow)
+ * or legacy overlay clearance.
  *
- *   Row 1 — *"what kind of work is this"* — urgency · platform · type; Photos
- *           pinned trailing.
- *   Row 2 — *"which record"* — locked status pill · order#/PO# · tracking
- *           (left); price · listing · Claim/ticket on the SAME flush bottom
- *           row (`h-6` secondary band, gap-0).
+ *   Left — identity: back · status dot · order# · tracking#
+ *   Middle — classify: priority · platform · type (+ color edit). Collapses
+ *            first (dots-only / shortLabel) when the row is tight.
+ *   Right — actions: quiet price · listing · claim · photos as icon buttons.
+ *            Those three verbs overflow into `⋯` before the row wraps.
  *
  * Secondary / exact triage detail (qty rollups, extra boxes, lineage,
  * exception routing, diagnostics) lives in right-edge **Displays** — never a
  * "Show details" expander under this identity band (guard:
  * `carton-context-details-in-displays.guard.test.ts`).
  *
- * CSS grid locks both rows — commerce never drops into a third band under
- * Photos. The exit chevron opens row 1 so it and the order chip share the
- * band's left edge. Never mix an identifier into row 1 or a classification
- * into row 2.
+ * The bar never wraps. Classify pills collapse and trailing verbs park in
+ * `⋯` before a second row appears. Status is a 6–8px colored dot, not a
+ * RECEIVED pill. Listing / claim / photos are icon buttons — no brand tiles.
  * Omit optional props (`onMakeClaim`, `showStaffPhotoRow`, `lifecycle`,
  * `showPoTotal`, classify, …) to hide that affordance per station — do not
  * invent empty placeholder tracks.
  *
- * Former `card` and one-row `bar` densities are deleted. Thin adapters
+ * Thin adapters
  * (`LineCartonContextSection` · `TestingCartonHeader` ·
  * `ShippingEntityContextHeader` · `PackOrderIdentity` · `ReviewOrderIdentity` ·
  * `SupportOrderIdentity`) wire domain controllers only.
@@ -325,6 +336,9 @@ export function CartonContextCard({
 }) {
   // One classify menu at a time — chip-anchored dropdown; identity band stays put.
   const [openPicker, setOpenPicker] = useState<'urgency' | 'platform' | 'type' | null>(null);
+  const barRef = useRef<HTMLDivElement | null>(null);
+  const { classifyCompact, overflowActions } = useCartonContextBarLayout(barRef);
+  const overflowSet = new Set<CartonContextActionId>(overflowActions);
 
   const setClassifyMenu = (picker: 'urgency' | 'platform' | 'type' | null) => {
     if (picker != null && !classifyInteractive) return;
@@ -355,11 +369,9 @@ export function CartonContextCard({
   const effectiveOrder = poDisplay || linkedReturnOrder;
   const orderCopyOnly = isReturn || (!poDisplay && !!linkedReturnOrder);
   const listingHasTarget = !!(listingLink || listingOpenHref);
-  const listingLinkOptions = formatListingLinkMenuOptions(listingLinks);
   // Listing face: brand tile (Amazon) as iconOnly; platforms without tileSrc
   // use ExternalLink + label (no carton/FBA glyph fallback). Identity last-8
   // stays on PO# / TRK / ticket. Placeholder text when unbound / no platform.
-  const listingUsesBrandTile = !!platformMeta.tileSrc;
   // Same paint ladder as PlatformMark — order `#` + listing ExternalLink.
   const platformIconTone = platformValue ? platformMetaIconTone(platformMeta) : null;
   const listingChipDisplay = platformValue
@@ -432,10 +444,15 @@ export function CartonContextCard({
   /* Classify chip face — click opens a chip-anchored menu (presentation=menu).
      Unbox/Triage inline edit stays here; Displays Classify remains the full
      searchable leaf when staff open it from the rail / dock. */
+  const classifyFace = classifyCompact ? 'dot' : 'label';
   const classifyCluster = showClassifyControls ? (
     <div
       data-testid="carton-context-classify-pills"
-      className={cn(STATION_IDENTITY_GROUP_CLASS, 'shrink-0')}
+      className={cn(
+        STATION_IDENTITY_GROUP_CLASS,
+        'shrink-0',
+        STATION_CHROME_SEAM_HAIRLINE,
+      )}
     >
       {showStaffPhotoRow ? (
         <InlinePillPicker
@@ -443,9 +460,9 @@ export function CartonContextCard({
           options={urgencyOptions}
           value={urgencyValue}
           onSelect={handleUrgencySelect}
-          collapsedLabel={effectiveUrgencyLabel}
+          collapsedLabel={classifyCompact ? (urgencyOptions.find((o) => o.value === urgencyValue)?.shortLabel ?? effectiveUrgencyLabel) : effectiveUrgencyLabel}
           collapsedClass={effectiveUrgencyClass}
-          collapsedFace="label"
+          collapsedFace={classifyFace}
           presentation="menu"
           open={openPicker === 'urgency'}
           onOpenChange={(o) => setClassifyMenu(o ? 'urgency' : null)}
@@ -458,7 +475,8 @@ export function CartonContextCard({
         options={platformOptions}
         value={platformValue}
         onSelect={onPlatformSelect}
-        collapsedFace="label"
+        collapsedLabel={classifyCompact ? (platformOptions.find((o) => o.value === platformValue)?.shortLabel) : undefined}
+        collapsedFace={classifyFace}
         presentation="menu"
         open={openPicker === 'platform'}
         onOpenChange={(o) => setClassifyMenu(o ? 'platform' : null)}
@@ -471,183 +489,80 @@ export function CartonContextCard({
         options={typeOptions}
         value={receivingType}
         onSelect={onTypeSelect}
-        collapsedFace="label"
+        collapsedLabel={classifyCompact ? (typeOptions.find((o) => o.value === receivingType)?.shortLabel) : undefined}
+        collapsedFace={classifyFace}
         presentation="menu"
         open={openPicker === 'type'}
         onOpenChange={(o) => setClassifyMenu(o ? 'type' : null)}
         readOnly={!classifyInteractive}
         placeholder="Type"
       />
+      <CartonClassifyColorPopover disabled={!classifyInteractive} />
     </div>
   ) : null;
 
-  /* Listing / external open — Amazon brand tile + ExternalLink when tileSrc
-     exists; otherwise ExternalLink + platform label (no carton glyph). Hover:
-     Copy, then Edit. Stacked pins this to row 2's leading commerce cluster. */
-  const listingChip = showListing ? (
-      <IdentityLinkChip
-        openHref={listingOpenHref}
-        openTitle={listingOpenTitle}
-        linkOptions={listingLinkOptions}
-        value={listingLink || listingOpenHref || ''}
-        display={listingChipDisplay}
-        // ExternalLink tone ONLY — brand tiles stay full color.
-        iconClass={
-          listingHasTarget && platformIconTone
-            ? platformIconTone.className
-            : 'text-text-faint'
-        }
-        iconStyle={
-          listingHasTarget && platformIconTone ? platformIconTone.style : undefined
-        }
-        disableCopy={!(listingLink.trim() || listingOpenHref)}
-        onEdit={onEditListing}
-        editOpen={false}
-        editLabel="Edit listing"
-        actionsInMenu
-        chipAction="open"
-        menuFirstAction="copy"
-        showExternalIcon
-        iconOnly={listingUsesBrandTile}
-        iconOnlyMark={
-          listingUsesBrandTile ? (
-            <PlatformMark
-              platformValue={platformValue}
-              preferBrandTile
-              empty={!platformValue}
-            />
-          ) : undefined
-        }
-      />
-  ) : null;
 
-  /* Filed ticket# OR empty Claim CTA — row 2 trailing with price · listing
-     (never beside Photos on row 1, never in the left identity strip). */
-  const filedTicketChip =
-    showStaffPhotoRow && zendeskTrimmed ? (
-      <ReceivingTicketChip
-        value={zendeskTrimmed}
-        display={zendeskChipDisplay}
-        openHref={zendeskHref}
-        providerTicketId={providerTicketId}
-        receivingId={receivingId}
-        lineId={lineId}
-        onUnlinked={() => {
-          onTicketUnlinked?.();
-        }}
-        onOpenTicketView={
-          onToggleTicketView && providerTicketId != null
-            ? () => onToggleTicketView()
-            : undefined
-        }
-        ticketViewActive={ticketViewActive}
-      />
-    ) : null;
+  const CONTEXT_ACTION_ICON_CLASS = cn(
+    STATION_CONTEXT_BOXED_CUBE_CLASS,
+    'h-full aspect-square shrink-0 border-l border-border-soft',
+  );
 
-  const claimCta =
-    showStaffPhotoRow && !zendeskTrimmed && onMakeClaim ? (
-      <HoverTooltip
-        label={claimViewActive ? 'Hide claim' : 'File claim'}
-        placement="above"
-        asChild
-      >
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={onMakeClaim}
-          ariaLabel={claimViewActive ? 'Hide claim' : 'File claim'}
-          aria-expanded={claimViewActive}
-          className={STATION_CONTEXT_CLAIM_PILL_CLASS}
-        >
-          Claim
-        </Button>
-      </HoverTooltip>
-    ) : null;
-
-  const claimUnderPhotos = filedTicketChip ?? claimCta;
-
-  /* Row 2 trailing — flush end-aligned price · listing · Claim/ticket
-     (gap-0 abut, same grammar as classify). Sits on the SAME grid row as
-     lifecycle · order# · tracking — never a third stacked band under Photos. */
-  const commerceUnderPhotos =
-    showPoTotal || listingChip || claimUnderPhotos ? (
-      <div className={cn(STATION_IDENTITY_COMMERCE_ROW_CLASS, 'justify-end')}>
-        {showPoTotal ? <PoTotalChip amount={poTotal} /> : null}
-        {listingChip}
-        {claimUnderPhotos}
-      </div>
-    ) : null;
-
-  const photosCell =
-    showStaffPhotoRow && receivingId != null ? (
-      <ReceivingPhotoButton
-        receivingId={receivingId}
-        staffId={Number(staffId) || 0}
-        poRef={effectiveOrder || null}
-        photoStage={photoStage}
-        // Open left of the pill so Claim under Photos stays clear. Unbox keeps
-        // the hover action dropdown; Move / Ticket open Displays (right rail).
-        // Click = phone; double-click = Displays Photos.
-        galleryPlacement="left"
-        onSendToTicket={onSendToTicket}
-        onOpenMovePhotosExternal={onOpenMovePhotosExternal}
-        onOpenPhotosDisplay={onOpenPhotosDisplay}
-        suppressHoverGallery={suppressPhotoHoverGallery}
-      />
-    ) : null;
-
-  /** True when the trailing (Photos / commerce) column mounts. */
-  const photosClaimColumn = Boolean(photosCell || commerceUnderPhotos);
-
-  /* PO# — or the originating ORDER# for a return: an imported RETURN shows its
-     Zoho order#, and a serial-resolved return (scanned unit that was previously
-     shipped) shows the closed-loop outbound order# lifted into this slot. Either
-     way it's a copy chip SEPARATE from the listing link. Bound POs keep open +
-     copy + Edit (Package Pairing) + Details (Incoming connection panel). Empty
-     `# ----` clicks Edit directly when onEditPo is set. */
+  /* PO# / order# — last-8 copy chip; edit menus stay on IdentityLinkChip when wired. */
   const orderChip = showOrderIdentity ? (
-    <IdentityLinkChip
-      openHref={orderCopyOnly ? undefined : poOpenHref}
-      openTitle={orderCopyOnly ? 'Order number' : 'Open purchase order'}
-      value={effectiveOrder}
-      display={effectiveOrder ? getLast8(effectiveOrder) : resolveChipDisplay('')}
-      tone="id"
-      lockLast8Width
-      iconClass={platformIconTone?.className}
-      iconStyle={platformIconTone?.style}
-      platformLabel={platformValue ? platformMeta.label : null}
-      disableCopy={!effectiveOrder}
-      onEdit={onEditPo}
-      editOpen={false}
-      editLabel={
-        poEditOpen
-          ? 'Hide package pairing'
-          : effectiveOrder
-            ? 'Edit order'
-            : 'Link PO'
-      }
-      onDetails={onOrderDetails}
-      detailsLabel="Show inspector"
-      actionsInMenu
-    />
+    onEditPo || onOrderDetails ? (
+      <IdentityLinkChip
+        openHref={orderCopyOnly ? undefined : poOpenHref}
+        openTitle={orderCopyOnly ? 'Order number' : 'Open purchase order'}
+        value={effectiveOrder}
+        display={effectiveOrder ? getLast8(effectiveOrder) : resolveChipDisplay('')}
+        tone="id"
+        lockLast8Width
+        iconClass={platformIconTone?.className}
+        iconStyle={platformIconTone?.style}
+        platformLabel={platformValue ? platformMeta.label : null}
+        disableCopy={!effectiveOrder}
+        onEdit={onEditPo}
+        editOpen={false}
+        editLabel={
+          poEditOpen
+            ? 'Hide package pairing'
+            : effectiveOrder
+              ? 'Edit order'
+              : 'Link PO'
+        }
+        onDetails={onOrderDetails}
+        detailsLabel="Show inspector"
+        actionsInMenu
+      />
+    ) : (
+      <OrderIdChip
+        value={effectiveOrder}
+        display={effectiveOrder ? getLast8(effectiveOrder) : resolveChipDisplay('')}
+        dense
+        displayWidth="last8"
+        platformLabel={platformValue ? platformMeta.label : null}
+        iconClass={platformIconTone?.className}
+        iconStyle={platformIconTone?.style}
+        truncateDisplay={false}
+      />
+    )
   ) : null;
 
-  /* Tracking# — MapPin tinted by carrier brand when known (UPS brown / FedEx
-     purple / USPS light postal blue); house blue when unknown. Extra-box `+`
-     sits on the chip. Suppressed for pickup. */
+  /* Tracking# — last-8 copy chip. Edit stays on IdentityLinkChip when wired. */
   const trackingSlot = isLocalPickup ? (
     <FulfillmentPickupPill
       variant="rail"
       tooltip="Fulfilled in person — no tracking number"
     />
-  ) : (
+  ) : onEditTracking ? (
     <div className="flex shrink-0 items-center gap-0">
       <IdentityLinkChip
         openHref={trackingOpenHref}
         openTitle="Open carrier tracking"
         value={primaryTrackingTrimmed}
-        display={primaryTrackingTrimmed ? getLast8(primaryTrackingTrimmed) : resolveChipDisplay('')}
+        display={
+          primaryTrackingTrimmed ? getLast8(primaryTrackingTrimmed) : resolveChipDisplay('')
+        }
         tone="tracking"
         carrierHint={carrierHint}
         showCarrierBrand
@@ -668,86 +583,258 @@ export function CartonContextCard({
         </HoverTooltip>
       ) : null}
     </div>
-  );
-
-  // ── Two-row assembly (the only face) — CSS grid so row 2 is ONE flush band ─
-  //
-  //   Row 1 — classify (left) · Photos (right)
-  //   Row 2 — lifecycle · order# · tracking (left) ·
-  //           price · listing · Claim/ticket (right) — same row, gap-0
-  //
-  // Never mix the two: no identifier on row 1, no classification on row 2.
-  // Never stack commerce under Photos in a third visual band.
-  const hasExitLead = !!exitControl;
-  const trailingCol = photosClaimColumn;
-
-  const statusPill = lifecycle ? (
-    <HoverTooltip label={lifecycle.tip || lifecycle.label} asChild>
-      <span
-        className={cn(STATION_CONTEXT_STATUS_PILL_CLASS, lifecycle.pillClass)}
-        data-testid="carton-context-lifecycle-pill"
-        aria-label={lifecycle.label}
-      >
-        {lifecycle.label}
-      </span>
-    </HoverTooltip>
-  ) : null;
-
-  const stackedLayout = (
-    <div
-      className={cn(
-        'grid min-w-0 w-full flex-1 gap-0',
-        trailingCol
-          ? 'grid-cols-[minmax(0,1fr)_auto] grid-rows-[auto_auto]'
-          : 'grid-cols-1 grid-rows-[auto_auto]',
-      )}
-      data-testid="carton-context-two-row"
-    >
-      {/* Row 1 left — what kind of work is this. */}
-      <div className={cn(STATION_IDENTITY_ROW_CLASS, 'min-w-0')}>
-        {hasExitLead ? (
-          <div className={STATION_IDENTITY_LEAD_COL_CLASS}>{exitControl}</div>
-        ) : null}
-        {classifyCluster}
-      </div>
-      {/* Row 1 right — Photos; same PRIMARY face as classify · Exit (never taller). */}
-      {trailingCol ? (
-        <div className={cn(STATION_IDENTITY_ROW_CLASS, 'justify-end')}>{photosCell}</div>
-      ) : null}
-      {/* Row 2 left — locked status pill · order# · tracking (identifiers). */}
-      <div className={cn(STATION_IDENTITY_COMMERCE_ROW_CLASS, 'min-w-0')}>
-        {statusPill}
-        {orderChip}
-        {trackingSlot}
-        {qty ? (
-          <GridQtyFractionValue received={qty.received} expected={qty.expected} />
-        ) : null}
-      </div>
-      {/* Row 2 right — price · listing · Claim flush on the same bottom row. */}
-      {trailingCol ? (
-        <div className="flex items-stretch justify-end self-stretch">
-          {commerceUnderPhotos}
-        </div>
+  ) : (
+    <div className="flex shrink-0 items-center gap-0">
+      <TrackingChip
+        value={primaryTrackingTrimmed}
+        display={
+          primaryTrackingTrimmed ? getLast8(primaryTrackingTrimmed) : resolveChipDisplay('')
+        }
+        dense
+        displayWidth="last8"
+        carrierHint={carrierHint}
+        truncateDisplay={false}
+      />
+      {filledExtraTrackingsCount > 0 ? (
+        <HoverTooltip
+          label={`${filledExtraTrackingsCount} extra box${filledExtraTrackingsCount === 1 ? '' : 'es'} on this PO`}
+          asChild
+        >
+          <span className="shrink-0 rounded-none bg-surface-strong/90 px-0 py-0 text-role-eyebrow tabular-nums text-text-muted">
+            +{filledExtraTrackingsCount}
+          </span>
+        </HoverTooltip>
       ) : null}
     </div>
   );
 
-  const body = (
-      <div className="px-0 py-0">
-        <div className={STATION_IDENTITY_ROW_STACK_CLASS}>
-          {/* Two-row identity — row 1 classify · Photos; row 2 status · order# ·
-              tracking · price · listing · Claim as ONE flush bottom band.
-              Classify chips open chip-anchored menus (identity band stays put). */}
-          <div className="flex w-full min-w-0 max-w-full items-center">
-            <div className="flex w-full max-w-full min-w-0 flex-nowrap items-center gap-0">
-              {stackedLayout}
-            </div>
-          </div>
+  const statusDot = lifecycle ? (
+    <HoverTooltip label={lifecycle.tip || lifecycle.label} asChild>
+      <span
+        className="flex h-full shrink-0 items-center px-1"
+        data-testid="carton-context-lifecycle-dot"
+        aria-label={lifecycle.label}
+      >
+        <span
+          className={cn('h-2 w-2 shrink-0 rounded-full', lifecycle.dotClass)}
+          aria-hidden
+        />
+      </span>
+    </HoverTooltip>
+  ) : null;
+
+  const listingIconButton =
+    showListing && !overflowSet.has('listing') ? (
+      <HoverTooltip label={listingOpenTitle} asChild>
+        <IconButton
+          type="button"
+          tone="neutral"
+          size="sm"
+          ariaLabel={listingOpenTitle}
+          disabled={!listingHasTarget}
+          onClick={() => {
+            if (listingOpenHref) window.open(listingOpenHref, '_blank', 'noopener,noreferrer');
+          }}
+          icon={
+            <span
+              className={cn(
+                listingHasTarget && platformIconTone
+                  ? platformIconTone.className
+                  : 'text-text-faint',
+              )}
+              style={listingHasTarget && platformIconTone ? platformIconTone.style : undefined}
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+            </span>
+          }
+          className={CONTEXT_ACTION_ICON_CLASS}
+          data-testid="carton-context-listing"
+        />
+      </HoverTooltip>
+    ) : null;
+
+  const claimIconButton =
+    showStaffPhotoRow && !zendeskTrimmed && onMakeClaim && !overflowSet.has('claim') ? (
+      <HoverTooltip label={claimViewActive ? 'Hide claim' : 'File claim'} asChild>
+        <IconButton
+          type="button"
+          tone="neutral"
+          size="sm"
+          onClick={onMakeClaim}
+          ariaLabel={claimViewActive ? 'Hide claim' : 'File claim'}
+          aria-pressed={claimViewActive}
+          icon={<Ticket className="h-3.5 w-3.5 text-orange-600" />}
+          className={CONTEXT_ACTION_ICON_CLASS}
+          data-testid="carton-context-claim"
+        />
+      </HoverTooltip>
+    ) : null;
+
+  const ticketInline =
+    showStaffPhotoRow && zendeskTrimmed && !overflowSet.has('claim') ? (
+      <ReceivingTicketChip
+        value={zendeskTrimmed}
+        display={zendeskChipDisplay}
+        openHref={zendeskHref}
+        providerTicketId={providerTicketId}
+        receivingId={receivingId}
+        lineId={lineId}
+        onUnlinked={() => {
+          onTicketUnlinked?.();
+        }}
+        onOpenTicketView={
+          onToggleTicketView && providerTicketId != null
+            ? () => onToggleTicketView()
+            : undefined
+        }
+        ticketViewActive={ticketViewActive}
+      />
+    ) : null;
+
+  const photosCell =
+    showStaffPhotoRow && receivingId != null && !overflowSet.has('photos') ? (
+      <ReceivingPhotoButton
+        receivingId={receivingId}
+        staffId={Number(staffId) || 0}
+        poRef={effectiveOrder || null}
+        photoStage={photoStage}
+        appearance="flush"
+        galleryPlacement="left"
+        onSendToTicket={onSendToTicket}
+        onOpenMovePhotosExternal={onOpenMovePhotosExternal}
+        onOpenPhotosDisplay={onOpenPhotosDisplay}
+        suppressHoverGallery={suppressPhotoHoverGallery}
+      />
+    ) : null;
+
+  const overflowItems: Array<{ key: string; label: string; onSelect: () => void }> = [];
+  if (showListing && overflowSet.has('listing')) {
+    overflowItems.push({
+      key: 'listing-open',
+      label: listingHasTarget ? `Open ${listingChipDisplay}` : 'Listing',
+      onSelect: () => {
+        if (listingOpenHref) window.open(listingOpenHref, '_blank', 'noopener,noreferrer');
+      },
+    });
+    if (onEditListing) {
+      overflowItems.push({
+        key: 'listing-edit',
+        label: 'Edit listing',
+        onSelect: onEditListing,
+      });
+    }
+  }
+  if (showStaffPhotoRow && !zendeskTrimmed && onMakeClaim && overflowSet.has('claim')) {
+    overflowItems.push({
+      key: 'claim',
+      label: claimViewActive ? 'Hide claim' : 'File claim',
+      onSelect: onMakeClaim,
+    });
+  }
+  if (showStaffPhotoRow && zendeskTrimmed && overflowSet.has('claim')) {
+    overflowItems.push({
+      key: 'ticket-open',
+      label: `Open ticket ${zendeskChipDisplay}`,
+      onSelect: () => {
+        if (zendeskHref) window.open(zendeskHref, '_blank', 'noopener,noreferrer');
+      },
+    });
+    if (onToggleTicketView && providerTicketId != null) {
+      overflowItems.push({
+        key: 'ticket-view',
+        label: ticketViewActive ? 'Hide ticket editor' : 'Ticket history',
+        onSelect: () => onToggleTicketView(),
+      });
+    }
+  }
+  if (showStaffPhotoRow && receivingId != null && overflowSet.has('photos')) {
+    overflowItems.push({
+      key: 'photos',
+      label: 'Photos',
+      onSelect: () => {
+        if (onOpenPhotosDisplay) onOpenPhotosDisplay();
+      },
+    });
+  }
+
+  const overflowMenu =
+    overflowItems.length > 0 ? (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <IconButton
+            type="button"
+            tone="neutral"
+            size="sm"
+            icon={<MoreHorizontal className="h-3.5 w-3.5" />}
+            ariaLabel="More actions"
+            className={CONTEXT_ACTION_ICON_CLASS}
+            data-testid="carton-context-overflow"
+          />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          align="end"
+          className="min-w-[12rem] border border-border-soft bg-surface-card text-text-default"
+        >
+          {overflowItems.map((item) => (
+            <DropdownMenuItem key={item.key} onSelect={item.onSelect}>
+              {item.label}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    ) : null;
+
+  const priceFace = showPoTotal ? (
+    <span
+      className="flex h-full shrink-0 items-center border-l border-border-soft px-1.5 font-mono text-role-caption tabular-nums text-text-muted"
+      data-testid="carton-context-price"
+    >
+      {poTotal == null || !Number.isFinite(poTotal) ? '—' : poTotal.toFixed(2)}
+    </span>
+  ) : null;
+
+  const oneRowBar = (
+    <div
+      ref={barRef}
+      className={cn(
+        'flex w-full min-w-0 flex-nowrap items-stretch overflow-hidden',
+        STATION_CHROME_ROW_FACE,
+        STATION_CHROME_SEAM_HAIRLINE,
+      )}
+      data-testid="carton-context-one-row"
+    >
+      {/* Left — identity (always visible) */}
+      <div className="flex min-w-0 shrink-0 items-stretch border-r border-border-soft">
+        {exitControl ? (
+          <div className={STATION_IDENTITY_LEAD_COL_CLASS}>{exitControl}</div>
+        ) : null}
+        {statusDot}
+        <div className="flex min-w-0 shrink items-stretch [&_[data-chip-face]]:rounded-none">
+          {orderChip}
+          {trackingSlot}
+          {qty ? (
+            <GridQtyFractionValue received={qty.received} expected={qty.expected} />
+          ) : null}
         </div>
       </div>
+
+      {/* Middle — classify (collapses first) */}
+      {classifyCluster ? (
+        <div className="flex min-w-0 flex-1 items-stretch justify-center overflow-hidden border-r border-border-soft">
+          {classifyCluster}
+        </div>
+      ) : null}
+
+      {/* Right — quiet price + icon actions; ⋯ before wrap */}
+      <div className="flex shrink-0 items-stretch">
+        {priceFace}
+        {listingIconButton}
+        {ticketInline ?? claimIconButton}
+        {photosCell}
+        {overflowMenu}
+      </div>
+    </div>
   );
 
-  // Width comes from StationContextBar's identity measure
-  // ({@link STATION_WORKBENCH_COLUMN} — white face + chips share the edge-to-edge measure).
-  return <div className="w-full min-w-0 overflow-visible">{body}</div>;
+  return <div className="w-full min-w-0 overflow-hidden">{oneRowBar}</div>;
 }
