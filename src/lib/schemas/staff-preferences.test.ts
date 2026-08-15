@@ -90,3 +90,10 @@ test('StaffPreferencesPutBody accepts quickAccess pins with label + exact href',
     'non-app href must be rejected',
   );
 });
+
+test('StaffPreferencesPutBody accepts product-update last-seen keys', () => {
+  ok(StaffPreferencesPutBody.safeParse({ lastSeenProductUpdateId: '2026-08-13-to-ship-desk' }).success);
+  ok(StaffPreferencesPutBody.safeParse({ lastSeenProductUpdateId: null }).success);
+  ok(StaffPreferencesPutBody.safeParse({ lastSeenBuildSha: '54a51e955' }).success);
+  ok(StaffPreferencesPutBody.safeParse({ lastSeenBuildSha: null }).success);
+});
