@@ -11,8 +11,8 @@
  * passes `onEdit*` + `*EditOpen`). PO# Edit always opens Package Pairing → PO
  * (`onEditPo`); Details opens the Incoming connection panel (`onOrderDetails`).
  *
- * Serves Unbox and Triage — both use the two-row family face (lifecycle · PO$
- * on row 2). Pair the host with `reserveIdentityClearance="stacked"`.
+ * Serves Unbox and Triage — both use the one-row family face. Pair the host
+ * with `reserveIdentityClearance={false}` (in-flow) or legacy overlay clearance.
  *
  * Displays `←|` + carton `↑↓` live on ScanStationUtilityRail, not here.
  */
