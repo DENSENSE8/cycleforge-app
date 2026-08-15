@@ -39,6 +39,8 @@ export {
 } from './preview-classify';
 export { StationScanPreviewCard } from './StationScanPreviewCard';
 export { getScanEscBlock, setScanEscBlock, consumeScanEscBlock } from './scan-esc-block';
+export { useScanTypeKeybinds } from './useScanTypeKeybinds';
+export { resolveTypeKeybind, isWedgeBurst, railHint } from './scan-type-keybinds';
 // ScanBandGlowHost: import from `./ScanBandGlowHost` (not this barrel) — keeps
 // the glow host out of the light scan-bar re-export graph.
 export * from './tokens';

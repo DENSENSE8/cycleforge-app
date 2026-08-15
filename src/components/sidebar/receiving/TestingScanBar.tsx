@@ -7,6 +7,7 @@ import {
   ThemedStationScanBar,
   classifyPreviewFromArmed,
   useScanStance,
+  useScanTypeKeybinds,
 } from '@/components/station/scan-bar';
 import { classifyInput } from '@/lib/scan-resolver';
 import {
@@ -101,6 +102,13 @@ export function TestingScanBar({
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const stance = useScanStance();
+  useScanTypeKeybinds({
+    modes: TESTING_SCAN_MODES.map((m) => m.mode),
+    armedMode,
+    onToggleMode,
+    value,
+    onChange,
+  });
 
   const handleSubmit = (e?: FormEvent<HTMLFormElement>) => {
     e?.preventDefault();

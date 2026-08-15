@@ -7,6 +7,7 @@ import {
   ThemedStationScanBar,
   classifyPreviewFromArmed,
   useScanStance,
+  useScanTypeKeybinds,
   type StationScanModeDefinition,
 } from '@/components/station/scan-bar';
 import { getStationInputMode, type StationInputMode } from '@/lib/station-scan-routing';
@@ -85,6 +86,13 @@ export function ShippingScanBar({
   idleFallbackMode: _idleFallbackMode = 'tracking',
 }: Props) {
   const stance = useScanStance();
+  useScanTypeKeybinds({
+    modes: SHIPPING_SCAN_MODES.map((m) => m.mode),
+    armedMode,
+    onToggleMode,
+    value,
+    onChange,
+  });
   const active = armedMode ? modeMeta(armedMode) : null;
   const typeLabel = active?.label ?? 'Auto';
   const placeholder =
