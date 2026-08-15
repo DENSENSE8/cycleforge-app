@@ -8899,7 +8899,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/CartonContextCard.tsx",
-      "line": 100,
+      "line": 98,
       "snippet": "export CartonContextCard from src/components/station/entity-context/CartonContextCard.tsx"
     },
     {
@@ -14190,7 +14190,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/grid-cells.tsx",
-      "line": 251,
+      "line": 250,
       "snippet": "export GridStaffCellValue from src/components/ui/grid-cells.tsx"
     },
     {
@@ -14203,7 +14203,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/grid-cells.tsx",
-      "line": 272,
+      "line": 271,
       "snippet": "export BrandIdentityDot from src/components/ui/grid-cells.tsx"
     },
     {
@@ -14216,7 +14216,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/grid-cells.tsx",
-      "line": 293,
+      "line": 292,
       "snippet": "export GridDateTimeCellValue from src/components/ui/grid-cells.tsx"
     },
     {
@@ -14229,7 +14229,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/grid-cells.tsx",
-      "line": 307,
+      "line": 306,
       "snippet": "export GridMonthDayTimeCellValue from src/components/ui/grid-cells.tsx"
     },
     {
@@ -14658,7 +14658,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/PlatformMark.tsx",
-      "line": 35,
+      "line": 28,
       "snippet": "export PlatformMark from src/components/ui/PlatformMark.tsx"
     },
     {
@@ -24161,7 +24161,7 @@
       ],
       "kind": "code",
       "source": "src/hooks/useCatalog.ts",
-      "line": 110,
+      "line": 108,
       "snippet": "export useReceivingTypeLabel from src/hooks/useCatalog.ts"
     },
     {
@@ -24174,7 +24174,7 @@
       ],
       "kind": "code",
       "source": "src/hooks/useCatalog.ts",
-      "line": 128,
+      "line": 126,
       "snippet": "export usePlatformAccountCatalog from src/hooks/useCatalog.ts"
     },
     {
@@ -24187,7 +24187,7 @@
       ],
       "kind": "code",
       "source": "src/hooks/useCatalog.ts",
-      "line": 144,
+      "line": 142,
       "snippet": "export useWorkflowNodeOptions from src/hooks/useCatalog.ts"
     },
     {
@@ -24200,7 +24200,7 @@
       ],
       "kind": "code",
       "source": "src/hooks/useCatalog.ts",
-      "line": 159,
+      "line": 157,
       "snippet": "export useOrderChannelLabel from src/hooks/useCatalog.ts"
     },
     {
@@ -24213,7 +24213,7 @@
       ],
       "kind": "code",
       "source": "src/hooks/useCatalog.ts",
-      "line": 182,
+      "line": 180,
       "snippet": "export useInvalidateCatalog from src/hooks/useCatalog.ts"
     },
     {
@@ -32988,7 +32988,7 @@
       ],
       "kind": "code",
       "source": "src/lib/source-platform.ts",
-      "line": 19,
+      "line": 18,
       "snippet": "export SourcePlatformMeta from src/lib/source-platform.ts"
     },
     {
@@ -33001,7 +33001,7 @@
       ],
       "kind": "code",
       "source": "src/lib/source-platform.ts",
-      "line": 69,
+      "line": 55,
       "snippet": "export SOURCE_PLATFORMS from src/lib/source-platform.ts"
     },
     {
@@ -33014,7 +33014,7 @@
       ],
       "kind": "code",
       "source": "src/lib/source-platform.ts",
-      "line": 98,
+      "line": 75,
       "snippet": "export UNKNOWN_PLATFORM from src/lib/source-platform.ts"
     },
     {
@@ -33027,7 +33027,7 @@
       ],
       "kind": "code",
       "source": "src/lib/source-platform.ts",
-      "line": 111,
+      "line": 88,
       "snippet": "export sourcePlatformMeta from src/lib/source-platform.ts"
     },
     {
@@ -33040,7 +33040,7 @@
       ],
       "kind": "code",
       "source": "src/lib/source-platform.ts",
-      "line": 117,
+      "line": 94,
       "snippet": "export sourcePlatformLabel from src/lib/source-platform.ts"
     },
     {
@@ -33053,7 +33053,7 @@
       ],
       "kind": "code",
       "source": "src/lib/source-platform.ts",
-      "line": 122,
+      "line": 99,
       "snippet": "export sourcePlatformMark from src/lib/source-platform.ts"
     },
     {
@@ -33066,7 +33066,7 @@
       ],
       "kind": "code",
       "source": "src/lib/source-platform.ts",
-      "line": 132,
+      "line": 109,
       "snippet": "export platformMetaIconTone from src/lib/source-platform.ts"
     },
     {
@@ -33079,7 +33079,7 @@
       ],
       "kind": "code",
       "source": "src/lib/source-platform.ts",
-      "line": 152,
+      "line": 129,
       "snippet": "export platformMetaBrandDot from src/lib/source-platform.ts"
     },
     {
@@ -33092,7 +33092,7 @@
       ],
       "kind": "code",
       "source": "src/lib/source-platform.ts",
-      "line": 172,
+      "line": 149,
       "snippet": "export formatPlatformTooltipLabel from src/lib/source-platform.ts"
     },
     {
@@ -33105,7 +33105,7 @@
       ],
       "kind": "code",
       "source": "src/lib/source-platform.ts",
-      "line": 195,
+      "line": 172,
       "snippet": "export sourcePlatformMetaFromLabel from src/lib/source-platform.ts"
     },
     {

@@ -210,7 +210,7 @@ export function GridQtyFractionValue({
 }
 
 /**
- * Fixed platform brand mark — display variant (tooltip + sr-only label), the
+ * Fixed platform lettermark — display variant (tooltip + sr-only label), the
  * shape the station grids and group summaries share. The Pending leaf row keeps
  * its richer `OrderIdentityChips` mark (listing link + hover menu) — that is a
  * different job, not this cell.
@@ -236,7 +236,6 @@ export function GridPlatformMarkValue({
           platformValue={platformValue}
           meta={meta}
           textClassName={textClassName}
-          preferBrandTile
         />
         <span className="sr-only">{label}</span>
       </span>

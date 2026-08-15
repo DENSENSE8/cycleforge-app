@@ -5,7 +5,6 @@ import { ChevronLeft } from '@/components/Icons';
 import { getLast8, PoTotalChip, resolveChipDisplay } from '@/components/ui/CopyChip';
 import { GridQtyFractionValue } from '@/components/ui/grid-cells';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { PlatformMark } from '@/components/ui/PlatformMark';
 import { Button } from '@/design-system/primitives';
 import { ReceivingPhotoButton } from '@/components/receiving/workspace/line-edit/ReceivingPhotoButton';
 import { IdentityLinkChip } from '@/components/receiving/workspace/line-edit/IdentityLinkChip';
@@ -84,10 +83,9 @@ import {
  * `SupportOrderIdentity`) wire domain controllers only.
  *
  * Layout decisions preserved from the original inline implementation:
- *  - The listing chip uses a full-color brand tile ({@link PlatformMark}
- *    `preferBrandTile`) only when `tileSrc` exists (Amazon); other platforms
- *    show ExternalLink + label with no carton/FBA glyph. ExternalLink goes
- *    faint when there is no listing URL. Placeholder text when unbound.
+ *  - The listing chip uses ExternalLink + platform label tinted via
+ *    {@link platformMetaIconTone}. ExternalLink goes faint when there is no
+ *    listing URL. Placeholder text when unbound.
  *  - Identity editing: listing/tracking editors accessible via chip edit actions,
  *    open external editing tabs. PO# is copy/open when linked; `onEditPo` opens
  *    Package Pairing → PO when there is no real Zoho PO id.
@@ -268,7 +266,7 @@ export function CartonContextCard({
   filledExtraTrackingsCount: number;
   /**
    * Stored carrier label/code from the line / shipment. Prefer over regex
-   * detect for brand tile paint (same ladder as Open URL).
+   * detect for carrier brand paint (same ladder as Open URL).
    */
   carrierHint?: string | null;
   /** Local-pickup fulfillment — suppress tracking chip/editor; show Pickup pill. */
@@ -356,11 +354,8 @@ export function CartonContextCard({
   const orderCopyOnly = isReturn || (!poDisplay && !!linkedReturnOrder);
   const listingHasTarget = !!(listingLink || listingOpenHref);
   const listingLinkOptions = formatListingLinkMenuOptions(listingLinks);
-  // Listing face: brand tile (Amazon) as iconOnly; platforms without tileSrc
-  // use ExternalLink + label (no carton/FBA glyph fallback). Identity last-8
-  // stays on PO# / TRK / ticket. Placeholder text when unbound / no platform.
-  const listingUsesBrandTile = !!platformMeta.tileSrc;
-  // Same paint ladder as PlatformMark — order `#` + listing ExternalLink.
+  // Listing face: ExternalLink + catalog label tinted by platform tone.
+  // Identity last-8 stays on PO# / TRK / ticket. Placeholder when unbound.
   const platformIconTone = platformValue ? platformMetaIconTone(platformMeta) : null;
   const listingChipDisplay = platformValue
     ? platformMeta.label
@@ -481,9 +476,9 @@ export function CartonContextCard({
     </div>
   ) : null;
 
-  /* Listing / external open — Amazon brand tile + ExternalLink when tileSrc
-     exists; otherwise ExternalLink + platform label (no carton glyph). Hover:
-     Copy, then Edit. Stacked pins this to row 2's leading commerce cluster. */
+  /* Listing / external open — ExternalLink + platform label tinted by
+     platformMetaIconTone. Hover: Copy, then Edit. Stacked pins this to row 2's
+     leading commerce cluster. */
   const listingChip = showListing ? (
       <IdentityLinkChip
         openHref={listingOpenHref}
@@ -491,7 +486,6 @@ export function CartonContextCard({
         linkOptions={listingLinkOptions}
         value={listingLink || listingOpenHref || ''}
         display={listingChipDisplay}
-        // ExternalLink tone ONLY — brand tiles stay full color.
         iconClass={
           listingHasTarget && platformIconTone
             ? platformIconTone.className
@@ -508,16 +502,6 @@ export function CartonContextCard({
         chipAction="open"
         menuFirstAction="copy"
         showExternalIcon
-        iconOnly={listingUsesBrandTile}
-        iconOnlyMark={
-          listingUsesBrandTile ? (
-            <PlatformMark
-              platformValue={platformValue}
-              preferBrandTile
-              empty={!platformValue}
-            />
-          ) : undefined
-        }
       />
   ) : null;
 

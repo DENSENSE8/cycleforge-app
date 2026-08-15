@@ -74,7 +74,7 @@ export function IncomingSourceFilters({
           active={source === opt.id}
           leading={
             opt.platform ? (
-              <PlatformMark platformValue={opt.platform} preferBrandTile textClassName="text-current" />
+              <PlatformMark platformValue={opt.platform} textClassName="text-current" />
             ) : undefined
           }
           onClick={() => {

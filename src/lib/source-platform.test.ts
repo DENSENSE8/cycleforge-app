@@ -24,12 +24,6 @@ test('every platform has an explicit brand-dot fill class', () => {
   assert.equal(UNKNOWN_PLATFORM.dot, 'bg-border-emphasis');
 });
 
-test('every platform has a monochrome brand icon path', () => {
-  for (const p of SOURCE_PLATFORMS) {
-    assert.ok(p.icon && p.icon.length > 20, `${p.value} missing icon path`);
-  }
-});
-
 test('sourcePlatformMark is stable width for known platforms', () => {
   assert.equal(sourcePlatformMark('goodwill'), 'Gw');
   assert.equal(sourcePlatformMark('amazon'), 'az');

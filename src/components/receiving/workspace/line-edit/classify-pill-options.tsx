@@ -8,7 +8,6 @@
  */
 
 import { Flag } from '@/components/Icons';
-import { PlatformMark } from '@/components/ui/PlatformMark';
 import { ReceivingTypeMark } from '@/components/ui/ReceivingTypeMark';
 import { TOP_CHROME_ICON_GLYPH } from '@/components/layout/header-shell';
 import { platformPaintFromHex } from '@/lib/color-contrast';
@@ -42,18 +41,9 @@ const PLATFORM_FACE_HEX_IDLE =
   'border bg-surface-card/70 hover:border-border-default hover:bg-surface-hover';
 
 /**
- * Simple Icons wordmarks read as extra text beside the short lettermark
- * (e.g. ebay glyph + "EB"). Bookmark chrome uses a tone pip for these;
- * silhouette marks (Amazon carton, etc.) keep {@link PlatformMark}.
+ * All platform faces use a tone pip — same color ladder as copy-chip platform
+ * accents, never marketplace brand logos.
  */
-const PLATFORM_WORDMARK = new Set([
-  'ebay',
-  'aliexpress',
-  'walmart',
-  'shopify',
-  'square',
-]);
-
 const PLATFORM_TONE_PIP = (
   <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-current opacity-90" aria-hidden />
 );
@@ -103,7 +93,7 @@ export function platformClassifyOptions(args: {
           label: 'Unfound',
           shortLabel: '?',
           title: 'No purchase order matched this carton',
-          face: <PlatformMark empty />,
+          face: PLATFORM_TONE_PIP,
           activeClass: 'border-amber-200 bg-amber-50 text-amber-700 shadow-none',
           inactiveClass:
             'border-amber-200 bg-amber-50 text-amber-700 hover:border-amber-300 hover:bg-amber-100',
@@ -119,23 +109,12 @@ export function platformClassifyOptions(args: {
       const active =
         PLATFORM_FACE_ACTIVE[meta.value] ??
         'border-slate-200 bg-slate-50 text-slate-600 shadow-none'; // ds-allow-raw-neutral: unknown platform face
-      const markMeta = paint
-        ? { ...meta, value: meta.value || o.value.toLowerCase(), label: o.label, accentHex: paint.accent }
-        : { ...meta, value: meta.value || o.value.toLowerCase(), label: o.label };
       return {
         value: o.value,
         label: o.label,
         shortLabel: meta.mark || o.label.slice(0, 2),
         title: o.label,
-        face: PLATFORM_WORDMARK.has(meta.value) ? (
-          PLATFORM_TONE_PIP
-        ) : (
-          <PlatformMark
-            platformValue={o.value}
-            meta={markMeta}
-            textClassName="text-current"
-          />
-        ),
+        face: PLATFORM_TONE_PIP,
         activeClass: paint ? PLATFORM_FACE_HEX_ACTIVE : active,
         inactiveClass: paint ? PLATFORM_FACE_HEX_IDLE : PLATFORM_FACE_IDLE,
         // ds-allow-hex: soft fill + ink from platforms.color_hex via color-contrast SoT.

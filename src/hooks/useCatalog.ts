@@ -94,8 +94,6 @@ export function usePlatformMeta(): (value: string | null | undefined) => SourceP
         border: accentHex ? '' : builtin.border,
         dot: builtin.dot || 'bg-border-emphasis',
         accentHex,
-        icon: builtin.icon,
-        tileSrc: builtin.tileSrc,
       };
     };
   }, [rows]);

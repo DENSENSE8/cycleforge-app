@@ -33,9 +33,9 @@ import { normalizeCopyText } from '@/lib/copy-chip-format';
  *   • Tracking empty — paste last in-app tracking clipboard entry when present
  *
  * Grid surfaces (`layout="cells"` / {@link useOrderIdentityCellNodes}) render
- * the platform as a FIXED-footprint brand mark ({@link PlatformMark} — bare
- * monochrome channel icon / lettermark), never a variable-width
- * marketplace name; the label lives in tooltip + sr-only.
+ * the platform as a FIXED-footprint colored lettermark ({@link PlatformMark}),
+ * never a variable-width marketplace name or brand logo; the label lives in
+ * tooltip + sr-only.
  */
 export interface OrderIdentityChipsProps {
   platformLabel: string;

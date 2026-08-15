@@ -13,22 +13,28 @@ import { describe, it } from 'node:test';
 
 const ROOT = process.cwd();
 const MANIFEST = join(ROOT, 'sot-manifest.json');
-const committedRaw = readFileSync(MANIFEST, 'utf8');
-const manifest = JSON.parse(committedRaw) as {
-  count: number;
-  sources: string[];
-  entries: Array<{
-    job: string;
-    sot: string;
-    path: string | null;
-    guard: string | null;
-    symbols: string[];
-    kind: string;
-    source: string;
-    line: number;
-    snippet: string;
-  }>;
-};
+
+function loadCommittedManifest() {
+  const committedRaw = readFileSync(MANIFEST, 'utf8');
+  const manifest = JSON.parse(committedRaw) as {
+    count: number;
+    sources: string[];
+    entries: Array<{
+      job: string;
+      sot: string;
+      path: string | null;
+      guard: string | null;
+      symbols: string[];
+      kind: string;
+      source: string;
+      line: number;
+      snippet: string;
+    }>;
+  };
+  return { committedRaw, manifest };
+}
+
+const { manifest } = loadCommittedManifest();
 
 function runNode(scriptRel: string, args: string[]): string {
   return execFileSync('node', [join(ROOT, scriptRel), ...args], {
@@ -43,6 +49,7 @@ const hasSymbol = (sym: string) =>
 
 describe('sot-manifest — parity + coverage', () => {
   it('committed sot-manifest.json equals a fresh build', () => {
+    const { committedRaw } = loadCommittedManifest();
     const fresh = runNode('scripts/build-sot-manifest.mjs', ['--stdout']);
     assert.equal(
       committedRaw,

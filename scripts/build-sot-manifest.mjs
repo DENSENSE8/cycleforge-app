@@ -59,7 +59,7 @@ export const CODE_SCAN_ROOTS = [
 ];
 
 const SKIP_NAME_RE =
-  /\.(test|spec|guard\.test)\.(ts|tsx)$|\/(__tests__|fixtures|stories)\//;
+  /\.(test|spec|guard\.test)\.(ts|tsx)$|\/(__tests__|fixtures|stories)\/|jscpd-.*-probe/;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Markdown parsing (AGENTS.md)

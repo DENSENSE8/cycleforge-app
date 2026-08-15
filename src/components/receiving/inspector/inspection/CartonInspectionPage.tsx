@@ -171,7 +171,7 @@ function FactValue({ fact }: { fact: CartonFact }) {
       const label = sourcePlatformLabel(fact.value);
       return (
         <span className="inline-flex min-w-0 items-center gap-1.5">
-          <PlatformMark platformValue={fact.value} meta={meta} preferBrandTile />
+          <PlatformMark platformValue={fact.value} meta={meta} />
           <span className="min-w-0 truncate text-role-caption text-text-default">{label}</span>
         </span>
       );

@@ -79,7 +79,7 @@ export function StationHistoryRailFilters({
           label={opt.label}
           active={facets.platform === opt.value}
           leading={
-            <PlatformMark platformValue={opt.value} preferBrandTile textClassName="text-current" />
+            <PlatformMark platformValue={opt.value} textClassName="text-current" />
           }
           onClick={() => {
             onChange({ ...facets, platform: opt.value });
