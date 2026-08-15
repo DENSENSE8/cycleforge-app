@@ -21,9 +21,9 @@ import type { InlinePillOption } from './InlinePillPicker';
 
 const FACE_GLYPH = TOP_CHROME_ICON_GLYPH;
 
-const IDENTITY_FACE = 'border-border-soft bg-white text-black shadow-none';
+const IDENTITY_FACE = 'border-border-soft bg-surface-card text-text-default shadow-none';
 const IDENTITY_FACE_IDLE =
-  'border-border-soft bg-white text-black hover:bg-surface-hover';
+  'border-border-soft bg-surface-card text-text-default hover:bg-surface-hover';
 
 export function urgencyClassifyOptions(args: {
   derivedLabel: string;
