@@ -111,16 +111,13 @@ const STATION_IDENTITY_COMMERCE_ROW_FACE = STATION_SECONDARY_BAND_FACE;
 export const STATION_IDENTITY_COMMERCE_ROW_CLASS = `flex ${STATION_IDENTITY_COMMERCE_ROW_FACE} items-stretch gap-0`;
 
 /**
- * Classify urgency·platform·type — **one token**: flush abut (`gap-0`) +
- * overlapping side borders (`-ml-px` on every pill after the first) so the
- * double-hairline seam between tone faces does not read as air. Same grammar
- * as Photos · Claim. Soft drop shadows live off these faces (`shadow-none` on
- * the tone SoTs); never reintroduce `gap-1.5` spacing between classify pills.
- *
- * Sibling overlap targets `[data-inline-pill]` hosts from {@link InlinePillPicker}.
+ * Classify urgency·platform·type — **one token**: flush abut (`gap-0`), no
+ * side hairlines. Soft drop shadows live off these faces (`shadow-none` on
+ * the tone SoTs); never reintroduce `gap-1.5` spacing or vertical rules
+ * between classify pills.
  */
 export const STATION_IDENTITY_GROUP_CLASS =
-  'flex h-full min-h-0 items-stretch gap-0 [&>[data-inline-pill]+[data-inline-pill]]:-ml-px';
+  'flex h-full min-h-0 items-stretch gap-0';
 
 /** Vertical step between the two rows — flush (zero gap). */
 export const STATION_IDENTITY_ROW_STACK_CLASS = 'flex flex-col gap-0';
@@ -149,8 +146,8 @@ export const STATION_CHROME_GLYPH_CLASS = 'block h-3.5 w-3.5 shrink-0';
 /**
  * Shared cell on the one-row carton bar: fill chrome height, vertical center.
  * Chip faces keep their own `px-1.5`; status / price compose
- * {@link STATION_CHROME_CELL_PAD}. Leading hairline is `border-l border-border-soft`
- * on every cell after the first in a cluster (same height, same inset).
+ * {@link STATION_CHROME_CELL_PAD}. No leading hairline — the bar is one
+ * continuous strip (no `border-l` / `divide-x` between cells).
  */
 export const STATION_CHROME_CELL_CLASS =
   'flex h-full min-h-0 shrink-0 items-center';

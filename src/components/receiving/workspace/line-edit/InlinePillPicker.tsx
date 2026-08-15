@@ -254,9 +254,11 @@ export function InlinePillPicker({
     // Flat face — classify pills match Photos · Claim (`shadow-none`), even if a
     // tone SoT regresses to `shadow-sm`.
     'shadow-none',
-    // Paint over the sibling `-ml-px` seam so one-token classify stays crisp.
     'relative z-base hover:z-raised focus-visible:z-raised',
     focusRing('control', 'accent'),
+    // Carton-context menu face is borderless so the identity bar reads as one
+    // strip (no boxed dots / vertical pill seams). Inline expand keeps borders.
+    isMenu && 'border-0 bg-transparent hover:bg-surface-hover/50',
     readOnly && 'pointer-events-none',
   );
 

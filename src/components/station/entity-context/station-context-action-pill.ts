@@ -31,19 +31,28 @@ export const STATION_CONTEXT_BOXED_CUBE_CLASS = [
 
 /**
  * Exit / back-to-list — fills the lead square
- * ({@link STATION_IDENTITY_LEAD_COL_CLASS}) with {@link STATION_CONTEXT_BOXED_CUBE_CLASS}.
+ * ({@link STATION_IDENTITY_LEAD_COL_CLASS}). Same hover/focus as the boxed
+ * cube, but borderless so the carton bar reads as one continuous strip.
  */
-export const STATION_CONTEXT_EXIT_PILL_CLASS = `${STATION_CONTEXT_BOXED_CUBE_CLASS} h-full w-full`;
+export const STATION_CONTEXT_EXIT_PILL_CLASS = [
+  'ds-raw-button relative z-base flex h-full w-full shrink-0 items-center justify-center',
+  cornerClass('flush'),
+  'border-0 bg-surface-card p-0 text-text-soft shadow-none',
+  'hover:bg-surface-hover/50 hover:text-text-muted',
+  focusRing('control', 'accent'),
+  'outline-none',
+].join(' ');
 
 /**
  * Icon-only action cell on the one-row carton bar — square face filling the
- * chrome row, leading hairline only (row owns the bottom seam). Pair glyph
- * with `h-3.5 w-3.5`. Listing · claim · overflow share this cell.
+ * chrome row, no cell hairline (the bar is one continuous strip; the row owns
+ * the bottom seam). Pair glyph with `h-3.5 w-3.5`. Listing · claim · overflow
+ * share this cell.
  */
 export const STATION_CONTEXT_ACTION_CELL_CLASS = [
   'ds-raw-button relative z-base flex h-full aspect-square shrink-0 items-center justify-center',
   cornerClass('flush'),
-  'border-y-0 border-r-0 border-l border-border-soft bg-surface-card p-0 text-text-soft shadow-none',
+  'border-0 bg-surface-card p-0 text-text-soft shadow-none',
   'hover:bg-surface-hover/50 hover:text-text-muted',
   focusRing('control', 'accent'),
   'outline-none',
@@ -61,13 +70,13 @@ export const STATION_CONTEXT_PHOTO_TONE =
 
 /**
  * Photos on the one-row carton chrome — same cell geometry as listing/claim
- * (h-full, house inset, leading hairline) + {@link STATION_CONTEXT_PHOTO_TONE}
+ * (h-full, house inset, no leading hairline) + {@link STATION_CONTEXT_PHOTO_TONE}
  * wash (the photos SoT). Camera + count; glyph is h-3.5, never the h-11 flush cube.
  */
 export const STATION_CONTEXT_PHOTO_CHROME_CLASS = [
   'ds-raw-button relative z-base flex h-full shrink-0 items-center justify-center gap-0.5',
   cornerClass('flush'),
-  'border-y-0 border-r-0 border-l px-1.5 text-role-caption font-semibold tabular-nums shadow-none',
+  'border-0 px-1.5 text-role-caption font-semibold tabular-nums shadow-none',
   STATION_CONTEXT_PHOTO_TONE,
   focusRing('control', 'accent'),
   'outline-none',
