@@ -19,6 +19,17 @@ export { StationScanBar, type StationScanBarProps } from './StationScanBar';
 export { ThemedStationScanBar, type ThemedStationScanBarProps } from './ThemedStationScanBar';
 export { StationScanLeadingIcon } from './StationScanLeadingIcon';
 export { StationScanModeRail, type StationScanModeDefinition } from './StationScanModeRail';
+export {
+  type StationScanStance,
+  getScanStance,
+  isScanPreview,
+  setScanStance,
+  toggleScanStance,
+  useScanStance,
+  useToggleScanStance,
+} from './scan-stance';
+export { nextArmedMode, shouldHandleScanModeEsc } from './scan-mode';
+export { useScanModeRelease } from './useScanModeRelease';
 // ScanBandGlowHost: import from `./ScanBandGlowHost` (not this barrel) — keeps
 // the glow host out of the light scan-bar re-export graph.
 export * from './tokens';

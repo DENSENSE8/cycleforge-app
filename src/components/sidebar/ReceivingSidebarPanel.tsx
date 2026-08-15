@@ -40,6 +40,7 @@ import { ReceivingLinePicker } from '@/components/sidebar/receiving/ReceivingLin
 import { SidebarRailScrollport } from '@/components/sidebar/rail-shell/SidebarRailScrollport';
 
 import { TriageScanBand, UnboxScanBand, PickupScanBand } from '@/components/sidebar/receiving/ReceivingScanBands';
+import { isScanPreview, useScanModeRelease } from '@/components/station/scan-bar';
 import { TriageCartonSearchBar } from '@/components/sidebar/receiving/TriageCartonSearchBar';
 import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 import { ReceivingRailBody } from '@/components/sidebar/receiving/ReceivingRailBody';
@@ -258,6 +259,9 @@ export function ReceivingSidebarPanel() {
     receivingMode: mode,
     onTriageScanStart,
   });
+
+  const releaseUnboxScanMode = useCallback(() => setUnboxScanMode(null), [setUnboxScanMode]);
+  useScanModeRelease(unboxScanMode != null, releaseUnboxScanMode);
 
   usePhoneScanBridge({
     phoneChannelName,
@@ -513,6 +517,7 @@ export function ReceivingSidebarPanel() {
                 value={bulkTracking}
                 onChange={setBulkTracking}
                 onSubmit={(m) => {
+                  if (isScanPreview()) return;
                   // Unbox: one cache upsert on resolve (final title). No importing
                   // stub — that caused tracking# → Unfound PO flicker.
                   // Leaving Queue after a scan lands on the default tab.

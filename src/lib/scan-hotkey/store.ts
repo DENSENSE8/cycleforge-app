@@ -105,6 +105,11 @@ export function setCapturing(value: boolean): void {
   capturing = value;
 }
 
+/** True while the scan-bar gear is capturing a new reclaim key. */
+export function isCapturing(): boolean {
+  return capturing;
+}
+
 /** React store subscription (useSyncExternalStore). Installs the global listener once. */
 export function subscribe(listener: () => void): () => void {
   ensureGlobalListener();

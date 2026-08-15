@@ -1,34 +1,63 @@
 'use client';
 
-import type { ComponentType, SVGProps } from 'react';
-import { STATION_SCAN_BAR_DEFAULT_ICON_CLASS } from './tokens';
+import type { ReactNode } from 'react';
+import { Barcode, Search } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-
-type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
+import { STATION_SCAN_BAR_DEFAULT_ICON_CLASS } from './tokens';
+import type { StationScanStance } from './scan-stance';
 
 interface StationScanLeadingIconProps {
-  Icon: IconComponent;
-  tintClassName?: string;
-  ariaLabel: string;
-  title: string;
+  stance: StationScanStance;
+  onToggle: () => void;
+  /** Custom glyph for scan stance. Preview always uses Search. */
+  scanIcon?: ReactNode;
 }
 
-/** Left indicator glyph — always uses the shared icon box geometry. */
+const COPY: Record<
+  StationScanStance,
+  { tooltip: string; ariaLabel: string }
+> = {
+  scan: {
+    tooltip: 'Scan — commits on Enter',
+    ariaLabel: 'Scan stance — commits on Enter. Click for Preview.',
+  },
+  preview: {
+    tooltip: 'Preview — decode only, no write',
+    ariaLabel: 'Preview stance — decode only, no write. Click for Scan.',
+  },
+};
+
+/**
+ * Left icon = Preview | Scan stance. Type lives on the right rail, not here.
+ * Wrapped by {@link ScanHotkeyControl}: at rest this button toggles stance;
+ * hover still reveals the gear for Insert / ⌘. remapping.
+ */
 export function StationScanLeadingIcon({
-  Icon,
-  tintClassName = 'text-text-faint',
-  ariaLabel,
-  title,
+  stance,
+  onToggle,
+  scanIcon,
 }: StationScanLeadingIconProps) {
+  const copy = COPY[stance];
+  const glyph =
+    stance === 'preview' ? (
+      <Search className={`${STATION_SCAN_BAR_DEFAULT_ICON_CLASS} transition-colors`} />
+    ) : (
+      (scanIcon ?? (
+        <Barcode className={`${STATION_SCAN_BAR_DEFAULT_ICON_CLASS} transition-colors`} />
+      ))
+    );
+
   return (
-    <HoverTooltip label={title} asChild focusable={false}>
-      <span
-        className={`flex items-center justify-center ${tintClassName}`}
-        role="status"
-        aria-label={ariaLabel}
+    <HoverTooltip label={copy.tooltip} asChild>
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-pressed={stance === 'preview'}
+        aria-label={copy.ariaLabel}
+        className="ds-raw-button inline-flex size-[17px] items-center justify-center leading-none"
       >
-        <Icon className={`${STATION_SCAN_BAR_DEFAULT_ICON_CLASS} transition-colors`} />
-      </span>
+        {glyph}
+      </button>
     </HoverTooltip>
   );
 }

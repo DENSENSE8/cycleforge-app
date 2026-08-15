@@ -3,9 +3,9 @@
 import { useRef, type FormEvent } from 'react';
 import { Barcode, MapPin, Hash, Pencil } from '@/components/Icons';
 import {
-  StationScanLeadingIcon,
   StationScanModeRail,
   ThemedStationScanBar,
+  useScanStance,
 } from '@/components/station/scan-bar';
 import { classifyInput } from '@/lib/scan-resolver';
 import {
@@ -99,16 +99,15 @@ export function TestingScanBar({
   onToggleMode,
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const stance = useScanStance();
 
   const handleSubmit = (e?: FormEvent<HTMLFormElement>) => {
     e?.preventDefault();
     onSubmit();
   };
 
-  const effective: ForcedTestingType = armedMode ?? classifyTestingScan(value);
-  const active = testingScanModeMeta(effective);
-  const LeadingIcon = armedMode ? active.Icon : Barcode;
-  const leadingTint = armedMode ? active.iconClass : 'text-text-faint';
+  const active = armedMode ? testingScanModeMeta(armedMode) : null;
+  const typeLabel = active?.label ?? 'Auto';
 
   return (
     <div data-testing-scan className="w-full">
@@ -118,27 +117,15 @@ export function TestingScanBar({
         onSubmit={handleSubmit}
         inputRef={inputRef}
         staffId={staffId}
-        placeholder={armedMode ? `Scan ${active.label}…` : 'Tracking · PO · Serial · SKU'}
+        placeholder={stance === 'preview'
+          ? `Preview: would search ${typeLabel}`
+          : armedMode
+            ? `Scan ${active!.label}`
+            : 'Tracking \u00b7 PO \u00b7 Serial \u00b7 SKU'}
         autoFocus
         // Align the scan icon/text to the recent rail's dot/title column below.
         leadingColumn="rail"
         isResolving={isResolving}
-        icon={
-          <StationScanLeadingIcon
-            Icon={LeadingIcon}
-            tintClassName={leadingTint}
-            ariaLabel={
-              armedMode
-                ? `Armed: ${active.label}`
-                : 'Auto-detect — tracking, PO#, serial, or SKU'
-            }
-            title={
-              armedMode
-                ? `Next scan forced to ${active.label}. Click the mode again to auto-detect.`
-                : 'Auto-detect — pick a route on the right to force the next scan'
-            }
-          />
-        }
         rightContent={
           <StationScanModeRail
             modes={TESTING_SCAN_MODES}

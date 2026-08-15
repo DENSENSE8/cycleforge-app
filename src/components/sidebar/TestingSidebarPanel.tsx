@@ -8,7 +8,7 @@ import { Button } from '@/design-system/primitives';
 import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
 import { appChromeClass } from '@/design-system/tokens/app-surface';
 import { TestingScanBar } from '@/components/sidebar/receiving/TestingScanBar';
-import { ScanBandShell } from '@/components/station/scan-bar';
+import { ScanBandShell, isScanPreview, useScanModeRelease } from '@/components/station/scan-bar';
 import { TestingRecentRail } from '@/components/sidebar/receiving/TestingRecentRail';
 import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 import { SidebarRailScrollport } from '@/components/sidebar/rail-shell/SidebarRailScrollport';
@@ -302,6 +302,7 @@ export function TestingSidebarPanel({
   }, [applyLineToSession, queryClient]);
 
   const handleSubmit = useCallback(() => {
+    if (isScanPreview()) return;
     void runScan(scanValue, armedMode);
   }, [runScan, scanValue, armedMode]);
 
@@ -310,6 +311,10 @@ export function TestingSidebarPanel({
     id: 'testing-scan-bar',
     enabled: true,
     onScan: (raw) => {
+      if (isScanPreview()) {
+        setScanValue(raw);
+        return;
+      }
       void runScan(raw, armedMode);
     },
     focus: () => {
@@ -317,13 +322,16 @@ export function TestingSidebarPanel({
     },
   });
 
+  const releaseArmedMode = useCallback(() => setArmedMode(null), []);
+  useScanModeRelease(armedMode != null, releaseArmedMode);
+
   const toggleMode = useCallback(
     (mode: ForcedTestingType) => {
       const turningOff = armedMode === mode;
       const next = turningOff ? null : mode;
       setArmedMode(next);
       const pending = scanValue.trim();
-      if (next && pending) {
+      if (next && pending && !isScanPreview()) {
         void runScan(scanValue, next);
         return;
       }
