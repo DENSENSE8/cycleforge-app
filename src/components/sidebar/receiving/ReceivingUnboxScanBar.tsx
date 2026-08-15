@@ -7,6 +7,7 @@ import {
   ThemedStationScanBar,
   classifyPreviewFromArmed,
   useScanStance,
+  useScanTypeKeybinds,
 } from '@/components/station/scan-bar';
 // From the light scan-parser module — importing via lib/support/tickets drags
 // the server-only tenancy/db (Neon driver) into this client bundle.
@@ -94,6 +95,13 @@ export function ReceivingUnboxScanBar({
 }: Props) {
   const fallbackRef = useRef<HTMLInputElement>(null);
   const stance = useScanStance();
+  useScanTypeKeybinds({
+    modes: UNBOX_SCAN_MODES.map((m) => m.mode),
+    armedMode,
+    onToggleMode,
+    value,
+    onChange,
+  });
 
   const active = armedMode ? modeMeta(armedMode) : null;
   const typeLabel = active?.label ?? 'Auto';

@@ -74,9 +74,36 @@ click-at-rest still toggles stance.
 on. The phone UI will not get a `phone_scan_result` in that stance
 (noted as a remaining gap if we want a preview echo later).
 
-## Remaining gaps (phase 3+)
+## Type keybinds (phase 3)
 
-- Type keybinds `1`/`2`/`3`/`4`, `0`/`` ` ``, empty-field `P` (phase 3)
-- Cheat-sheet + rail hint (phase 3)
+When the station scan input is focused (`data-station-scan-input`) **and**
+the field is empty:
+
+| Key | Action |
+|---|---|
+| `1` / `2` / `3` / `4` | Arm the nth type **after** Auto |
+| `0` or `` ` `` | Release to Auto |
+| `P` | Toggle Preview / Scan |
+
+Unbox: 1 Ticket, 2 Tracking, 3 PO. Testing: 1 Tracking, 2 PO, 3 Serial, 4 SKU.
+Shipping: 1 Tracking, 2 Amz Prep, 3 Repair, 4 Serial.
+
+If the field has text, digits type normally (ticket numbers). Empty-field `P`
+only — no Alt chord.
+
+### HID wedge yield
+
+`useScanTypeKeybinds` uses the same inter-key window as `wedgeReduce`
+(`WEDGE_MAX_INTER_KEY_MS` = 50ms). A lone `1` after 50ms of silence arms
+type 1. A fast `1`+more-chars burst is treated as a scanner: the swallowed
+digit is flushed into the field and nothing is armed. Enter during the
+pending window also flushes (scan, not arm).
+
+Rail Auto tooltip + group aria: `1–3 type · Esc Auto · P preview` (or 1–4).
+The `?` cheat sheet has a **Station scan bar** group.
+
+## Remaining gaps
+
 - Packing still has no type rail
 - Optional `staff_preferences.stationScanStance`
+- Phone preview echo (`phone_scan_result` is skipped in preview — gated, no substitute payload)

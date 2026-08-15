@@ -83,6 +83,18 @@ function buildGroups(): { title: string; rows: ShortcutRow[] }[] {
       ],
     },
     {
+      title: 'Station scan bar (input focused, field empty)',
+      rows: [
+        { keys: ['1'], label: 'Arm 1st type (Unbox Ticket · Testing Tracking · Shipping Tracking)' },
+        { keys: ['2'], label: 'Arm 2nd type (Unbox Tracking · Testing PO · Shipping Amz Prep)' },
+        { keys: ['3'], label: 'Arm 3rd type (Unbox PO · Testing Serial · Shipping Repair)' },
+        { keys: ['4'], label: 'Arm 4th type (Testing SKU · Shipping Serial)' },
+        { keys: ['0'], label: 'Release to Auto (or ` )' },
+        { keys: ['P'], label: 'Toggle Preview / Scan (empty field only)' },
+        { keys: ['Esc'], label: 'Dismiss preview card, then release type to Auto' },
+      ],
+    },
+    {
       title: 'Regions (after ⌘;)',
       rows: NAV_REGIONS.map((r) => ({
         keys: [r.key],

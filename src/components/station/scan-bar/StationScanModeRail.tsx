@@ -4,6 +4,7 @@ import type { ComponentType, SVGProps } from 'react';
 import { Sparkles } from '@/components/Icons';
 import { cn } from '@/utils/_cn';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { railHint } from './scan-type-keybinds';
 import {
   STATION_SCAN_BAR_MODE_BTN,
   STATION_SCAN_BAR_MODE_BTN_ARMED,
@@ -62,14 +63,14 @@ export function StationScanModeRail<T extends string>({
     <div
       className="relative z-dropdown isolate flex h-full items-stretch gap-0"
       role="group"
-      aria-label="Scan type"
+      aria-label={`Scan type. ${railHint(modes.length)}`}
     >
       {showAuto ? (
         <HoverTooltip
           label={
             autoArmed
-              ? 'Auto — next scan picks the type'
-              : 'Auto — release the armed type'
+              ? `Auto — next scan picks the type. ${railHint(modes.length)}`
+              : `Auto — release the armed type. ${railHint(modes.length)}`
           }
           asChild
         >
@@ -135,4 +136,3 @@ export function StationScanModeRail<T extends string>({
   );
 }
 
-export { nextArmedMode } from './scan-mode';
