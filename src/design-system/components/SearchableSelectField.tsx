@@ -67,6 +67,11 @@ interface SearchableSelectFieldProps<T = unknown> {
   placement?: SearchableSelectListPlacement;
   /** Autofocus the trigger on mount (form first field). */
   autoFocus?: boolean;
+  /**
+   * `identity` — platform / type / priority selects: black labels, light-blue
+   * active row wash; hue lives in {@link renderOption} dots only.
+   */
+  rowVariant?: 'default' | 'identity';
   /** Custom row body. Defaults to label + optional muted meta + check. */
   renderOption?: (opt: SearchableSelectOption<T>, state: { active: boolean }) => ReactNode;
   /** Custom filter predicate. Default: case-insensitive match on label + meta. */
@@ -98,6 +103,9 @@ const TONE_ACTIVE: Record<NonNullable<SearchableSelectFieldProps['tone']>, strin
   default: 'bg-blue-50 text-blue-700',
   emerald: 'bg-emerald-50 text-emerald-700',
 };
+
+const IDENTITY_ROW_ACTIVE = 'bg-blue-50 text-black';
+const IDENTITY_ROW_IDLE = 'text-black';
 
 const TONE_FLOAT: Record<NonNullable<SearchableSelectFieldProps['tone']>, string> = {
   default: 'text-text-soft',
@@ -148,6 +156,7 @@ export function SearchableSelectField<T = unknown>({
   appearance = 'default',
   placement = 'bottom-stretch',
   autoFocus = false,
+  rowVariant = 'default',
   renderOption,
   filter,
   onSearchChange,
@@ -161,6 +170,7 @@ export function SearchableSelectField<T = unknown>({
   const flush = appearance === 'flush';
   const opensUp = placement.startsWith('top-');
   const hasLabel = Boolean(label?.trim());
+  const identityRows = rowVariant === 'identity';
   const remote = typeof onSearchChange === 'function';
 
   // In remote mode the host reports the query change and refetches; setting the
@@ -390,7 +400,13 @@ export function SearchableSelectField<T = unknown>({
                         'flex w-full cursor-pointer items-center gap-2 text-left outline-none transition-colors',
                         'data-[selected=true]:bg-surface-hover',
                         flush ? 'rounded-none px-3.5 py-2' : 'px-3 py-1.5',
-                        active ? TONE_ACTIVE[tone] : 'text-text-muted',
+                        identityRows
+                          ? active
+                            ? IDENTITY_ROW_ACTIVE
+                            : IDENTITY_ROW_IDLE
+                          : active
+                            ? TONE_ACTIVE[tone]
+                            : 'text-text-muted',
                       )}
                     >
                       {renderOption ? (

@@ -30,7 +30,7 @@
     "src/lib/orders-sync",
     "src/hooks"
   ],
-  "count": 2663,
+  "count": 2672,
   "entries": [
     {
       "job": "Station: Scan pane + Displays push",
@@ -5441,7 +5441,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/incoming/IncomingAddInboundOverlay.tsx",
-      "line": 39,
+      "line": 44,
       "snippet": "export IncomingAddInboundOverlay from src/components/sidebar/receiving/incoming/IncomingAddInboundOverlay.tsx"
     },
     {
@@ -14389,6 +14389,123 @@
       "snippet": "export IdentifierToggle from src/components/ui/IdentifierToggle.tsx"
     },
     {
+      "job": "Export: IDENTITY_PILL_NEUTRAL_IDLE",
+      "sot": "IDENTITY_PILL_NEUTRAL_IDLE",
+      "path": "src/components/ui/IdentityLabelRow.tsx",
+      "guard": null,
+      "symbols": [
+        "IDENTITY_PILL_NEUTRAL_IDLE"
+      ],
+      "kind": "code",
+      "source": "src/components/ui/IdentityLabelRow.tsx",
+      "line": 29,
+      "snippet": "export IDENTITY_PILL_NEUTRAL_IDLE from src/components/ui/IdentityLabelRow.tsx"
+    },
+    {
+      "job": "Export: IDENTITY_PILL_NEUTRAL_ACTIVE",
+      "sot": "IDENTITY_PILL_NEUTRAL_ACTIVE",
+      "path": "src/components/ui/IdentityLabelRow.tsx",
+      "guard": null,
+      "symbols": [
+        "IDENTITY_PILL_NEUTRAL_ACTIVE"
+      ],
+      "kind": "code",
+      "source": "src/components/ui/IdentityLabelRow.tsx",
+      "line": 32,
+      "snippet": "export IDENTITY_PILL_NEUTRAL_ACTIVE from src/components/ui/IdentityLabelRow.tsx"
+    },
+    {
+      "job": "Export: PlatformIdentityLabel",
+      "sot": "PlatformIdentityLabel",
+      "path": "src/components/ui/IdentityLabelRow.tsx",
+      "guard": null,
+      "symbols": [
+        "PlatformIdentityLabel"
+      ],
+      "kind": "code",
+      "source": "src/components/ui/IdentityLabelRow.tsx",
+      "line": 71,
+      "snippet": "export PlatformIdentityLabel from src/components/ui/IdentityLabelRow.tsx"
+    },
+    {
+      "job": "Export: TypeIdentityLabel",
+      "sot": "TypeIdentityLabel",
+      "path": "src/components/ui/IdentityLabelRow.tsx",
+      "guard": null,
+      "symbols": [
+        "TypeIdentityLabel"
+      ],
+      "kind": "code",
+      "source": "src/components/ui/IdentityLabelRow.tsx",
+      "line": 100,
+      "snippet": "export TypeIdentityLabel from src/components/ui/IdentityLabelRow.tsx"
+    },
+    {
+      "job": "Export: PlatformDotMark",
+      "sot": "PlatformDotMark",
+      "path": "src/components/ui/IdentityLabelRow.tsx",
+      "guard": null,
+      "symbols": [
+        "PlatformDotMark"
+      ],
+      "kind": "code",
+      "source": "src/components/ui/IdentityLabelRow.tsx",
+      "line": 161,
+      "snippet": "export PlatformDotMark from src/components/ui/IdentityLabelRow.tsx"
+    },
+    {
+      "job": "Export: renderPlatformSelectOption",
+      "sot": "renderPlatformSelectOption",
+      "path": "src/components/ui/IdentityLabelRow.tsx",
+      "guard": null,
+      "symbols": [
+        "renderPlatformSelectOption"
+      ],
+      "kind": "code",
+      "source": "src/components/ui/IdentityLabelRow.tsx",
+      "line": 187,
+      "snippet": "export renderPlatformSelectOption from src/components/ui/IdentityLabelRow.tsx"
+    },
+    {
+      "job": "Export: renderTypeSelectOption",
+      "sot": "renderTypeSelectOption",
+      "path": "src/components/ui/IdentityLabelRow.tsx",
+      "guard": null,
+      "symbols": [
+        "renderTypeSelectOption"
+      ],
+      "kind": "code",
+      "source": "src/components/ui/IdentityLabelRow.tsx",
+      "line": 210,
+      "snippet": "export renderTypeSelectOption from src/components/ui/IdentityLabelRow.tsx"
+    },
+    {
+      "job": "Export: renderPrioritySelectOption",
+      "sot": "renderPrioritySelectOption",
+      "path": "src/components/ui/IdentityLabelRow.tsx",
+      "guard": null,
+      "symbols": [
+        "renderPrioritySelectOption"
+      ],
+      "kind": "code",
+      "source": "src/components/ui/IdentityLabelRow.tsx",
+      "line": 232,
+      "snippet": "export renderPrioritySelectOption from src/components/ui/IdentityLabelRow.tsx"
+    },
+    {
+      "job": "Export: TypeDotMark",
+      "sot": "TypeDotMark",
+      "path": "src/components/ui/IdentityLabelRow.tsx",
+      "guard": null,
+      "symbols": [
+        "TypeDotMark"
+      ],
+      "kind": "code",
+      "source": "src/components/ui/IdentityLabelRow.tsx",
+      "line": 254,
+      "snippet": "export TypeDotMark from src/components/ui/IdentityLabelRow.tsx"
+    },
+    {
       "job": "Export: OrderIdentityChipsProps",
       "sot": "OrderIdentityChipsProps",
       "path": "src/components/ui/OrderIdentityChips.tsx",
@@ -14658,7 +14775,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/PlatformMark.tsx",
-      "line": 28,
+      "line": 10,
       "snippet": "export PlatformMark from src/components/ui/PlatformMark.tsx"
     },
     {
@@ -14762,7 +14879,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/ReceivingTypeMark.tsx",
-      "line": 40,
+      "line": 8,
       "snippet": "export ReceivingTypeMark from src/components/ui/ReceivingTypeMark.tsx"
     },
     {
@@ -18766,7 +18883,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/components/PlatformBadge.tsx",
-      "line": 18,
+      "line": 19,
       "snippet": "export PlatformBadge from src/design-system/components/PlatformBadge.tsx"
     },
     {
@@ -18935,7 +19052,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/components/SearchableSelectField.tsx",
-      "line": 136,
+      "line": 144,
       "snippet": "export SearchableSelectField from src/design-system/components/SearchableSelectField.tsx"
     },
     {

@@ -3,6 +3,10 @@
 import { useMemo, type ReactNode } from 'react';
 import type { ClaimType } from '@/components/sidebar/receiving/receiving-sidebar-shared';
 import { SearchableSelectField } from '@/design-system/components';
+import {
+  renderPlatformSelectOption,
+  renderTypeSelectOption,
+} from '@/components/ui/IdentityLabelRow';
 import { usePlatformCatalog, useReceivingTypeCatalog } from '@/hooks/useCatalog';
 import { returnPlatformForSource } from '@/lib/receiving/return-platform-for-source';
 import {
@@ -37,12 +41,16 @@ export function ClaimComposeStep({ c }: { c: ReceivingClaimController }) {
       catalogOptions: platformCatalog.options,
       isUnmatched,
     });
-    return opts.map((o) => ({
-      value: o.value,
-      label: o.label,
-      meta: o.title,
-      group: 'Platforms',
-    }));
+    return opts.map((o) => {
+      const catalog = platformCatalog.options.find((c) => c.value === o.value);
+      return {
+        value: o.value,
+        label: o.label,
+        meta: o.title,
+        group: 'Platforms',
+        data: catalog ? { colorHex: catalog.colorHex } : undefined,
+      };
+    });
   }, [platformCatalog.options, isUnmatched]);
 
   const typeSelectOptions = useMemo(() => {
@@ -82,6 +90,8 @@ export function ClaimComposeStep({ c }: { c: ReceivingClaimController }) {
         </p>
         <SearchableSelectField
           appearance="flush"
+          rowVariant="identity"
+          renderOption={renderPlatformSelectOption}
           value={sourcePlatform}
           disabled={receivingIdMissing}
           onChange={(id) => {
@@ -112,6 +122,8 @@ export function ClaimComposeStep({ c }: { c: ReceivingClaimController }) {
         </p>
         <SearchableSelectField
           appearance="flush"
+          rowVariant="identity"
+          renderOption={renderTypeSelectOption}
           value={intakeType || null}
           disabled={receivingIdMissing}
           onChange={(id) => {

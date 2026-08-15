@@ -15,6 +15,11 @@ import { useQueryClient } from '@tanstack/react-query';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
 import { PaneHeaderCloseButton, PaneHeaderLabel } from '@/components/ui/pane-header';
 import { SearchableSelectField } from '@/design-system/components';
+import {
+  renderPlatformSelectOption,
+  renderPrioritySelectOption,
+  renderTypeSelectOption,
+} from '@/components/ui/IdentityLabelRow';
 import { Button, FlushTerminalFooter, TextField } from '@/design-system/primitives';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { useDebounce } from '@/hooks';
@@ -94,6 +99,7 @@ export function IncomingAddInboundOverlay({
       value: o.value,
       label: o.label,
       group: 'Platforms',
+      data: { colorHex: o.colorHex },
     }));
   }, [platformCatalog.options]);
 
@@ -285,6 +291,8 @@ export function IncomingAddInboundOverlay({
               appearance="flush"
               label="Platform"
               autoFocus
+              rowVariant="identity"
+              renderOption={renderPlatformSelectOption}
               value={platform}
               onChange={(id) => {
                 if (id == null) return;
@@ -301,6 +309,8 @@ export function IncomingAddInboundOverlay({
             <SearchableSelectField
               appearance="flush"
               label="Type"
+              rowVariant="identity"
+              renderOption={renderTypeSelectOption}
               value={receivingType}
               onChange={(id) => {
                 if (id == null) return;
@@ -315,6 +325,8 @@ export function IncomingAddInboundOverlay({
             <SearchableSelectField
               appearance="flush"
               label="Priority"
+              rowVariant="identity"
+              renderOption={renderPrioritySelectOption}
               value={priority}
               onChange={(id) => {
                 if (id == null) return;

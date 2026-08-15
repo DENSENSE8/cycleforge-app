@@ -3,50 +3,49 @@
  *
  * Shared by the carton bookmark (`InlinePillPicker` menu) and the Classify
  * Displays checklist so both surfaces render the same tone-coded faces.
- * Bookmark chrome uses {@link InlinePillOption.shortLabel}; Classify keeps
- * full `label`.
+ * Platform and type labels stay black; hue lives in the leading dot only.
  */
 
 import { Flag } from '@/components/Icons';
-import { ReceivingTypeMark } from '@/components/ui/ReceivingTypeMark';
+import {
+  IDENTITY_PILL_NEUTRAL_ACTIVE,
+  IDENTITY_PILL_NEUTRAL_IDLE,
+  PlatformDotMark,
+  TypeDotMark,
+} from '@/components/ui/IdentityLabelRow';
+import { BrandIdentityDot } from '@/components/ui/grid-cells';
 import { TOP_CHROME_ICON_GLYPH } from '@/components/layout/header-shell';
 import { platformPaintFromHex } from '@/lib/color-contrast';
-import { sourcePlatformMeta } from '@/lib/source-platform';
-import { receivingTypeMeta } from '@/lib/receiving/receiving-type-meta';
 import { priorityOverrideTiersForPicker } from '@/lib/receiving/priority-override';
+import { receivingTypeMeta } from '@/lib/receiving/receiving-type-meta';
+import { platformMetaBrandDot, sourcePlatformMeta } from '@/lib/source-platform';
 import type { InlinePillOption } from './InlinePillPicker';
 
 const FACE_GLYPH = TOP_CHROME_ICON_GLYPH;
 
-/** Soft platform face fills — brand hue tint, Claim/Photos flat language. */
-const PLATFORM_FACE_ACTIVE: Record<string, string> = {
-  ebay: 'border-yellow-200 bg-yellow-50 text-yellow-800 shadow-none',
-  amazon: 'border-orange-200 bg-orange-50 text-orange-700 shadow-none',
-  fba: 'border-orange-200 bg-orange-50 text-orange-700 shadow-none',
-  aliexpress: 'border-red-200 bg-red-50 text-red-700 shadow-none',
-  walmart: 'border-amber-200 bg-amber-50 text-amber-800 shadow-none',
-  goodwill: 'border-sky-200 bg-sky-50 text-sky-700 shadow-none',
-  ecwid: 'border-blue-200 bg-blue-50 text-blue-700 shadow-none',
-  square: 'border-slate-200 bg-slate-50 text-slate-700 shadow-none', // ds-allow-raw-neutral: Square brand slate
-  shopify: 'border-green-200 bg-green-50 text-green-700 shadow-none',
-  other: 'border-slate-200 bg-slate-50 text-slate-600 shadow-none', // ds-allow-raw-neutral: catch-all
-};
+function platformDotFace(value: string, colorHex?: string | null) {
+  const meta = sourcePlatformMeta(value);
+  if (colorHex) {
+    const paint = platformPaintFromHex(colorHex);
+    if (paint) {
+      const dot = platformMetaBrandDot({ ...meta, accentHex: paint.accent });
+      return (
+        <BrandIdentityDot className={dot.className} style={dot.style} aria-hidden />
+      );
+    }
+  }
+  return <PlatformDotMark platformValue={value} meta={meta} />;
+}
 
-const PLATFORM_FACE_IDLE =
-  'border-border-soft bg-surface-card/70 text-text-muted hover:border-border-default hover:bg-surface-hover';
+function typeDotFace(value: string) {
+  return <TypeDotMark typeValue={value} />;
+}
 
-/** Structural classes when hex paint supplies fill/ink via inline style. */
-const PLATFORM_FACE_HEX_ACTIVE = 'border shadow-none';
-const PLATFORM_FACE_HEX_IDLE =
-  'border bg-surface-card/70 hover:border-border-default hover:bg-surface-hover';
-
-/**
- * All platform faces use a tone pip — same color ladder as copy-chip platform
- * accents, never marketplace brand logos.
- */
-const PLATFORM_TONE_PIP = (
-  <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-current opacity-90" aria-hidden />
-);
+function priorityDotFace(tierValue: number) {
+  const tier = priorityOverrideTiersForPicker().find((t) => t.value === tierValue);
+  if (!tier) return <BrandIdentityDot className="bg-border-emphasis" aria-hidden />;
+  return <BrandIdentityDot className={tier.dot} aria-hidden />;
+}
 
 export function urgencyClassifyOptions(args: {
   derivedLabel: string;
@@ -54,7 +53,6 @@ export function urgencyClassifyOptions(args: {
   autoActiveClass: string;
 }): InlinePillOption[] {
   const { derivedLabel, derivedTierEquivalent, autoActiveClass } = args;
-  // Auto (platform / org unbox policy) first; manual pins escalate Low → Priority.
   return [
     {
       value: 'auto',
@@ -62,9 +60,9 @@ export function urgencyClassifyOptions(args: {
       shortLabel: 'Auto',
       title: `Auto — follows platform (${derivedLabel})`,
       face: <Flag className={FACE_GLYPH} />,
+      menuFace: <BrandIdentityDot className="bg-border-emphasis" aria-hidden />,
       activeClass: autoActiveClass,
-      inactiveClass:
-        'border-border-soft bg-surface-card/70 text-text-soft hover:border-border-default hover:bg-surface-hover',
+      inactiveClass: IDENTITY_PILL_NEUTRAL_IDLE,
     },
     ...priorityOverrideTiersForPicker().map((t) => ({
       value: String(t.value),
@@ -75,6 +73,7 @@ export function urgencyClassifyOptions(args: {
           ? `${t.title} — current (auto from platform); click to pin`
           : t.title,
       face: <Flag className={FACE_GLYPH} />,
+      menuFace: priorityDotFace(t.value),
       activeClass: t.activeClass,
       inactiveClass: derivedTierEquivalent === t.value ? t.activeClass : t.inactiveClass,
     })),
@@ -93,10 +92,9 @@ export function platformClassifyOptions(args: {
           label: 'Unfound',
           shortLabel: '?',
           title: 'No purchase order matched this carton',
-          face: PLATFORM_TONE_PIP,
-          activeClass: 'border-amber-200 bg-amber-50 text-amber-700 shadow-none',
-          inactiveClass:
-            'border-amber-200 bg-amber-50 text-amber-700 hover:border-amber-300 hover:bg-amber-100',
+          face: <BrandIdentityDot className="bg-amber-500" aria-hidden />,
+          activeClass: IDENTITY_PILL_NEUTRAL_ACTIVE,
+          inactiveClass: IDENTITY_PILL_NEUTRAL_IDLE,
         },
       ]
     : [];
@@ -105,25 +103,14 @@ export function platformClassifyOptions(args: {
     ...unfound,
     ...catalogOptions.map((o) => {
       const meta = sourcePlatformMeta(o.value);
-      const paint = o.colorHex ? platformPaintFromHex(o.colorHex) : null;
-      const active =
-        PLATFORM_FACE_ACTIVE[meta.value] ??
-        'border-slate-200 bg-slate-50 text-slate-600 shadow-none'; // ds-allow-raw-neutral: unknown platform face
       return {
         value: o.value,
         label: o.label,
         shortLabel: meta.mark || o.label.slice(0, 2),
         title: o.label,
-        face: PLATFORM_TONE_PIP,
-        activeClass: paint ? PLATFORM_FACE_HEX_ACTIVE : active,
-        inactiveClass: paint ? PLATFORM_FACE_HEX_IDLE : PLATFORM_FACE_IDLE,
-        // ds-allow-hex: soft fill + ink from platforms.color_hex via color-contrast SoT.
-        activeStyle: paint
-          ? { backgroundColor: paint.softFill, color: paint.softInk, borderColor: paint.border }
-          : undefined,
-        inactiveStyle: paint
-          ? { color: paint.accent, borderColor: paint.border }
-          : undefined,
+        face: platformDotFace(o.value, o.colorHex),
+        activeClass: IDENTITY_PILL_NEUTRAL_ACTIVE,
+        inactiveClass: IDENTITY_PILL_NEUTRAL_IDLE,
       } satisfies InlinePillOption;
     }),
   ];
@@ -141,14 +128,9 @@ export function typeClassifyOptions(args: {
         label: o.label,
         shortLabel: meta.short,
         title: o.label,
-        face: (
-          <ReceivingTypeMark
-            typeValue={o.value}
-            textClassName="text-current"
-          />
-        ),
-        activeClass: meta.activeClass,
-        inactiveClass: meta.inactiveClass,
+        face: typeDotFace(o.value),
+        activeClass: IDENTITY_PILL_NEUTRAL_ACTIVE,
+        inactiveClass: IDENTITY_PILL_NEUTRAL_IDLE,
       } satisfies InlinePillOption;
     });
 }

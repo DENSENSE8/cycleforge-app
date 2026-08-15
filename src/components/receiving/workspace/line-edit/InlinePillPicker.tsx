@@ -55,10 +55,12 @@ export interface InlinePillOption {
   inactiveStyle?: import('react').CSSProperties;
   title?: string;
   /**
-   * Identity face (platform mark / type glyph / urgency flag). Used when
+   * Identity face (platform / type dot). Used when
    * `collapsedFace` or `expandedFace` is `"icon"` / `"iconLabel"`.
    */
   face?: ReactNode;
+  /** Menu-row face when it differs from collapsed (e.g. urgency Flag vs dot). */
+  menuFace?: ReactNode;
 }
 
 /** Carton-context flush face — square corners; fills station chrome row (h-full). */
@@ -86,19 +88,12 @@ const DEFAULT_INACTIVE =
   'border-border-soft bg-surface-card/70 text-text-muted hover:border-border-default hover:bg-surface-hover';
 
 const EMPTY_FACE = (
-  <span className="text-role-micro text-current" aria-hidden>
+  <span className="text-role-micro text-black" aria-hidden>
     —
   </span>
 );
 
-/** Pull ink classes from a classify face tone (`border-… bg-… text-…`). */
-function menuLabelToneClass(activeClass?: string): string {
-  if (!activeClass) return 'text-text-default';
-  const ink = activeClass
-    .split(/\s+/)
-    .filter((token) => token.startsWith('text-'));
-  return ink.length > 0 ? ink.join(' ') : 'text-text-default';
-}
+const MENU_ROW_INK = 'text-black';
 
 const SWAP_MS = 0.12;
 const OPTION_STAGGER_MS = 0.018;
@@ -244,7 +239,8 @@ export function InlinePillPicker({
           </span>
           <span
             className={cn(
-              isBookmark && 'min-w-0 truncate text-left leading-none opacity-80',
+              isBookmark && 'min-w-0 truncate text-left leading-none text-black opacity-80',
+              !isBookmark && collapsedFace === 'iconLabel' && 'text-black',
             )}
           >
             {faceLabel}
@@ -312,10 +308,7 @@ export function InlinePillPicker({
             >
               {options.map((opt) => {
                 const isActive = opt.value === value;
-                const inkClass = menuLabelToneClass(opt.activeClass);
-                const inkStyle = opt.activeStyle?.color
-                  ? { color: opt.activeStyle.color }
-                  : undefined;
+                const rowFace = opt.menuFace ?? opt.face;
                 return (
                   <DropdownMenuItem
                     key={opt.value || '__none__'}
@@ -326,10 +319,12 @@ export function InlinePillPicker({
                     )}
                     aria-label={opt.title ?? opt.label}
                   >
-                    <span
-                      className={cn('min-w-0 flex-1 truncate', inkClass)}
-                      style={inkStyle}
-                    >
+                    <span className={cn('flex min-w-0 flex-1 items-center gap-2 truncate', MENU_ROW_INK)}>
+                      {rowFace ? (
+                        <span className="grid h-4 w-4 shrink-0 place-items-center" aria-hidden>
+                          {rowFace}
+                        </span>
+                      ) : null}
                       {opt.label}
                     </span>
                   </DropdownMenuItem>
@@ -420,7 +415,7 @@ export function InlinePillPicker({
                         <span className="grid h-5 w-5 place-items-center" aria-hidden>
                           {opt.face ?? EMPTY_FACE}
                         </span>
-                        <span>{opt.label}</span>
+                        <span className="text-black">{opt.label}</span>
                       </>
                     ) : (
                       opt.label

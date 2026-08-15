@@ -10,7 +10,7 @@
  * Pure — no React. Glyphs resolve in {@link ReceivingTypeMark}.
  */
 
-export type ReceivingTypeIconKey =
+type ReceivingTypeIconKey =
   | 'package'
   | 'rotate-ccw'
   | 'wrench'
@@ -18,7 +18,7 @@ export type ReceivingTypeIconKey =
   | 'map-pin'
   | 'tag';
 
-export interface ReceivingTypeMeta {
+interface ReceivingTypeMeta {
   /** Stored `receiving_type` / `intake_type` value (uppercase). */
   value: string;
   /** Canonical display label. */
@@ -31,6 +31,8 @@ export interface ReceivingTypeMeta {
   text: string;
   /** Tailwind border tone for underline / idle ring accents. */
   border: string;
+  /** Tailwind fill for identity dots — same ladder as {@link platformMetaBrandDot}. */
+  dot: string;
   /**
    * Quiet flat tint when this type is the active selection — same face
    * language as Claim/Photos (`border-*-200 bg-*-50 text-*-700 shadow-none`).
@@ -52,6 +54,7 @@ export const RECEIVING_TYPES: readonly ReceivingTypeMeta[] = [
     icon: 'package',
     text: 'text-blue-600',
     border: 'border-blue-600',
+    dot: 'bg-blue-600',
     activeClass: 'border-blue-200 bg-blue-50 text-blue-700 shadow-none',
     inactiveClass:
       'border-blue-200 bg-blue-50 text-blue-700 hover:border-blue-300 hover:bg-blue-100',
@@ -63,6 +66,7 @@ export const RECEIVING_TYPES: readonly ReceivingTypeMeta[] = [
     icon: 'rotate-ccw',
     text: 'text-rose-600',
     border: 'border-rose-500',
+    dot: 'bg-rose-500',
     activeClass: 'border-rose-200 bg-rose-50 text-rose-700 shadow-none',
     inactiveClass:
       'border-rose-200 bg-rose-50 text-rose-700 hover:border-rose-300 hover:bg-rose-100',
@@ -79,6 +83,7 @@ export const RECEIVING_TYPES: readonly ReceivingTypeMeta[] = [
     icon: 'wrench',
     text: 'text-orange-600',
     border: 'border-orange-500',
+    dot: 'bg-orange-600',
     activeClass: 'border-orange-200 bg-orange-50 text-orange-700 shadow-none',
     inactiveClass:
       'border-orange-200 bg-orange-50 text-orange-700 hover:border-orange-300 hover:bg-orange-100',
@@ -90,6 +95,7 @@ export const RECEIVING_TYPES: readonly ReceivingTypeMeta[] = [
     icon: 'arrow-left-right',
     text: 'text-amber-700',
     border: 'border-amber-500',
+    dot: 'bg-amber-700',
     activeClass: 'border-amber-200 bg-amber-50 text-amber-800 shadow-none',
     inactiveClass:
       'border-amber-200 bg-amber-50 text-amber-800 hover:border-amber-300 hover:bg-amber-100',
@@ -101,6 +107,7 @@ export const RECEIVING_TYPES: readonly ReceivingTypeMeta[] = [
     icon: 'map-pin',
     text: 'text-emerald-600',
     border: 'border-emerald-500',
+    dot: 'bg-emerald-600',
     activeClass: 'border-emerald-200 bg-emerald-50 text-emerald-700 shadow-none',
     inactiveClass:
       'border-emerald-200 bg-emerald-50 text-emerald-700 hover:border-emerald-300 hover:bg-emerald-100',
@@ -115,6 +122,7 @@ const UNKNOWN_RECEIVING_TYPE: ReceivingTypeMeta = {
   icon: 'tag',
   text: 'text-text-faint',
   border: 'border-border-default',
+  dot: 'bg-border-emphasis',
   activeClass: 'border-border-default bg-surface-card text-text-muted',
   inactiveClass:
     'border-border-soft bg-surface-card/70 text-text-soft hover:border-border-default hover:bg-surface-hover',
@@ -132,4 +140,14 @@ export function receivingTypeMeta(value: string | null | undefined): ReceivingTy
     label: key.replace(/_/g, ' '),
     short: key.slice(0, 5),
   };
+}
+
+/** Identity micro-dot fill — same ladder as {@link platformMetaBrandDot}. */
+export function receivingTypeBrandDot(meta: ReceivingTypeMeta): {
+  className?: string;
+  style?: { backgroundColor: string };
+} {
+  const dot = meta.dot?.trim();
+  if (dot) return { className: dot };
+  return { className: UNKNOWN_RECEIVING_TYPE.dot };
 }

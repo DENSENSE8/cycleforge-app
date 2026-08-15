@@ -21,6 +21,10 @@ import { returnPlatformForSource } from '@/lib/receiving/return-platform-for-sou
 import { invalidateReceivingFeeds } from '@/lib/queries/receiving-queries';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import type { InlinePillOption } from '@/components/receiving/workspace/line-edit/InlinePillPicker';
+import {
+  IDENTITY_PILL_NEUTRAL_ACTIVE,
+  IDENTITY_PILL_NEUTRAL_IDLE,
+} from '@/components/ui/IdentityLabelRow';
 import { getLast8 } from '@/lib/copy-chip-format';
 import { cn } from '@/utils/_cn';
 
@@ -60,12 +64,14 @@ function OptionGrid({
             title={opt.title}
             className={cn(
               'ds-raw-button flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl border px-2 py-3 text-center transition-all active:scale-[0.98] disabled:opacity-50',
-              active ? opt.activeClass ?? 'border-blue-300 bg-blue-50 text-blue-800 shadow-sm' : opt.inactiveClass,
+              active
+                ? opt.activeClass ?? IDENTITY_PILL_NEUTRAL_ACTIVE
+                : opt.inactiveClass ?? IDENTITY_PILL_NEUTRAL_IDLE,
             )}
             style={active ? opt.activeStyle : opt.inactiveStyle}
           >
             <span className="flex h-6 items-center justify-center">{opt.face}</span>
-            <span className="text-role-caption font-semibold">{opt.label}</span>
+            <span className="text-role-caption font-semibold text-black">{opt.label}</span>
           </button>
         );
       })}

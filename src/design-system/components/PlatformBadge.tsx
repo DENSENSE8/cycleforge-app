@@ -1,32 +1,32 @@
-import { getOrderPlatformLabel, getOrderPlatformColor, getOrderPlatformBorderColor } from '@/utils/order-platform';
+import { PlatformIdentityLabel } from '@/components/ui/IdentityLabelRow';
+import { sourcePlatformMetaFromLabel } from '@/lib/source-platform';
+import { getOrderPlatformLabel } from '@/utils/order-platform';
 
 interface PlatformBadgeProps {
   orderId: string;
   accountSource?: string | null;
-  /** When true, includes a left border accent. */
+  /** @deprecated Border accent removed — identity is dot + black label. */
   showBorder?: boolean;
   className?: string;
 }
 
 /**
- * Renders the platform label (Amazon, eBay, ECWID, FBA, etc.) with the
- * correct color. Encapsulates the getOrderPlatformLabel + getOrderPlatformColor
- * pattern used across 10+ files.
+ * Platform label with tone dot (black text). Encapsulates order-id → platform
+ * resolution for surfaces that need a readable channel name, not an order chip.
  *
  * Returns null when no platform can be determined.
  */
-export function PlatformBadge({ orderId, accountSource, showBorder = false, className = '' }: PlatformBadgeProps) {
+export function PlatformBadge({ orderId, accountSource, className = '' }: PlatformBadgeProps) {
   const label = getOrderPlatformLabel(orderId, accountSource);
   if (!label) return null;
 
-  const textColor = getOrderPlatformColor(label);
-  const borderColor = showBorder ? getOrderPlatformBorderColor(label) : '';
-
+  const meta = sourcePlatformMetaFromLabel(label);
   return (
-    <span
-      className={`text-role-micro uppercase tracking-wider ${textColor} ${showBorder ? `border-l-2 pl-1.5 ${borderColor}` : ''} ${className}`.trim()}
-    >
-      {label}
-    </span>
+    <PlatformIdentityLabel
+      platformValue={meta.value || label}
+      label={meta.label || label}
+      meta={meta}
+      className={className}
+    />
   );
 }

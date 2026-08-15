@@ -26,6 +26,8 @@ export interface PriorityOverrideTier {
   activeClass: string;
   /** Tinted tone in the expanded option list. */
   inactiveClass: string;
+  /** Tailwind fill for identity dots in menus / selects. */
+  dot: string;
 }
 
 /**
@@ -44,6 +46,7 @@ export const PRIORITY_OVERRIDE_TIERS: readonly PriorityOverrideTier[] = [
     title: 'Manual top priority — unbox / test first',
     activeClass: 'border-red-200 bg-red-50 text-red-700 shadow-none',
     inactiveClass: 'border-red-200 bg-red-50 text-red-700 hover:border-red-300 hover:bg-red-100',
+    dot: 'bg-red-500',
   },
   {
     value: 1,
@@ -52,6 +55,7 @@ export const PRIORITY_OVERRIDE_TIERS: readonly PriorityOverrideTier[] = [
     title: 'Manual high priority',
     activeClass: 'border-amber-200 bg-amber-50 text-amber-700 shadow-none',
     inactiveClass: 'border-amber-200 bg-amber-50 text-amber-700 hover:border-amber-300 hover:bg-amber-100',
+    dot: 'bg-amber-500',
   },
   {
     value: 2,
@@ -60,6 +64,7 @@ export const PRIORITY_OVERRIDE_TIERS: readonly PriorityOverrideTier[] = [
     title: 'Manual medium priority',
     activeClass: 'border-blue-200 bg-blue-50 text-blue-700 shadow-none',
     inactiveClass: 'border-blue-200 bg-blue-50 text-blue-700 hover:border-blue-300 hover:bg-blue-100',
+    dot: 'bg-blue-500',
   },
   {
     value: 3,
@@ -68,6 +73,7 @@ export const PRIORITY_OVERRIDE_TIERS: readonly PriorityOverrideTier[] = [
     title: 'Manual low priority',
     activeClass: 'border-emerald-200 bg-emerald-50 text-emerald-700 shadow-none',
     inactiveClass: 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:border-emerald-300 hover:bg-emerald-100',
+    dot: 'bg-emerald-500',
   },
 ];
 
@@ -94,4 +100,14 @@ export function priorityOverrideTier(value: number | null | undefined): Priority
 /** Lowest/highest values are valid stored tiers; used to validate API input. */
 export function isValidPriorityTier(value: number | null | undefined): boolean {
   return value == null || BY_VALUE.has(value);
+}
+
+/** Identity micro-dot fill for manual priority tiers. */
+export function priorityTierBrandDot(tier: PriorityOverrideTier): {
+  className?: string;
+  style?: { backgroundColor: string };
+} {
+  const dot = tier.dot?.trim();
+  if (dot) return { className: dot };
+  return { className: 'bg-border-emphasis' };
 }

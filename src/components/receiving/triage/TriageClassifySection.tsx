@@ -25,6 +25,11 @@ import { useQueryClient } from '@tanstack/react-query';
 import { ChevronRight, Link2, Ticket, Unlink, Wrench } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
 import { SearchableSelectField } from '@/design-system/components';
+import {
+  renderPlatformSelectOption,
+  renderPrioritySelectOption,
+  renderTypeSelectOption,
+} from '@/components/ui/IdentityLabelRow';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
@@ -223,13 +228,17 @@ export function TriageClassifySection({
 
   const platformSelectOptions = useMemo(
     () =>
-      platformOptions.map((o) => ({
-        value: o.value,
-        label: o.label,
-        meta: o.title,
-        group: 'Platforms',
-      })),
-    [platformOptions],
+      platformOptions.map((o) => {
+        const catalog = platformCatalog.options.find((c) => c.value === o.value);
+        return {
+          value: o.value,
+          label: o.label,
+          meta: o.title,
+          group: 'Platforms',
+          data: catalog ? { colorHex: catalog.colorHex } : undefined,
+        };
+      }),
+    [platformOptions, platformCatalog.options],
   );
 
   const typeSelectOptions = useMemo(
@@ -257,6 +266,8 @@ export function TriageClassifySection({
           appearance="flush"
           placement={listPlacement}
           label="Urgency"
+          rowVariant="identity"
+          renderOption={renderPrioritySelectOption}
           value={urgencyValue}
           onChange={(id) => {
             if (id == null) return;
@@ -273,6 +284,8 @@ export function TriageClassifySection({
           appearance="flush"
           placement={listPlacement}
           label="Platform"
+          rowVariant="identity"
+          renderOption={renderPlatformSelectOption}
           value={c.sourcePlatform}
           disabled={row.receiving_id == null}
           onChange={(id) => {
@@ -293,6 +306,8 @@ export function TriageClassifySection({
           appearance="flush"
           placement={listPlacement}
           label="Type"
+          rowVariant="identity"
+          renderOption={renderTypeSelectOption}
           value={c.receivingType || null}
           onChange={(id) => {
             if (id == null) return;

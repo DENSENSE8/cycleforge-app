@@ -31,6 +31,9 @@ import {
   type ArrivalClassifyStep,
 } from '@/lib/receiving/arrival-mobile-flow';
 import type { InlinePillOption } from '@/components/receiving/workspace/line-edit/InlinePillPicker';
+import {
+  IDENTITY_PILL_NEUTRAL_IDLE,
+} from '@/components/ui/IdentityLabelRow';
 
 const STEP_TITLE: Record<ArrivalClassifyStep, string> = {
   platform: 'Platform',
@@ -277,11 +280,11 @@ export function MobileArrivalClassifyFlow({
                 disabled={saving}
                 onClick={() => void onPick(opt.value)}
                 title={opt.title}
-                className={`ds-raw-button flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl border px-2 py-3 text-center transition-all active:scale-[0.98] disabled:opacity-50 ${opt.inactiveClass}`}
+                className={`ds-raw-button flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl border px-2 py-3 text-center transition-all active:scale-[0.98] disabled:opacity-50 ${opt.inactiveClass ?? IDENTITY_PILL_NEUTRAL_IDLE}`}
                 style={opt.inactiveStyle}
               >
                 <span className="flex h-6 items-center justify-center">{opt.face}</span>
-                <span className="text-role-caption font-semibold">{opt.label}</span>
+                <span className="text-role-caption font-semibold text-black">{opt.label}</span>
               </button>
             ))}
           </div>

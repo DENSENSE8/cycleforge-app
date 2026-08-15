@@ -453,7 +453,7 @@ export function CartonContextCard({
         options={platformOptions}
         value={platformValue}
         onSelect={onPlatformSelect}
-        collapsedFace="label"
+        collapsedFace="iconLabel"
         presentation="menu"
         open={openPicker === 'platform'}
         onOpenChange={(o) => setClassifyMenu(o ? 'platform' : null)}
@@ -466,7 +466,7 @@ export function CartonContextCard({
         options={typeOptions}
         value={receivingType}
         onSelect={onTypeSelect}
-        collapsedFace="label"
+        collapsedFace="iconLabel"
         presentation="menu"
         open={openPicker === 'type'}
         onOpenChange={(o) => setClassifyMenu(o ? 'type' : null)}

@@ -40,7 +40,7 @@ import {
   TrackingChip,
 } from '@/components/ui/CopyChip';
 import { CarrierMark } from '@/components/ui/CarrierMark';
-import { PlatformMark } from '@/components/ui/PlatformMark';
+import { PlatformIdentityLabel, TypeIdentityLabel } from '@/components/ui/IdentityLabelRow';
 import {
   GridDateTimeCellValue,
   GridStatusCellValue,
@@ -74,7 +74,7 @@ import {
   CARRIER_BRANDS,
   displayCarrierFromHint,
 } from '@/lib/carrier-brand';
-import { sourcePlatformLabel, sourcePlatformMeta } from '@/lib/source-platform';
+import { sourcePlatformLabel } from '@/lib/source-platform';
 import { receivingTypeMeta } from '@/lib/receiving/receiving-type-meta';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import {
@@ -167,13 +167,13 @@ function FactValue({ fact }: { fact: CartonFact }) {
         </span>
       );
     case 'platform': {
-      const meta = sourcePlatformMeta(fact.value);
       const label = sourcePlatformLabel(fact.value);
       return (
-        <span className="inline-flex min-w-0 items-center gap-1.5">
-          <PlatformMark platformValue={fact.value} meta={meta} />
-          <span className="min-w-0 truncate text-role-caption text-text-default">{label}</span>
-        </span>
+        <PlatformIdentityLabel
+          platformValue={fact.value}
+          label={label}
+          className="text-role-caption"
+        />
       );
     }
     case 'carrier': {
@@ -197,9 +197,11 @@ function FactValue({ fact }: { fact: CartonFact }) {
     }
     case 'receivingType':
       return (
-        <span className="text-role-caption text-text-default">
-          {receivingTypeMeta(fact.value).label}
-        </span>
+        <TypeIdentityLabel
+          typeValue={fact.value}
+          label={receivingTypeMeta(fact.value).label}
+          className="text-role-caption"
+        />
       );
     case 'source':
       return (
