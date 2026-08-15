@@ -109,20 +109,28 @@ export function platformClassifyOptions(args: {
 }
 
 export function typeClassifyOptions(args: {
-  catalogOptions: Array<{ value: string; label: string }>;
+  catalogOptions: Array<{ value: string; label: string; colorHex?: string | null }>;
 }): InlinePillOption[] {
   return args.catalogOptions
     .filter((o) => o.value !== 'PICKUP')
     .map((o) => {
       const meta = receivingTypeMeta(o.value);
+      const paint = o.colorHex ? platformPaintFromHex(o.colorHex) : null;
       const typeDot = meta.text.replace(/^text-/, 'bg-');
       return {
         value: o.value,
         label: o.label,
         shortLabel: meta.short,
         title: o.label,
-        face: <span className={`h-2 w-2 shrink-0 rounded-full ${typeDot}`} aria-hidden />,
-        dotClass: typeDot,
+        face: (
+          <span
+            className={`h-2 w-2 shrink-0 rounded-full ${paint ? '' : typeDot}`}
+            style={paint ? { backgroundColor: paint.accent } : undefined}
+            aria-hidden
+          />
+        ),
+        dotClass: paint ? undefined : typeDot,
+        dotStyle: paint ? { backgroundColor: paint.accent } : undefined,
         activeClass: IDENTITY_FACE,
         inactiveClass: IDENTITY_FACE_IDLE,
       } satisfies InlinePillOption;
