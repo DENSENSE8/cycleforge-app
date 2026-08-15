@@ -80,6 +80,13 @@ export interface StaffPreferences {
    */
   onboardingDismissed?: boolean | null;
   /**
+   * Last product-update catalog id dismissed via the What's-new panel.
+   * Absent/`null` = never seen.
+   */
+  lastSeenProductUpdateId?: string | null;
+  /** Last catalog buildSha dismissed with the update id. */
+  lastSeenBuildSha?: string | null;
+  /**
    * Unshipped · Shelf-board layout prefs (cross-device). Lanes are PENDING /
    * TESTED / BLOCKED; see {@link BoardPrefs} for the shape. One board surface =
    * one key; the generic {@link SwimlaneBoard} reads/writes `prefs[prefsKey]`.
