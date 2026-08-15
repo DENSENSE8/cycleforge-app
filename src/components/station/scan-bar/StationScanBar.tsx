@@ -2,6 +2,7 @@
 
 import {
   useCallback,
+  useEffect,
   useLayoutEffect,
   useRef,
   useState,
@@ -14,8 +15,6 @@ import { motion, AnimatePresence, useReducedMotion } from '@/design-system/motio
 import { motionBezier } from '@/design-system/foundations/motion-framer';
 import { Clipboard, ClipboardList, Pencil } from '@/components/Icons';
 import { ScanHotkeyControl } from '@/components/scan/ScanHotkeyControl';
-import { StationScanLeadingIcon } from './StationScanLeadingIcon';
-import { getScanStance, useScanStance, useToggleScanStance } from './scan-stance';
 import { usePublishCollapseScan } from '@/components/sidebar/context-panel-collapse-context';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IconButton } from '@/design-system/primitives/IconButton';
@@ -28,6 +27,13 @@ import {
 } from '@/components/layout/header-shell';
 import type { StationTheme } from '@/utils/staff-colors';
 import { cn } from '@/utils/_cn';
+import { StationScanLeadingIcon } from './StationScanLeadingIcon';
+import { StationScanPreviewCard } from './StationScanPreviewCard';
+import {
+  type StationScanPreviewClassification,
+} from './preview-classify';
+import { setScanEscBlock } from './scan-esc-block';
+import { getScanStance, setScanStance, useScanStance, useToggleScanStance } from './scan-stance';
 import {
   STATION_SCAN_BAR_COLLAPSE_HOVER_CLASS,
   STATION_SCAN_BAR_COLLAPSE_HOVER_DEFAULT_CLASS,
@@ -104,6 +110,17 @@ export interface StationScanBarProps {
    * Only renders the gear when `leadingIcon` is true (needs the icon slot).
    */
   hotkey?: boolean;
+  /**
+   * After a preview decode or a committed scan value, show a read-only face
+   * (click → select-all edit). Default on for station bars; off when
+   * `hotkey={false}` or Plan/Select mode buttons are showing.
+   */
+  displayEdit?: boolean;
+  /**
+   * Preview stance: classify the submitted value locally (no network write).
+   * Hosts pass classifyUnboxScan / classifyTestingScan / getStationInputMode.
+   */
+  classifyPreview?: (value: string) => StationScanPreviewClassification | null;
 }
 
 /** Assign a node to both an internal object ref and a forwarded ref of any shape. */
@@ -149,13 +166,18 @@ export function StationScanBar({
   onSelectMode,
   visibleModes = ['plan', 'select'],
   hotkey = true,
+  displayEdit: displayEditProp,
+  classifyPreview,
 }: StationScanBarProps) {
   const [scanKey, setScanKey] = useState(0);
   const [railWidthPx, setRailWidthPx] = useState(0);
-  const [previewNote, setPreviewNote] = useState<string | null>(null);
+  const [previewResult, setPreviewResult] = useState<StationScanPreviewClassification | null>(null);
+  const [face, setFace] = useState<'edit' | 'display'>('edit');
+  const [committedValue, setCommittedValue] = useState('');
   const stance = useScanStance();
   const toggleStance = useToggleScanStance();
   const shouldReduceMotion = useReducedMotion();
+  const displayEdit = displayEditProp ?? (hotkey && !showModeButtons);
 
   const internalInputRef = useRef<HTMLInputElement | null>(null);
   const railRef = useRef<HTMLDivElement | null>(null);
@@ -169,23 +191,116 @@ export function StationScanBar({
   const showHotkeyGear = hotkey && leadingIcon;
   const clearScanValue = useCallback(() => {
     onChange('');
+    setPreviewResult(null);
+    setCommittedValue('');
+    setFace('edit');
   }, [onChange]);
   // Insert → focus; ⌘. → clear + focus (arm next carton scan on this bar).
   useRegisterScanTarget(internalInputRef, showHotkeyGear, clearScanValue);
 
+  const enterEdit = useCallback(() => {
+    setFace('edit');
+    requestAnimationFrame(() => {
+      const el = internalInputRef.current;
+      if (!el) return;
+      el.focus();
+      el.select();
+    });
+  }, []);
+
+  const showDisplayFace = displayEdit && face === 'display' && value.trim() !== '';
+
   const handleInternalSubmit = useCallback((e?: FormEvent<HTMLFormElement>) => {
     e?.preventDefault();
+    const trimmed = value.trim();
     if (getScanStance() === 'preview') {
-      const trimmed = value.trim();
-      setPreviewNote(
-        trimmed ? `Preview: would search ${trimmed}` : 'Preview -- decode only, no write',
-      );
+      const classified =
+        classifyPreview?.(trimmed) ??
+        (trimmed
+          ? { typeLabel: 'Value', value: trimmed, source: 'auto' as const }
+          : null);
+      setPreviewResult(classified);
+      if (classified && displayEdit) {
+        setCommittedValue(classified.value);
+        setFace('display');
+      }
       return;
     }
-    setPreviewNote(null);
+    setPreviewResult(null);
     setScanKey((prev) => prev + 1);
+    if (trimmed && displayEdit) {
+      setCommittedValue(trimmed);
+      setFace('display');
+    }
     onSubmit(e);
-  }, [onSubmit, value]);
+  }, [onSubmit, value, classifyPreview, displayEdit]);
+
+  const dismissPreview = useCallback(() => {
+    setPreviewResult(null);
+  }, []);
+
+  const promoteToScan = useCallback(() => {
+    setPreviewResult(null);
+    setScanStance('scan');
+    setScanKey((prev) => prev + 1);
+    if (value.trim() && displayEdit) {
+      setCommittedValue(value.trim());
+      setFace('display');
+    }
+    onSubmit();
+  }, [onSubmit, value, displayEdit]);
+
+  useEffect(() => {
+    if (previewResult) {
+      setScanEscBlock('preview-card', () => setPreviewResult(null));
+      return () => {
+        setScanEscBlock('none');
+      };
+    }
+    if (
+      displayEdit &&
+      face === 'edit' &&
+      committedValue !== '' &&
+      value === committedValue
+    ) {
+      setScanEscBlock('display-edit', () => setFace('display'));
+      return () => {
+        setScanEscBlock('none');
+      };
+    }
+    setScanEscBlock('none');
+    return undefined;
+  }, [previewResult, displayEdit, face, committedValue, value]);
+
+  useEffect(() => {
+    if (!value.trim()) {
+      setFace('edit');
+      setCommittedValue('');
+      setPreviewResult(null);
+    }
+  }, [value]);
+
+  // Display face is showing — a new HID wedge must not drop. Claim the
+  // cancelable `wedge-scan` and fill + focus (Enter then commits).
+  useEffect(() => {
+    if (!showDisplayFace) return;
+    const onWedge = (event: Event) => {
+      const raw = (event as CustomEvent<{ value?: string }>).detail?.value;
+      if (!raw?.trim()) return;
+      event.preventDefault();
+      onChange(raw.trim());
+      setCommittedValue('');
+      setFace('edit');
+      requestAnimationFrame(() => {
+        const el = internalInputRef.current;
+        if (!el) return;
+        el.focus();
+        el.select();
+      });
+    };
+    window.addEventListener('wedge-scan', onWedge);
+    return () => window.removeEventListener('wedge-scan', onWedge);
+  }, [showDisplayFace, onChange]);
 
   const bottomRule = inputBorderClassName ?? STATION_SCAN_BAR_DEFAULT_BOTTOM_RULE_CLASS;
   const collapseHover =
@@ -283,7 +398,7 @@ export function StationScanBar({
       // Stable hook for the focus-lock assertions (§3 of display/station.md):
       // the bar is the scan hotkey's target, and a spec must be able to say
       // "focus came back HERE" without matching on a per-station placeholder.
-      data-station-scan-input={showHotkeyGear ? '' : undefined}
+      data-station-scan-input={showHotkeyGear && !showDisplayFace ? '' : undefined}
       value={value}
       onChange={(event) => onChange(event.target.value)}
       onBlur={onInputBlur}
@@ -298,9 +413,32 @@ export function StationScanBar({
         padLeft,
         // Hotkey gear cross-fades in the fixed icon slot — never bump pl on hover.
         inputClassName,
+        showDisplayFace ? 'sr-only' : null,
       )}
+      aria-hidden={showDisplayFace || undefined}
+      tabIndex={showDisplayFace ? -1 : undefined}
     />
   );
+
+  const displayFaceEl = showDisplayFace ? (
+    <button
+      type="button"
+      data-station-scan-input=""
+      data-station-scan-display=""
+      onClick={enterEdit}
+      title="Click to edit"
+      style={inputPadStyle}
+      className={cn(
+        STATION_SCAN_BAR_INPUT_CLASS,
+        'relative z-base min-w-0 flex-1 border-0 text-left',
+        padLeft,
+        inputClassName,
+      )}
+    >
+      <span className="block truncate">{value}</span>
+      <span className="sr-only">Click to edit</span>
+    </button>
+  ) : null;
 
   const rightRail = showRight ? (
     <div
@@ -375,85 +513,100 @@ export function StationScanBar({
     </div>
   ) : null;
 
-  return (
-    <motion.form
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.15, ease: motionBezier.easeOut }}
-      onSubmit={handleInternalSubmit}
-      className={cn('group relative', className)}
-    >
-      <span className="sr-only" aria-live="polite">
-        {previewNote}
-      </span>
-      <div
-        className={cn(
-          'relative isolate flex w-full items-stretch',
-          PRIMARY_CHROME_ROW_FACE,
-          bottomRule,
-          // Focus brightens the shell rule (input is border-0).
-          theme ? `focus-within:border-b-${theme}-600` : null,
-        )}
-      >
-        {dense ? (
-          <div className={cn(SIDEBAR_RAIL_INSET_LEFT, 'flex min-w-0 flex-1 items-stretch')}>
-            <div className={cn(SIDEBAR_SCAN_DOCK_LEADING_ROW, 'h-full min-w-0 w-full')}>
-              {leadingIcon ? (
-                <span
-                  className={cn(
-                    SIDEBAR_RAIL_DOT_TRACK,
-                    'relative z-raised flex shrink-0 items-center justify-center',
-                    iconClassName,
-                  )}
-                >
-                  {leadingGlyph}
-                </span>
-              ) : (
-                <span className={cn(SIDEBAR_RAIL_DOT_TRACK, 'shrink-0')} aria-hidden />
-              )}
-              {inputEl}
-            </div>
-          </div>
-        ) : (
-          <div className="relative min-w-0 flex-1">
+  const fieldRow = (
+    <>
+      {dense ? (
+        <div className={cn(SIDEBAR_RAIL_INSET_LEFT, 'flex min-w-0 flex-1 items-stretch')}>
+          <div className={cn(SIDEBAR_SCAN_DOCK_LEADING_ROW, 'h-full min-w-0 w-full')}>
             {leadingIcon ? (
-              <div className={cn(STATION_SCAN_BAR_ICON_SLOT_CLASS, iconClassName)}>
+              <span
+                className={cn(
+                  SIDEBAR_RAIL_DOT_TRACK,
+                  'relative z-raised flex shrink-0 items-center justify-center',
+                  iconClassName,
+                )}
+              >
                 {leadingGlyph}
-              </div>
-            ) : null}
+              </span>
+            ) : (
+              <span className={cn(SIDEBAR_RAIL_DOT_TRACK, 'shrink-0')} aria-hidden />
+            )}
+            {displayFaceEl}
             {inputEl}
           </div>
-        )}
-
-        {rightRail}
-
-        {/* Center→edges submit confirm on the bottom rule (same hue family). */}
-        <div
-          className="pointer-events-none absolute inset-x-0 bottom-0 z-raised h-0.5 overflow-hidden"
-          aria-hidden
-        >
-          <AnimatePresence>
-            {scanKey > 0 ? (
-              <motion.div
-                key={scanKey}
-                initial={shouldReduceMotion ? { opacity: 0 } : { scaleX: 0, opacity: 0.35 }}
-                animate={
-                  shouldReduceMotion
-                    ? { opacity: [0, 1, 0] }
-                    : { scaleX: [0, 1], opacity: [0.35, 1, 0] }
-                }
-                exit={{ opacity: 0 }}
-                transition={{
-                  duration: shouldReduceMotion ? 0.15 : 0.26,
-                  ease: motionBezier.easeOut,
-                  times: shouldReduceMotion ? undefined : [0, 0.55, 1],
-                }}
-                className={cn('absolute inset-y-0 left-0 w-full origin-center', traceClass)}
-              />
-            ) : null}
-          </AnimatePresence>
         </div>
-      </div>
-    </motion.form>
+      ) : (
+        <div className="relative min-w-0 flex-1">
+          {leadingIcon ? (
+            <div className={cn(STATION_SCAN_BAR_ICON_SLOT_CLASS, iconClassName)}>
+              {leadingGlyph}
+            </div>
+          ) : null}
+          {displayFaceEl}
+          {inputEl}
+        </div>
+      )}
+    </>
+  );
+
+  return (
+    <div className={cn('group relative', className)}>
+      <motion.form
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.15, ease: motionBezier.easeOut }}
+        onSubmit={handleInternalSubmit}
+        className="relative"
+      >
+        <div
+          className={cn(
+            'relative isolate flex w-full items-stretch',
+            PRIMARY_CHROME_ROW_FACE,
+            bottomRule,
+            // Focus brightens the shell rule (input is border-0).
+            theme ? `focus-within:border-b-${theme}-600` : null,
+          )}
+        >
+          {fieldRow}
+
+          {rightRail}
+
+          {/* Center→edges submit confirm on the bottom rule (same hue family). */}
+          <div
+            className="pointer-events-none absolute inset-x-0 bottom-0 z-raised h-0.5 overflow-hidden"
+            aria-hidden
+          >
+            <AnimatePresence>
+              {scanKey > 0 ? (
+                <motion.div
+                  key={scanKey}
+                  initial={shouldReduceMotion ? { opacity: 0 } : { scaleX: 0, opacity: 0.35 }}
+                  animate={
+                    shouldReduceMotion
+                      ? { opacity: [0, 1, 0] }
+                      : { scaleX: [0, 1], opacity: [0.35, 1, 0] }
+                  }
+                  exit={{ opacity: 0 }}
+                  transition={{
+                    duration: shouldReduceMotion ? 0.15 : 0.26,
+                    ease: motionBezier.easeOut,
+                    times: shouldReduceMotion ? undefined : [0, 0.55, 1],
+                  }}
+                  className={cn('absolute inset-y-0 left-0 w-full origin-center', traceClass)}
+                />
+              ) : null}
+            </AnimatePresence>
+          </div>
+        </div>
+      </motion.form>
+      {previewResult ? (
+        <StationScanPreviewCard
+          result={previewResult}
+          onScanIt={promoteToScan}
+          onDismiss={dismissPreview}
+        />
+      ) : null}
+    </div>
   );
 }
+

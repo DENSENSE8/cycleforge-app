@@ -5,10 +5,11 @@ import { Barcode, MapPin, Package, Settings } from '@/components/Icons';
 import {
   StationScanModeRail,
   ThemedStationScanBar,
+  classifyPreviewFromArmed,
   useScanStance,
   type StationScanModeDefinition,
 } from '@/components/station/scan-bar';
-import { type StationInputMode } from '@/lib/station-scan-routing';
+import { getStationInputMode, type StationInputMode } from '@/lib/station-scan-routing';
 
 interface ShippingScanModeMeta extends StationScanModeDefinition<StationInputMode> {
   iconClass: string;
@@ -86,6 +87,12 @@ export function ShippingScanBar({
   const stance = useScanStance();
   const active = armedMode ? modeMeta(armedMode) : null;
   const typeLabel = active?.label ?? 'Auto';
+  const placeholder =
+    stance === 'preview'
+      ? `Preview: would search ${typeLabel}`
+      : armedMode
+        ? `Scan ${active!.label}`
+        : 'Orders \u00b7 Amz SKU \u00b7 Repair \u00b7 Serial';
 
   return (
     <ThemedStationScanBar
@@ -94,16 +101,25 @@ export function ShippingScanBar({
       onSubmit={onSubmit}
       inputRef={inputRef}
       staffId={staffId}
-      placeholder={stance === 'preview'
-        ? `Preview: would search ${typeLabel}`
-        : armedMode
-          ? `Scan ${active!.label}`
-          : 'Orders \u00b7 Amz SKU \u00b7 Repair \u00b7 Serial'}
+      placeholder={placeholder}
       autoFocus
       className="w-full"
       // Align the scan icon/text to the recent rail's dot/title column below.
       leadingColumn="rail"
       isResolving={isResolving}
+      classifyPreview={(raw) =>
+        classifyPreviewFromArmed({
+          value: raw,
+          armedMode,
+          autoMode: getStationInputMode(raw),
+          labels: {
+            tracking: 'Tracking',
+            fba: 'Amz Prep',
+            repair: 'Repair',
+            serial: 'Serial',
+          },
+        })
+      }
       rightContent={
         <StationScanModeRail
           modes={SHIPPING_SCAN_MODES}
@@ -113,7 +129,7 @@ export function ShippingScanBar({
           getTitle={(mode, armed) => {
             const full = mode.mode === 'fba' ? 'Amazon Prep' : mode.label;
             return armed
-              ? `${full} armed — next Enter/scan. Click again to cancel.`
+              ? `${full} armed \u2014 next Enter/scan. Click again to cancel.`
               : `${full} (next Enter/scan; or search now if the field has text)`;
           }}
           getAriaLabel={(mode, armed) => {

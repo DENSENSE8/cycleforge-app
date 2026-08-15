@@ -30,6 +30,15 @@ export {
 } from './scan-stance';
 export { nextArmedMode, shouldHandleScanModeEsc } from './scan-mode';
 export { useScanModeRelease } from './useScanModeRelease';
+export {
+  type StationScanPreviewClassification,
+  type PreviewTypeSource,
+  classifyPreviewFromArmed,
+  formatPreviewLine,
+  formatPreviewSource,
+} from './preview-classify';
+export { StationScanPreviewCard } from './StationScanPreviewCard';
+export { getScanEscBlock, setScanEscBlock, consumeScanEscBlock } from './scan-esc-block';
 // ScanBandGlowHost: import from `./ScanBandGlowHost` (not this barrel) — keeps
 // the glow host out of the light scan-bar re-export graph.
 export * from './tokens';

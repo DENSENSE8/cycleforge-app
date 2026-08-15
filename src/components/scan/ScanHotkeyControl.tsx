@@ -129,14 +129,32 @@ export function ScanHotkeyControl({ children }: ScanHotkeyControlProps) {
           className={cn(
             'ds-raw-button',
             cn('absolute inset-0 inline-flex items-center justify-center rounded-md text-text-soft transition-opacity duration-150 hover:text-blue-600 focus-visible:opacity-100', focusRing('control', 'neutral')),
+            // Visual-only over the stance glyph — a corner chip below is the hit target
+            // so hover does not steal Preview/Scan clicks (phase 2 leftover).
+            'pointer-events-none',
             open
-              ? 'pointer-events-auto opacity-100 text-blue-600'
-              : 'pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100',
+              ? 'opacity-100 text-blue-600'
+              : 'opacity-0 group-hover:opacity-70',
           )}
         >
           <Settings className="block size-[17px]" />
         </button>
       </HoverTooltip>
+      <button
+        type="button"
+        onClick={() => (open ? close() : setOpen(true))}
+        tabIndex={-1}
+        aria-hidden
+        className={
+          'ds-raw-button absolute -right-0.5 -bottom-0.5 z-raised size-2.5 rounded-sm '
+          + 'bg-surface-card text-text-soft shadow-sm ring-1 ring-border-soft '
+          + (open
+            ? 'pointer-events-auto opacity-100'
+            : 'pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100')
+        }
+      >
+        <Settings className="block size-2.5" />
+      </button>
 
       <AnchoredLayer
         open={open}
