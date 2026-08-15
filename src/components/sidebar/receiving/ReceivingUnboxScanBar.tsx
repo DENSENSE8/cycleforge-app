@@ -1,11 +1,11 @@
 'use client';
 
 import { useRef, type FormEvent, type Ref } from 'react';
-import { MapPin, Hash, TicketHelp, Barcode } from '@/components/Icons';
+import { MapPin, Hash, TicketHelp } from '@/components/Icons';
 import {
-  StationScanLeadingIcon,
   StationScanModeRail,
   ThemedStationScanBar,
+  useScanStance,
 } from '@/components/station/scan-bar';
 // From the light scan-parser module — importing via lib/support/tickets drags
 // the server-only tenancy/db (Neon driver) into this client bundle.
@@ -92,12 +92,10 @@ export function ReceivingUnboxScanBar({
   onToggleMode,
 }: Props) {
   const fallbackRef = useRef<HTMLInputElement>(null);
+  const stance = useScanStance();
 
-  const effective: UnboxScanMode = armedMode ?? classifyUnboxScan(value);
-  const active = modeMeta(effective);
-  // Un-armed: neutral barcode — mode lives in the right rail + short placeholder.
-  const LeadingIcon = armedMode ? active.Icon : Barcode;
-  const leadingTint = armedMode ? active.iconClass : 'text-text-faint';
+  const active = armedMode ? modeMeta(armedMode) : null;
+  const typeLabel = active?.label ?? 'Auto';
 
   const handleSubmit = (e?: FormEvent<HTMLFormElement>) => {
     e?.preventDefault();
@@ -113,28 +111,16 @@ export function ReceivingUnboxScanBar({
       onSubmit={handleSubmit}
       inputRef={inputRef ?? fallbackRef}
       staffId={staffId}
-      placeholder={armedMode ? `Scan ${active.label}` : 'Ticket · Tracking · PO'}
+      placeholder={stance === 'preview'
+        ? `Preview: would search ${typeLabel}`
+        : armedMode
+          ? `Scan ${active!.label}`
+          : 'Ticket \u00b7 Tracking \u00b7 PO'}
       autoFocus
       className="w-full"
       // Align the scan icon/text to the recent rail's dot/title column below.
       leadingColumn="rail"
       isResolving={isResolving}
-      icon={
-        <StationScanLeadingIcon
-          Icon={LeadingIcon}
-          tintClassName={leadingTint}
-          ariaLabel={
-            armedMode
-              ? `Armed: ${active.label}`
-              : 'Auto — looks up Ticket, PO #, and Tracking'
-          }
-          title={
-            armedMode
-              ? `Next scan forced to ${active.label}. Click the icon again to auto-detect.`
-              : 'Auto — looks the scan up as a Ticket, PO #, and Tracking before creating a carton'
-          }
-        />
-      }
       rightContent={
         <StationScanModeRail
           modes={UNBOX_SCAN_MODES}

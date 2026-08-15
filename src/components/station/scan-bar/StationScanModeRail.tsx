@@ -1,6 +1,7 @@
 'use client';
 
 import type { ComponentType, SVGProps } from 'react';
+import { Sparkles } from '@/components/Icons';
 import { cn } from '@/utils/_cn';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import {
@@ -28,6 +29,8 @@ interface StationScanModeRailProps<T extends string> {
   size?: 'default' | 'compact';
   getAriaLabel?: (mode: StationScanModeDefinition<T>, armed: boolean) => string;
   getTitle?: (mode: StationScanModeDefinition<T>, armed: boolean) => string;
+  /** Visible Auto chip (selected when `armedMode === null`). Default on. */
+  showAuto?: boolean;
 }
 
 const BTN_BY_SIZE = {
@@ -35,10 +38,13 @@ const BTN_BY_SIZE = {
   compact: STATION_SCAN_BAR_MODE_BTN_COMPACT,
 } as const;
 
+/** Auto is a real selected state — faint/neutral, not a loud type hue. */
+const AUTO_ARMED_CLASS = 'text-text-soft';
+
 /**
- * Full-height flush mode segments (Tracking / PO# / Serial / …). Armed =
- * solid `surface-card` so the control reads as elevated depth continuous with
- * the work canvas — not a frosted chip over a recessed trough.
+ * Full-height flush mode segments. Auto is first; type chips follow.
+ * Armed = solid `surface-card`. Click Auto while a type is armed → release.
+ * Click Auto while already Auto → no-op. Click armed type → release to Auto.
  */
 export function StationScanModeRail<T extends string>({
   modes,
@@ -47,11 +53,50 @@ export function StationScanModeRail<T extends string>({
   size = 'default',
   getAriaLabel,
   getTitle,
+  showAuto = true,
 }: StationScanModeRailProps<T>) {
   const btnShell = BTN_BY_SIZE[size];
+  const autoArmed = armedMode === null;
 
   return (
-    <div className="relative z-dropdown isolate flex h-full items-stretch gap-0" role="group">
+    <div
+      className="relative z-dropdown isolate flex h-full items-stretch gap-0"
+      role="group"
+      aria-label="Scan type"
+    >
+      {showAuto ? (
+        <HoverTooltip
+          label={
+            autoArmed
+              ? 'Auto — next scan picks the type'
+              : 'Auto — release the armed type'
+          }
+          asChild
+        >
+          <button
+            type="button"
+            onClick={() => {
+              if (armedMode == null) return;
+              onToggleMode?.(armedMode);
+            }}
+            aria-pressed={autoArmed}
+            aria-label={
+              autoArmed
+                ? 'Auto armed. Next scan auto-detects type.'
+                : 'Release to Auto'
+            }
+            className={cn(
+              'ds-raw-button',
+              btnShell,
+              autoArmed
+                ? cn(STATION_SCAN_BAR_MODE_BTN_ARMED, AUTO_ARMED_CLASS)
+                : STATION_SCAN_BAR_MODE_BTN_INACTIVE,
+            )}
+          >
+            <Sparkles className={STATION_SCAN_BAR_MODE_GLYPH_CLASS} />
+          </button>
+        </HoverTooltip>
+      ) : null}
       {modes.map((mode) => {
         const armed = armedMode === mode.mode;
         const ariaLabel =
@@ -89,3 +134,5 @@ export function StationScanModeRail<T extends string>({
     </div>
   );
 }
+
+export { nextArmedMode } from './scan-mode';

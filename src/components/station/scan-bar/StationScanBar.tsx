@@ -12,8 +12,10 @@ import {
 } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from '@/design-system/motion';
 import { motionBezier } from '@/design-system/foundations/motion-framer';
-import { Barcode, Clipboard, ClipboardList, Pencil } from '@/components/Icons';
+import { Clipboard, ClipboardList, Pencil } from '@/components/Icons';
 import { ScanHotkeyControl } from '@/components/scan/ScanHotkeyControl';
+import { StationScanLeadingIcon } from './StationScanLeadingIcon';
+import { getScanStance, useScanStance, useToggleScanStance } from './scan-stance';
 import { usePublishCollapseScan } from '@/components/sidebar/context-panel-collapse-context';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IconButton } from '@/design-system/primitives/IconButton';
@@ -30,7 +32,6 @@ import {
   STATION_SCAN_BAR_COLLAPSE_HOVER_CLASS,
   STATION_SCAN_BAR_COLLAPSE_HOVER_DEFAULT_CLASS,
   STATION_SCAN_BAR_DEFAULT_BOTTOM_RULE_CLASS,
-  STATION_SCAN_BAR_DEFAULT_ICON_CLASS,
   STATION_SCAN_BAR_DEFAULT_SUBMIT_TRACE_CLASS,
   STATION_SCAN_BAR_ICON_SLOT_CLASS,
   STATION_SCAN_BAR_INPUT_CLASS,
@@ -151,6 +152,9 @@ export function StationScanBar({
 }: StationScanBarProps) {
   const [scanKey, setScanKey] = useState(0);
   const [railWidthPx, setRailWidthPx] = useState(0);
+  const [previewNote, setPreviewNote] = useState<string | null>(null);
+  const stance = useScanStance();
+  const toggleStance = useToggleScanStance();
   const shouldReduceMotion = useReducedMotion();
 
   const internalInputRef = useRef<HTMLInputElement | null>(null);
@@ -171,9 +175,17 @@ export function StationScanBar({
 
   const handleInternalSubmit = useCallback((e?: FormEvent<HTMLFormElement>) => {
     e?.preventDefault();
+    if (getScanStance() === 'preview') {
+      const trimmed = value.trim();
+      setPreviewNote(
+        trimmed ? `Preview: would search ${trimmed}` : 'Preview -- decode only, no write',
+      );
+      return;
+    }
+    setPreviewNote(null);
     setScanKey((prev) => prev + 1);
     onSubmit(e);
-  }, [onSubmit]);
+  }, [onSubmit, value]);
 
   const bottomRule = inputBorderClassName ?? STATION_SCAN_BAR_DEFAULT_BOTTOM_RULE_CLASS;
   const collapseHover =
@@ -255,10 +267,13 @@ export function StationScanBar({
     submitTraceClassName
     ?? (theme ? STATION_SCAN_BAR_SUBMIT_TRACE_CLASS[theme] : STATION_SCAN_BAR_DEFAULT_SUBMIT_TRACE_CLASS);
 
+  const stanceGlyph = (
+    <StationScanLeadingIcon stance={stance} onToggle={toggleStance} scanIcon={icon} />
+  );
   const leadingGlyph = showHotkeyGear ? (
-    <ScanHotkeyControl>{icon ?? <Barcode className={STATION_SCAN_BAR_DEFAULT_ICON_CLASS} />}</ScanHotkeyControl>
+    <ScanHotkeyControl>{stanceGlyph}</ScanHotkeyControl>
   ) : (
-    icon ?? <Barcode className={STATION_SCAN_BAR_DEFAULT_ICON_CLASS} />
+    stanceGlyph
   );
 
   const inputEl = (
@@ -368,6 +383,9 @@ export function StationScanBar({
       onSubmit={handleInternalSubmit}
       className={cn('group relative', className)}
     >
+      <span className="sr-only" aria-live="polite">
+        {previewNote}
+      </span>
       <div
         className={cn(
           'relative isolate flex w-full items-stretch',

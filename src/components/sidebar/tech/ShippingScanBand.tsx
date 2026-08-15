@@ -8,7 +8,7 @@ import {
 } from '@/hooks/useStationTestingController';
 import { looksLikeFnsku } from '@/lib/scan-resolver';
 import { useStationTheme } from '@/hooks/useStationTheme';
-import { ScanBandShell } from '@/components/station/scan-bar';
+import { ScanBandShell, isScanPreview, useScanModeRelease } from '@/components/station/scan-bar';
 import { ShippingScanBar } from '@/components/sidebar/tech/ShippingScanBar';
 import { useArmedPackStation } from '@/hooks/useArmedPackStation';
 import { unitPackPlacementQuery } from '@/lib/queries/unit-pack-placement-queries';
@@ -55,6 +55,8 @@ export function ShippingScanBand({
 }: ShippingScanBandProps) {
   const { theme: themeColor } = useStationTheme({ staffId });
   const [manualMode, setManualMode] = useState<StationInputMode | null>(null);
+  const releaseManualMode = useCallback(() => setManualMode(null), []);
+  useScanModeRelease(manualMode != null, releaseManualMode);
   const { armed, clear: clearArmedStation } = useArmedPackStation();
   // Live count of loose units staged at the armed bench (Phase 2 unit placement).
   const unitPlacement = useQuery(unitPackPlacementQuery());
@@ -95,6 +97,7 @@ export function ShippingScanBand({
   const handleFormSubmit = useCallback(
     (e?: React.FormEvent, overrideTracking?: string) => {
       e?.preventDefault();
+      if (isScanPreview() && typeof overrideTracking !== 'string') return;
       const value = overrideTracking ?? inputValue;
       const trimmedValue = value.trim();
       if (!trimmedValue && typeof overrideTracking !== 'string') return;
@@ -138,7 +141,7 @@ export function ShippingScanBand({
       const nextManualMode = togglingOff ? null : nextMode;
       setManualMode(nextManualMode);
       const pendingInput = inputValue.trim();
-      if (togglingOff || !pendingInput) {
+      if (togglingOff || !pendingInput || isScanPreview()) {
         queueMicrotask(() => inputRef.current?.focus());
         return;
       }

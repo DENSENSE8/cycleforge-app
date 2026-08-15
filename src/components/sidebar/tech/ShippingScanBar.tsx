@@ -3,15 +3,12 @@
 import type { FormEvent, Ref } from 'react';
 import { Barcode, MapPin, Package, Settings } from '@/components/Icons';
 import {
-  StationScanLeadingIcon,
   StationScanModeRail,
   ThemedStationScanBar,
+  useScanStance,
   type StationScanModeDefinition,
 } from '@/components/station/scan-bar';
-import {
-  getStationInputMode,
-  type StationInputMode,
-} from '@/lib/station-scan-routing';
+import { type StationInputMode } from '@/lib/station-scan-routing';
 
 interface ShippingScanModeMeta extends StationScanModeDefinition<StationInputMode> {
   iconClass: string;
@@ -54,19 +51,6 @@ function modeMeta(mode: StationInputMode): ShippingScanModeMeta {
   return SHIPPING_SCAN_MODES.find((m) => m.mode === mode) ?? SHIPPING_SCAN_MODES[0];
 }
 
-/**
- * Display-only hint when the operator hasn't armed a mode.
- * Does NOT decide resolution — un-armed scans still auto-detect.
- */
-function classifyShippingScan(
-  value: string,
-  fallback: StationInputMode = 'tracking',
-): StationInputMode {
-  const trimmed = value.trim();
-  if (!trimmed) return fallback;
-  return getStationInputMode(trimmed);
-}
-
 interface Props {
   value: string;
   onChange: (next: string) => void;
@@ -97,15 +81,11 @@ export function ShippingScanBar({
   isResolving = false,
   armedMode = null,
   onToggleMode,
-  idleFallbackMode = 'tracking',
+  idleFallbackMode: _idleFallbackMode = 'tracking',
 }: Props) {
-  const effective: StationInputMode =
-    armedMode ?? classifyShippingScan(value, idleFallbackMode);
-  const active = modeMeta(effective);
-  const ActiveIcon = active.Icon;
-  // Un-armed: neutral scan glyph — mode lives in the right rail only.
-  const LeadingIcon = armedMode ? ActiveIcon : Barcode;
-  const leadingTint = armedMode ? active.iconClass : 'text-text-faint';
+  const stance = useScanStance();
+  const active = armedMode ? modeMeta(armedMode) : null;
+  const typeLabel = active?.label ?? 'Auto';
 
   return (
     <ThemedStationScanBar
@@ -114,28 +94,16 @@ export function ShippingScanBar({
       onSubmit={onSubmit}
       inputRef={inputRef}
       staffId={staffId}
-      placeholder={armedMode ? `Scan ${active.label}` : 'Orders · Amz SKU · Repair · Serial'}
+      placeholder={stance === 'preview'
+        ? `Preview: would search ${typeLabel}`
+        : armedMode
+          ? `Scan ${active!.label}`
+          : 'Orders \u00b7 Amz SKU \u00b7 Repair \u00b7 Serial'}
       autoFocus
       className="w-full"
       // Align the scan icon/text to the recent rail's dot/title column below.
       leadingColumn="rail"
       isResolving={isResolving}
-      icon={
-        <StationScanLeadingIcon
-          Icon={LeadingIcon}
-          tintClassName={leadingTint}
-          ariaLabel={
-            armedMode
-              ? `Armed: ${active.label}`
-              : 'Auto-detect — tracking, FBA, repair, or serial'
-          }
-          title={
-            armedMode
-              ? `Next scan forced to ${active.label}. Click the mode again to auto-detect.`
-              : 'Auto-detect — pick a route on the right to force the next scan'
-          }
-        />
-      }
       rightContent={
         <StationScanModeRail
           modes={SHIPPING_SCAN_MODES}
