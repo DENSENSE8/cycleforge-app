@@ -95,7 +95,7 @@ const EMPTY_FACE = (
 );
 
 const IDENTITY_PILL =
-  'border-border-soft bg-white text-black shadow-none';
+  'border-border-soft bg-surface-card text-text-default shadow-none';
 
 /** Dot color from explicit option fields, else the face tone map. */
 function resolveOptionDot(opt: InlinePillOption | null): {
@@ -111,7 +111,7 @@ function resolveOptionDot(opt: InlinePillOption | null): {
       (token) =>
         token.startsWith('text-') &&
         !token.startsWith('text-text') &&
-        !token.startsWith('text-black') &&
+        !token.startsWith('text-text-default') &&
         !token.startsWith('text-white'),
     );
   if (text) return { className: text.replace(/^text-/, 'bg-') };
@@ -281,7 +281,7 @@ export function InlinePillPicker({
       ) : (
         <>
           <IdentityDot opt={active} />
-          <span className="text-black">{faceLabel}</span>
+          <span className="text-text-default">{faceLabel}</span>
         </>
       );
 
@@ -348,13 +348,13 @@ export function InlinePillPicker({
                     key={opt.value || '__none__'}
                     onSelect={() => onSelect(opt.value)}
                     className={cn(
-                      'gap-2 bg-white font-semibold text-black',
+                      'gap-2 bg-surface-card font-semibold text-text-default',
                       isActive && 'bg-surface-sunken',
                     )}
                     aria-label={opt.title ?? opt.label}
                   >
                     <IdentityDot opt={opt} />
-                    <span className="min-w-0 flex-1 truncate text-black">
+                    <span className="min-w-0 flex-1 truncate text-text-default">
                       {opt.label}
                     </span>
                   </DropdownMenuItem>
