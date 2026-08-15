@@ -52,7 +52,6 @@ import {
   STATION_IDENTITY_GROUP_CLASS,
   STATION_IDENTITY_LEAD_COL_CLASS,
 } from './station-identity-chrome';
-import { CartonClassifyColorPopover } from './CartonClassifyColorPopover';
 import {
   useCartonContextBarLayout,
   type CartonContextActionId,
@@ -76,7 +75,7 @@ import {
  * or legacy overlay clearance.
  *
  *   Left — identity: back · status dot · order# · tracking#
- *   Middle — classify: priority · platform · type (+ color edit). Collapses
+ *   Middle — classify: priority · platform · type. Collapses
  *            first (dots-only / shortLabel) when the row is tight.
  *   Right — actions: quiet price · listing · claim · photos as icon buttons.
  *            Those three verbs overflow into `⋯` before the row wraps.
@@ -501,7 +500,6 @@ export function CartonContextCard({
         readOnly={!classifyInteractive}
         placeholder="Type"
       />
-      <CartonClassifyColorPopover disabled={!classifyInteractive} />
     </div>
   ) : null;
 
@@ -665,7 +663,7 @@ export function CartonContextCard({
           onClick={onMakeClaim}
           ariaLabel={claimViewActive ? 'Hide claim' : 'File claim'}
           aria-pressed={claimViewActive}
-          icon={<Ticket className="h-3.5 w-3.5 text-orange-600" />}
+          icon={<Ticket className={cn(STATION_CHROME_GLYPH_CLASS, 'text-orange-600')} />}
           className={STATION_CONTEXT_ACTION_CELL_CLASS}
           data-testid="carton-context-claim"
         />
