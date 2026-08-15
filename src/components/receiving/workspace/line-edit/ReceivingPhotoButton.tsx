@@ -47,7 +47,7 @@ import { useSendToDeviceToast } from '@/components/station/send-to-device/useSen
 import { toast } from '@/lib/toast';
 import { receivingPhotoToGalleryInput } from '@/components/shipped/photo-gallery/photo-gallery-utils';
 import { buildUnboxingCartonLibraryHref } from '@/components/shipped/photo-gallery/photo-context-provenance';
-import { STATION_CONTEXT_PHOTO_FLUSH_CLASS, STATION_CONTEXT_PHOTO_PILL_CLASS } from '@/components/station/entity-context/station-context-action-pill';
+import { STATION_CONTEXT_PHOTO_CHROME_CLASS, STATION_CONTEXT_PHOTO_FLUSH_CLASS, STATION_CONTEXT_PHOTO_PILL_CLASS } from '@/components/station/entity-context/station-context-action-pill';
 import {
   RECEIVING_PHOTO_LIST_INTENT_CARTON,
   type ReceivingPhotoStage,
@@ -173,10 +173,11 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
    */
   galleryPlacement?: 'below' | 'above' | 'right' | 'left';
   /**
-   * `pill` — station identity / section chrome (rounded photo pill).
-   * `flush` — square ghost cell for flush unit rows (Units Displays explosion).
+   * `pill` — station identity / section chrome (camera + count, locked w-14).
+   * `flush` — square h-11 ghost cell for unit rows (Units Displays explosion).
+   * `chrome` — one-row carton bar: h-full cell, h-3.5 camera + count.
    */
-  appearance?: 'pill' | 'flush';
+  appearance?: 'pill' | 'flush' | 'chrome';
   /** Opens SendPhotoNoteRail — ticket icon in the photo dropdown toolbar. */
   onSendToTicket?: () => void;
   /** Unbox: open Move photos in the station tool push instead of a center overlay. */
@@ -405,10 +406,13 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
   // One consistent resting state across every PO — a calm blue-tinted pill.
   // Radius shared with Claim via {@link STATION_CONTEXT_PHOTO_PILL_CLASS}.
   // Flush = square blue cell (same blue as carton-context Photos).
+  const chromeFace = appearance === 'chrome';
   const btnClass =
     appearance === 'flush'
       ? STATION_CONTEXT_PHOTO_FLUSH_CLASS
-      : STATION_CONTEXT_PHOTO_PILL_CLASS;
+      : chromeFace
+        ? STATION_CONTEXT_PHOTO_CHROME_CLASS
+        : STATION_CONTEXT_PHOTO_PILL_CLASS;
 
   const noun = isItemScope ? 'item' : 'carton';
   const opensPhotosDisplay = typeof onOpenPhotosDisplay === 'function';
@@ -473,15 +477,16 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
       aria-disabled={!canSendToPhone || undefined}
       ariaLabel={ariaLabel}
       aria-expanded={suppressHoverGallery ? undefined : showGalleryPeek}
-      icon={<Camera className="h-4 w-4" />}
+      icon={<Camera className={chromeFace ? 'h-3.5 w-3.5' : 'h-4 w-4'} />}
       // Right face: count when photos exist (children), else "+". Camera stays
       // left via justify-between on the locked photo-pill width. Count is not
       // iconRight — Button's icon box would crush multi-digit tabular nums.
       // Flush square: camera only (count lives in aria / tooltip).
-      iconRight={appearance === 'flush' || hasGallery ? undefined : <Plus className="h-3 w-3" />}
+      // Chrome row: always show the amount (0 when empty) next to the camera.
+      iconRight={appearance === 'pill' && !hasGallery ? <Plus className="h-3 w-3" /> : undefined}
       className={btnClass}
     >
-      {appearance === 'flush' ? null : hasGallery ? count : null}
+      {appearance === 'flush' ? null : chromeFace || hasGallery ? count : null}
     </Button>
   );
 
