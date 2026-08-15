@@ -1,8 +1,9 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { ChevronLeft, ExternalLink, MoreHorizontal, Ticket } from '@/components/Icons';
+import { ChevronLeft, ExternalLink, MoreHorizontal, Receipt, Ticket } from '@/components/Icons';
 import {
+  CHIP_TONES,
   getLast8,
   OrderIdChip,
   resolveChipDisplay,
@@ -39,10 +40,13 @@ import {
 import { platformMetaIconTone } from '@/lib/source-platform';
 import { cn } from '@/utils/_cn';
 import {
-  STATION_CONTEXT_BOXED_CUBE_CLASS,
+  STATION_CONTEXT_ACTION_CELL_CLASS,
   STATION_CONTEXT_EXIT_PILL_CLASS,
 } from './station-context-action-pill';
 import {
+  STATION_CHROME_CELL_CLASS,
+  STATION_CHROME_CELL_PAD,
+  STATION_CHROME_GLYPH_CLASS,
   STATION_CHROME_ROW_FACE,
   STATION_CHROME_SEAM_HAIRLINE,
   STATION_IDENTITY_GROUP_CLASS,
@@ -502,11 +506,6 @@ export function CartonContextCard({
   ) : null;
 
 
-  const CONTEXT_ACTION_ICON_CLASS = cn(
-    STATION_CONTEXT_BOXED_CUBE_CLASS,
-    'h-full aspect-square shrink-0 border-l border-border-soft',
-  );
-
   /* PO# / order# — last-8 copy chip; edit menus stay on IdentityLinkChip when wired. */
   const orderChip = showOrderIdentity ? (
     onEditPo || onOrderDetails ? (
@@ -550,12 +549,14 @@ export function CartonContextCard({
 
   /* Tracking# — last-8 copy chip. Edit stays on IdentityLinkChip when wired. */
   const trackingSlot = isLocalPickup ? (
-    <FulfillmentPickupPill
-      variant="rail"
-      tooltip="Fulfilled in person — no tracking number"
-    />
+    <div className="flex h-full shrink-0 items-stretch border-l border-border-soft">
+      <FulfillmentPickupPill
+        variant="rail"
+        tooltip="Fulfilled in person — no tracking number"
+      />
+    </div>
   ) : onEditTracking ? (
-    <div className="flex shrink-0 items-center gap-0">
+    <div className="flex h-full shrink-0 items-stretch border-l border-border-soft">
       <IdentityLinkChip
         openHref={trackingOpenHref}
         openTitle="Open carrier tracking"
@@ -566,6 +567,7 @@ export function CartonContextCard({
         tone="tracking"
         carrierHint={carrierHint}
         showCarrierBrand
+        lockLast8Width
         disableCopy={!primaryTrackingTrimmed}
         onEdit={onEditTracking}
         editOpen={false}
@@ -584,7 +586,7 @@ export function CartonContextCard({
       ) : null}
     </div>
   ) : (
-    <div className="flex shrink-0 items-center gap-0">
+    <div className="flex h-full shrink-0 items-stretch border-l border-border-soft">
       <TrackingChip
         value={primaryTrackingTrimmed}
         display={
@@ -611,7 +613,7 @@ export function CartonContextCard({
   const statusDot = lifecycle ? (
     <HoverTooltip label={lifecycle.tip || lifecycle.label} asChild>
       <span
-        className="flex h-full shrink-0 items-center px-1"
+        className={cn(STATION_CHROME_CELL_CLASS, STATION_CHROME_CELL_PAD)}
         data-testid="carton-context-lifecycle-dot"
         aria-label={lifecycle.label}
       >
@@ -644,10 +646,10 @@ export function CartonContextCard({
               )}
               style={listingHasTarget && platformIconTone ? platformIconTone.style : undefined}
             >
-              <ExternalLink className="h-3.5 w-3.5" />
+              <ExternalLink className={STATION_CHROME_GLYPH_CLASS} />
             </span>
           }
-          className={CONTEXT_ACTION_ICON_CLASS}
+          className={STATION_CONTEXT_ACTION_CELL_CLASS}
           data-testid="carton-context-listing"
         />
       </HoverTooltip>
@@ -664,7 +666,7 @@ export function CartonContextCard({
           ariaLabel={claimViewActive ? 'Hide claim' : 'File claim'}
           aria-pressed={claimViewActive}
           icon={<Ticket className="h-3.5 w-3.5 text-orange-600" />}
-          className={CONTEXT_ACTION_ICON_CLASS}
+          className={STATION_CONTEXT_ACTION_CELL_CLASS}
           data-testid="carton-context-claim"
         />
       </HoverTooltip>
@@ -672,6 +674,7 @@ export function CartonContextCard({
 
   const ticketInline =
     showStaffPhotoRow && zendeskTrimmed && !overflowSet.has('claim') ? (
+      <div className={cn(STATION_CHROME_CELL_CLASS, 'border-l border-border-soft')}>
       <ReceivingTicketChip
         value={zendeskTrimmed}
         display={zendeskChipDisplay}
@@ -689,6 +692,7 @@ export function CartonContextCard({
         }
         ticketViewActive={ticketViewActive}
       />
+      </div>
     ) : null;
 
   const photosCell =
@@ -698,7 +702,7 @@ export function CartonContextCard({
         staffId={Number(staffId) || 0}
         poRef={effectiveOrder || null}
         photoStage={photoStage}
-        appearance="flush"
+        appearance="chrome"
         galleryPlacement="left"
         onSendToTicket={onSendToTicket}
         onOpenMovePhotosExternal={onOpenMovePhotosExternal}
@@ -765,9 +769,9 @@ export function CartonContextCard({
             type="button"
             tone="neutral"
             size="sm"
-            icon={<MoreHorizontal className="h-3.5 w-3.5" />}
+            icon={<MoreHorizontal className={STATION_CHROME_GLYPH_CLASS} />}
             ariaLabel="More actions"
-            className={CONTEXT_ACTION_ICON_CLASS}
+            className={STATION_CONTEXT_ACTION_CELL_CLASS}
             data-testid="carton-context-overflow"
           />
         </DropdownMenuTrigger>
@@ -786,9 +790,16 @@ export function CartonContextCard({
 
   const priceFace = showPoTotal ? (
     <span
-      className="flex h-full shrink-0 items-center border-l border-border-soft px-1.5 font-mono text-role-caption tabular-nums text-text-muted"
+      className={cn(
+        STATION_CHROME_CELL_CLASS,
+        STATION_CHROME_CELL_PAD,
+        'gap-0.5 border-l border-border-soft font-mono text-role-caption tabular-nums text-text-muted',
+      )}
       data-testid="carton-context-price"
     >
+      <span className={CHIP_TONES.price.iconClass} aria-hidden>
+        <Receipt className={STATION_CHROME_GLYPH_CLASS} />
+      </span>
       {poTotal == null || !Number.isFinite(poTotal) ? '—' : poTotal.toFixed(2)}
     </span>
   ) : null;
@@ -809,11 +820,13 @@ export function CartonContextCard({
           <div className={STATION_IDENTITY_LEAD_COL_CLASS}>{exitControl}</div>
         ) : null}
         {statusDot}
-        <div className="flex min-w-0 shrink items-stretch [&_[data-chip-face]]:rounded-none">
+        <div className="flex h-full min-w-0 shrink items-stretch [&_[data-chip-face]]:rounded-none">
           {orderChip}
           {trackingSlot}
           {qty ? (
-            <GridQtyFractionValue received={qty.received} expected={qty.expected} />
+            <div className={cn(STATION_CHROME_CELL_CLASS, 'border-l border-border-soft')}>
+              <GridQtyFractionValue received={qty.received} expected={qty.expected} />
+            </div>
           ) : null}
         </div>
       </div>

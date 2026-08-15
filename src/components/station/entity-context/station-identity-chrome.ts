@@ -133,6 +133,28 @@ export const STATION_IDENTITY_ROW_STACK_CLASS = 'flex flex-col gap-0';
 export const STATION_IDENTITY_LEAD_COL_CLASS =
   'flex h-full aspect-square shrink-0 items-stretch justify-stretch';
 
+/**
+ * House inset for identity / action cells that are not a chip face.
+ * Same `px-1.5` as CopyChip `outerPad="chip"` and action-pill faces —
+ * do not invent a second pad scale.
+ */
+export const STATION_CHROME_CELL_PAD = 'px-1.5';
+
+/**
+ * Chrome glyph box — same optical size as exit / back (`h-3.5`).
+ * Listing · claim · photos · price mark · overflow all use this box.
+ */
+export const STATION_CHROME_GLYPH_CLASS = 'block h-3.5 w-3.5 shrink-0';
+
+/**
+ * Shared cell on the one-row carton bar: fill chrome height, vertical center.
+ * Chip faces keep their own `px-1.5`; status / price compose
+ * {@link STATION_CHROME_CELL_PAD}. Leading hairline is `border-l border-border-soft`
+ * on every cell after the first in a cluster (same height, same inset).
+ */
+export const STATION_CHROME_CELL_CLASS =
+  'flex h-full min-h-0 shrink-0 items-center';
+
 /** Gap between icons / chips — same integer as GlobalHeader. */
 export const stationIdentityGapClass = HEADER_ICON_GAP;
 
