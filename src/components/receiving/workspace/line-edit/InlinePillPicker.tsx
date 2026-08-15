@@ -59,11 +59,14 @@ export interface InlinePillOption {
    * `collapsedFace` or `expandedFace` is `"icon"` / `"iconLabel"`.
    */
   face?: ReactNode;
+  /** Colored identity dot. Color lives here only — never on the label text. */
+  dotClass?: string;
+  dotStyle?: import('react').CSSProperties;
 }
 
 /** Carton-context flush face — square corners; fills station chrome row (h-full). */
 const PILL_BASE =
-  'inline-flex box-border h-full shrink-0 items-center whitespace-nowrap rounded-none border px-1.5 text-role-micro font-semibold uppercase leading-none tracking-wide transition-colors shadow-none';
+  'inline-flex box-border h-full shrink-0 items-center gap-1.5 whitespace-nowrap rounded-none border px-1.5 text-role-micro font-semibold uppercase leading-none tracking-wide transition-colors shadow-none';
 /**
  * Locked equal-width icon-only faces — square peer of carton exit
  * ({@link STATION_CONTEXT_EXIT_PILL_CLASS}); height from the chrome row.
@@ -91,13 +94,39 @@ const EMPTY_FACE = (
   </span>
 );
 
-/** Pull ink classes from a classify face tone (`border-… bg-… text-…`). */
-function menuLabelToneClass(activeClass?: string): string {
-  if (!activeClass) return 'text-text-default';
-  const ink = activeClass
+const IDENTITY_PILL =
+  'border-border-soft bg-white text-black shadow-none';
+
+/** Dot color from explicit option fields, else the face tone map. */
+function resolveOptionDot(opt: InlinePillOption | null): {
+  className: string;
+  style?: import('react').CSSProperties;
+} {
+  if (!opt) return { className: 'bg-border-emphasis' };
+  if (opt.dotStyle) return { className: opt.dotClass ?? '', style: opt.dotStyle };
+  if (opt.dotClass) return { className: opt.dotClass };
+  const text = (opt.activeClass ?? '')
     .split(/\s+/)
-    .filter((token) => token.startsWith('text-'));
-  return ink.length > 0 ? ink.join(' ') : 'text-text-default';
+    .find(
+      (token) =>
+        token.startsWith('text-') &&
+        !token.startsWith('text-text') &&
+        !token.startsWith('text-black') &&
+        !token.startsWith('text-white'),
+    );
+  if (text) return { className: text.replace(/^text-/, 'bg-') };
+  return { className: 'bg-border-emphasis' };
+}
+
+function IdentityDot({ opt }: { opt: InlinePillOption | null }) {
+  const dot = resolveOptionDot(opt);
+  return (
+    <span
+      className={cn('h-2 w-2 shrink-0 rounded-full', dot.className)}
+      style={dot.style}
+      aria-hidden
+    />
+  );
 }
 
 const SWAP_MS = 0.12;
@@ -191,9 +220,8 @@ export function InlinePillPicker({
   const faceLabel = isBookmark
     ? (collapsedLabel ?? active?.shortLabel ?? active?.label ?? placeholder)
     : (collapsedLabel ?? active?.label ?? placeholder);
-  const faceTone =
-    collapsedClass ?? (active ? active.activeClass ?? DEFAULT_ACTIVE : DEFAULT_INACTIVE);
-  const faceStyle = collapsedClass ? undefined : (active?.activeStyle ?? active?.inactiveStyle);
+  const faceTone = IDENTITY_PILL;
+  const faceStyle = undefined;
   const identityFace = active?.face ?? EMPTY_FACE;
   const tooltipLabel = `${ariaLabel}: ${active?.title ?? fullLabel}${
     readOnly ? '' : ' — click to change'
@@ -251,8 +279,11 @@ export function InlinePillPicker({
           </span>
         </>
       ) : (
-      faceLabel
-    );
+        <>
+          <IdentityDot opt={active} />
+          <span className="text-black">{faceLabel}</span>
+        </>
+      );
 
   const collapsedButton = (
     <button
@@ -312,24 +343,18 @@ export function InlinePillPicker({
             >
               {options.map((opt) => {
                 const isActive = opt.value === value;
-                const inkClass = menuLabelToneClass(opt.activeClass);
-                const inkStyle = opt.activeStyle?.color
-                  ? { color: opt.activeStyle.color }
-                  : undefined;
                 return (
                   <DropdownMenuItem
                     key={opt.value || '__none__'}
                     onSelect={() => onSelect(opt.value)}
                     className={cn(
-                      'font-semibold',
-                      isActive && 'bg-surface-canvas',
+                      'gap-2 bg-white font-semibold text-black',
+                      isActive && 'bg-surface-sunken',
                     )}
                     aria-label={opt.title ?? opt.label}
                   >
-                    <span
-                      className={cn('min-w-0 flex-1 truncate', inkClass)}
-                      style={inkStyle}
-                    >
+                    <IdentityDot opt={opt} />
+                    <span className="min-w-0 flex-1 truncate text-black">
                       {opt.label}
                     </span>
                   </DropdownMenuItem>
