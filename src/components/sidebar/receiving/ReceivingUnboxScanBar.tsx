@@ -5,6 +5,7 @@ import { MapPin, Hash, TicketHelp } from '@/components/Icons';
 import {
   StationScanModeRail,
   ThemedStationScanBar,
+  classifyPreviewFromArmed,
   useScanStance,
 } from '@/components/station/scan-bar';
 // From the light scan-parser module — importing via lib/support/tickets drags
@@ -60,7 +61,7 @@ function modeMeta(mode: UnboxScanMode): UnboxScanModeMeta {
 }
 
 /**
- * Display-only hint for the leading icon when the operator hasn't armed a mode.
+ * Display-only hint when the operator hasn't armed a mode.
  * It does NOT decide resolution — an un-armed scan submits `'auto'` and the
  * server deep-scans ticket #, PO #, and tracking # before creating a carton.
  */
@@ -96,6 +97,12 @@ export function ReceivingUnboxScanBar({
 
   const active = armedMode ? modeMeta(armedMode) : null;
   const typeLabel = active?.label ?? 'Auto';
+  const placeholder =
+    stance === 'preview'
+      ? `Preview: would search ${typeLabel}`
+      : armedMode
+        ? `Scan ${active!.label}`
+        : 'Ticket \u00b7 Tracking \u00b7 PO';
 
   const handleSubmit = (e?: FormEvent<HTMLFormElement>) => {
     e?.preventDefault();
@@ -111,16 +118,20 @@ export function ReceivingUnboxScanBar({
       onSubmit={handleSubmit}
       inputRef={inputRef ?? fallbackRef}
       staffId={staffId}
-      placeholder={stance === 'preview'
-        ? `Preview: would search ${typeLabel}`
-        : armedMode
-          ? `Scan ${active!.label}`
-          : 'Ticket \u00b7 Tracking \u00b7 PO'}
+      placeholder={placeholder}
       autoFocus
       className="w-full"
       // Align the scan icon/text to the recent rail's dot/title column below.
       leadingColumn="rail"
       isResolving={isResolving}
+      classifyPreview={(raw) =>
+        classifyPreviewFromArmed({
+          value: raw,
+          armedMode,
+          autoMode: classifyUnboxScan(raw),
+          labels: { ticket: 'Ticket', tracking: 'Tracking', order: 'PO' },
+        })
+      }
       rightContent={
         <StationScanModeRail
           modes={UNBOX_SCAN_MODES}
@@ -136,7 +147,7 @@ export function ReceivingUnboxScanBar({
           getTitle={(mode, armed) => {
             const full = UNBOX_SCAN_MODE_FULL_LABEL[mode.mode];
             return armed
-              ? `${full} armed — next scan. Click again to auto-detect.`
+              ? `${full} armed \u2014 next scan. Click again to auto-detect.`
               : `Search by ${full}`;
           }}
         />

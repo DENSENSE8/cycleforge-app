@@ -5,6 +5,7 @@ import { Barcode, MapPin, Hash, Pencil } from '@/components/Icons';
 import {
   StationScanModeRail,
   ThemedStationScanBar,
+  classifyPreviewFromArmed,
   useScanStance,
 } from '@/components/station/scan-bar';
 import { classifyInput } from '@/lib/scan-resolver';
@@ -56,7 +57,7 @@ export const TESTING_SCAN_MODES: readonly TestingScanModeMeta[] = [
 ] as const;
 
 /**
- * Display-only hint for the leading icon when the operator hasn't armed a mode.
+ * Display-only hint when the operator hasn't armed a mode.
  * Does NOT decide resolution — un-armed scans still auto-detect server-side.
  */
 export function classifyTestingScan(value: string): ForcedTestingType {
@@ -108,6 +109,12 @@ export function TestingScanBar({
 
   const active = armedMode ? testingScanModeMeta(armedMode) : null;
   const typeLabel = active?.label ?? 'Auto';
+  const placeholder =
+    stance === 'preview'
+      ? `Preview: would search ${typeLabel}`
+      : armedMode
+        ? `Scan ${active!.label}\u2026`
+        : 'Tracking \u00b7 PO \u00b7 Serial \u00b7 SKU';
 
   return (
     <div data-testing-scan className="w-full">
@@ -117,15 +124,19 @@ export function TestingScanBar({
         onSubmit={handleSubmit}
         inputRef={inputRef}
         staffId={staffId}
-        placeholder={stance === 'preview'
-          ? `Preview: would search ${typeLabel}`
-          : armedMode
-            ? `Scan ${active!.label}`
-            : 'Tracking \u00b7 PO \u00b7 Serial \u00b7 SKU'}
+        placeholder={placeholder}
         autoFocus
         // Align the scan icon/text to the recent rail's dot/title column below.
         leadingColumn="rail"
         isResolving={isResolving}
+        classifyPreview={(raw) =>
+          classifyPreviewFromArmed({
+            value: raw,
+            armedMode,
+            autoMode: classifyTestingScan(raw),
+            labels: { tracking: 'Tracking', po: 'PO', serial: 'Serial', sku: 'SKU' },
+          })
+        }
         rightContent={
           <StationScanModeRail
             modes={TESTING_SCAN_MODES}

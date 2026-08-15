@@ -9,6 +9,7 @@
  * unchanged.
  */
 
+import { isScanPreview } from '@/components/station/scan-bar';
 import { useAblyChannel } from '@/hooks/useAblyChannel';
 import type { useAblyClient } from '@/contexts/AblyContext';
 import type { TrackingScanState } from '@/components/sidebar/receiving/useTrackingScan';
@@ -36,6 +37,7 @@ export function usePhoneScanBridge({
     (msg: { data?: { tracking?: string } }) => {
       const tracking = String(msg?.data?.tracking || '').trim();
       if (!tracking) return;
+      if (isScanPreview()) return;
       submitTrackingScan(tracking, {
         onResult: async (result) => {
           try {
