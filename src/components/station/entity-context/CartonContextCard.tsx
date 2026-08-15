@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { ChevronLeft, ExternalLink, MoreHorizontal, Pencil, Receipt, Ticket } from '@/components/Icons';
+import { ChevronLeft, ExternalLink, MoreHorizontal, Receipt, Ticket } from '@/components/Icons';
 import {
   CHIP_TONES,
   getLast8,
@@ -22,7 +22,6 @@ import { ReceivingPhotoButton } from '@/components/receiving/workspace/line-edit
 import { IdentityLinkChip } from '@/components/receiving/workspace/line-edit/IdentityLinkChip';
 import { ReceivingTicketChip } from '@/components/receiving/workspace/line-edit/ReceivingTicketChip';
 import { FulfillmentPickupPill } from '@/components/receiving/ReceivingIdentityChips';
-import { ClassifyColorEditPopover } from '@/components/receiving/workspace/line-edit/ClassifyColorEditPopover';
 import { InlinePillPicker } from '@/components/receiving/workspace/line-edit/InlinePillPicker';
 import {
   platformClassifyOptions,
@@ -35,7 +34,6 @@ import {
 } from '@/components/receiving/workspace/line-edit/receiving-priority';
 import { priorityOverrideTier } from '@/lib/receiving/priority-override';
 import { usePlatformCatalog, useReceivingTypeCatalog, usePlatformMeta } from '@/hooks/useCatalog';
-import { useTypeColorOverrides } from '@/lib/receiving/type-color-overrides';
 import {
   type CartonListingLink,
 } from '@/lib/receiving/listing-links';
@@ -341,8 +339,6 @@ export function CartonContextCard({
 }) {
   // One classify menu at a time — chip-anchored dropdown; identity band stays put.
   const [openPicker, setOpenPicker] = useState<'urgency' | 'platform' | 'type' | null>(null);
-  const [colorEditOpen, setColorEditOpen] = useState(false);
-  const colorEditAnchorRef = useRef<HTMLDivElement | null>(null);
   const barRef = useRef<HTMLDivElement | null>(null);
   const { classifyCompact, overflowActions } = useCartonContextBarLayout(barRef);
   const overflowSet = new Set<CartonContextActionId>(overflowActions);
@@ -359,7 +355,6 @@ export function CartonContextCard({
   // the catalog too, so a renamed or custom platform reads correctly here.
   const platformCatalog = usePlatformCatalog();
   const typeCatalog = useReceivingTypeCatalog();
-  const typeColorOverrides = useTypeColorOverrides();
   const resolvePlatformMeta = usePlatformMeta();
   const platformMeta = resolvePlatformMeta(platformValue);
 
@@ -429,12 +424,7 @@ export function CartonContextCard({
     catalogOptions: platformCatalog.options,
     isUnmatched,
   });
-  const typeOptions = typeClassifyOptions({
-    catalogOptions: typeCatalog.options.map((o) => ({
-      ...o,
-      colorHex: typeColorOverrides.colors[o.value] ?? null,
-    })),
-  });
+  const typeOptions = typeClassifyOptions({ catalogOptions: typeCatalog.options });
 
   // Exit chevron — boxed flush face filling chrome row (h-full square).
   // Lead column is {@link STATION_IDENTITY_LEAD_COL_CLASS} so the
@@ -458,13 +448,8 @@ export function CartonContextCard({
      Unbox/Triage inline edit stays here; Displays Classify remains the full
      searchable leaf when staff open it from the rail / dock. */
   const classifyFace = classifyCompact ? 'dot' : 'label';
-  const openColorEdit = () => {
-    setOpenPicker(null);
-    setColorEditOpen(true);
-  };
   const classifyCluster = showClassifyControls ? (
     <div
-      ref={colorEditAnchorRef}
       data-testid="carton-context-classify-pills"
       className={cn(
         STATION_IDENTITY_GROUP_CLASS,
@@ -501,7 +486,6 @@ export function CartonContextCard({
         disabled={classifyInteractive ? receivingId == null : false}
         readOnly={!classifyInteractive}
         placeholder={isUnmatched ? 'Unfound' : 'Platform'}
-        onMenuEdit={classifyInteractive ? openColorEdit : undefined}
       />
       <InlinePillPicker
         ariaLabel="Type"
@@ -515,31 +499,6 @@ export function CartonContextCard({
         onOpenChange={(o) => setClassifyMenu(o ? 'type' : null)}
         readOnly={!classifyInteractive}
         placeholder="Type"
-        onMenuEdit={classifyInteractive ? openColorEdit : undefined}
-      />
-      {classifyInteractive ? (
-        <>
-          <span
-            className="w-px shrink-0 self-stretch bg-border-hairline"
-            aria-hidden
-          />
-          <HoverTooltip label="Edit colors" asChild>
-            <IconButton
-              size="sm"
-              icon={<Pencil className="h-3.5 w-3.5" />}
-              ariaLabel="Edit platform and type colors"
-              aria-expanded={colorEditOpen}
-              aria-haspopup="dialog"
-              onClick={() => setColorEditOpen((o) => !o)}
-              className="self-stretch hover:bg-surface-hover"
-            />
-          </HoverTooltip>
-        </>
-      ) : null}
-      <ClassifyColorEditPopover
-        open={colorEditOpen}
-        onClose={() => setColorEditOpen(false)}
-        anchorRef={colorEditAnchorRef}
       />
     </div>
   ) : null;
