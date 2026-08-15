@@ -24,12 +24,10 @@ import { useEffect, useRef, type ReactNode } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from '@/design-system/motion';
 import { HEADER_ICON_WRAP } from '@/components/layout/header-shell';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { Pencil } from '@/components/Icons';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/design-system/primitives/DropdownMenu';
 import { focusRing } from '@/design-system/tokens/focus-ring';
@@ -152,8 +150,6 @@ export function InlinePillPicker({
   expandedFace = 'label',
   collapsedVariant = 'default',
   presentation = 'inline',
-  onMenuEdit,
-  menuEditLabel = 'Edit colors',
 }: {
   ariaLabel: string;
   options: InlinePillOption[];
@@ -195,12 +191,6 @@ export function InlinePillPicker({
    * `inline` — in-row option strip (legacy expand).
    */
   presentation?: 'inline' | 'menu';
-  /**
-   * Optional trailing menu action (platform / type color sheet). Renders a
-   * hairline ({@link DropdownMenuSeparator}) after the options, then the row.
-   */
-  onMenuEdit?: () => void;
-  menuEditLabel?: string;
 }) {
   const ref = useRef<HTMLDivElement | null>(null);
   const reduceMotion = useReducedMotion();
@@ -372,18 +362,6 @@ export function InlinePillPicker({
                   </DropdownMenuItem>
                 );
               })}
-              {onMenuEdit ? (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onSelect={() => onMenuEdit()}
-                    className="gap-2 bg-surface-card font-semibold text-text-default"
-                  >
-                    <Pencil className="h-3.5 w-3.5 text-text-soft" aria-hidden />
-                    <span className="text-text-default">{menuEditLabel}</span>
-                  </DropdownMenuItem>
-                </>
-              ) : null}
             </DropdownMenuContent>
           </DropdownMenu>
         )}
