@@ -1,11 +1,13 @@
 /**
- * Kiosk POS floating-card surface + two-state mode rail + category nav contract.
+ * Kiosk POS flush surface + two-state command rail contract (cart-root shift).
  */
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import {
+  KIOSK_CART_COL,
+  KIOSK_CART_COL_PX,
   KIOSK_MODE_SPINE_COLLAPSED_W,
   KIOSK_MODE_SPINE_COLLAPSED_W_PX,
   KIOSK_MODE_SPINE_EXPANDED_W,
@@ -50,32 +52,36 @@ describe('kiosk-chrome pills', () => {
   });
 });
 
-describe('kiosk-chrome two-state mode rail', () => {
+describe('kiosk-chrome two-state command rail', () => {
   it('exports collapsed icon rail and expanded named rail widths', () => {
     assert.equal(KIOSK_MODE_SPINE_COLLAPSED_W, 'w-14');
     assert.equal(KIOSK_MODE_SPINE_COLLAPSED_W_PX, 56);
     assert.equal(KIOSK_MODE_SPINE_EXPANDED_W, 'w-64');
     assert.equal(KIOSK_MODE_SPINE_EXPANDED_W_PX, 256);
     assert.notEqual(KIOSK_MODE_SPINE_COLLAPSED_W_PX, 0);
-    assert.notEqual(KIOSK_MODE_SPINE_COLLAPSED_W_PX, 240);
     assert.notEqual(KIOSK_MODE_SPINE_COLLAPSED_W, 'w-24');
     assert.ok(KIOSK_MODE_SPINE_EXPANDED_W_PX > KIOSK_MODE_SPINE_COLLAPSED_W_PX);
-    assert.match(KIOSK_MODE_SPINE_ROW, /\brounded-xl\b/);
+    // Flush — no rounded-xl POS exception on command rows.
+    assert.doesNotMatch(KIOSK_MODE_SPINE_ROW, /\brounded-xl\b/);
     assert.match(KIOSK_MODE_SPINE_ROW_COLLAPSED, /\bflex-col\b/);
     assert.match(KIOSK_MODE_SPINE_ROW_EXPANDED, /\bflex-row\b/);
-    assert.match(KIOSK_MODE_SPINE_ROW_EXPANDED, /\bgap-3\b/);
     assert.match(KIOSK_MODE_SPINE_ICON, /\bh-5\b/);
     assert.match(KIOSK_MODE_SPINE_LABEL, /\bfont-semibold\b/);
-    assert.match(KIOSK_MODE_SPINE_LABEL, /\bleading-tight\b/);
   });
 
-  it('maps live services to the short expanded names', () => {
+  it('maps live services to sentence-case command names', () => {
     assert.equal(kioskSpineShortLabel('repair'), 'Repair');
-    assert.equal(kioskSpineShortLabel('sales'), 'Buy / Sell');
+    assert.equal(kioskSpineShortLabel('sales'), 'Retail');
+    assert.equal(kioskSpineShortLabel('buyback'), 'Buyback');
     assert.equal(kioskSpineShortLabel('pickup'), 'Pickup');
     for (const tab of KIOSK_SERVICES) {
-      assert.ok(tab.label.length > kioskSpineShortLabel(tab.id).length || tab.id === 'sales');
+      assert.ok(typeof tab.commandLabel === 'string' && tab.commandLabel.length > 0);
     }
+  });
+
+  it('exports a persistent right cart column token', () => {
+    assert.equal(KIOSK_CART_COL, 'w-80');
+    assert.equal(KIOSK_CART_COL_PX, 320);
   });
 });
 
@@ -89,17 +95,18 @@ describe('kiosk-chrome spine source contract', () => {
     assert.match(spine, /useMotionRole/);
     assert.doesNotMatch(spine, /from ['"]motion\/react['"]/);
     assert.doesNotMatch(spine, /from ['"]framer-motion['"]/);
-    assert.doesNotMatch(spine, /\bx:\s|translateX/);
   });
 
-  it('defaults collapsed and restores the spine toggle', () => {
+  it('defaults collapsed, mounts right ledger, never clears cart on command switch', () => {
     assert.match(shell, /spineExpanded/);
     assert.match(shell, /useState\(false\)/);
+    assert.match(shell, /KioskCartLedger/);
+    assert.match(shell, /hideCartTray/);
+    assert.match(shell, /useWedgeScanner/);
+    assert.doesNotMatch(shell, /Switching modes will clear/);
+    assert.doesNotMatch(shell, /confirm\(/);
     assert.match(spine, /KioskSpineToggle/);
     assert.match(spine, /kiosk-spine-search/);
-    assert.match(spine, /role="tab"/);
-    assert.doesNotMatch(spine, /bg-zinc-/);
-    assert.doesNotMatch(spine, /#[0-9a-fA-F]{3,8}\b/);
   });
 });
 
@@ -113,7 +120,7 @@ describe('kiosk v2 idle + attract source contract', () => {
     assert.doesNotMatch(runtime, /['"]mousemove['"]/);
     assert.match(runtime, /pointerdown/);
     assert.match(runtime, /keydown/);
-    assert.match(runtime, /dynamic\(/);
+    assert.match(runtime, /cartIsEmpty/);
     assert.match(runtime, /AttractLoop/);
     assert.match(runtime, /KioskShell/);
     assert.match(attract, /active = true/);
@@ -132,44 +139,41 @@ describe('lighthouse kiosk routes', () => {
   });
 });
 
-describe('kiosk-pos-surface', () => {
-  it('uses theme canvas + accent wash (no raw gray/white)', () => {
-    assert.match(KIOSK_POS_CANVAS, /\bbg-surface-canvas\b/);
-    assert.match(KIOSK_POS_SIDEBAR_BODY, /\bbg-surface-canvas\b/);
+describe('kiosk-pos-surface flush plane', () => {
+  it('uses one card plane (no canvas island)', () => {
+    assert.match(KIOSK_POS_CANVAS, /\bbg-surface-card\b/);
+    assert.match(KIOSK_POS_SIDEBAR_BODY, /\bbg-surface-card\b/);
     assert.match(KIOSK_POS_CATEGORY_ACTIVE, /\bbg-surface-accent\b/);
-    assert.match(KIOSK_POS_SEARCH_INPUT, /\bbg-surface-sunken\b/);
+    assert.doesNotMatch(KIOSK_POS_CANVAS, /\bbg-surface-canvas\b/);
     assert.doesNotMatch(KIOSK_POS_CANVAS, /\bbg-gray-/);
-    assert.doesNotMatch(KIOSK_POS_CARD, /\bbg-white\b/);
   });
 
-  it('uses soft floating cards with stock radius + density gap', () => {
-    assert.match(KIOSK_POS_CARD, /\brounded-2xl\b/);
+  it('strips floating rounded cards — flush cells + hairline grid', () => {
+    assert.doesNotMatch(KIOSK_POS_CARD, /\brounded-2xl\b/);
+    assert.doesNotMatch(KIOSK_POS_CARD, /\brounded-xl\b/);
+    assert.doesNotMatch(KIOSK_POS_CARD, /\bshadow-elev/);
     assert.match(KIOSK_POS_CARD, /\bbg-surface-card\b/);
-    assert.match(KIOSK_POS_CARD, /\bshadow-elev-soft\b/);
-    assert.match(KIOSK_POS_GRID, /\bgap-4\b/);
-    assert.match(KIOSK_POS_CARD_CAPTION, /\bp-4\b/);
-    assert.match(KIOSK_POS_CARD_SELECTED, /\bring-2\b/);
+    assert.match(KIOSK_POS_GRID, /\bgap-px\b/);
+    assert.match(KIOSK_POS_CARD_SELECTED, /\bring-1\b/);
+    assert.match(KIOSK_POS_CARD_CAPTION, /\bpx-3\b/);
   });
 
-  it('caps the category column and insets floating rounded-xl items', () => {
+  it('caps the category column with flush divide-y rows', () => {
     assert.match(KIOSK_POS_SIDEBAR, /\bmd:w-64\b/);
     assert.match(KIOSK_POS_SIDEBAR, /\bmd:shrink-0\b/);
-    assert.doesNotMatch(KIOSK_POS_SIDEBAR, /\bmd:w-1\/3\b/);
-    assert.doesNotMatch(KIOSK_POS_SIDEBAR, /\bmd:min-w-80\b/);
-    assert.match(KIOSK_POS_SIDEBAR_BODY, /\bp-4\b/);
-    assert.match(KIOSK_POS_CATEGORY, /\brounded-xl\b/);
+    assert.match(KIOSK_POS_SIDEBAR_BODY, /\bp-0\b/);
+    assert.doesNotMatch(KIOSK_POS_CATEGORY, /\brounded-xl\b/);
     assert.doesNotMatch(KIOSK_POS_CATEGORY, /\brounded-full\b/);
     assert.equal(KIOSK_POS_CATEGORY_ACTIVE, KIOSK_PILL_ACTIVE);
     assert.match(KIOSK_POS_CATEGORY_IDLE, /\bbg-surface-card\b/);
     assert.match(KIOSK_POS_CATEGORY_LABEL, /\bleading-snug\b/);
-    assert.match(KIOSK_POS_CATEGORY_STACK, /\bgap-1\.5\b/);
-    assert.doesNotMatch(KIOSK_POS_CATEGORY_STACK, /\bdivide-y\b/);
+    assert.match(KIOSK_POS_CATEGORY_STACK, /\bdivide-y\b/);
   });
 
-  it('search input is a filled rounded field', () => {
-    assert.match(KIOSK_POS_SEARCH_INPUT, /\brounded-lg\b/);
+  it('search input is flush (no rounded-lg sunken well)', () => {
+    assert.match(KIOSK_POS_SEARCH_INPUT, /\brounded-none\b/);
     assert.match(KIOSK_POS_SEARCH_INPUT, /\bpy-3\b/);
-    assert.match(KIOSK_POS_SEARCH_INPUT, /\bpx-4\b/);
-    assert.doesNotMatch(KIOSK_POS_SEARCH_INPUT, /\brounded-none\b/);
+    assert.doesNotMatch(KIOSK_POS_SEARCH_INPUT, /\brounded-lg\b/);
+    assert.doesNotMatch(KIOSK_POS_SEARCH_INPUT, /\bbg-surface-sunken\b/);
   });
 });

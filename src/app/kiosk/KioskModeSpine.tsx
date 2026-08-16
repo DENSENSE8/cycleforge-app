@@ -1,13 +1,13 @@
 'use client';
 
 /**
- * Kiosk mode spine — two-state rail for Repair · Buy/Sell · Pickup.
+ * Kiosk command spine — two-state rail for Repair · Retail · Buyback · Pickup.
  *
  * Collapsed (~56px): icon-only cells; names live on aria-label + tooltip.
- * Expanded (~256px): Search row + icon-leading named tabs.
- * Width + label/search opacity tween via `motionRole.push.rail` (never a
- * spring, never an x-translate out of the reserved slot, never a 0↔N snap).
+ * Expanded (~256px): Search row + icon-leading named commands.
+ * Width + label/search opacity tween via `motionRole.push.rail`.
  *
+ * Commands swap the center work surface only — they never clear the cart.
  * Region contract: docs/todo/kiosk-pos-modernization-HANDOFF.md.
  */
 
@@ -94,7 +94,7 @@ export function KioskModeSpine({
 
       <div
         role="tablist"
-        aria-label="Kiosk service mode"
+        aria-label="Kiosk commands"
         aria-orientation="vertical"
         className="flex min-h-0 flex-1 flex-col gap-1 p-1.5"
       >
@@ -102,7 +102,7 @@ export function KioskModeSpine({
           const live = tab.status === 'live';
           const active = activeMode === tab.id;
           const Icon = tab.icon;
-          const shortLabel = kioskSpineShortLabel(tab.id);
+          const shortLabel = tab.commandLabel ?? kioskSpineShortLabel(tab.id);
           const tip = expanded
             ? live
               ? tab.blurb

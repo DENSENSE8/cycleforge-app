@@ -61,6 +61,8 @@ Regions are I/O contracts (`MotionRegion`: `station` · `workbench` · `monitor`
 | Conversation header actions | `ConversationHeaderActionButton` · `src/design-system/primitives/ConversationHeaderActionButton.tsx` |
 | Chat / note composer shell | `OmnichannelComposerDock` · `src/design-system/primitives/OmnichannelComposerDock.tsx` |
 | HID barcode wedge | `createWedgeKeyListener` · `src/lib/keyboard/wedge-scan-listener.ts` |
+| Kiosk v2 session cart | `kioskSessionStore` · `src/lib/kiosk/kiosk-session-store.ts` |
+| Kiosk v2 cart ledger | `KioskCartLedger` · `src/app/kiosk/v2/KioskCartLedger.tsx` |
 | Main-thread yield (INP) | `yieldToInput` · `src/lib/perf/yield-to-input.ts` |
 | NDJSON / Ably paint budget | `streamNdjson` · `applyStreamBudget` · `src/lib/orders-sync/client.ts` · `src/lib/perf/stream-apply.ts` |
 | Grid first-paint window | `LEDGER_GRID_OVERSCAN` · `LEDGER_GRID_ROW_CONTAIN` · `src/design-system/components/grid/` |
@@ -88,9 +90,20 @@ Regions are I/O contracts (`MotionRegion`: `station` · `workbench` · `monitor`
 - **Never build a second search engine, audit API, or status transition** outside the SoT modules.
 - **Conversation bubbles / chat cards** compose `ConversationMessageCard` + `conversation-chrome` (`src/design-system/primitives/`) — never a page-local bubble twin, 75% chat bubble, or Lock-icon internal chip. Helpdesk tickets and entity threads share that face.
 - **HID wedge scans** attach via `createWedgeKeyListener` (native capture `keydown`, yield-before-React). Never a React synthetic `onKeyDown` for scanner input; never drop focus; never run scan side-effects on the keydown stack.
+- **Kiosk v2 session root is the cart** (`kioskSessionStore`) — Repair / Retail / Buyback / Pickup are commands that swap the center only and never clear lines. Mount wedge via `useWedgeScanner` + `classifyKioskScan` (not warehouse `scan-resolver`). Customer face strips void / discount / cost-basis; no Station chrome / RightRailHost on the kiosk.
 - **Live NDJSON / Ably paints** apply through `applyStreamBudget` / `createFrameCoalescer` — never `setState` per stream line or per Ably message during a burst. Orthogonal exception dimensions (SCANNED + PROBLEM) stay on the row payload.
 - **`npm run verify` before done** — lint · typecheck · unit · knip · jscpd · depcruise · route-auth · schema drift. Never raise a ratchet baseline to pass.
 - **E2E asserts against the QA org**, not the dogfood tenant.
+
+
+## Guard authoring
+
+When asked to "add a guard", never write `readFileSync` + regex on source.
+Match the invariant to its layer: (1) import/module boundary → `.dependency-cruiser.cjs`;
+(2) syntax/prop ban → ESLint AST in `eslint.config.mjs`; (3) layout/geometry →
+constrain TS props / a cell that owns height; (4) rendered behavior → a mounted
+DOM test, not file text. Load `.claude/skills/add-guard/SKILL.md` before creating
+any test file.
 
 ## Workflow
 

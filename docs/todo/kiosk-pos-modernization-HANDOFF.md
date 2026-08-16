@@ -61,36 +61,39 @@ Market anchors (2025–26):
 
 ---
 
-## Locked shell anatomy (must preserve unless user re-decides)
+## Locked shell anatomy (cart-root shift 2026-08-12)
 
 ```
-┌─ Mode spine (closed = width 0) ─┬─ Catalog sidebar ─┬─ Browse / checkout stage ─┐
-│ Repair · Buy/Sell · Pickup      │ Category accordion │ Products grid OR form     │
-│ (KioskModeSpine)                │ + cart + Continue  │                           │
-└─────────────────────────────────┴────────────────────┴───────────────────────────┘
+┌─ Command spine ─┬─ Contextual work ─────────┬─ Cart ledger (persistent) ─┐
+│ Repair · Retail │ Catalog / repair details  │ Polymorphic line items     │
+│ Buyback · Pickup│ buyback / pickup          │ Save · Pay · Customer      │
+│ (never clears   │ ProductSelector hideCart  │ KioskCartLedger            │
+│  the cart)      │ Tray                      │                            │
+└─────────────────┴───────────────────────────┴────────────────────────────┘
 ```
 
 | Zone | SoT / files |
 |---|---|
-| Modes | `KIOSK_SERVICES` · [`services.ts`](../../src/lib/kiosk/services.ts) · `KioskModeSpine` |
-| Chrome bands | [`kiosk-chrome.ts`](../../src/app/kiosk/kiosk-chrome.ts) — `KIOSK_PANE_HEADER_BAND` / `FOOTER_BAND` |
-| Catalog | `ProductSelector` `layout="kiosk-split"` · `appearance="flush"` |
-| Repair checkout | `KioskRepairPane` → `/api/kiosk/repair/submit` + Idempotency-Key |
-| Sales checkout | `KioskCounterPane` → `/api/kiosk/intake` · `buildKioskSalesIntakeBody` |
-| Pickup | `KioskPickupPane` · `/api/kiosk/pickup/*` |
-| Attract / idle | [`v2/page.tsx`](../../src/app/kiosk/v2/page.tsx) · `AttractLoop` |
+| Commands | `KIOSK_SERVICES` · [`services.ts`](../../src/lib/kiosk/services.ts) · `KioskModeSpine` |
+| Session cart | [`kiosk-session-store.ts`](../../src/lib/kiosk/kiosk-session-store.ts) · [`cart-line.ts`](../../src/lib/kiosk/cart-line.ts) |
+| Chrome bands | [`kiosk-chrome.ts`](../../src/app/kiosk/kiosk-chrome.ts) — header / footer / `KIOSK_CART_FACE` |
+| Catalog | `ProductSelector` `layout="kiosk-split"` · `hideCartTray` · flush [`kiosk-pos-surface`](../../src/app/kiosk/kiosk-pos-surface.ts) |
+| Repair details | `KioskRepairPane` → saves REPAIR line to session (Pay via ledger → `/api/kiosk/intake`) |
+| Buyback | `KioskBuybackPane` · negative BUYBACK line |
+| Pickup | `KioskPickupPane` · `/api/kiosk/pickup/*` (command, does not clear cart) |
+| Customer face | `KioskCustomerFace` · orientation 180 / Customer toggle |
+| Wedge | `useWedgeScanner` + [`scan-classify.ts`](../../src/lib/kiosk/scan-classify.ts) |
+| Attract / idle | [`v2/page.tsx`](../../src/app/kiosk/v2/page.tsx) · `AttractLoop` — **only when cart empty** |
 
 **Hard constraints (do not violate without an explicit product decision):**
 
-1. **No bottom mode dock** for customer module switching (palm/wrist hazard on mounted iPad). Modes stay in left spine. A bottom bar may only be a **transaction action** floor (Continue / Submit / Pay) — already `KIOSK_PANE_FOOTER_BAND`.
-2. Products stay on the **browse stage**, never stacked under categories in the left rail.
+1. **Cart is the session root.** Commands never clear lines. No bottom mode dock (palm hazard). Action floor = Save / Pay / Customer only.
+2. Products stay on the **browse stage**, never stacked under categories in the left rail. Cart lives on the **right** ledger.
 3. Gate incomplete work on `/kiosk/v2` — never silent-swap main `/kiosk`.
-4. Radius: Kinetic Ledger flushed every `cornerClass` except `'pill'`. Pills = `cornerClass('pill')` only.
+4. Radius: Kinetic Ledger flush everywhere except `'pill'` issue chips.
 5. No invented catalog prices.
 6. Never start/kill the dev server — attach to `:3050`.
-
-If the user insists on a full **bottom mode nav** (Repair | Sell | Pickup | History), treat that as a **staff register chrome** decision and document the override in `AGENTS.md` before coding.
-
+7. HID wedge on the kiosk form is allowed (attended register) — still **not** Station chrome.
 ---
 
 ## Detailed improvement plan (phased)

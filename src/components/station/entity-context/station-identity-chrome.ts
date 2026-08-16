@@ -21,7 +21,6 @@
 import {
   HEADER_ICON_GAP,
   PRIMARY_CHROME_ROW_FACE,
-  STATION_SECONDARY_BAND_FACE,
 } from '@/components/layout/header-shell';
 import { elevationClass } from '@/design-system/tokens/shadows';
 
@@ -92,40 +91,20 @@ export const STATION_CHROME_SEAM_HAIRLINE =
   'relative after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-border-hairline';
 
 /**
- * Chip-to-chip step on chrome row 1 (classify · Photos) — flush (zero gap),
- * locked to {@link STATION_CHROME_ROW_FACE}. Classify urgency·platform·type
- * uses the same flush abut as Photos ({@link STATION_IDENTITY_GROUP_CLASS}).
- * Never reintroduce `row-gap` / `row-tight` air tokens for identity chrome.
- * Bottom seam = {@link STATION_CHROME_SEAM_HAIRLINE} (matches Displays top band).
- */
-export const STATION_IDENTITY_ROW_CLASS = `flex ${STATION_CHROME_ROW_FACE} items-stretch gap-0 ${STATION_CHROME_SEAM_HAIRLINE}`;
-
-/**
- * Commerce row 2 face — same {@link STATION_SECONDARY_BAND_FACE} (`h-6`) as the
- * left-rail eyebrow (pencil) and Displays VERIFICATION group header. Not the
- * scan-bar chrome seam (that is row 1 / {@link STATION_CHROME_ROW_FACE}).
- */
-const STATION_IDENTITY_COMMERCE_ROW_FACE = STATION_SECONDARY_BAND_FACE;
-
-/** Chip-to-chip step on commerce row 2 — flush, locked to the commerce face. */
-export const STATION_IDENTITY_COMMERCE_ROW_CLASS = `flex ${STATION_IDENTITY_COMMERCE_ROW_FACE} items-stretch gap-0`;
-
-/**
  * Classify urgency·platform·type — **one token**: flush abut (`gap-0`), no
  * side hairlines. Soft drop shadows live off these faces (`shadow-none` on
  * the tone SoTs); never reintroduce `gap-1.5` spacing or vertical rules
- * between classify pills.
+ * between classify pills. Chip-to-chip step on chrome row 1 is the same
+ * flush abut (`gap-0` + {@link STATION_CHROME_ROW_FACE} +
+ * {@link STATION_CHROME_SEAM_HAIRLINE}) composed on the carton identity bar.
  */
 export const STATION_IDENTITY_GROUP_CLASS =
   'flex h-full min-h-0 items-stretch gap-0';
 
-/** Vertical step between the two rows — flush (zero gap). */
-export const STATION_IDENTITY_ROW_STACK_CLASS = 'flex flex-col gap-0';
-
 /**
- * Leading column on chrome row 1 — boxed exit chevron so classify pills
- * share one x with the exit face. Square track on {@link STATION_CHROME_ROW_FACE};
- * child fills flush (`h-full w-full`). Row 2 status is a content-width pill.
+ * Leading column on chrome row 1 — boxed exit chevron. Square track on
+ * {@link STATION_CHROME_ROW_FACE}; child fills flush (`h-full w-full`).
+ * Lifecycle status is a content-width cell after tracking, not this column.
  */
 export const STATION_IDENTITY_LEAD_COL_CLASS =
   'flex h-full aspect-square shrink-0 items-stretch justify-stretch';

@@ -48,7 +48,8 @@ import type {
   CounterTransactionResult,
 } from '@/lib/counter/counter-transaction-types';
 import { buildKioskSalesIntakeBodyFromInput } from '@/lib/counter/kiosk-intake-payload';
-import { KIOSK_SERVICES, type KioskServiceId } from '@/lib/kiosk/services';
+import { welcomeKioskServices, type KioskServiceId } from '@/lib/kiosk/services';
+import { pairKioskTablet } from '@/lib/kiosk/pair-tablet';
 
 // Lazy-load the intake form so the welcome screen stays light; it only loads
 // when a team member opens a service.
@@ -86,7 +87,7 @@ export default function KioskPage() {
   /** Same contract as `repairIdemKey`, for the counter transaction path. */
   const counterIdemKey = useRef<string | null>(null);
 
-  const liveServices = KIOSK_SERVICES.filter((s) => s.status === 'live');
+  const liveServices = welcomeKioskServices();
 
   // Dev-only convenience: silently exchange a fixed dogfood-org pairing for
   // this browser on mount, so a local kiosk.localhost tab never needs the
@@ -215,42 +216,16 @@ export default function KioskPage() {
   );
 
   const pair = useCallback(async () => {
-    if (code.trim().length < 8) {
-      setErr('Enter the full setup code.');
-      return;
-    }
     setBusy(true);
     setErr(null);
-    try {
-      const r = await fetch('/api/kiosk/pair', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ code: code.trim() }),
-      });
-      if (!r.ok) {
-        let apiError: string | undefined;
-        try {
-          const body = (await r.json()) as { error?: string };
-          apiError = body.error;
-        } catch {
-          /* non-JSON */
-        }
-        if (apiError === 'KIOSK_HOST_REQUIRED' || r.status === 403) {
-          setErr(
-            'Open this tablet on your workspace kiosk URL (Settings → Kiosk devices), not the staff app.',
-          );
-          return;
-        }
-        setErr('That setup code is invalid or expired. Generate a new one in Settings.');
-        return;
-      }
-      setCode('');
-      setMode('ready');
-    } catch {
-      setErr('Network issue while pairing. Try again.');
-    } finally {
-      setBusy(false);
+    const result = await pairKioskTablet(code);
+    setBusy(false);
+    if (!result.ok) {
+      setErr(result.error);
+      return;
     }
+    setCode('');
+    setMode('ready');
   }, [code]);
 
   // A live service replaces the whole surface with its full-screen intake form.

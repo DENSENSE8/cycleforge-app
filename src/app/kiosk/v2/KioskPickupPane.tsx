@@ -2,25 +2,50 @@
 
 /**
  * Landscape Order Pickup pane — two-key lookup (order/RS# + phone) then collect.
- * No left catalog rail; never mounts staff LCPU / PickupWorkspace.
+ * Command (not a cart-clearing mode); never mounts staff LCPU / PickupWorkspace.
  */
 
-import { useCallback, useState } from 'react';
-import { Panel, Button, TextField } from '@/design-system/primitives';
+import { useCallback, useEffect, useState } from 'react';
+import { Button, TextField } from '@/design-system/primitives';
 import { Check, Loader2 } from '@/components/Icons';
 import type { KioskPickupSummary } from '@/lib/kiosk/order-pickup';
+import {
+  useKioskSession,
+  useKioskSessionActions,
+} from '@/lib/kiosk/kiosk-session-store';
+import { cornerClass } from '@/design-system/tokens/radius';
+import { cn } from '@/utils/_cn';
+import {
+  KIOSK_PANE_FOOTER_BAND,
+  KIOSK_PANE_HEADER_BAND,
+  KIOSK_PANE_HEADER_TITLE,
+  KIOSK_SECTION_LABEL,
+} from '@/app/kiosk/kiosk-chrome';
 
 interface KioskPickupPaneProps {
   onReset?: () => void;
 }
 
 export function KioskPickupPane({ onReset }: KioskPickupPaneProps) {
+  const session = useKioskSession();
+  const actions = useKioskSessionActions();
   const [orderNumber, setOrderNumber] = useState('');
-  const [phone, setPhone] = useState('');
+  const [phone, setPhone] = useState(() => session.customerPhone);
   const [summary, setSummary] = useState<KioskPickupSummary | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [collected, setCollected] = useState(false);
+
+  useEffect(() => {
+    if (session.pickupPrefill) {
+      setOrderNumber(session.pickupPrefill);
+      actions.setPickupPrefill(null);
+    }
+  }, [session.pickupPrefill, actions]);
+
+  useEffect(() => {
+    if (session.customerPhone && !phone) setPhone(session.customerPhone);
+  }, [session.customerPhone, phone]);
 
   const reset = useCallback(() => {
     setOrderNumber('');
@@ -94,50 +119,126 @@ export function KioskPickupPane({ onReset }: KioskPickupPaneProps) {
 
   if (collected && summary) {
     return (
-      <div className="mx-auto flex w-full max-w-2xl flex-col items-center justify-center gap-5 px-6 py-12 text-center">
-        <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
-          <Check className="h-8 w-8" />
-        </span>
-        <div className="space-y-1">
-          <h2 className="text-2xl font-semibold tracking-tight">Ready to hand over</h2>
-          <p className="font-semibold text-text-soft">
-            {summary.productTitle?.trim() || `RS-${summary.repairId}`} is marked collected.
-          </p>
+      <div className="flex h-full flex-col" data-testid="kiosk-pickup-pane">
+        <div className={KIOSK_PANE_HEADER_BAND}>
+          <h2 className={KIOSK_PANE_HEADER_TITLE}>Pickup</h2>
         </div>
-        <Button size="lg" onClick={reset}>
-          Next Customer
-        </Button>
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-5 px-6 text-center">
+          <span
+            className={cn(
+              'flex h-16 w-16 items-center justify-center bg-emerald-50 text-emerald-600',
+              cornerClass('flush'),
+            )}
+          >
+            <Check className="h-8 w-8" />
+          </span>
+          <div className="space-y-1">
+            <h2 className="text-2xl font-semibold tracking-tight">Ready to hand over</h2>
+            <p className="font-semibold text-text-soft">
+              {summary.productTitle?.trim() || `RS-${summary.repairId}`} is marked collected.
+            </p>
+          </div>
+        </div>
+        <div className={KIOSK_PANE_FOOTER_BAND}>
+          <Button
+            size="lg"
+            className={cn('h-full min-h-0 w-full flex-1 rounded-none', cornerClass('flush'))}
+            onClick={reset}
+          >
+            Next customer
+          </Button>
+        </div>
       </div>
     );
   }
 
-  const SECTION_LABEL = 'text-role-micro uppercase tracking-[0.16em] text-text-soft';
-
   return (
-    <div className="mx-auto w-full max-w-2xl space-y-10">
-      <section className="space-y-4">
-        <h3 className={SECTION_LABEL}>Find your order</h3>
-        <Panel radius="xl" className="space-y-4">
-          <TextField
-            label="Order or repair number"
-            value={orderNumber}
-            onChange={setOrderNumber}
-            autoComplete="off"
-          />
-          <TextField
-            label="Phone number on the order"
-            value={phone}
-            onChange={setPhone}
-            inputMode="tel"
-            autoComplete="tel"
-          />
+    <div className="flex h-full flex-col" data-testid="kiosk-pickup-pane">
+      <div className={KIOSK_PANE_HEADER_BAND}>
+        <h2 className={KIOSK_PANE_HEADER_TITLE}>Pickup</h2>
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="flex w-full flex-col divide-y divide-border-hairline">
+          <section>
+            <h3 className={cn('border-b border-border-hairline px-4 py-2', KIOSK_SECTION_LABEL)}>
+              Find your order
+            </h3>
+            <div className="space-y-3 px-4 py-4">
+              <TextField
+                label="Order or repair number"
+                value={orderNumber}
+                onChange={setOrderNumber}
+                autoComplete="off"
+                inputClassName="rounded-none"
+                data-testid="kiosk-pickup-order"
+              />
+              <TextField
+                label="Phone number on the order"
+                value={phone}
+                onChange={(v) => {
+                  setPhone(v);
+                  actions.setCustomer({ phone: v });
+                }}
+                inputMode="tel"
+                autoComplete="tel"
+                inputClassName="rounded-none"
+              />
+              {error && (
+                <p className="text-center font-semibold text-text-danger">{error}</p>
+              )}
+            </div>
+          </section>
+
+          {summary && (
+            <section>
+              <h3 className={cn('border-b border-border-hairline px-4 py-2', KIOSK_SECTION_LABEL)}>
+                Order ready
+              </h3>
+              <div className="space-y-3 px-4 py-4">
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="font-semibold">
+                    {summary.productTitle?.trim() || 'Repair order'}
+                  </span>
+                  <span className="text-role-caption font-semibold uppercase tracking-widest text-text-soft">
+                    {summary.status}
+                  </span>
+                </div>
+                <p className="text-sm font-semibold text-text-soft">
+                  {summary.ticketNumber?.trim()
+                    ? `Ticket ${summary.ticketNumber}`
+                    : `RS-${summary.repairId}`}
+                </p>
+              </div>
+            </section>
+          )}
+        </div>
+      </div>
+      <div className={KIOSK_PANE_FOOTER_BAND}>
+        {summary?.collectible ? (
           <Button
             size="lg"
-            className="w-full"
-            disabled={busy || orderNumber.trim().length < 1 || phone.replace(/\D/g, '').length < 7}
+            className={cn('h-full min-h-0 w-full flex-1 rounded-none', cornerClass('flush'))}
+            disabled={busy}
+            onClick={() => void collect()}
+          >
+            {busy ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Collecting…
+              </>
+            ) : (
+              'Mark collected'
+            )}
+          </Button>
+        ) : (
+          <Button
+            size="lg"
+            className={cn('h-full min-h-0 w-full flex-1 rounded-none', cornerClass('flush'))}
+            disabled={
+              busy || orderNumber.trim().length < 1 || phone.replace(/\D/g, '').length < 7
+            }
             onClick={() => void lookup()}
           >
-            {busy && !summary ? (
+            {busy ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Looking up…
               </>
@@ -145,49 +246,8 @@ export function KioskPickupPane({ onReset }: KioskPickupPaneProps) {
               'Look up order'
             )}
           </Button>
-        </Panel>
-      </section>
-
-      {summary && (
-        <section className="space-y-4">
-          <h3 className={SECTION_LABEL}>Order ready</h3>
-          <Panel radius="xl" className="space-y-3">
-            <div className="flex items-baseline justify-between gap-3">
-              <span className="font-semibold">
-                {summary.productTitle?.trim() || 'Repair order'}
-              </span>
-              <span className="text-role-caption font-semibold uppercase tracking-widest text-text-soft">
-                {summary.status}
-              </span>
-            </div>
-            <p className="text-sm font-semibold text-text-soft">
-              {summary.ticketNumber?.trim()
-                ? `Ticket ${summary.ticketNumber}`
-                : `RS-${summary.repairId}`}
-            </p>
-            {summary.collectible && (
-              <Button
-                size="lg"
-                className="w-full"
-                disabled={busy}
-                onClick={() => void collect()}
-              >
-                {busy ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Collecting…
-                  </>
-                ) : (
-                  'Mark collected'
-                )}
-              </Button>
-            )}
-          </Panel>
-        </section>
-      )}
-
-      {error && (
-        <p className="text-center font-semibold text-text-danger">{error}</p>
-      )}
+        )}
+      </div>
     </div>
   );
 }

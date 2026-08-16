@@ -49,7 +49,8 @@ const RetailLineSchema = z.object({
   sku: z.string().trim().default(''),
   productTitle: z.string().trim().min(1),
   quantity: z.number().int().positive().max(999),
-  unitAmountCents: z.number().int().min(0).max(100_000_000),
+  // Negative = buyback / trade-in credit on the staged cart.
+  unitAmountCents: z.number().int().min(-100_000_000).max(100_000_000),
 });
 
 const ServiceSchema = z.object({

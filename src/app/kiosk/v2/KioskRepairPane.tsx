@@ -1,24 +1,30 @@
 'use client';
 
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+/**
+ * Landscape repair details — edits a REPAIR line on the session cart.
+ * Does not post to the API; Pay / Save on {@link KioskCartLedger} submits the
+ * whole polymorphic cart via `/api/kiosk/intake`.
+ */
+
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { Button } from '@/design-system/primitives';
-import { Loader2, Check } from '@/components/Icons';
 import { ReasonSelector } from '@/components/repair/ReasonSelector';
 import { CustomerInfoForm } from '@/components/repair/CustomerInfoForm';
 import { SignaturePad, type SignatureData } from '@/components/repair/SignaturePad';
-import RepairServiceForm from '@/components/repair/RepairServiceForm';
-import { RepairPaperworkCanvas } from '@/components/repair/RepairPaperworkCanvas';
 import { RepairPaperworkSheet } from '@/components/repair/RepairPaperworkSheet';
 import type { ProductSelection } from '@/components/repair/ProductSelector';
-import type { RepairFormData, RepairSubmitResult } from '@/components/repair/RepairIntakeForm';
+import type { RepairFormData } from '@/components/repair/RepairIntakeForm';
 import {
   buildInitialFormData,
   canSubmitRepairIntake,
   getRepairSubmitBlockReason,
 } from '@/components/repair/repair-intake-logic';
 import { useRepairIntakeData } from '@/components/repair/useRepairIntakeData';
-import { buildRepairIntakeReceiptProps } from '@/lib/repair/repair-intake-receipt';
-import { safeRandomUUID } from '@/lib/safe-uuid';
+import {
+  useKioskSession,
+  useKioskSessionActions,
+} from '@/lib/kiosk/kiosk-session-store';
+import { isRepairPayload } from '@/lib/kiosk/cart-line';
 import {
   KIOSK_PANE_FOOTER_BAND,
   KIOSK_PANE_HEADER_BAND,
@@ -30,17 +36,16 @@ import { cn } from '@/utils/_cn';
 
 interface KioskRepairPaneProps {
   selectedProduct: ProductSelection | null;
-  /** Catalog price from the left-rail selection — empty until a priced SKU is picked. */
+  /** Catalog price from the selection — empty until a priced SKU is picked. */
   price: string;
-  onReset: () => void;
 }
 
-function formatReceiptToday(): string {
-  return new Date().toLocaleDateString('en-US', {
-    month: '2-digit',
-    day: '2-digit',
-    year: 'numeric',
-  });
+function priceToCents(price: string): number {
+  const cleaned = price.replace(/[^0-9.]/g, '');
+  if (!cleaned) return 0;
+  const dollars = Number.parseFloat(cleaned);
+  if (!Number.isFinite(dollars) || dollars < 0) return 0;
+  return Math.round(dollars * 100);
 }
 
 const SECTION_LABEL = cn(
@@ -48,30 +53,41 @@ const SECTION_LABEL = cn(
   KIOSK_SECTION_LABEL,
 );
 
-/**
- * Landscape right-pane repair intake. Composes the same validation + receipt
- * helpers as `RepairIntakeForm` (kioskMode); submit goes through the device-authed
- * route with an idempotency key, matching the proven `/kiosk` host wiring.
- */
-export function KioskRepairPane({ selectedProduct, price, onReset }: KioskRepairPaneProps) {
+export function KioskRepairPane({ selectedProduct, price }: KioskRepairPaneProps) {
+  const session = useKioskSession();
+  const actions = useKioskSessionActions();
   const [formData, setFormData] = useState<RepairFormData>(() => buildInitialFormData());
   const [signatureData, setSignatureData] = useState<SignatureData | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
-  const [submitted, setSubmitted] = useState<RepairSubmitResult | null>(null);
   const [showPaperwork, setShowPaperwork] = useState(false);
-  const repairIdemKey = useRef<string | null>(null);
+  const [activeLineId, setActiveLineId] = useState<string | null>(null);
+  const [savedFlash, setSavedFlash] = useState(false);
 
   const { skuIssues } = useRepairIntakeData(null, true);
   const hasProduct = Boolean(selectedProduct?.model?.trim());
+
+  // Prefer editing an existing REPAIR line for this model; else create on save.
+  const existingRepair = useMemo(
+    () =>
+      session.lines.find(
+        (l) =>
+          l.type === 'REPAIR' &&
+          isRepairPayload(l.payload) &&
+          (activeLineId ? l.id === activeLineId : l.payload.productModel === selectedProduct?.model),
+      ) ?? null,
+    [session.lines, selectedProduct?.model, activeLineId],
+  );
 
   useEffect(() => {
     if (selectedProduct) {
       setFormData((prev) => ({
         ...prev,
         product: selectedProduct,
-        // Prefer catalog price; keep a staff override only when the catalog has none.
         price: price.trim() || (prev.price.trim() ? prev.price : ''),
+        customer: {
+          name: session.customerName || prev.customer.name,
+          phone: session.customerPhone || prev.customer.phone,
+          email: session.customerEmail || prev.customer.email,
+        },
       }));
     } else {
       setFormData((prev) => ({
@@ -81,107 +97,87 @@ export function KioskRepairPane({ selectedProduct, price, onReset }: KioskRepair
       }));
       setShowPaperwork(false);
     }
-  }, [selectedProduct, price]);
+  }, [selectedProduct, price, session.customerName, session.customerPhone, session.customerEmail]);
 
-  const updateCustomer = useCallback((field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, customer: { ...prev.customer, [field]: value } }));
-  }, []);
-
-  const handleSubmit = async () => {
-    if (!canSubmitRepairIntake(formData, !!signatureData) || !signatureData) return;
-
-    setIsSubmitting(true);
-    setSubmitError(null);
-    if (!repairIdemKey.current) repairIdemKey.current = safeRandomUUID();
-
-    try {
-      const r = await fetch('/api/kiosk/repair/submit', {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          'Idempotency-Key': repairIdemKey.current,
-        },
-        body: JSON.stringify({
-          ...formData,
-          signatureDataUrl: signatureData.dataUrl,
-          signatureStrokes: signatureData.strokes,
-        }),
-      });
-
-      if (!r.ok) {
-        const body = (await r.json().catch(() => ({}))) as { error?: string };
-        throw new Error(body.error?.trim() || 'Failed to submit repair');
-      }
-
-      const result = (await r.json()) as RepairSubmitResult;
-      setShowPaperwork(false);
-      setSubmitted(result);
-    } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : 'Error submitting repair');
-    } finally {
-      setIsSubmitting(false);
+  // Hydrate from an existing cart line when present.
+  useEffect(() => {
+    if (!existingRepair || !isRepairPayload(existingRepair.payload)) return;
+    const p = existingRepair.payload;
+    setActiveLineId(existingRepair.id);
+    setFormData((prev) => ({
+      ...prev,
+      product: {
+        type: p.productType ?? '',
+        model: p.productModel,
+        sourceSku: p.sourceSku ?? null,
+      },
+      repairReasons: p.repairReasons ?? [],
+      repairNotes: p.repairNotes ?? '',
+      serialNumber: p.serialNumber,
+      price: p.price,
+      notes: p.notes ?? '',
+    }));
+    if (p.signatureDataUrl) {
+      setSignatureData({
+        dataUrl: p.signatureDataUrl,
+        strokes: p.signatureStrokes,
+      } as SignatureData);
     }
+  }, [existingRepair?.id]); // eslint-disable-line react-hooks/exhaustive-deps -- hydrate once per line id
+
+  const updateCustomer = useCallback(
+    (field: string, value: string) => {
+      setFormData((prev) => ({ ...prev, customer: { ...prev.customer, [field]: value } }));
+      if (field === 'phone') actions.setCustomer({ phone: value });
+      if (field === 'name') actions.setCustomer({ name: value });
+      if (field === 'email') actions.setCustomer({ email: value });
+    },
+    [actions],
+  );
+
+  const saveToCart = () => {
+    if (!hasProduct || !selectedProduct) return;
+    const payload = {
+      productType: selectedProduct.type || null,
+      productModel: selectedProduct.model,
+      sourceSku: selectedProduct.sourceSku ?? null,
+      repairReasons: formData.repairReasons,
+      repairNotes: formData.repairNotes || null,
+      serialNumber: formData.serialNumber,
+      passcode: null,
+      imei: null,
+      notes: formData.notes || null,
+      price: formData.price.trim() || price.trim(),
+      signatureDataUrl: signatureData?.dataUrl ?? null,
+      signatureStrokes: signatureData?.strokes ?? null,
+    };
+    const unitAmountCents = priceToCents(payload.price);
+    const title = selectedProduct.model;
+
+    if (activeLineId || existingRepair) {
+      const id = activeLineId ?? existingRepair!.id;
+      actions.updateRepairLine(id, { title, unitAmountCents, payload });
+      setActiveLineId(id);
+    } else {
+      const line = actions.addRepair({ title, unitAmountCents, payload });
+      setActiveLineId(line.id);
+    }
+    actions.setCustomer({
+      phone: formData.customer.phone,
+      name: formData.customer.name,
+      email: formData.customer.email,
+    });
+    setSavedFlash(true);
+    window.setTimeout(() => setSavedFlash(false), 1500);
   };
 
-  if (submitted) {
-    const issueText = [...formData.repairReasons, formData.repairNotes].filter(Boolean).join(', ');
-    const receiptProps = buildRepairIntakeReceiptProps(
-      formData,
-      issueText,
-      formatReceiptToday(),
-      submitted.zendeskTicketNumber ?? '',
-    );
-
-    return (
-      <div className="flex h-full flex-col">
-        <div
-          className={cn(
-            'flex shrink-0 items-center justify-center bg-emerald-50 py-4 text-emerald-700',
-            cornerClass('flush'),
-          )}
-        >
-          <Check className="mr-2 h-5 w-5" />
-          <span className="font-semibold uppercase tracking-widest text-emerald-800">
-            Repair Submitted
-            {submitted.zendeskTicketNumber ? `: Ticket ${submitted.zendeskTicketNumber}` : ''}
-          </span>
-        </div>
-        <div className="min-h-0 flex-1 overflow-y-auto bg-surface-sunken p-0">
-          <div className="px-4 py-4">
-            <RepairPaperworkCanvas>
-              <RepairServiceForm {...receiptProps} surface="screen" />
-            </RepairPaperworkCanvas>
-          </div>
-        </div>
-        <div className={KIOSK_PANE_FOOTER_BAND} data-kiosk-footer-band>
-          <Button
-            size="lg"
-            className={cn('h-full min-h-0 w-full flex-1 rounded-none', cornerClass('flush'))}
-            onClick={() => {
-              repairIdemKey.current = null;
-              setSubmitted(null);
-              setSignatureData(null);
-              setShowPaperwork(false);
-              setFormData(buildInitialFormData());
-              onReset();
-            }}
-          >
-            Done / Next Customer
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
   const blockReason = getRepairSubmitBlockReason(formData, !!signatureData);
-  const canSubmit = canSubmitRepairIntake(formData, !!signatureData);
-  const issueText = [...formData.repairReasons, formData.repairNotes].filter(Boolean).join(', ');
-  const draftReceiptProps = buildRepairIntakeReceiptProps(formData, issueText, formatReceiptToday());
+  const canSave = canSubmitRepairIntake(formData, !!signatureData);
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col" data-testid="kiosk-repair-pane">
       <div className={KIOSK_PANE_HEADER_BAND}>
-        <h2 className={KIOSK_PANE_HEADER_TITLE}>Repair Details</h2>
+        <h2 className={KIOSK_PANE_HEADER_TITLE}>Repair details</h2>
         <RepairPaperworkSheet
           active={showPaperwork}
           onToggle={() => setShowPaperwork((v) => !v)}
@@ -189,31 +185,20 @@ export function KioskRepairPane({ selectedProduct, price, onReset }: KioskRepair
         />
       </div>
 
-      <div
-        className={cn(
-          'min-h-0 flex-1 overflow-y-auto p-0',
-          showPaperwork && hasProduct && 'bg-surface-sunken',
-        )}
-      >
+      <div className="min-h-0 flex-1 overflow-y-auto p-0">
         {!hasProduct ? (
           <div className="flex h-full items-center justify-center px-4">
             <div className="text-center">
               <h3 className="text-lg font-semibold text-text-default">No product selected</h3>
               <p className="mt-2 text-text-soft">
-                Select a repair service from the left catalog to begin intake.
+                Select a repair service from the catalog to begin intake.
               </p>
             </div>
-          </div>
-        ) : showPaperwork ? (
-          <div className="px-4 py-4">
-            <RepairPaperworkCanvas>
-              <RepairServiceForm {...draftReceiptProps} surface="screen" />
-            </RepairPaperworkCanvas>
           </div>
         ) : (
           <div className="flex w-full flex-col divide-y divide-border-hairline">
             <section>
-              <h3 className={SECTION_LABEL}>1. Issue Details</h3>
+              <h3 className={SECTION_LABEL}>1. Issue details</h3>
               <div className="bg-surface-card">
                 <ReasonSelector
                   appearance="pills"
@@ -222,14 +207,16 @@ export function KioskRepairPane({ selectedProduct, price, onReset }: KioskRepair
                   onReasonsChange={(reasons) =>
                     setFormData((prev) => ({ ...prev, repairReasons: reasons }))
                   }
-                  onNotesChange={(notes) => setFormData((prev) => ({ ...prev, repairNotes: notes }))}
+                  onNotesChange={(notes) =>
+                    setFormData((prev) => ({ ...prev, repairNotes: notes }))
+                  }
                   skuIssues={skuIssues}
                 />
               </div>
             </section>
 
             <section>
-              <h3 className={SECTION_LABEL}>2. Customer Information</h3>
+              <h3 className={SECTION_LABEL}>2. Customer information</h3>
               <div className="bg-surface-card px-4 py-4">
                 <CustomerInfoForm
                   layout="all"
@@ -241,8 +228,12 @@ export function KioskRepairPane({ selectedProduct, price, onReset }: KioskRepair
                   onSerialNumberChange={(value) =>
                     setFormData((prev) => ({ ...prev, serialNumber: value }))
                   }
-                  onPriceChange={(value) => setFormData((prev) => ({ ...prev, price: value }))}
-                  onNotesChange={(value) => setFormData((prev) => ({ ...prev, notes: value }))}
+                  onPriceChange={(value) =>
+                    setFormData((prev) => ({ ...prev, price: value }))
+                  }
+                  onNotesChange={(value) =>
+                    setFormData((prev) => ({ ...prev, notes: value }))
+                  }
                 />
               </div>
             </section>
@@ -259,36 +250,25 @@ export function KioskRepairPane({ selectedProduct, price, onReset }: KioskRepair
               </div>
             </section>
 
-            {(submitError || (blockReason && !canSubmit)) && (
-              <section className="space-y-1 px-4 py-3">
-                {submitError && (
-                  <p className="text-center font-semibold text-text-danger">{submitError}</p>
-                )}
-                {blockReason && !submitError && (
-                  <p className="text-center text-sm font-semibold text-text-soft">{blockReason}</p>
-                )}
+            {blockReason && !canSave && (
+              <section className="px-4 py-3">
+                <p className="text-center text-sm font-semibold text-text-soft">{blockReason}</p>
               </section>
             )}
           </div>
         )}
       </div>
 
-      {hasProduct && !showPaperwork && (
+      {hasProduct && (
         <div className={KIOSK_PANE_FOOTER_BAND} data-kiosk-footer-band>
           <Button
             size="lg"
             className={cn('h-full min-h-0 w-full flex-1 rounded-none', cornerClass('flush'))}
-            disabled={!canSubmit || isSubmitting}
-            onClick={() => void handleSubmit()}
-            title={blockReason}
+            disabled={!canSave}
+            onClick={saveToCart}
+            title={blockReason ?? undefined}
           >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting…
-              </>
-            ) : (
-              'Submit repair'
-            )}
+            {savedFlash ? 'Saved to cart' : 'Save to cart'}
           </Button>
         </div>
       )}

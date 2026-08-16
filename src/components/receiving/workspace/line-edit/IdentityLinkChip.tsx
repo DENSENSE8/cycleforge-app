@@ -15,8 +15,13 @@ import { IconButton } from '@/design-system/primitives';
 import { CarrierMark } from '@/components/ui/CarrierMark';
 import { CopyChip, type ChipTone } from '@/components/ui/CopyChip';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import {
+  CHIP_HOVER_MENU_ITEM_CLASS,
+  CHIP_HOVER_MENU_ITEM_SEAM_CLASS,
+  CHIP_HOVER_MENU_ITEM_TONE,
+  CHIP_HOVER_MENU_PANEL_CLASS,
+} from '@/components/ui/copy-chip-hover-menu-chrome';
 import { RECEIVING_CHIP_EDIT_BTN_CLASS } from '@/components/sidebar/receiving/receiving-sidebar-shared';
-import { cornerClass } from '@/design-system/tokens/radius';
 import { hasCarrierBrandPaint, resolveCarrierBrand } from '@/lib/carrier-brand';
 import { normalizeCopyText } from '@/lib/copy-chip-format';
 import { recordCopy } from '@/lib/clipboard-history';
@@ -295,16 +300,16 @@ export function IdentityLinkChip({
             width={grow ? 'min-w-0 flex-1 max-w-full' : 'w-auto'}
             // Default chip outerPad (`px-1.5`) — row stays gap-0 flush abut;
             // breathing lives on each face so listing text never jams the
-            // ticket icon (same inset as PoTotalChip · Claim · Photos).
+            // ticket icon (same inset as Claim · Photos).
             disableCopy={disableCopy || isEditing}
             fitDisplayWidth={!grow}
             displayWidth={lockLast8Width ? 'last8' : 'content'}
             truncateDisplay={grow}
             carrierHint={tone === 'tracking' ? carrierHint : null}
             platformLabel={tone === 'id' ? platformLabel : null}
-            // Hover shows the full value (listing URL / tracking / PO# / ticket#)
-            // via the site tooltip above; the Open/Edit action menu opens beside
-            // the chip (CopyChipHoverMenu side clamp — clears vertical travel).
+            // Hover shows the full value via the site tooltip above. Open/Edit
+            // opens **below** the chip (same px-1.5 as the face). Side flyouts
+            // stay on LedgerGrid CopyChipHoverMenu, not this carton strip.
             tooltipTrigger="hover"
             onActivate={chipActivate}
             activationLabel={chipActivateLabel}
@@ -356,7 +361,7 @@ export function IdentityLinkChip({
             'absolute z-panelPopover transition-opacity duration-100',
             menuPlacement === 'left'
               ? 'right-full top-0'
-              : 'left-0 top-full pt-1',
+              : 'left-0 top-full pt-1.5',
             menuHover
               ? 'visible pointer-events-auto opacity-100'
               : 'invisible pointer-events-none opacity-0',
@@ -365,10 +370,7 @@ export function IdentityLinkChip({
           <div
             role="menu"
             aria-label={`${display} actions`}
-            className={cn(
-              'min-w-[128px] overflow-hidden border border-border-soft bg-surface-card shadow-lg',
-              cornerClass('flush'),
-            )}
+            className={CHIP_HOVER_MENU_PANEL_CLASS}
           >
             {multiLinks ? (
               <>
@@ -378,7 +380,7 @@ export function IdentityLinkChip({
                   role="menuitem"
                   onClick={openAllLinks}
                   aria-label={`Open all ${display} links`}
-                  className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-role-caption font-semibold uppercase tracking-widest text-blue-700 hover:bg-blue-50"
+                  className={cn(CHIP_HOVER_MENU_ITEM_CLASS, CHIP_HOVER_MENU_ITEM_TONE.accent)}
                 >
                   <ExternalLink className="h-3.5 w-3.5 shrink-0 text-blue-600" />
                   Open all
@@ -392,7 +394,7 @@ export function IdentityLinkChip({
                       role="menuitem"
                       onClick={() => window.open(opt.href, '_blank', 'noopener,noreferrer')}
                       aria-label={`Open ${opt.label}`}
-                      className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-role-caption font-semibold uppercase tracking-widest text-blue-700 hover:bg-blue-50"
+                      className={cn(CHIP_HOVER_MENU_ITEM_CLASS, CHIP_HOVER_MENU_ITEM_TONE.accent)}
                     >
                       <ExternalLink className="h-3.5 w-3.5 shrink-0 text-blue-600" />
                       <span className="min-w-0 truncate normal-case tracking-normal">{opt.label}</span>
@@ -411,7 +413,7 @@ export function IdentityLinkChip({
                   disabled={!openHref}
                   onClick={openExternal}
                   aria-label={openTitle}
-                  className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-role-caption font-semibold uppercase tracking-widest text-blue-700 hover:bg-blue-50 disabled:cursor-not-allowed disabled:text-text-faint disabled:opacity-40"
+                  className={cn(CHIP_HOVER_MENU_ITEM_CLASS, CHIP_HOVER_MENU_ITEM_TONE.accent)}
                 >
                   <ExternalLink className="h-3.5 w-3.5 shrink-0 text-blue-600" />
                   Open
@@ -425,7 +427,7 @@ export function IdentityLinkChip({
                 disabled={!canCopy}
                 onClick={copyValue}
                 aria-label={`Copy ${display}`}
-                className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-role-caption font-semibold uppercase tracking-widest text-text-muted hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-40"
+                className={cn(CHIP_HOVER_MENU_ITEM_CLASS, CHIP_HOVER_MENU_ITEM_TONE.default)}
               >
                 <Copy className="h-3.5 w-3.5 shrink-0 text-text-soft" />
                 Copy
@@ -440,7 +442,11 @@ export function IdentityLinkChip({
                 onClick={onEdit}
                 aria-expanded={editOpen}
                 aria-label={editLabel}
-                className="flex w-full items-center gap-2 border-t border-border-hairline px-3 py-1.5 text-left text-role-caption font-semibold uppercase tracking-widest text-text-muted hover:bg-surface-hover"
+                className={cn(
+                  CHIP_HOVER_MENU_ITEM_CLASS,
+                  CHIP_HOVER_MENU_ITEM_SEAM_CLASS,
+                  CHIP_HOVER_MENU_ITEM_TONE.default,
+                )}
               >
                 <Pencil className="h-3.5 w-3.5 shrink-0 text-text-soft" />
                 Edit
@@ -453,7 +459,11 @@ export function IdentityLinkChip({
                 role="menuitem"
                 onClick={onDetails}
                 aria-label={detailsLabel}
-                className="flex w-full items-center gap-2 border-t border-border-hairline px-3 py-1.5 text-left text-role-caption font-semibold uppercase tracking-widest text-text-muted hover:bg-surface-hover"
+                className={cn(
+                  CHIP_HOVER_MENU_ITEM_CLASS,
+                  CHIP_HOVER_MENU_ITEM_SEAM_CLASS,
+                  CHIP_HOVER_MENU_ITEM_TONE.default,
+                )}
               >
                 <Info className="h-3.5 w-3.5 shrink-0 text-text-soft" />
                 {detailsLabel}

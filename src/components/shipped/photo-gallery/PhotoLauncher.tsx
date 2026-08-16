@@ -136,6 +136,7 @@ export function PhotoLauncher({ g }: { g: PhotoGalleryController }) {
         items={items}
         menuLabel="Photo actions"
         denseLabel
+        itemPad="chip"
         className={className}
         data-testid="photo-launcher-toolbar"
       />
@@ -174,6 +175,7 @@ export function PhotoLauncher({ g }: { g: PhotoGalleryController }) {
           items={items}
           menuLabel="Photo actions"
           denseLabel
+          itemPad="chip"
           data-testid="photo-launcher-toolbar"
         />
       </div>

@@ -37,7 +37,7 @@ export interface CounterRetailLine {
   sku: string;
   productTitle: string;
   quantity: number;
-  /** Unit price in minor units (cents). */
+  /** Unit price in minor units (cents). Negative = buyback / trade-in credit. */
   unitAmountCents: number;
 }
 
@@ -194,9 +194,9 @@ export function computeCounterTotals(input: {
 }): { subtotalCents: number; totalCents: number } {
   const subtotalCents = (input.retailLines ?? []).reduce((sum, line) => {
     const qty = Number.isFinite(line.quantity) ? Math.max(0, Math.trunc(line.quantity)) : 0;
-    const unit = Number.isFinite(line.unitAmountCents)
-      ? Math.max(0, Math.trunc(line.unitAmountCents))
-      : 0;
+    // Allow negative unit amounts (kiosk BUYBACK / trade-in credits). Do not
+    // clamp with Math.max(0) — that silently ate trade-in credits.
+    const unit = Number.isFinite(line.unitAmountCents) ? Math.trunc(line.unitAmountCents) : 0;
     return sum + qty * unit;
   }, 0);
 
