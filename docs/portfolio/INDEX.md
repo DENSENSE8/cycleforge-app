@@ -2,7 +2,7 @@
 
 > **Status:** Living SoT · 2026-07-12  
 > **Hub:** [README.md](./README.md) · **Lanes:** [WORKTREE-LANES.md](./WORKTREE-LANES.md) · **Review:** [review-protocol.md](./review-protocol.md)  
-> **Catalog:** [`DOC-CATALOG.md`](./DOC-CATALOG.md) (615 files, regenerated 2026-08-10) · run `node scripts/portfolio-sot-sync.mjs`
+> **Catalog:** [`DOC-CATALOG.md`](./DOC-CATALOG.md) (615 files, regenerated 2026-08-12) · run `node scripts/portfolio-sot-sync.mjs`
 > **Live tickets:** [`master-plan.mdx`](../../master-plan.mdx) → `/forge` or usav-dev  
 > **Lane registry:** [`dev-worktrees.json`](../../dev-worktrees.json) — a registry only. The
 > per-lane port resolver and `pnpm dev:switcher` were removed 2026-07-29; `pnpm dev` is a plain
@@ -38,41 +38,15 @@ Docs stay in this monorepo. Worktrees are **code lanes** only ([WORKTREE-LANES.m
 
 | WT-ID | Absolute path | Branch | HEAD | Switcher card | Unlock parked | Workstreams |
 |-------|---------------|--------|------|---------------|---------------|-------------|
-| `main` | `/Users/icecube/repos/cycleforge-app` | `main` | `b9b7880c2` | yes · :3000 | no | WS-DOGFOOD + lane=main |
-| `ai-chat` | `/Users/icecube/repos/cycleforge-ai-chat` | `topic/ai-chat` | `3f55b275e` | yes · :3010 | yes | WS-AI |
-| `fba` | `/Users/icecube/repos/cycleforge-fba` | `topic/fba` | `3f55b275e` | yes · :3020 | yes | WS-FBA |
-| `glass` | `/Users/icecube/repos/cycleforge-glass` | `glass-design-system` | `a331b1247` | yes · :3030 | yes | WS-GLASS |
-| `home` | `/Users/icecube/repos/cycleforge-home` | `topic/home` | `dfd5f517f` | yes · :3040 | yes | WS-HOME |
-| `inventory` | `/Users/icecube/repos/cycleforge-inventory` | `topic/inventory` | `3f55b275e` | yes · :3050 | yes | WS-INV |
-| `journey-hops` | `/Users/icecube/repos/cycleforge-journey-hops` | `topic/journey-hops` | `74d1dd5f6` | yes · :3000 | yes | — |
-| `note-grain` | `/Users/icecube/repos/cycleforge-note-grain` | `topic/note-grain` | `5c331b60a` | yes · :3140 | no | — |
-| `photo` | `/Users/icecube/repos/cycleforge-photo` | `topic/photo` | `6b7aab4ce` | yes · :3110 | yes | — |
-| `review` | `/Users/icecube/repos/cycleforge-review` | `topic/review` | `b766dd58f` | yes · :3000 | yes | — |
-| `sourcing` | `/Users/icecube/repos/cycleforge-sourcing` | `topic/sourcing` | `3f55b275e` | yes · :3060 | yes | WS-SRC |
-| `tables` | `/Users/icecube/repos/cycleforge-tables` | `topic/tables` | `5d94aad3a` | yes · :3150 | yes | — |
-| `tasks` | `/Users/icecube/repos/cycleforge-tasks` | `topic/tasks` | `e881fd2ad` | yes · :3160 | yes | — |
-| `unbox` | `/Users/icecube/repos/cycleforge-unbox` | `unbox-work` | `e627e3d3e` | yes · :3080 | yes | — |
-| `warehouse` | `/Users/icecube/repos/cycleforge-warehouse` | `topic/warehouse` | `3f55b275e` | yes · :3090 | yes | WS-WH |
+| `main` | `E:/cycleforge-app` | `main` | `5fd4a312b` | yes · :3000 | no | WS-DOGFOOD + lane=main |
+| `nav-ia` | `E:/cycleforge-nav-ia` | `topic/nav-ia` | `e3d409e4c` | yes · :3130 | yes | — |
 
 **Relative paths (for switcher / docs):**
 
 | WT-ID | Path relative to monorepo parent |
 |-------|----------------------------------|
 | `main` | `.` (parent: `cycleforge-app`) |
-| `ai-chat` | `../cycleforge-ai-chat` (parent: `cycleforge-ai-chat`) |
-| `fba` | `../cycleforge-fba` (parent: `cycleforge-fba`) |
-| `glass` | `../cycleforge-glass` (parent: `cycleforge-glass`) |
-| `home` | `../cycleforge-home` (parent: `cycleforge-home`) |
-| `inventory` | `../cycleforge-inventory` (parent: `cycleforge-inventory`) |
-| `journey-hops` | `../cycleforge-journey-hops` (parent: `cycleforge-journey-hops`) |
-| `note-grain` | `../cycleforge-note-grain` (parent: `cycleforge-note-grain`) |
-| `photo` | `../cycleforge-photo` (parent: `cycleforge-photo`) |
-| `review` | `../cycleforge-review` (parent: `cycleforge-review`) |
-| `sourcing` | `../cycleforge-sourcing` (parent: `cycleforge-sourcing`) |
-| `tables` | `../cycleforge-tables` (parent: `cycleforge-tables`) |
-| `tasks` | `../cycleforge-tasks` (parent: `cycleforge-tasks`) |
-| `unbox` | `../cycleforge-unbox` (parent: `cycleforge-unbox`) |
-| `warehouse` | `../cycleforge-warehouse` (parent: `cycleforge-warehouse`) |
+| `nav-ia` | `../cycleforge-nav-ia` (parent: `cycleforge-nav-ia`) |
 
 **Add a tree:**
 

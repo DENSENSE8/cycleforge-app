@@ -1,2 +1,4 @@
-# Auto detect text files and perform LF normalization
-* text=auto
+# Auto detect text files; store as LF in the repo AND check out as LF on every
+# platform (Windows included). Prevents CRLF from breaking the POSIX-oriented
+# DS guard tests. `eol=lf` overrides core.autocrlf/core.eol for the working tree.
+* text=auto eol=lf
