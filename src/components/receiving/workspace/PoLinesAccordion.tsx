@@ -246,7 +246,11 @@ export function PoLinesAccordion({
               // with either. Arrival (`unitsChrome={false}`) never stamps serials.
               onSerialAbsentChange={
                 unitsChrome
-                  ? (lineId, next) => markReceivingSerialAbsent(lineId, next)
+                  ? (lineId, next) =>
+                      markReceivingSerialAbsent(lineId, next, {
+                        serial_absent: line.serial_absent ?? false,
+                        serial_absent_reason: line.serial_absent_reason ?? null,
+                      })
                   : undefined
               }
               serialSplit={

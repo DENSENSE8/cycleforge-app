@@ -144,7 +144,7 @@ export function useCartonLabelEditor(
       printReceivingLabel(buildPayload(draft));
       // Same choke point the unbox print fires: optimistic marker/event + durable
       // label_printed_at stamp, so row chips flip and the Print step persists.
-      markReceivingLabelPrinted(row.id);
+      markReceivingLabelPrinted(row.id, row.label_printed_at ?? null);
     },
     [
       opts.conditionCode,

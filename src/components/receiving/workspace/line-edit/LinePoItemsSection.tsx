@@ -367,7 +367,10 @@ export function LinePoItemsSection({
                   }}
                   onConditionChange={(next) => {
                     if (isControllerLine) c.setCond(next);
-                    patchReceivingLineCondition(line.id, next);
+                    patchReceivingLineCondition(line.id, next, {
+                      condition_grade: line.condition_grade ?? null,
+                      condition_graded_at: line.condition_graded_at ?? null,
+                    });
                   }}
                   onEditingSerialChange={c.setHeaderSerialEdit}
                   serialAbsent={
@@ -386,7 +389,10 @@ export function LinePoItemsSection({
                       c.commitSerialAbsent(next);
                       return;
                     }
-                    markReceivingSerialAbsent(line.id, next);
+                    markReceivingSerialAbsent(line.id, next, {
+                      serial_absent: line.serial_absent ?? false,
+                      serial_absent_reason: line.serial_absent_reason ?? null,
+                    });
                   }}
                   units={units}
                   serialInputRef={isControllerLine ? c.serialRef : undefined}

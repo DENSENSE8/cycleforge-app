@@ -27,6 +27,7 @@ import { ActiveLineConditionSerial } from '@/components/receiving/workspace/line
 import { ReceivingPhotoButton } from '@/components/receiving/workspace/line-edit/ReceivingPhotoButton';
 import { useSerialLookup, type SerialMatchedOrder } from '@/components/receiving/workspace/SerialMatchResult';
 import { dispatchSelectLine } from '@/components/station/receiving-lines-table-helpers';
+import { patchReceivingLineCondition } from '@/components/receiving/workspace/patch-receiving-line-condition';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { receivingSiblingsQueryKey } from '@/lib/queries/receiving-queries';
 import { receivingWorkspaceLineTitle } from '@/lib/receiving/po-group-title';
@@ -262,18 +263,14 @@ function ActiveLineExplosion({
           onActiveConditionChange={c.setUnitLabelCondition}
           onConditionChange={(next) => {
             c.setCond(next);
-            const cleared = !String(next || '').trim();
-            if (cleared) {
-              // Line testing.condition_grade is NOT NULL — reopen retracts the
-              // grading act (condition_graded_at) without inventing a null grade.
-              void fetch(`/api/receiving/lines/${line.id}/condition`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ reopen: true }),
-              }).catch(() => {});
-              return;
-            }
-            void c.patch({ condition_grade: next });
+            // Both the set and the reopen go through the choke point: it owns
+            // the `condition_graded_at` stamp (a generic line PATCH writes
+            // `condition_grade` alone and leaves the Condition step stuck), and
+            // it reverts + reports if the write does not land.
+            patchReceivingLineCondition(line.id, next, {
+              condition_grade: line.condition_grade ?? null,
+              condition_graded_at: line.condition_graded_at ?? null,
+            });
           }}
           onEditingSerialChange={c.setHeaderSerialEdit}
           serialAbsent={c.serialAbsent}

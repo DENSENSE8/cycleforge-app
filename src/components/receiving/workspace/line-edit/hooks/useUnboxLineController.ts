@@ -493,8 +493,8 @@ export function useUnboxLineController(
 
   // Stamp the "label printed" marker + event so the row chips flip.
   const markLabelPrinted = useCallback(() => {
-    markReceivingLabelPrinted(row.id);
-  }, [row.id]);
+    markReceivingLabelPrinted(row.id, row.label_printed_at ?? null);
+  }, [row.id, row.label_printed_at]);
 
   const printKind = useCallback(
     (kind: WorkspaceLabelKind | string) => {
@@ -1015,11 +1015,14 @@ export function useUnboxLineController(
   // stamps receiving_line_testing so the waiver survives refresh / another device.
   const commitSerialAbsent = useCallback(
     ({ absent, reason }: { absent: boolean; reason: string | null }) => {
+      // Snapshot BEFORE the local setState pair, or the revert would restore
+      // the value we are about to write rather than the one on record.
+      const previous = { serial_absent: serialAbsent, serial_absent_reason: serialAbsentReason };
       setSerialAbsent(absent);
       setSerialAbsentReason(reason);
-      markReceivingSerialAbsent(row.id, { absent, reason });
+      markReceivingSerialAbsent(row.id, { absent, reason }, previous);
     },
-    [row.id],
+    [row.id, serialAbsent, serialAbsentReason],
   );
 
   return {

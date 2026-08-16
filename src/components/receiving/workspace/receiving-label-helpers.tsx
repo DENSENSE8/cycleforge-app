@@ -1,6 +1,7 @@
 'use client';
 
 import { dispatchLineUpdated } from '@/components/station/receiving-lines-table-helpers';
+import { persistGateWrite, persistGateWriteBatch } from './receiving-gate-write';
 import { buildFaceInfoHtml } from '@/lib/print/labelFace';
 import {
   receivingPayloadToFace,
@@ -102,23 +103,57 @@ export function printReceivingLabel(payload: ReceivingLabelPayload) {
  *      step / row chips flip *instantly* on this device (optimistic).
  *   2. POST /api/receiving/lines/[id]/label-printed → the DURABLE stamp
  *      (`receiving_line_testing.label_printed_at`) that survives refresh / other
- *      devices and is auditable. Fire-and-forget; the server COALESCE keeps the
- *      first print, so a reprint is a no-op on the recorded value.
+ *      devices and is auditable. The server COALESCE keeps the first print, so a
+ *      reprint is a no-op on the recorded value — but a write that never lands
+ *      is not a no-op, so the result is inspected and reverted on failure.
+ *
+ * `previousPrintedAt` is required (see {@link PreviousLineCondition}) so the
+ * commit `stage` pointer cannot stay armed on a print the server never recorded.
+ * A reprint passes the existing stamp and correctly reverts to it.
  */
-export function markReceivingLabelPrinted(lineId: number): void {
+export function markReceivingLabelPrinted(
+  lineId: number,
+  previousPrintedAt: string | null,
+): void {
   if (typeof window === 'undefined' || !(lineId > 0)) return;
+  persistGateWrite({
+    fact: 'Print record',
+    // Optimistic patch — stamps label_printed_at without waiting for the
+    // POST / feed invalidate round-trip.
+    apply: () => announceLabelPrinted(lineId, new Date().toISOString()),
+    // A prior print restores its stamp; a first print that failed clears the
+    // marker, or the local chip would outlive the stamp it stands for.
+    revert: () => announceLabelPrinted(lineId, previousPrintedAt),
+    url: `/api/receiving/lines/${lineId}/label-printed`,
+    init: { method: 'POST' },
+  });
+}
+
+/**
+ * Publish one label-printed state — local marker, DOM event, row patch.
+ *
+ * Apply and revert are the SAME broadcast with a different stamp, so they share
+ * one body: a second copy would be a second place for the three effects to fall
+ * out of step, and it would add a raw `receiving-` CustomEvent to a bus the
+ * `receiving-events.guard` ratchet is actively shrinking.
+ *
+ * `printedAt === null` clears. Only the marker's PRESENCE is read anywhere
+ * (the durable column superseded its value — see
+ * `2026-07-12_receiving_line_label_printed_at.sql`), so the stamp is stored
+ * as-is rather than re-derived.
+ */
+function announceLabelPrinted(lineId: number, printedAt: string | null): void {
   try {
-    window.localStorage.setItem(`receiving-label-printed:${lineId}`, String(Date.now()));
+    const localKey = `receiving-label-printed:${lineId}`;
+    if (printedAt) window.localStorage.setItem(localKey, printedAt);
+    else window.localStorage.removeItem(localKey);
   } catch {
     /* private-mode / quota — non-fatal */
   }
   window.dispatchEvent(
     new CustomEvent('receiving-label-printed', { detail: { line_id: lineId } }),
   );
-  // Optimistic row patch — stamps label_printed_at without waiting for the
-  // POST / feed invalidate round-trip.
-  dispatchLineUpdated({ id: lineId, label_printed_at: new Date().toISOString() });
-  void fetch(`/api/receiving/lines/${lineId}/label-printed`, { method: 'POST' }).catch(() => {});
+  dispatchLineUpdated({ id: lineId, label_printed_at: printedAt });
 }
 
 /**
@@ -133,7 +168,8 @@ export function markReceivingLabelPrinted(lineId: number): void {
  *      the SAME optimistic path a scanned serial already rides.
  *   2. POST /api/receiving/lines/[id]/serial-absent → the DURABLE stamp
  *      (`receiving_line_testing.serial_absent`) that survives refresh / another
- *      device. Fire-and-forget; a toggle writes the exact value (set or clear).
+ *      device. A toggle writes the exact value (set or clear), and the result is
+ *      inspected so a rejected waiver cannot leave the Serial step settled.
  *
  * A stub/unfound line (id ≤ 0) is skipped — there's no persisted line to stamp
  * yet; the local controller state still reflects the waiver until the line lands.
@@ -141,18 +177,30 @@ export function markReceivingLabelPrinted(lineId: number): void {
 export function markReceivingSerialAbsent(
   lineId: number,
   { absent, reason }: { absent: boolean; reason: string | null },
+  previous: { serial_absent: boolean; serial_absent_reason: string | null },
 ): void {
   if (typeof window === 'undefined' || !(lineId > 0)) return;
-  dispatchLineUpdated({
-    id: lineId,
-    serial_absent: absent,
-    serial_absent_reason: reason,
+  persistGateWrite({
+    fact: 'No-serial waiver',
+    apply: () =>
+      dispatchLineUpdated({
+        id: lineId,
+        serial_absent: absent,
+        serial_absent_reason: reason,
+      }),
+    revert: () =>
+      dispatchLineUpdated({
+        id: lineId,
+        serial_absent: previous.serial_absent,
+        serial_absent_reason: previous.serial_absent_reason,
+      }),
+    url: `/api/receiving/lines/${lineId}/serial-absent`,
+    init: {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ absent, reason }),
+    },
   });
-  void fetch(`/api/receiving/lines/${lineId}/serial-absent`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ absent, reason }),
-  }).catch(() => {});
 }
 
 type LineUnitWire = {
@@ -174,8 +222,12 @@ type LineUnitWire = {
  *   1. `dispatchLineUpdated` patches `units[]` on the shared bus so the Unbox
  *      stepper (which derives from `row.units`) flips on the same frame.
  *   2. POST /api/receiving/lines/[id]/units/[unitId]/serial-absent → the
- *      DURABLE stamp on `receiving_line_unit`. Fire-and-forget; exact-value
- *      toggle (set or clear). Never touches the line-level waiver.
+ *      DURABLE stamp on `receiving_line_unit`. Exact-value toggle (set or
+ *      clear); the result is inspected and the slot reverted on failure. Never
+ *      touches the line-level waiver.
+ *
+ * `currentUnits` is both the optimistic base and the rollback snapshot — no
+ * extra argument is needed to revert.
  */
 export function markReceivingUnitSerialAbsent(
   lineId: number,
@@ -184,25 +236,34 @@ export function markReceivingUnitSerialAbsent(
   currentUnits: ReadonlyArray<LineUnitWire> | null | undefined,
 ): void {
   if (typeof window === 'undefined' || !(lineId > 0) || !(unitId > 0)) return;
-  if (currentUnits) {
-    dispatchLineUpdated({
-      id: lineId,
-      units: currentUnits.map((u) =>
-        u.id === unitId
-          ? {
-              ...u,
-              serial_absent: absent,
-              serial_absent_reason: reason,
-            }
-          : u,
-      ),
-    });
-  }
-  void fetch(`/api/receiving/lines/${lineId}/units/${unitId}/serial-absent`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ absent, reason }),
-  }).catch(() => {});
+  persistGateWrite({
+    fact: 'Unit no-serial waiver',
+    apply: () => {
+      if (!currentUnits) return;
+      dispatchLineUpdated({
+        id: lineId,
+        units: currentUnits.map((u) =>
+          u.id === unitId
+            ? {
+                ...u,
+                serial_absent: absent,
+                serial_absent_reason: reason,
+              }
+            : u,
+        ),
+      });
+    },
+    revert: () => {
+      if (!currentUnits) return;
+      dispatchLineUpdated({ id: lineId, units: currentUnits.map((u) => ({ ...u })) });
+    },
+    url: `/api/receiving/lines/${lineId}/units/${unitId}/serial-absent`,
+    init: {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ absent, reason }),
+    },
+  });
 }
 
 /**
@@ -222,25 +283,37 @@ export function markReceivingUnitCondition(
   const raw = String(conditionGrade || '').trim().toUpperCase();
   // Empty string clears the per-unit grade (nullable column).
   const grade: string | null = raw || null;
-  if (currentUnits) {
-    dispatchLineUpdated({
-      id: lineId,
-      units: currentUnits.map((u) =>
-        u.id === unitId ? { ...u, condition_grade: grade } : u,
-      ),
-    });
-  }
-  void fetch(`/api/receiving/lines/${lineId}/units/${unitId}/condition`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ condition_grade: grade }),
-  }).catch(() => {});
+  persistGateWrite({
+    fact: 'Unit condition grade',
+    apply: () => {
+      if (!currentUnits) return;
+      dispatchLineUpdated({
+        id: lineId,
+        units: currentUnits.map((u) =>
+          u.id === unitId ? { ...u, condition_grade: grade } : u,
+        ),
+      });
+    },
+    revert: () => {
+      if (!currentUnits) return;
+      dispatchLineUpdated({ id: lineId, units: currentUnits.map((u) => ({ ...u })) });
+    },
+    url: `/api/receiving/lines/${lineId}/units/${unitId}/condition`,
+    init: {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ condition_grade: grade }),
+    },
+  });
 }
 
 /**
  * Stamp every materialised unit on a line to one grade — the "All units"
  * master picker. One bus patch (so intermediate frames aren't half-updated),
  * then one durable PATCH per unit.
+ *
+ * Partial failure reverts **only** the units whose PATCH did not land; the ones
+ * that succeeded keep the new grade, because they are durable.
  */
 export function markAllReceivingUnitsCondition(
   lineId: number,
@@ -252,17 +325,33 @@ export function markAllReceivingUnitsCondition(
   // Empty string clears every unit grade (nullable).
   const grade: string | null = raw || null;
   if (!currentUnits || currentUnits.length === 0) return;
-  dispatchLineUpdated({
-    id: lineId,
-    units: currentUnits.map((u) => ({ ...u, condition_grade: grade })),
+  const snapshot = currentUnits;
+  persistGateWriteBatch<LineUnitWire>({
+    fact: 'unit grade',
+    items: snapshot,
+    apply: () =>
+      dispatchLineUpdated({
+        id: lineId,
+        units: snapshot.map((u) => ({ ...u, condition_grade: grade })),
+      }),
+    revert: (failed) => {
+      const failedIds = new Set(failed.map((u) => u.id));
+      dispatchLineUpdated({
+        id: lineId,
+        units: snapshot.map((u) =>
+          failedIds.has(u.id) ? { ...u } : { ...u, condition_grade: grade },
+        ),
+      });
+    },
+    request: (u) => ({
+      url: `/api/receiving/lines/${lineId}/units/${u.id}/condition`,
+      init: {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ condition_grade: grade }),
+      },
+    }),
   });
-  for (const u of currentUnits) {
-    void fetch(`/api/receiving/lines/${lineId}/units/${u.id}/condition`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ condition_grade: grade }),
-    }).catch(() => {});
-  }
 }
 
 /**
@@ -284,19 +373,36 @@ export function markReceivingUnitsConditionSplit(
     : null;
   if (!primary || !currentUnits || currentUnits.length === 0) return;
   const cut = Math.max(0, Math.min(Math.floor(primaryCount), currentUnits.length));
-  const next = currentUnits.map((u, i) => ({
+  const snapshot = currentUnits;
+  const next = snapshot.map((u, i) => ({
     ...u,
     condition_grade: i < cut ? primary : secondary ?? primary,
   }));
-  dispatchLineUpdated({ id: lineId, units: next });
-  for (const u of next) {
-    if (!u.condition_grade) continue;
-    void fetch(`/api/receiving/lines/${lineId}/units/${u.id}/condition`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ condition_grade: u.condition_grade }),
-    }).catch(() => {});
-  }
+  const byId = new Map(next.map((u) => [u.id, u]));
+  persistGateWriteBatch<LineUnitWire>({
+    fact: 'unit grade',
+    items: next.filter((u) => u.condition_grade),
+    apply: () => dispatchLineUpdated({ id: lineId, units: next }),
+    revert: (failed) => {
+      const failedIds = new Set(failed.map((u) => u.id));
+      dispatchLineUpdated({
+        id: lineId,
+        // Failed units fall back to their pre-split grade; the rest keep the
+        // split value they durably received.
+        units: snapshot.map((u) =>
+          failedIds.has(u.id) ? { ...u } : (byId.get(u.id) ?? { ...u }),
+        ),
+      });
+    },
+    request: (u) => ({
+      url: `/api/receiving/lines/${lineId}/units/${u.id}/condition`,
+      init: {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ condition_grade: u.condition_grade }),
+      },
+    }),
+  });
 }
 
 /**
@@ -312,22 +418,39 @@ export function markAllEmptyReceivingUnitsSerialAbsent(
   if (typeof window === 'undefined' || !(lineId > 0)) return;
   const code = String(reason || '').trim() || 'BULK';
   if (!currentUnits || currentUnits.length === 0) return;
-  const targets = currentUnits.filter((u) => u.serial_unit_id == null);
+  const snapshot = currentUnits;
+  const targets = snapshot.filter((u) => u.serial_unit_id == null);
   if (targets.length === 0) return;
   const targetIds = new Set(targets.map((u) => u.id));
-  dispatchLineUpdated({
-    id: lineId,
-    units: currentUnits.map((u) =>
-      targetIds.has(u.id)
-        ? { ...u, serial_absent: true, serial_absent_reason: code }
-        : u,
-    ),
+  const waived = (u: LineUnitWire) => ({
+    ...u,
+    serial_absent: true,
+    serial_absent_reason: code,
   });
-  for (const u of targets) {
-    void fetch(`/api/receiving/lines/${lineId}/units/${u.id}/serial-absent`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ absent: true, reason: code }),
-    }).catch(() => {});
-  }
+  persistGateWriteBatch<LineUnitWire>({
+    fact: 'unit no-serial waiver',
+    items: targets,
+    apply: () =>
+      dispatchLineUpdated({
+        id: lineId,
+        units: snapshot.map((u) => (targetIds.has(u.id) ? waived(u) : u)),
+      }),
+    revert: (failed) => {
+      const failedIds = new Set(failed.map((u) => u.id));
+      dispatchLineUpdated({
+        id: lineId,
+        units: snapshot.map((u) =>
+          targetIds.has(u.id) && !failedIds.has(u.id) ? waived(u) : { ...u },
+        ),
+      });
+    },
+    request: (u) => ({
+      url: `/api/receiving/lines/${lineId}/units/${u.id}/serial-absent`,
+      init: {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ absent: true, reason: code }),
+      },
+    }),
+  });
 }
