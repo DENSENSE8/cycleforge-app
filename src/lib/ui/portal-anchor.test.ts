@@ -9,6 +9,7 @@ import {
   clampPortalSideMenuPosition,
   clampPortalTooltipPosition,
   isTrustedPortalAnchor,
+  PORTAL_BELOW_MENU_GAP,
   PORTAL_SIDE_MENU_GAP,
   PORTAL_TOOLTIP_MARGIN,
   readTrustedTriggerRect,
@@ -200,6 +201,60 @@ test('clampPortalSideMenuPosition rejects mid-screen top-left flash path', () =>
     null,
     `mid-screen trigger must not yield a top-left-pinned side menu, got ${JSON.stringify(pos)}`,
   );
+});
+
+test('clampPortalSideMenuPosition bottom + start sits under the trigger left edge', () => {
+  const anchor = rect({ top: 80, left: 900, width: 48, height: 28 });
+  const bubble = { width: 180, height: 120 };
+  const pos = clampPortalSideMenuPosition({
+    anchor,
+    bubble,
+    viewport: VIEW,
+    placement: 'bottom',
+    align: 'start',
+    avoidCollisions: false,
+  });
+  assert.ok(pos);
+  assert.equal(pos!.side, 'bottom');
+  assert.equal(pos!.left, anchor.left);
+  assert.equal(pos!.top, anchor.bottom + PORTAL_BELOW_MENU_GAP);
+  // Must not hang to the leading side of the chip (Claim lives there on the carton bar).
+  assert.ok(pos!.left >= anchor.left - 0.5);
+  assert.ok(pos!.top >= anchor.bottom);
+});
+
+test('clampPortalSideMenuPosition bottom + end aligns to the trigger right edge', () => {
+  const anchor = rect({ top: 80, left: 1000, width: 36, height: 28 });
+  const bubble = { width: 160, height: 80 };
+  const pos = clampPortalSideMenuPosition({
+    anchor,
+    bubble,
+    viewport: VIEW,
+    placement: 'bottom',
+    align: 'end',
+    avoidCollisions: false,
+  });
+  assert.ok(pos);
+  assert.equal(pos!.side, 'bottom');
+  assert.equal(pos!.left, anchor.right - bubble.width);
+  assert.equal(pos!.top, anchor.bottom + PORTAL_BELOW_MENU_GAP);
+});
+
+test('clampPortalSideMenuPosition bottom does not flip to a side when collisions are off', () => {
+  const anchor = rect({ top: 80, left: 1100, width: 48, height: 28 });
+  const bubble = { width: 200, height: 120 };
+  const pos = clampPortalSideMenuPosition({
+    anchor,
+    bubble,
+    viewport: VIEW,
+    placement: 'bottom',
+    align: 'start',
+    avoidCollisions: false,
+  });
+  assert.ok(pos);
+  assert.equal(pos!.side, 'bottom');
+  assert.equal(pos!.left, anchor.left);
+  assert.ok(pos!.left + bubble.width > VIEW.width);
 });
 
 test('readTrustedTriggerRect rejects disconnected / display:none', () => {

@@ -599,24 +599,28 @@ for (const factor of TABLET_FACTORS) {
         await expect(page.getByTestId('kiosk-spine-search')).toHaveCount(0);
         await expect(spine.getByText('Repair', { exact: true })).toHaveCount(0);
         await expect(page.getByRole('heading', { name: /catalog/i })).toBeVisible();
-        await expect(page.getByRole('heading', { name: /all repairs/i })).toBeVisible();
+        await expect(page.getByRole('heading', { name: /all (repairs|items)/i })).toBeVisible();
         await expect(page.locator('[class*="fixed"][class*="bottom-0"]')).toHaveCount(0);
 
-        await expect(page.getByRole('tablist', { name: /kiosk service mode/i })).toBeVisible();
+        await expect(page.getByRole('tablist', { name: /kiosk commands/i })).toBeVisible();
         await expect(page.getByRole('tab', { name: /repair drop-off/i })).toBeVisible();
+        await expect(page.getByTestId('kiosk-cart-ledger')).toBeVisible();
 
         await page.getByTestId('kiosk-spine-toggle').click();
         await expect(spine).toHaveAttribute('data-spine-expanded', 'true');
         await expect(page.getByTestId('kiosk-spine-search')).toBeVisible();
         await expect(spine.getByText('Repair', { exact: true })).toBeVisible();
-        await expect(spine.getByText('Buy / Sell', { exact: true })).toBeVisible();
+        await expect(spine.getByText('Retail', { exact: true })).toBeVisible();
+        await expect(spine.getByText('Buyback', { exact: true })).toBeVisible();
         await expect(spine.getByText('Pickup', { exact: true })).toBeVisible();
 
-        await page.getByRole('tab', { name: /buy \/ sell/i }).click();
+        // Command switch must NOT confirm / clear the cart session.
+        await page.getByRole('tab', { name: /buy \/ sell|retail/i }).click();
         await expect(page.getByRole('heading', { name: /all items/i })).toBeVisible();
+        await expect(page.getByTestId('kiosk-cart-ledger')).toBeVisible();
 
         await page.getByRole('tab', { name: /order pickup/i }).click();
-        await expect(page.getByRole('heading', { name: /pickup details/i })).toBeVisible();
+        await expect(page.getByRole('heading', { name: /^pickup$/i })).toBeVisible();
         await expect(page.getByText(/find your order/i)).toBeVisible();
         await expect(page.getByRole('button', { name: /look up order/i })).toBeVisible();
 
@@ -624,6 +628,13 @@ for (const factor of TABLET_FACTORS) {
         await expect(spine).toHaveAttribute('data-spine-expanded', 'false');
         await expect(page.getByTestId('kiosk-spine-search')).toHaveCount(0);
         await expect(page.getByRole('tab', { name: /order pickup/i })).toBeVisible();
+
+        // Customer face strips void controls.
+        await page.getByTestId('kiosk-show-customer').click();
+        await expect(page.getByTestId('kiosk-customer-face')).toBeVisible();
+        await expect(page.getByTestId('kiosk-cart-void-line')).toHaveCount(0);
+        await page.getByTestId('kiosk-return-staff').click();
+        await expect(page.getByTestId('kiosk-cart-ledger')).toBeVisible();
       } finally {
         await context.close();
         await revokeDevice(request, deviceId);

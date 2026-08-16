@@ -90,16 +90,16 @@ const PHONE_CLICK_DEFER_MS = 280;
  * tip readable; longer hover still lands the action strip.
  */
 const GALLERY_OPEN_DELAY_MS = 420;
-/** Gap between the pill and the portaled gallery — flush abut (no air). */
-const GALLERY_GAP_PX = 0;
+/** Gap between the pill and the portaled gallery — ~6px, same as carton chip menus. */
+const GALLERY_GAP_PX = 6;
 
 function galleryAnchoredPlacement(
   placement: 'below' | 'above' | 'right' | 'left',
 ): AnchoredPlacement {
-  if (placement === 'above') return 'top-end';
+  if (placement === 'above') return 'top-start';
   if (placement === 'right') return 'right-start';
   if (placement === 'left') return 'left-start';
-  return 'bottom-end';
+  return 'bottom-start';
 }
 
 export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
@@ -163,13 +163,10 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
   poRouteRef?: string | null;
   /**
    * Where the hover gallery card opens relative to the pill.
-   * - `below` — under the pill (unit rows, default).
+   * - `below` — under the pill, align start (carton identity + unit rows).
    * - `above` — bottom-anchored chrome (unbox item dock) so the card never
    *   runs off the pane edge.
-   * - `left` — beside the pill toward the work surface (carton identity). Keeps
-   *   Claim / ticket under Photos clear and never paints into Displays / off
-   *   the viewport edge.
-   * - `right` — beside the pill toward the trailing edge (legacy / rare).
+   * - `left` / `right` — beside the pill (legacy hosts only — not the carton bar).
    */
   galleryPlacement?: 'below' | 'above' | 'right' | 'left';
   /**
@@ -522,8 +519,8 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
         Body portal at panelPopover — escapes the locked-720 center
         (overflow-hidden + sibling utility/Displays stacking). Gap bridge lives
         on the portaled host via mouse enter/leave (pill leave delay still
-        applies). Carton identity uses `left` so Claim stays reachable under
-        Photos and the strip never runs into Displays / off-page.
+        applies). Carton chrome opens below-start and skips collision clamp so
+        the panel cannot be shoved left over Claim.
       */}
       <AnchoredLayer
         open={showGalleryPeek}
@@ -532,6 +529,7 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
         placement={galleryAnchoredPlacement(galleryPlacement)}
         level="panelPopover"
         gap={GALLERY_GAP_PX}
+        avoidCollisions={appearance !== 'chrome'}
         closeOnEscape={!galleryUploadPinned && !galleryMovePinned}
         className="w-max max-w-[18rem]"
       >

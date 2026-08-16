@@ -14,6 +14,8 @@
 export const PORTAL_TOOLTIP_MARGIN = 8;
 /** Default gap between a side-menu trigger and its portal panel. */
 export const PORTAL_SIDE_MENU_GAP = 4;
+/** Gap under a carton-bar chip when the menu opens below (matches ~6px / `pt-1.5`). */
+export const PORTAL_BELOW_MENU_GAP = 6;
 const PORTAL_ANCHOR_MIN_PX = 2;
 
 type PortalRect = Pick<DOMRect, 'width' | 'height' | 'top' | 'left' | 'bottom' | 'right'>;
@@ -23,10 +25,11 @@ type PortalViewport = { width: number; height: number };
 export type PortalTooltipPlacement = 'auto' | 'above' | 'below' | 'right' | 'left';
 
 /**
- * Horizontal side for dense-table hover menus (LTR).
- * `end` = trailing/right; `start` = leading/left; `auto` prefers end and flips.
+ * Menu placement vs the trigger.
+ * `end` / `start` / `auto` — horizontal side flyouts for dense tables (LTR).
+ * `bottom` — under the chip (carton identity bar). LedgerGrid must not use this.
  */
-export type PortalSideMenuPlacement = 'auto' | 'end' | 'start';
+export type PortalSideMenuPlacement = 'auto' | 'end' | 'start' | 'bottom';
 
 export type PortalSideMenuAlign = 'start' | 'center' | 'end';
 
@@ -165,12 +168,20 @@ export function clampPortalSideMenuPosition(args: {
   align?: PortalSideMenuAlign;
   margin?: number;
   gap?: number;
-}): { top: number; left: number; side: 'end' | 'start' } | null {
+  /**
+   * When false, do not flip a `bottom` menu onto the leading/trailing side
+   * and do not shift it horizontally to stay in-viewport (carton bar).
+   * Default true — LedgerGrid side menus still flip near the edge.
+   */
+  avoidCollisions?: boolean;
+}): { top: number; left: number; side: 'end' | 'start' | 'bottom' } | null {
   const margin = args.margin ?? PORTAL_TOOLTIP_MARGIN;
-  const gap = args.gap ?? PORTAL_SIDE_MENU_GAP;
-  const viewport = args.viewport ?? readPortalViewport();
   const placement = args.placement ?? 'auto';
+  const gap =
+    args.gap ?? (placement === 'bottom' ? PORTAL_BELOW_MENU_GAP : PORTAL_SIDE_MENU_GAP);
+  const viewport = args.viewport ?? readPortalViewport();
   const align = args.align ?? 'start';
+  const avoidCollisions = args.avoidCollisions ?? true;
   const { anchor, bubble } = args;
 
   if (!isTrustedPortalAnchor(anchor, viewport)) return null;
@@ -178,6 +189,23 @@ export function clampPortalSideMenuPosition(args: {
 
   const vw = viewport.width;
   const vh = viewport.height;
+
+  if (placement === 'bottom') {
+    const rawTop = anchor.bottom + gap;
+    const rawLeft =
+      align === 'end'
+        ? anchor.right - bubble.width
+        : align === 'center'
+          ? anchor.left + anchor.width / 2 - bubble.width / 2
+          : anchor.left;
+    const top = avoidCollisions
+      ? Math.min(Math.max(rawTop, margin), Math.max(margin, vh - bubble.height - margin))
+      : rawTop;
+    const left = avoidCollisions
+      ? Math.min(Math.max(rawLeft, margin), Math.max(margin, vw - bubble.width - margin))
+      : rawLeft;
+    return { top, left, side: 'bottom' };
+  }
 
   const roomEnd = vw - anchor.right - margin;
   const roomStart = anchor.left - margin;

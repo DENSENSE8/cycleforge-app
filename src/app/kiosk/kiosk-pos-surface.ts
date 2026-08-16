@@ -1,50 +1,44 @@
 /**
- * Kiosk V2 POS catalog surface — Square / Shopify-style floating cards + pills.
+ * Kiosk V2 POS catalog surface — flush Kinetic Ledger plane (cart-root shift).
  *
- * Isolated from ops Kinetic Ledger flush chrome (`kiosk-chrome.ts` bands stay
- * square). Compose only in `ProductSelector` `layout="kiosk-split"` — never
- * staff stacked intake.
- *
- * Category nav uses rounded-xl floating items (multi-line names — stadium
- * pills balloon). Issue chips still compose {@link KIOSK_PILL}* in kiosk-chrome.
+ * One continuous `bg-surface-card` plane; hairline dividers; no floating
+ * rounded-xl cards. Compose only in `ProductSelector` `layout="kiosk-split"`.
+ * Issue chips still compose {@link KIOSK_PILL}* in kiosk-chrome (`pill` only).
  */
 
-import { elevationClass } from '@/design-system/tokens/shadows';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { KIOSK_PILL_ACTIVE } from '@/app/kiosk/kiosk-chrome';
 import { cn } from '@/utils/_cn';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 
-
-/** Canvas behind floating cards — gray ground plane for white tiles. */
-export const KIOSK_POS_CANVAS = 'bg-surface-canvas';
+/** Shared plane behind catalog + stage — same card plane as chrome bands. */
+export const KIOSK_POS_CANVAS = 'bg-surface-card';
 
 /**
  * Landscape category column — fixed width, never flex leftover space.
  * Portrait stays full-bleed above the product stage.
  */
 export const KIOSK_POS_SIDEBAR = cn(
-  'max-h-[40vh] w-full border-b',
+  'max-h-[40vh] w-full border-b border-border-soft',
   'md:max-h-none md:w-64 md:shrink-0 md:border-b-0 md:border-r',
 );
 
 /**
- * Category accordion scroll body — inset pill stack, no hairline dividers.
+ * Category accordion scroll body — flush list, no inset pill padding.
  */
-export const KIOSK_POS_SIDEBAR_BODY = cn(KIOSK_POS_CANVAS, 'p-4');
+export const KIOSK_POS_SIDEBAR_BODY = cn(KIOSK_POS_CANVAS, 'p-0');
 
 /**
- * Category nav item — floating rounded-xl chip (POS radius exception).
- * Multi-line names use {@link KIOSK_POS_CATEGORY_LABEL} `leading-snug`.
+ * Category nav item — flush row (no rounded-xl POS exception).
  */
 export const KIOSK_POS_CATEGORY = cn(
-  'ds-raw-button flex w-full items-start gap-3 px-4 py-3 text-left transition-colors',
-  'rounded-xl',
+  'ds-raw-button flex w-full items-start gap-3 px-4 py-2.5 text-left transition-colors',
+  cornerClass('flush'),
 );
 
 export const KIOSK_POS_CATEGORY_ACTIVE = KIOSK_PILL_ACTIVE;
 
-/** Idle category — white card on canvas so the pill floats, not a sunken row. */
+/** Idle category — hairline hover wash on the shared card plane. */
 export const KIOSK_POS_CATEGORY_IDLE =
   'bg-surface-card text-text-default hover:bg-surface-hover active:bg-surface-hover';
 
@@ -52,45 +46,45 @@ export const KIOSK_POS_CATEGORY_IDLE =
 export const KIOSK_POS_CATEGORY_LABEL =
   'min-w-0 flex-1 text-sm font-semibold leading-snug text-text-default';
 
-/** Nested sibling stack under an expanded category — gap, not divide-y. */
-export const KIOSK_POS_CATEGORY_STACK = 'flex flex-col gap-1.5';
+/** Nested sibling stack — divide-y hairlines, not gap cards. */
+export const KIOSK_POS_CATEGORY_STACK = 'flex flex-col divide-y divide-border-hairline';
 
 /**
- * Search host — padded field well, not a joined hairline bar.
+ * Search host — flush under the header band.
  */
-export const KIOSK_POS_SEARCH_HOST = 'flex items-stretch gap-2 px-0 pb-4';
+export const KIOSK_POS_SEARCH_HOST =
+  'flex items-stretch gap-0 border-b border-border-hairline px-0';
 
 /**
- * Filled search input override for TextField (default appearance + these).
- * Soft sunken fill + rounded-lg signals interactivity on tablet.
+ * Search input — flush field, no rounded-lg sunken well.
  */
 export const KIOSK_POS_SEARCH_INPUT = cn(
-  'rounded-lg border-0 bg-surface-sunken py-3 px-4',
+  'rounded-none border-0 bg-surface-card py-3 px-4',
   focusRing('field', 'accent'),
 );
 
-/** Browse stage scroll region — perimeter pad so cards do not bleed edges. */
-export const KIOSK_POS_BROWSE_SCROLL = 'min-h-0 flex-1 overflow-y-auto p-6';
+/** Browse stage scroll region — minimal perimeter (horizontal-only list feel). */
+export const KIOSK_POS_BROWSE_SCROLL = 'min-h-0 flex-1 overflow-y-auto p-0';
 
-/** Product tile CSS grid — gap between independent cards. */
-export const KIOSK_POS_GRID = 'grid gap-4';
+/** Product tile CSS grid — hairline gutters via gap-px on a border host. */
+export const KIOSK_POS_GRID = 'grid gap-px bg-border-hairline';
 
-/** Floating product card shell. */
+/** Flush product cell shell. */
 export const KIOSK_POS_CARD = cn(
-  'relative flex flex-col overflow-hidden text-left transition-all',
-  'rounded-2xl bg-surface-card',
-  elevationClass('raised', 'soft'),
-  'hover:ring-1 hover:ring-border-soft',
+  'relative flex flex-col overflow-hidden text-left transition-colors',
+  'bg-surface-card',
+  cornerClass('flush'),
+  'hover:bg-surface-hover',
 );
 
-/** Selected product card — ring only; caption stays on the white tile. */
-export const KIOSK_POS_CARD_SELECTED = 'ring-2 ring-blue-500';
+/** Selected product cell — accent hairline, not pill wash. */
+export const KIOSK_POS_CARD_SELECTED = 'ring-1 ring-inset ring-blue-500 bg-surface-accent';
 
-/** Caption band under the image well. */
+/** Caption band under the image well — tight, no card padding balloon. */
 export const KIOSK_POS_CARD_CAPTION =
-  'flex flex-1 flex-col justify-between gap-1.5 bg-surface-card p-4';
+  'flex flex-1 flex-col justify-between gap-1 bg-surface-card px-3 py-2';
 
-/** Square image well — clips to card top radius via parent overflow-hidden. */
+/** Square image well. */
 export const KIOSK_POS_IMAGE_WELL =
   'relative aspect-square w-full flex-shrink-0 overflow-hidden bg-surface-sunken';
 

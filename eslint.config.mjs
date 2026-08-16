@@ -351,6 +351,62 @@ export default [
     },
   },
 
+
+  {
+    files: ['src/components/station/entity-context/**/*.{ts,tsx}'],
+    languageOptions: {
+      parser: tsParser,
+      parserOptions: { ecmaFeatures: { jsx: true } },
+    },
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: '@/design-system/primitives',
+              importNames: ['IconButton'],
+              message:
+                'Carton context strips require full-height action cells (StationContextIconCell / StationContextClaimCell). Do not use fixed-box IconButton.',
+            },
+            {
+              name: '@/design-system/primitives/IconButton',
+              message:
+                'Carton context strips require full-height action cells (StationContextIconCell / StationContextClaimCell). Do not use fixed-box IconButton.',
+            },
+          ],
+        },
+      ],
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            'JSXAttribute[name.name="galleryPlacement"] > Literal[value="left"], JSXAttribute[name.name="galleryPlacement"] > Literal[value="right"]',
+          message:
+            'Carton photos hover menu is below + start (galleryPlacement="below"). Side flyouts hang over Claim.',
+        },
+        {
+          selector:
+            'JSXOpeningElement[name.name="DropdownMenuContent"]:not(:has(JSXAttribute[name.name="avoidCollisions"]))',
+          message:
+            'Carton bar DropdownMenuContent must set avoidCollisions={false} so Radix does not flip to left/right.',
+        },
+        {
+          selector:
+            'JSXAttribute[name.name="avoidCollisions"] > JSXExpressionContainer > Literal[value=true]',
+          message:
+            'Carton bar menus must not re-enable collision flip (avoidCollisions={false}).',
+        },
+        {
+          selector:
+            'JSXOpeningElement[name.name="DropdownMenuContent"]:not(:has(JSXAttribute[name.name="side"][value.value="bottom"]))',
+          message:
+            'Carton bar DropdownMenuContent must open side="bottom" (not left/right).',
+        },
+      ],
+    },
+  },
+
   {
     files: ['**/*.test.*', '**/*.spec.*', 'tests/**/*'],
     // Tests are TypeScript — parse with tsParser so type annotations don't trip

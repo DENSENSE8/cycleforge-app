@@ -75,6 +75,11 @@ export interface AnchoredLayerProps {
   /** Gap in px between the trigger edge and the panel. Default 4. */
   gap?: number;
   /**
+   * When false, skip the horizontal viewport clamp so a below-start panel
+   * cannot be shoved left over siblings (carton photos over Claim). Default true.
+   */
+  avoidCollisions?: boolean;
+  /**
    * Force the panel to match the trigger's width. Always true for `*-stretch`
    * placements; opt-in for the others.
    */
@@ -180,6 +185,7 @@ export function AnchoredLayer({
   placement = 'bottom-start',
   level = 'dropdown',
   gap = 4,
+  avoidCollisions = true,
   matchWidth = false,
   closeOnEscape = true,
   ignoreClickSelector,
@@ -242,7 +248,7 @@ export function AnchoredLayer({
     }
     const width = panel.getBoundingClientRect().width;
     const intended = intendedPanelLeft(rect, placement, width);
-    if (intended == null) {
+    if (!avoidCollisions || intended == null) {
       setClampLeft(null);
       return;
     }
@@ -253,7 +259,7 @@ export function AnchoredLayer({
     const clamped = Math.min(Math.max(intended, VIEWPORT_GUTTER_PX), maxLeft);
     // Only override when we actually moved it — sub-pixel jitter is not overflow.
     setClampLeft(Math.abs(clamped - intended) > 0.5 ? clamped : null);
-  }, [open, rect, placement, gap]);
+  }, [open, rect, placement, gap, avoidCollisions]);
 
   // Outside-click that accounts for the (portaled) panel AND the anchor, so a
   // click inside either is not treated as "outside". Replaces each caller's

@@ -1,7 +1,67 @@
 {
-  "generatedAt": "2026-08-13T02:24:07.968Z",
+  "generatedAt": "2026-08-13T03:03:37.135Z",
   "count": 198,
   "commits": [
+    {
+      "sha": "10929f884de00d179ab7841bd91df7d9b83ad7af",
+      "shortSha": "10929f884",
+      "date": "2026-08-12T19:47:18-07:00",
+      "author": "DENSENSE8",
+      "subject": "chore: gitignore lighthouse perf build output and scratch dirs",
+      "body": "Ignore .next-perf-si/ (16k+ local build artifacts), tmp/, and Cursor debug logs\nso they do not appear as a phantom +13k pending commit.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "chore",
+      "title": "gitignore lighthouse perf build output and scratch dirs"
+    },
+    {
+      "sha": "6776dfa54ce493ab8d05df2fc69b18f7850a734a",
+      "shortSha": "6776dfa54",
+      "date": "2026-08-12T19:43:45-07:00",
+      "author": "DENSENSE8",
+      "subject": "fix: land PIN numpad SoT and tighten jscpd gate probe test",
+      "body": "Extract THEME_NUMPAD into shared auth module, refresh knip/jscpd baselines,\nand make the clone-probe regression test use cross-file duplicates.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "fix",
+      "title": "land PIN numpad SoT and tighten jscpd gate probe test"
+    },
+    {
+      "sha": "da620ecf25014d6b9f9fe01a54e098b1b70416f5",
+      "shortSha": "da620ecf2",
+      "date": "2026-08-12T19:26:50-07:00",
+      "author": "DENSENSE8",
+      "subject": "feat: consolidate design-system SoTs, governance gates, and operator surfaces",
+      "body": "Land fork-consolidation work: conversation chrome, button variants, wedge-scan\nand stream-apply perf SoTs, panel-store keyboard, receiving grid cells, kiosk POS\nspine, jscpd/depcruise/knip gates, and legacy rules archive cleanup.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "feature",
+      "title": "consolidate design-system SoTs, governance gates, and operator surfaces"
+    },
+    {
+      "sha": "65356964f2d112d2c1dd82e23f9e61cb6e729722",
+      "shortSha": "65356964f",
+      "date": "2026-08-13T01:48:25Z",
+      "author": "Cursor Agent",
+      "subject": "fix(test): resolve import.meta.dirname under tsx CJS transform",
+      "body": "Use fileURLToPath for disk-walk tests and refresh DOC-CATALOG so\nverify pre-push matches CI doc drift gate.",
+      "type": "fix",
+      "title": "resolve import.meta.dirname under tsx CJS transform"
+    },
+    {
+      "sha": "bb54630176c9d6e9ad98fd5d8e9cdf8d2a797c6d",
+      "shortSha": "bb5463017",
+      "date": "2026-08-13T01:44:40Z",
+      "author": "Cursor Agent",
+      "subject": "fix(ci): sync lockfile and refresh sot-manifest after rebase",
+      "body": "Pin @typescript-eslint/* to 8.57.2 so npm ci resolves without peer\nconflicts (main package.json vs lockfile drift). Regenerate\npackage-lock.json and rebuild sot-manifest for new to-ship desk files.",
+      "type": "fix",
+      "title": "sync lockfile and refresh sot-manifest after rebase"
+    },
+    {
+      "sha": "6ee7356c90d65b6b35e66f7f581e6568b9db670a",
+      "shortSha": "6ee7356c9",
+      "date": "2026-08-12T03:55:50Z",
+      "author": "Cursor Agent",
+      "subject": "Scaffold To Ship desk LedgerGrid fork (desk-only)",
+      "body": "Introduce a desk-local table engine mount for /shipping/orders without\nremoving entityFamily: orders from stations (Ready-to-Pack, Packing).\n\n- Add to-ship entityFamily + to-ship-desk prefs bucket\n- ToShipWmsShell: Recents | Process | Details 3-column scaffold\n- ToShipDeskTable/GridHost/ShelfBoard fork bindings; stations keep UnshippedTable\n- OrdersGridHost gains optional tableBindingFor for desk resolver\n- Doc: docs/refactors/to-ship-ledgergrid-fork.md",
+      "type": "other",
+      "title": "Scaffold To Ship desk LedgerGrid fork (desk-only)"
+    },
     {
       "sha": "bde43947649cffbe04b0d7d74e2cb1fb3d6f7edb",
       "shortSha": "bde439476",
@@ -1921,66 +1981,6 @@
       "body": "Replaces the floating rail-dock experiment with a two-card sidebar column on\nstation surfaces, and flattens the desktop frame chrome.\n\nStation column (src/components/sidebar/station-column.ts):\n- Gray canvas backdrop holding two elevated cards that share one shell,\n  mirrored: nav card flush to the top (rounded-b, border-t-0), station card\n  (recents + scan bar) flush to the bottom (rounded-t, border-b-0). Same width,\n  elevation and stacking band; only the flush edge differs.\n- They are flex siblings, so opening a nav menu expands the top card downward\n  and pushes the station card down instead of covering it -- no offset math.\n\nMasterNav gains layout=\"docked\" (MasterNavView): menus render in flow and grow\nthe host, with a `flat` variant on MasterNavDropdown / ModesPanel that drops\ntheir floating card chrome so a card never nests in a card. The height tween\nroutes through useMotionTransition so reduced motion does not animate layout.\n\nColumn selection is isStationSurfaceRoute() over the kind:'station' route keys.\nThat is a known over-sweep -- it also catches /incoming, /pickup, /repair and\n/receiving/history (workbench/monitor in SURFACE_REGISTRY) and mis-treats\n/support and /review as scan benches. Fix is planned in\ndocs/todo/station-column-archetype-split-plan.md: drive the column off\nSURFACE_REGISTRY.archetype plus a new collection:'catalog'|'queue' field, and\ngive backlog surfaces a queue band that never registers an F2 scan target.\n\nDesktop frame:\n- appContentShellClass drops rounded-tl-2xl + the canvas edge stroke; the corner\n  is square and the canvas background runs flat into it.\n- GlobalHeader now owns the single flat border-b hairline (inverting its old\n  \"no border-b here\" contract). DesktopShell's dead rounded-tl-none override\n  removed.\n\nAlso: ScanBandShell gets shrink-0 on its motion wrapper -- the inner band had\nit, the wrapper did not, so a height-capped host squashed the 40px band.\n\nRemoves the src/components/layout/station-rail portal module: once the dock IS\nthe sidebar column, the panel renders directly into the card and the portal +\nprovider are dead weight.\n\nverify: lint / typecheck / unit + DS guards / knip / route-auth / schema drift\nall green. Not browser-verified (the app is behind a sign-in wall).\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
       "type": "feature",
       "title": "two-card station column + flat desktop frame"
-    },
-    {
-      "sha": "ebd999d9cfd76010d30f418e09cb70623c56cb00",
-      "shortSha": "ebd999d9c",
-      "date": "2026-07-26T21:43:21-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat: grid column visibility/sort waist, station rail dock, and nav mode filtering",
-      "body": "Grid surface:\n- useGridColumnVisibility + GridFieldsMenu — descriptor `tier` ('core'|'optional')\n  is the default-set SoT; staff prefs persist as a delta in staff_preferences.\n- useUrlColumnSort + grid-column-sort-params — URL-durable column sort via\n  ?colsort=/?coldir=, keeping ?sort= free for server ordering on station routes.\n- grid-column-tier guard + grid-column-visibility tests + grid-fields-menu e2e.\n\nStation rail:\n- station-rail/ dock — floating rail host frame over the work canvas, wired to\n  the owning sidebar panel by DOM portal (not JSX-in-context) so a scan or an\n  optimistic patch never re-renders the layout shell.\n\nNav:\n- filterPageModes() — per-mode `requires` filtering shared by MasterNav and the\n  CommandBar Modes group, so mode surfaces match page-body permission filtering.\n\nAuth:\n- ProviderSignInButton + platform-oauth-types.\n\nGuards:\n- head-token-order + dialog-shell guard tests.\n\nChores:\n- gitignore electron-builder output dirs (desktop-dist/, desktop-dist2/) — 2.2 GB\n  of installer artifacts; the existing rule covered *.exe but not the output dirs.\n- station-rail barrel: drop the unused useStationRailDock re-export (module-internal;\n  StationRailDock.tsx imports it directly) — clears the knip gate without a baseline bump.\n- docs: page-consolidation + contextual-sidebar IA research briefings, token\n  consolidation plan, master-nav relocation prompt.\n\nverify: PASSED (lint, typecheck, 3145 unit tests, knip, route-auth 877 routes, schema drift).\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
-      "type": "feature",
-      "title": "grid column visibility/sort waist, station rail dock, and nav mode filtering"
-    },
-    {
-      "sha": "ed0eaa969025b5ad39fecb5813a191594004b910",
-      "shortSha": "ed0eaa969",
-      "date": "2026-07-25T11:11:46-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat: pickup ledger grid, catalog-link review chores, and photo/claim polish",
-      "body": "Port local pickup to LedgerGrid, add order↔catalog link review + transfer-sheet eligibility, and harden photo library ticket search plus Unbox claim/ticket pairing.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
-      "type": "feature",
-      "title": "pickup ledger grid, catalog-link review chores, and photo/claim polish"
-    },
-    {
-      "sha": "f2108f5a77fbbea7c1c7a0effb4cc3914251c254",
-      "shortSha": "f2108f5a7",
-      "date": "2026-07-24T11:39:58-07:00",
-      "author": "DENSENSE8",
-      "subject": "fix(receiving): tolerant claim-link ids and photo pill capture-only click",
-      "body": "Co-authored-by: Cursor <cursoragent@cursor.com>",
-      "type": "fix",
-      "title": "tolerant claim-link ids and photo pill capture-only click"
-    },
-    {
-      "sha": "0a733989545156be1970b507facd3db7aff60864",
-      "shortSha": "0a7339895",
-      "date": "2026-07-24T11:38:34-07:00",
-      "author": "DENSENSE8",
-      "subject": "fix(receiving): normalize placeholder line ids before claim link/create",
-      "body": "Co-authored-by: Cursor <cursoragent@cursor.com>",
-      "type": "fix",
-      "title": "normalize placeholder line ids before claim link/create"
-    },
-    {
-      "sha": "fccf52954552d93036e27f9055299b53d97d5917",
-      "shortSha": "fccf52954",
-      "date": "2026-07-24T11:37:01-07:00",
-      "author": "DENSENSE8",
-      "subject": "chore: work-log support create CTA and simplify claim-host openCreate",
-      "body": "Co-authored-by: Cursor <cursoragent@cursor.com>",
-      "type": "chore",
-      "title": "work-log support create CTA and simplify claim-host openCreate"
-    },
-    {
-      "sha": "1cfd2fcdd89d940b85331ed2a9999fbf6b7e1460",
-      "shortSha": "1cfd2fcdd",
-      "date": "2026-07-24T11:35:20-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat: station workbench chrome, catalog/repair ledger grids, and pickup + support polish",
-      "body": "Unify Unbox-family panes on StationPanelRoot/ComposerDock, port catalog and repair to LedgerGrid, rewrite local pickup into receiving, and ship support ticket linkages, NAS ticket archive, and out-of-stock order facts.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
-      "type": "feature",
-      "title": "station workbench chrome, catalog/repair ledger grids, and pickup + support polish"
     }
   ]
 }

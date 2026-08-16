@@ -11,6 +11,9 @@
  *
  * Side placement is load-bearing for LedgerGrid / queue sheets: a below-chip
  * menu sits in the vertical row-scan path and blocks travel to the next row.
+ * Default `placement` stays `auto` (side flyout). Carton identity may pass
+ * `placement="bottom"` + `avoidCollisions={false}` + `itemPad="chip"`.
+ *
  * The full-ID SiteTooltip stays above (`pointer-events-none`); OPEN/EDIT exit
  * horizontally so the column stays traversable.
  *
@@ -37,9 +40,16 @@ import {
 import { createPortal } from 'react-dom';
 import { cn } from '@/utils/_cn';
 import { zIndex } from '@/design-system/tokens/z-index';
-import { cornerClass } from '@/design-system/tokens/radius';
+import {
+  CHIP_HOVER_MENU_ICON_CLASS,
+  CHIP_HOVER_MENU_ITEM_CLASS,
+  CHIP_HOVER_MENU_ITEM_SEAM_CLASS,
+  CHIP_HOVER_MENU_ITEM_TONE,
+  CHIP_HOVER_MENU_PANEL_CLASS,
+} from '@/components/ui/copy-chip-hover-menu-chrome';
 import {
   clampPortalSideMenuPosition,
+  PORTAL_BELOW_MENU_GAP,
   PORTAL_SIDE_MENU_GAP,
   readTrustedTriggerRect,
   type PortalSideMenuAlign,
@@ -70,6 +80,7 @@ export function CopyChipHoverMenuPanel({
   menuLabel,
   className,
   denseLabel = false,
+  itemPad = 'default',
   onItemSelect,
   'data-testid': dataTestId,
 }: {
@@ -77,6 +88,11 @@ export function CopyChipHoverMenuPanel({
   menuLabel: string;
   className?: string;
   denseLabel?: boolean;
+  /**
+   * `chip` — carton / photo-toolbar rows match the chip face (`px-1.5` `gap-1.5`).
+   * Default keeps LedgerGrid menu breathing room (`px-3` `gap-2`).
+   */
+  itemPad?: 'default' | 'chip';
   /** Extra hook after a successful select (e.g. close the hover portal). */
   onItemSelect?: (item: CopyChipHoverMenuItem) => void;
   'data-testid'?: string;
@@ -86,19 +102,15 @@ export function CopyChipHoverMenuPanel({
       role="menu"
       aria-label={menuLabel}
       data-testid={dataTestId}
-      className={cn(
-        // Flush-square ops chrome — floating portal is not a soft-radius escape.
-        'min-w-35 overflow-hidden border border-border-soft bg-surface-card shadow-lg',
-        cornerClass('flush'),
-        className,
-      )}    >
+      className={cn(CHIP_HOVER_MENU_PANEL_CLASS, className)}
+    >
       {items.map((item, i) => {
         const toneClass =
           item.tone === 'danger'
-            ? 'text-rose-600 hover:bg-rose-50'
+            ? CHIP_HOVER_MENU_ITEM_TONE.danger
             : item.tone === 'accent'
-              ? 'text-blue-700 hover:bg-blue-50'
-              : 'text-text-muted hover:bg-surface-hover';
+              ? CHIP_HOVER_MENU_ITEM_TONE.accent
+              : CHIP_HOVER_MENU_ITEM_TONE.default;
         const iconClass =
           item.tone === 'danger'
             ? 'text-rose-600'
@@ -119,20 +131,14 @@ export function CopyChipHoverMenuPanel({
               onItemSelect?.(item);
             }}
             className={cn(
-              'flex w-full items-center gap-2 px-3 py-1.5 text-left text-role-caption font-semibold uppercase tracking-widest disabled:cursor-not-allowed disabled:opacity-40',
-              i > 0 ? 'border-t border-border-hairline' : '',
+              CHIP_HOVER_MENU_ITEM_CLASS,
+              itemPad === 'default' && 'gap-2 px-3',
+              i > 0 ? CHIP_HOVER_MENU_ITEM_SEAM_CLASS : '',
               toneClass,
             )}
           >
             {item.icon ? (
-              <span
-                className={cn(
-                  'inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center [&>svg]:h-3.5 [&>svg]:w-3.5',
-                  iconClass,
-                )}
-              >
-                {item.icon}
-              </span>
+              <span className={cn(CHIP_HOVER_MENU_ICON_CLASS, iconClass)}>{item.icon}</span>
             ) : null}
             {denseLabel ? (
               item.label
@@ -154,8 +160,10 @@ export function CopyChipHoverMenu({
   menuLabel,
   className,
   denseLabel = false,
+  itemPad = 'default',
   placement = 'auto',
   align = 'start',
+  avoidCollisions = true,
   onOpenChange,
 }: {
   children: ReactNode;
@@ -167,13 +175,23 @@ export function CopyChipHoverMenu({
    * carton IdentityLinkChip parity. Default keeps sentence-case dashboard labels.
    */
   denseLabel?: boolean;
+  itemPad?: 'default' | 'chip';
   /**
    * Side flyout for dense tables — prefer trailing (`auto`/`end`), flip leading.
    * Never default to below: that blocks vertical row travel in LedgerGrid.
+   * Carton identity passes `bottom` + `avoidCollisions={false}`.
    */
   placement?: PortalSideMenuPlacement;
-  /** Vertical align vs the chip. `start` (default) keeps OPEN/EDIT on the hovered row. */
+  /**
+   * Side menus: vertical align vs the chip (`start` keeps OPEN/EDIT on the row).
+   * `placement="bottom"`: horizontal align (`start` = trigger left, `end` = trigger right).
+   */
   align?: PortalSideMenuAlign;
+  /**
+   * When false, a `bottom` menu stays under the trigger and does not flip to
+   * left/right. Default true for LedgerGrid.
+   */
+  avoidCollisions?: boolean;
   /** Fires when the dropdown opens (true) / closes (false) — lets a host row keep
    *  its hover-expanded chrome (chevron + shifted chips) while the menu is up. */
   onOpenChange?: (open: boolean) => void;
@@ -186,6 +204,8 @@ export function CopyChipHoverMenu({
   placementRef.current = placement;
   const alignRef = useRef(align);
   alignRef.current = align;
+  const avoidCollisionsRef = useRef(avoidCollisions);
+  avoidCollisionsRef.current = avoidCollisions;
 
   // Trigger rect captured on open; the menu is positioned off-screen+hidden
   // first so we can measure it, then clamped into view in the layout effect.
@@ -237,9 +257,11 @@ export function CopyChipHoverMenu({
     const next = clampPortalSideMenuPosition({
       anchor,
       bubble: b,
-      gap: PORTAL_SIDE_MENU_GAP,
+      gap:
+        placementRef.current === 'bottom' ? PORTAL_BELOW_MENU_GAP : PORTAL_SIDE_MENU_GAP,
       placement: placementRef.current,
       align: alignRef.current,
+      avoidCollisions: avoidCollisionsRef.current,
     });
     // Keep hidden (pos null) when clamp rejects — never paint at ~(MARGIN,MARGIN)
     // from a bad/stale anchor.
@@ -282,6 +304,7 @@ export function CopyChipHoverMenu({
               items={items}
               menuLabel={menuLabel}
               denseLabel={denseLabel}
+              itemPad={itemPad}
               onItemSelect={() => close()}
             />
           </div>,
