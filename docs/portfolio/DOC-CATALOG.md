@@ -1,7 +1,7 @@
 # DOC catalog — machine-generated SoT
 
 > **Do not hand-edit.** Regenerate: `node scripts/portfolio-sot-sync.mjs`  
-> Generated: `2026-08-13T02:27:10.285Z` · Files: **659** · Repo: `cycleforge-app`  
+> Generated: `2026-08-16T21:41:13.028Z` · Files: **659** · Repo: `cycleforge-app`  
 > Parent index: [INDEX.md](./INDEX.md)
 
 Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*** id  
@@ -13,21 +13,11 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 
 | WT-ID | Absolute path | Branch | HEAD (short) | Exists |
 |-------|---------------|--------|--------------|--------|
-| `main` | `/Users/icecube/repos/cycleforge-app` | `detached` | `54a51e955` | yes |
-| `ai-chat` | `/Users/icecube/repos/cycleforge-ai-chat` | `topic/ai-chat` | `3f55b275e` | yes |
-| `fba` | `/Users/icecube/repos/cycleforge-fba` | `topic/fba` | `3f55b275e` | yes |
-| `glass` | `/Users/icecube/repos/cycleforge-glass` | `glass-design-system` | `a331b1247` | yes |
-| `home` | `/Users/icecube/repos/cycleforge-home` | `topic/home` | `dfd5f517f` | yes |
-| `inventory` | `/Users/icecube/repos/cycleforge-inventory` | `topic/inventory` | `3f55b275e` | yes |
-| `journey-hops` | `/Users/icecube/repos/cycleforge-journey-hops` | `topic/journey-hops` | `74d1dd5f6` | yes |
-| `note-grain` | `/Users/icecube/repos/cycleforge-note-grain` | `topic/note-grain` | `5c331b60a` | yes |
-| `photo` | `/Users/icecube/repos/cycleforge-photo` | `topic/photo` | `6b7aab4ce` | yes |
-| `review` | `/Users/icecube/repos/cycleforge-review` | `topic/review` | `b766dd58f` | yes |
-| `sourcing` | `/Users/icecube/repos/cycleforge-sourcing` | `topic/sourcing` | `3f55b275e` | yes |
-| `tables` | `/Users/icecube/repos/cycleforge-tables` | `topic/tables` | `5d94aad3a` | yes |
-| `tasks` | `/Users/icecube/repos/cycleforge-tasks` | `topic/tasks` | `e881fd2ad` | yes |
-| `unbox` | `/Users/icecube/repos/cycleforge-unbox` | `unbox-work` | `e627e3d3e` | yes |
-| `warehouse` | `/Users/icecube/repos/cycleforge-warehouse` | `topic/warehouse` | `3f55b275e` | yes |
+| `main` | `/home/avion/cycleforge-app` | `main` | `6cb7a8942` | yes |
+| `nav-ia` | `/home/avion/cycleforge-nav-ia` | `topic/nav-ia` | `e3d409e4c` | yes |
+| `product-updates` | `/home/avion/cycleforge-product-updates` | `wip/product-updates-popover` | `a3816a3bf` | yes |
+| `scan-phase1` | `/home/avion/cycleforge-scan-phase1` | `wip/station-scan-phase1` | `1ee41b9fa` | yes |
+| `toship-refactor` | `/home/avion/cycleforge-toship-refactor` | `refactor/to-ship-no-orders-family` | `7f8c7a3dd` | yes |
 
 ---
 
