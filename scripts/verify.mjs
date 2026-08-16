@@ -44,6 +44,15 @@ const GATES = [
         { name: 'Dead-code (knip)', cmd: 'node', args: ['scripts/knip-gate.mjs'] },
         { name: 'Route-permission drift', cmd: 'npx', args: ['tsx', 'scripts/audit-route-auth.ts', '--check'] },
         { name: 'Route-auth enforce', cmd: 'npx', args: ['tsx', 'scripts/audit-route-auth.ts', '--enforce'] },
+        // Marketing site reads docs/integrations/integration-manifest.json for
+        // its per-connector pages. Stale manifest = published copy describing
+        // connectors the product no longer has. Fix is one command:
+        // `npm run integrations:manifest -- --emit`.
+        {
+          name: 'Integration manifest drift',
+          cmd: 'npx',
+          args: ['tsx', 'scripts/export-integration-manifest.ts', '--check'],
+        },
         {
           name: 'Tenancy isolation (static)',
           cmd: 'npx',
