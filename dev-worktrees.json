@@ -109,6 +109,14 @@
       "note": "WS-PHOTO · topic/photo · :3110 · station-staged photo evidence chain"
     },
     {
+      "id": "product-updates",
+      "label": "product-updates · wip/product-updates-popover",
+      "path": "../cycleforge-product-updates",
+      "appPort": 3000,
+      "unlockParked": true,
+      "note": "WS · wip/product-updates-popover · docs/portfolio/WORKTREE-LANES.md"
+    },
+    {
       "id": "push-main",
       "label": "push-main · detached",
       "path": "../cycleforge-push-main",
@@ -123,6 +131,14 @@
       "appPort": 3000,
       "unlockParked": true,
       "note": "WS · topic/review · docs/portfolio/WORKTREE-LANES.md"
+    },
+    {
+      "id": "scan-phase1",
+      "label": "scan-phase1 · wip/station-scan-phase1",
+      "path": "../cycleforge-scan-phase1",
+      "appPort": 3000,
+      "unlockParked": true,
+      "note": "WS · wip/station-scan-phase1 · docs/portfolio/WORKTREE-LANES.md"
     },
     {
       "id": "sourcing",
@@ -163,6 +179,14 @@
       "appPort": 3120,
       "unlockParked": true,
       "note": "WS-TOKENS · topic/tokens · :3120 · bookkeeping — design-token emitter consolidation developed in main (touches globals.css + layout.tsx, which every lane shares); no physical worktree. Plan: docs/todo/token-system-consolidation-plan.md"
+    },
+    {
+      "id": "toship-refactor",
+      "label": "toship-refactor · refactor/to-ship-no-orders-family",
+      "path": "../cycleforge-toship-refactor",
+      "appPort": 3000,
+      "unlockParked": true,
+      "note": "WS · refactor/to-ship-no-orders-family · docs/portfolio/WORKTREE-LANES.md"
     },
     {
       "id": "unbox",
