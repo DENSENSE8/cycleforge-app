@@ -36,6 +36,8 @@ import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { PaintTimingHud } from "@/components/dev/PaintTimingHud";
 import { PostHogProvider } from "../components/analytics/PostHogProvider";
+import { ShellQuerySeed } from "@/components/providers/ShellQuerySeed";
+import { maybeSeedShell } from "@/lib/queries/unbox-shell-seed.server";
 import { PRODUCT_NAME } from "@/lib/branding/constants";
 import { cfSans, ibmPlexMono, ibmPlexSansCondensed } from "@/lib/fonts";
 import { appChromeClass } from "@/design-system/tokens/app-surface";
@@ -45,18 +47,26 @@ export default async function RootLayout({
 }: Readonly<{
     children: React.ReactNode;
 }>) {
+    const h = await headers();
+    const pathname = h.get('x-pathname') || '/';
+    const search = h.get('x-search') || '';
+    const kioskHost = isKioskHost(h.get('host')) || isKioskUiPath(pathname);
+
+    // Start the paint seed BEFORE awaiting auth so they overlap (~0.4s TTFB).
+    // Auth is not on the critical path once parallel; TTFB is on LCP for /unbox.
+    const shellSeedPromise = maybeSeedShell(pathname, search);
+
     const initialUser = await getInitialAuthUser();
     // Signed-out / first paint: platform brand only. Signed-in: the workspace
     // takes over the tab (per-page "{Page} · {org}" titles are set client-side
     // by each route as they adopt it — see docs/cycle-forge-branding-spec.md §3).
     const documentTitle = initialUser ? initialUser.organizationName : PRODUCT_NAME;
 
-    // Kiosk surface = tenant kiosk host OR staff-path dogfood (`/kiosk`, `/kiosk/v2`).
-    // Host-only sniff misses path dogfood; path-only misses MDM on `{slug}.kiosk…`.
-    // Resolved server-side from Host + x-pathname so SSR matches first paint.
-    const h = await headers();
-    const pathname = h.get('x-pathname') || '/';
-    const kioskHost = isKioskHost(h.get('host')) || isKioskUiPath(pathname);
+    // Paint seed for routes whose first-paint content lives in the SHELL rather
+    // than the page (Unbox recents rail; the Testing station's Ready-to-Pack
+    // grid + KPI band, whose keys the left rail mounts first). `null` on every
+    // other route.
+    const shellSeed = await shellSeedPromise;
 
     // Activation gate — covers desks that skip `requirePermission` (e.g. `/`,
     // `/incoming`). Exempt paths + fail-open live in activation-gate.ts.
@@ -129,9 +139,16 @@ export default async function RootLayout({
                                         <FbaWorkspaceProvider>
                                             <StudioWorkspaceProvider>
                                                 <AssistantProvider>
-                                                    <ResponsiveLayout kioskHost={kioskHost}>
-                                                        {children}
-                                                    </ResponsiveLayout>
+                                                    {/* Station paint seed. It wraps the SHELL, not
+                                                        the page, because the route's rail is a
+                                                        sibling of `children` and renders first —
+                                                        see `maybeSeedUnboxShell`. Null on every
+                                                        other route, where this renders nothing. */}
+                                                    <ShellQuerySeed state={shellSeed}>
+                                                        <ResponsiveLayout kioskHost={kioskHost}>
+                                                            {children}
+                                                        </ResponsiveLayout>
+                                                    </ShellQuerySeed>
                                                 </AssistantProvider>
                                             </StudioWorkspaceProvider>
                                         </FbaWorkspaceProvider>

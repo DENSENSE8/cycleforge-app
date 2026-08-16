@@ -128,7 +128,10 @@ export function PhotoPeekFan({
     () =>
       viewableCards.map((c) => {
         const idNum = Number(c.id);
-        const base = Number.isFinite(idNum) ? { id: idNum, url: c.imgUrl } : { url: c.imgUrl };
+        // The viewer zooms/pans — it takes the full-resolution source, never the
+        // downscaled tile the fan renders (`imgUrl` may be a thumb variant).
+        const url = c.fullUrl || c.imgUrl;
+        const base = Number.isFinite(idNum) ? { id: idNum, url } : { url };
         return c.meta ? { ...base, meta: c.meta } : base;
       }),
     [viewableCards],
@@ -297,7 +300,14 @@ export function PhotoPeekFan({
                   </div>
                 ) : (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={card.imgUrl} alt={card.alt} loading="lazy" decoding="async" className="h-full w-full object-cover" />
+                  <img
+                    src={card.imgUrl}
+                    alt={card.alt}
+                    loading={i === 0 ? 'eager' : 'lazy'}
+                    fetchPriority={i === 0 ? 'high' : undefined}
+                    decoding="async"
+                    className="h-full w-full object-cover"
+                  />
                 )}
                 {/* Count badge rides the FRONT card's visible corner. */}
                 {i === 0 && count > 1 ? (

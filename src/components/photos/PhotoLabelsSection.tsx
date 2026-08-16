@@ -9,6 +9,8 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { useLabels } from '@/hooks/useLabels';
 import { labelChipClasses } from '@/lib/photos/label-colors';
 import { toast } from '@/lib/toast';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+
 
 /**
  * Labels — the library's orthogonal refinement axis, rendered below the image-type
@@ -106,7 +108,7 @@ export function PhotoLabelsSection({
             aria-label="New label name"
             data-testid="photo-labels-section-name"
             className={cn(
-              'w-full border border-border-soft bg-surface-card px-2 py-1 text-role-caption text-text-default outline-none focus:border-blue-400',
+              cn('w-full border border-border-soft bg-surface-card px-2 py-1 text-role-caption text-text-default', focusRing('field', 'accent')),
               cornerClass('flush'),
             )}
           />

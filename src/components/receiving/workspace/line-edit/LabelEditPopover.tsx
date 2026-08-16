@@ -37,12 +37,16 @@ import { useLabelDraft } from '@/components/labels/useLabelDraft';
 import { formatLabelDate, parseLabelDate } from '@/components/labels/labelDate';
 import { usePlatformCatalog, useReceivingTypeCatalog } from '@/hooks/useCatalog';
 import { Calendar as CalendarIcon, ChevronDown, Pencil, Printer, X } from '@/components/Icons';
-import { Button, IconButton } from '@/design-system/primitives';
+import { Panel, Button, IconButton } from '@/design-system/primitives';
 import { microBadge } from '@/design-system/tokens/typography/presets';
 import { ConditionPills } from '../ConditionPills';
 import { ReceivingPoLabelPreview } from '../ReceivingPoLabelPreview';
 import type { ReceivingLabelPayload } from '../receiving-label-helpers';
 import { CatalogManagerPopover, type CatalogKind } from './CatalogManagerPopover';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 export type LabelCornerMode = 'order' | 'ticket' | 'tracking';
 
@@ -71,7 +75,7 @@ export interface LabelEditDraft {
 
 const FIELD_LABEL = `${microBadge} mb-1.5 block text-text-soft tracking-wider`;
 const TEXT_INPUT =
-  'w-full rounded-lg border border-border-soft bg-surface-card inset-cozy text-role-caption text-text-default outline-none transition-colors focus:border-blue-500';
+  cn('w-full rounded-lg border border-border-soft bg-surface-card inset-cozy text-role-caption text-text-default transition-colors', focusRing('field', 'accent'));
 
 // Label-face-only platform displays appended after the org's real platforms.
 const PLATFORM_SPECIALS = ['Unfound', 'Local pickup'];
@@ -215,9 +219,9 @@ export function LabelEditPopover({
         {/* Live preview — identical to the printed face. */}
         {/* Themed frame; the label face inside adapts to the theme (dark card +
             inverted barcode in dark mode). Print output stays black-on-white. */}
-        <div className="mb-4 rounded-xl border border-border-soft/80 bg-surface-card px-3 py-3 shadow-sm">
+        <Panel radius="xl" padding="none" className="mb-4 bg-surface-card/80 px-3 py-3">
           <ReceivingPoLabelPreview {...preview} embedded />
-        </div>
+        </Panel>
 
         <div className="space-y-3.5">
           {/* Platform · Type · Date — one condensed row of dropdowns. */}
@@ -266,7 +270,7 @@ export function LabelEditPopover({
                     align="end"
                     sideOffset={6}
                     // panelOverlay (130) clears the RightPaneOverlay panel (120).
-                    className="z-panelOverlay rounded-xl border border-border-soft bg-surface-card shadow-lg ring-1 ring-black/5 focus:outline-none"
+                    className={cn("z-panelOverlay rounded-xl border border-border-soft bg-surface-card shadow-lg ring-1 ring-black/5", focusRing('field', 'accent'))}
                   >
                     <Calendar
                       mode="single"

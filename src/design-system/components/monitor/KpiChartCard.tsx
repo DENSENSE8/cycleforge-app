@@ -88,7 +88,7 @@ function formatHoverBucketDate(at: string): string {
     : '';
   const timePart = formatTime12hPST(d, { withSeconds: false });
   if (!datePart) return timePart || at;
-  if (!timePart || timePart === 'N/A') return datePart;
+  if (!timePart || timePart === 'N/A' || timePart === '—') return datePart; // ds-allow-na: legacy date sentinel reader
   return `${datePart} · ${timePart}`;
 }
 

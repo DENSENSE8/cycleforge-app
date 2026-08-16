@@ -110,8 +110,11 @@ test.describe('Pack placement — Ready-to-Pack benches + counts', () => {
     await expect(kpi).toBeVisible({ timeout: 20_000 });
 
     // Station tiles come from the placement query (always the seeded benches),
-    // so "Staging" is a stable label unless the strip collapses to All clear.
-    const staging = kpi.getByText('Staging', { exact: true }).first();
+    // so the staging bench is a stable label unless the strip collapses to All
+    // clear. The face is the bench's stored NAME (`packBenchShortLabel` shows
+    // what Settings → Packing benches wrote, minus the `QA ` fixture prefix) —
+    // it is no longer the derived word "Staging".
+    const staging = kpi.getByText('Pack Staging', { exact: true }).first();
     const hasStaging = await staging
       .waitFor({ state: 'visible', timeout: 8_000 })
       .then(() => true)
@@ -127,6 +130,143 @@ test.describe('Pack placement — Ready-to-Pack benches + counts', () => {
     await page.goto('/dashboard?unshipped');
     const kpi = page.locator('section[aria-label="Outbound attention"]').first();
     await expect(kpi).toBeVisible({ timeout: 20_000 });
+  });
+
+  test('the bench facet lives IN the find field and filters the board (P3d)', async ({ page }) => {
+    await page.goto('/dashboard?unshipped');
+    await expect(page.locator('input[placeholder*="Filter orders" i]').first()).toBeVisible({
+      timeout: 20_000,
+    });
+
+    // The bench breakdown is a row-narrowing FACET, so it rides in the find
+    // field (house law, `band3-find-only.guard.test.ts`) — never its own band
+    // under the KPI tiles, and never inside the Views menu (a different store).
+    await expect(
+      page.locator('[data-testid="order-bench-strip"]'),
+      'the KPI-band chip row is retired',
+    ).toHaveCount(0);
+
+    const placement = await apiGet(page, '/api/orders/pack-placement');
+    const desks = ((placement.body.locations ?? []) as Array<{
+      id: number;
+      name: string;
+      locationKind: string;
+    }>).filter((l) => l.locationKind === 'DESK');
+    if (desks.length < 1) {
+      test.skip(true, 'need ≥1 packing desk — run pnpm provision:qa-org');
+      return;
+    }
+
+    const refine = page.getByRole('button', { name: /packing bench/i }).first();
+    await expect(refine, 'the bench refine sits in the find field').toBeVisible();
+    await refine.click();
+
+    // Rows name every bench and carry its count — including empty benches, so
+    // "Pack Desk 3 · 0" is a real answer rather than a missing row. The seed
+    // names every bench `Pack …` (QA prefixes `QA `, which the label strips).
+    const benchRow = page
+      .getByRole('menuitem')
+      .filter({ hasText: /^Pack / })
+      .first();
+    await expect(benchRow, 'bench rows list inside the funnel').toBeVisible();
+    await page.screenshot({ path: 'test-results/pack-placement-toship-bench-facet.png' });
+    await benchRow.click();
+
+    // Picking a bench writes `?packStation=` and clears the aggregate
+    // `?packPlaced=` — "placed anywhere" and "placed HERE" are one question.
+    await expect
+      .poll(() => new URL(page.url()).searchParams.get('packStation'), {
+        message: 'bench pick writes ?packStation=',
+        timeout: 10_000,
+      })
+      .not.toBeNull();
+    expect(new URL(page.url()).searchParams.get('packPlaced')).toBeNull();
+
+    // Re-picking the active bench clears it rather than re-applying.
+    const picked = new URL(page.url()).searchParams.get('packStation');
+    await refine.click();
+    await page
+      .getByRole('menuitem')
+      .filter({ hasText: /^Pack / })
+      .first()
+      .click();
+    await expect
+      .poll(() => new URL(page.url()).searchParams.get('packStation'), {
+        message: 're-picking the active bench clears the filter',
+        timeout: 10_000,
+      })
+      .not.toBe(picked);
+  });
+
+  test('the Station column is opt-in, and paints a bench chip once enabled', async ({ page }) => {
+    await page.goto('/dashboard?unshipped');
+    await expect(page.locator('[role="columnheader"]').first()).toBeVisible({ timeout: 25_000 });
+
+    // `tier: 'optional'` — off by default, so the default To-ship lane is
+    // unchanged for staff who never opt in.
+    const defaultCols = await page.evaluate(() =>
+      [...document.querySelectorAll('[role="columnheader"]')].map((c) => c.getAttribute('data-col')),
+    );
+    expect(defaultCols, 'Station is not on the default lane').not.toContain('packStation');
+
+    // Opt in through the same staff delta the ▦ column-display panel writes.
+    const put = await apiPost(page, '/api/staff-preferences', {
+      tableColumns: { orders: { shown: ['packStation'] } },
+    });
+    expect(put.status, 'staff column delta saved').toBe(200);
+
+    // Stage a board-visible order (tracked + not already placed) so the cell
+    // has a bench to name.
+    const placement = await apiGet(page, '/api/orders/pack-placement');
+    const desk = ((placement.body.locations ?? []) as Array<{ id: number; locationKind: string }>)
+      .find((l) => l.locationKind === 'DESK');
+    if (!desk) {
+      test.skip(true, 'need a packing desk — run pnpm provision:qa-org');
+      return;
+    }
+
+    const staged = await page.evaluate(async (deskId: number) => {
+      const api = await (
+        await fetch('/api/orders?fulfillmentScope=true&listShape=queue&limit=200')
+      ).json();
+      const cand = (api.orders || []).find(
+        (r: Record<string, unknown>) =>
+          r.pack_location_id == null && (r.tracking_number || r.shipping_tracking_number),
+      );
+      if (!cand) return { skipped: true as const };
+      const res = await fetch('/api/orders/pack-placement/move', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId: cand.id,
+          locationId: deskId,
+          idempotencyKey: `pw-station-col-${Date.now()}`,
+        }),
+      });
+      return { skipped: false as const, status: res.status };
+    }, desk.id);
+    if (staged.skipped) test.skip(true, 'no unstaged tracked order on the board');
+    expect(staged.status, 'order staged at the bench').toBe(200);
+
+    await page.reload();
+    await expect(page.locator('[role="columnheader"]').first()).toBeVisible({ timeout: 25_000 });
+    const withCol = await page.evaluate(() =>
+      [...document.querySelectorAll('[role="columnheader"]')].map((c) => c.getAttribute('data-col')),
+    );
+    expect(withCol, 'Station appears once opted in').toContain('packStation');
+
+    // The staged row names its bench through the SoT label (the bench's own
+    // name, e.g. `Pack Desk 1`), and every other row shows the quiet em dash —
+    // never a blank cell.
+    const cells = page.locator('[data-col="packStation"]');
+    await expect
+      .poll(
+        async () =>
+          (await cells.allTextContents()).slice(1).filter((t) => t.trim() && !t.includes('—')).length,
+        { message: 'a staged row paints a bench chip', timeout: 15_000 },
+      )
+      .toBeGreaterThan(0);
+    await page.screenshot({ path: 'test-results/toship-station-column.png' });
   });
 
   test('a TRACKING scan places an order at an armed bench; counts increment; /move shifts it', async ({

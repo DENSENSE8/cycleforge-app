@@ -16,6 +16,8 @@ import { useLabels } from '@/hooks/useLabels';
 import { labelChipClasses } from '@/lib/photos/label-colors';
 import { toast } from '@/lib/toast';
 import type { LibraryPhoto } from './photo-library-types';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+
 
 type TriState = 'all' | 'some' | 'none';
 
@@ -206,7 +208,7 @@ export function PhotoLabelEditor({
                 aria-label="New label name"
                 data-testid="photo-label-name"
                 className={cn(
-                  'min-w-0 flex-1 border border-border-soft bg-surface-card px-2 py-1 text-role-caption text-text-default outline-none focus:border-blue-400',
+                  cn('min-w-0 flex-1 border border-border-soft bg-surface-card px-2 py-1 text-role-caption text-text-default', focusRing('field', 'accent')),
                   cornerClass('flush'),
                 )}
               />

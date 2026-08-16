@@ -47,13 +47,15 @@ test('resolveAsListedQrValue prefers line handle then carton', () => {
   );
 });
 
-test('ticketPayloadToFace centers #ticket and encodes T- handle', () => {
+test('ticketPayloadToFace puts platform TL · #ticket BR and encodes T- handle', () => {
   const face = ticketPayloadToFace({
     ticketDigits: '9395',
     context: 'SKU-1',
     platform: 'Amazon',
   });
-  assert.equal(face.center, '#9395');
+  assert.equal(face.topLeft, 'Amazon');
+  assert.equal(face.center, '');
+  assert.equal(face.bottomRight, '#9395');
   assert.equal(face.matrix.value, 'T-9395');
   assert.equal(resolveTicketQrValue({ ticketDigits: '#9395' }), 'T-9395');
 });

@@ -197,6 +197,36 @@ export default [
           message:
             'crypto.randomUUID() is undefined in insecure contexts (LAN-HTTP phone, older Safari) and throws. Use safeRandomUUID() from @/lib/safe-uuid — the crash-safe SoT.',
         },
+        // ── Primitive override ban (fork-consolidation physics) ────────────
+        // Button fills resolve through semantic variants (`success` / `execute`
+        // / `danger`). Painting a raw slate/gray/zinc hue onto <Button> is the
+        // Check-button class of fork. Broader paint debt (rounded-2xl, bg-red-50)
+        // lives on the shrink-only guard in button-class-override.guard.test.ts
+        // until that family hits 0 — then flip those selectors to error here.
+        {
+          selector:
+            "JSXOpeningElement[name.name='Button'] > JSXAttribute[name.name='className'] Literal[value=/\\b(?:bg|from|to|via|hover:bg|active:bg)-(?:slate|gray|zinc|neutral)-/]",
+          message:
+            "Do not paint slate/gray/zinc onto <Button>. Use a semantic variant (e.g. variant='execute') or grow Button. See button-variants.ts.",
+        },
+        {
+          selector:
+            "JSXOpeningElement[name.name='Button'] > JSXAttribute[name.name='className'] TemplateElement[value.raw=/\\b(?:bg|from|to|via|hover:bg|active:bg)-(?:slate|gray|zinc|neutral)-/]",
+          message:
+            "Do not paint slate/gray/zinc onto <Button>. Use a semantic variant (e.g. variant='execute') or grow Button. See button-variants.ts.",
+        },
+        {
+          selector:
+            "JSXOpeningElement[name.name='Panel'] > JSXAttribute[name.name='className'] Literal[value=/rounded/]",
+          message:
+            "Do not alter Panel radii via className. Pass radius='none'|'lg'|'xl'|'2xl' — ops chrome is flush-square by default.",
+        },
+        {
+          selector:
+            "JSXOpeningElement[name.name='Panel'] > JSXAttribute[name.name='className'] TemplateElement[value.raw=/rounded/]",
+          message:
+            "Do not alter Panel radii via className. Pass radius='none'|'lg'|'xl'|'2xl' — ops chrome is flush-square by default.",
+        },
       ],
     },
   },

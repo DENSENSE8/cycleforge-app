@@ -5,6 +5,7 @@ import {
   DenseComposeLabel,
   DenseComposeSearchInput,
 } from '@/design-system/components/DenseComposeFields';
+import { ticketLinkResultsEyebrow } from '@/lib/support/ticket-link-query';
 import type { TicketCandidate, UseTicketSearch } from './useTicketSearch';
 
 /** Short civil date for a ticket row. Display-only — no warehouse day logic. */
@@ -66,12 +67,18 @@ export function TicketPicker({
     searchLoading,
     searchError,
     selectedTicket,
+    seededQuery,
   } = search;
   const hasQuery = !!ticketQuery.trim();
+  const suggestedFromTracking =
+    seededQuery.length > 0 && ticketQuery.trim() === seededQuery;
+  const resultsEyebrow = ticketLinkResultsEyebrow(ticketQuery, seededQuery);
 
   let emptyCopy: string;
   if (hasQuery) {
-    emptyCopy = 'No tickets found — try a different search or ticket #';
+    emptyCopy = suggestedFromTracking
+      ? 'No tickets mention this tracking — try subject text or a ticket #'
+      : 'No tickets found — try a different search or ticket #';
   } else if (mode === 'anchor' && hiddenLinked > 0) {
     emptyCopy = `${hiddenLinked} recent ticket${hiddenLinked === 1 ? ' is' : 's are'} hidden — already linked to other items. Search by ticket # to find one.`;
   } else {
@@ -86,7 +93,7 @@ export function TicketPicker({
           id={inputId}
           value={ticketQuery}
           onChange={(e) => setTicketQuery(e.target.value)}
-          placeholder="Search by subject, or paste a ticket # (e.g. #12345)"
+          placeholder="Search by subject, tracking, or paste a ticket # (e.g. #12345)"
           autoFocus
         />
       </div>
@@ -94,7 +101,7 @@ export function TicketPicker({
       <div className="mt-3 border-t border-border-hairline">
         <div className="flex items-center gap-2 px-3 pt-2 pb-1">
           <p className="text-role-eyebrow uppercase tracking-[0.14em] text-text-faint">
-            {hasQuery ? 'Results' : 'Recent tickets'}
+            {resultsEyebrow}
           </p>
           {searchLoading ? <Loader2 className="h-3 w-3 animate-spin text-text-faint" /> : null}
         </div>

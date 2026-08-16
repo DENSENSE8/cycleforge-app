@@ -3,10 +3,11 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { StationListTable } from '@/components/station/StationListTable';
 import { StationPipelineBoard } from '@/components/station/StationPipelineBoard';
 import { StationQueueRow } from '@/components/station/StationQueueRow';
-import { STATION_HISTORY_GRID_CAPABILITIES } from '@/components/station/station-history-capabilities';
+import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
+import { STATION_HISTORY_TABLE_BINDING } from '@/components/station/station-history-grid/station-history-table-definition';
+import { OrdersQueueColumnHeader } from '@/components/dashboard/orders-queue/OrdersQueueColumnHeader';
 import { TableColumnConfigProvider } from '@/components/ui/table-column-config/TableColumnConfig';
 import { TableDensityProvider } from '@/components/ui/table-density/TableDensityProvider';
 import { TableOptionsMenu } from '@/components/ui/table-options/TableOptionsMenu';
@@ -14,11 +15,15 @@ import { Copy, X } from '@/components/Icons';
 import { emitToggleAll } from '@/lib/selection/table-selection';
 import { useTableSelectMode } from '@/hooks/useTableSelectMode';
 import { useUIModeOptional } from '@/design-system/providers/UIModeProvider';
-import { useGridColumnVisibility } from '@/design-system/components/grid';
-import { ORDERS_QUEUE_COLUMNS, type OrdersQueueColumn } from '@/lib/dashboard-order-row-layout';
 import { toTsvBlock } from '@/lib/station/format-station-copy-row';
 import { getStationSourceRecord, type StationSourceKind } from '@/lib/station/record-to-queue-row';
 import type { QueueRowRecord } from '@/components/dashboard/orders-queue/helpers';
+import type { RowGroup } from '@/lib/group-rows';
+import {
+  ORDERS_QUEUE_COLUMNS,
+  type OrdersQueueColumn,
+  type OrdersQueueColumnKey,
+} from '@/lib/dashboard-order-row-layout';
 import type { SwimlaneLaneDef } from '@/components/board/SwimlaneBoard';
 import type { BoardPrefsKey } from '@/lib/neon/staff-preferences-queries';
 import type { WeekRange } from '@/components/dashboard/orders-queue/helpers';
@@ -92,7 +97,6 @@ export interface StationHistoryTableProps<T> {
 
 export function StationHistoryTable<T>({
   loading,
-  isRefreshing,
   weekRange,
   weekOffset,
   onPrevWeek,
@@ -113,16 +117,6 @@ export function StationHistoryTable<T>({
   const { isMobile } = useUIModeOptional();
   const totalCount = sumDaySectionCounts(daySections);
 
-  // Per-staff visible tracks for the converged station rows. The ⋮ menu below
-  // writes `staff_preferences.tableColumns[tableId].hidden`; resolving it ONCE
-  // here (instead of per cell inside the row, as `useIsColumnHidden` used to)
-  // is what makes a hidden column lose its whole track — header, body and grid
-  // template all read this one list.
-  const { columns: visibleColumns } = useGridColumnVisibility<OrdersQueueColumn>({
-    columns: ORDERS_QUEUE_COLUMNS,
-    tableId,
-  });
-
   // Reconnect-only broad invalidate (the hot path is Ably/local cache patches).
   useStationReconnectSync();
 
@@ -130,6 +124,21 @@ export function StationHistoryTable<T>({
   // Always on — left gutter ☐, no week-band pencil.
   const [focusedId, setFocusedId] = useState<number | null>(null);
   const orderedRecords = useMemo(() => daySections.flatMap(([, recs]) => recs), [daySections]);
+  const queueRows = useMemo(
+    () => orderedRecords.map(selection.toQueueRow),
+    [orderedRecords, selection],
+  );
+  const orderGroupsByDate = useMemo<[string, RowGroup<QueueRowRecord>[]][]>(
+    () =>
+      daySections.map(([date, recs]) => [
+        date,
+        recs.map((record) => ({
+          key: `k:${selection.getRecordId(record)}`,
+          rows: [selection.toQueueRow(record)],
+        })),
+      ]),
+    [daySections, selection],
+  );
   const getRecordId = useCallback((r: T) => selection.getRecordId(r), [selection]);
   const { selectedIds, toggle } = useTableSelectMode<T>({
     scope: selection.scope,
@@ -149,14 +158,18 @@ export function StationHistoryTable<T>({
     }
   }, [selection, orderedRecords, selectedIds]);
 
-  // Map each record → queue-row shape and render the shared OrdersQueueTableRow
-  // (checkbox + serial chip) — the same row the outbound Queue grid uses.
-  const renderRow = useCallback(
-    (record: T, index: number, rowIndex?: number) => {
-      const id = selection.getRecordId(record);
+  const renderQueueRow = useCallback(
+    (
+      mapped: QueueRowRecord,
+      index: number,
+      columns: readonly OrdersQueueColumn[],
+      rowIndex?: number,
+    ) => {
+      const source = getStationSourceRecord<T>(mapped);
+      const id = source ? selection.getRecordId(source) : Number(mapped.id);
       return (
         <StationQueueRow
-          record={selection.toQueueRow(record)}
+          record={mapped}
           index={index}
           rowIndex={rowIndex}
           queueMode={selection.queueMode}
@@ -164,16 +177,22 @@ export function StationHistoryTable<T>({
           isChecked={selectedIds.has(id)}
           isSelected={focusedId === id}
           isMobile={isMobile}
-          columns={visibleColumns}
+          columns={columns}
           onToggleSelect={(event) => toggle(id, event.shiftKey)}
-          onRowClick={(mapped) => {
-            const source = getStationSourceRecord<T>(mapped) ?? record;
-            selection.onOpen(source);
+          onRowClick={(row) => {
+            const rec = getStationSourceRecord<T>(row) ?? source;
+            if (rec) selection.onOpen(rec);
           }}
         />
       );
     },
-    [selection, selectedIds, isMobile, visibleColumns, toggle],
+    [selection, selectedIds, isMobile, toggle, focusedId],
+  );
+
+  const renderRow = useCallback(
+    (record: T, index: number, rowIndex?: number) =>
+      renderQueueRow(selection.toQueueRow(record), index, ORDERS_QUEUE_COLUMNS, rowIndex),
+    [renderQueueRow, selection],
   );
 
   const selectedCount = orderedRecords.filter((r) => selectedIds.has(selection.getRecordId(r))).length;
@@ -320,29 +339,43 @@ export function StationHistoryTable<T>({
             className="relative flex h-full min-h-0 flex-1 flex-col outline-none"
             tabIndex={0}
             onKeyDown={onKeyDown}
-            role="grid"
             aria-label="Station records"
           >
-            <StationListTable<T>
+            <NonlinearTableHost<QueueRowRecord, OrdersQueueColumnKey, OrdersQueueColumn>
+              binding={STATION_HISTORY_TABLE_BINDING}
+              tableId={tableId}
+              ariaLabel="Station records"
+              orderGroupsByDate={orderGroupsByDate}
+              rows={queueRows}
+              getRowId={(row) => {
+                const source = getStationSourceRecord<T>(row);
+                return String(source ? selection.getRecordId(source) : row.id);
+              }}
               loading={loading}
-              isRefreshing={isRefreshing}
-              weekRange={weekRange}
-              weekOffset={weekOffset}
-              onPrevWeek={onPrevWeek}
-              onNextWeek={onNextWeek}
-              onResetWeek={onResetWeek}
-              showWeekControls
-              hideHeader={Boolean(toolbarPortalTarget)}
-              daySections={daySections}
-              totalCount={totalCount}
-              renderRow={renderRow}
-              getRowKey={getRowKey}
-              virtualized
-              scrollToKey={focusedKey}
-              headerEndSlot={headerControls}
               emptyMessage={emptyMessage}
-              firstRunEmpty={firstRunEmpty}
-              capabilities={STATION_HISTORY_GRID_CAPABILITIES}
+              emptyState={firstRunEmpty}
+              sort={null}
+              dir={null}
+              onSortChange={() => {}}
+              scrollToKey={focusedKey}
+              columnTriggerPortalTarget={null}
+              renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns }) => (
+                <OrdersQueueColumnHeader
+                  selectionScope={selection.scope}
+                  columns={columns}
+                  activeSort={null}
+                  sortDir={null}
+                  onSortColumn={toggleColumnSort}
+                  onResizeColumn={onResizeColumn}
+                  onResetColumn={onResetColumn}
+                />
+              )}
+              renderGroup={(group, stripe, { columns }) =>
+                renderQueueRow(group.rows[0], stripe, columns)
+              }
+              renderRow={(row, stripe, { columns }, rowIndex) =>
+                renderQueueRow(row, stripe, columns, rowIndex)
+              }
             />
             {bulkBar}
           </div>

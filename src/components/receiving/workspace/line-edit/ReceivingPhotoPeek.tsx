@@ -34,6 +34,8 @@ interface PhotoRow {
   id: number;
   receivingId: number | null;
   photoUrl: string;
+  /** Downscaled tile variant when storage has one — see PeekCard.imgUrl. */
+  thumbUrl?: string | null;
   caption: string | null;
   uploadedBy: number | null;
   createdAt: string;
@@ -124,9 +126,12 @@ export const ReceivingPhotoPeek = memo(function ReceivingPhotoPeek({
           // `caption` carries the photo_type, so using it here read "receiving_package"
           // to a screen reader. Name the stage through the SoT, or say nothing.
           const stage = receivingPhotoStage(p);
+          // Tiles take the thumb; the viewer keeps the full-resolution source.
+          const thumb = p.thumbUrl?.trim() || '';
           return {
             id: String(p.id),
-            imgUrl: p.photoUrl,
+            imgUrl: thumb || p.photoUrl,
+            fullUrl: thumb ? p.photoUrl : undefined,
             alt: stage ? `${photoStageLabel(stage)} photo` : `Carton photo ${p.id}`,
             meta: receivingPhotoMeta(p, { poRef: poRef ?? null }),
           };

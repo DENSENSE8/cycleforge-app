@@ -31,6 +31,7 @@ import {
   type RailFetchRuntime,
   type ReceivingRailFeedId,
 } from '@/lib/receiving/rail/feeds';
+import { receivingRailQueryKey } from '@/lib/receiving/rail/rail-query-key';
 import { stampPoRailTitleContext } from '@/lib/receiving/po-group-title';
 import { RAIL_QTY } from '@/lib/receiving/rail/quantity';
 import { RAIL_STATUS } from '@/lib/receiving/rail/status';
@@ -99,10 +100,11 @@ export function ReceivingFeedRail({
   const excluded = useRailExclusions(exclusionFeedKey);
 
   // Distinct, isolated cache entry per feed/scope/staff/query — still under the
-  // ['receiving-lines-table'] prefix so broad invalidations refresh it.
+  // ['receiving-lines-table'] prefix so broad invalidations refresh it. Built
+  // through the shared SoT so the RSC first-paint seed can match this key exactly
+  // (a mismatch silently no-ops the seed) — see `rail-query-key`.
   const queryKey = useMemo(
-    () =>
-      ['receiving-lines-table', 'rail', feed.segment, scope ?? 'default', q, staffId ?? 'all'] as const,
+    () => receivingRailQueryKey(feed.segment, scope, q, staffId),
     [feed.segment, scope, q, staffId],
   );
 

@@ -7,9 +7,11 @@ import { cn } from '@/utils/_cn';
 import { RECEIVING_PHOTO_STAGES } from '@/lib/receiving/photo-intent';
 import { photoStageLabel } from '@/lib/photos/stages';
 import { isPhotoLibraryStage, type PhotoLibraryFilterState } from '@/lib/photos/library-filter-state';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+
 
 const fieldClass = cn(
-  'h-10 w-full border border-border-hairline bg-surface-canvas/50 px-3 text-role-caption font-semibold text-text-default outline-none focus:border-blue-500 focus:bg-surface-card focus:ring-4 focus:ring-blue-500/10',
+  cn('h-10 w-full border border-border-hairline bg-surface-canvas/50 px-3 text-role-caption font-semibold text-text-default focus:bg-surface-card', focusRing('field', 'accent')),
   cornerClass('flush'),
 );
 const labelClass = 'mb-1.5 block text-role-caption font-semibold uppercase tracking-[0.2em] text-text-faint';

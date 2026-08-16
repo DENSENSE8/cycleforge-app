@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
   EDGE_RESIZE_COLLAPSE_SLACK_PX,
+  edgeDragArmState,
   edgeResizeWidthCap,
   shouldCollapseFromEdgeDrag,
   widthFromEdgeDrag,
@@ -33,6 +34,67 @@ test('shouldCollapseFromEdgeDrag: requires a finite threshold below raw width', 
   assert.equal(shouldCollapseFromEdgeDrag(200, undefined), false);
   assert.equal(shouldCollapseFromEdgeDrag(200, Number.NaN), false);
   assert.equal(shouldCollapseFromEdgeDrag(Number.NaN, threshold), false);
+});
+
+test('edgeDragArmState: overshoot — pinned at cap, leaning into the close slack', () => {
+  const cap = 540; // clamped live width when the pane is pinned at its max
+  const beyond = cap + EDGE_RESIZE_COLLAPSE_SLACK_PX; // 588 — close fires past this
+  // Resting exactly at cap is not leaning — no arm.
+  assert.equal(
+    edgeDragArmState({ rawWidth: cap, clampedWidth: cap, overshootBeyondPx: beyond }),
+    'none',
+  );
+  // Pushing past cap but within the slack — armed.
+  assert.equal(
+    edgeDragArmState({ rawWidth: cap + 10, clampedWidth: cap, overshootBeyondPx: beyond }),
+    'overshoot',
+  );
+  assert.equal(
+    edgeDragArmState({ rawWidth: beyond, clampedWidth: cap, overshootBeyondPx: beyond }),
+    'overshoot',
+  );
+  // Past the slack — the close fires, so the arm clears (no longer "about to").
+  assert.equal(
+    edgeDragArmState({ rawWidth: beyond + 1, clampedWidth: cap, overshootBeyondPx: beyond }),
+    'none',
+  );
+  // No close wired to arm → never armed even while leaning.
+  assert.equal(
+    edgeDragArmState({ rawWidth: cap + 10, clampedWidth: cap }),
+    'none',
+  );
+});
+
+test('edgeDragArmState: collapse — pinned at min, leaning into the park slack', () => {
+  const min = 300;
+  const below = min - EDGE_RESIZE_COLLAPSE_SLACK_PX; // 252 — park fires below this
+  assert.equal(
+    edgeDragArmState({ rawWidth: min, clampedWidth: min, collapseBelowPx: below }),
+    'none',
+  );
+  assert.equal(
+    edgeDragArmState({ rawWidth: min - 10, clampedWidth: min, collapseBelowPx: below }),
+    'collapse',
+  );
+  assert.equal(
+    edgeDragArmState({ rawWidth: below, clampedWidth: min, collapseBelowPx: below }),
+    'collapse',
+  );
+  assert.equal(
+    edgeDragArmState({ rawWidth: below - 1, clampedWidth: min, collapseBelowPx: below }),
+    'none',
+  );
+});
+
+test('edgeDragArmState: non-finite inputs never arm', () => {
+  assert.equal(
+    edgeDragArmState({ rawWidth: Number.NaN, clampedWidth: 400, overshootBeyondPx: 500 }),
+    'none',
+  );
+  assert.equal(
+    edgeDragArmState({ rawWidth: 600, clampedWidth: Number.NaN, overshootBeyondPx: 500 }),
+    'none',
+  );
 });
 
 test('EDGE_RESIZE_COLLAPSE_SLACK_PX keeps context-rail threshold intentional', () => {

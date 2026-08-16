@@ -311,7 +311,20 @@ export function useSidebarRail<TRow>({
   // facet keep-filter (`includeRow`). Both are filtered HERE, not in the
   // queryKey/fetch, so loading/changing them re-filters in place instead of
   // forcing a queryKey change that would blank the whole list to a skeleton.
-  const baseRows = (Array.isArray(localRows) ? localRows : []).filter(
+  // Rows to render BEFORE the mirror effect has ever run — i.e. the server pass
+  // and the first client render. `localRows` is written from a `useEffect`,
+  // which does not run during SSR, so a rail whose data is already in the cache
+  // (an RSC seed) still server-rendered "No packages yet" and only filled in
+  // after hydration. On the Unbox bench that was the whole LCP: the largest
+  // element on the page is a rail row's product title.
+  //
+  // This is a fallback, not a second source. The moment the effect commits,
+  // `localRows` is non-null and owns the list forever after — so every rule the
+  // effect encodes (never-self-blank on an empty refetch, clear-on-key-change,
+  // snapshot persistence) is untouched. Those rules are all about the SECOND
+  // and later updates; there is nothing yet to preserve on the first.
+  const mirroredRows = localRows ?? (Array.isArray(data) ? sortRowsByActivity(data) : null);
+  const baseRows = (Array.isArray(mirroredRows) ? mirroredRows : []).filter(
     (r) =>
       !isRowDeleted(r)
       && !excludedIds.has(getId(r))

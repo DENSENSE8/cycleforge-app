@@ -7,13 +7,16 @@ export function AttractLoop({
   brandName,
   logoUrl,
   onWake,
+  active = true,
 }: {
   mediaUrl: string | null;
   brandName?: string | null;
   logoUrl?: string | null;
   onWake: () => void;
+  /** Media mounts only while attract is the visible mode. */
+  active?: boolean;
 }) {
-  const isVideo = Boolean(mediaUrl?.match(/\.(mp4|webm|ogg)$/i));
+  const isVideo = Boolean(active && mediaUrl?.match(/\.(mp4|webm|ogg)$/i));
   const [reducedMotion, setReducedMotion] = useState(false);
 
   useEffect(() => {
@@ -41,14 +44,14 @@ export function AttractLoop({
     >
       {showVideo ? (
         <video
-          src={mediaUrl}
+          src={mediaUrl ?? undefined}
           autoPlay
           muted
           loop
           playsInline
           className="absolute inset-0 h-full w-full object-cover opacity-80"
         />
-      ) : mediaUrl && !isVideo ? (
+      ) : active && mediaUrl && !isVideo ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={mediaUrl}

@@ -25,6 +25,10 @@ import {
   KIND_LABELS,
   type QueueKind,
 } from '@/components/receiving/unfound/UnfoundQueueTable';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 const UNFOUND_QUEUE_REFRESH_EVENT = 'unfound-queue-refresh';
 const SEARCH_DEBOUNCE_MS = 300;
@@ -205,7 +209,7 @@ export function UnfoundQueueSidebarToolbar() {
             onChange={(e) => onScanLimitChange(Number(e.target.value))}
             disabled={scanning}
             aria-label="How many recent inbox emails to fetch on each scan"
-            className="h-7 rounded-md border border-border-soft bg-surface-card px-1.5 text-role-micro tracking-wider text-text-muted outline-none focus:border-blue-500 disabled:opacity-60"
+            className={cn("h-7 rounded-md border border-border-soft bg-surface-card px-1.5 text-role-micro tracking-wider text-text-muted disabled:opacity-60", focusRing('field', 'accent'))}
           >
             {[10, 25, 50, 100, 200].map((n) => (
               <option key={n} value={n}>
@@ -224,7 +228,7 @@ export function UnfoundQueueSidebarToolbar() {
           defaultValue={q}
           onChange={(e) => onSearch(e.target.value)}
           placeholder="Search title, serial, note, ticket…"
-          className="h-8 w-full rounded-md border border-border-soft bg-surface-card pl-7 pr-3 text-role-caption outline-none focus:border-blue-500"
+          className={cn("h-8 w-full rounded-md border border-border-soft bg-surface-card pl-7 pr-3 text-role-caption", focusRing('field', 'accent'))}
         />
       </div>
 

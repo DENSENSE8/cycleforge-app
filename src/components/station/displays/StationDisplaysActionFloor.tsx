@@ -4,8 +4,9 @@
  * Station Displays carton Macro floor — unified action row seated **above**
  * the column's close chrome (`→|` / Filter hairline), never below it.
  *
- * Layout (equal fill-width peer columns — hit target is the column):
- *   [ ⋯ ][ Sync ][ Print ][ Edit ][ Delete ]
+ * Layout (equal fill-width peer columns — hit target is the column).
+ * Carton verb sets compose {@link CartonDisplaysActionFloor} on top of this
+ * host — do not fork a second spread row.
  *
  * Composes `FlushTerminalFooter` `spread` (Claim shell). Fixed `h-11` to match
  * Unbox dock Band 1. Station Displays paints `bg-surface-card` so the Macro

@@ -71,8 +71,10 @@ export function ArrivalCartonPipeline({ log }: { log: ReceivingDetailsLog }) {
       : log.source === 'unmatched'
         ? 'Unfound'
         : undefined;
+  // Channel face is PlatformMark elsewhere — never paint raw source_platform
+  // slug as staff-facing prose here. Keep intake type / Unfound only.
   const classifyLabel = classified
-    ? [log.source_platform || (log.source === 'unmatched' ? 'Unfound' : null), log.intake_type]
+    ? [log.source === 'unmatched' ? 'Unfound' : null, log.intake_type]
         .filter(Boolean)
         .join(' · ')
     : '';

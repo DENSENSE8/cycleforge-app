@@ -366,13 +366,13 @@ export function formatDateTimePST(
   input: string | Date | null | undefined,
   options?: { hour12?: boolean },
 ): string {
-  if (!input) return 'N/A';
+  if (!input) return '—';
 
   const hour12 = resolveHour12(options?.hour12);
   const timeOpts = intlTimeOptions(hour12, true);
 
   if (input instanceof Date) {
-    if (Number.isNaN(input.getTime())) return 'N/A';
+    if (Number.isNaN(input.getTime())) return '—';
     return input
       .toLocaleString('en-US', {
         timeZone: PST_TIME_ZONE,
@@ -385,12 +385,12 @@ export function formatDateTimePST(
   }
 
   const raw = String(input).trim();
-  if (!raw || raw === '1') return 'N/A';
+  if (!raw || raw === '1') return '—';
 
   if (SLASH_DATE_RE.test(raw)) {
     const [datePart, timePart] = raw.split(/\s+/, 2);
     const [month, day, year] = datePart.split('/').map(Number);
-    if (!month || !day || !year) return 'N/A';
+    if (!month || !day || !year) return '—';
 
     const [h = '00', m = '00', s = '00'] = (timePart || '00:00:00').split(':');
     return `${pad2(month)}/${pad2(day)}/${year} ${formatWallClock(Number(h), Number(m), Number(s), { hour12 })}`;
@@ -434,19 +434,19 @@ export function formatMonthDayTimePST(
   input: string | Date | null | undefined,
   options?: { hour12?: boolean },
 ): string {
-  if (!input) return 'N/A';
+  if (!input) return '—';
   if (!(input instanceof Date)) {
     const raw = String(input).trim();
-    if (!raw || raw === '1') return 'N/A';
+    if (!raw || raw === '1') return '—';
   } else if (Number.isNaN(input.getTime())) {
-    return 'N/A';
+    return '—';
   }
 
   const dateKey = toPSTDateKey(input);
-  if (!dateKey) return 'N/A';
+  if (!dateKey) return '—';
   const day = formatDateKeyShort(dateKey);
   const time = formatTime12hPST(input, { withSeconds: false, hour12: options?.hour12 });
-  if (!day || time === '--:--') return 'N/A';
+  if (!day || time === '--:--') return '—';
   return `${day}, ${time}`;
 }
 
@@ -454,9 +454,9 @@ export function formatDatePST(
   input: string | Date | null | undefined,
   options?: { shortYear?: boolean; withLeadingZeros?: boolean }
 ): string {
-  if (!input) return 'N/A';
+  if (!input) return '—';
   const dateKey = toPSTDateKey(input);
-  if (!dateKey) return 'N/A';
+  if (!dateKey) return '—';
 
   const [yearRaw, monthRaw, dayRaw] = dateKey.split('-').map(Number);
   const shortYear = options?.shortYear ?? false;

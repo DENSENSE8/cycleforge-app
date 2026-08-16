@@ -14,6 +14,7 @@ import { ChevronDown, Search, Check, Loader2 } from '@/components/Icons';
 import { cn } from '@/utils/_cn';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { Popover } from '../primitives/Popover';
+import type { AnchoredPlacement } from '../primitives/AnchoredLayer';
 
 interface SearchableSelectOption<T = unknown> {
   value: string | number;
@@ -26,6 +27,12 @@ interface SearchableSelectOption<T = unknown> {
   /** Arbitrary passthrough returned to onChange / renderOption. */
   data?: T;
 }
+
+/** Stretch placements only — combobox list always matches trigger width. */
+type SearchableSelectListPlacement = Extract<
+  AnchoredPlacement,
+  'bottom-stretch' | 'top-stretch'
+>;
 
 interface SearchableSelectFieldProps<T = unknown> {
   value: string | number | null;
@@ -52,6 +59,12 @@ interface SearchableSelectFieldProps<T = unknown> {
    * (claim compose golden). Default keeps the padded rounded field chrome.
    */
   appearance?: 'default' | 'flush';
+  /**
+   * List panel edge relative to the trigger. Default `bottom-stretch`.
+   * Use `top-stretch` when the field sits near the floor (Unbox unfound
+   * classify dock) so the menu opens upward into free space.
+   */
+  placement?: SearchableSelectListPlacement;
   /** Autofocus the trigger on mount (form first field). */
   autoFocus?: boolean;
   /** Custom row body. Defaults to label + optional muted meta + check. */
@@ -133,6 +146,7 @@ export function SearchableSelectField<T = unknown>({
   ariaLabel,
   tone = 'default',
   appearance = 'default',
+  placement = 'bottom-stretch',
   autoFocus = false,
   renderOption,
   filter,
@@ -145,6 +159,7 @@ export function SearchableSelectField<T = unknown>({
   const inputRef = useRef<HTMLInputElement>(null);
   const labelId = useId();
   const flush = appearance === 'flush';
+  const opensUp = placement.startsWith('top-');
   const hasLabel = Boolean(label?.trim());
   const remote = typeof onSearchChange === 'function';
 
@@ -287,13 +302,17 @@ export function SearchableSelectField<T = unknown>({
         open={open}
         onClose={() => close(true)}
         anchorRef={triggerRef}
-        placement="bottom-stretch"
+        placement={placement}
         matchWidth
         padded={false}
         gap={flush ? 0 : 6}
         role="listbox"
         aria-label={ariaLabel ?? label ?? placeholder}
-        className={cn(flush && '!rounded-none border-t-0 shadow-sm')}
+        className={cn(
+          flush && '!rounded-none shadow-sm',
+          // Flush abutment: drop the seam border on the edge that kisses the trigger.
+          flush && (opensUp ? 'border-b-0' : 'border-t-0'),
+        )}
       >
         <Command
           shouldFilter={false}

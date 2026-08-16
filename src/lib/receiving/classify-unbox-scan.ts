@@ -85,26 +85,6 @@ export function classifyUnboxScan(raw: string, ctx: UnboxScanContext): UnboxScan
 }
 
 /**
- * True when a known-carrier tracking scan would open a *new* carton while the
- * active Unbox carton still owes serials — hold and confirm before switching.
- *
- * Complements {@link classifyUnboxScan}: unknown-carrier barcodes reclassify as
- * serial mid-carton; known-carrier tracking stays `open_carton` and needs this
- * interrupt so the operator does not silently orphan incomplete work.
- */
-export function shouldConfirmCartonSwitch(args: {
-  intent: UnboxScanIntent;
-  knownCarrier: boolean;
-  activeCartonNeedsSerials: boolean;
-}): boolean {
-  return (
-    args.intent === 'open_carton' &&
-    args.knownCarrier === true &&
-    args.activeCartonNeedsSerials === true
-  );
-}
-
-/**
  * Minimal line shape for serial-need checks — avoids importing the heavy
  * `ReceivingLineRow` module into this pure classifier.
  */
@@ -134,7 +114,8 @@ export function lineNeedsSerials(line: SerialNeedLine): boolean {
 /**
  * Carton-level: any sibling line on the open carton still owes serials.
  * `lines` should be the selected line plus `scanMatchedRows` scoped to the
- * same `receiving_id` (caller owns that filter).
+ * same `receiving_id` (caller owns that filter). Callers pass the result as
+ * `activeCartonNeedsSerials` into {@link classifyUnboxScan}.
  */
 export function cartonNeedsSerials(lines: readonly SerialNeedLine[]): boolean {
   return lines.some(lineNeedsSerials);

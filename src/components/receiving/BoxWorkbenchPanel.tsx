@@ -31,6 +31,10 @@ import { printHandlingUnitLabel } from '@/lib/print/printHandlingUnitLabel';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { useHandlingUnitDetail } from '@/hooks/useHandlingUnitDetail';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 export function BoxWorkbenchPanel({
   handlingUnitId,
@@ -180,7 +184,7 @@ export function BoxWorkbenchPanel({
               }
             }}
             placeholder="Scan a serial to add…"
-            className="min-w-0 flex-1 rounded-lg border border-border-soft bg-surface-card inset-cozy font-mono text-role-caption text-text-default outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
+            className={cn("min-w-0 flex-1 rounded-lg border border-border-soft bg-surface-card inset-cozy font-mono text-role-caption text-text-default", focusRing('field', 'accent'))}
           />
           {busy === 'add' ? <Loader2 className="h-4 w-4 shrink-0 animate-spin text-text-muted" /> : null}
         </div>

@@ -6,29 +6,25 @@ import {
   useLayoutEffect,
   useRef,
   useState,
-  type MutableRefObject,
   type ReactNode,
   type RefObject,
 } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Pencil, Barcode } from '@/components/Icons';
+import { X, Pencil } from '@/components/Icons';
 import { SerialChip } from '@/components/ui/CopyChip';
-import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { TextField, IconButton } from '@/design-system/primitives';
 import { cornerClass } from '@/design-system/tokens/radius';
-import { TOP_CHROME_ICON_GLYPH } from '@/components/layout/header-shell';
-import { getLast8Serial } from '@/lib/copy-chip-format';
 import { cn } from '@/utils/_cn';
 import { ConditionPills } from './ConditionPills';
 import { ConditionBadge } from './ReceivingUnitRows';
-import { NoSerialOfferCheck } from './line-edit/NoSerialOfferCheck';
+import {
+  SerialScanField,
+  type SavedSerial,
+  type SerialScanFieldHandle,
+} from './SerialScanField';
+import { focusRing } from '@/design-system/tokens/focus-ring';
 
-export interface SavedSerial {
-  id?: number;
-  serial_number: string;
-  condition_grade?: string | null;
-  _optimistic?: 'adding' | 'removing';
-}
+
+export type { SavedSerial };
 
 interface Props {
   /** Already-saved serials for this line (from `row.serials`). */
@@ -122,15 +118,6 @@ interface Props {
   /** Controlled edit target from the PO item header chip. */
   editingSerial?: SavedSerial | null;
   onEditingSerialChange?: (serial: SavedSerial | null) => void;
-  /**
-   * Unbox dual-loci progressive bar: Condition (left expand) → Serial (middle)
-   * → Photos (peers expand). Requires {@link renderPhotoStage}.
-   */
-  progressiveCapture?: boolean;
-  /** Photos stage — `expanded` when serial is done and no photos yet. */
-  renderPhotoStage?: (ctx: { expanded: boolean }) => ReactNode;
-  /** Item photo count — drives Photos expand → collapse when &gt; 0. */
-  photoCount?: number;
 }
 
 /**
@@ -170,68 +157,15 @@ export function SerialCard({
   editingSerial = null,
   onEditingSerialChange,
   resultSlot,
-  progressiveCapture = false,
-  renderPhotoStage,
-  photoCount = 0,
 }: Props) {
   const showNotes = typeof notes === 'string' && typeof onNotesChange === 'function';
-  const progressive = progressiveCapture && !!renderPhotoStage;
-  const [scan, setScan] = useState('');
-  const [editing, setEditing] = useState<SavedSerial | null>(null);
-  /**
-   * Inline scan-guard feedback under the field — a big-enough state for a
-   * bench operator (never a corner toast). Used for duplicate serials.
-   */
-  const [inlineNotice, setInlineNotice] = useState<string | null>(null);
-  // Condition picker expand/collapse. Progressive Unbox always starts expanded
-  // (Condition → Serial → Photos) even when a default grade is already set —
-  // confirm (Check) collapses left. Non-progressive: expand only when empty.
+  // Condition picker expand/collapse — Testing / Arrival / Units Displays.
   const [condExpanded, setCondExpanded] = useState(
-    () =>
-      Boolean(progressiveCapture) || !String(condition || '').trim(),
+    () => !String(condition || '').trim(),
   );
-  /** Progressive: operator re-opened the serial field after it collapsed left. */
-  const [serialExpanded, setSerialExpanded] = useState(false);
-  const inputRef = useRef<HTMLInputElement | null>(null);
-  const setInputRef = useCallback(
-    (el: HTMLInputElement | null) => {
-      inputRef.current = el;
-      if (externalInputRef)
-        (externalInputRef as MutableRefObject<HTMLInputElement | null>).current = el;
-    },
-    [externalInputRef],
-  );
+  const [inlineNotice, setInlineNotice] = useState<string | null>(null);
+  const fieldRef = useRef<SerialScanFieldHandle | null>(null);
   const count = saved.length;
-  const hasGrade = Boolean(String(condition || '').trim());
-  const serialDone = count > 0 || noSerialActive;
-  const photosDone = photoCount > 0;
-
-  // Progressive unlock: keep condition open until graded; after serial settles
-  // advance into Photos; photos collapse once a shot lands.
-  useEffect(() => {
-    if (!progressive) return;
-    if (!hasGrade) {
-      setCondExpanded(true);
-      setSerialExpanded(false);
-      return;
-    }
-    if (!serialDone) {
-      setSerialExpanded(true);
-      return;
-    }
-    setSerialExpanded(false);
-  }, [progressive, hasGrade, serialDone]);
-
-  type ProgressiveStage = 'condition' | 'serial' | 'photos' | 'done';
-  const progressiveStage: ProgressiveStage | null = !progressive
-    ? null
-    : condExpanded || !hasGrade
-      ? 'condition'
-      : !serialDone || serialExpanded || editing
-        ? 'serial'
-        : !photosDone
-          ? 'photos'
-          : 'done';
 
   /**
    * Pick a condition grade, then jump focus straight to the serial input so
@@ -240,139 +174,21 @@ export function SerialCard({
    */
   const handleConditionPick = (grade: string) => {
     onConditionChange?.(grade);
-    setTimeout(() => {
-      const el = inputRef.current;
-      if (!el || el.disabled) return;
-      el.focus();
-    }, 0);
+    setTimeout(() => fieldRef.current?.focus(), 0);
   };
 
   const handleConditionExpandedChange = (next: boolean) => {
     setCondExpanded(next);
-    if (progressive && !next && hasGrade) {
-      setSerialExpanded(true);
-      setTimeout(() => {
-        const el = inputRef.current;
-        if (!el || el.disabled) return;
-        el.focus({ preventScroll: true });
-      }, 0);
-    }
   };
-
-  // If the underlying saved list changes while editing (e.g. the original
-  // chip got deleted from elsewhere), clear the edit state so we don't try
-  // to replace something that's gone.
-  useEffect(() => {
-    if (editing && !saved.some((s) => s.id === editing.id)) {
-      setEditing(null);
-      setScan('');
-      onEditingSerialChange?.(null);
-    }
-  }, [saved, editing, onEditingSerialChange]);
-
-  useEffect(() => {
-    if (!editingSerial) {
-      setEditing(null);
-      return;
-    }
-    setEditing(editingSerial);
-    setScan(editingSerial.serial_number);
-    // Collapse the condition picker so the focus is on editing the serial text.
-    setCondExpanded(false);
-    const t = window.setTimeout(() => {
-      const el = inputRef.current;
-      if (!el) return;
-      el.focus();
-      el.select();
-    }, 0);
-    return () => window.clearTimeout(t);
-  }, [editingSerial]);
-
-  useEffect(() => {
-    if (!autoFocusInput || disabled || editing || editingSerial) return;
-    const t = window.setTimeout(() => {
-      const el = inputRef.current;
-      if (!el || el.disabled) return;
-      el.focus({ preventScroll: true });
-    }, 0);
-    return () => window.clearTimeout(t);
-  }, [autoFocusInput, disabled, editing, editingSerial, focusKey]);
 
   const beginEdit = (s: SavedSerial) => {
-    setEditing(s);
-    onEditingSerialChange?.(s);
-    setScan(s.serial_number);
-    setInlineNotice(null);
-    // Collapse the condition picker so the focus is on editing the serial text.
     setCondExpanded(false);
-    // Defer focus until the input is enabled in the new render pass.
-    setTimeout(() => {
-      const el = inputRef.current;
-      if (!el) return;
-      el.focus({ preventScroll: true });
-      el.select();
-    }, 0);
+    fieldRef.current?.beginEdit(s);
   };
 
-  const cancelEdit = () => {
-    setEditing(null);
-    onEditingSerialChange?.(null);
-    setScan('');
-    setInlineNotice(null);
-  };
-
-  const submit = () => {
-    const trimmed = scan.trim();
-    if (!trimmed || disabled) return;
-
-    if (editing) {
-      // Replace mode — operator is finalizing an edit. Skip the comma-split
-      // path since "editing one serial" is a single-value action.
-      if (trimmed !== editing.serial_number && onReplaceSerial) {
-        onReplaceSerial(editing, trimmed);
-      }
-      setEditing(null);
-      onEditingSerialChange?.(null);
-      setScan('');
-      return;
-    }
-
-    // Comma-paste → enqueue each value. Parent queues writes (FOR UPDATE lock);
-    // never await the network here — clear + stay focused so the wedge can
-    // keep typing the next serial while the optimistic chip lands.
-    const parts = trimmed.split(',').map((s) => s.trim()).filter(Boolean);
-
-    // Duplicate guard: skip values already saved on this line so a double-scan
-    // (or re-scan of a chip below) can't queue a second server write.
-    const savedKeys = new Set(
-      saved.map((s) => (s.serial_number || '').trim().toUpperCase()).filter(Boolean),
-    );
-    const fresh: string[] = [];
-    const dupes: string[] = [];
-    for (const sn of parts) {
-      const key = sn.toUpperCase();
-      if (savedKeys.has(key)) {
-        dupes.push(sn);
-      } else {
-        savedKeys.add(key);
-        fresh.push(sn);
-      }
-    }
-    setInlineNotice(
-      dupes.length === 0
-        ? null
-        : dupes.length === 1
-          ? `Already on this line — ends ${getLast8Serial(dupes[0])}. Not added again.`
-          : `${dupes.length} serials already on this line — skipped.`,
-    );
-    setScan('');
-    if (fresh.length === 0) return;
-    for (const sn of fresh) {
-      void onAdd(sn);
-    }
-    // Field stays enabled during in-flight writes — keep the caret here.
-    inputRef.current?.focus({ preventScroll: true });
-  };
+  useEffect(() => {
+    if (editingSerial) setCondExpanded(false);
+  }, [editingSerial]);
 
   const Shell = embedded ? 'div' : 'section';
   const shellClass = embedded
@@ -394,42 +210,18 @@ export function SerialCard({
       )
     : 'flex h-11 items-center gap-2';
 
-  const showSerialField =
-    !progressive ||
-    progressiveStage === 'serial' ||
-    (!!editing && progressiveStage !== 'condition');
-  const showSerialCollapsed =
-    progressive &&
-    serialDone &&
-    (progressiveStage === 'photos' || progressiveStage === 'done');
-  const showPhotoStage =
-    progressive &&
-    (progressiveStage === 'photos' || progressiveStage === 'done');
-  const photoExpanded = progressiveStage === 'photos';
-  const latestSerial = [...saved]
-    .map((s) => (s.serial_number || '').trim())
-    .filter(Boolean)
-    .at(-1);
-
   return (
-    <Shell className={shellClass} data-progressive-capture={progressive || undefined}>
-      <div
-        className={rowClass}
-        data-progressive-stage={progressiveStage ?? undefined}
-      >
+    <Shell className={shellClass}>
+      <div className={rowClass}>
         {onConditionChange ? (
           // Condition picker: full pill row when the line opens (for selection),
           // collapsing to a filled square (grade hue) + white Tags.
-          // Progressive: expanded owns the full bar (serial/photos unmount).
           <div
             className={cn(
-              'flex min-w-0',
+              'flex min-w-0 shrink-0',
               embedded
                 ? 'h-11 items-stretch [&>*]:h-full'
                 : 'items-center gap-2',
-              progressiveStage === 'condition'
-                ? 'min-w-0 flex-1'
-                : 'shrink-0',
             )}
           >
             <ConditionPills
@@ -439,9 +231,6 @@ export function SerialCard({
               collapsedLabel={collapsedConditionLabel}
               expanded={condExpanded}
               onExpandedChange={handleConditionExpandedChange}
-              // Progressive Unbox: full SoT names edge-to-edge (not pill scroll).
-              labelVariant={progressive ? 'full' : 'pill'}
-              layout={progressive ? 'barDistribute' : 'scroll'}
             />
             {embedded ? null : (
               <div className="h-8 w-px shrink-0 bg-surface-sunken" />
@@ -453,154 +242,24 @@ export function SerialCard({
           </div>
         ) : null}
 
-        {progressiveStage === 'condition' ? null : (
-          <>
-            {showSerialCollapsed ? (
-              <HoverTooltip
-                label={
-                  noSerialActive
-                    ? 'No serial — edit'
-                    : latestSerial
-                      ? `Serial …${getLast8Serial(latestSerial)} — edit`
-                      : 'Edit serial'
-                }
-                asChild
-              >
-                <button
-                  type="button"
-                  aria-label="Edit serial"
-                  data-progressive-serial="collapsed"
-                  className={cn(
-                    'ds-raw-button inline-flex h-11 w-11 shrink-0 items-center justify-center',
-                    'bg-surface-card text-text-muted transition-colors hover:bg-surface-hover hover:text-text-default',
-                    cornerClass('flush'),
-                  )}
-                  onClick={() => {
-                    setSerialExpanded(true);
-                    setCondExpanded(false);
-                    setTimeout(() => {
-                      inputRef.current?.focus({ preventScroll: true });
-                    }, 0);
-                  }}
-                >
-                  <Barcode className={TOP_CHROME_ICON_GLYPH} aria-hidden />
-                </button>
-              </HoverTooltip>
-            ) : null}
-
-            {showSerialField ? (
-              <>
-                <div className="flex min-w-0 flex-1 items-stretch">
-                  {noSerialActive && noSerialSlot ? (
-                    noSerialSlot
-                  ) : (
-                  <TextField
-                    ref={setInputRef}
-                    label="Serial"
-                    data-unbox-serial-input
-                    appearance={embedded ? 'flush' : 'default'}
-                    value={scan}
-                    onChange={(next) => {
-                      setScan(next);
-                      if (inlineNotice) setInlineNotice(null);
-                    }}
-                    tone={embedded ? 'neutral' : 'blue'}
-                    mono
-                    disabled={disabled}
-                    autoComplete="off"
-                    spellCheck={false}
-                    autoFocus={false}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        submit();
-                      } else if (e.key === 'Escape' && editing) {
-                        e.preventDefault();
-                        cancelEdit();
-                      }
-                    }}
-                    trailing={
-                      scan || editing ? (
-                        <IconButton
-                          onClick={() => (editing ? cancelEdit() : setScan(''))}
-                          ariaLabel={editing ? 'Cancel edit' : 'Clear input'}
-                          className="rounded-md p-1 hover:bg-surface-sunken"
-                          icon={<X className="h-3.5 w-3.5" />}
-                        />
-                      ) : undefined
-                    }
-                  />
-                  )}
-                </div>
-
-                {noSerialActive ? null : lookupBusy && !scan.trim() && !editing ? (
-                  <div
-                    role="status"
-                    aria-label="Checking serial"
-                    className={cn(
-                      'inline-flex h-11 w-14 shrink-0 items-center justify-center text-emerald-600',
-                      embedded
-                        ? cn(cornerClass('flush'), 'bg-emerald-50')
-                        : cn(cornerClass('field'), 'border border-emerald-300 bg-emerald-50 shadow-sm'),
-                    )}
-                  >
-                    <svg
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2.5"
-                      className="h-5 w-5 animate-spin"
-                      aria-hidden
-                    >
-                      <circle cx="12" cy="12" r="9" className="opacity-25" />
-                      <path d="M21 12a9 9 0 0 1-9 9" strokeLinecap="round" />
-                    </svg>
-                  </div>
-                ) : !scan.trim() && !editing && onMarkNoSerial ? (
-                  <NoSerialOfferCheck
-                    onClick={onMarkNoSerial}
-                    label="Mark this item as having no serial number"
-                    width="w-14"
-                    appearance={embedded ? 'flush' : 'default'}
-                  />
-                ) : (
-                  <button
-                    type="button"
-                    onClick={submit}
-                    disabled={!scan.trim() || disabled}
-                    className={cn(
-                      'inline-flex h-11 shrink-0 items-center justify-center text-role-caption font-semibold uppercase tracking-wider text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-surface-strong',
-                      embedded
-                        ? cn(cornerClass('flush'), 'bg-emerald-600')
-                        : 'rounded-xl bg-emerald-600 shadow-sm',
-                      editing ? 'px-4' : 'w-14',
-                    )}
-                  >
-                    {editing ? (
-                      'Save'
-                    ) : (
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="h-5 w-5">
-                        <path d="M12 5v14M5 12h14" strokeLinecap="round" />
-                      </svg>
-                    )}
-                  </button>
-                )}
-              </>
-            ) : null}
-
-            {showPhotoStage && renderPhotoStage ? (
-              <div
-                className={cn(
-                  'flex min-w-0 items-stretch',
-                  photoExpanded ? 'min-w-0 flex-1' : 'shrink-0',
-                )}
-                data-progressive-photos={photoExpanded ? 'expanded' : 'collapsed'}
-              >
-                {renderPhotoStage({ expanded: photoExpanded })}
-              </div>
-            ) : null}
-          </>
-        )}
+        <SerialScanField
+          ref={fieldRef}
+          saved={saved}
+          onAdd={onAdd}
+          disabled={disabled}
+          onReplaceSerial={onReplaceSerial}
+          onMarkNoSerial={onMarkNoSerial}
+          lookupBusy={lookupBusy}
+          noSerialActive={noSerialActive}
+          noSerialSlot={noSerialSlot}
+          autoFocusInput={autoFocusInput}
+          focusKey={focusKey}
+          externalInputRef={externalInputRef}
+          appearance={embedded ? 'flush' : 'default'}
+          editingSerial={editingSerial}
+          onEditingSerialChange={onEditingSerialChange}
+          onInlineNoticeChange={setInlineNotice}
+        />
       </div>
 
       {/* Scan-guard feedback — inline under the field where the operator is
@@ -657,7 +316,7 @@ export function SerialCard({
             onBlur={onNotesBlur}
             rows={2}
             placeholder="PO-line notes (saved on off click)"
-            className="mt-1 w-full resize-none rounded-xl border border-border-soft bg-surface-card inset-field text-role-caption font-medium leading-snug text-text-default placeholder:text-text-faint focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            className={cn("mt-1 w-full resize-none rounded-xl border border-border-soft bg-surface-card inset-field text-role-caption font-medium leading-snug text-text-default placeholder:text-text-faint", focusRing('field', 'accent'))}
           />
         </div>
       ) : null}

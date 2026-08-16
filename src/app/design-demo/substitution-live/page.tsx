@@ -11,6 +11,8 @@
 import { useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SubstituteUnitCard } from '@/components/fulfillment/SubstituteUnitCard';
+import { Panel } from '@/design-system/primitives';
+
 
 const ORDER_ID = 99001;
 
@@ -68,9 +70,9 @@ export default function SubstitutionLiveDemoPage() {
         <h1 className="mb-6 text-role-eyebrow uppercase tracking-widest text-text-soft">
           SubstituteUnitCard — real container + hooks (mocked API)
         </h1>
-        <div className="max-w-xl rounded-xl border border-border-soft bg-surface-card p-4">
+        <Panel radius="xl" padding="sm" className="max-w-xl">
           <SubstituteUnitCard orderId={ORDER_ID} orderLabel="#A-10472" />
-        </div>
+        </Panel>
       </div>
     </QueryClientProvider>
   );

@@ -34,6 +34,72 @@ export function resolveLineReceiveMode(input: LineReceiveModeInput): LineReceive
 }
 
 /**
+ * Which body an Unbox PO line's under-row capture entry mounts.
+ *
+ * `capture-*` are the always-accessible row (condition full width + Serial /
+ * Photos junction segments that open Displays). Every editable Unbox line
+ * mounts this face — not only the active line. The other two are the legacy
+ * non-Unbox lanes — Units Displays explosion and Testing / Arrival.
+ */
+type CaptureEntryMode =
+  | 'capture-unit'
+  | 'capture-rollup'
+  | 'capture-stub'
+  | 'unit-rows'
+  | 'single';
+
+interface CaptureEntryInput {
+  /** Unbox centre: the bottom dock owns the wedge; this row is mouse go-back. */
+  dockOwnsCapture: boolean;
+  /**
+   * @deprecated Kept for call-site autofocus facts only — no longer gates
+   * whether the capture face mounts. Every editable Unbox line captures.
+   */
+  isActiveLine?: boolean;
+  /** Units Displays flush chrome — never the capture row. */
+  flush?: boolean;
+  /** Units Displays explosion — one editable row per serial. */
+  forceUnitRows?: boolean;
+  receivingId: number | null;
+  /** `null` = no line yet (empty unfound carton) → {@link CaptureEntryMode} stub. */
+  lineId: number | null;
+  quantityExpected: number;
+  serialCount: number;
+  forceUnitMode?: boolean;
+}
+
+/**
+ * THE gate for the Unbox capture row — call sites pass facts, never a derived
+ * `progressive` boolean.
+ *
+ * Surfaces used to fork `dockOwnsCapture && isActiveLine` themselves; capture
+ * now mounts on every editable Unbox line. Keep the answer here.
+ */
+export function resolveCaptureEntry(input: CaptureEntryInput): CaptureEntryMode {
+  const captures =
+    input.dockOwnsCapture &&
+    !input.flush &&
+    input.receivingId != null &&
+    input.receivingId > 0;
+
+  if (captures) {
+    if (input.lineId == null) return 'capture-stub';
+    if (input.lineId > 0) {
+      return resolveLineReceiveMode({
+        quantityExpected: input.quantityExpected,
+        serialCount: input.serialCount,
+        forceUnitMode: input.forceUnitMode,
+      }) === 'qtyRollup'
+        ? 'capture-rollup'
+        : 'capture-unit';
+    }
+  }
+
+  if (input.forceUnitRows || input.quantityExpected > 1) return 'unit-rows';
+  return 'single';
+}
+
+/**
  * Sliding window of unit indices that stays within `cap` and keeps `selected`
  * visible. Scan-down workflows bias toward the start when selected is near 0.
  */

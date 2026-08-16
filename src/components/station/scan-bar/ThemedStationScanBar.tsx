@@ -43,15 +43,17 @@ export function ThemedStationScanBar({
     staffId: staffId != null ? Number(staffId) : 0,
   });
 
-  // Spinner is PINNED (never tucked away by the focused scan display) so the
-  // operator keeps "lookup in flight" feedback; the mode rail (rightContent) is
-  // the hideable part. Keeping them separate is what lets StationScanBar hide
-  // only the mode glyphs during the scan display.
-  const spinner = isResolving ? (
-    <span className={STATION_SCAN_BAR_RIGHT_CELL} aria-hidden>
-      <Loader2 className={cn(STATION_SCAN_BAR_MODE_GLYPH_CLASS, 'animate-spin text-text-muted')} />
-    </span>
-  ) : null;
+  const resolvedRight =
+    isResolving || rightContent != null ? (
+      <>
+        {isResolving ? (
+          <span className={STATION_SCAN_BAR_RIGHT_CELL} aria-hidden>
+            <Loader2 className={cn(STATION_SCAN_BAR_MODE_GLYPH_CLASS, 'animate-spin text-text-muted')} />
+          </span>
+        ) : null}
+        {rightContent}
+      </>
+    ) : null;
 
   return (
     <StationScanBar
@@ -60,9 +62,8 @@ export function ThemedStationScanBar({
       submitTraceClassName={submitTraceClassName}
       inputBorderClassName={inputBorderClassName ?? inputBorder}
       inputClassName={cn(stationScanBarFocusInputClass(theme), inputClassName)}
-      rightContent={rightContent}
-      pinnedRight={spinner}
-      hasRightContent={props.hasRightContent ?? Boolean(rightContent)}
+      rightContent={resolvedRight}
+      hasRightContent={props.hasRightContent ?? Boolean(resolvedRight)}
     />
   );
 }

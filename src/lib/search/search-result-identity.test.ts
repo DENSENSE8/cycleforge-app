@@ -82,6 +82,15 @@ describe('search-result-identity', () => {
       identityKindFor(hit({ entityType: 'unit' }), '', 'SN-ABC-12345', null),
       'serial',
     );
+    assert.equal(
+      identityKindFor(
+        hit({ entityType: 'import_exception' }),
+        '15-14964-95153',
+        '',
+        '9434608106244396718157',
+      ),
+      'order',
+    );
   });
 
   it('unitSerialFromHit uses facet then subtitle', () => {

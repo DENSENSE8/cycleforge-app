@@ -1,24 +1,20 @@
 /**
  * `?incview=` — which right-pane sub-view Incoming is showing.
  *
- * Its own leaf module (2026-08-02) because the vocabulary now has three values
- * and TWO readers were each re-deriving it with an inline
- * `get('incview') === 'email' ? 'email' : 'pos'` ternary. A third value has to
- * be added to every such ternary, and the one that gets missed silently falls
- * back to `pos` — the surface renders the default lane while the rail says
- * otherwise. One parser, imported.
+ * Its own leaf module (2026-08-02) because the vocabulary had multiple values
+ * and TWO readers were each re-deriving it with an inline ternary. One parser,
+ * imported. `removed` (Recently removed) was deleted 2026-08-10 — wire tokens
+ * coerce to `pos`.
  *
  * Dependency-free so `useReceivingModeContext` can compose it without pulling
- * `EmailTriagePanel` (which re-exports the type) into its graph.
+ * `EmailTriagePanel` into its graph.
  */
 
-export const INCOMING_VIEWS = ['pos', 'email', 'removed'] as const;
+export const INCOMING_VIEWS = ['pos', 'email'] as const;
 
 /**
- * - `pos`     — the default Incoming lane (expected, untouched).
- * - `email`   — the unmatched shipping-email worklist.
- * - `removed` — "where did it go": rows that HAVE left the lane, each stating
- *               why. A lookup surface, not an attention tile.
+ * - `pos`   — the default Incoming lane (expected, untouched).
+ * - `email` — the unmatched shipping-email worklist.
  */
 export type IncomingView = (typeof INCOMING_VIEWS)[number];
 

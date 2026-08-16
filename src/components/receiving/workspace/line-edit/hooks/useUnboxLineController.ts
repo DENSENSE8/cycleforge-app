@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/lib/toast';
-import { emitReceiving } from '@/components/receiving/receiving-events';
 import { receivingPhotosQueryKey } from '@/lib/queries/receiving-queries';
 import {
   deriveReceivingPhotoStageCounts,
@@ -166,14 +165,17 @@ export function useUnboxLineController(
   // "repeat previous" prefill on multi-line cartons. The workspace stays
   // mounted across sibling-line switches within the same carton (see
   // ReceivingRightPane's carton-keyed remount), so a ref-captured value
-  // naturally survives from one line to the next.
+  // naturally survives from one line to the next. Recent (History) itself
+  // reads the DB via /api/receiving/recent-label-note — not this slot.
   const itemNoteLiveRef = useRef(itemNote);
   useEffect(() => {
     itemNoteLiveRef.current = itemNote;
   }, [itemNote]);
   const [prevLineNotes, setPrevLineNotes] = useState('');
   useEffect(() => {
-    return () => setPrevLineNotes(itemNoteLiveRef.current);
+    return () => {
+      setPrevLineNotes(itemNoteLiveRef.current);
+    };
   }, [row.id]);
 
   // Serial is per line; seed the label/receive buffer once when the active
@@ -325,7 +327,10 @@ export function useUnboxLineController(
     [runReceive, core.refreshInventoryDossier],
   );
 
-  const scanValue = core.poNumber || (row.receiving_id != null ? `RCV-${row.receiving_id}` : '');
+  const scanValue =
+    core.poNumber
+    || (row.receiving_id != null ? `RCV-${row.receiving_id}` : '')
+    || (row.tracking_number ?? '').trim();
   const isMultiQtyLine = (row.quantity_expected ?? 0) > 1;
   const labelConditionCode = isMultiQtyLine && unitLabelCondition ? unitLabelCondition : cond;
 
@@ -621,30 +626,15 @@ export function useUnboxLineController(
   const isUnfound = shouldUseLocalReceiveOnly(row);
 
   /**
-   * Dogfood primary: Print arms commit `stage`; Receive only after stage.
-   * Combined print→receive is gone — location scan sits between them.
+   * Dogfood primary: print dialog + receive in one click. Face says Receive;
+   * print opens synchronously so the browser dialog is not blocked by the
+   * async receive. Already-received lines stay print-only (terminal routes
+   * those separately).
    */
   const handlePrintAndReceive = useCallback(() => {
-    const printed = Boolean(row.label_printed_at);
-    const staged = Boolean(row.staged_at && row.staged_location_id);
-    if (!printed) {
-      runPrimaryPrint();
-      return;
-    }
-    if (!staged) {
-      toast.message('Scan a location barcode in the dock');
-      setTimeout(() => emitReceiving('receiving-focus-scan'), 60);
-      return;
-    }
-    handleReceive(isUnfound ? 'local_receive' : 'zoho_receive');
-  }, [
-    runPrimaryPrint,
-    handleReceive,
-    isUnfound,
-    row.label_printed_at,
-    row.staged_at,
-    row.staged_location_id,
-  ]);
+    runPrimaryPrint();
+    void handleReceive(isUnfound ? 'local_receive' : 'zoho_receive');
+  }, [runPrimaryPrint, handleReceive, isUnfound]);
 
   const canPrintReview = labelOptions.length > 0;
   const canReceiveReview = row.receiving_id != null;
@@ -658,7 +648,8 @@ export function useUnboxLineController(
   // failed Zoho receive parks a line there ("inventory committed, Zoho
   // pending"). Both must keep the Receive CTA — the first was never received,
   // the second needs a retry.
-  const isReceived = Boolean((row.received_done_at || '').trim());
+  // Stamp may still be a Date on a stale client patch — coerce before trim.
+  const isReceived = Boolean(String(row.received_done_at ?? '').trim());
   // Zoho receive is only valid for matched cartons; unfound stays local-only.
   const canZohoReceive = canReceiveReview && !isUnfound;
   // Optional org gate: Receive stays blocked until the operator captures a serial
@@ -740,35 +731,23 @@ export function useUnboxLineController(
   // Once received the primary action is print-only, so the receive-side gates
   // (shipment link, serial confirmation, photo policy) must stop blocking it —
   // otherwise a received line with no serial could never reprint its label.
-  const labelPrinted = Boolean(row.label_printed_at);
-  const locationStaged = Boolean(row.staged_at && row.staged_location_id);
   const combinedReviewDisabled = isReceived
     ? !canPrintReview
-    : !labelPrinted
-      ? !canPrintReview
-      : !locationStaged
-        ? true
-        : !canReceiveReview || !canPrintReview || !serialConfirmed || photoPolicyDisabledReason != null;
+    : !canReceiveReview || !canPrintReview || !serialConfirmed || photoPolicyDisabledReason != null;
   // Bench-visible reason for the disabled Receive bar. A hover `title` is
   // invisible to an operator standing at a station — the bar renders this
   // line above the pill so the blocker names itself.
   const combinedReviewDisabledReason = isReceived
-    ? !canPrintReview
-      ? 'Add a PO number or SKU before printing'
-      : null
-    : !labelPrinted
-      ? !canPrintReview
-        ? 'Add a PO number or SKU before printing'
-        : null
-      : !locationStaged
-        ? 'Scan a location barcode in the dock'
-        : !canReceiveReview
-          ? 'Link this carton to a shipment to receive'
-          : !canPrintReview
-            ? 'Add a PO number or SKU before printing and receiving'
-            : !serialConfirmed
-              ? 'Scan a serial — or mark “No serial” with a reason — to receive'
-              : photoPolicyDisabledReason;
+    ? null
+    : !canReceiveReview
+      ? // Unfound stubs / cold load have no shipment to link — never paint the
+        // matched-carton "link shipment" prompt over a loading unfound bench.
+        isUnfound
+          ? null
+          : 'Link this carton to a shipment to receive'
+      : !serialConfirmed
+        ? 'Scan a serial — or mark “No serial” with a reason — to receive'
+        : photoPolicyDisabledReason;
   // itemTotal is PO-scoped (workspace nav / useReceivingWorkspaceBridge) so
   // "Receive all" never claims lines from a different PO on a mixed carton.
   const isSinglePoItem = itemTotal === 1;
@@ -798,17 +777,13 @@ export function useUnboxLineController(
       : isUnfound
         ? 'Undo local receive — quantities and received stamp clear; inventory is not touched'
         : 'Undo website receive — quantities and received stamp clear; linked inventory PO is marked unreceived';
-  // Received ⇒ Print. Open + not printed ⇒ Print (arms stage). Printed + not
-  // staged ⇒ Scan location (dock). Staged ⇒ Receive.
+  // Face stays receive-noun (dogfood era). Click still print-then-receive;
+  // received lines collapse to print-only (terminal routes those separately).
   const printReceivePrimaryLabel = isReceived
     ? 'Print label'
-    : !labelPrinted
-      ? 'Print label'
-      : !locationStaged
-        ? 'Scan location'
-        : isUnfound
-          ? 'Receive locally'
-          : receiveMenuLabel;
+    : isUnfound
+      ? 'Receive locally'
+      : receiveMenuLabel;
   // Unfound cartons have no Zoho/scan options in the menu — just print-only and
   // a local "receive all". Keep the menu copy honest so it matches what's shown.
   // When Unreceive is available, name it in the split affordance — after receive
@@ -838,17 +813,13 @@ export function useUnboxLineController(
       : undefined;
   const printThenReceiveTitle = isReceived
     ? 'Already received — print the package label'
-    : !labelPrinted
-      ? 'Print the label — then scan a putaway location'
-      : !locationStaged
-        ? 'Scan a location barcode in the dock to stage this unit'
-        : row.receiving_id == null && !scanValue.trim() && !(row.sku || '').trim()
-          ? 'Need a shipment link or SKU to continue'
-          : isUnfound
-            ? 'Receive locally — unfound carton, external inventory is not touched'
-            : isSinglePoItem
-              ? 'Receive this line into the staged location'
-              : 'Receive every open line on this PO into the staged location';
+    : row.receiving_id == null && !scanValue.trim() && !(row.sku || '').trim()
+      ? 'Need a shipment link or SKU to continue'
+      : isUnfound
+        ? 'Print the label and receive locally — unfound carton, external inventory is not touched'
+        : isSinglePoItem
+          ? 'Print the label and receive this line'
+          : 'Print the label and receive every open line on this PO';
 
   // Pair the carton with the shipped order a scanned serial matched. Fires for
   // ANY line once a return is detected (not just a pre-typed RETURN) — the server

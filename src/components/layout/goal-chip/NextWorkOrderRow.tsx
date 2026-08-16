@@ -32,6 +32,8 @@ import { cn } from '@/utils/_cn';
 import { formatDate } from '@/components/work-orders/types';
 import { getDaysLateNullable } from '@/utils/date';
 import type { NextWorkOrder } from './useNextWorkOrder';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+
 
 function dueFace(deadlineAt: string | null): { label: string; overdue: boolean } {
   if (!deadlineAt) return { label: 'No deadline', overdue: false };
@@ -51,7 +53,7 @@ export function NextWorkOrderRow({ top, onNavigate }: { top: NextWorkOrder; onNa
       <Link
         href={top.sourcePath}
         onClick={onNavigate}
-        className="group mt-1 flex items-center gap-2 rounded-none outline-none focus-visible:ring-1 focus-visible:ring-blue-400"
+        className={cn("group mt-1 flex items-center gap-2 rounded-none", focusRing('control', 'accent'))}
       >
         <ClipboardList className="h-3.5 w-3.5 shrink-0 text-text-muted" />
         <span className="min-w-0 flex-1">

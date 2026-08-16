@@ -48,8 +48,7 @@ const RE = new RegExp(`(?<![A-Za-z0-9])text-\\[(${SIZES})px\\]`, 'g');
 const SKIP = new Set([
   'scripts/codemods/text-role-exact.mjs',
   'scripts/codemods/text-size-tokens.mjs',
-  'components/ui/typography-tokens.guard.test.ts',
-]);
+  ]);
 
 function walk(dir, out = []) {
   for (const entry of readdirSync(dir)) {

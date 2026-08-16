@@ -112,7 +112,7 @@ export function PlanEntryCard({
                 min={1}
                 max={9999}
                 onChange={(v) => void saveQty(v)}
-                className="h-10 w-16 rounded-lg border border-border-soft bg-surface-card text-center text-lg font-semibold tabular-nums text-text-default outline-none transition-colors focus:border-purple-400 focus:ring-2 focus:ring-purple-400/20 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                className={"h-10 w-16 rounded-lg border border-border-soft bg-surface-card text-center text-lg font-semibold tabular-nums text-text-default outline-none transition-colors focus:border-purple-400 focus:ring-2 focus:ring-purple-400/20 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" /* ds-allow-focus: identity/one-off hue or ring-0 */}
               />
               <IconButton
                 icon={<Plus className="h-3.5 w-3.5" />}

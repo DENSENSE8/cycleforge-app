@@ -67,6 +67,56 @@ export function shouldCollapseFromEdgeDrag(
 /** Default past-min slack when {@link UseHorizontalEdgeResizeOptions.onCollapseBeyondMin} is set. */
 export const EDGE_RESIZE_COLLAPSE_SLACK_PX = 48;
 
+/**
+ * Which collapse threshold the drag is currently LEANING against — the pane is
+ * pinned at a bound (its live width clamped) and the operator is pushing past it
+ * in the slack window, one shove from a collapse. Feeds the splitter's
+ * "arm-to-close" highlight (VS Code / Figma snap-zone grammar) so a collapse is
+ * never a surprise: the seam of the thing about to close lights before it fires.
+ *
+ * - `'overshoot'` — dragging past the MAX cap (pane pinned at cap, `raw > clamped`)
+ *   but not yet past {@link UseHorizontalEdgeResizeOptions.overshootBeyondPx}
+ *   (which closes the FAR rail — the station cascade's Stage 3).
+ * - `'collapse'` — dragging past the MIN floor (pane pinned at min, `raw < clamped`)
+ *   but not yet past {@link UseHorizontalEdgeResizeOptions.collapseBelowPx}
+ *   (which parks THIS pane — drag-past-min self-collapse).
+ * - `'none'` — resizing normally, or a bound with no collapse wired to arm.
+ */
+type EdgeDragArm = 'none' | 'collapse' | 'overshoot';
+
+/**
+ * Pure. `clampedWidth` is the live layout width AFTER `[minWidth, cap]` clamping,
+ * so `raw` diverging from it is exactly "the operator is leaning against a bound".
+ * A threshold is only armable when its collapse is wired (its `*Px` arg is set);
+ * a bare bound with nothing to collapse arms nothing.
+ */
+export function edgeDragArmState(args: {
+  rawWidth: number;
+  clampedWidth: number;
+  collapseBelowPx?: number;
+  overshootBeyondPx?: number;
+}): EdgeDragArm {
+  const { rawWidth, clampedWidth, collapseBelowPx, overshootBeyondPx } = args;
+  if (!Number.isFinite(rawWidth) || !Number.isFinite(clampedWidth)) return 'none';
+  if (
+    overshootBeyondPx != null &&
+    Number.isFinite(overshootBeyondPx) &&
+    rawWidth > clampedWidth &&
+    rawWidth <= overshootBeyondPx
+  ) {
+    return 'overshoot';
+  }
+  if (
+    collapseBelowPx != null &&
+    Number.isFinite(collapseBelowPx) &&
+    rawWidth < clampedWidth &&
+    rawWidth >= collapseBelowPx
+  ) {
+    return 'collapse';
+  }
+  return 'none';
+}
+
 function readPersistedWidth(
   key: string | undefined,
   fallback: number,
@@ -123,6 +173,17 @@ interface UseHorizontalEdgeResizeOptions {
    * `minWidth - {@link EDGE_RESIZE_COLLAPSE_SLACK_PX}` when the callback is set.
    */
   collapseBelowPx?: number;
+  /**
+   * Opt-in mirror of {@link onCollapseBeyondMin} for the GROW end: fired once
+   * (edge-triggered) mid-drag when the raw (unclamped) drag width pushes past
+   * {@link overshootBeyondPx}. Used by the station cascade's Stage 3 — dragging a
+   * sash past the point the far rail is squeezed to its min closes that far rail
+   * (freeing its width for this pane). Fires again only after the raw width drops
+   * back below the threshold and re-crosses it, so it never spams.
+   */
+  onOvershootMax?: () => void;
+  /** Raw-width threshold for {@link onOvershootMax} (typically `maxWidth + slack`). */
+  overshootBeyondPx?: number;
 }
 
 /** Props spread onto {@link HorizontalEdgeResizeHandle} (or a raw hit target). */
@@ -160,11 +221,18 @@ export function useHorizontalEdgeResize({
   testId = 'document-slide-over-resize',
   onCollapseBeyondMin,
   collapseBelowPx,
+  onOvershootMax,
+  overshootBeyondPx,
 }: UseHorizontalEdgeResizeOptions = {}) {
   // Start at the design default so SSR HTML and the first client paint agree;
   // localStorage hydrates in the effect below (avoids a width mismatch).
   const [width, setWidthState] = useState(defaultWidth);
   const [isDragging, setIsDragging] = useState(false);
+  // Which collapse threshold the live drag is leaning against — drives the
+  // "arm-to-close" seam highlight. `'none'` at rest / while resizing normally.
+  // React bails on an unchanged value, so setting it every pointermove is
+  // effectively edge-triggered (no re-render unless the zone changed).
+  const [armState, setArmState] = useState<EdgeDragArm>('none');
   const widthRef = useRef(width);
   const edgeRef = useRef(edge);
   const dragRef = useRef<{
@@ -177,6 +245,10 @@ export function useHorizontalEdgeResize({
     collapseBelowPx ??
       (onCollapseBeyondMin ? minWidth - EDGE_RESIZE_COLLAPSE_SLACK_PX : undefined),
   );
+  const onOvershootMaxRef = useRef(onOvershootMax);
+  const overshootBeyondPxRef = useRef(overshootBeyondPx);
+  // Edge-trigger latch — fire the overshoot once per upward crossing.
+  const overshootFiredRef = useRef(false);
 
   useEffect(() => {
     widthRef.current = width;
@@ -195,6 +267,14 @@ export function useHorizontalEdgeResize({
       collapseBelowPx ??
       (onCollapseBeyondMin ? minWidth - EDGE_RESIZE_COLLAPSE_SLACK_PX : undefined);
   }, [collapseBelowPx, onCollapseBeyondMin, minWidth]);
+
+  useEffect(() => {
+    onOvershootMaxRef.current = onOvershootMax;
+  }, [onOvershootMax]);
+
+  useEffect(() => {
+    overshootBeyondPxRef.current = overshootBeyondPx;
+  }, [overshootBeyondPx]);
 
   useEffect(() => {
     if (!storageKey) return;
@@ -267,6 +347,7 @@ export function useHorizontalEdgeResize({
     const { startWidth, rawWidth } = dragRef.current;
     dragRef.current = null;
     setIsDragging(false);
+    setArmState('none');
     document.body.style.userSelect = '';
     document.body.style.cursor = '';
 
@@ -298,6 +379,35 @@ export function useHorizontalEdgeResize({
       );
       dragRef.current.rawWidth = raw;
       applyLiveWidth(raw);
+      const beyond = overshootBeyondPxRef.current;
+      const onOvershoot = onOvershootMaxRef.current;
+      const onCollapse = onCollapseBeyondMinRef.current;
+      // Arm-to-close highlight: `widthRef.current` is the just-clamped live width,
+      // so `raw` diverging from it means the pane is pinned at a bound and the
+      // operator is pushing into the slack window — one shove from a collapse.
+      // Only a threshold with a wired collapse arms (a bare bound highlights
+      // nothing).
+      setArmState(
+        edgeDragArmState({
+          rawWidth: raw,
+          clampedWidth: widthRef.current,
+          overshootBeyondPx: onOvershoot ? beyond : undefined,
+          collapseBelowPx: onCollapse ? collapseBelowPxRef.current : undefined,
+        }),
+      );
+      // Stage-3 overshoot: edge-triggered when the raw drag pushes past the cap
+      // (the far rail is at its min and the operator keeps pulling) → close the
+      // far rail for more room. Re-arms once raw drops back below the threshold.
+      if (beyond != null && Number.isFinite(beyond) && onOvershoot) {
+        if (raw > beyond) {
+          if (!overshootFiredRef.current) {
+            overshootFiredRef.current = true;
+            onOvershoot();
+          }
+        } else {
+          overshootFiredRef.current = false;
+        }
+      }
     };
     const onUp = () => stopDrag();
     window.addEventListener('pointermove', onMove);
@@ -317,6 +427,8 @@ export function useHorizontalEdgeResize({
       e.stopPropagation();
       const startWidth = widthRef.current;
       dragRef.current = { startX: e.clientX, startWidth, rawWidth: startWidth };
+      overshootFiredRef.current = false;
+      setArmState('none');
       setIsDragging(true);
       document.body.style.userSelect = 'none';
       document.body.style.cursor = 'col-resize';
@@ -347,5 +459,23 @@ export function useHorizontalEdgeResize({
     onDoubleClick,
   };
 
-  return { width, setWidth, isDragging, edgeHandleProps };
+  return {
+    width,
+    setWidth,
+    isDragging,
+    edgeHandleProps,
+    /**
+     * True while a drag is leaning past the MIN floor into the
+     * {@link onCollapseBeyondMin} slack — this pane is one shove from parking
+     * itself. Feeds the sash's arm-to-close highlight.
+     */
+    collapseArmed: armState === 'collapse',
+    /**
+     * True while a drag is leaning past the MAX cap into the
+     * {@link onOvershootMax} slack — the FAR rail is pinned at its min and one
+     * shove from closing (the station cascade's Stage 3). Feeds the sash's
+     * arm-to-close highlight and the cross-rail relay.
+     */
+    overshootArmed: armState === 'overshoot',
+  };
 }

@@ -1,11 +1,13 @@
 'use client';
 
 import type { AuditEntry } from './role-editor-types';
+import { Panel } from '@/design-system/primitives';
+
 
 /** Card D — recent audit: role.* + staff.roles.changed entries touching this role. */
 export function RoleAuditCard({ audit }: { audit: AuditEntry[] }) {
   return (
-    <section className="overflow-hidden rounded-2xl border border-border-soft bg-surface-card shadow-sm">
+    <Panel radius="2xl" padding="none" className="overflow-hidden">
       <header className="flex items-center justify-between border-b border-border-hairline px-5 py-3">
         <div>
           <h2 className="text-sm font-semibold text-text-default">Recent activity</h2>
@@ -29,6 +31,6 @@ export function RoleAuditCard({ audit }: { audit: AuditEntry[] }) {
           ))}
         </ul>
       )}
-    </section>
+    </Panel>
   );
 }

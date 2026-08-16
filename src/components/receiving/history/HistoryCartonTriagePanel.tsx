@@ -51,6 +51,9 @@ import {
   type DetailInspectorCollapseDetail,
 } from '@/design-system/shells/detail-stack';
 import { OrderFactList, OrderFactRow } from '@/components/order-record/order-record-card';
+import { PlatformMark } from '@/components/ui/PlatformMark';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { sourcePlatformMeta } from '@/lib/source-platform';
 import {
   PaneHeaderLabel,
   PaneHeaderStatusPill,
@@ -659,7 +662,27 @@ export function HistoryCartonTriagePanel({
                             }
                             omitWhenEmpty
                           />
-                          <OrderFactRow label="Channel" value={channel} omitWhenEmpty />
+                          <OrderFactRow
+                            label="Channel"
+                            value={
+                              channel
+                                ? (() => {
+                                    const meta = sourcePlatformMeta(channel);
+                                    return (
+                                      <HoverTooltip label={meta.label || channel} asChild focusable={false}>
+                                        <span className="inline-flex shrink-0" aria-label={meta.label || channel}>
+                                          <PlatformMark
+                                            platformValue={meta.value || channel}
+                                            meta={meta.value ? meta : undefined}
+                                          />
+                                        </span>
+                                      </HoverTooltip>
+                                    );
+                                  })()
+                                : null
+                            }
+                            omitWhenEmpty
+                          />
                           <OrderFactRow label="Price" value={price} omitWhenEmpty />
                           <OrderFactRow label="Qty" value={qtyLabel} omitWhenEmpty />
                           <OrderFactRow label="Location" value={location} omitWhenEmpty />

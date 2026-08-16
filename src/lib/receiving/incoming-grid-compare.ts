@@ -10,7 +10,7 @@ import {
 import {
   incomingRowDateSource,
   type IncomingGridColumnKey,
-} from '@/lib/receiving/incoming-grid-layout';
+} from '@/lib/receiving/receiving-grid-layout';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { getDaysLateNullable } from '@/utils/date';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';

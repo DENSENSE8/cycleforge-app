@@ -3,7 +3,7 @@
 import { useCallback, useState } from 'react';
 import { AlertCircle, Loader2 } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
-import { PRODUCT_HUB_PLATFORMS } from './platform-style';
+import { PRODUCT_HUB_PLATFORMS } from './product-hub-platforms';
 import { useProductHub } from './useProductHub';
 import { ListingResizePanel } from '@/components/listing/ListingResizePanel';
 import { ProductHubHeader } from './product-hub/ProductHubHeader';

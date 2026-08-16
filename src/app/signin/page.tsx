@@ -773,6 +773,7 @@ export default function SignInPage() {
           )}
         </AnimatePresence>
 
+
         {/* Tier 3 — one promoted option (what you used last) + a quiet drawer.
             Hidden on the password step so that stays a single focused action. */}
         <AnimatePresence initial={false}>

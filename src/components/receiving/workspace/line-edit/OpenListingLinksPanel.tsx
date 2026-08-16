@@ -7,6 +7,7 @@
  */
 
 import { ExternalLink } from '@/components/Icons';
+import { InlineNotice } from '@/design-system/components';
 import { Button } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { openAllListingHrefs } from '@/lib/receiving/listing-links';
@@ -58,9 +59,9 @@ export function OpenListingLinksPanel({
       </div>
 
       {!links.length ? (
-        <div className="rounded-md border border-border-hairline bg-surface-card/70 px-3 py-2 text-role-caption text-text-muted">
+        <InlineNotice tone="neutral" size="sm">
           No links provided.
-        </div>
+        </InlineNotice>
       ) : (
         <div className="space-y-2">
           {links.map((href, i) => (

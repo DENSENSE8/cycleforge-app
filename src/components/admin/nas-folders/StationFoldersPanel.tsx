@@ -2,6 +2,10 @@ import { nasConfigured } from '@/lib/nas-photos';
 import { Button } from '@/design-system/primitives';
 import { STATIONS } from './nas-folders-config';
 import type { StationNasFoldersController } from './useStationNasFolders';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 /** Per-station picker default-folder panel. */
 export function StationFoldersPanel({ c }: { c: StationNasFoldersController }) {
@@ -21,7 +25,7 @@ export function StationFoldersPanel({ c }: { c: StationNasFoldersController }) {
                 value={draft[s.key] ?? ''}
                 onChange={(e) => setFolder(s.key, e.target.value)}
                 placeholder="Root (no folder)"
-                className="w-full rounded-lg border border-border-soft bg-surface-card inset-field text-role-caption text-text-default placeholder:text-text-faint focus:outline-none focus:ring-2 focus:ring-blue-200"
+                className={cn("w-full rounded-lg border border-border-soft bg-surface-card inset-field text-role-caption text-text-default placeholder:text-text-faint", focusRing('field', 'accent'))}
               />
               {s.hint ? <p className="mt-1 text-role-micro text-text-faint">{s.hint}</p> : null}
             </div>

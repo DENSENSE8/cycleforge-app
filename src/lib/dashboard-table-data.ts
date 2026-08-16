@@ -4,6 +4,12 @@ import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import type { PackerRecord } from '@/hooks/usePackerLogs';
 import type { ShippedSearchField } from '@/lib/shipped-search';
 import {
+  ZERO_QUEUE_COUNTS,
+  normalizeQueueCountsPayload,
+  type QueueCountsCombo,
+  type UnshippedQueueCounts,
+} from '@/lib/orders/queue-counts-normalize';
+import {
   dedupeByOrderId,
   isNonFbaRecord,
   normalizeUnshippedOrdersPayload,
@@ -152,40 +158,9 @@ export async function fetchUnshippedOrdersData({
   return normalizeUnshippedOrdersPayload(data.orders || []);
 }
 
-/** Raw signal combo from the queue-counts endpoint — mapped to a fulfillment
- *  lane CLIENT-side via `deriveFulfillmentState` (Decision 8), never in SQL. */
-export interface QueueCountsCombo {
-  hasTechScan: boolean;
-  blocked: boolean;
-  count: number;
-}
-
-export interface UnshippedQueueCounts {
-  total: number;
-  byStage: { all: number; pending: number; tested: number };
-  /** Operator-flagged urgent tally (orders.is_urgent) for the "Urgent" segment. */
-  urgent: number;
-  combos: QueueCountsCombo[];
-  /** Packing DESK/STAGING open-package counts (Ready-to-Pack placement). */
-  packPlacement?: {
-    counts: Array<{
-      locationId: number;
-      locationName: string;
-      locationBarcode: string | null;
-      locationKind: 'DESK' | 'STAGING';
-      count: number;
-    }>;
-    totalPlaced: number;
-  };
-}
-
-const ZERO_QUEUE_COUNTS: UnshippedQueueCounts = {
-  total: 0,
-  byStage: { all: 0, pending: 0, tested: 0 },
-  urgent: 0,
-  combos: [],
-  packPlacement: { counts: [], totalPlaced: 0 },
-};
+// Shape + normalization live in the shared waist so the RSC seed and this
+// browser fetch cannot produce different cache entries for the same key.
+export type { QueueCountsCombo, UnshippedQueueCounts };
 
 /**
  * Lightweight Unshipped-queue tallies — total + per-stage + raw lane combos —
@@ -201,23 +176,8 @@ export async function fetchUnshippedQueueCounts({
   const res = await fetch(`/api/orders/queue-counts${qs ? `?${qs}` : ''}`, FRESH_FETCH_OPTIONS);
   if (!res.ok) return ZERO_QUEUE_COUNTS;
   const data = await res.json().catch(() => null);
-  if (!data || typeof data.total !== 'number') return ZERO_QUEUE_COUNTS;
-  const packPlacement = data.packPlacement && typeof data.packPlacement === 'object'
-    ? {
-        counts: Array.isArray(data.packPlacement.counts) ? data.packPlacement.counts : [],
-        totalPlaced:
-          typeof data.packPlacement.totalPlaced === 'number'
-            ? data.packPlacement.totalPlaced
-            : 0,
-      }
-    : ZERO_QUEUE_COUNTS.packPlacement;
-  return {
-    total: data.total,
-    byStage: data.byStage ?? ZERO_QUEUE_COUNTS.byStage,
-    urgent: typeof data.urgent === 'number' ? data.urgent : 0,
-    combos: Array.isArray(data.combos) ? data.combos : [],
-    packPlacement,
-  };
+  // Zeros are the browser fallback; the seed leaves the key unset instead.
+  return normalizeQueueCountsPayload(data) ?? ZERO_QUEUE_COUNTS;
 }
 
 export interface DashboardShippedSearchMeta {

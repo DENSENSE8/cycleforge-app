@@ -19,7 +19,7 @@
 import { useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { StaffAvatar } from '@/components/identity';
-import { Button } from '@/design-system/primitives';
+import { Panel, Button } from '@/design-system/primitives';
 import { Loader2 } from '@/components/Icons';
 import { useAuth } from '@/contexts/AuthContext';
 import { qk } from '@/queries/keys';
@@ -72,7 +72,7 @@ export function StaffPhotoCard() {
   }
 
   return (
-    <div className="rounded-2xl border border-border-soft bg-surface-card p-5 shadow-sm">
+    <Panel radius="2xl">
       <h3 className="mb-3 text-sm font-semibold text-text-default">Your photo</h3>
       <div className="flex items-center gap-4">
         <StaffAvatar
@@ -137,7 +137,7 @@ export function StaffPhotoCard() {
           ) : null}
         </div>
       </div>
-    </div>
+    </Panel>
   );
 }
 

@@ -3,24 +3,20 @@
 /**
  * Home · Search · Media · Plans · Chat — the five app-wide destinations.
  *
- * ## Two mounts, one SoT
+ * ## One mount, one SoT
  *
- * - **Open spine** — {@link SpineTopPins} fills the spine's 40px top band
- *   (header seam geometry). Layout is equal `flex-1` cells across the band
- *   width so hover washes abut with no gaps.
- * - **Closed spine** — {@link TopDestinationPins} peeks from the header
- *   sidebar toggle (`SidebarCollapseControl`) so cold-load reachability does
- *   not wait on opening the map. Layout is a compact `HEADER_ICON_CLUSTER`.
+ * {@link SpineTopPins} fills the open spine's 40px top band (header seam
+ * geometry). Layout is equal `flex-1` cells across the band width so hover
+ * washes abut with no gaps. When the spine is closed, reach these via ⌘K /
+ * opening the map — the header toggle is click-only (no hover peek).
  *
  * They were four full rows pinned above the map until 2026-08-03, then header
- * icons for part of that day, then spine-band only. The closed-spine peek
- * returned (2026-08-03 evening) and **replaced** the 2s left-edge dwell so
- * that corner has one hover answer: peek pins; click opens the full spine.
- * Plans joined as the fifth pin (2026-08-03) between Media and Chat.
+ * icons for part of that day, then spine-band only. A closed-spine hover peek
+ * existed briefly and was removed so the toggle stays a plain Show/Hide
+ * control. Plans joined as the fifth pin (2026-08-03) between Media and Chat.
  *
  * As rows they cost the map vertical space. As icons in a band the spine already
- * reserves, they cost it **nothing**. The peek is collapsed-only — never a
- * permanent second door while the spine is open.
+ * reserves, they cost it **nothing**.
  *
  * ## The registry still owns them
  *
@@ -59,25 +55,12 @@ import { cn } from '@/utils/_cn';
 import {
   HEADER_ICON_BTN_CLASS,
   HEADER_ICON_BTN_OPEN_CLASS,
-  HEADER_ICON_GAP,
-  HEADER_ICON_WRAP,
   SPINE_TOP_PIN_WRAP,
   TOP_CHROME_ICON_GLYPH,
 } from '@/components/layout/header-shell';
 
-/**
- * Shared pin buttons — registry + permission gated. Parents own layout chrome
- * (`band` spread vs compact `cluster`).
- */
-export function TopDestinationPins({
-  layout = 'band',
-  onPinNavigate,
-}: {
-  /** `band` = spine top strip; `cluster` = collapsed-toggle peek popover. */
-  layout?: 'band' | 'cluster';
-  /** Fired after a pin navigates (peek dismisses here). */
-  onPinNavigate?: () => void;
-}) {
+/** Spine-band mount — equal-fill pins across the 40px header seam. */
+export function SpineTopPins() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -93,21 +76,13 @@ export function TopDestinationPins({
   return (
     <nav
       aria-label="Quick destinations"
-      className={cn(
-        // Band: equal flex-1 cells fill the seam — hover washes abut (no
-        // justify-between air between fixed w-8 islands).
-        layout === 'band' && 'flex h-full w-full min-w-0 items-stretch px-0',
-        layout === 'cluster' && cn('flex shrink-0 items-stretch', HEADER_ICON_GAP),
-      )}
+      className="flex h-full w-full min-w-0 items-stretch px-0"
     >
       {pins.map((pin) => {
         const Icon = pin.icon;
         const active = isSidebarTopPinActive(pin, { pathname, searchParams });
         return (
-          <div
-            key={pin.id}
-            className={layout === 'band' ? SPINE_TOP_PIN_WRAP : HEADER_ICON_WRAP}
-          >
+          <div key={pin.id} className={SPINE_TOP_PIN_WRAP}>
             <HoverTooltip label={pin.label} asChild>
               <IconButton
                 size="md"
@@ -115,7 +90,6 @@ export function TopDestinationPins({
                 aria-current={active ? 'page' : undefined}
                 onClick={() => {
                   router.push(pin.href);
-                  onPinNavigate?.();
                 }}
                 className={cn(HEADER_ICON_BTN_CLASS, active && HEADER_ICON_BTN_OPEN_CLASS)}
                 icon={
@@ -128,11 +102,4 @@ export function TopDestinationPins({
       })}
     </nav>
   );
-}
-
-/** Spine-band mount — equal-fill pins across the 40px header seam. */
-export function SpineTopPins() {
-  // `SPINE_TOP_PIN_WRAP` (`flex-1`) lives on the shared component's `band`
-  // layout so hover washes meet edge-to-edge with the map rows beneath.
-  return <TopDestinationPins layout="band" />;
 }

@@ -5,8 +5,8 @@
  * `[external-link] · [copy value] · [edit]` layout plus a compact action-menu
  * mode where the chip remains the primary action and Open/Edit move below it.
  *
- * When `editOpen`, the {@link CopyChip} face pulses `edit` (4 chars) via the
- * shared `editing` prop — the identity row never drops digits or reflows.
+ * When `editOpen`, the {@link CopyChip} face swaps to steady `editing` via the
+ * shared `editing` prop — the identity row never drops digits, reflows, or pulses.
  */
 
 import { useState, type CSSProperties, type ReactNode } from 'react';
@@ -16,10 +16,12 @@ import { CarrierMark } from '@/components/ui/CarrierMark';
 import { CopyChip, type ChipTone } from '@/components/ui/CopyChip';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { RECEIVING_CHIP_EDIT_BTN_CLASS } from '@/components/sidebar/receiving/receiving-sidebar-shared';
+import { cornerClass } from '@/design-system/tokens/radius';
 import { hasCarrierBrandPaint, resolveCarrierBrand } from '@/lib/carrier-brand';
 import { normalizeCopyText } from '@/lib/copy-chip-format';
 import { recordCopy } from '@/lib/clipboard-history';
 import { buildOpenLinksHubHref } from '@/lib/receiving/listing-links';
+import { cn } from '@/utils/_cn';
 
 export function IdentityLinkChip({
   openHref,
@@ -50,6 +52,7 @@ export function IdentityLinkChip({
   linkOptions,
   iconOnly = false,
   iconOnlyMark,
+  menuPlacement = 'below',
 }: {
   openHref: string | null | undefined;
   openTitle: string;
@@ -88,7 +91,7 @@ export function IdentityLinkChip({
   editLabel?: string;
   /**
    * When `actionsInMenu`, render the Edit menuitem. Ticket chip sets false —
-   * History owns the push-column toggle; `onEdit` still drives pulse / chip click.
+   * History owns the push-column toggle; `onEdit` still drives edit face / chip click.
    */
   editInMenu?: boolean;
   /**
@@ -134,6 +137,12 @@ export function IdentityLinkChip({
   iconOnly?: boolean;
   /** Mark node (e.g. {@link PlatformMark}) when `iconOnly`. */
   iconOnlyMark?: ReactNode;
+  /**
+   * Hover-menu anchor. `below` = under the chip, left-aligned (ops default).
+   * `left` = flush to the chip's left (Photos gallery grammar) — used by the
+   * filed-ticket chip under Photos so the panel clears Claim / Displays.
+   */
+  menuPlacement?: 'below' | 'left';
 }) {
   const [menuHover, setMenuHover] = useState(false);
   const normalizedValue = normalizeCopyText(value);
@@ -175,7 +184,7 @@ export function IdentityLinkChip({
       ? `${display} — no link available`
       : 'No listing';
 
-  // While editing, chip face is pulsed "edit"; click closes the below-row field.
+  // While editing, chip face reads steady "editing"; click closes the below-row field.
   // Empty chips with onEdit (e.g. unfound `# ----`) activate edit on click —
   // no value to copy, so the face itself is the Link-PO affordance.
   const emptyEditActivate = !canCopy && !!onEdit && !isEditing ? onEdit : undefined;
@@ -254,9 +263,7 @@ export function IdentityLinkChip({
                         : `Copy ${display}`
                 }
                 aria-busy={isEditing || undefined}
-                className={`inline-flex shrink-0 items-center justify-center rounded-md transition-colors hover:bg-surface-hover active:scale-95 disabled:pointer-events-none${
-                  isEditing ? ' animate-pulse' : ''
-                }`}
+                className="inline-flex shrink-0 items-center justify-center rounded-md transition-colors hover:bg-surface-hover active:scale-95 disabled:pointer-events-none"
               >
                 {iconOnlyMark}
               </button>
@@ -342,17 +349,26 @@ export function IdentityLinkChip({
           // Hover-only visibility — focus-within kept menus stuck open after a
           // chip click (especially chips on the wrapped second row).
           // z-panelPopover + station-bar z-10 sibling beat the workbench so the
-          // menu is not covered/clipped when it opens below the identity chips.
-          className={`absolute left-1/2 top-full z-panelPopover -translate-x-1/2 pt-1 transition-opacity duration-100 ${
+          // menu is not covered/clipped when it opens beside/below the chips.
+          // Flush-square + left: same chrome as Photos `CopyChipHoverMenuPanel`
+          // (never `rounded-lg` / centered under the face).
+          className={cn(
+            'absolute z-panelPopover transition-opacity duration-100',
+            menuPlacement === 'left'
+              ? 'right-full top-0'
+              : 'left-0 top-full pt-1',
             menuHover
               ? 'visible pointer-events-auto opacity-100'
-              : 'invisible pointer-events-none opacity-0'
-          }`}
+              : 'invisible pointer-events-none opacity-0',
+          )}
         >
           <div
             role="menu"
             aria-label={`${display} actions`}
-            className="min-w-[128px] overflow-hidden rounded-lg border border-border-soft bg-surface-card shadow-lg"
+            className={cn(
+              'min-w-[128px] overflow-hidden border border-border-soft bg-surface-card shadow-lg',
+              cornerClass('flush'),
+            )}
           >
             {multiLinks ? (
               <>

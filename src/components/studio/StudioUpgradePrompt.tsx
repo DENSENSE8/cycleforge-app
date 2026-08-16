@@ -1,5 +1,7 @@
 import Link from 'next/link';
 import { Lock, Sparkles } from '@/components/Icons';
+import { Panel } from '@/design-system/primitives';
+
 
 /**
  * Shown in place of the Studio canvas when the tenant's plan does not include
@@ -15,7 +17,7 @@ import { Lock, Sparkles } from '@/components/Icons';
 export function StudioUpgradePrompt() {
   return (
     <div className="flex h-full w-full items-center justify-center bg-surface-canvas p-6">
-      <div className="flex max-w-md flex-col items-center gap-4 rounded-xl border border-dashed border-border-soft bg-surface-card px-8 py-10 text-center shadow-sm">
+      <Panel radius="xl" padding="none" className="flex max-w-md flex-col items-center gap-4 border-dashed px-8 py-10 text-center">
         <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 text-blue-700">
           <Lock className="h-5 w-5" />
         </div>
@@ -33,7 +35,7 @@ export function StudioUpgradePrompt() {
           <Sparkles className="h-3.5 w-3.5" />
           View plans &amp; upgrade
         </Link>
-      </div>
+      </Panel>
     </div>
   );
 }

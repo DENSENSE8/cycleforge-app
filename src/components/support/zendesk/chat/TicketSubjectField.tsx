@@ -27,6 +27,8 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IconButton } from '@/design-system/primitives';
 import { useUpdateTicket } from '@/hooks/useZendeskQueries';
 import { cn } from '@/utils/_cn';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+
 
 export function TicketSubjectField({
   ticketId,
@@ -90,7 +92,7 @@ export function TicketSubjectField({
             }
           }}
           className={cn(
-            'min-w-0 flex-1 rounded-md border border-blue-300 bg-surface-card px-2 py-0.5 font-semibold tracking-tight text-text-default outline-none focus:ring-2 focus:ring-blue-100',
+            cn('min-w-0 flex-1 rounded-md border border-blue-300 bg-surface-card px-2 py-0.5 font-semibold tracking-tight text-text-default', focusRing('field', 'accent')),
             typeClass,
           )}
         />

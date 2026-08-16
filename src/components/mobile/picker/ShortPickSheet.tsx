@@ -20,6 +20,10 @@ import { BottomSheet } from '@/components/ui/BottomSheet';
 import { Button } from '@/design-system/primitives';
 import { useReasonVocabulary } from '@/hooks/useReasonVocabulary';
 import { SHORT_PICK_REASONS, mergeShortPickReasons } from '@/lib/picking/short-pick-reasons';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 export type ShortPickReason =
   | 'NOT_FOUND_IN_BIN'
@@ -154,7 +158,7 @@ export function ShortPickSheet({
           onChange={(e) => setNote(e.target.value)}
           rows={2}
           placeholder={noteRequired ? 'Describe what happened…' : 'Add context if useful'}
-          className="w-full resize-none rounded-2xl border border-border-default bg-surface-canvas px-4 py-3 text-sm text-text-default outline-none transition-colors focus:border-blue-500 focus:bg-surface-card focus:ring-2 focus:ring-blue-200"
+          className={cn("w-full resize-none rounded-2xl border border-border-default bg-surface-canvas px-4 py-3 text-sm text-text-default transition-colors focus:bg-surface-card", focusRing('field', 'accent'))}
         />
       </label>
 

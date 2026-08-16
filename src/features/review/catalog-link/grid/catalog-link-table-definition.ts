@@ -54,6 +54,7 @@ export const CATALOG_LINK_TABLE_BINDING: TableSurfaceBinding<
   definition: CATALOG_LINK_TABLE_DEFINITION,
   columns: CATALOG_LINK_GRID_COLUMNS,
   makeDescriptor: makeCatalogLinkGridDescriptor,
+  recordPlane: { kind: 'inspector', occupantId: 'detail:catalog-link' },
 };
 
 export const IMPORT_EXCEPTION_TABLE_DEFINITION = parseTableDefinition({
@@ -77,4 +78,5 @@ export const IMPORT_EXCEPTION_TABLE_BINDING: TableSurfaceBinding<
   definition: IMPORT_EXCEPTION_TABLE_DEFINITION,
   columns: IMPORT_EXCEPTION_GRID_COLUMNS,
   makeDescriptor: makeImportExceptionGridDescriptor,
+  recordPlane: { kind: 'inspector', occupantId: 'detail:import-exception' },
 };

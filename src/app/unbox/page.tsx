@@ -1,8 +1,7 @@
-import { HydrationBoundary } from '@tanstack/react-query';
 import { ReceivingSurfacePage } from '@/components/receiving/ReceivingSurfacePage';
 import { SurfaceGate } from '@/components/surfaces/SurfaceGate';
 import { SurfaceParamHygiene } from '@/components/routing/SurfaceParamHygiene';
-import { seedUnboxSpine } from '@/lib/queries/unbox-spine-seed.server';
+import { UnboxBrowseShell } from '@/components/receiving/unbox/UnboxBrowseShell';
 
 /**
  * `/unbox` — the Unbox operator surface as a first-class, semantic route
@@ -14,21 +13,35 @@ import { seedUnboxSpine } from '@/lib/queries/unbox-spine-seed.server';
  * `'legacy'` escape hatch — the safe default). Legacy `/receiving?mode=receive`
  * and bare `/receiving` redirect here.
  *
- * Paint order: RSC seeds History spine into a HydrationBoundary so
- * `useReceivingLinesQuery` paints from cache on first HTML (Packer / To-ship
- * golden). Route `loading.tsx` already streams {@link UnboxWorkbenchSkeleton}.
+ * Paint order: selected rail row → middle → right edge → the rest of the rail.
+ *
+ * **The seed is NOT here, and that is structural.** The recents rail is a
+ * sibling of this page (`ResponsiveLayout` renders
+ * `<ContextPanelLayout>{children}</ContextPanelLayout>`), so React renders it
+ * BEFORE this page's tree — a `HydrationBoundary` mounted here could never
+ * reach it, and the rail server-rendered empty while the seed sat unused in the
+ * RSC payload. The seed now hydrates above the shell
+ * (`maybeSeedUnboxShell`, called from the root layout) and covers this page too,
+ * so the middle's carton lines still hydrate from cache exactly as before.
+ *
+ * The middle shows `UnboxStationFirstPaint`'s skeleton until the interactive
+ * workspace hydrates over that same cache. Workbench tables mount only after
+ * Back to list (`?unboxdesk=1`).
+ *
+ * There is no second, `sr-only` copy of the stand-in. One was mounted here as
+ * "belt-and-suspenders" while the app shell was client-gated and nothing the
+ * server rendered ever painted; with that gate gone the shell's own copy IS in
+ * the HTML, so the duplicate only shipped the same markup twice.
  */
 export default async function UnboxPage() {
-  const seed = await seedUnboxSpine();
-
   return (
     <>
       <SurfaceParamHygiene />
-      <HydrationBoundary state={seed.state}>
+      <UnboxBrowseShell>
         <SurfaceGate surfaceKey="unbox">
           <ReceivingSurfacePage mobileTitle="Unbox" surface="unbox" />
         </SurfaceGate>
-      </HydrationBoundary>
+      </UnboxBrowseShell>
     </>
   );
 }

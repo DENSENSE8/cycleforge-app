@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { User, Mail, MapPin, Copy, Check } from '@/components/Icons';
 import { sectionLabel, fieldLabel, dataValue } from '@/design-system/tokens/typography/presets';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { Button } from '@/design-system/primitives';
+import { Panel, Button } from '@/design-system/primitives';
 import { cn } from '@/utils/_cn';
 
 interface CustomerRecord {
@@ -131,12 +131,12 @@ export function CustomerDetailsTab({ customerId, bare = false }: CustomerDetails
 
   return (
     <section className={cn(gutter, 'space-y-3')}>
-      <div className="divide-y divide-border-hairline overflow-hidden rounded-xl border border-border-soft bg-surface-card">
+      <Panel radius="xl" padding="none" className="divide-y divide-border-hairline overflow-hidden">
         {name && field('name', 'Name', name, <User className="h-3.5 w-3.5" />)}
         {data.email && field('email', 'Email', data.email, <Mail className="h-3.5 w-3.5" />)}
         {phone && field('phone', 'Phone', phone)}
         {lines.length > 0 && field('address', 'Shipping address', lines.join('\n'), <MapPin className="h-3.5 w-3.5" />)}
-      </div>
+      </Panel>
 
       {lines.length > 0 && (
         <Button

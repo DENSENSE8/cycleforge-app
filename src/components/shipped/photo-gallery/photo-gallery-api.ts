@@ -123,3 +123,17 @@ export async function reassignPhotoToReceiving(
   const body = (await res.json().catch(() => null)) as { error?: string } | null;
   if (!res.ok) throw new Error(body?.error || `Reassign failed (${res.status})`);
 }
+
+/** Move a receiving photo's primary link onto a PO line (item evidence). */
+export async function reassignPhotoToReceivingLine(
+  photoId: number,
+  receivingLineId: number,
+): Promise<void> {
+  const res = await fetch(`/api/photos/${photoId}/reassign`, {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ entityType: 'RECEIVING_LINE', entityId: receivingLineId }),
+  });
+  const body = (await res.json().catch(() => null)) as { error?: string } | null;
+  if (!res.ok) throw new Error(body?.error || `Reassign failed (${res.status})`);
+}

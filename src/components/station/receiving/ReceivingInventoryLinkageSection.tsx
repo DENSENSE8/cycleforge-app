@@ -4,7 +4,7 @@ import type { ReceivingDetailFormActions } from '@/hooks/useReceivingDetailForm'
 import type { ReceivingDetailsLog } from '@/components/station/receiving-details-log';
 import { TrackingNumberRow } from '@/components/ui/TrackingNumberRow';
 import { CopyableValueFieldBlock } from '@/components/shipped/details-panel/blocks/CopyableValueFieldBlock';
-import { listingUrlForOpen } from '@/components/sidebar/receiving/receiving-sidebar-shared';
+import { normalizeListingHref } from '@/lib/receiving/listing-links';
 
 export function ReceivingInventoryLinkageSection({
   log,
@@ -38,7 +38,7 @@ export function ReceivingInventoryLinkageSection({
           <CopyableValueFieldBlock
             label="Listing"
             value={listingRaw}
-            externalUrl={listingUrlForOpen(listingRaw)}
+            externalUrl={normalizeListingHref(listingRaw)}
             externalLabel="Open listing"
             variant="flat"
             twoLineValue

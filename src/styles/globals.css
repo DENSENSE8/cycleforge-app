@@ -768,3 +768,24 @@ html[data-color-scheme='dark'] .react-flow__attribution a { color: #94a3b8; }
   background-color: var(--ds-color-background-surface);
   backdrop-filter: none;
 }
+
+/* ── Unbox capture row — the moving outline (the shared cursor) ──────────────
+   The dock's activeKey stamps [data-active-step] on the CONTROLLER-active
+   capture row; this lights the ONE segment / condition it names with a 2px
+   INSET accent outline. Segment key (`photos`) and step key (`item_photos`)
+   differ — the Photos segment answers both. Inset (`outline-offset: -2px`) so
+   the flush zero-padding bar is geometry-identical armed or idle, and the
+   joined bar's `overflow-hidden` cannot clip it — zero layout shift. Accent is
+   `--ds-color-accent-bg` (staff-themeable), never a page-local hex; an outline,
+   never a glow. No transition — an instant hard-cut on step advance (Gate B),
+   so reduced motion is a no-op by construction. Mirrors ACTIVE_STEP_RING_CLASS
+   in line-edit/active-step-ring.ts — keep the 2px / -2px / accent in lockstep.
+   Unlayered, so it beats the segment's Tailwind `outline-none`
+   (`focusRing('control')`, which rings via box-shadow — orthogonal). */
+[data-capture-row][data-active-step='serial'] [data-capture-segment='serial'],
+[data-capture-row][data-active-step='photos'] [data-capture-segment='photos'],
+[data-capture-row][data-active-step='item_photos'] [data-capture-segment='photos'],
+[data-capture-row][data-active-step='condition'] [data-capture-condition] {
+  outline: 2px solid var(--ds-color-accent-bg);
+  outline-offset: -2px;
+}

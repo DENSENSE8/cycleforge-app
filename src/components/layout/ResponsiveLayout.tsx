@@ -73,6 +73,7 @@ const ThrowTaskHost = dynamic(
   () => import('@/components/quick-access/ThrowTaskHost').then((m) => m.ThrowTaskHost),
   { ssr: false },
 );
+import { VendorViewMaskHost } from '@/components/desktop/VendorViewMaskHost';
 const GlobalDesktopSkuScanner = dynamic(
   () => import('@/components/layout/GlobalDesktopSkuScanner').then((m) => m.GlobalDesktopSkuScanner),
   { ssr: false },
@@ -183,9 +184,8 @@ export function ResponsiveLayout({ children, kioskHost = false }: ResponsiveLayo
   // It is a PUSH column (`SidebarNavColumn`), so it does not auto-close: it
   // covers nothing, and a navigator that collapsed on the first row you clicked
   // would reflow the frame twice per jump for no gain. Closing is the toggle
-  // (and nothing else). Reopen paths: GlobalHeader toggle, or ⌘K. Collapsed
-  // hover peeks Home/Search/Media/Chat on the toggle (`SidebarCollapseControl`)
-  // — the old 2s left-edge dwell was removed so that corner has one hover answer.
+  // (and nothing else). Reopen paths: GlobalHeader toggle, or ⌘K. The toggle is
+  // click-only — no collapsed hover peek of top destinations.
   // (The spine pre-expands the active page's modes on every route change, so
   // staying open stays coherent with where you are.)
   const [navOpen, setNavOpen] = useState(false);
@@ -282,22 +282,22 @@ export function ResponsiveLayout({ children, kioskHost = false }: ResponsiveLayo
   // Lock body scroll when drawer is open (restores prior overflow on close).
   useBodyScrollLock(drawerOpen);
 
-  // Pre-hydration paint policy for the blank gate:
-  //   • `/m` routes render the mobile shell deterministically (`onMobileRoute`),
-  //     so there's nothing to wait for.
-  //   • Desktop-only routes (NOT in the mobile allowlist) always resolve to the
-  //     desktop branch as their final state — a phone bounces to `/m/home` via
-  //     `mobileRouteRestricted` rather than rendering an in-place mobile branch —
-  //     so there is no desktop→mobile flip to hide. Let their server-rendered
-  //     shell paint pre-hydration instead of blanking it. The whole shell used
-  //     to be client-gated here, so nothing the server rendered ever painted;
-  //     this is the LCP lever (richer first paint before hydration).
-  //   • Mobile-allowed non-`/m` routes DO flip to a content-only mobile branch
-  //     once device detection resolves (first render is always `desktop`), so
-  //     they keep the blank to avoid the desktop→mobile flash.
-  if (!mounted && !onMobileRoute && isMobileAllowedPath(pathname)) {
-    return <div className={cn('flex min-h-0 flex-1', appChromeClass)} aria-hidden="true" />;
-  }
+  // There is NO pre-hydration blank gate, and there must not be one again.
+  //
+  // Mobile is a ROUTING decision, not a width decision: phones are served the
+  // `/m/*` shell by the edge proxy, and a phone that lands on a desktop-only
+  // path bounces to `/m/home` via `mobileRouteRestricted`. So a non-`/m` route
+  // resolves to the desktop branch as its FINAL state on every device — there
+  // is no desktop→mobile flip left to hide.
+  //
+  // The gate that used to sit here returned `<div aria-hidden />` for every
+  // mobile-allowed path (`/unbox`, `/receiving`, `/triage`, `/pack`, …) until
+  // `mounted` flipped after hydration. Because `mounted` starts false on the
+  // server, that blanked the ENTIRE shell in the SSR HTML: `/unbox` shipped
+  // 285KB of flight payload over 544 bytes of empty DOM, so no server-rendered
+  // content could ever own LCP and every station's first paint waited on the
+  // JS bundle. Deleting it is the LCP lever — see the Paint content order SoT
+  // (P0 shell must paint).
 
   // Drawer overlay is rendered regardless of which branch is active so pages
   // that ship their own mobile UI (e.g. /receiving uses `md:hidden`) can still
@@ -351,9 +351,19 @@ export function ResponsiveLayout({ children, kioskHost = false }: ResponsiveLayo
   );
 
   // ── Desktop layout ──
-  // `/m` routes always use the mobile shell, even before client detection
-  // resolves, so a refresh never flashes the desktop frame.
-  if (!isMobile && !onMobileRoute) {
+  //
+  // The branch is keyed on the ROUTE, never on viewport width. `/m` routes get
+  // the mobile shell (deterministically, so a refresh never flashes the desktop
+  // frame); every other route gets this one on every device.
+  //
+  // It used to read `!isMobile && !onMobileRoute`, which flipped a non-`/m`
+  // route to the content-only mobile branch once client-side device detection
+  // resolved. That in-place flip is what forced the pre-hydration blank gate
+  // above (to hide the flash), and the blank gate is what cost the whole app
+  // its SSR paint. It was also redundant: `/m/*` already IS the mobile routing
+  // answer, and pages that need a narrow-width treatment do it in CSS
+  // (`md:hidden`), which keeps working here because CSS needs no JS to resolve.
+  if (!onMobileRoute) {
     return (
       <div className="flex min-h-0 w-full flex-1 overflow-hidden">
         <GlobalWedgeScannerMount />
@@ -411,6 +421,7 @@ export function ResponsiveLayout({ children, kioskHost = false }: ResponsiveLayo
         <CommandBar />
         <ClipboardHistoryHost />
         <ThrowTaskHost />
+        <VendorViewMaskHost />
         <Suspense fallback={null}>
           <GlobalDesktopSkuScanner />
         </Suspense>
@@ -419,9 +430,10 @@ export function ResponsiveLayout({ children, kioskHost = false }: ResponsiveLayo
     );
   }
 
-  if (mobileRouteRestricted) {
-    return <div className={cn('flex min-h-0 flex-1', appChromeClass)} aria-hidden="true" />;
-  }
+  // (The `mobileRouteRestricted` blank that used to sit here is gone: only `/m`
+  // paths reach this far now, and `/m` is always mobile-allowed, so it could
+  // never fire. The redirect effect above still bounces a phone off a
+  // desktop-only path — that is routing, and it is unchanged.)
 
   // ── Mobile layout: content only ──
   //

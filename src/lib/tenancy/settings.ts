@@ -15,7 +15,8 @@ const BrandSchema = z.object({
   name: z.string().min(1).max(80).optional(),
   logoUrl: z.string().url().optional(),
   primaryColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
-  attractMediaUrl: z.string().url().optional(),
+  /** Public image/video URL for kiosk attract. Empty string clears. */
+  attractMediaUrl: z.string().url().or(z.literal('')).optional(),
   /**
    * Customer website opened from the public QR interstitial (phone-camera
    * scans of platform Digital Links). Stickers always mint on the Cycle Forge
@@ -23,6 +24,15 @@ const BrandSchema = z.object({
    * Empty / unset ⇒ interstitial shows brand but no continue button.
    */
   publicLandingUrl: z.string().url().or(z.literal('')).optional(),
+});
+
+// Counter-tablet BEHAVIOUR, kept out of `brand` on purpose: brand is identity
+// (name, logo, colour, attract media) and this is how the screen acts. Bounds
+// + fallback resolve in src/lib/kiosk/idle.ts — the schema states the range,
+// the resolver is what the shell and the prompt countdown both read.
+const KioskSchema = z.object({
+  /** Inactivity seconds before the "still there?" prompt. Unset ⇒ 60. */
+  idleTimeoutSeconds: z.number().int().min(15).max(3600).optional(),
 });
 
 // Tenant letterhead — drives the company block on printed repair paper and
@@ -75,6 +85,7 @@ export const OrgSettingsSchema = z.object({
   currency: z.string().length(3).default('USD'),
   locale: z.string().default('en-US'),
   brand: BrandSchema.default({}),
+  kiosk: KioskSchema.default({}),
   letterhead: LetterheadSchema.default({ addressLine1: '', addressLine2: '', phone: '', email: '' }),
   // Warehouse origin for outbound shipping labels (ShipStation ship_from).
   // Optional — falls back to SHIPSTATION_SHIP_FROM_* env when unset.

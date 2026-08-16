@@ -13,6 +13,13 @@ export type InventoryDossierRefreshResult =
   /** Live Zoho failed but local mirror/line paint was refreshed. */
   | { ok: false; error: string; painted?: boolean };
 
+function isLocallyReceived(row: ReceivingLineRow): boolean {
+  return (
+    Boolean(String(row.received_done_at ?? '').trim()) ||
+    String(row.workflow_status || '').trim().toUpperCase() === 'DONE'
+  );
+}
+
 /**
  * Refresh ↔ Zoho for a single receiving line. Always searches by tracking#
  * (PO# search is a future upgrade). Flow:
@@ -51,6 +58,22 @@ export function useZohoSync(
   const [zohoSyncing, setZohoSyncing] = useState(false);
   const [inventoryRefreshing, setInventoryRefreshing] = useState(false);
 
+  /** Re-fetch the open line so zoho_status / notes from the local mirror land even when live Zoho is down. */
+  const refetchLineForPaint = useCallback(async (): Promise<boolean> => {
+    try {
+      const lineRes = await fetch(`/api/receiving-lines?id=${row.id}`);
+      const lineData = await lineRes.json();
+      if (lineData?.success && lineData.receiving_line) {
+        dispatchLine(lineData.receiving_line as ReceivingLineRow);
+        refreshDomains(REFRESH_BUNDLES.receivingWrite);
+        return true;
+      }
+    } catch {
+      /* paint re-fetch best-effort */
+    }
+    return false;
+  }, [row.id, dispatchLine]);
+
   /**
    * Pull-from-Zoho for the whole carton: re-imports the linked PO so
    * receiving.zoho_notes (PO header notes), receiving_lines.unit_price (price),
@@ -70,11 +93,18 @@ export function useZohoSync(
       const data = (await res.json().catch(() => null)) as {
         zoho_notes?: string | null;
         error?: string;
+        local_promoted?: number;
       } | null;
       if (!res.ok) {
+        // Local DONE repair may have run before Zoho failed — still re-paint.
+        const promoted = Number(data?.local_promoted ?? 0) > 0;
+        if (promoted) {
+          await refetchLineForPaint();
+        }
         return {
           ok: false,
           error: data?.error?.trim() || `Inventory sync failed (${res.status})`,
+          painted: promoted || undefined,
         };
       }
       const syncedNotes =
@@ -108,28 +138,12 @@ export function useZohoSync(
     } catch {
       return { ok: false, error: 'Inventory sync failed' };
     }
-  }, [row.receiving_id, row.id, dispatchLine]);
+  }, [row.receiving_id, row.id, dispatchLine, refetchLineForPaint]);
 
   const syncCartonFromZoho = useCallback(async (): Promise<string | null> => {
     const result = await syncCartonFromZohoResult();
     return result.ok ? result.zohoNotes : null;
   }, [syncCartonFromZohoResult]);
-
-  /** Re-fetch the open line so zoho_status / notes from the local mirror land even when live Zoho is down. */
-  const refetchLineForPaint = useCallback(async (): Promise<boolean> => {
-    try {
-      const lineRes = await fetch(`/api/receiving-lines?id=${row.id}`);
-      const lineData = await lineRes.json();
-      if (lineData?.success && lineData.receiving_line) {
-        dispatchLine(lineData.receiving_line as ReceivingLineRow);
-        refreshDomains(REFRESH_BUNDLES.receivingWrite);
-        return true;
-      }
-    } catch {
-      /* paint re-fetch best-effort */
-    }
-    return false;
-  }, [row.id, dispatchLine]);
 
   /**
    * Inventory Displays Refresh — refresh the Zoho PO mirror (header · line_items ·
@@ -137,6 +151,9 @@ export function useZohoSync(
    * Callers that toast (header Refresh / F5) read {@link InventoryDossierRefreshResult}.
    * Always re-fetches the open line afterward so coarse Received paint updates
    * from the local mirror even when live Zoho credentials fail.
+   *
+   * Already-received lines never return `{ painted: true }` — that drives the
+   * yellow "Inventory status updated locally" toast, which is noise once DONE.
    */
   const refreshInventoryDossier = useCallback(async (): Promise<InventoryDossierRefreshResult> => {
     if (inventoryRefreshing) {
@@ -144,6 +161,7 @@ export function useZohoSync(
     }
     setInventoryRefreshing(true);
     try {
+      const alreadyReceived = isLocallyReceived(row);
       const poId = (row.zoho_purchaseorder_id || '').trim();
       let mirrorError: string | null = null;
       let mirrorOk = !poId; // no PO id → skip mirror, not a failure
@@ -177,7 +195,12 @@ export function useZohoSync(
       }
 
       // Live pulls failed — still paint from local mirror / carton rows.
-      const painted = await refetchLineForPaint();
+      // inventory-sync may have promoted stuck UNBOXED→DONE before Zoho failed.
+      const painted = carton.painted === true || (await refetchLineForPaint());
+      if (painted && (alreadyReceived || carton.painted === true)) {
+        // Local DONE already stands (or just repaired) — never warn.
+        return { ok: true, zohoNotes: null };
+      }
       if (painted && (mirrorOk || !poId)) {
         // Mirror was already current (or skipped); local paint refreshed.
         return { ok: true, zohoNotes: null };
@@ -185,6 +208,7 @@ export function useZohoSync(
       if (painted) {
         // Operator still gets status from the local mirror; surface that the
         // live Zoho pull failed (common when credentials are missing in a lane).
+        // Never for already-received — handled above.
         return {
           ok: false,
           painted: true,
@@ -200,7 +224,7 @@ export function useZohoSync(
     }
   }, [
     inventoryRefreshing,
-    row.zoho_purchaseorder_id,
+    row,
     syncCartonFromZohoResult,
     refetchLineForPaint,
   ]);

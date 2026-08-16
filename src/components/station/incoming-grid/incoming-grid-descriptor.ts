@@ -18,7 +18,7 @@ import {
   isIncomingGridFrozen,
   isIncomingGridSortable,
   type IncomingGridColumn,
-} from '@/lib/receiving/incoming-grid-layout';
+} from '@/lib/receiving/receiving-grid-layout';
 
 /** Incoming POS browse — no staff triage row wash. */
 export const INCOMING_GRID_CAPABILITIES: GridSurfaceCapabilities = {

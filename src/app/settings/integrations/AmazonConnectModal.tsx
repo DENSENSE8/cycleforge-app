@@ -21,6 +21,10 @@ import {
 } from '@/design-system/components/Dialog';
 import { FILTER_DROPDOWN_SELECT_CLASS } from '@/design-system/components/FilterDropdownSelect';
 import { ChevronDown, ExternalLink } from '@/components/Icons';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 const REGIONS: Array<{ value: 'NA' | 'EU' | 'FE'; label: string }> = [
   { value: 'NA', label: 'North America (US/CA/MX/BR)' },
@@ -109,14 +113,14 @@ export function AmazonConnectModal({ onClose }: { onClose: () => void }) {
             value={refreshToken}
             onChange={(e) => setRefreshToken(e.target.value)}
             placeholder="LWA refresh token (Atzr|…)"
-            className="block w-full rounded-xl border border-border-soft bg-surface-card px-3 py-2 font-mono text-role-caption text-text-default focus:border-border-emphasis focus:outline-none focus:ring-2 focus:ring-border-soft"
+            className={cn("block w-full rounded-xl border border-border-soft bg-surface-card px-3 py-2 font-mono text-role-caption text-text-default", focusRing('field', 'neutral'))}
             spellCheck={false}
           />
           <input
             value={sellerId}
             onChange={(e) => setSellerId(e.target.value)}
             placeholder="Seller ID (optional)"
-            className="block w-full rounded-xl border border-border-soft bg-surface-card px-3 py-2 text-role-caption text-text-default focus:border-border-emphasis focus:outline-none focus:ring-2 focus:ring-border-soft"
+            className={cn("block w-full rounded-xl border border-border-soft bg-surface-card px-3 py-2 text-role-caption text-text-default", focusRing('field', 'neutral'))}
           />
         </div>
 

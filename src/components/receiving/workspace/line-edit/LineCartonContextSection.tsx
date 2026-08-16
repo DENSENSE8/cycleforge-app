@@ -11,8 +11,8 @@
  * passes `onEdit*` + `*EditOpen`). PO# Edit always opens Package Pairing → PO
  * (`onEditPo`); Details opens the Incoming connection panel (`onOrderDetails`).
  *
- * Serves Unbox and Triage — both use the two-row family face (lifecycle · PO$
- * on row 2). Pair the host with `reserveIdentityClearance="stacked"`.
+ * Serves Unbox and Triage — both use the one-row family face. Pair the host
+ * with `reserveIdentityClearance={false}` (in-flow) or legacy overlay clearance.
  *
  * Displays `←|` + carton `↑↓` live on ScanStationUtilityRail, not here.
  */
@@ -77,15 +77,11 @@ interface LineCartonContextSectionProps {
    */
   showClassifyControls?: boolean;
   /**
-   * When false, header pills are read-only facts (triage — Overview checklist
-   * owns edits). Default true = unbox InlinePillPicker.
+   * When false, header pills are read-only facts. Default true = chip-anchored
+   * InlinePillPicker menus. Classify Displays / Arrival Classify stay available
+   * when staff open those surfaces themselves.
    */
   classifyInteractive?: boolean;
-  /**
-   * Unbox / Arrival: fired when a classify pill is clicked — host opens the
-   * Classify surface and expands that dimension's names list.
-   */
-  onClassifyPillOpen?: (picker: 'urgency' | 'platform' | 'type') => void;
   /** Switch Unbox workspace to the Tracking tab. */
   onEditTracking?: () => void;
   /** Switch Unbox workspace to the Listings tab. */
@@ -99,8 +95,6 @@ interface LineCartonContextSectionProps {
   onOrderDetails?: () => void;
   /** Pulse tracking chip while Tracking tab is active. */
   trackingEditOpen?: boolean;
-  /** Pulse listing chip while Listings tab is active. */
-  listingEditOpen?: boolean;
   /** Pulse PO chip while Package Pairing (PO) is open. */
   poEditOpen?: boolean;
   /** Unbox: open Photos → Move in Displays. */
@@ -108,8 +102,15 @@ interface LineCartonContextSectionProps {
   /** Unbox: open Photos → Send in Displays. */
   onSendToTicketExternal?: () => void;
   /**
-   * Unbox: suppress Photos hover toolbar (multi-verbs in Displays Actions).
-   * Pill click stays send-to-phone.
+   * Unbox: double-click Photos pill → Displays → Photos (Actions).
+   * Replaces whatever Displays leaf is open; opens the column when closed.
+   */
+  onOpenPhotosDisplay?: () => void;
+  /**
+   * Opt-out: suppress Photos hover toolbar. Unbox keeps the strip — Move /
+   * Send open Displays via the external callbacks. Pill click stays
+   * send-to-phone; double-click opens Displays when {@link onOpenPhotosDisplay}
+   * is set.
    */
   suppressPhotoHoverGallery?: boolean;
 }
@@ -129,17 +130,16 @@ export function LineCartonContextSection({
   expandClassifyWhenPending = true,
   showClassifyControls = true,
   classifyInteractive = true,
-  onClassifyPillOpen,
   onEditTracking,
   onEditListing,
   onEditPo,
   onOrderDetails,
   trackingEditOpen = false,
-  listingEditOpen = false,
   poEditOpen = false,
   photoStage,
   onOpenMovePhotosExternal,
   onSendToTicketExternal,
+  onOpenPhotosDisplay,
   suppressPhotoHoverGallery = false,
 }: LineCartonContextSectionProps) {
   void expandClassifyWhenPending;
@@ -156,7 +156,6 @@ export function LineCartonContextSection({
       isUnmatched={row.receiving_source === 'unmatched'}
       showClassifyControls={showClassifyControls}
       classifyInteractive={classifyInteractive}
-      onClassifyPillOpen={onClassifyPillOpen}
       poTotal={poTotal}
       showPoTotal
       // Qty left this band on 2026-08-02: Unbox pins it on the Items eyebrow
@@ -183,7 +182,6 @@ export function LineCartonContextSection({
       listingOpenHref={c.listingOpenHref}
       listingLinks={c.listingLinks}
       onEditListing={onEditListing}
-      listingEditOpen={listingEditOpen}
       poOpenHref={c.poOpenHref}
       trackingOpenHref={c.trackingOpenHref}
       poDisplay={c.poNumber}
@@ -232,6 +230,7 @@ export function LineCartonContextSection({
         onSendToTicketExternal ?? (() => c.setPhotoNoteOpen(true))
       }
       onOpenMovePhotosExternal={onOpenMovePhotosExternal}
+      onOpenPhotosDisplay={onOpenPhotosDisplay}
       suppressPhotoHoverGallery={suppressPhotoHoverGallery}
     />
   );

@@ -10,6 +10,10 @@ import { dehydrate, QueryClient, type DehydratedState } from '@tanstack/react-qu
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import { normalizeUnshippedOrdersPayload } from '@/lib/orders/order-record-normalize';
 import { serverSelfFetch } from '@/lib/observability/server-self-fetch';
+import {
+  normalizeQueueCountsPayload,
+  type UnshippedQueueCounts,
+} from '@/lib/orders/queue-counts-normalize';
 
 /** Default page size — keep in lockstep with `UnshippedTable` `rowLimit` initial. */
 const UNSHIPPED_SEED_LIMIT = 200;
@@ -53,27 +57,19 @@ async function fetchUnshippedRows(): Promise<ShippedOrder[]> {
   return normalizeUnshippedOrdersPayload(data.orders || []);
 }
 
-async function fetchUnshippedCounts(): Promise<{
-  total: number;
-  byStage: { all: number; pending: number; tested: number };
-  urgent: number;
-  combos: unknown[];
-} | null> {
+/**
+ * Seeded counts MUST be the same shape the browser fetch produces — this key is
+ * read by the KPI band, and a seed that narrows the payload wins first paint and
+ * then holds for the query's whole staleTime. Normalizing through the shared
+ * waist is what keeps the two writers from drifting (it drifted once already:
+ * a hand-narrowed seed dropped `packPlacement`, so "At stations" and the
+ * per-bench chips read zero benches for the first 60s on every load).
+ */
+async function fetchUnshippedCounts(): Promise<UnshippedQueueCounts | null> {
   const res = await serverSelfFetch('/api/orders/queue-counts');
   if (!res.ok) return null;
-  const data = (await res.json().catch(() => null)) as {
-    total?: number;
-    byStage?: { all: number; pending: number; tested: number };
-    urgent?: number;
-    combos?: unknown[];
-  } | null;
-  if (!data || typeof data.total !== 'number') return null;
-  return {
-    total: data.total,
-    byStage: data.byStage ?? { all: 0, pending: 0, tested: 0 },
-    urgent: typeof data.urgent === 'number' ? data.urgent : 0,
-    combos: Array.isArray(data.combos) ? data.combos : [],
-  };
+  const data = await res.json().catch(() => null);
+  return normalizeQueueCountsPayload(data);
 }
 
 /**

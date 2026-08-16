@@ -3,6 +3,10 @@ import { Button, IconButton } from '@/design-system/primitives';
 import { sectionLabel } from '@/design-system/tokens/typography/presets';
 import type { SkuDetailData } from './sku-detail-types';
 import type { SkuDetailController } from './useSkuDetailView';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 /** Stock quantity card — quick +/- adjust, bulk delta, or set-exact mode. */
 export function SkuStockCard({ c, data }: { c: SkuDetailController; data: SkuDetailData }) {
@@ -30,7 +34,7 @@ export function SkuStockCard({ c, data }: { c: SkuDetailController; data: SkuDet
             value={c.absoluteQty}
             onChange={(e) => c.setAbsoluteQty(e.target.value)}
             placeholder={String(data.stock.qty)}
-            className="h-10 w-24 rounded-lg border border-border-default px-3 text-center text-sm font-semibold focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            className={cn("h-10 w-24 rounded-lg border border-border-default px-3 text-center text-sm font-semibold", focusRing('field', 'accent'))}
           />
           <Button
             variant="primary"
@@ -69,7 +73,7 @@ export function SkuStockCard({ c, data }: { c: SkuDetailController; data: SkuDet
               value={c.adjustDelta || ''}
               onChange={(e) => c.setAdjustDelta(parseInt(e.target.value, 10) || 0)}
               placeholder="±"
-              className="h-10 w-16 rounded-lg border border-border-default px-2 text-center text-sm font-semibold focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              className={cn("h-10 w-16 rounded-lg border border-border-default px-2 text-center text-sm font-semibold", focusRing('field', 'accent'))}
             />
             <Button
               variant="brand"
@@ -84,7 +88,7 @@ export function SkuStockCard({ c, data }: { c: SkuDetailController; data: SkuDet
           <select
             value={c.adjustReason}
             onChange={(e) => c.setAdjustReason(e.target.value)}
-            className="h-10 rounded-lg border border-border-default px-2 text-xs font-semibold text-text-muted focus:border-blue-500"
+            className={cn("h-10 rounded-lg border border-border-default px-2 text-xs font-semibold text-text-muted", focusRing('field', 'accent'))}
           >
             {c.reasonOptions.map((r) => (
               <option key={r.code} value={r.code}>{r.label}</option>

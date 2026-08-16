@@ -17,7 +17,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Loader2, ClipboardList } from '@/components/Icons';
 import { AnimatedCheck } from '@/components/ui/AnimatedCheck';
-import { Button } from '@/design-system/primitives';
+import { Panel, Button } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { HorizontalButtonSlider } from '@/components/ui/HorizontalButtonSlider';
 import { TASK_STATUS_DOT } from '@/components/sidebar/operations/plans-shared';
@@ -62,17 +62,17 @@ function TaskListRow({
       onClick={onSelect}
       className={cn(
         'flex w-full flex-col gap-0.5 px-4 py-2 text-left transition-colors',
-        selected ? 'bg-blue-50 ring-1 ring-inset ring-blue-400' : 'hover:bg-gray-50',
+        selected ? 'bg-blue-50 ring-1 ring-inset ring-blue-400' : 'hover:bg-surface-hover',
       )}
     >
       <div className="flex items-center gap-2">
         <HoverTooltip label={dot.label} focusable={false}>
           <span className={cn('h-2 w-2 shrink-0 rounded-full', dot.dot)} />
         </HoverTooltip>
-        <span className="truncate text-role-caption font-semibold text-gray-900">{item.title}</span>
+        <span className="truncate text-role-caption font-semibold text-text-default">{item.title}</span>
       </div>
       {meta ? (
-        <span className="truncate pl-4 text-role-eyebrow font-semibold uppercase tracking-widest text-gray-500">
+        <span className="truncate pl-4 text-role-eyebrow font-semibold uppercase tracking-widest text-text-muted">
           {meta}
         </span>
       ) : null}
@@ -97,7 +97,7 @@ function TaskDetail({ item }: { item: HomeTaskItem }) {
 
   return (
     <div className="mx-auto max-w-2xl px-6 py-8">
-      <div className="rounded-2xl border border-border-soft bg-surface-card p-6 shadow-sm">
+      <Panel radius="2xl" padding="lg">
         <div className="flex items-start gap-2">
           <span className={cn('mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full', dot.dot)} />
           <div className="min-w-0">
@@ -164,7 +164,7 @@ function TaskDetail({ item }: { item: HomeTaskItem }) {
             </Link>
           ) : null}
         </div>
-      </div>
+      </Panel>
     </div>
   );
 }
@@ -250,7 +250,7 @@ export function HomeTasksMode() {
             </div>
           ) : items.length === 0 ? (
             <div className="px-4 py-6">
-              <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 px-4 py-6 text-center text-role-caption text-text-muted">
+              <div className="rounded-xl border border-dashed border-border-soft bg-surface-sunken px-4 py-6 text-center text-role-caption text-text-muted">
                 {scope === 'mine' ? 'No open tasks assigned to you.' : 'No open tasks right now.'}
               </div>
             </div>
@@ -273,7 +273,7 @@ export function HomeTasksMode() {
           <TaskDetail item={selected} />
         ) : (
           <div className="flex h-full items-center justify-center px-6">
-            <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 px-6 py-8 text-center">
+            <div className="rounded-xl border border-dashed border-border-soft bg-surface-sunken px-6 py-8 text-center">
               <ClipboardList className="mx-auto h-6 w-6 text-text-soft" />
               <p className="mt-2 text-role-caption font-semibold text-text-muted">
                 Select a task to view details and claim or complete it.

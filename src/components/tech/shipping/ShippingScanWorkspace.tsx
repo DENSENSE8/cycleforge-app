@@ -1,41 +1,26 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { Barcode } from '@/components/Icons';
-import { SectionTabsSlider } from '@/design-system/components';
-import { buildSectionTabs } from '@/components/station/workbench';
+import { useMemo } from 'react';
 import { initSkuSerialGroups } from '@/lib/tech/sku-serial-groups';
 import type { ActiveStationOrder } from '@/hooks/useStationTestingController';
 import type { Order } from '@/components/station/upnext/upnext-types';
 import { ShippingSkuSerialRows } from './ShippingSkuSerialRows';
-import { ShippingCapturedUnits } from './ShippingCapturedUnits';
-import type { ShippingView } from './terminal/shipping-terminal';
 
 /**
- * Shipping centre work tabs — Ship · Units only.
- * Timeline · Listings are Displays push bodies on {@link ActiveOrderWorkspace}
- * (scan-station Displays SoT — reference tools leave the mid-canvas strip;
- * Listings is the trailing upgrade slot).
+ * Ready-to-Pack centre ops-flow — SKU/serial pairing rows only.
+ * Captured Units · Condition · Timeline · Listings are Displays push bodies on
+ * {@link ActiveOrderWorkspace} (scan-station Displays SoT — no centre tab strip).
  *
  * Mounts in the `tabs` slot of `ActiveOrderWorkspace`'s `StationWorkbench`.
  */
 export function ShippingScanWorkspace({
   activeOrder,
   previewOrder,
-  onRemoveSerial,
 }: {
   activeOrder: ActiveStationOrder;
   /** Up Next preview row — supplies status fields missing from ActiveStationOrder. */
   previewOrder?: Order;
-  onRemoveSerial?: (serial: string, index: number) => Promise<void> | void;
 }) {
-  const [view, setView] = useState<ShippingView>('ship');
-  const hasUnits = activeOrder.serialNumbers.length > 0;
-
-  useEffect(() => {
-    if (!hasUnits && view === 'units') setView('ship');
-  }, [hasUnits, view]);
-
   const orderForContext = useMemo(() => {
     if (activeOrder.skuSerialGroups && activeOrder.skuSerialGroups.length > 0) {
       return activeOrder;
@@ -46,49 +31,8 @@ export function ShippingScanWorkspace({
     };
   }, [activeOrder]);
 
-  // previewOrder reserved for future Ship status chips; keep prop for host parity.
+  // previewOrder reserved for future Pack status chips; keep prop for host parity.
   void previewOrder;
 
-  const tabs = useMemo(
-    () =>
-      buildSectionTabs([
-        {
-          id: 'ship',
-          label: 'Pack',
-          icon: Barcode,
-          content: (
-            <ShippingSkuSerialRows activeOrder={orderForContext} />
-          ),
-        },
-        {
-          id: 'units',
-          label: `Units · ${activeOrder.serialNumbers.length}`,
-          icon: Barcode,
-          count: activeOrder.serialNumbers.length,
-          visible: hasUnits,
-          content: (
-            <ShippingCapturedUnits
-              activeOrder={activeOrder}
-              onRemoveSerial={onRemoveSerial}
-            />
-          ),
-        },
-      ]),
-    [
-      orderForContext,
-      hasUnits,
-      activeOrder,
-      onRemoveSerial,
-    ],
-  );
-
-  return (
-    <SectionTabsSlider
-      tabs={tabs}
-      value={view}
-      onChange={(id) => setView(id as ShippingView)}
-      ariaLabel="Ready to Pack work"
-      className="gap-0 space-y-0"
-    />
-  );
+  return <ShippingSkuSerialRows activeOrder={orderForContext} />;
 }

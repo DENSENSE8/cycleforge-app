@@ -19,6 +19,10 @@ import {
   type DepartmentNodeData,
   type ProcessNodeData,
 } from './studio-canvas-shared';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 // ─── Custom node renderers ───────────────────────────────────
 
@@ -455,7 +459,7 @@ export function AnnotationNode({ data }: NodeProps) {
       {editable ? (
         <textarea
           // nodrag so typing/selecting inside the note doesn't drag the node.
-          className="nodrag nopan w-full resize-none border-0 bg-transparent text-role-caption leading-snug text-amber-900 placeholder:text-amber-400 focus:outline-none"
+          className={cn("nodrag nopan w-full resize-none border-0 bg-transparent text-role-caption leading-snug text-amber-900 placeholder:text-amber-400", focusRing('field', 'warning'))}
           rows={3}
           value={annotation.text}
           placeholder="Add a note…"

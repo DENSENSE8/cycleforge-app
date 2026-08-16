@@ -29,4 +29,12 @@ export const READY_TABLE_BINDING: TableSurfaceBinding<AllocationHit, ReadyGridCo
   definition: READY_TABLE_DEFINITION,
   columns: READY_GRID_COLUMNS,
   makeDescriptor: makeReadyGridDescriptor,
+  // Honest absence, and it predates this field: `ReadyGridRow` already refuses
+  // `role="button"` and overrides the shared fill helper's `cursor-pointer`,
+  // because a pointer would promise an interaction that does not exist.
+  recordPlane: {
+    kind: 'none',
+    reason:
+      'append-only tested-hit history — these rows have no record plane to open; the only affordance is the action cell Stage-FBA link',
+  },
 };

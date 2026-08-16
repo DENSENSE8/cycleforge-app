@@ -83,6 +83,23 @@ test('accordion surface is ONE row surface: PoLinesAccordion + shared editor lea
   );
 });
 
+test('Unbox dual loci: unfound surface shares the capture ALS + ReturnScanCard', () => {
+  assert.ok(
+    /dockOwnsCapture=\{dockOwnsCapture\}[\s\S]{0,80}isActiveLine=\{isActiveLine\}/.test(
+      SURFACE,
+    ),
+    'lined unfound reports the same facts as the matched PoLinesAccordion wiring',
+  );
+  assert.ok(
+    /dockOwnsCapture\?:/.test(SHARED),
+    'shared props expose dockOwnsCapture for Unbox dual loci',
+  );
+  assert.ok(
+    /<PoLineCaptureRow/.test(RETURN_CARD),
+    'empty ReturnScanCard mounts PoLineCaptureRow under Unbox',
+  );
+});
+
 test('ReturnScanCard gates on empty carton only (no double-row)', () => {
   assert.ok(
     /hasLines \?/.test(SURFACE) ||

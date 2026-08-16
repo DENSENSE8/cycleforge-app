@@ -20,21 +20,29 @@ the SoT right rail in Unbox mode."**
 >   `shrink-0` sibling after the scroll body; the `delete` verb row, `deleteArmed` /
 >   `deleting` / `handleDelete` / `DELETE_ARM_MS` / the disarm effect and `BatchRow.danger`
 >   are all gone — the control owns arm-then-confirm itself.
-> - **§2.3.3 answered: (a), Delete alone.** Same shape `BinDetailFlyout` · `SkuDetailView` ·
->   `RepairDetailsPanel` already ship. **Consequence to know:** with one peer the spread floor
->   gives Delete the whole 419px column, so it reads as a bottom *bar* with a centred trash
->   rather than the far-right cell of Unbox's five-icon row. Adding a second icon verb is what
->   makes "far right" literal — the E2E therefore asserts **trailing = last peer**, which
->   stays true either way, rather than a gap that is trivially 0 today.
+> - **§2.3.3 answered: (b), the terminal pair `⭳ Download` · `🗑 Delete`.** Shipped as (a) first
+>   and corrected the same day, and the reason is worth keeping: with **one** peer the spread
+>   floor gives Delete the whole 419px column, so it read as a bottom *bar* with a centred trash
+>   — legal (`BinDetailFlyout` · `SkuDetailView` · `RepairDetailsPanel` ship one) but not the
+>   far-right cell the operator asked for. A second peer is what makes "far right" literal;
+>   shrinking Delete into a right-hugging island instead is banned by `FlushTerminalFooter`.
+>   Download **moves** off the rows (`FLOOR_ACTION_KEYS` partitions the action set) rather than
+>   being duplicated. Measured after: Delete `x 1231 → 1440` of a 419px panel.
+> - **The floor is `surface="card"`, coplanar white** — not the desk `canvas` step (operator:
+>   *"not a different color for the display it must be a white background display"*).
+>   `InspectorActionFloor` grew the prop, **default `canvas`**, so the other seven desk rails
+>   are untouched; the guard pins the default and keeps the exception list to this one rail.
 > - **§2.4 answered by the operator: keep the pulse OFF.** The armed face composes the shared
 >   chevron + track tokens without `ARMED_CURSOR_MARKER_PULSE_CLASS`; recorded as a deliberate
 >   divergence from the Unbox golden in `display/media-library.md` and pinned by a guard.
-> - **Guards:** `media-library-chrome.guard.test.ts` 9/9 (Delete-on-floor · no motion / no
->   `layoutId` across the whole photos dir · pulse off), and the panel joined
->   `DESK_FLOOR_CONSUMERS` + `DESK_RAIL_CHROME_ROW_GOLDEN`. Right-rail guards 33/33.
-> - **E2E:** three batch tests added to `photos-railless-frame.spec.ts`; the three photo specs
->   run **21 passed** on `qa-desktop`. `photos-inspector-walk.spec.ts`'s stale "bulk toolbar"
->   naming was corrected to the batch rail.
+> - **Guards:** `media-library-chrome.guard.test.ts` 12/12 (terminal pair · Download moved not
+>   copied · Delete trailing · card surface · no motion / no `layoutId` across the whole photos
+>   dir · pulse off), and the panel joined `DESK_FLOOR_CONSUMERS` +
+>   `DESK_RAIL_CHROME_ROW_GOLDEN`. Right-rail guards 34/34 (+ the canvas-default ratchet).
+> - **E2E:** three batch tests added to `photos-railless-frame.spec.ts` — the floor test
+>   measures peer ORDER, that Delete does not fill the row, and that the floor's computed paint
+>   equals the chrome row's. `photos-inspector-walk.spec.ts`'s stale "bulk toolbar" naming was
+>   corrected to the batch rail.
 > - **Docs:** `display/media-library.md` (planes · rail-vs-toolbar · no-motion · Delete floor ·
 >   modules · guards), `source-of-truth.md` Media Library row, a dated amendment at the top of
 >   the A3 plan (original kept as evidence), and `PhotoInspectorPanel`'s docblock.

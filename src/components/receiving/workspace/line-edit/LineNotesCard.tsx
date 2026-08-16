@@ -1,11 +1,13 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Check, Download, History, Loader2, Receipt, User, Tag, Pencil } from '@/components/Icons';
 import { OmnichannelComposerDock } from '@/design-system/primitives';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/lib/toast';
+import { recentLabelNoteQueryKey } from '@/lib/receiving/recent-label-note';
 import { NoteComposerInsertRail, type NoteComposerInsertAction } from '../NoteComposerInsertRail';
 import {
   appendNoteLine,
@@ -21,6 +23,7 @@ import {
   NOTE_UNIT_PRICE_BTN,
   parseZendeskTicketId,
 } from '../note-composer-helpers';
+import { useLabelNoteGhostAutocomplete } from './hooks/useLabelNoteGhostAutocomplete';
 import type {
   SaveOverallNoteOptions,
   SaveOverallNoteResult,
@@ -41,6 +44,14 @@ import type {
  * When a {@link trailingAction} (Unbox Receive) owns the footer, Enter acts
  * like Send-in-chat: save the note, then fire {@link onPrimaryAction}.
  *
+ * Ghost autocomplete (label-note MRU via {@link useLabelNoteGhostAutocomplete})
+ * paints an inline suffix; Tab / ArrowRight / click accept; Escape dismisses.
+ *
+ * Recent (History) applies the **label note from the newest scanned carton
+ * that has one** (`/api/receiving/recent-label-note` → walk scans →
+ * `label_note` / `notes`). Hover paints that phrase as a ghost placeholder
+ * in an empty field.
+ *
  * Insert rail (staff stamp / ticket / price / synced PO / title) and, for
  * matched cartons, push-to-PO live in the composer footer.
  */
@@ -54,6 +65,7 @@ export function LineNotesCard({
   zendeskProviderTicketId,
   zendeskTicketSubject,
   previousLineNotes,
+  lineId,
   onNotesChange,
   onSaveNotes,
   onSaveOverallNote,
@@ -80,9 +92,14 @@ export function LineNotesCard({
   zendeskTicketSubject?: string | null;
   /** Note from the previous line touched this session — repeat-previous source. */
   previousLineNotes?: string;
+  /** Current line id — excluded from the DB Recent lookup. */
+  lineId?: number | null;
   onNotesChange: (next: string) => void;
-  /** Persist the note to `receiving_line.notes`. Returns true if it saved. */
-  onSaveNotes: () => boolean;
+  /**
+   * Persist the note to `receiving_line.notes`. Optional `next` overrides the
+   * live draft (Enter that also accepts a ghost). Returns true if it saved.
+   */
+  onSaveNotes: (next?: string) => boolean;
   /** Append the note into the carton's synced PO note (external push). */
   onSaveOverallNote: (
     text: string,
@@ -117,6 +134,55 @@ export function LineNotesCard({
   const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { user } = useAuth();
 
+  // DB SoT — label note from this operator's last scanned tracking (other carton).
+  const excludeLineId =
+    lineId != null && Number.isFinite(lineId) && lineId > 0 ? lineId : null;
+  const recentNoteQuery = useQuery({
+    queryKey: recentLabelNoteQueryKey(excludeLineId),
+    queryFn: async (): Promise<string> => {
+      const qs =
+        excludeLineId != null
+          ? `?excludeLineId=${encodeURIComponent(String(excludeLineId))}`
+          : '';
+      const res = await fetch(`/api/receiving/recent-label-note${qs}`);
+      const data = (await res.json().catch(() => null)) as {
+        success?: boolean;
+        note?: string | null;
+      } | null;
+      if (!res.ok || !data?.success) return '';
+      return (data.note || '').trim();
+    },
+    staleTime: 15_000,
+  });
+  const recentPhrase = (recentNoteQuery.data || '').trim();
+  const [recentHover, setRecentHover] = useState(false);
+
+  const {
+    matchedPhrase,
+    ghostSuffix,
+    acceptGhost,
+    dismissGhost,
+    clearGhostDismissal,
+    onValueChange,
+    rememberIfWrote,
+    handleGhostKeyDown,
+    resolveCommitValue,
+  } = useLabelNoteGhostAutocomplete({
+    value: notes,
+    onChange: onNotesChange,
+    previousLineNotes: recentPhrase || previousLineNotes,
+    inputRef: textareaRef,
+  });
+
+  // Hover Recent → paint the DB note as a ghost placeholder (same overlay as
+  // prefix autocomplete). Empty field shows the full phrase.
+  const hoverPreview = recentHover ? recentPhrase : '';
+  const showHoverGhost = Boolean(hoverPreview) && !notes.trim();
+  const paintMatchedPhrase = showHoverGhost ? hoverPreview : matchedPhrase;
+  const paintGhostSuffix = showHoverGhost
+    ? hoverPreview
+    : ghostSuffix || undefined;
+
   // DELETED 2026-08-02 — an auto-focus on the print step.
   //
   // It fired on DERIVED step advance, with no operator gesture: the carton
@@ -144,22 +210,30 @@ export function LineNotesCard({
     savedTimer.current = setTimeout(() => setSavedFlash(false), 1600);
   }, []);
 
-  const commitNotes = useCallback(() => {
-    if (!onSaveNotes()) return;
-    flashSaved();
-  }, [onSaveNotes, flashSaved]);
+  const commitNotes = useCallback(
+    (override?: string) => {
+      const phrase = override ?? notes;
+      const wrote = onSaveNotes(phrase);
+      rememberIfWrote(phrase, wrote);
+      if (!wrote) return;
+      flashSaved();
+    },
+    [notes, onSaveNotes, rememberIfWrote, flashSaved],
+  );
 
   // Enter: with a trailing Receive CTA, behave like chat Send (save → receive).
-  // Without it, Enter is just save (Send button path).
+  // Without it, Enter is just save (Send button path). Accept ghost first when
+  // caret is at end so the MRU phrase is what persists.
   const handleCommit = useCallback(() => {
+    const phrase = resolveCommitValue(textareaRef.current);
     if (onPrimaryAction) {
-      commitNotes();
+      commitNotes(phrase);
       if (primaryActionDisabled) return;
       onPrimaryAction();
       return;
     }
-    commitNotes();
-  }, [onPrimaryAction, primaryActionDisabled, commitNotes]);
+    commitNotes(phrase);
+  }, [onPrimaryAction, primaryActionDisabled, commitNotes, resolveCommitValue]);
 
   // Auto-save on blur when the note changed.
   const handleBlur = useCallback(() => {
@@ -170,10 +244,11 @@ export function LineNotesCard({
     (text: string) => {
       const next = appendNoteLine(notes, text);
       if (next === notes) return;
+      clearGhostDismissal();
       onNotesChange(next);
       requestAnimationFrame(() => focusTextEnd(textareaRef.current));
     },
-    [notes, onNotesChange],
+    [notes, onNotesChange, clearGhostDismissal],
   );
 
   const resolvedTicketId =
@@ -225,10 +300,22 @@ export function LineNotesCard({
 
   const formattedUnitPrice = formatUnitPriceForNotes(unitPrice);
   const trimmedSkuTitle = (skuTitle || '').trim();
-  const trimmedPreviousNotes = (previousLineNotes || '').trim();
+  const trimmedPreviousNotes = recentPhrase;
   const trimmedSyncNotes = (overallZohoNotes ?? '').trim();
   const hasTicket = Boolean(resolvedTicketId);
   const staffStamp = buildStaffStampText({ name: user?.name, staffId: user?.staffId });
+
+  const applyLastLabelNote = useCallback(() => {
+    const phrase = recentPhrase;
+    if (!phrase) {
+      toast.message('No recent label note on a scanned carton yet');
+      return;
+    }
+    clearGhostDismissal();
+    onNotesChange(phrase);
+    setRecentHover(false);
+    requestAnimationFrame(() => focusTextEnd(textareaRef.current));
+  }, [recentPhrase, clearGhostDismissal, onNotesChange]);
 
   const insertActions = useMemo((): NoteComposerInsertAction[] => {
     const actions: NoteComposerInsertAction[] = [];
@@ -241,6 +328,17 @@ export function LineNotesCard({
         icon: <User className={NOTE_OVERLAY_ICON} />,
         buttonClassName: NOTE_STAFF_STAMP_BTN,
         onClick: () => appendToNotes(staffStamp),
+      });
+    }
+
+    if (trimmedPreviousNotes) {
+      actions.push({
+        id: 'last-notes',
+        label: 'Add last notes',
+        ariaLabel: 'Add last notes',
+        icon: <History className={NOTE_OVERLAY_ICON} />,
+        buttonClassName: NOTE_OVERLAY_ICON_BTN,
+        onClick: () => appendToNotes(trimmedPreviousNotes),
       });
     }
 
@@ -293,6 +391,7 @@ export function LineNotesCard({
     return actions;
   }, [
     staffStamp,
+    trimmedPreviousNotes,
     hasTicket,
     fetchingTicketSubject,
     handlePrefillTicketSubject,
@@ -306,19 +405,25 @@ export function LineNotesCard({
   const footerStart = (
     <>
       <NoteComposerInsertRail actions={insertActions} placement="inline" />
-      {trimmedPreviousNotes ? (
-        <HoverTooltip label="Repeat the previous line's notes" asChild>
-          {/* ds-raw-button */}
-          <button
-            type="button"
-            onClick={() => appendToNotes(trimmedPreviousNotes)}
-            aria-label="Repeat the previous line's notes"
-            className={`${NOTE_OVERLAY_ICON_BTN} text-text-faint transition hover:bg-surface-sunken hover:text-text-muted`}
-          >
-            <History className={NOTE_OVERLAY_ICON} />
-          </button>
-        </HoverTooltip>
-      ) : null}
+      {/* Recent — hover paints DB note as field ghost only (no tooltip). */}
+      {/* ds-raw-button */}
+      <button
+        type="button"
+        onClick={applyLastLabelNote}
+        onMouseEnter={() => {
+          if (recentPhrase) setRecentHover(true);
+        }}
+        onMouseLeave={() => setRecentHover(false)}
+        onFocus={() => {
+          if (recentPhrase) setRecentHover(true);
+        }}
+        onBlur={() => setRecentHover(false)}
+          aria-label="Apply label note from last scanned carton with a note"
+        data-unbox-notes-recent
+        className={`${NOTE_OVERLAY_ICON_BTN} text-text-faint transition hover:bg-surface-sunken hover:text-text-muted`}
+      >
+        <History className={NOTE_OVERLAY_ICON} />
+      </button>
       <div
         aria-live="polite"
         className={`flex items-center gap-1 text-role-micro font-semibold uppercase tracking-wide text-emerald-600 transition-opacity duration-300 ${
@@ -352,7 +457,7 @@ export function LineNotesCard({
   return (
     <OmnichannelComposerDock
       value={notes}
-      onChange={onNotesChange}
+      onChange={onValueChange}
       onCommit={handleCommit}
       onBlur={handleBlur}
       // Receive CTA: Enter must fire even with an empty note (chat-send).
@@ -360,7 +465,11 @@ export function LineNotesCard({
       commitDisabled={onPrimaryAction ? primaryActionDisabled : undefined}
       // Unbox overview: this draft live-drives the carton sticker center;
       // durable save is still the item note (`notes`), not label_note.
-      placeholder="Note for this item — shows on the sticker center"
+      placeholder={
+        showHoverGhost
+          ? ''
+          : 'Note for this item — shows on the sticker center'
+      }
       ariaLabel="Item note"
       commitAriaLabel="Save item note"
       commitTooltip={
@@ -372,6 +481,23 @@ export function LineNotesCard({
       chrome={chrome}
       animateMount={animateMount}
       textareaRef={textareaRef}
+      ghostSuffix={paintGhostSuffix}
+      matchedPhrase={paintMatchedPhrase}
+      onAcceptGhost={
+        showHoverGhost
+          ? () => {
+              applyLastLabelNote();
+            }
+          : acceptGhost
+      }
+      onDismissGhost={
+        showHoverGhost
+          ? () => {
+              setRecentHover(false);
+            }
+          : dismissGhost
+      }
+      onTextareaKeyDown={handleGhostKeyDown}
     />
   );
 }

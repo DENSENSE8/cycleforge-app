@@ -39,4 +39,5 @@ export const CSV_IMPORT_STAGING_TABLE_BINDING: TableSurfaceBinding<
   definition: CSV_IMPORT_STAGING_TABLE_DEFINITION,
   columns: CSV_IMPORT_STAGING_GRID_COLUMNS,
   makeDescriptor: makeCsvImportStagingGridDescriptor,
+  recordPlane: { kind: 'inspector', occupantId: 'detail:order-import-staging' },
 };

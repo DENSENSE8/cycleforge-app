@@ -28,6 +28,8 @@ import {
 export interface Location {
   id: number;
   name: string;
+  /** Operator nickname (2026-08-10d); null = read {@link name}. Not unique. */
+  display_name?: string | null;
   room: string | null;
   description: string | null;
   barcode: string | null;
@@ -463,7 +465,7 @@ export async function createLocation(data: {
 
 export async function updateLocation(
   id: number,
-  data: Partial<{ name: string; room: string | null; description: string | null; barcode: string | null; binType: string | null; capacity: number | null; isActive: boolean; sortOrder: number }>,
+  data: Partial<{ name: string; displayName: string | null; room: string | null; description: string | null; barcode: string | null; binType: string | null; capacity: number | null; isActive: boolean; sortOrder: number }>,
   orgId?: OrgId,
 ): Promise<Location | null> {
   const sets: string[] = ['updated_at = NOW()'];
@@ -471,6 +473,9 @@ export async function updateLocation(
   let idx = 1;
 
   if (data.name !== undefined) { sets.push(`name = $${idx++}`); params.push(data.name.trim()); }
+  // Empty nickname === no nickname: store NULL so every display read falls back
+  // to `name` instead of painting a blank chip.
+  if (data.displayName !== undefined) { sets.push(`display_name = $${idx++}`); params.push(data.displayName?.trim() || null); }
   if (data.room !== undefined) { sets.push(`room = $${idx++}`); params.push(data.room?.trim() || null); }
   if (data.description !== undefined) { sets.push(`description = $${idx++}`); params.push(data.description?.trim() || null); }
   if (data.barcode !== undefined) { sets.push(`barcode = $${idx++}`); params.push(data.barcode?.trim() || null); }

@@ -3,6 +3,8 @@ import { Check, Plus, Trash2, X } from '@/components/Icons';
 import { cn } from '@/utils/_cn';
 import { Button, IconButton } from '@/design-system/primitives';
 import type { Todo } from './goal-chip-shared';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+
 
 /** Shared checklist list (used by both the recurring + to-do modes). */
 export function TaskList({
@@ -85,7 +87,7 @@ export function TaskList({
               if (e.key === 'Escape') onCancelAdd();
             }}
             placeholder={placeholder}
-            className="w-full rounded-none border border-border-soft px-2.5 py-1.5 text-role-caption text-text-default outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
+            className={cn("w-full rounded-none border border-border-soft px-2.5 py-1.5 text-role-caption text-text-default", focusRing('field', 'accent'))}
           />
           <Button variant="primary" size="sm" onClick={onAdd} className="shrink-0 text-role-caption font-semibold">
             Add

@@ -55,6 +55,8 @@ import {
   type SignalsView,
 } from '@/features/signals/signals-url';
 import { SIGNAL_KIND_LIST, SIGNAL_KINDS } from '@/lib/surfaces/registry';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+
 
 const ANALYTICS_RANGES: AnalyticsRange[] = ['24h', '7d', '30d'];
 
@@ -343,7 +345,7 @@ const SIGNALS_WINDOWS: Array<{ id: string; label: string; days: number | null }>
 ];
 
 const SIGNALS_FILTER_SELECT_CLASS =
-  'w-full rounded-none border border-border-soft bg-surface-card px-2 py-1.5 text-role-caption font-semibold text-text-muted focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400';
+  cn('w-full rounded-none border border-border-soft bg-surface-card px-2 py-1.5 text-role-caption font-semibold text-text-muted', focusRing('field', 'accent'));
 
 function SignalsSidebar() {
   const router = useRouter();

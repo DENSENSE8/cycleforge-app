@@ -118,7 +118,7 @@ export function FbaTrackingBundleCard({
             onKeyDown={(e) => { if (e.key === 'Enter' && bundle.tracking_number.trim()) setEditingTracking(false); }}
             autoFocus={editingTracking}
             placeholder="1Z..."
-            className="min-w-0 rounded-md border border-border-soft bg-surface-card px-2 py-1 font-mono text-role-micro text-text-default outline-none transition-all placeholder:text-text-faint focus:border-purple-400 focus:ring-1 focus:ring-purple-400"
+            className={"min-w-0 rounded-md border border-border-soft bg-surface-card px-2 py-1 font-mono text-role-micro text-text-default outline-none transition-all placeholder:text-text-faint focus:border-purple-400 focus:ring-1 focus:ring-purple-400" /* ds-allow-focus: identity/one-off hue or ring-0 */}
           />
         )}
 

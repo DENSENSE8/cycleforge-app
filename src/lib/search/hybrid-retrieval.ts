@@ -281,7 +281,7 @@ function exactResultToHit(result: GlobalSearchResult, rank: number): SearchHit {
   const facets = result.facets ?? {};
   return {
     id: result.id,
-    entityType: result.entityType,
+    entityType: result.entityType as SearchHit['entityType'],
     title: result.title,
     subtitle: result.subtitle,
     href: result.href,

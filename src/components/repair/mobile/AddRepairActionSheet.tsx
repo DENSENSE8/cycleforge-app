@@ -3,6 +3,10 @@
 import { useState } from 'react';
 import { useBodyScrollLock } from '@/design-system/hooks';
 import { Button } from '@/design-system/primitives';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 type ActionType = 'replaced' | 'repaired' | 'cleaned' | 'tested' | 'no_fix' | 'awaiting_part';
 
@@ -287,7 +291,7 @@ function FieldTextarea({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         rows={4}
-        className="w-full rounded-lg border border-border-default bg-surface-card px-3 py-2.5 text-sm font-medium text-text-default outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 resize-none"
+        className={cn("w-full rounded-lg border border-border-default bg-surface-card px-3 py-2.5 text-sm font-medium text-text-default resize-none", focusRing('field', 'warning'))}
       />
     </label>
   );

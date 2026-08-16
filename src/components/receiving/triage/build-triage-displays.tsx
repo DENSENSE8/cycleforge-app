@@ -1,42 +1,110 @@
 'use client';
 
 /**
- * Arrival (triage) Displays — Pairing/Linkage on the right-edge push column
- * ({@link StationDisplaysPushStack}), never a centre tab strip.
+ * Arrival (triage) Displays — Ticket + Pairing/Linkage on the right-edge push
+ * column ({@link StationDisplaysPushStack}), never a centre tab strip.
  *
- * Sibling of Unbox's {@link buildUnboxSideTabs}: Arrival's centre owns the door
- * flow — items (`POUnboxingSection`) + Classify + Staging stacked under them.
- * The Displays strip is Pairing only (`CartonMatchHub`, `tabSet="arrival"`,
- * `chrome="bare"`). The PO-avenue intent arrives as DATA (`pairingFocus` → the
- * hub's `focusTab`), read on mount — never a timed event that the display's
- * mount races.
+ * Sibling of Unbox's {@link buildUnboxSideTabs} / Testing's
+ * {@link buildTestingDisplayTabs}: Arrival's centre owns the door flow — items
+ * (`POUnboxingSection`) + Classify + Staging stacked under them. Displays =
+ * **Ticket** (create / link / chat via {@link TicketDisplayHost}) + **Pairing**
+ * (`CartonMatchHub`, `tabSet="arrival"`, `chrome="bare"`). The PO-avenue intent
+ * arrives as DATA (`pairingFocus` → the hub's `focusTab`), read on mount —
+ * never a timed event that the display's mount races.
+ *
+ * P3 Ticket body is dynamic — strip labels stay eager. Ticket identity is
+ * passed as primitives (not the whole line controller) so the builder stays
+ * mount-safe when the host reloads mid-edit.
  */
 
-import { Link2 } from '@/components/Icons';
+import dynamic from 'next/dynamic';
+import { Link2, MapPin, Ticket } from '@/components/Icons';
 import { type SectionTab } from '@/design-system/components';
 import { buildSectionTabs } from '@/components/station/workbench';
 import { shouldUseUnmatchedItemsSurface } from '@/lib/receiving/intake-items-routing';
 import { CartonMatchHub } from '../workspace/line-edit/CartonMatchHub';
+import { ArrivalLocationsDisplay } from './ArrivalLocationsDisplay';
+import type { TriageStagingController } from './useTriageStaging';
+import type { ClaimModalMode } from '../workspace/claim/claim-types';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 
-/** Arrival Displays vocabulary — Pairing only (Classify · Staging live in the centre). */
-export type TriageDisplayTab = 'linkage';
+const TicketDisplayHost = dynamic(
+  () =>
+    import('../workspace/line-edit/TicketDisplayHost').then((m) => m.TicketDisplayHost),
+  { loading: () => null },
+);
+
+/**
+ * Arrival Displays vocabulary — Ticket + Pairing + New location (Classify ·
+ * Staging live in the centre).
+ *
+ * `location` is a TOOL, not a beat of the carton's procedure: browse the
+ * shelves, place the carton, reprint a scuffed sticker, mint a new spot. It
+ * earns the right edge for the same reason Pairing does — the centre stays
+ * ops-flow.
+ */
+export type TriageDisplayTab = 'ticket' | 'linkage' | 'location';
 
 interface BuildTriageDisplaysInput {
   row: ReceivingLineRow;
   staffId: string;
+  /** Linked Zendesk provider ticket id (null when unlinked). */
+  providerTicketId?: number | null;
+  /** RETURN claim reason prefill for Ticket → Claim. */
+  returnClaimPrefill?: string | null;
   /** PO-avenue handoff — land Pairing on the PO tab (carried as data, not an event). */
   pairingFocus: { tab: 'zoho_po' | null; requestId: number } | null;
+  /** Claim create/link mode while Ticket has no linked id. */
+  claimMode: ClaimModalMode;
+  onCloseClaim: () => void;
+  onCloseTicket: () => void;
+  onClaimTicketCreated: (ticketNumber: string) => void;
+  onClaimTicketUnlinked: () => void;
+  /** Auto-match Find ticket → Ticket Displays topic. */
+  onFindTicket?: () => void;
+  /** Staging controller — the New location leaf places on the shelf it mints. */
+  staging: TriageStagingController;
+  /** Close Displays once the carton is on the new spot. */
+  onLocationPlaced?: () => void;
 }
 
 export function buildTriageDisplayTabs({
   row,
   staffId,
+  providerTicketId = null,
+  returnClaimPrefill = null,
   pairingFocus,
+  claimMode,
+  onCloseClaim,
+  onCloseTicket,
+  onClaimTicketCreated,
+  onClaimTicketUnlinked,
+  onFindTicket,
+  staging,
+  onLocationPlaced,
 }: BuildTriageDisplaysInput): SectionTab[] {
   const unfound = shouldUseUnmatchedItemsSurface(row);
+  const ticketId = providerTicketId ?? null;
 
   return buildSectionTabs([
+    {
+      id: 'ticket',
+      label: 'Ticket',
+      icon: Ticket,
+      content:
+        row.id != null || row.receiving_id != null ? (
+          <TicketDisplayHost
+            row={row}
+            ticketId={ticketId}
+            claimMode={claimMode}
+            onCloseClaim={onCloseClaim}
+            onCloseTicket={onCloseTicket}
+            onClaimTicketCreated={onClaimTicketCreated}
+            onClaimTicketUnlinked={onClaimTicketUnlinked}
+            returnClaimPrefill={returnClaimPrefill}
+          />
+        ) : null,
+    },
     {
       id: 'linkage',
       label: 'Pairing',
@@ -57,10 +125,20 @@ export function buildTriageDisplayTabs({
                   receivingId: row.receiving_id ?? null,
                   lineId: row.id ?? null,
                   trackingNumber: row.tracking_number ?? null,
+                  providerTicketId: ticketId,
+                  onFindTicket,
                 }
               : null
           }
         />
+      ),
+    },
+    {
+      id: 'location',
+      label: 'Locations',
+      icon: MapPin,
+      content: (
+        <ArrivalLocationsDisplay staging={staging} onPlaced={onLocationPlaced} />
       ),
     },
   ]);

@@ -19,6 +19,7 @@ import {
 } from '@/components/fba/sidebar/FbaSidebarRails';
 import { SidebarRailScrollport } from '@/components/sidebar/rail-shell/SidebarRailScrollport';
 import { sidebarSubBandClass } from '@/components/fba/sidebar/fba-sidebar-shared';
+import { SkeletonBase } from '@/design-system/components/Skeletons';
 import {
   useFbaPlanData,
   useFbaRailViews,
@@ -33,20 +34,20 @@ export function FbaWorkspaceSidebarFallback() {
     <div className="relative flex h-full w-full flex-col overflow-hidden bg-surface-card">
       <div className={sidebarHeaderBandClass}>
         <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] divide-x divide-border-soft">
-          <div className="h-11 bg-surface-canvas animate-pulse" />
-          <div className="h-11 bg-surface-canvas animate-pulse" />
+          <SkeletonBase height="2.75rem" className="rounded-none bg-surface-canvas" />
+          <SkeletonBase height="2.75rem" className="rounded-none bg-surface-canvas" />
         </div>
       </div>
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <div className={`${sidebarSubBandClass} ${SIDEBAR_GUTTER} py-2.5`}>
-          <div className="h-24 w-full rounded-2xl bg-surface-sunken animate-pulse" />
+          <SkeletonBase height="6rem" className="rounded-2xl bg-surface-sunken" />
         </div>
         <div className={`min-h-0 flex-1 space-y-3 ${SIDEBAR_GUTTER} py-3 overflow-y-auto bg-surface-card`}>
-          <div className="h-4 w-32 bg-surface-sunken rounded animate-pulse" />
+          <SkeletonBase width="8rem" height="1rem" className="bg-surface-sunken" />
           <div className="space-y-2">
-            <div className="h-16 w-full rounded-xl bg-surface-canvas border border-border-hairline animate-pulse" />
-            <div className="h-16 w-full rounded-xl bg-surface-canvas border border-border-hairline animate-pulse" />
-            <div className="h-16 w-full rounded-xl bg-surface-canvas border border-border-hairline animate-pulse" />
+            <SkeletonBase height="4rem" className="rounded-xl bg-surface-canvas" />
+            <SkeletonBase height="4rem" className="rounded-xl bg-surface-canvas" />
+            <SkeletonBase height="4rem" className="rounded-xl bg-surface-canvas" />
           </div>
         </div>
       </div>

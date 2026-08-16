@@ -12,7 +12,11 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { Button } from '@/design-system/primitives';
+import { Panel, Button } from '@/design-system/primitives';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 type Preview =
   | { state: 'loading' }
@@ -21,7 +25,7 @@ type Preview =
 
 const FIELD =
   'w-full rounded-xl border border-border-default bg-surface-card px-3 py-2 text-sm text-text-default ' +
-  'placeholder:text-text-faint focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
+  cn('placeholder:text-text-faint', focusRing('field', 'accent'));
 
 export default function InviteAcceptPage() {
   const params = useParams<{ token: string }>();
@@ -86,7 +90,7 @@ export default function InviteAcceptPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-surface-canvas px-4">
-      <div className="w-full max-w-sm rounded-2xl border border-border-soft bg-surface-card p-6 shadow-sm">
+      <Panel radius="2xl" padding="lg" className="w-full max-w-sm">
         {preview.state === 'loading' && (
           <div className="flex flex-col items-center gap-3 py-8 text-text-soft">
             <div className="h-6 w-6 animate-spin rounded-full border-2 border-border-soft border-t-text-muted" />
@@ -149,7 +153,7 @@ export default function InviteAcceptPage() {
             </Button>
           </form>
         )}
-      </div>
+      </Panel>
     </div>
   );
 }

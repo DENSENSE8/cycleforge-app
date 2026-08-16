@@ -5,6 +5,10 @@ import { Button } from '@/design-system/primitives';
 import { QR_BASE_URL } from '@/lib/barcode-routing';
 import { useOrgGs1 } from '@/hooks/useOrgGs1';
 import { DEFAULT_CONFIG, clampMax, type PrinterConfig } from './rack-printer-config';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 interface ConfigSheetProps {
   open: boolean;
@@ -100,7 +104,7 @@ function NumField({ label, value, onChange }: { label: string; value: number; on
         max={99}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="mt-1 h-12 w-full rounded-2xl border border-border-default bg-surface-canvas px-4 text-center text-lg font-semibold tabular-nums text-text-default outline-none focus:border-blue-500 focus:bg-surface-card focus:ring-2 focus:ring-blue-200"
+        className={cn("mt-1 h-12 w-full rounded-2xl border border-border-default bg-surface-canvas px-4 text-center text-lg font-semibold tabular-nums text-text-default focus:bg-surface-card", focusRing('field', 'accent'))}
       />
     </div>
   );

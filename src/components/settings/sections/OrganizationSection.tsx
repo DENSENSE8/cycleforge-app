@@ -14,6 +14,11 @@ import { useSwitchOrg } from '@/lib/identity/use-switch-org';
 import { Gs1ComplianceCard } from './Gs1ComplianceCard';
 import { SupportVisionLaneCard } from './SupportVisionLaneCard';
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
+import { KioskAttractMediaCard } from './KioskAttractMediaCard';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 /**
  * "Which workspace am I in" card + deliberate org switcher. Always-on switching
@@ -122,7 +127,7 @@ interface OrgProfileResponse {
 
 const FIELD_CLS =
   'w-full rounded-xl border border-border-default bg-surface-card px-3 py-2 text-sm text-text-default ' +
-  'placeholder:text-text-faint focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
+  cn('placeholder:text-text-faint', focusRing('field', 'accent'));
 
 const TIMEZONES = [
   'America/Los_Angeles',
@@ -568,16 +573,12 @@ export function OrganizationSection() {
             placeholder="#2563EB"
           />
         </label>
-        <label className="block">
-          <span className="mb-1 block text-xs font-medium text-text-muted">Kiosk attract media URL</span>
-          <input
-            type="url"
-            value={draft.brand.attractMediaUrl ?? ''}
-            onChange={(e) => setDraft({ ...draft, brand: { ...draft.brand, attractMediaUrl: e.target.value } })}
-            className={FIELD_CLS}
-            placeholder="https://… (public image or muted video URL — Blob upload later)"
-          />
-        </label>
+        <KioskAttractMediaCard
+          attractMediaUrl={draft.brand.attractMediaUrl ?? ''}
+          onUrlChange={(url) =>
+            setDraft({ ...draft, brand: { ...draft.brand, attractMediaUrl: url } })
+          }
+        />
         <label className="block">
           <span className="mb-1 block text-xs font-medium text-text-muted">
             Customer website for QR scans

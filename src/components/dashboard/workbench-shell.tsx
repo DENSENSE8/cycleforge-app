@@ -24,6 +24,7 @@
 
 import type { HTMLAttributes, ReactNode, Ref } from 'react';
 import { PRIMARY_CHROME_ROW_FACE } from '@/components/layout/header-shell';
+import { WorkbenchInspectorToggle } from '@/components/dashboard/workbench-inspector-toggle';
 import { TabSwitch } from '@/design-system/components/TabSwitch';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
@@ -105,15 +106,21 @@ export function WorkbenchTriageBand({
    */
   kpiToggle?: ReactNode;
   /**
-   * Far-right of the band (after `kpiToggle`) — e.g. Unbox History inspector
-   * toggle. Keeps secondary refine (`right` + portal) left of the primary
-   * park/expand affordances.
+   * Far-right of the band (after `kpiToggle`) — {@link WorkbenchInspectorToggle}.
+   * Defaults to Show inspector (opens Column display when the rail is empty).
+   * Pass `null` only for honest absence of any desk peek.
    */
   trailing?: ReactNode;
   controlsSlotRef?: Ref<HTMLDivElement>;
   controlsSlotProps?: HTMLAttributes<HTMLDivElement> & Partial<Record<`data-${string}`, string>>;
   className?: string;
 }) {
+  const inspector =
+    trailing === undefined ? (
+      <WorkbenchInspectorToggle open={false} />
+    ) : (
+      trailing
+    );
   return (
     <div
       className={cn(
@@ -135,7 +142,7 @@ export function WorkbenchTriageBand({
         ) : null}
         {views}
         {kpiToggle}
-        {trailing}
+        {inspector}
       </div>
     </div>
   );

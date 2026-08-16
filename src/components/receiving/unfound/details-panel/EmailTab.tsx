@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { formatDateTimePST } from '@/utils/date';
 import type { TriageDetail } from '@/components/po-triage/types';
 import { Row } from './details-primitives';
+import { Panel } from '@/design-system/primitives';
+
 
 export function EmailTab({ detail }: { detail: TriageDetail }) {
   const { html, text, error } = detail.body;
@@ -80,7 +82,7 @@ function EmailHtmlFrame({ html }: { html: string }) {
   }, [html]);
 
   return (
-    <div className="overflow-hidden rounded-md border border-border-soft bg-surface-card">
+    <Panel radius="lg" padding="none" className="overflow-hidden">
       {/* ds-allow-title: iframe title is the required accessible name, not a tooltip */}
       <iframe
         ref={ref}
@@ -89,6 +91,6 @@ function EmailHtmlFrame({ html }: { html: string }) {
         className="block w-full"
         style={{ height, border: 'none' }}
       />
-    </div>
+    </Panel>
   );
 }

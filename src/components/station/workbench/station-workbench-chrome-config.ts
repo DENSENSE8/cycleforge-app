@@ -22,12 +22,12 @@
  * its LINES display (PO items / unfound); its reference tools — Pairing/Linkage ·
  * Classify · Staging · Ticket · Photos — live on the right-edge Displays push,
  * never a centre `SectionTabsSlider` strip. Arrival carve-out: Classify · Staging
- * stack under items in the centre; Displays = Pairing only.
+ * stack under items in the centre; Displays = Ticket + Pairing.
  *
  *   - Unbox   (`LineEditPanel`)  — DONE (golden). `StationDisplaysPushStack`.
  *   - Arrival (`TriagePanel`)    — DONE (carve-out 2026-08-06): centre = items
  *                                  (`POUnboxingSection`, Unbox-parity) + Classify
- *                                  + Staging stacked under items; Pairing only
+ *                                  + Staging stacked under items; Ticket + Pairing
  *                                  on `arrival-displays-push`. Guard:
  *                                  `receiving/triage/arrival-displays-push.guard.test.ts`.
    *   - Testing (`TestingPanel`)   — DONE (Phase E complete): centre = testing

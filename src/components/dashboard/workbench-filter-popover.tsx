@@ -35,6 +35,8 @@ import { ToolbarButton } from '@/components/ui/ToolbarButton';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { ToolbarListboxOption } from '@/design-system/primitives';
 import { cn } from '@/utils/_cn';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+
 
 export function WorkbenchFilterPopover({
   open,
@@ -144,7 +146,7 @@ export function WorkbenchFilterPopover({
           className={cn(
             // Panel chrome matches the house `Popover` the sibling toolbar
             // dropdowns use (p-0.5 + shadow-md), so the three read as one menu.
-            'z-dropdown overflow-hidden rounded-lg border border-border-soft bg-surface-card p-0.5 shadow-md ring-1 ring-black/5 focus:outline-none',
+            cn('z-dropdown overflow-hidden rounded-lg border border-border-soft bg-surface-card p-0.5 shadow-md ring-1 ring-black/5', focusRing('field', 'accent')),
             contentClassName ?? 'w-56',
           )}
         >
@@ -260,3 +262,80 @@ export function WorkbenchFilterMenuRow({
     </ToolbarListboxOption>
   );
 }
+
+/**
+ * Faceted tab strip for a {@link WorkbenchFilterPopover} — the refine funnel's
+ * top row, where one facet body shows at a time.
+ *
+ * **Why this is a component and not two copies.** `UnboxWorkspaceHeader` grew
+ * the same 30-line `role="tablist"` twice — History refine and triage refine —
+ * with byte-identical tab classes, the identical `onMouseDown` preventDefault,
+ * and the identical hot dot. Two copies of an a11y-bearing control is two places
+ * for `aria-selected` or the keep-open behavior to drift.
+ *
+ * **The `onMouseDown` preventDefault is load-bearing, not a tic.** Switching a
+ * facet must not blur the field the popover is anchored to — a blur closes the
+ * popover, so without it the funnel shuts on the first facet click.
+ *
+ * A single facet renders **nothing**: a one-tab tablist is chrome that cannot
+ * navigate anywhere, and it spends a row of a 72-wide popover saying so.
+ *
+ * Not for the flat grouped-row refine (`HistoryWorkspaceHeader`), which lists
+ * every group at once instead of tabbing between them — a different shape, and
+ * deliberately left alone.
+ */
+export function WorkbenchRefineFacetTabs<TId extends string>({
+  facets,
+  activeId,
+  onSelect,
+  ariaLabel = 'Refine facets',
+}: {
+  /** `hot` marks a facet holding an active refinement. */
+  facets: ReadonlyArray<{ id: TId; label: string; hot?: boolean }>;
+  activeId: TId | null | undefined;
+  onSelect: (id: TId) => void;
+  ariaLabel?: string;
+}) {
+  if (facets.length <= 1) return null;
+
+  return (
+    <div
+      role="tablist"
+      aria-label={ariaLabel}
+      className="flex gap-0.5 border-b border-border-default px-1"
+    >
+      {facets.map((facet) => {
+        const selected = activeId === facet.id;
+        return (
+          <button
+            key={facet.id}
+            type="button"
+            role="tab"
+            aria-selected={selected}
+            // Keep the popover open while switching facets — see the docblock.
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => onSelect(facet.id)}
+            className={cn(
+              // ds-raw-button: compact facet tabs inside WorkbenchFilterPopover.
+              'ds-raw-button relative flex-1 border-b-2 px-1.5 py-1.5 text-role-caption font-medium transition-colors',
+              selected
+                ? 'border-blue-600 text-text-primary'
+                : 'border-transparent text-text-muted hover:text-text-primary',
+            )}
+          >
+            {facet.label}
+            {facet.hot ? (
+              <span
+                className="absolute right-0.5 top-1 h-1 w-1 rounded-full bg-blue-500"
+                aria-hidden
+              />
+            ) : null}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Scroll port for the active facet's body, beneath {@link WorkbenchRefineFacetTabs}. */
+export const WORKBENCH_REFINE_BODY_CLASS = 'max-h-64 overflow-y-auto py-0.5';

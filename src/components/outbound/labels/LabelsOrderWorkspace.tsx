@@ -33,7 +33,9 @@ import { isPdfOutboundDocument } from '@/lib/documents/outbound-document-display
 import { Button, Panel } from '@/design-system/primitives';
 import { FileText, History, Printer } from '@/components/Icons';
 import { AnimatedCheck } from '@/components/ui/AnimatedCheck';
-import { sourcePlatformLabel } from '@/lib/source-platform';
+import { PlatformMark } from '@/components/ui/PlatformMark';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { sourcePlatformMeta } from '@/lib/source-platform';
 import {
   printOutboundDocuments,
   type PrintableOutboundDocument,
@@ -152,11 +154,16 @@ export function LabelsOrderWorkspace({ orderId, onClose }: LabelsOrderWorkspaceP
         mimeHint: label ? (isPdfOutboundDocument(label) ? 'pdf' : 'image') : 'pdf',
         count: label ? 1 : undefined,
         emptyHint: 'Attach or fetch one from the Documents tab',
-        meta: label?.data.platform ? (
-          <span className="text-role-eyebrow uppercase tracking-widest text-text-faint">
-            {sourcePlatformLabel(label.data.platform)}
-          </span>
-        ) : null,
+        meta: label?.data.platform ? (() => {
+          const meta = sourcePlatformMeta(label.data.platform);
+          return (
+            <HoverTooltip label={meta.label} asChild focusable={false}>
+              <span className="inline-flex shrink-0" aria-label={meta.label}>
+                <PlatformMark platformValue={label.data.platform} meta={meta} />
+              </span>
+            </HoverTooltip>
+          );
+        })() : null,
       },
       {
         id: 'packing_slip',
@@ -166,11 +173,16 @@ export function LabelsOrderWorkspace({ orderId, onClose }: LabelsOrderWorkspaceP
         count: slip ? 1 : undefined,
         loading: slipAutoFetching && !slip,
         emptyHint: 'Attach or fetch one from the Documents tab',
-        meta: slip?.data.platform ? (
-          <span className="text-role-eyebrow uppercase tracking-widest text-text-faint">
-            {sourcePlatformLabel(slip.data.platform)}
-          </span>
-        ) : null,
+        meta: slip?.data.platform ? (() => {
+          const meta = sourcePlatformMeta(slip.data.platform);
+          return (
+            <HoverTooltip label={meta.label} asChild focusable={false}>
+              <span className="inline-flex shrink-0" aria-label={meta.label}>
+                <PlatformMark platformValue={slip.data.platform} meta={meta} />
+              </span>
+            </HoverTooltip>
+          );
+        })() : null,
       },
     ];
   }, [label, slip, slipAutoFetching]);
@@ -232,7 +244,7 @@ export function LabelsOrderWorkspace({ orderId, onClose }: LabelsOrderWorkspaceP
           label: 'Print',
           icon: Printer,
           content: (
-            <Panel padding="none" elevation="none" className="flex flex-col gap-0 rounded-none">
+            <Panel padding="none" elevation="none" className="flex flex-col gap-0">
               <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border-hairline px-3 py-2.5">
                 <div className="min-w-0">
                   <h3 className="text-role-eyebrow uppercase tracking-widest text-text-soft">

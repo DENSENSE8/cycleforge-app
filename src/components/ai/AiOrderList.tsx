@@ -3,6 +3,9 @@
 import { useEffect, useState } from 'react';
 import { ShipmentStatusBadge } from '@/components/shipping/ShipmentStatusBadge';
 import { sectionLabel } from '@/design-system/tokens/typography/presets';
+import { Panel } from '@/design-system/primitives';
+import { SkeletonBase } from '@/design-system/components/Skeletons';
+
 
 interface AiOrder {
   id: number;
@@ -55,22 +58,22 @@ export default function AiOrderList({ orderIds }: { orderIds: string[] }) {
 
   if (loading) {
     return (
-      <div className="overflow-hidden rounded-xl border border-border-soft bg-surface-card">
+      <Panel radius="xl" padding="none" className="overflow-hidden">
         {[0, 1, 2].map((i) => (
           <div key={i} className="flex items-center gap-3 border-b border-border-hairline px-3 py-2.5 last:border-b-0">
-            <div className="h-3 w-16 animate-pulse rounded bg-surface-sunken" />
-            <div className="h-3 flex-1 animate-pulse rounded bg-surface-sunken" />
-            <div className="h-4 w-20 animate-pulse rounded bg-surface-sunken" />
+            <SkeletonBase width="4rem" height="0.75rem" className="bg-surface-sunken" />
+            <SkeletonBase height="0.75rem" className="flex-1 bg-surface-sunken" />
+            <SkeletonBase width="5rem" height="1rem" className="bg-surface-sunken" />
           </div>
         ))}
-      </div>
+      </Panel>
     );
   }
 
   if (!orders || orders.length === 0) return null;
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border-soft bg-surface-card">
+    <Panel radius="xl" padding="none" className="overflow-hidden">
       <div className="flex items-center justify-between border-b border-border-hairline bg-surface-canvas/60 px-3 py-2">
         <span className={sectionLabel}>{orders.length} order{orders.length !== 1 ? 's' : ''}</span>
         <a
@@ -115,6 +118,6 @@ export default function AiOrderList({ orderIds }: { orderIds: string[] }) {
           </a>
         ))}
       </div>
-    </div>
+    </Panel>
   );
 }

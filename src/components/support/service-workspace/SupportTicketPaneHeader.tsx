@@ -4,41 +4,31 @@
  * Support · Tickets — the thread's SPLIT header (Workbench branch
  * `service-workspace`).
  *
- *   ┌─ Panel (rounded-2xl, same shell as the queue card) ──────────────┐
- *   │ Row 1 — icon action row      Inspector · Open     │ ⧉ · ×        │
- *   ├──────────────────────────────────────────────────────────────────┤
- *   │ Row 2 — dense identity       ● subject … · priority              │
- *   │                          #175  (StackedRowIdentity keys row)     │
- *   └──────────────────────────────────────────────────────────────────┘
+ *   ┌─ Panel (flush-square — ONE plane, no hairline) ──────────────────┐
+ *   │ [← back] ……………  [↗ Open in Zendesk] [details] [▥ inspector]     │
+ *   │ status · subject · priority · #ticket                             │
+ *   └───────────────────────────────────────────────────────────────────┘
  *
- * **Why it is not `PaneHeader` itself.** `PaneHeader`'s shell is
- * `mainStickyHeaderClass` — a full-bleed, squared, bottom-bordered band. Beside
- * the rounded `MONITOR_SECTION_CARD_CLASS` queue card the thread replaces, that
- * squared edge reads as a seam, and it was the actual complaint. So this
- * composes the pane-header BLOCKS (`PaneHeaderActionBar`, `PaneHeaderCloseButton`)
- * onto a {@link Panel} whose radius, border and lift are the queue card's own —
- * the same primitives, a card shell instead of a page band. It is deliberately
- * NOT a fifth header grammar.
+ * Back leads top-left (station Exit cube). Trailing cluster is circular
+ * {@link ConversationHeaderActionButton} — same face as Unbox Ticket Displays
+ * (open-in-provider → ticket details → Show/Hide inspector). Inspector uses
+ * {@link ColumnsTwo} — same glyph as Unbox History Band-3
+ * {@link WorkbenchInspectorToggle}.
  *
- * **Why it is not `StationContextBar` / `CartonContextCard` either.** That is the
- * Unbox floating carton bookmark. Getting Support out of carton-bench chrome is
- * the whole branch ruling (`workbench-service.md`), and the guard pins it.
- *
- * Row order follows the house split-header grammar in
- * `display/right-rail-inspector.md`: actions on top, dense identity beneath,
- * dismiss at the far right of the action row. Identity stays caption-density via
- * {@link SupportTicketIdentity} — never a wrapping hero title.
+ * Not `PaneHeader` (sticky band) and not `StationContextBar` (carton bookmark).
+ * Identity stays caption-density via {@link SupportTicketIdentity}.
  */
 
 import type { ReactNode } from 'react';
-import { ExternalLink, Layers } from '@/components/Icons';
+import { ChevronLeft, ColumnsTwo, ExternalLink } from '@/components/Icons';
+import { WorkbenchChromeCubeButton } from '@/components/dashboard/workbench-chrome-cube';
 import {
-  PaneHeaderActionBar,
-  PaneHeaderCloseButton,
-  type PaneHeaderActionBarAction,
-} from '@/components/ui/pane-header';
-import { Panel } from '@/design-system/primitives';
+  ConversationHeaderActionButton,
+  Panel,
+} from '@/design-system/primitives';
+import { CONVERSATION_HEADER_ACTION_GLYPH } from '@/design-system/primitives/conversation-chrome';
 import type { SupportContextTicket } from '@/lib/support/context-types';
+import { openHelpdeskTicketUrl } from '@/lib/desktop/desktop-host';
 import { SupportTicketIdentity } from './SupportTicketIdentity';
 
 export function SupportTicketPaneHeader({
@@ -56,65 +46,51 @@ export function SupportTicketPaneHeader({
   ticketId: number;
   /** Provider deep link; omitted while the bundle resolves the runtime provider. */
   openUrl: string | null;
+  /**
+   * Deep-link tooltip — connected helpdesk provider face
+   * (`Open in Zendesk`), from {@link useCapabilityProviderLabel}.
+   */
   openLabel: string;
   /** Whether the right rail currently holds the ticket context. */
   contextOpen: boolean;
   onToggleContext: () => void;
   onClose: () => void;
-  /** Secondary detail popover trigger — sits left of the dismiss control. */
+  /** Ticket-details popover — between open-external and inspector. */
   detailsSlot?: ReactNode;
 }) {
-  const actions: PaneHeaderActionBarAction[] = [
-    {
-      key: 'inspector',
-      // The rail is a non-modal push column with no scrim, so its close button
-      // needs a way back. This is it — `active` mirrors the rail's own state so
-      // the toggle never lies about what is on screen.
-      //
-      // It says "Inspector", not "Displays" and not "Connections". The rail is a
-      // `RightRailHost` occupant (`SupportContextDetailPanel`), and the SoT law
-      // reserves "Displays" for the Station scan push column — a RightRailHost
-      // peek is an inspector (source-of-truth.md → Displays vs inspector).
-      // "Connections" is one of the cells the inspector holds
-      // (Connections · Conversations · Timeline · Assist), so naming the whole
-      // column after it would put two differently-scoped controls on one screen.
-      label: 'Inspector',
-      icon: <Layers className="h-3.5 w-3.5" />,
-      onClick: onToggleContext,
-      active: contextOpen,
-      title: contextOpen ? 'Hide inspector' : 'Show inspector',
-    },
-    ...(openUrl
-      ? [
-          {
-            key: 'open-external',
-            label: openLabel,
-            icon: <ExternalLink className="h-3.5 w-3.5" />,
-            onClick: () => window.open(openUrl, '_blank', 'noopener'),
-          } satisfies PaneHeaderActionBarAction,
-        ]
-      : []),
-  ];
-
   return (
-    <Panel padding="none" radius="2xl" elevation="sm" className="shrink-0 overflow-hidden">
-      {/* Row 1 — the only secondary action surface on this pane. */}
-      <div className="flex items-center justify-between gap-2 border-b border-border-hairline px-1.5 py-1">
-        <PaneHeaderActionBar variant="flat" iconOnly actions={actions} className="px-0 py-0" />
+    <Panel padding="none" radius="none" elevation="none" className="shrink-0 overflow-hidden">
+      {/* One chrome plane — actions + identity; no hairline split. */}
+      <div className="flex items-center justify-between gap-2 px-1.5 pt-1">
+        <WorkbenchChromeCubeButton
+          label="Back to tickets queue"
+          icon={<ChevronLeft className="h-3.5 w-3.5" aria-hidden />}
+          onClick={onClose}
+          data-testid="support-ticket-back-to-list"
+        />
         <div className="flex shrink-0 items-center gap-1">
+          {openUrl ? (
+            <ConversationHeaderActionButton
+              label={openLabel}
+              icon={<ExternalLink className={CONVERSATION_HEADER_ACTION_GLYPH} aria-hidden />}
+              onClick={() => {
+                void openHelpdeskTicketUrl(openUrl, { title: openLabel });
+              }}
+              data-testid="support-ticket-open-helpdesk"
+            />
+          ) : null}
           {detailsSlot}
-          {/* Mandatory: the thread has no scrim to click off, and Escape alone
-              is not a visible dismiss. */}
-          <PaneHeaderCloseButton
-            onClick={onClose}
-            ariaLabel="Back to tickets queue"
-            title="Back to tickets queue"
+          <ConversationHeaderActionButton
+            label={contextOpen ? 'Hide inspector' : 'Show inspector'}
+            icon={<ColumnsTwo className={CONVERSATION_HEADER_ACTION_GLYPH} aria-hidden />}
+            onClick={onToggleContext}
+            active={contextOpen}
+            data-testid="support-ticket-toggle-inspector"
           />
         </div>
       </div>
 
-      {/* Row 2 — dense identity: status · subject · priority; ticket # below. */}
-      <div className="flex min-w-0 items-center px-2.5 py-1.5">
+      <div className="flex min-w-0 items-center px-2.5 pb-1.5 pt-1">
         <SupportTicketIdentity ticket={ticket} fallbackId={ticketId} />
       </div>
     </Panel>

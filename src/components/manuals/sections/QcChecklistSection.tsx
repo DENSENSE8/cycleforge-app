@@ -6,7 +6,7 @@ import { ChevronDown, Plus, Loader2, Trash2, Pencil } from '@/components/Icons';
 import { FILTER_DROPDOWN_SELECT_CLASS } from '@/design-system/components/FilterDropdownSelect';
 import { microBadge } from '@/design-system/tokens/typography/presets';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { Button, IconButton } from '@/design-system/primitives';
+import { Panel, Button, IconButton } from '@/design-system/primitives';
 
 interface QcCheckRow {
   id: number;
@@ -307,7 +307,7 @@ export function QcChecklistSection({ catalogId, qcChecks, onRefresh }: QcCheckli
             exit={{ opacity: 0, height: 0 }}
             className="overflow-hidden"
           >
-            <div className="rounded-xl border border-border-soft bg-surface-card p-2.5 space-y-2">
+            <Panel radius="xl" padding="none" className="p-2.5 space-y-2">
               <input
                 type="text"
                 value={stepLabel}
@@ -427,7 +427,7 @@ export function QcChecklistSection({ catalogId, qcChecks, onRefresh }: QcCheckli
                   Cancel
                 </Button>
               </div>
-            </div>
+            </Panel>
           </motion.div>
         )}
       </AnimatePresence>

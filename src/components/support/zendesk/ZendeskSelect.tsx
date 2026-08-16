@@ -3,6 +3,10 @@
 import { useRef, useState } from 'react';
 import { AnchoredLayer } from '@/design-system';
 import { cn } from '@/utils/_cn';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { Panel } from '@/design-system/primitives';
+
+
 
 export interface SelectOption {
   value: string;
@@ -49,7 +53,7 @@ export function ZendeskSelect({
         className={cn(
           'ds-raw-button flex w-full items-center justify-between gap-2 border border-border-default bg-surface-card text-text-default transition-colors hover:bg-surface-hover disabled:opacity-50',
           isField
-            ? 'h-10 min-h-10 rounded-xl px-3 text-role-data font-semibold outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100'
+            ? cn('h-10 min-h-10 rounded-xl px-3 text-role-data font-semibold', focusRing('field', 'accent'))
             : isRail
               ? 'inline-flex max-w-[7.5rem] gap-0.5 rounded px-1.5 py-0.5 text-role-eyebrow font-semibold'
               : isDense
@@ -79,7 +83,7 @@ export function ZendeskSelect({
         placement={align === 'right' ? 'bottom-end' : 'bottom-start'}
         gap={4}
       >
-        <div className="max-h-64 w-max min-w-[150px] overflow-auto rounded-lg border border-border-soft bg-surface-card p-1 shadow-xl">
+        <Panel radius="lg" padding="none" elevation="md" className="max-h-64 w-max min-w-[150px] overflow-auto p-1">
           {options.map((o) => (
             <button
               key={o.value}
@@ -96,7 +100,7 @@ export function ZendeskSelect({
               {o.sublabel ? <span className="text-role-micro text-text-soft">{o.sublabel}</span> : null}
             </button>
           ))}
-        </div>
+        </Panel>
       </AnchoredLayer>
     </div>
   );

@@ -21,6 +21,10 @@ import { Button } from '@/design-system/primitives/Button';
 import { AdminEmptyDetail } from '../shared';
 import { Cpu } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 // ─── Types (mirror the API responses) ───────────────────────────────────────
 
@@ -362,8 +366,8 @@ function SkuSearchField({ value, onSelect, onClear }: { value: string; onSelect:
 
 // ─── Small presentational bits ──────────────────────────────────────────────
 
-const inputCls = 'w-full rounded-md border border-border-default inset-field text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500';
-const selectCls = 'rounded-md border border-border-default px-2 py-1.5 text-role-caption focus:border-blue-500 focus:outline-none';
+const inputCls = cn('w-full rounded-md border border-border-default inset-field text-sm', focusRing('field', 'accent'));
+const selectCls = cn('rounded-md border border-border-default px-2 py-1.5 text-role-caption', focusRing('field', 'accent'));
 
 function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return (

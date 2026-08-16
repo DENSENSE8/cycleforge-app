@@ -337,7 +337,7 @@ export async function getSkuStockWorkOrders(orgId: string): Promise<WorkOrderRow
       queueKey: 'stock_replenish' as const,
       queueLabel: 'Stock Replenish',
       title: String(row.product_title || row.sku || `SKU Stock #${row.id}`),
-      subtitle: `SKU ${String(row.sku || 'N/A')} • Stock ${Number.isFinite(stockLevel) ? stockLevel : 0}`,
+      subtitle: `SKU ${String(row.sku || '—')} • Stock ${Number.isFinite(stockLevel) ? stockLevel : 0}`,
       recordLabel: String(row.sku || `SKU Stock #${row.id}`),
       sourcePath: '/sku-stock',
       techId: row.assigned_tech_id == null ? null : Number(row.assigned_tech_id),

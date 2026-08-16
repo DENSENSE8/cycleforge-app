@@ -1,10 +1,13 @@
 # Build and dependency artifacts
 .next
+.next-perf
 node_modules
 desktop-dist
 build
 out
 coverage
+lighthouse
+tmp
 
 # Local/runtime metadata
 .git
@@ -12,6 +15,13 @@ coverage
 .DS_Store
 *.log
 *.tsbuildinfo
+.cursor
+.claude
+.agents
+.gemini
+.obsidian
+.impeccable
+.cycle_forge_ops
 
 # Env and local-only files
 .env

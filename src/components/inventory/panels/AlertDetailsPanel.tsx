@@ -6,6 +6,12 @@ import { Button } from '@/design-system/primitives/Button';
 import { microBadge, sectionLabel } from '@/design-system/tokens/typography/presets';
 import type { AlertRow } from '@/hooks/useInventorySearch';
 import { InventoryDetailPanelShell } from './InventoryDetailPanelShell';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+import { Panel } from '@/design-system/primitives';
+
+
+
 
 interface AlertDetailsPanelProps {
     alertId: string;
@@ -116,7 +122,7 @@ export function AlertDetailsPanel({ alertId, onClose, chrome = 'default' }: Aler
                         </div>
                     </header>
 
-                    <section className="rounded-xl border border-border-soft bg-surface-card">
+                    <Panel radius="xl" padding="none">
                         <div className="grid grid-cols-2 gap-4 px-5 py-4 text-sm">
                             <Field label="SKU" value={alert.sku ?? '—'} />
                             <Field label="Bin" value={alert.bin_barcode ?? '—'} />
@@ -126,9 +132,9 @@ export function AlertDetailsPanel({ alertId, onClose, chrome = 'default' }: Aler
                                 value={alert.resolved_at ? new Date(alert.resolved_at).toLocaleString() : '—'}
                             />
                         </div>
-                    </section>
+                    </Panel>
 
-                    <section className="rounded-xl border border-border-soft bg-surface-card px-5 py-4">
+                    <Panel radius="xl" padding="none" className="px-5 py-4">
                         <p className={sectionLabel}>Resolve</p>
                         {alert.resolved_at ? (
                             <p className={`${microBadge} mt-2 text-emerald-700`}>
@@ -141,7 +147,7 @@ export function AlertDetailsPanel({ alertId, onClose, chrome = 'default' }: Aler
                                     onChange={(e) => setNote(e.target.value)}
                                     placeholder="Optional note (what changed, who handled it)"
                                     rows={2}
-                                    className="w-full resize-none rounded-lg border border-border-soft bg-surface-canvas px-3 py-2 text-sm text-text-default focus:border-blue-400 focus:bg-surface-card focus:outline-none"
+                                    className={cn("w-full resize-none rounded-lg border border-border-soft bg-surface-canvas px-3 py-2 text-sm text-text-default focus:bg-surface-card", focusRing('field', 'accent'))}
                                 />
                                 {ackError ? (
                                     <p className={`${microBadge} text-red-600`}>{ackError}</p>
@@ -160,7 +166,7 @@ export function AlertDetailsPanel({ alertId, onClose, chrome = 'default' }: Aler
                                 </Button>
                             </div>
                         )}
-                    </section>
+                    </Panel>
                 </div>
             )}
         </InventoryDetailPanelShell>

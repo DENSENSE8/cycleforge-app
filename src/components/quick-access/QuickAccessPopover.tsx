@@ -8,7 +8,7 @@ import { useQuickAccess } from '@/lib/quick-access/use-quick-access';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStaffColorVersion } from '@/contexts/StaffColorsProvider';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { IconButton } from '@/design-system/primitives';
+import { Panel, IconButton } from '@/design-system/primitives';
 import { StaffAvatar } from '@/components/identity';
 
 interface QuickAccessPopoverProps {
@@ -45,11 +45,8 @@ export function QuickAccessPopover({
   const staffName = user?.name ?? '';
 
   return (
-    <div
-      role="dialog"
-      aria-label="Quick access"
-      className="flex max-h-[calc(100vh-6rem)] w-[340px] flex-col overflow-hidden rounded-2xl border border-border-soft bg-surface-card shadow-xl"
-    >
+    <Panel radius="2xl" padding="none" elevation="md" className="flex max-h-[calc(100vh-6rem)] w-[340px] flex-col overflow-hidden" role="dialog"
+      aria-label="Quick access">
       {compact && onOpenFeedbackPopover ? (
         <ActionsSection
           actions={{ phoneHistory: false }}
@@ -112,6 +109,6 @@ export function QuickAccessPopover({
           <span className="text-role-caption text-text-soft">Pick a staff →</span>
         </button>
       )}
-    </div>
+    </Panel>
   );
 }

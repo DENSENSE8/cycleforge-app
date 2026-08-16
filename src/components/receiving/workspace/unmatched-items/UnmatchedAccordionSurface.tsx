@@ -56,6 +56,8 @@ import { PoLinesAccordion, type ActiveRowSerial } from '@/components/receiving/w
 import { ActiveLineConditionSerial } from '@/components/receiving/workspace/line-edit/ActiveLineConditionSerial';
 import { useSerialLookup } from '@/components/receiving/workspace/SerialMatchResult';
 import { dispatchUnboxRailLineUpdated } from '@/components/sidebar/receiving/unbox-rail-events';
+import { dispatchSelectLine } from '@/components/station/receiving-lines-table-helpers';
+import { setActiveSinkId } from '@/lib/station-scan-sink';
 import { requestConfirm } from '@/design-system/components/confirm';
 import { useUnmatchedItems } from './useUnmatchedItems';
 import { IntakeClassifyRow } from './IntakeClassifyRow';
@@ -454,6 +456,7 @@ export function UnmatchedAccordionSurface(props: UnmatchedItemsSectionProps) {
     placeholderActiveRow: placeholderActiveRowProp,
     hideNoTestLines = false,
     activeSerialActions: activeSerialActionsProp,
+    dockOwnsCapture = false,
   } = props;
   // Legacy callers tied interactivity to showSerialScan; Arrival passes
   // readOnly from editLines so unit capture can stay off independently.
@@ -725,6 +728,20 @@ export function UnmatchedAccordionSurface(props: UnmatchedItemsSectionProps) {
                         }}
                         units={units}
                         autoFocusSerial={isActiveLine}
+                        autoCommitDefaultGrade={
+                          isActiveLine && !line.condition_graded_at
+                        }
+                        dockOwnsCapture={dockOwnsCapture}
+                        isActiveLine={isActiveLine}
+                        staffId={Number(staffId) || 0}
+                        poRef={
+                          props.linkedOrderHint?.zoho_purchaseorder_number ?? null
+                        }
+                        poRouteRef={null}
+                        onArmCapture={() => {
+                          setActiveSinkId(`po-line:${line.id}`);
+                          if (!isActiveLine) dispatchSelectLine(line);
+                        }}
                       />
                     );
                   }
@@ -742,6 +759,9 @@ export function UnmatchedAccordionSurface(props: UnmatchedItemsSectionProps) {
           serialAbsentReason={serialAbsentReason}
           requireSerialConfirmation={requireSerialConfirmation}
           onSerialAbsentChange={onSerialAbsentChange}
+          dockOwnsCapture={dockOwnsCapture}
+          receivingId={receivingId}
+          staffId={Number(staffId) || 0}
         />
       ) : null}
     </div>

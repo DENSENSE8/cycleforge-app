@@ -20,11 +20,7 @@
  * where the control went.
  */
 
-import { gridFrozenKeys } from '@/design-system/components/grid/grid-column-editability';
-import {
-  gridFrozenLeft,
-  gridTemplate,
-} from '@/design-system/components/grid/grid-column-geometry';
+import { makeGridLayout } from '@/design-system/components/grid/make-grid-layout';
 import type { ColumnType } from '@/lib/tables/table-columns';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
@@ -108,53 +104,40 @@ export const WARRANTY_GRID_COLUMNS: readonly WarrantyGridColumn[] = [
 ] as const;
 
 /**
- * Frozen identity pane — `select · title`. Derived from the model's `frozen`
- * flag (one declaration for freeze + immovability + offset math), never a
- * re-typed key list.
+ * Layout DERIVED from the column model — template, sticky offsets, frozen and
+ * sortable answers, default sort direction. The hand-written versions of these
+ * were the same six functions in every family with the names swapped; see
+ * `make-grid-layout.ts` for the breakdown and `make-grid-layout.test.ts` for
+ * the goldens that pinned the outputs across this migration.
  */
-const WARRANTY_GRID_LOCKED_KEYS: readonly WarrantyGridColumnKey[] =
-  gridFrozenKeys(WARRANTY_GRID_COLUMNS);
+const WARRANTY_GRID_LAYOUT = makeGridLayout<WarrantyGridColumn>({
+  columns: WARRANTY_GRID_COLUMNS,
+  descFirstKeys: ['logged'],
+});
 
-const WARRANTY_GRID_SORTABLE_KEYS: readonly WarrantyGridColumnKey[] = WARRANTY_GRID_COLUMNS.filter(
-  (c) => c.sortable !== false && c.key !== 'select',
-).map((c) => c.key);
-
+/** Narrowing wrapper — the derived answer, with this family's key type. */
 export function isWarrantyGridSortable(key: string): key is WarrantyGridColumnKey {
-  return (WARRANTY_GRID_SORTABLE_KEYS as readonly string[]).includes(key);
+  return WARRANTY_GRID_LAYOUT.isSortable(key);
 }
 
 export function isWarrantyGridFrozen(key: string): boolean {
-  return WARRANTY_GRID_LOCKED_KEYS.includes(key as WarrantyGridColumnKey);
+  return WARRANTY_GRID_LAYOUT.isFrozen(key);
 }
 
 /** CSS grid template — one `var(--cf-col-<key>, <width>)` track per column. */
 export function warrantyGridTemplate(
   columns: readonly WarrantyGridColumn[] = WARRANTY_GRID_COLUMNS,
 ): string {
-  return gridTemplate(columns);
+  return WARRANTY_GRID_LAYOUT.template(columns);
 }
 
-/**
- * Sticky offset for a frozen cell — row px + the summed widths of the locked
- * columns before it. Self-computed over {@link WARRANTY_GRID_COLUMNS} so this
- * surface's own select/title widths drive the offset.
- */
+/** Sticky offset for a frozen cell — row px + the locked widths before it. */
 export function warrantyGridFrozenLeft(key: WarrantyGridColumnKey): string {
-  return gridFrozenLeft(WARRANTY_GRID_COLUMNS, key);
+  return WARRANTY_GRID_LAYOUT.frozenLeft(key);
 }
 
-
-/**
- * Default direction when first activating a column sort.
- *
- * `logged` → newest first, the usual date reading. `warranty` → **ascending**,
- * because the column holds days REMAINING: fewest-days-left first puts the
- * claims about to fall out of cover at the top, which is the only reason to
- * sort that column at all.
- */
 export function defaultDirForWarrantyGridSort(key: WarrantyGridColumnKey): GridSortDir {
-  if (key === 'logged') return 'desc';
-  return 'asc';
+  return WARRANTY_GRID_LAYOUT.defaultDir(key);
 }
 
 // Shared spreadsheet chrome — @/design-system/components/grid ledgerGridCell.

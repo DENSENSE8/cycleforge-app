@@ -2,6 +2,9 @@
  * Incoming desk import orchestration — single Add / CSV row → ingestPurchase
  * (+ optional RETURN tag + classify stamps). Shared by import-purchase and
  * import-csv routes.
+ *
+ * Native Amazon Manage Returns CSV rows are gated: ASIN must equal
+ * sku_catalog.sku (case-insensitive). Misses are structured skips, not errors.
  */
 
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -13,7 +16,11 @@ import {
   assertRegisteredInboundSource,
   type InboundSourceType,
 } from './source-registry';
-import type { DeskImportRow, DeskInboundKind } from './desk-csv';
+import type {
+  AmazonReturnSkipReason,
+  DeskImportRow,
+  DeskInboundKind,
+} from './desk-csv';
 import { inboundSourcePlatformForRaw } from './desk-csv';
 
 export { deskRowFromCsvRecord } from './desk-csv';
@@ -23,6 +30,21 @@ interface DeskImportResult extends IngestPurchaseResult {
   sourcePlatform: string | null;
   receivingType: string | null;
   priorityTier: number | null;
+}
+
+interface DeskImportSkipResult {
+  skipped: true;
+  reason: AmazonReturnSkipReason;
+  asin?: string | null;
+  orderId?: string | null;
+}
+
+type DeskImportOutcome = DeskImportResult | DeskImportSkipResult;
+
+export function isDeskImportSkip(
+  r: DeskImportOutcome,
+): r is DeskImportSkipResult {
+  return 'skipped' in r && r.skipped === true;
 }
 
 async function stampClassify(
@@ -84,10 +106,65 @@ async function stampClassify(
   return { sourcePlatform, receivingType, priorityTier };
 }
 
+/**
+ * Resolve sku_catalog where sku equals ASIN (case-insensitive, org-scoped).
+ * No platform_id crosswalk — locked match rule for Amazon returns import.
+ */
+export async function resolveCatalogByAsinSku(
+  orgId: OrgId,
+  asin: string,
+): Promise<{ id: number; sku: string; product_title: string } | null> {
+  const needle = asin.trim();
+  if (!needle) return null;
+  const r = await tenantQuery<{
+    id: number;
+    sku: string;
+    product_title: string;
+  }>(
+    orgId,
+    `SELECT id, sku, product_title
+       FROM sku_catalog
+      WHERE organization_id = $1::uuid
+        AND lower(sku) = lower($2)
+        AND is_active = true
+      ORDER BY id
+      LIMIT 1`,
+    [orgId, needle],
+  );
+  return r.rows[0] ?? null;
+}
+
+/** Optional deps for unit tests (catalog gate without a live DB). */
+export interface ImportDeskInboundRowDeps {
+  resolveCatalogByAsinSku?: typeof resolveCatalogByAsinSku;
+  ingestPurchase?: typeof ingestPurchase;
+  tagInboundAsReturn?: typeof tagInboundAsReturn;
+  stampClassify?: typeof stampClassify;
+}
+
+/**
+ * Import one desk / CSV row onto the Incoming spine.
+ * Amazon native return rows without a matching catalog ASIN are skipped.
+ */
 export async function importDeskInboundRow(
   orgId: OrgId,
   row: DeskImportRow,
-): Promise<DeskImportResult> {
+  deps: ImportDeskInboundRowDeps = {},
+): Promise<DeskImportOutcome> {
+  const resolveCatalog = deps.resolveCatalogByAsinSku ?? resolveCatalogByAsinSku;
+  const doIngest = deps.ingestPurchase ?? ingestPurchase;
+  const doTagReturn = deps.tagInboundAsReturn ?? tagInboundAsReturn;
+  const doStamp = deps.stampClassify ?? stampClassify;
+
+  if (row.skipReason) {
+    return {
+      skipped: true,
+      reason: row.skipReason,
+      asin: row.sku ?? null,
+      orderId: row.orderId || null,
+    };
+  }
+
   const sourceType = String(row.sourceType || 'manual').trim().toLowerCase();
   assertRegisteredInboundSource(sourceType);
   // Zoho POs come from sync — desk Add does not invent Zoho-primary rows.
@@ -98,8 +175,35 @@ export async function importDeskInboundRow(
   const orderId = String(row.orderId || '').trim();
   if (!orderId) throw new Error('inbound: order_id is required');
 
-  const sku = row.sku?.trim() || null;
-  const itemName = row.itemName?.trim() || null;
+  let sku = row.sku?.trim() || null;
+  let itemName = row.itemName?.trim() || null;
+  let skuCatalogId: number | null = null;
+
+  // Native Amazon returns: ASIN must equal sku_catalog.sku — skip otherwise.
+  if (row.amazonNativeReturn && row.kind === 'return' && sourceType === 'amazon') {
+    if (!sku) {
+      return {
+        skipped: true,
+        reason: 'no_asin',
+        asin: null,
+        orderId,
+      };
+    }
+    const catalog = await resolveCatalog(orgId, sku);
+    if (!catalog) {
+      return {
+        skipped: true,
+        reason: 'no_catalog_asin',
+        asin: sku,
+        orderId,
+      };
+    }
+    skuCatalogId = catalog.id;
+    // Prefer catalog SKU casing; fill blank title from catalog.
+    sku = catalog.sku;
+    if (!itemName) itemName = catalog.product_title?.trim() || null;
+  }
+
   if (!sku && !itemName) {
     throw new Error('inbound: must provide at least one of: sku, item_name');
   }
@@ -122,7 +226,7 @@ export async function importDeskInboundRow(
       ? row.priorityTier
       : null;
 
-  const result = await ingestPurchase(orgId, {
+  const result = await doIngest(orgId, {
     sourceType: sourceType as InboundSourceType,
     sourceOrderId: orderId,
     sourceLineItemId: row.lineItemId?.trim() || null,
@@ -131,16 +235,18 @@ export async function importDeskInboundRow(
     itemName,
     quantityExpected: row.quantity ?? 1,
     conditionGrade: row.conditionGrade ?? undefined,
+    skuCatalogId,
     sellerUsername: seller,
     listingUrl: row.listingUrl?.trim() || null,
     orderNumber: orderId,
     vendorOrSellerName: seller,
     trackingNumber: row.trackingNumber?.trim() || null,
     carrierCode: row.carrierCode?.trim() || null,
+    rawPayload: row.rawPayload ?? null,
   });
 
   if (kind === 'return') {
-    await tagInboundAsReturn(orgId, {
+    await doTagReturn(orgId, {
       receivingLineId: result.receivingLineId,
       sourceType,
       sourceOrderId: orderId,
@@ -149,7 +255,7 @@ export async function importDeskInboundRow(
     });
   }
 
-  const stamped = await stampClassify(orgId, result.receivingLineId, {
+  const stamped = await doStamp(orgId, result.receivingLineId, {
     sourcePlatform,
     receivingType: kind === 'return' ? null : receivingType,
     priorityTier,

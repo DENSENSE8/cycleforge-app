@@ -3,13 +3,9 @@ import { describe, it } from 'node:test';
 import {
   buildDisplayPending,
   parseUnboxDisplayParam,
-  shouldClearDisplayOnLineChange,
+  shouldClearDisplayOnRecordChange,
 } from './useUnboxDisplayView';
 import { UNBOX_SIDE_TAB_ORDER } from '../unbox-side-tabs';
-import {
-  resolveOptimisticParam,
-  shouldClearOptimisticParam,
-} from '@/lib/routing/optimistic-url-param';
 
 describe('parseUnboxDisplayParam', () => {
   it('accepts every real side tab', () => {
@@ -36,7 +32,7 @@ describe('parseUnboxDisplayParam', () => {
     assert.equal(parseUnboxDisplayParam('overview'), null);
   });
 
-  it('rejects the browse-tab vocabulary, so `?display=` cannot shadow `?unboxview=`', () => {
+  it('rejects the browse-tab vocabulary, so display ids cannot shadow `?unboxview=`', () => {
     for (const browseTab of ['recent', 'queue', 'viewed']) {
       assert.equal(parseUnboxDisplayParam(browseTab), null);
     }
@@ -54,49 +50,66 @@ describe('parseUnboxDisplayParam', () => {
   });
 });
 
-describe('shouldClearDisplayOnLineChange', () => {
-  it('clears on a genuine sibling-line switch while open', () => {
-    assert.equal(shouldClearDisplayOnLineChange(11, 22, true), true);
+describe('shouldClearDisplayOnRecordChange', () => {
+  it('clears on a genuine carton→carton switch while open', () => {
+    assert.equal(shouldClearDisplayOnRecordChange(11, 22, true), true);
   });
 
   it('stays put when the column is closed', () => {
-    assert.equal(shouldClearDisplayOnLineChange(11, 22, false), false);
+    assert.equal(shouldClearDisplayOnRecordChange(11, 22, false), false);
   });
 
-  it('keeps a deep link open when prev line is null (mount / resolve)', () => {
-    assert.equal(shouldClearDisplayOnLineChange(null, 22, true), false);
+  it('keeps open when prev record is null (mount / resolve)', () => {
+    assert.equal(shouldClearDisplayOnRecordChange(null, 22, true), false);
   });
 
-  it('keeps open when the line id is unchanged', () => {
-    assert.equal(shouldClearDisplayOnLineChange(22, 22, true), false);
+  it('keeps open when the carton is unchanged (sibling child switch)', () => {
+    // Both children of one carton pass the SAME receiving_id here, so this is
+    // exactly what a sibling switch looks like — the column must NOT flash.
+    assert.equal(shouldClearDisplayOnRecordChange(22, 22, true), false);
   });
 
-  it('keeps open when the current line becomes null', () => {
-    assert.equal(shouldClearDisplayOnLineChange(22, null, true), false);
+  it('keeps open when the current record becomes null', () => {
+    assert.equal(shouldClearDisplayOnRecordChange(22, null, true), false);
   });
 });
 
-describe('buildDisplayPending (domain snapshot)', () => {
+describe('buildDisplayPending (local snapshot)', () => {
   it('snapshots nested photo / ticket intents for the same-commit paint', () => {
-    const photos = buildDisplayPending('photos', { photoAction: 'send' }, null);
+    const photos = buildDisplayPending('photos', { photoAction: 'send' });
     assert.equal(photos.photoAction, 'send');
-    const claim = buildDisplayPending(
-      'ticket',
-      { ticketAction: 'claim', claimMode: 'link' },
-      null,
-    );
+    const claim = buildDisplayPending('ticket', {
+      ticketAction: 'claim',
+      claimMode: 'link',
+    });
     assert.equal(claim.ticketActionRaw, 'claim');
     assert.equal(claim.claimMode, 'link');
   });
 
-  it('paints via the shared optimistic SoT (display key only)', () => {
-    const pending = buildDisplayPending('index', undefined, null);
-    assert.equal(resolveOptimisticParam(null, pending.display), 'index');
-    assert.equal(shouldClearOptimisticParam('index', pending.display), true);
-    assert.equal(
-      shouldClearOptimisticParam('index', buildDisplayPending('photos', undefined, null).display),
-      false,
-      'index→leaf race stays on the shared SoT',
-    );
+  it('closes to a null display with default nest', () => {
+    const closed = buildDisplayPending(null, undefined);
+    assert.equal(closed.display, null);
+    assert.equal(closed.photoAction, 'actions');
+    assert.equal(closed.claimMode, 'link');
+  });
+
+  it('defaults claimMode to link when opening claim without an explicit mode', () => {
+    const claim = buildDisplayPending('ticket', { ticketAction: 'claim' });
+    assert.equal(claim.ticketActionRaw, 'claim');
+    assert.equal(claim.claimMode, 'link');
+  });
+
+  it('honors explicit create claimMode', () => {
+    const claim = buildDisplayPending('ticket', {
+      ticketAction: 'claim',
+      claimMode: 'create',
+    });
+    assert.equal(claim.claimMode, 'create');
+  });
+
+  it('maps legacy po-note raw id to linkage note nest', () => {
+    const note = buildDisplayPending('linkage', undefined, 'po-note');
+    assert.equal(note.display, 'linkage');
+    assert.equal(note.linkageActionRaw, 'note');
   });
 });

@@ -6,6 +6,8 @@ import {
   INCOMING_HUNT_TILE_ORDER,
 } from '@/lib/receiving/incoming-delivery-state-face';
 import type { IncomingDeliveryState, IncomingSummary } from './incoming-summary-types';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+
 
 export interface TileSpec {
   state: IncomingDeliveryState | null; // null = "All"
@@ -54,13 +56,13 @@ export const TONE: Record<
   TileSpec['tone'],
   { active: string; inactive: string; ring: string; iconActive: string; iconInactive: string; pill: string }
 > = {
-  rose: { active: 'bg-rose-600 text-white ring-rose-600', inactive: 'bg-surface-card text-rose-700 ring-rose-200 hover:bg-rose-50', ring: 'focus:ring-rose-500/40', iconActive: 'text-white', iconInactive: 'text-rose-500', pill: 'bg-rose-50 text-rose-700 ring-rose-200 hover:bg-rose-100' },
-  amber: { active: 'bg-amber-600 text-white ring-amber-600', inactive: 'bg-surface-card text-amber-800 ring-amber-200 hover:bg-amber-50', ring: 'focus:ring-amber-500/40', iconActive: 'text-white', iconInactive: 'text-amber-500', pill: 'bg-amber-50 text-amber-800 ring-amber-200 hover:bg-amber-100' },
-  orange: { active: 'bg-orange-600 text-white ring-orange-600', inactive: 'bg-surface-card text-orange-800 ring-orange-200 hover:bg-orange-50', ring: 'focus:ring-orange-500/40', iconActive: 'text-white', iconInactive: 'text-orange-500', pill: 'bg-orange-50 text-orange-800 ring-orange-200 hover:bg-orange-100' },
-  blue: { active: 'bg-blue-600 text-white ring-blue-600', inactive: 'bg-surface-card text-blue-700 ring-blue-200 hover:bg-blue-50', ring: 'focus:ring-blue-500/40', iconActive: 'text-white', iconInactive: 'text-blue-500', pill: 'bg-blue-50 text-blue-700 ring-blue-200 hover:bg-blue-100' },
+  rose: { active: 'bg-rose-600 text-white ring-rose-600', inactive: 'bg-surface-card text-rose-700 ring-rose-200 hover:bg-rose-50', ring: focusRing('field', 'danger'), iconActive: 'text-white', iconInactive: 'text-rose-500', pill: 'bg-rose-50 text-rose-700 ring-rose-200 hover:bg-rose-100' },
+  amber: { active: 'bg-amber-600 text-white ring-amber-600', inactive: 'bg-surface-card text-amber-800 ring-amber-200 hover:bg-amber-50', ring: focusRing('field', 'warning'), iconActive: 'text-white', iconInactive: 'text-amber-500', pill: 'bg-amber-50 text-amber-800 ring-amber-200 hover:bg-amber-100' },
+  orange: { active: 'bg-orange-600 text-white ring-orange-600', inactive: 'bg-surface-card text-orange-800 ring-orange-200 hover:bg-orange-50', ring: focusRing('field', 'warning'), iconActive: 'text-white', iconInactive: 'text-orange-500', pill: 'bg-orange-50 text-orange-800 ring-orange-200 hover:bg-orange-100' },
+  blue: { active: 'bg-blue-600 text-white ring-blue-600', inactive: 'bg-surface-card text-blue-700 ring-blue-200 hover:bg-blue-50', ring: focusRing('field', 'accent'), iconActive: 'text-white', iconInactive: 'text-blue-500', pill: 'bg-blue-50 text-blue-700 ring-blue-200 hover:bg-blue-100' },
   // ds-allow-raw-neutral: identity/tone hue — gray tone must stay distinct from slate (= surface-inverse), not chrome
-  gray: { active: 'bg-gray-700 text-white ring-gray-700', inactive: 'bg-surface-card text-text-muted ring-border-soft hover:bg-surface-hover', ring: 'focus:ring-gray-500/40', iconActive: 'text-white', iconInactive: 'text-text-soft', pill: 'bg-surface-canvas text-text-muted ring-border-soft hover:bg-surface-sunken' },
-  slate: { active: 'bg-surface-inverse text-white ring-surface-inverse', inactive: 'bg-surface-card text-text-muted ring-border-soft hover:bg-surface-hover', ring: 'focus:ring-text-soft/40', iconActive: 'text-white', iconInactive: 'text-text-soft', pill: 'bg-surface-canvas text-text-muted ring-border-soft hover:bg-surface-sunken' },
-  violet: { active: 'bg-violet-600 text-white ring-violet-600', inactive: 'bg-surface-card text-violet-700 ring-violet-200 hover:bg-violet-50', ring: 'focus:ring-violet-500/40', iconActive: 'text-white', iconInactive: 'text-violet-500', pill: 'bg-violet-50 text-violet-700 ring-violet-200 hover:bg-violet-100' },
-  red: { active: 'bg-red-600 text-white ring-red-600', inactive: 'bg-surface-card text-red-700 ring-red-200 hover:bg-red-50', ring: 'focus:ring-red-500/40', iconActive: 'text-white', iconInactive: 'text-red-500', pill: 'bg-red-50 text-red-700 ring-red-200 hover:bg-red-100' },
+  gray: { active: 'bg-gray-700 text-white ring-gray-700', inactive: 'bg-surface-card text-text-muted ring-border-soft hover:bg-surface-hover', ring: focusRing('field', 'neutral'), iconActive: 'text-white', iconInactive: 'text-text-soft', pill: 'bg-surface-canvas text-text-muted ring-border-soft hover:bg-surface-sunken' },
+  slate: { active: 'bg-surface-inverse text-white ring-surface-inverse', inactive: 'bg-surface-card text-text-muted ring-border-soft hover:bg-surface-hover', ring: focusRing('field', 'neutral'), iconActive: 'text-white', iconInactive: 'text-text-soft', pill: 'bg-surface-canvas text-text-muted ring-border-soft hover:bg-surface-sunken' },
+  violet: { active: 'bg-violet-600 text-white ring-violet-600', inactive: 'bg-surface-card text-violet-700 ring-violet-200 hover:bg-violet-50', ring: 'focus:ring-violet-500/40' /* ds-allow-focus: identity/one-off hue or ring-0 */, iconActive: 'text-white', iconInactive: 'text-violet-500', pill: 'bg-violet-50 text-violet-700 ring-violet-200 hover:bg-violet-100' },
+  red: { active: 'bg-red-600 text-white ring-red-600', inactive: 'bg-surface-card text-red-700 ring-red-200 hover:bg-red-50', ring: focusRing('field', 'danger'), iconActive: 'text-white', iconInactive: 'text-red-500', pill: 'bg-red-50 text-red-700 ring-red-200 hover:bg-red-100' },
 };

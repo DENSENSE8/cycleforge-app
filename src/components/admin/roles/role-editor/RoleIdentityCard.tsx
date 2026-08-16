@@ -3,7 +3,7 @@
 import { RoleColorPicker } from '../RoleColorPicker';
 import { InlineEdit } from './InlineEdit';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { Button } from '@/design-system/primitives';
+import { Panel, Button } from '@/design-system/primitives';
 import type { RoleDetail } from './role-editor-types';
 
 type Role = RoleDetail['role'];
@@ -25,7 +25,7 @@ export function RoleIdentityCard({
   onDuplicate: () => void;
 }) {
   return (
-    <section className="rounded-2xl border border-border-soft bg-surface-card p-5 shadow-sm">
+    <Panel radius="2xl">
       <div className="flex items-start gap-4">
         <div className="h-14 w-14 flex-shrink-0 rounded-full ring-4 ring-white shadow" style={{ backgroundColor: role.color }} aria-hidden />
         <div className="min-w-0 flex-1">
@@ -74,6 +74,6 @@ export function RoleIdentityCard({
           </HoverTooltip>
         </div>
       </div>
-    </section>
+    </Panel>
   );
 }

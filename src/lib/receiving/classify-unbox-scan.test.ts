@@ -9,7 +9,6 @@ import {
   cartonNeedsSerials,
   classifyUnboxScan,
   lineNeedsSerials,
-  shouldConfirmCartonSwitch,
 } from './classify-unbox-scan';
 
 test('base classification passes through with the right intent', () => {
@@ -83,41 +82,6 @@ test('triage surface does NOT reclassify tracking as serial (serials are inside 
     assert.equal(res.type, 'TRACKING');
     assert.equal(res.reclassified, false);
   }
-});
-
-test('shouldConfirmCartonSwitch: only known-carrier open_carton while serials owed', () => {
-  assert.equal(
-    shouldConfirmCartonSwitch({
-      intent: 'open_carton',
-      knownCarrier: true,
-      activeCartonNeedsSerials: true,
-    }),
-    true,
-  );
-  assert.equal(
-    shouldConfirmCartonSwitch({
-      intent: 'open_carton',
-      knownCarrier: false,
-      activeCartonNeedsSerials: true,
-    }),
-    false,
-  );
-  assert.equal(
-    shouldConfirmCartonSwitch({
-      intent: 'add_serial',
-      knownCarrier: true,
-      activeCartonNeedsSerials: true,
-    }),
-    false,
-  );
-  assert.equal(
-    shouldConfirmCartonSwitch({
-      intent: 'open_carton',
-      knownCarrier: true,
-      activeCartonNeedsSerials: false,
-    }),
-    false,
-  );
 });
 
 test('lineNeedsSerials: expected qty vs accounted serials + per-unit waiver', () => {

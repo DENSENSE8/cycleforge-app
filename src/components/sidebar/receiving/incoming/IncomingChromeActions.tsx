@@ -8,7 +8,7 @@
 
 import { useState } from 'react';
 import * as Popover from '@radix-ui/react-popover';
-import { Plus, RefreshCw, Loader2, Package, ClipboardList, Upload } from '@/components/Icons';
+import { Plus, RefreshCw, Loader2, Package, Upload } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import { PlatformMark } from '@/components/ui/PlatformMark';
 import {
@@ -16,7 +16,10 @@ import {
   WorkbenchFilterMenuRow,
 } from '@/components/dashboard/workbench-filter-popover';
 import { WORKBENCH_CHROME_PILL_CLASS } from '@/components/dashboard/workbench-shell';
+import { ChromeCheckButton } from '@/components/receiving/ChromeCheckButton';
 import { cn } from '@/utils/_cn';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+
 
 export function IncomingChromeActions({
   onCheckZoho,
@@ -63,51 +66,36 @@ export function IncomingChromeActions({
   return (
     <>
       {canCheckZoho ? (
-        <Button
-          size="sm"
+        <ChromeCheckButton
           onClick={onCheckZoho}
           ariaLabel="Check Zoho received by tracking"
-          icon={<ClipboardList />}
-          className={cn(
-            WORKBENCH_CHROME_PILL_CLASS,
-            'font-semibold uppercase tracking-widest bg-slate-700 shadow-sm shadow-slate-700/25 hover:bg-slate-600 active:bg-slate-800',
-          )}
-        >
-          Check
-        </Button>
+          testId="incoming-check"
+        />
       ) : null}
       {hasAnyImport ? (
         <Popover.Root open={menuOpen} onOpenChange={setMenuOpen}>
           <Popover.Trigger asChild>
-            {/* ds-raw-button: single child of Radix Popover.Trigger asChild — Slot clones onto this element. */}
-            {/* ds-allow-title: Radix Trigger asChild — HoverTooltip would disturb the Slot clone. */}
-            <button
-              type="button"
+            <Button
+              size="sm"
+              variant="primary"
               disabled={importing}
               aria-expanded={menuOpen}
-              aria-label={importing ? 'Importing incoming orders' : 'Import incoming orders'}
-              title={importing ? 'Importing…' : 'Import from purchasing source or CSV'}
+              ariaLabel={importing ? 'Importing incoming orders' : 'Import incoming orders'}
+              icon={importing ? <Loader2 className="animate-spin" /> : <RefreshCw />}
               className={cn(
-                'ds-raw-button inline-flex h-8 shrink-0 items-center gap-1.5 bg-blue-600 px-3 text-white shadow-sm transition-colors hover:bg-blue-700 active:scale-95 disabled:opacity-70',
                 WORKBENCH_CHROME_PILL_CLASS,
+                'font-semibold uppercase tracking-widest',
               )}
             >
-              {importing ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <RefreshCw className="h-3.5 w-3.5" />
-              )}
-              <span className="text-role-eyebrow uppercase tracking-widest text-white">
-                {importing ? 'Syncing…' : 'Import'}
-              </span>
-            </button>
+              {importing ? 'Syncing…' : 'Import'}
+            </Button>
           </Popover.Trigger>
           <Popover.Portal>
             <Popover.Content
               align="end"
               sideOffset={6}
               className={cn(
-                'z-dropdown w-64 overflow-hidden rounded-lg border border-border-soft bg-surface-card p-1 shadow-lg ring-1 ring-black/5 focus:outline-none',
+                cn('z-dropdown w-64 overflow-hidden rounded-lg border border-border-soft bg-surface-card p-1 shadow-lg ring-1 ring-black/5', focusRing('field', 'accent')),
               )}
             >
               <WorkbenchFilterGroupLabel>Import from</WorkbenchFilterGroupLabel>
@@ -163,13 +151,11 @@ export function IncomingChromeActions({
       {canAdd ? (
         <Button
           size="sm"
+          variant="success"
           onClick={onAdd}
           ariaLabel="Add inbound purchase or return"
           icon={<Plus />}
-          className={cn(
-            WORKBENCH_CHROME_PILL_CLASS,
-            'font-semibold uppercase tracking-widest bg-emerald-600 shadow-sm shadow-emerald-600/25 hover:bg-emerald-500 active:bg-emerald-700',
-          )}
+          className={cn(WORKBENCH_CHROME_PILL_CLASS, 'font-semibold uppercase tracking-widest')}
         >
           Add
         </Button>

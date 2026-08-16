@@ -11,7 +11,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/design-system/components/Dialog';
-import { platformStyle } from './platform-style';
+import { PlatformMark } from '@/components/ui/PlatformMark';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { sourcePlatformMeta } from '@/lib/source-platform';
 import type { UnmappedPlatformId } from './types';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
@@ -172,7 +174,10 @@ export function AddOrPairSkuModal({ open, onClose, query, pending, onDone }: Pro
   };
 
   const headerLabel = pending ? 'Pair identifier' : 'Add inventory SKU';
-  const style = useMemo(() => (pending ? platformStyle(pending.platform) : null), [pending]);
+  const pendingMeta = useMemo(
+    () => (pending ? sourcePlatformMeta(pending.platform) : null),
+    [pending],
+  );
 
   return (
     <Dialog
@@ -197,12 +202,14 @@ export function AddOrPairSkuModal({ open, onClose, query, pending, onDone }: Pro
         </DialogHeader>
 
         {/* Pending identifier banner */}
-        {pending && style && (
+        {pending && pendingMeta && (
           <div className="shrink-0 border-b border-border-hairline bg-surface-canvas px-4 py-2.5">
             <div className="flex items-center gap-2">
-              <span className={`inline-flex items-center rounded border px-1.5 py-0 text-role-eyebrow font-semibold uppercase tracking-wider ${style.chip}`}>
-                {style.label}
-              </span>
+              <HoverTooltip label={pendingMeta.label} asChild focusable={false}>
+                <span className="inline-flex shrink-0" aria-label={pendingMeta.label}>
+                  <PlatformMark platformValue={pending.platform} meta={pendingMeta} />
+                </span>
+              </HoverTooltip>
               <span className="font-mono text-xs font-semibold text-text-default">{identifier}</span>
               {pending.orderCount > 0 && (
                 <span className="text-role-micro font-semibold text-amber-700">

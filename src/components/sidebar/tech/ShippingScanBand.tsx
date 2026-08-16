@@ -174,6 +174,8 @@ export function ShippingScanBand({
     />
   );
 
+  // Armed chip only — no empty-state "scan a station to place" prompt (KPI / barcode
+  // arming stays available; the banner was noise on the Ready-to-Pack left rail).
   const armedChip = armed ? (
     <div className="flex items-center gap-1 border-b border-border-soft bg-surface-sunken px-2 py-1">
       <span className="min-w-0 flex-1 truncate text-role-micro font-semibold text-text-soft">
@@ -193,11 +195,7 @@ export function ShippingScanBand({
         />
       </HoverTooltip>
     </div>
-  ) : (
-    <div className="border-b border-border-soft bg-amber-50 px-2 py-1 text-role-micro font-semibold text-amber-900">
-      Scan a packing station barcode (or pick a station KPI) to place
-    </div>
-  );
+  ) : null;
 
   if (scanOnly) {
     return (

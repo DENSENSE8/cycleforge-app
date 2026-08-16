@@ -1,9 +1,11 @@
 'use client';
 
 /**
- * Kiosk mode-spine open/close — lives in the **pane header** (Catalog, or
- * Pickup detail when Catalog is hidden), never inside the spine column.
- * Same placement grammar as staff `SidebarCollapseControl` in GlobalHeader.
+ * Kiosk mode-spine open/close.
+ *
+ * Collapsed: small control on the icon rail.
+ * Expanded: trailing control in the Search row.
+ * Same sidebar-rect glyph as staff `SidebarCollapseControl`.
  */
 
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
@@ -32,7 +34,7 @@ export function KioskSpineToggle({
   expanded: boolean;
   onExpandedChange: (next: boolean) => void;
 }) {
-  const label = expanded ? 'Collapse service menu' : 'Expand service menu';
+  const label = expanded ? 'Hide service menu' : 'Show service menu';
   return (
     <HoverTooltip label={label} asChild>
       <IconButton

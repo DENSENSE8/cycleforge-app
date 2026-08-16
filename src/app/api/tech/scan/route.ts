@@ -349,7 +349,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
           order: buildOrderPayload(null, {
             orderId: 'FNSKU',
             productTitle: catalog.product_title || fnsku,
-            sku: catalog.sku || 'N/A',
+            sku: catalog.sku || 'N/A', // ds-allow-na: FNSKU scan API payload writer
             condition: 'FBA Scan',
             tracking: fnsku,
             serialNumbers: serials,
@@ -441,21 +441,10 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       const trackingValue = order.shipping_tracking_number || value;
       const testDateTime = formatPSTTimestamp();
 
-      // Ready-to-Pack handoff requires a packing DESK / STAGING place (not FBA).
-      // Check before any writes so the tenant txn can commit cleanly as a no-op.
+      // Ready-to-Pack TRACKING always loads the order (serials can follow).
+      // Bench placement is optional: only when a packing DESK/STAGING is armed
+      // (or a barcode is sent). No arm → plain tracking scan, no place.
       let packPlacement: Awaited<ReturnType<typeof placeOrderAtLocation>> | null = null;
-      if (!isFbaSource && packLocationId == null && !packLocationBarcode) {
-        return NextResponse.json(
-          {
-            success: false,
-            found: true,
-            orderFound: true,
-            error: 'Scan or select a packing station before marking ready to pack',
-            code: 'PACK_STATION_REQUIRED',
-          },
-          { status: 400 },
-        );
-      }
 
       const salId = await createStationActivityLog(client, {
         organizationId: ctx.organizationId,

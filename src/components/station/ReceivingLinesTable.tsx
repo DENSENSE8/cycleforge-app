@@ -28,6 +28,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useSurfacePaintMark } from '@/lib/observability/paint-timing';
+import { useUnboxPrimaryPaintOptional } from '@/components/receiving/unbox/unbox-primary-paint-context';
 import { useUIModeOptional } from '@/design-system/providers/UIModeProvider';
 import { DateRangePickerPill } from '@/components/ui/DateRangeHeader';
 import { IncomingWorkspaceHeader } from '@/components/sidebar/receiving/incoming/IncomingWorkspaceHeader';
@@ -36,17 +37,16 @@ import {
   HistoryTriageBand,
 } from '@/components/sidebar/receiving/HistoryWorkspaceHeader';
 import {
-  WORKBENCH_SHEET_CHROME,
-  WORKBENCH_SHEET_HOST,
-} from '@/components/dashboard/workbench-shell';
-import { cn } from '@/utils/_cn';
+  WorkbenchSheetView,
+  useWorkbenchSheetChrome,
+} from '@/components/dashboard/WorkbenchSheetView';
 import {
   incomingGridColumnsFor,
   defaultDirForIncomingGridSort,
   isIncomingGridSortable,
   type IncomingGridColumn,
   type IncomingGridColumnKey,
-} from '@/lib/receiving/incoming-grid-layout';
+} from '@/lib/receiving/receiving-grid-layout';
 import { compareIncomingGridRows } from '@/lib/receiving/incoming-grid-compare';
 import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
@@ -54,7 +54,6 @@ import { groupRowsBy, type RowGroup } from '@/lib/group-rows';
 import { INCOMING_TABLE_BINDING } from '@/components/station/incoming-grid/incoming-table-definition';
 import { IncomingGridColumnHeader } from '@/components/station/incoming-grid/IncomingGridColumnHeader';
 import { IncomingGridGroupRow } from '@/components/station/incoming-grid/IncomingGridGroupRow';
-import { providerCatalogLabel } from '@/lib/integrations/capability-labels';
 import { computeWeekRange, formatWeekRangeCompact, toPSTDateKey } from '@/utils/date';
 import type { GroupedRenderOrder } from '@/lib/group-rows';
 import { usePublishRecordCursor } from '@/lib/record-cursor/useRecordCursor';
@@ -184,12 +183,9 @@ export default function ReceivingLinesTable({
   const router = useRouter();
   const pathname = usePathname() ?? '';
   const searchParams = useSearchParams();
-  // Band-3 controls slot for the standalone Incoming desk (/incoming). Fresh
-  // state — NOT `toolbarPortalTarget` (that is the Unbox-embedded week-pill
-  // target, null here). Hosts the portaled column-display (▦) trigger.
-  const [incomingControlsEl, setIncomingControlsEl] = useState<HTMLElement | null>(null);
-  // Standalone `/receiving/history` Band-3 slot (separate from Incoming Docked).
-  const [historyControlsEl, setHistoryControlsEl] = useState<HTMLElement | null>(null);
+  // Band-3 no longer hosts ▦ — Show inspector opens Column display.
+  // Unbox embed still portals into the inspector View cluster.
+  const sheetChrome = useWorkbenchSheetChrome();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const {
@@ -506,6 +502,16 @@ export default function ReceivingLinesTable({
   useSurfacePaintMark('unbox:table', embedded && !isLoading);
   useSurfacePaintMark('unbox:primary', embedded && !isLoading);
 
+  // SSR first-paint handoff — seeded spine (or settled fetch) → drop stand-in.
+  const unboxPrimaryPaint = useUnboxPrimaryPaintOptional();
+  useEffect(() => {
+    if (!embedded || !unboxPrimaryPaint) return;
+    // Paintable = settled with any result (including empty queue) or seeded data.
+    if (data != null && !isLoading) {
+      unboxPrimaryPaint.onPrimaryPainted();
+    }
+  }, [embedded, unboxPrimaryPaint, data, isLoading]);
+
   const emptyMessage = mode.emptyMessage(modeContext);
 
   // Fourth settled state (degraded): the authoritative list fetch failed AND we
@@ -647,15 +653,11 @@ export default function ReceivingLinesTable({
     unboxTab === 'history' &&
     parseHistoryDrillLayout(searchParams.get('hlayout')) === 'drill';
 
-  // Band-3 ▦ host: Unbox embed → toolbar portal; Incoming Docked → incoming
-  // controls; standalone History → HistoryTriageBand; else null (card-corner).
+  // Unbox embed → inspector View cluster. Desk Incoming / standalone History
+  // open Column display from Show inspector (no Band-3 ▦).
   const columnDisplayPortalTarget = embedded
     ? (toolbarPortalTarget ?? null)
-    : isInboundDocked
-      ? incomingControlsEl
-      : isHistorySurface
-        ? historyControlsEl
-        : null;
+    : null;
 
   const receivingGrid = () =>
     historyDrill ? (
@@ -831,15 +833,17 @@ export default function ReceivingLinesTable({
 
   // Inbound desk — Pipeline (Incoming) + Docked (history). Host owns
   // IncomingWorkspaceHeader for both lanes so Docked never double-mounts
-  // HistoryWorkspaceHeader. Sheets flush mount (Unbox golden): chrome + KPI
-  // abut the context rail; grid on WORKBENCH_SHEET_HOST.
+  // HistoryWorkspaceHeader. IncomingWorkspaceHeader already paints Band 1 +
+  // Band 3 (no KPI); the sheet shell owns the chrome stack + host.
   if (isIncomingMode || isInboundDocked) {
     return (
       <TableColumnConfigProvider tableId={isIncomingMode ? 'incoming' : 'receiving'}>
-        <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-surface-canvas">
-          <div className={cn(WORKBENCH_SHEET_CHROME, 'relative z-header flex shrink-0 flex-col gap-0')}>
+        <WorkbenchSheetView
+          chrome={sheetChrome}
+          className="h-full bg-transparent"
+          tabs={({ className }) => (
             <IncomingWorkspaceHeader
-              controlsSlotRef={setIncomingControlsEl}
+              className={className}
               total={
                 isIncomingMode
                   ? isDeliveredUnscannedFacet || isDeliveredNotUnboxedFacet
@@ -848,124 +852,118 @@ export default function ReceivingLinesTable({
                   : Number(data?.total ?? localRows.length)
               }
               page={isIncomingMode ? incomingPage : 1}
-              laneNote={
-                isIncomingMode
-                  ? {
-                      view: mode.apiView,
-                      trackingFiltered: modeContext.trackingIn.length > 0,
-                      rowCount: orderedVisibleRows.length,
-                      providerLabel: providerCatalogLabel('zoho'),
-                    }
-                  : null
-              }
             />
-          </div>
-          {isIncomingMode ? (
-            <div className={WORKBENCH_SHEET_HOST}>
-              {incomingDegraded ? (
+          )}
+        >
+          {() =>
+            isIncomingMode ? (
+              incomingDegraded ? (
                 <div className="p-3">
                   <GridDegradedBox onRetry={refetch} />
                 </div>
               ) : (
-              <NonlinearTableHost<ReceivingLineRow, IncomingGridColumnKey, IncomingGridColumn>
-                binding={INCOMING_TABLE_BINDING}
-                columns={incomingGridColumnsFor({
-                  trackingFiltered: modeContext.trackingIn.length > 0,
-                  removedLane: mode.id === 'incoming_removed',
-                })}
-                orderGroupsByDate={incomingGroups}
-                rows={incomingFlatRows}
-                sort={incomingColumnSort}
-                dir={incomingSortDir}
-                onSortChange={setIncomingSort}
-                loading={isLoading && localRows.length === 0}
-                emptyMessage={emptyMessage}
-                scrollRef={scrollRef}
-                columnTriggerPortalTarget={incomingControlsEl}
-                renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
-                  <IncomingGridColumnHeader
-                    isMobile={isMobile}
-                    selectMode={selectMode}
-                    selectionScope={RECEIVING_SELECTION_SCOPE}
-                    selectGutterChrome={selectGutterChrome}
-                    columns={visible}
-                    activeSort={incomingColumnSort}
-                    sortDir={incomingSortDir}
-                    onSortColumn={toggleColumnSort}
-                    onResizeColumn={onResizeColumn}
-                    onResetColumn={onResetColumn}
-                  />
-                )}
-                renderGroup={(group, baseStripeIndex, { columns: visible }) => (
-                  <IncomingGridGroupRow
-                    group={group}
-                    baseStripeIndex={baseStripeIndex}
-                    isMobile={isMobile}
-                    selectMode={selectMode}
-                    selectedId={selectedId}
-                    selectedIds={selectedIds}
-                    handleSelectRow={handleSelectRow}
-                    handleToggleRow={handleToggleRow}
-                    clickSelect={incomingClickSelect}
-                    selectGutterChrome={selectGutterChrome}
-                    columns={visible}
-                  />
-                )}
-                renderRow={(row, stripeIndex, { columns: visible }) => (
-                  <IncomingGridGroupRow
-                    group={{ key: `k:${row.id}`, rows: [row] }}
-                    baseStripeIndex={stripeIndex}
-                    isMobile={isMobile}
-                    selectMode={selectMode}
-                    selectedId={selectedId}
-                    selectedIds={selectedIds}
-                    handleSelectRow={handleSelectRow}
-                    handleToggleRow={handleToggleRow}
-                    clickSelect={incomingClickSelect}
-                    selectGutterChrome={selectGutterChrome}
-                    columns={visible}
-                  />
-                )}
-              />
-              )}
-            </div>
-          ) : (
-            <div className={WORKBENCH_SHEET_HOST}>{receivingGrid()}</div>
-          )}
-        </div>
+                <NonlinearTableHost<ReceivingLineRow, IncomingGridColumnKey, IncomingGridColumn>
+                  binding={INCOMING_TABLE_BINDING}
+                  columns={incomingGridColumnsFor({
+                    trackingFiltered: modeContext.trackingIn.length > 0,
+                    removedLane: mode.id === 'incoming_removed',
+                  })}
+                  orderGroupsByDate={incomingGroups}
+                  rows={incomingFlatRows}
+                  sort={incomingColumnSort}
+                  dir={incomingSortDir}
+                  onSortChange={setIncomingSort}
+                  loading={isLoading && localRows.length === 0}
+                  emptyMessage={emptyMessage}
+                  scrollRef={scrollRef}
+                  columnTriggerPortalTarget={null}
+                  renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
+                    <IncomingGridColumnHeader
+                      isMobile={isMobile}
+                      selectMode={selectMode}
+                      selectionScope={RECEIVING_SELECTION_SCOPE}
+                      selectGutterChrome={selectGutterChrome}
+                      columns={visible}
+                      activeSort={incomingColumnSort}
+                      sortDir={incomingSortDir}
+                      onSortColumn={toggleColumnSort}
+                      onResizeColumn={onResizeColumn}
+                      onResetColumn={onResetColumn}
+                    />
+                  )}
+                  renderGroup={(group, baseStripeIndex, { columns: visible }) => (
+                    <IncomingGridGroupRow
+                      group={group}
+                      baseStripeIndex={baseStripeIndex}
+                      isMobile={isMobile}
+                      selectMode={selectMode}
+                      selectedId={selectedId}
+                      selectedIds={selectedIds}
+                      handleSelectRow={handleSelectRow}
+                      handleToggleRow={handleToggleRow}
+                      clickSelect={incomingClickSelect}
+                      selectGutterChrome={selectGutterChrome}
+                      columns={visible}
+                    />
+                  )}
+                  renderRow={(row, stripeIndex, { columns: visible }) => (
+                    <IncomingGridGroupRow
+                      group={{ key: `k:${row.id}`, rows: [row] }}
+                      baseStripeIndex={stripeIndex}
+                      isMobile={isMobile}
+                      selectMode={selectMode}
+                      selectedId={selectedId}
+                      selectedIds={selectedIds}
+                      handleSelectRow={handleSelectRow}
+                      handleToggleRow={handleToggleRow}
+                      clickSelect={incomingClickSelect}
+                      selectGutterChrome={selectGutterChrome}
+                      columns={visible}
+                    />
+                  )}
+                />
+              )
+            ) : (
+              receivingGrid()
+            )
+          }
+        </WorkbenchSheetView>
       </TableColumnConfigProvider>
     );
   }
 
   // History — standalone `/receiving/history` (until redirected). Unbox embeds
-  // use the branch above via `embedded`. Sheets flush (Unbox golden): tabs
-  // (Band 1) + triage (Band 3) abut the context rail; grid on WORKBENCH_SHEET_HOST.
+  // use the `embedded` branch above — never wrap that host. 1+3 sheet: Band 1
+  // tabs + Band 3 triage; no KPI.
   if (isHistoryMode) {
     return (
       <TableColumnConfigProvider tableId="receiving">
-        <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-surface-canvas">
-          <div className={cn(WORKBENCH_SHEET_CHROME, 'relative z-header flex shrink-0 flex-col gap-0')}>
-            <HistoryWorkspaceHeader className="rounded-none border-l-0 border-t-0 shadow-sm" />
+        <WorkbenchSheetView
+          chrome={sheetChrome}
+          className="h-full bg-transparent"
+          tabs={({ className }) => <HistoryWorkspaceHeader className={className} />}
+          triage={({ controlsSlotRef }) => (
             <HistoryTriageBand
-              controlsSlotRef={setHistoryControlsEl}
+              controlsSlotRef={controlsSlotRef}
               weekRange={weekRange}
               weekOffset={weekOffset}
               weekCount={getWeekCount()}
               onPrevWeek={() => setWeekOffset(weekOffset + 1)}
               onNextWeek={() => setWeekOffset(Math.max(0, weekOffset - 1))}
             />
-          </div>
-          <div className={WORKBENCH_SHEET_HOST}>{receivingGrid()}</div>
-        </div>
+          )}
+        >
+          {() => receivingGrid()}
+        </WorkbenchSheetView>
       </TableColumnConfigProvider>
     );
   }
 
   return (
     <TableColumnConfigProvider tableId="receiving">
-      <div className="flex h-full min-w-0 overflow-hidden bg-surface-canvas">
-        <div className={WORKBENCH_SHEET_HOST}>{receivingGrid()}</div>
-      </div>
+      <WorkbenchSheetView chrome={sheetChrome} className="h-full bg-transparent">
+        {() => receivingGrid()}
+      </WorkbenchSheetView>
     </TableColumnConfigProvider>
   );
 }

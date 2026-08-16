@@ -24,12 +24,21 @@ import type { WorkbenchKpiSurfaceId } from '@/components/dashboard/workbench-kpi
 
 function readStoredCollapsed(
   prefs: StaffPreferences | undefined,
-  surfaceId: WorkbenchKpiSurfaceId,
+  surfaceId: WorkbenchKpiSurfaceId | null,
 ): boolean {
+  if (surfaceId == null) return false;
   return prefs?.kpiCollapsed?.[surfaceId] === true;
 }
 
-export function useWorkbenchKpiCollapsed(surfaceId: WorkbenchKpiSurfaceId) {
+/**
+ * `surfaceId` may be `null` for a sheet with **no KPI band** (tabs + triage
+ * only — Pickup, the Review family, Locations, …). The band is what owns the
+ * collapse control, so a surface without one has no preference to read and
+ * nothing that could write it; `null` keeps it inert rather than persisting a
+ * key under a surface that has no band. Hooks cannot be called conditionally,
+ * which is why this is a nullable parameter and not a conditional call site.
+ */
+export function useWorkbenchKpiCollapsed(surfaceId: WorkbenchKpiSurfaceId | null) {
   const { prefs, update, isLoading } = useStaffPreferences();
   const queryClient = useQueryClient();
 
@@ -55,6 +64,7 @@ export function useWorkbenchKpiCollapsed(surfaceId: WorkbenchKpiSurfaceId) {
 
   const setCollapsed = useCallback(
     (next: boolean) => {
+      if (surfaceId == null) return; // no band ⇒ no preference to persist
       setCollapsedLocal(next);
       collapsedRef.current = next;
       const prev =

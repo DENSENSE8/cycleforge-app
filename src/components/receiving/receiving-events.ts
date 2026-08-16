@@ -27,6 +27,7 @@
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import type { ReceivingPackageUpdatedDetail } from '@/components/station/receiving-lines-table-helpers';
 import type { ReceivingSelectLineDetail } from '@/components/sidebar/receiving/receiving-sidebar-shared';
+import type { PhotoAspect } from '@/lib/photos/photo-aspects';
 import type { ScanIntakeSurface } from '@/lib/receiving/scan/types';
 import type {
   NavState,
@@ -95,6 +96,16 @@ export interface ReceivingEventDetail {
   'receiving-highlight-line': number;
   /** Workspace / triage / History chrome: step prev/next line in the open table. */
   'receiving-navigate-table': 'prev' | 'next';
+  /**
+   * Dock / PO-line strip Link → LineEditPanel: open the Photos Displays leaf on
+   * its `link` drill. LineEditPanel owns `openDisplays`; the emitter does not.
+   * Pass `lineId` (PO item) and/or `cartonAspect` (Shipping label · The box ·
+   * Packing material) to default the leaf's "Link to" combobox — at least one.
+   */
+  'receiving-open-photo-link': {
+    lineId?: number;
+    cartonAspect?: PhotoAspect;
+  };
   /**
    * Unbox History left-click — open the carton triage slide-over
    * (`detail:history` / HistoryCartonTriagePanel).

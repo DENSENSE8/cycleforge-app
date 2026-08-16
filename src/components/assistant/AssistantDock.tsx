@@ -34,6 +34,8 @@ import { AssistantEditsTray } from './AssistantEditsTray';
 import { StudioNodeDetail } from './StudioNodeDetail';
 import { PageContextSection } from './PageContextSection';
 import { RecentDetailStacksSection } from './RecentDetailStacksSection';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+
 
 const SUGGESTIONS = [
   'Why are units failing testing this week?',
@@ -230,7 +232,7 @@ export function AssistantDockBody({ onClose }: { onClose: () => void }) {
             rows={1}
             placeholder="Ask about your operation…"
             aria-keyshortcuts="Meta+J"
-            className="block max-h-32 min-h-[40px] w-full resize-none rounded-lg border border-border-soft bg-surface-card py-2.5 pl-3 pr-11 text-role-caption leading-5 text-text-default placeholder:text-text-faint focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+            className={cn("block max-h-32 min-h-[40px] w-full resize-none rounded-lg border border-border-soft bg-surface-card py-2.5 pl-3 pr-11 text-role-caption leading-5 text-text-default placeholder:text-text-faint", focusRing('field', 'accent'))}
           />
           <div className="absolute bottom-1.5 right-1.5">
             <HoverTooltip label="Send (Enter)" focusable={false}>

@@ -28,7 +28,6 @@ import { deriveShippedHeaderMeta } from './details-panel/shipped-details-logic';
 import { useOrderAssignment } from '@/hooks/useOrderAssignment';
 import { toast } from '@/lib/toast';
 import {
-  useShippedCopyActions,
   useShippedDeletion,
   useShippedDetailState,
   useShippedPanelViewState,
@@ -142,10 +141,6 @@ export function ShippedDetailsPanel({
     return subscribeReplaceTrackingIntent(applyIntent);
   }, [initialShipped.id, setActiveSection]);
 
-  const { copiedAll, handleCopyAll } = useShippedCopyActions(
-    shipped,
-    liveMeta.orderIdDisplay,
-  );
   const { isDeleteArmed, isDeleting, handleDelete } = useShippedDeletion(shipped, onUpdate);
   const assignOrder = useOrderAssignment();
   const isUrgent = Boolean((shipped as { is_urgent?: unknown }).is_urgent);
@@ -287,8 +282,6 @@ export function ShippedDetailsPanel({
         displayTopic={topic}
         shipped={shipped}
         durationData={durationData}
-        copiedAll={copiedAll}
-        onCopyAll={handleCopyAll}
         onUpdate={onUpdate}
         activeInput={activeInput}
         setActiveInput={setActiveInput}

@@ -19,12 +19,9 @@ export async function handleTrackingScan(
 
   try {
     const normalizedInput = normalizeTrackingNumber(input);
+    // Armed bench → place on that desk; no arm → plain tracking (order load +
+    // serials). Placement is earned by arming, never required to scan.
     const packLocationId = ctx.getArmedPackLocationId?.() ?? null;
-    if (packLocationId == null) {
-      ctx.setErrorMessage('Scan or select a packing station before marking ready to pack');
-      ctx.setIsLoading(false);
-      return;
-    }
 
     const res = await fetch('/api/tech/scan', {
       method: 'POST',
@@ -34,7 +31,7 @@ export async function handleTrackingScan(
         value: normalizedInput,
         techId: ctx.userId,
         idempotencyKey: ctx.newIdempotencyKey(),
-        packLocationId,
+        ...(packLocationId != null ? { packLocationId } : {}),
       }),
     });
     const data = await res.json();
@@ -42,9 +39,7 @@ export async function handleTrackingScan(
     if (!res.ok || !data.found) {
       const msg = data?.error
         ? `Scan error: ${data.error}`
-        : data?.code === 'PACK_STATION_REQUIRED'
-          ? 'Scan or select a packing station before marking ready to pack'
-          : 'Tracking number not found — logged to exceptions queue.';
+        : 'Tracking number not found — logged to exceptions queue.';
       ctx.setErrorMessage(msg);
       ctx.syncActiveOrderState(null);
       ctx.clearManuals();
@@ -96,10 +91,13 @@ export async function handleTrackingScan(
       ctx.clearManuals();
     } else {
       const serialCount = data.order.serialNumbers?.length || 0;
+      const placeHint = data.packPlacement?.locationName
+        ? ` · at ${data.packPlacement.locationName}`
+        : '';
       ctx.setSuccessMessage(
         serialCount > 0
-          ? `Order loaded: ${serialCount} serial${serialCount !== 1 ? 's' : ''} already scanned`
-          : 'Order loaded - ready to scan serials',
+          ? `Order loaded: ${serialCount} serial${serialCount !== 1 ? 's' : ''} already scanned${placeHint}`
+          : `Order loaded - ready to scan serials${placeHint}`,
       );
       void ctx.resolveManual(data.order.sku, data.order.itemNumber ?? null);
     }
@@ -117,11 +115,11 @@ export async function handleTrackingScan(
           shipping_tracking_number: data.order.tracking ?? '',
           serial_number: '',
           tested_by: data.order.testedBy ?? null,
-          order_id: data.order.orderId !== 'N/A' ? data.order.orderId : null,
+          order_id: data.order.orderId !== 'N/A' && data.order.orderId !== '—' ? data.order.orderId : null, // ds-allow-na: scan payload empty reader
           product_title: data.order.productTitle ?? null,
           item_number: data.order.itemNumber ?? null,
-          sku: data.order.sku !== 'N/A' ? data.order.sku : null,
-          condition: data.order.condition !== 'N/A' ? data.order.condition : null,
+          sku: data.order.sku !== 'N/A' && data.order.sku !== '—' ? data.order.sku : null, // ds-allow-na: scan payload empty reader
+          condition: data.order.condition !== 'N/A' && data.order.condition !== '—' ? data.order.condition : null, // ds-allow-na: scan payload empty reader
           status: data.order.status ?? null,
           status_history: data.order.statusHistory ?? [],
           notes: data.order.notes ?? null,

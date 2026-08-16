@@ -32,12 +32,25 @@
  * The push column mounts once while an occupant is present. Record→record swaps
  * keep a stable id (`detail:order`, …) so the column never remounts and content
  * updates in place — the same instant cut Unbox Displays uses when a leaf swaps.
+ *
+ * ## Singleton close
+ *
+ * The host paints one `→|` (`ArrowRightToLine`) at the top-left. Click / Esc
+ * fires `closeAndCachePanel()` — unmounts the occupant (wedge listeners die),
+ * caches `draftData`, toasts "Draft saved." with Resume. Child views must not
+ * mount a second close. Mod+Shift+R resumes while the toast is armed.
  */
 
-import { useEffect, useRef, useSyncExternalStore } from 'react';
+import { useEffect, useRef, useSyncExternalStore, type ReactNode } from 'react';
 import { AnimatePresence, motion } from '@/design-system/motion';
-import { ChevronLeft } from '@/components/Icons';
+import { ArrowRightToLine, ChevronLeft } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { usePanelStoreKeyboard } from '@/hooks/usePanelStoreKeyboard';
+import {
+  closeAndCachePanel,
+  usePanelDraft,
+  usePanelStore,
+} from '@/lib/right-rail/panel-store';
 import {
   framerDuration,
   framerPresence,
@@ -82,10 +95,44 @@ import {
 } from '@/lib/right-rail/frame';
 import {
   getRightRailTop,
+  getRightRailTopSkipping,
   getServerRightRailTop,
   subscribeRightRail,
 } from '@/lib/right-rail/store';
 import { cn } from '@/utils/_cn';
+
+function RightRailOccupantBody({ node }: { node: ReactNode }) {
+  const restored = usePanelDraft();
+  return (
+    <div
+      className="flex h-full min-h-0 flex-1 flex-col overflow-hidden p-0"
+      data-right-rail-has-draft={restored != null ? '' : undefined}
+    >
+      {node}
+    </div>
+  );
+}
+
+function RightRailHostCloseAnchor() {
+  return (
+    <div
+      className="absolute left-2 top-0.5 z-header p-0"
+      data-right-rail-host-close-anchor
+    >
+      <HoverTooltip label="Hide right panel" asChild>
+        <IconButton
+          size="sm"
+          tone="neutral"
+          ariaLabel="Hide right panel"
+          icon={<ArrowRightToLine className="h-4 w-4" />}
+          onClick={() => closeAndCachePanel()}
+          data-testid="right-rail-host-close"
+          className="active:scale-100"
+        />
+      </HoverTooltip>
+    </div>
+  );
+}
 
 const BACKDROP_FADE = {
   duration: framerDuration.detailStackOverlayMount * 0.75,
@@ -93,7 +140,14 @@ const BACKDROP_FADE = {
 } as const;
 
 export function RightRailHost({ inline = true }: { inline?: boolean } = {}) {
-  const top = useSyncExternalStore(subscribeRightRail, getRightRailTop, getServerRightRailTop);
+  const occupancyTop = useSyncExternalStore(
+    subscribeRightRail,
+    getRightRailTop,
+    getServerRightRailTop,
+  );
+  const lifecycle = usePanelStore();
+  const skipId = lifecycle.dismissed ? lifecycle.activeView?.id ?? null : null;
+  const top = skipId ? getRightRailTopSkipping(skipId) : occupancyTop;
   const frame = useSyncExternalStore(
     subscribeRightRailFrame,
     getRightRailFrame,
@@ -172,7 +226,13 @@ export function RightRailHost({ inline = true }: { inline?: boolean } = {}) {
   const isPush = wantsPush;
 
   useBodyScrollLock(!!renderable && isModal && !isPush);
-  useEscapeClose(!!renderable?.onClose && !overlayOpen, renderable?.onClose ?? (() => {}));
+  // Assistant keeps its own Esc. Detail occupants go through closeAndCachePanel
+  // (unmount + draft toast) so wedge listeners on the view die with it.
+  useEscapeClose(
+    isAssistantDock && !!renderable?.onClose && !overlayOpen,
+    renderable?.onClose ?? (() => {}),
+  );
+  usePanelStoreKeyboard();
 
   const { width, edgeHandleProps, isDragging } = useHorizontalEdgeResize({
     storageKey: DETAIL_STACK_RESIZE.storageKey,
@@ -213,19 +273,12 @@ export function RightRailHost({ inline = true }: { inline?: boolean } = {}) {
     !isPush;
   const showModalBackdrop = !!renderable?.onClose && isModal && !isPush;
 
-  const body = (
-    <div
-      className={cn(
-        'flex h-full min-h-0 flex-1 flex-col overflow-hidden',
-        isResizable && 'rounded-[inherit]', // ds-allow-radius: clip shell inherits the aside card radius
-      )}
-    >
-      {renderable?.node}
-    </div>
-  );
+  const body = renderable?.node != null ? <RightRailOccupantBody node={renderable.node} /> : null;
 
   const showPush = isPush && !!renderable;
   const showOverlay = !isPush && !!renderable;
+  const showHostClose = !!renderable && !isAssistantDock && !isCollapsed;
+  const onHostDismiss = isAssistantDock ? renderable?.onClose : closeAndCachePanel;
 
   return (
     <>
@@ -255,7 +308,7 @@ export function RightRailHost({ inline = true }: { inline?: boolean } = {}) {
             aria-label={renderable?.ariaLabel ?? 'Details'}
             data-right-rail-column
             data-right-rail-mode="push"
-            className={DETAIL_STACK_PUSH_COLUMN_CLASS}
+            className={cn(DETAIL_STACK_PUSH_COLUMN_CLASS, 'p-0')}
             // The header+content column is `relative` and seven workspaces
             // mount `zIndex.panel` overlays inside it, so an in-flow column
             // with `z-index: auto` would paint under them.
@@ -272,9 +325,8 @@ export function RightRailHost({ inline = true }: { inline?: boolean } = {}) {
               edge="leading"
               placement="inset"
             />
-            <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden rounded-[inherit]"> {/* ds-allow-radius: clip shell inherits the card radius */}
-              {renderable?.node}
-            </div>
+            {showHostClose ? <RightRailHostCloseAnchor /> : null}
+            {renderable?.node != null ? <RightRailOccupantBody node={renderable.node} /> : null}
           </aside>
         ) : null}
       </>
@@ -289,7 +341,7 @@ export function RightRailHost({ inline = true }: { inline?: boolean } = {}) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={BACKDROP_FADE}
-            onClick={overlayOpen ? undefined : renderable!.onClose}
+            onClick={overlayOpen ? undefined : onHostDismiss}
             className={
               showModalBackdrop
                 ? isElevated
@@ -375,6 +427,7 @@ export function RightRailHost({ inline = true }: { inline?: boolean } = {}) {
                 placement="inset"
               />
             ) : null}
+            {showHostClose ? <RightRailHostCloseAnchor /> : null}
             {body}
           </motion.aside>
         ) : null}

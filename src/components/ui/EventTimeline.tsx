@@ -27,6 +27,10 @@ import {
   resolveTimelineGalleryIndex,
   timelineMediaStripPreview,
 } from '@/lib/timeline/timeline-media-strip';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 /** Station / journey density: max preview slots (last becomes `+N` when more). */
 const DEFAULT_MEDIA_THUMB_LIMIT = 4;
@@ -543,7 +547,7 @@ export function EventTimeline({
                   }
                 }}
                 aria-expanded={open}
-                className="group flex w-full cursor-pointer items-center gap-2 rounded-lg px-1.5 py-1 text-left transition-colors hover:bg-surface-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+                className={cn("group flex w-full cursor-pointer items-center gap-2 rounded-lg px-1.5 py-1 text-left transition-colors hover:bg-surface-hover", focusRing('control', 'accent'))}
               >
                 <ChevronRight
                   className={`h-3.5 w-3.5 shrink-0 text-text-faint transition-transform duration-150 ${open ? 'rotate-90' : ''}`}

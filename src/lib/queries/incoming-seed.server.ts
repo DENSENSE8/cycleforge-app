@@ -3,7 +3,8 @@
  * `useReceivingLinesQuery` mounts with on bare `/incoming`, so the Inbound grid
  * paints rows on the first HTML frame instead of hydrating → firing one
  * client-side fetch → skeleton (the "feels broken" symptom). Mirrors
- * `seedUnboxSpine`; Incoming has no spine phase, so it seeds `full` directly.
+ * `seedUnboxQueue` / `seedUnboxSpine`; Incoming has no spine phase, so it seeds
+ * `full` directly.
  *
  * Bare `/incoming` shares the default receiving context object (all mode-specific
  * facets null/empty). A tenant that lands with filter params in the URL just
@@ -30,7 +31,7 @@ interface IncomingSeed {
  * state. Shorter than the client bound on purpose — the seed is a bonus, the
  * client is the safety net.
  */
-const SEED_FETCH_TIMEOUT_MS = 3_000;
+const SEED_FETCH_TIMEOUT_MS = 400;
 
 /** Prefetch the bare `/incoming` list (`full` phase). Soft-fail — client still fetches. */
 export async function seedIncomingLines(

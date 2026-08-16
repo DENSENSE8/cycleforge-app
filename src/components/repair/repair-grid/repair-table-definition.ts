@@ -29,4 +29,5 @@ export const REPAIR_TABLE_BINDING: TableSurfaceBinding<RSRecord, RepairGridColum
   definition: REPAIR_TABLE_DEFINITION,
   columns: REPAIR_GRID_COLUMNS,
   makeDescriptor: makeRepairGridDescriptor,
+  recordPlane: { kind: 'inspector', occupantId: 'detail:repair' },
 };

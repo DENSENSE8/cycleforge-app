@@ -6,7 +6,7 @@ import { Database, MessageSquare, PackageCheck, RefreshCw, Sparkles, Wrench } fr
 import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
 import { appChromeClass } from '@/design-system/tokens/app-surface';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { IconButton } from '@/design-system/primitives';
+import { Panel, IconButton } from '@/design-system/primitives';
 import { emitAiChatNew, emitAiChatPrompt } from '@/components/ai/ai-chat-events';
 import { PRODUCT_NAME_AI } from '@/lib/branding/constants';
 
@@ -70,13 +70,13 @@ export function AiChatSidebarPanel() {
 
         <div className="mt-5 flex flex-col gap-2.5">
           {CAPABILITIES.map((c) => (
-            <div key={c.title} className="rounded-xl border border-border-soft bg-surface-card p-3">
+            <Panel radius="xl" padding="sm" key={c.title}>
               <div className="flex items-center gap-2 text-text-default">
                 <c.icon className="h-4 w-4 text-blue-500" />
                 <p className="text-role-caption font-semibold tracking-tight">{c.title}</p>
               </div>
               <p className="mt-1 text-role-micro leading-5 text-text-muted">{c.detail}</p>
-            </div>
+            </Panel>
           ))}
         </div>
 

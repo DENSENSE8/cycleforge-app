@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Pencil, Lock, Tags, Check } from "@/components/Icons";
+import { Pencil, Lock, Tags } from "@/components/Icons";
 import { TOP_CHROME_ICON_GLYPH } from "@/components/layout/header-shell";
 import {
   CONDITION_GRADES,
@@ -17,7 +17,6 @@ import {
 } from "@/lib/condition-tone";
 import { HoverTooltip } from "@/components/ui/HoverTooltip";
 import { useHorizontalWheelScroll } from "@/hooks/useHorizontalWheelScroll";
-import { cornerClass } from "@/design-system/tokens/radius";
 import { cn } from "@/utils/_cn";
 
 /** Expanded strip layout — scroll (Units / compact hosts) vs full-width distribute. */
@@ -26,15 +25,15 @@ type ConditionPillsLayout = "scroll" | "barDistribute";
 interface Props {
   value: string | null | undefined;
   /**
-   * Grade pick, or `''` to clear/remove the selected grade (re-click active
-   * pill). Callers must accept empty — Units display + ReceivingUnitRows wire
-   * clear through unit + serial grade writers.
+   * Grade pick — every press commits that grade (select-never-clear). Callers
+   * that need a rare clear do it elsewhere, not via pill re-click.
    */
   onChange: (next: string) => void;
   /**
-   * When set, the picker starts as the full row (PO just opened → pick a
-   * grade) with a trailing confirm that collapses to ONLY the selected
-   * control. Clicking the Tags face re-expands the full row.
+   * When set, the picker collapses to the Tags square once a grade is selected.
+   * Hover / focus / click the Tags face re-expands; picking a grade collapses
+   * again — stays open on mouse leave (unlike TestingStatusPills). Never a
+   * trailing ✓.
    */
   collapsible?: boolean;
   /**
@@ -83,6 +82,12 @@ interface Props {
    * (`flex-1` / `justify-between`) with no left-clump dead air.
    */
   layout?: ConditionPillsLayout;
+  /**
+   * Collapsible Tags square press. When set, click runs this instead of
+   * expanding the grade strip — hover / focus still expand. Unbox capture
+   * uses this to arm the serial field from the leading units/Tags face.
+   */
+  onCollapsedClick?: () => void;
 }
 
 // Collapsed / locked faces keep abbreviated pill labels for aria — long
@@ -110,8 +115,9 @@ const COLLAPSED_TAGS_ICON = {
 } as const;
 
 /**
- * Read-only collapsed condition face — filled square (grade hue) + white Tags.
- * Same visual as {@link ConditionPills} collapsible collapse; no expand/edit.
+ * Collapsed condition face — filled square (grade hue) + white Tags icon.
+ * Same visual as {@link ConditionPills} collapsible collapse; used by the
+ * Unbox capture row when Serial is open (back-to-grading affordance).
  */
 function ConditionGradeCircle({
   grade,
@@ -119,7 +125,7 @@ function ConditionGradeCircle({
   faceSize = "bar",
 }: {
   grade: string | null | undefined;
-  /** Optional handoff (e.g. open Units display). */
+  /** Optional handoff (e.g. expand picker / close serial panel). */
   onClick?: () => void;
   faceSize?: "bar" | "header";
 }) {
@@ -130,6 +136,21 @@ function ConditionGradeCircle({
   const faceBtn = COLLAPSED_ICON_BTN[faceSize];
   const tagsIcon = COLLAPSED_TAGS_ICON[faceSize];
   if (!selectedGrade) {
+    if (onClick) {
+      return (
+        <HoverTooltip label="Not graded — back to condition" asChild focusable={false}>
+          <button
+            type="button"
+            onClick={onClick}
+            aria-label="Not graded — back to condition"
+            data-capture-badge
+            className={`ds-raw-button ${faceBtn} bg-surface-card text-text-faint active:scale-[0.98]`}
+          >
+            <Tags className={tagsIcon} aria-hidden />
+          </button>
+        </HoverTooltip>
+      );
+    }
     return (
       <HoverTooltip label="Not graded" asChild focusable={false}>
         <span
@@ -155,6 +176,7 @@ function ConditionGradeCircle({
           type="button"
           onClick={onClick}
           aria-label={`Condition ${selectedGrade.label} — change`}
+          data-capture-badge
           className={`ds-raw-button ${faceClass} active:scale-[0.98]`}
         >
           <Tags className={`${tagsIcon} text-white`} aria-hidden />
@@ -182,9 +204,9 @@ function ConditionGradeCircle({
 /**
  * Bare, mobile-first condition picker. Renders every grade as a single
  * horizontally-scrolling row of pills — no nested parents. In `collapsible`
- * mode a trailing confirm folds the strip to a Tags square. Progressive
- * Unbox opts into `labelVariant="full"` + `layout="barDistribute"` for a
- * flush edge-to-edge full-name bar.
+ * mode picking a grade folds the strip to a Tags square — the pill click is
+ * the confirm. Progressive Unbox opts into `labelVariant="full"` +
+ * `layout="barDistribute"` for a flush edge-to-edge full-name bar.
  */
 export function ConditionPills({
   value,
@@ -198,6 +220,7 @@ export function ConditionPills({
   faceSize = "bar",
   labelVariant = "pill",
   layout = "scroll",
+  onCollapsedClick,
 }: Props) {
   const selected = String(value || "")
     .trim()
@@ -216,8 +239,8 @@ export function ConditionPills({
   // unreachable in narrow hosts like the shipped details sidebar.
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   // Collapsible variant starts EXPANDED on mount (the SerialCard remounts per
-  // line, so opening a PO line always shows the full row for selection); the
-  // trailing confirm collapses to the Tags square. Multi-unit Station rows
+  // line, so opening a PO line always shows the full row for selection);
+  // picking a grade collapses to the Tags square. Multi-unit Station rows
   // pass startCollapsed so an already-graded unit mounts collapsed. The
   // parent may take control via `expanded`/`onExpandedChange` (e.g. collapse
   // while editing a serial); otherwise it's self-managed.
@@ -258,8 +281,35 @@ export function ConditionPills({
     );
   }
 
+  const openStrip = () => setExpanded(true);
+  const onTagsPress = onCollapsedClick ?? openStrip;
+  // When Tags click arms serial, delay hover-expand so a press lands on the
+  // square before the strip replaces it. Clear on leave so a pass-through
+  // hover does not expand after the pointer is gone.
+  const hoverExpandTimerRef = useRef<number | null>(null);
+  const hoverExpandMs = onCollapsedClick ? 280 : 0;
+  const clearHoverExpand = () => {
+    if (hoverExpandTimerRef.current != null) {
+      window.clearTimeout(hoverExpandTimerRef.current);
+      hoverExpandTimerRef.current = null;
+    }
+  };
+  const scheduleHoverExpand = () => {
+    clearHoverExpand();
+    if (hoverExpandMs <= 0) {
+      openStrip();
+      return;
+    }
+    hoverExpandTimerRef.current = window.setTimeout(() => {
+      hoverExpandTimerRef.current = null;
+      openStrip();
+    }, hoverExpandMs);
+  };
+
   // Collapsed: filled square (active grade hue) + white Tags icon.
-  // Click expands the full grade row — no separate edit pencil.
+  // Hover / focus expands the full grade row — stays open until a
+  // grade is picked (never collapses on mouse leave).
+  // Click defaults to expand; Unbox passes `onCollapsedClick` to arm serial.
   // When `collapsedLabel` is off, the grade is already shown elsewhere (the meta
   // row chip), so collapse to just a change control (pencil) with no duplicate icon.
   if (collapsible && !expanded && selectedGrade) {
@@ -268,22 +318,31 @@ export function ConditionPills({
         role="radiogroup"
         aria-label="Condition grade"
         className="flex w-fit items-center gap-0"
+        onMouseEnter={scheduleHoverExpand}
+        onMouseLeave={clearHoverExpand}
+        onFocusCapture={openStrip}
       >
         {collapsedLabel ? (
           <ConditionGradeCircle
             grade={selectedGrade.value}
-            onClick={() => setExpanded(true)}
+            onClick={() => {
+              clearHoverExpand();
+              onTagsPress();
+            }}
             faceSize={faceSize}
           />
         ) : (
           <HoverTooltip
-            label={`Condition ${selectedGrade.label} — change`}
+            label={`Condition ${selectedGrade.label} — hover to change`}
             asChild
             focusable={false}
           >
             <button
               type="button"
-              onClick={() => setExpanded(true)}
+              onClick={() => {
+                clearHoverExpand();
+                onTagsPress();
+              }}
               aria-label={`Condition ${selectedGrade.label} — change`}
               className="ds-raw-button rounded p-0.5 text-text-faint transition-colors hover:bg-surface-sunken hover:text-text-muted"
             >
@@ -299,8 +358,8 @@ export function ConditionPills({
     <div
       className={cn(
         "flex min-w-0 items-stretch",
-        // Collapsible expanded: grades fill; trailing confirm owns a fixed cell.
-        // barDistribute always claims full width (progressive Unbox bar).
+        // Collapsible expanded + barDistribute claim full width (progressive
+        // Unbox bar / unit-row strip). No trailing confirm cell.
         collapsible || distribute ? "w-full max-w-full" : "w-max max-w-full",
       )}
     >
@@ -312,19 +371,29 @@ export function ConditionPills({
           "flex min-w-0 flex-1 items-stretch gap-0",
           distribute
             ? // Full-name progressive bar: even share across the row — no
-              // left-clump + dead air before the confirm ✓.
-              "justify-between overflow-hidden"
+              // left-clump dead air.
+              //
+              // `[&>*+*]:-ml-px` collapses the doubled seam between flush grade
+              // faces: each pill draws its own `ring-1 ring-inset`, so abutting
+              // them puts two 1px columns side by side. Overlapping by exactly
+              // the ring width makes those columns COINCIDE — one hairline, and
+              // each pill keeps its own grade hue (a parent `divide-x` could
+              // only paint one shared colour). Same mechanic as
+              // STATION_IDENTITY_GROUP_CLASS.
+              //
+              // SCOPED TO `barDistribute` ON PURPOSE: that mode is passed only
+              // by Unbox (PoLineCaptureRow + the Unbox dock tabs), and this
+              // first pass is Unbox-only. The `scroll` density below has the
+              // same 2px seam on Testing / Units / shipped — fix it when those
+              // surfaces are in scope, not by widening this.
+              "justify-between overflow-hidden [&>*+*]:-ml-px"
             : "overflow-x-auto overscroll-x-contain [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden",
         )}
       >
         {grades.map((g) => (
           <HoverTooltip
             key={g.value}
-            label={
-              selected === g.value
-                ? `${conditionDescription(g.value)} — click again to clear`
-                : conditionDescription(g.value)
-            }
+            label={conditionDescription(g.value)}
             asChild
             focusable={false}
           >
@@ -334,14 +403,10 @@ export function ConditionPills({
               role="radio"
               aria-checked={selected === g.value}
               onClick={() => {
-                // Re-click active pill clears the grade (Units + editing surfaces).
-                // Collapse only via the trailing confirm — keep the strip open
-                // until the operator accepts the pick.
-                if (selected === g.value) {
-                  onChange("");
-                  return;
-                }
+                // Select-never-clear: every press commits that grade (including
+                // re-affirm). Clearing a grade is not a pill re-click.
                 onChange(g.value);
+                if (collapsible) setExpanded(false);
               }}
               className={`${conditionPillClass(g.value, selected === g.value, pillDensity)} ds-raw-button`}
             >
@@ -350,37 +415,6 @@ export function ConditionPills({
           </HoverTooltip>
         ))}
       </div>
-      {collapsible ? (
-        <HoverTooltip
-          label={
-            selectedGrade
-              ? `Confirm ${selectedGrade.label}`
-              : "Pick a condition first"
-          }
-          asChild
-        >
-          {/* ds-raw-button: confirm + collapse expanded grade strip */}
-          <button
-            type="button"
-            aria-label={
-              selectedGrade
-                ? `Confirm condition ${selectedGrade.label}`
-                : "Pick a condition first"
-            }
-            disabled={!selectedGrade}
-            onClick={() => setExpanded(false)}
-            className={cn(
-              "ds-raw-button inline-flex w-11 shrink-0 self-stretch items-center justify-center border-l border-border-soft transition-colors",
-              cornerClass("flush"),
-              selectedGrade
-                ? "bg-emerald-600 text-white hover:bg-emerald-700"
-                : "cursor-not-allowed bg-surface-strong text-text-faint",
-            )}
-          >
-            <Check className="h-4 w-4" aria-hidden />
-          </button>
-        </HoverTooltip>
-      ) : null}
     </div>
   );
 }

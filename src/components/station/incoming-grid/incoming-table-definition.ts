@@ -6,7 +6,8 @@
  *
  * - its own capabilities bag (`dayBands: false` — Date is a per-row column, no
  *   sticky bands), distinct from receiving's;
- * - a second `entityFamily` / `cellMapKey`;
+ * - a second `entityFamily` (prefs / row shape); `cellMapKey: 'receiving'`
+ *   so Incoming paints through the shared ReceivingLineRow cell registry;
  * - **two prefs buckets from one definition** — the default `incoming` desk and
  *   the Unbox pinned-Inbound `incoming_embed`, the latter passed as a `tableId`
  *   override at the mount so hiding a heavy column on the Unbox Inbound tab never
@@ -23,7 +24,7 @@ import type { TableSurfaceBinding } from '@/components/tables/table-surface-bind
 import {
   INCOMING_GRID_COLUMNS,
   type IncomingGridColumn,
-} from '@/lib/receiving/incoming-grid-layout';
+} from '@/lib/receiving/receiving-grid-layout';
 import { parseTableDefinition } from '@/lib/tables/table-definition';
 import {
   INCOMING_GRID_CAPABILITIES,
@@ -34,7 +35,7 @@ export const INCOMING_TABLE_DEFINITION = parseTableDefinition({
   id: 'inbound.incoming',
   tableId: 'incoming',
   entityFamily: 'incoming',
-  cellMapKey: 'incoming',
+  cellMapKey: 'receiving',
   ariaLabel: 'Incoming cartons',
   testId: 'incoming-grid-body',
   surface: 'sheet',
@@ -48,4 +49,5 @@ export const INCOMING_TABLE_BINDING: TableSurfaceBinding<ReceivingLineRow, Incom
   definition: INCOMING_TABLE_DEFINITION,
   columns: INCOMING_GRID_COLUMNS,
   makeDescriptor: makeIncomingGridDescriptor,
+  recordPlane: { kind: 'inspector', occupantId: 'detail:incoming' },
 };

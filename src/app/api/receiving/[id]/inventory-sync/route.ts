@@ -21,6 +21,7 @@ import { NextRequest, NextResponse, after } from 'next/server';
 import { requireRoutePerm } from '@/lib/auth/dynamic-route-guard';
 import { tenantQuery } from '@/lib/tenancy/db';
 import { invalidateReceivingViews } from '@/lib/receiving/invalidation';
+import { promoteLocallyReceivedUnboxedToDone } from '@/lib/receiving/promote-locally-received';
 import { resolveCartonZohoPoId } from '@/lib/receiving/resolve-carton-po-id';
 import { importZohoPurchaseOrderToReceiving } from '@/lib/zoho-receiving-sync';
 
@@ -35,6 +36,7 @@ export async function POST(
     const gate = await requireRoutePerm(request, 'receiving.scan_po');
     if (gate.denied) return gate.denied;
     const orgId = gate.ctx.organizationId;
+    const staffId = gate.ctx.staffId ?? null;
 
     const { id: idRaw } = await params;
     const receivingId = Number(idRaw);
@@ -42,9 +44,28 @@ export async function POST(
       return NextResponse.json({ success: false, error: 'Valid receiving id is required' }, { status: 400 });
     }
 
+    // Local DONE repair first — stuck UNBOXED + qty-received must paint RECEIVED
+    // even when the live Zoho pull below fails.
+    let promoted = 0;
+    try {
+      const repair = await promoteLocallyReceivedUnboxedToDone({
+        organizationId: orgId,
+        receivingId,
+        actorStaffId: staffId,
+      });
+      promoted = repair.promoted;
+    } catch (err) {
+      console.warn('receiving/[id]/inventory-sync local DONE repair failed', receivingId, err);
+    }
+
     const poId = await resolveCartonZohoPoId(orgId, receivingId);
     if (!poId) {
-      return NextResponse.json({ success: true, skipped: 'no_zoho_link', zoho_notes: null });
+      return NextResponse.json({
+        success: true,
+        skipped: 'no_zoho_link',
+        zoho_notes: null,
+        local_promoted: promoted,
+      });
     }
 
     try {
@@ -52,7 +73,11 @@ export async function POST(
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Inventory sync failed';
       console.warn('receiving/[id]/inventory-sync import failed', receivingId, poId, message);
-      return NextResponse.json({ success: false, error: message }, { status: 502 });
+      // Local repair may still have fixed paint — surface both.
+      return NextResponse.json(
+        { success: false, error: message, local_promoted: promoted },
+        { status: 502 },
+      );
     }
 
     after(async () => {
@@ -70,6 +95,7 @@ export async function POST(
       success: true,
       purchaseorder_id: poId,
       zoho_notes: res.rows[0]?.zoho_notes ?? null,
+      local_promoted: promoted,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to sync from inventory provider';

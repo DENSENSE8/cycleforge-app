@@ -31,7 +31,7 @@ export interface ReceivingDashboardMode {
   isIncomingMode: boolean;
   isRepairMode: boolean;
   isTableOnlyMode: boolean;
-  /** Incoming right-pane sub-view from `?incview=` (`pos` default | `email` | `removed`). */
+  /** Incoming right-pane sub-view from `?incview=` (`pos` default | `email`). */
   incomingView: IncomingView;
 }
 

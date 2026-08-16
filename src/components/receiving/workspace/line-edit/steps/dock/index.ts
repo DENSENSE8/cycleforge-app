@@ -14,8 +14,8 @@
  * a bench, so that registry is total and the guard requires it. Not every step
  * has an ACTION — declare those in `UNBOX_STEPS_WITHOUT_DOCK_ACTION` with a
  * reason. Photo steps mount Link | Upload | Send to phone
- * (`PhotoStepDockStrip`). `classify` mounts `TriageClassifySection` via
- * `classifySlot`.
+ * (`PhotoStepDockStrip`). `classify` is a one-row Continue CTA — the editor
+ * is Displays KNOW (`TriageClassifySection` / `railLeaf: 'classify'`).
  *
  * So the dock band renders **nothing** for a step with no entry, and
  * `procedure-step-dock.guard.test.ts` pins exactly which steps that is —
@@ -27,7 +27,6 @@ import { CartonPhotoDockControl } from './CartonPhotoDockControl';
 import { ClassifyDockControl } from './ClassifyDockControl';
 import { ContentsDockControl, LabelDockControl } from './AcknowledgeDockControl';
 import { ItemPhotoDockControl } from './ItemPhotoDockControl';
-import { LocationScanDockControl } from './LocationScanDockControl';
 import {
   ConditionDockControl,
   SerialDockControl,
@@ -52,14 +51,14 @@ export const UNBOX_STEP_DOCK_CONTROLS: Partial<Record<string, UnboxStepDock>> = 
   serial: SerialDockControl,
   contents: ContentsDockControl,
   label: LabelDockControl,
-  // Commit `stage` — docks after print; not a capture checklist step.
-  // Listed in {@link UNBOX_COMMIT_DOCK_KEYS} so the either-or capture guard
-  // does not treat it as undeclared dead coverage.
-  stage: LocationScanDockControl,
 };
 
-/** Dock controls for commit-phase keys (not `phase: 'capture'` vocabulary). */
-export const UNBOX_COMMIT_DOCK_KEYS = ['stage'] as const;
+/**
+ * Dock controls for commit-phase keys (not `phase: 'capture'` vocabulary).
+ * Empty: Print · Receive owns commit on the dogfood strip — no Band 1
+ * "Scan location" CTA after print.
+ */
+export const UNBOX_COMMIT_DOCK_KEYS = [] as const;
 
 /**
  * Steps that deliberately have NO dock action, with the reason.

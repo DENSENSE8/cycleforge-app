@@ -69,8 +69,10 @@ import {
   Clock,
   Copy,
   History,
+  Maximize2,
   PackageCheck,
   Search,
+  X,
 } from '@/components/Icons';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
 import {
@@ -80,9 +82,14 @@ import {
 import { PoChip, TrackingChip } from '@/components/ui/CopyChip';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { PaneHeaderCloseButton } from '@/components/ui/pane-header';
+import { RightPaneOverlay } from '@/components/ui/RightPaneOverlay';
 import { Button, IconButton, OmnichannelComposerDock } from '@/design-system/primitives';
 import type { SectionTab } from '@/design-system/components';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
 import { receivingSurfaceBasePath } from '@/lib/receiving/surface-path';
+import { yieldStationRightEdgeForDeskOccupant } from '@/components/receiving/workspace/line-edit/unbox-right-edge';
+import { STATION_DESK_OCCUPANT_CLOSE_EVENT } from '@/utils/events';
 import {
   INCOMING_REMOVAL_REASON_FACE,
   type IncomingRemovalReason,
@@ -437,6 +444,7 @@ export function IncomingBulkTrackingPanel({
   const dockRef = useRef<ComponentRef<typeof OmnichannelComposerDock>>(null);
 
   const [paste, setPaste] = useState('');
+  const [pasteExpanded, setPasteExpanded] = useState(false);
   const [busy, setBusy] = useState<PasteAction | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [action, setAction] = useState<PasteAction>(checkOnly ? 'check' : initialAction);
@@ -448,19 +456,39 @@ export function IncomingBulkTrackingPanel({
   const activeFilter = checkOnly ? '' : (searchParams.get(TRACKING_IN_PARAM) || '').trim();
   const panelTitle =
     checkOnly || action === 'check' ? 'Checking unreceived orders' : 'Tracking list';
+  const pasteExpandTitle = checkOnly ? 'Paste tracking or order numbers' : 'Paste tracking list';
 
   useEffect(() => {
     if (!open) return;
     setPaste('');
+    setPasteExpanded(false);
     setError(null);
     setCheckResult(null);
     setFilterResult(null);
     setBusy(null);
     setAction(checkOnly ? 'check' : initialAction);
+    // One right-edge wrapper: yield Station Displays (+ details / AI) before
+    // this RightRailHost claim paints — never stack two push columns. Mounted
+    // on Unbox/Arrival Band 1, this panel outlives the browse it opened from
+    // (the workbench header stays mounted under a carton, `visibility: hidden`),
+    // so without this it painted BESIDE the cockpit's Displays column.
+    yieldStationRightEdgeForDeskOccupant((qs) => {
+      const base = receivingSurfaceBasePath(pathname);
+      router.replace(qs ? `${base}?${qs}` : base, { scroll: false });
+    });
     // The operator opened this to paste — put the caret where their hands are.
     const id = window.setTimeout(() => dockRef.current?.focus(), 0);
     return () => window.clearTimeout(id);
-  }, [open, initialAction, checkOnly]);
+  }, [open, initialAction, checkOnly, pathname, router]);
+
+  // The other half of the wrapper — Displays (or a peer desk occupant) opening
+  // takes the edge back.
+  useEffect(() => {
+    if (!open) return;
+    const onPeerOpen = () => onClose();
+    window.addEventListener(STATION_DESK_OCCUPANT_CLOSE_EVENT, onPeerOpen);
+    return () => window.removeEventListener(STATION_DESK_OCCUPANT_CLOSE_EVENT, onPeerOpen);
+  }, [open, onClose]);
 
   /** The split, done once, client-side — same parser the server re-runs. */
   const selection = useMemo(() => parseTrackingKeys(paste), [paste]);
@@ -492,21 +520,6 @@ export function IncomingBulkTrackingPanel({
 
   const clearFilter = useCallback(() => {
     writeParams((params) => params.delete(TRACKING_IN_PARAM));
-  }, [writeParams]);
-
-  /**
-   * Send the same keys to the recently-removed lane.
-   *
-   * The residual report NAMES the rows that left, but they are not on the lane
-   * behind it — measured on real data, a 42-tracking paste left 41 of them off
-   * Incoming and 46 line rows waiting on the removed lane. Reporting the exit
-   * without offering the door makes the operator retype the paste.
-   */
-  const showOnRemovedLane = useCallback(() => {
-    writeParams((params) => {
-      params.set('incview', 'removed');
-      params.delete('state');
-    });
   }, [writeParams]);
 
   /** Narrow to a single tracking — the per-row magnifier. */
@@ -622,11 +635,6 @@ export function IncomingBulkTrackingPanel({
                 isEmpty={filterResult.hidden.length === 0}
               >
                 <div className="space-y-2">
-                  {/* The door to the rows just named. Carries the SAME keys, so
-                      the operator never retypes the paste. */}
-                  <Button variant="secondary" size="sm" onClick={showOnRemovedLane}>
-                    Show these on Recently removed
-                  </Button>
                   <ul className="space-y-1.5">
                     {filterResult.hidden.map((row) => (
                       <HiddenRow key={row.key} row={row} onFocusTracking={focusTracking} />
@@ -730,11 +738,12 @@ export function IncomingBulkTrackingPanel({
     }
 
     return [];
-  }, [action, filterResult, checkResult, focusTracking, showOnRemovedLane]);
+  }, [action, filterResult, checkResult, focusTracking]);
 
   if (!open) return null;
 
   return (
+    <>
     <DetailStackRailRegistrar
       id="detail:incoming-bulk-tracking"
       onClose={onClose}
@@ -865,9 +874,25 @@ export function IncomingBulkTrackingPanel({
             placeholder="Paste tracking or order numbers…"
             ariaLabel="Tracking or order numbers"
             hideCommitButton
-            density="compact"
+            // Stacked paste field: a bit taller than the old compact row, with
+            // CSS drag-resize so long lists fit without leaving the sidebar.
+            density="default"
+            manualResize
+            manualResizeMinPx={72}
             animateMount={false}
             disabled={busy != null}
+            footerStart={
+              <HoverTooltip label="Expand paste" asChild>
+                <IconButton
+                  size="sm"
+                  tone="neutral"
+                  ariaLabel="Expand paste"
+                  icon={<Maximize2 className="h-3.5 w-3.5" />}
+                  onClick={() => setPasteExpanded(true)}
+                  disabled={busy != null}
+                />
+              </HoverTooltip>
+            }
             trailingAction={
               <div className="flex items-center gap-1.5">
                 {checkOnly ? (
@@ -905,5 +930,95 @@ export function IncomingBulkTrackingPanel({
         </div>
       </div>
     </DetailStackRailRegistrar>
+
+      <RightPaneOverlay
+        open={pasteExpanded}
+        onClose={() => setPasteExpanded(false)}
+        align="center"
+        anchor="viewport"
+        resizable
+        storageKey="incoming-bulk-tracking-paste-expand"
+        minWidth={420}
+        minHeight={360}
+        className="flex h-[min(72vh,36rem)] w-[min(92vw,40rem)] flex-col"
+        aria-label={pasteExpandTitle}
+      >
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border-hairline px-4 py-3">
+          <h2 className="text-sm font-semibold text-text-default">{pasteExpandTitle}</h2>
+          <IconButton
+            type="button"
+            onClick={() => setPasteExpanded(false)}
+            ariaLabel="Collapse paste"
+            icon={<X className="h-4 w-4" />}
+          />
+        </div>
+        <div className="min-h-0 flex-1 p-4">
+          <textarea
+            value={paste}
+            onChange={(e) => setPaste(e.target.value)}
+            autoFocus
+            rows={12}
+            disabled={busy != null}
+            placeholder="Paste tracking or order numbers…"
+            aria-label={pasteExpandTitle}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault();
+                if (!canSubmit) return;
+                setPasteExpanded(false);
+                void (checkOnly ? runCheck() : runFilter());
+              }
+            }}
+            className={cn(
+              'block h-full min-h-[14rem] w-full resize-none rounded-none border border-border-soft bg-surface-card px-3.5 py-2.5 text-role-caption leading-relaxed text-text-default outline-none placeholder:text-text-faint',
+              focusRing('field', 'accent'),
+            )}
+          />
+        </div>
+        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border-hairline px-4 py-3">
+          <Button type="button" variant="secondary" size="sm" onClick={() => setPasteExpanded(false)}>
+            Done
+          </Button>
+          {checkOnly ? (
+            <Button
+              variant="primary"
+              size="sm"
+              disabled={!canSubmit}
+              onClick={() => {
+                setPasteExpanded(false);
+                void runCheck();
+              }}
+            >
+              {busy === 'check' ? 'Checking…' : 'Check'}
+            </Button>
+          ) : (
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={!canSubmit}
+                onClick={() => {
+                  setPasteExpanded(false);
+                  void runCheck();
+                }}
+              >
+                {busy === 'check' ? 'Checking…' : 'Check receipts'}
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                disabled={!canSubmit}
+                onClick={() => {
+                  setPasteExpanded(false);
+                  void runFilter();
+                }}
+              >
+                {busy === 'filter' ? 'Filtering…' : 'Filter'}
+              </Button>
+            </>
+          )}
+        </div>
+      </RightPaneOverlay>
+    </>
   );
 }

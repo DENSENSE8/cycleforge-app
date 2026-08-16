@@ -4,6 +4,10 @@ import { useState } from 'react';
 import { Camera, Check, Loader2, AlertTriangle } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import type { LabelCandidate } from '@/lib/vision-identify';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 export function CandidateCard({
   c, primary, adding, canAdd, onAdd, onCreateSku, onFlagMissing,
@@ -90,7 +94,7 @@ export function CandidateCard({
                 inputMode="text"
                 autoFocus
                 placeholder="New SKU (e.g. AWRCC1)"
-                className="w-full rounded-xl bg-glass/[0.06] px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                className={cn("w-full rounded-xl bg-glass/[0.06] px-3 py-2.5 text-sm text-white placeholder:text-white/30", focusRing('field', 'success'))}
               />
               <div className="flex gap-2">
                 {/* ds-raw-button: solid-emerald CTA (emerald-500/text-black) — no green Button variant */}

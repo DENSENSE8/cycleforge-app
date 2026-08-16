@@ -5,6 +5,10 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Button } from '@/design-system/primitives';
 import { STATUS_OPTIONS, type DetailEnvelope, type RoleSlim } from '../staff-access-shared';
 import { initials } from '../staff-access-shared';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 interface IdentityCardProps {
   staff: DetailEnvelope['staff'];
@@ -125,9 +129,9 @@ function InlineNameAndCode({ name, code, onSave }: {
   return (
     <div className="flex flex-wrap items-center gap-2">
       <input autoFocus value={draftName} onChange={(e) => setDraftName(e.target.value)}
-        className="h-9 min-w-[180px] flex-1 rounded-md border border-border-default px-2 text-base font-semibold outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15" />
+        className={cn("h-9 min-w-[180px] flex-1 rounded-md border border-border-default px-2 text-base font-semibold", focusRing('field', 'accent'))} />
       <input value={draftCode} onChange={(e) => setDraftCode(e.target.value)} placeholder="Employee code"
-        className="h-9 w-36 rounded-md border border-border-default px-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15" />
+        className={cn("h-9 w-36 rounded-md border border-border-default px-2 text-sm", focusRing('field', 'accent'))} />
       <Button variant="brand" size="md" onClick={() => { onSave(draftName.trim() || name, draftCode.trim()); setEditing(false); }}>
         Save
       </Button>

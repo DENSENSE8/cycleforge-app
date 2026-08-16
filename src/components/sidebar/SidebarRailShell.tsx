@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence, useReducedMotion, type Variants } from '@/design-system/motion';
 import { markSurfacePainted } from '@/lib/observability/paint-timing';
 import {
@@ -85,7 +85,29 @@ export function SidebarRailShell<TRow>(props: SidebarRailShellProps<TRow>) {
     getCollapsePinFacts,
     getId, getReconcileId, getActivityAt, onSelect, getStatusDot, getStatusDotLabel,
     renderRowMain, renderPopover, navRegionId,
+    selectedRow, getGroupId,
   } = props;
+
+  // Carton-aware selection (SoT default): a recent rail grouped by a parent
+  // (`getGroupId` = carton `receiving_id`) must keep the parent's row lit while
+  // the active CHILD moves between siblings — matching only `getId(row) ===
+  // selectedId` drops the glow the moment a sibling (whose line id is not the
+  // rail's representative row) becomes active. Whenever the surface exposes both
+  // a `selectedRow` and a `getGroupId`, we also match by group; a rail that
+  // exposes neither is unchanged (strict per-row id highlight).
+  const selectedGroupId =
+    selectedRow != null && getGroupId ? getGroupId(selectedRow) : null;
+  const rowSelected = useCallback(
+    (row: TRow): boolean => {
+      if (selectedId != null && getId(row) === selectedId) return true;
+      if (selectedGroupId != null && getGroupId) {
+        const g = getGroupId(row);
+        return g != null && g === selectedGroupId;
+      }
+      return false;
+    },
+    [selectedId, selectedGroupId, getId, getGroupId],
+  );
   // Durable render key (see SidebarRailShellProps.getReconcileId): keeps an
   // optimistic stub and its resolved row as the SAME element so the swap is an
   // in-place update, not a remount. Defaults to the numeric id.
@@ -143,7 +165,7 @@ export function SidebarRailShell<TRow>(props: SidebarRailShellProps<TRow>) {
           statusLabel,
           meta,
           age: age && age !== '—' ? age : undefined,
-          selected: selectedId != null && numericId === selectedId,
+          selected: rowSelected(row),
           onSelect: () => onSelect(row),
           renderPeek: (ctx: CollapseStripPeekCtx) =>
             renderPopover ? (
@@ -170,7 +192,7 @@ export function SidebarRailShell<TRow>(props: SidebarRailShellProps<TRow>) {
     publishCollapseMru,
     rows,
     grouped,
-    selectedId,
+    rowSelected,
     getId,
     getReconcileId,
     getCollapsePinLabel,
@@ -334,11 +356,12 @@ export function SidebarRailShell<TRow>(props: SidebarRailShellProps<TRow>) {
                 nodes.push(
                   <RailRow
                     key={rowKey(row)}
+                    reconcileKey={rowKey(row)}
                     row={row}
                     index={idx}
                     staggerItemVariants={staggerItemVariants}
                     isDisabled={getRowDisabled?.(row) ?? false}
-                    isSelected={getId(row) === selectedId}
+                    isSelected={rowSelected(row)}
                     isFocused={idx === focusIndex}
                     editActive={editMode.active}
                     isChecked={editMode.active && editMode.selectedIds.has(getId(row))}

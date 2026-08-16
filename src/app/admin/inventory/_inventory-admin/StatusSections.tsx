@@ -6,6 +6,8 @@ import type {
   PreflightCheck,
   SchemaRow,
 } from './inventory-admin-data';
+import { Panel } from '@/design-system/primitives';
+
 
 const FLAG_COLUMNS: DataTableColumn<FlagRow>[] = [
   {
@@ -60,7 +62,7 @@ export function FlagsSection({ flags, allFlagsOff }: { flags: FlagRow[]; allFlag
 /** Preflight — gating checks that should be green before flipping any phase flag. */
 export function PreflightSection({ preflight, preflightAllOk }: { preflight: PreflightCheck[]; preflightAllOk: boolean }) {
   return (
-    <section className="rounded-lg border border-border-soft bg-surface-card shadow-sm">
+    <Panel radius="lg" padding="none">
       <header className="flex items-center justify-between border-b border-border-hairline px-6 py-4">
         <h2 className="text-lg font-medium text-text-default">Preflight</h2>
         <span className={`rounded-full px-3 py-1 text-xs font-medium ${preflightAllOk ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
@@ -105,7 +107,7 @@ export function PreflightSection({ preflight, preflightAllOk }: { preflight: Pre
           rows exist for /api/pack/ship to accept.
         </span>
       </footer>
-    </section>
+    </Panel>
   );
 }
 
@@ -138,7 +140,7 @@ export function QuickLinks() {
 /** Schema artifact presence check. */
 export function SchemaSection({ schema, schemaAllOk }: { schema: SchemaRow[]; schemaAllOk: boolean }) {
   return (
-    <section className="rounded-lg border border-border-soft bg-surface-card shadow-sm">
+    <Panel radius="lg" padding="none">
       <header className="flex items-center justify-between border-b border-border-hairline px-6 py-4">
         <h2 className="text-lg font-medium text-text-default">Schema artifacts</h2>
         <span className={`rounded-full px-3 py-1 text-xs font-medium ${schemaAllOk ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
@@ -153,14 +155,14 @@ export function SchemaSection({ schema, schemaAllOk }: { schema: SchemaRow[]; sc
           </li>
         ))}
       </ul>
-    </section>
+    </Panel>
   );
 }
 
 /** Backfill progress stats (tech_serial_numbers → serial_units linkage). */
 export function BackfillSection({ backfill }: { backfill: BackfillRow | null }) {
   return (
-    <section className="rounded-lg border border-border-soft bg-surface-card shadow-sm">
+    <Panel radius="lg" padding="none">
       <header className="border-b border-border-hairline px-6 py-4">
         <h2 className="text-lg font-medium text-text-default">Backfill progress</h2>
       </header>
@@ -188,6 +190,6 @@ export function BackfillSection({ backfill }: { backfill: BackfillRow | null }) 
       ) : (
         <p className="px-6 py-4 text-sm text-amber-700">Backfill stats unavailable.</p>
       )}
-    </section>
+    </Panel>
   );
 }

@@ -2,6 +2,7 @@ import pool from '@/lib/db';
 import { orderTrackingMatchKeys } from '@/lib/tracking-format';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
+import { sqlOrderOwnsShipment } from '@/lib/search/order-tracking-match-sql';
 
 export type ExceptionSourceStation = 'tech' | 'packer' | 'verify' | 'mobile' | 'fba';
 
@@ -140,21 +141,20 @@ export async function findOrderByTrackingKey(
   if (!trackingKey18) return null;
 
   // Tenant-aware path: scope the org-bearing `orders` table to the caller's org.
-  // The stn joins are integer surrogate-PK (stn.id = o.shipment_id) and the
-  // independent lateral lookup keys off shipping_tracking_numbers.id — that
-  // table has no organization_id column (NEEDS-COL), so it is only reachable
-  // via the org-scoped `orders` row, which is the tenant guard here.
+  // Tracking ownership is `orders.shipment_id` OR `shipment_links` — packer_logs
+  // are not required. STN has no reliable org column, so the org-scoped order
+  // row is the tenant guard.
   if (orgId) {
+    const ownsStn = sqlOrderOwnsShipment('o', 'stn.id');
     // Prefer exact STN normalized join (same as packing / receiving).
     const exact = await tenantQuery(
       orgId,
       `SELECT
           o.id,
           stn.tracking_number_raw AS shipping_tracking_number
-       FROM orders o
-       JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
+       FROM shipping_tracking_numbers stn
+       JOIN orders o ON o.organization_id = $2 AND ${ownsStn}
        WHERE stn.tracking_number_normalized = $1
-         AND o.organization_id = $2
        ORDER BY o.id DESC
        LIMIT 1`,
       [canonical, orgId],
@@ -163,6 +163,7 @@ export async function findOrderByTrackingKey(
       return exact.rows[0] as { id: number; shipping_tracking_number: string };
     }
 
+    const ownsS2 = sqlOrderOwnsShipment('o', 's2.id');
     const tenantResult = await tenantQuery(
       orgId,
       `SELECT
@@ -194,7 +195,7 @@ export async function findOrderByTrackingKey(
                )
              )
            ) OR (
-             s2.id IS NOT NULL AND o.shipment_id = s2.id
+             s2.id IS NOT NULL AND ${ownsS2}
            )
          )
        ORDER BY o.id DESC
@@ -205,12 +206,13 @@ export async function findOrderByTrackingKey(
     return (tenantResult.rows[0] as { id: number; shipping_tracking_number: string } | undefined) || null;
   }
 
+  const ownsStn = sqlOrderOwnsShipment('o', 'stn.id');
   const exact = await dbClient.query(
     `SELECT
         o.id,
         stn.tracking_number_raw AS shipping_tracking_number
-     FROM orders o
-     JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
+     FROM shipping_tracking_numbers stn
+     JOIN orders o ON ${ownsStn}
      WHERE stn.tracking_number_normalized = $1
      ORDER BY o.id DESC
      LIMIT 1`,
@@ -220,6 +222,7 @@ export async function findOrderByTrackingKey(
     return exact.rows[0] as { id: number; shipping_tracking_number: string };
   }
 
+  const ownsS2 = sqlOrderOwnsShipment('o', 's2.id');
   const result = await dbClient.query(
     `SELECT
         o.id,
@@ -248,7 +251,7 @@ export async function findOrderByTrackingKey(
            )
          )
      ) OR (
-         s2.id IS NOT NULL AND o.shipment_id = s2.id
+         s2.id IS NOT NULL AND ${ownsS2}
      )
      ORDER BY o.id DESC
      LIMIT 1`,

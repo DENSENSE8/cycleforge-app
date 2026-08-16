@@ -4,6 +4,10 @@ import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/lib/toast';
 import { Button } from '@/design-system/primitives';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 /**
  * Admin → Photo platform → AI analysis engine. Lets the org owner pick WHICH
@@ -194,7 +198,7 @@ export function PhotoAnalysisProviderPanel() {
             value={baseUrl}
             onChange={(e) => setBaseUrl(e.target.value)}
             placeholder="https://vision.yourdomain.com"
-            className="w-full rounded-lg border border-border-default inset-field text-role-caption text-text-default focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400"
+            className={cn("w-full rounded-lg border border-border-default inset-field text-role-caption text-text-default", focusRing('field', 'accent'))}
           />
           <p className="text-role-caption text-text-soft">
             The Cloudflare-tunnel hostname of your box. The analysis cron runs in the cloud and

@@ -303,15 +303,26 @@ export function dispatchAssistantDockOpen(): void {
 }
 
 /**
- * Close desk/station Add inbound (`IncomingAddInboundOverlay` on RightRailHost).
- * Dispatched when Station Displays open so Add and Displays never both push the
- * right edge (source-of-truth → Right-rail modality · one wrapper).
+ * Close whatever DESK occupant is holding `RightRailHost` on a station page —
+ * Add inbound (`IncomingAddInboundOverlay`), Check receipts
+ * (`IncomingBulkTrackingPanel`), and any future Band-1 tool that mounts there.
+ *
+ * Dispatched when Station Displays open, so a desk occupant and the station's
+ * Displays column never both push the right edge (source-of-truth →
+ * Right-rail modality · one wrapper). The twin direction is
+ * `yieldStationRightEdgeForDeskOccupant`, which the occupant calls as it opens.
+ *
+ * **Named for the ROLE, not for one panel** (renamed from
+ * `INCOMING_ADD_INBOUND_CLOSE_EVENT` 2026-08-10): while it named a single
+ * overlay, the second occupant to arrive — Check — silently did not join the
+ * wrapper, and shipped as a second full right column beside Displays.
+ * The wire value is unchanged so nothing in flight breaks.
  */
-export const INCOMING_ADD_INBOUND_CLOSE_EVENT = 'incoming-add-inbound-close';
+export const STATION_DESK_OCCUPANT_CLOSE_EVENT = 'incoming-add-inbound-close';
 
-export function dispatchIncomingAddInboundClose(): void {
+export function dispatchStationDeskOccupantClose(): void {
   if (typeof window === 'undefined') return;
-  window.dispatchEvent(new CustomEvent(INCOMING_ADD_INBOUND_CLOSE_EVENT));
+  window.dispatchEvent(new CustomEvent(STATION_DESK_OCCUPANT_CLOSE_EVENT));
 }
 
 /**

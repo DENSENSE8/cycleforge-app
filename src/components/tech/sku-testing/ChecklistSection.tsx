@@ -5,6 +5,10 @@ import { EYEBROW, SECTION, type Bundle, type UnitResult } from './sku-testing-ty
 import { useChecklistEditor } from './useChecklistEditor';
 import { ChecklistStepRow } from './ChecklistStepRow';
 import { NoCatalogNotice } from './NoCatalogNotice';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 /** Testing checklist — template editing + per-unit recording for one line. */
 export function ChecklistSection({
@@ -119,7 +123,7 @@ export function ChecklistSection({
             }}
             autoFocus
             placeholder="New checklist step…"
-            className="w-full rounded-md border border-border-soft px-2 py-1.5 text-role-caption font-medium text-text-default placeholder:text-text-faint focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/10"
+            className={cn("w-full rounded-md border border-border-soft px-2 py-1.5 text-role-caption font-medium text-text-default placeholder:text-text-faint", focusRing('field', 'accent'))}
           />
           <Button
             variant="primary"

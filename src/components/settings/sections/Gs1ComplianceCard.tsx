@@ -41,6 +41,10 @@ import {
   resolveGs1Requirement,
   type Gs1SourceStatus,
 } from '@/lib/interop/gs1-keys';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 interface SettingsResponse {
   gs1: { companyPrefix: string; gln: string; cbvUriForm: 'urn' | 'webUri' };
@@ -62,7 +66,7 @@ interface Draft {
 
 const FIELD_CLS =
   'w-full rounded-xl border border-border-default bg-surface-card px-3 py-2 text-sm text-text-default ' +
-  'placeholder:text-text-faint focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
+  cn('placeholder:text-text-faint', focusRing('field', 'accent'));
 
 const GS1_STATUS_OPTIONS: ReadonlyArray<{ key: Gs1SourceStatus; label: string }> = [
   { key: 'prefix', label: 'We hold a GS1 Company Prefix' },
@@ -208,7 +212,7 @@ export function Gs1ComplianceCard() {
   }
 
   return (
-    <Panel id="gs1" className="rounded-none space-y-5 scroll-mt-6">
+    <Panel id="gs1" className="space-y-5 scroll-mt-6">
       <div>
         <h3 className="text-sm font-semibold text-text-default">Product identity (GS1)</h3>
         <p className="mt-1 text-xs text-text-soft">

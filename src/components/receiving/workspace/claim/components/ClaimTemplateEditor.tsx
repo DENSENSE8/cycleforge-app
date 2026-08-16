@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Barcode, Download, FileText, Pencil, Receipt, Tag, User } from '@/components/Icons';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { useAuth } from '@/contexts/AuthContext';
@@ -36,6 +36,10 @@ import type { UseClaimTemplate } from '../hooks/useClaimTemplate';
 interface Props {
   template: UseClaimTemplate;
   row: ReceivingLineRow;
+  /** Slot above Subject (Platform · Type). */
+  beforeSubject?: ReactNode;
+  /** Slot between Subject and Body (Claim category). */
+  afterSubject?: ReactNode;
 }
 
 /**
@@ -45,7 +49,12 @@ interface Props {
  * the same context inserts (internal notes, title, price, sync notes, ticket subject).
  * Ticket identity chrome lives in scroll-spy / Displays — not restated here.
  */
-export function ClaimTemplateEditor({ template, row }: Props) {
+export function ClaimTemplateEditor({
+  template,
+  row,
+  beforeSubject,
+  afterSubject,
+}: Props) {
   const {
     subject,
     description,
@@ -222,7 +231,9 @@ export function ClaimTemplateEditor({ template, row }: Props) {
 
   return (
     <div className="space-y-0">
-      <div className="space-y-3 px-3">
+      {beforeSubject}
+
+      <div className="space-y-3 px-3 pt-3">
         <div>
           <div className="mb-1 flex items-center justify-between gap-3">
             <DenseComposeLabel htmlFor="claim-subject" className="mb-0">
@@ -252,6 +263,8 @@ export function ClaimTemplateEditor({ template, row }: Props) {
           />
         </div>
       </div>
+
+      {afterSubject}
 
       <div className="mt-3 border-t border-border-hairline">
         <div className="px-3 pt-2">

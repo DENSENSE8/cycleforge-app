@@ -5,13 +5,17 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Copy, Loader2, MessageSquare } from '@/components/Icons';
 import { toast } from '@/lib/toast';
 import { AnchoredLayer } from '@/design-system/primitives/AnchoredLayer';
-import { Button } from '@/design-system/primitives';
+import { Panel, Button } from '@/design-system/primitives';
 import type { ClaimType } from '@/lib/zendesk-claim-template';
 // From the light refs module — importing via receiving-claim-seller-message
 // drags the server-only tenancy/db (Neon driver) into this client bundle.
 import { normalizeClaimSellerMessageRefs } from '@/lib/receiving-claim-seller-refs';
 import { copySellerClaimMessageWithPersist } from '@/lib/receiving-claim-seller-copy';
 import { sellerDraftMatchesTicket } from '@/lib/receiving-claim-seller-ticket-match';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 const sellerMessageKey = (receivingId: number, lineId: number | null) => {
   const { receivingId: rid, lineId: lid } = normalizeClaimSellerMessageRefs({ receivingId, lineId });
@@ -307,11 +311,8 @@ function SellerMessagePanel({
   };
 
   return (
-    <div
-      role="dialog"
-      aria-label="Seller message"
-      className="flex max-h-[420px] w-[360px] max-w-[calc(100vw-24px)] flex-col overflow-hidden rounded-xl border border-border-soft bg-surface-card shadow-xl"
-    >
+    <Panel radius="xl" padding="none" elevation="md" className="flex max-h-[420px] w-[360px] max-w-[calc(100vw-24px)] flex-col overflow-hidden" role="dialog"
+      aria-label="Seller message">
       <header className="flex items-center justify-between gap-2 border-b border-border-hairline inset-field">
         <div className="flex min-w-0 items-center gap-2">
           <MessageSquare className="h-4 w-4 shrink-0 text-blue-600" />
@@ -354,7 +355,7 @@ function SellerMessagePanel({
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             rows={10}
-            className="block w-full resize-y rounded-lg border border-blue-100 bg-surface-card inset-field text-role-data leading-snug text-text-default outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
+            className={cn("block w-full resize-y rounded-lg border border-blue-100 bg-surface-card inset-field text-role-data leading-snug text-text-default", focusRing('field', 'accent'))}
             placeholder="Seller-facing message…"
           />
         )}
@@ -380,6 +381,6 @@ function SellerMessagePanel({
           Save
         </Button>
       </footer>
-    </div>
+    </Panel>
   );
 }

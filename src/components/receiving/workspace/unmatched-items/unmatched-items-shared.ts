@@ -152,6 +152,13 @@ export interface UnmatchedItemsSectionProps {
   };
   /** Workspace row id for optimistic patch after unpair. */
   activeLineId?: number;
+  /**
+   * Unbox dual loci: when true, bottom dock owns wedge/procedure and the
+   * active unfound line mounts progressive Condition → Serial → Photos
+   * (`ActiveLineConditionSerial` / `ReturnScanCard`). Arrival / Testing omit
+   * (default false).
+   */
+  dockOwnsCapture?: boolean;
 }
 
 export interface CartonResponse {

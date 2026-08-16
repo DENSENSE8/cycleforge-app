@@ -1,6 +1,6 @@
 {
   "version": "0.0.1",
-  "_comment": "ATTACH-ONLY BY DESIGN. There is deliberately no runtimeExecutable/runtimeArgs: a configuration with a `url` and no command attaches to an already-running server instead of spawning one. The user owns the dev server's lifecycle — see .claude/rules/workflow-safety.md. Do NOT re-add a command to 'make preview_start work'; if nothing is listening on :3050 the dev server simply is not running, and starting it is the user's call.",
+  "_comment": "ATTACH-ONLY BY DESIGN. There is deliberately no runtimeExecutable/runtimeArgs: a configuration with a `url` and no command attaches to an already-running server instead of spawning one. The user owns the dev server's lifecycle — see AGENTS.md. Do NOT re-add a command to 'make preview_start work'; if nothing is listening on :3050 the dev server simply is not running, and starting it is the user's call.",
   "configurations": [
     {
       "name": "cycleforge-dev",

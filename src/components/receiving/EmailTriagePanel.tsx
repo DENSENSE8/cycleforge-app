@@ -8,7 +8,7 @@
  * worklist and acts-and-clears each row (archive / link-to-PO / reply). It is the
  * single home for the email worklist (it replaced the old sidebar to-do list). It
  * rides in the Incoming right pane *beside* the "Incoming POS" table, toggled from
- * the sidebar facet rail (`IncomingSidebarPanel`) via URL sub-view
+ * the Pipeline facet strip (`IncomingWorkspaceHeader`) via URL sub-view
  * (`?incview=pos|email`), and the right pane crossfades between the two through the
  * canonical `framerPresence.workbenchPane` preset (wired in `ReceivingRightPane`).
  * It is **not** a local-state toggle and it does **not** fork a new list primitive —
@@ -86,22 +86,15 @@ export interface Email {
 // API row → Email adapter (the `/incoming/todo` TodoItem/TodoResponse shape).
 // ─────────────────────────────────────────────────────────────────────────────
 
-interface TodoItem {
-  id: string;
-  order_numbers: string[];
-  email_subject: string | null;
-  email_from: string | null;
-  email_received: string | null;
-  scanned_at: string;
-  pile: string;
-  resolved_at: string | null;
-}
+// Wire types + the standalone count hook live in `incoming-todo-shared.ts` so
+// the Incoming sidebar can read the count WITHOUT pulling this panel into every
+// receiving surface's initial JS. Do not move them back here.
+// Deliberately NOT re-exported from here: a re-export would let a caller import
+// the hook from this module and silently pull the panel back into the sidebar's
+// chunk, which is the exact fan-in the split removed.
+import type { TodoItem, TodoResponse } from '@/components/receiving/incoming-todo-shared';
+import { focusRing } from '@/design-system/tokens/focus-ring';
 
-interface TodoResponse {
-  success: true;
-  open: { items: TodoItem[]; count: number; truncated: boolean };
-  done: { items: TodoItem[]; truncated: boolean };
-}
 
 /**
  * Heuristic status tag from the email subject + pile. The worklist row has no
@@ -254,24 +247,6 @@ function useIncomingEmailTodo(search: string, enabled: boolean): IncomingEmailTo
   };
 }
 
-/**
- * Standalone count hook for the Incoming sidebar Views row — reuses the same
- * cache entry as the unfiltered list (`q=''`), so it never adds a request.
- */
-export function useIncomingEmailCount(): number {
-  const { data } = useQuery<TodoResponse>({
-    queryKey: ['receiving-lines-incoming-todo', ''],
-    queryFn: async () => {
-      const res = await fetch('/api/receiving-lines/incoming/todo', { cache: 'no-store' });
-      if (!res.ok) throw new Error('todo fetch failed');
-      return res.json();
-    },
-    refetchInterval: 180_000,
-    staleTime: 30_000,
-  });
-  return data?.open.count ?? 0;
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Row
 // ─────────────────────────────────────────────────────────────────────────────
@@ -289,7 +264,7 @@ const CHIP_CLASS =
   'inline-flex items-center gap-1 rounded inset-chip text-role-eyebrow uppercase leading-none tracking-widest ring-1 ring-inset';
 
 const ROW_ACTION_CLASS =
-  'flex h-7 w-7 items-center justify-center rounded-md text-text-faint transition-colors hover:bg-surface-sunken hover:text-text-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 disabled:opacity-50';
+  cn('flex h-7 w-7 items-center justify-center rounded-md text-text-faint transition-colors hover:bg-surface-sunken hover:text-text-muted disabled:opacity-50', focusRing('control', 'accent'));
 
 const rowMotion = {
   hidden: { opacity: 0, y: 4 },

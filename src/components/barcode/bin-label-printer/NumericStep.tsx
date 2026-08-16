@@ -1,5 +1,10 @@
 'use client';
 
+/**
+ * Label-builder numeric step — 1–9 quick-pick + custom 10–99 stepper.
+ * Shared by bin labels and rack labels. Do not fork a printer-local twin.
+ */
+
 import { useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from '@/design-system/motion';
 import { Check, ChevronDown, ChevronUp } from '@/components/Icons';
@@ -9,10 +14,13 @@ import {
   LABEL_BUILDER_NUMPAD,
   LABEL_BUILDER_SELECTED,
 } from '../label-builder-layout';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
 
 interface NumericStepProps {
   title: string;
-  prefix: string;
+  /** Optional tile prefix (bin labels). Rack omits it. */
+  prefix?: string;
   count: number;
   selected?: number;
   onPick: (n: number) => void;
@@ -29,7 +37,7 @@ const NUMERIC_QUICK_PICKS = [1, 2, 3, 4, 5, 6, 7, 8, 9] as const;
 
 export function NumericStep({
   title,
-  prefix,
+  prefix = '',
   count,
   selected,
   onPick,
@@ -124,7 +132,7 @@ export function NumericStep({
             className={`${LABEL_BUILDER_NUMPAD.customTile} ${
               isCustomSelected
                 ? LABEL_BUILDER_SELECTED.soft
-                : 'border-border-default focus-within:border-blue-400 focus-within:ring-1 focus-within:ring-blue-100'
+                : cn('border-border-default', focusRing('wrapper', 'accent'))
             }`}
             aria-label={customLabel}
           >

@@ -4,6 +4,8 @@
  * URL `?packStation=` filters the board and can arm from a KPI click.
  */
 
+import { packBenchShortLabel } from '@/lib/packing/pack-bench-display';
+
 export const PACK_STATION_PARAM = 'packStation';
 /** Filter to any order with a packing-station placement (To-ship / Ready to Pack). */
 export const PACK_PLACED_PARAM = 'packPlaced';
@@ -73,6 +75,8 @@ export function isAutoArmSuppressed(): boolean {
 interface PackBenchOption {
   id: number;
   name: string;
+  /** Operator nickname (`locations.display_name`); null = read {@link name}. */
+  displayName?: string | null;
   barcode: string | null;
   locationKind: string;
 }
@@ -93,7 +97,13 @@ export function resolveWorkstationBench(
   if (!match) return null;
   return {
     locationId: Number(match.id),
-    name: String(match.name || ''),
+    // The FACE, resolved once here — `armed.name` is a display string ("Placing
+    // at …"), so a caller must not have to remember to re-resolve the nickname.
+    name: packBenchShortLabel({
+      locationName: String(match.name || ''),
+      locationDisplayName: match.displayName,
+      locationKind: match.locationKind,
+    }),
     barcode: match.barcode ?? null,
     locationKind: match.locationKind === 'STAGING' ? 'STAGING' : 'DESK',
   };

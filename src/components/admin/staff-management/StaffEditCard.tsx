@@ -1,12 +1,16 @@
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { Button } from '@/design-system/primitives';
+import { Panel, Button } from '@/design-system/primitives';
 import { StaffColorWheel } from '../StaffColorWheel';
 import { StaffAvatar } from '@/components/identity';
 import { getStaffColorHex } from '@/utils/staff-colors';
 import type { Staff } from '../types';
 import { STAFF_HOME_OPTIONS, type StaffRole, type StaffUpdatePayload } from './constants';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 function FieldGroup({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -108,7 +112,7 @@ export function StaffEditCard({
               type="text"
               value={editName}
               onChange={(e) => setEditName(e.target.value)}
-              className="h-11 w-full rounded-full border border-border-soft bg-surface-card px-4 text-sm font-semibold text-text-default outline-none transition focus:border-border-strong focus:ring-2 focus:ring-border-strong/10"
+              className={cn("h-11 w-full rounded-full border border-border-soft bg-surface-card px-4 text-sm font-semibold text-text-default transition", focusRing('field', 'neutral'))}
               placeholder="Full name"
             />
           </FieldGroup>
@@ -117,7 +121,7 @@ export function StaffEditCard({
               type="text"
               value={editEmployeeId}
               onChange={(e) => setEditEmployeeId(e.target.value)}
-              className="h-11 w-full rounded-full border border-border-soft bg-surface-card px-4 text-sm font-semibold text-text-default outline-none transition focus:border-border-strong focus:ring-2 focus:ring-border-strong/10"
+              className={cn("h-11 w-full rounded-full border border-border-soft bg-surface-card px-4 text-sm font-semibold text-text-default transition", focusRing('field', 'neutral'))}
               placeholder="Employee ID"
             />
           </FieldGroup>
@@ -130,7 +134,7 @@ export function StaffEditCard({
                 value={editRole}
                 onChange={(e) => setEditRole(e.target.value as StaffRole)}
                 disabled={member.role !== 'technician' && member.role !== 'packer'}
-                className="h-11 w-full rounded-full border border-border-soft bg-surface-card px-4 text-sm font-semibold text-text-default outline-none transition focus:border-border-strong focus:ring-2 focus:ring-border-strong/10 disabled:cursor-not-allowed disabled:bg-surface-canvas disabled:text-text-soft"
+                className={cn("h-11 w-full rounded-full border border-border-soft bg-surface-card px-4 text-sm font-semibold text-text-default transition disabled:cursor-not-allowed disabled:bg-surface-canvas disabled:text-text-soft", focusRing('field', 'neutral'))}
               >
                 <option value="technician">Technician</option>
                 <option value="packer">Packer</option>
@@ -141,18 +145,18 @@ export function StaffEditCard({
 
         {/* Identity color card — fully rounded, wheel anchored right so the eye
             lands on it immediately. */}
-        <div className="mt-5 flex items-center gap-4 rounded-3xl border border-border-soft bg-surface-card px-5 py-4">
+        <Panel radius="2xl" padding="none" className="mt-5 flex items-center gap-4 px-5 py-4">
           <div className="min-w-0 flex-1">
             <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Identity color</p>
             <p className="mt-1 text-role-caption text-text-soft">Tap the wheel — picks up on the sidebar, sign-in picker, and FAB.</p>
           </div>
           <StaffColorWheel value={editColorHex} onChange={setEditColorHex} />
-        </div>
+        </Panel>
 
         {/* Default home page — per-staff override of ROLE_HOME. Empty value =
             fall back to role default. The select is sourced from
             STAFF_HOME_OPTIONS so admins can't typo a 404 path. */}
-        <div className="mt-4 flex items-center gap-4 rounded-3xl border border-border-soft bg-surface-card px-5 py-4">
+        <Panel radius="2xl" padding="none" className="mt-4 flex items-center gap-4 px-5 py-4">
           <div className="min-w-0 flex-1">
             <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Default home page</p>
             <p className="mt-1 text-role-caption text-text-soft">
@@ -162,14 +166,14 @@ export function StaffEditCard({
           <select
             value={editDefaultHomePath}
             onChange={(e) => setEditDefaultHomePath(e.target.value)}
-            className="h-11 min-w-[14rem] rounded-full border border-border-soft bg-surface-card px-4 text-sm font-semibold text-text-default outline-none transition focus:border-border-strong focus:ring-2 focus:ring-border-strong/10"
+            className={cn("h-11 min-w-[14rem] rounded-full border border-border-soft bg-surface-card px-4 text-sm font-semibold text-text-default transition", focusRing('field', 'neutral'))}
           >
             <option value="">Use role default</option>
             {STAFF_HOME_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>
             ))}
           </select>
-        </div>
+        </Panel>
 
         <label className="mt-5 inline-flex cursor-pointer items-center gap-2.5 rounded-full bg-surface-card px-3.5 py-2 text-role-caption font-semibold uppercase tracking-[0.16em] text-text-muted ring-1 ring-border-soft transition hover:bg-surface-hover">
           <input

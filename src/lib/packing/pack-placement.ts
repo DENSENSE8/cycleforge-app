@@ -13,6 +13,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import {
   PACK_PLACEABLE_KINDS,
+  locationDisplayNameSql,
   type PackPlaceableKind,
   type PackPlacementSource,
 } from '@/lib/packing/pack-placement-constants';
@@ -21,7 +22,10 @@ export type { PackPlaceableKind, PackPlacementSource } from '@/lib/packing/pack-
 
 export interface PackPlaceableLocation {
   id: number;
+  /** Warehouse-map identity — globally unique, referenced by seeds and rooms. */
   name: string;
+  /** Operator nickname (`locations.display_name`); null = read {@link name}. */
+  displayName: string | null;
   barcode: string | null;
   locationKind: PackPlaceableKind;
   room: string | null;
@@ -64,8 +68,16 @@ export class PackPlacementError extends Error {
   }
 }
 
-/** Open unshipped / pre-pack membership — mirrors queue-counts scope. */
-function prepackMembershipSql(orderAlias = 'o'): string {
+/**
+ * Open unshipped / pre-pack membership — mirrors queue-counts scope.
+ *
+ * Requires `$1` = organization_id and a `LEFT JOIN shipping_tracking_numbers stn
+ * ON stn.id = <alias>.shipment_id` in the surrounding query. Exported so
+ * view-monitor value resolution reuses this exact predicate rather than adding a
+ * 5th hand-inlined copy of it (the fragment is already inlined in the
+ * queue-counts route, /api/orders?fulfillmentScope, and feed-membership-projection).
+ */
+export function prepackMembershipSql(orderAlias = 'o'): string {
   return `
     ${orderAlias}.organization_id = $1
     AND ${orderAlias}.shipment_id IS NOT NULL
@@ -87,12 +99,15 @@ export async function resolvePackPlaceableLocations(
     const result = await client.query<{
       id: number;
       name: string;
+      display_name: string | null;
       barcode: string | null;
       location_kind: string;
       room: string | null;
       sort_order: number;
     }>(
-      `SELECT id, name, barcode, location_kind, room, sort_order
+      // Both names, unresolved: Settings → Packing benches shows the canonical
+      // `name` beside the editable nickname, so it cannot COALESCE here.
+      `SELECT id, name, display_name, barcode, location_kind, room, sort_order
          FROM locations
         WHERE organization_id = $1
           AND is_active = true
@@ -103,6 +118,7 @@ export async function resolvePackPlaceableLocations(
     return result.rows.map((row) => ({
       id: Number(row.id),
       name: row.name,
+      displayName: row.display_name,
       barcode: row.barcode,
       locationKind: row.location_kind as PackPlaceableKind,
       room: row.room,
@@ -124,12 +140,13 @@ export async function resolvePackPlaceableLocation(
     const result = await c.query<{
       id: number;
       name: string;
+      display_name: string | null;
       barcode: string | null;
       location_kind: string;
       room: string | null;
       sort_order: number;
     }>(
-      `SELECT id, name, barcode, location_kind, room, sort_order
+      `SELECT id, name, display_name, barcode, location_kind, room, sort_order
          FROM locations
         WHERE organization_id = $1
           AND is_active = true
@@ -146,6 +163,7 @@ export async function resolvePackPlaceableLocation(
     return {
       id: Number(row.id),
       name: row.name,
+      displayName: row.display_name,
       barcode: row.barcode,
       locationKind: row.location_kind as PackPlaceableKind,
       room: row.room,
@@ -268,7 +286,7 @@ export async function placeOrderAtLocation(
     return {
       orderId,
       locationId: location.id,
-      locationName: location.name,
+      locationName: location.displayName?.trim() || location.name,
       locationBarcode: location.barcode,
       locationKind: location.locationKind,
       placedAt: new Date().toISOString(),
@@ -341,7 +359,8 @@ export async function countOpenPlacementsByLocation(
       location_kind: string;
       n: number;
     }>(
-      `SELECT l.id AS location_id, l.name AS location_name, l.barcode AS location_barcode,
+      `SELECT l.id AS location_id, ${locationDisplayNameSql('l')} AS location_name,
+              l.barcode AS location_barcode,
               l.location_kind, COALESCE(c.n, 0)::int AS n
          FROM locations l
          LEFT JOIN (

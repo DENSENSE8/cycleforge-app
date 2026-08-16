@@ -1,4 +1,6 @@
 import { focusRing } from '@/design-system/tokens/focus-ring';
+import { Panel } from '@/design-system/primitives';
+
 
 interface PublicQrInterstitialProps {
   /** Org display name (brand.name or organization name). */
@@ -25,7 +27,7 @@ export function PublicQrInterstitial({
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-surface-canvas px-6 py-10">
-      <div className="w-full max-w-sm space-y-6 rounded-2xl border border-border-soft bg-surface-card p-6 shadow-sm">
+      <Panel radius="2xl" padding="lg" className="w-full max-w-sm space-y-6">
         <div className="flex flex-col items-center gap-3 text-center">
           {logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element -- tenant-uploaded arbitrary URL
@@ -74,7 +76,7 @@ export function PublicQrInterstitial({
         <p className="text-center text-role-eyebrow uppercase tracking-wide text-text-faint">
           Powered by Cycle Forge
         </p>
-      </div>
+      </Panel>
     </div>
   );
 }

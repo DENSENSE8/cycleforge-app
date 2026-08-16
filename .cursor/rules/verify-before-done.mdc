@@ -17,23 +17,16 @@ once. Treat it as the definition of "done."
    gate. (Quick inner-loop: `npm run verify -- --fast` = lint + typecheck only;
    the full `npm run verify` is still required before finishing.)
 2. **Fix every ✗ gate.** The gates are: lint (0 errors), typecheck (0 errors),
-   unit tests **including the DS-ratchet guards**, knip dead-code, route-auth
-   drift + enforce, schema drift.
-3. **DS-ratchet guards ratchet DOWN, never up.** When a guard fails
-   (`raw <button>` / native `title=` / raw `focus:ring` / `text-[Npx]` grew):
-   - **Migrate** to the design-system primitive — `Button`/`IconButton`,
-     `HoverTooltip`, `focusRing(archetype, tone)`, `text-role-*`. This is the
-     default and preferred fix.
-   - Only for a genuinely-required raw element, add the documented same-line /
-     line-above escape: `ds-raw-button`, `ds-allow-title`, `ds-allow-focus`.
-   - **Never** raise a `*-baseline` count or `git commit --no-verify` to get
-     past a ratchet. That defeats the guard.
+   unit tests (including structural governance guards), knip dead-code,
+   jscpd clone baseline, depcruise assembly boundaries, route-auth drift +
+   enforce, schema drift.
+3. **Structural guards** (motion boundary, frame budgets, region hosts) must
+   stay green.
 4. **knip dead-code:** remove the dead export/file or wire it up. Only refresh
    `knip-baseline.json` (`npm run knip:baseline`) for reviewed, intentional
    staged code — say so in the change.
-5. **Route/permission/tenant/status changes** follow `AGENTS.md` +
-   `.claude/rules/backend-patterns.md`; regenerate the manifest with
-   `npm run audit-route-auth:emit` when a route's auth changes.
+5. **Route/permission/tenant/status changes** follow `AGENTS.md`; regenerate
+   the manifest with `npm run audit-route-auth:emit` when a route's auth changes.
 
 If `npm run verify` is green, the push will be green. If it is red, fix it —
 do not push and let CI find it.

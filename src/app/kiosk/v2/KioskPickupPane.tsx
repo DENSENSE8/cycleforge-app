@@ -6,7 +6,7 @@
  */
 
 import { useCallback, useState } from 'react';
-import { Button, TextField } from '@/design-system/primitives';
+import { Panel, Button, TextField } from '@/design-system/primitives';
 import { Check, Loader2 } from '@/components/Icons';
 import type { KioskPickupSummary } from '@/lib/kiosk/order-pickup';
 
@@ -117,7 +117,7 @@ export function KioskPickupPane({ onReset }: KioskPickupPaneProps) {
     <div className="mx-auto w-full max-w-2xl space-y-10">
       <section className="space-y-4">
         <h3 className={SECTION_LABEL}>Find your order</h3>
-        <div className="space-y-4 rounded-xl border border-border-soft bg-surface-card p-5">
+        <Panel radius="xl" className="space-y-4">
           <TextField
             label="Order or repair number"
             value={orderNumber}
@@ -145,13 +145,13 @@ export function KioskPickupPane({ onReset }: KioskPickupPaneProps) {
               'Look up order'
             )}
           </Button>
-        </div>
+        </Panel>
       </section>
 
       {summary && (
         <section className="space-y-4">
           <h3 className={SECTION_LABEL}>Order ready</h3>
-          <div className="space-y-3 rounded-xl border border-border-soft bg-surface-card p-5">
+          <Panel radius="xl" className="space-y-3">
             <div className="flex items-baseline justify-between gap-3">
               <span className="font-semibold">
                 {summary.productTitle?.trim() || 'Repair order'}
@@ -181,7 +181,7 @@ export function KioskPickupPane({ onReset }: KioskPickupPaneProps) {
                 )}
               </Button>
             )}
-          </div>
+          </Panel>
         </section>
       )}
 

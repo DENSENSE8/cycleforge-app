@@ -205,6 +205,8 @@ interface LedgerGridSurfaceProps<Row, K extends string, C extends LedgerGridColu
    * grid grows with content and virtualizes against that port.
    */
   scrollParentRef?: RefObject<HTMLElement | null>;
+  /** Scroll a row (by getRowKey) into view — deep-link / keyboard focus. */
+  scrollToKey?: string | null;
   /**
    * Optional ref on the outer shell — Orders attaches viewport force-hide
    * observation here.
@@ -296,6 +298,7 @@ export function LedgerGridSurface<Row, K extends string, C extends LedgerGridCol
   showDayHeaders = false,
   scrollRef,
   scrollParentRef,
+  scrollToKey,
   shellRef,
   className,
   ariaLabel,
@@ -470,6 +473,7 @@ export function LedgerGridSurface<Row, K extends string, C extends LedgerGridCol
             <LedgerGrid<Row>
               scrollX
               scrollParentRef={scrollParentRef}
+              scrollToKey={scrollToKey}
               contentMinWidthRem={descriptor.contentMinWidthRem}
               contentMinWidthPx={contentMinWidthPx}
               columnVars={columnVars}

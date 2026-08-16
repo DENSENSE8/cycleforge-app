@@ -35,7 +35,7 @@ interface FreshCode {
 const STATUS_TONE: Record<KioskDeviceRow['status'], string> = {
   active: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
   enrolled: 'bg-amber-50 text-amber-700 ring-amber-200',
-  revoked: 'bg-gray-100 text-gray-500 ring-gray-200',
+  revoked: 'bg-surface-sunken text-text-muted ring-border-soft',
 };
 
 const STATUS_LABEL: Record<KioskDeviceRow['status'], string> = {

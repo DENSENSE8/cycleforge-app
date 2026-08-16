@@ -49,19 +49,12 @@ function nudgeShortcutOnce(id: string, tip: string): void {
   toast.message(tip, { duration: 4500 });
 }
 
-/** Unbox Print · Receive mouse → teach Middle letters. */
-export function nudgeUnboxPrintReceive(kind: 'print' | 'receive' | 'cta'): void {
+/** Unbox Print / dock CTA mouse → teach Middle letters. Receive has no nudge. */
+export function nudgeUnboxPrintReceive(kind: 'print' | 'cta'): void {
   if (kind === 'print') {
     nudgeShortcutOnce(
       'unbox-print',
       'Tip: next time press ⌘; then m then p to print.',
-    );
-    return;
-  }
-  if (kind === 'receive') {
-    nudgeShortcutOnce(
-      'unbox-receive',
-      'Tip: next time press ⌘; then m then e to receive.',
     );
     return;
   }

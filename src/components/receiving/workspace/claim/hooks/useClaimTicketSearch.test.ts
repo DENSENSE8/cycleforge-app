@@ -32,3 +32,11 @@ test('buildClaimTicketSearchParams omits empty query', () => {
   const params = buildClaimTicketSearchParams({ receivingId: 42, query: '   ' });
   assert.equal(params.has('query'), false);
 });
+
+test('buildClaimTicketSearchParams includes tracking-shaped query', () => {
+  const params = buildClaimTicketSearchParams({
+    receivingId: 42,
+    query: '382803670296',
+  });
+  assert.equal(params.get('query'), '382803670296');
+});

@@ -17,6 +17,8 @@ import { framerPresence, framerTransition } from '@/design-system/foundations/mo
 import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
 import { elevationClass } from '@/design-system/tokens/shadows';
 import { cn } from '@/utils/_cn';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+
 
 function ArrowRightGlyph({ className = 'h-3.5 w-3.5' }: { className?: string }) {
   return (
@@ -452,7 +454,7 @@ export default function AiChatConversation({ variant = 'panel', chat }: AiChatCo
               <Button variant="ghost" size="sm" onClick={cancelEditing} className="text-amber-700 hover:bg-amber-100" ariaLabel="Cancel edit">Cancel · Esc</Button>
             </div>
           ) : null}
-          <div className="flex items-end gap-2 rounded-xl border border-border-default bg-surface-card px-3 py-2 shadow-sm transition-colors focus-within:border-blue-400">
+          <div className={cn("flex items-end gap-2 rounded-xl border border-border-default bg-surface-card px-3 py-2 shadow-sm transition-colors", focusRing('wrapper', 'accent'))}>
             <textarea
               ref={textareaRef}
               rows={1}
@@ -460,7 +462,7 @@ export default function AiChatConversation({ variant = 'panel', chat }: AiChatCo
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={onKeyDown}
               placeholder={editingId ? 'Edit your message…' : 'Ask about orders, staff, FBA, repairs, Bose manuals…'}
-              className="min-h-[24px] flex-1 resize-none bg-transparent text-sm leading-6 text-text-default placeholder-gray-400 focus:outline-none"
+              className={cn("min-h-[24px] flex-1 resize-none bg-transparent text-sm leading-6 text-text-default placeholder-gray-400", focusRing('field', 'neutral'))}
               style={{ maxHeight: '180px' }}
             />
             {status === 'streaming' ? (

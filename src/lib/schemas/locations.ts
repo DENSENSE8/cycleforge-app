@@ -67,6 +67,12 @@ export type LocationsPatchBody = z.infer<typeof LocationsPatchBody>;
 export const LocationPropertiesPatchBody = z
   .object({
     name: trimmedStr.optional(),
+    /**
+     * Operator nickname. `null` (or an empty string, which the writer folds to
+     * null) clears it and restores the canonical `name` — so this is
+     * `.nullable()`, unlike `name`, which a location must always have.
+     */
+    displayName: z.string().trim().nullable().optional(),
     barcode: z.string().trim().min(1).nullable().optional(),
     binType: z.string().trim().min(1).nullable().optional(),
     capacity: nonNegInt.nullable().optional(),

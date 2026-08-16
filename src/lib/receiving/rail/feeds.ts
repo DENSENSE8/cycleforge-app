@@ -25,9 +25,11 @@
 
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import type { ReceivingRailRowTitleMode } from '@/lib/receiving/po-group-title';
-import { stampCartonRailTitleContext } from '@/lib/receiving/po-group-title';
 import type { ApiResponse } from '@/components/sidebar/receiving/RecentActivityRailBase';
-import { receivingRailCartonKey } from '@/lib/queries/receiving-queries';
+import {
+  transformUnboxOpenedRows,
+  UNBOX_SIDEBAR_LIMIT,
+} from '@/lib/receiving/rail/unbox-opened-rows';
 import { getViewedAt, type RailStatusId } from './status';
 import type { RailQtyId } from './quantity';
 import {
@@ -41,8 +43,6 @@ import {
   type TriageDoneRow,
 } from './done-stub';
 import type { RefreshDomain } from '@/lib/refresh/domains';
-/** Unbox sidebar "Unboxed" rail — most recent cartons opened on the Unbox surface. */
-const UNBOX_SIDEBAR_LIMIT = 50;
 
 type ReceivingLinesView = 'activity' | 'scanned' | 'viewed' | 'unbox_opened';
 type ReceivingLinesSort = 'unboxed_newest' | 'priority';
@@ -309,36 +309,10 @@ function buildUnboxReceivedFetcher(rt: RailFetchRuntime): () => Promise<ApiRespo
       includeSerials: false,
     }).then((d) => d.receiving_lines);
 
-    // Dedup by carton while preserving SQL order. Prefer a real line over a
-    // stub; never re-order by time (server owns the first-open axis).
-    const bestByCarton = new Map<number, ReceivingLineRow>();
-    const order: number[] = [];
-    for (const row of opened) {
-      const rid = row.receiving_id;
-      if (rid == null || !Number.isFinite(Number(rid))) continue;
-      const existing = bestByCarton.get(rid);
-      if (!existing) {
-        bestByCarton.set(rid, row);
-        order.push(rid);
-        continue;
-      }
-      const existingIsStub = existing.id < 0;
-      const nextIsStub = row.id < 0;
-      if (existingIsStub && !nextIsStub) {
-        bestByCarton.set(rid, row);
-      }
-    }
-
-    const merged = stampCartonRailTitleContext(
-      opened,
-      order.map((rid) => bestByCarton.get(rid)!).slice(0, UNBOX_SIDEBAR_LIMIT),
-    ).map((r) => ({
-      ...r,
-      // Same durable carton identity as optimistic upserts + triage combined —
-      // without this, refetch flips React keys from `carton:N` → numeric id and
-      // AnimatePresence remounts the whole Unboxed rail.
-      client_event_id: receivingRailCartonKey(r.receiving_id as number),
-    }));
+    // Dedup by carton (preserving SQL first-open order), stamp title context, and
+    // attach the durable `carton:{id}` client_event_id — shared with the RSC
+    // first-paint seed so the two never drift. See `./unbox-opened-rows`.
+    const merged = transformUnboxOpenedRows(opened);
 
     return { success: true, receiving_lines: merged, total: merged.length };
   };

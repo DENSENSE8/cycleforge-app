@@ -53,6 +53,8 @@ import { useStaffPreferences } from '@/hooks/useStaffPreferences';
 import type { BoardLanePref, BoardPrefs, BoardPrefsKey } from '@/lib/neon/staff-preferences-queries';
 import type { StaffPreferencesPutBody } from '@/lib/schemas/staff-preferences';
 import { cn } from '@/utils/_cn';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+
 
 /** One lane in the board. `dot` is a Tailwind bg class; `icon` is paired with the label. */
 export interface SwimlaneLaneDef<LaneId extends string> {
@@ -236,7 +238,7 @@ function LaneSortMenu<SortId extends string>({
         <Popover.Content
           align="end"
           sideOffset={6}
-          className="z-dropdown w-36 overflow-hidden rounded-lg border border-border-soft bg-surface-card p-1 shadow-lg ring-1 ring-black/5 focus:outline-none"
+          className={cn("z-dropdown w-36 overflow-hidden rounded-lg border border-border-soft bg-surface-card p-1 shadow-lg ring-1 ring-black/5", focusRing('field', 'accent'))}
         >
           {options.map((o) => (
             // ds-raw-button: text-left two-state menu/select row

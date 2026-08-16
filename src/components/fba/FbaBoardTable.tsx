@@ -426,11 +426,11 @@ export function FbaBoardTable({
                 )}
               </div>
               <div className="min-w-0 align-middle">
-                <p className="truncate text-role-caption font-semibold text-gray-900">
+                <p className="truncate text-role-caption font-semibold text-text-default">
                   {item.display_title || '—'}
                 </p>
                 {item.sku ? (
-                  <p className="truncate text-role-eyebrow font-semibold uppercase tracking-widest text-gray-500">
+                  <p className="truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-muted">
                     {item.sku}
                   </p>
                 ) : null}

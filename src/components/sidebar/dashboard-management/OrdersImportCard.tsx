@@ -5,6 +5,10 @@ import { Button } from '@/design-system/primitives';
 import { Check, Database, Loader2, X } from '@/components/Icons';
 import { sectionLabel } from '@/design-system/tokens/typography/presets';
 import type { OrdersImportController } from './useOrdersImport';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 /** Manual sheet name + Import/Cancel button + the compact running-status row. */
 export function OrdersImportCard({ imp, canImportOrders }: { imp: OrdersImportController; canImportOrders: boolean }) {
@@ -20,7 +24,7 @@ export function OrdersImportCard({ imp, canImportOrders }: { imp: OrdersImportCo
         value={manualSheetName}
         onChange={(e) => setManualSheetName(e.target.value)}
         placeholder="e.g., Sheet_01_14_2026"
-        className="w-full inset-field bg-surface-card border border-border-soft rounded-xl text-role-caption font-mono text-text-default outline-none focus:border-blue-500 transition-all"
+        className={cn("w-full inset-field bg-surface-card border border-border-soft rounded-xl text-role-caption font-mono text-text-default transition-all", focusRing('field', 'accent'))}
         disabled={isTransferring}
       />
 

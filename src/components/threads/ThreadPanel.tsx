@@ -3,11 +3,16 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
-  Loader2, Lock, Globe, MessageSquare, Ticket, User, Check,
+  Loader2, MessageSquare, Ticket, User, Check,
   MoreHorizontal, Pencil, Trash2, X, ExternalLink, Link2,
   Package, Truck, Barcode, Tag, PackageOpen, Wrench, ShieldCheck, Box,
 } from '@/components/Icons';
-import { Button, IconButton } from '@/design-system/primitives';
+import { Button, IconButton, ConversationMessageCard } from '@/design-system/primitives';
+import {
+  CONVERSATION_BODY,
+  CONVERSATION_MARK,
+  CONVERSATION_MARK_BOX,
+} from '@/design-system/primitives/conversation-chrome';
 import { ThreadNoteComposer } from '@/components/threads/ThreadNoteComposer';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import {
@@ -27,7 +32,6 @@ import { requestConfirm } from '@/design-system/components/confirm';
 import { initials } from '@/components/support/zendesk/chat/support-chat-utils';
 import { renderInlineMarkdown } from '@/lib/support/markdown';
 import { formatDateTimePST } from '@/utils/date';
-import { timeAgo } from '@/utils/_date';
 import { cn } from '@/utils/_cn';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 
@@ -78,19 +82,10 @@ const CONNECTION_ICON: Record<string, typeof Package> = {
  * ThreadPanel — the one reusable entity-conversation surface (chat bubbles +
  * composer), ticket-optional, mounted in the idiomatic slot of every entity
  * detail Workbench (docs/todo/entity-threads-conversation-plan.md D5).
- * Mirrors the sanctioned support-chat anatomy (`SupportChatThread` /
- * `SupportChatComposer`); the read-only merged history stays `EventTimeline`
- * (its rows gain THREAD_MESSAGE via the adapter) — this is the *channel*,
- * never the record. Do NOT mount the composer on a Monitor surface (D8).
+ * Message cards compose {@link ConversationMessageCard} (hard DS SoT) — same
+ * face as helpdesk ticket chat. The read-only merged history stays
+ * `EventTimeline`. Do NOT mount the composer on a Monitor surface (D8).
  */
-
-function Time({ iso }: { iso: string }) {
-  return (
-    <HoverTooltip label={formatDateTimePST(iso)} focusable={false}>
-      <span>{timeAgo(iso)}</span>
-    </HoverTooltip>
-  );
-}
 
 function MessageBubble({
   m,
@@ -148,81 +143,73 @@ function MessageBubble({
     );
   }
 
-  return (
-    <div
-      className={cn('group/msg relative flex items-end gap-2.5', pending && 'opacity-60')}
-      onMouseLeave={() => setMenuOpen(false)}
-    >
+  const mark = (
+    <div className={CONVERSATION_MARK_BOX}>
       <span
         className={cn(
-          'flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-role-micro',
-          ours ? 'bg-blue-100 text-blue-700' : 'bg-surface-strong text-text-muted',
+          'flex h-5 w-5 items-center justify-center rounded-full text-role-micro',
+          CONVERSATION_MARK,
         )}
       >
         {initials(name)}
       </span>
-      <div className="min-w-0 max-w-[78%] items-start">
-        <div className="mb-1 flex items-center gap-2 text-role-caption justify-start">
-          {internal ? (
-            <span className="inline-flex items-center gap-1 rounded bg-amber-100 px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest text-amber-700">
-              <Lock className="h-2.5 w-2.5" /> Internal
-            </span>
-          ) : (
-            <span className="inline-flex items-center gap-1 rounded bg-blue-100 px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest text-blue-700">
-              <Globe className="h-2.5 w-2.5" /> Public
-            </span>
-          )}
-          <span className="font-semibold text-text-muted">{name}</span>
-          <span className="text-text-faint">
-            · <Time iso={m.createdAt} />
-          </span>
-          {m.meta && (m.meta as Record<string, unknown>).editedAt ? (
-            <span className="text-role-eyebrow uppercase tracking-widest text-text-faint">· edited</span>
+    </div>
+  );
+
+  const metaTrailing = (
+    <>
+      {m.meta && (m.meta as Record<string, unknown>).editedAt ? (
+        <span className="text-text-faint">· edited</span>
+      ) : null}
+      {editable ? (
+        <span className="relative ml-auto opacity-0 transition-opacity group-hover/msg:opacity-100">
+          <IconButton
+            size="xs"
+            ariaLabel="Message actions"
+            icon={<MoreHorizontal className="h-3.5 w-3.5" />}
+            onClick={() => setMenuOpen((v) => !v)}
+          />
+          {menuOpen ? (
+            <div className="absolute right-0 z-panelPopover mt-1 w-32 overflow-hidden rounded-lg border border-border-soft bg-surface-card shadow-lg">
+              {/* ds-raw-button: popover menu rows */}
+              <button
+                type="button"
+                onClick={() => { setMenuOpen(false); setDraft(m.body); setEditing(true); }}
+                className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-role-caption text-text-default hover:bg-surface-sunken"
+              >
+                <Pencil className="h-3.5 w-3.5" /> Edit
+              </button>
+              {/* ds-raw-button: popover menu rows */}
+              <button
+                type="button"
+                onClick={() => { setMenuOpen(false); onDelete(m.id); }}
+                className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-role-caption text-rose-600 hover:bg-rose-50"
+              >
+                <Trash2 className="h-3.5 w-3.5" /> Delete
+              </button>
+            </div>
           ) : null}
-          {editable ? (
-            <span className="relative ml-auto opacity-0 transition-opacity group-hover/msg:opacity-100">
-              <IconButton
-                size="xs"
-                ariaLabel="Message actions"
-                icon={<MoreHorizontal className="h-3.5 w-3.5" />}
-                onClick={() => setMenuOpen((v) => !v)}
-              />
-              {menuOpen ? (
-                <div className="absolute right-0 z-panelPopover mt-1 w-32 overflow-hidden rounded-lg border border-border-soft bg-surface-card shadow-lg">
-                  {/* ds-raw-button: popover menu rows */}
-                  <button
-                    type="button"
-                    onClick={() => { setMenuOpen(false); setDraft(m.body); setEditing(true); }}
-                    className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-role-caption text-text-default hover:bg-surface-sunken"
-                  >
-                    <Pencil className="h-3.5 w-3.5" /> Edit
-                  </button>
-                  {/* ds-raw-button: popover menu rows */}
-                  <button
-                    type="button"
-                    onClick={() => { setMenuOpen(false); onDelete(m.id); }}
-                    className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-role-caption text-rose-600 hover:bg-rose-50"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" /> Delete
-                  </button>
-                </div>
-              ) : null}
-            </span>
-          ) : null}
-        </div>
-        <div
-          className={cn(
-            'rounded-2xl rounded-bl-md px-3.5 py-2.5 text-role-data leading-relaxed shadow-sm',
-            internal
-              ? 'border border-amber-200 bg-amber-50 text-amber-900'
-              : ours
-                ? 'bg-blue-600 text-white'
-                : 'border border-border-soft bg-surface-card text-text-default',
-          )}
-        >
-          <div className="break-words">{renderInlineMarkdown(m.body)}</div>
-        </div>
-      </div>
+        </span>
+      ) : null}
+    </>
+  );
+
+  return (
+    <div
+      className={cn('group/msg', pending && 'opacity-60')}
+      onMouseLeave={() => setMenuOpen(false)}
+      data-ours={ours ? 'true' : undefined}
+    >
+      <ConversationMessageCard
+        internal={internal}
+        mark={mark}
+        author={name}
+        at={m.createdAt}
+        atAbsolute={formatDateTimePST(m.createdAt)}
+        metaTrailing={metaTrailing}
+      >
+        <div className={CONVERSATION_BODY}>{renderInlineMarkdown(m.body)}</div>
+      </ConversationMessageCard>
     </div>
   );
 }

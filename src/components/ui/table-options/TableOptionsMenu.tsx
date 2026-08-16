@@ -15,6 +15,10 @@ import {
   OUTBOUND_COLUMN_PRESET_HIDDEN,
   type OutboundColumnPreset,
 } from '@/lib/dashboard/outbound-queue-prefs';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 /**
  * `TableOptionsMenu` (⋮) — the station tables' options popover
@@ -173,7 +177,7 @@ export function TableOptionsMenu({
         <Popover.Content
           align={align}
           sideOffset={6}
-          className="z-dropdown w-64 divide-y divide-border-hairline overflow-hidden rounded-xl border border-border-soft bg-surface-card shadow-lg ring-1 ring-black/5 focus:outline-none"
+          className={cn("z-dropdown w-64 divide-y divide-border-hairline overflow-hidden rounded-xl border border-border-soft bg-surface-card shadow-lg ring-1 ring-black/5", focusRing('field', 'accent'))}
         >
           {layout ? (
             <Section label="Layout">

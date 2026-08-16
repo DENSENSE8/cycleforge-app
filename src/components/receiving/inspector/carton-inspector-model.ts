@@ -47,6 +47,8 @@ export interface CartonInspectorReceiving {
   zoho_purchaseorder_id: string | null;
   zoho_purchaseorder_number: string | null;
   listing_url: string | null;
+  /** Zoho PO header notes — the sync-note listing-link tier. */
+  zoho_notes?: string | null;
   support_notes: string | null;
   tracking_scanned_at: string | null;
   tracking_scanned_by?: number | null;

@@ -6,7 +6,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { PageHeader } from '@/components/ui/pane-header';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { Button } from '@/design-system/primitives';
+import { Panel, Button } from '@/design-system/primitives';
 import { DataTable, type DataTableColumn } from '@/design-system/components/DataTable';
 
 export const dynamic = 'force-dynamic';
@@ -243,7 +243,7 @@ export default async function HoldsAdminPage({
         ) : null}
 
         {/* Hold form */}
-        <section className="rounded-lg border border-border-soft bg-surface-card shadow-sm">
+        <Panel radius="lg" padding="none">
           <header className="border-b border-border-hairline px-6 py-3">
             <h2 className="text-base font-medium text-text-default">Place a unit on hold</h2>
           </header>
@@ -272,7 +272,7 @@ export default async function HoldsAdminPage({
               </Button>
             </div>
           </form>
-        </section>
+        </Panel>
 
         {/* Held units */}
         <section className="space-y-3">

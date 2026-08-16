@@ -42,11 +42,11 @@ test('checklist appears on the Root Index (floor % ring deleted)', () => {
   assert.equal(rows.at(-1)?.id, 'checklist');
 });
 
-test('matched carton emits Listings · Classify · Pairing · Inventory · Units first', () => {
-  const rows = buildUnboxDisplayIndexRows(MATCHED, BASE_SIGNALS);
+test('matched carton emits Listings · Classify · Pairing · Inventory · Units · Prebox first', () => {
+  const rows = buildUnboxDisplayIndexRows(MATCHED, { ...BASE_SIGNALS, serialCount: 2 });
   assert.deepEqual(
-    rows.slice(0, 5).map((r) => r.id),
-    ['listings', 'classify', 'linkage', 'inventory', 'units'],
+    rows.slice(0, 6).map((r) => r.id),
+    ['listings', 'classify', 'linkage', 'inventory', 'units', 'prebox'],
   );
 });
 
@@ -58,11 +58,12 @@ test('Unbox rows carry PO-identity · stock · context groups', () => {
   assert.equal(rows.find((r) => r.id === 'inventory')?.group, 'assets');
   assert.equal(rows.find((r) => r.id === 'photos')?.group, 'assets');
   assert.equal(rows.find((r) => r.id === 'units')?.group, 'assets');
+  assert.equal(rows.find((r) => r.id === 'prebox')?.group, 'assets');
   assert.equal(rows.find((r) => r.id === 'ticket')?.group, 'context');
   assert.equal(rows.find((r) => r.id === 'timeline')?.group, 'context');
 });
 
-test('sparse gates hide units · listings · tracking · timeline', () => {
+test('sparse gates hide units · listings · tracking · timeline — Prebox stays', () => {
   const sparse: UnboxSideTabGates = {
     hasClassifyTab: true,
     hasLinkageTab: true,
@@ -76,6 +77,7 @@ test('sparse gates hide units · listings · tracking · timeline', () => {
   const ids = buildUnboxDisplayIndexRows(sparse, BASE_SIGNALS).map((r) => r.id);
   assert.ok(ids.includes('ticket'));
   assert.ok(ids.includes('photos'));
+  assert.ok(ids.includes('prebox'));
   assert.ok(ids.includes('classify'));
   assert.equal(ids.includes('units'), false);
   assert.equal(ids.includes('listings'), false);
@@ -105,6 +107,16 @@ test('ticket / photos / linkage / classify subtitles + tones', () => {
   assert.equal(ok.find((r) => r.id === 'classify')?.subtitle, 'Return');
   assert.equal(ok.find((r) => r.id === 'units')?.subtitle, '2 serials');
   assert.equal(ok.find((r) => r.id === 'tracking')?.tone, 'ok');
+});
+
+test('Prebox with serials is quiet (no unit-ready chip / no action tone)', () => {
+  const empty = buildUnboxDisplayIndexRows(MATCHED, BASE_SIGNALS);
+  assert.equal(empty.find((r) => r.id === 'prebox')?.subtitle, 'Need serials');
+  assert.equal(empty.find((r) => r.id === 'prebox')?.tone, 'neutral');
+
+  const ready = buildUnboxDisplayIndexRows(MATCHED, { ...BASE_SIGNALS, serialCount: 1 });
+  assert.equal(ready.find((r) => r.id === 'prebox')?.subtitle, '');
+  assert.equal(ready.find((r) => r.id === 'prebox')?.tone, 'ok');
 });
 
 test('return intake marks Timeline as action', () => {

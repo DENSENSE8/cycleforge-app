@@ -232,7 +232,10 @@ export const POST = withAuth(async (request, ctx) => {
     // (MATCHED); local_receive advances to RECEIVED just like a real receive,
     // minus the Zoho call. Treated as a non-scan receive everywhere the DONE
     // promotion runs (`!skipZohoReceive`), and guarded out of the Zoho POST.
-    const localReceive = receiveIntentRaw === 'local_receive';
+    // Carton source can force local-only below once we load receiving_carton —
+    // never let an unmatched/unfound carton enter createPurchaseReceive even
+    // if the client sent zoho_receive by mistake.
+    let localReceive = receiveIntentRaw === 'local_receive';
     /** Lines to load: scan_only + unreceive must see DONE lines to rewind them. */
     const includeAllLines = skipZohoReceive || isUnreceive;
     /** after() should call markPurchaseOrderUnreceived. */
@@ -580,12 +583,11 @@ export const POST = withAuth(async (request, ctx) => {
         disposition_code: dispositionCode,
         condition_grade: conditionGrade,
         notes,
-        // A real receive advances lines straight to UNBOXED so they never dwell in
-        // the coarse SCANNED state (MATCHED) — that transient dwell is what stamped
-        // receiving_lines.scanned_at on unbox/unfound receives, leaking the door-scan
-        // timestamp that triage owns. scan_only ("Mark as scanned") keeps MATCHED so
-        // its "SCANNED" mark + revert still work (and legitimately owns scanned_at).
-        set_workflow_status: skipZohoReceive ? 'MATCHED' : 'UNBOXED',
+        // A real receive advances lines straight to DONE (local SoT). Zoho
+        // createPurchaseReceive stays best-effort in after() — Sync failed must
+        // not park lifecycle at UNBOXED. scan_only keeps MATCHED so its
+        // "SCANNED" mark + revert still work (and legitimately owns scanned_at).
+        set_workflow_status: skipZohoReceive ? 'MATCHED' : 'DONE',
         // A real receive must not downgrade a line already unboxed at first scan;
         // scan_only ("Mark as scanned") leaves this false so its revert still works.
         advanceOnly: !skipZohoReceive,
@@ -773,20 +775,34 @@ export const POST = withAuth(async (request, ctx) => {
     }
 
     let packageZohoPoId: string | null = null;
+    let cartonSource: string | null = null;
     try {
-      const pkgPoRes = await tenantQuery<{ zoho_purchaseorder_id: string | null }>(
+      const pkgPoRes = await tenantQuery<{
+        zoho_purchaseorder_id: string | null;
+        source: string | null;
+      }>(
         ctx.organizationId,
-        `SELECT zoho_purchaseorder_id FROM receiving_carton
+        `SELECT zoho_purchaseorder_id, source FROM receiving_carton
           WHERE id = $1 AND organization_id = $2 LIMIT 1`,
         [receivingId, ctx.organizationId],
       );
       packageZohoPoId = String(pkgPoRes.rows[0]?.zoho_purchaseorder_id || '').trim() || null;
+      cartonSource = String(pkgPoRes.rows[0]?.source || '').trim() || null;
     } catch {
       /* silent */
     }
 
+    // Unfound / unmatched cartons never hit Zoho purchase-receive — force
+    // local_receive even when the client sent zoho_receive.
+    const isUnfoundCarton = cartonSource === 'unmatched' && !packageZohoPoId;
+    if (isUnfoundCarton && !isUnreceive && !skipZohoReceive) {
+      localReceive = true;
+    }
+
     // Sync part: fill missing PO id from the package-level link (no Zoho
     // call — pure DB lookup we already did above into packageZohoPoId).
+    // Never backfill a PO onto an unmatched carton — that would drag unfound
+    // lines into createPurchaseReceive.
     // line_item_id resolution requires getPurchaseOrderById which is a
     // synchronous Zoho roundtrip; that work moved into after() below so
     // the receive click never waits on Zoho for any reason. The matcher
@@ -795,6 +811,7 @@ export const POST = withAuth(async (request, ctx) => {
     // after()'s resolve only fires for stragglers (manually-added lines
     // promoted later) and no longer blocks the request.
     for (const l of updatedLines) {
+      if (isUnfoundCarton) continue;
       const poId = String(l.zoho_purchaseorder_id || '').trim();
       if (!poId && packageZohoPoId) {
         l.zoho_purchaseorder_id = packageZohoPoId;
@@ -812,62 +829,38 @@ export const POST = withAuth(async (request, ctx) => {
     // Optimistic-view PO set for the response — every PO id touched by
     // any updated line, regardless of whether its lines have a resolved
     // line_item_id yet. after() resolves stragglers and then calls Zoho
-    // for the subset that resolves successfully.
+    // for the subset that resolves successfully. Unfound / local_receive
+    // never claim Zoho attempts.
     const attemptedPoIds = new Set<string>();
-    for (const l of updatedLines) {
-      const poId = String(l.zoho_purchaseorder_id || '').trim();
-      if (poId) attemptedPoIds.add(poId);
+    if (!localReceive) {
+      for (const l of updatedLines) {
+        const poId = String(l.zoho_purchaseorder_id || '').trim();
+        if (poId) attemptedPoIds.add(poId);
+      }
     }
 
-    // Scanned vs unboxed separation. Workflow ladder: MATCHED ("scanned at
-    // the dock") → UNBOXED ("physically processed; Zoho receive pending") →
-    // DONE ("Zoho-confirmed received"). Receiving units here = the carton was
-    // unboxed, so:
-    //   - lines with a Zoho PO link go to UNBOXED now; after()'s background
-    //     receive promotes them to DONE on success (failures stay UNBOXED —
-    //     visibly Zoho-pending instead of re-queuing as merely scanned).
-    //   - lines with no Zoho link (unfound / off-PO extras) have nothing to
-    //     confirm and complete as DONE immediately.
-    //   - scan_only / unreceive are excluded: both leave lines at MATCHED
-    //     (scan_only via receiveLineUnits; unreceive via unreceiveLineUnits),
-    //     and the old unconditional DONE promotion here was silently defeating
-    //     that revert.
+    // Local lifecycle completes on Receive. Zoho sync is best-effort in after()
+    // — failure must not park the line at UNBOXED (face stays RECEIVED; Sync
+    // row can still say failed). scan_only / unreceive stay excluded: both leave
+    // lines at MATCHED and must not be silently promoted to DONE.
     if (linesUpdatedViaReceiveUnits && updatedLines.length > 0 && !skipZohoReceive && !isUnreceive) {
-      const zohoPendingIds: number[] = [];
-      const localOnlyIds: number[] = [];
+      const ids = updatedLines.map((l) => l.id);
+      // Route through the guarded chokepoint (was inline raw UPDATEs — §7 Step D).
+      // skipEvent: this route emits its own UNBOX_CONFIRMED ops-event + audit
+      // (and receiveLineUnits emitted the receive events) — no double-write.
+      // receiveLineUnits already targets DONE; this batch is the safety net when
+      // a prior path left the row short of DONE.
+      await withTenantTransaction(ctx.organizationId, async (client) => {
+        for (const id of ids) {
+          await transitionReceivingLine(
+            { receivingLineId: id, to: 'DONE', actorStaffId: staffId, station, skipEvent: true },
+            client,
+            ctx.organizationId,
+          );
+        }
+      });
       for (const l of updatedLines) {
-        if (String(l.zoho_purchaseorder_id || '').trim()) zohoPendingIds.push(l.id);
-        else localOnlyIds.push(l.id);
-      }
-      // Route these workflow_status advances through the guarded chokepoint
-      // (was inline raw UPDATEs — §7 Step D). One shared tx per batch keeps the
-      // atomicity the batch UPDATE had; skipEvent because this route emits its own
-      // UNBOX_CONFIRMED ops-event + audit (and receiveLineUnits emitted the receive
-      // events) — no double-write.
-      if (zohoPendingIds.length > 0) {
-        await withTenantTransaction(ctx.organizationId, async (client) => {
-          for (const id of zohoPendingIds) {
-            await transitionReceivingLine(
-              { receivingLineId: id, to: 'UNBOXED', actorStaffId: staffId, station, skipEvent: true },
-              client,
-              ctx.organizationId,
-            );
-          }
-        });
-      }
-      if (localOnlyIds.length > 0) {
-        await withTenantTransaction(ctx.organizationId, async (client) => {
-          for (const id of localOnlyIds) {
-            await transitionReceivingLine(
-              { receivingLineId: id, to: 'DONE', actorStaffId: staffId, station, skipEvent: true },
-              client,
-              ctx.organizationId,
-            );
-          }
-        });
-      }
-      for (const l of updatedLines) {
-        l.workflow_status = String(l.zoho_purchaseorder_id || '').trim() ? 'UNBOXED' : 'DONE';
+        l.workflow_status = 'DONE';
       }
     }
 
@@ -1126,45 +1119,8 @@ export const POST = withAuth(async (request, ctx) => {
         console.warn('mark-received-po: Zoho receive background failed', err);
       }
 
-      // UNBOXED → DONE on Zoho confirmation. DONE means "Zoho-confirmed
-      // received"; lines whose PO receive failed stay UNBOXED so the pending
-      // sync is visible (and replayable) instead of masquerading as complete.
-      // Status-guarded so we never clobber a state someone advanced meanwhile.
-      if (!skipZohoReceive && !isUnreceive) {
-        const confirmIds = updatedLines
-          .filter((l) => {
-            const poId = String(l.zoho_purchaseorder_id || '').trim();
-            return poId && poZohoReceiveSucceeded.get(poId) === true;
-          })
-          .map((l) => l.id);
-        if (confirmIds.length > 0) {
-          try {
-            // Chokepoint fold (§7 Step D). expectedFrom:'UNBOXED' reproduces the
-            // former `AND workflow_status = 'UNBOXED'` guard per line — a line
-            // advanced elsewhere meanwhile returns 409 and is skipped (no ROLLBACK
-            // on the shared tx in the executor path), never clobbered. skipEvent:
-            // the carton UNBOX_CONFIRMED event already covers this.
-            await withTenantTransaction(ctx.organizationId, async (client) => {
-              for (const id of confirmIds) {
-                await transitionReceivingLine(
-                  {
-                    receivingLineId: id,
-                    to: 'DONE',
-                    expectedFrom: 'UNBOXED',
-                    actorStaffId: staffId,
-                    station,
-                    skipEvent: true,
-                  },
-                  client,
-                  ctx.organizationId,
-                );
-              }
-            });
-          } catch (err) {
-            console.warn('mark-received-po: UNBOXED→DONE promotion failed', err);
-          }
-        }
-      }
+      // Local DONE already stamped on the request path. Zoho createPurchaseReceive
+      // above is best-effort — do not gate lifecycle on Sync success.
 
       try {
         if (!skipZohoReceive && !isUnreceive && inventory) {
@@ -1422,8 +1378,8 @@ export const POST = withAuth(async (request, ctx) => {
       // staggered green checks. Optimistic — the Zoho writes run in after();
       // the realtime `zohoReceive` verdict reconciles a background failure.
       summary: {
-        marked_received:
-          !skipZohoReceive && !isUnreceive && attemptedPoIds.size > 0 && !circuitOpen,
+        // Local DONE stands — not "Zoho attempt fired". Sync row owns Zoho.
+        marked_received: !skipZohoReceive && !isUnreceive && updatedLines.length > 0,
         descriptions_updated: descriptionsUpdated,
         notes_updated: notesUpdated,
         local_only: attemptedPoIds.size === 0 || isUnreceive,

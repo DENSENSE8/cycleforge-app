@@ -9,7 +9,10 @@ import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 /**
  * PATCH /api/locations/[barcode]/properties
  *
- * Edit a bin's own metadata — name, barcode, bin type, capacity, sort order.
+ * Edit a bin's own metadata — name, operator nickname (`displayName`), barcode,
+ * bin type, capacity, sort order. This is also the ONLY rename door for a
+ * station bench (Settings → Stations patches `displayName` here) — a bench is a
+ * `locations` row, so it needs no route of its own.
  * This is deliberately separate from PATCH /api/locations/[barcode], which is
  * reserved for stock content actions (take / put / set / count). Structural
  * edits reuse `sku_stock.manage`, the same gate as room renames.
@@ -42,6 +45,7 @@ export async function PATCH(
 
     const updated = await updateLocation(before.id, {
       ...(parsed.name !== undefined ? { name: parsed.name } : {}),
+      ...(parsed.displayName !== undefined ? { displayName: parsed.displayName } : {}),
       ...(parsed.barcode !== undefined ? { barcode: parsed.barcode } : {}),
       ...(parsed.binType !== undefined ? { binType: parsed.binType } : {}),
       ...(parsed.capacity !== undefined ? { capacity: parsed.capacity } : {}),

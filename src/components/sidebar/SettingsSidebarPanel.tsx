@@ -119,6 +119,15 @@ function sectionIcon(id: SettingsSection) {
           <line x1="7" y1="7" x2="7.01" y2="7" />
         </svg>
       );
+    case 'stations':
+      // A workbench: top surface + two legs — the physical thing being named.
+      return (
+        <svg className={ICON_CLS} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M3 9h18" />
+          <path d="M4 6h16a1 1 0 0 1 1 1v2H3V7a1 1 0 0 1 1-1z" />
+          <path d="M6 9v9M18 9v9" />
+        </svg>
+      );
     case 'team':
       return (
         <svg className={ICON_CLS} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

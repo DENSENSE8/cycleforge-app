@@ -61,6 +61,14 @@ interface PhotoRow {
   receivingLineId: number | null;
   photoUrl: string;
   /**
+   * Downscaled variant for tiles (the photo peek's corner/fan), when storage
+   * has one. Absent → callers fall back to {@link PhotoRow.photoUrl}.
+   *
+   * Kept as a SECOND field rather than lowering `photoUrl`: the fullscreen
+   * viewer zooms and pans off the same payload and must stay full-resolution.
+   */
+  thumbUrl?: string;
+  /**
    * Legacy alias of {@link PhotoRow.photoType} — kept because five readers parse
    * it AS the stage, including the server-side receive gate. See the field docs
    * on `ReceivingPhotoListRow`. New readers take `photoType`.
@@ -217,10 +225,13 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     }
 
     const photos = await Promise.all(
-      rows.map(async (row) => ({
-        ...mapRow(row),
-        photoUrl: await resolvePhotoAccessUrl(row.id, ctx.organizationId, 'full'),
-      })),
+      rows.map(async (row) => {
+        const [photoUrl, thumbUrl] = await Promise.all([
+          resolvePhotoAccessUrl(row.id, ctx.organizationId, 'full'),
+          resolvePhotoAccessUrl(row.id, ctx.organizationId, 'thumb'),
+        ]);
+        return { ...mapRow(row), photoUrl, thumbUrl };
+      }),
     );
 
     return NextResponse.json({

@@ -2,6 +2,8 @@
 
 import Link from 'next/link';
 import type { SkuHit } from '@/hooks/useWarehouseSkuSearch';
+import { Panel } from '@/design-system/primitives';
+
 
 interface WarehouseSkuSearchResultsProps {
   loading: boolean;
@@ -16,25 +18,25 @@ export function WarehouseSkuSearchResults({
 }: WarehouseSkuSearchResultsProps) {
   if (loading) {
     return (
-      <div className="overflow-hidden rounded-xl border border-border-soft bg-surface-card">
+      <Panel radius="xl" padding="none" className="overflow-hidden">
         <div className="px-3 py-3 text-xs text-text-faint">Searching…</div>
-      </div>
+      </Panel>
     );
   }
 
   if (hits && hits.length === 0) {
     return (
-      <div className="overflow-hidden rounded-xl border border-border-soft bg-surface-card">
+      <Panel radius="xl" padding="none" className="overflow-hidden">
         <div className="px-3 py-3 text-xs text-text-soft">
           No SKUs or products match.
         </div>
-      </div>
+      </Panel>
     );
   }
 
   if (hits && hits.length > 0) {
     return (
-      <div className="overflow-hidden rounded-xl border border-border-soft bg-surface-card shadow-lg">
+      <Panel radius="xl" padding="none" elevation="md" className="overflow-hidden">
         <ul className="max-h-72 divide-y divide-border-hairline overflow-y-auto">
           {hits.map((h) => (
             <li key={h.sku}>
@@ -64,7 +66,7 @@ export function WarehouseSkuSearchResults({
             </li>
           ))}
         </ul>
-      </div>
+      </Panel>
     );
   }
 

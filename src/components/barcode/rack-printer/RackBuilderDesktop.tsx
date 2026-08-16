@@ -4,7 +4,7 @@ import { Button, IconButton } from '@/design-system/primitives';
 import { LABEL_BUILDER } from '../label-builder-layout';
 import { STEPS } from './rack-printer-config';
 import { StepPills } from './StepPills';
-import { NumericStep } from './NumericStep';
+import { NumericStep } from '@/components/barcode/bin-label-printer/NumericStep';
 import { ConfigSheet } from './ConfigSheet';
 import { GiantRackPreviewPanel } from './GiantRackPreviewPanel';
 import { MissingLetterBanner } from './RackBuilderMobile';

@@ -18,13 +18,27 @@
  * The label HTML embeds its own `window.onload -> window.print()` (so the legacy
  * popup path still drives itself); inside the iframe that same script runs in the
  * frame's context and prints the frame. We only own the iframe lifecycle here.
+ *
+ * DESKTOP HOST: inside the Electron shell (`electron/`) the same HTML is printed
+ * silently with no dialog and no `--kiosk-printing` flag — see
+ * {@link ../desktop/desktop-host}. That branch lives HERE, in the one browser
+ * fallback every print call site already funnels through, so the five callers
+ * stay unchanged and no second print SoT appears.
  */
+
+import { desktopPrintHtml } from '@/lib/desktop/desktop-host';
+import { isSilentPrintEnabled } from '@/lib/print/printMode';
 
 export interface IframePrintOptions {
   /** Safety-net delay (ms) before the hidden iframe is torn down. Default 60s. */
   removeAfterMs?: number;
   /** Log prefix used if the document can't be mounted. */
   name?: string;
+  /**
+   * Desktop host only — OS printer to target. Omitted → the system default,
+   * which matches what `--kiosk-printing` does in the browser path.
+   */
+  deviceName?: string | null;
 }
 
 /**
@@ -34,6 +48,25 @@ export interface IframePrintOptions {
  */
 export function printHtmlInIframe(html: string, options: IframePrintOptions = {}): boolean {
   if (typeof document === 'undefined' || !document.body) return false;
+
+  // Desktop host — print silently to a driver-owned OS printer, the one job the
+  // browser paths cannot do. Gated on the SAME per-workstation silent-print
+  // switch as every other silent path, so an operator who turns it off still
+  // gets a dialog they can pick a printer in.
+  if (isSilentPrintEnabled()) {
+    const pending = desktopPrintHtml(html, { deviceName: options.deviceName ?? null });
+    if (pending) {
+      // Fire-and-forget: this function's contract is "the job was handed off",
+      // not "the job finished" — identical to the iframe path, whose print is
+      // driven by the embedded script after this returns.
+      void pending.then((res) => {
+        if (!res.success) {
+          console.error(`[print] desktop silent print failed: ${res.reason ?? 'unknown'}`);
+        }
+      });
+      return true;
+    }
+  }
 
   const iframe = document.createElement('iframe');
   iframe.setAttribute('aria-hidden', 'true');

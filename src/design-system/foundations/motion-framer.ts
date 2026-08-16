@@ -132,16 +132,6 @@ export const framerDuration = {
   /** Station scan-band glow — submit / click pulse flash */
   scanBandGlowPulse: 0.26,
   /**
-   * Station scan-band ready HUD — empty-focused block caret blink (opacity
-   * keyframes). Pair with `framerTransition.scanBandReadyBlink`.
-   */
-  scanBandReadyBlink: 1.1,
-  /**
-   * Station scan-band ready HUD — focused sweep reticle (transform y loop).
-   * Gate under `useReducedMotion` (no travel when RM).
-   */
-  scanBandReadySweep: 3.2,
-  /**
    * Procedure Focus Deck layout settle — face height, pull-up margin, peek
    * geometry when the step pointer advances. Soft + slow (Smart Stack notch
    * commit). Single-channel Motion `layout` FLIP — no competing CSS
@@ -454,26 +444,6 @@ export const framerTransition = {
     duration: framerDuration.scanBandGlowPulse,
     ease: motionBezier.easeOut,
     times: [0, 0.4, 1],
-  } satisfies Transition,
-
-  /**
-   * Station scan-band ready HUD — empty-focused block caret blink. Opacity
-   * only (GPU). Consume via `StationScanBar` when focused + empty.
-   */
-  scanBandReadyBlink: {
-    duration: framerDuration.scanBandReadyBlink,
-    ease: 'linear',
-    repeat: Infinity,
-  } satisfies Transition,
-
-  /**
-   * Station scan-band ready HUD — focused horizontal sweep (transform y).
-   * Off under reduced motion. Consume via `ScanBandGlowHost`.
-   */
-  scanBandReadySweep: {
-    duration: framerDuration.scanBandReadySweep,
-    ease: 'linear',
-    repeat: Infinity,
   } satisfies Transition,
 
   /** Auth card shell mount — pair with `framerPresence.signInCard` */
@@ -892,18 +862,6 @@ export const scanBandGlowOpacity = {
   /** Mid-pulse dip when already focused (keeps a visible flash at opacity 1). */
   pulseDip: 0.42,
 } as const;
-
-/**
- * Station scan-band ready HUD — low-key block caret blink opacity keyframes.
- * Pair with `framerTransition.scanBandReadyBlink`.
- */
-export const scanBandReadyBlinkOpacity = [0.75, 0.2, 0.75] as const;
-
-/**
- * Station scan-band ready HUD — sweep travel (`PRIMARY_CHROME_ROW_FACE` = h-7).
- * Pair with `framerTransition.scanBandReadySweep` (y: top → bottom → top).
- */
-export const scanBandReadySweepY = [0, 26, 0] as const;
 
 /**
  * Row-to-row slide inside `WorkOrderAssignmentCard`.

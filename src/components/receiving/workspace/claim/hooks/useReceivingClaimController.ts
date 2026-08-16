@@ -25,6 +25,10 @@ import { useClaimTicketSearch } from './useClaimTicketSearch';
 import { useClaimTemplate } from './useClaimTemplate';
 import { useClaimSellerMessage } from './useClaimSellerMessage';
 import { useClaimTicketReply } from './useClaimTicketReply';
+import {
+  nextAutoCreateFromEmptyTrackingFlag,
+  shouldAutoCreateFromEmptyTrackingSeed,
+} from './claim-empty-seed-create';
 
 /**
  * Prefer the server's field-level `details` (e.g. a Zod issue string like
@@ -81,8 +85,8 @@ export interface ClaimModalProps {
   /** Seeds the "What happened?" note when the modal opens (RETURN match CTA). */
   prefillReason?: string;
   /**
-   * Which wizard tab to land on when the modal opens. Defaults to `create`
-   * (New ticket). Station Ticket empty-state "Link ticket" passes `link`.
+   * Which wizard tab to land on when the modal opens. Defaults to `link`
+   * (existing ticket). Create remains available via the mode combobox.
    */
   initialMode?: ClaimModalMode;
   onClose: () => void;
@@ -104,7 +108,7 @@ export function useReceivingClaimController({
   row,
   lineIdOverride,
   prefillReason,
-  initialMode = 'create',
+  initialMode = 'link',
   onClose,
   onTicketCreated,
   onTicketUnlinked,
@@ -137,10 +141,12 @@ export function useReceivingClaimController({
 
   // ── Wizard / mode state ──────────────────────────────────────────────────
   const [claimType, setClaimType] = useState<ClaimType>(initialClaimType);
-  const [mode, setMode] = useState<ClaimModalMode>('create');
-  const [step, setStep] = useState<ClaimWizardStep>('photos');
+  const [mode, setMode] = useState<ClaimModalMode>(initialMode);
+  const [step, setStep] = useState<ClaimWizardStep>(() => claimWizardStartStep(initialMode));
   const [filedTicket, setFiledTicket] = useState<FiledTicket | null>(null);
   const [reason, setReason] = useState('');
+  /** True only after empty tracking-seeded Link search auto-flipped to Create. */
+  const [autoCreateFromEmptyTracking, setAutoCreateFromEmptyTracking] = useState(false);
 
   // ── Recipients (opening comment) ─────────────────────────────────────────
   // Default is a public reply + CC. `notePublic` files the opening comment as a
@@ -173,20 +179,43 @@ export function useReceivingClaimController({
 
   // ── Composed sub-hooks ───────────────────────────────────────────────────
   const photos = useClaimPhotos(open, receivingId);
-  const template = useClaimTemplate({
-    open,
-    // Keep the preview warm across Photos · Ticket so subject/body stay fresh.
-    active: step === 'photos' || step === 'compose',
-    receivingId,
-    lineId,
-    claimType,
-    linkedTicketId: mode === 'link' ? filedTicket?.id ?? null : null,
-  });
+  const trackingSeed =
+    typeof row.tracking_number === 'string' ? row.tracking_number.trim() : '';
   const search = useClaimTicketSearch({
     open,
     enabled: mode === 'link',
     receivingId,
     lineId,
+    // Seed Link with carton tracking so Zendesk search runs without typing
+    // (id-vs-search SoT: carrier tracking never calls getTicket).
+    initialQuery: trackingSeed || null,
+  });
+  const template = useClaimTemplate({
+    open,
+    // Create and Link both mount compose — keep the claim-type template warm
+    // so Link shows the Unfound body before a ticket is picked.
+    active: open,
+    receivingId,
+    lineId,
+    claimType,
+    initialSourcePlatform: row.source_platform ?? null,
+    initialReceivingType:
+      row.carton_intake_type || row.receiving_type || row.intake_type || null,
+    initialIsReturn:
+      String(row.carton_intake_type || row.receiving_type || '')
+        .trim()
+        .toUpperCase() === 'RETURN'
+        ? true
+        : null,
+    initialReturnPlatform: null,
+    // Link: once a ticket is picked, replace Subject with that ticket's title.
+    // Body stays the generated claim-type template unless the operator edits.
+    linkedTicketId:
+      mode === 'link'
+        ? (search.selectedTicket?.id ?? filedTicket?.id ?? null)
+        : null,
+    linkedTicketSubject:
+      mode === 'link' ? (search.selectedTicket?.subject ?? null) : null,
   });
   // Gate the seller hook's auto-draft on reaching the seller step.
   const sellerActive = step === 'seller';
@@ -205,25 +234,41 @@ export function useReceivingClaimController({
   });
   const reply = useClaimTicketReply({ open, ticketId: filedTicket?.id ?? null });
 
-  // Reset the controller-owned cells each time the modal opens. Sub-hooks reset
-  // their own state on `open`.
+  // Open-time seeds only — read via refs so a live Type/Platform save (which
+  // updates row → defaultReceivingClaimType) cannot re-run this and bounce
+  // mode back to Link (re-firing ticket search) or wipe operator Claim picks.
+  const openSeedRef = useRef({
+    claimType: initialClaimType,
+    mode: initialMode,
+    prefillReason,
+  });
+  openSeedRef.current = {
+    claimType: initialClaimType,
+    mode: initialMode,
+    prefillReason,
+  };
+
+  // Reset controller-owned cells when the panel opens or the carton/line
+  // changes — never when derived defaults drift mid-session.
   useEffect(() => {
     if (!open) return;
-    setReason(prefillReason ?? '');
+    const seed = openSeedRef.current;
+    setReason(seed.prefillReason ?? '');
     setDraftBody(null);
-    setClaimType(initialClaimType);
+    setClaimType(seed.claimType);
     setNotePublic(true);
     setCcEmails(readStoredCcEmails(LAST_CC_EMAIL_STORAGE_KEY));
     // `crypto.randomUUID` only exists in a secure context (HTTPS / localhost);
     // over a plain-HTTP LAN IP it's undefined. `randomId` falls back safely.
     idempotencyKey.current = randomId();
-    setMode(initialMode);
-    setStep(claimWizardStartStep(initialMode));
+    setMode(seed.mode);
+    setStep(claimWizardStartStep(seed.mode));
     setFiledTicket(null);
     setLinkCommitStatus('idle');
     setLinkUpdateStatus('idle');
     setArchiveState(null);
-  }, [open, receivingId, lineId, initialClaimType, prefillReason, initialMode]);
+    setAutoCreateFromEmptyTracking(false);
+  }, [open, receivingId, lineId]);
 
   // Remember every CC email ever entered (accumulated, not just this session's
   // set) so the next claim on any carton auto-fills from the operator's full
@@ -272,8 +317,8 @@ export function useReceivingClaimController({
 
   // ── Section navigation (scroll-spy) ──────────────────────────────────────
   // Create: filed/seller require a filed ticket.
-  // Link: photos+ only after commit; filed/seller after update posted; seller
-  // skipped for 'return'.
+  // Link: photos+compose always reachable; filed/seller after update posted;
+  // seller skipped for 'return'.
   const isStepDisabled = (key: string): boolean => {
     const target = key as ClaimWizardStep;
     if (mode === 'create') {
@@ -281,8 +326,7 @@ export function useReceivingClaimController({
       if (target === 'filed') return !filedTicket;
       return false;
     }
-    if (target === 'find') return false;
-    if (linkCommitStatus !== 'committed') return true;
+    if (target === 'find' || target === 'photos' || target === 'compose') return false;
     if (target === 'filed') return linkUpdateStatus !== 'posted';
     if (target === 'seller') return linkUpdateStatus !== 'posted' || !sellerStepApplicable;
     return false;
@@ -296,19 +340,17 @@ export function useReceivingClaimController({
   // ── Wizard navigation ────────────────────────────────────────────────────
   const handleModeChange = (next: ClaimModalMode) => {
     setMode(next);
-    if (next === 'link') {
-      // Resume wherever the link sub-flow left off; a fresh link starts at Find.
-      seller.resetBootstrap();
-      if (linkCommitStatus !== 'committed') {
-        setStep('find');
-      } else if (linkUpdateStatus !== 'posted') {
-        setStep('photos');
-      } else {
-        setStep('filed');
-      }
-    } else {
-      setStep(filedTicket ? 'filed' : 'photos');
-    }
+    setAutoCreateFromEmptyTracking(
+      nextAutoCreateFromEmptyTrackingFlag({ prev: false, event: 'mode-change' }),
+    );
+    // Clear link pick / commit state; keep claim type + template (shared compose).
+    search.setSelectedTicket(null);
+    setFiledTicket(null);
+    setLinkCommitStatus('idle');
+    setLinkUpdateStatus('idle');
+    seller.resetBootstrap();
+    seller.resetDraftState();
+    setStep(next === 'link' ? 'find' : 'photos');
   };
 
   const handleStepClick = (key: string) => {
@@ -341,6 +383,81 @@ export function useReceivingClaimController({
       }
     }
   };
+
+  // Sole tracking suggestion → auto-pick so Subject replaces without an extra click.
+  // Multi-hit lists still require an explicit pick.
+  useEffect(() => {
+    if (!open || mode !== 'link') return;
+    if (search.selectedTicket) return;
+    if (!search.seededQuery) return;
+    if (search.ticketQuery.trim() !== search.seededQuery) return;
+    if (search.searchLoading || search.searchError) return;
+    if (search.ticketResults.length !== 1) return;
+    const sole = search.ticketResults[0];
+    if (!sole || sole.linkedToThis) return;
+    selectLinkTicket(sole);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- selectLinkTicket closes over mode/search
+  }, [
+    open,
+    mode,
+    search.selectedTicket,
+    search.seededQuery,
+    search.ticketQuery,
+    search.searchLoading,
+    search.searchError,
+    search.ticketResults,
+  ]);
+
+  // Empty tracking-seeded Link search → Create once per open (friendly path).
+  // In-surface helper copy (ClaimEmptySeedCreateHelper) explains the flip;
+  // no toast — easy to miss beside the caption.
+  const emptySeedFlipKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!open) {
+      emptySeedFlipKeyRef.current = null;
+      setAutoCreateFromEmptyTracking(
+        nextAutoCreateFromEmptyTrackingFlag({ prev: false, event: 'closed' }),
+      );
+      return;
+    }
+    const flipKey = `${receivingId ?? 'x'}:${search.seededQuery}`;
+    if (
+      !shouldAutoCreateFromEmptyTrackingSeed({
+        open,
+        mode,
+        seededQuery: search.seededQuery,
+        ticketQuery: search.ticketQuery,
+        searchLoading: search.searchLoading,
+        searchError: search.searchError,
+        resultCount: search.ticketResults.length,
+        hasSelectedTicket: search.selectedTicket != null,
+        alreadyFlippedKey: emptySeedFlipKeyRef.current,
+        flipKey,
+      })
+    ) {
+      return;
+    }
+    emptySeedFlipKeyRef.current = flipKey;
+    handleModeChange('create');
+    // After mode-change clears the flag, re-set so Create paints the helper.
+    setAutoCreateFromEmptyTracking(
+      nextAutoCreateFromEmptyTrackingFlag({
+        prev: false,
+        event: 'empty-seed-flip',
+      }),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- handleModeChange stable enough via mode/search
+  }, [
+    open,
+    mode,
+    receivingId,
+    search.seededQuery,
+    search.ticketQuery,
+    search.searchLoading,
+    search.searchError,
+    search.ticketResults,
+    search.selectedTicket,
+  ]);
 
   const deselectLinkedTicket = () => {
     search.setSelectedTicket(null);
@@ -498,9 +615,25 @@ export function useReceivingClaimController({
     }
   };
 
-  // ── Link flow: attach an existing ticket to this carton/line ─────────────
-  const submitLink = async () => {
-    if (linkCommitStatus === 'linking' || !search.selectedTicket || !receivingId) return;
+  // ── Link flow: attach ticket + post template body as one CTA ─────────────
+  /** Link-only (no Chat flip). Prefer {@link submitLinkAndUpdate} from the footer. */
+  const submitLink = async (): Promise<{
+    ok: boolean;
+    ticketNumber?: string;
+    ticketId?: number;
+    ticketUrl?: string | null;
+  }> => {
+    if (linkCommitStatus === 'linking' || !search.selectedTicket || !receivingId) {
+      return { ok: false };
+    }
+    if (linkCommitStatus === 'committed' && filedTicket?.id === search.selectedTicket.id) {
+      return {
+        ok: true,
+        ticketNumber: filedTicket.number,
+        ticketId: filedTicket.id ?? search.selectedTicket.id,
+        ticketUrl: filedTicket.url,
+      };
+    }
     const selected = search.selectedTicket;
     setLinkCommitStatus('linking');
     try {
@@ -513,25 +646,19 @@ export function useReceivingClaimController({
       if (!res.ok || !data?.success) {
         toast.error(apiErrorText(data, 'Could not link the ticket'));
         setLinkCommitStatus('idle');
-        return;
+        return { ok: false };
       }
       const url = typeof data.ticketUrl === 'string' ? data.ticketUrl : null;
-      toast.success(`Linked ${data.ticketNumber}`, {
-        action: url
-          ? { label: 'Open', onClick: () => window.open(url, '_blank', 'noopener') }
-          : undefined,
-      });
-      onTicketCreated(String(data.ticketNumber));
+      const ticketNumber = String(data.ticketNumber);
       setLinkCommitStatus('committed');
       setLinkUpdateStatus('idle');
-      setFiledTicket({ number: String(data.ticketNumber), url, id: selected.id });
-      // Land on Photos — same Photos → Ticket → Review arc the create flow
-      // runs, ending in a comment (+ attached photos) posted to THIS ticket.
+      setFiledTicket({ number: ticketNumber, url, id: selected.id });
       seller.resetBootstrap();
-      setStep('photos');
+      return { ok: true, ticketNumber, ticketId: selected.id, ticketUrl: url };
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Network error');
       setLinkCommitStatus('idle');
+      return { ok: false };
     }
   };
 
@@ -561,19 +688,24 @@ export function useReceivingClaimController({
     }
   };
 
-  // Link flow's Review step "submit": posts the composed subject/body as a
-  // comment on the ALREADY-LINKED ticket, attaching the selected photos —
-  // the same subject/body/recipients/photo-selection UI as the create flow,
-  // but updating the existing ticket instead of filing a new one.
-  const submitLinkUpdate = async () => {
-    if (linkUpdateStatus === 'posting' || !filedTicket?.id || !receivingId) return;
+  // Posts the composed subject/body as a comment on the linked ticket.
+  const submitLinkUpdate = async (ticketOverride?: {
+    id: number;
+    number: string;
+  }): Promise<boolean> => {
+    const ticketId = ticketOverride?.id ?? filedTicket?.id ?? search.selectedTicket?.id ?? null;
+    const ticketNumber =
+      ticketOverride?.number ??
+      filedTicket?.number ??
+      (ticketId != null ? `#${ticketId}` : '');
+    if (linkUpdateStatus === 'posting' || ticketId == null || !receivingId) return false;
     setLinkUpdateStatus('posting');
     try {
       const res = await fetch('/api/receiving/zendesk-claim/thread', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ticketId: filedTicket.id,
+          ticketId,
           receivingId,
           body: template.readDescription().trim(),
           subject: template.readSubject().trim(),
@@ -586,22 +718,48 @@ export function useReceivingClaimController({
       if (!res.ok || !data?.success) {
         toast.error(apiErrorText(data, 'Could not update the ticket'));
         setLinkUpdateStatus('idle');
-        return;
+        return false;
       }
       toast.success(
         notePublic
-          ? `Ticket ${filedTicket.number} updated — customer emailed`
-          : `Ticket ${filedTicket.number} updated`,
+          ? `Ticket ${ticketNumber} updated — customer emailed`
+          : `Ticket ${ticketNumber} updated`,
       );
       setLinkUpdateStatus('posted');
       setStep('filed');
-      // Mirror the create flow's auto-backup so the filed confirmation
-      // shows the same local-backup card either way.
       void archiveToNas();
+      return true;
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Network error');
       setLinkUpdateStatus('idle');
+      return false;
     }
+  };
+
+  /**
+   * One Link CTA: attach the ticket, post the template body (+ photos), then
+   * flip Displays to Chat via {@link onTicketCreated}. Never calls
+   * onTicketCreated after link-only.
+   */
+  const submitLinkAndUpdate = async () => {
+    if (
+      linkCommitStatus === 'linking' ||
+      linkUpdateStatus === 'posting' ||
+      !search.selectedTicket ||
+      !receivingId ||
+      !composeComplete
+    ) {
+      return;
+    }
+    const linked = await submitLink();
+    if (!linked.ok || linked.ticketId == null || !linked.ticketNumber) return;
+    const posted = await submitLinkUpdate({
+      id: linked.ticketId,
+      number: linked.ticketNumber,
+    });
+    if (!posted) return;
+    const number = linked.ticketNumber;
+    onTicketCreated(number.startsWith('#') ? number : `#${number}`);
   };
 
   return {
@@ -614,6 +772,7 @@ export function useReceivingClaimController({
     step,
     setStep,
     filedTicket,
+    autoCreateFromEmptyTracking,
     claimType,
     setClaimType,
     reason,
@@ -645,6 +804,7 @@ export function useReceivingClaimController({
     linkCommitStatus,
     unlinking,
     submitLink,
+    submitLinkAndUpdate,
     linkUpdateStatus,
     submitLinkUpdate,
     // sub-hooks

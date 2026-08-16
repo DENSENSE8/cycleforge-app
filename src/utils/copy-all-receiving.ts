@@ -96,7 +96,7 @@ export function buildReceivingCopyInfo(opts: {
       : currentLine.receiving_id != null
         ? `Receiving ID: ${currentLine.receiving_id}`
         : null,
-    `PO#: ${currentLine.zoho_purchaseorder_number || currentLine.zoho_purchaseorder_id || 'N/A'}`,
+    `PO#: ${currentLine.zoho_purchaseorder_number || currentLine.zoho_purchaseorder_id || '—'}`,
     trackings.length ? `Tracking: ${trackings.join(', ')}` : null,
     carton?.carrier
       ? `Carrier: ${carton.carrier}`

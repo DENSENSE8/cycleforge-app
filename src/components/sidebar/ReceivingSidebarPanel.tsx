@@ -37,7 +37,6 @@ import { buildPendingScanStubRow } from '@/components/sidebar/receiving/receivin
 import type { TrackingScanResult } from '@/components/sidebar/receiving/useTrackingScan';
 import { ReceivingReturnBanner } from '@/components/sidebar/ReceivingReturnBanner';
 import { ReceivingLinePicker } from '@/components/sidebar/receiving/ReceivingLinePicker';
-import { IncomingSidebarPanel } from '@/components/sidebar/receiving/IncomingSidebarPanel';
 import { SidebarRailScrollport } from '@/components/sidebar/rail-shell/SidebarRailScrollport';
 
 import { TriageScanBand, UnboxScanBand, PickupScanBand } from '@/components/sidebar/receiving/ReceivingScanBands';
@@ -250,8 +249,6 @@ export function ReceivingSidebarPanel() {
     queryClient,
     publishPhotoRequestFor,
     serialInputRef,
-    selectedLine,
-    scanMatchedRows,
     setSelectedLine,
     setScanMatchedRows,
     setLineAccordionBootstrap,
@@ -436,11 +433,11 @@ export function ReceivingSidebarPanel() {
             (HeaderPageSwitcher). Do not remount ReceivingModeSwitcher. */}
 
         {mode === 'incoming' ? (
-          // Incoming PO sync + email-triage band. Search / filters / Select live
-          // in IncomingWorkspaceHeader on the right pane.
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-            <IncomingSidebarPanel />
-          </div>
+          // Inbound desk is rail-less (Pattern E). Pipeline POS / Email / Removed
+          // and Docked Triage / Unbox live in IncomingWorkspaceHeader facet chrome.
+          // Desktop never mounts this branch (`isRaillessOrderFeedSurface`); mobile
+          // Actions pane stays empty rather than resurrecting a Views rail twin.
+          null
         ) : mode === 'repair' ? (
           // Repair Favorites + intake overlay. Active/Done · search · Add live in
           // RepairWorkspaceHeader on the right pane (RepairTable).

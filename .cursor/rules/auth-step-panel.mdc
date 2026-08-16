@@ -6,7 +6,7 @@ alwaysApply: false
 
 # Auth step panel architecture
 
-Reference: `src/components/auth/SignInAuthStepPanels.tsx`, `.claude/rules/display/auth-step-panel.md`.
+Reference: `src/components/auth/SignInAuthStepPanels.tsx` + `@/design-system/motion`.
 
 ## Layout
 

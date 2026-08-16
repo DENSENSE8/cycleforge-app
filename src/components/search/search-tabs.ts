@@ -8,15 +8,21 @@ import type { AiSearchHit } from '@/lib/search/ai-search-client';
 // ── Header-preview grouping ─────────────────────────────────────────────────
 
 /** UI entity type → group heading (orders first). */
-const PREVIEW_ENTITY_ORDER = ['order', 'unit', 'receiving', 'sku', 'repair', 'fba'] as const;
+const PREVIEW_ENTITY_ORDER = ['order', 'exception', 'unit', 'receiving', 'sku', 'repair', 'fba'] as const;
 const ENTITY_GROUP_LABEL: Record<string, string> = {
   order: 'Orders',
+  exception: 'Exceptions',
   unit: 'Units',
   receiving: 'Receiving',
   sku: 'SKUs',
   repair: 'Repairs',
   fba: 'FBA',
 };
+
+function previewBucket(entityType: string): string {
+  if (entityType === 'import_exception') return 'exception';
+  return entityType;
+}
 
 export interface PreviewGroup {
   label: string;
@@ -34,9 +40,10 @@ export function groupHitsForPreview(
 ): PreviewGroup[] {
   const byType = new Map<string, AiSearchHit[]>();
   for (const hit of hits) {
-    const bucket = byType.get(hit.entityType);
+    const type = previewBucket(hit.entityType);
+    const bucket = byType.get(type);
     if (bucket) bucket.push(hit);
-    else byType.set(hit.entityType, [hit]);
+    else byType.set(type, [hit]);
   }
   const groups: PreviewGroup[] = [];
   let used = 0;

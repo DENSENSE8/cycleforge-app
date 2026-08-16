@@ -115,6 +115,8 @@ interface NonlinearTableHostProps<Row, K extends string, C extends LedgerGridCol
   shellRef?: RefObject<HTMLDivElement | null>;
   /** Page scroll ancestor — grid virtualizes against it (Pending / To-ship). */
   scrollParentRef?: RefObject<HTMLElement | null>;
+  /** Scroll a row into view — deep-link / keyboard focus. */
+  scrollToKey?: string | null;
 
   // ── Page chrome passthrough ────────────────────────────────────────────────
   scrollRef?: RefObject<HTMLDivElement | null>;
@@ -147,6 +149,7 @@ export function NonlinearTableHost<Row, K extends string, C extends LedgerGridCo
   forceHidden,
   shellRef,
   scrollParentRef,
+  scrollToKey,
   scrollRef,
   className,
   columnTriggerPortalTarget = null,
@@ -174,6 +177,7 @@ export function NonlinearTableHost<Row, K extends string, C extends LedgerGridCo
       forceHidden={forceHidden}
       shellRef={shellRef}
       scrollParentRef={scrollParentRef}
+      scrollToKey={scrollToKey}
       scrollRef={scrollRef}
       className={className}
       testId={testId ?? definition.testId}

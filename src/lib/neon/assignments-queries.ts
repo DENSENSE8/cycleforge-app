@@ -1,5 +1,6 @@
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
+import { WORK_ASSIGNMENTS_ACTIVE_ON_CONFLICT } from '@/lib/neon/work-assignments-conflict';
 
 // ─── Tenancy note ────────────────────────────────────────────────────────────
 // `work_assignments` is tenant-owned (organization_id NOT NULL) with RLS FORCE +
@@ -10,11 +11,9 @@ import type { OrgId } from '@/lib/tenancy/constants';
 // no-op even if a future caller runs on the BYPASSRLS owner pool). Every export
 // requires the request's orgId.
 //
-// Follow-up: the `(entity_type, entity_id, work_type)` unique key on
-// upsertAssignment is NOT composited with organization_id. It is safe today only
-// because entity_id references globally-unique PKs (orders.id, etc.); make it
-// `(organization_id, entity_type, entity_id, work_type)` in a migration to remove
-// that latent assumption.
+// Active-row uniqueness is org-led via `ux_work_assignments_active_entity`
+// (organization_id, entity_type, entity_id, work_type) — see
+// WORK_ASSIGNMENTS_ACTIVE_ON_CONFLICT.
 
 export type WorkType = 'TEST' | 'PACK' | 'REPAIR' | 'QA' | 'RECEIVE' | 'STOCK_REPLENISH';
 export type EntityType = 'ORDER' | 'REPAIR' | 'FBA_SHIPMENT' | 'RECEIVING' | 'SKU_STOCK';
@@ -247,7 +246,7 @@ export async function upsertAssignment(params: CreateAssignmentParams): Promise<
     `INSERT INTO work_assignments
        (organization_id, entity_type, entity_id, work_type, assigned_tech_id, assigned_packer_id, status, notes, deadline_at)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-     ON CONFLICT (entity_type, entity_id, work_type)
+     ON CONFLICT ${WORK_ASSIGNMENTS_ACTIVE_ON_CONFLICT}
      DO UPDATE SET
        assigned_tech_id   = EXCLUDED.assigned_tech_id,
        assigned_packer_id = EXCLUDED.assigned_packer_id,

@@ -3,7 +3,7 @@
 import { useRef, useState } from 'react';
 import { microBadge } from '@/design-system/tokens/typography/presets';
 import { AnchoredLayer } from '@/design-system';
-import { Button } from '@/design-system/primitives';
+import { Panel, Button } from '@/design-system/primitives';
 import { SlidersHorizontal, ChevronDown } from '@/components/Icons';
 import {
     INVENTORY_BUCKETS,
@@ -217,11 +217,8 @@ export function InventorySidebarFilters({
                 placement="bottom-stretch"
                 gap={4}
             >
-                <div
-                    role="dialog"
-                    aria-label="Search filters"
-                    className="rounded-xl border border-border-soft bg-surface-card p-4 shadow-xl"
-                >
+                <Panel radius="xl" padding="sm" elevation="md" role="dialog"
+                    aria-label="Search filters">
                     <div className="space-y-4">
                         {/* Section: Search Field */}
                         <div>
@@ -288,7 +285,7 @@ export function InventorySidebarFilters({
                             </div>
                         )}
                     </div>
-                </div>
+                </Panel>
             </AnchoredLayer>
         </div>
     );

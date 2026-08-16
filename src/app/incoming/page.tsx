@@ -1,4 +1,6 @@
+import { Suspense } from 'react';
 import { HydrationBoundary } from '@tanstack/react-query';
+import { IncomingBrowseShell } from '@/components/receiving/incoming/IncomingBrowseShell';
 import { ReceivingSurfacePage } from '@/components/receiving/ReceivingSurfacePage';
 import { SurfaceGate } from '@/components/surfaces/SurfaceGate';
 import { SurfaceParamHygiene } from '@/components/routing/SurfaceParamHygiene';
@@ -10,24 +12,31 @@ import { seedIncomingLines } from '@/lib/queries/incoming-seed.server';
  * select → edit), not a scan bench. Bare `/incoming` derives the `incoming` mode
  * path-first. Legacy `/receiving?mode=incoming` redirects here.
  *
- * Wrapped in `SurfaceGate` (composition + flag → SurfaceRenderer, else the
- * legacy tree).
- *
- * Paint order: RSC seeds the bare-`/incoming` list into a HydrationBoundary so
- * the Inbound grid paints rows on first HTML instead of hydrating → firing one
- * client fetch → skeleton (the flagship resilience fix; mirrors `/unbox`).
+ * Paint order: this page returns immediately. {@link IncomingBrowseShell}
+ * puts a flush ledger stand-in in the first HTML (Speed Index). The full-list
+ * seed runs in a nested Suspense so a slow `/api/receiving-lines` cannot hold
+ * TTFB. Client still fetches if the seed bails.
  */
-export default async function IncomingPage() {
-  const seed = await seedIncomingLines();
-
+export default function IncomingPage() {
   return (
     <>
       <SurfaceParamHygiene />
-      <HydrationBoundary state={seed.state}>
-        <SurfaceGate surfaceKey="incoming">
-          <ReceivingSurfacePage mobileTitle="Inbound" />
-        </SurfaceGate>
-      </HydrationBoundary>
+      <IncomingBrowseShell>
+        <Suspense fallback={null}>
+          <IncomingSeededSurface />
+        </Suspense>
+      </IncomingBrowseShell>
     </>
+  );
+}
+
+async function IncomingSeededSurface() {
+  const seed = await seedIncomingLines();
+  return (
+    <HydrationBoundary state={seed.state}>
+      <SurfaceGate surfaceKey="incoming">
+        <ReceivingSurfacePage mobileTitle="Inbound" />
+      </SurfaceGate>
+    </HydrationBoundary>
   );
 }

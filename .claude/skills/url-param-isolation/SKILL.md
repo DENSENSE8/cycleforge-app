@@ -9,7 +9,7 @@ description: "Isolate query params across mode/surface switches by constructing 
 
 **Not this skill:** mount-gated open **paint** (pending until soft-replace) lives in
 `src/lib/routing/optimistic-url-param.ts` + `useOptimisticUrlParam` — see
-`.claude/rules/source-of-truth.md` → Optimistic URL-param paint. Isolation owns
+`AGENTS.md` + `src/lib/routing/optimistic-url-param.ts`. Isolation owns
 construct/parse; paint owns click→mount latency. Do not merge the two jobs.
 
 ## Quick Reference

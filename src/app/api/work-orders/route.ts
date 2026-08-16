@@ -16,6 +16,7 @@ import { compareWorkOrderRows } from '@/lib/work-orders/ranking';
 import { fetchAllWorkOrderQueues } from '@/lib/work-orders/fetch-all-queues';
 import { syncLinkProgressFromWorkAssignment } from '@/lib/ops-plans/task-links';
 import type { WorkOrderRow as SharedWorkOrderRow } from '@/components/work-orders/types';
+import { WORK_ASSIGNMENTS_ACTIVE_ON_CONFLICT } from '@/lib/neon/work-assignments-conflict';
 
 type QueueKey =
   | 'all'
@@ -209,8 +210,7 @@ async function upsertAssignment(client: PoolClient, orgId: string, params: {
        (organization_id, entity_type, entity_id, work_type, assigned_tech_id, assigned_packer_id,
         completed_by_packer_id, status, priority, deadline_at, notes)
      VALUES ($11, $1, $2, $3, $4, $5, $6, $7::assignment_status_enum, $8, $9, $10)
-     ON CONFLICT (entity_type, entity_id, work_type)
-       WHERE (status IN ('OPEN', 'ASSIGNED', 'IN_PROGRESS'))
+     ON CONFLICT ${WORK_ASSIGNMENTS_ACTIVE_ON_CONFLICT}
      DO UPDATE SET
        assigned_tech_id = EXCLUDED.assigned_tech_id,
        assigned_packer_id = EXCLUDED.assigned_packer_id,

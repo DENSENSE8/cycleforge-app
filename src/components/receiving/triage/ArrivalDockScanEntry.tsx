@@ -86,7 +86,7 @@ export function ArrivalDockScanEntry({
     STATION_SCAN_BAR_COLLAPSE_HOVER_DEFAULT_CLASS;
   const bottomRule = inputBorder || STATION_SCAN_BAR_DEFAULT_BOTTOM_RULE_CLASS;
 
-  const { locations, selectShelf } = staging;
+  const { locations, selectShelf, refreshCatalog } = staging;
   const enabled = typeof receivingId === 'number' && receivingId > 0;
 
   useReceivingEvents({
@@ -121,13 +121,17 @@ export function ArrivalDockScanEntry({
           toast.error(data.error || `Shelf not found: ${barcode}`);
           return null;
         }
+        // The catalog in hand did not carry this shelf, so it is stale — pull it
+        // again or the picker and the shelf summary will deny the placement we
+        // are about to make.
+        refreshCatalog();
         return { id: data.location.id, name: data.location.name ?? barcode };
       } catch {
         toast.error('Could not look up that shelf.');
         return null;
       }
     },
-    [locations],
+    [locations, refreshCatalog],
   );
 
   const placeCarton = useCallback(

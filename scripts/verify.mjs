@@ -37,20 +37,9 @@ const GATES = [
     ? []
     : [
         {
-          name: 'Unit tests + DS guards',
+          name: 'Unit tests + structural guards',
           cmd: 'node',
-          // register-server-only-shim: `import 'server-only'` on db/etc. is a Next
-          // client-boundary guard; node:test runs outside the RSC graph.
-          args: [
-            '--test',
-            '--require',
-            './scripts/register-server-only-shim.cjs',
-            '--import',
-            'tsx',
-            '--test-reporter',
-            'spec',
-            'src/**/*.test.ts',
-          ],
+          args: ['scripts/run-unit-tests.mjs'],
         },
         { name: 'Dead-code (knip)', cmd: 'node', args: ['scripts/knip-gate.mjs'] },
         { name: 'Route-permission drift', cmd: 'npx', args: ['tsx', 'scripts/audit-route-auth.ts', '--check'] },
@@ -74,6 +63,12 @@ const GATES = [
           cmd: 'node',
           args: ['scripts/schema-model-parity-guard.mjs', '--check'],
         },
+        // Shrink-only clone baseline (DS fork-consolidation 1b). New same-usecase
+        // clones fail; parked by-design siblings live in .jscpd.json ignore.
+        { name: 'Clone baseline (jscpd)', cmd: 'node', args: ['scripts/jscpd-gate.mjs'] },
+        // Assembly import boundaries — feature routes compose the host, not its
+        // internals (DashboardScrollShell, ScanStationUtilityRail, StationAmbientWash).
+        { name: 'Assembly boundaries (depcruise)', cmd: 'node', args: ['scripts/depcruise-gate.mjs'] },
         // Doc catalog drift. Fix is one command: `pnpm portfolio:sot`.
         // Added 2026-08-01 — the check existed but was gated by nothing, and
         // DOC-CATALOG.md had drifted 71 files behind before anyone noticed.
@@ -108,8 +103,8 @@ if (hardFail) {
     '\n' +
       c('31', 'verify FAILED') +
       ' — fix the ✗ gates above before pushing.\n' +
-      'DS-ratchet gates ratchet DOWN: migrate to the DS primitive or add the\n' +
-      'documented ds-* escape for a genuine one-off. Never raise a baseline to pass.\n\n',
+      'Compose named SoTs from AGENTS.md / sot-lookup; never raise a ratchet\n' +
+      'baseline to pass a gate.\n\n',
   );
   process.exit(1);
 }

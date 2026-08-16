@@ -35,20 +35,15 @@ import {
 } from '@/design-system/hooks';
 import {
   contextRailCostPx,
-  getRightRailFrameWidthPx,
+  getRightRailFrame,
+  getServerRightRailFrame,
   getStationPushActive,
-  getStationPushDesiredWidthPx,
+  requestStationCloseDisplays,
   setRightRailContextRail,
+  setStationContextSashArmed,
   subscribeRightRailFrame,
+  subscribeStationFarRailRequest,
 } from '@/lib/right-rail/frame';
-import {
-  applyStationContextDelta,
-  getServerStationCoupled,
-  getStationCoupled,
-  isStationDualRailCouplingActive,
-  stationLadderMaxContextPx,
-  subscribeStationCoupled,
-} from '@/lib/right-rail/station-dual-rail';
 import { useLocalStorage } from '@/hooks';
 import { isStationSurfaceRoute } from '@/lib/sidebar-navigation';
 import { cn } from '@/utils/_cn';
@@ -57,9 +52,16 @@ import { cn } from '@/utils/_cn';
 // dispatcher code-splits every route panel behind it, so a shell-chunk static
 // import here would pull each feature's graph into the shared bundle
 // (`.claude/rules/build-gotchas.md` → bundle altitude).
+//
+// `ssr: false` was REMOVED (2026-08-12). It was never what bought the bundle
+// split — `dynamic()` code-splits the client chunk either way — it only meant
+// the rail could not exist in the server HTML. On a scan station the recents
+// rail is the first thing the operator reads (the carton they were last on,
+// already selected), so a rail that cannot server-render cannot paint first no
+// matter how fast its data is; with the seed in the HydrationBoundary it now
+// renders straight from the seeded cache.
 const SidebarContextPanel = dynamic(
   () => import('@/components/sidebar/SidebarContextPanel').then((m) => m.SidebarContextPanel),
-  { ssr: false },
 );
 
 /**
@@ -126,35 +128,52 @@ export function ContextPanelLayout({ children }: { children: ReactNode }) {
   // Single owner — the open panel stays mounted (inert) while parked, so the
   // chord cannot live on both collapse + expand click hosts.
   useContextPanelToggleHotkey(toggle, hasPanel);
-  // Station Displays push — re-render when frame mode/cap flips (opening
-  // Displays switches centerFloor 784→0 and changes capPx). Snapshot is the
-  // live stationPushActive flag for dual-rail coupling.
+  // Stage 3: a Displays-sash overshoot (right panel dragged past its cap — this
+  // rail already at its min) parks THIS rail so Displays keeps growing. Ref so
+  // the subscription never re-binds on `collapse` churn.
+  const collapseRef = useRef(collapse);
+  collapseRef.current = collapse;
+  useEffect(
+    () =>
+      subscribeStationFarRailRequest((req) => {
+        if (req === 'collapse-context') collapseRef.current();
+      }),
+    [],
+  );
+  // Station Displays push — the live in-flow flag + the reactive frame snapshot
+  // (its `stationContextCapPx` is this rail's LOCAL sash clamp).
   const stationPushActive = useSyncExternalStore(
     subscribeRightRailFrame,
     getStationPushActive,
     () => false,
   );
+  const frame = useSyncExternalStore(
+    subscribeRightRailFrame,
+    getRightRailFrame,
+    getServerRightRailFrame,
+  );
 
-  // While coupling with an open Displays column, cap the context sash at the
-  // yield-ladder max (`frame − 720 − 280`, Displays at its hardMin), NOT the
-  // loose "fill to the viewport" pad. The tight cap is what the coupling would
-  // otherwise have to clamp back to on every sash pixel — the context-side edge
-  // jitter. Off a coupling the sash keeps its normal viewport-pad reach.
-  const contextCouplingMaxPx =
+  // While an in-flow Displays column is open, cap the context sash at
+  // `frame − displays − 720` (the frame store's `stationContextCapPx`). This is a
+  // LOCAL clamp — the sash resizes ONLY this rail and the elastic center absorbs
+  // the change; Displays is never written (no coupling). The sash simply STOPS
+  // at the center floor. Off a station push the sash keeps its normal
+  // viewport-pad reach.
+  const contextStationMaxPx =
     stationSurface && stationPushActive && !collapsed
-      ? stationLadderMaxContextPx(getRightRailFrameWidthPx())
+      ? frame.stationContextCapPx
       : undefined;
 
   // Every mounted context rail shares Unbox's resize + collapse grammar.
   // Hooks must run unconditionally (hasPanel flips on navigation).
-  const { width, setWidth, edgeHandleProps, isDragging } = useHorizontalEdgeResize({
+  const { width, edgeHandleProps, isDragging, collapseArmed, overshootArmed } = useHorizontalEdgeResize({
     storageKey: CONTEXT_PANEL_RESIZE.storageKey,
     defaultWidth: CONTEXT_PANEL_RESIZE.defaultWidthPx,
     minWidth: CONTEXT_PANEL_RESIZE.minWidthPx,
     maxWidthPad: stationSurface
       ? CONTEXT_PANEL_RESIZE.stationMaxWidthPadPx
       : CONTEXT_PANEL_RESIZE.maxWidthPadPx,
-    maxWidth: contextCouplingMaxPx,
+    maxWidth: contextStationMaxPx,
     enabled: hasPanel,
     edge: 'trailing',
     label: 'Resize sidebar',
@@ -162,103 +181,61 @@ export function ContextPanelLayout({ children }: { children: ReactNode }) {
     collapseBelowPx:
       CONTEXT_PANEL_RESIZE.minWidthPx - EDGE_RESIZE_COLLAPSE_SLACK_PX,
     onCollapseBeyondMin: collapse,
+    // Stage 3 (reverse): dragging the rail past its cap — Displays already at its
+    // min — closes Displays so the rail (and center) keep growing. Only when an
+    // in-flow Displays column is actually open to close.
+    onOvershootMax:
+      contextStationMaxPx != null ? requestStationCloseDisplays : undefined,
+    overshootBeyondPx:
+      contextStationMaxPx != null
+        ? contextStationMaxPx + EDGE_RESIZE_COLLAPSE_SLACK_PX
+        : undefined,
   });
 
   // Publish what this rail would COST IF OPEN — never a measurement of the
-  // current DOM. Skip mid-drag publishes so the park ladder does not tween on
-  // every sash pixel; dual-rail coupling passes live widths into
-  // {@link applyStationContextDelta} instead of reading the frame bus.
+  // current DOM. Desk inspectors freeze this mid-drag (publish on release only),
+  // but on a station surface with an open Displays we publish LIVE during a
+  // context-sash drag too: as the rail grows, the frame store's tight Displays
+  // cap shrinks and Displays yields toward its min (the cascade's symmetric
+  // direction — the center absorbs first, then Displays yields).
   const publishedCostRef = useRef<{ cost: number; collapsed: boolean } | null>(null);
+  const publishLiveDuringDrag = stationSurface && stationPushActive && !collapsed;
   useEffect(() => {
-    if (!isDragging) {
-      const cost = hasPanel ? contextRailCostPx(width) : 0;
-      const prev = publishedCostRef.current;
-      if (!prev || prev.cost !== cost || prev.collapsed !== collapsed) {
-        publishedCostRef.current = { cost, collapsed };
-        setRightRailContextRail({
-          railCostOpenPx: cost,
-          railOperatorCollapsed: collapsed,
-        });
-      }
+    if (isDragging && !publishLiveDuringDrag) return;
+    const cost = hasPanel ? contextRailCostPx(width) : 0;
+    const prev = publishedCostRef.current;
+    if (!prev || prev.cost !== cost || prev.collapsed !== collapsed) {
+      publishedCostRef.current = { cost, collapsed };
+      setRightRailContextRail({
+        railCostOpenPx: cost,
+        railOperatorCollapsed: collapsed,
+      });
     }
-  }, [hasPanel, width, collapsed, isDragging]);
+  }, [hasPanel, width, collapsed, isDragging, publishLiveDuringDrag]);
 
-  // Inverse-couple on station surfaces while Displays push is open: context
-  // sash → Displays moves by −Δ. Desk routes keep solo CONTEXT_PANEL_RESIZE.
-  const dragWidthRef = useRef(width);
+  // Relay the reverse Stage-3 arm to the far DISPLAYS column so it lights its own
+  // seam warning. Only the OVERSHOOT arm (close Displays) relays — the collapse
+  // arm (park THIS rail) is self-contained and lights this rail's own seam below.
+  // `overshootArmed` can only be true on a station surface where a Displays is
+  // open (that is the only case its `onOvershootMax` is wired), so this publishes
+  // `false` everywhere else — a no-op after the store dedupes.
   useEffect(() => {
-    if (!stationSurface || !stationPushActive || collapsed || !isDragging) {
-      dragWidthRef.current = width;
-      return;
-    }
-    const delta = width - dragWidthRef.current;
-    dragWidthRef.current = width;
-    if (delta === 0 || !isStationDualRailCouplingActive()) return;
-    const next = applyStationContextDelta(delta, {
-      leftPx: width - delta,
-      displaysPx: getStationPushDesiredWidthPx(),
-    });
-    if (next && next.leftPx !== width) {
-      setWidth(next.leftPx);
-      dragWidthRef.current = next.leftPx;
-    }
-  }, [
-    width,
-    isDragging,
-    stationSurface,
-    stationPushActive,
-    collapsed,
-    setWidth,
-  ]);
+    setStationContextSashArmed(overshootArmed);
+    return () => setStationContextSashArmed(false);
+  }, [overshootArmed]);
 
-  // Peer Displays sash wrote context width — sync (not while we drag).
-  const coupled = useSyncExternalStore(
-    subscribeStationCoupled,
-    getStationCoupled,
-    getServerStationCoupled,
-  );
-  useEffect(() => {
-    if (!coupled || coupled.source !== 'displays' || isDragging || collapsed) return;
-    if (!stationSurface || !stationPushActive) return;
-    if (coupled.leftPx === width) return;
-    setWidth(coupled.leftPx);
-  }, [
-    coupled,
-    isDragging,
-    collapsed,
-    stationSurface,
-    stationPushActive,
-    width,
-    setWidth,
-  ]);
+  // No cross-rail coupling (Option A). This sash resizes ONLY this rail; the
+  // elastic center absorbs the change and the Displays column is untouched. The
+  // rail paints from its own local `width`, and `contextStationMaxPx` stops the
+  // drag at the center floor — the sash never reaches across to the far column.
 
-  // Paint the context rail from the LIVE coupled value during a Displays-sourced
-  // drag, not from the local `width` the coupled-sync effect above updates. That
-  // effect runs a render AFTER the store publish, so painting from `width`
-  // lagged the context edge ~2 frames behind the Displays sash — the reported
-  // "painted width diverges from the drag target". Reading the coupled snapshot
-  // directly closes the hop; `width` still catches up via the effect, and
-  // post-settle `coupled.leftPx === width` (the coupling persists both to one
-  // key), so this is a no-op except during the live drag transient. Guarded to
-  // the exact scenario — never a non-station route, never an operator-parked or
-  // Displays-closed rail, never this rail's OWN drag.
-  const liveCoupledLeftPx =
-    coupled &&
-    coupled.source === 'displays' &&
-    stationSurface &&
-    stationPushActive &&
-    !collapsed &&
-    !isDragging
-      ? coupled.leftPx
-      : null;
-  const paintWidthPx = liveCoupledLeftPx ?? width;
-
-  // Collapse is operator-owned only. Opening a right-edge panel must NOT mask
-  // this rail — both stay open and the center hugs `MIN_WORK_SURFACE_PX` /
-  // the station workbench lock while the right panel's resize cap shrinks.
+  // Collapse is operator-owned on desk surfaces. On a station surface with an
+  // open Displays, the frame store may request `collapse-context` so Displays
+  // stays open on a small width (parks THIS rail rather than overflowing /
+  // overlay-hiding Displays). Live sash drag paints every frame from local `width`.
   const isCollapsed = hasPanel && collapsed;
   // Park/restore snaps — same as Station Displays (no `motionRole.push.rail`
-  // width tween). Live sash drag still paints every frame via paintWidthPx.
+  // width tween). Live sash drag paints every frame from local `width`.
 
   if (!hasPanel) return <>{children}</>;
 
@@ -290,11 +267,17 @@ export function ContextPanelLayout({ children }: { children: ReactNode }) {
         </ErrorBoundary>
       </div>
       {!isCollapsed ? (
+        // The flash marks the pane about to DISAPPEAR — so this rail lights only
+        // when IT is the one collapsing: its own drag-past-min park
+        // (`collapseArmed`), or the Displays sash parking it
+        // (`stationDisplaysSashArmed`). NOT `overshootArmed` — that is this rail's
+        // sash closing DISPLAYS, so the flash belongs to Displays, not here.
         <HorizontalEdgeResizeHandle
           edgeHandleProps={edgeHandleProps}
           isDragging={isDragging}
           edge="trailing"
           placement="inset"
+          armed={collapseArmed || frame.stationDisplaysSashArmed}
           tooltipLabel="Resize"
         />
       ) : null}
@@ -327,7 +310,7 @@ export function ContextPanelLayout({ children }: { children: ReactNode }) {
           )}
           data-context-panel
           data-collapsed={isCollapsed ? 'true' : 'false'}
-          style={{ width: isCollapsed ? 0 : paintWidthPx }}
+          style={{ width: isCollapsed ? 0 : width }}
           // Collapsed column stays mounted so the scan session does not remount
           // on expand — same latch idiom as SidebarNavColumn.
           inert={isCollapsed || undefined}

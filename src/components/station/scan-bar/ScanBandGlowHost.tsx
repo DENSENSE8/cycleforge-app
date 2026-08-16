@@ -9,10 +9,6 @@
  * - Outcome flash (`cf:scan-band-flash`): emerald success / rose reject overlay
  *   for ~800ms — primary visual channel once scan lines are a flat data floor
  *
- * Ready HUD (reticle / sweep / block caret) lives on {@link StationScanBar}'s
- * input column so it tracks each station skin's width and never underlaps the
- * frosted mode rail.
- *
  * Catalog: `framerTransition.scanBandGlow` / `scanBandGlowPulse` +
  * `scanBandGlowOpacity`. Reduced motion via `useMotionTransition`.
  */
@@ -49,12 +45,8 @@ import { cn } from '@/utils/_cn';
 /** Scan feedback auto-reset window (~800ms). */
 const OUTCOME_FLASH_MS = 800;
 
-/**
- * Outcome flash fills — success is a touch stronger than reject so a good
- * scan reads as a locked confirmation without a second flash channel.
- */
 const OUTCOME_FLASH_CLASS: Record<ScanVisualKind, string> = {
-  success: 'bg-emerald-400/45',
+  success: 'bg-emerald-400/35',
   reject: 'bg-rose-400/35',
 };
 
@@ -157,7 +149,7 @@ export function ScanBandGlowHost({
   return (
     <div
       // Chrome fill defaults to the shared SoT (`appSurfaceFillClass('chrome')`,
-      // theme-correct — the old hardcoded `bg-white` stayed white even under a
+      // theme-correct — the old hardcoded paper-white fill stayed white even under a
       // dark theme). Listed before `className` so a caller's own tone (all
       // current callers pass `receivingScanBandClass`, which resolves to the
       // same fill) still wins the `cn()` merge.
@@ -183,15 +175,15 @@ export function ScanBandGlowHost({
             key={outcomeFlash}
             aria-hidden
             initial={{ opacity: shouldReduce ? 0.55 : 0 }}
-            animate={{ opacity: shouldReduce ? 0.55 : [0, 0.95, 0] }}
+            animate={{ opacity: shouldReduce ? 0.55 : [0, 0.9, 0] }}
             exit={{ opacity: 0 }}
             transition={
               shouldReduce
                 ? { duration: 0 }
-                : { duration: OUTCOME_FLASH_MS / 1000, times: [0, 0.18, 1], ease: 'easeOut' }
+                : { duration: OUTCOME_FLASH_MS / 1000, times: [0, 0.2, 1], ease: 'easeOut' }
             }
             className={cn(
-              'pointer-events-none absolute inset-0 z-base',
+              'pointer-events-none absolute inset-0 z-0',
               OUTCOME_FLASH_CLASS[outcomeFlash],
             )}
           />

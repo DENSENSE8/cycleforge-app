@@ -35,11 +35,10 @@ import { REPAIR_SELECTION_SCOPE } from '@/lib/selection/repair-scopes';
 import { emitToggleAll } from '@/lib/selection/table-selection';
 import { compareRepairGridRows } from '@/lib/repair/repair-grid-compare';
 import {
-  WORKBENCH_SHEET_CHROME,
-  WORKBENCH_SHEET_HOST,
-} from '@/components/dashboard/workbench-shell';
+  WorkbenchSheetView,
+  useWorkbenchSheetChrome,
+} from '@/components/dashboard/WorkbenchSheetView';
 import { RepairTriageBand, RepairWorkspaceHeader } from './RepairWorkspaceHeader';
-import { cn } from '@/utils/_cn';
 
 interface RepairTableProps {
   filter: RepairTab;
@@ -49,9 +48,9 @@ export function RepairTable({ filter }: RepairTableProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const chrome = useWorkbenchSheetChrome();
   const search = searchParams.get('search');
   const [selectedRepair, setSelectedRepair] = useState<RSRecord | null>(null);
-  const [repairControlsEl, setRepairControlsEl] = useState<HTMLDivElement | null>(null);
 
   // URL-backed display sort — `newest` (default) keeps the server `created_at
   // DESC`; a column sort re-orders via the house comparator.
@@ -193,15 +192,15 @@ export function RepairTable({ filter }: RepairTableProps) {
   );
 
   return (
-    <div className="relative flex h-full min-h-0 min-w-0 w-full flex-1 flex-col overflow-hidden bg-surface-canvas">
-      <div className={cn('relative z-header shrink-0 flex flex-col gap-0', WORKBENCH_SHEET_CHROME)}>
-        <RepairWorkspaceHeader className="rounded-none border-l-0 border-t-0 shadow-sm" />
-        <RepairTriageBand controlsSlotRef={setRepairControlsEl} />
-      </div>
-      {/* Grid mounts flush in the sheet host — the grid's own sheet surface is
-          the single plane (no gutter column, no nested card wrapper). */}
-      <div className={WORKBENCH_SHEET_HOST}>
-        <NonlinearTableHost<RSRecord, RepairGridColumnKey, RepairGridColumn>
+    <>
+      <WorkbenchSheetView
+        chrome={chrome}
+        className="h-full bg-transparent"
+        tabs={({ className }) => <RepairWorkspaceHeader className={className} />}
+        triage={({ controlsSlotRef }) => <RepairTriageBand controlsSlotRef={controlsSlotRef} />}
+      >
+        {() => (
+          <NonlinearTableHost<RSRecord, RepairGridColumnKey, RepairGridColumn>
           binding={REPAIR_TABLE_BINDING}
           orderGroupsByDate={orderGroupsByDate}
           rows={displayRepairs}
@@ -213,7 +212,7 @@ export function RepairTable({ filter }: RepairTableProps) {
           }}
           loading={loading}
           emptyMessage={search ? `No repairs match "${search}"` : 'No repairs found'}
-          columnTriggerPortalTarget={repairControlsEl}
+          columnTriggerPortalTarget={null}
           renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
             <RepairGridColumnHeader
               selectionScope={REPAIR_SELECTION_SCOPE}
@@ -230,7 +229,8 @@ export function RepairTable({ filter }: RepairTableProps) {
           }
           renderRow={(row, _stripe, { columns: visible }) => renderRepairLeaf(row, visible)}
         />
-      </div>
+        )}
+      </WorkbenchSheetView>
 
       <RepairRailShell />
 
@@ -247,6 +247,6 @@ export function RepairTable({ filter }: RepairTableProps) {
           disableMoveDown={selectedIndex < 0 || selectedIndex >= displayRepairs.length - 1}
         />
       ) : null}
-    </div>
+    </>
   );
 }

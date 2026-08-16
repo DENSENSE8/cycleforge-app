@@ -5,9 +5,9 @@
  * (serial↔label pairing plan §6.4.C).
  *
  * Hosts:
- *  - `embedded` — flush body inside Unbox Units Displays (no overlay, no
- *    duplicate "Create prebox label" title — the Units · Prebox TabDisplay
- *    already names the surface). Mode choice is {@link TabDisplay} segment.
+ *  - `embedded` — flush body inside Unbox Displays → Prebox Assets leaf (no
+ *    overlay, no duplicate "Create prebox label" title — the leaf names the
+ *    surface). Mode choice is {@link TabDisplay} segment.
  *  - default — {@link RightPaneOverlay} (legacy / non-Displays callers).
  */
 
@@ -148,7 +148,7 @@ function PreboxWizardBody({
       className="flex h-full min-h-0 min-w-0 flex-col"
       data-prebox-wizard={embedded ? 'embedded' : 'overlay'}
     >
-      {/* Overlay only — embedded lives under Units · Prebox TabDisplay. */}
+      {/* Overlay only — embedded lives under the Prebox Displays leaf. */}
       {!embedded ? (
         <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border-hairline bg-surface-canvas py-3">
           <div className="flex min-w-0 items-center gap-2">
@@ -169,7 +169,7 @@ function PreboxWizardBody({
         </div>
       ) : null}
 
-      {/* Mode — child segment under Units · Prebox parent underline (nested grammar). */}
+      {/* Mode — child segment under Prebox leaf (nested grammar). */}
       <div className="shrink-0">
         <TabDisplay
           tabs={PREBOX_MODE_TABS}

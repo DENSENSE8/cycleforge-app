@@ -28,7 +28,11 @@ describe('orders-queue mode column sets (TanStack ColumnDefs)', () => {
     const defs = ordersQueueColumnDefsFor('fulfillment.default');
     assert.deepEqual(
       defs.map((d) => d.id),
-      ['select', 'order', 'age', 'title', 'condition', 'qty', 'tracking', '_fill'],
+      // `packStation` joined 2026-08-10 as `tier: 'optional'` — it is in the
+      // canonical ORDER but OFF by default, opted in from the ▦ column display
+      // (Unbox History treats Serial / Vendor the same way). The def list is the
+      // full model; `useGridColumnVisibility` is what resolves the visible set.
+      ['select', 'order', 'age', 'title', 'condition', 'qty', 'tracking', 'packStation', '_fill'],
     );
     assert.deepEqual(
       defs.map((d) => d.id),

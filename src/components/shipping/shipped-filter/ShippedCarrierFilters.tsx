@@ -9,9 +9,15 @@ import { toISODate } from './shipped-filter-params';
 import { useShippedFilterActions } from './useShippedFilterActions';
 import { useStaffOptions } from './useStaffOptions';
 import { CarrierSelect, NeedsAttentionButton, StatusSelect } from './ShippedFilterControls';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+import { Panel } from '@/design-system/primitives';
+
+
+
 
 const selectClass =
-  'h-9 w-full cursor-pointer appearance-none rounded-md border border-border-soft bg-surface-card pl-2.5 pr-7 text-role-caption font-semibold text-text-default hover:border-blue-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
+  cn('h-9 w-full cursor-pointer appearance-none rounded-md border border-border-soft bg-surface-card pl-2.5 pr-7 text-role-caption font-semibold text-text-default hover:border-blue-300', focusRing('field', 'accent'));
 const labelClass = 'mb-1 block text-role-eyebrow uppercase tracking-wider text-text-soft';
 
 export function ShippedCarrierFilters({
@@ -105,7 +111,7 @@ export function ShippedCarrierFilters({
           gap={4}
           ignoreClickSelector="[data-radix-popper-content-wrapper]"
         >
-          <div role="dialog" aria-label="Shipment filters" className="space-y-3 rounded-xl border border-border-soft bg-surface-card p-3 shadow-xl ring-1 ring-black/5">
+          <Panel radius="xl" padding="sm" elevation="md" className="space-y-3 ring-1 ring-black/5" role="dialog" aria-label="Shipment filters">
             <NeedsAttentionButton active={exceptionsOnly} onClick={a.toggleExceptions} />
 
             <label className="block">
@@ -175,7 +181,7 @@ export function ShippedCarrierFilters({
                 Clear filters
               </button>
             ) : null}
-          </div>
+          </Panel>
         </AnchoredLayer>
       </div>
 
