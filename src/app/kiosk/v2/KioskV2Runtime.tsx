@@ -14,6 +14,9 @@ import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 import { resolveKioskIdleTiming } from '@/lib/kiosk/idle';
+import { pairKioskTablet } from '@/lib/kiosk/pair-tablet';
+import { kioskSessionStore } from '@/lib/kiosk/kiosk-session-store';
+import { cartIsEmpty } from '@/lib/kiosk/cart-line';
 import { KioskCatalogFirstPaint } from '../KioskCatalogFirstPaint';
 
 const AttractLoop = dynamic(
@@ -91,6 +94,8 @@ export function KioskV2Runtime() {
 
   useEffect(() => {
     if (mode === 'pair' || mode === 'attract') return;
+    // Attract only when the cart is empty — never interrupt an active visit.
+    if (!cartIsEmpty(kioskSessionStore.getSnapshot().lines)) return;
     if (idleTime === idleTiming.promptAtS) setMode('prompt');
     else if (idleTime >= idleTiming.attractAtS) setMode('attract');
   }, [idleTime, mode, idleTiming]);
@@ -101,40 +106,16 @@ export function KioskV2Runtime() {
   }, []);
 
   const pair = useCallback(async () => {
-    if (code.trim().length < 8) {
-      setErr('Enter the full setup code.');
-      return;
-    }
     setBusy(true);
     setErr(null);
-    try {
-      const r = await fetch('/api/kiosk/pair', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ code: code.trim() }),
-      });
-      if (!r.ok) {
-        let apiError: string | undefined;
-        try {
-          const body = (await r.json()) as { error?: string };
-          apiError = body.error;
-        } catch {
-          /* non-JSON */
-        }
-        if (apiError === 'KIOSK_HOST_REQUIRED' || r.status === 403) {
-          setErr('Open this tablet on your workspace kiosk URL, not the staff app.');
-          return;
-        }
-        setErr('That setup code is invalid or expired. Generate a new one in Settings.');
-        return;
-      }
-      setCode('');
-      setMode('ready');
-    } catch {
-      setErr('Network issue while pairing. Try again.');
-    } finally {
-      setBusy(false);
+    const result = await pairKioskTablet(code);
+    setBusy(false);
+    if (!result.ok) {
+      setErr(result.error);
+      return;
     }
+    setCode('');
+    setMode('ready');
   }, [code]);
 
   if (mode === 'ready' || mode === 'prompt') {

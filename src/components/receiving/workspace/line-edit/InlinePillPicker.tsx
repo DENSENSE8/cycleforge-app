@@ -5,8 +5,9 @@
  * current value (tone-coded icon face, icon+name, or label).
  *
  * Two presentations:
- * - `menu` (carton-context default) — chip-anchored {@link DropdownMenu} with
- *   tone-colored labels only (no icons); identity band stays put. Classify
+ * - `menu` (carton-context default) — chip-anchored {@link DropdownMenu}
+ *   opening **below** the face (`side="bottom"`, no side flip). Item pad
+ *   matches the chip (`px-1.5`). Classify
  *   Displays keeps the full searchable editor when staff open that leaf
  *   themselves.
  * - `inline` — expands the option set in-row (legacy / hosts that need a
@@ -33,6 +34,12 @@ import {
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { motionBezier, framerDuration } from '@/design-system/foundations/motion-framer';
 import { cn } from '@/utils/_cn';
+import {
+  CHIP_HOVER_MENU_ITEM_CLASS,
+  CHIP_HOVER_MENU_ITEM_SEAM_CLASS,
+  CHIP_HOVER_MENU_ITEM_TONE,
+  CHIP_HOVER_MENU_PANEL_CLASS,
+} from '@/components/ui/copy-chip-hover-menu-chrome';
 
 export interface InlinePillOption {
   value: string;
@@ -341,26 +348,28 @@ export function InlinePillPicker({
             <DropdownMenuContent
               align="start"
               side="bottom"
-              sideOffset={4}
-              className="min-w-[10rem] max-w-[18rem] border border-border-soft"
+              sideOffset={6}
+              avoidCollisions={false}
+              className={CHIP_HOVER_MENU_PANEL_CLASS}
               aria-label={ariaLabel}
             >
-              {options.map((opt) => {
+              {options.map((opt, i) => {
                 const isActive = opt.value === value;
                 return (
                   <DropdownMenuItem
                     key={opt.value || '__none__'}
                     onSelect={() => onSelect(opt.value)}
                     className={cn(
-                      'gap-2 bg-surface-card font-semibold text-text-default',
-                      isActive && 'bg-surface-sunken',
+                      CHIP_HOVER_MENU_ITEM_CLASS,
+                      i > 0 && CHIP_HOVER_MENU_ITEM_SEAM_CLASS,
+                      isActive
+                        ? CHIP_HOVER_MENU_ITEM_TONE.active
+                        : CHIP_HOVER_MENU_ITEM_TONE.default,
                     )}
                     aria-label={opt.title ?? opt.label}
                   >
                     <IdentityDot opt={opt} />
-                    <span className="min-w-0 flex-1 truncate text-text-default">
-                      {opt.label}
-                    </span>
+                    <span className="min-w-0 flex-1 truncate">{opt.label}</span>
                   </DropdownMenuItem>
                 );
               })}

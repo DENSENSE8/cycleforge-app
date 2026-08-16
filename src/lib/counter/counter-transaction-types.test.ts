@@ -73,7 +73,7 @@ test('an unparseable or negative quote contributes 0, never NaN', () => {
   }
 });
 
-test('malformed retail quantity or unit price contributes 0, never NaN', () => {
+test('malformed retail quantity or unit price contributes 0, never NaN; negative unit is a credit', () => {
   const { totalCents } = computeCounterTotals({
     retailLines: [
       retail({ quantity: Number.NaN }),
@@ -83,7 +83,8 @@ test('malformed retail quantity or unit price contributes 0, never NaN', () => {
       retail({ unitAmountCents: 700 }),
     ],
   });
-  assert.equal(totalCents, 700);
+  // Negative unitAmountCents is a buyback credit; NaN/negative qty contribute 0.
+  assert.equal(totalCents, 600);
 });
 
 test('fractional quantities truncate rather than producing fractional cents', () => {

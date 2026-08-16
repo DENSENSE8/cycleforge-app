@@ -1,13 +1,13 @@
 /**
- * Kiosk V2 pane chrome — shared header hairline Y + far-left mode spine.
+ * Kiosk V2 pane chrome — shared header hairline Y + far-left command spine +
+ * persistent right cart ledger.
  *
- * Catalog and Repair Details (and any future detail header) must compose the
- * same band so the top hairline reads as one continuous seam across columns.
- * Hosts stay `p-0`; content inset lives on this band / list rows only.
+ * Catalog and detail headers compose the same band so the top hairline reads
+ * as one continuous seam across columns. Hosts stay `p-0`.
  *
- * Mode selection is a two-state spine (`KioskModeSpine`): collapsed icon rail
- * (~56px) or expanded Search + named tabs (~256px). Never a locked labeled
- * 96px column, never width 0 / off-screen, never a bottom pill dock.
+ * Command selection is a two-state spine (`KioskModeSpine`): collapsed icon
+ * rail (~56px) or expanded Search + named commands (~256px). Commands swap
+ * the center work surface only — they never clear the cart session.
  * Live law: `AGENTS.md` + docs/todo/kiosk-pos-modernization-HANDOFF.md.
  */
 
@@ -15,10 +15,11 @@ import { cornerClass } from '@/design-system/tokens/radius';
 import type { KioskServiceId } from '@/lib/kiosk/services';
 import { cn } from '@/utils/_cn';
 
-/** Expanded-rail short name — full `KIOSK_SERVICES[].label` stays on aria-label. */
+/** Expanded-rail short name — prefers `commandLabel` grammar (Repair / Retail…). */
 export function kioskSpineShortLabel(id: KioskServiceId): string {
   if (id === 'repair') return 'Repair';
-  if (id === 'sales') return 'Buy / Sell';
+  if (id === 'sales') return 'Retail';
+  if (id === 'buyback') return 'Buyback';
   return 'Pickup';
 }
 
@@ -70,8 +71,8 @@ export const KIOSK_SECTION_LABEL =
 /**
  * Selectable pill chrome (repair issue chips).
  * Only house use of `cornerClass('pill')` on the kiosk counter face.
- * Category nav is rounded-xl in `kiosk-pos-surface` — multi-line names must
- * not stadium-pill. Compose with {@link KIOSK_PILL_ACTIVE} / {@link KIOSK_PILL_IDLE}.
+ * Category nav is flush in `kiosk-pos-surface`. Compose with
+ * {@link KIOSK_PILL_ACTIVE} / {@link KIOSK_PILL_IDLE}.
  */
 export const KIOSK_PILL = cn(
   'ds-raw-button flex w-full items-center gap-3 px-4 py-3 text-left transition-colors',
@@ -111,7 +112,7 @@ export const KIOSK_MODE_SPINE_EXPANDED_W = 'w-64';
 /** Numeric twin of {@link KIOSK_MODE_SPINE_EXPANDED_W}. */
 export const KIOSK_MODE_SPINE_EXPANDED_W_PX = 256;
 
-/** Outer face of the mode spine column (card plane + trailing hairline). */
+/** Outer face of the command spine column (card plane + trailing hairline). */
 export const KIOSK_MODE_SPINE_FACE = cn(
   'flex h-full flex-col bg-surface-card',
   'border-r border-border-soft',
@@ -119,13 +120,12 @@ export const KIOSK_MODE_SPINE_FACE = cn(
 );
 
 /**
- * Shared mode-cell chrome — touch-tall, inset rounded wash.
- * `rounded-xl` is the kiosk POS radius exception (same as category pills /
- * product tiles); ops chrome stays flush via {@link cornerClass}.
+ * Shared command-cell chrome — touch-tall, flush (no rounded-xl).
  */
 export const KIOSK_MODE_SPINE_ROW = cn(
   'ds-raw-button flex w-full shrink-0 transition-colors duration-150',
-  'min-h-16 rounded-xl',
+  'min-h-14',
+  cornerClass('flush'),
 );
 
 /** Collapsed cell — centered glyph, no visible label. */
@@ -148,4 +148,27 @@ export const KIOSK_MODE_SPINE_ICON = 'h-5 w-5 shrink-0';
 
 /** Expanded Search row — first row of the named rail. */
 export const KIOSK_MODE_SPINE_SEARCH_ROW =
-  'flex min-h-14 shrink-0 items-center gap-2 px-2';
+  'flex min-h-14 shrink-0 items-center gap-2 border-b border-border-hairline px-2';
+
+/**
+ * Persistent right cart ledger column — locked on staff face.
+ * ~320px / `w-80` so the center work surface stays the elastic absorber.
+ */
+export const KIOSK_CART_COL = 'w-80';
+export const KIOSK_CART_COL_PX = 320;
+
+export const KIOSK_CART_FACE = cn(
+  'flex h-full w-80 shrink-0 flex-col bg-surface-card',
+  'border-l border-border-soft',
+  cornerClass('flush'),
+);
+
+/** Cart line row — horizontal hairline only, no inner card padding balloon. */
+export const KIOSK_CART_LINE_ROW =
+  'flex items-baseline justify-between gap-3 px-4 py-2.5';
+
+/** Customer-face shell — same card plane, no operational chrome. */
+export const KIOSK_CUSTOMER_FACE = cn(
+  'flex h-full w-full flex-col bg-surface-card text-text-default',
+  cornerClass('flush'),
+);

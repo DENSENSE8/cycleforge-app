@@ -54,8 +54,8 @@ const COARSE_DOT: Record<ReceivingLineStatus, string> = {
 
 /**
  * Coarse status → carton-identity status pill tone (border · wash · ink).
- * Same 3-state map as {@link COARSE_DOT}; face geometry lives on
- * `STATION_CONTEXT_STATUS_PILL_CLASS`.
+ * Same 3-state map as {@link COARSE_DOT}; carton chrome composes the
+ * tone onto a content-width cell after tracking.
  */
 const COARSE_PILL: Record<ReceivingLineStatus, string> = {
   INCOMING: 'border-amber-200 bg-amber-50 text-amber-700',
@@ -89,7 +89,7 @@ export function getReceivingStatusDot(row: ReceivingLineRow): string {
 
 /**
  * Locked carton-identity status pill tone for row 2 — same coarse stage as
- * {@link getReceivingStatusDot}. Compose with `STATION_CONTEXT_STATUS_PILL_CLASS`.
+ * {@link getReceivingStatusDot}. Compose onto the carton chrome status cell.
  */
 export function getReceivingStatusPillClass(row: ReceivingLineRow): string {
   return COARSE_PILL[railCoarseStatus(row)];
