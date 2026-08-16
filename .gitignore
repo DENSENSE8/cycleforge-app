@@ -109,3 +109,6 @@ scripts/.shipped-test-snapshot.json
 # Desktop shell app-manifest deps (installed by `pnpm desktop:deps`)
 electron/node_modules/
 electron/package-lock.json
+
+# Generated test output — never track (98k+ lines of TAP per run)
+.cycle_forge_ops/logs/*.tap
