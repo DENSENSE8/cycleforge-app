@@ -3,8 +3,8 @@
 /**
  * Unbox Displays → Linkage topic — Pairing (CartonMatchHub) + Zoho PO note.
  *
- * Armed-row verbs + URL drills (Photos twin):
- * `?display=linkage` → Actions list · `?linkageAction=link|note` → bodies.
+ * Armed-row verbs + local nest drills (Photos twin):
+ * `linkage` leaf → Actions list · `linkageAction` link|note → bodies.
  */
 
 import { useEffect, useMemo } from 'react';

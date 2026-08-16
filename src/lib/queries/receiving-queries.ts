@@ -10,6 +10,17 @@ import type {
   ReceivingModeDescriptor,
 } from '@/lib/receiving/receiving-modes';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import {
+  isReceivingRailShipmentKey,
+  receivingRailCartonKey,
+  receivingRailRowKey,
+  receivingRailShipmentKey,
+} from '@/lib/receiving/rail/rail-carton-key';
+
+// Re-exported for this module's existing client importers (useTrackingScan,
+// scan-apply, …); the definition moved to a server-safe module so the RSC rail
+// seed can share it. See `@/lib/receiving/rail/rail-carton-key`.
+export { receivingRailCartonKey, receivingRailRowKey, receivingRailShipmentKey };
 
 /**
  * Query-key roots for every receiving feed (Phase 1 of the receiving-triage
@@ -416,36 +427,32 @@ export function deferInvalidateReceivingFeeds(queryClient: QueryClient): void {
   }
 }
 
-/** Stable React list key for one carton across stub → server reconcile. */
-export function receivingRailCartonKey(receivingId: number): string {
-  return `carton:${receivingId}`;
-}
-
 /**
  * Durable AnimatePresence / React list key for a receiving rail row.
- * Prefer an explicit `client_event_id`, then `carton:{receiving_id}`, then line id.
+ * Prefer an explicit `client_event_id`, then the shipment-first ladder
+ * (`stn:{tracking}` → `carton:{receiving_id}`), then line id.
  * Never key carton-deduped feeds on line id alone — stub→real swaps would remount.
  */
 export function receivingRailReconcileId(row: {
   client_event_id?: string | null;
+  tracking_number?: string | null;
   receiving_id?: number | null;
   id: number;
 }): string | number {
   if (typeof row.client_event_id === 'string' && row.client_event_id.length > 0) {
     return row.client_event_id;
   }
-  const rid = row.receiving_id;
-  if (rid != null && Number.isFinite(rid)) return receivingRailCartonKey(rid);
-  return row.id;
+  return receivingRailRowKey(row);
 }
 
 function normalizeRailRows(rows: ReceivingRailRow[]): ReceivingRailRow[] {
   return rows.map((row) => {
-    const rid = row.receiving_id;
-    const cartonKey =
-      row.client_event_id
-      ?? (rid != null && Number.isFinite(rid) ? receivingRailCartonKey(rid) : undefined);
-    return cartonKey ? { ...row, client_event_id: cartonKey } : row;
+    if (row.client_event_id) return row;
+    // Only a SHIPMENT or CARTON key is durable enough to stamp. The ladder's
+    // line-id fallback is a render key, never a reconcile key — stamping it
+    // would let an unrelated row match on it in `mergeRailRows`.
+    const key = receivingRailRowKey(row);
+    return typeof key === 'string' ? { ...row, client_event_id: key } : row;
   });
 }
 
@@ -490,7 +497,17 @@ function mergeRailRows(
         || (key != null && r.client_event_id === key),
     );
     if (idx >= 0) {
-      const merged = { ...next[idx], ...row, client_event_id: key ?? next[idx].client_event_id };
+      // Key preference: a SHIPMENT key already on the row outranks an incoming
+      // `carton:{id}` one. Identity/title patches (`patchUnboxRailTitleByCarton`,
+      // the workspace keep-alive) stamp the carton key by construction, and
+      // letting that overwrite `stn:{tracking}` would remount the row on every
+      // rename — the exact flicker the shipment key exists to remove.
+      const existingKey = next[idx].client_event_id;
+      const nextKey =
+        isReceivingRailShipmentKey(existingKey) && !isReceivingRailShipmentKey(key)
+          ? existingKey
+          : (key ?? existingKey);
+      const merged = { ...next[idx], ...row, client_event_id: nextKey };
       // First-open stamp is stable — never let a re-scan / hydration overwrite
       // with a newer (or null) unbox_opened_at and reshuffle the Unboxed rail.
       if (next[idx].unbox_opened_at != null) {

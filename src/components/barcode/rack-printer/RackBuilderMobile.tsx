@@ -5,7 +5,7 @@ import { STEPS } from './rack-printer-config';
 import { StepPills } from './StepPills';
 import { ZoneLetterTile } from './ZoneLetterTile';
 import { RoomPicker } from './RoomPicker';
-import { NumericStep } from './NumericStep';
+import { NumericStep } from '@/components/barcode/bin-label-printer/NumericStep';
 import { ConfigSheet } from './ConfigSheet';
 import type { RackLabelPrinterController } from './useRackLabelPrinter';
 import type { RackPrinterVariant } from './rack-printer-types';

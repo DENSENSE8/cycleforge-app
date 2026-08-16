@@ -13,9 +13,25 @@
  */
 
 import { useRef } from 'react';
+import dynamic from 'next/dynamic';
 import { AnimatePresence, motion, motionRole, useMotionRole } from '@/design-system/motion';
-import { ReceivingLineWorkspace } from '@/components/receiving/workspace/ReceivingLineWorkspace';
 import { TriageWorkspaceSkeleton } from '@/components/receiving/triage/TriageWorkspaceSkeleton';
+
+// Phase 2 (lazy carton graph): `TriageLineWorkspace` is a co-mounted sibling of
+// `UnboxLineWorkspace` under `ReceivingRightPane`, so its static import of the
+// carton graph would drag the ~1.1k-LOC `LineEditPanel` back into the `/unbox`
+// (and arrival) browse bundle even after the Unbox path went dynamic. Split it
+// here too. Both siblings target the SAME `ReceivingLineWorkspace` specifier, so
+// Next dedupes to ONE lazy chunk fetched on the first carton open on either
+// surface. Mount stays gated on `showOverlay && workspace`; the loading fallback
+// is the triage skeleton (restore/deep-link), never a pulse-bar on browse.
+const ReceivingLineWorkspace = dynamic(
+  () =>
+    import('@/components/receiving/workspace/ReceivingLineWorkspace').then(
+      (m) => m.ReceivingLineWorkspace,
+    ),
+  { ssr: false, loading: () => <TriageWorkspaceSkeleton /> },
+);
 import { TriageWorkspaceView } from '@/components/receiving/triage/TriageWorkspaceView';
 import { zIndex } from '@/design-system/tokens/z-index';
 import { appWorkCanvasLayoutClass } from '@/design-system/tokens/app-surface';

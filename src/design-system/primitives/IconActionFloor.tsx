@@ -11,7 +11,9 @@
  * when empty — never mount an empty bar.
  *
  * `surface` picks the plane paint so one renderer serves two host shells:
- *  - `card`   → Station Displays column (matches the `→|` / Filter close chrome).
+ *  - `card`   → Station Displays column (matches the `→|` / Filter close chrome),
+ *    and any desk rail whose body is one continuous white plane the floor must
+ *    stay coplanar with (Media Library batch rail).
  *  - `canvas` → desk RightRailHost floor (the default plane).
  *
  * Composed by BOTH desk (`InspectorActionFloor`) and station

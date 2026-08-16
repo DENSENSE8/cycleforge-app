@@ -19,12 +19,12 @@ export const getConditionColor = conditionTextColor;
 
 /**
  * Formats a raw condition string for display.
- * Strips underscores, handles empty / "FBA SCAN" → "N/A".
+ * Strips underscores, handles empty / "FBA SCAN" → honest-absence dash.
  */
 export function formatConditionLabel(value: string | null | undefined): string {
   const raw = String(value || '').trim();
   const normalized = raw.toUpperCase().replace(/\s+/g, ' ');
-  if (!raw || normalized === 'FBA SCAN') return 'N/A';
+  if (!raw || normalized === 'FBA SCAN') return '—';
   return raw.replaceAll('_', ' ');
 }
 

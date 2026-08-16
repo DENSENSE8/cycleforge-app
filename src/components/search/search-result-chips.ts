@@ -18,14 +18,7 @@
  * this one map, so they can never disagree (plan L8).
  */
 
-import {
-  Tool,
-  Package,
-  PackageOpen,
-  Box,
-  PackageCheck,
-  Boxes,
-} from '@/components/Icons';
+import { AlertTriangle, Tool, Package, PackageOpen, Box, PackageCheck, Boxes } from '@/components/Icons';
 
 type IconComponent = (props: { className?: string }) => JSX.Element;
 
@@ -41,6 +34,8 @@ export const ENTITY_ICONS: Record<string, IconComponent> = {
   receiving: PackageOpen,
   sku: Box,
   unit: PackageCheck,
+  exception: AlertTriangle,
+  import_exception: AlertTriangle,
 };
 
 /** Semantic chip tone vocabulary — matches SearchHitChip.tone. */
@@ -57,6 +52,8 @@ export const ENTITY_TONE: Record<string, ChipTone> = {
   sku: 'gray',
   repair: 'rose',
   fba: 'blue',
+  exception: 'amber',
+  import_exception: 'amber',
 };
 
 /** House 3-layer chip tones (bg-x-50 / text-x-700 / ring-x-200). */

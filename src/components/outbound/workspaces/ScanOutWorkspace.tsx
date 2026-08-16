@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback } from 'react';
 import { AnimatePresence } from '@/design-system/motion';
 import { StagedQueueTable } from '@/components/outbound/scan-out/StagedQueueTable';
 import { StagedOrderDetail } from '@/components/outbound/shared/StagedOrderDetail';
@@ -9,6 +9,7 @@ import {
   WORKBENCH_SHEET_HOST,
   WorkbenchChromeHeader,
 } from '@/components/dashboard/workbench-shell';
+import { WorkbenchInspectorToggle } from '@/components/dashboard/workbench-inspector-toggle';
 import { useOutboundUrlState } from '@/hooks/useOutboundUrlState';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import { cn } from '@/utils/_cn';
@@ -24,8 +25,6 @@ import { cn } from '@/utils/_cn';
  */
 export function ScanOutWorkspace() {
   const { q, open, setOpen } = useOutboundUrlState();
-  // ▦ portals into Band-1 controls (find lives in the scan-out sidebar).
-  const [controlsEl, setControlsEl] = useState<HTMLDivElement | null>(null);
 
   const handleOpenOrder = useCallback(
     (order: ShippedOrder) => setOpen(Number(order.id)),
@@ -41,7 +40,12 @@ export function ScanOutWorkspace() {
           tabs={[{ id: 'staged', label: 'Staged' }]}
           activeTab="staged"
           onTabChange={() => undefined}
-          controlsSlotRef={setControlsEl}
+          trailing={
+            <WorkbenchInspectorToggle
+              open={open != null}
+              testId="scan-out-inspector-toggle"
+            />
+          }
           className="rounded-none border-l-0 border-t-0 shadow-sm"
         />
       </div>
@@ -51,7 +55,7 @@ export function ScanOutWorkspace() {
           onOpenOrder={handleOpenOrder}
           onCloseOrder={handleCloseDetail}
           hideHeader
-          columnTriggerPortalTarget={controlsEl}
+          columnTriggerPortalTarget={null}
         />
       </div>
       <AnimatePresence>

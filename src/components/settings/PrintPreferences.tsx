@@ -23,11 +23,20 @@ import {
   type PrinterProfile,
   type PrinterRole,
 } from '@/lib/print/browserPrint';
+import {
+  isDesktopHost,
+  listDesktopPrinters,
+  type DesktopPrinter,
+} from '@/lib/desktop/desktop-host';
 import { buildTestLabelCommands } from '@/lib/print/labelCommands';
 import { isSilentPrintEnabled, setSilentPrintEnabled } from '@/lib/print/printMode';
 import { friendlyPrintError } from '@/lib/print/printErrors';
 import { Button, IconButton, Switch } from '@/design-system/primitives';
 import { FILTER_DROPDOWN_SELECT_CLASS } from '@/design-system/components/FilterDropdownSelect';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 interface PrintPreferencesProps {
   onClose?: () => void;
@@ -35,8 +44,8 @@ interface PrintPreferencesProps {
 
 const FIELD_CLS =
   'w-full rounded-xl border border-border-default bg-surface-card px-3 py-2 text-sm text-text-default ' +
-  'placeholder:text-text-faint focus:border-blue-500 focus:outline-none focus:ring-2 ' +
-  'focus:ring-blue-500/20';
+  cn('placeholder:text-text-faint', focusRing('field', 'accent')) +
+  focusRing('field', 'accent');
 
 const LANGUAGES: { id: LabelLanguage; label: string }[] = [
   { id: 'tspl', label: 'TSPL (TSC / generic thermal)' },
@@ -122,9 +131,22 @@ function BrowserProfiles() {
   const [routing, setRouting] = useState<Partial<Record<PrinterRole, string>>>({});
   const [status, setStatus] = useState('');
   const [busy, setBusy] = useState(false);
+  // Real OS device names — empty in a browser, so the field stays free-typed
+  // there and gains a picker only where the shell can actually enumerate.
+  const [osPrinters, setOsPrinters] = useState<DesktopPrinter[]>([]);
 
   useEffect(() => {
     reload();
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void listDesktopPrinters().then((found) => {
+      if (!cancelled) setOsPrinters(found);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   function reload() {
@@ -184,7 +206,10 @@ function BrowserProfiles() {
     <div className="space-y-4">
       <div className="rounded-none border border-border-soft bg-surface-canvas px-3 py-2 text-xs text-text-muted">
         Pair a printer for each role. Labels &amp; receipts print silently from the browser (raw
-        TSPL/ZPL/ESC-POS). Paper/office printers use the browser print dialog.
+        TSPL/ZPL/ESC-POS).{' '}
+        {isDesktopHost()
+          ? 'Paper/office printers print silently through the desktop app.'
+          : 'Paper/office printers use the browser print dialog.'}
         <span className="mt-1 block text-text-soft">
           If a vendor driver already owns the USB printer, WebUSB can’t reach it (“Access denied”).
           Pair it as a <strong>serial port</strong> for reliable silent printing, or remove the driver to use USB.
@@ -215,6 +240,7 @@ function BrowserProfiles() {
                 reload();
               }}
               onStatus={setStatus}
+              osPrinters={osPrinters}
             />
           ))}
         </div>
@@ -247,6 +273,7 @@ function ProfileCard({
   onMakeDefault,
   onRemove,
   onStatus,
+  osPrinters,
 }: {
   profile: PrinterProfile;
   isDefaultForRole: boolean;
@@ -254,6 +281,7 @@ function ProfileCard({
   onMakeDefault: () => void;
   onRemove: () => void;
   onStatus: (s: string) => void;
+  osPrinters: DesktopPrinter[];
 }) {
   const sizes = PAPER_SIZES.filter((s) => s.kinds.includes(profile.kind as PrinterKind));
   const set = <K extends keyof PrinterProfile>(key: K, value: PrinterProfile[K]) =>
@@ -282,7 +310,7 @@ function ProfileCard({
         <input
           value={profile.name}
           onChange={(e) => set('name', e.target.value)}
-          className="min-w-0 flex-1 rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-sm font-semibold text-text-default hover:border-border-default focus:border-blue-500 focus:outline-none"
+          className={cn("min-w-0 flex-1 rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-sm font-semibold text-text-default hover:border-border-default", focusRing('field', 'accent'))}
         />
         <span className="shrink-0 text-role-caption text-text-faint">{profileSummary(profile)}</span>
       </div>
@@ -305,7 +333,24 @@ function ProfileCard({
         ) : (
           <label className="block">
             <span className="mb-1 block text-role-caption font-medium text-text-muted">OS printer name</span>
-            <input value={profile.deviceName ?? ''} onChange={(e) => set('deviceName', e.target.value)} placeholder="System default" className={`${FIELD_CLS} px-2 py-1.5`} />
+            <input
+              value={profile.deviceName ?? ''}
+              onChange={(e) => set('deviceName', e.target.value)}
+              placeholder="System default"
+              // The desktop shell can enumerate real device names; a browser
+              // cannot, so there the list is empty and this stays free-typed.
+              list={osPrinters.length ? `${profile.id}-os-printers` : undefined}
+              className={`${FIELD_CLS} px-2 py-1.5`}
+            />
+            {osPrinters.length > 0 && (
+              <datalist id={`${profile.id}-os-printers`}>
+                {osPrinters.map((p) => (
+                  <option key={p.name} value={p.name}>
+                    {p.isDefault ? `${p.displayName} (default)` : p.displayName}
+                  </option>
+                ))}
+              </datalist>
+            )}
           </label>
         )}
 

@@ -12,6 +12,7 @@ import { toast } from '@/lib/toast';
 import { dispatchLineUpdated } from '@/components/station/receiving-lines-table-helpers';
 import { invalidateReceivingFeeds } from '@/lib/queries/receiving-queries';
 import { resolveTriageLane } from '@/lib/receiving/triage-lane-policy';
+import { qk } from '@/queries/keys';
 import { isReturnIntake } from '@/lib/receiving/triage-intake-kind';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import type { Location } from '@/lib/neon/location-queries';
@@ -116,6 +117,24 @@ export function useTriageStaging(row: ReceivingLineRow) {
     [patchStaging, row, priorityLane],
   );
 
+  /**
+   * Re-read the locations catalog after something MINTED a shelf (the dock
+   * scanned a barcode this list had never seen; the New location leaf just
+   * registered one).
+   *
+   * Without it the write lands and the UI denies it: `staging_location_id` is
+   * set, but the `<select>` and the shelf summary both resolve their label from
+   * this 60s-stale list, so the operator sees "Select a shelf…" next to a
+   * STAGED chip — which reads as "nothing happened" at a bench.
+   *
+   * `qk.locations.all` is `['locations']`, a PREFIX of this hook's own
+   * `['locations','active']` and of the room picker's `qk.locations.list()`, so
+   * one invalidation refreshes both.
+   */
+  const refreshCatalog = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: qk.locations.all });
+  }, [queryClient]);
+
   const selectLane = useCallback(
     async (lane: string | null) => {
       setPriorityLane(lane);
@@ -132,6 +151,7 @@ export function useTriageStaging(row: ReceivingLineRow) {
     locationsLoading: locationsQuery.isLoading,
     stagingLocationId,
     selectShelf,
+    refreshCatalog,
     savingLocation,
     priorityLane,
     selectLane,

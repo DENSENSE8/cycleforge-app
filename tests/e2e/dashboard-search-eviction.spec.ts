@@ -74,7 +74,7 @@ test.describe('Search eviction from /dashboard', () => {
     test.skip(isMobile(), 'the 360px context column is desktop-only');
     await page.goto('/incoming?lane=docked&sort=scanned_newest');
     await page.waitForLoadState('domcontentloaded');
-    // Pipeline/Docked copy rides in IncomingSidebarPanel on the desk.
+    // Pipeline/Docked lane copy rides in IncomingWorkspaceHeader on the desk.
     const panel = page.getByText(/docked activity/i).or(page.getByLabel(/^views$/i));
     await expect(panel.first()).toBeVisible({ timeout: 15_000 });
   });

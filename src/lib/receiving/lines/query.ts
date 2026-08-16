@@ -41,6 +41,21 @@ export const receivingLinesQuerySchema = z.object({
   id: numberish,
   /** `?receiving_id=` — same raw-Number semantics as `id`. */
   receivingId: numberish,
+  /**
+   * `?receiving_id_in=1,2,3` — restrict the list to an explicit carton set.
+   *
+   * This is the **pre-limit** half of pre-limit-then-hydrate. The list's sort
+   * key (`ru.opened_at`) lives on a JOINED table, so Postgres has to run every
+   * display lateral over the whole candidate set before it can sort and LIMIT —
+   * measured at 274,539 shared buffers / 2.2s to return 50 rail rows, and a
+   * smaller `?limit=` does not help because the limit applies last. Naming the
+   * cartons up front (ranked by a cheap indexed read on the ordering column
+   * alone) collapses the lateral work to just the rows that will be shown.
+   *
+   * Empty by default, and the SQL condition is omitted entirely when empty, so
+   * every existing caller's SQL stays byte-identical to the legacy fixture.
+   */
+  receivingIdIn: z.array(z.number()),
   /** `?limit=` — `Math.min(Number(v || 200), 500)`; junk → NaN (preserved). */
   limit: numberish,
   /** `?offset=` — `Math.max(Number(v || 0), 0)`; junk → NaN (preserved). */
@@ -133,6 +148,15 @@ export type ReceivingLinesQuery = z.infer<typeof receivingLinesQuerySchema>;
 export function parseReceivingLinesQuery(searchParams: URLSearchParams): ReceivingLinesQuery {
   const id          = Number(searchParams.get('id'));
   const receivingId = Number(searchParams.get('receiving_id'));
+  // Capped at the list's own ceiling — this names a page, never a bulk export.
+  const receivingIdIn = Array.from(
+    new Set(
+      String(searchParams.get('receiving_id_in') || '')
+        .split(',')
+        .map((s) => Number(s.trim()))
+        .filter((n) => Number.isFinite(n) && n > 0),
+    ),
+  ).slice(0, 500);
   const limit       = Math.min(Number(searchParams.get('limit') || 200), 500);
   const offset      = Math.max(Number(searchParams.get('offset') || 0), 0);
   const search      = String(searchParams.get('search') || '').trim();
@@ -282,6 +306,7 @@ export function parseReceivingLinesQuery(searchParams: URLSearchParams): Receivi
   return receivingLinesQuerySchema.parse({
     id,
     receivingId,
+    receivingIdIn,
     limit,
     offset,
     search,

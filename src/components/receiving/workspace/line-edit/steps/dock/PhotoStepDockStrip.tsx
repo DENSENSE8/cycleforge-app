@@ -106,7 +106,8 @@ export function PhotoStepDockStrip({
   hostMarker?:
     | 'data-unbox-arrival-photos-dock'
     | 'data-unbox-carton-photo-dock'
-    | 'data-unbox-item-photos';
+    | 'data-unbox-item-photos'
+    | 'data-po-line-item-photos';
 }) {
   return (
     <div

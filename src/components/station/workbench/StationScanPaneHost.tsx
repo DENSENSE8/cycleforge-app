@@ -1,14 +1,18 @@
 'use client';
 
 /**
- * Scan-station Flex-Grow Sandwich host — ONE flex row for Unbox · Arrival ·
- * Testing. No host `gap-*` / `justify-between` / spacer columns / `ml-auto`
- * detach bands.
+ * Scan-station pane host — ONE flex row for Unbox · Arrival · Testing. No host
+ * `gap-*` / `justify-between` / spacer columns / `ml-auto` detach bands.
  *
- * When Displays is open: locked 720 middle (`shrink-0`) + optional utility rail
- * + Displays invader (`flex-1` — always fills leftover to the pane trailing
- * edge). When closed: center fills (`flex-1`), utility rail stays on the far
- * right. Never a leading spacer; never a hard-coded gutter div.
+ * The row is `[center flex-1 min-720][optional utility rail][Displays sized]`.
+ * The **center is the single elastic absorber** (`flex-1 min-w-[720px]`): it
+ * grows when the rails are narrow and shrinks to its 720 floor when they are
+ * wide, so resizing either rail moves only that rail and the center absorbs the
+ * change (Option A — {@link STATION_CENTER_COLUMN_OPEN_CLASS}). Displays is an
+ * explicitly-sized `shrink-0` sibling; because the center eats all leftover,
+ * Displays always abuts the center's right edge with no gray band. Always
+ * in-flow when open — never an overlay that hides the middle / dock. Never a
+ * leading spacer; never a gutter div.
  *
  * Displays `←|` + carton `↑↓` live in {@link ScanStationUtilityRail} — a
  * separate white rail, not carton identity and not an absolute float. When
@@ -16,17 +20,12 @@
  * push top band).
  */
 
-import { useCallback, useSyncExternalStore, type ReactNode } from 'react';
+import { useCallback, type ReactNode } from 'react';
 import { KEYBOARD_REGION_ATTR } from '@/lib/keyboard/keyboard-region-owner';
 import { useKeyboardRegionOwner } from '@/lib/keyboard/useKeyboardRegionOwner';
-import {
-  getStationDisplaysCollapsed,
-  subscribeRightRailFrame,
-} from '@/lib/right-rail/frame';
 import { cn } from '@/utils/_cn';
 import { ScanStationUtilityRail } from './ScanStationUtilityRail';
 import {
-  STATION_CENTER_COLUMN_CLASS,
   STATION_CENTER_COLUMN_OPEN_CLASS,
   STATION_SCAN_PANE_HOST_CLASS,
 } from './workbench-layout';
@@ -57,20 +56,11 @@ export function StationScanPaneHost({
   /** Extra `data-*` on the host (e.g. `data-unbox-pane-host`). */
   hostDataAttrs?: Record<string, string | boolean | undefined>;
 }) {
-  // The center is LOCKED at 720 only while Displays is an in-flow push sibling.
-  // When the frame budget yields Displays to an overlay (it floats — see
-  // StationDisplaysPushColumn), the locked center would leave an empty leftover
-  // band to its right (the "gray detach band"); instead the center FILLS
-  // (`STATION_CENTER_COLUMN_OPEN_CLASS`, flex-1 min-720) and Displays floats over
-  // its right edge (M3 supporting-pane overlay). Same store flag the push column
-  // reads — single source, so the two can never disagree.
-  const displaysCollapsed = useSyncExternalStore(
-    subscribeRightRailFrame,
-    getStationDisplaysCollapsed,
-    () => false,
-  );
-  const centerLocked = displaysOpen && !displaysCollapsed;
-  // Pointer into the locked middle reclaims keyboard ownership from Displays.
+  // The center is ALWAYS the elastic absorber (`flex-1 min-w-[720px]`) — whether
+  // Displays is an in-flow sized sibling or closed. Because the center eats all
+  // leftover between the rails, an in-flow Displays abuts its right edge with
+  // no gray band. One class, no lock, no overlay hide.
+  // Pointer into the middle reclaims keyboard ownership from Displays.
   const { claim: claimKeyboardRegion } = useKeyboardRegionOwner();
   const claimMiddle = useCallback(() => {
     claimKeyboardRegion('middle');
@@ -82,9 +72,7 @@ export function StationScanPaneHost({
       {...hostDataAttrs}
     >
       <div
-        className={
-          centerLocked ? STATION_CENTER_COLUMN_CLASS : STATION_CENTER_COLUMN_OPEN_CLASS
-        }
+        className={STATION_CENTER_COLUMN_OPEN_CLASS}
         data-testid={centerTestId}
         {...{ [KEYBOARD_REGION_ATTR]: 'middle' }}
         onPointerDownCapture={claimMiddle}

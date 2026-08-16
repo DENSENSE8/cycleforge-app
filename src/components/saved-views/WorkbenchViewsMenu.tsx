@@ -46,7 +46,7 @@ export function WorkbenchViewsMenu({
 
   return (
     <div className={cn('relative inline-flex shrink-0 items-center', className)}>
-      <ViewsMenuButton
+      <ViewsMenuShell
         open={open}
         tip={tip}
         active={Boolean(controller.activeView)}
@@ -60,12 +60,26 @@ export function WorkbenchViewsMenu({
           emptyHint={emptyHint}
           controller={controller}
         />
-      </ViewsMenuButton>
+      </ViewsMenuShell>
     </div>
   );
 }
 
-function ViewsMenuButton({
+/**
+ * The Views **face** — flush Bookmark trigger + `HeaderChromeMenu` panel, with
+ * no opinion about where the views come from.
+ *
+ * Exported because a surface may legitimately own a different saved-views
+ * STORE while wearing this control. Media Library (`/ops/photos`) is the second
+ * consumer: its views persist a JSON `{filters, view}` snapshot through
+ * `useMediaLibrarySavedViews`, not a URL-param set, so it cannot compose
+ * {@link WorkbenchViewsMenu} — and must not fork the icon, the tooltip or the
+ * panel either. Three client hooks over ONE `saved_views` store is the ruling
+ * (source-of-truth.md → Tabs vs. saved views); three *faces* never was.
+ *
+ * Own the store, compose the face.
+ */
+export function ViewsMenuShell({
   open,
   tip,
   active,
@@ -74,7 +88,12 @@ function ViewsMenuButton({
   children,
 }: {
   open: boolean;
+  /** Tooltip + aria: the active view's name, else `Views`. */
   tip: string;
+  /**
+   * A saved view is currently applied. Pass `false` where the surface cannot
+   * honestly tell — a wrong "active" badge is chrome inventing a second story.
+   */
   active: boolean;
   onToggle: () => void;
   onClose: () => void;

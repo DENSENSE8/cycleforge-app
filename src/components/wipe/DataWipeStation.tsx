@@ -12,7 +12,7 @@ import {
 import { ScanBandShell, ThemedStationScanBar } from '@/components/station/scan-bar';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { SerialChip } from '@/components/ui/CopyChip';
-import { Button } from '@/design-system/primitives';
+import { Panel, Button } from '@/design-system/primitives';
 import { useStationTheme } from '@/hooks/useStationTheme';
 import { conditionLabel } from '@/lib/conditions';
 import { cn } from '@/utils/_cn';
@@ -168,7 +168,7 @@ function ActiveUnitCard({
   onSubmit: (success: boolean) => void;
 }) {
   return (
-    <div className="space-y-4 rounded-2xl border border-border-soft bg-surface-card p-4 shadow-sm">
+    <Panel radius="2xl" padding="sm" className="space-y-4">
       <div className="flex items-center justify-between gap-2">
         <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
           Active Unit
@@ -257,7 +257,7 @@ function ActiveUnitCard({
           Wipe failed
         </Button>
       </div>
-    </div>
+    </Panel>
   );
 }
 

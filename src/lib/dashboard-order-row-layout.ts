@@ -40,9 +40,6 @@ import {
   ledgerGridRowShellClass,
   ledgerGridWidthVarValue,
 } from '@/design-system/components/grid/grid-cell-chrome';
-/** Sticky column header docks at the scrollport top. */
-export const ORDERS_QUEUE_COL_HEADER_STICKY = 'top-0';
-
 /** Stable key set for the desktop orders-queue columns (scan order). */
 export type OrdersQueueColumnKey =
   | 'select'
@@ -112,7 +109,14 @@ export interface OrdersQueueColumn extends Omit<LedgerGridColumnModel, 'key'> {
  * Status + Platform columns retired — lifecycle tabs (Pending · Tested) own the
  * lane; listing open stays on the product-cell hover link.
  * **Cond** (`condition`) sits after Product (Unbox adjacency) — Unbox flush
- * grade face (`conditionGradeTextClass` + table label). Hideable via Fields.
+ * grade face (`conditionGradeTextClass` + table label). `tier: 'optional'`
+ * (2026-08-10, operator ruling): the grade is a receiving-side fact that an
+ * outbound picker does not act on, so it must not spend a default track on the
+ * main To-ship lane. This is the alignment Unbox History already had — it marks
+ * `condition` optional too — and it applies to BOTH lanes, since the default
+ * and TESTED tabs share one `orders` prefs bucket and a column that appeared on
+ * one tab and not the other would read as a bug. Opted back in from the ▦
+ * column display, same door as Serial / Vendor / Station.
  * Note / OOS corners stay on Product. Fused `sla` / civil-date face retired
  * 2026-08-05 in favor of this compact days-late track.
  */
@@ -161,6 +165,7 @@ export const ORDERS_QUEUE_COLUMNS: readonly OrdersQueueColumn[] = [
     type: 'tag',
     align: 'start',
     hideKey: 'condition',
+    tier: 'optional',
     resizable: false,
     labelFitRem: 4.5,
   },
@@ -182,6 +187,23 @@ export const ORDERS_QUEUE_COLUMNS: readonly OrdersQueueColumn[] = [
     hideKey: 'tracking',
     resizable: false,
     labelFitRem: 5.5,
+  },
+  // Which packing bench this order is staged at (`order_pack_placements`).
+  // `tier: 'optional'` — off by default, opted in from the ▦ column display,
+  // the same way Unbox History treats Serial / Vendor. The bench is a real
+  // per-row fact (the data already rides on every row), but it only matters
+  // once someone is working the pack floor, so it must not spend a track on
+  // the default To-ship lane. The Tested lane keeps it always-on.
+  {
+    key: 'packStation',
+    width: 'minmax(7rem, 7rem)',
+    label: 'Station',
+    type: 'location',
+    align: 'start',
+    hideKey: 'packStation',
+    tier: 'optional',
+    resizable: false,
+    labelFitRem: 5,
   },
   { key: '_fill', width: 'minmax(0rem, 1fr)', resizable: false },
 ] as const;
@@ -258,6 +280,7 @@ export const ORDERS_QUEUE_TESTED_COLUMNS: readonly OrdersQueueColumn[] = [
     type: 'tag',
     align: 'start',
     hideKey: 'condition',
+    tier: 'optional',
     resizable: false,
     labelFitRem: 4.5,
   },

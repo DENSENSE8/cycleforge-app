@@ -14,7 +14,7 @@
 
 import { useMemo, useState } from 'react';
 import QRCode from 'react-qr-code';
-import { Button } from '@/design-system/primitives';
+import { Panel, Button } from '@/design-system/primitives';
 import {
   Dialog,
   DialogContent,
@@ -197,9 +197,9 @@ export function StaffAccessDetail({ staffId }: StaffAccessDetailProps) {
           </DialogHeader>
           {qrUrl ? (
             <>
-              <div className="inline-block rounded-2xl border border-border-soft bg-surface-card p-4">
+              <Panel radius="2xl" padding="sm" className="inline-block">
                 <QRCode value={qrUrl.url} size={220} level="M" />
-              </div>
+              </Panel>
               <p className="break-all text-role-micro text-text-faint">{qrUrl.url}</p>
             </>
           ) : null}

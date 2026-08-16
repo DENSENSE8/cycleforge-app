@@ -51,6 +51,54 @@ module.exports = {
       from: { path: '^src/design-system' },
       to: { path: '^src/(components|hooks|lib|app|features|queries|services|contexts|data)(/|$)' },
     },
+    {
+      name: 'use-the-sheet-not-the-scroll-shell',
+      severity: 'error',
+      comment:
+        'Compose WorkbenchSheetView (the three-band assembly). DashboardScrollShell is an ' +
+        'internal part — feature routes that import it are hand-rolling a custom car. ' +
+        'Documented exceptions (Unbox / Unbox skeleton / Photo library) are different tasks; ' +
+        'reasons live in workbench-sheet-view.test.ts OUT_OF_COHORT.',
+      from: {
+        pathNot:
+          '(^src/components/dashboard/WorkbenchSheetView\\.tsx$)|(^src/components/dashboard/DashboardScrollShell\\.tsx$)|(^src/components/receiving/unbox/UnboxWorkspaceView\\.tsx$)|(^src/components/receiving/unbox/UnboxWorkbenchSkeleton\\.tsx$)|(^src/components/photos/PhotoLibraryPage\\.tsx$)',
+      },
+      to: { path: '^src/components/dashboard/DashboardScrollShell\\.tsx$' },
+    },
+    {
+      name: 'use-the-scan-host-not-the-utility-rail',
+      severity: 'error',
+      comment:
+        'ScanStationUtilityRail is internal to StationScanPaneHost. Import the host, not the rail.',
+      from: { pathNot: '^src/components/station/workbench/' },
+      to: { path: '^src/components/station/workbench/ScanStationUtilityRail\\.tsx$' },
+    },
+    {
+      name: 'use-the-panel-root-not-the-ambient-wash',
+      severity: 'error',
+      comment:
+        'StationAmbientWash is internal to StationPanelRoot / StationWorkbench. Compose those hosts — do not copy the 3-blob wash.',
+      from: { pathNot: '^src/components/station/workbench/' },
+      to: { path: '^src/components/station/workbench/StationAmbientWash\\.tsx$' },
+    },
+    {
+      name: 'no-retired-order-warranty-section',
+      severity: 'error',
+      comment:
+        'OrderWarrantySection is retired. Compose OrderWarrantySummary ' +
+        '(density="pane" for the exclusive order tab).',
+      from: {},
+      to: { path: '^src/components/shipped/details-panel/OrderWarrantySection\\.tsx$' },
+    },
+    {
+      name: 'no-retired-rack-numeric-step',
+      severity: 'error',
+      comment:
+        'rack-printer/NumericStep is retired. Compose NumericStep from ' +
+        'bin-label-printer (prefix optional).',
+      from: {},
+      to: { path: '^src/components/barcode/rack-printer/NumericStep\\.tsx$' },
+    },
   ],
   options: {
     doNotFollow: {

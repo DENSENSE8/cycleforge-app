@@ -24,8 +24,6 @@ export interface DetailsStackDurationData {
 export interface DetailsStackProps {
   shipped: ShippedOrder;
   durationData: DetailsStackDurationData;
-  copiedAll: boolean;
-  onCopyAll: () => void;
   onUpdate?: () => void;
   showShippingTimestamp?: boolean;
   mode?: 'dashboard' | 'tech';

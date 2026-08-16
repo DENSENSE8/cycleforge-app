@@ -63,10 +63,18 @@ const config: KnipConfig = {
     'src/lib/my-day/my-day-tasks.ts',
     'src/lib/work-orders/work-status-display.ts',
 
+    // Mid-wire WIP — active-step ring token. Capture rows use the data-attr +
+    // globals.css path today; the TS class mounts on Phase 2 stepper faces.
+    'src/components/receiving/workspace/line-edit/active-step-ring.ts',
+
     // Mid-wire WIP (photo aspect helpers) — ASPECTS_BY_STAGE is already composed
     // from photo-aspects; remaining helpers mount next.
     'src/lib/photos/photo-aspects.ts',
     'src/lib/receiving/photo-aspect-counts.ts',
+
+    // Mid-wire WIP — QC / AI summary ticket note helper (photo-ticket chokepoint);
+    // callers mount next.
+    'src/lib/support/post-ticket-comment.ts',
 
     // Guided ProcedureDeck / step bodies / step dock — parked on `unbox-work`
     // (`../cycleforge-unbox`). Main dogfood mounts PO lines + label instead.
@@ -96,6 +104,7 @@ const config: KnipConfig = {
     '@types/*',
     // Keep these even if currently unused — they are part of the dev/CI surface
     'knip',
+    'jscpd',
     'dependency-cruiser',
     'eslint-plugin-unused-imports',
     '@playwright/test',
@@ -105,6 +114,14 @@ const config: KnipConfig = {
     'lighthouse',
     'chrome-launcher',
     '@next/bundle-analyzer',
+    // Desktop shell (electron/**) — the main process is plain CommonJS outside
+    // knip's `project` glob (src/**), and electron-builder resolves the two
+    // runtime deps itself from `dependencies`. Same shape as the lighthouse
+    // tooling above. Plan: docs/todo/electron-desktop-shell-PLAN.md
+    'electron',
+    'electron-builder',
+    'electron-log',
+    'electron-updater',
     // The motion engine is imported as `motion/react` from the single boundary
     // file `src/design-system/motion/framer.ts`. `framer-motion` is the legacy
     // alias for the SAME v12 package (and `motion`'s own dependency), kept as a

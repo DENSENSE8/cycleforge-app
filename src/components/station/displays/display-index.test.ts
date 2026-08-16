@@ -36,6 +36,7 @@ test('defaultDisplayIndexGroup maps known leaves', () => {
   assert.equal(defaultDisplayIndexGroup('listing'), 'verification');
   assert.equal(defaultDisplayIndexGroup('classify'), 'verification');
   assert.equal(defaultDisplayIndexGroup('units'), 'assets');
+  assert.equal(defaultDisplayIndexGroup('prebox'), 'assets');
   assert.equal(defaultDisplayIndexGroup('photos'), 'assets');
   assert.equal(defaultDisplayIndexGroup('checklist'), 'assets');
   assert.equal(defaultDisplayIndexGroup('manuals'), 'assets');

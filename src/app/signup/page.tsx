@@ -16,6 +16,10 @@
 import { useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/design-system/primitives';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 interface FormState {
   companyName: string;
@@ -182,7 +186,7 @@ function Field({ label, value, onChange, placeholder, type = 'text', inputMode, 
     <label className="block">
       <span className="mb-1 block text-role-caption font-medium uppercase tracking-[0.12em] text-text-soft">{label}</span>
       <input
-        className="block w-full rounded-xl border border-border-soft bg-surface-card px-3.5 py-2.5 text-sm text-text-default shadow-sm shadow-gray-900/[0.02] transition-colors focus:border-border-emphasis focus:outline-none focus:ring-2 focus:ring-border-soft"
+        className={cn("block w-full rounded-xl border border-border-soft bg-surface-card px-3.5 py-2.5 text-sm text-text-default shadow-sm shadow-gray-900/[0.02] transition-colors", focusRing('field', 'neutral'))}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}

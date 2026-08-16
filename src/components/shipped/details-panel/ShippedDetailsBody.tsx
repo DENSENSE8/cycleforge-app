@@ -13,7 +13,7 @@ import { ShippedDetailsPanelContent, type ShippedActiveSection } from '@/compone
 import { OrderTimelineSection } from '@/components/shipped/OrderTimelineSection';
 import { SerialJourneySection } from '@/components/serial/SerialJourneySection';
 import { OrderDocumentsSection } from '@/components/shipped/OrderDocumentsSection';
-import { OrderWarrantySection } from '@/components/shipped/details-panel/OrderWarrantySection';
+import { OrderWarrantySummary } from '@/components/order-record/OrderWarrantySummary';
 import { ThreadPanel } from '@/components/threads/ThreadPanel';
 import { OrderUpdateDock } from '@/components/shipped/details-panel/OrderUpdateDock';
 import { OrderStationHandoff } from '@/components/shipped/details-panel/OrderStationHandoff';
@@ -67,8 +67,6 @@ export interface ShippedDetailsBodyProps {
   displayTopic: OrderInspectorDisplayTopic;
   shipped: ShippedOrder;
   durationData: DetailsStackDurationData;
-  copiedAll: boolean;
-  onCopyAll: () => void;
   onUpdate: () => void;
   activeInput: ShippedActiveInput;
   setActiveInput: React.Dispatch<React.SetStateAction<ShippedActiveInput>>;
@@ -104,8 +102,6 @@ export function ShippedDetailsBody({
   displayTopic,
   shipped,
   durationData,
-  copiedAll,
-  onCopyAll,
   onUpdate,
   activeInput,
   setActiveInput,
@@ -158,7 +154,7 @@ export function ShippedDetailsBody({
     }
 
     if (activeSection === 'warranty') {
-      return <OrderWarrantySection order={shipped} />;
+      return <OrderWarrantySummary order={shipped} density="pane" />;
     }
 
     if (displayTopic === 'conversation' && shipped?.id) {
@@ -192,8 +188,6 @@ export function ShippedDetailsBody({
         <DashboardDetailsStack
           shipped={shipped}
           durationData={durationData}
-          copiedAll={copiedAll}
-          onCopyAll={onCopyAll}
           onUpdate={onUpdate}
           showShippingTimestamp={false}
           activeSection={stackSection}
@@ -209,8 +203,6 @@ export function ShippedDetailsBody({
         <TechDetailsStack
           shipped={shipped}
           durationData={durationData}
-          copiedAll={copiedAll}
-          onCopyAll={onCopyAll}
           onUpdate={onUpdate}
           showShippingTimestamp={false}
           actionBar={stackActionBar}
@@ -226,8 +218,6 @@ export function ShippedDetailsBody({
         <PackerDetailsStack
           shipped={shipped}
           durationData={durationData}
-          copiedAll={copiedAll}
-          onCopyAll={onCopyAll}
           onUpdate={onUpdate}
           showShippingTimestamp={false}
           actionBar={stackActionBar}
@@ -250,8 +240,6 @@ export function ShippedDetailsBody({
               shipping_tracking_number: editableFields.trackingNumber,
             }}
             durationData={durationData}
-            copiedAll={copiedAll}
-            onCopyAll={onCopyAll}
             onUpdate={onUpdate}
             editableShippingFields={{
               orderNumber: editableFields.orderNumber,

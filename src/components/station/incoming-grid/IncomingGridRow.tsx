@@ -13,11 +13,11 @@ import { INCOMING_GRID_CAPABILITIES } from '@/components/station/incoming-grid/i
 import { LedgerGridLeafRow } from '@/design-system/components/grid';
 import type { GridSelectGutterChrome } from '@/components/ui/GridRowCheckbox';
 import {
-  displayProductTitle,
+  displayReceivingProductTitle,
   incomingDateCell,
-  renderIncomingGridCell,
-  type IncomingGridCellCtx,
-} from './cells';
+  renderReceivingGridCell,
+  type ReceivingGridCellCtx,
+} from '@/components/station/receiving-grid/cells';
 import { usePlatformMeta } from '@/hooks/useCatalog';
 import {
   displayTrackingNumber,
@@ -29,7 +29,7 @@ import {
   incomingGridTemplate,
   incomingRowDateSource,
   type IncomingGridColumn,
-} from '@/lib/receiving/incoming-grid-layout';
+} from '@/lib/receiving/receiving-grid-layout';
 import { sourcePlatformMetaFromLabel } from '@/lib/source-platform';
 import {
   formatLaneAgeCompact,
@@ -58,7 +58,7 @@ interface IncomingGridRowProps {
 
 /**
  * Incoming POS leaf row — CSS-grid columns matching {@link INCOMING_GRID_COLUMNS}.
- * Desktop cells live under `./cells/`; edit a column there, not here.
+ * Desktop cells paint through `renderReceivingGridCell` with `linePhase: 'expected'`.
  * Mobile falls back to the legacy {@link ReceivingLineOrderRow} stack.
  */
 export const IncomingGridRow = memo(function IncomingGridRow({
@@ -95,7 +95,7 @@ export const IncomingGridRow = memo(function IncomingGridRow({
     );
   }
 
-  const productTitle = displayProductTitle(row);
+  const productTitle = displayReceivingProductTitle(row);
   const condGrade = (row.condition_grade || '').toUpperCase();
   const conditionLabel = conditionGradeTableLabel(row.condition_grade);
   const dateSource = incomingRowDateSource(row);
@@ -143,30 +143,43 @@ export const IncomingGridRow = memo(function IncomingGridRow({
   const removalReason = resolveIncomingRemovalReasonForRow(row);
   const removalFace = removalReason ? INCOMING_REMOVAL_REASON_FACE[removalReason] : null;
 
-  const ctx: IncomingGridCellCtx = {
+  const ctx: ReceivingGridCellCtx = {
     row,
+    selectMode,
+    isSelected: isOpen || isChecked,
+    isChecked,
+    onToggle: clickSelect ? undefined : onToggle,
+    activityAxis: 'unboxed',
+    isHistory: false,
+    statusVocabulary: 'coarse',
+    statusBadgeClass: '',
     productTitle,
     condGrade,
     conditionLabel,
+    stageDisplay: null,
+    stageLabel: '',
+    stageTip: '',
     dateCell,
+    poValue,
+    platformLabel: platformMeta.label || markLabel,
+    platformMeta,
+    isPickup,
+    pickupLabel,
+    trackingValue,
+    onEditTracking: onSelect,
+    serialsCsv: '',
+    statusDot: '',
+    inventoryProviderLabel: 'Inventory',
+    selectGutterChrome,
+    clickSelect,
+    linePhase: 'expected',
     daysLate,
     laneAgeLabel: showLaneAge ? laneAgeLabelRaw : null,
     laneAgeHours,
     ageTooltip,
-    platformMeta,
     markLabel,
-    poValue,
-    isPickup,
-    pickupLabel,
-    trackingValue,
     trackingAction,
-    onEditTracking: onSelect,
     removalFace,
-    selectMode,
-    isChecked,
-    onToggle: clickSelect ? undefined : onToggle,
-    selectGutterChrome,
-    clickSelect,
   };
 
   return (
@@ -224,7 +237,7 @@ export const IncomingGridRow = memo(function IncomingGridRow({
       template={incomingGridTemplate(columns)}
       selected={isOpen || isChecked}
       capabilities={INCOMING_GRID_CAPABILITIES}
-      renderCell={(col, { rule }) => renderIncomingGridCell(col, rule, ctx)}
+      renderCell={(col, { last }) => renderReceivingGridCell(col, last, ctx)}
     />
   );
 });

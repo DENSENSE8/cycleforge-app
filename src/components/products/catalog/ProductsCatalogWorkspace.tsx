@@ -12,10 +12,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Loader2, RefreshCw } from '@/components/Icons';
-import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
 import {
-  WORKBENCH_SHEET_CHROME,
-  WORKBENCH_SHEET_HOST,
+  WorkbenchSheetView,
+  useWorkbenchSheetChrome,
+} from '@/components/dashboard/WorkbenchSheetView';
+import {
   WorkbenchChromeHeader,
   WorkbenchTrailingCluster,
   WorkbenchTriageBand,
@@ -82,7 +83,8 @@ export function ProductsCatalogWorkspace() {
   const [error, setError] = useState<string | null>(null);
   const [provider, setProvider] = useState<InventoryProviderMeta | null>(null);
   const [syncing, setSyncing] = useState(false);
-  const [catalogControlsEl, setCatalogControlsEl] = useState<HTMLDivElement | null>(null);
+  // No KPI band (no metrics) — the controller is the Band-3 ▦ portal only.
+  const chrome = useWorkbenchSheetChrome();
 
   // Column sort is DURABLE: `?colsort=`/`?coldir=` (workbench URL-as-state law),
   // so a reload or a shared catalog link reproduces the same ordering. NOT
@@ -259,13 +261,14 @@ export function ProductsCatalogWorkspace() {
 
   return (
     <div className="relative flex h-full min-h-0 w-full flex-col overflow-hidden bg-surface-canvas">
-      <DashboardScrollShell
+      <WorkbenchSheetView
+        chrome={chrome}
         className="h-full"
-        chrome={
-          <div className={cn(WORKBENCH_SHEET_CHROME, 'flex flex-col gap-0')}>
+        sheetHostClassName="min-h-0"
+        tabs={({ className }) => (
             <WorkbenchChromeHeader
               density="band"
-              className="rounded-none border-l-0 border-t-0 shadow-sm"
+              className={className}
               tabs={PLATFORM_TABS.map((t) => ({
                 id: t.id,
                 label: t.label,
@@ -295,11 +298,13 @@ export function ProductsCatalogWorkspace() {
                 />
               }
             />
-            {/* Band 3 — find-only: dominant find with catalog refine in-field.
-                No KPI band (no metrics), no desk peek (honest absence of the
-                inspector toggle — catalog rows navigate to the SKU page). */}
+        )}
+        // Band 3 — find-only: dominant find with catalog refine in-field. No KPI
+        // band (no metrics), no desk peek (honest absence of the inspector
+        // toggle — catalog rows navigate to the SKU page).
+        triage={({ controlsSlotRef }) => (
             <WorkbenchTriageBand
-              controlsSlotRef={setCatalogControlsEl}
+              controlsSlotRef={controlsSlotRef ?? undefined}
               search={
                 <TechRailSearchBar
                   variant="chrome"
@@ -371,10 +376,10 @@ export function ProductsCatalogWorkspace() {
                 />
               }
             />
-          </div>
-        }
+        )}
       >
-        <div className={cn(WORKBENCH_SHEET_HOST, 'min-h-0')}>
+        {() => (
+          <>
           <div className="flex shrink-0 items-center justify-between px-0.5 text-role-micro font-medium uppercase tracking-wide text-text-soft">
             <span>{countLabel}</span>
             {provider ? (
@@ -407,7 +412,7 @@ export function ProductsCatalogWorkspace() {
               loading={loading}
               emptyMessage={emptyMessage}
               className="min-h-0 flex-1"
-              columnTriggerPortalTarget={catalogControlsEl}
+              columnTriggerPortalTarget={null}
               renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
                 <CatalogGridColumnHeader
                   selectionScope={CATALOG_SELECTION_SCOPE}
@@ -425,8 +430,9 @@ export function ProductsCatalogWorkspace() {
               renderRow={(row, _stripe, { columns: visible }) => renderCatalogLeaf(row, visible)}
             />
           )}
-        </div>
-      </DashboardScrollShell>
+          </>
+        )}
+      </WorkbenchSheetView>
       <CatalogBulkActionBar scope={CATALOG_SELECTION_SCOPE} selected={selectedCatalogRows} />
     </div>
   );

@@ -2,12 +2,48 @@
 
 **For:** Claude Code / Cursor Agent
 **From:** the 2026-08-02 carton-read pass (column balance → activity rows → unfound-return write path)
-**Status:** HAND-OFF. Everything in §1 shipped and is guarded. §3 is the open work; §4 is settled and must not be reopened.
+**Status:** **CLOSED — and the LAYOUT half is SUPERSEDED. Read §0.1 before anything else.**
+All §3 work is done; the timeline / write-path / model rulings still stand. The
+**column-track ruling was reversed on 2026-08-03**, which retires three rows of
+§4 and makes the §3.3 pixel measurement historical.
 **Lane:** current checkout — no ad-hoc branch. Attach to `:3050` (never start/restart it). User owns commits.
 
 **Read first:** `.claude/rules/display/carton-read.md` · `.claude/rules/display/reference-timeline.md` ·
 `.claude/rules/source-of-truth.md` · [`carton-read-display-polish-CLAUDE-CODE-PROMPT.md`](./carton-read-display-polish-CLAUDE-CODE-PROMPT.md)
 (the prompt this continues; its §2.1 / §2.2 are now done, its §2.3 / §2.4 are not).
+
+---
+
+## 0.1 SUPERSEDED — the tracks inverted on 2026-08-03
+
+**This doc argued for a narrow LEFT rail beside a wide unbounded stream. The
+product now ships the opposite, and the reversal is correct.** Live SoT:
+`.claude/rules/display/carton-read.md` → *The tracks are `2fr | 1fr`*.
+
+| | This doc (2026-08-02) | Ships now (2026-08-03) |
+|---|---|---|
+| Tracks | `[minmax(0,22rem)_minmax(0,1fr)]` — rail \| stream | **`[minmax(0,2fr)_minmax(0,1fr)]`** — contents \| timeline |
+| Wide column | col 2 (timeline) | **col 1 (contents)** |
+| Activity | fully expanded in col 2 | **a disclosure** — `events[0]` collapsed, chevron expands, Maximize opens a Dialog |
+| Guard asserts | timeline > 1.4× contents | **contents ≈ 2× timeline** |
+
+**Why it flipped, and why that is not a contradiction of the old measurement.**
+The 2026-08-02 case rested on one fact: col 2 is *unbounded* and col 1 is not, so
+the stream must own the width. Collapsing Activity into a disclosure **removed
+that unboundedness** — the right column is now a bounded progress / findings /
+history readout, while long line titles in CONTENTS still need room to wrap
+honestly. Change the premise and the conclusion has to move. The old ruling was
+not wrong on its own premise; the premise stopped holding.
+
+**So do not "restore" the rail**, and do not treat the numbers in §1 or §3.3 as
+live targets — they measured a layout that no longer exists. The reasoning method
+in §0 (can this value be traced to something recorded?) is the part that carries
+forward; the track widths are not.
+
+The reversal landed inside `8ecc85f8c chore: land workspace polish on main for
+production` with no handoff of its own, which is why `carton-read.md` is the only
+record of it. That is also why this section exists: a "settled — do not reopen"
+table that has quietly been reopened is worse than no table.
 
 ---
 
@@ -37,11 +73,13 @@ standing in for content someone typed cannot. Prefer honest absence.
 ## 1. What shipped (guarded — do not regress)
 
 ### Layout
-- **Asymmetric tracks** `xl:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]` — the columns
-  are not peers (bounded fact set vs unbounded stream). Measured 1440: dead canvas
-  ~421k px² → ~178k. Guard: `tests/e2e/carton-column-balance.spec.ts`.
-- **FINDINGS above HISTORY** — history is unbounded, so "last in the column" meant
-  "below the fold" on exactly the cartons that had something wrong.
+- ~~**Asymmetric tracks** `xl:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]`~~ —
+  **SUPERSEDED 2026-08-03 by `2fr | 1fr` (contents wide). See §0.1.** Kept for the
+  record only: the columns are not peers (bounded fact set vs unbounded stream);
+  measured at 1440 the dead canvas went ~421k px² → ~178k. The guard
+  (`tests/e2e/carton-column-balance.spec.ts`) now asserts the *inverse* ratio.
+- **FINDINGS above HISTORY** — still live. History is unbounded, so "last in the
+  column" meant "below the fold" on exactly the cartons that had something wrong.
 
 ### Activity rows (`/carton/[id]`)
 - `cartonEventSignature` (pure, in `carton-inspector-model.ts`) — **a unit's first
@@ -213,6 +251,12 @@ questions that were actually in doubt are answered.** Shapes re-confirmed
 against the DB first (`lines` / distinct `receiving_line_zoho.zoho_purchaseorder_id`),
 so the witnesses below are still the witnesses.
 
+> **HISTORICAL — measured the pre-2026-08-03 layout (`22rem | 1fr`, Activity
+> expanded).** The numbers are real and were correctly taken; the layout they
+> describe was replaced the next day (§0.1). Do not re-run this probe expecting
+> these figures, and do not cite the 1.8× as a live property. **What survives is
+> the chip-alignment finding** — that one is structural, not track-dependent.
+
 **Carton 6159 at 1440×900, dogfood:**
 
 | | Measured |
@@ -235,11 +279,12 @@ so the witnesses below are still the witnesses.
   it breaks the column the second line exists to make. Recorded in
   `EventTimeline.tsx`'s second-line docblock, beside the claim it verifies.
 
-**Still unmeasured, and not blocking:** 2402 (inverting edge) and 5678 (a second
-chip witness). **The dev server on `:3050` went down mid-probe** — it was up for
-6159 and gone by 5678, no `.next/dev/lock` left behind, so it exited cleanly. An
-agent must not restart it; ask the operator. Neither carton gates a ruling
-(2402's verdict is "not worth a layout" whichever way its pixels fall).
+**2402 and 5678 were never measured, and now never need to be.** They were queued
+against the old tracks; the layout they would have tested no longer ships, and
+2402's verdict ("an un-worked carton is not a second shape the surface should
+learn") never depended on pixels. **Closed, not deferred** — do not re-queue them.
+*(For the record: the dev server went down mid-probe after 6159, cleanly, no
+`.next/dev/lock`. An agent must not restart it; ask the operator.)*
 
 | Carton | Shape (re-confirmed) | Tests | Status |
 |---|---|---|---|
@@ -306,10 +351,15 @@ this item cannot arise. The split inside those 1194 is what makes both halves of
 
 ## 4. Settled — do not reopen
 
+**Three rows below were REOPENED and reversed on 2026-08-03 — they are struck
+through, not deleted, because the reasoning is still worth reading (§0.1).**
+Everything not struck through still stands.
+
 | Decision | Where |
 |---|---|
-| Asymmetric tracks; `2fr/3fr` and data-threshold stacking both measured and rejected | `carton-read.md` |
-| Activity lives in col 2 | `carton-read.md` |
+| ~~Asymmetric tracks (rail \| stream); `2fr/3fr` rejected~~ → **REVERSED: ships `2fr \| 1fr`, contents wide** | `carton-read.md` · §0.1 |
+| Data-threshold stacking rejected — a layout that changes shape on a data threshold teaches two surfaces | `carton-read.md` (survived the reversal) |
+| Activity lives in col 2 — **but as a DISCLOSURE since 2026-08-03**, not an expanded stream | `carton-read.md` |
 | Findings above History, under Activity | `carton-read.md` |
 | A first status is a transition (`→ RECEIVED`) | `cartonEventSignature` + tests |
 | A note is paper, a message is a bubble | `timeline-glyphs.ts` + tests |
@@ -320,8 +370,8 @@ this item cannot arise. The split inside those 1194 is what makes both halves of
 | `pairing_state` is never COALESCEd on a display path; the model reads recorded `source='unmatched'` | `carton-inspector-model.ts` + tests |
 | `WAIVED` is an ANSWER — the metric counts the complement of `PAIRING_ANSWERED_STATES` | `triage-focus.ts` + tests |
 | Journey thumbs are event context; the viewer is shared, the sources differ on purpose | `carton-read.md` |
-| The asymmetric tracks hold at 4+ lines (measured 8:1 in rows, 1.8× in pixels on 6159) — do not re-tune for a bigger contents list | `carton-read.md` |
-| Column balance is compared by RATIO, never by dead-canvas area — area scales with column height | `carton-read.md` |
+| ~~The asymmetric tracks hold at 4+ lines (8:1 in rows, 1.8× in pixels on 6159)~~ → **the measurement stands as a fact about the OLD layout; its conclusion does not carry** | §0.1 · §3.3 |
+| Column balance is compared by RATIO, never by dead-canvas area — area scales with column height (**still true, and still the trap**) | this doc §3.3 |
 | The journey chip span leads `metaBits` on every two-line row; that is what makes the last-8 column | `EventTimeline.tsx` docblock |
 
 ---
@@ -351,6 +401,43 @@ bottom relative to the column top, per column.
 imbalance (ratio was already 0.90 there) — the shape only reproduces on a carton with
 a real history, so before/after numbers come from dogfood while the permanent spec
 asserts on QA. Any dogfood-only spec needs a header comment saying why.
+
+---
+
+## 6. State at close (2026-08-03)
+
+**Nothing here is open. Pick this doc up only to read the reasoning, or if a
+carton-read layout question resurfaces.**
+
+| | State |
+|---|---|
+| §1 shipped work | Live, except the tracks (§0.1) |
+| §2 deliberately-not-done | Unchanged — re-read the reasons before "finishing" any of it |
+| §3.1 · 3.2 · 3.4 · 3.5 · 3.6 | Closed |
+| §3.3 | Closed — primary witness measured; the layout it measured was then superseded |
+| §4 | Three rows struck through (§0.1); the rest stand |
+| Working tree | This task's files are **committed and clean**; the checkout carries ~308 unrelated in-flight files from other lanes |
+| Dev server | Back up on `:3050` |
+
+**`npm run verify` is red on `Dead-code (knip)` only, and it is NOT this task's.**
+At close the finding was `src/lib/receiving/arrival-new-location.ts → SlotAddress`
+— an untouched file from another lane. Earlier in the pass it was six different
+findings in `master-nav` / `requester-profile` / `composer-draft`, also another
+lane's. **Confirm the finding names your own files before you act on it, and never
+refresh the baseline to clear someone else's red** (`verify.md`). Every other gate
+is green.
+
+**Spun out and still open:**
+[`triage-complete-never-true-HANDOFF.md`](./triage-complete-never-true-HANDOFF.md)
+— `receiving_triage.triage_complete` is true on 0 of 2474 dogfood rows because
+`staging_location_id` is null on all of them, so `save_without_pair_rate` returns
+null and `TriageKpiStrip` has never rendered. That is the live thread, not this doc.
+
+**If you are here to change the carton read layout:** the SoT is
+`.claude/rules/display/carton-read.md`, the guard is
+`tests/e2e/carton-column-balance.spec.ts` (QA org), and the thing to establish
+first is whether col 2 is still bounded — that single premise is what flipped the
+tracks once already.
 
 ---
 

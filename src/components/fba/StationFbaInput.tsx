@@ -92,7 +92,7 @@ export default function StationFbaInput(props: StationFbaInputProps) {
       inputClassName={
         fbaScanOnly
           ? undefined
-          : '!py-2.5 !text-sm focus:border-b-violet-600 focus:ring-0'
+          : '!py-2.5 !text-sm focus:border-b-violet-600 focus:ring-0' /* ds-allow-focus: identity/one-off hue or ring-0 */
       }
       showModeButtons={showModeToggle}
       visibleModes={['plan', 'select']}

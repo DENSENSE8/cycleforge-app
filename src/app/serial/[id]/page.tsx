@@ -7,7 +7,11 @@ import { unitStatusBadgeTone } from '@/components/station/receiving-constants';
 import { ScanAgainBar } from '@/components/mobile/receiving/ScanAgainBar';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { unwrapScannedLocation } from '@/lib/barcode-routing';
-import { Button } from '@/design-system/primitives';
+import { Panel, Button } from '@/design-system/primitives';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -274,7 +278,7 @@ function UnitPageInner() {
 
         {unit && (
           <>
-            <section className="rounded-lg border border-border-soft bg-surface-card p-3 shadow-sm">
+            <Panel radius="lg" padding="sm">
               <p className="mb-2 text-role-micro uppercase tracking-[0.16em] text-text-soft">
                 Test status
               </p>
@@ -305,9 +309,9 @@ function UnitPageInner() {
                   Fail
                 </Button>
               </div>
-            </section>
+            </Panel>
 
-            <section className="rounded-lg border border-border-soft bg-surface-card p-3 shadow-sm">
+            <Panel radius="lg" padding="sm">
               <p className="mb-2 text-role-micro uppercase tracking-[0.16em] text-text-soft">
                 Stash in bin
               </p>
@@ -322,7 +326,7 @@ function UnitPageInner() {
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') submitPutaway();
                   }}
-                  className="flex-1 rounded-md border border-border-default px-3 py-3 text-base font-mono font-semibold text-text-default focus:border-blue-500 focus:outline-none"
+                  className={cn("flex-1 rounded-md border border-border-default px-3 py-3 text-base font-mono font-semibold text-text-default", focusRing('field', 'accent'))}
                 />
                 <Button
                   variant="brand"
@@ -332,9 +336,9 @@ function UnitPageInner() {
                   Stash
                 </Button>
               </div>
-            </section>
+            </Panel>
 
-            <section className="rounded-lg border border-border-soft bg-surface-card p-3 shadow-sm">
+            <Panel radius="lg" padding="sm">
               <p className="mb-2 text-role-micro uppercase tracking-[0.16em] text-text-soft">
                 Note (optional)
               </p>
@@ -343,11 +347,11 @@ function UnitPageInner() {
                 placeholder="e.g. Power button flaky"
                 value={noteInput}
                 onChange={(e) => setNoteInput(e.target.value)}
-                className="w-full rounded-md border border-border-default px-3 py-2 text-sm text-text-default focus:border-blue-500 focus:outline-none"
+                className={cn("w-full rounded-md border border-border-default px-3 py-2 text-sm text-text-default", focusRing('field', 'accent'))}
               />
-            </section>
+            </Panel>
 
-            <section className="rounded-lg border border-border-soft bg-surface-card p-3 shadow-sm">
+            <Panel radius="lg" padding="sm">
               <p className="mb-2 text-role-micro uppercase tracking-[0.16em] text-text-soft">
                 Lifecycle
               </p>
@@ -377,7 +381,7 @@ function UnitPageInner() {
                   ))}
                 </ul>
               )}
-            </section>
+            </Panel>
           </>
         )}
       </main>

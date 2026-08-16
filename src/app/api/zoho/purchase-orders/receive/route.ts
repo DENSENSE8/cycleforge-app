@@ -14,6 +14,7 @@ import {
 import { formatPSTTimestamp, getCurrentPSTDateKey, normalizePSTTimestamp } from '@/utils/date';
 import { withZohoOrg } from '@/lib/zoho/tenant-context';
 import { withAuth } from '@/lib/auth/withAuth';
+import { WORK_ASSIGNMENTS_ACTIVE_ON_CONFLICT } from '@/lib/neon/work-assignments-conflict';
 import {
   getApiIdempotencyResponse,
   readIdempotencyKey,
@@ -272,7 +273,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
           `INSERT INTO work_assignments
              (organization_id, entity_type, entity_id, work_type, assigned_tech_id, status, priority, notes)
            VALUES ($1, 'RECEIVING', $2, 'TEST', $3, 'ASSIGNED', 100, $4)
-           ON CONFLICT DO NOTHING`,
+           ON CONFLICT ${WORK_ASSIGNMENTS_ACTIVE_ON_CONFLICT} DO NOTHING`,
           [
             ctx.organizationId,
             receivingId,

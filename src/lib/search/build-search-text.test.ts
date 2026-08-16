@@ -33,6 +33,18 @@ test('ORDER: title from product_title, subtitle mirrors global-search, facets ma
   assert.equal(doc.facets.happenedAt?.toISOString(), '2026-06-01T12:00:00.000Z');
 });
 
+test('ORDER: linked_trackings from shipment_links join the search text', () => {
+  const doc = buildSearchText('ORDER', {
+    id: 42,
+    order_id: '12-34567-89012',
+    product_title: 'Bose',
+    tracking_number: '1Z999AA10123456784',
+    linked_trackings: '9434608106244396718157',
+  });
+  assert.ok(doc.searchText.includes('9434608106244396718157'));
+  assert.equal(doc.facets.trackingNumber, '1Z999AA10123456784');
+});
+
 test('ORDER: falls back to "Order #id" title and created_at date', () => {
   const doc = buildSearchText('ORDER', { id: 7, created_at: '2026-01-02T00:00:00Z' });
   assert.equal(doc.title, 'Order #7');

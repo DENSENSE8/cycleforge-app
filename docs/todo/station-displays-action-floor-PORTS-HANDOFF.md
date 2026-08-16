@@ -43,7 +43,7 @@ record is a carton reuses everything; a station whose record is an *order* or a
 |---|---|---|---|---|---|
 | **Unbox** | `LineEditPanel` | ✓ | ✓ `UnboxDisplaysActionFloor` | receiving carton | golden |
 | **Arrival** | `TriagePanel` | ✓ | ✓ `ArrivalDisplaysActionFloor` | receiving carton | done |
-| **Testing** | `TestingPanel` | ✓ | ✗ | **receiving carton** | **Phase 1 — direct port** |
+| **Testing** | `TestingPanel` | ✓ | ✓ `TestingDisplaysActionFloor` (2026-08-10) | receiving carton | **Phase 1 — DONE** |
 | **Pack** | `PackOrderPanel` | ✓ | ✗ | order (`activeOrder.orderId`) | Phase 2 — gate (not a copy) |
 | **Shipping** | `ActiveOrderWorkspace` | ✓ | ✗ | order | Phase 2 — gate |
 | **Support orders** | `SupportOrdersFocusHost` | ✓ | ✗ | order | Phase 2 — gate |
@@ -172,12 +172,24 @@ delete grain and the shared shell all apply.
 - ✗ **no** `refreshInventoryDossier` / `inventoryRefreshing` → **Sync peer drops** (Testing is QC, not an inventory-dossier surface).
 - Print lives in the Testing **dock** (`TestingDockHost`: works-as-listed · notes · Pass · Print) — the floor's Print must wire to Testing's print handler (locate it; it is not a bare `c.runPrintLabel` on this controller).
 
-### 1a. Verb set (RECOMMENDED — differs from both siblings)
+### 1a. Verb set — SHIPPED 2026-08-10 (3 peers)
 
-`⋯ More (Resolve, unfound) · Print · Edit (→ linkage) · 🗑 Delete carton` = **4 peers**.
-- **Sync DROPS** vs Unbox's 5 (no inventory dossier on Testing).
-- **Print STAYS** vs Arrival's 4 (Testing has a printable label; Arrival did not).
-- Net: same count as Arrival, different middle peer.
+`⋯ More (Resolve, unfound) · Edit (→ linkage) · 🗑 Delete carton` = **3 peers**.
+- **Sync DROPS** — `useTestingLineController` exposes no Zoho inventory dossier.
+- **Print OMITTED** — every Testing print path is *apply-and-print* / the dock's
+  **Pass · Print** terminal; there is **no clean floor reprint**, so Print stays
+  on the dock (a bare Printer icon firing a mutating apply-and-print is a
+  footgun). *This corrects an earlier "Print stays" guess — the code dive found
+  no reprint to bind.*
+- **Delete carton INCLUDED** (confirmed) — the floor's main value-add and a NEW
+  QC-bench capability (`DELETE /api/receiving-logs`, verbatim Unbox handler).
+- **Edit → `linkage`** — Testing has both a `pairing` (SKU catalog) and a
+  `linkage` (carton↔PO) tab; linkage is the Unbox analog. `editSelected =
+  activeSideTab === 'linkage'`.
+
+**Lesson for the next port: verb set is decided by the station's CONTROLLER
+surface, not by the sibling's peer count.** Grep the controller's exposed
+methods before assuming Sync/Print exist.
 
 ### 1b. The port (ordered)
 

@@ -10,6 +10,7 @@ import { ConditionPills } from '@/components/receiving/workspace/ConditionPills'
 import { FnskuCatalogInfoPanel } from '@/components/fba/FnskuCatalogInfoPanel';
 import { getFnskuCatalogValue, isFnskuCatalogContext } from '@/utils/fnsku-catalog';
 import { CopyChip } from '@/components/ui/CopyChip';
+import { PlatformMark } from '@/components/ui/PlatformMark';
 import { LedgerValue } from '@/design-system/components/LedgerValue';
 import { DetailsPanelRow } from '@/design-system/components/DetailsPanelRow';
 import { Button, IconButton } from '@/design-system/primitives';
@@ -21,37 +22,11 @@ import { isOrderShipped } from '@/components/shipped/details-panel/shipped-detai
 import { isAmazonOrderForItemRefresh } from '@/lib/amazon/order-item-refresh-shared';
 import { conditionGradeTone } from '@/lib/condition-tone';
 import { conditionLabel } from '@/lib/conditions';
+import { sourcePlatformMeta } from '@/lib/source-platform';
 import { toast } from '@/lib/toast';
 
 import { normalizeCondition, type ConditionGrade } from '@/components/tech/StationConditionEditor';
 import { refreshDomain } from '@/lib/refresh/bus';
-
-// Per-platform CopyChip styling. Chip palette matches SkuIdentity /
-// order-platform.ts so the panel stays consistent with the rest of the app.
-const PLATFORM_STYLE: Record<
-  string,
-  { label: string; chip: string }
-> = {
-  zoho:    { label: 'Zoho',    chip: 'border-red-200    bg-red-50    text-red-700' },
-  amazon:  { label: 'Amazon',  chip: 'border-orange-200 bg-orange-50 text-orange-700' },
-  fba:     { label: 'Amazon',  chip: 'border-orange-200 bg-orange-50 text-orange-700' },
-  ecwid:   { label: 'Ecwid',   chip: 'border-blue-200   bg-blue-50   text-blue-700' },
-  ebay:    { label: 'eBay',    chip: 'border-yellow-200 bg-yellow-50 text-yellow-800' },
-  walmart: { label: 'Walmart', chip: 'border-amber-200  bg-amber-50  text-amber-800' },
-  mercari: { label: 'Mercari', chip: 'border-purple-200 bg-purple-50 text-purple-700' },
-  shopify: { label: 'Shopify', chip: 'border-border-default  bg-surface-canvas  text-text-default' },
-};
-const DEFAULT_STYLE = {
-  label: 'Other',
-  chip: 'border-border-soft bg-surface-canvas text-text-muted',
-};
-
-function styleFor(platform: string) {
-  return PLATFORM_STYLE[platform.toLowerCase()] || {
-    ...DEFAULT_STYLE,
-    label: platform.charAt(0).toUpperCase() + platform.slice(1),
-  };
-}
 
 interface PlatformSkuEntry {
   platform: string;
@@ -61,15 +36,15 @@ interface PlatformSkuEntry {
 }
 
 function PlatformSkuRow({ entry }: { entry: PlatformSkuEntry }) {
-  const style = styleFor(entry.platform);
+  const meta = sourcePlatformMeta(entry.platform);
   return (
     <div className="flex items-center gap-2 py-1">
       <div className="flex w-[88px] shrink-0 flex-col items-start gap-0.5">
-        <span
-          className={`inline-flex w-full items-center justify-center rounded-md border px-1.5 py-0.5 text-role-micro font-semibold uppercase tracking-wider ${style.chip}`}
-        >
-          {style.label}
-        </span>
+        <HoverTooltip label={meta.label} asChild focusable={false}>
+          <span className="inline-flex" aria-label={meta.label}>
+            <PlatformMark platformValue={entry.platform} meta={meta} />
+          </span>
+        </HoverTooltip>
         {entry.accountName && (
           <span className="w-full truncate text-role-eyebrow font-medium uppercase tracking-wider text-text-faint">
             {entry.accountName}

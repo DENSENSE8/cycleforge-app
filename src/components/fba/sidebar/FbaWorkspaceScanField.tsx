@@ -20,9 +20,13 @@ import { SIDEBAR_INTAKE_LABEL_CLASS } from '@/design-system/components/sidebar-i
 import { framerTransition } from '@/design-system/foundations/motion-framer';
 import { Button } from '@/design-system/primitives';
 import { refreshDomain } from '@/lib/refresh/bus';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 const fieldBaseClass =
-  'mt-1 w-full rounded-xl border-2 border-border-emphasis bg-surface-card px-3 py-2.5 text-sm font-semibold text-text-default outline-none transition-all placeholder:text-text-faint focus:border-transparent focus:ring-2 disabled:opacity-50';
+  cn('mt-1 w-full rounded-xl border-2 border-border-emphasis bg-surface-card px-3 py-2.5 text-sm font-semibold text-text-default transition-all placeholder:text-text-faint disabled:opacity-50', focusRing('field', 'neutral'));
 
 const TRACKING_PANEL_VARIANTS = {
   hidden: { opacity: 0 },

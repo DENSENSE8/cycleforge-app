@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { PageHeader } from '@/components/ui/pane-header';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { DataTable, type DataTableColumn } from '@/design-system/components/DataTable';
+import { Panel } from '@/design-system/primitives';
+
 
 export const dynamic = 'force-dynamic';
 
@@ -218,7 +220,7 @@ export default async function ThroughputPage({
         </section>
 
         {/* By event type */}
-        <section className="rounded-lg border border-border-soft bg-surface-card shadow-sm">
+        <Panel radius="lg" padding="none">
           <header className="border-b border-border-hairline px-6 py-3">
             <h2 className="text-lg font-medium text-text-default">By event type</h2>
           </header>
@@ -242,11 +244,11 @@ export default async function ThroughputPage({
               ))}
             </ul>
           )}
-        </section>
+        </Panel>
 
         {/* Station × hour heatmap */}
         {hourly.length > 0 ? (
-          <section className="rounded-lg border border-border-soft bg-surface-card shadow-sm">
+          <Panel radius="lg" padding="none">
             <header className="border-b border-border-hairline px-6 py-3">
               <h2 className="text-lg font-medium text-text-default">Station × hour</h2>
               <p className="mt-1 text-xs text-text-soft">
@@ -295,7 +297,7 @@ export default async function ThroughputPage({
                 </tbody>
               </table>
             </div>
-          </section>
+          </Panel>
         ) : null}
 
         {/* By actor */}
@@ -317,9 +319,9 @@ export default async function ThroughputPage({
 
 function Tile({ label, value, accent }: { label: string; value: string; accent: string }) {
   return (
-    <div className="rounded-lg border border-border-soft bg-surface-card px-6 py-4 shadow-sm">
+    <Panel radius="lg" padding="none" className="px-6 py-4">
       <p className="text-xs uppercase tracking-wide text-text-soft">{label}</p>
       <p className={`mt-1 text-3xl font-semibold ${accent}`}>{value}</p>
-    </div>
+    </Panel>
   );
 }

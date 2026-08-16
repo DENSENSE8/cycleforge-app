@@ -26,6 +26,8 @@
  */
 
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { PlatformMark } from '@/components/ui/PlatformMark';
+import { sourcePlatformLabel, sourcePlatformMeta } from '@/lib/source-platform';
 
 export interface SkuPlatformMapping {
   platform: string;             // 'amazon' | 'ecwid' | 'ebay' | 'fba' | …
@@ -43,37 +45,6 @@ interface SkuIdentityProps {
   className?: string;
 }
 
-// Aligned with PLATFORM_COLORS in src/utils/order-platform.ts so the
-// palette stays consistent across the app.
-const PLATFORM_CHIP_CLASSES: Record<string, string> = {
-  amazon:  'border-orange-200 bg-orange-50 text-orange-700',
-  fba:     'border-orange-200 bg-orange-50 text-orange-700',
-  ecwid:   'border-blue-200   bg-blue-50   text-blue-700',
-  ebay:    'border-yellow-200 bg-yellow-50 text-yellow-800',
-  walmart: 'border-amber-200  bg-amber-50  text-amber-800',
-  mercari: 'border-purple-200 bg-purple-50 text-purple-700',
-  shopify: 'border-border-default  bg-surface-canvas  text-text-default',
-  zoho:    'border-red-200    bg-red-50    text-red-700',
-};
-const DEFAULT_PLATFORM_CHIP = 'border-border-soft bg-surface-canvas text-text-muted';
-
-function platformChipClass(platform: string): string {
-  return PLATFORM_CHIP_CLASSES[platform.toLowerCase()] || DEFAULT_PLATFORM_CHIP;
-}
-
-function platformLabel(platform: string): string {
-  const p = platform.toLowerCase();
-  if (p === 'amazon') return 'Amazon';
-  if (p === 'fba')    return 'FBA';
-  if (p === 'ebay')   return 'eBay';
-  if (p === 'ecwid')  return 'Ecwid';
-  if (p === 'walmart') return 'Walmart';
-  if (p === 'mercari') return 'Mercari';
-  if (p === 'shopify') return 'Shopify';
-  // Fallback: title-case the raw string.
-  return platform.charAt(0).toUpperCase() + platform.slice(1);
-}
-
 export function SkuIdentity({
   canonicalSku,
   productTitle,
@@ -89,9 +60,11 @@ export function SkuIdentity({
     return (
       <div className={`flex flex-wrap items-center gap-1.5 ${className}`}>
         <span className="font-mono text-sm font-semibold tabular-nums text-text-default">{canonicalSku}</span>
-        <span className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-role-micro font-semibold uppercase tracking-wider ${platformChipClass('zoho')}`}>
-          Zoho
-        </span>
+        <HoverTooltip label={sourcePlatformLabel('zoho')} asChild focusable={false}>
+          <span className="inline-flex shrink-0" aria-label={sourcePlatformLabel('zoho')}>
+            <PlatformMark platformValue="zoho" />
+          </span>
+        </HoverTooltip>
         {visiblePlatforms.map((p, i) => (
           <PlatformSkuChip key={`${p.platform}-${i}`} mapping={p} dense />
         ))}
@@ -108,9 +81,11 @@ export function SkuIdentity({
         <span className="font-mono text-2xl font-semibold tabular-nums tracking-tight text-text-default">
           {canonicalSku}
         </span>
-        <span className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-role-micro font-semibold uppercase tracking-wider ${platformChipClass('zoho')}`}>
-          Zoho
-        </span>
+        <HoverTooltip label={sourcePlatformLabel('zoho')} asChild focusable={false}>
+          <span className="inline-flex shrink-0" aria-label={sourcePlatformLabel('zoho')}>
+            <PlatformMark platformValue="zoho" />
+          </span>
+        </HoverTooltip>
       </div>
       {visiblePlatforms.length > 0 && (
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
@@ -125,16 +100,18 @@ export function SkuIdentity({
 
 function PlatformSkuChip({ mapping, dense = false }: { mapping: SkuPlatformMapping; dense?: boolean }) {
   const value = (mapping.platformSku && mapping.platformSku.trim()) || mapping.platformItemId || '';
+  const meta = sourcePlatformMeta(mapping.platform);
+  const label = sourcePlatformLabel(mapping.platform);
   const sizing = dense ? 'px-1.5 py-0.5 text-role-micro' : 'px-2 py-0.5 text-xs';
   return (
     <HoverTooltip
-      label={`${platformLabel(mapping.platform)} · ${value}${mapping.platformItemId ? ` · ${mapping.platformItemId}` : ''}`}
+      label={`${label} · ${value}${mapping.platformItemId ? ` · ${mapping.platformItemId}` : ''}`}
       asChild
     >
       <span
-        className={`inline-flex items-center gap-1 rounded-md border font-medium ${sizing} ${platformChipClass(mapping.platform)}`}
+        className={`inline-flex items-center gap-1 rounded-md border border-border-soft bg-surface-canvas font-medium text-text-default ${sizing}`}
       >
-        <span className="font-semibold uppercase tracking-wider">{platformLabel(mapping.platform)}</span>
+        <PlatformMark platformValue={mapping.platform} meta={meta} />
         <span className="font-mono tabular-nums">{value}</span>
       </span>
     </HoverTooltip>

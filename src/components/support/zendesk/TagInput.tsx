@@ -2,6 +2,10 @@
 
 import { useState, type KeyboardEvent } from 'react';
 import { Tag, X } from '@/components/Icons';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 /**
  * Chip-style tag editor shared across the Zendesk support surfaces (claim
@@ -37,7 +41,7 @@ export function TagInput({
   };
 
   return (
-    <div className="flex min-h-10 flex-wrap items-center gap-1.5 rounded-xl border border-border-default bg-surface-card px-3 py-1.5 transition focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100">
+    <div className={cn("flex min-h-10 flex-wrap items-center gap-1.5 rounded-xl border border-border-default bg-surface-card px-3 py-1.5 transition", focusRing('wrapper', 'accent'))}>
       {tags.map((t) => (
         <span
           key={t}

@@ -403,6 +403,7 @@ export function CsvImportStagingRail({
           nextTitle="Next staging row"
           prevTestId="csv-import-staging-prev"
           nextTestId="csv-import-staging-next"
+          columnDisplay
           cursor={
             cursorPos >= 0 ? (
               <CursorPositionReadout

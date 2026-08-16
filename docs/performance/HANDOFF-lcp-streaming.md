@@ -1,3 +1,55 @@
+## Progress log — 2026-08-11 (Unbox LCP = MRU middle carton)
+
+**Shipped:** LCP stand-in is the **MRU carton middle** (identity + PO lines from
+`seed.mruLines`), not Browse lists / restore pulse skeleton.
+
+- Hold `UnboxStationFirstPaint` until `ReceivingLineWorkspace` mounts (or
+  settled empty). Never release onto `showRestoreSkeleton`.
+- Paint order (CWV + WMS ops): P1 above-fold primary work in SSR HTML → P2
+  context rail → P3 Displays bodies stay `dynamic()`. Target Perf ≥ 90 once
+  measured; do **not** ratchet baseline until a real win.
+
+---
+
+## Progress log — 2026-08-11 (Unbox station-first cold load)
+
+**Shipped:** bare `/unbox` is **station-first**, not browse-first.
+
+- RSC `seedUnboxStation` — Unboxed rail (`view=unbox_opened`) + MRU carton
+  siblings; **no** Queue spine on cold land.
+- LCP stand-in: `UnboxStationFirstPaint` (MRU identity or empty scan copy).
+- Client auto-opens MRU when `shouldAutoOpenUnboxMru` (no `openReceivingId`,
+  no `unboxdesk`). Back to list / Browse lists → `?unboxdesk=1` (tables only
+  then). Opening a carton clears desk.
+- `UnboxLineWorkspace` does **not** keep-alive `UnboxWorkspaceView` under the
+  carton; desk sheet is `dynamic()` gated on `unboxdesk`.
+- Guards + SoT Paint updated. **Do not** ratchet `lighthouse-baseline.json`
+  until a measured win.
+
+---
+
+## Progress log — 2026-08-10 (Unbox Phase 1 — kill skeleton-as-LCP)
+
+**Phase 1 shipped (verified corrections to Gemini D9):**
+
+- `UnboxBrowseFirstPaint` empty seed → hard text
+  (`Queue empty — scan Ticket · Tracking · PO`) — **no** `animate-pulse` bars.
+- `UnboxWorkbenchSkeleton` flush (`cornerClass('flush')` / `!rounded-none`);
+  stripped `rounded-lg` / `rounded-full` / `shadow-sm`; table skeleton pad gone.
+- `UnboxWorkspaceView` **static** import of `ReceivingLinesTable` (dropped
+  `dynamic` + `UnboxTableCardSkeleton` loading flash). RightPane already
+  static-imported the same module — Gemini’s “dual dynamic” claim was stale.
+- **Kept** `UnboxBrowseShell` `opacity-0` handoff (To-ship
+  `OutboundOrdersDeskShell` parity) — deleting it while children can paint a
+  skeleton body would cover FirstPaint and worsen LCP.
+- Guard: `unbox-browse-first-paint.guard.test.ts`. SoT Paint: skeletons are
+  geometry, not LCP. **Do not** ratchet `lighthouse-baseline.json` until a
+  measured win.
+  *(Superseded for cold `/unbox` LCP by 2026-08-11 station-first — Queue
+  stand-in is desk-only.)*
+
+---
+
 ## Progress log — 2026-08-06 (paint content order + To-ship / Unbox seeds)
 
 **SoT law shipped:** P0 shell → P1 primary → P2 context → P3 trailing in
@@ -10,10 +62,17 @@
 stand-in. Dropped `ssr: false` on `DashboardShippedTable`. Filter URL writes
 use `startTransition`; Unshipped search uses `useDeferredValue`.
 
-**Unbox / Arrival:** RSC `seedUnboxSpine` dehydrates History spine into the
-same key `useReceivingLinesQuery` mounts with. Displays P3 bodies
-(Ticket / Photos / Timeline / Support) are `dynamic()` in `unbox-tabs` and
-Testing `build-testing-displays`.
+**Unbox / Arrival:** RSC `seedUnboxQueue` dehydrates **Queue** spine (bare
+`/unbox` default tab) into the same key `useReceivingLinesQuery` mounts with,
+and streams `UnboxBrowseFirstPaint` as the LCP stand-in (To-ship
+`OrdersQueueFirstPaint` dual-mount: page `sr-only` + `UnboxBrowseShell`
+opacity handoff). Arrival still warms History via `seedUnboxSpine`. Displays
+P3 bodies (Ticket / Photos / Timeline / Support) are `dynamic()` in
+`unbox-tabs` and Testing `build-testing-displays`.
+
+**Progress — 2026-08-10 (Unbox SSR row stand-in):** Seed retargeted History →
+Queue; `{ state, rows }` + `UnboxBrowseFirstPaint` + `UnboxBrowseShell`. Measure
+`/unbox` with the workflow below before ratcheting `lighthouse-baseline.json`.
 
 **Search:** `GlobalHeaderSearch` + `SearchBrowseShell` are LCP (marks
 `search:chrome` / `search:primary`). No locked-width stage field.

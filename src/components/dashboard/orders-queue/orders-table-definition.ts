@@ -67,12 +67,16 @@ export const ORDERS_DEFAULT_TABLE_BINDING: TableSurfaceBinding<ShippedOrder, Ord
   definition: ORDERS_DEFAULT_TABLE_DEFINITION,
   columns: ORDERS_QUEUE_COLUMNS,
   makeDescriptor: makeOrdersGridDescriptorDefault,
+  // Stable id on purpose: To-ship is walked record-by-record, and a per-order
+  // id would play exit → empty → enter on every ↑↓ step.
+  recordPlane: { kind: 'inspector', occupantId: 'detail:order' },
 };
 
 export const ORDERS_TESTED_TABLE_BINDING: TableSurfaceBinding<ShippedOrder, OrdersQueueColumn> = {
   definition: ORDERS_TESTED_TABLE_DEFINITION,
   columns: ORDERS_QUEUE_TESTED_COLUMNS,
   makeDescriptor: makeOrdersGridDescriptorTested,
+  recordPlane: { kind: 'inspector', occupantId: 'detail:order' },
 };
 
 /** Pick the binding for the resolved column mode (the adapter's one branch). */

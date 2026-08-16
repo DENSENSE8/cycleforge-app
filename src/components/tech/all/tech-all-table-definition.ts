@@ -29,4 +29,13 @@ export const TECH_ALL_TABLE_BINDING: TableSurfaceBinding<TechAllTriageRow, TechA
   definition: TECH_ALL_TABLE_DEFINITION,
   columns: TECH_ALL_GRID_COLUMNS,
   makeDescriptor: makeTechAllGridDescriptor,
+  // A cross-entity triage feed: a row routes to whichever surface owns it
+  // (`dispatchSelectLine` → TestingPanel · `dispatchOpenShippedDetails` →
+  // the order rail · `/repair?openRepair=` · `/pickup?lcpu=`). There is no
+  // single record plane to name, which is exactly why it declares one.
+  recordPlane: {
+    kind: 'station',
+    reason:
+      'cross-entity triage — the row dispatches to the owning surface (testing bench, order rail, repair, pickup) by row kind',
+  },
 };

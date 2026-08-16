@@ -23,12 +23,10 @@ import { FbaTriageBand, FbaWorkspaceHeader } from '@/components/fba/FbaWorkspace
 import { FbaKpiStrip } from '@/components/fba/FbaKpiStrip';
 import { ReadyWorkspaceBody } from '@/components/outbound/ready/ReadyWorkspaceBody';
 import { ReadyKpiBand } from '@/components/outbound/ready/ReadyKpiBand';
-import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
 import {
-  WORKBENCH_SHEET_CHROME,
-  WORKBENCH_SHEET_HOST,
-} from '@/components/dashboard/workbench-shell';
-import { cn } from '@/utils/_cn';
+  WorkbenchSheetView,
+  useWorkbenchSheetChrome,
+} from '@/components/dashboard/WorkbenchSheetView';
 import { SlicedActionDock } from '@/design-system/primitives';
 import { Package, X } from '@/components/Icons';
 import { framerPresence, framerTransition, motionBezier } from '@/design-system/foundations/motion-framer';
@@ -78,7 +76,9 @@ export function FbaOutboundWorkspace() {
   const readySearch = String(searchParams.get('q') || '');
   // Portal target for the Ready grid's column-display (▦) trigger — seats it in
   // the triage band controls slot instead of the sheet card corner.
-  const [readyControlsEl, setReadyControlsEl] = useState<HTMLDivElement | null>(null);
+  // Band 2 here is a raw strip, not a snap-collapsible KPI band, so there is no
+  // per-staff collapse preference to read — see the `band2` slot below.
+  const chrome = useWorkbenchSheetChrome();
 
   const handleSelectTab = useCallback(
     (tab: FbaMode) => {
@@ -146,47 +146,51 @@ export function FbaOutboundWorkspace() {
 
   return (
     <div className="relative flex h-full min-h-0 w-full flex-col">
-      <DashboardScrollShell
+      <WorkbenchSheetView
+        chrome={chrome}
         className="h-full bg-surface-canvas"
-        chrome={
-          <div className={cn(WORKBENCH_SHEET_CHROME, 'flex flex-col gap-0')}>
-            <FbaWorkspaceHeader
-              tab={activeMode}
-              onSelectTab={handleSelectTab}
-              className="rounded-none border-l-0 border-t-0 shadow-sm"
-            />
-            {/* Band 2 — KPI. Board modes (Plan · Combine) show stage counts;
-                Ready shows the disposition tiles pinned in chrome (folded out of
-                the scroll body); Shipped is honest absence. Plain flush band (no
-                snap-collapse — the strip is mode-scoped, not a per-staff pref). */}
-            {isBoard ? (
-              <div className="border-b border-r border-border-soft bg-surface-card px-3 py-2">
-                <FbaKpiStrip
-                  counts={stageCounts}
-                  activeFilter={statusFilter}
-                  onToggleFilter={handleToggleFilter}
-                />
-              </div>
-            ) : isReady ? (
-              <div className="border-b border-r border-border-soft bg-surface-card px-3 py-2">
-                <ReadyKpiBand />
-              </div>
-            ) : null}
-            <FbaTriageBand
-              tab={activeMode}
-              search={isReady ? readySearch : search}
-              onSearchChange={handleSearchChange}
-              weekRange={isBoard ? weekRange : undefined}
-              weekOffset={weekOffset}
-              onPrevWeek={isBoard ? () => setWeekOffset((o) => o - 1) : undefined}
-              onNextWeek={isBoard ? () => setWeekOffset((o) => Math.min(0, o + 1)) : undefined}
-              visibleCount={filteredPendingItems.length}
-              controlsSlotRef={setReadyControlsEl}
-            />
-          </div>
+        tabs={({ className }) => (
+          <FbaWorkspaceHeader
+            tab={activeMode}
+            onSelectTab={handleSelectTab}
+            className={className}
+          />
+        )}
+        // Band 2 — KPI. Board modes (Plan · Combine) show stage counts; Ready
+        // shows the disposition tiles pinned in chrome (folded out of the scroll
+        // body); Shipped is honest absence. `band2`, not `kpi`: this is a plain
+        // flush strip with no snap-collapse, because it is mode-scoped rather
+        // than a per-staff preference.
+        band2={
+          isBoard ? (
+            <div className="border-b border-r border-border-soft bg-surface-card px-3 py-2">
+              <FbaKpiStrip
+                counts={stageCounts}
+                activeFilter={statusFilter}
+                onToggleFilter={handleToggleFilter}
+              />
+            </div>
+          ) : isReady ? (
+            <div className="border-b border-r border-border-soft bg-surface-card px-3 py-2">
+              <ReadyKpiBand />
+            </div>
+          ) : undefined
         }
+        triage={({ controlsSlotRef }) => (
+          <FbaTriageBand
+            tab={activeMode}
+            search={isReady ? readySearch : search}
+            onSearchChange={handleSearchChange}
+            weekRange={isBoard ? weekRange : undefined}
+            weekOffset={weekOffset}
+            onPrevWeek={isBoard ? () => setWeekOffset((o) => o - 1) : undefined}
+            onNextWeek={isBoard ? () => setWeekOffset((o) => Math.min(0, o + 1)) : undefined}
+            visibleCount={filteredPendingItems.length}
+            controlsSlotRef={controlsSlotRef ?? undefined}
+          />
+        )}
       >
-        <div className={WORKBENCH_SHEET_HOST}>
+        {() => (
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
               key={activeMode}
@@ -194,7 +198,7 @@ export function FbaOutboundWorkspace() {
               className="relative flex min-w-0 flex-col"
             >
               {isReady ? (
-                <ReadyWorkspaceBody columnTriggerPortalTarget={readyControlsEl} />
+                <ReadyWorkspaceBody columnTriggerPortalTarget={null} />
               ) : error ? (
                 <FbaErrorState message={error} onRetry={fetchBoard} theme={stationTheme} />
               ) : activeMode === 'shipped' ? (
@@ -219,8 +223,8 @@ export function FbaOutboundWorkspace() {
               )}
             </motion.div>
           </AnimatePresence>
-        </div>
-      </DashboardScrollShell>
+        )}
+      </WorkbenchSheetView>
 
       {/* Bottom-edge sliced dock (same family as station terminal) —
           pinned to the pane, not the scroll content. */}

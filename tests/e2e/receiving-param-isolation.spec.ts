@@ -66,20 +66,18 @@ test.describe('receiving param isolation', () => {
     await gotoAuthed(page, '/unbox?unboxview=not-a-tab&openReceivingId=0&display=not-a-tab');
     await expect.poll(() => paramsOf(page).unboxview, { timeout: 15_000 }).toBeUndefined();
     expect(paramsOf(page).openReceivingId).toBeUndefined();
-    // `?display=` is the Displays push column. A bogus value must not survive —
-    // an unparseable tab would otherwise ask the column to paint nothing.
+    // Displays leaf selection is local — stale `?display=` must be stripped.
     expect(paramsOf(page).display).toBeUndefined();
   });
 
-  test('a real Displays tab survives arrival — the column is deep-linkable', async ({ page }) => {
-    // The whole reason `?display=` exists: the column shipped holding its tab in
-    // local state, so a reload or a shared link landed with it closed while its
-    // Ticket / Claim siblings restored fine.
+  test('stale Displays URL keys are stripped — leaf selection is not deep-linkable', async ({
+    page,
+  }) => {
     await gotoAuthed(page, '/unbox?display=po-note');
-    await expect.poll(() => paramsOf(page).display, { timeout: 15_000 }).toBe('po-note');
+    await expect.poll(() => paramsOf(page).display, { timeout: 15_000 }).toBeUndefined();
   });
 
-  test('`display` is Unbox-owned — Triage drops it on arrival', async ({ page }) => {
+  test('`display` is not Triage-owned — Triage drops it on arrival', async ({ page }) => {
     // Asserted by direct navigation rather than through the header Mode menu:
     // ownership is a property of the ROUTE (Triage does not declare `display`),
     // and routing it through `switchMode` would couple this to GlobalHeader

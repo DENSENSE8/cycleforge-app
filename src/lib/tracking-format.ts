@@ -245,7 +245,7 @@ export const getCarrier = detectCarrier;
 
 function isBlankTracking(tracking: string): boolean {
   const t = String(tracking || '').trim();
-  return !t || t === 'Not available' || t === 'N/A';
+  return !t || t === 'Not available' || t === 'N/A'; // ds-allow-na: tracking empty-vocab reader
 }
 
 /**

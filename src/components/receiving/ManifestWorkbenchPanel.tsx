@@ -19,6 +19,10 @@ import { conditionLabel } from '@/lib/conditions';
 import { printManifestLabel } from '@/lib/print/printManifestLabel';
 import { useManifestDetail } from '@/hooks/useManifestDetail';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 const MANIFEST_STATUS_TONE: Record<string, string> = {
   OPEN: 'bg-amber-100 text-amber-800',
@@ -235,7 +239,7 @@ export function ManifestWorkbenchPanel({
                 }
               }}
               placeholder="Scan a serial to add to the kit…"
-              className="min-w-0 flex-1 rounded-lg border border-border-soft bg-surface-card inset-cozy font-mono text-role-caption text-text-default outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
+              className={cn("min-w-0 flex-1 rounded-lg border border-border-soft bg-surface-card inset-cozy font-mono text-role-caption text-text-default", focusRing('field', 'accent'))}
             />
             {busy === 'add' ? <Loader2 className="h-4 w-4 shrink-0 animate-spin text-text-muted" /> : null}
           </div>

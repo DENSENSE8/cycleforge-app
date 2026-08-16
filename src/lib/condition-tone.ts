@@ -151,7 +151,7 @@ export function orderRowConditionTone(condition: string | null | undefined): str
     .trim()
     .toUpperCase()
     .replace(/\s+/g, '_');
-  if (!normalized || normalized === 'N/A' || normalized === '--' || normalized === '—' || normalized === '---') {
+  if (!normalized || normalized === 'N/A' || normalized === '--' || normalized === '—' || normalized === '---') { // ds-allow-na: condition empty-vocab reader
     return 'text-text-muted';
   }
   if (normalized === 'NEW' || normalized === 'BRAND_NEW') return 'text-text-warning';
@@ -207,11 +207,23 @@ export function conditionPillClass(
   if (density === 'barDistribute') {
     // Full-name progressive strip: share remaining width evenly; no pad /
     // uppercase tracking (labels come from conditionLabel(..., 'full')).
-    return `inline-flex h-11 min-w-0 flex-1 items-center justify-center rounded-none p-0 text-center text-role-caption font-semibold leading-tight ring-1 ring-inset transition-colors active:scale-[0.98] ${
+    //
+    // SEAM (Unbox only — `barDistribute` is passed just by PoLineCaptureRow +
+    // the Unbox dock tabs): these faces sit in a flush `gap-0` strip whose
+    // container overlaps every sibling after the first by 1px
+    // (`[&>*+*]:-ml-px`). Without it two `ring-inset` edges ABUT and the
+    // internal seam renders 2px. The overlap makes the LATER sibling paint the
+    // shared column, so the picked grade must out-stack its neighbours or its
+    // saturated hue is clipped on the right by the next idle pill's pale ring.
+    // `relative` is what makes z apply.
+    const stack = isActive ? 'relative z-raised' : 'relative z-base hover:z-raised';
+    return `${stack} inline-flex h-11 min-w-0 flex-1 items-center justify-center rounded-none p-0 text-center text-role-caption font-semibold leading-tight ring-1 ring-inset transition-colors active:scale-[0.98] ${
       isActive ? tone.active : tone.inactive
     }`;
   }
   // Compact pill strip: horizontal label inset + uppercase abbreviation.
+  // No stacking context here — the `scroll` density is Testing / Units /
+  // shipped, which are out of scope for the Unbox-first border pass.
   return `inline-flex h-11 shrink-0 items-center justify-center whitespace-nowrap rounded-none px-2.5 text-role-caption font-semibold uppercase tracking-[0.1em] ring-1 ring-inset transition-colors active:scale-[0.98] ${
     isActive ? tone.active : tone.inactive
   }`;

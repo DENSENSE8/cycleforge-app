@@ -10,6 +10,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/design-system/components/Dialog';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 // ─── Shared shell ──────────────────────────────────────────────────────────
 
@@ -79,7 +83,7 @@ export function FieldLabel({ children }: { children: React.ReactNode }) {
 }
 
 export const inputClass =
-  'w-full rounded-lg border border-border-soft bg-surface-card px-3 py-2 text-sm text-text-default placeholder:text-text-faint focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-100';
+  cn('w-full rounded-lg border border-border-soft bg-surface-card px-3 py-2 text-sm text-text-default placeholder:text-text-faint', focusRing('field', 'accent'));
 
 export { FILTER_DROPDOWN_SELECT_CLASS as selectClass } from '@/design-system/components/FilterDropdownSelect';
 

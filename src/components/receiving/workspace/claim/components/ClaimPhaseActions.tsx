@@ -57,7 +57,10 @@ function SellerActions({ c }: { c: ReceivingClaimController }) {
         variant="primary"
         size="md"
         onClick={() => void seller.finishSellerStep()}
-        disabled={seller.aiLoading || (c.mode === 'link' && c.linkCommitStatus !== 'committed')}
+        disabled={
+          seller.aiLoading ||
+          (c.mode === 'link' && c.linkUpdateStatus !== 'posted')
+        }
       >
         Finish seller msg
       </Button>
@@ -65,11 +68,12 @@ function SellerActions({ c }: { c: ReceivingClaimController }) {
   );
 }
 
-type ClaimPhase = 'find' | 'ticket' | 'filed' | 'seller';
+type ClaimPhase = 'ticket' | 'filed' | 'seller';
 
 /**
  * Resolve which primary CTA the sticky footer should show from claim lifecycle
- * (not scroll position).
+ * (not scroll position). Create and Link share one compose surface — Link uses
+ * a single Link & send CTA (no separate Find-phase Link).
  */
 function resolveClaimFooterPhase(c: ReceivingClaimController): ClaimPhase | null {
   const isCreate = c.mode === 'create';
@@ -77,7 +81,6 @@ function resolveClaimFooterPhase(c: ReceivingClaimController): ClaimPhase | null
   const linkPosted = !isCreate && c.linkUpdateStatus === 'posted';
   const isFiledPhase = createFiled || linkPosted;
 
-  if (!isCreate && c.linkCommitStatus !== 'committed') return 'find';
   if (!isFiledPhase) return 'ticket';
   if (c.step === 'seller' && c.sellerStepApplicable) return 'seller';
   return 'filed';
@@ -100,33 +103,6 @@ function ClaimPhaseActions({
 }) {
   const { search } = c;
   const isCreate = c.mode === 'create';
-
-  if (phase === 'find') {
-    return (
-      <ActionsRow sticky={sticky}>
-        <Button
-          type="button"
-          variant={search.selectedTicket ? 'danger' : 'primary'}
-          size="md"
-          onClick={c.submitLink}
-          disabled={c.linkCommitStatus === 'linking' || !c.row.receiving_id || !search.selectedTicket}
-          icon={
-            c.linkCommitStatus === 'linking' ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Link2 className="h-3.5 w-3.5" />
-            )
-          }
-        >
-          {c.linkCommitStatus === 'linking'
-            ? 'Linking…'
-            : search.selectedTicket
-              ? `Link ticket #${search.selectedTicket.id} →`
-              : 'Choose a ticket'}
-        </Button>
-      </ActionsRow>
-    );
-  }
 
   if (phase === 'ticket') {
     const backupLeading = <ClaimBackupStep c={c} />;
@@ -158,8 +134,6 @@ function ClaimPhaseActions({
       );
       return (
         <ActionsRow sticky={sticky} leading={backupLeading}>
-          {/* Stable mount — completeness disables the tip instead of unwrapping
-              the CTA (unwrap remounted the button when compose flipped). */}
           <HoverTooltip
             label="Add a subject and body first"
             asChild
@@ -171,35 +145,47 @@ function ClaimPhaseActions({
       );
     }
 
-    if (c.linkCommitStatus !== 'committed' || c.linkUpdateStatus === 'posted') return null;
-    const updateButton = (
+    if (c.linkUpdateStatus === 'posted') return null;
+    const busy =
+      c.linkCommitStatus === 'linking' || c.linkUpdateStatus === 'posting';
+    const linkDisabled =
+      busy ||
+      !c.row.receiving_id ||
+      !search.selectedTicket ||
+      !c.composeComplete;
+    const linkButton = (
       <Button
         type="button"
-        variant="danger"
+        variant={search.selectedTicket ? 'danger' : 'primary'}
         size="md"
-        onClick={c.submitLinkUpdate}
-        disabled={
-          c.linkUpdateStatus === 'posting' || !c.row.receiving_id || !c.composeComplete
-        }
+        onClick={() => void c.submitLinkAndUpdate()}
+        disabled={linkDisabled}
         icon={
-          c.linkUpdateStatus === 'posting' ? (
+          busy ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
             <Link2 className="h-3.5 w-3.5" />
           )
         }
       >
-        {c.linkUpdateStatus === 'posting' ? 'Posting…' : 'Update ticket →'}
+        {c.linkCommitStatus === 'linking'
+          ? 'Linking…'
+          : c.linkUpdateStatus === 'posting'
+            ? 'Sending…'
+            : search.selectedTicket
+              ? `Link & send #${search.selectedTicket.id} →`
+              : 'Choose a ticket'}
       </Button>
     );
+    const tip = !search.selectedTicket
+      ? 'Pick an existing ticket first'
+      : !c.composeComplete
+        ? 'Add a subject and body first'
+        : '';
     return (
       <ActionsRow sticky={sticky} leading={backupLeading}>
-        <HoverTooltip
-          label="Add a subject and body first"
-          asChild
-          disabled={c.composeComplete}
-        >
-          {updateButton}
+        <HoverTooltip label={tip || 'Link & send'} asChild disabled={!tip}>
+          {linkButton}
         </HoverTooltip>
       </ActionsRow>
     );

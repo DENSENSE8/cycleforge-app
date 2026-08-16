@@ -29,4 +29,14 @@ export const WARRANTY_TABLE_BINDING: TableSurfaceBinding<WarrantyClaimListRow, W
   definition: WARRANTY_TABLE_DEFINITION,
   columns: WARRANTY_GRID_COLUMNS,
   makeDescriptor: makeWarrantyGridDescriptor,
+  /**
+   * Migrated onto `RightRailHost` 2026-08-10. It used to be a page-local
+   * `w-[420px] border-l … shadow-xl` column mounted straight into
+   * `WarrantyWorkspace` — the private right-edge element the right-rail store
+   * exists to prevent — with an `AnimatePresence` keyed per claim (exit → empty
+   * → enter on every step) and a spring `x: 420` slide on a width its siblings
+   * lay out against. Declaring the plane is what surfaced it: the union has no
+   * arm that can describe a private fork.
+   */
+  recordPlane: { kind: 'inspector', occupantId: 'detail:warranty' },
 };

@@ -75,7 +75,7 @@ test('matchLabelNotePhraseFrom prefixes case-insensitively and prefers extras th
 
 test('labelNoteGhostSuffix paints only the remainder', () => {
   assert.equal(labelNoteGhostSuffix('Scr', 'Scratch on left'), 'atch on left');
-  assert.equal(labelNoteGhostSuffix('', 'Scratch'), '');
+  assert.equal(labelNoteGhostSuffix('', 'Scratch'), 'Scratch');
   assert.equal(labelNoteGhostSuffix('Scratch', 'Scratch'), '');
   assert.equal(labelNoteGhostSuffix('Scr', null), '');
 });

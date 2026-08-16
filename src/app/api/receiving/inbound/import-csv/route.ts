@@ -2,7 +2,8 @@
  * POST /api/receiving/inbound/import-csv
  *
  * Batch desk import — client parses CSV rows and posts them here. Each row
- * goes through importDeskInboundRow (same UPSERT as Add).
+ * goes through importDeskInboundRow (same UPSERT as Add). Amazon native
+ * returns rows without a matching sku_catalog.sku (= ASIN) are skipped.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -13,7 +14,11 @@ import { parseBody } from '@/lib/schemas/parse';
 import { InboundImportCsvBody } from '@/lib/schemas/inbound-desk';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import { invalidateReceivingViews } from '@/lib/receiving/invalidation';
-import { deskRowFromCsvRecord, importDeskInboundRow } from '@/lib/inbound/desk-import';
+import {
+  deskRowFromCsvRecord,
+  importDeskInboundRow,
+  isDeskImportSkip,
+} from '@/lib/inbound/desk-import';
 
 export const POST = withAuth(async (request: NextRequest, ctx) => {
   const raw = await request.json().catch(() => ({}));
@@ -25,17 +30,32 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
     ok: boolean;
     created?: boolean;
     receiving_line_id?: number;
+    skipped?: boolean;
+    skip_reason?: string;
+    asin?: string | null;
     error?: string;
   }> = [];
 
   let created = 0;
   let updated = 0;
+  let skipped = 0;
   let failed = 0;
 
   for (let i = 0; i < parsed.rows.length; i++) {
     const deskRow = deskRowFromCsvRecord(parsed.rows[i]);
     try {
       const r = await importDeskInboundRow(ctx.organizationId, deskRow);
+      if (isDeskImportSkip(r)) {
+        skipped += 1;
+        results.push({
+          row: i,
+          ok: true,
+          skipped: true,
+          skip_reason: r.reason,
+          asin: r.asin ?? null,
+        });
+        continue;
+      }
       results.push({
         row: i,
         ok: true,
@@ -60,7 +80,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
     entityType: AUDIT_ENTITY.RECEIVING_LINE,
     entityId: 'batch',
     method: 'system',
-    after: { created, updated, failed, total: parsed.rows.length },
+    after: { created, updated, skipped, failed, total: parsed.rows.length },
   });
 
   after(async () => {
@@ -75,6 +95,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
     success: failed === 0,
     created,
     updated,
+    skipped,
     failed,
     total: parsed.rows.length,
     results,

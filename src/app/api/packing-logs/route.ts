@@ -18,6 +18,7 @@ import { mirrorLegacyPackToAllocations } from '@/lib/inventory/sync-legacy-pack'
 import { attachPhotoWithLegacyUrl } from '@/lib/photos/service';
 import { PACKER_BOX_LABEL_PHOTO_TYPE } from '@/lib/photos/types';
 import { writeLedgerDelta } from '@/lib/inventory/write-ledger-delta';
+import { WORK_ASSIGNMENTS_ACTIVE_ON_CONFLICT } from '@/lib/neon/work-assignments-conflict';
 import type { ScanClassification } from '@/utils/packer';
 
 /**
@@ -541,7 +542,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
                         orderId: '',
                         productTitle: 'Unmatched tracking — exception queue',
                         qty: 1,
-                        condition: 'N/A',
+                        condition: 'N/A', // ds-allow-na: packing-exception API payload writer
                         tracking: scanInput,
                         sku: null,
                         itemNumber: null,
@@ -581,8 +582,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
                     (organization_id, entity_type, entity_id, work_type, assigned_packer_id,
                      completed_by_packer_id, status, priority, notes, completed_at)
                 VALUES ($1, 'ORDER', $2, 'PACK', $3, $3, 'DONE', 100, 'Auto-completed on pack scan', NOW())
-                ON CONFLICT (entity_type, entity_id, work_type)
-                    WHERE status IN ('ASSIGNED', 'IN_PROGRESS')
+                ON CONFLICT ${WORK_ASSIGNMENTS_ACTIVE_ON_CONFLICT}
                 DO UPDATE
                     SET assigned_packer_id     = EXCLUDED.assigned_packer_id,
                         completed_by_packer_id = EXCLUDED.completed_by_packer_id,
@@ -721,7 +721,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
                         orderId: String(order.order_id ?? '').trim(),
                         productTitle: String(order.product_title ?? '').trim() || 'Unknown product',
                         qty: Math.max(1, Number(order.quantity ?? 1) || 1),
-                        condition: String(order.condition ?? '').trim() || 'N/A',
+                        condition: String(order.condition ?? '').trim() || 'N/A', // ds-allow-na: packing-scan API payload writer
                         tracking: String(order.tracking_number ?? scanInput).trim(),
                         sku: order.sku ?? null,
                         itemNumber: order.item_number ?? null,

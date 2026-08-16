@@ -1456,19 +1456,23 @@ export function legacyBuildUnmatchedPlaceholdersSql(searchParams: URLSearchParam
           )`;
         }
       }
-  // Keep in lockstep with buildUnmatchedPlaceholdersSql: History (activity)
-  // drops door-scan-only Unfound; view=all stays inclusive.
-  const activityUnboxTouchSql =
-    view === 'activity'
-      ? ` AND (
+  // Keep in lockstep with buildUnmatchedPlaceholdersSql: browse History
+  // (activity, no search) drops door-scan-only Unfound; an armed search widens
+  // to lineless zoho_po and skips Unbox-touch; view=all stays inclusive.
+  const searchActive = Boolean(search);
+  const sourceInSql = searchActive
+    ? `('unmatched', 'local_pickup', 'zoho_po')`
+    : `('unmatched', 'local_pickup')`;
+  const activityGatesMembership = view === 'activity' && !searchActive;
+  const activityUnboxTouchSql = activityGatesMembership
+    ? ` AND (
               ru.unboxed_at IS NOT NULL
               OR ru.opened_at IS NOT NULL
               OR unbox_open.unbox_opened_at IS NOT NULL
             )`
-      : '';
-  const countUnboxJoinsSql =
-    view === 'activity'
-      ? `
+    : '';
+  const countUnboxJoinsSql = activityGatesMembership
+    ? `
              LEFT JOIN receiving_unbox ru  ON ru.receiving_id = r.id AND ru.organization_id = r.organization_id
              LEFT JOIN LATERAL (
                SELECT MAX(oe_uo.occurred_at) AS unbox_opened_at
@@ -1478,7 +1482,7 @@ export function legacyBuildUnmatchedPlaceholdersSql(searchParams: URLSearchParam
                  AND oe_uo.entity_id = r.id
                  AND oe_uo.event_type = 'UNBOX_SCAN_OPENED'
              ) unbox_open ON TRUE`
-      : '';
+    : '';
   const listSql =
           `SELECT r.id,
                   stn.tracking_number_raw AS receiving_tracking_number,
@@ -1541,7 +1545,7 @@ export function legacyBuildUnmatchedPlaceholdersSql(searchParams: URLSearchParam
                  AND oe_uo.event_type = 'UNBOX_SCAN_OPENED'
            ) unbox_open ON TRUE
            WHERE r.organization_id = $1
-             AND r.source IN ('unmatched', 'local_pickup')
+             AND r.source IN ${sourceInSql}
              AND NOT EXISTS (
                SELECT 1 FROM receiving_line rl
                 WHERE rl.receiving_id = r.id
@@ -1556,7 +1560,7 @@ export function legacyBuildUnmatchedPlaceholdersSql(searchParams: URLSearchParam
              FROM receiving_carton r
              LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id${countUnboxJoinsSql}
             WHERE r.organization_id = $1
-              AND r.source IN ('unmatched', 'local_pickup')
+              AND r.source IN ${sourceInSql}
               AND NOT EXISTS (
                 SELECT 1 FROM receiving_line rl
                  WHERE rl.receiving_id = r.id

@@ -25,18 +25,5 @@ export type TrackingRow = {
   isPrimary: boolean;
 };
 
-export type TrackingDraftRow = {
-  shipmentId: number | null;
-  tracking: string;
-};
-
-export type ShippingInfoEditDraft = {
-  shipByDate: string;
-  orderNumber: string;
-  itemNumber: string;
-  trackingRows: TrackingDraftRow[];
-  serialRows: string[];
-};
-
 /** A flat, deduped tracking entry rendered as Tracking 1, 2, 3, … */
 export type FlatTrackingRow = { tracking: string; shipmentId: number | null };

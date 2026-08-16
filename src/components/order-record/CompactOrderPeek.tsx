@@ -20,9 +20,12 @@ import {
   PaneHeaderLabel,
   PaneHeaderStatusPill,
 } from '@/components/ui/pane-header';
+import { PlatformMark } from '@/components/ui/PlatformMark';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { deriveShippedHeaderMeta } from '@/components/shipped/details-panel/shipped-details-logic';
+import { useOrderChannelLabel, usePlatformMeta } from '@/hooks/useCatalog';
 import { searchOrderFeedbackHref } from '@/lib/search/search-hit';
-import { getAccountSourceLabel } from '@/utils/order-links';
+import { sourcePlatformMetaFromLabel } from '@/lib/source-platform';
 import type { ShippedOrder } from '@/types/orders';
 
 export function CompactOrderPeek({
@@ -34,7 +37,11 @@ export function CompactOrderPeek({
 }) {
   const router = useRouter();
   const meta = deriveShippedHeaderMeta(order);
-  const platformLabel = getAccountSourceLabel(order.order_id, order.account_source);
+  const orderChannelLabel = useOrderChannelLabel();
+  const resolvePlatformMeta = usePlatformMeta();
+  const channelLabel = orderChannelLabel(order.order_id, order.account_source);
+  const fromLabel = sourcePlatformMetaFromLabel(channelLabel);
+  const platformMeta = fromLabel.value ? resolvePlatformMeta(fromLabel.value) : fromLabel;
   const pillTone =
     meta.statusTone === 'emerald' ? 'emerald' : meta.statusTone === 'red' ? 'red' : 'yellow';
 
@@ -66,8 +73,12 @@ export function CompactOrderPeek({
                 <PaneHeaderLabel eyebrow="Order #" value={meta.orderIdDisplay} valueTitle={meta.orderIdDisplay} />
                 <div className="flex flex-wrap items-center gap-1.5">
                   <PaneHeaderStatusPill tone={pillTone}>{meta.statusLabel}</PaneHeaderStatusPill>
-                  {platformLabel ? (
-                    <PaneHeaderStatusPill tone="yellow">{platformLabel}</PaneHeaderStatusPill>
+                  {platformMeta.value ? (
+                    <HoverTooltip label={platformMeta.label} asChild focusable={false}>
+                      <span className="inline-flex shrink-0" aria-label={platformMeta.label}>
+                        <PlatformMark platformValue={platformMeta.value} meta={platformMeta} />
+                      </span>
+                    </HoverTooltip>
                   ) : null}
                 </div>
               </div>

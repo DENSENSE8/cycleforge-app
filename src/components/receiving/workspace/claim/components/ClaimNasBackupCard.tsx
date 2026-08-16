@@ -34,7 +34,7 @@ export function ClaimNasBackupCard({
           <p className="text-role-micro uppercase tracking-[0.14em] text-text-soft">
             Local backup
           </p>
-          <span className="h-1.5 w-1.5 rounded-full bg-gray-300" aria-hidden />
+          <span className="h-1.5 w-1.5 rounded-full bg-text-faint" aria-hidden />
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {canArchive ? (

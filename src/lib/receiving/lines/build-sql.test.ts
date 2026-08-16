@@ -406,6 +406,9 @@ test('unmatched placeholders included only for all/activity, non-zoho_po scope, 
 
 test('unmatched placeholders: activity requires Unbox-touch; all stays ungated', () => {
   const UNBOX_TOUCH = /ru\.unboxed_at IS NOT NULL\s+OR ru\.opened_at IS NOT NULL\s+OR unbox_open\.unbox_opened_at IS NOT NULL/;
+  const BROWSE_SOURCES = /r\.source IN \('unmatched', 'local_pickup'\)/;
+  const SEARCH_SOURCES = /r\.source IN \('unmatched', 'local_pickup', 'zoho_po'\)/;
+
   const activity = buildUnmatchedPlaceholdersSql(
     parseReceivingLinesQuery(new URLSearchParams('view=activity')),
     ORG,
@@ -417,6 +420,8 @@ test('unmatched placeholders: activity requires Unbox-touch; all stays ungated',
     /LEFT JOIN receiving_unbox ru/,
     'activity count needs receiving_unbox for the Unbox-touch gate',
   );
+  assert.match(activity.list.sql, BROWSE_SOURCES, 'browse activity must not flood with lineless zoho_po');
+  assert.doesNotMatch(activity.list.sql, SEARCH_SOURCES, 'browse activity excludes zoho_po from placeholders');
 
   const all = buildUnmatchedPlaceholdersSql(
     parseReceivingLinesQuery(new URLSearchParams('view=all')),
@@ -424,6 +429,26 @@ test('unmatched placeholders: activity requires Unbox-touch; all stays ungated',
   );
   assert.doesNotMatch(all.list.sql, UNBOX_TOUCH, 'view=all list must stay inclusive of door-scan Unfound');
   assert.doesNotMatch(all.count.sql, UNBOX_TOUCH, 'view=all count must stay inclusive of door-scan Unfound');
+});
+
+test('unmatched placeholders: armed History search includes lineless zoho_po and skips Unbox-touch', () => {
+  const UNBOX_TOUCH = /ru\.unboxed_at IS NOT NULL\s+OR ru\.opened_at IS NOT NULL\s+OR unbox_open\.unbox_opened_at IS NOT NULL/;
+  const SEARCH_SOURCES = /r\.source IN \('unmatched', 'local_pickup', 'zoho_po'\)/;
+  const searched = buildUnmatchedPlaceholdersSql(
+    parseReceivingLinesQuery(
+      new URLSearchParams('view=activity&search=9434608106244428194843&search_field=tracking'),
+    ),
+    ORG,
+  );
+  assert.match(searched.list.sql, SEARCH_SOURCES, 'armed search must resolve lineless zoho_po cartons');
+  assert.match(searched.count.sql, SEARCH_SOURCES, 'armed search count must include zoho_po');
+  assert.doesNotMatch(searched.list.sql, UNBOX_TOUCH, 'armed search must not hide behind Unbox-touch');
+  assert.doesNotMatch(searched.count.sql, UNBOX_TOUCH, 'armed search count must not gate on Unbox-touch');
+  assert.doesNotMatch(
+    searched.count.sql,
+    /LEFT JOIN receiving_unbox ru/,
+    'armed search count does not need receiving_unbox joins',
+  );
 });
 
 test('unbox-opened placeholders included only for view=unbox_opened with the same gates', () => {

@@ -16,6 +16,8 @@ import {
 import { cn } from '@/utils/_cn';
 import { Button } from '@/design-system/primitives';
 import { triageStatusBadgeClass } from '@/lib/inventory-triage-status';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+
 
 /** Full `tracking_exceptions` row (GET /api/tracking-exceptions/[id]). */
 interface ExceptionDetail {
@@ -233,7 +235,7 @@ export function TriageWorkspace({ selectedId }: TriageWorkspaceProps) {
                             value={notes}
                             onChange={(e) => setNotes(e.target.value)}
                             placeholder="Add triage notes…"
-                            className="min-h-[120px] w-full rounded-2xl border border-border-soft bg-surface-card p-4 text-sm shadow-sm focus:border-blue-500 focus:outline-none"
+                            className={cn("min-h-[120px] w-full rounded-2xl border border-border-soft bg-surface-card p-4 text-sm shadow-sm", focusRing('field', 'accent'))}
                         />
                         <div className="flex items-center gap-3">
                             <Button

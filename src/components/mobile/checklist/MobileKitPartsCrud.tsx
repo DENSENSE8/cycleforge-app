@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from 'react';
 import { Loader2, Pencil, Plus, Trash2 } from '@/components/Icons';
-import { Button, IconButton } from '@/design-system/primitives';
+import { Panel, Button, IconButton } from '@/design-system/primitives';
 import { microBadge } from '@/design-system/tokens/typography/presets';
 import { KIT_PART_TYPES } from '@/lib/schemas/kit-parts';
 import type { SkuKitPartRow } from '@/lib/neon/sku-catalog-queries';
@@ -188,7 +188,7 @@ export function MobileKitPartsCrud({
       </ul>
 
       {showAdd && canManage && (
-        <div className="space-y-2 rounded-2xl border border-border-soft bg-surface-card p-3">
+        <Panel radius="2xl" padding="sm" className="space-y-2">
           <input
             type="text"
             value={componentName}
@@ -244,7 +244,7 @@ export function MobileKitPartsCrud({
               Cancel
             </Button>
           </div>
-        </div>
+        </Panel>
       )}
 
       {canManage && !showAdd && (

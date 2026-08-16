@@ -22,12 +22,14 @@
 import { useCallback, useState } from 'react';
 import Link from 'next/link';
 import { useQueryClient } from '@tanstack/react-query';
-import { ChevronRight, ExternalLink, Loader2, X } from '@/components/Icons';
+import { ChevronRight, ExternalLink, Loader2 } from '@/components/Icons';
 import { OrderIdChip, TicketChip, getLast8 } from '@/components/ui/CopyChip';
 import { DateTimeValue } from '@/design-system/components/DateTimeValue';
 import { LedgerValue } from '@/design-system/components/LedgerValue';
-import { Button, IconButton, Panel } from '@/design-system/primitives';
+import { Button, Panel } from '@/design-system/primitives';
 import { RIGHT_RAIL_PRIORITY } from '@/lib/right-rail/store';
+import { DeskRailChromeRow } from '@/components/right-rail/DeskRailChromeRow';
+import { PaneHeaderLabel } from '@/components/ui/pane-header';
 import { useRegisterRightPanel } from '@/components/right-rail/useRegisterRightPanel';
 import { workStatusChipClass, workStatusLabel } from '@/lib/work-orders/work-status-display';
 import {
@@ -112,74 +114,72 @@ function MyDayTaskInspectorBody({
   }, [onClose, queryClient, supportTicketId]);
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-3 overflow-y-auto p-4">
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0 space-y-1">
-          <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">{context}</p>
-          <h2 className="inline-flex items-center gap-2 text-role-title text-text-default">
-            <span
-              className={cn('h-2 w-2 shrink-0 rounded-full', myDayLaneDot(task.lane))}
-              aria-hidden
-            />
-            <span className="min-w-0 truncate">{task.title}</span>
-          </h2>
-          <p className="text-role-caption text-text-muted">{task.subtitle}</p>
+    <div className="flex h-full min-h-0 flex-col">
+      {/* Row 1 is chrome ONLY — a non-modal occupant owns an explicit dismiss
+          (there is no scrim to click off), and it sits OUTSIDE the scroll port
+          so it cannot scroll away from under the operator. The glyph is `→|`
+          (the panel parks back against the edge it came from), not an `X`.
+          SoT: `display/right-rail-inspector.md`. */}
+      <DeskRailChromeRow onClose={onClose} columnDisplay />
+
+      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 pb-4">
+        {/* Dense identity — eyebrow + short key. Never a hero title: the old
+            `text-role-title` h2 wrapped the task name at display density. */}
+        <div className="flex min-w-0 items-center gap-2">
+          <span
+            className={cn('h-2 w-2 shrink-0 rounded-full', myDayLaneDot(task.lane))}
+            aria-hidden
+          />
+          <PaneHeaderLabel eyebrow={context} value={task.title} valueTitle={task.title} />
         </div>
-        {/* A non-modal occupant owns an explicit close — there is no scrim to
-            click off (`source-of-truth.md` → Right-rail modality). */}
-        <IconButton
-          size="sm"
-          ariaLabel="Close task details"
-          onClick={onClose}
-          icon={<X className="h-4 w-4" />}
-        />
-      </div>
+        <p className="text-role-caption text-text-muted">{task.subtitle}</p>
 
-      <div className="flex flex-wrap gap-2">
-        <TaskChip label={myDayLaneLabel(task.lane)} toneClass={myDayLaneChipClass(task.lane)} />
-        {status ? <TaskChip label={status} toneClass={workStatusChipClass(task.status)} /> : null}
-        {supportTicketId != null ? (
-          <TaskChip label="Watching" toneClass="bg-surface-accent text-text-accent ring-border-accent" />
-        ) : null}
-      </div>
+        <div className="flex flex-wrap gap-2">
+          <TaskChip label={myDayLaneLabel(task.lane)} toneClass={myDayLaneChipClass(task.lane)} />
+          {status ? <TaskChip label={status} toneClass={workStatusChipClass(task.status)} /> : null}
+          {supportTicketId != null ? (
+            <TaskChip label="Watching" toneClass="bg-surface-accent text-text-accent ring-border-accent" />
+          ) : null}
+        </div>
 
-      <Panel padding="sm" radius="xl" elevation="none" className="space-y-3">
-        <Field label="Queue">
-          <LedgerValue value={task.queueLabel} truncate />
-        </Field>
-        <Field label="Record">
-          {task.recordLabel == null ? (
-            <LedgerValue value={null} />
-          ) : task.source.kind === 'interrupt' ? (
-            <TicketChip value={task.recordLabel} display={task.recordLabel} dense />
-          ) : (
-            <OrderIdChip value={task.recordLabel} display={getLast8(task.recordLabel)} dense />
-          )}
-        </Field>
-        <Field label="Due">
-          <DateTimeValue value={task.deadlineAt} fallback="No deadline" />
-        </Field>
-        <Field label="Last update">
-          <DateTimeValue value={task.updatedAt} />
-        </Field>
-      </Panel>
+        <Panel padding="sm" radius="xl" elevation="none" className="space-y-3">
+          <Field label="Queue">
+            <LedgerValue value={task.queueLabel} truncate />
+          </Field>
+          <Field label="Record">
+            {task.recordLabel == null ? (
+              <LedgerValue value={null} />
+            ) : task.source.kind === 'interrupt' ? (
+              <TicketChip value={task.recordLabel} display={task.recordLabel} dense />
+            ) : (
+              <OrderIdChip value={task.recordLabel} display={getLast8(task.recordLabel)} dense />
+            )}
+          </Field>
+          <Field label="Due">
+            <DateTimeValue value={task.deadlineAt} fallback="No deadline" />
+          </Field>
+          <Field label="Last update">
+            <DateTimeValue value={task.updatedAt} />
+          </Field>
+        </Panel>
 
-      <div className="flex flex-col gap-2">
-        <Link href={task.href} className="inline-flex">
-          <Button variant="primary" icon={<ExternalLink />} iconRight={<ChevronRight />}>
-            {task.source.kind === 'interrupt' ? 'Investigate' : 'Open in workspace'}
-          </Button>
-        </Link>
-        {supportTicketId != null ? (
-          <Button
-            variant="secondary"
-            disabled={stopping}
-            icon={stopping ? <Loader2 className="animate-spin" /> : undefined}
-            onClick={() => void stopWatching()}
-          >
-            {stopping ? 'Stopping…' : 'Stop watching'}
-          </Button>
-        ) : null}
+        <div className="flex flex-col gap-2">
+          <Link href={task.href} className="inline-flex">
+            <Button variant="primary" icon={<ExternalLink />} iconRight={<ChevronRight />}>
+              {task.source.kind === 'interrupt' ? 'Investigate' : 'Open in workspace'}
+            </Button>
+          </Link>
+          {supportTicketId != null ? (
+            <Button
+              variant="secondary"
+              disabled={stopping}
+              icon={stopping ? <Loader2 className="animate-spin" /> : undefined}
+              onClick={() => void stopWatching()}
+            >
+              {stopping ? 'Stopping…' : 'Stop watching'}
+            </Button>
+          ) : null}
+        </div>
       </div>
     </div>
   );

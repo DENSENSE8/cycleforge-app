@@ -12,6 +12,7 @@ import {
 } from '@/lib/work-assignments/order-assignment-snapshot';
 import { clearReplenishmentForOrder, ensureReplenishmentForOrder } from '@/lib/replenishment';
 import { withAuth } from '@/lib/auth/withAuth';
+import { WORK_ASSIGNMENTS_ACTIVE_ON_CONFLICT } from '@/lib/neon/work-assignments-conflict';
 import {
   upsertOrderTracking,
   updateShipmentTrackingById,
@@ -81,7 +82,7 @@ async function upsertOrderAssignment(
     await client.query(
       `INSERT INTO work_assignments (organization_id, entity_type, entity_id, work_type, ${col}, status, priority)
        VALUES ($1, 'ORDER', $2, $3, $4, 'ASSIGNED', 100)
-       ON CONFLICT DO NOTHING`,
+       ON CONFLICT ${WORK_ASSIGNMENTS_ACTIVE_ON_CONFLICT} DO NOTHING`,
       [organizationId, orderId, workType, staffId]
     );
   }
@@ -123,7 +124,7 @@ async function upsertOrderDeadline(
       `INSERT INTO work_assignments
          (organization_id, entity_type, entity_id, work_type, assigned_tech_id, status, priority, deadline_at)
        VALUES ($1, 'ORDER', $2, 'TEST', NULL, 'OPEN', 100, $3)
-       ON CONFLICT DO NOTHING`,
+       ON CONFLICT ${WORK_ASSIGNMENTS_ACTIVE_ON_CONFLICT} DO NOTHING`,
       [organizationId, orderId, deadlineAt ?? null]
     );
   }

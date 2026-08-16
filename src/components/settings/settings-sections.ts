@@ -4,7 +4,7 @@ export type SettingsSection =
   | 'hardware' | 'workstation' | 'quick-access' | 'appearance' | 'keyboard' | 'about'
   | 'security' | 'organization' | 'billing' | 'integrations' | 'team'
   | 'roles' | 'access' | 'sessions' | 'audit' | 'catalog' | 'legal' | 'receiving'
-  | 'devices' | 'ai';
+  | 'devices' | 'ai' | 'stations';
 
 export type SettingsGroup = 'Personal' | 'Organization';
 
@@ -34,6 +34,9 @@ export const SETTINGS_SECTION_OPTIONS: SettingsSectionOption[] = [
   { id: 'integrations',  label: 'Integrations',  description: 'Connect inventory, sales channels, payments & more', group: 'Organization', requires: 'admin.view', href: '/settings/integrations' },
   { id: 'ai',            label: 'AI & Search',   description: 'AI provider, search usage & pricing',              group: 'Organization', requires: 'admin.view', href: '/settings/ai' },
   { id: 'catalog',       label: 'Platforms & Types', description: 'Sales channels & receiving flow types',          group: 'Organization', requires: 'admin.manage_features' },
+  // Gate matches the door it uses — the nickname goes through
+  // `PATCH /api/locations/[barcode]/properties`, which is `sku_stock.manage`.
+  { id: 'stations',      label: 'Stations',      description: 'Name each packing & testing station',              group: 'Organization', requires: 'sku_stock.manage' },
   { id: 'team',          label: 'Team',          description: 'Invite teammates, roles, deactivate access',       group: 'Organization', requires: 'admin.manage_staff', href: '/settings/staff' },
   { id: 'roles',         label: 'Roles',         description: 'Define what each role can do',                     group: 'Organization', requires: 'admin.manage_roles', href: '/settings/roles' },
   { id: 'access',        label: 'Access',        description: 'Per-staff role + page-access matrix',              group: 'Organization', href: '/settings/access' },

@@ -18,6 +18,7 @@ import {
 import type { TerminalActionVm } from '@/lib/station-terminal';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { useUnboxProcedureSteps } from './useUnboxProcedureSteps';
+import { scheduleFocusUnboxCaptureSerial } from './focus-unbox-capture-serial';
 
 type UnboxMiddleCartonNavActions = {
   /** Print barcode / label (dogfood strip — always registered when canPrint). */
@@ -79,7 +80,8 @@ export function useUnboxMiddleCartonNav(
           return;
         case 'serial':
           focusStep('serial');
-          setTimeout(() => emitReceiving('receiving-focus-scan'), 60);
+          // Centre capture row owns serial entry — not the dock wedge.
+          scheduleFocusUnboxCaptureSerial(60);
           return;
         case 'condition':
           focusStep('condition');

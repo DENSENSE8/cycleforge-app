@@ -99,8 +99,7 @@ export function PackWorkspaceHeader({
       trailing={
         onNewOrder ? (
           <WorkbenchTrailingCluster
-            // The hairline walls SOLID CTAs off the quiet icon rail; the data-in
-            // control is a quiet glyph now, so it would read as a broken pair.
+            // Band 1 trailing is solid Import · Add only — no hairline pair.
             divide={false}
             actions={<OutboundOrderChromeActions onNewOrder={onNewOrder} />}
           />

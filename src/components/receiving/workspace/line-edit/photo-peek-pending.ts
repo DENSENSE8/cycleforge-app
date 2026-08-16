@@ -7,7 +7,20 @@ import type { PhotoMeta } from '@/components/shipped/photo-gallery/photo-gallery
 
 export type PeekCard = {
   id: string;
+  /**
+   * What the CORNER/FAN tiles render — the thumb variant when storage has one.
+   * These draw at ~400×560 at most, so the full-resolution capture is many
+   * times the pixels the tile can show.
+   */
   imgUrl: string;
+  /**
+   * Full-resolution source for the fullscreen viewer, when `imgUrl` is a thumb.
+   *
+   * The viewer zooms and pans, so it must NOT inherit the tile's downscale —
+   * that is the whole reason this is a second field rather than one lowered URL.
+   * Absent when the two are the same.
+   */
+  fullUrl?: string;
   alt: string;
   meta?: PhotoMeta;
   /** Ably in-flight placeholder — skeleton tile; not openable in the viewer. */

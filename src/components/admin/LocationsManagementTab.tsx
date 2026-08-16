@@ -16,6 +16,8 @@ import { mainStickyHeaderClass, mainStickyHeaderShellRowClass } from '@/componen
 import { toast } from '@/lib/toast';
 import { sectionLabel, fieldLabel, tableHeader, tableCell } from '@/design-system/tokens/typography/presets';
 import { cn } from '@/utils/_cn';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+
 
 /** Mirrors a row from GET /api/inventory/bins-overview (BinsOverviewRow). */
 interface BinRow {
@@ -44,7 +46,7 @@ interface BinFormState {
 }
 
 const inputClass =
-  'h-10 w-full border border-border-soft bg-surface-card px-3 text-sm font-semibold text-text-default outline-none transition-colors focus:border-border-emphasis';
+  cn('h-10 w-full border border-border-soft bg-surface-card px-3 text-sm font-semibold text-text-default transition-colors', focusRing('field', 'neutral'));
 
 const ALL_ROOMS = '__all__';
 
@@ -218,7 +220,7 @@ export function LocationsManagementTab() {
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
               placeholder="Filter barcode / name / type"
-              className="h-8 w-64 border border-border-soft bg-surface-card px-3 text-xs font-medium text-text-default outline-none focus:border-border-emphasis"
+              className={cn("h-8 w-64 border border-border-soft bg-surface-card px-3 text-xs font-medium text-text-default", focusRing('field', 'neutral'))}
             />
           </div>
         </div>

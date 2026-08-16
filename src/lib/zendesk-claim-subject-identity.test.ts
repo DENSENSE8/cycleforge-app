@@ -2,8 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   knownReturnClassification,
+  replaceClaimSubjectClaimTypeSegment,
+  replaceClaimSubjectIdentitySegment,
   resolveClaimSubjectIdentity,
 } from '@/lib/zendesk-claim-subject-identity';
+import { CLAIM_TYPE_LABEL } from '@/lib/receiving-claim-type';
 import { returnPlatformForSource } from '@/lib/receiving/return-platform-for-source';
 
 test('empty platform + Return type + claim Return → Unknown - Return (not bare Return)', () => {
@@ -118,4 +121,59 @@ test('returnPlatformForSource maps FBA / Amazon / eBay for return cartons', () =
   assert.equal(returnPlatformForSource('amazon'), 'AMZ');
   assert.equal(returnPlatformForSource('ebay'), 'EBAY_USAV');
   assert.equal(returnPlatformForSource('other'), null);
+});
+
+test('replaceClaimSubjectIdentitySegment patches only the first // segment', () => {
+  assert.equal(
+    replaceClaimSubjectIdentitySegment(
+      'eBay - Purchase order // Damage // PO 123 // TRK#1Z',
+      'Amazon - Return',
+    ),
+    'Amazon - Return // Damage // PO 123 // TRK#1Z',
+  );
+  assert.equal(replaceClaimSubjectIdentitySegment('', 'FBA'), 'FBA');
+});
+
+test('replaceClaimSubjectClaimTypeSegment patches only the claim-type // segment', () => {
+  assert.equal(
+    replaceClaimSubjectClaimTypeSegment(
+      'Unfound - Purchase order // Unfound — no PO match // TRK#1Z730376306',
+      'Damage',
+    ),
+    'Unfound - Purchase order // Damage // TRK#1Z730376306',
+  );
+  assert.equal(
+    replaceClaimSubjectClaimTypeSegment(
+      'Return // Unfound — no PO match // TRK#1Z',
+      'Damage',
+    ),
+    'Return // Damage // TRK#1Z',
+    'identity stays put — claim flip must not invent a new identity',
+  );
+  assert.equal(
+    replaceClaimSubjectClaimTypeSegment(
+      'eBay - Purchase order // Damage // PO 123 // TRK#1Z',
+      'Missing item',
+    ),
+    'eBay - Purchase order // Missing item // PO 123 // TRK#1Z',
+  );
+  assert.equal(
+    replaceClaimSubjectClaimTypeSegment('free typed subject', 'Damage'),
+    'free typed subject',
+  );
+});
+
+test('claim flip through every CLAIM_TYPE_LABEL keeps Unfound identity (incl. Return)', () => {
+  const identity = 'Unfound - Purchase order';
+  const tail = 'TRK#1Z730376306';
+  const seed = `${identity} // Unfound — no PO match // ${tail}`;
+  for (const label of Object.values(CLAIM_TYPE_LABEL)) {
+    const next = replaceClaimSubjectClaimTypeSegment(seed, label);
+    const [first, claim, ...rest] = next.split(' // ');
+    assert.equal(first, identity, `identity stable for claim "${label}"`);
+    assert.equal(claim, label);
+    assert.equal(rest.join(' // '), tail);
+    assert.notEqual(first, 'Amazon', `claim "${label}" must not invent Amazon identity`);
+    assert.notEqual(first, 'Return', `claim "${label}" must not paint Return identity`);
+  }
 });

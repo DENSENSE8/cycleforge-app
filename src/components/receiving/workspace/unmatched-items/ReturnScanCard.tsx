@@ -9,21 +9,19 @@ import { ProgressBadge } from '@/components/receiving/workspace/PoLineBadges';
 import { PoLineMetaGrid } from '@/components/receiving/workspace/PoLineMetaGrid';
 import { PoLineHeaderThumb } from '@/components/receiving/workspace/PoLineHeaderThumb';
 import { NoSerialControl } from '@/components/receiving/workspace/line-edit/NoSerialControl';
+import { PoLineCaptureRow } from '@/components/receiving/workspace/line-edit/PoLineCaptureRow';
 import { cn } from '@/utils/_cn';
 import { PO_LINE_HEADER_FACE } from '@/components/receiving/workspace/station-scan-face';
+import { resolveCaptureEntry } from '@/components/receiving/workspace/line-receive-mode';
 import { UNFOUND_PO_DISPLAY } from '@/lib/receiving/po-group-title';
 
 /**
  * Empty unfound carton — "scan the first return" affordance.
  *
- * Nested-grid anatomy: size-20 thumb in the title + details band (expands that
- * row), then serial body with condition · serial · trailing. SKU uses the mono
- * `----` empty face until a return / catalog import fills a real SKU.
- *
- * Shown only when the carton has 0 lines, so it never stands beside a line row.
- *
- * Packing also imports this chrome for unknown-order sessions (`body="none"`)
- * so the empty pack checklist matches Unbox's Unfound PO accordion row.
+ * Unbox dual loci (`dockOwnsCapture`): same invariant capture face as found /
+ * lined unfound — always-collapsed Tags (`USED_A`) + open Serial with autofocus.
+ * Photos stays off until a real line exists (item-scoped strip needs a
+ * receiving line id).
  */
 export function ReturnScanCard({
   condition,
@@ -35,6 +33,9 @@ export function ReturnScanCard({
   onSerialAbsentChange,
   title = UNFOUND_PO_DISPLAY,
   body = 'serial',
+  dockOwnsCapture = false,
+  receivingId = null,
+  staffId = 0,
 }: {
   condition: string;
   onConditionChange: (next: string) => void;
@@ -43,14 +44,34 @@ export function ReturnScanCard({
   serialAbsentReason?: string | null;
   requireSerialConfirmation?: boolean;
   onSerialAbsentChange?: (next: { absent: boolean; reason: string | null }) => void;
-  /** Line title above the meta row — defaults to the unfound stub label. */
   title?: string;
-  /**
-   * `serial` — Unbox return-scan body (default).
-   * `none` — chrome only (packing unknown-order empty row).
-   */
   body?: 'serial' | 'none';
+  dockOwnsCapture?: boolean;
+  receivingId?: number | null;
+  staffId?: number;
 }) {
+  const captureRow =
+    body === 'serial' &&
+    resolveCaptureEntry({
+      dockOwnsCapture,
+      receivingId,
+      lineId: null,
+      quantityExpected: 1,
+      serialCount: 0,
+    }) === 'capture-stub';
+
+  const markNoSerial = onSerialAbsentChange
+    ? () =>
+        onSerialAbsentChange(
+          serialAbsent
+            ? { absent: false, reason: null }
+            : {
+                absent: true,
+                reason: serialAbsentReason ?? 'NOT_SERIALIZED',
+              },
+        )
+    : undefined;
+
   return (
     <div
       className={cn(
@@ -58,6 +79,9 @@ export function ReturnScanCard({
         QUEUE_ROW.selectedStationClass,
       )}
       aria-current="true"
+      data-return-scan-capture={captureRow || undefined}
+      data-receiving-id={receivingId != null && receivingId > 0 ? receivingId : undefined}
+      data-staff-id={staffId > 0 ? staffId : undefined}
     >
       <div className="w-full min-w-0 py-0 pl-0 pr-0 text-left">
         <div
@@ -95,43 +119,62 @@ export function ReturnScanCard({
       {body === 'serial' ? (
         <div className="min-w-0 overflow-hidden border-t border-border-hairline bg-surface-card">
           <div className="min-w-0 bg-surface-card px-0 py-0">
-            <SerialCard
-              embedded
-              saved={[]}
-              expected={null}
-              isSubmitting={false}
-              showSavedChips={false}
-              condition={condition}
-              onConditionChange={onConditionChange}
-              onAdd={onAdd}
-              noSerialActive={serialAbsent ?? false}
-              onMarkNoSerial={
-                onSerialAbsentChange
-                  ? () =>
-                      onSerialAbsentChange(
-                        serialAbsent
-                          ? { absent: false, reason: null }
-                          : { absent: true, reason: serialAbsentReason ?? 'NOT_SERIALIZED' },
-                      )
-                  : undefined
-              }
-              noSerialSlot={
-                onSerialAbsentChange ? (
-                  // fullWidth + hideClear: the committed bar fills the field (same
-                  // width as the Serial input) and the SerialCard trailing green-check
-                  // owns the on/off toggle — so "checked" and "acknowledged" stay
-                  // the same width.
-                  <NoSerialControl
-                    absent
-                    fullWidth
-                    hideClear
-                    reason={serialAbsentReason ?? null}
-                    required={requireSerialConfirmation ?? false}
-                    onChange={onSerialAbsentChange}
-                  />
-                ) : undefined
-              }
-            />
+            {captureRow ? (
+              <PoLineCaptureRow
+                condition={condition || 'USED_A'}
+                onConditionChange={onConditionChange}
+                serialDone={serialAbsent ?? false}
+                noSerialActive={serialAbsent ?? false}
+                showPhotos={false}
+                receivingId={receivingId}
+                staffId={staffId}
+                autoFocusSerial
+                autoCommitDefaultGrade
+                onAddSerial={onAdd}
+                onMarkNoSerial={markNoSerial}
+                noSerialSlot={
+                  onSerialAbsentChange ? (
+                    <NoSerialControl
+                      absent
+                      fullWidth
+                      hideClear
+                      reason={serialAbsentReason ?? null}
+                      required={requireSerialConfirmation}
+                      disabled={receivingId == null || receivingId <= 0}
+                      onChange={onSerialAbsentChange}
+                    />
+                  ) : undefined
+                }
+              />
+            ) : (
+              <SerialCard
+                embedded
+                saved={[]}
+                expected={null}
+                isSubmitting={false}
+                showSavedChips={false}
+                autoFocusInput
+                condition={condition}
+                onConditionChange={onConditionChange}
+                collapsedConditionLabel
+                onAdd={onAdd}
+                noSerialActive={serialAbsent ?? false}
+                onMarkNoSerial={markNoSerial}
+                noSerialSlot={
+                  onSerialAbsentChange ? (
+                    <NoSerialControl
+                      absent
+                      fullWidth
+                      hideClear
+                      reason={serialAbsentReason ?? null}
+                      required={requireSerialConfirmation}
+                      disabled={receivingId == null || receivingId <= 0}
+                      onChange={onSerialAbsentChange}
+                    />
+                  ) : undefined
+                }
+              />
+            )}
           </div>
         </div>
       ) : null}

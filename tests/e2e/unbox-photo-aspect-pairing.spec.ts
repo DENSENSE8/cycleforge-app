@@ -67,8 +67,11 @@ async function attachPhoto(
  * No `networkidle` — the realtime channel means /unbox never settles.
  */
 async function openUnbox(page: Page, receivingId: number, lineId: number) {
-  await page.goto(`/unbox?openReceivingId=${receivingId}&lineId=${lineId}&display=checklist`);
+  await page.goto(`/unbox?openReceivingId=${receivingId}&lineId=${lineId}`);
   await expect(page.getByTestId('receiving-workspace')).toBeVisible({ timeout: 30_000 });
+  await page.getByTestId('unbox-displays-pane-toggle').click();
+  await expect(page.getByTestId('receiving-displays-push')).toBeVisible({ timeout: 15_000 });
+  await page.getByTestId('unbox-displays-expand-button').click();
   await expect(page.locator('[data-procedure-deck]')).toBeVisible({ timeout: 30_000 });
 }
 

@@ -140,9 +140,13 @@ export function matchLabelNotePhrase(
   return matchLabelNotePhraseFrom(readLabelNotePhrases(), input, extras);
 }
 
-/** Ghost suffix to paint after the typed value (empty when no match). */
+/** Ghost suffix to paint after the typed value (empty when no match).
+ *  When `input` is empty and a full preview phrase is supplied as the match
+ *  (Recent hover), the whole phrase paints as the placeholder ghost.
+ */
 export function labelNoteGhostSuffix(input: string, matchedPhrase: string | null): string {
-  if (!matchedPhrase || !input) return '';
+  if (!matchedPhrase) return '';
+  if (!input) return matchedPhrase;
   if (matchedPhrase.length <= input.length) return '';
   return matchedPhrase.slice(input.length);
 }

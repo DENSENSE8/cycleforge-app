@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  detectCarrier,
   extractCanonicalTracking,
   stripFedexConcatPrefix,
   normalizeTrackingNumber,
@@ -93,22 +94,39 @@ test('punctuation/spacing in a pasted number is normalized away before matching'
   assert.equal(extractCanonicalTracking('382-141-152-045'), '382141152045');
 });
 
+// ─── FedEx Express 12-digit detect (any leading digit) ───────────────────────
+// Pattern was historically /^[39]\d{11}$/; real Express STNs also start 4/7/8/…
+
+test('detectCarrier: FedEx Express 12-digit accepts leading digits beyond 3/9', () => {
+  assert.equal(detectCarrier('382141152045'), 'FedEx'); // classic 3…
+  assert.equal(detectCarrier('986578788855'), 'FedEx'); // classic 9…
+  assert.equal(detectCarrier('477179081230'), 'FedEx'); // jkeen sample 4…
+  assert.equal(detectCarrier('799531274483'), 'FedEx'); // jkeen sample 7…
+  assert.equal(detectCarrier('875230873543'), 'FedEx'); // ops incident 8…
+});
+
+test('detectCarrier: neighboring lengths stay on their carriers', () => {
+  assert.equal(detectCarrier('9400111899223344556677'), 'USPS'); // 22
+  assert.equal(detectCarrier('1234567890'), 'DHL'); // 10 → DHL Express
+  assert.equal(detectCarrier('1Z999AA10123456784'), 'UPS');
+});
+
 // ─── §3.1 cross-carrier hardening — never truncate a USPS number ──────────────
 // The earlier (unsafe) strip guessed by trailing pattern: a valid 22-digit USPS
-// IMpb number routinely ends in a 12-digit run matching FedEx Express
-// `[39]\d{11}`, so it got folded onto a FedEx tail — which would have merged
-// ~500 distinct USPS shipments. The hardened strip anchors on the 96-prefixed
-// GS1 envelope, so every 92/93/94/95-prefixed USPS number passes through whole.
+// IMpb number routinely ends in a 12-digit FedEx-shaped run, so it got folded
+// onto a FedEx tail — which would have merged ~500 distinct USPS shipments.
+// The hardened strip anchors on the 96-prefixed GS1 envelope, so every
+// 92/93/94/95-prefixed USPS number passes through whole.
 
 test('USPS 22-digit number whose tail looks like FedEx Express is left WHOLE (plan example)', () => {
-  // The literal regression from the plan: trailing 12 = 314810260579 → [39]\d{11}.
+  // Trailing 12 = 314810260579 — FedEx-shaped under /^\d{12}$/, but USPS must stay whole.
   const usps = '9235990407314810260579';
   assert.equal(stripFedexConcatPrefix(usps), usps);
   assert.equal(extractCanonicalTracking(usps), usps);
 });
 
 test('USPS number ending in a FedEx-Express-looking 9-prefixed run is left WHOLE', () => {
-  const usps = '9405998877912345678901'; // trailing 12 = 912345678901 → [39]\d{11}
+  const usps = '9405998877912345678901'; // trailing 12 = 912345678901
   assert.equal(stripFedexConcatPrefix(usps), usps);
   assert.equal(extractCanonicalTracking(usps), usps);
 });
@@ -153,6 +171,14 @@ test('resolveTrackingOpenUrl: UPS 1Z detects to UPS track URL', () => {
 
 test('resolveTrackingOpenUrl: FedEx 12-digit detects to FedEx track URL', () => {
   const fedex = '382141152045';
+  const url = resolveTrackingOpenUrl(fedex);
+  assert.ok(url);
+  assert.match(url!, /fedex\.com/i);
+  assert.ok(url!.includes(fedex));
+});
+
+test('resolveTrackingOpenUrl: 8-prefixed FedEx Express detects without carrierHint', () => {
+  const fedex = '875230873543';
   const url = resolveTrackingOpenUrl(fedex);
   assert.ok(url);
   assert.match(url!, /fedex\.com/i);

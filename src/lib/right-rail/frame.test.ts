@@ -10,7 +10,13 @@
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { STATION_WORKBENCH_LOCK_PX } from '@/components/station/workbench/workbench-layout';
+import { CONTEXT_PANEL_RESIZE } from '@/components/sidebar/context-panel-column';
+import {
+  STATION_COLUMN_BUDGET,
+  STATION_DISPLAYS_AUTO_CLOSE_FRAME_PX,
+  STATION_DISPLAYS_MIN_WIDTH_PX,
+  STATION_WORKBENCH_LOCK_PX,
+} from '@/components/station/workbench/workbench-layout';
 import {
   CONTEXT_RAIL_PARKED_PX,
   MIN_WORK_SURFACE_PX,
@@ -18,12 +24,23 @@ import {
   RIGHT_RAIL_PUSH_MIN_FRAME_PX,
   STATION_PUSH_CENTER_FLOOR_PX,
   contextRailCostPx,
-  getStationDisplaysCollapsed,
+  getRightRailFrame,
   resolveRightRailFrame,
   resolveStationDisplaysCollapse,
   setRightRailContextRail,
   setRightRailFrameWidth,
+  setStationContextSashArmed,
+  setStationDisplaysSashArmed,
+  setStationDisplaysSashDragging,
+  setStationPushDemand,
+  stationContextSashMaxPx,
+  stationDisplaysSashMaxPx,
+  subscribeStationFarRailRequest,
 } from './frame';
+
+const LEFT_MIN = CONTEXT_PANEL_RESIZE.minWidthPx; // 300
+const DISPLAYS_MIN = STATION_DISPLAYS_MIN_WIDTH_PX; // 280
+const FLOOR = STATION_PUSH_CENTER_FLOOR_PX; // 720
 
 /** A route rail at its 360px default (flush — no outer gutter islands). */
 const RAIL_OPEN = contextRailCostPx();
@@ -149,35 +166,172 @@ describe('the resize cap', () => {
   });
 });
 
-describe('reactive Displays-collapse slice (Fiori/M3 — the store latches hysteresis)', () => {
-  it('the pure resolver reopens only after the full deadband', () => {
-    // Rail open (minLeft 300): close < 1300, reopen ≥ 1332.
+describe('Displays prefers parking the left rail; parks itself only when still unfit', () => {
+  it('the pure resolver parks Displays against the yielded (parked-strip) left cost', () => {
+    // Parked left strip (32): close < 1032, reopen ≥ 1064.
     const open = (frameWidthPx: number, wasCollapsed: boolean) =>
-      resolveStationDisplaysCollapse({ frameWidthPx, minLeftPx: 300, wasCollapsed });
+      resolveStationDisplaysCollapse({
+        frameWidthPx,
+        leftCostPx: CONTEXT_RAIL_PARKED_PX,
+        wasCollapsed,
+      });
     assert.equal(open(1920, false), false);
-    assert.equal(open(1299, false), true, 'closes below the fit threshold');
-    assert.equal(open(1320, true), true, 'stays collapsed in the deadband');
-    assert.equal(open(1332, true), false, 'reopens only past the deadband');
-    // Parking the rail (strip 32) lowers the threshold so Displays survives narrower.
+    assert.equal(open(1200, false), false, '1200 seats Displays beside a parked left');
+    assert.equal(open(1031, false), true, 'parks below parked-left fit threshold');
+    assert.equal(open(1050, true), true, 'stays parked in the deadband');
+    assert.equal(open(1064, true), false, 'reopens only past the deadband');
+    // Open-rail-at-min diagnostic sum stays 300 + 720 + 280.
+    assert.equal(STATION_DISPLAYS_AUTO_CLOSE_FRAME_PX, LEFT_MIN + FLOOR + DISPLAYS_MIN);
+  });
+
+  it('the store parks Displays only when even a parked left cannot seat it', () => {
+    // Rail open at 360. Prefer parking left — Displays stays open down to ~1032.
+    setRightRailContextRail({ railCostOpenPx: 360, railOperatorCollapsed: false });
+    setStationPushDemand({ active: true, desiredWidthPx: 420 });
+    setRightRailFrameWidth(1920);
+    assert.equal(getRightRailFrame().stationDisplaysCollapsed, false);
+    setRightRailFrameWidth(1200);
     assert.equal(
-      resolveStationDisplaysCollapse({ frameWidthPx: 1200, minLeftPx: 32, wasCollapsed: true }),
+      getRightRailFrame().stationDisplaysCollapsed,
       false,
-      'parked rail keeps Displays open at 1200',
+      '1200 keeps Displays open (left yields first)',
+    );
+    setRightRailFrameWidth(1000);
+    assert.equal(
+      getRightRailFrame().stationDisplaysCollapsed,
+      true,
+      'parks Displays only below parked-left + 720 + 280',
+    );
+    setRightRailFrameWidth(1050); // deadband [1032, 1064)
+    assert.equal(getRightRailFrame().stationDisplaysCollapsed, true, 'hysteresis holds');
+    setRightRailFrameWidth(1064);
+    assert.equal(getRightRailFrame().stationDisplaysCollapsed, false, 'reopens past deadband');
+    setStationPushDemand({ active: false, desiredWidthPx: 420 });
+    setRightRailFrameWidth(1920);
+    assert.equal(getRightRailFrame().stationDisplaysCollapsed, false);
+  });
+
+  it('opening Displays on a tight frame requests collapse-context (park left)', () => {
+    const seen: string[] = [];
+    const unsub = subscribeStationFarRailRequest((req) => {
+      seen.push(req);
+    });
+    setRightRailContextRail({ railCostOpenPx: 360, railOperatorCollapsed: false });
+    setRightRailFrameWidth(1200); // 360+720+280 = 1360 — too tight with left open
+    setStationPushDemand({ active: true, desiredWidthPx: 420 });
+    assert.ok(
+      seen.includes('collapse-context'),
+      'must park the left rail so Displays can stay open',
+    );
+    assert.equal(
+      getRightRailFrame().stationDisplaysCollapsed,
+      false,
+      'Displays itself stays open while left yields',
+    );
+    unsub();
+    setStationPushDemand({ active: false, desiredWidthPx: 420 });
+    setRightRailFrameWidth(1920);
+  });
+});
+
+describe('Option A — local sash clamps + the budget is sourced (no coupling)', () => {
+  it('the min-fit budget hardMins ARE the live layout constants', () => {
+    assert.equal(STATION_COLUMN_BUDGET.context.hardMinPx, LEFT_MIN);
+    assert.equal(STATION_COLUMN_BUDGET.primary.hardMinPx, STATION_WORKBENCH_LOCK_PX);
+    assert.equal(STATION_COLUMN_BUDGET.displays.hardMinPx, DISPLAYS_MIN);
+    assert.equal(
+      STATION_DISPLAYS_AUTO_CLOSE_FRAME_PX,
+      STATION_COLUMN_BUDGET.context.hardMinPx +
+        STATION_COLUMN_BUDGET.primary.hardMinPx +
+        STATION_COLUMN_BUDGET.displays.hardMinPx,
     );
   });
 
-  it('the store publishes the flag off a frame measurement (singleton — drive it in order)', () => {
+  it('the Displays sash caps at frame − leftCost − 720, floored at its 280 min', () => {
+    assert.equal(stationDisplaysSashMaxPx(1680, 360), 1680 - 360 - FLOOR); // 600
+    assert.equal(stationDisplaysSashMaxPx(1680, 32), 1680 - 32 - FLOOR); // parked rail → roomier
+    // Never below the station min (unlike the desk capPx's 360 floor).
+    assert.equal(stationDisplaysSashMaxPx(1010, 300), DISPLAYS_MIN);
+  });
+
+  it('the context sash caps at frame − displays − 720, floored at its 300 min', () => {
+    assert.equal(stationContextSashMaxPx(1680, 420), 1680 - 420 - FLOOR); // 540
+    assert.equal(stationContextSashMaxPx(1680, 900), LEFT_MIN); // frame − 900 − 720 = 60 → floored to 300
+    assert.equal(stationContextSashMaxPx(1010, 300), LEFT_MIN);
+  });
+
+  it('the two clamps are mutually consistent — neither sash can force the peer to shrink', () => {
+    // A rail at its context-sash MAX leaves the Displays cap at exactly the
+    // current Displays width (never below it), so widening the rail never
+    // force-shrinks Displays — the center absorbed it all. And vice-versa.
+    const frame = 1680;
+    const displays = 500;
+    const leftAtMax = stationContextSashMaxPx(frame, displays); // frame − 500 − 720 = 460
+    assert.equal(stationDisplaysSashMaxPx(frame, leftAtMax), displays, 'Displays cap = its own width');
+
+    const left = 420;
+    const displaysAtMax = stationDisplaysSashMaxPx(frame, left); // frame − 420 − 720 = 540
+    assert.equal(stationContextSashMaxPx(frame, displaysAtMax), left, 'context cap = its own width');
+  });
+
+  it('the store flips the sash caps directionally when the Displays sash drags (the cascade)', () => {
     setRightRailContextRail({ railCostOpenPx: 360, railOperatorCollapsed: false });
+    setStationPushDemand({ active: true, desiredWidthPx: 420 });
+
+    // Idle: the LEFT rail is authority. Displays cap is TIGHT (yields into the
+    // leftover — opening it never shrinks the rail); context cap is LOOSE (its
+    // sash may grow to the ladder max, and Displays yields).
+    setStationDisplaysSashDragging(false);
+    setRightRailFrameWidth(1680);
+    let s = getRightRailFrame();
+    assert.equal(s.stationDisplaysCapPx, 1680 - 360 - FLOOR, 'idle: Displays cap tight (frame − leftCost − 720)');
+    assert.equal(s.stationContextCapPx, 1680 - DISPLAYS_MIN - FLOOR, 'idle: context cap loose (frame − 280 − 720)');
+
+    // Displays DRAGGING: its cap opens to the ladder max (frame − 300 − 720) so
+    // it can grow past the center floor; the context cap goes TIGHT
+    // (frame − displays − 720) so the left rail yields via its own resize-clamp.
+    setStationDisplaysSashDragging(true);
+    s = getRightRailFrame();
+    assert.equal(s.stationDisplaysCapPx, 1680 - LEFT_MIN - FLOOR, 'dragging: Displays cap loose (rail at its 300 min)');
+    assert.equal(s.stationContextCapPx, 1680 - 420 - FLOOR, 'dragging: context cap tight (rail yields to Displays)');
+
+    // Stage 3: once the operator PARKS the rail (from a drag overshoot), the
+    // loose Displays cap GROWS from `F − 300 − 720` to `F − 32 − 720` so the drag
+    // keeps going into the freed strip space.
+    setRightRailContextRail({ railCostOpenPx: 360, railOperatorCollapsed: true });
+    s = getRightRailFrame();
+    assert.equal(
+      s.stationDisplaysCapPx,
+      1680 - CONTEXT_RAIL_PARKED_PX - FLOOR,
+      'dragging + rail parked: Displays cap grows to F − 32 − 720',
+    );
+
+    // Reset the singleton so nothing downstream inherits the drag/push state.
+    setStationDisplaysSashDragging(false);
+    setRightRailContextRail({ railCostOpenPx: 360, railOperatorCollapsed: false });
+    setStationPushDemand({ active: false, desiredWidthPx: 420 });
     setRightRailFrameWidth(1920);
-    assert.equal(getStationDisplaysCollapsed(), false);
-    setRightRailFrameWidth(1200);
-    assert.equal(getStationDisplaysCollapsed(), true, 'collapses at 1200');
-    setRightRailFrameWidth(1320); // inside the deadband
-    assert.equal(getStationDisplaysCollapsed(), true, 'hysteresis holds it collapsed');
-    setRightRailFrameWidth(1400);
-    assert.equal(getStationDisplaysCollapsed(), false, 'reopens above the deadband');
-    // Reset the singleton so nothing downstream inherits the sticky state.
-    setRightRailFrameWidth(1920);
-    assert.equal(getStationDisplaysCollapsed(), false);
+  });
+
+  it('relays each sash arm-to-close into the snapshot independently (no stomp)', () => {
+    assert.equal(getRightRailFrame().stationDisplaysSashArmed, false);
+    assert.equal(getRightRailFrame().stationContextSashArmed, false);
+
+    // Displays sash arms → only its field flips; the reverse stays clear so an
+    // idle context-rail publish cannot stomp it.
+    setStationDisplaysSashArmed(true);
+    assert.equal(getRightRailFrame().stationDisplaysSashArmed, true);
+    assert.equal(getRightRailFrame().stationContextSashArmed, false);
+
+    // The reverse arm is a separate field with its own writer.
+    setStationContextSashArmed(true);
+    assert.equal(getRightRailFrame().stationDisplaysSashArmed, true);
+    assert.equal(getRightRailFrame().stationContextSashArmed, true);
+
+    // Reset.
+    setStationDisplaysSashArmed(false);
+    setStationContextSashArmed(false);
+    assert.equal(getRightRailFrame().stationDisplaysSashArmed, false);
+    assert.equal(getRightRailFrame().stationContextSashArmed, false);
   });
 });

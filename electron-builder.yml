@@ -1,0 +1,99 @@
+# Cycle Forge desktop shell — packaging.
+#
+# Plan: docs/todo/electron-desktop-shell-PLAN.md
+#
+# The Next.js build output is deliberately NOT bundled. The shell loads the
+# deployed app over HTTPS, so shipping app code never requires shipping an
+# installer — and an installed shell never pins operators to a stale app build.
+# What ships here is the shell and its two runtime deps (electron-log,
+# electron-updater), which electron-builder resolves from `dependencies`.
+
+appId: com.cycleforge.desktop
+productName: Cycle Forge
+
+asar: true
+
+directories:
+  # TWO-MANIFEST LAYOUT — the app root is `electron/`, which has its own
+  # package.json declaring only the shell's runtime deps.
+  #
+  # The repo root package.json is the NEXT APP's, so its `dependencies` are the
+  # whole web tree. electron-builder bundles production dependencies, so pointing
+  # it at the root packaged an 851 MB .app (437 MB even with `files` negations —
+  # the negations filter the copy, they do not change what gets resolved). Worse
+  # than the size: it shipped `pg`, `googleapis` and the AI SDKs — server-side
+  # code with no business on a bench PC.
+  #
+  # Run `pnpm desktop:deps` after changing electron/package.json.
+  app: electron
+  output: desktop-dist
+  buildResources: build
+
+# Paths are relative to `directories.app` (electron/). Production dependencies
+# from electron/package.json are resolved and bundled automatically.
+files:
+  - '**/*'
+
+# ---------------------------------------------------------------------------
+# macOS
+# ---------------------------------------------------------------------------
+mac:
+  category: public.app-category.business
+  minimumSystemVersion: '11.0.0'
+  # Space-free asset name: GitHub Releases rewrites spaces in asset filenames to
+  # dots, which desyncs the name from the URL inside latest-mac.yml and 404s the
+  # auto-update download.
+  artifactName: CycleForge-${version}-${arch}.${ext}
+  # Hardened runtime + entitlements are REQUIRED for Developer ID signing and
+  # notarization, which are in turn required for macOS auto-update — Squirrel.Mac
+  # refuses to apply an update unless the running app is signed and the
+  # downloaded update's signature validates.
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: electron/entitlements.mac.plist
+  entitlementsInherit: electron/entitlements.mac.plist
+  # Needs APPLE_ID / APPLE_APP_SPECIFIC_PASSWORD / APPLE_TEAM_ID in the env.
+  # Local build without them:  pnpm desktop:dist:mac -- -c.mac.notarize=false
+  notarize: true
+  target:
+    # dmg = first install. zip = what electron-updater consumes (Squirrel.Mac
+    # updates from a zip, not a dmg) — without it macOS auto-update has nothing
+    # valid to download.
+    - target: dmg
+      arch: [arm64, x64]
+    - target: zip
+      arch: [arm64, x64]
+
+dmg:
+  title: Cycle Forge ${version}
+
+# ---------------------------------------------------------------------------
+# Windows — the common warehouse station PC
+# ---------------------------------------------------------------------------
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  artifactName: CycleForge-Setup-${version}.${ext}
+
+# ---------------------------------------------------------------------------
+# Linux (optional bench images)
+# ---------------------------------------------------------------------------
+linux:
+  category: Office
+  target:
+    - AppImage
+
+# ---------------------------------------------------------------------------
+# Auto-update — GitHub Releases (N4)
+# ---------------------------------------------------------------------------
+publish:
+  provider: github
+  owner: DENSENSE8
+  repo: cycleforge-app
+  releaseType: release # only pull from published (non-draft) releases

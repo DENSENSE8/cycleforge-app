@@ -7,6 +7,7 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { packPlacementQuery } from '@/lib/queries/pack-placement-queries';
+import { packBenchShortLabel } from '@/lib/packing/pack-bench-display';
 import { Button } from '@/design-system/primitives';
 import { cornerClass } from '@/design-system/tokens';
 
@@ -77,9 +78,9 @@ export function PackStationPlacementControl({
             disabled={busy || row.locationId === locationId}
             onClick={() => void moveTo(row.locationId)}
           >
-            {row.locationKind === 'STAGING'
-              ? 'Staging'
-              : row.locationName.replace(/^QA\s+/i, '').replace(/^Packing\s+/i, '')}
+            {/* Label SoT — a hand-rolled strip here is how this button drifted
+                from the bench chips showing the same benches elsewhere. */}
+            {packBenchShortLabel(row)}
           </Button>
         ))}
       </div>

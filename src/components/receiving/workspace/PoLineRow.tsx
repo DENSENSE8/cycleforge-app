@@ -26,11 +26,9 @@ import {
 import { cn } from '@/utils/_cn';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { focusRing } from '@/design-system/tokens/focus-ring';
-import {
-  NoSerialControl,
-  type SerialAbsentState,
-} from '@/components/receiving/workspace/line-edit/NoSerialControl';
+import type { SerialAbsentState } from '@/components/receiving/workspace/line-edit/NoSerialControl';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import { resolveReceivingLineSerialsCsv } from '@/components/station/receiving-line-serials';
 import { emitReceiving } from '@/components/receiving/receiving-events';
 import { dispatchSelectLine } from '@/components/station/receiving-lines-table-helpers';
 import { setActiveSinkId } from '@/lib/station-scan-sink';
@@ -40,6 +38,7 @@ import {
   type ScanLinePulseDetail,
 } from '@/lib/scan-feedback/visual';
 import { ScannedBadge, ProgressBadge } from './PoLineBadges';
+import { scheduleFocusUnboxCaptureSerialInLine } from './line-edit/focus-unbox-capture-serial';
 import type {
   ActiveRowSlot,
   PoLineSerialActions,
@@ -126,7 +125,7 @@ export function PoLineRow({
   activeConditionOverride,
   activeRowSlot,
   serialSplit,
-  onSerialAbsentChange,
+  onSerialAbsentChange: _onSerialAbsentChange,
   animateLayout = true,
   onViewAllUnits,
   onEditConditionInDock,
@@ -137,16 +136,11 @@ export function PoLineRow({
   const pulseTransition = useMotionTransition(motionRole.feedback.pulse.transition);
   const lineTitle = receivingWorkspaceLineTitle(line);
 
-  /**
-   * Is this row's editor body on screen? When true, the green-check no-serial
-   * offer lives there — suppress the meta-row committed token so the two never
-   * stack. Mirrors the body's own render gate below. Bodies mount under every
-   * editable line.
-   */
-  const editorBodyVisible = unitsChrome && !readOnly && !!activeRowSlot;
-
-  const serialNumbers = (Array.isArray(line.serials) ? line.serials : [])
-    .map((s) => (s.serial_number || '').trim())
+  // Persisted units win; optimistic return lines fall back to the title serial
+  // so the meta face stays last-8 before projection catches up.
+  const serialNumbers = resolveReceivingLineSerialsCsv(line)
+    .split(',')
+    .map((s) => s.trim())
     .filter(Boolean);
   const expectedQty = Number(line.quantity_expected) || 0;
   const canOpenUnits =
@@ -176,12 +170,26 @@ export function PoLineRow({
     return () => window.clearTimeout(timer);
   }, [pulseToken]);
 
+  /** Select this line and arm its capture serial (Unbox dual loci). */
+  const activateLineForSerial = () => {
+    if (readOnly) return;
+    setActiveSinkId(`po-line:${line.id}`);
+    if (!isActive) dispatchSelectLine(line);
+    // Capture face owns serial entry when mounted; dock wedge only as fallback.
+    if (activeRowSlot) {
+      scheduleFocusUnboxCaptureSerialInLine(line.id, 60);
+      return;
+    }
+    setTimeout(() => emitReceiving('receiving-focus-scan'), 60);
+  };
+
   return (
     <motion.li
       layout={animateLayout ? 'position' : false}
       transition={rowLayoutTransition}
       aria-current={isActive ? 'true' : undefined}
       data-po-line-row
+      data-receiving-line-id={line.id}
       data-po-line-active={isActive ? 'true' : undefined}
       className={cn(
         // Flat data floor: hairline bottom only — no card radius / side borders.
@@ -220,18 +228,13 @@ export function PoLineRow({
           setActiveSinkId(`po-line:${line.id}`);
         }}
         onClick={() => {
-          if (readOnly) return;
-          setActiveSinkId(`po-line:${line.id}`);
-          if (!isActive) dispatchSelectLine(line);
-          setTimeout(() => emitReceiving('receiving-focus-scan'), 60);
+          activateLineForSerial();
         }}
         onKeyDown={(e) => {
           if (readOnly || isActive) return;
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
-            setActiveSinkId(`po-line:${line.id}`);
-            dispatchSelectLine(line);
-            setTimeout(() => emitReceiving('receiving-focus-scan'), 60);
+            activateLineForSerial();
           }
         }}
         className={`w-full min-w-0 py-0 pl-0 pr-0 text-left ${
@@ -269,6 +272,27 @@ export function PoLineRow({
               qty={
                 readOnly ? (
                   <ScannedBadge expected={line.quantity_expected} />
+                ) : activeRowSlot ? (
+                  <HoverTooltip label="Focus serial for this unit" asChild>
+                    <button
+                      type="button"
+                      data-po-line-units
+                      aria-label="Focus serial for this unit"
+                      className={cn(
+                        'ds-raw-button flex h-full min-w-0 items-center',
+                        focusRing('control', 'neutral'),
+                      )}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        activateLineForSerial();
+                      }}
+                    >
+                      <ProgressBadge
+                        received={line.quantity_received}
+                        expected={line.quantity_expected}
+                      />
+                    </button>
+                  </HoverTooltip>
                 ) : (
                   <ProgressBadge
                     received={line.quantity_received}
@@ -331,27 +355,36 @@ export function PoLineRow({
               serial={
                 !unitsChrome ? undefined : serialsLoading ? (
                   <SerialChipSkeleton width="w-fit max-w-full" dense />
-                ) : !readOnly &&
-                  onSerialAbsentChange &&
-                  !editorBodyVisible &&
+                ) : serialNumbers.length > 0 ||
+                  canOpenUnits ||
+                  canEditSerialInDock ||
                   (line.serial_absent ?? false) ? (
-                  <NoSerialControl
-                    variant="pill"
-                    absent
-                    reason={line.serial_absent_reason ?? null}
-                    onChange={(next) => onSerialAbsentChange(line.id, next)}
-                  />
-                ) : serialNumbers.length > 0 || canOpenUnits || canEditSerialInDock ? (
                   (canEditSerialInDock || onViewAllUnits) && !readOnly ? (
                     <HoverTooltip
-                      label={onEditSerialInDock ? 'Edit serial in dock' : 'Edit units'}
+                      label={
+                        serialNumbers.length > 0
+                          ? 'Edit serials in Displays'
+                          : onEditSerialInDock
+                            ? 'Edit serial in dock'
+                            : line.serial_absent
+                              ? 'No serial'
+                              : 'View serials'
+                      }
                       asChild
                     >
-                      {/* ds-raw-button: meta-row serial preview → dock step or Units */}
+                      {/* ds-raw-button: meta-row serial preview → a FILLED serial
+                          edits in Units Displays (edit-in-Displays, per-line); a
+                          fresh line (no serial yet) arms the in-row/dock capture. */}
                       <button
                         type="button"
                         aria-label={
-                          onEditSerialInDock ? 'Edit serial in dock' : 'Edit units'
+                          serialNumbers.length > 0
+                            ? 'Edit serials in Displays'
+                            : onEditSerialInDock
+                              ? 'Edit serial in dock'
+                              : line.serial_absent
+                                ? 'No serial'
+                                : 'View serials'
                         }
                         className={cn(
                           'ds-raw-button flex h-full min-w-0 w-full items-center gap-0.5 overflow-hidden px-2 py-1 text-left transition-colors',
@@ -362,11 +395,23 @@ export function PoLineRow({
                           e.stopPropagation();
                           setActiveSinkId(`po-line:${line.id}`);
                           if (!isActive) dispatchSelectLine(line);
-                          if (onEditSerialInDock) onEditSerialInDock(line);
-                          else onViewAllUnits?.(line);
-                          if (onEditSerialInDock) {
-                            setTimeout(() => emitReceiving('receiving-focus-scan'), 60);
+                          // A FILLED serial edits in Units Displays for THIS line
+                          // (promotes the sibling + opens the leaf). Never the
+                          // controller-bound dock. A fresh line (no serial yet)
+                          // arms the in-row/dock capture instead.
+                          if (serialNumbers.length > 0 && onViewAllUnits) {
+                            onViewAllUnits(line);
+                            return;
                           }
+                          if (onEditSerialInDock) {
+                            onEditSerialInDock(line);
+                            setTimeout(
+                              () => emitReceiving('receiving-focus-scan'),
+                              60,
+                            );
+                            return;
+                          }
+                          onViewAllUnits?.(line);
                         }}
                       >
                         <Barcode
@@ -379,7 +424,9 @@ export function PoLineRow({
                                 .slice(-SERIAL_PREVIEW_CAP)
                                 .map((sn) => getLast8(sn))
                                 .join(', ')
-                            : '—'}
+                            : line.serial_absent
+                              ? 'No serial'
+                              : '—'}
                         </span>
                       </button>
                     </HoverTooltip>
@@ -395,7 +442,9 @@ export function PoLineRow({
                               .slice(-SERIAL_PREVIEW_CAP)
                               .map((sn) => getLast8(sn))
                               .join(', ')
-                          : '—'}
+                          : line.serial_absent
+                            ? 'No serial'
+                            : '—'}
                       </span>
                     </span>
                   )
@@ -409,10 +458,24 @@ export function PoLineRow({
       {/* Mouse-escape / Testing body when parent passes `activeRowSlot`.
           Unbox mounts only under the active line; Testing may interleave.
           Snap — no height tween that pushes the ledger on line focus.
-          Arrival (`unitsChrome={false}`) never mounts unit editors. */}
+          Arrival (`unitsChrome={false}`) never mounts unit editors.
+          Entry is boxed off the ledger (hairline frame + card face) so bulk /
+          progressive capture reads as one instrument under the selected line. */}
       {unitsChrome && !readOnly && activeRowSlot ? (
-        <div className="min-w-0 overflow-hidden bg-surface-card">
-          <div className="min-w-0 bg-surface-card px-0 py-0">
+        <div
+          className={cn(
+            'min-w-0 overflow-hidden border-t border-border-hairline bg-surface-sunken',
+            // Unbox mounts PoLineUnitCaptureList here, whose first capture row
+            // already draws `border-y` (PO_LINE_CAPTURE_ROW_CLASS) flush at the
+            // top of this box — two hairlines with nothing between them read as
+            // one 2px rule. Yield our top seam to it. Scoped with `:has()` so
+            // the TESTING path (ReceivingUnitRows, which draws no top border of
+            // its own) keeps this border as its only boundary.
+            '[&:has([data-po-line-unit-capture])]:border-t-0',
+          )}
+          data-po-line-entry
+        >
+          <div className="min-w-0 border border-border-soft border-t-0 bg-surface-card">
             {typeof activeRowSlot === 'function'
               ? activeRowSlot({
                   line,

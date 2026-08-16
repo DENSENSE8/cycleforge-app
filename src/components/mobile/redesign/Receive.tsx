@@ -24,6 +24,10 @@ import {
   type IntakeTone,
 } from '@/lib/receiving/intake-classification';
 import { mobileArrivalGuidedPhotosHref } from '@/lib/receiving/photo-scope';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 type UnboxVerdict = 'expedited' | 'normal' | 'unfound';
 
@@ -342,7 +346,7 @@ export default function RedesignedMobileReceive({
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && lookup(input)}
               placeholder="Scan or enter tracking..."
-              className="w-full bg-surface-card border border-blue-100 rounded-[24px] pl-11 pr-14 py-5 text-base font-semibold text-blue-950 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all shadow-sm placeholder:text-blue-300"
+              className={cn("w-full bg-surface-card border border-blue-100 rounded-[24px] pl-11 pr-14 py-5 text-base font-semibold text-blue-950 transition-all shadow-sm placeholder:text-blue-300", focusRing('field', 'accent'))}
             />
             <IconButton
               ariaLabel="Look up tracking"

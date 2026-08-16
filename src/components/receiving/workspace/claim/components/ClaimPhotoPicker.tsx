@@ -2,6 +2,9 @@ import { useCallback, useMemo, useState } from 'react';
 import { Camera, Loader2, Pencil, Plus, ZoomIn } from '@/components/Icons';
 import { PhotoGridDisplayControls } from '@/components/photos/PhotoGridDisplayControls';
 import {
+  photoAttachControlGroupClass,
+  photoAttachDensityButtonClass,
+  photoAttachIconButtonClass,
   photoLibraryControlButtonClass,
   photoLibraryControlGroupClass,
 } from '@/components/photos/photo-library-controls';
@@ -35,12 +38,14 @@ interface Props {
   mode?: 'select' | 'view';
 }
 
-/** Claim-local flush chrome — does not change Media Library control defaults. */
-const CLAIM_CONTROL_GROUP =
-  '!rounded-none border-border-hairline !p-0 shadow-none';
-const CLAIM_ICON_BUTTON =
-  '!h-7 !w-7 !rounded-none border-border-hairline';
-const CLAIM_DENSITY_BUTTON = '!rounded-none shadow-none';
+/**
+ * Claim-local flush chrome — the shared attach-picker overrides
+ * (`photo-library-controls.ts`). Aliased so the existing call sites below read
+ * unchanged; the strings live in one place now.
+ */
+const CLAIM_CONTROL_GROUP = photoAttachControlGroupClass;
+const CLAIM_ICON_BUTTON = photoAttachIconButtonClass;
+const CLAIM_DENSITY_BUTTON = photoAttachDensityButtonClass;
 
 /**
  * Photo grid for claim / Move / Send selection (`mode="select"`) and the Photos

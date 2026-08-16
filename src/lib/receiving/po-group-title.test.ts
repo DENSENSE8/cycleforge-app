@@ -292,6 +292,28 @@ test('receivingWorkspaceLineTitle — uses product SoT when present', () => {
   assert.equal(receivingProductTitle(r), 'Bose TV Speaker Soundbar');
 });
 
+test('receivingProductTitle — return serial face is last-8', () => {
+  const r = row({
+    item_name: 'Return serial 017817834247',
+    sku: null,
+    zoho_item_id: null,
+  });
+  assert.equal(receivingProductTitle(r), 'Return serial 17834247');
+  assert.equal(receivingRailRowTitle(r, 'line', identity), 'Return serial 17834247');
+  assert.equal(receivingWorkspaceLineTitle(r), 'Return serial 17834247');
+});
+
+test('receivingProductTitle — live serial wins over stale Return serial title', () => {
+  const r = row({
+    item_name: 'Return serial 017817834247',
+    sku: null,
+    zoho_item_id: null,
+    serials: [{ id: 1, serial_number: '083424j32000020ae' }],
+  });
+  assert.equal(receivingProductTitle(r), 'Return serial 000020ae');
+  assert.equal(receivingWorkspaceLineTitle(r), 'Return serial 000020ae');
+});
+
 test('receivingWorkspaceLineTitle — thin PO placeholder never paints Line #', () => {
   const r = row({
     id: 8696,

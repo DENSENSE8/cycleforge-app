@@ -137,14 +137,37 @@ interface OmnichannelComposerDockProps {
    * `compact` — one short row: field + trailing action inline (paste docks).
    */
   density?: 'default' | 'compact';
-  /** Auto-grow between min/max. Default true. Ignored when `density="compact"`. */
+  /** Auto-grow between min/max. Default true. Ignored when `density="compact"` or `manualResize`. */
   autoGrow?: boolean;
+  /**
+   * CSS drag-resize on the textarea (`resize-y`). Disables auto-grow and
+   * compact single-row lock so the operator can pull the paste field taller
+   * inside a sidebar (e.g. Checking unreceived orders).
+   */
+  manualResize?: boolean;
+  /** Floor height in px when `manualResize` is on. Default 72. */
+  manualResizeMinPx?: number;
   className?: string;
   /** Skip mount entrance (e.g. when already in a presence tree). */
   animateMount?: boolean;
   onBlur?: () => void;
   onFocus?: () => void;
   textareaRef?: Ref<HTMLTextAreaElement>;
+  /**
+   * Optional inline ghost autocomplete (Unbox label-note MRU). Overlay paints
+   * the untyped suffix; Tab / ArrowRight / click accept via {@link onAcceptGhost}.
+   */
+  ghostSuffix?: string;
+  matchedPhrase?: string | null;
+  onAcceptGhost?: () => void;
+  onDismissGhost?: () => void;
+  /**
+   * Extra keydown before Enter commit. Return true when handled (skip default
+   * Enter / composer handling for that key).
+   */
+  onTextareaKeyDown?: (
+    e: KeyboardEvent<HTMLTextAreaElement>,
+  ) => boolean | void;
 }
 
 export const OmnichannelComposerDock = forwardRef<
@@ -168,17 +191,26 @@ export const OmnichannelComposerDock = forwardRef<
     chrome = 'raised',
     density = 'default',
     autoGrow = true,
+    manualResize = false,
+    manualResizeMinPx = 72,
     className,
     animateMount = true,
     onBlur,
     onFocus,
     textareaRef: textareaRefProp,
+    ghostSuffix,
+    matchedPhrase = null,
+    onAcceptGhost,
+    onDismissGhost,
+    onTextareaKeyDown,
   },
   ref,
 ) {
   const localRef = useRef<HTMLTextAreaElement | null>(null);
-  const compact = density === 'compact';
-  const growEnabled = autoGrow && !compact;
+  // Manual resize needs a stacked field the operator can pull — never the
+  // compact single-row lock (that pins h-8 and fights the grip).
+  const compact = density === 'compact' && !manualResize;
+  const growEnabled = autoGrow && !compact && !manualResize;
   useImperativeHandle(ref, () => ({
     focus: () => localRef.current?.focus(),
     blur: () => localRef.current?.blur(),
@@ -216,7 +248,7 @@ export const OmnichannelComposerDock = forwardRef<
   const bare = chrome === 'bare';
 
   const trailing = (
-    <div className="flex shrink-0 items-center gap-1.5">
+    <div className="flex shrink-0 items-end gap-1">
       {footerEnd}
       {composerShowsCommit({
         hideCommitButton,
@@ -230,7 +262,7 @@ export const OmnichannelComposerDock = forwardRef<
             ariaLabel={commitAriaLabel}
             disabled={disabled || !canCommit}
             onClick={() => onCommit()}
-            className="h-7 w-7 p-0"
+            className="h-7 w-7 rounded-full p-0"
           >
             <Send className="h-3.5 w-3.5" />
           </Button>
@@ -261,42 +293,86 @@ export const OmnichannelComposerDock = forwardRef<
       data-composer-chrome={chrome}
       data-composer-density={density}
     >
-      <textarea
-        ref={setTextareaRef}
-        value={value}
-        disabled={disabled}
-        rows={1}
-        aria-label={ariaLabel}
-        placeholder={placeholder}
-        onChange={(e) => onChange(e.target.value)}
-        onBlur={onBlur}
-        onFocus={onFocus}
-        onKeyDown={(e) => {
-          if (disabled) return;
-          handleComposerKeyDown(e, () => {
-            if (!canCommit) return;
-            onCommit();
-          });
-        }}
-        className={cn(
-          'block w-full resize-none bg-transparent text-role-caption leading-5 text-text-default placeholder:text-text-faint',
-          'focus:outline-none',
-          compact
-            ? 'h-8 min-h-8 max-h-8 flex-1 overflow-y-auto px-2.5 py-1.5 leading-5'
-            : cn(
-                'px-3.5 pt-3 pb-1.5',
-                growEnabled ? 'max-h-32 min-h-[40px] overflow-y-auto' : 'min-h-[40px]',
-              ),
-        )}
-      />
+      <div className={cn('relative min-w-0', compact ? 'flex-1' : 'w-full')}>
+        {ghostSuffix ? (
+          <div
+            aria-hidden
+            className={cn(
+              'pointer-events-none absolute inset-0 overflow-hidden text-role-caption leading-5',
+              compact ? 'px-2.5 py-1.5' : 'px-3.5 pt-3 pb-1.5',
+            )}
+          >
+            <span className="whitespace-pre-wrap break-words">
+              <span className="text-transparent">{value}</span>
+              {/* ds-raw-button */}
+              <button
+                type="button"
+                tabIndex={-1}
+                className="ds-raw-button pointer-events-auto cursor-pointer border-0 bg-transparent p-0 text-inherit text-text-faint"
+                aria-label={
+                  matchedPhrase ? `Accept suggestion: ${matchedPhrase}` : 'Accept suggestion'
+                }
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  onAcceptGhost?.();
+                }}
+              >
+                {ghostSuffix}
+              </button>
+            </span>
+          </div>
+        ) : null}
+        <textarea
+          ref={setTextareaRef}
+          value={value}
+          disabled={disabled}
+          rows={1}
+          aria-label={ariaLabel}
+          aria-autocomplete={ghostSuffix != null || onAcceptGhost ? 'inline' : undefined}
+          placeholder={placeholder}
+          onChange={(e) => onChange(e.target.value)}
+          onBlur={onBlur}
+          onFocus={onFocus}
+          onKeyDown={(e) => {
+            if (disabled) return;
+            if (onTextareaKeyDown?.(e)) return;
+            if (e.key === 'Escape' && ghostSuffix && onDismissGhost) {
+              e.preventDefault();
+              onDismissGhost();
+              return;
+            }
+            handleComposerKeyDown(e, () => {
+              if (!canCommit) return;
+              onCommit();
+            });
+          }}
+          className={cn(
+            'relative block w-full bg-transparent text-role-caption leading-5 text-text-default placeholder:text-text-faint',
+            'focus:outline-none',
+            manualResize
+              ? 'max-h-64 overflow-y-auto px-3.5 pt-3 pb-1.5 resize-y'
+              : 'resize-none',
+            !manualResize && compact
+              ? 'h-8 min-h-8 max-h-8 w-full overflow-y-auto px-2.5 py-1.5 leading-5'
+              : null,
+            !manualResize && !compact
+              ? cn(
+                  'px-3.5 pt-3 pb-1.5',
+                  growEnabled ? 'max-h-32 min-h-[40px] overflow-y-auto' : 'min-h-[40px]',
+                )
+              : null,
+          )}
+          style={manualResize ? { minHeight: manualResizeMinPx } : undefined}
+        />
+      </div>
       {compact ? (
         <div className="flex shrink-0 items-center gap-1 pr-1.5">
           {footerStart ? <div className="flex items-center gap-1">{footerStart}</div> : null}
           {trailing}
         </div>
       ) : (
-        <div className="flex min-w-0 flex-wrap items-center gap-2 px-2 pb-2 pt-0.5">
-          <div className="flex min-w-0 flex-1 items-center gap-1">{footerStart}</div>
+        <div className="flex min-w-0 flex-wrap items-end gap-1 px-2 pb-1.5 pt-0.5">
+          <div className="flex min-w-0 flex-1 items-center gap-0.5">{footerStart}</div>
           {trailing}
         </div>
       )}

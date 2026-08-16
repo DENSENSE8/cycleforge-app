@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { RightPaneOverlay } from '@/components/ui/RightPaneOverlay';
-import { Button, IconButton } from '@/design-system/primitives';
+import { Panel, Button, IconButton } from '@/design-system/primitives';
 import { Pencil, Printer, X } from '@/components/Icons';
 import { microBadge } from '@/design-system/tokens/typography/presets';
 import { ConditionPills } from '@/components/receiving/workspace/ConditionPills';
@@ -10,6 +10,10 @@ import { LabelFacePreview } from '@/components/labels/LabelFacePreview';
 import { useLabelDraft } from '@/components/labels/useLabelDraft';
 import { unitLabelToFace } from '@/lib/print/printProductLabel';
 import type { LabelFaceModel } from '@/lib/print/labelFace';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 /** The hand-editable product/unit label-face fields. */
 export interface ProductLabelDraft {
@@ -23,7 +27,7 @@ export interface ProductLabelDraft {
 
 const FIELD_LABEL = `${microBadge} mb-1.5 block text-text-soft tracking-wider`;
 const TEXT_INPUT =
-  'w-full rounded-lg border border-border-soft bg-surface-card px-2.5 py-1.5 text-role-caption text-text-default outline-none transition-colors focus:border-blue-500';
+  cn('w-full rounded-lg border border-border-soft bg-surface-card px-2.5 py-1.5 text-role-caption text-text-default transition-colors', focusRing('field', 'accent'));
 
 /**
  * Custom-print editor for the product/unit (testing + products page) label.
@@ -90,9 +94,9 @@ export function ProductLabelEditPopover({
       {/* Body */}
       <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
         {/* Live preview — identical to the printed face. */}
-        <div className="mb-4 rounded-xl border border-border-soft/80 bg-surface-card px-3 py-3 shadow-sm">
+        <Panel radius="xl" padding="none" className="mb-4 bg-surface-card/80 px-3 py-3">
           <LabelFacePreview model={face} embedded />
-        </div>
+        </Panel>
 
         <div className="space-y-3.5">
           <div>

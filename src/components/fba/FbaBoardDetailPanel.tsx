@@ -10,9 +10,10 @@
 import { Check, ClipboardList, Loader2 } from '@/components/Icons';
 import { sectionLabel } from '@/design-system/tokens/typography/presets';
 import { FnskuChip } from '@/components/ui/CopyChip';
-import { PanelActionBar } from '@/components/shipped/details-panel/PanelActionBar';
+import { PaneHeaderActionBar, PaneHeaderLabel } from '@/components/ui/pane-header';
 import { FnskuCatalogInfoPanel } from './FnskuCatalogInfoPanel';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
+import { DeskRailChromeRow } from '@/components/right-rail/DeskRailChromeRow';
 import { scanActionLabel, formatCreatedAt, type FbaBoardDetailPanelProps } from './board-detail/board-detail-shared';
 import { useFbaBoardDetail } from './board-detail/useFbaBoardDetail';
 import { PlanEntryCard } from './board-detail/PlanEntryCard';
@@ -44,35 +45,61 @@ export function FbaBoardDetailPanel({
       ariaLabel={`FBA ${item.fnsku} details`}
     >
       <div className="flex h-full min-h-0 flex-col overflow-hidden">
-      {/* ── Fixed header (4 rows) — never scrolls ──────────────────── */}
+      {/* ── Fixed header — never scrolls ───────────────────────────────
+          Desk single-card chrome (`display/right-rail-inspector.md`):
+          Row 1 is close + contextual icons + ↑↓ in ONE in-flow row; Row 2 is
+          dense identity (eyebrow + the FNSKU, the short durable key).
+
+          This replaced a 4-row header whose Row 2 was a fixed `h-[100px]`
+          `line-clamp-4 text-lg` product title — a wrapping hero title, banned
+          on a record inspector — and whose Row 3 routed close through
+          `PanelActionBar`, which **drops `onClose`** ("close lives on
+          RightRailHost (backdrop / Esc)"). That has not been true since the
+          non-modal flip: there is no scrim, so this panel shipped with no
+          visible dismiss at all. `DeskRailChromeRow` restores it.
+
+          Passing contextual `actions` and prev/next to ONE `PaneHeaderActionBar`
+          is also banned; here ↑↓ belong to the chrome row and the actions ride
+          its `actions` slot. */}
       <div className="shrink-0 overflow-hidden bg-surface-card">
-        {/* Row 1: label */}
-        <div className="px-6 pt-4 pb-0">
-          <p className="text-role-eyebrow uppercase tracking-[0.3em] text-purple-700">
-            FBA Item
-          </p>
-        </div>
+        <DeskRailChromeRow
+          onClose={onClose}
+          onPrev={() => onNavigate('up')}
+          onNext={() => onNavigate('down')}
+          prevDisabled={disableMoveUp}
+          nextDisabled={disableMoveDown}
+          prevTitle="Move up a row"
+          nextTitle="Move down a row"
+          columnDisplay
+          actions={
+            panelActions.length ? (
+              <PaneHeaderActionBar
+                iconOnly
+                // `variant` DEFAULTS to 'card' — the deleted chrome pill. It is
+                // banned on a registrar file, and the ban only ever matched an
+                // explicit `variant="card"`, so omitting it passed the guard
+                // while rendering the thing the guard exists to stop.
+                variant="flat"
+                actions={panelActions.map((a) => ({
+                  key: a.key,
+                  label: a.label,
+                  icon: <span className={a.toneClassName}>{a.icon}</span>,
+                  onClick: a.onAction,
+                }))}
+              />
+            ) : undefined
+          }
+        />
 
-        {/* Row 2: title */}
-        <div className="px-6 pt-1.5 pb-2 border-b border-border-soft h-[100px]">
-          <h2 className="line-clamp-4 text-lg font-semibold leading-snug tracking-tight text-text-default">
-            {headerTitle}
-          </h2>
-        </div>
-
-        {/* Row 3: navigation action bar */}
-        <div className="pt-1 pb-0">
-          <PanelActionBar
-            onClose={onClose}
-            onMoveUp={() => onNavigate('up')}
-            onMoveDown={() => onNavigate('down')}
-            disableMoveUp={disableMoveUp}
-            disableMoveDown={disableMoveDown}
-            actions={panelActions}
+        <div className="border-b border-border-soft px-6 pb-2">
+          <PaneHeaderLabel
+            eyebrow="FBA Item"
+            value={headerTitle}
+            valueTitle={headerTitle}
           />
         </div>
 
-        {/* Row 4: FNSKU + totals */}
+        {/* FNSKU + totals */}
         <div className="flex items-center justify-between px-6 pt-2 pb-2">
           <div className="flex items-center gap-4 text-role-caption">
             <span className="flex items-center gap-1 font-semibold text-text-muted">

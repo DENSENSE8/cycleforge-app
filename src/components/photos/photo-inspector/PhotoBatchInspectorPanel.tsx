@@ -14,10 +14,9 @@
  *   Add photos
  *   Copy shareable links
  *   Create share page
- *   Download selected
  *   Edit labels
  * ───────────────────────────────────
- *                              [ 🗑 ]  ← InspectorActionFloor (Macro floor)
+ * [      ⭳       ][      🗑       ]   ← InspectorActionFloor (Macro floor)
  * ```
  *
  * ## Why this replaced a top action bar
@@ -63,17 +62,29 @@
  * (`right-rail-inspector.md` → *Workbench inspector action floor*). Park stays on
  * the top `DeskRailChromeRow`, so a dismiss never sits beside a delete.
  *
- * **Delete is the floor's only peer, and that is the choice** (option (a) of the
- * handoff): every other bulk verb is a *set* operation that reads better as a
- * named row, and the rows are the one place a verb is read. Delete is on the
- * floor because it is destructive, not because floors are where verbs go — the
- * same shape `BinDetailFlyout`, `SkuDetailView` and `RepairDetailsPanel` already
- * ship. `InspectorFlushDelete` owns its own arm-then-confirm, so the rail holds
- * no delete state of its own.
+ * **The floor carries the TERMINAL pair — Download then Delete** (ruled
+ * 2026-08-10). A single-peer floor is legal (`BinDetailFlyout` · `SkuDetailView`
+ * · `RepairDetailsPanel` ship one), but the spread layout then gives Delete the
+ * whole column, so "far right" is only literal once a second peer sits beside
+ * it. Download is the right partner and the only one: it is the other verb an
+ * operator reaches for without looking, and it is *terminal* — it ends the
+ * selection's business rather than reshaping it, which is what the floor means.
  *
- * The floor stays MOUNTED at zero selected (disabled) rather than unmounting —
- * a bottom row that appears and disappears with the selection would move the
- * verb list under the operator's cursor mid-tick.
+ * It **MOVES, it does not copy** ({@link FLOOR_ACTION_KEYS} partitions the
+ * incoming action set): a verb readable in two places is two places to keep in
+ * sync, and the rows exist precisely so each verb is read once. Everything else
+ * — add · copy links · share page · labels — stays a named row.
+ *
+ * `InspectorFlushDelete` owns its own arm-then-confirm, so the rail holds no
+ * delete state of its own. The floor stays MOUNTED at zero selected (its peers
+ * disabled) rather than unmounting — a bottom row that appears and disappears
+ * with the selection would move the verb list under the operator's cursor
+ * mid-tick.
+ *
+ * **The floor is `surface="card"`, not the desk default `canvas`.** This rail's
+ * body is one continuous white plane, and a grey band under it read as a second
+ * surface rather than as its floor (operator-ruled 2026-08-10). The `border-t`
+ * hairline still carries the seam; only the paint changed.
  *
  * Occupant id is the stable `detail:photo-batch` — a per-selection id would play
  * exit → empty → enter every time the operator ticked another tile, which is the
@@ -96,6 +107,7 @@ import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRai
 import { DeskRailChromeRow } from '@/components/right-rail/DeskRailChromeRow';
 import {
   FLOOR_DELETE_PEER_CLASS,
+  FloorIconButton,
   InspectorActionFloor,
 } from '@/components/right-rail/InspectorActionFloor';
 import { InspectorFlushDelete } from '@/components/right-rail/InspectorFlushDelete';
@@ -112,6 +124,20 @@ import {
   type SelectionAction,
 } from '@/lib/selection/selection-actions';
 import { cn } from '@/utils/_cn';
+
+/**
+ * Bulk verbs that leave the row list for the Macro floor.
+ *
+ * TERMINAL only — a verb that ends the selection's business (hand the bytes
+ * over) rather than reshaping it. Deletion is not listed because it is not a
+ * `SelectionAction` at all: it arrives as `onDeleteSelected` and renders as
+ * {@link InspectorFlushDelete}, the floor's trailing child.
+ *
+ * Keep this SHORT. Every key added here is a verb that stops naming itself in
+ * words, and the floor's whole affordance is that the two glyphs on it are the
+ * two an operator can hit without reading.
+ */
+const FLOOR_ACTION_KEYS: readonly string[] = ['download'];
 
 interface BatchRow {
   id: string;
@@ -151,6 +177,18 @@ export function PhotoBatchInspectorPanel<T>({
   const shownCount = selectedCount ?? count;
   const allSelected = total > 0 && count >= total;
 
+  // One partition, two surfaces — a verb is in the rows OR on the floor, never
+  // both. A scope that ships no terminal verb (some do not) simply lands a
+  // one-peer floor; nothing is invented to fill the slot.
+  const rowActions = useMemo(
+    () => actions.filter((a) => !FLOOR_ACTION_KEYS.includes(a.key)),
+    [actions],
+  );
+  const floorActions = useMemo(
+    () => actions.filter((a) => FLOOR_ACTION_KEYS.includes(a.key)),
+    [actions],
+  );
+
   const batchRows = useMemo<BatchRow[]>(() => {
     const out: BatchRow[] = [
       {
@@ -171,7 +209,7 @@ export function PhotoBatchInspectorPanel<T>({
       });
     }
 
-    for (const action of actions) {
+    for (const action of rowActions) {
       const resolved = resolveSelectionAction(action, rows);
       out.push({
         id: action.key,
@@ -184,16 +222,16 @@ export function PhotoBatchInspectorPanel<T>({
       });
     }
 
-    // NOTE: Delete is deliberately NOT a row here — it is the flush trailing
-    // child of the Macro floor below. See the docblock.
+    // NOTE: Download and Delete are deliberately NOT rows here — they are the
+    // Macro floor's two peers below. See the docblock.
     return out;
   }, [
-    actions,
     allSelected,
     hasMore,
     onClear,
     onSelectAll,
     onSelectAllMatching,
+    rowActions,
     rows,
     total,
   ]);
@@ -334,10 +372,25 @@ export function PhotoBatchInspectorPanel<T>({
           </div>
         </div>
 
-        {/* Macro floor — the destructive verb's one home. Flush trailing child,
-            arm-then-confirm owned by the control, disabled (never unmounted) at
+        {/* Macro floor — the terminal pair, Download then Delete. Coplanar with
+            the panel (`surface="card"`); peers disabled, never unmounted, at
             zero selected so the row above never shifts under a tick. */}
-        <InspectorActionFloor>
+        <InspectorActionFloor surface="card">
+          {floorActions.map((action) => {
+            const resolved = resolveSelectionAction(action, rows);
+            return (
+              <FloorIconButton
+                key={action.key}
+                icon={action.icon}
+                // A disabled peer says WHY on hover — the reason is the only
+                // thing an icon-only control can still tell you.
+                label={resolved.disabled ? (resolved.reason ?? action.label) : action.label}
+                onClick={() => void action.run(rows)}
+                disabled={resolved.disabled}
+                data-testid={`photo-batch-floor-${action.key}`}
+              />
+            );
+          })}
           <InspectorFlushDelete
             onConfirm={() => onDeleteSelected?.(rows)}
             label={shownCount > 0 ? `Delete ${shownCount}` : 'Delete selected'}

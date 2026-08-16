@@ -8,11 +8,11 @@ allowed-tools: Read, Grep, Glob, Edit, Write, Bash
 
 **Scope:** pages that already use (or correctly need) the **sidebar map + focus pane** Workbench
 recipe for mode-scoped pick+edit. This is **not** “every Cycle Forge surface is dual-pane” —
-Kinetic Ledger (`.claude/rules/kinetic-ledger.md`) allows tables, boards, stations, and rollups as primary surfaces.
+Kinetic Ledger (`AGENTS.md` + `.impeccable.md`) allows tables, boards, stations, and rollups as primary surfaces.
 
 When you are adding a feature, view, list, tab, filter, or search **to a sidebar-driven page**,
 follow this contract. If the job is Station, pure Monitor, Canvas, or a table/board-primary Workbench
-without a mode sidebar, **do not force this skill** — use `contextual-display.md` + the right child recipe.
+without a mode sidebar, **do not force this skill** — use `AGENTS.md` region hosts + `node scripts/sot-lookup.mjs`.
 
 This skill exists because new features keep getting wired as floating panels or right-pane chrome
 instead of modes on pages that already use `SidebarShell`.
@@ -114,8 +114,6 @@ top-level panel or a new route unless the mode is genuinely a separate page.
 
 - ❌ `const [view, setView] = useState(...)` to switch feature displays → use `?mode=`.
 - ❌ Importing or rendering `<SidebarSearchBar>` directly → pass `search` to `SidebarShell`.
-  (A guard test, `src/components/ui/sidebar-search-bar.guard.test.ts`, fails the build if
-  anything but `SidebarShell` imports it.)
 - ❌ A search input, mode pills, or filter bar inside the right/main pane.
 - ❌ Hand-positioning the search band (`py-2`, `mt-4`, `-mx-1.5`, nesting it in a scroll
   body) — the shell owns the 40px band and the gutter.
@@ -127,11 +125,10 @@ top-level panel or a new route unless the mode is genuinely a separate page.
 
 1. `npm run lint`
 2. `npx tsc --noEmit` — the `XxxMode` union must be exhaustive everywhere it's switched.
-3. Run the guard test if you touched any search wiring (it asserts `SidebarSearchBar`
-   stays shell-only).
-4. Manual check: deep-link to `?mode=newmode` loads the mode directly; switching modes
+3. Manual check: deep-link to `?mode=newmode` loads the mode directly; switching modes
    clears stale `q`/`filter`/`open`; refresh preserves the mode; the right pane shows
    only visual detail for the current selection.
+4. `npm run verify` before done.
 
 If any of the four laws can't be satisfied for a genuine reason, say so explicitly and
 propose the smallest deviation — don't silently fork a parallel pattern.

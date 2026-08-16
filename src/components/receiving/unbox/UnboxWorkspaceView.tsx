@@ -21,7 +21,6 @@
  */
 
 import { Suspense, useEffect, useRef } from 'react';
-import dynamic from 'next/dynamic';
 import { useSearchParams } from 'next/navigation';
 import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
 import {
@@ -30,6 +29,7 @@ import {
 } from '@/components/dashboard/workbench-shell';
 import { RECEIVING_SELECTION_SCOPE } from '@/components/station/receiving-lines-table-helpers';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import ReceivingLinesTable from '@/components/station/ReceivingLinesTable';
 import { UnboxTableCardSkeleton } from '@/components/receiving/unbox/UnboxWorkbenchSkeleton';
 import { UnboxWorkspaceHeader } from '@/components/receiving/unbox/UnboxWorkspaceHeader';
 import { ReceivingLineRailShell } from '@/components/receiving/rail/ReceivingLineRailShell';
@@ -51,11 +51,6 @@ import { useReceivingLineRailSelection } from '@/hooks/useReceivingLineRailSelec
 import { incomingDetailsTargetFromRow } from '@/lib/receiving/incoming-details-target';
 import { dispatchReceivingOpenIncomingDetails } from '@/utils/events';
 import { toast } from '@/lib/toast';
-
-const ReceivingLinesTable = dynamic(
-  () => import('@/components/station/ReceivingLinesTable'),
-  { loading: () => <UnboxTableCardSkeleton /> },
-);
 
 /** Copy line for a receiving carton/line: PO • SKU • tracking. */
 function formatReceivingCopyRow(r: ReceivingLineRow): string {

@@ -46,11 +46,6 @@ export interface UnboxStepDockContext {
   itemPhotoSlot?: ReactNode;
   /** The serial scan field + waiver — the `serial` step's action. */
   serialSlot?: ReactNode;
-  /**
-   * Classify editor (`TriageClassifySection`) — adapter-composed so the dock
-   * bag never takes the line controller. Band grows while this step is active.
-   */
-  classifySlot?: ReactNode;
 }
 
 export type UnboxStepDock = (props: UnboxStepDockContext) => ReactNode;

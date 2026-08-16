@@ -3,24 +3,22 @@
  * Notes use segments separated by " · " (see mark-received). Prefixes are
  * case-insensitive; first match wins scanning top-to-bottom.
  */
+
+import { normalizeListingHref } from '@/lib/receiving/listing-href';
+
 export interface SyncNoteListingLink {
   href: string;
   /** Optional human title prefix before `: https://...` on the line. */
   title: string | null;
 }
 
-function normalizeHref(raw: string): string | null {
-  const t = raw.trim();
-  if (!t) return null;
-  try {
-    const withProto = /^https?:\/\//i.test(t) ? t : `https://${t}`;
-    const u = new URL(withProto);
-    if (u.protocol !== 'http:' && u.protocol !== 'https:') return null;
-    return u.href;
-  } catch {
-    return null;
-  }
-}
+/**
+ * Sync-note hrefs go through the same normalizer as pasted and catalog ones —
+ * this is the `sync_notes` tier of `collectCartonListingLinks`, so a local copy
+ * meant the resolver normalized one of its four inputs differently from the
+ * other three.
+ */
+const normalizeHref = normalizeListingHref;
 
 function trimTrailingPunctuation(url: string): string {
   // Common sync-note formatting: "...: https://…", sometimes followed by punctuation.

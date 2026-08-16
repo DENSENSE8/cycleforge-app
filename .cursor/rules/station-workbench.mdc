@@ -6,9 +6,9 @@ alwaysApply: false
 
 # Station Workbench (Unbox-family right panes)
 
-Golden: `receiving/workspace/LineEditPanel.tsx`. Full rule + tiers:
-`.claude/rules/display/station-workbench.md`. CI: `station-workbench-chrome.guard.test.ts`
-(+ `station-terminal.test.ts`). Baselines shrink only — never raise one to pass.
+Golden: `receiving/workspace/LineEditPanel.tsx`. Live law: `AGENTS.md` Station hosts
+(`StationWorkbench`, `CartonContextCard`, `StationTerminalDock`). CI:
+`src/lib/station-terminal/station-terminal.test.ts`. Baselines shrink only — never raise one to pass.
 
 ## Always
 - Identity: `StationContextBar` flush under GlobalHeader (`placement="flow"` on Unbox + coplanar flush `stationIdentityPanelClass` — `rounded-none`, hairline `border-b`, no elevation) + entity-context adapter (two-row `CartonContextCard`) **above** `StationWorkbench` (`reserveIdentityClearance={false}`, Unbox `bodyGap="none"`) so identity abuts PO lines with zero air.
@@ -16,7 +16,7 @@ Golden: `receiving/workspace/LineEditPanel.tsx`. Full rule + tiers:
 - Outer shell: `StationPanelRoot` (owns `bg-surface-sunken` column + `StationAmbientWash`).
 - Column: `STATION_WORKBENCH_*` (720 lock, start-aligned, zero body pad) from `workbench-layout.ts`. Displays drag min = `STATION_DISPLAYS_MIN_WIDTH_PX` (280).
 - Terminal: `useStationTerminalAction` + `STATION_TERMINAL_REGISTRY` (or `TERMINAL_HAND_VM_ALLOWLIST` + follow-up).
-- Unbox floor: `UnboxDockHost` — flush `inset-x-0 border-t bg-surface-card` instrument; Band 1 = Active Step Studio (`trailing={null}`); dogfood Print·Receive on `data-unbox-dogfood-print` above the host (always-on); notes escalate via `DenseComposeFields` (`UnboxDockNotesEntry`); under-row pager only (no % ring). Float over canvas with safe-area `pb` only — no `px-4`/`sm:px-6` gutters.
+- Unbox floor: raised `WorkspaceNotesCard` / `OmnichannelComposerDock` (`chrome="raised"`) with trailing divided Print·Receive (`StationTerminalDock` `embedded` + `embeddedChrome="pill"`). Ghost label-note autocomplete via `useLabelNoteGhostAutocomplete`. Flush two-band procedure floor is parked on `unbox-work` — see `docs/todo/unbox-dock-procedure-parked-HANDOFF.md`. Float uses `slicedActionDockWrapperClass` gutters.
 - Tabs: `buildSectionTabs` + `SectionTabsSlider`. Mid-canvas jump: `StationRightEdgeAction`.
 
 ## Never
@@ -26,4 +26,4 @@ Golden: `receiving/workspace/LineEditPanel.tsx`. Full rule + tiers:
 - Fork a second condensed identity header (only `SupportTicketIdentity` is sanctioned).
 - Put carton identity in `StationWorkbench` `entityContext`/`toolbar` (Tier A/B).
 - Reintroduce `StationWorkbenchShell`; use `STATION_WORKBENCH_HEADER_COLUMN` for identity/body.
-- Co-mount Print·Receive with an active step studio; mount a raised `Panel` / `OmnichannelComposerDock` / floor % ring on the Unbox procedure floor.
+- Co-mount a Band 1 Active Step Studio with Print·Receive on main Unbox (procedure dock is parked). Do not drop ghost autocomplete from the notes bubble.

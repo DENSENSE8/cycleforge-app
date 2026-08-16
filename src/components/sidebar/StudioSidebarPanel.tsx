@@ -21,6 +21,8 @@ import { StudioLibrary } from '@/components/studio/StudioLibrary';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { cn } from '@/utils/_cn';
 import { appChromeClass } from '@/design-system/tokens/app-surface';
+import { Panel } from '@/design-system/primitives';
+
 
 /**
  * Contextual sidebar for /studio (Operations Studio) — the route's whole
@@ -132,7 +134,7 @@ export function StudioSidebarPanel() {
               role="menu"
               className={`absolute left-0 right-0 z-panelPopover mt-1 ${SIDEBAR_GUTTER} `}
             >
-              <div className="rounded-xl border border-border-soft bg-surface-card p-2 shadow-xl">
+              <Panel radius="xl" padding="none" elevation="md" className="p-2">
                 <p className="mb-1 px-1 text-role-micro uppercase tracking-wider text-text-faint">Lenses</p>
                 <div className="space-y-0.5">
                   {LENSES.map((l) => {
@@ -168,7 +170,7 @@ export function StudioSidebarPanel() {
                 <p className="mt-1.5 px-1 text-role-micro leading-relaxed text-text-faint">
                   Double-click a step at L1 to open its station detail (L2).
                 </p>
-              </div>
+              </Panel>
             </div>
           </>
         )}

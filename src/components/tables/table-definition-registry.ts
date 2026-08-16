@@ -21,66 +21,22 @@
  * entry plus a thin binding — never a new `*GridView.tsx`.
  */
 
-import { INCOMING_TABLE_BINDING } from '@/components/station/incoming-grid/incoming-table-definition';
-import { RECEIVING_TABLE_BINDING } from '@/components/station/receiving-grid/receiving-table-definition';
-import { READY_TABLE_BINDING } from '@/components/outbound/ready/grid/ready-table-definition';
-import { PICKUP_TABLE_BINDING } from '@/components/receiving/pickup/grid/pickup-table-definition';
-import { UNFOUND_TABLE_BINDING } from '@/components/receiving/unfound/grid/unfound-table-definition';
-import { TECH_ALL_TABLE_BINDING } from '@/components/tech/all/tech-all-table-definition';
-import { TRACKING_EXCEPTIONS_TABLE_BINDING } from '@/components/tracking-exceptions/grid/tracking-exceptions-table-definition';
-import { WARRANTY_TABLE_BINDING } from '@/components/warranty/grid/warranty-table-definition';
-import { MY_DAY_TABLE_BINDING } from '@/features/my-day/grid/my-day-table-definition';
-import { CATALOG_TABLE_BINDING } from '@/components/products/catalog/catalog-grid/catalog-table-definition';
-import { REPAIR_TABLE_BINDING } from '@/components/repair/repair-grid/repair-table-definition';
-import { BINS_TABLE_BINDING } from '@/components/warehouse/bins-grid/bins-table-definition';
-import { UNITS_TABLE_BINDING } from '@/components/inventory/units-grid/units-table-definition';
-import {
-  CATALOG_LINK_TABLE_BINDING,
-  IMPORT_EXCEPTION_TABLE_BINDING,
-} from '@/features/review/catalog-link/grid/catalog-link-table-definition';
-import {
-  ORDERS_DEFAULT_TABLE_BINDING,
-  ORDERS_TESTED_TABLE_BINDING,
-} from '@/components/dashboard/orders-queue/orders-table-definition';
-import { CSV_IMPORT_STAGING_TABLE_BINDING } from '@/components/outbound/orders/import-staging/csv-import-staging-table-definition';
+import { REGISTERED_BINDINGS } from './registered-bindings';
 import type { TableDefinition } from '@/lib/tables/table-definition';
 
 /**
- * Every registered binding, in migration order.
+ * The registered DEFINITIONS — derived from {@link REGISTERED_BINDINGS} rather
+ * than hand-listed beside it. Two hand-maintained lists of "all the tables"
+ * drifted once already; see `registered-bindings.ts` for what that cost.
  *
- * Typed loosely (`TableSurfaceBinding<never, never>` would not hold two row
- * shapes) — the map is for **enumeration and lookup of the data half**. A mount
- * imports its family's binding directly so `Row`/`C` stay checked at compile
- * time; see `table-surface-binding.ts` for why an id-keyed typed lookup would
- * be a cast pretending to be a guarantee.
+ * Typed loosely on purpose — the map is for **enumeration and lookup of the
+ * data half**. A mount imports its family's binding directly so `Row`/`C` stay
+ * checked at compile time; see `table-surface-binding.ts` for why an id-keyed
+ * typed lookup would be a cast pretending to be a guarantee.
  */
-const REGISTERED_DEFINITIONS: readonly TableDefinition[] = [
-  RECEIVING_TABLE_BINDING.definition,
-  INCOMING_TABLE_BINDING.definition,
-  // Wave 2 — the thin-adapter cluster (one template, seven surfaces).
-  READY_TABLE_BINDING.definition,
-  PICKUP_TABLE_BINDING.definition,
-  UNFOUND_TABLE_BINDING.definition,
-  TECH_ALL_TABLE_BINDING.definition,
-  TRACKING_EXCEPTIONS_TABLE_BINDING.definition,
-  WARRANTY_TABLE_BINDING.definition,
-  MY_DAY_TABLE_BINDING.definition,
-  // Wave 3 — the second-shape adapters.
-  CATALOG_TABLE_BINDING.definition,
-  REPAIR_TABLE_BINDING.definition,
-  BINS_TABLE_BINDING.definition,
-  // Wave 0 (SoT page-violation migrate) — Inventory units browse collection.
-  UNITS_TABLE_BINDING.definition,
-  // Wave 4 — Review · Catalog-link: two definitions, one shared capabilities bag.
-  CATALOG_LINK_TABLE_BINDING.definition,
-  IMPORT_EXCEPTION_TABLE_BINDING.definition,
-  // Wave 5 — Orders: two column-mode definitions for the shared parametric grid.
-  ORDERS_DEFAULT_TABLE_BINDING.definition,
-  ORDERS_TESTED_TABLE_BINDING.definition,
-  // Wave 6 — To-Ship CSV import staging: a triage sheet over a session draft,
-  // its own family so a staging column pref never touches the live queue.
-  CSV_IMPORT_STAGING_TABLE_BINDING.definition,
-];
+const REGISTERED_DEFINITIONS: readonly TableDefinition[] = REGISTERED_BINDINGS.map(
+  (binding) => binding.definition,
+);
 
 export const TABLE_DEFINITIONS: Readonly<Record<string, TableDefinition>> = Object.freeze(
   Object.fromEntries(REGISTERED_DEFINITIONS.map((d) => [d.id, d])),

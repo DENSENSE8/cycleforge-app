@@ -72,14 +72,14 @@ async function confirmContents(request: APIRequestContext, receivingId: number) 
 
 /**
  * Open the carton with its Displays column already on the Checklist display.
- *
- * `?display=` is the column's URL-durable open state (absence IS closed), so
- * deep-linking is the honest way in — it exercises the same param a reload or a
- * shared link uses, rather than driving the strip's overflow menu.
+ * Leaf selection is local React state — open via ←| then the strip progress ring.
  */
 async function openUnbox(page: Page, receivingId: number, lineId: number) {
-  await page.goto(`/unbox?openReceivingId=${receivingId}&lineId=${lineId}&display=checklist`);
+  await page.goto(`/unbox?openReceivingId=${receivingId}&lineId=${lineId}`);
   await expect(page.getByTestId('receiving-workspace')).toBeVisible({ timeout: 30_000 });
+  await page.getByTestId('unbox-displays-pane-toggle').click();
+  await expect(page.getByTestId('receiving-displays-push')).toBeVisible({ timeout: 15_000 });
+  await page.getByTestId('unbox-displays-expand-button').click();
   // The procedure lives in the Displays column — never in the work surface.
   await expect(page.locator('[data-procedure-step]').first()).toBeVisible({ timeout: 30_000 });
 }

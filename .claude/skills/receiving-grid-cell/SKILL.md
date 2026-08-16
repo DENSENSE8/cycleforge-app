@@ -10,8 +10,8 @@ Unbox has **two** table surfaces. This skill is only for the **Workbench LedgerG
 (Queue · Viewed · History spreadsheet). Do not open the Station PO accordion unless the
 user names line chips / expand-edit.
 
-Full map: `docs/todo/unbox-receiving-grid-CONTEXT-MAP.md`. Display law:
-`.claude/rules/display/workbench.md` → **Receiving spreadsheet agent waist**.
+Full map: `docs/todo/unbox-receiving-grid-CONTEXT-MAP.md`. Display SoT:
+`AGENTS.md` Workbench hosts + `NonlinearTableHost` / `LedgerGridSurface`.
 
 ## Open only (allowlist)
 

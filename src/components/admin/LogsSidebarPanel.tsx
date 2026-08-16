@@ -21,6 +21,10 @@ import {
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Button } from '@/design-system/primitives';
 import { SearchBar } from '@/components/ui/SearchBar';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 type LogKind = 'all' | 'audit' | 'sal';
 
@@ -167,7 +171,7 @@ export function LogsSidebarPanel() {
             });
           }}
           placeholder="Filter by actor staff id"
-          className="h-9 w-full rounded-lg border border-border-soft bg-surface-card px-3 text-role-caption text-text-default outline-none transition placeholder:text-text-faint focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15"
+          className={cn("h-9 w-full rounded-lg border border-border-soft bg-surface-card px-3 text-role-caption text-text-default transition placeholder:text-text-faint", focusRing('field', 'accent'))}
         />
       }
     >

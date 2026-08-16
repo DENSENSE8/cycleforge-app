@@ -55,14 +55,6 @@ export const TESTING_SCAN_MODES: readonly TestingScanModeMeta[] = [
   },
 ] as const;
 
-/** Full operator name for the ready-arm face — short `label` stays on the rail. */
-const TESTING_SCAN_MODE_FULL_LABEL: Record<ForcedTestingType, string> = {
-  tracking: 'Tracking #',
-  po: 'PO #',
-  serial: 'Serial',
-  sku: 'SKU',
-};
-
 /**
  * Display-only hint for the leading icon when the operator hasn't armed a mode.
  * Does NOT decide resolution — un-armed scans still auto-detect server-side.
@@ -117,17 +109,6 @@ export function TestingScanBar({
   const active = testingScanModeMeta(effective);
   const LeadingIcon = armedMode ? active.Icon : Barcode;
   const leadingTint = armedMode ? active.iconClass : 'text-text-faint';
-  const readyArm = armedMode
-    ? {
-        label: `${TESTING_SCAN_MODE_FULL_LABEL[armedMode]} armed`,
-        Icon: active.Icon,
-        tintClassName: active.iconClass,
-      }
-    : {
-        label: 'Auto',
-        Icon: Barcode,
-        tintClassName: 'text-text-faint',
-      };
 
   return (
     <div data-testing-scan className="w-full">
@@ -137,8 +118,7 @@ export function TestingScanBar({
         onSubmit={handleSubmit}
         inputRef={inputRef}
         staffId={staffId}
-        placeholder=""
-        readyArm={readyArm}
+        placeholder={armedMode ? `Scan ${active.label}…` : 'Tracking · PO · Serial · SKU'}
         autoFocus
         // Align the scan icon/text to the recent rail's dot/title column below.
         leadingColumn="rail"

@@ -22,11 +22,11 @@ const LABEL: Record<WorkStatus, string> = {
 
 /** Chip trio (fill · ink · ring) — semantic families only, never a raw hex. */
 const CHIP: Record<WorkStatus, string> = {
-  OPEN: 'bg-gray-50 text-gray-700 ring-gray-200',
+  OPEN: 'bg-surface-sunken text-text-muted ring-border-soft',
   ASSIGNED: 'bg-blue-50 text-blue-700 ring-blue-200',
   IN_PROGRESS: 'bg-amber-50 text-amber-700 ring-amber-200',
   DONE: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
-  CANCELED: 'bg-gray-50 text-gray-500 ring-gray-200',
+  CANCELED: 'bg-surface-sunken text-text-faint ring-border-soft',
 };
 
 function coerce(status: string | null | undefined): WorkStatus | null {

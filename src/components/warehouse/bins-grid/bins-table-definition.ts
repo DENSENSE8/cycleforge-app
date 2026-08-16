@@ -32,4 +32,10 @@ export const BINS_TABLE_BINDING: TableSurfaceBinding<BinsOverviewRow, BinsGridCo
   definition: BINS_TABLE_DEFINITION,
   columns: BINS_GRID_COLUMNS,
   makeDescriptor: makeBinsGridDescriptor,
+  recordPlane: {
+    kind: 'inspector',
+    occupantId: 'detail:bin',
+    keyedByRecord:
+      'the bin flyout has no prev/next walk — nothing publishes a cursor over this grid — so the per-bin id costs no exit → empty → enter step',
+  },
 };

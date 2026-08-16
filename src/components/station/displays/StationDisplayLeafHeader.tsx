@@ -120,13 +120,16 @@ export function StationDisplayLeafHeader({
       data-breadcrumb-depth={trail.length}
       data-testid="station-displays-leaf-nav"
     >
+      {/* `ml-1` clears the Displays elevated sash hairline (4px) so ← does not
+          read as half-dead under the seam paint. Hit re-enable stays on the
+          button; the sash grab zone is still the leading w-3 under chrome. */}
       <HoverTooltip label={backLabel} asChild>
         <button
           type="button"
           onClick={onBack}
           disabled={!canGoBack}
           aria-label={backLabel}
-          className={HISTORY_BTN}
+          className={cn(HISTORY_BTN, 'ml-1')}
           data-testid="station-displays-history-back"
           data-station-displays-back=""
         >

@@ -71,7 +71,7 @@ export const stationUtilityPanelClass =
  */
 export const stationIdentityPadClass = 'px-0';
 
-/* ── Two-row identity rhythm ──────────────────────────────────────────────── */
+/* ── Identity rhythm (one-row carton bar; stacked tokens kept for overlays) ─ */
 
 /**
  * Station chrome seam — alias of {@link PRIMARY_CHROME_ROW_FACE} (28px scan bar
@@ -111,11 +111,13 @@ const STATION_IDENTITY_COMMERCE_ROW_FACE = STATION_SECONDARY_BAND_FACE;
 export const STATION_IDENTITY_COMMERCE_ROW_CLASS = `flex ${STATION_IDENTITY_COMMERCE_ROW_FACE} items-stretch gap-0`;
 
 /**
- * Classify urgency·platform·type — flush abut (`gap-0`), same grammar as
- * Photos · Claim. Soft drop shadows live off these faces (`shadow-none` on
- * the tone SoTs); never reintroduce `gap-1.5` spacing between classify pills.
+ * Classify urgency·platform·type — **one token**: flush abut (`gap-0`), no
+ * side hairlines. Soft drop shadows live off these faces (`shadow-none` on
+ * the tone SoTs); never reintroduce `gap-1.5` spacing or vertical rules
+ * between classify pills.
  */
-export const STATION_IDENTITY_GROUP_CLASS = 'flex h-full min-h-0 items-stretch gap-0';
+export const STATION_IDENTITY_GROUP_CLASS =
+  'flex h-full min-h-0 items-stretch gap-0';
 
 /** Vertical step between the two rows — flush (zero gap). */
 export const STATION_IDENTITY_ROW_STACK_CLASS = 'flex flex-col gap-0';
@@ -123,10 +125,32 @@ export const STATION_IDENTITY_ROW_STACK_CLASS = 'flex flex-col gap-0';
 /**
  * Leading column on chrome row 1 — boxed exit chevron so classify pills
  * share one x with the exit face. Square track on {@link STATION_CHROME_ROW_FACE};
- * child fills flush (`h-full w-full`). Row 2 status is a locked `w-14` pill.
+ * child fills flush (`h-full w-full`). Row 2 status is a content-width pill.
  */
 export const STATION_IDENTITY_LEAD_COL_CLASS =
   'flex h-full aspect-square shrink-0 items-stretch justify-stretch';
+
+/**
+ * House inset for identity / action cells that are not a chip face.
+ * Same `px-1.5` as CopyChip `outerPad="chip"` and action-pill faces —
+ * do not invent a second pad scale.
+ */
+export const STATION_CHROME_CELL_PAD = 'px-1.5';
+
+/**
+ * Chrome glyph box — same optical size as exit / back (`h-3.5`).
+ * Listing · claim · photos · price mark · overflow all use this box.
+ */
+export const STATION_CHROME_GLYPH_CLASS = 'block h-3.5 w-3.5 shrink-0';
+
+/**
+ * Shared cell on the one-row carton bar: fill chrome height, vertical center.
+ * Chip faces keep their own `px-1.5`; status / price compose
+ * {@link STATION_CHROME_CELL_PAD}. No leading hairline — the bar is one
+ * continuous strip (no `border-l` / `divide-x` between cells).
+ */
+export const STATION_CHROME_CELL_CLASS =
+  'flex h-full min-h-0 shrink-0 items-center';
 
 /** Gap between icons / chips — same integer as GlobalHeader. */
 export const stationIdentityGapClass = HEADER_ICON_GAP;

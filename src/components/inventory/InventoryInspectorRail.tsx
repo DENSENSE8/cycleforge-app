@@ -101,7 +101,7 @@ export function InventoryInspectorRail({
     >
       <div className="flex h-full min-h-0 flex-col overflow-hidden">
         <div className="shrink-0 border-b border-border-hairline bg-surface-card/90 backdrop-blur-xl">
-          <DeskRailChromeRow onClose={onClose} closeTitle="Close details" />
+          <DeskRailChromeRow onClose={onClose} closeTitle="Close details" columnDisplay />
           <div className="flex min-w-0 flex-col gap-0.5 px-2 pb-2 pt-1">
             <PaneHeaderLabel
               eyebrow={eyebrow}

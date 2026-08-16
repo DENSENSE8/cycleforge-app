@@ -16,6 +16,8 @@
 
 import { use } from 'react';
 import { CartonInspector } from '@/components/receiving/inspector/CartonInspector';
+import { Panel } from '@/design-system/primitives';
+
 
 export default function CartonInspectorPage({
   params,
@@ -28,9 +30,9 @@ export default function CartonInspectorPage({
   if (!Number.isFinite(receivingId) || receivingId <= 0) {
     return (
       <div className="flex h-full w-full items-center justify-center bg-surface-canvas p-6">
-        <div className="rounded-xl border border-dashed border-border-soft bg-surface-card inset-empty text-center text-role-caption text-text-muted">
+        <Panel radius="xl" padding="none" className="border-dashed inset-empty text-center text-role-caption text-text-muted">
           “{id}” is not a carton id.
-        </div>
+        </Panel>
       </div>
     );
   }

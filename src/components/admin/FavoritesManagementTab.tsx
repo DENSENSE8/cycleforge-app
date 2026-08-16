@@ -15,6 +15,8 @@ import { mainStickyHeaderClass, mainStickyHeaderShellRowClass } from '@/componen
 import { toast } from '@/lib/toast';
 import { sectionLabel, tableHeader, tableCell } from '@/design-system/tokens/typography/presets';
 import { cn } from '@/utils/_cn';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+
 
 /** Keep in sync with FAVORITE_WORKSPACE_KEYS in src/lib/favorites/sku-favorites.ts. */
 const WORKSPACES = [
@@ -64,7 +66,7 @@ const DEFAULT_FORM_STATE: FavoriteFormState = {
 };
 
 const inputClass =
-  'h-10 w-full border border-border-soft bg-surface-card px-3 text-sm font-semibold text-text-default outline-none transition-colors focus:border-border-emphasis';
+  cn('h-10 w-full border border-border-soft bg-surface-card px-3 text-sm font-semibold text-text-default transition-colors', focusRing('field', 'neutral'));
 
 function toNullable(value: string): string | null {
   const v = value.trim();
@@ -256,7 +258,7 @@ export function FavoritesManagementTab() {
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
               placeholder="Filter sku / label / title"
-              className="h-8 w-64 border border-border-soft bg-surface-card px-3 text-xs font-medium text-text-default outline-none focus:border-border-emphasis"
+              className={cn("h-8 w-64 border border-border-soft bg-surface-card px-3 text-xs font-medium text-text-default", focusRing('field', 'neutral'))}
             />
             <Button
               variant="secondary"
@@ -444,7 +446,7 @@ export function FavoritesManagementTab() {
                   onChange={(e) => setForm((c) => ({ ...c, notes: e.target.value }))}
                   placeholder="Optional"
                   rows={2}
-                  className="w-full border border-border-soft bg-surface-card inset-field text-sm font-semibold text-text-default outline-none transition-colors focus:border-border-emphasis"
+                  className={cn("w-full border border-border-soft bg-surface-card inset-field text-sm font-semibold text-text-default transition-colors", focusRing('field', 'neutral'))}
                 />
               </label>
 

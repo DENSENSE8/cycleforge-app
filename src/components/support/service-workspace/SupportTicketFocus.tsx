@@ -48,7 +48,7 @@ import { usePhotoDropzone } from '@/hooks/usePhotoDropzone';
 import { useSupportContext } from '@/hooks/useSupportContext';
 import type { TicketPhotoStaging } from '@/hooks/useTicketPhotoStaging';
 import { useZendeskTicketBundle } from '@/hooks/useZendeskQueries';
-import { capabilityTitle } from '@/lib/integrations/capability-labels';
+import { useCapabilityProviderLabel } from '@/hooks/useCapabilityProviderLabel';
 import { zendeskTicketUrl } from '@/lib/zendesk-ticket-url';
 import { cn } from '@/utils/_cn';
 import { SupportDetailsStack } from '@/components/support/zendesk/chat/SupportDetailsStack';
@@ -128,11 +128,11 @@ export function SupportTicketFocus({
     [ticketBridge],
   );
 
-  // Deep-link + label resolve from the bundle's runtime provider (vendor-neutral);
-  // fall back to the connector URL + generic capability title while it loads.
+  // Deep-link + runtime provider face — connected helpdesk label (Zendesk),
+  // never the generic capability title ("Helpdesk") when a connector is live.
   const openUrl = ticket?.openUrl ?? zendeskTicketUrl(ticketId);
-  const providerLabel = ticket?.providerLabel ?? capabilityTitle('helpdesk');
-  const openLabel = `Open in ${providerLabel}`;
+  const { label: helpdeskLabel } = useCapabilityProviderLabel('helpdesk');
+  const openLabel = `Open in ${ticket?.providerLabel ?? helpdeskLabel}`;
 
   return (
     <TicketComposerStagingProvider value={photoStaging}>
@@ -181,12 +181,10 @@ export function SupportTicketFocus({
               // The split header above already carries the subject; drawing it
               // again here was the duplicate.
               hideTitle
-              // …and the chat header's one-line requester is superseded by the
-              // RequesterDetailBand below, which answers the same question with
-              // the linkage and the counts attached. With the title gone too,
-              // SupportChatHeader has nothing left to draw and renders null.
+              // Requester banner deleted — linkage / counts live in the
+              // inspector (Connections). Chat header stays null with both
+              // title + requester band hidden.
               hideRequesterBand
-              showRequesterDetail
               // Linkage is a rail display now, so the chat header's own
               // Links control and slide-over stay off.
               hideLinkedContext

@@ -6,11 +6,15 @@ import { MAX_PINS, type ActionToggles } from '@/lib/quick-access/types';
 import { Button, IconButton, Switch } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { ChevronDown, ChevronUp } from '@/components/Icons';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 const FIELD_CLS =
   'w-full rounded-xl border border-border-default bg-surface-card px-3 py-2 text-sm text-text-default ' +
-  'placeholder:text-text-faint focus:border-blue-500 focus:outline-none focus:ring-2 ' +
-  'focus:ring-blue-500/20';
+  cn('placeholder:text-text-faint', focusRing('field', 'accent')) +
+  focusRing('field', 'accent');
 
 interface ToggleRowProps {
   label: string;

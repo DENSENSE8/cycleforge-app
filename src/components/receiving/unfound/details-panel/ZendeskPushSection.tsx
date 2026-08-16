@@ -5,6 +5,10 @@ import { ExternalLink, Sparkles } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Button } from '@/design-system/primitives';
 import type { UnfoundQueueDetailsRow } from '../unfound-triage-types';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 /**
  * Push-to-Zendesk control with an optional AI draft + review step (A2).
@@ -120,7 +124,7 @@ export function ZendeskPushSection({
           type="text"
           value={subject}
           onChange={(e) => setSubject(e.target.value)}
-          className="block w-full rounded-md border border-border-soft bg-surface-card inset-cozy text-role-caption font-semibold text-text-default outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+          className={cn("block w-full rounded-md border border-border-soft bg-surface-card inset-cozy text-role-caption font-semibold text-text-default", focusRing('field', 'accent'))}
         />
       </div>
       <div>
@@ -131,7 +135,7 @@ export function ZendeskPushSection({
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           rows={8}
-          className="block w-full resize-y rounded-md border border-border-soft bg-surface-card inset-cozy font-mono text-role-micro leading-snug text-text-default outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+          className={cn("block w-full resize-y rounded-md border border-border-soft bg-surface-card inset-cozy font-mono text-role-micro leading-snug text-text-default", focusRing('field', 'accent'))}
         />
       </div>
       <div className="flex flex-wrap items-center gap-2">

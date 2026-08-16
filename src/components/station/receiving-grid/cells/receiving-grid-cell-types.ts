@@ -1,9 +1,9 @@
 /**
- * Shared context for Unbox / History / Testing LedgerGrid cell renderers.
+ * Shared context for Unbox / History / Testing / Incoming LedgerGrid cells.
  * Row shell builds this once; cells stay column-scoped.
  */
 
-import type { CSSProperties } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import type { ReceivingActivityAxis } from '@/components/station/receiving-lines-table-helpers';
 import {
@@ -18,6 +18,7 @@ import {
   RECEIVING_GRID_FROZEN_EDGE_KEY,
   receivingGridCell,
   receivingGridFrozenLeft,
+  type IncomingGridColumn,
   type ReceivingGridColumn,
 } from '@/lib/receiving/receiving-grid-layout';
 import type { SourcePlatformMeta } from '@/lib/source-platform';
@@ -94,16 +95,32 @@ export type ReceivingGridCellCtx = {
   customFieldDefs?: readonly CustomFieldDef[];
   /** Persist one custom cell (def key + next string). */
   onCustomFieldCommit?: (defKey: string, next: string) => void;
+  /**
+   * Incoming POS is `'expected'` (delivery_state status, Age / Platform /
+   * Removed / attach-tracking). History / Unbox / Testing omit or pass
+   * `'landed'` so `status` stays {@link ReceivingStatusCell}.
+   */
+  linePhase?: 'expected' | 'landed';
+  daysLate?: number | null;
+  laneAgeLabel?: string | null;
+  laneAgeHours?: number | null;
+  ageTooltip?: string;
+  markLabel?: string;
+  trackingAction?: ReactNode;
+  removalFace?: { tip: string; className: string; label: string } | null;
 };
 
+/** Column model a cell may receive — Incoming keys stay a separate array. */
+export type ReceivingGridCellColumn = ReceivingGridColumn | IncomingGridColumn;
+
 export type ReceivingGridCellProps = {
-  col: ReceivingGridColumn;
+  col: ReceivingGridCellColumn;
   /** When false, omit the trailing column rule (last visible column). */
   rule: boolean;
   ctx: ReceivingGridCellCtx;
 };
 
-export function receivingDataCellClass(col: ReceivingGridColumn, rule = true, ctx?: ReceivingGridCellCtx): string {
+export function receivingDataCellClass(col: ReceivingGridCellColumn, rule = true, ctx?: ReceivingGridCellCtx): string {
   const pref = col.hideKey && ctx?.columnDisplay ? ctx.columnDisplay[col.hideKey] : undefined;
   return cn(
     receivingGridCell({ rule, inset: 'grid' }),
@@ -118,7 +135,7 @@ export function receivingDataCellClass(col: ReceivingGridColumn, rule = true, ct
  * tracks. One helper so leaf cells never hand-roll `left` past the SoT offset.
  */
 export function receivingDataCellStyle(
-  col: ReceivingGridColumn,
+  col: ReceivingGridCellColumn,
   ctx?: ReceivingGridCellCtx,
 ): CSSProperties | undefined {
   const pref = col.hideKey && ctx?.columnDisplay ? ctx.columnDisplay[col.hideKey] : undefined;
@@ -132,7 +149,7 @@ export function receivingDataCellStyle(
 
 /** @deprecated Prefer {@link receivingDataCellStyle} (folds frozen `left`). */
 export function receivingDataCellHighlightStyle(
-  col: ReceivingGridColumn,
+  col: ReceivingGridCellColumn,
   ctx?: ReceivingGridCellCtx,
 ): CSSProperties | undefined {
   return receivingDataCellStyle(col, ctx);
@@ -140,13 +157,15 @@ export function receivingDataCellHighlightStyle(
 
 /** `data-frozen-edge` only on the trailing frozen identity cell. */
 export function receivingFrozenEdgeProps(
-  col: ReceivingGridColumn,
+  col: ReceivingGridCellColumn,
 ): { 'data-frozen-edge'?: true } {
-  return col.key === RECEIVING_GRID_FROZEN_EDGE_KEY ? { 'data-frozen-edge': true } : {};
+  return col.frozen && col.key === RECEIVING_GRID_FROZEN_EDGE_KEY
+    ? { 'data-frozen-edge': true }
+    : {};
 }
 
 /** True when this column should wrap its primary value in chip chrome. */
-export function receivingCellWantsChip(col: ReceivingGridColumn, ctx: ReceivingGridCellCtx): boolean {
+export function receivingCellWantsChip(col: ReceivingGridCellColumn, ctx: ReceivingGridCellCtx): boolean {
   if (!col.hideKey || col.frozen) return false;
   return ctx.columnDisplay?.[col.hideKey]?.cell === 'chip';
 }

@@ -22,8 +22,6 @@ export type { ShippedActiveSection };
 interface ShippedDetailsPanelContentProps {
   shipped: ShippedOrder;
   durationData: DurationData;
-  copiedAll: boolean;
-  onCopyAll: () => void;
   onUpdate?: () => void;
   showPackingPhotos?: boolean;
   showShippingTimestamp?: boolean;
@@ -66,8 +64,6 @@ interface ShippedDetailsPanelContentProps {
 export function ShippedDetailsPanelContent({
   shipped,
   durationData: _durationData,
-  copiedAll,
-  onCopyAll,
   onUpdate,
   showPackingPhotos = true,
   showShippingTimestamp = false,
@@ -172,8 +168,6 @@ export function ShippedDetailsPanelContent({
         ? wrapSection(
             <ShippingInformationSection
               shipped={shipped}
-              copiedAll={copiedAll}
-              onCopyAll={onCopyAll}
               onUpdate={onUpdate}
               showShippingTimestamp={showShippingTimestamp}
               showSerialNumber={showSerialNumber}

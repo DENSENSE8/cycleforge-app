@@ -1,5 +1,9 @@
 import { Button } from '@/design-system/primitives';
 import { lookupUnit, lookupSku } from './inventory-admin-actions';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 /** Side-by-side Unit / SKU lookup forms (server actions redirect on submit). */
 export function LookupForms() {
@@ -14,7 +18,7 @@ export function LookupForms() {
           name="ref"
           type="text"
           placeholder="serial or id"
-          className="flex-1 rounded-md border border-border-default px-3 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className={cn("flex-1 rounded-md border border-border-default px-3 py-1.5 text-sm", focusRing('field', 'accent'))}
         />
         <Button variant="primary" size="sm" type="submit">
           Timeline →
@@ -30,7 +34,7 @@ export function LookupForms() {
           name="sku"
           type="text"
           placeholder="SKU code"
-          className="flex-1 rounded-md border border-border-default px-3 py-1.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          className={cn("flex-1 rounded-md border border-border-default px-3 py-1.5 text-sm", focusRing('field', 'accent'))}
         />
         <Button variant="primary" size="sm" type="submit">
           Detail →

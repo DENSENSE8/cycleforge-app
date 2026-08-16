@@ -6,6 +6,10 @@ import { Check } from '@/components/Icons';
 import { Button, IconButton } from '@/design-system/primitives';
 import { useAuth } from '@/contexts/AuthContext';
 import { safeRandomUUID } from '@/lib/safe-uuid';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 function randomId(): string {
   return safeRandomUUID();
@@ -215,7 +219,7 @@ export function BinCycleCountSheet({
                     onChange={(e) =>
                       setDrafts((prev) => ({ ...prev, [line.id]: e.target.value }))
                     }
-                    className="flex-1 rounded-md border border-border-default px-3 py-2.5 text-center font-mono text-base font-semibold text-text-default focus:border-blue-500 focus:outline-none"
+                    className={cn("flex-1 rounded-md border border-border-default px-3 py-2.5 text-center font-mono text-base font-semibold text-text-default", focusRing('field', 'accent'))}
                   />
                   <Button
                     variant="primary"

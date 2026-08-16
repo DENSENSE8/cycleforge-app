@@ -31,6 +31,8 @@ import {
 import type { SearchSelection } from '@/lib/search/search-selection';
 import { ENTITY_ICONS, ENTITY_TONE, CHIP_TONE_CLASSES } from '@/components/search/search-result-chips';
 import { cn } from '@/utils/_cn';
+import { Panel } from '@/design-system/primitives';
+
 
 const SkuDetailView = dynamic(
   () => import('@/components/sku/SkuDetailView'),
@@ -46,11 +48,11 @@ function TeachEmpty({
 }) {
   return (
     <div className="flex h-full min-h-0 flex-1 items-center justify-center bg-surface-card p-8">
-      <div className="max-w-sm rounded-xl border border-dashed border-border-soft bg-surface-card px-6 py-10 text-center">
+      <Panel radius="xl" padding="none" className="max-w-sm border-dashed px-6 py-10 text-center">
         <Search className="mx-auto mb-3 h-8 w-8 text-text-faint" />
         <p className="text-role-caption font-semibold text-text-default">{title}</p>
         <p className="mt-1 text-role-caption text-text-muted">{body}</p>
-      </div>
+      </Panel>
     </div>
   );
 }
@@ -97,7 +99,7 @@ function EntityPreviewCard({
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col items-center justify-center bg-surface-card p-8">
-      <div className="w-full max-w-md rounded-xl border border-border-soft bg-surface-card p-6 shadow-sm">
+      <Panel radius="xl" padding="lg" className="w-full max-w-md">
         <div className="flex items-start gap-3">
           <span
             className={cn(
@@ -124,7 +126,7 @@ function EntityPreviewCard({
           <ExternalLink className="h-3.5 w-3.5" />
           Open full record
         </Link>
-      </div>
+      </Panel>
     </div>
   );
 }

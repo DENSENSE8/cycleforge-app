@@ -31,6 +31,7 @@ import { customers as customersTable, orders as ordersTable } from '@/lib/drizzl
 import { withTenantDrizzle } from '@/lib/drizzle/tenant-db';
 import { transitionalDogfoodOrgId, tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
+import { WORK_ASSIGNMENTS_ACTIVE_ON_CONFLICT } from '@/lib/neon/work-assignments-conflict';
 import { invalidateAllOrdersApiCaches } from '@/lib/orders/invalidation';
 import { publishOrderChanged } from '@/lib/realtime/publish';
 import { normalizeTrackingNumber } from '@/lib/shipping/normalize';
@@ -278,7 +279,7 @@ async function upsertOrderDeadline(orderId: number, deadlineAt: Date | null, org
         `INSERT INTO work_assignments
            (organization_id, entity_type, entity_id, work_type, assigned_tech_id, status, priority, deadline_at)
          VALUES ($1, 'ORDER', $2, 'TEST', NULL, 'OPEN', 100, $3)
-         ON CONFLICT DO NOTHING`,
+         ON CONFLICT ${WORK_ASSIGNMENTS_ACTIVE_ON_CONFLICT} DO NOTHING`,
         [orgId, orderId, deadlineAt],
       );
     });
@@ -297,7 +298,7 @@ async function upsertOrderDeadline(orderId: number, deadlineAt: Date | null, org
     `INSERT INTO work_assignments
        (organization_id, entity_type, entity_id, work_type, assigned_tech_id, status, priority, deadline_at)
      VALUES ($1, 'ORDER', $2, 'TEST', NULL, 'OPEN', 100, $3)
-     ON CONFLICT DO NOTHING`,
+     ON CONFLICT ${WORK_ASSIGNMENTS_ACTIVE_ON_CONFLICT} DO NOTHING`,
     [transitionalDogfoodOrgId(), orderId, deadlineAt],
   );
 }

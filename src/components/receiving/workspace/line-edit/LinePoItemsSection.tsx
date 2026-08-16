@@ -26,6 +26,8 @@ import {
   dispatchLineUpdated,
   dispatchSelectLine,
 } from "@/components/station/receiving-lines-table-helpers";
+import { setActiveSinkId } from "@/lib/station-scan-sink";
+import { scheduleFocusUnboxCaptureSerialInLine } from "./focus-unbox-capture-serial";
 import {
   invalidateReceivingFeeds,
   receivingSiblingsQueryKey,
@@ -54,13 +56,18 @@ interface LinePoItemsSectionProps {
   serialScan: boolean;
   /**
    * Unbox dual loci: dock owns scanner/procedure; meta chips forward via
-   * {@link onFocusCaptureStep}. Active line mounts progressive
-   * Condition → Serial → Photos (`ActiveLineConditionSerial` +
-   * `autoFocusSerial` off so the wedge stays dock-owned). When false,
-   * under-row editors mount on every editable line (Testing / unmatched).
+   * {@link onFocusCaptureStep}. Every editable line mounts Tags + open serial
+   * (`ActiveLineConditionSerial`); controller-active line autofocuses centre
+   * serial. When false, under-row editors mount (Testing / unmatched).
    */
   dockOwnsCapture?: boolean;
   onFocusCaptureStep?: (key: 'serial' | 'condition' | 'item_photos') => void;
+  /**
+   * The dock's `activeKey` (Unbox `dockOwnsCapture`) — the ONE derivation from
+   * `useUnboxProcedureSteps(row)` in LineEditPanel. Gated to the controller line
+   * below; drives the capture face's moving outline. Absent on Testing / Arrival.
+   */
+  activeStep?: string | null;
   /** Offer the unmatched-carton "open in unbox" jump (triage hands off to unbox). */
   openInUnbox: boolean;
   /** PO-items accordion interactivity — false renders a flat read-only display (triage). */
@@ -103,6 +110,7 @@ export function LinePoItemsSection({
   serialScan,
   dockOwnsCapture = false,
   onFocusCaptureStep,
+  activeStep = null,
   openInUnbox,
   editLines,
   embedded = false,
@@ -189,6 +197,7 @@ export function LinePoItemsSection({
           zoho_purchaseorder_number: row.zoho_purchaseorder_number ?? null,
         }}
         activeLineId={row.id}
+        dockOwnsCapture={dockOwnsCapture}
         onViewAllUnits={unitsChrome ? onViewAllUnits : undefined}
         onUnlinked={() => {
           invalidateReceivingFeeds(queryClient);
@@ -251,7 +260,16 @@ export function LinePoItemsSection({
       onEditConditionInDock={
         dockOwnsCapture && onFocusCaptureStep
           ? (line) => {
-              if (line.id !== row.id) dispatchSelectLine(line);
+              // Sibling line: the dock's `activeKey` is bound to the OTHER
+              // (controller) line, so `onFocusCaptureStep` would arm the wrong
+              // line's condition. Promote this line to the controller — its own
+              // in-row Tags / dock condition step then follow. Do NOT force a
+              // serial focus (condition ≠ serial).
+              if (line.id !== row.id) {
+                setActiveSinkId(`po-line:${line.id}`);
+                dispatchSelectLine(line);
+                return;
+              }
               onFocusCaptureStep('condition');
             }
           : undefined
@@ -259,7 +277,12 @@ export function LinePoItemsSection({
       onEditSerialInDock={
         dockOwnsCapture && onFocusCaptureStep
           ? (line) => {
-              if (line.id !== row.id) dispatchSelectLine(line);
+              if (line.id !== row.id) {
+                setActiveSinkId(`po-line:${line.id}`);
+                dispatchSelectLine(line);
+                scheduleFocusUnboxCaptureSerialInLine(line.id, 80);
+                return;
+              }
               onFocusCaptureStep('serial');
             }
           : undefined
@@ -275,7 +298,12 @@ export function LinePoItemsSection({
         unitsChrome
           ? {
               editingSerialId: c.headerSerialEdit?.id ?? null,
-              onEdit: (s) => c.setHeaderSerialEdit(s),
+              onEdit: (s) => {
+                // Edit-in-Displays: seed the target serial, then open the Units
+                // Displays leaf for the active line — never the in-row/dock field.
+                c.setHeaderSerialEdit(s);
+                onViewAllUnits?.(row);
+              },
               onDelete: async (s, lineId) => {
                 if (s.id == null) return;
                 const ok = await requestConfirm({
@@ -291,13 +319,12 @@ export function LinePoItemsSection({
           : undefined
       }
       activeRowSlot={
-        // Dual loci (Unbox `dockOwnsCapture`): active line mounts mouse editor;
-        // chips still forward to the dock. Testing / unmatched (`!dockOwnsCapture`)
-        // keep under-row editors on every editable line. RETURN match evidence
+        // Dual loci (Unbox `dockOwnsCapture`): every editable line mounts the
+        // capture face; chips still forward to the dock. Testing / unmatched
+        // (`!dockOwnsCapture`) keep under-row editors. RETURN match evidence
         // rides inside ActiveLineConditionSerial via serialLookup.
         unitsChrome && serialScan
           ? ({ serials, units, line }) => {
-              if (dockOwnsCapture && line.id !== row.id) return null;
               const isControllerLine = line.id === row.id;
               return (
                 <ActiveLineConditionSerial
@@ -311,7 +338,9 @@ export function LinePoItemsSection({
                       : line.condition_grade || 'USED_A'
                   }
                   serialSubmitting={c.serialSubmitting}
-                  editingSerial={c.headerSerialEdit}
+                  editingSerial={
+                    isControllerLine ? c.headerSerialEdit : null
+                  }
                   serialLookup={
                     isControllerLine ? c.serialLookup : IDLE_SERIAL_LOOKUP
                   }
@@ -361,10 +390,20 @@ export function LinePoItemsSection({
                   }}
                   units={units}
                   serialInputRef={isControllerLine ? c.serialRef : undefined}
-                  autoFocusSerial={isControllerLine && !dockOwnsCapture}
+                  autoFocusSerial={isControllerLine}
+                  autoCommitDefaultGrade={
+                    isControllerLine && !line.condition_graded_at
+                  }
                   onEditFilledSerial={onEditFilledSerial}
                   stationCompact
-                  progressiveCapture={dockOwnsCapture && isControllerLine}
+                  dockOwnsCapture={dockOwnsCapture}
+                  isActiveLine={isControllerLine}
+                  // Outline-visibility only — NOT a capture-MOUNT gate
+                  // (`resolveCaptureEntry` owns whether the row mounts). The
+                  // dock's `activeKey` lights the cursor on this line alone.
+                  activeStep={
+                    isControllerLine && dockOwnsCapture ? activeStep : null
+                  }
                   staffId={Number(staffId) || 0}
                   poRef={row.zoho_purchaseorder_number ?? null}
                   poRouteRef={
@@ -372,6 +411,14 @@ export function LinePoItemsSection({
                     row.zoho_purchaseorder_number ??
                     null
                   }
+                  onArmCapture={() => {
+                    // Sibling faces paint like the controller but only one line
+                    // owns data-active-step + the po-line: scan sink. Promote
+                    // before Tags / serial / condition arm so outline + sink
+                    // catch up; local focus does not wait on this.
+                    setActiveSinkId(`po-line:${line.id}`);
+                    if (!isControllerLine) dispatchSelectLine(line);
+                  }}
                 />
               );
             }

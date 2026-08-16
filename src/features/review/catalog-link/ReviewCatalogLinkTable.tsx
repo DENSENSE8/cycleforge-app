@@ -34,14 +34,14 @@ import { useRightRailOccupantOpen } from '@/components/right-rail/useRightRailOc
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
-  WORKBENCH_SHEET_CHROME,
-  WORKBENCH_SHEET_HOST,
   WorkbenchChromeHeader,
   WorkbenchTriageBand,
 } from '@/components/dashboard/workbench-shell';
-import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
+import {
+  WorkbenchSheetView,
+  useWorkbenchSheetChrome,
+} from '@/components/dashboard/WorkbenchSheetView';
 import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
-import { cn } from '@/utils/_cn';
 import {
   resolveOptimisticParam,
   shouldClearOptimisticParam,
@@ -219,7 +219,9 @@ export function ReviewCatalogLinkTable() {
   const sel = resolveOptimisticParam(urlSel, pendingSel);
   const selectedChoreId = sel.choreId;
   const selectedExceptionId = sel.exceptionId;
-  const [controlsEl, setControlsEl] = useState<HTMLDivElement | null>(null);
+  // No KPI band on this sheet — the controller is the Band-3 controls portal only.
+  const chrome = useWorkbenchSheetChrome();
+  const controlsEl = chrome.controlsEl;
   // Listing-match / import-exception rows both open a desk peek on the right
   // edge — Band 3's Show / Hide inspector parks whichever is showing.
   const linkFormOpen = useRightRailOccupantOpen('detail:catalog-link');
@@ -422,48 +424,51 @@ export function ReviewCatalogLinkTable() {
 
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-surface-canvas">
-      <DashboardScrollShell
+      <WorkbenchSheetView
+        chrome={chrome}
         className="h-full"
-        chrome={
-          <div className={cn(WORKBENCH_SHEET_CHROME, 'flex flex-col gap-0')}>
-            <WorkbenchChromeHeader
-              density="band"
-              tabs={SECTION_TABS}
-              activeTab={section}
-              onTabChange={setSection}
-              className="rounded-none border-l-0 border-t-0 shadow-sm"
-              // No trailing cluster. Display sort IS the grid's column sort
-              // (`?colsort=`) — a second vocabulary here would break the
-              // one-sort-param-per-surface rule — nothing is created by hand
-              // (both queues are written by the sheet import), and column
-              // display moved to the grid's own top-right lip (2026-08-02).
-            />
-            {/* Band 3 — find. Always-open TechRailSearchBar (filter+paste, not
-                icon-first expand); this is also the first time `?search=` has had
-                a control at all — the old pane's "Clear search" button could only
-                appear for a query no operator could enter. */}
-            <WorkbenchTriageBand
-              controlsSlotRef={setControlsEl}
-              search={
-                <TechRailSearchBar
-                  variant="chrome"
-                  value={searchQuery}
-                  onChange={setSearch}
-                  placeholder={isChoreTab ? 'Filter listings…' : 'Filter orders…'}
-                  className="min-w-0 flex-1"
-                />
-              }
-              trailing={
-                <WorkbenchInspectorToggle
-                  open={linkInspectorOpen}
-                  testId="catalog-link-inspector-toggle"
-                />
-              }
-            />
-          </div>
-        }
+        sheetHostClassName="min-h-0"
+        tabs={({ className }) => (
+          <WorkbenchChromeHeader
+            density="band"
+            tabs={SECTION_TABS}
+            activeTab={section}
+            onTabChange={setSection}
+            className={className}
+            // No trailing cluster. Display sort IS the grid's column sort
+            // (`?colsort=`) — a second vocabulary here would break the
+            // one-sort-param-per-surface rule — nothing is created by hand
+            // (both queues are written by the sheet import), and column
+            // display moved to the grid's own top-right lip (2026-08-02).
+          />
+        )}
+        // Band 3 — find. Always-open TechRailSearchBar (filter+paste, not
+        // icon-first expand); this is also the first time `?search=` has had a
+        // control at all — the old pane's "Clear search" button could only
+        // appear for a query no operator could enter.
+        triage={({ controlsSlotRef }) => (
+          <WorkbenchTriageBand
+            controlsSlotRef={controlsSlotRef ?? undefined}
+            search={
+              <TechRailSearchBar
+                variant="chrome"
+                value={searchQuery}
+                onChange={setSearch}
+                placeholder={isChoreTab ? 'Filter listings…' : 'Filter orders…'}
+                className="min-w-0 flex-1"
+              />
+            }
+            trailing={
+              <WorkbenchInspectorToggle
+                open={linkInspectorOpen}
+                testId="catalog-link-inspector-toggle"
+              />
+            }
+          />
+        )}
       >
-        <div className={cn(WORKBENCH_SHEET_HOST, 'min-h-0')}>
+        {() => (
+          <>
           {isChoreTab ? (
             <NonlinearTableHost<CatalogLinkChoreRow, CatalogLinkGridColumnKey, CatalogLinkGridColumn>
               binding={CATALOG_LINK_TABLE_BINDING}
@@ -474,7 +479,7 @@ export function ReviewCatalogLinkTable() {
               dir={choreDir}
               onSortChange={setChoreSort}
               loading={choresQuery.isLoading}
-              columnTriggerPortalTarget={controlsEl}
+              columnTriggerPortalTarget={null}
               // Settled-with-nothing is an ALL-CLEAR on this queue, not an
               // absence — say what it means rather than "no rows".
               emptyMessage="Nothing needs a catalog link right now."
@@ -506,7 +511,7 @@ export function ReviewCatalogLinkTable() {
               dir={exceptionDir}
               onSortChange={setExceptionSort}
               loading={exceptionsQuery.isLoading}
-              columnTriggerPortalTarget={controlsEl}
+              columnTriggerPortalTarget={null}
               emptyMessage="Every synced sheet row has an Item Number."
               searchEmptyMessage={`No row matches “${searchQuery}”. Clear the filter to see the rest.`}
               isSearching={isSearching}
@@ -527,8 +532,9 @@ export function ReviewCatalogLinkTable() {
               renderRow={(row, _stripe, { columns: visible }) => renderExceptionLeaf(row, visible)}
             />
           )}
-        </div>
-      </DashboardScrollShell>
+          </>
+        )}
+      </WorkbenchSheetView>
 
       {/* Record plane — mounted only while a row is picked. Mutually exclusive
           by construction: the two tabs never render together. */}

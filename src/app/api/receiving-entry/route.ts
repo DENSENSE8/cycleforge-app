@@ -17,6 +17,7 @@ import { recordReceivingScan } from '@/lib/receiving/record-scan';
 import { upsertReceivingTriage } from '@/lib/receiving/streets/carton-street-write';
 import { withAuth } from '@/lib/auth/withAuth';
 import { resolveReceivingTypeId } from '@/lib/catalog/org-catalog';
+import { WORK_ASSIGNMENTS_ACTIVE_ON_CONFLICT } from '@/lib/neon/work-assignments-conflict';
 
 /**
  * Compute Mon–Fri week range (PST date strings) for a given PST timestamp string
@@ -411,7 +412,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
                                 assigned_tech_id, status, priority, notes
                              )
                              VALUES ($1, 'RECEIVING', $2, 'TEST', $3, 'ASSIGNED', 100, $4)
-                             ON CONFLICT DO NOTHING`,
+                             ON CONFLICT ${WORK_ASSIGNMENTS_ACTIVE_ON_CONFLICT} DO NOTHING`,
                             [ctx.organizationId, newReceivingId, assignedTechId, `Auto-created from receiving entry ${trackingNumber}`]
                         );
                     }

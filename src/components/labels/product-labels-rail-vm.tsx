@@ -21,7 +21,7 @@ const STATUS_DOT: Record<string, string> = {
   PACKED: 'bg-purple-500',
   LABELED: 'bg-purple-500',
   STAGED: 'bg-purple-500',
-  SHIPPED: 'bg-zinc-400',
+  SHIPPED: 'bg-zinc-400', // ds-allow-raw-neutral: identity status hue on the print rail
   RETURNED: 'bg-orange-500',
   RMA: 'bg-orange-500',
   ON_HOLD: 'bg-red-500',

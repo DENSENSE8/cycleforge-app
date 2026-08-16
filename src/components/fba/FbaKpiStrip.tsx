@@ -10,7 +10,12 @@
  */
 
 import { useMemo } from 'react';
-import { KpiTile, metricIntentTextClass } from '@/design-system/components/monitor';
+import {
+  KpiTile,
+  OpsKpiBand,
+  OpsKpiBandCell,
+  metricIntentTextClass,
+} from '@/design-system/components/monitor';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import {
   resolveFbaBoardMetrics,
@@ -18,9 +23,6 @@ import {
   type FbaBoardStageCounts,
   type FbaBoardStatusFilter,
 } from '@/lib/fba/fba-metrics';
-
-const TILE_BAND_CLASS = 'flex flex-wrap gap-3';
-const TILE_CELL_CLASS = 'min-w-0 grow basis-32';
 
 interface FbaKpiStripProps {
   counts: FbaBoardStageCounts;
@@ -58,7 +60,7 @@ function MetricTileCell({
   );
 
   return (
-    <div className={TILE_CELL_CLASS}>
+    <OpsKpiBandCell compact>
       {metric.tooltip ? (
         <HoverTooltip label={metric.tooltip} focusable={!clickable} className="block h-full">
           {tile}
@@ -66,7 +68,7 @@ function MetricTileCell({
       ) : (
         tile
       )}
-    </div>
+    </OpsKpiBandCell>
   );
 }
 
@@ -74,7 +76,7 @@ export function FbaKpiStrip({ counts, activeFilter, onToggleFilter }: FbaKpiStri
   const metrics = useMemo(() => resolveFbaBoardMetrics(counts), [counts]);
 
   return (
-    <div className={TILE_BAND_CLASS}>
+    <OpsKpiBand aria-label="FBA board metrics">
       {metrics.map((metric) => (
         <MetricTileCell
           key={metric.id}
@@ -83,6 +85,6 @@ export function FbaKpiStrip({ counts, activeFilter, onToggleFilter }: FbaKpiStri
           onToggleFilter={onToggleFilter}
         />
       ))}
-    </div>
+    </OpsKpiBand>
   );
 }

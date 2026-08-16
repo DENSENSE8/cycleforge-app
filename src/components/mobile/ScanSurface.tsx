@@ -20,6 +20,10 @@ import { motion } from '@/design-system/motion';
 import { ScanLine } from 'lucide-react';
 import { Button } from '@/design-system/primitives';
 import type { UseBarcodeScanner } from '@/hooks/useBarcodeScanner';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 interface ScanSurfaceProps {
   /** Scanner hook instance from `useBarcodeScanner()`. */
@@ -179,7 +183,7 @@ export function ScanSurface({
               placeholder={manualPlaceholder}
               autoComplete="off"
               inputMode="text"
-              className="h-11 flex-1 rounded-xl border border-glass/10 bg-glass/5 px-3 text-sm text-white placeholder:text-white/40 outline-none focus:border-glass/40"
+              className={cn("h-11 flex-1 rounded-xl border border-glass/10 bg-glass/5 px-3 text-sm text-white placeholder:text-white/40", focusRing('field', 'accent'))}
             />
             <Button
               type="submit"

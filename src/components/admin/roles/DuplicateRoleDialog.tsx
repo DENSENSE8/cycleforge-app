@@ -10,6 +10,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/design-system/components/Dialog';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 interface DuplicateRoleDialogProps {
   open: boolean;
@@ -75,7 +79,7 @@ export function DuplicateRoleDialog({ open, sourceRoleId, sourceLabel, onClose, 
               value={label}
               onChange={(e) => setLabel(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') void submit(); }}
-              className="mt-1 w-full rounded-md border border-border-default inset-cozy text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15"
+              className={cn("mt-1 w-full rounded-md border border-border-default inset-cozy text-sm", focusRing('field', 'accent'))}
             />
           </label>
           <label className="block">
@@ -84,7 +88,7 @@ export function DuplicateRoleDialog({ open, sourceRoleId, sourceLabel, onClose, 
               value={key}
               onChange={(e) => setKey(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 40))}
               placeholder="shift_lead"
-              className="mt-1 w-full rounded-md border border-border-default inset-cozy text-sm font-mono outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15"
+              className={cn("mt-1 w-full rounded-md border border-border-default inset-cozy text-sm font-mono", focusRing('field', 'accent'))}
             />
           </label>
         </div>

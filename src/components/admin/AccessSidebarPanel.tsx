@@ -39,6 +39,10 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { StatPill } from './access/StatPill';
 import { AddStaffDialog } from './access/AddStaffDialog';
 import { Button, IconButton } from '@/design-system/primitives';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 interface StaffRow {
   id: number;
@@ -173,7 +177,7 @@ export function AccessSidebarPanel({ basePath = '/settings/access' }: { basePath
               if (v) p.set('search', v); else p.delete('search');
             })}
             placeholder="Search name, code, or id…"
-            className="h-9 w-full rounded-xl border border-border-soft bg-surface-card pl-8 pr-2.5 text-sm text-text-default outline-none transition placeholder:text-text-faint focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15"
+            className={cn("h-9 w-full rounded-xl border border-border-soft bg-surface-card pl-8 pr-2.5 text-sm text-text-default transition placeholder:text-text-faint", focusRing('field', 'accent'))}
           />
           <svg className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-text-faint" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="11" cy="11" r="8"/>

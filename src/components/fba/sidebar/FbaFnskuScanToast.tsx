@@ -136,7 +136,7 @@ export function FbaFnskuScanToast({ pendingPlans, stationTheme }: FbaFnskuScanTo
                   <select
                     value={selectedPlanId}
                     onChange={(e) => setSelectedPlanId(e.target.value)}
-                    className="rounded-lg border border-purple-200 bg-surface-card px-2 py-1 text-role-micro text-text-default outline-none focus:border-purple-400"
+                    className={"rounded-lg border border-purple-200 bg-surface-card px-2 py-1 text-role-micro text-text-default outline-none focus:border-purple-400" /* ds-allow-focus: identity/one-off hue or ring-0 */}
                   >
                     <option value="">Pick plan…</option>
                     {pendingPlans.map((p) => (

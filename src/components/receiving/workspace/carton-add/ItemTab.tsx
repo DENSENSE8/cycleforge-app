@@ -5,6 +5,10 @@ import { SearchBar } from '@/components/ui/SearchBar';
 import { microBadge } from '@/design-system/tokens/typography/presets';
 import { DEBOUNCE_MS, type CartonAddSelection, type CatalogItem } from './carton-add-types';
 import { HintBanner, ResultRow } from './carton-add-primitives';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 // ─── Item tab — internal catalog (Zoho items) ────────────────────────────────
 
@@ -124,7 +128,7 @@ export function ItemTab({
                 if (e.key === 'Enter') void submitManual();
               }}
               placeholder="Type a product title…"
-              className="flex-1 rounded-md border border-border-soft bg-surface-card inset-cozy text-role-caption outline-none focus:border-blue-500"
+              className={cn("flex-1 rounded-md border border-border-soft bg-surface-card inset-cozy text-role-caption", focusRing('field', 'accent'))}
             />
             <Button
               variant="primary"

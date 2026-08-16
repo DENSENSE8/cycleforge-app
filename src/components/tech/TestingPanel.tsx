@@ -53,10 +53,13 @@ import {
 import { buildTestingDisplayIndexRows } from './testing-panel/testing-display-index';
 import { shouldUseUnmatchedItemsSurface } from '@/lib/receiving/intake-items-routing';
 import { TestingDockHost } from './testing-panel/TestingDockHost';
+import { TestingDisplaysActionFloor } from './testing-panel/TestingDisplaysActionFloor';
 import { WorksAsListedDockControl } from './testing-panel/WorksAsListedDockControl';
 import { buildNotAsListedIssue } from '@/lib/receiving/seller-claimed-condition';
 import { TESTING_QC_STEP_LABEL } from '@/lib/stations/testing-procedure';
 import { useSellerClaimedCondition } from './testing-panel/useSellerClaimedCondition';
+import { postTicketInternalNote } from '@/lib/support/post-ticket-comment';
+import { ticketReplyPresetById } from '@/lib/support/ticket-reply-presets';
 
 /**
  * Right-pane TESTING display — Unbox SoT anatomy.
@@ -329,7 +332,16 @@ export function TestingPanel({
   const onAsListed = useCallback(() => {
     openDisplays('listing');
     toast.success('Marked as listed — Pass · Print when ready');
-  }, [openDisplays]);
+    // REST internal note when a ticket is already linked — never DOM macros.
+    if (claimTicketId != null) {
+      const preset = ticketReplyPresetById('qc-pass-internal');
+      if (preset) {
+        void postTicketInternalNote(claimTicketId, preset.body).then((res) => {
+          if (!res.ok) toast.error(res.error || 'Could not add QC note to ticket');
+        });
+      }
+    }
+  }, [openDisplays, claimTicketId]);
 
   const onNotAsListed = useCallback(() => {
     const issue = buildNotAsListedIssue({
@@ -483,6 +495,15 @@ export function TestingPanel({
                 setActiveSideTab(id as TestingDisplayTab);
               }}
               onClose={closeDisplays}
+              actionFloor={
+                <TestingDisplaysActionFloor
+                  receivingId={row.receiving_id}
+                  isUnfound={shouldUseUnmatchedItemsSurface(row)}
+                  openDisplays={openDisplays}
+                  onDeleted={closeDisplays}
+                  editSelected={activeSideTab === 'linkage'}
+                />
+              }
             />
           ) : null
         }

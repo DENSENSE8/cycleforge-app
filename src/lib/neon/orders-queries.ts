@@ -5,6 +5,7 @@ import { getShippedSearchFieldConfig, type ShippedSearchField } from '@/lib/ship
 import { buildRankedSearchSql, buildTextSearchVariants, type RankedSearchVariant } from '@/lib/search/sql-ranked-search';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
+import { WORK_ASSIGNMENTS_ACTIVE_ON_CONFLICT } from '@/lib/neon/work-assignments-conflict';
 
 // Order record with shipping information.
 // Definition lives in the dependency-free leaf @/types/orders so low-layer
@@ -1365,7 +1366,7 @@ export async function updateOrder(
         `INSERT INTO work_assignments
            (organization_id, entity_type, entity_id, work_type, assigned_tech_id, status, priority, deadline_at, notes, assigned_at, created_at, updated_at)
          VALUES ($1, 'ORDER', $2, 'TEST', NULL, 'OPEN', 100, $3, 'Canonical deadline row from updateOrder', NOW(), NOW(), NOW())
-         ON CONFLICT DO NOTHING`,
+         ON CONFLICT ${WORK_ASSIGNMENTS_ACTIVE_ON_CONFLICT} DO NOTHING`,
         [order.organization_id, id, deadlineAt ?? null],
       );
       await client.query(

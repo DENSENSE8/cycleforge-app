@@ -19,6 +19,7 @@ import {
 } from '@/lib/dashboard-order-row-layout';
 import { ORDERS_GRID_CAPABILITIES } from '@/components/dashboard/orders-queue/orders-queue-descriptor';
 import { ordersTableBindingFor } from './orders-table-definition';
+import type { TableSurfaceBinding } from '@/components/tables/table-surface-binding';
 import {
   isQueueColumnSort,
   type QueueDisplaySortColumn,
@@ -39,7 +40,7 @@ import { useOrdersQueuePlane } from './useOrdersQueuePlane';
 import { AddTrackingPopover } from '@/components/outbound/labels/AddTrackingPopover';
 import { useViewportForcedHidden } from './ViewportForcedHidden';
 
-interface OrdersGridHostProps {
+export interface OrdersGridHostProps {
   records: ShippedOrder[];
   loading: boolean;
   searchValue: string;
@@ -87,8 +88,17 @@ interface OrdersGridHostProps {
    * Pending, drag a column on Shipped, and the two prefs disagree), so both now
    * resolve under this one id. A host that genuinely wants an independent
    * layout passes its own `tableId` and gets BOTH prefs scoped to it.
+   *
+   * The To-Ship desk fork passes `to-ship-desk` via {@link ToShipDeskGridHost}.
    */
   tableId?: TableId;
+  /**
+   * Definition binding resolver — stations omit (shared `orders` family).
+   * The desk fork supplies {@link toShipDeskTableBindingFor}.
+   */
+  tableBindingFor?: (
+    columnMode: 'fulfillment.default' | 'fulfillment.tested',
+  ) => TableSurfaceBinding<ShippedOrder, OrdersQueueColumn>;
   /**
    * Sort for row order / Date-column banding keys. When omitted, reads `?sort=`
    * via {@link useQueueDisplaySort} (Pending / To Ship).
@@ -148,6 +158,7 @@ export function OrdersGridHost({
   railSelection = false,
   queueMode = 'fulfillment',
   tableId = 'orders',
+  tableBindingFor = ordersTableBindingFor,
   sort: sortProp,
   ariaLabel,
   className,
@@ -173,7 +184,7 @@ export function OrdersGridHost({
       ? 'fulfillment.tested'
       : 'fulfillment.default';
   // Two column-mode bindings — the definition/host resolve columns + descriptor.
-  const binding = ordersTableBindingFor(columnMode);
+  const binding = tableBindingFor(columnMode);
 
   const { orderGroupsByDate, displayedRecords } = useOrdersQueueRows({
     records,
@@ -345,11 +356,10 @@ export function OrdersGridHost({
       }) => (
         <OrdersQueueColumnHeader
           isMobile={isMobile}
-          selectMode={selectMode}
           selectionScope={selectionScope}
-          gridSkin
           selectGutterChrome="always"
           columns={visible}
+          tableId={tableId}
           activeSort={columnSort && isQueueColumnSort(columnSort) ? columnSort : undefined}
           sortDir={columnSortDir}
           onSortColumn={urlDriven ? (key) => toggleColumnSort(key) : undefined}

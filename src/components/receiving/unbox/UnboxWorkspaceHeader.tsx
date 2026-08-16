@@ -15,10 +15,12 @@ import {
 } from '@/components/dashboard/workbench-kpi-collapse';
 import { useWorkbenchKpiCollapsed } from '@/hooks/useWorkbenchKpiCollapsed';
 import {
+  WORKBENCH_REFINE_BODY_CLASS,
   WorkbenchFilterDivider,
   WorkbenchFilterGroupLabel,
   WorkbenchFilterMenuRow,
   WorkbenchFilterPopover,
+  WorkbenchRefineFacetTabs,
 } from '@/components/dashboard/workbench-filter-popover';
 import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 import { ReceivingModeUnbox } from '@/components/icons/stations';
@@ -598,43 +600,16 @@ export function UnboxWorkspaceHeader({
       density="field"
       contentClassName="w-72"
     >
-      <div
-        role="tablist"
-        aria-label="Refine facets"
-        className="flex gap-0.5 border-b border-border-default px-1"
-      >
-        {HISTORY_REFINE_FACETS.map((facet) => {
-          const selected = refineFacet === facet.id;
-          const facetHot = isHistoryRefineFacetHot(facet.id, historyFilter);
-          return (
-            <button
-              key={facet.id}
-              type="button"
-              role="tab"
-              aria-selected={selected}
-              // Keep the popover open while switching facets.
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => setRefineFacet(facet.id)}
-              className={cn(
-                // ds-raw-button: compact facet tabs inside WorkbenchFilterPopover.
-                'ds-raw-button relative flex-1 border-b-2 px-1.5 py-1.5 text-role-caption font-medium transition-colors',
-                selected
-                  ? 'border-blue-600 text-text-primary'
-                  : 'border-transparent text-text-muted hover:text-text-primary',
-              )}
-            >
-              {facet.label}
-              {facetHot ? (
-                <span
-                  className="absolute right-0.5 top-1 h-1 w-1 rounded-full bg-blue-500"
-                  aria-hidden
-                />
-              ) : null}
-            </button>
-          );
-        })}
-      </div>
-      <div className="max-h-64 overflow-y-auto py-0.5">{historyRefineBody}</div>
+      <WorkbenchRefineFacetTabs
+        facets={HISTORY_REFINE_FACETS.map((facet) => ({
+          id: facet.id,
+          label: facet.label,
+          hot: isHistoryRefineFacetHot(facet.id, historyFilter),
+        }))}
+        activeId={refineFacet}
+        onSelect={setRefineFacet}
+      />
+      <div className={WORKBENCH_REFINE_BODY_CLASS}>{historyRefineBody}</div>
       {HISTORY_SORT_OPTIONS.length > 1 ? (
         <>
           <WorkbenchFilterDivider />
@@ -804,44 +779,16 @@ export function UnboxWorkspaceHeader({
       density="field"
       contentClassName="w-72"
     >
-      {triageRefineFacets.length > 1 ? (
-        <div
-          role="tablist"
-          aria-label="Refine facets"
-          className="flex gap-0.5 border-b border-border-default px-1"
-        >
-          {triageRefineFacets.map((facet) => {
-            const selected = activeTriageFacet?.id === facet.id;
-            return (
-              <button
-                key={facet.id}
-                type="button"
-                role="tab"
-                aria-selected={selected}
-                // Keep the popover open while switching facets.
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => setTriageFacet(facet.id)}
-                className={cn(
-                  // ds-raw-button: compact facet tabs inside WorkbenchFilterPopover.
-                  'ds-raw-button relative flex-1 border-b-2 px-1.5 py-1.5 text-role-caption font-medium transition-colors',
-                  selected
-                    ? 'border-blue-600 text-text-primary'
-                    : 'border-transparent text-text-muted hover:text-text-primary',
-                )}
-              >
-                {facet.label}
-                {triageFacetHot(facet.id) ? (
-                  <span
-                    className="absolute right-0.5 top-1 h-1 w-1 rounded-full bg-blue-500"
-                    aria-hidden
-                  />
-                ) : null}
-              </button>
-            );
-          })}
-        </div>
-      ) : null}
-      <div className="max-h-64 overflow-y-auto py-0.5">{triageRefineBody}</div>
+      <WorkbenchRefineFacetTabs
+        facets={triageRefineFacets.map((facet) => ({
+          id: facet.id,
+          label: facet.label,
+          hot: triageFacetHot(facet.id),
+        }))}
+        activeId={activeTriageFacet?.id}
+        onSelect={setTriageFacet}
+      />
+      <div className={WORKBENCH_REFINE_BODY_CLASS}>{triageRefineBody}</div>
       {triageRefineFacets.some((f) => triageFacetHot(f.id)) ? (
         <>
           <WorkbenchFilterDivider />

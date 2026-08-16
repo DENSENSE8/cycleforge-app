@@ -11,6 +11,13 @@ import {
   type WorkstationSettings,
 } from '@/lib/settings/workstation';
 import { packPlacementQuery } from '@/lib/queries/pack-placement-queries';
+import { packBenchShortLabel } from '@/lib/packing/pack-bench-display';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+import { Panel } from '@/design-system/primitives';
+
+
+
 
 const ROLES: { value: WorkstationRole; label: string }[] = [
   { value: '', label: '— No default role —' },
@@ -22,8 +29,8 @@ const ROLES: { value: WorkstationRole; label: string }[] = [
 
 const FIELD_CLS =
   'w-full rounded-xl border border-border-default bg-surface-card px-3 py-2 text-sm text-text-default ' +
-  'placeholder:text-text-faint focus:border-blue-500 focus:outline-none focus:ring-2 ' +
-  'focus:ring-blue-500/20';
+  cn('placeholder:text-text-faint', focusRing('field', 'accent')) +
+  focusRing('field', 'accent');
 
 export function WorkstationSection() {
   const [settings, setSettings] = useState<WorkstationSettings>(DEFAULT_WORKSTATION);
@@ -50,7 +57,7 @@ export function WorkstationSection() {
         </p>
       </header>
 
-      <div className="space-y-5 rounded-2xl border border-border-soft bg-surface-card p-5 shadow-sm">
+      <Panel radius="2xl" className="space-y-5">
         <label className="block">
           <span className="mb-1 block text-xs font-medium text-text-muted">Station name</span>
           <input
@@ -102,8 +109,14 @@ export function WorkstationSection() {
           >
             <option value="">— No bench —</option>
             {benches.map((bench) => (
+              // The FACE, not the warehouse name — an operator picking their
+              // bench here should read the same word the floor chips show.
               <option key={bench.id} value={String(bench.id)}>
-                {bench.name}
+                {packBenchShortLabel({
+                  locationName: bench.name,
+                  locationDisplayName: bench.displayName,
+                  locationKind: bench.locationKind,
+                })}
                 {bench.locationKind === 'STAGING' ? ' (staging)' : ''}
               </option>
             ))}
@@ -120,7 +133,7 @@ export function WorkstationSection() {
         </label>
 
         {status && <span className="block text-xs text-text-soft">{status}</span>}
-      </div>
+      </Panel>
     </div>
   );
 }

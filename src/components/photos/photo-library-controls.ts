@@ -22,3 +22,15 @@ export function photoLibraryControlButtonClass(active: boolean, extra?: string) 
     extra,
   );
 }
+
+/**
+ * Flush claim/attach chrome overrides — the zero-radius, no-shadow, hairline
+ * variant of the Media Library control cluster used by every embedded photo
+ * ATTACH picker (Arrival claim, item Link, Zendesk claim / Move / Send). One
+ * home so the three call sites stop re-declaring identical `!rounded-none`
+ * strings that drift the moment one is edited.
+ */
+export const photoAttachControlGroupClass =
+  '!rounded-none border-border-hairline !p-0 shadow-none';
+export const photoAttachIconButtonClass = '!h-7 !w-7 !rounded-none border-border-hairline';
+export const photoAttachDensityButtonClass = '!rounded-none shadow-none';

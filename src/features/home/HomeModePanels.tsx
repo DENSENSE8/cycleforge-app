@@ -13,6 +13,8 @@
  */
 
 import Link from 'next/link';
+import { Panel } from '@/design-system/primitives';
+
 
 interface ModeLink {
   label: string;
@@ -35,7 +37,7 @@ function HomeModePlaceholder({
   return (
     <div className="h-full overflow-y-auto">
       <div className="mx-auto max-w-3xl px-4 py-8">
-        <div className="rounded-2xl border border-border-soft bg-surface-card p-6 shadow-sm">
+        <Panel radius="2xl" padding="lg">
           <p className="text-role-micro uppercase tracking-widest text-text-soft">{eyebrow}</p>
           <h2 className="mt-1 text-lg font-semibold text-text-strong">{title}</h2>
           <p className="mt-2 text-sm leading-relaxed text-text-muted">{blurb}</p>
@@ -69,7 +71,7 @@ function HomeModePlaceholder({
               ))}
             </div>
           ) : null}
-        </div>
+        </Panel>
       </div>
     </div>
   );

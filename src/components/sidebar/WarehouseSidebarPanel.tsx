@@ -24,6 +24,8 @@ import { RoomFinderProvider, useRoomFinder } from '@/components/warehouse/roomFi
 import { SidebarShell } from '@/components/layout/SidebarShell';
 import { appChromeClass } from '@/design-system/tokens/app-surface';
 import { SearchBar } from '@/components/ui/SearchBar';
+import { Panel } from '@/design-system/primitives';
+
 
 type InventoryTab = 'rooms' | 'bins' | 'labels' | 'racks' | 'map';
 
@@ -199,14 +201,14 @@ function RecentBinsActivity() {
   // identifier off. Falls back to an empty state if the timeline endpoint
   // requires an id — surface a hint then.
   return (
-    <div className="rounded-xl border border-dashed border-border-soft bg-surface-card p-3 text-center">
+    <Panel radius="xl" padding="sm" className="border-dashed text-center">
       <p className="text-role-caption text-text-soft">
         Click a bin in the table to see its history.
       </p>
       <p className="mt-1 text-role-micro text-text-faint">
         A cross-bin feed lands in the next update.
       </p>
-    </div>
+    </Panel>
   );
 }
 

@@ -252,18 +252,11 @@ function ActiveLineExplosion({
           onFileReturnClaim={c.handleFileReturnClaim}
           onOpenReturnHistory={c.handleOpenReturnHistory}
           onSubmitSerial={(sn, grade) => c.enqueueSerial(sn, grade)}
-          onDeleteSerialUnit={async (id) => {
-            if (
-              !(await requestConfirm({
-                description: 'Remove this serial?',
-                tone: 'danger',
-                confirmLabel: 'Remove',
-              }))
-            ) {
-              return;
-            }
-            void c.deleteSerialUnit(id, line.id);
-          }}
+          // Confirm is owned by ActiveLineConditionSerial.confirmDelete (org-gated
+          // by receiving.confirmSerialRemoval) — same as the LinePoItemsSection /
+          // UnmatchedAccordionSurface callers. A second requestConfirm here stacked
+          // a duplicate "Remove" dialog: the click-Remove-twice bug.
+          onDeleteSerialUnit={(id) => void c.deleteSerialUnit(id, line.id)}
           onReplaceSerialUnit={(original, next) => void c.replaceSerialUnit(original, next)}
           onSetUnitGrade={(id, grade) => void c.setUnitGrade(id, grade)}
           onActiveConditionChange={c.setUnitLabelCondition}

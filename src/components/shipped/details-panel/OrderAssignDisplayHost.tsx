@@ -17,6 +17,8 @@ import { useWorkOrderAssignment } from '@/hooks/useWorkOrderAssignment';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import { cn } from '@/utils/_cn';
 import { toast } from '@/lib/toast';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+
 
 export function OrderAssignDisplayHost({
   shipped,
@@ -125,7 +127,7 @@ export function OrderAssignDisplayHost({
             setDeadline(next);
             void persist(techId, packerId, next);
           }}
-          className="rounded-none border border-border-soft bg-surface-card px-2 py-1 text-role-micro text-text-default outline-none focus:border-border-emphasis tabular-nums"
+          className={cn("rounded-none border border-border-soft bg-surface-card px-2 py-1 text-role-micro text-text-default tabular-nums", focusRing('field', 'neutral'))}
         />
       </div>
       {(techId || packerId) && (

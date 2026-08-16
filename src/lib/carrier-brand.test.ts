@@ -53,6 +53,10 @@ describe('carrier-brand', () => {
     const ups = resolveCarrierBrand('1Z999AA10123456784');
     assert.equal(ups.carrier, 'UPS');
     assert.ok(hasCarrierBrandPaint(ups));
+    // 8-prefixed Express STN — pattern detect (not only [39] folklore).
+    const fedex8 = resolveCarrierBrand('875230873543');
+    assert.equal(fedex8.carrier, 'FedEx');
+    assert.ok(hasCarrierBrandPaint(fedex8));
     const unknown = resolveCarrierBrand('not-a-tracking');
     assert.equal(unknown.carrier, 'Unknown');
     assert.equal(hasCarrierBrandPaint(unknown), false);
@@ -63,6 +67,11 @@ describe('carrier-brand', () => {
       formatTrackingTooltipLabel('1Z999AA10123456784'),
       'UPS 1Z999AA10123456784',
     );
+    // Pattern detect alone — no carrierHint required for 8-prefixed Express.
+    assert.equal(
+      formatTrackingTooltipLabel('875230873543'),
+      'FedEx 875230873543',
+    );
     assert.equal(
       formatTrackingTooltipLabel('875114550512', 'FedEx'),
       'FedEx 875114550512',
@@ -71,3 +80,4 @@ describe('carrier-brand', () => {
     assert.equal(formatTrackingTooltipLabel(''), '');
   });
 });
+

@@ -30,6 +30,7 @@ import {
 } from '@/lib/unshipped-state';
 import { OUTBOUND_STATE_META, type OutboundState } from '@/lib/outbound-state';
 import { unshippedQueueCountsQuery } from '@/lib/queries/dashboard-queries';
+import { PACK_PLACED_PARAM, PACK_STATION_PARAM } from '@/lib/packing/pack-station-arm';
 import { useShippedScanOutData } from '@/hooks/useShippedScanOutData';
 import { parseStaffParam } from '@/hooks/useStaffFilter';
 import { useOutboundStatusFilter } from '@/components/shipped/useOutboundStatusFilter';
@@ -78,6 +79,11 @@ export function useToShipFilterActions() {
   // now "urgent only" — operator-flagged expedited rows (orders.is_urgent).
   const urgentOnly =
     searchParams.get('attention') === '1' || searchParams.get('attention') === 'true';
+  const packStationRaw = Number(searchParams.get(PACK_STATION_PARAM));
+  const packStationId =
+    Number.isFinite(packStationRaw) && packStationRaw > 0 ? packStationRaw : null;
+  const packPlacedOnly =
+    searchParams.get(PACK_PLACED_PARAM) === '1' || searchParams.get(PACK_PLACED_PARAM) === 'true';
 
   const replaceParams = useCallback(
     (mutator: (params: URLSearchParams) => void) => {
@@ -138,6 +144,51 @@ export function useToShipFilterActions() {
     });
   }, [replaceParams]);
 
+  /**
+   * Packing-bench filter (`?packStation=`) — one bench, or none.
+   *
+   * Mutually exclusive with the aggregate `?packPlaced=1`: "placed anywhere"
+   * and "placed at THIS bench" are two answers to one question, and holding
+   * both would show the board a combination neither control is claiming.
+   * Re-selecting the active bench clears it rather than re-applying.
+   *
+   * This lives here, beside the other To-ship filter writes, because this hook
+   * is the surface's ONE URL write path — a second writer is how `packPlaced`
+   * and `packStation` would drift out of that exclusion.
+   */
+  const togglePackStation = useCallback(
+    (locationId: number) => {
+      replaceParams((p) => {
+        if (Number(p.get(PACK_STATION_PARAM)) === locationId) {
+          p.delete(PACK_STATION_PARAM);
+          return;
+        }
+        p.set(PACK_STATION_PARAM, String(locationId));
+        p.delete(PACK_PLACED_PARAM);
+      });
+    },
+    [replaceParams],
+  );
+
+  const clearPackPlacement = useCallback(() => {
+    replaceParams((p) => {
+      p.delete(PACK_STATION_PARAM);
+      p.delete(PACK_PLACED_PARAM);
+    });
+  }, [replaceParams]);
+
+  /** "Placed anywhere" — the aggregate the KPI tile also toggles. */
+  const togglePackPlaced = useCallback(() => {
+    replaceParams((p) => {
+      if (p.get(PACK_PLACED_PARAM) === '1' || p.get(PACK_PLACED_PARAM) === 'true') {
+        p.delete(PACK_PLACED_PARAM);
+        return;
+      }
+      p.set(PACK_PLACED_PARAM, '1');
+      p.delete(PACK_STATION_PARAM);
+    });
+  }, [replaceParams]);
+
   const toggleBlocked = useCallback(() => {
     // Blocked lives under Pending — jump there if needed, then toggle.
     replaceParams((p) => {
@@ -154,11 +205,16 @@ export function useToShipFilterActions() {
   return {
     active,
     urgentOnly,
+    packStationId,
+    packPlacedOnly,
     selectAll,
     selectPendingTab,
     toggle,
     toggleUrgent,
     toggleBlocked,
+    togglePackStation,
+    togglePackPlaced,
+    clearPackPlacement,
     selectLifecycleTab,
   };
 }

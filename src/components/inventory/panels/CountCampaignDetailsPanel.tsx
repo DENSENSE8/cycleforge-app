@@ -5,6 +5,8 @@ import { ClipboardList, Loader2 } from '@/components/Icons';
 import { microBadge, sectionLabel } from '@/design-system/tokens/typography/presets';
 import type { CountRow } from '@/hooks/useInventorySearch';
 import { InventoryDetailPanelShell } from './InventoryDetailPanelShell';
+import { Panel } from '@/design-system/primitives';
+
 
 interface CountCampaignDetailsPanelProps {
     campaignId: string;
@@ -82,7 +84,7 @@ export function CountCampaignDetailsPanel({ campaignId, onClose, chrome = 'defau
                         </div>
                     </header>
 
-                    <section className="rounded-xl border border-border-soft bg-surface-card">
+                    <Panel radius="xl" padding="none">
                         <div className="grid grid-cols-2 gap-4 px-5 py-4 text-sm">
                             <Field label="Zone" value={campaign.zone ?? '—'} />
                             <Field
@@ -108,7 +110,7 @@ export function CountCampaignDetailsPanel({ campaignId, onClose, chrome = 'defau
                                 </div>
                             </div>
                         ) : null}
-                    </section>
+                    </Panel>
 
                     <section className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-5 py-4">
                         <p className={sectionLabel}>Lines</p>

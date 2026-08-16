@@ -26,10 +26,6 @@ import {
 import { PRODUCTS_ROUTE_PARAMS } from './query-mode-routes';
 import { routeParamsFor } from './registry';
 import {
-  UNBOX_PHOTO_ACTION_ORDER,
-  UNBOX_SIDE_TAB_ORDER,
-} from '@/components/receiving/workspace/line-edit/unbox-side-tabs';
-import {
   normalizeUnboxWorkspaceTabParams,
   type UnboxWorkspaceTab,
 } from '@/utils/unbox-workspace-state';
@@ -116,38 +112,36 @@ test('Incoming desk accepts Pipeline ∪ Docked sorts; History keeps its own voc
   assert.equal(parseRouteParams(HISTORY_ROUTE_PARAMS, incoming).get('sort'), null);
 });
 
-test('EVERY Unbox display survives surface hygiene', () => {
-  // The `?display=` schema was a hand-copied `paramEnum([...])` until
-  // 2026-08-02, and it drifted the moment the vocabulary grew: `pairing` joined
-  // `UNBOX_SIDE_TAB_ORDER` when Package Pairing became a display, but not the
-  // route spec — so hygiene stripped `?display=pairing` on the next pass and the
-  // display was unreachable from the `# ----` chip, its strip cell, AND a shared
-  // link. Nothing failed; the column just never opened.
-  //
-  // Derived over the SoT list, so a tab added tomorrow is covered by this test
-  // the day it is added — which a re-typed list here could never be.
-  for (const tab of UNBOX_SIDE_TAB_ORDER) {
-    const next = parseRouteParams(UNBOX_ROUTE_PARAMS, new URLSearchParams(`display=${tab}`));
-    assert.equal(next.get('display'), tab, `?display=${tab} must survive /unbox hygiene`);
+test('Unbox Displays URL keys are stripped by surface hygiene', () => {
+  // Displays leaf + nest are local React state (Arrival parity). Stale
+  // `?display=` / nest params must not survive hygiene — mount strip + desk
+  // claim also clear them, and the registry must not re-own them.
+  const dirty = new URLSearchParams(
+    'openReceivingId=7&display=photos&photoAction=send&linkageAction=note&ticketAction=claim&unitsAction=prebox&claimMode=link&ticketView=1&claimView=1&inventoryAction=items',
+  );
+  const next = parseRouteParams(UNBOX_ROUTE_PARAMS, dirty);
+  assert.equal(next.get('openReceivingId'), '7');
+  for (const key of [
+    'display',
+    'photoAction',
+    'linkageAction',
+    'ticketAction',
+    'unitsAction',
+    'claimMode',
+    'ticketView',
+    'claimView',
+    'inventoryAction',
+  ]) {
+    assert.equal(next.get(key), null, `?${key}= must be stripped from /unbox hygiene`);
   }
-  assert.equal(
-    parseRouteParams(UNBOX_ROUTE_PARAMS, new URLSearchParams('display=index')).get('display'),
-    'index',
-    '?display=index (Root Index) must survive /unbox hygiene',
-  );
-  // …and the vocabulary is still closed.
-  assert.equal(
-    parseRouteParams(UNBOX_ROUTE_PARAMS, new URLSearchParams('display=nonsense')).get('display'),
-    null,
-  );
 });
 
 test('EVERY Unbox workbench tab wire survives surface hygiene', () => {
-  // Same drift class as `?display=` above: when History got an explicit wire
-  // (`?unboxview=history`, 2026-08-08) the route enum still only listed
-  // `recent|queue|viewed`. Hygiene stripped History on the next pass and the
-  // strip bounced back to Queue (the bare-/unbox default). Round-trip the SoT
-  // writer so a new tab cannot land without surviving hygiene.
+  // When History got an explicit wire (`?unboxview=history`, 2026-08-08) the
+  // route enum still only listed `recent|queue|viewed`. Hygiene stripped History
+  // on the next pass and the strip bounced back to Queue (the bare-/unbox
+  // default). Round-trip the SoT writer so a new tab cannot land without
+  // surviving hygiene.
   const tabs: UnboxWorkspaceTab[] = ['incoming', 'queue', 'recent', 'history', 'all'];
   for (const tab of tabs) {
     const written = new URLSearchParams();
@@ -177,35 +171,6 @@ test('EVERY Unbox workbench tab wire survives surface hygiene', () => {
   assert.equal(
     parseRouteParams(UNBOX_ROUTE_PARAMS, new URLSearchParams('unboxview=nonsense')).get(
       'unboxview',
-    ),
-    null,
-  );
-});
-
-test('EVERY Unbox Photos nested action wire survives surface hygiene', () => {
-  // Same drift class: `compare` joined UNBOX_PHOTO_ACTION_ORDER but the route
-  // enum stayed `browse|actions|move|send` — hygiene stripped Compare and the
-  // leaf bounced to Actions.
-  for (const action of UNBOX_PHOTO_ACTION_ORDER) {
-    const next = parseRouteParams(
-      UNBOX_ROUTE_PARAMS,
-      new URLSearchParams(`photoAction=${action}`),
-    );
-    assert.equal(
-      next.get('photoAction'),
-      action,
-      `?photoAction=${action} must survive /unbox hygiene`,
-    );
-  }
-  assert.equal(
-    parseRouteParams(UNBOX_ROUTE_PARAMS, new URLSearchParams('photoAction=browse')).get(
-      'photoAction',
-    ),
-    'browse',
-  );
-  assert.equal(
-    parseRouteParams(UNBOX_ROUTE_PARAMS, new URLSearchParams('photoAction=nonsense')).get(
-      'photoAction',
     ),
     null,
   );

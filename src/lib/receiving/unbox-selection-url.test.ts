@@ -1,8 +1,11 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
+  applyUnboxDeskParam,
   applyUnboxOpenReceivingParams,
+  isUnboxDesk,
   pickReceivingLineForDeepLink,
+  shouldAutoOpenUnboxMru,
   shouldRestoreOpenReceiving,
 } from '@/lib/receiving/unbox-selection-url';
 
@@ -75,5 +78,30 @@ describe('shouldRestoreOpenReceiving', () => {
     assert.equal(shouldRestoreOpenReceiving(true, null), false);
     assert.equal(shouldRestoreOpenReceiving(true, ''), false);
     assert.equal(shouldRestoreOpenReceiving(true, 'abc'), false);
+  });
+});
+
+describe('unboxdesk + station-first MRU gate', () => {
+  it('applyUnboxDeskParam sets and clears unboxdesk=1', () => {
+    const params = new URLSearchParams('unboxview=viewed');
+    applyUnboxDeskParam(params, true);
+    assert.equal(params.get('unboxdesk'), '1');
+    assert.equal(isUnboxDesk(params), true);
+    applyUnboxDeskParam(params, false);
+    assert.equal(params.get('unboxdesk'), null);
+    assert.equal(isUnboxDesk(params), false);
+  });
+
+  it('shouldAutoOpenUnboxMru only on bare station Unbox', () => {
+    assert.equal(shouldAutoOpenUnboxMru(true, new URLSearchParams()), true);
+    assert.equal(
+      shouldAutoOpenUnboxMru(true, new URLSearchParams('unboxdesk=1')),
+      false,
+    );
+    assert.equal(
+      shouldAutoOpenUnboxMru(true, new URLSearchParams('openReceivingId=9')),
+      false,
+    );
+    assert.equal(shouldAutoOpenUnboxMru(false, new URLSearchParams()), false);
   });
 });

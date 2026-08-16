@@ -7,6 +7,10 @@ import type { StaffDayOfWeek } from '@/lib/staff-schedule';
 import { DEFAULT_AVAILABILITY_DRAFT, type WeekdayRuleBucket } from '@/hooks/admin/useStaffScheduleData';
 import type { Staff } from '../types';
 import type { useAvailabilityEditor } from './hooks/useAvailabilityEditor';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 export function AvailabilityRulesSection({
   availability,
@@ -66,7 +70,7 @@ export function AvailabilityRulesSection({
               <select
                 value={availabilityDraft.isAllowed ? 'allowed' : 'blocked'}
                 onChange={(e) => setAvailabilityDraft((prev) => ({ ...prev, isAllowed: e.target.value === 'allowed' }))}
-                className="h-9 w-full border border-amber-200 bg-surface-card px-3 text-sm font-semibold text-text-default outline-none focus:border-amber-400"
+                className={cn("h-9 w-full border border-amber-200 bg-surface-card px-3 text-sm font-semibold text-text-default", focusRing('field', 'warning'))}
               >
                 <option value="allowed">Allowed</option>
                 <option value="blocked">Blocked</option>
@@ -78,7 +82,7 @@ export function AvailabilityRulesSection({
                 type="date"
                 value={availabilityDraft.effectiveStartDate}
                 onChange={(e) => setAvailabilityDraft((prev) => ({ ...prev, effectiveStartDate: e.target.value }))}
-                className="h-9 w-full border border-amber-200 bg-surface-card px-3 text-sm font-semibold text-text-default outline-none focus:border-amber-400"
+                className={cn("h-9 w-full border border-amber-200 bg-surface-card px-3 text-sm font-semibold text-text-default", focusRing('field', 'warning'))}
               />
             </label>
             <label className="space-y-1">
@@ -87,7 +91,7 @@ export function AvailabilityRulesSection({
                 type="date"
                 value={availabilityDraft.effectiveEndDate}
                 onChange={(e) => setAvailabilityDraft((prev) => ({ ...prev, effectiveEndDate: e.target.value }))}
-                className="h-9 w-full border border-amber-200 bg-surface-card px-3 text-sm font-semibold text-text-default outline-none focus:border-amber-400"
+                className={cn("h-9 w-full border border-amber-200 bg-surface-card px-3 text-sm font-semibold text-text-default", focusRing('field', 'warning'))}
               />
             </label>
             <label className="space-y-1 md:col-span-1">
@@ -96,7 +100,7 @@ export function AvailabilityRulesSection({
                 type="text"
                 value={availabilityDraft.reason}
                 onChange={(e) => setAvailabilityDraft((prev) => ({ ...prev, reason: e.target.value }))}
-                className="h-9 w-full border border-amber-200 bg-surface-card px-3 text-sm font-semibold text-text-default outline-none focus:border-amber-400"
+                className={cn("h-9 w-full border border-amber-200 bg-surface-card px-3 text-sm font-semibold text-text-default", focusRing('field', 'warning'))}
                 placeholder="Optional note"
               />
             </label>

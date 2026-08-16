@@ -4,6 +4,10 @@ import { IconButton } from '@/design-system/primitives';
 import { needsValueInput, type ChecklistStep, type UnitResult } from './sku-testing-types';
 import { StepValueControl } from './StepValueControl';
 import type { ChecklistEditor } from './useChecklistEditor';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 /** One checklist step row — record toggle / value input, inline edit, delete. */
 export function ChecklistStepRow({
@@ -60,7 +64,7 @@ export function ChecklistStepRow({
                 if (e.key === 'Escape') ed.setEditingId(null);
               }}
               autoFocus
-              className="w-full rounded-md border border-blue-300 px-2 py-1 text-role-caption font-medium text-text-default focus:outline-none focus:ring-2 focus:ring-blue-500/10"
+              className={cn("w-full rounded-md border border-blue-300 px-2 py-1 text-role-caption font-medium text-text-default", focusRing('field', 'accent'))}
             />
             <IconButton
               onClick={() => void ed.saveEdit()}

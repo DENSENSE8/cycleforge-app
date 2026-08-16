@@ -4,6 +4,8 @@
  * multi distinct SKU → PO/order identity; single product → item name.
  */
 
+import { formatReturnSerialProductTitle } from '@/components/station/receiving-line-serials';
+
 interface ReceivingSearchTitleInput {
   lineCount: number;
   distinctSkuCount: number;
@@ -62,7 +64,7 @@ export function receivingSearchTitle(input: ReceivingSearchTitleInput): string {
     if (poTitle) return poTitle;
   }
   const product = (input.firstItemName ?? '').trim();
-  if (product) return product;
+  if (product) return formatReturnSerialProductTitle(product);
   const id = receivingOrderIdFromParts(input.poNumber, input.sourceOrderId);
   if (id) return id;
   return input.fallback;

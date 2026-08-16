@@ -4,13 +4,16 @@
  * Every surface that links an EXISTING ticket to an internal entity (receiving
  * carton/line, warranty claim, …) needs the same three behaviours:
  *   • no query        → most recent tickets (newest first)
- *   • "#1234" / "1234" → direct id lookup (the manual-entry path)
- *   • anything else    → Zendesk search
+ *   • "#1234" / short bare id → direct id lookup (the manual-entry path)
+ *   • carrier tracking / anything else → Zendesk search
  * …and the same "hide tickets already linked to a DIFFERENT entity" rule, with
  * a ticket linked to THIS entity flagged `linkedToThis` so the UI shows it as
  * done. Centralising it here keeps the receiving and warranty link routes from
  * drifting into parallel implementations (the manual-id path must behave
  * identically to a list pick on every surface).
+ *
+ * Id vs search is {@link resolveTicketLinkQueryKind} — 12-digit FedEx must not
+ * call getTicket.
  */
 import pool from '@/lib/db';
 import {
@@ -21,6 +24,7 @@ import {
 } from '@/lib/zendesk';
 import { parseExternalId } from '@/lib/zendesk-links';
 import { zendeskTicketUrl } from '@/lib/zendesk-ticket-url';
+import { resolveTicketLinkQueryKind } from '@/lib/support/ticket-link-query';
 
 export interface TicketLinkCandidate {
   id: number;
@@ -63,19 +67,16 @@ export async function listTicketLinkCandidates(args: {
 }): Promise<{ tickets: TicketLinkCandidate[]; hiddenLinked: number }> {
   const mode: TicketLinkCandidateMode = args.mode ?? 'anchor';
   const perPage = args.perPage ?? 20;
-  const query = (args.query ?? '').trim();
-  // A bare "#1234" / "1234" is a direct ticket lookup — this is what makes
-  // manual typed-id entry resolve identically to picking from the list.
-  const idMatch = /^#?(\d{1,12})$/.exec(query);
+  const queryKind = resolveTicketLinkQueryKind(args.query ?? '');
 
   let tickets: ZendeskTicket[];
-  if (!query) {
+  if (queryKind.kind === 'recent') {
     tickets = (await listTickets({ perPage }, args.orgId)).tickets;
-  } else if (idMatch) {
-    const ticket = await getTicket(Number(idMatch[1]), args.orgId);
+  } else if (queryKind.kind === 'id') {
+    const ticket = await getTicket(queryKind.ticketId, args.orgId);
     tickets = ticket ? [ticket] : [];
   } else {
-    tickets = (await searchTickets(query, { perPage }, args.orgId)).results;
+    tickets = (await searchTickets(queryKind.query, { perPage }, args.orgId)).results;
   }
 
   // Resolve existing links for the whole result page in two bulk queries

@@ -6,7 +6,7 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { TicketPickRow } from '@/components/ui/TicketPickRow';
 import { cn } from '@/utils/_cn';
 import { toast } from '@/lib/toast';
-import { Button, IconButton } from '@/design-system/primitives';
+import { Panel, Button, IconButton } from '@/design-system/primitives';
 import { AnchoredLayer } from '@/design-system/primitives/AnchoredLayer';
 import { requestConfirm } from '@/design-system/components/confirm';
 import { useWarrantyClaim } from '@/hooks/useWarrantyClaims';
@@ -25,6 +25,8 @@ import {
 } from '@/lib/warranty/zendesk-format';
 import { formatDateTimePST } from '@/utils/date';
 import { renderInlineMarkdown } from '@/lib/support/markdown';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+
 
 /**
  * Single icon-button entry point for a claim's support thread. Click → anchored
@@ -166,11 +168,8 @@ function WarrantyTicketPanel({ claimId }: { claimId: number }) {
   };
 
   return (
-    <div
-      role="dialog"
-      aria-label="Support ticket thread"
-      className="flex max-h-[480px] w-[380px] max-w-[calc(100vw-24px)] flex-col overflow-hidden rounded-xl border border-border-soft bg-surface-card shadow-xl"
-    >
+    <Panel radius="xl" padding="none" elevation="md" className="flex max-h-[480px] w-[380px] max-w-[calc(100vw-24px)] flex-col overflow-hidden" role="dialog"
+      aria-label="Support ticket thread">
       <header className="flex items-center justify-between gap-2 border-b border-border-hairline px-3 py-2">
         <div className="flex min-w-0 items-center gap-2">
           <MessageSquare className="h-4 w-4 shrink-0 text-text-accent" />
@@ -347,7 +346,7 @@ function WarrantyTicketPanel({ claimId }: { claimId: number }) {
                         onChange={(e) => setLinkQuery(e.target.value)}
                         placeholder="Search subject or type ticket # (e.g. 12345)"
                         autoFocus
-                        className="w-full rounded-md border border-border-soft py-1.5 pl-7 pr-2 text-role-caption focus:border-border-accent focus:outline-none"
+                        className={cn("w-full rounded-md border border-border-soft py-1.5 pl-7 pr-2 text-role-caption", focusRing('field', 'accent'))}
                       />
                     </div>
                     {linkExisting.isError && (
@@ -430,7 +429,7 @@ function WarrantyTicketPanel({ claimId }: { claimId: number }) {
                   placeholder={isPublic ? 'Reply to the customer…' : 'Add an internal note…'}
                   rows={2}
                   autoFocus
-                  className="w-full resize-none rounded-md border border-border-soft px-2 py-1.5 text-sm focus:border-border-accent focus:outline-none"
+                  className={cn("w-full resize-none rounded-md border border-border-soft px-2 py-1.5 text-sm", focusRing('field', 'accent'))}
                 />
                 <div className="flex items-center justify-between gap-2">
                   <label className="flex cursor-pointer items-center gap-1.5 text-role-caption text-text-soft">
@@ -460,6 +459,6 @@ function WarrantyTicketPanel({ claimId }: { claimId: number }) {
           </footer>
         </>
       )}
-    </div>
+    </Panel>
   );
 }

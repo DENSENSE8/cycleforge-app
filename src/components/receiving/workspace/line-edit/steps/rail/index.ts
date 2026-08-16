@@ -33,13 +33,14 @@ import type { UnboxSideTab } from '../../unbox-side-tabs';
 export const UNBOX_STEP_RAIL_LEAF: Partial<Record<string, UnboxSideTab>> = {
   // Identify / link the unfound carton — its reference is the classify surface.
   classify: 'classify',
-  // The door's pre-opening evidence, and the three bench carton shots + item
-  // shots, all reference the Photos gallery (the evidence the shot lands in).
-  arrival_label_photo: 'photos',
-  arrival_box_photo: 'photos',
+  // Found/Return door + packing walk: KNOW is listing links (what you are
+  // receiving) — not the Photos gallery. Catalog-only / item photo steps still
+  // reference Photos (and item_photos opens Compare via LineEditPanel).
+  arrival_label_photo: 'listings',
+  arrival_box_photo: 'listings',
+  packing_material: 'listings',
   shipping_label_photo: 'photos',
   box_photo: 'photos',
-  packing_material: 'photos',
   item_photos: 'photos',
   // What SHOULD be in the box — the PO dossier.
   contents: 'inventory',

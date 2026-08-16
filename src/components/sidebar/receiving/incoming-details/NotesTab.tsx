@@ -2,6 +2,10 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/lib/toast';
 import { Empty } from './incoming-details-primitives';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 export function NotesTab({
   receivingId,
@@ -79,7 +83,7 @@ export function NotesTab({
         onChange={(e) => setValue(e.target.value)}
         rows={6}
         placeholder="Vendor context, claim handoff, anything the receiver should see…"
-        className="mt-1 w-full rounded-md border border-border-soft bg-surface-card px-2 py-1.5 text-role-caption font-medium leading-snug text-text-default placeholder:text-text-faint focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500/10"
+        className={cn("mt-1 w-full rounded-md border border-border-soft bg-surface-card px-2 py-1.5 text-role-caption font-medium leading-snug text-text-default placeholder:text-text-faint", focusRing('field', 'accent'))}
       />
       <div className="mt-2 text-role-eyebrow font-semibold text-text-faint">
         {saving ? 'Saving…' : 'Saves when you click away'}

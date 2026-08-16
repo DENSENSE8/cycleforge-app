@@ -29,14 +29,16 @@ describe('table-surface SoT', () => {
     assert.doesNotMatch(TABLE_SURFACE_CLIP_CLASS, /clip-path/);
   });
 
-  it('Sheets plane: hairline only — no radius, no raised lift, rail-abutting border-l-0', () => {
+  it('Sheets plane: hairline only — no radius, no raised lift, no side edges', () => {
     assert.doesNotMatch(TABLE_SURFACE_SHEET_CLASS, /\brounded-xl\b/);
     assert.doesNotMatch(TABLE_SURFACE_SHEET_CLASS, /\bshadow-elev/);
     assert.ok(
       !TABLE_SURFACE_SHEET_CLASS.includes(ELEVATION_CLASS.raised.default),
       'sheet plane must not carry raised elevation',
     );
-    assert.match(TABLE_SURFACE_SHEET_CLASS, /\bborder-l-0\b/);
+    // Side rails own the vertical seams — sheet is border-y only (not border + border-l-0).
+    assert.match(TABLE_SURFACE_SHEET_CLASS, /\bborder-y\b/);
+    assert.doesNotMatch(TABLE_SURFACE_SHEET_CLASS, /\bborder-l\b|\bborder-r\b|\bborder\b(?!-)/);
     assert.match(TABLE_SURFACE_SHEET_CLASS, /\bborder-border-soft\b/);
     assert.match(TABLE_SURFACE_SHEET_CLASS, /\bbg-surface-card\b/);
     assert.match(TABLE_SURFACE_SHEET_CLASS, /\boverflow-hidden\b/);

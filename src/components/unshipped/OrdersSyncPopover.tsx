@@ -1,43 +1,39 @@
 'use client';
 
-import { Database, FileText, Loader2, Plus, X, Check } from '@/components/Icons';
+import { Database, FileText, Loader2, X, Check } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import { sectionLabel } from '@/design-system/tokens/typography/presets';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOrdersSync } from '@/hooks/useOrdersSync';
 import { OrderSyncDialog } from '@/components/sidebar/OrderSyncDialog';
 import { AwaitingEbayPanel } from '@/components/unshipped/AwaitingEbayPanel';
-import { WORKBENCH_CHROME_CUBE_GLYPH_CLASS } from '@/components/dashboard/workbench-chrome-cube';
+import { WORKBENCH_CHROME_PILL_CLASS } from '@/components/dashboard/workbench-shell';
 import {
   WorkbenchChromeCubeMenu,
-  WorkbenchChromeMenuAction,
   type WorkbenchChromeMenuTab,
 } from '@/components/dashboard/workbench-chrome-cube-menu';
 import { TableImportFileButton } from '@/components/tables/import/TableImportFileButton';
 import { ORDER_IMPORT_DESCRIPTOR } from '@/lib/orders/order-import-descriptor';
+import { cn } from '@/utils/_cn';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+
+
+const CTA_FACE = cn(
+  WORKBENCH_CHROME_PILL_CLASS,
+  'font-semibold uppercase tracking-widest',
+);
 
 /**
- * The desk's ONE data cube — Import · Add · Backfill as tabs behind a single
- * `+`, never a row of separated glyphs (`AGENTS.md` → Band-1 same-topic
- * controls are tabs; detail in `display/workbench-ops-queue.md`).
+ * Band-1 **Import** control — CSV · channel sync · Backfill as tabs behind one
+ * labeled Import CTA (peer of Add on {@link OutboundOrderChromeActions}).
  *
  * Import leads with the CSV file (the operator-driven path) and keeps the
  * channel sync below it; detailed stacked per-source progress opens in the
- * non-modal {@link OrderSyncDialog} right rail. Add is manual single-order
- * entry. Backfill is the eBay/Ecwid catch-up + integrity check.
- *
- * The `sidebar` trigger variant and the `iconOnly` flag were deleted with this
- * consolidation: both had zero call sites, and the cube menu is now the only
- * shape this control has.
+ * non-modal {@link OrderSyncDialog} right rail. Backfill is the eBay/Ecwid
+ * catch-up + integrity check. Manual new-order lives on the labeled Add peer,
+ * not in this panel.
  */
-export function OrdersSyncPopover({
-  onRefresh,
-  onNewOrder,
-}: {
-  onRefresh?: () => void;
-  /** Manual single-order entry — omit and the Add tab is honestly absent. */
-  onNewOrder?: () => void;
-}) {
+export function OrdersSyncPopover({ onRefresh }: { onRefresh?: () => void }) {
   const { has } = useAuth();
   const canImportOrders = has('orders.import');
   const sync = useOrdersSync();
@@ -69,7 +65,7 @@ export function OrdersSyncPopover({
             value={sync.manualSheetName}
             onChange={(e) => sync.setManualSheetName(e.target.value)}
             placeholder="e.g., Sheet_01_14_2026"
-            className="w-full rounded-xl border border-border-soft bg-surface-card px-3 py-2 font-mono text-role-caption text-text-default outline-none transition-all focus:border-border-accent"
+            className={cn("w-full rounded-xl border border-border-soft bg-surface-card px-3 py-2 font-mono text-role-caption text-text-default transition-all", focusRing('field', 'accent'))}
             disabled={sync.isTransferring}
           />
           {sync.isTransferring ? (
@@ -140,47 +136,34 @@ export function OrdersSyncPopover({
         </p>
       ),
     },
+    {
+      id: 'backfill',
+      label: 'Backfill',
+      content: <AwaitingEbayPanel onRefresh={onRefresh} />,
+    },
   ];
-
-  if (onNewOrder) {
-    tabs.push({
-      id: 'add',
-      label: 'Add',
-      content: (
-        <WorkbenchChromeMenuAction
-          label="New order"
-          ariaLabel="New order entry"
-          description="Opens the intake form on the right rail — one order, typed by hand."
-          icon={<Plus className="h-3.5 w-3.5" />}
-          onClick={onNewOrder}
-        />
-      ),
-    });
-  }
-
-  tabs.push({
-    id: 'backfill',
-    label: 'Backfill',
-    content: <AwaitingEbayPanel onRefresh={onRefresh} />,
-  });
 
   return (
     <>
       <WorkbenchChromeCubeMenu
-        label={
-          sync.isTransferring
-            ? 'Syncing orders'
-            : onNewOrder
-              ? 'Add or import orders'
-              : 'Import orders'
-        }
+        label={sync.isTransferring ? 'Syncing orders' : 'Import orders'}
         icon={
           sync.isTransferring ? (
-            <Loader2 className={`${WORKBENCH_CHROME_CUBE_GLYPH_CLASS} animate-spin`} />
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
           ) : (
-            <Plus className={WORKBENCH_CHROME_CUBE_GLYPH_CLASS} />
+            <FileText className="h-3.5 w-3.5" />
           )
         }
+        labeledTrigger={{
+          children: 'Import',
+          variant: 'secondary',
+          className: CTA_FACE,
+          icon: sync.isTransferring ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <FileText className="h-3.5 w-3.5" />
+          ),
+        }}
         tabs={tabs}
         data-testid="orders-data-menu"
       />

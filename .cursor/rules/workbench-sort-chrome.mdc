@@ -13,13 +13,13 @@ Display sort (`Priority` / `Newest` / `Deadline`, etc.) is a **quiet preference*
 - Render sort as a compact **dropdown** (`ToolbarButton` + `Popover` / listbox) — current value on the trigger.
 - Place it in the workbench chrome **trailing** cluster via `WorkbenchTrailingCluster` (`sort` slot), **left of Import / Add** when those exist.
 - Reuse `QueueSortSwitch` for Pending / Testing queue sort; Labels’ ghost sort toggle stays in the same trailing slot.
-- Reach column visibility/display from `GridColumnGutter` → `GridColumnDetailsPanel` (one door). **Norm:** portal ▦ into the Band-3 `WorkbenchTriageBand` controls slot (`columnTriggerPortalTarget` / `triggerPortalTarget`) beside filter / staff / week / sort. **No host ⇒ no ▦** (the card-corner hover-reveal was deleted 2026-08-08). Paint host only; open state + rail stay on the gutter. There is no chrome `fields` slot and no second mount. Detail: `.claude/rules/display/workbench-ops-queue.md` → Trailing Display & Actions.
+- Reach column visibility/display from `GridColumnGutter` → `GridColumnDetailsPanel` (one door). **Norm:** portal ▦ into the Band-3 `WorkbenchTriageBand` controls slot (`columnTriggerPortalTarget` / `triggerPortalTarget`) beside filter / staff / week / sort. **No host ⇒ no ▦** (the card-corner hover-reveal was deleted 2026-08-08). Paint host only; open state + rail stay on the gutter. There is no chrome `fields` slot and no second mount. Detail: `AGENTS.md` Workbench hosts + `WorkbenchViewsMenu` / triage band.
 
 ## Don’t
 
 - Don’t use a solid `TabSwitch` (or other primary segmented control) for display sort beside search.
 - Don’t park **display** sort in the `right` filter cluster next to search / filter icons — that overweights a preference and competes with lifecycle tabs.
-  - **Not the same thing:** a **server-ordering** `?sort=` group *inside* a `WorkbenchFilterPopover` (Unbox / History “Sort by”) belongs in `right`, because it is part of the QUERY, not of how the list is drawn. Those routes keep column sort on `?colsort=` and server order on `?sort=` — two params answering two questions (`source-of-truth.md` → Grid column visibility + sort). Hoisting that group into `trailing` would put two sort vocabularies on one surface, which is the thing that rule bans. Judge by which question the control answers, not by the word “sort”.
+  - **Not the same thing:** a **server-ordering** `?sort=` group *inside* a `WorkbenchFilterPopover` (Unbox / History “Sort by”) belongs in `right`, because it is part of the QUERY, not of how the list is drawn. Those routes keep column sort on `?colsort=` and server order on `?sort=` — two params answering two questions. Hoisting that group into `trailing` would put two sort vocabularies on one surface, which is the thing that rule bans. Judge by which question the control answers, not by the word “sort”.
 - Don’t invent a second sort chrome; grow `QueueSortSwitch` or the Labels trailing pattern.
 - Don’t invent a Sheets-like in-card `TableActionBar` above the grid — that adds a SECOND sticky band. (The column-display control is not this: it is absolutely positioned and adds no sticky layer.)
 
@@ -27,6 +27,6 @@ Display sort (`Priority` / `Newest` / `Deadline`, etc.) is a **quiet preference*
 
 `search` → `right` (filters / staff) → controls portal → `trailing` (`WorkbenchTrailingCluster`: **sort → Import → Add**, honest absence OK)
 
-When `WorkbenchTrailingCluster` draws its leading hairline (default when `actions` are present), solid CTAs and the quiet control immediately left of the rule use `WORKBENCH_CHROME_PILL_CLASS` (band History tab radius) on all sides — never square-flat. Detail: `.claude/rules/source-of-truth.md` → Workbench chrome pill.
+When `WorkbenchTrailingCluster` draws its leading hairline (default when `actions` are present), solid CTAs and the quiet control immediately left of the rule use `WORKBENCH_CHROME_PILL_CLASS` (band History tab radius) on all sides — never square-flat. Detail: `AGENTS.md` → ops chrome flush-square / `workbench-shell.tsx`.
 
 Column display is not a `WorkbenchTrailingCluster` slot — Band-3 (or the inspector View cluster) hosts it in a controls portal. No host ⇒ no ▦; the card-corner hover reveal is deleted (2026-08-08).

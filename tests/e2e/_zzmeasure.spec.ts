@@ -15,9 +15,22 @@ async function addLine(request: APIRequestContext, receivingId: number): Promise
   });
   return Number((await res.json())?.line?.id);
 }
-async function openUnbox(page: Page, receivingId: number, lineId: number, extra = '') {
-  await page.goto(`/unbox?openReceivingId=${receivingId}&lineId=${lineId}${extra}`);
+async function openUnbox(page: Page, receivingId: number, lineId: number) {
+  await page.goto(`/unbox?openReceivingId=${receivingId}&lineId=${lineId}`);
   await expect(page.getByTestId('receiving-workspace')).toBeVisible({ timeout: 30_000 });
+}
+
+async function openDisplaysLeaf(page: Page, label: string) {
+  await page.getByTestId('unbox-displays-pane-toggle').click();
+  await expect(page.getByTestId('receiving-displays-push')).toBeVisible({ timeout: 15_000 });
+  const displays = page.getByTestId('receiving-displays-push');
+  const onStrip = displays.getByRole('button', { name: new RegExp(`^${label}\\b`, 'i') });
+  if ((await onStrip.count()) > 0) {
+    await onStrip.first().click();
+  } else {
+    await displays.getByRole('button', { name: /more displays/i }).click();
+    await page.getByRole('menuitem', { name: new RegExp(label, 'i') }).click();
+  }
 }
 
 async function dump(page: Page, tag: string) {
@@ -34,7 +47,7 @@ async function dump(page: Page, tag: string) {
       center: box(document.querySelector('[data-testid="unbox-station-center"]')),
       measure: box(ws?.querySelector('.max-w-\\[720px\\]') ?? null),
       displays: box(document.querySelector('[data-testid="receiving-displays-push"]')),
-      claim: box(document.querySelector('[data-testid="receiving-claim-push"]')),
+      claim: box(document.querySelector('[data-testid="receiving-claim-panel"]')),
       ring: box(document.querySelector('[data-testid="unbox-displays-expand-button"]')),
       close: box(document.querySelector('[data-testid="unbox-push-close"]')),
       peek: box(document.querySelector('[data-testid="photo-peek"]')),
@@ -52,22 +65,24 @@ test('MEASURE unbox geometry', async ({ page, request }) => {
   await openUnbox(page, receivingId, lineId);
   await dump(page, 'CLOSED (no displays)');
 
-  await openUnbox(page, receivingId, lineId, '&display=classify');
+  await openDisplaysLeaf(page, 'Classify');
   await expect(page.getByTestId('receiving-displays-push')).toBeVisible({ timeout: 15_000 });
   await dump(page, 'OPEN @default');
 
-  // Seed a wide persisted width then reload.
+  // Seed a wide persisted width then re-open.
   await page.evaluate(() => window.localStorage.setItem('unbox-displays-push-width', '900'));
-  await openUnbox(page, receivingId, lineId, '&display=classify');
+  await page.getByTestId('unbox-push-close').click();
+  await openDisplaysLeaf(page, 'Classify');
   await expect(page.getByTestId('receiving-displays-push')).toBeVisible({ timeout: 15_000 });
   await dump(page, 'OPEN @seed900');
 
   await page.evaluate(() => window.localStorage.setItem('unbox-displays-push-width', '300'));
-  await openUnbox(page, receivingId, lineId, '&display=classify');
+  await page.getByTestId('unbox-push-close').click();
+  await openDisplaysLeaf(page, 'Classify');
   await expect(page.getByTestId('receiving-displays-push')).toBeVisible({ timeout: 15_000 });
   await dump(page, 'OPEN @seed300');
 
-  await openUnbox(page, receivingId, lineId, '&claimView=1');
-  await expect(page.getByTestId('receiving-claim-push')).toBeVisible({ timeout: 15_000 });
+  await page.getByRole('button', { name: /File claim|claim/i }).first().click();
+  await expect(page.getByTestId('receiving-claim-panel')).toBeVisible({ timeout: 15_000 });
   await dump(page, 'CLAIM open');
 });

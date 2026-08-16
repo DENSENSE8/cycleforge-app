@@ -27,10 +27,20 @@ const keepOnMainThread = () => {};
 
 export function RailRow<TRow>({
   row, index, isSelected, isFocused, editActive, isChecked, isDisabled, groupSize, groupIndex, isCollapsed, showInlinePkgChip,
-  staggerItemVariants, onToggleGroup, getStatusDot, getStatusDotLabel, getActivityAt, renderRowMain, renderPopover, onClick, navKey,
+  staggerItemVariants, onToggleGroup, getStatusDot, getStatusDotLabel, getActivityAt, renderRowMain, renderPopover, onClick, navKey, reconcileKey,
 }: {
   row: TRow;
   index: number;
+  /**
+   * The row's durable React key, mirrored onto the DOM.
+   *
+   * Diagnostic only — nothing reads it at runtime. It exists because the rail's
+   * one non-obvious invariant is that this key must NOT change while a scan
+   * resolves (a changed key is an unmount + remount, which the operator sees as
+   * their tracking number vanishing and coming back), and that is otherwise
+   * invisible to anything outside React's reconciler.
+   */
+  reconcileKey?: string | number;
   /** Reveal-on-arm nav-key letter — present only while this rail's region is armed. */
   navKey?: string | null;
   isSelected: boolean;
@@ -144,6 +154,7 @@ export function RailRow<TRow>({
         type="button"
         data-rail-row
         data-rail-index={index}
+        data-rail-key={reconcileKey}
         tabIndex={-1}
         disabled={isDisabled}
         aria-disabled={isDisabled || undefined}

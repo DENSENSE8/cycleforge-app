@@ -5,12 +5,20 @@ import withBundleAnalyzerInit from "@next/bundle-analyzer";
 // ANALYZE=true pnpm build → .next/analyze/client.html (chunk treemap).
 const withBundleAnalyzer = withBundleAnalyzerInit({ enabled: process.env.ANALYZE === "true" });
 
+// PWA/workbox compile is a webpack-only memory spike. On Vercel we ship the
+// committed `public/sw.js` (+ workbox-*) instead — regenerate with
+// `pnpm build:webpack` when runtimeCaching / fallbacks change, then commit.
+const skipPwaCompile =
+    process.env.NODE_ENV === "development" ||
+    process.env.VERCEL === "1" ||
+    process.env.CF_SKIP_PWA === "1";
+
 const withPWA = withPWAInit({
     dest: "public",
     cacheOnFrontEndNav: true,
     aggressiveFrontEndNavCaching: true,
     reloadOnOnline: true,
-    disable: process.env.NODE_ENV === "development",
+    disable: skipPwaCompile,
     // Served when a navigation request fails AND we have no cached version of
     // the target route. Mostly relevant for receivers/pickers walking out of
     // Wi-Fi range. The shell + last-cached responses still render.
@@ -76,10 +84,11 @@ const nextConfig: NextConfig = {
     allowedDevOrigins: ['*.trycloudflare.com', '*.ngrok-free.app', '192.168.*', '*.michaelgarisek.com'],
     experimental: {
         webpackMemoryOptimizations: true,
-        // Cap static/page-data workers. Vercel Enhanced (8 cores) otherwise
-        // fans out ~7 workers and OOM-kills during "Collecting page data"
-        // (routes-manifest missing is the symptom). Prefer slower + green.
-        cpus: 2,
+        // Cap static/page-data workers. Vercel Enhanced is 8 cores / 16 GB;
+        // with NODE_OPTIONS heap at 8 GB, even 2 workers can SIGKILL mid-
+        // webpack or during "Collecting page data" — missing routes-manifest
+        // is the symptom. Prefer slower + green (1 worker).
+        cpus: 1,
         optimizePackageImports: [
             'framer-motion',
             'lucide-react',
@@ -94,6 +103,14 @@ const nextConfig: NextConfig = {
         ],
     },
     productionBrowserSourceMaps: false,
+    // On Vercel, keep webpack single-threaded so peak RSS stays under the
+    // Enhanced 16 GB ceiling (parent heap is already capped at 8 GB).
+    webpack: (config) => {
+        if (process.env.VERCEL) {
+            config.parallelism = 1;
+        }
+        return config;
+    },
     // Phase C of the Products / Inventory / Warehouse rename. /sku-stock is
     // the legacy path; the same content now lives at /inventory. Order matters:
     // longer-prefix rules (e.g. /location) must precede the bare :sku catch.

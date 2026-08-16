@@ -8,9 +8,13 @@ import { SHIPPED_SEARCH_FIELDS, type ShippedSearchField } from '@/lib/shipped-se
 import { CARRIERS, STATUS_CATEGORIES, TYPE_ITEMS, type ShippedTypeFilter } from './shipped-filter-constants';
 import { useShippedFilterRefinements } from './useShippedFilterRefinements';
 import { NeedsAttentionButton } from './ShippedFilterControls';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 const selectClass =
-  'h-9 w-full cursor-pointer appearance-none rounded-md border border-border-soft bg-surface-card pl-2.5 pr-7 text-role-caption font-semibold text-text-default hover:border-blue-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20';
+  cn('h-9 w-full cursor-pointer appearance-none rounded-md border border-border-soft bg-surface-card pl-2.5 pr-7 text-role-caption font-semibold text-text-default hover:border-blue-300', focusRing('field', 'accent'));
 const labelClass = 'mb-1 block text-role-eyebrow uppercase tracking-wider text-text-soft';
 
 export function ShippedFilterDropdown({

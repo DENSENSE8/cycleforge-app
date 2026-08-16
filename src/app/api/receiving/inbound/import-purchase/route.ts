@@ -13,7 +13,10 @@ import { parseBody } from '@/lib/schemas/parse';
 import { InboundImportPurchaseBody } from '@/lib/schemas/inbound-desk';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import { invalidateReceivingViews } from '@/lib/receiving/invalidation';
-import { importDeskInboundRow } from '@/lib/inbound/desk-import';
+import {
+  importDeskInboundRow,
+  isDeskImportSkip,
+} from '@/lib/inbound/desk-import';
 
 export const POST = withAuth(async (request: NextRequest, ctx) => {
   const raw = await request.json().catch(() => ({}));
@@ -22,7 +25,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
 
   let result;
   try {
-    result = await importDeskInboundRow(ctx.organizationId, {
+    const outcome = await importDeskInboundRow(ctx.organizationId, {
       kind: parsed.kind,
       sourceType: parsed.source_type,
       sourcePlatform: parsed.source_platform,
@@ -42,6 +45,18 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
       rmaId: parsed.rma_id,
       conditionGrade: parsed.condition_grade,
     });
+    if (isDeskImportSkip(outcome)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `skipped: ${outcome.reason}`,
+          skipped: true,
+          skip_reason: outcome.reason,
+        },
+        { status: 400 },
+      );
+    }
+    result = outcome;
   } catch (err) {
     const message = err instanceof Error ? err.message : 'import failed';
     const status = /required|unregistered|must provide|cannot manually/.test(message)

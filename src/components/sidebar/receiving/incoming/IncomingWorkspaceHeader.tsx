@@ -1,33 +1,26 @@
 'use client';
 
 /**
- * Inbound desk chrome — Pipeline (on the way) | Docked (landed activity).
+ * Inbound desk chrome — Pipeline collection (POS | Email) + Docked history.
  *
- * Unbox Sheets three-band recipe (Incoming consumer):
- *   House Band-1 law (Unbox golden · To-ship desk exemplar): fixed process tabs
- *   for every staffer — never Chrome-style unpin of a system stage · Pin-list
- *   cube omitted (honest absence — this is the L1 inbound desk; Unbox embeds the
- *   inbound collection, not the reverse) · Views on Band 3 (`WorkbenchViewsMenu`
- *   in the triage `views` slot, never Band-1 leading) · page-pin in GlobalHeader.
- *   Three pin scopes never share a trigger/store. SoT: source-of-truth.md →
- *   Workbench Band-1 strip · Left-edge → SCOPE decides its home.
+ * Unbox Sheets recipe (Incoming consumer):
+ *   House Band-1 law: fixed process tabs · Pin-list omitted (L1 desk) · Views on
+ *   Band 3 (`WorkbenchViewsMenu`) · page-pin in GlobalHeader.
  *
- *   Band 1 — Pipeline | Docked tabs · labeled Check / Import / Add
- *   Facet  — Triage / Unbox (Docked only; Pipeline has no facet strip)
- *   Band 2 — KPI (+ Pipeline lane note)
- *   Band 3 — triage (`WorkbenchTriageBand`: search left · refine icons right)
- *            Pipeline source (Zoho / eBay) lives in the search-field filter
- *            (`IncomingSourceFilters` → `?inbound=`), default All.
+ *   Band 1 — Pipeline: Incoming POS | Email Triage + Check / Import / Add
+ *            Docked (`?lane=docked`): Arrival | Unbox (no Pipeline|Docked parent)
+ *   Band 2 — omitted (KPI strip deleted 2026-08-10)
+ *   Band 3 — triage find + Views (POS) + inspector
  *
- * Primary tabs write `?lane=` (omit = pipeline). Docked reuses Triage / Unbox
- * sort tabs (`inbound-docked-tabs`) and history `rh_*` search.
+ * Pipeline|Docked big tabs, the retired removed-lane facet, and KPI tiles were
+ * deleted 2026-08-10 (rail-less ops-queue chrome). Docked remains URL-reachable
+ * for legacy redirects.
  */
 
-import { useCallback, useEffect, useMemo, useState, type Ref } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { receivingSurfaceBasePath } from '@/lib/receiving/surface-path';
 import {
-  applyInboundLane,
   parseInboundLane,
   type InboundLane,
 } from '@/lib/receiving/inbound-lane';
@@ -35,14 +28,6 @@ import { WorkbenchChromeHeader, WorkbenchTrailingCluster, WorkbenchTriageBand } 
 import { WorkbenchInspectorToggle } from '@/components/dashboard/workbench-inspector-toggle';
 import { useRightRailOccupantOpen } from '@/components/right-rail/useRightRailOccupant';
 import { INCOMING_DETAILS_RAIL_ID } from '@/components/sidebar/receiving/incoming-details/IncomingDetailsHeader';
-import { PRIMARY_CHROME_ROW_FACE } from '@/components/layout/header-shell';
-import { cn } from '@/utils/_cn';
-import {
-  WorkbenchKpiBand,
-  WorkbenchKpiCollapseToggle,
-  WORKBENCH_KPI_SURFACE,
-} from '@/components/dashboard/workbench-kpi-collapse';
-import { useWorkbenchKpiCollapsed } from '@/hooks/useWorkbenchKpiCollapsed';
 import {
   WorkbenchFilterDivider,
   WorkbenchFilterGroupLabel,
@@ -56,7 +41,6 @@ import { ToolbarButton } from '@/components/ui/ToolbarButton';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { AlertTriangle, ExternalLink, Layout } from '@/components/Icons';
 import { DateRangePickerField } from '@/design-system/components/DateRangePickerField';
-import { TabSwitch } from '@/design-system/components/TabSwitch';
 import { useAuth } from '@/contexts/AuthContext';
 import { INCOMING_PAGE_SIZE } from '@/lib/receiving/receiving-modes';
 import {
@@ -86,8 +70,6 @@ import { IncomingChromeActions } from './IncomingChromeActions';
 import { IncomingAddInboundOverlay } from './IncomingAddInboundOverlay';
 import { IncomingImportCsvOverlay } from './IncomingImportCsvOverlay';
 import { IncomingBulkTrackingPanel } from './IncomingBulkTrackingPanel';
-import { IncomingKpiStrip } from './IncomingKpiStrip';
-import { IncomingLaneNote } from './IncomingLaneNote';
 import {
   IncomingSourceFilters,
   IncomingSourceHotChip,
@@ -104,11 +86,20 @@ import {
   SAVED_VIEW_PARAM_KEYS,
   SAVED_VIEW_STORAGE_KEY,
 } from '@/lib/station/table-url-params';
-import { parseIncomingView } from '@/lib/receiving/incoming-view';
+import {
+  parseIncomingView,
+  type IncomingView,
+} from '@/lib/receiving/incoming-view';
+import { useIncomingEmailCount } from '@/components/receiving/incoming-todo-shared';
 
-const LANE_TABS = [
-  { id: 'pipeline', label: 'Pipeline', color: 'blue' as const },
-  { id: 'docked', label: 'Docked', color: 'blue' as const, dividerBefore: true },
+/** Band-1 collection faces — only writer of `?incview=` (Pipeline desk). */
+const PIPELINE_VIEW_TABS: {
+  id: IncomingView;
+  label: string;
+  color: 'blue';
+}[] = [
+  { id: 'pos', label: 'Incoming POS', color: 'blue' },
+  { id: 'email', label: 'Email Triage', color: 'blue' },
 ];
 
 const SCOPE_ITEMS: {
@@ -125,25 +116,14 @@ interface IncomingWorkspaceHeaderProps {
   total: number;
   /** Current 1-based page index (`?page=`). */
   page: number;
-  /**
-   * Pipeline lane note under the KPI strip. Omit / null on Docked — the note
-   * is Incoming-predicate copy only.
-   */
-  laneNote?: {
-    view: string;
-    trackingFiltered: boolean;
-    rowCount: number;
-    providerLabel?: string | null;
-  } | null;
-  /** Band-3 controls slot — hosts the portaled column-display (▦) trigger. */
-  controlsSlotRef?: Ref<HTMLDivElement>;
+  /** Flush Band-1 face from WorkbenchSheetView — never re-type it here. */
+  className?: string;
 }
 
 export function IncomingWorkspaceHeader({
   total,
   page,
-  laneNote = null,
-  controlsSlotRef,
+  className,
 }: IncomingWorkspaceHeaderProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -159,10 +139,9 @@ export function IncomingWorkspaceHeader({
   const lane: InboundLane = parseInboundLane(searchParams.get('lane'));
   const isPipeline = lane === 'pipeline';
   const incomingView = parseIncomingView(searchParams.get('incview'));
-  /** Saved views only refine the POS collection — not Email / Recently removed. */
+  /** Saved views only refine the POS collection — not Email Triage. */
   const showIncomingViews = isPipeline && incomingView === 'pos';
-  const { collapsed: kpiCollapsed, setCollapsed: setKpiCollapsed, toggleCollapsed: toggleKpiCollapsed } =
-    useWorkbenchKpiCollapsed(WORKBENCH_KPI_SURFACE.incoming);
+  const emailCount = useIncomingEmailCount();
   const incomingDetailOpen = useRightRailOccupantOpen(INCOMING_DETAILS_RAIL_ID);
 
   const [addOpen, setAddOpen] = useState(false);
@@ -191,10 +170,14 @@ export function IncomingWorkspaceHeader({
     [router, base],
   );
 
-  const setLane = useCallback(
+  const setIncomingView = useCallback(
     (id: string) => {
-      const nextLane: InboundLane = id === 'docked' ? 'docked' : 'pipeline';
-      replaceParams(applyInboundLane(searchParams, nextLane));
+      const next = id as IncomingView;
+      const params = new URLSearchParams(searchParams.toString());
+      if (next === 'pos') params.delete('incview');
+      else params.set('incview', next);
+      params.delete('page');
+      replaceParams(params);
     },
     [replaceParams, searchParams],
   );
@@ -299,6 +282,24 @@ export function IncomingWorkspaceHeader({
         color: 'blue' as const,
       })),
     [],
+  );
+
+  const pipelineViewTabs = useMemo(
+    () =>
+      PIPELINE_VIEW_TABS.map((t) => ({
+        ...t,
+        count:
+          t.id === 'pos'
+            ? total > 0
+              ? total
+              : undefined
+            : t.id === 'email'
+              ? emailCount > 0
+                ? emailCount
+                : undefined
+              : undefined,
+      })),
+    [total, emailCount],
   );
 
   /*
@@ -438,19 +439,16 @@ export function IncomingWorkspaceHeader({
   return (
     <>
       {/*
-        Unbox Sheets three-band chrome (Incoming consumer):
-          Band 1 — tabs · labeled CTAs
-          Facet  — Triage / Unbox (Docked only)
-          Band 2 — KPI
-          Band 3 — triage (search left · refine icons right);
-                   Pipeline Zoho / eBay → search-field source filter
+        Inbound chrome (Pipeline-only Band-1 faces · Docked URL keeps Arrival|Unbox):
+          Band 1 — POS | Email (+ CTAs) · or Docked Arrival | Unbox
+          Band 3 — triage find · Views · inspector
       */}
       <WorkbenchChromeHeader
         density="band"
-        className="rounded-none border-l-0 border-t-0 shadow-sm"
-        tabs={LANE_TABS}
-        activeTab={lane}
-        onTabChange={setLane}
+        className={className}
+        tabs={isPipeline ? pipelineViewTabs : dockedSubTabs}
+        activeTab={isPipeline ? incomingView : dockedTab}
+        onTabChange={isPipeline ? setIncomingView : setDockedTab}
         solidTone="accent"
         trailing={
           isPipeline ? (
@@ -484,47 +482,8 @@ export function IncomingWorkspaceHeader({
         }
       />
 
-      {/* Docked sub-tabs — Triage / Unbox between Band 1 and KPI. Pipeline has
-          no facet strip; purchasing source lives in the Band-3 search filter. */}
-      {!isPipeline ? (
-        <div
-          className={cn(
-            'flex items-center border-b border-r border-border-soft bg-surface-card px-3 py-0.5',
-            PRIMARY_CHROME_ROW_FACE,
-          )}
-        >
-          <TabSwitch
-            tabs={dockedSubTabs}
-            activeTab={dockedTab}
-            onTabChange={setDockedTab}
-            variant="solid"
-            solidTone="accent"
-            size="sm"
-          />
-        </div>
-      ) : null}
-
-      {/* Band 2 — snap-collapsible KPI; owns the bottom hairline. */}
-      <WorkbenchKpiBand
-        open={!kpiCollapsed}
-        onSnapCollapse={() => setKpiCollapsed(true)}
-        onSnapExpand={() => setKpiCollapsed(false)}
-      >
-        <IncomingKpiStrip />
-        {laneNote ? (
-          <IncomingLaneNote
-            view={laneNote.view}
-            trackingFiltered={laneNote.trackingFiltered}
-            rowCount={laneNote.rowCount}
-            providerLabel={laneNote.providerLabel}
-          />
-        ) : null}
-      </WorkbenchKpiBand>
-
-      {/* Band 3 — find + Views ▾ (POS Pipeline) + view toggles (pagination ·
-          sort · ▦ · KPI · inspector). */}
+      {/* Band 3 — find + Views ▾ (POS) + view toggles. */}
       <WorkbenchTriageBand
-        controlsSlotRef={controlsSlotRef}
         views={
           showIncomingViews ? (
             <WorkbenchViewsMenu
@@ -538,12 +497,6 @@ export function IncomingWorkspaceHeader({
           <WorkbenchInspectorToggle
             open={incomingDetailOpen}
             testId="incoming-inspector-toggle"
-          />
-        }
-        kpiToggle={
-          <WorkbenchKpiCollapseToggle
-            open={!kpiCollapsed}
-            onToggle={toggleKpiCollapsed}
           />
         }
         search={

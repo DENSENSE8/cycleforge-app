@@ -20,6 +20,10 @@ import { Button, TextField } from '@/design-system/primitives';
 import { toast } from '@/lib/toast';
 import { invalidateReceivingFeeds } from '@/lib/queries/receiving-queries';
 import type { DetailsResponse } from './incoming-details-shared';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 interface PoCandidate {
   zoho_purchaseorder_id: string;
@@ -235,7 +239,7 @@ export function EbayTab({ data }: { data: DetailsResponse }) {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search purchase order # / reference / vendor…"
-                className="w-full rounded-none border border-border-soft py-2 pl-8 pr-8 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className={cn("w-full rounded-none border border-border-soft py-2 pl-8 pr-8 text-sm", focusRing('field', 'accent'))}
               />
               {isFetching ? (
                 <Loader2 className="absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 animate-spin text-text-faint" />

@@ -1,5 +1,5 @@
 import { ChevronDown, ChevronUp } from '@/components/Icons';
-import { IconButton } from '@/design-system/primitives';
+import { Panel, IconButton } from '@/design-system/primitives';
 import type { PreviewResponse } from './po-mailbox-types';
 import { ScanControls } from './mailbox-shared';
 
@@ -16,7 +16,7 @@ export function RawMode({
   setExpanded: (fn: (prev: Record<string, boolean>) => Record<string, boolean>) => void;
 }) {
   return (
-    <div className="space-y-3 rounded-lg border border-border-soft bg-surface-card p-3 shadow-sm">
+    <Panel radius="lg" padding="sm" className="space-y-3">
       <ScanControls query={query} setQuery={setQuery} limit={limit} setLimit={setLimit} onRun={onRun} loading={loading} actionLabel="Scan" />
 
       {response && (
@@ -71,6 +71,6 @@ export function RawMode({
           )}
         </div>
       )}
-    </div>
+    </Panel>
   );
 }

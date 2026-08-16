@@ -669,11 +669,9 @@ export const POST = withAuth(async (request, ctx) => {
       }
     }
 
-    // 1. Update the line locally. When Zoho receive is required, sit at
-    //    UNBOXED (physically processed, Zoho receive pending) until
-    //    createPurchaseReceive succeeds; then we set DONE. UNBOXED — not
-    //    MATCHED — so a Zoho-pending line can't be mistaken for (or re-queued
-    //    as) a merely door-scanned carton.
+    // 1. Update the line locally. Local DONE stands on Receive — Zoho
+    //    createPurchaseReceive is best-effort afterward (Sync can fail without
+    //    parking the face at UNBOXED).
     //
     //    Chokepoint fold (§7 Step D): the facts half (qa/disposition/condition/
     //    notes/quantity) is a raw UPDATE that deliberately does NOT list
@@ -686,11 +684,8 @@ export const POST = withAuth(async (request, ctx) => {
     //    actually changes (check-and-skip in TS). skipEvent: this route's
     //    applyInventoryV2Effects emits the RECEIVED inventory_event and the
     //    route records the PO_RECEIVE audit — the chokepoint must not
-    //    double-write. IN_TEST→UNBOXED / AWAITING_TEST→UNBOXED are unmodeled
-    //    edges in INBOUND_TRANSITIONS: the permissive guard logs and proceeds
-    //    (deliberately NOT added to the graph — a re-receive of a line already
-    //    in testing is a bounce-back we want surfaced in the logs, not modeled).
-    const targetWorkflowStatus = hasZohoReceive ? 'UNBOXED' : 'DONE';
+    //    double-write. Bounce-backs from testing stay surfaced in the logs.
+    const targetWorkflowStatus = 'DONE' as const;
     const foldedLine = await withTenantTransaction(ctx.organizationId, async (client) => {
       // Wave-3 writer inversion: qa/disposition/condition are receiving_line_testing
       // facts now — the spine UPDATE keeps only the columns that stay on the spine
@@ -1064,32 +1059,7 @@ export const POST = withAuth(async (request, ctx) => {
           }),
         );
         zohoReceiveOk = true;
-        // Chokepoint fold (§7 Step D) — mirrors mark-received-po's folded
-        // UNBOXED→DONE promotion. expectedFrom:'UNBOXED' is a deliberate guard
-        // the former raw UPDATE lacked: a line advanced elsewhere while the
-        // Zoho call was in flight now returns 409 and is SKIPPED (logged,
-        // non-fatal) instead of being unconditionally overwritten to DONE.
-        // skipEvent: applyInventoryV2Effects already emitted the RECEIVED
-        // inventory_event and this route records the PO_RECEIVE audit below.
-        const doneTr = await transitionReceivingLine(
-          {
-            receivingLineId,
-            to: 'DONE',
-            expectedFrom: 'UNBOXED',
-            actorStaffId: staffId,
-            skipEvent: true,
-          },
-          undefined,
-          ctx.organizationId,
-        );
-        if (doneTr.ok) {
-          line.workflow_status = doneTr.to;
-          line.receiving_line_status = doneTr.coarse;
-        } else {
-          console.warn(
-            `[mark-received] UNBOXED→DONE promotion skipped for line ${receivingLineId} (${doneTr.status}): ${doneTr.error}`,
-          );
-        }
+        // Local DONE already stamped above — Zoho success does not re-promote.
 
         try {
           const existing = await withZohoOrg(ctx.organizationId, () => getPurchaseOrderById(zohoPoId));
@@ -1174,7 +1144,7 @@ export const POST = withAuth(async (request, ctx) => {
     });
 
     const workflowStatus =
-      String(line.workflow_status ?? '').trim() || (hasZohoReceive ? 'UNBOXED' : 'DONE');
+      String(line.workflow_status ?? '').trim() || 'DONE';
 
     await recordAudit(pool, ctx, request, {
       source: 'receiving-station',

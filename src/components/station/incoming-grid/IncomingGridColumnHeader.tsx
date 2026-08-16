@@ -16,7 +16,7 @@ import {
   isIncomingGridSortable,
   type IncomingGridColumn,
   type IncomingGridColumnKey,
-} from '@/lib/receiving/incoming-grid-layout';
+} from '@/lib/receiving/receiving-grid-layout';
 
 const INCOMING_HEADER_LAYOUT: LedgerHeaderLayoutApi<IncomingGridColumn> = {
   template: incomingGridTemplate,

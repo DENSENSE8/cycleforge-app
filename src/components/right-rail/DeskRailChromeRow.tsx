@@ -4,7 +4,7 @@
  * DeskRailChromeRow — SoT for Unbox-aligned chrome on a single RightRailHost card.
  *
  * ```text
- * [→|] [actions?] …………………… [cursor?] [↑][↓] [trailing?]
+ * [host →|] [actions?] …………………… [cursor?] [↑][↓] [trailing?]
  * ```
  *
  * **Why this exists.** Unbox reads `[→|] ……… [↑ ↓]` across TWO regions
@@ -13,6 +13,11 @@
  * *inside* a Desk card applies `top-2` only to the trailing cluster and splits
  * the baseline. When every control lives in one card, they must share ONE
  * in-flow flex row.
+ *
+ * **Close is host-owned.** `RightRailHost` paints the single `→|` at the
+ * absolute top-left and fires `closeAndCachePanel()`. This row keeps a spacer
+ * so actions/↑↓ do not sit under that control. Do not mount a second close
+ * here — `onClose` is accepted so callers compile, then ignored.
  *
  * **`actions`** — optional contextual icon cluster for occupants whose actions
  * belong on the navigation row. Sits after close, left of the flex spacer +
@@ -25,15 +30,14 @@
  * **`trailing`** — far-right peer after ↑↓ (e.g. Incoming Sync) — Desk twin of
  * station strip controls that need a trailing instrument face.
  *
- * Recipe: `.claude/rules/display/right-rail-inspector.md` → Desk single-card
- * chrome. Guard: `right-rail-inspector-header.guard.test.ts`.
+ * identity lives in `PaneHeaderLabel` below this row, not in this chrome.
  */
 
 import type { ReactNode } from 'react';
 import { ChevronDown, ChevronUp } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { PaneHeaderCloseButton } from '@/components/ui/pane-header';
 import { IconButton } from '@/design-system/primitives';
+import { InspectorColumnDisplayButton } from '@/components/right-rail/InspectorColumnDisplayButton';
 import { cn } from '@/utils/_cn';
 
 /** Optical `pl-2` — Unbox push-band twin so the `→|` mark lands on content ink.
@@ -42,8 +46,6 @@ const DESK_RAIL_CHROME_ROW_CLASS =
   'relative z-header flex h-8 shrink-0 items-center pl-2 pr-2';
 
 export function DeskRailChromeRow({
-  onClose,
-  closeTitle = 'Hide right panel',
   onPrev,
   onNext,
   prevDisabled,
@@ -62,9 +64,15 @@ export function DeskRailChromeRow({
   cursor,
   /** Far-right twin of the Unbox scan-progress ring (e.g. Incoming Sync). */
   trailing,
+  /**
+   * Grid workbenches: Column display lives in the inspector, not Band 3.
+   * Renders ▦ after close so a record peek still has a door onto
+   * `detail:grid-column-details`.
+   */
+  columnDisplay = false,
   className,
 }: {
-  /** Omit on full-page `/o` (no dismiss) — trail cluster still mounts. */
+  /** Ignored — `RightRailHost` owns the singleton `→|`. Kept so callers compile. */
   onClose?: () => void;
   closeTitle?: string;
   onPrev?: () => void;
@@ -78,19 +86,22 @@ export function DeskRailChromeRow({
   actions?: ReactNode;
   cursor?: ReactNode;
   trailing?: ReactNode;
+  columnDisplay?: boolean;
   className?: string;
 }) {
   const hasTrail = Boolean(onPrev || onNext || cursor || trailing);
 
   return (
     <div className={cn(DESK_RAIL_CHROME_ROW_CLASS, className)}>
-      {onClose ? (
-        <PaneHeaderCloseButton
-          onClick={onClose}
-          title={closeTitle}
-          ariaLabel={closeTitle}
-          className="-ml-px h-7 w-7"
-        />
+      <span
+        className="inline-block h-7 w-7 shrink-0"
+        aria-hidden
+        data-right-rail-host-close-slot
+      />
+      {columnDisplay ? (
+        <div className="ml-0.5 flex shrink-0 items-center">
+          <InspectorColumnDisplayButton />
+        </div>
       ) : null}
       {actions ? (
         <div

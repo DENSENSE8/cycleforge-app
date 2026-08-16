@@ -5,13 +5,40 @@ import { requireRoutePerm } from '@/lib/auth/dynamic-route-guard';
 import { tenantQuery } from '@/lib/tenancy/db';
 import { getPrimaryPhotoStorage } from '@/lib/photos/storage/resolve-primary';
 import { getStorageAdapter } from '@/lib/photos/storage/registry';
-import { readPhotoBytesById } from '@/lib/photos/read-bytes';
+import { generateThumbnail, readPhotoBytesById } from '@/lib/photos/read-bytes';
 import { normalizePhotoDisplayUrl } from '@/lib/nas-photo-url';
 import { resolveOrgIdFromRequest, NIL_ORG_ID } from '@/lib/tenancy/resolve-org-from-request';
 
 export const dynamic = 'force-dynamic';
 
 const TTL = Number(process.env.PHOTOS_SIGNED_URL_TTL_SECONDS || 3600);
+const THUMB_MAX_PX = Number(process.env.PHOTOS_THUMB_MAX_PX || 256);
+const THUMB_MEMO_MAX = 64;
+
+/** Bounded in-process memo for on-demand thumb synthesis (missing thumbObjectKey). */
+const thumbMemo = new Map<number, { bytes: Buffer; contentType: string }>();
+
+function rememberThumb(photoId: number, entry: { bytes: Buffer; contentType: string }) {
+  if (thumbMemo.size >= THUMB_MEMO_MAX) {
+    const oldest = thumbMemo.keys().next().value;
+    if (oldest != null) thumbMemo.delete(oldest);
+  }
+  thumbMemo.set(photoId, entry);
+}
+
+async function synthesizeThumb(
+  photoId: number,
+  orgId: string,
+): Promise<{ bytes: Buffer; contentType: string } | null> {
+  const cached = thumbMemo.get(photoId);
+  if (cached) return cached;
+  const full = await readPhotoBytesById(photoId, orgId);
+  if (!full) return null;
+  const bytes = await generateThumbnail(Buffer.from(full.bytes), THUMB_MAX_PX);
+  const entry = { bytes, contentType: 'image/jpeg' };
+  rememberThumb(photoId, entry);
+  return entry;
+}
 
 // A photo is content-addressed by an immutable {id}+variant — its bytes never
 // change (a re-upload is a new id). Cache thumbnails hard, browser-only.
@@ -97,8 +124,8 @@ export async function GET(
   }
 
   if (storage?.provider === 'gcs' && storage.bucket) {
-    const isThumb = variant === 'thumb' && !!storage.thumbObjectKey;
-    const key = isThumb ? storage.thumbObjectKey! : storage.objectKey;
+    const isStoredThumb = variant === 'thumb' && !!storage.thumbObjectKey;
+    const key = isStoredThumb ? storage.thumbObjectKey! : storage.objectKey;
     try {
       const adapter = getStorageAdapter('gcs');
 
@@ -107,7 +134,7 @@ export async function GET(
       // cache, so the browser reuses them across scroll / reopen / revisit with
       // zero network. The old signed-URL redirect rotated the cache key on every
       // request, so nothing was ever reused — the "no caching at all" symptom.
-      if (isThumb) {
+      if (variant === 'thumb') {
         const etag = `"p${photoId}-thumb"`;
         if (request.headers.get('if-none-match') === etag) {
           return new NextResponse(null, {
@@ -115,14 +142,27 @@ export async function GET(
             headers: { etag, 'cache-control': IMMUTABLE_CACHE },
           });
         }
-        const bytes = await adapter.getObjectBytes({ bucket: storage.bucket, objectKey: key });
-        return new NextResponse(Buffer.from(bytes), {
-          headers: {
-            'content-type': storage.contentType || 'image/jpeg',
-            'cache-control': IMMUTABLE_CACHE,
-            etag,
-          },
-        });
+        if (isStoredThumb) {
+          const bytes = await adapter.getObjectBytes({ bucket: storage.bucket, objectKey: key });
+          return new NextResponse(Buffer.from(bytes), {
+            headers: {
+              'content-type': storage.contentType || 'image/jpeg',
+              'cache-control': IMMUTABLE_CACHE,
+              etag,
+            },
+          });
+        }
+        // No stored thumb — synthesize from full bytes and memoize.
+        const synthesized = await synthesizeThumb(photoId, orgId);
+        if (synthesized) {
+          return new NextResponse(Buffer.from(synthesized.bytes), {
+            headers: {
+              'content-type': synthesized.contentType,
+              'cache-control': IMMUTABLE_CACHE,
+              etag,
+            },
+          });
+        }
       }
 
       // Full-res stays a direct-from-GCS redirect (avoids streaming MBs through
@@ -162,6 +202,19 @@ export async function GET(
   }
 
   if (actor) {
+    if (variant === 'thumb') {
+      const synthesized = await synthesizeThumb(photoId, orgId);
+      if (synthesized) {
+        const etag = `"p${photoId}-thumb"`;
+        return new NextResponse(Buffer.from(synthesized.bytes), {
+          headers: {
+            'content-type': synthesized.contentType,
+            'cache-control': IMMUTABLE_CACHE,
+            etag,
+          },
+        });
+      }
+    }
     const bytes = await readPhotoBytesById(photoId, orgId);
     if (bytes) {
       return new NextResponse(Buffer.from(bytes.bytes), {

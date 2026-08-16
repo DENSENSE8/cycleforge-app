@@ -2,6 +2,10 @@ import { AlertTriangle, Truck } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import type { CarrierCode, ShipmentStatusCategory } from '@/components/shipping/ShipmentStatusBadge';
 import { CARRIERS, STATUS_CATEGORIES } from './shipped-filter-constants';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 export function NeedsAttentionButton({
   active,
@@ -43,7 +47,7 @@ export function CarrierSelect({ value, onChange }: { value: CarrierCode | null; 
       <select
         value={value ?? ''}
         onChange={(e) => onChange((e.target.value || null) as CarrierCode | null)}
-        className="bg-transparent text-xs font-semibold text-text-default focus:outline-none"
+        className={cn("bg-transparent text-xs font-semibold text-text-default", focusRing('field', 'accent'))}
         aria-label="Filter by carrier"
       >
         <option value="">All carriers</option>
@@ -62,7 +66,7 @@ export function StatusSelect({ value, onChange }: { value: ShipmentStatusCategor
       <select
         value={value ?? ''}
         onChange={(e) => onChange((e.target.value || null) as ShipmentStatusCategory | null)}
-        className="bg-transparent text-xs font-semibold text-text-default focus:outline-none"
+        className={cn("bg-transparent text-xs font-semibold text-text-default", focusRing('field', 'accent'))}
         aria-label="Filter by shipment status"
       >
         <option value="">All statuses</option>

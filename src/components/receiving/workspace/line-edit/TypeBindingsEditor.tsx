@@ -18,9 +18,13 @@ import { Loader2 } from '@/components/Icons';
 import { toast } from '@/lib/toast';
 import type { TypeRow } from '@/lib/neon/catalog-queries';
 import { usePlatformAccountCatalog, usePlatformCatalog, useWorkflowNodeOptions } from '@/hooks/useCatalog';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 const SELECT =
-  'w-full rounded-lg border border-border-soft bg-surface-card inset-cozy text-role-caption text-text-default outline-none transition-colors focus:border-blue-500';
+  cn('w-full rounded-lg border border-border-soft bg-surface-card inset-cozy text-role-caption text-text-default transition-colors', focusRing('field', 'accent'));
 
 export function TypeBindingsEditor({
   type,

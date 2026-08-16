@@ -59,6 +59,8 @@ export function useRealtimeInvalidation({
   const stationChannel = safeChannelName(() => getStationChannelName(orgId!));
   const walkInChannel = safeChannelName(() => getWalkInChannelName(orgId!));
 
+  const frameCoalesce = { coalesce: 'frame' as const };
+
   useAblyChannel(
     ordersChannel,
     'order.changed',
@@ -75,6 +77,7 @@ export function useRealtimeInvalidation({
       invalidateOutboundQueues(queryClient);
     },
     !!ordersChannel && dashboard,
+    frameCoalesce,
   );
 
   // Assignment changes can patch one table in-place, but other dashboard
@@ -95,6 +98,7 @@ export function useRealtimeInvalidation({
       invalidateOutboundQueues(queryClient);
     },
     !!ordersChannel && dashboard,
+    frameCoalesce,
   );
 
   useAblyChannel(
@@ -113,6 +117,7 @@ export function useRealtimeInvalidation({
       invalidateOutboundQueues(queryClient);
     },
     !!ordersChannel && dashboard,
+    frameCoalesce,
   );
 
   // Serial added from the tech station publishes order.tested (not order.changed).
@@ -132,6 +137,7 @@ export function useRealtimeInvalidation({
       queryClient.invalidateQueries({ queryKey: ['shipped-table-fba'] });
     },
     !!ordersChannel && dashboard,
+    frameCoalesce,
   );
 
   useAblyChannel(
@@ -141,6 +147,7 @@ export function useRealtimeInvalidation({
       queryClient.invalidateQueries({ queryKey: qk.repairs.all });
     },
     !!repairsChannel && repair,
+    frameCoalesce,
   );
 
   useAblyChannel(
@@ -173,6 +180,7 @@ export function useRealtimeInvalidation({
       queryClient.invalidateQueries({ queryKey: ['receiving-item-photos'] });
     },
     !!stationChannel && receiving,
+    frameCoalesce,
   );
 
   useAblyChannel(
@@ -187,6 +195,7 @@ export function useRealtimeInvalidation({
       queryClient.invalidateQueries({ queryKey: ['receiving-item-photos'] });
     },
     !!stationChannel && receiving,
+    frameCoalesce,
   );
 
   // Carrier tracking status changed (webhook push or sync poll). Keeps the
@@ -206,6 +215,7 @@ export function useRealtimeInvalidation({
       queryClient.invalidateQueries({ queryKey: ['receiving-lines-incoming-todo'] });
     },
     !!stationChannel && receiving,
+    frameCoalesce,
   );
 
   // Email-signal events (incoming-todo Phase 4b): a rescan/reconcile upserted
@@ -223,6 +233,7 @@ export function useRealtimeInvalidation({
       queryClient.invalidateQueries({ queryKey: ['receiving-lines-incoming-summary'] });
     },
     !!stationChannel && receiving,
+    frameCoalesce,
   );
 
   useAblyChannel(
@@ -232,6 +243,7 @@ export function useRealtimeInvalidation({
       queryClient.invalidateQueries({ queryKey: qk.walkInSales.all });
     },
     !!walkInChannel && walkIn,
+    frameCoalesce,
   );
 
   // ─── Reconnect listener ────────────────────────────────────────────────

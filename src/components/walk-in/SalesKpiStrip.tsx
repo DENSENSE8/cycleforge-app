@@ -15,14 +15,15 @@
  * ACTIVE category: on Sales the heroes describe sales, not the whole counter.
  */
 
-import { KpiTile, MONITOR_KPI_TILE_CLASS } from '@/design-system/components/monitor';
+import {
+  KpiTile,
+  MONITOR_KPI_TILE_CLASS,
+  OpsKpiBand,
+  OpsKpiBandCell,
+} from '@/design-system/components/monitor';
 import { formatDateKeyMedium } from '@/utils/date';
 import type { TransactionRollup } from '@/lib/walk-in/transactions';
 import { cn } from '@/utils/_cn';
-
-/** Shared band geometry — live strip and skeleton use it so settle is zero-CLS. */
-const TILE_BAND_CLASS = 'flex flex-wrap gap-3';
-const TILE_CELL_CLASS = 'min-w-0 grow basis-40';
 
 function SkeletonKpiTile() {
   return (
@@ -48,15 +49,20 @@ export function SalesKpiStrip({
 }) {
   if (isLoading) {
     return (
-      <section aria-label="Transaction rollup" className="shrink-0">
-        <div className={cn(TILE_BAND_CLASS, 'animate-pulse')} aria-busy="true" aria-live="polite">
+      <section
+        aria-label="Transaction rollup"
+        aria-busy="true"
+        aria-live="polite"
+        className="shrink-0"
+      >
+        <OpsKpiBand className="animate-pulse" aria-label="Loading transaction rollup">
           <span className="sr-only">Loading transaction rollup…</span>
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className={TILE_CELL_CLASS}>
+            <OpsKpiBandCell key={i}>
               <SkeletonKpiTile />
-            </div>
+            </OpsKpiBandCell>
           ))}
-        </div>
+        </OpsKpiBand>
       </section>
     );
   }
@@ -77,13 +83,13 @@ export function SalesKpiStrip({
 
   return (
     <section aria-label="Transaction rollup" className="shrink-0">
-      <div className={TILE_BAND_CLASS}>
+      <OpsKpiBand aria-label="Transaction rollup">
         {tiles.map((tile) => (
-          <div key={tile.id} className={TILE_CELL_CLASS}>
+          <OpsKpiBandCell key={tile.id}>
             <KpiTile label={tile.label} value={tile.value} className="h-full" />
-          </div>
+          </OpsKpiBandCell>
         ))}
-      </div>
+      </OpsKpiBand>
     </section>
   );
 }

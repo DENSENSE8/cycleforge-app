@@ -36,9 +36,11 @@ export const STATION_TERMINAL_REGISTRY: Record<TerminalWorkspaceMode, ModeTermin
     tabs: {},
   },
   shipping: {
+    // Centre Pack pairing is not a SectionTabsSlider; hasSectionTabs stays true
+    // so preview Start still resolves when tabId is null.
     hasSectionTabs: true,
     // Preview (Up Next) uses defaultKind with tabId null → Start CTA.
-    // Active scan tabs stay `none` (scan-driven; no sticky CTA on ship/units).
+    // Active Pack centre is scan-driven (`none`); Units is a Displays leaf.
     defaultKind: 'start',
     tabs: {
       ship: 'none',

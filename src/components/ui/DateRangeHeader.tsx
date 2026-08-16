@@ -14,6 +14,8 @@ import { ToolbarButton } from '@/components/ui/ToolbarButton';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { dateKeyToLocalDate, formatWeekRangeCompact, localDateToDateKey } from '@/utils/date';
 import { cn } from '@/utils/_cn';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+
 
 interface WeekRange {
   startStr: string;
@@ -145,7 +147,7 @@ export function DateRangePickerPill({
         <Popover.Content
           align="end"
           sideOffset={6}
-          className="z-dropdown w-auto min-w-[14rem] rounded-xl border border-border-soft bg-surface-card shadow-lg ring-1 ring-black/5 focus:outline-none"
+          className={cn("z-dropdown w-auto min-w-[14rem] rounded-xl border border-border-soft bg-surface-card shadow-lg ring-1 ring-black/5", focusRing('field', 'accent'))}
         >
           <div className="flex items-center justify-between gap-2 border-b border-border-hairline px-3 py-2">
             <div className="min-w-0">

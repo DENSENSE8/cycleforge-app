@@ -40,8 +40,8 @@ export const TABLE_SURFACE_CLIP_CLASS = `${TABLE_SURFACE_CLASS} overflow-hidden`
  *
  * - No `rounded-xl` / no `elevationClass('raised')` — the grid is coplanar with
  *   the work frame, not a floating padded card.
- * - `border-l-0` — the context rail (or collapse strip) already owns the
- *   trailing hairline; a left border would double it.
+ * - `border-y` only — side rails (context / inspector) own the vertical seams;
+ *   a left/right border here would double them.
  * - `overflow-hidden` clips airtable paints at the sheet edge; sticky header
  *   still docks inside the LedgerGrid scrollport.
  *
@@ -50,7 +50,7 @@ export const TABLE_SURFACE_CLIP_CLASS = `${TABLE_SURFACE_CLASS} overflow-hidden`
  */
 export const TABLE_SURFACE_SHEET_CLASS = [
   'relative',
-  'border border-l-0 border-border-soft',
+  'border-y border-border-soft',
   'bg-surface-card',
   'overflow-hidden',
 ].join(' ');

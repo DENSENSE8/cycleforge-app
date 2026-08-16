@@ -1,89 +1,72 @@
 'use client';
 
 /**
- * URL ⇄ state for the Unbox Displays push column (`ReceivingDisplaysPushStack`).
+ * Local state for the Unbox Displays push column (`StationDisplaysPushStack`).
  *
- * Navigation (Root-to-Leaf):
- *   - absence of `?display=` → column CLOSED
- *   - `?display=index` → Root Index
- *   - `?display=<leaf>` → leaf body (Ticket · Photos · …)
+ * Navigation (Root-to-Leaf) — React state only (Arrival / Testing parity):
+ *   - `display === null` → column CLOSED
+ *   - `display === 'index'` → Root Index
+ *   - `display === <leaf>` → leaf body (Ticket · Photos · …)
  *
- * Nested modes on leaves:
- *   - Photos: `?photoAction=move|send` (absent / legacy `browse` = Actions list)
- *   - Linkage: `?linkageAction=link|note`
- *   - Ticket: `?ticketAction=chat|claim` + `?claimMode=create|link` for claim
- *   - Units: `?unitsAction=units|prebox`
- *   - Inventory: one stacked leaf (stale `?inventoryAction=` is cleared only)
+ * Nested modes on leaves ride the same snapshot via `setDisplay(tab, opts)`:
+ *   - Photos: `photoAction` move|send|compare|actions
+ *   - Linkage: `linkageAction` link|note
+ *   - Ticket: `ticketAction` chat|claim + `claimMode` create|link
+ * Prebox is a peer Assets leaf (not a Units nest).
  *
- * Compat (one release): `?ticketView=1` → `display=ticket`; `?claimView=1` /
- * `?display=claim` → `display=ticket&ticketAction=claim`. Retired ids
- * `pairing` / `po-note` map to `linkage`.
- *
- * Mutually exclusive with `detail:receiving` and AI.
- *
- * Paint: `setDisplay` `flushSync`s a pending snapshot so Open displays / leaf
- * swaps mount in the same pointer/key turn (no armed-chevron frame before the
- * rail updates); URL remains the durable SoT via `router.replace` inside
- * `startTransition`. Pending clears when `useSearchParams` catches up.
+ * Mutually exclusive with `detail:receiving` and AI. No URL writes — deep-link
+ * is not required; stale `?display=` / nest keys are stripped once on mount via
+ * silent `history.replaceState` (no App Router pass).
  */
 
-import { startTransition, useCallback, useEffect, useRef, useState } from 'react';
-import { flushSync } from 'react-dom';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import {
-  readLiveSearchParams,
-  resolveOptimisticParam,
-  shouldClearOptimisticParam,
-} from '@/lib/routing/optimistic-url-param';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   dispatchAssistantDockClose,
-  dispatchIncomingAddInboundClose,
+  dispatchStationDeskOccupantClose,
   dispatchReceivingDetailsOverlayClose,
+  STATION_DISPLAYS_CLOSE_EVENT,
 } from '@/utils/events';
-import { clearAllUnboxRightEdgeParams } from '../unbox-right-edge';
+import { stripStaleUnboxRightEdgeParamsFromUrl } from '../unbox-right-edge';
 import {
   parseUnboxDisplayNav,
   parseUnboxLinkageAction,
   parseUnboxPhotoAction,
-  parseUnboxUnitsAction,
   resolveUnboxTicketAction,
   type UnboxDisplayNav,
   type UnboxLinkageAction,
   type UnboxPhotoAction,
   type UnboxSideTabGates,
   type UnboxTicketAction,
-  type UnboxUnitsAction,
 } from '../unbox-side-tabs';
 import type { ClaimModalMode } from '@/components/receiving/workspace/claim/claim-types';
 
-const DISPLAY_PARAM = 'display';
-const PHOTO_ACTION_PARAM = 'photoAction';
-const LINKAGE_ACTION_PARAM = 'linkageAction';
-const INVENTORY_ACTION_PARAM = 'inventoryAction';
-const TICKET_ACTION_PARAM = 'ticketAction';
-const UNITS_ACTION_PARAM = 'unitsAction';
-const CLAIM_MODE_PARAM = 'claimMode';
-const LEGACY_TICKET_VIEW = 'ticketView';
-const LEGACY_CLAIM_VIEW = 'claimView';
-
 /**
- * Parse `?display=` into nav. `index` opens Root Index; leaf ids canonicalize;
- * bogus → closed.
+ * Parse a display id into nav. `index` opens Root Index; leaf ids canonicalize;
+ * bogus → closed. Kept for callers / tests that still name wire ids.
  */
 export function parseUnboxDisplayParam(raw: string | null): UnboxDisplayNav | null {
   return parseUnboxDisplayNav(raw);
 }
 
-export function shouldClearDisplayOnLineChange(
-  prevLineId: number | null,
-  currentLineId: number | null,
+/**
+ * Close the Displays column only when the open RECORD genuinely changes.
+ *
+ * The record is the CARTON (`receiving_id`), not the active child line. Sibling
+ * PO lines are children of one parent carton — switching between them keeps the
+ * same Displays context (Units / Photos / Ticket / Linkage are carton-scoped and
+ * their line-scoped bodies just re-read the new active line). Keying this on the
+ * line made every child switch close + reopen the column — the right-rail flash.
+ */
+export function shouldClearDisplayOnRecordChange(
+  prevRecordId: number | null,
+  currentRecordId: number | null,
   displayOpen: boolean,
 ): boolean {
   return (
     displayOpen &&
-    prevLineId != null &&
-    currentLineId != null &&
-    prevLineId !== currentLineId
+    prevRecordId != null &&
+    currentRecordId != null &&
+    prevRecordId !== currentRecordId
   );
 }
 
@@ -91,63 +74,58 @@ type SetUnboxDisplayOpts = {
   photoAction?: UnboxPhotoAction;
   linkageAction?: UnboxLinkageAction;
   ticketAction?: UnboxTicketAction;
-  unitsAction?: UnboxUnitsAction;
   claimMode?: ClaimModalMode;
 };
 
 /** Domain snapshot — nested leaf intents ride with the display write. */
-type UnboxDisplayPending = {
+type UnboxDisplaySnapshot = {
   display: UnboxDisplayNav | null;
   photoAction: UnboxPhotoAction;
   linkageActionRaw: string | null;
   ticketActionRaw: string | null;
-  unitsActionRaw: string | null;
   claimMode: ClaimModalMode;
 };
 
-/** Mirror of the URL fields `setDisplay` is about to write. */
+const CLOSED_SNAPSHOT: UnboxDisplaySnapshot = {
+  display: null,
+  photoAction: parseUnboxPhotoAction(null),
+  linkageActionRaw: null,
+  ticketActionRaw: null,
+  claimMode: 'link',
+};
+
+/**
+ * Build the local Displays snapshot for a tab + nest opts.
+ * `rawDisplay` remains for one-shot legacy id mapping (e.g. `po-note` → note).
+ */
 export function buildDisplayPending(
   tab: UnboxDisplayNav | null,
   opts: SetUnboxDisplayOpts | undefined,
-  rawDisplay: string | null,
-): UnboxDisplayPending {
+  rawDisplay: string | null = null,
+): UnboxDisplaySnapshot {
   if (!tab) {
-    return {
-      display: null,
-      photoAction: parseUnboxPhotoAction(null),
-      linkageActionRaw: null,
-      ticketActionRaw: null,
-      unitsActionRaw: null,
-      claimMode: 'create',
-    };
+    return { ...CLOSED_SNAPSHOT };
   }
 
   let linkageActionRaw: string | null = null;
   if (tab === 'linkage') {
     if (opts?.linkageAction === 'note') linkageActionRaw = 'note';
     else if (opts?.linkageAction === 'link') linkageActionRaw = 'link';
-    // `actions` / absent → null (parse → actions list)
   }
-  // Legacy po-note deep-link intent when opening linkage for note.
   if (rawDisplay === 'po-note' && tab === 'linkage' && !opts?.linkageAction) {
     linkageActionRaw = 'note';
   }
 
   let ticketActionRaw: string | null = null;
-  let claimMode: ClaimModalMode = 'create';
+  let claimMode: ClaimModalMode = 'link';
   if (tab === 'ticket') {
     if (opts?.ticketAction === 'claim') {
       ticketActionRaw = 'claim';
-      if (opts.claimMode === 'link') claimMode = 'link';
+      if (opts.claimMode === 'create') claimMode = 'create';
+      else if (opts.claimMode === 'link') claimMode = 'link';
     } else if (opts?.ticketAction === 'chat') {
       ticketActionRaw = 'chat';
     }
-  }
-
-  let unitsActionRaw: string | null = null;
-  if (tab === 'units') {
-    if (opts?.unitsAction === 'prebox') unitsActionRaw = 'prebox';
-    else if (opts?.unitsAction === 'units') unitsActionRaw = 'units';
   }
 
   const photoAction =
@@ -160,7 +138,6 @@ export function buildDisplayPending(
     photoAction,
     linkageActionRaw,
     ticketActionRaw,
-    unitsActionRaw,
     claimMode,
   };
 }
@@ -170,197 +147,66 @@ interface UnboxDisplayViewState {
   photoAction: UnboxPhotoAction;
   linkageActionRaw: string | null;
   ticketActionRaw: string | null;
-  unitsActionRaw: string | null;
   claimMode: ClaimModalMode;
   setDisplay: (tab: UnboxDisplayNav | null, opts?: SetUnboxDisplayOpts) => void;
   /** Resolve linkage nested action against current gates. */
   resolveLinkageAction: (gates: Pick<UnboxSideTabGates, 'hasPoNoteTab'>) => UnboxLinkageAction;
   /** Resolve ticket nested action given whether a linked ticket id exists. */
   resolveTicketAction: (hasTicketId: boolean) => UnboxTicketAction;
-  /** Resolve units nested action (Prebox gated on serials). */
-  resolveUnitsAction: (gates: { hasPrebox: boolean }) => UnboxUnitsAction;
 }
 
-export function useUnboxDisplayView(currentLineId: number | null): UnboxDisplayViewState {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
+export function useUnboxDisplayView(currentRecordId: number | null): UnboxDisplayViewState {
+  const [snapshot, setSnapshot] = useState<UnboxDisplaySnapshot>(CLOSED_SNAPSHOT);
 
-  const rawDisplay = searchParams.get(DISPLAY_PARAM);
-  const urlDisplay = parseUnboxDisplayParam(rawDisplay);
-  const urlPhotoAction = parseUnboxPhotoAction(searchParams.get(PHOTO_ACTION_PARAM));
-  const urlLinkageActionRaw = searchParams.get(LINKAGE_ACTION_PARAM);
-  const urlTicketActionRaw = searchParams.get(TICKET_ACTION_PARAM);
-  const urlUnitsActionRaw = searchParams.get(UNITS_ACTION_PARAM);
-  const urlClaimModeRaw = searchParams.get(CLAIM_MODE_PARAM);
-  const urlClaimMode: ClaimModalMode = urlClaimModeRaw === 'link' ? 'link' : 'create';
-
-  const [pending, setPending] = useState<UnboxDisplayPending | undefined>(undefined);
-
+  // Strip stale Displays URL keys once — old bookmarks must not reopen the
+  // column or trigger an App Router soft-replace.
   useEffect(() => {
-    if (shouldClearOptimisticParam(urlDisplay, pending?.display)) {
-      setPending(undefined);
+    stripStaleUnboxRightEdgeParamsFromUrl();
+  }, []);
+
+  const setDisplay = useCallback((tab: UnboxDisplayNav | null, opts?: SetUnboxDisplayOpts) => {
+    const next = buildDisplayPending(tab, opts, null);
+    if (tab) {
+      dispatchReceivingDetailsOverlayClose();
+      dispatchAssistantDockClose();
+      dispatchStationDeskOccupantClose();
     }
-  }, [urlDisplay, pending]);
+    setSnapshot(next);
+  }, []);
 
-  const requestedDisplay = resolveOptimisticParam(urlDisplay, pending?.display);
-  const photoAction = pending !== undefined ? pending.photoAction : urlPhotoAction;
-  const linkageActionRaw =
-    pending !== undefined ? pending.linkageActionRaw : urlLinkageActionRaw;
-  const ticketActionRaw =
-    pending !== undefined ? pending.ticketActionRaw : urlTicketActionRaw;
-  const unitsActionRaw =
-    pending !== undefined ? pending.unitsActionRaw : urlUnitsActionRaw;
-  const claimMode = pending !== undefined ? pending.claimMode : urlClaimMode;
+  const requestedDisplay = snapshot.display;
+  const {
+    photoAction,
+    linkageActionRaw,
+    ticketActionRaw,
+    claimMode,
+  } = snapshot;
 
-  const replaceParams = useCallback(
-    (next: URLSearchParams) => {
-      const qs = next.toString();
-      router.replace(qs ? `${pathname}?${qs}` : (pathname ?? ''));
-    },
-    [router, pathname],
-  );
-
-  const setDisplay = useCallback(
-    (tab: UnboxDisplayNav | null, opts?: SetUnboxDisplayOpts) => {
-      // Live seed — React `searchParams` can lag a concurrent `openReceivingId`
-      // write (SoT: `readLiveSearchParams`).
-      const next = readLiveSearchParams(searchParams.toString());
-      // Drop nested + legacy peer flags whenever the display changes.
-      next.delete(PHOTO_ACTION_PARAM);
-      next.delete(LINKAGE_ACTION_PARAM);
-      next.delete(INVENTORY_ACTION_PARAM);
-      next.delete(TICKET_ACTION_PARAM);
-      next.delete(UNITS_ACTION_PARAM);
-      next.delete(CLAIM_MODE_PARAM);
-      next.delete(LEGACY_TICKET_VIEW);
-      next.delete(LEGACY_CLAIM_VIEW);
-
-      const snapshot = buildDisplayPending(tab, opts, rawDisplay);
-
-      if (tab) {
-        next.set(DISPLAY_PARAM, tab);
-        if (tab === 'photos' && opts?.photoAction && opts.photoAction !== 'actions') {
-          next.set(PHOTO_ACTION_PARAM, opts.photoAction);
-        }
-        if (tab === 'linkage') {
-          if (opts?.linkageAction === 'note') next.set(LINKAGE_ACTION_PARAM, 'note');
-          else if (opts?.linkageAction === 'link') next.set(LINKAGE_ACTION_PARAM, 'link');
-        }
-        if (tab === 'units') {
-          if (opts?.unitsAction === 'prebox') next.set(UNITS_ACTION_PARAM, 'prebox');
-          else if (opts?.unitsAction === 'units') next.set(UNITS_ACTION_PARAM, 'units');
-        }
-        if (tab === 'ticket') {
-          if (opts?.ticketAction === 'claim') {
-            next.set(TICKET_ACTION_PARAM, 'claim');
-            if (opts.claimMode === 'link') next.set(CLAIM_MODE_PARAM, 'link');
-          } else if (opts?.ticketAction === 'chat') {
-            next.set(TICKET_ACTION_PARAM, 'chat');
-          }
-        }
-        // Legacy po-note deep-link intent when opening linkage for note.
-        if (rawDisplay === 'po-note' && tab === 'linkage' && !opts?.linkageAction) {
-          next.set(LINKAGE_ACTION_PARAM, 'note');
-        }
-        dispatchReceivingDetailsOverlayClose();
-        dispatchAssistantDockClose();
-        dispatchIncomingAddInboundClose();
-      } else {
-        next.delete(DISPLAY_PARAM);
-      }
-
-      // Urgent paint — flush before soft-replace so mouse/keyboard triage never
-      // shows an armed index chevron (or empty leaf shell) waiting on the URL.
-      flushSync(() => {
-        setPending(snapshot);
-      });
-      startTransition(() => {
-        replaceParams(next);
-      });
-    },
-    [searchParams, replaceParams, rawDisplay],
-  );
-
-  // Compat: rewrite legacy ticketView / claimView / pairing / po-note / claim once.
+  const prevRecordIdRef = useRef<number | null>(null);
   useEffect(() => {
-    const next = new URLSearchParams(searchParams.toString());
-    let dirty = false;
-
-    const legacyTicket = next.get(LEGACY_TICKET_VIEW) === '1';
-    const legacyClaim = next.get(LEGACY_CLAIM_VIEW) === '1';
-    const displayRaw = next.get(DISPLAY_PARAM);
-
-    if (legacyTicket && !next.get(DISPLAY_PARAM)) {
-      next.set(DISPLAY_PARAM, 'ticket');
-      dirty = true;
-    }
-    if (legacyClaim && !next.get(DISPLAY_PARAM)) {
-      next.set(DISPLAY_PARAM, 'ticket');
-      next.set(TICKET_ACTION_PARAM, 'claim');
-      dirty = true;
-    }
-    if (legacyTicket) {
-      next.delete(LEGACY_TICKET_VIEW);
-      dirty = true;
-    }
-    if (legacyClaim) {
-      next.delete(LEGACY_CLAIM_VIEW);
-      dirty = true;
-    }
-
-    if (displayRaw === 'pairing') {
-      next.set(DISPLAY_PARAM, 'linkage');
-      dirty = true;
-    } else if (displayRaw === 'po-note') {
-      next.set(DISPLAY_PARAM, 'linkage');
-      next.set(LINKAGE_ACTION_PARAM, 'note');
-      dirty = true;
-    } else if (displayRaw === 'claim') {
-      next.set(DISPLAY_PARAM, 'ticket');
-      next.set(TICKET_ACTION_PARAM, 'claim');
-      dirty = true;
-    }
-
-    if (dirty) replaceParams(next);
-  }, [searchParams, replaceParams]);
-
-  // Deep-link / reload with a display already open — suspend details + AI + Add.
-  useEffect(() => {
-    if (!requestedDisplay) return;
-    dispatchReceivingDetailsOverlayClose();
-    dispatchAssistantDockClose();
-    dispatchIncomingAddInboundClose();
-  }, [requestedDisplay]);
-
-  const prevLineIdRef = useRef<number | null>(null);
-  useEffect(() => {
-    const prev = prevLineIdRef.current;
-    prevLineIdRef.current = currentLineId;
-    if (shouldClearDisplayOnLineChange(prev, currentLineId, requestedDisplay != null)) {
+    const prev = prevRecordIdRef.current;
+    prevRecordIdRef.current = currentRecordId;
+    if (shouldClearDisplayOnRecordChange(prev, currentRecordId, requestedDisplay != null)) {
       setDisplay(null);
     }
-  }, [currentLineId, requestedDisplay, setDisplay]);
+  }, [currentRecordId, requestedDisplay, setDisplay]);
 
-  // More details opened → clear Displays so detail:receiving owns the slot.
+  // More details / desk Add → close Displays so one right-edge surface owns the slot.
   useEffect(() => {
-    const handler = () => {
-      if (!requestedDisplay && !searchParams.has(DISPLAY_PARAM) && pending === undefined) {
-        return;
-      }
-      // Close the column in this commit — do not wait for soft-replace.
-      flushSync(() => {
-        setPending(buildDisplayPending(null, undefined, null));
-      });
-      const next = readLiveSearchParams(searchParams.toString());
-      clearAllUnboxRightEdgeParams(next);
-      startTransition(() => {
-        replaceParams(next);
-      });
+    const close = () => {
+      setSnapshot(CLOSED_SNAPSHOT);
     };
-    window.addEventListener('receiving-open-details-overlay', handler);
-    return () => window.removeEventListener('receiving-open-details-overlay', handler);
-  }, [requestedDisplay, searchParams, replaceParams, pending]);
+    const onDetails = () => {
+      if (requestedDisplay == null) return;
+      close();
+    };
+    window.addEventListener('receiving-open-details-overlay', onDetails);
+    window.addEventListener(STATION_DISPLAYS_CLOSE_EVENT, close);
+    return () => {
+      window.removeEventListener('receiving-open-details-overlay', onDetails);
+      window.removeEventListener(STATION_DISPLAYS_CLOSE_EVENT, close);
+    };
+  }, [requestedDisplay]);
 
   const resolveLinkageAction = useCallback(
     (gates: Pick<UnboxSideTabGates, 'hasPoNoteTab'>) =>
@@ -373,21 +219,14 @@ export function useUnboxDisplayView(currentLineId: number | null): UnboxDisplayV
     [],
   );
 
-  const resolveUnitsAction = useCallback(
-    (gates: { hasPrebox: boolean }) => parseUnboxUnitsAction(unitsActionRaw, gates),
-    [unitsActionRaw],
-  );
-
   return {
     requestedDisplay,
     photoAction,
     linkageActionRaw,
     ticketActionRaw,
-    unitsActionRaw,
     claimMode,
     setDisplay,
     resolveLinkageAction,
     resolveTicketAction,
-    resolveUnitsAction,
   };
 }

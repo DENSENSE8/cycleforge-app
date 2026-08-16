@@ -2,6 +2,10 @@
 
 import { fmtRelative, type DetailEnvelope } from '../staff-access-shared';
 import { Button } from '@/design-system/primitives';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
 
 interface CredentialsCardProps {
   staff: DetailEnvelope['staff'];
@@ -107,7 +111,7 @@ export function CredentialsCard({
                 value={staff.session_policy}
                 onChange={(e) => onChangeSessionPolicy(e.target.value)}
                 disabled={busyBasic}
-                className="rounded-md border border-border-default bg-surface-card px-2 py-1 text-xs font-medium text-text-default focus:outline-none focus:ring-1 focus:ring-border-emphasis"
+                className={cn("rounded-md border border-border-default bg-surface-card px-2 py-1 text-xs font-medium text-text-default", focusRing('field', 'neutral'))}
               >
                 <option value="default">Default</option>
                 <option value="extended">Extended</option>

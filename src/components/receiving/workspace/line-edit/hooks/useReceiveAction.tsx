@@ -191,51 +191,10 @@ export function useReceiveAction(
         setResponseExpanded(false);
         return Promise.resolve(false);
       }
-      // Unfound dock walk: never stamp empty local_receive (unfound_no_po) —
-      // identify/create the unmatched line first (contents step / classify).
-      if (receiveIntent === 'local_receive' && row.id <= 0) {
-        setReceiveResult({
-          kind: 'diagnostic',
-          intent: receiveIntent,
-          response: {
-            at: Date.now(),
-            durationMs: 0,
-            httpStatus: 0,
-            ok: false,
-            body: {
-              error:
-                'Identify the item first — add an unmatched line (contents step) before receiving into inventory.',
-            },
-          },
-        });
-        setResponseExpanded(false);
-        return Promise.resolve(false);
-      }
-      // Commit order: print → stage → receive. Block inventory commit until the
-      // operator has scanned a putaway location (after print). Unreceive skips.
-      if (
-        receiveIntent !== 'unreceive' &&
-        Boolean(row.label_printed_at) &&
-        !(row.staged_at && row.staged_location_id)
-      ) {
-        setReceiveResult({
-          kind: 'diagnostic',
-          intent: receiveIntent,
-          response: {
-            at: Date.now(),
-            durationMs: 0,
-            httpStatus: 0,
-            ok: false,
-            body: {
-              error:
-                'Scan a location barcode first — stage this unit before receiving into inventory.',
-            },
-          },
-        });
-        setResponseExpanded(false);
-        return Promise.resolve(false);
-      }
-
+      // Unfound / unmatched cartons call mark-received-po with local_receive —
+      // the server stamps unboxed locally and never posts a Zoho purchase
+      // receive (including the empty-line unfound_no_po path). Do not block on
+      // a stub line id here.
       receiveInFlightRef.current = true;
       const startedAt = Date.now();
       setReceiving({ startedAt, intent: receiveIntent });
@@ -521,8 +480,6 @@ export function useReceiveAction(
     [
       row.receiving_id,
       row.id,
-      row.label_printed_at,
-      row.staged_at,
       row.staged_location_id,
       orgId,
       isUnfound,

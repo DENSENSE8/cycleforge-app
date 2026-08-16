@@ -39,6 +39,8 @@ import { AnimatedCheck } from '@/components/ui/AnimatedCheck';
 import { formatDateKeyShort, formatTime12hPST } from '@/utils/date';
 import type { TvBoard, TvBoardPlan, TvBoardStation, TvBoardTask, TvPlanSource } from '@/lib/ops-plans/tv-board';
 import { useOperationsTvBoard } from './useOperationsTvBoard';
+import { Panel } from '@/design-system/primitives';
+
 
 const SOURCE_LABEL: Record<TvPlanSource, string> = {
   agentic: 'Product plan',
@@ -306,7 +308,7 @@ function TaskLane({
 function StationTile({ station }: { station: TvBoardStation }) {
   const hasOverdue = station.overdue > 0;
   return (
-    <div className="rounded-2xl border border-border-soft bg-surface-card p-4">
+    <Panel radius="2xl" padding="sm">
       <p className="text-role-caption font-semibold uppercase tracking-widest text-text-soft">{station.station}</p>
       <p
         className={cn(
@@ -333,7 +335,7 @@ function StationTile({ station }: { station: TvBoardStation }) {
           </span>
         ) : null}
       </div>
-    </div>
+    </Panel>
   );
 }
 

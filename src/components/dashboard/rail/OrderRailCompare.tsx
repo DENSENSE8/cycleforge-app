@@ -28,10 +28,12 @@
 import { useMemo, useState } from 'react';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
 import { GridCellDash } from '@/components/ui/grid-cells';
+import { PlatformMark } from '@/components/ui/PlatformMark';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Checkbox } from '@/design-system/primitives';
 import { formatQueueRowDateCell } from '@/components/dashboard/orders-queue/helpers';
 import { conditionLabel } from '@/lib/conditions';
-import { sourcePlatformLabel } from '@/lib/source-platform';
+import { sourcePlatformMeta } from '@/lib/source-platform';
 import { emitToggleAll } from '@/lib/selection/table-selection';
 import {
   isRailOccupantActive,
@@ -63,7 +65,8 @@ import {
 function displayValue(raw: string | null, kind: CompareFactKind): string | null {
   if (raw === null) return null;
   if (kind === 'condition') return conditionLabel(raw, 'table');
-  if (kind === 'platform') return sourcePlatformLabel(raw);
+  // Platform paints via {@link PlatformMark} in CompareValue — never typed prose.
+  if (kind === 'platform') return raw;
   // Same helper the grid's own Date cell composes, so the pane and the row
   // behind it can never print two different days for one order.
   if (kind === 'date') return formatQueueRowDateCell(raw)?.label ?? raw;
@@ -86,6 +89,24 @@ function CompareValue({
   side: 'left' | 'right';
 }) {
   const raw = side === 'left' ? fact.left : fact.right;
+  if (fact.kind === 'platform') {
+    if (raw === null) return <GridCellDash />;
+    const meta = sourcePlatformMeta(raw);
+    if (!meta.value && !raw) return <GridCellDash />;
+    return (
+      <HoverTooltip label={meta.label || raw} asChild focusable={false}>
+        <span
+          className={cn(
+            'inline-flex shrink-0',
+            fact.diverges ? 'opacity-100' : 'opacity-70',
+          )}
+          aria-label={meta.label || raw}
+        >
+          <PlatformMark platformValue={meta.value || raw} meta={meta.value ? meta : undefined} />
+        </span>
+      </HoverTooltip>
+    );
+  }
   const text = displayValue(raw, fact.kind);
   if (text === null) return <GridCellDash />;
   return (

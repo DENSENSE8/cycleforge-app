@@ -157,7 +157,7 @@ export function DashboardRecentsPanel() {
         return {
           id: `${entry.kind}:${entry.id}`,
           label: entry.label,
-          statusDotClass: DASHBOARD_RECENT_PIN_DOT[entry.kind] ?? 'bg-slate-400',
+          statusDotClass: DASHBOARD_RECENT_PIN_DOT[entry.kind] ?? 'bg-text-faint',
           statusLabel: noun,
           meta: entry.id,
           age: when || undefined,
@@ -170,7 +170,7 @@ export function DashboardRecentsPanel() {
             <RailPeekCard
               title={entry.label}
               statusLabel={noun}
-              statusDotClass={DASHBOARD_RECENT_PIN_DOT[entry.kind] ?? 'bg-slate-400'}
+              statusDotClass={DASHBOARD_RECENT_PIN_DOT[entry.kind] ?? 'bg-text-faint'}
               facts={[{ tone: entry.kind === 'po' ? 'po' : 'order', value: entry.id }]}
               age={when || undefined}
               onOpen={openWorkspace}

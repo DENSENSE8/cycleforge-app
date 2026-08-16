@@ -12,6 +12,7 @@ import {
 } from '@/lib/inventory/events';
 import { attachTechSerial } from '@/lib/inventory/tech-serial';
 import { upsertReceivingUnbox } from '@/lib/receiving/streets/carton-street-write';
+import { parseReturnSerialTitle } from '@/components/station/receiving-line-serials';
 
 /**
  * Serial numbers as a SIDECAR. A `serial_units` row IS the item identity
@@ -267,6 +268,25 @@ export async function attachSerialToLine(
         });
       }
 
+      // Generated return-intake titles bake the scanned serial into item_name.
+      // Keep that face aligned when the operator replaces/rescans the unit —
+      // otherwise the rail/title keep painting a stale serial while the chip
+      // shows the live one.
+      let lineForState = line;
+      const scannedSerial = String(input.serial_number || '').trim();
+      if (scannedSerial && parseReturnSerialTitle(line.item_name) != null) {
+        const nextName = `Return serial ${scannedSerial}`;
+        if (nextName !== line.item_name) {
+          await client.query(
+            `UPDATE receiving_line
+                SET item_name = $2, updated_at = NOW()
+              WHERE id = $1 AND organization_id = $3`,
+            [line.id, nextName, orgId],
+          );
+          lineForState = { ...line, item_name: nextName };
+        }
+      }
+
       return {
         line_id: line.id,
         serial_unit: upserted.unit,
@@ -276,7 +296,7 @@ export async function attachSerialToLine(
         warnings: upserted.warnings,
         already_attached: false,
         inventory_event_id: event.id,
-        line_state: lineState(line),
+        line_state: lineState(lineForState),
       };
     });
 }
@@ -297,9 +317,11 @@ export interface DetachSerialResult {
 }
 
 /**
- * Detach (delete) a serial from a receiving line. Scoped to
- * `origin_receiving_line_id` so a unit that has already moved past receiving is
- * never clobbered. Never decrements quantity or writes a reversing ledger row.
+ * Detach (delete) a serial from a receiving line. Identity match on the stable
+ * `serial_unit_id` + org (the "Displayed ⟹ Deletable" contract — see the lookup
+ * comment): the Units display resolves a serial to its CURRENT line, so the
+ * request's `receiving_line_id` is recompute/audit context, not an identity
+ * filter. Never decrements quantity or writes a reversing ledger row.
  */
 export async function detachSerialFromLine(
   input: DetachSerialInput,
@@ -328,14 +350,23 @@ export async function detachSerialFromLine(
         sku: string | null;
         serial_number: string;
       }>(
-        // Phase 3: line membership via provenance reverse lookup.
+        // "Displayed ⟹ Deletable": the operator removes a serial they can SEE,
+        // and the Units display resolves a serial to its CURRENT receiving line
+        // (latest inventory_events touch, via fetchSerialsForLines /
+        // resolveCurrentReceivingLineIds) — NOT its frozen provenance origin. So
+        // the id path matches by the stable serial_unit_id + org ALONE; the
+        // request's receiving_line_id is context for the recompute/audit, not an
+        // identity filter. Filtering this lookup by provenance origin_id 404'd
+        // any serial whose current line ≠ origin line (a re-received / MOVED unit
+        // shown on a sibling line — the "serial not found on this line" bug).
+        //
+        // The serial_number branch has NO live caller (every DELETE sends
+        // serial_unit_id) and stays line-scoped by origin so a repeated serial
+        // string can't org-wide-match the wrong physical unit.
         serialUnitId
           ? `SELECT id, sku, serial_number
                FROM serial_units
-              WHERE id = $1
-                AND id IN (SELECT p.serial_unit_id FROM serial_unit_provenance p
-                            WHERE p.origin_type = 'RECEIVING_LINE' AND p.origin_id = $2 AND p.organization_id = $3)
-                AND organization_id = $3
+              WHERE id = $1 AND organization_id = $2
               LIMIT 1`
           : `SELECT id, sku, serial_number
                FROM serial_units
@@ -345,7 +376,7 @@ export async function detachSerialFromLine(
                 AND organization_id = $3
               LIMIT 1`,
         serialUnitId
-          ? [serialUnitId, input.receiving_line_id, orgId]
+          ? [serialUnitId, orgId]
           : [serialNumber, input.receiving_line_id, orgId],
       );
 
