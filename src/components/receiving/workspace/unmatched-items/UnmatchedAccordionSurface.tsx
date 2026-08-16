@@ -724,7 +724,10 @@ export function UnmatchedAccordionSurface(props: UnmatchedItemsSectionProps) {
                             onSerialAbsentChange?.(next);
                             return;
                           }
-                          markReceivingSerialAbsent(line.id, next);
+                          markReceivingSerialAbsent(line.id, next, {
+                            serial_absent: line.serial_absent ?? false,
+                            serial_absent_reason: line.serial_absent_reason ?? null,
+                          });
                         }}
                         units={units}
                         autoFocusSerial={isActiveLine}
