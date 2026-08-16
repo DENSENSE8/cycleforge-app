@@ -7,7 +7,7 @@ import { cornerClass } from '@/design-system/tokens/radius';
  * Kinetic Ledger / carton-context flush: `cornerClass('flush')` (square —
  * never `pill` / `rounded-full`). Internal `px-1.5` keeps glyph/text off the
  * border (same inset as serials "View All"). Chip-to-chip air stays zero via
- * {@link STATION_IDENTITY_ROW_CLASS}.
+ * {@link STATION_CHROME_ROW_FACE}.
  *
  * Cite the `rounded-*` CLASS or a {@link cornerClass} role, never a raw token
  * name.
@@ -46,8 +46,10 @@ export const STATION_CONTEXT_EXIT_PILL_CLASS = [
 /**
  * Icon-only action cell on the one-row carton bar — square face filling the
  * chrome row, no cell hairline (the bar is one continuous strip; the row owns
- * the bottom seam). Pair glyph with `h-3.5 w-3.5`. Listing · claim · overflow
- * share this cell.
+ * the bottom seam). Pair glyph with `h-3.5 w-3.5`. Listing · overflow only.
+ * Claim is the word face ({@link STATION_CONTEXT_CLAIM_CHROME_CLASS}), not this
+ * cell. Never put `IconButton` on this row — `size="sm"` is a fixed h-7 w-7
+ * box that sits off the strip.
  */
 export const STATION_CONTEXT_ACTION_CELL_CLASS = [
   'ds-raw-button relative z-base flex h-full aspect-square shrink-0 items-center justify-center',
@@ -102,20 +104,23 @@ export const STATION_CONTEXT_PHOTO_FLUSH_CLASS =
   `h-11 w-11 shrink-0 justify-center ${cornerClass('flush')} border px-0 ${STATION_CONTEXT_PHOTO_TONE}`;
 
 /**
- * Locked width matches Photos so Claim does not reflow the commerce row.
- * Status is content-width (full lifecycle label). Fills secondary band row 2
- * (`h-6`). Typography matches classify pills (`text-role-micro` + uppercase).
- *
- * **Seam flush:** `border-t-0 border-r-0` — pairs with Photos above; trailing
- * vertical rule is the Displays / utility hairline, not a second Claim border.
+ * Claim tone — orange wash twin of {@link STATION_CONTEXT_PHOTO_TONE}.
+ * Upgrade the orange recipe HERE.
  */
-export const STATION_CONTEXT_CLAIM_PILL_CLASS = `h-6 ${STATION_CONTEXT_ACTION_PILL_FACE} w-14 justify-center px-1.5 border-t-0 border-r-0 border-orange-200 bg-orange-50 text-role-micro font-medium uppercase tracking-wide text-orange-600 hover:bg-orange-100 hover:text-orange-700`;
+const STATION_CONTEXT_CLAIM_TONE =
+  'border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100 hover:text-orange-700';
 
 /**
- * Carton lifecycle status — content-width face on commerce row 2 (replaces the
- * bare status dot). Sizes to the full label (Incoming · Received · …) — never
- * a locked `w-14` that truncates. Tone classes come from
- * `getReceivingStatusPillClass` (rail status SoT); compose here for geometry.
- * Height matches {@link STATION_SECONDARY_BAND_FACE} (`h-6`).
+ * Claim on the one-row carton chrome — same geometry as Photos
+ * ({@link STATION_CONTEXT_PHOTO_CHROME_CLASS}): h-full, icon left + word right.
+ * Ticket + "claim". Never IconButton. Linked tickets stay ReceivingTicketChip.
  */
-export const STATION_CONTEXT_STATUS_PILL_CLASS = `inline-flex h-6 w-auto shrink-0 items-center justify-center whitespace-nowrap px-1.5 ${cornerClass('flush')} border text-role-micro font-medium uppercase tracking-wide shadow-none box-border`;
+export const STATION_CONTEXT_CLAIM_CHROME_CLASS = [
+  'ds-raw-button relative z-base flex h-full shrink-0 items-center justify-center gap-0.5',
+  cornerClass('flush'),
+  'border-0 px-1.5 text-role-caption font-semibold shadow-none',
+  STATION_CONTEXT_CLAIM_TONE,
+  focusRing('control', 'accent'),
+  'outline-none',
+].join(' ');
+

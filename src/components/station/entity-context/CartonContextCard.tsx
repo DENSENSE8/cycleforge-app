@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { ChevronLeft, ExternalLink, MoreHorizontal, Receipt, Ticket } from '@/components/Icons';
+import { ChevronLeft, ExternalLink, MoreHorizontal, Receipt } from '@/components/Icons';
 import {
   CHIP_TONES,
   getLast8,
@@ -12,13 +12,19 @@ import {
 import { GridQtyFractionValue } from '@/components/ui/grid-cells';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import {
+  CHIP_HOVER_MENU_ITEM_CLASS,
+  CHIP_HOVER_MENU_ITEM_SEAM_CLASS,
+  CHIP_HOVER_MENU_ITEM_TONE,
+  CHIP_HOVER_MENU_PANEL_CLASS,
+} from '@/components/ui/copy-chip-hover-menu-chrome';
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  IconButton,
 } from '@/design-system/primitives';
 import { ReceivingPhotoButton } from '@/components/receiving/workspace/line-edit/ReceivingPhotoButton';
+import { StationContextClaimCell, StationContextIconCell } from './StationContextActionCell';
 import { IdentityLinkChip } from '@/components/receiving/workspace/line-edit/IdentityLinkChip';
 import { ReceivingTicketChip } from '@/components/receiving/workspace/line-edit/ReceivingTicketChip';
 import { FulfillmentPickupPill } from '@/components/receiving/ReceivingIdentityChips';
@@ -40,7 +46,6 @@ import {
 import { platformMetaIconTone } from '@/lib/source-platform';
 import { cn } from '@/utils/_cn';
 import {
-  STATION_CONTEXT_ACTION_CELL_CLASS,
   STATION_CONTEXT_EXIT_PILL_CLASS,
 } from './station-context-action-pill';
 import {
@@ -74,11 +79,14 @@ import {
  * Pair hosts with `StationWorkbench reserveIdentityClearance={false}` (in-flow)
  * or legacy overlay clearance.
  *
- *   Left — identity: back · status dot · order# · tracking#
- *   Middle — classify: priority · platform · type. Collapses
- *            first (dots-only / shortLabel) when the row is tight.
- *   Right — actions: quiet price · listing · claim · photos as icon buttons.
- *            Those three verbs overflow into `⋯` before the row wraps.
+ *   Left — identity: back · order# · tracking# · received status
+ *   Middle — classify: priority · platform · type. Collapses to dots
+ *            only when those labels would touch identity or actions.
+ *   Right — actions: quiet price · listing (icon) · claim (ticket + "claim")
+ *            · photos (camera + count). Claim and photos share one word-button
+ *            recipe (`STATION_CONTEXT_*_CHROME_CLASS`). Listing / overflow are
+ *            raw `h-full` cells — never `IconButton` (fixed h-7 box floats off
+ *            the strip). Those three verbs overflow into `⋯` before wrap.
  *
  * Secondary / exact triage detail (qty rollups, extra boxes, lineage,
  * exception routing, diagnostics) lives in right-edge **Displays** — never a
@@ -87,7 +95,7 @@ import {
  *
  * The bar never wraps. Classify pills collapse and trailing verbs park in
  * `⋯` before a second row appears. Status is a 6–8px colored dot, not a
- * RECEIVED pill. Listing / claim / photos are icon buttons — no brand tiles.
+ * RECEIVED pill. No brand tiles. Never IconButton on this row.
  * Omit optional props (`onMakeClaim`, `showStaffPhotoRow`, `lifecycle`,
  * `showPoTotal`, classify, …) to hide that affordance per station — do not
  * invent empty placeholder tracks.
@@ -105,8 +113,9 @@ import {
  *  - Identity editing: listing/tracking editors accessible via chip edit actions,
  *    open external editing tabs. PO# is copy/open when linked; `onEditPo` opens
  *    Package Pairing → PO when there is no real Zoho PO id.
- *  - Classify chips open chip-anchored menus on the left only — right-side
- *    identity/actions are unchanged. Full Classify Displays stays the searchable
+ *  - Classify / order / tracking / photos menus open below the chip (`side=bottom`,
+ *    `align=start`). Overflow `⋯` is below + `align=end`. Collision flip to
+ *    left/right is off on this bar. Full Classify Displays stays the searchable
  *    editor when staff open that leaf themselves.
  *
  * Purely presentational/controlled — all state lives in the parent.
@@ -427,8 +436,8 @@ export function CartonContextCard({
   const typeOptions = typeClassifyOptions({ catalogOptions: typeCatalog.options });
 
   // Exit chevron — boxed flush face filling chrome row (h-full square).
-  // Lead column is {@link STATION_IDENTITY_LEAD_COL_CLASS} so the
-  // chevron and lifecycle dot centre on one x and fill the chrome row.
+  // Lifecycle status sits after tracking (IDs first, then received state) —
+  // not in the lead column, so it is not mistaken for a classify dot.
   const exitControl = onExitToList ? (
     <HoverTooltip label={exitLabel} asChild>
       {/* Boxed flush cube — own carton-context face (not scan-bar mode chrome). */}
@@ -451,6 +460,7 @@ export function CartonContextCard({
   const classifyCluster = showClassifyControls ? (
     <div
       data-testid="carton-context-classify-pills"
+      data-carton-bar-slot="classify"
       className={cn(STATION_IDENTITY_GROUP_CLASS, 'shrink-0')}
     >
       {showStaffPhotoRow ? (
@@ -526,6 +536,7 @@ export function CartonContextCard({
         onDetails={onOrderDetails}
         detailsLabel="Show inspector"
         actionsInMenu
+        menuPlacement="below"
       />
     ) : (
       <OrderIdChip
@@ -567,6 +578,7 @@ export function CartonContextCard({
         editOpen={false}
         editLabel="Edit tracking"
         actionsInMenu
+        menuPlacement="below"
       />
       {filledExtraTrackingsCount > 0 ? (
         <HoverTooltip
@@ -589,7 +601,6 @@ export function CartonContextCard({
         dense
         displayWidth="last8"
         carrierHint={carrierHint}
-        truncateDisplay={false}
       />
       {filledExtraTrackingsCount > 0 ? (
         <HoverTooltip
@@ -622,47 +633,32 @@ export function CartonContextCard({
   const listingIconButton =
     showListing && !overflowSet.has('listing') ? (
       <HoverTooltip label={listingOpenTitle} asChild>
-        <IconButton
-          type="button"
-          tone="neutral"
-          size="sm"
+        <StationContextIconCell
           ariaLabel={listingOpenTitle}
           disabled={!listingHasTarget}
           onClick={() => {
             if (listingOpenHref) window.open(listingOpenHref, '_blank', 'noopener,noreferrer');
           }}
-          icon={
-            <span
-              className={cn(
-                listingHasTarget && platformIconTone
-                  ? platformIconTone.className
-                  : 'text-text-faint',
-              )}
-              style={listingHasTarget && platformIconTone ? platformIconTone.style : undefined}
-            >
-              <ExternalLink className={STATION_CHROME_GLYPH_CLASS} />
-            </span>
-          }
-          className={STATION_CONTEXT_ACTION_CELL_CLASS}
-          data-testid="carton-context-listing"
-        />
+          testId="carton-context-listing"
+        >
+          <span
+            className={cn(
+              listingHasTarget && platformIconTone
+                ? platformIconTone.className
+                : 'text-text-faint',
+            )}
+            style={listingHasTarget && platformIconTone ? platformIconTone.style : undefined}
+          >
+            <ExternalLink className={STATION_CHROME_GLYPH_CLASS} />
+          </span>
+        </StationContextIconCell>
       </HoverTooltip>
     ) : null;
 
   const claimIconButton =
     showStaffPhotoRow && !zendeskTrimmed && onMakeClaim && !overflowSet.has('claim') ? (
       <HoverTooltip label={claimViewActive ? 'Hide claim' : 'File claim'} asChild>
-        <IconButton
-          type="button"
-          tone="neutral"
-          size="sm"
-          onClick={onMakeClaim}
-          ariaLabel={claimViewActive ? 'Hide claim' : 'File claim'}
-          aria-pressed={claimViewActive}
-          icon={<Ticket className={cn(STATION_CHROME_GLYPH_CLASS, 'text-orange-600')} />}
-          className={STATION_CONTEXT_ACTION_CELL_CLASS}
-          data-testid="carton-context-claim"
-        />
+        <StationContextClaimCell active={claimViewActive} onClick={onMakeClaim} />
       </HoverTooltip>
     ) : null;
 
@@ -697,7 +693,7 @@ export function CartonContextCard({
         poRef={effectiveOrder || null}
         photoStage={photoStage}
         appearance="chrome"
-        galleryPlacement="left"
+        galleryPlacement="below"
         onSendToTicket={onSendToTicket}
         onOpenMovePhotosExternal={onOpenMovePhotosExternal}
         onOpenPhotosDisplay={onOpenPhotosDisplay}
@@ -759,22 +755,27 @@ export function CartonContextCard({
     overflowItems.length > 0 ? (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <IconButton
-            type="button"
-            tone="neutral"
-            size="sm"
-            icon={<MoreHorizontal className={STATION_CHROME_GLYPH_CLASS} />}
-            ariaLabel="More actions"
-            className={STATION_CONTEXT_ACTION_CELL_CLASS}
-            data-testid="carton-context-overflow"
-          />
+          <StationContextIconCell ariaLabel="More actions" testId="carton-context-overflow">
+            <MoreHorizontal className={STATION_CHROME_GLYPH_CLASS} />
+          </StationContextIconCell>
         </DropdownMenuTrigger>
         <DropdownMenuContent
           align="end"
-          className="min-w-[12rem] border border-border-soft bg-surface-card text-text-default"
+          side="bottom"
+          sideOffset={6}
+          avoidCollisions={false}
+          className={CHIP_HOVER_MENU_PANEL_CLASS}
         >
-          {overflowItems.map((item) => (
-            <DropdownMenuItem key={item.key} onSelect={item.onSelect}>
+          {overflowItems.map((item, i) => (
+            <DropdownMenuItem
+              key={item.key}
+              onSelect={item.onSelect}
+              className={cn(
+                CHIP_HOVER_MENU_ITEM_CLASS,
+                i > 0 && CHIP_HOVER_MENU_ITEM_SEAM_CLASS,
+                CHIP_HOVER_MENU_ITEM_TONE.default,
+              )}
+            >
               {item.label}
             </DropdownMenuItem>
           ))}
@@ -809,14 +810,17 @@ export function CartonContextCard({
       data-testid="carton-context-one-row"
     >
       {/* Left — identity (always visible) */}
-      <div className="flex min-w-0 shrink-0 items-stretch">
+      <div
+        data-carton-bar-slot="identity"
+        className="flex min-w-0 shrink-0 items-stretch"
+      >
         {exitControl ? (
           <div className={STATION_IDENTITY_LEAD_COL_CLASS}>{exitControl}</div>
         ) : null}
-        {statusDot}
         <div className="flex h-full min-w-0 shrink items-stretch [&_[data-chip-face]]:rounded-none">
           {orderChip}
           {trackingSlot}
+          {statusDot}
           {qty ? (
             <div className={STATION_CHROME_CELL_CLASS}>
               <GridQtyFractionValue received={qty.received} expected={qty.expected} />
@@ -833,7 +837,7 @@ export function CartonContextCard({
       ) : null}
 
       {/* Right — quiet price + icon actions; ⋯ before wrap */}
-      <div className="flex shrink-0 items-stretch">
+      <div data-carton-bar-slot="actions" className="flex shrink-0 items-stretch">
         {priceFace}
         {listingIconButton}
         {ticketInline ?? claimIconButton}

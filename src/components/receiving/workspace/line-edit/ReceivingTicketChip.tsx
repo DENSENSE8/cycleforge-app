@@ -5,6 +5,12 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Archive, History, Loader2, Unlink } from '@/components/Icons';
 import { toast } from '@/lib/toast';
 import { IdentityLinkChip } from './IdentityLinkChip';
+import { cn } from '@/utils/_cn';
+import {
+  CHIP_HOVER_MENU_ITEM_CLASS,
+  CHIP_HOVER_MENU_ITEM_SEAM_CLASS,
+  CHIP_HOVER_MENU_ITEM_TONE,
+} from '@/components/ui/copy-chip-hover-menu-chrome';
 import {
   SellerMessageAnchoredPanel,
   SellerMessageMenuItem,
@@ -193,7 +199,11 @@ export function ReceivingTicketChip({
                 onClick={openTicketHistory}
                 aria-expanded={ticketViewActive}
                 aria-label="Ticket history"
-                className="flex w-full items-center gap-2 border-t border-border-hairline px-3 py-1.5 text-left text-role-caption font-semibold uppercase tracking-widest text-text-muted hover:bg-surface-hover"
+                className={cn(
+                  CHIP_HOVER_MENU_ITEM_CLASS,
+                  CHIP_HOVER_MENU_ITEM_SEAM_CLASS,
+                  CHIP_HOVER_MENU_ITEM_TONE.default,
+                )}
               >
                 <History className="h-3.5 w-3.5 shrink-0 text-text-soft" aria-hidden />
                 History
@@ -209,7 +219,11 @@ export function ReceivingTicketChip({
               onClick={runNasSync}
               disabled={!ticketNumber || nasArchive.isPending}
               aria-label="Archive this ticket's photos to the NAS claim folder"
-              className="flex w-full items-center gap-2 border-t border-border-hairline px-3 py-1.5 text-left text-role-caption font-semibold uppercase tracking-widest text-text-muted hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-40"
+              className={cn(
+                CHIP_HOVER_MENU_ITEM_CLASS,
+                CHIP_HOVER_MENU_ITEM_SEAM_CLASS,
+                CHIP_HOVER_MENU_ITEM_TONE.default,
+              )}
             >
               {nasArchive.isPending ? (
                 <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-text-soft" aria-hidden />
@@ -225,7 +239,11 @@ export function ReceivingTicketChip({
               onClick={() => unlink.mutate()}
               disabled={unlink.isPending || receivingId == null || zendeskTicketId == null}
               aria-label="Unlink ticket"
-              className="flex w-full items-center gap-2 border-t border-border-hairline px-3 py-1.5 text-left text-role-caption font-semibold uppercase tracking-widest text-rose-600 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-40"
+              className={cn(
+                CHIP_HOVER_MENU_ITEM_CLASS,
+                CHIP_HOVER_MENU_ITEM_SEAM_CLASS,
+                CHIP_HOVER_MENU_ITEM_TONE.danger,
+              )}
             >
               {unlink.isPending ? (
                 <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-rose-500" aria-hidden />

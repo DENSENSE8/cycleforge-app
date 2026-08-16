@@ -32,6 +32,11 @@ import {
   KIOSK_POS_SIDEBAR_BODY,
 } from '@/app/kiosk/kiosk-pos-surface';
 import { cn } from '@/utils/_cn';
+import {
+  isCatalogRootSearchLevel,
+  resolveCatalogProductPool,
+  shouldHydrateRootSearchPool,
+} from './catalog-search-pool';
 
 export interface ProductSelection {
   type: string;
@@ -71,14 +76,15 @@ interface ProductSelectorProps {
   flowInPage?: boolean;
   /**
    * `flush` = stacked edge-to-edge chrome (square rows). Ignored when
-   * `layout="kiosk-split"` — that path uses the floating-card POS surface.
+   * `layout="kiosk-split"` — that path uses the flush POS surface recipes.
    * Staff intake keeps the soft `default` cards.
    */
   appearance?: 'default' | 'flush';
   /**
    * `stacked` = staff / legacy single column.
-   * `kiosk-split` = left category+cart sidebar · right browse (or `stageContent`)
-   * with Square/Shopify floating-card POS chrome (`kiosk-pos-surface`).
+   * `kiosk-split` = left category sidebar · right browse (or `stageContent`)
+   * with flush POS chrome (`kiosk-pos-surface`). Cart ledger lives on the
+   * shell's right column when `hideCartTray` is set.
    */
   layout?: 'stacked' | 'kiosk-split';
   /** Browse vs checkout — checkout replaces the products stage with `stageContent`. */
@@ -101,6 +107,11 @@ interface ProductSelectorProps {
   onSearchQueryChange?: (value: string) => void;
   /** Hide the browse-stage search when the expanded spine hosts it. */
   hideBrowseSearch?: boolean;
+  /**
+   * Hide the left-rail cart tray (v2 shell owns a persistent right ledger).
+   * Default false so staff stacked + legacy split keep the tray.
+   */
+  hideCartTray?: boolean;
 }
 
 interface CategoryNode {
@@ -172,9 +183,10 @@ export function ProductSelector({
   searchQuery,
   onSearchQueryChange,
   hideBrowseSearch = false,
+  hideCartTray = false,
 }: ProductSelectorProps) {
   const kioskSplit = layout === 'kiosk-split';
-  /** Floating-card POS chrome — only the kiosk-split catalog path. */
+  /** Flush POS chrome — only the kiosk-split catalog path. */
   const pos = kioskSplit;
   /** Stacked flush chrome — staff/legacy; never when POS split is active. */
   const flush = appearance === 'flush' && !pos;
@@ -360,11 +372,23 @@ export function ProductSelector({
 
   // Lazy-load the full catalog once, on the first root-level keystroke. The
   // server response is Redis-cached, so this is a single cheap round trip and
-  // every later keystroke filters in memory.
-  const isAtRootLevel = !currentCategoryId && !showAllProducts;
+  // every later keystroke filters in memory. Kiosk-split first-page paint
+  // flips showAllProducts — that must not disable this path.
+  const isAtRootLevel = isCatalogRootSearchLevel({
+    currentCategoryId,
+    showAllProducts,
+    kioskSplit,
+  });
   useEffect(() => {
-    if (!isAtRootLevel || search.trim().length < 2) return;
-    if (rootSearchPool || loadingRootSearch) return;
+    if (
+      !shouldHydrateRootSearchPool({
+        isAtRootLevel,
+        search,
+        hasPool: Boolean(rootSearchPool),
+      })
+    ) {
+      return;
+    }
 
     let cancelled = false;
     setLoadingRootSearch(true);
@@ -376,8 +400,10 @@ export function ProductSelector({
       })
       .catch(() => { /* search degrades to categories-only; never break the step */ })
       .finally(() => { if (!cancelled) setLoadingRootSearch(false); });
-    return () => { cancelled = true; };
-  }, [isAtRootLevel, search, rootSearchPool, loadingRootSearch, apiBasePath]);
+    return () => {
+      cancelled = true;
+    };
+  }, [isAtRootLevel, search, rootSearchPool, apiBasePath]);
 
   // Sync selection + price to parent after state settles (avoids setState-during-render)
   const isInitialMount = useRef(true);
@@ -401,8 +427,12 @@ export function ProductSelector({
 
   // At the root level a query searches the WHOLE catalog (rootSearchPool);
   // inside a category it filters that category's own page, as before.
-  const productPool =
-    isAtRootLevel && search.trim().length >= 2 && rootSearchPool ? rootSearchPool : products;
+  const productPool = resolveCatalogProductPool({
+    isAtRootLevel,
+    search,
+    rootSearchPool,
+    products,
+  });
 
   const filteredProducts = productPool.filter((p) => {
     if (!search.trim()) return true;
@@ -1206,7 +1236,8 @@ export function ProductSelector({
               )}
               {(categoriesHydratedRef.current || !loading) && !error && renderCategoryAccordion()}
             </div>
-            {(selectedItems.length > 0 || catalogPhase === 'checkout') &&
+            {!hideCartTray &&
+              (selectedItems.length > 0 || catalogPhase === 'checkout') &&
               renderCartTray({ withActions: true })}
           </div>
         </aside>

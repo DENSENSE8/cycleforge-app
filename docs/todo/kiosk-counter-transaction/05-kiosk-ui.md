@@ -34,11 +34,13 @@ One 4-step counter form that produces a sale, a repair, or both — replacing th
 
 ## This is a FORM, not a Station
 
-`.claude/rules/contextual-display.md` Q1: scanner input ⇒ Station. **There is no scanner at the counter**, and the owner's refinement in `docs/todo/foh-boh-surface-split-plan.md` is explicit: *"The counter is a form, not a scanner station."*
+`.claude/rules/contextual-display.md` Q1: scanner input ⇒ Station. **Portrait `/kiosk` welcome remains a form without a scan bar.**
 
-So: **no** scan bar, **no** focus-lock loop, **no** `StationWorkbench` chrome. Step motion follows `.claude/rules/display/auth-step-panel.md` — and note its 2026-07-26 supersession: for a small field count, prefer **progressive reveal** (`framerPresence.collapseHeight`, both fields mounted) over panel-swapping. Route every preset through `useMotionTransition` / `useMotionPresence` so reduced motion collapses to opacity.
+**Override (2026-08-12 — attended register on `/kiosk/v2`):** landscape v2 **does** mount `useWedgeScanner` + `classifyKioskScan` so UPC/IMEI/RS# drive the **session cart**. It still must **not** compose `StationWorkbench`, focus-lock loops, or Station chrome. Wedge classification is kiosk-local (do not reuse warehouse `scan-resolver` — 12-digit FedEx vs UPC collide).
 
-Reuse the existing kiosk chrome in `src/app/kiosk/page.tsx`: the square container-query stage, `cornerClass`, `focusRing`, semantic tokens. No page-local hex, no raw `z-[N]`.
+Step motion on portrait counter forms still follows `.claude/rules/display/auth-step-panel.md`.
+
+Reuse the existing kiosk chrome: `cornerClass`, `focusRing`, semantic tokens. No page-local hex, no raw `z-[N]`.
 
 ## Scope
 

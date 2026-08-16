@@ -24,16 +24,26 @@ export const GET = withKioskAuth(async (req: NextRequest, ctx) => {
 
     const mode = String(req.nextUrl.searchParams.get('mode') || '').trim().toLowerCase();
     const categoryId = req.nextUrl.searchParams.get('categoryId');
+    const barcode = String(req.nextUrl.searchParams.get('barcode') || '')
+      .replace(/\D/g, '')
+      .trim();
 
-    if (mode !== 'all' && !categoryId) {
+    if (!barcode && mode !== 'all' && !categoryId) {
       return NextResponse.json({ success: false, error: 'categoryId is required' }, { status: 400 });
     }
 
     const retail = await loadRetailProductsForOrg(ctx.organizationId as OrgId);
-    const scoped =
-      categoryId && mode !== 'all'
-        ? retail.filter((product) => product.categoryIds.includes(categoryId))
-        : retail;
+    let scoped = retail;
+    if (barcode) {
+      // Exact SKU match (digits-normalized) or SKU ending with the barcode.
+      scoped = retail.filter((product) => {
+        const skuDigits = String(product.sku ?? '').replace(/\D/g, '');
+        const sku = String(product.sku ?? '').trim();
+        return sku === barcode || skuDigits === barcode || skuDigits.endsWith(barcode);
+      });
+    } else if (categoryId && mode !== 'all') {
+      scoped = retail.filter((product) => product.categoryIds.includes(categoryId));
+    }
 
     const page = scoped.slice(offset, offset + limit);
 

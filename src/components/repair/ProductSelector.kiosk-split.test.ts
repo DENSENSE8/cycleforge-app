@@ -70,4 +70,18 @@ describe('ProductSelector kiosk-split meta', () => {
     assert.doesNotMatch(src, /fuse|Fuse|cmd-k|cmdk|CommandPalette/i);
     assert.match(src, /!hideBrowseSearch && renderSearchBar\(\)/);
   });
+
+  it('keeps whole-catalog search live after kiosk first-page paint', () => {
+    assert.match(src, /isCatalogRootSearchLevel/);
+    assert.match(src, /resolveCatalogProductPool/);
+    assert.match(src, /shouldHydrateRootSearchPool/);
+    assert.doesNotMatch(src, /const isAtRootLevel = !currentCategoryId && !showAllProducts/);
+  });
+
+  it('hides the left-rail cart tray when the shell owns the right ledger', () => {
+    assert.match(src, /hideCartTray\?:/);
+    assert.match(src, /!hideCartTray &&/);
+    assert.match(shell, /hideCartTray/);
+    assert.match(shell, /KioskCartLedger/);
+  });
 });

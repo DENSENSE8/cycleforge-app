@@ -14,6 +14,11 @@ import { copySellerClaimMessageWithPersist } from '@/lib/receiving-claim-seller-
 import { sellerDraftMatchesTicket } from '@/lib/receiving-claim-seller-ticket-match';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
+import {
+  CHIP_HOVER_MENU_ITEM_CLASS,
+  CHIP_HOVER_MENU_ITEM_SEAM_CLASS,
+  CHIP_HOVER_MENU_ITEM_TONE,
+} from '@/components/ui/copy-chip-hover-menu-chrome';
 
 
 
@@ -121,7 +126,11 @@ export function SellerMessageMenuItem({
       onClick={onClick}
       aria-label="Seller message draft"
       aria-expanded={active}
-      className="flex w-full items-center gap-2 border-t border-border-hairline px-3 py-1.5 text-left text-role-caption font-semibold uppercase tracking-widest text-text-muted hover:bg-surface-hover"
+      className={cn(
+        CHIP_HOVER_MENU_ITEM_CLASS,
+        CHIP_HOVER_MENU_ITEM_SEAM_CLASS,
+        CHIP_HOVER_MENU_ITEM_TONE.default,
+      )}
     >
       <MessageSquare className="h-3.5 w-3.5 shrink-0 text-text-soft" />
       Message
