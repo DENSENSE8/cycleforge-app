@@ -5,6 +5,13 @@
     },
     "motion-plus": {
       "url": "https://mcp.motion.dev/plus"
+    },
+    "code-graph": {
+      "command": "/home/avion/Garisek-OS/tools/code-graph/run-mcp.sh",
+      "args": [],
+      "env": {
+        "CODE_GRAPH_PROJECT": "cycleforge-app"
+      }
     }
   }
 }
