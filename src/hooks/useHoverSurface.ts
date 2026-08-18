@@ -25,8 +25,8 @@
  *
  * Opening evicts whatever is open. By default the registry is module-scope, so
  * a carton-bar menu evicts a rail peek and vice versa — different React trees,
- * one pointer, one answer on screen. Wrap a subtree in
- * {@link HoverSurfaceProvider} to scope the rule to that subtree instead.
+ * one pointer, one answer on screen. (A subtree-scoped registry is supported by
+ * `HoverSurfaceContext`; no provider is exported until a caller needs one.)
  *
  * Deliberately no provider REQUIREMENT: this hook replaced three engines with
  * ~14 existing call sites across unrelated trees, and forcing every host to
@@ -39,8 +39,8 @@
  * under the cursor, a sibling tooltip painting, a `ResizeObserver` re-measuring
  * and shifting a cell by a pixel. Each of those emits leave→enter with the
  * pointer stationary, and a debounce on top of that is a flashing loop. Callers
- * that portal their surface should therefore prefer {@link isPointerInside} /
- * the `pointerover` guard in `surfaceProps` over raw leave events.
+ * that portal their surface should therefore prefer the `pointerover` guard in
+ * `surfaceProps` over raw leave events.
  */
 
 import {
@@ -80,26 +80,6 @@ function setActive(registry: Registry, id: string | null) {
 const globalRegistry = createRegistry();
 
 const HoverSurfaceContext = createContext<Registry | null>(null);
-
-/**
- * Scope the one-at-a-time rule to a subtree. Optional: without it, surfaces
- * coordinate through the module-scope registry.
- */
-export const HoverSurfaceProvider = HoverSurfaceContext.Provider;
-
-/** Create a registry to hand to {@link HoverSurfaceProvider}. */
-export { createRegistry as createHoverSurfaceRegistry };
-
-/** True when `node` is inside the trigger or any open portal surface. */
-export function isPointerInside(
-  node: EventTarget | null,
-  triggerEl: HTMLElement | null,
-  surfaceSelector = '[data-hover-surface]',
-): boolean {
-  if (!(node instanceof Node)) return false;
-  if (triggerEl?.contains(node)) return true;
-  return node instanceof Element && node.closest(surfaceSelector) != null;
-}
 
 export function useHoverSurface({
   id,

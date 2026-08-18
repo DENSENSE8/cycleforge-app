@@ -71,7 +71,7 @@ export function toggleScanStance(): StationScanStance {
   return next;
 }
 
-export function subscribeScanStance(listener: () => void): () => void {
+function subscribeScanStance(listener: () => void): () => void {
   listeners.add(listener);
   return () => {
     listeners.delete(listener);

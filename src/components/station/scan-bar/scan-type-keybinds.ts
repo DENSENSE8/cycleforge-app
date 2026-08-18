@@ -7,7 +7,7 @@ import { WEDGE_MAX_INTER_KEY_MS } from '@/lib/keyboard/wedge-scan-machine';
 
 export { WEDGE_MAX_INTER_KEY_MS };
 
-export type TypeKeybindAction =
+type TypeKeybindAction =
   | { kind: 'arm'; index: number }
   | { kind: 'auto' }
   | { kind: 'toggle-stance' }

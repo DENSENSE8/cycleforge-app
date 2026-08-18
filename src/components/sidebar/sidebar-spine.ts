@@ -32,7 +32,7 @@ export const SIDEBAR_SPINE_WIDTH = 'w-[240px]';
  * Two spellings of one measurement is a fork risk, so they live on adjacent
  * lines: change one, change the other.
  */
-export const SIDEBAR_SPINE_WIDTH_PX = 240;
+const SIDEBAR_SPINE_WIDTH_PX = 240;
 
 /**
  * Drag-to-resize + drag-to-collapse contract for the MasterNav spine
