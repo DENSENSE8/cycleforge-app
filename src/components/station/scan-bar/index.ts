@@ -12,35 +12,20 @@
  *
  * Domain wrappers (TestingScanBar, ReceivingUnboxScanBar, ShippingScanBar) supply
  * mode lists + submit logic; they should not re-declare chrome classes.
+ *
+ * Only CROSS-MODULE consumers are re-exported here. Siblings inside this folder
+ * import each other directly (`./scan-stance`, `./scan-esc-block`, …), so a
+ * pass-through nothing outside imports is dead weight and trips the knip gate.
  */
 
 export { ScanBandShell } from './ScanBandShell';
 export { StationScanBar, type StationScanBarProps } from './StationScanBar';
 export { ThemedStationScanBar, type ThemedStationScanBarProps } from './ThemedStationScanBar';
-export { StationScanLeadingIcon } from './StationScanLeadingIcon';
 export { StationScanModeRail, type StationScanModeDefinition } from './StationScanModeRail';
-export {
-  type StationScanStance,
-  getScanStance,
-  isScanPreview,
-  setScanStance,
-  toggleScanStance,
-  useScanStance,
-  useToggleScanStance,
-} from './scan-stance';
-export { nextArmedMode, shouldHandleScanModeEsc } from './scan-mode';
+export { isScanPreview, useScanStance } from './scan-stance';
 export { useScanModeRelease } from './useScanModeRelease';
-export {
-  type StationScanPreviewClassification,
-  type PreviewTypeSource,
-  classifyPreviewFromArmed,
-  formatPreviewLine,
-  formatPreviewSource,
-} from './preview-classify';
-export { StationScanPreviewCard } from './StationScanPreviewCard';
-export { getScanEscBlock, setScanEscBlock, consumeScanEscBlock } from './scan-esc-block';
+export { classifyPreviewFromArmed } from './preview-classify';
 export { useScanTypeKeybinds } from './useScanTypeKeybinds';
-export { resolveTypeKeybind, isWedgeBurst, railHint } from './scan-type-keybinds';
 // ScanBandGlowHost: import from `./ScanBandGlowHost` (not this barrel) — keeps
 // the glow host out of the light scan-bar re-export graph.
 export * from './tokens';

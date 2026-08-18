@@ -6,14 +6,10 @@
  *   3. Else Phase 1: armed type → release to Auto
  */
 
-export type ScanEscBlock = 'none' | 'preview-card' | 'display-edit';
+type ScanEscBlock = 'none' | 'preview-card' | 'display-edit';
 
 let block: ScanEscBlock = 'none';
 let handler: (() => void) | null = null;
-
-export function getScanEscBlock(): ScanEscBlock {
-  return block;
-}
 
 export function setScanEscBlock(
   next: ScanEscBlock,
