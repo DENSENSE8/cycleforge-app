@@ -31,7 +31,6 @@ import type { CollapseStripPin } from '@/components/sidebar/context-panel-collap
 import { contextPanelToggleHotkeyLabel } from '@/components/sidebar/context-panel-toggle-hotkey';
 import { RailPopover } from '@/components/sidebar/rail-shell/RailPopover';
 import { useRailHoverPreview } from '@/components/sidebar/rail-shell/useRailHoverPreview';
-import { AnimatePresence } from '@/design-system/motion';
 import { IconButton } from '@/design-system/primitives';
 import { cn } from '@/utils/_cn';
 
@@ -185,26 +184,25 @@ function CollapseStripPinFace({
     return (
       <>
         {pinButton}
-        <AnimatePresence>
-          {previewOpen && pin.renderPeek ? (
-            <RailPopover
-              anchorEl={btnRef.current}
-              onMouseEnter={scheduleOpen}
-              onMouseLeave={scheduleClose}
-              onDismiss={dismiss}
-            >
-              <div data-collapse-strip-rail-peek="">
-                {pin.renderPeek({
-                  openWorkspace: () => {
-                    pin.onSelect();
-                    dismiss();
-                  },
-                  dismiss,
-                })}
-              </div>
-            </RailPopover>
-          ) : null}
-        </AnimatePresence>
+        {/* No AnimatePresence: the parked-pin peek reveals instantly, no exit. */}
+        {previewOpen && pin.renderPeek ? (
+          <RailPopover
+            anchorEl={btnRef.current}
+            onMouseEnter={scheduleOpen}
+            onMouseLeave={scheduleClose}
+            onDismiss={dismiss}
+          >
+            <div data-collapse-strip-rail-peek="">
+              {pin.renderPeek({
+                openWorkspace: () => {
+                  pin.onSelect();
+                  dismiss();
+                },
+                dismiss,
+              })}
+            </div>
+          </RailPopover>
+        ) : null}
       </>
     );
   }

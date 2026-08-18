@@ -30,6 +30,10 @@ import { ReceivingTicketChip } from '@/components/receiving/workspace/line-edit/
 import { FulfillmentPickupPill } from '@/components/receiving/ReceivingIdentityChips';
 import { InlinePillPicker } from '@/components/receiving/workspace/line-edit/InlinePillPicker';
 import {
+  CatalogManagerPopover,
+  type CatalogKind,
+} from '@/components/receiving/workspace/line-edit/CatalogManagerPopover';
+import {
   platformClassifyOptions,
   typeClassifyOptions,
   urgencyClassifyOptions,
@@ -52,6 +56,7 @@ import {
   STATION_CHROME_CELL_CLASS,
   STATION_CHROME_CELL_PAD,
   STATION_CHROME_GLYPH_CLASS,
+  STATION_CHROME_HOVER_CELL_CLASS,
   STATION_CHROME_ROW_FACE,
   STATION_CHROME_SEAM_HAIRLINE,
   STATION_IDENTITY_GROUP_CLASS,
@@ -349,13 +354,42 @@ export function CartonContextCard({
   // One classify menu at a time — chip-anchored dropdown; identity band stays put.
   const [openPicker, setOpenPicker] = useState<'urgency' | 'platform' | 'type' | null>(null);
   const barRef = useRef<HTMLDivElement | null>(null);
-  const { classifyCompact, overflowActions } = useCartonContextBarLayout(barRef);
+  // Freeze the responsive decision while a classify menu is open. The row must
+  // not reflow under a pointer that is mid-interaction: a pill changing width
+  // moves out from under the cursor, which fires `mouseleave` and flashes the
+  // menu shut. `openPicker` is exactly "a cell owns the pointer right now".
+  const { classifyCompact, overflowActions } = useCartonContextBarLayout(
+    barRef,
+    openPicker != null,
+  );
   const overflowSet = new Set<CartonContextActionId>(overflowActions);
 
-  const setClassifyMenu = (picker: 'urgency' | 'platform' | 'type' | null) => {
-    if (picker != null && !classifyInteractive) return;
-    setOpenPicker(picker);
+  /**
+   * Ownership-scoped: a pill may only clear the slot it actually holds.
+   *
+   * The pills share one hover registry, so crossing from one to the next evicts
+   * the first and BOTH report — the loser "closed", the winner "opened" — in an
+   * order React does not guarantee. A bare `setOpenPicker(null)` from the loser
+   * landing last would clear the winner, unfreezing the bar's layout while its
+   * menu is open: the reflow-under-a-stationary-pointer this row exists to
+   * prevent. Keying the clear on `prev === picker` makes a stale close a no-op.
+   */
+  const setClassifyMenu = (
+    picker: 'urgency' | 'platform' | 'type',
+    next: boolean,
+  ) => {
+    if (next && !classifyInteractive) return;
+    setOpenPicker((prev) => (next ? picker : prev === picker ? null : prev));
   };
+
+  /**
+   * "Edit colours" on the platform / type menus opens the org catalog manager —
+   * the ONE place `platforms.color_hex` is edited ({@link CatalogManagerList},
+   * shared with the /settings catalog section). Urgency has no entry: it is
+   * `receiving.priority_tier`, not a catalog row, so there is no colour to edit
+   * and a dead row would be worse than its absence.
+   */
+  const [catalogManager, setCatalogManager] = useState<CatalogKind | null>(null);
 
   // Canonical platform tone/label for the listing chip — same SoT the platform
   // pill and printed label read, so a platform never presents two ways.
@@ -474,7 +508,7 @@ export function CartonContextCard({
           collapsedFace={classifyFace}
           presentation="menu"
           open={openPicker === 'urgency'}
-          onOpenChange={(o) => setClassifyMenu(o ? 'urgency' : null)}
+          onOpenChange={(o) => setClassifyMenu('urgency', o)}
           disabled={classifyInteractive ? !onPrioritySelect : false}
           readOnly={!classifyInteractive}
         />
@@ -488,10 +522,11 @@ export function CartonContextCard({
         collapsedFace={classifyFace}
         presentation="menu"
         open={openPicker === 'platform'}
-        onOpenChange={(o) => setClassifyMenu(o ? 'platform' : null)}
+        onOpenChange={(o) => setClassifyMenu('platform', o)}
         disabled={classifyInteractive ? receivingId == null : false}
         readOnly={!classifyInteractive}
         placeholder={isUnmatched ? 'Unfound' : 'Platform'}
+        onEditColors={classifyInteractive ? () => setCatalogManager('platform') : undefined}
       />
       <InlinePillPicker
         ariaLabel="Type"
@@ -502,9 +537,10 @@ export function CartonContextCard({
         collapsedFace={classifyFace}
         presentation="menu"
         open={openPicker === 'type'}
-        onOpenChange={(o) => setClassifyMenu(o ? 'type' : null)}
+        onOpenChange={(o) => setClassifyMenu('type', o)}
         readOnly={!classifyInteractive}
         placeholder="Type"
+        onEditColors={classifyInteractive ? () => setCatalogManager('type') : undefined}
       />
     </div>
   ) : null;
@@ -561,7 +597,7 @@ export function CartonContextCard({
       />
     </div>
   ) : onEditTracking ? (
-    <div className="flex h-full shrink-0 items-stretch">
+    <div className={STATION_CHROME_HOVER_CELL_CLASS}>
       <IdentityLinkChip
         openHref={trackingOpenHref}
         openTitle="Open carrier tracking"
@@ -592,7 +628,7 @@ export function CartonContextCard({
       ) : null}
     </div>
   ) : (
-    <div className="flex h-full shrink-0 items-stretch">
+    <div className={STATION_CHROME_HOVER_CELL_CLASS}>
       <TrackingChip
         value={primaryTrackingTrimmed}
         display={
@@ -664,7 +700,7 @@ export function CartonContextCard({
 
   const ticketInline =
     showStaffPhotoRow && zendeskTrimmed && !overflowSet.has('claim') ? (
-      <div className={STATION_CHROME_CELL_CLASS}>
+      <div className={STATION_CHROME_HOVER_CELL_CLASS}>
       <ReceivingTicketChip
         value={zendeskTrimmed}
         display={zendeskChipDisplay}
@@ -818,9 +854,20 @@ export function CartonContextCard({
           <div className={STATION_IDENTITY_LEAD_COL_CLASS}>{exitControl}</div>
         ) : null}
         <div className="flex h-full min-w-0 shrink items-stretch [&_[data-chip-face]]:rounded-none">
-          {orderChip}
-          {trackingSlot}
+          {/* Lifecycle dot leads the identity run: it sits between the back
+              control and the order # so the operator reads STATE → WHICH
+              CARTON left to right, instead of finding the state after the
+              identifiers it qualifies. */}
           {statusDot}
+          {/* Order # is a copy/menu target, so it gets the same cell box as
+              every other interactive cell. The chip itself is `inline-flex` and
+              centred — without this h-full wrapper its hover box would be
+              shorter than the pills' and the strip would delineate at two
+              heights. */}
+          {orderChip ? (
+            <div className={STATION_CHROME_HOVER_CELL_CLASS}>{orderChip}</div>
+          ) : null}
+          {trackingSlot}
           {qty ? (
             <div className={STATION_CHROME_CELL_CLASS}>
               <GridQtyFractionValue received={qty.received} expected={qty.expected} />
@@ -844,6 +891,15 @@ export function CartonContextCard({
         {photosCell}
         {overflowMenu}
       </div>
+
+      {/* Catalog manager — opened by "Edit colours" on the platform / type menus. */}
+      {catalogManager ? (
+        <CatalogManagerPopover
+          open
+          kind={catalogManager}
+          onClose={() => setCatalogManager(null)}
+        />
+      ) : null}
     </div>
   );
 

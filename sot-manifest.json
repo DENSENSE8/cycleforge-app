@@ -30,7 +30,7 @@
     "src/lib/orders-sync",
     "src/hooks"
   ],
-  "count": 2678,
+  "count": 2737,
   "entries": [
     {
       "job": "Station: Scan pane + Displays push",
@@ -1768,6 +1768,19 @@
       "snippet": "export QueueTableToolbar from src/components/dashboard/queue-table/QueueTableToolbar.tsx"
     },
     {
+      "job": "Export: StationRowColumnHeader",
+      "sot": "StationRowColumnHeader",
+      "path": "src/components/dashboard/queue-table/StationRowColumnHeader.tsx",
+      "guard": null,
+      "symbols": [
+        "StationRowColumnHeader"
+      ],
+      "kind": "code",
+      "source": "src/components/dashboard/queue-table/StationRowColumnHeader.tsx",
+      "line": 27,
+      "snippet": "export StationRowColumnHeader from src/components/dashboard/queue-table/StationRowColumnHeader.tsx"
+    },
+    {
       "job": "Export: QueueSortSwitch",
       "sot": "QueueSortSwitch",
       "path": "src/components/dashboard/QueueSortSwitch.tsx",
@@ -3233,7 +3246,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/ContextPanelLayout.tsx",
-      "line": 107,
+      "line": 112,
       "snippet": "export ContextPanelLayout from src/components/sidebar/ContextPanelLayout.tsx"
     },
     {
@@ -3757,6 +3770,19 @@
       "snippet": "export GoalsSidebarPanel from src/components/sidebar/GoalsSidebarPanel.tsx"
     },
     {
+      "job": "Export: HomeContextPanel",
+      "sot": "HomeContextPanel",
+      "path": "src/components/sidebar/HomeContextPanel.tsx",
+      "guard": null,
+      "symbols": [
+        "HomeContextPanel"
+      ],
+      "kind": "code",
+      "source": "src/components/sidebar/HomeContextPanel.tsx",
+      "line": 38,
+      "snippet": "export HomeContextPanel from src/components/sidebar/HomeContextPanel.tsx"
+    },
+    {
       "job": "Export: useActiveStaffDirectory",
       "sot": "useActiveStaffDirectory",
       "path": "src/components/sidebar/hooks.ts",
@@ -3818,7 +3844,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/master-nav/SidebarNavList.tsx",
-      "line": 153,
+      "line": 191,
       "snippet": "export SidebarNavList from src/components/sidebar/master-nav/SidebarNavList.tsx"
     },
     {
@@ -4598,7 +4624,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/rail-shell/RailPopover.tsx",
-      "line": 18,
+      "line": 25,
       "snippet": "export RailPopover from src/components/sidebar/rail-shell/RailPopover.tsx"
     },
     {
@@ -4871,7 +4897,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/rail-shell/useRailHoverPreview.ts",
-      "line": 27,
+      "line": 35,
       "snippet": "export useRailHoverPreview from src/components/sidebar/rail-shell/useRailHoverPreview.ts"
     },
     {
@@ -5564,6 +5590,32 @@
       "snippet": "export IncomingKindHotChip from src/components/sidebar/receiving/incoming/IncomingKindFilters.tsx"
     },
     {
+      "job": "Export: IncomingKpiStrip",
+      "sot": "IncomingKpiStrip",
+      "path": "src/components/sidebar/receiving/incoming/IncomingKpiStrip.tsx",
+      "guard": null,
+      "symbols": [
+        "IncomingKpiStrip"
+      ],
+      "kind": "code",
+      "source": "src/components/sidebar/receiving/incoming/IncomingKpiStrip.tsx",
+      "line": 219,
+      "snippet": "export IncomingKpiStrip from src/components/sidebar/receiving/incoming/IncomingKpiStrip.tsx"
+    },
+    {
+      "job": "Export: IncomingLaneNote",
+      "sot": "IncomingLaneNote",
+      "path": "src/components/sidebar/receiving/incoming/IncomingLaneNote.tsx",
+      "guard": null,
+      "symbols": [
+        "IncomingLaneNote"
+      ],
+      "kind": "code",
+      "source": "src/components/sidebar/receiving/incoming/IncomingLaneNote.tsx",
+      "line": 19,
+      "snippet": "export IncomingLaneNote from src/components/sidebar/receiving/incoming/IncomingLaneNote.tsx"
+    },
+    {
       "job": "Export: IncomingSource",
       "sot": "IncomingSource",
       "path": "src/components/sidebar/receiving/incoming/IncomingSourceFilters.tsx",
@@ -5655,6 +5707,19 @@
       "snippet": "export useIncomingSyncActions from src/components/sidebar/receiving/incoming/useIncomingSyncActions.ts"
     },
     {
+      "job": "Export: useIncomingTableTotal",
+      "sot": "useIncomingTableTotal",
+      "path": "src/components/sidebar/receiving/incoming/useIncomingTableTotal.ts",
+      "guard": null,
+      "symbols": [
+        "useIncomingTableTotal"
+      ],
+      "kind": "code",
+      "source": "src/components/sidebar/receiving/incoming/useIncomingTableTotal.ts",
+      "line": 21,
+      "snippet": "export useIncomingTableTotal from src/components/sidebar/receiving/incoming/useIncomingTableTotal.ts"
+    },
+    {
       "job": "Export: AttachTrackingPresetPo",
       "sot": "AttachTrackingPresetPo",
       "path": "src/components/sidebar/receiving/IncomingAttachTrackingPopover.tsx",
@@ -5718,6 +5783,19 @@
       "source": "src/components/sidebar/receiving/IncomingPaneHeader.tsx",
       "line": 27,
       "snippet": "export INCOMING_SORT_OPTIONS from src/components/sidebar/receiving/IncomingPaneHeader.tsx"
+    },
+    {
+      "job": "Export: IncomingSidebarPanel",
+      "sot": "IncomingSidebarPanel",
+      "path": "src/components/sidebar/receiving/IncomingSidebarPanel.tsx",
+      "guard": null,
+      "symbols": [
+        "IncomingSidebarPanel"
+      ],
+      "kind": "code",
+      "source": "src/components/sidebar/receiving/IncomingSidebarPanel.tsx",
+      "line": 33,
+      "snippet": "export IncomingSidebarPanel from src/components/sidebar/receiving/IncomingSidebarPanel.tsx"
     },
     {
       "job": "Export: IncomingSyncKind",
@@ -6262,7 +6340,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/ReceivingUnboxScanBar.tsx",
-      "line": 14,
+      "line": 16,
       "snippet": "export UnboxScanMode from src/components/sidebar/receiving/ReceivingUnboxScanBar.tsx"
     },
     {
@@ -6275,7 +6353,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/ReceivingUnboxScanBar.tsx",
-      "line": 24,
+      "line": 26,
       "snippet": "export UNBOX_SCAN_MODES from src/components/sidebar/receiving/ReceivingUnboxScanBar.tsx"
     },
     {
@@ -6288,7 +6366,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/ReceivingUnboxScanBar.tsx",
-      "line": 67,
+      "line": 69,
       "snippet": "export classifyUnboxScan from src/components/sidebar/receiving/ReceivingUnboxScanBar.tsx"
     },
     {
@@ -6301,7 +6379,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/ReceivingUnboxScanBar.tsx",
-      "line": 84,
+      "line": 86,
       "snippet": "export ReceivingUnboxScanBar from src/components/sidebar/receiving/ReceivingUnboxScanBar.tsx"
     },
     {
@@ -6457,7 +6535,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/TestingScanBar.tsx",
-      "line": 19,
+      "line": 21,
       "snippet": "export TestingScanModeMeta from src/components/sidebar/receiving/TestingScanBar.tsx"
     },
     {
@@ -6470,7 +6548,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/TestingScanBar.tsx",
-      "line": 27,
+      "line": 29,
       "snippet": "export TESTING_SCAN_MODES from src/components/sidebar/receiving/TestingScanBar.tsx"
     },
     {
@@ -6483,7 +6561,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/TestingScanBar.tsx",
-      "line": 62,
+      "line": 64,
       "snippet": "export classifyTestingScan from src/components/sidebar/receiving/TestingScanBar.tsx"
     },
     {
@@ -6496,7 +6574,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/TestingScanBar.tsx",
-      "line": 78,
+      "line": 80,
       "snippet": "export testingScanModeMeta from src/components/sidebar/receiving/TestingScanBar.tsx"
     },
     {
@@ -6509,7 +6587,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/TestingScanBar.tsx",
-      "line": 92,
+      "line": 94,
       "snippet": "export TestingScanBar from src/components/sidebar/receiving/TestingScanBar.tsx"
     },
     {
@@ -6704,7 +6782,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/usePhoneScanBridge.ts",
-      "line": 26,
+      "line": 27,
       "snippet": "export usePhoneScanBridge from src/components/sidebar/receiving/usePhoneScanBridge.ts"
     },
     {
@@ -7081,7 +7159,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/ReceivingSidebarPanel.tsx",
-      "line": 79,
+      "line": 80,
       "snippet": "export ReceivingSidebarPanel from src/components/sidebar/ReceivingSidebarPanel.tsx"
     },
     {
@@ -7341,7 +7419,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/sidebar-spine.ts",
-      "line": 17,
+      "line": 25,
       "snippet": "export SIDEBAR_SPINE_WIDTH from src/components/sidebar/sidebar-spine.ts"
     },
     {
@@ -7354,8 +7432,21 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/sidebar-spine.ts",
-      "line": 29,
+      "line": 35,
       "snippet": "export SIDEBAR_SPINE_WIDTH_PX from src/components/sidebar/sidebar-spine.ts"
+    },
+    {
+      "job": "Export: SIDEBAR_SPINE_RESIZE",
+      "sot": "SIDEBAR_SPINE_RESIZE",
+      "path": "src/components/sidebar/sidebar-spine.ts",
+      "guard": null,
+      "symbols": [
+        "SIDEBAR_SPINE_RESIZE"
+      ],
+      "kind": "code",
+      "source": "src/components/sidebar/sidebar-spine.ts",
+      "line": 49,
+      "snippet": "export SIDEBAR_SPINE_RESIZE from src/components/sidebar/sidebar-spine.ts"
     },
     {
       "job": "Export: SIDEBAR_SPINE_MENU_PANEL_CLASS",
@@ -7367,7 +7458,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/sidebar-spine.ts",
-      "line": 41,
+      "line": 67,
       "snippet": "export SIDEBAR_SPINE_MENU_PANEL_CLASS from src/components/sidebar/sidebar-spine.ts"
     },
     {
@@ -7380,7 +7471,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/sidebar-spine.ts",
-      "line": 45,
+      "line": 71,
       "snippet": "export SIDEBAR_SPINE_MENU_HEADER_CLASS from src/components/sidebar/sidebar-spine.ts"
     },
     {
@@ -7393,7 +7484,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/sidebar-spine.ts",
-      "line": 49,
+      "line": 75,
       "snippet": "export SIDEBAR_SPINE_MENU_ACTION_CLASS from src/components/sidebar/sidebar-spine.ts"
     },
     {
@@ -7406,7 +7497,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/sidebar-spine.ts",
-      "line": 53,
+      "line": 79,
       "snippet": "export SIDEBAR_SPINE_MENU_TITLE_CLASS from src/components/sidebar/sidebar-spine.ts"
     },
     {
@@ -7419,7 +7510,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/sidebar-spine.ts",
-      "line": 60,
+      "line": 86,
       "snippet": "export SIDEBAR_SPINE_MENU_ORG_CLASS from src/components/sidebar/sidebar-spine.ts"
     },
     {
@@ -7432,7 +7523,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/sidebar-spine.ts",
-      "line": 64,
+      "line": 90,
       "snippet": "export SIDEBAR_SPINE_MENU_META_CLASS from src/components/sidebar/sidebar-spine.ts"
     },
     {
@@ -7445,7 +7536,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/sidebar-spine.ts",
-      "line": 67,
+      "line": 93,
       "snippet": "export SIDEBAR_SPINE_MENU_ACTION_LABEL_CLASS from src/components/sidebar/sidebar-spine.ts"
     },
     {
@@ -7484,7 +7575,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/SidebarNavColumn.tsx",
-      "line": 73,
+      "line": 115,
       "snippet": "export SidebarNavColumn from src/components/sidebar/SidebarNavColumn.tsx"
     },
     {
@@ -7913,7 +8004,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/tech/left-dock-toggle.tsx",
-      "line": 49,
+      "line": 48,
       "snippet": "export RailFilterCollapseButton from src/components/sidebar/tech/left-dock-toggle.tsx"
     },
     {
@@ -7926,7 +8017,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/tech/left-dock-toggle.tsx",
-      "line": 226,
+      "line": 224,
       "snippet": "export CollapseStripMruPins from src/components/sidebar/tech/left-dock-toggle.tsx"
     },
     {
@@ -7939,7 +8030,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/tech/left-dock-toggle.tsx",
-      "line": 275,
+      "line": 273,
       "snippet": "export LeftDockCollapseStrip from src/components/sidebar/tech/left-dock-toggle.tsx"
     },
     {
@@ -7965,7 +8056,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/tech/ShippingScanBar.tsx",
-      "line": 91,
+      "line": 77,
       "snippet": "export ShippingScanBar from src/components/sidebar/tech/ShippingScanBar.tsx"
     },
     {
@@ -8979,7 +9070,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/CartonContextCard.tsx",
-      "line": 123,
+      "line": 128,
       "snippet": "export CartonContextCard from src/components/station/entity-context/CartonContextCard.tsx"
     },
     {
@@ -8992,7 +9083,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-context-action-pill.ts",
-      "line": 23,
+      "line": 27,
       "snippet": "export STATION_CONTEXT_BOXED_CUBE_CLASS from src/components/station/entity-context/station-context-action-pill.ts"
     },
     {
@@ -9005,7 +9096,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-context-action-pill.ts",
-      "line": 37,
+      "line": 42,
       "snippet": "export STATION_CONTEXT_EXIT_PILL_CLASS from src/components/station/entity-context/station-context-action-pill.ts"
     },
     {
@@ -9018,7 +9109,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-context-action-pill.ts",
-      "line": 54,
+      "line": 60,
       "snippet": "export STATION_CONTEXT_ACTION_CELL_CLASS from src/components/station/entity-context/station-context-action-pill.ts"
     },
     {
@@ -9031,7 +9122,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-context-action-pill.ts",
-      "line": 70,
+      "line": 77,
       "snippet": "export STATION_CONTEXT_PHOTO_TONE from src/components/station/entity-context/station-context-action-pill.ts"
     },
     {
@@ -9044,7 +9135,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-context-action-pill.ts",
-      "line": 78,
+      "line": 85,
       "snippet": "export STATION_CONTEXT_PHOTO_CHROME_CLASS from src/components/station/entity-context/station-context-action-pill.ts"
     },
     {
@@ -9057,7 +9148,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-context-action-pill.ts",
-      "line": 97,
+      "line": 105,
       "snippet": "export STATION_CONTEXT_PHOTO_PILL_CLASS from src/components/station/entity-context/station-context-action-pill.ts"
     },
     {
@@ -9070,7 +9161,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-context-action-pill.ts",
-      "line": 103,
+      "line": 111,
       "snippet": "export STATION_CONTEXT_PHOTO_FLUSH_CLASS from src/components/station/entity-context/station-context-action-pill.ts"
     },
     {
@@ -9083,7 +9174,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-context-action-pill.ts",
-      "line": 118,
+      "line": 126,
       "snippet": "export STATION_CONTEXT_CLAIM_CHROME_CLASS from src/components/station/entity-context/station-context-action-pill.ts"
     },
     {
@@ -9226,7 +9317,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-identity-chrome.ts",
-      "line": 109,
+      "line": 110,
       "snippet": "export STATION_IDENTITY_LEAD_COL_CLASS from src/components/station/entity-context/station-identity-chrome.ts"
     },
     {
@@ -9239,7 +9330,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-identity-chrome.ts",
-      "line": 117,
+      "line": 118,
       "snippet": "export STATION_CHROME_CELL_PAD from src/components/station/entity-context/station-identity-chrome.ts"
     },
     {
@@ -9252,7 +9343,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-identity-chrome.ts",
-      "line": 123,
+      "line": 124,
       "snippet": "export STATION_CHROME_GLYPH_CLASS from src/components/station/entity-context/station-identity-chrome.ts"
     },
     {
@@ -9265,8 +9356,47 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-identity-chrome.ts",
-      "line": 131,
+      "line": 132,
       "snippet": "export STATION_CHROME_CELL_CLASS from src/components/station/entity-context/station-identity-chrome.ts"
+    },
+    {
+      "job": "Export: STATION_CHROME_CELL_HOVER_SEAM",
+      "sot": "STATION_CHROME_CELL_HOVER_SEAM",
+      "path": "src/components/station/entity-context/station-identity-chrome.ts",
+      "guard": null,
+      "symbols": [
+        "STATION_CHROME_CELL_HOVER_SEAM"
+      ],
+      "kind": "code",
+      "source": "src/components/station/entity-context/station-identity-chrome.ts",
+      "line": 164,
+      "snippet": "export STATION_CHROME_CELL_HOVER_SEAM from src/components/station/entity-context/station-identity-chrome.ts"
+    },
+    {
+      "job": "Export: STATION_CHROME_CELL_HOVER_FILL",
+      "sot": "STATION_CHROME_CELL_HOVER_FILL",
+      "path": "src/components/station/entity-context/station-identity-chrome.ts",
+      "guard": null,
+      "symbols": [
+        "STATION_CHROME_CELL_HOVER_FILL"
+      ],
+      "kind": "code",
+      "source": "src/components/station/entity-context/station-identity-chrome.ts",
+      "line": 174,
+      "snippet": "export STATION_CHROME_CELL_HOVER_FILL from src/components/station/entity-context/station-identity-chrome.ts"
+    },
+    {
+      "job": "Export: STATION_CHROME_HOVER_CELL_CLASS",
+      "sot": "STATION_CHROME_HOVER_CELL_CLASS",
+      "path": "src/components/station/entity-context/station-identity-chrome.ts",
+      "guard": null,
+      "symbols": [
+        "STATION_CHROME_HOVER_CELL_CLASS"
+      ],
+      "kind": "code",
+      "source": "src/components/station/entity-context/station-identity-chrome.ts",
+      "line": 187,
+      "snippet": "export STATION_CHROME_HOVER_CELL_CLASS from src/components/station/entity-context/station-identity-chrome.ts"
     },
     {
       "job": "Export: stationIdentityGapClass",
@@ -9278,7 +9408,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-identity-chrome.ts",
-      "line": 135,
+      "line": 194,
       "snippet": "export stationIdentityGapClass from src/components/station/entity-context/station-identity-chrome.ts"
     },
     {
@@ -9291,7 +9421,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-identity-chrome.ts",
-      "line": 142,
+      "line": 201,
       "snippet": "export stationMoreDetailsHostClass from src/components/station/entity-context/station-identity-chrome.ts"
     },
     {
@@ -9304,7 +9434,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-identity-chrome.ts",
-      "line": 150,
+      "line": 209,
       "snippet": "export stationMoreDetailsPaneHostClass from src/components/station/entity-context/station-identity-chrome.ts"
     },
     {
@@ -9317,7 +9447,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-identity-chrome.ts",
-      "line": 156,
+      "line": 215,
       "snippet": "export STATION_IDENTITY_SCROLL_CLEARANCE from src/components/station/entity-context/station-identity-chrome.ts"
     },
     {
@@ -9330,7 +9460,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-identity-chrome.ts",
-      "line": 163,
+      "line": 222,
       "snippet": "export STATION_IDENTITY_STACKED_SCROLL_CLEARANCE from src/components/station/entity-context/station-identity-chrome.ts"
     },
     {
@@ -9434,7 +9564,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/useCartonContextBarLayout.ts",
-      "line": 13,
+      "line": 32,
       "snippet": "export useCartonContextBarLayout from src/components/station/entity-context/useCartonContextBarLayout.ts"
     },
     {
@@ -9462,6 +9592,58 @@
       "source": "src/components/station/entity-context/workspace-mode-registry.ts",
       "line": 43,
       "snippet": "export WORKSPACE_MODES from src/components/station/entity-context/workspace-mode-registry.ts"
+    },
+    {
+      "job": "Export: incomingDateCell",
+      "sot": "incomingDateCell",
+      "path": "src/components/station/incoming-grid/cells/index.tsx",
+      "guard": null,
+      "symbols": [
+        "incomingDateCell"
+      ],
+      "kind": "code",
+      "source": "src/components/station/incoming-grid/cells/index.tsx",
+      "line": 50,
+      "snippet": "export incomingDateCell from src/components/station/incoming-grid/cells/index.tsx"
+    },
+    {
+      "job": "Export: displayProductTitle",
+      "sot": "displayProductTitle",
+      "path": "src/components/station/incoming-grid/cells/index.tsx",
+      "guard": null,
+      "symbols": [
+        "displayProductTitle"
+      ],
+      "kind": "code",
+      "source": "src/components/station/incoming-grid/cells/index.tsx",
+      "line": 64,
+      "snippet": "export displayProductTitle from src/components/station/incoming-grid/cells/index.tsx"
+    },
+    {
+      "job": "Export: IncomingGridCellCtx",
+      "sot": "IncomingGridCellCtx",
+      "path": "src/components/station/incoming-grid/cells/index.tsx",
+      "guard": null,
+      "symbols": [
+        "IncomingGridCellCtx"
+      ],
+      "kind": "code",
+      "source": "src/components/station/incoming-grid/cells/index.tsx",
+      "line": 74,
+      "snippet": "export IncomingGridCellCtx from src/components/station/incoming-grid/cells/index.tsx"
+    },
+    {
+      "job": "Export: renderIncomingGridCell",
+      "sot": "renderIncomingGridCell",
+      "path": "src/components/station/incoming-grid/cells/index.tsx",
+      "guard": null,
+      "symbols": [
+        "renderIncomingGridCell"
+      ],
+      "kind": "code",
+      "source": "src/components/station/incoming-grid/cells/index.tsx",
+      "line": 106,
+      "snippet": "export renderIncomingGridCell from src/components/station/incoming-grid/cells/index.tsx"
     },
     {
       "job": "Export: INCOMING_GRID_CAPABILITIES",
@@ -9553,6 +9735,19 @@
       "source": "src/components/station/incoming-grid/IncomingGridRow.tsx",
       "line": 64,
       "snippet": "export IncomingGridRow from src/components/station/incoming-grid/IncomingGridRow.tsx"
+    },
+    {
+      "job": "Export: IncomingGridStatusCell",
+      "sot": "IncomingGridStatusCell",
+      "path": "src/components/station/incoming-grid/IncomingGridStatusCell.tsx",
+      "guard": null,
+      "symbols": [
+        "IncomingGridStatusCell"
+      ],
+      "kind": "code",
+      "source": "src/components/station/incoming-grid/IncomingGridStatusCell.tsx",
+      "line": 29,
+      "snippet": "export IncomingGridStatusCell from src/components/station/incoming-grid/IncomingGridStatusCell.tsx"
     },
     {
       "job": "Export: IncomingAttachTrackingButton",
@@ -10855,6 +11050,318 @@
       "snippet": "export ReceivingLinesTableProps from src/components/station/ReceivingLinesTable.tsx"
     },
     {
+      "job": "Export: PreviewTypeSource",
+      "sot": "PreviewTypeSource",
+      "path": "src/components/station/scan-bar/preview-classify.ts",
+      "guard": null,
+      "symbols": [
+        "PreviewTypeSource"
+      ],
+      "kind": "code",
+      "source": "src/components/station/scan-bar/preview-classify.ts",
+      "line": 6,
+      "snippet": "export PreviewTypeSource from src/components/station/scan-bar/preview-classify.ts"
+    },
+    {
+      "job": "Export: StationScanPreviewClassification",
+      "sot": "StationScanPreviewClassification",
+      "path": "src/components/station/scan-bar/preview-classify.ts",
+      "guard": null,
+      "symbols": [
+        "StationScanPreviewClassification"
+      ],
+      "kind": "code",
+      "source": "src/components/station/scan-bar/preview-classify.ts",
+      "line": 8,
+      "snippet": "export StationScanPreviewClassification from src/components/station/scan-bar/preview-classify.ts"
+    },
+    {
+      "job": "Export: formatPreviewLine",
+      "sot": "formatPreviewLine",
+      "path": "src/components/station/scan-bar/preview-classify.ts",
+      "guard": null,
+      "symbols": [
+        "formatPreviewLine"
+      ],
+      "kind": "code",
+      "source": "src/components/station/scan-bar/preview-classify.ts",
+      "line": 17,
+      "snippet": "export formatPreviewLine from src/components/station/scan-bar/preview-classify.ts"
+    },
+    {
+      "job": "Export: formatPreviewSource",
+      "sot": "formatPreviewSource",
+      "path": "src/components/station/scan-bar/preview-classify.ts",
+      "guard": null,
+      "symbols": [
+        "formatPreviewSource"
+      ],
+      "kind": "code",
+      "source": "src/components/station/scan-bar/preview-classify.ts",
+      "line": 24,
+      "snippet": "export formatPreviewSource from src/components/station/scan-bar/preview-classify.ts"
+    },
+    {
+      "job": "Export: classifyPreviewFromArmed",
+      "sot": "classifyPreviewFromArmed",
+      "path": "src/components/station/scan-bar/preview-classify.ts",
+      "guard": null,
+      "symbols": [
+        "classifyPreviewFromArmed"
+      ],
+      "kind": "code",
+      "source": "src/components/station/scan-bar/preview-classify.ts",
+      "line": 31,
+      "snippet": "export classifyPreviewFromArmed from src/components/station/scan-bar/preview-classify.ts"
+    },
+    {
+      "job": "Export: ScanEscBlock",
+      "sot": "ScanEscBlock",
+      "path": "src/components/station/scan-bar/scan-esc-block.ts",
+      "guard": null,
+      "symbols": [
+        "ScanEscBlock"
+      ],
+      "kind": "code",
+      "source": "src/components/station/scan-bar/scan-esc-block.ts",
+      "line": 9,
+      "snippet": "export ScanEscBlock from src/components/station/scan-bar/scan-esc-block.ts"
+    },
+    {
+      "job": "Export: getScanEscBlock",
+      "sot": "getScanEscBlock",
+      "path": "src/components/station/scan-bar/scan-esc-block.ts",
+      "guard": null,
+      "symbols": [
+        "getScanEscBlock"
+      ],
+      "kind": "code",
+      "source": "src/components/station/scan-bar/scan-esc-block.ts",
+      "line": 14,
+      "snippet": "export getScanEscBlock from src/components/station/scan-bar/scan-esc-block.ts"
+    },
+    {
+      "job": "Export: setScanEscBlock",
+      "sot": "setScanEscBlock",
+      "path": "src/components/station/scan-bar/scan-esc-block.ts",
+      "guard": null,
+      "symbols": [
+        "setScanEscBlock"
+      ],
+      "kind": "code",
+      "source": "src/components/station/scan-bar/scan-esc-block.ts",
+      "line": 18,
+      "snippet": "export setScanEscBlock from src/components/station/scan-bar/scan-esc-block.ts"
+    },
+    {
+      "job": "Export: consumeScanEscBlock",
+      "sot": "consumeScanEscBlock",
+      "path": "src/components/station/scan-bar/scan-esc-block.ts",
+      "guard": null,
+      "symbols": [
+        "consumeScanEscBlock"
+      ],
+      "kind": "code",
+      "source": "src/components/station/scan-bar/scan-esc-block.ts",
+      "line": 27,
+      "snippet": "export consumeScanEscBlock from src/components/station/scan-bar/scan-esc-block.ts"
+    },
+    {
+      "job": "Export: nextArmedMode",
+      "sot": "nextArmedMode",
+      "path": "src/components/station/scan-bar/scan-mode.ts",
+      "guard": null,
+      "symbols": [
+        "nextArmedMode"
+      ],
+      "kind": "code",
+      "source": "src/components/station/scan-bar/scan-mode.ts",
+      "line": 7,
+      "snippet": "export nextArmedMode from src/components/station/scan-bar/scan-mode.ts"
+    },
+    {
+      "job": "Export: isStationScanInputFocused",
+      "sot": "isStationScanInputFocused",
+      "path": "src/components/station/scan-bar/scan-mode.ts",
+      "guard": null,
+      "symbols": [
+        "isStationScanInputFocused"
+      ],
+      "kind": "code",
+      "source": "src/components/station/scan-bar/scan-mode.ts",
+      "line": 15,
+      "snippet": "export isStationScanInputFocused from src/components/station/scan-bar/scan-mode.ts"
+    },
+    {
+      "job": "Export: shouldHandleScanModeEsc",
+      "sot": "shouldHandleScanModeEsc",
+      "path": "src/components/station/scan-bar/scan-mode.ts",
+      "guard": null,
+      "symbols": [
+        "shouldHandleScanModeEsc"
+      ],
+      "kind": "code",
+      "source": "src/components/station/scan-bar/scan-mode.ts",
+      "line": 30,
+      "snippet": "export shouldHandleScanModeEsc from src/components/station/scan-bar/scan-mode.ts"
+    },
+    {
+      "job": "Export: StationScanStance",
+      "sot": "StationScanStance",
+      "path": "src/components/station/scan-bar/scan-stance.ts",
+      "guard": null,
+      "symbols": [
+        "StationScanStance"
+      ],
+      "kind": "code",
+      "source": "src/components/station/scan-bar/scan-stance.ts",
+      "line": 14,
+      "snippet": "export StationScanStance from src/components/station/scan-bar/scan-stance.ts"
+    },
+    {
+      "job": "Export: getScanStance",
+      "sot": "getScanStance",
+      "path": "src/components/station/scan-bar/scan-stance.ts",
+      "guard": null,
+      "symbols": [
+        "getScanStance"
+      ],
+      "kind": "code",
+      "source": "src/components/station/scan-bar/scan-stance.ts",
+      "line": 53,
+      "snippet": "export getScanStance from src/components/station/scan-bar/scan-stance.ts"
+    },
+    {
+      "job": "Export: isScanPreview",
+      "sot": "isScanPreview",
+      "path": "src/components/station/scan-bar/scan-stance.ts",
+      "guard": null,
+      "symbols": [
+        "isScanPreview"
+      ],
+      "kind": "code",
+      "source": "src/components/station/scan-bar/scan-stance.ts",
+      "line": 57,
+      "snippet": "export isScanPreview from src/components/station/scan-bar/scan-stance.ts"
+    },
+    {
+      "job": "Export: setScanStance",
+      "sot": "setScanStance",
+      "path": "src/components/station/scan-bar/scan-stance.ts",
+      "guard": null,
+      "symbols": [
+        "setScanStance"
+      ],
+      "kind": "code",
+      "source": "src/components/station/scan-bar/scan-stance.ts",
+      "line": 61,
+      "snippet": "export setScanStance from src/components/station/scan-bar/scan-stance.ts"
+    },
+    {
+      "job": "Export: toggleScanStance",
+      "sot": "toggleScanStance",
+      "path": "src/components/station/scan-bar/scan-stance.ts",
+      "guard": null,
+      "symbols": [
+        "toggleScanStance"
+      ],
+      "kind": "code",
+      "source": "src/components/station/scan-bar/scan-stance.ts",
+      "line": 68,
+      "snippet": "export toggleScanStance from src/components/station/scan-bar/scan-stance.ts"
+    },
+    {
+      "job": "Export: subscribeScanStance",
+      "sot": "subscribeScanStance",
+      "path": "src/components/station/scan-bar/scan-stance.ts",
+      "guard": null,
+      "symbols": [
+        "subscribeScanStance"
+      ],
+      "kind": "code",
+      "source": "src/components/station/scan-bar/scan-stance.ts",
+      "line": 74,
+      "snippet": "export subscribeScanStance from src/components/station/scan-bar/scan-stance.ts"
+    },
+    {
+      "job": "Export: useScanStance",
+      "sot": "useScanStance",
+      "path": "src/components/station/scan-bar/scan-stance.ts",
+      "guard": null,
+      "symbols": [
+        "useScanStance"
+      ],
+      "kind": "code",
+      "source": "src/components/station/scan-bar/scan-stance.ts",
+      "line": 82,
+      "snippet": "export useScanStance from src/components/station/scan-bar/scan-stance.ts"
+    },
+    {
+      "job": "Export: useToggleScanStance",
+      "sot": "useToggleScanStance",
+      "path": "src/components/station/scan-bar/scan-stance.ts",
+      "guard": null,
+      "symbols": [
+        "useToggleScanStance"
+      ],
+      "kind": "code",
+      "source": "src/components/station/scan-bar/scan-stance.ts",
+      "line": 86,
+      "snippet": "export useToggleScanStance from src/components/station/scan-bar/scan-stance.ts"
+    },
+    {
+      "job": "Export: TypeKeybindAction",
+      "sot": "TypeKeybindAction",
+      "path": "src/components/station/scan-bar/scan-type-keybinds.ts",
+      "guard": null,
+      "symbols": [
+        "TypeKeybindAction"
+      ],
+      "kind": "code",
+      "source": "src/components/station/scan-bar/scan-type-keybinds.ts",
+      "line": 10,
+      "snippet": "export TypeKeybindAction from src/components/station/scan-bar/scan-type-keybinds.ts"
+    },
+    {
+      "job": "Export: isWedgeBurst",
+      "sot": "isWedgeBurst",
+      "path": "src/components/station/scan-bar/scan-type-keybinds.ts",
+      "guard": null,
+      "symbols": [
+        "isWedgeBurst"
+      ],
+      "kind": "code",
+      "source": "src/components/station/scan-bar/scan-type-keybinds.ts",
+      "line": 16,
+      "snippet": "export isWedgeBurst from src/components/station/scan-bar/scan-type-keybinds.ts"
+    },
+    {
+      "job": "Export: resolveTypeKeybind",
+      "sot": "resolveTypeKeybind",
+      "path": "src/components/station/scan-bar/scan-type-keybinds.ts",
+      "guard": null,
+      "symbols": [
+        "resolveTypeKeybind"
+      ],
+      "kind": "code",
+      "source": "src/components/station/scan-bar/scan-type-keybinds.ts",
+      "line": 29,
+      "snippet": "export resolveTypeKeybind from src/components/station/scan-bar/scan-type-keybinds.ts"
+    },
+    {
+      "job": "Export: railHint",
+      "sot": "railHint",
+      "path": "src/components/station/scan-bar/scan-type-keybinds.ts",
+      "guard": null,
+      "symbols": [
+        "railHint"
+      ],
+      "kind": "code",
+      "source": "src/components/station/scan-bar/scan-type-keybinds.ts",
+      "line": 57,
+      "snippet": "export railHint from src/components/station/scan-bar/scan-type-keybinds.ts"
+    },
+    {
       "job": "Export: ScanBandGlowHost",
       "sot": "ScanBandGlowHost",
       "path": "src/components/station/scan-bar/ScanBandGlowHost.tsx",
@@ -10890,7 +11397,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/scan-bar/StationScanBar.tsx",
-      "line": 52,
+      "line": 59,
       "snippet": "export StationScanBarProps from src/components/station/scan-bar/StationScanBar.tsx"
     },
     {
@@ -10903,7 +11410,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/scan-bar/StationScanBar.tsx",
-      "line": 123,
+      "line": 141,
       "snippet": "export StationScanBar from src/components/station/scan-bar/StationScanBar.tsx"
     },
     {
@@ -10916,7 +11423,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/scan-bar/StationScanLeadingIcon.tsx",
-      "line": 17,
+      "line": 35,
       "snippet": "export StationScanLeadingIcon from src/components/station/scan-bar/StationScanLeadingIcon.tsx"
     },
     {
@@ -10929,7 +11436,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/scan-bar/StationScanModeRail.tsx",
-      "line": 16,
+      "line": 18,
       "snippet": "export StationScanModeDefinition from src/components/station/scan-bar/StationScanModeRail.tsx"
     },
     {
@@ -10942,8 +11449,21 @@
       ],
       "kind": "code",
       "source": "src/components/station/scan-bar/StationScanModeRail.tsx",
-      "line": 43,
+      "line": 50,
       "snippet": "export StationScanModeRail from src/components/station/scan-bar/StationScanModeRail.tsx"
+    },
+    {
+      "job": "Export: StationScanPreviewCard",
+      "sot": "StationScanPreviewCard",
+      "path": "src/components/station/scan-bar/StationScanPreviewCard.tsx",
+      "guard": null,
+      "symbols": [
+        "StationScanPreviewCard"
+      ],
+      "kind": "code",
+      "source": "src/components/station/scan-bar/StationScanPreviewCard.tsx",
+      "line": 19,
+      "snippet": "export StationScanPreviewCard from src/components/station/scan-bar/StationScanPreviewCard.tsx"
     },
     {
       "job": "Export: ThemedStationScanBarProps",
@@ -11269,6 +11789,58 @@
       "source": "src/components/station/scan-bar/tokens.ts",
       "line": 170,
       "snippet": "export stationScanBarFocusInputClass from src/components/station/scan-bar/tokens.ts"
+    },
+    {
+      "job": "Export: useScanModeRelease",
+      "sot": "useScanModeRelease",
+      "path": "src/components/station/scan-bar/useScanModeRelease.ts",
+      "guard": null,
+      "symbols": [
+        "useScanModeRelease"
+      ],
+      "kind": "code",
+      "source": "src/components/station/scan-bar/useScanModeRelease.ts",
+      "line": 16,
+      "snippet": "export useScanModeRelease from src/components/station/scan-bar/useScanModeRelease.ts"
+    },
+    {
+      "job": "Export: useScanTypeKeybinds",
+      "sot": "useScanTypeKeybinds",
+      "path": "src/components/station/scan-bar/useScanTypeKeybinds.ts",
+      "guard": null,
+      "symbols": [
+        "useScanTypeKeybinds"
+      ],
+      "kind": "code",
+      "source": "src/components/station/scan-bar/useScanTypeKeybinds.ts",
+      "line": 28,
+      "snippet": "export useScanTypeKeybinds from src/components/station/scan-bar/useScanTypeKeybinds.ts"
+    },
+    {
+      "job": "Export: ScanStationProgressControl",
+      "sot": "ScanStationProgressControl",
+      "path": "src/components/station/ScanStationProgressControl.tsx",
+      "guard": null,
+      "symbols": [
+        "ScanStationProgressControl"
+      ],
+      "kind": "code",
+      "source": "src/components/station/ScanStationProgressControl.tsx",
+      "line": 47,
+      "snippet": "export ScanStationProgressControl from src/components/station/ScanStationProgressControl.tsx"
+    },
+    {
+      "job": "Export: ScanStationProgressRing",
+      "sot": "ScanStationProgressRing",
+      "path": "src/components/station/ScanStationProgressRing.tsx",
+      "guard": null,
+      "symbols": [
+        "ScanStationProgressRing"
+      ],
+      "kind": "code",
+      "source": "src/components/station/ScanStationProgressRing.tsx",
+      "line": 23,
+      "snippet": "export ScanStationProgressRing from src/components/station/ScanStationProgressRing.tsx"
     },
     {
       "job": "Export: useSendToDevice",
@@ -14153,7 +14725,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/CopyChipHoverMenu.tsx",
-      "line": 61,
+      "line": 60,
       "snippet": "export CopyChipHoverMenuItem from src/components/ui/CopyChipHoverMenu.tsx"
     },
     {
@@ -14166,7 +14738,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/CopyChipHoverMenu.tsx",
-      "line": 78,
+      "line": 77,
       "snippet": "export CopyChipHoverMenuPanel from src/components/ui/CopyChipHoverMenu.tsx"
     },
     {
@@ -14179,7 +14751,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/CopyChipHoverMenu.tsx",
-      "line": 157,
+      "line": 156,
       "snippet": "export CopyChipHoverMenu from src/components/ui/CopyChipHoverMenu.tsx"
     },
     {
@@ -24830,6 +25402,58 @@
       "snippet": "export useHorizontalWheelScroll from src/hooks/useHorizontalWheelScroll.ts"
     },
     {
+      "job": "Export: HOVER_DELAYS",
+      "sot": "HOVER_DELAYS",
+      "path": "src/hooks/useHoverSurface.ts",
+      "guard": null,
+      "symbols": [
+        "HOVER_DELAYS"
+      ],
+      "kind": "code",
+      "source": "src/hooks/useHoverSurface.ts",
+      "line": 57,
+      "snippet": "export HOVER_DELAYS from src/hooks/useHoverSurface.ts"
+    },
+    {
+      "job": "Export: HoverSurfaceProvider",
+      "sot": "HoverSurfaceProvider",
+      "path": "src/hooks/useHoverSurface.ts",
+      "guard": null,
+      "symbols": [
+        "HoverSurfaceProvider"
+      ],
+      "kind": "code",
+      "source": "src/hooks/useHoverSurface.ts",
+      "line": 88,
+      "snippet": "export HoverSurfaceProvider from src/hooks/useHoverSurface.ts"
+    },
+    {
+      "job": "Export: isPointerInside",
+      "sot": "isPointerInside",
+      "path": "src/hooks/useHoverSurface.ts",
+      "guard": null,
+      "symbols": [
+        "isPointerInside"
+      ],
+      "kind": "code",
+      "source": "src/hooks/useHoverSurface.ts",
+      "line": 94,
+      "snippet": "export isPointerInside from src/hooks/useHoverSurface.ts"
+    },
+    {
+      "job": "Export: useHoverSurface",
+      "sot": "useHoverSurface",
+      "path": "src/hooks/useHoverSurface.ts",
+      "guard": null,
+      "symbols": [
+        "useHoverSurface"
+      ],
+      "kind": "code",
+      "source": "src/hooks/useHoverSurface.ts",
+      "line": 104,
+      "snippet": "export useHoverSurface from src/hooks/useHoverSurface.ts"
+    },
+    {
       "job": "Export: useIdleReady",
       "sot": "useIdleReady",
       "path": "src/hooks/useIdleReady.ts",
@@ -30793,7 +31417,7 @@
       ],
       "kind": "code",
       "source": "src/lib/keyboard/nav-keys/KeyboardShortcutsCheatSheet.tsx",
-      "line": 132,
+      "line": 144,
       "snippet": "export KeyboardShortcutsCheatSheet from src/lib/keyboard/nav-keys/KeyboardShortcutsCheatSheet.tsx"
     },
     {
@@ -32563,6 +33187,149 @@
       "source": "src/lib/right-rail/selection-occupancy.ts",
       "line": 160,
       "snippet": "export isRailOccupantActive from src/lib/right-rail/selection-occupancy.ts"
+    },
+    {
+      "job": "Export: resolveStationDualRailDelta",
+      "sot": "resolveStationDualRailDelta",
+      "path": "src/lib/right-rail/station-dual-rail.ts",
+      "guard": null,
+      "symbols": [
+        "resolveStationDualRailDelta"
+      ],
+      "kind": "code",
+      "source": "src/lib/right-rail/station-dual-rail.ts",
+      "line": 68,
+      "snippet": "export resolveStationDualRailDelta from src/lib/right-rail/station-dual-rail.ts"
+    },
+    {
+      "job": "Export: resolveStationYieldLadder",
+      "sot": "resolveStationYieldLadder",
+      "path": "src/lib/right-rail/station-dual-rail.ts",
+      "guard": null,
+      "symbols": [
+        "resolveStationYieldLadder"
+      ],
+      "kind": "code",
+      "source": "src/lib/right-rail/station-dual-rail.ts",
+      "line": 147,
+      "snippet": "export resolveStationYieldLadder from src/lib/right-rail/station-dual-rail.ts"
+    },
+    {
+      "job": "Export: stationLadderMaxDisplaysPx",
+      "sot": "stationLadderMaxDisplaysPx",
+      "path": "src/lib/right-rail/station-dual-rail.ts",
+      "guard": null,
+      "symbols": [
+        "stationLadderMaxDisplaysPx"
+      ],
+      "kind": "code",
+      "source": "src/lib/right-rail/station-dual-rail.ts",
+      "line": 212,
+      "snippet": "export stationLadderMaxDisplaysPx from src/lib/right-rail/station-dual-rail.ts"
+    },
+    {
+      "job": "Export: stationLadderMaxContextPx",
+      "sot": "stationLadderMaxContextPx",
+      "path": "src/lib/right-rail/station-dual-rail.ts",
+      "guard": null,
+      "symbols": [
+        "stationLadderMaxContextPx"
+      ],
+      "kind": "code",
+      "source": "src/lib/right-rail/station-dual-rail.ts",
+      "line": 226,
+      "snippet": "export stationLadderMaxContextPx from src/lib/right-rail/station-dual-rail.ts"
+    },
+    {
+      "job": "Export: subscribeStationCoupled",
+      "sot": "subscribeStationCoupled",
+      "path": "src/lib/right-rail/station-dual-rail.ts",
+      "guard": null,
+      "symbols": [
+        "subscribeStationCoupled"
+      ],
+      "kind": "code",
+      "source": "src/lib/right-rail/station-dual-rail.ts",
+      "line": 269,
+      "snippet": "export subscribeStationCoupled from src/lib/right-rail/station-dual-rail.ts"
+    },
+    {
+      "job": "Export: getStationCoupled",
+      "sot": "getStationCoupled",
+      "path": "src/lib/right-rail/station-dual-rail.ts",
+      "guard": null,
+      "symbols": [
+        "getStationCoupled"
+      ],
+      "kind": "code",
+      "source": "src/lib/right-rail/station-dual-rail.ts",
+      "line": 274,
+      "snippet": "export getStationCoupled from src/lib/right-rail/station-dual-rail.ts"
+    },
+    {
+      "job": "Export: getServerStationCoupled",
+      "sot": "getServerStationCoupled",
+      "path": "src/lib/right-rail/station-dual-rail.ts",
+      "guard": null,
+      "symbols": [
+        "getServerStationCoupled"
+      ],
+      "kind": "code",
+      "source": "src/lib/right-rail/station-dual-rail.ts",
+      "line": 278,
+      "snippet": "export getServerStationCoupled from src/lib/right-rail/station-dual-rail.ts"
+    },
+    {
+      "job": "Export: registerStationDisplaysStorageKey",
+      "sot": "registerStationDisplaysStorageKey",
+      "path": "src/lib/right-rail/station-dual-rail.ts",
+      "guard": null,
+      "symbols": [
+        "registerStationDisplaysStorageKey"
+      ],
+      "kind": "code",
+      "source": "src/lib/right-rail/station-dual-rail.ts",
+      "line": 286,
+      "snippet": "export registerStationDisplaysStorageKey from src/lib/right-rail/station-dual-rail.ts"
+    },
+    {
+      "job": "Export: isStationDualRailCouplingActive",
+      "sot": "isStationDualRailCouplingActive",
+      "path": "src/lib/right-rail/station-dual-rail.ts",
+      "guard": null,
+      "symbols": [
+        "isStationDualRailCouplingActive"
+      ],
+      "kind": "code",
+      "source": "src/lib/right-rail/station-dual-rail.ts",
+      "line": 297,
+      "snippet": "export isStationDualRailCouplingActive from src/lib/right-rail/station-dual-rail.ts"
+    },
+    {
+      "job": "Export: applyStationDisplaysDelta",
+      "sot": "applyStationDisplaysDelta",
+      "path": "src/lib/right-rail/station-dual-rail.ts",
+      "guard": null,
+      "symbols": [
+        "applyStationDisplaysDelta"
+      ],
+      "kind": "code",
+      "source": "src/lib/right-rail/station-dual-rail.ts",
+      "line": 309,
+      "snippet": "export applyStationDisplaysDelta from src/lib/right-rail/station-dual-rail.ts"
+    },
+    {
+      "job": "Export: applyStationContextDelta",
+      "sot": "applyStationContextDelta",
+      "path": "src/lib/right-rail/station-dual-rail.ts",
+      "guard": null,
+      "symbols": [
+        "applyStationContextDelta"
+      ],
+      "kind": "code",
+      "source": "src/lib/right-rail/station-dual-rail.ts",
+      "line": 350,
+      "snippet": "export applyStationContextDelta from src/lib/right-rail/station-dual-rail.ts"
     },
     {
       "job": "Export: RIGHT_RAIL_PRIORITY",

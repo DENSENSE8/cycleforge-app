@@ -62,7 +62,7 @@ export function StationContextClaimCell({
       className={STATION_CONTEXT_CLAIM_CHROME_CLASS}
       data-testid="carton-context-claim"
     >
-      claim
+      Claim
     </Button>
   );
 }

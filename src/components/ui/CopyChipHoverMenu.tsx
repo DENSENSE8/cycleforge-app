@@ -55,8 +55,7 @@ import {
   type PortalSideMenuAlign,
   type PortalSideMenuPlacement,
 } from '@/lib/ui/portal-anchor';
-/** Grace period so crossing the chip→menu gap doesn't close the menu. */
-const CLOSE_DELAY_MS = 120;
+import { useHoverSurface } from '@/hooks/useHoverSurface';
 
 export type CopyChipHoverMenuItem = {
   id: string;
@@ -199,7 +198,6 @@ export function CopyChipHoverMenu({
   const enabled = items.length > 0;
   const triggerRef = useRef<HTMLDivElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
-  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const placementRef = useRef(placement);
   placementRef.current = placement;
   const alignRef = useRef(align);
@@ -212,36 +210,41 @@ export function CopyChipHoverMenu({
   const [anchor, setAnchor] = useState<DOMRect | null>(null);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
 
-  const clearClose = useCallback(() => {
-    if (closeTimer.current) {
-      clearTimeout(closeTimer.current);
-      closeTimer.current = null;
-    }
-  }, []);
+  /**
+   * Timing + eviction come from {@link useHoverSurface} — the ONE hover engine
+   * (0ms open, 150ms close, one surface open anywhere). This component keeps
+   * only what is genuinely its own: capturing the trigger rect and clamping the
+   * portal into view. It owns no timers.
+   */
+  const hover = useHoverSurface({ disabled: !enabled });
 
   const open = useCallback(() => {
     if (!enabled) return;
-    clearClose();
+    hover.open();
     const r = readTrustedTriggerRect(triggerRef.current);
     if (r) {
       setAnchor(r);
       setPos(null);
     }
-  }, [enabled, clearClose]);
+  }, [enabled, hover]);
 
   const close = useCallback(() => {
-    clearClose();
+    hover.close();
     setAnchor(null);
     setPos(null);
-  }, [clearClose]);
+  }, [hover]);
 
-  const scheduleClose = useCallback(() => {
-    clearClose();
-    closeTimer.current = setTimeout(() => {
+  const scheduleClose = hover.scheduleClose;
+
+  // Evicted by another hover surface (a rail peek, a classify menu) — drop the
+  // rect so the portal unmounts. Without this the registry would say "closed"
+  // while this menu stayed painted.
+  useEffect(() => {
+    if (!hover.isOpen && anchor) {
       setAnchor(null);
       setPos(null);
-    }, CLOSE_DELAY_MS);
-  }, [clearClose]);
+    }
+  }, [hover.isOpen, anchor]);
 
   // Notify the host on open/close transitions (keyed on the boolean, not the rect).
   const isOpen = anchor != null;
@@ -281,7 +284,6 @@ export function CopyChipHoverMenu({
     };
   }, [anchor, close]);
 
-  useEffect(() => () => clearClose(), [clearClose]);
 
   const menu =
     anchor && typeof document !== 'undefined'
@@ -295,10 +297,12 @@ export function CopyChipHoverMenu({
               visibility: pos ? 'visible' : 'hidden',
               zIndex: zIndex.panelPopover,
             }}
-            className="transition-opacity duration-100"
+            // No appear transition. The bench reads the panel the instant it
+            // exists; a 100ms fade is latency between the reach and the answer,
+            // and it made this menu behave differently from every other hover
+            // surface on the same row.
             onClick={(e) => e.stopPropagation()}
-            onMouseEnter={clearClose}
-            onMouseLeave={scheduleClose}
+            {...hover.surfaceProps}
           >
             <CopyChipHoverMenuPanel
               items={items}
