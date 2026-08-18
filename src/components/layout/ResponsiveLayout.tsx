@@ -376,7 +376,7 @@ export function ResponsiveLayout({ children, kioskHost = false }: ResponsiveLayo
         {!chromeless && (
           <ErrorBoundary label="sidebar-nav-column" fallback={() => null}>
             <Suspense fallback={null}>
-              <SidebarNavColumn open={navOpen}>
+              <SidebarNavColumn open={navOpen} onOpenChange={setNavOpen}>
                 <DashboardSidebar />
               </SidebarNavColumn>
             </Suspense>

@@ -5,6 +5,7 @@ import {
   useEffect,
   useRef,
   useState,
+  type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
 } from 'react';
@@ -13,6 +14,11 @@ const DEFAULT_WIDTH = 640;
 const DEFAULT_MIN_WIDTH = 320;
 /** Keep at least this many px of main content visible while dragging. */
 const DEFAULT_MAX_WIDTH_PAD = 240;
+/** Arrow-key resize step — one keypress, one deliberate nudge. */
+const KEYBOARD_STEP_PX = 16;
+/** Shift+Arrow step — a keyboard-only user reaching the far end of the
+ *  range one `KEYBOARD_STEP_PX` at a time would need dozens of presses. */
+const KEYBOARD_STEP_LARGE_PX = 80;
 
 /**
  * Which edge of the panel owns the drag handle.
@@ -197,6 +203,13 @@ export interface HorizontalEdgeHandleProps {
   onPointerDown: (e: ReactPointerEvent<HTMLDivElement>) => void;
   /** Double-click snaps back to `defaultWidth` (and persists). */
   onDoubleClick: (e: ReactMouseEvent<HTMLDivElement>) => void;
+  /**
+   * Arrow keys nudge the width (Shift+Arrow for a larger step); Home/End jump
+   * to the floor/ceiling. The WAI-ARIA "window splitter" pattern for a
+   * focusable `role="separator"` — without this the handle was reachable by
+   * Tab (`tabIndex={0}`, `aria-valuenow`) but inert on every key press.
+   */
+  onKeyDown: (e: ReactKeyboardEvent<HTMLDivElement>) => void;
 }
 
 /**
@@ -448,6 +461,41 @@ export function useHorizontalEdgeResize({
     [enabled, defaultWidth, setWidth, stopDrag],
   );
 
+  /**
+   * Arrow-key resize — see {@link HorizontalEdgeHandleProps.onKeyDown}.
+   * Direction mirrors {@link widthFromEdgeDrag}: on a `trailing` edge, moving
+   * the handle right (ArrowRight) grows the pane, same as dragging right;
+   * on `leading`, right shrinks it (dragging right shrinks a leading-edge
+   * handle too — see the `HorizontalEdge` doc above `widthFromEdgeDrag`).
+   * `setWidth` (not `applyLiveWidth`) — a keypress is a discrete commit, not
+   * a live drag frame, so it persists immediately like a click would.
+   */
+  const onKeyDown = useCallback(
+    (e: ReactKeyboardEvent<HTMLDivElement>) => {
+      if (!enabled) return;
+      if (e.key === 'Home') {
+        e.preventDefault();
+        setWidth(minWidth);
+        return;
+      }
+      if (e.key === 'End') {
+        // Infinity always lands exactly on the live cap — `setWidth`'s own
+        // `clamp()` computes it fresh, so this never duplicates
+        // `edgeResizeWidthCap`'s viewport/maxWidth math.
+        e.preventDefault();
+        setWidth(Number.POSITIVE_INFINITY);
+        return;
+      }
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+      e.preventDefault();
+      const step = e.shiftKey ? KEYBOARD_STEP_LARGE_PX : KEYBOARD_STEP_PX;
+      const sign = e.key === 'ArrowRight' ? 1 : -1;
+      const dir = edgeRef.current === 'trailing' ? 1 : -1;
+      setWidth(widthRef.current + sign * dir * step);
+    },
+    [enabled, minWidth, setWidth],
+  );
+
   const edgeHandleProps: HorizontalEdgeHandleProps = {
     role: 'separator',
     'aria-orientation': 'vertical',
@@ -457,6 +505,7 @@ export function useHorizontalEdgeResize({
     tabIndex: enabled ? 0 : -1,
     onPointerDown,
     onDoubleClick,
+    onKeyDown,
   };
 
   return {

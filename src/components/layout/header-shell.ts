@@ -261,12 +261,22 @@ export const TOP_CHROME_ICON_GLYPH = 'h-4 w-4';
 
 /**
  * Shared IconButton chrome for GlobalHeader — square hit wash filling the beam
- * cell (never a circle, never a floated h-8 island), mute tone, sunken hover.
+ * cell (never a circle, never a floated h-8 island), sunken hover.
  * `h-full w-full` overrides IconButton `size="md"` box so the wash meets the
  * header hairlines. Page face adds `w-auto` for icon+label width.
+ *
+ * **Ink is `text-text-default` (2026-08-16), not the previous mute tone.**
+ * `HeaderPageSwitcher`'s `PAGE_FACE_CLASS` had already overridden this same
+ * base to `text-text-default` so the page name (icon + label) matched the
+ * rail's bold title treatment — which left every OTHER header icon
+ * (sidebar toggle, Pins, Recents, WO, clipboard, inbox) visibly lighter than
+ * the page face sitting right beside them in the same cluster. One base
+ * token for the whole GlobalHeader icon row now, matching the spine
+ * (`spine-section-accent.ts` — ink constant, no dimming) on the other side
+ * of the toggle: header and sidebar read as one ink system, not two.
  */
 export const HEADER_ICON_BTN_CLASS =
-  'h-full min-h-8 w-full rounded-none text-text-muted hover:bg-surface-sunken';
+  'h-full min-h-8 w-full rounded-none text-text-default hover:bg-surface-sunken';
 
 /** Pressed / open fill for header icon toggles. */
 export const HEADER_ICON_BTN_OPEN_CLASS = 'bg-surface-sunken';

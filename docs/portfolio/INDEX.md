@@ -2,7 +2,7 @@
 
 > **Status:** Living SoT · 2026-07-12  
 > **Hub:** [README.md](./README.md) · **Lanes:** [WORKTREE-LANES.md](./WORKTREE-LANES.md) · **Review:** [review-protocol.md](./review-protocol.md)  
-> **Catalog:** [`DOC-CATALOG.md`](./DOC-CATALOG.md) (659 files, regenerated 2026-08-16) · run `node scripts/portfolio-sot-sync.mjs`
+> **Catalog:** [`DOC-CATALOG.md`](./DOC-CATALOG.md) (664 files, regenerated 2026-08-18) · run `node scripts/portfolio-sot-sync.mjs`
 > **Live tickets:** [`master-plan.mdx`](../../master-plan.mdx) → `/forge` or usav-dev  
 > **Lane registry:** [`dev-worktrees.json`](../../dev-worktrees.json) — a registry only. The
 > per-lane port resolver and `pnpm dev:switcher` were removed 2026-07-29; `pnpm dev` is a plain
@@ -38,7 +38,7 @@ Docs stay in this monorepo. Worktrees are **code lanes** only ([WORKTREE-LANES.m
 
 | WT-ID | Absolute path | Branch | HEAD | Switcher card | Unlock parked | Workstreams |
 |-------|---------------|--------|------|---------------|---------------|-------------|
-| `main` | `/home/avion/cycleforge-app` | `main` | `6cb7a8942` | yes · :3000 | no | WS-DOGFOOD + lane=main |
+| `main` | `/home/avion/cycleforge-app` | `wip/nav-chrome-and-guard-suite` | `f8105eda1` | yes · :3000 | no | WS-DOGFOOD + lane=main |
 | `nav-ia` | `/home/avion/cycleforge-nav-ia` | `topic/nav-ia` | `e3d409e4c` | yes · :3130 | yes | — |
 | `product-updates` | `/home/avion/cycleforge-product-updates` | `wip/product-updates-popover` | `a3816a3bf` | yes · :3000 | yes | — |
 | `scan-phase1` | `/home/avion/cycleforge-scan-phase1` | `wip/station-scan-phase1` | `1ee41b9fa` | yes · :3000 | yes | — |

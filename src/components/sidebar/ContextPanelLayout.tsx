@@ -98,8 +98,13 @@ const SidebarContextPanel = dynamic(
  * {@link RailFilterCollapseButton}, **or ⌘/Ctrl+B**
  * ({@link useContextPanelToggleHotkey}) — all write {@link CONTEXT_PANEL_COLLAPSE}
  * (width-drawer to 0 + slim expand strip). One shared preference across routes.
- * The resize sash is drag-only (no sash-top collapse chevron). MasterNav spine
- * stays click-only (distinct altitude from this work rail).
+ * The resize sash is drag-only (no sash-top collapse chevron). MasterNav
+ * spine (`SidebarNavColumn`) shares this exact grammar too now (2026-08-16) —
+ * its own {@link useHorizontalEdgeResize} + {@link HorizontalEdgeResizeHandle}
+ * pair, a separate storage key (`SIDEBAR_SPINE_RESIZE`), open via click OR
+ * drag-past-min collapse OR the GlobalHeader toggle. Two altitudes, one
+ * splitter contract — no reason left for the spine to be the one nav surface
+ * that doesn't drag.
  *
  * Renders `children` untouched when the route has no panel, so a panel-less
  * surface still reserves nothing.

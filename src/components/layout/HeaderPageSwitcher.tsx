@@ -55,15 +55,28 @@ import {
 
 /**
  * Shared face chrome — interactive Button and static chip stay pixel-matched.
- * Mute tone is owned by {@link HEADER_ICON_BTN_CLASS} (`text-text-muted`) —
- * same DS token as Recents / Pins / WO. Never re-declare `text-text-default`
- * here; that forked the page face from the rest of the nav cluster.
+ *
+ * **Weight/ink match the rail's title (2026-08-16); size settled at
+ * `role-title` the same day.** This face names the page you are ON — the
+ * same job the context rail's row title does (`RailRowBody` —
+ * `font-semibold text-text-default`, at `role-caption`) — so it carries the
+ * same weight and ink. `text-text-default` no longer needs to override
+ * {@link HEADER_ICON_BTN_CLASS} here (that base moved to `text-text-default`
+ * the same day, once every OTHER header icon needed the same ink this face
+ * already had); the explicit class survives as the `role-title` carrier,
+ * which the base does not set. `role-title` (18px, bumped from `role-nav`'s
+ * 13px) matches the spine's OWN settled size (`SidebarNavList.tsx` —
+ * `SPINE_ROW_FACE_CLASS`'s docblock has the full history) — this face and
+ * the spine row it mirrors ("Unbox" here, "Unbox" in the list below) are the
+ * same destination through two doors; they should read as the same size.
+ * `role-title` bakes its own 600 weight, so the previous separate
+ * `font-semibold` is redundant but harmless to drop — dropped.
  */
 const PAGE_FACE_CLASS = cn(
   HEADER_ICON_BTN_CLASS,
   // Beam-height face; w-auto so icon+label is not crushed to the icon-cell width.
   'inline-flex h-full min-h-8 w-auto shrink-0 select-none items-center justify-center gap-1 px-1.5',
-  'text-role-caption font-medium transition-colors duration-150 ease-out',
+  'text-role-title text-text-default transition-colors duration-150 ease-out',
 );
 
 type HeaderMenuRow = {
@@ -194,10 +207,14 @@ export function HeaderPageSwitcher() {
     return (
       <div className="relative flex h-full shrink-0 items-stretch">
         <span className={PAGE_FACE_CLASS} aria-label={page.label}>
-          <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center">
+          {/* Same TOP_CHROME_ICON_GLYPH (16px) as the switchable Button face
+              below and every other GlobalHeader icon — this used to be a
+              14px (`h-3.5`) one-off that made the static face's glyph read
+              smaller than its own interactive twin. */}
+          <span className={cn(TOP_CHROME_ICON_GLYPH, 'flex shrink-0 items-center justify-center')}>
             <FaceIcon className="h-full w-full" aria-hidden />
           </span>
-          <span className="max-w-[10rem] truncate">{faceLabel}</span>
+          <span className="max-w-[10rem] truncate" title={faceLabel}>{faceLabel}</span>
         </span>
       </div>
     );
@@ -215,7 +232,7 @@ export function HeaderPageSwitcher() {
         className={cn(PAGE_FACE_CLASS, open && HEADER_ICON_BTN_OPEN_CLASS)}
         icon={<FaceIcon className={TOP_CHROME_ICON_GLYPH} />}
       >
-        <span className="max-w-[10rem] truncate">{faceLabel}</span>
+        <span className="max-w-[10rem] truncate" title={faceLabel}>{faceLabel}</span>
       </Button>
 
       <AnchoredLayer

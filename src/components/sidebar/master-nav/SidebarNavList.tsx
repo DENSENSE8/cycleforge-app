@@ -5,9 +5,12 @@ import { ChevronDown, ChevronLeft, ChevronsRight } from '@/components/Icons';
 import { navIconStrokeClass } from '@/components/icons/nav-weight';
 import { buildNavDestinations, type NavDestination } from '@/lib/nav/nav-destinations';
 import { searchNav, splitNavHighlight, type NavMatch } from '@/lib/nav/nav-search';
-import { PRIMARY_CHROME_ROW_FACE } from '@/components/layout/header-shell';
 import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
-import { spineAccentFor, type SpineAccentClasses } from '@/lib/nav/spine-section-accent';
+import {
+  spineAccentFor,
+  spineRailLineClass,
+  type SpineAccentClasses,
+} from '@/lib/nav/spine-section-accent';
 import {
   SPINE_SECTIONS,
   getStationSubgroupDef,
@@ -21,11 +24,41 @@ import { cn } from '@/utils/_cn';
 import { StaffAccountFooter } from './StaffAccountFooter';
 
 /**
+ * Row height + glyph size for every destination row in this map (2026-08-16)
+ * — deliberately its OWN local token, not `PRIMARY_CHROME_ROW_FACE` (28px,
+ * shared by the scan bar / carton identity row 1 / Displays top / grid column
+ * headers app-wide). A short destination list — Scan Stations' 7 benches, a
+ * domain section's 2-3 pages — used to huddle at 28px rows near the top of a
+ * column that runs the full viewport height, leaving most of it visibly
+ * empty. Taller rows spend that space instead of wasting it, and the glyph
+ * scales with the row so it stays proportionate rather than shrinking inside
+ * a box that grew around it. This trades the previous cross-column seam
+ * match (spine row 1 bottom ↔ the scan bar's) for legibility + fill — a
+ * deliberate call, not an oversight; nothing else in the app reads this
+ * token, so nothing else moved.
+ *
+ * **Settled at `h-10` / 16px icon (2026-08-16, second pass).** A first pass
+ * went to `h-14` (56px) paired with `role-display` (24px) text — genuinely
+ * too much: 56px rows and 24px labels are BUTTON scale, not repeated
+ * nav-list-row scale, and no reference sidebar (VS Code ~13px/22px rows,
+ * Linear/GitHub ~14px/32px, Slack/Notion ~14-15px/28-32px) runs anywhere
+ * near that for an item that repeats a dozen times down a column. `h-10`
+ * (40px) is generous against the 28px it replaced without reading as
+ * oversized, and pairs with `role-title` (18px, see below) the way the
+ * glyph below pairs with it — back to 16px, proportionate at this text size
+ * rather than the 20px the 24px-text pass needed.
+ */
+const SPINE_ROW_FACE_CLASS = 'h-10 shrink-0';
+const SPINE_ROW_ICON_CLASS = 'h-4 w-4 shrink-0';
+
+/**
  * The page list inside the sidebar spine — **ONE flat scrolling map**.
  *
  * The body is every reachable destination in {@link SPINE_SECTIONS} order —
  * **Scan Stations first (2026-08-03)**, because the benches are what this
- * product is for — grouped by a trailing `border-b`; a footer-pinned {@link TechRailSearchBar} (`density="row"`,
+ * product is for — grouped by spacing/order alone, no rule between sections
+ * (2026-08-16, the map has zero horizontal hairlines top to bottom, matching
+ * the context rail beside it); a footer-pinned {@link TechRailSearchBar} (`density="row"`,
  * the shared ~33px band used by station recent rails too) sits above the
  * footer band — Operations Studio · Admin · Settings — then
  * {@link StaffAccountFooter}.
@@ -69,21 +102,26 @@ import { StaffAccountFooter } from './StaffAccountFooter';
  * row's accessible name. The vacated slot stays EMPTY: see `renderPageHeader`.
  *
  * **Nesting is a rail, not just an indent.** Child rows draw a left hairline
- * (`renderChildLikeRow`) that costs no vertical space — the one thing this
- * column cannot spend, since the map already measures against its scrollport
- * on the widest page (`sidebar-open-close.spec.ts` MEASURE tests). The row
- * gets its height from an explicit box (`PRIMARY_CHROME_ROW_FACE` on L1 /
- * drill-back so it shares the scan-bar seam; nested children stay `h-7`),
- * not from `py-*` — a box, not a padded label.
+ * (`renderChildLikeRow`) that costs no vertical space — the one thing THIS
+ * measurement (`sidebar-open-close.spec.ts` MEASURE tests) used to be short
+ * of, before rows grew (see next). The row gets its height from an explicit
+ * box, not from `py-*` — a box, not a padded label.
  *
  * **Monochrome, uniform, and STILL (2026-08-08).** There is no per-section hue
  * — {@link spineAccentFor} returns one treatment for every row at every
- * altitude (`src/lib/nav/spine-section-accent.ts` carries the ruling and the
- * ink ladder). Hierarchy is INDENT + the nesting rail + ink contrast; identity
- * is grouping and order. L1 / drill-back / nested children share the same
- * **`PRIMARY_CHROME_ROW_FACE`** (`h-7`) box as the scan bar. Same
- * **13px `role-nav`** label, so the map reads as one surface rather than a
- * stack of differently-sized parts — the 36px-parent / 24px-child jump that
+ * altitude (`src/lib/nav/spine-section-accent.ts` carries the ruling). Hierarchy
+ * is INDENT + the nesting rail + weight; identity is grouping and order. Ink
+ * is CONSTANT now (2026-08-16, see the accent module) — `spineAccentFor`
+ * no longer dims idle rows. L1 / drill-back / nested children share
+ * {@link SPINE_ROW_FACE_CLASS} (`h-10`, 40px — bumped from the shared
+ * `PRIMARY_CHROME_ROW_FACE`'s 28px, settled here after a `h-14`/56px
+ * overshoot; see the constant's own docblock above). **`text-role-title`**
+ * label (18px, bumped from `role-body`'s 14px — a `role-display`/24px
+ * overshoot came and went the same day). `role-title` bakes its own 600
+ * weight, the same `font-semibold` value the rail's `RailRowBody` title
+ * carries at its own (`role-caption`) size — so the spine and the rail
+ * beside it read as one typographic FAMILY (weight + ink), each sized for
+ * its own row height and density — the 36px-parent / 24px-child jump that
  * preceded it was 1.5×, which is enough to read as two systems.
  *
  * Nothing on a row travels on hover: the glyph's 2px CSS lift stays deleted,
@@ -288,40 +326,52 @@ export function SidebarNavList({
    * page switcher draws with glyphs. Dropping them here would leave the app's two
    * doors onto one destination disagreeing about whether it has a face.
    *
-   * Hierarchy is carried by the **nesting rail** plus the indent and one ink
-   * step (`text-soft` against a parent's `text-muted`) — never by a heavier
-   * stroke, never by a smaller type size, and never by a colour. A child glyph
-   * at the L2 weight (2.25) would out-draw its own parent at 1.5, which inverts
-   * the ladder it was supposed to express.
+   * Hierarchy is carried by the **nesting rail** plus the indent — never by a
+   * heavier stroke, never by a smaller type size, and never by a colour (ink
+   * is constant across idle/current now, 2026-08-16 — see
+   * `src/lib/nav/spine-section-accent.ts`). A child glyph at the L2 weight
+   * (2.25) would out-draw its own parent at 1.5, which inverts the ladder it
+   * was supposed to express.
    *
-   * **Same 28px box and same 13px `role-nav` as its parent** (2026-08-08). It
-   * used to be a 24px row at 12px against a 36px/14px parent; a 1.5× height
-   * jump inside one list makes parent and child read as two different kinds of
-   * object rather than two altitudes of one. Weight is the only type variable
-   * left: 400 idle, 500 when it is the page you are on.
+   * **Same {@link SPINE_ROW_FACE_CLASS} box (40px) and same `text-role-title`
+   * label as its parent** (rail-matched 2026-08-16, both bumped same day from
+   * a 28px/`role-body` (14px) box that was reading thin against the column's
+   * full height — see the constant's own docblock for the `h-14`/56px
+   * overshoot that came before this size). It used to be a 24px row at 12px
+   * against a 36px/14px parent; a 1.5× height jump inside one list makes
+   * parent and child read as two different kinds of object rather than two
+   * altitudes of one. Weight is now constant (600) — the fill on
+   * `accent.child*` plus the rail line's darkened token (below)
+   * is what says "you are here", same two-signal shape industry side-nav
+   * tokens use (a paired width + colour token on ONE element).
    *
-   * ## The rail (2026-08-03; centered 2026-08-03)
+   * ## The rail (2026-08-03; centered 2026-08-03; width bumped 2026-08-16)
    *
-   * A left hairline spanning the nested block, in place of relying on indent
+   * A left line spanning the nested block, in place of relying on indent
    * alone. Two properties earned it a place in a phase whose measurement ruled
    * *against* the richer pattern it came from:
    *
-   * 1. **It costs no vertical space.** It is a hairline in a gutter, so the
+   * 1. **It costs no vertical space.** It is a thin gutter line, so the
    *    map's height is unchanged — which is the only currency the spine is
    *    short of (measured: 732px of map against a 685px port on the widest page).
    * 2. **It survives greyscale.** Same reason the section hues were deleted: the
    *    channels this column may spend are shape and grouping, not colour.
    *
    * **Centered under the parent glyph** via a token-only gutter: `ml-2` matches
-   * the parent's `px-2`, `w-3.5` matches the glyph — the `w-px` sits on the
-   * icon's centre (15px) without an arbitrary `ml-[15px]`.
+   * the parent's `px-2`, `w-4` matches the glyph — the line sits on the icon's
+   * centre without an arbitrary `ml-[Npx]`. Width is `w-0.5` (2026-08-16, up
+   * from a `w-px` hairline) — the darkened active token needs enough width to
+   * read as a bar, not a barely-visible pixel; kept constant across idle/active
+   * (see {@link spineRailLineClass}) rather than only widening on select, so it
+   * is genuinely one element, not a line that swaps shape depending on state.
    *
    * It is drawn **per row, not per group**, and that is deliberate rather than
    * lazy. Child pages arrive inside a `<ul>`, but station-subgroup members
    * arrive as flat siblings of every other page in the section — there is no
    * element wrapping just them to hang a group rail on. Adjacent rows carry no
    * vertical margin, so per-row segments abut into one continuous line in both
-   * shapes, and the active row's own segment darkens to mark where you are.
+   * shapes, and the active row's own segment darkens to mark where you are —
+   * `spineRailLineClass(active)` on the SAME `<div>`, never a second element.
    *
    * The fill therefore starts INSIDE the rail rather than under it: a hover wash
    * that swallowed the line would erase the one cue this adds.
@@ -340,23 +390,32 @@ export function SidebarNavList({
     const RowIcon = opts.icon;
     return (
       <div className="flex">
-        {/* Rail gutter: `ml-2` matches the parent's `px-2` and `w-4` matches the
-            parent's 16px glyph, so the `w-px` lands on the icon's centre
-            without an arbitrary `ml-[Npx]`. */}
+        {/* Rail gutter: `ml-2` matches the parent's `px-2` and `w-4` matches
+            {@link SPINE_ROW_ICON_CLASS} (16px — briefly 20px during the
+            same-day `h-14`/24px overshoot; the gutter tracks whatever the
+            glyph size settles at), so the line lands on the icon's centre
+            without an arbitrary `ml-[Npx]`. ONE line, two tokens (2026-08-16,
+            corrected same day) — {@link spineRailLineClass} toggles this SAME
+            element between the structural "lessened gray" guide (idle) and a
+            darkened bar (active); it is never joined by a second bar
+            elsewhere on the row. Full row height (`self-stretch`) puts its
+            centre on the icon's centre for free. */}
         <div className="ml-2 flex w-4 shrink-0 justify-center" aria-hidden>
-          <div
-            className={cn(
-              'w-px self-stretch transition-colors duration-150',
-              opts.active ? 'bg-border-default' : 'bg-border-soft',
-            )}
-          />
+          <div className={spineRailLineClass(opts.active)} />
         </div>
         <button
           type="button"
           onClick={opts.onClick}
           onMouseEnter={opts.onMouseEnter}
+          // The visual "you are here" signal (fill + spineRailLineClass's
+          // darkened bar) was purely visual until now — nothing told a
+          // screen reader which row is current. `aria-current="page"` is the
+          // WAI-ARIA APG signal for exactly this (a nav link to the page the
+          // user is already on).
+          aria-current={opts.active ? 'page' : undefined}
           className={cn(
-            'ds-raw-button group flex h-7 min-w-0 flex-1 items-center gap-2 rounded-none pl-1 pr-2 text-left transition-colors duration-150',
+            'ds-raw-button group flex min-w-0 flex-1 items-center gap-2 rounded-none pl-1 pr-2 text-left transition-colors duration-150',
+            SPINE_ROW_FACE_CLASS,
             opts.active ? accent.childActive : accent.childIdle,
           )}
         >
@@ -365,18 +424,21 @@ export function SidebarNavList({
               className={navIconStrokeClass(
                 'page',
                 cn(
-                  'h-4 w-4 shrink-0',
+                  SPINE_ROW_ICON_CLASS,
                   opts.active ? accent.childActiveIcon : accent.childIdleIcon,
                 ),
               )}
             />
           ) : null}
-          <span
-            className={cn(
-              'min-w-0 flex-1 truncate text-role-nav',
-              opts.active ? 'font-medium' : 'font-normal',
-            )}
-          >
+          {/* Rail-matched title weight/ink (2026-08-16) — `font-semibold
+              text-text-default`, same as RailRowBody's title line, bumped to
+              `role-body` (14px) for nav-row legibility. Weight is constant
+              now (ink already is); active/idle reads from `accent.child*`
+              background + the rail line's token, not font weight. */}
+          {/* `title` — a long child label (a station name, a deep page) truncates
+              with no other way to reveal itself. RailRowBody does this
+              (`titleAttr`); the spine rows never had. */}
+          <span className="min-w-0 flex-1 truncate text-role-title" title={opts.label}>
             {opts.label}
           </span>
         </button>
@@ -431,11 +493,17 @@ export function SidebarNavList({
         onMouseEnter={opts.onMouseEnter}
         aria-label={opts.ariaLabel}
         aria-expanded={opts.disclosure ? opts.disclosure.expanded : undefined}
+        // See renderChildLikeRow — same `aria-current="page"` signal for the
+        // same reason. A disclosure-only row (multi-child parent, subgroup
+        // header) never passes `active: true` in the first place, so this
+        // stays `undefined` there without a separate check.
+        aria-current={opts.active ? 'page' : undefined}
         className={cn(
           'ds-raw-button group flex w-full items-center gap-2 rounded-none px-2 text-left transition-colors duration-150',
-          // L1 + Scan Stations enter share PRIMARY with the context scan bar
-          // (same Y under GlobalHeader / SpineTopPins). Nested children stay h-7.
-          PRIMARY_CHROME_ROW_FACE,
+          // L1 + Scan Stations enter + drill-back share SPINE_ROW_FACE_CLASS.
+          // Nested children stay the same height too (renderChildLikeRow) —
+          // one size, every altitude (see the module docblock).
+          SPINE_ROW_FACE_CLASS,
           opts.active ? accent.activePage : accent.idlePage,
         )}
       >
@@ -443,14 +511,23 @@ export function SidebarNavList({
           className={navIconStrokeClass(
             'page',
             cn(
-              'h-4 w-4 shrink-0',
+              SPINE_ROW_ICON_CLASS,
               opts.active ? accent.activePageIcon : accent.idlePageIcon,
             ),
           )}
         />
-        <span className="min-w-0 flex-1 truncate text-role-nav font-medium">{opts.label}</span>
+        {/* Rail-matched title weight/ink (2026-08-16) — `font-semibold
+            text-text-default`, same as RailRowBody's title line, bumped to
+            `role-title` (18px, see the module docblock) for nav-row
+            legibility + fill. "You are here" reads from `accent.activePage`'s
+            background fill alone — an L1 row is full-width, so the fill reads
+            clearly with no bar (a nested row's fill is narrower against its
+            indent, which is why THAT row also gets `spineRailLineClass`'s
+            darkened rail token). `title` — same truncation-tooltip reasoning
+            as renderChildLikeRow. */}
+        <span className="min-w-0 flex-1 truncate text-role-title" title={opts.label}>{opts.label}</span>
         {opts.drill ? (
-          <ChevronsRight className="h-4 w-4 shrink-0 text-text-faint" aria-hidden />
+          <ChevronsRight className={cn(SPINE_ROW_ICON_CLASS, 'text-text-faint')} aria-hidden />
         ) : opts.disclosure ? (
           <ChevronDown
             className={cn(
@@ -459,7 +536,8 @@ export function SidebarNavList({
               // the operator had just committed to — a 150ms tell that the
               // click registered, on a click whose result (the nest) is
               // already there instantly. Snap it.
-              'h-4 w-4 shrink-0 text-text-faint',
+              SPINE_ROW_ICON_CLASS,
+              'text-text-faint',
               !opts.disclosure.expanded && '-rotate-90',
             )}
           />
@@ -734,20 +812,22 @@ export function SidebarNavList({
           onClick={() => onStationsDrillChange(false)}
           aria-label="Back to pages"
           className={cn(
-            'ds-raw-button grid w-full grid-cols-[1rem_1fr_1rem] items-center gap-2 rounded-none border-b border-border-soft px-2 text-text-muted transition-colors duration-150 hover:bg-surface-hover hover:text-text-default',
-            // Same PRIMARY face as context scan bar · carton identity row 1.
-            PRIMARY_CHROME_ROW_FACE,
+            'ds-raw-button grid w-full grid-cols-[1rem_1fr_1rem] items-center gap-2 rounded-none px-2 text-text-default transition-colors duration-150 hover:bg-surface-hover',
+            // Same SPINE_ROW_FACE_CLASS as every other row (see module docblock).
+            SPINE_ROW_FACE_CLASS,
           )}
         >
-          <ChevronLeft className="h-4 w-4 shrink-0 justify-self-start" aria-hidden />
-          <span className="min-w-0 truncate text-center text-role-nav font-medium">
+          <ChevronLeft className={cn(SPINE_ROW_ICON_CLASS, 'justify-self-start')} aria-hidden />
+          {/* Rail-matched title role (2026-08-16) — see renderPageHeader.
+              `title` — same truncation-tooltip reasoning too. */}
+          <span className="min-w-0 truncate text-center text-role-title" title={section.label}>
             {section.label}
           </span>
-          <span className="h-4 w-4 shrink-0" aria-hidden />
+          <span className={SPINE_ROW_ICON_CLASS} aria-hidden />
         </button>
         <div id="spine-section-floor" role="group" aria-label={section.label}>
           {pages.length === 0 ? (
-            <p className="px-2 py-1 text-role-nav text-text-soft">No matching pages</p>
+            <p className="px-2 py-1 text-role-caption text-text-soft">No matching pages</p>
           ) : (
             renderFloorPages(pages, accent)
           )}
@@ -773,29 +853,17 @@ export function SidebarNavList({
         {groups.map(({ section, pages }) => {
           const accent = spineAccentFor(section.id);
           /**
-           * A hairline BELOW every section — the ONLY thing marking where one
-           * section ends now that hue is gone (2026-08-08).
-           *
-           * Deleting the per-section colour deleted the last section marker:
-           * sections draw no header row (pages sit directly on the map, so a
-           * header would read `Catalog › Catalog`), and the old `mt-1` gap was
-           * removed for the box-to-box pass. Without this the map is twenty
-           * identical rows with no breaks — which hides the fact that the root
-           * axis is deliberately mixed (Scan Stations is an INPUT MODEL sitting
-           * among business DOMAINS).
-           *
-           * Bottom rule, not top: a `border-t` on `index > 0` left the LAST
-           * section (Inventory) with no trailing hairline — every other entry
-           * inherited its neighbour's top rule, the tail had nothing below it.
-           * `border-b` on every section closes that gap without doubling seams
-           * between peers.
-           *
-           * A hairline and not a gap: 8px × 8 boundaries is 64px against a
-           * scrollport that already measures 732px of map into a 685px port on
-           * the widest page, so whitespace here would push rows below the fold.
-           * A rule costs zero vertical space and survives greyscale.
+           * Section boundary — NO hairline (2026-08-16, superseding the
+           * "hairline below every section" ruling this replaced). The rail
+           * beside this column (`RailRow` / recent activity) has no dividers
+           * between its rows either — grouping there reads from spacing and
+           * the day-band eyebrow alone, never a rule. Matching that removes
+           * the last horizontal line left in the spine now that ink is
+           * constant and the section hue is gone; the root axis split (Scan
+           * Stations as an INPUT MODEL among business DOMAINS) still reads
+           * from the drill's own Back-header shape, not from a rule.
            */
-          const seam = 'border-b border-border-soft';
+          const seam = '';
 
           // Scan Stations — enter row only; benches live inside the drill.
           if (section.id === 'floor') {
@@ -855,13 +923,17 @@ export function SidebarNavList({
             className={navIconStrokeClass(
               'page',
               cn(
-                'h-4 w-4 shrink-0',
+                SPINE_ROW_ICON_CLASS,
                 isCursor ? accent.activePageIcon : accent.idlePageIcon,
               ),
             )}
           />
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-role-nav font-medium">
+            {/* Rail-matched title role (2026-08-16) — see renderPageHeader.
+                `title` carries the raw label — the truncated content here is
+                highlight spans, not plain text, so the tooltip can't just
+                read the DOM like the other rows; it needs the source string. */}
+            <span className="block truncate text-role-title" title={destination.label}>
               {splitNavHighlight(destination.label, match.ranges).map((part, i) =>
                 part.hit ? (
                   // Marks the characters that justified the row. Underline, not
@@ -899,7 +971,7 @@ export function SidebarNavList({
       {results.length === 0 ? (
         // Names the query back. "No results" leaves the operator unsure whether
         // the place does not exist or the box simply is not working.
-        <li className="px-2 py-1 text-role-nav text-text-soft">
+        <li className="px-2 py-1 text-role-caption text-text-soft">
           No destination matches “{navFilter.trim()}”
         </li>
       ) : (
@@ -951,7 +1023,7 @@ export function SidebarNavList({
           density="row"
         />
         {bottomPages.length > 0 ? (
-          <div className="w-full border-t border-border-soft p-0">
+          <div className="w-full p-0">
             {bottomPages.map((page) => renderRow(page, 'bottom', neutralAccent, { pinned: true }))}
           </div>
         ) : null}
