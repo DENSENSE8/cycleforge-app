@@ -13,20 +13,46 @@
  * jobs. Receiving can drag-resize its rail via `CONTEXT_PANEL_RESIZE`; wiring
  * the panel to this spine token would still mean narrowing the nav silently
  * narrows every route's default rail.
+ *
+ * **Desktop is drag-resizable now (2026-08-16); this class is the MOBILE
+ * drawer's fixed width only.** `SidebarNavColumn`'s desktop push column reads
+ * its live width from `useHorizontalEdgeResize` ({@link SIDEBAR_SPINE_RESIZE}
+ * below), because a Tailwind class cannot be interpolated per-drag-frame. The
+ * mobile drawer has no mouse to drag with, so it keeps this static class
+ * unchanged — `SIDEBAR_SPINE_WIDTH_PX` is that drawer's fixed width AND the
+ * desktop resize's persisted default.
  */
 export const SIDEBAR_SPINE_WIDTH = 'w-[240px]';
 
 /**
- * The same width as a number, for the one consumer that must animate it:
- * {@link SidebarNavColumn} tweens the column's own `width` from 0, and a
- * Tailwind class cannot be interpolated.
+ * The same width as a number — the mobile drawer's fixed pixel twin of
+ * {@link SIDEBAR_SPINE_WIDTH}, and the desktop resize's `defaultWidthPx`
+ * (see {@link SIDEBAR_SPINE_RESIZE}).
  *
  * Two spellings of one measurement is a fork risk, so they live on adjacent
- * lines: change one, change the other. (A `style={{ width }}` on the inner
- * column instead would move the geometry out of the token file and into the
- * component, which is the trade this pair exists to avoid.)
+ * lines: change one, change the other.
  */
 export const SIDEBAR_SPINE_WIDTH_PX = 240;
+
+/**
+ * Drag-to-resize + drag-to-collapse contract for the MasterNav spine
+ * (2026-08-16) — same grammar as {@link CONTEXT_PANEL_RESIZE}
+ * (`context-panel-column.ts`): left-anchored, trailing-edge handle via
+ * `useHorizontalEdgeResize`, width persists in localStorage, drag-past-min
+ * collapses instead of flooring at `minWidthPx`. This retires the "MasterNav
+ * spine stays click-only" line in `ContextPanelLayout.tsx` — the spine now
+ * shares the exact industry splitter grammar (VS Code / Linear: drag the
+ * seam to resize, drag past the floor to park, click the strip or the
+ * GlobalHeader toggle to restore) instead of being the one nav surface that
+ * doesn't.
+ */
+export const SIDEBAR_SPINE_RESIZE = {
+  storageKey: 'sidebar-spine-width',
+  defaultWidthPx: SIDEBAR_SPINE_WIDTH_PX,
+  minWidthPx: 200,
+  /** Generous enough for long destination labels; short of crowding the workspace. */
+  maxWidthPx: 360,
+} as const;
 
 /**
  * Chrome for MasterNav **identity menus** (org/workspace switch + staff ⋯ menu).

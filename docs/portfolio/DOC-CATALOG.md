@@ -1,7 +1,7 @@
 # DOC catalog — machine-generated SoT
 
 > **Do not hand-edit.** Regenerate: `node scripts/portfolio-sot-sync.mjs`  
-> Generated: `2026-08-16T21:41:13.028Z` · Files: **659** · Repo: `cycleforge-app`  
+> Generated: `2026-08-18T04:51:04.628Z` · Files: **664** · Repo: `cycleforge-app`  
 > Parent index: [INDEX.md](./INDEX.md)
 
 Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*** id  
@@ -13,7 +13,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 
 | WT-ID | Absolute path | Branch | HEAD (short) | Exists |
 |-------|---------------|--------|--------------|--------|
-| `main` | `/home/avion/cycleforge-app` | `main` | `6cb7a8942` | yes |
+| `main` | `/home/avion/cycleforge-app` | `wip/nav-chrome-and-guard-suite` | `f8105eda1` | yes |
 | `nav-ia` | `/home/avion/cycleforge-nav-ia` | `topic/nav-ia` | `e3d409e4c` | yes |
 | `product-updates` | `/home/avion/cycleforge-product-updates` | `wip/product-updates-popover` | `a3816a3bf` | yes |
 | `scan-phase1` | `/home/avion/cycleforge-scan-phase1` | `wip/station-scan-phase1` | `1ee41b9fa` | yes |
@@ -142,6 +142,9 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 | `DOC-ROOT-SETTINGS-REGISTRY-5316` | `WS-PLATFORM` | [`settings-registry.md`](../settings-registry.md) |
 | `DOC-ROOT-SHIPSTATION-OUTBOUND-C710` | `WS-SHIP` | [`shipstation-outbound.md`](../shipstation-outbound.md) |
 | `DOC-ROOT-STATION-CHASSIS-REFACTOR-DISCOVERY-8014` | `WS-STATION` | [`station-chassis-refactor-discovery.md`](../station-chassis-refactor-discovery.md) |
+| `DOC-ROOT-STATION-SCAN-STANCE-PHASE1-3BD2` | `WS-DOCS-MISC` | [`refactors/station-scan-stance-phase1.md`](../refactors/station-scan-stance-phase1.md) |
+| `DOC-ROOT-STATION-SCAN-STANCE-PHASE2-7384` | `WS-DOCS-MISC` | [`refactors/station-scan-stance-phase2.md`](../refactors/station-scan-stance-phase2.md) |
+| `DOC-ROOT-STATION-SCAN-UNIFICATION-RESEARCH-BRIEF-29E4` | `WS-SEARCH` | [`refactors/station-scan-unification-research-brief.md`](../refactors/station-scan-unification-research-brief.md) |
 | `DOC-ROOT-TEMPLATE-205D` | `WS-DOCS-MISC` | [`agent-fs/contracts/TEMPLATE.md`](../agent-fs/contracts/TEMPLATE.md) |
 | `DOC-ROOT-TESTING-VS-RECEIVING-ISOLATION-C2D2` | `WS-RECV` | [`testing-vs-receiving-isolation.md`](../testing-vs-receiving-isolation.md) |
 | `DOC-ROOT-TIER0-GO-LIVE-RUNBOOK-0230` | `WS-PLATFORM` | [`tier0-go-live-runbook.md`](../tier0-go-live-runbook.md) |
@@ -197,6 +200,8 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 | `DOC-TODO-BAND3-FIND-ONLY-INSPECTOR-SOT-FINISH-HANDOFF-1051` | `WS-TODO-MISC` | [`todo/band3-find-only-inspector-SOT-FINISH-HANDOFF.md`](../todo/band3-find-only-inspector-SOT-FINISH-HANDOFF.md) |
 | `DOC-TODO-BAND3-LEAN-ROW-PORTS-HANDOFF-36B3` | `WS-TODO-MISC` | [`todo/band3-lean-row-PORTS-HANDOFF.md`](../todo/band3-lean-row-PORTS-HANDOFF.md) |
 | `DOC-TODO-BETA-INTAKE-FUNNEL-PLAN-6D32` | `WS-BETA` | [`todo/beta-intake-funnel-plan.md`](../todo/beta-intake-funnel-plan.md) |
+| `DOC-TODO-CARTON-CONTEXT-HANDOFF-0531` | `WS-TODO-MISC` | [`todo/carton-context-HANDOFF.md`](../todo/carton-context-HANDOFF.md) |
+| `DOC-TODO-CARTON-CONTEXT-HOVER-UNIFICATION-GEMINI-RESEARCH-9992` | `WS-TODO-MISC` | [`todo/carton-context-hover-unification-GEMINI-RESEARCH-BRIEFING.md`](../todo/carton-context-hover-unification-GEMINI-RESEARCH-BRIEFING.md) |
 | `DOC-TODO-CARTON-INSPECTOR-D4-ROOT-FIX-HANDOFF-A727` | `WS-TODO-MISC` | [`todo/carton-inspector-D4-ROOT-FIX-HANDOFF.md`](../todo/carton-inspector-D4-ROOT-FIX-HANDOFF.md) |
 | `DOC-TODO-CARTON-INSPECTOR-LAYOUT-POLISH-HANDOFF-2237` | `WS-TODO-MISC` | [`todo/carton-inspector-LAYOUT-POLISH-HANDOFF.md`](../todo/carton-inspector-LAYOUT-POLISH-HANDOFF.md) |
 | `DOC-TODO-CARTON-INSPECTOR-REBUILD-HANDOFF-DDA8` | `WS-TODO-MISC` | [`todo/carton-inspector-REBUILD-HANDOFF.md`](../todo/carton-inspector-REBUILD-HANDOFF.md) |
@@ -737,7 +742,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 - `DOC-DIAG-14-FBA-STATION-TRACE-81AB` — [`diagrams/14-fba-station-trace.md`](../diagrams/14-fba-station-trace.md)
 - `DOC-DIAG-README-5821` — [`diagrams/README.md`](../diagrams/README.md)
 
-### `WS-DOCS-MISC` (13)
+### `WS-DOCS-MISC` (15)
 
 - `DOC-ROOT-BASELINE-2026-07-19-A64A` — [`performance/baseline-2026-07-19.md`](../performance/baseline-2026-07-19.md)
 - `DOC-ROOT-FABLE5-DS-PRUNE-REPORT-7D88` — [`audit/fable5-ds-prune-report.md`](../audit/fable5-ds-prune-report.md)
@@ -749,6 +754,8 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 - `DOC-ROOT-README-F525` — [`agent-fs/README.md`](../agent-fs/README.md)
 - `DOC-ROOT-README-F6D4` — [`agent-fs/contracts/README.md`](../agent-fs/contracts/README.md)
 - `DOC-ROOT-RESULTS-2026-07-19-27F7` — [`performance/results-2026-07-19.md`](../performance/results-2026-07-19.md)
+- `DOC-ROOT-STATION-SCAN-STANCE-PHASE1-3BD2` — [`refactors/station-scan-stance-phase1.md`](../refactors/station-scan-stance-phase1.md)
+- `DOC-ROOT-STATION-SCAN-STANCE-PHASE2-7384` — [`refactors/station-scan-stance-phase2.md`](../refactors/station-scan-stance-phase2.md)
 - `DOC-ROOT-TEMPLATE-205D` — [`agent-fs/contracts/TEMPLATE.md`](../agent-fs/contracts/TEMPLATE.md)
 - `DOC-ROOT-TO-SHIP-LEDGERGRID-FORK-AB5F` — [`refactors/to-ship-ledgergrid-fork.md`](../refactors/to-ship-ledgergrid-fork.md)
 - `DOC-ROOT-VERIFIER-4F0C` — [`agent-fs/contracts/verifier.md`](../agent-fs/contracts/verifier.md)
@@ -870,12 +877,13 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 - `DOC-TODO-SAAS-COMMERCIALIZATION-PLAN-090C` — [`todo/saas-commercialization-plan.md`](../todo/saas-commercialization-plan.md)
 - `DOC-TODO-SAAS-PRODUCTION-READINESS-AUDIT-2026-07-08-38B5` — [`todo/saas-production-readiness-audit-2026-07-08.md`](../todo/saas-production-readiness-audit-2026-07-08.md)
 
-### `WS-SEARCH` (6)
+### `WS-SEARCH` (7)
 
 - `DOC-ROOT-AI-AUTOMATION-OPPORTUNITIES-PLAN-52DE` — [`ai-automation-opportunities-plan.md`](../ai-automation-opportunities-plan.md)
 - `DOC-ROOT-GEMINI-BRIEFING-JIT-PACK-DOCUMENTS-2533` — [`research/gemini-briefing-jit-pack-documents.md`](../research/gemini-briefing-jit-pack-documents.md)
 - `DOC-ROOT-GEMINI-BRIEFING-SERIAL-LABEL-ORDER-BINDING-598B` — [`research/gemini-briefing-serial-label-order-binding.md`](../research/gemini-briefing-serial-label-order-binding.md)
 - `DOC-ROOT-SEARCH-AND-DENSE-UI-REFACTOR-PLAN-3E46` — [`search-and-dense-ui-refactor-plan.md`](../search-and-dense-ui-refactor-plan.md)
+- `DOC-ROOT-STATION-SCAN-UNIFICATION-RESEARCH-BRIEF-29E4` — [`refactors/station-scan-unification-research-brief.md`](../refactors/station-scan-unification-research-brief.md)
 - `DOC-ROOT-UNIFIED-GLOBAL-SEARCH-CONSOLIDATION-PLAN-9E96` — [`unified-global-search-consolidation-plan.md`](../unified-global-search-consolidation-plan.md)
 - `DOC-ROOT-UNIT-EVENT-BACKFILL-PLAN-33B0` — [`unit-event-backfill-plan.md`](../unit-event-backfill-plan.md)
 
@@ -951,7 +959,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 - `DOC-TEN-SLICE-TEMPLATE-5BE0` — [`tenancy/SLICE_TEMPLATE.md`](../tenancy/SLICE_TEMPLATE.md)
 - `DOC-TEN-TABLES-9F18` — [`tenancy/_analysis/tables.md`](../tenancy/_analysis/tables.md)
 
-### `WS-TODO-MISC` (487)
+### `WS-TODO-MISC` (489)
 
 - `DOC-TODO-00-INDEX-9E1E` — [`todo/kiosk-counter-transaction/00-INDEX.md`](../todo/kiosk-counter-transaction/00-INDEX.md)
 - `DOC-TODO-01-RECEIVING-BOH-SLIM-4C77` — [`todo/foh-boh-surface-split/01-receiving-boh-slim.md`](../todo/foh-boh-surface-split/01-receiving-boh-slim.md)
@@ -977,6 +985,8 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 - `DOC-TODO-BAND1-CHROME-HOUSE-PORT-HANDOFF-2DAF` — [`todo/band1-chrome-house-port-HANDOFF.md`](../todo/band1-chrome-house-port-HANDOFF.md)
 - `DOC-TODO-BAND3-FIND-ONLY-INSPECTOR-SOT-FINISH-HANDOFF-1051` — [`todo/band3-find-only-inspector-SOT-FINISH-HANDOFF.md`](../todo/band3-find-only-inspector-SOT-FINISH-HANDOFF.md)
 - `DOC-TODO-BAND3-LEAN-ROW-PORTS-HANDOFF-36B3` — [`todo/band3-lean-row-PORTS-HANDOFF.md`](../todo/band3-lean-row-PORTS-HANDOFF.md)
+- `DOC-TODO-CARTON-CONTEXT-HANDOFF-0531` — [`todo/carton-context-HANDOFF.md`](../todo/carton-context-HANDOFF.md)
+- `DOC-TODO-CARTON-CONTEXT-HOVER-UNIFICATION-GEMINI-RESEARCH-9992` — [`todo/carton-context-hover-unification-GEMINI-RESEARCH-BRIEFING.md`](../todo/carton-context-hover-unification-GEMINI-RESEARCH-BRIEFING.md)
 - `DOC-TODO-CARTON-INSPECTOR-D4-ROOT-FIX-HANDOFF-A727` — [`todo/carton-inspector-D4-ROOT-FIX-HANDOFF.md`](../todo/carton-inspector-D4-ROOT-FIX-HANDOFF.md)
 - `DOC-TODO-CARTON-INSPECTOR-LAYOUT-POLISH-HANDOFF-2237` — [`todo/carton-inspector-LAYOUT-POLISH-HANDOFF.md`](../todo/carton-inspector-LAYOUT-POLISH-HANDOFF.md)
 - `DOC-TODO-CARTON-INSPECTOR-REBUILD-HANDOFF-DDA8` — [`todo/carton-inspector-REBUILD-HANDOFF.md`](../todo/carton-inspector-REBUILD-HANDOFF.md)

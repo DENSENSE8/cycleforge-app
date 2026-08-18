@@ -86,26 +86,48 @@ export const HeaderChromeMenuItem = forwardRef<HTMLButtonElement, HeaderChromeMe
         ref={ref}
         type={type}
         role="menuitem"
-        aria-current={active ? 'true' : undefined}
+        // `"page"` (was the generic `"true"`) — every row here IS a page /
+        // destination (Page switcher's children, a Recents entry, a Pin), so
+        // the more specific WAI-ARIA value applies, matching the spine rows
+        // these menus are a second door onto (`SidebarNavList.tsx`).
+        aria-current={active ? 'page' : undefined}
         className={cn(
-          'ds-raw-button flex min-w-0 flex-1 items-center gap-2 rounded-none px-3 py-2.5 text-left text-sm text-text-default',
+          // Rail-matched row type (2026-08-16, bumped again same day) —
+          // `font-semibold text-text-default`, same weight/ink as
+          // RailRowBody's title line, at `role-title` (18px) — matching the
+          // spine's own settled size (`SidebarNavList.tsx` —
+          // `SPINE_ROW_FACE_CLASS` docblock has the full sizing history).
+          // These rows are the SAME destinations as the spine, opened from a
+          // second door (the header face); they read small next to a
+          // `role-title` spine row otherwise. Replacing the raw
+          // (non-density-aware) `text-sm` this row originally carried.
+          // Weight is baked into `role-title` itself now, so the previous
+          // separate `font-semibold` is redundant but harmless to drop —
+          // dropped. `active` marks itself via the `bg-surface-sunken` fill
+          // below, not a font-weight bump.
+          'ds-raw-button flex min-w-0 flex-1 items-center gap-2 rounded-none px-3 py-2.5 text-left text-role-title text-text-default',
           focusRing('control', 'accent'),
-          active && 'font-medium',
           !hasSideSlots && 'w-full border-b border-border-hairline hover:bg-surface-sunken',
           !hasSideSlots && active && 'bg-surface-sunken',
           className,
         )}
         {...rest}
       >
+        {/* `text-text-default` (2026-08-16) — matches HEADER_ICON_BTN_CLASS's
+            base ink (header-shell.ts) and the spine's constant ink
+            (spine-section-accent.ts); these menu rows (Page / Recents /
+            Pins) are the same nav system as the row they open from. */}
         <span
           className={cn(
             TOP_CHROME_ICON_GLYPH,
-            'flex shrink-0 items-center justify-center text-text-muted [&>svg]:h-full [&>svg]:w-full',
+            'flex shrink-0 items-center justify-center text-text-default [&>svg]:h-full [&>svg]:w-full',
           )}
         >
           {icon}
         </span>
-        <span className="min-w-0 flex-1 truncate">{label}</span>
+        {/* `title` — truncation tooltip, same reasoning as the spine rows
+            these menus mirror (`SidebarNavList.tsx`). */}
+        <span className="min-w-0 flex-1 truncate" title={label}>{label}</span>
         {activeCheck ? (
           active ? (
             <Check className="h-3.5 w-3.5 shrink-0 text-text-muted" aria-hidden />

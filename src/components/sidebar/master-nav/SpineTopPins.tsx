@@ -91,7 +91,18 @@ export function SpineTopPins() {
                 onClick={() => {
                   router.push(pin.href);
                 }}
-                className={cn(HEADER_ICON_BTN_CLASS, active && HEADER_ICON_BTN_OPEN_CLASS)}
+                // `text-text-default` overrides HEADER_ICON_BTN_CLASS's baked-in
+                // `text-text-muted` (2026-08-16) — this band sits inside the
+                // MasterNav spine (not GlobalHeader chrome), and its glyphs
+                // read as a duller stroke than the spine rows just below it
+                // now that those rows paint constant black ink. Same
+                // `navIconStrokeClass('page')` (1.5) as every spine row glyph,
+                // now the same colour too.
+                className={cn(
+                  HEADER_ICON_BTN_CLASS,
+                  'text-text-default',
+                  active && HEADER_ICON_BTN_OPEN_CLASS,
+                )}
                 icon={
                   <Icon className={cn(TOP_CHROME_ICON_GLYPH, navIconStrokeClass('page'))} />
                 }

@@ -30,7 +30,7 @@
     "src/lib/orders-sync",
     "src/hooks"
   ],
-  "count": 2737,
+  "count": 2714,
   "entries": [
     {
       "job": "Station: Scan pane + Displays push",
@@ -1766,19 +1766,6 @@
       "source": "src/components/dashboard/queue-table/QueueTableToolbar.tsx",
       "line": 16,
       "snippet": "export QueueTableToolbar from src/components/dashboard/queue-table/QueueTableToolbar.tsx"
-    },
-    {
-      "job": "Export: StationRowColumnHeader",
-      "sot": "StationRowColumnHeader",
-      "path": "src/components/dashboard/queue-table/StationRowColumnHeader.tsx",
-      "guard": null,
-      "symbols": [
-        "StationRowColumnHeader"
-      ],
-      "kind": "code",
-      "source": "src/components/dashboard/queue-table/StationRowColumnHeader.tsx",
-      "line": 27,
-      "snippet": "export StationRowColumnHeader from src/components/dashboard/queue-table/StationRowColumnHeader.tsx"
     },
     {
       "job": "Export: QueueSortSwitch",
@@ -3770,19 +3757,6 @@
       "snippet": "export GoalsSidebarPanel from src/components/sidebar/GoalsSidebarPanel.tsx"
     },
     {
-      "job": "Export: HomeContextPanel",
-      "sot": "HomeContextPanel",
-      "path": "src/components/sidebar/HomeContextPanel.tsx",
-      "guard": null,
-      "symbols": [
-        "HomeContextPanel"
-      ],
-      "kind": "code",
-      "source": "src/components/sidebar/HomeContextPanel.tsx",
-      "line": 38,
-      "snippet": "export HomeContextPanel from src/components/sidebar/HomeContextPanel.tsx"
-    },
-    {
       "job": "Export: useActiveStaffDirectory",
       "sot": "useActiveStaffDirectory",
       "path": "src/components/sidebar/hooks.ts",
@@ -5590,32 +5564,6 @@
       "snippet": "export IncomingKindHotChip from src/components/sidebar/receiving/incoming/IncomingKindFilters.tsx"
     },
     {
-      "job": "Export: IncomingKpiStrip",
-      "sot": "IncomingKpiStrip",
-      "path": "src/components/sidebar/receiving/incoming/IncomingKpiStrip.tsx",
-      "guard": null,
-      "symbols": [
-        "IncomingKpiStrip"
-      ],
-      "kind": "code",
-      "source": "src/components/sidebar/receiving/incoming/IncomingKpiStrip.tsx",
-      "line": 219,
-      "snippet": "export IncomingKpiStrip from src/components/sidebar/receiving/incoming/IncomingKpiStrip.tsx"
-    },
-    {
-      "job": "Export: IncomingLaneNote",
-      "sot": "IncomingLaneNote",
-      "path": "src/components/sidebar/receiving/incoming/IncomingLaneNote.tsx",
-      "guard": null,
-      "symbols": [
-        "IncomingLaneNote"
-      ],
-      "kind": "code",
-      "source": "src/components/sidebar/receiving/incoming/IncomingLaneNote.tsx",
-      "line": 19,
-      "snippet": "export IncomingLaneNote from src/components/sidebar/receiving/incoming/IncomingLaneNote.tsx"
-    },
-    {
       "job": "Export: IncomingSource",
       "sot": "IncomingSource",
       "path": "src/components/sidebar/receiving/incoming/IncomingSourceFilters.tsx",
@@ -5707,19 +5655,6 @@
       "snippet": "export useIncomingSyncActions from src/components/sidebar/receiving/incoming/useIncomingSyncActions.ts"
     },
     {
-      "job": "Export: useIncomingTableTotal",
-      "sot": "useIncomingTableTotal",
-      "path": "src/components/sidebar/receiving/incoming/useIncomingTableTotal.ts",
-      "guard": null,
-      "symbols": [
-        "useIncomingTableTotal"
-      ],
-      "kind": "code",
-      "source": "src/components/sidebar/receiving/incoming/useIncomingTableTotal.ts",
-      "line": 21,
-      "snippet": "export useIncomingTableTotal from src/components/sidebar/receiving/incoming/useIncomingTableTotal.ts"
-    },
-    {
       "job": "Export: AttachTrackingPresetPo",
       "sot": "AttachTrackingPresetPo",
       "path": "src/components/sidebar/receiving/IncomingAttachTrackingPopover.tsx",
@@ -5783,19 +5718,6 @@
       "source": "src/components/sidebar/receiving/IncomingPaneHeader.tsx",
       "line": 27,
       "snippet": "export INCOMING_SORT_OPTIONS from src/components/sidebar/receiving/IncomingPaneHeader.tsx"
-    },
-    {
-      "job": "Export: IncomingSidebarPanel",
-      "sot": "IncomingSidebarPanel",
-      "path": "src/components/sidebar/receiving/IncomingSidebarPanel.tsx",
-      "guard": null,
-      "symbols": [
-        "IncomingSidebarPanel"
-      ],
-      "kind": "code",
-      "source": "src/components/sidebar/receiving/IncomingSidebarPanel.tsx",
-      "line": 33,
-      "snippet": "export IncomingSidebarPanel from src/components/sidebar/receiving/IncomingSidebarPanel.tsx"
     },
     {
       "job": "Export: IncomingSyncKind",
@@ -9594,58 +9516,6 @@
       "snippet": "export WORKSPACE_MODES from src/components/station/entity-context/workspace-mode-registry.ts"
     },
     {
-      "job": "Export: incomingDateCell",
-      "sot": "incomingDateCell",
-      "path": "src/components/station/incoming-grid/cells/index.tsx",
-      "guard": null,
-      "symbols": [
-        "incomingDateCell"
-      ],
-      "kind": "code",
-      "source": "src/components/station/incoming-grid/cells/index.tsx",
-      "line": 50,
-      "snippet": "export incomingDateCell from src/components/station/incoming-grid/cells/index.tsx"
-    },
-    {
-      "job": "Export: displayProductTitle",
-      "sot": "displayProductTitle",
-      "path": "src/components/station/incoming-grid/cells/index.tsx",
-      "guard": null,
-      "symbols": [
-        "displayProductTitle"
-      ],
-      "kind": "code",
-      "source": "src/components/station/incoming-grid/cells/index.tsx",
-      "line": 64,
-      "snippet": "export displayProductTitle from src/components/station/incoming-grid/cells/index.tsx"
-    },
-    {
-      "job": "Export: IncomingGridCellCtx",
-      "sot": "IncomingGridCellCtx",
-      "path": "src/components/station/incoming-grid/cells/index.tsx",
-      "guard": null,
-      "symbols": [
-        "IncomingGridCellCtx"
-      ],
-      "kind": "code",
-      "source": "src/components/station/incoming-grid/cells/index.tsx",
-      "line": 74,
-      "snippet": "export IncomingGridCellCtx from src/components/station/incoming-grid/cells/index.tsx"
-    },
-    {
-      "job": "Export: renderIncomingGridCell",
-      "sot": "renderIncomingGridCell",
-      "path": "src/components/station/incoming-grid/cells/index.tsx",
-      "guard": null,
-      "symbols": [
-        "renderIncomingGridCell"
-      ],
-      "kind": "code",
-      "source": "src/components/station/incoming-grid/cells/index.tsx",
-      "line": 106,
-      "snippet": "export renderIncomingGridCell from src/components/station/incoming-grid/cells/index.tsx"
-    },
-    {
       "job": "Export: INCOMING_GRID_CAPABILITIES",
       "sot": "INCOMING_GRID_CAPABILITIES",
       "path": "src/components/station/incoming-grid/incoming-grid-descriptor.ts",
@@ -11815,32 +11685,6 @@
       "source": "src/components/station/scan-bar/useScanTypeKeybinds.ts",
       "line": 28,
       "snippet": "export useScanTypeKeybinds from src/components/station/scan-bar/useScanTypeKeybinds.ts"
-    },
-    {
-      "job": "Export: ScanStationProgressControl",
-      "sot": "ScanStationProgressControl",
-      "path": "src/components/station/ScanStationProgressControl.tsx",
-      "guard": null,
-      "symbols": [
-        "ScanStationProgressControl"
-      ],
-      "kind": "code",
-      "source": "src/components/station/ScanStationProgressControl.tsx",
-      "line": 47,
-      "snippet": "export ScanStationProgressControl from src/components/station/ScanStationProgressControl.tsx"
-    },
-    {
-      "job": "Export: ScanStationProgressRing",
-      "sot": "ScanStationProgressRing",
-      "path": "src/components/station/ScanStationProgressRing.tsx",
-      "guard": null,
-      "symbols": [
-        "ScanStationProgressRing"
-      ],
-      "kind": "code",
-      "source": "src/components/station/ScanStationProgressRing.tsx",
-      "line": 23,
-      "snippet": "export ScanStationProgressRing from src/components/station/ScanStationProgressRing.tsx"
     },
     {
       "job": "Export: useSendToDevice",
@@ -33187,149 +33031,6 @@
       "source": "src/lib/right-rail/selection-occupancy.ts",
       "line": 160,
       "snippet": "export isRailOccupantActive from src/lib/right-rail/selection-occupancy.ts"
-    },
-    {
-      "job": "Export: resolveStationDualRailDelta",
-      "sot": "resolveStationDualRailDelta",
-      "path": "src/lib/right-rail/station-dual-rail.ts",
-      "guard": null,
-      "symbols": [
-        "resolveStationDualRailDelta"
-      ],
-      "kind": "code",
-      "source": "src/lib/right-rail/station-dual-rail.ts",
-      "line": 68,
-      "snippet": "export resolveStationDualRailDelta from src/lib/right-rail/station-dual-rail.ts"
-    },
-    {
-      "job": "Export: resolveStationYieldLadder",
-      "sot": "resolveStationYieldLadder",
-      "path": "src/lib/right-rail/station-dual-rail.ts",
-      "guard": null,
-      "symbols": [
-        "resolveStationYieldLadder"
-      ],
-      "kind": "code",
-      "source": "src/lib/right-rail/station-dual-rail.ts",
-      "line": 147,
-      "snippet": "export resolveStationYieldLadder from src/lib/right-rail/station-dual-rail.ts"
-    },
-    {
-      "job": "Export: stationLadderMaxDisplaysPx",
-      "sot": "stationLadderMaxDisplaysPx",
-      "path": "src/lib/right-rail/station-dual-rail.ts",
-      "guard": null,
-      "symbols": [
-        "stationLadderMaxDisplaysPx"
-      ],
-      "kind": "code",
-      "source": "src/lib/right-rail/station-dual-rail.ts",
-      "line": 212,
-      "snippet": "export stationLadderMaxDisplaysPx from src/lib/right-rail/station-dual-rail.ts"
-    },
-    {
-      "job": "Export: stationLadderMaxContextPx",
-      "sot": "stationLadderMaxContextPx",
-      "path": "src/lib/right-rail/station-dual-rail.ts",
-      "guard": null,
-      "symbols": [
-        "stationLadderMaxContextPx"
-      ],
-      "kind": "code",
-      "source": "src/lib/right-rail/station-dual-rail.ts",
-      "line": 226,
-      "snippet": "export stationLadderMaxContextPx from src/lib/right-rail/station-dual-rail.ts"
-    },
-    {
-      "job": "Export: subscribeStationCoupled",
-      "sot": "subscribeStationCoupled",
-      "path": "src/lib/right-rail/station-dual-rail.ts",
-      "guard": null,
-      "symbols": [
-        "subscribeStationCoupled"
-      ],
-      "kind": "code",
-      "source": "src/lib/right-rail/station-dual-rail.ts",
-      "line": 269,
-      "snippet": "export subscribeStationCoupled from src/lib/right-rail/station-dual-rail.ts"
-    },
-    {
-      "job": "Export: getStationCoupled",
-      "sot": "getStationCoupled",
-      "path": "src/lib/right-rail/station-dual-rail.ts",
-      "guard": null,
-      "symbols": [
-        "getStationCoupled"
-      ],
-      "kind": "code",
-      "source": "src/lib/right-rail/station-dual-rail.ts",
-      "line": 274,
-      "snippet": "export getStationCoupled from src/lib/right-rail/station-dual-rail.ts"
-    },
-    {
-      "job": "Export: getServerStationCoupled",
-      "sot": "getServerStationCoupled",
-      "path": "src/lib/right-rail/station-dual-rail.ts",
-      "guard": null,
-      "symbols": [
-        "getServerStationCoupled"
-      ],
-      "kind": "code",
-      "source": "src/lib/right-rail/station-dual-rail.ts",
-      "line": 278,
-      "snippet": "export getServerStationCoupled from src/lib/right-rail/station-dual-rail.ts"
-    },
-    {
-      "job": "Export: registerStationDisplaysStorageKey",
-      "sot": "registerStationDisplaysStorageKey",
-      "path": "src/lib/right-rail/station-dual-rail.ts",
-      "guard": null,
-      "symbols": [
-        "registerStationDisplaysStorageKey"
-      ],
-      "kind": "code",
-      "source": "src/lib/right-rail/station-dual-rail.ts",
-      "line": 286,
-      "snippet": "export registerStationDisplaysStorageKey from src/lib/right-rail/station-dual-rail.ts"
-    },
-    {
-      "job": "Export: isStationDualRailCouplingActive",
-      "sot": "isStationDualRailCouplingActive",
-      "path": "src/lib/right-rail/station-dual-rail.ts",
-      "guard": null,
-      "symbols": [
-        "isStationDualRailCouplingActive"
-      ],
-      "kind": "code",
-      "source": "src/lib/right-rail/station-dual-rail.ts",
-      "line": 297,
-      "snippet": "export isStationDualRailCouplingActive from src/lib/right-rail/station-dual-rail.ts"
-    },
-    {
-      "job": "Export: applyStationDisplaysDelta",
-      "sot": "applyStationDisplaysDelta",
-      "path": "src/lib/right-rail/station-dual-rail.ts",
-      "guard": null,
-      "symbols": [
-        "applyStationDisplaysDelta"
-      ],
-      "kind": "code",
-      "source": "src/lib/right-rail/station-dual-rail.ts",
-      "line": 309,
-      "snippet": "export applyStationDisplaysDelta from src/lib/right-rail/station-dual-rail.ts"
-    },
-    {
-      "job": "Export: applyStationContextDelta",
-      "sot": "applyStationContextDelta",
-      "path": "src/lib/right-rail/station-dual-rail.ts",
-      "guard": null,
-      "symbols": [
-        "applyStationContextDelta"
-      ],
-      "kind": "code",
-      "source": "src/lib/right-rail/station-dual-rail.ts",
-      "line": 350,
-      "snippet": "export applyStationContextDelta from src/lib/right-rail/station-dual-rail.ts"
     },
     {
       "job": "Export: RIGHT_RAIL_PRIORITY",

@@ -38,16 +38,24 @@
  * doorway to one, and doorways in this app are now uniformly quiet.
  * `REPAIR_ICON_TINT` is deleted from nav for exactly that reason.
  *
- * ## The ladder — ink does the work, fill only says "this row is a target"
+ * ## The ladder — SUPERSEDED 2026-08-16, ink is now constant
+ *
+ * This section documented the original three-ink-step ladder (child idle →
+ * parent idle → current page). It is kept below for the archaeology — the
+ * fill-ascends-toward-white reasoning still holds — but the ink column no
+ * longer varies: every row (idle or current, L1 or child) now paints
+ * `text-text-default`, matching the context rail beside it
+ * (`RailRowBody` — full ink at every state, selection is background-only).
+ * See the note above `SPINE_ACCENT` for the reasoning and the date.
  *
  * Three ink steps and three planes, every one an existing house token; this
  * pass introduced no new colour values.
  *
- * | State           | Ink                          | Plane                        |
+ * | State           | Ink (historical)             | Plane                        |
  * |-----------------|------------------------------|------------------------------|
- * | child idle      | `text-text-soft`   `#64748b` | none (the spine's own ground)|
- * | parent idle     | `text-text-muted`  `#475569` | none                         |
- * | hover           | one ink step up              | `bg-surface-hover`  `#f8fafc`|
+ * | child idle      | ~~`text-text-soft` `#64748b`~~ → `text-text-default` | none (the spine's own ground)|
+ * | parent idle     | ~~`text-text-muted` `#475569`~~ → `text-text-default` | none                         |
+ * | hover           | ~~one ink step up~~ (ink is constant now) | `bg-surface-hover`  `#f8fafc`|
  * | **current page**| `text-text-default` `#0f172a`| `bg-surface-card`   `#ffffff`|
  *
  * **The fill ASCENDS toward white, and that is deliberate.** The spine sits
@@ -74,6 +82,8 @@
  *   giving it a wash makes an expanded sibling compete with the page you are
  *   actually on. The fill means "you are here" and nothing else.
  */
+
+import { cn } from '@/utils/_cn';
 
 export type SpineAccentClasses = {
   /** The page you are ON — the only row that fills. */
@@ -103,9 +113,41 @@ export type SpineAccentClasses = {
 
 /**
  * Current page: rises to the work surface's own white, ink to full contrast.
- * No ring — the plane step against the spine's canvas ground is the edge.
+ * No `border-l` here — the child rail carries "you are here" for nested rows
+ * (see {@link spineRailLineClass}); L1 rows carry it on the fill alone,
+ * matching a top-level item in a reference sidebar (filled row, no bar) vs a
+ * nested one (bar, per the rail below).
  */
 const CURRENT_PAGE = 'bg-surface-card text-text-default';
+
+/**
+ * ONE rail-line element, TWO tokens (2026-08-16, corrected same day).
+ *
+ * The first attempt added a SECOND bar — a `border-l` on the row's own
+ * button, layered on top of the existing nesting-rail hairline
+ * (`renderChildLikeRow`'s gutter line), which already darkened slightly on
+ * active. Two elements for one state is the "double bar" that produced —
+ * exactly the anti-pattern industry sidebar-nav guidance calls out:
+ * *"active state should not rely on color alone — pair a border-width token
+ * with a color-border token on the SAME element for selected vs
+ * unselected"* (Atlassian / USWDS side-nav token pattern).
+ *
+ * So there is exactly ONE physical line, always mounted, always in the
+ * SAME position (the nesting-rail gutter — already the row's leading edge
+ * within its own indent group, already `self-stretch` to the row's full
+ * height so its centre lands on the icon's centre for free). Only its
+ * COLOR TOKEN changes: `border-soft` (the "lessened gray" structural guide)
+ * when idle, `text-default` (darkened) when this row is the one you are on.
+ * Width stays constant across both states — `w-0.5`, bumped from the
+ * original `w-px` hairline so the darkened state reads as a genuine bar,
+ * not a barely-visible pixel.
+ */
+export function spineRailLineClass(active: boolean): string {
+  return cn(
+    'w-0.5 self-stretch transition-colors duration-150',
+    active ? 'bg-text-default' : 'bg-border-soft',
+  );
+}
 
 /**
  * THE treatment. One object, every row, every altitude, both consumers.
@@ -115,16 +157,37 @@ const CURRENT_PAGE = 'bg-surface-card text-text-default';
  * replaced would make the git history harder to follow than the name is
  * confusing. There is exactly one of these now; `spineAccentFor` survives so
  * consumers keep a single resolution point if a treatment ever varies again.
+ *
+ * ## Ink is now CONSTANT — selection is background-only (2026-08-16)
+ *
+ * The three-step ink ladder documented above this constant (`text-text-soft`
+ * idle child → `text-text-muted` idle parent → `text-text-default` current)
+ * is retired. It made every idle spine row read thin and gray beside the
+ * context rail immediately to its right, whose rows (`RailRowBody` —
+ * `text-role-caption font-semibold text-text-default`) are ALWAYS full ink
+ * regardless of selection; only the row's background changes. Two navigators
+ * sitting side by side with two different "am I looking at a label or a
+ * whisper" rules read as two different products.
+ *
+ * Ink is now `text-text-default` at every state, for both L1 and child rows
+ * and their icons — matching the rail's ink exactly. "You are here" is
+ * carried by the background step (`CURRENT_PAGE` fill vs
+ * `hover:bg-surface-hover` vs nothing); nested rows add
+ * {@link spineRailLineClass}'s darkened token on top, since a plain fill is
+ * a weaker signal on an indented row than on a full-width L1 one. The label
+ * WEIGHT moved with it — see `SidebarNavList.tsx` (`text-role-body
+ * font-semibold` for spine rows: same `font-semibold` the rail's title
+ * carries, bumped up for nav-row legibility at this density).
  */
 export const SPINE_ACCENT: SpineAccentClasses = {
   activePage: CURRENT_PAGE,
-  idlePage: 'text-text-muted hover:bg-surface-hover hover:text-text-default',
+  idlePage: 'text-text-default hover:bg-surface-hover',
   activePageIcon: 'text-text-default',
-  idlePageIcon: 'text-text-muted group-hover:text-text-default',
+  idlePageIcon: 'text-text-default',
   childActive: CURRENT_PAGE,
-  childIdle: 'text-text-soft hover:bg-surface-hover hover:text-text-muted',
+  childIdle: 'text-text-default hover:bg-surface-hover',
   childActiveIcon: 'text-text-default',
-  childIdleIcon: 'text-text-soft group-hover:text-text-muted',
+  childIdleIcon: 'text-text-default',
   cmdkSelected: 'data-[selected=true]:bg-surface-card data-[selected=true]:text-text-default',
   cmdkSelectedIcon: 'group-data-[selected=true]:[&_svg]:text-text-default',
 };
