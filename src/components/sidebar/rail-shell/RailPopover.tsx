@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { motion } from '@/design-system/motion';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { zIndex as zLayer } from '@/design-system/tokens/z-index';
 import { cn } from '@/utils/_cn';
@@ -14,6 +13,14 @@ import { cn } from '@/utils/_cn';
  *
  * Flush against the rail row (GAP 0) + squared chrome — no floating gutter or
  * soft card radius between the recent rail and the hover display.
+ *
+ * The card REVEALS INSTANTLY — no motion, and `useRailHoverPreview` opens it
+ * with a 0ms delay. This is a navigator on a scan bench: the operator is
+ * reaching for a row they already know, so any duration sits between the reach
+ * and the target (same ruling as the MasterNav spine, which imports no motion
+ * at all — `display/motion-crossfade.md` → *the MasterNav spine has NO motion*).
+ * The spring + `x`/`scale` travel this used to run also made the peek arrive
+ * from the side while the pointer was already on the row it describes.
  */
 export function RailPopover({
   anchorEl, onMouseEnter, onMouseLeave, onDismiss, children,
@@ -77,23 +84,26 @@ export function RailPopover({
   if (typeof document === 'undefined' || !coords) return null;
 
   return createPortal(
-    <motion.div
+    <div
       ref={popoverRef}
       role="dialog"
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
-      initial={{ opacity: 0, x: coords.flipped ? 8 : -8, scale: 0.97 }}
-      animate={{ opacity: 1, x: 0, scale: 1 }}
-      exit={{ opacity: 0, x: coords.flipped ? 8 : -8, scale: 0.97 }}
-      transition={{ type: 'spring', stiffness: 380, damping: 32, mass: 0.6 }}
       style={{ position: 'fixed', top: coords.top, left: coords.left, width: POPOVER_WIDTH, zIndex: zLayer.panelPopover }}
       className={cn(
         cornerClass('flush'),
-        'border border-border-soft bg-surface-card shadow-2xl ring-1 ring-black/5',
+        'border border-border-soft bg-surface-card',
+        // Cast the overlay ink AWAY from the rail. The card is flush (GAP 0)
+        // against the row it describes, so an all-round `shadow-2xl` threw its
+        // heaviest layer straight back onto the rail — the one surface it must
+        // not dim. `shadow-elev-overlay-{left,right}` is the house directional
+        // token (`tokens/shadows.ts`); its zero-offset ambient layer stays, so
+        // the flush edge keeps a hairline read instead of a dark gutter.
+        coords.flipped ? 'shadow-elev-overlay-left' : 'shadow-elev-overlay-right',
       )}
     >
       {children}
-    </motion.div>,
+    </div>,
     document.body,
   );
 }

@@ -5,7 +5,6 @@ import { persistGateWrite, persistGateWriteBatch } from './receiving-gate-write'
 import { buildFaceInfoHtml } from '@/lib/print/labelFace';
 import {
   receivingPayloadToFace,
-  resolveReceivingQrValue,
   type ReceivingLabelPayload,
 } from '@/lib/print/printReceivingLabel';
 import { getProfileForRole, printRawToProfile, resolvePaperSize } from '@/lib/print/browserPrint';
@@ -25,7 +24,6 @@ const RECEIVING_LABEL_SIZE = resolvePaperSize('2x1');
 // useUnboxLineController) and the raw-command builder keep their existing import
 // path. The canonical definition lives in `@/lib/print/printReceivingLabel`.
 export type { ReceivingLabelPayload };
-export { resolveReceivingQrValue as resolveReceivingLabelQrValue };
 
 /**
  * Print the unbox/receiving carton label. Renders the SAME face as the

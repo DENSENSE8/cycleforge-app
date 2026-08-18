@@ -42,7 +42,17 @@ const twMerge = extendTailwindMerge<'cf-inset' | 'cf-stack' | 'cf-row'>({
       // it into the shadow-COLOR group, and two elevation roles on one element
       // both survive — stylesheet order then picks silently. Same failure mode
       // as the font-size roles above.
-      shadow: [{ shadow: ['elev-soft', 'elev-raised', 'elev-overlay', 'elev-overlay-left'] }],
+      shadow: [
+        {
+          shadow: [
+            'elev-soft',
+            'elev-raised',
+            'elev-overlay',
+            'elev-overlay-left',
+            'elev-overlay-right',
+          ],
+        },
+      ],
       // Spacing intents (tailwind.config.ts plugin — spacing plan Phase 2).
       // Own groups so two intents of one kind conflict-resolve (last wins);
       // unregistered, twMerge would treat them as unknown classes and keep

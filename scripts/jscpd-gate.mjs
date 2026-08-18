@@ -25,6 +25,24 @@ const REPORT_DIR = join(ROOT, 'reports', 'jscpd');
 const REPORT = join(REPORT_DIR, 'jscpd-report.json');
 const CACHE_DIR = join(ROOT, '.jscpd');
 const WRITE = process.argv.includes('--write');
+// Run the INSTALLED jscpd, never `npx jscpd`. In a checkout with no
+// node_modules, npx silently fetches jscpd@latest — a different major, whose
+// flags (`--noTips` was renamed `--no-tips` in 5.x) and clone accounting do not
+// match `jscpd-baseline.json`. That reads as a breached baseline, or an
+// unexplained exit 2, when nothing in `src` changed. Spawning the package's own
+// entry through `process.execPath` also drops the `shell: win32` hack: no .cmd
+// resolution, and no quoting hazard if the checkout path contains spaces.
+const JSCPD_ENTRY = join(ROOT, 'node_modules', 'jscpd', 'bin', 'jscpd');
+
+if (!existsSync(JSCPD_ENTRY)) {
+  process.stderr.write(
+    `jscpd-gate: jscpd is not installed at ${JSCPD_ENTRY}.\n` +
+      'Run `npm install` in THIS checkout, then re-run the gate.\n' +
+      'The gate deliberately does not fall back to `npx jscpd` — that would pull a\n' +
+      'different major and compare its clone count against a baseline recorded here.\n',
+  );
+  process.exit(2);
+}
 
 mkdirSync(REPORT_DIR, { recursive: true });
 // Stale LevelDB cache lists deleted files (e.g. the gate's clone-probe) and
@@ -32,9 +50,9 @@ mkdirSync(REPORT_DIR, { recursive: true });
 rmSync(CACHE_DIR, { recursive: true, force: true });
 
 const res = spawnSync(
-  'npx',
+  process.execPath,
   [
-    'jscpd',
+    JSCPD_ENTRY,
     'src',
     '--config',
     '.jscpd.json',
@@ -47,7 +65,7 @@ const res = spawnSync(
     '--exitCode',
     '0',
   ],
-  { cwd: ROOT, encoding: 'utf8', shell: process.platform === 'win32' },
+  { cwd: ROOT, encoding: 'utf8' },
 );
 
 if (res.status !== 0 && res.status !== null) {

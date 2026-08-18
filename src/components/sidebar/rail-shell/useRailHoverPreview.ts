@@ -1,65 +1,55 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
-
 /**
- * The shared on-hover preview primitive — the timer/open-state engine behind
- * every rail/card hover popover. Open on a debounced mouse-enter, close on a
- * debounced mouse-leave (the close delay lets the pointer travel from the row
- * onto the popover without it vanishing), and expose handlers the popover can
- * reuse so hovering the popover keeps it open.
+ * Rail/card hover preview — a thin naming layer over {@link useHoverSurface},
+ * which is the ONE hover-open engine (`src/hooks/useHoverSurface.ts`).
  *
- * Pair with {@link RailPopover} for positioning. Used by both `RailRow` (the
- * recent-activity rail) and the tech Up-Next `OrderCard`, so the shipping
+ * This file used to own its own open/close timers and its own module-scope
+ * "one at a time" registry. Both moved to the shared hook, so the rail, the
+ * carton bar's classify menus, and the chip menus now share one timing contract
+ * (`HOVER_DELAYS`: 0ms open, 150ms close) and one eviction rule. Do not
+ * reintroduce timers here — a fifth engine is exactly what the consolidation
+ * removed.
+ *
+ * The public shape is unchanged so the existing call sites did not move.
+ *
+ * Pair with {@link RailPopover} for positioning. Used by `RailRow` (the
+ * recent-activity rail) and the parked collapse-strip pins, so the shipping
  * sidebar's hover preview behaves identically to the receiving/testing rail's.
  *
  * Usage:
  *   const preview = useRailHoverPreview({ enabled: Boolean(renderPopover) });
  *   <div ref={anchorRef} {...preview.hoverProps}>…</div>
- *   <AnimatePresence>
- *     {preview.isOpen && (
- *       <RailPopover anchorEl={anchorRef.current}
- *         onMouseEnter={preview.scheduleOpen} onMouseLeave={preview.scheduleClose}
- *         onDismiss={preview.dismiss}>…</RailPopover>
- *     )}
- *   </AnimatePresence>
+ *   {preview.isOpen && (
+ *     <RailPopover anchorEl={anchorRef.current}
+ *       onMouseEnter={preview.scheduleOpen} onMouseLeave={preview.scheduleClose}
+ *       onDismiss={preview.dismiss}>…</RailPopover>
+ *   )}
+ *
+ * Do NOT wrap it in `AnimatePresence` — the popover has no exit animation, so
+ * the wrapper only adds a presence subtree that defers the unmount.
  */
+
+import { HOVER_DELAYS, useHoverSurface } from '@/hooks/useHoverSurface';
+
 export function useRailHoverPreview(
-  opts: { enabled?: boolean; openDelay?: number; closeDelay?: number } = {},
+  opts: { enabled?: boolean; closeDelay?: number } = {},
 ) {
-  const { enabled = true, openDelay = 200, closeDelay = 150 } = opts;
-  const [open, setOpen] = useState(false);
-  const openTimer = useRef<number | null>(null);
-  const closeTimer = useRef<number | null>(null);
-
-  const scheduleOpen = useCallback(() => {
-    if (!enabled) return;
-    if (closeTimer.current) { window.clearTimeout(closeTimer.current); closeTimer.current = null; }
-    if (open || openTimer.current) return;
-    openTimer.current = window.setTimeout(() => { openTimer.current = null; setOpen(true); }, openDelay);
-  }, [enabled, open, openDelay]);
-
-  const scheduleClose = useCallback(() => {
-    if (openTimer.current) { window.clearTimeout(openTimer.current); openTimer.current = null; }
-    if (closeTimer.current) return;
-    closeTimer.current = window.setTimeout(() => { closeTimer.current = null; setOpen(false); }, closeDelay);
-  }, [closeDelay]);
-
-  // Disabling mid-hover (e.g. entering edit mode) tears the preview down now.
-  useEffect(() => { if (!enabled) setOpen(false); }, [enabled]);
-
-  useEffect(() => () => {
-    if (openTimer.current) window.clearTimeout(openTimer.current);
-    if (closeTimer.current) window.clearTimeout(closeTimer.current);
-  }, []);
-
-  const dismiss = useCallback(() => setOpen(false), []);
+  const { enabled = true, closeDelay = HOVER_DELAYS.CLOSE_MS } = opts;
+  const { isOpen, open, close, scheduleClose, clearCloseTimer } = useHoverSurface({
+    disabled: !enabled,
+    closeMs: closeDelay,
+  });
 
   return {
-    isOpen: open && enabled,
-    hoverProps: { onMouseEnter: scheduleOpen, onMouseLeave: scheduleClose },
-    scheduleOpen,
+    isOpen,
+    hoverProps: { onMouseEnter: open, onMouseLeave: scheduleClose },
+    /** Also cancels a pending close — the popover reuses this on mouse-enter. */
+    scheduleOpen: () => {
+      clearCloseTimer();
+      open();
+    },
     scheduleClose,
-    dismiss,
+    dismiss: close,
   };
 }

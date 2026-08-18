@@ -23,7 +23,13 @@
 
 import { useEffect, useRef, type ReactNode } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from '@/design-system/motion';
+import { PaintBucket } from '@/components/Icons';
 import { HEADER_ICON_WRAP } from '@/components/layout/header-shell';
+import {
+  STATION_CHROME_CELL_HOVER_FILL,
+  STATION_CHROME_CELL_HOVER_SEAM,
+} from '@/components/station/entity-context/station-identity-chrome';
+import { useHoverSurface } from '@/hooks/useHoverSurface';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import {
   DropdownMenu,
@@ -35,6 +41,7 @@ import { focusRing } from '@/design-system/tokens/focus-ring';
 import { motionBezier, framerDuration } from '@/design-system/foundations/motion-framer';
 import { cn } from '@/utils/_cn';
 import {
+  CHIP_HOVER_MENU_ICON_CLASS,
   CHIP_HOVER_MENU_ITEM_CLASS,
   CHIP_HOVER_MENU_ITEM_SEAM_CLASS,
   CHIP_HOVER_MENU_ITEM_TONE,
@@ -157,6 +164,8 @@ export function InlinePillPicker({
   expandedFace = 'label',
   collapsedVariant = 'default',
   presentation = 'inline',
+  onEditColors,
+  editColorsLabel = 'Edit colors',
 }: {
   ariaLabel: string;
   options: InlinePillOption[];
@@ -198,6 +207,15 @@ export function InlinePillPicker({
    * `inline` — in-row option strip (legacy expand).
    */
   presentation?: 'inline' | 'menu';
+  /**
+   * Trailing catalog escape on the `menu` panel — a hairline, then one row that
+   * opens the org catalog manager where this dimension's colours live. Omit it
+   * (honest absence) for a dimension with no colour catalog behind it; urgency
+   * is `receiving.priority_tier`, not a `platforms` / `types` row, so it has no
+   * target and must not render a dead row.
+   */
+  onEditColors?: () => void;
+  editColorsLabel?: string;
 }) {
   const ref = useRef<HTMLDivElement | null>(null);
   const reduceMotion = useReducedMotion();
@@ -220,6 +238,60 @@ export function InlinePillPicker({
     };
   }, [open, onOpenChange, readOnly, isMenu]);
 
+  /**
+   * Hover-to-open comes from {@link useHoverSurface} — the ONE engine, shared
+   * with the rail peek and the chip menus (0ms open, 150ms close, one surface
+   * open at a time). This component owns no timers.
+   *
+   * ## ONE owner. Do not re-introduce a mirror effect.
+   *
+   * For `presentation="menu"` the REGISTRY owns open/closed. The lifted
+   * `open` / `onOpenChange` pair is a write-only *view* of that — the carton bar
+   * reads it to freeze its layout while a cell owns the pointer; it never
+   * dictates back.
+   *
+   * There used to be an effect that mirrored `open` INTO the registry
+   * (`if (open && !hover.isOpen) hover.open()` / the inverse). With two writers
+   * that each react to the other's not-yet-committed value, it oscillated one
+   * render out of phase and every pill hover threw "Maximum update depth
+   * exceeded":
+   *
+   * | render | `open` | `hover.isOpen` | effects |
+   * |---|---|---|---|
+   * | N+1 | false (parent update not landed) | true | hook pushes `true`; mirror reads the STALE false and calls `close()` |
+   * | N+2 | true | false | hook pushes `false`; mirror calls `open()` |
+   * | N+3 | false | true | …N+1 again, forever |
+   *
+   * Explicit closes (select, Escape, outside click) therefore route through
+   * `hover.close()` as well, so the owner is told rather than inferred.
+   *
+   * `modal={false}` on the Radix `Root` below is REQUIRED: the default puts
+   * `pointer-events: none` on `<body>`, so the trigger stops receiving pointer
+   * events, fires `mouseleave`, the debounce closes it, the pointer "re-enters"
+   * and it reopens — a flashing loop. Non-modal also stops the menu trapping
+   * focus, which a hover affordance must never do on a bench owned by the wedge.
+   */
+  const hover = useHoverSurface({
+    disabled: readOnly || disabled || !isMenu,
+    onOpenChange: (next) => onOpenChange(next),
+  });
+
+  /**
+   * The menu's actual open state. Menus read the registry (the owner); every
+   * other presentation keeps using the lifted prop, which it alone owns.
+   */
+  const menuOpen = isMenu ? hover.isOpen : open;
+
+  /**
+   * Radix asking to close (Escape, outside click, item select) must reach the
+   * OWNER, or the registry keeps the slot and the menu never reopens. The
+   * parent is still notified so the bar can unfreeze its layout.
+   */
+  const onMenuOpenChange = (next: boolean) => {
+    if (!next) hover.close();
+    onOpenChange(next);
+  };
+
   const active = options.find((o) => o.value === value) ?? null;
   const showOpen = open && !readOnly && !isMenu;
   const fullLabel =
@@ -230,9 +302,12 @@ export function InlinePillPicker({
   const faceTone = IDENTITY_PILL;
   const faceStyle = undefined;
   const identityFace = active?.face ?? EMPTY_FACE;
-  const tooltipLabel = `${ariaLabel}: ${active?.title ?? fullLabel}${
-    readOnly ? '' : ' — click to change'
-  }`;
+  /**
+   * Identity only — never an instruction. The face used to append
+   * "— click to change", which was both wrong (it opens on hover now) and
+   * chrome narrating itself. The menu IS the affordance.
+   */
+  const tooltipLabel = `${ariaLabel}: ${active?.title ?? fullLabel}`;
 
   const swapTransition = reduceMotion
     ? { duration: 0.01 }
@@ -265,7 +340,11 @@ export function InlinePillPicker({
     focusRing('control', 'accent'),
     // Carton-context menu face is borderless so the identity bar reads as one
     // strip (no boxed dots / vertical pill seams). Inline expand keeps borders.
-    isMenu && 'border-0 bg-transparent hover:bg-surface-hover/50',
+    // On hover the cell draws its own inset box — the same seam every other
+    // carton-bar cell uses, so the strip delineates consistently under the
+    // pointer instead of only under the action cells.
+    isMenu && `border-0 bg-transparent ${STATION_CHROME_CELL_HOVER_FILL}`,
+    isMenu && !readOnly && STATION_CHROME_CELL_HOVER_SEAM,
     readOnly && 'pointer-events-none',
   );
 
@@ -300,11 +379,12 @@ export function InlinePillPicker({
     <button
       type="button"
       aria-haspopup={readOnly ? undefined : 'menu'}
-      aria-expanded={readOnly ? undefined : open}
-      aria-label={
-        readOnly ? `${ariaLabel}: ${fullLabel}` : `${ariaLabel}: ${fullLabel} — click to change`
-      }
-      title={isBookmark ? undefined : tooltipLabel}
+      aria-expanded={readOnly ? undefined : menuOpen}
+      aria-label={`${ariaLabel}: ${fullLabel}`}
+      // No native `title` on the menu face either — a browser tooltip appearing
+      // under the pointer is a second overlay competing with the menu the hover
+      // just opened, and it re-fires the wrapper's mouseleave.
+      title={isBookmark || isMenu ? undefined : tooltipLabel}
       onClick={readOnly || isMenu ? undefined : () => onOpenChange(true)}
       className={collapsedClassName}
       style={faceStyle}
@@ -322,19 +402,22 @@ export function InlinePillPicker({
   );
 
   if (isMenu) {
-    const menuTrigger = isBookmark ? (
-      <HoverTooltip label={tooltipLabel} asChild>
-        <DropdownMenuTrigger asChild>{collapsedButton}</DropdownMenuTrigger>
-      </HoverTooltip>
-    ) : (
-      <DropdownMenuTrigger asChild>{collapsedButton}</DropdownMenuTrigger>
-    );
+    /**
+     * NO `HoverTooltip` on a hover-opened trigger. The tooltip portals its own
+     * layer under the pointer, which fires `mouseleave` on the wrapper below —
+     * the debounce closes the menu, the pointer "re-enters", it reopens: the
+     * flashing loop, with the tooltip and the menu fighting for the same
+     * gesture. The menu itself already names the dimension (`aria-label`) and
+     * shows the full option labels, so the tooltip said nothing it didn't.
+     */
+    const menuTrigger = <DropdownMenuTrigger asChild>{collapsedButton}</DropdownMenuTrigger>;
 
     return (
       <div
         ref={ref}
         data-inline-pill=""
         data-presentation="menu"
+        {...(readOnly ? {} : hover.triggerProps)}
         className={cn(
           'flex h-full shrink-0 self-stretch items-stretch',
           disabled && 'pointer-events-none opacity-50',
@@ -343,13 +426,17 @@ export function InlinePillPicker({
         {readOnly ? (
           <div className="flex h-full shrink-0 items-stretch">{collapsedFaceWrap}</div>
         ) : (
-          <DropdownMenu open={open} onOpenChange={onOpenChange}>
+          <DropdownMenu open={menuOpen} onOpenChange={onMenuOpenChange} modal={false}>
             {menuTrigger}
             <DropdownMenuContent
               align="start"
               side="bottom"
               sideOffset={6}
               avoidCollisions={false}
+              {...hover.surfaceProps}
+              // Closing must hand focus back to the bench, not park it on the
+              // trigger — the wedge owns focus on a scan station.
+              onCloseAutoFocus={(e) => e.preventDefault()}
               className={CHIP_HOVER_MENU_PANEL_CLASS}
               aria-label={ariaLabel}
             >
@@ -368,11 +455,37 @@ export function InlinePillPicker({
                     )}
                     aria-label={opt.title ?? opt.label}
                   >
-                    <IdentityDot opt={opt} />
+                    {/* Dot rides the SAME 3.5 icon box every other carton-bar
+                        menu uses for its glyph, so option labels start at the
+                        same x as History / Edit colours / overflow rows. */}
+                    <span className={CHIP_HOVER_MENU_ICON_CLASS} aria-hidden>
+                      <IdentityDot opt={opt} />
+                    </span>
                     <span className="min-w-0 flex-1 truncate">{opt.label}</span>
                   </DropdownMenuItem>
                 );
               })}
+              {onEditColors ? (
+                <DropdownMenuItem
+                  key="__edit-colors__"
+                  onSelect={() => onEditColors()}
+                  className={cn(
+                    CHIP_HOVER_MENU_ITEM_CLASS,
+                    // The hairline is the SAME seam token the option rows use —
+                    // this is a footer, not a second panel, so it must not
+                    // introduce a heavier rule than the rows above it.
+                    CHIP_HOVER_MENU_ITEM_SEAM_CLASS,
+                    CHIP_HOVER_MENU_ITEM_TONE.default,
+                  )}
+                  aria-label={editColorsLabel}
+                  data-testid="inline-pill-edit-colors"
+                >
+                  <span className={CHIP_HOVER_MENU_ICON_CLASS} aria-hidden>
+                    <PaintBucket />
+                  </span>
+                  <span className="min-w-0 flex-1 truncate">{editColorsLabel}</span>
+                </DropdownMenuItem>
+              ) : null}
             </DropdownMenuContent>
           </DropdownMenu>
         )}

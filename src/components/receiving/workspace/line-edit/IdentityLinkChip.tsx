@@ -9,12 +9,13 @@
  * shared `editing` prop — the identity row never drops digits, reflows, or pulses.
  */
 
-import { useState, type CSSProperties, type ReactNode } from 'react';
+import { type CSSProperties, type ReactNode } from 'react';
 import { Copy, ChevronDown, ExternalLink, Pencil, Info } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
 import { CarrierMark } from '@/components/ui/CarrierMark';
 import { CopyChip, type ChipTone } from '@/components/ui/CopyChip';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { useHoverSurface } from '@/hooks/useHoverSurface';
 import {
   CHIP_HOVER_MENU_ITEM_CLASS,
   CHIP_HOVER_MENU_ITEM_SEAM_CLASS,
@@ -149,7 +150,6 @@ export function IdentityLinkChip({
    */
   menuPlacement?: 'below' | 'left';
 }) {
-  const [menuHover, setMenuHover] = useState(false);
   const normalizedValue = normalizeCopyText(value);
   const canCopy = !disableCopy && !!normalizedValue && normalizedValue !== '---';
   const carrierBrand =
@@ -183,6 +183,21 @@ export function IdentityLinkChip({
   const showActionMenu = hasMenuActions && !editOpen && !suppressMenu;
   const isEditing = !!editOpen;
 
+  /**
+   * Hover-to-open comes from {@link useHoverSurface} — the ONE engine, shared
+   * with the classify pills, the rail peek and the chip menus (0ms open, 150ms
+   * close, one surface open at a time). This chip used to run its own
+   * `useState` + `mouseenter/mouseleave` pair with no close delay and a
+   * `duration-100` fade, which made it the fifth engine on a row that had just
+   * been consolidated to one — and, because it never joined the registry, its
+   * menu did not evict an open classify menu (two panels, one pointer).
+   *
+   * Open state stays LOCAL here (unlike `InlinePillPicker`, whose host lifts it
+   * to drive the bar's `frozen` layout freeze). Nothing outside this chip needs
+   * to know the menu is up, so there is no lifted mirror to keep in sync.
+   */
+  const hover = useHoverSurface({ disabled: !showActionMenu });
+
   const iconOnlyTooltip = openHref
     ? `${display} — ${openTitle}`
     : display
@@ -213,10 +228,7 @@ export function IdentityLinkChip({
       }`}
       onClick={(e) => e.stopPropagation()}
       onKeyDown={(e) => e.stopPropagation()}
-      onMouseEnter={() => {
-        if (showActionMenu) setMenuHover(true);
-      }}
-      onMouseLeave={() => setMenuHover(false)}
+      {...hover.triggerProps}
     >
       {!actionsInMenu ? (
         <HoverTooltip label={openHref ? openTitle : 'No link available'} asChild>
@@ -357,14 +369,22 @@ export function IdentityLinkChip({
           // menu is not covered/clipped when it opens beside/below the chips.
           // Flush-square + left: same chrome as Photos `CopyChipHoverMenuPanel`
           // (never `rounded-lg` / centered under the face).
+          //
+          // NO fade. This row animates nothing: opening is instant, so there is
+          // no appear animation for a `duration-100` opacity ramp to match — it
+          // only delays the data reaching the operator's eye. The panel is a DOM
+          // child of the trigger, so `mouseleave` does not fire crossing onto
+          // it; `surfaceProps` still cancels the pending close for the portal-
+          // like `right-full` placement.
+          {...hover.surfaceProps}
           className={cn(
-            'absolute z-panelPopover transition-opacity duration-100',
+            'absolute z-panelPopover',
             menuPlacement === 'left'
               ? 'right-full top-0'
               : 'left-0 top-full pt-1.5',
-            menuHover
-              ? 'visible pointer-events-auto opacity-100'
-              : 'invisible pointer-events-none opacity-0',
+            hover.isOpen
+              ? 'visible pointer-events-auto'
+              : 'invisible pointer-events-none',
           )}
         >
           <div

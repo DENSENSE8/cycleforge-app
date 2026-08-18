@@ -2,7 +2,7 @@
 
 import { useRef, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
 import type { Variants } from '@/design-system/motion';
-import { motion, AnimatePresence } from '@/design-system/motion';
+import { motion } from '@/design-system/motion';
 import { framerPresence, framerTransition, motionBezier } from '@/design-system/foundations/motion-framer';
 import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
 import { SIDEBAR_RAIL_INSET_LEFT } from '@/components/layout/header-shell';
@@ -223,13 +223,12 @@ export function RailRow<TRow>({
           {navKey}
         </span>
       ) : null}
-      <AnimatePresence>
-        {previewOpen && renderPopover ? (
-          <RailPopover anchorEl={rowRef.current} onMouseEnter={scheduleOpen} onMouseLeave={scheduleClose} onDismiss={dismiss}>
-            {renderPopover(row, { groupSize, openWorkspace: onClick, dismiss })}
-          </RailPopover>
-        ) : null}
-      </AnimatePresence>
+      {/* No AnimatePresence: the peek reveals instantly and has no exit. */}
+      {previewOpen && renderPopover ? (
+        <RailPopover anchorEl={rowRef.current} onMouseEnter={scheduleOpen} onMouseLeave={scheduleClose} onDismiss={dismiss}>
+          {renderPopover(row, { groupSize, openWorkspace: onClick, dismiss })}
+        </RailPopover>
+      ) : null}
     </motion.li>
   );
 }

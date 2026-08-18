@@ -1,5 +1,9 @@
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cornerClass } from '@/design-system/tokens/radius';
+import {
+  STATION_CHROME_CELL_HOVER_FILL,
+  STATION_CHROME_CELL_HOVER_SEAM,
+} from './station-identity-chrome';
 
 /**
  * Shared face geometry for station identity action pills.
@@ -24,7 +28,8 @@ export const STATION_CONTEXT_BOXED_CUBE_CLASS = [
   'ds-raw-button relative z-base flex shrink-0 items-center justify-center',
   cornerClass('flush'),
   'border border-border-soft bg-surface-card p-0 text-text-soft shadow-none',
-  'hover:bg-surface-hover/50 hover:text-text-muted',
+  `${STATION_CHROME_CELL_HOVER_FILL} hover:text-text-muted`,
+  STATION_CHROME_CELL_HOVER_SEAM,
   focusRing('control', 'accent'),
   'outline-none',
 ].join(' ');
@@ -38,7 +43,8 @@ export const STATION_CONTEXT_EXIT_PILL_CLASS = [
   'ds-raw-button relative z-base flex h-full w-full shrink-0 items-center justify-center',
   cornerClass('flush'),
   'border-0 bg-surface-card p-0 text-text-soft shadow-none',
-  'hover:bg-surface-hover/50 hover:text-text-muted',
+  `${STATION_CHROME_CELL_HOVER_FILL} hover:text-text-muted`,
+  STATION_CHROME_CELL_HOVER_SEAM,
   focusRing('control', 'accent'),
   'outline-none',
 ].join(' ');
@@ -55,7 +61,8 @@ export const STATION_CONTEXT_ACTION_CELL_CLASS = [
   'ds-raw-button relative z-base flex h-full aspect-square shrink-0 items-center justify-center',
   cornerClass('flush'),
   'border-0 bg-surface-card p-0 text-text-soft shadow-none',
-  'hover:bg-surface-hover/50 hover:text-text-muted',
+  `${STATION_CHROME_CELL_HOVER_FILL} hover:text-text-muted`,
+  STATION_CHROME_CELL_HOVER_SEAM,
   focusRing('control', 'accent'),
   'outline-none',
 ].join(' ');
@@ -80,6 +87,7 @@ export const STATION_CONTEXT_PHOTO_CHROME_CLASS = [
   cornerClass('flush'),
   'border-0 px-1.5 text-role-caption font-semibold tabular-nums shadow-none',
   STATION_CONTEXT_PHOTO_TONE,
+  STATION_CHROME_CELL_HOVER_SEAM,
   focusRing('control', 'accent'),
   'outline-none',
 ].join(' ');
@@ -120,6 +128,7 @@ export const STATION_CONTEXT_CLAIM_CHROME_CLASS = [
   cornerClass('flush'),
   'border-0 px-1.5 text-role-caption font-semibold shadow-none',
   STATION_CONTEXT_CLAIM_TONE,
+  STATION_CHROME_CELL_HOVER_SEAM,
   focusRing('control', 'accent'),
   'outline-none',
 ].join(' ');

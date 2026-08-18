@@ -104,7 +104,8 @@ export const STATION_IDENTITY_GROUP_CLASS =
 /**
  * Leading column on chrome row 1 — boxed exit chevron. Square track on
  * {@link STATION_CHROME_ROW_FACE}; child fills flush (`h-full w-full`).
- * Lifecycle status is a content-width cell after tracking, not this column.
+ * Lifecycle status is the content-width cell immediately AFTER this column and
+ * before the order # — state, then which carton — not part of this column.
  */
 export const STATION_IDENTITY_LEAD_COL_CLASS =
   'flex h-full aspect-square shrink-0 items-stretch justify-stretch';
@@ -130,6 +131,64 @@ export const STATION_CHROME_GLYPH_CLASS = 'block h-3.5 w-3.5 shrink-0';
  */
 export const STATION_CHROME_CELL_CLASS =
   'flex h-full min-h-0 shrink-0 items-center';
+
+/**
+ * Hover seam — the carton bar is one flush strip (`gap-0`, no `divide-x`), so
+ * at rest a cell has no edges of its own. On hover it draws its OWN box:
+ * an inset hairline on all four sides, which is what gives the vertical rules
+ * between neighbouring cells and the horizontal rules top and bottom.
+ *
+ * `ring-inset`, not `border`: a border is in the box model and would shift the
+ * whole row by 1px on hover; an inset ring paints inside the existing box, so
+ * nothing moves. Variant-scoped (`hover:`), so it never collides with
+ * `focusRing('control', …)`, which is `focus-visible:`-scoped.
+ *
+ * **One ink — NOT `currentColor`.** This token was briefly `ring-current/30`,
+ * on the theory that a cell drawing its box in its own text colour would give
+ * every cell the same optical WEIGHT. It does the opposite: the box comes out
+ * blue on Photos, orange on Claim, `text-soft` on Back-to-list / Listing /
+ * overflow, and `text-default` on the classify pills — four different boxes on
+ * one 28px strip, which is precisely the inconsistency this token exists to
+ * remove.
+ *
+ * `text-default/30` is the classify-pill value (their face is
+ * `text-text-default`), and the pills are the reference the row is tuned to:
+ * dark enough to read over the Photos blue-50 and Claim orange-50 washes, quiet
+ * enough not to cage the white neutral cells. The complaint that first motivated
+ * `ring-current` — a hairline that disappeared on the colour washes — was true
+ * of `border-hairline` (≈ gray-100) specifically, not of a fixed ink as such.
+ *
+ * Interactive cells only. A hover box on a read-only fact (status dot, qty,
+ * price) would advertise a click that does nothing.
+ */
+export const STATION_CHROME_CELL_HOVER_SEAM =
+  'hover:ring-1 hover:ring-inset hover:ring-text-default/30';
+
+/**
+ * Hover FILL that pairs with {@link STATION_CHROME_CELL_HOVER_SEAM}. The box and
+ * the wash are one gesture: a cell that rings without filling (or fills without
+ * ringing) reads as a different kind of control under the same pointer. Every
+ * neutral cell uses this; the tone cells (Photos, Claim) step their own wash
+ * instead and must NOT stack this on top of it.
+ */
+export const STATION_CHROME_CELL_HOVER_FILL = 'hover:bg-surface-hover/50';
+
+/**
+ * Interactive cell on the carton bar that is NOT one of the button faces in
+ * `station-context-action-pill.ts` — i.e. the identity chips (order #,
+ * tracking #, ticket). Those chips are `inline-flex` and vertically centred, so
+ * left to themselves their hover box would be shorter than the row and the strip
+ * would delineate at two different heights. This wrapper hands them the same
+ * `h-full` cell box, seam and fill that every other interactive cell has.
+ *
+ * Read-only facts (status dot, qty, price, the Pickup indicator) compose
+ * {@link STATION_CHROME_CELL_CLASS} instead — no box, no fill.
+ */
+export const STATION_CHROME_HOVER_CELL_CLASS = [
+  'flex h-full min-h-0 shrink-0 items-stretch',
+  STATION_CHROME_CELL_HOVER_FILL,
+  STATION_CHROME_CELL_HOVER_SEAM,
+].join(' ');
 
 /** Gap between icons / chips — same integer as GlobalHeader. */
 export const stationIdentityGapClass = HEADER_ICON_GAP;

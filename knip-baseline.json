@@ -1,8 +1,8 @@
 {
   "$comment": "Baseline of KNOWN knip findings (dead-code backlog). The gate `npm run knip` (scripts/knip-gate.mjs) fails only on findings NOT listed here — i.e. NEW dead code. Captured with `knip --cache` for determinism. Regenerate after intentional changes with `npm run knip:baseline` and commit this file.",
   "knipVersion": "5.88.1",
-  "generatedAt": "2026-08-13",
-  "count": 2549,
+  "generatedAt": "2026-08-17",
+  "count": 2548,
   "findings": [
     "binaries|package.json|json",
     "binaries|package.json|pm2",
@@ -69,7 +69,6 @@
     "exports|src/components/receiving/workspace/claim/components/CcEmailField.tsx|isValidCcEmail",
     "exports|src/components/receiving/workspace/line-edit/ReceivingPhotoButton.tsx|default",
     "exports|src/components/receiving/workspace/note-composer-helpers.ts|NOTE_SAVE_BTN",
-    "exports|src/components/receiving/workspace/receiving-label-helpers.tsx|resolveReceivingLabelQrValue",
     "exports|src/components/receiving/workspace/receiving-workspace-layout.ts|RECEIVING_WORKSPACE_COLUMN",
     "exports|src/components/repair/RepairIntakeStepper.tsx|REPAIR_INTAKE_STEPS",
     "exports|src/components/repair/RepairIntakeStepper.tsx|deriveRepairIntakeStepStates",
