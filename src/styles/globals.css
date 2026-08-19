@@ -13,12 +13,12 @@
 
      Three cuts of ONE macro-family (IBM Plex). The condensed cut is bound
      intrinsically by the `text-role-eyebrow` / `text-role-micro` utilities
-     (tailwind.config.ts plugin) — never reach for `font-condensed` by hand to
+     (tailwind.config.mjs plugin) — never reach for `font-condensed` by hand to
      narrow arbitrary text; pick the role whose job is dense chrome.
 
      Both spellings are load-bearing and NEITHER has a fallback at its reader:
        --font-sans     → `body` + `.font-dm-sans` (src/app/globals.css)
-       --ds-font-sans  → `fontFamily.sans` in tailwind.config.ts, i.e. every
+       --ds-font-sans  → `fontFamily.sans` in tailwind.config.mjs, i.e. every
                          `font-sans` utility in the app, + ProviderSignInButton
      `src/styles/tokens.ts` currently declares the same four names with the same
      values and wins the cascade (injected <style> flushes after this

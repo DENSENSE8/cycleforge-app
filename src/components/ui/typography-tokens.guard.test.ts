@@ -9,7 +9,7 @@ import { MAX_FONT_WEIGHT } from '@/design-system/tokens/typography/weights';
  * Guards the CF Type typography system (search-and-dense-ui-refactor plan §2).
  *
  * The old compact px scale (text-mini/eyebrow/micro/caption/label) was RETIRED
- * 2026-07-13 (T4) in favour of the role-bundled scale in `tailwind.config.ts`
+ * 2026-07-13 (T4) in favour of the role-bundled scale in `tailwind.config.mjs`
  * (`text-role-display/title/body/data/caption/eyebrow/micro`), each bundling
  * size + line-height + tracking + weight, `rem`-based + density-aware. `cn()`
  * (src/utils/_cn.ts) teaches tailwind-merge about the role tokens so they
@@ -172,7 +172,7 @@ test('the 700+ cuts are not loaded — a capped system must not ship the weight'
 test('no CF Type role bakes a weight above the cap', () => {
   // The roles are the one place a weight is applied without any class naming it,
   // so a drift here would be invisible at every call site.
-  const src = readFileSync(join(REPO_ROOT, 'tailwind.config.ts'), 'utf8');
+  const src = readFileSync(join(REPO_ROOT, 'tailwind.config.mjs'), 'utf8');
   const offenders: string[] = [];
   for (const m of src.matchAll(/'(role-[a-z]+)':\s*\[[^\]]*fontWeight:\s*'(\d+)'/g)) {
     if (Number(m[2]) > MAX_FONT_WEIGHT) offenders.push(`${m[1]} = ${m[2]}`);
@@ -260,10 +260,10 @@ test('the sans cut loads no weight above the 600 cap', () => {
 });
 
 test('text-role-eyebrow / -micro bind the condensed cut intrinsically', () => {
-  const src = readFileSync(join(REPO_ROOT, 'tailwind.config.ts'), 'utf8');
+  const src = readFileSync(join(REPO_ROOT, 'tailwind.config.mjs'), 'utf8');
   assert.ok(
     src.includes('condensed:') && src.includes('--ds-font-condensed'),
-    "tailwind.config.ts must register the condensed family on '--ds-font-condensed'.",
+    "tailwind.config.mjs must register the condensed family on '--ds-font-condensed'.",
   );
   for (const role of ['.text-role-eyebrow', '.text-role-micro']) {
     const bound = new RegExp(

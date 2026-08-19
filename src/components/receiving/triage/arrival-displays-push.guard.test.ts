@@ -257,10 +257,10 @@ describe('Arrival pane controls — expand · cursor · flush dock', () => {
       /utilityRail=\{utilityRailBody\}/,
       'utility mounts on ScanStationUtilityRail when Displays closed',
     );
-    assert.match(
+    assert.doesNotMatch(
       panel,
-      /headerTrailing=\{displaysCartonCursor\}/,
-      'carton ↑↓ mounts top-right on the details panel when Displays is open',
+      /headerTrailing|displaysCartonCursor/,
+      'the band corner belongs to the Macro verb cluster — no carton ↑↓ while Displays is open (2026-08-18)',
     );
     assert.doesNotMatch(
       panel,
@@ -363,26 +363,32 @@ describe('Arrival flat centre — Unbox flow identity parity', () => {
 describe('Arrival Displays carton Macro floor', () => {
   const panel = read(TRIAGE_PANEL);
   const floor = read('src/components/receiving/triage/ArrivalDisplaysActionFloor.tsx');
+  const compound = read(
+    'src/components/station/displays/CartonDisplaysActionFloor.tsx',
+  );
 
-  it('TriagePanel passes ArrivalDisplaysActionFloor as the Displays actionFloor', () => {
+  it('TriagePanel passes ArrivalDisplaysActionFloor as the Displays headerActions', () => {
     assert.match(
       panel,
-      /actionFloor=\{[\s\S]{0,400}ArrivalDisplaysActionFloor/,
-      'the Macro floor mounts via the PushStack actionFloor slot (above the close chrome)',
+      /headerActions=\{[\s\S]{0,400}ArrivalDisplaysActionFloor/,
+      'the Macro verbs mount via the PushStack headerActions slot (top-band cluster)',
     );
+    assert.doesNotMatch(panel, /actionFloor=\{/);
     assert.match(panel, /onDeleted=\{closeDisplays\}/);
     assert.match(panel, /editSelected=\{activeSideTab === ['"]linkage['"]\}/);
     assert.match(panel, /onInventorySync=\{\(\) => c\.refreshInventoryDossier\(\)\}/);
     assert.match(panel, /inventorySyncing=\{Boolean\(c\.inventoryRefreshing\)\}/);
   });
 
-  it('composes the STATION shell + shared waist (not the desk InspectorActionFloor)', () => {
-    assert.match(floor, /StationDisplaysActionFloor/);
-    assert.match(floor, /InspectorFlushDelete/);
-    assert.match(floor, /stationDisplaysFloorMoreItems/);
-    assert.match(floor, /size="fill"/);
-    assert.match(floor, /FLUSH_TERMINAL_SPREAD_PEER_CLASS/);
-    assert.match(floor, /FLUSH_TERMINAL_SPREAD_GLYPH_CLASS/);
+  it('composes the shared carton compound (not the desk InspectorActionFloor)', () => {
+    // The Arrival file is a THIN recipe — the shell/waist assertions belong to
+    // the compound it composes, not to the wrapper. (This case asserted
+    // wrapper internals it never had; it was red before this change too.)
+    assert.match(floor, /<CartonDisplaysActionFloor/);
+    assert.match(compound, /StationDisplaysHeaderActions/);
+    assert.match(compound, /stationDisplaysFloorMoreItems/);
+    assert.match(compound, /size="sm"/);
+    assert.match(compound, /STATION_DISPLAYS_HEADER_ACTION_CELL/);
   });
 
   it('C2 — never imports the desk shell / peers', () => {
@@ -392,6 +398,7 @@ describe('Arrival Displays carton Macro floor', () => {
   });
 
   it('Arrival omits Print (door pass — no printable label yet)', () => {
+    assert.doesNotMatch(floor, /\bprint=\{/);
     assert.doesNotMatch(floor, /\bPrinter\b/);
     assert.doesNotMatch(
       floor,
@@ -400,18 +407,19 @@ describe('Arrival Displays carton Macro floor', () => {
     );
   });
 
-  it('verb order is More → Sync → Edit → far-right Delete', () => {
-    assert.match(floor, /MoreHorizontal/);
-    assert.match(floor, /RefreshCw/);
-    assert.match(floor, /Pencil/);
-    const morePos = floor.indexOf('arrival-displays-floor-more');
-    const syncPos = floor.indexOf('arrival-displays-floor-inventory-sync');
-    const editPos = floor.indexOf('arrival-displays-floor-edit');
-    const deletePos = floor.indexOf('arrival-displays-floor-delete');
+  it('verb order is Refresh → Edit → trailing ⋮ (Delete inside it)', () => {
+    // Order lives in the compound + the descriptor SoT, not the thin recipe.
+    assert.match(compound, /MoreVertical/);
+    assert.match(compound, /RefreshCw/);
+    assert.match(compound, /Pencil/);
+    const syncPos = compound.indexOf("case 'sync'");
+    const editPos = compound.indexOf("case 'edit'");
+    const morePos = compound.indexOf("case 'more'");
     assert.ok(
-      morePos > 0 && syncPos > morePos && editPos > syncPos && deletePos > editPos,
-      'peer columns left→right: More · Sync · Edit · Delete',
+      syncPos > 0 && editPos > syncPos && morePos > editPos,
+      'cells left→right: Refresh · Edit · ⋮ (Arrival omits Print)',
     );
+    assert.doesNotMatch(compound, /InspectorFlushDelete/);
   });
 
   it('no floating island / touch peers (hit target is the fill column)', () => {

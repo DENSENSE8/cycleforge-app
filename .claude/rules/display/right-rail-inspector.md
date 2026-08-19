@@ -114,10 +114,12 @@ navigation-only so a Park never sits beside a Delete. The View-only shell (n=0)
 mounts no floor.
 
 **Station Displays carton Macro (fork):** scan benches mount
-`StationDisplaysActionFloor` (`src/components/station/displays/`) via
-`StationDisplaysPushStack` `actionFloor` **above** the close chrome footer
-(`→|` / Filter hairline) — `h-11`, Unbox dock Band 1. Layout: Edit ·
-Print/Resolve · Delete far bottom-right (no `…` menu). Unbox golden:
+`StationDisplaysHeaderActions` (`src/components/station/displays/`) via
+`StationDisplaysPushStack` `headerActions` in the column's **top-right band**
+(moved off the bottom rung 2026-08-18). Layout: Refresh · Print/Resolve · Edit ·
+trailing **`⋮`**, with Delete and Resolve *inside* `⋮` (`tone="danger"` + the
+undo toast) — the opposite of the desk floor, where Delete is the flush trailing
+peer. The `Filter displays… + →|` footer keeps the bottom band. Unbox golden:
 `UnboxDisplaysActionFloor` (`station-displays-carton-floor.ts`). Still never
 import desk `InspectorActionFloor` into Displays.
 
@@ -234,8 +236,9 @@ plus padding per group for no navigational gain.
   `InspectorActionFloor` **icons-first** — `FloorIconButton` / `FloorOverflowButton`
   peers + a flush trailing `InspectorFlushDelete` child (`IconActionFloor` spread
   on canvas) — never a labelled `actions` cluster or a full-width labelled danger
-  pill. Station Displays Macro CTAs compose `FlushTerminalFooter` /
-  `StationDisplaysActionFloor` directly. Micro per-row actions stay on
+  pill. Station Displays Macro verbs compose `StationDisplaysHeaderActions`
+  (top band); leaf-local commit surfaces still compose `FlushTerminalFooter`
+  directly. Micro per-row actions stay on
   `IconButton size="md"`.
 
 ### Anti-patterns

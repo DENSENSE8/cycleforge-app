@@ -332,7 +332,7 @@ load-bearing (condensed keeps 10–11px chrome inside a grid column; mono keeps 
 "one macro-family" rule was actually protecting.
 
 - **Pick a ROLE, not a family.** `text-role-eyebrow`/`-micro` bind the condensed cut themselves
-  (tailwind.config.ts CF Type plugin), so a 10–11px label stays legible without wrapping a grid column.
+  (tailwind.config.mjs CF Type plugin), so a 10–11px label stays legible without wrapping a grid column.
   Writing `font-condensed` by hand to narrow arbitrary text is the fork — it drifts the moment someone
   forgets it. `families.ts` deliberately has no `heading`/`display`/`label` slot.
 - **600 is the ceiling.** `font-bold`/`font-extrabold`/`font-black` are banned: at 10–14px on a 1080p

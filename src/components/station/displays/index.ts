@@ -31,7 +31,13 @@ export {
 export { DisplaysIndexLeafStage } from './DisplaysIndexLeafStage';
 export { StationDisplaysPushStack } from './StationDisplaysPushStack';
 export type { DisplaysVisitFrame } from './StationDisplaysPushStack';
-export { StationDisplaysActionFloor } from './StationDisplaysActionFloor';
+export {
+  StationDisplaysHeaderActions,
+  STATION_DISPLAYS_HEADER_ACTION_ACTIVE,
+  STATION_DISPLAYS_HEADER_ACTION_CELL,
+  STATION_DISPLAYS_HEADER_ACTION_FACE,
+  STATION_DISPLAYS_HEADER_ACTION_GLYPH,
+} from './StationDisplaysHeaderActions';
 export { CartonDisplaysActionFloor } from './CartonDisplaysActionFloor';
 export { StationDisplaysEdgeToggle } from './StationDisplaysEdgeToggle';
 export { useDisplaysLeafChrome } from './displays-leaf-chrome';

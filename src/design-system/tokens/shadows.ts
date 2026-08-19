@@ -43,7 +43,7 @@ export type ElevationRole = 'flat' | 'raised' | 'overlay';
 export type RaisedIntensity = 'soft' | 'default';
 
 /**
- * Role → `shadow-elev-*` utility (tailwind.config.ts `theme.extend.boxShadow`,
+ * Role → `shadow-elev-*` utility (tailwind.config.mjs `theme.extend.boxShadow`,
  * values in globals.css `--ds-elev-*`).
  *
  * Every role is an **ambient + key + cast** stack. The zero-offset ambient

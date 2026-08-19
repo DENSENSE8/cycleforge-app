@@ -24,14 +24,16 @@
  *
  * Chrome bands are stage-owned (left-rail twin grammar):
  *   - Root Index **and** default leaves → {@link StationDisplaysDismissFooter}
- *     (`Filter displays…` + `→|`) — seated **above** the carton Macro icon row
+ *     (`Filter displays…`) — the column's bottom band. Dismiss is NOT here any
+ *     more: the single header band owns the far-right `→|` (2026-08-18).
  *   - Leaf opt-in → {@link StationDisplaysCommandFooter} (`/` · `→|`)
  *     when the active leaf registers commands via
  *     {@link useDisplaysLeafChrome} `setLeafCommands` (`leaf-command`)
  *
- * When {@link actionFloor} is set (Unbox carton Macro), that row sits
- * **below** the Filter / hide chrome — never above or instead of it. Delete
- * docks on the Macro row's far right.
+ * When {@link headerActions} is set (Unbox carton Macro), those verbs sit in the
+ * single header band's right group, `⋮` last before fullscreen + close. Delete
+ * and Resolve live inside `⋮`. The bottom band keeps the **filter** only and is
+ * still the left context rail's twin.
  *
  * Host body is {@link DisplaysIndexLeafStage} (shared with desk
  * `DeskInspectorIndexShell`) inside the push column.
@@ -95,9 +97,8 @@ export function StationDisplaysPushStack({
   activeTab,
   onTabChange,
   onClose,
-  headerTrailing = null,
   rightSlot = null,
-  actionFloor = null,
+  headerActions = null,
   indexRows,
   /**
    * Current visit snapshot (tab + nest). When omitted, `{ tab: activeTab }`.
@@ -128,18 +129,18 @@ export function StationDisplaysPushStack({
   activeTab: string;
   onTabChange: (id: string) => void;
   onClose: () => void;
-  /** Carton ↑↓ at the details panel top-right while Displays is open. */
-  headerTrailing?: ReactNode;
   /**
-   * Procedure progress ring — column top band (right of fullscreen, left of
-   * carton cursor). Optional; stations without a derived procedure leave it empty.
+   * Procedure progress ring — column top band, leading the Macro verbs.
+   * A read-only metric, so it never sits in {@link headerActions}. Optional;
+   * stations without a derived procedure leave it empty.
    */
   rightSlot?: ReactNode;
   /**
-   * Carton Macro floor below Filter / hide chrome (Unbox golden — Edit ·
-   * Print/Resolve · trailing Delete). Omit on stations that have not wired it yet.
+   * Carton Macro verbs in the top-band trailing cluster — Unbox golden:
+   * Refresh · Print · Edit · `⋯` (Resolve + Delete). Omit on stations that
+   * have not wired it yet.
    */
-  actionFloor?: ReactNode;
+  headerActions?: ReactNode;
   /**
    * Enriched Root Index rows (subtitle + tone + group). When omitted, rows are
    * derived from visible {@link tabs} (neutral tone + default groups).
@@ -455,9 +456,9 @@ export function StationDisplaysPushStack({
       resizeTooltip={resizeTooltip}
       onClose={onClose}
       onEscape={onEscape}
-      headerTrailing={headerTrailing}
       headerRightSlot={rightSlot}
-      actionFloor={actionFloor}
+      headerNav={historyChrome}
+      headerActions={headerActions}
       footer={
         footerStage === 'leaf-command' ? (
           <div data-footer-stage={footerStage} className="shrink-0">
@@ -475,7 +476,6 @@ export function StationDisplaysPushStack({
             className="shrink-0"
           >
             <StationDisplaysDismissFooter
-              onClose={onClose}
               filterQuery={filterQuery}
               onFilterChange={applyFilterQuery}
               onFilterClear={() => applyFilterQuery('')}
@@ -489,7 +489,6 @@ export function StationDisplaysPushStack({
     >
       <DisplaysIndexLeafStage
         onIndex={onIndex}
-        stickyHeader={historyChrome}
         rows={filteredIndexRows}
         tabs={tabs}
         onSelectLeaf={onTabChange}

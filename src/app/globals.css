@@ -5,7 +5,7 @@
 @import 'tailwindcss';
 /* Bridge: keep JS theme + CF Type / spacing-intent plugins until fully
    migrated into @theme / @utility. See docs/todo/tailwind-v4-SPIKE.md. */
-@config '../../tailwind.config.ts';
+@config '../../tailwind.config.mjs';
 /* Explicit sources — v4 auto-detect can miss SoT modules that only emit
    class strings (outbound-state, etc.). Mirror the v3 content globs. */
 @source '../pages/**/*.{js,ts,jsx,tsx,mdx}';

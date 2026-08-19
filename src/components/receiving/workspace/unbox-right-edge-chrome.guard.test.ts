@@ -181,15 +181,20 @@ describe('Unbox right-edge chrome (2026-08-02 rulings)', () => {
         /unbox-push-close/,
         'column-close variant keeps the unbox-push-close test id',
       );
-      assert.match(
+      assert.doesNotMatch(
         column,
         /headerTrailing/,
-        'column band accepts carton ↑↓ as top-right headerTrailing',
+        'the band corner is the Macro verb cluster — no carton ↑↓ (2026-08-18)',
+      );
+      assert.match(
+        column,
+        /\{headerActions\}/,
+        'column band accepts the carton Macro verbs as top-right headerActions',
       );
       assert.match(
         column,
         /pointer-events-auto ml-auto flex h-full shrink-0 items-stretch/,
-        'carton cursor seats on the same header row, top-right, fill-height',
+        'the trailing cluster seats on the same header row, top-right, fill-height',
       );
       assert.match(
         column,
@@ -356,10 +361,10 @@ describe('Unbox right-edge chrome (2026-08-02 rulings)', () => {
         /utilityRail=\{utilityRailBody\}/,
         'utility mounts on ScanStationUtilityRail via StationScanPaneHost when Displays closed',
       );
-      assert.match(
+      assert.doesNotMatch(
         panel,
-        /headerTrailing=\{displaysCartonCursor\}/,
-        'carton ↑↓ mounts top-right on the details panel when Displays is open',
+        /headerTrailing|displaysCartonCursor/,
+        'no carton ↑↓ while Displays is open — hide the column to page cartons',
       );
       assert.doesNotMatch(
         panel,

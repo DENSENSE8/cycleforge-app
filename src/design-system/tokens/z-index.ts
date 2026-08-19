@@ -10,7 +10,7 @@
  *
  * Usage:
  *   - Tailwind:  className="z-panel"  (semantic classes are wired in
- *                tailwind.config.ts from z-index.mjs)
+ *                tailwind.config.mjs from z-index.mjs)
  *   - Inline:    style={{ zIndex: zIndex.modal }}
  *   - CSS var:   var(--ds-zIndex-modal)  (emitted by css-variables.ts)
  *

@@ -4,7 +4,7 @@
  * pattern as `z-index.mjs`. Types live in `spacing.ts`.
  *
  * Every step = Tailwind's stock rem value × var(--cf-density, 1) — the same
- * treatment as the CF Type `role-*` fontSize tokens (tailwind.config.ts). At
+ * treatment as the CF Type `role-*` fontSize tokens (tailwind.config.mjs). At
  * the default density (1) each value renders pixel-identical to the stock
  * scale, so wiring this in is additive and invisible; inside a
  * `[data-density='compact']` container (--cf-density: 0.92, globals.css)

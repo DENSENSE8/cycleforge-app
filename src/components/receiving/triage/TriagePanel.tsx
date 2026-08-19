@@ -389,20 +389,6 @@ export function TriagePanel({
     />
   ) : null;
 
-  const displaysCartonCursor = showCartonCursor ? (
-    <ScanStationCartonCursor
-      onPrev={onPrevCarton}
-      onNext={onNextCarton}
-      prevDisabled={prevCartonDisabled}
-      nextDisabled={nextCartonDisabled}
-      orientation="horizontal"
-      size="sm"
-      prevTestId="arrival-carton-prev"
-      nextTestId="arrival-carton-next"
-      groupTestId="arrival-carton-cursor"
-    />
-  ) : null;
-
   return (
     <>
       <StationScanPaneHost
@@ -585,8 +571,7 @@ export function TriagePanel({
                 claimDisplays(id as TriageDisplayTab);
               }}
               onClose={closeDisplays}
-              headerTrailing={displaysCartonCursor}
-              actionFloor={
+              headerActions={
                 <ArrivalDisplaysActionFloor
                   receivingId={row.receiving_id}
                   isUnfound={shouldUseUnmatchedItemsSurface(row)}

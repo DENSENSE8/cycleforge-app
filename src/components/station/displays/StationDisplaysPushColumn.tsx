@@ -25,7 +25,9 @@
  * host `gap-*` / `justify-between` / gutter divs / `ml-auto` detach.
  *
  * **Dismiss + filter live in the footer** (left-rail twin) — hosts pass
- * {@link footer}. Top band keeps maximize + optional ring / carton cursor.
+ * {@link footer}. **Top band keeps maximize + optional ring + the carton Macro
+ * verbs** ({@link headerActions}, `⋯` last). The carton `↑↓` cursor no longer
+ * mounts here (2026-08-18) — the corner is the utility cluster's.
  */
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
@@ -37,6 +39,7 @@ import {
 import { STATION_COLUMN_FOOTER_BAND_FACE } from '@/components/layout/header-shell';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { HorizontalEdgeResizeHandle } from '@/design-system/components/HorizontalEdgeResizeHandle';
+import { StationDisplaysEdgeToggle } from './StationDisplaysEdgeToggle';
 import {
   EDGE_RESIZE_COLLAPSE_SLACK_PX,
   useEscapeClose,
@@ -117,9 +120,9 @@ export function StationDisplaysPushColumn({
   resizeTooltip = 'Drag to resize · drag past min to park',
   onClose,
   onEscape,
-  headerTrailing,
+  headerNav,
   headerRightSlot,
-  actionFloor,
+  headerActions,
   footer,
   children,
 }: {
@@ -145,25 +148,28 @@ export function StationDisplaysPushColumn({
    */
   onEscape?: () => void;
   /**
-   * Top-right of the details panel header band — carton `↑ ↓` cursor when
-   * Displays is open. Hosts compose {@link ScanStationCartonCursor}; omit when
-   * the station has no carton pager.
+   * LEFT group of the header band — history `← →` + the current title
+   * ({@link StationDisplayLeafHeader}). Merged into this band 2026-08-18; it
+   * used to be its own sticky row inside the body.
    */
-  headerTrailing?: ReactNode;
+  headerNav?: ReactNode;
   /**
-   * Trailing peer before carton cursor — Unbox: procedure progress ring
-   * (was Displays icon-plate `rightSlot`).
+   * Leading peer of the header band's trailing cluster — Unbox: procedure
+   * progress ring. A read-only metric, so it sits left of the action verbs.
    */
   headerRightSlot?: ReactNode;
   /**
-   * Carton Macro floor — seated **below** the Filter / `→|` {@link footer}.
-   * Unbox golden: {@link StationDisplaysActionFloor} at the `h-8` footer rung.
-   * Never desk `InspectorActionFloor`.
+   * Carton Macro verbs — top-right of the band, `⋯` last
+   * ({@link StationDisplaysHeaderActions}). Moved here from the retired bottom
+   * `actionFloor` rung (2026-08-18): a control that acts on the open carton
+   * belongs in the corner the operator already looks at for chrome, not at the
+   * far end of a scrolling column. Never desk `InspectorActionFloor`.
    */
-  actionFloor?: ReactNode;
+  headerActions?: ReactNode;
   /**
    * Filter + hide chrome — Root Index / every leaf (`Filter displays…` + `→|`)
-   * · leaf `/` commands. Always above {@link actionFloor} when both are set.
+   * · leaf `/` commands. Stays at the BOTTOM: it is the left context rail's
+   * twin, and both rails' filters share one muscle memory.
    */
   footer?: ReactNode;
   children: ReactNode;
@@ -419,48 +425,63 @@ export function StationDisplaysPushColumn({
           armed={stationContextSashArmed}
           tooltipLabel={resizeTooltip}
         />
+        {/* ONE header band (2026-08-18):
+              [ < > ] Displays ………… [ ring ][ verbs ⋮ ][ ⤢ ][ →| ]
+            Left answers "where am I", right answers "what can I do to this".
+            Fullscreen and close are the two WINDOW controls, so they close the
+            row and never collapse — the item verbs to their left are what a
+            narrower column would fold into `⋮`. */}
         <div className={STATION_DISPLAYS_PUSH_TOP_BAND}>
-          <HoverTooltip
-            label={
-              maximized
-                ? STATION_DISPLAYS_PUSH_COLLAPSE_LABEL
-                : STATION_DISPLAYS_PUSH_EXPAND_LABEL
-            }
-            asChild
-          >
+          {headerNav}
+          {headerNav == null ? <div className="flex-1" /> : null}
+          <div className="pointer-events-auto flex h-full shrink-0 items-stretch gap-0.5">
+            {headerRightSlot}
+            {headerActions}
+            <HoverTooltip
+              label={
+                maximized
+                  ? STATION_DISPLAYS_PUSH_COLLAPSE_LABEL
+                  : STATION_DISPLAYS_PUSH_EXPAND_LABEL
+              }
+              asChild
+            >
+              <span className={STATION_DISPLAYS_PUSH_TOP_CELL}>
+                <IconButton
+                  size="sm"
+                  tone="neutral"
+                  ariaLabel={
+                    maximized
+                      ? STATION_DISPLAYS_PUSH_COLLAPSE_LABEL
+                      : STATION_DISPLAYS_PUSH_EXPAND_LABEL
+                  }
+                  icon={
+                    maximized ? (
+                      <Minimize2 className="h-3.5 w-3.5" />
+                    ) : (
+                      <Maximize2 className="h-3.5 w-3.5" />
+                    )
+                  }
+                  onClick={toggleMaximize}
+                  className="h-full w-full rounded-none"
+                  data-testid="unbox-push-fullscreen"
+                />
+              </span>
+            </HoverTooltip>
+            {/* Absolute far right, never collapses. Stays `→|` (not an X):
+                Displays PUSHES, so the panel parks back against the edge it
+                came from rather than being cancelled — the house close-glyph
+                ruling is about semantics, not position, so moving the control
+                up here does not change it. */}
             <span className={STATION_DISPLAYS_PUSH_TOP_CELL}>
-              <IconButton
-                size="sm"
-                tone="neutral"
-                ariaLabel={
-                  maximized
-                    ? STATION_DISPLAYS_PUSH_COLLAPSE_LABEL
-                    : STATION_DISPLAYS_PUSH_EXPAND_LABEL
-                }
-                icon={
-                  maximized ? (
-                    <Minimize2 className="h-3.5 w-3.5" />
-                  ) : (
-                    <Maximize2 className="h-3.5 w-3.5" />
-                  )
-                }
-                onClick={toggleMaximize}
-                className="h-full w-full rounded-none"
-                data-testid="unbox-push-fullscreen"
+              <StationDisplaysEdgeToggle
+                variant="column-close"
+                onClick={onClose}
               />
             </span>
-          </HoverTooltip>
-          {/* Progress ring (optional) + carton ↑↓ — top-right when Displays open. */}
-          {headerRightSlot != null || headerTrailing != null ? (
-            <div className="pointer-events-auto ml-auto flex h-full shrink-0 items-stretch gap-0.5">
-              {headerRightSlot}
-              {headerTrailing}
-            </div>
-          ) : null}
+          </div>
         </div>
         <div className="flex min-h-0 flex-1 flex-col">{children}</div>
         {footer}
-        {actionFloor}
       </div>
     </aside>
   );

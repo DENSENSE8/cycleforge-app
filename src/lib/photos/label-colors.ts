@@ -4,7 +4,7 @@
  * A label's `color` column stores a SEMANTIC TOKEN NAME ('blue', 'rose', …),
  * never a hex (house rule: color only from semantic tokens). The chip classes
  * below are written as FULL LITERAL strings so Tailwind's content scanner
- * generates them — `src/lib/**` is in the `content` globs (see tailwind.config.ts),
+ * generates them — `src/lib/**` is in the `content` globs (see tailwind.config.mjs),
  * so a class referenced only here is still emitted. Building the class names
  * dynamically (`bg-${token}-50`) would NOT be scanned and would render invisible
  * (the build-gotchas.md "un-scanned class" trap). Keep every variant spelled out.

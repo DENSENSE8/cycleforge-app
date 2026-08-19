@@ -2,7 +2,7 @@
  * Theme registry — the single source of truth for every color theme.
  *
  * A theme is a complete `ThemePalette`: every `--ds-color-*` custom property
- * the Tailwind semantic aliases consume (see tailwind.config.ts `colors`),
+ * the Tailwind semantic aliases consume (see tailwind.config.mjs `colors`),
  * plus the page-level `--background` / `--foreground` pair. Adding a theme is
  * a pure configuration exercise:
  *

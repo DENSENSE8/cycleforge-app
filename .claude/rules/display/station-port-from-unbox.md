@@ -80,7 +80,7 @@ rg -n 'Panel.*radius=|elevation=\"raised\"|OmnichannelComposerDock' \
 |---|---|
 | Detail still in centre tabs while Displays also exists | Delete the centre twin; Displays alone |
 | `RightRailHost` for station tools | `StationDisplaysPushStack` |
-| Desk `InspectorActionFloor` on Displays | `StationDisplaysActionFloor` |
+| Desk `InspectorActionFloor` on Displays | `StationDisplaysHeaderActions` |
 | Per-entity occupant ids on a queue walk | Stable occupant id (preconditions in SoT — ask first) |
 
 ### Procedure smells
@@ -130,7 +130,7 @@ Each station owns:
 - `StationScanPaneHost` · `StationPanelRoot` · `StationWorkbench`
 - `StationContextBar` · `CartonContextCard` (or order adapter)
 - `StationDisplaysPushStack` / `StationDisplaysPushColumn`
-- `StationDisplaysActionFloor` · `StationDisplaysEdgeToggle`
+- `StationDisplaysHeaderActions` · `StationDisplaysEdgeToggle`
 - `STATION_WORKBENCH_*` / Flex-Grow Sandwich (`STATION_PUSH_CENTER_FLOOR_PX` = 720)
 - Terminal via `useStationTerminalAction` + `STATION_TERMINAL_REGISTRY` (or typed exempt)
 
@@ -171,7 +171,7 @@ has a raised dock or centre advisory.
 - [ ] Smell grep run; twin list attached
 - [ ] Centre = ops-flow only (no SectionTabsSlider for Displays tools)
 - [ ] Dock = flush Unbox geometry (or Tier C exempt documented)
-- [ ] Displays = StationDisplaysPush*; Macro = StationDisplaysActionFloor
+- [ ] Displays = StationDisplaysPush*; Macro = StationDisplaysHeaderActions (top band, ⋮ last)
 - [ ] Procedure maps (if any) either-or guarded; one derivation
 - [ ] Old twin DELETED or shrink-only allowlist
 - [ ] Station guard flipped; family baselines shrunk

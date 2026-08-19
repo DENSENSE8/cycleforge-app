@@ -168,7 +168,7 @@ describe('same-usecase forks — one face per operator job', () => {
     );
     const host = join(
       ROOT,
-      'src/components/station/displays/StationDisplaysActionFloor.tsx',
+      'src/components/station/displays/StationDisplaysHeaderActions.tsx',
     );
     const unbox = join(
       ROOT,
@@ -183,14 +183,14 @@ describe('same-usecase forks — one face per operator job', () => {
       'src/components/tech/testing-panel/TestingDisplaysActionFloor.tsx',
     );
     assert.ok(existsSync(compound), 'CartonDisplaysActionFloor must exist');
-    assert.ok(existsSync(host), 'StationDisplaysActionFloor host must stay');
+    assert.ok(existsSync(host), 'StationDisplaysHeaderActions host must stay');
     assert.ok(existsSync(unbox), 'UnboxDisplaysActionFloor recipe must stay');
     assert.ok(existsSync(arrival), 'ArrivalDisplaysActionFloor recipe must stay');
     assert.ok(existsSync(testing), 'TestingDisplaysActionFloor recipe must stay');
 
     const compoundSrc = readFileSync(compound, 'utf8');
     assert.match(compoundSrc, /export function CartonDisplaysActionFloor/);
-    assert.match(compoundSrc, /<StationDisplaysActionFloor/);
+    assert.match(compoundSrc, /<StationDisplaysHeaderActions/);
     assert.match(compoundSrc, /cartonFloorPeerOrder/);
     assert.doesNotMatch(code(compoundSrc), /InspectorActionFloor/);
     assert.doesNotMatch(code(compoundSrc), /FloorIconButton/);
@@ -209,7 +209,7 @@ describe('same-usecase forks — one face per operator job', () => {
       );
       assert.doesNotMatch(
         stripped,
-        /<StationDisplaysActionFloor/,
+        /<StationDisplaysHeaderActions/,
         `${name} recipe must not remount the host beside the compound`,
       );
       assert.doesNotMatch(

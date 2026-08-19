@@ -7,7 +7,7 @@ import { cn } from '@/utils/_cn';
 //
 // Padding by INTENT (spacing-token-leakage plan Phase 3): a plain padded box
 // whose inset comes from the Tier-2 spacing intents (`inset-card/field/cozy/
-// chip` — tailwind.config.ts plugin), so it is density-aware for free. Reach
+// chip` — tailwind.config.mjs plugin), so it is density-aware for free. Reach
 // for <Inset> instead of hand-picking another `px-N py-M` pair for the same
 // job (the census found 65 distinct paddings on one box archetype).
 //

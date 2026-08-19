@@ -29,7 +29,7 @@ const ROOT = process.cwd();
 const SRC = join(ROOT, 'src');
 const APPLY = process.argv.includes('--apply');
 
-// exact/±1 px → role class. Keep in sync with tailwind.config.ts role-* tokens.
+// exact/±1 px → role class. Keep in sync with tailwind.config.mjs role-* tokens.
 const MAP = {
   9: 'text-role-micro',
   10: 'text-role-micro',

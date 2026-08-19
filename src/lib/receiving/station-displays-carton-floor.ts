@@ -1,8 +1,17 @@
 /**
- * Station Displays carton Macro floor — exposed single-row action descriptors.
+ * Station Displays carton Macro verbs — top-band action descriptors.
  *
- * Icon row (full-width justify-between): More · Print · Edit · Delete.
- * Overflow `⋯` holds secondary verbs (Resolve when unfound).
+ * Header cluster (top-right of the push column, ruled 2026-08-18):
+ *   [ Refresh? ][ Print? ][ Edit ][ ⋯ ]
+ *
+ * `⋯` is always the trailing cell and holds every secondary or destructive
+ * verb — Resolve (when unfound) and Delete. Delete is deliberately NOT an
+ * exposed peer: a bench operator clicks fast, and the menu's extra click plus
+ * the undo toast are the two layers keeping a carton from vanishing mid-scan.
+ *
+ * Refresh is the peer that survives longest when a station wires fewer verbs —
+ * it is the operator's re-sync after touching inventory elsewhere, and it is
+ * the one they reach for without reading the row.
  */
 
 import { getLast8 } from '@/lib/copy-chip-format';
@@ -17,18 +26,35 @@ export function stationDisplaysFloorPrimaryAction(input: {
   return { key: 'print', label: 'Print', shortcut: 'Enter' };
 }
 
-/** Overflow `⋯` items — Resolve when unfound; empty when matched. */
+/** A `⋯` row. `tone: 'danger'` paints destructive and sorts last. */
+export type CartonFloorMoreItem = {
+  key: 'link' | 'delete';
+  label: string;
+  tone?: 'danger';
+};
+
+/**
+ * `⋯` items — Resolve when unfound, then Delete.
+ *
+ * Delete is always present (the menu is never empty, so the trigger is never
+ * disabled) and always last, separated from the navigational verbs above it.
+ */
 export function stationDisplaysFloorMoreItems(input: {
   unfound: boolean;
-}): ReadonlyArray<{ key: 'link'; label: string }> {
-  if (input.unfound) {
-    return [{ key: 'link', label: 'Resolve' }];
-  }
-  return [];
+  /** Operator-facing carton noun from {@link cartonDeleteFace}. */
+  deleteLabel: string;
+}): ReadonlyArray<CartonFloorMoreItem> {
+  const items: CartonFloorMoreItem[] = [];
+  if (input.unfound) items.push({ key: 'link', label: 'Resolve' });
+  items.push({ key: 'delete', label: input.deleteLabel, tone: 'danger' });
+  return items;
 }
 
-/** Equal-fill carton Macro peers. More · Edit · Delete always paint. */
-export type CartonFloorPeer = 'more' | 'sync' | 'print' | 'edit' | 'delete';
+/**
+ * Carton Macro header peers. Edit and `⋯` always paint; Refresh and Print are
+ * per-station slots. Delete is not a peer — it lives inside `⋯`.
+ */
+export type CartonFloorPeer = 'sync' | 'print' | 'edit' | 'more';
 
 export type CartonDeleteIdentity = {
   receivingId: number;
@@ -64,17 +90,20 @@ export function cartonDeleteLabels(face: string): {
 }
 
 /**
- * Peer order for {@link CartonDisplaysActionFloor}.
- * Unbox: Print+Sync (5). Arrival: Sync only (4). Testing: neither (3).
+ * Peer order for {@link CartonDisplaysActionFloor} — `⋯` is ALWAYS last, so it
+ * anchors the same trailing corner on every station regardless of which
+ * optional peers that station wired.
+ *
+ * Unbox: Refresh + Print (4). Arrival: Refresh only (3). Testing: neither (2).
  */
 export function cartonFloorPeerOrder(input: {
   print?: boolean;
   sync?: boolean;
 }): readonly CartonFloorPeer[] {
-  const peers: CartonFloorPeer[] = ['more'];
+  const peers: CartonFloorPeer[] = [];
   if (input.sync) peers.push('sync');
   if (input.print) peers.push('print');
-  peers.push('edit', 'delete');
+  peers.push('edit', 'more');
   return peers;
 }
 

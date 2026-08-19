@@ -10,7 +10,7 @@
  * class name shipped ~4px wrong. Realigning them removes that trap; it changed
  * no pixels, because nothing consumed the old values.
  *
- * This scale is deliberately NOT wired into `tailwind.config.ts` — pointing
+ * This scale is deliberately NOT wired into `tailwind.config.mjs` — pointing
  * `theme.extend.borderRadius` at it would remap every `rounded-*` call site in
  * the app at once. The classes stay Tailwind's; this module is the typed mirror
  * plus the role layer below.

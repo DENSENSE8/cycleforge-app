@@ -17,7 +17,7 @@
  *  - `canvas` → desk RightRailHost floor (the default plane).
  *
  * Composed by BOTH desk (`InspectorActionFloor`) and station
- * (`StationDisplaysActionFloor`) — one display method, two host shells (C2).
+ * (`StationDisplaysHeaderActions`) — one display method, two host shells (C2).
  * Park / close chrome always sits on a SEPARATE row (top `DeskRailChromeRow`
  * on desk; Filter / `→|` band **above** this floor on station), never inside
  * this floor.

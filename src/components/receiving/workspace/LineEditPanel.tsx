@@ -826,9 +826,12 @@ export function LineEditPanel({
    *
    * **Closed:** {@link ScanStationUtilityRail} — vertical `↑↓` top, `←|` in the
    * bottom footer (left-dock expand twin).
-   * **Open:** cursor on {@link StationDisplaysPushColumn} top-right (`headerTrailing`);
-   * utility rail unmounts. `→|` lives on the Displays footer search trailing
-   * track (left-rail filter-collapse twin).
+   * **Open (2026-08-18):** the utility rail unmounts and the carton cursor does
+   * NOT re-mount — the column's top-right corner is the Macro verb cluster's
+   * (`headerActions`, `⋮` last). So carton prev/next is unreachable while
+   * Displays is open; hide the column (`→|` on the footer search trailing
+   * track) to get it back. Ruled deliberately — revisit if the bench reports
+   * hopping cartons with reference open.
    *
    * Cursor mapping matches left sidebar / DeskRailChromeRow: ↑ prev · ↓ next.
    */
@@ -851,20 +854,6 @@ export function LineEditPanel({
           />
         ) : null
       }
-    />
-  ) : null;
-
-  const displaysCartonCursor = showCartonCursor ? (
-    <ScanStationCartonCursor
-      onPrev={onPrevCarton}
-      onNext={onNextCarton}
-      prevDisabled={prevCartonDisabled}
-      nextDisabled={nextCartonDisabled}
-      orientation="horizontal"
-      size="sm"
-      prevTestId="unbox-carton-prev"
-      nextTestId="unbox-carton-next"
-      groupTestId="unbox-carton-cursor"
     />
   ) : null;
 
@@ -1083,8 +1072,7 @@ export function LineEditPanel({
                 setRequestedSideTab(tab);
               }}
               onClose={closeDisplays}
-              headerTrailing={displaysCartonCursor}
-              actionFloor={
+              headerActions={
                 <UnboxDisplaysActionFloor
                   receivingId={row.receiving_id}
                   isUnfound={c.isUnfound}
