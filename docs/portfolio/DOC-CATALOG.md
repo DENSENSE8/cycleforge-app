@@ -1,7 +1,7 @@
 # DOC catalog — machine-generated SoT
 
 > **Do not hand-edit.** Regenerate: `node scripts/portfolio-sot-sync.mjs`  
-> Generated: `2026-08-18T04:51:04.628Z` · Files: **664** · Repo: `cycleforge-app`  
+> Generated: `2026-08-19T05:10:16.684Z` · Files: **665** · Repo: `cycleforge-app`  
 > Parent index: [INDEX.md](./INDEX.md)
 
 Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*** id  
@@ -13,11 +13,11 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 
 | WT-ID | Absolute path | Branch | HEAD (short) | Exists |
 |-------|---------------|--------|--------------|--------|
-| `main` | `/home/avion/cycleforge-app` | `wip/nav-chrome-and-guard-suite` | `f8105eda1` | yes |
-| `nav-ia` | `/home/avion/cycleforge-nav-ia` | `topic/nav-ia` | `e3d409e4c` | yes |
-| `product-updates` | `/home/avion/cycleforge-product-updates` | `wip/product-updates-popover` | `a3816a3bf` | yes |
-| `scan-phase1` | `/home/avion/cycleforge-scan-phase1` | `wip/station-scan-phase1` | `1ee41b9fa` | yes |
-| `toship-refactor` | `/home/avion/cycleforge-toship-refactor` | `refactor/to-ship-no-orders-family` | `7f8c7a3dd` | yes |
+| `main` | `/home/michaelgarisek/Projects/cycleforge-app` | `wip/nav-chrome-and-guard-suite` | `cc97d9d20` | yes |
+| `nav-ia` | `/home/avion/cycleforge-nav-ia` | `topic/nav-ia` | `e3d409e4c` | NO |
+| `product-updates` | `/home/avion/cycleforge-product-updates` | `wip/product-updates-popover` | `a3816a3bf` | NO |
+| `scan-phase1` | `/home/avion/cycleforge-scan-phase1` | `wip/station-scan-phase1` | `1ee41b9fa` | NO |
+| `toship-refactor` | `/home/avion/cycleforge-toship-refactor` | `refactor/to-ship-no-orders-family` | `7f8c7a3dd` | NO |
 
 ---
 
@@ -115,6 +115,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 | `DOC-ROOT-EDGE-REWRITES-8F0E` | `WS-INT` | [`edge-rewrites.md`](../edge-rewrites.md) |
 | `DOC-ROOT-FABLE5-DS-PRUNE-REPORT-7D88` | `WS-DOCS-MISC` | [`audit/fable5-ds-prune-report.md`](../audit/fable5-ds-prune-report.md) |
 | `DOC-ROOT-FABLE5-WAVE2-DS-REPORT-721A` | `WS-DOCS-MISC` | [`audit/fable5-wave2-ds-report.md`](../audit/fable5-wave2-ds-report.md) |
+| `DOC-ROOT-GEMINI-BRIEFING-GRAPH-VIEWING-LOCATION-BINDING-C-19D1` | `WS-SEARCH` | [`research/gemini-briefing-graph-viewing-location-binding-crud-keyboard.md`](../research/gemini-briefing-graph-viewing-location-binding-crud-keyboard.md) |
 | `DOC-ROOT-GEMINI-BRIEFING-JIT-PACK-DOCUMENTS-2533` | `WS-SEARCH` | [`research/gemini-briefing-jit-pack-documents.md`](../research/gemini-briefing-jit-pack-documents.md) |
 | `DOC-ROOT-GEMINI-BRIEFING-SERIAL-LABEL-ORDER-BINDING-598B` | `WS-SEARCH` | [`research/gemini-briefing-serial-label-order-binding.md`](../research/gemini-briefing-serial-label-order-binding.md) |
 | `DOC-ROOT-GOOGLE-DRIVE-BACKUP-SETUP-7C9C` | `WS-INT` | [`google-drive-backup-setup.md`](../google-drive-backup-setup.md) |
@@ -877,9 +878,10 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 - `DOC-TODO-SAAS-COMMERCIALIZATION-PLAN-090C` — [`todo/saas-commercialization-plan.md`](../todo/saas-commercialization-plan.md)
 - `DOC-TODO-SAAS-PRODUCTION-READINESS-AUDIT-2026-07-08-38B5` — [`todo/saas-production-readiness-audit-2026-07-08.md`](../todo/saas-production-readiness-audit-2026-07-08.md)
 
-### `WS-SEARCH` (7)
+### `WS-SEARCH` (8)
 
 - `DOC-ROOT-AI-AUTOMATION-OPPORTUNITIES-PLAN-52DE` — [`ai-automation-opportunities-plan.md`](../ai-automation-opportunities-plan.md)
+- `DOC-ROOT-GEMINI-BRIEFING-GRAPH-VIEWING-LOCATION-BINDING-C-19D1` — [`research/gemini-briefing-graph-viewing-location-binding-crud-keyboard.md`](../research/gemini-briefing-graph-viewing-location-binding-crud-keyboard.md)
 - `DOC-ROOT-GEMINI-BRIEFING-JIT-PACK-DOCUMENTS-2533` — [`research/gemini-briefing-jit-pack-documents.md`](../research/gemini-briefing-jit-pack-documents.md)
 - `DOC-ROOT-GEMINI-BRIEFING-SERIAL-LABEL-ORDER-BINDING-598B` — [`research/gemini-briefing-serial-label-order-binding.md`](../research/gemini-briefing-serial-label-order-binding.md)
 - `DOC-ROOT-SEARCH-AND-DENSE-UI-REFACTOR-PLAN-3E46` — [`search-and-dense-ui-refactor-plan.md`](../search-and-dense-ui-refactor-plan.md)
