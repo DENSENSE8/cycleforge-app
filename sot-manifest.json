@@ -30,7 +30,7 @@
     "src/lib/orders-sync",
     "src/hooks"
   ],
-  "count": 2721,
+  "count": 2722,
   "entries": [
     {
       "job": "Station: Scan pane + Displays push",
@@ -9031,7 +9031,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/CartonContextCard.tsx",
-      "line": 130,
+      "line": 132,
       "snippet": "export CartonContextCard from src/components/station/entity-context/CartonContextCard.tsx"
     },
     {
@@ -9321,19 +9321,6 @@
       "snippet": "export STATION_CHROME_GLYPH_CLASS from src/components/station/entity-context/station-identity-chrome.ts"
     },
     {
-      "job": "Export: STATION_CHROME_CELL_CLASS",
-      "sot": "STATION_CHROME_CELL_CLASS",
-      "path": "src/components/station/entity-context/station-identity-chrome.ts",
-      "guard": null,
-      "symbols": [
-        "STATION_CHROME_CELL_CLASS"
-      ],
-      "kind": "code",
-      "source": "src/components/station/entity-context/station-identity-chrome.ts",
-      "line": 132,
-      "snippet": "export STATION_CHROME_CELL_CLASS from src/components/station/entity-context/station-identity-chrome.ts"
-    },
-    {
       "job": "Export: STATION_CHROME_CELL_HOVER_SEAM",
       "sot": "STATION_CHROME_CELL_HOVER_SEAM",
       "path": "src/components/station/entity-context/station-identity-chrome.ts",
@@ -9343,7 +9330,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-identity-chrome.ts",
-      "line": 164,
+      "line": 158,
       "snippet": "export STATION_CHROME_CELL_HOVER_SEAM from src/components/station/entity-context/station-identity-chrome.ts"
     },
     {
@@ -9356,7 +9343,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-identity-chrome.ts",
-      "line": 174,
+      "line": 168,
       "snippet": "export STATION_CHROME_CELL_HOVER_FILL from src/components/station/entity-context/station-identity-chrome.ts"
     },
     {
@@ -9369,8 +9356,21 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-identity-chrome.ts",
-      "line": 187,
+      "line": 183,
       "snippet": "export STATION_CHROME_HOVER_CELL_CLASS from src/components/station/entity-context/station-identity-chrome.ts"
+    },
+    {
+      "job": "Export: STATION_CHROME_CELL_CLASS",
+      "sot": "STATION_CHROME_CELL_CLASS",
+      "path": "src/components/station/entity-context/station-identity-chrome.ts",
+      "guard": null,
+      "symbols": [
+        "STATION_CHROME_CELL_CLASS"
+      ],
+      "kind": "code",
+      "source": "src/components/station/entity-context/station-identity-chrome.ts",
+      "line": 196,
+      "snippet": "export STATION_CHROME_CELL_CLASS from src/components/station/entity-context/station-identity-chrome.ts"
     },
     {
       "job": "Export: stationIdentityGapClass",
@@ -9382,7 +9382,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-identity-chrome.ts",
-      "line": 194,
+      "line": 203,
       "snippet": "export stationIdentityGapClass from src/components/station/entity-context/station-identity-chrome.ts"
     },
     {
@@ -9395,7 +9395,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-identity-chrome.ts",
-      "line": 201,
+      "line": 210,
       "snippet": "export stationMoreDetailsHostClass from src/components/station/entity-context/station-identity-chrome.ts"
     },
     {
@@ -9408,7 +9408,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-identity-chrome.ts",
-      "line": 209,
+      "line": 218,
       "snippet": "export stationMoreDetailsPaneHostClass from src/components/station/entity-context/station-identity-chrome.ts"
     },
     {
@@ -9421,7 +9421,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-identity-chrome.ts",
-      "line": 215,
+      "line": 224,
       "snippet": "export STATION_IDENTITY_SCROLL_CLEARANCE from src/components/station/entity-context/station-identity-chrome.ts"
     },
     {
@@ -9434,8 +9434,21 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-identity-chrome.ts",
-      "line": 222,
+      "line": 231,
       "snippet": "export STATION_IDENTITY_STACKED_SCROLL_CLEARANCE from src/components/station/entity-context/station-identity-chrome.ts"
+    },
+    {
+      "job": "Export: STATION_CHROME_BAR_MENU_ANCHOR",
+      "sot": "STATION_CHROME_BAR_MENU_ANCHOR",
+      "path": "src/components/station/entity-context/station-identity-chrome.ts",
+      "guard": null,
+      "symbols": [
+        "STATION_CHROME_BAR_MENU_ANCHOR"
+      ],
+      "kind": "code",
+      "source": "src/components/station/entity-context/station-identity-chrome.ts",
+      "line": 242,
+      "snippet": "export STATION_CHROME_BAR_MENU_ANCHOR from src/components/station/entity-context/station-identity-chrome.ts"
     },
     {
       "job": "Export: StationContextIconCell",
@@ -9447,7 +9460,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/StationContextActionCell.tsx",
-      "line": 30,
+      "line": 33,
       "snippet": "export StationContextIconCell from src/components/station/entity-context/StationContextActionCell.tsx"
     },
     {
@@ -9460,7 +9473,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/StationContextActionCell.tsx",
-      "line": 57,
+      "line": 60,
       "snippet": "export StationContextListingCell from src/components/station/entity-context/StationContextActionCell.tsx"
     },
     {
@@ -9473,7 +9486,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/StationContextActionCell.tsx",
-      "line": 218,
+      "line": 225,
       "snippet": "export StationContextClaimCell from src/components/station/entity-context/StationContextActionCell.tsx"
     },
     {
