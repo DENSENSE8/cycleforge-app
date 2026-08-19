@@ -763,7 +763,7 @@ Right edge (exactly one at a time, LineEditPanel wires the exclusion):
   — Linkage = Pairing hub + Zoho note (`?linkageAction=link|note`) — **debt:** parent underline TabDisplay (migrate to armed rows)
   — Units = Units · Prebox (`?unitsAction=`) — **debt:** parent underline TabDisplay (migrate to armed rows; Prebox mode stays child segment)
   — Inventory = armed-row secondary drill (Information · Lines · PO notes · Activity via `StationArmedVerbList` + `useDisplaysLeafChrome`; never a hand-rolled sub-index)
-    via `useDisplaysLeafChrome` — top-left ← → + current title; trail depth via Back/Esc; Change PO → Linkage;
+    via `useDisplaysLeafChrome` — top-left `<` Back + current title (no `>` twin — it sat disabled on nearly every frame; ArrowRight still walks the future stack); trail depth via Back/Esc; Change PO → Linkage;
     reconnect → Settings
   — compose StationDisplaysPushColumn (flush DETAIL_STACK_PUSH_COLUMN_CLASS)
   (no parked expand strip — ticket reopen = carton Reply → `display=ticket`;
