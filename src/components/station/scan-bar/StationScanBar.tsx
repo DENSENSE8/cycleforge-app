@@ -28,10 +28,7 @@ import {
 import type { StationTheme } from '@/utils/staff-colors';
 import { cn } from '@/utils/_cn';
 import { StationScanLeadingIcon } from './StationScanLeadingIcon';
-import { StationScanPreviewCard } from './StationScanPreviewCard';
-import {
-  type StationScanPreviewClassification,
-} from './preview-classify';
+import type { UnboxPreviewHit } from '@/lib/receiving/preview-scan';
 import { setScanEscBlock } from './scan-esc-block';
 import { getScanStance, setScanStance, useScanStance, useToggleScanStance } from './scan-stance';
 import {
@@ -104,10 +101,10 @@ export interface StationScanBarProps {
   visibleModes?: Array<'plan' | 'select'>;
   /**
    * Wire the shared focus-scan hotkey: registers this bar as the global key's
-   * focus target and cross-fades the left icon slot to a gear (reassign
-   * dropdown) on hover. Default true — every primary scan bar gets it for free.
-   * Set false for secondary/inline fields that shouldn't steal the hotkey.
-   * Only renders the gear when `leadingIcon` is true (needs the icon slot).
+   * focus target and turns the left icon slot into the scan-entry dropdown
+   * (Scan · Preview · focus · Edit hotkey). Default true — every primary scan
+   * bar gets it for free. Set false for secondary/inline fields that shouldn't
+   * steal the hotkey. Needs `leadingIcon` (the dropdown lives in that slot).
    */
   hotkey?: boolean;
   /**
@@ -117,10 +114,20 @@ export interface StationScanBarProps {
    */
   displayEdit?: boolean;
   /**
-   * Preview stance: classify the submitted value locally (no network write).
-   * Hosts pass classifyUnboxScan / classifyTestingScan / getStationInputMode.
+   * Preview stance's READ. Hosts hand back what the value actually resolves to
+   * (`GET /api/receiving/preview-scan`) — a real lookup against the same tables
+   * the scan would open, with none of its writes. Without it the stance can
+   * only echo the typed value back, which is what made Preview read as broken.
    */
-  classifyPreview?: (value: string) => StationScanPreviewClassification | null;
+  previewLookup?: (value: string) => Promise<UnboxPreviewHit | null>;
+  /**
+   * Identity of the vocabulary a preview would resolve against (the armed type,
+   * or `auto`). Changing it RE-RUNS the open for the value already on the bar:
+   * arming PO after previewing as Tracking asks a different question of the
+   * same number, and leaving the old carton on screen would answer the question
+   * the operator just stopped asking.
+   */
+  previewMode?: string;
 }
 
 /** Assign a node to both an internal object ref and a forwarded ref of any shape. */
@@ -131,7 +138,7 @@ function assignRef<T>(node: T, forwarded: Ref<T> | undefined): void {
 }
 
 /**
- * Core scan input — icon slot, hotkey gear, bottom-rule chrome, center-out
+ * Core scan input — icon slot, scan-entry dropdown, bottom-rule chrome, center-out
  * submit trace, frosted absolute right rail. Prefer {@link ThemedStationScanBar}.
  *
  * The mode rail overlays the trailing edge with a frosted veil so long
@@ -167,11 +174,11 @@ export function StationScanBar({
   visibleModes = ['plan', 'select'],
   hotkey = true,
   displayEdit: displayEditProp,
-  classifyPreview,
+  previewLookup,
+  previewMode,
 }: StationScanBarProps) {
   const [scanKey, setScanKey] = useState(0);
   const [railWidthPx, setRailWidthPx] = useState(0);
-  const [previewResult, setPreviewResult] = useState<StationScanPreviewClassification | null>(null);
   const [face, setFace] = useState<'edit' | 'display'>('edit');
   const [committedValue, setCommittedValue] = useState('');
   const stance = useScanStance();
@@ -181,6 +188,21 @@ export function StationScanBar({
 
   const internalInputRef = useRef<HTMLInputElement | null>(null);
   const railRef = useRef<HTMLDivElement | null>(null);
+  /** Monotonic preview-lookup token — a stale answer must never paint. */
+  const previewTokenRef = useRef(0);
+  /**
+   * Latest preview runner, for the wedge `deliver` path. A ref, not the
+   * callback itself: `deliverScanValue` is registered on mount and must not
+   * re-register on every keystroke, but it still has to run the CURRENT
+   * classifier + lookup.
+   */
+  const previewSubmitRef = useRef<((value: string) => void) | null>(null);
+  /**
+   * The value the last preview ran for. A hit leaves the band quiet (the pane
+   * is the answer), so `previewResult` cannot be the memory that decides
+   * whether the next Enter commits.
+   */
+  const previewedValueRef = useRef<string | null>(null);
   const setInputRef = useCallback(
     (node: HTMLInputElement | null) => {
       internalInputRef.current = node;
@@ -191,12 +213,33 @@ export function StationScanBar({
   const showHotkeyGear = hotkey && leadingIcon;
   const clearScanValue = useCallback(() => {
     onChange('');
-    setPreviewResult(null);
+    previewedValueRef.current = null;
     setCommittedValue('');
     setFace('edit');
   }, [onChange]);
+  /**
+   * Preview stance: take the wedge payload instead of letting the app resolve
+   * it. Fills the bar and submits through the same handler a typed Enter uses,
+   * so a physical scan and a typed one get the identical read-only preview.
+   */
+  const deliverScanValue = useCallback(
+    (raw: string) => {
+      if (getScanStance() !== 'preview') return false;
+      const next = raw.trim();
+      if (!next) return false;
+      onChange(next);
+      setFace('edit');
+      // Submit on the next frame — the controlled value has to land first.
+      requestAnimationFrame(() => {
+        previewSubmitRef.current?.(next);
+      });
+      return true;
+    },
+    [onChange],
+  );
+
   // Insert → focus; ⌘. → clear + focus (arm next carton scan on this bar).
-  useRegisterScanTarget(internalInputRef, showHotkeyGear, clearScanValue);
+  useRegisterScanTarget(internalInputRef, showHotkeyGear, clearScanValue, deliverScanValue);
 
   const enterEdit = useCallback(() => {
     setFace('edit');
@@ -210,53 +253,73 @@ export function StationScanBar({
 
   const showDisplayFace = displayEdit && face === 'display' && value.trim() !== '';
 
+  /**
+   * Run one preview READ. Shared by typed Enter and the wedge `deliver` path so
+   * a physical scan and a typed one cannot diverge.
+   */
+  const runPreview = useCallback(
+    (trimmed: string) => {
+      if (!trimmed) {
+        previewedValueRef.current = null;
+        return;
+      }
+      previewedValueRef.current = trimmed;
+      // Preview touches NONE of the scan face state (`committedValue` /
+      // `setFace`). Two stances sharing one piece of state is the linkage the
+      // stance split exists to remove — the bar renders the value it already
+      // holds, and the pane is the whole answer.
+      if (!previewLookup) return;
+      const token = ++previewTokenRef.current;
+      void previewLookup(trimmed)
+        .then(() => {
+          if (previewTokenRef.current !== token) return;
+        })
+        .catch(() => {
+          if (previewTokenRef.current !== token) return;
+          // A miss or a failure is NOT the bar's to narrate. The honest owner
+          // is the surface that would have opened; the bar renders the value
+          // and the chrome and nothing else.
+        });
+    },
+    [previewLookup],
+  );
+
+  useEffect(() => {
+    previewSubmitRef.current = runPreview;
+  }, [runPreview]);
+
+  // Re-preview on a type switch. Skips the first pass for a mode that has not
+  // changed, and only fires for a value this bar has ALREADY previewed — a
+  // mode toggle with nothing on the bar is just arming the next scan.
+  const lastPreviewModeRef = useRef(previewMode);
+  useEffect(() => {
+    const changed = lastPreviewModeRef.current !== previewMode;
+    lastPreviewModeRef.current = previewMode;
+    if (!changed) return;
+    const pending = previewedValueRef.current;
+    if (!pending || getScanStance() !== 'preview') return;
+    runPreview(pending);
+  }, [previewMode, runPreview]);
+
   const handleInternalSubmit = useCallback((e?: FormEvent<HTMLFormElement>) => {
     e?.preventDefault();
     const trimmed = value.trim();
     if (getScanStance() === 'preview') {
-      const classified =
-        classifyPreview?.(trimmed) ??
-        (trimmed
-          ? { typeLabel: 'Value', value: trimmed, source: 'auto' as const }
-          : null);
-      setPreviewResult(classified);
-      if (classified && displayEdit) {
-        setCommittedValue(classified.value);
-        setFace('display');
-      }
+      // Enter RE-PREVIEWS. It never commits: Preview cannot become a Scan from
+      // inside Preview, or the two stances are one stance with a shortcut.
+      // Committing is the operator switching the stance themselves.
+      runPreview(trimmed);
       return;
     }
-    setPreviewResult(null);
     setScanKey((prev) => prev + 1);
     if (trimmed && displayEdit) {
       setCommittedValue(trimmed);
       setFace('display');
     }
     onSubmit(e);
-  }, [onSubmit, value, classifyPreview, displayEdit]);
-
-  const dismissPreview = useCallback(() => {
-    setPreviewResult(null);
-  }, []);
-
-  const promoteToScan = useCallback(() => {
-    setPreviewResult(null);
-    setScanStance('scan');
-    setScanKey((prev) => prev + 1);
-    if (value.trim() && displayEdit) {
-      setCommittedValue(value.trim());
-      setFace('display');
-    }
-    onSubmit();
-  }, [onSubmit, value, displayEdit]);
+  }, [onSubmit, value, displayEdit, runPreview]);
 
   useEffect(() => {
-    if (previewResult) {
-      setScanEscBlock('preview-card', () => setPreviewResult(null));
-      return () => {
-        setScanEscBlock('none');
-      };
-    }
     if (
       displayEdit &&
       face === 'edit' &&
@@ -270,13 +333,13 @@ export function StationScanBar({
     }
     setScanEscBlock('none');
     return undefined;
-  }, [previewResult, displayEdit, face, committedValue, value]);
+  }, [displayEdit, face, committedValue, value]);
 
   useEffect(() => {
     if (!value.trim()) {
       setFace('edit');
       setCommittedValue('');
-      setPreviewResult(null);
+      previewedValueRef.current = null;
     }
   }, [value]);
 
@@ -336,7 +399,8 @@ export function StationScanBar({
   const showPaste = !!onPaste;
   const modeButtonCount = showModeButtons ? visibleModes.length : 0;
   const hasActiveRightContent = hasRightContent && rightContent != null;
-  const showRight = hasActiveRightContent || showPaste || modeButtonCount > 0;
+  const showRight =
+    hasActiveRightContent || showPaste || modeButtonCount > 0;
 
   // Measure the frosted rail so padding-inline-end tracks real glyph width
   // (3 compact modes ≠ 1 spinner ≠ paste reveal) — never a magic pr-32 twin.
@@ -382,13 +446,16 @@ export function StationScanBar({
     submitTraceClassName
     ?? (theme ? STATION_SCAN_BAR_SUBMIT_TRACE_CLASS[theme] : STATION_SCAN_BAR_DEFAULT_SUBMIT_TRACE_CLASS);
 
-  const stanceGlyph = (
-    <StationScanLeadingIcon stance={stance} onToggle={toggleStance} scanIcon={icon} />
-  );
+  // Primary bars get the one LEFT dropdown (Scan · Preview · Edit hotkey);
+  // secondary fields keep the bare stance toggle.
   const leadingGlyph = showHotkeyGear ? (
-    <ScanHotkeyControl>{stanceGlyph}</ScanHotkeyControl>
+    <ScanHotkeyControl
+      stance={stance}
+      onSelectStance={setScanStance}
+      scanIcon={icon}
+    />
   ) : (
-    stanceGlyph
+    <StationScanLeadingIcon stance={stance} onToggle={toggleStance} scanIcon={icon} />
   );
 
   const inputEl = (
@@ -411,7 +478,7 @@ export function StationScanBar({
         // Full-bleed under the frosted rail; border lives on the outer shell.
         'relative z-base min-w-0 flex-1 border-0',
         padLeft,
-        // Hotkey gear cross-fades in the fixed icon slot — never bump pl on hover.
+        // The scan-entry dropdown sits in the fixed icon slot — never bump pl.
         inputClassName,
         showDisplayFace ? 'sr-only' : null,
       )}
@@ -599,13 +666,6 @@ export function StationScanBar({
           </div>
         </div>
       </motion.form>
-      {previewResult ? (
-        <StationScanPreviewCard
-          result={previewResult}
-          onScanIt={promoteToScan}
-          onDismiss={dismissPreview}
-        />
-      ) : null}
     </div>
   );
 }

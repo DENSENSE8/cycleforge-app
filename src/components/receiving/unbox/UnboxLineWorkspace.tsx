@@ -63,6 +63,7 @@ const UnboxWorkspaceView = dynamic(
     ),
   { ssr: false, loading: () => <ReceivingWorkspaceSkeleton /> },
 );
+import { UnboxPreviewLock } from './UnboxPreviewLock';
 import { UnboxLookupReceipt } from '@/components/receiving/unbox/UnboxLookupReceipt';
 import { useUnboxPrimaryPaintOptional } from '@/components/receiving/unbox/unbox-primary-paint-context';
 import type { UnboxLookupScanDetail } from '@/components/receiving/receiving-events';
@@ -205,6 +206,11 @@ export function UnboxLineWorkspace({
             style={{ zIndex: zIndex.panel + (cartonSwapHardCut ? 1 : 0) }}
             className={cn('absolute inset-0 flex min-h-0 flex-col', appSurfaceFillClass('canvas'))}
           >
+            {workspace.preview ? (
+              // Read-only lease: the band names the stance, and `inert` on the
+              // body below is what actually enforces it.
+              <UnboxPreviewLock onDismiss={onCloseWorkspace} />
+            ) : null}
             {showLookupReceipt && lookupReceipt ? (
               // Covers the editor rather than replacing it, so "Open anyway" is
               // instant (dismiss the cover) and the editor never re-mounts.
@@ -220,6 +226,18 @@ export function UnboxLineWorkspace({
                 />
               </div>
             ) : null}
+            {/* Preview makes the whole plane inert rather than threading a
+                `readOnly` prop through ~40 controls: one missed control would
+                be a silent write from the stance whose contract is not
+                writing. `inert` also takes it out of the tab order, so the
+                wedge cannot land in a field that will never save. */}
+            <div
+              className="flex min-h-0 flex-1 flex-col"
+              // Stable hook for the read-only E2E: the assertion has to name
+              // the plane that carries `inert`, not infer it from a sibling.
+              data-unbox-preview-plane={workspace.preview ? '' : undefined}
+              inert={workspace.preview ? true : undefined}
+            >
             <ReceivingLineWorkspace
               row={workspace.row}
               staffId={staffId}
@@ -229,7 +247,7 @@ export function UnboxLineWorkspace({
               // Absent = a path that predates the feed's click-to-open (scan,
               // recent rail, sibling PO line, deep-link restore) — every one of
               // those is a deliberate open of one carton, so it records.
-              recordView={workspace.recordView !== false}
+              recordView={!workspace.preview && workspace.recordView !== false}
               onPrev={() => {
                 emitReceiving('receiving-navigate-table', 'prev');
               }}
@@ -238,6 +256,7 @@ export function UnboxLineWorkspace({
               }}
               onClose={onCloseWorkspace}
             />
+            </div>
           </motion.div>
         ) : null}
       </AnimatePresence>

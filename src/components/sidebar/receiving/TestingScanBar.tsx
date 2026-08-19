@@ -5,7 +5,6 @@ import { Barcode, MapPin, Hash, Pencil } from '@/components/Icons';
 import {
   StationScanModeRail,
   ThemedStationScanBar,
-  classifyPreviewFromArmed,
   useScanStance,
   useScanTypeKeybinds,
 } from '@/components/station/scan-bar';
@@ -116,10 +115,12 @@ export function TestingScanBar({
   };
 
   const active = armedMode ? testingScanModeMeta(armedMode) : null;
-  const typeLabel = active?.label ?? 'Auto';
+  // The bar renders the value and the chrome — never a sentence, a status word
+  // or a stance label. Preview leaves the placeholder EMPTY: naming the stance
+  // in the field was the bar narrating itself.
   const placeholder =
     stance === 'preview'
-      ? `Preview: would search ${typeLabel}`
+      ? ''
       : armedMode
         ? `Scan ${active!.label}\u2026`
         : 'Tracking \u00b7 PO \u00b7 Serial \u00b7 SKU';
@@ -137,21 +138,18 @@ export function TestingScanBar({
         // Align the scan icon/text to the recent rail's dot/title column below.
         leadingColumn="rail"
         isResolving={isResolving}
-        classifyPreview={(raw) =>
-          classifyPreviewFromArmed({
-            value: raw,
-            armedMode,
-            autoMode: classifyTestingScan(raw),
-            labels: { tracking: 'Tracking', po: 'PO', serial: 'Serial', sku: 'SKU' },
-          })
-        }
         rightContent={
-          <StationScanModeRail
-            modes={TESTING_SCAN_MODES}
-            armedMode={armedMode}
-            onToggleMode={onToggleMode}
-            size="compact"
-          />
+          // The scan-TYPE picker belongs to scanning. In Preview the bar is a
+          // find field, so arming a type for the NEXT SCAN is a control for
+          // something this field is not about to do.
+          stance === 'scan' ? (
+            <StationScanModeRail
+              modes={TESTING_SCAN_MODES}
+              armedMode={armedMode}
+              onToggleMode={onToggleMode}
+              size="compact"
+            />
+          ) : undefined
         }
       />
     </div>

@@ -30,7 +30,7 @@
     "src/lib/orders-sync",
     "src/hooks"
   ],
-  "count": 2718,
+  "count": 2714,
   "entries": [
     {
       "job": "Station: Scan pane + Displays push",
@@ -6301,7 +6301,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/ReceivingUnboxScanBar.tsx",
-      "line": 86,
+      "line": 100,
       "snippet": "export ReceivingUnboxScanBar from src/components/sidebar/receiving/ReceivingUnboxScanBar.tsx"
     },
     {
@@ -6457,7 +6457,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/TestingScanBar.tsx",
-      "line": 21,
+      "line": 20,
       "snippet": "export TestingScanModeMeta from src/components/sidebar/receiving/TestingScanBar.tsx"
     },
     {
@@ -6470,7 +6470,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/TestingScanBar.tsx",
-      "line": 29,
+      "line": 28,
       "snippet": "export TESTING_SCAN_MODES from src/components/sidebar/receiving/TestingScanBar.tsx"
     },
     {
@@ -6483,7 +6483,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/TestingScanBar.tsx",
-      "line": 64,
+      "line": 63,
       "snippet": "export classifyTestingScan from src/components/sidebar/receiving/TestingScanBar.tsx"
     },
     {
@@ -6496,7 +6496,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/TestingScanBar.tsx",
-      "line": 80,
+      "line": 79,
       "snippet": "export testingScanModeMeta from src/components/sidebar/receiving/TestingScanBar.tsx"
     },
     {
@@ -6509,7 +6509,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/TestingScanBar.tsx",
-      "line": 94,
+      "line": 93,
       "snippet": "export TestingScanBar from src/components/sidebar/receiving/TestingScanBar.tsx"
     },
     {
@@ -7020,6 +7020,19 @@
       "snippet": "export useTriageUnfoundExceptions from src/components/sidebar/receiving/useTriageUnfoundExceptions.ts"
     },
     {
+      "job": "Export: useUnboxPreviewOpen",
+      "sot": "useUnboxPreviewOpen",
+      "path": "src/components/sidebar/receiving/useUnboxPreviewOpen.ts",
+      "guard": null,
+      "symbols": [
+        "useUnboxPreviewOpen"
+      ],
+      "kind": "code",
+      "source": "src/components/sidebar/receiving/useUnboxPreviewOpen.ts",
+      "line": 54,
+      "snippet": "export useUnboxPreviewOpen from src/components/sidebar/receiving/useUnboxPreviewOpen.ts"
+    },
+    {
       "job": "Export: UnitPhotoRequestPublisher",
       "sot": "UnitPhotoRequestPublisher",
       "path": "src/components/sidebar/receiving/useUnitPhotoRequestPublisher.ts",
@@ -7081,7 +7094,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/ReceivingSidebarPanel.tsx",
-      "line": 80,
+      "line": 84,
       "snippet": "export ReceivingSidebarPanel from src/components/sidebar/ReceivingSidebarPanel.tsx"
     },
     {
@@ -7965,7 +7978,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/tech/ShippingScanBar.tsx",
-      "line": 77,
+      "line": 76,
       "snippet": "export ShippingScanBar from src/components/sidebar/tech/ShippingScanBar.tsx"
     },
     {
@@ -10985,71 +10998,6 @@
       "snippet": "export ReceivingLinesTableProps from src/components/station/ReceivingLinesTable.tsx"
     },
     {
-      "job": "Export: PreviewTypeSource",
-      "sot": "PreviewTypeSource",
-      "path": "src/components/station/scan-bar/preview-classify.ts",
-      "guard": null,
-      "symbols": [
-        "PreviewTypeSource"
-      ],
-      "kind": "code",
-      "source": "src/components/station/scan-bar/preview-classify.ts",
-      "line": 6,
-      "snippet": "export PreviewTypeSource from src/components/station/scan-bar/preview-classify.ts"
-    },
-    {
-      "job": "Export: StationScanPreviewClassification",
-      "sot": "StationScanPreviewClassification",
-      "path": "src/components/station/scan-bar/preview-classify.ts",
-      "guard": null,
-      "symbols": [
-        "StationScanPreviewClassification"
-      ],
-      "kind": "code",
-      "source": "src/components/station/scan-bar/preview-classify.ts",
-      "line": 8,
-      "snippet": "export StationScanPreviewClassification from src/components/station/scan-bar/preview-classify.ts"
-    },
-    {
-      "job": "Export: formatPreviewLine",
-      "sot": "formatPreviewLine",
-      "path": "src/components/station/scan-bar/preview-classify.ts",
-      "guard": null,
-      "symbols": [
-        "formatPreviewLine"
-      ],
-      "kind": "code",
-      "source": "src/components/station/scan-bar/preview-classify.ts",
-      "line": 17,
-      "snippet": "export formatPreviewLine from src/components/station/scan-bar/preview-classify.ts"
-    },
-    {
-      "job": "Export: formatPreviewSource",
-      "sot": "formatPreviewSource",
-      "path": "src/components/station/scan-bar/preview-classify.ts",
-      "guard": null,
-      "symbols": [
-        "formatPreviewSource"
-      ],
-      "kind": "code",
-      "source": "src/components/station/scan-bar/preview-classify.ts",
-      "line": 24,
-      "snippet": "export formatPreviewSource from src/components/station/scan-bar/preview-classify.ts"
-    },
-    {
-      "job": "Export: classifyPreviewFromArmed",
-      "sot": "classifyPreviewFromArmed",
-      "path": "src/components/station/scan-bar/preview-classify.ts",
-      "guard": null,
-      "symbols": [
-        "classifyPreviewFromArmed"
-      ],
-      "kind": "code",
-      "source": "src/components/station/scan-bar/preview-classify.ts",
-      "line": 31,
-      "snippet": "export classifyPreviewFromArmed from src/components/station/scan-bar/preview-classify.ts"
-    },
-    {
       "job": "Export: setScanEscBlock",
       "sot": "setScanEscBlock",
       "path": "src/components/station/scan-bar/scan-esc-block.ts",
@@ -11280,7 +11228,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/scan-bar/StationScanBar.tsx",
-      "line": 59,
+      "line": 56,
       "snippet": "export StationScanBarProps from src/components/station/scan-bar/StationScanBar.tsx"
     },
     {
@@ -11293,7 +11241,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/scan-bar/StationScanBar.tsx",
-      "line": 141,
+      "line": 148,
       "snippet": "export StationScanBar from src/components/station/scan-bar/StationScanBar.tsx"
     },
     {

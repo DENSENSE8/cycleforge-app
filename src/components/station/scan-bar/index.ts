@@ -22,9 +22,14 @@ export { ScanBandShell } from './ScanBandShell';
 export { StationScanBar, type StationScanBarProps } from './StationScanBar';
 export { ThemedStationScanBar, type ThemedStationScanBarProps } from './ThemedStationScanBar';
 export { StationScanModeRail, type StationScanModeDefinition } from './StationScanModeRail';
-export { isScanPreview, useScanStance } from './scan-stance';
+// The stance has exactly TWO writers, and neither commits anything:
+//   1. the bar's own `ScanHotkeyControl` — the operator picking their mode;
+//   2. leaving a preview (`ReceivingSidebarPanel`) — done looking, back to work.
+// What stays banned is a writer that flips the stance AND submits, which is how
+// a preview would become an unbox behind the operator (see the deleted
+// `promoteToScan` / `receiving-preview-commit`).
+export { isScanPreview, setScanStance, useScanStance } from './scan-stance';
 export { useScanModeRelease } from './useScanModeRelease';
-export { classifyPreviewFromArmed } from './preview-classify';
 export { useScanTypeKeybinds } from './useScanTypeKeybinds';
 // ScanBandGlowHost: import from `./ScanBandGlowHost` (not this barrel) — keeps
 // the glow host out of the light scan-bar re-export graph.

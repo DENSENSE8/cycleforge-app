@@ -72,6 +72,12 @@ export interface ReceivingEventDetail {
    * The Unbox pane shows a read-only receipt over the editor.
    */
   'receiving-lookup-scan': UnboxLookupScanDetail;
+  /**
+   * Preview → real scan. The read-only lock's **Scan it** asks the sidebar to
+   * re-run the value it previewed, for real. The pane cannot do it itself: the
+   * scan is an INGEST act and belongs to the bar that owns the value, and
+   * routing it back keeps one submit path rather than a second writer.
+   */
   /** Hand focus back to the scan wedge after a procedure face/chip click. */
   'receiving-focus-scan': undefined;
   /**
