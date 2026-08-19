@@ -431,10 +431,18 @@ export function InlinePillPicker({
           'relative flex h-full shrink-0 self-stretch items-stretch',
           disabled && 'pointer-events-none opacity-50',
         )}
-        onMouseEnter={() => {
-          if (!readOnly) onOpenChange(true);
-        }}
-        onMouseLeave={() => onOpenChange(false)}
+        // Menu presentation opens from the hover ENGINE (`hover.triggerProps`
+        // above → `hover.isOpen` → `menuOpen`). The inline presentation is
+        // parent-controlled, so it — and ONLY it — drives open on mouse enter.
+        // Spreading these unconditionally clobbered the engine's own
+        // onMouseEnter/onMouseLeave (later props win), so the menu never opened
+        // on hover.
+        {...(!isMenu && !readOnly
+          ? {
+              onMouseEnter: () => onOpenChange(true),
+              onMouseLeave: () => onOpenChange(false),
+            }
+          : {})}
       >
         {readOnly ? (
           <div className="flex h-full shrink-0 items-stretch">{collapsedFaceWrap}</div>
@@ -442,7 +450,11 @@ export function InlinePillPicker({
           <DropdownMenu open={menuOpen} onOpenChange={onMenuOpenChange} modal={false}>
             {menuTrigger}
             <DropdownMenuContent
-              align="start"
+              // Bottom-CENTER under the pill — one anchoring for every menu the
+              // carton bar opens (classify · listing · photos), so the strip
+              // reads as one system rather than cells that drop panels in
+              // different places.
+              align="center"
               side="bottom"
               sideOffset={6}
               avoidCollisions={false}

@@ -124,14 +124,16 @@ describe('carton-context-details-in-displays', () => {
     );
   });
 
-  it('CartonContextCard stays a two-row face — no collapseHeight detail drawer under it', () => {
+  it('CartonContextCard stays a one-row face — no collapseHeight detail drawer under it', () => {
     const card = code(
       'src/components/station/entity-context/CartonContextCard.tsx',
     );
+    // The two-row face was retired by `da4736740`; this guard kept asserting it
+    // and so failed on every run instead of guarding the drawer ban below.
     assert.match(
       card,
-      /carton-context-two-row/,
-      'CartonContextCard must keep the two-row identity face',
+      /carton-context-one-row/,
+      'CartonContextCard must keep the one-row identity face',
     );
     assert.doesNotMatch(
       card,
