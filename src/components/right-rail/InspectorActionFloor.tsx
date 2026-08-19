@@ -35,7 +35,10 @@ import {
   ICON_ACTION_FLOOR_CELL_CLASS,
   IconActionFloor,
 } from '@/design-system/primitives/IconActionFloor';
-import { FLUSH_TERMINAL_SPREAD_PEER_CLASS } from '@/design-system/primitives/FlushTerminalFooter';
+import {
+  FLUSH_TERMINAL_SPREAD_GLYPH_CLASS,
+  FLUSH_TERMINAL_SPREAD_PEER_CLASS,
+} from '@/design-system/primitives/FlushTerminalFooter';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -47,9 +50,21 @@ import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 
 /** Fill-width Macro spread peer face (hit target IS the column). */
+/**
+ * Glyph size for a spread peer, applied by the CELL rather than by each caller.
+ * Callers pass bare icons (`<Printer />`), which default to `w-6 h-6` — so
+ * leaving this to the call site meant every floor's glyphs drifted with
+ * whoever wrote it last. The host owning it is the same reasoning as the grid
+ * cell zeroing `[data-chip-face]` padding instead of ~12 chip call sites.
+ */
+const FLOOR_GLYPH_CLASS = FLUSH_TERMINAL_SPREAD_GLYPH_CLASS.split(' ')
+  .map((c) => `[&_svg]:${c}`)
+  .join(' ');
+
 const FLOOR_CELL = cn(
   cornerClass('flush'),
   FLUSH_TERMINAL_SPREAD_PEER_CLASS,
+  FLOOR_GLYPH_CLASS,
   ICON_ACTION_FLOOR_CELL_CLASS,
 );
 

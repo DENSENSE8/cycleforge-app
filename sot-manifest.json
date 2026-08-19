@@ -30,7 +30,7 @@
     "src/lib/orders-sync",
     "src/hooks"
   ],
-  "count": 2717,
+  "count": 2721,
   "entries": [
     {
       "job": "Station: Scan pane + Displays push",
@@ -2258,7 +2258,7 @@
       ],
       "kind": "code",
       "source": "src/components/right-rail/InspectorActionFloor.tsx",
-      "line": 57,
+      "line": 72,
       "snippet": "export FLOOR_DELETE_PEER_CLASS from src/components/right-rail/InspectorActionFloor.tsx"
     },
     {
@@ -2271,7 +2271,7 @@
       ],
       "kind": "code",
       "source": "src/components/right-rail/InspectorActionFloor.tsx",
-      "line": 59,
+      "line": 74,
       "snippet": "export InspectorActionFloor from src/components/right-rail/InspectorActionFloor.tsx"
     },
     {
@@ -2284,7 +2284,7 @@
       ],
       "kind": "code",
       "source": "src/components/right-rail/InspectorActionFloor.tsx",
-      "line": 117,
+      "line": 132,
       "snippet": "export FloorIconButton from src/components/right-rail/InspectorActionFloor.tsx"
     },
     {
@@ -2297,7 +2297,7 @@
       ],
       "kind": "code",
       "source": "src/components/right-rail/InspectorActionFloor.tsx",
-      "line": 198,
+      "line": 213,
       "snippet": "export FloorOverflowButton from src/components/right-rail/InspectorActionFloor.tsx"
     },
     {
@@ -8277,7 +8277,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/displays/CartonDisplaysActionFloor.tsx",
-      "line": 99,
+      "line": 89,
       "snippet": "export CartonDisplaysActionFloor from src/components/station/displays/CartonDisplaysActionFloor.tsx"
     },
     {
@@ -8810,21 +8810,8 @@
       ],
       "kind": "code",
       "source": "src/components/station/displays/StationDisplayLeafHeader.tsx",
-      "line": 33,
+      "line": 43,
       "snippet": "export StationDisplayLeafHeader from src/components/station/displays/StationDisplayLeafHeader.tsx"
-    },
-    {
-      "job": "Export: StationDisplaysActionFloor",
-      "sot": "StationDisplaysActionFloor",
-      "path": "src/components/station/displays/StationDisplaysActionFloor.tsx",
-      "guard": null,
-      "symbols": [
-        "StationDisplaysActionFloor"
-      ],
-      "kind": "code",
-      "source": "src/components/station/displays/StationDisplaysActionFloor.tsx",
-      "line": 24,
-      "snippet": "export StationDisplaysActionFloor from src/components/station/displays/StationDisplaysActionFloor.tsx"
     },
     {
       "job": "Export: StationDisplaysCommandFooter",
@@ -8849,7 +8836,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/displays/StationDisplaysDismissFooter.tsx",
-      "line": 16,
+      "line": 18,
       "snippet": "export StationDisplaysDismissFooter from src/components/station/displays/StationDisplaysDismissFooter.tsx"
     },
     {
@@ -8866,6 +8853,71 @@
       "snippet": "export StationDisplaysEdgeToggle from src/components/station/displays/StationDisplaysEdgeToggle.tsx"
     },
     {
+      "job": "Export: STATION_DISPLAYS_HEADER_ACTION_CELL",
+      "sot": "STATION_DISPLAYS_HEADER_ACTION_CELL",
+      "path": "src/components/station/displays/StationDisplaysHeaderActions.tsx",
+      "guard": null,
+      "symbols": [
+        "STATION_DISPLAYS_HEADER_ACTION_CELL"
+      ],
+      "kind": "code",
+      "source": "src/components/station/displays/StationDisplaysHeaderActions.tsx",
+      "line": 48,
+      "snippet": "export STATION_DISPLAYS_HEADER_ACTION_CELL from src/components/station/displays/StationDisplaysHeaderActions.tsx"
+    },
+    {
+      "job": "Export: STATION_DISPLAYS_HEADER_ACTION_GLYPH",
+      "sot": "STATION_DISPLAYS_HEADER_ACTION_GLYPH",
+      "path": "src/components/station/displays/StationDisplaysHeaderActions.tsx",
+      "guard": null,
+      "symbols": [
+        "STATION_DISPLAYS_HEADER_ACTION_GLYPH"
+      ],
+      "kind": "code",
+      "source": "src/components/station/displays/StationDisplaysHeaderActions.tsx",
+      "line": 52,
+      "snippet": "export STATION_DISPLAYS_HEADER_ACTION_GLYPH from src/components/station/displays/StationDisplaysHeaderActions.tsx"
+    },
+    {
+      "job": "Export: STATION_DISPLAYS_HEADER_ACTION_FACE",
+      "sot": "STATION_DISPLAYS_HEADER_ACTION_FACE",
+      "path": "src/components/station/displays/StationDisplaysHeaderActions.tsx",
+      "guard": null,
+      "symbols": [
+        "STATION_DISPLAYS_HEADER_ACTION_FACE"
+      ],
+      "kind": "code",
+      "source": "src/components/station/displays/StationDisplaysHeaderActions.tsx",
+      "line": 55,
+      "snippet": "export STATION_DISPLAYS_HEADER_ACTION_FACE from src/components/station/displays/StationDisplaysHeaderActions.tsx"
+    },
+    {
+      "job": "Export: STATION_DISPLAYS_HEADER_ACTION_ACTIVE",
+      "sot": "STATION_DISPLAYS_HEADER_ACTION_ACTIVE",
+      "path": "src/components/station/displays/StationDisplaysHeaderActions.tsx",
+      "guard": null,
+      "symbols": [
+        "STATION_DISPLAYS_HEADER_ACTION_ACTIVE"
+      ],
+      "kind": "code",
+      "source": "src/components/station/displays/StationDisplaysHeaderActions.tsx",
+      "line": 59,
+      "snippet": "export STATION_DISPLAYS_HEADER_ACTION_ACTIVE from src/components/station/displays/StationDisplaysHeaderActions.tsx"
+    },
+    {
+      "job": "Export: StationDisplaysHeaderActions",
+      "sot": "StationDisplaysHeaderActions",
+      "path": "src/components/station/displays/StationDisplaysHeaderActions.tsx",
+      "guard": null,
+      "symbols": [
+        "StationDisplaysHeaderActions"
+      ],
+      "kind": "code",
+      "source": "src/components/station/displays/StationDisplaysHeaderActions.tsx",
+      "line": 62,
+      "snippet": "export StationDisplaysHeaderActions from src/components/station/displays/StationDisplaysHeaderActions.tsx"
+    },
+    {
       "job": "Export: STATION_DISPLAYS_HOST_PAD_CLASS",
       "sot": "STATION_DISPLAYS_HOST_PAD_CLASS",
       "path": "src/components/station/displays/StationDisplaysPushColumn.tsx",
@@ -8875,7 +8927,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/displays/StationDisplaysPushColumn.tsx",
-      "line": 74,
+      "line": 77,
       "snippet": "export STATION_DISPLAYS_HOST_PAD_CLASS from src/components/station/displays/StationDisplaysPushColumn.tsx"
     },
     {
@@ -8888,7 +8940,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/displays/StationDisplaysPushColumn.tsx",
-      "line": 109,
+      "line": 112,
       "snippet": "export StationDisplaysPushColumn from src/components/station/displays/StationDisplaysPushColumn.tsx"
     },
     {
@@ -8901,7 +8953,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/displays/StationDisplaysPushStack.tsx",
-      "line": 93,
+      "line": 95,
       "snippet": "export StationDisplaysPushStack from src/components/station/displays/StationDisplaysPushStack.tsx"
     },
     {

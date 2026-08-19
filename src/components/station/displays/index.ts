@@ -31,13 +31,9 @@ export {
 export { DisplaysIndexLeafStage } from './DisplaysIndexLeafStage';
 export { StationDisplaysPushStack } from './StationDisplaysPushStack';
 export type { DisplaysVisitFrame } from './StationDisplaysPushStack';
-export {
-  StationDisplaysHeaderActions,
-  STATION_DISPLAYS_HEADER_ACTION_ACTIVE,
-  STATION_DISPLAYS_HEADER_ACTION_CELL,
-  STATION_DISPLAYS_HEADER_ACTION_FACE,
-  STATION_DISPLAYS_HEADER_ACTION_GLYPH,
-} from './StationDisplaysHeaderActions';
+// StationDisplaysHeaderActions + its face tokens are NOT re-exported here:
+// the carton compound is their only consumer and imports the module directly.
+// Add a re-export when a second station needs it through the barrel.
 export { CartonDisplaysActionFloor } from './CartonDisplaysActionFloor';
 export { StationDisplaysEdgeToggle } from './StationDisplaysEdgeToggle';
 export { useDisplaysLeafChrome } from './displays-leaf-chrome';

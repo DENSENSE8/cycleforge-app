@@ -26,8 +26,8 @@ export function stationDisplaysFloorPrimaryAction(input: {
   return { key: 'print', label: 'Print', shortcut: 'Enter' };
 }
 
-/** A `⋯` row. `tone: 'danger'` paints destructive and sorts last. */
-export type CartonFloorMoreItem = {
+/** A `⋮` row. `tone: 'danger'` paints destructive and sorts last. */
+type CartonFloorMoreItem = {
   key: 'link' | 'delete';
   label: string;
   tone?: 'danger';

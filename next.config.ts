@@ -19,6 +19,22 @@ const withPWA = withPWAInit({
     aggressiveFrontEndNavCaching: true,
     reloadOnOnline: true,
     disable: skipPwaCompile,
+    // NEVER precache build output from a COMMITTED service worker.
+    //
+    // `public/sw.js` is generated locally and committed, then shipped verbatim
+    // (PWA compile is skipped on Vercel — see `skipPwaCompile` above). A
+    // precache manifest naming `_next/static/chunks/<content-hash>.js` is only
+    // valid for the single build that produced it; every later deploy renames
+    // those chunks. Workbox precaching treats a 404 on a precached URL as a
+    // FATAL install error, so the new worker never activates and each client
+    // stays pinned to whichever worker last installed successfully — serving
+    // that deploy's CSS forever. That is the "old machine still shows old
+    // classes" bug: not a stale file, a worker that can no longer install.
+    //
+    // Excluding build output leaves a manifest of stable `public/` assets whose
+    // URLs survive a rebuild, so the committed worker keeps installing across
+    // deploys. `_next/static` is content-hashed and immutable, so it is cached
+    // at RUNTIME below instead — same offline behaviour, no build coupling.
     // Served when a navigation request fails AND we have no cached version of
     // the target route. Mostly relevant for receivers/pickers walking out of
     // Wi-Fi range. The shell + last-cached responses still render.
@@ -27,7 +43,29 @@ const withPWA = withPWAInit({
     },
     workboxOptions: {
         disableDevLogs: true,
+        // `exclude` is a WORKBOX option, not a top-level plugin option — it
+        // lives on GenerateSWOptions (via WebpackOptions), so at the top level
+        // it silently did nothing AND failed typecheck. Keeping it here is what
+        // actually keeps build output out of the committed worker's precache
+        // manifest; see the reasoning above `fallbacks`.
+        exclude: [
+            /^\/_next\/static\/chunks\//,
+            /^\/_next\/static\/css\//,
+            /^\/_next\/static\/media\//,
+            /\.map$/,
+        ],
         runtimeCaching: [
+            {
+                // Replaces the precache entries removed by `exclude` above.
+                // `_next/static` URLs are content-hashed and immutable, so a
+                // cache hit is always correct and a miss just fetches once.
+                urlPattern: /\/_next\/static\/.*/i,
+                handler: "CacheFirst",
+                options: {
+                    cacheName: "next-static",
+                    expiration: { maxEntries: 512, maxAgeSeconds: 30 * 24 * 60 * 60 },
+                },
+            },
             {
                 urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
                 handler: "CacheFirst",
