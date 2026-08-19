@@ -30,7 +30,7 @@
     "src/lib/orders-sync",
     "src/hooks"
   ],
-  "count": 2719,
+  "count": 2718,
   "entries": [
     {
       "job": "Station: Scan pane + Displays push",
@@ -25948,19 +25948,6 @@
       "snippet": "export useMediaLibraryShortcuts from src/hooks/useMediaLibraryShortcuts.ts"
     },
     {
-      "job": "Export: nasArchivePendingQueryKey",
-      "sot": "nasArchivePendingQueryKey",
-      "path": "src/hooks/useNasArchivePending.ts",
-      "guard": null,
-      "symbols": [
-        "nasArchivePendingQueryKey"
-      ],
-      "kind": "code",
-      "source": "src/hooks/useNasArchivePending.ts",
-      "line": 16,
-      "snippet": "export nasArchivePendingQueryKey from src/hooks/useNasArchivePending.ts"
-    },
-    {
       "job": "Export: useNasArchivePending",
       "sot": "useNasArchivePending",
       "path": "src/hooks/useNasArchivePending.ts",
@@ -25970,7 +25957,7 @@
       ],
       "kind": "code",
       "source": "src/hooks/useNasArchivePending.ts",
-      "line": 32,
+      "line": 33,
       "snippet": "export useNasArchivePending from src/hooks/useNasArchivePending.ts"
     },
     {
