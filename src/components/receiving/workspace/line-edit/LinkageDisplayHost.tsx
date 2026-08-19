@@ -62,7 +62,7 @@ export function LinkageDisplayHost({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- same shape as CartonMatchHub autoMatch
   autoMatch: any;
 }) {
-  const { setTrail, setOnNestedPop, setOnNestedRestore, setLeafCommands } = useDisplaysLeafChrome();
+  const { setTrail, setOnNestedPop, setOnNestedRestore } = useDisplaysLeafChrome();
 
   const verbs = useMemo<StationArmedVerb[]>(() => {
     const rows: StationArmedVerb[] = [
@@ -114,11 +114,6 @@ export function LinkageDisplayHost({
     });
     return () => setOnNestedRestore(null);
   }, [setOnNestedRestore, onActionChange]);
-
-  useEffect(() => {
-    setLeafCommands(null);
-    return () => setLeafCommands(null);
-  }, [setLeafCommands]);
 
   return (
     <div className="flex min-h-0 flex-col gap-0" data-testid="unbox-linkage-display">

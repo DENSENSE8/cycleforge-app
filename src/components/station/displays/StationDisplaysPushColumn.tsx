@@ -24,8 +24,8 @@
  * eats all leftover, Displays always abuts the center with no gray band. Never
  * host `gap-*` / `justify-between` / gutter divs / `ml-auto` detach.
  *
- * **Dismiss + filter live in the footer** (left-rail twin) — hosts pass
- * {@link footer}. **Top band keeps maximize + optional ring + the carton Macro
+ * **Filter is row 2** (`subHeader`, index only). There is **no bottom band** —
+ * the column ends at its body. **Top band keeps maximize + optional ring + the carton Macro
  * verbs** ({@link headerActions}, `⋯` last). The carton `↑↓` cursor no longer
  * mounts here (2026-08-18) — the corner is the utility cluster's.
  */
@@ -123,7 +123,7 @@ export function StationDisplaysPushColumn({
   headerNav,
   headerRightSlot,
   headerActions,
-  footer,
+  subHeader,
   children,
 }: {
   ariaLabel: string;
@@ -167,11 +167,20 @@ export function StationDisplaysPushColumn({
    */
   headerActions?: ReactNode;
   /**
-   * Filter + hide chrome — Root Index / every leaf (`Filter displays…` + `→|`)
-   * · leaf `/` commands. Stays at the BOTTOM: it is the left context rail's
-   * twin, and both rails' filters share one muscle memory.
+   * Row 2 — a full-width band directly under the header, above the body.
+   *
+   * **This is where `Filter displays…` lives (ruled 2026-08-19).** It used to
+   * sit in the bottom footer as the left context rail's twin; that pairing
+   * stopped holding the moment `→|` left the footer for the header band, since
+   * what made the two rails read alike was the filter sharing a band with the
+   * dismiss control. A find field that filters the list *below* it now sits
+   * above that list — the same order the Unbox workbench sheet already uses
+   * (Band 1 chrome → Band 3 find → rows), so one muscle memory covers both.
+   *
+   * Index-only by contract: a leaf must never inherit list-filter chrome that
+   * does not refine the leaf.
    */
-  footer?: ReactNode;
+  subHeader?: ReactNode;
   children: ReactNode;
 }) {
   useEscapeClose(true, onEscape ?? onClose);
@@ -358,9 +367,11 @@ export function StationDisplaysPushColumn({
       >
         {/* Empty mid — the whole strip is clickable when restore is allowed. */}
         <div className="min-h-0 flex-1" aria-hidden />
-        {/* Restore control in the BOTTOM footer band — same seat as the `→|`
-            close / `←|` open toggle (Displays dismiss chrome lives at the
-            bottom), and a mirror of the left rail's parked-strip expand. */}
+        {/* Restore control at the strip's foot — a mirror of the LEFT rail's
+            parked-strip expand, which is what this seat has always answered to.
+            It deliberately does not follow the open column's dismiss up to the
+            header band (2026-08-19): a parked strip is 32px of chrome with no
+            band to sit in, and both parked rails restore from the same corner. */}
         <div className={cn(STATION_COLUMN_FOOTER_BAND_FACE, 'justify-center')}>
           <HoverTooltip label={showLabel} asChild focusable={false}>
             <IconButton
@@ -480,8 +491,8 @@ export function StationDisplaysPushColumn({
             </span>
           </div>
         </div>
+        {subHeader}
         <div className="flex min-h-0 flex-1 flex-col">{children}</div>
-        {footer}
       </div>
     </aside>
   );

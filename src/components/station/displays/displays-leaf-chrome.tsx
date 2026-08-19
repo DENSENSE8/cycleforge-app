@@ -9,9 +9,9 @@
  *   trail = [Inventory, PO notes]    → Back / Esc → pop one (Inventory sub-index)
  *   Forward after a nested pop restores via {@link setOnNestedRestore}.
  *
- * Opt-in leaf-command footer: {@link setLeafCommands} with a non-empty list
- * flips the column footer to `leaf-command` (`/` palette). Pass `null` / `[]`
- * to stay on Filter + hide. Index and default leaves share `Filter displays…`.
+ * There is no leaf footer to register into: the column's bottom band was
+ * removed 2026-08-19 (`Filter displays…` is row 2, index only), and the opt-in
+ * `/` command stage it hosted had no leaf that ever registered a command.
  *
  * Leaf-wide child perspectives (e.g. Claim New·Link) register via
  * {@link setLeafTrailing} into the sticky header’s trailing slot — never a
@@ -22,7 +22,6 @@
  */
 
 import { createContext, useContext, useMemo, type ReactNode } from 'react';
-import type { DisplaysFooterCommand } from './displays-footer-command';
 
 export type DisplaysBreadcrumbSegment = {
   /** `'index'` | leaf tab id | leaf-local sub id */
@@ -46,12 +45,6 @@ type DisplaysLeafChromeApi = {
    */
   setOnNestedRestore: (handler: ((segmentId: string) => void) | null) => void;
   /**
-   * Opt into the leaf-command footer stage. Non-empty → `/` palette;
-   * `null` / `[]` → dismiss-only. Cleared automatically when the leaf unmounts
-   * if the leaf's effect cleanup calls this with `null`.
-   */
-  setLeafCommands: (items: DisplaysFooterCommand[] | null) => void;
-  /**
    * Leaf-wide perspective control for the sticky header trailing slot
    * (e.g. Arrival Locations commit). Pass `null` on cleanup. In-tool segments
    * stay in-body. Claim Create|Link is a body combobox, not leaf trailing.
@@ -71,12 +64,11 @@ export function useDisplaysLeafChrome(): DisplaysLeafChromeApi {
   return api;
 }
 
-/** Thin context bridge — PushStack owns trail / nested / leaf-command / trailing. */
+/** Thin context bridge — PushStack owns trail / nested / trailing. */
 export function DisplaysLeafChromeProvider({
   setTrail,
   setOnNestedPop,
   setOnNestedRestore,
-  setLeafCommands,
   setLeafTrailing,
   children,
 }: DisplaysLeafChromeApi & { children: ReactNode }) {
@@ -85,10 +77,9 @@ export function DisplaysLeafChromeProvider({
       setTrail,
       setOnNestedPop,
       setOnNestedRestore,
-      setLeafCommands,
       setLeafTrailing,
     }),
-    [setTrail, setOnNestedPop, setOnNestedRestore, setLeafCommands, setLeafTrailing],
+    [setTrail, setOnNestedPop, setOnNestedRestore, setLeafTrailing],
   );
   return (
     <DisplaysLeafChromeContext.Provider value={api}>

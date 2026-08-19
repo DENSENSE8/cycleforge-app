@@ -1,22 +1,35 @@
 /**
- * Station Displays footer is stage-owned:
- *   - `index-filter` — Root Index `TechRailSearchBar` (`Filter displays…`)
- *   - `leaf-dismiss` — default leaf `StationDisplaysDismissFooter`
- *   - `leaf-command` — opt-in `StationDisplaysCommandFooter` via setLeafCommands
+ * Station Displays chrome is TWO ROWS and no bottom band (ruled 2026-08-19).
+ *
+ *   Row 1  [< Back] title ……… [verbs][⋮][⤢][→|]     ← the single header band
+ *   Row 2  [🔍 Filter displays…                 ]   ← Root Index ONLY
+ *   Body   VERIFICATION · index rows / leaf body
  *
  * WHY THIS EXISTS
- * `StationDisplaysPushStack` once fused `TechRailSearchBar` (`Filter displays…`)
- * into every footer because `→|` lived in the search trailing track. Leaf
- * Action surfaces inherited list-filter chrome that did not refine the leaf
- * (and typing ejected to the index). SoT said "index-only" for *function*;
- * this guard pins *visibility* too — and the opt-in leaf-command stage must
- * never remount the index filter or invent a second ⌘K.
+ * The filter used to sit in a bottom footer, justified as the left context
+ * rail's twin. That pairing stopped holding when `→|` moved into the header
+ * band (2026-08-18): what made the two rails read alike was the filter sharing
+ * a band with the dismiss control, and once the dismiss left, the bottom band
+ * held one lonely field *below* the list it filters. Row 2 puts it above that
+ * list, which is the order the Unbox workbench sheet already teaches
+ * (chrome → find → rows), and it uses the same `TechRailSearchBar
+ * variant="chrome"` face so one muscle memory covers both surfaces.
  *
- *   node --import tsx --test src/components/station/displays/station-displays-footer-stage.guard.test.ts
+ * The other half of the ruling is a deletion: the opt-in `/` leaf-command
+ * footer had **zero** leaves registering a command (both call sites passed
+ * `null`), so the footer slot, its two components and `setLeafCommands` went
+ * with the bottom band rather than surviving as a stage nothing could paint.
+ *
+ * What carries over unchanged from the old footer-stage guard: the filter is
+ * INDEX-ONLY (a leaf must never inherit list-filter chrome that does not
+ * refine the leaf), typing must not eject a leaf to the index, Esc clears a
+ * live filter before closing, and no host may fork a page-local filter twin.
+ *
+ *   node --import tsx --test src/components/station/displays/station-displays-chrome-rows.guard.test.ts
  */
 
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
 
@@ -29,10 +42,8 @@ function stripComments(src: string): string {
 const read = (rel: string) => stripComments(readFileSync(join(process.cwd(), rel), 'utf8'));
 
 const STACK = 'src/components/station/displays/StationDisplaysPushStack.tsx';
-const DISMISS = 'src/components/station/displays/StationDisplaysDismissFooter.tsx';
-const COMMAND = 'src/components/station/displays/StationDisplaysCommandFooter.tsx';
+const COLUMN = 'src/components/station/displays/StationDisplaysPushColumn.tsx';
 const CHROME = 'src/components/station/displays/displays-leaf-chrome.tsx';
-const INVENTORY = 'src/components/receiving/workspace/line-edit/InventoryDisplayHost.tsx';
 const SOT = '.claude/rules/source-of-truth.md';
 
 /** Panels that mount the shared push stack (same census as reachability). */
@@ -46,86 +57,84 @@ const STACK_HOSTS = [
   'src/components/support/orders/SupportOrdersFocusHost.tsx',
 ] as const;
 
-describe('Station Displays footer stage split', () => {
-  it('PushStack gates TechRailSearchBar behind index-filter stage', () => {
+/** The bottom band and its `/` palette are gone — not parked, deleted. */
+const DELETED = [
+  'src/components/station/displays/StationDisplaysDismissFooter.tsx',
+  'src/components/station/displays/StationDisplaysCommandFooter.tsx',
+  'src/components/station/displays/displays-footer-command.ts',
+] as const;
+
+describe('Station Displays chrome rows', () => {
+  it('the column exposes a subHeader row and no footer slot', () => {
+    const src = read(COLUMN);
+    assert.match(src, /subHeader\?: ReactNode;/, 'row 2 is a real slot');
+    assert.doesNotMatch(
+      src,
+      /footer\?: ReactNode;/,
+      'the bottom band slot is gone — a footer prop invites it back',
+    );
+    const bandIdx = src.indexOf('STATION_DISPLAYS_PUSH_TOP_BAND}>');
+    const subIdx = src.indexOf('{subHeader}');
+    const bodyIdx = src.indexOf('{children}');
+    assert.ok(bandIdx >= 0 && subIdx > bandIdx, 'row 2 paints under the band');
+    assert.ok(bodyIdx > subIdx, 'row 2 paints above the body');
+  });
+
+  it('the filter is row 2, index-only, and mounts once', () => {
     const src = read(STACK);
+    assert.match(src, /subHeader=\{/, 'stack fills the row-2 slot');
+    assert.match(src, /Filter displays…/, 'placeholder unchanged');
+    assert.match(src, /unbox-displays-filter-row/, 'row carries a stable testid');
+
+    const subIdx = src.indexOf('subHeader={');
+    const slice = src.slice(subIdx, subIdx + 900);
+    assert.match(slice, /onIndex \? \(/, 'row 2 renders on the index only');
+    assert.match(slice, /TechRailSearchBar/, 'row 2 mounts the shared find face');
     assert.match(
-      src,
-      /footerStage === 'index-filter'/,
-      'footer prop must branch on footerStage (index-filter vs leaf)',
+      slice,
+      /variant="chrome"/,
+      'same face as the Unbox sheet Band-3 find — not the rail variant',
     );
-    assert.match(
+
+    const mounts = src.split('<TechRailSearchBar').length - 1;
+    assert.equal(mounts, 1, 'exactly one find field in the whole column');
+    assert.doesNotMatch(
       src,
-      /TechRailSearchBar/,
-      'Root Index still mounts TechRailSearchBar',
+      /footer=\{/,
+      'the stack paints no bottom band',
     );
-    assert.match(
-      src,
-      /Filter displays…/,
-      'index placeholder stays Filter displays…',
-    );
-    assert.match(
-      src,
-      /StationDisplaysDismissFooter/,
-      'leaf stage mounts StationDisplaysDismissFooter',
-    );
-    assert.match(
-      src,
-      /footerStage === 'leaf-command'|footerStage === \"leaf-command\"/,
-      'leaf-command is gated via DisplaysFooterStage',
-    );
-    assert.match(
-      src,
-      /StationDisplaysCommandFooter/,
-      'opt-in leaf-command stage mounts StationDisplaysCommandFooter',
-    );
+  });
+
+  it('typing in the filter never ejects a leaf to the index', () => {
+    const src = read(STACK);
     assert.doesNotMatch(
       src,
       /if \(!onIndex && next\.trim\(\)\) goIndex/,
       'no leaf→index eject-by-typing substitute for Back',
     );
-
-    // TechRailSearchBar must appear only in the index-filter footer branch.
-    // Macro actionFloor sits above this close chrome — never steals Filter/`→|`.
-    const footerIdx = src.indexOf('footer={');
-    assert.ok(footerIdx >= 0, 'footer prop present');
-    const footerSlice = src.slice(footerIdx, footerIdx + 1600);
-    const searchIdx = footerSlice.indexOf('TechRailSearchBar');
-    const commandIdx = footerSlice.indexOf('StationDisplaysCommandFooter');
-    const dismissIdx = footerSlice.indexOf('StationDisplaysDismissFooter');
-    assert.ok(searchIdx >= 0, 'TechRailSearchBar inside footer prop');
-    assert.ok(commandIdx >= 0, 'CommandFooter inside footer prop');
-    assert.ok(dismissIdx >= 0, 'DismissFooter inside footer prop');
-    assert.ok(
-      searchIdx < commandIdx && commandIdx < dismissIdx,
-      'footer order: index-filter → leaf-command → leaf-dismiss',
-    );
-    const afterSearch = footerSlice.slice(searchIdx + 'TechRailSearchBar'.length);
-    assert.doesNotMatch(
-      afterSearch,
-      /TechRailSearchBar/,
-      'leaf branches must not remount TechRailSearchBar',
-    );
   });
 
-  it('Esc closes command palette before leaf pop', () => {
+  it('Esc clears a live filter before closing the column', () => {
     const src = read(STACK);
-    assert.match(src, /if \(commandOpen\)/);
-    assert.match(src, /setCommandOpen\(false\)/);
     assert.match(
       src,
       /onIndex && filterQuery\.trim\(\)/,
       'index Esc clears a live filter before closing the column',
     );
+    assert.doesNotMatch(
+      src,
+      /commandOpen/,
+      'the `/` palette is gone — no command-open rung left in Esc',
+    );
   });
 
-  it('index-filter TechRailSearchBar wires onKeyDown into the index list', () => {
+  it('the filter row wires onKeyDown into the index list', () => {
     const src = read(STACK);
     assert.match(src, /indexFilterKeysRef/);
-    assert.match(src, /onFilterKeyDown/);
     assert.match(
       src,
       /onKeyDown=\{\(e\) => indexFilterKeysRef\.current\?\.onFilterKeyDown\(e\)\}/,
+      'character-select keys reach the armed cursor list',
     );
     const searchBar = read('src/components/sidebar/tech/TechRailSearchBar.tsx');
     assert.match(
@@ -135,62 +144,22 @@ describe('Station Displays footer stage split', () => {
     );
   });
 
-  it('DismissFooter is →| only — no list filter field', () => {
-    const src = read(DISMISS);
-    assert.match(src, /station-displays-dismiss-footer/);
-    assert.match(src, /StationDisplaysEdgeToggle/);
-    assert.match(src, /variant="column-close"/);
+  it('the bottom band and its / palette are deleted, not parked', () => {
+    for (const rel of DELETED) {
+      assert.equal(
+        existsSync(join(process.cwd(), rel)),
+        false,
+        `${rel} must stay deleted — a retirement is not done until the file is gone`,
+      );
+    }
     assert.doesNotMatch(
-      src,
-      /TechRailSearchBar|Filter displays|SearchBar|SearchField/,
-      'dismiss footer must not mount list-filter chrome',
+      read(CHROME),
+      /setLeafCommands/,
+      'leaf chrome no longer offers a footer to register into',
     );
   });
 
-  it('CommandFooter is / palette + →| — never index filter copy', () => {
-    const src = read(COMMAND);
-    assert.match(src, /station-displays-command-footer/);
-    assert.match(src, /StationDisplaysEdgeToggle/);
-    assert.match(src, /placeholder="Command…"/);
-    assert.match(src, /COMMAND_SCAN_BURST_MS|SCAN_BURST/);
-    assert.match(src, /isEditableKeyTarget|isEditable/);
-    assert.match(src, /hasOpenOverlay|pushOverlay/);
-    assert.match(src, /isKeyboardRegionOwner\('right'\)/);
-    assert.doesNotMatch(
-      src,
-      /TechRailSearchBar|Filter displays…/,
-      'leaf-command must not remount index filter chrome',
-    );
-    assert.doesNotMatch(
-      src,
-      /goIndex|onTabChange\(['"]index['"]\)/,
-      'command footer must not eject to index',
-    );
-    // No bare digit key binds as actions — wedge law.
-    assert.doesNotMatch(
-      src,
-      /e\.key === ['"][0-9]['"]/,
-      'no bare digit command binds',
-    );
-  });
-
-  it('leaf chrome exposes setLeafCommands for opt-in', () => {
-    const src = read(CHROME);
-    assert.match(src, /setLeafCommands/);
-    assert.match(src, /DisplaysFooterCommand/);
-  });
-
-  it('Inventory clears leaf commands — footer stays leaf-dismiss (no / Commands)', () => {
-    const src = read(INVENTORY);
-    assert.match(src, /setLeafCommands\(null\)/);
-    assert.doesNotMatch(
-      src,
-      /slash:\s*['"](?:change po|refresh|mark received|save notes)['"]/,
-      'Inventory must not register / leaf-command faces',
-    );
-  });
-
-  it('stack hosts do not fork a page-local Displays footer filter', () => {
+  it('no host forks a page-local Displays filter', () => {
     for (const host of STACK_HOSTS) {
       const src = read(host);
       assert.match(
@@ -206,26 +175,19 @@ describe('Station Displays footer stage split', () => {
       assert.doesNotMatch(
         src,
         /TechRailSearchBar/,
-        `${host}: Displays footer filter stays inside StationDisplaysPushStack`,
+        `${host}: the Displays filter stays inside StationDisplaysPushStack`,
       );
     }
   });
 
-  it('Filter displays… lives only on the stack index footer', () => {
-    const stack = read(STACK);
-    const dismiss = read(DISMISS);
-    const command = read(COMMAND);
-    assert.match(stack, /Filter displays…/);
-    assert.doesNotMatch(dismiss, /Filter displays…/);
-    assert.doesNotMatch(command, /Filter displays…/);
-  });
-
-  it('SoT documents footer stages including leaf-command', () => {
+  it('SoT documents the two-row chrome and the absent footer', () => {
     const sot = read(SOT);
-    assert.match(sot, /index-filter/);
-    assert.match(sot, /leaf-dismiss/);
-    assert.match(sot, /leaf-command/);
-    assert.match(sot, /StationDisplaysCommandFooter/);
-    assert.match(sot, /setLeafCommands/);
+    assert.match(sot, /Displays chrome rows|row 2/i);
+    assert.match(sot, /Filter displays…/);
+    assert.doesNotMatch(
+      sot,
+      /StationDisplaysCommandFooter|StationDisplaysDismissFooter/,
+      'SoT must not name deleted footer components',
+    );
   });
 });

@@ -23,7 +23,7 @@
  *
  *     So `→|` closes the column from the Displays footer: on Root Index it
  *     seats in the filter search trailing track (left-rail filter-collapse
- *     twin); on a leaf it seats in `StationDisplaysDismissFooter`. `←|` Open
+ *     twin); a leaf paints no filter at all. `←|` Open
  *     displays seats in the utility-rail **bottom** footer (left-dock expand
  *     twin). `↑ ↓` step the CARTON. Procedure % ring lives under the Unbox
  *     dock (bottom-right); step pager bottom-left. Print·Receive trailing only
@@ -132,49 +132,34 @@ describe('Unbox right-edge chrome (2026-08-02 rulings)', () => {
       );
     });
 
-    it('the push column footer owns a VISIBLE dismiss (left-rail twin)', () => {
+    it('the header band owns a VISIBLE dismiss; row 2 owns the filter', () => {
       const column = read(PUSH_COLUMN_PATH);
       const displays = read(DISPLAYS_PATH);
       const edge = read(EDGE_TOGGLE_PATH);
       assert.match(
         column,
-        /footer/,
-        'column accepts a stage-owned footer slot (index filter · leaf dismiss · leaf-command)',
+        /subHeader/,
+        'column accepts the row-2 slot that replaced the footer (2026-08-19)',
       );
       assert.match(
-        displays,
+        column,
         /StationDisplaysEdgeToggle/,
-        'column dismiss is the shared edge-toggle host (layoutId handoff with the pane)',
+        'column dismiss is the shared edge-toggle host, now in the header band',
       );
       assert.match(
         displays,
-        /footerStage === 'index-filter'/,
-        'footer branches on DisplaysFooterStage',
+        /subHeader=\{/,
+        'the stack fills row 2 (the filter band) — no footer stage left',
+      );
+      assert.match(
+        displays,
+        /onIndex \? \(/,
+        'row 2 is index-only — a leaf inherits no list-filter chrome',
       );
       assert.match(
         displays,
         /TechRailSearchBar/,
-        'Root Index footer mounts TechRailSearchBar (list-filter twin)',
-      );
-      assert.match(
-        displays,
-        /trailingAction=\{/,
-        'index →| seats as TechRailSearchBar trailingAction (filter-collapse twin)',
-      );
-      assert.match(
-        displays,
-        /StationDisplaysDismissFooter/,
-        'default leaf footer mounts dismiss-only band (no list filter)',
-      );
-      assert.match(
-        displays,
-        /StationDisplaysCommandFooter/,
-        'opt-in leaf-command footer mounts StationDisplaysCommandFooter',
-      );
-      assert.match(
-        displays,
-        /variant="column-close"/,
-        'open Displays lands column-close →| on both footer stages',
+        'row 2 mounts the shared find face',
       );
       assert.match(
         edge,

@@ -7,7 +7,7 @@
  * expand twin.
  * Open: `→|` Hide displays — seats as {@link TechRailSearchBar}
  * `trailingAction` on Root Index and every leaf (and on
- * {@link StationDisplaysCommandFooter} when `/` commands are registered).
+ * the column's header band — there is no footer variant any more).
  *
  * Shared `layoutId` FLIPs the mark across the work surface with the push
  * column width tween (`motionRole.push.rail`). Never mount both at once —

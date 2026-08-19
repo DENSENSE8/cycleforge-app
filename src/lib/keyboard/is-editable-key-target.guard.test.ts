@@ -21,7 +21,6 @@ const read = (rel: string) =>
 /** Call sites that must import the shared predicate (not redefine it). */
 const MUST_IMPORT = [
   'src/components/station/displays/StationDisplaysPushStack.tsx',
-  'src/components/station/displays/StationDisplaysCommandFooter.tsx',
   'src/components/station/displays/useArmedCursorList.ts',
   'src/components/station/displays/StationActionKeyLegend.tsx',
   'src/components/station/displays/StationActionDossierShell.tsx',

@@ -73,6 +73,15 @@ const ThrowTaskHost = dynamic(
   () => import('@/components/quick-access/ThrowTaskHost').then((m) => m.ThrowTaskHost),
   { ssr: false },
 );
+// Persistent "these ticket photos are not on the NAS yet" prompt. Global for the
+// same reason as the two hosts above and one of its own: it has to survive the
+// operator scanning on to the next carton, which is exactly when the surface
+// that would otherwise carry the state (the carton's own ticket chip) unmounts.
+// P3 — deferred, never in the first-paint path.
+const NasArchivePrompt = dynamic(
+  () => import('@/components/receiving/nas-archive/NasArchivePrompt').then((m) => m.NasArchivePrompt),
+  { ssr: false },
+);
 import { VendorViewMaskHost } from '@/components/desktop/VendorViewMaskHost';
 const GlobalDesktopSkuScanner = dynamic(
   () => import('@/components/layout/GlobalDesktopSkuScanner').then((m) => m.GlobalDesktopSkuScanner),
@@ -421,6 +430,7 @@ export function ResponsiveLayout({ children, kioskHost = false }: ResponsiveLayo
         <CommandBar />
         <ClipboardHistoryHost />
         <ThrowTaskHost />
+        <NasArchivePrompt />
         <VendorViewMaskHost />
         <Suspense fallback={null}>
           <GlobalDesktopSkuScanner />
