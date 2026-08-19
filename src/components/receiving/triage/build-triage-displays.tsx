@@ -23,7 +23,7 @@ import { type SectionTab } from '@/design-system/components';
 import { buildSectionTabs } from '@/components/station/workbench';
 import { shouldUseUnmatchedItemsSurface } from '@/lib/receiving/intake-items-routing';
 import { CartonMatchHub } from '../workspace/line-edit/CartonMatchHub';
-import { ArrivalLocationsDisplay } from './ArrivalLocationsDisplay';
+import { ArrivalLocationsLeaf } from './ArrivalLocationsLeaf';
 import type { TriageStagingController } from './useTriageStaging';
 import type { ClaimModalMode } from '../workspace/claim/claim-types';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
@@ -138,7 +138,7 @@ export function buildTriageDisplayTabs({
       label: 'Locations',
       icon: MapPin,
       content: (
-        <ArrivalLocationsDisplay staging={staging} onPlaced={onLocationPlaced} />
+        <ArrivalLocationsLeaf staging={staging} onPlaced={onLocationPlaced} />
       ),
     },
   ]);

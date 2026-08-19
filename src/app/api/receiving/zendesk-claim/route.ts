@@ -3,6 +3,7 @@ import { ApiError, errorResponse } from '@/lib/api';
 import { withAuth } from '@/lib/auth/withAuth';
 import {
   buildReceivingClaimTemplate,
+  claimAttachmentFileLabel,
   claimBodyToHtml,
   CLAIM_TYPE_LABEL,
   type ClaimType,
@@ -13,12 +14,11 @@ import {
   HELPDESK_CONNECT_HINT,
   HELPDESK_NOT_CONNECTED_MESSAGE,
 } from '@/lib/integrations/helpdesk';
+import { poReceivingLink } from '@/lib/receiving-claim-photos';
 import {
-  archiveClaimToFolder,
-  archiveClaimViaAgent,
-  poReceivingLink,
-  resolveClaimArchivePhotoUrl,
-} from '@/lib/receiving-claim-photos';
+  archiveReceivingClaimPhotos,
+  claimArchiveResponseFields,
+} from '@/lib/receiving-claim-archive';
 import { uploadClaimPhotosToHelpdesk } from '@/lib/receiving-claim-attach';
 import { listAllReceivingPhotoIds } from '@/lib/photos/queries/receiving-list';
 import { createSharePack } from '@/lib/photos/share-packs';
@@ -26,8 +26,6 @@ import { linkPhoto } from '@/lib/photos/service';
 import { buildExternalId, linkTicket } from '@/lib/zendesk-links';
 import { zendeskTicketUrl } from '@/lib/zendesk-ticket-url';
 import { readIdempotencyKey, withIdempotentResponse } from '@/lib/api-idempotency';
-import { getOrganization } from '@/lib/tenancy/organizations';
-import { getNasStorageTarget } from '@/lib/tenancy/settings';
 import { upsertClaimSellerMessage } from '@/lib/receiving-claim-seller-message';
 import { claimTicketLinkEntity } from '@/lib/support/tickets';
 import { pairTicketShipmentFromReceiving } from '@/lib/support/ticket-link';
@@ -127,13 +125,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
 
     // Label every uploaded image with the PO# (falls back to tracking, then the
     // receiving id) so the attachments in Zendesk read e.g. "PO-06-14788_001.jpg".
-    const fileLabel = (
-      template.poNumber
-        ? `PO-${template.poNumber}`
-        : template.tracking
-          ? `TRK-${template.tracking}`
-          : `RCV-${receivingId}`
-    ).replace(/[^A-Za-z0-9._-]+/g, '-');
+    const fileLabel = claimAttachmentFileLabel(template, receivingId);
 
     const { entityType, entityId } = claimTicketLinkEntity(lineId, receivingId);
 
@@ -236,76 +228,31 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
 
         // Archive ALL of the PO's photos into a folder named after the ticket
         // (".../2 Zendesk 2026/<ticket#>/") so we keep the full set even though
-        // only the selected subset was uploaded to Zendesk. In prod (Vercel) this
-        // goes through the office archive agent over the tunnel; on a LAN/dev box
-        // it writes the mount directly. Best-effort — the ticket already exists,
-        // so a hiccup never fails the claim — but we DO surface a warning so a
-        // claim whose photos silently didn't archive is visible to the operator.
-        let archiveWarning: string | null = null;
-        let archiveResult: { folder: string; copied: number; total: number } | null = null;
-        try {
-          const allPhotoIds = await listAllReceivingPhotoIds(ctx.organizationId, receivingId);
-          const allPhotos = (
-            await Promise.all(
-              allPhotoIds.map(async (photoId) => ({
-                photoId,
-                url: await resolveClaimArchivePhotoUrl(photoId, ctx.organizationId),
-              })),
-            )
-          )
-            .filter((p): p is { photoId: number; url: string } => Boolean(p.url))
-            .map((p) => ({ url: p.url }));
-          const info = [
-            `Zendesk Ticket: ${ticketNumber}`,
-            `URL: ${zendeskTicketUrl(ticket.id)}`,
-            `Subject: ${subject}`,
-            `Claim type: ${CLAIM_TYPE_LABEL[claimType]}`,
-            `Filed: ${new Date().toISOString()}`,
-            `Photos uploaded to Zendesk: ${uploads.length}`,
-            `Photos on claim record: ${allPhotoIds.length}`,
-            `Photos resolved for NAS archive: ${allPhotos.length}`,
-            '',
-            '--- Ticket body ---',
-            description,
-          ].join('\n');
-          // Prefer the office agent (works from Vercel); fall back to a direct
-          // filesystem write when running on a box that has the share mounted.
-          const useAgent = Boolean(process.env.NAS_AGENT_URL && process.env.NAS_AGENT_TOKEN);
-          let claimTarget = { root: '', folder: '' };
-          if (useAgent) {
-            try {
-              const org = await getOrganization(ctx.organizationId);
-              if (org) claimTarget = getNasStorageTarget(org.settings, 'claims');
-            } catch {
-              claimTarget = { root: '', folder: '' };
-            }
-          }
-          const archived = useAgent
-            ? await archiveClaimViaAgent({
-                ticketId: ticket.id,
-                photos: allPhotos,
-                info,
-                organizationId: ctx.organizationId,
-                archiveRoot: claimTarget.root,
-                archiveFolder: claimTarget.folder,
-              })
-            : await archiveClaimToFolder({ ticketId: ticket.id, photos: allPhotos, info });
-          if (!archived) {
-            archiveWarning = 'Photos were NOT archived to the NAS (archive agent/mount unavailable).';
-            console.warn('[zendesk-claim] archive skipped — no agent/mount configured');
-          } else {
-            archiveResult = archived;
-            console.warn(`[zendesk-claim] archived ${archived.copied}/${archived.total} photo(s) → ${archived.folder}`);
-            if (allPhotos.length < allPhotoIds.length) {
-              archiveWarning = `Only ${archived.copied} of ${allPhotoIds.length} photos archived to the NAS. ${allPhotoIds.length - allPhotos.length} photo source(s) could not be resolved for archiving.`;
-            } else if (archived.copied < archived.total) {
-              archiveWarning = `Only ${archived.copied} of ${archived.total} photos archived to the NAS.`;
-            }
-          }
-        } catch (archiveErr) {
-          archiveWarning = `NAS archive failed: ${archiveErr instanceof Error ? archiveErr.message : 'unknown error'}`;
-          console.warn('[zendesk-claim] photo archive failed', archiveErr);
-        }
+        // only the selected subset was uploaded to Zendesk. Best-effort — the
+        // ticket already exists, so a hiccup never fails the claim — but we DO
+        // surface a warning so a claim whose photos silently didn't archive is
+        // visible to the operator.
+        const archived = await archiveReceivingClaimPhotos({
+          orgId: ctx.organizationId,
+          receivingId,
+          ticketId: ticket.id,
+          logTag: 'zendesk-claim',
+          info: ({ photoIdCount, resolvedCount }) =>
+            [
+              `Zendesk Ticket: ${ticketNumber}`,
+              `URL: ${zendeskTicketUrl(ticket.id)}`,
+              `Subject: ${subject}`,
+              `Claim type: ${CLAIM_TYPE_LABEL[claimType]}`,
+              `Filed: ${new Date().toISOString()}`,
+              `Photos uploaded to Zendesk: ${uploads.length}`,
+              `Photos on claim record: ${photoIdCount}`,
+              `Photos resolved for NAS archive: ${resolvedCount}`,
+              '',
+              '--- Ticket body ---',
+              description,
+            ].join('\n'),
+        });
+        const archiveFields = claimArchiveResponseFields(archived);
 
         // Write the ticket→entity link row. Prefer RECEIVING_LINE / RECEIVING as
         // the primary anchor when the carton is open; also reference the carton's
@@ -415,13 +362,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
             success: true,
             ticketNumber,
             ticketUrl: zendeskTicketUrl(ticket.id),
-            archiveWarning,
-            // Archive result so the client can DISPLAY the NAS backup status on
-            // the seller step (and offer a retry when it failed/was partial).
-            archiveOk: !!archiveResult && !archiveWarning,
-            archiveCopied: archiveResult?.copied ?? 0,
-            archiveTotal: archiveResult?.total ?? 0,
-            archiveFolder: archiveResult?.folder ?? null,
+            ...archiveFields,
             sharePackUrl,
           },
         };

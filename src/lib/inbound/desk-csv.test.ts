@@ -136,7 +136,9 @@ describe('deskRowFromCsvRecord — Amazon native returns', () => {
     assert.equal(row.sourcePlatform, 'amazon');
     assert.equal(row.receivingType, 'RETURN');
     assert.equal(row.orderId, '111-7654321-1234567');
-    assert.equal(row.sku, 'B0ABC12345');
+    assert.equal(row.sku, 'MSKU-IGNORED');
+    assert.equal(row.amazonAsin, 'B0ABC12345');
+    assert.equal(row.listingUrl, amazonListingUrlForAsin('B0ABC12345'));
     assert.equal(row.itemName, 'Widget Pro');
     assert.equal(row.quantity, 2);
     assert.equal(row.trackingNumber, '1Z999AA10123456784');
@@ -144,7 +146,6 @@ describe('deskRowFromCsvRecord — Amazon native returns', () => {
     assert.equal(row.rmaId, 'amzn1.rma.v1.xyz');
     assert.equal(row.returnReason, 'UNWANTED_ITEM');
     assert.equal(row.lineItemId, 'amzn1.rma.v1.xyz:B0ABC12345');
-    assert.equal(row.listingUrl, amazonListingUrlForAsin('B0ABC12345'));
     assert.equal(row.skipReason, null);
     assert.ok(row.rawPayload);
   });
@@ -187,9 +188,32 @@ describe('deskRowFromCsvRecord — Amazon native returns', () => {
     assert.equal(row.skipReason, 'cancelled');
   });
 
-  it('does not treat Merchant SKU as the match key (sku = ASIN)', () => {
+  it('maps Return tracking ID when Tracking ID is empty', () => {
+    const row = deskRowFromCsvRecord({
+      'Order ID': '111-1-1',
+      'Return request status': 'Approved',
+      'Amazon RMA ID': 'RMA9',
+      'Tracking ID': '',
+      'Return tracking ID': 'TBA308847293000',
+      ASIN: 'B09ZZZZZZZ',
+      'Item Name': 'Thing',
+    });
+    assert.equal(row.amazonNativeReturn, true);
+    assert.equal(row.trackingNumber, 'TBA308847293000');
+  });
+
+  it('treats placeholder Tracking ID as empty', () => {
+    const row = deskRowFromCsvRecord({
+      ...spaceRow,
+      'Tracking ID': 'Not Available',
+    });
+    assert.equal(row.trackingNumber, null);
+  });
+
+  it('uses Merchant SKU as catalog sku and keeps ASIN for listing', () => {
     const row = deskRowFromCsvRecord(spaceRow);
-    assert.equal(row.sku, 'B0ABC12345');
-    assert.notEqual(row.sku, 'MSKU-IGNORED');
+    assert.equal(row.sku, 'MSKU-IGNORED');
+    assert.equal(row.amazonAsin, 'B0ABC12345');
+    assert.equal(row.listingUrl, amazonListingUrlForAsin('B0ABC12345'));
   });
 });

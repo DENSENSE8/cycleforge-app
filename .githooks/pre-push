@@ -1,7 +1,13 @@
 #!/bin/sh
 #
-# Pre-push gate — the local CI mirror. Blocks pushing red code to the remote so
-# `main` stops breaking. Runs the exact same checks CI runs (npm run verify).
+# Pre-push gate — local verify before the remote sees the commits.
+#
+#   push to `main`  → `npm run verify`         (full CI mirror)
+#   any other ref   → `npm run verify:dogfood` (tenant click-through slice)
+#
+# CI on GitHub still runs the full gate on every PR / push to main. Dogfood
+# is the laptop tax for iterating on a branch; it is not a substitute for
+# "done" (agents still run full verify before finishing).
 #
 # Wired up automatically by `npm install` (package.json "prepare" sets
 # core.hooksPath to .githooks). To wire it up by hand:
@@ -10,6 +16,21 @@
 # Deliberate escape (use sparingly, e.g. a docs-only hotfix):
 #   git push --no-verify
 #
-echo "▶ pre-push: running 'npm run verify' (local CI mirror)…"
-echo "  (skip with 'git push --no-verify' — use sparingly)"
-npm run verify
+
+pushing_main=0
+while read -r _local_ref _local_sha remote_ref _remote_sha; do
+  case "$remote_ref" in
+    refs/heads/main) pushing_main=1 ;;
+  esac
+done
+
+if [ "$pushing_main" -eq 1 ]; then
+  echo "▶ pre-push: destination is main — running 'npm run verify' (full CI mirror)…"
+  echo "  (skip with 'git push --no-verify' — use sparingly)"
+  npm run verify
+else
+  echo "▶ pre-push: running 'npm run verify:dogfood' (tenant click-through)…"
+  echo "  Full verify still runs in CI, and is required before merging to main."
+  echo "  (skip with 'git push --no-verify' — use sparingly)"
+  npm run verify:dogfood
+fi

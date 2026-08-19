@@ -5,6 +5,8 @@
  * Overflow `⋯` holds secondary verbs (Resolve when unfound).
  */
 
+import { getLast8 } from '@/lib/copy-chip-format';
+
 /** Readiness-picked primary CTA (Print when matched; Resolve when unfound). */
 export function stationDisplaysFloorPrimaryAction(input: {
   unfound: boolean;
@@ -27,6 +29,39 @@ export function stationDisplaysFloorMoreItems(input: {
 
 /** Equal-fill carton Macro peers. More · Edit · Delete always paint. */
 export type CartonFloorPeer = 'more' | 'sync' | 'print' | 'edit' | 'delete';
+
+export type CartonDeleteIdentity = {
+  receivingId: number;
+  tracking?: string | null;
+  poNumber?: string | null;
+};
+
+/**
+ * Operator-facing noun for carton delete (arm tooltip, undo toast).
+ * Tracking last-8 wins; else PO number; else `carton {id}`.
+ */
+export function cartonDeleteFace(input: CartonDeleteIdentity): string {
+  const tracking = (input.tracking ?? '').trim();
+  if (tracking) {
+    const short = getLast8(tracking);
+    if (short && short !== '---') return short;
+  }
+  const po = (input.poNumber ?? '').trim();
+  if (po) return po;
+  return `carton ${input.receivingId}`;
+}
+
+export function cartonDeleteLabels(face: string): {
+  idleLabel: string;
+  confirmLabel: string;
+  deletedTitle: string;
+} {
+  return {
+    idleLabel: `Delete ${face}`,
+    confirmLabel: `Click again to delete ${face}`,
+    deletedTitle: `${face} deleted`,
+  };
+}
 
 /**
  * Peer order for {@link CartonDisplaysActionFloor}.

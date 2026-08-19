@@ -98,6 +98,12 @@ const config: KnipConfig = {
     // rollup consumer remounts `replenishmentTooltip`.
     'src/lib/orders/replenishment-display.ts',
 
+    // Ephemeral jscpd-gate probes — written under src/ so the clone finder
+    // sees them, then deleted. Ignore so a mid-verify leftover cannot fail knip.
+    'src/jscpd-clone-probe-*.ts',
+    'src/components/station/jscpd-hardware-wall-probe.ts',
+    'src/components/support/jscpd-hardware-wall-probe.ts',
+
   ],
 
   ignoreDependencies: [

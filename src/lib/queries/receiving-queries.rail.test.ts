@@ -17,6 +17,8 @@ import {
   removePendingScanRailRow,
   removeReceivingRailByCarton,
   removeReceivingRailByLine,
+  restoreReceivingRailSnapshot,
+  snapshotReceivingRailByCarton,
   upsertReceivingRailRows,
   type ReceivingRailRow,
 } from './receiving-queries';
@@ -86,6 +88,25 @@ describe('removeReceivingRailByCarton / ByLine', () => {
     assert.deepEqual(qc.getQueryData(railKey(UNBOX_RAIL_SEGMENT)), [
       { id: 502, receiving_id: 88, client_event_id: 'carton:88' },
     ]);
+  });
+
+  it('snapshot + restore puts the carton back after optimistic hide', () => {
+    const qc = new QueryClient();
+    const rows: ReceivingRailRow[] = [
+      { id: 1, receiving_id: 10, client_event_id: 'carton:10' },
+      { id: 2, receiving_id: 20, client_event_id: 'carton:20' },
+    ];
+    qc.setQueryData(railKey(UNBOX_RAIL_SEGMENT), rows);
+    const snap = snapshotReceivingRailByCarton(qc, 10);
+    removeReceivingRailByCarton(qc, 10);
+    assert.deepEqual(qc.getQueryData(railKey(UNBOX_RAIL_SEGMENT)), [
+      { id: 2, receiving_id: 20, client_event_id: 'carton:20' },
+    ]);
+    restoreReceivingRailSnapshot(qc, snap);
+    const next = qc.getQueryData<ReceivingRailRow[]>(railKey(UNBOX_RAIL_SEGMENT));
+    assert.equal(next?.length, 2);
+    assert.ok(next?.some((r) => r.receiving_id === 10));
+    assert.ok(next?.some((r) => r.receiving_id === 20));
   });
 });
 

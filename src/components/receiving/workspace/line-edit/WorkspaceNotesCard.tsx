@@ -24,9 +24,7 @@
 
 import type { ReactNode } from 'react';
 import { LineNotesCard } from './LineNotesCard';
-import { useSyncedPoNote } from './hooks/useSyncedPoNote';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
-import type { InlineActionFeedbackPayload } from '../InlineActionFeedbackCard';
 
 /**
  * Minimal notes contract — Unbox + Testing (+ Arrival) compose the same dock
@@ -46,7 +44,6 @@ type WorkspaceNotesController = {
 interface WorkspaceNotesCardProps {
   row: ReceivingLineRow;
   c: WorkspaceNotesController;
-  onActionFeedback: (feedback: InlineActionFeedbackPayload | null) => void;
   /** Pass-through to OmnichannelComposerDock mount motion. */
   animateMount?: boolean;
   /**
@@ -60,19 +57,24 @@ interface WorkspaceNotesCardProps {
   onPrimaryAction?: () => void;
   /** Mirrors the disabled Receive pill so Enter is a no-op when blocked. */
   primaryActionDisabled?: boolean;
+  /**
+   * Open this station's Displays → Locations leaf (the footer location pill's
+   * **New location**). Omitted on a surface with no Displays column — the menu
+   * item then says so instead of pretending.
+   */
+  onOpenLocations?: () => void;
 }
 
 export function WorkspaceNotesCard({
   row,
   c,
-  onActionFeedback,
   animateMount = true,
   chrome = 'raised',
   trailingAction,
   onPrimaryAction,
   primaryActionDisabled,
+  onOpenLocations,
 }: WorkspaceNotesCardProps) {
-  const { saveOverallNote } = useSyncedPoNote(row, onActionFeedback);
   return (
     <div id="zoho-notes-card">
       <LineNotesCard
@@ -97,13 +99,30 @@ export function WorkspaceNotesCard({
           void c.patch({ notes: next });
           return true;
         }}
-        onSaveOverallNote={saveOverallNote}
         showSyncToPo={!(c.isUnfound ?? false)}
         animateMount={animateMount}
         chrome={chrome}
         trailingAction={trailingAction}
         onPrimaryAction={onPrimaryAction}
         primaryActionDisabled={primaryActionDisabled}
+        onOpenLocations={onOpenLocations}
+        statusStamps={{
+          received_at: row.received_at,
+          received_by_name: row.received_by_name,
+          unbox_opened_at: row.unbox_opened_at,
+          unboxed_at: row.unboxed_at,
+          unboxed_by_name: row.unboxed_by_name,
+          received_done_at: row.received_done_at,
+          label_printed_at: row.label_printed_at,
+          staged_at: row.staged_at,
+          staged_location_id: row.staged_location_id,
+          staged_location_name: row.staged_location_name,
+          staged_location_barcode: row.staged_location_barcode,
+          staged_location_room: row.staged_location_room,
+          // Snapshot + actor: what the operator confirmed, and who confirmed it.
+          staged_location_code: row.staged_location_code,
+          staged_by_name: row.staged_by_name,
+        }}
       />
     </div>
   );

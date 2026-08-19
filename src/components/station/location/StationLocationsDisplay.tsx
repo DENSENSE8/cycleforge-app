@@ -1,11 +1,18 @@
 'use client';
 
 /**
- * Arrival Displays → **Locations**.
+ * @domain-job Station Displays → **Locations** — browse the addresses this
+ *   warehouse has, place the open entity on one, reprint a scuffed sticker,
+ *   or mint a new spot without leaving the bench.
+ * @hardware-target Station
+ * @density floor
+ * @justification Cannot reuse `LocationCrudDialog` — that is the Inventory
+ *   admin editor behind a modal scrim; this is a Displays leaf whose rows are
+ *   ONE armed control on the keyboard path, next to a carton in hand.
  *
- * The shelves this warehouse has, at the door: browse them, place the open
- * carton on one, reprint a damaged sticker, or mint a new spot — without
- * leaving the station.
+ * Shared by Arrival, Unbox, and Ready to Pack through
+ * {@link StationLocationPlacementPort}: same interaction at all three benches,
+ * three different writers (triage staging · line putaway · pack placement).
  *
  * **Why a LIST and not a create form.** The first cut of this leaf was
  * create-only, which answered the rarer half of the job: an operator reprints a
@@ -30,10 +37,10 @@
  * `extractArrivalLocationBarcode` decodes, so a hand-typed barcode would make a
  * shelf you can pick but never scan.
  *
- * Placement runs through `useTriageStaging.selectShelf` — the same writer the
- * dock scan and the `<select>` use, so the lane auto-route and its manual-wins
- * rule are inherited. Arrival storage only (`receiving_triage`); never the Unbox
- * line putaway or the packing-desk ledger.
+ * Placement runs through the port's own writer — at Arrival that is
+ * `useTriageStaging.selectShelf`, so the lane auto-route and its manual-wins
+ * rule are inherited. One storage per station; this leaf never writes across
+ * them.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -52,8 +59,8 @@ import { useOrgGs1 } from '@/hooks/useOrgGs1';
 import { parseLocationCodeFlat, type LocationSegments } from '@/lib/barcode-routing';
 import { toast } from '@/lib/toast';
 import { cn } from '@/utils/_cn';
-import { ArrivalNewLocationForm } from './ArrivalNewLocationForm';
-import type { TriageStagingController } from './useTriageStaging';
+import { StationNewLocationForm } from './StationNewLocationForm';
+import type { StationLocationPlacementPort } from './station-location-port';
 
 /** What committing a row does. `new` swaps the list for the create form. */
 type LocationsMode = 'place' | 'print' | 'new';
@@ -64,16 +71,21 @@ const MODE_TABS = [
   { id: 'new', label: 'New' },
 ];
 
-export function ArrivalLocationsDisplay({
-  staging,
+export function StationLocationsDisplay({
+  port,
   onPlaced,
 }: {
-  staging: TriageStagingController;
-  /** Close the leaf once the carton is on a shelf (nothing left to do here). */
+  port: StationLocationPlacementPort;
+  /** Close the leaf once the entity is placed (nothing left to do here). */
   onPlaced?: () => void;
 }) {
-  const { locations, locationsLoading, stagingLocationId, selectShelf, refreshCatalog } =
-    staging;
+  const {
+    locations,
+    locationsLoading,
+    placedLocationId,
+    place: placeAt,
+    entityNoun,
+  } = port;
   const { identity: orgGs1 } = useOrgGs1();
   const { setLeafTrailing } = useDisplaysLeafChrome();
 
@@ -107,13 +119,13 @@ export function ArrivalLocationsDisplay({
         )
       : locations;
     return matched.map((l): StationArmedVerb => {
-      const staged = l.id === stagingLocationId;
+      const staged = l.id === placedLocationId;
       return {
         id: String(l.id),
         label: l.name,
         icon: MapPin,
         // One fact under the label — where it is and what you scan for it.
-        subtitle: [l.room, l.barcode, staged ? 'carton is here' : null]
+        subtitle: [l.room, l.barcode, staged ? `${entityNoun} is here` : null]
           .filter(Boolean)
           .join(' · '),
         // A shelf with no canonical barcode cannot be printed; it can still be
@@ -122,18 +134,18 @@ export function ArrivalLocationsDisplay({
           mode === 'print' && parseLocationCodeFlat((l.barcode ?? '').trim()) == null,
       };
     });
-  }, [locations, mode, query, stagingLocationId]);
+  }, [entityNoun, locations, mode, placedLocationId, query]);
 
   const place = useCallback(
     async (id: number, name: string) => {
-      const ok = await selectShelf(id);
-      // selectShelf already reported a failed write and rolled back — only claim
+      const ok = await placeAt(id);
+      // The port already reported a failed write and rolled back — only claim
       // the placement when it actually landed.
       if (!ok) return;
       toast.success(`Staged → ${name}`);
       onPlaced?.();
     },
-    [onPlaced, selectShelf],
+    [onPlaced, placeAt],
   );
 
   const print = useCallback(
@@ -147,7 +159,7 @@ export function ArrivalLocationsDisplay({
         // Register before print — an orphan sticker that scans to nothing is
         // worse than no sticker. Idempotent, so a reprint is a no-op write.
         await registerLocations(room || '', [segments]);
-        refreshCatalog();
+        port.refreshCatalog();
       } catch {
         // A reprint of an EXISTING shelf must not be blocked by a re-register
         // hiccup; the row is already in the table.
@@ -160,7 +172,7 @@ export function ArrivalLocationsDisplay({
         });
       });
     },
-    [refreshCatalog],
+    [port],
   );
 
   const commit = useCallback(
@@ -186,8 +198,8 @@ export function ArrivalLocationsDisplay({
   return (
     <div className="flex h-full min-h-0 flex-col">
       {mode === 'new' ? (
-        <ArrivalNewLocationForm
-          staging={staging}
+        <StationNewLocationForm
+          port={port}
           onPlaced={onPlaced}
           onCreated={() => setMode('place')}
         />
@@ -198,7 +210,7 @@ export function ArrivalLocationsDisplay({
               variant="rail"
               value={query}
               onChange={setQuery}
-              placeholder="Filter shelves…"
+              placeholder="Filter locations…"
             />
           </div>
 
@@ -211,7 +223,7 @@ export function ArrivalLocationsDisplay({
                 )}
               >
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Loading shelves…
+                Loading locations…
               </p>
             ) : rows.length === 0 ? (
               // Two empty answers, never one: a filter that excluded everything
@@ -224,7 +236,7 @@ export function ArrivalLocationsDisplay({
               >
                 {query.trim() ? (
                   <>
-                    No shelf matches “{query.trim()}”.
+                    No location matches “{query.trim()}”.
                     <button
                       type="button"
                       className="ml-1 underline"
@@ -235,8 +247,8 @@ export function ArrivalLocationsDisplay({
                   </>
                 ) : (
                   <>
-                    No shelves yet — switch to <strong>New</strong> to make the
-                    first one.
+                    No locations yet — switch to <strong>New</strong> to make
+                    the first one.
                   </>
                 )}
               </div>
@@ -244,7 +256,11 @@ export function ArrivalLocationsDisplay({
               <StationArmedVerbList
                 verbs={rows}
                 onCommit={commit}
-                listLabel={mode === 'print' ? 'Print a shelf label' : 'Place carton on a shelf'}
+                listLabel={
+                  mode === 'print'
+                    ? 'Print a location label'
+                    : `Place ${entityNoun} on a location`
+                }
                 testId="arrival-locations-list"
               />
             )}
@@ -264,14 +280,17 @@ export function ArrivalLocationsDisplay({
             ) : mode === 'print' ? (
               <span className="inline-flex items-center gap-1.5">
                 <Printer className="h-3.5 w-3.5 shrink-0" />
-                <span>Pick a shelf to reprint its label.</span>
+                <span>Pick a location to reprint its label.</span>
               </span>
             ) : (
               <span className="inline-flex items-center gap-1.5">
                 <Plus className="h-3.5 w-3.5 shrink-0" />
                 {/* One text node — an inline-flex parent would otherwise make
                     every inline child a flex item and gap the sentence apart. */}
-                <span>Pick a shelf to place this carton, or New to make one.</span>
+                <span>
+                  Pick a location to place this {entityNoun}, or New to make
+                  one.
+                </span>
               </span>
             )}
           </div>

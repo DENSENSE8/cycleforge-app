@@ -44,10 +44,12 @@ if (!existsSync(JSCPD_ENTRY)) {
   process.exit(2);
 }
 
+rmSync(REPORT_DIR, { recursive: true, force: true });
 mkdirSync(REPORT_DIR, { recursive: true });
 // Stale LevelDB cache lists deleted files (e.g. the gate's clone-probe) and
 // then ENOENT-crashes. Wipe like knip-gate does for its cache.
 rmSync(CACHE_DIR, { recursive: true, force: true });
+rmSync(join(ROOT, 'node_modules', '.cache', 'jscpd'), { recursive: true, force: true });
 
 const res = spawnSync(
   process.execPath,

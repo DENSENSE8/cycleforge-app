@@ -16,7 +16,10 @@ import { TOP_CHROME_ICON_GLYPH } from '@/components/layout/header-shell';
 import { platformPaintFromHex } from '@/lib/color-contrast';
 import { platformMetaBrandDot, sourcePlatformMeta } from '@/lib/source-platform';
 import { receivingTypeMeta } from '@/lib/receiving/receiving-type-meta';
-import { priorityOverrideTiersForPicker } from '@/lib/receiving/priority-override';
+import {
+  priorityOverrideTiersForHeader,
+  priorityOverrideTiersForPicker,
+} from '@/lib/receiving/priority-override';
 import type { InlinePillOption } from './InlinePillPicker';
 
 const FACE_GLYPH = TOP_CHROME_ICON_GLYPH;
@@ -29,21 +32,35 @@ export function urgencyClassifyOptions(args: {
   derivedLabel: string;
   derivedTierEquivalent: number | null;
   autoActiveClass: string;
+  /**
+   * `header` — carton identity hover list: Low / Medium / High (no Auto, no
+   * Priority). `full` — Classify Displays / Arrival / mobile keep Auto +
+   * Priority as the searchable editor.
+   */
+  surface?: 'header' | 'full';
 }): InlinePillOption[] {
-  const { derivedLabel, derivedTierEquivalent, autoActiveClass } = args;
-  // Auto (platform / org unbox policy) first; manual pins escalate Low → Priority.
+  const { derivedLabel, derivedTierEquivalent, autoActiveClass, surface = 'full' } = args;
+  const tiers =
+    surface === 'header' ? priorityOverrideTiersForHeader() : priorityOverrideTiersForPicker();
+  const autoRow: InlinePillOption[] =
+    surface === 'header'
+      ? []
+      : [
+          {
+            value: 'auto',
+            label: 'Auto',
+            shortLabel: 'Auto',
+            title: `Auto — follows platform (${derivedLabel})`,
+            face: <Flag className={FACE_GLYPH} />,
+            activeClass: autoActiveClass,
+            inactiveClass:
+              'border-border-soft bg-surface-card/70 text-text-soft hover:border-border-default hover:bg-surface-hover',
+            dotClass: 'bg-border-emphasis',
+          },
+        ];
   return [
-    {
-      value: 'auto',
-      label: 'Auto',
-      shortLabel: 'Auto',
-      title: `Auto — follows platform (${derivedLabel})`,
-      face: <Flag className={FACE_GLYPH} />,
-      activeClass: autoActiveClass,
-      inactiveClass:
-        'border-border-soft bg-surface-card/70 text-text-soft hover:border-border-default hover:bg-surface-hover',
-    },
-    ...priorityOverrideTiersForPicker().map((t) => ({
+    ...autoRow,
+    ...tiers.map((t) => ({
       value: String(t.value),
       label: t.label,
       shortLabel: t.short,
@@ -54,6 +71,7 @@ export function urgencyClassifyOptions(args: {
       face: <Flag className={FACE_GLYPH} />,
       activeClass: t.activeClass,
       inactiveClass: derivedTierEquivalent === t.value ? t.activeClass : t.inactiveClass,
+      dotClass: t.dotClass,
     })),
   ];
 }

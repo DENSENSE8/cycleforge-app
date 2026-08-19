@@ -236,8 +236,8 @@ export function TestingPanel({
         claimMode,
         sellerClaimed,
         claimPrefill,
-        onCloseClaim: closeDisplays,
-        onCloseTicket: closeDisplays,
+        onCloseClaim: openDisplaysIndex,
+        onCloseTicket: openDisplaysIndex,
         onClaimTicketCreated,
         onClaimTicketUnlinked,
         onFindTicket: openFindTicketDisplay,
@@ -257,7 +257,7 @@ export function TestingPanel({
       claimMode,
       sellerClaimed,
       claimPrefill,
-      closeDisplays,
+      openDisplaysIndex,
       onClaimTicketCreated,
       onClaimTicketUnlinked,
       openFindTicketDisplay,
@@ -404,7 +404,6 @@ export function TestingPanel({
             <WorkspaceNotesCard
               row={row}
               c={c}
-              onActionFeedback={() => {}}
               chrome="bare"
               onPrimaryAction={terminalVm ? () => void terminalVm.onClick() : undefined}
               primaryActionDisabled={Boolean(terminalVm?.disabled)}
@@ -502,6 +501,10 @@ export function TestingPanel({
                   openDisplays={openDisplays}
                   onDeleted={closeDisplays}
                   editSelected={activeSideTab === 'linkage'}
+                  deleteIdentity={{
+                    tracking: row.tracking_number,
+                    poNumber: row.zoho_purchaseorder_number,
+                  }}
                 />
               }
             />

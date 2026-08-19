@@ -94,3 +94,24 @@ export function resolveAuthor(
   }
   return { name: `User #${c.author_id}`, email: null, photo: null, isOurs };
 }
+
+/**
+ * How far off the bottom still counts as "reading the newest message" when the
+ * floating composer resizes. One card of slack — tighter and a half-scrolled
+ * pixel breaks the dock; looser and it yanks a reader who moved up on purpose.
+ */
+export const STREAM_AT_END_SLACK_PX = 96;
+
+/**
+ * Is the conversation port parked at the newest message?
+ *
+ * Gates the re-dock when the floating composer changes height: re-scrolling a
+ * reader who has moved up into history would yank the thread out from under
+ * them, so growth only re-docks someone already at the end.
+ */
+export function isConversationAtEnd(
+  port: Pick<HTMLElement, 'scrollHeight' | 'scrollTop' | 'clientHeight'>,
+  slackPx: number = STREAM_AT_END_SLACK_PX,
+): boolean {
+  return port.scrollHeight - port.scrollTop - port.clientHeight <= slackPx;
+}

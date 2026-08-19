@@ -5,6 +5,9 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
   CONVERSATION_BODY,
+  CONVERSATION_COMPOSER_DOCK_INTERNAL,
+  CONVERSATION_COMPOSER_PAD,
+  CONVERSATION_DAY_HEADER,
   CONVERSATION_DETAIL_SURFACE,
   CONVERSATION_HEADER_ACTION_BTN,
   CONVERSATION_SHELL,
@@ -62,5 +65,28 @@ describe('conversation plane + type', () => {
   it('header actions are perfect circles', () => {
     assert.match(CONVERSATION_HEADER_ACTION_BTN, /rounded-full/);
     assert.match(CONVERSATION_HEADER_ACTION_BTN, /h-8 w-8/);
+  });
+});
+
+describe('sticky day band', () => {
+  it('paints the conversation plane so rows cannot read through the docked date', () => {
+    assert.match(CONVERSATION_DAY_HEADER, /bg-surface-card/);
+    assert.doesNotMatch(CONVERSATION_DAY_HEADER, /bg-transparent/);
+    // Opacity/blur would let the card underneath ghost through the label.
+    assert.doesNotMatch(CONVERSATION_DAY_HEADER, /bg-surface-card\//);
+  });
+});
+
+describe('floating composer', () => {
+  it('internal composer carries channel on the hairline, never a filled wash', () => {
+    assert.match(CONVERSATION_COMPOSER_DOCK_INTERNAL, /border-amber-/);
+    assert.doesNotMatch(CONVERSATION_COMPOSER_DOCK_INTERNAL, /bg-amber/);
+    // The fill still belongs on POSTED internal messages.
+    assert.match(conversationShell(true), /bg-amber-50/);
+  });
+
+  it('composer pad paints no band fill and fades the thread under the card', () => {
+    assert.match(CONVERSATION_COMPOSER_PAD, /bg-transparent/);
+    assert.match(CONVERSATION_COMPOSER_PAD, /before:bg-gradient-to-t/);
   });
 });

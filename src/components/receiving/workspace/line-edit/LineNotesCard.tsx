@@ -1,13 +1,17 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { Check, Download, History, Loader2, Receipt, User, Tag, Pencil } from '@/components/Icons';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Check, Download, History, Receipt, User, Tag, Pencil, Info } from '@/components/Icons';
 import { OmnichannelComposerDock } from '@/design-system/primitives';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/lib/toast';
-import { recentLabelNoteQueryKey } from '@/lib/receiving/recent-label-note';
+import {
+  RECENT_LABEL_NOTE_QUERY_ROOT,
+  recentLabelNoteQueryKey,
+  shouldRefreshRecentFace,
+} from '@/lib/receiving/recent-label-note';
+import { useReceivingEvents } from '@/hooks/useReceivingEvents';
 import { NoteComposerInsertRail, type NoteComposerInsertAction } from '../NoteComposerInsertRail';
 import {
   appendNoteLine,
@@ -15,19 +19,18 @@ import {
   focusTextEnd,
   formatUnitPriceForNotes,
   NOTE_DOWNLOAD_INSERT_BTN,
-  NOTE_DOWNLOAD_SYNC_BTN,
   NOTE_OVERLAY_ICON,
   NOTE_OVERLAY_ICON_BTN,
   NOTE_STAFF_STAMP_BTN,
   NOTE_TAG_BTN,
   NOTE_UNIT_PRICE_BTN,
   parseZendeskTicketId,
+  resolveNoteGhostPaint,
 } from '../note-composer-helpers';
 import { useLabelNoteGhostAutocomplete } from './hooks/useLabelNoteGhostAutocomplete';
-import type {
-  SaveOverallNoteOptions,
-  SaveOverallNoteResult,
-} from './hooks/useSyncedPoNote';
+import { UnboxNotesLocationControl } from './UnboxNotesLocationControl';
+import { UnboxNotesStatusDialog } from './UnboxNotesStatusDialog';
+import type { LineStatusExactSource } from '@/lib/receiving/unbox-notes-status';
 
 /**
  * Item-note composer — the operator's durable note on this line
@@ -47,13 +50,15 @@ import type {
  * Ghost autocomplete (label-note MRU via {@link useLabelNoteGhostAutocomplete})
  * paints an inline suffix; Tab / ArrowRight / click accept; Escape dismisses.
  *
- * Recent (History) applies the **label note from the newest scanned carton
- * that has one** (`/api/receiving/recent-label-note` → walk scans →
- * `label_note` / `notes`). Hover paints that phrase as a ghost placeholder
- * in an empty field.
+ * Recent (History) applies the **sticker center from the newest scanned carton
+ * that has one** (`/api/receiving/recent-label-note` → walk scans → the line on
+ * that carton touched last → `notes` before the older `label_note`, since the
+ * dock draft is what the Unbox face prints). Hover paints that phrase as a
+ * ghost placeholder in an empty field; click replaces the draft with the same
+ * string.
  *
- * Insert rail (staff stamp / ticket / price / synced PO / title) and, for
- * matched cartons, push-to-PO live in the composer footer.
+ * Insert rail (staff stamp / ticket / price / synced PO / title) lives in
+ * the composer footer. Location sits left of Print in the trailing slot.
  */
 
 export function LineNotesCard({
@@ -68,13 +73,14 @@ export function LineNotesCard({
   lineId,
   onNotesChange,
   onSaveNotes,
-  onSaveOverallNote,
   showSyncToPo = true,
   animateMount = true,
   chrome = 'raised',
   trailingAction,
+  onOpenLocations,
   onPrimaryAction,
   primaryActionDisabled = false,
+  statusStamps,
 }: {
   /** The operator's durable item note (`receiving_line.notes`) — never printed. */
   notes: string;
@@ -100,12 +106,7 @@ export function LineNotesCard({
    * live draft (Enter that also accepts a ghost). Returns true if it saved.
    */
   onSaveNotes: (next?: string) => boolean;
-  /** Append the note into the carton's synced PO note (external push). */
-  onSaveOverallNote: (
-    text: string,
-    opts?: SaveOverallNoteOptions,
-  ) => void | Promise<void | SaveOverallNoteResult>;
-  /** Show the push-to-PO button — matched cartons only (unfound has no PO). */
+  /** Show synced-PO insert — matched cartons only (unfound has no PO). */
   showSyncToPo?: boolean;
   /** Pass-through to OmnichannelComposerDock mount motion. */
   animateMount?: boolean;
@@ -120,6 +121,8 @@ export function LineNotesCard({
    * fires {@link onPrimaryAction} (chat Send); blur still saves.
    */
   trailingAction?: ReactNode;
+  /** Footer location pill → this station's Displays → Locations leaf. */
+  onOpenLocations?: () => void;
   /**
    * Primary footer action for Enter when {@link trailingAction} is mounted
    * (print + receive). Empty notes still allow Enter — receive is not gated
@@ -128,13 +131,19 @@ export function LineNotesCard({
   onPrimaryAction?: () => void;
   /** When true, Enter is a no-op (mirrors the disabled Receive pill). */
   primaryActionDisabled?: boolean;
+  /** Line stamps for the notes Info dialog + current putaway face. */
+  statusStamps?: LineStatusExactSource & {
+    staged_location_id?: number | null;
+  };
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [savedFlash, setSavedFlash] = useState(false);
+  const [statusOpen, setStatusOpen] = useState(false);
   const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { user } = useAuth();
 
-  // DB SoT — label note from this operator's last scanned tracking (other carton).
+  // DB SoT — sticker center from this operator's last scanned tracking (other
+  // carton). Never the device-local MRU phrase bank.
   const excludeLineId =
     lineId != null && Number.isFinite(lineId) && lineId > 0 ? lineId : null;
   const recentNoteQuery = useQuery({
@@ -157,6 +166,29 @@ export function LineNotesCard({
   const recentPhrase = (recentNoteQuery.data || '').trim();
   const [recentHover, setRecentHover] = useState(false);
 
+  // Close the save→fetch race. The dock's note write is fire-and-forget, so the
+  // next carton's Recent fetch can beat the PATCH carrying the face the operator
+  // just typed — and would then hold that pre-save answer for the whole carton.
+  // This event fires with the PERSISTED row once the write resolves.
+  // {@link shouldRefreshRecentFace} keeps it off the steady patch traffic.
+  const queryClient = useQueryClient();
+  useReceivingEvents({
+    'receiving-line-updated': (detail) => {
+      if (
+        !shouldRefreshRecentFace({
+          updatedLineId: detail.id,
+          updatedLabelNote: detail.label_note,
+          updatedNotes: detail.notes,
+          openLineId: excludeLineId,
+          shownPhrase: recentPhrase,
+        })
+      ) {
+        return;
+      }
+      void queryClient.invalidateQueries({ queryKey: RECENT_LABEL_NOTE_QUERY_ROOT });
+    },
+  });
+
   const {
     matchedPhrase,
     ghostSuffix,
@@ -174,14 +206,19 @@ export function LineNotesCard({
     inputRef: textareaRef,
   });
 
-  // Hover Recent → paint the DB note as a ghost placeholder (same overlay as
-  // prefix autocomplete). Empty field shows the full phrase.
-  const hoverPreview = recentHover ? recentPhrase : '';
-  const showHoverGhost = Boolean(hoverPreview) && !notes.trim();
-  const paintMatchedPhrase = showHoverGhost ? hoverPreview : matchedPhrase;
-  const paintGhostSuffix = showHoverGhost
-    ? hoverPreview
-    : ghostSuffix || undefined;
+  // Hover Recent → the overlay previews exactly what clicking Recent applies.
+  // Resolution (incl. suppressing the unrelated MRU ghost while Recent is
+  // hovered) lives in {@link resolveNoteGhostPaint}.
+  const ghostPaint = resolveNoteGhostPaint({
+    recentHover,
+    recentPhrase,
+    value: notes,
+    matchedPhrase,
+    ghostSuffix,
+  });
+  const showHoverGhost = ghostPaint.acceptAppliesRecent;
+  const paintMatchedPhrase = ghostPaint.matchedPhrase;
+  const paintGhostSuffix = ghostPaint.ghostSuffix;
 
   // DELETED 2026-08-02 — an auto-focus on the print step.
   //
@@ -285,18 +322,6 @@ export function LineNotesCard({
       setFetchingTicketSubject(false);
     }
   }, [resolvedTicketId, zendeskTicketSubject, fetchingTicketSubject, appendToNotes]);
-
-  const [syncingToInventory, setSyncingToInventory] = useState(false);
-  const handleSyncToInventory = useCallback(async () => {
-    if (syncingToInventory || !showSyncToPo) return;
-    setSyncingToInventory(true);
-    try {
-      const combined = appendNoteLine(overallZohoNotes ?? '', notes);
-      await onSaveOverallNote(combined);
-    } finally {
-      setSyncingToInventory(false);
-    }
-  }, [syncingToInventory, showSyncToPo, notes, overallZohoNotes, onSaveOverallNote]);
 
   const formattedUnitPrice = formatUnitPriceForNotes(unitPrice);
   const trimmedSkuTitle = (skuTitle || '').trim();
@@ -435,26 +460,18 @@ export function LineNotesCard({
     </>
   );
 
-  const footerEnd = showSyncToPo ? (
-    <HoverTooltip label="Push this note to the synced PO" asChild>
-      {/* ds-raw-button */}
-      <button
-        type="button"
-        onClick={() => void handleSyncToInventory()}
-        disabled={syncingToInventory}
-        aria-label="Push this note to the synced PO note"
-        className={`${NOTE_DOWNLOAD_SYNC_BTN} disabled:cursor-not-allowed disabled:opacity-40`}
-      >
-        {syncingToInventory ? (
-          <Loader2 className={`${NOTE_OVERLAY_ICON} animate-spin`} />
-        ) : (
-          <Download className={NOTE_OVERLAY_ICON} />
-        )}
-      </button>
-    </HoverTooltip>
-  ) : null;
+  const footerEnd = (
+    <UnboxNotesLocationControl
+      lineId={lineId}
+      currentLocationId={statusStamps?.staged_location_id}
+      currentLocationName={statusStamps?.staged_location_name}
+      currentLocationBarcode={statusStamps?.staged_location_barcode}
+      currentLocationRoom={statusStamps?.staged_location_room}
+    />
+  );
 
   return (
+    <>
     <OmnichannelComposerDock
       value={notes}
       onChange={onValueChange}
@@ -477,6 +494,17 @@ export function LineNotesCard({
       }
       footerStart={footerStart}
       footerEnd={footerEnd}
+      headerEnd={
+        // ds-raw-button — same overlay glyph as Recent, not a sized IconButton box.
+        <button
+          type="button"
+          aria-label="Item status history"
+          onClick={() => setStatusOpen(true)}
+          className={`${NOTE_OVERLAY_ICON_BTN} text-text-faint transition hover:bg-surface-sunken hover:text-text-muted`}
+        >
+          <Info className={NOTE_OVERLAY_ICON} />
+        </button>
+      }
       trailingAction={trailingAction}
       chrome={chrome}
       animateMount={animateMount}
@@ -499,5 +527,11 @@ export function LineNotesCard({
       }
       onTextareaKeyDown={handleGhostKeyDown}
     />
+    <UnboxNotesStatusDialog
+      open={statusOpen}
+      onOpenChange={setStatusOpen}
+      row={statusStamps ?? {}}
+    />
+    </>
   );
 }

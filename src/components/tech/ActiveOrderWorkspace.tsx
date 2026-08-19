@@ -1,8 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, ExternalLink, History, Package, Tags } from '@/components/Icons';
-import { ActiveOrderScanFeedback } from '@/components/station/ActiveOrderScanFeedback';
+import { AlertTriangle, ExternalLink, History, MapPin, Package, Tags } from '@/components/Icons';
 import { StationContextBar } from '@/components/station/entity-context';
 import {
   StationPanelRoot,
@@ -20,6 +19,7 @@ import {
 } from '@/components/station/displays';
 import { StationConditionEditor } from '@/components/tech/StationConditionEditor';
 import { ListingLinksTab } from '@/components/receiving/workspace/line-edit/ListingLinksTab';
+import { FlushTerminalFooter } from '@/design-system/primitives/FlushTerminalFooter';
 import { DISPLAYS_BODY_INSET } from '@/design-system/shells/detail-stack';
 import { cn } from '@/utils/_cn';
 import type { ActiveStationOrder } from '@/hooks/useStationTestingController';
@@ -31,7 +31,9 @@ import {
   ShippingEntityContextHeader,
   ShippingOutOfStockNotice,
 } from './shipping/ShippingEntityContextHeader';
-import { PackStationPlacementControl } from './shipping/PackStationPlacementControl';
+import { PackLocationControl } from './shipping/PackLocationControl';
+import { PackLocationsLeaf } from './shipping/PackLocationsLeaf';
+import { usePackOrderPlacement } from './shipping/usePackOrderPlacement';
 import { resolveShippingListingLinks } from './shipping/shipping-listing-links';
 import { TechSubstituteSection } from './TechSubstituteSection';
 import { useSubstitutionPolicy } from '@/hooks/fulfillment/useSubstitutionPolicy';
@@ -39,8 +41,13 @@ import { useOrderAmendments } from '@/hooks/fulfillment/useSubstitution';
 import { canShowTechSubstitution } from '@/lib/tech/substitution-eligibility';
 import { useOrderAssignment } from '@/hooks';
 
-/** Units · Condition · Timeline · Listings (trailing — upgrade slot). */
-type ShippingDisplayTab = 'units' | 'condition' | 'timeline' | 'listings';
+/** Units · Condition · Timeline · Listings (trailing — upgrade slot) · Locations. */
+type ShippingDisplayTab =
+  | 'units'
+  | 'condition'
+  | 'timeline'
+  | 'listings'
+  | 'locations';
 
 /** Displays nav: closed is `null`; open is the Root Index or a content leaf. */
 type ShippingDisplayNav = typeof STATION_DISPLAY_INDEX | ShippingDisplayTab;
@@ -69,9 +76,16 @@ interface ActiveOrderWorkspaceProps {
 
 /**
  * Focused work-item view rendered in the `/test` right pane while an order is
- * active. Unbox-family host: StationScanPaneHost + StationPanelRoot; Ship stays
- * centre work; Units · Condition · Timeline · Listings (trailing) clarify on
- * Displays (Open displays CTA).
+ * active. Unbox-family host: StationScanPaneHost + StationPanelRoot.
+ *
+ * **The centre is serial pairing and nothing else.** Units · Condition ·
+ * Timeline · Listings · Locations clarify on Displays; the order's identity is
+ * `StationContextBar` + `ShippingEntityContextHeader`; the packing desk is the
+ * floor's location pill. Two things were deliberately taken OUT of the middle:
+ * the wrap of packing-desk chips (a destination picker standing where the work
+ * goes — the desks now live in the pill's menu) and the active-order scan dump
+ * (a second identity block under the identity row). Neither may come back: the
+ * centre of a scan station is the job in hand.
  */
 export function ActiveOrderWorkspace({
   activeOrder,
@@ -116,6 +130,16 @@ export function ActiveOrderWorkspace({
   const pendingCount = blockEnforced
     ? (amendments.data ?? []).filter((r) => r.status === 'PENDING').length
     : 0;
+
+  const packOrderId =
+    !isPreview && activeOrder.id != null && activeOrder.orderFound !== false
+      ? Number(activeOrder.id)
+      : null;
+  const placement = usePackOrderPlacement({
+    orderId: packOrderId,
+    initialLocationId: activeOrder.packLocationId,
+    initialLocationName: activeOrder.packLocationName,
+  });
 
   const orderAssignmentMutation = useOrderAssignment();
   const isShipped =
@@ -189,6 +213,16 @@ export function ActiveOrderWorkspace({
       tone: listingResolution.listingUrl ? 'ok' : 'neutral',
       group: 'context',
     });
+    if (packOrderId != null) {
+      rows.push({
+        id: 'locations',
+        label: 'Locations',
+        // A directory, never an alarm — an unplaced order is normal mid-pack.
+        subtitle: placement.locationName || 'Place · print · mint',
+        tone: placement.locationName ? 'ok' : 'neutral',
+        group: 'context',
+      });
+    }
     return rows;
   }, [
     activeOrder.condition,
@@ -196,6 +230,8 @@ export function ActiveOrderWorkspace({
     conditionLabel,
     hasTimelineDisplay,
     listingResolution.listingUrl,
+    packOrderId,
+    placement.locationName,
   ]);
 
   const displayTabs = useMemo(
@@ -241,6 +277,13 @@ export function ActiveOrderWorkspace({
           ),
         },
         {
+          id: 'locations',
+          label: 'Locations',
+          icon: MapPin,
+          visible: packOrderId != null,
+          content: <PackLocationsLeaf placement={placement} />,
+        },
+        {
           id: 'listings',
           label: 'Listings',
           icon: ExternalLink,
@@ -269,8 +312,18 @@ export function ActiveOrderWorkspace({
       orderAssignmentMutation.isPending,
       listingResolution.listingLinks,
       listingLink,
+      packOrderId,
+      placement,
     ],
   );
+
+  /**
+   * Station-floor location pill → Displays → Locations. Toggles, so a second
+   * click on New location closes the column instead of re-opening it.
+   */
+  const openLocationsDisplay = useCallback(() => {
+    setActiveSideTab((prev) => (prev === 'locations' ? null : 'locations'));
+  }, []);
 
   /** `←|` Open displays → the Root Index, not `displayTabs[0]`. */
   const openDisplaysIndex = useCallback(() => setActiveSideTab(STATION_DISPLAY_INDEX), []);
@@ -318,16 +371,6 @@ export function ActiveOrderWorkspace({
               bodyGap="none"
               entityContext={
                 <>
-                  {isPreview ? null : (
-                    <ActiveOrderScanFeedback activeOrder={activeOrder} />
-                  )}
-                  {!isPreview && activeOrder.id != null && activeOrder.orderFound !== false ? (
-                    <PackStationPlacementControl
-                      orderId={Number(activeOrder.id)}
-                      initialLocationId={activeOrder.packLocationId}
-                      initialLocationName={activeOrder.packLocationName}
-                    />
-                  ) : null}
                   <ShippingOutOfStockNotice
                     isOutOfStock={Boolean(previewOrder?.is_out_of_stock)}
                   />
@@ -349,6 +392,17 @@ export function ActiveOrderWorkspace({
                     </div>
                   ) : null}
                 </>
+              }
+              footer={
+                packOrderId != null ? (
+                  <FlushTerminalFooter layout="cluster">
+                    <PackLocationControl
+                      orderId={packOrderId}
+                      placement={placement}
+                      onOpenLocations={openLocationsDisplay}
+                    />
+                  </FlushTerminalFooter>
+                ) : null
               }
               tabs={
                 <ShippingScanWorkspace

@@ -2,6 +2,7 @@ import { NextResponse, after } from 'next/server';
 import pool from '@/lib/db';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import { formatPSTTimestamp } from '@/utils/date';
+import { buildZohoReceiveNoteLine, zohoReceiveStaffName } from '@/lib/receiving/zoho-receive-note';
 import { invalidateReceivingViews } from '@/lib/receiving/invalidation';
 import { publishReceivingLogChanged, publishReturnPendingTest, publishOrderReadyShip } from '@/lib/realtime/publish';
 import {
@@ -573,9 +574,7 @@ export const POST = withAuth(async (request, ctx) => {
         staffName = (staffLookup.rows[0]?.name || '').trim();
       } catch { /* silent — fall through to generic label */ }
     }
-    if (!staffName) {
-      staffName = staffId != null && Number.isFinite(staffId) && staffId > 0 ? `Staff #${staffId}` : 'Unknown';
-    }
+    staffName = zohoReceiveStaffName(staffName, staffId);
 
     if (!Number.isFinite(receivingLineId) || receivingLineId <= 0) {
       return NextResponse.json({ success: false, error: 'receiving_line_id is required' }, { status: 400 });
@@ -614,11 +613,15 @@ export const POST = withAuth(async (request, ctx) => {
       ctx.organizationId,
       `SELECT rl.quantity_received, rl.quantity_expected, rl.workflow_status,
               rl.receiving_id AS line_receiving_id,
+              rl.scanned_at,
+              ru.unboxed_at,
               rlt.qa_status::text AS qa_status,
               rlt.disposition_code::text AS disposition_code,
               rlt.condition_grade::text AS condition_grade
          FROM receiving_line rl
          LEFT JOIN receiving_line_testing rlt ON rlt.receiving_line_id = rl.id
+         LEFT JOIN receiving_unbox ru
+           ON ru.receiving_id = rl.receiving_id AND ru.organization_id = rl.organization_id
         WHERE rl.id = $1 AND rl.organization_id = $2`,
       [receivingLineId, ctx.organizationId],
     );
@@ -627,6 +630,8 @@ export const POST = withAuth(async (request, ctx) => {
       quantity_expected: number | null;
       workflow_status: string | null;
       line_receiving_id: number | null;
+      scanned_at: Date | string | null;
+      unboxed_at: Date | string | null;
       qa_status: string | null;
       disposition_code: string | null;
       condition_grade: string | null;
@@ -1090,7 +1095,13 @@ export const POST = withAuth(async (request, ctx) => {
             patch.reference_number = localTracking;
           }
 
-          const noteLead: string[] = [`${staffName} ${now}`];
+          const noteLead: string[] = [
+            buildZohoReceiveNoteLine({
+              staffName,
+              scannedAt: beforeRow?.scanned_at ?? null,
+              unboxedAt: beforeRow?.unboxed_at ?? null,
+            }),
+          ];
           if (zendeskTicket) noteLead.push(`Zendesk: ${zendeskTicket}`);
           const noteHead = noteLead.join(' · ');
           const noteTail = [

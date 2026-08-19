@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import {
   countOpenPlacementsByLocation,
+  fetchRecentPackPlacement,
   resolvePackPlaceableLocations,
 } from '@/lib/packing/pack-placement';
 
@@ -9,13 +10,33 @@ import {
  * GET /api/orders/pack-placement — packing DESK/STAGING locations + open
  * ready-to-pack package counts per location.
  *
+ * `?excludeOrderId=` additionally returns `recent` — the desk this operator
+ * last placed an order on, minus the open one (Ready-to-Pack "Last entry").
+ *
  * Readable with either tech or packing view (Ready to Pack + Pack + To-ship).
  */
-export const GET = withAuth(async (_req: NextRequest, ctx) => {
+export const GET = withAuth(async (req: NextRequest, ctx) => {
   try {
-    const [locations, counts] = await Promise.all([
+    const excludeRaw = new URL(req.url).searchParams.get('excludeOrderId');
+    const excludeOrderId =
+      excludeRaw != null && excludeRaw.trim() !== '' ? Number(excludeRaw) : null;
+    if (
+      excludeOrderId != null &&
+      (!Number.isFinite(excludeOrderId) || excludeOrderId <= 0)
+    ) {
+      return NextResponse.json(
+        { success: false, error: 'excludeOrderId must be a positive integer' },
+        { status: 400 },
+      );
+    }
+
+    const [locations, counts, recent] = await Promise.all([
       resolvePackPlaceableLocations(ctx.organizationId),
       countOpenPlacementsByLocation(ctx.organizationId),
+      fetchRecentPackPlacement(ctx.organizationId, {
+        excludeOrderId,
+        staffId: ctx.staffId,
+      }),
     ]);
     const totalPlaced = counts.reduce((sum, row) => sum + row.count, 0);
     return NextResponse.json({
@@ -23,6 +44,7 @@ export const GET = withAuth(async (_req: NextRequest, ctx) => {
       locations,
       counts,
       totalPlaced,
+      recent,
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Failed to load pack placement';

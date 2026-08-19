@@ -21,6 +21,7 @@ export function ArrivalDisplaysActionFloor({
   onInventorySync,
   inventorySyncing = false,
   canInventorySync = true,
+  deleteIdentity,
 }: {
   receivingId: number | null | undefined;
   isUnfound: boolean;
@@ -34,6 +35,7 @@ export function ArrivalDisplaysActionFloor({
   onInventorySync?: () => void | Promise<InventoryDossierRefreshResult | void>;
   inventorySyncing?: boolean;
   canInventorySync?: boolean;
+  deleteIdentity?: { tracking?: string | null; poNumber?: string | null } | null;
 }) {
   return (
     <CartonDisplaysActionFloor
@@ -42,6 +44,7 @@ export function ArrivalDisplaysActionFloor({
       isUnfound={isUnfound}
       onDeleted={onDeleted}
       editSelected={editSelected}
+      deleteIdentity={deleteIdentity}
       onEdit={() => openDisplays('linkage')}
       onLink={() => openDisplays('linkage')}
       sync={{ onInventorySync, inventorySyncing, canInventorySync }}

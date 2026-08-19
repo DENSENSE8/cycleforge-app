@@ -42,6 +42,10 @@ import { useSyncedPoNote } from './line-edit/hooks/useSyncedPoNote';
 import { useUnboxLineController } from './line-edit/hooks/useUnboxLineController';
 import { useUnboxDisplayView } from './line-edit/hooks/useUnboxDisplayView';
 import { resolveUnboxTicketContextOpen } from './line-edit/unbox-ticket-context';
+import {
+  shouldCockpitYieldToDisplaysIndex,
+  shouldItemPhotosCompareAutoOpen,
+} from './line-edit/unbox-displays-nav';
 import { yieldUnboxStationPushesOnAssistantOpen } from './line-edit/unbox-right-edge';
 import {
   StationDisplaysPushStack,
@@ -412,6 +416,14 @@ export function LineEditPanel({
     if (activeSideTab === 'photos' && (photoAction === 'move' || photoAction === 'send')) {
       return;
     }
+    if (
+      !shouldItemPhotosCompareAutoOpen({
+        requestedDisplay: requestedSideTab,
+        activeLeaf: activeSideTab,
+      })
+    ) {
+      return;
+    }
     itemPhotosCompareOpenedRef.current = row.id;
     openDisplays('photos', { photoAction: 'compare' });
   }, [
@@ -419,6 +431,7 @@ export function LineEditPanel({
     activeKey,
     activeSideTab,
     photoAction,
+    requestedSideTab,
     row.id,
     openDisplays,
   ]);
@@ -447,6 +460,7 @@ export function LineEditPanel({
 
     if (cockpitClosedForCartonRef.current === cartonKey) return;
     if (!railLeaf) return; // reference-less step — its reference is the work plane
+    if (shouldCockpitYieldToDisplaysIndex(requestedSideTab, cartonChanged)) return;
 
     // Cold-load CLS gate: auto-opening Displays that would park the left rail
     // shifts the surface ~328px after paint. Skip the open when the frame store
@@ -494,6 +508,7 @@ export function LineEditPanel({
     openDisplays,
     row,
     hasTicketId,
+    requestedSideTab,
   ]);
 
   const onLinkageActionChange = useCallback(
@@ -529,10 +544,10 @@ export function LineEditPanel({
 
   const closeClaimView = useCallback(() => {
     c.setReturnClaimPrefill(null);
-    // Stay on Ticket → Chat when a ticket exists; otherwise close Displays.
+    // Stay on Ticket → Chat when a ticket exists; otherwise Displays index.
     if (hasTicketId) openDisplays('ticket', { ticketAction: 'chat' });
-    else closeDisplays();
-  }, [c, hasTicketId, openDisplays, closeDisplays]);
+    else openDisplays(UNBOX_DISPLAY_INDEX);
+  }, [c, hasTicketId, openDisplays]);
 
   const onClaimTicketCreated = useCallback(
     (ticketNumber: string) => {
@@ -639,16 +654,16 @@ export function LineEditPanel({
   }, [activeSideTab, linkageAction, openDisplays, closeDisplays]);
 
   /**
-   * Order-chip Details → Unbox Displays Inventory dossier (not Incoming
-   * RightRailHost / external Zoho). Unpaired cartons still open Inventory so
-   * Pair inventory CTA is one click away.
+   * Notes-footer location pill → Displays → Locations (browse · reprint · mint).
+   * Toggles like the other leaf openers, so a second click on New location
+   * closes the column rather than re-opening what is already showing.
    */
-  const openOrderConnectionDetails = useCallback(() => {
-    if (activeSideTab === 'inventory') {
+  const openLocationsDisplay = useCallback(() => {
+    if (activeSideTab === 'locations') {
       closeDisplays();
       return;
     }
-    openDisplays('inventory');
+    openDisplays('locations');
   }, [activeSideTab, closeDisplays, openDisplays]);
 
   useEffect(() => {
@@ -760,7 +775,7 @@ export function LineEditPanel({
         inventorySyncing: Boolean(c.inventoryRefreshing),
         claimMode,
         onCloseClaim: closeClaimView,
-        onCloseTicket: closeDisplays,
+        onCloseTicket: openDisplaysIndex,
         onClaimTicketCreated,
         onClaimTicketUnlinked,
         accordionBootstrap,
@@ -793,7 +808,7 @@ export function LineEditPanel({
       openPoPairing,
       claimMode,
       closeClaimView,
-      closeDisplays,
+      openDisplaysIndex,
       onClaimTicketCreated,
       onClaimTicketUnlinked,
       accordionBootstrap,
@@ -885,7 +900,6 @@ export function LineEditPanel({
           onEditTracking={hasTrackingTab ? () => openDisplays('tracking') : undefined}
           onEditListing={hasListingsTab ? () => openDisplays('listings') : undefined}
           onEditPo={openPoPairing}
-          onOrderDetails={openOrderConnectionDetails}
           trackingEditOpen={activeSideTab === 'tracking'}
           poEditOpen={activeSideTab === 'linkage' && linkageAction === 'link'}
           photoStage="unbox_carton"
@@ -1002,7 +1016,6 @@ export function LineEditPanel({
                         <WorkspaceNotesCard
                           row={row}
                           c={c}
-                          onActionFeedback={setActionFeedback}
                           chrome="raised"
                           trailingAction={bubbleTerminal}
                           onPrimaryAction={() => {
@@ -1015,6 +1028,7 @@ export function LineEditPanel({
                             nudgeUnboxPrintReceive('cta');
                           }}
                           primaryActionDisabled={Boolean(terminalVm.disabled)}
+                          onOpenLocations={openLocationsDisplay}
                         />
                       ) : null}
                     </div>
@@ -1082,6 +1096,10 @@ export function LineEditPanel({
                   openDisplays={(tab, opts) => openDisplays(tab, opts)}
                   onDeleted={closeDisplays}
                   editSelected={activeSideTab === 'linkage'}
+                  deleteIdentity={{
+                    tracking: trackingNumber,
+                    poNumber: row.zoho_purchaseorder_number,
+                  }}
                   onInventorySync={() => c.refreshInventoryDossier()}
                   inventorySyncing={Boolean(c.inventoryRefreshing)}
                   canInventorySync={

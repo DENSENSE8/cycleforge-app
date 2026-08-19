@@ -32,6 +32,7 @@ export function UnboxDisplaysActionFloor({
   onInventorySync,
   inventorySyncing = false,
   canInventorySync = true,
+  deleteIdentity,
 }: {
   receivingId: number | null | undefined;
   isUnfound: boolean;
@@ -46,6 +47,7 @@ export function UnboxDisplaysActionFloor({
   onInventorySync?: () => void | Promise<InventoryDossierRefreshResult | void>;
   inventorySyncing?: boolean;
   canInventorySync?: boolean;
+  deleteIdentity?: { tracking?: string | null; poNumber?: string | null } | null;
 }) {
   return (
     <CartonDisplaysActionFloor
@@ -54,6 +56,7 @@ export function UnboxDisplaysActionFloor({
       isUnfound={isUnfound}
       onDeleted={onDeleted}
       editSelected={editSelected}
+      deleteIdentity={deleteIdentity}
       onEdit={() => {
         if (isUnfound) {
           openDisplays('linkage', { linkageAction: 'link' });

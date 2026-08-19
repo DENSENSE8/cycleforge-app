@@ -171,7 +171,7 @@ function ClaimPhaseActions({
         {c.linkCommitStatus === 'linking'
           ? 'Linking…'
           : c.linkUpdateStatus === 'posting'
-            ? 'Sending…'
+            ? 'Saving photos…'
             : search.selectedTicket
               ? `Link & send #${search.selectedTicket.id} →`
               : 'Choose a ticket'}

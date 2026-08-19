@@ -32,8 +32,7 @@ export type SaveOverallNoteResult = {
  * Shared handler to persist the carton-level synced PO note (overwrite + push to
  * the inventory PO field) and surface the result in the workspace feedback slot.
  *
- * Used by BOTH the notes composer's "push to PO" button ({@link WorkspaceNotesCard})
- * and the standalone "PO note" display tab ({@link LinePoNoteCard}), so the ~40-line
+ * Used by the standalone "PO note" display tab ({@link LinePoNoteCard}), so the
  * PATCH + feedback path lives in exactly one place.
  */
 export function useSyncedPoNote(
