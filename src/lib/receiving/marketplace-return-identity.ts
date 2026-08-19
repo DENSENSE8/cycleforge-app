@@ -63,5 +63,8 @@ export function formatMarketplaceReturnIdentityTitle(
     receiving_type: 'RETURN',
   });
   const short = classificationShort(cls);
-  return [short, 'return', getLast8(orderId)].join(MARKETPLACE_RETURN_IDENTITY_SEP);
+  // Amazon ids are hyphenated (114-1234567-5969038), so a blind last-8 drags the
+  // segment's own hyphen in and renders as a double dash after the en-dash join.
+  const last8 = getLast8(orderId).replace(/^[-_]+/, '');
+  return [short, 'return', last8].join(MARKETPLACE_RETURN_IDENTITY_SEP);
 }

@@ -45,7 +45,7 @@ describe('receiving-search-title', () => {
         sourcePlatform: 'amazon',
         intakeType: 'RETURN',
       }),
-      'AMZ – return – -4552201',
+      'AMZ – return – 4552201',
     );
   });
 
@@ -76,7 +76,7 @@ describe('receiving-search-title', () => {
         firstItemName: 'Bose QuietComfort',
         fallback: 'Receiving #1',
       }),
-      'AMZ – return – -4552201',
+      'AMZ – return – 4552201',
     );
   });
 

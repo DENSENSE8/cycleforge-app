@@ -78,7 +78,7 @@ test('getReceivingPoGroupTitle — Amazon RETURN is AMZ – return – last8, no
     zoho_purchaseorder_number: null,
   });
   const title = getReceivingPoGroupTitle(r, (p) => (p === 'amazon' ? 'Amazon' : p));
-  assert.equal(title, 'AMZ – return – -4552201');
+  assert.equal(title, 'AMZ – return – 4552201');
   assert.ok(!title.includes('Order'));
   assert.ok(!title.includes(orderId));
 });
@@ -97,7 +97,7 @@ test('receivingAdaptiveRailTitle — Amazon RETURN identity even for a single SK
   });
   assert.equal(
     receivingAdaptiveRailTitle(r, (p) => (p === 'amazon' ? 'Amazon' : p)),
-    'AMZ – return – -4552201',
+    'AMZ – return – 4552201',
   );
 });
 

@@ -1,6 +1,5 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { getLast8 } from '@/lib/copy-chip-format';
 import {
   formatMarketplaceReturnIdentityTitle,
   isMarketplaceReturnIntake,
@@ -15,7 +14,9 @@ test('Amazon RETURN paints AMZ – return – last8, never Order + full id', () 
     returnPlatform: 'AMZ',
     receivingType: 'RETURN',
   });
-  assert.equal(title, `AMZ – return – ${getLast8(AMAZON_ORDER)}`);
+  // last-8 of the id is '-4552201'; the leading hyphen is dropped so the
+  // en-dash join never renders as a double dash.
+  assert.equal(title, 'AMZ – return – 4552201');
   assert.ok(title && !title.includes('Order'));
   assert.ok(title && !title.includes(AMAZON_ORDER));
 });
@@ -40,7 +41,7 @@ test('eBay RETURN uses eBay short + last8', () => {
       sourcePlatform: 'ebay',
       receivingType: 'RETURN',
     }),
-    `eBay – return – ${getLast8(orderId)}`,
+    'eBay – return – 67-89012',
   );
 });
 
@@ -51,6 +52,6 @@ test('carton intake_type RETURN is enough without is_return', () => {
       sourcePlatform: 'amazon',
       cartonIntakeType: 'RETURN',
     }),
-    `AMZ – return – ${getLast8(AMAZON_ORDER)}`,
+    'AMZ – return – 4552201',
   );
 });
