@@ -11,7 +11,7 @@
  *
  * Nested drill reports trail / pop / restore UP via
  * {@link useDisplaysLeafChrome} — the stack owns ← → Esc / Back and the
- * leaf-dismiss footer (`→|`). This host never mounts
+ * column (no footer since 2026-08-19). This host never mounts
  * {@link StationDisplayLeafHeader}, a hand-rolled sub-index, an Action
  * KeyLegend floor, or `/` leaf-commands.
  *
@@ -104,7 +104,6 @@ export function InventoryDisplayHost({
     setTrail,
     setOnNestedPop,
     setOnNestedRestore,
-    setLeafCommands,
     setLeafTrailing,
   } = useDisplaysLeafChrome();
 
@@ -131,12 +130,6 @@ export function InventoryDisplayHost({
     });
     return () => setOnNestedRestore(null);
   }, [setOnNestedRestore]);
-
-  // Never opt into `/` leaf-command footer — stack stays on leaf-dismiss (`→|`).
-  useEffect(() => {
-    setLeafCommands(null);
-    return () => setLeafCommands(null);
-  }, [setLeafCommands]);
 
   const poId = (row.zoho_purchaseorder_id || '').trim() || null;
   const inboundSource = (row.inbound_source_type || '').trim().toLowerCase();

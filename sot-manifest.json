@@ -30,7 +30,7 @@
     "src/lib/orders-sync",
     "src/hooks"
   ],
-  "count": 2722,
+  "count": 2719,
   "entries": [
     {
       "job": "Station: Scan pane + Displays push",
@@ -8411,45 +8411,6 @@
       "snippet": "export groupDisplayIndexRows from src/components/station/displays/display-index.ts"
     },
     {
-      "job": "Export: DisplaysFooterStage",
-      "sot": "DisplaysFooterStage",
-      "path": "src/components/station/displays/displays-footer-command.ts",
-      "guard": null,
-      "symbols": [
-        "DisplaysFooterStage"
-      ],
-      "kind": "code",
-      "source": "src/components/station/displays/displays-footer-command.ts",
-      "line": 16,
-      "snippet": "export DisplaysFooterStage from src/components/station/displays/displays-footer-command.ts"
-    },
-    {
-      "job": "Export: DisplaysFooterCommand",
-      "sot": "DisplaysFooterCommand",
-      "path": "src/components/station/displays/displays-footer-command.ts",
-      "guard": null,
-      "symbols": [
-        "DisplaysFooterCommand"
-      ],
-      "kind": "code",
-      "source": "src/components/station/displays/displays-footer-command.ts",
-      "line": 18,
-      "snippet": "export DisplaysFooterCommand from src/components/station/displays/displays-footer-command.ts"
-    },
-    {
-      "job": "Export: formatDisplaysFooterSlash",
-      "sot": "formatDisplaysFooterSlash",
-      "path": "src/components/station/displays/displays-footer-command.ts",
-      "guard": null,
-      "symbols": [
-        "formatDisplaysFooterSlash"
-      ],
-      "kind": "code",
-      "source": "src/components/station/displays/displays-footer-command.ts",
-      "line": 33,
-      "snippet": "export formatDisplaysFooterSlash from src/components/station/displays/displays-footer-command.ts"
-    },
-    {
       "job": "Export: DisplaysBreadcrumbSegment",
       "sot": "DisplaysBreadcrumbSegment",
       "path": "src/components/station/displays/displays-leaf-chrome.tsx",
@@ -8459,7 +8420,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/displays/displays-leaf-chrome.tsx",
-      "line": 27,
+      "line": 26,
       "snippet": "export DisplaysBreadcrumbSegment from src/components/station/displays/displays-leaf-chrome.tsx"
     },
     {
@@ -8472,7 +8433,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/displays/displays-leaf-chrome.tsx",
-      "line": 64,
+      "line": 57,
       "snippet": "export useDisplaysLeafChrome from src/components/station/displays/displays-leaf-chrome.tsx"
     },
     {
@@ -8485,7 +8446,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/displays/displays-leaf-chrome.tsx",
-      "line": 75,
+      "line": 68,
       "snippet": "export DisplaysLeafChromeProvider from src/components/station/displays/displays-leaf-chrome.tsx"
     },
     {
@@ -8812,32 +8773,6 @@
       "source": "src/components/station/displays/StationDisplayLeafHeader.tsx",
       "line": 53,
       "snippet": "export StationDisplayLeafHeader from src/components/station/displays/StationDisplayLeafHeader.tsx"
-    },
-    {
-      "job": "Export: StationDisplaysCommandFooter",
-      "sot": "StationDisplaysCommandFooter",
-      "path": "src/components/station/displays/StationDisplaysCommandFooter.tsx",
-      "guard": null,
-      "symbols": [
-        "StationDisplaysCommandFooter"
-      ],
-      "kind": "code",
-      "source": "src/components/station/displays/StationDisplaysCommandFooter.tsx",
-      "line": 44,
-      "snippet": "export StationDisplaysCommandFooter from src/components/station/displays/StationDisplaysCommandFooter.tsx"
-    },
-    {
-      "job": "Export: StationDisplaysDismissFooter",
-      "sot": "StationDisplaysDismissFooter",
-      "path": "src/components/station/displays/StationDisplaysDismissFooter.tsx",
-      "guard": null,
-      "symbols": [
-        "StationDisplaysDismissFooter"
-      ],
-      "kind": "code",
-      "source": "src/components/station/displays/StationDisplaysDismissFooter.tsx",
-      "line": 18,
-      "snippet": "export StationDisplaysDismissFooter from src/components/station/displays/StationDisplaysDismissFooter.tsx"
     },
     {
       "job": "Export: StationDisplaysEdgeToggle",
@@ -26013,6 +25948,32 @@
       "snippet": "export useMediaLibraryShortcuts from src/hooks/useMediaLibraryShortcuts.ts"
     },
     {
+      "job": "Export: nasArchivePendingQueryKey",
+      "sot": "nasArchivePendingQueryKey",
+      "path": "src/hooks/useNasArchivePending.ts",
+      "guard": null,
+      "symbols": [
+        "nasArchivePendingQueryKey"
+      ],
+      "kind": "code",
+      "source": "src/hooks/useNasArchivePending.ts",
+      "line": 16,
+      "snippet": "export nasArchivePendingQueryKey from src/hooks/useNasArchivePending.ts"
+    },
+    {
+      "job": "Export: useNasArchivePending",
+      "sot": "useNasArchivePending",
+      "path": "src/hooks/useNasArchivePending.ts",
+      "guard": null,
+      "symbols": [
+        "useNasArchivePending"
+      ],
+      "kind": "code",
+      "source": "src/hooks/useNasArchivePending.ts",
+      "line": 32,
+      "snippet": "export useNasArchivePending from src/hooks/useNasArchivePending.ts"
+    },
+    {
       "job": "Export: NasConfig",
       "sot": "NasConfig",
       "path": "src/hooks/useNasConfig.ts",
@@ -28310,7 +28271,7 @@
       ],
       "kind": "code",
       "source": "src/hooks/useTicketNasArchive.ts",
-      "line": 33,
+      "line": 39,
       "snippet": "export useTicketNasArchive from src/hooks/useTicketNasArchive.ts"
     },
     {

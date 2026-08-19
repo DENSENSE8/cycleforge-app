@@ -5,7 +5,7 @@
  *   - `StationDisplaysHeaderActions` is the top-band cluster host; the retired
  *     bottom `StationDisplaysActionFloor` rung is gone from the column
  *   - PushColumn mounts `headerActions` in the band's trailing cluster, and the
- *     `Filter displays… + →|` footer STAYS at the bottom (left-rail twin)
+ *     `Filter displays…` is ROW 2 (sub-header, index only) — no footer
  *   - the carton `↑↓` cursor no longer mounts in the band
  *   - verb order is Refresh · Print · Edit · `⋮`, with `⋮` LAST on every station
  *   - Delete is inside `⋮` (tone danger), never an exposed peer
@@ -79,18 +79,22 @@ describe('PushColumn / PushStack mount order', () => {
     assert.doesNotMatch(src, /ScanStationCartonCursor/);
   });
 
-  it('PushStack plumbs headerActions; Filter stays on the close-chrome footer', () => {
+  it('PushStack plumbs headerActions; Filter is row 2, never in the band', () => {
     const src = read(STACK);
     assert.match(src, /headerActions=\{headerActions\}/);
-    // The filter lives in the footer component, not in the band. Pin the
-    // mount, not the placeholder string — that literal only ever appeared in a
-    // docblock, which `stripComments` removes.
-    assert.match(src, /<StationDisplaysDismissFooter/);
+    // The filter is the column's own sub-header row, below the band and above
+    // the index body (2026-08-19). Pin the slot, not the placeholder string.
+    assert.match(src, /subHeader=\{/);
     const actionsPos = src.indexOf('headerActions={headerActions}');
-    const footerPos = src.indexOf('<StationDisplaysDismissFooter');
+    const subHeaderPos = src.indexOf('subHeader={');
     assert.ok(
-      footerPos > actionsPos,
-      'the dismiss/filter footer still renders after the band cluster',
+      subHeaderPos > actionsPos,
+      'the filter row renders after the band cluster, not inside it',
+    );
+    assert.doesNotMatch(
+      src,
+      /footer=\{/,
+      'the column paints no bottom band — the filter row replaced it',
     );
     assert.doesNotMatch(src, /actionFloor/);
     assert.doesNotMatch(src, /headerTrailing/);

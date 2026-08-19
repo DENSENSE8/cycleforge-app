@@ -342,12 +342,13 @@ them. Law: `source-of-truth.md` → Station Action vs Context planes.
   (not a per-panel listener). Closes the whole column from a leaf (toggle
   visibility); Esc still pops leaf → index → close. Guard:
   `station-displays-toggle-hotkey.guard.test.ts`.
-- **Footer is stage-owned (list vs triage leaf):** Root Index = bottom
-  `TechRailSearchBar` (`Filter displays…`) with `→|` as `trailingAction`.
-  Leaf triage/action = `StationDisplaysDismissFooter` (`→|` dismiss band only)
-  — never mount list-filter chrome on a leaf. Filter query applies only to
-  `StationDisplayIndexList` / `filterDisplayIndexRows`. Guard:
-  `station-displays-footer-stage.guard.test.ts`.
+- **Chrome is two rows and no footer (2026-08-19):** row 1 = the header band;
+  **row 2 = `Filter displays…`** (`subHeader`, full width, **Root Index only**,
+  `TechRailSearchBar variant="chrome"` — the same find face as the Unbox sheet's
+  Band 3, above the list it filters). A leaf paints no filter, and the column
+  paints no bottom band. Filter query applies only to `StationDisplayIndexList` /
+  `filterDisplayIndexRows`. Guard:
+  `station-displays-chrome-rows.guard.test.ts`.
 - **Carton Macro verbs (top band):** Unbox mounts
   `StationDisplaysHeaderActions` via PushStack `headerActions` in the column's
   top-right corner — Refresh · Print/Resolve · Edit · trailing `⋮` (Delete and

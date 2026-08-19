@@ -22,13 +22,15 @@
  *     {@link StationDisplayLeafHeader}.
  *   - Forward restores nested drill first, then the visit future stack.
  *
- * Chrome bands are stage-owned (left-rail twin grammar):
- *   - Root Index **and** default leaves → {@link StationDisplaysDismissFooter}
- *     (`Filter displays…`) — the column's bottom band. Dismiss is NOT here any
- *     more: the single header band owns the far-right `→|` (2026-08-18).
- *   - Leaf opt-in → {@link StationDisplaysCommandFooter} (`/` · `→|`)
- *     when the active leaf registers commands via
- *     {@link useDisplaysLeafChrome} `setLeafCommands` (`leaf-command`)
+ * Chrome is two rows and no bottom band (ruled 2026-08-19):
+ *   - Row 1 — the header band (`< Back` · title · verbs · `⋮` · `⤢` · `→|`).
+ *   - Row 2 — `Filter displays…` on the **Root Index only**, full width,
+ *     directly above the first group eyebrow. A find field belongs above the
+ *     list it filters; a leaf must never inherit list-filter chrome that does
+ *     not refine the leaf.
+ *   - There is no footer. The filter was the bottom band's only remaining
+ *     occupant once `→|` moved into the header (2026-08-18), and the opt-in
+ *     `/` command footer had zero leaves registering commands.
  *
  * When {@link headerActions} is set (Unbox carton Macro), those verbs sit in the
  * single header band's right group, `⋮` last before fullscreen + close. Delete
@@ -49,15 +51,12 @@ import {
 } from 'react';
 import type { SectionTab } from '@/design-system/components';
 import { isKeyboardRegionOwner } from '@/lib/keyboard/keyboard-region-owner';
-import { StationDisplaysCommandFooter } from './StationDisplaysCommandFooter';
-import { StationDisplaysDismissFooter } from './StationDisplaysDismissFooter';
 import {
   STATION_DISPLAY_INDEX,
   deriveDisplayIndexRowsFromTabs,
   filterDisplayIndexRows,
   type DisplayIndexRow,
 } from './display-index';
-import type { DisplaysFooterCommand, DisplaysFooterStage } from './displays-footer-command';
 import {
   DisplaysLeafChromeProvider,
   type DisplaysBreadcrumbSegment,
@@ -78,6 +77,7 @@ import {
   DisplaysIndexLeafStage,
   type StationDisplayIndexFilterKeys,
 } from './DisplaysIndexLeafStage';
+import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 import { StationDisplayLeafHeader } from './StationDisplayLeafHeader';
 import { StationDisplaysPushColumn } from './StationDisplaysPushColumn';
 import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
@@ -173,9 +173,6 @@ export function StationDisplaysPushStack({
   const [leafTrail, setLeafTrail] = useState<DisplaysBreadcrumbSegment[]>([]);
   /** Leaf-wide header trailing (Claim New·Link) — cleared on index / leaf exit. */
   const [leafTrailing, setLeafTrailingState] = useState<ReactNode>(null);
-  /** Opt-in leaf-command items — non-empty flips footer to leaf-command stage. */
-  const [leafCommands, setLeafCommandsState] = useState<DisplaysFooterCommand[]>([]);
-  const [commandOpen, setCommandOpen] = useState(false);
   const nestedPopRef = useRef<(() => void) | null>(null);
   const nestedRestoreRef = useRef<((segmentId: string) => void) | null>(null);
   /** Segment ids popped by nested Back — Forward restores before visit future. */
@@ -227,16 +224,12 @@ export function StationDisplaysPushStack({
       nestedPopRef.current = null;
       nestedRestoreRef.current = null;
       setNestedForward([]);
-      setLeafCommandsState([]);
-      setCommandOpen(false);
       return;
     }
     setLeafTrail([{ id: activeTab, label: tabLabel(tabs, activeTab) }]);
     nestedPopRef.current = null;
     nestedRestoreRef.current = null;
     setNestedForward([]);
-    setLeafCommandsState([]);
-    setCommandOpen(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- tab label is read once per leaf open
   }, [activeTab, onIndex]);
 
@@ -301,12 +294,6 @@ export function StationDisplaysPushStack({
     nestedRestoreRef.current = handler;
   }, []);
 
-  const setLeafCommands = useCallback((items: DisplaysFooterCommand[] | null) => {
-    const next = items && items.length > 0 ? items : [];
-    setLeafCommandsState(next);
-    if (next.length === 0) setCommandOpen(false);
-  }, []);
-
   const setLeafTrailing = useCallback((node: ReactNode | null) => {
     setLeafTrailingState(node);
   }, []);
@@ -344,17 +331,13 @@ export function StationDisplaysPushStack({
 
   /** Esc: command palette → clear index filter → nested → visit/leaf → index → close. Never Forward. */
   const onEscape = useCallback(() => {
-    if (commandOpen) {
-      setCommandOpen(false);
-      return;
-    }
     if (onIndex && filterQuery.trim()) {
       setFilterQuery('');
       return;
     }
     if (onIndex) onClose();
     else popOne();
-  }, [commandOpen, filterQuery, onIndex, onClose, popOne]);
+  }, [filterQuery, onIndex, onClose, popOne]);
 
   /** Index Left closes the column (Layer A); leaf Left = popOne. */
   const onHistoryBack = useCallback(() => {
@@ -440,12 +423,6 @@ export function StationDisplaysPushStack({
     />
   );
 
-  const footerStage: DisplaysFooterStage = onIndex
-    ? 'index-filter'
-    : leafCommands.length > 0
-      ? 'leaf-command'
-      : 'leaf-dismiss';
-
   return (
     <StationDisplaysPushColumn
       ariaLabel={ariaLabel}
@@ -459,32 +436,28 @@ export function StationDisplaysPushStack({
       headerRightSlot={rightSlot}
       headerNav={historyChrome}
       headerActions={headerActions}
-      footer={
-        footerStage === 'leaf-command' ? (
-          <div data-footer-stage={footerStage} className="shrink-0">
-            <StationDisplaysCommandFooter
-              commands={leafCommands}
-              open={commandOpen}
-              onOpenChange={setCommandOpen}
-              onClose={onClose}
-            />
-          </div>
-        ) : (
+      subHeader={
+        onIndex ? (
           <div
-            data-testid="unbox-displays-footer"
-            data-footer-stage={footerStage}
-            className="shrink-0"
+            data-testid="unbox-displays-filter-row"
+            className="shrink-0 border-b border-border-hairline"
           >
-            <StationDisplaysDismissFooter
-              filterQuery={filterQuery}
-              onFilterChange={applyFilterQuery}
-              onFilterClear={() => applyFilterQuery('')}
-              onFilterKeyDown={(e) =>
-                indexFilterKeysRef.current?.onFilterKeyDown(e)
-              }
+            {/* Same find face as the Unbox workbench sheet's Band 3
+                (`variant="chrome"` + `min-w-0 flex-1`), so the field an
+                operator types into above a list is one component and one
+                rhythm on both surfaces. Index only — a leaf inherits no
+                list-filter chrome. */}
+            <TechRailSearchBar
+              variant="chrome"
+              value={filterQuery}
+              onChange={applyFilterQuery}
+              onClear={() => applyFilterQuery('')}
+              onKeyDown={(e) => indexFilterKeysRef.current?.onFilterKeyDown(e)}
+              placeholder="Filter displays…"
+              className="min-w-0 flex-1"
             />
           </div>
-        )
+        ) : null
       }
     >
       <DisplaysIndexLeafStage
@@ -503,7 +476,6 @@ export function StationDisplaysPushStack({
             setTrail={setTrail}
             setOnNestedPop={setOnNestedPop}
             setOnNestedRestore={setOnNestedRestore}
-            setLeafCommands={setLeafCommands}
             setLeafTrailing={setLeafTrailing}
           >
             {activeLeafTab?.content ?? null}

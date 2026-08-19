@@ -119,7 +119,7 @@ mounts no floor.
 (moved off the bottom rung 2026-08-18). Layout: Refresh · Print/Resolve · Edit ·
 trailing **`⋮`**, with Delete and Resolve *inside* `⋮` (`tone="danger"` + the
 undo toast) — the opposite of the desk floor, where Delete is the flush trailing
-peer. The `Filter displays… + →|` footer keeps the bottom band. Unbox golden:
+peer. `Filter displays…` is row 2 under the band; there is no bottom band. Unbox golden:
 `UnboxDisplaysActionFloor` (`station-displays-carton-floor.ts`). Still never
 import desk `InspectorActionFloor` into Displays.
 

@@ -190,7 +190,8 @@ browse until step advances; never steals wedge focus. Detail: [`scan-cockpit.md`
 
 **Macro:** `StationDisplaysHeaderActions` in the column's **top-right band** —
 Refresh · Print · Edit · `⋮` (Resolve + Delete inside `⋮`). Moved off the bottom
-rung 2026-08-18; the `Filter displays… + →|` footer stays at the bottom. Never
+rung 2026-08-18. `Filter displays…` is row 2 under the band and the bottom
+footer is gone (2026-08-19). Never
 desk `InspectorActionFloor`.
 
 ---
