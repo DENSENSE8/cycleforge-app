@@ -30,6 +30,12 @@ import {
 } from '@/components/station/entity-context/station-identity-chrome';
 import { useHoverSurface } from '@/hooks/useHoverSurface';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/design-system/primitives/DropdownMenu';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { motionBezier, framerDuration } from '@/design-system/foundations/motion-framer';
 import { cn } from '@/utils/_cn';
