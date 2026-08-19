@@ -64,7 +64,9 @@ const UNSHIPPED_LIST_KEY = [
   },
 ] as const; // unshippedOrdersQuery
 const UNSHIPPED_COUNTS_KEY = ['dashboard-table', 'unshipped-counts', { staffId: null }] as const; // unshippedQueueCountsQuery
-const PACK_PLACEMENT_KEY = ['orders', 'pack-placement'] as const; // packPlacementQuery
+// `null` = the no-excludeOrderId read; the pill's own Last-entry variant keys
+// on its order id and is never the shell seed's business.
+const PACK_PLACEMENT_KEY = ['orders', 'pack-placement', null] as const; // packPlacementQuery
 const UNIT_PLACEMENT_KEY = ['units', 'pack-placement'] as const; // unitPackPlacementQuery
 const OPS_ROI_KEY = ['ops-roi'] as const; // useOperationsRoi
 const STAFF_PREFERENCES_KEY = ['staff-preferences'] as const; // useStaffPreferences

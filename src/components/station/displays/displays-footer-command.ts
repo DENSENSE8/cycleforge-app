@@ -2,10 +2,12 @@
  * Station Displays leaf-command footer — opt-in slash actions.
  *
  * Footer stages (SoT):
- *   - `index-filter` — Root Index only (`TechRailSearchBar` · Filter displays…)
- *   - `leaf-dismiss` — default leaf (`StationDisplaysDismissFooter`)
+ *   - `index-filter` — Root Index (`TechRailSearchBar` · Filter displays…)
+ *   - `leaf-dismiss` — default leaf (same Filter + `→|` band as index)
  *   - `leaf-command` — leaf registers {@link DisplaysFooterCommand}[] via
  *     {@link useDisplaysLeafChrome} `setLeafCommands`
+ *
+ * Filter / hide always sit **above** the carton Macro icon row.
  *
  * Commands compose existing leaf / terminal / print owners — never page-local
  * fetchers, never raw status SQL, never orgId from the body.

@@ -32,7 +32,7 @@ function runGate(): { status: number; out: string } {
   }
 }
 
-describe('jscpd shrink-only clone baseline', () => {
+describe('jscpd shrink-only clone baseline', { concurrency: false }, () => {
   it('jscpd is wired: config + baseline + gate script exist', () => {
     assert.ok(existsSync(CONFIG), '.jscpd.json missing');
     assert.ok(existsSync(BASELINE), 'jscpd-baseline.json missing — seed with node scripts/jscpd-gate.mjs --write');
@@ -72,10 +72,10 @@ describe('jscpd shrink-only clone baseline', () => {
       assert.notEqual(status, 0, 'expected the new clone to fail the shrink-only baseline');
       assert.match(out, /clones grew|jscpd-gate/);
     } finally {
+      execFileSync('git', ['reset', '-q', 'HEAD', '--', PROBE_A, PROBE_B], { cwd: ROOT });
       for (const probe of [PROBE_A, PROBE_B]) {
         if (existsSync(probe)) unlinkSync(probe);
       }
-      execFileSync('git', ['reset', '-q', 'HEAD', '--', PROBE_A, PROBE_B], { cwd: ROOT });
     }
   });
 

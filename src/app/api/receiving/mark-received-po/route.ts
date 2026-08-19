@@ -3,6 +3,7 @@ import pool from '@/lib/db';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import { logger } from '@/lib/observability/logger';
 import { formatPSTTimestamp } from '@/utils/date';
+import { buildZohoReceiveNoteLine, zohoReceiveStaffName } from '@/lib/receiving/zoho-receive-note';
 import { invalidateReceivingViews } from '@/lib/receiving/invalidation';
 import { publishReceivingLogChanged } from '@/lib/realtime/publish';
 // Pure payload helpers only — every Zoho NETWORK call in this route goes
@@ -19,6 +20,7 @@ import { getInventoryProvider, type InventoryProvider } from '@/lib/integrations
 import { receiveLineUnits, unreceiveLineUnits } from '@/lib/receiving/receive-line';
 import { transitionReceivingLine } from '@/lib/receiving/state-machine';
 import { upsertReceivingLineZoho } from '@/lib/receiving/facts/narrow';
+import type { FactsDeps } from '@/lib/receiving/facts/store';
 import { upsertReceivingUnbox } from '@/lib/receiving/streets/carton-street-write';
 import { attachSerialToLine } from '@/lib/receiving/serial-attach';
 import { refreshLineSerialProjectionSafe } from '@/lib/receiving/serial-projection';
@@ -216,9 +218,7 @@ export const POST = withAuth(async (request, ctx) => {
         /* silent */
       }
     }
-    if (!staffName) {
-      staffName = staffId != null && staffId > 0 ? `Staff #${staffId}` : 'Unknown';
-    }
+    staffName = zohoReceiveStaffName(staffName, staffId);
 
     const receiveIntentRaw = String(body?.receive_intent ?? 'zoho_receive').trim().toLowerCase();
     const skipZohoReceive = receiveIntentRaw === 'scan_only';
@@ -309,6 +309,19 @@ export const POST = withAuth(async (request, ctx) => {
     };
 
     const now = formatPSTTimestamp();
+
+    const stampRes = await tenantQuery<{ scanned_at: Date | null; unboxed_at: Date | null }>(
+      ctx.organizationId,
+      `SELECT MIN(rl.scanned_at) AS scanned_at, MIN(ru.unboxed_at) AS unboxed_at
+         FROM receiving_line rl
+         LEFT JOIN receiving_unbox ru
+           ON ru.receiving_id = rl.receiving_id
+          AND ru.organization_id = rl.organization_id
+        WHERE rl.receiving_id = $1 AND rl.organization_id = $2`,
+      [receivingId, ctx.organizationId],
+    );
+    const cartonScannedAt = stampRes.rows[0]?.scanned_at ?? null;
+    const cartonUnboxedAt = stampRes.rows[0]?.unboxed_at ?? null;
 
     // scan_only is a local-only state action: include ALL lines (even DONE) so
     // "Mark as scanned" can flip a previously-DONE line back to MATCHED for
@@ -583,11 +596,15 @@ export const POST = withAuth(async (request, ctx) => {
         disposition_code: dispositionCode,
         condition_grade: conditionGrade,
         notes,
-        // A real receive advances lines straight to DONE (local SoT). Zoho
-        // createPurchaseReceive stays best-effort in after() — Sync failed must
-        // not park lifecycle at UNBOXED. scan_only keeps MATCHED so its
-        // "SCANNED" mark + revert still work (and legitimately owns scanned_at).
-        set_workflow_status: skipZohoReceive ? 'MATCHED' : 'DONE',
+        // Zoho-linked receive parks at UNBOXED until after() confirms the
+        // purchase receive. Inventory is currently SoT for Received. Unfound
+        // cartons are forced local_receive after the carton load and the
+        // batch DONE below promotes them. scan_only keeps MATCHED.
+        set_workflow_status: skipZohoReceive
+          ? 'MATCHED'
+          : localReceive
+            ? 'DONE'
+            : 'UNBOXED',
         // A real receive must not downgrade a line already unboxed at first scan;
         // scan_only ("Mark as scanned") leaves this false so its revert still works.
         advanceOnly: !skipZohoReceive,
@@ -839,17 +856,18 @@ export const POST = withAuth(async (request, ctx) => {
       }
     }
 
-    // Local lifecycle completes on Receive. Zoho sync is best-effort in after()
-    // — failure must not park the line at UNBOXED (face stays RECEIVED; Sync
-    // row can still say failed). scan_only / unreceive stay excluded: both leave
-    // lines at MATCHED and must not be silently promoted to DONE.
-    if (linesUpdatedViaReceiveUnits && updatedLines.length > 0 && !skipZohoReceive && !isUnreceive) {
+    // Unfound / local_receive: local lifecycle completes on Receive (no PO).
+    // Zoho-linked: stay UNBOXED until after() confirms the purchase receive —
+    // inventory is currently SoT for the Received face. scan_only / unreceive
+    // stay excluded (MATCHED).
+    if (
+      localReceive &&
+      linesUpdatedViaReceiveUnits &&
+      updatedLines.length > 0 &&
+      !skipZohoReceive &&
+      !isUnreceive
+    ) {
       const ids = updatedLines.map((l) => l.id);
-      // Route through the guarded chokepoint (was inline raw UPDATEs — §7 Step D).
-      // skipEvent: this route emits its own UNBOX_CONFIRMED ops-event + audit
-      // (and receiveLineUnits emitted the receive events) — no double-write.
-      // receiveLineUnits already targets DONE; this batch is the safety net when
-      // a prior path left the row short of DONE.
       await withTenantTransaction(ctx.organizationId, async (client) => {
         for (const id of ids) {
           await transitionReceivingLine(
@@ -865,16 +883,15 @@ export const POST = withAuth(async (request, ctx) => {
     }
 
     // Background: Zoho receive POST, then description/notes PUT, then cache
-    // invalidation. Moved out of the request path so the operator gets an
-    // immediate 1/1 (local SoT). Zoho is best-effort — failure is logged and
-    // the local DONE state stands.
+    // invalidation. Zoho-linked lines promote UNBOXED → DONE only after the
+    // purchase receive confirms (or Zoho is already terminal / already received).
     const needsHeaderPatch =
       Boolean(localTracking) || Boolean(zendeskTicket) ||
-      Boolean(notes) || aggregatedSerials.length > 0 || Boolean(serialNumber);
+      Boolean(notes) || aggregatedSerials.length > 0 || Boolean(serialNumber) ||
+      (!skipZohoReceive && !isUnreceive);
 
     // Resolve the org's inventory provider (capability facade). Null when no
-    // inventory integration is connected — the local receive still stands and
-    // the background provider sync degrades exactly like a failed Zoho call.
+    // inventory integration is connected — Zoho-linked lines stay UNBOXED.
     const inventory = await getInventoryProvider(ctx.organizationId);
 
     // Re-bind the tenant inside after(): the callback runs outside the
@@ -990,6 +1007,7 @@ export const POST = withAuth(async (request, ctx) => {
       }
 
       const poZohoReceiveSucceeded = new Map<string, boolean>();
+      const poZohoReceiveId = new Map<string, string>();
       try {
         if (!inventory) {
           // No inventory integration connected: the local receive stands; every
@@ -1080,6 +1098,7 @@ export const POST = withAuth(async (request, ctx) => {
               });
               const receiveId = getPurchaseReceiveIdFromCreateResponse(receiveResp);
               poZohoReceiveSucceeded.set(zohoPoId, true);
+              if (receiveId) poZohoReceiveId.set(zohoPoId, receiveId);
               logger.info(
                 { zohoPoId, lineItems: lineItemsPosted, receiveId },
                 'mark-received-po: createPurchaseReceive ok (background)',
@@ -1119,8 +1138,90 @@ export const POST = withAuth(async (request, ctx) => {
         console.warn('mark-received-po: Zoho receive background failed', err);
       }
 
-      // Local DONE already stamped on the request path. Zoho createPurchaseReceive
-      // above is best-effort — do not gate lifecycle on Sync success.
+      // Inventory SoT: promote Zoho-linked lines UNBOXED → DONE only when the
+      // purchase receive succeeded (or Zoho was already received/terminal).
+      // Replay on already-DONE lines that failed yesterday: rewind to UNBOXED
+      // so the website does not keep showing Received.
+      if (!skipZohoReceive && !isUnreceive && !localReceive) {
+        const linkedAt = formatPSTTimestamp();
+        const succeededIds: number[] = [];
+        const failedIds: number[] = [];
+        for (const l of updatedLines) {
+          const poId = String(l.zoho_purchaseorder_id || '').trim();
+          if (!poId) continue;
+          if (poZohoReceiveSucceeded.get(poId)) succeededIds.push(l.id);
+          else failedIds.push(l.id);
+        }
+        if (succeededIds.length > 0) {
+          const receiveIds = [...new Set(poZohoReceiveId.values())];
+          const cartonReceiveId = receiveIds.length === 1 ? receiveIds[0]! : null;
+          await withTenantTransaction(ctx.organizationId, async (client) => {
+            if (cartonReceiveId) {
+              await client.query(
+                `UPDATE receiving_carton
+                    SET zoho_purchase_receive_id = COALESCE(zoho_purchase_receive_id, $1),
+                        updated_at = NOW()
+                  WHERE id = $2 AND organization_id = $3`,
+                [cartonReceiveId, receivingId, ctx.organizationId],
+              );
+            }
+            const txDeps: FactsDeps = {
+              query: ((_org, sql, p) => client.query(sql, p as unknown[])) as FactsDeps['query'],
+            };
+            for (const l of updatedLines) {
+              const poId = String(l.zoho_purchaseorder_id || '').trim();
+              if (!poId || !poZohoReceiveSucceeded.get(poId)) continue;
+              await transitionReceivingLine(
+                {
+                  receivingLineId: l.id,
+                  to: 'DONE',
+                  actorStaffId: staffId,
+                  station,
+                  skipEvent: true,
+                },
+                client,
+                ctx.organizationId,
+              );
+              const receiveId = poZohoReceiveId.get(poId);
+              if (receiveId) {
+                await upsertReceivingLineZoho(
+                  ctx.organizationId,
+                  l.id,
+                  { zohoPurchaseReceiveId: receiveId, zohoSyncedAt: linkedAt },
+                  txDeps,
+                );
+              }
+            }
+          }).catch((err) => {
+            console.warn('mark-received-po: UNBOXED→DONE after Zoho ok failed', err);
+          });
+          for (const l of updatedLines) {
+            if (succeededIds.includes(l.id)) l.workflow_status = 'DONE';
+          }
+        }
+        if (failedIds.length > 0) {
+          await withTenantTransaction(ctx.organizationId, async (client) => {
+            for (const id of failedIds) {
+              await transitionReceivingLine(
+                {
+                  receivingLineId: id,
+                  to: 'UNBOXED',
+                  actorStaffId: staffId,
+                  station,
+                  skipEvent: true,
+                },
+                client,
+                ctx.organizationId,
+              );
+            }
+          }).catch((err) => {
+            console.warn('mark-received-po: rewind DONE→UNBOXED after Zoho fail failed', err);
+          });
+          for (const l of updatedLines) {
+            if (failedIds.includes(l.id)) l.workflow_status = 'UNBOXED';
+          }
+        }
+      }
 
       try {
         if (!skipZohoReceive && !isUnreceive && inventory) {
@@ -1154,7 +1255,13 @@ export const POST = withAuth(async (request, ctx) => {
                 patch.reference_number = localTracking;
               }
 
-              const noteLead: string[] = [`${staffName} ${now}`];
+              const noteLead: string[] = [
+                buildZohoReceiveNoteLine({
+                  staffName,
+                  scannedAt: cartonScannedAt,
+                  unboxedAt: cartonUnboxedAt,
+                }),
+              ];
               if (zendeskTicket) noteLead.push(`Zendesk: ${zendeskTicket}`);
               const noteHead = noteLead.join(' · ');
               const serialsForNote = aggregatedSerials.length > 0
@@ -1182,7 +1289,11 @@ export const POST = withAuth(async (request, ctx) => {
                   return currentNotesUpper.includes(`SN: ${snUpper}`) ||
                     (currentNotesUpper.includes('SNS:') && currentNotesUpper.includes(snUpper));
                 });
-              if (!allSerialsAlreadyNoted && !currentNotes.includes(newLine)) {
+              const staffTimeAlreadyNoted = currentNotes.includes(noteHead);
+              // Serials already on the PO must not block a new staff/time lead
+              // (Kai + scan/unbox). That skip left Michael / Staff #N as the
+              // first line after a later Receive.
+              if (!currentNotes.includes(newLine) && !(allSerialsAlreadyNoted && staffTimeAlreadyNoted)) {
                 patch.notes = currentNotes ? `${newLine}\n${currentNotes}` : newLine;
               }
             }
@@ -1297,9 +1408,9 @@ export const POST = withAuth(async (request, ctx) => {
       });
     }
 
-    // Optimistic response: Zoho work is in after() above. We report the local
-    // truth right now — operator sees 1/1 + DONE immediately. Zoho status will
-    // arrive via the realtime channel once the background sync settles.
+    // Optimistic response: floor work is committed. Zoho-linked lines stay
+    // UNBOXED in this payload — Received/DONE is stamped in after() only after
+    // the inventory purchase receive confirms.
     // Surface an already-open Zoho circuit at response time. This is a cheap
     // in-process read of the shared breaker (no token mint, no network), and it
     // replaces the former client-side /api/zoho/health pre-check that cost up to
@@ -1378,7 +1489,7 @@ export const POST = withAuth(async (request, ctx) => {
       // staggered green checks. Optimistic — the Zoho writes run in after();
       // the realtime `zohoReceive` verdict reconciles a background failure.
       summary: {
-        // Local DONE stands — not "Zoho attempt fired". Sync row owns Zoho.
+        // Floor work recorded. Zoho-linked Received/DONE is after() only.
         marked_received: !skipZohoReceive && !isUnreceive && updatedLines.length > 0,
         descriptions_updated: descriptionsUpdated,
         notes_updated: notesUpdated,
@@ -1386,7 +1497,7 @@ export const POST = withAuth(async (request, ctx) => {
       },
       zoho: {
         attempted: attemptedPoIds.size,
-        ok: true, // local SoT — pending state is informational only
+        ok: true, // HTTP contract; pending=true means inventory receive is in after()
         pending: zohoPending,
         rate_limited: false,
         results: [],

@@ -82,7 +82,6 @@ import { buildTriageDisplayIndexRows } from './triage-display-index';
 import { shouldUseUnmatchedItemsSurface } from '@/lib/receiving/intake-items-routing';
 import {
   dispatchStationDeskOccupantClose,
-  dispatchReceivingOpenIncomingDetails,
   STATION_DISPLAYS_CLOSE_EVENT,
 } from '@/utils/events';
 import {
@@ -192,8 +191,8 @@ export function TriagePanel({
   const closeClaimView = useCallback(() => {
     c.setReturnClaimPrefill(null);
     if (claimTicketId != null) openDisplays('ticket');
-    else closeDisplays();
-  }, [c, claimTicketId, openDisplays, closeDisplays]);
+    else openDisplaysIndex();
+  }, [c, claimTicketId, openDisplays, openDisplaysIndex]);
 
   const onClaimTicketCreated = useCallback(
     (ticketNumber: string) => {
@@ -219,40 +218,6 @@ export function TriagePanel({
     dispatchLineUpdated({ id: row.id, zendesk_ticket: null, notes: row.notes });
     invalidateReceivingFeeds(queryClient);
   }, [c, queryClient, row.id, row.notes, row.receiving_id]);
-
-  const openOrderConnectionDetails = useCallback(() => {
-    const poId = (row.zoho_purchaseorder_id || '').trim();
-    const inboundSource = (row.inbound_source_type || '').trim().toLowerCase();
-    const inboundOrderId = (row.source_order_id || '').trim();
-    const isInbound =
-      !poId && inboundSource !== '' && inboundSource !== 'zoho' && inboundOrderId !== '';
-    const shipmentId =
-      typeof row.shipment_ref === 'number' && Number.isFinite(row.shipment_ref) && row.shipment_ref > 0
-        ? row.shipment_ref
-        : null;
-    if (!poId && !isInbound && shipmentId == null) {
-      openPoPairing();
-      return;
-    }
-    dispatchReceivingOpenIncomingDetails({
-      poId: poId || null,
-      poNumber: row.zoho_purchaseorder_number ?? null,
-      shipmentId: poId ? null : shipmentId,
-      inboundSourceType: isInbound ? inboundSource : null,
-      inboundSourceOrderId: isInbound ? inboundOrderId : null,
-      receivingId: row.receiving_id ?? null,
-      receivingLineId: row.id ?? null,
-    });
-  }, [
-    row.zoho_purchaseorder_id,
-    row.zoho_purchaseorder_number,
-    row.inbound_source_type,
-    row.source_order_id,
-    row.shipment_ref,
-    row.receiving_id,
-    row.id,
-    openPoPairing,
-  ]);
 
   useEffect(() => {
     setActionFeedback(null);
@@ -334,7 +299,7 @@ export function TriagePanel({
         pairingFocus,
         claimMode,
         onCloseClaim: closeClaimView,
-        onCloseTicket: closeDisplays,
+        onCloseTicket: openDisplaysIndex,
         onClaimTicketCreated,
         onClaimTicketUnlinked,
         onFindTicket: openFindTicketDisplay,
@@ -351,6 +316,7 @@ export function TriagePanel({
       pairingFocus,
       claimMode,
       closeClaimView,
+      openDisplaysIndex,
       closeDisplays,
       onClaimTicketCreated,
       onClaimTicketUnlinked,
@@ -458,7 +424,6 @@ export function TriagePanel({
                     showClassifyControls
                     classifyInteractive
                     onEditPo={openPoPairing}
-                    onOrderDetails={openOrderConnectionDetails}
                     poEditOpen={activeSideTab === 'linkage'}
                     onToggleClaimView={openClaimView}
                     claimViewActive={activeSideTab === 'ticket' && claimTicketId == null}
@@ -628,6 +593,10 @@ export function TriagePanel({
                   openDisplays={openDisplays}
                   onDeleted={closeDisplays}
                   editSelected={activeSideTab === 'linkage'}
+                  deleteIdentity={{
+                    tracking: row.tracking_number,
+                    poNumber: row.zoho_purchaseorder_number,
+                  }}
                   onInventorySync={() => c.refreshInventoryDossier()}
                   inventorySyncing={Boolean(c.inventoryRefreshing)}
                   canInventorySync={

@@ -23,17 +23,15 @@
  *   - Forward restores nested drill first, then the visit future stack.
  *
  * Chrome bands are stage-owned (left-rail twin grammar):
- *   - Root Index → {@link TechRailSearchBar} (`Filter displays…`) with `→|`
- *     as `trailingAction` (`index-filter`)
- *   - Leaf default → {@link StationDisplaysDismissFooter} (`→|` only)
- *     (`leaf-dismiss`)
+ *   - Root Index **and** default leaves → {@link StationDisplaysDismissFooter}
+ *     (`Filter displays…` + `→|`) — seated **above** the carton Macro icon row
  *   - Leaf opt-in → {@link StationDisplaysCommandFooter} (`/` · `→|`)
  *     when the active leaf registers commands via
  *     {@link useDisplaysLeafChrome} `setLeafCommands` (`leaf-command`)
  *
  * When {@link actionFloor} is set (Unbox carton Macro), that row sits
- * **above** the close chrome footer (`→|` / Filter hairline) — never below
- * or instead of it. Delete docks on the Macro row's far bottom-right.
+ * **below** the Filter / hide chrome — never above or instead of it. Delete
+ * docks on the Macro row's far right.
  *
  * Host body is {@link DisplaysIndexLeafStage} (shared with desk
  * `DeskInspectorIndexShell`) inside the push column.
@@ -48,11 +46,9 @@ import {
   type ReactNode,
 } from 'react';
 import type { SectionTab } from '@/design-system/components';
-import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 import { isKeyboardRegionOwner } from '@/lib/keyboard/keyboard-region-owner';
 import { StationDisplaysCommandFooter } from './StationDisplaysCommandFooter';
 import { StationDisplaysDismissFooter } from './StationDisplaysDismissFooter';
-import { StationDisplaysEdgeToggle } from './StationDisplaysEdgeToggle';
 import {
   STATION_DISPLAY_INDEX,
   deriveDisplayIndexRowsFromTabs,
@@ -68,8 +64,8 @@ import {
   canVisitBack,
   canVisitForward,
   createVisitHistory,
-  goVisitBack,
   goVisitForward,
+  goLeafRootBack,
   pushVisitFrame,
   visitFrameKey,
   visitFramesEqual,
@@ -140,8 +136,8 @@ export function StationDisplaysPushStack({
    */
   rightSlot?: ReactNode;
   /**
-   * Carton Macro floor above close chrome (Unbox golden — Edit · Print/Resolve
-   * · trailing Delete). Omit on stations that have not wired it yet.
+   * Carton Macro floor below Filter / hide chrome (Unbox golden — Edit ·
+   * Print/Resolve · trailing Delete). Omit on stations that have not wired it yet.
    */
   actionFloor?: ReactNode;
   /**
@@ -161,6 +157,13 @@ export function StationDisplaysPushStack({
 }) {
   const onIndex = activeTab === STATION_DISPLAY_INDEX;
   const [filterQuery, setFilterQuery] = useState('');
+  const applyFilterQuery = useCallback(
+    (next: string) => {
+      setFilterQuery(next);
+      if (!onIndex && next.trim()) onTabChange(STATION_DISPLAY_INDEX);
+    },
+    [onIndex, onTabChange],
+  );
   /** Footer filter → index list ↑↓/Enter/Esc bridge (cursor stays in the list). */
   const indexFilterKeysRef = useRef<StationDisplayIndexFilterKeys | null>(null);
   /** Last leaf visited — paints layout-stable active glow on Root Index return. */
@@ -278,8 +281,6 @@ export function StationDisplaysPushStack({
     [onVisitNavigate, onTabChange],
   );
 
-  const goIndex = useCallback(() => onTabChange(STATION_DISPLAY_INDEX), [onTabChange]);
-
   const setTrail = useCallback((segments: DisplaysBreadcrumbSegment[]) => {
     if (segments.length < 1) return;
     setLeafTrail((prev) => {
@@ -322,14 +323,10 @@ export function StationDisplaysPushStack({
       return;
     }
     setNestedForward([]);
-    const back = goVisitBack(history);
-    if (back) {
-      setHistory(back);
-      applyFrame(back.present);
-      return;
-    }
-    goIndex();
-  }, [leafTrail, history, applyFrame, goIndex]);
+    const back = goLeafRootBack(history);
+    setHistory(back);
+    applyFrame(back.present);
+  }, [leafTrail, history, applyFrame]);
 
   const goForward = useCallback(() => {
     if (nestedForward.length > 0) {
@@ -462,26 +459,7 @@ export function StationDisplaysPushStack({
       headerRightSlot={rightSlot}
       actionFloor={actionFloor}
       footer={
-        footerStage === 'index-filter' ? (
-          <div
-            data-testid="unbox-displays-footer"
-            data-footer-stage={footerStage}
-            className="shrink-0"
-          >
-            <TechRailSearchBar
-              value={filterQuery}
-              onChange={setFilterQuery}
-              onClear={() => setFilterQuery('')}
-              onKeyDown={(e) => indexFilterKeysRef.current?.onFilterKeyDown(e)}
-              placeholder="Filter displays…"
-              density="row"
-              variant="rail"
-              trailingAction={
-                <StationDisplaysEdgeToggle variant="column-close" onClick={onClose} />
-              }
-            />
-          </div>
-        ) : footerStage === 'leaf-command' ? (
+        footerStage === 'leaf-command' ? (
           <div data-footer-stage={footerStage} className="shrink-0">
             <StationDisplaysCommandFooter
               commands={leafCommands}
@@ -491,8 +469,20 @@ export function StationDisplaysPushStack({
             />
           </div>
         ) : (
-          <div data-footer-stage={footerStage} className="shrink-0">
-            <StationDisplaysDismissFooter onClose={onClose} />
+          <div
+            data-testid="unbox-displays-footer"
+            data-footer-stage={footerStage}
+            className="shrink-0"
+          >
+            <StationDisplaysDismissFooter
+              onClose={onClose}
+              filterQuery={filterQuery}
+              onFilterChange={applyFilterQuery}
+              onFilterClear={() => applyFilterQuery('')}
+              onFilterKeyDown={(e) =>
+                indexFilterKeysRef.current?.onFilterKeyDown(e)
+              }
+            />
           </div>
         )
       }

@@ -36,6 +36,7 @@ import type {
 } from '../unbox-side-tabs';
 import { TrackingNumbersTab } from '../TrackingNumbersTab';
 import { ListingLinksTab } from '../ListingLinksTab';
+import { UnboxLocationsLeaf } from '../UnboxLocationsLeaf';
 import { TriageClassifySection } from '@/components/receiving/triage/TriageClassifySection';
 import type { ClaimModalMode } from '../../claim/claim-types';
 import { isReturnIntake } from '@/lib/receiving/triage-intake-kind';
@@ -514,6 +515,22 @@ export function buildUnboxSideTabs(input: BuildUnboxTabsInput): SectionTab[] {
           ) : null}
         </div>
       ),
+    },
+    {
+      id: 'locations',
+      label: 'Locations',
+      icon: MapPin,
+      priority: 'overflow',
+      // Mount only while showing — the catalog read is a station-wide list and
+      // has no business firing behind every other leaf.
+      content:
+        activeSideTab === 'locations' ? (
+          <UnboxLocationsLeaf
+            lineId={row.id ?? null}
+            stagedLocationId={row.staged_location_id ?? null}
+            onPlaced={onCloseTicket}
+          />
+        ) : null,
     },
     {
       id: 'support',

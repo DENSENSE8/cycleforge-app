@@ -8,6 +8,7 @@ import {
   canVisitBack,
   canVisitForward,
   createVisitHistory,
+  goLeafRootBack,
   goVisitBack,
   goVisitForward,
   pushVisitFrame,
@@ -73,5 +74,36 @@ describe('displays-visit-history', () => {
     const state = createVisitHistory({ tab: 'inventory' });
     const next = pushVisitFrame(state, { tab: 'inventory' });
     assert.equal(next, state);
+  });
+
+  it('leaf-root Back from Inventory (empty past) lands on Displays index', () => {
+    const state = createVisitHistory({ tab: 'inventory' });
+    const back = goLeafRootBack(state);
+    assert.equal(back.present.tab, 'index');
+    assert.equal(canVisitForward(back), true);
+    assert.equal(back.future[0]!.tab, 'inventory');
+  });
+
+  it('leaf-root Back from Inventory skips a prior Ticket leaf and lands on index', () => {
+    const state = {
+      past: [{ tab: 'ticket' as const }],
+      present: { tab: 'inventory' },
+      future: [] as const,
+    };
+    const back = goLeafRootBack(state);
+    assert.equal(back.present.tab, 'index');
+    assert.notEqual(back.present.tab, 'ticket');
+    assert.equal(back.future[0]!.tab, 'inventory');
+  });
+
+  it('leaf-root Back with Index in past still uses visit Back (Forward restores)', () => {
+    let state = createVisitHistory({ tab: 'index' });
+    state = pushVisitFrame(state, { tab: 'inventory' });
+    const back = goLeafRootBack(state);
+    assert.equal(back.present.tab, 'index');
+    assert.equal(canVisitForward(back), true);
+    const fwd = goVisitForward(back);
+    assert.ok(fwd);
+    assert.equal(fwd.present.tab, 'inventory');
   });
 });

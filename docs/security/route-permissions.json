@@ -1,9 +1,9 @@
 {
   "version": 1,
-  "generatedAt": "2026-08-12T05:20:03Z",
-  "totalRoutes": 932,
+  "generatedAt": "2026-08-18T17:51:16Z",
+  "totalRoutes": 933,
   "summary": {
-    "permissionGated": 792,
+    "permissionGated": 793,
     "authenticatedNoPermission": 51,
     "anonymousIntentional": 87,
     "serviceToService": 2,
@@ -5454,6 +5454,15 @@
     },
     {
       "path": "/api/receiving/recent-label-note/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "receiving.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/receiving/recent-staged-location/route.ts",
       "methods": [
         "GET"
       ],

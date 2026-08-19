@@ -5,8 +5,9 @@
  *
  * Closed: utility-rail **bottom** footer (`←|` Open displays) — left-dock
  * expand twin.
- * Open: `→|` Hide displays — on Root Index, seats in the filter search
- * trailing track; on a leaf, seats in {@link StationDisplaysDismissFooter}.
+ * Open: `→|` Hide displays — seats as {@link TechRailSearchBar}
+ * `trailingAction` on Root Index and every leaf (and on
+ * {@link StationDisplaysCommandFooter} when `/` commands are registered).
  *
  * Shared `layoutId` FLIPs the mark across the work surface with the push
  * column width tween (`motionRole.push.rail`). Never mount both at once —

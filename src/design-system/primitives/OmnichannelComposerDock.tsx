@@ -119,6 +119,11 @@ interface OmnichannelComposerDockProps {
   footerStart?: ReactNode;
   footerEnd?: ReactNode;
   /**
+   * Absolute top-right of the textarea (Unbox notes Info). Caller owns the
+   * control; this slot only places it so line 1 does not sit under the glyph.
+   */
+  headerEnd?: ReactNode;
+  /**
    * Terminal control mounted at the footer's trailing edge. Replaces the blue
    * Send button so the composer stays ONE shell. Caller should map Enter
    * (`onCommit`) to the same primary as this control (chat Send); blur save
@@ -187,6 +192,7 @@ export const OmnichannelComposerDock = forwardRef<
     commitTooltip = 'Save (Enter)',
     footerStart,
     footerEnd,
+    headerEnd,
     trailingAction,
     chrome = 'raised',
     density = 'default',
@@ -294,12 +300,17 @@ export const OmnichannelComposerDock = forwardRef<
       data-composer-density={density}
     >
       <div className={cn('relative min-w-0', compact ? 'flex-1' : 'w-full')}>
+        {headerEnd ? (
+          <div className="pointer-events-none absolute right-1.5 top-1.5 z-10 flex h-auto w-auto items-start">
+            <div className="pointer-events-auto">{headerEnd}</div>
+          </div>
+        ) : null}
         {ghostSuffix ? (
           <div
             aria-hidden
             className={cn(
               'pointer-events-none absolute inset-0 overflow-hidden text-role-caption leading-5',
-              compact ? 'px-2.5 py-1.5' : 'px-3.5 pt-3 pb-1.5',
+            compact ? 'px-2.5 py-1.5' : headerEnd ? 'px-3.5 pt-3 pb-1.5 pr-10' : 'px-3.5 pt-3 pb-1.5',
             )}
           >
             <span className="whitespace-pre-wrap break-words">
@@ -357,7 +368,7 @@ export const OmnichannelComposerDock = forwardRef<
               : null,
             !manualResize && !compact
               ? cn(
-                  'px-3.5 pt-3 pb-1.5',
+                  headerEnd ? 'px-3.5 pt-3 pb-1.5 pr-10' : 'px-3.5 pt-3 pb-1.5',
                   growEnabled ? 'max-h-32 min-h-[40px] overflow-y-auto' : 'min-h-[40px]',
                 )
               : null,

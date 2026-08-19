@@ -101,7 +101,7 @@ export const motionRole = {
    *
    * A press is the one role SUPPRESSED outright under reduced motion rather
    * than crossfaded — `useMotionRole` returns `whileTap: undefined`, matching
-   * what `CardShell` and `ActiveOrderScanFeedback` hand-roll today. A 0.9 scale
+   * what `CardShell` hand-rolls today. A 0.9 scale
    * that snaps instead of springing is worse than no feedback at all.
    */
   gesture: {

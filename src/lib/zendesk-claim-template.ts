@@ -52,6 +52,23 @@ export interface ClaimTemplateResult {
   tracking: string | null;
 }
 
+/**
+ * Zendesk attachment stem for claim photos — PO# first, then tracking, then
+ * the receiving id. Shared by Create and Link & send so filenames match.
+ */
+export function claimAttachmentFileLabel(
+  input: Pick<ClaimTemplateResult, 'poNumber' | 'tracking'>,
+  receivingId: number,
+): string {
+  return (
+    input.poNumber
+      ? `PO-${input.poNumber}`
+      : input.tracking
+        ? `TRK-${input.tracking}`
+        : `RCV-${receivingId}`
+  ).replace(/[^A-Za-z0-9._-]+/g, '-');
+}
+
 export async function buildReceivingClaimTemplate(
   input: ClaimTemplateInput,
   orgId?: OrgId,

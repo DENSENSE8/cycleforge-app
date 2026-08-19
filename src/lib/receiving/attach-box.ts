@@ -4,6 +4,14 @@ import { withTenantTransaction } from '@/lib/tenancy/db';
 import { registerShipmentPermissive } from '@/lib/shipping/sync-shipment';
 import { linkShipment } from '@/lib/shipping/shipment-links';
 
+/** Tenant-tx or pool — ingest threads the GUC client so carton writes aren't RLS-blind. */
+type SqlClient = {
+  query: <T = Record<string, unknown>>(
+    text: string,
+    params?: unknown[],
+  ) => Promise<{ rows: T[]; rowCount?: number | null }>;
+};
+
 /**
  * Shared core for the multi-tracking → PO feature (docs/multi-tracking-po-plan.md).
  *
@@ -232,11 +240,13 @@ async function ensureReceivingForEbayOrder(params: {
   sourceOrderId: string;
   shipmentId?: number | null;
   organizationId: string;
+  db?: SqlClient;
 }): Promise<number> {
   const sourceOrderId = String(params.sourceOrderId ?? '').trim();
   if (!sourceOrderId) throw new Error('ensureReceivingForEbayOrder: sourceOrderId is required');
+  const db = params.db ?? (pool as unknown as SqlClient);
 
-  const result = await pool.query<{ id: number }>(
+  const result = await db.query<{ id: number }>(
     // Base table (not the `receiving` compat view): ON CONFLICT is unsupported on
     // auto-updatable views. 2026-07-05d.
     `INSERT INTO receiving_carton
@@ -265,6 +275,8 @@ export async function ensureReceivingForInboundOrder(params: {
   sourceOrderId: string;
   shipmentId?: number | null;
   organizationId: string;
+  /** Tenant-tx client when called from ingest — carton writes must share the GUC. */
+  db?: SqlClient;
 }): Promise<number> {
   if (params.sourceType === 'ebay') {
     return ensureReceivingForEbayOrder(params);
@@ -275,8 +287,9 @@ export async function ensureReceivingForInboundOrder(params: {
     throw new Error('ensureReceivingForInboundOrder: sourceOrderId is required');
   }
   const source = params.sourceType;
+  const db = params.db ?? (pool as unknown as SqlClient);
 
-  const existing = await pool.query<{ id: number }>(
+  const existing = await db.query<{ id: number }>(
     `SELECT id FROM receiving_carton
       WHERE organization_id = $1::uuid
         AND source = $2
@@ -288,7 +301,7 @@ export async function ensureReceivingForInboundOrder(params: {
   if (existing.rows[0]) {
     const id = Number(existing.rows[0].id);
     if (params.shipmentId != null) {
-      await pool.query(
+      await db.query(
         `UPDATE receiving_carton
             SET shipment_id = COALESCE(shipment_id, $2),
                 updated_at = NOW()
@@ -299,7 +312,7 @@ export async function ensureReceivingForInboundOrder(params: {
     return id;
   }
 
-  const inserted = await pool.query<{ id: number }>(
+  const inserted = await db.query<{ id: number }>(
     `INSERT INTO receiving_carton
        (source, source_order_id, shipment_id, qa_status, needs_test, updated_at, organization_id)
      VALUES ($1, $2, $3, 'PENDING', true, NOW(), $4::uuid)

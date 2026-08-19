@@ -707,6 +707,8 @@ export function useReceivingClaimController({
         body: JSON.stringify({
           ticketId,
           receivingId,
+          lineId,
+          claimType,
           body: template.readDescription().trim(),
           subject: template.readSubject().trim(),
           public: notePublic,
@@ -725,9 +727,22 @@ export function useReceivingClaimController({
           ? `Ticket ${ticketNumber} updated — customer emailed`
           : `Ticket ${ticketNumber} updated`,
       );
+      const archiveWarning = data.archiveWarning ? String(data.archiveWarning) : null;
+      setArchiveState({
+        ok: data.archiveOk === true && !archiveWarning,
+        copied: Number(data.archiveCopied ?? 0),
+        total: Number(data.archiveTotal ?? 0),
+        folder:
+          typeof data.archiveFolder === 'string' && data.archiveFolder
+            ? data.archiveFolder
+            : ticketNumber.replace(/^#/, '') || null,
+        warning: archiveWarning,
+      });
+      if (archiveWarning) {
+        toast.warning(archiveWarning, { duration: 8000 });
+      }
       setLinkUpdateStatus('posted');
       setStep('filed');
-      void archiveToNas();
       return true;
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Network error');
@@ -737,9 +752,9 @@ export function useReceivingClaimController({
   };
 
   /**
-   * One Link CTA: attach the ticket, post the template body (+ photos), then
-   * flip Displays to Chat via {@link onTicketCreated}. Never calls
-   * onTicketCreated after link-only.
+   * One Link CTA: attach the ticket, post the template body (+ photos), NAS
+   * archive in the thread request, then flip Displays to Chat via
+   * {@link onTicketCreated}. Never calls onTicketCreated after link-only.
    */
   const submitLinkAndUpdate = async () => {
     if (

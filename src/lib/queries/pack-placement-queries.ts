@@ -2,25 +2,47 @@ import { queryOptions } from '@tanstack/react-query';
 import type {
   PackPlaceableLocation,
   PackPlacementCountRow,
+  RecentPackPlacement,
 } from '@/lib/packing/pack-placement';
 
-async function fetchPackPlacement(): Promise<{
+interface PackPlacementRead {
   success: boolean;
   locations: PackPlaceableLocation[];
   counts: PackPlacementCountRow[];
   totalPlaced: number;
-}> {
-  const res = await fetch('/api/orders/pack-placement');
+  /** Only populated when `excludeOrderId` is passed (the Last entry desk). */
+  recent?: RecentPackPlacement | null;
+}
+
+async function fetchPackPlacement(
+  excludeOrderId: number | null,
+): Promise<PackPlacementRead> {
+  const qs =
+    excludeOrderId != null
+      ? `?excludeOrderId=${encodeURIComponent(String(excludeOrderId))}`
+      : '';
+  const res = await fetch(`/api/orders/pack-placement${qs}`);
   if (!res.ok) {
     throw new Error(`pack-placement ${res.status}`);
   }
   return res.json();
 }
 
-export function packPlacementQuery() {
+/**
+ * Packing benches + their open counts.
+ *
+ * `excludeOrderId` widens the read with `recent` (Last entry) and is part of
+ * the key, so the open order's own placement can never seed its own suggestion.
+ * The `['orders','pack-placement']` PREFIX is unchanged, so every existing
+ * invalidation still matches both shapes.
+ */
+export function packPlacementQuery(
+  opts: { excludeOrderId?: number | null } = {},
+) {
+  const excludeOrderId = opts.excludeOrderId ?? null;
   return queryOptions({
-    queryKey: ['orders', 'pack-placement'] as const,
-    queryFn: fetchPackPlacement,
+    queryKey: ['orders', 'pack-placement', excludeOrderId] as const,
+    queryFn: () => fetchPackPlacement(excludeOrderId),
     staleTime: 15_000,
   });
 }

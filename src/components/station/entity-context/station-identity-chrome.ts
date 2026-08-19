@@ -104,7 +104,7 @@ export const STATION_IDENTITY_GROUP_CLASS =
 /**
  * Leading column on chrome row 1 — boxed exit chevron. Square track on
  * {@link STATION_CHROME_ROW_FACE}; child fills flush (`h-full w-full`).
- * Lifecycle status is a content-width cell after tracking, not this column.
+ * Lifecycle status is a content-width cell after this column (before order#).
  */
 export const STATION_IDENTITY_LEAD_COL_CLASS =
   'flex h-full aspect-square shrink-0 items-stretch justify-stretch';

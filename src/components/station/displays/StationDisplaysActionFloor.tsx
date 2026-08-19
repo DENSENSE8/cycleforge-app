@@ -1,17 +1,17 @@
 'use client';
 
 /**
- * Station Displays carton Macro floor — unified action row seated **above**
- * the column's close chrome (`→|` / Filter hairline), never below it.
+ * Station Displays carton Macro floor — unified action row seated **below**
+ * the column's Filter / `→|` chrome, never above it.
  *
  * Layout (equal fill-width peer columns — hit target is the column).
  * Carton verb sets compose {@link CartonDisplaysActionFloor} on top of this
  * host — do not fork a second spread row.
  *
- * Composes `FlushTerminalFooter` `spread` (Claim shell). Fixed `h-11` to match
- * Unbox dock Band 1. Station Displays paints `bg-surface-card` so the Macro
- * row matches the Filter/`→|` close chrome (Claim File footer stays canvas).
- * Returns null when empty — never mount an empty bar.
+ * Composes `FlushTerminalFooter` `spread` (Claim shell). Fixed `h-8` to match
+ * the Filter / hide footer band. Station Displays paints `bg-surface-card` so
+ * the Macro row matches that chrome (Claim File footer stays canvas). Returns
+ * null when empty — never mount an empty bar.
  *
  * **Not** desk {@link InspectorActionFloor} (Workbench triage / RightRailHost).
  * Law: `.claude/rules/display/right-rail-inspector.md` · Station Action plane.
@@ -38,10 +38,14 @@ export function StationDisplaysActionFloor({
   if (children == null) return null;
 
   return (
-    <div className={cn('h-11 shrink-0', className)} data-testid={testId}>
+    <div className={cn('h-8 shrink-0', className)} data-testid={testId}>
       <FlushTerminalFooter
         layout="spread"
-        className="h-full w-full bg-surface-card"
+        className={cn(
+          'h-full w-full bg-surface-card [&_svg]:!h-4 [&_svg]:!w-4',
+          // Extra gap before Delete (Human Standards destroy separation).
+          '[&>[data-flush-delete-gap]]:ml-4 [&>[data-flush-delete-gap]]:!flex-none [&>[data-flush-delete-gap]]:w-[2.75rem]',
+        )}
         data-testid={`${testId}-bar`}
       >
         {children}

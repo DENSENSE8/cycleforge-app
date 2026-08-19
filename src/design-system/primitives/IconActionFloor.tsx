@@ -19,7 +19,8 @@
  * Composed by BOTH desk (`InspectorActionFloor`) and station
  * (`StationDisplaysActionFloor`) — one display method, two host shells (C2).
  * Park / close chrome always sits on a SEPARATE row (top `DeskRailChromeRow`
- * on desk; column footer `→|` on station), never inside this floor.
+ * on desk; Filter / `→|` band **above** this floor on station), never inside
+ * this floor.
  *
  * Law: `.claude/rules/display/right-rail-inspector.md` · SoT Macro CTA.
  */

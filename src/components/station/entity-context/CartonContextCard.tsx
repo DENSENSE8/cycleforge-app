@@ -1,7 +1,7 @@
 'use client';
 
-import { useRef, useState } from 'react';
-import { ChevronLeft, ExternalLink, MoreHorizontal, Receipt } from '@/components/Icons';
+import { useEffect, useRef, useState } from 'react';
+import { ChevronLeft, MoreHorizontal, Pencil, Receipt, X } from '@/components/Icons';
 import {
   CHIP_TONES,
   getLast8,
@@ -18,14 +18,16 @@ import {
   CHIP_HOVER_MENU_PANEL_CLASS,
 } from '@/components/ui/copy-chip-hover-menu-chrome';
 import {
+  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/design-system/primitives';
 import { ReceivingPhotoButton } from '@/components/receiving/workspace/line-edit/ReceivingPhotoButton';
-import { StationContextClaimCell, StationContextIconCell } from './StationContextActionCell';
+import { StationContextClaimCell, StationContextIconCell, StationContextListingCell } from './StationContextActionCell';
 import { IdentityLinkChip } from '@/components/receiving/workspace/line-edit/IdentityLinkChip';
+import { CatalogManagerList, type CatalogKind } from '@/components/receiving/workspace/line-edit/CatalogManagerList';
 import { ReceivingTicketChip } from '@/components/receiving/workspace/line-edit/ReceivingTicketChip';
 import { FulfillmentPickupPill } from '@/components/receiving/ReceivingIdentityChips';
 import { InlinePillPicker } from '@/components/receiving/workspace/line-edit/InlinePillPicker';
@@ -41,6 +43,7 @@ import {
 import { priorityOverrideTier } from '@/lib/receiving/priority-override';
 import { usePlatformCatalog, useReceivingTypeCatalog, usePlatformMeta } from '@/hooks/useCatalog';
 import {
+  formatListingLinkMenuOptions,
   type CartonListingLink,
 } from '@/lib/receiving/listing-links';
 import { platformMetaIconTone } from '@/lib/source-platform';
@@ -79,14 +82,16 @@ import {
  * Pair hosts with `StationWorkbench reserveIdentityClearance={false}` (in-flow)
  * or legacy overlay clearance.
  *
- *   Left — identity: back · order# · tracking# · received status
- *   Middle — classify: priority · platform · type. Collapses to dots
- *            only when those labels would touch identity or actions.
- *   Right — actions: quiet price · listing (icon) · claim (ticket + "claim")
- *            · photos (camera + count). Claim and photos share one word-button
- *            recipe (`STATION_CONTEXT_*_CHROME_CLASS`). Listing / overflow are
- *            raw `h-full` cells — never `IconButton` (fixed h-7 box floats off
- *            the strip). Those three verbs overflow into `⋯` before wrap.
+ *   Left — identity: back · received status · order# · tracking#
+ *   Middle — classify: priority · platform · type, absolutely centered
+ *            in the bar. Collapses to dots only when those labels would
+ *            touch identity or actions.
+ *   Right — actions: quiet price · listing (ExternalLink + platform name)
+ *            · claim (ticket + "Claim") · photos (camera + count). Listing,
+ *            Claim, and photos share one word-button recipe
+ *            (`STATION_CONTEXT_*_CHROME_CLASS`). Overflow is a raw `h-full`
+ *            cell — never `IconButton` (fixed h-7 box floats off the strip).
+ *            Those three verbs overflow into `⋯` before wrap.
  *
  * Secondary / exact triage detail (qty rollups, extra boxes, lineage,
  * exception routing, diagnostics) lives in right-edge **Displays** — never a
@@ -142,7 +147,6 @@ export function CartonContextCard({
   showOrderIdentity = true,
   onEditPo,
   poEditOpen = false,
-  onOrderDetails,
   linkedOrderNumber = null,
   lineId,
   zendeskTrimmed,
@@ -263,16 +267,11 @@ export function CartonContextCard({
   /**
    * Open Package Pairing → PO tab (link / change / import a Zoho PO). Always
    * offered when set — empty `# ----` clicks this directly; linked chips keep
-   * Edit in the hover menu alongside Open + Details.
+   * Edit in the hover menu alongside Open.
    */
   onEditPo?: () => void;
   /** Pulse the PO chip while Package Pairing (PO) is open — steady `editing` face, no flash. */
   poEditOpen?: boolean;
-  /**
-   * Open the in-app Incoming connection panel (PO mirror / sync / link CRUD)
-   * on RightRailHost. Hover menu "Details".
-   */
-  onOrderDetails?: () => void;
   /**
    * Serial-resolved outbound (return) order#. Fills the PO#/order chip (last-8,
    * copy-only) ONLY when the carton has no PO# of its own — never clobbers a
@@ -348,7 +347,9 @@ export function CartonContextCard({
 }) {
   // One classify menu at a time — chip-anchored dropdown; identity band stays put.
   const [openPicker, setOpenPicker] = useState<'urgency' | 'platform' | 'type' | null>(null);
+  const [catalogKind, setCatalogKind] = useState<CatalogKind | null>(null);
   const barRef = useRef<HTMLDivElement | null>(null);
+  const catalogPanelRef = useRef<HTMLDivElement | null>(null);
   const { classifyCompact, overflowActions } = useCartonContextBarLayout(barRef);
   const overflowSet = new Set<CartonContextActionId>(overflowActions);
 
@@ -356,6 +357,25 @@ export function CartonContextCard({
     if (picker != null && !classifyInteractive) return;
     setOpenPicker(picker);
   };
+
+  useEffect(() => {
+    if (catalogKind == null) return;
+    const onDown = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (catalogPanelRef.current?.contains(t)) return;
+      if (barRef.current?.contains(t)) return;
+      setCatalogKind(null);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setCatalogKind(null);
+    };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [catalogKind]);
 
   // Canonical platform tone/label for the listing chip — same SoT the platform
   // pill and printed label read, so a platform never presents two ways.
@@ -399,33 +419,33 @@ export function CartonContextCard({
     ? `Open ${platformMeta.label} listing in new tab`
     : 'Open listing in new tab';
 
-  // Urgency is a tier picker: Auto + Priority/High/Medium/Low. Collapsed it
-  // shows the *effective* tier — the manual override when set, else the
-  // platform-derived rank (so a no-override carton still reads its auto urgency
-  // at rest). Open it offers Auto (clear → derived) + the four manual tiers.
+  // Urgency header list is Low / Medium / High. Collapsed face shows the
+  // effective heat (manual pin, else platform-derived). Priority pins paint as
+  // High; Auto is not a header option (full Classify editor still has it).
   const derivedRank = receivingPriorityRank(isUnmatched, platformValue, false);
   const derivedTone = receivingPriorityTone(derivedRank);
   const overrideMeta = priorityOverrideTier(priorityTier);
-  const urgencyValue = priorityTier != null ? String(priorityTier) : 'auto';
-  const effectiveUrgencyLabel = overrideMeta ? overrideMeta.label : derivedTone.label;
-  const effectiveUrgencyClass = overrideMeta ? overrideMeta.activeClass : derivedTone.className;
-  // In Auto mode the option matching the platform-derived urgency renders in
-  // its active tone — the collapsed pill shows that derived label, so an open
-  // picker highlighting only "Auto" read as if the current urgency were
-  // unselected. Rank→tier mapping: Priority 0→0, unfound/untagged 1→High 1,
-  // Amazon 2→High 1, eBay 3→Medium 2, Goodwill 4→Low 3; Other (9) highlights
-  // nothing. Manual override set → normal value-match highlighting only.
   const RANK_TO_TIER: Record<number, number> = { 0: 0, 1: 1, 2: 1, 3: 2, 4: 3 };
   const derivedTierEquivalent = priorityTier == null ? RANK_TO_TIER[derivedRank] ?? null : null;
+  const headerUrgencyTier =
+    priorityTier != null && priorityTier !== 0
+      ? priorityTier
+      : priorityTier === 0
+        ? 1
+        : derivedTierEquivalent === 0
+          ? 1
+          : (derivedTierEquivalent ?? 3);
+  const urgencyValue = String(headerUrgencyTier);
+  const effectiveUrgencyLabel =
+    overrideMeta && overrideMeta.value !== 0 ? overrideMeta.label : derivedTone.label === 'Priority' ? 'High' : derivedTone.label;
+  const effectiveUrgencyClass = overrideMeta ? overrideMeta.activeClass : derivedTone.className;
   const urgencyOptions = urgencyClassifyOptions({
     derivedLabel: derivedTone.label,
     derivedTierEquivalent,
     autoActiveClass: 'border-border-default bg-surface-card text-text-muted',
-  }).map((o) =>
-    o.value === 'auto' ? { ...o, activeClass: effectiveUrgencyClass } : o,
-  );
-  const handleUrgencySelect = (v: string) =>
-    onPrioritySelect?.(v === 'auto' ? null : Number(v));
+    surface: 'header',
+  });
+  const handleUrgencySelect = (v: string) => onPrioritySelect?.(Number(v));
 
   // Platform/Type identity faces come from shared builders (same SoT as the
   // Classify tab). Org catalog drives the option set; tones/marks stay built-in.
@@ -436,8 +456,7 @@ export function CartonContextCard({
   const typeOptions = typeClassifyOptions({ catalogOptions: typeCatalog.options });
 
   // Exit chevron — boxed flush face filling chrome row (h-full square).
-  // Lifecycle status sits after tracking (IDs first, then received state) —
-  // not in the lead column, so it is not mistaken for a classify dot.
+  // Lifecycle status sits between back and order# (received state, then IDs).
   const exitControl = onExitToList ? (
     <HoverTooltip label={exitLabel} asChild>
       {/* Boxed flush cube — own carton-context face (not scan-bar mode chrome). */}
@@ -453,9 +472,8 @@ export function CartonContextCard({
     </HoverTooltip>
   ) : null;
 
-  /* Classify chip face — click opens a chip-anchored menu (presentation=menu).
-     Unbox/Triage inline edit stays here; Displays Classify remains the full
-     searchable leaf when staff open it from the rail / dock. */
+  /* Classify chip face — hover list. Platform / type Edit drops the catalog
+     manager under this centered cluster (middle display, not right overlay). */
   const classifyFace = classifyCompact ? 'dot' : 'label';
   const classifyCluster = showClassifyControls ? (
     <div
@@ -487,6 +505,19 @@ export function CartonContextCard({
         collapsedLabel={classifyCompact ? (platformOptions.find((o) => o.value === platformValue)?.shortLabel) : undefined}
         collapsedFace={classifyFace}
         presentation="menu"
+        menuLeadItems={
+          classifyInteractive
+            ? [
+                {
+                  id: 'edit-platforms',
+                  label: 'Edit',
+                  icon: <Pencil />,
+                  onSelect: () =>
+                    setCatalogKind((k) => (k === 'platform' ? null : 'platform')),
+                },
+              ]
+            : []
+        }
         open={openPicker === 'platform'}
         onOpenChange={(o) => setClassifyMenu(o ? 'platform' : null)}
         disabled={classifyInteractive ? receivingId == null : false}
@@ -501,6 +532,18 @@ export function CartonContextCard({
         collapsedLabel={classifyCompact ? (typeOptions.find((o) => o.value === receivingType)?.shortLabel) : undefined}
         collapsedFace={classifyFace}
         presentation="menu"
+        menuLeadItems={
+          classifyInteractive
+            ? [
+                {
+                  id: 'edit-types',
+                  label: 'Edit',
+                  icon: <Pencil />,
+                  onSelect: () => setCatalogKind((k) => (k === 'type' ? null : 'type')),
+                },
+              ]
+            : []
+        }
         open={openPicker === 'type'}
         onOpenChange={(o) => setClassifyMenu(o ? 'type' : null)}
         readOnly={!classifyInteractive}
@@ -512,7 +555,7 @@ export function CartonContextCard({
 
   /* PO# / order# — last-8 copy chip; edit menus stay on IdentityLinkChip when wired. */
   const orderChip = showOrderIdentity ? (
-    onEditPo || onOrderDetails ? (
+    onEditPo ? (
       <IdentityLinkChip
         openHref={orderCopyOnly ? undefined : poOpenHref}
         openTitle={orderCopyOnly ? 'Order number' : 'Open purchase order'}
@@ -533,8 +576,6 @@ export function CartonContextCard({
               ? 'Edit order'
               : 'Link PO'
         }
-        onDetails={onOrderDetails}
-        detailsLabel="Show inspector"
         actionsInMenu
         menuPlacement="below"
       />
@@ -632,27 +673,25 @@ export function CartonContextCard({
 
   const listingIconButton =
     showListing && !overflowSet.has('listing') ? (
-      <HoverTooltip label={listingOpenTitle} asChild>
-        <StationContextIconCell
-          ariaLabel={listingOpenTitle}
-          disabled={!listingHasTarget}
-          onClick={() => {
-            if (listingOpenHref) window.open(listingOpenHref, '_blank', 'noopener,noreferrer');
-          }}
-          testId="carton-context-listing"
-        >
-          <span
-            className={cn(
-              listingHasTarget && platformIconTone
-                ? platformIconTone.className
-                : 'text-text-faint',
-            )}
-            style={listingHasTarget && platformIconTone ? platformIconTone.style : undefined}
-          >
-            <ExternalLink className={STATION_CHROME_GLYPH_CLASS} />
-          </span>
-        </StationContextIconCell>
-      </HoverTooltip>
+      <StationContextListingCell
+        label={listingChipDisplay}
+        ariaLabel={listingOpenTitle}
+        disabled={!listingHasTarget}
+        onClick={() => {
+          if (listingOpenHref) window.open(listingOpenHref, '_blank', 'noopener,noreferrer');
+        }}
+        iconClass={
+          listingHasTarget && platformIconTone
+            ? platformIconTone.className
+            : 'text-text-faint'
+        }
+        iconStyle={listingHasTarget && platformIconTone ? platformIconTone.style : undefined}
+        openHref={listingOpenHref}
+        copyValue={listingLink || listingOpenHref || ''}
+        links={formatListingLinkMenuOptions(listingLinks) ?? listingLinks}
+        onEdit={onEditListing}
+        editLabel="Edit listing"
+      />
     ) : null;
 
   const claimIconButton =
@@ -803,24 +842,31 @@ export function CartonContextCard({
     <div
       ref={barRef}
       className={cn(
-        'flex w-full min-w-0 flex-nowrap items-stretch overflow-visible',
+        'relative flex w-full min-w-0 flex-nowrap items-stretch overflow-visible',
         STATION_CHROME_ROW_FACE,
         STATION_CHROME_SEAM_HAIRLINE,
       )}
       data-testid="carton-context-one-row"
     >
+      {/* Middle — classify, centered on the full bar (not leftover flex). */}
+      {classifyCluster ? (
+        <div className="pointer-events-none absolute inset-0 flex items-stretch justify-center overflow-visible">
+          <div className="pointer-events-auto flex items-stretch">{classifyCluster}</div>
+        </div>
+      ) : null}
+
       {/* Left — identity (always visible) */}
       <div
         data-carton-bar-slot="identity"
-        className="flex min-w-0 shrink-0 items-stretch"
+        className="relative flex min-w-0 shrink-0 items-stretch"
       >
         {exitControl ? (
           <div className={STATION_IDENTITY_LEAD_COL_CLASS}>{exitControl}</div>
         ) : null}
+        {statusDot}
         <div className="flex h-full min-w-0 shrink items-stretch [&_[data-chip-face]]:rounded-none">
           {orderChip}
           {trackingSlot}
-          {statusDot}
           {qty ? (
             <div className={STATION_CHROME_CELL_CLASS}>
               <GridQtyFractionValue received={qty.received} expected={qty.expected} />
@@ -829,15 +875,8 @@ export function CartonContextCard({
         </div>
       </div>
 
-      {/* Middle — classify (collapses first) */}
-      {classifyCluster ? (
-        <div className="flex min-w-0 flex-1 items-stretch justify-center overflow-visible">
-          {classifyCluster}
-        </div>
-      ) : null}
-
       {/* Right — quiet price + icon actions; ⋯ before wrap */}
-      <div data-carton-bar-slot="actions" className="flex shrink-0 items-stretch">
+      <div data-carton-bar-slot="actions" className="relative ml-auto flex shrink-0 items-stretch">
         {priceFace}
         {listingIconButton}
         {ticketInline ?? claimIconButton}
@@ -847,5 +886,41 @@ export function CartonContextCard({
     </div>
   );
 
-  return <div className="w-full min-w-0 overflow-visible">{oneRowBar}</div>;
+  return (
+    <div className="relative w-full min-w-0 overflow-visible">
+      {oneRowBar}
+      {catalogKind ? (
+        <div
+          ref={catalogPanelRef}
+          className={cn(
+            CHIP_HOVER_MENU_PANEL_CLASS,
+            'absolute left-1/2 top-full z-panelPopover mt-1.5 w-[min(100%,20rem)] max-w-none -translate-x-1/2',
+          )}
+          data-testid="carton-context-catalog-manager"
+        >
+          <div className="flex items-center justify-between border-b border-border-hairline px-1.5 py-1.5">
+            <span className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-muted">
+              {catalogKind === 'platform' ? 'Manage platforms' : 'Manage types'}
+            </span>
+            {/* `Button`, not `IconButton`: this directory bans the fixed-box
+                control so nothing lands on the strip that cannot be a
+                full-height action cell. This close sits in a POPOVER header,
+                not on the strip — `Button` is already flush-square
+                (`cornerClass('flush')`), so only the box is trimmed here. */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setCatalogKind(null)}
+              ariaLabel="Close"
+              icon={<X />}
+              className="h-6 w-6 p-0"
+            />
+          </div>
+          <div className="max-h-80 overflow-y-auto px-1.5 py-1.5">
+            <CatalogManagerList kind={catalogKind} enabled />
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
 }

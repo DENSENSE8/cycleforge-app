@@ -46,10 +46,10 @@ export const STATION_CONTEXT_EXIT_PILL_CLASS = [
 /**
  * Icon-only action cell on the one-row carton bar — square face filling the
  * chrome row, no cell hairline (the bar is one continuous strip; the row owns
- * the bottom seam). Pair glyph with `h-3.5 w-3.5`. Listing · overflow only.
- * Claim is the word face ({@link STATION_CONTEXT_CLAIM_CHROME_CLASS}), not this
- * cell. Never put `IconButton` on this row — `size="sm"` is a fixed h-7 w-7
- * box that sits off the strip.
+ * the bottom seam). Pair glyph with `h-3.5 w-3.5`. Overflow only.
+ * Listing is the word face ({@link STATION_CONTEXT_LISTING_CHROME_CLASS}); Claim
+ * is {@link STATION_CONTEXT_CLAIM_CHROME_CLASS}. Never put `IconButton` on this
+ * row — `size="sm"` is a fixed h-7 w-7 box that sits off the strip.
  */
 export const STATION_CONTEXT_ACTION_CELL_CLASS = [
   'ds-raw-button relative z-base flex h-full aspect-square shrink-0 items-center justify-center',
@@ -76,7 +76,7 @@ export const STATION_CONTEXT_PHOTO_TONE =
  * wash (the photos SoT). Camera + count; glyph is h-3.5, never the h-11 flush cube.
  */
 export const STATION_CONTEXT_PHOTO_CHROME_CLASS = [
-  'ds-raw-button relative z-base flex h-full shrink-0 items-center justify-center gap-0.5',
+  'ds-raw-button relative z-base flex h-full shrink-0 items-center justify-center gap-0.5 leading-none',
   cornerClass('flush'),
   'border-0 px-1.5 text-role-caption font-semibold tabular-nums shadow-none',
   STATION_CONTEXT_PHOTO_TONE,
@@ -113,13 +113,27 @@ const STATION_CONTEXT_CLAIM_TONE =
 /**
  * Claim on the one-row carton chrome — same geometry as Photos
  * ({@link STATION_CONTEXT_PHOTO_CHROME_CLASS}): h-full, icon left + word right.
- * Ticket + "claim". Never IconButton. Linked tickets stay ReceivingTicketChip.
+ * Ticket + "Claim". Never IconButton. Linked tickets stay ReceivingTicketChip.
  */
 export const STATION_CONTEXT_CLAIM_CHROME_CLASS = [
-  'ds-raw-button relative z-base flex h-full shrink-0 items-center justify-center gap-0.5',
+  'ds-raw-button relative z-base flex h-full shrink-0 items-center justify-center gap-0.5 leading-none',
   cornerClass('flush'),
   'border-0 px-1.5 text-role-caption font-semibold shadow-none',
   STATION_CONTEXT_CLAIM_TONE,
+  focusRing('control', 'accent'),
+  'outline-none',
+].join(' ');
+
+/**
+ * Listing on the one-row carton chrome — same geometry as Claim / Photos.
+ * ExternalLink + platform catalog name (eBay, Goodwill, …). Glyph paint comes
+ * from {@link platformMetaIconTone} on the icon span; the word stays default ink.
+ */
+export const STATION_CONTEXT_LISTING_CHROME_CLASS = [
+  'ds-raw-button relative z-base flex h-full shrink-0 items-center justify-center gap-0.5 leading-none',
+  cornerClass('flush'),
+  'border-0 bg-surface-card px-1.5 text-role-caption font-semibold text-text-default shadow-none',
+  'hover:bg-surface-hover/50 disabled:text-text-faint',
   focusRing('control', 'accent'),
   'outline-none',
 ].join(' ');

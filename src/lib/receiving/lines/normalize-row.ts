@@ -116,6 +116,11 @@ export function normalizeRow(row: Record<string, unknown>) {
     staged_location_room:     (row.staged_location_room as string | null) ?? null,
     staged_location_row_label:(row.staged_location_row_label as string | null) ?? null,
     staged_location_col_label:(row.staged_location_col_label as string | null) ?? null,
+    // Point-in-time snapshot written by the stage route — the face the operator
+    // actually confirmed. Survives a later rename of the bin.
+    staged_location_code:     (row.staged_location_code as string | null) ?? null,
+    staged_by:                row.staged_by != null ? Number(row.staged_by) : null,
+    staged_by_name:           (row.staged_by_name as string | null) ?? null,
     // Denormalized serial projection (rlt.serial_projection) surfaced by the list
     // builders as `serials` — the FAST DEFAULT for first-frame chip display, so a
     // row-click / deep-link / arrow-nav open paints serials without waiting on the

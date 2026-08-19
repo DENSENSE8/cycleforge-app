@@ -11,7 +11,7 @@
  *
  * Opt-in leaf-command footer: {@link setLeafCommands} with a non-empty list
  * flips the column footer to `leaf-command` (`/` palette). Pass `null` / `[]`
- * to stay on dismiss-only. Never remount index `Filter displays…` from a leaf.
+ * to stay on Filter + hide. Index and default leaves share `Filter displays…`.
  *
  * Leaf-wide child perspectives (e.g. Claim New·Link) register via
  * {@link setLeafTrailing} into the sticky header’s trailing slot — never a

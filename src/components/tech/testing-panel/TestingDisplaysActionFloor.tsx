@@ -17,6 +17,7 @@ export function TestingDisplaysActionFloor({
   openDisplays,
   onDeleted,
   editSelected = false,
+  deleteIdentity,
 }: {
   receivingId: number | null | undefined;
   isUnfound: boolean;
@@ -26,6 +27,7 @@ export function TestingDisplaysActionFloor({
   onDeleted?: () => void;
   /** Underline Edit when the Linkage leaf is open. */
   editSelected?: boolean;
+  deleteIdentity?: { tracking?: string | null; poNumber?: string | null } | null;
 }) {
   return (
     <CartonDisplaysActionFloor
@@ -34,6 +36,7 @@ export function TestingDisplaysActionFloor({
       isUnfound={isUnfound}
       onDeleted={onDeleted}
       editSelected={editSelected}
+      deleteIdentity={deleteIdentity}
       onEdit={() => openDisplays('linkage')}
       onLink={() => openDisplays('linkage')}
     />

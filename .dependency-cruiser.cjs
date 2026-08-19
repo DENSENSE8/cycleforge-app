@@ -116,6 +116,7 @@ module.exports = {
         '^scripts',
         '\\.test\\.(ts|tsx|js|jsx|mjs)$',
         '\\.spec\\.(ts|tsx|js|jsx|mjs)$',
+        'jscpd-(clone-probe|hardware-wall-probe)',
       ],
     },
     includeOnly: '^src',

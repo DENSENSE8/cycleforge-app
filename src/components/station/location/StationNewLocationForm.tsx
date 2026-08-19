@@ -1,12 +1,17 @@
 'use client';
 
 /**
- * Arrival Displays → Locations → **New** — the create mode of
- * {@link ArrivalLocationsDisplay}, not a leaf of its own.
+ * @domain-job Station Displays → Locations → **New** — mint a scannable
+ *   address, print its sticker, and (where the storage allows it) put the open
+ *   entity straight on it.
+ * @hardware-target Station
+ * @density floor
+ * @justification Cannot reuse the Inventory location editor — this is the
+ *   create MODE of {@link StationLocationsDisplay}, not a leaf or a dialog of
+ *   its own, and it must hand the operator back to that list on commit.
  *
- * Mint a staging spot from the door, print its sticker, and put the open carton
- * on it. Closes the loop the placement work opened: the dock lets you scan a
- * shelf, this makes the shelf you are about to scan.
+ * Closes the loop the placement work opened: the dock lets you scan a shelf,
+ * this makes the shelf you are about to scan.
  *
  * **Why it lives inside the Locations list.** Creating a place is the RARE half
  * of the job — an operator reprints a scuffed label far more often than they
@@ -24,10 +29,12 @@
  * `extractArrivalLocationBarcode` decodes, so a hand-typed barcode would make a
  * row you can pick from a dropdown but never scan.
  *
- * Placement then runs through `useTriageStaging.selectShelf` — the same writer
- * the dock and the `<select>` use, so the lane auto-route and its manual-wins
- * rule are inherited. Arrival storage only (`receiving_triage`); never the Unbox
- * line putaway or the packing-desk ledger.
+ * Placement then runs through the port's writer — at Arrival
+ * `useTriageStaging.selectShelf`, so the lane auto-route and its manual-wins
+ * rule are inherited. Where a minted BIN cannot hold the open entity
+ * (`canPlaceMinted: false` — Ready to Pack places on DESK/STAGING rows only),
+ * the leaf offers mint + print and does NOT paint a Create & place that the
+ * placement API would bounce.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -49,7 +56,7 @@ import {
 } from '@/lib/receiving/arrival-new-location';
 import { toast } from '@/lib/toast';
 import { cn } from '@/utils/_cn';
-import type { TriageStagingController } from './useTriageStaging';
+import type { StationLocationPlacementPort } from './station-location-port';
 
 const FIELD_CLASS = cn(
   'h-8 w-full min-w-0 rounded-none border border-border-soft bg-surface-card',
@@ -92,20 +99,20 @@ function NumberField({
   );
 }
 
-export function ArrivalNewLocationForm({
-  staging,
+export function StationNewLocationForm({
+  port,
   onPlaced,
   onCreated,
 }: {
-  staging: TriageStagingController;
-  /** Close the leaf once the carton is on the new spot (nothing left to do). */
+  port: StationLocationPlacementPort;
+  /** Close the leaf once the entity is on the new spot (nothing left to do). */
   onPlaced?: () => void;
-  /** Hand the operator back to the list after a shelf is minted. */
+  /** Hand the operator back to the list after an address is minted. */
   onCreated?: () => void;
 }) {
   const { rooms, loading: roomsLoading } = useLocations();
   const { identity: orgGs1 } = useOrgGs1();
-  const { locations, selectShelf, refreshCatalog } = staging;
+  const { locations, place: placeAt, refreshCatalog, canPlaceMinted } = port;
 
   const roomNames = useMemo(() => printableRoomNames(rooms), [rooms]);
   const [room, setRoom] = useState('');
@@ -153,11 +160,11 @@ export function ArrivalNewLocationForm({
       // picker and shelf summary will read "Select a shelf…" beside a staged
       // carton.
       refreshCatalog();
-      const ok = await selectShelf(created.id);
-      // selectShelf already reported a failed write and rolled back; only claim
+      const ok = await placeAt(created.id);
+      // The port already reported a failed write and rolled back; only claim
       // the placement when it actually landed.
       if (!ok) return;
-      toast.success(`Created ${created.name} · carton staged`);
+      toast.success(`Created ${created.name} · ${port.entityNoun} staged`);
       onCreated?.();
       onPlaced?.();
     } catch (err) {
@@ -167,7 +174,7 @@ export function ArrivalNewLocationForm({
     } finally {
       setBusy(false);
     }
-  }, [onCreated, onPlaced, refreshCatalog, room, segments, selectShelf]);
+  }, [onCreated, onPlaced, placeAt, port.entityNoun, refreshCatalog, room, segments]);
 
   const printSticker = useCallback(async () => {
     if (!segments || !room) return;
@@ -268,21 +275,25 @@ export function ArrivalNewLocationForm({
         }
       >
         <Button
-          variant="secondary"
+          // With no Create & place (pack desks), minting the sticker IS the
+          // commit — it must not read as the quiet option next to nothing.
+          variant={canPlaceMinted ? 'secondary' : 'primary'}
           onClick={() => void printSticker()}
           disabled={busy || !segments}
         >
           <Printer className="h-4 w-4" />
           Print label
         </Button>
-        <Button
-          variant="primary"
-          onClick={() => void createAndPlace()}
-          disabled={busy || !segments}
-        >
-          <MapPin className="h-4 w-4" />
-          Create &amp; place
-        </Button>
+        {canPlaceMinted ? (
+          <Button
+            variant="primary"
+            onClick={() => void createAndPlace()}
+            disabled={busy || !segments}
+          >
+            <MapPin className="h-4 w-4" />
+            Create &amp; place
+          </Button>
+        ) : null}
       </FlushTerminalFooter>
 
       {/* Print zone — hidden on screen, fills the 3in × 2in page on print. */}

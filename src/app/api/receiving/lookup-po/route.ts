@@ -31,6 +31,7 @@ import {
 } from '@/lib/receiving/unbox-lookup-scan';
 import type { UnboxScanKind } from '@/lib/receiving/unbox-scan-kind';
 import { resolveShipmentForScan } from '@/lib/receiving/resolve-shipment-for-scan';
+import { resolveInboundCartonByTracking } from '@/lib/inbound/resolve-inbound-tracking';
 import type { ReceivingExceptionCode } from '@/lib/receiving/exception-codes';
 import {
   upsertOpenTrackingException,
@@ -274,6 +275,23 @@ async function findScanByTracking(
       orgId,
     );
     return { scan_id, receiving_id: resolved.receivingId };
+  }
+
+  // ── 1b. Incoming desk / Amazon-returns CSV — mirror tracking → carton ──
+  const inbound = await resolveInboundCartonByTracking(orgId as OrgId, trackingNumber).catch(
+    () => null,
+  );
+  if (inbound) {
+    const scan_id = await memoizeLookupHit(
+      inbound.receivingId,
+      trackingNumber,
+      'unmatched',
+      staffId,
+      carrier,
+      intakeSurface,
+      orgId,
+    );
+    return { scan_id, receiving_id: inbound.receivingId };
   }
 
   // ── 2. receiving_scans fallback (STN-less rows) ─────────────────────────

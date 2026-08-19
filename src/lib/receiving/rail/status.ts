@@ -30,13 +30,21 @@ import { isZohoReceivedLikeStatus } from '@/lib/receiving/zoho-received-status';
  * workflow_status can't express:
  *   - Unmatched cartons have no PO/receive step → unboxed locally reads Received.
  *   - Vendor-side already-received (Zoho) reads Received in-warehouse.
+ *   - Vendor-side still open (issued / not received-like) never reads Received —
+ *     inventory is SoT; local DONE from a failed push stays Unboxed.
  */
 function railCoarseStatus(row: ReceivingLineRow): ReceivingLineStatus {
   if (row.receiving_source === 'unmatched') {
     return row.unboxed_at || (row.quantity_received ?? 0) > 0 ? 'RECEIVED' : 'SCANNED';
   }
   if (isZohoReceivedLikeStatus(row.zoho_status)) return 'RECEIVED';
-  return deriveReceivingLineStatus(row.workflow_status);
+  const derived = deriveReceivingLineStatus(row.workflow_status);
+  const zohoOpen =
+    Boolean(String(row.zoho_purchaseorder_id ?? '').trim()) &&
+    Boolean(String(row.zoho_status ?? '').trim()) &&
+    !isZohoReceivedLikeStatus(row.zoho_status);
+  if (zohoOpen && derived === 'RECEIVED') return 'UNBOXED';
+  return derived;
 }
 
 /** @deprecated A row at/after the RECEIVED coarse stage. Prefer {@link railCoarseStatus}. */

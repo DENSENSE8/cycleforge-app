@@ -5,9 +5,8 @@
  * current value (tone-coded icon face, icon+name, or label).
  *
  * Two presentations:
- * - `menu` (carton-context default) — chip-anchored {@link DropdownMenu}
- *   opening **below** the face (`side="bottom"`, no side flip). Item pad
- *   matches the chip (`px-1.5`). Classify
+ * - `menu` (carton-context default) — hover list below the face. Optional
+ *   Edit row is first. Item pad matches the chip (`px-1.5`). Classify
  *   Displays keeps the full searchable editor when staff open that leaf
  *   themselves.
  * - `inline` — expands the option set in-row (legacy / hosts that need a
@@ -25,16 +24,11 @@ import { useEffect, useRef, type ReactNode } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from '@/design-system/motion';
 import { HEADER_ICON_WRAP } from '@/components/layout/header-shell';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/design-system/primitives/DropdownMenu';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { motionBezier, framerDuration } from '@/design-system/foundations/motion-framer';
 import { cn } from '@/utils/_cn';
 import {
+  CHIP_HOVER_MENU_ICON_CLASS,
   CHIP_HOVER_MENU_ITEM_CLASS,
   CHIP_HOVER_MENU_ITEM_SEAM_CLASS,
   CHIP_HOVER_MENU_ITEM_TONE,
@@ -139,6 +133,13 @@ function IdentityDot({ opt }: { opt: InlinePillOption | null }) {
 const SWAP_MS = 0.12;
 const OPTION_STAGGER_MS = 0.018;
 
+interface InlinePillMenuLeadItem {
+  id: string;
+  label: string;
+  icon?: ReactNode;
+  onSelect: () => void;
+}
+
 export function InlinePillPicker({
   ariaLabel,
   options,
@@ -157,6 +158,7 @@ export function InlinePillPicker({
   expandedFace = 'label',
   collapsedVariant = 'default',
   presentation = 'inline',
+  menuLeadItems = [],
 }: {
   ariaLabel: string;
   options: InlinePillOption[];
@@ -194,10 +196,12 @@ export function InlinePillPicker({
    */
   collapsedVariant?: 'default' | 'bookmark';
   /**
-   * `menu` — chip-anchored dropdown (carton-context inline edit).
-   * `inline` — in-row option strip (legacy expand).
+   * `menu` — chip-anchored hover list (carton-context). Optional lead rows
+   * (Add platform / Edit all) sit above the option list. `inline` — in-row strip.
    */
   presentation?: 'inline' | 'menu';
+  /** Hover-menu rows above the option list (catalog add / edit-all). */
+  menuLeadItems?: InlinePillMenuLeadItem[];
 }) {
   const ref = useRef<HTMLDivElement | null>(null);
   const reduceMotion = useReducedMotion();
@@ -231,7 +235,7 @@ export function InlinePillPicker({
   const faceStyle = undefined;
   const identityFace = active?.face ?? EMPTY_FACE;
   const tooltipLabel = `${ariaLabel}: ${active?.title ?? fullLabel}${
-    readOnly ? '' : ' — click to change'
+    readOnly ? '' : isMenu ? ' — hover to change' : ' — click to change'
   }`;
 
   const swapTransition = reduceMotion
@@ -302,7 +306,9 @@ export function InlinePillPicker({
       aria-haspopup={readOnly ? undefined : 'menu'}
       aria-expanded={readOnly ? undefined : open}
       aria-label={
-        readOnly ? `${ariaLabel}: ${fullLabel}` : `${ariaLabel}: ${fullLabel} — click to change`
+        readOnly
+          ? `${ariaLabel}: ${fullLabel}`
+          : `${ariaLabel}: ${fullLabel}${isMenu ? ' — hover to change' : ' — click to change'}`
       }
       title={isBookmark ? undefined : tooltipLabel}
       onClick={readOnly || isMenu ? undefined : () => onOpenChange(true)}
@@ -322,59 +328,86 @@ export function InlinePillPicker({
   );
 
   if (isMenu) {
-    const menuTrigger = isBookmark ? (
-      <HoverTooltip label={tooltipLabel} asChild>
-        <DropdownMenuTrigger asChild>{collapsedButton}</DropdownMenuTrigger>
-      </HoverTooltip>
-    ) : (
-      <DropdownMenuTrigger asChild>{collapsedButton}</DropdownMenuTrigger>
-    );
-
     return (
       <div
         ref={ref}
         data-inline-pill=""
         data-presentation="menu"
         className={cn(
-          'flex h-full shrink-0 self-stretch items-stretch',
+          'relative flex h-full shrink-0 self-stretch items-stretch',
           disabled && 'pointer-events-none opacity-50',
         )}
+        onMouseEnter={() => {
+          if (!readOnly) onOpenChange(true);
+        }}
+        onMouseLeave={() => onOpenChange(false)}
       >
         {readOnly ? (
           <div className="flex h-full shrink-0 items-stretch">{collapsedFaceWrap}</div>
         ) : (
-          <DropdownMenu open={open} onOpenChange={onOpenChange}>
-            {menuTrigger}
-            <DropdownMenuContent
-              align="start"
-              side="bottom"
-              sideOffset={6}
-              avoidCollisions={false}
-              className={CHIP_HOVER_MENU_PANEL_CLASS}
-              aria-label={ariaLabel}
-            >
-              {options.map((opt, i) => {
-                const isActive = opt.value === value;
-                return (
-                  <DropdownMenuItem
-                    key={opt.value || '__none__'}
-                    onSelect={() => onSelect(opt.value)}
-                    className={cn(
-                      CHIP_HOVER_MENU_ITEM_CLASS,
-                      i > 0 && CHIP_HOVER_MENU_ITEM_SEAM_CLASS,
-                      isActive
-                        ? CHIP_HOVER_MENU_ITEM_TONE.active
-                        : CHIP_HOVER_MENU_ITEM_TONE.default,
-                    )}
-                    aria-label={opt.title ?? opt.label}
-                  >
-                    <IdentityDot opt={opt} />
-                    <span className="min-w-0 flex-1 truncate">{opt.label}</span>
-                  </DropdownMenuItem>
-                );
-              })}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <>
+            {collapsedFaceWrap}
+            {open ? (
+              <div className="absolute left-0 top-full z-panelPopover pt-1.5">
+                <div
+                  role="menu"
+                  aria-label={ariaLabel}
+                  className={CHIP_HOVER_MENU_PANEL_CLASS}
+                  data-testid="inline-pill-hover-menu"
+                >
+                  {menuLeadItems.map((item, i) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        item.onSelect();
+                        onOpenChange(false);
+                      }}
+                      aria-label={item.label}
+                      className={cn(
+                        CHIP_HOVER_MENU_ITEM_CLASS,
+                        i > 0 && CHIP_HOVER_MENU_ITEM_SEAM_CLASS,
+                        CHIP_HOVER_MENU_ITEM_TONE.default,
+                      )}
+                    >
+                      {item.icon ? (
+                        <span className={cn(CHIP_HOVER_MENU_ICON_CLASS, 'text-text-soft')}>
+                          {item.icon}
+                        </span>
+                      ) : null}
+                      {item.label}
+                    </button>
+                  ))}
+                  {options.map((opt, i) => {
+                    const isActive = opt.value === value;
+                    return (
+                      <button
+                        key={opt.value || '__none__'}
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          onSelect(opt.value);
+                          onOpenChange(false);
+                        }}
+                        className={cn(
+                          CHIP_HOVER_MENU_ITEM_CLASS,
+                          (menuLeadItems.length > 0 || i > 0) && CHIP_HOVER_MENU_ITEM_SEAM_CLASS,
+                          isActive
+                            ? CHIP_HOVER_MENU_ITEM_TONE.active
+                            : CHIP_HOVER_MENU_ITEM_TONE.default,
+                        )}
+                        aria-label={opt.title ?? opt.label}
+                      >
+                        <IdentityDot opt={opt} />
+                        <span className="min-w-0 flex-1 truncate">{opt.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+          </>
         )}
       </div>
     );
