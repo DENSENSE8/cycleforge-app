@@ -206,6 +206,7 @@ function buildReceivingDoc(row: SearchSourceRow): BuiltSearchDoc {
     poNumber,
     sourceOrderId,
     sourcePlatform,
+    intakeType: strOrNull(row.intake_type),
     firstItemName,
     fallback: `Receiving #${str(row.id)}`,
   });
