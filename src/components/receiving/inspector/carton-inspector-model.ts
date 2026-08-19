@@ -321,7 +321,7 @@ export function qaStatusToneClass(raw: string | null | undefined): string {
  * Capability nouns — "PO match", not a vendor product sentence.
  */
 const RECEIVING_SOURCE_LABELS: Record<string, string> = {
-  zoho_po: 'PO match',
+  zoho_po: 'PO',
   unmatched: 'Unmatched',
   local_pickup: 'Local pickup',
   sourcing_import: 'Sourcing import',
@@ -548,8 +548,11 @@ export function cartonRecordMeta(receiving: CartonInspectorReceiving): CartonFac
   ) => {
     if (value) out.push({ key, label, value, kind });
   };
-  add('id', 'Carton', String(receiving.id), 'id');
-  add('shipment', 'Shipment', present(receiving.shipment_id), 'id');
+  // NO 'Carton' and NO 'Shipment' row. Both are internal row handles — the
+  // carton id already addresses this page (URL, audit rail, Unbox) and the
+  // shipment id names a grouping nobody on the floor quotes. Printing them as
+  // facts spent two of the record grid's cells on numbers that answer no
+  // question an operator arrives with.
   add('source', 'Source', present(receiving.source), 'source');
   // Omitted entirely when nobody recorded a pairing answer — `add` skips a null.
   // That honest absence is the point: this row used to print "UNFOUND" for every
@@ -671,7 +674,6 @@ export function cartonContentsSummary(totals: CartonInspectorTotals | undefined 
  */
 export type CartonExceptionKey =
   | 'unfound'
-  | 'triage_incomplete'
   | 'no_lines'
   | 'qa_pending';
 
@@ -698,16 +700,15 @@ export function cartonExceptions(
     });
   }
 
-  const opened = present(receiving.unbox_opened_at) || present(receiving.unboxed_at);
-  if (opened && receiving.triage_complete === false) {
-    out.push({
-      key: 'triage_incomplete',
-      label: 'Triage incomplete',
-      ctaHint: 'Finish triage or clear the flag in Unbox',
-      tone: 'warning',
-    });
-  }
+  // NO 'triage_incomplete' FINDING. `triage_complete = false` on an opened
+  // carton is an internal bookkeeping flag, not something wrong with the box:
+  // it fires on cartons whose contents, photos and receipt are all complete, so
+  // on the read surface it was a permanent amber band telling the reader to go
+  // do work in Unbox that nobody had asked for. A findings list that cries wolf
+  // costs the findings that are real (no contents recorded, QA pending). The
+  // flag still exists on the row and still drives the Unbox/Triage queues.
 
+  const opened = present(receiving.unbox_opened_at) || present(receiving.unboxed_at);
   if (opened && (!totals || totals.lines === 0)) {
     out.push({
       key: 'no_lines',

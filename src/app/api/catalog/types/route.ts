@@ -55,6 +55,7 @@ export const POST = withAuth(
         slug,
         label: parsed.label,
         kind: parsed.kind,
+        colorHex: parsed.colorHex == null ? null : parsed.colorHex.toLowerCase(),
         isReturn: parsed.isReturn,
         sortOrder: parsed.sortOrder,
         platformAccountId: parsed.platformAccountId,

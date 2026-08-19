@@ -5,6 +5,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import { motion, useReducedMotion } from '@/design-system/motion';
 import { motionBezier } from '@/design-system/foundations/motion-framer';
 import { nestedCornerClass } from '@/design-system/tokens/radius';
+import { navIconStrokeClass } from '@/components/icons/nav-weight';
 import { cn } from '@/utils/_cn';
 
 interface Tab {
@@ -333,7 +334,13 @@ export function TabSwitch({
                   }}
                   transition={{ duration: 0.18, ease: motionBezier.easeOut }}
                 >
-                  {Icon ? <Icon className="h-3.5 w-3.5 shrink-0" /> : null}
+                  {Icon ? (
+                    // Nav-chrome glyphs (station / scope faces) arrive BARE
+                    // since 2026-08-19 — the surface owns the stroke, so a tab
+                    // band that draws them declares it here rather than each
+                    // registry baking a weight into its icons.
+                    <Icon className={navIconStrokeClass('h-3.5 w-3.5 shrink-0')} />
+                  ) : null}
                   <span className="inline-flex items-center gap-1.5">
                     <span>{tab.label}</span>
                     {tab.count !== undefined && tab.count > 0 && countStyle === 'plain' ? (

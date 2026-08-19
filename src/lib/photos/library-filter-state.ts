@@ -674,3 +674,24 @@ export function clearStructuredPhotoFilters(
     hasAnalysis: undefined,
   };
 }
+
+/**
+ * Deep link to the pack photos captured for ONE outbound shipment.
+ *
+ * The media library resolves PACKER_LOG photos by tracking number via
+ * `packer_logs.shipment_id → shipping_tracking_numbers` (see
+ * `src/lib/photos/queries/library.ts` → trackingExists), so the tracking
+ * number is the whole scope — no packerLogId lookup, no per-order endpoint.
+ *
+ * Callers (search rows, order rails) hold a tracking number and nothing about
+ * how many photos exist; the library itself paints the empty state when the
+ * packer never captured any.
+ */
+export function packPhotosLibraryHref(tracking: string): string {
+  const params = new URLSearchParams({
+    sourceScope: 'outbound',
+    outboundMedia: 'pack_photos',
+    tracking: tracking.trim(),
+  });
+  return `/ops/photos?${params.toString()}`;
+}

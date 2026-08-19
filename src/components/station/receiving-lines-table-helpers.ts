@@ -32,12 +32,22 @@ export function dispatchSelectLine(
      * byte-identical. The browse FEED passes false — see `readSelectLineDetail`.
      */
     recordView?: boolean;
+    /**
+     * Preview stance open — the pane paints as a scan's would but stays inert,
+     * and the open writes nothing. Implies `recordView: false`, resolved in
+     * `readSelectLineDetail` so the two facts cannot drift apart.
+     */
+    preview?: boolean;
   },
 ) {
   // Bare row when there is nothing to add, so the ~15 existing dispatchers keep
   // emitting the exact payload shape their listeners have always received.
   const detail =
-    opts?.recordView === false ? { row, recordView: false } : row;
+    opts?.preview === true
+      ? { row, recordView: false, preview: true }
+      : opts?.recordView === false
+        ? { row, recordView: false }
+        : row;
   window.dispatchEvent(new CustomEvent('receiving-select-line', { detail }));
 }
 

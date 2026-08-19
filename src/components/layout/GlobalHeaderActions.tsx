@@ -25,7 +25,7 @@ import {
   HEADER_ICON_CLUSTER,
   HEADER_ICON_GAP,
   HEADER_ICON_WRAP,
-  TOP_CHROME_ICON_GLYPH,
+  TOP_CHROME_ICON_FACE,
 } from './header-shell';
 
 type OpenPopover = 'none' | 'history' | 'inbox' | 'account' | 'clipboard' | 'feedback';
@@ -89,7 +89,7 @@ export function GlobalHeaderActions({ variant = 'desktop' }: { variant?: 'deskto
   const accountInitial = initials(displayName) || '·';
 
   const iconBtnSize = isMobile ? ('touch' as const) : ('md' as const);
-  const iconSize = isMobile ? 'h-5 w-5' : TOP_CHROME_ICON_GLYPH;
+  const iconSize = isMobile ? 'h-5 w-5' : TOP_CHROME_ICON_FACE;
   const avatarSize = 'h-9 w-9 text-sm';
   const wrapClass = isMobile ? 'relative flex h-11 w-11 shrink-0 items-center justify-center' : HEADER_ICON_WRAP;
 

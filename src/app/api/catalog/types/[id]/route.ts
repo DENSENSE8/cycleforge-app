@@ -28,8 +28,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const before = await getTypeById(gate.ctx.organizationId, id);
     if (!before) return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 });
 
-    // platformAccountId / workflowNodeId: only forward the key when the client
-    // sent it, so updateType can tell "clear to null" from "leave unchanged".
+    // colorHex / platformAccountId / workflowNodeId: only forward the key when
+    // the client sent it, so updateType can tell "clear to null" from "leave
+    // unchanged" — null on colorHex means "back to the built-in type tone".
     const data: Parameters<typeof updateType>[2] = {
       label: parsed.label,
       kind: parsed.kind,
@@ -37,6 +38,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       sortOrder: parsed.sortOrder,
       isActive: parsed.isActive,
     };
+    if (Object.prototype.hasOwnProperty.call(parsed, 'colorHex')) {
+      data.colorHex = parsed.colorHex == null ? null : parsed.colorHex.toLowerCase();
+    }
     if (Object.prototype.hasOwnProperty.call(parsed, 'platformAccountId')) {
       data.platformAccountId = parsed.platformAccountId;
     }

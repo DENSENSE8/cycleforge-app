@@ -61,7 +61,7 @@ import {
   HEADER_ICON_BTN_CLASS,
   HEADER_ICON_BTN_OPEN_CLASS,
   HEADER_ICON_WRAP,
-  TOP_CHROME_ICON_GLYPH,
+  TOP_CHROME_ICON_FACE,
 } from './header-shell';
 
 function resolvePinIcon(pin: PinnedPage): SidebarIconComponent {
@@ -235,7 +235,7 @@ export function HeaderPinsSwitcher() {
           aria-haspopup="menu"
           onClick={() => setOpen((o) => !o)}
           className={cn(HEADER_ICON_BTN_CLASS, open && HEADER_ICON_BTN_OPEN_CLASS)}
-          icon={<Pin className={TOP_CHROME_ICON_GLYPH} />}
+          icon={<Pin className={TOP_CHROME_ICON_FACE} />}
         />
       </HoverTooltip>
 

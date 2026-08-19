@@ -632,6 +632,28 @@ export const PATCH = withAuth(async (request: NextRequest, ctx) => {
       }
     }
 
+    // Face-write clock (`face_noted_at`) — the ONE column that says when this
+    // line's sticker text last changed, and what Unbox notes-composer Recent
+    // ranks on. Stamped HERE because this route is the single door the notes
+    // composer, the label editor and the carton-print stamp all patch through.
+    //
+    // `IS DISTINCT FROM` is load-bearing: a blur-save or a re-print that writes
+    // the same words is not a new note, and stamping it would float a stale
+    // phrase back to the top of Recent. The comparison reads the OLD row (SET
+    // expressions all evaluate pre-update), so no read-modify-write is needed.
+    const faceCols = (['notes', 'label_note'] as const).filter(
+      (col) => body[col] !== undefined,
+    );
+    if (faceCols.length > 0) {
+      const changed = faceCols.map((col) => {
+        values.push(String(body[col] ?? '').trim() || null);
+        return `${col} IS DISTINCT FROM $${idx++}`;
+      });
+      updates.push(
+        `face_noted_at = CASE WHEN ${changed.join(' OR ')} THEN now() ELSE face_noted_at END`,
+      );
+    }
+
     type ZohoTextKey =
       | 'zohoItemId' | 'zohoLineItemId' | 'zohoPurchaseReceiveId'
       | 'zohoPurchaseOrderId' | 'zohoPurchaseOrderNumber';

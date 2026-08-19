@@ -53,6 +53,13 @@ type ScanBarTarget = {
    * Sidebar ingestion only; dock wedge fields never register here.
    */
   armNext: () => void;
+  /**
+   * Hand a wedge payload to the bar instead of letting the app resolve it.
+   * Preview stance's escape hatch at the wedge waist — see
+   * {@link deliverScanToTarget}. Optional: a bar that cannot accept a value
+   * (no controlled `onChange`) simply declines and the scan falls through.
+   */
+  deliver?: (value: string) => boolean;
 };
 
 const targets: ScanBarTarget[] = [];
@@ -158,6 +165,21 @@ function armNextTopTarget(): void {
     window.dispatchEvent(new CustomEvent(SCAN_NEXT_REQUESTED_EVENT));
   }
   topTarget()?.armNext();
+}
+
+/**
+ * Route a wedge payload into the mounted scan bar rather than resolving it.
+ *
+ * The one door Preview stance uses from {@link useGlobalWedgeScanner}: a
+ * physical scan lands wherever focus happens to be, so without this the stance
+ * was only ever honored on the typed-Enter path and a real scanner navigated
+ * straight past it. Returns false when no mounted bar can take the value, so
+ * the caller keeps its normal ladder.
+ */
+export function deliverScanToTarget(value: string): boolean {
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  return topTarget()?.deliver?.(trimmed) ?? false;
 }
 
 /** Pointer reclaim — same path as the bare reclaim key (keep typed text). */

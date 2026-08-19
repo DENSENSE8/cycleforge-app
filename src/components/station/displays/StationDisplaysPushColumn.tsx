@@ -91,7 +91,7 @@ const STATION_DISPLAYS_DEFAULT_WIDTH_PX = 420;
  * double-paints against the leaf header's top hairline).
  */
 const STATION_DISPLAYS_PUSH_TOP_BAND =
-  `pointer-events-none relative z-header flex ${STATION_CHROME_ROW_FACE} items-stretch gap-0.5 pl-2 pr-2 ${STATION_CHROME_SEAM_HAIRLINE}`;
+  `pointer-events-none relative z-header flex ${STATION_CHROME_ROW_FACE} items-stretch gap-0.5 pr-2 ${STATION_CHROME_SEAM_HAIRLINE}`;
 
 /** Hit cell for a top-band IconButton — stretch to the band, re-enable pointer. */
 const STATION_DISPLAYS_PUSH_TOP_CELL =
@@ -106,8 +106,9 @@ const STATION_DISPLAYS_PUSH_COLLAPSE_LABEL = 'Restore panel width';
  * (`pointer-events-auto` on the cell) so the band itself stays pass-through
  * for the sash hit area under empty chrome.
  *
- * The 8px is the control's optical inset, not a taste nudge, and `pl-2` keeps it
- * clear of the leading hairline.
+ * The band has NO leading pad (2026-08-19): the leaf Back chevron takes the
+ * column's own left corner. The trailing `pr-2` is the window controls' optical
+ * inset.
  */
 export function StationDisplaysPushColumn({
   ariaLabel,

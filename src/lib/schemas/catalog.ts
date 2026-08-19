@@ -16,7 +16,7 @@ const slug = trimmed
   .max(64)
   .regex(/^[a-z0-9_]+$/, 'slug must be lowercase letters, numbers, or underscores');
 
-/** Org platform accent — `#RRGGBB` only; ink is derived at render. */
+/** Org platform / type accent — `#RRGGBB` only; ink is derived at render. */
 const colorHex = z
   .string()
   .trim()
@@ -64,6 +64,7 @@ export const TypeCreateBody = z
     label: trimmed.min(1, 'label is required'),
     slug: slug.optional(),
     kind: typeKind.optional(),
+    colorHex,
     isReturn: z.boolean().optional(),
     sortOrder: z.number().int().optional(),
     platformAccountId: accountBinding.optional(),
@@ -76,6 +77,7 @@ export const TypeUpdateBody = z
   .object({
     label: trimmed.min(1).optional(),
     kind: typeKind.optional(),
+    colorHex,
     isReturn: z.boolean().optional(),
     sortOrder: z.number().int().optional(),
     isActive: z.boolean().optional(),

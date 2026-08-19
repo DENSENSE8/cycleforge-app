@@ -101,7 +101,6 @@ import {
 } from './line-edit/unbox-side-tabs';
 import { buildUnboxDisplayIndexRows } from './line-edit/unbox-display-index';
 import { isReturnIntake } from '@/lib/receiving/triage-intake-kind';
-import { effectiveIntakeKind } from '@/lib/receiving/kinds/registry';
 import { UnboxDisplaysUtilityRailBody } from './UnboxDisplaysUtilityRailBody';
 
 export function LineEditPanel({
@@ -184,13 +183,10 @@ export function LineEditPanel({
   const hasPoNoteTab = !c.isUnfound && row.receiving_id != null;
   const isLocalPickup = isLocalPickupFulfillment(row);
   const hasTrackingTab = !isLocalPickup;
-  const hasClassifyTab = true;
-  const classifyOnStrip = c.isUnfound;
   const hasListingsTab = !c.isUnfound;
   const hasLinkageTab = row.receiving_id != null;
   const hasInventoryTab = row.receiving_id != null;
   const sideGates = {
-    hasClassifyTab,
     hasLinkageTab,
     hasInventoryTab,
     hasListingsTab,
@@ -277,16 +273,6 @@ export function LineEditPanel({
   const linkagePaired =
     Boolean(String(row.zoho_purchaseorder_id ?? '').trim()) ||
     Boolean(String(row.source_order_id ?? '').trim());
-  const classifyLabel = (() => {
-    const kind = effectiveIntakeKind(
-      row.intake_type || row.receiving_type,
-      row.carton_intake_type,
-    );
-    const bits: string[] = [];
-    if (row.is_priority) bits.push('Priority');
-    if (kind) bits.push(kind);
-    return bits.length > 0 ? bits.join(' · ') : null;
-  })();
   const inventoryReceived =
     typeof row.quantity_received === 'number' ? row.quantity_received : null;
   const inventoryExpected =
@@ -296,7 +282,6 @@ export function LineEditPanel({
       buildUnboxDisplayIndexRows(sideGates, {
         hasTicketId,
         photoCount: typeof row.photo_count === 'number' ? row.photo_count : null,
-        classifyLabel,
         serialCount,
         linkagePaired,
         isUnfound: Boolean(c.isUnfound),
@@ -309,7 +294,6 @@ export function LineEditPanel({
       sideGates,
       hasTicketId,
       row.photo_count,
-      classifyLabel,
       serialCount,
       linkagePaired,
       c.isUnfound,
@@ -531,10 +515,17 @@ export function LineEditPanel({
     openDisplays('photos');
   }, [openDisplays]);
 
-  const toggleTicketView = useCallback(() => {
-    if (ticketViewActive && ticketAction === 'chat') closeDisplays();
-    else openDisplays('ticket', { ticketAction: hasTicketId ? 'chat' : 'claim' });
-  }, [ticketViewActive, ticketAction, hasTicketId, closeDisplays, openDisplays]);
+  /**
+   * OPEN-only, never a toggle (2026-08-19). This is a menu ROW inside the
+   * ticket chip's dropdown, and a row that closes the column it just named
+   * reads as a dead click — the operator picked "Message" to go read the
+   * thread. Dismissing Displays belongs to the column's own chrome
+   * (`→|` / ⌘]), the same split Photos already has (`openPhotosDisplay` opens
+   * and never closes).
+   */
+  const openTicketView = useCallback(() => {
+    openDisplays('ticket', { ticketAction: hasTicketId ? 'chat' : 'claim' });
+  }, [hasTicketId, openDisplays]);
 
   /** Auto-match "Find ticket" → Ticket display as the main surface (claim · link). */
   const openFindTicketDisplay = useCallback(() => {
@@ -756,8 +747,6 @@ export function LineEditPanel({
         hasTimelineTab,
         hasTrackingTab,
         hasListingsTab,
-        hasClassifyTab,
-        classifyOnStrip,
         hasLinkageTab,
         hasInventoryTab,
         poIdForTracking,
@@ -794,8 +783,6 @@ export function LineEditPanel({
       hasTimelineTab,
       hasTrackingTab,
       hasListingsTab,
-      hasClassifyTab,
-      classifyOnStrip,
       hasLinkageTab,
       hasInventoryTab,
       poIdForTracking,
@@ -871,7 +858,7 @@ export function LineEditPanel({
           staffId={staffId}
           c={c}
           linkedOrderNumber={linkedOrder?.orderId ?? null}
-          onToggleTicketView={toggleTicketView}
+          onToggleTicketView={openTicketView}
           ticketViewActive={ticketViewActive}
           onToggleClaimView={() => {
             if (claimViewActive) closeClaimView();

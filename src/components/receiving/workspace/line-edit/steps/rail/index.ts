@@ -31,8 +31,6 @@ import type { UnboxSideTab } from '../../unbox-side-tabs';
  * not frozen) — but every capture step is either here or in the either-or twin.
  */
 export const UNBOX_STEP_RAIL_LEAF: Partial<Record<string, UnboxSideTab>> = {
-  // Identify / link the unfound carton — its reference is the classify surface.
-  classify: 'classify',
   // Found/Return door + packing walk: KNOW is listing links (what you are
   // receiving) — not the Photos gallery. Catalog-only / item photo steps still
   // reference Photos (and item_photos opens Compare via LineEditPanel).
@@ -55,6 +53,10 @@ export const UNBOX_STEP_RAIL_LEAF: Partial<Record<string, UnboxSideTab>> = {
  * `UNBOX_STEPS_WITHOUT_DOCK_ACTION`.
  */
 export const UNBOX_STEPS_WITHOUT_RAIL_LEAF: Readonly<Record<string, string>> = {
+  classify:
+    'urgency · platform · type are InlinePillPicker menus on the carton identity ' +
+    'bar, one row above the work plane — the Displays Classify leaf was a second ' +
+    'editor for the same three fields and was dropped 2026-08-19',
   label:
     'the printed face is the centre UnboxLabelPreview — the operator reads the ' +
     'label in the work plane, so there is no distinct rail reference; a forced ' +

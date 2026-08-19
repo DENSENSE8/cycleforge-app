@@ -92,3 +92,45 @@ export async function getPackerPhotoLogId(
   );
   return res.rows[0] ? Number(res.rows[0].entity_id) : null;
 }
+
+/**
+ * Batch packer-photo counts keyed by TRACKING number — the read behind the
+ * search row's pack-photo CTA.
+ *
+ * Search hits carry a tracking number and no packerLogId, so this walks the
+ * same join the media library uses (`packer_logs.shipment_id →
+ * shipping_tracking_numbers`) rather than making every caller resolve a log id
+ * first. Keys are `tracking_number_normalized`, so callers must normalize with
+ * `normalizeTrackingKey` on both the request and the lookup.
+ *
+ * Tracking numbers WITHOUT a packer log simply do not appear in the result —
+ * callers read a missing key as 0, which is the same answer as "a log exists
+ * but nobody captured anything".
+ */
+export async function countPackerPhotosByTracking(input: {
+  organizationId: string;
+  trackingKeys: string[];
+}): Promise<Record<string, number>> {
+  const keys = [...new Set(input.trackingKeys.filter((k) => k.length > 0))];
+  if (keys.length === 0) return {};
+  const res = await pool.query<{ tn: string; c: string }>(
+    `SELECT stn.tracking_number_normalized AS tn,
+            COUNT(DISTINCT p.id) AS c
+       FROM shipping_tracking_numbers stn
+       JOIN packer_logs pl
+         ON pl.shipment_id = stn.id AND pl.organization_id = stn.organization_id
+       JOIN photo_entity_links l
+         ON l.entity_type = 'PACKER_LOG'
+        AND l.entity_id = pl.id
+        AND l.organization_id = pl.organization_id
+       JOIN photos p
+         ON p.id = l.photo_id AND p.organization_id = l.organization_id
+      WHERE stn.organization_id = $1
+        AND stn.tracking_number_normalized = ANY($2::text[])
+      GROUP BY stn.tracking_number_normalized`,
+    [input.organizationId, keys],
+  );
+  const out: Record<string, number> = {};
+  for (const row of res.rows) out[row.tn] = Number(row.c);
+  return out;
+}

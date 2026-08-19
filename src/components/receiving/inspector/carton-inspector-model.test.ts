@@ -221,7 +221,7 @@ test('qaStatusMeta paints PENDING / PASSED / FAILED without inventing stages', (
 });
 
 test('receivingSourceLabel humanizes intake source tokens', () => {
-  assert.equal(receivingSourceLabel('zoho_po'), 'PO match');
+  assert.equal(receivingSourceLabel('zoho_po'), 'PO');
   assert.equal(receivingSourceLabel('unmatched'), 'Unmatched');
   assert.equal(receivingSourceLabel('local_pickup'), 'Local pickup');
   assert.equal(receivingSourceLabel('sourcing_import'), 'Sourcing import');
@@ -298,8 +298,10 @@ test('cartonFlags carries return and needs-test states', () => {
 test('cartonRecordMeta identifies the row and omits unset ids', () => {
   const meta = cartonRecordMeta(RECEIVING);
   const byKey = new Map(meta.map((m) => [m.key, m.value]));
-  assert.equal(byKey.get('id'), '49929');
-  assert.equal(byKey.get('shipment'), '43682');
+  // Internal row handles are NOT facts — the carton id addresses the page and
+  // the shipment id names a grouping nobody quotes.
+  assert.equal(byKey.has('id'), false, 'the carton id is the address, not a fact');
+  assert.equal(byKey.has('shipment'), false, 'the shipment id is not an operator fact');
   assert.equal(byKey.get('poId'), '5623409000003125066');
   // Null on the fixture.
   assert.equal(byKey.has('receiveId'), false, 'an unset zoho receive id must be omitted');
@@ -307,8 +309,6 @@ test('cartonRecordMeta identifies the row and omits unset ids', () => {
 
 test('cartonRecordMeta tags system facts for typed presenters', () => {
   const byKey = new Map(cartonRecordMeta(RECEIVING).map((m) => [m.key, m]));
-  assert.equal(byKey.get('id')?.kind, 'id');
-  assert.equal(byKey.get('shipment')?.kind, 'id');
   assert.equal(byKey.get('source')?.kind, 'source');
   assert.equal(byKey.get('poId')?.kind, 'externalId');
   assert.equal(byKey.get('poId')?.label, 'PO id');
@@ -368,7 +368,7 @@ test('cartonHeaderIdentity: falls back to line PO/tracking and sole product name
 
 // ── Disposition truth (exceptions outrank lifecycle.done) ───────────────────
 
-test('cartonDisposition: received + linked PO + triage + 0 lines is NOT complete', () => {
+test('cartonDisposition: received + linked PO + 0 lines is NOT complete', () => {
   // Lifecycle says received/done, but triage/no-lines still block settled.
   // Stale UNFOUND does not win when a PO is linked — lead with Needs action.
   const d = cartonDisposition(RECEIVING, {
@@ -380,7 +380,11 @@ test('cartonDisposition: received + linked PO + triage + 0 lines is NOT complete
   assert.equal(d.settled, false, 'must never show work-complete while exceptions hold');
   assert.equal(d.state, 'needs_action');
   assert.equal(d.exceptions.some((e) => e.key === 'unfound'), false);
-  assert.ok(d.exceptions.some((e) => e.key === 'triage_incomplete'));
+  assert.equal(
+    d.exceptions.some((e) => e.key === 'triage_incomplete'),
+    false,
+    'incomplete triage is bookkeeping, not a finding on the read surface',
+  );
   assert.ok(d.exceptions.some((e) => e.key === 'no_lines'));
   assert.equal(d.lifecycle.done, true, 'lifecycle can still be done — disposition overrides');
 });

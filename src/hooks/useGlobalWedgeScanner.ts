@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { useWedgeScanner } from '@/hooks/useWedgeScanner';
 import { routeScan } from '@/lib/barcode-routing';
 import { dispatchScanToActiveSink } from '@/lib/station-scan-sink';
+import { deliverScanToTarget } from '@/lib/scan-hotkey/store';
+import { isScanPreview } from '@/components/station/scan-bar/scan-stance';
 
 /**
  * Mount once at the app root. Every wedge scan is classified via
@@ -44,6 +46,15 @@ export function useGlobalWedgeScanner(): void {
       }
 
       if (claimed) return;
+
+      // ── Preview stance is enforced HERE, at the one waist every wedge scan
+      // crosses — not per host. A physical scan lands on whatever holds focus,
+      // which on a bench is usually a row or the chrome, not the input; so with
+      // the guard only on the typed-submit path a scanner sailed straight into
+      // `routeScan` → navigate and Preview never fired at all. Filling the bar
+      // (rather than resolving) is the whole contract of the stance: no write,
+      // no navigation, no unbox attribution.
+      if (isScanPreview() && deliverScanToTarget(value)) return;
 
       // Action-plane sink (dock / serial / station bar) before URL navigation.
       if (dispatchScanToActiveSink(value)) return;

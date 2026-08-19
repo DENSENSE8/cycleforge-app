@@ -17,7 +17,8 @@
  * ai_search_commandbar / AI_SEARCH_COMMANDBAR env). Lets the client skip the
  * new path entirely when the rollout flag is off.
  *
- * Output: { hits: SearchHit[], usedSemantic: boolean } (+ toolArgs/model on
+ * Output: { hits: SearchHit[] minus matchField/score, usedSemantic: boolean }
+ *         (+ toolArgs/model on
  * mode 'ask').
  */
 
@@ -28,6 +29,7 @@ import { AiRetrieveBody } from '@/lib/schemas/ai-search';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import { checkRateLimitAsync } from '@/lib/api-guard';
 import { hybridSearch } from '@/lib/search/hybrid-retrieval';
+import type { SearchHit } from '@/lib/search/search-hit';
 import { pageContextToEntityTypes } from '@/lib/search/page-context';
 import { runAskAiSearch } from '@/lib/ai/search-tools';
 import { isAiSearchCommandbar } from '@/lib/feature-flags';
@@ -64,6 +66,19 @@ function retrieveCacheSet(key: string, body: unknown): void {
     if (oldest !== undefined) retrieveCache.delete(oldest);
   }
   retrieveCache.set(key, { expiresAt: Date.now() + RETRIEVE_CACHE_TTL_MS, body });
+}
+
+/**
+ * Wire projection — strip fields no client reads.
+ *
+ * `matchField` and `score` exist to RANK hits; ranking finishes server-side
+ * before serialization, and no consumer reads either for display. Sending them
+ * per hit on every keystroke is pure weight. `chips` stays: the row renderers
+ * (unit / generic / status fallback) read it directly.
+ */
+function toWireHit(hit: SearchHit) {
+  const { matchField: _matchField, score: _score, ...wire } = hit;
+  return wire;
 }
 
 export const POST = withAuth(async (req: NextRequest, ctx) => {
@@ -108,7 +123,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       });
 
       return NextResponse.json({
-        hits: result.hits,
+        hits: result.hits.map(toWireHit),
         usedSemantic: result.usedSemantic,
         toolArgs: result.toolArgs,
         model: result.model,
@@ -129,7 +144,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       boostEntityTypes,
       limit: parsed.limit,
     });
-    const body = { hits, usedSemantic };
+    const body = { hits: hits.map(toWireHit), usedSemantic };
     retrieveCacheSet(cacheKey, body);
     return NextResponse.json(body, { headers: { 'x-cache': 'MISS' } });
   } catch (error: any) {

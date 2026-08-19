@@ -6,10 +6,13 @@
  *
  * ```text
  *   REQUIRED
- *   [ Check ] [ UNBOX ] [ Add ]
- *                       labeled global CTA (Plus + Add)
- *   History also earns  [ Export ] after Add
+ *   [ Check ] [ UNBOX ] [ Export? ] [ Add ]
+ *                                    labeled global CTA (Plus + Add)
  * ```
+ *
+ * **Add is pinned far-right on every tab.** It is the row's one create verb, so
+ * it takes the fixed corner an operator reaches for without looking; Export is
+ * History-only and would otherwise shift Add's position from tab to tab.
  *
  * Check · resume · Add are labeled peer CTAs — everyday Band-1 verbs at button
  * altitude, not buried icon cubes. Export is browse-only (History) and stays a
@@ -25,9 +28,11 @@ import { WORKBENCH_CHROME_PILL_CLASS } from '@/components/dashboard/workbench-sh
 import { ChromeCheckButton } from './ChromeCheckButton';
 import { cn } from '@/utils/_cn';
 
+// `h-full` — a Band-1 CTA FILLS the PRIMARY chrome row (28px) instead of
+// standing at the Button `sm` 32px and bleeding over the band's seam.
 const CTA_FACE = cn(
   WORKBENCH_CHROME_PILL_CLASS,
-  'font-semibold uppercase tracking-widest',
+  'h-full font-semibold uppercase tracking-widest',
 );
 
 export function ReceivingBoxChromeActions({
@@ -62,17 +67,6 @@ export function ReceivingBoxChromeActions({
       >
         {resumeLabel}
       </Button>
-      <Button
-        size="sm"
-        variant="success"
-        icon={<Plus className="h-3.5 w-3.5" />}
-        ariaLabel="Add inbound purchase or return"
-        onClick={onAdd}
-        className={CTA_FACE}
-        data-testid="receiving-box-add"
-      >
-        Add
-      </Button>
       {onExport ? (
         <Button
           size="sm"
@@ -86,6 +80,17 @@ export function ReceivingBoxChromeActions({
           Export
         </Button>
       ) : null}
+      <Button
+        size="sm"
+        variant="success"
+        icon={<Plus className="h-3.5 w-3.5" />}
+        ariaLabel="Add inbound purchase or return"
+        onClick={onAdd}
+        className={CTA_FACE}
+        data-testid="receiving-box-add"
+      >
+        Add
+      </Button>
     </>
   );
 }

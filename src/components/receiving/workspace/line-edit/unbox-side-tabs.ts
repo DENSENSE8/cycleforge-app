@@ -41,7 +41,6 @@ export type UnboxSideTab =
   | 'photos'
   | 'linkage'
   | 'inventory'
-  | 'classify'
   | 'listings'
   | 'units'
   | 'prebox'
@@ -79,13 +78,19 @@ export const UNBOX_PHOTO_ACTION_ORDER = [
 
 /**
  * Linkage leaf surfaces (`linkageAction` nest). Absent → armed Actions rows;
- * `link` · `note` are nest drill-downs (Photos twin).
+ * `link` · `return` · `note` are nest drill-downs (Photos twin).
+ *
+ * `return` is the shipped-order Return # search. It is a Linkage drill rather
+ * than a lane inside `link` because the pairing VERBS live on the Linkage
+ * actions list — the Link body is the avenue combobox + its search, and a
+ * second search nested inside it is a search inside a search.
  */
-export type UnboxLinkageAction = 'actions' | 'link' | 'note';
+export type UnboxLinkageAction = 'actions' | 'link' | 'return' | 'note';
 
 const UNBOX_LINKAGE_ACTION_ORDER = [
   'actions',
   'link',
+  'return',
   'note',
 ] as const satisfies readonly UnboxLinkageAction[];
 
@@ -100,7 +105,6 @@ const UNBOX_TICKET_ACTION_ORDER = ['chat', 'claim'] as const satisfies readonly 
 export const UNBOX_SIDE_TAB_ORDER: readonly UnboxSideTab[] = [
   'checklist',
   'listings',
-  'classify',
   'linkage',
   'inventory',
   'units',
@@ -120,7 +124,6 @@ export const UNBOX_SIDE_TAB_ORDER: readonly UnboxSideTab[] = [
  */
 export const UNBOX_STRIP_TAB_ORDER: readonly UnboxSideTab[] = [
   'listings',
-  'classify',
   'linkage',
   'inventory',
   'units',
@@ -138,8 +141,6 @@ export const UNBOX_STRIP_TAB_ORDER: readonly UnboxSideTab[] = [
 
 /** Per-carton visibility gates. */
 export interface UnboxSideTabGates {
-  /** Always true today — Classify is the SoT editor for both lanes. */
-  hasClassifyTab: boolean;
   /**
    * Linkage (Pairing + Zoho note) needs a carton record to pair — without one
    * the hub can only teach, which is not worth a strip cell.
@@ -224,6 +225,7 @@ export function parseUnboxLinkageAction(
 ): UnboxLinkageAction {
   if (raw === 'note' && gates.hasPoNoteTab) return 'note';
   if (raw === 'link') return 'link';
+  if (raw === 'return') return 'return';
   // Absent / explicit `actions` / gated-away note → armed verb list.
   return 'actions';
 }
@@ -240,8 +242,6 @@ export function resolveUnboxTicketAction(hasTicketId: boolean): UnboxTicketActio
 
 export function isUnboxSideTabVisible(tab: UnboxSideTab, gates: UnboxSideTabGates): boolean {
   switch (tab) {
-    case 'classify':
-      return gates.hasClassifyTab;
     case 'linkage':
       return gates.hasLinkageTab;
     case 'inventory':

@@ -2,7 +2,7 @@
 
 /**
  * Reusable CRUD list for one org catalog kind (platform | type): active rows
- * with inline rename, reorder (up/down), hide, and delete; a "Hidden" section
+ * with inline edit, reorder (up/down), hide, and delete; a "Hidden" section
  * with Restore; and an add row. Backed by /api/catalog/{platforms,types} and
  * the catalog query factory.
  *
@@ -10,8 +10,25 @@
  * (rename edits the label only), hide-only — while custom rows are removable.
  * All deletes are soft, so anything hidden/removed is restorable below.
  *
- * Platforms additionally expose an accent color picker (`color_hex`) with a
- * live contrast preview — ink is derived via {@link platformPaintFromHex}.
+ * Row anatomy — reorder · identity · name ……… accent · edit · remove:
+ *
+ *   [▲▼] [●] [ Label  DEFAULT ] ……… [◍] [ ✎ ] [ 🗑 ]
+ *         identity dot              accent name
+ *
+ * TWO dots, two jobs, and they must not be collapsed into one:
+ *
+ * - The LEADING dot is a READOUT — the exact mark the carton bar will paint for
+ *   this row, resolved through {@link catalogIdentityDot} (org accent → builtin
+ *   registry tone). It is what makes the manager legible as "this is what my
+ *   pills look like"; a picker-shaped rainbow there was a control impersonating
+ *   the data.
+ * - The TRAILING dot is the CONTROL, immediately left of the name pencil, so
+ *   the row's two editors sit together at the right edge. It shows the CUSTOM
+ *   accent (rainbow when none is set — "pick one"), never the builtin tone,
+ *   because that is the value it edits.
+ *
+ * Colour saves on pick (a swatch has nothing to draft); the pencil stays the
+ * NAME editor. Live contrast preview derives ink via {@link platformPaintFromHex}.
  *
  * Layout-agnostic (no overlay/card chrome): the {@link CatalogManagerPopover}
  * wraps it in a RightPaneOverlay; the /settings catalog section drops it into a
@@ -35,6 +52,7 @@ import type { PlatformRow, TypeRow } from '@/lib/neon/catalog-queries';
 import { useInvalidateCatalog } from '@/hooks/useCatalog';
 import { platformPaintFromHex } from '@/lib/color-contrast';
 import { SOURCE_PLATFORM_OPTS, RECEIVING_TYPE_OPTS } from '@/components/sidebar/receiving/receiving-sidebar-shared';
+import { catalogIdentityDot } from './classify-pill-options';
 import { TypeBindingsEditor } from './TypeBindingsEditor';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
@@ -51,8 +69,8 @@ const API_BASE: Record<CatalogKind, string> = {
 const TEXT_INPUT =
   cn('w-full rounded-lg border border-border-soft bg-surface-card inset-cozy text-role-caption text-text-default transition-colors', focusRing('field', 'accent'));
 
-/** Accessible mid-saturation presets for platform origin tags. */
-const PLATFORM_COLOR_PRESETS: ReadonlyArray<ColorSwatch> = [
+/** Accessible mid-saturation presets for catalog accents (platforms + types). */
+const CATALOG_COLOR_PRESETS: ReadonlyArray<ColorSwatch> = [
   { hex: '#2563eb', label: 'Blue' },
   { hex: '#0ea5e9', label: 'Sky' },
   { hex: '#10b981', label: 'Emerald' },
@@ -69,6 +87,7 @@ const PLATFORM_COLOR_PRESETS: ReadonlyArray<ColorSwatch> = [
 
 interface Entry {
   id: number;
+  slug: string;
   label: string;
   sortOrder: number;
   isActive: boolean;
@@ -76,7 +95,8 @@ interface Entry {
   colorHex: string | null;
 }
 
-function PlatformColorPreview({ hex, label }: { hex: string; label: string }) {
+/** Live face for a catalog accent — same paint the pill dot will use. */
+function CatalogColorPreview({ hex, label }: { hex: string; label: string }) {
   const paint = platformPaintFromHex(hex);
   if (!paint) return null;
   // ds-allow-hex: live preview of platforms.color_hex + luminance ink.
@@ -112,6 +132,13 @@ export function CatalogManagerList({
   const invalidate = useInvalidateCatalog();
   const base = API_BASE[kind];
   const isPlatform = kind === 'platform';
+  /**
+   * Both kinds persist an accent (`platforms.color_hex` 2026-08-05 /
+   * `types.color_hex` 2026-08-19). Kept as a named flag rather than an inlined
+   * `true` so a future catalog kind with no accent column has one place to opt
+   * out — every face below reads `Entry.colorHex`, never the kind.
+   */
+  const supportsColor = true;
 
   // Manager shows EVERYTHING (active + hidden) so a hidden default can be
   // restored — unlike the pickers, which read active-only via useCatalog.
@@ -127,11 +154,12 @@ export function CatalogManagerList({
 
   const entries: Entry[] = rawRows.map((r) => ({
     id: r.id,
+    slug: r.slug,
     label: r.label,
     sortOrder: r.sort_order,
     isActive: r.is_active,
     isSystem: r.is_system,
-    colorHex: isPlatform ? ((r as PlatformRow).color_hex ?? null) : null,
+    colorHex: (isPlatform ? (r as PlatformRow).color_hex : (r as TypeRow).color_hex) ?? null,
   }));
   const editable = entries.length > 0;
   const active = entries.filter((e) => e.isActive);
@@ -176,7 +204,7 @@ export function CatalogManagerList({
     setBusyId(null);
   }
 
-  async function saveRename(id: number) {
+  async function saveRow(id: number) {
     const label = editLabel.trim();
     if (!label) return;
     setBusyId(id);
@@ -184,6 +212,13 @@ export function CatalogManagerList({
     setBusyId(null);
   }
 
+  function beginEdit(e: Entry) {
+    setEditingId(e.id);
+    setEditLabel(e.label);
+    setColorEditingId(null);
+  }
+
+  /** Accent commits on pick — a swatch is a choice, not a draft with a Save. */
   async function saveColor(id: number, colorHex: string | null) {
     if (busyId != null) return;
     setBusyId(id);
@@ -240,7 +275,14 @@ export function CatalogManagerList({
             const rowBusy = busyId === e.id;
             const isEditing = editingId === e.id;
             const expanded = bindingsOn && expandedId === e.id;
-            const colorOpen = isPlatform && colorEditingId === e.id;
+            const colorOpen = supportsColor && colorEditingId === e.id;
+            // Same resolver the classify pills use — manager and bar cannot disagree.
+            const identityDot = catalogIdentityDot({
+              kind,
+              value: isPlatform ? e.slug : e.slug.toUpperCase(),
+              label: e.label,
+              colorHex: e.colorHex,
+            });
             return (
               <li key={e.id} className="rounded-lg border border-border-soft bg-surface-card">
               <div className="flex items-center gap-2 inset-cozy">
@@ -263,13 +305,22 @@ export function CatalogManagerList({
                   />
                 </div>
 
+                {supportsColor ? (
+                  // READOUT — the exact dot this row paints on the carton bar.
+                  <span
+                    className={cn('h-2 w-2 shrink-0 rounded-full', identityDot.className)}
+                    style={identityDot.style}
+                    aria-hidden
+                  />
+                ) : null}
+
                 {isEditing ? (
                   <input
                     autoFocus
                     value={editLabel}
                     onChange={(ev) => setEditLabel(ev.target.value)}
                     onKeyDown={(ev) => {
-                      if (ev.key === 'Enter') void saveRename(e.id);
+                      if (ev.key === 'Enter') void saveRow(e.id);
                       if (ev.key === 'Escape') setEditingId(null);
                     }}
                     className={`${TEXT_INPUT} flex-1`}
@@ -282,9 +333,6 @@ export function CatalogManagerList({
                         Default
                       </span>
                     ) : null}
-                    {isPlatform && e.colorHex ? (
-                      <PlatformColorPreview hex={e.colorHex} label={e.label} />
-                    ) : null}
                   </span>
                 )}
 
@@ -294,7 +342,7 @@ export function CatalogManagerList({
                   <>
                     <IconButton
                       type="button"
-                      onClick={() => void saveRename(e.id)}
+                      onClick={() => void saveRow(e.id)}
                       ariaLabel="Save"
                       icon={<Check className="h-4 w-4" />}
                       className="rounded p-1 text-emerald-600 hover:bg-emerald-50"
@@ -309,29 +357,6 @@ export function CatalogManagerList({
                   </>
                 ) : (
                   <>
-                    {isPlatform ? (
-                      <HoverTooltip label="Accent color" asChild>
-                        <IconButton
-                          type="button"
-                          onClick={() => setColorEditingId(colorOpen ? null : e.id)}
-                          ariaLabel={`${colorOpen ? 'Hide' : 'Edit'} color for ${e.label}`}
-                          aria-expanded={colorOpen}
-                          icon={
-                            <span
-                              className="block h-3.5 w-3.5 rounded-full border border-border-soft"
-                              style={{
-                                // ds-allow-hex: swatch button face for platforms.color_hex
-                                backgroundColor: e.colorHex ?? undefined,
-                                backgroundImage: e.colorHex
-                                  ? undefined
-                                  : 'conic-gradient(from 90deg, #ef4444, #f59e0b, #22c55e, #3b82f6, #a855f7, #ef4444)',
-                              }}
-                            />
-                          }
-                          className={`rounded p-1 hover:bg-surface-sunken ${colorOpen ? 'ring-2 ring-border-strong' : ''}`}
-                        />
-                      </HoverTooltip>
-                    ) : null}
                     {bindingsOn ? (
                       <HoverTooltip label="Account & workflow bindings" asChild>
                         <IconButton
@@ -344,16 +369,48 @@ export function CatalogManagerList({
                         />
                       </HoverTooltip>
                     ) : null}
-                    <IconButton
-                      type="button"
-                      onClick={() => {
-                        setEditingId(e.id);
-                        setEditLabel(e.label);
-                      }}
-                      ariaLabel={`Rename ${e.label}`}
-                      icon={<Pencil className="h-3.5 w-3.5" />}
-                      className="rounded p-1 text-text-faint hover:bg-surface-sunken hover:text-text-muted"
-                    />
+                    {supportsColor ? (
+                      <HoverTooltip
+                        label={e.colorHex ? `Accent ${e.colorHex}` : 'Pick an accent color'}
+                        asChild
+                      >
+                        <IconButton
+                          type="button"
+                          onClick={() => {
+                            setEditingId(null);
+                            setColorEditingId(colorOpen ? null : e.id);
+                          }}
+                          ariaLabel={`${colorOpen ? 'Hide' : 'Edit'} color for ${e.label}`}
+                          aria-expanded={colorOpen}
+                          icon={
+                            <span
+                              className="block h-3.5 w-3.5 rounded-full border border-border-soft"
+                              style={{
+                                // ds-allow-hex: the CUSTOM accent this control edits
+                                // ({platforms,types}.color_hex) — never the builtin tone.
+                                backgroundColor: e.colorHex ?? undefined,
+                                backgroundImage: e.colorHex
+                                  ? undefined
+                                  : 'conic-gradient(from 90deg, #ef4444, #f59e0b, #22c55e, #3b82f6, #a855f7, #ef4444)',
+                              }}
+                            />
+                          }
+                          className={cn(
+                            'rounded p-1 hover:bg-surface-sunken',
+                            colorOpen && 'bg-surface-sunken',
+                          )}
+                        />
+                      </HoverTooltip>
+                    ) : null}
+                    <HoverTooltip label="Edit name" asChild>
+                      <IconButton
+                        type="button"
+                        onClick={() => beginEdit(e)}
+                        ariaLabel={`Edit ${e.label}`}
+                        icon={<Pencil className="h-3.5 w-3.5" />}
+                        className="rounded p-1 text-text-faint hover:bg-surface-sunken hover:text-text-muted"
+                      />
+                    </HoverTooltip>
                     <HoverTooltip label={e.isSystem ? 'Hide (restorable below)' : 'Remove'} asChild>
                       <IconButton
                         type="button"
@@ -370,7 +427,7 @@ export function CatalogManagerList({
                 <div className="space-y-2 border-t border-border-soft px-2.5 py-2.5">
                   <div className="flex items-center gap-2">
                     {e.colorHex ? (
-                      <PlatformColorPreview hex={e.colorHex} label={e.label} />
+                      <CatalogColorPreview hex={e.colorHex} label={e.label} />
                     ) : (
                       <span className="text-role-micro text-text-faint">
                         Default tone — pick a custom accent
@@ -380,7 +437,7 @@ export function CatalogManagerList({
                   <ColorSwatchPicker
                     value={e.colorHex}
                     onChange={(hex) => void saveColor(e.id, hex)}
-                    presets={PLATFORM_COLOR_PRESETS}
+                    presets={CATALOG_COLOR_PRESETS}
                     allowNone
                     showHex
                     shape="square"

@@ -1,12 +1,16 @@
 'use client';
 
 /**
- * Auto-match row for an UNFOUND carton — lives inside {@link CartonMatchHub}
- * above Package Pairing avenues. Operator-initiated only; nothing here
- * runs on the scan path (see useUnfoundRefetchActions).
+ * Auto-match toolkit for an UNFOUND carton — lives inside {@link CartonMatchHub}
+ * BELOW the Package Pairing search (the search bar leads the display).
+ * Operator-initiated only; nothing here runs on the scan path (see
+ * useUnfoundRefetchActions).
  *
- * Flush segmented toolkit (gap-0 · divide-x) on bare Displays and card chrome —
- * never absorbed into the Pairing avenue dropdown.
+ * **Armed verb ROWS, never a segmented one-row strip.** Five cells in a ~300px
+ * Displays column truncated to "Find …" / "Retu…" / "Ama…"; a label you cannot
+ * read is not a label. Composes {@link StationArmedVerbList} (Photos ·
+ * Inventory golden) — full labels + one fact each, ↑↓ cursor, mouse =
+ * keyboard. Never absorbed into the Pairing avenue combobox.
  *
  *   • **Find ticket** (TicketHelp) — when `onFindTicket` is set, jumps to the
  *     Ticket Displays topic (claim · link). Ticket is the main display for
@@ -18,8 +22,13 @@
  *     The search icon runs the read-only serial compare instead (for
  *     verifying before linking) — a confirmed match then logs the serial /
  *     files a support ticket inline. Back returns to the action row.
- *   • **Store** (ShoppingCart) — when `onLinkRepair` is set, opens the shared
- *     {@link RepairServiceIdentify} host (Pairing Store avenue). No third search.
+ *     **Every outcome is spoken as a toast**, and opening it without a serial
+ *     in hand says so: the result panel is below the fold on a ~300px column,
+ *     so a silent status change reads as "nothing happened".
+ *   • **Store** (ShoppingCart) — only where the host's pairing surface is not a
+ *     Linkage leaf. On Unbox it is OMITTED: Store is one of Link's three
+ *     avenues, so a peer row would be a second door onto the same search one
+ *     level above it.
  *   • **Zoho** (RefreshCw) — FETCH: re-run the Zoho PO tracking search.
  *   • **Amazon return** (PackageCheck) — FETCH: reverse-tracking SP-API lookup.
  */
@@ -47,9 +56,13 @@ import {
   Send,
   Database,
   ShoppingCart,
+  Loader2,
 } from '@/components/Icons';
+import {
+  StationArmedVerbList,
+  type StationArmedVerb,
+} from '@/components/station/displays/StationArmedVerbList';
 import { Button, IconButton } from '@/design-system/primitives';
-import { cornerClass } from '@/design-system/tokens/radius';
 import { Popover } from '@/design-system/primitives/Popover';
 import { PaneHeaderTabs } from '@/components/ui/pane-header';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
@@ -88,6 +101,11 @@ import { cn } from '@/utils/_cn';
 
 type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
 
+/** Async lane (Zoho / Amazon) in flight — swaps the verb row's own glyph. */
+function SpinnerIcon({ className }: { className?: string }) {
+  return <Loader2 className={cn(className, 'animate-spin')} />;
+}
+
 interface UnfoundMatchStripProps {
   receivingId: number | null;
   /** Active line — the ticket entity (create / reply) is scoped to it. */
@@ -119,6 +137,219 @@ interface UnfoundMatchStripProps {
   showTopRule?: boolean;
 }
 
+/**
+ * The Auto-match toolkit as DATA — verb rows + their commit + the merged fetch
+ * notice, without owning where they render.
+ *
+ * Unbox's pairing surface is the **Linkage leaf's own actions list**, so it
+ * merges these rows beside `Link` / `Zoho note` (one list, one armed cursor —
+ * two `StationArmedVerbList`s stacked would both register keyboard region
+ * `right` and fight over the same letters). Hosts whose pairing surface *is*
+ * {@link CartonMatchHub} (Arrival · Testing · Incoming · mobile) compose
+ * {@link UnfoundMatchStrip}, which wires this hook to its own list.
+ */
+export function useUnfoundMatchVerbs({
+  receivingId,
+  trackingNumber,
+  receivedSerial = null,
+  onFindTicket,
+  onLinkRepair,
+  onOpenReturnSearch,
+}: {
+  receivingId: number | null;
+  trackingNumber: string | null;
+  /** The serial in hand — Return # compares it against the order's shipped serials. */
+  receivedSerial?: string | null;
+  onFindTicket?: () => void;
+  onLinkRepair?: () => void;
+  /** Open the Return # search — a lane in the strip, a drill in Linkage. */
+  onOpenReturnSearch: () => void;
+}): {
+  verbs: StationArmedVerb[];
+  runVerb: (id: string) => void;
+  notice: RefetchState | null;
+} {
+  const { zoho, amazon, busy, checkZoho, checkAmazon } = useUnfoundRefetchActions(
+    receivingId,
+    trackingNumber,
+  );
+  const hasTracking = Boolean((trackingNumber ?? '').trim());
+  const hasSerial = Boolean((receivedSerial ?? '').trim());
+  const noReceiving = receivingId == null;
+
+  /**
+   * ARMED ROWS, never a crammed `divide-x` cell strip. Five cells in a ~300px
+   * Displays column truncated to "Find …" / "Retu…" / "Ama…" — a label you
+   * cannot read is not a label. Rows are the house nested-leaf verb grammar
+   * (Photos · Inventory golden).
+   */
+  const verbs: StationArmedVerb[] = [
+    ...(typeof onFindTicket === 'function'
+      ? [
+          {
+            id: 'find_ticket',
+            label: 'Find ticket',
+            preferredKey: 't',
+            icon: TicketHelp,
+            disabled: noReceiving || !hasTracking,
+            subtitle: hasTracking
+              ? 'New ticket · Link existing'
+              : 'Add a tracking number first',
+          } satisfies StationArmedVerb,
+        ]
+      : []),
+    {
+      id: 'return_number',
+      label: 'Return #',
+      preferredKey: 'r',
+      icon: Search,
+      disabled: noReceiving,
+      subtitle: hasSerial
+        ? 'Search shipped records by return / order number'
+        : 'Scan a serial first to compare against the order',
+    },
+    ...(typeof onLinkRepair === 'function'
+      ? [
+          {
+            id: 'store',
+            label: 'Store',
+            preferredKey: 's',
+            icon: ShoppingCart,
+            disabled: noReceiving,
+            subtitle: 'Link a repair / store order',
+          } satisfies StationArmedVerb,
+        ]
+      : []),
+    {
+      id: 'zoho',
+      label: 'Zoho',
+      preferredKey: 'z',
+      icon: zoho.status === 'loading' ? SpinnerIcon : RefreshCw,
+      disabled: noReceiving || busy,
+      subtitle: 'Re-run the purchase order tracking search',
+    },
+    {
+      id: 'amazon',
+      label: 'Amazon return',
+      preferredKey: 'a',
+      icon: amazon.status === 'loading' ? SpinnerIcon : PackageCheck,
+      disabled: noReceiving || !hasTracking || busy,
+      subtitle: hasTracking
+        ? 'Match by reverse tracking ID (Returns SP-API)'
+        : 'Add a tracking number first',
+    },
+  ];
+
+  const runVerb = (id: string) => {
+    switch (id) {
+      case 'find_ticket':
+        onFindTicket?.();
+        return;
+      case 'return_number':
+        // ALWAYS speak. The lane opens either way — an exact order number links
+        // without a serial — but the operator must know which half is armed:
+        // with a serial the compare runs, without one only the link does. A
+        // silent open on a ~300px column reads as a dead button, and this row
+        // WAS dead for a day (the display snapshot writer dropped `return`).
+        if (hasSerial) {
+          toast.info(
+            `Return # — comparing serial ${getLast8(receivedSerial ?? '')} against that order’s shipped serials.`,
+          );
+        } else {
+          toast.info('Return # — link only. Scan a serial first to compare it against the order.');
+        }
+        onOpenReturnSearch();
+        return;
+      case 'store':
+        onLinkRepair?.();
+        return;
+      case 'zoho':
+        void checkZoho();
+        return;
+      case 'amazon':
+        void checkAmazon();
+        return;
+      default:
+    }
+  };
+
+  return { verbs, runVerb, notice: pickMergedRefetchNotice(zoho, amazon) };
+}
+
+/** The merged Zoho / Amazon fetch outcome — hosts render it under their list. */
+export function UnfoundMatchNotice({ state }: { state: RefetchState }) {
+  return <MergedNotice state={state} />;
+}
+
+/**
+ * Return # search — the drill body. Owns the shipped-order compare so a host
+ * mounts it and nothing else; `onBack` pops the drill (Linkage) or returns to
+ * the action rows (strip).
+ */
+export function UnfoundReturnSearch({
+  receivingId,
+  lineId = null,
+  receivedSerial = null,
+  providerTicketId = null,
+  ticketNumber = null,
+  ticketUrl = null,
+  onTicketChanged,
+  onBack,
+}: {
+  receivingId: number | null;
+  lineId?: number | null;
+  receivedSerial?: string | null;
+  providerTicketId?: number | null;
+  ticketNumber?: string | null;
+  ticketUrl?: string | null;
+  onTicketChanged?: () => void;
+  onBack: () => void;
+}) {
+  const compare = useShippedOrderCompare();
+
+  /**
+   * Speak every compare outcome. The result panel is below the fold on a ~300px
+   * Displays column, so a silent status change reads as "nothing happened" —
+   * and the operator re-types the same return number.
+   */
+  const spokenRef = useRef<string | null>(null);
+  const { status, message } = compare.state;
+  useEffect(() => {
+    const key = `${status}:${message ?? ''}`;
+    if (status === 'idle' || status === 'loading') {
+      spokenRef.current = null;
+      return;
+    }
+    if (spokenRef.current === key) return;
+    spokenRef.current = key;
+    if (status === 'error') toast.error(message || 'Return lookup failed.');
+    else if (status === 'not-found') toast.warning(message || 'No shipped record matches that return #.');
+    else if (status === 'found') toast.success(message || 'Found the shipped record.');
+  }, [status, message]);
+
+  const close = () => {
+    compare.reset();
+    onBack();
+  };
+  return (
+    <OrderSearchRow
+      state={compare.state}
+      receivedSerial={receivedSerial}
+      disabled={receivingId == null}
+      receivingId={receivingId}
+      lineId={lineId}
+      providerTicketId={providerTicketId}
+      ticketNumber={ticketNumber}
+      ticketUrl={ticketUrl}
+      onTicketChanged={onTicketChanged}
+      onBack={close}
+      onLinked={close}
+      onSearch={(order, serial) => void compare.search(order, serial)}
+      onClear={compare.reset}
+    />
+  );
+}
+
 export function UnfoundMatchStrip({
   receivingId,
   lineId = null,
@@ -132,30 +363,20 @@ export function UnfoundMatchStrip({
   onLinkRepair,
   showTopRule = true,
 }: UnfoundMatchStripProps) {
-  const { zoho, amazon, busy, checkZoho, checkAmazon } = useUnfoundRefetchActions(
+  // Return # opens the search lane in-strip; Find ticket (when wired) jumps to
+  // the Ticket display. Back from Return # returns to the rows.
+  const [lane, setLane] = useState<'order' | 'actions'>('actions');
+  const { verbs, runVerb, notice } = useUnfoundMatchVerbs({
     receivingId,
     trackingNumber,
-  );
-  const compare = useShippedOrderCompare();
-  // Flush action row. Return # opens the search lane in-strip; Find ticket
-  // (when wired) jumps to the Ticket display. Back from Return # returns here.
-  const [lane, setLane] = useState<'order' | 'actions'>('actions');
-  const trimmedTracking = (trackingNumber ?? '').trim();
-  const hasTracking = Boolean(trimmedTracking);
-  const noReceiving = receivingId == null;
-  const notice = pickMergedRefetchNotice(zoho, amazon);
-  const showFindTicket = typeof onFindTicket === 'function';
+    onFindTicket,
+    onLinkRepair,
+    onOpenReturnSearch: () => setLane('order'),
+  });
 
-  const closeSearch = () => {
-    setLane('actions');
-    compare.reset();
-  };
-
-  // Crossfade the search bar ⇄ the action row — one focus surface swaps for the
-  // other. Opacity + small-y via the shared workbench-pane preset; reduced motion
-  // collapses to opacity automatically through the hook bridge.
-  // `motionRole.swap.focus` — the pointer-driven focus-surface swap, taken as
-  // one pair so the presence can never drift onto another job's timing.
+  // Crossfade the search bar ⇄ the action rows — one focus surface swaps for the
+  // other. `motionRole.swap.focus` — the pointer-driven focus-surface swap, taken
+  // as one pair so the presence can never drift onto another job's timing.
   const { presence: stepPresence, transition: stepTransition } = useMotionRole(motionRole.swap.focus);
 
   return (
@@ -165,77 +386,24 @@ export function UnfoundMatchStrip({
       <AnimatePresence mode="wait" initial={false}>
         {lane === 'order' ? (
           <motion.div key="order-search" {...stepPresence} transition={stepTransition}>
-            <OrderSearchRow
-              state={compare.state}
-              receivedSerial={receivedSerial}
-              disabled={noReceiving}
+            <UnfoundReturnSearch
               receivingId={receivingId}
               lineId={lineId}
+              receivedSerial={receivedSerial}
               providerTicketId={providerTicketId}
               ticketNumber={ticketNumber}
               ticketUrl={ticketUrl}
               onTicketChanged={onTicketChanged}
-              onBack={closeSearch}
-              onLinked={closeSearch}
-              onSearch={(order, serial) => void compare.search(order, serial)}
-              onClear={compare.reset}
+              onBack={() => setLane('actions')}
             />
           </motion.div>
         ) : (
-          <motion.div
-            key="actions"
-            {...stepPresence}
-            transition={stepTransition}
-            className={`flex w-full min-w-0 items-stretch overflow-hidden divide-x divide-border-soft bg-surface-card ring-1 ring-inset ring-border-soft ${cornerClass('flush')}`}
-          >
-            {showFindTicket ? (
-              <StripButton
-                icon={TicketHelp}
-                label="Find ticket"
-                tooltip={
-                  hasTracking
-                    ? 'Open Ticket display — New ticket · Link existing'
-                    : 'Add a tracking number to this carton first'
-                }
-                disabled={noReceiving || !hasTracking}
-                onClick={onFindTicket}
-              />
-            ) : null}
-            <StripButton
-              icon={Search}
-              label="Return #"
-              tooltip="Search our shipped records by return / order number"
-              disabled={noReceiving}
-              onClick={() => setLane('order')}
-            />
-            {typeof onLinkRepair === 'function' ? (
-              <StripButton
-                icon={ShoppingCart}
-                label="Store"
-                tooltip="Link a repair / store order — opens the Store identify host"
-                disabled={noReceiving}
-                onClick={onLinkRepair}
-              />
-            ) : null}
-            <StripButton
-              icon={RefreshCw}
-              label="Zoho"
-              tooltip="Fetch from platform — re-run the purchase order tracking search"
-              state={zoho}
-              disabled={noReceiving || busy}
-              onClick={() => void checkZoho()}
-            />
-            <StripButton
-              icon={PackageCheck}
-              label="Amazon return"
-              tooltip={
-                hasTracking
-                  ? 'Fetch from platform — match by reverse tracking ID (Amazon Returns SP-API)'
-                  : 'Add a tracking number to this carton first'
-              }
-              state={amazon}
-              disabled={noReceiving || !hasTracking || busy}
-              onClick={() => void checkAmazon()}
+          <motion.div key="actions" {...stepPresence} transition={stepTransition}>
+            <StationArmedVerbList
+              verbs={verbs}
+              onCommit={runVerb}
+              listLabel="Auto-match actions"
+              testId="unbox-automatch-actions"
             />
           </motion.div>
         )}
@@ -243,41 +411,6 @@ export function UnfoundMatchStrip({
 
       {lane === 'actions' && notice ? <MergedNotice state={notice} /> : null}
     </div>
-  );
-}
-
-/** One cell in the flush Auto-match action row. Async lanes (Zoho / Amazon) pass
- *  `state` for the loading spinner. Outer shell owns the ring · divide-x seams —
- *  cells drop their own border so the group reads as one control. */
-function StripButton({
-  icon: Icon,
-  label,
-  tooltip,
-  state,
-  disabled,
-  onClick,
-}: {
-  icon: IconComponent;
-  label: string;
-  tooltip: string;
-  state?: RefetchState;
-  disabled: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <HoverTooltip label={tooltip} asChild focusable={false}>
-      <Button
-        variant="secondary"
-        size="sm"
-        loading={state?.status === 'loading'}
-        disabled={disabled}
-        onClick={onClick}
-        className={`min-h-11 min-w-0 flex-1 justify-start gap-1.5 rounded-none px-2.5 ring-0 hover:bg-surface-canvas ${cornerClass('flush')}`}
-        icon={<Icon className="h-4 w-4 shrink-0" />}
-      >
-        <span className="truncate text-role-caption font-semibold">{label}</span>
-      </Button>
-    </HoverTooltip>
   );
 }
 

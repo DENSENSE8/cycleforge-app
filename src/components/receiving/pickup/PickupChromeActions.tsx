@@ -30,7 +30,7 @@ export function PickupChromeActions({
       icon={<ReceivingModePickup />}
       className={cn(
         WORKBENCH_CHROME_PILL_CLASS,
-        'font-semibold uppercase tracking-widest',
+        'h-full font-semibold uppercase tracking-widest',
       )}
     >
       {busy ? 'Creating…' : 'New Pickup'}

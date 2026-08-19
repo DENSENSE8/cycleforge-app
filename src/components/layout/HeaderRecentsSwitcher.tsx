@@ -41,7 +41,7 @@ import {
   HEADER_ICON_BTN_CLASS,
   HEADER_ICON_BTN_OPEN_CLASS,
   HEADER_ICON_WRAP,
-  TOP_CHROME_ICON_GLYPH,
+  TOP_CHROME_ICON_FACE,
 } from './header-shell';
 
 function toPageNav(item: SidebarNavItem): SidebarPageNav {
@@ -132,7 +132,7 @@ export function HeaderRecentsSwitcher() {
           aria-haspopup="menu"
           onClick={() => setOpen((o) => !o)}
           className={cn(HEADER_ICON_BTN_CLASS, open && HEADER_ICON_BTN_OPEN_CLASS)}
-          icon={<History className={TOP_CHROME_ICON_GLYPH} />}
+          icon={<History className={TOP_CHROME_ICON_FACE} />}
         />
       </HoverTooltip>
 

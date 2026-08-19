@@ -13,6 +13,7 @@ import {
   X,
   ReceivingModeRepair,
 } from '@/components/Icons';
+import { navIconStrokeClass } from '@/components/icons/nav-weight';
 import { IconButton } from '@/design-system/primitives';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/lib/toast';
@@ -239,7 +240,7 @@ export const MobileSidebarDrawer = ({
                           }`}
                         >
                           {Icon ? (
-                            <Icon className={`h-5 w-5 shrink-0 ${active ? 'text-blue-600' : 'text-text-faint'}`} />
+                            <Icon className={navIconStrokeClass(`h-5 w-5 shrink-0 ${active ? 'text-blue-600' : 'text-text-faint'}`)} />
                           ) : null}
                           <span className="text-role-body font-semibold tracking-tight">{item.label}</span>
                         </button>

@@ -24,7 +24,7 @@ export interface CatalogOption {
   sortOrder?: number;
   /** Seeded built-in (hide-only) vs the org's own custom row. */
   isSystem?: boolean;
-  /** Optional org accent `#RRGGBB` from `platforms.color_hex`. */
+  /** Optional org accent `#RRGGBB` from `platforms.color_hex` / `types.color_hex`. */
   colorHex?: string | null;
 }
 
@@ -62,7 +62,14 @@ export function useReceivingTypeCatalog() {
   const q = useQuery(typesQuery());
   const rows: TypeRow[] = q.data ?? [];
   const options: CatalogOption[] = rows.length
-    ? rows.map((r) => ({ value: r.slug.toUpperCase(), label: r.label, id: r.id, sortOrder: r.sort_order, isSystem: r.is_system }))
+    ? rows.map((r) => ({
+        value: r.slug.toUpperCase(),
+        label: r.label,
+        id: r.id,
+        sortOrder: r.sort_order,
+        isSystem: r.is_system,
+        colorHex: r.color_hex,
+      }))
     : BUILTIN_TYPES;
   return { ...q, rows, options };
 }

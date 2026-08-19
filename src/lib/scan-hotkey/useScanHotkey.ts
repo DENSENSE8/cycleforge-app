@@ -24,10 +24,16 @@ export function useRegisterScanTarget(
   enabled = true,
   /** Clear the controlled value before focusing — required for ⌘. arm-next. */
   clearValue?: () => void,
+  /**
+   * Accept a wedge payload into this bar (Preview stance). Return false to
+   * decline and let the global scanner keep its normal ladder.
+   */
+  deliverValue?: (value: string) => boolean,
 ): void {
   useEffect(() => {
     if (!enabled) return;
     return registerScanTarget({
+      deliver: deliverValue,
       focus: () => {
         const el = inputRef.current;
         if (!el) return;
@@ -45,5 +51,5 @@ export function useRegisterScanTarget(
         });
       },
     });
-  }, [inputRef, enabled, clearValue]);
+  }, [inputRef, enabled, clearValue, deliverValue]);
 }

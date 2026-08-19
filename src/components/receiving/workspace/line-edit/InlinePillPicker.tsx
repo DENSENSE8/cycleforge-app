@@ -22,7 +22,7 @@
 
 import { useEffect, useRef, type ReactNode } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from '@/design-system/motion';
-import { PaintBucket } from '@/components/Icons';
+import { Pencil } from '@/components/Icons';
 import { HEADER_ICON_WRAP } from '@/components/layout/header-shell';
 import {
   STATION_CHROME_CELL_HOVER_FILL,
@@ -170,8 +170,8 @@ export function InlinePillPicker({
   expandedFace = 'label',
   collapsedVariant = 'default',
   presentation = 'inline',
-  onEditColors,
-  editColorsLabel = 'Edit colors',
+  onEditCatalog,
+  editCatalogLabel = 'Edit',
   menuLeadItems = [],
 }: {
   ariaLabel: string;
@@ -221,8 +221,14 @@ export function InlinePillPicker({
    * is `receiving.priority_tier`, not a `platforms` / `types` row, so it has no
    * target and must not render a dead row.
    */
-  onEditColors?: () => void;
-  editColorsLabel?: string;
+  /**
+   * Opens the org catalog manager for this pill's kind. Named for the ACT, not
+   * one field: the manager edits the row's name and its accent behind one
+   * pencil, so a `PaintBucket` + "Edit colors" advertised half of what the row
+   * does — and disagreed with the pencil the manager itself paints.
+   */
+  onEditCatalog?: () => void;
+  editCatalogLabel?: string;
   /** Hover-menu rows above the option list (catalog add / edit-all). */
   menuLeadItems?: InlinePillMenuLeadItem[];
 }) {
@@ -503,7 +509,7 @@ export function InlinePillPicker({
                   >
                     {/* Dot rides the SAME 3.5 icon box every other carton-bar
                         menu uses for its glyph, so option labels start at the
-                        same x as History / Edit colours / overflow rows. */}
+                        same x as History / Edit / overflow rows. */}
                     <span className={CHIP_HOVER_MENU_ICON_CLASS} aria-hidden>
                       <IdentityDot opt={opt} />
                     </span>
@@ -511,10 +517,10 @@ export function InlinePillPicker({
                   </DropdownMenuItem>
                 );
               })}
-              {onEditColors ? (
+              {onEditCatalog ? (
                 <DropdownMenuItem
-                  key="__edit-colors__"
-                  onSelect={() => onEditColors()}
+                  key="__edit-catalog__"
+                  onSelect={() => onEditCatalog()}
                   className={cn(
                     CHIP_HOVER_MENU_ITEM_CLASS,
                     // The hairline is the SAME seam token the option rows use —
@@ -523,13 +529,13 @@ export function InlinePillPicker({
                     CHIP_HOVER_MENU_ITEM_SEAM_CLASS,
                     CHIP_HOVER_MENU_ITEM_TONE.default,
                   )}
-                  aria-label={editColorsLabel}
-                  data-testid="inline-pill-edit-colors"
+                  aria-label={editCatalogLabel}
+                  data-testid="inline-pill-edit-catalog"
                 >
                   <span className={CHIP_HOVER_MENU_ICON_CLASS} aria-hidden>
-                    <PaintBucket />
+                    <Pencil className="h-3.5 w-3.5" />
                   </span>
-                  <span className="min-w-0 flex-1 truncate">{editColorsLabel}</span>
+                  <span className="min-w-0 flex-1 truncate">{editCatalogLabel}</span>
                 </DropdownMenuItem>
               ) : null}
             </DropdownMenuContent>

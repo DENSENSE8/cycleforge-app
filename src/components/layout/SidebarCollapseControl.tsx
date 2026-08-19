@@ -16,7 +16,7 @@ import { cn } from '@/utils/_cn';
 import {
   HEADER_ICON_BTN_CLASS,
   HEADER_ICON_WRAP,
-  TOP_CHROME_ICON_GLYPH,
+  TOP_CHROME_ICON_FACE,
 } from './header-shell';
 
 const SidebarGlyph = (
@@ -27,7 +27,7 @@ const SidebarGlyph = (
     strokeWidth={2}
     strokeLinecap="round"
     strokeLinejoin="round"
-    className={TOP_CHROME_ICON_GLYPH}
+    className={TOP_CHROME_ICON_FACE}
     aria-hidden
   >
     <rect width="18" height="18" x="3" y="3" rx="2" />

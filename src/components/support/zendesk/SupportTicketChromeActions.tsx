@@ -25,7 +25,7 @@ export function SupportTicketChromeActions({
       disabled={disabled}
       ariaLabel="New ticket"
       icon={<Plus />}
-      className={cn(WORKBENCH_CHROME_PILL_CLASS, 'font-semibold uppercase tracking-widest')}
+      className={cn(WORKBENCH_CHROME_PILL_CLASS, 'h-full font-semibold uppercase tracking-widest')}
     >
       Add
     </Button>

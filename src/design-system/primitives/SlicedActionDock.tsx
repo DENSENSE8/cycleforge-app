@@ -24,6 +24,7 @@ import { motion } from '@/design-system/motion';
 import { Check, ChevronDown, Loader2 } from '@/components/Icons';
 import { cn } from '@/utils/_cn';
 import { operatorAccentClasses } from '@/utils/operator-accent';
+import { FLOATING_DOCK_BOTTOM_PAD } from '@/design-system/tokens/dock-clearance';
 import { Popover } from './Popover';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -225,7 +226,10 @@ export function slicedActionDockWrapperClass(opts: {
   if ((opts.edge ?? 'bottom') !== 'bottom') return '';
   return opts.docked
     ? 'shrink-0 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 sm:px-6'
-    : 'pointer-events-none absolute inset-x-0 bottom-0 z-fab px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-2 sm:px-6';
+    : cn(
+        'pointer-events-none absolute inset-x-0 bottom-0 z-fab px-4 pt-2 sm:px-6',
+        FLOATING_DOCK_BOTTOM_PAD,
+      );
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────

@@ -1,9 +1,9 @@
 {
   "version": 1,
-  "generatedAt": "2026-08-19T06:41:58Z",
-  "totalRoutes": 934,
+  "generatedAt": "2026-08-19T18:48:24Z",
+  "totalRoutes": 936,
   "summary": {
-    "permissionGated": 794,
+    "permissionGated": 796,
     "authenticatedNoPermission": 51,
     "anonymousIntentional": 87,
     "serviceToService": 2,
@@ -4084,6 +4084,15 @@
       "exemptReason": null
     },
     {
+      "path": "/api/packing-photos/counts/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "packing.view",
+      "exemptReason": null
+    },
+    {
       "path": "/api/packing-photos/route.ts",
       "methods": [
         "DELETE",
@@ -5433,6 +5442,15 @@
     },
     {
       "path": "/api/receiving/po/list/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "receiving.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/receiving/preview-scan/route.ts",
       "methods": [
         "GET"
       ],

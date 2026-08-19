@@ -5,7 +5,11 @@ import {
   parseUnboxDisplayParam,
   shouldClearDisplayOnRecordChange,
 } from './useUnboxDisplayView';
-import { UNBOX_SIDE_TAB_ORDER } from '../unbox-side-tabs';
+import {
+  parseUnboxLinkageAction,
+  UNBOX_SIDE_TAB_ORDER,
+  type UnboxLinkageAction,
+} from '../unbox-side-tabs';
 
 describe('parseUnboxDisplayParam', () => {
   it('accepts every real side tab', () => {
@@ -113,6 +117,34 @@ describe('buildDisplayPending (local snapshot)', () => {
     assert.equal(actions.linkageActionRaw, null);
     const link = buildDisplayPending('linkage', { linkageAction: 'link' });
     assert.equal(link.linkageActionRaw, 'link');
+  });
+
+  /**
+   * Every linkage drill must SURVIVE the round trip, or its row is a dead
+   * button. `return` shipped 2026-08-19 with a parser that accepted it and a
+   * leaf that rendered it, while this writer quietly mapped it to `null` — so
+   * clicking Return # landed back on the actions list and looked like nothing
+   * happened. Enumerating the union here means the next drill added to
+   * `UnboxLinkageAction` fails until the writer knows about it.
+   */
+  it('every linkage drill round-trips writer → parser (no silently dropped verb)', () => {
+    const gates = { hasPoNoteTab: true };
+    const drills: UnboxLinkageAction[] = ['link', 'return', 'note'];
+    for (const drill of drills) {
+      const snap = buildDisplayPending('linkage', { linkageAction: drill });
+      assert.equal(snap.display, 'linkage');
+      assert.equal(
+        snap.linkageActionRaw,
+        drill,
+        `${drill} must reach the URL snapshot — null falls back to the actions list`,
+      );
+      assert.equal(parseUnboxLinkageAction(snap.linkageActionRaw, gates), drill);
+    }
+    // `actions` is the one that legitimately writes null — it IS the fallback.
+    assert.equal(
+      buildDisplayPending('linkage', { linkageAction: 'actions' }).linkageActionRaw,
+      null,
+    );
   });
 
   it('maps legacy po-note raw id to linkage note nest', () => {

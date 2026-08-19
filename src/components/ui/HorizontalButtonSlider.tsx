@@ -265,7 +265,7 @@ export function HorizontalButtonSlider({
                       transition={framerTransition.sliderIndicator}
                     />
                   ) : null}
-                  {Icon ? <Icon className={navIconStrokeClass('mode', 'relative z-10 h-[18px] w-[18px]')} /> : null}
+                  {Icon ? <Icon className={navIconStrokeClass('relative z-10 h-[18px] w-[18px]')} /> : null}
                   {item.badge === 'dot' ? (
                     <span className="absolute right-1.5 top-1.5 z-10 h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden />
                   ) : null}
@@ -323,7 +323,6 @@ export function HorizontalButtonSlider({
                   {Icon ? (
                     <Icon
                       className={navIconStrokeClass(
-                        'mode',
                         `shrink-0 ${navIconOnly ? 'h-3 w-3' : 'h-3.5 w-3.5'}`,
                       )}
                     />

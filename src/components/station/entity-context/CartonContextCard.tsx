@@ -526,7 +526,7 @@ export function CartonContextCard({
         disabled={classifyInteractive ? receivingId == null : false}
         readOnly={!classifyInteractive}
         placeholder={isUnmatched ? 'Unfound' : 'Platform'}
-        onEditColors={classifyInteractive ? () => setCatalogManager('platform') : undefined}
+        onEditCatalog={classifyInteractive ? () => setCatalogManager('platform') : undefined}
       />
       <InlinePillPicker
         ariaLabel="Type"
@@ -540,7 +540,7 @@ export function CartonContextCard({
         onOpenChange={(o) => setClassifyMenu('type', o)}
         readOnly={!classifyInteractive}
         placeholder="Type"
-        onEditColors={classifyInteractive ? () => setCatalogManager('type') : undefined}
+        onEditCatalog={classifyInteractive ? () => setCatalogManager('type') : undefined}
       />
     </div>
   ) : null;
@@ -570,7 +570,6 @@ export function CartonContextCard({
               : 'Link PO'
         }
         actionsInMenu
-        menuPlacement="below"
       />
     ) : (
       <OrderIdChip
@@ -612,7 +611,6 @@ export function CartonContextCard({
         editOpen={false}
         editLabel="Edit tracking"
         actionsInMenu
-        menuPlacement="below"
       />
       {filledExtraTrackingsCount > 0 ? (
         <HoverTooltip

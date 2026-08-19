@@ -428,7 +428,18 @@ export function WorkbenchChromeHeader({
 
       <div className="min-w-0 flex-1" aria-hidden />
 
-      <div className="flex shrink-0 items-center gap-2">
+      {/*
+        Band: the controls column STRETCHES to the PRIMARY row height so its
+        CTAs can fill it (`h-full`) instead of standing 32px tall in a 28px row
+        and bleeding over the seam onto the grid header below. Default density
+        keeps its content-driven centered cluster.
+      */}
+      <div
+        className={cn(
+          'flex shrink-0 gap-2',
+          band ? 'items-stretch' : 'items-center',
+        )}
+      >
         {search}
         {right}
         <div ref={controlsSlotRef} className="flex shrink-0 items-center gap-2" {...controlsSlotProps} />

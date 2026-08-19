@@ -99,6 +99,12 @@ export const types = pgTable('types', {
   label: text('label').notNull(),
   /** 'receiving' | 'shipping' | 'both'. */
   kind: text('kind').notNull().default('receiving'),
+  /**
+   * Optional org accent `#RRGGBB` (2026-08-19) — sibling of
+   * {@link platforms.colorHex}. When set, the type pill's dot derives paint via
+   * `src/lib/color-contrast.ts`; null → the built-in RECEIVING_TYPES tone.
+   */
+  colorHex: varchar('color_hex', { length: 7 }),
   /** Optional channel binding for fixed platform×flow combos (returns, etc.). */
   platformAccountId: bigint('platform_account_id', { mode: 'number' })
     .references(() => platformAccounts.id, { onDelete: 'set null' }),
@@ -1457,6 +1463,15 @@ export const receivingLines = pgTable('receiving_line', {
   /** Printed label face center text (carton face center / As Listed disclosure).
    *  Split out of `notes` 2026-07-31 so an item note need not print. */
   labelNote: text('label_note'),
+  /**
+   * When the sticker FACE TEXT (`notes` / `label_note`) last CHANGED. 2026-08-19a.
+   *
+   * Not `updatedAt`, which bumps on every condition / serial / qty patch —
+   * ranking Unbox notes-composer Recent on that resurfaces an old sentence the
+   * moment someone grades an old carton. Null on rows written before the column
+   * (never backfilled: there is no honest historical value).
+   */
+  faceNotedAt: timestamp('face_noted_at', { withTimezone: true }),
   /** Filed Zendesk ticket # for a line-level claim, stored as "#<id>". */
   zendeskTicket: text('zendesk_ticket'),
   // ── Drift reconciliation (2026-06-19): DB columns added via raw-SQL

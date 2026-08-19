@@ -5,7 +5,7 @@
  *
  * Closed: utility-rail **bottom** footer (`←|` Open displays) — left-dock
  * expand twin.
- * Open: `→|` Hide displays — seats as {@link TechRailSearchBar}
+ * Open: `✕` Hide displays — seats as {@link TechRailSearchBar}
  * `trailingAction` on Root Index and every leaf (and on
  * the column's header band — there is no footer variant any more).
  *
@@ -23,7 +23,7 @@
  */
 
 import { useState } from 'react';
-import { ArrowLeftToLine, ArrowRightToLine } from '@/components/Icons';
+import { ArrowLeftToLine, X } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IconButton } from '@/design-system/primitives';
 import { motion, motionRole, useMotionRole, useReducedMotion } from '@/design-system/motion';
@@ -78,7 +78,7 @@ export function StationDisplaysEdgeToggle({
             paneOpen ? (
               <ArrowLeftToLine className="h-4 w-4" />
             ) : (
-              <ArrowRightToLine className="h-3.5 w-3.5" />
+              <X className="h-3.5 w-3.5" />
             )
           }
           onClick={onClick}

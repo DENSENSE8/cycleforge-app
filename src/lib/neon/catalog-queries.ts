@@ -48,6 +48,8 @@ export interface TypeRow {
   slug: string;
   label: string;
   kind: string;
+  /** Optional `#RRGGBB` accent; ink/softFill derived via color-contrast SoT. */
+  color_hex: string | null;
   platform_account_id: number | null;
   workflow_node_id: string | null;
   is_return: boolean;
@@ -400,6 +402,7 @@ export async function createType(
     slug: string;
     label: string;
     kind?: string;
+    colorHex?: string | null;
     isReturn?: boolean;
     sortOrder?: number;
     platformAccountId?: number | null;
@@ -409,14 +412,15 @@ export async function createType(
   const res = await tenantQuery<TypeRow>(
     organizationId,
     `INSERT INTO types
-       (organization_id, slug, label, kind, is_return, sort_order, platform_account_id, workflow_node_id)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       (organization_id, slug, label, kind, color_hex, is_return, sort_order, platform_account_id, workflow_node_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
      RETURNING *`,
     [
       organizationId,
       data.slug,
       data.label,
       data.kind ?? 'receiving',
+      data.colorHex ?? null,
       data.isReturn ?? false,
       data.sortOrder ?? 100,
       data.platformAccountId ?? null,
@@ -432,6 +436,9 @@ export async function updateType(
   data: {
     label?: string;
     kind?: string;
+    // `null` clears the accent back to the built-in registry tone — so this
+    // takes the same sentinel treatment as the bindings below, never COALESCE.
+    colorHex?: string | null;
     isReturn?: boolean;
     sortOrder?: number;
     isActive?: boolean;
@@ -444,6 +451,7 @@ export async function updateType(
 ): Promise<TypeRow | null> {
   const setBinding = Object.prototype.hasOwnProperty.call(data, 'platformAccountId');
   const setWorkflow = Object.prototype.hasOwnProperty.call(data, 'workflowNodeId');
+  const setColor = Object.prototype.hasOwnProperty.call(data, 'colorHex');
   const res = await tenantQuery<TypeRow>(
     organizationId,
     `UPDATE types SET
@@ -453,7 +461,8 @@ export async function updateType(
        sort_order          = COALESCE($6, sort_order),
        is_active           = COALESCE($7, is_active),
        platform_account_id = CASE WHEN $8::boolean THEN $9::bigint ELSE platform_account_id END,
-       workflow_node_id    = CASE WHEN $10::boolean THEN $11::text ELSE workflow_node_id END
+       workflow_node_id    = CASE WHEN $10::boolean THEN $11::text ELSE workflow_node_id END,
+       color_hex           = CASE WHEN $12::boolean THEN $13::varchar ELSE color_hex END
      WHERE organization_id = $1 AND id = $2
      RETURNING *`,
     [
@@ -468,6 +477,8 @@ export async function updateType(
       data.platformAccountId ?? null,
       setWorkflow,
       data.workflowNodeId ?? null,
+      setColor,
+      data.colorHex ?? null,
     ],
   );
   return res.rows[0] ?? null;

@@ -1,14 +1,25 @@
 'use client';
 
 /**
- * Unbox Displays → Linkage topic — Pairing (CartonMatchHub) + Zoho PO note.
+ * Unbox Displays → Linkage topic — the carton's PAIRING surface.
  *
  * Armed-row verbs + local nest drills (Photos twin):
- * `linkage` leaf → Actions list · `linkageAction` link|note → bodies.
+ * `linkage` leaf → Actions list · `linkageAction` link|return|note → bodies.
+ *
+ * **The pairing verbs live HERE, on the actions list — never inside the Link
+ * body.** Link is one avenue combobox plus that avenue's search field; Find
+ * ticket · Return # · Store · Zoho · Amazon return are peers of it, not
+ * controls buried under its search results. They are merged into this one list
+ * rather than stacked as a second {@link StationArmedVerbList}: two lists both
+ * register keyboard region `right` and would fight over the same letters.
+ *
+ * Find ticket is also this list's job, not Classify's — Classify grades what
+ * the carton IS (urgency · platform · type); linking it to a ticket is a
+ * pairing act.
  */
 
-import { useEffect, useMemo } from 'react';
-import { FileText, Link2 } from '@/components/Icons';
+import { useCallback, useEffect, useMemo } from 'react';
+import { FileText, Link2, TicketHelp } from '@/components/Icons';
 import { useDisplaysLeafChrome } from '@/components/station/displays/displays-leaf-chrome';
 import {
   StationArmedVerbList,
@@ -17,6 +28,11 @@ import {
 import { DISPLAYS_BODY_INSET } from '@/design-system/shells/detail-stack';
 import { cn } from '@/utils/_cn';
 import { CartonMatchHub } from './CartonMatchHub';
+import {
+  UnfoundMatchNotice,
+  UnfoundReturnSearch,
+  useUnfoundMatchVerbs,
+} from './UnfoundMatchStrip';
 import { LinePoNoteCard } from './LinePoNoteCard';
 import { providerCatalogLabel } from '@/lib/integrations/capability-labels';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
@@ -29,15 +45,16 @@ function providerStripLabel(providerKey: string): string {
   return brand || full;
 }
 
-const LINKAGE_DRILL_LABEL: Record<'link' | 'note', string> = {
+const LINKAGE_DRILL_LABEL: Record<'link' | 'return' | 'note', string> = {
   link: 'Link',
+  return: 'Return #',
   note: 'Note',
 };
 
 function isLinkageDrill(
   action: UnboxLinkageAction,
-): action is 'link' | 'note' {
-  return action === 'link' || action === 'note';
+): action is 'link' | 'return' | 'note' {
+  return action === 'link' || action === 'return' || action === 'note';
 }
 
 export function LinkageDisplayHost({
@@ -50,6 +67,8 @@ export function LinkageDisplayHost({
   pairingFocusTab,
   pairingFocusRequestId,
   autoMatch,
+  onFindTicket,
+  ticketLabel,
 }: {
   row: ReceivingLineRow;
   staffId: string;
@@ -61,8 +80,33 @@ export function LinkageDisplayHost({
   pairingFocusRequestId?: number;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- same shape as CartonMatchHub autoMatch
   autoMatch: any;
+  /**
+   * Open Ticket Displays (Link existing / Chat). Found **and** unfound — a
+   * ticket is a pairing, so this row lives here rather than in Classify, which
+   * grades what the carton IS (urgency · platform · type).
+   */
+  onFindTicket?: () => void;
+  /** Linked ticket display label ("#9395"), when one is linked. */
+  ticketLabel?: string | null;
 }) {
   const { setTrail, setOnNestedPop, setOnNestedRestore } = useDisplaysLeafChrome();
+
+  const openReturnSearch = useCallback(() => onActionChange('return'), [onActionChange]);
+
+  const {
+    verbs: matchVerbs,
+    runVerb: runMatchVerb,
+    notice: matchNotice,
+  } = useUnfoundMatchVerbs({
+    receivingId: autoMatch?.receivingId ?? null,
+    trackingNumber: autoMatch?.trackingNumber ?? null,
+    receivedSerial: autoMatch?.receivedSerial ?? null,
+    // Find ticket is added below so it survives on FOUND cartons too.
+    // **No Store verb here** — Store is one of Link's three avenues (Inventory
+    // item · Purchase order · Store), so a peer row would be a second door onto
+    // the same search one level up from it.
+    onOpenReturnSearch: openReturnSearch,
+  });
 
   const verbs = useMemo<StationArmedVerb[]>(() => {
     const rows: StationArmedVerb[] = [
@@ -71,8 +115,20 @@ export function LinkageDisplayHost({
         label: 'Link',
         preferredKey: 'k',
         icon: (p) => <Link2 className={p.className} />,
+        subtitle: 'Inventory item · Purchase order · Store',
       },
     ];
+    // Pairing verbs are peers of Link — see the module docblock.
+    if (typeof onFindTicket === 'function') {
+      rows.push({
+        id: 'find_ticket',
+        label: 'Find ticket',
+        preferredKey: 't',
+        icon: (p) => <TicketHelp className={p.className} />,
+        subtitle: ticketLabel ? `Linked ${ticketLabel} · open chat` : 'New ticket · Link existing',
+      });
+    }
+    if (autoMatch) rows.push(...matchVerbs);
     if (hasPoNote) {
       rows.push({
         id: 'note',
@@ -82,10 +138,27 @@ export function LinkageDisplayHost({
       });
     }
     return rows;
-  }, [hasPoNote]);
+  }, [autoMatch, hasPoNote, matchVerbs, onFindTicket, ticketLabel]);
 
+  const commitVerb = useCallback(
+    (id: string) => {
+      if (id === 'link' || id === 'note') {
+        onActionChange(id as UnboxLinkageAction);
+        return;
+      }
+      if (id === 'find_ticket') {
+        onFindTicket?.();
+        return;
+      }
+      runMatchVerb(id);
+    },
+    [onActionChange, onFindTicket, runMatchVerb],
+  );
+
+  // A gated-away drill resolves to the actions list — never a silent swap to
+  // an unrelated body (Displays reachability law).
   const verb: UnboxLinkageAction = isLinkageDrill(action)
-    ? action === 'note' && !hasPoNote
+    ? (action === 'note' && !hasPoNote) || (action === 'return' && !autoMatch)
       ? 'actions'
       : action
     : 'actions';
@@ -122,8 +195,13 @@ export function LinkageDisplayHost({
           verbs={verbs}
           listLabel="Linkage actions"
           testId="unbox-linkage-actions"
-          onCommit={(id) => onActionChange(id as UnboxLinkageAction)}
+          onCommit={commitVerb}
         />
+      ) : null}
+      {verb === 'actions' && matchNotice ? (
+        <div className={cn('pt-2', DISPLAYS_BODY_INSET)}>
+          <UnfoundMatchNotice state={matchNotice} />
+        </div>
       ) : null}
       {verb === 'link' ? (
         <div className={cn('min-h-0 flex-1 pt-3', DISPLAYS_BODY_INSET)}>
@@ -136,7 +214,22 @@ export function LinkageDisplayHost({
             autoFocusSearch={false}
             focusTab={pairingFocusTab}
             focusRequestId={pairingFocusRequestId}
-            autoMatch={autoMatch}
+            /* Verbs live on this leaf's actions list, not under the search. */
+            autoMatch={null}
+          />
+        </div>
+      ) : null}
+      {verb === 'return' ? (
+        <div className={cn('min-h-0 flex-1 pt-3', DISPLAYS_BODY_INSET)}>
+          <UnfoundReturnSearch
+            receivingId={autoMatch?.receivingId ?? null}
+            lineId={autoMatch?.lineId ?? null}
+            receivedSerial={autoMatch?.receivedSerial ?? null}
+            providerTicketId={autoMatch?.providerTicketId ?? null}
+            ticketNumber={autoMatch?.ticketNumber ?? null}
+            ticketUrl={autoMatch?.ticketUrl ?? null}
+            onTicketChanged={autoMatch?.onTicketChanged}
+            onBack={() => onActionChange('actions')}
           />
         </div>
       ) : null}

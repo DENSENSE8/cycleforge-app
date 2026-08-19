@@ -289,7 +289,7 @@ export function CsvImportStagingHost() {
                     size="sm"
                     icon={<X className="h-3.5 w-3.5" />}
                     onClick={() => void handleCancelDraft()}
-                    className={WORKBENCH_CHROME_PILL_CLASS}
+                    className={cn(WORKBENCH_CHROME_PILL_CLASS, 'h-full')}
                   >
                     Cancel
                   </Button>
@@ -307,7 +307,7 @@ export function CsvImportStagingHost() {
                     onClick={() => void handleConfirm()}
                     className={cn(
                       WORKBENCH_CHROME_PILL_CLASS,
-                      'font-semibold uppercase tracking-widest',
+                      'h-full font-semibold uppercase tracking-widest',
                     )}
                     data-testid="csv-import-staging-confirm"
                   >

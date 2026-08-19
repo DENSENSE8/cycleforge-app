@@ -13,7 +13,7 @@
  * plus quiet actions — never an in-flow pinned band.
  */
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { AnimatePresence, motion } from '@/design-system/motion';
@@ -250,7 +250,7 @@ function RecordFactCell({
   quietLabel?: boolean;
 }) {
   return (
-    <div className={cn('min-w-0 space-y-0.5', wide && 'col-span-3')}>
+    <div className={cn('min-w-0 space-y-0.5', wide && 'col-span-full')}>
       <p
         className={cn(
           'text-role-micro uppercase tracking-widest',
@@ -478,8 +478,6 @@ export function CartonInspectionPage({ receivingId }: { receivingId: number }) {
                 receiving={receiving}
                 lines={lines ?? []}
                 totalsSummary={cartonContentsSummary(data?.totals)}
-                facts={facts}
-                recordMeta={recordMeta}
                 purchaseOrders={data?.purchase_orders}
                 hideEmptyContents={disposition.exceptions.some((e) => e.key === 'no_lines')}
               />
@@ -487,6 +485,8 @@ export function CartonInspectionPage({ receivingId }: { receivingId: number }) {
                 receiving={receiving}
                 disposition={disposition}
                 events={data?.events ?? []}
+                facts={facts}
+                recordMeta={recordMeta}
               />
             </div>
           </div>
@@ -502,13 +502,24 @@ export function CartonInspectionPage({ receivingId }: { receivingId: number }) {
   );
 }
 
+/**
+ * Lead title — a name a person recognises, never the internal carton id.
+ *
+ * The row number is a database handle: an operator arrived here by scanning a
+ * tracking number or looking up a PO, and neither of those is `14215`. The id
+ * still addresses the record (the URL, the audit rail, Unbox), it just does not
+ * get the one line that answers "what am I looking at". Order is what the
+ * warehouse says out loud: the product, then the PO, then the parcel. When we
+ * genuinely know none of the three we say so rather than substituting a number.
+ */
 function cartonHeaderTitle(identity: CartonHeaderIdentity): string {
+  if (identity.productTitle?.trim()) return identity.productTitle.trim();
   if (identity.poNumber) {
     const platform = identity.platform ? sourcePlatformLabel(identity.platform) : '';
     return [platform, `PO ${identity.poNumber}`].filter(Boolean).join(' · ');
   }
-  if (identity.productTitle) return identity.productTitle;
-  return `Carton ${identity.cartonId}`;
+  if (identity.tracking?.trim()) return `Parcel ${getLast8(identity.tracking.trim())}`;
+  return 'Unidentified carton';
 }
 
 function DispositionBar({
@@ -534,7 +545,7 @@ function DispositionBar({
   onAudit: () => void;
 }) {
   const router = useRouter();
-  const title = identity ? cartonHeaderTitle(identity) : `Carton ${receivingId}`;
+  const title = identity ? cartonHeaderTitle(identity) : 'Loading…';
   const tracking = identity?.tracking ?? null;
   const poNumber = identity?.poNumber ?? null;
 
@@ -626,23 +637,86 @@ function DispositionBar({
   );
 }
 
+/**
+ * ONE section header for the whole read surface.
+ *
+ * Every section on this sheet answers a different question, so the only thing
+ * that should differ between their headers is the word. Before this they did
+ * not: Progress wore `text-text-muted` while its five siblings wore
+ * `text-text-soft`, Contents put its total in a bare span, and Activity built a
+ * third shape out of a button, a count and an icon — three inks and three row
+ * heights down one 1fr column, which reads as three unrelated widgets rather
+ * than one record.
+ *
+ * `count` is the section's own trailing fact (12 events, 3 of 4 received);
+ * `action` is the one control the section owns. `onToggle` turns the label into
+ * the disclosure so the chevron sits inside the word it opens.
+ */
+function SectionLabel({
+  label,
+  count,
+  action,
+  open,
+  onToggle,
+}: {
+  label: string;
+  count?: ReactNode;
+  action?: ReactNode;
+  open?: boolean;
+  onToggle?: () => void;
+}) {
+  const face = 'inline-flex min-w-0 items-center gap-1.5 text-role-eyebrow uppercase tracking-widest text-text-soft';
+  return (
+    <div className="flex min-h-6 items-center justify-between gap-2">
+      {onToggle ? (
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded={open}
+          className={cn('ds-raw-button rounded-md text-left', face, focusRing('control', 'accent'))}
+        >
+          <ChevronDown
+            className={cn(
+              'h-3.5 w-3.5 shrink-0 transition-transform duration-150',
+              open && 'rotate-180',
+            )}
+          />
+          {label}
+        </button>
+      ) : (
+        <span className={face}>{label}</span>
+      )}
+
+      <span className="flex shrink-0 items-center gap-1">
+        {count != null ? (
+          <span className="text-role-micro uppercase tracking-widest tabular-nums text-text-faint">
+            {count}
+          </span>
+        ) : null}
+        {action}
+      </span>
+    </div>
+  );
+}
+
 function ContentsColumn({
   receiving,
   lines,
   totalsSummary,
-  facts,
-  recordMeta,
   purchaseOrders,
   hideEmptyContents,
 }: {
   receiving: CartonInspectorReceiving;
   lines: CartonInspectorLine[];
   totalsSummary: string;
-  facts: CartonFact[];
-  recordMeta: CartonFact[];
   purchaseOrders?: CartonInspectorPayload['purchase_orders'];
   hideEmptyContents: boolean;
 }) {
+  // The line list is a disclosure, not the resting state: the summary answers
+  // "how much is in here" in one row, and a carton with eight lines used to
+  // push Purchase orders and Note below the fold to say it eight times.
+  const [linesOpen, setLinesOpen] = useState(false);
+
   return (
     // Sections, not cards. `divide-y` rules BETWEEN siblings only, so the last
     // section never trails an unfinished hairline into open plane — which is
@@ -650,51 +724,21 @@ function ContentsColumn({
     <section className="divide-y divide-border-hairline" data-testid="carton-contents-column">
       {lines.length > 0 ? (
         <div className="inset-card space-y-2">
-          <div className="flex items-baseline justify-between gap-3">
-            <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Contents</p>
-            <span className="text-role-micro uppercase tracking-widest text-text-soft">{totalsSummary}</span>
-          </div>
-          <ContentsList lines={lines} />
+          <SectionLabel
+            label="Contents"
+            count={totalsSummary}
+            open={linesOpen}
+            onToggle={() => setLinesOpen((v) => !v)}
+          />
+          {linesOpen ? <ContentsList lines={lines} /> : null}
         </div>
       ) : hideEmptyContents ? null : (
         <p className="inset-card text-role-caption text-text-muted">No lines on this carton yet.</p>
       )}
 
-      {facts.length > 0 || recordMeta.length > 0 ? (
-        <div className="inset-card space-y-3">
-          <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Record</p>
-          {facts.length > 0 ? (
-            <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.55fr)] gap-x-4 gap-y-2">
-              {facts.slice(0, 6).map((f) => (
-                <RecordFactCell key={f.key} fact={f} />
-              ))}
-            </div>
-          ) : null}
-
-          {recordMeta.length > 0 ? (
-            <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.55fr)] gap-x-4 gap-y-2">
-              {recordMeta.map((m) => (
-                <RecordFactCell
-                  key={m.key}
-                  fact={m}
-                  wide={WIDE_RECORD_META_KEYS.has(m.key)}
-                  quietLabel
-                />
-              ))}
-            </div>
-          ) : null}
-
-          <SourceListingLinks receiving={receiving} />
-        </div>
-      ) : (
-        <SourceListingLinks receiving={receiving} className="inset-card" />
-      )}
-
       {(purchaseOrders?.length ?? 0) > 1 ? (
         <div className="inset-card space-y-2">
-          <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
-            Purchase orders
-          </p>
+          <SectionLabel label="Purchase orders" />
           <ul className="divide-y divide-border-hairline">
             {purchaseOrders!.map((po) => (
               <li
@@ -715,7 +759,7 @@ function ContentsColumn({
 
       {receiving.support_notes?.trim() ? (
         <div className="inset-card space-y-2">
-          <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Note</p>
+          <SectionLabel label="Note" />
           <p className="whitespace-pre-wrap text-role-caption text-text-default">
             {receiving.support_notes.trim()}
           </p>
@@ -725,14 +769,69 @@ function ContentsColumn({
   );
 }
 
+/**
+ * RECORD — the row's own system facts, and they live in the RIGHT column.
+ *
+ * The left column answers "what is in the box" and the right answers
+ * "what happened to it / what is this row". Platform · QA · carrier · source ·
+ * ids · stamps are the second question, and parking them under the line list
+ * put a 3-track fact grid between the contents and the notes about them.
+ * It leads the right column: an operator who arrived from a search reads
+ * "which record am I on" before the pipeline.
+ */
+function RecordSection({
+  receiving,
+  facts,
+  recordMeta,
+}: {
+  receiving: CartonInspectorReceiving;
+  facts: CartonFact[];
+  recordMeta: CartonFact[];
+}) {
+  if (facts.length === 0 && recordMeta.length === 0) {
+    return <SourceListingLinks receiving={receiving} className="inset-card" />;
+  }
+  return (
+    <div className="inset-card space-y-3">
+      <SectionLabel label="Record" />
+      {facts.length > 0 ? (
+        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-x-4 gap-y-2">
+          {facts.slice(0, 6).map((f) => (
+            <RecordFactCell key={f.key} fact={f} />
+          ))}
+        </div>
+      ) : null}
+
+      {recordMeta.length > 0 ? (
+        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-x-4 gap-y-2">
+          {recordMeta.map((m) => (
+            <RecordFactCell
+              key={m.key}
+              fact={m}
+              wide={WIDE_RECORD_META_KEYS.has(m.key)}
+              quietLabel
+            />
+          ))}
+        </div>
+      ) : null}
+
+      <SourceListingLinks receiving={receiving} />
+    </div>
+  );
+}
+
 function ProgressRail({
   receiving,
   disposition,
   events,
+  facts,
+  recordMeta,
 }: {
   receiving: CartonInspectorReceiving;
   disposition: CartonDisposition;
   events: CartonInspectorEvent[];
+  facts: CartonFact[];
+  recordMeta: CartonFact[];
 }) {
   const readiness = useMemo(() => deriveCartonReadiness(receiving), [receiving]);
   const log = useMemo(() => toReceivingDetailsLog(receiving), [receiving]);
@@ -744,13 +843,16 @@ function ProgressRail({
       className="divide-y divide-border-hairline border-t border-border-soft xl:border-t-0 xl:border-l"
       data-testid="carton-timeline-column"
     >
+      {/* Which record am I on — leads the column (see RecordSection). */}
+      <RecordSection receiving={receiving} facts={facts} recordMeta={recordMeta} />
+
       {/*
         No photo card here any more. Photos are the DispositionBar's primary CTA
         and open in-flow above both columns — a mid-rail launcher beside it would
         be a second front door to one surface.
       */}
       <div className="inset-card space-y-2">
-        <p className="text-role-eyebrow uppercase tracking-widest text-text-muted">Progress</p>
+        <SectionLabel label="Progress" />
         <ReceivingCartonPipeline log={log} readiness={readiness} />
       </div>
 
@@ -761,7 +863,7 @@ function ProgressRail({
       */}
       {disposition.exceptions.length > 0 ? (
         <div className="inset-card space-y-2">
-          <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Findings</p>
+          <SectionLabel label="Findings" />
           <ul className="space-y-1.5">
             {disposition.exceptions.map((ex) => (
               // A finding keeps its tone — that is state, not decoration — but
@@ -788,7 +890,7 @@ function ProgressRail({
       {events.length > 0 ? <ActivitySection events={events} /> : null}
 
       <div className="inset-card space-y-2">
-        <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">History</p>
+        <SectionLabel label="History" />
         <CartonUnitJourneyHistory receivingId={receiving.id} />
       </div>
     </section>
@@ -881,45 +983,23 @@ function ActivitySection({ events }: { events: CartonInspectorEvent[] }) {
 
   return (
     <div className="inset-card space-y-2">
-      <div className="flex items-baseline justify-between gap-2">
-        <button
-          type="button"
-          onClick={() => canExpandList && setListOpen((v) => !v)}
-          aria-expanded={listOpen}
-          disabled={!canExpandList}
-          className={cn(
-            // Eyebrow disclosure — Button chrome fights the section-label density.
-            'ds-raw-button flex min-w-0 flex-1 items-baseline gap-1.5 rounded-md text-left',
-            focusRing('control', 'accent'),
-            !canExpandList && 'cursor-default',
-          )}
-        >
-          <span className="inline-flex items-center gap-1.5 text-role-eyebrow uppercase tracking-widest text-text-soft">
-            {canExpandList ? (
-              <ChevronDown
-                className={cn(
-                  'h-3.5 w-3.5 shrink-0 transition-transform duration-150',
-                  listOpen && 'rotate-180',
-                )}
-              />
-            ) : null}
-            Activity
-          </span>
-          <span className="text-role-micro tabular-nums uppercase tracking-widest text-text-soft">
-            {countLabel}
-          </span>
-        </button>
-
-        <HoverTooltip label="Expand activity" asChild>
-          <IconButton
-            size="sm"
-            ariaLabel="Expand activity on page"
-            onClick={() => setPageOpen(true)}
-            icon={<Maximize2 />}
-            className="shrink-0 text-text-soft"
-          />
-        </HoverTooltip>
-      </div>
+      <SectionLabel
+        label="Activity"
+        count={countLabel}
+        open={listOpen}
+        onToggle={canExpandList ? () => setListOpen((v) => !v) : undefined}
+        action={
+          <HoverTooltip label="Expand activity" asChild>
+            <IconButton
+              size="sm"
+              ariaLabel="Expand activity on page"
+              onClick={() => setPageOpen(true)}
+              icon={<Maximize2 />}
+              className="-my-1 text-text-soft"
+            />
+          </HoverTooltip>
+        }
+      />
 
       <AnimatePresence initial={false} mode="sync">
         <motion.div

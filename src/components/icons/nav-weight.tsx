@@ -1,50 +1,52 @@
 /**
- * Nav icon stroke weights — visual hierarchy for Kinetic Ledger chrome.
+ * Nav icon stroke — **ONE token, and the surface owns it.**
  *
- * **Page glyphs draw at 1.5** (2026-08-02, down from 2). These render at 14px
- * in the MasterNav spine and the header Recents rows, and at that size a
- * 2-weight stroke on a 24-unit viewBox is a heavy graphic sitting beside
- * 12–14px text — the loudest single reason a dense nav column reads as
- * clip-art. 1.5 is the weight Lucide, Linear and VS Code all draw nav chrome at.
+ * ## Why there is only one
  *
- * Mode glyphs keep the heavier 2.25 — they no longer appear in the spine (child
- * rows there render no icon at all), but they still carry L2 switches in the
- * GlobalHeader Mode switcher and `HorizontalButtonSlider`, where a glyph is the
- * whole control rather than a label's companion. Keep mode ≤ 2.25: heavier CSS
- * overrides (e.g. 2.75) muddy dense glyphs at h-4.
+ * The weight used to live in three places at once: a `page` tier (1.5), a
+ * `mode` tier (2.25), and — the expensive part — *inside the glyph components
+ * themselves*, via `withNavIconPageStroke` / `withNavIconModeStroke` wrappers
+ * that baked a weight into ~23 exports in `icons/stations.tsx` and
+ * `lib/photos/scope-icons.ts`.
  *
- * GlobalHeader *chrome* icon actions are a separate contract and are NOT this —
- * they use native SVG stroke via `TOP_CHROME_ICON_GLYPH` (`header-shell.ts`).
+ * A glyph that carries its own weight cannot be reused at another altitude, and
+ * it does not lose quietly — it wins. Both wrapper and surface emit the same
+ * shape of rule (`.a path` vs `.b path`), so they tie on specificity and the
+ * winner is decided by Tailwind's emission order (`1.5` before `2.25`). The
+ * GlobalHeader's Unbox face read heavier than the Panel · Pin · History glyphs
+ * beside it for exactly that reason, and it survived three separate fixes: the
+ * dropdown rows had no class at all, then `Button`'s `icon` prop overrode the
+ * size box, then the glyph's own baked 2.25 outranked the beam. Three passes,
+ * three layers, one root cause — weight had more than one home.
+ *
+ * So: glyphs ship BARE, this is the only stroke token, and a surface that draws
+ * nav chrome applies it. Nothing to lose a specificity race against.
+ *
+ * ## The single weight is 1.5
+ *
+ * The `mode` tier is gone with the wrappers. It existed for surfaces where a
+ * glyph is the whole control rather than a label's companion (`TabSwitch` /
+ * `HorizontalButtonSlider`, the header "now" identity) — but those glyphs draw
+ * at 14–18px beside 12–14px text just like every other one, and a second weight
+ * bought a distinction nobody could name while costing the drift above. If a
+ * heavier control glyph is ever wanted again, it is a NEW token with a stated
+ * job — never a wrapper baked back into an icon.
+ *
+ * ## Applying it
+ *
+ * The selectors cover the glyph itself AND a wrapper one or two levels up
+ * (`Button`'s icon box, a chrome-menu row cell), because a Lucide-shaped glyph
+ * carries its weight as a `stroke-width` ATTRIBUTE on its own `<svg>` that its
+ * shapes inherit — so a wrapper needs to reach the `<svg>`, not just `path`.
  */
 
 import { cn } from '@/utils/_cn';
 
-type NavIconProps = { className?: string };
-type NavIconComponent = (props: NavIconProps) => JSX.Element;
+/** The one nav-glyph stroke. Compose it; never re-type a `stroke-width` literal. */
+export const NAV_ICON_STROKE_CLASS =
+  '![stroke-width:1.5] [&_svg]:![stroke-width:1.5] [&_path]:![stroke-width:1.5] [&_circle]:![stroke-width:1.5] [&_rect]:![stroke-width:1.5] [&_line]:![stroke-width:1.5] [&_polyline]:![stroke-width:1.5] [&_polygon]:![stroke-width:1.5] [&_ellipse]:![stroke-width:1.5]';
 
-/** L1 destination glyphs (MasterNav spine rows, header Recents rows). */
-export const NAV_ICON_PAGE_STROKE_CLASS =
-  '![stroke-width:1.5] [&_path]:![stroke-width:1.5] [&_circle]:![stroke-width:1.5] [&_rect]:![stroke-width:1.5] [&_line]:![stroke-width:1.5] [&_polyline]:![stroke-width:1.5]';
-
-/**
- * L2 mode glyphs (rails, dropdown modes, hover modes, header “now”).
- * 2.25 — previous crisp weight before the 2.75 bump that blurred mode icons.
- */
-export const NAV_ICON_MODE_STROKE_CLASS =
-  '![stroke-width:2.25] [&_path]:![stroke-width:2.25] [&_circle]:![stroke-width:2.25] [&_rect]:![stroke-width:2.25] [&_line]:![stroke-width:2.25] [&_polyline]:![stroke-width:2.25]';
-
-export function navIconStrokeClass(layer: 'page' | 'mode', className?: string): string {
-  return cn(layer === 'page' ? NAV_ICON_PAGE_STROKE_CLASS : NAV_ICON_MODE_STROKE_CLASS, className);
-}
-
-export function withNavIconPageStroke(Icon: NavIconComponent): NavIconComponent {
-  return function NavIconPage({ className }) {
-    return <Icon className={navIconStrokeClass('page', className)} />;
-  };
-}
-
-export function withNavIconModeStroke(Icon: NavIconComponent): NavIconComponent {
-  return function NavIconMode({ className }) {
-    return <Icon className={navIconStrokeClass('mode', className)} />;
-  };
+/** {@link NAV_ICON_STROKE_CLASS} plus the caller's own classes. */
+export function navIconStrokeClass(className?: string): string {
+  return cn(NAV_ICON_STROKE_CLASS, className);
 }

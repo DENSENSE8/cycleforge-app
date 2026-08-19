@@ -37,7 +37,25 @@ export interface UseAiQuickJumpResult {
   aiEnabled: boolean;
   hits: AiSearchHit[];
   searching: boolean;
+  /**
+   * What the retrieve is doing RIGHT NOW, so the dropdown can narrate it
+   * instead of painting an opaque skeleton:
+   *   idle       — nothing in flight
+   *   debouncing — holding for the 250ms keystroke settle
+   *   retrieving — POST /api/ai/retrieve is open
+   */
+  phase: QuickJumpPhase;
 }
+
+type QuickJumpPhase = 'idle' | 'debouncing' | 'retrieving';
+
+/**
+ * The ONLY debounce between a keystroke and the retrieve POST. The header
+ * field feeds `query` immediately (`debounceMs={0}`) precisely so this is the
+ * single wait — the two used to stack into ~570ms of dead time before the
+ * request even opened.
+ */
+const RETRIEVE_DEBOUNCE_MS = 180;
 
 export function useAiQuickJump(
   query: string,
@@ -47,6 +65,7 @@ export function useAiQuickJump(
   const [aiEnabled, setAiEnabled] = useState(false);
   const [hits, setHits] = useState<AiSearchHit[]>([]);
   const [searching, setSearching] = useState(false);
+  const [phase, setPhase] = useState<QuickJumpPhase>('idle');
   const abortRef = useRef<AbortController | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
   // Stable key for array deps without re-running on identity churn.
@@ -71,6 +90,7 @@ export function useAiQuickJump(
       abortRef.current?.abort();
       setHits([]);
       setSearching(false);
+      setPhase('idle');
       return;
     }
     // Clear stale hits immediately on retype so Enter / handoff cannot use a
@@ -78,11 +98,13 @@ export function useAiQuickJump(
     abortRef.current?.abort();
     setHits([]);
     setSearching(true);
+    setPhase('debouncing');
     clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
       abortRef.current?.abort();
       const controller = new AbortController();
       abortRef.current = controller;
+      setPhase('retrieving');
       try {
         const data = await postAiRetrieve(q, {
           entityTypes: entityTypesKey ? entityTypesKey.split(',') : undefined,
@@ -93,16 +115,17 @@ export function useAiQuickJump(
         if (!controller.signal.aborted) {
           setHits(data?.hits ?? []);
           setSearching(false);
+          setPhase('idle');
         }
       } catch {
         // AbortError — a newer request owns the state now.
       }
-    }, 250);
+    }, RETRIEVE_DEBOUNCE_MS);
     return () => clearTimeout(debounceRef.current);
   }, [query, aiEnabled, enabled, entityTypesKey, pageContext, limit]);
 
   // Unmount: kill any in-flight request outright.
   useEffect(() => () => abortRef.current?.abort(), []);
 
-  return { aiEnabled, hits, searching };
+  return { aiEnabled, hits, searching, phase };
 }

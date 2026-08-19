@@ -450,23 +450,29 @@ Full waist: [source-of-truth.md](source-of-truth.md).
 
 - Import from `@/components/Icons`. Always pair an icon with text (e.g. `<Check className="h-3.5 w-3.5"/> Resolve`),
   except the status dot — and **GlobalHeader Mode / Recents / Pins** (icon-only with `HoverTooltip`; active mode, History, or pin glyph).
-- **Nav chrome law — ONE stroke for every altitude of the spine**
-  (rewritten 2026-08-02; it used to read *"L2 modes keep glyphs with heavier stroke"*).
+- **Nav chrome law — ONE stroke token, and the SURFACE owns it**
+  (finished 2026-08-19; rewritten 2026-08-02 from *"L2 modes keep glyphs with heavier stroke"*).
   **Every MasterNav row draws its SoT glyph** — root destinations *and* child rows (a page's modes,
-  a station inside a subgroup) — all at the light page stroke (**1.5**, down from 2: these draw at
-  14px beside 12–14px text, where a 2-weight stroke on a 24-unit viewBox is a heavy graphic rather
-  than chrome). A child row is the switch between one page's siblings, which is the job the
-  GlobalHeader Mode menu draws with the *same icon set* — two doors onto one destination must not
-  disagree about whether it has a face. **What child rows do not get is a heavier stroke:** at 2.25
-  a child glyph out-draws its own parent at 1.5, inverting the ladder it was meant to express.
+  a station inside a subgroup) — and so does the GlobalHeader half of the same 40px beam, all at
+  **1.5** (down from 2: these draw at 14–16px beside 12–14px text, where a 2-weight stroke on a
+  24-unit viewBox is a heavy graphic rather than chrome). A child row is the switch between one
+  page's siblings, which is the job the GlobalHeader page menu draws with the *same icon set* — two
+  doors onto one destination must not disagree about whether it has a face, or about its weight.
   Subordination is the indent (`pl-7`), the caption/medium type against the parent's body/semibold,
-  and the muted ink. The heavier 2.25 stays where a glyph is the **whole control** rather than a
-  label's companion — GlobalHeader Mode menu, header “now” identity, scan rails,
-  `HorizontalButtonSlider` — so `STATION_GLYPH_KEYS` uniqueness stays live.
-  CommandBar Pages / mobile page rows stay label-only until those surfaces
-  are migrated. Stroke SoT: `nav-weight.tsx`. **Exception — GlobalHeader icon
-  actions:** native SVG stroke only (`TOP_CHROME_ICON_GLYPH` in
-  `header-shell.ts`); keep mode stroke ≤ 2.25 (`nav-weight.tsx`); 2.75 muddies dense glyphs.
+  and the muted ink — never a heavier glyph, which at 2.25 out-drew its own parent.
+  - **The `mode` (2.25) tier and the `withNavIcon*Stroke` wrappers are DELETED.** The wrappers baked
+    a weight into ~23 glyph exports (`icons/stations.tsx`, `lib/photos/scope-icons.ts`), which made
+    a glyph undrawable at a second altitude — and it did not lose quietly: wrapper and surface emit
+    the same shape of rule (`.a path` vs `.b path`), so they tie on specificity and Tailwind's
+    emission order decides. The header's Unbox face stayed heavy through three separate fixes for
+    exactly that reason. **Glyphs ship bare; a surface drawing nav chrome applies
+    `navIconStrokeClass()` / `NAV_ICON_STROKE_CLASS`.** A heavier control glyph, if ever wanted
+    again, is a NEW token with a stated job — never a wrapper baked back into an icon.
+  - **GlobalHeader chrome is no longer an exception.** It ran on native stroke 2, which made the two
+    halves of one beam read as different weights at an identical 16px; beam glyphs now compose
+    `TOP_CHROME_ICON_FACE` (`header-shell.ts`) = the 16px box + the one stroke token.
+  `STATION_GLYPH_KEYS` uniqueness stays live. CommandBar Pages / mobile page rows stay label-only
+  until those surfaces are migrated. Stroke SoT: `nav-weight.tsx`.
   Cross-page MRU is the GlobalHeader Recents popover (`HeaderRecentsSwitcher`) — never spine chips.
   Quick Access **pins** are `HeaderPinsSwitcher`, directly beside the selected page
   with only the parent header cluster gap — no hairline or padded wrapper, and

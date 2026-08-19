@@ -113,6 +113,61 @@ test('pickRecentFaceRow breaks an updated_at tie on the newer line id', () => {
   assert.equal(row?.lineId, 12);
 });
 
+test('pickRecentFaceRow ranks a sibling by the FACE clock, not by updated_at', () => {
+  // The condition/serial trap: the sibling was patched seconds ago (grading,
+  // serial capture), but its FACE has not been touched since last week. The
+  // line whose face was actually written last owns the carton's phrase.
+  const row = pickRecentFaceRow([
+    candidate({
+      lineId: 11,
+      notes: 'stale face, freshly graded line',
+      lineUpdatedAt: '2026-08-19T12:00:00.000Z',
+      faceNotedAt: '2026-08-12T09:00:00.000Z',
+    }),
+    candidate({
+      lineId: 12,
+      notes: 'untested.....',
+      lineUpdatedAt: '2026-08-18T10:00:00.000Z',
+      faceNotedAt: '2026-08-19T11:00:00.000Z',
+    }),
+  ]);
+
+  assert.equal(row?.note, 'untested.....');
+  assert.equal(row?.lineId, 12);
+});
+
+test('pickRecentFaceRow falls back to updated_at for an unstamped legacy row', () => {
+  // face_noted_at was never backfilled, so a pre-2026-08-19 row still ranks on
+  // the only clock it has.
+  const row = pickRecentFaceRow([
+    candidate({ lineId: 11, notes: 'older', lineUpdatedAt: '2026-08-10T10:00:00.000Z' }),
+    candidate({ lineId: 12, notes: 'newer', lineUpdatedAt: '2026-08-18T10:00:00.000Z' }),
+  ]);
+
+  assert.equal(row?.note, 'newer');
+});
+
+test('pickRecentFaceRow: a stamped face outranks an unstamped sibling touched later', () => {
+  // Mixed era on one carton. The stamped row states when its face was written;
+  // the unstamped one can only offer updated_at, which is not the same fact —
+  // so the stamp wins on its own merit, not by being newer on a shared axis.
+  const row = pickRecentFaceRow([
+    candidate({
+      lineId: 11,
+      notes: 'legacy row, patched a minute ago',
+      lineUpdatedAt: '2026-08-19T12:00:00.000Z',
+    }),
+    candidate({
+      lineId: 12,
+      notes: 'face written this morning',
+      lineUpdatedAt: '2026-08-01T10:00:00.000Z',
+      faceNotedAt: '2026-08-19T13:00:00.000Z',
+    }),
+  ]);
+
+  assert.equal(row?.note, 'face written this morning');
+});
+
 test('pickRecentFaceRow returns null when nothing has a face note', () => {
   assert.equal(pickRecentFaceRow([]), null);
   assert.equal(pickRecentFaceRow([candidate({ notes: ' ', labelNote: null })]), null);

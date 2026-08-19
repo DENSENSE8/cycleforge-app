@@ -50,34 +50,68 @@ import {
 import {
   HEADER_ICON_BTN_CLASS,
   HEADER_ICON_BTN_OPEN_CLASS,
-  TOP_CHROME_ICON_GLYPH,
+  TOP_CHROME_ICON_FACE,
 } from './header-shell';
 
 /**
  * Shared face chrome — interactive Button and static chip stay pixel-matched.
  *
- * **Weight/ink match the rail's title (2026-08-16); size settled at
- * `role-title` the same day.** This face names the page you are ON — the
- * same job the context rail's row title does (`RailRowBody` —
- * `font-semibold text-text-default`, at `role-caption`) — so it carries the
- * same weight and ink. `text-text-default` no longer needs to override
- * {@link HEADER_ICON_BTN_CLASS} here (that base moved to `text-text-default`
- * the same day, once every OTHER header icon needed the same ink this face
- * already had); the explicit class survives as the `role-title` carrier,
- * which the base does not set. `role-title` (18px, bumped from `role-nav`'s
- * 13px) matches the spine's OWN settled size (`SidebarNavList.tsx` —
- * `SPINE_ROW_FACE_CLASS`'s docblock has the full history) — this face and
- * the spine row it mirrors ("Unbox" here, "Unbox" in the list below) are the
- * same destination through two doors; they should read as the same size.
- * `role-title` bakes its own 600 weight, so the previous separate
- * `font-semibold` is redundant but harmless to drop — dropped.
+ * **Quiet by design (2026-08-19).** This face names the page you are already
+ * ON, so it is a READOUT, not a destination — it says where you are, and the
+ * operator never needs to find it. It briefly ran at `role-title` (18px,
+ * constant black) to match the spine row of the same name; at that size the
+ * one thing on the beam that cannot be clicked-to-go-anywhere was also the
+ * loudest thing on it, out-shouting Pins, Recents and the toggle beside it.
+ * It is `role-caption` now — one step under the spine's `role-nav` rows — and
+ * the LABEL alone takes `text-text-muted`, while the glyph keeps the beam's
+ * shared ink from {@link HEADER_ICON_BTN_CLASS} so the icon row reads as one
+ * set. Emphasis on this beam is contrast, never size or weight.
  */
 const PAGE_FACE_CLASS = cn(
   HEADER_ICON_BTN_CLASS,
   // Beam-height face; w-auto so icon+label is not crushed to the icon-cell width.
-  'inline-flex h-full min-h-8 w-auto shrink-0 select-none items-center justify-center gap-1 px-1.5',
-  'text-role-title text-text-default transition-colors duration-150 ease-out',
+  'inline-flex h-full min-h-8 w-auto shrink-0 select-none justify-center gap-1 px-1.5',
+  // The face stays CENTRED in the beam so its glyph sits on the same row as
+  // Panel · Pin · History beside it. Bottom-alignment is an INNER concern —
+  // the icon+label group aligns on its own bottom edge (see PageFaceContent)
+  // and that group is then centred as a unit. Bottom-aligning the face itself
+  // pushed the glyph off the shared icon row, which is worse than the
+  // misalignment it was fixing.
+  'items-center',
+  // `font-medium` is explicit because ONE branch is a `Button`, whose base
+  // carries `font-semibold`; without it the interactive face would sit a weight
+  // above its own static twin. Emphasis on this beam is contrast, not weight.
+  'text-role-caption font-medium leading-none transition-colors duration-150 ease-out',
 );
+
+/** The face's content — ONE render for the static chip and the menu trigger. */
+function PageFaceContent({ Icon, label }: { Icon: SidebarIconComponent; label: string }) {
+  return (
+    <>
+      {/*
+        The glyph is a plain child span, never `Button`'s `icon` prop: that prop
+        wraps the node in `iconBox[size]` and forces `[&>svg]:h-full`, so a
+        `size="sm"` Button drew this at **14px** while every other beam glyph —
+        including this face's own static twin — drew at 16px. The prop silently
+        overrode the size token, which is why "the icon sizing doesn't match"
+        survived a pass that set the token correctly.
+      */}
+      <span className="flex min-w-0 items-end gap-1">
+        <span className={cn(TOP_CHROME_ICON_FACE, 'flex shrink-0 items-center justify-center')}>
+          <Icon className="h-full w-full" aria-hidden />
+        </span>
+        {/*
+          `items-end` on the pair, `leading-none` on the word: the label's box is
+          bottom-aligned to the glyph's, so the type sits on the icon's floor
+          rather than on the middle of a line box taller than the glyph. The
+          pair is 16px tall either way, so the beam still centres it on the same
+          row as every other header glyph.
+        */}
+        <span className="max-w-[10rem] truncate text-text-muted" title={label}>{label}</span>
+      </span>
+    </>
+  );
+}
 
 type HeaderMenuRow = {
   id: string;
@@ -207,14 +241,7 @@ export function HeaderPageSwitcher() {
     return (
       <div className="relative flex h-full shrink-0 items-stretch">
         <span className={PAGE_FACE_CLASS} aria-label={page.label}>
-          {/* Same TOP_CHROME_ICON_GLYPH (16px) as the switchable Button face
-              below and every other GlobalHeader icon — this used to be a
-              14px (`h-3.5`) one-off that made the static face's glyph read
-              smaller than its own interactive twin. */}
-          <span className={cn(TOP_CHROME_ICON_GLYPH, 'flex shrink-0 items-center justify-center')}>
-            <FaceIcon className="h-full w-full" aria-hidden />
-          </span>
-          <span className="max-w-[10rem] truncate" title={faceLabel}>{faceLabel}</span>
+          <PageFaceContent Icon={FaceIcon} label={faceLabel} />
         </span>
       </div>
     );
@@ -230,9 +257,8 @@ export function HeaderPageSwitcher() {
         aria-haspopup="menu"
         onClick={() => setOpen((o) => !o)}
         className={cn(PAGE_FACE_CLASS, open && HEADER_ICON_BTN_OPEN_CLASS)}
-        icon={<FaceIcon className={TOP_CHROME_ICON_GLYPH} />}
       >
-        <span className="max-w-[10rem] truncate" title={faceLabel}>{faceLabel}</span>
+        <PageFaceContent Icon={FaceIcon} label={faceLabel} />
       </Button>
 
       <AnchoredLayer

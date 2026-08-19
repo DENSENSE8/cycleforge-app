@@ -19,12 +19,12 @@ import {
   HEADER_ICON_BTN_CLASS,
   HEADER_ICON_BTN_OPEN_CLASS,
   HEADER_ICON_WRAP,
-  TOP_CHROME_ICON_GLYPH,
+  TOP_CHROME_ICON_FACE,
 } from './header-shell';
 
 export function GlobalHeaderAssistantButton({
   size = 'md',
-  iconClassName = TOP_CHROME_ICON_GLYPH,
+  iconClassName = TOP_CHROME_ICON_FACE,
   wrapClassName = HEADER_ICON_WRAP,
 }: {
   size?: 'md' | 'touch';
