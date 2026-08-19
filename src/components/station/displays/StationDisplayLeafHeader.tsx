@@ -16,6 +16,16 @@
  * owns all three. Height is `h-full` so it fills the band rather than setting
  * its own.
  *
+ * **There is no Forward BUTTON (2026-08-18).** A `>` twin sat disabled on
+ * essentially every frame an operator sees — you only have a forward stack
+ * after going back, which on a scan bench is rare — so it spent a permanent
+ * cell to render `opacity-30` almost always, next to the one control here that
+ * matters. Forward itself is NOT removed: `ArrowRight` still walks the future
+ * stack while the Right keyboard region owns, which is the documented Displays
+ * history chord. That is a working chord with no advertised affordance, which
+ * is the safe direction — the banned shape is the reverse, a hint for a chord
+ * that does nothing.
+ *
  * Title is always the current trail segment (e.g. `PO notes`). Ancestors are
  * not painted as jump crumbs — depth is ← → / Esc / ArrowLeft·ArrowRight only.
  *
@@ -23,16 +33,16 @@
  */
 
 import { useCallback, type KeyboardEvent, type ReactNode } from 'react';
-import { ChevronLeft, ChevronRight } from '@/components/Icons';
+import { ChevronLeft } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 import type { DisplaysBreadcrumbSegment } from './displays-leaf-chrome';
 
 /**
- * History ← → — re-enable hits on the pointer-events-none eyebrow (top-band
- * twin). Enabled ink is `text-text-default` so ← is never mistaken for the
- * disabled forward twin (`opacity-30` + soft).
+ * History Back — re-enable hits on the pointer-events-none band. Enabled ink is
+ * `text-text-default`; the disabled face (`opacity-30` + soft) now only shows
+ * at the very start of a session, since the forward twin is gone.
  */
 const HISTORY_BTN =
   'pointer-events-auto inline-flex h-full w-6 shrink-0 items-center justify-center ' +
@@ -130,23 +140,11 @@ export function StationDisplayLeafHeader({
           onClick={onBack}
           disabled={!canGoBack}
           aria-label={backLabel}
-          className={cn(HISTORY_BTN, 'ml-1')}
+          className={cn(HISTORY_BTN, 'ml-1 border-r border-border-hairline')}
           data-testid="station-displays-history-back"
           data-station-displays-back=""
         >
           <ChevronLeft className="h-4 w-4" aria-hidden />
-        </button>
-      </HoverTooltip>
-      <HoverTooltip label={forwardLabel} asChild>
-        <button
-          type="button"
-          onClick={onForward}
-          disabled={!canGoForward || !onForward}
-          aria-label={forwardLabel}
-          className={cn(HISTORY_BTN, 'border-r border-border-hairline')}
-          data-testid="station-displays-history-forward"
-        >
-          <ChevronRight className="h-4 w-4" aria-hidden />
         </button>
       </HoverTooltip>
 

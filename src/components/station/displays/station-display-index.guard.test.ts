@@ -276,19 +276,22 @@ describe('Station Displays Root Index chrome', () => {
     assert.match(stack, /lastLeafId=\{lastLeafId\}/);
   });
 
-  it('leaf header is top-left ← → + current title only (no ancestor jump crumbs)', () => {
+  it('leaf header is top-left Back + current title only (no forward twin, no jump crumbs)', () => {
     const header = read('src/components/station/displays/StationDisplayLeafHeader.tsx');
     assert.match(header, /data-testid="station-displays-history-back"/);
-    assert.match(header, /data-testid="station-displays-history-forward"/);
     assert.match(header, /data-station-displays-leaf-title/);
     assert.match(header, /data-breadcrumb-kind="current"/);
+    assert.match(header, /aria-current="page"/);
+    // No `>` control (2026-08-18): it was disabled on nearly every frame.
+    assert.doesNotMatch(header, /data-testid="station-displays-history-forward"/);
+    assert.doesNotMatch(header, /ChevronRight/);
+    // Forward the CAPABILITY stays — ArrowRight still walks the future stack.
     assert.match(header, /ArrowLeft/);
     assert.match(header, /ArrowRight/);
-    assert.match(header, /aria-current="page"/);
     assert.equal(
       (header.match(/<button/g) ?? []).length,
       2,
-      'leaf header: exactly history back · history forward (title is not a button)',
+      'leaf header: exactly history back + the title (which is a Back target)',
     );
     assert.doesNotMatch(
       header,
@@ -300,36 +303,33 @@ describe('Station Displays Root Index chrome', () => {
       /data-breadcrumb-kind="ancestor"|onJumpToSegment/,
       'ancestor jump crumbs are retired — depth is ← → / Esc only',
     );
-    // Verifiable 24px height — shared STATION_SECONDARY_BAND_FACE (h-6) eyebrow.
-    assert.match(header, /STATION_SECONDARY_BAND_FACE/);
+    // In-band since 2026-08-18: this cluster is the LEFT group of the column's
+    // single header band, so the band owns height, seam and background. Owning
+    // any of them here would double-paint the hairline it used to draw.
     assert.match(
       header,
-      /STATION_CHROME_SEAM_HAIRLINE/,
-      'leaf hairline is the shared seam token — never border-b that notches Displays border-l',
+      /h-full/,
+      'the nav cluster fills the band rather than setting its own height',
     );
-    assert.doesNotMatch(
-      header,
-      /\bh-10\b/,
-      'leaf header must be the 24px eyebrow band, not a 40px chrome band',
-    );
+    assert.doesNotMatch(header, /STATION_SECONDARY_BAND_FACE/);
+    assert.doesNotMatch(header, /STATION_CHROME_SEAM_HAIRLINE/);
+    assert.doesNotMatch(header, /\bsticky\b/);
+    assert.doesNotMatch(header, /bg-surface-card/);
     // Resize sash is z-sticky full-height. Leaf nav matches the column top band:
     // z-header + pointer-events-none so ← → can re-enable hits above the sash
     // without blanketing the leading seam (title gutter still lets drag through).
-    assert.match(header, /z-header/);
+    // `z-header` moved to the band with the background; the cluster keeps only
+    // the pointer-events contract, because the inset resize sash still runs
+    // full-height under the leading edge of this chrome.
     assert.match(
       header,
       /pointer-events-none/,
-      'leaf eyebrow must not blanket the inset resize sash — children re-enable hits',
+      'nav cluster must not blanket the inset resize sash — children re-enable hits',
     );
     assert.match(
       header,
       /pointer-events-auto/,
-      'history ← → / trailing must re-enable pointer-events above the sash',
-    );
-    assert.match(
-      header,
-      /\bsticky\b/,
-      'leaf eyebrow must stay sticky for scroll — place sticky AFTER seam token so tailwind-merge does not drop it for relative',
+      'Back / title / trailing must re-enable pointer-events above the sash',
     );
     // Must not dump the whole path as the only title control.
     assert.doesNotMatch(
