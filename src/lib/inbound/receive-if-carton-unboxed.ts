@@ -8,7 +8,7 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { receiveLineUnits } from '@/lib/receiving/receive-line';
 
-export interface ReceiveIfUnboxedHit {
+interface ReceiveIfUnboxedHit {
   receivingLineId: number;
   receivingId: number;
   received: boolean;

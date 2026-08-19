@@ -16,9 +16,9 @@ import {
 } from '@/lib/receiving/intake-classification';
 
 /** En dash join — operator-facing return identity (`AMZ – return – 4552201`). */
-export const MARKETPLACE_RETURN_IDENTITY_SEP = ' – ';
+const MARKETPLACE_RETURN_IDENTITY_SEP = ' – ';
 
-export type MarketplaceReturnIdentityInput = {
+type MarketplaceReturnIdentityInput = {
   orderId: string | null | undefined;
   sourcePlatform?: string | null;
   returnPlatform?: string | null;
