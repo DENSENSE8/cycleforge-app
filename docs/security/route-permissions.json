@@ -1,9 +1,9 @@
 {
   "version": 1,
-  "generatedAt": "2026-08-18T17:51:16Z",
-  "totalRoutes": 933,
+  "generatedAt": "2026-08-19T06:41:58Z",
+  "totalRoutes": 934,
   "summary": {
-    "permissionGated": 793,
+    "permissionGated": 794,
     "authenticatedNoPermission": 51,
     "anonymousIntentional": 87,
     "serviceToService": 2,
@@ -5356,6 +5356,15 @@
       ],
       "gate": "withAuth",
       "permission": "receiving.mark_received",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/receiving/nas-archive-pending/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "receiving.view",
       "exemptReason": null
     },
     {

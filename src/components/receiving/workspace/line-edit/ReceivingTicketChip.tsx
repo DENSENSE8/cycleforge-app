@@ -18,6 +18,7 @@ import {
 import { threadKey } from '@/components/support/TicketThreadCard';
 import { invalidateSupportContextCaches } from '@/hooks';
 import { entitySupportTicketQueryKey } from '@/hooks/useEntitySupportTicket';
+import { useNasArchivePending } from '@/hooks/useNasArchivePending';
 import { useTicketNasArchive } from '@/hooks/useTicketNasArchive';
 import {
   invalidateReceivingFeeds,
@@ -93,6 +94,13 @@ export function ReceivingTicketChip({
 
   const qc = useQueryClient();
   const nasArchive = useTicketNasArchive();
+
+  // Narrowed to the open carton; the global prompt runs the unfiltered form.
+  const { items: pendingArchives } = useNasArchivePending({
+    receivingId,
+    enabled: receivingId != null && receivingId > 0,
+  });
+  const archivePending = pendingArchives.length > 0;
 
   const unlink = useMutation<{ removed: boolean; shipmentUnpairWarning: string | null }, Error, void, {
     previousTicketQueries: Array<[readonly unknown[], unknown]>;
@@ -184,7 +192,12 @@ export function ReceivingTicketChip({
         value={value}
         display={display}
         tone="ticket"
-        iconClass="text-orange-500"
+        // Amber `#` when this carton has photos taken since the ticket was filed
+        // that are not on the NAS yet. The chip already IS the ticket's home and
+        // already carries Archive in its menu, so the pending state costs no new
+        // pixels and needs no second control. Same query as the bottom-right
+        // prompt, so the two can never disagree about whether a sync is owed.
+        iconClass={archivePending ? 'text-amber-600' : 'text-orange-500'}
         disableCopy={!value.trim()}
         actionsInMenu
         menuPlacement="left"
