@@ -112,3 +112,6 @@ electron/package-lock.json
 
 # Generated test output — never track (98k+ lines of TAP per run)
 .cycle_forge_ops/logs/*.tap
+
+# Local vision dataset — 13GB of captures/derivatives, regenerated locally, never tracked
+vision/data/
