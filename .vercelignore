@@ -18,6 +18,11 @@ tmp
 .cursor
 .claude
 .agents
+# Machine-local CLI state. `.antigravitycli/` holds an ABSOLUTE symlink into a
+# developer's home (`~/.gemini/config/...`), which is dangling everywhere else —
+# Vercel rejects the upload outright ("is not a valid symlink"), so this took
+# down production deploys, CI's included.
+.antigravitycli
 .gemini
 .obsidian
 .impeccable
