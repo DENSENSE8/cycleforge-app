@@ -10,7 +10,7 @@
     },
     "code-graph": {
       "type": "stdio",
-      "command": "/home/avion/Garisek-OS/tools/code-graph/run-mcp.sh",
+      "command": "/home/michaelgarisek/Projects/Garisek-OS/tools/code-graph/run-mcp.sh",
       "args": [],
       "env": {
         "CODE_GRAPH_PROJECT": "cycleforge-app"
