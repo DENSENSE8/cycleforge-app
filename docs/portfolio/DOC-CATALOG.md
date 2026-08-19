@@ -1,7 +1,7 @@
 # DOC catalog — machine-generated SoT
 
 > **Do not hand-edit.** Regenerate: `node scripts/portfolio-sot-sync.mjs`  
-> Generated: `2026-08-19T05:10:16.684Z` · Files: **665** · Repo: `cycleforge-app`  
+> Generated: `2026-08-19T06:21:38.994Z` · Files: **666** · Repo: `cycleforge-app`  
 > Parent index: [INDEX.md](./INDEX.md)
 
 Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*** id  
@@ -13,7 +13,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 
 | WT-ID | Absolute path | Branch | HEAD (short) | Exists |
 |-------|---------------|--------|--------------|--------|
-| `main` | `/home/michaelgarisek/Projects/cycleforge-app` | `wip/nav-chrome-and-guard-suite` | `cc97d9d20` | yes |
+| `main` | `/home/michaelgarisek/Projects/cycleforge-app` | `wip/nav-chrome-and-guard-suite` | `a244f81f2` | yes |
 | `nav-ia` | `/home/avion/cycleforge-nav-ia` | `topic/nav-ia` | `e3d409e4c` | NO |
 | `product-updates` | `/home/avion/cycleforge-product-updates` | `wip/product-updates-popover` | `a3816a3bf` | NO |
 | `scan-phase1` | `/home/avion/cycleforge-scan-phase1` | `wip/station-scan-phase1` | `1ee41b9fa` | NO |
@@ -265,6 +265,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 | `DOC-TODO-DISPLAY-REGION-CONTRACT-ELEVATION-2026-07-31-FDF4` | `WS-TODO-MISC` | [`todo/display-region-contract-ELEVATION-2026-07-31.md`](../todo/display-region-contract-ELEVATION-2026-07-31.md) |
 | `DOC-TODO-DISPLAYS-CHARACTER-SELECT-GAME-FEEL-GEMINI-RESEA-5524` | `WS-TODO-MISC` | [`todo/displays-character-select-game-feel-GEMINI-RESEARCH-BRIEFING.md`](../todo/displays-character-select-game-feel-GEMINI-RESEARCH-BRIEFING.md) |
 | `DOC-TODO-DISPLAYS-CHARACTER-SELECT-GAME-FEEL-HANDOFF-1E9F` | `WS-TODO-MISC` | [`todo/displays-character-select-game-feel-HANDOFF.md`](../todo/displays-character-select-game-feel-HANDOFF.md) |
+| `DOC-TODO-DISPLAYS-HEADER-BAND-HANDOFF-75C2` | `WS-TODO-MISC` | [`todo/displays-header-band-HANDOFF.md`](../todo/displays-header-band-HANDOFF.md) |
 | `DOC-TODO-DISPLAYS-LEAF-BACK-BREADCRUMB-SOT-HANDOFF-DCE0` | `WS-TODO-MISC` | [`todo/displays-leaf-back-breadcrumb-SOT-HANDOFF.md`](../todo/displays-leaf-back-breadcrumb-SOT-HANDOFF.md) |
 | `DOC-TODO-DISPLAYS-LEAF-VERBS-ARMED-ROWS-SOT-HANDOFF-4CCF` | `WS-TODO-MISC` | [`todo/displays-leaf-verbs-armed-rows-SOT-HANDOFF.md`](../todo/displays-leaf-verbs-armed-rows-SOT-HANDOFF.md) |
 | `DOC-TODO-DISPLAYS-ROOT-TO-LEAF-DEFERRED-SOT-HANDOFF-6BAE` | `WS-TODO-MISC` | [`todo/displays-root-to-leaf-deferred-SOT-HANDOFF.md`](../todo/displays-root-to-leaf-deferred-SOT-HANDOFF.md) |
@@ -961,7 +962,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 - `DOC-TEN-SLICE-TEMPLATE-5BE0` — [`tenancy/SLICE_TEMPLATE.md`](../tenancy/SLICE_TEMPLATE.md)
 - `DOC-TEN-TABLES-9F18` — [`tenancy/_analysis/tables.md`](../tenancy/_analysis/tables.md)
 
-### `WS-TODO-MISC` (489)
+### `WS-TODO-MISC` (490)
 
 - `DOC-TODO-00-INDEX-9E1E` — [`todo/kiosk-counter-transaction/00-INDEX.md`](../todo/kiosk-counter-transaction/00-INDEX.md)
 - `DOC-TODO-01-RECEIVING-BOH-SLIM-4C77` — [`todo/foh-boh-surface-split/01-receiving-boh-slim.md`](../todo/foh-boh-surface-split/01-receiving-boh-slim.md)
@@ -1049,6 +1050,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 - `DOC-TODO-DISPLAY-REGION-CONTRACT-ELEVATION-2026-07-31-FDF4` — [`todo/display-region-contract-ELEVATION-2026-07-31.md`](../todo/display-region-contract-ELEVATION-2026-07-31.md)
 - `DOC-TODO-DISPLAYS-CHARACTER-SELECT-GAME-FEEL-GEMINI-RESEA-5524` — [`todo/displays-character-select-game-feel-GEMINI-RESEARCH-BRIEFING.md`](../todo/displays-character-select-game-feel-GEMINI-RESEARCH-BRIEFING.md)
 - `DOC-TODO-DISPLAYS-CHARACTER-SELECT-GAME-FEEL-HANDOFF-1E9F` — [`todo/displays-character-select-game-feel-HANDOFF.md`](../todo/displays-character-select-game-feel-HANDOFF.md)
+- `DOC-TODO-DISPLAYS-HEADER-BAND-HANDOFF-75C2` — [`todo/displays-header-band-HANDOFF.md`](../todo/displays-header-band-HANDOFF.md)
 - `DOC-TODO-DISPLAYS-LEAF-BACK-BREADCRUMB-SOT-HANDOFF-DCE0` — [`todo/displays-leaf-back-breadcrumb-SOT-HANDOFF.md`](../todo/displays-leaf-back-breadcrumb-SOT-HANDOFF.md)
 - `DOC-TODO-DISPLAYS-LEAF-VERBS-ARMED-ROWS-SOT-HANDOFF-4CCF` — [`todo/displays-leaf-verbs-armed-rows-SOT-HANDOFF.md`](../todo/displays-leaf-verbs-armed-rows-SOT-HANDOFF.md)
 - `DOC-TODO-DISPLAYS-ROOT-TO-LEAF-DEFERRED-SOT-HANDOFF-6BAE` — [`todo/displays-root-to-leaf-deferred-SOT-HANDOFF.md`](../todo/displays-root-to-leaf-deferred-SOT-HANDOFF.md)
