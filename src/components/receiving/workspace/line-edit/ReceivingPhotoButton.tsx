@@ -48,6 +48,7 @@ import { toast } from '@/lib/toast';
 import { receivingPhotoToGalleryInput } from '@/components/shipped/photo-gallery/photo-gallery-utils';
 import { buildUnboxingCartonLibraryHref } from '@/components/shipped/photo-gallery/photo-context-provenance';
 import { STATION_CONTEXT_PHOTO_CHROME_CLASS, STATION_CONTEXT_PHOTO_FLUSH_CLASS, STATION_CONTEXT_PHOTO_PILL_CLASS } from '@/components/station/entity-context/station-context-action-pill';
+import { STATION_CHROME_GLYPH_CLASS } from '@/components/station/entity-context/station-identity-chrome';
 import {
   RECEIVING_PHOTO_LIST_INTENT_CARTON,
   type ReceivingPhotoStage,
@@ -460,30 +461,38 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
     onOpenPhotosDisplay();
   }, [onOpenPhotosDisplay]);
 
-  const pillButton = (
+  // Carton chrome: raw button (not Button size=sm). The primitive's h-8 /
+  // caption line-height sat the glyph and count off the row midline.
+  const pillButton = chromeFace ? (
+    <button
+      type="button"
+      onClick={handlePillClick}
+      onDoubleClick={opensPhotosDisplay ? handlePillDoubleClick : undefined}
+      disabled={phone.pending}
+      aria-disabled={!canSendToPhone || undefined}
+      aria-label={ariaLabel}
+      aria-expanded={suppressHoverGallery ? undefined : showGalleryPeek}
+      className={STATION_CONTEXT_PHOTO_CHROME_CLASS}
+    >
+      <Camera className={STATION_CHROME_GLYPH_CLASS} aria-hidden />
+      <span className="leading-none tabular-nums">{count}</span>
+    </button>
+  ) : (
     <Button
       type="button"
       variant="ghost"
       size="sm"
       onClick={handlePillClick}
       onDoubleClick={opensPhotosDisplay ? handlePillDoubleClick : undefined}
-      // Item scope with no PO route ref: the phone leg has nowhere to land, but
-      // the pill must stay hoverable for device upload — so it is click-inert,
-      // not `disabled` (a disabled button swallows the hover the strip needs).
       disabled={phone.pending}
       aria-disabled={!canSendToPhone || undefined}
       ariaLabel={ariaLabel}
       aria-expanded={suppressHoverGallery ? undefined : showGalleryPeek}
-      icon={<Camera className={chromeFace ? 'h-3.5 w-3.5' : 'h-4 w-4'} />}
-      // Right face: count when photos exist (children), else "+". Camera stays
-      // left via justify-between on the locked photo-pill width. Count is not
-      // iconRight — Button's icon box would crush multi-digit tabular nums.
-      // Flush square: camera only (count lives in aria / tooltip).
-      // Chrome row: always show the amount (0 when empty) next to the camera.
+      icon={<Camera className="h-4 w-4" />}
       iconRight={appearance === 'pill' && !hasGallery ? <Plus className="h-3 w-3" /> : undefined}
       className={btnClass}
     >
-      {appearance === 'flush' ? null : chromeFace || hasGallery ? count : null}
+      {appearance === 'flush' ? null : hasGallery ? count : null}
     </Button>
   );
 

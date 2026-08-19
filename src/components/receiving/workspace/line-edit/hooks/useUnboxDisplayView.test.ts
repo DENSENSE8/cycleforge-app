@@ -107,6 +107,14 @@ describe('buildDisplayPending (local snapshot)', () => {
     assert.equal(claim.claimMode, 'create');
   });
 
+  it('maps linkage actions list as empty nest (Back target for Link · Note)', () => {
+    const actions = buildDisplayPending('linkage', { linkageAction: 'actions' });
+    assert.equal(actions.display, 'linkage');
+    assert.equal(actions.linkageActionRaw, null);
+    const link = buildDisplayPending('linkage', { linkageAction: 'link' });
+    assert.equal(link.linkageActionRaw, 'link');
+  });
+
   it('maps legacy po-note raw id to linkage note nest', () => {
     const note = buildDisplayPending('linkage', undefined, 'po-note');
     assert.equal(note.display, 'linkage');

@@ -150,19 +150,30 @@ export function StationDisplayLeafHeader({
       </HoverTooltip>
 
       <div
-        className="flex min-w-0 flex-1 items-center px-2"
+        className="flex min-w-0 flex-1 items-stretch"
         data-station-displays-breadcrumb=""
       >
         {current ? (
-          <span
-            className="min-w-0 truncate text-role-caption font-semibold text-text-default"
+          <button
+            type="button"
+            onClick={onBack}
+            disabled={!canGoBack}
+            aria-label={backLabel}
+            className={cn(
+              'pointer-events-auto min-w-0 flex-1 truncate px-2 text-left text-role-caption font-semibold text-text-default',
+              'hover:bg-surface-sunken',
+              'disabled:pointer-events-none disabled:text-text-default',
+              focusRing('control', 'accent'),
+              'outline-none',
+            )}
             data-station-displays-leaf-title=""
+            data-testid="station-displays-leaf-title"
             data-breadcrumb-segment={current.id}
             data-breadcrumb-kind="current"
             aria-current="page"
           >
             {current.label}
-          </span>
+          </button>
         ) : null}
       </div>
 

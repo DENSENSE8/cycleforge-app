@@ -48,7 +48,8 @@ export type UnboxSideTab =
   | 'checklist'
   | 'support'
   | 'tracking'
-  | 'timeline';
+  | 'timeline'
+  | 'locations';
 
 /** Nav id: closed is `null`; open is index or a content leaf. */
 export type UnboxDisplayNav = typeof UNBOX_DISPLAY_INDEX | UnboxSideTab;
@@ -109,6 +110,7 @@ export const UNBOX_SIDE_TAB_ORDER: readonly UnboxSideTab[] = [
   'tracking',
   'timeline',
   'support',
+  'locations',
 ];
 
 /**
@@ -128,6 +130,9 @@ export const UNBOX_STRIP_TAB_ORDER: readonly UnboxSideTab[] = [
   'tracking',
   'timeline',
   'support',
+  // Locations is a TOOL (place · reprint · mint), so it sits below the
+  // carton's own leaves; Checklist still trails as the procedure summary.
+  'locations',
   'checklist',
 ];
 
@@ -251,11 +256,14 @@ export function isUnboxSideTabVisible(tab: UnboxSideTab, gates: UnboxSideTabGate
       return gates.hasTimelineTab;
     // Ticket · Photos · Prebox · Checklist · Support — always on an open carton.
     // Prebox is an Assets peer leaf (empty body when no serials — never gated off).
+    // Locations is a TOOL, not a beat of the carton's procedure — always
+    // reachable so the putaway pill's New location has somewhere to land.
     case 'ticket':
     case 'photos':
     case 'prebox':
     case 'checklist':
     case 'support':
+    case 'locations':
       return true;
   }
 }

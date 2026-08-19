@@ -338,6 +338,14 @@ export interface ReceivingLineRow {
   staged_location_row_label?: string | null;
   staged_location_col_label?: string | null;
   /**
+   * Bin code AS STAMPED (`receiving_line_putaway.location_code`). History reads
+   * this, not the joined live row — renaming a bin must not rewrite what a past
+   * putaway says the operator confirmed.
+   */
+  staged_location_code?: string | null;
+  staged_by?: number | null;
+  staged_by_name?: string | null;
+  /**
    * Operator waived the serial for this line (no serial available — cable / bulk
    * part / return with none). Durable `receiving_line_testing.serial_absent`;
    * completes the Unbox stepper's Serial step alongside a captured serial.

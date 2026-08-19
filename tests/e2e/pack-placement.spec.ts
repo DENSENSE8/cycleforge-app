@@ -23,6 +23,10 @@ import {
  *   5. Arm a bench via packLocationId on a tech TRACKING scan → the order is
  *      placed → the desk count increments → a /move shifts it to another bench.
  *
+ *   6. Ready-to-Pack station floor: the packing desks are NOT in the centre —
+ *      they live in the location pill's menu — and the centre stays serial
+ *      pairing while a scan updates it.
+ *
  * Never the dogfood tenant (`.claude/rules/verify.md`). Seed + run:
  *   pnpm provision:qa-org
  *   npx playwright test tests/e2e/pack-placement.spec.ts --project=qa-desktop
@@ -267,6 +271,100 @@ test.describe('Pack placement — Ready-to-Pack benches + counts', () => {
       )
       .toBeGreaterThan(0);
     await page.screenshot({ path: 'test-results/toship-station-column.png' });
+  });
+
+  test('?excludeOrderId returns the operator Last-entry desk shape (and validates)', async ({
+    page,
+  }) => {
+    // The pill's Last entry is a fact about the OPERATOR, so the read carries
+    // it beside the benches rather than in a second endpoint.
+    const ok = await apiGet(page, '/api/orders/pack-placement?excludeOrderId=1');
+    expect(ok.status).toBe(200);
+    expect(ok.body.success).toBe(true);
+    expect('recent' in ok.body, 'the read carries a recent key').toBe(true);
+    const recent = ok.body.recent as { locationId?: number } | null;
+    if (recent) {
+      expect(typeof recent.locationId, 'recent names a bench id').toBe('number');
+    }
+
+    const bad = await apiGet(page, '/api/orders/pack-placement?excludeOrderId=nope');
+    expect(bad.status, 'a junk exclude id is rejected, not ignored').toBe(400);
+  });
+
+  test('the packing stations are not in the centre — they are in the location menu', async ({
+    page,
+  }) => {
+    const placement = await apiGet(page, '/api/orders/pack-placement');
+    const desks = ((placement.body.locations ?? []) as Array<{ locationKind: string }>).filter(
+      (l) => l.locationKind === 'DESK',
+    );
+    if (desks.length < 1) {
+      test.skip(true, 'need ≥1 packing desk — run pnpm provision:qa-org');
+      return;
+    }
+
+    await page.goto('/test');
+    const scanField = page.getByPlaceholder(/Orders · Amz SKU/i).first();
+    await expect(scanField).toBeVisible({ timeout: 30_000 });
+
+    // Open an order in the centre the way an operator does — a tracking scan.
+    let opened = false;
+    for (const tracking of [
+      QA_FIXTURE_TRACKING_PENDING,
+      QA_FIXTURE_TRACKING_PENDING_SECOND,
+      QA_FIXTURE_TRACKING_PENDING_THIRD,
+    ]) {
+      await scanField.fill(tracking);
+      await scanField.press('Enter');
+      opened = await page
+        .locator('[data-testid="shipping-station-center"]')
+        .first()
+        .waitFor({ state: 'visible', timeout: 12_000 })
+        .then(() => true)
+        .catch(() => false);
+      if (opened) break;
+    }
+    if (!opened) {
+      test.skip(true, 'no pending fixture opened the pack workspace — run pnpm provision:qa-org');
+      return;
+    }
+
+    const centre = page.locator('[data-testid="shipping-station-center"]').first();
+
+    // The wrap of desk chips is gone from the middle. A destination picker
+    // standing where the work goes is what this whole pass removed.
+    await expect(
+      centre.locator('[data-testid="pack-station-placement"]'),
+      'the centre carries no packing-station picker',
+      ).toHaveCount(0);
+
+    // …and the desks are one click away, inside the pill that already says
+    // where the order IS.
+    const pill = page.locator('[data-testid="pack-location-pill"]').first();
+    await expect(pill, 'the station floor carries the location pill').toBeVisible({
+      timeout: 15_000,
+    });
+    await pill.getByRole('button', { name: /Packing station options/i }).click();
+
+    const benchItem = page
+      .getByRole('menuitem')
+      .filter({ hasText: /^Pack / })
+      .first();
+    await expect(benchItem, 'every bench is a menu row on the pill').toBeVisible({
+      timeout: 10_000,
+    });
+    await expect(
+      page.getByRole('menuitem').filter({ hasText: /New location/i }).first(),
+      'minting an address is reachable from the same menu',
+    ).toBeVisible();
+    await page.screenshot({ path: 'test-results/pack-location-pill-menu.png' });
+    await page.keyboard.press('Escape');
+
+    // The centre is serial pairing, and a scan still lands there.
+    await expect(
+      centre.locator('[data-testid="shipping-sku-serial-rows"]').first(),
+      'the centre work surface is serial pairing',
+    ).toBeVisible({ timeout: 10_000 });
   });
 
   test('a TRACKING scan places an order at an armed bench; counts increment; /move shifts it', async ({

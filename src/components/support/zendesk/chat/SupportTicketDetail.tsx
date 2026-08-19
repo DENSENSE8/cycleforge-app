@@ -13,6 +13,7 @@ import {
   type TicketPhotoStaging,
 } from '@/hooks/useTicketPhotoStaging';
 import { usePhotoDropzone } from '@/hooks/usePhotoDropzone';
+import { useMeasuredHeight } from '@/hooks/useMeasuredHeight';
 import { useSupportContext } from '@/hooks/useSupportContext';
 import type { SupportContextBundle } from '@/lib/support/context-types';
 import { capabilityTitle } from '@/lib/integrations/capability-labels';
@@ -206,6 +207,8 @@ export function SupportTicketDetail({
   // where the cursor happened to be.
   const dz = usePhotoDropzone(staging.addFiles, { paste: false });
   const hostOwnsComposer = composerPlacement === 'host';
+  // Live height of the floating composer — the band the thread must keep clear.
+  const [composerRef, composerHeight] = useMeasuredHeight<HTMLDivElement>();
 
   if (isLoading) {
     return (
@@ -268,7 +271,9 @@ export function SupportTicketDetail({
         contextBadge={showContext ? contextBadge : null}
         ordersHref={ordersHref}
       />
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      {/* `data-conversation-port` marks the scroll ancestor the stream measures
+          against when the floating composer resizes. */}
+      <div data-conversation-port className="min-h-0 flex-1 overflow-y-auto">
         {/* Context FOR the conversation, so it lives in the conversation's own
             port and scrolls away with it — not pinned chrome.
             Deliberately NOT `compact={embedded}`: `/support` passes `embedded`
@@ -285,18 +290,31 @@ export function SupportTicketDetail({
           requesterEmail={requester.email}
           onOpenPhoto={onOpenPhoto}
           events={mergeFloorTimeline ? contextBundle?.timeline : undefined}
+          bottomInsetPx={hostOwnsComposer ? 0 : composerHeight}
         />
       </div>
       {/* AI suggested reply intentionally omitted for now (station + console). */}
       {hostOwnsComposer ? null : (
-        <SupportChatComposer
-          ticketId={ticketId}
-          requesterEmail={requester.email}
-          staging={staging}
-          receivingId={receivingId}
-          onBridgeChange={onComposerBridgeChange}
-          showReplyPresets={showReplyPresets}
-        />
+        // FLOATS over the thread rather than sitting in flow under it: the
+        // conversation reads as one continuous plane the composer hovers on.
+        // The port is not padded — the stream spends `composerHeight` as a
+        // spacer above its autoscroll sentinel, so the newest message parks
+        // clear of the dock at every composer height.
+        <div
+          ref={composerRef}
+          className="pointer-events-none absolute inset-x-0 bottom-0 z-raised"
+        >
+          <div className="pointer-events-auto">
+            <SupportChatComposer
+              ticketId={ticketId}
+              requesterEmail={requester.email}
+              staging={staging}
+              receivingId={receivingId}
+              onBridgeChange={onComposerBridgeChange}
+              showReplyPresets={showReplyPresets}
+            />
+          </div>
+        </div>
       )}
 
       {showContext ? (

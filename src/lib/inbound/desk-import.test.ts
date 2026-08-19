@@ -57,7 +57,7 @@ function mockDeps(opts: {
   };
 }
 
-describe('importDeskInboundRow — Amazon ASIN catalog gate', () => {
+describe('importDeskInboundRow — Amazon returns ingest', () => {
   it('skips cancelled rows without calling ingest', async () => {
     let ingestCalled = false;
     const row = amazonRow({ 'Return request status': 'Cancelled' });
@@ -75,16 +75,32 @@ describe('importDeskInboundRow — Amazon ASIN catalog gate', () => {
     assert.equal(outcome.reason, 'cancelled');
   });
 
-  it('skips when ASIN is not in sku_catalog', async () => {
+  it('ingests when ASIN is not in sku_catalog so tracking still lands', async () => {
     const row = amazonRow({ ASIN: 'B0MISSING99' });
+    let seenSku: string | null | undefined;
+    let seenCatalogId: number | null | undefined;
     const outcome = await importDeskInboundRow(
       ORG,
       row,
-      mockDeps({ catalog: null }),
+      {
+        ...mockDeps({ catalog: null }),
+        ingestPurchase: async (_org, input) => {
+          seenSku = input.sku ?? null;
+          seenCatalogId = input.skuCatalogId ?? null;
+          assert.equal(input.trackingNumber, '1Z999');
+          return {
+            receivingLineId: 1001,
+            created: true,
+            platformAccountId: null,
+            sourceType: 'amazon',
+            sourceOrderId: '111-222-333',
+          };
+        },
+      },
     );
-    assert.ok(isDeskImportSkip(outcome));
-    assert.equal(outcome.reason, 'no_catalog_asin');
-    assert.equal(outcome.asin, 'B0MISSING99');
+    assert.equal(isDeskImportSkip(outcome), false);
+    assert.equal(seenSku, 'B0MISSING99');
+    assert.equal(seenCatalogId, null);
   });
 
   it('ingests when ASIN equals sku_catalog.sku and stamps catalog id', async () => {

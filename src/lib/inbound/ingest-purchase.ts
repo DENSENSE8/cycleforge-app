@@ -315,7 +315,6 @@ export async function ingestPurchase(
       );
       if (shipment?.id) {
         const shipmentId = Number(shipment.id);
-        // Zoho identity read from the rz facts table (W3 — spine zoho columns are dead).
         const lineMeta = await client.query<{
           receiving_id: number | null;
           zoho_purchaseorder_id: string | null;
@@ -331,9 +330,48 @@ export async function ingestPurchase(
         );
         const meta = lineMeta.rows[0];
 
+        const stnCarton = await client.query<{ id: number }>(
+          `SELECT id
+             FROM receiving_carton
+            WHERE organization_id = $1::uuid
+              AND shipment_id = $2
+            ORDER BY id
+            LIMIT 1`,
+          [orgId, shipmentId],
+        );
+        const stnLink = stnCarton.rows[0]
+          ? null
+          : await client.query<{ owner_id: number }>(
+              `SELECT owner_id
+                 FROM shipment_links
+                WHERE organization_id = $1::uuid
+                  AND owner_type = 'RECEIVING'
+                  AND shipment_id = $2
+                ORDER BY is_primary DESC, id
+                LIMIT 1`,
+              [orgId, shipmentId],
+            );
+        const existingStnCartonId =
+          stnCarton.rows[0]?.id != null
+            ? Number(stnCarton.rows[0].id)
+            : stnLink?.rows[0]?.owner_id != null
+              ? Number(stnLink.rows[0].owner_id)
+              : null;
+
         let cartonId: number;
         if (meta?.receiving_id != null) {
           cartonId = Number(meta.receiving_id);
+          await client.query(
+            `UPDATE receiving_carton
+                SET shipment_id = COALESCE(shipment_id, $2),
+                    updated_at  = NOW()
+              WHERE id = $1 AND organization_id = $3::uuid`,
+            [cartonId, shipmentId, orgId],
+          );
+        } else if (existingStnCartonId != null) {
+          // Already-scanned / existing STN carton — attach the imported line
+          // instead of minting a second amazon inbound carton.
+          cartonId = existingStnCartonId;
           await client.query(
             `UPDATE receiving_carton
                 SET shipment_id = COALESCE(shipment_id, $2),
@@ -361,6 +399,7 @@ export async function ingestPurchase(
             sourceOrderId,
             shipmentId,
             organizationId: orgId,
+            db: client as unknown as Parameters<typeof ensureReceivingForInboundOrder>[0]['db'],
           });
         }
 

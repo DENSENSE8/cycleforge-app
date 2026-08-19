@@ -239,9 +239,8 @@ test.describe('Unbox Receive → Zoho purchase receive (push)', () => {
     expect(body.summary?.marked_received, 'summary.marked_received === true').toBe(true);
     const line0 = (body.receiving_lines ?? [])[0];
     expect(line0, 'response carries the received line').toBeTruthy();
-    // Optimistic: a Zoho-linked line is UNBOXED (Zoho-pending) until the push
-    // confirms; the DONE promotion happens in after().
-    expect(['UNBOXED', 'DONE']).toContain(String(line0.workflow_status).toUpperCase());
+    // Optimistic: a Zoho-linked line is UNBOXED until the push confirms.
+    expect(String(line0.workflow_status).toUpperCase()).toBe('UNBOXED');
 
     // 2) Reconcile ≤ 15s: poll the line to DONE (Option B). DONE == the Zoho
     //    push returned ok — no cron involved.

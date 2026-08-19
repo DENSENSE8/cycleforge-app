@@ -47,6 +47,7 @@ const LABELS: Record<UnboxSideTab, string> = {
   support: 'Support',
   tracking: 'Tracking',
   timeline: 'Timeline',
+  locations: 'Locations',
 };
 
 /** PO-identity → stock → exceptions/history. */
@@ -63,6 +64,7 @@ const GROUPS: Record<UnboxSideTab, DisplayIndexGroup> = {
   tracking: 'context',
   timeline: 'context',
   support: 'context',
+  locations: 'context',
 };
 
 function ticketRow(signals: UnboxDisplayIndexSignals): Pick<DisplayIndexRow, 'subtitle' | 'tone'> {
@@ -154,6 +156,11 @@ function timelineRow(signals: UnboxDisplayIndexSignals): Pick<DisplayIndexRow, '
   return { subtitle: 'Carton history', tone: 'neutral' };
 }
 
+function locationsRow(): Pick<DisplayIndexRow, 'subtitle' | 'tone'> {
+  // A directory, never an alarm: an unplaced carton is normal mid-unbox.
+  return { subtitle: 'Place · print · mint', tone: 'neutral' };
+}
+
 function checklistRow(): Pick<DisplayIndexRow, 'subtitle' | 'tone'> {
   return { subtitle: 'Procedure steps', tone: 'neutral' };
 }
@@ -187,6 +194,8 @@ function rowMeta(
       return trackingRow(signals);
     case 'timeline':
       return timelineRow(signals);
+    case 'locations':
+      return locationsRow();
   }
 }
 

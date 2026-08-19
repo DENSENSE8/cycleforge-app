@@ -40,6 +40,13 @@ test('routeByPath returns the entry for a known route', () => {
   assert.equal(r.permission, 'admin.view_logs');
 });
 
+test('regression: receiving.view gates recent-staged-location', () => {
+  const r = routeByPath('/api/receiving/recent-staged-location/route.ts');
+  assert.ok(r);
+  assert.equal(r.permission, 'receiving.view');
+  assert.deepEqual(r.methods, ['GET']);
+});
+
 test('permissionsWithRouteCount is sorted descending by routeCount', () => {
   const list = permissionsWithRouteCount();
   assert.ok(list.length > 0);

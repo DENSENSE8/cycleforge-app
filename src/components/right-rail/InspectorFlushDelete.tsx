@@ -116,13 +116,19 @@ export function InspectorFlushDelete(props: InspectorFlushDeleteProps) {
         onClick={() => void handleClick()}
         disabled={isDisabled}
         aria-label={isArmed ? confirmLabel : label}
+        aria-pressed={isArmed || undefined}
+        data-armed={isArmed ? 'true' : undefined}
         data-testid={testId}
         className={cn(
           'ds-raw-button',
           FLUSH,
           focusRing('control', 'danger'),
           'flex h-10 w-10 shrink-0 items-center justify-center border-l border-border-hairline bg-transparent p-0',
-          isArmed ? 'text-red-700 hover:text-red-800' : 'text-red-600 hover:text-red-700',
+          // Idle matches sibling Macro glyphs (`text-text-soft`). Danger ink
+          // only on hover, or while armed for the second click.
+          isArmed
+            ? 'bg-red-50 text-red-700 shadow-[inset_0_-2px_0_0_currentColor] hover:bg-red-100 hover:text-red-800'
+            : 'text-text-soft hover:bg-surface-hover hover:text-red-600 focus-visible:bg-red-50 focus-visible:text-red-600',
           'disabled:opacity-40',
           className,
         )}

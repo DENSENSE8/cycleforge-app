@@ -4,7 +4,28 @@
  * Dependency-free: quoted fields, escaped `""`, `\n` / `\r\n`, and a leading
  * BOM. Lives in the import seam rather than beside any one family so a second
  * surface taking a file never has a reason to hand-roll a second parser.
+ *
+ * Delimiter: comma by default; Amazon Seller Central returns reports are often
+ * tab-separated — auto-detect from the first line (unquoted tab vs comma count).
  */
+
+function detectDelimiter(source: string): ',' | '\t' {
+  let commas = 0;
+  let tabs = 0;
+  let inQuotes = false;
+  for (let i = 0; i < source.length; i += 1) {
+    const ch = source[i];
+    if (ch === '\n' || ch === '\r') break;
+    if (ch === '"') {
+      inQuotes = !inQuotes;
+      continue;
+    }
+    if (inQuotes) continue;
+    if (ch === ',') commas += 1;
+    else if (ch === '\t') tabs += 1;
+  }
+  return tabs > commas ? '\t' : ',';
+}
 
 export function parseCsv(text: string): {
   headers: string[];
@@ -16,6 +37,7 @@ export function parseCsv(text: string): {
   let inQuotes = false;
   // A BOM on the first header would bind a column nobody can match by name.
   const source = text.replace(/^﻿/, '');
+  const delimiter = detectDelimiter(source);
 
   for (let i = 0; i < source.length; i += 1) {
     const ch = source[i];
@@ -36,7 +58,7 @@ export function parseCsv(text: string): {
       inQuotes = true;
       continue;
     }
-    if (ch === ',') {
+    if (ch === delimiter) {
       record.push(field);
       field = '';
       continue;

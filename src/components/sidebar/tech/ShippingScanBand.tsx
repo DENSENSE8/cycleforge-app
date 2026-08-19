@@ -33,12 +33,14 @@ interface ShippingScanBandProps {
  * Flush 40px {@link ScanBandShell} — same geometry as Unbox / Testing (no py).
  *
  * **The scan column carries the BAR and nothing else** (2026-08-02). It used to
- * render `ActiveOrderScanFeedback` under the bar as well, so a scanned order was
- * drawn twice — here, and in the middle as `ShippingEntityContextHeader` + the
- * Ship tab. Two renders of one entity are two things that can disagree, on the
- * surface whose only job is telling an operator what is in their hands. The card
- * moved to `ActiveOrderWorkspace` (the Station focus surface), which is Unbox's
- * shape: `ReceivingSidebarPanel` carries no identity at all.
+ * render an active-order confirmation card under the bar as well, so a scanned
+ * order was drawn twice — here, and in the middle as
+ * `ShippingEntityContextHeader`. Two renders of one entity are two things that
+ * can disagree, on the surface whose only job is telling an operator what is in
+ * their hands. That card moved to `ActiveOrderWorkspace`, and in 2026-08-18 it
+ * was deleted there too: the identity row already says what is in hand, and its
+ * one real verb (undo a serial) lives on Displays → Units. `ReceivingSidebarPanel`
+ * carries no identity at all — same shape.
  *
  * This component still OWNS the controller — it is the only
  * `useStationTestingController` instance in the app, and the middle receives its

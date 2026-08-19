@@ -32,7 +32,7 @@
  * Host stays flush (`DISPLAYS_FLUSH_HOST`).
  */
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import type { ZendeskAgent, ZendeskComment, ZendeskUser } from '@/lib/zendesk';
 import { useTicketComments, useZendeskAgents, useZendeskUsers } from '@/hooks/useZendeskQueries';
 import {
@@ -57,7 +57,7 @@ import { useTimeFormat } from '@/lib/time-format/useTimeFormat';
 import { cn } from '@/utils/_cn';
 import { renderBlockMarkdown } from '@/lib/support/markdown';
 import { ConversationMessageCard } from '@/design-system/primitives/ConversationMessageCard';
-import { resolveAuthor } from './support-chat-utils';
+import { isConversationAtEnd, resolveAuthor } from './support-chat-utils';
 import {
   TICKET_BUBBLE_BODY,
   TICKET_BUBBLE_DAY_HEADER,
@@ -307,6 +307,7 @@ export function MergedRecordStream({
   requesterEmail,
   onOpenPhoto,
   events,
+  bottomInsetPx = 0,
 }: {
   ticketId: number;
   requesterId?: number;
@@ -318,6 +319,18 @@ export function MergedRecordStream({
    * sorted and collapsed. Omit ⇒ messages only.
    */
   events?: TimelineItem[];
+  /**
+   * Live height of a floating composer overlaying the bottom of this stream's
+   * scroll port (measured by {@link useMeasuredHeight} in the host).
+   *
+   * It is spent as a SPACER inside the stream, ABOVE the autoscroll sentinel —
+   * not as padding on the port. `scrollIntoView({ block: 'end' })` aligns the
+   * sentinel with the port's bottom edge, so a sentinel below the reserved band
+   * would park the newest message right back under the composer. With the
+   * spacer first, "scrolled to the end" means the last message sits clear of
+   * the dock.
+   */
+  bottomInsetPx?: number;
 }) {
   const { data, isLoading, error } = useTicketComments(ticketId);
   const { data: agents = [] } = useZendeskAgents();
@@ -380,6 +393,18 @@ export function MergedRecordStream({
     endRef.current?.scrollIntoView({ block: 'end' });
   }, [rows.length]);
 
+  // A growing composer (auto-grow textarea, CC strip, staged thumbs) eats the
+  // band the newest message occupies. Re-dock the end ONLY when the reader is
+  // already parked there — re-scrolling someone who has read up into history
+  // would yank the thread out from under them.
+  useEffect(() => {
+    const end = endRef.current;
+    const port = end?.closest<HTMLElement>('[data-conversation-port]');
+    if (!end || !port) return;
+    if (!isConversationAtEnd(port)) return;
+    end.scrollIntoView({ block: 'end' });
+  }, [bottomInsetPx]);
+
   if (isLoading) {
     return (
       <div className={cn('flex items-center justify-center py-16', DISPLAYS_BODY_INSET)}>
@@ -435,7 +460,12 @@ export function MergedRecordStream({
         const showDay = dayKey !== lastDay;
         lastDay = dayKey;
         return (
-          <div key={String(item.id)}>
+          // Fragment, NOT a wrapper div: `DateGroupHeader` is `sticky top-0`,
+          // and a sticky element only travels inside its own containing block.
+          // Wrapped per-item, the docked date fell out of view as soon as the
+          // day's FIRST message scrolled past. As siblings of the rows, the
+          // band stays docked for the whole day it labels.
+          <Fragment key={String(item.id)}>
             {showDay ? (
               <DateGroupHeader
                 date={dayKey}
@@ -444,9 +474,12 @@ export function MergedRecordStream({
               />
             ) : null}
             <StreamRow item={item} onOpenPhoto={onOpenPhoto} />
-          </div>
+          </Fragment>
         );
       })}
+      {bottomInsetPx > 0 ? (
+        <div aria-hidden style={{ height: bottomInsetPx }} className="shrink-0" />
+      ) : null}
       <div ref={endRef} />
     </div>
   );

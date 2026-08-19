@@ -111,6 +111,7 @@ export function buildDisplayPending(
   if (tab === 'linkage') {
     if (opts?.linkageAction === 'note') linkageActionRaw = 'note';
     else if (opts?.linkageAction === 'link') linkageActionRaw = 'link';
+    else linkageActionRaw = null; // actions list (Back target for Link · Note)
   }
   if (rawDisplay === 'po-note' && tab === 'linkage' && !opts?.linkageAction) {
     linkageActionRaw = 'note';

@@ -28,24 +28,46 @@ export const CONVERSATION_HEADER_ACTION_BTN_ACTIVE =
 
 export const CONVERSATION_HEADER_ACTION_GLYPH = 'h-3.5 w-3.5 shrink-0';
 
-/** Composer pad under a thread — Displays gutter + bottom clearance. */
+/**
+ * Composer pad under a thread — Displays gutter + bottom clearance.
+ *
+ * The pad itself paints NO fill: the dock is a floating card on the white
+ * conversation plane. A short top fade dissolves the last message under the
+ * card instead of a hard band edge, so the composer reads as floating over the
+ * thread rather than as a docked footer strip.
+ */
 export const CONVERSATION_COMPOSER_PAD = cn(
   DISPLAYS_BODY_INSET,
-  'min-w-0 shrink-0 pt-2 pb-3 font-sans',
+  'relative min-w-0 shrink-0 bg-transparent pt-2 pb-3 font-sans',
+  'before:pointer-events-none before:absolute before:inset-x-0 before:-top-5 before:h-5 before:bg-gradient-to-t before:from-surface-card before:to-transparent',
 );
 
 /**
- * OmnichannelComposerDock shell when composing an internal note — amber wash
- * matches {@link CONVERSATION_SHELL_INTERNAL}.
+ * OmnichannelComposerDock shell when composing an internal note.
+ *
+ * Channel is carried by the amber HAIRLINE + focus ring, not by a filled wash:
+ * the entry field keeps the dock's own white card so it floats on the
+ * conversation plane. The amber FILL stays where it belongs — on posted
+ * internal messages ({@link CONVERSATION_SHELL_INTERNAL}), which is what makes
+ * an internal note legible in the stream after it is sent.
  */
 export const CONVERSATION_COMPOSER_DOCK_INTERNAL =
-  '!border-amber-200/70 !bg-amber-50 focus-within:!ring-amber-500/20';
+  '!border-amber-300/80 focus-within:!ring-amber-500/20';
 
 /** Message stream list — owns the readable gutter. */
 export const CONVERSATION_STREAM = cn(DISPLAYS_BODY_INSET, 'stack-tight font-sans');
 
-/** Day band — date · count as text; no table-band fill. */
-export const CONVERSATION_DAY_HEADER = 'bg-transparent px-0 backdrop-blur-none';
+/**
+ * Day band — date · count as text, no table-band fill.
+ *
+ * OPAQUE plane fill (not transparent): the band is `sticky top-0` inside the
+ * thread's scroll port, so a transparent band let message cards read straight
+ * through the docked date while they scrolled under it. The fill is the
+ * conversation's own white plane, so it stays invisible at rest and only shows
+ * itself as the cover it is while a day scrolls past.
+ */
+export const CONVERSATION_DAY_HEADER =
+  'bg-surface-card px-0 py-1 backdrop-blur-none';
 
 /** One row: avatar left, card left — never `flex-row-reverse`. */
 export const CONVERSATION_ROW =

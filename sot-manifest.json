@@ -30,7 +30,7 @@
     "src/lib/orders-sync",
     "src/hooks"
   ],
-  "count": 2678,
+  "count": 2689,
   "entries": [
     {
       "job": "Station: Scan pane + Displays push",
@@ -5521,7 +5521,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/incoming/IncomingImportCsvOverlay.tsx",
-      "line": 28,
+      "line": 29,
       "snippet": "export IncomingImportCsvOverlay from src/components/sidebar/receiving/incoming/IncomingImportCsvOverlay.tsx"
     },
     {
@@ -7952,7 +7952,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/tech/ShippingScanBand.tsx",
-      "line": 48,
+      "line": 50,
       "snippet": "export ShippingScanBand from src/components/sidebar/tech/ShippingScanBand.tsx"
     },
     {
@@ -8058,19 +8058,6 @@
       "source": "src/components/sidebar/WarehouseSidebarPanel.tsx",
       "line": 37,
       "snippet": "export WarehouseSidebarPanel from src/components/sidebar/WarehouseSidebarPanel.tsx"
-    },
-    {
-      "job": "Export: ActiveOrderScanFeedback",
-      "sot": "ActiveOrderScanFeedback",
-      "path": "src/components/station/ActiveOrderScanFeedback.tsx",
-      "guard": null,
-      "symbols": [
-        "ActiveOrderScanFeedback"
-      ],
-      "kind": "code",
-      "source": "src/components/station/ActiveOrderScanFeedback.tsx",
-      "line": 203,
-      "snippet": "export ActiveOrderScanFeedback from src/components/station/ActiveOrderScanFeedback.tsx"
     },
     {
       "job": "Export: CaptureUploadState",
@@ -8290,7 +8277,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/displays/CartonDisplaysActionFloor.tsx",
-      "line": 87,
+      "line": 99,
       "snippet": "export CartonDisplaysActionFloor from src/components/station/displays/CartonDisplaysActionFloor.tsx"
     },
     {
@@ -8433,7 +8420,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/displays/displays-footer-command.ts",
-      "line": 14,
+      "line": 16,
       "snippet": "export DisplaysFooterStage from src/components/station/displays/displays-footer-command.ts"
     },
     {
@@ -8446,7 +8433,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/displays/displays-footer-command.ts",
-      "line": 16,
+      "line": 18,
       "snippet": "export DisplaysFooterCommand from src/components/station/displays/displays-footer-command.ts"
     },
     {
@@ -8459,7 +8446,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/displays/displays-footer-command.ts",
-      "line": 31,
+      "line": 33,
       "snippet": "export formatDisplaysFooterSlash from src/components/station/displays/displays-footer-command.ts"
     },
     {
@@ -8619,6 +8606,19 @@
       "snippet": "export goVisitBack from src/components/station/displays/displays-visit-history.ts"
     },
     {
+      "job": "Export: goLeafRootBack",
+      "sot": "goLeafRootBack",
+      "path": "src/components/station/displays/displays-visit-history.ts",
+      "guard": null,
+      "symbols": [
+        "goLeafRootBack"
+      ],
+      "kind": "code",
+      "source": "src/components/station/displays/displays-visit-history.ts",
+      "line": 102,
+      "snippet": "export goLeafRootBack from src/components/station/displays/displays-visit-history.ts"
+    },
+    {
       "job": "Export: goVisitForward",
       "sot": "goVisitForward",
       "path": "src/components/station/displays/displays-visit-history.ts",
@@ -8628,7 +8628,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/displays/displays-visit-history.ts",
-      "line": 93,
+      "line": 116,
       "snippet": "export goVisitForward from src/components/station/displays/displays-visit-history.ts"
     },
     {
@@ -8641,7 +8641,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/displays/displays-visit-history.ts",
-      "line": 105,
+      "line": 128,
       "snippet": "export canVisitBack from src/components/station/displays/displays-visit-history.ts"
     },
     {
@@ -8654,7 +8654,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/displays/displays-visit-history.ts",
-      "line": 109,
+      "line": 132,
       "snippet": "export canVisitForward from src/components/station/displays/displays-visit-history.ts"
     },
     {
@@ -8836,7 +8836,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/displays/StationDisplaysCommandFooter.tsx",
-      "line": 43,
+      "line": 44,
       "snippet": "export StationDisplaysCommandFooter from src/components/station/displays/StationDisplaysCommandFooter.tsx"
     },
     {
@@ -8849,7 +8849,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/displays/StationDisplaysDismissFooter.tsx",
-      "line": 22,
+      "line": 16,
       "snippet": "export StationDisplaysDismissFooter from src/components/station/displays/StationDisplaysDismissFooter.tsx"
     },
     {
@@ -8862,7 +8862,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/displays/StationDisplaysEdgeToggle.tsx",
-      "line": 42,
+      "line": 43,
       "snippet": "export StationDisplaysEdgeToggle from src/components/station/displays/StationDisplaysEdgeToggle.tsx"
     },
     {
@@ -8901,7 +8901,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/displays/StationDisplaysPushStack.tsx",
-      "line": 97,
+      "line": 93,
       "snippet": "export StationDisplaysPushStack from src/components/station/displays/StationDisplaysPushStack.tsx"
     },
     {
@@ -8979,7 +8979,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/CartonContextCard.tsx",
-      "line": 123,
+      "line": 128,
       "snippet": "export CartonContextCard from src/components/station/entity-context/CartonContextCard.tsx"
     },
     {
@@ -9085,6 +9085,19 @@
       "source": "src/components/station/entity-context/station-context-action-pill.ts",
       "line": 118,
       "snippet": "export STATION_CONTEXT_CLAIM_CHROME_CLASS from src/components/station/entity-context/station-context-action-pill.ts"
+    },
+    {
+      "job": "Export: STATION_CONTEXT_LISTING_CHROME_CLASS",
+      "sot": "STATION_CONTEXT_LISTING_CHROME_CLASS",
+      "path": "src/components/station/entity-context/station-context-action-pill.ts",
+      "guard": null,
+      "symbols": [
+        "STATION_CONTEXT_LISTING_CHROME_CLASS"
+      ],
+      "kind": "code",
+      "source": "src/components/station/entity-context/station-context-action-pill.ts",
+      "line": 132,
+      "snippet": "export STATION_CONTEXT_LISTING_CHROME_CLASS from src/components/station/entity-context/station-context-action-pill.ts"
     },
     {
       "job": "Export: STATION_IDENTITY_INSET_TOP",
@@ -9343,8 +9356,21 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/StationContextActionCell.tsx",
-      "line": 19,
+      "line": 30,
       "snippet": "export StationContextIconCell from src/components/station/entity-context/StationContextActionCell.tsx"
+    },
+    {
+      "job": "Export: StationContextListingCell",
+      "sot": "StationContextListingCell",
+      "path": "src/components/station/entity-context/StationContextActionCell.tsx",
+      "guard": null,
+      "symbols": [
+        "StationContextListingCell"
+      ],
+      "kind": "code",
+      "source": "src/components/station/entity-context/StationContextActionCell.tsx",
+      "line": 57,
+      "snippet": "export StationContextListingCell from src/components/station/entity-context/StationContextActionCell.tsx"
     },
     {
       "job": "Export: StationContextClaimCell",
@@ -9356,7 +9382,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/StationContextActionCell.tsx",
-      "line": 46,
+      "line": 218,
       "snippet": "export StationContextClaimCell from src/components/station/entity-context/StationContextActionCell.tsx"
     },
     {
@@ -9579,6 +9605,71 @@
       "source": "src/components/station/InstallPrompt.tsx",
       "line": 30,
       "snippet": "export InstallPrompt from src/components/station/InstallPrompt.tsx"
+    },
+    {
+      "job": "Export: StationLocationRow",
+      "sot": "StationLocationRow",
+      "path": "src/components/station/location/station-location-port.ts",
+      "guard": null,
+      "symbols": [
+        "StationLocationRow"
+      ],
+      "kind": "code",
+      "source": "src/components/station/location/station-location-port.ts",
+      "line": 17,
+      "snippet": "export StationLocationRow from src/components/station/location/station-location-port.ts"
+    },
+    {
+      "job": "Export: StationLocationPlacementPort",
+      "sot": "StationLocationPlacementPort",
+      "path": "src/components/station/location/station-location-port.ts",
+      "guard": null,
+      "symbols": [
+        "StationLocationPlacementPort"
+      ],
+      "kind": "code",
+      "source": "src/components/station/location/station-location-port.ts",
+      "line": 30,
+      "snippet": "export StationLocationPlacementPort from src/components/station/location/station-location-port.ts"
+    },
+    {
+      "job": "Export: StationLocationPill",
+      "sot": "StationLocationPill",
+      "path": "src/components/station/location/StationLocationPill.tsx",
+      "guard": null,
+      "symbols": [
+        "StationLocationPill"
+      ],
+      "kind": "code",
+      "source": "src/components/station/location/StationLocationPill.tsx",
+      "line": 61,
+      "snippet": "export StationLocationPill from src/components/station/location/StationLocationPill.tsx"
+    },
+    {
+      "job": "Export: StationLocationsDisplay",
+      "sot": "StationLocationsDisplay",
+      "path": "src/components/station/location/StationLocationsDisplay.tsx",
+      "guard": null,
+      "symbols": [
+        "StationLocationsDisplay"
+      ],
+      "kind": "code",
+      "source": "src/components/station/location/StationLocationsDisplay.tsx",
+      "line": 74,
+      "snippet": "export StationLocationsDisplay from src/components/station/location/StationLocationsDisplay.tsx"
+    },
+    {
+      "job": "Export: StationNewLocationForm",
+      "sot": "StationNewLocationForm",
+      "path": "src/components/station/location/StationNewLocationForm.tsx",
+      "guard": null,
+      "symbols": [
+        "StationNewLocationForm"
+      ],
+      "kind": "code",
+      "source": "src/components/station/location/StationNewLocationForm.tsx",
+      "line": 102,
+      "snippet": "export StationNewLocationForm from src/components/station/location/StationNewLocationForm.tsx"
     },
     {
       "job": "Export: packerRecordRailId",
@@ -20367,7 +20458,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/primitives/conversation-chrome.ts",
-      "line": 32,
+      "line": 39,
       "snippet": "export CONVERSATION_COMPOSER_PAD from src/design-system/primitives/conversation-chrome.ts"
     },
     {
@@ -20380,7 +20471,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/primitives/conversation-chrome.ts",
-      "line": 41,
+      "line": 54,
       "snippet": "export CONVERSATION_COMPOSER_DOCK_INTERNAL from src/design-system/primitives/conversation-chrome.ts"
     },
     {
@@ -20393,7 +20484,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/primitives/conversation-chrome.ts",
-      "line": 45,
+      "line": 58,
       "snippet": "export CONVERSATION_STREAM from src/design-system/primitives/conversation-chrome.ts"
     },
     {
@@ -20406,7 +20497,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/primitives/conversation-chrome.ts",
-      "line": 48,
+      "line": 69,
       "snippet": "export CONVERSATION_DAY_HEADER from src/design-system/primitives/conversation-chrome.ts"
     },
     {
@@ -20419,7 +20510,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/primitives/conversation-chrome.ts",
-      "line": 51,
+      "line": 73,
       "snippet": "export CONVERSATION_ROW from src/design-system/primitives/conversation-chrome.ts"
     },
     {
@@ -20432,7 +20523,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/primitives/conversation-chrome.ts",
-      "line": 58,
+      "line": 80,
       "snippet": "export CONVERSATION_SHELL from src/design-system/primitives/conversation-chrome.ts"
     },
     {
@@ -20445,7 +20536,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/primitives/conversation-chrome.ts",
-      "line": 61,
+      "line": 83,
       "snippet": "export CONVERSATION_SHELL_INTERNAL from src/design-system/primitives/conversation-chrome.ts"
     },
     {
@@ -20458,7 +20549,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/primitives/conversation-chrome.ts",
-      "line": 64,
+      "line": 86,
       "snippet": "export conversationShell from src/design-system/primitives/conversation-chrome.ts"
     },
     {
@@ -20471,7 +20562,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/primitives/conversation-chrome.ts",
-      "line": 68,
+      "line": 90,
       "snippet": "export CONVERSATION_MARK from src/design-system/primitives/conversation-chrome.ts"
     },
     {
@@ -20484,7 +20575,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/primitives/conversation-chrome.ts",
-      "line": 71,
+      "line": 93,
       "snippet": "export CONVERSATION_MARK_BOX from src/design-system/primitives/conversation-chrome.ts"
     },
     {
@@ -20497,7 +20588,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/primitives/conversation-chrome.ts",
-      "line": 74,
+      "line": 96,
       "snippet": "export CONVERSATION_BODY from src/design-system/primitives/conversation-chrome.ts"
     },
     {
@@ -20510,7 +20601,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/primitives/conversation-chrome.ts",
-      "line": 77,
+      "line": 99,
       "snippet": "export CONVERSATION_META from src/design-system/primitives/conversation-chrome.ts"
     },
     {
@@ -20523,7 +20614,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/primitives/conversation-chrome.ts",
-      "line": 80,
+      "line": 102,
       "snippet": "export CONVERSATION_AUTHOR from src/design-system/primitives/conversation-chrome.ts"
     },
     {
@@ -20536,7 +20627,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/primitives/conversation-chrome.ts",
-      "line": 83,
+      "line": 105,
       "snippet": "export CONVERSATION_AGE from src/design-system/primitives/conversation-chrome.ts"
     },
     {
@@ -20549,7 +20640,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/primitives/conversation-chrome.ts",
-      "line": 85,
+      "line": 107,
       "snippet": "export CONVERSATION_INTERNAL_CHIP from src/design-system/primitives/conversation-chrome.ts"
     },
     {
@@ -20562,7 +20653,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/primitives/conversation-chrome.ts",
-      "line": 91,
+      "line": 113,
       "snippet": "export formatConversationAge from src/design-system/primitives/conversation-chrome.ts"
     },
     {
@@ -20731,7 +20822,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/primitives/IconActionFloor.tsx",
-      "line": 41,
+      "line": 42,
       "snippet": "export ICON_ACTION_FLOOR_CELL_CLASS from src/design-system/primitives/IconActionFloor.tsx"
     },
     {
@@ -20744,7 +20835,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/primitives/IconActionFloor.tsx",
-      "line": 45,
+      "line": 46,
       "snippet": "export ICON_ACTION_FLOOR_CELL_ACTIVE_CLASS from src/design-system/primitives/IconActionFloor.tsx"
     },
     {
@@ -20757,7 +20848,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/primitives/IconActionFloor.tsx",
-      "line": 48,
+      "line": 49,
       "snippet": "export IconActionFloor from src/design-system/primitives/IconActionFloor.tsx"
     },
     {
@@ -20926,7 +21017,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/primitives/OmnichannelComposerDock.tsx",
-      "line": 173,
+      "line": 178,
       "snippet": "export OmnichannelComposerDock from src/design-system/primitives/OmnichannelComposerDock.tsx"
     },
     {
@@ -21225,7 +21316,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/primitives/SlicedActionDock.tsx",
-      "line": 29,
+      "line": 31,
       "snippet": "export SlicedActionTone from src/design-system/primitives/SlicedActionDock.tsx"
     },
     {
@@ -21238,7 +21329,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/primitives/SlicedActionDock.tsx",
-      "line": 38,
+      "line": 41,
       "snippet": "export SlicedActionMenuItem from src/design-system/primitives/SlicedActionDock.tsx"
     },
     {
@@ -21251,7 +21342,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/primitives/SlicedActionDock.tsx",
-      "line": 53,
+      "line": 56,
       "snippet": "export SlicedActionEdge from src/design-system/primitives/SlicedActionDock.tsx"
     },
     {
@@ -21264,8 +21355,47 @@
       ],
       "kind": "code",
       "source": "src/design-system/primitives/SlicedActionDock.tsx",
-      "line": 55,
+      "line": 58,
       "snippet": "export SlicedActionDockProps from src/design-system/primitives/SlicedActionDock.tsx"
+    },
+    {
+      "job": "Export: slicedActionDockToneInk",
+      "sot": "slicedActionDockToneInk",
+      "path": "src/design-system/primitives/SlicedActionDock.tsx",
+      "guard": null,
+      "symbols": [
+        "slicedActionDockToneInk"
+      ],
+      "kind": "code",
+      "source": "src/design-system/primitives/SlicedActionDock.tsx",
+      "line": 146,
+      "snippet": "export slicedActionDockToneInk from src/design-system/primitives/SlicedActionDock.tsx"
+    },
+    {
+      "job": "Export: slicedActionDockTrackClass",
+      "sot": "slicedActionDockTrackClass",
+      "path": "src/design-system/primitives/SlicedActionDock.tsx",
+      "guard": null,
+      "symbols": [
+        "slicedActionDockTrackClass"
+      ],
+      "kind": "code",
+      "source": "src/design-system/primitives/SlicedActionDock.tsx",
+      "line": 187,
+      "snippet": "export slicedActionDockTrackClass from src/design-system/primitives/SlicedActionDock.tsx"
+    },
+    {
+      "job": "Export: slicedActionDockSegmentOrder",
+      "sot": "slicedActionDockSegmentOrder",
+      "path": "src/design-system/primitives/SlicedActionDock.tsx",
+      "guard": null,
+      "symbols": [
+        "slicedActionDockSegmentOrder"
+      ],
+      "kind": "code",
+      "source": "src/design-system/primitives/SlicedActionDock.tsx",
+      "line": 208,
+      "snippet": "export slicedActionDockSegmentOrder from src/design-system/primitives/SlicedActionDock.tsx"
     },
     {
       "job": "Export: slicedActionDockWrapperClass",
@@ -21277,7 +21407,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/primitives/SlicedActionDock.tsx",
-      "line": 131,
+      "line": 217,
       "snippet": "export slicedActionDockWrapperClass from src/design-system/primitives/SlicedActionDock.tsx"
     },
     {
@@ -21290,7 +21420,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/primitives/SlicedActionDock.tsx",
-      "line": 147,
+      "line": 233,
       "snippet": "export SlicedActionDock from src/design-system/primitives/SlicedActionDock.tsx"
     },
     {
@@ -25255,7 +25385,7 @@
       ],
       "kind": "code",
       "source": "src/hooks/useLocations.ts",
-      "line": 142,
+      "line": 177,
       "snippet": "export UseLocationsResult from src/hooks/useLocations.ts"
     },
     {
@@ -25268,7 +25398,7 @@
       ],
       "kind": "code",
       "source": "src/hooks/useLocations.ts",
-      "line": 184,
+      "line": 231,
       "snippet": "export useLocations from src/hooks/useLocations.ts"
     },
     {
@@ -25361,6 +25491,19 @@
       "source": "src/hooks/useMasterPlanDoc.ts",
       "line": 35,
       "snippet": "export useMasterPlanDoc from src/hooks/useMasterPlanDoc.ts"
+    },
+    {
+      "job": "Export: useMeasuredHeight",
+      "sot": "useMeasuredHeight",
+      "path": "src/hooks/useMeasuredHeight.ts",
+      "guard": null,
+      "symbols": [
+        "useMeasuredHeight"
+      ],
+      "kind": "code",
+      "source": "src/hooks/useMeasuredHeight.ts",
+      "line": 18,
+      "snippet": "export useMeasuredHeight from src/hooks/useMeasuredHeight.ts"
     },
     {
       "job": "Export: MediaViewPayload",

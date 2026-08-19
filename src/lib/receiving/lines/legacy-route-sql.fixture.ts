@@ -119,6 +119,9 @@ export function legacyBuildLineByIdSql(id: number, orgId: string) {
                 stg_loc.room AS staged_location_room,
                 stg_loc.row_label AS staged_location_row_label,
                 stg_loc.col_label AS staged_location_col_label,
+                rlp.location_code AS staged_location_code,
+                rlp.staged_by AS staged_by,
+                staff_stg.name AS staged_by_name,
                 COALESCE(rlt.serial_absent, false)           AS serial_absent,
                 rlt.serial_absent_reason                     AS serial_absent_reason,
                 COALESCE(rlt.serial_projection, '[]'::jsonb)   AS serials,
@@ -199,6 +202,7 @@ export function legacyBuildLineByIdSql(id: number, orgId: string) {
          LEFT JOIN receiving_line_putaway rlp
            ON rlp.receiving_line_id = rl.id AND rlp.organization_id = rl.organization_id
          LEFT JOIN locations stg_loc ON stg_loc.id = rlp.staged_location_id
+         LEFT JOIN staff staff_stg ON staff_stg.id = rlp.staged_by
          LEFT JOIN zoho_po_mirror mirror
            ON mirror.zoho_purchaseorder_id = rz.zoho_purchaseorder_id
           AND mirror.organization_id = rl.organization_id
@@ -304,6 +308,9 @@ export function legacyBuildLinesByReceivingIdSql(receivingId: number, orgId: str
                 stg_loc.room AS staged_location_room,
                 stg_loc.row_label AS staged_location_row_label,
                 stg_loc.col_label AS staged_location_col_label,
+                rlp.location_code AS staged_location_code,
+                rlp.staged_by AS staged_by,
+                staff_stg.name AS staged_by_name,
                 COALESCE(rlt.serial_absent, false)           AS serial_absent,
                 rlt.serial_absent_reason                     AS serial_absent_reason,
                 COALESCE(rlt.serial_projection, '[]'::jsonb)   AS serials,
@@ -374,6 +381,7 @@ export function legacyBuildLinesByReceivingIdSql(receivingId: number, orgId: str
            LEFT JOIN receiving_line_putaway rlp
            ON rlp.receiving_line_id = rl.id AND rlp.organization_id = rl.organization_id
          LEFT JOIN locations stg_loc ON stg_loc.id = rlp.staged_location_id
+         LEFT JOIN staff staff_stg ON staff_stg.id = rlp.staged_by
            LEFT JOIN zoho_po_mirror mirror
              ON mirror.zoho_purchaseorder_id = rz.zoho_purchaseorder_id
             AND mirror.organization_id = rl.organization_id
@@ -1241,6 +1249,9 @@ export function legacyBuildListSql(searchParams: URLSearchParams, opts: LegacySq
                 stg_loc.room AS staged_location_room,
                 stg_loc.row_label AS staged_location_row_label,
                 stg_loc.col_label AS staged_location_col_label,
+                rlp.location_code AS staged_location_code,
+                rlp.staged_by AS staged_by,
+                staff_stg.name AS staged_by_name,
                 COALESCE(rlt.serial_absent, false)           AS serial_absent,
                 rlt.serial_absent_reason                     AS serial_absent_reason,
                 COALESCE(rlt.serial_projection, '[]'::jsonb)   AS serials,
@@ -1323,6 +1334,7 @@ export function legacyBuildListSql(searchParams: URLSearchParams, opts: LegacySq
          LEFT JOIN receiving_line_putaway rlp
            ON rlp.receiving_line_id = rl.id AND rlp.organization_id = rl.organization_id
          LEFT JOIN locations stg_loc ON stg_loc.id = rlp.staged_location_id
+         LEFT JOIN staff staff_stg ON staff_stg.id = rlp.staged_by
          -- Soft JOIN: direct FK when set, else PO#-based fallback (see note above).
          -- D1 wrong-shipment guard: a direct receiving FK, else a PO#-based
          -- fallback. When a line has no FK and its PO has multiple zoho_po

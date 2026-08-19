@@ -92,7 +92,7 @@ Regions are I/O contracts (`MotionRegion`: `station` · `workbench` · `monitor`
 - **HID wedge scans** attach via `createWedgeKeyListener` (native capture `keydown`, yield-before-React). Never a React synthetic `onKeyDown` for scanner input; never drop focus; never run scan side-effects on the keydown stack.
 - **Kiosk v2 session root is the cart** (`kioskSessionStore`) — Repair / Retail / Buyback / Pickup are commands that swap the center only and never clear lines. Mount wedge via `useWedgeScanner` + `classifyKioskScan` (not warehouse `scan-resolver`). Customer face strips void / discount / cost-basis; no Station chrome / RightRailHost on the kiosk.
 - **Live NDJSON / Ably paints** apply through `applyStreamBudget` / `createFrameCoalescer` — never `setState` per stream line or per Ably message during a burst. Orthogonal exception dimensions (SCANNED + PROBLEM) stay on the row payload.
-- **`npm run verify` before done** — lint · typecheck · unit · knip · jscpd · depcruise · route-auth · schema drift. Never raise a ratchet baseline to pass.
+- **`npm run verify` before done** — lint · typecheck · unit · knip · jscpd · depcruise · route-auth · schema drift. Never raise a ratchet baseline to pass. Inner loop: `npm run verify:fast`. Tenant click-through: `npm run verify:dogfood` (lint · tsc · route-auth enforce · schema). Pre-push to non-`main` runs dogfood; push to `main` and “done” still require full verify.
 - **E2E asserts against the QA org**, not the dogfood tenant.
 
 

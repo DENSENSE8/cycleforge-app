@@ -68,14 +68,29 @@ export async function tagInboundAsReturn(
     );
     const cartonId = line.rows[0]?.receiving_id;
     if (cartonId != null) {
+      const inboundSource =
+        input.sourceType === 'ebay' || input.sourceType === 'amazon' || input.sourceType === 'manual'
+          ? input.sourceType
+          : null;
       await client.query(
         `UPDATE receiving_carton
             SET intake_type = 'RETURN',
                 is_return = true,
                 return_platform = COALESCE($3, return_platform),
+                source = CASE
+                  WHEN source = 'unmatched' AND $4::text IS NOT NULL THEN $4
+                  ELSE source
+                END,
+                source_platform = COALESCE(source_platform, $5),
                 updated_at = NOW()
           WHERE id = $1 AND organization_id = $2::uuid`,
-        [cartonId, orgId, returnPlatform],
+        [
+          cartonId,
+          orgId,
+          returnPlatform,
+          inboundSource,
+          inboundSource === 'amazon' || inboundSource === 'ebay' ? inboundSource : null,
+        ],
       );
     }
   });

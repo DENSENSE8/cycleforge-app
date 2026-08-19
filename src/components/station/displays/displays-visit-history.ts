@@ -90,6 +90,29 @@ export function goVisitBack(
   };
 }
 
+/**
+ * Leaf-root Back (trail length 1) — Displays index is the parent of every
+ * topic leaf. Nested drills (Inventory sections · Linkage Link/Note · Photos
+ * verbs) pop via breadcrumb first.
+ *
+ * Cockpit auto-open (Ticket · Inventory for `contents`) seeds history with a
+ * leaf and empty past. Visit past may also hold another leaf; that is not a
+ * parent — Back still lands on Root Index, and the left leaf stays Forward.
+ */
+export function goLeafRootBack(
+  state: DisplaysVisitHistoryState,
+): DisplaysVisitHistoryState {
+  const index: DisplaysVisitFrame = { tab: STATION_DISPLAY_INDEX };
+  if (isIndexTab(state.present.tab)) return state;
+  const back = goVisitBack(state);
+  if (back && isIndexTab(back.present.tab)) return back;
+  return {
+    past: [],
+    present: index,
+    future: [state.present, ...state.future],
+  };
+}
+
 export function goVisitForward(
   state: DisplaysVisitHistoryState,
 ): DisplaysVisitHistoryState | null {

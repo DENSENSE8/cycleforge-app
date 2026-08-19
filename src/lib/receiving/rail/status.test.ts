@@ -51,6 +51,29 @@ test('getReceivingStatusDotLabel — door-scanned matched carton reads Scanned',
   assert.ok(getReceivingStatusDot(r).includes('blue') || getReceivingStatusDot(r).includes('sky'));
 });
 
+test('getReceivingStatusDotLabel — Zoho issued + local DONE reads Unboxed, not Received', () => {
+  const r = row({
+    workflow_status: 'DONE',
+    zoho_status: 'issued',
+    zoho_purchaseorder_id: 'PO-1',
+    quantity_received: 1,
+  });
+  assert.equal(getReceivingStatusDotLabel(r), 'Unboxed');
+  assert.equal(getReceivingStatusDot(r), 'bg-indigo-500');
+  assert.equal(getReceivingStatusDotTip(r, 'Zoho Inventory'), 'Awaiting confirmation in Zoho Inventory');
+});
+
+test('getReceivingStatusDotLabel — Zoho received + local DONE still reads Received', () => {
+  const r = row({
+    workflow_status: 'DONE',
+    zoho_status: 'received',
+    zoho_purchaseorder_id: 'PO-1',
+    quantity_received: 1,
+  });
+  assert.equal(getReceivingStatusDotLabel(r), 'Received');
+  assert.equal(getReceivingStatusDot(r), 'bg-emerald-500');
+});
+
 test('getReceivingStatusPillClass — tracks the same coarse stage as the rail dot', () => {
   assert.match(
     getReceivingStatusPillClass(row({ workflow_status: 'MATCHED' })),

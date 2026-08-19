@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { PRIORITY_OVERRIDE_TIERS, priorityOverrideTiersForPicker } from '@/lib/receiving/priority-override';
+import { PRIORITY_OVERRIDE_TIERS, priorityOverrideTiersForHeader, priorityOverrideTiersForPicker } from '@/lib/receiving/priority-override';
 import { sourcePlatformMark } from '@/lib/source-platform';
 import { receivingTypeMeta } from '@/lib/receiving/receiving-type-meta';
 
@@ -18,6 +18,16 @@ test('urgency picker escalates Low → Priority under Auto (platform first)', ()
   );
   // Storage / facet order stays most-urgent-first.
   assert.equal(PRIORITY_OVERRIDE_TIERS[0].label, 'Priority');
+});
+
+test('header urgency list is Low → Medium → High (no Auto, no Priority)', () => {
+  const header = priorityOverrideTiersForHeader();
+  assert.deepEqual(
+    header.map((t) => t.label),
+    ['Low', 'Medium', 'High'],
+  );
+  const medium = header.find((t) => t.label === 'Medium');
+  assert.ok(medium?.dotClass.includes('yellow'), 'Medium has a yellow identity dot');
 });
 
 test('platform marks stay ≤2 chars for equal-width bookmark', () => {

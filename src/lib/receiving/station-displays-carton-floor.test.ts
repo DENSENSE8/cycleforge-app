@@ -7,6 +7,8 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
 import {
+  cartonDeleteFace,
+  cartonDeleteLabels,
   cartonFloorPeerOrder,
   cartonInventoryRefreshFeedback,
   stationDisplaysFloorMoreItems,
@@ -65,6 +67,37 @@ describe('cartonFloorPeerOrder', () => {
       'edit',
       'delete',
     ]);
+  });
+});
+
+describe('cartonDeleteFace / cartonDeleteLabels', () => {
+  test('tracking last-8 wins', () => {
+    assert.equal(
+      cartonDeleteFace({
+        receivingId: 9,
+        tracking: '9400111899223197428490',
+        poNumber: 'PO-1',
+      }),
+      '97428490',
+    );
+  });
+
+  test('PO when tracking empty', () => {
+    assert.equal(
+      cartonDeleteFace({ receivingId: 9, tracking: '', poNumber: 'PO-4411' }),
+      'PO-4411',
+    );
+  });
+
+  test('carton id fallback', () => {
+    assert.equal(cartonDeleteFace({ receivingId: 44 }), 'carton 44');
+  });
+
+  test('labels name the face', () => {
+    const labels = cartonDeleteLabels('1Z999');
+    assert.equal(labels.idleLabel, 'Delete 1Z999');
+    assert.equal(labels.confirmLabel, 'Click again to delete 1Z999');
+    assert.equal(labels.deletedTitle, '1Z999 deleted');
   });
 });
 

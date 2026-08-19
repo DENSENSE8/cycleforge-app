@@ -9,10 +9,20 @@ import {
   HELPDESK_CONNECT_HINT,
   HELPDESK_NOT_CONNECTED_MESSAGE,
 } from '@/lib/integrations/helpdesk';
-import { markdownToHtml } from '@/lib/support/markdown';
 import { getTicketEntity } from '@/lib/zendesk-links';
 import { zendeskTicketUrl } from '@/lib/zendesk-ticket-url';
 import { uploadClaimPhotosToHelpdesk } from '@/lib/receiving-claim-attach';
+import {
+  archiveReceivingClaimPhotos,
+  claimArchiveResponseFields,
+} from '@/lib/receiving-claim-archive';
+import {
+  buildReceivingClaimTemplate,
+  claimAttachmentFileLabel,
+  claimBodyToHtml,
+  CLAIM_TYPE_LABEL,
+  type ClaimType,
+} from '@/lib/zendesk-claim-template';
 
 export const dynamic = 'force-dynamic';
 
@@ -108,6 +118,8 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   }
 }, { permission: 'receiving.mark_received' });
 
+const CLAIM_TYPE_VALUES = Object.keys(CLAIM_TYPE_LABEL) as [ClaimType, ...ClaimType[]];
+
 const PostBody = z.object({
   ticketId: z.number().int().positive(),
   body: z.string().trim().min(1).max(20000),
@@ -127,6 +139,8 @@ const PostBody = z.object({
   subject: z.string().trim().min(1).max(300).optional(),
   /** Receiving carton id — required (with attachPhotoIds) to resolve photos. */
   receivingId: z.number().int().positive().optional(),
+  lineId: z.number().int().positive().nullish(),
+  claimType: z.enum(CLAIM_TYPE_VALUES).optional(),
   /** Photo row ids to upload as real Zendesk attachments on this comment. */
   attachPhotoIds: z.array(z.number().int().positive()).max(50).optional(),
 });
@@ -135,8 +149,11 @@ const PostBody = z.object({
  * POST → add a reply to a receiving claim's Zendesk ticket, optionally
  * attaching selected carton photos and/or updating the ticket subject in the
  * same request (the link-flow's Photos → Ticket → Review steps land here,
- * mirroring the create-flow claim route's upload + file shape). The comment
- * defaults to an internal note (`public: false`); a public reply
+ * mirroring the create-flow claim route's upload + file shape). When
+ * `receivingId` is present (Link & send), ALL carton photos are archived to
+ * the NAS ticket folder after the comment lands — same best-effort copy as
+ * Create. Seller-step replies omit `receivingId` and skip the archive.
+ * The comment defaults to an internal note (`public: false`); a public reply
  * (`public: true`) emails the customer. Same entity-link guard as the GET so
  * this can only post to tickets linked to one of THIS org's receiving
  * cartons/lines.
@@ -158,14 +175,31 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         : undefined;
 
     const ids = parsed.attachPhotoIds ?? [];
+    const receivingId = parsed.receivingId;
+    let fileLabel = `TICKET-${parsed.ticketId}`;
+    if (receivingId) {
+      try {
+        const template = await buildReceivingClaimTemplate(
+          {
+            receivingId,
+            lineId: parsed.lineId ?? null,
+            claimType: parsed.claimType ?? 'damage',
+          },
+          ctx.organizationId,
+        );
+        fileLabel = claimAttachmentFileLabel(template, receivingId);
+      } catch (labelErr) {
+        console.warn('[POST /api/receiving/zendesk-claim/thread] file label template failed', labelErr);
+      }
+    }
     const uploads =
-      ids.length > 0 && parsed.receivingId
+      ids.length > 0 && receivingId
         ? await uploadClaimPhotosToHelpdesk({
             helpdesk,
             organizationId: ctx.organizationId,
-            receivingId: parsed.receivingId,
+            receivingId,
             photoIds: ids,
-            fileLabel: `TICKET-${parsed.ticketId}`,
+            fileLabel,
           })
         : [];
 
@@ -176,13 +210,42 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       ...(parsed.subject ? { subject: parsed.subject } : {}),
       comment: {
         body: parsed.body,
-        html_body: markdownToHtml(parsed.body),
+        html_body: claimBodyToHtml(parsed.body),
         public: parsed.public,
         uploads: uploads.length ? uploads : undefined,
       },
       ...(emailCcs ? { email_ccs: emailCcs } : {}),
     });
     if (!ticket) throw ApiError.notFound('Helpdesk ticket', parsed.ticketId);
+
+    // Link & send archives ALL carton photos into the ticket NAS folder in this
+    // same request (Create parity). Seller-step replies omit receivingId and
+    // skip the copy. Best-effort — the comment already landed.
+    const archived = receivingId
+      ? await archiveReceivingClaimPhotos({
+          orgId: ctx.organizationId,
+          receivingId,
+          ticketId: parsed.ticketId,
+          logTag: 'zendesk-claim-thread',
+          info: ({ photoIdCount, resolvedCount }) =>
+            [
+              `Zendesk Ticket: #${parsed.ticketId}`,
+              `URL: ${zendeskTicketUrl(parsed.ticketId)}`,
+              parsed.subject ? `Subject: ${parsed.subject}` : null,
+              parsed.claimType ? `Claim type: ${CLAIM_TYPE_LABEL[parsed.claimType]}` : null,
+              'Mode: Link & send (existing ticket)',
+              `Updated: ${new Date().toISOString()}`,
+              `Photos uploaded to Zendesk: ${uploads.length}`,
+              `Photos on claim record: ${photoIdCount}`,
+              `Photos resolved for NAS archive: ${resolvedCount}`,
+              '',
+              '--- Ticket body ---',
+              parsed.body,
+            ]
+              .filter(Boolean)
+              .join('\n'),
+        })
+      : null;
 
     return NextResponse.json({
       success: true,
@@ -194,6 +257,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         status: String(ticket.status ?? ''),
         url: zendeskTicketUrl(ticket.id),
       },
+      ...(archived ? claimArchiveResponseFields(archived) : {}),
     });
   } catch (err) {
     return mapZendeskError(err, context);
