@@ -16,7 +16,6 @@
 import { useSyncExternalStore } from 'react';
 import { Button } from '@/design-system/primitives';
 import {
-  PaneHeaderCloseButton,
   type PaneHeaderActionBarAction,
 } from '@/components/ui/pane-header';
 import { cn } from '@/utils/_cn';
@@ -59,16 +58,21 @@ export function useRailHeaderActions(): PaneHeaderActionBarAction[] {
 }
 
 /**
- * Region 1 — the selection band. Carries the three affordances the capsule
- * owned and the rail would otherwise lose: the count, select-all, and clear.
- * Close (`→|`) is top-left — Unbox / DeskRailChromeRow twin.
+ * Region 1 — the selection band. Carries the affordances the capsule owned and
+ * the rail would otherwise lose: the count, select-all, and clear.
+ *
+ * **It mounts no close.** It used to carry a `→|` at its top-left, and that was
+ * the ONLY dismiss that did the right thing: the host's own control ran the
+ * lifecycle half only, so it hid the rail and left every row checked with
+ * nothing on screen saying so. `closeRightPanel` now runs the occupant's
+ * `onClose` too — for these shells that is `emitToggleAll(scope, 'none')` — so
+ * the singleton `X` clears the selection and the band's twin is redundant.
+ * The trailing cell it reserves is where that `X` paints.
  */
 export function RailSelectionBand({
   className,
-  onClose,
 }: {
   className?: string;
-  onClose?: () => void;
 }) {
   const { scope, rows, total } = useRailActionSnapshot();
   const count = rows.length;
@@ -79,14 +83,10 @@ export function RailSelectionBand({
   return (
     <div
       className={cn(
-        'flex items-center gap-2 border-b border-border-soft py-2 pr-4',
-        onClose ? 'pl-2' : 'pl-4',
+        'flex items-center gap-2 border-b border-border-soft py-2 pl-4 pr-2',
         className,
       )}
     >
-      {onClose ? (
-        <PaneHeaderCloseButton onClick={onClose} title="Hide right panel" className="-ml-px -my-1 h-7 w-7" />
-      ) : null}
       <p className="min-w-0 flex-1 truncate text-role-eyebrow uppercase tracking-widest text-text-soft">
         {total > 0 ? `${count} of ${total} selected` : `${count} selected`}
       </p>
@@ -112,6 +112,11 @@ export function RailSelectionBand({
           Clear
         </Button>
       </div>
+      <span
+        className="inline-block h-7 w-7 shrink-0"
+        aria-hidden
+        data-right-rail-host-close-slot
+      />
     </div>
   );
 }

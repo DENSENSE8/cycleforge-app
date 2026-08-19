@@ -4,7 +4,7 @@
  * DeskRailChromeRow — SoT for Unbox-aligned chrome on a single RightRailHost card.
  *
  * ```text
- * [host →|] [actions?] …………………… [cursor?] [↑][↓] [trailing?]
+ * [▦?] [actions?] …………………… [cursor?] [↑][↓] [trailing?] [host X]
  * ```
  *
  * **Why this exists.** Unbox reads `[→|] ……… [↑ ↓]` across TWO regions
@@ -14,10 +14,13 @@
  * the baseline. When every control lives in one card, they must share ONE
  * in-flow flex row.
  *
- * **Close is host-owned.** `RightRailHost` paints the single `→|` at the
- * absolute top-left and fires `closeAndCachePanel()`. This row keeps a spacer
- * so actions/↑↓ do not sit under that control. Do not mount a second close
- * here — `onClose` is accepted so callers compile, then ignored.
+ * **Close is host-owned, and it is the TRAILING cell.** `RightRailHost` paints
+ * the single `X` absolutely at the top-RIGHT (ruled 2026-08-19) and fires
+ * `closeAndCachePanel()`. This row keeps a spacer at the END so the cursor /
+ * ↑↓ / trailing cluster never sit under that control, and the LEADING edge is
+ * handed back to the occupant's own chrome (`▦`, contextual icons). Do not
+ * mount a second close here — `onClose` is accepted so callers compile, then
+ * ignored.
  *
  * **`actions`** — optional contextual icon cluster for occupants whose actions
  * belong on the navigation row. Sits after close, left of the flex spacer +
@@ -40,8 +43,9 @@ import { IconButton } from '@/design-system/primitives';
 import { InspectorColumnDisplayButton } from '@/components/right-rail/InspectorColumnDisplayButton';
 import { cn } from '@/utils/_cn';
 
-/** Optical `pl-2` — Unbox push-band twin so the `→|` mark lands on content ink.
- *  `relative z-header` keeps Hide above the inset resize sash (`z-sticky`). */
+/** Optical `pl-2` — Unbox push-band twin so the leading mark lands on content
+ *  ink. `relative z-header` keeps the row above the inset resize sash
+ *  (`z-sticky`). */
 const DESK_RAIL_CHROME_ROW_CLASS =
   'relative z-header flex h-8 shrink-0 items-center pl-2 pr-2';
 
@@ -93,25 +97,20 @@ export function DeskRailChromeRow({
 
   return (
     <div className={cn(DESK_RAIL_CHROME_ROW_CLASS, className)}>
-      <span
-        className="inline-block h-7 w-7 shrink-0"
-        aria-hidden
-        data-right-rail-host-close-slot
-      />
       {columnDisplay ? (
-        <div className="ml-0.5 flex shrink-0 items-center">
+        <div className="flex shrink-0 items-center">
           <InspectorColumnDisplayButton />
         </div>
       ) : null}
       {actions ? (
         <div
-          className="ml-0.5 flex min-w-0 items-center overflow-x-auto"
+          className="flex min-w-0 items-center overflow-x-auto"
           data-testid="desk-rail-chrome-actions"
         >
           {actions}
         </div>
       ) : null}
-      {hasTrail ? <div className="flex-1" /> : null}
+      <div className="flex-1" />
       {hasTrail ? (
         <div className="flex items-center gap-0">
           {cursor}
@@ -144,6 +143,13 @@ export function DeskRailChromeRow({
           {trailing}
         </div>
       ) : null}
+      {/* The host's absolute `X` lives over this cell — reserve it so nothing
+          above scrolls or truncates underneath the singleton close. */}
+      <span
+        className="inline-block h-7 w-7 shrink-0"
+        aria-hidden
+        data-right-rail-host-close-slot
+      />
     </div>
   );
 }

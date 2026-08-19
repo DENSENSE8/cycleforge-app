@@ -418,10 +418,71 @@ describe('right-rail inspector header', () => {
     );
   });
 
-  it('RightRailHost owns the singleton →| close (closeAndCachePanel)', () => {
+  it('closeRightPanel is the ONE closer — lifecycle half + occupant teardown', () => {
+    const closer = code(read('src/lib/right-rail/close.ts'));
+    assert.match(closer, /closeAndCachePanel\(\)/, 'must run the host lifecycle half');
+    assert.match(closer, /top\.onClose\?\.\(\)/, 'must run the occupant teardown half');
+    // Order is load-bearing: captureDraft() reads the live view's registered
+    // getter, so it must run before a teardown that could unregister it.
+    assert.ok(
+      closer.indexOf('closeAndCachePanel()') < closer.lastIndexOf('top.onClose?.()'),
+      'lifecycle must run before occupant teardown',
+    );
+
     const host = code(read('src/components/right-rail/RightRailHost.tsx'));
-    assert.match(host, /ArrowRightToLine/);
-    assert.match(host, /closeAndCachePanel/);
+    assert.match(host, /closeRightPanel/);
+    assert.doesNotMatch(
+      host,
+      /closeAndCachePanel/,
+      'the host must route every dismiss through closeRightPanel, not the half',
+    );
+
+    const keys = code(read('src/hooks/usePanelStoreKeyboard.ts'));
+    assert.match(
+      keys,
+      /closeAndCachePanel: closeRightPanel/,
+      'Esc must run the same closer as the host X',
+    );
+  });
+
+  it('no right-rail occupant mounts a close of its own', () => {
+    // The dismiss is ONE control: the host's `X`, top-right. A panel-owned
+    // twin is how the intake overlays came to carry a footer `→|` beside their
+    // submit CTA and the batch band came to carry the only dismiss that
+    // actually cleared the selection. Shrink-only: finishing a migration
+    // removes a line; nothing may add one.
+    const OCCUPANT_OWNED_CLOSE_ALLOWLIST: string[] = [];
+
+    const files = [
+      'src/components/sidebar/receiving/incoming/IncomingAddInboundOverlay.tsx',
+      'src/components/sidebar/receiving/incoming/IncomingImportCsvOverlay.tsx',
+      'src/components/sidebar/receiving/incoming/IncomingBulkTrackingPanel.tsx',
+      'src/components/ui/table-column-config/GridColumnDetailsPanel.tsx',
+      'src/components/right-rail/RailSelectionActions.tsx',
+      'src/components/right-rail/DeskRailChromeRow.tsx',
+    ];
+    for (const f of files) {
+      if (OCCUPANT_OWNED_CLOSE_ALLOWLIST.includes(f)) continue;
+      assert.doesNotMatch(
+        code(read(f)),
+        /PaneHeaderCloseButton/,
+        `${f} must not mount its own close — the host paints the singleton X`,
+      );
+    }
+  });
+
+  it('RightRailHost owns the singleton top-RIGHT X close', () => {
+    const host = code(read('src/components/right-rail/RightRailHost.tsx'));
+    // Ruled 2026-08-19: the dismiss is an `X` in the TRAILING corner, so the
+    // leading cell belongs to the occupant's own chrome (Back / ▦ / icons).
+    assert.match(host, /<X className/);
+    assert.match(host, /absolute right-2 top-0\.5/);
+    assert.doesNotMatch(
+      host,
+      /ArrowRightToLine/,
+      'host close moved off the park-arrow; →| stays a PaneHeader affordance elsewhere',
+    );
+    assert.match(host, /closeRightPanel/);
     assert.match(host, /right-rail-host-close/);
     assert.match(host, /usePanelStoreKeyboard/);
     assert.doesNotMatch(

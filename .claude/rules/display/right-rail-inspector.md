@@ -162,7 +162,8 @@ as contextual `actions`.
 - Long product titles, listing sentences, descriptions, and multi-line prose live in the **body** as fact rows — not in the header.
 - Contextual icon actions are a **per-occupant** `PaneHeaderActionBarAction[]` (Link / Sync / Print / Ignore / …). The shell does not hardcode them.
 - Close is **`PaneHeaderActionBar onClose`** (orders) **or** **`DeskRailChromeRow`** (Incoming-family) — mandatory for `modal={false}`. Queue walk uses the same row's prev/next. **Never** close in a `rightSlot` on the row above prev/next (split-cluster drift). Reach for `PaneHeaderCloseButton` directly only outside an action/chrome row.
-- **Close glyph is `ArrowRightToLine` (`>|`), not an `X`** (2026-08-02). The arrow says the panel is parked back against the right edge; `intent="dismiss"` restores the `X` for a pane that genuinely goes away.
+- **`closeRightPanel` is the ONE closer** (`src/lib/right-rail/close.ts`) — it runs the host lifecycle half (`closeAndCachePanel`: draft cache + park + Resume toast) **and** the occupant's own `onClose` teardown. Host `X`, scrim and Esc all route through it. A panel therefore never needs — and must never mount — a close of its own, including a footer `→|` beside a submit CTA.
+- **The HOST's singleton close is an `X` at the top-RIGHT** (ruled 2026-08-19, superseding the 2026-08-02 top-left `→|`). `RightRailHost` paints it absolutely at `right-2 top-0.5`; `DeskRailChromeRow` reserves the matching cell at the END of its row, and the LEADING edge belongs to the occupant (Back · `▦` · contextual icons). A panel must not mount a second close. Panel-owned `PaneHeaderCloseButton` instances elsewhere keep `intent="push"` (`>|`) / `intent="dismiss"` (`X`).
 - **Desk selected-order (`detail:order`)** uses Unbox **index→leaf** grammar:
   `DeskRailChromeRow` + `DeskInspectorIndexShell` (`order-inspector-topics.ts`).
   No ORDER # identity row. Order leaf stacks Shipping + Product. Order updates

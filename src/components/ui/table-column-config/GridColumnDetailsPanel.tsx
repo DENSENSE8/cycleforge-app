@@ -23,7 +23,7 @@
  *
  * Prefs: `staff_preferences.tableColumns[tableId]` via {@link useGridFields} +
  * {@link useGridColumnDisplay}. Shell: non-modal **push** detail stack with
- * `PaneHeaderCloseButton` (`→|`) — same top-band grammar as Incoming bulk
+ * no close of its own (the host's `X` owns it) — same top-band grammar as Incoming bulk
  * tracking / app right-rail inspectors.
  *
  * ## Every import here is BY PATH, and both reasons are load-bearing
@@ -46,7 +46,6 @@ import { useQueryClient } from '@tanstack/react-query';
 import { RotateCcw } from '@/components/Icons';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
 import { ColorSwatchPicker } from '@/components/ui/ColorSwatchPicker';
-import { PaneHeaderCloseButton } from '@/components/ui/pane-header';
 import { useGridColumnDisplay } from '@/design-system/components/grid/useGridColumnDisplay';
 import { useGridFields } from '@/design-system/components/grid/useGridColumnVisibility';
 import { isGridColumnResizable } from '@/design-system/components/grid/grid-column-editability';
@@ -97,10 +96,12 @@ const CELL_OPTS: { id: GridColumnCellMode; label: string }[] = [
 ];
 
 /**
- * The band that carries the panel's own dismiss, at its top-LEFT.
- * Same optical gutter as Incoming bulk tracking / Unbox push close.
+ * The chrome band. It mounts NO close — the dismiss is the host's singleton
+ * `X` at the column's top-right (`closeRightPanel`). The band leads with the
+ * eyebrow on the body's own content gutter and reserves the trailing cell that
+ * `X` paints over, same shape as `DeskRailChromeRow`.
  */
-const TOP_BAND_CLASS = 'flex h-9 shrink-0 items-center gap-1.5 border-b border-border-soft pl-1.5 pr-3';
+const TOP_BAND_CLASS = 'flex h-9 shrink-0 items-center gap-1.5 border-b border-border-soft pl-4 pr-2';
 
 export function GridColumnDetailsPanel<C extends LedgerGridColumnModel>({
   open,
@@ -193,15 +194,8 @@ export function GridColumnDetailsPanel<C extends LedgerGridColumnModel>({
       ariaLabel="Column display"
     >
       <div className="flex h-full min-h-0 flex-col bg-surface-card">
-        {/* Non-modal push has no scrim — visible dismiss is mandatory, and it
-            belongs at the column's top-left where every push surface puts it. */}
         <div className={TOP_BAND_CLASS}>
-          <PaneHeaderCloseButton
-            onClick={onClose}
-            ariaLabel="Hide column display"
-            title="Hide column display"
-          />
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-default">
               Column display
             </p>
@@ -209,6 +203,11 @@ export function GridColumnDetailsPanel<C extends LedgerGridColumnModel>({
               Grid fields
             </p>
           </div>
+          <span
+            className="inline-block h-7 w-7 shrink-0"
+            aria-hidden
+            data-right-rail-host-close-slot
+          />
         </div>
 
         <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-4 scrollbar-hide">
