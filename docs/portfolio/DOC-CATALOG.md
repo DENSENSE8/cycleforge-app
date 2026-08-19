@@ -1,7 +1,7 @@
 # DOC catalog — machine-generated SoT
 
 > **Do not hand-edit.** Regenerate: `node scripts/portfolio-sot-sync.mjs`  
-> Generated: `2026-08-19T06:21:38.994Z` · Files: **666** · Repo: `cycleforge-app`  
+> Generated: `2026-08-19T21:15:04.869Z` · Files: **667** · Repo: `cycleforge-app`  
 > Parent index: [INDEX.md](./INDEX.md)
 
 Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*** id  
@@ -13,11 +13,21 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 
 | WT-ID | Absolute path | Branch | HEAD (short) | Exists |
 |-------|---------------|--------|--------------|--------|
-| `main` | `/home/michaelgarisek/Projects/cycleforge-app` | `wip/nav-chrome-and-guard-suite` | `a244f81f2` | yes |
-| `nav-ia` | `/home/avion/cycleforge-nav-ia` | `topic/nav-ia` | `e3d409e4c` | NO |
-| `product-updates` | `/home/avion/cycleforge-product-updates` | `wip/product-updates-popover` | `a3816a3bf` | NO |
-| `scan-phase1` | `/home/avion/cycleforge-scan-phase1` | `wip/station-scan-phase1` | `1ee41b9fa` | NO |
-| `toship-refactor` | `/home/avion/cycleforge-toship-refactor` | `refactor/to-ship-no-orders-family` | `7f8c7a3dd` | NO |
+| `main` | `/Users/icecube/repos/cycleforge-app` | `main` | `4d4eaff5e` | yes |
+| `ai-chat` | `/Users/icecube/repos/cycleforge-ai-chat` | `topic/ai-chat` | `3f55b275e` | yes |
+| `fba` | `/Users/icecube/repos/cycleforge-fba` | `topic/fba` | `3f55b275e` | yes |
+| `glass` | `/Users/icecube/repos/cycleforge-glass` | `glass-design-system` | `a331b1247` | yes |
+| `home` | `/Users/icecube/repos/cycleforge-home` | `topic/home` | `dfd5f517f` | yes |
+| `inventory` | `/Users/icecube/repos/cycleforge-inventory` | `topic/inventory` | `3f55b275e` | yes |
+| `journey-hops` | `/Users/icecube/repos/cycleforge-journey-hops` | `topic/journey-hops` | `74d1dd5f6` | yes |
+| `note-grain` | `/Users/icecube/repos/cycleforge-note-grain` | `topic/note-grain` | `5e3a3fbd7` | yes |
+| `photo` | `/Users/icecube/repos/cycleforge-photo` | `topic/photo` | `6b7aab4ce` | yes |
+| `review` | `/Users/icecube/repos/cycleforge-review` | `topic/review` | `b766dd58f` | yes |
+| `sourcing` | `/Users/icecube/repos/cycleforge-sourcing` | `topic/sourcing` | `3f55b275e` | yes |
+| `tables` | `/Users/icecube/repos/cycleforge-tables` | `topic/tables` | `5e3a3fbd7` | yes |
+| `tasks` | `/Users/icecube/repos/cycleforge-tasks` | `topic/tasks` | `e881fd2ad` | yes |
+| `unbox` | `/Users/icecube/repos/cycleforge-unbox` | `unbox-work` | `e627e3d3e` | yes |
+| `warehouse` | `/Users/icecube/repos/cycleforge-warehouse` | `topic/warehouse` | `3f55b275e` | yes |
 
 ---
 
@@ -643,6 +653,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 | `DOC-TODO-UNBOX-PHOTOS-ARMED-ROWS-NO-TABS-HANDOFF-1F59` | `WS-TODO-MISC` | [`todo/unbox-photos-armed-rows-no-tabs-HANDOFF.md`](../todo/unbox-photos-armed-rows-no-tabs-HANDOFF.md) |
 | `DOC-TODO-UNBOX-PIN-PATTERN-HARDEN-CLAUDE-CODE-PROMPT-1083` | `WS-TODO-MISC` | [`todo/unbox-pin-pattern-harden-CLAUDE-CODE-PROMPT.md`](../todo/unbox-pin-pattern-harden-CLAUDE-CODE-PROMPT.md) |
 | `DOC-TODO-UNBOX-PINNED-INBOUND-TAB-PLAN-25C8` | `WS-TODO-MISC` | [`todo/unbox-pinned-inbound-tab-PLAN.md`](../todo/unbox-pinned-inbound-tab-PLAN.md) |
+| `DOC-TODO-UNBOX-PREVIEW-STANCE-HANDOFF-8EE0` | `WS-TODO-MISC` | [`todo/unbox-preview-stance-HANDOFF.md`](../todo/unbox-preview-stance-HANDOFF.md) |
 | `DOC-TODO-UNBOX-PROCEDURE-CHAT-PROGRESSION-GROK-RULES-1A47` | `WS-TODO-MISC` | [`todo/unbox-procedure-chat-progression-GROK-RULES.md`](../todo/unbox-procedure-chat-progression-GROK-RULES.md) |
 | `DOC-TODO-UNBOX-PROCEDURE-CHAT-PROGRESSION-HANDOFF-132E` | `WS-TODO-MISC` | [`todo/unbox-procedure-chat-progression-HANDOFF.md`](../todo/unbox-procedure-chat-progression-HANDOFF.md) |
 | `DOC-TODO-UNBOX-PROCEDURE-COLUMN-FIX-HANDOFF-F22A` | `WS-TODO-MISC` | [`todo/unbox-procedure-column-FIX-HANDOFF.md`](../todo/unbox-procedure-column-FIX-HANDOFF.md) |
@@ -962,7 +973,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 - `DOC-TEN-SLICE-TEMPLATE-5BE0` — [`tenancy/SLICE_TEMPLATE.md`](../tenancy/SLICE_TEMPLATE.md)
 - `DOC-TEN-TABLES-9F18` — [`tenancy/_analysis/tables.md`](../tenancy/_analysis/tables.md)
 
-### `WS-TODO-MISC` (490)
+### `WS-TODO-MISC` (491)
 
 - `DOC-TODO-00-INDEX-9E1E` — [`todo/kiosk-counter-transaction/00-INDEX.md`](../todo/kiosk-counter-transaction/00-INDEX.md)
 - `DOC-TODO-01-RECEIVING-BOH-SLIM-4C77` — [`todo/foh-boh-surface-split/01-receiving-boh-slim.md`](../todo/foh-boh-surface-split/01-receiving-boh-slim.md)
@@ -1408,6 +1419,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 - `DOC-TODO-UNBOX-PHOTOS-ARMED-ROWS-NO-TABS-HANDOFF-1F59` — [`todo/unbox-photos-armed-rows-no-tabs-HANDOFF.md`](../todo/unbox-photos-armed-rows-no-tabs-HANDOFF.md)
 - `DOC-TODO-UNBOX-PIN-PATTERN-HARDEN-CLAUDE-CODE-PROMPT-1083` — [`todo/unbox-pin-pattern-harden-CLAUDE-CODE-PROMPT.md`](../todo/unbox-pin-pattern-harden-CLAUDE-CODE-PROMPT.md)
 - `DOC-TODO-UNBOX-PINNED-INBOUND-TAB-PLAN-25C8` — [`todo/unbox-pinned-inbound-tab-PLAN.md`](../todo/unbox-pinned-inbound-tab-PLAN.md)
+- `DOC-TODO-UNBOX-PREVIEW-STANCE-HANDOFF-8EE0` — [`todo/unbox-preview-stance-HANDOFF.md`](../todo/unbox-preview-stance-HANDOFF.md)
 - `DOC-TODO-UNBOX-PROCEDURE-CHAT-PROGRESSION-GROK-RULES-1A47` — [`todo/unbox-procedure-chat-progression-GROK-RULES.md`](../todo/unbox-procedure-chat-progression-GROK-RULES.md)
 - `DOC-TODO-UNBOX-PROCEDURE-CHAT-PROGRESSION-HANDOFF-132E` — [`todo/unbox-procedure-chat-progression-HANDOFF.md`](../todo/unbox-procedure-chat-progression-HANDOFF.md)
 - `DOC-TODO-UNBOX-PROCEDURE-COLUMN-FIX-HANDOFF-F22A` — [`todo/unbox-procedure-column-FIX-HANDOFF.md`](../todo/unbox-procedure-column-FIX-HANDOFF.md)

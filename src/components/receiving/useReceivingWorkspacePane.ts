@@ -22,6 +22,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { dispatchReceivingWorkspaceClose } from '@/utils/events';
 import { emitReceiving } from '@/components/receiving/receiving-events';
 import { dispatchSelectLine, mergeReceivingPackageMetaIntoRow } from '@/components/station/receiving-lines-table-helpers';
+import { useScanStance } from '@/components/station/scan-bar';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import type { ScanIntakeSurface } from '@/lib/receiving/scan';
 import type { UnboxLookupScanDetail } from '@/components/receiving/receiving-events';
@@ -52,6 +53,14 @@ export interface WorkspaceState {
    * `readSelectLineDetail`.
    */
   recordView?: boolean;
+  /**
+   * Preview stance. The pane opens for real — identity, middle ops-flow and the
+   * Displays column all paint exactly as a scan's would — but it is INERT: no
+   * edit lands, and the open itself wrote nothing (no `receiving_scans` row, no
+   * `receiving_unbox.opened_at`, no recents view). Answers *"what is this?"*
+   * without answering it by doing the work.
+   */
+  preview?: boolean;
 }
 
 export interface NavState {
@@ -139,7 +148,20 @@ export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
   // Last Unboxed-rail MRU receiving_id we auto-opened (avoid re-entry loops).
   const mruOpenedReceivingIdRef = useRef<number | null>(null);
 
-  const wantMruAutoOpen = shouldAutoOpenUnboxMru(isUnboxSurface, searchParams);
+  /**
+   * Station-first MRU auto-open is a **Scan-stance** affordance: it puts the
+   * operator's last carton back under their hands so they can keep unboxing.
+   *
+   * In Preview it answers a question nobody asked, and — because the restore is
+   * async (rail query → carton fetch) exactly like the preview open (preview-scan
+   * → lines) — the two race for the pane. The MRU won on the default Queue tab
+   * whenever the rail's newest carton was not the previewed one, so the operator
+   * typed a value, hit Enter, and got somebody else's carton. Standing the MRU
+   * down in Preview removes the race rather than ordering it.
+   */
+  const scanStance = useScanStance();
+  const wantMruAutoOpen =
+    shouldAutoOpenUnboxMru(isUnboxSurface, searchParams) && scanStance !== 'preview';
   const unboxRailStaffId = useMemo(() => {
     const feed = RECEIVING_RAIL_FEEDS.unboxRecent;
     if (!feed.usesStaffFilter) return null;
@@ -510,6 +532,10 @@ export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
   useEffect(() => {
     if (!wantMruAutoOpen) {
       mruOpenedReceivingIdRef.current = null;
+      // The pending flag is seeded from `shouldAutoOpenUnboxMru` alone, so a
+      // stance that stands the MRU down must release the skeleton — otherwise
+      // Preview holds a loader for a restore that will never run.
+      setRestorePending(false);
       return;
     }
     if (workspaceRef.current != null) {

@@ -40,9 +40,13 @@ import { ReceivingLinePicker } from '@/components/sidebar/receiving/ReceivingLin
 import { SidebarRailScrollport } from '@/components/sidebar/rail-shell/SidebarRailScrollport';
 
 import { TriageScanBand, UnboxScanBand, PickupScanBand } from '@/components/sidebar/receiving/ReceivingScanBands';
-import { isScanPreview, useScanModeRelease } from '@/components/station/scan-bar';
-import { TriageCartonSearchBar } from '@/components/sidebar/receiving/TriageCartonSearchBar';
-import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
+import {
+  isScanPreview,
+  setScanStance,
+  useScanModeRelease,
+  useScanStance,
+} from '@/components/station/scan-bar';
+import { useUnboxPreviewOpen } from '@/components/sidebar/receiving/useUnboxPreviewOpen';
 import { ReceivingRailBody } from '@/components/sidebar/receiving/ReceivingRailBody';
 import { ReceivingRecentRailFilters } from '@/components/sidebar/rail-shell/ReceivingRecentRailFilters';
 import { useReceivingRailFacets } from '@/components/sidebar/rail-shell/useReceivingRailFacets';
@@ -140,6 +144,7 @@ export function ReceivingSidebarPanel() {
     scanDriven,
     setScanDriven,
     recordView,
+    preview,
   } = useReceivingSelection({ mode, clearScanSession });
 
   const { currentIndex, canPrev, canNext } = useReceivingLineNavigation({
@@ -156,11 +161,17 @@ export function ReceivingSidebarPanel() {
     lineAccordionBootstrap,
     scanDriven,
     recordView,
+    preview,
     scanMatchedRows,
     currentIndex,
     canPrev,
     canNext,
   });
+
+  // Preview stance: resolve + open the station READ-ONLY (two reads, no
+  // writes). Unbox is the golden; sibling stations adopt the same hook rather
+  // than a page-local twin.
+  const openUnboxPreview = useUnboxPreviewOpen();
 
   // ── Triage scan input (scan-only — NOT a list filter) ──
   const [triageQuery, setTriageQuery] = useState('');
@@ -169,9 +180,44 @@ export function ReceivingSidebarPanel() {
   /** Client-side Unboxed / Triage rail text filter + shared facet SoT. */
   const [unboxRailFilter, setUnboxRailFilter] = useState('');
   const receivingRailFacets = useReceivingRailFacets();
+
+  // Preview stance turns the scan bar into the rail's find field: typing
+  // filters the recents live instead of arming a scan (submit is already a
+  // no-op in Preview). The facet popover rides the bar's right rail, so the
+  // filter icon is present exactly when the field filters — which is what
+  // replaced the always-mounted footer search bar under the list.
+  const scanStance = useScanStance();
+  const previewFiltering = scanStance === 'preview';
+  const receivingFilterSlot = previewFiltering ? (
+    <ReceivingRecentRailFilters
+      facets={receivingRailFacets.facets}
+      onChange={receivingRailFacets.setFacets}
+    />
+  ) : null;
+
   /** Local Pickup scan wedge — open/match an LCPU order (not create). */
   const [pickupScanQuery, setPickupScanQuery] = useState('');
   const [pickupRailFilter, setPickupRailFilter] = useState('');
+  // Arrival filters instantly off local state and syncs `?triq=` on a debounce.
+  // `updateTriageQuery` is a bare `router.replace`, so driving it per keystroke
+  // would push one history entry per character typed into the bar.
+  const [triageRailFilter, setTriageRailFilter] = useState(triageListQuery);
+  const updateTriageQueryRef = useRef(updateTriageQuery);
+  updateTriageQueryRef.current = updateTriageQuery;
+  useEffect(() => {
+    if (!previewFiltering) return;
+    const t = setTimeout(() => updateTriageQueryRef.current(triageRailFilter), 250);
+    return () => clearTimeout(t);
+  }, [triageRailFilter, previewFiltering]);
+  // Leaving Preview drops the filter — otherwise a stale query keeps the rail
+  // narrowed while the bar is back to arming scans, with nothing on screen
+  // saying why rows are missing.
+  useEffect(() => {
+    if (previewFiltering) return;
+    setUnboxRailFilter('');
+    setPickupRailFilter('');
+    setTriageRailFilter('');
+  }, [previewFiltering]);
   const [pickupRailFacets, setPickupRailFacets] = useState<PickupRailFacets>(
     EMPTY_PICKUP_RAIL_FACETS,
   );
@@ -362,6 +408,26 @@ export function ReceivingSidebarPanel() {
   // rather than being swallowed at the dock. Only this direction is legal —
   // this bar never places cartons.
   useReceivingEvents({
+    /**
+     * Leaving a preview returns the bench to Scan with an empty bar.
+     *
+     * The stance is sticky (localStorage), so a preview that ended in Preview
+     * left the operator's NEXT real scan silently not unboxing — the bar looks
+     * armed and records nothing. Closing the read-only lock means "done
+     * looking", so it re-arms for work.
+     *
+     * This is not the promotion that constraint A bans: nothing is submitted,
+     * nothing opens, and the value is CLEARED rather than carried over — so the
+     * next Enter cannot commit the carton the operator was only inspecting.
+     * Clearing the bar also drops the rail filters, which follow `previewFiltering`.
+     */
+    'receiving-workspace-close': () => {
+      if (!isScanPreview()) return;
+      setScanStance('scan');
+      setBulkTracking('');
+      setPickupScanQuery('');
+      emitReceiving('receiving-focus-scan');
+    },
     'receiving-submit-tracking': ({ tracking }) => {
       const raw = String(tracking ?? '').trim();
       // Gated to Arrival: the only mounted procedure waist that hands back
@@ -455,7 +521,18 @@ export function ReceivingSidebarPanel() {
             <PickupScanBand
               themeColor={themeColor}
               value={pickupScanQuery}
-              onChange={setPickupScanQuery}
+              onChange={(next) => {
+                setPickupScanQuery(next);
+                if (previewFiltering) setPickupRailFilter(next);
+              }}
+              filterSlot={
+                previewFiltering ? (
+                  <PickupRailFilters
+                    facets={pickupRailFacets}
+                    onChange={setPickupRailFacets}
+                  />
+                ) : null
+              }
               onSubmit={submitPickupScan}
               inputRef={scanInputRef}
               staffId={staffId}
@@ -466,17 +543,6 @@ export function ReceivingSidebarPanel() {
                 facets={pickupRailFacets}
               />
             </SidebarRailScrollport>
-            <TechRailSearchBar
-              value={pickupRailFilter}
-              onChange={setPickupRailFilter}
-              placeholder="Filter pickup…"
-              trailingSuffix={
-                <PickupRailFilters
-                  facets={pickupRailFacets}
-                  onChange={setPickupRailFacets}
-                />
-              }
-            />
           </div>
         ) : mode === 'history' ? (
           // History has no scan session and no rail — the right-pane table is
@@ -494,7 +560,13 @@ export function ReceivingSidebarPanel() {
                 <TriageScanBand
                   themeColor={themeColor}
                   value={triageQuery}
-                  onChange={setTriageQuery}
+                  onChange={(next) => {
+                    setTriageQuery(next);
+                    // Preview: the bar IS the rail's find field (local now,
+                    // `?triq=` on a debounce so the view stays deep-linkable).
+                    if (previewFiltering) setTriageRailFilter(next);
+                  }}
+                  filterSlot={receivingFilterSlot}
                   onSubmit={submitTriageScan}
                   inputRef={scanInputRef}
                   staffId={staffId}
@@ -515,8 +587,16 @@ export function ReceivingSidebarPanel() {
               <UnboxScanBand
                 themeColor={themeColor}
                 value={bulkTracking}
-                onChange={setBulkTracking}
+                onChange={(next) => {
+                  setBulkTracking(next);
+                  if (previewFiltering) setUnboxRailFilter(next);
+                }}
+                filterSlot={receivingFilterSlot}
+                previewLookup={(raw, m) => openUnboxPreview(raw, m)}
                 onSubmit={(m) => {
+                  // Preview stance resolves + opens READ-ONLY through the
+                  // bar's own `previewLookup`; the ingest path (which writes,
+                  // stamps and records) must not run.
                   if (isScanPreview()) return;
                   // Unbox: one cache upsert on resolve (final title). No importing
                   // stub — that caused tracking# → Unfound PO flicker.
@@ -561,7 +641,7 @@ export function ReceivingSidebarPanel() {
                 mode={mode}
                 selectedLine={selectedLine}
                 triageLeadingRow={triageLeadingRow}
-                triageFilterText={mode === 'triage' ? triageListQuery : ''}
+                triageFilterText={mode === 'triage' ? triageRailFilter : ''}
                 triageIncludeRow={
                   mode === 'triage' ? receivingRailFacets.includeRow : undefined
                 }
@@ -572,41 +652,12 @@ export function ReceivingSidebarPanel() {
               />
             </SidebarRailScrollport>
 
-            {/* Carton-list filter (D1) — finds a carton already in the
-                Triage/Prioritize/Unfound/Done list, distinct from the scan band
-                below and from the Zoho-PO search inside the pairing hub
-                (PoLinkTab, kept as-is). Hidden while bulk-editing so it never
-                collides with the selection action bar. */}
-            {mode === 'triage' && !railEditMode ? (
-              <TriageCartonSearchBar
-                value={triageListQuery}
-                onChange={updateTriageQuery}
-                trailingSuffix={
-                  <ReceivingRecentRailFilters
-                    facets={receivingRailFacets.facets}
-                    onChange={receivingRailFacets.setFacets}
-                  />
-                }
-              />
-            ) : null}
-
-            {/* Unboxed rail filter — same bottom-anchored TechRailSearchBar as
-                Testing/Shipping (paste hover-reveal + auto context-panel
-                collapse). Facets seat in trailingSuffix so paste leads.
-                Hidden while bulk-editing (bulk bar owns the footer). */}
-            {mode === 'receive' && !railEditMode ? (
-              <TechRailSearchBar
-                value={unboxRailFilter}
-                onChange={setUnboxRailFilter}
-                placeholder="Filter unboxed…"
-                trailingSuffix={
-                  <ReceivingRecentRailFilters
-                    facets={receivingRailFacets.facets}
-                    onChange={receivingRailFacets.setFacets}
-                  />
-                }
-              />
-            ) : null}
+            {/* No footer filter bar. Finding a carton already in the rail is
+                the SCAN BAR's job in Preview stance: typing filters the recents
+                live and the facet popover rides the bar's right rail. A second
+                always-mounted find field under the list was a duplicate door
+                onto the same query, and it cost a row of the rail's height on
+                every station. */}
 
             {/* Edit-mode bulk dismiss — rides at the very bottom of the rail. */}
             {railEditMode ? (
