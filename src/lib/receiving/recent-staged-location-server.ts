@@ -3,8 +3,11 @@
  * carton that is not the open one**.
  *
  * SoT for Unbox notes-composer **Last entry**:
- *   1. Walk `receiving_line_putaway` newest-first (this operator when known,
- *      else org), skipping the open line's carton
+ *   1. Walk `receiving_line_putaway` newest-first ACROSS THE ORG, skipping the
+ *      open line's carton — never scoped to `staged_by = me`. Same ruling as
+ *      the note twin ({@link ./recent-label-note-server}): the bench is shared,
+ *      so "prefer my own" answers with MY stalest stage instead of the bench's
+ *      newest one, and staleness is what puts a carton on the wrong shelf.
  *   2. First row with a non-null `staged_location_id` wins
  *
  * Never device-local storage / last-clicked bin.
@@ -22,8 +25,6 @@ export async function fetchMostRecentStagedLocation(
   orgId: OrgId,
   opts: {
     excludeLineId?: number | null;
-    /** Prefer this operator's stages (Unbox bench). */
-    staffId?: number | null;
   } = {},
 ): Promise<StagedLocationFace | null> {
   const exclude =
@@ -31,10 +32,6 @@ export async function fetchMostRecentStagedLocation(
     Number.isFinite(opts.excludeLineId) &&
     opts.excludeLineId > 0
       ? opts.excludeLineId
-      : null;
-  const staffId =
-    opts.staffId != null && Number.isFinite(opts.staffId) && opts.staffId > 0
-      ? opts.staffId
       : null;
 
   const result = await tenantQuery<{
@@ -82,10 +79,9 @@ export async function fetchMostRecentStagedLocation(
           NOT EXISTS (SELECT 1 FROM exclude_carton)
           OR rl.receiving_id IS DISTINCT FROM (SELECT receiving_id FROM exclude_carton)
         )
-        AND ($3::int IS NULL OR rlp.staged_by = $3)
       ORDER BY rlp.staged_at DESC NULLS LAST, rlp.receiving_line_id DESC
       LIMIT 1`,
-    [orgId, exclude, staffId],
+    [orgId, exclude],
   );
 
   const row = result.rows[0];

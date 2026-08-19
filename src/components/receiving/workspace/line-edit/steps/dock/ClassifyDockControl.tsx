@@ -3,13 +3,16 @@
 /**
  * Dock control for `classify` — one-row Band 1 ACTION (h-11).
  *
- * Unbox unfound: the full editor is KNOW on Displays (`TriageClassifySection`
- * via `railLeaf: 'classify'`). Dock never remounts that stack — growing Band 1
- * shoved Print · Receive off the thumb floor. DO = Continue once
- * {@link isIntakeClassified}; otherwise cue the open Classify Displays leaf.
+ * Unbox unfound: urgency · platform · type are `InlinePillPicker` menus on the
+ * **carton identity bar**, one row above the work plane. The Displays Classify
+ * leaf was a second editor for those same three fields and was dropped
+ * 2026-08-19, so this control cues the bar, not a leaf. The dock never remounts
+ * an editor of its own — growing Band 1 shoved Print · Receive off the thumb
+ * floor. DO = Continue once {@link isIntakeClassified}.
  *
  * Arrival centre still mounts `TriageClassifySection` under items (different
- * station — no Unbox Displays twin). Do not fork a second classify editor here.
+ * station — its Displays column is Pairing only). Do not fork a second classify
+ * editor here.
  */
 
 import { useCallback } from 'react';
@@ -43,7 +46,7 @@ export function ClassifyDockControl({ row }: UnboxStepDockContext) {
         ariaLabel={
           classified
             ? 'Continue — classification set'
-            : 'Classify in Displays — set urgency, platform, and type'
+            : 'Set urgency, platform, and type on the carton bar above'
         }
         icon={
           classified ? (
@@ -55,7 +58,7 @@ export function ClassifyDockControl({ row }: UnboxStepDockContext) {
         onClick={continueWalk}
         className="h-full w-full min-w-0 justify-center rounded-none"
       >
-        {classified ? 'Continue' : 'Classify in Displays'}
+        {classified ? 'Continue' : 'Classify above'}
       </Button>
     </div>
   );

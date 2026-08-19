@@ -165,7 +165,7 @@ floor's one metric; no vanity aggregate KPIs. Centre
 `ProcedureDeck` stays parked. Every other display lives in the right-edge
 **Displays** push column (`StationDisplaysPushStack` in
 `src/components/station/displays/`): Root Index → leaf drill-down for
-**Listings · Classify · Pairing · Inventory · Units · Photos · Ticket ·
+**Listings · Pairing · Inventory · Units · Photos · Ticket ·
 Checklist** (+ Tracking / Timeline / Support). Ticket is **presence-exclusive**
 (no linked ticket → Claim New · Link with ⌥1/⌥2; linked ticket → Chat —
 no Chat · Claim tabs); Photos is an **armed-row leaf** (default Actions via
@@ -394,9 +394,11 @@ event.
 
 **A timed dispatch cannot outrun a navigation.** `focusTab` is read on mount; a
 `focusRequestId` bump re-selects the avenue when the host asks again. Same
-handoff shape as `classifyExpand` → `TriageClassifySection`. Arrival mounts
-Classify in the centre door flow (under items); Unbox keeps Classify on Displays.
-Both use the same `classifyExpand` data handoff — never a timed event.
+handoff shape Arrival's `classifyExpand` → `TriageClassifySection` uses — never a
+timed event. Arrival mounts Classify in the centre door flow (under items);
+**Unbox has no Classify display** (dropped 2026-08-19) — urgency · platform ·
+type are `InlinePillPicker` menus on its carton identity bar, so a leaf was a
+second editor for the same three fields.
 
 **A display's URL vocabulary lives in ONE list.** `?display=` is round-tripped
 via `canonicalizeUnboxSideTab` in `UNBOX_ROUTE_PARAMS` (legacy `pairing` /
@@ -700,8 +702,10 @@ Receive means the same thing on every step.
   the `require_one` receive gate). That step is listed in
   `UNBOX_STEPS_WITHOUT_DOCK_ACTION` **with a reason** — a step in neither map
   fails CI, so an empty dock band is always a decision and never a gap.
-  `classify` mounts the shared `TriageClassifySection` via `classifySlot` (Band 1
-  grows for that step only — unfound dock-completable).
+  `classify`'s dock control is a one-row Continue that cues the carton identity
+  bar's own pills — the dock never remounts a classify editor (growing Band 1
+  shoved Print · Receive off the thumb floor), and since 2026-08-19 there is no
+  Displays leaf to send the operator to either.
 - **The leading zone crossfades on `activeKey` with `motionRole.swap.scan`** —
   the station-cadence preset with the `duration: 0` exit, never `swap.focus`. The
   trailing terminal sits outside that presence and never animates: it is the one
@@ -755,7 +759,7 @@ Parent shell (Unbox = pane outer: Unbox column + optional flush push column)
 
 Right edge (exactly one at a time, LineEditPanel wires the exclusion):
   Displays (`?display=<tab>`) ∪ `detail:receiving` ∪ AI
-  — Displays index (PO-identity first): Listings · Classify · Pairing · Inventory · Units ·
+  — Displays index (PO-identity first): Listings · Pairing · Inventory · Units ·
     Photos · Ticket · Tracking · Timeline · Support
     (Audit folds under Timeline; checklist = under-dock ring + Root Index leaf)
   — Ticket: presence-exclusive Claim vs Chat (`?ticketAction=` derived from

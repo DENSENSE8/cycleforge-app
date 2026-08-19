@@ -79,6 +79,11 @@ const DASHED_LOCATION_RE = /^([A-Z])-(\d{2})-(\d{2})-(\d{1,2})(?:-(\d{2}))?$/i;
 // of a non-GS1 location DataMatrix.
 const LOCATION_FLAT_RE = /^[A-Z]\d{7,8}$/i;
 
+// Punctuation-stripped platform Digital Link — see the RECOVERY branch in
+// `routeScan`. Right-anchored so a tenant slug containing `m` ("mycompany")
+// cannot be mistaken for the `/m/` path segment.
+const FLATTENED_MOBILE_LINK_RE = /^https?.*m([rlu])(\d+)$/i;
+
 function pathToRoute(path: string, value: string): ScanRoute | null {
   const m = MOBILE_PATH_RE.exec(path);
   if (m) {
@@ -166,6 +171,30 @@ export function routeScan(raw: string): ScanRoute | null {
   }
   if (value.startsWith('/')) {
     const matched = pathToRoute(value, value);
+    if (matched) return matched;
+  }
+
+  // 1b. RECOVERY — a punctuation-stripped Digital Link. An HID wedge running the
+  //     wrong keyboard country drops `:` `/` `.` and upper-cases the rest, so a
+  //     carton matrix WE printed arrives as `HTTPSUSAVAPPCYCLEFORGEAIMR51189`
+  //     instead of `https://usav.app.cycleforge.ai/m/r/51189`.
+  //
+  //     Without this the value reached the letter→bin fallback (§6), which types
+  //     it `bin` with NO redirect — so the receiving bar took it for an unknown
+  //     carrier tracking number and intook a NEW carton. One junk row per scan
+  //     of a sticker this app printed itself.
+  //
+  //     Anchored on a leading `https` with every separator gone: nothing a
+  //     scanner legitimately emits looks like that. Deliberately NOT keyed on
+  //     our own hostname — the installed base was printed against whatever host
+  //     was current then, and those stickers must keep resolving (nothing is
+  //     ever re-printed). The id must be digits: a `/m/u/{serial}` whose serial
+  //     carried a hyphen is genuinely unrecoverable, so it falls through rather
+  //     than being guessed at.
+  const flattened = FLATTENED_MOBILE_LINK_RE.exec(value.replace(/[^A-Za-z0-9]/g, ''));
+  if (flattened) {
+    const [, classKey, id] = flattened;
+    const matched = pathToRoute(`/m/${classKey.toLowerCase()}/${id}`, value);
     if (matched) return matched;
   }
 

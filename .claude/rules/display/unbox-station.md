@@ -95,7 +95,7 @@ listed in the matching either-or map with a reason. Guards:
 
 | Step key | Label | Gate / evidence | Dock ACTION (`UNBOX_STEP_DOCK_CONTROLS`) | KNOW `railLeaf` | Band 1 geometry |
 |---|---|---|---|---|---|
-| `classify` | Classify | Intake classified (`isIntakeClassified`) | `ClassifyDockControl` → `TriageClassifySection` | `classify` | **Grows** past `h-11` |
+| `classify` | Classify | Intake classified (`isIntakeClassified`) | `ClassifyDockControl` (one-row Continue) | **none** — the carton identity bar's own pills | `h-11` |
 | `arrival_label_photo` | Label photo | ≥1 `arrival_package` · `shipping_label` | `ArrivalPhotosDockControl` → `PhotoStepDockStrip` | `photos` | Left waist + right thirds: Link \| Upload \| Send |
 | `arrival_box_photo` | Box photo | ≥1 `arrival_package` · `box_exterior` | `ArrivalPhotosDockControl` → `PhotoStepDockStrip` | `photos` | Left waist + right thirds: Link \| Upload \| Send |
 | `packing_material` | Packing material | `unbox_carton` · `packing_material` | `CartonPhotoDockControl` | `photos` | Left waist + photo strip thirds |
@@ -178,7 +178,15 @@ horizontal icon plate in the centre.
 | Leaf | Job |
 |---|---|
 | Index | Status rows (`STATION_DISPLAY_INDEX`) |
-| `listings` · `classify` · `linkage` · `inventory` · `units` · `photos` · `ticket` · `tracking` · `timeline` · `support` · `checklist` | Operator tools + cockpit targets |
+| `listings` · `linkage` · `inventory` · `units` · `photos` · `ticket` · `tracking` · `timeline` · `support` · `checklist` | Operator tools + cockpit targets |
+
+**Classify is NOT a display (dropped 2026-08-19).** Urgency · platform · type are
+`InlinePillPicker` menus on the carton identity bar one row above the work plane,
+so a leaf here was a second editor for those exact three fields — sitting in the
+column the operator reads for *reference*. The `classify` step is therefore
+reference-less (`UNBOX_STEPS_WITHOUT_RAIL_LEAF`) and its dock control cues the
+bar. Arrival keeps its centre `TriageClassifySection`: its Displays column is
+Pairing only and it has no identity pills.
 
 **Leaf verb grammar:** armed rows + URL drills (`?photoAction=` / `?linkageAction=` /
 `?unitsAction=`) — never a nested parent `TabDisplay` for leaf actions. Photos golden:

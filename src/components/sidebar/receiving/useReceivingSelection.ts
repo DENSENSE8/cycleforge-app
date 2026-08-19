@@ -49,6 +49,8 @@ export interface ReceivingSelectionState {
    * recents. False only for a browse-feed click — see `readSelectLineDetail`.
    */
   recordView: boolean;
+  /** Preview stance open — pane paints, but nothing may be edited or written. */
+  preview: boolean;
 }
 
 export function useReceivingSelection({
@@ -62,6 +64,7 @@ export function useReceivingSelection({
   );
   const [scanDriven, setScanDriven] = useState(false);
   const [recordView, setRecordView] = useState(true);
+  const [preview, setPreview] = useState(false);
   const [scanMatchedRows, setScanMatchedRows] = useState<ReceivingLineRow[]>([]);
 
   // Refs the handlers read so the single subscription never re-binds on
@@ -116,7 +119,7 @@ export function useReceivingSelection({
     // a History-mode click has no workspace mount, so deep-link into Unbox
     // (same contract as cmd+k / search hits).
     'receiving-select-line': (detail) => {
-      const { row, expandFlowSections, recordView: shouldRecordView } =
+      const { row, expandFlowSections, recordView: shouldRecordView, preview: isPreview } =
         readSelectLineDetail(detail);
       const liveMode =
         typeof window !== 'undefined'
@@ -142,6 +145,9 @@ export function useReceivingSelection({
       // Clearing (row === null) must not leave a stale "don't record" behind for
       // the next scan — reset to the default whenever the selection empties.
       setRecordView(row == null ? true : shouldRecordView);
+      // Same reset rule as recordView: clearing must not leave a stale
+      // read-only lease over the NEXT carton the operator actually scans.
+      setPreview(row != null && isPreview);
       setScanMatchedRows([]);
     },
     'receiving-line-updated': (updated) => {
@@ -208,5 +214,6 @@ export function useReceivingSelection({
     scanDriven,
     setScanDriven,
     recordView,
+    preview,
   };
 }

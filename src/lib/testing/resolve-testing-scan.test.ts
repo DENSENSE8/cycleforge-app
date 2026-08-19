@@ -50,6 +50,33 @@ test('PO / order / tracking values are NOT codes (keep lookup-po routing)', () =
   }
 });
 
+test('a PRINTED carton label is a code — every form the encoder can mint', () => {
+  // The regression this closes: the predicate used a bare `^(R|RCV)-\\d+$`
+  // regex, so it answered FALSE for the exact payload the app prints (an
+  // absolute Digital Link). The unbox bar therefore skipped the canonical-code
+  // resolver and sent a scanned carton down carrier-tracking intake, minting a
+  // duplicate carton per scan.
+  for (const v of [
+    'https://usav.app.cycleforge.ai/m/r/51189', // what encodePrintMatrix emits
+    '/m/r/51189',                               // bare path (proxy rewrite)
+    'HTTPSUSAVAPPCYCLEFORGEAIMR51189',          // wedge dropped the punctuation
+    'https://usav.app.cycleforge.ai/m/l/77',    // printed LINE matrix
+  ]) {
+    strictEqual(looksLikeReceivingCode(v), true, `${v} should be a code`);
+  }
+});
+
+test('a mangled URL must not swallow ordinary scans', () => {
+  for (const v of [
+    'https://usav.app.cycleforge.ai/inventory?bin=A0101101', // bin URL, not /m/
+    'HTTPSUSAVAPPCYCLEFORGEAIMRS33',   // repair (/m/rs/) — not a carton
+    'HTTPSUSAVAPPCYCLEFORGEAIMR',      // no id at all
+    'MR51189',                         // no https anchor
+  ]) {
+    strictEqual(looksLikeReceivingCode(v), false, `${v} should NOT be a code`);
+  }
+});
+
 test('surrounding whitespace is tolerated', () => {
   strictEqual(looksLikeReceivingCode('  R-1234  '), true);
   strictEqual(looksLikeReceivingCode('\tH-9\n'), true);

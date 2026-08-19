@@ -26,8 +26,14 @@ export interface AiSearchHit {
   title: string;
   subtitle: string;
   href: string;
-  matchField: string;
-  score: number;
+  /**
+   * Ranking inputs — RANKING happens server-side, so `/api/ai/retrieve` strips
+   * both from the wire (see its `toWireHit`). Optional here because other
+   * producers of this shape (CommandBar's local mapping, support-ticket
+   * search) still set them.
+   */
+  matchField?: string;
+  score?: number;
   chips?: AiSearchHitChip[];
   facets?: Record<string, string | null>;
 }

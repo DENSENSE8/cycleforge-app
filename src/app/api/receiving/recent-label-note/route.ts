@@ -2,9 +2,10 @@
  * GET /api/receiving/recent-label-note?excludeLineId=
  *
  * Sticker-center note from the **newest scanned carton that has a face note**
- * (walk `receiving_scans` newest-first; skip blank cartons; exclude the open
- * carton), taken from the line on that carton touched last and reading `notes`
- * before the older `label_note`. Powers Unbox notes-composer Recent.
+ * (walk `receiving_scans` newest-first ACROSS THE ORG; skip blank cartons;
+ * exclude the open carton), taken from the line on that carton touched last and
+ * reading `notes` before the older `label_note`. Powers Unbox notes-composer
+ * Recent.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -23,17 +24,10 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
     }
     const { excludeLineId } = parsed;
     const orgId = ctx.organizationId;
-    const row =
-      (await fetchMostRecentProcessedLabelNote(orgId, {
-        excludeLineId,
-        staffId: ctx.staffId,
-      })) ??
-      // Fallback: org-wide scan walk when this operator has no prior scanned
-      // carton with a face note (shared bench / first scan of the shift).
-      (await fetchMostRecentProcessedLabelNote(orgId, {
-        excludeLineId,
-        staffId: null,
-      }));
+    // ORG-WIDE, never scoped to this operator's own scans: the bench is shared
+    // (one operator scans in, another labels), so "prefer mine" served a
+    // nine-day-old phrase over yesterday's. See the server module's docblock.
+    const row = await fetchMostRecentProcessedLabelNote(orgId, { excludeLineId });
 
     return NextResponse.json({
       success: true,

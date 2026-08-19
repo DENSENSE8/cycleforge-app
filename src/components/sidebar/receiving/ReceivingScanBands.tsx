@@ -19,6 +19,8 @@ import {
   ReceivingUnboxScanBar,
   type UnboxScanMode,
 } from '@/components/sidebar/receiving/ReceivingUnboxScanBar';
+import type { ReactNode } from 'react';
+import type { UnboxPreviewHit } from '@/lib/receiving/preview-scan';
 import type { StationTheme } from '@/hooks/useStationTheme';
 
 interface TriageScanBandProps {
@@ -35,6 +37,8 @@ interface TriageScanBandProps {
    */
   batchSortArmed?: boolean;
   batchCount?: number;
+  /** Recent-rail facet popover — mounted only in Preview stance (see UnboxScanBand). */
+  filterSlot?: ReactNode;
 }
 
 /**
@@ -52,6 +56,7 @@ export function TriageScanBand({
   isResolving,
   batchSortArmed = false,
   batchCount = 0,
+  filterSlot,
 }: TriageScanBandProps) {
   const placeholder = batchSortArmed
     ? batchCount > 0
@@ -77,13 +82,18 @@ export function TriageScanBand({
           batchSortArmed ? STATION_SCAN_BAR_SESSION_CAPTURE_BOTTOM_RULE_CLASS : undefined
         }
         rightContent={
-          batchSortArmed ? (
-            <span
-              className="flex h-full shrink-0 items-center justify-center px-2 text-role-caption font-semibold uppercase tracking-wide text-amber-800"
-              aria-live="polite"
-            >
-              Batch sort
-            </span>
+          batchSortArmed || filterSlot ? (
+            <>
+              {filterSlot}
+              {batchSortArmed ? (
+                <span
+                  className="flex h-full shrink-0 items-center justify-center px-2 text-role-caption font-semibold uppercase tracking-wide text-amber-800"
+                  aria-live="polite"
+                >
+                  Batch sort
+                </span>
+              ) : null}
+            </>
           ) : undefined
         }
       />
@@ -101,6 +111,16 @@ interface UnboxScanBandProps {
   staffId: string;
   armedMode: UnboxScanMode | null;
   onToggleMode: (mode: UnboxScanMode) => void;
+  /** Recent-rail facet popover — mounted only in Preview stance. */
+  filterSlot?: ReactNode;
+  /**
+   * Preview stance READ — resolve the value and open the station read-only.
+   * Returns the resolved carton, or null when nothing is on file.
+   */
+  previewLookup?: (
+    value: string,
+    mode: UnboxScanMode | null,
+  ) => Promise<UnboxPreviewHit | null>;
 }
 
 /** Mode-toggling scan entry for the Unbox workspace. */
@@ -114,6 +134,8 @@ export function UnboxScanBand({
   staffId,
   armedMode,
   onToggleMode,
+  filterSlot,
+  previewLookup,
 }: UnboxScanBandProps) {
   return (
     <ScanBandShell themeColor={themeColor}>
@@ -126,6 +148,8 @@ export function UnboxScanBand({
         staffId={staffId}
         armedMode={armedMode}
         onToggleMode={onToggleMode}
+        filterSlot={filterSlot}
+        previewLookup={previewLookup}
       />
     </ScanBandShell>
   );
@@ -139,6 +163,8 @@ interface PickupScanBandProps {
   inputRef: React.Ref<HTMLInputElement>;
   staffId?: string | number | null;
   isResolving?: boolean;
+  /** Recent-rail facet popover — mounted only in Preview stance. */
+  filterSlot?: ReactNode;
 }
 
 /**
@@ -153,6 +179,7 @@ export function PickupScanBand({
   inputRef,
   staffId,
   isResolving = false,
+  filterSlot,
 }: PickupScanBandProps) {
   return (
     <ScanBandShell themeColor={themeColor}>
@@ -167,6 +194,7 @@ export function PickupScanBand({
         className="w-full"
         leadingColumn="rail"
         isResolving={isResolving}
+        rightContent={filterSlot ?? undefined}
       />
     </ScanBandShell>
   );

@@ -12,7 +12,6 @@ import {
 import type { UnboxSideTabGates } from './unbox-side-tabs';
 
 const MATCHED: UnboxSideTabGates = {
-  hasClassifyTab: true,
   hasLinkageTab: true,
   hasInventoryTab: true,
   hasListingsTab: true,
@@ -42,18 +41,21 @@ test('checklist appears on the Root Index (floor % ring deleted)', () => {
   assert.equal(rows.at(-1)?.id, 'checklist');
 });
 
-test('matched carton emits Listings · Classify · Pairing · Inventory · Units · Prebox first', () => {
+test('matched carton emits Listings · Pairing · Inventory · Units · Prebox first', () => {
   const rows = buildUnboxDisplayIndexRows(MATCHED, { ...BASE_SIGNALS, serialCount: 2 });
   assert.deepEqual(
-    rows.slice(0, 6).map((r) => r.id),
-    ['listings', 'classify', 'linkage', 'inventory', 'units', 'prebox'],
+    rows.slice(0, 5).map((r) => r.id),
+    ['listings', 'linkage', 'inventory', 'units', 'prebox'],
   );
+  // Classify is not a display — its three fields are InlinePillPicker menus on
+  // the carton identity bar, so a leaf here was a second editor (dropped
+  // 2026-08-19).
+  assert.equal(rows.some((r) => r.id === 'classify'), false);
 });
 
 test('Unbox rows carry PO-identity · stock · context groups', () => {
   const rows = buildUnboxDisplayIndexRows(MATCHED, BASE_SIGNALS);
   assert.equal(rows.find((r) => r.id === 'listings')?.group, 'verification');
-  assert.equal(rows.find((r) => r.id === 'classify')?.group, 'verification');
   assert.equal(rows.find((r) => r.id === 'linkage')?.group, 'verification');
   assert.equal(rows.find((r) => r.id === 'inventory')?.group, 'assets');
   assert.equal(rows.find((r) => r.id === 'photos')?.group, 'assets');
@@ -65,8 +67,7 @@ test('Unbox rows carry PO-identity · stock · context groups', () => {
 
 test('sparse gates hide units · listings · tracking · timeline — Prebox stays', () => {
   const sparse: UnboxSideTabGates = {
-    hasClassifyTab: true,
-    hasLinkageTab: true,
+      hasLinkageTab: true,
     hasInventoryTab: true,
     hasListingsTab: false,
     hasUnits: false,
@@ -78,25 +79,23 @@ test('sparse gates hide units · listings · tracking · timeline — Prebox sta
   assert.ok(ids.includes('ticket'));
   assert.ok(ids.includes('photos'));
   assert.ok(ids.includes('prebox'));
-  assert.ok(ids.includes('classify'));
+  assert.equal(ids.includes('classify'), false);
   assert.equal(ids.includes('units'), false);
   assert.equal(ids.includes('listings'), false);
   assert.equal(ids.includes('tracking'), false);
   assert.equal(ids.includes('timeline'), false);
 });
 
-test('ticket / photos / linkage / classify subtitles + tones', () => {
+test('ticket / photos / linkage subtitles + tones', () => {
   const action = buildUnboxDisplayIndexRows(MATCHED, BASE_SIGNALS);
   assert.equal(action.find((r) => r.id === 'ticket')?.subtitle, 'No ticket');
   assert.equal(action.find((r) => r.id === 'ticket')?.tone, 'neutral');
   assert.equal(action.find((r) => r.id === 'photos')?.subtitle, 'None');
-  assert.equal(action.find((r) => r.id === 'classify')?.tone, 'action');
 
   const ok = buildUnboxDisplayIndexRows(MATCHED, {
     ...BASE_SIGNALS,
     hasTicketId: true,
     photoCount: 3,
-    classifyLabel: 'Return',
     serialCount: 2,
     linkagePaired: true,
     trackingPresent: true,
@@ -104,7 +103,6 @@ test('ticket / photos / linkage / classify subtitles + tones', () => {
   assert.equal(ok.find((r) => r.id === 'ticket')?.tone, 'ok');
   assert.equal(ok.find((r) => r.id === 'photos')?.subtitle, '3 photos');
   assert.equal(ok.find((r) => r.id === 'linkage')?.subtitle, 'Paired');
-  assert.equal(ok.find((r) => r.id === 'classify')?.subtitle, 'Return');
   assert.equal(ok.find((r) => r.id === 'units')?.subtitle, '2 serials');
   assert.equal(ok.find((r) => r.id === 'tracking')?.tone, 'ok');
 });

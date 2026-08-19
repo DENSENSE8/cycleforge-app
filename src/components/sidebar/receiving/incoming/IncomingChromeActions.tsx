@@ -84,7 +84,7 @@ export function IncomingChromeActions({
               icon={importing ? <Loader2 className="animate-spin" /> : <RefreshCw />}
               className={cn(
                 WORKBENCH_CHROME_PILL_CLASS,
-                'font-semibold uppercase tracking-widest',
+                'h-full font-semibold uppercase tracking-widest',
               )}
             >
               {importing ? 'Syncing…' : 'Import'}
@@ -155,7 +155,7 @@ export function IncomingChromeActions({
           onClick={onAdd}
           ariaLabel="Add inbound purchase or return"
           icon={<Plus />}
-          className={cn(WORKBENCH_CHROME_PILL_CLASS, 'font-semibold uppercase tracking-widest')}
+          className={cn(WORKBENCH_CHROME_PILL_CLASS, 'h-full font-semibold uppercase tracking-widest')}
         >
           Add
         </Button>

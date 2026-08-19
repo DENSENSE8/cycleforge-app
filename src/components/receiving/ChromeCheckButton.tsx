@@ -23,7 +23,8 @@ import { cn } from '@/utils/_cn';
 /** Flush workbench-chrome CTA face (soft pill + condensed uppercase). */
 const CHROME_CTA_FACE = cn(
   WORKBENCH_CHROME_PILL_CLASS,
-  'font-semibold uppercase tracking-widest',
+  // Fills the PRIMARY chrome row — never taller than the band it sits in.
+  'h-full font-semibold uppercase tracking-widest',
 );
 
 export function ChromeCheckButton({

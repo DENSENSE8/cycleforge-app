@@ -10,7 +10,7 @@
  *
  * Nested modes on leaves ride the same snapshot via `setDisplay(tab, opts)`:
  *   - Photos: `photoAction` move|send|compare|actions
- *   - Linkage: `linkageAction` link|note
+ *   - Linkage: `linkageAction` link|return|note
  *   - Ticket: `ticketAction` chat|claim + `claimMode` create|link
  * Prebox is a peer Assets leaf (not a Units nest).
  *
@@ -109,9 +109,15 @@ export function buildDisplayPending(
 
   let linkageActionRaw: string | null = null;
   if (tab === 'linkage') {
+    // Every drill this snapshot can carry must be listed. An unlisted verb
+    // falls to `null` = the actions list, so the row it came from reads as a
+    // DEAD BUTTON — which is exactly how `return` shipped on 2026-08-19: the
+    // parser accepted it, the leaf rendered it, and the writer quietly threw it
+    // away one layer earlier. Keep this in lockstep with `UnboxLinkageAction`.
     if (opts?.linkageAction === 'note') linkageActionRaw = 'note';
     else if (opts?.linkageAction === 'link') linkageActionRaw = 'link';
-    else linkageActionRaw = null; // actions list (Back target for Link · Note)
+    else if (opts?.linkageAction === 'return') linkageActionRaw = 'return';
+    else linkageActionRaw = null; // actions list (Back target for the drills)
   }
   if (rawDisplay === 'po-note' && tab === 'linkage' && !opts?.linkageAction) {
     linkageActionRaw = 'note';

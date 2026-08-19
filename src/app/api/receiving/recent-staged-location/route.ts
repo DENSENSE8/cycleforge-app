@@ -21,15 +21,12 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
       );
     }
     const orgId = ctx.organizationId;
-    const row =
-      (await fetchMostRecentStagedLocation(orgId, {
-        excludeLineId: parsed.excludeLineId,
-        staffId: ctx.staffId,
-      })) ??
-      (await fetchMostRecentStagedLocation(orgId, {
-        excludeLineId: parsed.excludeLineId,
-        staffId: null,
-      }));
+    // ORG-WIDE — never scoped to this operator's own stages. Same ruling as the
+    // note twin: a shared bench must answer with the newest stage on the floor,
+    // not with my stalest one.
+    const row = await fetchMostRecentStagedLocation(orgId, {
+      excludeLineId: parsed.excludeLineId,
+    });
 
     return NextResponse.json({
       success: true,

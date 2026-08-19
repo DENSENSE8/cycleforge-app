@@ -220,6 +220,36 @@ const WILD_PAYLOAD_FORMS: WildForm[] = [
     redirect: '/m/r/1234',
   },
 
+  {
+    // NOT a form we mint — it is the rung-3 carton row above as delivered by an
+    // HID wedge running the wrong keyboard country: every separator dropped and
+    // the rest upper-cased. It is in the wild the moment a bench has one such
+    // scanner, and it decoded to `bin`-with-no-redirect until 2026-08-19, which
+    // made the receiving bar intake a duplicate carton on every scan.
+    what: 'platform Digital Link — carton, punctuation stripped by the wedge',
+    rung: 3,
+    mint: null,
+    value: 'HTTPSUSAVAPPCYCLEFORGEAIMR1234',
+    type: 'receiving',
+    redirect: '/m/r/1234',
+  },
+  {
+    what: 'platform Digital Link — carton, colon eaten but slashes intact',
+    rung: 3,
+    mint: null,
+    value: 'https//usav.app.cycleforge.ai/m/r/1234',
+    type: 'receiving',
+    redirect: '/m/r/1234',
+  },
+  {
+    what: 'platform Digital Link — line, punctuation stripped by the wedge',
+    rung: 3,
+    mint: null,
+    value: 'HTTPSUSAVAPPCYCLEFORGEAIML77',
+    type: 'receiving-line',
+    redirect: '/m/l/77',
+  },
+
   // ── Rung 4 · bare handles + the flat location code ────────────────────────
   {
     what: 'bare flat location code — no licensed GLN',
@@ -318,6 +348,16 @@ test('EVERY payload form in the wild decodes to the right entity', () => {
       strictEqual(r!.type, f.type, `${f.what} → type`);
       if (f.redirect) strictEqual(r!.redirect, f.redirect, `${f.what} → redirect`);
     }
+  });
+});
+
+test('a flattened link is matched right-to-left — a slug with an "m" cannot steal the path', () => {
+  withAppHost(() => {
+    // `mycompany` contains the letter the `/m/` segment is anchored on. Greedy
+    // matching takes the LAST candidate, so the path segment still wins.
+    const r = routeScan('HTTPSMYCOMPANYAPPCYCLEFORGEAIMR1234');
+    strictEqual(r?.type, 'receiving');
+    strictEqual(r?.redirect, '/m/r/1234');
   });
 });
 

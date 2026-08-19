@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type RefObject } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Copy, Loader2, MessageSquare } from '@/components/Icons';
+import { Copy, Loader2, MessageSquare, Send } from '@/components/Icons';
 import { toast } from '@/lib/toast';
 import { AnchoredLayer } from '@/design-system/primitives/AnchoredLayer';
 import { Panel, Button } from '@/design-system/primitives';
@@ -124,7 +124,7 @@ export function SellerMessageMenuItem({
       type="button"
       role="menuitem"
       onClick={onClick}
-      aria-label="Seller message draft"
+      aria-label="Message the seller"
       aria-expanded={active}
       className={cn(
         CHIP_HOVER_MENU_ITEM_CLASS,
@@ -132,8 +132,10 @@ export function SellerMessageMenuItem({
         CHIP_HOVER_MENU_ITEM_TONE.default,
       )}
     >
-      <MessageSquare className="h-3.5 w-3.5 shrink-0 text-text-soft" />
-      Message
+      {/* Send, not MessageSquare — the thread row above it now owns that glyph;
+          this row composes an outbound draft to the seller. */}
+      <Send className="h-3.5 w-3.5 shrink-0 text-text-soft" />
+      Seller
     </button>
   );
 }

@@ -24,7 +24,6 @@ import {
   MessageSquare,
   Boxes,
   Package,
-  SlidersHorizontal,
   Ticket,
 } from '@/components/Icons';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
@@ -37,7 +36,6 @@ import type {
 import { TrackingNumbersTab } from '../TrackingNumbersTab';
 import { ListingLinksTab } from '../ListingLinksTab';
 import { UnboxLocationsLeaf } from '../UnboxLocationsLeaf';
-import { TriageClassifySection } from '@/components/receiving/triage/TriageClassifySection';
 import type { ClaimModalMode } from '../../claim/claim-types';
 import { isReturnIntake } from '@/lib/receiving/triage-intake-kind';
 import { DisplaysLeafBodySkeleton } from '@/components/station/displays/DisplaysLeafBodySkeleton';
@@ -109,10 +107,6 @@ export interface BuildUnboxTabsInput {
   hasTimelineTab: boolean;
   hasTrackingTab: boolean;
   hasListingsTab: boolean;
-  /** Always true — Classify is the SoT editor (strip for unfound, overflow for matched). */
-  hasClassifyTab: boolean;
-  /** Unfound: Classify stays on the strip. Matched: under ⋯. */
-  classifyOnStrip: boolean;
   /** Linkage (Pairing + Zoho note) needs a carton record. */
   hasLinkageTab: boolean;
   /** Inventory dossier — same carton gate as Linkage. */
@@ -142,10 +136,7 @@ export interface BuildUnboxTabsInput {
   onCloseTicket: () => void;
   onClaimTicketCreated: (ticketNumber: string) => void;
   onClaimTicketUnlinked: () => void;
-  /** Header classify pill → open this dimension in TriageClassifySection. */
-  classifyExpandDimension?: 'urgency' | 'platform' | 'type' | null;
   /** Bump to re-open the same dimension from the header. */
-  classifyExpandRequestId?: number;
   /**
    * Carton `# ----` handoff — which pairing tab the Linkage Link display opens on.
    */
@@ -244,7 +235,7 @@ export function buildUnboxOverview(
 /**
  * Build the Unbox side displays for the Displays push column.
  *
- * Strip (PO-identity first): Listings · Classify · Pairing · Inventory · Units ·
+ * Strip (PO-identity first): Listings · Pairing · Inventory · Units ·
  * Photos · Ticket · Tracking · Timeline · Support. Ticket is presence-exclusive
  * (Claim vs Chat — no nested tabs). Inventory is one stacked dossier (no nested
  * tabs). Photos is armed-row Actions + URL drills. Units · Linkage still nest
@@ -262,8 +253,6 @@ export function buildUnboxSideTabs(input: BuildUnboxTabsInput): SectionTab[] {
     hasTimelineTab,
     hasTrackingTab,
     hasListingsTab,
-    hasClassifyTab,
-    classifyOnStrip,
     hasLinkageTab,
     hasInventoryTab,
     poIdForTracking,
@@ -284,8 +273,6 @@ export function buildUnboxSideTabs(input: BuildUnboxTabsInput): SectionTab[] {
     onCloseTicket,
     onClaimTicketCreated,
     onClaimTicketUnlinked,
-    classifyExpandDimension = null,
-    classifyExpandRequestId = 0,
     pairingFocusTab = null,
     pairingFocusRequestId = 0,
     onFindTicket,
@@ -310,24 +297,6 @@ export function buildUnboxSideTabs(input: BuildUnboxTabsInput): SectionTab[] {
       ),
     },
     {
-      id: 'classify',
-      label: 'Classify',
-      icon: SlidersHorizontal,
-      visible: hasClassifyTab,
-      // Unfound still promotes Classify on any legacy strip; matched keeps it
-      // index-first via UNBOX_STRIP_TAB_ORDER regardless of overflow priority.
-      priority: classifyOnStrip ? 'primary' : 'overflow',
-      content: (
-        <TriageClassifySection
-          row={row}
-          c={c}
-          expandDimension={classifyExpandDimension}
-          expandRequestId={classifyExpandRequestId}
-          onFindTicket={onFindTicket}
-        />
-      ),
-    },
-    {
       id: 'linkage',
       label: 'Pairing',
       icon: Link2,
@@ -343,6 +312,8 @@ export function buildUnboxSideTabs(input: BuildUnboxTabsInput): SectionTab[] {
             poNote={poNote}
             pairingFocusTab={pairingFocusTab}
             pairingFocusRequestId={pairingFocusRequestId}
+            onFindTicket={onFindTicket}
+            ticketLabel={c.supportTicket?.label ?? null}
             autoMatch={
               c.isUnfound
                 ? {
@@ -464,7 +435,7 @@ export function buildUnboxSideTabs(input: BuildUnboxTabsInput): SectionTab[] {
       id: 'checklist',
       label: 'Checklist',
       icon: ClipboardList,
-      // Flush Displays body — no WorkspaceCard glass island (Classify / Pairing SoT).
+      // Flush Displays body — no WorkspaceCard glass island (Pairing SoT).
       content: <UnboxProcedureChecklist row={row} />,
     },
     {

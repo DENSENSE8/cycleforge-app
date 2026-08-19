@@ -10,6 +10,7 @@
  * white — same treatment as the copy-chip identity dots.
  */
 
+import { type CSSProperties } from 'react';
 import { Flag } from '@/components/Icons';
 import { PlatformMark } from '@/components/ui/PlatformMark';
 import { TOP_CHROME_ICON_GLYPH } from '@/components/layout/header-shell';
@@ -76,6 +77,41 @@ export function urgencyClassifyOptions(args: {
   ];
 }
 
+/**
+ * The resolved identity dot for ONE catalog row — the single ladder every
+ * surface that paints a platform / type mark descends:
+ *
+ *   org accent (`color_hex`) → built-in registry tone → neutral
+ *
+ * Exported because the catalog MANAGER lists the same rows and must show the
+ * same dot the carton bar will paint; a second resolver there would drift the
+ * moment a registry tone changed. Returns a Tailwind class OR an inline style
+ * (never both) — a derived hex has no class to name it.
+ */
+export function catalogIdentityDot(args: {
+  kind: 'platform' | 'type';
+  /** Platform slug (lowercase) or type slug (uppercase) — as stored. */
+  value: string;
+  label: string;
+  colorHex?: string | null;
+}): { className?: string; style?: CSSProperties } {
+  const paint = args.colorHex ? platformPaintFromHex(args.colorHex) : null;
+  if (args.kind === 'type') {
+    // ds-allow-hex: derived accent from types.color_hex via the contrast SoT.
+    if (paint) return { style: { backgroundColor: paint.accent } };
+    return { className: receivingTypeMeta(args.value).text.replace(/^text-/, 'bg-') };
+  }
+  const meta = sourcePlatformMeta(args.value);
+  const markMeta = {
+    ...meta,
+    value: meta.value || args.value.toLowerCase(),
+    label: args.label,
+    ...(paint ? { accentHex: paint.accent } : null),
+  };
+  const brandDot = platformMetaBrandDot(markMeta);
+  return { className: brandDot.className, style: brandDot.style };
+}
+
 export function platformClassifyOptions(args: {
   catalogOptions: Array<{ value: string; label: string; colorHex?: string | null }>;
   isUnmatched: boolean;
@@ -100,11 +136,12 @@ export function platformClassifyOptions(args: {
     ...unfound,
     ...catalogOptions.map((o) => {
       const meta = sourcePlatformMeta(o.value);
-      const paint = o.colorHex ? platformPaintFromHex(o.colorHex) : null;
-      const markMeta = paint
-        ? { ...meta, value: meta.value || o.value.toLowerCase(), label: o.label, accentHex: paint.accent }
-        : { ...meta, value: meta.value || o.value.toLowerCase(), label: o.label };
-      const brandDot = platformMetaBrandDot(markMeta);
+      const brandDot = catalogIdentityDot({
+        kind: 'platform',
+        value: o.value,
+        label: o.label,
+        colorHex: o.colorHex,
+      });
       return {
         value: o.value,
         label: o.label,
@@ -127,20 +164,35 @@ export function platformClassifyOptions(args: {
 }
 
 export function typeClassifyOptions(args: {
-  catalogOptions: Array<{ value: string; label: string }>;
+  catalogOptions: Array<{ value: string; label: string; colorHex?: string | null }>;
 }): InlinePillOption[] {
   return args.catalogOptions
     .filter((o) => o.value !== 'PICKUP')
     .map((o) => {
       const meta = receivingTypeMeta(o.value);
-      const typeDot = meta.text.replace(/^text-/, 'bg-');
+      // Org accent (`types.color_hex`) beats the built-in registry tone — the
+      // same ladder platforms use, and the only answer for a CUSTOM type, which
+      // `receivingTypeMeta` can only resolve to the neutral tag face.
+      const { className: dotClass, style: dotStyle } = catalogIdentityDot({
+        kind: 'type',
+        value: o.value,
+        label: o.label,
+        colorHex: o.colorHex,
+      });
       return {
         value: o.value,
         label: o.label,
         shortLabel: meta.short,
         title: o.label,
-        face: <span className={`h-2 w-2 shrink-0 rounded-full ${typeDot}`} aria-hidden />,
-        dotClass: typeDot,
+        face: (
+          <span
+            className={`h-2 w-2 shrink-0 rounded-full ${dotClass ?? ''}`}
+            style={dotStyle}
+            aria-hidden
+          />
+        ),
+        dotClass,
+        dotStyle,
         activeClass: IDENTITY_FACE,
         inactiveClass: IDENTITY_FACE_IDLE,
       } satisfies InlinePillOption;

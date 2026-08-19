@@ -5,9 +5,11 @@
  * Testing, and Arrival.
  *
  * One host, two presentations:
- *   • Auto-match — `UnfoundMatchStrip` flush action row when `autoMatch` is set
- *     (unfound only). Toolkit: Find ticket (→ Ticket display · claim tabs) ·
- *     Return # · Zoho · Amazon return.
+ *   • Auto-match — `UnfoundMatchStrip` armed verb ROWS **below** the search,
+ *     when `autoMatch` is set (unfound only). Toolkit: Find ticket (→ Ticket
+ *     display · claim tabs) · Return # · Store · Zoho · Amazon return. Unbox
+ *     passes `autoMatch={null}` — its pairing verbs live one level up, on the
+ *     Linkage leaf's actions list ({@link LinkageDisplayHost}).
  *   • Pairing — avenue switcher + attach bodies (Inventory · PO · Store).
  *     Ticket create/link lives on the Ticket Displays topic
  *     (`ReceivingClaimPanel` New ticket · Link existing) — never a Pairing
@@ -18,7 +20,7 @@
  *   • `chrome` — `bare` (Station Displays push — Arrival · Unbox · Testing): no
  *     duplicate title / pencil; Pairing secondary-token dropdown; flush plane
  *     (no WorkspaceCard island). `card`: WorkspaceCard + dense slider. Both
- *     mount the Auto-match strip above Pairing when unfound.
+ *     mount the Auto-match rows BELOW the search when unfound.
  *   • `autoFocusSearch` — Unbox desk may focus; Arrival Station never
  *
  * Multi-link: order/PO collapses the picker; tickets stay on ReceivingTicketChip.
@@ -140,7 +142,12 @@ type CartonMatchHubProps = {
   /** Arrival accordion header toggle. */
   onToggleCollapsed?: () => void;
   showTopRule?: boolean;
-  /** When set and carton is unfound, Quick-match (Auto-match) lives inside this hub. */
+  /**
+   * When set and the carton is unfound, the Auto-match toolkit renders inside
+   * this hub, **below** the search. Unbox passes `null`: its pairing verbs are
+   * peers of Link on the Linkage leaf's actions list, not controls buried under
+   * the Link body's own search results.
+   */
   autoMatch?: CartonMatchAutoMatch | null;
 };
 
@@ -597,11 +604,22 @@ function MatchHubCard({
 
   const body = (
     <div className="min-w-0 max-w-full">
-      {/* Auto-match toolkit above Pairing — bare and card share this presentation. */}
-      {!embedded && quickMatchStrip ? <div className="mb-3">{quickMatchStrip}</div> : null}
-
+      {/*
+       * FIND LEADS (2026-08-19). Avenue combobox + that avenue's search field
+       * sit at the TOP; the Auto-match toolkit follows below the results.
+       * Searching for the order IS the job here — the toolkit is the fallback
+       * you reach for when the search does not find it — so it must not push
+       * the search field down (it did, and on a ~300px Displays column that put
+       * the field below the fold).
+       *
+       * On Unbox the toolkit is not here at all: that surface's pairing level
+       * is the Linkage leaf's own actions list, so `autoMatch` arrives null and
+       * this body is combobox + search only. Hosts whose pairing surface IS
+       * this hub (Arrival · Testing · Incoming) keep it inline.
+       */}
       {avenueSwitcher}
       {tabBody}
+      {!embedded && quickMatchStrip ? <div className="mt-3">{quickMatchStrip}</div> : null}
     </div>
   );
 

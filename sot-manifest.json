@@ -30,7 +30,7 @@
     "src/lib/orders-sync",
     "src/hooks"
   ],
-  "count": 2714,
+  "count": 2715,
   "entries": [
     {
       "job": "Station: Scan pane + Displays push",
@@ -668,20 +668,22 @@
       "snippet": "**Frame budgets** live in `src/lib/right-rail/frame.ts` — desk center ≥ `MIN_WORK_SURFACE_PX` (784); station Displays keep center ≥ `STATION_PUSH_CENTER_FLOOR_PX` (720); gutters `0`. Right edge **pushes** via `RightRailHost` (`modal={false…"
     },
     {
-      "job": "Right-rail dismiss is host-owned.",
+      "job": "Right-rail dismiss is host-owned, ONE control, ONE closer.",
       "sot": "RightRailHost",
-      "path": null,
+      "path": "lib/right-rail/close.ts",
       "guard": null,
       "symbols": [
         "RightRailHost",
-        "closeAndCachePanel",
+        "X",
+        "closeRightPanel",
         "draftData",
+        "onClose",
         "handlePanelStoreKeydown"
       ],
       "kind": "law",
       "source": "AGENTS.md",
       "line": 80,
-      "snippet": "**Right-rail dismiss is host-owned.** `RightRailHost` paints the single `→|` and `closeAndCachePanel()` unmounts the occupant, caches `draftData`, and toasts Resume. Child views never mount a second close. Esc and Mod+Shift+R live in `hand…"
+      "snippet": "**Right-rail dismiss is host-owned, ONE control, ONE closer.** `RightRailHost` paints the single `X` (top-RIGHT); `closeRightPanel()` (`lib/right-rail/close.ts`) unmounts the occupant, caches `draftData`, toasts Resume, **and** runs the oc…"
     },
     {
       "job": "Ops chrome is flush-square",
@@ -1673,7 +1675,7 @@
       ],
       "kind": "code",
       "source": "src/components/dashboard/OutboundOrderChromeActions.tsx",
-      "line": 29,
+      "line": 30,
       "snippet": "export OutboundOrderChromeActions from src/components/dashboard/OutboundOrderChromeActions.tsx"
     },
     {
@@ -2232,7 +2234,7 @@
       ],
       "kind": "code",
       "source": "src/components/right-rail/DeskRailChromeRow.tsx",
-      "line": 48,
+      "line": 52,
       "snippet": "export DeskRailChromeRow from src/components/right-rail/DeskRailChromeRow.tsx"
     },
     {
@@ -2336,7 +2338,7 @@
       ],
       "kind": "code",
       "source": "src/components/right-rail/RailSelectionActions.tsx",
-      "line": 31,
+      "line": 30,
       "snippet": "export useRailActionSnapshot from src/components/right-rail/RailSelectionActions.tsx"
     },
     {
@@ -2349,7 +2351,7 @@
       ],
       "kind": "code",
       "source": "src/components/right-rail/RailSelectionActions.tsx",
-      "line": 43,
+      "line": 42,
       "snippet": "export useRailHeaderActions from src/components/right-rail/RailSelectionActions.tsx"
     },
     {
@@ -2362,7 +2364,7 @@
       ],
       "kind": "code",
       "source": "src/components/right-rail/RailSelectionActions.tsx",
-      "line": 66,
+      "line": 72,
       "snippet": "export RailSelectionBand from src/components/right-rail/RailSelectionActions.tsx"
     },
     {
@@ -2375,7 +2377,7 @@
       ],
       "kind": "code",
       "source": "src/components/right-rail/RailSelectionActions.tsx",
-      "line": 125,
+      "line": 130,
       "snippet": "export RailActionRegion from src/components/right-rail/RailSelectionActions.tsx"
     },
     {
@@ -2414,7 +2416,7 @@
       ],
       "kind": "code",
       "source": "src/components/right-rail/RightRailHost.tsx",
-      "line": 142,
+      "line": 151,
       "snippet": "export RightRailHost from src/components/right-rail/RightRailHost.tsx"
     },
     {
@@ -3831,7 +3833,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/master-nav/SpineTopPins.tsx",
-      "line": 63,
+      "line": 62,
       "snippet": "export SpineTopPins from src/components/sidebar/master-nav/SpineTopPins.tsx"
     },
     {
@@ -5482,7 +5484,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/incoming/IncomingAddInboundOverlay.tsx",
-      "line": 39,
+      "line": 37,
       "snippet": "export IncomingAddInboundOverlay from src/components/sidebar/receiving/incoming/IncomingAddInboundOverlay.tsx"
     },
     {
@@ -5495,7 +5497,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/incoming/IncomingBulkTrackingPanel.tsx",
-      "line": 425,
+      "line": 426,
       "snippet": "export IncomingBulkTrackingPanel from src/components/sidebar/receiving/incoming/IncomingBulkTrackingPanel.tsx"
     },
     {
@@ -5521,7 +5523,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/incoming/IncomingImportCsvOverlay.tsx",
-      "line": 29,
+      "line": 31,
       "snippet": "export IncomingImportCsvOverlay from src/components/sidebar/receiving/incoming/IncomingImportCsvOverlay.tsx"
     },
     {
@@ -5989,7 +5991,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/receiving-sidebar-shared.ts",
-      "line": 307,
+      "line": 316,
       "snippet": "export readSelectLineDetail from src/components/sidebar/receiving/receiving-sidebar-shared.ts"
     },
     {
@@ -6002,7 +6004,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/receiving-sidebar-shared.ts",
-      "line": 326,
+      "line": 345,
       "snippet": "export SELECT_CLASS from src/components/sidebar/receiving/receiving-sidebar-shared.ts"
     },
     {
@@ -6015,7 +6017,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/receiving-sidebar-shared.ts",
-      "line": 347,
+      "line": 366,
       "snippet": "export FLOW_SECTION_LABEL from src/components/sidebar/receiving/receiving-sidebar-shared.ts"
     },
     {
@@ -6028,7 +6030,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/receiving-sidebar-shared.ts",
-      "line": 349,
+      "line": 368,
       "snippet": "export RECEIVING_SCAN_RULE_LINE_CLASS from src/components/sidebar/receiving/receiving-sidebar-shared.ts"
     },
     {
@@ -6041,7 +6043,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/receiving-sidebar-shared.ts",
-      "line": 352,
+      "line": 371,
       "snippet": "export RECEIVING_CHIP_EDIT_BTN_CLASS from src/components/sidebar/receiving/receiving-sidebar-shared.ts"
     },
     {
@@ -6054,7 +6056,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/receiving-sidebar-shared.ts",
-      "line": 362,
+      "line": 381,
       "snippet": "export CLAIM_TYPE_OPTIONS from src/components/sidebar/receiving/receiving-sidebar-shared.ts"
     },
     {
@@ -6067,7 +6069,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/receiving-sidebar-shared.ts",
-      "line": 405,
+      "line": 424,
       "snippet": "export pendingScanReconcileKey from src/components/sidebar/receiving/receiving-sidebar-shared.ts"
     },
     {
@@ -6080,7 +6082,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/receiving-sidebar-shared.ts",
-      "line": 431,
+      "line": 450,
       "snippet": "export buildPendingScanStubRow from src/components/sidebar/receiving/receiving-sidebar-shared.ts"
     },
     {
@@ -6093,7 +6095,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/receiving-sidebar-shared.ts",
-      "line": 476,
+      "line": 495,
       "snippet": "export buildOptimisticUnmatchedPaneStub from src/components/sidebar/receiving/receiving-sidebar-shared.ts"
     },
     {
@@ -6106,7 +6108,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/receiving-sidebar-shared.ts",
-      "line": 516,
+      "line": 535,
       "snippet": "export isOptimisticUnmatchedPaneStub from src/components/sidebar/receiving/receiving-sidebar-shared.ts"
     },
     {
@@ -6119,7 +6121,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/receiving-sidebar-shared.ts",
-      "line": 536,
+      "line": 555,
       "snippet": "export isPendingTriageScanRow from src/components/sidebar/receiving/receiving-sidebar-shared.ts"
     },
     {
@@ -6132,7 +6134,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/receiving-sidebar-shared.ts",
-      "line": 556,
+      "line": 575,
       "snippet": "export buildUnmatchedStubRow from src/components/sidebar/receiving/receiving-sidebar-shared.ts"
     },
     {
@@ -6145,7 +6147,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/receiving-sidebar-shared.ts",
-      "line": 602,
+      "line": 621,
       "snippet": "export buildUnboxRailUnmatchedRow from src/components/sidebar/receiving/receiving-sidebar-shared.ts"
     },
     {
@@ -6158,7 +6160,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/receiving-sidebar-shared.ts",
-      "line": 634,
+      "line": 653,
       "snippet": "export buildMatchedStubRow from src/components/sidebar/receiving/receiving-sidebar-shared.ts"
     },
     {
@@ -6223,7 +6225,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/ReceivingScanBands.tsx",
-      "line": 45,
+      "line": 49,
       "snippet": "export TriageScanBand from src/components/sidebar/receiving/ReceivingScanBands.tsx"
     },
     {
@@ -6236,7 +6238,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/ReceivingScanBands.tsx",
-      "line": 107,
+      "line": 127,
       "snippet": "export UnboxScanBand from src/components/sidebar/receiving/ReceivingScanBands.tsx"
     },
     {
@@ -6249,7 +6251,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/ReceivingScanBands.tsx",
-      "line": 148,
+      "line": 174,
       "snippet": "export PickupScanBand from src/components/sidebar/receiving/ReceivingScanBands.tsx"
     },
     {
@@ -6511,19 +6513,6 @@
       "source": "src/components/sidebar/receiving/TestingScanBar.tsx",
       "line": 93,
       "snippet": "export TestingScanBar from src/components/sidebar/receiving/TestingScanBar.tsx"
-    },
-    {
-      "job": "Export: TriageCartonSearchBar",
-      "sot": "TriageCartonSearchBar",
-      "path": "src/components/sidebar/receiving/TriageCartonSearchBar.tsx",
-      "guard": null,
-      "symbols": [
-        "TriageCartonSearchBar"
-      ],
-      "kind": "code",
-      "source": "src/components/sidebar/receiving/TriageCartonSearchBar.tsx",
-      "line": 24,
-      "snippet": "export TriageCartonSearchBar from src/components/sidebar/receiving/TriageCartonSearchBar.tsx"
     },
     {
       "job": "Export: TriageCombinedList",
@@ -6912,7 +6901,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/useReceivingSelection.ts",
-      "line": 54,
+      "line": 56,
       "snippet": "export useReceivingSelection from src/components/sidebar/receiving/useReceivingSelection.ts"
     },
     {
@@ -6938,7 +6927,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/useReceivingWorkspaceBridge.ts",
-      "line": 45,
+      "line": 47,
       "snippet": "export useReceivingWorkspaceBridge from src/components/sidebar/receiving/useReceivingWorkspaceBridge.ts"
     },
     {
@@ -8888,7 +8877,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/displays/StationDisplaysPushColumn.tsx",
-      "line": 112,
+      "line": 113,
       "snippet": "export StationDisplaysPushColumn from src/components/station/displays/StationDisplaysPushColumn.tsx"
     },
     {
@@ -10266,7 +10255,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/receiving-grid/cells/ReceivingLocationCell.tsx",
-      "line": 15,
+      "line": 23,
       "snippet": "export ReceivingLocationCell from src/components/station/receiving-grid/cells/ReceivingLocationCell.tsx"
     },
     {
@@ -10669,7 +10658,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/receiving-lines-table-helpers.ts",
-      "line": 44,
+      "line": 54,
       "snippet": "export dispatchLineUpdated from src/components/station/receiving-lines-table-helpers.ts"
     },
     {
@@ -10682,7 +10671,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/receiving-lines-table-helpers.ts",
-      "line": 49,
+      "line": 59,
       "snippet": "export ReceivingPackageUpdatedDetail from src/components/station/receiving-lines-table-helpers.ts"
     },
     {
@@ -10695,7 +10684,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/receiving-lines-table-helpers.ts",
-      "line": 64,
+      "line": 74,
       "snippet": "export RECEIVING_UNPAIR_ROW_PATCH from src/components/station/receiving-lines-table-helpers.ts"
     },
     {
@@ -10708,7 +10697,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/receiving-lines-table-helpers.ts",
-      "line": 76,
+      "line": 86,
       "snippet": "export mergeReceivingPackageMetaIntoRow from src/components/station/receiving-lines-table-helpers.ts"
     },
     {
@@ -10721,7 +10710,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/receiving-lines-table-helpers.ts",
-      "line": 109,
+      "line": 119,
       "snippet": "export dispatchReceivingCartonUnlinkPatch from src/components/station/receiving-lines-table-helpers.ts"
     },
     {
@@ -10734,7 +10723,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/receiving-lines-table-helpers.ts",
-      "line": 134,
+      "line": 144,
       "snippet": "export RECEIVING_SELECTION_SCOPE from src/components/station/receiving-lines-table-helpers.ts"
     },
     {
@@ -10747,7 +10736,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/receiving-lines-table-helpers.ts",
-      "line": 150,
+      "line": 160,
       "snippet": "export ReceivingActivityAxis from src/components/station/receiving-lines-table-helpers.ts"
     },
     {
@@ -10760,7 +10749,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/receiving-lines-table-helpers.ts",
-      "line": 152,
+      "line": 162,
       "snippet": "export receivingRowActivityTs from src/components/station/receiving-lines-table-helpers.ts"
     },
     {
@@ -10773,7 +10762,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/receiving-lines-table-helpers.ts",
-      "line": 173,
+      "line": 183,
       "snippet": "export receivingRowActivityMs from src/components/station/receiving-lines-table-helpers.ts"
     },
     {
@@ -10786,7 +10775,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/receiving-lines-table-helpers.ts",
-      "line": 197,
+      "line": 207,
       "snippet": "export ReceivingPoGroup from src/components/station/receiving-lines-table-helpers.ts"
     },
     {
@@ -10799,7 +10788,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/receiving-lines-table-helpers.ts",
-      "line": 203,
+      "line": 213,
       "snippet": "export poGroupAnchorMs from src/components/station/receiving-lines-table-helpers.ts"
     },
     {
@@ -10812,7 +10801,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/receiving-lines-table-helpers.ts",
-      "line": 236,
+      "line": 246,
       "snippet": "export resolveReceivingRowStageStamp from src/components/station/receiving-lines-table-helpers.ts"
     },
     {
@@ -11254,7 +11243,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/scan-bar/StationScanLeadingIcon.tsx",
-      "line": 35,
+      "line": 37,
       "snippet": "export StationScanLeadingIcon from src/components/station/scan-bar/StationScanLeadingIcon.tsx"
     },
     {
@@ -11267,7 +11256,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/scan-bar/StationScanModeRail.tsx",
-      "line": 18,
+      "line": 25,
       "snippet": "export StationScanModeDefinition from src/components/station/scan-bar/StationScanModeRail.tsx"
     },
     {
@@ -11280,21 +11269,8 @@
       ],
       "kind": "code",
       "source": "src/components/station/scan-bar/StationScanModeRail.tsx",
-      "line": 50,
+      "line": 66,
       "snippet": "export StationScanModeRail from src/components/station/scan-bar/StationScanModeRail.tsx"
-    },
-    {
-      "job": "Export: StationScanPreviewCard",
-      "sot": "StationScanPreviewCard",
-      "path": "src/components/station/scan-bar/StationScanPreviewCard.tsx",
-      "guard": null,
-      "symbols": [
-        "StationScanPreviewCard"
-      ],
-      "kind": "code",
-      "source": "src/components/station/scan-bar/StationScanPreviewCard.tsx",
-      "line": 19,
-      "snippet": "export StationScanPreviewCard from src/components/station/scan-bar/StationScanPreviewCard.tsx"
     },
     {
       "job": "Export: ThemedStationScanBarProps",
@@ -15635,7 +15611,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/table-column-config/GridColumnDetailsPanel.tsx",
-      "line": 105,
+      "line": 106,
       "snippet": "export GridColumnDetailsPanel from src/components/ui/table-column-config/GridColumnDetailsPanel.tsx"
     },
     {
@@ -19886,7 +19862,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/components/TabSwitch.tsx",
-      "line": 105,
+      "line": 106,
       "snippet": "export SidebarTabSwitchChrome from src/design-system/components/TabSwitch.tsx"
     },
     {
@@ -19899,7 +19875,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/components/TabSwitch.tsx",
-      "line": 109,
+      "line": 110,
       "snippet": "export TabSwitch from src/design-system/components/TabSwitch.tsx"
     },
     {
@@ -20692,7 +20668,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/primitives/conversation-chrome.ts",
-      "line": 17,
+      "line": 18,
       "snippet": "export CONVERSATION_DETAIL_SURFACE from src/design-system/primitives/conversation-chrome.ts"
     },
     {
@@ -20705,7 +20681,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/primitives/conversation-chrome.ts",
-      "line": 23,
+      "line": 24,
       "snippet": "export CONVERSATION_HEADER_ACTION_BTN from src/design-system/primitives/conversation-chrome.ts"
     },
     {
@@ -20718,7 +20694,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/primitives/conversation-chrome.ts",
-      "line": 26,
+      "line": 27,
       "snippet": "export CONVERSATION_HEADER_ACTION_BTN_ACTIVE from src/design-system/primitives/conversation-chrome.ts"
     },
     {
@@ -20731,7 +20707,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/primitives/conversation-chrome.ts",
-      "line": 29,
+      "line": 30,
       "snippet": "export CONVERSATION_HEADER_ACTION_GLYPH from src/design-system/primitives/conversation-chrome.ts"
     },
     {
@@ -20744,7 +20720,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/primitives/conversation-chrome.ts",
-      "line": 39,
+      "line": 40,
       "snippet": "export CONVERSATION_COMPOSER_PAD from src/design-system/primitives/conversation-chrome.ts"
     },
     {
@@ -20757,7 +20733,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/primitives/conversation-chrome.ts",
-      "line": 54,
+      "line": 57,
       "snippet": "export CONVERSATION_COMPOSER_DOCK_INTERNAL from src/design-system/primitives/conversation-chrome.ts"
     },
     {
@@ -20770,7 +20746,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/primitives/conversation-chrome.ts",
-      "line": 58,
+      "line": 61,
       "snippet": "export CONVERSATION_STREAM from src/design-system/primitives/conversation-chrome.ts"
     },
     {
@@ -20783,7 +20759,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/primitives/conversation-chrome.ts",
-      "line": 69,
+      "line": 72,
       "snippet": "export CONVERSATION_DAY_HEADER from src/design-system/primitives/conversation-chrome.ts"
     },
     {
@@ -20796,7 +20772,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/primitives/conversation-chrome.ts",
-      "line": 73,
+      "line": 76,
       "snippet": "export CONVERSATION_ROW from src/design-system/primitives/conversation-chrome.ts"
     },
     {
@@ -20809,7 +20785,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/primitives/conversation-chrome.ts",
-      "line": 80,
+      "line": 83,
       "snippet": "export CONVERSATION_SHELL from src/design-system/primitives/conversation-chrome.ts"
     },
     {
@@ -20822,7 +20798,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/primitives/conversation-chrome.ts",
-      "line": 83,
+      "line": 86,
       "snippet": "export CONVERSATION_SHELL_INTERNAL from src/design-system/primitives/conversation-chrome.ts"
     },
     {
@@ -20835,7 +20811,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/primitives/conversation-chrome.ts",
-      "line": 86,
+      "line": 89,
       "snippet": "export conversationShell from src/design-system/primitives/conversation-chrome.ts"
     },
     {
@@ -20848,7 +20824,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/primitives/conversation-chrome.ts",
-      "line": 90,
+      "line": 93,
       "snippet": "export CONVERSATION_MARK from src/design-system/primitives/conversation-chrome.ts"
     },
     {
@@ -20861,7 +20837,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/primitives/conversation-chrome.ts",
-      "line": 93,
+      "line": 96,
       "snippet": "export CONVERSATION_MARK_BOX from src/design-system/primitives/conversation-chrome.ts"
     },
     {
@@ -20874,7 +20850,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/primitives/conversation-chrome.ts",
-      "line": 96,
+      "line": 99,
       "snippet": "export CONVERSATION_BODY from src/design-system/primitives/conversation-chrome.ts"
     },
     {
@@ -20887,7 +20863,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/primitives/conversation-chrome.ts",
-      "line": 99,
+      "line": 102,
       "snippet": "export CONVERSATION_META from src/design-system/primitives/conversation-chrome.ts"
     },
     {
@@ -20900,7 +20876,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/primitives/conversation-chrome.ts",
-      "line": 102,
+      "line": 105,
       "snippet": "export CONVERSATION_AUTHOR from src/design-system/primitives/conversation-chrome.ts"
     },
     {
@@ -20913,7 +20889,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/primitives/conversation-chrome.ts",
-      "line": 105,
+      "line": 108,
       "snippet": "export CONVERSATION_AGE from src/design-system/primitives/conversation-chrome.ts"
     },
     {
@@ -20926,7 +20902,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/primitives/conversation-chrome.ts",
-      "line": 107,
+      "line": 110,
       "snippet": "export CONVERSATION_INTERNAL_CHIP from src/design-system/primitives/conversation-chrome.ts"
     },
     {
@@ -20939,7 +20915,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/primitives/conversation-chrome.ts",
-      "line": 113,
+      "line": 116,
       "snippet": "export formatConversationAge from src/design-system/primitives/conversation-chrome.ts"
     },
     {
@@ -21602,7 +21578,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/primitives/SlicedActionDock.tsx",
-      "line": 31,
+      "line": 32,
       "snippet": "export SlicedActionTone from src/design-system/primitives/SlicedActionDock.tsx"
     },
     {
@@ -21615,7 +21591,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/primitives/SlicedActionDock.tsx",
-      "line": 41,
+      "line": 42,
       "snippet": "export SlicedActionMenuItem from src/design-system/primitives/SlicedActionDock.tsx"
     },
     {
@@ -21628,7 +21604,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/primitives/SlicedActionDock.tsx",
-      "line": 56,
+      "line": 57,
       "snippet": "export SlicedActionEdge from src/design-system/primitives/SlicedActionDock.tsx"
     },
     {
@@ -21641,7 +21617,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/primitives/SlicedActionDock.tsx",
-      "line": 58,
+      "line": 59,
       "snippet": "export SlicedActionDockProps from src/design-system/primitives/SlicedActionDock.tsx"
     },
     {
@@ -21654,7 +21630,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/primitives/SlicedActionDock.tsx",
-      "line": 146,
+      "line": 147,
       "snippet": "export slicedActionDockToneInk from src/design-system/primitives/SlicedActionDock.tsx"
     },
     {
@@ -21667,7 +21643,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/primitives/SlicedActionDock.tsx",
-      "line": 187,
+      "line": 188,
       "snippet": "export slicedActionDockTrackClass from src/design-system/primitives/SlicedActionDock.tsx"
     },
     {
@@ -21680,7 +21656,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/primitives/SlicedActionDock.tsx",
-      "line": 208,
+      "line": 209,
       "snippet": "export slicedActionDockSegmentOrder from src/design-system/primitives/SlicedActionDock.tsx"
     },
     {
@@ -21693,7 +21669,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/primitives/SlicedActionDock.tsx",
-      "line": 217,
+      "line": 218,
       "snippet": "export slicedActionDockWrapperClass from src/design-system/primitives/SlicedActionDock.tsx"
     },
     {
@@ -21706,7 +21682,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/primitives/SlicedActionDock.tsx",
-      "line": 233,
+      "line": 237,
       "snippet": "export SlicedActionDock from src/design-system/primitives/SlicedActionDock.tsx"
     },
     {
@@ -22670,6 +22646,19 @@
       "source": "src/design-system/tokens/css-variables.ts",
       "line": 61,
       "snippet": "export DesignSystemCssVariables from src/design-system/tokens/css-variables.ts"
+    },
+    {
+      "job": "Export: FLOATING_DOCK_BOTTOM_PAD",
+      "sot": "FLOATING_DOCK_BOTTOM_PAD",
+      "path": "src/design-system/tokens/dock-clearance.ts",
+      "guard": null,
+      "symbols": [
+        "FLOATING_DOCK_BOTTOM_PAD"
+      ],
+      "kind": "code",
+      "source": "src/design-system/tokens/dock-clearance.ts",
+      "line": 13,
+      "snippet": "export FLOATING_DOCK_BOTTOM_PAD from src/design-system/tokens/dock-clearance.ts"
     },
     {
       "job": "Export: FocusArchetype",
@@ -24449,7 +24438,7 @@
       ],
       "kind": "code",
       "source": "src/hooks/useAiQuickJump.ts",
-      "line": 42,
+      "line": 60,
       "snippet": "export useAiQuickJump from src/hooks/useAiQuickJump.ts"
     },
     {
@@ -24761,7 +24750,7 @@
       ],
       "kind": "code",
       "source": "src/hooks/useCatalog.ts",
-      "line": 79,
+      "line": 86,
       "snippet": "export usePlatformMeta from src/hooks/useCatalog.ts"
     },
     {
@@ -24774,7 +24763,7 @@
       ],
       "kind": "code",
       "source": "src/hooks/useCatalog.ts",
-      "line": 110,
+      "line": 117,
       "snippet": "export useReceivingTypeLabel from src/hooks/useCatalog.ts"
     },
     {
@@ -24787,7 +24776,7 @@
       ],
       "kind": "code",
       "source": "src/hooks/useCatalog.ts",
-      "line": 128,
+      "line": 135,
       "snippet": "export usePlatformAccountCatalog from src/hooks/useCatalog.ts"
     },
     {
@@ -24800,7 +24789,7 @@
       ],
       "kind": "code",
       "source": "src/hooks/useCatalog.ts",
-      "line": 144,
+      "line": 151,
       "snippet": "export useWorkflowNodeOptions from src/hooks/useCatalog.ts"
     },
     {
@@ -24813,7 +24802,7 @@
       ],
       "kind": "code",
       "source": "src/hooks/useCatalog.ts",
-      "line": 159,
+      "line": 166,
       "snippet": "export useOrderChannelLabel from src/hooks/useCatalog.ts"
     },
     {
@@ -24826,7 +24815,7 @@
       ],
       "kind": "code",
       "source": "src/hooks/useCatalog.ts",
-      "line": 182,
+      "line": 189,
       "snippet": "export useInvalidateCatalog from src/hooks/useCatalog.ts"
     },
     {
@@ -25177,7 +25166,7 @@
       ],
       "kind": "code",
       "source": "src/hooks/useGlobalWedgeScanner.ts",
-      "line": 25,
+      "line": 27,
       "snippet": "export useGlobalWedgeScanner from src/hooks/useGlobalWedgeScanner.ts"
     },
     {
@@ -26325,6 +26314,19 @@
       "snippet": "export usePackingPolicy from src/hooks/usePackingPolicy.ts"
     },
     {
+      "job": "Export: usePackPhotoCounts",
+      "sot": "usePackPhotoCounts",
+      "path": "src/hooks/usePackPhotoCounts.ts",
+      "guard": null,
+      "symbols": [
+        "usePackPhotoCounts"
+      ],
+      "kind": "code",
+      "source": "src/hooks/usePackPhotoCounts.ts",
+      "line": 32,
+      "snippet": "export usePackPhotoCounts from src/hooks/usePackPhotoCounts.ts"
+    },
+    {
       "job": "Export: usePackWorkspaceTab",
       "sot": "usePackWorkspaceTab",
       "path": "src/hooks/usePackWorkspaceTab.ts",
@@ -26399,7 +26401,7 @@
       ],
       "kind": "code",
       "source": "src/hooks/usePanelStoreKeyboard.ts",
-      "line": 20,
+      "line": 21,
       "snippet": "export usePanelStoreKeyboard from src/hooks/usePanelStoreKeyboard.ts"
     },
     {
@@ -32160,6 +32162,19 @@
       "source": "src/lib/perf/yield-to-input.ts",
       "line": 46,
       "snippet": "export yieldToInput from src/lib/perf/yield-to-input.ts"
+    },
+    {
+      "job": "Export: closeRightPanel",
+      "sot": "closeRightPanel",
+      "path": "src/lib/right-rail/close.ts",
+      "guard": null,
+      "symbols": [
+        "closeRightPanel"
+      ],
+      "kind": "code",
+      "source": "src/lib/right-rail/close.ts",
+      "line": 45,
+      "snippet": "export closeRightPanel from src/lib/right-rail/close.ts"
     },
     {
       "job": "Export: RIGHT_RAIL_GUTTER_PX",

@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Archive, History, Loader2, Unlink } from '@/components/Icons';
+import { Archive, Loader2, MessageSquare, Unlink } from '@/components/Icons';
 import { toast } from '@/lib/toast';
 import { IdentityLinkChip } from './IdentityLinkChip';
 import { cn } from '@/utils/_cn';
@@ -50,10 +50,16 @@ function parseTicketId(raw: string): number | null {
 /**
  * Filed-ticket chip for the carton identity row. Renders the same
  * {@link IdentityLinkChip} primitive as PO#/tracking (orange `#` tone).
- * Menu opens flush-square to the left (Photos gallery grammar). Menu: Open →
- * History (Ticket push column) → Message → Archive → Unlink. Outside Unbox
- * there is no History row. Message opens the seller draft. History does not
- * pulse the chip face — the ticket id stays visible (no `editing` flash).
+ * Menu drops flush-square under the chip (same grammar as Photos). Menu: Open →
+ * Message (Ticket push column) → Seller → Archive → Unlink. Outside Unbox
+ * there is no Message row. Seller opens the seller draft. Neither pulses the
+ * chip face — the ticket id stays visible (no `editing` flash).
+ *
+ * Row copy names WHAT OPENS, not the mechanism: the first row is the ticket's
+ * message thread (it read "History", which described a log rather than the
+ * conversation an operator goes there to read), the second composes to the
+ * seller. Handler / testid names keep `ticketHistory` — the push column's own
+ * vocabulary is unchanged.
  */
 export function ReceivingTicketChip({
   value,
@@ -185,7 +191,11 @@ export function ReceivingTicketChip({
   };
 
   return (
-    <div ref={anchorRef} className="flex shrink-0 items-center">
+    // `items-stretch` + `h-full`, not `items-center`: the chip's own box is the
+    // menu's anchor, so a centred (shorter) box opened the dropdown ABOVE the
+    // bar cell's bottom edge — visibly less top padding than Photos / listing,
+    // whose faces are `h-full`. Stretching lands every carton-bar menu on one Y.
+    <div ref={anchorRef} className="flex h-full shrink-0 items-stretch">
       <IdentityLinkChip
         openHref={openHref}
         openTitle="Open claim in Zendesk"
@@ -200,7 +210,6 @@ export function ReceivingTicketChip({
         iconClass={archivePending ? 'text-amber-600' : 'text-orange-500'}
         disableCopy={!value.trim()}
         actionsInMenu
-        menuPlacement="left"
         suppressMenu={sellerOpen}
         menuBetween={
           <>
@@ -211,15 +220,15 @@ export function ReceivingTicketChip({
                 role="menuitem"
                 onClick={openTicketHistory}
                 aria-expanded={ticketViewActive}
-                aria-label="Ticket history"
+                aria-label="Ticket messages"
                 className={cn(
                   CHIP_HOVER_MENU_ITEM_CLASS,
                   CHIP_HOVER_MENU_ITEM_SEAM_CLASS,
                   CHIP_HOVER_MENU_ITEM_TONE.default,
                 )}
               >
-                <History className="h-3.5 w-3.5 shrink-0 text-text-soft" aria-hidden />
-                History
+                <MessageSquare className="h-3.5 w-3.5 shrink-0 text-text-soft" aria-hidden />
+                Message
               </button>
             ) : null}
             {receivingId != null ? (

@@ -24,7 +24,6 @@ import {
 } from './unbox-side-tabs';
 
 const MATCHED: UnboxSideTabGates = {
-  hasClassifyTab: true,
   hasLinkageTab: true,
   hasInventoryTab: true,
   hasListingsTab: true,
@@ -36,7 +35,6 @@ const MATCHED: UnboxSideTabGates = {
 
 /** Unfound local-pickup carton with nothing scanned yet — the sparsest lane. */
 const SPARSE: UnboxSideTabGates = {
-  hasClassifyTab: true,
   hasLinkageTab: true,
   hasInventoryTab: true,
   hasListingsTab: false,
@@ -58,15 +56,15 @@ test('a visible request is returned unchanged', () => {
 });
 
 test('a request gated off falls back to first visible strip leaf', () => {
-  // SPARSE: listings gated → Classify is the leftmost survivor.
-  assert.equal(resolveUnboxSideTab('units', SPARSE), 'classify');
-  assert.equal(resolveUnboxSideTab('listings', SPARSE), 'classify');
-  assert.equal(resolveUnboxSideTab('tracking', SPARSE), 'classify');
+  // SPARSE: listings gated → Pairing is the leftmost survivor. (Classify left
+  // the Displays 2026-08-19 — its pills live on the carton identity bar.)
+  assert.equal(resolveUnboxSideTab('units', SPARSE), 'linkage');
+  assert.equal(resolveUnboxSideTab('listings', SPARSE), 'linkage');
+  assert.equal(resolveUnboxSideTab('tracking', SPARSE), 'linkage');
 });
 
 test('ticket · photos · prebox · checklist · support survive every gate', () => {
   const nothing: UnboxSideTabGates = {
-    hasClassifyTab: false,
     hasLinkageTab: false,
     hasInventoryTab: false,
     hasListingsTab: false,
@@ -90,14 +88,17 @@ test('checklist is a Displays leaf — on the strip / index order', () => {
   assert.equal(UNBOX_SIDE_TAB_ORDER.includes('checklist'), true);
 });
 
-test('strip order is Listings · Classify · Pairing · Inventory · Units · … — no Claim cell', () => {
-  assert.deepEqual(UNBOX_STRIP_TAB_ORDER.slice(0, 5), [
+test('strip order is Listings · Pairing · Inventory · Units · … — no Claim, no Classify cell', () => {
+  assert.deepEqual(UNBOX_STRIP_TAB_ORDER.slice(0, 4), [
     'listings',
-    'classify',
     'linkage',
     'inventory',
     'units',
   ]);
+  // Classify is NOT a display — urgency · platform · type are InlinePillPicker
+  // menus on the carton identity bar, so a leaf here was a second editor.
+  assert.equal(UNBOX_STRIP_TAB_ORDER.includes('classify' as never), false);
+  assert.equal(UNBOX_SIDE_TAB_ORDER.includes('classify' as never), false);
   assert.equal(
     UNBOX_SIDE_TAB_ORDER.includes('claim' as never),
     false,
@@ -183,5 +184,5 @@ test('display=index opens Root Index with no leaf', () => {
   });
   assert.deepEqual(resolveUnboxDisplayNav(null, MATCHED), { open: false, leaf: null });
   assert.deepEqual(resolveUnboxDisplayNav('units', MATCHED), { open: true, leaf: 'units' });
-  assert.deepEqual(resolveUnboxDisplayNav('units', SPARSE), { open: true, leaf: 'classify' });
+  assert.deepEqual(resolveUnboxDisplayNav('units', SPARSE), { open: true, leaf: 'linkage' });
 });

@@ -9,9 +9,9 @@
  * shared `editing` prop — the identity row never drops digits, reflows, or pulses.
  */
 
-import { type CSSProperties, type ReactNode } from 'react';
+import { useRef, type CSSProperties, type ReactNode } from 'react';
 import { Copy, ChevronDown, ExternalLink, Pencil, Info } from '@/components/Icons';
-import { IconButton } from '@/design-system/primitives';
+import { AnchoredLayer, IconButton } from '@/design-system/primitives';
 import { CarrierMark } from '@/components/ui/CarrierMark';
 import { CopyChip, type ChipTone } from '@/components/ui/CopyChip';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
@@ -58,7 +58,6 @@ export function IdentityLinkChip({
   linkOptions,
   iconOnly = false,
   iconOnlyMark,
-  menuPlacement = 'below',
 }: {
   openHref: string | null | undefined;
   openTitle: string;
@@ -143,12 +142,6 @@ export function IdentityLinkChip({
   iconOnly?: boolean;
   /** Mark node (e.g. {@link PlatformMark}) when `iconOnly`. */
   iconOnlyMark?: ReactNode;
-  /**
-   * Hover-menu anchor. `below` = under the chip, left-aligned (ops default).
-   * `left` = flush to the chip's left (Photos gallery grammar) — used by the
-   * filed-ticket chip under Photos so the panel clears Claim / Displays.
-   */
-  menuPlacement?: 'below' | 'left';
 }) {
   const normalizedValue = normalizeCopyText(value);
   const canCopy = !disableCopy && !!normalizedValue && normalizedValue !== '---';
@@ -197,6 +190,8 @@ export function IdentityLinkChip({
    * to know the menu is up, so there is no lifted mirror to keep in sync.
    */
   const hover = useHoverSurface({ disabled: !showActionMenu });
+  /** Anchor for the portaled menu — the whole chip cluster, so it centres under the face. */
+  const hostRef = useRef<HTMLDivElement | null>(null);
 
   const iconOnlyTooltip = openHref
     ? `${display} — ${openTitle}`
@@ -223,6 +218,7 @@ export function IdentityLinkChip({
 
   return (
     <div
+      ref={hostRef}
       className={`group relative flex items-center gap-0.5 ${
         iconOnly || !grow ? 'shrink-0' : 'min-w-0 flex-1'
       }`}
@@ -359,35 +355,31 @@ export function IdentityLinkChip({
         </HoverTooltip>
       ) : null}
       {showActionMenu ? (
-        <div
-          // Local hover menu matching SerialChipWithMenu; it is intentionally
-          // outside the app-wide portal/overlay stack. Hidden while editOpen so
-          // anchored previews (ticket history) are the only panel shown.
-          // Hover-only visibility — focus-within kept menus stuck open after a
-          // chip click (especially chips on the wrapped second row).
-          // z-panelPopover + station-bar z-10 sibling beat the workbench so the
-          // menu is not covered/clipped when it opens beside/below the chips.
-          // Flush-square + left: same chrome as Photos `CopyChipHoverMenuPanel`
-          // (never `rounded-lg` / centered under the face).
+        <AnchoredLayer
+          open={hover.isOpen}
+          onClose={hover.close}
+          anchorRef={hostRef}
+          // Centred under the chip and PORTALED to the body — the same grammar
+          // (and the same primitive) as the Photos gallery peek, so every menu
+          // on the carton identity row floats the same way. It was an `absolute`
+          // DOM child of the trigger until 2026-08-19: inside the locked-720
+          // centre that is an `overflow-hidden` box with stacking siblings, so
+          // the panel could be clipped by the very row it belongs to, and it
+          // hung off the chip's left edge while Photos dropped centred.
           //
-          // NO fade. This row animates nothing: opening is instant, so there is
-          // no appear animation for a `duration-100` opacity ramp to match — it
-          // only delays the data reaching the operator's eye. The panel is a DOM
-          // child of the trigger, so `mouseleave` does not fire crossing onto
-          // it; `surfaceProps` still cancels the pending close for the portal-
-          // like `right-full` placement.
-          {...hover.surfaceProps}
-          className={cn(
-            'absolute z-panelPopover',
-            menuPlacement === 'left'
-              ? 'right-full top-0'
-              : 'left-0 top-full pt-1.5',
-            hover.isOpen
-              ? 'visible pointer-events-auto'
-              : 'invisible pointer-events-none',
-          )}
+          // A portal means `mouseleave` DOES fire crossing the seam, so the
+          // panel carries `surfaceProps` (the hook's pointer guard, not raw
+          // leave events) and `gap` stays small enough to cross.
+          placement="bottom-center"
+          level="panelPopover"
+          gap={6}
+          className="w-max"
         >
           <div
+            // NO fade. This row animates nothing: opening is instant, so there
+            // is no appear animation for an opacity ramp to match — it would
+            // only delay the data reaching the operator's eye.
+            {...hover.surfaceProps}
             role="menu"
             aria-label={`${display} actions`}
             className={CHIP_HOVER_MENU_PANEL_CLASS}
@@ -490,7 +482,7 @@ export function IdentityLinkChip({
               </button>
             ) : null}
           </div>
-        </div>
+        </AnchoredLayer>
       ) : null}
     </div>
   );

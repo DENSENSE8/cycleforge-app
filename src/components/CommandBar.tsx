@@ -80,6 +80,7 @@ import {
 } from '@/lib/search/ai-search-client';
 import { COMMAND_BAR_OPEN_EVENT } from '@/lib/app-events';
 import { useAuth } from '@/contexts/AuthContext';
+import { navIconStrokeClass } from '@/components/icons/nav-weight';
 import { cn } from '@/utils/_cn';
 
 // ── Types ─────────────────────────────────────────────────────────────────
@@ -632,7 +633,7 @@ export function CommandBar() {
                         <CmdRow
                           key={`recent:${r.id}`}
                           value={`recent ${r.label} ${r.href ?? ''}`}
-                          icon={<Icon className="h-4 w-4 text-text-faint" />}
+                          icon={<Icon className={navIconStrokeClass('h-4 w-4 text-text-faint')} />}
                           label={r.label}
                           subLabel={r.subtitle ?? r.href ?? undefined}
                           onSelect={() => navigate(r)}
@@ -667,7 +668,7 @@ export function CommandBar() {
                         <CmdRow
                           key={`child:${m.pageId}:${m.childId}`}
                           value={`child ${m.pageLabel} ${m.childLabel}`}
-                          icon={<Icon className="h-4 w-4 text-text-faint" />}
+                          icon={<Icon className={navIconStrokeClass('h-4 w-4 text-text-faint')} />}
                           label={`${m.pageLabel} · ${m.childLabel}`}
                           subLabel={m.href}
                           onSelect={() => selectChildPage(m)}
@@ -751,7 +752,7 @@ export function CommandBar() {
                         <CmdRow
                           key={`result:${r.entityType}:${r.id}`}
                           value={`result ${r.entityType} ${r.id} ${r.title}`}
-                          icon={<Icon className="h-4 w-4 text-text-faint" />}
+                          icon={<Icon className={navIconStrokeClass('h-4 w-4 text-text-faint')} />}
                           label={r.title}
                           subLabel={r.subtitle}
                           badge={r.entityType}
@@ -792,7 +793,7 @@ export function CommandBar() {
                           <CmdRow
                             key={`ai:${r.entityType}:${r.id}`}
                             value={`ai result ${r.entityType} ${r.id} ${r.title}`}
-                            icon={<Icon className="h-4 w-4 text-text-faint" />}
+                            icon={<Icon className={navIconStrokeClass('h-4 w-4 text-text-faint')} />}
                             label={r.title}
                             subLabel={r.subtitle}
                             badge={r.entityType}
@@ -929,7 +930,7 @@ function SpineNavGroup({
           className="mx-1 flex items-center gap-2 px-3 py-1.5 text-role-caption font-semibold text-text-muted"
           aria-hidden
         >
-          <Icon className={`h-3.5 w-3.5 ${idleIconClass}`} />
+          <Icon className={navIconStrokeClass(`h-3.5 w-3.5 ${idleIconClass}`)} />
           <span>{row.label}</span>
         </div>
       );

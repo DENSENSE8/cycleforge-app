@@ -421,9 +421,7 @@ export function SidebarNavList({
         >
           {RowIcon ? (
             <RowIcon
-              className={navIconStrokeClass(
-                'page',
-                cn(
+              className={navIconStrokeClass(cn(
                   SPINE_ROW_ICON_CLASS,
                   opts.active ? accent.childActiveIcon : accent.childIdleIcon,
                 ),
@@ -508,9 +506,7 @@ export function SidebarNavList({
         )}
       >
         <PageIcon
-          className={navIconStrokeClass(
-            'page',
-            cn(
+          className={navIconStrokeClass(cn(
               SPINE_ROW_ICON_CLASS,
               opts.active ? accent.activePageIcon : accent.idlePageIcon,
             ),
@@ -920,9 +916,7 @@ export function SidebarNavList({
           )}
         >
           <Icon
-            className={navIconStrokeClass(
-              'page',
-              cn(
+            className={navIconStrokeClass(cn(
                 SPINE_ROW_ICON_CLASS,
                 isCursor ? accent.activePageIcon : accent.idlePageIcon,
               ),

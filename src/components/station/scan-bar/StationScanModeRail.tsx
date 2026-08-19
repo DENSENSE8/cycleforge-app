@@ -1,8 +1,15 @@
 'use client';
 
 import type { ComponentType, SVGProps } from 'react';
-import { Sparkles } from '@/components/Icons';
+import { Check, Layers } from '@/components/Icons';
 import { cn } from '@/utils/_cn';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/design-system/primitives/DropdownMenu';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { railHint } from './scan-type-keybinds';
 import {
@@ -30,11 +37,11 @@ interface StationScanModeRailProps<T extends string> {
   size?: 'default' | 'compact';
   getAriaLabel?: (mode: StationScanModeDefinition<T>, armed: boolean) => string;
   getTitle?: (mode: StationScanModeDefinition<T>, armed: boolean) => string;
-  /** Visible Auto chip (selected when `armedMode === null`). Default on. */
+  /** Offer Auto as a menu row (selected when `armedMode === null`). Default on. */
   showAuto?: boolean;
 }
 
-const BTN_BY_SIZE = {
+const TRIGGER_BY_SIZE = {
   default: STATION_SCAN_BAR_MODE_BTN,
   compact: STATION_SCAN_BAR_MODE_BTN_COMPACT,
 } as const;
@@ -43,9 +50,18 @@ const BTN_BY_SIZE = {
 const AUTO_ARMED_CLASS = 'text-text-soft';
 
 /**
- * Full-height flush mode segments. Auto is first; type chips follow.
- * Armed = solid `surface-card`. Click Auto while a type is armed → release.
- * Click Auto while already Auto → no-op. Click armed type → release to Auto.
+ * Scan TYPE picker — one full-height flush dropdown at the bar's trailing edge.
+ *
+ * Was a rail of N abutting icon segments (Auto · Ticket · Tracking · PO). Four
+ * unlabelled glyphs cost four cells of a 40px band and were read once; the
+ * trigger now shows only the live answer (armed type's glyph in its hue, or the
+ * neutral Auto stack) and the menu names every option in words. No caret — the
+ * band is 40px and the glyph IS the affordance.
+ *
+ * Armed = solid `surface-card` (same plane as the work canvas). Picking the
+ * armed type again, or picking Auto, releases to Auto. The per-type number
+ * keybinds (see {@link railHint}) are unchanged and still work with the menu
+ * closed.
  */
 export function StationScanModeRail<T extends string>({
   modes,
@@ -56,83 +72,94 @@ export function StationScanModeRail<T extends string>({
   getTitle,
   showAuto = true,
 }: StationScanModeRailProps<T>) {
-  const btnShell = BTN_BY_SIZE[size];
+  const triggerShell = TRIGGER_BY_SIZE[size];
   const autoArmed = armedMode === null;
+  const active = armedMode ? modes.find((m) => m.mode === armedMode) ?? null : null;
+  const hint = railHint(modes.length);
+
+  const release = () => {
+    if (armedMode == null) return;
+    onToggleMode?.(armedMode);
+  };
+
+  const faceLabel = active?.label ?? 'Auto';
+  const triggerTitle = active
+    ? (getTitle?.(active, true) ?? `${active.label} armed — next Enter/scan. ${hint}`)
+    : `Auto — next scan picks the type. ${hint}`;
 
   return (
-    <div
-      className="relative z-dropdown isolate flex h-full items-stretch gap-0"
-      role="group"
-      aria-label={`Scan type. ${railHint(modes.length)}`}
-    >
-      {showAuto ? (
-        <HoverTooltip
-          label={
-            autoArmed
-              ? `Auto — next scan picks the type. ${railHint(modes.length)}`
-              : `Auto — release the armed type. ${railHint(modes.length)}`
-          }
-          asChild
-        >
-          <button
-            type="button"
-            onClick={() => {
-              if (armedMode == null) return;
-              onToggleMode?.(armedMode);
-            }}
-            aria-pressed={autoArmed}
-            aria-label={
-              autoArmed
-                ? 'Auto armed. Next scan auto-detects type.'
-                : 'Release to Auto'
-            }
-            className={cn(
-              'ds-raw-button',
-              btnShell,
-              autoArmed
-                ? cn(STATION_SCAN_BAR_MODE_BTN_ARMED, AUTO_ARMED_CLASS)
-                : STATION_SCAN_BAR_MODE_BTN_INACTIVE,
-            )}
-          >
-            <Sparkles className={STATION_SCAN_BAR_MODE_GLYPH_CLASS} />
-          </button>
-        </HoverTooltip>
-      ) : null}
-      {modes.map((mode) => {
-        const armed = armedMode === mode.mode;
-        const ariaLabel =
-          getAriaLabel?.(mode, armed) ??
-          (armed
-            ? `${mode.label} armed for next scan. Click again to cancel.`
-            : `Arm ${mode.label}: next Enter/scan searches ${mode.label}.`);
-        const title =
-          getTitle?.(mode, armed) ??
-          (armed
-            ? `${mode.label} armed — next Enter/scan. Click again to cancel.`
-            : `${mode.label} (next Enter/scan; or search now if the field has text)`);
-
-        return (
-          <HoverTooltip key={mode.mode} label={title} asChild>
-            {/* ds-raw-button: scan-station full-height mode segment (armed/inactive via STATION_SCAN_BAR_MODE_* tokens) — intentionally not a Button/IconButton primitive */}
+    <div className="relative z-dropdown isolate flex h-full items-stretch gap-0">
+      <DropdownMenu>
+        <HoverTooltip label={triggerTitle} asChild>
+          <DropdownMenuTrigger asChild>
+            {/* ds-raw-button: scan-station full-height flush segment (armed/inactive
+                via STATION_SCAN_BAR_MODE_* tokens) — intentionally not a Button. */}
             <button
               type="button"
-              onClick={() => onToggleMode?.(mode.mode)}
-              aria-pressed={armed}
-              aria-label={ariaLabel}
+              aria-label={`Scan type: ${faceLabel}. ${hint}`}
               className={cn(
                 'ds-raw-button',
-                btnShell,
-                armed
-                  ? cn(STATION_SCAN_BAR_MODE_BTN_ARMED, mode.armedClass)
-                  : STATION_SCAN_BAR_MODE_BTN_INACTIVE,
+                triggerShell,
+                active
+                  ? cn(STATION_SCAN_BAR_MODE_BTN_ARMED, active.armedClass)
+                  : cn(STATION_SCAN_BAR_MODE_BTN_INACTIVE, autoArmed ? AUTO_ARMED_CLASS : null),
               )}
             >
-              <mode.Icon className={STATION_SCAN_BAR_MODE_GLYPH_CLASS} />
+              {active ? (
+                <active.Icon className={STATION_SCAN_BAR_MODE_GLYPH_CLASS} />
+              ) : (
+                <Layers className={STATION_SCAN_BAR_MODE_GLYPH_CLASS} />
+              )}
             </button>
-          </HoverTooltip>
-        );
-      })}
+          </DropdownMenuTrigger>
+        </HoverTooltip>
+
+        <DropdownMenuContent align="end" sideOffset={4} className="min-w-[11rem]">
+          {showAuto ? (
+            <>
+              <DropdownMenuItem
+                onSelect={release}
+                role="menuitemradio"
+                aria-checked={autoArmed}
+                className="justify-between"
+              >
+                <span className="flex items-center gap-2">
+                  <Layers className="size-4 text-text-soft" />
+                  <span className="text-role-caption font-semibold">Auto</span>
+                </span>
+                {autoArmed ? <Check className="size-4 text-text-soft" /> : null}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+            </>
+          ) : null}
+
+          {modes.map((mode) => {
+            const armed = armedMode === mode.mode;
+            const ariaLabel =
+              getAriaLabel?.(mode, armed) ??
+              (armed
+                ? `${mode.label} armed for next scan. Pick again to cancel.`
+                : `Arm ${mode.label}: next Enter/scan searches ${mode.label}.`);
+
+            return (
+              <DropdownMenuItem
+                key={mode.mode}
+                onSelect={() => onToggleMode?.(mode.mode)}
+                role="menuitemradio"
+                aria-checked={armed}
+                aria-label={ariaLabel}
+                className="justify-between"
+              >
+                <span className="flex items-center gap-2">
+                  <mode.Icon className={cn('size-4', armed ? mode.armedClass : 'text-text-soft')} />
+                  <span className="text-role-caption font-semibold">{mode.label}</span>
+                </span>
+                {armed ? <Check className="size-4 text-text-soft" /> : null}
+              </DropdownMenuItem>
+            );
+          })}
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }
-

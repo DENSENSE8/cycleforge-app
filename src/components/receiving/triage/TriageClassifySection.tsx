@@ -1,7 +1,21 @@
 'use client';
 
 /**
- * Classify controls — Urgency / Platform / Type + ticket link + repair-order identify.
+ * Classify controls — Urgency / Platform / Type
+ * (+ ticket link only where the host has nowhere better).
+ *
+ * **No repair-order link (removed 2026-08-19).** Classify grades what the
+ * carton IS; attaching it to a store / repair order is a PAIRING act and lives
+ * on the Link body's Store avenue — one identify host. A CTA here was a second
+ * door onto that same search.
+ *
+ * **Unbox does NOT mount the ticket row here (moved 2026-08-19).** Classify
+ * grades what the carton IS (urgency · platform · type); linking it to a ticket
+ * is a PAIRING act, so on Unbox `Find ticket` lives on the Linkage (Pairing)
+ * actions list beside Link · Return # · Store. `onFindTicket` stays for hosts
+ * with no Linkage leaf of their own — Arrival, whose Displays column is Pairing
+ * only. Do not re-thread it from Unbox: that is the second door this move
+ * removed.
  *
  * Shared by Arrival (centre door-flow chrome host under items) + Unbox Classify
  * Displays. Flush plane (no WorkspaceCard glass island) — edge-to-edge host
@@ -13,17 +27,12 @@
  * Chat when already linked — found and unfound. Never mounts a second ticket
  * picker inside Classify.
  *
- * Repair identify composes the same {@link RepairServiceIdentify} host as
- * Arrival Pairing / Unbox Linkage Store — Classify never forks a second Ecwid
- * search. Writes go through {@link addUnmatchedLine} (not a second
- * `useUnmatchedItems` mount). Mobile Arrival classify identify is out of scope
- * (desktop Displays / centre hosts only).
+ * Mobile Arrival classify identify is out of scope (desktop Displays / centre
+ * hosts only).
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import { ChevronRight, Link2, Ticket, Unlink, Wrench } from '@/components/Icons';
-import { IconButton } from '@/design-system/primitives';
+import { useEffect, useMemo, useRef } from 'react';
+import { ChevronRight, Ticket } from '@/components/Icons';
 import { SearchableSelectField } from '@/design-system/components';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cornerClass } from '@/design-system/tokens/radius';
@@ -38,19 +47,10 @@ import { priorityOverrideTier } from '@/lib/receiving/priority-override';
 import { usePlatformCatalog, useReceivingTypeCatalog } from '@/hooks/useCatalog';
 import type { UnboxLineController } from '../workspace/line-edit/unbox-line-controller';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
-import { RepairServiceIdentify } from '@/components/receiving/workspace/line-edit/RepairServiceIdentify';
-import {
-  isRepairServiceLinked,
-  repairServiceLinkedOrderId,
-} from '@/lib/receiving/repair-service-identify';
-import { addUnmatchedLine } from '@/lib/receiving/add-unmatched-line-client';
-import { useReceivingCartonUnlink } from '@/components/receiving/workspace/unmatched-items/useReceivingCartonUnlink';
-import {
-  dispatchLineUpdated,
-  dispatchSelectLine,
-} from '@/components/station/receiving-lines-table-helpers';
-import { invalidateReceivingFeeds } from '@/lib/queries/receiving-queries';
-import type { EcwidProductSelection } from '@/components/receiving/unfound/ecwid-search/ecwid-search-shared';
+
+
+
+
 
 type ClassifyPicker = 'urgency' | 'platform' | 'type';
 
@@ -97,75 +97,21 @@ export function TriageClassifySection({
    */
   onFindTicket?: () => void;
 }) {
-  const queryClient = useQueryClient();
   const isUnmatched = row.receiving_source === 'unmatched';
   const platformCatalog = usePlatformCatalog();
   const typeCatalog = useReceivingTypeCatalog();
-  const [repairIdentifyOpen, setRepairIdentifyOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const lastExpandRef = useRef<{ dim: ClassifyPicker | null; id: number }>({
     dim: null,
     id: -1,
   });
   const receivingId = row.receiving_id ?? null;
-  const repairLinked = isRepairServiceLinked(row);
-  const linkedOrderId = repairServiceLinkedOrderId(row);
-  const { unlinkCarton, unlinking } = useReceivingCartonUnlink();
   const hasTicket = c.providerTicketId != null;
   const ticketLabel =
     c.supportTicket?.label?.trim() ||
     (c.providerTicketId != null ? `#${c.providerTicketId}` : null);
   const showTicketLink = typeof onFindTicket === 'function' && receivingId != null && receivingId > 0;
 
-  // Identify only — do NOT mount useUnmatchedItems here (items accordion owns
-  // that controller). A second mount would GET + setLines([]) and flash empty.
-  const handleRepairIdentifySelect = useCallback(
-    async (selection: EcwidProductSelection) => {
-      if (receivingId == null || receivingId <= 0) return;
-      await addUnmatchedLine({
-        receivingId,
-        selection,
-        sourcePlatformHint: c.sourcePlatform || 'ecwid',
-        receivingTypeHint: 'REPAIR',
-        listingUrlHint: row.receiving_listing_url ?? undefined,
-        queryClient,
-        onLinked: ({ carton, line }) => {
-          const cartonPatch = {
-            zoho_purchaseorder_number: carton.zoho_purchaseorder_number,
-            receiving_source: carton.source ?? 'unmatched',
-            source_platform: carton.source_platform ?? 'ecwid',
-            source_platform_pill: carton.source_platform ?? 'ecwid',
-            receiving_type: 'REPAIR',
-          };
-          c.setSourcePlatform(cartonPatch.source_platform ?? 'ecwid');
-          c.setReceivingType('REPAIR');
-          if (line && line.id > 0 && row.id < 0) {
-            dispatchSelectLine({
-              ...row,
-              ...cartonPatch,
-              id: line.id,
-              sku: line.sku ?? row.sku,
-              item_name: line.item_name ?? row.item_name,
-              quantity_expected: line.quantity_expected,
-              quantity_received: line.quantity_received,
-              condition_grade: line.condition_grade ?? row.condition_grade,
-              receiving_listing_url: line.listing_url ?? row.receiving_listing_url,
-              source_order_id: carton.zoho_purchaseorder_number,
-            });
-          } else {
-            dispatchLineUpdated({
-              id: row.id,
-              ...cartonPatch,
-              source_order_id: carton.zoho_purchaseorder_number,
-            });
-          }
-          invalidateReceivingFeeds(queryClient);
-          setRepairIdentifyOpen(false);
-        },
-      });
-    },
-    [c, queryClient, receivingId, row],
-  );
 
   // Header classify pill → open the matching flush combobox (click its trigger).
   useEffect(() => {
@@ -346,108 +292,6 @@ export function TriageClassifySection({
         </div>
       ) : null}
 
-      {/* Same RepairServiceIdentify host as Pairing/Linkage Store — Classify
-          never forks Ecwid search. Linked → chip + unlink; unpaired → CTA. */}
-      {receivingId != null && receivingId > 0 ? (
-        <div
-          data-testid="triage-classify-repair-identify"
-          className="border-t border-border-hairline"
-        >
-          {repairLinked && linkedOrderId ? (
-            <div className="flex min-w-0 items-center gap-2 inset-cozy">
-              <span
-                className={cn(
-                  'grid h-5 w-5 shrink-0 place-items-center text-text-muted',
-                  cornerClass('flush'),
-                )}
-                aria-hidden
-              >
-                <Wrench className="h-3.5 w-3.5" />
-              </span>
-              <span className="min-w-0 flex-1 truncate text-role-caption font-semibold text-text-default">
-                Order #{linkedOrderId} · Repair
-              </span>
-              <IconButton
-                icon={<Unlink className="h-3.5 w-3.5" />}
-                ariaLabel="Unlink repair order"
-                disabled={unlinking}
-                onClick={() => {
-                  void unlinkCarton({
-                    receivingId,
-                    lineId: row.id,
-                    confirmMessage:
-                      'Unlink this repair order? The carton goes back to the Unfound queue.',
-                  });
-                }}
-              />
-            </div>
-          ) : (
-            <div className="min-w-0">
-              <button
-                type="button"
-                aria-expanded={repairIdentifyOpen}
-                aria-controls="triage-classify-repair-identify-body"
-                onClick={() => setRepairIdentifyOpen((o) => !o)}
-                className={cn(
-                  'flex w-full items-center gap-2.5 inset-cozy text-left',
-                  focusRing('control', 'accent'),
-                  repairIdentifyOpen && 'bg-surface-hover/40',
-                )}
-              >
-                <span
-                  className={cn(
-                    'grid h-5 w-5 shrink-0 place-items-center text-text-muted',
-                    cornerClass('flush'),
-                  )}
-                  aria-hidden
-                >
-                  <Link2 className="h-3.5 w-3.5" />
-                </span>
-                <span className="min-w-0 flex-1 truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
-                  Link repair order
-                </span>
-                <ChevronRight
-                  className={cn(
-                    'h-3.5 w-3.5 shrink-0 text-text-faint transition-transform duration-150 ease-out motion-reduce:transition-none',
-                    repairIdentifyOpen && 'rotate-90',
-                  )}
-                  aria-hidden
-                />
-              </button>
-              <div
-                id="triage-classify-repair-identify-body"
-                aria-hidden={!repairIdentifyOpen}
-                className={cn(
-                  'grid transition-[grid-template-rows] duration-200 ease-out motion-reduce:transition-none',
-                  repairIdentifyOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]',
-                )}
-              >
-                <div className="min-h-0 overflow-hidden">
-                  <div
-                    className={cn(
-                      'px-2 pb-2 transition-opacity duration-150 ease-out motion-reduce:transition-none',
-                      repairIdentifyOpen
-                        ? 'opacity-100'
-                        : 'pointer-events-none opacity-0',
-                    )}
-                  >
-                    {repairIdentifyOpen ? (
-                      <RepairServiceIdentify
-                        receivingId={receivingId}
-                        initialOrderScope="repair_rs"
-                        chrome="bare"
-                        autoFocusSearch
-                        onSelect={handleRepairIdentifySelect}
-                        onClose={() => setRepairIdentifyOpen(false)}
-                      />
-                    ) : null}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      ) : null}
     </div>
   );
 }

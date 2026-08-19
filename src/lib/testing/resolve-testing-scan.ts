@@ -1,7 +1,7 @@
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { buildUnmatchedStubRow } from '@/components/sidebar/receiving/receiving-sidebar-shared';
 import { classifyInput, parseScannedUrl } from '@/lib/scan-resolver';
-import { routeScan } from '@/lib/barcode-routing';
+import { routeScan, scannedReceivingId } from '@/lib/barcode-routing';
 import {
   parseTrackingKeys,
   serializeTrackingIn,
@@ -83,10 +83,20 @@ export function looksLikeUnitId(value: string): boolean {
 }
 
 export function looksLikeReceivingRef(value: string): boolean {
-  // Canonical carton handles: `R-{id}` (current, from receivingHandle in
-  // lib/barcode-routing) and `RCV-{id}` (legacy pre-DataMatrix labels).
+  // Compose the ONE decoder — never a local `R-\d+` regex. A printed carton
+  // sticker does NOT carry `R-1234`: since the platform-link change it carries
+  // an absolute Digital Link (`https://{slug}.app.cycleforge.ai/m/r/1234`), and
+  // a wedge in the wrong keyboard mode delivers that with its punctuation
+  // stripped. This test regexed the bare handle, so it answered FALSE for the
+  // exact payload this app prints — which is what sent a scanned carton down
+  // the carrier-tracking intake path and minted a duplicate carton per scan.
+  //
+  // `scannedReceivingId` resolves every form (absolute URL, bare path, the
+  // flattened wedge form, `R-1234`, legacy `RCV-1234`) and deliberately
+  // excludes a repair label (`REP-33` redirects to `/m/rs/33`, not a carton).
   const v = value.trim();
-  return /^(R|RCV)-\d+$/i.test(v);
+  if (!v) return false;
+  return scannedReceivingId(v) != null;
 }
 
 export function looksLikePoNumber(value: string): boolean {
@@ -121,12 +131,20 @@ const LINE_UNIT_REPAIR_RE = /^(?:L|U|REP)-\d+$/i;
 export function looksLikeReceivingCode(value: string): boolean {
   const v = value.trim();
   if (!v) return false;
-  return (
-    looksLikeReceivingRef(v) ||      // R-{id} / RCV-{id} carton
+  if (
+    looksLikeReceivingRef(v) ||      // carton — every printed form (see above)
     looksLikeHandlingUnit(v) ||      // H-{id} handling unit
     LINE_UNIT_REPAIR_RE.test(v) ||   // L-{id} / U-{id} / REP-{id}
     looksLikeUnitId(v)               // {SKU}-{YYWW}-{SEQ6} printed unit-id
-  );
+  ) {
+    return true;
+  }
+  // Printed LINE / UNIT matrices carry a Digital Link too, and the bare-handle
+  // regexes above miss them for the same reason the carton one did. Decode once
+  // and accept only the classes `resolveReceivingCodeToLine` can actually open —
+  // routeScan's fallbacks type everything else `sku` / `bin`, which stay false.
+  const route = routeScan(v);
+  return route?.type === 'receiving-line' || route?.type === 'serial-unit';
 }
 
 async function fetchLinesByReceivingId(receivingId: number) {

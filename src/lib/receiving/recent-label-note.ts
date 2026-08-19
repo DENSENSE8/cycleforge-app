@@ -48,6 +48,15 @@ export type RecentFaceCandidate = {
   trackingNumber: string | null;
   /** `receiving_line.updated_at` — which line on the carton was touched last. */
   lineUpdatedAt: string | null;
+  /**
+   * `receiving_line.face_noted_at` — when the FACE TEXT last changed.
+   *
+   * The honest recency clock, and the reason it is not `lineUpdatedAt`: that
+   * one bumps on every condition / serial / qty patch, so ranking on it floats
+   * an ancient sentence back up the moment someone grades an old carton. Null
+   * on rows written before 2026-08-19 (never backfilled — see the migration).
+   */
+  faceNotedAt?: string | null;
 };
 
 export type RecentFaceRow = {
@@ -58,10 +67,20 @@ export type RecentFaceRow = {
   receivingId: number | null;
 };
 
+/**
+ * When this candidate's face was written, as far as we can honestly tell:
+ * the face clock, else the line's last touch for a row that predates it.
+ */
+function faceTime(row: RecentFaceCandidate): number {
+  const stamped = row.faceNotedAt ? Date.parse(row.faceNotedAt) : NaN;
+  if (Number.isFinite(stamped)) return stamped;
+  return row.lineUpdatedAt ? Date.parse(row.lineUpdatedAt) : NaN;
+}
+
 /** Newest first; nulls last; `lineId` DESC breaks a tie. */
 function fresherLine(a: RecentFaceCandidate, b: RecentFaceCandidate): boolean {
-  const at = a.lineUpdatedAt ? Date.parse(a.lineUpdatedAt) : NaN;
-  const bt = b.lineUpdatedAt ? Date.parse(b.lineUpdatedAt) : NaN;
+  const at = faceTime(a);
+  const bt = faceTime(b);
   const aOk = Number.isFinite(at);
   const bOk = Number.isFinite(bt);
   if (aOk && bOk && at !== bt) return at > bt;
@@ -70,13 +89,13 @@ function fresherLine(a: RecentFaceCandidate, b: RecentFaceCandidate): boolean {
 }
 
 /**
- * Resolve Recent from scan-ordered candidates (newest scanned carton first,
- * already filtered to lines that have some face text).
+ * Resolve Recent from ranked candidates — freshest face first, already filtered
+ * to lines that have some face text (see the server module for the ranking).
  *
  * Two-level pick, because a carton is not a line:
- *   1. CARTON — the newest scanned carton that has any face note at all.
- *   2. LINE   — within that carton, the line touched most recently
- *      (`updated_at`), i.e. the one whose face the operator just labeled.
+ *   1. CARTON — the one carrying the freshest face.
+ *   2. LINE   — within that carton, the freshest face again ({@link faceTime}),
+ *      i.e. the one the operator actually just labeled.
  *
  * Step 2 is the multi-line fix: ordering by "has a label_note" picked whichever
  * sibling SKU still carried the backfilled sentence instead of the line the

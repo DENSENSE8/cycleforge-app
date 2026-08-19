@@ -23,6 +23,7 @@ import { cn } from '@/utils/_cn';
 
 const CTA_FACE = cn(
   WORKBENCH_CHROME_PILL_CLASS,
+  'h-full',
   'font-semibold uppercase tracking-widest',
 );
 

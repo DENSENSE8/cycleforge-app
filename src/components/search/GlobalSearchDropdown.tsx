@@ -9,15 +9,26 @@
  * hover):
  *   recents · first-use · preview · loading · empty
  *
+ * `loading` is a QUERY TRACE, not a skeleton — it states the literal query,
+ * how it was classified, which retrieval arm is running, and which step is
+ * live. Placeholder bars were removed on purpose: they imply imminent rows and
+ * tell an operator nothing while a slow retrieve is open.
+ *
  * The flattened option index model (must match the keyboard nav in the host):
  *   • recents  → option i = recents[i]
  *   • preview  → options 0..N-1 = the preview hits in grouped display order
  *                (flattenPreviewGroups). There is no "See all results" row —
  *                the dropdown IS the results list; picking a hit opens `?sel=`.
  *
- * Flush column chrome: `rounded-none`, zero gap under the find cell, width
- * matched to the anchor (`bottom-stretch`). The column is the card — never a
- * floating glass bubble. Motion via the canonical dropdownPanel preset.
+ * Flush column chrome: `rounded-none`, zero gap under the find cell. The
+ * column is the card — never a floating glass bubble. Motion via the canonical
+ * dropdownPanel preset.
+ *
+ * Width MATCHES the find field exactly (`bottom-stretch` + `matchWidth`) — the
+ * panel is the field's own column continued downward, never a wider slab
+ * hanging off one edge. That budget (24rem) is what sizes the row's tracks:
+ * Status · Id · Match · Tracking · Photos, with relative age dropped because
+ * six tracks cannot share 24rem without crushing the title.
  */
 
 import type { MouseEvent as ReactMouseEvent, RefObject } from 'react';
@@ -34,6 +45,8 @@ import { elevationClass } from '@/design-system/tokens/shadows';
 import { cn } from '@/utils/_cn';
 import { SearchResultRow } from './SearchResultRow';
 import { SearchRecentsDropdown } from './SearchRecentsDropdown';
+import { SearchQueryTrace, type SearchTracePhase } from './SearchQueryTrace';
+import { usePackPhotoCounts } from '@/hooks/usePackPhotoCounts';
 import type { PreviewGroup } from './search-tabs';
 
 export type GlobalSearchDropdownState =
@@ -64,6 +77,16 @@ export interface GlobalSearchDropdownProps {
    */
   onHoverStart?: () => void;
   onHoverEnd?: () => void;
+  /**
+   * Live retrieval state for the `loading` panel. The dropdown narrates the
+   * query instead of painting a skeleton — see {@link SearchQueryTrace}.
+   */
+  trace?: {
+    phase: SearchTracePhase;
+    arm: 'ai' | 'classic';
+    identifier: boolean;
+    pageContext?: string | null;
+  };
 }
 
 /** Flush header extension — square shell, matched width, soft cast (not glass). */
@@ -94,9 +117,16 @@ export function GlobalSearchDropdown({
   onNavigateHit,
   onHoverStart,
   onHoverEnd,
+  trace,
 }: GlobalSearchDropdownProps) {
   const presence = useMotionPresence(framerPresence.dropdownPanel);
   const transition = useMotionTransition(framerTransition.dropdownOpen);
+
+  // One batched pack-photo count per preview render — the CTA on every row
+  // shows a real number (0 included), so it cannot be inferred per row.
+  const packPhotoCount = usePackPhotoCounts(
+    previewGroups.flatMap((g) => g.hits.map((h) => h.facets?.tracking_number ?? null)),
+  );
 
   // Base flat index of each group's first hit (option 0 = the first hit).
   let running = 0;
@@ -172,6 +202,9 @@ export function GlobalSearchDropdown({
                                 active={idx === activeIndex}
                                 optionId={optionId(idx)}
                                 onNavigate={onNavigateHit}
+                                packPhotoCount={packPhotoCount(
+                                  hit.facets?.tracking_number ?? null,
+                                )}
                               />
                             </li>
                           );
@@ -183,17 +216,15 @@ export function GlobalSearchDropdown({
               )}
 
               {state === 'loading' && (
-                <ul className="divide-y divide-border-hairline" aria-hidden>
-                  {[0, 1, 2].map((i) => (
-                    <li key={i} className="flex items-center gap-3 px-3 py-2.5">
-                      <span className="h-2 w-2 shrink-0 animate-pulse bg-surface-strong" />
-                      <span className="flex-1 space-y-1.5">
-                        <span className="block h-2.5 w-1/2 animate-pulse bg-surface-strong" />
-                        <span className="block h-2 w-1/3 animate-pulse bg-surface-sunken" />
-                      </span>
-                    </li>
-                  ))}
-                </ul>
+                <div aria-live="polite">
+                  <SearchQueryTrace
+                    query={query}
+                    phase={trace?.phase ?? 'retrieving'}
+                    arm={trace?.arm ?? 'ai'}
+                    identifier={trace?.identifier ?? false}
+                    pageContext={trace?.pageContext ?? null}
+                  />
+                </div>
               )}
 
               {state === 'empty' && (

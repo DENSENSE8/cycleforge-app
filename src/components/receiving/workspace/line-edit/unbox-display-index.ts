@@ -18,8 +18,6 @@ export interface UnboxDisplayIndexSignals {
   hasTicketId: boolean;
   /** Carton photo count when known; `null` → generic subtitle. */
   photoCount: number | null;
-  /** Short classify face (urgency / type) — empty → "Not set". */
-  classifyLabel: string | null;
   serialCount: number;
   /** Matched to a PO / inbound source (Linkage). */
   linkagePaired: boolean;
@@ -40,7 +38,6 @@ const LABELS: Record<UnboxSideTab, string> = {
   photos: 'Photos',
   linkage: 'Pairing',
   inventory: 'Inventory',
-  classify: 'Classify',
   listings: 'Listings',
   units: 'Units',
   prebox: 'Prebox',
@@ -54,7 +51,6 @@ const LABELS: Record<UnboxSideTab, string> = {
 const GROUPS: Record<UnboxSideTab, DisplayIndexGroup> = {
   checklist: 'verification',
   listings: 'verification',
-  classify: 'verification',
   linkage: 'verification',
   inventory: 'assets',
   units: 'assets',
@@ -111,11 +107,6 @@ function inventoryRow(signals: UnboxDisplayIndexSignals): Pick<DisplayIndexRow, 
   return { subtitle: 'PO · lines · notes', tone: 'ok' };
 }
 
-function classifyRow(signals: UnboxDisplayIndexSignals): Pick<DisplayIndexRow, 'subtitle' | 'tone'> {
-  const label = (signals.classifyLabel ?? '').trim();
-  if (!label) return { subtitle: 'Not set', tone: 'action' };
-  return { subtitle: label, tone: 'ok' };
-}
 
 function unitsRow(signals: UnboxDisplayIndexSignals): Pick<DisplayIndexRow, 'subtitle' | 'tone'> {
   const n = signals.serialCount;
@@ -180,8 +171,6 @@ function rowMeta(
       return linkageRow(signals);
     case 'inventory':
       return inventoryRow(signals);
-    case 'classify':
-      return classifyRow(signals);
     case 'listings':
       return listingsRow();
     case 'units':

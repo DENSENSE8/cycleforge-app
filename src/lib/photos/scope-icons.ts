@@ -27,23 +27,22 @@ import {
   ReceivingModeRepair,
   ReceivingModeUnbox,
   Ticket,
-  withNavIconModeStroke,
 } from '@/components/Icons';
 import type { PhotoLibrarySourceScope } from '@/lib/photos/library-filter-state';
 
 type IconComponent = (props: { className?: string }) => JSX.Element;
 
 export const PHOTO_SCOPE_ICONS: Record<PhotoLibrarySourceScope, IconComponent> = {
-  all: withNavIconModeStroke(Images),
+  all: Images,
   unboxing: ReceivingModeUnbox,
   local_pickup: ReceivingModePickup,
   packing: PackingModeStandard,
   repair: ReceivingModeRepair,
-  claims: withNavIconModeStroke(Ticket),
+  claims: Ticket,
   // Outbound media is the shipped-parcel evidence trail, so it takes the
   // Shipping station's glyph (PackageCheck) rather than any single shipping
   // MODE — the scope spans all of them. Wrapped from the PRIMITIVE, not from
   // `StationShipping`: that export is already page-stroked, and stacking a
   // second arbitrary `![stroke-width:…]` on top leaves both classes live.
-  outbound: withNavIconModeStroke(PackageCheck),
+  outbound: PackageCheck,
 };

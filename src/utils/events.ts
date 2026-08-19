@@ -154,6 +154,11 @@ export interface ReceivingWorkspaceOpenPayload {
    * deep-link restore. See `readSelectLineDetail`.
    */
   recordView?: boolean;
+  /**
+   * Preview stance — open the pane for reading only. It paints as a scan's open
+   * does, but is inert and wrote nothing. Implies `recordView: false`.
+   */
+  preview?: boolean;
 }
 
 export function dispatchReceivingWorkspaceOpen(

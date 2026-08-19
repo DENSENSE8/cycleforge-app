@@ -20,7 +20,7 @@ import { focusRing } from '@/design-system/tokens/focus-ring';
 
 const CTA_FACE = cn(
   WORKBENCH_CHROME_PILL_CLASS,
-  'font-semibold uppercase tracking-widest',
+  'h-full font-semibold uppercase tracking-widest',
 );
 
 /**

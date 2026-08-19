@@ -63,7 +63,7 @@ import { cn } from '@/utils/_cn';
 import {
   HEADER_ICON_BTN_CLASS,
   HEADER_ICON_WRAP,
-  TOP_CHROME_ICON_GLYPH,
+  TOP_CHROME_ICON_FACE,
 } from '@/components/layout/header-shell';
 
 type GlobalFindPresentation = 'chrome' | 'stage';
@@ -587,6 +587,29 @@ export function GlobalFindCombobox({
         return;
       }
 
+      // ── Single settled hit = the answer ──
+      // One result is not a list worth reading; open the record (and its data)
+      // rather than making the operator click the only row. Applies to chrome
+      // and stage alike, and only once retrieval has SETTLED — mid-flight the
+      // preview may legitimately hold one hit on its way to several.
+      {
+        const preview = navRef.current.flatPreviewHits;
+        if (!previewSearching && preview.length === 1) {
+          onPushRecent?.({
+            query: trimmed,
+            scope: isStage ? 'dashboard' : 'global',
+            scopeHref: hrefForPreviewHit(preview[0]),
+            topHit: {
+              title: preview[0].title,
+              href: hrefForPreviewHit(preview[0]),
+              entityType: preview[0].entityType,
+            },
+          });
+          commitHit(preview[0]);
+          return;
+        }
+      }
+
       // ── Natural language ──
       // Chrome: stay put — dropdown shows hits or “No matches”; never navigate.
       // Stage: optional in-page browse via onBrowseQuery.
@@ -627,6 +650,8 @@ export function GlobalFindCombobox({
       onSelectHit,
       queryClient,
       keepPreviewOpen,
+      previewSearching,
+      commitHit,
     ],
   );
 
@@ -704,7 +729,10 @@ export function GlobalFindCombobox({
         onSearch={handleSearchSubmit}
         onClear={handleClear}
         placeholder="Order, serial, tracking…"
-        debounceMs={320}
+        // 0 = track keystrokes straight into `query`. The RETRIEVE debounce
+        // lives in useAiQuickJump (which also owns abort); a second one here
+        // just stacked ~320ms of dead time in front of every search.
+        debounceMs={0}
         isSearching={previewSearching}
         tone="neutral"
         size="compact"
@@ -726,6 +754,14 @@ export function GlobalFindCombobox({
         query={trimmedQuery}
         recents={recents}
         previewGroups={previewGroups}
+        trace={{
+          // The classic arm has no sub-phases, so it reports the open request
+          // directly; only the AI arm distinguishes debounce from retrieve.
+          phase: aiQuickJump.aiEnabled ? aiQuickJump.phase : 'retrieving',
+          arm: aiQuickJump.aiEnabled ? 'ai' : 'classic',
+          identifier: looksLikeIdentifier(trimmedQuery),
+          pageContext: pathname,
+        }}
         onClose={() => setFocused(false)}
         onHoverStart={holdHover}
         onHoverEnd={() => {
@@ -763,7 +799,7 @@ export function GlobalFindCombobox({
               aria-expanded={false}
               onClick={expandAndFocus}
               className={HEADER_ICON_BTN_CLASS}
-              icon={<Search className={TOP_CHROME_ICON_GLYPH} />}
+              icon={<Search className={TOP_CHROME_ICON_FACE} />}
             />
           </HoverTooltip>
         </div>

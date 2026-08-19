@@ -9,8 +9,8 @@ import { focusRing } from '@/design-system/tokens/focus-ring';
  * height, icon slot, or placeholder styling HERE — not per surface.
  *
  * Chrome: flat band + staff bottom-rule + bottom-up station glow (chromatic
- * depth). Mode segments are full-height flush siblings — armed = solid
- * `surface-card` against the glow so they read continuous with the work
+ * depth). The scan TYPE picker is one full-height flush segment — armed =
+ * solid `surface-card` against the glow so it reads continuous with the work
  * canvas. Submit confirm is a center→edges scaleX flash on the bottom rule.
  * Work canvas elevation is border-only — no competing drop shadows at the join.
  *

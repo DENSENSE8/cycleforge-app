@@ -131,16 +131,17 @@ export function StationDisplayLeafHeader({
       data-breadcrumb-depth={trail.length}
       data-testid="station-displays-leaf-nav"
     >
-      {/* `ml-1` clears the Displays elevated sash hairline (4px) so ← does not
-          read as half-dead under the seam paint. Hit re-enable stays on the
-          button; the sash grab zone is still the leading w-3 under chrome. */}
+      {/* Back is the LEADING-most cell of the band (2026-08-19) — no `ml-1`
+          inset and no trailing hairline. It is the one control an operator
+          reaches for without looking, so it takes the corner; the sash still
+          grabs under the rest of the band's empty chrome. */}
       <HoverTooltip label={backLabel} asChild>
         <button
           type="button"
           onClick={onBack}
           disabled={!canGoBack}
           aria-label={backLabel}
-          className={cn(HISTORY_BTN, 'ml-1 border-r border-border-hairline')}
+          className={HISTORY_BTN}
           data-testid="station-displays-history-back"
           data-station-displays-back=""
         >
@@ -153,18 +154,8 @@ export function StationDisplayLeafHeader({
         data-station-displays-breadcrumb=""
       >
         {current ? (
-          <button
-            type="button"
-            onClick={onBack}
-            disabled={!canGoBack}
-            aria-label={backLabel}
-            className={cn(
-              'pointer-events-auto min-w-0 flex-1 truncate px-2 text-left text-role-caption font-semibold text-text-default',
-              'hover:bg-surface-sunken',
-              'disabled:pointer-events-none disabled:text-text-default',
-              focusRing('control', 'accent'),
-              'outline-none',
-            )}
+          <span
+            className="h-4 min-w-0 flex-1 self-center truncate pl-1 pr-2 text-left text-role-caption font-semibold leading-4 text-text-default"
             data-station-displays-leaf-title=""
             data-testid="station-displays-leaf-title"
             data-breadcrumb-segment={current.id}
@@ -172,7 +163,7 @@ export function StationDisplayLeafHeader({
             aria-current="page"
           >
             {current.label}
-          </button>
+          </span>
         ) : null}
       </div>
 

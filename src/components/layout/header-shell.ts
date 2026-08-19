@@ -5,6 +5,7 @@ import {
   appChromeMutedClass,
   appWashClass,
 } from '@/design-system/tokens/app-surface';
+import { NAV_ICON_STROKE_CLASS } from '@/components/icons/nav-weight';
 import { cn } from '@/utils/_cn';
 
 /** Inner bottom hairline shared by receiving sidebar + workspace chrome (not outer border-b). */
@@ -252,12 +253,30 @@ export const HEADER_ICON_GAP = 'gap-0';
 export const HEADER_ICON_CLUSTER = `flex h-full shrink-0 items-stretch ${HEADER_ICON_GAP}`;
 
 /**
- * Glyph box for GlobalHeader icon actions (sidebar, Mode, Recents, WO, clipboard,
- * inbox, search/AI). Native SVG `strokeWidth={2}` only — do **not** layer
- * `navIconStrokeClass` here; CSS `![stroke-width:…]` on dense glyphs reads
- * muddy/blurry at this size.
+ * Glyph BOX for top-chrome icons — 16px, and nothing else. Shared beyond the
+ * header (condition pills, inline notices), so it must stay size-only.
  */
 export const TOP_CHROME_ICON_GLYPH = 'h-4 w-4';
+
+/**
+ * Glyph FACE for every icon on the 40px nav beam — GlobalHeader chrome
+ * (toggle · Pins · Recents · page face · search · goal · inbox · assistant) **and**
+ * the MasterNav spine's own top pin band ({@link SPINE_TOP_PIN_WRAP}).
+ *
+ * **Size and stroke resolve in ONE place (2026-08-19).** The two halves of that
+ * beam sit on one Y and read as one row, so a header glyph drawing at native
+ * stroke 2 beside a spine pin at 1.5 made the header half look heavier than the
+ * nav half at identical 16px — the seam was legible as a weight change, which
+ * is the one thing a shared beam must not show. The header now takes the spine's
+ * page stroke; the earlier "native stroke only, never layer `navIconStrokeClass`"
+ * note is superseded by this token rather than by per-call-site classes.
+ *
+ * There is no override tier any more, and no need for one: glyphs ship bare
+ * since 2026-08-19, so nothing on the beam brings a competing weight for this
+ * to outrank. (The page face's Unbox glyph used to carry 2.25 inside itself and
+ * beat the beam on emission order — that is what the unwrap removed.)
+ */
+export const TOP_CHROME_ICON_FACE = cn(TOP_CHROME_ICON_GLYPH, NAV_ICON_STROKE_CLASS);
 
 /**
  * Shared IconButton chrome for GlobalHeader — square hit wash filling the beam

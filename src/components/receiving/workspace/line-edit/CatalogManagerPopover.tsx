@@ -4,7 +4,10 @@
  * Overlay wrapper around {@link CatalogManagerList} — the CRUD manager for the
  * org platform / type catalog, opened from the pencil next to Platform or Type
  * in {@link LabelEditPopover}. Same RightPaneOverlay shell as the
- * label editor / ReceivingClaimModal. The carton identity bar composes
+ * label editor / ReceivingClaimModal, but `anchor="viewport"`: this is an ORG
+ * SETTINGS surface, not a fact about the open carton, so it centres on the
+ * page rather than over whichever pane happened to launch it (it read as
+ * shoved right, hard against the pane edge, on a wide bench). The carton identity bar composes
  * {@link CatalogManagerList} inline under the centered pills (not this overlay).
  * The /settings catalog section renders the same list without overlay chrome.
  */
@@ -39,6 +42,7 @@ export function CatalogManagerPopover({
       open={open}
       onClose={onClose}
       align="center"
+      anchor="viewport"
       aria-label={TITLE[kind]}
       className="w-[min(94%,32rem)] rounded-2xl border-0 shadow-2xl ring-1 ring-border-soft"
     >

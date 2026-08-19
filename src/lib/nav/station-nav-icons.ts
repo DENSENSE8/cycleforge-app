@@ -4,12 +4,12 @@
  * SIDEBAR_PAGE_NAV data, the receiving rail, tech top pills, and shipping.
  *
  * MasterNav renders {@link STATION_PAGE_ICONS} (and other page SoT icons).
- * **Every spine row draws its glyph at the same 1.5 page stroke — parent rows
- * and child rows alike** (reversed 2026-08-02: at 2.25 a child glyph out-drew
- * its own parent, inverting the ladder it was meant to express). The heavier
- * 2.25 survives only where a glyph is the WHOLE control — the GlobalHeader page
- * switcher, header "now" identity, scan rails, `HorizontalButtonSlider`. See
- * icons/stations.tsx + icons/nav-weight.tsx.
+ * **Weight is not in this registry, and not in the glyphs it names.** Every
+ * surface that draws nav chrome applies the ONE stroke token
+ * (`NAV_ICON_STROKE_CLASS`, icons/nav-weight.tsx); the glyph components ship
+ * bare. The 1.5 / 2.25 split and the `withNavIcon*Stroke` wrappers were deleted
+ * 2026-08-19 — a wrapped glyph could not be drawn at a second altitude, and it
+ * beat the surface's own weight on emission order rather than losing quietly.
  *
  * Glyphs must stay unique across floor stations — enforced via
  * {@link STATION_GLYPH_KEYS}.

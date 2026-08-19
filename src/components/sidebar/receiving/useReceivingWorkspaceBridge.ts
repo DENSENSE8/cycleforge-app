@@ -36,6 +36,8 @@ interface UseReceivingWorkspaceBridgeArgs {
   scanDriven: boolean;
   /** False when a browse-feed click opened the line — see `readSelectLineDetail`. */
   recordView?: boolean;
+  /** Preview stance — carried onto WorkspaceState so the pane renders inert. */
+  preview?: boolean;
   scanMatchedRows: ReceivingLineRow[];
   currentIndex: number;
   canPrev: boolean;
@@ -48,6 +50,7 @@ export function useReceivingWorkspaceBridge({
   lineAccordionBootstrap,
   scanDriven,
   recordView = true,
+  preview = false,
   scanMatchedRows,
   currentIndex,
   canPrev,
@@ -93,8 +96,9 @@ export function useReceivingWorkspaceBridge({
       accordionBootstrap: lineAccordionBootstrap,
       scanDriven,
       recordView,
+      preview,
     });
-  }, [isTableOnlyMode, selectedLine, lineAccordionBootstrap, scanDriven, recordView]);
+  }, [isTableOnlyMode, selectedLine, lineAccordionBootstrap, scanDriven, recordView, preview]);
 
   // Nav state mirror: workspace header reads prev/next + Line N of M from these
   // events instead of having scanMatchedRows lifted up.

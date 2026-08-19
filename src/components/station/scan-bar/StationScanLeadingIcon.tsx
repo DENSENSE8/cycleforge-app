@@ -29,8 +29,10 @@ const COPY: Record<
 
 /**
  * Left icon = Preview | Scan stance. Type lives on the right rail, not here.
- * Wrapped by {@link ScanHotkeyControl}: at rest this button toggles stance;
- * hover still reveals the gear for Insert / ⌘. remapping.
+ *
+ * SECONDARY fields only (`hotkey={false}`): a bare click-to-toggle glyph.
+ * Primary station bars render {@link ScanHotkeyControl} in this slot instead —
+ * one dropdown carrying Scan · Preview · focus · Edit hotkey.
  */
 export function StationScanLeadingIcon({
   stance,

@@ -126,8 +126,9 @@ function stepSummary(
 
   switch (key) {
     case 'classify':
-      // Dock = one-row Continue; editor is Displays KNOW — › still advances.
-      return ctx.classified ? 'Classified' : 'Set in Displays';
+      // Dock = one-row Continue; the editor is the carton identity bar's own
+      // pills (the Displays leaf was a duplicate, dropped 2026-08-19).
+      return ctx.classified ? 'Classified' : 'Set on the carton bar';
     // Door + bench photo steps share the aspect-count summary shape; the map
     // (arrivalAspect vs cartonAspect) is chosen by stage below.
     case 'arrival_label_photo':

@@ -302,22 +302,41 @@ export type ReceivingSelectLineDetail =
        * the record plane, so this is the one caller that has to answer.
        */
       recordView?: boolean;
+      /**
+       * Preview stance open — the operator asked *"what is this?"*, not
+       * *"work this"*. The pane paints exactly as a scan does (identity,
+       * middle, Displays) but is **inert**: nothing here may be edited, and
+       * nothing about the open is written. Always pairs with
+       * `recordView: false` — a preview that stamped recents would be the
+       * unbox attribution the stance exists to avoid.
+       */
+      preview?: boolean;
     };
 
 export function readSelectLineDetail(
   detail: ReceivingSelectLineDetail,
-): { row: ReceivingLineRow | null; expandFlowSections: boolean; recordView: boolean } {
+): {
+  row: ReceivingLineRow | null;
+  expandFlowSections: boolean;
+  recordView: boolean;
+  preview: boolean;
+} {
   if (detail && typeof detail === 'object' && 'row' in detail) {
+    const preview = detail.preview === true;
     return {
       row: detail.row ?? null,
       expandFlowSections: detail.expandFlowSections === true,
-      recordView: detail.recordView !== false,
+      // A preview can never record a view, whatever the caller passed — the
+      // two facts are one decision, so they resolve in one place.
+      recordView: !preview && detail.recordView !== false,
+      preview,
     };
   }
   return {
     row: (detail as ReceivingLineRow | null) ?? null,
     expandFlowSections: false,
     recordView: true,
+    preview: false,
   };
 }
 

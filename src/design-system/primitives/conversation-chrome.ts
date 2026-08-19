@@ -11,6 +11,7 @@
  */
 import { cn } from '@/utils/_cn';
 import { DISPLAYS_BODY_INSET } from '@/design-system/shells/detail-stack';
+import { FLOATING_DOCK_BOTTOM_PAD } from '@/design-system/tokens/dock-clearance';
 import { formatLaneAgeCompact } from '@/utils/date';
 
 /** Conversation column plane — white so gray cards read as events. */
@@ -38,7 +39,9 @@ export const CONVERSATION_HEADER_ACTION_GLYPH = 'h-3.5 w-3.5 shrink-0';
  */
 export const CONVERSATION_COMPOSER_PAD = cn(
   DISPLAYS_BODY_INSET,
-  'relative min-w-0 shrink-0 bg-transparent pt-2 pb-3 font-sans',
+  'relative min-w-0 shrink-0 bg-transparent pt-2 font-sans',
+  // Same floating-dock clearance as the Unbox notes dock on the centre column.
+  FLOATING_DOCK_BOTTOM_PAD,
   'before:pointer-events-none before:absolute before:inset-x-0 before:-top-5 before:h-5 before:bg-gradient-to-t before:from-surface-card before:to-transparent',
 );
 
