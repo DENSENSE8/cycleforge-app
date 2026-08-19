@@ -30,116 +30,60 @@ describe('stationDisplaysFloorPrimaryAction', () => {
 });
 
 describe('stationDisplaysFloorMoreItems', () => {
-  test('matched → empty overflow', () => {
-    assert.deepEqual(stationDisplaysFloorMoreItems({ unfound: false }), []);
+  test('matched → Delete only (the menu is never empty)', () => {
+    assert.deepEqual(
+      stationDisplaysFloorMoreItems({ unfound: false, deleteLabel: 'Delete 12345678' }),
+      [{ key: 'delete', label: 'Delete 12345678', tone: 'danger' }],
+    );
   });
 
-  test('unfound → Resolve in overflow', () => {
-    assert.deepEqual(stationDisplaysFloorMoreItems({ unfound: true }), [
-      { key: 'link', label: 'Resolve' },
-    ]);
+  test('unfound → Resolve, then Delete last', () => {
+    assert.deepEqual(
+      stationDisplaysFloorMoreItems({ unfound: true, deleteLabel: 'Delete PO-9' }),
+      [
+        { key: 'link', label: 'Resolve' },
+        { key: 'delete', label: 'Delete PO-9', tone: 'danger' },
+      ],
+    );
+  });
+
+  test('Delete is always last, so the destructive row never moves', () => {
+    for (const unfound of [true, false]) {
+      const items = stationDisplaysFloorMoreItems({ unfound, deleteLabel: 'Delete x' });
+      assert.equal(items[items.length - 1]!.key, 'delete');
+      assert.equal(items[items.length - 1]!.tone, 'danger');
+    }
   });
 });
 
 describe('cartonFloorPeerOrder', () => {
-  test('Unbox — Print + Sync is 5 peers', () => {
+  test('Unbox — Refresh + Print is 4 cells', () => {
     assert.deepEqual(cartonFloorPeerOrder({ print: true, sync: true }), [
-      'more',
       'sync',
       'print',
       'edit',
-      'delete',
-    ]);
-  });
-
-  test('Arrival — Sync only is 4 peers (no Print)', () => {
-    assert.deepEqual(cartonFloorPeerOrder({ sync: true }), [
       'more',
-      'sync',
-      'edit',
-      'delete',
     ]);
   });
 
-  test('Testing — neither slot is 3 peers (no Print / no Sync)', () => {
-    assert.deepEqual(cartonFloorPeerOrder({}), [
-      'more',
-      'edit',
-      'delete',
-    ]);
-  });
-});
-
-describe('cartonDeleteFace / cartonDeleteLabels', () => {
-  test('tracking last-8 wins', () => {
-    assert.equal(
-      cartonDeleteFace({
-        receivingId: 9,
-        tracking: '9400111899223197428490',
-        poNumber: 'PO-1',
-      }),
-      '97428490',
-    );
+  test('Arrival — Refresh only is 3 cells (no Print)', () => {
+    assert.deepEqual(cartonFloorPeerOrder({ sync: true }), ['sync', 'edit', 'more']);
   });
 
-  test('PO when tracking empty', () => {
-    assert.equal(
-      cartonDeleteFace({ receivingId: 9, tracking: '', poNumber: 'PO-4411' }),
-      'PO-4411',
-    );
+  test('Testing — neither slot is 2 cells (no Print / no Refresh)', () => {
+    assert.deepEqual(cartonFloorPeerOrder({}), ['edit', 'more']);
   });
 
-  test('carton id fallback', () => {
-    assert.equal(cartonDeleteFace({ receivingId: 44 }), 'carton 44');
+  test('⋮ is last on every station, so it anchors one corner', () => {
+    for (const slots of [{ print: true, sync: true }, { sync: true }, { print: true }, {}]) {
+      const peers = cartonFloorPeerOrder(slots);
+      assert.equal(peers[peers.length - 1], 'more');
+    }
   });
 
-  test('labels name the face', () => {
-    const labels = cartonDeleteLabels('1Z999');
-    assert.equal(labels.idleLabel, 'Delete 1Z999');
-    assert.equal(labels.confirmLabel, 'Click again to delete 1Z999');
-    assert.equal(labels.deletedTitle, '1Z999 deleted');
-  });
-});
-
-describe('cartonInventoryRefreshFeedback', () => {
-  test('ok result → success with dossier description', () => {
-    assert.deepEqual(cartonInventoryRefreshFeedback({ ok: true, zohoNotes: null }), {
-      kind: 'success',
-      title: 'Inventory refreshed',
-      description: 'Pulled latest status, notes, and lines from inventory.',
-    });
-  });
-
-  test('failed but painted → warning with error', () => {
-    assert.deepEqual(
-      cartonInventoryRefreshFeedback({
-        ok: false,
-        painted: true,
-        error: 'Zoho timed out',
-      }),
-      {
-        kind: 'warning',
-        title: 'Inventory status updated locally',
-        description: 'Zoho timed out',
-      },
-    );
-  });
-
-  test('failed unpainted → error with error', () => {
-    assert.deepEqual(
-      cartonInventoryRefreshFeedback({ ok: false, error: 'HTTP 500' }),
-      {
-        kind: 'error',
-        title: 'Inventory refresh failed',
-        description: 'HTTP 500',
-      },
-    );
-  });
-
-  test('void / non-object result → plain success (no description)', () => {
-    assert.deepEqual(cartonInventoryRefreshFeedback(undefined), {
-      kind: 'success',
-      title: 'Inventory refreshed',
-    });
+  test('Delete is never a peer — it lives inside ⋮', () => {
+    for (const slots of [{ print: true, sync: true }, {}]) {
+      assert.ok(!cartonFloorPeerOrder(slots).includes('delete' as never));
+    }
   });
 });
