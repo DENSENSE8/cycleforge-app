@@ -23,6 +23,14 @@
  *      and the later color-mix wins, so their rendering is unchanged.
  *
  * Run AFTER `@tailwindcss/postcss` — it rewrites that plugin's output.
+ *
+ * CommonJS ON PURPOSE. Next validates postcss config in
+ * `next/dist/build/webpack/config/blocks/css/plugins.js` and rejects a plugin
+ * passed as a function ("must be provided as a string"), so this has to be
+ * referenced by path. Next then `require()`s that path — and an ESM default
+ * export arrives as a namespace object, which postcss cannot normalize
+ * ("Cannot convert object to primitive value", which killed two builds).
+ * A `.cjs` module.exports hands back the function itself.
  */
 
 const OKLCH = /oklch\(\s*([\d.]+|none)%?\s+([\d.]+|none)\s+([\d.]+|none)(?:deg)?\s*\)/gi;
@@ -52,7 +60,7 @@ const normL = (raw, hadPct) => (hadPct ? Number(raw) / 100 : Number(raw));
 /** `none` is CSS Color 4 for "no value here" — numerically zero for our purposes. */
 const num = (raw) => (raw === 'none' ? 0 : Number(raw));
 
-export default function legacyColorFallback() {
+function legacyColorFallback() {
   return {
     postcssPlugin: 'legacy-color-fallback',
     OnceExit(root) {
@@ -101,3 +109,5 @@ export default function legacyColorFallback() {
   };
 }
 legacyColorFallback.postcss = true;
+
+module.exports = legacyColorFallback;
