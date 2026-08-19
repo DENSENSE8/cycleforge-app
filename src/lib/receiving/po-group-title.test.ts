@@ -66,6 +66,41 @@ test('getReceivingPoGroupTitle — platform prefix when source_platform set', ()
   assert.equal(getReceivingPoGroupTitle(r, (p) => (p === 'amazon' ? 'Amazon' : p)), 'Amazon · PO 63598685');
 });
 
+test('getReceivingPoGroupTitle — Amazon RETURN is AMZ – return – last8, not Order + full id', () => {
+  const orderId = '111-6986570-4552201';
+  const r = row({
+    receiving_type: 'RETURN',
+    carton_intake_type: 'RETURN',
+    inbound_source_type: 'amazon',
+    source_platform: 'amazon',
+    source_order_id: orderId,
+    zoho_purchaseorder_id: null,
+    zoho_purchaseorder_number: null,
+  });
+  const title = getReceivingPoGroupTitle(r, (p) => (p === 'amazon' ? 'Amazon' : p));
+  assert.equal(title, 'AMZ – return – -4552201');
+  assert.ok(!title.includes('Order'));
+  assert.ok(!title.includes(orderId));
+});
+
+test('receivingAdaptiveRailTitle — Amazon RETURN identity even for a single SKU', () => {
+  const r = row({
+    receiving_type: 'RETURN',
+    carton_intake_type: 'RETURN',
+    inbound_source_type: 'amazon',
+    source_platform: 'amazon',
+    source_order_id: '111-6986570-4552201',
+    zoho_purchaseorder_id: null,
+    zoho_purchaseorder_number: null,
+    item_name: 'Bose QuietComfort',
+    rail_title_context: { line_count: 1, distinct_sku_count: 1 },
+  });
+  assert.equal(
+    receivingAdaptiveRailTitle(r, (p) => (p === 'amazon' ? 'Amazon' : p)),
+    'AMZ – return – -4552201',
+  );
+});
+
 test('isReceivingPoGroupTitleRow — unfound stub is excluded', () => {
   const r = row({
     receiving_source: 'unmatched',

@@ -248,6 +248,9 @@ async function searchReceiving(orgId: OrgId, query: string, limit: number): Prom
             r.qa_status,
             r.condition_grade,
             r.source_platform,
+            r.intake_type,
+            r.return_platform::text AS return_platform,
+            COALESCE(r.is_return, false) AS is_return,
             lines.line_count,
             lines.distinct_sku_count,
             lines.first_item_name
@@ -289,6 +292,9 @@ async function searchReceiving(orgId: OrgId, query: string, limit: number): Prom
         poNumber,
         sourceOrderId,
         sourcePlatform,
+        intakeType: row.intake_type != null ? String(row.intake_type) : null,
+        returnPlatform: row.return_platform != null ? String(row.return_platform) : null,
+        isReturn: row.is_return === true,
         firstItemName,
         fallback: row.tracking_number
           ? `Carton · ${String(row.tracking_number).slice(-8)}`

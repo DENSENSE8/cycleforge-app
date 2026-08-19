@@ -3,12 +3,18 @@ import assert from 'node:assert/strict';
 import {
   classificationToColumns,
   columnsToClassification,
+  classificationShort,
   isIntakeClassification,
   INTAKE_CLASSIFICATION_OPTS,
   type IntakeClassification,
 } from '@/lib/receiving/intake-classification';
 
 const ALL: IntakeClassification[] = INTAKE_CLASSIFICATION_OPTS.map((o) => o.value);
+
+test('classificationShort — Amazon returns compact to AMZ', () => {
+  assert.equal(classificationShort('AMAZON_RETURN'), 'AMZ');
+  assert.equal(classificationShort('FBA_RETURN'), 'AMZ');
+});
 
 test('isIntakeClassification accepts known values, rejects junk', () => {
   assert.equal(isIntakeClassification('FBA_RETURN'), true);

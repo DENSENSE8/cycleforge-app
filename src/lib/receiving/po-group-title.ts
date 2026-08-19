@@ -2,6 +2,9 @@
  * PO-group display title — shared by drill / identity chrome (collapsed PO
  * rows in the receiving table) and receiving sidebar rails.
  * Title = platform · buyer account · PO/Order when multi-SKU; product title when single-SKU.
+ * Marketplace returns (`intake_type` / `receiving_type` RETURN) paint
+ * `{SHORT} – return – {last8}` via {@link formatMarketplaceReturnIdentityTitle}
+ * — never `Amazon · Order {full id}`.
  */
 
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
@@ -10,6 +13,7 @@ import {
   parseReturnSerialTitle,
   resolveReceivingLinePrimarySerial,
 } from '@/components/station/receiving-line-serials';
+import { formatMarketplaceReturnIdentityTitle } from '@/lib/receiving/marketplace-return-identity';
 
 /** DB / wire sentinel for an unmatched carton line — never paint this raw. */
 export const UNFOUND_PO_SENTINEL = 'Unfound PO';
@@ -57,6 +61,16 @@ export function getReceivingPoIdentityParts(
   return { poValue, idPrefix, platformLabel, accountLabel };
 }
 
+function marketplaceReturnTitleFromRow(row: ReceivingLineRow, poValue: string): string | null {
+  return formatMarketplaceReturnIdentityTitle({
+    orderId: poValue,
+    sourcePlatform: row.source_platform || row.inbound_source_type,
+    receivingType: row.receiving_type,
+    cartonIntakeType: row.carton_intake_type,
+    intakeType: row.intake_type,
+  });
+}
+
 /** Collapsed-PO / carton-level title — drill / identity chrome. */
 export function getReceivingPoGroupTitle(
   row: ReceivingLineRow,
@@ -66,6 +80,8 @@ export function getReceivingPoGroupTitle(
     row,
     resolvePlatformLabel,
   );
+  const returnTitle = poValue ? marketplaceReturnTitleFromRow(row, poValue) : null;
+  if (returnTitle) return returnTitle;
   return (
     [platformLabel, accountLabel, poValue ? `${idPrefix} ${poValue}` : '']
       .filter(Boolean)
@@ -242,6 +258,9 @@ export function receivingAdaptiveRailTitle(
   if (!isReceivingPoGroupTitleRow(row)) {
     return receivingProductTitle(row);
   }
+  const { poValue } = getReceivingPoIdentityParts(row, resolvePlatformLabel);
+  const returnTitle = poValue ? marketplaceReturnTitleFromRow(row, poValue) : null;
+  if (returnTitle) return returnTitle;
   if (shouldUsePoGroupRailTitle(row)) {
     return getReceivingPoGroupTitle(row, resolvePlatformLabel);
   }
