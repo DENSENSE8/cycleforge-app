@@ -8,7 +8,7 @@
  *
  * Usage:
  *   - Tailwind: `p-3` / `gap-2` / `space-y-6` — the numeric scale itself is
- *     density-aware (wired in tailwind.config.ts from spacing.mjs), so
+ *     density-aware (wired in tailwind.config.mjs from spacing.mjs), so
  *     existing utilities pick it up with no class rename.
  *   - Inline style (rare): `style={{ padding: spacingScale[3] }}`.
  *

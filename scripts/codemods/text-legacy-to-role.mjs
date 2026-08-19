@@ -3,7 +3,7 @@
  * Codemod: migrate the 5 legacy px font-size tokens → CF Type roles, AND
  * resolve the remaining arbitrary-px tail to named sizes (search-and-dense-ui
  * plan §2.5 T3/T4). After this the legacy tokens can be deleted from
- * tailwind.config.ts + _cn.ts.
+ * tailwind.config.mjs + _cn.ts.
  *
  * Legacy token → role (size-preserving where a role matches; +1–2px at the
  * retired sub-10px end, which is the plan's intent):

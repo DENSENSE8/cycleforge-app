@@ -82,7 +82,7 @@ const NEUTRAL_FAMILIES = new Set(['gray', 'slate', 'zinc', 'neutral']);
 
 /**
  * Per step → token name per utility family (token names are the Tailwind
- * color keys from tailwind.config.ts; the utility prefix is re-applied).
+ * color keys from tailwind.config.mjs; the utility prefix is re-applied).
  * A missing entry = deliberately unmapped.
  */
 const STEP_MAP = {

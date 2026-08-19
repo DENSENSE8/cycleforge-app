@@ -22,7 +22,7 @@
  * CTA — and compose `FlushTerminalFooter` directly, not this floor.
  *
  * Not for Station Displays / station docks (that shell is
- * `StationDisplaysActionFloor` — the station half of the same display method).
+ * `StationDisplaysHeaderActions` — the station half of the same display method).
  * Law: `.claude/rules/display/right-rail-inspector.md` · SoT Macro CTA.
  */
 

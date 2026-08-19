@@ -184,7 +184,7 @@ inspector action floor*). It is the floor's **only** peer — every other bulk v
 is a set operation that reads better as a named row, so Delete is there because
 it is destructive, not because floors are where verbs go (same shape as
 `BinDetailFlyout` · `SkuDetailView` · `RepairDetailsPanel`). Desk floor, **not**
-`StationDisplaysActionFloor` — that is the Station half of the same display
+`StationDisplaysHeaderActions` — that is the Station half of the same display
 method (C2). The floor stays **mounted and disabled** at zero selected rather
 than unmounting, so the row above never shifts mid-tick.
 

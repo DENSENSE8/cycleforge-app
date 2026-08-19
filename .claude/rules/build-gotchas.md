@@ -5,25 +5,30 @@ Silent-failure traps specific to this stack (Next 16, Turbopack dev, Tailwind). 
 ## Tailwind v4 (PostCSS + `@config` bridge)
 
 - CSS entry: `src/app/globals.css` uses `@import "tailwindcss"`, then
-  `@config "../../tailwind.config.ts"`, then explicit `@source` globs (incl. `src/lib`).
+  `@config "../../tailwind.config.mjs"`, then explicit `@source` globs (incl. `src/lib`).
 - PostCSS: `postcss.config.mjs` → `@tailwindcss/postcss` only (no `autoprefixer` —
   Lightning CSS handles prefixes).
 - **Do not** use v3 “function colors” (`themed()`). Theme colors must be plain
   `'var(--ds-…)'` strings; `/opacity` uses `color-mix` natively.
-- CF Type + spacing-intent plugins still live in `tailwind.config.ts` via `@config`.
+- CF Type + spacing-intent plugins still live in `tailwind.config.mjs` via `@config`.
   Ship-before-adoption classes use `@source inline("…")` (replaces v3 `safelist`).
 - Content / `@source` changes still need a **dev server restart** (operator owns `:3050`).
 - Optional follow-up: migrate `theme.extend` into native `@theme` —
   [`docs/todo/tailwind-v4-SPIKE.md`](../../docs/todo/tailwind-v4-SPIKE.md).
 
-## tailwind.config.ts must import values modules as `.mjs` (z-index, spacing)
+## Tailwind config itself is `.mjs`, and it imports value modules as `.mjs` too
 
-- `tailwind.config.ts` imports the z-index and spacing scales from
-  `src/design-system/tokens/z-index.mjs` / `spacing.mjs`.
-- Use the explicit `.mjs` extension — do **not** import the `.ts` twins here. Node loads
-  Tailwind config directly; a `.ts` ESM import triggers `MODULE_TYPELESS_PACKAGE_JSON`
-  reparsing (build noise + overhead). App code keeps importing `@/design-system/tokens/*`.
-- Values live in the `.mjs` module; the `.ts` twin re-exports with types.
+- The repo has no `"type": "module"` in `package.json`, so Node guesses a file's module
+  system from its extension. A `.ts` config containing ESM `import` syntax makes Node
+  reparse it as ESM at runtime and print `MODULE_TYPELESS_PACKAGE_JSON` — noisy on every
+  dev-server request (`tailwind.config.ts?id=…`) and a perf overhead. `.mjs` is unambiguous
+  ESM to Node, so no reparse guess happens. **`tailwind.config.mjs` is therefore the file
+  itself**, not `tailwind.config.ts` — keep it in sync in `src/app/globals.css`'s `@config`
+  line and `components.json`'s `tailwind.config` path if it ever moves.
+- The same reasoning applies one level down: `tailwind.config.mjs` imports the z-index and
+  spacing scales from `src/design-system/tokens/z-index.mjs` / `spacing.mjs`.
+- Use the explicit `.mjs` extension — do **not** import the `.ts` twins here. App code keeps
+  importing `@/design-system/tokens/*` (the `.ts` twin re-exports the same values with types).
 - A bare extensionless import can also fail under Turbopack dev (silent missing `z-*` utilities).
 
 ## Tailwind `@source` / content: a class used only in an un-scanned file renders invisible
@@ -32,7 +37,7 @@ Silent-failure traps specific to this stack (Next 16, Turbopack dev, Tailwind). 
   legacy `content` array) is silently not generated — no error, the style just doesn't apply.
   This bit us when logic moved into `src/lib` (e.g. `outbound-state.ts`).
 - Prefer already-generated shades. If you must add a class in a new path, update `@source`
-  in `src/app/globals.css` (keep `content` in `tailwind.config.ts` in parity) and
+  in `src/app/globals.css` (keep `content` in `tailwind.config.mjs` in parity) and
   **restart the dev server**.
 - **v4 auto-detect still scans the repo** (except gitignored paths). Truncated Tailwind
   arbitrary classes in markdown (ellipsis placeholders inside `pb-[max(…)]`-style fences)

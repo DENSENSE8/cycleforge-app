@@ -2,7 +2,7 @@
 /**
  * Codemod: arbitrary `text-[Npx]` → named font-size tokens.
  *
- * Tailwind already defines a compact sub-12px scale in `tailwind.config.ts`
+ * Tailwind already defines a compact sub-12px scale in `tailwind.config.mjs`
  * (theme.fontSize): mini=8, eyebrow=9, micro=10, caption=11, label=12. Hundreds
  * of call sites hand-rolled the raw `text-[10px]` equivalents instead, which
  * drift and bypass the scale. This rewrites the 1:1 mappable sizes onto the
@@ -25,7 +25,7 @@ const ROOT = process.cwd();
 const SRC = join(ROOT, 'src');
 const APPLY = process.argv.includes('--apply');
 
-// 1:1 px → token. Keep in sync with tailwind.config.ts theme.fontSize.
+// 1:1 px → token. Keep in sync with tailwind.config.mjs theme.fontSize.
 const MAP = { 8: 'mini', 9: 'eyebrow', 10: 'micro', 11: 'caption', 12: 'label' };
 
 // Match `text-[Npx]` only when it is a standalone class (not a substring of a

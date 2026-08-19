@@ -8,14 +8,14 @@ import { cornerClass, nestedCorner, type CornerRole } from './radius';
  * Guards the corner-radius system (structure cloned from
  * spacing-tokens.guard.test.ts).
  *
- * The radius scale is 100% Tailwind STOCK — `tailwind.config.ts` deliberately
+ * The radius scale is 100% Tailwind STOCK — `tailwind.config.mjs` deliberately
  * does not extend `borderRadius`. Semantic corners come from
  * `cornerClass(role)` / `nestedCorner(outer, padStep)` in `tokens/radius.ts`.
  *
  * This is a RATCHET, not a migration: the ~3,900 existing `rounded-*` classes
  * are correct and are not offenders. Only two things fail here —
  *   1. a NEW arbitrary-value radius (`rounded-[…]`), which bypasses the scale;
- *   2. re-introducing a custom `borderRadius` key in tailwind.config.ts.
+ *   2. re-introducing a custom `borderRadius` key in tailwind.config.mjs.
  */
 
 const SRC_ROOT = join(process.cwd(), 'src');
@@ -122,7 +122,7 @@ test('no NEW arbitrary-value radius — the ratchet only shrinks', () => {
 });
 
 test('keystone: the radius scale stays 100% Tailwind stock', () => {
-  const tw = readFileSync(join(process.cwd(), 'tailwind.config.ts'), 'utf8');
+  const tw = readFileSync(join(process.cwd(), 'tailwind.config.mjs'), 'utf8');
   // A custom borderRadius key is an unregistered class group in cn() — twMerge
   // cannot tell it is a radius, so it and a primitive's own rounded-* BOTH
   // survive and stylesheet order silently picks. That is exactly what the
@@ -131,7 +131,7 @@ test('keystone: the radius scale stays 100% Tailwind stock', () => {
   assert.equal(
     extendsRadius,
     false,
-    'tailwind.config.ts must NOT extend theme.borderRadius. Add a semantic role ' +
+    'tailwind.config.mjs must NOT extend theme.borderRadius. Add a semantic role ' +
       'to cornerClass() in tokens/radius.ts instead — it returns stock classes, ' +
       'which cn() already conflict-resolves correctly.',
   );

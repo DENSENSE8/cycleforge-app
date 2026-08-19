@@ -494,7 +494,7 @@ export function TestingPanel({
                 setActiveSideTab(id as TestingDisplayTab);
               }}
               onClose={closeDisplays}
-              actionFloor={
+              headerActions={
                 <TestingDisplaysActionFloor
                   receivingId={row.receiving_id}
                   isUnfound={shouldUseUnmatchedItemsSurface(row)}

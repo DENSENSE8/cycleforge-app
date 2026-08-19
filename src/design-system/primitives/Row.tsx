@@ -7,7 +7,7 @@ import { cn } from '@/utils/_cn';
 //
 // Horizontal grouping by INTENT (spacing-token-leakage plan Phase 3): an
 // items-center flex row whose gap comes from the Tier-2 spacing intents
-// (`row-gap`/`row-tight` — tailwind.config.ts plugin), density-aware for
+// (`row-gap`/`row-tight` — tailwind.config.mjs plugin), density-aware for
 // free. Reach for <Row> instead of hand-rolling `flex items-center gap-2`.
 //
 // Pure layout — no surface or padding. This is the inline sibling of <Stack>;

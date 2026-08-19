@@ -17,7 +17,7 @@ const DEPLOY_PATHS = [
   'package-lock.json',
   'next.config.ts',
   'vercel.json',
-  'tailwind.config.ts',
+  'tailwind.config.mjs',
   'postcss.config.js',
   'postcss.config.mjs',
   'tsconfig.json',

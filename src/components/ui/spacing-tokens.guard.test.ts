@@ -10,7 +10,7 @@ import { test } from 'node:test';
  * Tier 1: the numeric spacing scale (`p-3`, `gap-2`, …) is density-aware —
  * values live in `src/design-system/tokens/spacing.mjs`, wired via
  * `theme.extend.spacing`. Tier 2: named intents (`inset-*` / `stack-*` /
- * `row-*`) — a tailwind.config.ts plugin + safelist, with `cf-*` conflict
+ * `row-*`) — a tailwind.config.mjs plugin + safelist, with `cf-*` conflict
  * groups registered in `cn()` (src/utils/_cn.ts). Tier 3: the
  * `Stack`/`Inset`/`Row` primitives compose Tier 2.
  *
@@ -20,7 +20,7 @@ import { test } from 'node:test';
 
 const SRC_ROOT = join(process.cwd(), 'src');
 
-// The Tier-2 spacing intents. Must stay in sync across the tailwind.config.ts
+// The Tier-2 spacing intents. Must stay in sync across the tailwind.config.mjs
 // plugin, its safelist, and the cn() class groups — the keystone test below
 // pins all three.
 const INTENTS = [
@@ -98,15 +98,15 @@ test('no NEW arbitrary-px spacing — use the density-aware scale or an intent',
 });
 
 test('keystone: the spacing scale + intents stay wired (tailwind, safelist, plugin, cn)', () => {
-  const tw = readFileSync(join(process.cwd(), 'tailwind.config.ts'), 'utf8');
+  const tw = readFileSync(join(process.cwd(), 'tailwind.config.mjs'), 'utf8');
   // Tier 1 — the density-aware scale drives theme.extend.spacing.
   assert.ok(
     tw.includes('./src/design-system/tokens/spacing.mjs'),
-    'tailwind.config.ts must import the spacing scale from spacing.mjs (.mjs — see build-gotchas).',
+    'tailwind.config.mjs must import the spacing scale from spacing.mjs (.mjs — see build-gotchas).',
   );
   assert.ok(
     tw.includes('spacing: spacingScale'),
-    'tailwind.config.ts must wire theme.extend.spacing from spacingScale.',
+    'tailwind.config.mjs must wire theme.extend.spacing from spacingScale.',
   );
   // Tier 2 — every intent exists in BOTH the safelist (single-quoted) and the
   // plugin (double-quoted selector), so the three lists cannot drift apart.

@@ -1,9 +1,13 @@
 import plugin from "tailwindcss/plugin";
-// NOTE: import `.mjs` values modules, not `.ts`. Tailwind's config loader
-// runs under Node; a `.ts` import with ESM syntax triggers
-// MODULE_TYPELESS_PACKAGE_JSON reparsing (performance overhead + build noise).
-// Turbopack dev also resolves `.mjs` from this config. Values + types SoT
-// pairs: `src/design-system/tokens/z-index.mjs` + `z-index.ts`,
+// NOTE: this config file is itself `.mjs`, not `.ts`. Tailwind's config
+// loader runs under plain Node with no "type": "module" in package.json, so
+// a `.ts` file containing ESM `import` syntax triggers Node's
+// MODULE_TYPELESS_PACKAGE_JSON reparsing warning (perf overhead + build
+// noise) on every dev-server request. `.mjs` is unambiguous ESM to Node, so
+// no reparse guess is needed. Same reasoning applies one level down to the
+// values modules this file imports — `.mjs` twins, never their `.ts`
+// counterparts. Turbopack dev also resolves `.mjs` cleanly here. Values +
+// types SoT pairs: `src/design-system/tokens/z-index.mjs` + `z-index.ts`,
 // `spacing.mjs` + `spacing.ts`.
 import { zIndex } from "./src/design-system/tokens/z-index.mjs";
 import { spacingScale } from "./src/design-system/tokens/spacing.mjs";
@@ -253,7 +257,7 @@ const config = {
         // src/utils/_cn.ts). Registered in the safelist above; conflict groups
         // in _cn.ts; both lists must stay in sync with this plugin.
         plugin(({ addUtilities, theme }) => {
-            const s = theme("spacing") as Record<string, string>;
+            const s = theme("spacing");
             addUtilities({
                 ".inset-chip": { paddingInline: s["1.5"], paddingBlock: s["0.5"] },
                 ".inset-field": { paddingInline: s["3"], paddingBlock: s["2"] },

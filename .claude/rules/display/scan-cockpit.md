@@ -83,7 +83,7 @@ noticeboard and is banned — it stops being glanceable, which is the entire job
 - **No competing primaries in the centre** (P5). The work plane carries the one
   armed action; a reference wall or a second CTA in the centre is banned.
 - **No everything-rail.** Reference for the *current* step only.
-- **Carton Macro on the rail is allowed** (`StationDisplaysActionFloor` —
+- **Carton Macro on the rail is allowed** (`StationDisplaysHeaderActions` —
   above close chrome: Edit · Print/Resolve · Delete far-right). That is record
   gravity on the KNOW column, not a second DO primary in the centre. Never desk
   `InspectorActionFloor`.

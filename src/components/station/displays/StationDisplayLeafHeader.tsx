@@ -1,8 +1,20 @@
 'use client';
 
 /**
- * Sticky leaf chrome — top-left history ← → + **current title** (+ optional
- * trailing perspective segment, e.g. Claim New·Link).
+ * Displays nav cluster — history `← →` + **current title** (+ optional trailing
+ * perspective segment, e.g. Claim New·Link).
+ *
+ * **In-band since 2026-08-18.** This was its own sticky `h-6` row under the
+ * column's top band; it is now the LEFT group of that single band
+ * (`[< >] Displays ……… [verbs] [⤢] [→|]`). Merging the two rows recovers a
+ * whole row of vertical space above the index — which on a bench is the
+ * difference between seeing the first VERIFICATION rows and scrolling for them
+ * — and it separates "where am I" (left) from "what can I do" (right) on one
+ * axis instead of two stacked ones.
+ *
+ * It renders no background, no hairline, and no sticky positioning: the band
+ * owns all three. Height is `h-full` so it fills the band rather than setting
+ * its own.
  *
  * Title is always the current trail segment (e.g. `PO notes`). Ancestors are
  * not painted as jump crumbs — depth is ← → / Esc / ArrowLeft·ArrowRight only.
@@ -13,8 +25,6 @@
 import { useCallback, type KeyboardEvent, type ReactNode } from 'react';
 import { ChevronLeft, ChevronRight } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { STATION_SECONDARY_BAND_FACE } from '@/components/layout/header-shell';
-import { STATION_CHROME_SEAM_HAIRLINE } from '@/components/station/entity-context';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 import type { DisplaysBreadcrumbSegment } from './displays-leaf-chrome';
@@ -94,25 +104,16 @@ export function StationDisplayLeafHeader({
       tabIndex={0}
       onKeyDown={onBandKeyDown}
       className={cn(
-        // 24px eyebrow band — same STATION_SECONDARY_BAND_FACE (h-6) seam as the
-        // Displays index group eyebrows, the left-rail eyebrow, and carton
-        // commerce row 2. Never a page-local h-10 chrome band.
+        // LEFT group of the column's single header band. The band owns the
+        // height, background, hairline and stacking — this cluster owns none of
+        // them, or it would double-paint the seam it used to draw itself.
         //
-        // Stacking matches the column top band (fullscreen / carton cursor):
-        // `z-header` + `pointer-events-none`, with ← → / trailing re-enabled.
-        // Sitting at `z-base` under the inset resize sash (`z-sticky`, full
-        // height `w-3`) made the Back chevron half-dead and look disabled —
-        // the sash ate the leading 12px of the history controls. Empty title
-        // gutter still lets the sash through for a T-junction drag.
-        // Hairline via STATION_CHROME_SEAM_HAIRLINE — not border-b (avoids
-        // notching the column border-l).
-        // `sticky` MUST follow STATION_CHROME_SEAM_HAIRLINE — that token sets
-        // `relative` for the `after:` hairline, and tailwind-merge drops the
-        // earlier position utility when both appear (Back band stopped sticking).
-        'pointer-events-none top-0 z-header flex w-full items-stretch bg-surface-card',
-        STATION_SECONDARY_BAND_FACE,
-        STATION_CHROME_SEAM_HAIRLINE,
-        'sticky',
+        // `pointer-events-none` + per-control re-enable is inherited from the
+        // band: the inset resize sash (`z-sticky`, full-height `w-3`) sits under
+        // this chrome, and an opaque cluster ate the leading 12px of the Back
+        // chevron — it looked disabled. The empty title gutter still passes the
+        // sash through for a T-junction drag.
+        'pointer-events-none flex h-full min-w-0 flex-1 items-stretch',
         focusRing('control', 'accent'),
         'outline-none',
       )}

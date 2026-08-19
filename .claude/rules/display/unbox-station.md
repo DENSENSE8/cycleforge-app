@@ -57,7 +57,7 @@
 | Cockpit KNOW map | `UNBOX_STEP_RAIL_LEAF` (`line-edit/steps/rail/`) |
 | Floor host | `UnboxDockHost` — Band 1 + Band 2 flush instrument |
 | Displays | `StationDisplaysPushStack` / `StationDisplaysPushColumn` + `unbox-side-tabs.ts` |
-| Macro floor | `UnboxDisplaysActionFloor` → `StationDisplaysActionFloor` (never desk inspector floor) |
+| Macro verbs (top band) | `UnboxDisplaysActionFloor` → `CartonDisplaysActionFloor` → `StationDisplaysHeaderActions` (never desk inspector floor) |
 | Progress | `UnboxScanProgressControl` `variant="floor"` in Band 2 only — never `GoalRing`, never a floor % twin on Displays |
 | Flows | `@/lib/stations/procedure` — `found` / `unfound` / `return` capture orders |
 
@@ -188,8 +188,10 @@ horizontal icon plate in the centre.
 `railLeaf`; yields to explicit close until next carton; yields to Index / other leaf
 browse until step advances; never steals wedge focus. Detail: [`scan-cockpit.md`](scan-cockpit.md).
 
-**Macro:** `StationDisplaysActionFloor` above close chrome — Edit · Print/Resolve ·
-Delete. Never desk `InspectorActionFloor`.
+**Macro:** `StationDisplaysHeaderActions` in the column's **top-right band** —
+Refresh · Print · Edit · `⋮` (Resolve + Delete inside `⋮`). Moved off the bottom
+rung 2026-08-18; the `Filter displays… + →|` footer stays at the bottom. Never
+desk `InspectorActionFloor`.
 
 ---
 

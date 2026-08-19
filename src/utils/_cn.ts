@@ -2,7 +2,7 @@ import { clsx, type ClassValue } from 'clsx';
 import { extendTailwindMerge } from 'tailwind-merge';
 
 /**
- * Custom font-size utilities defined in `tailwind.config.ts` (theme.fontSize).
+ * Custom font-size utilities defined in `tailwind.config.mjs` (theme.fontSize).
  * Keep this list in sync with that config — it is the sub-12px compact scale
  * (`text-mini` … `text-label`) used pervasively in station/sidebar UI.
  *
@@ -36,7 +36,7 @@ const twMerge = extendTailwindMerge<'cf-inset' | 'cf-stack' | 'cf-row'>({
   extend: {
     classGroups: {
       'font-size': [{ text: [...CUSTOM_FONT_SIZES] }],
-      // Elevation ladder (tailwind.config.ts theme.extend.boxShadow —
+      // Elevation ladder (tailwind.config.mjs theme.extend.boxShadow —
       // `shadow-elev-*` via elevationClass). Unregistered, twMerge cannot tell
       // `shadow-elev-raised` is a box-SHADOW (it is not a t-shirt size), lumps
       // it into the shadow-COLOR group, and two elevation roles on one element
@@ -53,13 +53,13 @@ const twMerge = extendTailwindMerge<'cf-inset' | 'cf-stack' | 'cf-row'>({
           ],
         },
       ],
-      // Spacing intents (tailwind.config.ts plugin — spacing plan Phase 2).
+      // Spacing intents (tailwind.config.mjs plugin — spacing plan Phase 2).
       // Own groups so two intents of one kind conflict-resolve (last wins);
       // unregistered, twMerge would treat them as unknown classes and keep
       // both, letting stylesheet order pick silently. Cross-axis (intent +
       // raw p-*/px-*) is deliberately NOT a conflict: both classes survive
       // and the intent wins in CSS order — don't mix them on one element.
-      // Keep in sync with the plugin + safelist in tailwind.config.ts.
+      // Keep in sync with the plugin + safelist in tailwind.config.mjs.
       'cf-inset': ['inset-chip', 'inset-field', 'inset-cozy', 'inset-card', 'inset-empty'],
       'cf-stack': ['stack-tight', 'stack-row', 'stack-section'],
       'cf-row': ['row-gap', 'row-tight'],

@@ -348,11 +348,15 @@ them. Law: `source-of-truth.md` → Station Action vs Context planes.
   — never mount list-filter chrome on a leaf. Filter query applies only to
   `StationDisplayIndexList` / `filterDisplayIndexRows`. Guard:
   `station-displays-footer-stage.guard.test.ts`.
-- **Carton Macro floor (above close chrome):** Unbox mounts
-  `StationDisplaysActionFloor` via PushStack `actionFloor` at dock Band 1
-  `h-11` (Edit · Print/Resolve · Delete far bottom-right; no `…`) — above the
-  `→|` / Filter hairline, never replacing it. Desk `InspectorActionFloor` stays
-  banned on Displays. Guard: `station-displays-action-floor.guard.test.ts`.
+- **Carton Macro verbs (top band):** Unbox mounts
+  `StationDisplaysHeaderActions` via PushStack `headerActions` in the column's
+  top-right corner — Refresh · Print/Resolve · Edit · trailing `⋮` (Delete and
+  Resolve inside `⋮`). Moved off the bottom rung 2026-08-18: a verb acting on
+  the open carton belongs in the corner the operator already reads for chrome,
+  not at the far end of a scrolling column. The `→|` / Filter footer is
+  untouched and stays the bottom band. The carton `↑↓` cursor no longer mounts
+  in this band. Desk `InspectorActionFloor` stays banned on Displays. Guard:
+  `station-displays-action-floor.guard.test.ts`.
 - **Guard:** `station-displays-reachability.guard.test.ts` asserts the operator
   contract (*every declared display is reachable*), not the mode string. The
   per-station guards asserted `navMode="leaf"` was present and were green
