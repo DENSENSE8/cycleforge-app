@@ -31,10 +31,7 @@ import { CatalogManagerList, type CatalogKind } from '@/components/receiving/wor
 import { ReceivingTicketChip } from '@/components/receiving/workspace/line-edit/ReceivingTicketChip';
 import { FulfillmentPickupPill } from '@/components/receiving/ReceivingIdentityChips';
 import { InlinePillPicker } from '@/components/receiving/workspace/line-edit/InlinePillPicker';
-import {
-  CatalogManagerPopover,
-  type CatalogKind,
-} from '@/components/receiving/workspace/line-edit/CatalogManagerPopover';
+import { CatalogManagerPopover } from '@/components/receiving/workspace/line-edit/CatalogManagerPopover';
 import {
   platformClassifyOptions,
   typeClassifyOptions,
