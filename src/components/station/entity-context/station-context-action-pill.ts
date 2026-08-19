@@ -142,7 +142,8 @@ export const STATION_CONTEXT_LISTING_CHROME_CLASS = [
   'ds-raw-button relative z-base flex h-full shrink-0 items-center justify-center gap-0.5 leading-none',
   cornerClass('flush'),
   'border-0 bg-surface-card px-1.5 text-role-caption font-semibold text-text-default shadow-none',
-  'hover:bg-surface-hover/50 disabled:text-text-faint',
+  `${STATION_CHROME_CELL_HOVER_FILL} disabled:text-text-faint`,
+  STATION_CHROME_CELL_HOVER_SEAM,
   focusRing('control', 'accent'),
   'outline-none',
 ].join(' ');
