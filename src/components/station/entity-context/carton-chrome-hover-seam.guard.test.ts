@@ -81,11 +81,25 @@ test('the hover fill is a token, not a literal repeated per face', () => {
 
 test('every interactive carton-bar cell composes the seam', () => {
   const actionPill = read(ACTION_PILL);
-  // Exit / boxed cube / icon cell / Photos / Claim.
+  // Exit / boxed cube / icon cell / Photos / Claim / Listing. Listing was the
+  // face that fell out: it re-spelled the wash literal and drew no box, so it
+  // was the one cell on the strip that stayed flat under the pointer. A count
+  // of 5 passed the whole time it was missing — hence 6.
   const faces = actionPill.match(/STATION_CHROME_CELL_HOVER_SEAM/g) ?? [];
   assert.ok(
-    faces.length >= 5,
-    `Every button face on the strip carries the seam; found ${faces.length} of the expected 5+.`,
+    faces.length >= 6,
+    `Every button face on the strip carries the seam; found ${faces.length} of the expected 6+.`,
+  );
+
+  const listing =
+    /export const STATION_CONTEXT_LISTING_CHROME_CLASS = \[[\s\S]*?\]\.join/.exec(
+      actionPill,
+    );
+  assert.ok(listing, 'Listing face not found — update this guard alongside it.');
+  assert.match(
+    listing[0],
+    /STATION_CHROME_CELL_HOVER_SEAM/,
+    'Listing is a click target on the strip; it draws the same box as Photos / Claim.',
   );
 
   assert.match(
