@@ -9,7 +9,7 @@
  *
  * Listing / tracking Edit navigate to Unbox SectionTabsSlider tabs (parent
  * passes `onEdit*` + `*EditOpen`). PO# Edit always opens Package Pairing → PO
- * (`onEditPo`); Details opens the Incoming connection panel (`onOrderDetails`).
+ * (`onEditPo`).
  *
  * Serves Unbox and Triage — both use the one-row family face. Pair the host
  * with `reserveIdentityClearance={false}` (in-flow) or legacy overlay clearance.
@@ -88,11 +88,6 @@ interface LineCartonContextSectionProps {
   onEditListing?: () => void;
   /** Open Package Pairing → PO tab (link / change / import a Zoho PO). */
   onEditPo?: () => void;
-  /**
-   * Open the Incoming connection details panel (PO mirror / sync / link CRUD)
-   * on RightRailHost.
-   */
-  onOrderDetails?: () => void;
   /** Pulse tracking chip while Tracking tab is active. */
   trackingEditOpen?: boolean;
   /** Pulse PO chip while Package Pairing (PO) is open. */
@@ -133,7 +128,6 @@ export function LineCartonContextSection({
   onEditTracking,
   onEditListing,
   onEditPo,
-  onOrderDetails,
   trackingEditOpen = false,
   poEditOpen = false,
   photoStage,
@@ -187,7 +181,6 @@ export function LineCartonContextSection({
       poDisplay={c.poNumber}
       onEditPo={onEditPo}
       poEditOpen={poEditOpen}
-      onOrderDetails={onOrderDetails}
       linkedOrderNumber={linkedOrderNumber}
       lineId={row.id ?? null}
       zendeskTrimmed={c.zendeskTrimmed}

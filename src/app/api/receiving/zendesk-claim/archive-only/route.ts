@@ -2,15 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { errorResponse } from '@/lib/api';
 import { withAuth } from '@/lib/auth/withAuth';
-import {
-  archiveClaimToFolder,
-  archiveClaimViaAgent,
-  resolveClaimArchivePhotoUrl,
-} from '@/lib/receiving-claim-photos';
+import { archiveReceivingClaimPhotos } from '@/lib/receiving-claim-archive';
 import { CLAIM_TYPE_LABEL, type ClaimType } from '@/lib/zendesk-claim-template';
-import { listAllReceivingPhotoIds } from '@/lib/photos/queries/receiving-list';
-import { getOrganization } from '@/lib/tenancy/organizations';
-import { getNasStorageTarget } from '@/lib/tenancy/settings';
 import { getTicketEntity } from '@/lib/zendesk-links';
 import { tenantQuery } from '@/lib/tenancy/db';
 
@@ -136,96 +129,38 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       if (lineId == null && resolved.lineId != null) lineId = resolved.lineId;
     }
 
-    const allPhotoIds = await listAllReceivingPhotoIds(ctx.organizationId, receivingId);
-    const allPhotos = (
-      await Promise.all(
-        allPhotoIds.map(async (photoId) => ({
-          photoId,
-          url: await resolveClaimArchivePhotoUrl(photoId, ctx.organizationId),
-        })),
-      )
-    )
-      .filter((p): p is { photoId: number; url: string } => Boolean(p.url))
-      .map((p) => ({ url: p.url }));
+    const archived = await archiveReceivingClaimPhotos({
+      orgId: ctx.organizationId,
+      receivingId,
+      ticketId: folderName,
+      logTag: 'POST /api/receiving/zendesk-claim/archive-only',
+      info: ({ photoIdCount, resolvedCount }) =>
+        [
+          `Archive target: ${folderName}`,
+          'Mode: Archive to NAS (no Zendesk ticket created by this call)',
+          body.claimType ? `Claim type: ${CLAIM_TYPE_LABEL[body.claimType as ClaimType]}` : null,
+          `Receiving id: ${receivingId}`,
+          lineId != null ? `Receiving line id: ${lineId}` : null,
+          `Captured: ${new Date().toISOString()}`,
+          `Photos on claim record: ${photoIdCount}`,
+          `Photos resolved for NAS archive: ${resolvedCount}`,
+          body.subject ? `Subject: ${body.subject}` : null,
+          body.reason ? `Reason: ${body.reason}` : null,
+          '',
+          '--- Draft body ---',
+          body.description || '',
+        ]
+          .filter(Boolean)
+          .join('\n'),
+    });
 
-    const info = [
-      `Archive target: ${folderName}`,
-      'Mode: Archive to NAS (no Zendesk ticket created by this call)',
-      body.claimType ? `Claim type: ${CLAIM_TYPE_LABEL[body.claimType as ClaimType]}` : null,
-      `Receiving id: ${receivingId}`,
-      lineId != null ? `Receiving line id: ${lineId}` : null,
-      `Captured: ${new Date().toISOString()}`,
-      `Photos on claim record: ${allPhotoIds.length}`,
-      `Photos resolved for NAS archive: ${allPhotos.length}`,
-      body.subject ? `Subject: ${body.subject}` : null,
-      body.reason ? `Reason: ${body.reason}` : null,
-      '',
-      '--- Draft body ---',
-      body.description || '',
-    ]
-      .filter(Boolean)
-      .join('\n');
-
-    // Presence booleans (never the values) so a failure response can say WHICH
-    // side is missing without leaking a secret.
-    const hasAgentUrl = Boolean((process.env.NAS_AGENT_URL || '').trim());
-    const hasAgentToken = Boolean((process.env.NAS_AGENT_TOKEN || '').trim());
-    const useAgent = hasAgentUrl && hasAgentToken;
-
-    let claimTarget = { root: '', folder: '' };
-    let claimTargetErr: string | null = null;
-    if (useAgent) {
-      try {
-        const org = await getOrganization(ctx.organizationId);
-        if (org) claimTarget = getNasStorageTarget(org.settings, 'claims');
-      } catch (e) {
-        claimTargetErr = e instanceof Error ? e.message : 'org settings lookup failed';
-        claimTarget = { root: '', folder: '' };
-      }
-    }
-
-    // Capture the EXACT reason the archive failed → returned in `details` (and
-    // logged) so the operator's toast names it instead of a generic wall.
-    // `archiveClaimViaAgent` THROWS on agent/transport failure (vs returning
-    // null only when unconfigured), so wrap it and surface either shape.
-    let archived: { folder: string; copied: number; total: number } | null = null;
-    let failReason: string | null = null;
-    try {
-      archived = useAgent
-        ? await archiveClaimViaAgent({
-            ticketId: folderName,
-            photos: allPhotos,
-            info,
-            organizationId: ctx.organizationId,
-            archiveRoot: claimTarget.root,
-            archiveFolder: claimTarget.folder,
-          })
-        : await archiveClaimToFolder({
-            ticketId: folderName,
-            photos: allPhotos,
-            info,
-          });
-      if (!archived) {
-        failReason = useAgent
-          ? 'archive agent returned no result (unconfigured base/token at runtime)'
-          : `NAS agent not configured at runtime (NAS_AGENT_URL present=${hasAgentUrl}, NAS_AGENT_TOKEN present=${hasAgentToken}); direct-mount fallback is not writable on this host`;
-      }
-    } catch (agentErr) {
-      failReason = agentErr instanceof Error ? agentErr.message : 'archive failed';
-    }
-
-    if (!archived) {
-      const details = [failReason, claimTargetErr ? `claims-target: ${claimTargetErr}` : null]
+    if (!archived.folder) {
+      const details = [
+        archived.failReason,
+        archived.claimTargetErr ? `claims-target: ${archived.claimTargetErr}` : null,
+      ]
         .filter(Boolean)
         .join(' · ');
-      console.warn('[POST /api/receiving/zendesk-claim/archive-only] archive failed', {
-        useAgent,
-        hasAgentUrl,
-        hasAgentToken,
-        photoCount: allPhotos.length,
-        totalPhotoIds: allPhotoIds.length,
-        details,
-      });
       return NextResponse.json(
         {
           success: false,
@@ -236,20 +171,13 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       );
     }
 
-    const archiveWarning =
-      allPhotos.length < allPhotoIds.length
-        ? `Only ${archived.copied} of ${allPhotoIds.length} photos archived to the NAS. ${allPhotoIds.length - allPhotos.length} photo source(s) could not be resolved for archiving.`
-        : archived.copied < archived.total
-          ? `Only ${archived.copied} of ${archived.total} photos archived to the NAS.`
-          : null;
-
     return NextResponse.json({
       success: true,
       folder: archived.folder,
       folderName,
       copied: archived.copied,
       total: archived.total,
-      archiveWarning,
+      archiveWarning: archived.archiveWarning,
     });
   } catch (error) {
     return errorResponse(error, 'POST /api/receiving/zendesk-claim/archive-only');

@@ -3,8 +3,9 @@
  * (+ optional RETURN tag + classify stamps). Shared by import-purchase and
  * import-csv routes.
  *
- * Native Amazon Manage Returns CSV rows are gated: ASIN must equal
- * sku_catalog.sku (case-insensitive). Misses are structured skips, not errors.
+ * Native Amazon Manage Returns CSV rows resolve sku_catalog when ASIN equals
+ * sku_catalog.sku (case-insensitive). A catalog miss still ingests — tracking
+ * must land so door/unbox can find the carton.
  */
 
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -144,7 +145,8 @@ export interface ImportDeskInboundRowDeps {
 
 /**
  * Import one desk / CSV row onto the Incoming spine.
- * Amazon native return rows without a matching catalog ASIN are skipped.
+ * Amazon native return rows resolve catalog by ASIN when present; a miss still
+ * ingests so Tracking ID is registered for unbox.
  */
 export async function importDeskInboundRow(
   orgId: OrgId,
@@ -179,33 +181,27 @@ export async function importDeskInboundRow(
   let itemName = row.itemName?.trim() || null;
   let skuCatalogId: number | null = null;
 
-  // Native Amazon returns: ASIN must equal sku_catalog.sku — skip otherwise.
+  // Native Amazon returns: catalog by Merchant SKU, then ASIN.
   if (row.amazonNativeReturn && row.kind === 'return' && sourceType === 'amazon') {
-    if (!sku) {
-      return {
-        skipped: true,
-        reason: 'no_asin',
-        asin: null,
-        orderId,
-      };
+    const asin = row.amazonAsin?.trim() || null;
+    const needles = [sku, asin].filter((v, i, a): v is string => Boolean(v) && a.indexOf(v) === i);
+    for (const needle of needles) {
+      const catalog = await resolveCatalog(orgId, needle);
+      if (catalog) {
+        skuCatalogId = catalog.id;
+        sku = catalog.sku;
+        if (!itemName) itemName = catalog.product_title?.trim() || null;
+        break;
+      }
     }
-    const catalog = await resolveCatalog(orgId, sku);
-    if (!catalog) {
-      return {
-        skipped: true,
-        reason: 'no_catalog_asin',
-        asin: sku,
-        orderId,
-      };
-    }
-    skuCatalogId = catalog.id;
-    // Prefer catalog SKU casing; fill blank title from catalog.
-    sku = catalog.sku;
-    if (!itemName) itemName = catalog.product_title?.trim() || null;
   }
 
   if (!sku && !itemName) {
-    throw new Error('inbound: must provide at least one of: sku, item_name');
+    if (row.amazonNativeReturn && row.trackingNumber?.trim()) {
+      itemName = `Amazon return ${orderId}`;
+    } else {
+      throw new Error('inbound: must provide at least one of: sku, item_name');
+    }
   }
 
   const receivingType = row.receivingType?.trim()

@@ -48,6 +48,8 @@ export interface DeskImportRow {
    * Desk-import gates these on sku_catalog.sku = ASIN.
    */
   amazonNativeReturn?: boolean;
+  /** Native Amazon ASIN (listing key); sku may be Merchant SKU when present. */
+  amazonAsin?: string | null;
   /** Pre-ingest skip (e.g. Cancelled status) — no DB write. */
   skipReason?: AmazonReturnSkipReason | null;
   /** Full CSV record for inbound_purchase_order_mirror.raw_payload. */
@@ -96,6 +98,27 @@ function hasHeader(record: Record<string, string>, ...aliases: string[]): boolea
   return aliases.some((a) => keys.includes(normalizeHeaderKey(a)));
 }
 
+const AMAZON_TRACKING_HEADERS = [
+  'Tracking ID',
+  'Tracking-ID',
+  'Return tracking ID',
+  'Return-tracking-ID',
+  'Return Tracking ID',
+  'Tracking Number',
+  'Tracking-Number',
+  'Carrier tracking',
+] as const;
+
+const AMAZON_RMA_HEADERS = ['Amazon RMA ID', 'Amazon-RMA-ID'] as const;
+
+/** Seller Central placeholders that are not a carrier tracking number. */
+function sanitizeInboundTracking(raw: string | null | undefined): string | null {
+  const t = String(raw ?? '').trim();
+  if (!t) return null;
+  if (/^(n\/?a|none|null|unknown|not\s*available|pending|-)$/i.test(t)) return null;
+  return t;
+}
+
 /**
  * Detect Seller Central Manage Returns / flat-file returns export.
  * Requires ASIN + Order ID + (Amazon RMA ID or Tracking ID).
@@ -107,10 +130,8 @@ export function isAmazonNativeReturnsRecord(
   const hasOrder = hasHeader(record, 'Order ID', 'Order-ID');
   const hasRmaOrTracking = hasHeader(
     record,
-    'Amazon RMA ID',
-    'Amazon-RMA-ID',
-    'Tracking ID',
-    'Tracking-ID',
+    ...AMAZON_RMA_HEADERS,
+    ...AMAZON_TRACKING_HEADERS,
   );
   // Cycle Forge desk CSV uses `order_id` + `sku` / `kind` — not native Amazon.
   if (hasHeader(record, 'kind', 'source', 'source_type', 'platform')
@@ -134,21 +155,20 @@ function deskRowFromAmazonReturnsRecord(
 ): DeskImportRow {
   const orderId = cell(record, 'Order ID', 'Order-ID') || '';
   const asin = cell(record, 'ASIN');
-  const rmaId = cell(record, 'Amazon RMA ID', 'Amazon-RMA-ID');
+  const merchantSku = cell(record, 'Merchant SKU', 'Merchant-SKU');
+  const rmaId = cell(record, ...AMAZON_RMA_HEADERS);
   const status = (cell(record, 'Return request status', 'Return-request-status') || '')
     .toLowerCase();
   const qtyRaw = cell(record, 'Return quantity', 'Return-quantity');
   const quantity = qtyRaw ? Math.max(1, Math.floor(Number(qtyRaw)) || 1) : 1;
   const itemName = cell(record, 'Item Name', 'Item-Name');
-  const trackingNumber = cell(record, 'Tracking ID', 'Tracking-ID');
+  const trackingNumber = sanitizeInboundTracking(cell(record, ...AMAZON_TRACKING_HEADERS));
   const carrierCode = cell(record, 'Return carrier', 'Return-carrier');
   const returnReason = cell(record, 'Return Reason', 'Return-Reason');
 
   let skipReason: AmazonReturnSkipReason | null = null;
   if (status === 'cancelled' || status === 'canceled') {
     skipReason = 'cancelled';
-  } else if (!asin) {
-    skipReason = 'no_asin';
   } else if (!orderId) {
     skipReason = 'no_order_id';
   }
@@ -167,7 +187,8 @@ function deskRowFromAmazonReturnsRecord(
     receivingType: 'RETURN',
     orderId,
     lineItemId,
-    sku: asin,
+    sku: merchantSku || asin,
+    amazonAsin: asin,
     itemName,
     quantity,
     trackingNumber,
@@ -229,7 +250,9 @@ export function deskRowFromCsvRecord(
     sku: get('sku'),
     itemName: get('item_name', 'title', 'item', 'name'),
     quantity,
-    trackingNumber: get('tracking', 'tracking_number', 'tracking_no'),
+    trackingNumber: sanitizeInboundTracking(
+      get('tracking', 'tracking_number', 'tracking_no', 'tracking_id'),
+    ),
     listingUrl: get('listing_url', 'listing', 'url', 'asin_url'),
     seller: seller || (sourcePlatform === 'goodwill' ? 'Goodwill' : null),
     rmaId: get('rma_id', 'rma', 'rma_ref'),

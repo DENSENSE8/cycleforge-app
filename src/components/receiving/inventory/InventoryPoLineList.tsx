@@ -46,6 +46,8 @@ function lineTrustStatusLabel(
 ): string | null {
   const localQty = Number(quantityReceived ?? 0);
   if (localQty > 0 && isZohoReceivedLikeStatus(poStatus)) return 'Received';
+  const poOpen = Boolean(String(poStatus ?? '').trim()) && !isZohoReceivedLikeStatus(poStatus);
+  if (poOpen && localQty > 0) return 'Unboxed';
   if (!(workflowStatus || '').trim()) return null;
   return COARSE_FACE[deriveReceivingLineStatus(workflowStatus)] ?? null;
 }

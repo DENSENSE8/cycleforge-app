@@ -72,8 +72,6 @@ export const NOTE_COMPOSER_OVERLAY_PAD = 'py-2 pr-10';
 /** Extra bottom inset when bottom-right icon actions share the same field. */
 export const NOTE_COMPOSER_OVERLAY_PAD_BOTTOM_ACTIONS = 'pb-8';
 
-export const NOTE_DOWNLOAD_SYNC_BTN = `${NOTE_OVERLAY_ICON_BTN} text-text-faint transition hover:bg-blue-100/60 hover:text-blue-600 hover:shadow-sm hover:ring-1 hover:ring-blue-200/80`;
-
 /**
  * Insert `+` trigger — faint at rest; hover/open = white surface, gray ring,
  * gray `+` (same outline method as sync, neutral chrome instead of blue).
@@ -121,3 +119,54 @@ export const NOTE_INSERT_MENU_ICON_TONE: Record<string, string> = {
 
 export const NOTE_CLEAR_BTN =
   'ds-raw-button rounded inset-chip text-role-micro font-semibold text-text-faint transition hover:bg-surface-sunken/80 hover:text-text-muted';
+
+/**
+ * Which ghost the notes composer paints, and what accepting it applies.
+ *
+ * Two ghost sources share one overlay: the Recent hover preview (the DB
+ * sticker center) and the MRU prefix autocomplete. They must never be confused
+ * for each other — the overlay is a promise about what the next gesture
+ * inserts, and Recent's click always inserts `recentPhrase`.
+ *
+ * - Empty field + Recent hovered → paint the whole Recent phrase; accepting it
+ *   is the same gesture as clicking Recent.
+ * - Non-empty field + Recent hovered → paint NOTHING. The full phrase cannot
+ *   render as a suffix after the typed text, and leaving the MRU ghost up
+ *   previews an older device-bank phrase that Recent would never insert.
+ * - Recent not hovered → the MRU prefix ghost, unchanged.
+ */
+export function resolveNoteGhostPaint(opts: {
+  /** Recent (History) is hovered / focused. */
+  recentHover: boolean;
+  /** DB sticker center for the last scanned carton — what Recent applies. */
+  recentPhrase: string;
+  /** Live composer draft. */
+  value: string;
+  /** MRU prefix-autocomplete match, if any. */
+  matchedPhrase: string | null;
+  /** Suffix of {@link matchedPhrase} past what is typed. */
+  ghostSuffix: string;
+}): {
+  matchedPhrase: string | null;
+  ghostSuffix: string | undefined;
+  /** True when accepting the ghost must run Recent's apply, not the MRU's. */
+  acceptAppliesRecent: boolean;
+} {
+  const preview = opts.recentHover ? opts.recentPhrase.trim() : '';
+  const showRecentGhost = Boolean(preview) && !opts.value.trim();
+  if (showRecentGhost) {
+    return {
+      matchedPhrase: preview,
+      ghostSuffix: preview,
+      acceptAppliesRecent: true,
+    };
+  }
+  if (opts.recentHover) {
+    return { matchedPhrase: null, ghostSuffix: undefined, acceptAppliesRecent: false };
+  }
+  return {
+    matchedPhrase: opts.matchedPhrase,
+    ghostSuffix: opts.ghostSuffix || undefined,
+    acceptAppliesRecent: false,
+  };
+}

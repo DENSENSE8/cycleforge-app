@@ -3,7 +3,8 @@
  *
  * Batch desk import — client parses CSV rows and posts them here. Each row
  * goes through importDeskInboundRow (same UPSERT as Add). Amazon native
- * returns rows without a matching sku_catalog.sku (= ASIN) are skipped.
+ * returns still ingest when ASIN is not in sku_catalog so Tracking IDs
+ * register for unbox.
  */
 
 import { NextRequest, NextResponse } from 'next/server';

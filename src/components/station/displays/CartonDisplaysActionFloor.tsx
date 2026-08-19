@@ -2,7 +2,7 @@
 
 /**
  * @domain-job Station Displays carton Macro verbs — More, optional Sync,
- *   optional Print, Edit, Delete — one equal-fill row above the column close.
+ *   optional Print, Edit, Delete — one equal-fill row below Filter / hide.
  * @hardware-target Station
  * @density floor
  * @justification Cannot reuse InspectorActionFloor — C2 station Displays vs
@@ -45,11 +45,23 @@ import {
 } from '@/design-system/primitives/DropdownMenu';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { emitReceiving } from '@/components/receiving/receiving-events';
-import { removeReceivingRailByCarton } from '@/lib/queries/receiving-queries';
 import {
+  removeReceivingRailByCarton,
+  restoreReceivingRailSnapshot,
+  snapshotReceivingRailByCarton,
+} from '@/lib/queries/receiving-queries';
+import {
+  CARTON_DELETE_UNDO_MS,
+  scheduleCartonDeleteUndo,
+  undoCartonDelete,
+} from '@/lib/receiving/carton-delete-undo';
+import {
+  cartonDeleteFace,
+  cartonDeleteLabels,
   cartonFloorPeerOrder,
   cartonInventoryRefreshFeedback,
   stationDisplaysFloorMoreItems,
+  type CartonDeleteIdentity,
 } from '@/lib/receiving/station-displays-carton-floor';
 import { toast } from '@/lib/toast';
 import { cn } from '@/utils/_cn';
@@ -94,6 +106,7 @@ export function CartonDisplaysActionFloor({
   testIdPrefix,
   print,
   sync,
+  deleteIdentity,
 }: {
   receivingId: number | null | undefined;
   isUnfound: boolean;
@@ -108,6 +121,8 @@ export function CartonDisplaysActionFloor({
   print?: CartonFloorPrintSlot;
   /** When set, paints the Sync peer (Unbox · Arrival). */
   sync?: CartonFloorSyncSlot;
+  /** Tracking / PO for arm copy + undo toast. Falls back to carton id. */
+  deleteIdentity?: Omit<CartonDeleteIdentity, 'receivingId'> | null;
 }) {
   const queryClient = useQueryClient();
 
@@ -157,21 +172,44 @@ export function CartonDisplaysActionFloor({
       toast.error('No carton to delete');
       throw new Error('No carton to delete');
     }
-    const res = await fetch(
-      `/api/receiving-logs?id=${encodeURIComponent(String(receivingId))}`,
-      { method: 'DELETE' },
-    );
-    if (!res.ok && res.status !== 404) {
-      const body = (await res.json().catch(() => null)) as { error?: string } | null;
-      const msg = body?.error || `Delete failed (${res.status})`;
-      toast.error(msg);
-      throw new Error(msg);
-    }
+    const face = cartonDeleteFace({
+      receivingId,
+      tracking: deleteIdentity?.tracking,
+      poNumber: deleteIdentity?.poNumber,
+    });
+    const labels = cartonDeleteLabels(face);
+    const snapshot = snapshotReceivingRailByCarton(queryClient, receivingId);
     removeReceivingRailByCarton(queryClient, receivingId);
-    void queryClient.invalidateQueries({ queryKey: ['receiving-lines-table'] });
     emitReceiving('receiving-entry-deleted', receivingId);
-    toast.success('Carton deleted');
-  }, [receivingId, queryClient]);
+    onDeleted?.();
+
+    scheduleCartonDeleteUndo(receivingId, async () => {
+      const res = await fetch(
+        `/api/receiving-logs?id=${encodeURIComponent(String(receivingId))}`,
+        { method: 'DELETE' },
+      );
+      if (!res.ok && res.status !== 404) {
+        const body = (await res.json().catch(() => null)) as { error?: string } | null;
+        const msg = body?.error || `Delete failed (${res.status})`;
+        restoreReceivingRailSnapshot(queryClient, snapshot);
+        toast.error(msg);
+        return;
+      }
+      void queryClient.invalidateQueries({ queryKey: ['receiving-lines-table'] });
+    });
+
+    toast.success(labels.deletedTitle, {
+      duration: CARTON_DELETE_UNDO_MS,
+      action: {
+        label: 'Undo',
+        onClick: () => {
+          if (!undoCartonDelete(receivingId)) return;
+          restoreReceivingRailSnapshot(queryClient, snapshot);
+          toast.success(`${face} restored`);
+        },
+      },
+    });
+  }, [receivingId, queryClient, onDeleted, deleteIdentity]);
 
   const runMoreItem = useCallback(
     (key: 'link') => {
@@ -181,6 +219,13 @@ export function CartonDisplaysActionFloor({
   );
 
   if (receivingId == null) return null;
+
+  const deleteFace = cartonDeleteFace({
+    receivingId,
+    tracking: deleteIdentity?.tracking,
+    poNumber: deleteIdentity?.poNumber,
+  });
+  const deleteLabels = cartonDeleteLabels(deleteFace);
 
   const inventorySyncing = Boolean(sync?.inventorySyncing);
   const syncDisabled =
@@ -299,15 +344,15 @@ export function CartonDisplaysActionFloor({
             );
           case 'delete':
             return (
-              <InspectorFlushDelete
-                key="delete"
-                onConfirm={handleDelete}
-                onDeleted={onDeleted}
-                label="Delete carton"
-                confirmLabel="Click again to delete carton"
-                data-testid={`${testIdPrefix}-displays-floor-delete`}
-                className={cn(FLUSH_TERMINAL_SPREAD_PEER_CLASS, 'border-l-0')}
-              />
+              <div key="delete" data-flush-delete-gap="">
+                <InspectorFlushDelete
+                  onConfirm={handleDelete}
+                  label={deleteLabels.idleLabel}
+                  confirmLabel={deleteLabels.confirmLabel}
+                  data-testid={`${testIdPrefix}-displays-floor-delete`}
+                  className={cn(FLUSH_TERMINAL_SPREAD_PEER_CLASS, 'border-l-0')}
+                />
+              </div>
             );
           default: {
             const _exhaustive: never = peer;

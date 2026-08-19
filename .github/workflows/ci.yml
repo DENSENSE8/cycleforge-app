@@ -40,7 +40,9 @@ jobs:
       # unsafe patterns before the heavier typecheck loads the world.
       # Every check below runs even if an earlier one failed (`!cancelled()`),
       # so one red run surfaces ALL failures at once — no fix-one-push-fail-again
-      # loop. `npm run verify` mirrors this locally (scripts/verify.mjs).
+      # loop. `npm run verify` (full profile) mirrors this locally
+      # (scripts/verify.mjs). `verify:dogfood` is the laptop pre-push slice
+      # for non-main refs — not a substitute for this job.
       - name: Lint
         if: ${{ !cancelled() }}
         run: npm run lint -- --max-warnings=10000

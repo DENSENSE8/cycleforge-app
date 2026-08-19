@@ -808,6 +808,42 @@ export function removeReceivingRailByCarton(
   filterRailSegmentRows(queryClient, UNBOX_QUEUE_SEGMENT, keep);
 }
 
+type CartonRailSnapshot = {
+  entries: Array<{ queryKey: readonly unknown[]; rows: ReceivingRailRow[] }>;
+};
+
+/** Capture rail rows for a carton before optimistic hide (undo restore). */
+export function snapshotReceivingRailByCarton(
+  queryClient: QueryClient,
+  receivingId: number,
+): CartonRailSnapshot {
+  const entries: CartonRailSnapshot['entries'] = [];
+  if (!Number.isFinite(receivingId)) return { entries };
+  for (const [queryKey, data] of queryClient.getQueriesData<ReceivingRailRow[]>({
+    queryKey: ['receiving-lines-table', 'rail'],
+  })) {
+    if (!Array.isArray(data)) continue;
+    const rows = data.filter((r) => r.receiving_id === receivingId);
+    if (rows.length > 0) entries.push({ queryKey, rows });
+  }
+  return { entries };
+}
+
+/** Put snapshotted carton rows back onto the rails they came from. */
+export function restoreReceivingRailSnapshot(
+  queryClient: QueryClient,
+  snapshot: CartonRailSnapshot,
+): void {
+  for (const { queryKey, rows } of snapshot.entries) {
+    if (rows.length === 0) continue;
+    queryClient.setQueryData<ReceivingRailRow[]>(queryKey, (old) => {
+      if (!Array.isArray(old)) return rows;
+      const ids = new Set(rows.map((r) => r.id));
+      return [...rows, ...old.filter((r) => !ids.has(r.id))];
+    });
+  }
+}
+
 /**
  * Drop a line-shaped rail row; when the cached row has a `receiving_id`, remove
  * the whole carton (Unbox is one-row-per-carton).

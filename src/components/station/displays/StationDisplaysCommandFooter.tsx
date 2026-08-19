@@ -3,7 +3,8 @@
 /**
  * Station Displays leaf-command footer — dismiss `→|` plus opt-in `/` palette.
  *
- * Never mounts `TechRailSearchBar` / `Filter displays…` (index-stage only).
+ * Never mounts `TechRailSearchBar` / `Filter displays…` — that band is the
+ * default leaf/index footer; this stage replaces it with `/` + hide.
  * Wedge-safe: refuse-in-input · scan-burst · overlay yield · no bare digit binds.
  * Esc closes the palette first (caller owns stack Esc after).
  */

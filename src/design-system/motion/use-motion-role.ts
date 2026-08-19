@@ -50,7 +50,7 @@ export function useMotionRole<T extends PresenceRole>(
  * Press is the one role suppressed rather than crossfaded: the floor would make
  * a `scale: 0.9` SNAP (transforms are positional keys and get `{ type: false }`),
  * and an instantaneous squash reads as a glitch rather than feedback. Returning
- * `undefined` is what `CardShell` and `ActiveOrderScanFeedback` already do by
+ * `undefined` is what `CardShell` already does by
  * hand — this names it once.
  */
 export function useMotionPressRole(

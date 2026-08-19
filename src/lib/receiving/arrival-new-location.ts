@@ -45,12 +45,21 @@ export function zoneLetterForRoom(
 }
 
 /**
+ * The only field an occupancy read needs. Widened from `Location` so the
+ * shared station Locations leaf can pass its own port rows without inflating
+ * them into full catalog rows — the address IS the barcode.
+ */
+interface AddressedLocation {
+  barcode: string | null;
+}
+
+/**
  * Every position already taken on one zone/aisle/bay/level, read from the
  * barcodes themselves rather than a count — a soft-deleted or out-of-order
  * catalog must not hand back an address that is physically occupied.
  */
 export function occupiedPositions(
-  locations: readonly Location[],
+  locations: readonly AddressedLocation[],
   at: SlotAddress,
 ): number[] {
   const zone = String(at.zone ?? '').trim().toUpperCase();
@@ -78,7 +87,7 @@ export function occupiedPositions(
  * has that space.
  */
 export function suggestNextPosition(
-  locations: readonly Location[],
+  locations: readonly AddressedLocation[],
   at: SlotAddress,
 ): number | null {
   const taken = new Set(occupiedPositions(locations, at));

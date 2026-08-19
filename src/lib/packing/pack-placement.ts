@@ -388,6 +388,82 @@ export async function countOpenPlacementsByLocation(
   });
 }
 
+export interface RecentPackPlacement {
+  locationId: number;
+  /** Bench face as {@link packBenchShortLabel} would read it. */
+  locationName: string;
+  locationKind: PackPlaceableKind;
+  placedAt: string | null;
+}
+
+/**
+ * The desk this operator last put an order on — the Ready-to-Pack twin of
+ * Unbox's Last entry.
+ *
+ * Read from `order_pack_placement_events` rather than the live placements
+ * table, because the answer must survive the order being packed and cleared:
+ * the operator's last bench is a fact about the OPERATOR, and a placements-only
+ * read would forget it the moment the board drained.
+ *
+ * The open order is excluded — "put this where I put the last one" is
+ * meaningless if the last one IS this one. Prefers this operator's own history
+ * and falls back to the floor's, so a fresh badge still gets a sane default.
+ */
+export async function fetchRecentPackPlacement(
+  orgId: OrgId,
+  args: { excludeOrderId?: number | null; staffId?: number | null } = {},
+): Promise<RecentPackPlacement | null> {
+  const excludeOrderId =
+    args.excludeOrderId != null && Number.isFinite(args.excludeOrderId)
+      ? Number(args.excludeOrderId)
+      : null;
+  const staffId =
+    args.staffId != null && Number.isFinite(args.staffId) ? Number(args.staffId) : null;
+
+  return withTenantTransaction(orgId, async (client) => {
+    const run = async (byStaff: boolean) => {
+      const result = await client.query<{
+        location_id: number;
+        location_name: string;
+        location_kind: string;
+        placed_at: string | null;
+      }>(
+        `SELECT e.to_location_id AS location_id,
+                ${locationDisplayNameSql('l')} AS location_name,
+                l.location_kind,
+                e.created_at AS placed_at
+           FROM order_pack_placement_events e
+           JOIN locations l
+             ON l.id = e.to_location_id
+            AND l.organization_id = e.organization_id
+          WHERE e.organization_id = $1
+            AND e.source <> 'clear'
+            AND l.is_active = true
+            AND l.location_kind = ANY($2::text[])
+            AND ($3::int IS NULL OR e.order_id <> $3)
+            AND ($4::int IS NULL OR e.staff_id = $4)
+          ORDER BY e.created_at DESC
+          LIMIT 1`,
+        [orgId, [...PACK_PLACEABLE_KINDS], excludeOrderId, byStaff ? staffId : null],
+      );
+      const row = result.rows[0];
+      if (!row) return null;
+      return {
+        locationId: Number(row.location_id),
+        locationName: row.location_name,
+        locationKind: row.location_kind as PackPlaceableKind,
+        placedAt: row.placed_at ?? null,
+      };
+    };
+
+    if (staffId != null) {
+      const mine = await run(true);
+      if (mine) return mine;
+    }
+    return run(false);
+  });
+}
+
 /**
  * Seed packing room + desks + staging for an org (idempotent).
  * `locations.name` / `barcode` are still globally unique (legacy) — pass a

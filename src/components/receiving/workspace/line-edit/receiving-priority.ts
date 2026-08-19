@@ -57,7 +57,7 @@ export function receivingPriorityTone(rank: number): PriorityTone {
         label: 'Medium',
         short: 'Med',
         title: 'Medium priority — eBay',
-        className: 'border-blue-200 bg-blue-50 text-blue-700 shadow-none',
+        className: 'border-yellow-200 bg-yellow-50 text-yellow-800 shadow-none',
       };
     case 4:
       return {

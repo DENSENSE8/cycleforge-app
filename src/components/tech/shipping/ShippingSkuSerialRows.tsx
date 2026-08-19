@@ -62,7 +62,7 @@ export function ShippingSkuSerialRows({
   }
 
   return (
-    <div className="min-w-0">
+    <div className="min-w-0" data-testid="shipping-sku-serial-rows">
       {groups.map((group) => (
         <SkuSerialGroupBlock
           key={group.sku}
@@ -80,7 +80,10 @@ export function ShippingSkuSerialRows({
 function EmptyPairingHint({ sku }: { sku: string }) {
   const displaySku = String(sku || '').trim();
   return (
-    <div className="border-b border-border-soft bg-surface-card px-3 py-3 text-center">
+    <div
+      className="border-b border-border-soft bg-surface-card px-3 py-3 text-center"
+      data-testid="shipping-sku-serial-rows"
+    >
       <p className="text-role-caption font-semibold text-text-muted">
         {displaySku && !/^n\/a$/i.test(displaySku)
           ? `Ready — pair serials to ${displaySku}`

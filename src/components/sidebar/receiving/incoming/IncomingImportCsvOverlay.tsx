@@ -3,8 +3,9 @@
 /**
  * Incoming Import → Upload CSV — flush inspector (Amazon / Goodwill unfound fix).
  *
- * Accepts Cycle Forge desk CSV and native Amazon Manage Returns exports.
- * Amazon ASIN rows only land when sku_catalog.sku matches (server-gated).
+ * Accepts Cycle Forge desk CSV and native Amazon Manage Returns exports
+ * (comma or tab). Tracking IDs register onto STN + inbound cartons so Unbox
+ * can find the package. Catalog ASIN is enrichment, not a gate.
  *
  * Macro floor = Import CTA + `→|` close in one FlushTerminalFooter wrapper.
  */
@@ -99,13 +100,13 @@ export function IncomingImportCsvOverlay({
       const parts: string[] = [];
       if (created > 0) parts.push(`${created} new`);
       if (updated > 0) parts.push(`${updated} refreshed`);
-      if (skipped > 0) parts.push(`${skipped} skipped (no catalog ASIN)`);
+      if (skipped > 0) parts.push(`${skipped} skipped`);
       if (failed > 0) {
         toast.error(
           `Imported ${created + updated}${skipped ? ` · ${skipped} skipped` : ''}; ${failed} failed`,
         );
       } else if (created + updated === 0 && skipped > 0) {
-        toast.success(`No lines imported · ${skipped} skipped (ASIN not in catalog)`);
+        toast.success(`No lines imported · ${skipped} skipped`);
       } else {
         toast.success(parts.length > 0 ? parts.join(' · ') : 'Import complete');
       }
@@ -138,13 +139,14 @@ export function IncomingImportCsvOverlay({
         <div className="min-h-0 flex-1 overflow-y-auto">
           <p className="inset-cozy text-role-caption text-text-faint">
             Desk columns: kind, source (amazon|goodwill|ebay), order_id, tracking, listing_url,
-            sku, item_name, qty, seller, rma_id. Or paste Seller Central Manage Returns CSV —
-            only rows whose ASIN matches a catalog SKU are imported; cancelled rows are skipped.
+            sku, item_name, qty, seller, rma_id. Or paste Seller Central Manage Returns CSV
+            (comma or tab) — Tracking ID lands on Incoming so Unbox can find it. Cancelled
+            rows are skipped.
           </p>
 
           {amazonNative ? (
             <p className="inset-cozy border-b border-border-hairline text-role-caption font-medium text-text-default">
-              Amazon Manage Returns file detected · ASIN → catalog SKU gate on
+              Amazon Manage Returns file detected · Tracking ID → Incoming / Unbox
             </p>
           ) : null}
 
@@ -161,7 +163,7 @@ export function IncomingImportCsvOverlay({
             <span className="text-role-micro text-text-faint">or paste below</span>
             <input
               type="file"
-              accept=".csv,text/csv"
+              accept=".csv,.txt,text/csv,text/tab-separated-values"
               className="sr-only"
               onChange={(e) => void onFile(e.target.files?.[0] ?? null)}
             />
@@ -190,7 +192,7 @@ export function IncomingImportCsvOverlay({
             <div className="divide-y divide-border-hairline border-b border-border-hairline">
               <p className="inset-cozy text-role-micro uppercase tracking-widest text-text-soft">
                 Preview ({rows.length} rows)
-                {amazonNative ? ' · catalog gate at import' : ''}
+                {amazonNative ? ' · Amazon returns' : ''}
               </p>
               {preview.map((p) =>
                 p.ok ? (

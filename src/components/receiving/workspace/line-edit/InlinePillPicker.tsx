@@ -5,9 +5,8 @@
  * current value (tone-coded icon face, icon+name, or label).
  *
  * Two presentations:
- * - `menu` (carton-context default) — chip-anchored {@link DropdownMenu}
- *   opening **below** the face (`side="bottom"`, no side flip). Item pad
- *   matches the chip (`px-1.5`). Classify
+ * - `menu` (carton-context default) — hover list below the face. Optional
+ *   Edit row is first. Item pad matches the chip (`px-1.5`). Classify
  *   Displays keeps the full searchable editor when staff open that leaf
  *   themselves.
  * - `inline` — expands the option set in-row (legacy / hosts that need a
@@ -31,12 +30,6 @@ import {
 } from '@/components/station/entity-context/station-identity-chrome';
 import { useHoverSurface } from '@/hooks/useHoverSurface';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/design-system/primitives/DropdownMenu';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { motionBezier, framerDuration } from '@/design-system/foundations/motion-framer';
 import { cn } from '@/utils/_cn';
@@ -146,6 +139,13 @@ function IdentityDot({ opt }: { opt: InlinePillOption | null }) {
 const SWAP_MS = 0.12;
 const OPTION_STAGGER_MS = 0.018;
 
+interface InlinePillMenuLeadItem {
+  id: string;
+  label: string;
+  icon?: ReactNode;
+  onSelect: () => void;
+}
+
 export function InlinePillPicker({
   ariaLabel,
   options,
@@ -166,6 +166,7 @@ export function InlinePillPicker({
   presentation = 'inline',
   onEditColors,
   editColorsLabel = 'Edit colors',
+  menuLeadItems = [],
 }: {
   ariaLabel: string;
   options: InlinePillOption[];
@@ -203,8 +204,8 @@ export function InlinePillPicker({
    */
   collapsedVariant?: 'default' | 'bookmark';
   /**
-   * `menu` — chip-anchored dropdown (carton-context inline edit).
-   * `inline` — in-row option strip (legacy expand).
+   * `menu` — chip-anchored hover list (carton-context). Optional lead rows
+   * (Add platform / Edit all) sit above the option list. `inline` — in-row strip.
    */
   presentation?: 'inline' | 'menu';
   /**
@@ -216,6 +217,8 @@ export function InlinePillPicker({
    */
   onEditColors?: () => void;
   editColorsLabel?: string;
+  /** Hover-menu rows above the option list (catalog add / edit-all). */
+  menuLeadItems?: InlinePillMenuLeadItem[];
 }) {
   const ref = useRef<HTMLDivElement | null>(null);
   const reduceMotion = useReducedMotion();
@@ -419,9 +422,13 @@ export function InlinePillPicker({
         data-presentation="menu"
         {...(readOnly ? {} : hover.triggerProps)}
         className={cn(
-          'flex h-full shrink-0 self-stretch items-stretch',
+          'relative flex h-full shrink-0 self-stretch items-stretch',
           disabled && 'pointer-events-none opacity-50',
         )}
+        onMouseEnter={() => {
+          if (!readOnly) onOpenChange(true);
+        }}
+        onMouseLeave={() => onOpenChange(false)}
       >
         {readOnly ? (
           <div className="flex h-full shrink-0 items-stretch">{collapsedFaceWrap}</div>
@@ -440,6 +447,27 @@ export function InlinePillPicker({
               className={CHIP_HOVER_MENU_PANEL_CLASS}
               aria-label={ariaLabel}
             >
+              {menuLeadItems.map((item, i) => (
+                <DropdownMenuItem
+                  key={item.id}
+                  onSelect={() => item.onSelect()}
+                  className={cn(
+                    CHIP_HOVER_MENU_ITEM_CLASS,
+                    i > 0 && CHIP_HOVER_MENU_ITEM_SEAM_CLASS,
+                    CHIP_HOVER_MENU_ITEM_TONE.default,
+                  )}
+                  aria-label={item.label}
+                >
+                  {/* Same 3.5 icon box as the option dots and the Edit-colours
+                      footer, so every row in this panel starts at one x. */}
+                  {item.icon ? (
+                    <span className={cn(CHIP_HOVER_MENU_ICON_CLASS, 'text-text-soft')} aria-hidden>
+                      {item.icon}
+                    </span>
+                  ) : null}
+                  <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                </DropdownMenuItem>
+              ))}
               {options.map((opt, i) => {
                 const isActive = opt.value === value;
                 return (
@@ -448,7 +476,7 @@ export function InlinePillPicker({
                     onSelect={() => onSelect(opt.value)}
                     className={cn(
                       CHIP_HOVER_MENU_ITEM_CLASS,
-                      i > 0 && CHIP_HOVER_MENU_ITEM_SEAM_CLASS,
+                      (menuLeadItems.length > 0 || i > 0) && CHIP_HOVER_MENU_ITEM_SEAM_CLASS,
                       isActive
                         ? CHIP_HOVER_MENU_ITEM_TONE.active
                         : CHIP_HOVER_MENU_ITEM_TONE.default,

@@ -14,6 +14,7 @@
     "desktop:dist:win": "npm run desktop:deps && electron-builder --win nsis --x64",
     "desktop:dist:all": "npm run desktop:dist:mac && npm run desktop:dist:mac-intel-legacy && npm run desktop:dist:win",
     "verify": "node scripts/verify.mjs",
+    "verify:dogfood": "node scripts/verify.mjs --dogfood",
     "jscpd": "node scripts/jscpd-gate.mjs",
     "jscpd:write": "node scripts/jscpd-gate.mjs --write",
     "debt": "node scripts/debt-ledger.mjs",

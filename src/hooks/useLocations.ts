@@ -113,6 +113,41 @@ async function deleteRoom(name: string): Promise<{ deactivated: number }> {
   return data;
 }
 
+/**
+ * Edit ONE bin's own metadata (name / nickname / barcode / type / capacity).
+ * Hits the properties door, which is deliberately separate from the
+ * content-action PATCH on /[barcode] (take / put / set / count).
+ */
+async function patchBinProperties(args: {
+  barcode: string;
+  body: Record<string, unknown>;
+}): Promise<LocationRecord | null> {
+  const res = await fetch(
+    `/api/locations/${encodeURIComponent(args.barcode)}/properties`,
+    {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(args.body),
+    },
+  );
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.error || 'Failed to update location');
+  return (data?.location as LocationRecord | undefined) ?? null;
+}
+
+/**
+ * Soft-delete ONE bin. The route refuses a bin that still holds stock (409);
+ * that message is surfaced verbatim so the operator knows to empty it first.
+ */
+async function deleteBin(barcode: string): Promise<{ success: true }> {
+  const res = await fetch(`/api/locations/${encodeURIComponent(barcode)}`, {
+    method: 'DELETE',
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.error || 'Failed to delete location');
+  return { success: true };
+}
+
 async function postBulkBins(
   payload: BulkBinRangePayload,
 ): Promise<{ created: number; bins: LocationRecord[] }> {
@@ -175,6 +210,18 @@ export interface UseLocationsResult {
   reorderRooms: (order: string[]) => Promise<{ updated: number } | null>;
   roomMutating: boolean;
   roomMutationError: Error | null;
+  /**
+   * Edit one bin's own metadata. `body` carries CHANGED FIELDS ONLY — the
+   * route is `.strict()` and rejects an empty object.
+   */
+  updateBin: (
+    barcode: string,
+    body: Record<string, unknown>,
+  ) => Promise<LocationRecord | null>;
+  /** Soft-delete one bin. Rejects (409) while the bin still holds stock. */
+  removeBin: (barcode: string) => Promise<boolean>;
+  binMutating: boolean;
+  binMutationError: Error | null;
   /** Resolve a barcode to its location record. */
   findByBarcode: (barcode: string) => LocationRecord | undefined;
   /** Get all bins for a specific room. */
@@ -249,6 +296,20 @@ export function useLocations(): UseLocationsResult {
     },
   });
 
+  const updateBinMutation = useMutation({
+    mutationFn: patchBinProperties,
+    onSuccess: () => {
+      invalidateLocations();
+    },
+  });
+
+  const deleteBinMutation = useMutation({
+    mutationFn: deleteBin,
+    onSuccess: () => {
+      invalidateLocations();
+    },
+  });
+
   const bulkBinsMutation = useMutation({
     mutationFn: postBulkBins,
     onSuccess: () => {
@@ -273,6 +334,34 @@ export function useLocations(): UseLocationsResult {
       }
     },
     [createMutation],
+  );
+
+  const updateBin = useCallback(
+    async (
+      barcode: string,
+      body: Record<string, unknown>,
+    ): Promise<LocationRecord | null> => {
+      try {
+        return await updateBinMutation.mutateAsync({ barcode, body });
+      } catch {
+        // Message stays readable on `binMutationError` — same shape as create.
+        return null;
+      }
+    },
+    [updateBinMutation],
+  );
+
+  const removeBin = useCallback(
+    async (barcode: string): Promise<boolean> => {
+      try {
+        await deleteBinMutation.mutateAsync(barcode);
+        return true;
+      } catch {
+        // 409 "bin is not empty" lands on `binMutationError` for the caller.
+        return false;
+      }
+    },
+    [deleteBinMutation],
   );
 
   const createRoom = useCallback(
@@ -410,6 +499,15 @@ export function useLocations(): UseLocationsResult {
         ? roomMutationError
         : roomMutationError
           ? new Error(String(roomMutationError))
+          : null,
+    updateBin,
+    removeBin,
+    binMutating: updateBinMutation.isPending || deleteBinMutation.isPending,
+    binMutationError:
+      updateBinMutation.error instanceof Error
+        ? updateBinMutation.error
+        : deleteBinMutation.error instanceof Error
+          ? deleteBinMutation.error
           : null,
     findByBarcode,
     binsForRoom,

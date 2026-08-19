@@ -164,6 +164,7 @@ export async function updateInboundIdentity(
             sourceOrderId,
             shipmentId,
             organizationId: orgId,
+            db: client as unknown as Parameters<typeof ensureReceivingForInboundOrder>[0]['db'],
           });
           await client.query(
             `UPDATE receiving_line

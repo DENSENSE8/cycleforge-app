@@ -9,6 +9,9 @@
  */
 
 import { useCallback, useMemo, useState, type Ref } from 'react';
+import { Plus } from '@/components/Icons';
+import { LocationCrudDialog } from '@/components/locations/LocationCrudDialog';
+import { IconButton } from '@/design-system/primitives';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   WorkbenchSheetView,
@@ -94,6 +97,7 @@ function LocationsBinsChrome({
   const { rooms } = useLocations();
   const { counts } = useBinsOverview({ room, q });
   const [roomFilterOpen, setRoomFilterOpen] = useState(false);
+  const [crudOpen, setCrudOpen] = useState(false);
   // `BinDetailFlyout` registers `detail:bin:<identity>` — a per-entity id, so
   // match on the prefix rather than a fixed string.
   const railTopId = useRightRailTopId();
@@ -116,7 +120,18 @@ function LocationsBinsChrome({
       <WorkbenchTriageBand
         controlsSlotRef={controlsSlotRef}
         trailing={
-          <WorkbenchInspectorToggle open={binInspectorOpen} testId="bins-inspector-toggle" />
+          <>
+            <IconButton
+              type="button"
+              size="sm"
+              tone="neutral"
+              ariaLabel="New location"
+              icon={<Plus className="h-3.5 w-3.5" />}
+              onClick={() => setCrudOpen(true)}
+            />
+            <WorkbenchInspectorToggle open={binInspectorOpen} testId="bins-inspector-toggle" />
+            <LocationCrudDialog open={crudOpen} onOpenChange={setCrudOpen} />
+          </>
         }
         search={
           <TechRailSearchBar

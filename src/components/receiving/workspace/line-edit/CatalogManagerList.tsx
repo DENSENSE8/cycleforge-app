@@ -19,7 +19,7 @@
  * built-in defaults read-only with a one-line notice.
  */
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from '@/lib/toast';
 import { Check, ChevronDown, ChevronUp, Loader2, Pencil, Plus, Settings, Trash2, X } from '@/components/Icons';
@@ -100,11 +100,14 @@ export function CatalogManagerList({
   kind,
   enabled = true,
   enableTypeBindings = false,
+  autoFocusAdd = false,
 }: {
   kind: CatalogKind;
   enabled?: boolean;
   /** Show the per-type account + workflow-node binding editor (settings page). */
   enableTypeBindings?: boolean;
+  /** Focus the "New platform/type" field — hover-menu Add platform / Add type. */
+  autoFocusAdd?: boolean;
 }) {
   const invalidate = useInvalidateCatalog();
   const base = API_BASE[kind];
@@ -142,6 +145,13 @@ export function CatalogManagerList({
   const [busyId, setBusyId] = useState<number | 'new' | null>(null);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [colorEditingId, setColorEditingId] = useState<number | null>(null);
+  const addInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (!enabled || !autoFocusAdd) return;
+    const id = window.setTimeout(() => addInputRef.current?.focus(), 0);
+    return () => window.clearTimeout(id);
+  }, [enabled, autoFocusAdd, kind]);
 
   async function call(method: string, path: string, body?: unknown): Promise<boolean> {
     const res = await fetch(`${base}${path}`, {
@@ -421,6 +431,7 @@ export function CatalogManagerList({
       {/* Add */}
       <div className="mt-3 flex items-center gap-2">
         <input
+          ref={addInputRef}
           value={adding}
           onChange={(e) => setAdding(e.target.value)}
           onKeyDown={(e) => {

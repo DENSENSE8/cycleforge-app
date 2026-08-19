@@ -1,0 +1,278 @@
+/**
+ * Shared NAS archive for receiving claims.
+ *
+ * Create, Link & send (thread), and manual Sync-to-NAS all copy EVERY carton
+ * photo into `…/2 Zendesk 2026/<ticket#>/`. Zendesk itself only gets the
+ * operator-selected subset; the folder is the full local record.
+ *
+ * Best-effort: never throws. Callers surface `archiveWarning` / `failReason`.
+ */
+
+import { listAllReceivingPhotoIds } from '@/lib/photos/queries/receiving-list';
+import {
+  archiveClaimToFolder,
+  archiveClaimViaAgent,
+  resolveClaimArchivePhotoUrl,
+} from '@/lib/receiving-claim-photos';
+import type { OrgId } from '@/lib/tenancy/constants';
+import { getOrganization } from '@/lib/tenancy/organizations';
+import { getNasStorageTarget, type OrgSettings } from '@/lib/tenancy/settings';
+
+export type ArchiveClaimCopyResult = {
+  folder: string;
+  copied: number;
+  total: number;
+} | null;
+
+interface ArchiveReceivingClaimPhotosArgs {
+  orgId: OrgId;
+  receivingId: number;
+  /** Folder key — Zendesk ticket id (Create / Link) or a sanitized name (manual). */
+  ticketId: number | string;
+  info:
+    | string
+    | ((ctx: { photoIdCount: number; resolvedCount: number }) => string);
+  /** Console prefix, e.g. `zendesk-claim`. */
+  logTag?: string;
+}
+
+interface ArchiveReceivingClaimPhotosResult {
+  copied: number;
+  total: number;
+  folder: string | null;
+  photoIdCount: number;
+  resolvedCount: number;
+  archiveWarning: string | null;
+  archiveOk: boolean;
+  failReason: string | null;
+  claimTargetErr: string | null;
+  usedAgent: boolean;
+  hasAgentUrl: boolean;
+  hasAgentToken: boolean;
+}
+
+export interface ArchiveReceivingClaimPhotosDeps {
+  listPhotoIds: (orgId: string, receivingId: number) => Promise<number[]>;
+  resolvePhotoUrl: (photoId: number, organizationId: string) => Promise<string | null>;
+  getOrganization: (orgId: OrgId) => Promise<{ settings: OrgSettings } | null>;
+  getNasStorageTarget: (
+    settings: OrgSettings,
+    key: 'claims',
+  ) => { root: string; folder: string };
+  archiveViaAgent: (opts: {
+    ticketId: number | string;
+    photos: Array<{ url: string }>;
+    info: string;
+    organizationId?: OrgId;
+    archiveRoot?: string;
+    archiveFolder?: string;
+  }) => Promise<ArchiveClaimCopyResult>;
+  archiveToFolder: (opts: {
+    ticketId: number | string;
+    photos: Array<{ url: string }>;
+    info: string;
+  }) => Promise<ArchiveClaimCopyResult>;
+  agentEnv: () => { hasUrl: boolean; hasToken: boolean };
+}
+
+const defaultDeps: ArchiveReceivingClaimPhotosDeps = {
+  listPhotoIds: listAllReceivingPhotoIds,
+  resolvePhotoUrl: resolveClaimArchivePhotoUrl,
+  getOrganization,
+  getNasStorageTarget: (settings, key) => getNasStorageTarget(settings, key),
+  archiveViaAgent: archiveClaimViaAgent,
+  archiveToFolder: archiveClaimToFolder,
+  agentEnv: () => ({
+    hasUrl: Boolean((process.env.NAS_AGENT_URL || '').trim()),
+    hasToken: Boolean((process.env.NAS_AGENT_TOKEN || '').trim()),
+  }),
+};
+
+const UNAVAILABLE_WARNING =
+  'Photos were NOT archived to the NAS (archive agent/mount unavailable).';
+
+function emptyResult(
+  photoIdCount: number,
+  resolvedCount: number,
+  env: { hasUrl: boolean; hasToken: boolean },
+  usedAgent: boolean,
+  extra: Pick<
+    ArchiveReceivingClaimPhotosResult,
+    'failReason' | 'claimTargetErr' | 'archiveWarning'
+  >,
+): ArchiveReceivingClaimPhotosResult {
+  return {
+    copied: 0,
+    total: 0,
+    folder: null,
+    photoIdCount,
+    resolvedCount,
+    archiveWarning: extra.archiveWarning,
+    archiveOk: false,
+    failReason: extra.failReason,
+    claimTargetErr: extra.claimTargetErr,
+    usedAgent,
+    hasAgentUrl: env.hasUrl,
+    hasAgentToken: env.hasToken,
+  };
+}
+
+function partialWarning(
+  copied: number,
+  total: number,
+  photoIdCount: number,
+  resolvedCount: number,
+): string | null {
+  if (resolvedCount < photoIdCount) {
+    return `Only ${copied} of ${photoIdCount} photos archived to the NAS. ${photoIdCount - resolvedCount} photo source(s) could not be resolved for archiving.`;
+  }
+  if (copied < total) {
+    return `Only ${copied} of ${total} photos archived to the NAS.`;
+  }
+  return null;
+}
+
+export function claimArchiveResponseFields(r: ArchiveReceivingClaimPhotosResult): {
+  archiveWarning: string | null;
+  archiveOk: boolean;
+  archiveCopied: number;
+  archiveTotal: number;
+  archiveFolder: string | null;
+} {
+  return {
+    archiveWarning: r.archiveWarning,
+    archiveOk: r.archiveOk,
+    archiveCopied: r.copied,
+    archiveTotal: r.total,
+    archiveFolder: r.folder,
+  };
+}
+
+/**
+ * Copy every carton photo into the NAS ticket folder. Never throws.
+ */
+export async function archiveReceivingClaimPhotos(
+  args: ArchiveReceivingClaimPhotosArgs,
+  deps: ArchiveReceivingClaimPhotosDeps = defaultDeps,
+): Promise<ArchiveReceivingClaimPhotosResult> {
+  const env = deps.agentEnv();
+  const usedAgent = env.hasUrl && env.hasToken;
+  const logTag = args.logTag ?? 'zendesk-claim-archive';
+
+  let photoIds: number[] = [];
+  try {
+    photoIds = await deps.listPhotoIds(args.orgId, args.receivingId);
+  } catch (err) {
+    const failReason = err instanceof Error ? err.message : 'photo list failed';
+    console.warn(`[${logTag}] photo list failed`, err);
+    return emptyResult(0, 0, env, usedAgent, {
+      failReason,
+      claimTargetErr: null,
+      archiveWarning: `NAS archive failed: ${failReason}`,
+    });
+  }
+
+  const resolved = (
+    await Promise.all(
+      photoIds.map(async (photoId) => ({
+        photoId,
+        url: await deps.resolvePhotoUrl(photoId, args.orgId),
+      })),
+    )
+  ).filter((p): p is { photoId: number; url: string } => Boolean(p.url));
+  const photos = resolved.map((p) => ({ url: p.url }));
+  const photoIdCount = photoIds.length;
+  const resolvedCount = photos.length;
+
+  const info =
+    typeof args.info === 'function'
+      ? args.info({ photoIdCount, resolvedCount })
+      : args.info;
+
+  let claimTarget = { root: '', folder: '' };
+  let claimTargetErr: string | null = null;
+  if (usedAgent) {
+    try {
+      const org = await deps.getOrganization(args.orgId);
+      if (org) claimTarget = deps.getNasStorageTarget(org.settings, 'claims');
+    } catch (e) {
+      claimTargetErr = e instanceof Error ? e.message : 'org settings lookup failed';
+      claimTarget = { root: '', folder: '' };
+    }
+  }
+
+  let archived: ArchiveClaimCopyResult = null;
+  let failReason: string | null = null;
+  try {
+    archived = usedAgent
+      ? await deps.archiveViaAgent({
+          ticketId: args.ticketId,
+          photos,
+          info,
+          organizationId: args.orgId,
+          archiveRoot: claimTarget.root,
+          archiveFolder: claimTarget.folder,
+        })
+      : await deps.archiveToFolder({
+          ticketId: args.ticketId,
+          photos,
+          info,
+        });
+    if (!archived) {
+      failReason = usedAgent
+        ? 'archive agent returned no result (unconfigured base/token at runtime)'
+        : `NAS agent not configured at runtime (NAS_AGENT_URL present=${env.hasUrl}, NAS_AGENT_TOKEN present=${env.hasToken}); direct-mount fallback is not writable on this host`;
+    }
+  } catch (agentErr) {
+    failReason = agentErr instanceof Error ? agentErr.message : 'archive failed';
+    console.warn(`[${logTag}] photo archive failed`, agentErr);
+    return emptyResult(photoIdCount, resolvedCount, env, usedAgent, {
+      failReason,
+      claimTargetErr,
+      archiveWarning: `NAS archive failed: ${failReason}`,
+    });
+  }
+
+  if (!archived) {
+    const details = [failReason, claimTargetErr ? `claims-target: ${claimTargetErr}` : null]
+      .filter(Boolean)
+      .join(' · ');
+    console.warn(`[${logTag}] archive skipped — no agent/mount configured`, {
+      usedAgent,
+      hasAgentUrl: env.hasUrl,
+      hasAgentToken: env.hasToken,
+      photoCount: resolvedCount,
+      totalPhotoIds: photoIdCount,
+      details,
+    });
+    return emptyResult(photoIdCount, resolvedCount, env, usedAgent, {
+      failReason,
+      claimTargetErr,
+      archiveWarning: UNAVAILABLE_WARNING,
+    });
+  }
+
+  const archiveWarning = partialWarning(
+    archived.copied,
+    archived.total,
+    photoIdCount,
+    resolvedCount,
+  );
+  console.warn(
+    `[${logTag}] archived ${archived.copied}/${archived.total} photo(s) → ${archived.folder}`,
+  );
+  return {
+    copied: archived.copied,
+    total: archived.total,
+    folder: archived.folder,
+    photoIdCount,
+    resolvedCount,
+    archiveWarning,
+    archiveOk: !archiveWarning,
+    failReason: null,
+    claimTargetErr,
+    usedAgent,
+    hasAgentUrl: env.hasUrl,
+    hasAgentToken: env.hasToken,
+  };
+}
