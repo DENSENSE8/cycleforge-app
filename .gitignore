@@ -115,3 +115,6 @@ electron/package-lock.json
 
 # Local vision dataset — 13GB of captures/derivatives, regenerated locally, never tracked
 vision/data/
+
+# Machine-local CLI state — an absolute symlink into the developer's home.
+.antigravitycli/
