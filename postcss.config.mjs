@@ -1,8 +1,7 @@
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 
 /**
- * Plugin path is ABSOLUTE, derived from this file's own location.
+ * Plugin path is ABSOLUTE, derived from the project root at load time.
  *
  * Next requires postcss plugins be named by string (it rejects a function:
  * "must be provided as a string"), and then `require()`s that string. A
@@ -13,12 +12,14 @@ import { fileURLToPath } from 'node:url';
  * it from the project root, which is why `next build` passed and only
  * `next dev --turbopack` broke.
  *
- * `import.meta.url` is this file, and this file sits at the project root, so
- * the path holds for every bundler and every cwd — unlike `process.cwd()`,
- * which follows wherever the command was invoked from.
+ * `import.meta.url` does NOT work here either: Turbopack rewrites this module
+ * into `.next/dev/build/`, so it reports the INLINED location and the path
+ * resolved to `.next/scripts/postcss/...`. `process.cwd()` is the project root
+ * for both `next dev` and `next build` — Next requires being run from the
+ * project root — and it is not rewritten by bundling.
  */
 const legacyColorFallback = path.join(
-  path.dirname(fileURLToPath(import.meta.url)),
+  process.cwd(),
   'scripts/postcss/legacy-color-fallback.cjs',
 );
 
