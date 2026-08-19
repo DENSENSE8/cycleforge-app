@@ -13,7 +13,8 @@ import type { NasArchivePendingItem } from '@/lib/receiving/nas-archive-pending'
 
 export type { NasArchivePendingItem };
 
-export const nasArchivePendingQueryKey = (receivingId?: number | null) =>
+/** Local — re-export it the moment a second module needs to invalidate this key. */
+const nasArchivePendingQueryKey = (receivingId?: number | null) =>
   ['nas-archive-pending', receivingId ?? 'all'] as const;
 
 /**
