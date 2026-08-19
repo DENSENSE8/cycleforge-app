@@ -7,13 +7,15 @@
  * (comma or tab). Tracking IDs register onto STN + inbound cartons so Unbox
  * can find the package. Catalog ASIN is enrichment, not a gate.
  *
- * Macro floor = Import CTA + `→|` close in one FlushTerminalFooter wrapper.
+ * Macro floor = the Import CTA alone (`FlushTerminalFooter layout="bleed"`).
+ * The dismiss is the host's singleton `X` at the top-right — a floor is for
+ * committing, never a second close beside the commit.
  */
 
 import { useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
-import { PaneHeaderCloseButton, PaneHeaderLabel } from '@/components/ui/pane-header';
+import { PaneHeaderLabel } from '@/components/ui/pane-header';
 import { Button, FlushTerminalFooter } from '@/design-system/primitives';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { focusRing } from '@/design-system/tokens/focus-ring';
@@ -226,34 +228,21 @@ export function IncomingImportCsvOverlay({
           ) : null}
         </div>
 
-        <FlushTerminalFooter
-          layout="cluster"
-          leading={
-            <div className="flex min-w-0 flex-1 items-stretch">
-              <Button
-                type="button"
-                variant="primary"
-                disabled={!canSubmit}
-                onClick={() => void handleSubmit()}
-                ariaLabel={submitting ? 'Importing CSV' : `Import ${rows.length || 0} rows`}
-                className="min-h-9 w-full flex-1"
-                data-testid="import-csv-submit"
-              >
-                {submitting ? 'Importing…' : `Import ${rows.length || 0} row(s)`}
-              </Button>
-            </div>
-          }
-        >
-          <PaneHeaderCloseButton
-            onClick={onClose}
-            ariaLabel="Hide right panel"
-            title="Hide right panel"
-            className={cn(
-              'h-full min-h-9 w-10',
-              cornerClass('flush'),
-              'rounded-none border-l border-border-hairline',
-            )}
-          />
+        {/* The dismiss is the host's singleton `X` at the column's
+            top-right (`closeRightPanel`) — never a second `→|` down here
+            beside the commit. A floor is for committing. */}
+        <FlushTerminalFooter layout="bleed">
+            <Button
+              type="button"
+              variant="primary"
+              disabled={!canSubmit}
+              onClick={() => void handleSubmit()}
+              ariaLabel={submitting ? 'Importing CSV' : `Import ${rows.length || 0} rows`}
+              className="min-h-9 w-full flex-1"
+              data-testid="import-csv-submit"
+            >
+              {submitting ? 'Importing…' : `Import ${rows.length || 0} row(s)`}
+            </Button>
         </FlushTerminalFooter>
       </div>
     </DetailStackRailRegistrar>

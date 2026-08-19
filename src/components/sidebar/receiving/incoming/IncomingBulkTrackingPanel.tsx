@@ -42,15 +42,21 @@
  * That shell leads with a 32px circled `X` and a wrapping hero title, which is
  * right for a create/import form and wrong here: this panel has no form, and it
  * now has a switcher that wants the top-left corner. It wears the house
- * push-column chrome instead — `PaneHeaderCloseButton` (`→|`, the panel parks
- * back against the edge it came from) at the band's top-left, the icon strip
- * beneath it. Its entry in `INTAKE_SHELL_WITH_REGISTRAR_ALLOWLIST` was removed
- * in the same change; that allowlist is shrink-only.
+ * push-column chrome instead: the band leads with the panel's eyebrow and ends
+ * with the reserved cell the host's singleton `X` paints into. Its entry in
+ * `INTAKE_SHELL_WITH_REGISTRAR_ALLOWLIST` was removed in the same change; that
+ * allowlist is shrink-only.
  *
- * Composed, never forked: `RightRailHost` for the slot,
- * `DeskInspectorIndexShell` for result topics, `PaneHeaderCloseButton` for the
- * dismiss, `OmnichannelComposerDock` for the paste dock, `parseTrackingKeys`
- * for the split. Never mounts station Displays push stack on RightRailHost.
+ * **It used to mount its own close, stacked under the host's.** The band paid
+ * `pl-1.5` for a `PaneHeaderCloseButton` sitting at exactly the coordinates
+ * `RightRailHostCloseAnchor` already occupied — two dismiss controls, one
+ * pixel apart, on a non-modal column. The host owns the close; an occupant
+ * reserves the cell and renders nothing into it.
+ *
+ * Composed, never forked: `RightRailHost` for the slot AND the dismiss,
+ * `DeskInspectorIndexShell` for result topics, `OmnichannelComposerDock` for
+ * the paste dock, `parseTrackingKeys` for the split. Never mounts station
+ * Displays push stack on RightRailHost.
  */
 
 import {
@@ -81,7 +87,6 @@ import {
 } from '@/components/right-rail/DeskInspectorIndexShell';
 import { PoChip, TrackingChip } from '@/components/ui/CopyChip';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { PaneHeaderCloseButton } from '@/components/ui/pane-header';
 import { RightPaneOverlay } from '@/components/ui/RightPaneOverlay';
 import { Button, IconButton, OmnichannelComposerDock } from '@/design-system/primitives';
 import type { SectionTab } from '@/design-system/components';
@@ -130,20 +135,16 @@ type CheckResult = {
 };
 
 /**
- * The band that carries the panel's own dismiss, at its top-LEFT.
+ * The panel's chrome band — `DeskRailChromeRow`'s shape for a rail that has no
+ * cursor and no contextual icons: eyebrow at the leading gutter, flex spacer,
+ * then the reserved cell the host's singleton `X` paints over.
  *
- * `pl-1.5` is the optical gutter, not a guess. `PaneHeaderCloseButton` is a
- * 32px box around a 16px glyph, so the box insets its mark 8px, and the lucide
- * arrow draws ~1.3px inside its own viewBox at that size — ~9.3px of inset
- * before the band's padding. The body's content gutter is `px-4` (16px), so the
- * band pays the difference (6px) and the MARK lands on the gutter that the
- * heading, the icon strip and every card border beneath it share.
- *
- * A hit box may bleed past the content edge; the mark the operator reads may
- * not sit off it — `ui-design-system.md` → *A leading glyph aligns to a text
- * gutter OPTICALLY*.
+ * `pl-4` is the body's own content gutter (`px-4`), so the eyebrow's ink lands
+ * on the line the heading, the icon strip and every card border beneath it
+ * share. `pr-2` matches `DESK_RAIL_CHROME_ROW_CLASS` so the reserved 28px cell
+ * sits under the host anchor's `right-2`.
  */
-const TOP_BAND_CLASS = 'flex h-9 shrink-0 items-center gap-1.5 pl-1.5 pr-3';
+const TOP_BAND_CLASS = 'flex h-9 shrink-0 items-center gap-1.5 pl-4 pr-2';
 
 function reasonLabel(reason: CheckZohoReceivedRow['reason']): string {
   switch (reason) {
@@ -751,18 +752,20 @@ export function IncomingBulkTrackingPanel({
       ariaLabel={panelTitle}
     >
       <div className="flex h-full min-h-0 flex-col bg-surface-card">
-        {/* The panel's own visible dismiss — a non-modal push column has no
-            scrim to click off, so this is mandatory, and it belongs at the
-            column's top-left where every push surface in the house puts it. */}
+        {/* Chrome band. The dismiss is the HOST's singleton `X` at the
+            top-right (`RightRailHostCloseAnchor`); this row reserves that cell
+            so the eyebrow can never truncate underneath it, and mounts no
+            close of its own. */}
         <div className={TOP_BAND_CLASS}>
-          <PaneHeaderCloseButton
-            onClick={onClose}
-            ariaLabel={`Hide ${panelTitle.toLowerCase()}`}
-            title={`Hide ${panelTitle.toLowerCase()}`}
-          />
-          <p className="truncate text-role-eyebrow uppercase tracking-widest text-text-soft">
+          <p className="min-w-0 truncate text-role-eyebrow uppercase tracking-widest text-text-soft">
             {panelTitle}
           </p>
+          <div className="flex-1" />
+          <span
+            className="inline-block h-7 w-7 shrink-0"
+            aria-hidden
+            data-right-rail-host-close-slot
+          />
         </div>
 
         {/* Stats / paste feedback above the topic shell; buckets own their scroll. */}

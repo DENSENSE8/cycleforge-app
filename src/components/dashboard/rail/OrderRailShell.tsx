@@ -124,7 +124,7 @@ export function OrderRailShell() {
     >
       <OrdersViewChromeBridge value={viewChrome}>
       <div className="flex h-full min-h-0 flex-col overflow-hidden bg-surface-card">
-        <RailSelectionBand onClose={handleClose} />
+        <RailSelectionBand />
         {active && viewChrome ? (
           <div
             className="flex h-9 min-w-0 items-center justify-end gap-2 border-b border-border-hairline px-2"

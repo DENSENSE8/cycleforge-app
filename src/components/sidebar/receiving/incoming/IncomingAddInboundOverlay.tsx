@@ -13,10 +13,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
-import { PaneHeaderCloseButton, PaneHeaderLabel } from '@/components/ui/pane-header';
+import { PaneHeaderLabel } from '@/components/ui/pane-header';
 import { SearchableSelectField } from '@/design-system/components';
 import { Button, FlushTerminalFooter, TextField } from '@/design-system/primitives';
-import { cornerClass } from '@/design-system/tokens/radius';
 import { useDebounce } from '@/hooks';
 import { usePlatformCatalog, useReceivingTypeCatalog } from '@/hooks/useCatalog';
 import { useSkuCatalogSearch, type SkuCatalogItem } from '@/hooks/useSkuCatalogSearch';
@@ -29,7 +28,6 @@ import { priorityOverrideTiersForPicker } from '@/lib/receiving/priority-overrid
 import { invalidateReceivingFeeds } from '@/lib/queries/receiving-queries';
 import { toast } from '@/lib/toast';
 import { STATION_DESK_OCCUPANT_CLOSE_EVENT } from '@/utils/events';
-import { cn } from '@/utils/_cn';
 
 /** Prefer purchase sources operators fix unfound cartons with. */
 const INBOUND_PLATFORM_PRIORITY = ['amazon', 'goodwill', 'ebay', 'walmart', 'shopify'] as const;
@@ -489,34 +487,21 @@ export function IncomingAddInboundOverlay({
           </div>
         </div>
 
-        <FlushTerminalFooter
-          layout="cluster"
-          leading={
-            <div className="flex min-w-0 flex-1 items-stretch">
-              <Button
-                type="button"
-                variant="primary"
-                disabled={!canSubmit}
-                onClick={() => void handleSubmit()}
-                ariaLabel={submitting ? 'Saving inbound' : 'Add to Incoming'}
-                className="min-h-9 w-full flex-1"
-                data-testid="add-inbound-submit"
-              >
-                {submitting ? 'Saving…' : 'Add to Incoming'}
-              </Button>
-            </div>
-          }
-        >
-          <PaneHeaderCloseButton
-            onClick={onClose}
-            ariaLabel="Hide right panel"
-            title="Hide right panel"
-            className={cn(
-              'h-full min-h-9 w-10',
-              cornerClass('flush'),
-              'rounded-none border-l border-border-hairline',
-            )}
-          />
+        {/* The dismiss is the host's singleton `X` at the column's
+            top-right (`closeRightPanel`) — never a second `→|` down here
+            beside the commit. A floor is for committing. */}
+        <FlushTerminalFooter layout="bleed">
+            <Button
+              type="button"
+              variant="primary"
+              disabled={!canSubmit}
+              onClick={() => void handleSubmit()}
+              ariaLabel={submitting ? 'Saving inbound' : 'Add to Incoming'}
+              className="min-h-9 w-full flex-1"
+              data-testid="add-inbound-submit"
+            >
+              {submitting ? 'Saving…' : 'Add to Incoming'}
+            </Button>
         </FlushTerminalFooter>
       </div>
     </DetailStackRailRegistrar>

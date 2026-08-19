@@ -35,22 +35,31 @@
  *
  * ## Singleton close
  *
- * The host paints one `→|` (`ArrowRightToLine`) at the top-left. Click / Esc
- * fires `closeAndCachePanel()` — unmounts the occupant (wedge listeners die),
- * caches `draftData`, toasts "Draft saved." with Resume. Child views must not
- * mount a second close. Mod+Shift+R resumes while the toast is armed.
+ * The host paints one `X` at the top-RIGHT (ruled 2026-08-19, replacing the
+ * top-left `→|`). Click / Esc / scrim all fire the ONE closer,
+ * `closeRightPanel()` (`lib/right-rail/close.ts`) — which caches `draftData`,
+ * parks the occupant, toasts "Draft saved." with Resume, AND runs the
+ * occupant's own `onClose` teardown (clear a selection, drop a URL param).
+ * Child views must not mount a second close anywhere — not a header twin and
+ * not a footer `→|` beside a submit CTA. Mod+Shift+R resumes while the toast
+ * is armed.
+ *
+ * WHY THE CORNER MOVED. The top-LEFT corner is where every panel's own chrome
+ * starts — the index Back, the column-display `▦`, the contextual icon strip —
+ * so the singleton close was permanently occupying the one cell each occupant
+ * wanted first, and each of them had to reserve a spacer for a control they do
+ * not own. The trailing corner is empty on every occupant, and it is where a
+ * dismiss is reached for without looking. `DeskRailChromeRow` therefore
+ * reserves its slot at the TRAILING end; the leading edge is the occupant's.
  */
 
 import { useEffect, useRef, useSyncExternalStore, type ReactNode } from 'react';
 import { AnimatePresence, motion } from '@/design-system/motion';
-import { ArrowRightToLine, ChevronLeft } from '@/components/Icons';
+import { ChevronLeft, X } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { usePanelStoreKeyboard } from '@/hooks/usePanelStoreKeyboard';
-import {
-  closeAndCachePanel,
-  usePanelDraft,
-  usePanelStore,
-} from '@/lib/right-rail/panel-store';
+import { closeRightPanel } from '@/lib/right-rail/close';
+import { usePanelDraft, usePanelStore } from '@/lib/right-rail/panel-store';
 import {
   framerDuration,
   framerPresence,
@@ -116,7 +125,7 @@ function RightRailOccupantBody({ node }: { node: ReactNode }) {
 function RightRailHostCloseAnchor() {
   return (
     <div
-      className="absolute left-2 top-0.5 z-header p-0"
+      className="absolute right-2 top-0.5 z-header p-0"
       data-right-rail-host-close-anchor
     >
       <HoverTooltip label="Hide right panel" asChild>
@@ -124,8 +133,8 @@ function RightRailHostCloseAnchor() {
           size="sm"
           tone="neutral"
           ariaLabel="Hide right panel"
-          icon={<ArrowRightToLine className="h-4 w-4" />}
-          onClick={() => closeAndCachePanel()}
+          icon={<X className="h-4 w-4" />}
+          onClick={() => closeRightPanel()}
           data-testid="right-rail-host-close"
           className="active:scale-100"
         />
@@ -226,8 +235,9 @@ export function RightRailHost({ inline = true }: { inline?: boolean } = {}) {
   const isPush = wantsPush;
 
   useBodyScrollLock(!!renderable && isModal && !isPush);
-  // Assistant keeps its own Esc. Detail occupants go through closeAndCachePanel
-  // (unmount + draft toast) so wedge listeners on the view die with it.
+  // Assistant keeps its own Esc. Every other occupant goes through
+  // `closeRightPanel` (unmount + draft toast + occupant teardown) so wedge
+  // listeners on the view die with it.
   useEscapeClose(
     isAssistantDock && !!renderable?.onClose && !overlayOpen,
     renderable?.onClose ?? (() => {}),
@@ -278,7 +288,7 @@ export function RightRailHost({ inline = true }: { inline?: boolean } = {}) {
   const showPush = isPush && !!renderable;
   const showOverlay = !isPush && !!renderable;
   const showHostClose = !!renderable && !isAssistantDock && !isCollapsed;
-  const onHostDismiss = isAssistantDock ? renderable?.onClose : closeAndCachePanel;
+  const onHostDismiss = closeRightPanel;
 
   return (
     <>
