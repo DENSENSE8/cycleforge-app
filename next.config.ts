@@ -48,11 +48,25 @@ const withPWA = withPWAInit({
         // it silently did nothing AND failed typecheck. Keeping it here is what
         // actually keeps build output out of the committed worker's precache
         // manifest; see the reasoning above `fallbacks`.
-        exclude: [
-            /^\/_next\/static\/chunks\//,
-            /^\/_next\/static\/css\//,
-            /^\/_next\/static\/media\//,
-            /\.map$/,
+        // Patterns match the WEBPACK ASSET NAME (`static/chunks/x.js`) — no
+        // leading slash and no `_next` prefix, both of which are added later
+        // when the manifest URL is built. Anchoring on `/_next/...` (as this
+        // first shipped) can never match: measured, the manifest still carried
+        // 1438 build-hashed entries.
+        exclude: [/^static\//, /\.map$/, /^build-manifest\.json$/],
+        // `exclude` only filters assets workbox harvests from the compilation.
+        // next-pwa injects its own via `additionalManifestEntries`, which skip
+        // that filter entirely — so drop anything build-hashed that survives,
+        // matching on the FINAL url this time.
+        manifestTransforms: [
+            // Must satisfy workbox's `ManifestTransform`, which hands over
+            // `ManifestEntry & { size: number }`: `revision` is REQUIRED
+            // (nullable value, not an optional key) and `size` is present, so
+            // omitting either fails assignability.
+            (entries: Array<{ url: string; revision: string | null; integrity?: string; size: number }>) => ({
+                manifest: entries.filter((e) => !/^\/?_next\/static\//.test(e.url)),
+                warnings: [] as string[],
+            }),
         ],
         runtimeCaching: [
             {
