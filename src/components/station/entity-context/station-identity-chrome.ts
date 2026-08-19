@@ -123,14 +123,6 @@ export const STATION_CHROME_CELL_PAD = 'px-1.5';
  */
 export const STATION_CHROME_GLYPH_CLASS = 'block h-3.5 w-3.5 shrink-0';
 
-/**
- * Shared cell on the one-row carton bar: fill chrome height, vertical center.
- * Chip faces keep their own `px-1.5`; status / price compose
- * {@link STATION_CHROME_CELL_PAD}. No leading hairline — the bar is one
- * continuous strip (no `border-l` / `divide-x` between cells).
- */
-export const STATION_CHROME_CELL_CLASS =
-  'flex h-full min-h-0 shrink-0 items-center';
 
 /**
  * Hover seam — the carton bar is one flush strip (`gap-0`, no `divide-x`), so
@@ -158,8 +150,10 @@ export const STATION_CHROME_CELL_CLASS =
  * `ring-current` — a hairline that disappeared on the colour washes — was true
  * of `border-hairline` (≈ gray-100) specifically, not of a fixed ink as such.
  *
- * Interactive cells only. A hover box on a read-only fact (status dot, qty,
- * price) would advertise a click that does nothing.
+ * EVERY cell on the bar draws this box on hover — the read-only facts (status
+ * dot, qty, price) compose the base {@link STATION_CHROME_CELL_CLASS}, which
+ * carries the seam + fill, so the strip reads as one uniform set under a
+ * pointer sweep rather than splitting into "control" and "fact" cells.
  */
 export const STATION_CHROME_CELL_HOVER_SEAM =
   'hover:ring-1 hover:ring-inset hover:ring-text-default/30';
@@ -181,11 +175,26 @@ export const STATION_CHROME_CELL_HOVER_FILL = 'hover:bg-surface-hover/50';
  * would delineate at two different heights. This wrapper hands them the same
  * `h-full` cell box, seam and fill that every other interactive cell has.
  *
- * Read-only facts (status dot, qty, price, the Pickup indicator) compose
- * {@link STATION_CHROME_CELL_CLASS} instead — no box, no fill.
+ * Read-only facts (status dot, qty, price) compose
+ * {@link STATION_CHROME_CELL_CLASS}, which now carries the SAME seam + fill —
+ * so they box on hover identically; this variant only adds `items-stretch` for
+ * the inline chips whose own box would otherwise be shorter than the row.
  */
 export const STATION_CHROME_HOVER_CELL_CLASS = [
   'flex h-full min-h-0 shrink-0 items-stretch',
+  STATION_CHROME_CELL_HOVER_FILL,
+  STATION_CHROME_CELL_HOVER_SEAM,
+].join(' ');
+
+/**
+ * Shared cell on the one-row carton bar: fill chrome height, vertical center,
+ * and draw the hover box (seam + fill) so status dot / qty / price delineate
+ * the same as every interactive cell. Chip faces keep their own `px-1.5`;
+ * status / price compose {@link STATION_CHROME_CELL_PAD}. No leading hairline —
+ * the bar is one continuous strip (no `border-l` / `divide-x` between cells).
+ */
+export const STATION_CHROME_CELL_CLASS = [
+  'flex h-full min-h-0 shrink-0 items-center',
   STATION_CHROME_CELL_HOVER_FILL,
   STATION_CHROME_CELL_HOVER_SEAM,
 ].join(' ');
@@ -220,3 +229,15 @@ export const STATION_IDENTITY_SCROLL_CLEARANCE = 'pt-7';
  */
 // ds-allow-spacing: stacked identity overlay = PRIMARY h-7 + secondary h-6 (not a density step).
 export const STATION_IDENTITY_STACKED_SCROLL_CLEARANCE = 'pt-[52px]'; // ds-allow-spacing
+/**
+ * Bottom-CENTER anchor for a menu opened by a carton-bar cell (the listing
+ * menu, and any future hand-rolled bar panel). ONE definition of "how a bar
+ * cell menu is placed" so the strip's menus read as one system: centered under
+ * the cell, not left/right-bound to it. Radix-driven menus (classify, photos,
+ * overflow) express the same intent through their own `align`/placement props;
+ * this token is for the CSS-positioned panels that do not go through Radix.
+ *
+ * A cell that hosts one composes `relative`; the panel composes this.
+ */
+export const STATION_CHROME_BAR_MENU_ANCHOR =
+  'absolute left-1/2 top-full z-panelPopover -translate-x-1/2 pt-1.5';

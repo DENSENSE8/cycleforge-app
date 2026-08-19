@@ -23,8 +23,12 @@ import test from 'node:test';
  *    acquire neither the box nor the row height unless a host cell gives it to
  *    them. They were the cells that had no hover state at all.
  *
- * Read-only facts stay boxless ON PURPOSE — status dot, qty, price and the
- * Pickup indicator advertise no click, so they must not draw a control box.
+ * EVERY cell draws the box on hover — including the read-only facts (status
+ * dot, qty, price) and the Pickup indicator. This is a deliberate reversal of
+ * the earlier "read-only facts stay boxless" rule: the bar must read as one
+ * uniform set under a pointer sweep, so a fact cell and a control cell
+ * delineate the same way. The base `STATION_CHROME_CELL_CLASS` carries the
+ * seam + fill, so composing it is enough — no cell opts out.
  */
 
 const ROOT = join(import.meta.dirname, '..', '..', '..', '..');
@@ -109,7 +113,7 @@ test('every interactive carton-bar cell composes the seam', () => {
   );
 });
 
-test('the identity chips get a full-height cell box, the read-only facts do not', () => {
+test('every cell draws the hover box — chips are h-full, read-only facts inherit it', () => {
   const chrome = read(CHROME);
   assert.match(
     chrome,
@@ -117,21 +121,37 @@ test('the identity chips get a full-height cell box, the read-only facts do not'
     'The chip host must be h-full, or its box is shorter than the pills and the strip delineates at two heights.',
   );
 
+  // The base cell (status dot / qty / price) now carries the SAME box, so the
+  // read-only facts delineate identically to the interactive cells.
+  const baseCell =
+    /export const STATION_CHROME_CELL_CLASS = \[[\s\S]*?\]\.join/.exec(chrome);
+  assert.ok(baseCell, 'STATION_CHROME_CELL_CLASS must stay an array-composed token.');
+  assert.match(
+    baseCell[0],
+    /STATION_CHROME_CELL_HOVER_FILL/,
+    'the base cell must carry the hover FILL so price / qty / status dot box on hover',
+  );
+  assert.match(
+    baseCell[0],
+    /STATION_CHROME_CELL_HOVER_SEAM/,
+    'the base cell must carry the hover SEAM so price / qty / status dot box on hover',
+  );
+
   const card = read(CARD);
   const boxed = card.match(/STATION_CHROME_HOVER_CELL_CLASS/g) ?? [];
   assert.ok(
     boxed.length >= 4,
-    `Order #, both tracking branches and the ticket chip are interactive and need the box; found ${boxed.length} of 4+.`,
+    `Order #, both tracking branches, the ticket chip and the pickup slot need the box; found ${boxed.length} of 4+.`,
   );
 
-  // The Pickup indicator copies nothing and opens nothing — a box on it would
-  // advertise a click that does not exist.
+  // The Pickup indicator now shares the tracking slot's box, so the slot reads
+  // the same whether it holds tracking or a pickup marker.
   const pickup = /FulfillmentPickupPill[\s\S]{0,400}?\/>/.exec(card);
   assert.ok(pickup, 'Pickup branch not found — update this guard alongside the tracking slot.');
   const pickupHost = card.slice(Math.max(0, pickup.index - 200), pickup.index);
-  assert.doesNotMatch(
+  assert.match(
     pickupHost,
     /STATION_CHROME_HOVER_CELL_CLASS/,
-    'Pickup is a read-only fact; it must not draw an interactive cell box.',
+    'Pickup shares the tracking slot box so the slot delineates the same either way.',
   );
 });

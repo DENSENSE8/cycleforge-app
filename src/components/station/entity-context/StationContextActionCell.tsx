@@ -20,7 +20,10 @@ import { recordCopy } from '@/lib/clipboard-history';
 import { normalizeCopyText } from '@/lib/copy-chip-format';
 import { buildOpenLinksHubHref } from '@/lib/receiving/listing-links';
 import { cn } from '@/utils/_cn';
-import { STATION_CHROME_GLYPH_CLASS } from './station-identity-chrome';
+import {
+  STATION_CHROME_BAR_MENU_ANCHOR,
+  STATION_CHROME_GLYPH_CLASS,
+} from './station-identity-chrome';
 import {
   STATION_CONTEXT_ACTION_CELL_CLASS,
   STATION_CONTEXT_CLAIM_CHROME_CLASS,
@@ -125,7 +128,11 @@ export function StationContextListingCell({
       {showActionMenu ? (
         <div
           className={cn(
-            'absolute left-0 top-full z-panelPopover pt-1.5 transition-opacity duration-100',
+            // Centered on the trigger, not left-aligned to it: the carton bar
+            // is a row of narrow abutting cells, so a start-aligned panel puts
+            // its body under a NEIGHBOUR and reads as that cell's menu.
+            STATION_CHROME_BAR_MENU_ANCHOR,
+            'transition-opacity duration-100',
             menuHover
               ? 'visible pointer-events-auto opacity-100'
               : 'invisible pointer-events-none opacity-0',

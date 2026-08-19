@@ -97,10 +97,14 @@ const GALLERY_GAP_PX = 6;
 function galleryAnchoredPlacement(
   placement: 'below' | 'above' | 'right' | 'left',
 ): AnchoredPlacement {
-  if (placement === 'above') return 'top-start';
+  if (placement === 'above') return 'top-center';
   if (placement === 'right') return 'right-start';
   if (placement === 'left') return 'left-start';
-  return 'bottom-start';
+  // Below opens CENTERED on the pill, not left-aligned to it: on the carton
+  // strip the trigger is a narrow cell in a row of narrow cells, so a
+  // start-aligned panel reads as belonging to whichever cell its left edge
+  // happens to land under.
+  return 'bottom-center';
 }
 
 export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({

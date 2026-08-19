@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { ChevronLeft, MoreHorizontal, Pencil, Receipt, X } from '@/components/Icons';
+import { useRef, useState } from 'react';
+import { ChevronLeft, MoreHorizontal, Receipt } from '@/components/Icons';
 import {
   CHIP_TONES,
   getLast8,
@@ -18,7 +18,6 @@ import {
   CHIP_HOVER_MENU_PANEL_CLASS,
 } from '@/components/ui/copy-chip-hover-menu-chrome';
 import {
-  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -27,7 +26,7 @@ import {
 import { ReceivingPhotoButton } from '@/components/receiving/workspace/line-edit/ReceivingPhotoButton';
 import { StationContextClaimCell, StationContextIconCell, StationContextListingCell } from './StationContextActionCell';
 import { IdentityLinkChip } from '@/components/receiving/workspace/line-edit/IdentityLinkChip';
-import { CatalogManagerList, type CatalogKind } from '@/components/receiving/workspace/line-edit/CatalogManagerList';
+import { type CatalogKind } from '@/components/receiving/workspace/line-edit/CatalogManagerList';
 import { ReceivingTicketChip } from '@/components/receiving/workspace/line-edit/ReceivingTicketChip';
 import { FulfillmentPickupPill } from '@/components/receiving/ReceivingIdentityChips';
 import { InlinePillPicker } from '@/components/receiving/workspace/line-edit/InlinePillPicker';
@@ -120,10 +119,13 @@ import {
  *  - Identity editing: listing/tracking editors accessible via chip edit actions,
  *    open external editing tabs. PO# is copy/open when linked; `onEditPo` opens
  *    Package Pairing → PO when there is no real Zoho PO id.
- *  - Classify / order / tracking / photos menus open below the chip (`side=bottom`,
- *    `align=start`). Overflow `⋯` is below + `align=end`. Collision flip to
- *    left/right is off on this bar. Full Classify Displays stays the searchable
- *    editor when staff open that leaf themselves.
+ *  - Every menu the bar opens is bottom-CENTER under its cell (classify · listing
+ *    · photos) — one anchoring so the strip reads as one system. Overflow `⋯` is
+ *    the one exception (`align=end`) so the trailing cell's menu stays on-screen.
+ *    Collision flip is off on this bar. Catalog edit ("Edit colours" on the
+ *    platform / type menus) opens ONE page-centered `CatalogManagerPopover` —
+ *    never a second inline bar-anchored twin. Full Classify Displays stays the
+ *    searchable editor when staff open that leaf themselves.
  *
  * Purely presentational/controlled — all state lives in the parent.
  */
@@ -349,9 +351,7 @@ export function CartonContextCard({
 }) {
   // One classify menu at a time — chip-anchored dropdown; identity band stays put.
   const [openPicker, setOpenPicker] = useState<'urgency' | 'platform' | 'type' | null>(null);
-  const [catalogKind, setCatalogKind] = useState<CatalogKind | null>(null);
   const barRef = useRef<HTMLDivElement | null>(null);
-  const catalogPanelRef = useRef<HTMLDivElement | null>(null);
   // Freeze the responsive decision while a classify menu is open. The row must
   // not reflow under a pointer that is mid-interaction: a pill changing width
   // moves out from under the cursor, which fires `mouseleave` and flashes the
@@ -381,32 +381,17 @@ export function CartonContextCard({
   };
 
   /**
-   * "Edit colours" on the platform / type menus opens the org catalog manager —
-   * the ONE place `platforms.color_hex` is edited ({@link CatalogManagerList},
-   * shared with the /settings catalog section). Urgency has no entry: it is
-   * `receiving.priority_tier`, not a catalog row, so there is no colour to edit
-   * and a dead row would be worse than its absence.
+   * "Edit" / "Edit colours" on the platform / type menus opens the org catalog
+   * manager — the ONE place `platforms.color_hex` and the catalog rows are
+   * edited ({@link CatalogManagerPopover} → {@link CatalogManagerList}, shared
+   * with the /settings catalog section). It is a single PAGE-CENTERED overlay
+   * (`RightPaneOverlay align="center"`): the carton bar used to also mount an
+   * inline bar-anchored twin of the same list, so one job had two edit surfaces
+   * with two anchorings. Urgency has no entry: it is `receiving.priority_tier`,
+   * not a catalog row, so there is no colour to edit and a dead row would be
+   * worse than its absence.
    */
   const [catalogManager, setCatalogManager] = useState<CatalogKind | null>(null);
-
-  useEffect(() => {
-    if (catalogKind == null) return;
-    const onDown = (e: MouseEvent) => {
-      const t = e.target as Node;
-      if (catalogPanelRef.current?.contains(t)) return;
-      if (barRef.current?.contains(t)) return;
-      setCatalogKind(null);
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setCatalogKind(null);
-    };
-    document.addEventListener('mousedown', onDown);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onDown);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [catalogKind]);
 
   // Canonical platform tone/label for the listing chip — same SoT the platform
   // pill and printed label read, so a platform never presents two ways.
@@ -536,19 +521,6 @@ export function CartonContextCard({
         collapsedLabel={classifyCompact ? (platformOptions.find((o) => o.value === platformValue)?.shortLabel) : undefined}
         collapsedFace={classifyFace}
         presentation="menu"
-        menuLeadItems={
-          classifyInteractive
-            ? [
-                {
-                  id: 'edit-platforms',
-                  label: 'Edit',
-                  icon: <Pencil />,
-                  onSelect: () =>
-                    setCatalogKind((k) => (k === 'platform' ? null : 'platform')),
-                },
-              ]
-            : []
-        }
         open={openPicker === 'platform'}
         onOpenChange={(o) => setClassifyMenu('platform', o)}
         disabled={classifyInteractive ? receivingId == null : false}
@@ -564,18 +536,6 @@ export function CartonContextCard({
         collapsedLabel={classifyCompact ? (typeOptions.find((o) => o.value === receivingType)?.shortLabel) : undefined}
         collapsedFace={classifyFace}
         presentation="menu"
-        menuLeadItems={
-          classifyInteractive
-            ? [
-                {
-                  id: 'edit-types',
-                  label: 'Edit',
-                  icon: <Pencil />,
-                  onSelect: () => setCatalogKind((k) => (k === 'type' ? null : 'type')),
-                },
-              ]
-            : []
-        }
         open={openPicker === 'type'}
         onOpenChange={(o) => setClassifyMenu('type', o)}
         readOnly={!classifyInteractive}
@@ -628,7 +588,7 @@ export function CartonContextCard({
 
   /* Tracking# — last-8 copy chip. Edit stays on IdentityLinkChip when wired. */
   const trackingSlot = isLocalPickup ? (
-    <div className="flex h-full shrink-0 items-stretch">
+    <div className={STATION_CHROME_HOVER_CELL_CLASS}>
       <FulfillmentPickupPill
         variant="rail"
         tooltip="Fulfilled in person — no tracking number"
@@ -940,40 +900,6 @@ export function CartonContextCard({
   );
 
   return (
-    <div className="relative w-full min-w-0 overflow-visible">
-      {oneRowBar}
-      {catalogKind ? (
-        <div
-          ref={catalogPanelRef}
-          className={cn(
-            CHIP_HOVER_MENU_PANEL_CLASS,
-            'absolute left-1/2 top-full z-panelPopover mt-1.5 w-[min(100%,20rem)] max-w-none -translate-x-1/2',
-          )}
-          data-testid="carton-context-catalog-manager"
-        >
-          <div className="flex items-center justify-between border-b border-border-hairline px-1.5 py-1.5">
-            <span className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-muted">
-              {catalogKind === 'platform' ? 'Manage platforms' : 'Manage types'}
-            </span>
-            {/* `Button`, not `IconButton`: this directory bans the fixed-box
-                control so nothing lands on the strip that cannot be a
-                full-height action cell. This close sits in a POPOVER header,
-                not on the strip — `Button` is already flush-square
-                (`cornerClass('flush')`), so only the box is trimmed here. */}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setCatalogKind(null)}
-              ariaLabel="Close"
-              icon={<X />}
-              className="h-6 w-6 p-0"
-            />
-          </div>
-          <div className="max-h-80 overflow-y-auto px-1.5 py-1.5">
-            <CatalogManagerList kind={catalogKind} enabled />
-          </div>
-        </div>
-      ) : null}
-    </div>
+    <div className="relative w-full min-w-0 overflow-visible">{oneRowBar}</div>
   );
 }

@@ -3,294 +3,90 @@ name: improve-ui
 description: >
   Integrated UX/UI audit and refactor for Cycle Forge components. Use when the user
   asks to improve, redesign, polish, normalize, audit, or refactor the UX/UI of a
-  specific component, sidebar, panel, station, or page region. Runs critique + audit
-  first, pauses for approval, then normalizes to house design system.
+  specific component, sidebar, panel, station, or page region. Runs SoT discovery +
+  design/technical audit first, pauses for approval, then normalizes to Kinetic Ledger.
 user-invocable: true
-argument-hint: "[component path or name]"
-allowed-tools: Read, Grep, Glob, Edit, Write, Bash, Task
 ---
 
-# Improve UI — Cycle Forge UX/UI audit + refactor
+# MISSION: Surface Refactoring & Alignment Protocol
 
-One chat invocation — e.g. *"improve the UX/UI of ReceivingSidebarPanel"* — runs a
-repeatable pipeline: load design context → classify archetype → critique + audit
-(read-only) → **stop for approval** → normalize → targeted fixes → polish.
+You are executing a strict, phase-by-phase refactor of a UI surface. You must enforce the
+Kinetic Ledger identity, respect the `v2-spine` firewall, and prevent component forking.
 
-This skill **orchestrates** existing skills and house rules. It does not reinvent
-design guidance — it routes to the right ones and enforces the approval gate.
+**Do not proceed to Phase 3 until the user replies to the Phase 2 prompt.**
 
-## Hard invariants
+> **Repo state (2026-08):** `src/v2-spine/` does not exist yet — it is a planned add-on.
+> Until it lands, every `v2-spine/` clause below resolves to the **legacy `src/components/`
+> tree**: the firewall check reports "N/A — no v2-spine", the boundary import ban is inert,
+> and Phase 5 extracts to the existing `src/design-system/` primitives. Token intents come
+> from `src/design-system/tokens/colors/semantic.ts` today; CVA `intents` arrive with v2.
+> The conditional phrasing ("*if* inside `v2-spine/`") means the protocol activates
+> automatically once the firewall exists — do not delete those clauses.
 
-1. **Never edit source files before the user approves scope** (Phase 2 → gate).
-2. **Never run `bolder`, `delight`, or `overdrive`** unless the user explicitly asks —
-   Cycle Forge UI is **Kinetic Ledger** utilitarian ops (see `.impeccable.md` + `AGENTS.md`).
-3. **Compose rails when the job is sidebar pick+edit;** never fork `SidebarRailShell` /
-   `RecentActivityRailBase`. Do not force dual-pane when data shape wants table/board/station/rollup.
-4. **Colors only from** `src/design-system/tokens/colors/semantic.ts` — no hardcoded hex.
-5. **One region contract per region** — never blend station / workbench / monitor / canvas.
-6. **Data shape → primary surface** — detail pane is optional context, not identity.
-7. **Presentation SoTs** — condition, chips, dates, capabilities, `SearchHit`; views stay dumb.
-8. **Pattern evolution** — user prompt is a floor. Scan for stronger *house* patterns; do not invent foreign aesthetics or page-local shells.
+## Phase 0: Setup & JIT Discovery (Read-Only)
+1. Resolve the target path.
+2. Determine the core job of the surface (e.g., "triage header", "kpi band", "station action row").
+3. **DO NOT bulk-read markdown.** Run `node scripts/sot-lookup.mjs "<job>"` to retrieve the exact
+   Source of Truth (SoT) and current architectural constraints. Try several phrasings (job name,
+   symbol, module) if the first misses.
+4. Check `.dependency-cruiser.cjs` to confirm whether the target path is inside the `v2-spine/`
+   firewall or the legacy `components/` directory. (No `v2-spine/` yet ⇒ legacy tree; still read
+   the station firewall rules — `use-the-scan-host-not-the-utility-rail`,
+   `use-the-panel-root-not-the-ambient-wash`, `use-the-sheet-not-the-scroll-shell` — they apply now.)
 
----
+## Phase 1: Classify & Route
+1. **Region Contract:** Classify as `station` (hardware-driven, flush-square `floor` density),
+   `workbench` (pointer-driven, `ops` density), `monitor`, or `canvas`.
+2. **Boundary Check:** If the target is inside `v2-spine/`, it MUST NOT import anything from the
+   legacy `components/` or `design-system/` folders. (Inert until v2-spine exists.)
+3. **Strategy:** Determine whether to *compose* the SoT (wrap it) or *grow* it (add semantic
+   variants). Never fork.
 
-## Phase 0 — Setup (mandatory, read-only)
-
-Do this once per session for the target. Do not skip.
-
-1. **Resolve the target** to a concrete path under `src/` (component file, directory,
-   or route). Prefer a source path over a URL. If the user names a symbol
-   (`ReceivingSidebarPanel`), Grep/Glob until you have the primary file path.
-2. **Load design context:**
-   ```bash
-   node .claude/skills/impeccable/scripts/context.mjs --target <resolved-path>
-   ```
-   If already run this session for this target, skip. **Always** read `.impeccable.md`
-   at the project root — it is the Cycle Forge design-context file for this repo.
-   `context.mjs` may print `NO_PRODUCT_MD` when `PRODUCT.md` is absent; that is **not**
-   a blocker when `.impeccable.md` exists. Continue with `.impeccable.md` + house rules.
-3. **Read house rules:**
-   - `AGENTS.md` (hard laws)
-   - `.impeccable.md` (product design context)
-   - `src/design-system/DESIGN_SYSTEM.md` (north star)
-   - If any region is **Monitor rollup**: compose `@/design-system/components/monitor`
-     (or grow that registry — never invent page-local card shells).
-4. **Read one representative sibling** in the same feature area (so normalize matches
-   local patterns, not a foreign aesthetic). For Monitor rollup, prefer
-   `OperationsAnalyticsView.tsx` as the golden composition.
-5. **Pattern scan (compound):** inventory stronger siblings, duplicated structures (2+),
-   token drift, registry misses, dual primitives for the same job, forced dual-pane where
-   table/board/timeline fits. Name each pattern and map to SoT path or “promote to DS” target.
-
-Only if **both** `PRODUCT.md` and `.impeccable.md` are missing, stop and ask the user
-to run `/impeccable init` (or restore `.impeccable.md`) before resuming.
-
----
-
-## Phase 1 — Classify (mandatory, read-only)
-
-**Per region**, record three layers:
-
-### 1) Region contract (Q1→Q4)
-
-| Question (first yes wins) | Contract |
-|---------------------------|----------|
-| Scanner / keyboard-wedge / barcode? | **station** |
-| Observe-only, no durable edit? | **monitor** |
-| Node-graph / pan-zoom / semantic zoom? | **canvas** |
-| Else (pick → edit → persist) | **workbench** |
-
-### 2) Data shape → primary surface
-
-singleton transient → station card · singleton durable → fact stack · many+pick → list/table/board · stream → timeline · rollup → KPI+SectionCards · graph → canvas.  
-**Right pane / inspector = optional secondary.**
-
-### 3) Density
-
-`floor` | `ops` | `rollup` | `studio` (see `.impeccable.md` + `DESIGN_SYSTEM.md`).
-
-### Conditional skills (read when signals match)
-
+### Conditional deep-reads (only when signals match)
 | Signal in target | Also read |
 |------------------|-----------|
-| Sidebar / `?mode=` / `SidebarShell` / mode rail (master–detail recipe) | `.claude/skills/sidebar-mode/SKILL.md` |
+| Sidebar / `?mode=` / `SidebarShell` / mode rail | `.claude/skills/sidebar-mode/SKILL.md` |
 | Station blocks / scan bar / `src/lib/stations` | `.claude/skills/station-block/SKILL.md` |
 | Operations Studio / node graph / workflow canvas | `.claude/skills/ops-studio/SKILL.md` |
-| KPI strip / analytics / rollup dashboard / Monitor | `AGENTS.md` Monitor hosts + design-system `monitor/` |
+| KPI strip / analytics / Monitor rollup | `AGENTS.md` Monitor hosts + `src/design-system/components/monitor/` |
 
-**Record** (carry into the audit report):
+## Phase 2: Audit & Report (HARD STOP)
+1. Run internal sub-routines (Design Critique + Technical/AST Audit) to identify debt (e.g., raw
+   `bg-` hacks, duplicate assemblies, flex/geometry violations). When Task/subagent tools are
+   available, delegate two isolated subagents (critique + audit) and synthesize; otherwise run
+   sequentially and prefix the report `⚠️ DEGRADED: single-context`.
+2. **Synthesize and Output the Audit Report:**
+   - **P0:** Structural violations, firewall breaches, or hardware contract failures.
+   - **P1:** Token/identity drift (raw Tailwind colors instead of semantic tokens / CVA intents).
+   - **P2:** Minor typescript/cleanup issues.
+   - **Compound Opportunities Table:** List areas where extracted `<Winner.Slot>` components (or,
+     pre-v2, shared `design-system` primitives) can replace boilerplate.
+3. **HALT.** Ask the user verbatim:
+   > *"Execute: all | P0 only | pick: 1,3,5 | compound+P0 | stop"*
+   **Do not write or edit any source files before receiving this reply.**
 
-- Contract + data shape + density for each region
-- Primary surface + secondary (if any)
-- Reference module to **compose** (not fork) — or **grow** if the SoT is the weak sibling
-- Any anti-mix violations (e.g. search in the right pane, browse list inside a station, dual-pane forced on a board)
-- Compound candidates: do-now / promote-next / deferred (see report template)
+## Phase 3: Refactor (Approved Items Only)
+1. Execute the user's exact selection.
+2. Normalize all styling to Kinetic Ledger tokens (no raw hex, no arbitrary `rounded-*` unless
+   mapped to primitives; colors from `semantic.ts`).
+3. Compose or grow the SoT defined in Phase 0. Never fork a page-local twin.
 
----
+## Phase 4: Verify & Polish
+1. Run `npm run verify` to ensure no `dependency-cruiser` firewall breaches or AST clone (`jscpd`)
+   violations were introduced, and that guards/lint/typecheck stay green.
+2. Run standard formatters.
 
-## Phase 2 — Audit (mandatory, read-only, hard stop after)
-
-Delegate two **isolated** subagents when Task/subagent tools are available. They must
-not see each other's output until you synthesize.
-
-| Subagent | Instructions to load | Work |
-|----------|----------------------|------|
-| **A — Design critique** | `.claude/skills/impeccable/reference/critique.md` (+ product register `.claude/skills/impeccable/reference/product.md`) | Heuristic scoring, AI-slop check, hierarchy/IA, cognitive load. Browser inspect when available. |
-| **B — Technical audit** | `.claude/skills/impeccable/reference/audit.md` | Score a11y / perf / theming / responsive / anti-patterns. Run detector: `node .claude/skills/impeccable/scripts/detect.mjs --json <target>` |
-
-If subagents are unavailable, run A then B sequentially and prefix the report with:
-
-`⚠️ DEGRADED: single-context (no subagent tool)`
-
-### Report template (required — use exactly this structure)
-
-```markdown
-## Improve UI — audit report: <target>
-
-### Contract: <station|workbench|monitor|canvas>
-### Data shape / primary surface / density: …
-### Classification notes
-- Regions: …
-- Secondary context (pane/inspector/none): …
-- Compose (do not fork): …
-- Anti-mix: none | <list>
-
-### Scores
-- Critique: <n>/100 (or heuristic summary)
-- Audit dims: a11y <0-4> · perf <0-4> · theming <0-4> · responsive <0-4> · anti-patterns <0-4>
-
-### P0 (must fix)
-1. …
-2. …
-
-### P1 (should fix)
-1. …
-2. …
-
-### P2 (nice to have)
-1. …
-2. …
-
-### Compound opportunities (mandatory)
-User prompt is a floor. Prefer house DS compounding over one-off reskins.
-
-| Tier | Finding | Action if approved |
-|------|---------|-------------------|
-| **Do now** | In-scope / low blast radius (compose missing SoT, or grow single-consumer primitive) | Implement in Phase 3 |
-| **Promote next** | Pattern appears ≥2× or stronger sibling exists; multi-file | Include only if user expands scope |
-| **Deferred** | Multi-page migrate / new public API | Recommend only |
-
-List 1–5 concrete items with SoT paths (e.g. “Unify MetricRing → GaugeDonut half-gauge in design-system”).
-
-### Recommended refactor commands
-- normalize (always)
-- grow-sot / unify-sibling (when compound scan finds a weak primitive)
-- layout | distill | typeset | colorize | adapt | clarify | animate (only as flagged)
-
-### Proposed scope for approval
-- [ ] P0 item 1
-- [ ] P0 item 2
-- [ ] P1 item 1
-- [ ] Compound do-now: …
-…
-```
-
-### Approval gate — STOP HERE
-
-After posting the report, ask **exactly**:
-
-> Approve this scope for refactor? Reply with: **all** | **P0 only** | **pick: 1,3,5** | **compound+P0** | **stop**
-
-- Numbered items in P0 then P1 (then P2 if listed) form the pick list (`1` = first P0, etc.).
-- **Do not** Edit / Write / StrReplace any app source until the user replies.
-- If the user says **stop**, end the run. If they re-scope ("P0 only", "pick: …"),
-  proceed to Phase 3 with only that subset.
-
-### Follow-up intents (same thread)
-
-| User says | Action |
-|-----------|--------|
-| Re-audit only / audit again | Re-run Phase 2; skip Phase 3–4 |
-| Also run adapt / distill / … | After approval (or re-approval), include that sub-skill in Phase 3 |
-| Approve / all / P0 only / pick: … | Continue to Phase 3 |
+## Phase 5: Extract (Optional)
+If a new reusable primitive was discovered and approved during Phase 2, extract it to
+`v2-spine/ui/primitives/` (or, pre-v2, the matching `src/design-system/` primitive) and document
+its hardware-target constraints.
 
 ---
 
-## Phase 3 — Refactor (only after approval)
-
-Scope: **approved items only**. Prefer the smallest diff that closes each finding.
-
-### Always: normalize
-
-Follow the normalize skill workflow (house design system first):
-
-- Replace hardcoded colors with theme / semantic tokens (no page-local hex)
-- Apply Kinetic Ledger: one-row anatomy; density-appropriate layout; ban random card soup /
-  nested cards-as-rows; allow boards / named rollup grids / station cards when data shape fits
-- Resolve presentation kinds via SoTs (condition, typed CopyChips, dates, capabilities)
-- Semantic chips: `bg-x-50 text-x-700 ring-x-200` when using the chip recipe
-- Compose rails (`SidebarRailShell`, `RecentActivityRailBase`) when using master–detail —
-  never fork list infra; do not invent dual-pane for table/board-primary jobs
-- Monitor rollup: compose `SectionCard` / `KpiStrip` / `MonitorPageShell` — never local card shells;
-  if the registry primitive is the weak sibling of an approved compound item, **grow the SoT**
-  then recompose (pattern evolution — not a freeze)
-- Fix contract / sidebar-mode violations (e.g. search → sidebar map, not focus pane)
-- Icons from `@/components/Icons`, structural and paired
-- Crossfade only the singular focus surface (never the collection map / stream / graph)
-
-
-Load normalize guidance from the available normalize skill path (project or user skills).
-If none is present, apply `src/design-system/DESIGN_SYSTEM.md` as the normalize checklist.
-
-### Grow SoT when approved compound items require it
-
-When an approved item is “unify / promote / grow primitive”:
-
-1. Confirm blast radius (prefer single-consumer or same PR surface).
-2. Change the design-system / registry module first.
-3. Point the target (and any in-scope callers) at the improved SoT.
-4. Do not leave two shapes for the same job on the polished surface.
-
-### Route additional sub-skills only when audit flagged them
-
-| Finding class | Load and apply |
-|---------------|----------------|
-| Spacing / hierarchy / composition | `.claude/skills/impeccable/reference/layout.md` |
-| Clutter / too many actions / noise | distill (impeccable `reference/distill.md` or distill skill) |
-| Typography scale / eyebrow misuse | `.claude/skills/impeccable/reference/typeset.md` |
-| Token / gray-on-color / flat palette | `.claude/skills/impeccable/reference/colorize.md` |
-| Breakpoints / touch targets | `.claude/skills/impeccable/reference/adapt.md` |
-| Labels / empty / error copy | `.claude/skills/impeccable/reference/clarify.md` |
-| Missing motion / wrong crossfade | `.claude/skills/impeccable/reference/animate.md` + `@/design-system/motion` (`useMotionTransition` / `useMotionPresence`) |
-
-Do **not** invent new design-system components when an existing primitive covers the need.
-Do **extend** an existing primitive when the approved better pattern is a growth of that family.
-
----
-
-## Phase 4 — Polish
-
-After approved fixes land, load `.claude/skills/impeccable/reference/polish.md` and
-run a final pass on the **same target**:
-
-- Alignment / spacing consistency
-- Interaction states (hover / focus / disabled / loading)
-- Empty / error edge cases that were in scope
-- Optical tweaks that don't expand scope
-
-Do not reopen P2 items the user declined.
-
----
-
-## Phase 5 — Optional extract
-
-If the refactor produced a clearly reusable pattern (token, row renderer, shell wrapper),
-**offer** `/impeccable extract <target>` (or load `.claude/skills/impeccable/reference/extract.md`).
-**Never** auto-run extract. Prefer extract when Phase 2 listed a **Promote next** item that
-is now proven in code.
-
----
-
-## End-of-run summary
-
-After Phase 4 (or after Phase 2 if the user stopped), output:
-
-1. What was audited / what was changed (file paths)
-2. Which approved items closed vs deferred
-3. **Compound opportunities** still open (promote next / deferred) — so the system keeps compounding
-4. Suggested manual check (route + viewport)
-5. Optional extract offer if applicable
-
----
-
-## Anti-patterns for this skill
-
-- Skipping the approval gate "to save a turn"
-- Running `craft` / `shape` / `bolder` / `delight` / `overdrive` by default
-- Redesigning an entire page when the user named one component
-- Rebuilding sidebar/rail infrastructure instead of composing
-- Changing backend routes, permissions, or data models under a UX/UI ask
-- Literal reskin only when a stronger house sibling or single-consumer SoT fix exists
-- Importing a foreign visual system that fights Kinetic Ledger tokens / region contracts
-- Forcing sidebar + right pane when data shape wants table, board, station card, or rollup
-- Omitting the Compound opportunities section from the audit report
+## Hard invariants
+- **Never edit source before the Phase 2 reply.**
+- **Never run `bolder` / `delight` / `overdrive`** — Cycle Forge is Kinetic Ledger utilitarian ops.
+- **Compose rails** (`SidebarRailShell` / `RecentActivityRailBase`) for sidebar pick+edit; never fork.
+- **One region contract per region** — never blend station / workbench / monitor / canvas.
+- **Colors only from `semantic.ts`;** presentation kinds via SoTs (condition, chips, dates, `SearchHit`).
+- **Pattern evolution** — the user prompt is a floor; scan for stronger house patterns, never a foreign aesthetic.

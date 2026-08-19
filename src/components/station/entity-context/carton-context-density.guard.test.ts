@@ -50,57 +50,51 @@ describe('carton-context-density', () => {
     );
   });
 
-  it('two-row commerce order: status · order# · tracking; price · listing · Claim on same bottom row', () => {
+  it('one-row three-zone bar: status · order# · tracking left; price · listing · claim/ticket · photos trailing', () => {
     const src = readFileSync(
       join(SRC, 'components/station/entity-context/CartonContextCard.tsx'),
       'utf8',
     );
-    assert.match(src, /photosClaimColumn/);
-    assert.match(src, /carton-context-two-row/);
+    // The two-row face was retired by `da4736740 feat(station): one-row
+    // three-zone carton context bar`. This guard tracked the old assembly for
+    // months after, asserting `photosClaimColumn` / `carton-context-two-row`
+    // against a card that renders neither — so it failed on every run and
+    // guarded nothing. It now pins the shipped one-row SoT.
+    assert.match(src, /carton-context-one-row/);
+    assert.doesNotMatch(
+      src,
+      /carton-context-two-row|photosClaimColumn|commerceUnderPhotos/,
+      'the two-row assembly is retired — never reintroduce a second identity band',
+    );
     // Scan-station Displays ←| · carton ↑↓ live on ScanStationUtilityRail —
     // CartonContextCard must not own that chrome. (Pack may still compose
     // sibling trailing chrome outside this card.)
 
-    assert.match(src, /commerceUnderPhotos/);
     assert.match(
-      src,
-      /claimUnderPhotos = filedTicketChip \?\? claimCta/,
-      'Claim CTA or filed ticket# share the row-2 trailing slot',
-    );
-    assert.match(
-      src,
-      /STATION_IDENTITY_COMMERCE_ROW_CLASS, 'justify-end'\)[\s\S]{0,120}PoTotalChip[\s\S]{0,80}\{listingChip\}[\s\S]{0,40}\{claimUnderPhotos\}/,
-      'row 2 trailing must be end-aligned price · listing · Claim (gap-0 via STATION_IDENTITY_COMMERCE_ROW_CLASS)',
-    );
-    assert.match(
-      src,
-      /carton-context-lifecycle-pill/,
-      'row 2 leading status must be a locked pill, not a bare status dot',
-    );
-    assert.doesNotMatch(
       src,
       /carton-context-lifecycle-dot/,
-      'bare lifecycle status dot is retired on carton identity',
-    );
-    assert.doesNotMatch(
-      src,
-      /justify-end gap-1\.5[\s\S]{0,120}PoTotalChip/,
-      'commerce must not reintroduce gap-1.5 between price · listing · Claim',
+      'the one-row bar leads identity with the lifecycle DOT — the locked h-6 pill went with the second band',
     );
     assert.doesNotMatch(
       src,
       /flex shrink-0 flex-col items-end/,
-      'must not stack Photos + commerce in a flex-col (that drops a third band)',
+      'must not stack Photos + commerce in a flex-col (that is the retired second band)',
     );
-    // Row 2 left strip: order → tracking (no listing/price there).
+    // Left zone reads STATE → WHICH CARTON: dot, then order #, then tracking.
     assert.match(
       src,
-      /\{orderChip\}[\s\S]{0,200}\{trackingSlot\}/,
-      'row 2 left must keep order# · tracking',
+      /\{statusDot\}[\s\S]{0,700}\{orderChip\}[\s\S]{0,200}\{trackingSlot\}/,
+      'left identity zone must keep dot · order# · tracking in that order',
+    );
+    // Trailing zone is quiet price, then the action cells, ⋯ last.
+    assert.match(
+      src,
+      /\{priceFace\}[\s\S]{0,200}\{listingIconButton\}[\s\S]{0,200}\{ticketInline \?\? claimIconButton\}[\s\S]{0,200}\{photosCell\}[\s\S]{0,200}\{overflowMenu\}/,
+      'trailing zone must be price · listing · (ticket ?? claim) · photos · overflow',
     );
     assert.doesNotMatch(
       src,
-      /\{trackingSlot\}[\s\S]{0,300}\{listingChip\}/,
+      /\{trackingSlot\}[\s\S]{0,300}\{listingIconButton\}/,
       'listing must not sit in the left identity strip',
     );
   });
@@ -142,25 +136,13 @@ describe('carton-context-density', () => {
       /STATION_CHROME_ROW_FACE = PRIMARY_CHROME_ROW_FACE/,
       'station chrome seam aliases PRIMARY_CHROME_ROW_FACE (scan · identity · Displays)',
     );
-    assert.match(
+    // `STATION_IDENTITY_ROW_CLASS` / `STATION_IDENTITY_COMMERCE_ROW_FACE` were
+    // the second band's tokens and went with it. The one-row bar composes the
+    // face + seam directly on the strip, so those are what this pins.
+    assert.doesNotMatch(
       identity,
-      /STATION_IDENTITY_ROW_CLASS = `flex \$\{STATION_CHROME_ROW_FACE\} items-stretch gap-0 \$\{STATION_CHROME_SEAM_HAIRLINE\}`/,
-      'identity row chips must abut (gap-0) and stretch flush to the primary chrome face',
-    );
-    assert.match(
-      identity,
-      /STATION_IDENTITY_COMMERCE_ROW_FACE = STATION_SECONDARY_BAND_FACE/,
-      'commerce row 2 must share STATION_SECONDARY_BAND_FACE with left eyebrow / VERIFICATION',
-    );
-    assert.match(
-      readFileSync(join(process.cwd(), 'src/components/layout/header-shell.ts'), 'utf8'),
-      /STATION_SECONDARY_BAND_FACE = 'h-6 shrink-0'/,
-      'secondary band SoT stays h-6 (left eyebrow · commerce · VERIFICATION)',
-    );
-    assert.match(
-      identity,
-      /STATION_IDENTITY_STACKED_SCROLL_CLEARANCE = 'pt-\[52px\]'/,
-      'stacked clearance must be chrome h-7 + secondary h-6 (52px)',
+      /STATION_IDENTITY_(?:ROW_CLASS|COMMERCE_ROW_FACE|COMMERCE_ROW_CLASS)/,
+      'the retired second-band tokens must not come back — one strip, one face',
     );
     assert.match(
       identity,
@@ -169,7 +151,7 @@ describe('carton-context-density', () => {
     );
     assert.match(
       identity,
-      /STATION_IDENTITY_GROUP_CLASS = 'flex h-full min-h-0 items-stretch gap-0'/,
+      /STATION_IDENTITY_GROUP_CLASS =\s*\n?\s*'flex h-full min-h-0 items-stretch gap-0'/,
       'classify group chips abut (gap-0) and fill the chrome row height',
     );
     assert.doesNotMatch(
@@ -200,10 +182,23 @@ describe('carton-context-density', () => {
       /STATION_CONTEXT_BOXED_CUBE_CLASS[\s\S]*?border border-border-soft/,
       'Boxed cube (Exit · Unbox pin-list) paints border + card',
     );
+    // Exit stopped deriving from the boxed cube when the bar became one
+    // continuous strip: it fills the lead column BORDERLESS so no cell draws
+    // edges at rest. Height still comes from PRIMARY_CHROME_ROW_FACE.
+    const exitFace =
+      /export const STATION_CONTEXT_EXIT_PILL_CLASS = \[[\s\S]*?\]\.join/.exec(
+        actionPillCode,
+      );
+    assert.ok(exitFace, 'Exit face not found — update this guard alongside it.');
     assert.match(
-      actionPillCode,
-      /STATION_CONTEXT_EXIT_PILL_CLASS = `\$\{STATION_CONTEXT_BOXED_CUBE_CLASS\} h-full w-full`/,
+      exitFace[0],
+      /h-full w-full/,
       'Exit / back fills the lead column flush — height owned by PRIMARY_CHROME_ROW_FACE',
+    );
+    assert.match(
+      exitFace[0],
+      /border-0/,
+      'Exit stays borderless so the strip has no rest-state cell edges',
     );
     assert.match(
       actionPillCode,
@@ -230,35 +225,39 @@ describe('carton-context-density', () => {
       /STATION_CONTEXT_PHOTO_FLUSH_CLASS[\s\S]*?\$\{STATION_CONTEXT_PHOTO_TONE\}/,
       'Photos flush cell composes PHOTO_TONE',
     );
-    assert.match(
+    // `STATION_CONTEXT_CLAIM_PILL_CLASS` / `STATION_CONTEXT_STATUS_PILL_CLASS`
+    // were h-6 faces for the retired secondary band. On the one-row strip Claim
+    // is a full-height chrome cell and status is a bare dot, so those are the
+    // shapes pinned here.
+    assert.doesNotMatch(
       actionPillCode,
-      /STATION_CONTEXT_CLAIM_PILL_CLASS = `h-6 /,
-      'Claim face fills secondary band row 2 (h-6)',
+      /STATION_CONTEXT_(?:CLAIM|STATUS)_PILL_CLASS/,
+      'the h-6 secondary-band faces are retired — Claim is a full-height cell, status is a dot',
+    );
+    const claimFace =
+      /export const STATION_CONTEXT_CLAIM_CHROME_CLASS = \[[\s\S]*?\]\.join/.exec(
+        actionPillCode,
+      );
+    assert.ok(claimFace, 'Claim face not found — update this guard alongside it.');
+    assert.match(
+      claimFace[0],
+      /h-full/,
+      'Claim fills the primary chrome row — never a fixed h-6 band height',
     );
     assert.match(
-      actionPillCode,
-      /STATION_CONTEXT_CLAIM_PILL_CLASS[\s\S]*?border-t-0 border-r-0/,
-      'Claim drops top+trailing borders — pairs with Photos; Displays owns the vertical rule',
+      claimFace[0],
+      /px-1\.5/,
+      'Claim keeps px-1.5 inset (same as View All / Photos) so CLAIM stays off the border',
     );
-    assert.match(
-      actionPillCode,
-      /STATION_CONTEXT_STATUS_PILL_CLASS = `[^`]*h-6 w-14/,
-      'Status pill is locked w-14 on the h-6 secondary band',
+    assert.doesNotMatch(
+      claimFace[0],
+      /px-0/,
+      'Claim must not edge-flush the label',
     );
     assert.match(
       actionPillCode,
       /justify-between[\s\S]*?px-1\.5|px-1\.5[\s\S]*?justify-between/,
       'Photos pill must keep justify-between + inset pad (camera · count/+ off the border)',
-    );
-    assert.match(
-      actionPillCode,
-      /STATION_CONTEXT_CLAIM_PILL_CLASS[\s\S]*?px-1\.5/,
-      'Claim keeps px-1.5 inset (same as View All / Photos) so CLAIM stays off the border',
-    );
-    assert.doesNotMatch(
-      actionPillCode,
-      /STATION_CONTEXT_CLAIM_PILL_CLASS[\s\S]*?px-0/,
-      'Claim must not edge-flush the label inside its locked width',
     );
 
     const pills = readFileSync(
@@ -268,10 +267,15 @@ describe('carton-context-density', () => {
     const pillsCode = pills
       .replace(/\/\*[\s\S]*?\*\//g, '')
       .replace(/\/\/.*$/gm, '');
+    // `rounded-full` is banned on the pill FACES, not on the 2x2 status dot —
+    // the house keeps the round dot (`kinetic-ledger.md`: rounded-full survives
+    // for status dots, avatars and Switch tracks). A blanket ban here failed on
+    // the dot and taught nothing.
+    const pillFaces = pillsCode.replace(/'h-2 w-2 shrink-0 rounded-full'/g, '');
     assert.doesNotMatch(
-      pillsCode,
+      pillFaces,
       /rounded-full/,
-      'InlinePillPicker (carton classify SoT) must stay square',
+      'InlinePillPicker (carton classify SoT) faces must stay square — only the status dot is round',
     );
     assert.match(
       pillsCode,
@@ -309,10 +313,15 @@ describe('carton-context-density', () => {
       'Collapsed classify face must force shadow-none even if a tone SoT regresses',
     );
 
+    // Comment-stripped: the card's own docblock explains why it uses `Button`
+    // and NOT `IconButton`, which tripped the ban below on the prose rather
+    // than on a mount.
     const card = readFileSync(
       join(SRC, 'components/station/entity-context/CartonContextCard.tsx'),
       'utf8',
-    );
+    )
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/\/\/.*$/gm, '');
     assert.match(
       card,
       /STATION_CONTEXT_EXIT_PILL_CLASS/,
@@ -340,13 +349,8 @@ describe('carton-context-density', () => {
     );
     assert.match(
       card,
-      /STATION_IDENTITY_ROW_CLASS,\s*'justify-end'\)/,
-      'Photos cell shares STATION_IDENTITY_ROW_CLASS with classify · Exit (same PRIMARY face)',
-    );
-    assert.match(
-      card,
-      /STATION_IDENTITY_COMMERCE_ROW_CLASS/,
-      'Row 2 commerce stays on STATION_IDENTITY_COMMERCE_ROW_CLASS (h-6) — not PRIMARY',
+      /STATION_CHROME_ROW_FACE[\s\S]{0,200}STATION_CHROME_SEAM_HAIRLINE/,
+      'the one-row bar composes the primary chrome face + the seam hairline directly',
     );
     const leadChrome = readFileSync(
       join(SRC, 'components/station/entity-context/station-identity-chrome.ts'),
@@ -459,8 +463,19 @@ describe('carton-context-density', () => {
     );
     assert.match(
       card,
-      /galleryPlacement\s*=\s*["']left["']/,
-      'Arrival hover strip (when not suppressed) opens left of the pill',
+      /galleryPlacement\s*=\s*["']below["']/,
+      'Arrival hover strip (when not suppressed) opens below the pill',
+    );
+    // "below" must resolve to bottom-CENTER. The carton strip is a row of
+    // narrow abutting cells, so a start-aligned panel sits under a neighbour
+    // and reads as that cell's menu.
+    assert.match(
+      readFileSync(
+        join(SRC, 'components/receiving/workspace/line-edit/ReceivingPhotoButton.tsx'),
+        'utf8',
+      ),
+      /return 'bottom-center';/,
+      'the Photos gallery opens centered under the pill, not left-aligned to it',
     );
 
     const panel = readFileSync(
@@ -469,15 +484,15 @@ describe('carton-context-density', () => {
     )
       .replace(/\/\*[\s\S]*?\*\//g, '')
       .replace(/\/\/.*$/gm, '');
+    // Unbox now wires `onOpenPhotosDisplay` — for DOUBLE-click, which opens the
+    // Photos Actions leaf. The guard used to ban the prop outright as a proxy
+    // for "click must not open Displays"; that proxy went stale the moment the
+    // double-click route landed, and the real invariant is asserted on the pill
+    // itself below (click always calls handleRequestOnPhone).
     assert.match(
       panel,
-      /suppressPhotoHoverGallery/,
-      'Unbox identity suppresses Photos hover strip',
-    );
-    assert.doesNotMatch(
-      panel,
-      /onOpenPhotosDisplay/,
-      'pill click must not open Displays — send-to-phone stays the click action',
+      /onOpenPhotosDisplay=\{openPhotosDisplay\}/,
+      'Unbox threads the Photos Displays leaf for the double-click route',
     );
 
     const pill = readFileSync(
@@ -492,10 +507,19 @@ describe('carton-context-density', () => {
       /void handleRequestOnPhone\(\)/,
       'pill click always send-to-phone',
     );
-    assert.doesNotMatch(
+    // The pill DOES know about Displays — on double-click. Banning the prop
+    // name asserted the mechanism, not the behaviour, and went stale when the
+    // double-click route landed. Pin the split instead: single click defers to
+    // the phone, double-click cancels that timer and opens the leaf.
+    assert.match(
       pill,
-      /onOpenPhotosDisplay/,
-      'pill must not route click to Displays',
+      /handlePillClick[\s\S]{0,400}handleRequestOnPhone\(\)/,
+      'single click still routes to send-to-phone',
+    );
+    assert.match(
+      pill,
+      /handlePillDoubleClick[\s\S]{0,300}onOpenPhotosDisplay\(\)/,
+      'only the DOUBLE-click opens the Photos Displays leaf',
     );
     assert.match(pill, /AnchoredLayer/, 'non-suppressed paths still portal via AnchoredLayer');
     assert.match(
