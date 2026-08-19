@@ -38,6 +38,15 @@ describe('receiving-search-title', () => {
       }),
       'ebay · Order 16-14873-30704',
     );
+    assert.equal(
+      receivingPoIdentityTitle({
+        poNumber: null,
+        sourceOrderId: '111-6986570-4552201',
+        sourcePlatform: 'amazon',
+        intakeType: 'RETURN',
+      }),
+      'AMZ – return – -4552201',
+    );
   });
 
   it('receivingSearchTitle: multi distinct SKU → PO title', () => {
@@ -52,6 +61,22 @@ describe('receiving-search-title', () => {
         fallback: 'Receiving #1',
       }),
       'ebay · PO 999',
+    );
+  });
+
+  it('receivingSearchTitle: Amazon RETURN identity even for a single product', () => {
+    assert.equal(
+      receivingSearchTitle({
+        lineCount: 1,
+        distinctSkuCount: 1,
+        poNumber: null,
+        sourceOrderId: '111-6986570-4552201',
+        sourcePlatform: 'amazon',
+        intakeType: 'RETURN',
+        firstItemName: 'Bose QuietComfort',
+        fallback: 'Receiving #1',
+      }),
+      'AMZ – return – -4552201',
     );
   });
 

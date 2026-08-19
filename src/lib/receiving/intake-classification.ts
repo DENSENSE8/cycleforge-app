@@ -114,6 +114,11 @@ export function classificationLabel(c: IntakeClassification): string {
   return INTAKE_CLASSIFICATION_OPTS.find((o) => o.value === c)?.label ?? 'Unknown';
 }
 
+/** Compact scan-chip / rail short for a classification (`AMZ`, `eBay`, `WMT`). */
+export function classificationShort(c: IntakeClassification): string {
+  return INTAKE_CLASSIFICATION_OPTS.find((o) => o.value === c)?.short ?? '—';
+}
+
 /**
  * Platform-only identity for a return classification — same platform, without
  * the trailing "Return" word. Used by `zendesk-claim-subject-identity.ts` when

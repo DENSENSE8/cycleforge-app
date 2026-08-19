@@ -54,6 +54,7 @@ function mockDeps(opts: {
       receivingType: 'RETURN',
       priorityTier: null,
     }),
+    receiveIfCartonUnboxed: async () => null,
   };
 }
 
@@ -130,6 +131,7 @@ describe('importDeskInboundRow — Amazon returns ingest', () => {
         receivingType: null,
         priorityTier: null,
       }),
+      receiveIfCartonUnboxed: async () => null,
     });
     assert.equal(isDeskImportSkip(outcome), false);
     if (!isDeskImportSkip(outcome)) {
@@ -173,6 +175,7 @@ describe('importDeskInboundRow — Amazon returns ingest', () => {
         receivingType: null,
         priorityTier: null,
       }),
+      receiveIfCartonUnboxed: async () => null,
     });
     assert.equal(seenName, 'From Catalog');
   });
@@ -205,6 +208,7 @@ describe('importDeskInboundRow — Amazon returns ingest', () => {
         receivingType: null,
         priorityTier: null,
       }),
+      receiveIfCartonUnboxed: async () => null,
     });
     assert.equal(resolveCalled, false);
     assert.equal(isDeskImportSkip(outcome), false);

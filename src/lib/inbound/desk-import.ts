@@ -13,6 +13,7 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import { isValidPriorityTier } from '@/lib/receiving/priority-override';
 import { ingestPurchase, type IngestPurchaseResult } from './ingest-purchase';
 import { tagInboundAsReturn } from './tag-inbound-return';
+import { receiveImportedLineIfCartonUnboxed } from './receive-if-carton-unboxed';
 import {
   assertRegisteredInboundSource,
   type InboundSourceType,
@@ -141,6 +142,7 @@ export interface ImportDeskInboundRowDeps {
   ingestPurchase?: typeof ingestPurchase;
   tagInboundAsReturn?: typeof tagInboundAsReturn;
   stampClassify?: typeof stampClassify;
+  receiveIfCartonUnboxed?: typeof receiveImportedLineIfCartonUnboxed;
 }
 
 /**
@@ -157,6 +159,7 @@ export async function importDeskInboundRow(
   const doIngest = deps.ingestPurchase ?? ingestPurchase;
   const doTagReturn = deps.tagInboundAsReturn ?? tagInboundAsReturn;
   const doStamp = deps.stampClassify ?? stampClassify;
+  const doReceiveIfUnboxed = deps.receiveIfCartonUnboxed ?? receiveImportedLineIfCartonUnboxed;
 
   if (row.skipReason) {
     return {
@@ -256,6 +259,10 @@ export async function importDeskInboundRow(
     receivingType: kind === 'return' ? null : receivingType,
     priorityTier,
   });
+
+  if (kind === 'return') {
+    await doReceiveIfUnboxed(orgId, result.receivingLineId);
+  }
 
   return {
     ...result,
