@@ -1219,6 +1219,16 @@ export const receiving = pgTable('receiving_carton', {
   zohoNotes: text('zoho_notes'),
   /** Filed Zendesk ticket # for a package-level claim, stored as "#<id>". */
   zendeskTicket: text('zendesk_ticket'),
+  /**
+   * Last successful NAS claim-folder copy for this carton (2026-08-18a).
+   * NULL = never archived. Read together with the two columns below — the
+   * timestamp alone cannot tell a stale ticket relink from a fresh sync.
+   */
+  nasArchivedAt: timestamp('nas_archived_at', { withTimezone: true }),
+  /** Ticket folder {@link nasArchivedAt} refers to (normalized, no leading `#`). */
+  nasArchivedTicket: text('nas_archived_ticket'),
+  /** Photos the last copy reported as copied; below the carton count = partial. */
+  nasArchivedPhotoCount: integer('nas_archived_photo_count'),
   // expected_box_count dropped 2026-06-28o — never wired (inert stub, 0 rows);
   // multi-box PO rollup never consumed it. See migration
   // 2026-06-28o_drop_receiving_expected_box_count.sql.

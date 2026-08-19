@@ -29,8 +29,14 @@ function archiveApiError(json: unknown, fallback: string): string {
  * Manual ticket-folder NAS archive — same `/archive-only` waist as the claim
  * modal and filed-ticket chip. `receivingId` is optional when the ticket is
  * already linked to a receiving carton/line (photo-library ticket leaf).
+ *
+ * `silent` suppresses the toasts for a caller that renders its own result in
+ * place. The archive prompt needs it: the house Toaster is bottom-right and so
+ * is the prompt, so a success toast would land on top of the card that fired
+ * it. Grown here rather than forked — one archive mutation, two feedback
+ * placements.
  */
-export function useTicketNasArchive() {
+export function useTicketNasArchive({ silent = false }: { silent?: boolean } = {}) {
   return useMutation<TicketNasArchiveResult, Error, TicketNasArchiveInput>({
     mutationFn: async ({ receivingId, lineId, ticketNumber }) => {
       const trimmed = ticketNumber.trim();
@@ -56,9 +62,11 @@ export function useTicketNasArchive() {
       };
     },
     onSuccess: (d) => {
+      if (silent) return;
       toast.success(`Synced ${d.copied}/${d.total} photo(s) → /${d.folderName}`);
     },
     onError: (err) => {
+      if (silent) return;
       toast.error(err.message || 'Could not sync photos to NAS');
     },
   });
