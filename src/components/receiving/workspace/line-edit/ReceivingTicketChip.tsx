@@ -18,7 +18,7 @@ import {
 import { threadKey } from '@/components/support/TicketThreadCard';
 import { invalidateSupportContextCaches } from '@/hooks';
 import { entitySupportTicketQueryKey } from '@/hooks/useEntitySupportTicket';
-import { useNasArchivePending } from '@/hooks/useNasArchivePending';
+import { usePendingWork } from '@/hooks/usePendingWork';
 import { useTicketNasArchive } from '@/hooks/useTicketNasArchive';
 import {
   invalidateReceivingFeeds,
@@ -101,12 +101,14 @@ export function ReceivingTicketChip({
   const qc = useQueryClient();
   const nasArchive = useTicketNasArchive();
 
-  // Narrowed to the open carton; the global prompt runs the unfiltered form.
-  const { items: pendingArchives } = useNasArchivePending({
+  // Narrowed to the open carton; the global card runs the unfiltered form.
+  // Filtered to the archive source on purpose: this is the TICKET chip, so an
+  // open SHORT exception on the same carton is not its story to tell.
+  const { items: pendingWork } = usePendingWork({
     receivingId,
     enabled: receivingId != null && receivingId > 0,
   });
-  const archivePending = pendingArchives.length > 0;
+  const archivePending = pendingWork.some((i) => i.source === 'nas-archive');
 
   const unlink = useMutation<{ removed: boolean; shipmentUnpairWarning: string | null }, Error, void, {
     previousTicketQueries: Array<[readonly unknown[], unknown]>;
