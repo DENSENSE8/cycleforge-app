@@ -26,8 +26,12 @@ export type PlacementLocationFace = {
   capacity?: number | null;
 };
 
-/** Row-col face for shelf pickers (Arrival staging select). */
-export function formatBinAddress(loc: {
+/**
+ * Row-col face. Module-local: its one external consumer was the Arrival
+ * staging `<select>`, deleted 2026-08-20 when shelf/lane became a Displays-only
+ * job (`ArrivalLocationsLeaf`). Export it again when a second caller exists.
+ */
+function formatBinAddress(loc: {
   row_label?: string | null;
   col_label?: string | null;
 }): string | null {

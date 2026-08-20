@@ -6,7 +6,9 @@
  *
  * Sibling of Unbox's {@link buildUnboxSideTabs} / Testing's
  * {@link buildTestingDisplayTabs}: Arrival's centre owns the door flow — items
- * (`POUnboxingSection`) + Classify + Staging stacked under them. Displays =
+ * (`POUnboxingSection`) and nothing stacked under them — the centre Classify
+ * section and the Staging control both left 2026-08-20 (classify survives as the
+ * identity header's pills). Displays =
  * **Ticket** (create / link / chat via {@link TicketDisplayHost}) + **Pairing**
  * (`CartonMatchHub`, `tabSet="arrival"`, `chrome="bare"`). The PO-avenue intent
  * arrives as DATA (`pairingFocus` → the hub's `focusTab`), read on mount —
@@ -35,8 +37,9 @@ const TicketDisplayHost = dynamic(
 );
 
 /**
- * Arrival Displays vocabulary — Ticket + Pairing + New location (Classify ·
- * Staging live in the centre).
+ * Arrival Displays vocabulary — Ticket + Pairing + Locations. Locations is now
+ * the ONLY shelf/lane writer on this station (its `selectShelf` auto-routes the
+ * lane), which is what keeps `completeTriage`'s Save-for-unbox gate reachable.
  *
  * `location` is a TOOL, not a beat of the carton's procedure: browse the
  * shelves, place the carton, reprint a scuffed sticker, mint a new spot. It
