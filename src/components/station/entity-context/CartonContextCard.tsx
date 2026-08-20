@@ -1,30 +1,34 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { ChevronLeft, MoreHorizontal, Receipt } from '@/components/Icons';
+import {
+  Camera,
+  ChevronLeft,
+  ExternalLink,
+  MessageSquare,
+  MoreHorizontal,
+  Receipt,
+  Ticket,
+} from '@/components/Icons';
 import {
   CHIP_TONES,
   getLast8,
-  OrderIdChip,
   resolveChipDisplay,
-  TrackingChip,
 } from '@/components/ui/CopyChip';
 import { GridQtyFractionValue } from '@/components/ui/grid-cells';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import {
-  CHIP_HOVER_MENU_ITEM_CLASS,
-  CHIP_HOVER_MENU_ITEM_SEAM_CLASS,
-  CHIP_HOVER_MENU_ITEM_TONE,
-  CHIP_HOVER_MENU_PANEL_CLASS,
-} from '@/components/ui/copy-chip-hover-menu-chrome';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/design-system/primitives';
+  ChipHoverMenuSurface,
+  type ChipHoverMenuRow,
+} from '@/components/ui/ChipHoverMenuSurface';
 import { ReceivingPhotoButton } from '@/components/receiving/workspace/line-edit/ReceivingPhotoButton';
-import { StationContextClaimCell, StationContextIconCell, StationContextListingCell } from './StationContextActionCell';
+import {
+  LISTING_MENU_ICONS,
+  StationContextClaimCell,
+  StationContextIconCell,
+  StationContextListingCell,
+} from './StationContextActionCell';
+import { listingMenuRows } from './carton-bar-menu-rows';
 import { IdentityLinkChip } from '@/components/receiving/workspace/line-edit/IdentityLinkChip';
 import { type CatalogKind } from '@/components/receiving/workspace/line-edit/CatalogManagerList';
 import { ReceivingTicketChip } from '@/components/receiving/workspace/line-edit/ReceivingTicketChip';
@@ -358,7 +362,9 @@ export function CartonContextCard({
 }) {
   // One classify menu at a time — chip-anchored dropdown; identity band stays put.
   const [openPicker, setOpenPicker] = useState<'urgency' | 'platform' | 'type' | null>(null);
+  const [overflowOpen, setOverflowOpen] = useState(false);
   const barRef = useRef<HTMLDivElement | null>(null);
+  const overflowAnchorRef = useRef<HTMLDivElement | null>(null);
   // Freeze the responsive decision while a classify menu is open. The row must
   // not reflow under a pointer that is mid-interaction: a pill changing width
   // moves out from under the cursor, which fires `mouseleave` and flashes the
@@ -558,46 +564,71 @@ export function CartonContextCard({
   ) : null;
 
 
-  /* PO# / order# — last-8 copy chip; edit menus stay on IdentityLinkChip when wired. */
+  /**
+   * PO# / order# — ONE face for every scan station.
+   *
+   * There is no read-only twin. This used to branch on `onEditPo`: hosts that
+   * wired an editor got {@link IdentityLinkChip}, everyone else got a bare
+   * `OrderIdChip dense`. Two components for one job means the read-only station
+   * (Arrival) drifts silently — which is exactly what happened to the tracking
+   * cell below. Whether the menu carries an Edit row is a PROP, not a second
+   * component.
+   */
   const orderChip = showOrderIdentity ? (
-    onEditPo ? (
-      <IdentityLinkChip
-        openHref={orderCopyOnly ? undefined : poOpenHref}
-        openTitle={orderCopyOnly ? 'Order number' : 'Open purchase order'}
-        value={effectiveOrder}
-        display={effectiveOrder ? getLast8(effectiveOrder) : resolveChipDisplay('')}
-        tone="id"
-        lockLast8Width
-        iconClass={platformIconTone?.className}
-        iconStyle={platformIconTone?.style}
-        platformLabel={platformValue ? platformMeta.label : null}
-        disableCopy={!effectiveOrder}
-        onEdit={onEditPo}
-        editOpen={false}
-        editLabel={
-          poEditOpen
-            ? 'Hide package pairing'
-            : effectiveOrder
-              ? 'Edit order'
-              : 'Link PO'
-        }
-        actionsInMenu
-      />
-    ) : (
-      <OrderIdChip
-        value={effectiveOrder}
-        display={effectiveOrder ? getLast8(effectiveOrder) : resolveChipDisplay('')}
-        dense
-        displayWidth="last8"
-        platformLabel={platformValue ? platformMeta.label : null}
-        iconClass={platformIconTone?.className}
-        iconStyle={platformIconTone?.style}
-        truncateDisplay={false}
-      />
-    )
+    <IdentityLinkChip
+      openHref={orderCopyOnly ? undefined : poOpenHref}
+      openTitle={orderCopyOnly ? 'Order number' : 'Open purchase order'}
+      value={effectiveOrder}
+      display={effectiveOrder ? getLast8(effectiveOrder) : resolveChipDisplay('')}
+      tone="id"
+      lockLast8Width
+      iconClass={platformIconTone?.className}
+      iconStyle={platformIconTone?.style}
+      platformLabel={platformValue ? platformMeta.label : null}
+      disableCopy={!effectiveOrder}
+      onEdit={onEditPo}
+      editOpen={false}
+      editLabel={
+        poEditOpen
+          ? 'Hide package pairing'
+          : effectiveOrder
+            ? 'Edit order'
+            : 'Link PO'
+      }
+      actionsInMenu
+    />
   ) : null;
 
-  /* Tracking# — last-8 copy chip. Edit stays on IdentityLinkChip when wired. */
+  /**
+   * Tracking# — ONE face for every scan station; Unbox is the SoT.
+   *
+   * The read-only branch used to paint a bare `TrackingChip dense`, which is a
+   * PROPORTIONAL face inside the same `w-[8ch]` lock the mono face was measured
+   * for. Eight digits did not fit, so Arrival truncated the number from the
+   * wrong end — `052400…` instead of the last-8 the whole product identifies
+   * cartons by. Same data, same lock, two type faces: the fork WAS the bug.
+   *
+   * Edit is a prop. A station that wires no editor simply gets a menu without
+   * an Edit row.
+   */
+  const trackingExtraBoxes =
+    filledExtraTrackingsCount > 0 ? (
+      <HoverTooltip
+        label={`${filledExtraTrackingsCount} extra box${filledExtraTrackingsCount === 1 ? '' : 'es'} on this PO`}
+        asChild
+      >
+        <span
+          className={cn(
+            'shrink-0 rounded-none bg-surface-strong/90 px-0 py-0',
+            STATION_CHROME_CELL_TEXT,
+            STATION_CHROME_CELL_INK,
+          )}
+        >
+          +{filledExtraTrackingsCount}
+        </span>
+      </HoverTooltip>
+    ) : null;
+
   const trackingSlot = isLocalPickup ? (
     <div className={STATION_CHROME_HOVER_CELL_CLASS}>
       <FulfillmentPickupPill
@@ -605,7 +636,7 @@ export function CartonContextCard({
         tooltip="Fulfilled in person — no tracking number"
       />
     </div>
-  ) : onEditTracking ? (
+  ) : (
     <div className={STATION_CHROME_HOVER_CELL_CLASS}>
       <IdentityLinkChip
         openHref={trackingOpenHref}
@@ -624,46 +655,7 @@ export function CartonContextCard({
         editLabel="Edit tracking"
         actionsInMenu
       />
-      {filledExtraTrackingsCount > 0 ? (
-        <HoverTooltip
-          label={`${filledExtraTrackingsCount} extra box${filledExtraTrackingsCount === 1 ? '' : 'es'} on this PO`}
-          asChild
-        >
-          <span className={cn(
-              'shrink-0 rounded-none bg-surface-strong/90 px-0 py-0',
-              STATION_CHROME_CELL_TEXT,
-              STATION_CHROME_CELL_INK,
-            )}>
-            +{filledExtraTrackingsCount}
-          </span>
-        </HoverTooltip>
-      ) : null}
-    </div>
-  ) : (
-    <div className={STATION_CHROME_HOVER_CELL_CLASS}>
-      <TrackingChip
-        value={primaryTrackingTrimmed}
-        display={
-          primaryTrackingTrimmed ? getLast8(primaryTrackingTrimmed) : resolveChipDisplay('')
-        }
-        dense
-        displayWidth="last8"
-        carrierHint={carrierHint}
-      />
-      {filledExtraTrackingsCount > 0 ? (
-        <HoverTooltip
-          label={`${filledExtraTrackingsCount} extra box${filledExtraTrackingsCount === 1 ? '' : 'es'} on this PO`}
-          asChild
-        >
-          <span className={cn(
-              'shrink-0 rounded-none bg-surface-strong/90 px-0 py-0',
-              STATION_CHROME_CELL_TEXT,
-              STATION_CHROME_CELL_INK,
-            )}>
-            +{filledExtraTrackingsCount}
-          </span>
-        </HoverTooltip>
-      ) : null}
+      {trackingExtraBoxes}
     </div>
   );
 
@@ -753,86 +745,97 @@ export function CartonContextCard({
       />
     ) : null;
 
-  const overflowItems: Array<{ key: string; label: string; onSelect: () => void }> = [];
+  /**
+   * Overflow rows — the SAME verbs the inline cells offer, never a second list.
+   * Spillover changes where a verb lives, not which verbs exist.
+   */
+  const overflowItems: ChipHoverMenuRow[] = [];
   if (showListing && overflowSet.has('listing')) {
-    overflowItems.push({
-      key: 'listing-open',
-      label: listingHasTarget ? `Open ${listingChipDisplay}` : 'Listing',
-      onSelect: () => {
-        if (listingOpenHref) window.open(listingOpenHref, '_blank', 'noopener,noreferrer');
-      },
-    });
-    if (onEditListing) {
-      overflowItems.push({
-        key: 'listing-edit',
-        label: 'Edit listing',
-        onSelect: onEditListing,
-      });
-    }
+    overflowItems.push(
+      ...listingMenuRows({
+        label: listingChipDisplay,
+        ariaLabel: listingOpenTitle,
+        openHref: listingOpenHref,
+        copyValue: listingLink || listingOpenHref || '',
+        links: formatListingLinkMenuOptions(listingLinks) ?? listingLinks,
+        onEdit: onEditListing,
+        editLabel: 'Edit listing',
+        onDone: () => setOverflowOpen(false),
+        icons: LISTING_MENU_ICONS,
+        qualify: true,
+      }),
+    );
   }
   if (showStaffPhotoRow && !zendeskTrimmed && onMakeClaim && overflowSet.has('claim')) {
     overflowItems.push({
-      key: 'claim',
+      id: 'claim',
       label: claimViewActive ? 'Hide claim' : 'File claim',
-      onSelect: onMakeClaim,
+      icon: <Ticket className="h-3.5 w-3.5" />,
+      onSelect: () => {
+        onMakeClaim();
+        setOverflowOpen(false);
+      },
     });
   }
   if (showStaffPhotoRow && zendeskTrimmed && overflowSet.has('claim')) {
     overflowItems.push({
-      key: 'ticket-open',
+      id: 'ticket-open',
       label: `Open ticket ${zendeskChipDisplay}`,
+      icon: <ExternalLink className="h-3.5 w-3.5" />,
+      tone: 'accent',
       onSelect: () => {
         if (zendeskHref) window.open(zendeskHref, '_blank', 'noopener,noreferrer');
+        setOverflowOpen(false);
       },
     });
     if (onToggleTicketView && providerTicketId != null) {
       overflowItems.push({
-        key: 'ticket-view',
+        id: 'ticket-view',
         label: ticketViewActive ? 'Hide ticket editor' : 'Ticket history',
-        onSelect: () => onToggleTicketView(),
+        icon: <MessageSquare className="h-3.5 w-3.5" />,
+        onSelect: () => {
+          onToggleTicketView();
+          setOverflowOpen(false);
+        },
       });
     }
   }
   if (showStaffPhotoRow && receivingId != null && overflowSet.has('photos')) {
     overflowItems.push({
-      key: 'photos',
+      id: 'photos',
       label: 'Photos',
+      icon: <Camera className="h-3.5 w-3.5" />,
       onSelect: () => {
         if (onOpenPhotosDisplay) onOpenPhotosDisplay();
+        setOverflowOpen(false);
       },
     });
   }
 
   const overflowMenu =
     overflowItems.length > 0 ? (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <StationContextIconCell ariaLabel="More actions" testId="carton-context-overflow">
-            <MoreHorizontal className={STATION_CHROME_GLYPH_CLASS} />
-          </StationContextIconCell>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent
-          align="end"
-          side="bottom"
-          sideOffset={6}
-          avoidCollisions={false}
-          className={CHIP_HOVER_MENU_PANEL_CLASS}
+      /**
+       * Same panel as every other cell on this bar — the ⋯ differs only in
+       * being CLICK-opened (there is no identity to peek at, so hover would be
+       * a trap for a pointer crossing the bar). It was a Radix `DropdownMenu`;
+       * the rows now come from the one row renderer.
+       */
+      <div ref={overflowAnchorRef} className="flex h-full shrink-0 items-stretch">
+        <StationContextIconCell
+          ariaLabel="More actions"
+          testId="carton-context-overflow"
+          onClick={() => setOverflowOpen((o) => !o)}
         >
-          {overflowItems.map((item, i) => (
-            <DropdownMenuItem
-              key={item.key}
-              onSelect={item.onSelect}
-              className={cn(
-                CHIP_HOVER_MENU_ITEM_CLASS,
-                i > 0 && CHIP_HOVER_MENU_ITEM_SEAM_CLASS,
-                CHIP_HOVER_MENU_ITEM_TONE.default,
-              )}
-            >
-              {item.label}
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
+          <MoreHorizontal className={STATION_CHROME_GLYPH_CLASS} />
+        </StationContextIconCell>
+        <ChipHoverMenuSurface
+          open={overflowOpen}
+          onClose={() => setOverflowOpen(false)}
+          anchorRef={overflowAnchorRef}
+          menuLabel="More actions"
+          rows={overflowItems}
+        />
+      </div>
     ) : null;
 
   const priceFace = showPoTotal ? (

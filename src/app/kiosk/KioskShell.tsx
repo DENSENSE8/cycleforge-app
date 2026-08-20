@@ -9,7 +9,7 @@
  * Customer face overlays the same session (orientation 180 or Customer toggle).
  */
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import {
   ProductSelector,
   type ProductSelection,
@@ -30,6 +30,7 @@ import { cartIsEmpty } from '@/lib/kiosk/cart-line';
 import { classifyKioskScan } from '@/lib/kiosk/scan-classify';
 import { useWedgeScanner } from '@/hooks/useWedgeScanner';
 import { toast } from '@/lib/toast';
+import { cn } from '@/utils/_cn';
 import {
   KIOSK_PANE_HEADER_BAND,
   KIOSK_PANE_HEADER_TITLE,
@@ -38,7 +39,14 @@ import { KioskModeSpine } from './KioskModeSpine';
 import { KioskRepairPane } from './v2/KioskRepairPane';
 import { KioskPickupPane } from './v2/KioskPickupPane';
 import { KioskBuybackPane } from './v2/KioskBuybackPane';
-import { KioskCartLedger } from './v2/KioskCartLedger';
+import { KioskCartLedger, type KioskCartFocus } from './v2/KioskCartLedger';
+import { KioskPaperworkPanel } from './v2/KioskPaperworkPanel';
+import { KioskTriagePanel } from './v2/KioskTriagePanel';
+import { countKioskBlockers, type KioskTriageItem } from '@/lib/kiosk/visit-triage';
+import {
+  KioskUtilitySpine,
+  type KioskUtilitySlotId,
+} from './KioskUtilitySpine';
 import { KioskCustomerFace } from './v2/KioskCustomerFace';
 
 /** Catalog API prefix per command — repair = `-RS`; retail = non-`-RS`. */
@@ -69,6 +77,13 @@ export function KioskShell() {
   const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([]);
   const [servicePrice, setServicePrice] = useState('');
   const [spineExpanded, setSpineExpanded] = useState(false);
+  // Right utility spine: the glyph rail is always visible and no panel is open
+  // at rest; the first line added opens the cart so an operator never adds into
+  // an unseen cart.
+  const [utilitySlot, setUtilitySlot] = useState<KioskUtilitySlotId | null>(null);
+  const [cartFocus, setCartFocus] = useState<KioskCartFocus | null>(null);
+  const focusNonce = useRef(0);
+  const hadLinesRef = useRef(false);
   const [catalogSearch, setCatalogSearch] = useState('');
 
   const resetBrowseState = useCallback(() => {
@@ -86,6 +101,9 @@ export function KioskShell() {
     if (!tile) return;
     // Command switch never clears the cart — only resets browse chrome.
     resetBrowseState();
+    // Choosing a command means "I want to work now": the centre goes back to
+    // the work surface rather than leaving a utility panel covering it.
+    setUtilitySlot(null);
     actions.setActiveCommand(command);
   };
 
@@ -110,6 +128,48 @@ export function KioskShell() {
       window.screen?.orientation?.removeEventListener?.('change', syncOrientation);
     };
   }, [session.faceManualOverride, session.face, actions]);
+
+  useEffect(() => {
+    const hasLines = !cartIsEmpty(session.lines);
+    if (hasLines && !hadLinesRef.current) setUtilitySlot('cart');
+    hadLinesRef.current = hasLines;
+  }, [session.lines]);
+
+  const blockerCount = useMemo(
+    () =>
+      countKioskBlockers({
+        lines: session.lines,
+        customerPhone: session.customerPhone,
+        customerName: session.customerName,
+        customerEmail: session.customerEmail,
+      }),
+    [
+      session.lines,
+      session.customerPhone,
+      session.customerName,
+      session.customerEmail,
+    ],
+  );
+
+  /**
+   * Triage row → the fix. A line issue opens the cart with that line's editor
+   * on the failing field; a customer/ticket issue just opens the cart, where
+   * the identity block and the lines both live.
+   */
+  const resolveTriageItem = useCallback((item: KioskTriageItem) => {
+    if (item.target === 'line' && item.lineId) {
+      focusNonce.current += 1;
+      setCartFocus({
+        lineId: item.lineId,
+        field:
+          item.field === 'phone' ? undefined : (item.field as KioskCartFocus['field']),
+        nonce: focusNonce.current,
+      });
+    } else {
+      setCartFocus(null);
+    }
+    setUtilitySlot('cart');
+  }, []);
 
   // Global HID wedge — classify → cart / command, never drop focus.
   const onWedgeScan = useCallback(
@@ -174,15 +234,17 @@ export function KioskShell() {
   const showCatalog =
     session.activeCommand === 'repair' || session.activeCommand === 'retail';
 
-  const onSelectProduct = useCallback(
-    (product: ProductSelection | null) => {
-      setSelectedProduct(product);
-      if (session.activeCommand === 'repair' && product?.model?.trim()) {
-        setCatalogPhase('checkout');
-      }
-    },
-    [session.activeCommand],
-  );
+  const onSelectProduct = useCallback((product: ProductSelection | null) => {
+    setSelectedProduct(product);
+  }, []);
+
+  const openRepairDetails = useCallback(() => {
+    setCatalogPhase('checkout');
+  }, []);
+
+  const returnToRepairCatalog = useCallback(() => {
+    setCatalogPhase('browse');
+  }, []);
 
   // Sync ProductSelector selectedItems → session RETAIL lines (by variation id).
   useEffect(() => {
@@ -207,7 +269,11 @@ export function KioskShell() {
   const checkoutStage =
     session.activeCommand === 'repair' ? (
       <div className="flex min-h-0 flex-1 flex-col">
-        <KioskRepairPane selectedProduct={selectedProduct} price={servicePrice} />
+        <KioskRepairPane
+          selectedProduct={selectedProduct}
+          price={servicePrice}
+          onBack={returnToRepairCatalog}
+        />
       </div>
     ) : null;
 
@@ -235,6 +301,21 @@ export function KioskShell() {
       />
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden md:flex-row">
+        {/*
+          The utility panels mount HERE — in the center stage, the same slot the
+          command panes use. Never a drawer or a slide-out over the work: the
+          rail glyph swaps the center, exactly like the command spine does.
+          The work surface stays MOUNTED behind it (`hidden`, not unmounted) so
+          the catalog does not refetch and lose scroll on every peek at the cart.
+        */}
+        <div
+          className={cn(
+            'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden md:flex-row',
+            utilitySlot !== null && 'hidden',
+          )}
+          data-testid="kiosk-work-surface"
+          aria-hidden={utilitySlot !== null}
+        >
         {showCatalog ? (
           <ProductSelector
             key={session.activeCommand}
@@ -247,8 +328,8 @@ export function KioskShell() {
             catalogPhase={
               session.activeCommand === 'repair' ? catalogPhase : 'browse'
             }
-            onContinue={() => setCatalogPhase('checkout')}
-            onAddAnotherItem={() => setCatalogPhase('browse')}
+            onContinue={openRepairDetails}
+            onAddAnotherItem={returnToRepairCatalog}
             selectedProduct={selectedProduct}
             onSelect={onSelectProduct}
             selectedItems={selectedItems}
@@ -273,9 +354,19 @@ export function KioskShell() {
             <KioskPickupPane onReset={resetBrowseState} />
           </div>
         )}
+        </div>
+
+        {utilitySlot === 'cart' && <KioskCartLedger focus={cartFocus} />}
+        {utilitySlot === 'paperwork' && <KioskPaperworkPanel />}
+        {utilitySlot === 'triage' && <KioskTriagePanel onResolve={resolveTriageItem} />}
       </div>
 
-      <KioskCartLedger />
+      <KioskUtilitySpine
+        activeSlot={utilitySlot}
+        onSelect={setUtilitySlot}
+        cartCount={session.lines.length}
+        blockerCount={blockerCount}
+      />
     </div>
   );
 }

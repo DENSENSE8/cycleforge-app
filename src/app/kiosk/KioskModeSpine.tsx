@@ -12,7 +12,7 @@
  */
 
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { TextField } from '@/design-system/primitives';
+import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 import { motion, motionRole, useMotionRole } from '@/design-system/motion';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { KIOSK_SERVICES, type KioskServiceId } from '@/lib/kiosk/services';
@@ -33,7 +33,6 @@ import {
   KIOSK_MODE_SPINE_SEARCH_ROW,
   kioskSpineShortLabel,
 } from './kiosk-chrome';
-import { KIOSK_POS_SEARCH_INPUT } from './kiosk-pos-surface';
 import { KioskSpineToggle } from './KioskSpineToggle';
 
 export function KioskModeSpine({
@@ -75,16 +74,18 @@ export function KioskModeSpine({
           animate={{ opacity: 1 }}
           transition={transition}
         >
-          <TextField
-            label={searchLabel}
+          {/* One house find bar everywhere — same SoT as MasterNav / Band-3 / To Ship. */}
+          <TechRailSearchBar
+            variant="chrome"
+            placeholder={searchLabel}
             value={searchValue}
             onChange={onSearchChange}
             className="min-w-0 flex-1"
-            tone="blue"
-            inputClassName={KIOSK_POS_SEARCH_INPUT}
+            trailingAction={
+              <KioskSpineToggle expanded={expanded} onExpandedChange={onExpandedChange} />
+            }
             data-testid="kiosk-spine-search"
           />
-          <KioskSpineToggle expanded={expanded} onExpandedChange={onExpandedChange} />
         </motion.div>
       ) : (
         <div className="flex h-14 shrink-0 items-center justify-center">

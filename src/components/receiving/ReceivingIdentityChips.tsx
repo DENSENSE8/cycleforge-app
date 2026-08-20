@@ -15,18 +15,15 @@ import {
 import { TrackingNumberMenuChip } from '@/components/ui/TrackingNumberMenuChip';
 import { ChipColumns, CHIP_COL, type ChipColumn } from '@/components/ui/ChipColumns';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-
-/** Matches {@link InlinePillPicker} collapsed shell — flush square in the carton bar. */
-const RAIL_PILL_BASE =
-  'inline-flex h-full shrink-0 items-center whitespace-nowrap rounded-none border px-2.5 text-role-micro uppercase tracking-wide shadow-none';
-const RAIL_PICKUP_TONE = 'border-emerald-600 bg-emerald-600 text-white';
+import { STATION_CONTEXT_PICKUP_CHROME_CLASS } from '@/components/station/entity-context/station-context-action-pill';
 
 export type FulfillmentPickupPillVariant = 'chip' | 'rail';
 
 /**
  * Non-copy pickup indicator for the tracking slot.
  * - `chip` (default) — ring badge for table columns, popovers, dense rows.
- * - `rail` — solid h-10 flush square aligned with InlinePillPicker in CartonContextCard.
+ * - `rail` — the carton-bar word cell ({@link STATION_CONTEXT_PICKUP_CHROME_CLASS}),
+ *   so it measures and reads exactly like Listing / Claim beside it.
  */
 export function FulfillmentPickupPill({
   dense,
@@ -41,7 +38,7 @@ export function FulfillmentPickupPill({
   if (variant === 'rail') {
     const pill = (
       <span
-        className={`${RAIL_PILL_BASE} ${RAIL_PICKUP_TONE}`}
+        className={STATION_CONTEXT_PICKUP_CHROME_CLASS}
         aria-label={tooltip ?? 'Pickup — fulfilled in person, no tracking number'}
       >
         Pickup

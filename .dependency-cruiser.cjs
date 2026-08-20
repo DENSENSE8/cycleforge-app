@@ -103,6 +103,23 @@ module.exports = {
       to: { path: '^src/components/shipped/details-panel/OrderWarrantySection\\.tsx$' },
     },
     {
+      name: 'carton-bar-menus-use-the-one-surface',
+      severity: 'error',
+      comment:
+        'Every carton-context dropdown paints through ChipHoverMenuSurface ' +
+        '(src/components/ui/ChipHoverMenuSurface.tsx). A Radix DropdownMenu on ' +
+        'the bar is a second mechanism behind the same class tokens — that is ' +
+        'how the classify pills, the identity chips and the listing cell ended ' +
+        'up with three anchorings.',
+      from: {
+        path: [
+          '^src/components/station/entity-context/',
+          '^src/components/receiving/workspace/line-edit/(InlinePillPicker|IdentityLinkChip)\\.tsx$',
+        ],
+      },
+      to: { path: '^src/design-system/primitives/DropdownMenu' },
+    },
+    {
       name: 'no-retired-rack-numeric-step',
       severity: 'error',
       comment:

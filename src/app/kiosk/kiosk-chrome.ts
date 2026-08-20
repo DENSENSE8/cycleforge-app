@@ -29,8 +29,8 @@ export function kioskSpineShortLabel(id: KioskServiceId): string {
  * Upper band owns `border-b`; bodies never add a matching `border-t`.
  */
 export const KIOSK_PANE_HEADER_BAND = cn(
-  // Title-only bands pick up readable inset via KIOSK_PANE_HEADER_TITLE first:pl-4.
-  'flex h-14 shrink-0 items-center gap-3 bg-surface-card pl-0 pr-4',
+  // Full-bleed host — title type owns its own in-band inset (px-3), never a page margin.
+  'flex h-14 shrink-0 items-center gap-3 bg-surface-card pl-0 pr-0',
   'border-b border-border-soft',
   cornerClass('flush'),
 );
@@ -49,8 +49,8 @@ export const KIOSK_PANE_FOOTER_BAND = cn(
 
 /** Pane title face inside {@link KIOSK_PANE_HEADER_BAND}. */
 export const KIOSK_PANE_HEADER_TITLE =
-  // first:pl-4: title-only bands (no leading toggle) keep a readable inset.
-  'min-w-0 flex-1 first:pl-4 text-lg font-semibold tracking-tight text-text-default';
+  // In-band type inset only — the host band stays edge-to-edge with column seams.
+  'min-w-0 flex-1 px-3 text-lg font-semibold tracking-tight text-text-default';
 
 /**
  * Dense meta chrome — SKU, category row labels, quiet status (not form fields).
@@ -151,11 +151,54 @@ export const KIOSK_MODE_SPINE_SEARCH_ROW =
   'flex min-h-14 shrink-0 items-center gap-2 border-b border-border-hairline px-2';
 
 /**
- * Persistent right cart ledger column — locked on staff face.
- * ~320px / `w-80` so the center work surface stays the elastic absorber.
+ * Right cart ledger panel — ~320px / `w-80` so the center work surface stays
+ * the elastic absorber. It opens LEFT of the utility spine, which is what
+ * toggles it (the spine's cart glyph is the one control).
  */
 export const KIOSK_CART_COL = 'w-80';
 export const KIOSK_CART_COL_PX = 320;
+
+/** Live line-count badge riding the cart glyph. */
+export const KIOSK_CART_COUNT_BADGE = cn(
+  'absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center px-1',
+  'bg-blue-600 text-role-micro leading-none text-white tabular-nums',
+  cornerClass('pill'),
+);
+
+/**
+ * Right utility spine — the mirror of the left command spine.
+ *
+ * Always-visible ~56px glyph column at the FAR RIGHT: cart on top, paperwork
+ * under it, and room for further checkout-context slots below. Selecting a
+ * glyph pushes its panel open to the LEFT of the rail; selecting it again
+ * closes it. The rail itself never collapses — it is how the operator gets
+ * back to the cart.
+ */
+export const KIOSK_UTILITY_SPINE_FACE = cn(
+  'flex h-full w-14 shrink-0 flex-col items-center gap-1 bg-surface-card py-1.5',
+  'border-l border-border-soft',
+  cornerClass('flush'),
+);
+
+/** Utility glyph cell — same touch height + states as the command spine row. */
+export const KIOSK_UTILITY_SPINE_ROW = cn(
+  'ds-raw-button relative flex h-14 w-14 shrink-0 items-center justify-center',
+  'transition-colors duration-150',
+  cornerClass('flush'),
+);
+
+/**
+ * Utility panel face — cart / paperwork / triage mounted in the CENTER stage.
+ *
+ * These are NOT a drawer and NOT a slide-out column: selecting a rail glyph
+ * swaps the center work surface, exactly like the left command spine swaps it.
+ * Full width of the center, no `border-l` (the rail already owns that seam) and
+ * no fixed `w-80` — a floating panel over the work is the shape this replaces.
+ */
+export const KIOSK_UTILITY_PANEL_FACE = cn(
+  'flex h-full min-h-0 w-full min-w-0 flex-col bg-surface-card',
+  cornerClass('flush'),
+);
 
 export const KIOSK_CART_FACE = cn(
   'flex h-full w-80 shrink-0 flex-col bg-surface-card',

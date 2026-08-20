@@ -102,6 +102,8 @@ const NO_DESK_PEEK_SURFACES: Readonly<Record<string, string>> = {
     'review workspace — rows open the pairing body',
   'src/components/tracking-exceptions/TrackingExceptionsTable.tsx':
     'ops triage — rows open an edit dialog, not a RightRailHost desk peek',
+  'src/components/repair/ProductSelector.tsx':
+    'kiosk catalog find reuses To-ship / Unbox Band 3 (TechRailSearchBar in WorkbenchTriageBand); the counter has no RightRailHost peek — the cart ledger is the session root, so the inspector toggle is honest absence',
 };
 
 /**

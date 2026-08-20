@@ -7,6 +7,7 @@
 
 import { useEffect, useState } from 'react';
 import { Button, TextField } from '@/design-system/primitives';
+import { KioskCustomerIntake } from '@/components/kiosk/KioskCustomerIntake';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 import { looksLikeImei } from '@/lib/kiosk/scan-classify';
@@ -110,6 +111,9 @@ export function KioskBuybackPane() {
               )}
             </div>
           </section>
+
+          {/* Same identity block as Repair / Retail / Pickup — one intake face. */}
+          <KioskCustomerIntake />
         </div>
       </div>
       <div className={KIOSK_PANE_FOOTER_BAND}>

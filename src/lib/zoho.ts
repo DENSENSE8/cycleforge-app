@@ -130,8 +130,12 @@ export async function getPurchaseReceiveById(
 
 /**
  * Total quantity already on purchase receives for this PO, keyed by PO `line_item_id`.
- * List results often omit `line_items`; we GET each receive when needed.
+ * List results often omit `line_items`; we GET each receive when needed — but
+ * cap detail GETs so a PO with many prior receives cannot burn N×10s before
+ * the purchase-receive POST even starts (Unbox timeout root cause).
  */
+const MAX_PURCHASE_RECEIVE_DETAIL_GETS = 8;
+
 export async function sumWarehouseReceivedByPoLineItem(
   purchaseOrderId: string,
 ): Promise<Map<string, number>> {
@@ -141,6 +145,7 @@ export async function sumWarehouseReceivedByPoLineItem(
   const totals = new Map<string, number>();
   /** Dedupe detail GETs when the same receive id appears across pages. */
   const detailCache = new Map<string, ZohoPurchaseReceive['line_items']>();
+  let detailGets = 0;
   let page = 1;
   const perPage = 200;
   for (;;) {
@@ -158,8 +163,13 @@ export async function sumWarehouseReceivedByPoLineItem(
       if ((!lines || lines.length === 0) && rid) {
         if (detailCache.has(rid)) {
           lines = detailCache.get(rid);
+        } else if (detailGets >= MAX_PURCHASE_RECEIVE_DETAIL_GETS) {
+          // Prefer under-counting warehouse qty (Zoho may reject an over-receive
+          // which we treat as already-received) over burning the Unbox clock.
+          lines = undefined;
         } else {
           try {
+            detailGets += 1;
             const detail = await getPurchaseReceiveById(rid);
             lines = detail.purchasereceive?.line_items;
             detailCache.set(rid, lines);

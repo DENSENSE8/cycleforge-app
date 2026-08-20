@@ -78,6 +78,7 @@ export function TechRailSearchBar({
   onScanHandle,
   navKeyHint,
   className,
+  'data-testid': dataTestId,
 }: {
   value: string;
   onChange: (next: string) => void;
@@ -174,6 +175,8 @@ export function TechRailSearchBar({
    */
   navKeyHint?: ReactNode;
   className?: string;
+  /** Host-owned hook for E2E — the band wrapper carries it. */
+  'data-testid'?: string;
 }) {
   const [draft, setDraft] = useState(value);
   useEffect(() => {
@@ -273,6 +276,7 @@ export function TechRailSearchBar({
   return (
     <div
       onKeyDown={handleKeyDown}
+      data-testid={dataTestId}
       // `group/search-bar` — empty-field paste reveals only while THIS host is
       // hovered/focused, not while the pointer is on a list above.
       //
@@ -303,7 +307,9 @@ export function TechRailSearchBar({
       )}
     >
       {chrome ? (
-        <div className="flex h-full min-w-0 flex-1 items-center gap-0.5 bg-surface-sunken px-2">
+        <div
+          className="flex h-full min-w-0 flex-1 items-center gap-0.5 bg-surface-sunken px-2"
+        >
           <div className="min-w-0 flex-1">{field}</div>
           {resolvedTrailingAction}
         </div>

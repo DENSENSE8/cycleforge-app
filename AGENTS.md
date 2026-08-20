@@ -68,6 +68,7 @@ Regions are I/O contracts (`MotionRegion`: `station` · `workbench` · `monitor`
 | Station carton Macro verbs | `CartonDisplaysActionFloor` · `src/components/station/displays/CartonDisplaysActionFloor.tsx` |
 | Staff PIN numpad theme | `THEME_NUMPAD` · `src/components/auth/theme-numpad.ts` |
 | Tooltips (no native title attr) | `HoverTooltip` · `src/components/ui/HoverTooltip.tsx` |
+| Carton-bar dropdown (one panel, one anchoring) | `ChipHoverMenuSurface` · `src/components/ui/ChipHoverMenuSurface.tsx` |
 | Conversation message card | `ConversationMessageCard` · `src/design-system/primitives/ConversationMessageCard.tsx` |
 | Conversation chrome tokens | `conversation-chrome` · `src/design-system/primitives/conversation-chrome.ts` |
 | Conversation header actions | `ConversationHeaderActionButton` · `src/design-system/primitives/ConversationHeaderActionButton.tsx` |
@@ -91,6 +92,9 @@ Regions are I/O contracts (`MotionRegion`: `station` · `workbench` · `monitor`
 - **New feature assemblies declare `@domain-job`.** Plus `@hardware-target` (`Station` · `Workbench` · `Monitor` · `Canvas`), `@density` (`floor` · `ops` · `monitor` · `studio`), and `@justification` (why the named host cannot be reused).
 - **Frame budgets** live in `src/lib/right-rail/frame.ts` — desk center ≥ `MIN_WORK_SURFACE_PX` (784); station Displays keep center ≥ `STATION_PUSH_CENTER_FLOOR_PX` (720); gutters `0`. Right edge **pushes** via `RightRailHost` (`modal={false}`); never a floating card over the work.
 - **Right-rail dismiss is host-owned, ONE control, ONE closer.** `RightRailHost` paints the single `X` (top-RIGHT); `closeRightPanel` (`lib/right-rail/close.ts`) unmounts the occupant, caches `draftData`, toasts Resume, **and** runs the occupant's own `onClose` teardown. Child views never mount a second close — not a header twin, not a footer `→|` beside a submit CTA. Esc and Mod+Shift+R live in `handlePanelStoreKeydown`.
+- **Every carton-context dropdown is `ChipHoverMenuSurface`** — one portaled, bottom-CENTRED panel with one row renderer, opened by `useHoverSurface` (click only for `⋯`). Identity chips, listing cell and classify pills each had their own mechanism behind the same class tokens until 2026-08-20. Enforced by depcruise `carton-bar-menus-use-the-one-surface`.
+- **One carton-bar cell FACE and one verb list.** Every clickable cell composes a named `STATION_CONTEXT_*` face from the single builder in `station-context-action-pill.ts` (`box` · `tone` · `text`) — never a seventh hand-rolled class array, and never a page-local pill rendered into the strip. A cell's verbs are declared once (`carton-bar-menu-rows.ts`) and shared by its own menu and the `⋯` overflow: spillover changes WHERE a verb lives, never WHICH verbs exist.
+- **The carton header has no read-only twin.** `CartonContextCard` is the one header for every scan station (Unbox is the SoT; Arrival / Testing / Review compose it through thin adapters). Whether a cell can be edited is a PROP, never a second component: the read-only tracking cell forked to `TrackingChip dense` — a proportional face inside the mono `w-[8ch]` last-8 lock — and Arrival silently truncated tracking numbers from the wrong end.
 - **Ops chrome is flush-square** — `WORKBENCH_CHROME_PILL_CLASS` = `cornerClass('flush')` in `workbench-shell.tsx`.
 - **Workbench spreadsheets** mount via the table definition registry + `NonlinearTableHost` over `LedgerGridSurface` — never a new `*GridView` twin.
 - **Motion** only via `@/design-system/motion` + `motionRole.*`. Only `src/design-system/motion/framer.ts` may import `motion/react` or `framer-motion`.
@@ -115,7 +119,7 @@ Regions are I/O contracts (`MotionRegion`: `station` · `workbench` · `monitor`
 
 | Layer | What it is | Runs in `npm run verify`? |
 |---|---|---|
-| **13 gates** | lint · typecheck · unit · knip · route-permission drift · route-auth enforce · integration manifest · tenancy (advisory) · schema drift · schema model parity · jscpd clones · depcruise · doc catalog | **Yes** — this is the whole automated surface |
+| **13 gates** | lint · typecheck · unit · knip (advisory) · route-permission drift (advisory) · route-auth enforce · integration manifest · tenancy (advisory) · schema drift · schema model parity · jscpd clones · depcruise · doc catalog (advisory) | **Yes** — this is the whole automated surface |
 | **~757 unit tests** | any `*.test.ts` under `src/`, auto-discovered by `scripts/run-unit-tests.mjs` | **Yes**, inside the unit gate |
 | **~182 E2E specs** | Playwright under `tests/e2e`; `qa-desktop` runs against the QA org | **No** — run them deliberately |
 | **Structural guards** | `*.guard.test.ts` | **One** on disk (`carton-chrome-type-unity`, 7 tests) — auto-discovered, so it runs. **17 exist in HEAD**; 16 are deleted only in an *uncommitted* working-tree change |

@@ -15,7 +15,7 @@ full Playwright runs. Supersedes the status lines in
 | Counter transaction 01–05 | **Complete** | `src/lib/submit-counter-transaction.ts`; `/api/kiosk/intake` returns `counter_transaction_id`; `KIOSK_SERVICES.sales.status === 'live'` |
 | POS modernization Ph 1–3 | **Landed** | `KIOSK_PILL` / `KIOSK_PILL_ACTIVE_ISSUE` in `kiosk-chrome.ts`; `ReasonSelector appearance: 'pills'`; `KioskRepairPane` `layout="all"` |
 | POS modernization Ph 4 | **Not built** | no History member in `KIOSK_SERVICES`; no reprint route |
-| Tablet ↔ desktop live link | **Not built** | zero `ably` / `realtime` references under `src/app/kiosk`, `src/lib/kiosk`, `src/app/api/kiosk` |
+| Tablet ↔ desktop live link | **Not built** | zero `ably` / `realtime` references under `src/app/kiosk`, `src/lib/kiosk`, `src/app/api/kiosk`; tracked in the OTHER task system as `master-plan.mdx` → **ROI-F1 / PR-12**, still `pending`, whose open question #2 is *"one iPad mode-switch vs two devices (session channel)?"* |
 | E2E `--project=qa-desktop` | **20 / 22 pass** | full device lifecycle, host gating, PIN step-up, pickup lookup, revoke, both form factors |
 | E2E `--project=desktop` | **13 / 22 fail** | single root cause — see §1 |
 
@@ -51,7 +51,7 @@ dogfood tenant. Most of this spec should not have needed a dogfood session at al
 | # | Item | Why it is first |
 |---|---|---|
 | A1 | Fix the dogfood credential (§1) | 13 red tests are lying about the system's health |
-| A2 | Root-cause the Settings → Kiosk devices UI failure | The only *real* red left under QA. `getByPlaceholder(/tablet name/i)` fills and `Generate code` clicks, but the `Pairing code — shown once` panel never mounts — while the **API** enroll passes in the same run. So it is a client-side seam (fetch rejected in page context, an error box swallowed, or a hydration race), not a permission gap. Read the trace's `0-trace.network` for the `/api/kiosk/enroll` status. |
+| ~~A2~~ | ~~Root-cause the Settings → Kiosk devices UI failure~~ — **DONE 2026-08-20** | **Root cause: a hydration race, not permissions.** The trace showed *zero* `/api/kiosk/enroll` requests and the snapshot showed `Give the tablet a name first.` — `label` was empty at click time. A probe proved the field held `PROBE-A` immediately after `fill` and `""` 300ms later, with the **same DOM element** still connected: React hydrated the controlled `value={label}` input and patched the typed text away. Fixed with `fillWhenHydrated` (retries the fill until the value survives a read-back), which waits for INTERACTIVITY instead of a guessed timeout. |
 | A3 | Port the spec's dogfood-only assumptions to the QA org | `pair + intake succeed on the dogfood kiosk Host` (line 507) resolves the usav kiosk host while authed as QA. Either provision a QA kiosk host in `provision-qa-org.ts` or mark that one test `desktop`-only with a header comment stating why (the documented dogfood exception in `.claude/rules/verify.md`). |
 
 ### B. E2E coverage gaps (POS handoff Phase 5)
@@ -59,13 +59,21 @@ dogfood tenant. Most of this spec should not have needed a dogfood session at al
 The spec today proves the **device-auth lifecycle**. It does not prove a customer can complete a
 transaction. That gap is exactly what let the `activeField`-pinned-to-`extras` bug ship.
 
-| # | Add to `tests/e2e/kiosk-intake-flow.spec.ts` | Asserts |
+**Landed 2026-08-20** as `test.describe('Kiosk v2 — customer happy paths (iPad landscape)')`.
+
+| # | Test | State |
 |---|---|---|
-| B1 | **v2 repair happy path** — pair → Repair command → pick issue pills → fill name/phone/serial → sign → Submit | closes the missing-field trap class |
-| B2 | **v2 retail happy path** — pick product → line lands in `KioskCartLedger` → Pay → PIN step-up → `/api/kiosk/intake` 200 with a `counter_transaction_id` | proves the counter-transaction waist end to end |
-| B3 | **Cart-is-session-root invariant** — add a repair line, switch command to Retail and back, assert lines survive | the one hard constraint the whole v2 shell rests on |
-| B4 | **Pickup twin** — lookup by order # + phone → collect | already device-authed; only the UI leg is unproven |
-| B5 | Update stale assertions the Ph 1–2 chrome work invalidated (`/products/i` → category title) | spec currently asserts pre-Phase-1 copy |
+| B1 | **repair drop-off completes** — pair → Repair → priced `-RS` tile → issue notes → name/phone/serial/price → signature → Save to cart → Save → `Service RS-… checked in` | **PASSING** — commits a real counter transaction through `/api/kiosk/intake`; the receipt face can only render from a returned `CounterTransactionResult` |
+| B3 | **cart is the session root** — repair line survives Retail → Pickup → Repair command switches | **PASSING** |
+| B4 | **pickup miss teaches** — bogus order + phone → oracle-safe copy | **PASSING** |
+| B2′ | **Pay demands a staff PIN** — step-up sheet opens, no card field exists | **written, unproven** — the dev server went down mid-run before it executed |
+| B2 | *retail* happy path via catalog | **not possible in QA today** — retail reads the LOCAL projection (`/api/kiosk/sales/*`), and the QA org has no `platform_listings` rows, so the grid is empty. Repair reads live Ecwid (`resolveEcwidStoreCreds`, org-blind) and does return products. Either seed a QA retail projection in `provision-qa-org.ts` or accept repair-only UI coverage. |
+| B5 | Stale Ph 1–2 copy assertions | **not needed** — the existing shell test already tolerates `/all (repairs\|items)/i` |
+
+Supporting seams added: `data-testid="product-tile"` on the `ProductSelector` grid button (the tiles
+carried no stable handle), and `signOn()` which draws on the `SignaturePad` **canvas** — including a
+`scrollIntoViewIfNeeded`, without which `boundingBox` returns coordinates for a canvas below the fold
+and the stroke lands somewhere else entirely (that was a real 20-minute red).
 
 ### C. Features still genuinely missing
 

@@ -1,6 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { orderPendingWork, type PendingWorkItem } from './pending-work-model';
+import {
+  isPendingWorkPromptHidden,
+  orderPendingWork,
+  type PendingWorkItem,
+} from './pending-work-model';
 
 const commit = (key: string, latestAt: string): PendingWorkItem => ({
   source: 'nas-archive',
@@ -42,6 +46,15 @@ test('ordering does not mutate the caller array', () => {
   const input = [commit('a', '2026-08-01T00:00:00.000Z'), commit('b', '2026-08-09T00:00:00.000Z')];
   orderPendingWork(input);
   assert.deepEqual(input.map((i) => i.key), ['a', 'b']);
+});
+
+test('the corner card never mounts on Unbox', () => {
+  assert.equal(isPendingWorkPromptHidden('/unbox'), true);
+  assert.equal(isPendingWorkPromptHidden('/unbox/'), true);
+  assert.equal(isPendingWorkPromptHidden('/triage'), false);
+  assert.equal(isPendingWorkPromptHidden('/incoming'), false);
+  assert.equal(isPendingWorkPromptHidden('/carton/12'), false);
+  assert.equal(isPendingWorkPromptHidden(null), false);
 });
 
 test('a navigate item always carries a destination', () => {
