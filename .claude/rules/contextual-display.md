@@ -42,7 +42,7 @@ A mechanical procedure — run it **per region**, not per page. A page with N jo
 - **Q6 — RISK / PERSISTENCE:** act-and-clear (no undo trail in URL) → Station; edit-and-keep (persists via CRUD route) →
   Workbench; nothing persists (pure read) → Monitor; draft→publish of a definition → Canvas.
 
-### `pickArchetype()` — the decision table as code
+### `pickArchetype` — the decision table as code
 
 ```ts
 function pickArchetype(region) {
@@ -59,7 +59,7 @@ function pickArchetype(region) {
 // On ambiguity, the JOB (observe vs edit vs act-and-clear vs reshape) decides — not the feature area or route.
 ```
 
-> **Code home.** Implemented in `src/lib/stations/archetype.ts` (`pickArchetype()` — explicit hint wins, else Q1→Q4).
+> **Code home.** Implemented in `src/lib/stations/archetype.ts` (`pickArchetype` — explicit hint wins, else Q1→Q4).
 > First-class surfaces declare contracts in `SURFACE_REGISTRY` (`src/lib/stations/surface-keys.ts`).
 > Composed render path: `SurfaceRenderer` / `StationSlot` when `surface_composed_render` is on.
 > See `docs/todo/studio-driven-operator-surfaces-refactor-plan.md`.
@@ -131,7 +131,7 @@ References: `ProductsWorkspace.tsx`, `QcChecklistWorkspace.tsx`, `SidebarRailShe
 
 **Observe-only.** No durable selection, no edit. Filters are ephemeral URL params. Primary surfaces: event stream, KPI rollup (`MonitorPageShell` + blocks). Density **`rollup`**. Org-scoped inventory events only for analytics.
 
-> Watches and never edits. Row gains durable selection or save → split into Workbench region.  
+> Watches and never edits. Row gains durable selection or save → split into Workbench region.
 → [display/monitor-and-canvas.md](display/monitor-and-canvas.md).
 
 ### Canvas — `graph → zoom/lens → focus → inspect`
@@ -164,7 +164,7 @@ References: `ProductsWorkspace.tsx`, `QcChecklistWorkspace.tsx`, `SidebarRailShe
 2. **SCAN:** wedge/camera → Enter → classify (`station-scan-routing.ts`) → domain handler.
 3. **RESOLVE → SET ACTIVE:** active card mounts via `AnimatePresence mode="wait"` keyed on entity id — opacity + small-y. Previous exits first.
 4. **RE-FOCUS:** clear + re-focus; watchdog on blur/visibilitychange.
-5. **ACT:** scan-to-confirm; optimistic UI; `clientEventId` / `idempotencyKey` honored server-side; 409 → big rose fail card (not a quiet toast / not `alert()`); unmatched tracking → amber exception card (continue scanning, never emerald Active).
+5. **ACT:** scan-to-confirm; optimistic UI; `clientEventId` / `idempotencyKey` honored server-side; 409 → big rose fail card (not a quiet toast / not `alert`); unmatched tracking → amber exception card (continue scanning, never emerald Active).
 6. **CLEAR:** ephemeral — never URL selection.
 7. **STATION-DOWN:** `connection-health` + durable queue; degrade-not-block (no app-root banner).
 
@@ -211,7 +211,7 @@ All contracts inherit `ui-design-system.md` — **do not restate it here**. Load
 - One-row anatomy; selection = ring + background only.
 - Compose rails/shells for picker infrastructure; grow SoT when wrong.
 - Empty/error teach and degrade.
-- Backend: `transition()` / `applyTransition`, `clientEventId`, tenant GUC, `recordAudit`.
+- Backend: `transition` / `applyTransition`, `clientEventId`, tenant GUC, `recordAudit`.
 
 ### The motion law
 

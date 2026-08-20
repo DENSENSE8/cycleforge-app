@@ -94,7 +94,7 @@ The single most load-bearing behavior. A station that loses focus is a station t
   `Insert`, and the first spec written from the docs failed against the real bench
   (`tests/e2e/unbox-scan-focus.spec.ts` imports the constant instead).
 - **Auto-refocus after every submit.** On submit the bar clears the input and the host re-focuses it
-  (`setTimeout(() => inputRef.current?.focus(), 0)` in `StationPacking`'s `handleSubmit`). *Rationale: the operator
+  (`setTimeout( => inputRef.current?.focus, 0)` in `StationPacking`'s `handleSubmit`). *Rationale: the operator
   scans the next entity immediately; a one-tick defer lets React commit the cleared value before focus returns.*
 - **Add a focus-watchdog for blur/`visibilitychange`.** Modals, tab-aways, and on-screen keyboards steal focus — the
   classic wedge failure mode. Re-grab focus when the bar blurs unexpectedly or the tab regains visibility. *(The global
@@ -258,7 +258,7 @@ mistake on this surface. Hover peek is suppressed while any right-edge push (Dis
 ## 7. Optimistic act + idempotency
 
 - **Mint a per-scan `clientEventId` / `idempotencyKey` and thread it through the mutation.** The controller generates
-  one per scan (`newStationIdempotencyKey` → `crypto.randomUUID()` in `useStationTestingController`) and passes it into
+  one per scan (`newStationIdempotencyKey` → `crypto.randomUUID` in `useStationTestingController`) and passes it into
   the scan handlers' context (body and/or `Idempotency-Key` header). *Rationale: a flaky-network retry (or a wedge
   double-fire) carries the same key, so the server collapses it to a no-op.*
 - **The server must honor the key the client already mints.** Station mutation routes (`/api/tech/scan`,
@@ -271,7 +271,7 @@ mistake on this surface. Hover peek is suppressed while any right-edge push (Dis
   *Rationale: at scan cadence the operator can't wait a round-trip per scan; optimistic UI sits *on top of* the
   idempotent server contract, it never replaces it.*
 - **On 409 / reject, revert the card with a big fail state (not a toast).** Status changes go through
-  `transition()`/`applyTransition()` with `expectedFrom` (../backend-patterns.md), which returns 409 on a conflicting
+  `transition`/`applyTransition` with `expectedFrom` (../backend-patterns.md), which returns 409 on a conflicting
   prior state; the bench reverts the optimistic increment and shows the fail card. The reversible secondary action
   (e.g. **Undo last serial** in `ActiveOrderScanFeedback`) lives in a footer row, separated from the primary status.
   *Rationale: a conflict is a real event the operator must see at the card, and undo is a deliberate secondary action,
@@ -283,7 +283,7 @@ mistake on this surface. Hover peek is suppressed while any right-edge push (Dis
 
 - **No app-root connection banner.** The retired layout/mobile `OfflineBanner` twins are gone (2026-08-05). Station-down
   is still first-class: the **answer** lives in `src/lib/realtime/connection-health.ts` (pure, unit-tested) and is read
-  through `useNetworkOnline()` / `useRealtimeLink()` (`src/hooks/useConnectionHealth.ts`). Visible chrome is the
+  through `useNetworkOnline` / `useRealtimeLink` (`src/hooks/useConnectionHealth.ts`). Visible chrome is the
   Operations TV wall pill (`REALTIME_DEGRADED_LABEL`) and mobile `NetworkChip` — never a fixed top band, never a
   per-bench reconnect strip (D4). *Rationale: the top band stole viewport on every Ably blip and trained operators to
   ignore it; degrade-not-block + durable queue is the real floor safety net.*
@@ -364,7 +364,7 @@ The phone station is **not a distinct archetype** — it is this same Station we
   (`tech-active-order-changed` · `lib/testing/testing-scan-session-bridge`) and render it in the workspace —
   one derivation, one display. **Move the display, don't delete it:** Shipping's `ActiveOrderScanFeedback` is the
   only carrier of the amber **No order** exception state (§6) and of Undo, so deleting it would have taken the
-  silent-success fix with it. Guard: `station-sidebar-identity.guard.test.ts` (shrink-only allowlist).
+  silent-success fix with it.
 - **Don't make the station react to hover/click.** It reacts to *scans* only; pointer-reactive detail is a Workbench
   tell.
 - **Don't let focus drift.** No un-refocused submit, no missing `useRegisterScanTarget`, no modal that swallows the bar
@@ -382,7 +382,7 @@ The phone station is **not a distinct archetype** — it is this same Station we
 - **Don't block the bench on infra.** Printer/scale/network down → distinct non-blocking banner + durable queue, never a
   gated scan (§8).
 - **Don't add a fifth `navigator.onLine` listener, a per-bench reconnect strip, or a second degraded-state answer.**
-  Read `useConnectionChrome()` / `useNetworkOnline()` / `useRealtimeLink()`; grow the pure module if the answer is
+  Read `useConnectionChrome` / `useNetworkOnline` / `useRealtimeLink`; grow the pure module if the answer is
   wrong (§8, D4).
 - **Don't invent hex or hardcode `z-[NNN]`.** Color from `src/design-system/tokens/colors/semantic.ts`, z-index from the
   named scale, status tones from `workflowStageDot`.
@@ -408,7 +408,7 @@ The phone station is **not a distinct archetype** — it is this same Station we
 | Hybrid exit | return-to-scan CTA in `WorkbenchTrailingCluster.actions` (every strip tab, at or above any KPI display) — **resumes** the MRU record, never lands a bare table |
 | What crossfades | the **active card** (`framerPresence.stationCard`, `mode="wait"`) |
 | Confirm model | scan-to-confirm (`PackChecklist`), optimistic + `clientEventId` idempotency |
-| Feedback | big card pass/fail (emerald Active vs amber No order vs rose fail) + audio/haptic; never toast/`alert()` |
+| Feedback | big card pass/fail (emerald Active vs amber No order vs rose fail) + audio/haptic; never toast/`alert` |
 | Idempotency | client mints key; server **must** honor via `api_idempotency_responses` |
 | Down state | `connection-health` + durable queue; TV pill / `NetworkChip`; degrade-not-block |
 | Connection health | offline · realtime-degraded · syncing — one answer from `connection-health.ts`, debounced, no Ably jargon |

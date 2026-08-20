@@ -37,12 +37,12 @@ cannot:
 | Capture-day tree + counts | **Band-2 in-field refine**, "Capture days" |
 
 **The mechanism is `CONTEXT_PANEL_ROUTE_KEYS`** (`sidebar-navigation.ts`) — drop
-the key and `useHasSidebarContext()` collapses the column, exactly as `/search`
+the key and `useHasSidebarContext` collapses the column, exactly as `/search`
 and `/reports` already do.
 
 **Never widen `isRaillessOrderFeedSurface` to cover photos.** That predicate is
 named for the To-ship **order feed**, its docblock is entirely outbound lifecycle
-/ KPI / Views, and `outbound-rail-dedup.guard.test.ts` asserts order-feed
+/ KPI / Views, and asserts order-feed
 semantics on it. Widening it would make the name a lie and put a media concern
 inside an outbound guard.
 
@@ -131,7 +131,7 @@ chrome, because a chrome media-type dropdown had shipped whose built-in rows wer
 byte-for-byte the rail's source scopes — two controls, one param, able to
 disagree. S1.5 keeps the invariant and swaps the survivor. **Deleting the rail
 BEFORE porting the tabs** is what made the two-writer state unreachable instead
-of temporary. Guard: `media-library-chrome.guard.test.ts`.
+of temporary.
 
 The tabs and the cube live in **one component** for the same reason: split across
 two files they would be two writers of one param sitting one import apart, which
@@ -214,7 +214,7 @@ loading affordance at all) and `transition-colors` on hover (*hover is
 `ARMED_CURSOR_MARKER_PULSE_CLASS`; this rail composes the same tokens **without**
 it (operator-confirmed 2026-08-10). It is a recorded divergence from the golden,
 not an oversight: the pulse would be the last moving thing on a surface whose
-whole pass was removing motion. Guard: `media-library-chrome.guard.test.ts`.
+whole pass was removing motion.
 
 `PhotoViewerModal` (`shipped/photo-gallery/**`, ~18 consumers) is untouched — hard
 ban. Its `heroLayoutId` is now a lone `layoutId` with no partner, which is inert.
@@ -265,9 +265,8 @@ ban. Its `heroLayoutId` is now a lone `layoutId` with no partner, which is inert
 | Batch rail (n ≠ 1) + Delete floor | `src/components/photos/photo-inspector/PhotoBatchInspectorPanel.tsx` |
 | Armed-row waist | `@/components/station/displays/useArmedCursorList` + `armed-cursor-face` |
 
-**Guards:** `media-library-chrome.guard.test.ts` (rail-less · one writer · band
-order · no native prompt · **no motion** · Delete on the floor · pulse off) ·
-`inspector-action-floor.guard.test.ts` + `right-rail-inspector-header.guard.test.ts`
+**
+order · no native prompt · **no motion** · Delete on the floor · pulse off) · +
 (the batch rail is a desk floor + `DeskRailChromeRow` consumer) ·
 `tests/e2e/photos-railless-frame.spec.ts` (the frame + band geometry + the batch
 rail's floor geometry and ↑↓ walk) · `photos-library-deep-link.spec.ts` (filter

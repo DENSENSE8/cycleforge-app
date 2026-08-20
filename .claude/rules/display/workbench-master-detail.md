@@ -20,8 +20,7 @@ When using the sidebar map, three structural slots, in this order:
 | **Right pane** (the workspace) | the selected record's detail/editor; crossfades on selection change | `QcChecklistWorkspace.tsx`, `KitPartsWorkspace.tsx` |
 
 - **Compose `src/components/layout/SidebarShell.tsx`; never hand-position search.** It owns the outer
-  `flex h-full flex-col overflow-hidden` column, renders `<SidebarSearchBar>` itself from the `search` prop (the
-  `sidebar-search-bar.guard.test.ts` guard keeps `SidebarSearchBar` out of other components — migration in progress),
+  `flex h-full flex-col overflow-hidden` column, renders `<SidebarSearchBar>` itself from the `search` prop (the guard keeps `SidebarSearchBar` out of other components — migration in progress),
   and stacks `headerAbove` → search →
   `headerRows[]` (sub-tabs / facet filters) → `children` (the single `flex-1 overflow-y-auto` body). The panel supplies slots, not
   layout — that's what kept the 40px search band from drifting per page.
@@ -69,9 +68,8 @@ When using the sidebar map, three structural slots, in this order:
   `AnchoredLayer` `*-stretch` (inset by band pad); never a wider magic
   `w-[Npx]` or a chunkier twin. Menu type = caption/micro (org trigger stays
   `text-role-body`). Never hand-roll a
-  `rounded-full` initials span or a local `initials()`; SoT:
+  `rounded-full` initials span or a local `initials`; SoT:
   `source-of-truth.md` → Identity mark · Staff profile photo · MasterNav spine type ladder.
-  Guard: `header-mode.guard.test.ts`.
 - **FLAT MAP for domains; Scan Stations alone is a Vercel list-replace drill (2026-08-03).**
   Root body: Scan Stations enter row (`ChevronRight`, navigates nowhere — opens the drill) +
   flat domain pages in `SPINE_SECTIONS` order (`sidebar-navigation.ts` — compose from
@@ -155,8 +153,7 @@ When using the sidebar map, three structural slots, in this order:
   `motion-crossfade.md` → ONE MasterNav row cascade; `source-of-truth.md` → MasterNav
   spine accent / row hover-press travel. The page switcher also lives in GlobalHeader — and with the
   spine flat it is now a second door onto the same destinations, which is the fork Phase B's
-  open question has to settle.
-  Guards: `main-nav-groups.guard.test.ts`, `station-nav-groups.guard.test.ts`.
+  open question has to.
 - **Anti-mix — never invert the sidebar.** Related/similar is progressive disclosure *below* the picker, never replacing the map.
 - **Responsive fallback is list-OR-detail, not both.** On a narrow viewport, show the picker *or* the detail, never a
   cramped two-up. (M3 list-detail / WinUI List/Details patterns.)
@@ -312,4 +309,4 @@ surface tells the operator something false. Every collection surface answers:
 
 ---
 
-Indexed by [`workbench.md`](workbench.md) · ../contextual-display.md
+Indexed by [`workbench.md`](workbench.md) ../contextual-display.md

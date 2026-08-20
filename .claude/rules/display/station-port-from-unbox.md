@@ -100,8 +100,7 @@ rg -n 'Panel.*radius=|elevation=\"raised\"|OmnichannelComposerDock' \
 2. **Wire the Unbox-shaped replacement** behind the same panel entry.
 3. **Delete** the old component / import / centre tab / raised dock — or add a
    shrink-only allowlist line with a dated reason.
-4. **Flip the guard** that previously pinned the fork (e.g. Testing's
-   `testing-qc-dock.guard.test.ts` "never UnboxDockHost" becomes "must match
+4. **Flip the guard** that previously pinned the fork (e.g. Testing's "never UnboxDockHost" becomes "must match
    flush Unbox geometry").
 5. **Run** `npm run verify` — family baselines must not grow.
 

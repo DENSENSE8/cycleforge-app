@@ -1,7 +1,7 @@
 # DOC catalog — machine-generated SoT
 
 > **Do not hand-edit.** Regenerate: `node scripts/portfolio-sot-sync.mjs`  
-> Generated: `2026-08-19T21:15:04.869Z` · Files: **667** · Repo: `cycleforge-app`  
+> Generated: `2026-08-20T16:44:28.850Z` · Files: **670** · Repo: `cycleforge-app`  
 > Parent index: [INDEX.md](./INDEX.md)
 
 Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*** id  
@@ -13,7 +13,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 
 | WT-ID | Absolute path | Branch | HEAD (short) | Exists |
 |-------|---------------|--------|--------------|--------|
-| `main` | `/Users/icecube/repos/cycleforge-app` | `main` | `4d4eaff5e` | yes |
+| `main` | `/Users/icecube/repos/cycleforge-app` | `main` | `b15cf37d9` | yes |
 | `ai-chat` | `/Users/icecube/repos/cycleforge-ai-chat` | `topic/ai-chat` | `3f55b275e` | yes |
 | `fba` | `/Users/icecube/repos/cycleforge-fba` | `topic/fba` | `3f55b275e` | yes |
 | `glass` | `/Users/icecube/repos/cycleforge-glass` | `glass-design-system` | `a331b1247` | yes |
@@ -136,6 +136,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 | `DOC-ROOT-NAS-PHOTOS-WEBSITE-SETUP-C6BD` | `WS-INT` | [`nas-photos-website-setup.md`](../nas-photos-website-setup.md) |
 | `DOC-ROOT-OUTBOUND-DOCUMENTS-PLAN-5DBA` | `WS-SHIP` | [`outbound-documents-plan.md`](../outbound-documents-plan.md) |
 | `DOC-ROOT-OUTBOUND-MEDIA-LIBRARY-INTEGRATION-PLAN-AFFE` | `WS-SHIP` | [`outbound-media-library-integration-plan.md`](../outbound-media-library-integration-plan.md) |
+| `DOC-ROOT-PRODUCT-UPDATES-POPOVER-42D6` | `WS-DOCS-MISC` | [`refactors/product-updates-popover.md`](../refactors/product-updates-popover.md) |
 | `DOC-ROOT-QA-ORG-PLAYBOOK-F4D1` | `WS-PLATFORM` | [`qa-org-playbook.md`](../qa-org-playbook.md) |
 | `DOC-ROOT-README-012D` | `WS-DOCS-MISC` | [`agent-log/README.md`](../agent-log/README.md) |
 | `DOC-ROOT-README-13F9` | `WS-INT` | [`zoho-sync-issues/README.md`](../zoho-sync-issues/README.md) |
@@ -203,6 +204,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 | `DOC-TODO-ALL-TABLES-IMPROVEMENTS-EXECUTION-PROMPT-7E82` | `WS-TODO-MISC` | [`todo/all-tables-improvements-EXECUTION-PROMPT.md`](../todo/all-tables-improvements-EXECUTION-PROMPT.md) |
 | `DOC-TODO-ARRIVAL-DIRECTED-STAGING-AND-DOCK-OSD-PLAN-F2B5` | `WS-TODO-MISC` | [`todo/arrival-directed-staging-and-dock-osd-PLAN.md`](../todo/arrival-directed-staging-and-dock-osd-PLAN.md) |
 | `DOC-TODO-ARRIVAL-DISPLAYS-ACTION-FLOOR-HANDOFF-BA9A` | `WS-TODO-MISC` | [`todo/arrival-displays-action-floor-HANDOFF.md`](../todo/arrival-displays-action-floor-HANDOFF.md) |
+| `DOC-TODO-ARRIVAL-DOCK-NOTE-ONLY-HANDOFF-DBC3` | `WS-TODO-MISC` | [`todo/arrival-dock-note-only-HANDOFF.md`](../todo/arrival-dock-note-only-HANDOFF.md) |
 | `DOC-TODO-ARRIVAL-DOOR-DECISIONS-STAGING-AND-OSD-GEMINI-RE-DDCB` | `WS-TODO-MISC` | [`todo/arrival-door-decisions-staging-and-osd-GEMINI-RESEARCH-BRIEFING.md`](../todo/arrival-door-decisions-staging-and-osd-GEMINI-RESEARCH-BRIEFING.md) |
 | `DOC-TODO-ARRIVAL-KPI-AND-DOOR-LPN-PLAN-VALIDATION-GEMINI--04B1` | `WS-TODO-MISC` | [`todo/arrival-kpi-and-door-lpn-PLAN-VALIDATION-GEMINI-RESEARCH-BRIEFING.md`](../todo/arrival-kpi-and-door-lpn-PLAN-VALIDATION-GEMINI-RESEARCH-BRIEFING.md) |
 | `DOC-TODO-ARRIVAL-MANIFEST-AND-CROSSDOCK-PLAN-VALIDATION-G-C4AC` | `WS-TODO-MISC` | [`todo/arrival-manifest-and-crossdock-PLAN-VALIDATION-GEMINI-RESEARCH-BRIEFING.md`](../todo/arrival-manifest-and-crossdock-PLAN-VALIDATION-GEMINI-RESEARCH-BRIEFING.md) |
@@ -392,6 +394,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 | `DOC-TODO-MOBILE-UNBOX-PHOTO-FLOW-GEMINI-RESEARCH-BRIEFING-2BA6` | `WS-TODO-MISC` | [`todo/mobile-unbox-photo-flow-GEMINI-RESEARCH-BRIEFING.md`](../todo/mobile-unbox-photo-flow-GEMINI-RESEARCH-BRIEFING.md) |
 | `DOC-TODO-MOTION-REDUCE-STRATEGY-COSTING-50E3` | `WS-TODO-MISC` | [`todo/motion-reduce-strategy-COSTING.md`](../todo/motion-reduce-strategy-COSTING.md) |
 | `DOC-TODO-MOTION-ROLE-LAYER-HANDOFF-76E5` | `WS-TODO-MISC` | [`todo/motion-role-layer-HANDOFF.md`](../todo/motion-role-layer-HANDOFF.md) |
+| `DOC-TODO-NAV-IA-PHASE4-EXECUTION-PLAN-26A2` | `WS-TODO-MISC` | [`todo/nav-ia-phase4-EXECUTION-PLAN.md`](../todo/nav-ia-phase4-EXECUTION-PLAN.md) |
 | `DOC-TODO-NAV-KEYS-SELECTION-KEYBOARD-HANDOFF-F1F1` | `WS-TODO-MISC` | [`todo/nav-keys-selection-keyboard-HANDOFF.md`](../todo/nav-keys-selection-keyboard-HANDOFF.md) |
 | `DOC-TODO-NAV-ROUTING-REFACTOR-EXECUTION-PROMPT-1A0D` | `WS-TODO-MISC` | [`todo/nav-routing-refactor-EXECUTION-PROMPT.md`](../todo/nav-routing-refactor-EXECUTION-PROMPT.md) |
 | `DOC-TODO-NAV-ROUTING-REFACTOR-FINISH-PROMPT-3E0A` | `WS-TODO-MISC` | [`todo/nav-routing-refactor-FINISH-PROMPT.md`](../todo/nav-routing-refactor-FINISH-PROMPT.md) |
@@ -755,7 +758,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 - `DOC-DIAG-14-FBA-STATION-TRACE-81AB` — [`diagrams/14-fba-station-trace.md`](../diagrams/14-fba-station-trace.md)
 - `DOC-DIAG-README-5821` — [`diagrams/README.md`](../diagrams/README.md)
 
-### `WS-DOCS-MISC` (15)
+### `WS-DOCS-MISC` (16)
 
 - `DOC-ROOT-BASELINE-2026-07-19-A64A` — [`performance/baseline-2026-07-19.md`](../performance/baseline-2026-07-19.md)
 - `DOC-ROOT-FABLE5-DS-PRUNE-REPORT-7D88` — [`audit/fable5-ds-prune-report.md`](../audit/fable5-ds-prune-report.md)
@@ -763,6 +766,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 - `DOC-ROOT-HANDOFF-LCP-STREAMING-793C` — [`performance/HANDOFF-lcp-streaming.md`](../performance/HANDOFF-lcp-streaming.md)
 - `DOC-ROOT-LIGHTHOUSE-E7C7` — [`performance/LIGHTHOUSE.md`](../performance/LIGHTHOUSE.md)
 - `DOC-ROOT-MAIN-F33A` — [`agent-log/entries/main.md`](../agent-log/entries/main.md)
+- `DOC-ROOT-PRODUCT-UPDATES-POPOVER-42D6` — [`refactors/product-updates-popover.md`](../refactors/product-updates-popover.md)
 - `DOC-ROOT-README-012D` — [`agent-log/README.md`](../agent-log/README.md)
 - `DOC-ROOT-README-F525` — [`agent-fs/README.md`](../agent-fs/README.md)
 - `DOC-ROOT-README-F6D4` — [`agent-fs/contracts/README.md`](../agent-fs/contracts/README.md)
@@ -973,7 +977,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 - `DOC-TEN-SLICE-TEMPLATE-5BE0` — [`tenancy/SLICE_TEMPLATE.md`](../tenancy/SLICE_TEMPLATE.md)
 - `DOC-TEN-TABLES-9F18` — [`tenancy/_analysis/tables.md`](../tenancy/_analysis/tables.md)
 
-### `WS-TODO-MISC` (491)
+### `WS-TODO-MISC` (493)
 
 - `DOC-TODO-00-INDEX-9E1E` — [`todo/kiosk-counter-transaction/00-INDEX.md`](../todo/kiosk-counter-transaction/00-INDEX.md)
 - `DOC-TODO-01-RECEIVING-BOH-SLIM-4C77` — [`todo/foh-boh-surface-split/01-receiving-boh-slim.md`](../todo/foh-boh-surface-split/01-receiving-boh-slim.md)
@@ -992,6 +996,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 - `DOC-TODO-ALL-TABLES-IMPROVEMENTS-EXECUTION-PROMPT-7E82` — [`todo/all-tables-improvements-EXECUTION-PROMPT.md`](../todo/all-tables-improvements-EXECUTION-PROMPT.md)
 - `DOC-TODO-ARRIVAL-DIRECTED-STAGING-AND-DOCK-OSD-PLAN-F2B5` — [`todo/arrival-directed-staging-and-dock-osd-PLAN.md`](../todo/arrival-directed-staging-and-dock-osd-PLAN.md)
 - `DOC-TODO-ARRIVAL-DISPLAYS-ACTION-FLOOR-HANDOFF-BA9A` — [`todo/arrival-displays-action-floor-HANDOFF.md`](../todo/arrival-displays-action-floor-HANDOFF.md)
+- `DOC-TODO-ARRIVAL-DOCK-NOTE-ONLY-HANDOFF-DBC3` — [`todo/arrival-dock-note-only-HANDOFF.md`](../todo/arrival-dock-note-only-HANDOFF.md)
 - `DOC-TODO-ARRIVAL-DOOR-DECISIONS-STAGING-AND-OSD-GEMINI-RE-DDCB` — [`todo/arrival-door-decisions-staging-and-osd-GEMINI-RESEARCH-BRIEFING.md`](../todo/arrival-door-decisions-staging-and-osd-GEMINI-RESEARCH-BRIEFING.md)
 - `DOC-TODO-ARRIVAL-KPI-AND-DOOR-LPN-PLAN-VALIDATION-GEMINI--04B1` — [`todo/arrival-kpi-and-door-lpn-PLAN-VALIDATION-GEMINI-RESEARCH-BRIEFING.md`](../todo/arrival-kpi-and-door-lpn-PLAN-VALIDATION-GEMINI-RESEARCH-BRIEFING.md)
 - `DOC-TODO-ARRIVAL-MANIFEST-AND-CROSSDOCK-PLAN-VALIDATION-G-C4AC` — [`todo/arrival-manifest-and-crossdock-PLAN-VALIDATION-GEMINI-RESEARCH-BRIEFING.md`](../todo/arrival-manifest-and-crossdock-PLAN-VALIDATION-GEMINI-RESEARCH-BRIEFING.md)
@@ -1176,6 +1181,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 - `DOC-TODO-MOBILE-UNBOX-PHOTO-FLOW-GEMINI-RESEARCH-BRIEFING-2BA6` — [`todo/mobile-unbox-photo-flow-GEMINI-RESEARCH-BRIEFING.md`](../todo/mobile-unbox-photo-flow-GEMINI-RESEARCH-BRIEFING.md)
 - `DOC-TODO-MOTION-REDUCE-STRATEGY-COSTING-50E3` — [`todo/motion-reduce-strategy-COSTING.md`](../todo/motion-reduce-strategy-COSTING.md)
 - `DOC-TODO-MOTION-ROLE-LAYER-HANDOFF-76E5` — [`todo/motion-role-layer-HANDOFF.md`](../todo/motion-role-layer-HANDOFF.md)
+- `DOC-TODO-NAV-IA-PHASE4-EXECUTION-PLAN-26A2` — [`todo/nav-ia-phase4-EXECUTION-PLAN.md`](../todo/nav-ia-phase4-EXECUTION-PLAN.md)
 - `DOC-TODO-NAV-KEYS-SELECTION-KEYBOARD-HANDOFF-F1F1` — [`todo/nav-keys-selection-keyboard-HANDOFF.md`](../todo/nav-keys-selection-keyboard-HANDOFF.md)
 - `DOC-TODO-NAV-ROUTING-REFACTOR-EXECUTION-PROMPT-1A0D` — [`todo/nav-routing-refactor-EXECUTION-PROMPT.md`](../todo/nav-routing-refactor-EXECUTION-PROMPT.md)
 - `DOC-TODO-NAV-ROUTING-REFACTOR-FINISH-PROMPT-3E0A` — [`todo/nav-routing-refactor-FINISH-PROMPT.md`](../todo/nav-routing-refactor-FINISH-PROMPT.md)

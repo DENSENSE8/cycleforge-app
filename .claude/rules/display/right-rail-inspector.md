@@ -1,24 +1,22 @@
 # Right-rail inspector — display contract
 
-**Region:** Workbench / Desk record plane (and intake create overlays that share `RightRailHost`).  
-**Shell SoT:** `RightRailHost` + `src/lib/right-rail/store.ts` + detail-stack tokens.  
+**Region:** Workbench / Desk record plane (and intake create overlays that share `RightRailHost`).
+**Shell SoT:** `RightRailHost` + `src/lib/right-rail/store.ts` + detail-stack tokens.
 **Desktop geometry:** every non-modal resident inspector is a flush **in-flow
 push column at every width**. Width pressure caps the right panel so the center
 hugs its floor beside an **open** context rail; it must never auto-park the left
 rail and never switch the inspector to the floating rounded overlay shell.
 Overlay remains explicit for modal/intake, mobile, ambient assistant, and
-station-edge opt-outs.  
-**Header SoT:** `PaneHeader` + blocks (`PaneHeaderLabel`, `PaneHeaderActionBar`, `PaneHeaderCloseButton`, …) **or** Unbox-aligned `DeskRailChromeRow` (`src/components/right-rail/DeskRailChromeRow.tsx`) when the card wants `→|` top-left · ↑↓ · trailing ring-twin. Desk `detail:order` composes `DeskRailChromeRow` + Unbox `SectionTabsSlider` density=icon (no identity row).  
-**Hairline SoT:** `useHorizontalEdgeResize` + `HorizontalEdgeResizeHandle` on `RightRailHost` with **`placement="inset"`** — the hover paint is a **4px** full-height bar on the panel's own `border-l` seam (the display hairline), hit sash inside the card. Never an outset overhang into the work surface, and never a sash-top collapse chevron. Close / park = `→|` + Band 3 Show/Hide inspector + parked expand strip. Station Displays (`StationDisplaysPushColumn`) is the golden twin for hairline placement — **not** the same host. Left context rail uses the same inset seam paint (drag-only sash) + filter trailing + drag-past-min — different dismiss grammar, same hairline placement.  
-**Motion:** desk push open ↔ park **snaps** (`style.width` — Unbox Displays / `ContextPanelLayout` twin). Never `motionRole.push.rail` width tween or opacity presence on the push column; overlay / modal / intake keep their presence fade. Guard: `right-rail-push.guard.test.ts` · `detail-stack-collapse.guard.test.ts`.  
+station-edge opt-outs.
+**Header SoT:** `PaneHeader` + blocks (`PaneHeaderLabel`, `PaneHeaderActionBar`, `PaneHeaderCloseButton`, …) **or** Unbox-aligned `DeskRailChromeRow` (`src/components/right-rail/DeskRailChromeRow.tsx`) when the card wants `→|` top-left · ↑↓ · trailing ring-twin. Desk `detail:order` composes `DeskRailChromeRow` + Unbox `SectionTabsSlider` density=icon (no identity row).
+**Hairline SoT:** `useHorizontalEdgeResize` + `HorizontalEdgeResizeHandle` on `RightRailHost` with **`placement="inset"`** — the hover paint is a **4px** full-height bar on the panel's own `border-l` seam (the display hairline), hit sash inside the card. Never an outset overhang into the work surface, and never a sash-top collapse chevron. Close / park = `→|` + Band 3 Show/Hide inspector + parked expand strip. Station Displays (`StationDisplaysPushColumn`) is the golden twin for hairline placement — **not** the same host. Left context rail uses the same inset seam paint (drag-only sash) + filter trailing + drag-past-min — different dismiss grammar, same hairline placement.
+**Motion:** desk push open ↔ park **snaps** (`style.width` — Unbox Displays / `ContextPanelLayout` twin). Never `motionRole.push.rail` width tween or opacity presence on the push column; overlay / modal / intake keep their presence.
 **Modality / push / occupancy:** [source-of-truth.md](../source-of-truth.md) → **Right-rail modality**
 (AI and record/ticket details share **one** right-edge slot — detail outranks assistant) ·
 **Frame column budget** (center floor · yield ladder) · **Scan vs desk right-edge (C2 thin waist)**
 (distinct hosts; share `DisplaysIndexLeafStage` + tokens + domain; never share dismiss chords /
-AI occupancy / visit-history).  
-**Guard:** `src/components/right-rail/right-rail-inspector-header.guard.test.ts` ·
-`src/components/right-rail/detail-stack-collapse.guard.test.ts` ·
-`src/components/right-rail/desk-inspector-index.guard.test.ts`.
+AI occupancy / visit-history).
+**.
 
 ### C2 — desk host vs station Displays (do not merge)
 
@@ -156,8 +154,8 @@ as contextual `actions`.
 
 **Always**
 
-- Identity uses `PaneHeaderLabel` (or the same role ladder):  
-  - Eyebrow: `text-role-eyebrow uppercase tracking-widest` — mode / entity kind (`Order #`, `Catalog link`, `PO`, `Repair ticket`).  
+- Identity uses `PaneHeaderLabel` (or the same role ladder):
+  - Eyebrow: `text-role-eyebrow uppercase tracking-widest` — mode / entity kind (`Order #`, `Catalog link`, `PO`, `Repair ticket`).
   - Value: truncated short key at caption density (`paneHeaderLabelValueClass` / `text-role-caption font-semibold`) — order id, item #, SKU, ticket #, tracking.
 - Long product titles, listing sentences, descriptions, and multi-line prose live in the **body** as fact rows — not in the header.
 - Contextual icon actions are a **per-occupant** `PaneHeaderActionBarAction[]` (Link / Sync / Print / Ignore / …). The shell does not hardcode them.
@@ -289,10 +287,10 @@ Trailing cluster is always **`>| · ↑ · ↓`** when the rail walks a queue; c
 
 ## Checklist (new right-rail occupant)
 
-1. `DetailStackRailRegistrar` / `useRegisterRightPanel` — no private geometry.  
-2. `modal={false}` for record peeks; stable id when row→row is the loop.  
-3. Header is **chrome → Displays topics → flush body** for desk `detail:order` (`DeskRailChromeRow` + `SectionTabsSlider` density=icon — Unbox twin; no identity row). History keeps chrome → Display tabs → identity (+ primary CTA). Orders sheet View = `detail:orders-view` only.  
-4. No `SidebarIntakeFormShell` on a record inspector.  
-5. No `stationMoreDetailsPaneHostClass`, no `rightSlot` close, no `variant="card"` ActionBar pill.  
-6. Long titles / prose only in the scroll body.  
+1. `DetailStackRailRegistrar` / `useRegisterRightPanel` — no private geometry.
+2. `modal={false}` for record peeks; stable id when row→row is the loop.
+3. Header is **chrome → Displays topics → flush body** for desk `detail:order` (`DeskRailChromeRow` + `SectionTabsSlider` density=icon — Unbox twin; no identity row). History keeps chrome → Display tabs → identity (+ primary CTA). Orders sheet View = `detail:orders-view` only.
+4. No `SidebarIntakeFormShell` on a record inspector.
+5. No `stationMoreDetailsPaneHostClass`, no `rightSlot` close, no `variant="card"` ActionBar pill.
+6. Long titles / prose only in the scroll body.
 7. Push / resize / collapse per Right-rail modality SoT (`edgeCollapse={false}` when header `→|` is the only dismiss — Incoming).

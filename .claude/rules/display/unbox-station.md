@@ -90,8 +90,7 @@ serial (or waive), then **one** line-level condition + item-photos — not the t
 ## Per-step contract (exact)
 
 Every capture step declares **ACTION** (dock) **and** **KNOW** (rail leaf) — or is
-listed in the matching either-or map with a reason. Guards:
-`procedure-step-dock.guard.test.ts` · `scan-cockpit.guard.test.ts`.
+listed in the matching either-or map with a.
 
 | Step key | Label | Gate / evidence | Dock ACTION (`UNBOX_STEP_DOCK_CONTROLS`) | KNOW `railLeaf` | Band 1 geometry |
 |---|---|---|---|---|---|
@@ -154,7 +153,7 @@ Hidden only on `serial` and `classify` (those own Band 1 alone — serial field
 
 Host = `w-full` · `p-0` · `gap-0` · `items-stretch` · `STATION_COLUMN_FOOTER_SEAM_CLASS`.
 Every control is a **full-height abutting segment**. Content pad lives *inside* a
-segment. Guard: `unbox-dock-one-shell.guard.test.ts`.
+segment.
 
 | Zone | Contract |
 |---|---|
@@ -236,16 +235,16 @@ When `dockOwnsCapture`:
 
 | Guard | Pins |
 |---|---|
-| `unbox-dock-one-shell.guard.test.ts` | Flush floor · XOR terminal · photo strip · Band 2 layout |
-| `unbox-dock-scan-entry.guard.test.ts` | Enter routing by `activeKey` |
-| `procedure-step-dock.guard.test.ts` | Step→ACTION either-or |
-| `scan-cockpit.guard.test.ts` | Step→`railLeaf` either-or + LineEditPanel wiring |
-| `unbox-right-edge-chrome.guard.test.ts` | Displays push / utility rail |
-| `unbox-displays-drilldown.guard.test.ts` | Armed-row leaf drills |
-| `station-displays-action-floor.guard.test.ts` | Macro floor |
-| `station-centre-ops-flow.guard.test.ts` | No centre advisory |
-| `procedure-divergence.guard.test.ts` | Catalog ↔ gate vocabulary |
-| `return-match-evidence.guard.test.ts` | Return evidence stays lines-shaped |
+| | Flush floor · XOR terminal · photo strip · Band 2 layout |
+| | Enter routing by `activeKey` |
+| | Step→ACTION either-or |
+| | Step→`railLeaf` either-or + LineEditPanel wiring |
+| | Displays push / utility rail |
+| | Armed-row leaf drills |
+| | Macro floor |
+| | No centre advisory |
+| | Catalog ↔ gate vocabulary |
+| | Return evidence stays lines-shaped |
 
 ---
 
