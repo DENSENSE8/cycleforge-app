@@ -8,15 +8,41 @@
  * carry `?dir=` only when it differs from that column's default direction.
  */
 
-import {
-  defaultDirForRepairGridSort,
-  isRepairGridSortable,
-  type RepairGridColumnKey,
-} from '@/lib/repair/repair-grid-layout';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
-/** Every sortable grid column (the frozen `select` gutter is never a sort). */
-export type RepairDisplaySortColumn = Exclude<RepairGridColumnKey, 'select'>;
+/**
+ * The sortable column vocabulary, declared here rather than derived from a
+ * column model.
+ *
+ * It used to read `RepairGridColumnKey` / `isRepairGridSortable` off
+ * `repair-grid-layout`, which was deleted with the repair grid on 2026-08-20.
+ * This module is NOT part of that display — it is URL vocabulary, and
+ * `query-mode-routes` / `receiving-routes` parse `?sort=` through it on routes
+ * that still exist. Keeping the list local means a rewritten repair display
+ * cannot silently change the meaning of a URL someone has bookmarked; when the
+ * grid returns, re-derive this from its column model in ONE direction.
+ */
+export type RepairDisplaySortColumn =
+  | 'title'
+  | 'date'
+  | 'customer'
+  | 'phone'
+  | 'price'
+  | 'order'
+  | 'ticket';
+
+const REPAIR_SORTABLE_COLUMNS: readonly string[] = [
+  'title', 'date', 'customer', 'phone', 'price', 'order', 'ticket',
+];
+
+/** Recency/urgency columns open most-urgent-first; the rest ascend. */
+function defaultDirForRepairGridSort(key: RepairDisplaySortColumn): GridSortDir {
+  return key === 'date' ? 'desc' : 'asc';
+}
+
+function isRepairGridSortable(key: string): key is RepairDisplaySortColumn {
+  return REPAIR_SORTABLE_COLUMNS.includes(key);
+}
 /** `newest` is the default composite (server `created_at DESC`). */
 export type RepairDisplaySort = 'newest' | RepairDisplaySortColumn;
 export type RepairDisplaySortDir = GridSortDir;

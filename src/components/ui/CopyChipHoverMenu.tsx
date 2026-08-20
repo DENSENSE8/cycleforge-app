@@ -142,7 +142,7 @@ export function CopyChipHoverMenuPanel({
             {denseLabel ? (
               item.label
             ) : (
-              <span className="min-w-0 truncate normal-case tracking-normal font-semibold">
+              <span className="min-w-0 truncate font-semibold">
                 {item.label}
               </span>
             )}

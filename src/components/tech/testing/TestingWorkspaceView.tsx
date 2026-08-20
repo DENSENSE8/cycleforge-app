@@ -8,7 +8,7 @@
 import { WorkbenchSheetView, useWorkbenchSheetChrome } from '@/components/dashboard/WorkbenchSheetView';
 import { WORKBENCH_KPI_SURFACE } from '@/components/dashboard/workbench-kpi-collapse';
 import { TestingHistoryList } from '@/components/tech/TestingHistoryList';
-import { TechAllTriageTable } from '@/components/tech/all/TechAllTriageTable';
+import { TableRebuildPlaceholder } from '@/components/tables/TableRebuildPlaceholder';
 import { TestingKpiStrip } from '@/components/tech/testing/TestingKpiStrip';
 import {
   TestingTriageBand,
@@ -46,11 +46,7 @@ export function TestingWorkspaceView({
     >
       {({ controlsEl }) =>
         testTab === 'all' ? (
-          <TechAllTriageTable
-            scope="testing"
-            onOpenTestingLine={onOpenLine}
-            columnTriggerPortalTarget={null}
-          />
+          <TableRebuildPlaceholder surface="Testing · All" />
         ) : (
           <TestingHistoryList
             key={testTab}

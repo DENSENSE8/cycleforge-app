@@ -55,12 +55,13 @@ export const INTEGRATION_MANIFEST_PATH = 'docs/integrations/integration-manifest
  * Vault providers that are infrastructure, not a tenant-facing integration, and
  * so carry no `PROVIDER_CATALOG` entry.
  *
- * An explicit, reasoned list rather than a silent filter: the coverage guard
- * asserts every `IntegrationProvider` is EITHER in the display catalog OR named
- * here. A provider added to the enum and forgotten in both fails CI instead of
- * quietly never reaching the marketing site.
+ * An explicit, reasoned list rather than a silent filter. It USED to be asserted
+ * by integration-manifest.guard.test.ts — that a provider added to the enum and
+ * forgotten in both this list and the display catalog failed CI. That guard was
+ * deleted 2026-08-19, so nothing enforces the pairing now; a forgotten provider
+ * will silently never reach the marketing site. Still read by the filter below.
  */
-export const INFRASTRUCTURE_ONLY: Readonly<Record<string, string>> = {
+const INFRASTRUCTURE_ONLY: Readonly<Record<string, string>> = {
   ably: 'Realtime transport for the app itself — the tenant never connects it.',
   stripe: 'Billing for CycleForge subscriptions, not a tenant-facing data integration.',
 };

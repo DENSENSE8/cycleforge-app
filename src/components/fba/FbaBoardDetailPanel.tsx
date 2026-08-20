@@ -64,12 +64,6 @@ export function FbaBoardDetailPanel({
       <div className="shrink-0 overflow-hidden bg-surface-card">
         <DeskRailChromeRow
           onClose={onClose}
-          onPrev={() => onNavigate('up')}
-          onNext={() => onNavigate('down')}
-          prevDisabled={disableMoveUp}
-          nextDisabled={disableMoveDown}
-          prevTitle="Move up a row"
-          nextTitle="Move down a row"
           columnDisplay
           actions={
             panelActions.length ? (

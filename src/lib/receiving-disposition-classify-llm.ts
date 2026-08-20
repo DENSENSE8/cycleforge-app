@@ -13,6 +13,7 @@
  */
 
 import { hermesToolCall } from '@/lib/ai/hermes-tool-call';
+import type { OrgId } from '@/lib/tenancy/constants';
 
 const TOOL_NAME = 'report_disposition';
 
@@ -60,8 +61,11 @@ function coerce<T extends string>(value: unknown, allowed: readonly T[], fallbac
 }
 
 export async function classifyDispositionWithLlm(
+  /** Tenant whose AI provider serves this call — required, never defaulted. */
+  orgId: OrgId,
   input: DispositionInput,
 ): Promise<DispositionSuggestion> {
+
   const notes = String(input.notes ?? '').trim();
   const qa = String(input.qaStatus ?? '').trim();
   const grade = String(input.conditionGrade ?? '').trim();
@@ -78,6 +82,7 @@ export async function classifyDispositionWithLlm(
   ].join('\n');
 
   const { args, model } = await hermesToolCall<DispositionToolArgs>({
+    orgId,
     systemPrompt: SYSTEM_PROMPT,
     userText,
     // Headroom for "thinking" models that emit reasoning before the tool call —

@@ -327,6 +327,19 @@ export const OrgSettingsSchema = z.object({
       vertical: z.string().max(80).optional(),
     })
     .default({}),
+  // AI provider preferences. `providerOrder` decides which connected provider a
+  // call TRIES FIRST — local-first by default, so a tenant with their own model
+  // is not paying a cloud vendor by accident. Precedence (org → env →
+  // local-first) lives ONLY in `resolveAiProviderOrder`; this bag stores the
+  // org's request, never the resolved order, and never which provider actually
+  // served a given turn (that is the failover loop's answer, recorded on
+  // ai_usage_events.source). Optional so "unset → inherit" stays
+  // distinguishable from an explicit pick.
+  ai: z
+    .object({
+      providerOrder: z.enum(['local-first', 'cloud-first']).optional(),
+    })
+    .default({}),
 }).passthrough();
 
 export type OrgSettings = z.infer<typeof OrgSettingsSchema>;

@@ -361,7 +361,7 @@ Create a tracking issue or use the triage document + labels on PRs (`dead-code`,
 - Both `receiving_lines_cleanup_backup_*.json`
 - `Repair Service HTML`
 - Old ebay token getter scripts
-- ~~`src/app/design-demo/`~~ **NOT dead — reconcile/exempt:** `src/app/design-demo` was re-created as the component-adoption showroom (see design-2026-component-adoption). Keep it; add a knip exempt.
+- ~~`src/app/design-demo/`~~ **DELETED 2026-08-20.** It was re-created as the component-adoption showroom after Wave 1, then deleted again on an operator ruling — it is not a dogfood surface. No knip exempt is needed; the tree is gone.
 - Most root `*_PLAN.md` files (move to archive)
 
 **High triage priority categories** (from initial knip run):
@@ -377,7 +377,7 @@ See `docs/dead-code-triage.md` for the full living list.
 
 **Progress - PLAN EXECUTION ADVANCED**:
 - Phase 0: Tooling complete (eslint.config.mjs for unused-imports, knip tightened, dead-code:report script, living triage).
-- Phase 1: Complete (surface junk removed, apps/desktop gone, plans archived). **Correction 2026-06-28:** `src/app/design-demo` was later RE-CREATED as the component-adoption showroom — it is NOT dead; reconcile/exempt it in knip rather than delete.
+- Phase 1: Complete (surface junk removed, apps/desktop gone, plans archived). **Correction 2026-06-28:** `src/app/design-demo` was later RE-CREATED as the component-adoption showroom. **Superseded 2026-08-20:** deleted again on an operator ruling; see `docs/kill-list/`.
 - Phase 2: Complete (all legacy setup routes + guard deleted; references cleaned in README, docs, context, diagrams; modern migrations via `npm run db:migrate`).
 - Phase 3: Multiple waves (admin connections + workflow board, FBA legacy, activity/barcode, more admin tables; ~18+ files from knip; verified via grep; knip ~182 → 164).
 - Phase 6: All deletions verified (grep), committed in focused waves, triage + plan docs updated.
@@ -406,7 +406,7 @@ This plan was built from direct codebase inspection (knip output, schema comment
 
 - Deleted 2 orphaned receiving modes — `Mode1BulkScan.tsx` and `Mode3LocalPickup.tsx` — as a small Phase 3 wave (verified zero importers via grep).
 - Reconciled stale status: Phase 4.1 (`INVENTORY_V2` dual-path collapse) marked DONE (collapsed 2026-06-14, engine unconditional).
-- Corrected the Phase 1 / Appendix claim that `src/app/design-demo` was deleted — it was re-created as the component-adoption showroom and is NOT dead (reconcile/exempt in knip).
+- Corrected the Phase 1 / Appendix claim that `src/app/design-demo` was deleted — it was re-created as the component-adoption showroom (reconcile/exempt in knip). **Re-superseded 2026-08-20: deleted for good.**
 - Confirmed VERIFIED-DONE: tooling (eslint + eslint-plugin-unused-imports, knip config, `generate-dead-code-report.mjs`, `knip-gate.mjs` + baseline), CI ratchet ("Dead-code gate (knip baseline)" in `ci.yml`), all Phase 2 route deletions.
 
 ### 2026-06-29 — Phase 3 knip unused-files wave (verified)
@@ -418,6 +418,6 @@ Ran a conservative Phase-3 wave: verified all 26 current knip "unused files" can
 ## Remaining work — handoff (2026-06-28)
 
 - **[CODE]** Continue Phase 3 knip waves (~2291 baseline findings) in small reviewed batches, each with exhaustive import/dynamic-import/ref checks before deletion. Next step: pick one category (FBA fragments, manuals legacy), grep for all references, delete only verified-unreachable files, refresh `knip-baseline.json`.
-- **[CODE]** Add a knip exempt for `src/app/design-demo` so the showroom stops surfacing as a candidate.
+- ~~**[CODE]** Add a knip exempt for `src/app/design-demo`~~ — moot: the tree was deleted 2026-08-20.
 - **[DEFERRED-BY-DESIGN]** Phase 5 deeper detection (route-reachability map, `ts-morph` static analysis) — build when triage backlog justifies the tooling cost.
 - **[DESIGN-DECISION]** Optional knip strictness flip (`rules: { exports, types }`) — currently deferred; the baseline gate covers regressions. Decide whether to enable.

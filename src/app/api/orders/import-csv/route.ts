@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { and, eq, inArray } from 'drizzle-orm';
 import { z } from 'zod';
-import { db } from '@/lib/drizzle/db';
-import { orders as ordersTable } from '@/lib/drizzle/schema';
 import { withAuth } from '@/lib/auth/withAuth';
 import pool from '@/lib/db';
 import { recordAudit, AUDIT_ENTITY } from '@/lib/audit-logs';
+import { resolveSpreadsheetShipByDate } from '@/lib/orders/canonical-order';
 import { ingestCanonicalOrders } from '@/lib/orders/ingest-canonical-orders';
 
 /**
@@ -26,8 +24,11 @@ import { ingestCanonicalOrders } from '@/lib/orders/ingest-canonical-orders';
  * invalidation and the realtime publish for free.
  *
  * Idempotency: `orders` has no UNIQUE(organization_id, order_id) constraint, so
- * we dedupe within the batch and skip rows whose order_number already exists for
- * this org, reporting them as `skipped` rather than inserting duplicates.
+ * we dedupe within the batch and let the writer match an incoming row to the
+ * one this org already has. A re-upload therefore BACKFILLS (additive — fills
+ * blanks, never overwrites an operator's correction) instead of inserting a
+ * duplicate; `collapseDuplicates: false` guarantees it can never delete one.
+ * Rows are reported as `inserted` · `updated` · `skipped` (in-batch duplicate).
  */
 
 const bodySchema = z.object({
@@ -37,11 +38,16 @@ const bodySchema = z.object({
 
 type CanonicalRow = {
   order_number: string;
+  item_title: string;
   sku: string;
+  item_number: string;
   quantity: string;
+  condition: string;
   customer_name: string;
+  ship_by_date: string;
   tracking_number: string;
   platform: string;
+  note: string;
 };
 
 function pick(row: Record<string, string>, header: string | undefined): string {
@@ -83,11 +89,16 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
   rows.forEach((row, index) => {
     const canonical: CanonicalRow = {
       order_number: pick(row, mapping.order_number),
+      item_title: pick(row, mapping.item_title),
       sku: pick(row, mapping.sku),
+      item_number: pick(row, mapping.item_number),
       quantity: pick(row, mapping.quantity),
+      condition: pick(row, mapping.condition),
       customer_name: pick(row, mapping.customer_name),
+      ship_by_date: pick(row, mapping.ship_by_date),
       tracking_number: pick(row, mapping.tracking_number),
       platform: pick(row, mapping.platform),
+      note: pick(row, mapping.note),
     };
     if (!canonical.order_number) {
       errors.push({ row: index, reason: 'Missing order_number' });
@@ -108,76 +119,83 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
     deduped.push(entry);
   }
 
-  // 3. Skip order_numbers that already exist for THIS org (no unique constraint
-  //    to upsert on, so we explicitly check + skip).
-  const candidateNumbers = deduped.map((e) => e.canonical.order_number);
-  const existing = new Set<string>();
-  if (candidateNumbers.length > 0) {
-    const found = await db
-      .select({ orderId: ordersTable.orderId })
-      .from(ordersTable)
-      .where(
-        and(
-          eq(ordersTable.organizationId, ctx.organizationId),
-          inArray(ordersTable.orderId, candidateNumbers),
-        ),
-      );
-    for (const r of found) {
-      if (r.orderId) existing.add(r.orderId);
-    }
-  }
-
-  const toInsert = deduped.filter((e) => {
-    if (existing.has(e.canonical.order_number)) {
-      skipped += 1;
-      return false;
-    }
-    return true;
-  });
-
-  // 4. Hand the NEW rows to the shared order-ingest writer.
+  // 3. Hand EVERY deduped row to the shared order-ingest writer — the ones
+  //    this org already has included.
   //
-  //    Only genuinely-new order numbers reach it (step 3 already skipped the
-  //    ones this org has). That is deliberate: the writer's default `orderId`
-  //    match also COLLAPSES DUPLICATES by deleting the losing rows, and a user
+  //    This route used to pre-filter existing order numbers out of the batch
+  //    and report them as `skipped`, because the writer's default `orderId`
+  //    match COLLAPSES DUPLICATES by deleting the losing rows and a user
   //    uploading a spreadsheet must never be able to delete existing orders.
-  //    Pre-filtering keeps this lane insert-only, exactly as before.
+  //    That guarantee was right; expressing it as a pre-filter was not — it
+  //    made the lane insert-only, so re-uploading a file whose rows had since
+  //    gained a tracking number, a ship-by, a title or a condition wrote none
+  //    of them and called the whole file skipped.
   //
-  //    Going through the writer fixes a silent data-loss bug: this route used
-  //    to insert `shippingTrackingNumber` and `isShipped`, neither of which is
-  //    a real `orders` column any more (tracking lives in
+  //    `collapseDuplicates: false` states the guarantee at the layer that owns
+  //    it, and lets existing orders reach the writer's ADDITIVE backfill path:
+  //    it fills blanks and never overwrites, so an operator's correction always
+  //    survives the next upload.
+  //
+  //    Going through the writer also fixes a silent data-loss bug: this route
+  //    used to insert `shippingTrackingNumber` and `isShipped`, neither of
+  //    which is a real `orders` column any more (tracking lives in
   //    shipping_tracking_numbers + shipment_links). Drizzle dropped both keys
   //    without error, so every tracking number in an imported CSV was thrown
   //    away. The writer resolves it to a shipment and links it properly.
   let inserted = 0;
-  if (toInsert.length > 0) {
+  let updated = 0;
+  if (deduped.length > 0) {
     try {
       const result = await ingestCanonicalOrders(
-        toInsert.map(({ canonical }) => ({
+        deduped.map(({ canonical }) => ({
           externalOrderId: canonical.order_number,
-          itemNumber: '',
+          // A marketplace item number (ASIN / eBay listing id) when the file
+          // has one — it resolves through `sku_platform_ids.platform_item_id`,
+          // a path the SKU lookup cannot reach. When the file has only a SKU
+          // the writer falls back to it via `resolveListingIdentity` on a
+          // catalog miss, so either way the order lands in the catalog-link
+          // queue instead of writing a blank `orders.item_number` and being
+          // unlinkable forever.
+          itemNumber: canonical.item_number || '',
           sku: canonical.sku || '',
-          productTitle: '',
-          condition: '',
+          productTitle: canonical.item_title || '',
+          condition: canonical.condition || '',
           quantity: canonical.quantity || '1',
-          // The mapped `customer_name` column is a BUYER, not a note. It used
-          // to land as `notes: "Customer: <name>"`, which made the buyer
-          // invisible to every customer-scoped read and put import prose in the
-          // column operators type into. The writer now resolves it to a
-          // `customers` row and sets `orders.customer_id`.
-          notes: '',
+          // The mapped `note` column is an operator REMARK, and lands in the
+          // legacy scalar `orders.notes` the writer owns on insert. The mapped
+          // `customer_name` column is a BUYER, not a note: it used to land as
+          // `notes: "Customer: <name>"`, which made the buyer invisible to
+          // every customer-scoped read and put import prose in the column
+          // operators type into. The writer resolves it to a `customers` row
+          // and sets `orders.customer_id`.
+          notes: canonical.note || '',
           customerName: canonical.customer_name || '',
           accountSource: canonical.platform || '',
           trackings: canonical.tracking_number ? [canonical.tracking_number] : [],
-          shipByDate: null,
+          // END of the named warehouse civil day — a ship-by is a deadline, and
+          // a blank/unparseable cell is unknown (null), never today. Shared
+          // with the Google-Sheet lane, which reads the same file shapes.
+          shipByDate: resolveSpreadsheetShipByDate(canonical.ship_by_date),
           orderDate: null,
           saleAmount: null,
           currency: null,
           status: null,
         })),
-        { orgId: ctx.organizationId, source: 'orders-import-csv' },
+        {
+          orgId: ctx.organizationId,
+          source: 'orders-import-csv',
+          // See the block above — never let an upload delete existing orders.
+          collapseDuplicates: false,
+          // Only claim an opinion about deadlines when the file actually
+          // carries one. `upsertOrderDeadline` CREATES an OPEN TEST assignment
+          // when none exists, so managing deadlines with no mapped ship-by
+          // column would fill the tech queue with null-deadline assignments —
+          // one per row of every CSV ever uploaded.
+          manageDeadlines: Boolean(mapping.ship_by_date),
+        },
       );
       inserted = result.insertedOrders;
+      updated = result.processedOrders - result.insertedOrders;
     } catch (error: any) {
       console.error('CSV order import insert error:', error);
       return NextResponse.json(
@@ -191,15 +209,16 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
     source: 'orders-import-csv',
     action: 'orders.import',
     entityType: AUDIT_ENTITY.ORDER,
-    entityId: `csv:${inserted}`,
+    entityId: `csv:${inserted}+${updated}`,
     method: 'system',
     extra: {
       inserted,
+      updated,
       skipped,
       errorCount: errors.length,
       rowCount: rows.length,
     },
   });
 
-  return NextResponse.json({ inserted, skipped, errors });
+  return NextResponse.json({ inserted, updated, skipped, errors });
 }, { permission: 'orders.import' });

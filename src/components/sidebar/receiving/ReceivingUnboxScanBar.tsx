@@ -10,7 +10,6 @@ import {
 } from '@/components/station/scan-bar';
 // From the light scan-parser module — importing via lib/support/tickets drags
 // the server-only tenancy/db (Neon driver) into this client bundle.
-import { looksLikeTicketScan } from '@/lib/support/ticket-scan';
 import type { UnboxPreviewHit } from '@/lib/receiving/preview-scan';
 
 export type UnboxScanMode = 'ticket' | 'tracking' | 'order';
@@ -59,16 +58,6 @@ const UNBOX_SCAN_MODE_FULL_LABEL: Record<UnboxScanMode, string> = {
 
 function modeMeta(mode: UnboxScanMode): UnboxScanModeMeta {
   return UNBOX_SCAN_MODES.find((m) => m.mode === mode) ?? UNBOX_SCAN_MODES[1];
-}
-
-/**
- * Display-only hint when the operator hasn't armed a mode.
- * It does NOT decide resolution — an un-armed scan submits `'auto'` and the
- * server deep-scans ticket #, PO #, and tracking # before creating a carton.
- */
-export function classifyUnboxScan(value: string): UnboxScanMode {
-  if (looksLikeTicketScan(value)) return 'ticket';
-  return value.includes('-') ? 'order' : 'tracking';
 }
 
 interface Props {

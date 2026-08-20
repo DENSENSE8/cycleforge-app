@@ -19,6 +19,13 @@
  * Ordering is the Root Index's own (`verification → assets → context`, groups
  * omitted when empty), NOT recency — a fixed rail is reachable by muscle memory
  * and a reordering one is not.
+ *
+ * **It now gets that order from `groupDisplayIndexRows`, the same function the
+ * open list uses (fixed 2026-08-19).** This file used to paint `rows` in raw
+ * array order while `StationDisplayIndexList` grouped them, so the parked strip
+ * and the open index disagreed about sequence — the same displays in a
+ * different order depending on whether the column was open. A docblock claiming
+ * "the Root Index's own ordering" is not ordering; calling the grouper is.
  */
 
 import type { SectionTab } from '@/design-system/components';
@@ -29,7 +36,7 @@ import {
 } from '@/components/layout/header-shell';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { cn } from '@/utils/_cn';
-import type { DisplayIndexRow } from './display-index';
+import { groupDisplayIndexRows, type DisplayIndexRow } from './display-index';
 
 /**
  * ONE icon-chrome token, shared with the 40px nav beam.
@@ -69,7 +76,10 @@ export function StationDisplaysParkedRail({
   activeId?: string | null;
 }) {
   const iconById = new Map(tabs.map((t) => [t.id, t.icon]));
-  const painted = rows.filter((row) => iconById.get(row.id));
+  // Flatten the SAME grouped sequence the open index renders, so a display sits
+  // at the same ordinal whether the column is parked or open.
+  const ordered = groupDisplayIndexRows(rows).flatMap((section) => section.rows);
+  const painted = ordered.filter((row) => iconById.get(row.id));
   if (painted.length === 0) return null;
 
   return (

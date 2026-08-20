@@ -41,3 +41,24 @@ describe('classifyHistoryCommandScan', () => {
     assert.deepEqual(hit, { kind: 'find', raw: '1Z999AA10123456784' });
   });
 });
+
+test('ordinary find text is NOT swallowed as a handle', () => {
+  // `routeScan` guesses `bin` for any unrecognised string, and this classifier
+  // read that guess as a handle — so a product name, a part number and a plain
+  // serial all returned `passthrough` and the find never ran. Only a carrier
+  // number (which guesses `sku`) reached `find` at all.
+  for (const raw of ['Dell Latitude 7420', 'HP-PSU-450', 'CN1A2B3XYZ', '1Z999AA10123456784']) {
+    assert.deepEqual(classifyHistoryCommandScan(raw), { kind: 'find', raw }, raw);
+  }
+});
+
+test('a real DECODE still wins over find', () => {
+  assert.deepEqual(classifyHistoryCommandScan('R-1234'), {
+    kind: 'open_carton',
+    receivingId: 1234,
+  });
+  // Handles this table cannot open defer rather than search for their own label.
+  for (const raw of ['U-CN1A2B3', 'A0101101', 'T-9395']) {
+    assert.deepEqual(classifyHistoryCommandScan(raw), { kind: 'passthrough', raw }, raw);
+  }
+});

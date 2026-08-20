@@ -11,6 +11,11 @@
  *
  * Gated by admin.manage_features (these are global-impact credentials)
  * plus step-up to prevent CSRF-style replays.
+ *
+ * Self-hosted AI endpoints are PROBED before persisting — a hand-typed URL is
+ * the one credential whose "works on my machine" and "works from the server"
+ * routinely differ, and saving an unreachable one fails later as a mysterious
+ * "AI is not working" with nothing pointing back at the URL.
  */
 
 import { NextResponse, after } from 'next/server';
@@ -32,6 +37,7 @@ import {
   parseIntegrationPayloadInput,
 } from '@/lib/integrations/credential-schemas';
 import { mergeVaultPayload } from '@/lib/integrations/credential-payload';
+import { modelWarning, probeAiEndpoint } from '@/lib/ai/provider-probe';
 
 const Body = z.object({
   provider: z.enum(VAULT_UPSERT_PROVIDERS),
@@ -100,6 +106,36 @@ export const POST = withAuth(async (req, ctx) => {
     );
   }
 
+  // Verify the endpoint ACTUALLY answers before persisting (integration-connector
+  // skill: "verify the connection works before persisting").
+  //
+  // Only the self-hosted slot is probed. The cloud providers are fixed, known-good
+  // hosts whose only failure mode is a bad key — which their own first call
+  // surfaces — whereas a self-hosted URL is typed by hand and is the one case
+  // where "works from my laptop" and "works from the server" routinely differ.
+  let probeNote: string | null = null;
+  if (provider === 'ollama') {
+    const cfg = validated.payload as Record<string, string | undefined>;
+    const probe = await probeAiEndpoint({
+      // Probe what RUNTIME will use: tunnelUrl wins over baseUrl, exactly as
+      // resolveOrgAiConfig resolves it. Probing the other one would bless a URL
+      // no call will ever make.
+      baseURL: String(cfg.tunnelUrl || cfg.baseUrl || ''),
+      apiKey: cfg.apiKey,
+      headers: {
+        ...(cfg.cfAccessClientId ? { 'CF-Access-Client-Id': cfg.cfAccessClientId } : {}),
+        ...(cfg.cfAccessClientSecret ? { 'CF-Access-Client-Secret': cfg.cfAccessClientSecret } : {}),
+      },
+    });
+    if (!probe.ok) {
+      return NextResponse.json(
+        { error: 'ENDPOINT_UNREACHABLE', detail: probe.reason },
+        { status: 400 },
+      );
+    }
+    probeNote = modelWarning(probe.models, cfg.model) ?? probe.note ?? null;
+  }
+
   await upsertIntegrationCredentials({
     orgId: ctx.organizationId,
     provider,
@@ -123,7 +159,10 @@ export const POST = withAuth(async (req, ctx) => {
       }
     });
   }
-  return NextResponse.json({ status: 'ok' });
+  // `warning` is advisory — the credential IS saved. A named-but-unlisted model
+  // must not block the save: the listing can be empty, and a model can be
+  // pulled after the endpoint is connected.
+  return NextResponse.json({ status: 'ok', ...(probeNote ? { warning: probeNote } : {}) });
 }, {
   permission: 'admin.manage_features',
   stepUp: true,

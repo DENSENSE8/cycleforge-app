@@ -167,7 +167,7 @@ export interface ReceivingLinesTableProps {
    * Host owns WorkbenchChromeHeader (Unbox workbench). Suppresses the table's
    * own History/Incoming chrome; week pill portals into `toolbarPortalTarget`
    * (controls slot). Column display is neither the host's nor this portal's —
-   * it is the grid's own header lip (chrome Fields retired 2026-08-02).
+   * it is the grid's own header lip — chrome never carries Fields.
    */
   embedded?: boolean;
   /** Portal ▦ column trigger into Unbox History View controls (week lives in Refine). */

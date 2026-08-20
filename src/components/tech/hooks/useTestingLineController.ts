@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { unwrapScannedSerial } from '@/lib/barcode-routing';
 import { toast } from '@/lib/toast';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -338,7 +339,10 @@ export function useTestingLineController(
 
   const submitSerial = useCallback(
     async (lineId: number, raw: string) => {
-      const serial = (raw ?? '').trim();
+      // A printed unit label carries a GS1 Digital Link / element string /
+      // `U-{serial}` — never a bare serial. Decode through the ONE decoder
+      // before anything optimistic or persisted reads it.
+      const serial = unwrapScannedSerial(raw ?? '');
       if (!serial || serialSubmittingRef.current) return;
       // A linked carton is NOT required — the scan-serial route attaches by
       // receiving_line_id, so a returned unit on a not-yet-cartoned line can still

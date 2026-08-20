@@ -1,3 +1,5 @@
+import { toPSTDateKey, warehouseDayUtcBounds } from '@/utils/date';
+
 /**
  * `CanonicalOrder` — the normalization boundary for order ingest.
  *
@@ -173,4 +175,36 @@ export function groupCanonicalOrderLines(lines: CanonicalOrderLine[]): Canonical
   }
 
   return Array.from(byOrderId.values());
+}
+
+/**
+ * Resolve a SPREADSHEET ship-by cell to the END of that warehouse civil day.
+ *
+ * Shared by every spreadsheet-shaped lane — the Google Sheet adapter and the
+ * CSV import, which read the same operator-authored files in the same formats.
+ * It lived in `sources/google-sheet-rows.ts` until the CSV lane gained a
+ * mappable ship-by column; a second copy would have re-earned both bugs below
+ * independently, which is the whole reason they are documented here.
+ *
+ *  1. `new Date('2026-07-15')` parses as UTC midnight, which is 5pm the
+ *     PREVIOUS day in the warehouse zone — every date-only ship-by landed a day
+ *     early. `toPSTDateKey` normalizes the sheet's shapes (`YYYY-MM-DD`,
+ *     `M/D/YYYY`, a datetime) to one civil key first.
+ *  2. A blank cell must NOT fall back to today. That stamped the import day as
+ *     the deadline, so an order was born already at its due date and read as
+ *     overdue the next morning — 61% of the live Pending queue carried a
+ *     deadline equal to its own creation date because of it. A missing ship-by
+ *     is unknown (null); display already falls back to the created date.
+ *
+ * End-of-day rather than midnight because a ship-by is a deadline: the order is
+ * on time until that warehouse day closes (matches the FBA path's 23:59:59).
+ */
+export function resolveSpreadsheetShipByDate(rawShipByDate: unknown): Date | null {
+  const raw = cleanText(rawShipByDate);
+  if (!raw) return null;
+  const dateKey = toPSTDateKey(raw);
+  if (!dateKey) return null;
+  // An unparseable civil key yields no bounds — treat it as unknown, not today.
+  const bounds = warehouseDayUtcBounds(dateKey);
+  return bounds ? new Date(bounds.endIso) : null;
 }

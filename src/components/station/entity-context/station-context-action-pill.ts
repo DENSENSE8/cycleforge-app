@@ -84,9 +84,18 @@ export const STATION_CONTEXT_PHOTO_TONE =
  * Photos on the one-row carton chrome — same cell geometry as listing/claim
  * (h-full, house inset, no leading hairline) + {@link STATION_CONTEXT_PHOTO_TONE}
  * wash (the photos SoT). Camera + count; glyph is h-3.5, never the h-11 flush cube.
+ *
+ * **`w-11` (44px) is a lock, not a suggestion.** Left content-sized, the cell
+ * grew and shrank with the photo count — 1 → 2 → 10 photos each produced a
+ * different width, and because Photos sits in the trailing cluster every cell
+ * to its left shifted horizontally as an operator captured. A fixed track keeps
+ * the strip still. Camera (h-3.5) + `gap-0.5` + a two-digit count at
+ * {@link STATION_CHROME_CELL_TEXT} measures ~42px inside `px-1.5`, so 44 holds
+ * it centred with a hair of room; a three-digit count is intentionally allowed
+ * to fill the track rather than widen it.
  */
 export const STATION_CONTEXT_PHOTO_CHROME_CLASS = [
-  'ds-raw-button relative z-base flex h-full shrink-0 items-center justify-center gap-0.5 leading-none',
+  'ds-raw-button relative z-base flex h-full w-11 shrink-0 items-center justify-center gap-0.5 leading-none',
   cornerClass('flush'),
   `border-0 px-1.5 ${STATION_CHROME_CELL_TEXT} shadow-none`,
   STATION_CONTEXT_PHOTO_TONE,

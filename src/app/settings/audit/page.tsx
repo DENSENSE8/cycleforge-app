@@ -141,8 +141,8 @@ export default async function AuditPage({ searchParams }: PageProps) {
 
   return (
     <div className="min-h-screen bg-surface-canvas antialiased">
-      <PageHeader title="Audit log" maxWidth="6xl" />
-      <div className="mx-auto max-w-6xl space-y-4 px-6 py-6">
+      <PageHeader title="Audit log" />
+      <div className="space-y-4 px-6 py-6">
         <p className="text-sm text-text-soft">
           Every privileged write, every permission denial. Last {PAGE_SIZE} rows{source || action ? ' matching filter' : ''}.
         </p>

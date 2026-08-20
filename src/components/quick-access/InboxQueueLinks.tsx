@@ -49,10 +49,19 @@ import { useMyDayFeed } from '@/features/my-day/useMyDayFeed';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 
+/**
+ * Track count is CONTAINER-relative (`auto-fill`), never a viewport breakpoint.
+ * The strip has two hosts at very different widths — the ~320px bell popover and
+ * the full-width Inbox page — and a `lg:grid-cols-6` would widen the popover on
+ * a large screen while doing nothing for a narrow one. A fixed two-track grid was
+ * right for the popover and left two 600px-wide doors on the page.
+ */
+const QUEUE_LINK_GRID_CLASS = 'grid grid-cols-[repeat(auto-fill,minmax(9rem,1fr))] gap-1';
+
 /** Reserve the strip's box while the feed settles, so the list below cannot jump. */
 function QueueLinksSkeleton() {
   return (
-    <div className="grid grid-cols-2 gap-1 px-2 py-2" aria-hidden>
+    <div className={cn(QUEUE_LINK_GRID_CLASS, 'px-2 py-2')} aria-hidden>
       {[0, 1, 2, 3].map((i) => (
         <div key={i} className={cn('h-7 animate-pulse bg-surface-hover', cornerClass('flush'))} />
       ))}
@@ -76,7 +85,7 @@ export function InboxQueueLinks({ onNavigate }: { onNavigate: () => void }) {
       <p className="px-1 pb-1 text-role-eyebrow uppercase tracking-widest text-text-soft">
         Your queues
       </p>
-      <ul className="grid grid-cols-2 gap-1">
+      <ul className={QUEUE_LINK_GRID_CLASS}>
         {cards.map((card) => (
           <li key={card.key} className="min-w-0">
             <Link

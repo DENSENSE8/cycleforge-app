@@ -46,7 +46,10 @@ import {
   enqueueCatalogLinkChoresForImport,
   type EnqueueCatalogLinkChoreInput,
 } from '@/lib/inventory/order-catalog-link-chores';
-import { shouldEnqueueCatalogLinkChore } from '@/lib/inventory/order-catalog-link-chore-gates';
+import {
+  resolveListingIdentity,
+  shouldEnqueueCatalogLinkChore,
+} from '@/lib/inventory/order-catalog-link-chore-gates';
 import type { SyncProgress, TransferOrderDetail } from '@/lib/orders-sync/types';
 import { groupCanonicalOrderLines, type CanonicalOrderLine } from '@/lib/orders/canonical-order';
 
@@ -389,6 +392,21 @@ interface IngestCanonicalOrdersOptions {
    */
   manageDeadlines?: boolean;
   /**
+   * Fold every row matching `matchOn` onto the richest one and DELETE the
+   * losers. Default true — the spreadsheet contract, where the same id twice is
+   * a duplicate row to clean up.
+   *
+   * A **user-uploaded** file passes false. `POST /api/orders/import-csv` used to
+   * express that by pre-filtering every already-existing order out of the batch
+   * before the writer saw it, which made the lane insert-only — and therefore
+   * unable to BACKFILL. A re-upload of a file whose rows had gained a tracking
+   * number, a ship-by or a title wrote none of them, and reported the whole
+   * file as `skipped`. This is the same guarantee expressed at the right layer:
+   * existing orders reach the additive backfill path (which fills blanks and
+   * never overwrites), and nothing is deleted.
+   */
+  collapseDuplicates?: boolean;
+  /**
    * Title stored on INSERT when neither the source nor the catalog knows one
    * (e.g. `'Square order'`). It is deliberately NOT used on update, so a real
    * title that arrives later replaces it, and it can never overwrite one.
@@ -417,6 +435,7 @@ export async function ingestCanonicalOrders(
     matchOn = 'orderId',
     authoritative = {},
     manageDeadlines = true,
+    collapseDuplicates = true,
     fallbackProductTitle = '',
   }: IngestCanonicalOrdersOptions,
 ): Promise<IngestCanonicalOrdersResult> {
@@ -758,6 +777,15 @@ export async function ingestCanonicalOrders(
       resolvedItemNumber = platformItemIdByCatalogId.get(skuCatalogId) ?? '';
     }
 
+    // A source that names the product only by SKU (CSV import, ShipStation)
+    // still needs SOME listing identity on the row, or the catalog-link queue
+    // can neither ask about it nor heal it later. See `resolveListingIdentity`.
+    resolvedItemNumber = resolveListingIdentity({
+      itemNumber: resolvedItemNumber,
+      sku: resolvedSku,
+      skuCatalogId,
+    });
+
     return { sku: resolvedSku, itemNumber: resolvedItemNumber, skuCatalogId, titleSource, productTitle };
   };
 
@@ -802,10 +830,16 @@ export async function ingestCanonicalOrders(
     };
 
     if (catalogLink.titleSource === 'none') detailsUnknownTitle.push(detailRow);
-    if (shouldEnqueueCatalogLinkChore({ rawItemNumber: order.itemNumber, skuCatalogId: catalogLink.skuCatalogId })) {
+    // Gate on the RESOLVED identity, not the raw one: the raw value is blank on
+    // every lane but Sheets, and the chore + the `orders.item_number` the
+    // cascade matches must be the same string or a link heals nothing.
+    if (shouldEnqueueCatalogLinkChore({
+      rawItemNumber: catalogLink.itemNumber,
+      skuCatalogId: catalogLink.skuCatalogId,
+    })) {
       detailsUnmatchedCatalog.push(detailRow);
       catalogLinkChoresToEnqueue.push({
-        itemNumber: order.itemNumber,
+        itemNumber: catalogLink.itemNumber,
         accountSource: order.accountSource,
         productTitle: catalogLink.productTitle,
         sku: catalogLink.sku,
@@ -849,16 +883,21 @@ export async function ingestCanonicalOrders(
       // Collapse duplicates: keep the row carrying the most populated fields,
       // inherit the losers' shipment ids, delete the rest.
       const candidateList = allOrdersByKey.get(matchKey(order.accountSource, orderId)) ?? [existingOrder];
+      const score = (o: OrderProjection) =>
+        [o.productTitle, o.condition, o.itemNumber, o.sku, o.quantity, o.notes].filter((v) => !isBlank(v)).length;
       let orderToKeep: OrderProjection;
       if (candidateList.length > 1) {
-        const score = (o: OrderProjection) =>
-          [o.productTitle, o.condition, o.itemNumber, o.sku, o.quantity, o.notes].filter((v) => !isBlank(v)).length;
         const sorted = [...candidateList].sort((a, b) => score(b) - score(a));
         orderToKeep = sorted[0];
-        sorted.slice(1).forEach((o) => {
-          if (o.shipmentId != null) shipmentIds.add(Number(o.shipmentId));
-          ordersToDelete.push({ id: o.id, detail: detailRow });
-        });
+        // Without collapse the losers keep existing, so they keep their own
+        // shipment links — inheriting them here would move a live row's
+        // tracking onto a sibling that still points at it.
+        if (collapseDuplicates) {
+          sorted.slice(1).forEach((o) => {
+            if (o.shipmentId != null) shipmentIds.add(Number(o.shipmentId));
+            ordersToDelete.push({ id: o.id, detail: detailRow });
+          });
+        }
       } else {
         orderToKeep = candidateList[0];
       }

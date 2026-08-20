@@ -56,6 +56,23 @@ export const ClipboardList = ({ className = "w-6 h-6" }: { className?: string })
     </svg>
 );
 
+/**
+ * ListChecks — the DAILY CHECKLIST glyph (Home → Daily).
+ *
+ * Deliberately not `ClipboardList`, which Home → Tasks already owns: two rows
+ * on one switcher must not share a mark, or the operator cannot tell the
+ * repeating daily list from project task work at a glance.
+ *
+ * Ticks + lines, no clipboard body — a list you run, not a document you carry.
+ * strokeWidth={2} is the module default; nav surfaces override it to 1.5 via
+ * NAV_ICON_STROKE_CLASS (`!important`), so this stays the bare glyph.
+ */
+export const ListChecks = ({ className = "w-6 h-6" }: { className?: string }) => (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6.5l2 2 4-4M3 16.5l2 2 4-4M13 7h8M13 17h8" />
+    </svg>
+);
+
 export const FileText = ({ className = "w-6 h-6" }: { className?: string }) => (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />

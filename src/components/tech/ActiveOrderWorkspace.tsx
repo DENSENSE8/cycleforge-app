@@ -11,7 +11,8 @@ import {
   buildSectionTabs,
 } from '@/components/station/workbench';
 import {
-  StationDisplaysEdgeToggle,
+  StationDisplaysParkedRail,
+  StationDisplaysUtilityRail,
   StationDisplaysPushStack,
   STATION_DISPLAY_INDEX,
   useYieldStationDisplaysOnAssistantOpen,
@@ -19,7 +20,6 @@ import {
 } from '@/components/station/displays';
 import { StationConditionEditor } from '@/components/tech/StationConditionEditor';
 import { ListingLinksTab } from '@/components/receiving/workspace/line-edit/ListingLinksTab';
-import { FlushTerminalFooter } from '@/design-system/primitives/FlushTerminalFooter';
 import { DISPLAYS_BODY_INSET } from '@/design-system/shells/detail-stack';
 import { cn } from '@/utils/_cn';
 import type { ActiveStationOrder } from '@/hooks/useStationTestingController';
@@ -31,7 +31,6 @@ import {
   ShippingEntityContextHeader,
   ShippingOutOfStockNotice,
 } from './shipping/ShippingEntityContextHeader';
-import { PackLocationControl } from './shipping/PackLocationControl';
 import { PackLocationsLeaf } from './shipping/PackLocationsLeaf';
 import { usePackOrderPlacement } from './shipping/usePackOrderPlacement';
 import { resolveShippingListingLinks } from './shipping/shipping-listing-links';
@@ -234,6 +233,11 @@ export function ActiveOrderWorkspace({
     placement.locationName,
   ]);
 
+  // Declared above `displayTabs` on purpose: the Locations leaf inside that memo
+  // calls it, and the memo factory runs at ITS line during render — a `const`
+  // below would be in the temporal dead zone when the factory reads it.
+  const closeDisplays = useCallback(() => setActiveSideTab(null), []);
+
   const displayTabs = useMemo(
     () =>
       buildSectionTabs([
@@ -281,7 +285,12 @@ export function ActiveOrderWorkspace({
           label: 'Locations',
           icon: MapPin,
           visible: packOrderId != null,
-          content: <PackLocationsLeaf placement={placement} />,
+          // Placing the order on a bench is a completed errand — hand the
+          // operator back to the work instead of leaving the column parked
+          // open, the same close-on-placed contract Arrival's leaf uses.
+          content: (
+            <PackLocationsLeaf placement={placement} onPlaced={closeDisplays} />
+          ),
         },
         {
           id: 'listings',
@@ -314,20 +323,12 @@ export function ActiveOrderWorkspace({
       listingLink,
       packOrderId,
       placement,
+      closeDisplays,
     ],
   );
 
-  /**
-   * Station-floor location pill → Displays → Locations. Toggles, so a second
-   * click on New location closes the column instead of re-opening it.
-   */
-  const openLocationsDisplay = useCallback(() => {
-    setActiveSideTab((prev) => (prev === 'locations' ? null : 'locations'));
-  }, []);
-
   /** `←|` Open displays → the Root Index, not `displayTabs[0]`. */
   const openDisplaysIndex = useCallback(() => setActiveSideTab(STATION_DISPLAY_INDEX), []);
-  const closeDisplays = useCallback(() => setActiveSideTab(null), []);
   useYieldStationDisplaysOnAssistantOpen(closeDisplays);
 
   const resolvedSideTab: ShippingDisplayNav | null = useMemo(() => {
@@ -339,9 +340,19 @@ export function ActiveOrderWorkspace({
   }, [activeSideTab, displayTabs]);
 
   const utilityRailBody = !resolvedSideTab ? (
-    <div className="flex flex-col items-center gap-0 pt-0">
-      <StationDisplaysEdgeToggle variant="pane-open" onClick={openDisplaysIndex} />
-    </div>
+    <StationDisplaysUtilityRail
+      onOpenDisplays={openDisplaysIndex}
+      indexRail={
+        <StationDisplaysParkedRail
+          rows={displayIndexRows}
+          tabs={displayTabs}
+          activeId={activeSideTab ?? null}
+          onOpenLeaf={(id) =>
+            setActiveSideTab(id as Parameters<typeof setActiveSideTab>[0])
+          }
+        />
+      }
+    />
   ) : null;
 
   // Host (`TechRightPane`) owns scan-cadence swap; this panel is opaque content.
@@ -393,17 +404,12 @@ export function ActiveOrderWorkspace({
                   ) : null}
                 </>
               }
-              footer={
-                packOrderId != null ? (
-                  <FlushTerminalFooter layout="cluster">
-                    <PackLocationControl
-                      orderId={packOrderId}
-                      placement={placement}
-                      onOpenLocations={openLocationsDisplay}
-                    />
-                  </FlushTerminalFooter>
-                ) : null
-              }
+              // No footer band. The pack-desk picker left the centre 2026-08-20:
+              // choosing a bench is a DESTINATION, and a destination sitting in
+              // the work surface stops the operator's eye before they have done
+              // the job. Desks now live only in Displays → Locations
+              // (`PackLocationsLeaf`), the same place every other station's
+              // placement lives.
               tabs={
                 <ShippingScanWorkspace
                   activeOrder={activeOrder}

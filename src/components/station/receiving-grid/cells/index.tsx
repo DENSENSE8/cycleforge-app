@@ -1,5 +1,6 @@
 'use client';
 
+import { GridFillCell } from '@/design-system/components/grid';
 import type { ReactNode } from 'react';
 import type { IncomingGridColumn, ReceivingGridColumn } from '@/lib/receiving/receiving-grid-layout';
 import { CustomFieldCell } from '@/components/tables/CustomFieldCell';
@@ -91,15 +92,8 @@ export function renderReceivingGridCell(
     case 'zoho':
       return <ReceivingZohoCell {...props} />;
     case '_fill':
-      // Structural slack track — empty header/body; never a fact column.
-      return (
-        <div
-          data-col="_fill"
-          role="presentation"
-          aria-hidden
-          className={`${receivingDataCellClass(col, false, ctx)} min-h-0`}
-        />
-      );
+      // Structural slack track — the shared cell, not a per-family copy.
+      return <GridFillCell />;
     default: {
       if (isCustomFieldColumnKey(col.key)) {
         const defKey = parseCustomFieldDefKey(col.key);

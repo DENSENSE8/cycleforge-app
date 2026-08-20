@@ -23,6 +23,7 @@ export type { CatalogKind } from './CatalogManagerList';
 const TITLE: Record<CatalogKind, string> = {
   platform: 'Manage platforms',
   type: 'Manage types',
+  priority: 'Manage priorities',
 };
 
 export function CatalogManagerPopover({

@@ -121,7 +121,13 @@ export type TableId =
    * bucket, never `orders`: hiding a column while triaging a file must not
    * change the density of the live queue those rows are about to land in.
    */
-  | 'orders-import';
+  | 'orders-import'
+  /**
+   * Home → Daily shift checklist. Its OWN bucket: hiding `team` on a personal
+   * checklist must not touch any operator queue's density, and no queue shares
+   * these keys.
+   */
+  | 'daily';
 
 /** Canonical meta-slot keys (the left-side qty | condition | rest grid). */
 export const META_KEYS = {
@@ -277,6 +283,13 @@ export const TABLE_COLUMNS: Record<TableId, TableColumnSpec[]> = {
   // `src/components/outbound/orders/import-staging/csv-import-staging-grid-layout.ts`.
   // `select` / `order` are frozen identity and `status` is the triage state —
   // all three are structural, so none of them is offered here.
+  // Home → Daily. `select` and `task` are frozen identity, so neither is
+  // offered — a checklist you cannot read the name of is not a checklist.
+  daily: [
+    META_STATUS,
+    GRID_COL('team', 'Team', 'number'),
+    GRID_COL('marked', 'Checked', 'date'),
+  ],
   'orders-import': [
     GRID_COL('sku', 'SKU', 'id'),
     GRID_COL('qty', 'Quantity', 'number'),

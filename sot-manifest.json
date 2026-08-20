@@ -30,7 +30,7 @@
     "src/lib/orders-sync",
     "src/hooks"
   ],
-  "count": 2715,
+  "count": 2723,
   "entries": [
     {
       "job": "Station: Scan pane + Displays push",
@@ -620,7 +620,7 @@
       ],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 76,
+      "line": 77,
       "snippet": "**Compose from the named SoT first; grow it when wrong.** Never fork a page-local twin. Lookup: `node scripts/sot-lookup.mjs \"<job>\"`. New AST-similar copies fail `jscpd` within an interaction contract; station-vs-support clones are filter…"
     },
     {
@@ -633,7 +633,7 @@
       ],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 77,
+      "line": 78,
       "snippet": "**Do not paint over primitives.** `<Button>` fills and `<Panel>` radii resolve through semantic variants (`variant`, `radius`) — never `className` hue/radius overrides. Grow `button-variants.ts` instead."
     },
     {
@@ -649,7 +649,7 @@
       ],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 78,
+      "line": 79,
       "snippet": "**New feature assemblies declare `@domain-job`.** Plus `@hardware-target` (`Station` · `Workbench` · `Monitor` · `Canvas`), `@density` (`floor` · `ops` · `monitor` · `studio`), and `@justification` (why the named host cannot be reused). Gu…"
     },
     {
@@ -664,7 +664,7 @@
       ],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 79,
+      "line": 80,
       "snippet": "**Frame budgets** live in `src/lib/right-rail/frame.ts` — desk center ≥ `MIN_WORK_SURFACE_PX` (784); station Displays keep center ≥ `STATION_PUSH_CENTER_FLOOR_PX` (720); gutters `0`. Right edge **pushes** via `RightRailHost` (`modal={false…"
     },
     {
@@ -682,7 +682,7 @@
       ],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 80,
+      "line": 81,
       "snippet": "**Right-rail dismiss is host-owned, ONE control, ONE closer.** `RightRailHost` paints the single `X` (top-RIGHT); `closeRightPanel()` (`lib/right-rail/close.ts`) unmounts the occupant, caches `draftData`, toasts Resume, **and** runs the oc…"
     },
     {
@@ -695,7 +695,7 @@
       ],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 81,
+      "line": 82,
       "snippet": "**Ops chrome is flush-square** — `WORKBENCH_CHROME_PILL_CLASS` = `cornerClass('flush')` in `workbench-shell.tsx`."
     },
     {
@@ -709,7 +709,7 @@
       ],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 82,
+      "line": 83,
       "snippet": "**Workbench spreadsheets** mount via the table definition registry + `NonlinearTableHost` over `LedgerGridSurface` — never a new `*GridView` twin."
     },
     {
@@ -720,7 +720,7 @@
       "symbols": [],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 83,
+      "line": 84,
       "snippet": "**Motion** only via `@/design-system/motion` + `motionRole.*`. Only `src/design-system/motion/framer.ts` may import `motion/react` or `framer-motion`."
     },
     {
@@ -731,7 +731,7 @@
       "symbols": [],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 84,
+      "line": 85,
       "snippet": "**Color, spacing, type, elevation, focus, and named z-index tokens** come from `@/design-system/tokens` — no page-local hex; no ad-hoc numeric stacking."
     },
     {
@@ -747,7 +747,7 @@
       ],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 85,
+      "line": 86,
       "snippet": "**Platform / order identity** resolves from `source-platform.ts` + chip family (`OrderIdChip` / `PoChip` / `TrackingChip` / `PlatformMark`) — never prose platform names as the channel face."
     },
     {
@@ -761,7 +761,7 @@
       ],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 86,
+      "line": 87,
       "snippet": "**Mount-gated URL opens** paint via `useOptimisticUrlParam` / `resolveOptimisticParam` (`src/hooks/useOptimisticUrlParam.ts`, `src/lib/routing/optimistic-url-param.ts`)."
     },
     {
@@ -772,7 +772,7 @@
       "symbols": [],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 87,
+      "line": 88,
       "snippet": "**Status changes only via `transition()`** (`src/lib/inventory/state-machine.ts`) — never a raw status UPDATE outside the state machine."
     },
     {
@@ -786,7 +786,7 @@
       ],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 88,
+      "line": 89,
       "snippet": "**`orgId` comes from `ctx`**, never the body; org-scoped writes go through `withTenantTransaction` (`src/lib/tenancy/db.ts`)."
     },
     {
@@ -799,7 +799,7 @@
       ],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 89,
+      "line": 90,
       "snippet": "**Cross-entity urgency** resolves only in `promoteUrgency()` (`src/lib/urgency/`)."
     },
     {
@@ -812,7 +812,7 @@
       ],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 91,
+      "line": 92,
       "snippet": "**Conversation bubbles / chat cards** compose `ConversationMessageCard` + `conversation-chrome` (`src/design-system/primitives/`) — never a page-local bubble twin, 75% chat bubble, or Lock-icon internal chip. Helpdesk tickets and entity th…"
     },
     {
@@ -826,7 +826,7 @@
       ],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 92,
+      "line": 93,
       "snippet": "**HID wedge scans** attach via `createWedgeKeyListener` (native capture `keydown`, yield-before-React). Never a React synthetic `onKeyDown` for scanner input; never drop focus; never run scan side-effects on the keydown stack."
     },
     {
@@ -841,7 +841,7 @@
       ],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 93,
+      "line": 94,
       "snippet": "**Kiosk v2 session root is the cart** (`kioskSessionStore`) — Repair / Retail / Buyback / Pickup are commands that swap the center only and never clear lines. Mount wedge via `useWedgeScanner` + `classifyKioskScan` (not warehouse `scan-res…"
     },
     {
@@ -856,7 +856,7 @@
       ],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 94,
+      "line": 95,
       "snippet": "**Live NDJSON / Ably paints** apply through `applyStreamBudget` / `createFrameCoalescer` — never `setState` per stream line or per Ably message during a burst. Orthogonal exception dimensions (SCANNED + PROBLEM) stay on the row payload."
     },
     {
@@ -2416,7 +2416,7 @@
       ],
       "kind": "code",
       "source": "src/components/right-rail/RightRailHost.tsx",
-      "line": 151,
+      "line": 162,
       "snippet": "export RightRailHost from src/components/right-rail/RightRailHost.tsx"
     },
     {
@@ -3092,7 +3092,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/context-panel-column.ts",
-      "line": 47,
+      "line": 46,
       "snippet": "export CONTEXT_PANEL_WIDTH_PX from src/components/sidebar/context-panel-column.ts"
     },
     {
@@ -3105,7 +3105,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/context-panel-column.ts",
-      "line": 56,
+      "line": 55,
       "snippet": "export CONTEXT_PANEL_RESIZE from src/components/sidebar/context-panel-column.ts"
     },
     {
@@ -3118,7 +3118,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/context-panel-column.ts",
-      "line": 92,
+      "line": 91,
       "snippet": "export CONTEXT_PANEL_COLLAPSE from src/components/sidebar/context-panel-column.ts"
     },
     {
@@ -3131,7 +3131,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/context-panel-column.ts",
-      "line": 110,
+      "line": 109,
       "snippet": "export CONTEXT_PANEL_OUTER_MARGIN from src/components/sidebar/context-panel-column.ts"
     },
     {
@@ -3144,7 +3144,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/context-panel-column.ts",
-      "line": 116,
+      "line": 115,
       "snippet": "export CONTEXT_PANEL_OUTER_MARGIN_Y from src/components/sidebar/context-panel-column.ts"
     },
     {
@@ -3157,21 +3157,8 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/context-panel-column.ts",
-      "line": 124,
+      "line": 123,
       "snippet": "export CONTEXT_PANEL_COLLAPSE_STRIP_CLASS from src/components/sidebar/context-panel-column.ts"
-    },
-    {
-      "job": "Export: CONTEXT_PANEL_COLLAPSE_STRIP_FOOTER_CLASS",
-      "sot": "CONTEXT_PANEL_COLLAPSE_STRIP_FOOTER_CLASS",
-      "path": "src/components/sidebar/context-panel-column.ts",
-      "guard": null,
-      "symbols": [
-        "CONTEXT_PANEL_COLLAPSE_STRIP_FOOTER_CLASS"
-      ],
-      "kind": "code",
-      "source": "src/components/sidebar/context-panel-column.ts",
-      "line": 133,
-      "snippet": "export CONTEXT_PANEL_COLLAPSE_STRIP_FOOTER_CLASS from src/components/sidebar/context-panel-column.ts"
     },
     {
       "job": "Export: CONTEXT_PANEL_COLUMN_CLASS",
@@ -3183,7 +3170,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/context-panel-column.ts",
-      "line": 152,
+      "line": 142,
       "snippet": "export CONTEXT_PANEL_COLUMN_CLASS from src/components/sidebar/context-panel-column.ts"
     },
     {
@@ -3196,7 +3183,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/context-panel-column.ts",
-      "line": 170,
+      "line": 160,
       "snippet": "export CONTEXT_PANEL_HOST_CLASS from src/components/sidebar/context-panel-column.ts"
     },
     {
@@ -3820,7 +3807,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/master-nav/SidebarNavList.tsx",
-      "line": 191,
+      "line": 193,
       "snippet": "export SidebarNavList from src/components/sidebar/master-nav/SidebarNavList.tsx"
     },
     {
@@ -6264,7 +6251,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/ReceivingUnboxScanBar.tsx",
-      "line": 16,
+      "line": 15,
       "snippet": "export UnboxScanMode from src/components/sidebar/receiving/ReceivingUnboxScanBar.tsx"
     },
     {
@@ -6277,21 +6264,8 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/ReceivingUnboxScanBar.tsx",
-      "line": 26,
+      "line": 25,
       "snippet": "export UNBOX_SCAN_MODES from src/components/sidebar/receiving/ReceivingUnboxScanBar.tsx"
-    },
-    {
-      "job": "Export: classifyUnboxScan",
-      "sot": "classifyUnboxScan",
-      "path": "src/components/sidebar/receiving/ReceivingUnboxScanBar.tsx",
-      "guard": null,
-      "symbols": [
-        "classifyUnboxScan"
-      ],
-      "kind": "code",
-      "source": "src/components/sidebar/receiving/ReceivingUnboxScanBar.tsx",
-      "line": 69,
-      "snippet": "export classifyUnboxScan from src/components/sidebar/receiving/ReceivingUnboxScanBar.tsx"
     },
     {
       "job": "Export: ReceivingUnboxScanBar",
@@ -6303,7 +6277,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/ReceivingUnboxScanBar.tsx",
-      "line": 100,
+      "line": 89,
       "snippet": "export ReceivingUnboxScanBar from src/components/sidebar/receiving/ReceivingUnboxScanBar.tsx"
     },
     {
@@ -7915,7 +7889,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/tech/left-dock-toggle.tsx",
-      "line": 48,
+      "line": 47,
       "snippet": "export RailFilterCollapseButton from src/components/sidebar/tech/left-dock-toggle.tsx"
     },
     {
@@ -7928,7 +7902,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/tech/left-dock-toggle.tsx",
-      "line": 224,
+      "line": 195,
       "snippet": "export CollapseStripMruPins from src/components/sidebar/tech/left-dock-toggle.tsx"
     },
     {
@@ -7941,7 +7915,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/tech/left-dock-toggle.tsx",
-      "line": 273,
+      "line": 249,
       "snippet": "export LeftDockCollapseStrip from src/components/sidebar/tech/left-dock-toggle.tsx"
     },
     {
@@ -7980,7 +7954,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/tech/TechRailSearchBar.tsx",
-      "line": 60,
+      "line": 65,
       "snippet": "export TechRailSearchBar from src/components/sidebar/tech/TechRailSearchBar.tsx"
     },
     {
@@ -8855,6 +8829,19 @@
       "snippet": "export StationDisplaysHeaderActions from src/components/station/displays/StationDisplaysHeaderActions.tsx"
     },
     {
+      "job": "Export: StationDisplaysParkedRail",
+      "sot": "StationDisplaysParkedRail",
+      "path": "src/components/station/displays/StationDisplaysParkedRail.tsx",
+      "guard": null,
+      "symbols": [
+        "StationDisplaysParkedRail"
+      ],
+      "kind": "code",
+      "source": "src/components/station/displays/StationDisplaysParkedRail.tsx",
+      "line": 56,
+      "snippet": "export StationDisplaysParkedRail from src/components/station/displays/StationDisplaysParkedRail.tsx"
+    },
+    {
       "job": "Export: STATION_DISPLAYS_HOST_PAD_CLASS",
       "sot": "STATION_DISPLAYS_HOST_PAD_CLASS",
       "path": "src/components/station/displays/StationDisplaysPushColumn.tsx",
@@ -8890,7 +8877,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/displays/StationDisplaysPushStack.tsx",
-      "line": 95,
+      "line": 96,
       "snippet": "export StationDisplaysPushStack from src/components/station/displays/StationDisplaysPushStack.tsx"
     },
     {
@@ -8968,7 +8955,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/CartonContextCard.tsx",
-      "line": 132,
+      "line": 134,
       "snippet": "export CartonContextCard from src/components/station/entity-context/CartonContextCard.tsx"
     },
     {
@@ -8981,7 +8968,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-context-action-pill.ts",
-      "line": 27,
+      "line": 30,
       "snippet": "export STATION_CONTEXT_BOXED_CUBE_CLASS from src/components/station/entity-context/station-context-action-pill.ts"
     },
     {
@@ -8994,7 +8981,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-context-action-pill.ts",
-      "line": 42,
+      "line": 45,
       "snippet": "export STATION_CONTEXT_EXIT_PILL_CLASS from src/components/station/entity-context/station-context-action-pill.ts"
     },
     {
@@ -9007,7 +8994,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-context-action-pill.ts",
-      "line": 60,
+      "line": 63,
       "snippet": "export STATION_CONTEXT_ACTION_CELL_CLASS from src/components/station/entity-context/station-context-action-pill.ts"
     },
     {
@@ -9020,7 +9007,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-context-action-pill.ts",
-      "line": 77,
+      "line": 80,
       "snippet": "export STATION_CONTEXT_PHOTO_TONE from src/components/station/entity-context/station-context-action-pill.ts"
     },
     {
@@ -9033,7 +9020,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-context-action-pill.ts",
-      "line": 85,
+      "line": 88,
       "snippet": "export STATION_CONTEXT_PHOTO_CHROME_CLASS from src/components/station/entity-context/station-context-action-pill.ts"
     },
     {
@@ -9046,7 +9033,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-context-action-pill.ts",
-      "line": 105,
+      "line": 108,
       "snippet": "export STATION_CONTEXT_PHOTO_PILL_CLASS from src/components/station/entity-context/station-context-action-pill.ts"
     },
     {
@@ -9059,7 +9046,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-context-action-pill.ts",
-      "line": 111,
+      "line": 114,
       "snippet": "export STATION_CONTEXT_PHOTO_FLUSH_CLASS from src/components/station/entity-context/station-context-action-pill.ts"
     },
     {
@@ -9072,7 +9059,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-context-action-pill.ts",
-      "line": 126,
+      "line": 129,
       "snippet": "export STATION_CONTEXT_CLAIM_CHROME_CLASS from src/components/station/entity-context/station-context-action-pill.ts"
     },
     {
@@ -9085,7 +9072,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-context-action-pill.ts",
-      "line": 141,
+      "line": 144,
       "snippet": "export STATION_CONTEXT_LISTING_CHROME_CLASS from src/components/station/entity-context/station-context-action-pill.ts"
     },
     {
@@ -9098,7 +9085,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-identity-chrome.ts",
-      "line": 31,
+      "line": 32,
       "snippet": "export STATION_IDENTITY_INSET_TOP from src/components/station/entity-context/station-identity-chrome.ts"
     },
     {
@@ -9111,7 +9098,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-identity-chrome.ts",
-      "line": 34,
+      "line": 35,
       "snippet": "export STATION_IDENTITY_INSET_RIGHT from src/components/station/entity-context/station-identity-chrome.ts"
     },
     {
@@ -9124,7 +9111,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-identity-chrome.ts",
-      "line": 41,
+      "line": 42,
       "snippet": "export stationContextBarHostClass from src/components/station/entity-context/station-identity-chrome.ts"
     },
     {
@@ -9137,7 +9124,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-identity-chrome.ts",
-      "line": 50,
+      "line": 51,
       "snippet": "export stationContextBarFlowHostClass from src/components/station/entity-context/station-identity-chrome.ts"
     },
     {
@@ -9150,7 +9137,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-identity-chrome.ts",
-      "line": 58,
+      "line": 59,
       "snippet": "export stationIdentityPanelClass from src/components/station/entity-context/station-identity-chrome.ts"
     },
     {
@@ -9163,7 +9150,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-identity-chrome.ts",
-      "line": 64,
+      "line": 65,
       "snippet": "export stationUtilityPanelClass from src/components/station/entity-context/station-identity-chrome.ts"
     },
     {
@@ -9176,7 +9163,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-identity-chrome.ts",
-      "line": 71,
+      "line": 72,
       "snippet": "export stationIdentityPadClass from src/components/station/entity-context/station-identity-chrome.ts"
     },
     {
@@ -9189,7 +9176,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-identity-chrome.ts",
-      "line": 82,
+      "line": 83,
       "snippet": "export STATION_CHROME_ROW_FACE from src/components/station/entity-context/station-identity-chrome.ts"
     },
     {
@@ -9202,7 +9189,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-identity-chrome.ts",
-      "line": 90,
+      "line": 91,
       "snippet": "export STATION_CHROME_SEAM_HAIRLINE from src/components/station/entity-context/station-identity-chrome.ts"
     },
     {
@@ -9215,7 +9202,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-identity-chrome.ts",
-      "line": 101,
+      "line": 102,
       "snippet": "export STATION_IDENTITY_GROUP_CLASS from src/components/station/entity-context/station-identity-chrome.ts"
     },
     {
@@ -9228,7 +9215,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-identity-chrome.ts",
-      "line": 110,
+      "line": 111,
       "snippet": "export STATION_IDENTITY_LEAD_COL_CLASS from src/components/station/entity-context/station-identity-chrome.ts"
     },
     {
@@ -9241,8 +9228,47 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-identity-chrome.ts",
-      "line": 118,
+      "line": 119,
       "snippet": "export STATION_CHROME_CELL_PAD from src/components/station/entity-context/station-identity-chrome.ts"
+    },
+    {
+      "job": "Export: STATION_CHROME_CELL_TEXT",
+      "sot": "STATION_CHROME_CELL_TEXT",
+      "path": "src/components/station/entity-context/station-identity-chrome.ts",
+      "guard": null,
+      "symbols": [
+        "STATION_CHROME_CELL_TEXT"
+      ],
+      "kind": "code",
+      "source": "src/components/station/entity-context/station-identity-chrome.ts",
+      "line": 140,
+      "snippet": "export STATION_CHROME_CELL_TEXT from src/components/station/entity-context/station-identity-chrome.ts"
+    },
+    {
+      "job": "Export: STATION_CHROME_CELL_LABEL",
+      "sot": "STATION_CHROME_CELL_LABEL",
+      "path": "src/components/station/entity-context/station-identity-chrome.ts",
+      "guard": null,
+      "symbols": [
+        "STATION_CHROME_CELL_LABEL"
+      ],
+      "kind": "code",
+      "source": "src/components/station/entity-context/station-identity-chrome.ts",
+      "line": 154,
+      "snippet": "export STATION_CHROME_CELL_LABEL from src/components/station/entity-context/station-identity-chrome.ts"
+    },
+    {
+      "job": "Export: STATION_CHROME_CELL_INK",
+      "sot": "STATION_CHROME_CELL_INK",
+      "path": "src/components/station/entity-context/station-identity-chrome.ts",
+      "guard": null,
+      "symbols": [
+        "STATION_CHROME_CELL_INK"
+      ],
+      "kind": "code",
+      "source": "src/components/station/entity-context/station-identity-chrome.ts",
+      "line": 162,
+      "snippet": "export STATION_CHROME_CELL_INK from src/components/station/entity-context/station-identity-chrome.ts"
     },
     {
       "job": "Export: STATION_CHROME_GLYPH_CLASS",
@@ -9254,7 +9280,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-identity-chrome.ts",
-      "line": 124,
+      "line": 168,
       "snippet": "export STATION_CHROME_GLYPH_CLASS from src/components/station/entity-context/station-identity-chrome.ts"
     },
     {
@@ -9267,7 +9293,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-identity-chrome.ts",
-      "line": 158,
+      "line": 202,
       "snippet": "export STATION_CHROME_CELL_HOVER_SEAM from src/components/station/entity-context/station-identity-chrome.ts"
     },
     {
@@ -9280,7 +9306,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-identity-chrome.ts",
-      "line": 168,
+      "line": 212,
       "snippet": "export STATION_CHROME_CELL_HOVER_FILL from src/components/station/entity-context/station-identity-chrome.ts"
     },
     {
@@ -9293,7 +9319,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-identity-chrome.ts",
-      "line": 183,
+      "line": 227,
       "snippet": "export STATION_CHROME_HOVER_CELL_CLASS from src/components/station/entity-context/station-identity-chrome.ts"
     },
     {
@@ -9306,7 +9332,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-identity-chrome.ts",
-      "line": 196,
+      "line": 240,
       "snippet": "export STATION_CHROME_CELL_CLASS from src/components/station/entity-context/station-identity-chrome.ts"
     },
     {
@@ -9319,7 +9345,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-identity-chrome.ts",
-      "line": 203,
+      "line": 247,
       "snippet": "export stationIdentityGapClass from src/components/station/entity-context/station-identity-chrome.ts"
     },
     {
@@ -9332,7 +9358,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-identity-chrome.ts",
-      "line": 210,
+      "line": 254,
       "snippet": "export stationMoreDetailsHostClass from src/components/station/entity-context/station-identity-chrome.ts"
     },
     {
@@ -9345,7 +9371,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-identity-chrome.ts",
-      "line": 218,
+      "line": 262,
       "snippet": "export stationMoreDetailsPaneHostClass from src/components/station/entity-context/station-identity-chrome.ts"
     },
     {
@@ -9358,7 +9384,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-identity-chrome.ts",
-      "line": 224,
+      "line": 268,
       "snippet": "export STATION_IDENTITY_SCROLL_CLEARANCE from src/components/station/entity-context/station-identity-chrome.ts"
     },
     {
@@ -9371,7 +9397,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-identity-chrome.ts",
-      "line": 231,
+      "line": 275,
       "snippet": "export STATION_IDENTITY_STACKED_SCROLL_CLEARANCE from src/components/station/entity-context/station-identity-chrome.ts"
     },
     {
@@ -9384,7 +9410,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-identity-chrome.ts",
-      "line": 242,
+      "line": 286,
       "snippet": "export STATION_CHROME_BAR_MENU_ANCHOR from src/components/station/entity-context/station-identity-chrome.ts"
     },
     {
@@ -11217,7 +11243,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/scan-bar/StationScanBar.tsx",
-      "line": 56,
+      "line": 57,
       "snippet": "export StationScanBarProps from src/components/station/scan-bar/StationScanBar.tsx"
     },
     {
@@ -11230,7 +11256,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/scan-bar/StationScanBar.tsx",
-      "line": 148,
+      "line": 149,
       "snippet": "export StationScanBar from src/components/station/scan-bar/StationScanBar.tsx"
     },
     {
@@ -11243,7 +11269,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/scan-bar/StationScanLeadingIcon.tsx",
-      "line": 37,
+      "line": 42,
       "snippet": "export StationScanLeadingIcon from src/components/station/scan-bar/StationScanLeadingIcon.tsx"
     },
     {
@@ -12803,7 +12829,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/workbench/workbench-layout.ts",
-      "line": 115,
+      "line": 118,
       "snippet": "export STATION_UTILITY_RAIL_CLASS from src/components/station/workbench/workbench-layout.ts"
     },
     {
@@ -12816,7 +12842,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/workbench/workbench-layout.ts",
-      "line": 122,
+      "line": 125,
       "snippet": "export STATION_UTILITY_RAIL_FOOTER_CLASS from src/components/station/workbench/workbench-layout.ts"
     },
     {
@@ -12829,7 +12855,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/workbench/workbench-layout.ts",
-      "line": 150,
+      "line": 153,
       "snippet": "export STATION_COLUMN_BUDGET from src/components/station/workbench/workbench-layout.ts"
     },
     {
@@ -12842,7 +12868,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/workbench/workbench-layout.ts",
-      "line": 165,
+      "line": 168,
       "snippet": "export STATION_DISPLAYS_AUTO_CLOSE_FRAME_PX from src/components/station/workbench/workbench-layout.ts"
     },
     {
@@ -12855,7 +12881,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/workbench/workbench-layout.ts",
-      "line": 178,
+      "line": 181,
       "snippet": "export STATION_DISPLAYS_AUTO_CLOSE_HYSTERESIS_PX from src/components/station/workbench/workbench-layout.ts"
     },
     {
@@ -23047,8 +23073,21 @@
       ],
       "kind": "code",
       "source": "src/design-system/tokens/typography/presets.ts",
-      "line": 22,
+      "line": 33,
       "snippet": "export chipText from src/design-system/tokens/typography/presets.ts"
+    },
+    {
+      "job": "Export: chipLabel",
+      "sot": "chipLabel",
+      "path": "src/design-system/tokens/typography/presets.ts",
+      "guard": null,
+      "symbols": [
+        "chipLabel"
+      ],
+      "kind": "code",
+      "source": "src/design-system/tokens/typography/presets.ts",
+      "line": 51,
+      "snippet": "export chipLabel from src/design-system/tokens/typography/presets.ts"
     },
     {
       "job": "Export: qtyProgress",
@@ -23060,7 +23099,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/tokens/typography/presets.ts",
-      "line": 25,
+      "line": 55,
       "snippet": "export qtyProgress from src/design-system/tokens/typography/presets.ts"
     },
     {
@@ -23073,7 +23112,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/tokens/typography/presets.ts",
-      "line": 31,
+      "line": 61,
       "snippet": "export ledgerCell from src/design-system/tokens/typography/presets.ts"
     },
     {
@@ -23086,7 +23125,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/tokens/typography/presets.ts",
-      "line": 34,
+      "line": 64,
       "snippet": "export cardTitle from src/design-system/tokens/typography/presets.ts"
     },
     {
@@ -23099,7 +23138,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/tokens/typography/presets.ts",
-      "line": 42,
+      "line": 72,
       "snippet": "export tableHeader from src/design-system/tokens/typography/presets.ts"
     },
     {
@@ -23112,7 +23151,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/tokens/typography/presets.ts",
-      "line": 45,
+      "line": 75,
       "snippet": "export tableCell from src/design-system/tokens/typography/presets.ts"
     },
     {
@@ -23125,7 +23164,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/tokens/typography/presets.ts",
-      "line": 48,
+      "line": 78,
       "snippet": "export microBadge from src/design-system/tokens/typography/presets.ts"
     },
     {
@@ -23138,7 +23177,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/tokens/typography/presets.ts",
-      "line": 50,
+      "line": 80,
       "snippet": "export typographyPresets from src/design-system/tokens/typography/presets.ts"
     },
     {
@@ -23151,7 +23190,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/tokens/typography/presets.ts",
-      "line": 64,
+      "line": 95,
       "snippet": "export TypographyPresets from src/design-system/tokens/typography/presets.ts"
     },
     {
@@ -24152,7 +24191,7 @@
       ],
       "kind": "code",
       "source": "src/hooks/station/handleSerialScan.ts",
-      "line": 6,
+      "line": 7,
       "snippet": "export handleSerialScan from src/hooks/station/handleSerialScan.ts"
     },
     {
@@ -25157,6 +25196,19 @@
       "snippet": "export useFbaRealtimeInvalidation from src/hooks/useFbaRealtimeInvalidation.ts"
     },
     {
+      "job": "Export: useFindFieldScan",
+      "sot": "useFindFieldScan",
+      "path": "src/hooks/useFindFieldScan.ts",
+      "guard": null,
+      "symbols": [
+        "useFindFieldScan"
+      ],
+      "kind": "code",
+      "source": "src/hooks/useFindFieldScan.ts",
+      "line": 35,
+      "snippet": "export useFindFieldScan from src/hooks/useFindFieldScan.ts"
+    },
+    {
       "job": "Export: useGlobalWedgeScanner",
       "sot": "useGlobalWedgeScanner",
       "path": "src/hooks/useGlobalWedgeScanner.ts",
@@ -25885,19 +25937,6 @@
       "snippet": "export useMediaLibraryShortcuts from src/hooks/useMediaLibraryShortcuts.ts"
     },
     {
-      "job": "Export: useNasArchivePending",
-      "sot": "useNasArchivePending",
-      "path": "src/hooks/useNasArchivePending.ts",
-      "guard": null,
-      "symbols": [
-        "useNasArchivePending"
-      ],
-      "kind": "code",
-      "source": "src/hooks/useNasArchivePending.ts",
-      "line": 33,
-      "snippet": "export useNasArchivePending from src/hooks/useNasArchivePending.ts"
-    },
-    {
       "job": "Export: NasConfig",
       "sot": "NasConfig",
       "path": "src/hooks/useNasConfig.ts",
@@ -26403,6 +26442,19 @@
       "source": "src/hooks/usePanelStoreKeyboard.ts",
       "line": 21,
       "snippet": "export usePanelStoreKeyboard from src/hooks/usePanelStoreKeyboard.ts"
+    },
+    {
+      "job": "Export: usePendingWork",
+      "sot": "usePendingWork",
+      "path": "src/hooks/usePendingWork.ts",
+      "guard": null,
+      "symbols": [
+        "usePendingWork"
+      ],
+      "kind": "code",
+      "source": "src/hooks/usePendingWork.ts",
+      "line": 32,
+      "snippet": "export usePendingWork from src/hooks/usePendingWork.ts"
     },
     {
       "job": "Export: usePhoneScanBridge",
@@ -31085,6 +31137,58 @@
       "snippet": "export writeLedgerDelta from src/lib/inventory/write-ledger-delta.ts"
     },
     {
+      "job": "Export: FindFieldBurst",
+      "sot": "FindFieldBurst",
+      "path": "src/lib/keyboard/find-field-scan.ts",
+      "guard": null,
+      "symbols": [
+        "FindFieldBurst"
+      ],
+      "kind": "code",
+      "source": "src/lib/keyboard/find-field-scan.ts",
+      "line": 33,
+      "snippet": "export FindFieldBurst from src/lib/keyboard/find-field-scan.ts"
+    },
+    {
+      "job": "Export: FIND_FIELD_BURST_IDLE",
+      "sot": "FIND_FIELD_BURST_IDLE",
+      "path": "src/lib/keyboard/find-field-scan.ts",
+      "guard": null,
+      "symbols": [
+        "FIND_FIELD_BURST_IDLE"
+      ],
+      "kind": "code",
+      "source": "src/lib/keyboard/find-field-scan.ts",
+      "line": 38,
+      "snippet": "export FIND_FIELD_BURST_IDLE from src/lib/keyboard/find-field-scan.ts"
+    },
+    {
+      "job": "Export: appendFindFieldKey",
+      "sot": "appendFindFieldKey",
+      "path": "src/lib/keyboard/find-field-scan.ts",
+      "guard": null,
+      "symbols": [
+        "appendFindFieldKey"
+      ],
+      "kind": "code",
+      "source": "src/lib/keyboard/find-field-scan.ts",
+      "line": 46,
+      "snippet": "export appendFindFieldKey from src/lib/keyboard/find-field-scan.ts"
+    },
+    {
+      "job": "Export: resolveFindFieldScan",
+      "sot": "resolveFindFieldScan",
+      "path": "src/lib/keyboard/find-field-scan.ts",
+      "guard": null,
+      "symbols": [
+        "resolveFindFieldScan"
+      ],
+      "kind": "code",
+      "source": "src/lib/keyboard/find-field-scan.ts",
+      "line": 73,
+      "snippet": "export resolveFindFieldScan from src/lib/keyboard/find-field-scan.ts"
+    },
+    {
       "job": "Export: isEditableKeyTarget",
       "sot": "isEditableKeyTarget",
       "path": "src/lib/keyboard/is-editable-key-target.ts",
@@ -32173,7 +32277,7 @@
       ],
       "kind": "code",
       "source": "src/lib/right-rail/close.ts",
-      "line": 45,
+      "line": 55,
       "snippet": "export closeRightPanel from src/lib/right-rail/close.ts"
     },
     {
@@ -33083,7 +33187,7 @@
       ],
       "kind": "code",
       "source": "src/lib/right-rail/store.ts",
-      "line": 169,
+      "line": 182,
       "snippet": "export registerRightRailPanel from src/lib/right-rail/store.ts"
     },
     {
@@ -33096,7 +33200,7 @@
       ],
       "kind": "code",
       "source": "src/lib/right-rail/store.ts",
-      "line": 216,
+      "line": 231,
       "snippet": "export updateRightRailPanelNode from src/lib/right-rail/store.ts"
     },
     {
@@ -33109,7 +33213,7 @@
       ],
       "kind": "code",
       "source": "src/lib/right-rail/store.ts",
-      "line": 272,
+      "line": 292,
       "snippet": "export subscribeRightRail from src/lib/right-rail/store.ts"
     },
     {
@@ -33122,7 +33226,7 @@
       ],
       "kind": "code",
       "source": "src/lib/right-rail/store.ts",
-      "line": 277,
+      "line": 297,
       "snippet": "export getRightRailTop from src/lib/right-rail/store.ts"
     },
     {
@@ -33135,7 +33239,7 @@
       ],
       "kind": "code",
       "source": "src/lib/right-rail/store.ts",
-      "line": 286,
+      "line": 306,
       "snippet": "export getRightRailTopSkipping from src/lib/right-rail/store.ts"
     },
     {
@@ -33148,7 +33252,7 @@
       ],
       "kind": "code",
       "source": "src/lib/right-rail/store.ts",
-      "line": 303,
+      "line": 323,
       "snippet": "export getServerRightRailTop from src/lib/right-rail/store.ts"
     },
     {

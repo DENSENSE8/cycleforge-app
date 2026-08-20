@@ -93,6 +93,10 @@ export function IncomingSyncDialog({
     <DetailStackRailRegistrar
       id="detail:incoming-sync"
       onClose={handleClose}
+      // `handleClose` can only decline to act; it cannot stop the host's
+      // lifecycle half, which parked this panel and toasted "Draft saved."
+      // over a live progress readout while the transfer kept running.
+      canClose={() => !isRunning}
       modal={false}
       ariaLabel="Incoming import progress"
     >

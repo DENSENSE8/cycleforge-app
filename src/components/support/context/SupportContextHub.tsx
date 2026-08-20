@@ -2,7 +2,7 @@
 
 /**
  * SupportContextHub — unified linkage + Customer | Team | Activity perspectives
- * (industrial TabDisplay segment via SupportContextSegments) for ticket↔STN
+ * (flush child-mode combobox via SupportContextSegments) for ticket↔STN
  * context. Composed on Support console, Unbox, and packing (rollup) — one SoT,
  * density variants only.
  */

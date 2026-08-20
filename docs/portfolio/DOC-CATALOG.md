@@ -1,7 +1,7 @@
 # DOC catalog — machine-generated SoT
 
 > **Do not hand-edit.** Regenerate: `node scripts/portfolio-sot-sync.mjs`  
-> Generated: `2026-08-19T21:15:04.869Z` · Files: **667** · Repo: `cycleforge-app`  
+> Generated: `2026-08-20T07:37:30.005Z` · Files: **709** · Repo: `cycleforge-app`  
 > Parent index: [INDEX.md](./INDEX.md)
 
 Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*** id  
@@ -13,21 +13,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 
 | WT-ID | Absolute path | Branch | HEAD (short) | Exists |
 |-------|---------------|--------|--------------|--------|
-| `main` | `/Users/icecube/repos/cycleforge-app` | `main` | `4d4eaff5e` | yes |
-| `ai-chat` | `/Users/icecube/repos/cycleforge-ai-chat` | `topic/ai-chat` | `3f55b275e` | yes |
-| `fba` | `/Users/icecube/repos/cycleforge-fba` | `topic/fba` | `3f55b275e` | yes |
-| `glass` | `/Users/icecube/repos/cycleforge-glass` | `glass-design-system` | `a331b1247` | yes |
-| `home` | `/Users/icecube/repos/cycleforge-home` | `topic/home` | `dfd5f517f` | yes |
-| `inventory` | `/Users/icecube/repos/cycleforge-inventory` | `topic/inventory` | `3f55b275e` | yes |
-| `journey-hops` | `/Users/icecube/repos/cycleforge-journey-hops` | `topic/journey-hops` | `74d1dd5f6` | yes |
-| `note-grain` | `/Users/icecube/repos/cycleforge-note-grain` | `topic/note-grain` | `5e3a3fbd7` | yes |
-| `photo` | `/Users/icecube/repos/cycleforge-photo` | `topic/photo` | `6b7aab4ce` | yes |
-| `review` | `/Users/icecube/repos/cycleforge-review` | `topic/review` | `b766dd58f` | yes |
-| `sourcing` | `/Users/icecube/repos/cycleforge-sourcing` | `topic/sourcing` | `3f55b275e` | yes |
-| `tables` | `/Users/icecube/repos/cycleforge-tables` | `topic/tables` | `5e3a3fbd7` | yes |
-| `tasks` | `/Users/icecube/repos/cycleforge-tasks` | `topic/tasks` | `e881fd2ad` | yes |
-| `unbox` | `/Users/icecube/repos/cycleforge-unbox` | `unbox-work` | `e627e3d3e` | yes |
-| `warehouse` | `/Users/icecube/repos/cycleforge-warehouse` | `topic/warehouse` | `3f55b275e` | yes |
+| `main` | `/home/michaelgarisek/Projects/cycleforge-app` | `main` | `882c3cfc1` | yes |
 
 ---
 
@@ -114,11 +100,20 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 | `DOC-ROAD-LOOP-PROMPT-7BF7` | `WS-ROADMAP` | [`roadmap/LOOP_PROMPT.md`](../roadmap/LOOP_PROMPT.md) |
 | `DOC-ROAD-MASTER-FED6` | `WS-ROADMAP` | [`roadmap/MASTER.md`](../roadmap/MASTER.md) |
 | `DOC-ROAD-WS0-FOUNDATIONS-SPEC-39C9` | `WS-ROADMAP` | [`roadmap/ws0-foundations-spec.md`](../roadmap/ws0-foundations-spec.md) |
+| `DOC-ROOT-01-TIER1-PROVABLY-DEAD-E00C` | `WS-DOCS-MISC` | [`kill-list/01-tier1-provably-dead.md`](../kill-list/01-tier1-provably-dead.md) |
+| `DOC-ROOT-02-TIER2-DEAD-EXPORTS-112A` | `WS-DOCS-MISC` | [`kill-list/02-tier2-dead-exports.md`](../kill-list/02-tier2-dead-exports.md) |
+| `DOC-ROOT-03-FRAME-TWINS-547A` | `WS-DOCS-MISC` | [`kill-list/03-frame-twins.md`](../kill-list/03-frame-twins.md) |
+| `DOC-ROOT-04-PARKED-SURFACES-C6FD` | `WS-DOCS-MISC` | [`kill-list/04-parked-surfaces.md`](../kill-list/04-parked-surfaces.md) |
+| `DOC-ROOT-05-TOSHIP-PORT-SPEC-A2FE` | `WS-DOCS-MISC` | [`kill-list/05-toship-port-spec.md`](../kill-list/05-toship-port-spec.md) |
+| `DOC-ROOT-06-SHADCN-DS-REPLACEMENT-7188` | `WS-DOCS-MISC` | [`kill-list/06-shadcn-ds-replacement.md`](../kill-list/06-shadcn-ds-replacement.md) |
 | `DOC-ROOT-AI-AUTOMATION-OPPORTUNITIES-PLAN-52DE` | `WS-SEARCH` | [`ai-automation-opportunities-plan.md`](../ai-automation-opportunities-plan.md) |
 | `DOC-ROOT-ARCHITECTURE-B82B` | `WS-PLATFORM` | [`architecture.md`](../architecture.md) |
 | `DOC-ROOT-AUTH-COVERAGE-9458` | `WS-PLATFORM` | [`auth-coverage.md`](../auth-coverage.md) |
+| `DOC-ROOT-AUTH-STEP-PANEL-2C08` | `WS-DOCS-MISC` | [`rules/display/auth-step-panel.md`](../rules/display/auth-step-panel.md) |
 | `DOC-ROOT-BASELINE-2026-07-19-A64A` | `WS-DOCS-MISC` | [`performance/baseline-2026-07-19.md`](../performance/baseline-2026-07-19.md) |
 | `DOC-ROOT-BOSE-PRODUCT-TREE-F9FD` | `WS-INT` | [`BOSE_PRODUCT_TREE.md`](../BOSE_PRODUCT_TREE.md) |
+| `DOC-ROOT-CARTON-READ-D5B4` | `WS-DOCS-MISC` | [`rules/display/carton-read.md`](../rules/display/carton-read.md) |
+| `DOC-ROOT-CONTEXTUAL-DISPLAY-66BF` | `WS-DOCS-MISC` | [`rules/contextual-display.md`](../rules/contextual-display.md) |
 | `DOC-ROOT-CYCLE-FORGE-BRANDING-SPEC-BD29` | `WS-PLATFORM` | [`cycle-forge-branding-spec.md`](../cycle-forge-branding-spec.md) |
 | `DOC-ROOT-CYCLE-FORGE-ROADMAP-BA36` | `WS-ROADMAP` | [`CYCLE-FORGE-ROADMAP`](../CYCLE-FORGE-ROADMAP) |
 | `DOC-ROOT-DESIGN-SYSTEM-TOKEN-SIMPLIFICATION-2F2A` | `WS-DS` | [`design-system-token-simplification.md`](../design-system-token-simplification.md) |
@@ -130,41 +125,64 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 | `DOC-ROOT-GEMINI-BRIEFING-SERIAL-LABEL-ORDER-BINDING-598B` | `WS-SEARCH` | [`research/gemini-briefing-serial-label-order-binding.md`](../research/gemini-briefing-serial-label-order-binding.md) |
 | `DOC-ROOT-GOOGLE-DRIVE-BACKUP-SETUP-7C9C` | `WS-INT` | [`google-drive-backup-setup.md`](../google-drive-backup-setup.md) |
 | `DOC-ROOT-HANDOFF-LCP-STREAMING-793C` | `WS-DOCS-MISC` | [`performance/HANDOFF-lcp-streaming.md`](../performance/HANDOFF-lcp-streaming.md) |
+| `DOC-ROOT-INSTRUMENT-PANEL-4D37` | `WS-DOCS-MISC` | [`rules/display/instrument-panel.md`](../rules/display/instrument-panel.md) |
+| `DOC-ROOT-KIOSK-SHELL-8FA0` | `WS-DOCS-MISC` | [`rules/display/kiosk-shell.md`](../rules/display/kiosk-shell.md) |
 | `DOC-ROOT-LIGHTHOUSE-E7C7` | `WS-DOCS-MISC` | [`performance/LIGHTHOUSE.md`](../performance/LIGHTHOUSE.md) |
 | `DOC-ROOT-MAIN-F33A` | `WS-DOCS-MISC` | [`agent-log/entries/main.md`](../agent-log/entries/main.md) |
+| `DOC-ROOT-MEDIA-LIBRARY-7829` | `WS-DOCS-MISC` | [`rules/display/media-library.md`](../rules/display/media-library.md) |
+| `DOC-ROOT-MONITOR-AND-CANVAS-3C06` | `WS-DOCS-MISC` | [`rules/display/monitor-and-canvas.md`](../rules/display/monitor-and-canvas.md) |
+| `DOC-ROOT-MONITOR-ROLLUP-BLOCKS-7CDA` | `WS-DOCS-MISC` | [`rules/display/monitor-rollup-blocks.md`](../rules/display/monitor-rollup-blocks.md) |
+| `DOC-ROOT-MOTION-CROSSFADE-47E4` | `WS-DOCS-MISC` | [`rules/display/motion-crossfade.md`](../rules/display/motion-crossfade.md) |
 | `DOC-ROOT-NANGO-SIDECAR-SETUP-FD76` | `WS-INT` | [`nango-sidecar-setup.md`](../nango-sidecar-setup.md) |
 | `DOC-ROOT-NAS-PHOTOS-WEBSITE-SETUP-C6BD` | `WS-INT` | [`nas-photos-website-setup.md`](../nas-photos-website-setup.md) |
 | `DOC-ROOT-OUTBOUND-DOCUMENTS-PLAN-5DBA` | `WS-SHIP` | [`outbound-documents-plan.md`](../outbound-documents-plan.md) |
 | `DOC-ROOT-OUTBOUND-MEDIA-LIBRARY-INTEGRATION-PLAN-AFFE` | `WS-SHIP` | [`outbound-media-library-integration-plan.md`](../outbound-media-library-integration-plan.md) |
+| `DOC-ROOT-POLYMORPHIC-TABLES-6C5D` | `WS-DOCS-MISC` | [`rules/polymorphic-tables.md`](../rules/polymorphic-tables.md) |
+| `DOC-ROOT-PRODUCT-UPDATES-POPOVER-42D6` | `WS-DOCS-MISC` | [`refactors/product-updates-popover.md`](../refactors/product-updates-popover.md) |
 | `DOC-ROOT-QA-ORG-PLAYBOOK-F4D1` | `WS-PLATFORM` | [`qa-org-playbook.md`](../qa-org-playbook.md) |
 | `DOC-ROOT-README-012D` | `WS-DOCS-MISC` | [`agent-log/README.md`](../agent-log/README.md) |
 | `DOC-ROOT-README-13F9` | `WS-INT` | [`zoho-sync-issues/README.md`](../zoho-sync-issues/README.md) |
 | `DOC-ROOT-README-3DBE` | `WS-PORTFOLIO` | [`archive/README.md`](../archive/README.md) |
 | `DOC-ROOT-README-8EC9` | `WS-PORTFOLIO` | [`README.md`](../README.md) |
+| `DOC-ROOT-README-9B55` | `WS-DOCS-MISC` | [`kill-list/README.md`](../kill-list/README.md) |
+| `DOC-ROOT-README-F015` | `WS-DOCS-MISC` | [`rules/README.md`](../rules/README.md) |
 | `DOC-ROOT-README-F525` | `WS-DOCS-MISC` | [`agent-fs/README.md`](../agent-fs/README.md) |
 | `DOC-ROOT-README-F6D4` | `WS-DOCS-MISC` | [`agent-fs/contracts/README.md`](../agent-fs/contracts/README.md) |
 | `DOC-ROOT-RECEIVING-ACTOR-ATTRIBUTION-1CF2` | `WS-RECV` | [`receiving-actor-attribution.md`](../receiving-actor-attribution.md) |
 | `DOC-ROOT-RECEIVING-TRIAGE-REDESIGN-PLAN-3997` | `WS-RECV` | [`receiving-triage-redesign-plan.md`](../receiving-triage-redesign-plan.md) |
 | `DOC-ROOT-RECEIVING-TRIAGE-STREAMLINE-PLAN-C2E0` | `WS-RECV` | [`receiving-triage-streamline-plan.md`](../receiving-triage-streamline-plan.md) |
+| `DOC-ROOT-REFERENCE-TIMELINE-C1F0` | `WS-DOCS-MISC` | [`rules/display/reference-timeline.md`](../rules/display/reference-timeline.md) |
 | `DOC-ROOT-RESULTS-2026-07-19-27F7` | `WS-DOCS-MISC` | [`performance/results-2026-07-19.md`](../performance/results-2026-07-19.md) |
 | `DOC-ROOT-RETURNS-RECEIVING-ORDER-UNIFICATION-PLAN-9DB3` | `WS-RECV` | [`returns-receiving-order-unification-plan.md`](../returns-receiving-order-unification-plan.md) |
+| `DOC-ROOT-RIGHT-RAIL-INSPECTOR-38A5` | `WS-DOCS-MISC` | [`rules/display/right-rail-inspector.md`](../rules/display/right-rail-inspector.md) |
+| `DOC-ROOT-SCAN-COCKPIT-144D` | `WS-DOCS-MISC` | [`rules/display/scan-cockpit.md`](../rules/display/scan-cockpit.md) |
 | `DOC-ROOT-SEARCH-AND-DENSE-UI-REFACTOR-PLAN-3E46` | `WS-SEARCH` | [`search-and-dense-ui-refactor-plan.md`](../search-and-dense-ui-refactor-plan.md) |
 | `DOC-ROOT-SECOND-TENANT-ONBOARDING-CHECKLIST-55EF` | `WS-PLATFORM` | [`second-tenant-onboarding-checklist.md`](../second-tenant-onboarding-checklist.md) |
 | `DOC-ROOT-SETTINGS-REGISTRY-5316` | `WS-PLATFORM` | [`settings-registry.md`](../settings-registry.md) |
 | `DOC-ROOT-SHIPSTATION-OUTBOUND-C710` | `WS-SHIP` | [`shipstation-outbound.md`](../shipstation-outbound.md) |
+| `DOC-ROOT-SOURCE-OF-TRUTH-037E` | `WS-DOCS-MISC` | [`rules/source-of-truth.md`](../rules/source-of-truth.md) |
+| `DOC-ROOT-STATION-CF4B` | `WS-DOCS-MISC` | [`rules/display/station.md`](../rules/display/station.md) |
 | `DOC-ROOT-STATION-CHASSIS-REFACTOR-DISCOVERY-8014` | `WS-STATION` | [`station-chassis-refactor-discovery.md`](../station-chassis-refactor-discovery.md) |
+| `DOC-ROOT-STATION-PORT-FROM-UNBOX-E812` | `WS-RECV` | [`rules/display/station-port-from-unbox.md`](../rules/display/station-port-from-unbox.md) |
 | `DOC-ROOT-STATION-SCAN-STANCE-PHASE1-3BD2` | `WS-DOCS-MISC` | [`refactors/station-scan-stance-phase1.md`](../refactors/station-scan-stance-phase1.md) |
 | `DOC-ROOT-STATION-SCAN-STANCE-PHASE2-7384` | `WS-DOCS-MISC` | [`refactors/station-scan-stance-phase2.md`](../refactors/station-scan-stance-phase2.md) |
 | `DOC-ROOT-STATION-SCAN-UNIFICATION-RESEARCH-BRIEF-29E4` | `WS-SEARCH` | [`refactors/station-scan-unification-research-brief.md`](../refactors/station-scan-unification-research-brief.md) |
+| `DOC-ROOT-STATION-WORKBENCH-35E8` | `WS-DOCS-MISC` | [`rules/display/station-workbench.md`](../rules/display/station-workbench.md) |
 | `DOC-ROOT-TEMPLATE-205D` | `WS-DOCS-MISC` | [`agent-fs/contracts/TEMPLATE.md`](../agent-fs/contracts/TEMPLATE.md) |
 | `DOC-ROOT-TESTING-VS-RECEIVING-ISOLATION-C2D2` | `WS-RECV` | [`testing-vs-receiving-isolation.md`](../testing-vs-receiving-isolation.md) |
 | `DOC-ROOT-TIER0-GO-LIVE-RUNBOOK-0230` | `WS-PLATFORM` | [`tier0-go-live-runbook.md`](../tier0-go-live-runbook.md) |
 | `DOC-ROOT-TO-SHIP-LEDGERGRID-FORK-AB5F` | `WS-DOCS-MISC` | [`refactors/to-ship-ledgergrid-fork.md`](../refactors/to-ship-ledgergrid-fork.md) |
+| `DOC-ROOT-UI-DESIGN-SYSTEM-710B` | `WS-DS` | [`rules/ui-design-system.md`](../rules/ui-design-system.md) |
+| `DOC-ROOT-UNBOX-STATION-7491` | `WS-RECV` | [`rules/display/unbox-station.md`](../rules/display/unbox-station.md) |
 | `DOC-ROOT-UNBOX-UNIT-EVIDENCE-REDESIGN-B6AA` | `WS-RECV` | [`prototypes/unbox-unit-evidence-redesign.html`](../prototypes/unbox-unit-evidence-redesign.html) |
 | `DOC-ROOT-UNIFIED-GLOBAL-SEARCH-CONSOLIDATION-PLAN-9E96` | `WS-SEARCH` | [`unified-global-search-consolidation-plan.md`](../unified-global-search-consolidation-plan.md) |
 | `DOC-ROOT-UNIT-EVENT-BACKFILL-PLAN-33B0` | `WS-SEARCH` | [`unit-event-backfill-plan.md`](../unit-event-backfill-plan.md) |
 | `DOC-ROOT-VERIFIER-4F0C` | `WS-DOCS-MISC` | [`agent-fs/contracts/verifier.md`](../agent-fs/contracts/verifier.md) |
 | `DOC-ROOT-VISUAL-RECEIVING-IDENTIFY-PLAN-B7A8` | `WS-RECV` | [`visual-receiving-identify-plan.md`](../visual-receiving-identify-plan.md) |
+| `DOC-ROOT-WORKBENCH-8B99` | `WS-DOCS-MISC` | [`rules/display/workbench.md`](../rules/display/workbench.md) |
+| `DOC-ROOT-WORKBENCH-MASTER-DETAIL-9098` | `WS-DOCS-MISC` | [`rules/display/workbench-master-detail.md`](../rules/display/workbench-master-detail.md) |
+| `DOC-ROOT-WORKBENCH-OPS-QUEUE-4801` | `WS-DOCS-MISC` | [`rules/display/workbench-ops-queue.md`](../rules/display/workbench-ops-queue.md) |
+| `DOC-ROOT-WORKBENCH-SERVICE-1BC1` | `WS-DOCS-MISC` | [`rules/display/workbench-service.md`](../rules/display/workbench-service.md) |
 | `DOC-ROOT-ZOHO-FULFILLMENT-SYNC-2DAE` | `WS-SHIP` | [`zoho-fulfillment-sync.md`](../zoho-fulfillment-sync.md) |
 | `DOC-SEC-KIOSK-DEVICE-LOCKDOWN-B2C2` | `WS-SEC` | [`security/kiosk-device-lockdown.md`](../security/kiosk-device-lockdown.md) |
 | `DOC-SKILL-CODE-ARCHITECTURE-LOGIC-IMPROVEMENTS-0B69` | `WS-SKILLS` | [`skills/Code_Architecture_Logic_Improvements.md`](../skills/Code_Architecture_Logic_Improvements.md) |
@@ -200,11 +218,14 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 | `DOC-TODO-AGENTIC-LOOP-EXECUTION-PROMPT-E0EC` | `WS-ALP` | [`todo/agentic-loop-EXECUTION-PROMPT.md`](../todo/agentic-loop-EXECUTION-PROMPT.md) |
 | `DOC-TODO-AGENTIC-LOOP-MASTER-PLAN-C913` | `WS-ALP` | [`todo/agentic-loop-master-plan.md`](../todo/agentic-loop-master-plan.md) |
 | `DOC-TODO-AI-CHAT-ODYSSEUS-DISPLAY-HANDOFF-CA08` | `WS-TODO-MISC` | [`todo/ai-chat-odysseus-display-HANDOFF.md`](../todo/ai-chat-odysseus-display-HANDOFF.md) |
+| `DOC-TODO-AI-PROVIDER-CONSOLIDATION-HANDOFF-3D26` | `WS-TODO-MISC` | [`todo/ai-provider-consolidation-HANDOFF.md`](../todo/ai-provider-consolidation-HANDOFF.md) |
 | `DOC-TODO-ALL-TABLES-IMPROVEMENTS-EXECUTION-PROMPT-7E82` | `WS-TODO-MISC` | [`todo/all-tables-improvements-EXECUTION-PROMPT.md`](../todo/all-tables-improvements-EXECUTION-PROMPT.md) |
 | `DOC-TODO-ARRIVAL-DIRECTED-STAGING-AND-DOCK-OSD-PLAN-F2B5` | `WS-TODO-MISC` | [`todo/arrival-directed-staging-and-dock-osd-PLAN.md`](../todo/arrival-directed-staging-and-dock-osd-PLAN.md) |
 | `DOC-TODO-ARRIVAL-DISPLAYS-ACTION-FLOOR-HANDOFF-BA9A` | `WS-TODO-MISC` | [`todo/arrival-displays-action-floor-HANDOFF.md`](../todo/arrival-displays-action-floor-HANDOFF.md) |
+| `DOC-TODO-ARRIVAL-DOCK-NOTE-ONLY-HANDOFF-DBC3` | `WS-TODO-MISC` | [`todo/arrival-dock-note-only-HANDOFF.md`](../todo/arrival-dock-note-only-HANDOFF.md) |
 | `DOC-TODO-ARRIVAL-DOOR-DECISIONS-STAGING-AND-OSD-GEMINI-RE-DDCB` | `WS-TODO-MISC` | [`todo/arrival-door-decisions-staging-and-osd-GEMINI-RESEARCH-BRIEFING.md`](../todo/arrival-door-decisions-staging-and-osd-GEMINI-RESEARCH-BRIEFING.md) |
 | `DOC-TODO-ARRIVAL-KPI-AND-DOOR-LPN-PLAN-VALIDATION-GEMINI--04B1` | `WS-TODO-MISC` | [`todo/arrival-kpi-and-door-lpn-PLAN-VALIDATION-GEMINI-RESEARCH-BRIEFING.md`](../todo/arrival-kpi-and-door-lpn-PLAN-VALIDATION-GEMINI-RESEARCH-BRIEFING.md) |
+| `DOC-TODO-ARRIVAL-LEGACY-PALETTE-HANDOFF-6C7E` | `WS-TODO-MISC` | [`todo/arrival-legacy-palette-HANDOFF.md`](../todo/arrival-legacy-palette-HANDOFF.md) |
 | `DOC-TODO-ARRIVAL-MANIFEST-AND-CROSSDOCK-PLAN-VALIDATION-G-C4AC` | `WS-TODO-MISC` | [`todo/arrival-manifest-and-crossdock-PLAN-VALIDATION-GEMINI-RESEARCH-BRIEFING.md`](../todo/arrival-manifest-and-crossdock-PLAN-VALIDATION-GEMINI-RESEARCH-BRIEFING.md) |
 | `DOC-TODO-ARRIVAL-MOBILE-SCAN-PHOTOS-CLASSIFY-FINISH-HANDO-36CE` | `WS-TODO-MISC` | [`todo/arrival-mobile-scan-photos-classify-FINISH-HANDOFF.md`](../todo/arrival-mobile-scan-photos-classify-FINISH-HANDOFF.md) |
 | `DOC-TODO-BAND1-CHROME-HOUSE-PORT-HANDOFF-2DAF` | `WS-TODO-MISC` | [`todo/band1-chrome-house-port-HANDOFF.md`](../todo/band1-chrome-house-port-HANDOFF.md) |
@@ -242,6 +263,8 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 | `DOC-TODO-CONTEXTUAL-SIDEBAR-IA-GEMINI-RESEARCH-BRIEFING-DD4E` | `WS-TODO-MISC` | [`todo/contextual-sidebar-ia-GEMINI-RESEARCH-BRIEFING.md`](../todo/contextual-sidebar-ia-GEMINI-RESEARCH-BRIEFING.md) |
 | `DOC-TODO-COPY-CELL-PLAIN-AND-CHIP-UNDERLINE-PLAN-F3A1` | `WS-TODO-MISC` | [`todo/copy-cell-plain-and-chip-underline-PLAN.md`](../todo/copy-cell-plain-and-chip-underline-PLAN.md) |
 | `DOC-TODO-CUSTOM-COLUMN-SORT-AND-GRID-VAR-HANDOFF-61AC` | `WS-TODO-MISC` | [`todo/custom-column-sort-and-grid-var-HANDOFF.md`](../todo/custom-column-sort-and-grid-var-HANDOFF.md) |
+| `DOC-TODO-DAILY-CHECKS-HANDOFF-E462` | `WS-TODO-MISC` | [`todo/daily-checks-HANDOFF.md`](../todo/daily-checks-HANDOFF.md) |
+| `DOC-TODO-DAILY-CHECKS-PHASE-2-HANDOFF-99B0` | `WS-TODO-MISC` | [`todo/daily-checks-PHASE-2-HANDOFF.md`](../todo/daily-checks-PHASE-2-HANDOFF.md) |
 | `DOC-TODO-DAILY-TRIAGE-BACKEND-PLAN-VALIDATION-B9D3` | `WS-TODO-MISC` | [`todo/daily-triage-BACKEND-PLAN-VALIDATION.md`](../todo/daily-triage-BACKEND-PLAN-VALIDATION.md) |
 | `DOC-TODO-DAILY-TRIAGE-FRONTEND-F0-EXECUTION-PROMPT-6BDB` | `WS-TODO-MISC` | [`todo/daily-triage-frontend-F0-EXECUTION-PROMPT.md`](../todo/daily-triage-frontend-F0-EXECUTION-PROMPT.md) |
 | `DOC-TODO-DAILY-TRIAGE-FRONTEND-PLAN-VALIDATION-A98D` | `WS-TODO-MISC` | [`todo/daily-triage-FRONTEND-PLAN-VALIDATION.md`](../todo/daily-triage-FRONTEND-PLAN-VALIDATION.md) |
@@ -315,6 +338,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 | `DOC-TODO-GS1-INTERNAL-GTIN-RCN-HANDOFF-D1C2` | `WS-TODO-MISC` | [`todo/gs1-internal-gtin-rcn-HANDOFF.md`](../todo/gs1-internal-gtin-rcn-HANDOFF.md) |
 | `DOC-TODO-HANDOFF-STEP1-PHOTO-CAPTURE-0FD7` | `WS-TODO-MISC` | [`todo/scan-station-procedure/HANDOFF-step1-photo-capture.md`](../todo/scan-station-procedure/HANDOFF-step1-photo-capture.md) |
 | `DOC-TODO-HEADER-MODE-SWITCHER-UNBOX-HANDOFF-9862` | `WS-TODO-MISC` | [`todo/header-mode-switcher-UNBOX-HANDOFF.md`](../todo/header-mode-switcher-UNBOX-HANDOFF.md) |
+| `DOC-TODO-HEADER-TASK-PREVIEW-HANDOFF-7BA0` | `WS-TODO-MISC` | [`todo/header-task-preview-HANDOFF.md`](../todo/header-task-preview-HANDOFF.md) |
 | `DOC-TODO-HIGHEST-ROI-OPS-UI-EXECUTION-PLAN-3D1F` | `WS-ROI` | [`todo/highest-roi-ops-ui-execution-plan.md`](../todo/highest-roi-ops-ui-execution-plan.md) |
 | `DOC-TODO-HISTORY-INSPECTOR-ACTION-FLOOR-AND-KEYBINDS-PLAN-E66C` | `WS-TODO-MISC` | [`todo/history-inspector-action-floor-and-keybinds-PLAN.md`](../todo/history-inspector-action-floor-and-keybinds-PLAN.md) |
 | `DOC-TODO-HISTORY-INSPECTOR-DS-AND-TABLE-ACTIONS-GEMINI-RE-1AF5` | `WS-TODO-MISC` | [`todo/history-inspector-ds-and-table-actions-GEMINI-RESEARCH-BRIEFING.md`](../todo/history-inspector-ds-and-table-actions-GEMINI-RESEARCH-BRIEFING.md) |
@@ -352,6 +376,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 | `DOC-TODO-KINETIC-LEDGER-STATION-SAFETY-EXECUTION-PROMPT-DECE` | `WS-TODO-MISC` | [`todo/kinetic-ledger-station-safety-EXECUTION-PROMPT.md`](../todo/kinetic-ledger-station-safety-EXECUTION-PROMPT.md) |
 | `DOC-TODO-KINETIC-LEDGER-STATION-SAFETY-PLAN-97BC` | `WS-TODO-MISC` | [`todo/kinetic-ledger-station-safety-PLAN.md`](../todo/kinetic-ledger-station-safety-PLAN.md) |
 | `DOC-TODO-KIOSK-COUNTER-TRANSACTION-PLAN-0689` | `WS-TODO-MISC` | [`todo/kiosk-counter-transaction-PLAN.md`](../todo/kiosk-counter-transaction-PLAN.md) |
+| `DOC-TODO-KIOSK-DESK-SESSION-CHANNEL-PLAN-0AF6` | `WS-TODO-MISC` | [`todo/kiosk-desk-session-channel-PLAN.md`](../todo/kiosk-desk-session-channel-PLAN.md) |
 | `DOC-TODO-KIOSK-IPAD-NATIVE-SHELL-GEMINI-RESEARCH-BRIEFING-D94F` | `WS-TODO-MISC` | [`todo/kiosk-ipad-native-shell-GEMINI-RESEARCH-BRIEFING.md`](../todo/kiosk-ipad-native-shell-GEMINI-RESEARCH-BRIEFING.md) |
 | `DOC-TODO-KIOSK-LANDSCAPE-SHELL-PLAN-1830` | `WS-TODO-MISC` | [`todo/kiosk-landscape-shell-PLAN.md`](../todo/kiosk-landscape-shell-PLAN.md) |
 | `DOC-TODO-KIOSK-LIGHTHOUSE-SIDEBAR-HANDOFF-800A` | `WS-TODO-MISC` | [`todo/kiosk-lighthouse-sidebar-HANDOFF.md`](../todo/kiosk-lighthouse-sidebar-HANDOFF.md) |
@@ -392,6 +417,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 | `DOC-TODO-MOBILE-UNBOX-PHOTO-FLOW-GEMINI-RESEARCH-BRIEFING-2BA6` | `WS-TODO-MISC` | [`todo/mobile-unbox-photo-flow-GEMINI-RESEARCH-BRIEFING.md`](../todo/mobile-unbox-photo-flow-GEMINI-RESEARCH-BRIEFING.md) |
 | `DOC-TODO-MOTION-REDUCE-STRATEGY-COSTING-50E3` | `WS-TODO-MISC` | [`todo/motion-reduce-strategy-COSTING.md`](../todo/motion-reduce-strategy-COSTING.md) |
 | `DOC-TODO-MOTION-ROLE-LAYER-HANDOFF-76E5` | `WS-TODO-MISC` | [`todo/motion-role-layer-HANDOFF.md`](../todo/motion-role-layer-HANDOFF.md) |
+| `DOC-TODO-NAV-IA-PHASE4-EXECUTION-PLAN-26A2` | `WS-TODO-MISC` | [`todo/nav-ia-phase4-EXECUTION-PLAN.md`](../todo/nav-ia-phase4-EXECUTION-PLAN.md) |
 | `DOC-TODO-NAV-KEYS-SELECTION-KEYBOARD-HANDOFF-F1F1` | `WS-TODO-MISC` | [`todo/nav-keys-selection-keyboard-HANDOFF.md`](../todo/nav-keys-selection-keyboard-HANDOFF.md) |
 | `DOC-TODO-NAV-ROUTING-REFACTOR-EXECUTION-PROMPT-1A0D` | `WS-TODO-MISC` | [`todo/nav-routing-refactor-EXECUTION-PROMPT.md`](../todo/nav-routing-refactor-EXECUTION-PROMPT.md) |
 | `DOC-TODO-NAV-ROUTING-REFACTOR-FINISH-PROMPT-3E0A` | `WS-TODO-MISC` | [`todo/nav-routing-refactor-FINISH-PROMPT.md`](../todo/nav-routing-refactor-FINISH-PROMPT.md) |
@@ -403,6 +429,8 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 | `DOC-TODO-NONLINEAR-TABLE-FOREST-FINISH-HANDOFF-4F55` | `WS-TODO-MISC` | [`todo/nonlinear-table-forest-finish-HANDOFF.md`](../todo/nonlinear-table-forest-finish-HANDOFF.md) |
 | `DOC-TODO-NOTE-GRAIN-E2E-AND-FOLLOWUPS-EXECUTION-PROMPT-CAA2` | `WS-TODO-MISC` | [`todo/note-grain-e2e-and-followups-EXECUTION-PROMPT.md`](../todo/note-grain-e2e-and-followups-EXECUTION-PROMPT.md) |
 | `DOC-TODO-ONBOARDING-FOUNDATIONAL-PLAN-8E4E` | `WS-ONB` | [`todo/onboarding-foundational-plan.md`](../todo/onboarding-foundational-plan.md) |
+| `DOC-TODO-ONE-WRAPPER-DUAL-RIGHT-RAIL-GEMINI-RESEARCH-BRIE-51D6` | `WS-TODO-MISC` | [`todo/one-wrapper-dual-right-rail-GEMINI-RESEARCH-BRIEFING.md`](../todo/one-wrapper-dual-right-rail-GEMINI-RESEARCH-BRIEFING.md) |
+| `DOC-TODO-ONE-WRAPPER-DUAL-RIGHT-RAIL-PLAN-CB8E` | `WS-TODO-MISC` | [`todo/one-wrapper-dual-right-rail-PLAN.md`](../todo/one-wrapper-dual-right-rail-PLAN.md) |
 | `DOC-TODO-OPERATOR-LABEL-VOCABULARY-HANDOFF-1C67` | `WS-TODO-MISC` | [`todo/operator-label-vocabulary-HANDOFF.md`](../todo/operator-label-vocabulary-HANDOFF.md) |
 | `DOC-TODO-OPS-EVENTS-STATION-WORKFLOW-UNIFICATION-PLAN-2789` | `WS-ENGINE` | [`todo/ops-events-station-workflow-unification-plan.md`](../todo/ops-events-station-workflow-unification-plan.md) |
 | `DOC-TODO-OPS-TABLE-SIMPLIFICATION-GEMINI-FOLLOWUP-9A06` | `WS-TODO-MISC` | [`todo/ops-table-simplification-GEMINI-FOLLOWUP.md`](../todo/ops-table-simplification-GEMINI-FOLLOWUP.md) |
@@ -755,28 +783,58 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 - `DOC-DIAG-14-FBA-STATION-TRACE-81AB` — [`diagrams/14-fba-station-trace.md`](../diagrams/14-fba-station-trace.md)
 - `DOC-DIAG-README-5821` — [`diagrams/README.md`](../diagrams/README.md)
 
-### `WS-DOCS-MISC` (15)
+### `WS-DOCS-MISC` (44)
 
+- `DOC-ROOT-01-TIER1-PROVABLY-DEAD-E00C` — [`kill-list/01-tier1-provably-dead.md`](../kill-list/01-tier1-provably-dead.md)
+- `DOC-ROOT-02-TIER2-DEAD-EXPORTS-112A` — [`kill-list/02-tier2-dead-exports.md`](../kill-list/02-tier2-dead-exports.md)
+- `DOC-ROOT-03-FRAME-TWINS-547A` — [`kill-list/03-frame-twins.md`](../kill-list/03-frame-twins.md)
+- `DOC-ROOT-04-PARKED-SURFACES-C6FD` — [`kill-list/04-parked-surfaces.md`](../kill-list/04-parked-surfaces.md)
+- `DOC-ROOT-05-TOSHIP-PORT-SPEC-A2FE` — [`kill-list/05-toship-port-spec.md`](../kill-list/05-toship-port-spec.md)
+- `DOC-ROOT-06-SHADCN-DS-REPLACEMENT-7188` — [`kill-list/06-shadcn-ds-replacement.md`](../kill-list/06-shadcn-ds-replacement.md)
+- `DOC-ROOT-AUTH-STEP-PANEL-2C08` — [`rules/display/auth-step-panel.md`](../rules/display/auth-step-panel.md)
 - `DOC-ROOT-BASELINE-2026-07-19-A64A` — [`performance/baseline-2026-07-19.md`](../performance/baseline-2026-07-19.md)
+- `DOC-ROOT-CARTON-READ-D5B4` — [`rules/display/carton-read.md`](../rules/display/carton-read.md)
+- `DOC-ROOT-CONTEXTUAL-DISPLAY-66BF` — [`rules/contextual-display.md`](../rules/contextual-display.md)
 - `DOC-ROOT-FABLE5-DS-PRUNE-REPORT-7D88` — [`audit/fable5-ds-prune-report.md`](../audit/fable5-ds-prune-report.md)
 - `DOC-ROOT-FABLE5-WAVE2-DS-REPORT-721A` — [`audit/fable5-wave2-ds-report.md`](../audit/fable5-wave2-ds-report.md)
 - `DOC-ROOT-HANDOFF-LCP-STREAMING-793C` — [`performance/HANDOFF-lcp-streaming.md`](../performance/HANDOFF-lcp-streaming.md)
+- `DOC-ROOT-INSTRUMENT-PANEL-4D37` — [`rules/display/instrument-panel.md`](../rules/display/instrument-panel.md)
+- `DOC-ROOT-KIOSK-SHELL-8FA0` — [`rules/display/kiosk-shell.md`](../rules/display/kiosk-shell.md)
 - `DOC-ROOT-LIGHTHOUSE-E7C7` — [`performance/LIGHTHOUSE.md`](../performance/LIGHTHOUSE.md)
 - `DOC-ROOT-MAIN-F33A` — [`agent-log/entries/main.md`](../agent-log/entries/main.md)
+- `DOC-ROOT-MEDIA-LIBRARY-7829` — [`rules/display/media-library.md`](../rules/display/media-library.md)
+- `DOC-ROOT-MONITOR-AND-CANVAS-3C06` — [`rules/display/monitor-and-canvas.md`](../rules/display/monitor-and-canvas.md)
+- `DOC-ROOT-MONITOR-ROLLUP-BLOCKS-7CDA` — [`rules/display/monitor-rollup-blocks.md`](../rules/display/monitor-rollup-blocks.md)
+- `DOC-ROOT-MOTION-CROSSFADE-47E4` — [`rules/display/motion-crossfade.md`](../rules/display/motion-crossfade.md)
+- `DOC-ROOT-POLYMORPHIC-TABLES-6C5D` — [`rules/polymorphic-tables.md`](../rules/polymorphic-tables.md)
+- `DOC-ROOT-PRODUCT-UPDATES-POPOVER-42D6` — [`refactors/product-updates-popover.md`](../refactors/product-updates-popover.md)
 - `DOC-ROOT-README-012D` — [`agent-log/README.md`](../agent-log/README.md)
+- `DOC-ROOT-README-9B55` — [`kill-list/README.md`](../kill-list/README.md)
+- `DOC-ROOT-README-F015` — [`rules/README.md`](../rules/README.md)
 - `DOC-ROOT-README-F525` — [`agent-fs/README.md`](../agent-fs/README.md)
 - `DOC-ROOT-README-F6D4` — [`agent-fs/contracts/README.md`](../agent-fs/contracts/README.md)
+- `DOC-ROOT-REFERENCE-TIMELINE-C1F0` — [`rules/display/reference-timeline.md`](../rules/display/reference-timeline.md)
 - `DOC-ROOT-RESULTS-2026-07-19-27F7` — [`performance/results-2026-07-19.md`](../performance/results-2026-07-19.md)
+- `DOC-ROOT-RIGHT-RAIL-INSPECTOR-38A5` — [`rules/display/right-rail-inspector.md`](../rules/display/right-rail-inspector.md)
+- `DOC-ROOT-SCAN-COCKPIT-144D` — [`rules/display/scan-cockpit.md`](../rules/display/scan-cockpit.md)
+- `DOC-ROOT-SOURCE-OF-TRUTH-037E` — [`rules/source-of-truth.md`](../rules/source-of-truth.md)
+- `DOC-ROOT-STATION-CF4B` — [`rules/display/station.md`](../rules/display/station.md)
 - `DOC-ROOT-STATION-SCAN-STANCE-PHASE1-3BD2` — [`refactors/station-scan-stance-phase1.md`](../refactors/station-scan-stance-phase1.md)
 - `DOC-ROOT-STATION-SCAN-STANCE-PHASE2-7384` — [`refactors/station-scan-stance-phase2.md`](../refactors/station-scan-stance-phase2.md)
+- `DOC-ROOT-STATION-WORKBENCH-35E8` — [`rules/display/station-workbench.md`](../rules/display/station-workbench.md)
 - `DOC-ROOT-TEMPLATE-205D` — [`agent-fs/contracts/TEMPLATE.md`](../agent-fs/contracts/TEMPLATE.md)
 - `DOC-ROOT-TO-SHIP-LEDGERGRID-FORK-AB5F` — [`refactors/to-ship-ledgergrid-fork.md`](../refactors/to-ship-ledgergrid-fork.md)
 - `DOC-ROOT-VERIFIER-4F0C` — [`agent-fs/contracts/verifier.md`](../agent-fs/contracts/verifier.md)
+- `DOC-ROOT-WORKBENCH-8B99` — [`rules/display/workbench.md`](../rules/display/workbench.md)
+- `DOC-ROOT-WORKBENCH-MASTER-DETAIL-9098` — [`rules/display/workbench-master-detail.md`](../rules/display/workbench-master-detail.md)
+- `DOC-ROOT-WORKBENCH-OPS-QUEUE-4801` — [`rules/display/workbench-ops-queue.md`](../rules/display/workbench-ops-queue.md)
+- `DOC-ROOT-WORKBENCH-SERVICE-1BC1` — [`rules/display/workbench-service.md`](../rules/display/workbench-service.md)
 
-### `WS-DS` (2)
+### `WS-DS` (3)
 
 - `DOC-DS-2026-COMPONENT-ADOPTION-PLAN-14C0` — [`design-system/2026-component-adoption-plan.md`](../design-system/2026-component-adoption-plan.md)
 - `DOC-ROOT-DESIGN-SYSTEM-TOKEN-SIMPLIFICATION-2F2A` — [`design-system-token-simplification.md`](../design-system-token-simplification.md)
+- `DOC-ROOT-UI-DESIGN-SYSTEM-710B` — [`rules/ui-design-system.md`](../rules/ui-design-system.md)
 
 ### `WS-ENGINE` (1)
 
@@ -863,13 +921,15 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 - `DOC-ROOT-README-8EC9` — [`README.md`](../README.md)
 - `DOC-TODO-README-1DDA` — [`todo/README.md`](../todo/README.md)
 
-### `WS-RECV` (7)
+### `WS-RECV` (9)
 
 - `DOC-ROOT-RECEIVING-ACTOR-ATTRIBUTION-1CF2` — [`receiving-actor-attribution.md`](../receiving-actor-attribution.md)
 - `DOC-ROOT-RECEIVING-TRIAGE-REDESIGN-PLAN-3997` — [`receiving-triage-redesign-plan.md`](../receiving-triage-redesign-plan.md)
 - `DOC-ROOT-RECEIVING-TRIAGE-STREAMLINE-PLAN-C2E0` — [`receiving-triage-streamline-plan.md`](../receiving-triage-streamline-plan.md)
 - `DOC-ROOT-RETURNS-RECEIVING-ORDER-UNIFICATION-PLAN-9DB3` — [`returns-receiving-order-unification-plan.md`](../returns-receiving-order-unification-plan.md)
+- `DOC-ROOT-STATION-PORT-FROM-UNBOX-E812` — [`rules/display/station-port-from-unbox.md`](../rules/display/station-port-from-unbox.md)
 - `DOC-ROOT-TESTING-VS-RECEIVING-ISOLATION-C2D2` — [`testing-vs-receiving-isolation.md`](../testing-vs-receiving-isolation.md)
+- `DOC-ROOT-UNBOX-STATION-7491` — [`rules/display/unbox-station.md`](../rules/display/unbox-station.md)
 - `DOC-ROOT-UNBOX-UNIT-EVIDENCE-REDESIGN-B6AA` — [`prototypes/unbox-unit-evidence-redesign.html`](../prototypes/unbox-unit-evidence-redesign.html)
 - `DOC-ROOT-VISUAL-RECEIVING-IDENTIFY-PLAN-B7A8` — [`visual-receiving-identify-plan.md`](../visual-receiving-identify-plan.md)
 
@@ -973,7 +1033,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 - `DOC-TEN-SLICE-TEMPLATE-5BE0` — [`tenancy/SLICE_TEMPLATE.md`](../tenancy/SLICE_TEMPLATE.md)
 - `DOC-TEN-TABLES-9F18` — [`tenancy/_analysis/tables.md`](../tenancy/_analysis/tables.md)
 
-### `WS-TODO-MISC` (491)
+### `WS-TODO-MISC` (501)
 
 - `DOC-TODO-00-INDEX-9E1E` — [`todo/kiosk-counter-transaction/00-INDEX.md`](../todo/kiosk-counter-transaction/00-INDEX.md)
 - `DOC-TODO-01-RECEIVING-BOH-SLIM-4C77` — [`todo/foh-boh-surface-split/01-receiving-boh-slim.md`](../todo/foh-boh-surface-split/01-receiving-boh-slim.md)
@@ -989,11 +1049,14 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 - `DOC-TODO-06-WALK-IN-KIOSK-AUTH-F4B9` — [`todo/foh-boh-surface-split/06-walk-in-kiosk-auth.md`](../todo/foh-boh-surface-split/06-walk-in-kiosk-auth.md)
 - `DOC-TODO-ACTIVE-STEP1-PHOTO-CAPTURE-0CAE` — [`todo/scan-station-procedure/ACTIVE-step1-photo-capture.md`](../todo/scan-station-procedure/ACTIVE-step1-photo-capture.md)
 - `DOC-TODO-AI-CHAT-ODYSSEUS-DISPLAY-HANDOFF-CA08` — [`todo/ai-chat-odysseus-display-HANDOFF.md`](../todo/ai-chat-odysseus-display-HANDOFF.md)
+- `DOC-TODO-AI-PROVIDER-CONSOLIDATION-HANDOFF-3D26` — [`todo/ai-provider-consolidation-HANDOFF.md`](../todo/ai-provider-consolidation-HANDOFF.md)
 - `DOC-TODO-ALL-TABLES-IMPROVEMENTS-EXECUTION-PROMPT-7E82` — [`todo/all-tables-improvements-EXECUTION-PROMPT.md`](../todo/all-tables-improvements-EXECUTION-PROMPT.md)
 - `DOC-TODO-ARRIVAL-DIRECTED-STAGING-AND-DOCK-OSD-PLAN-F2B5` — [`todo/arrival-directed-staging-and-dock-osd-PLAN.md`](../todo/arrival-directed-staging-and-dock-osd-PLAN.md)
 - `DOC-TODO-ARRIVAL-DISPLAYS-ACTION-FLOOR-HANDOFF-BA9A` — [`todo/arrival-displays-action-floor-HANDOFF.md`](../todo/arrival-displays-action-floor-HANDOFF.md)
+- `DOC-TODO-ARRIVAL-DOCK-NOTE-ONLY-HANDOFF-DBC3` — [`todo/arrival-dock-note-only-HANDOFF.md`](../todo/arrival-dock-note-only-HANDOFF.md)
 - `DOC-TODO-ARRIVAL-DOOR-DECISIONS-STAGING-AND-OSD-GEMINI-RE-DDCB` — [`todo/arrival-door-decisions-staging-and-osd-GEMINI-RESEARCH-BRIEFING.md`](../todo/arrival-door-decisions-staging-and-osd-GEMINI-RESEARCH-BRIEFING.md)
 - `DOC-TODO-ARRIVAL-KPI-AND-DOOR-LPN-PLAN-VALIDATION-GEMINI--04B1` — [`todo/arrival-kpi-and-door-lpn-PLAN-VALIDATION-GEMINI-RESEARCH-BRIEFING.md`](../todo/arrival-kpi-and-door-lpn-PLAN-VALIDATION-GEMINI-RESEARCH-BRIEFING.md)
+- `DOC-TODO-ARRIVAL-LEGACY-PALETTE-HANDOFF-6C7E` — [`todo/arrival-legacy-palette-HANDOFF.md`](../todo/arrival-legacy-palette-HANDOFF.md)
 - `DOC-TODO-ARRIVAL-MANIFEST-AND-CROSSDOCK-PLAN-VALIDATION-G-C4AC` — [`todo/arrival-manifest-and-crossdock-PLAN-VALIDATION-GEMINI-RESEARCH-BRIEFING.md`](../todo/arrival-manifest-and-crossdock-PLAN-VALIDATION-GEMINI-RESEARCH-BRIEFING.md)
 - `DOC-TODO-ARRIVAL-MOBILE-SCAN-PHOTOS-CLASSIFY-FINISH-HANDO-36CE` — [`todo/arrival-mobile-scan-photos-classify-FINISH-HANDOFF.md`](../todo/arrival-mobile-scan-photos-classify-FINISH-HANDOFF.md)
 - `DOC-TODO-BAND1-CHROME-HOUSE-PORT-HANDOFF-2DAF` — [`todo/band1-chrome-house-port-HANDOFF.md`](../todo/band1-chrome-house-port-HANDOFF.md)
@@ -1028,6 +1091,8 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 - `DOC-TODO-CONTEXTUAL-SIDEBAR-IA-GEMINI-RESEARCH-BRIEFING-DD4E` — [`todo/contextual-sidebar-ia-GEMINI-RESEARCH-BRIEFING.md`](../todo/contextual-sidebar-ia-GEMINI-RESEARCH-BRIEFING.md)
 - `DOC-TODO-COPY-CELL-PLAIN-AND-CHIP-UNDERLINE-PLAN-F3A1` — [`todo/copy-cell-plain-and-chip-underline-PLAN.md`](../todo/copy-cell-plain-and-chip-underline-PLAN.md)
 - `DOC-TODO-CUSTOM-COLUMN-SORT-AND-GRID-VAR-HANDOFF-61AC` — [`todo/custom-column-sort-and-grid-var-HANDOFF.md`](../todo/custom-column-sort-and-grid-var-HANDOFF.md)
+- `DOC-TODO-DAILY-CHECKS-HANDOFF-E462` — [`todo/daily-checks-HANDOFF.md`](../todo/daily-checks-HANDOFF.md)
+- `DOC-TODO-DAILY-CHECKS-PHASE-2-HANDOFF-99B0` — [`todo/daily-checks-PHASE-2-HANDOFF.md`](../todo/daily-checks-PHASE-2-HANDOFF.md)
 - `DOC-TODO-DAILY-TRIAGE-BACKEND-PLAN-VALIDATION-B9D3` — [`todo/daily-triage-BACKEND-PLAN-VALIDATION.md`](../todo/daily-triage-BACKEND-PLAN-VALIDATION.md)
 - `DOC-TODO-DAILY-TRIAGE-FRONTEND-F0-EXECUTION-PROMPT-6BDB` — [`todo/daily-triage-frontend-F0-EXECUTION-PROMPT.md`](../todo/daily-triage-frontend-F0-EXECUTION-PROMPT.md)
 - `DOC-TODO-DAILY-TRIAGE-FRONTEND-PLAN-VALIDATION-A98D` — [`todo/daily-triage-FRONTEND-PLAN-VALIDATION.md`](../todo/daily-triage-FRONTEND-PLAN-VALIDATION.md)
@@ -1101,6 +1166,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 - `DOC-TODO-GS1-INTERNAL-GTIN-RCN-HANDOFF-D1C2` — [`todo/gs1-internal-gtin-rcn-HANDOFF.md`](../todo/gs1-internal-gtin-rcn-HANDOFF.md)
 - `DOC-TODO-HANDOFF-STEP1-PHOTO-CAPTURE-0FD7` — [`todo/scan-station-procedure/HANDOFF-step1-photo-capture.md`](../todo/scan-station-procedure/HANDOFF-step1-photo-capture.md)
 - `DOC-TODO-HEADER-MODE-SWITCHER-UNBOX-HANDOFF-9862` — [`todo/header-mode-switcher-UNBOX-HANDOFF.md`](../todo/header-mode-switcher-UNBOX-HANDOFF.md)
+- `DOC-TODO-HEADER-TASK-PREVIEW-HANDOFF-7BA0` — [`todo/header-task-preview-HANDOFF.md`](../todo/header-task-preview-HANDOFF.md)
 - `DOC-TODO-HISTORY-INSPECTOR-ACTION-FLOOR-AND-KEYBINDS-PLAN-E66C` — [`todo/history-inspector-action-floor-and-keybinds-PLAN.md`](../todo/history-inspector-action-floor-and-keybinds-PLAN.md)
 - `DOC-TODO-HISTORY-INSPECTOR-DS-AND-TABLE-ACTIONS-GEMINI-RE-1AF5` — [`todo/history-inspector-ds-and-table-actions-GEMINI-RESEARCH-BRIEFING.md`](../todo/history-inspector-ds-and-table-actions-GEMINI-RESEARCH-BRIEFING.md)
 - `DOC-TODO-HISTORY-INSPECTOR-TOPIC-ICONS-HANDOFF-BC8E` — [`todo/history-inspector-topic-icons-HANDOFF.md`](../todo/history-inspector-topic-icons-HANDOFF.md)
@@ -1136,6 +1202,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 - `DOC-TODO-KINETIC-LEDGER-STATION-SAFETY-EXECUTION-PROMPT-DECE` — [`todo/kinetic-ledger-station-safety-EXECUTION-PROMPT.md`](../todo/kinetic-ledger-station-safety-EXECUTION-PROMPT.md)
 - `DOC-TODO-KINETIC-LEDGER-STATION-SAFETY-PLAN-97BC` — [`todo/kinetic-ledger-station-safety-PLAN.md`](../todo/kinetic-ledger-station-safety-PLAN.md)
 - `DOC-TODO-KIOSK-COUNTER-TRANSACTION-PLAN-0689` — [`todo/kiosk-counter-transaction-PLAN.md`](../todo/kiosk-counter-transaction-PLAN.md)
+- `DOC-TODO-KIOSK-DESK-SESSION-CHANNEL-PLAN-0AF6` — [`todo/kiosk-desk-session-channel-PLAN.md`](../todo/kiosk-desk-session-channel-PLAN.md)
 - `DOC-TODO-KIOSK-IPAD-NATIVE-SHELL-GEMINI-RESEARCH-BRIEFING-D94F` — [`todo/kiosk-ipad-native-shell-GEMINI-RESEARCH-BRIEFING.md`](../todo/kiosk-ipad-native-shell-GEMINI-RESEARCH-BRIEFING.md)
 - `DOC-TODO-KIOSK-LANDSCAPE-SHELL-PLAN-1830` — [`todo/kiosk-landscape-shell-PLAN.md`](../todo/kiosk-landscape-shell-PLAN.md)
 - `DOC-TODO-KIOSK-LIGHTHOUSE-SIDEBAR-HANDOFF-800A` — [`todo/kiosk-lighthouse-sidebar-HANDOFF.md`](../todo/kiosk-lighthouse-sidebar-HANDOFF.md)
@@ -1176,6 +1243,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 - `DOC-TODO-MOBILE-UNBOX-PHOTO-FLOW-GEMINI-RESEARCH-BRIEFING-2BA6` — [`todo/mobile-unbox-photo-flow-GEMINI-RESEARCH-BRIEFING.md`](../todo/mobile-unbox-photo-flow-GEMINI-RESEARCH-BRIEFING.md)
 - `DOC-TODO-MOTION-REDUCE-STRATEGY-COSTING-50E3` — [`todo/motion-reduce-strategy-COSTING.md`](../todo/motion-reduce-strategy-COSTING.md)
 - `DOC-TODO-MOTION-ROLE-LAYER-HANDOFF-76E5` — [`todo/motion-role-layer-HANDOFF.md`](../todo/motion-role-layer-HANDOFF.md)
+- `DOC-TODO-NAV-IA-PHASE4-EXECUTION-PLAN-26A2` — [`todo/nav-ia-phase4-EXECUTION-PLAN.md`](../todo/nav-ia-phase4-EXECUTION-PLAN.md)
 - `DOC-TODO-NAV-KEYS-SELECTION-KEYBOARD-HANDOFF-F1F1` — [`todo/nav-keys-selection-keyboard-HANDOFF.md`](../todo/nav-keys-selection-keyboard-HANDOFF.md)
 - `DOC-TODO-NAV-ROUTING-REFACTOR-EXECUTION-PROMPT-1A0D` — [`todo/nav-routing-refactor-EXECUTION-PROMPT.md`](../todo/nav-routing-refactor-EXECUTION-PROMPT.md)
 - `DOC-TODO-NAV-ROUTING-REFACTOR-FINISH-PROMPT-3E0A` — [`todo/nav-routing-refactor-FINISH-PROMPT.md`](../todo/nav-routing-refactor-FINISH-PROMPT.md)
@@ -1185,6 +1253,8 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 - `DOC-TODO-NONLINEAR-TABLE-BURN-FOREST-AND-RATCHET-HANDOFF-7EFE` — [`todo/nonlinear-table-burn-forest-and-ratchet-HANDOFF.md`](../todo/nonlinear-table-burn-forest-and-ratchet-HANDOFF.md)
 - `DOC-TODO-NONLINEAR-TABLE-FOREST-FINISH-HANDOFF-4F55` — [`todo/nonlinear-table-forest-finish-HANDOFF.md`](../todo/nonlinear-table-forest-finish-HANDOFF.md)
 - `DOC-TODO-NOTE-GRAIN-E2E-AND-FOLLOWUPS-EXECUTION-PROMPT-CAA2` — [`todo/note-grain-e2e-and-followups-EXECUTION-PROMPT.md`](../todo/note-grain-e2e-and-followups-EXECUTION-PROMPT.md)
+- `DOC-TODO-ONE-WRAPPER-DUAL-RIGHT-RAIL-GEMINI-RESEARCH-BRIE-51D6` — [`todo/one-wrapper-dual-right-rail-GEMINI-RESEARCH-BRIEFING.md`](../todo/one-wrapper-dual-right-rail-GEMINI-RESEARCH-BRIEFING.md)
+- `DOC-TODO-ONE-WRAPPER-DUAL-RIGHT-RAIL-PLAN-CB8E` — [`todo/one-wrapper-dual-right-rail-PLAN.md`](../todo/one-wrapper-dual-right-rail-PLAN.md)
 - `DOC-TODO-OPERATOR-LABEL-VOCABULARY-HANDOFF-1C67` — [`todo/operator-label-vocabulary-HANDOFF.md`](../todo/operator-label-vocabulary-HANDOFF.md)
 - `DOC-TODO-OPS-TABLE-SIMPLIFICATION-GEMINI-FOLLOWUP-9A06` — [`todo/ops-table-simplification-GEMINI-FOLLOWUP.md`](../todo/ops-table-simplification-GEMINI-FOLLOWUP.md)
 - `DOC-TODO-OPS-TABLE-SIMPLIFICATION-GEMINI-RESEARCH-BRIEFIN-BE48` — [`todo/ops-table-simplification-GEMINI-RESEARCH-BRIEFING.md`](../todo/ops-table-simplification-GEMINI-RESEARCH-BRIEFING.md)

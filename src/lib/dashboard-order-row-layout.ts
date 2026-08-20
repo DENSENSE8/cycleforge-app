@@ -130,6 +130,12 @@ export const ORDERS_QUEUE_COLUMNS: readonly OrdersQueueColumn[] = [
   // the type map. See `source-of-truth.md` → Grid column justification.
   {
     key: 'order',
+    // Identity language: brand dot, not the `#`/MapPin type glyph — the header
+    // already names this column (`display/workbench-ops-queue.md`, ruled
+    // 2026-08-20). This one flag is the whole switch: `OrdersQueueTableRow`
+    // derives its chip `variant` from it, and the shared painter swaps the
+    // glyph for the platform/carrier dot.
+    omitCellIcon: true,
     width: 'minmax(4.5rem, 4.5rem)',
     label: 'Order',
     type: 'id',
@@ -181,6 +187,12 @@ export const ORDERS_QUEUE_COLUMNS: readonly OrdersQueueColumn[] = [
   },
   {
     key: 'tracking',
+    // Identity language: brand dot, not the `#`/MapPin type glyph — the header
+    // already names this column (`display/workbench-ops-queue.md`, ruled
+    // 2026-08-20). This one flag is the whole switch: `OrdersQueueTableRow`
+    // derives its chip `variant` from it, and the shared painter swaps the
+    // glyph for the platform/carrier dot.
+    omitCellIcon: true,
     width: 'minmax(5.5rem, 5.5rem)',
     label: 'Tracking',
     type: 'tracking',
@@ -221,6 +233,12 @@ export const ORDERS_QUEUE_TESTED_COLUMNS: readonly OrdersQueueColumn[] = [
   { key: 'select', width: 'minmax(2rem, 2rem)', frozen: true, resizable: false },
   {
     key: 'order',
+    // Identity language: brand dot, not the `#`/MapPin type glyph — the header
+    // already names this column (`display/workbench-ops-queue.md`, ruled
+    // 2026-08-20). This one flag is the whole switch: `OrdersQueueTableRow`
+    // derives its chip `variant` from it, and the shared painter swaps the
+    // glyph for the platform/carrier dot.
+    omitCellIcon: true,
     width: 'minmax(4.5rem, 4.5rem)',
     label: 'Order',
     type: 'id',
@@ -295,6 +313,12 @@ export const ORDERS_QUEUE_TESTED_COLUMNS: readonly OrdersQueueColumn[] = [
   },
   {
     key: 'tracking',
+    // Identity language: brand dot, not the `#`/MapPin type glyph — the header
+    // already names this column (`display/workbench-ops-queue.md`, ruled
+    // 2026-08-20). This one flag is the whole switch: `OrdersQueueTableRow`
+    // derives its chip `variant` from it, and the shared painter swaps the
+    // glyph for the platform/carrier dot.
+    omitCellIcon: true,
     width: 'minmax(5.5rem, 5.5rem)',
     label: 'Tracking',
     type: 'tracking',

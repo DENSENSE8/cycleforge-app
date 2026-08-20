@@ -39,6 +39,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     });
 
     const research = await researchSourcingCandidates({
+      orgId: ctx.organizationId,
       query: search.query,
       modelNumber: parsed.modelNumber ?? null,
       partRole: parsed.partRole ?? null,

@@ -86,18 +86,10 @@ export function IncomingDetailsHeader({
     : 'Re-pull this PO from inventory + re-poll its shipment';
   const syncAria = isInboundOnly ? 'Resync this marketplace order' : 'Sync this PO';
 
-  const navigate = (direction: 'prev' | 'next') => {
-    window.dispatchEvent(new CustomEvent('receiving-navigate-table', { detail: direction }));
-  };
-
   return (
     <div className="shrink-0 border-b border-border-hairline bg-surface-card/90 backdrop-blur-xl">
       <DeskRailChromeRow
         onClose={onClose}
-        onPrev={() => navigate('prev')}
-        onNext={() => navigate('next')}
-        prevTestId="incoming-details-prev"
-        nextTestId="incoming-details-next"
         columnDisplay
         trailing={
           selectionActions.length > 0 || !hideSync ? (

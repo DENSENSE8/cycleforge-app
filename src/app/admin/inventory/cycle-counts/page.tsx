@@ -193,8 +193,8 @@ export default async function CycleCountsAdminPage({
 
   return (
     <div className="min-h-screen bg-surface-canvas">
-      <PageHeader backHref="/admin/inventory" title="Cycle counts" maxWidth="6xl" />
-      <div className="mx-auto max-w-6xl space-y-6 p-8">
+      <PageHeader backHref="/admin/inventory" title="Cycle counts" />
+      <div className="space-y-6 p-8">
         <p className="text-sm text-text-muted">
           Campaigns snapshot <code className="rounded bg-surface-sunken px-1 py-0.5 text-xs">bin_contents</code>{' '}
           and route counts through the variance-tolerance gate. Within tolerance auto-approves

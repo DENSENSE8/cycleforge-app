@@ -204,8 +204,8 @@ export default async function ReturnsIntakeAdminPage({
 
   return (
     <div className="min-h-screen bg-surface-canvas">
-      <PageHeader backHref="/admin/inventory" title="Returns intake" maxWidth="6xl" />
-      <div className="mx-auto max-w-6xl space-y-6 p-8">
+      <PageHeader backHref="/admin/inventory" title="Returns intake" />
+      <div className="space-y-6 p-8">
         <p className="text-sm text-text-muted">
           Receive units back into the warehouse. Each scanned serial gets a
           <code className="mx-1 rounded bg-surface-sunken px-1 py-0.5 text-xs">RETURNED</code>

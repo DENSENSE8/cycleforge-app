@@ -75,6 +75,9 @@ export async function embedText(
         headers: {
           'content-type': 'application/json',
           ...(config.apiKey ? { authorization: `Bearer ${config.apiKey}` } : {}),
+          // Endpoint-level auth (Cloudflare Access on a tunnelled self-hosted
+          // model). Dropping it yields a CF 403 that reads like a model error.
+          ...(config.headers ?? {}),
         },
         body: JSON.stringify({
           model: config.model,

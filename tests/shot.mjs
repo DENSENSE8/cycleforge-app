@@ -5,7 +5,7 @@ import fs from 'fs';
 // routes render; if the session is stale, re-sign-in via the e2e auth helper
 // (pinless API or owner act-as) and re-save it.
 //   node tests/shot.mjs <path> <outfile>
-const route = process.argv[2] || '/design-demo/id-chips';
+const route = process.argv[2] || '/unbox';
 const out = process.argv[3] || '/tmp/shot.png';
 const STORAGE = 'tests/.auth/admin.json';
 const STAFF = process.env.PW_STAFF_NAME || 'Michael';

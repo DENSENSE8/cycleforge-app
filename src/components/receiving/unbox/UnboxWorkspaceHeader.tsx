@@ -483,6 +483,27 @@ export function UnboxWorkspaceHeader({
     return () => window.removeEventListener('wedge-scan', onWedge);
   }, [isHistoryTab, replaceParams, searchParams]);
 
+  /**
+   * A printed label scanned INTO the History find box.
+   *
+   * The `wedge-scan` handler above never fires here: the global listener bails
+   * on editable focus, so the classifier this surface already wired is
+   * unreachable the moment the operator clicks into the box it feeds. They
+   * scanned a carton to OPEN it, not to search for the text of its label.
+   *
+   * Only a decoded handle arrives (a carrier number stays a text query and
+   * filters normally), so this sends it exactly where the global wedge would
+   * have: the route's own redirect.
+   */
+  const onFindFieldScan = useCallback(
+    (route: ScanRoute) => {
+      if (!route.redirect) return false;
+      router.push(route.redirect);
+      return true;
+    },
+    [router],
+  );
+
   const tabCount = (id: UnboxWorkspaceTab): number | undefined => {
     const n = id === 'queue' ? queueCount : id === 'recent' ? recentCount : undefined;
     // History is the whole station's archive — a count there is a database size,
@@ -819,6 +840,7 @@ export function UnboxWorkspaceHeader({
       className="min-w-0 flex-1"
       trailingSuffix={historyInFieldFilter}
       inputRef={findInputRef}
+      onScanHandle={onFindFieldScan}
       navKeyHint={navKeyCap('find')}
     />
   ) : (

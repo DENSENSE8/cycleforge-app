@@ -323,10 +323,14 @@ async function testManuals() {
 async function testSupportHealth() {
   console.log('\n❤️   HEALTH / SUPPORT\n');
 
-  const r1 = await get('/api/ai/health');
-  check('GET /api/ai/health', r1, {
-    validate: (b) => (b?.status ? [] : ['Missing status field']),
-    warnOnly: true,   // AI (Ollama) may be offline in non-local environments
+  // /api/ai/health was deleted as a strict subset of /api/ai/chat-health
+  // (same probe, same permission, poorer shape). The old assertion checked a
+  // `status` field this endpoint family has never returned, so it could only
+  // ever warn; assert on the fields that actually exist.
+  const r1 = await get('/api/ai/chat-health');
+  check('GET /api/ai/chat-health', r1, {
+    validate: (b) => (typeof b?.ok === 'boolean' && b?.backend ? [] : ['Missing ok/backend field']),
+    warnOnly: true,   // the provider may be offline in non-local environments
   });
 
   const r2 = await get('/api/support/overview');

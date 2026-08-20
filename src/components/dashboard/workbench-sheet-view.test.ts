@@ -48,24 +48,12 @@ const COHORT: readonly string[] = [
   // Scan stations + To-ship (the first pass).
   'src/components/tech/testing/TestingWorkspaceView.tsx',
   'src/components/tech/shipping/ShippingWorkspaceView.tsx',
-  'src/components/packer/PackWorkspaceView.tsx',
   'src/components/receiving/triage/TriageWorkspaceView.tsx',
-  'src/components/outbound/labels/LabelsWorkspaceView.tsx',
   'src/components/dashboard/DashboardOrdersView.tsx',
   // Every other three-band sheet (the all-pages pass).
-  'src/components/fba/FbaOutboundWorkspace.tsx',
-  'src/components/receiving/pickup/PickupWorkspace.tsx',
   'src/components/warehouse/LocationsWorkspace.tsx',
-  'src/components/products/catalog/ProductsCatalogWorkspace.tsx',
   'src/components/support/zendesk/SupportTicketsBoard.tsx',
   'src/components/labels/LabelsProductsWorkspace.tsx',
-  'src/components/inventory/UnitsWorkspaceView.tsx',
-  'src/features/review/ReviewPackingTable.tsx',
-  'src/features/review/pairing/ReviewPairingTable.tsx',
-  'src/features/review/catalog-link/ReviewCatalogLinkTable.tsx',
-  'src/features/my-day/MyDayWorkspace.tsx',
-  'src/components/repair/RepairTable.tsx',
-  'src/components/tracking-exceptions/TrackingExceptionsTable.tsx',
   'src/components/station/ReceivingLinesTable.tsx',
 ];
 
@@ -75,6 +63,30 @@ const COHORT: readonly string[] = [
  * list cannot be wrong out loud (`pattern-evolution.md` → Always #6).
  */
 const OUT_OF_COHORT: Readonly<Record<string, string>> = {
+  'src/components/packer/PackWorkspaceView.tsx':
+    'Its collection grid was deleted on 2026-08-20 while the display is rewritten, so this file is a TableRebuildPlaceholder and has no three-band stack left to compose. Move it back into COHORT the moment its sheet is rebuilt — an out-of-cohort row here is a rebuild TODO, not a permanent divergence.',
+  'src/components/fba/FbaOutboundWorkspace.tsx':
+    'Its collection grid was deleted on 2026-08-20 while the display is rewritten, so this file is a TableRebuildPlaceholder and has no three-band stack left to compose. Move it back into COHORT the moment its sheet is rebuilt — an out-of-cohort row here is a rebuild TODO, not a permanent divergence.',
+  'src/features/review/ReviewPackingTable.tsx':
+    'Its collection grid was deleted on 2026-08-20 while the display is rewritten, so this file is a TableRebuildPlaceholder and has no three-band stack left to compose. Move it back into COHORT the moment its sheet is rebuilt — an out-of-cohort row here is a rebuild TODO, not a permanent divergence.',
+  'src/features/review/pairing/ReviewPairingTable.tsx':
+    'Its collection grid was deleted on 2026-08-20 while the display is rewritten, so this file is a TableRebuildPlaceholder and has no three-band stack left to compose. Move it back into COHORT the moment its sheet is rebuilt — an out-of-cohort row here is a rebuild TODO, not a permanent divergence.',
+  'src/components/outbound/labels/LabelsWorkspaceView.tsx':
+    'Its collection grid was deleted on 2026-08-20 while the display is rewritten, so this file is a TableRebuildPlaceholder and has no three-band stack left to compose. Move it back into COHORT the moment its sheet is rebuilt — an out-of-cohort row here is a rebuild TODO, not a permanent divergence.',
+  'src/components/receiving/pickup/PickupWorkspace.tsx':
+    'Its collection grid was deleted on 2026-08-20 while the display is rewritten, so this file is a TableRebuildPlaceholder and has no three-band stack left to compose. Move it back into COHORT the moment its sheet is rebuilt — an out-of-cohort row here is a rebuild TODO, not a permanent divergence.',
+  'src/components/products/catalog/ProductsCatalogWorkspace.tsx':
+    'Its collection grid was deleted on 2026-08-20 while the display is rewritten, so this file is a TableRebuildPlaceholder and has no three-band stack left to compose. Move it back into COHORT the moment its sheet is rebuilt — an out-of-cohort row here is a rebuild TODO, not a permanent divergence.',
+  'src/components/inventory/UnitsWorkspaceView.tsx':
+    'Its collection grid was deleted on 2026-08-20 while the display is rewritten, so this file is a TableRebuildPlaceholder and has no three-band stack left to compose. Move it back into COHORT the moment its sheet is rebuilt — an out-of-cohort row here is a rebuild TODO, not a permanent divergence.',
+  'src/features/review/catalog-link/ReviewCatalogLinkTable.tsx':
+    'Its collection grid was deleted on 2026-08-20 while the display is rewritten, so this file is a TableRebuildPlaceholder and has no three-band stack left to compose. Move it back into COHORT the moment its sheet is rebuilt — an out-of-cohort row here is a rebuild TODO, not a permanent divergence.',
+  'src/features/my-day/MyDayWorkspace.tsx':
+    'Its collection grid was deleted on 2026-08-20 while the display is rewritten, so this file is a TableRebuildPlaceholder and has no three-band stack left to compose. Move it back into COHORT the moment its sheet is rebuilt — an out-of-cohort row here is a rebuild TODO, not a permanent divergence.',
+  'src/components/repair/RepairTable.tsx':
+    'Its collection grid was deleted on 2026-08-20 while the display is rewritten, so this file is a TableRebuildPlaceholder and has no three-band stack left to compose. Move it back into COHORT the moment its sheet is rebuilt — an out-of-cohort row here is a rebuild TODO, not a permanent divergence.',
+  'src/components/tracking-exceptions/TrackingExceptionsTable.tsx':
+    'Its collection grid was deleted on 2026-08-20 while the display is rewritten, so this file is a TableRebuildPlaceholder and has no three-band stack left to compose. Move it back into COHORT the moment its sheet is rebuilt — an out-of-cohort row here is a rebuild TODO, not a permanent divergence.',
   'src/components/receiving/unbox/UnboxWorkspaceView.tsx':
     'Unbox renders ONE band here — Bands 2 and 3 live INSIDE UnboxWorkspaceHeader ' +
     '(its KPI canvas + LEAN row are the header’s own, and its View cluster is on the ' +

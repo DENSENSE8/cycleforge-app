@@ -139,3 +139,27 @@ test('timeout aborts and surfaces as a failed request', async () => {
     /Embedding request failed/,
   );
 });
+
+// --- Endpoint-level header forwarding (AI provider consolidation, Phase 0).
+// A self-hosted embed endpoint behind Cloudflare Access needs its service
+// token on every request; the bearer `apiKey` is the model's, not the edge's.
+
+test('config.headers are forwarded to the embeddings request', async () => {
+  const f = fakes();
+  await embedText(['x'], {
+    ...f.deps,
+    resolveConfig: () => ({
+      baseURL: 'https://ai.example.com/v1',
+      apiKey: 'model-key',
+      model: 'nomic-embed-text',
+      headers: { 'CF-Access-Client-Id': 'cf-id', 'CF-Access-Client-Secret': 'cf-secret' },
+    }),
+  });
+
+  assert.equal(f.calls.length, 1);
+  const sent = f.calls[0]!.headers;
+  assert.equal(sent['CF-Access-Client-Id'], 'cf-id');
+  assert.equal(sent['CF-Access-Client-Secret'], 'cf-secret');
+  // The model bearer is still sent alongside — headers augment, never replace.
+  assert.equal(sent.authorization, 'Bearer model-key');
+});

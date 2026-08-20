@@ -92,6 +92,9 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       name: 'cycle-forge-ai',
       baseURL: cfg.baseURL,
       apiKey: cfg.apiKey,
+      // Endpoint-level auth (Cloudflare Access on a tunnelled self-hosted
+      // model), applied after the apiKey bearer — never a replacement for it.
+      ...(cfg.headers ? { headers: cfg.headers } : {}),
     });
 
     const result = streamText({

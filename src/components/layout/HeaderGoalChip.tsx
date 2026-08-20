@@ -11,6 +11,7 @@ import { useNextWorkOrder } from './goal-chip/useNextWorkOrder';
 import { GoalRing } from './goal-chip/GoalRing';
 import { GoalPopover } from './goal-chip/GoalPopover';
 import { NextWorkOrderRow } from './goal-chip/NextWorkOrderRow';
+import { GoalPanelHomeCta } from './goal-chip/GoalPanelHomeCta';
 import { HEADER_ICON_BTN_CLASS, HEADER_ICON_BTN_OPEN_CLASS, HEADER_ICON_WRAP } from './header-shell';
 
 /**
@@ -84,6 +85,7 @@ export function HeaderGoalChip() {
         >
           <div className={GOAL_PANEL_SHELL_CLASS}>
             {wo.top ? <NextWorkOrderRow top={wo.top} onNavigate={g.closePopover} /> : null}
+            <GoalPanelHomeCta onNavigate={g.closePopover} />
           </div>
         </AnchoredLayer>
       </div>

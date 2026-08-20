@@ -3,27 +3,24 @@
  * Row shell builds this once; cells stay column-scoped.
  */
 
+import { gridDataCellClass } from '@/design-system/components/grid';
 import type { CSSProperties, ReactNode } from 'react';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import type { ReceivingActivityAxis } from '@/components/station/receiving-lines-table-helpers';
 import {
-  gridCellAlignClass,
   gridColumnHighlightStyle,
-  gridColumnTextEmphasisClass,
   type GridColumnDisplayPref,
 } from '@/design-system/components/grid';
 import type { GridSelectGutterChrome } from '@/components/ui/GridRowCheckbox';
 import {
   RECEIVING_GRID_FROZEN_CELL,
   RECEIVING_GRID_FROZEN_EDGE_KEY,
-  receivingGridCell,
   receivingGridFrozenLeft,
   type IncomingGridColumn,
   type ReceivingGridColumn,
 } from '@/lib/receiving/receiving-grid-layout';
 import type { SourcePlatformMeta } from '@/lib/source-platform';
 import type { CustomFieldDef } from '@/lib/custom-fields/types';
-import { cn } from '@/utils/_cn';
 
 export type ReceivingActivityDateCell = {
   label: string;
@@ -121,13 +118,15 @@ export type ReceivingGridCellProps = {
 };
 
 export function receivingDataCellClass(col: ReceivingGridCellColumn, rule = true, ctx?: ReceivingGridCellCtx): string {
-  const pref = col.hideKey && ctx?.columnDisplay ? ctx.columnDisplay[col.hideKey] : undefined;
-  return cn(
-    receivingGridCell({ rule, inset: 'grid' }),
-    gridCellAlignClass(col),
-    gridColumnTextEmphasisClass(pref?.text),
-    col.frozen && RECEIVING_GRID_FROZEN_CELL,
-  );
+  // Delegates to the shared composition — this file assembled the four
+  // concerns by hand, and Orders assembled a different two, which is how the
+  // per-staff text emphasis ended up honoured on one family only.
+  return gridDataCellClass(col, {
+    rule,
+    inset: 'grid',
+    columnDisplay: ctx?.columnDisplay,
+    frozenClass: RECEIVING_GRID_FROZEN_CELL,
+  });
 }
 
 /**

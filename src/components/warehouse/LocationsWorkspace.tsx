@@ -27,7 +27,7 @@ import { useRightRailTopId } from '@/components/right-rail/useRightRailOccupant'
 import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 import { useLocations } from '@/hooks/useLocations';
 import { useBinsOverview, type BinsOverviewRow } from '@/hooks/useBinsOverview';
-import { BinsTable } from './BinsTable';
+import { TableRebuildPlaceholder } from '@/components/tables/TableRebuildPlaceholder';
 import {
   useBinsFilterParams,
   filterRowsByStatus,
@@ -215,14 +215,7 @@ function BinsTabSheet({
 
   return (
     <>
-      <BinsTable
-        rows={visibleRows}
-        loading={loading}
-        selected={reconciledSelected}
-        onSelectChange={setSelected}
-        onRowClick={(row) => setFlyoutRow(row)}
-        columnTriggerPortalTarget={columnTriggerPortalTarget}
-      />
+      <TableRebuildPlaceholder surface="Locations" />
 
       <BinsBulkActionBar
         selected={reconciledSelected}

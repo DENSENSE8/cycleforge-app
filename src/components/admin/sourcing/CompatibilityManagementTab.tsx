@@ -131,7 +131,7 @@ export function CompatibilityManagementTab() {
 
   return (
     <div className="flex h-full flex-col overflow-y-auto p-6">
-      <div className="mx-auto w-full max-w-4xl space-y-4">
+      <div className="w-full space-y-4">
         <h2 className="text-lg font-semibold text-text-default">
           Compatibility edges{' '}
           {!isLoading ? <span className="text-text-faint">({rows.length})</span> : null}

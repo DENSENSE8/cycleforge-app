@@ -58,7 +58,18 @@ export const ALL_GATES = [
   {
     name: 'Lint',
     cmd: 'npx',
-    args: ['eslint', 'src', '--max-warnings=10000'],
+    // --cache: eslint re-lints only files whose content or resolved config changed
+    // (the per-file cache entry carries a config hash, so a flat-config edit
+    // invalidates on its own). Cache lives under node_modules/.cache so it is
+    // wiped by `npm ci` in CI — same cold-run semantics there as before.
+    args: [
+      'eslint',
+      'src',
+      '--max-warnings=10000',
+      '--cache',
+      '--cache-location',
+      'node_modules/.cache/eslint/',
+    ],
     profiles: 'always',
   },
   {
@@ -72,6 +83,11 @@ export const ALL_GATES = [
     name: 'Unit tests + structural guards',
     cmd: 'node',
     args: ['scripts/run-unit-tests.mjs'],
+    // NODE_COMPILE_CACHE (Node 22+): persist V8 bytecode for every module the
+    // runner loads. `node --test` spawns one child per test file and each child
+    // re-boots tsx + esbuild from scratch, so the compile cache is paid once and
+    // reused ~770 times. Inherited by the children through the environment.
+    env: { NODE_COMPILE_CACHE: 'node_modules/.cache/node-compile' },
     profiles: 'full',
   },
   { name: 'Dead-code (knip)', cmd: 'node', args: ['scripts/knip-gate.mjs'], profiles: 'full' },

@@ -66,9 +66,10 @@ type GateWriteFailure = { title: string; description: string };
  * `status === null` means the request never completed (offline / dropped), which
  * is a different remedy from any server answer and so is its own branch.
  *
- * Exported for the guard + unit tests.
+ * Module-private: its only external consumer was receiving-gate-write.guard.test.ts,
+ * deleted 2026-08-19 with the rest of the structural guards. Still used twice below.
  */
-export function describeGateWriteFailure(
+function describeGateWriteFailure(
   fact: string,
   status: number | null,
   serverMessage: string | null,

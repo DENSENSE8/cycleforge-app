@@ -7,7 +7,8 @@
  * Hosts:
  *  - `embedded` — flush body inside Unbox Displays → Prebox Assets leaf (no
  *    overlay, no duplicate "Create prebox label" title — the leaf names the
- *    surface). Mode choice is {@link TabDisplay} segment.
+ *    surface). Mode choice is a {@link SearchableSelectField} combobox —
+ *    the house child-mode face, shared with the ticket claim panel.
  *  - default — {@link RightPaneOverlay} (legacy / non-Displays callers).
  */
 
@@ -15,7 +16,7 @@ import { useState } from 'react';
 import { toast } from '@/lib/toast';
 import { X, Package, Check } from '@/components/Icons';
 import { Button, FlushTerminalFooter, IconButton } from '@/design-system/primitives';
-import { TabDisplay } from '@/design-system/components';
+import { SearchableSelectField } from '@/design-system/components';
 import { RightPaneOverlay } from '@/components/ui/RightPaneOverlay';
 import { getLast8 } from '@/components/ui/CopyChip';
 import { printProductLabels } from '@/lib/print/printProductLabel';
@@ -30,9 +31,9 @@ export interface PreboxWizardSerial {
 
 type PreboxMode = 'master' | 'per-unit';
 
-const PREBOX_MODE_TABS = [
-  { id: 'master' as const, label: 'One master label' },
-  { id: 'per-unit' as const, label: 'One label per unit' },
+const PREBOX_MODE_OPTIONS = [
+  { value: 'master', label: 'One master label' },
+  { value: 'per-unit', label: 'One label per unit' },
 ];
 
 function PreboxWizardBody({
@@ -169,16 +170,21 @@ function PreboxWizardBody({
         </div>
       ) : null}
 
-      {/* Mode — child segment under Prebox leaf (nested grammar). */}
+      {/* Mode — child combobox under the Prebox leaf: the house child-mode
+          face (claim Create|Link), not a segment twin. */}
       <div className="shrink-0">
-        <TabDisplay
-          tabs={PREBOX_MODE_TABS}
-          activeTab={mode}
-          onTabChange={(id) => setMode(id as PreboxMode)}
-          density="nested"
-          fit="fill"
-          appearance="segment"
-          aria-label="Prebox label mode"
+        <SearchableSelectField
+          appearance="flush"
+          value={mode}
+          onChange={(id) => {
+            if (id == null) return;
+            setMode(id as PreboxMode);
+          }}
+          options={PREBOX_MODE_OPTIONS}
+          placeholder="Pick a label mode…"
+          searchPlaceholder="Type to filter…"
+          emptyMessage="No modes match"
+          ariaLabel="Prebox label mode"
         />
       </div>
 

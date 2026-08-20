@@ -1,4 +1,6 @@
-import { getHermesApiUrl, getHermesHeaders } from '@/lib/ai/hermes-client';
+import { aiRequestHeaders } from '@/lib/ai/provider';
+import { resolveOrgAiConfig } from '@/lib/ai/org-provider';
+import type { OrgId } from '@/lib/tenancy/constants';
 import type { NormalizedCandidate } from '@/lib/sourcing/normalize';
 
 export interface SourcingResearchCandidate {
@@ -81,6 +83,8 @@ function extractJsonObject(text: string): ResearchToolArgs {
 }
 
 export async function researchSourcingCandidates(input: {
+  /** Whose AI provider serves this call — required, never defaulted. */
+  orgId: OrgId;
   query: string;
   modelNumber?: string | null;
   partRole?: string | null;
@@ -100,10 +104,17 @@ export async function researchSourcingCandidates(input: {
     source: candidate.source,
   }));
 
-  const model = String(process.env.HERMES_MODEL || 'hermes-agent').trim();
-  const res = await fetch(`${getHermesApiUrl()}/chat/completions`, {
+  const provider = await resolveOrgAiConfig(input.orgId, 'chat');
+  if (!provider) {
+    throw new Error('No AI chat provider is connected for this organization');
+  }
+  const model = provider.model;
+  const res = await fetch(`${provider.baseURL}/chat/completions`, {
     method: 'POST',
-    headers: getHermesHeaders({ 'content-type': 'application/json', 'X-Source': 'cycle-forge-sourcing-research' }),
+    headers: aiRequestHeaders(provider, {
+      'content-type': 'application/json',
+      'X-Source': 'cycle-forge-sourcing-research',
+    }),
     body: JSON.stringify({
       model,
       temperature: 0,

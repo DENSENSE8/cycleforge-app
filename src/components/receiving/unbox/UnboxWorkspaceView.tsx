@@ -36,7 +36,7 @@ import { ReceivingLineRailShell } from '@/components/receiving/rail/ReceivingLin
 import { ReceivingClaimModal } from '@/components/receiving/workspace/ReceivingClaimModal';
 import { UnboxCompareHost } from '@/components/receiving/unbox/compare/UnboxCompareHost';
 import { useHistoryViewChromeOptional } from '@/components/receiving/history/history-view-chrome-context';
-import { TechAllTriageTable } from '@/components/tech/all/TechAllTriageTable';
+import { TableRebuildPlaceholder } from '@/components/tables/TableRebuildPlaceholder';
 import {
   GRID_ZOOM_DEFAULT,
   gridZoomStyle,
@@ -167,7 +167,7 @@ export function UnboxWorkspaceView(props: {
         >
           <Suspense fallback={<UnboxTableCardSkeleton />}>
             {unboxView === 'all' ? (
-              <TechAllTriageTable scope="unbox" columnTriggerPortalTarget={controlsEl} />
+              <TableRebuildPlaceholder surface="Unbox · All" />
             ) : isCompare ? (
               <UnboxCompareHost selectMode={selectMode} />
             ) : (

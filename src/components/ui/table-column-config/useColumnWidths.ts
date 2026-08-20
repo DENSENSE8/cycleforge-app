@@ -2,10 +2,10 @@
  * Column width clamp helpers for drag-resize handles and Columns Display
  * numeric width / min / max fields.
  *
- * Live per-staff width persistence (`useColumnWidths`) was retired with
- * `OrdersQueueTable` — outbound lists use SoT default tracks on LedgerGrid.
- * Keep the clamp constants here so {@link ColumnResizeHandle} (opt-in when a
- * surface wires `onResizeColumn`) still shares the same floor/ceiling.
+ * Outbound lists render SoT default tracks on LedgerGrid — there is no live
+ * per-staff width persistence layer here. The clamp constants live in this
+ * module so {@link ColumnResizeHandle} (opt-in, when a surface wires
+ * `onResizeColumn`) shares one floor/ceiling with everything else.
  */
 
 /** House absolute floor — short labels (Qty / Cond / Age / Order) stay readable. */

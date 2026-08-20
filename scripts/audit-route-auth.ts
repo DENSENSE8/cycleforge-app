@@ -91,6 +91,7 @@ function classifyExemption(path: string): string | null {
   // secret on the legacy path) + org resolved from the URL token, not a session.
   if (path.includes('/api/zoho/webhooks')) return 'webhook (gated by signature + token-resolved org)';
   if (path.includes('/api/health')) return 'health probe';
+  if (path.includes('/api/version')) return 'deploy sha probe (public; same class as /api/health)';
   if (path.includes('/api/ready')) return 'readiness probe';
   if (path.includes('/api/cron/')) return 'cron endpoint';
   // Dev/LAN NAS file passthrough: returns 404 in production unless NAS_DEV_ROOT

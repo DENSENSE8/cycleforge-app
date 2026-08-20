@@ -37,6 +37,8 @@ import {
   upsertOpenTrackingException,
   resolveReceivingExceptionsByReceivingId,
 } from '@/lib/tracking-exceptions';
+import { routeScan, scannedReceivingId } from '@/lib/barcode-routing';
+import { detectStationScanType } from '@/lib/station-scan-routing';
 import { withAuth } from '@/lib/auth/withAuth';
 import { AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import {
@@ -261,7 +263,50 @@ async function findScanByTracking(
   carrier: string,
   orgId: string,
   intakeSurface: ReceivingIntakeSurface = 'triage',
+  /**
+   * The carton id the RAW scan decoded to, when it decoded to one of our own
+   * printed carton labels. Resolved by the caller from the raw value, because
+   * `trackingNumber` here has already been through `extractCanonicalTracking`.
+   */
+  scannedCartonId: number | null = null,
 ): Promise<{ scan_id: number; receiving_id: number } | null> {
+  // ── 0. OUR OWN PRINTED CARTON LABEL — an exact answer, not a match ───────
+  //
+  // This route composed NO decoder, so a re-scan of a sticker we printed
+  // (`https://{slug}.app.cycleforge.ai/m/r/1234`, or the punctuation-stripped
+  // form an HID wedge in the wrong keyboard country emits) was treated as an
+  // unknown CARRIER number: every rung below missed and the unmatched path
+  // MINTED A NEW CARTON — once per scan. Desktop was protected only because
+  // `useTrackingScan` short-circuits carton codes before it ever calls here;
+  // every other caller (mobile Receive, mobile Arrival) had no such hop, and
+  // the protection was one refactor away from being lost on desktop too.
+  //
+  // Guarding at the shared route rather than per caller is the point: this is
+  // the ingest boundary, so it holds for every surface at once.
+  if (scannedCartonId != null) {
+    const owned = await tenantQuery<{ id: number }>(
+      orgId,
+      `SELECT id FROM receiving_carton WHERE id = $1 AND organization_id = $2 LIMIT 1`,
+      [scannedCartonId, orgId],
+    );
+    const receivingId = owned.rows[0]?.id ?? null;
+    if (receivingId != null) {
+      const scan_id = await memoizeLookupHit(
+        receivingId,
+        trackingNumber,
+        'unmatched',
+        staffId,
+        carrier,
+        intakeSurface,
+        orgId,
+      );
+      return { scan_id, receiving_id: receivingId };
+    }
+    // A label for a carton this org does not own is NOT a carrier number.
+    // Falling through would mint one; returning null lets the caller refuse.
+    return null;
+  }
+
   // ── 1. STN exact-normalized (last-8 demoted to a logged fallback) ────────
   const resolved = await resolveShipmentForScan(trackingNumber, orgId);
   if (resolved.receivingId != null) {
@@ -855,6 +900,33 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
     // carrier-tracking resolution matches against the canonical form. In `auto`
     // the same scan is tried as both, so canonicalize for tracking+auto and keep
     // the raw value for the PO# phase via `poLookupValue`.
+    // DECODE BEFORE INGEST. `rawTracking` may be one of our own printed labels;
+    // `extractCanonicalTracking` below is a CARRIER canonicalizer and has no
+    // opinion about them, so without this the value reaches the unmatched path
+    // as an unknown carrier number and mints a carton.
+    const scannedCartonId = scannedReceivingId(rawTracking);
+    /**
+     * The ticket number when the raw value is a printed TICKET label.
+     *
+     * `looksLikeTicketScan` / `parseTicketScanValue` accept a bare `9395` only —
+     * they answer false for `T-9395` and for the Digital Link the encoder mints,
+     * which is the same defect `looksLikeReceivingRef` had: a bare-handle regex
+     * that cannot see what we print. Without this, a scanned claim sticker
+     * skipped its own branch and fell through to the carrier rungs.
+     */
+    const scannedTicketValue = (() => {
+      const redirect = routeScan(rawTracking)?.redirect ?? '';
+      const m = /^\/support\?ticket=(\d+)$/.exec(redirect);
+      return m ? m[1] : null;
+    })();
+    // A house handle that is NOT a carton (a unit, a line, a shelf address, a
+    // kit manifest) is likewise not a carrier number. Tickets are excluded —
+    // they have a legitimate branch below that resolves them to a carton.
+    const isNonCartonHandle =
+      scannedCartonId == null &&
+      scannedTicketValue == null &&
+      detectStationScanType(rawTracking) === 'HANDLE' &&
+      !looksLikeTicketScan(rawTracking);
     const poLookupValue = rawTracking;
     const trackingNumber =
       mode === 'order' || mode === 'ticket'
@@ -963,9 +1035,14 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
     // −1. TICKET# — resolve an internal support ticket id to its receiving carton
     //     (support_tickets + ticket_links). Runs before PO/tracking.
     const tryTicket =
-      mode === 'ticket' || (mode === 'auto' && looksLikeTicketScan(rawTracking));
+      mode === 'ticket'
+      || scannedTicketValue != null
+      || (mode === 'auto' && looksLikeTicketScan(rawTracking));
     if (tryTicket) {
-      const ticketId = parseTicketScanValue(rawTracking);
+      // Decoded label first, then the bare-number parser for a typed value.
+      const ticketScanValue = scannedTicketValue ?? rawTracking;
+      const ticketId: number | null =
+        scannedTicketValue != null ? Number(scannedTicketValue) : parseTicketScanValue(rawTracking);
       if (mode === 'ticket' && ticketId == null) {
         return NextResponse.json({
           success: true,
@@ -977,7 +1054,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
         });
       }
       if (ticketId != null) {
-        const hit = await resolveSupportTicketToReceiving(ctx.organizationId, rawTracking).catch(
+        const hit = await resolveSupportTicketToReceiving(ctx.organizationId, ticketScanValue).catch(
           () => null,
         );
         if (hit) {
@@ -1226,7 +1303,14 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
     //    empty (e.g. receiving_lines was truncated, or the row was created
     //    as 'unmatched' before the PO mirror synced), fall through to the
     //    local tracking→PO adopt path so we can repopulate linkage on this row.
-    const existingScan = await findScanByTracking(trackingNumber, staffId, carrier, ctx.organizationId, intakeSurface);
+    const existingScan = await findScanByTracking(
+      trackingNumber,
+      staffId,
+      carrier,
+      ctx.organizationId,
+      intakeSurface,
+      scannedCartonId,
+    );
     let preassignedReceivingId: number | null = null;
     let preassignedScanId: number | null = null;
     if (existingScan) {
@@ -1666,6 +1750,28 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
           quantity_expected: l.quantity_expected,
           quantity_received: l.quantity_received,
         })),
+      });
+    }
+
+    // 3a-bis. REFUSE TO MINT FROM ONE OF OUR OWN HANDLES.
+    //
+    // Everything below this line creates a carton. A value that decodes to a
+    // house handle which is not a carton — a unit label, a receiving line, a
+    // shelf address, a kit manifest — is not a carrier tracking number, and
+    // minting for it produces a phantom carton named after a shelf. Tickets are
+    // excluded above because they have a real branch that resolves to a carton.
+    //
+    // A carton label that reached here means the id is not this org's (rung 0
+    // returned null rather than falling through), which is likewise not a
+    // reason to create anything.
+    if (isNonCartonHandle || scannedCartonId != null) {
+      return NextResponse.json({
+        success: true,
+        matched: false,
+        po_matched: false,
+        not_found: true,
+        po_ids: [],
+        error: `"${rawTracking}" is a Cycle Forge label, not a carrier tracking number.`,
       });
     }
 
