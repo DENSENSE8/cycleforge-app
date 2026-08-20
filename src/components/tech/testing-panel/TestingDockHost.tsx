@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Testing bottom dock — station-local host (not UnboxDockHost).
+ * Testing bottom dock — station-local host (not the shared notes floor).
  *
  * Panel row: leading QC CTA · trailing Pass · Print (carton-scoped; Displays
  * never re-labels it). Under-dock = step label. Notes mount *below* the Panel

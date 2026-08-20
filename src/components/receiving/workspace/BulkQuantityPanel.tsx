@@ -138,7 +138,7 @@ export function BulkQuantityPanel({
       {/*
         One-row stamp: qty left · actions right.
         Progressive = edge-to-edge h-11 band (same rhythm as PoLineCaptureRow /
-        UnboxDockHost) — never host px/pb air around the controls.
+        the station dock) — never host px/pb air around the controls.
       */}
       <div
         className={cn(

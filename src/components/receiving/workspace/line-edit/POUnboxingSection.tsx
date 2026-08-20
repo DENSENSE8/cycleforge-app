@@ -92,7 +92,7 @@ export function POUnboxingSection({
   if (!showPoItems) return null;
 
   // Flush data floor — zero radius / elevation. Depth lives on the elevated
-  // action dock (UnboxDockHost), not around PO line cards.
+  // action dock (the raised WorkspaceNotesCard floor), not around PO line cards.
   return (
     <div className="min-w-0">
       <LinePoItemsSection

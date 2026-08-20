@@ -61,7 +61,7 @@ export function StationWorkbench({
   /**
    * Sticky band between scroll body and dock.
    * Unbox mounts `ReceiveFeedbackRegion` in the absolute dock float stack
-   * (above `UnboxDockHost`) instead — an absolute dock would cover this slot.
+   * (above the dock) instead — an absolute dock would cover this slot.
    */
   footer?: ReactNode;
   dock?: ReactNode;

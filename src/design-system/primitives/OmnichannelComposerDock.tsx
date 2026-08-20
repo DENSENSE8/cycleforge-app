@@ -132,7 +132,8 @@ interface OmnichannelComposerDockProps {
   trailingAction?: ReactNode;
   /**
    * Outer chrome. `raised` (default) is the Support / standalone card — border +
-   * elevation. `bare` is the body zone inside a host shell (UnboxDockHost): no
+   * elevation. `bare` is the body zone inside a host shell that already
+   * paints the plane: no
    * second raised card, host owns elevation. Never nest `raised` under another
    * raised dock band.
    */

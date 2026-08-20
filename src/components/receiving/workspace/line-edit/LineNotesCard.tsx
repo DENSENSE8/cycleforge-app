@@ -112,7 +112,7 @@ export function LineNotesCard({
   animateMount?: boolean;
   /**
    * Pass-through to OmnichannelComposerDock. `bare` when nested inside
-   * {@link UnboxDockHost} so the host owns the only raised shell.
+   * a host that already paints the plane, so it owns the only raised shell.
    */
   chrome?: 'raised' | 'bare';
   /**
