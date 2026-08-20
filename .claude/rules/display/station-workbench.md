@@ -347,8 +347,12 @@ them. Law: `source-of-truth.md` → Station Action vs Context planes.
   `TechRailSearchBar variant="chrome"` — the same find face as the Unbox sheet's
   Band 3, above the list it filters). A leaf paints no filter, and the column
   paints no bottom band. Filter query applies only to `StationDisplayIndexList` /
-  `filterDisplayIndexRows`. Guard:
-  `station-displays-chrome-rows.guard.test.ts`.
+  `filterDisplayIndexRows`. Enforcement is layered per `AGENTS.md` → Guard
+  authoring: the import ban (no host forks a find field) is a scoped
+  `no-restricted-imports` in `eslint.config.mjs`; the rendered behaviour is
+  `tests/e2e/unbox-displays-header-band.spec.ts`. There is no source-text
+  guard — the one that existed could not tell an import from the same word in
+  a comment.
 - **Carton Macro verbs (top band):** Unbox mounts
   `StationDisplaysHeaderActions` via PushStack `headerActions` in the column's
   top-right corner — Refresh · Print/Resolve · Edit · trailing `⋮` (Delete and

@@ -353,6 +353,50 @@ export default [
 
 
   {
+    /**
+     * Displays hosts must not fork a page-local list-filter.
+     *
+     * `Filter displays…` is row 2 of `StationDisplaysPushColumn` and lives in
+     * `StationDisplaysPushStack` alone — index-only, one field per column. A
+     * host that imports the find bar directly is how a second door onto one
+     * query appears, and how a leaf grows filter chrome that does not refine
+     * the leaf.
+     *
+     * Tier 2 (AGENTS.md → Guard authoring). This replaced 43 regex assertions
+     * over source text in `station-displays-chrome-rows.guard.test.ts`, which
+     * is deleted: that file could not tell an import from the same word in a
+     * comment, and the behaviour it claimed to pin is asserted for real by
+     * `tests/e2e/unbox-displays-header-band.spec.ts` in a browser.
+     */
+    files: [
+      'src/components/receiving/workspace/LineEditPanel.tsx',
+      'src/components/receiving/triage/TriagePanel.tsx',
+      'src/components/tech/TestingPanel.tsx',
+      'src/components/packer/PackOrderPanel.tsx',
+      'src/components/tech/ActiveOrderWorkspace.tsx',
+      'src/features/review/packer/PackerReviewMode.tsx',
+      'src/components/support/orders/SupportOrdersFocusHost.tsx',
+    ],
+    languageOptions: {
+      parser: tsParser,
+      parserOptions: { ecmaFeatures: { jsx: true } },
+    },
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: '@/components/sidebar/tech/TechRailSearchBar',
+              message:
+                'The Displays filter is row 2 of StationDisplaysPushStack (index-only). Do not mount a page-local find field on a Displays host.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     files: ['src/components/station/entity-context/**/*.{ts,tsx}'],
     languageOptions: {
       parser: tsParser,
