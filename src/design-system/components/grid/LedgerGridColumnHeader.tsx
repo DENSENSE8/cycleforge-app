@@ -79,8 +79,6 @@ export type LedgerGridColumnHeaderProps<C extends LedgerGridColumnModel> = {
   activeSort?: string | null;
   sortDir?: GridSortDir | null;
   onSortColumn?: (key: string) => void;
-  /** Surface glyph override. Default: none on text headers; type glyph only when glyph-only / narrow. */
-  glyphFor?: (column: C) => ReactNode;
   /** Runtime label override (e.g. Unbox stage → Unboxed / Scanned / Tested). */
   labelFor?: (column: C) => string | undefined;
   /**
@@ -117,7 +115,6 @@ export function LedgerGridColumnHeader<C extends LedgerGridColumnModel>({
   activeSort = null,
   sortDir = null,
   onSortColumn,
-  glyphFor,
   labelFor,
   onResizeColumn,
   onResetColumn,
@@ -238,7 +235,6 @@ export function LedgerGridColumnHeader<C extends LedgerGridColumnModel>({
             isActiveSort={isActiveSort}
             sortDir={isActiveSort ? sortDir : null}
             onSort={sortable ? () => onSortColumn?.(column.key) : undefined}
-            glyph={glyphFor?.(column)}
             resizeEdges={edges}
             onResize={
               edges && onResizeColumn
@@ -268,7 +264,6 @@ function LedgerHeaderCell<C extends LedgerGridColumnModel>({
   isActiveSort = false,
   sortDir = null,
   onSort,
-  glyph,
   onResize,
   onReset,
   resizeEdges,
@@ -283,7 +278,6 @@ function LedgerHeaderCell<C extends LedgerGridColumnModel>({
   isActiveSort?: boolean;
   sortDir?: GridSortDir | null;
   onSort?: () => void;
-  glyph?: ReactNode;
   onResize?: (px: number) => void;
   onReset?: () => void;
   resizeEdges?: readonly GridColumnResizeEdge[];
@@ -326,7 +320,7 @@ function LedgerHeaderCell<C extends LedgerGridColumnModel>({
       )}
       style={frozen ? { left: layout.frozenLeft(column.key) } : undefined}
     >
-      <GridHeaderLabel column={column} glyph={glyph} sortDir={isActiveSort ? sortDir : null} />
+      <GridHeaderLabel column={column} sortDir={isActiveSort ? sortDir : null} />
       {onResize && onReset && resizeEdges
         ? resizeEdges.map((edge) => (
             <ColumnResizeHandle

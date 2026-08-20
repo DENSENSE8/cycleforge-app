@@ -1,3 +1,4 @@
+import type { OrgId } from '@/lib/tenancy/constants';
 import { sanitizeSellerMessage } from '@/lib/ai/seller-message-guard';
 import {
   CLAIM_TYPE_LABEL,
@@ -92,15 +93,19 @@ function extractSellerJson(text: string): { seller_message?: unknown } {
   return JSON.parse(trimmed.slice(start, end + 1)) as { seller_message?: unknown };
 }
 
-async function fetchHermes(body: unknown): Promise<Response> {
-  // Lazy import: hermes-client is `server-only`, so keep it off this module's
-  // static graph — the pure buildDeterministicSellerMessage stays unit-testable.
-  const { getHermesApiUrl, getHermesHeaders } = await import('@/lib/ai/hermes-client');
+async function fetchProvider(
+  provider: { baseURL: string; apiKey: string; headers?: Record<string, string> },
+  body: unknown,
+): Promise<Response> {
+  // Lazy import kept: org-provider reaches the vault (and so `@/lib/db`, which
+  // is `server-only`), and the pure buildDeterministicSellerMessage must stay
+  // unit-testable without it on the static graph.
+  const { aiRequestHeaders } = await import('@/lib/ai/provider');
   const controller = new AbortController();
   let timeout: ReturnType<typeof setTimeout> | undefined;
-  const request = fetch(`${getHermesApiUrl()}/chat/completions`, {
+  const request = fetch(`${provider.baseURL}/chat/completions`, {
     method: 'POST',
-    headers: getHermesHeaders({
+    headers: aiRequestHeaders(provider, {
       'content-type': 'application/json',
       'X-Source': 'cycle-forge-receiving-claim-assist-seller',
     }),
@@ -136,9 +141,10 @@ export interface SellerAssistResult {
 }
 
 export async function draftSellerMessageWithHermes(
+  /** Whose AI provider serves this call — required, never defaulted. */
+  orgId: OrgId,
   input: SellerAssistInput,
 ): Promise<SellerAssistResult> {
-  const model = String(process.env.HERMES_MODEL || 'hermes-agent').trim();
   const fallback = buildDeterministicSellerMessage({
     claimType: input.claimType,
     reason: input.reason,
@@ -154,7 +160,15 @@ export async function draftSellerMessageWithHermes(
   };
 
   try {
-    const res = await fetchHermes({
+    // Lazy for the same reason as fetchProvider above.
+    const { resolveOrgAiConfig } = await import('@/lib/ai/org-provider');
+    const provider = await resolveOrgAiConfig(orgId, 'chat');
+    // No provider is a DEGRADED answer, not an error: this surface always has
+    // a deterministic seller message to fall back to.
+    if (!provider) return finish(fallback, 'deterministic', true);
+    const model = provider.model;
+
+    const res = await fetchProvider(provider, {
       model,
       stream: false,
       temperature: 0,

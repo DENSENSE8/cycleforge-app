@@ -20,7 +20,7 @@ export type OrderInspectorDisplayTopic =
   | 'timeline'
   | 'conversation';
 
-/** Nested verbs under the Order parent (`TabDisplay` underline). */
+/** Nested verbs under the Order parent (flush child-mode select). */
 export type OrderInspectorOrderChild = 'shipping' | 'product';
 
 /** Order-tab bottom update actions (toggle editors / one-shot mutations). */

@@ -9,7 +9,7 @@
  * global {@link routeScan} / Unbox scan bar (passthrough / open_carton).
  */
 
-import { routeScan, type ScanRoute } from '@/lib/barcode-routing';
+import { decodedHandle, type ScanRoute } from '@/lib/barcode-routing';
 import { parseStationCommand } from '@/lib/stations/station-command-codes';
 import {
   normalizeReceivingHistorySearchField,
@@ -65,7 +65,13 @@ export function classifyHistoryCommandScan(
     }
   }
 
-  const resolved = route ?? routeScan(raw);
+  // TRUST ONLY A DECODE, NEVER A GUESS — see `decodedHandle`. Reading the guess
+  // as a handle swallowed ordinary find text: `Dell Latitude 7420`, `HP-PSU-450`
+  // and any plain serial guessed `bin` and returned `passthrough`, so the find
+  // never ran. Only a carrier number (which guesses `sku`) reached `find`.
+  //
+  // A caller-supplied `route` is trusted as-is — it already decoded upstream.
+  const resolved = route ?? decodedHandle(raw);
   if (resolved) {
     if (resolved.type === 'receiving') {
       const id = Number(resolved.value.replace(/^RCV-/i, '').replace(/^R-/i, '') || resolved.value);

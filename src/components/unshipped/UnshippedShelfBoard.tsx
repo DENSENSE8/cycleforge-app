@@ -3,7 +3,8 @@
 /**
  * Unshipped · Pending Grid — To Ship fulfillment queue as a single connected
  * spreadsheet (`OrdersGridHost` → `LedgerGridSurface` `surface="sheet"`).
- * Board|Grid switcher retired; search uses the same grid surface (filtered records).
+ * One grid surface, no Board|Grid switcher: search renders the same grid over
+ * filtered records.
  *
  * Workbench contract: URL-addressable selection (`?openOrderId`) + right-pane
  * detail. Do not refactor onto SidebarRailShell (single-list rail engine).

@@ -118,7 +118,7 @@ interface Props {
  *
  * Publishes the record-cursor **`sibling`** scope so ambient ↑/↓ steps PO
  * lines while the carton middle is open (←/→ stay on procedure steps). Carton
- * hopping stays on chrome {@link ScanStationCartonCursor} / History triage
+ * hopping stays on the recents rail / History triage
  * `record` scope — not ambient arrows here.
  *
  * A thin shell over two collaborators (per the god-component cleanup):

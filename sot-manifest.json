@@ -30,7 +30,7 @@
     "src/lib/orders-sync",
     "src/hooks"
   ],
-  "count": 2721,
+  "count": 2726,
   "entries": [
     {
       "job": "Station: Scan pane + Displays push",
@@ -42,7 +42,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 20,
+      "line": 32,
       "snippet": "`StationScanPaneHost` · `src/components/station/workbench/StationScanPaneHost.tsx`"
     },
     {
@@ -55,7 +55,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 21,
+      "line": 33,
       "snippet": "`StationWorkbench` · `src/components/station/workbench/`"
     },
     {
@@ -68,7 +68,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 22,
+      "line": 34,
       "snippet": "`StationDisplaysPushColumn` · `src/components/station/displays/`"
     },
     {
@@ -81,7 +81,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 23,
+      "line": 35,
       "snippet": "`CartonContextCard` · `src/components/station/entity-context/`"
     },
     {
@@ -94,7 +94,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 24,
+      "line": 36,
       "snippet": "`StationTerminalDock` · `src/components/station/terminal/`"
     },
     {
@@ -107,7 +107,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 25,
+      "line": 37,
       "snippet": "`WorkbenchSheetView` · `src/components/dashboard/WorkbenchSheetView.tsx`"
     },
     {
@@ -120,7 +120,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 26,
+      "line": 38,
       "snippet": "`WorkbenchChromeHeader` · `src/components/dashboard/workbench-shell.tsx`"
     },
     {
@@ -133,7 +133,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 27,
+      "line": 39,
       "snippet": "`WorkbenchKpiBand` · `src/components/dashboard/workbench-kpi-collapse.tsx`"
     },
     {
@@ -146,7 +146,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 28,
+      "line": 40,
       "snippet": "`NonlinearTableHost` · `src/components/tables/NonlinearTableHost.tsx`"
     },
     {
@@ -159,7 +159,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 29,
+      "line": 41,
       "snippet": "`TABLE_DEFINITIONS` · `src/components/tables/table-definition-registry.ts`"
     },
     {
@@ -172,7 +172,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 30,
+      "line": 42,
       "snippet": "`WorkbenchViewsMenu` · `src/components/saved-views/WorkbenchViewsMenu.tsx`"
     },
     {
@@ -185,7 +185,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 31,
+      "line": 43,
       "snippet": "`RightRailHost` · `src/components/right-rail/RightRailHost.tsx`"
     },
     {
@@ -198,7 +198,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 32,
+      "line": 44,
       "snippet": "`usePanelStore` · `src/lib/right-rail/panel-store.ts`"
     },
     {
@@ -211,7 +211,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 33,
+      "line": 45,
       "snippet": "`MonitorPageShell` · `src/design-system/components/monitor/MonitorPageShell.tsx`"
     },
     {
@@ -224,7 +224,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 34,
+      "line": 46,
       "snippet": "`OpsKpiBand` · `src/design-system/components/monitor/`"
     },
     {
@@ -237,7 +237,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 35,
+      "line": 47,
       "snippet": "`StudioShell` · `src/components/studio/`"
     },
     {
@@ -250,7 +250,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 36,
+      "line": 48,
       "snippet": "`MIN_WORK_SURFACE_PX` · `src/lib/right-rail/frame.ts`"
     },
     {
@@ -263,7 +263,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 37,
+      "line": 49,
       "snippet": "`ContextPanelLayout` · `src/components/sidebar/ContextPanelLayout.tsx`"
     },
     {
@@ -276,7 +276,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 38,
+      "line": 50,
       "snippet": "`RouteShell` · `src/design-system/components/RouteShell.tsx`"
     },
     {
@@ -290,7 +290,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 44,
+      "line": 56,
       "snippet": "`Button` · `Panel` · `src/design-system/primitives/`"
     },
     {
@@ -303,7 +303,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 45,
+      "line": 57,
       "snippet": "`LedgerGridSurface` · `src/design-system/components/grid/`"
     },
     {
@@ -316,7 +316,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 46,
+      "line": 58,
       "snippet": "`resolveGridColumnAlign` · `src/design-system/components/grid/`"
     },
     {
@@ -329,7 +329,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 47,
+      "line": 59,
       "snippet": "`motionRole` · `src/design-system/motion/`"
     },
     {
@@ -342,7 +342,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 48,
+      "line": 60,
       "snippet": "`cornerClass` · `src/design-system/tokens/`"
     },
     {
@@ -355,7 +355,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 49,
+      "line": 61,
       "snippet": "`CopyChip` · `src/components/ui/CopyChip.tsx`"
     },
     {
@@ -368,7 +368,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 50,
+      "line": 62,
       "snippet": "`PlatformMark` · `src/lib/source-platform.ts`"
     },
     {
@@ -381,7 +381,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 51,
+      "line": 63,
       "snippet": "`StackedRowIdentity` · `src/components/ui/StackedRowIdentity.tsx`"
     },
     {
@@ -394,7 +394,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 52,
+      "line": 64,
       "snippet": "`CompactActivityRow` · `src/components/ui/CompactActivityRow.tsx`"
     },
     {
@@ -407,7 +407,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 53,
+      "line": 65,
       "snippet": "`OrderWarrantySummary` · `src/components/order-record/OrderWarrantySummary.tsx`"
     },
     {
@@ -420,7 +420,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 54,
+      "line": 66,
       "snippet": "`NumericStep` · `src/components/barcode/bin-label-printer/NumericStep.tsx`"
     },
     {
@@ -433,7 +433,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 55,
+      "line": 67,
       "snippet": "`StationDisplaysActionFloor` · `src/components/station/displays/StationDisplaysActionFloor.tsx`"
     },
     {
@@ -446,7 +446,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 56,
+      "line": 68,
       "snippet": "`CartonDisplaysActionFloor` · `src/components/station/displays/CartonDisplaysActionFloor.tsx`"
     },
     {
@@ -459,7 +459,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 57,
+      "line": 69,
       "snippet": "`THEME_NUMPAD` · `src/components/auth/theme-numpad.ts`"
     },
     {
@@ -472,7 +472,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 58,
+      "line": 70,
       "snippet": "`HoverTooltip` · `src/components/ui/HoverTooltip.tsx`"
     },
     {
@@ -485,7 +485,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 59,
+      "line": 71,
       "snippet": "`ConversationMessageCard` · `src/design-system/primitives/ConversationMessageCard.tsx`"
     },
     {
@@ -496,7 +496,7 @@
       "symbols": [],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 60,
+      "line": 72,
       "snippet": "`conversation-chrome` · `src/design-system/primitives/conversation-chrome.ts`"
     },
     {
@@ -509,7 +509,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 61,
+      "line": 73,
       "snippet": "`ConversationHeaderActionButton` · `src/design-system/primitives/ConversationHeaderActionButton.tsx`"
     },
     {
@@ -522,7 +522,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 62,
+      "line": 74,
       "snippet": "`OmnichannelComposerDock` · `src/design-system/primitives/OmnichannelComposerDock.tsx`"
     },
     {
@@ -535,7 +535,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 63,
+      "line": 75,
       "snippet": "`createWedgeKeyListener` · `src/lib/keyboard/wedge-scan-listener.ts`"
     },
     {
@@ -548,7 +548,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 64,
+      "line": 76,
       "snippet": "`kioskSessionStore` · `src/lib/kiosk/kiosk-session-store.ts`"
     },
     {
@@ -561,7 +561,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 65,
+      "line": 77,
       "snippet": "`KioskCartLedger` · `src/app/kiosk/v2/KioskCartLedger.tsx`"
     },
     {
@@ -574,7 +574,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 66,
+      "line": 78,
       "snippet": "`yieldToInput` · `src/lib/perf/yield-to-input.ts`"
     },
     {
@@ -588,7 +588,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 67,
+      "line": 79,
       "snippet": "`streamNdjson` · `applyStreamBudget` · `src/lib/orders-sync/client.ts` · `src/lib/perf/stream-apply.ts`"
     },
     {
@@ -602,7 +602,7 @@
       ],
       "kind": "table",
       "source": "AGENTS.md",
-      "line": 68,
+      "line": 80,
       "snippet": "`LEDGER_GRID_OVERSCAN` · `LEDGER_GRID_ROW_CONTAIN` · `src/design-system/components/grid/`"
     },
     {
@@ -620,7 +620,7 @@
       ],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 77,
+      "line": 89,
       "snippet": "**Compose from the named SoT first; grow it when wrong.** Never fork a page-local twin. Lookup: `node scripts/sot-lookup.mjs \"<job>\"`. New AST-similar copies fail `jscpd` within an interaction contract; station-vs-support clones are filter…"
     },
     {
@@ -633,7 +633,7 @@
       ],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 78,
+      "line": 90,
       "snippet": "**Do not paint over primitives.** `<Button>` fills and `<Panel>` radii resolve through semantic variants (`variant`, `radius`) — never `className` hue/radius overrides. Grow `button-variants.ts` instead."
     },
     {
@@ -649,7 +649,7 @@
       ],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 79,
+      "line": 91,
       "snippet": "**New feature assemblies declare `@domain-job`.** Plus `@hardware-target` (`Station` · `Workbench` · `Monitor` · `Canvas`), `@density` (`floor` · `ops` · `monitor` · `studio`), and `@justification` (why the named host cannot be reused)."
     },
     {
@@ -664,7 +664,7 @@
       ],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 80,
+      "line": 92,
       "snippet": "**Frame budgets** live in `src/lib/right-rail/frame.ts` — desk center ≥ `MIN_WORK_SURFACE_PX` (784); station Displays keep center ≥ `STATION_PUSH_CENTER_FLOOR_PX` (720); gutters `0`. Right edge **pushes** via `RightRailHost` (`modal={false…"
     },
     {
@@ -682,7 +682,7 @@
       ],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 81,
+      "line": 93,
       "snippet": "**Right-rail dismiss is host-owned, ONE control, ONE closer.** `RightRailHost` paints the single `X` (top-RIGHT); `closeRightPanel` (`lib/right-rail/close.ts`) unmounts the occupant, caches `draftData`, toasts Resume, **and** runs the occu…"
     },
     {
@@ -695,7 +695,7 @@
       ],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 82,
+      "line": 94,
       "snippet": "**Ops chrome is flush-square** — `WORKBENCH_CHROME_PILL_CLASS` = `cornerClass('flush')` in `workbench-shell.tsx`."
     },
     {
@@ -709,7 +709,7 @@
       ],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 83,
+      "line": 95,
       "snippet": "**Workbench spreadsheets** mount via the table definition registry + `NonlinearTableHost` over `LedgerGridSurface` — never a new `*GridView` twin."
     },
     {
@@ -720,7 +720,7 @@
       "symbols": [],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 84,
+      "line": 96,
       "snippet": "**Motion** only via `@/design-system/motion` + `motionRole.*`. Only `src/design-system/motion/framer.ts` may import `motion/react` or `framer-motion`."
     },
     {
@@ -731,7 +731,7 @@
       "symbols": [],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 85,
+      "line": 97,
       "snippet": "**Color, spacing, type, elevation, focus, and named z-index tokens** come from `@/design-system/tokens` — no page-local hex; no ad-hoc numeric stacking."
     },
     {
@@ -747,7 +747,7 @@
       ],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 86,
+      "line": 98,
       "snippet": "**Platform / order identity** resolves from `source-platform.ts` + chip family (`OrderIdChip` / `PoChip` / `TrackingChip` / `PlatformMark`) — never prose platform names as the channel face."
     },
     {
@@ -761,7 +761,7 @@
       ],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 87,
+      "line": 99,
       "snippet": "**Mount-gated URL opens** paint via `useOptimisticUrlParam` / `resolveOptimisticParam` (`src/hooks/useOptimisticUrlParam.ts`, `src/lib/routing/optimistic-url-param.ts`)."
     },
     {
@@ -772,7 +772,7 @@
       "symbols": [],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 88,
+      "line": 100,
       "snippet": "**Status changes only via `transition`** (`src/lib/inventory/state-machine.ts`) — never a raw status UPDATE outside the state machine."
     },
     {
@@ -786,7 +786,7 @@
       ],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 89,
+      "line": 101,
       "snippet": "**`orgId` comes from `ctx`**, never the body; org-scoped writes go through `withTenantTransaction` (`src/lib/tenancy/db.ts`)."
     },
     {
@@ -799,7 +799,7 @@
       ],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 90,
+      "line": 102,
       "snippet": "**Cross-entity urgency** resolves only in `promoteUrgency` (`src/lib/urgency/`)."
     },
     {
@@ -812,7 +812,7 @@
       ],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 92,
+      "line": 104,
       "snippet": "**Conversation bubbles / chat cards** compose `ConversationMessageCard` + `conversation-chrome` (`src/design-system/primitives/`) — never a page-local bubble twin, 75% chat bubble, or Lock-icon internal chip. Helpdesk tickets and entity th…"
     },
     {
@@ -826,7 +826,7 @@
       ],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 93,
+      "line": 105,
       "snippet": "**HID wedge scans** attach via `createWedgeKeyListener` (native capture `keydown`, yield-before-React). Never a React synthetic `onKeyDown` for scanner input; never drop focus; never run scan side-effects on the keydown stack."
     },
     {
@@ -841,7 +841,7 @@
       ],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 94,
+      "line": 106,
       "snippet": "**Kiosk v2 session root is the cart** (`kioskSessionStore`) — Repair / Retail / Buyback / Pickup are commands that swap the center only and never clear lines. Mount wedge via `useWedgeScanner` + `classifyKioskScan` (not warehouse `scan-res…"
     },
     {
@@ -856,8 +856,30 @@
       ],
       "kind": "law",
       "source": "AGENTS.md",
-      "line": 95,
+      "line": 107,
       "snippet": "**Live NDJSON / Ably paints** apply through `applyStreamBudget` / `createFrameCoalescer` — never `setState` per stream line or per Ably message during a burst. Orthogonal exception dimensions (SCANNED + PROBLEM) stay on the row payload."
+    },
+    {
+      "job": "~757 unit tests",
+      "sot": "src",
+      "path": "src/",
+      "guard": "*.test.ts",
+      "symbols": [],
+      "kind": "table",
+      "source": "AGENTS.md",
+      "line": 119,
+      "snippet": "any `*.test.ts` under `src/`, auto-discovered by `scripts/run-unit-tests.mjs` **Yes**, inside the unit gate"
+    },
+    {
+      "job": "Structural guards",
+      "sot": "*.guard.test.ts",
+      "path": null,
+      "guard": "*.guard.test.ts",
+      "symbols": [],
+      "kind": "table",
+      "source": "AGENTS.md",
+      "line": 121,
+      "snippet": "`*.guard.test.ts` **One** on disk (`carton-chrome-type-unity`, 7 tests) — auto-discovered, so it runs. **17 exist in HEAD**; 16 are deleted only in an *uncommitted* working-tree change"
     },
     {
       "job": "Export: BulkFlagDialog",
@@ -1337,7 +1359,7 @@
       ],
       "kind": "code",
       "source": "src/components/dashboard/orders-queue/OrdersGridHost.tsx",
-      "line": 43,
+      "line": 44,
       "snippet": "export OrdersGridHostProps from src/components/dashboard/orders-queue/OrdersGridHost.tsx"
     },
     {
@@ -1350,7 +1372,7 @@
       ],
       "kind": "code",
       "source": "src/components/dashboard/orders-queue/OrdersGridHost.tsx",
-      "line": 144,
+      "line": 145,
       "snippet": "export OrdersGridHost from src/components/dashboard/orders-queue/OrdersGridHost.tsx"
     },
     {
@@ -1376,7 +1398,7 @@
       ],
       "kind": "code",
       "source": "src/components/dashboard/orders-queue/OrdersQueueTableRow.tsx",
-      "line": 76,
+      "line": 78,
       "snippet": "export OrdersQueueTableRowProps from src/components/dashboard/orders-queue/OrdersQueueTableRow.tsx"
     },
     {
@@ -1389,7 +1411,7 @@
       ],
       "kind": "code",
       "source": "src/components/dashboard/orders-queue/OrdersQueueTableRow.tsx",
-      "line": 188,
+      "line": 197,
       "snippet": "export OrdersQueueTableRow from src/components/dashboard/orders-queue/OrdersQueueTableRow.tsx"
     },
     {
@@ -1731,19 +1753,6 @@
       "snippet": "export OutboundTriageBand from src/components/dashboard/OutboundWorkspaceHeader.tsx"
     },
     {
-      "job": "Export: PackedOrdersTableProps",
-      "sot": "PackedOrdersTableProps",
-      "path": "src/components/dashboard/PackedOrdersTable.tsx",
-      "guard": null,
-      "symbols": [
-        "PackedOrdersTableProps"
-      ],
-      "kind": "code",
-      "source": "src/components/dashboard/PackedOrdersTable.tsx",
-      "line": 24,
-      "snippet": "export PackedOrdersTableProps from src/components/dashboard/PackedOrdersTable.tsx"
-    },
-    {
       "job": "Export: PackedOrdersTable",
       "sot": "PackedOrdersTable",
       "path": "src/components/dashboard/PackedOrdersTable.tsx",
@@ -1753,7 +1762,7 @@
       ],
       "kind": "code",
       "source": "src/components/dashboard/PackedOrdersTable.tsx",
-      "line": 32,
+      "line": 18,
       "snippet": "export PackedOrdersTable from src/components/dashboard/PackedOrdersTable.tsx"
     },
     {
@@ -2039,7 +2048,7 @@
       ],
       "kind": "code",
       "source": "src/components/dashboard/workbench-shell.tsx",
-      "line": 42,
+      "line": 41,
       "snippet": "export WORKBENCH_SHEET_HOST from src/components/dashboard/workbench-shell.tsx"
     },
     {
@@ -2052,7 +2061,7 @@
       ],
       "kind": "code",
       "source": "src/components/dashboard/workbench-shell.tsx",
-      "line": 50,
+      "line": 49,
       "snippet": "export WORKBENCH_SHEET_CHROME from src/components/dashboard/workbench-shell.tsx"
     },
     {
@@ -2065,7 +2074,7 @@
       ],
       "kind": "code",
       "source": "src/components/dashboard/workbench-shell.tsx",
-      "line": 82,
+      "line": 81,
       "snippet": "export WorkbenchTriageBand from src/components/dashboard/workbench-shell.tsx"
     },
     {
@@ -2078,7 +2087,7 @@
       ],
       "kind": "code",
       "source": "src/components/dashboard/workbench-shell.tsx",
-      "line": 177,
+      "line": 176,
       "snippet": "export withScopeDivider from src/components/dashboard/workbench-shell.tsx"
     },
     {
@@ -2091,7 +2100,7 @@
       ],
       "kind": "code",
       "source": "src/components/dashboard/workbench-shell.tsx",
-      "line": 215,
+      "line": 214,
       "snippet": "export WORKBENCH_CHROME_PILL_CLASS from src/components/dashboard/workbench-shell.tsx"
     },
     {
@@ -2104,7 +2113,7 @@
       ],
       "kind": "code",
       "source": "src/components/dashboard/workbench-shell.tsx",
-      "line": 252,
+      "line": 251,
       "snippet": "export WorkbenchTrailingCluster from src/components/dashboard/workbench-shell.tsx"
     },
     {
@@ -2117,7 +2126,7 @@
       ],
       "kind": "code",
       "source": "src/components/dashboard/workbench-shell.tsx",
-      "line": 279,
+      "line": 278,
       "snippet": "export WorkbenchChromeHeaderProps from src/components/dashboard/workbench-shell.tsx"
     },
     {
@@ -2130,7 +2139,7 @@
       ],
       "kind": "code",
       "source": "src/components/dashboard/workbench-shell.tsx",
-      "line": 351,
+      "line": 350,
       "snippet": "export WorkbenchChromeHeader from src/components/dashboard/workbench-shell.tsx"
     },
     {
@@ -2195,7 +2204,7 @@
       ],
       "kind": "code",
       "source": "src/components/right-rail/DeskInspectorIndexShell.tsx",
-      "line": 34,
+      "line": 38,
       "snippet": "export DESK_INSPECTOR_INDEX from src/components/right-rail/DeskInspectorIndexShell.tsx"
     },
     {
@@ -2208,7 +2217,7 @@
       ],
       "kind": "code",
       "source": "src/components/right-rail/DeskInspectorIndexShell.tsx",
-      "line": 45,
+      "line": 49,
       "snippet": "export DeskInspectorLeaf from src/components/right-rail/DeskInspectorIndexShell.tsx"
     },
     {
@@ -2221,7 +2230,7 @@
       ],
       "kind": "code",
       "source": "src/components/right-rail/DeskInspectorIndexShell.tsx",
-      "line": 79,
+      "line": 83,
       "snippet": "export DeskInspectorIndexShell from src/components/right-rail/DeskInspectorIndexShell.tsx"
     },
     {
@@ -2234,7 +2243,7 @@
       ],
       "kind": "code",
       "source": "src/components/right-rail/DeskRailChromeRow.tsx",
-      "line": 52,
+      "line": 58,
       "snippet": "export DeskRailChromeRow from src/components/right-rail/DeskRailChromeRow.tsx"
     },
     {
@@ -2416,7 +2425,7 @@
       ],
       "kind": "code",
       "source": "src/components/right-rail/RightRailHost.tsx",
-      "line": 151,
+      "line": 162,
       "snippet": "export RightRailHost from src/components/right-rail/RightRailHost.tsx"
     },
     {
@@ -3807,7 +3816,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/master-nav/SidebarNavList.tsx",
-      "line": 194,
+      "line": 193,
       "snippet": "export SidebarNavList from src/components/sidebar/master-nav/SidebarNavList.tsx"
     },
     {
@@ -3924,7 +3933,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/operations/operations-sidebar-shared.ts",
-      "line": 37,
+      "line": 38,
       "snippet": "export DEFAULT_OPERATIONS_MODE from src/components/sidebar/operations/operations-sidebar-shared.ts"
     },
     {
@@ -3937,7 +3946,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/operations/operations-sidebar-shared.ts",
-      "line": 40,
+      "line": 41,
       "snippet": "export OPERATIONS_MODES from src/components/sidebar/operations/operations-sidebar-shared.ts"
     },
     {
@@ -3950,7 +3959,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/operations/operations-sidebar-shared.ts",
-      "line": 50,
+      "line": 52,
       "snippet": "export parseOperationsMode from src/components/sidebar/operations/operations-sidebar-shared.ts"
     },
     {
@@ -3963,7 +3972,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/operations/operations-sidebar-shared.ts",
-      "line": 65,
+      "line": 68,
       "snippet": "export parseOperationsModeWire from src/components/sidebar/operations/operations-sidebar-shared.ts"
     },
     {
@@ -3976,7 +3985,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/operations/operations-sidebar-shared.ts",
-      "line": 78,
+      "line": 81,
       "snippet": "export JOURNEY_DIMENSION_ITEMS from src/components/sidebar/operations/operations-sidebar-shared.ts"
     },
     {
@@ -3989,7 +3998,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/operations/operations-sidebar-shared.ts",
-      "line": 84,
+      "line": 87,
       "snippet": "export parseJourneyDimension from src/components/sidebar/operations/operations-sidebar-shared.ts"
     },
     {
@@ -4002,7 +4011,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/operations/operations-sidebar-shared.ts",
-      "line": 89,
+      "line": 92,
       "snippet": "export JOURNEY_STATION_ITEMS from src/components/sidebar/operations/operations-sidebar-shared.ts"
     },
     {
@@ -4015,7 +4024,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/operations/operations-sidebar-shared.ts",
-      "line": 98,
+      "line": 101,
       "snippet": "export JOURNEY_TYPE_ITEMS from src/components/sidebar/operations/operations-sidebar-shared.ts"
     },
     {
@@ -4028,7 +4037,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/operations/operations-sidebar-shared.ts",
-      "line": 112,
+      "line": 115,
       "snippet": "export JOURNEY_DIMENSION_PARAM from src/components/sidebar/operations/operations-sidebar-shared.ts"
     },
     {
@@ -4041,7 +4050,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/operations/operations-sidebar-shared.ts",
-      "line": 123,
+      "line": 126,
       "snippet": "export AnalyticsRange from src/components/sidebar/operations/operations-sidebar-shared.ts"
     },
     {
@@ -4054,7 +4063,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/operations/operations-sidebar-shared.ts",
-      "line": 125,
+      "line": 128,
       "snippet": "export ANALYTICS_RANGE_LABELS from src/components/sidebar/operations/operations-sidebar-shared.ts"
     },
     {
@@ -4067,21 +4076,8 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/operations/operations-sidebar-shared.ts",
-      "line": 131,
+      "line": 134,
       "snippet": "export parseAnalyticsRange from src/components/sidebar/operations/operations-sidebar-shared.ts"
-    },
-    {
-      "job": "Export: TASK_STATUS_DOT",
-      "sot": "TASK_STATUS_DOT",
-      "path": "src/components/sidebar/operations/plans-shared.ts",
-      "guard": null,
-      "symbols": [
-        "TASK_STATUS_DOT"
-      ],
-      "kind": "code",
-      "source": "src/components/sidebar/operations/plans-shared.ts",
-      "line": 14,
-      "snippet": "export TASK_STATUS_DOT from src/components/sidebar/operations/plans-shared.ts"
     },
     {
       "job": "Export: OperationsModeState",
@@ -5237,7 +5233,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/incoming-details/IncomingDetailsHeader.tsx",
-      "line": 172,
+      "line": 164,
       "snippet": "export incomingDetailsHeaderMeta from src/components/sidebar/receiving/incoming-details/IncomingDetailsHeader.tsx"
     },
     {
@@ -5250,7 +5246,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/incoming-details/IncomingDetailsHeader.tsx",
-      "line": 203,
+      "line": 195,
       "snippet": "export INCOMING_DETAILS_RAIL_ID from src/components/sidebar/receiving/incoming-details/IncomingDetailsHeader.tsx"
     },
     {
@@ -5263,7 +5259,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/incoming-details/IncomingDetailsHeader.tsx",
-      "line": 206,
+      "line": 198,
       "snippet": "export incomingDetailsAriaLabel from src/components/sidebar/receiving/incoming-details/IncomingDetailsHeader.tsx"
     },
     {
@@ -6251,7 +6247,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/ReceivingUnboxScanBar.tsx",
-      "line": 16,
+      "line": 15,
       "snippet": "export UnboxScanMode from src/components/sidebar/receiving/ReceivingUnboxScanBar.tsx"
     },
     {
@@ -6264,7 +6260,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/ReceivingUnboxScanBar.tsx",
-      "line": 26,
+      "line": 25,
       "snippet": "export UNBOX_SCAN_MODES from src/components/sidebar/receiving/ReceivingUnboxScanBar.tsx"
     },
     {
@@ -6277,7 +6273,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/ReceivingUnboxScanBar.tsx",
-      "line": 100,
+      "line": 89,
       "snippet": "export ReceivingUnboxScanBar from src/components/sidebar/receiving/ReceivingUnboxScanBar.tsx"
     },
     {
@@ -6420,7 +6416,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/receiving/TestingRecentRail.tsx",
-      "line": 80,
+      "line": 90,
       "snippet": "export TestingRecentRail from src/components/sidebar/receiving/TestingRecentRail.tsx"
     },
     {
@@ -7954,7 +7950,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/tech/TechRailSearchBar.tsx",
-      "line": 60,
+      "line": 65,
       "snippet": "export TechRailSearchBar from src/components/sidebar/tech/TechRailSearchBar.tsx"
     },
     {
@@ -7980,7 +7976,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/TestingSidebarPanel.tsx",
-      "line": 118,
+      "line": 119,
       "snippet": "export TestingSidebarPanel from src/components/sidebar/TestingSidebarPanel.tsx"
     },
     {
@@ -8838,7 +8834,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/displays/StationDisplaysParkedRail.tsx",
-      "line": 56,
+      "line": 63,
       "snippet": "export StationDisplaysParkedRail from src/components/station/displays/StationDisplaysParkedRail.tsx"
     },
     {
@@ -8879,6 +8875,19 @@
       "source": "src/components/station/displays/StationDisplaysPushStack.tsx",
       "line": 96,
       "snippet": "export StationDisplaysPushStack from src/components/station/displays/StationDisplaysPushStack.tsx"
+    },
+    {
+      "job": "Export: StationDisplaysUtilityRail",
+      "sot": "StationDisplaysUtilityRail",
+      "path": "src/components/station/displays/StationDisplaysUtilityRail.tsx",
+      "guard": null,
+      "symbols": [
+        "StationDisplaysUtilityRail"
+      ],
+      "kind": "code",
+      "source": "src/components/station/displays/StationDisplaysUtilityRail.tsx",
+      "line": 31,
+      "snippet": "export StationDisplaysUtilityRail from src/components/station/displays/StationDisplaysUtilityRail.tsx"
     },
     {
       "job": "Export: useArmedCursorList",
@@ -8955,7 +8964,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/CartonContextCard.tsx",
-      "line": 134,
+      "line": 139,
       "snippet": "export CartonContextCard from src/components/station/entity-context/CartonContextCard.tsx"
     },
     {
@@ -9020,7 +9029,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-context-action-pill.ts",
-      "line": 88,
+      "line": 97,
       "snippet": "export STATION_CONTEXT_PHOTO_CHROME_CLASS from src/components/station/entity-context/station-context-action-pill.ts"
     },
     {
@@ -9033,7 +9042,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-context-action-pill.ts",
-      "line": 108,
+      "line": 117,
       "snippet": "export STATION_CONTEXT_PHOTO_PILL_CLASS from src/components/station/entity-context/station-context-action-pill.ts"
     },
     {
@@ -9046,7 +9055,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-context-action-pill.ts",
-      "line": 114,
+      "line": 123,
       "snippet": "export STATION_CONTEXT_PHOTO_FLUSH_CLASS from src/components/station/entity-context/station-context-action-pill.ts"
     },
     {
@@ -9059,7 +9068,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-context-action-pill.ts",
-      "line": 129,
+      "line": 138,
       "snippet": "export STATION_CONTEXT_CLAIM_CHROME_CLASS from src/components/station/entity-context/station-context-action-pill.ts"
     },
     {
@@ -9072,7 +9081,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-context-action-pill.ts",
-      "line": 144,
+      "line": 153,
       "snippet": "export STATION_CONTEXT_LISTING_CHROME_CLASS from src/components/station/entity-context/station-context-action-pill.ts"
     },
     {
@@ -9618,7 +9627,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/incoming-grid/IncomingGridColumnHeader.tsx",
-      "line": 37,
+      "line": 36,
       "snippet": "export IncomingGridColumnHeader from src/components/station/incoming-grid/IncomingGridColumnHeader.tsx"
     },
     {
@@ -9722,7 +9731,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/location/StationLocationsDisplay.tsx",
-      "line": 74,
+      "line": 86,
       "snippet": "export StationLocationsDisplay from src/components/station/location/StationLocationsDisplay.tsx"
     },
     {
@@ -10034,7 +10043,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/receiving-grid/cells/index.tsx",
-      "line": 45,
+      "line": 46,
       "snippet": "export renderReceivingGridCell from src/components/station/receiving-grid/cells/index.tsx"
     },
     {
@@ -10047,7 +10056,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/receiving-grid/cells/receiving-grid-cell-types.ts",
-      "line": 28,
+      "line": 25,
       "snippet": "export ReceivingActivityDateCell from src/components/station/receiving-grid/cells/receiving-grid-cell-types.ts"
     },
     {
@@ -10060,7 +10069,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/receiving-grid/cells/receiving-grid-cell-types.ts",
-      "line": 33,
+      "line": 30,
       "snippet": "export ReceivingGridCellCtx from src/components/station/receiving-grid/cells/receiving-grid-cell-types.ts"
     },
     {
@@ -10073,7 +10082,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/receiving-grid/cells/receiving-grid-cell-types.ts",
-      "line": 114,
+      "line": 111,
       "snippet": "export ReceivingGridCellColumn from src/components/station/receiving-grid/cells/receiving-grid-cell-types.ts"
     },
     {
@@ -10086,7 +10095,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/receiving-grid/cells/receiving-grid-cell-types.ts",
-      "line": 116,
+      "line": 113,
       "snippet": "export ReceivingGridCellProps from src/components/station/receiving-grid/cells/receiving-grid-cell-types.ts"
     },
     {
@@ -10099,7 +10108,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/receiving-grid/cells/receiving-grid-cell-types.ts",
-      "line": 123,
+      "line": 120,
       "snippet": "export receivingDataCellClass from src/components/station/receiving-grid/cells/receiving-grid-cell-types.ts"
     },
     {
@@ -10112,7 +10121,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/receiving-grid/cells/receiving-grid-cell-types.ts",
-      "line": 137,
+      "line": 136,
       "snippet": "export receivingDataCellStyle from src/components/station/receiving-grid/cells/receiving-grid-cell-types.ts"
     },
     {
@@ -10125,7 +10134,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/receiving-grid/cells/receiving-grid-cell-types.ts",
-      "line": 151,
+      "line": 150,
       "snippet": "export receivingDataCellHighlightStyle from src/components/station/receiving-grid/cells/receiving-grid-cell-types.ts"
     },
     {
@@ -10138,7 +10147,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/receiving-grid/cells/receiving-grid-cell-types.ts",
-      "line": 159,
+      "line": 158,
       "snippet": "export receivingFrozenEdgeProps from src/components/station/receiving-grid/cells/receiving-grid-cell-types.ts"
     },
     {
@@ -10151,7 +10160,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/receiving-grid/cells/receiving-grid-cell-types.ts",
-      "line": 168,
+      "line": 167,
       "snippet": "export receivingCellWantsChip from src/components/station/receiving-grid/cells/receiving-grid-cell-types.ts"
     },
     {
@@ -11243,7 +11252,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/scan-bar/StationScanBar.tsx",
-      "line": 56,
+      "line": 57,
       "snippet": "export StationScanBarProps from src/components/station/scan-bar/StationScanBar.tsx"
     },
     {
@@ -11256,7 +11265,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/scan-bar/StationScanBar.tsx",
-      "line": 148,
+      "line": 149,
       "snippet": "export StationScanBar from src/components/station/scan-bar/StationScanBar.tsx"
     },
     {
@@ -11269,7 +11278,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/scan-bar/StationScanLeadingIcon.tsx",
-      "line": 37,
+      "line": 42,
       "snippet": "export StationScanLeadingIcon from src/components/station/scan-bar/StationScanLeadingIcon.tsx"
     },
     {
@@ -11715,32 +11724,6 @@
       "snippet": "export STATION_HISTORY_GRID_CAPABILITIES from src/components/station/station-history-capabilities.ts"
     },
     {
-      "job": "Export: makeStationHistoryGridDescriptor",
-      "sot": "makeStationHistoryGridDescriptor",
-      "path": "src/components/station/station-history-grid/station-history-grid-descriptor.ts",
-      "guard": null,
-      "symbols": [
-        "makeStationHistoryGridDescriptor"
-      ],
-      "kind": "code",
-      "source": "src/components/station/station-history-grid/station-history-grid-descriptor.ts",
-      "line": 18,
-      "snippet": "export makeStationHistoryGridDescriptor from src/components/station/station-history-grid/station-history-grid-descriptor.ts"
-    },
-    {
-      "job": "Export: STATION_HISTORY_TABLE_BINDING",
-      "sot": "STATION_HISTORY_TABLE_BINDING",
-      "path": "src/components/station/station-history-grid/station-history-table-definition.ts",
-      "guard": null,
-      "symbols": [
-        "STATION_HISTORY_TABLE_BINDING"
-      ],
-      "kind": "code",
-      "source": "src/components/station/station-history-grid/station-history-table-definition.ts",
-      "line": 32,
-      "snippet": "export STATION_HISTORY_TABLE_BINDING from src/components/station/station-history-grid/station-history-table-definition.ts"
-    },
-    {
       "job": "Export: isDetailsReopen",
       "sot": "isDetailsReopen",
       "path": "src/components/station/station-table-logic.ts",
@@ -11793,19 +11776,6 @@
       "snippet": "export StationDetailsHandler from src/components/station/StationDetailsHandler.tsx"
     },
     {
-      "job": "Export: StationHistoryTableProps",
-      "sot": "StationHistoryTableProps",
-      "path": "src/components/station/StationHistoryTable.tsx",
-      "guard": null,
-      "symbols": [
-        "StationHistoryTableProps"
-      ],
-      "kind": "code",
-      "source": "src/components/station/StationHistoryTable.tsx",
-      "line": 50,
-      "snippet": "export StationHistoryTableProps from src/components/station/StationHistoryTable.tsx"
-    },
-    {
       "job": "Export: StationHistoryTable",
       "sot": "StationHistoryTable",
       "path": "src/components/station/StationHistoryTable.tsx",
@@ -11815,21 +11785,8 @@
       ],
       "kind": "code",
       "source": "src/components/station/StationHistoryTable.tsx",
-      "line": 98,
+      "line": 15,
       "snippet": "export StationHistoryTable from src/components/station/StationHistoryTable.tsx"
-    },
-    {
-      "job": "Export: StationListTableProps",
-      "sot": "StationListTableProps",
-      "path": "src/components/station/StationListTable.tsx",
-      "guard": null,
-      "symbols": [
-        "StationListTableProps"
-      ],
-      "kind": "code",
-      "source": "src/components/station/StationListTable.tsx",
-      "line": 27,
-      "snippet": "export StationListTableProps from src/components/station/StationListTable.tsx"
     },
     {
       "job": "Export: StationListTable",
@@ -11841,7 +11798,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/StationListTable.tsx",
-      "line": 109,
+      "line": 18,
       "snippet": "export StationListTable from src/components/station/StationListTable.tsx"
     },
     {
@@ -12363,19 +12320,6 @@
       "source": "src/components/station/workbench/resolve-timeline-sections.ts",
       "line": 49,
       "snippet": "export resolveTimelineSections from src/components/station/workbench/resolve-timeline-sections.ts"
-    },
-    {
-      "job": "Export: ScanStationCartonCursor",
-      "sot": "ScanStationCartonCursor",
-      "path": "src/components/station/workbench/ScanStationCartonCursor.tsx",
-      "guard": null,
-      "symbols": [
-        "ScanStationCartonCursor"
-      ],
-      "kind": "code",
-      "source": "src/components/station/workbench/ScanStationCartonCursor.tsx",
-      "line": 24,
-      "snippet": "export ScanStationCartonCursor from src/components/station/workbench/ScanStationCartonCursor.tsx"
     },
     {
       "job": "Export: ScanStationUtilityRail",
@@ -13895,7 +13839,7 @@
       ],
       "kind": "code",
       "source": "src/components/tables/registered-bindings.ts",
-      "line": 58,
+      "line": 51,
       "snippet": "export REGISTERED_BINDINGS from src/components/tables/registered-bindings.ts"
     },
     {
@@ -13962,6 +13906,19 @@
       "source": "src/components/tables/table-surface-binding.ts",
       "line": 87,
       "snippet": "export TableSurfaceBinding from src/components/tables/table-surface-binding.ts"
+    },
+    {
+      "job": "Export: TableRebuildPlaceholder",
+      "sot": "TableRebuildPlaceholder",
+      "path": "src/components/tables/TableRebuildPlaceholder.tsx",
+      "guard": null,
+      "symbols": [
+        "TableRebuildPlaceholder"
+      ],
+      "kind": "code",
+      "source": "src/components/tables/TableRebuildPlaceholder.tsx",
+      "line": 16,
+      "snippet": "export TableRebuildPlaceholder from src/components/tables/TableRebuildPlaceholder.tsx"
     },
     {
       "job": "Export: AnimatedCheck",
@@ -14155,7 +14112,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/copy-chip-hover-menu-chrome.ts",
-      "line": 11,
+      "line": 12,
       "snippet": "export CHIP_HOVER_MENU_PANEL_CLASS from src/components/ui/copy-chip-hover-menu-chrome.ts"
     },
     {
@@ -14168,7 +14125,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/copy-chip-hover-menu-chrome.ts",
-      "line": 18,
+      "line": 32,
       "snippet": "export CHIP_HOVER_MENU_ITEM_CLASS from src/components/ui/copy-chip-hover-menu-chrome.ts"
     },
     {
@@ -14181,7 +14138,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/copy-chip-hover-menu-chrome.ts",
-      "line": 21,
+      "line": 35,
       "snippet": "export CHIP_HOVER_MENU_ITEM_SEAM_CLASS from src/components/ui/copy-chip-hover-menu-chrome.ts"
     },
     {
@@ -14194,7 +14151,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/copy-chip-hover-menu-chrome.ts",
-      "line": 23,
+      "line": 37,
       "snippet": "export CHIP_HOVER_MENU_ITEM_TONE from src/components/ui/copy-chip-hover-menu-chrome.ts"
     },
     {
@@ -14207,7 +14164,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/copy-chip-hover-menu-chrome.ts",
-      "line": 30,
+      "line": 44,
       "snippet": "export CHIP_HOVER_MENU_ICON_CLASS from src/components/ui/copy-chip-hover-menu-chrome.ts"
     },
     {
@@ -14428,7 +14385,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/CopyChip.tsx",
-      "line": 889,
+      "line": 907,
       "snippet": "export SerialChipSkeleton from src/components/ui/CopyChip.tsx"
     },
     {
@@ -14441,7 +14398,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/CopyChip.tsx",
-      "line": 922,
+      "line": 940,
       "snippet": "export SkuSerialChip from src/components/ui/CopyChip.tsx"
     },
     {
@@ -14454,7 +14411,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/CopyChip.tsx",
-      "line": 941,
+      "line": 959,
       "snippet": "export TicketChip from src/components/ui/CopyChip.tsx"
     },
     {
@@ -14467,7 +14424,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/CopyChip.tsx",
-      "line": 963,
+      "line": 981,
       "snippet": "export BinChip from src/components/ui/CopyChip.tsx"
     },
     {
@@ -14480,7 +14437,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/CopyChip.tsx",
-      "line": 986,
+      "line": 1004,
       "snippet": "export FnskuChip from src/components/ui/CopyChip.tsx"
     },
     {
@@ -14493,7 +14450,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/CopyChip.tsx",
-      "line": 990,
+      "line": 1008,
       "snippet": "export SourceOrderChip from src/components/ui/CopyChip.tsx"
     },
     {
@@ -14506,7 +14463,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/CopyChip.tsx",
-      "line": 1024,
+      "line": 1042,
       "snippet": "export AddValueChipFace from src/components/ui/CopyChip.tsx"
     },
     {
@@ -14519,7 +14476,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/CopyChip.tsx",
-      "line": 1058,
+      "line": 1076,
       "snippet": "export PlatformChip from src/components/ui/CopyChip.tsx"
     },
     {
@@ -14532,7 +14489,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/CopyChip.tsx",
-      "line": 1135,
+      "line": 1153,
       "snippet": "export CopyableCellValue from src/components/ui/CopyChip.tsx"
     },
     {
@@ -14588,19 +14545,6 @@
       "snippet": "export dayGroupChipRowClass from src/components/ui/DateGroupHeader.tsx"
     },
     {
-      "job": "Export: dayGroupChipRowSolidClass",
-      "sot": "dayGroupChipRowSolidClass",
-      "path": "src/components/ui/DateGroupHeader.tsx",
-      "guard": null,
-      "symbols": [
-        "dayGroupChipRowSolidClass"
-      ],
-      "kind": "code",
-      "source": "src/components/ui/DateGroupHeader.tsx",
-      "line": 53,
-      "snippet": "export dayGroupChipRowSolidClass from src/components/ui/DateGroupHeader.tsx"
-    },
-    {
       "job": "Export: dayGroupChipClass",
       "sot": "dayGroupChipClass",
       "path": "src/components/ui/DateGroupHeader.tsx",
@@ -14610,7 +14554,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/DateGroupHeader.tsx",
-      "line": 60,
+      "line": 64,
       "snippet": "export dayGroupChipClass from src/components/ui/DateGroupHeader.tsx"
     },
     {
@@ -14623,7 +14567,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/DateGroupHeader.tsx",
-      "line": 98,
+      "line": 102,
       "snippet": "export DateGroupHeader from src/components/ui/DateGroupHeader.tsx"
     },
     {
@@ -15000,7 +14944,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/OrderIdentityChips.tsx",
-      "line": 40,
+      "line": 43,
       "snippet": "export OrderIdentityChipsProps from src/components/ui/OrderIdentityChips.tsx"
     },
     {
@@ -15013,7 +14957,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/OrderIdentityChips.tsx",
-      "line": 130,
+      "line": 133,
       "snippet": "export useOrderIdentityCellNodes from src/components/ui/OrderIdentityChips.tsx"
     },
     {
@@ -15026,7 +14970,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/OrderIdentityChips.tsx",
-      "line": 335,
+      "line": 369,
       "snippet": "export OrderIdentityChips from src/components/ui/OrderIdentityChips.tsx"
     },
     {
@@ -17344,6 +17288,32 @@
       "snippet": "export resolveColumnResizeEdges from src/design-system/components/grid/grid-column-resize-edges.ts"
     },
     {
+      "job": "Export: GridSortValue",
+      "sot": "GridSortValue",
+      "path": "src/design-system/components/grid/grid-column-sort.ts",
+      "guard": null,
+      "symbols": [
+        "GridSortValue"
+      ],
+      "kind": "code",
+      "source": "src/design-system/components/grid/grid-column-sort.ts",
+      "line": 37,
+      "snippet": "export GridSortValue from src/design-system/components/grid/grid-column-sort.ts"
+    },
+    {
+      "job": "Export: compareGridValues",
+      "sot": "compareGridValues",
+      "path": "src/design-system/components/grid/grid-column-sort.ts",
+      "guard": null,
+      "symbols": [
+        "compareGridValues"
+      ],
+      "kind": "code",
+      "source": "src/design-system/components/grid/grid-column-sort.ts",
+      "line": 71,
+      "snippet": "export compareGridValues from src/design-system/components/grid/grid-column-sort.ts"
+    },
+    {
       "job": "Export: DateColumnFace",
       "sot": "DateColumnFace",
       "path": "src/design-system/components/grid/grid-column-type-track.ts",
@@ -17446,6 +17416,19 @@
       "source": "src/design-system/components/grid/grid-column-width-bounds-context.tsx",
       "line": 31,
       "snippet": "export useGridColumnWidthBoundsContext from src/design-system/components/grid/grid-column-width-bounds-context.tsx"
+    },
+    {
+      "job": "Export: gridDataCellClass",
+      "sot": "gridDataCellClass",
+      "path": "src/design-system/components/grid/grid-data-cell-class.ts",
+      "guard": null,
+      "symbols": [
+        "gridDataCellClass"
+      ],
+      "kind": "code",
+      "source": "src/design-system/components/grid/grid-data-cell-class.ts",
+      "line": 34,
+      "snippet": "export gridDataCellClass from src/design-system/components/grid/grid-data-cell-class.ts"
     },
     {
       "job": "Export: GridColumnAlign",
@@ -17877,6 +17860,32 @@
       "snippet": "export GridDegradedBox from src/design-system/components/grid/GridDegradedBox.tsx"
     },
     {
+      "job": "Export: GridFillCell",
+      "sot": "GridFillCell",
+      "path": "src/design-system/components/grid/GridFillCell.tsx",
+      "guard": null,
+      "symbols": [
+        "GridFillCell"
+      ],
+      "kind": "code",
+      "source": "src/design-system/components/grid/GridFillCell.tsx",
+      "line": 29,
+      "snippet": "export GridFillCell from src/design-system/components/grid/GridFillCell.tsx"
+    },
+    {
+      "job": "Export: GRID_FILL_COLUMN",
+      "sot": "GRID_FILL_COLUMN",
+      "path": "src/design-system/components/grid/GridFillCell.tsx",
+      "guard": null,
+      "symbols": [
+        "GRID_FILL_COLUMN"
+      ],
+      "kind": "code",
+      "source": "src/design-system/components/grid/GridFillCell.tsx",
+      "line": 44,
+      "snippet": "export GRID_FILL_COLUMN from src/design-system/components/grid/GridFillCell.tsx"
+    },
+    {
       "job": "Export: GridHeaderLabel",
       "sot": "GridHeaderLabel",
       "path": "src/design-system/components/grid/GridHeaderLabel.tsx",
@@ -17899,7 +17908,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/components/grid/GridHeaderLabel.tsx",
-      "line": 93,
+      "line": 95,
       "snippet": "export gridHeaderAriaSort from src/design-system/components/grid/GridHeaderLabel.tsx"
     },
     {
@@ -18224,7 +18233,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/components/grid/LedgerGridColumnHeader.tsx",
-      "line": 109,
+      "line": 107,
       "snippet": "export LedgerGridColumnHeader from src/design-system/components/grid/LedgerGridColumnHeader.tsx"
     },
     {
@@ -18293,19 +18302,6 @@
       "snippet": "export LedgerGridSurface from src/design-system/components/grid/LedgerGridSurface.tsx"
     },
     {
-      "job": "Export: makeGridLayout",
-      "sot": "makeGridLayout",
-      "path": "src/design-system/components/grid/make-grid-layout.ts",
-      "guard": null,
-      "symbols": [
-        "makeGridLayout"
-      ],
-      "kind": "code",
-      "source": "src/design-system/components/grid/make-grid-layout.ts",
-      "line": 90,
-      "snippet": "export makeGridLayout from src/design-system/components/grid/make-grid-layout.ts"
-    },
-    {
       "job": "Export: GridHeaderSelectMode",
       "sot": "GridHeaderSelectMode",
       "path": "src/design-system/components/grid/makeLedgerGridColumnHeader.tsx",
@@ -18341,7 +18337,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/components/grid/makeLedgerGridColumnHeader.tsx",
-      "line": 121,
+      "line": 120,
       "snippet": "export GridColumnHeaderProps from src/design-system/components/grid/makeLedgerGridColumnHeader.tsx"
     },
     {
@@ -18354,7 +18350,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/components/grid/makeLedgerGridColumnHeader.tsx",
-      "line": 127,
+      "line": 126,
       "snippet": "export MakeLedgerGridColumnHeaderConfig from src/design-system/components/grid/makeLedgerGridColumnHeader.tsx"
     },
     {
@@ -18367,7 +18363,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/components/grid/makeLedgerGridColumnHeader.tsx",
-      "line": 149,
+      "line": 147,
       "snippet": "export makeLedgerGridColumnHeader from src/design-system/components/grid/makeLedgerGridColumnHeader.tsx"
     },
     {
@@ -19550,7 +19546,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/components/SectionTabsSlider.tsx",
-      "line": 95,
+      "line": 100,
       "snippet": "export SectionTabPriority from src/design-system/components/SectionTabsSlider.tsx"
     },
     {
@@ -19563,7 +19559,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/components/SectionTabsSlider.tsx",
-      "line": 97,
+      "line": 102,
       "snippet": "export SectionTab from src/design-system/components/SectionTabsSlider.tsx"
     },
     {
@@ -19576,7 +19572,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/components/SectionTabsSlider.tsx",
-      "line": 119,
+      "line": 124,
       "snippet": "export partitionSectionTabs from src/design-system/components/SectionTabsSlider.tsx"
     },
     {
@@ -19589,7 +19585,7 @@
       ],
       "kind": "code",
       "source": "src/design-system/components/SectionTabsSlider.tsx",
-      "line": 138,
+      "line": 143,
       "snippet": "export SectionTabsSlider from src/design-system/components/SectionTabsSlider.tsx"
     },
     {
@@ -19890,19 +19886,6 @@
       "source": "src/design-system/components/StickyActionBar.tsx",
       "line": 119,
       "snippet": "export StickyActionBar from src/design-system/components/StickyActionBar.tsx"
-    },
-    {
-      "job": "Export: TabDisplay",
-      "sot": "TabDisplay",
-      "path": "src/design-system/components/TabDisplay.tsx",
-      "guard": null,
-      "symbols": [
-        "TabDisplay"
-      ],
-      "kind": "code",
-      "source": "src/design-system/components/TabDisplay.tsx",
-      "line": 95,
-      "snippet": "export TabDisplay from src/design-system/components/TabDisplay.tsx"
     },
     {
       "job": "Export: SidebarTabSwitchChrome",
@@ -24217,7 +24200,7 @@
       ],
       "kind": "code",
       "source": "src/hooks/station/handleSerialScan.ts",
-      "line": 6,
+      "line": 7,
       "snippet": "export handleSerialScan from src/hooks/station/handleSerialScan.ts"
     },
     {
@@ -24776,7 +24759,7 @@
       ],
       "kind": "code",
       "source": "src/hooks/useCatalog.ts",
-      "line": 19,
+      "line": 26,
       "snippet": "export CatalogOption from src/hooks/useCatalog.ts"
     },
     {
@@ -24789,8 +24772,21 @@
       ],
       "kind": "code",
       "source": "src/hooks/useCatalog.ts",
-      "line": 40,
+      "line": 53,
       "snippet": "export usePlatformCatalog from src/hooks/useCatalog.ts"
+    },
+    {
+      "job": "Export: usePriorityCatalog",
+      "sot": "usePriorityCatalog",
+      "path": "src/hooks/useCatalog.ts",
+      "guard": null,
+      "symbols": [
+        "usePriorityCatalog"
+      ],
+      "kind": "code",
+      "source": "src/hooks/useCatalog.ts",
+      "line": 83,
+      "snippet": "export usePriorityCatalog from src/hooks/useCatalog.ts"
     },
     {
       "job": "Export: useReceivingTypeCatalog",
@@ -24802,7 +24798,7 @@
       ],
       "kind": "code",
       "source": "src/hooks/useCatalog.ts",
-      "line": 61,
+      "line": 113,
       "snippet": "export useReceivingTypeCatalog from src/hooks/useCatalog.ts"
     },
     {
@@ -24815,7 +24811,7 @@
       ],
       "kind": "code",
       "source": "src/hooks/useCatalog.ts",
-      "line": 86,
+      "line": 138,
       "snippet": "export usePlatformMeta from src/hooks/useCatalog.ts"
     },
     {
@@ -24828,7 +24824,7 @@
       ],
       "kind": "code",
       "source": "src/hooks/useCatalog.ts",
-      "line": 117,
+      "line": 169,
       "snippet": "export useReceivingTypeLabel from src/hooks/useCatalog.ts"
     },
     {
@@ -24841,7 +24837,7 @@
       ],
       "kind": "code",
       "source": "src/hooks/useCatalog.ts",
-      "line": 135,
+      "line": 187,
       "snippet": "export usePlatformAccountCatalog from src/hooks/useCatalog.ts"
     },
     {
@@ -24854,7 +24850,7 @@
       ],
       "kind": "code",
       "source": "src/hooks/useCatalog.ts",
-      "line": 151,
+      "line": 203,
       "snippet": "export useWorkflowNodeOptions from src/hooks/useCatalog.ts"
     },
     {
@@ -24867,7 +24863,7 @@
       ],
       "kind": "code",
       "source": "src/hooks/useCatalog.ts",
-      "line": 166,
+      "line": 218,
       "snippet": "export useOrderChannelLabel from src/hooks/useCatalog.ts"
     },
     {
@@ -24880,7 +24876,7 @@
       ],
       "kind": "code",
       "source": "src/hooks/useCatalog.ts",
-      "line": 189,
+      "line": 241,
       "snippet": "export useInvalidateCatalog from src/hooks/useCatalog.ts"
     },
     {
@@ -25233,6 +25229,19 @@
       "source": "src/hooks/useFbaRealtimeInvalidation.ts",
       "line": 9,
       "snippet": "export useFbaRealtimeInvalidation from src/hooks/useFbaRealtimeInvalidation.ts"
+    },
+    {
+      "job": "Export: useFindFieldScan",
+      "sot": "useFindFieldScan",
+      "path": "src/hooks/useFindFieldScan.ts",
+      "guard": null,
+      "symbols": [
+        "useFindFieldScan"
+      ],
+      "kind": "code",
+      "source": "src/hooks/useFindFieldScan.ts",
+      "line": 35,
+      "snippet": "export useFindFieldScan from src/hooks/useFindFieldScan.ts"
     },
     {
       "job": "Export: useGlobalWedgeScanner",
@@ -27001,19 +27010,6 @@
       "source": "src/hooks/useRepairNewParam.ts",
       "line": 14,
       "snippet": "export useRepairNewParam from src/hooks/useRepairNewParam.ts"
-    },
-    {
-      "job": "Export: useRepairRailSelection",
-      "sot": "useRepairRailSelection",
-      "path": "src/hooks/useRepairRailSelection.tsx",
-      "guard": null,
-      "symbols": [
-        "useRepairRailSelection"
-      ],
-      "kind": "code",
-      "source": "src/hooks/useRepairRailSelection.tsx",
-      "line": 23,
-      "snippet": "export useRepairRailSelection from src/hooks/useRepairRailSelection.tsx"
     },
     {
       "job": "Export: useRepairsTable",
@@ -29837,6 +29833,19 @@
       "snippet": "export detectListingPlatform from src/lib/inventory/order-catalog-link-chore-gates.ts"
     },
     {
+      "job": "Export: resolveListingIdentity",
+      "sot": "resolveListingIdentity",
+      "path": "src/lib/inventory/order-catalog-link-chore-gates.ts",
+      "guard": null,
+      "symbols": [
+        "resolveListingIdentity"
+      ],
+      "kind": "code",
+      "source": "src/lib/inventory/order-catalog-link-chore-gates.ts",
+      "line": 59,
+      "snippet": "export resolveListingIdentity from src/lib/inventory/order-catalog-link-chore-gates.ts"
+    },
+    {
       "job": "Export: EnqueueCatalogLinkChoreInput",
       "sot": "EnqueueCatalogLinkChoreInput",
       "path": "src/lib/inventory/order-catalog-link-chores.ts",
@@ -31163,6 +31172,58 @@
       "snippet": "export writeLedgerDelta from src/lib/inventory/write-ledger-delta.ts"
     },
     {
+      "job": "Export: FindFieldBurst",
+      "sot": "FindFieldBurst",
+      "path": "src/lib/keyboard/find-field-scan.ts",
+      "guard": null,
+      "symbols": [
+        "FindFieldBurst"
+      ],
+      "kind": "code",
+      "source": "src/lib/keyboard/find-field-scan.ts",
+      "line": 33,
+      "snippet": "export FindFieldBurst from src/lib/keyboard/find-field-scan.ts"
+    },
+    {
+      "job": "Export: FIND_FIELD_BURST_IDLE",
+      "sot": "FIND_FIELD_BURST_IDLE",
+      "path": "src/lib/keyboard/find-field-scan.ts",
+      "guard": null,
+      "symbols": [
+        "FIND_FIELD_BURST_IDLE"
+      ],
+      "kind": "code",
+      "source": "src/lib/keyboard/find-field-scan.ts",
+      "line": 38,
+      "snippet": "export FIND_FIELD_BURST_IDLE from src/lib/keyboard/find-field-scan.ts"
+    },
+    {
+      "job": "Export: appendFindFieldKey",
+      "sot": "appendFindFieldKey",
+      "path": "src/lib/keyboard/find-field-scan.ts",
+      "guard": null,
+      "symbols": [
+        "appendFindFieldKey"
+      ],
+      "kind": "code",
+      "source": "src/lib/keyboard/find-field-scan.ts",
+      "line": 46,
+      "snippet": "export appendFindFieldKey from src/lib/keyboard/find-field-scan.ts"
+    },
+    {
+      "job": "Export: resolveFindFieldScan",
+      "sot": "resolveFindFieldScan",
+      "path": "src/lib/keyboard/find-field-scan.ts",
+      "guard": null,
+      "symbols": [
+        "resolveFindFieldScan"
+      ],
+      "kind": "code",
+      "source": "src/lib/keyboard/find-field-scan.ts",
+      "line": 73,
+      "snippet": "export resolveFindFieldScan from src/lib/keyboard/find-field-scan.ts"
+    },
+    {
       "job": "Export: isEditableKeyTarget",
       "sot": "isEditableKeyTarget",
       "path": "src/lib/keyboard/is-editable-key-target.ts",
@@ -31549,7 +31610,7 @@
       ],
       "kind": "code",
       "source": "src/lib/keyboard/segment-chords.ts",
-      "line": 27,
+      "line": 28,
       "snippet": "export segmentChordIndexFromEvent from src/lib/keyboard/segment-chords.ts"
     },
     {
@@ -31562,7 +31623,7 @@
       ],
       "kind": "code",
       "source": "src/lib/keyboard/segment-chords.ts",
-      "line": 38,
+      "line": 39,
       "snippet": "export segmentChordHint from src/lib/keyboard/segment-chords.ts"
     },
     {
@@ -31575,7 +31636,7 @@
       ],
       "kind": "code",
       "source": "src/lib/keyboard/segment-chords.ts",
-      "line": 44,
+      "line": 45,
       "snippet": "export isSegmentChordEditableTarget from src/lib/keyboard/segment-chords.ts"
     },
     {
@@ -32251,7 +32312,7 @@
       ],
       "kind": "code",
       "source": "src/lib/right-rail/close.ts",
-      "line": 45,
+      "line": 55,
       "snippet": "export closeRightPanel from src/lib/right-rail/close.ts"
     },
     {
@@ -33161,7 +33222,7 @@
       ],
       "kind": "code",
       "source": "src/lib/right-rail/store.ts",
-      "line": 169,
+      "line": 182,
       "snippet": "export registerRightRailPanel from src/lib/right-rail/store.ts"
     },
     {
@@ -33174,7 +33235,7 @@
       ],
       "kind": "code",
       "source": "src/lib/right-rail/store.ts",
-      "line": 216,
+      "line": 231,
       "snippet": "export updateRightRailPanelNode from src/lib/right-rail/store.ts"
     },
     {
@@ -33187,7 +33248,7 @@
       ],
       "kind": "code",
       "source": "src/lib/right-rail/store.ts",
-      "line": 272,
+      "line": 292,
       "snippet": "export subscribeRightRail from src/lib/right-rail/store.ts"
     },
     {
@@ -33200,7 +33261,7 @@
       ],
       "kind": "code",
       "source": "src/lib/right-rail/store.ts",
-      "line": 277,
+      "line": 297,
       "snippet": "export getRightRailTop from src/lib/right-rail/store.ts"
     },
     {
@@ -33213,7 +33274,7 @@
       ],
       "kind": "code",
       "source": "src/lib/right-rail/store.ts",
-      "line": 286,
+      "line": 306,
       "snippet": "export getRightRailTopSkipping from src/lib/right-rail/store.ts"
     },
     {
@@ -33226,7 +33287,7 @@
       ],
       "kind": "code",
       "source": "src/lib/right-rail/store.ts",
-      "line": 303,
+      "line": 323,
       "snippet": "export getServerRightRailTop from src/lib/right-rail/store.ts"
     },
     {
@@ -33330,7 +33391,7 @@
       ],
       "kind": "code",
       "source": "src/lib/routing/query-mode-routes.ts",
-      "line": 256,
+      "line": 289,
       "snippet": "export PRODUCTS_ROUTE_PARAMS from src/lib/routing/query-mode-routes.ts"
     },
     {
@@ -33343,7 +33404,7 @@
       ],
       "kind": "code",
       "source": "src/lib/routing/query-mode-routes.ts",
-      "line": 303,
+      "line": 336,
       "snippet": "export SOURCING_ROUTE_PARAMS from src/lib/routing/query-mode-routes.ts"
     },
     {
@@ -33356,7 +33417,7 @@
       ],
       "kind": "code",
       "source": "src/lib/routing/query-mode-routes.ts",
-      "line": 343,
+      "line": 376,
       "snippet": "export TEST_ROUTE_PARAMS from src/lib/routing/query-mode-routes.ts"
     },
     {
@@ -33369,7 +33430,7 @@
       ],
       "kind": "code",
       "source": "src/lib/routing/query-mode-routes.ts",
-      "line": 379,
+      "line": 412,
       "snippet": "export WALK_IN_ROUTE_PARAMS from src/lib/routing/query-mode-routes.ts"
     },
     {
@@ -33382,7 +33443,7 @@
       ],
       "kind": "code",
       "source": "src/lib/routing/query-mode-routes.ts",
-      "line": 432,
+      "line": 465,
       "snippet": "export INVENTORY_ROUTE_PARAMS from src/lib/routing/query-mode-routes.ts"
     },
     {
@@ -33395,7 +33456,7 @@
       ],
       "kind": "code",
       "source": "src/lib/routing/query-mode-routes.ts",
-      "line": 554,
+      "line": 587,
       "snippet": "export WAREHOUSE_ROUTE_PARAMS from src/lib/routing/query-mode-routes.ts"
     },
     {
@@ -33408,7 +33469,7 @@
       ],
       "kind": "code",
       "source": "src/lib/routing/query-mode-routes.ts",
-      "line": 608,
+      "line": 641,
       "snippet": "export QUERY_MODE_ROUTE_PARAMS from src/lib/routing/query-mode-routes.ts"
     },
     {
@@ -34955,7 +35016,7 @@
       ],
       "kind": "code",
       "source": "src/lib/tenancy/settings.ts",
-      "line": 332,
+      "line": 345,
       "snippet": "export OrgSettings from src/lib/tenancy/settings.ts"
     },
     {
@@ -34968,7 +35029,7 @@
       ],
       "kind": "code",
       "source": "src/lib/tenancy/settings.ts",
-      "line": 334,
+      "line": 347,
       "snippet": "export parseOrgSettings from src/lib/tenancy/settings.ts"
     },
     {
@@ -34981,7 +35042,7 @@
       ],
       "kind": "code",
       "source": "src/lib/tenancy/settings.ts",
-      "line": 345,
+      "line": 358,
       "snippet": "export getPublicLandingUrl from src/lib/tenancy/settings.ts"
     },
     {
@@ -34994,7 +35055,7 @@
       ],
       "kind": "code",
       "source": "src/lib/tenancy/settings.ts",
-      "line": 362,
+      "line": 375,
       "snippet": "export getActiveNasBaseUrl from src/lib/tenancy/settings.ts"
     },
     {
@@ -35007,7 +35068,7 @@
       ],
       "kind": "code",
       "source": "src/lib/tenancy/settings.ts",
-      "line": 374,
+      "line": 387,
       "snippet": "export getAllNasBaseUrls from src/lib/tenancy/settings.ts"
     },
     {
@@ -35020,7 +35081,7 @@
       ],
       "kind": "code",
       "source": "src/lib/tenancy/settings.ts",
-      "line": 388,
+      "line": 401,
       "snippet": "export isSharedStaffAccountOrg from src/lib/tenancy/settings.ts"
     },
     {
@@ -35033,7 +35094,7 @@
       ],
       "kind": "code",
       "source": "src/lib/tenancy/settings.ts",
-      "line": 393,
+      "line": 406,
       "snippet": "export PackingEnforcement from src/lib/tenancy/settings.ts"
     },
     {
@@ -35046,7 +35107,7 @@
       ],
       "kind": "code",
       "source": "src/lib/tenancy/settings.ts",
-      "line": 395,
+      "line": 408,
       "snippet": "export getPackingEnforcement from src/lib/tenancy/settings.ts"
     },
     {
@@ -35059,7 +35120,7 @@
       ],
       "kind": "code",
       "source": "src/lib/tenancy/settings.ts",
-      "line": 400,
+      "line": 413,
       "snippet": "export PhotoAnalysisSettings from src/lib/tenancy/settings.ts"
     },
     {
@@ -35072,7 +35133,7 @@
       ],
       "kind": "code",
       "source": "src/lib/tenancy/settings.ts",
-      "line": 402,
+      "line": 415,
       "snippet": "export getPhotoAnalysisSettings from src/lib/tenancy/settings.ts"
     },
     {
@@ -35085,7 +35146,7 @@
       ],
       "kind": "code",
       "source": "src/lib/tenancy/settings.ts",
-      "line": 407,
+      "line": 420,
       "snippet": "export getSupportSettings from src/lib/tenancy/settings.ts"
     },
     {
@@ -35098,7 +35159,7 @@
       ],
       "kind": "code",
       "source": "src/lib/tenancy/settings.ts",
-      "line": 412,
+      "line": 425,
       "snippet": "export SubstitutionEnforcement from src/lib/tenancy/settings.ts"
     },
     {
@@ -35111,7 +35172,7 @@
       ],
       "kind": "code",
       "source": "src/lib/tenancy/settings.ts",
-      "line": 413,
+      "line": 426,
       "snippet": "export SubstitutionNode from src/lib/tenancy/settings.ts"
     },
     {
@@ -35124,7 +35185,7 @@
       ],
       "kind": "code",
       "source": "src/lib/tenancy/settings.ts",
-      "line": 415,
+      "line": 428,
       "snippet": "export getSubstitutionEnforcement from src/lib/tenancy/settings.ts"
     },
     {
@@ -35137,7 +35198,7 @@
       ],
       "kind": "code",
       "source": "src/lib/tenancy/settings.ts",
-      "line": 419,
+      "line": 432,
       "snippet": "export getSubstitutionAllowedNodes from src/lib/tenancy/settings.ts"
     },
     {
@@ -35150,7 +35211,7 @@
       ],
       "kind": "code",
       "source": "src/lib/tenancy/settings.ts",
-      "line": 432,
+      "line": 445,
       "snippet": "export InboundOrgSettingsRaw from src/lib/tenancy/settings.ts"
     },
     {
@@ -35163,7 +35224,7 @@
       ],
       "kind": "code",
       "source": "src/lib/tenancy/settings.ts",
-      "line": 433,
+      "line": 446,
       "snippet": "export InboundOrgSettings from src/lib/tenancy/settings.ts"
     },
     {
@@ -35176,7 +35237,7 @@
       ],
       "kind": "code",
       "source": "src/lib/tenancy/settings.ts",
-      "line": 451,
+      "line": 464,
       "snippet": "export getInboundSettings from src/lib/tenancy/settings.ts"
     },
     {
@@ -35189,7 +35250,7 @@
       ],
       "kind": "code",
       "source": "src/lib/tenancy/settings.ts",
-      "line": 465,
+      "line": 478,
       "snippet": "export getGs1SettingsRaw from src/lib/tenancy/settings.ts"
     },
     {
@@ -35202,7 +35263,7 @@
       ],
       "kind": "code",
       "source": "src/lib/tenancy/settings.ts",
-      "line": 495,
+      "line": 508,
       "snippet": "export getComplianceAnswers from src/lib/tenancy/settings.ts"
     },
     {
@@ -35215,7 +35276,7 @@
       ],
       "kind": "code",
       "source": "src/lib/tenancy/settings.ts",
-      "line": 506,
+      "line": 519,
       "snippet": "export NasStorageTargetKey from src/lib/tenancy/settings.ts"
     },
     {
@@ -35228,7 +35289,7 @@
       ],
       "kind": "code",
       "source": "src/lib/tenancy/settings.ts",
-      "line": 508,
+      "line": 521,
       "snippet": "export getNasStorageTarget from src/lib/tenancy/settings.ts"
     },
     {

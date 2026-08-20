@@ -10,8 +10,7 @@ import { test, expect } from '@playwright/test';
  * Monitor. This spec asserts the surviving pillars render in order AND that the
  * order ledger is gone.
  *
- * Read-only: it never mutates and takes no build lock (mirrors
- * design-demo-showcase.spec.ts). Desktop project only.
+ * Read-only: it never mutates and takes no build lock. Desktop project only.
  */
 
 test.describe('Operations Live (slim Monitor)', () => {

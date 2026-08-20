@@ -41,7 +41,12 @@ import {
   receivingPriorityTone,
 } from '@/components/receiving/workspace/line-edit/receiving-priority';
 import { priorityOverrideTier } from '@/lib/receiving/priority-override';
-import { usePlatformCatalog, useReceivingTypeCatalog, usePlatformMeta } from '@/hooks/useCatalog';
+import {
+  usePlatformCatalog,
+  usePriorityCatalog,
+  useReceivingTypeCatalog,
+  usePlatformMeta,
+} from '@/hooks/useCatalog';
 import {
   formatListingLinkMenuOptions,
   type CartonListingLink,
@@ -402,6 +407,7 @@ export function CartonContextCard({
   // the catalog too, so a renamed or custom platform reads correctly here.
   const platformCatalog = usePlatformCatalog();
   const typeCatalog = useReceivingTypeCatalog();
+  const priorityCatalog = usePriorityCatalog();
   const resolvePlatformMeta = usePlatformMeta();
   const platformMeta = resolvePlatformMeta(platformValue);
 
@@ -462,6 +468,9 @@ export function CartonContextCard({
     derivedTierEquivalent,
     autoActiveClass: 'border-border-default bg-surface-card text-text-muted',
     surface: 'header',
+    // Org renames / accents skin the rungs; the ladder itself stays the code
+    // constant, so this can only change how a tier reads, never which exist.
+    catalogOptions: priorityCatalog.options,
   });
   const handleUrgencySelect = (v: string) => onPrioritySelect?.(Number(v));
 
@@ -513,6 +522,7 @@ export function CartonContextCard({
           onOpenChange={(o) => setClassifyMenu('urgency', o)}
           disabled={classifyInteractive ? !onPrioritySelect : false}
           readOnly={!classifyInteractive}
+          onEditCatalog={classifyInteractive ? () => setCatalogManager('priority') : undefined}
         />
       ) : null}
       <InlinePillPicker

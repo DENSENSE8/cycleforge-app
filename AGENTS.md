@@ -1,8 +1,20 @@
 # Cycle Forge — agent instructions
 
 Portable hard rules for every coding agent. **This file is the constitution.**
-Depth for a job: run `node scripts/sot-lookup.mjs "<job>"` before writing new UI —
-do not invent a page-local twin.
+
+**Depth is ON-DEMAND — go get it.** This file plus `.claude/rules/*.md` is
+everything loaded for you, and it is deliberately small. The rest lives in
+[`docs/rules/`](docs/rules/) and is **not** in your context:
+
+1. `node scripts/sot-lookup.mjs "<job>"` — the SoT for a job, before writing new
+   UI. Do not invent a page-local twin.
+2. Empty result? It indexes this file + code symbols, **not** the prose tables —
+   fall back to [`docs/rules/source-of-truth.md`](docs/rules/source-of-truth.md).
+3. Building a surface? Read the one recipe that governs it —
+   [`docs/rules/README.md`](docs/rules/README.md) routes you in one hop.
+
+Reading the depth for the surface you are touching is not optional diligence; it
+is how you avoid forking a twin of something that already exists.
 
 ## Product
 
@@ -97,6 +109,30 @@ Regions are I/O contracts (`MotionRegion`: `station` · `workbench` · `monitor`
 - **E2E asserts against the QA org**, not the dogfood tenant.
 
 
+## What actually enforces these rules
+
+**Most of this file is convention, not a machine check. Know which is which.**
+
+| Layer | What it is | Runs in `npm run verify`? |
+|---|---|---|
+| **13 gates** | lint · typecheck · unit · knip · route-permission drift · route-auth enforce · integration manifest · tenancy (advisory) · schema drift · schema model parity · jscpd clones · depcruise · doc catalog | **Yes** — this is the whole automated surface |
+| **~757 unit tests** | any `*.test.ts` under `src/`, auto-discovered by `scripts/run-unit-tests.mjs` | **Yes**, inside the unit gate |
+| **~182 E2E specs** | Playwright under `tests/e2e`; `qa-desktop` runs against the QA org | **No** — run them deliberately |
+| **Structural guards** | `*.guard.test.ts` | **One** on disk (`carton-chrome-type-unity`, 7 tests) — auto-discovered, so it runs. **17 exist in HEAD**; 16 are deleted only in an *uncommitted* working-tree change |
+
+**124 `*.guard.test.ts` citations were pruned from these rules on 2026-08-19.**
+123 of them named files absent from HEAD as well as from the tree — prose asserting
+enforcement deleted commits ago. The 124th (`domain-job`) is alive in HEAD and was
+restored. **Check HEAD, not just the working tree, before removing a citation:** 16
+guard files are currently deleted in an uncommitted change, and reverting it brings
+them back. **Never add a citation for a file you have not confirmed exists.**
+
+A rule with no gate behind it is still the house law — it is just enforced by
+review, not by CI. Say which one you mean when you write a new rule.
+
+The machinery is intact: `run-unit-tests.mjs` picks up any `*.guard.test.ts`
+automatically, so adding a guard file back is enough to enforce it.
+
 ## Guard authoring
 
 When asked to "add a guard", never write `readFileSync` + regex on source.
@@ -104,7 +140,8 @@ Match the invariant to its layer: (1) import/module boundary → `.dependency-cr
 (2) syntax/prop ban → ESLint AST in `eslint.config.mjs`; (3) layout/geometry →
 constrain TS props / a cell that owns height; (4) rendered behavior → a mounted
 DOM test, not file text. Load `.claude/skills/add-guard/SKILL.md` before creating
-any test file.
+any test file. There are no structural guards in the tree today (see above), so a
+new one is a genuine addition — not a change to an existing family.
 
 ## Workflow
 

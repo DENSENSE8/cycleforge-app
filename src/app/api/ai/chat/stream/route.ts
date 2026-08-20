@@ -21,7 +21,8 @@ import { detectIntents } from '@/lib/ai/intent-router';
 import { queryNemoClawRag } from '@/lib/ai/nemoclaw-rag';
 import { checkRateLimitForOrg } from '@/lib/api-guard';
 import { persistChatMessage } from '@/lib/ai/chat-persistence';
-import { getHermesApiUrl, getHermesHeaders, getHermesModel } from '@/lib/ai/hermes-client';
+import { AiFailoverError, postToAiProvider } from '@/lib/ai/failover';
+import type { OrgId } from '@/lib/tenancy/constants';
 import type { AiStructuredAnswer } from '@/lib/ai/types';
 import { enrichAssistantTurn } from '@/lib/assistant/enrich-turn';
 import { withAuth } from '@/lib/auth/withAuth';
@@ -29,6 +30,34 @@ import { withAuth } from '@/lib/auth/withAuth';
 export const runtime = 'nodejs';
 
 type AiChatBody = { sessionId?: string; message?: string };
+
+const CHAT_SYSTEM_PROMPT =
+  'You are the Cycle Forge operations assistant. Staff ask about ' +
+  'orders, stock, staff pace, receiving, and repairs. Keep answers ' +
+  'concrete and numeric, 1-4 sentences. Use ISO Pacific dates. Call ' +
+  'tools for fresh data. When you list multiple records (orders, ' +
+  'shipments, repairs, SKUs), do NOT write a long run-on paragraph — ' +
+  'output a compact GitHub-flavored Markdown table, one record per ' +
+  'row, with short columns (e.g. Order | Product | Date | Status). ' +
+  'Put each order or tracking ID in its own cell verbatim so it can ' +
+  'be linked. Lead with a one-line count, then the table.';
+
+/**
+ * The request body, built PER ATTEMPT — `model` is provider-specific, so a
+ * fall-forward must not replay the previous provider's model name.
+ */
+function chatBody(model: string, userMessage: string) {
+  return {
+    model,
+    messages: [
+      { role: 'system', content: CHAT_SYSTEM_PROMPT },
+      { role: 'user', content: userMessage },
+    ],
+    stream: true,
+    temperature: 0.3,
+    max_tokens: 2048,
+  };
+}
 
 const encoder = new TextEncoder();
 function sse(event: string, data: unknown): Uint8Array {
@@ -175,42 +204,68 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         send('meta', { mode: prepared.intents.length > 0 ? 'hybrid' : 'assistant', sessionId });
         send('step', { label: 'Asking the assistant' });
 
-        const hermesRes = await fetch(`${getHermesApiUrl()}/chat/completions`, {
-          method: 'POST',
-          headers: getHermesHeaders({
-            'Content-Type': 'application/json',
-            'X-Hermes-Session-Id': sessionId,
-            'X-Source': 'cycle-forge',
-          }),
-          body: JSON.stringify({
-            model: getHermesModel(),
-            messages: [
-              {
-                role: 'system',
-                content:
-                  'You are the Cycle Forge operations assistant. Staff ask about ' +
-                  'orders, stock, staff pace, receiving, and repairs. Keep answers ' +
-                  'concrete and numeric, 1-4 sentences. Use ISO Pacific dates. Call ' +
-                  'tools for fresh data. When you list multiple records (orders, ' +
-                  'shipments, repairs, SKUs), do NOT write a long run-on paragraph — ' +
-                  'output a compact GitHub-flavored Markdown table, one record per ' +
-                  'row, with short columns (e.g. Order | Product | Date | Status). ' +
-                  'Put each order or tracking ID in its own cell verbatim so it can ' +
-                  'be linked. Lead with a one-line count, then the table.',
-              },
-              { role: 'user', content: enrichedMessage },
-            ],
-            stream: true,
-            temperature: 0.3,
-            max_tokens: 2048,
-          }),
-          signal: AbortSignal.timeout(180_000),
-        });
+        // Per-org provider chain with failover (local-first by default). A
+        // cold or unreachable local box falls forward to cloud here rather
+        // than ending the turn — the whole point of the inversion.
+        //
+        // Unconfigured / whole-chain-down is a first-class in-protocol answer,
+        // not a thrown fetch at a default URL: this stream has already emitted
+        // `meta`, so the client is listening for `error`/`done` and would
+        // otherwise hang on a dead socket.
+        let hermesRes: Response;
+        let servedBy: string;
+        try {
+          const attempt = await postToAiProvider(organizationId as OrgId, 'chat', {
+            path: '/chat/completions',
+            headers: {
+              'X-Hermes-Session-Id': sessionId,
+              'X-Source': 'cycle-forge',
+            },
+            // Rebuilt per attempt: falling forward to another provider is also
+            // falling forward to a different model name.
+            buildBody: (config) => chatBody(config.model, enrichedMessage),
+            body: null,
+            // Streaming needs the ORIGINAL 3-minute budget, not the helper's
+            // per-provider default. `AbortSignal.timeout` bounds the whole
+            // fetch — body included — so a 45s local budget would guillotine a
+            // long answer mid-sentence: at the measured ~17 tok/s a 2048-token
+            // reply runs past two minutes. A genuinely dead endpoint still
+            // fails over fast, because that surfaces as a network error rather
+            // than as this timeout.
+            timeoutMs: 180_000,
+          });
+          hermesRes = attempt.res;
+          servedBy = attempt.served.source;
+          if (attempt.demoted.length) {
+            console.warn(
+              `[ai-chat-stream] fell forward to ${servedBy} past ${attempt.demoted
+                .map((d) => d.source)
+                .join(', ')}`,
+            );
+          }
+        } catch (err) {
+          send('error', {
+            message:
+              err instanceof AiFailoverError && err.attempts.length
+                ? `No AI provider could answer (tried ${err.attempts
+                    .map((a) => a.source)
+                    .join(', ')}). Check Settings → AI.`
+                : 'No AI chat provider is connected for this workspace. Connect one in Settings → AI.',
+          });
+          send('done', { mode: 'assistant' });
+          return;
+        }
 
         if (!hermesRes.ok || !hermesRes.body) {
           const errBody = await hermesRes.text().catch(() => '');
-          console.error('[ai-chat-stream] Hermes error:', hermesRes.status, errBody.slice(0, 300));
-          send('error', { message: `Local AI returned ${hermesRes.status}. Is the hermes gateway running?` });
+          console.error(
+            `[ai-chat-stream] provider error (source=${servedBy}):`,
+            hermesRes.status,
+            errBody.slice(0, 300),
+          );
+          send('error', {
+            message: `The AI provider returned ${hermesRes.status} (${servedBy}).`,
+          });
           send('done', { mode: 'assistant' });
           return;
         }

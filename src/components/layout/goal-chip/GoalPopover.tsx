@@ -7,6 +7,7 @@ import { GOAL_PANEL_SHELL_CLASS, RECUR_INTERVALS, STATION_LABEL, toneFor } from 
 import { GoalRing } from './GoalRing';
 import { TaskList } from './TaskList';
 import { NextWorkOrderRow } from './NextWorkOrderRow';
+import { GoalPanelHomeCta } from './GoalPanelHomeCta';
 import type { NextWorkOrder } from './useNextWorkOrder';
 import type { HeaderGoalChipController } from './useHeaderGoalChip';
 
@@ -16,7 +17,7 @@ interface ChipCount { value: number; total: number; unit: string }
 
 /**
  * The pace-and-next panel: next work order → goal header → station switcher →
- * the 3 mode panels.
+ * the 3 mode panels, closing on the one door out: Home.
  *
  * **The work order leads.** It is the one row here that is a *thing to do next*;
  * everything under it is *how today is going*. An operator opening this button
@@ -243,6 +244,8 @@ export function GoalPopover({
           </motion.div>
         )}
       </AnimatePresence>
+
+      <GoalPanelHomeCta onNavigate={onNavigate} />
     </motion.div>
   );
 }

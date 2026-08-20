@@ -6,6 +6,7 @@
 import { CONDITION_GRADES, resolveConditionGrade } from '@/lib/conditions';
 import { displayTrackingNumber } from '@/lib/receiving/fulfillment-mode';
 import {
+  RECEIVING_GRID_COLUMNS,
   type ReceivingGridColumnKey,
 } from '@/lib/receiving/receiving-grid-layout';
 import {
@@ -19,6 +20,7 @@ import {
 } from '@/components/station/receiving-lines-table-helpers';
 import { resolveReceivingLineSerialsCsv } from '@/components/station/receiving-line-serials';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
+import { compareGridValues, type GridSortValue } from '@/design-system/components/grid';
 
 const CONDITION_RANK = new Map<string, number>(
   CONDITION_GRADES.map((g, i) => [g, i]),
@@ -152,54 +154,48 @@ export function compareReceivingGridRows(
     return customPrimary !== 0 ? sign * customPrimary : a.id - b.id;
   }
 
-  let primary = 0;
+  // Extract, then let the ENGINE compare. Pulling a comparable value off a
+  // domain row is domain knowledge and stays here; how two values order — and
+  // where a blank lands — is `type` semantics and belongs to one owner. This
+  // switch used to carry the comparison too, which is how `date` ended up with
+  // an unflipped `+Infinity` (undated rows at the TOP under desc) while Orders
+  // sank its missing deadlines under both directions.
+  const value = (row: ReceivingLineRow): GridSortValue => {
+    switch (column) {
+      case 'title':
+        return productTitle(row);
+      // `stageMs` already returns `+Infinity` for a missing stamp, and the
+      // engine reads a non-finite number as blank — so undated rows now sort
+      // LAST in both directions with no change to the extractor.
+      case 'date':
+        return stageMs(row, activityAxis);
+      case 'qty':
+        return qtyValue(row);
+      case 'price':
+        return priceValue(row);
+      // A grade ordinal, not the label: `condition` is `type: 'tag'`, but the
+      // value is numeric and the engine compares numbers as numbers.
+      case 'condition':
+        return conditionRank(row);
+      case 'location':
+        return locationValue(row);
+      case 'order':
+        return orderValue(row);
+      case 'tracking':
+        return trackingValue(row);
+      case 'serial':
+        return serialValue(row);
+      default:
+        return null;
+    }
+  };
 
-  switch (column) {
-    case 'title':
-      primary = productTitle(a).localeCompare(productTitle(b), undefined, { sensitivity: 'base' });
-      break;
-    case 'date':
-      primary = stageMs(a, activityAxis) - stageMs(b, activityAxis);
-      break;
-    case 'qty':
-      primary = qtyValue(a) - qtyValue(b);
-      break;
-    case 'price':
-      primary = priceValue(a) - priceValue(b);
-      break;
-    case 'condition':
-      primary = conditionRank(a) - conditionRank(b);
-      break;
-    case 'location':
-      primary = locationValue(a).localeCompare(locationValue(b), undefined, {
-        numeric: true,
-        sensitivity: 'base',
-      });
-      break;
-    case 'order':
-      primary = orderValue(a).localeCompare(orderValue(b), undefined, {
-        numeric: true,
-        sensitivity: 'base',
-      });
-      break;
-    case 'tracking':
-      primary = trackingValue(a).localeCompare(trackingValue(b), undefined, {
-        numeric: true,
-        sensitivity: 'base',
-      });
-      break;
-    case 'serial':
-      primary = serialValue(a).localeCompare(serialValue(b), undefined, {
-        numeric: true,
-        sensitivity: 'base',
-      });
-      break;
-    case 'select':
-    default:
-      primary = 0;
-      break;
-  }
+  // Type off the column MODEL, never a second hand-written map — the same
+  // declaration that resolves this column's alignment and header glyph.
+  const type = RECEIVING_GRID_COLUMNS.find((c) => c.key === column)?.type;
+  const primary = compareGridValues(value(a), value(b), { type, dir });
 
-  if (primary !== 0) return sign * primary;
-  return a.id - b.id;
+  // `compareGridValues` already applied `dir` — re-signing here would
+  // re-invert blanks and undo the ruling.
+  return primary !== 0 ? primary : a.id - b.id;
 }

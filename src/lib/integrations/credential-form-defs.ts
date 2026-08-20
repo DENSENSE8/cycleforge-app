@@ -129,10 +129,13 @@ const OLLAMA_FORM: CredentialFormDef = {
   title: 'Self-hosted AI',
   description: 'Connect any OpenAI-compatible endpoint (Ollama, LM Studio, vLLM) for AI search and Ask AI.',
   fields: [
-    { key: 'baseUrl', label: 'Base URL', type: 'url', required: true, placeholder: 'http://localhost:11434/v1' },
+    { key: 'baseUrl', label: 'Base URL', type: 'url', required: true, placeholder: 'http://localhost:11434/v1', help: 'Where the model runs. Reachable from YOUR machine is not enough — see below.' },
     { key: 'model', label: 'Chat model', type: 'text', required: true, placeholder: 'llama3.2' },
-    { key: 'embedModel', label: 'Embedding model', type: 'text', placeholder: 'nomic-embed-text' },
-    { key: 'apiKey', label: 'API key (optional)', type: 'password', secret: true },
+    { key: 'embedModel', label: 'Embedding model', type: 'text', placeholder: 'nomic-embed-text', help: 'Leave blank to use this endpoint for chat only; semantic search then falls to another provider.' },
+    { key: 'apiKey', label: 'API key (optional)', type: 'password', secret: true, help: "The MODEL's bearer token, if your endpoint requires one." },
+    { key: 'tunnelUrl', label: 'Server-reachable URL', type: 'url', section: 'Remote access (optional)', placeholder: 'https://ai.yourcompany.com/v1', help: 'Used INSTEAD of the base URL when set. A model on your LAN or tailnet is invisible to a deployed server, so a tunnel is what makes it reachable in production.' },
+    { key: 'cfAccessClientId', label: 'CF Access client ID', type: 'text', section: 'Remote access (optional)', help: 'Only if the tunnel is fronted by Cloudflare Access.' },
+    { key: 'cfAccessClientSecret', label: 'CF Access client secret', type: 'password', secret: true, section: 'Remote access (optional)' },
   ],
 };
 

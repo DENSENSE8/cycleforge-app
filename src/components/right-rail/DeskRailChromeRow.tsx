@@ -4,8 +4,16 @@
  * DeskRailChromeRow — SoT for Unbox-aligned chrome on a single RightRailHost card.
  *
  * ```text
- * [▦?] [actions?] …………………… [cursor?] [↑][↓] [trailing?] [host X]
+ * [▦?] [actions?] …………………………………… [cursor?] [trailing?] [host X]
  * ```
+ *
+ * **No ↑↓ stepper (removed 2026-08-19).** Walking the queue from inside the
+ * inspector was a second door onto a selection the left recents rail already
+ * owns: the rail is the list, and it is where an operator picks the next
+ * record. Two controls for one job meant the inspector could advance the
+ * selection without the rail's own cursor agreeing. Pick in the rail.
+ * `useRecordCursor` keyboard walking is untouched — it moves the RAIL's cursor,
+ * which is the single source the inspector follows.
  *
  * **Why this exists.** Unbox reads `[→|] ……… [↑ ↓]` across TWO regions
  * (column band + pane carton cursor) with the procedure progress ring on the
@@ -27,8 +35,9 @@
  * ↑↓. History `detail:history` deliberately does not use this slot: its
  * contextual topics own a dedicated second row.
  *
- * **`cursor`** — optional `N / M` readout (`CursorPositionReadout`) immediately
- * before ↑↓. Desk `detail:order` and Incoming-family rails compose this.
+ * **`cursor`** — optional `N / M` readout (`CursorPositionReadout`). A readout,
+ * not a control: it says where the rail's selection sits, and moving it is the
+ * rail's job.
  *
  * **`trailing`** — far-right peer after ↑↓ (e.g. Incoming Sync) — Desk twin of
  * station strip controls that need a trailing instrument face.
@@ -37,9 +46,6 @@
  */
 
 import type { ReactNode } from 'react';
-import { ChevronDown, ChevronUp } from '@/components/Icons';
-import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { IconButton } from '@/design-system/primitives';
 import { InspectorColumnDisplayButton } from '@/components/right-rail/InspectorColumnDisplayButton';
 import { cn } from '@/utils/_cn';
 
@@ -50,21 +56,13 @@ const DESK_RAIL_CHROME_ROW_CLASS =
   'relative z-header flex h-8 shrink-0 items-center pl-2 pr-2';
 
 export function DeskRailChromeRow({
-  onPrev,
-  onNext,
-  prevDisabled,
-  nextDisabled,
-  prevTitle = 'Previous row',
-  nextTitle = 'Next row',
-  prevTestId,
-  nextTestId,
   /**
    * Contextual icon cluster between close and the cursor. Compose
    * `PaneHeaderActionBar iconOnly variant="flat"` — do not invent a page-local
    * icon bar.
    */
   actions,
-  /** `N / M` readout — sits before ↑↓ (desk queue walk). */
+  /** `N / M` readout — where the RAIL's selection sits. */
   cursor,
   /** Far-right twin of the Unbox scan-progress ring (e.g. Incoming Sync). */
   trailing,
@@ -79,21 +77,13 @@ export function DeskRailChromeRow({
   /** Ignored — `RightRailHost` owns the singleton `→|`. Kept so callers compile. */
   onClose?: () => void;
   closeTitle?: string;
-  onPrev?: () => void;
-  onNext?: () => void;
-  prevDisabled?: boolean;
-  nextDisabled?: boolean;
-  prevTitle?: string;
-  nextTitle?: string;
-  prevTestId?: string;
-  nextTestId?: string;
   actions?: ReactNode;
   cursor?: ReactNode;
   trailing?: ReactNode;
   columnDisplay?: boolean;
   className?: string;
 }) {
-  const hasTrail = Boolean(onPrev || onNext || cursor || trailing);
+  const hasTrail = Boolean(cursor || trailing);
 
   return (
     <div className={cn(DESK_RAIL_CHROME_ROW_CLASS, className)}>
@@ -114,32 +104,6 @@ export function DeskRailChromeRow({
       {hasTrail ? (
         <div className="flex items-center gap-0">
           {cursor}
-          {onPrev ? (
-            <HoverTooltip label={prevTitle} asChild>
-              <IconButton
-                size="xs"
-                tone="neutral"
-                disabled={prevDisabled}
-                ariaLabel={prevTitle}
-                icon={<ChevronUp className="h-4 w-4" />}
-                onClick={onPrev}
-                data-testid={prevTestId}
-              />
-            </HoverTooltip>
-          ) : null}
-          {onNext ? (
-            <HoverTooltip label={nextTitle} asChild>
-              <IconButton
-                size="xs"
-                tone="neutral"
-                disabled={nextDisabled}
-                ariaLabel={nextTitle}
-                icon={<ChevronDown className="h-4 w-4" />}
-                onClick={onNext}
-                data-testid={nextTestId}
-              />
-            </HoverTooltip>
-          ) : null}
           {trailing}
         </div>
       ) : null}

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
   detectListingPlatform,
+  resolveListingIdentity,
   shouldEnqueueCatalogLinkChore,
 } from './order-catalog-link-chore-gates';
 
@@ -38,5 +39,43 @@ describe('detectListingPlatform', () => {
     assert.equal(detectListingPlatform('Amazon'), 'amazon');
     assert.equal(detectListingPlatform('ecwid'), 'ecwid');
     assert.equal(detectListingPlatform(''), 'unknown');
+  });
+});
+
+describe('resolveListingIdentity', () => {
+  it('keeps a real Item Number when the source carries one', () => {
+    assert.equal(
+      resolveListingIdentity({ itemNumber: '  126538271  ', sku: 'SKU-1', skuCatalogId: null }),
+      '126538271',
+    );
+  });
+
+  it('falls back to the SKU on a catalog miss (CSV / ShipStation lane)', () => {
+    assert.equal(
+      resolveListingIdentity({ itemNumber: '', sku: ' SKU-1 ', skuCatalogId: null }),
+      'SKU-1',
+    );
+  });
+
+  it('does NOT fall back on a catalog hit — the platform item id is truer', () => {
+    assert.equal(
+      resolveListingIdentity({ itemNumber: '', sku: 'SKU-1', skuCatalogId: 42 }),
+      '',
+    );
+  });
+
+  it('stays blank when the source names no product at all (Shopify / Square)', () => {
+    assert.equal(
+      resolveListingIdentity({ itemNumber: '', sku: '', skuCatalogId: null }),
+      '',
+    );
+  });
+
+  it('composes with the chore gate: a SKU-only miss now enqueues', () => {
+    const identity = resolveListingIdentity({ itemNumber: '', sku: 'SKU-1', skuCatalogId: null });
+    assert.equal(
+      shouldEnqueueCatalogLinkChore({ rawItemNumber: identity, skuCatalogId: null }),
+      true,
+    );
   });
 });

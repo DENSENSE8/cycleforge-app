@@ -32,6 +32,14 @@ export type OrderImportRowView = {
   missing: CsvOrderCanonicalKey[];
   orderNumber: string;
   sku: string;
+  /**
+   * Not on a grid TRACK — carried for `searchValues` only. A marketplace export
+   * routinely leaves the seller SKU blank and names the product by ASIN and
+   * title, so without these the staging find bar cannot locate the very rows
+   * such a file is made of.
+   */
+  itemNumber: string;
+  itemTitle: string;
   quantity: string;
   customerName: string;
   trackingNumber: string;
@@ -65,6 +73,8 @@ export const ORDER_IMPORT_DESCRIPTOR: TableImportDescriptor<
       missing,
       orderNumber: projected.order_number,
       sku: projected.sku,
+      itemNumber: projected.item_number,
+      itemTitle: projected.item_title,
       quantity: projected.quantity,
       customerName: projected.customer_name,
       trackingNumber: projected.tracking_number,
@@ -75,6 +85,8 @@ export const ORDER_IMPORT_DESCRIPTOR: TableImportDescriptor<
     return [
       view.orderNumber,
       view.sku,
+      view.itemNumber,
+      view.itemTitle,
       view.quantity,
       view.customerName,
       view.trackingNumber,

@@ -4,7 +4,7 @@
  * Home ("/") workbench shell.
  *
  * Reads `?mode=` (the single source of truth) and renders the matching region
- * inside a height-bounded host. `today` is the default and stays on the bare `/`
+ * inside a height-bounded host. `daily` is the default and stays on the bare `/`
  * path. Mirrors `OperationsWorkspace`'s mode-router shape.
  *
  * **This file renders no chrome of its own.** It used to stack a page header
@@ -16,34 +16,33 @@
  * `HeaderPageSwitcher` serves them exactly like Dashboard's and Operations'.
  *
  * Composition (do not rebuild):
- *   today → `MyDayWorkspace` (the Today triage workbench)
- *   forge → `AgenticLoopLiveConsole`, self-gated on `operations.plans.view`
- *   tasks / collab / brief → Phase B/D/E teaching seams
+ *   daily → `HomeDailyMode` (the daily checklist + the day's report) — DEFAULT
+ *   today → `MyDayWorkspace` (the My Day triage workbench)
+ *
+ * TWO modes as of 2026-08-19. `inbox` and `tasks` were deleted; `forge` moved to
+ * its own `/forge` route (see `app/forge/page.tsx`). `collab` and `brief` went
+ * earlier the same day. Home is the first screen of a shift — the modes it keeps
+ * are the ones an operator actually opens.
  */
 
 import { MyDayWorkspace } from '@/features/my-day/MyDayWorkspace';
-import { AgenticLoopLiveConsole } from '@/components/forge/AgenticLoopLiveConsole';
+import { cn } from '@/utils/_cn';
 import { useHomeMode } from './useHomeMode';
-import { HomeTasksMode } from './HomeTasksMode';
-import { HomeInboxMode } from './HomeInboxMode';
-import { HomeCollabPanel, HomeBriefPanel } from './HomeModePanels';
+import { HomeDailyMode } from './HomeDailyMode';
 
 export function HomeWorkspace() {
   const { mode } = useHomeMode();
 
   return (
-    <div className="flex h-[calc(100vh-64px)] min-h-0 flex-col overflow-hidden bg-surface-canvas">
-      <div className="min-h-0 flex-1 overflow-hidden">
+    <div
+      className={cn(
+        'flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden',
+        mode === 'daily' ? 'bg-surface-card' : 'bg-surface-canvas',
+      )}
+    >
+      <div className="min-h-0 w-full min-w-0 flex-1 overflow-hidden">
+        {mode === 'daily' && <HomeDailyMode />}
         {mode === 'today' && <MyDayWorkspace />}
-        {mode === 'inbox' && <HomeInboxMode />}
-        {mode === 'forge' && (
-          <div className="flex h-full min-h-0 flex-col overflow-hidden px-4 py-4">
-            <AgenticLoopLiveConsole />
-          </div>
-        )}
-        {mode === 'tasks' && <HomeTasksMode />}
-        {mode === 'collab' && <HomeCollabPanel />}
-        {mode === 'brief' && <HomeBriefPanel />}
       </div>
     </div>
   );

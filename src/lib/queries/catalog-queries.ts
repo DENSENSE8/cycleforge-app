@@ -1,5 +1,10 @@
 import { queryOptions } from '@tanstack/react-query';
-import type { PlatformRow, PlatformAccountRow, TypeRow } from '@/lib/neon/catalog-queries';
+import type {
+  PlatformRow,
+  PlatformAccountRow,
+  PriorityTierRow,
+  TypeRow,
+} from '@/lib/neon/catalog-queries';
 
 /** One bindable workflow-graph node (from /api/catalog/workflow-nodes). */
 export interface WorkflowNodeOption {
@@ -29,7 +34,25 @@ export const catalogKeys = {
   accounts: (includeInactive = false, platformId?: number) =>
     ['catalog', 'platform-accounts', includeInactive, platformId ?? null] as const,
   workflowNodes: () => ['catalog', 'workflow-nodes'] as const,
+  priorities: () => ['catalog', 'priorities'] as const,
 };
+
+/**
+ * The org's priority-ladder overrides. No `includeInactive` twin: a rung cannot
+ * be deactivated (see the priority_tiers migration), so there is only one view
+ * of this catalog. An empty array is the normal, healthy answer — it means no
+ * rung has been renamed or repainted, and the caller falls back to the built-in
+ * PRIORITY_OVERRIDE_TIERS.
+ */
+export function prioritiesQuery() {
+  return queryOptions({
+    queryKey: catalogKeys.priorities(),
+    queryFn: () =>
+      fetchJson<{ success: boolean; priorities: PriorityTierRow[] }>('/api/catalog/priorities'),
+    staleTime: 5 * 60_000,
+    select: (d) => d.priorities ?? [],
+  });
+}
 
 export function platformsQuery(opts: { includeInactive?: boolean } = {}) {
   const inc = opts.includeInactive ?? false;

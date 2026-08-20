@@ -1,6 +1,15 @@
 /**
  * Every table SURFACE BINDING in the product, in migration order — the one list.
  *
+ * **Reduced to two surfaces (2026-08-20).** Every other collection grid was
+ * deleted while its display is rewritten; each route it served still mounts and
+ * renders `TableRebuildPlaceholder`, so the routes, their permissions, their
+ * nav positions and their data are untouched and a rewritten display drops back
+ * into a seam that still exists. Re-register a surface here as it is rebuilt —
+ * this list and the registry are cross-asserted by
+ * `table-record-plane.guard.test.ts`, so a binding that is not here is not in
+ * the product.
+ *
  * ## Why this is its own module
  *
  * There were two lists: `REGISTERED_DEFINITIONS` inside the registry (which
@@ -28,22 +37,8 @@
  */
 
 import { INCOMING_TABLE_BINDING } from '@/components/station/incoming-grid/incoming-table-definition';
+import { DAILY_TABLE_BINDING } from '@/features/home/grid/daily-table-definition';
 import { RECEIVING_TABLE_BINDING } from '@/components/station/receiving-grid/receiving-table-definition';
-import { READY_TABLE_BINDING } from '@/components/outbound/ready/grid/ready-table-definition';
-import { PICKUP_TABLE_BINDING } from '@/components/receiving/pickup/grid/pickup-table-definition';
-import { UNFOUND_TABLE_BINDING } from '@/components/receiving/unfound/grid/unfound-table-definition';
-import { TECH_ALL_TABLE_BINDING } from '@/components/tech/all/tech-all-table-definition';
-import { TRACKING_EXCEPTIONS_TABLE_BINDING } from '@/components/tracking-exceptions/grid/tracking-exceptions-table-definition';
-import { WARRANTY_TABLE_BINDING } from '@/components/warranty/grid/warranty-table-definition';
-import { MY_DAY_TABLE_BINDING } from '@/features/my-day/grid/my-day-table-definition';
-import { CATALOG_TABLE_BINDING } from '@/components/products/catalog/catalog-grid/catalog-table-definition';
-import { REPAIR_TABLE_BINDING } from '@/components/repair/repair-grid/repair-table-definition';
-import { BINS_TABLE_BINDING } from '@/components/warehouse/bins-grid/bins-table-definition';
-import { UNITS_TABLE_BINDING } from '@/components/inventory/units-grid/units-table-definition';
-import {
-  CATALOG_LINK_TABLE_BINDING,
-  IMPORT_EXCEPTION_TABLE_BINDING,
-} from '@/features/review/catalog-link/grid/catalog-link-table-definition';
 import {
   ORDERS_DEFAULT_TABLE_BINDING,
   ORDERS_TESTED_TABLE_BINDING,
@@ -52,37 +47,23 @@ import {
   TO_SHIP_DESK_DEFAULT_BINDING,
   TO_SHIP_DESK_TESTED_BINDING,
 } from '@/components/outbound/orders/to-ship/to-ship-desk-table-definition';
-import { CSV_IMPORT_STAGING_TABLE_BINDING } from '@/components/outbound/orders/import-staging/csv-import-staging-table-definition';
-import { STATION_HISTORY_TABLE_BINDING } from '@/components/station/station-history-grid/station-history-table-definition';
 
 export const REGISTERED_BINDINGS = [
+  // Unbox / History / Testing — the golden spreadsheet.
   RECEIVING_TABLE_BINDING,
+  // Incoming Pipeline is not a separate table: `ReceivingLinesTable` is ONE
+  // component serving both, switching column model and header by mode. It
+  // survives because deleting it would mean cutting a branch out of the kept
+  // surface, not removing a table.
   INCOMING_TABLE_BINDING,
-  // Wave 2 — the thin-adapter cluster (one template, seven surfaces).
-  READY_TABLE_BINDING,
-  PICKUP_TABLE_BINDING,
-  UNFOUND_TABLE_BINDING,
-  TECH_ALL_TABLE_BINDING,
-  TRACKING_EXCEPTIONS_TABLE_BINDING,
-  WARRANTY_TABLE_BINDING,
-  MY_DAY_TABLE_BINDING,
-  // Wave 3 — the second-shape adapters.
-  CATALOG_TABLE_BINDING,
-  REPAIR_TABLE_BINDING,
-  BINS_TABLE_BINDING,
-  // Wave 0 (SoT page-violation migrate) — Inventory units browse collection.
-  UNITS_TABLE_BINDING,
-  // Wave 4 — Review · Catalog-link: two definitions, one shared capabilities bag.
-  CATALOG_LINK_TABLE_BINDING,
-  IMPORT_EXCEPTION_TABLE_BINDING,
-  // Wave 5 — Orders: two column-mode definitions for the shared parametric grid.
+  // To-Ship runs on the shared parametric Orders grid: `ToShipDeskTable` mounts
+  // `OrdersGridHost`, which resolves `ordersTableBindingFor(mode)`. So the two
+  // Orders definitions are To-Ship's ENGINE, not a second surface — the
+  // dashboard Orders queue that used to mount them is gone.
   ORDERS_DEFAULT_TABLE_BINDING,
   ORDERS_TESTED_TABLE_BINDING,
-  // Wave 5b — To-Ship desk fork: own entityFamily + prefs; stations stay on orders.
   TO_SHIP_DESK_DEFAULT_BINDING,
   TO_SHIP_DESK_TESTED_BINDING,
-  // Wave 6 — To-Ship CSV import staging: a triage sheet over a session draft,
-  // its own family so a staging column pref never touches the live queue.
-  CSV_IMPORT_STAGING_TABLE_BINDING,
-  STATION_HISTORY_TABLE_BINDING,
+  // Home → Daily: the shift checklist as a real collection, not a prose list.
+  DAILY_TABLE_BINDING,
 ] as const;

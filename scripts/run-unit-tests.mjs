@@ -1,21 +1,38 @@
 #!/usr/bin/env node
-// Unit-test runner for verify/CI (governance reset 2026-08-12).
-// Runs every src test file ending in .test.ts, but skips legacy
-// "*.guard.test.ts" except the four structural keepers. Editor buffers may
-// restore purged guards onto disk; those must not re-enter the gate.
+// Unit-test runner for verify/CI.
+//
+// Runs every src test file ending in .test.ts, INCLUDING "*.guard.test.ts",
+// except an explicit, shrink-only QUARANTINE of guards that are red today.
+//
+// The default was inverted 2026-08-19. The governance reset (2026-08-12) had
+// allowlisted four structural keepers and skipped every other guard, which
+// meant a guard written AFTER the reset was silently not enforced: the Preview
+// stance shipped 12 passing guard tests and a 10-test E2E, and `npm run verify`
+// ran neither. A gate you have to remember to opt into is not a gate.
+//
+// Adding a guard file is now enough to enforce it. A guard that is red goes in
+// QUARANTINE with a reason and a fix owner — never silently skipped, and the
+// list only shrinks.
 import { spawnSync } from 'node:child_process';
 import { readdirSync, statSync } from 'node:fs';
+import { availableParallelism } from 'node:os';
 import { join, relative } from 'node:path';
 
 const ROOT = process.cwd();
 const SRC = join(ROOT, 'src');
 
-const KEEPER_GUARDS = new Set([
-  'src/lib/sot-manifest/sot-manifest.guard.test.ts',
-  'src/design-system/foundations/motion-boundary.guard.test.ts',
-  'src/lib/governance/frame-budget.guard.test.ts',
-  'src/lib/governance/region-hosts.guard.test.ts',
-]);
+/**
+ * Guards that are RED against the current tree. Each records the drift it is
+ * reporting, so the next agent fixes the code or the guard rather than deleting
+ * one of them. SHRINK-ONLY: never add a line to make a change land.
+ *
+ * EMPTY as of 2026-08-19: every `*.guard.test.ts` in src/ was deleted at the
+ * operator's explicit request (structural guards removed for iteration speed).
+ * The five entries that lived here named files that no longer exist, and the
+ * ghost check below would exit 2 on them. The machinery is intentionally kept —
+ * adding a guard file back is still enough to enforce it.
+ */
+const QUARANTINE = new Map([]);
 
 function walk(dir, out = []) {
   for (const entry of readdirSync(dir)) {
@@ -37,7 +54,7 @@ const files = walk(SRC)
     // the gate: node --import tsx --test src/lib/governance/jscpd-gate.test.ts
     if (rel === 'src/lib/governance/jscpd-gate.test.ts') return false;
     if (!rel.endsWith('.guard.test.ts')) return true;
-    return KEEPER_GUARDS.has(rel);
+    return !QUARANTINE.has(rel);
   })
   .sort();
 
@@ -46,30 +63,61 @@ if (files.length < 50) {
   process.exit(2);
 }
 
-// The burn is a CEILING, not a filter. Silently skipping a non-keeper guard
-// let the population regrow 4 -> 17 in eight days: every one of those files
-// was unrun, so it enforced nothing, while still costing every agent that
-// read it a search for the rule it appeared to pin. A guard that does not run
-// is prose wearing a test's filename. Add one here only by adding it to
-// KEEPER_GUARDS — deliberately, with a reason — or put the invariant in the
-// layer that can actually hold it (dep-cruiser, ESLint AST, TS props, a
-// mounted DOM test) per AGENTS.md -> Guard authoring.
-const strayGuards = walk(SRC)
-  .map((abs) => relative(ROOT, abs).split('\\').join('/'))
-  .filter((rel) => rel.endsWith('.guard.test.ts') && !KEEPER_GUARDS.has(rel));
-if (strayGuards.length) {
-  console.error(
-    `run-unit-tests: ${strayGuards.length} guard test(s) exist outside KEEPER_GUARDS ` +
-      `and would never run:\n  ${strayGuards.join('\n  ')}\n` +
-      `Delete them, or promote to KEEPER_GUARDS in this file.`,
-  );
+const onDisk = new Set(
+  walk(SRC)
+    .map((abs) => relative(ROOT, abs).split('\\').join('/'))
+    .filter((rel) => rel.endsWith('.guard.test.ts')),
+);
+const quarantined = [...QUARANTINE.keys()].filter((rel) => onDisk.has(rel));
+if (quarantined.length) {
+  console.log(`run-unit-tests: ${quarantined.length} guard(s) QUARANTINED (red, shrink-only):`);
+  for (const rel of quarantined) console.log(`  - ${rel} — ${QUARANTINE.get(rel)}`);
+}
+// A quarantine entry for a guard nobody deleted is one thing; an entry for a
+// file that no longer exists is a stale excuse. Fail rather than carry it.
+const ghosts = [...QUARANTINE.keys()].filter((rel) => !onDisk.has(rel));
+if (ghosts.length) {
+  console.error(`run-unit-tests: QUARANTINE names ${ghosts.length} file(s) that do not exist:`);
+  for (const rel of ghosts) console.error(`  - ${rel}`);
   process.exit(2);
 }
+
+/**
+ * Cap how many test files run at once.
+ *
+ * `node --test` defaults to `availableParallelism()` workers, and every worker
+ * here is a full `tsx` TypeScript compile — not a cheap fork. Across 755 test
+ * files on a 16-core box that pins all 16 cores for the length of the run and
+ * starves everything else sharing the machine (dev servers, other agents).
+ *
+ * Half the cores keeps the box usable and costs little wall-clock: the run is
+ * compile-bound, so the extra workers were mostly competing for the same cores
+ * rather than adding throughput. Override with TEST_CONCURRENCY=N for CI or a
+ * deliberate full-speed run; TEST_CONCURRENCY=0 restores the Node default.
+ */
+function testConcurrency() {
+  const raw = process.env.TEST_CONCURRENCY;
+  if (raw !== undefined && raw !== '') {
+    const n = Number(raw);
+    if (!Number.isInteger(n) || n < 0) {
+      console.error(`run-unit-tests: TEST_CONCURRENCY must be a non-negative integer, got "${raw}"`);
+      process.exit(2);
+    }
+    return n;
+  }
+  return Math.max(1, Math.floor(availableParallelism() / 2));
+}
+
+const concurrency = testConcurrency();
+console.log(
+  `run-unit-tests: ${files.length} file(s), concurrency ${concurrency || `default (${availableParallelism()})`}`,
+);
 
 const res = spawnSync(
   process.execPath,
   [
     '--test',
+    ...(concurrency ? [`--test-concurrency=${concurrency}`] : []),
     '--require',
     './scripts/register-server-only-shim.cjs',
     '--import',

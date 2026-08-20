@@ -26,6 +26,12 @@ interface ScanHotkeyControlProps {
   stance: StationScanStance;
   /** Commit a stance pick from the menu. */
   onSelectStance: (stance: StationScanStance) => void;
+  /**
+   * False when the host wired no `previewLookup`. The stance store is one global
+   * key, so a bar that cannot preview must not OFFER Preview — picking it there
+   * arms a mode that swallows the next scan on a station that can't answer it.
+   */
+  previewEnabled?: boolean;
   /** Custom glyph for the scan stance (preview always uses Search). */
   scanIcon?: ReactNode;
 }
@@ -59,6 +65,7 @@ const STANCE_COPY: Record<
 export function ScanHotkeyControl({
   stance,
   onSelectStance,
+  previewEnabled = true,
   scanIcon,
 }: ScanHotkeyControlProps) {
   const { hotkey, setHotkey, setCapturing } = useScanHotkey();
@@ -145,7 +152,7 @@ export function ScanHotkeyControl({
       </HoverTooltip>
 
       <DropdownMenuContent align="start" sideOffset={8} className="min-w-[13rem]">
-        {(['scan', 'preview'] as const).map((value) => {
+        {(previewEnabled ? (['scan', 'preview'] as const) : (['scan'] as const)).map((value) => {
           const active = stance === value;
           return (
             <DropdownMenuItem

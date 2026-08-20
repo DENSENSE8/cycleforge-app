@@ -1,5 +1,7 @@
 'use client';
 
+import { gridDataCellClass } from '@/design-system/components/grid';
+import type { GridColumnDisplayPref } from '@/design-system/components/grid/grid-column-display';
 import { Fragment, memo, useCallback, useRef, useState, type ReactNode } from 'react';
 import { motion } from '@/design-system/motion';
 import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
@@ -8,7 +10,7 @@ import { ChevronDown, Plus } from '@/components/Icons';
 import { useRouter } from 'next/navigation';
 import { useOrderIdentityCellNodes, OrderIdentityChips } from '@/components/ui/OrderIdentityChips';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { gridCellAlignClass, LedgerCellEditor } from '@/design-system/components/grid';
+import { LedgerCellEditor } from '@/design-system/components/grid';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { ConditionSelectPopover } from './cell-editors';
 import {
@@ -134,6 +136,13 @@ export interface OrdersQueueTableRowProps {
    *  the SAME list. */
   columns?: readonly OrdersQueueColumn[];
   /**
+   * Per-staff column display prefs, resolved once by the host. Orders had no
+   * access to these, so `gridColumnTextEmphasisClass` — a shared SoT — had
+   * exactly one consuming family and a staffer's column emphasis stopped at
+   * the edge of Unbox History.
+   */
+  columnDisplay?: Readonly<Record<string, GridColumnDisplayPref>>;
+  /**
    * The MOUNTING SURFACE's declared capabilities — required, never defaulted.
    *
    * This row is rendered by two surfaces with different feature sets: the
@@ -211,6 +220,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   onToggleSelect,
   queueMode = 'fulfillment',
   columns = ORDERS_QUEUE_COLUMNS,
+  columnDisplay,
   capabilities,
   onRowClick,
   onRowOpen,
@@ -237,8 +247,9 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
     trackingType: record.tracking_type,
     scanRef: scanRefForSku,
   });
-  // Platform label feeds OrderIdChip tooltip only (`Platform full-id` SoT) —
-  // this surface never paints a PlatformChip / PlatformMark or color-maps.
+  // The channel is carried by the ORDER cell's brand dot (the identity
+  // language: dot, never a type glyph) and named in full on the chip's hover
+  // label. One fact, one place — the row needs no channel track of its own.
   const platformLabel = orderChannelLabel(record.order_id || '', record.account_source);
   const isFba = isFbaOrder(record.order_id, record.account_source);
   const orderMarketplaceUrl = marketplaceOrderUrl(record.order_id, record.account_source);
@@ -342,6 +353,15 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   const conditionLabel = conditionGradeTableLabel(conditionValue);
   const conditionEmpty = isEmptyMetaDash(conditionLabel);
 
+  // `omitCellIcon` on EITHER identity column drops the body glyph: the two
+  // chips are one identity face, so a half-iconed pair would read as a third
+  // style rather than a choice.
+  const identityVariant: 'icons' | 'plain' = columns.some(
+    (c) => (c.key === 'order' || c.key === 'tracking') && c.omitCellIcon,
+  )
+    ? 'plain'
+    : 'icons';
+
   const identityChipProps = {
     platformLabel,
     productPageUrl: null as string | null,
@@ -361,8 +381,13 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
           : undefined
         : undefined,
     serialChip,
-    // SoT identity: Hash / MapPin tone glyphs on Order + Tracking chips.
-    variant: 'icons' as const,
+    // Identity face is DECLARED, not hardcoded. This read `variant: 'icons'`
+    // while `ReceivingOrderCell` hardcoded `plain` — the same two fields, an
+    // opposite answer on each surface, and neither derived from anything. The
+    // switch is now the column's own `omitCellIcon`, which is what the header
+    // glyph rule already keys on, so "does the body repeat what the header
+    // says" has ONE answer per column instead of one per call site.
+    variant: identityVariant,
     // No platform column on this surface — order + tracking only.
     showPlatform: false,
   };
@@ -374,7 +399,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   const gridTemplate = isMobile ? undefined : ordersQueueGridTemplateFor(columns);
   const cellInset = gridSkin ? ('grid' as const) : ('cell' as const);
   const dataCell = (col: OrdersQueueColumn, rule = true) =>
-    cn(ordersQueueGridCell({ rule, inset: cellInset }), gridCellAlignClass(col));
+    gridDataCellClass(col, { rule, inset: cellInset, columnDisplay });
 
   // Mobile keeps the right-packed icon cluster (order + tracking; no platform).
   const chipsNode = <OrderIdentityChips {...identityChipProps} isMobile={isMobile} />;

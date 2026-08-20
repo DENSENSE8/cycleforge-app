@@ -27,6 +27,9 @@ export function useRegisterRightPanel(opts: {
   priority: number;
   node: ReactNode;
   onClose?: () => void;
+  /** Return false to REFUSE dismissal while a run is in flight. See
+   *  `RightRailPanel.canClose` — `onClose` cannot express refusal. */
+  canClose?: () => boolean;
   /** When true, render in the elevated `detailStack` band + deeper backdrop. */
   elevated?: boolean;
   /** Modality — defaults to `true`. Pass `false` for a non-modal inspector
@@ -53,6 +56,7 @@ export function useRegisterRightPanel(opts: {
     priority,
     node,
     onClose,
+    canClose,
     elevated,
     modal,
     closeOnOutsideClick,
@@ -75,6 +79,7 @@ export function useRegisterRightPanel(opts: {
       priority,
       node,
       onClose,
+      canClose,
       elevated,
       modal,
       closeOnOutsideClick,
@@ -92,6 +97,7 @@ export function useRegisterRightPanel(opts: {
       id,
       node,
       onClose,
+      canClose,
       elevated,
       modal,
       closeOnOutsideClick,
@@ -100,5 +106,5 @@ export function useRegisterRightPanel(opts: {
       collapsedStrip,
       ariaLabel,
     });
-  }, [id, node, onClose, elevated, modal, closeOnOutsideClick, push, edgeCollapse, collapsedStrip, ariaLabel, enabled]);
+  }, [id, node, onClose, canClose, elevated, modal, closeOnOutsideClick, push, edgeCollapse, collapsedStrip, ariaLabel, enabled]);
 }

@@ -13,6 +13,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import { syncAgentRootsFromSettings } from '@/lib/nas-agent-client';
 import { normalizeProvider } from '@/lib/photos/analyze-provider';
 import { normalizeVisionLane } from '@/lib/support/vision-lane';
+import { normalizeAiProviderOrder } from '@/lib/ai/provider-order';
 import {
   isLicensedGln,
   isPlaceholderGs1Prefix,
@@ -56,6 +57,10 @@ export const GET = withAuth(async (_req: NextRequest, ctx) => {
     ? getComplianceAnswers(org.settings)
     : { hasNewInventory: null, sellsOnAmazon: null, gs1Status: null, answeredAt: null };
   const support = org ? getSupportSettings(org.settings) : {};
+  const aiSettings =
+    org?.settings && typeof org.settings === 'object'
+      ? (((org.settings as Record<string, unknown>).ai as Record<string, unknown> | undefined) ?? {})
+      : {};
   return NextResponse.json({
     stationNasPhotoFolders: org?.settings.stationNasPhotoFolders ?? {},
     nasPhotoServers: org?.settings.nasPhotoServers ?? { test: '', prod: '', active: 'prod' },
@@ -79,6 +84,9 @@ export const GET = withAuth(async (_req: NextRequest, ctx) => {
           visionLane: support.visionLane ?? null,
           vertical: support.vertical ?? null,
         },
+        // Raw org request — null means "inherit env / local-first". Never
+        // return the resolved order; provider-order.ts owns that precedence.
+        ai: { providerOrder: aiSettings.providerOrder ?? null },
   });
 }, { permission: 'admin.view' });
 
@@ -401,11 +409,54 @@ export const PATCH = withAuth(async (req: NextRequest, ctx) => {
     patch.support = next;
   }
 
+  // ── ai (provider order preference) ───────────────────────────────────────
+  //
+  // Same merge-over-current shape as `support` above: jsonb `||` replaces the
+  // whole `ai` key, so a providerOrder-only patch must not clobber anything
+  // else stored under it. The value is the org's REQUEST — `provider-order.ts`
+  // remains the only place precedence (org → env → local-first) lives, and the
+  // chain builder remains the only thing that decides what is actually usable.
+  if ('ai' in body) {
+    const raw = (body as Record<string, unknown>).ai;
+    if (raw == null || typeof raw !== 'object' || Array.isArray(raw)) {
+      return NextResponse.json(
+        { error: 'ai must be an object of { providerOrder }' },
+        { status: 400 },
+      );
+    }
+    const r = raw as Record<string, unknown>;
+    const currentOrg = await getOrganization(ctx.organizationId as OrgId);
+    const currentAi =
+      currentOrg?.settings && typeof currentOrg.settings === 'object'
+        ? ((currentOrg.settings as Record<string, unknown>).ai as Record<string, unknown> | undefined)
+        : undefined;
+    const next: Record<string, unknown> = { ...(currentAi ?? {}) };
+
+    if ('providerOrder' in r) {
+      if (r.providerOrder === null || r.providerOrder === '') {
+        delete next.providerOrder; // clear → inherit env / local-first
+      } else {
+        const order = normalizeAiProviderOrder(
+          typeof r.providerOrder === 'string' ? r.providerOrder : null,
+        );
+        if (!order) {
+          return NextResponse.json(
+            { error: 'providerOrder must be local-first | cloud-first | null' },
+            { status: 400 },
+          );
+        }
+        next.providerOrder = order;
+      }
+    }
+
+    patch.ai = next;
+  }
+
   if (Object.keys(patch).length === 0) {
     return NextResponse.json(
       {
         error:
-          'Provide stationNasPhotoFolders, nasPhotoServers, nasStorageTargets, photoAnalysis, gs1, compliance, and/or support',
+          'Provide stationNasPhotoFolders, nasPhotoServers, nasStorageTargets, photoAnalysis, gs1, compliance, support, and/or ai',
       },
       { status: 400 },
     );

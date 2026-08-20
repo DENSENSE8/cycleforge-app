@@ -49,9 +49,10 @@ import { Button, IconButton } from '@/design-system/primitives';
 import { requestConfirm } from '@/design-system/components/confirm';
 import { platformsQuery, typesQuery } from '@/lib/queries/catalog-queries';
 import type { PlatformRow, TypeRow } from '@/lib/neon/catalog-queries';
-import { useInvalidateCatalog } from '@/hooks/useCatalog';
+import { useInvalidateCatalog, usePriorityCatalog } from '@/hooks/useCatalog';
 import { platformPaintFromHex } from '@/lib/color-contrast';
 import { SOURCE_PLATFORM_OPTS, RECEIVING_TYPE_OPTS } from '@/components/sidebar/receiving/receiving-sidebar-shared';
+import { PRIORITY_OVERRIDE_TIERS } from '@/lib/receiving/priority-override';
 import { catalogIdentityDot } from './classify-pill-options';
 import { TypeBindingsEditor } from './TypeBindingsEditor';
 import { focusRing } from '@/design-system/tokens/focus-ring';
@@ -59,18 +60,34 @@ import { cn } from '@/utils/_cn';
 
 
 
-export type CatalogKind = 'platform' | 'type';
+/**
+ * `priority` is a catalog HERE — one manager, one look — but it is not an open
+ * set. Its rows are the four rungs of the priority ladder
+ * (`PRIORITY_OVERRIDE_TIERS`), and the value stored on a carton is the rung's
+ * NUMBER (`receiving.priority_tier`), which `RECEIVING_PRIORITY_RANK_SQL` sorts
+ * the receiving queue on. So rename and repaint behave exactly as they do for
+ * platform / type, while add · hide · reorder are switched off below: there is
+ * no fifth rung to add, and hiding or reordering one would change the meaning
+ * of a number already written to thousands of rows.
+ */
+export type CatalogKind = 'platform' | 'type' | 'priority';
 
 const API_BASE: Record<CatalogKind, string> = {
   platform: '/api/catalog/platforms',
   type: '/api/catalog/types',
+  priority: '/api/catalog/priorities',
 };
 
 const TEXT_INPUT =
   cn('w-full rounded-lg border border-border-soft bg-surface-card inset-cozy text-role-caption text-text-default transition-colors', focusRing('field', 'accent'));
 
-/** Accessible mid-saturation presets for catalog accents (platforms + types). */
-const CATALOG_COLOR_PRESETS: ReadonlyArray<ColorSwatch> = [
+/**
+ * Accessible mid-saturation presets for catalog accents (platforms + types +
+ * the priority ladder). Exported so {@link PriorityTierManagerList} offers the
+ * SAME swatches — two palettes would let a renamed rung sit beside a platform
+ * in a colour the other list cannot express.
+ */
+export const CATALOG_COLOR_PRESETS: ReadonlyArray<ColorSwatch> = [
   { hex: '#2563eb', label: 'Blue' },
   { hex: '#0ea5e9', label: 'Sky' },
   { hex: '#10b981', label: 'Emerald' },
@@ -132,6 +149,16 @@ export function CatalogManagerList({
   const invalidate = useInvalidateCatalog();
   const base = API_BASE[kind];
   const isPlatform = kind === 'platform';
+  const isPriority = kind === 'priority';
+  /**
+   * The open-set affordances. True for the catalogs whose rows an org owns;
+   * false for the priority ladder, whose rungs are a code constant and whose
+   * order is a storage contract (see {@link CatalogKind}). Named flags rather
+   * than inline `kind !==` checks so the reasoning lives in one place.
+   */
+  const canAdd = !isPriority;
+  const canReorder = !isPriority;
+  const canDeactivate = !isPriority;
   /**
    * Both kinds persist an accent (`platforms.color_hex` 2026-08-05 /
    * `types.color_hex` 2026-08-19). Kept as a named flag rather than an inlined
@@ -144,7 +171,9 @@ export function CatalogManagerList({
   // restored — unlike the pickers, which read active-only via useCatalog.
   const platformQ = useQuery({ ...platformsQuery({ includeInactive: true }), enabled: enabled && kind === 'platform' });
   const typeQ = useQuery({ ...typesQuery({ includeInactive: true }), enabled: enabled && kind === 'type' });
-  const rawRows: Array<PlatformRow | TypeRow> = kind === 'platform' ? platformQ.data ?? [] : typeQ.data ?? [];
+  const priorityCatalog = usePriorityCatalog();
+  const rawRows: Array<PlatformRow | TypeRow> =
+    kind === 'platform' ? platformQ.data ?? [] : kind === 'type' ? typeQ.data ?? [] : [];
   // Full type rows (with platform_account_id / workflow_node_id) for the binding
   // editor — `entries` below intentionally narrows to the shared shape.
   const typeRowById = new Map<number, TypeRow>(
@@ -152,20 +181,38 @@ export function CatalogManagerList({
   );
   const bindingsOn = enableTypeBindings && kind === 'type';
 
-  const entries: Entry[] = rawRows.map((r) => ({
-    id: r.id,
-    slug: r.slug,
-    label: r.label,
-    sortOrder: r.sort_order,
-    isActive: r.is_active,
-    isSystem: r.is_system,
-    colorHex: (isPlatform ? (r as PlatformRow).color_hex : (r as TypeRow).color_hex) ?? null,
-  }));
+  const entries: Entry[] = isPriority
+    ? // The ladder merged with any org skin — `id` IS the tier, which is what
+      // /api/catalog/priorities/[tier] addresses, so every mutation below works
+      // unchanged. Always active, always "Default"-badged: a rung is seeded by
+      // the constant, never created by an org.
+      priorityCatalog.options.map((o) => ({
+        id: Number(o.value),
+        slug: o.value,
+        label: o.label,
+        sortOrder: Number(o.value),
+        isActive: true,
+        isSystem: true,
+        colorHex: o.colorHex ?? null,
+      }))
+    : rawRows.map((r) => ({
+        id: r.id,
+        slug: r.slug,
+        label: r.label,
+        sortOrder: r.sort_order,
+        isActive: r.is_active,
+        isSystem: r.is_system,
+        colorHex: (isPlatform ? (r as PlatformRow).color_hex : (r as TypeRow).color_hex) ?? null,
+      }));
   const editable = entries.length > 0;
   const active = entries.filter((e) => e.isActive);
   const hidden = entries.filter((e) => !e.isActive);
   const fallbackLabels =
-    kind === 'platform' ? SOURCE_PLATFORM_OPTS.map((o) => o.label) : RECEIVING_TYPE_OPTS.map((o) => o.label);
+    kind === 'platform'
+      ? SOURCE_PLATFORM_OPTS.map((o) => o.label)
+      : kind === 'priority'
+        ? PRIORITY_OVERRIDE_TIERS.map((t) => t.label)
+        : RECEIVING_TYPE_OPTS.map((o) => o.label);
 
   const [adding, setAdding] = useState('');
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -286,6 +333,7 @@ export function CatalogManagerList({
             return (
               <li key={e.id} className="rounded-lg border border-border-soft bg-surface-card">
               <div className="flex items-center gap-2 inset-cozy">
+                {canReorder ? (
                 <div className="flex flex-col">
                   <IconButton
                     type="button"
@@ -304,6 +352,7 @@ export function CatalogManagerList({
                     className="text-text-faint hover:text-text-muted disabled:opacity-30"
                   />
                 </div>
+                ) : null}
 
                 {supportsColor ? (
                   // READOUT — the exact dot this row paints on the carton bar.
@@ -411,15 +460,17 @@ export function CatalogManagerList({
                         className="rounded p-1 text-text-faint hover:bg-surface-sunken hover:text-text-muted"
                       />
                     </HoverTooltip>
-                    <HoverTooltip label={e.isSystem ? 'Hide (restorable below)' : 'Remove'} asChild>
-                      <IconButton
-                        type="button"
-                        onClick={() => void setActive(e, false)}
-                        ariaLabel={`${e.isSystem ? 'Hide' : 'Remove'} ${e.label}`}
-                        icon={<Trash2 className="h-3.5 w-3.5" />}
-                        className="rounded p-1 text-text-faint hover:bg-rose-50 hover:text-rose-600"
-                      />
-                    </HoverTooltip>
+                    {canDeactivate ? (
+                      <HoverTooltip label={e.isSystem ? 'Hide (restorable below)' : 'Remove'} asChild>
+                        <IconButton
+                          type="button"
+                          onClick={() => void setActive(e, false)}
+                          ariaLabel={`${e.isSystem ? 'Hide' : 'Remove'} ${e.label}`}
+                          icon={<Trash2 className="h-3.5 w-3.5" />}
+                          className="rounded p-1 text-text-faint hover:bg-rose-50 hover:text-rose-600"
+                        />
+                      </HoverTooltip>
+                    ) : null}
                   </>
                 )}
               </div>
@@ -486,6 +537,7 @@ export function CatalogManagerList({
       ) : null}
 
       {/* Add */}
+      {canAdd ? (
       <div className="mt-3 flex items-center gap-2">
         <input
           ref={addInputRef}
@@ -511,6 +563,7 @@ export function CatalogManagerList({
           Add
         </Button>
       </div>
+      ) : null}
     </div>
   );
 }

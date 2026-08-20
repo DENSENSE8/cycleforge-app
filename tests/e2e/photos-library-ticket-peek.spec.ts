@@ -5,9 +5,14 @@ import { test, expect } from '@playwright/test';
  *
  * A. The library exposes a "Group by ticket" layout that resolves photos by
  *    ticket number (poRef) into labeled sections.
- * B. The receiving photo peek (PhotoPeekFan) renders a hover → fan → expand
- *    card stack. Exercised against the isolation harness at
- *    /design-demo/photo-peek so it needs no real carton.
+ *
+ * NOTE (2026-08-20): part B covered the receiving photo peek (PhotoPeekFan)
+ * hover → fan → expand card stack against the isolation harness at
+ * /design-demo/photo-peek. That harness route was deleted with the design-demo
+ * tree, so part B was removed with it. PhotoPeekFan is STILL LIVE
+ * (packer/UnitPackPhotoPeek, line-edit/PhotoPeekFan) and is now UNCOVERED —
+ * it needs a replacement spec driven from a real carton, or a new harness.
+ * Tracked in docs/kill-list/01-tier1-provably-dead.md.
  */
 
 test.describe('A · Photo library group-by-ticket', () => {
@@ -86,25 +91,5 @@ test.describe('A · Photo library group-by-ticket', () => {
       }
     }
     expect(pageErrors, `Uncaught page errors: ${pageErrors.join(' | ')}`).toHaveLength(0);
-  });
-});
-
-test.describe('B · Receiving photo peek card stack', () => {
-  test('hover fans the peek and hold/click expands into the card stack', async ({ page }) => {
-    await page.goto('/design-demo/photo-peek');
-    const peek = page.getByTestId('photo-peek');
-    await expect(peek).toBeVisible();
-
-    // Hover fans the cards out.
-    await peek.hover();
-
-    // Click opens the expanded fan display.
-    await peek.click();
-    await expect(page.getByTestId('photo-peek-expanded')).toBeVisible();
-    await expect(page.getByTestId('fan-card').first()).toBeVisible();
-
-    // Clicking a fan card opens the shared fullscreen viewer (PhotoViewerModal).
-    await page.getByTestId('fan-card').first().click();
-    await expect(page.getByTestId('photo-lightbox')).toBeVisible();
   });
 });

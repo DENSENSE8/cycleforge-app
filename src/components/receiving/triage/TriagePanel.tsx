@@ -53,7 +53,6 @@ import {
   StationPanelRoot,
   StationWorkbench,
   StationScanPaneHost,
-  ScanStationCartonCursor,
   STATION_WORKBENCH_COLUMN,
 } from '@/components/station/workbench';
 import { StationContextBar } from '@/components/station/entity-context';
@@ -75,7 +74,7 @@ import {
   STATION_DISPLAY_INDEX,
   useYieldStationDisplaysOnAssistantOpen,
 } from '@/components/station/displays';
-import { UnboxDisplaysUtilityRailBody } from '../workspace/UnboxDisplaysUtilityRailBody';
+import { StationDisplaysUtilityRail } from '@/components/station/displays';
 import { useUnboxLineController } from '../workspace/line-edit/hooks/useUnboxLineController';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { dispatchLineUpdated } from '@/components/station/receiving-lines-table-helpers';
@@ -101,19 +100,10 @@ export function TriagePanel({
   row,
   staffId,
   onClose,
-  onPrevCarton,
-  onNextCarton,
-  prevCartonDisabled = false,
-  nextCartonDisabled = false,
 }: {
   row: ReceivingLineRow;
   staffId: string;
   onClose: () => void;
-  /** Carton cursor — ↑ prev / ↓ next (same as left sidebar / DeskRailChromeRow). */
-  onPrevCarton?: () => void;
-  onNextCarton?: () => void;
-  prevCartonDisabled?: boolean;
-  nextCartonDisabled?: boolean;
 }) {
   const staging = useTriageStaging(row);
   const [actionFeedback, setActionFeedback] = useState<InlineActionFeedbackPayload | null>(null);
@@ -188,6 +178,14 @@ export function TriagePanel({
     if (activeSideTab === 'ticket' && claimTicketId == null) closeDisplays();
     else onOpenClaim('create');
   }, [activeSideTab, claimTicketId, closeDisplays, onOpenClaim]);
+
+  /**
+   * The notes header's ⓘ → Displays → Timeline. Contextual detail opens on the
+   * right edge, never as a dialog over the work the operator is doing.
+   */
+  const openTimelineDisplay = useCallback(() => {
+    openDisplays('timeline');
+  }, [openDisplays]);
 
   /** Auto-match Find ticket → Ticket display (link existing). */
   const openFindTicketDisplay = useCallback(() => {
@@ -315,8 +313,12 @@ export function TriagePanel({
         // through the same staging writer the dock and the <select> use.
         staging,
         onLocationPlaced: closeDisplays,
+        // Root Index is not a leaf — Timeline's audit read waits for the leaf
+        // itself, never paints behind the index.
+        activeTab: activeSideTab === STATION_DISPLAY_INDEX ? null : activeSideTab,
       }),
     [
+      activeSideTab,
       row,
       staffId,
       claimTicketId,
@@ -377,25 +379,8 @@ export function TriagePanel({
 
   // Scan-station chrome: utility rail when Displays closed (`←|` bottom
   // footer); ↑↓ on details panel top-right when open.
-  const showCartonCursor = Boolean(onPrevCarton || onNextCarton);
   const utilityRailBody = !activeSideTab ? (
-    <UnboxDisplaysUtilityRailBody
-      onOpenDisplays={openDisplaysIndex}
-      cartonCursor={
-        showCartonCursor ? (
-          <ScanStationCartonCursor
-            onPrev={onPrevCarton}
-            onNext={onNextCarton}
-            prevDisabled={prevCartonDisabled}
-            nextDisabled={nextCartonDisabled}
-            orientation="vertical"
-            prevTestId="arrival-carton-prev"
-            nextTestId="arrival-carton-next"
-            groupTestId="arrival-carton-cursor"
-          />
-        ) : null
-      }
-    />
+    <StationDisplaysUtilityRail onOpenDisplays={openDisplaysIndex} />
   ) : null;
 
   return (
@@ -480,6 +465,7 @@ export function TriagePanel({
                           trailingAction={bubbleTerminal}
                           onPrimaryAction={() => void handleSaveForUnbox()}
                           primaryActionDisabled={Boolean(terminalVm.disabled)}
+                          onOpenStatusHistory={openTimelineDisplay}
                         />
                       ) : null}
                     </div>

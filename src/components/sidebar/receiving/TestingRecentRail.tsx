@@ -60,6 +60,16 @@ function getTestedQty(row: ReceivingLineRow): number {
   return isTested ? row.quantity_received : 0;
 }
 
+/**
+ * Rows the rail renders. The feed already fetches 500 and the shell slices to
+ * this number, so it is a DISPLAY window, not a fetch bound — raising it costs
+ * nothing at the API. 25 was the generic `useSidebarRail` default and was never
+ * chosen for this bench: a tester's shift routinely passes 25 verdicts, at which
+ * point the rail silently stopped being the "recently tested" map it claims to
+ * be and started being "the last 25". 50 (2026-08-19).
+ */
+const TESTING_RAIL_LIMIT = 50;
+
 interface Props {
   selectedLineId: number | null;
   selectedRow?: ReceivingLineRow | null;
@@ -80,7 +90,7 @@ interface Props {
 export function TestingRecentRail({
   selectedLineId,
   selectedRow = null,
-  limit = 25,
+  limit = TESTING_RAIL_LIMIT,
   testerId = null,
   filterText = '',
   includeRow,

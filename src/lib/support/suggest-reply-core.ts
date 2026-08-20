@@ -106,8 +106,14 @@ export interface SuggestDeps {
     /** Signed image URLs — present ONLY on the cloud-multimodal lane. */
     images?: string[];
   }) => Promise<string>;
-  /** The model name to REPORT for the lane that ran. Reported, never chosen. */
-  resolveModel: (usedImages: boolean) => string;
+  /**
+   * The model name to REPORT for the lane that ran. Reported, never chosen.
+   *
+   * May be async: the name comes from THIS ORG's resolved provider, which is a
+   * vault read. It must still never throw — an unresolvable name degrades to a
+   * generic label rather than taking down a draft that already generated.
+   */
+  resolveModel: (usedImages: boolean) => string | Promise<string>;
 }
 
 export class SupportSuggestError extends Error {
@@ -236,7 +242,7 @@ export async function suggestSupportReplyCore(
     // local lane, and reporting otherwise would tell the operator a customer's
     // photo left the building when it did not.
     mode: images.length ? 'cloud-multimodal' : 'local-only',
-    model: deps.resolveModel(images.length > 0),
+    model: await deps.resolveModel(images.length > 0),
     grounded,
     searchHits: matches,
     evidence: photos,

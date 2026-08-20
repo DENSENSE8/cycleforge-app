@@ -13,6 +13,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -20,11 +21,14 @@ import type { SectionTab } from '@/design-system/components';
 import {
   STATION_DISPLAY_INDEX,
   defaultDisplayIndexGroup,
+  filterDisplayIndexRows,
   type DisplayIndexGroup,
   type DisplayIndexRow,
   type DisplayIndexTone,
 } from '@/components/station/displays/display-index';
 import { DisplaysIndexLeafStage } from '@/components/station/displays';
+import type { StationDisplayIndexFilterKeys } from '@/components/station/displays/DisplaysIndexLeafStage';
+import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
 import { StationDisplayLeafHeader } from '@/components/station/displays/StationDisplayLeafHeader';
 import { STATION_CHROME_SEAM_HAIRLINE } from '@/components/station/entity-context/station-identity-chrome';
@@ -91,6 +95,8 @@ export function DeskInspectorIndexShell({
   ariaLabel = 'Inspector topics',
   testId = 'desk-inspector-index',
   backLabel = 'Back to topics',
+  /** Unbox Root Index find (`Filter displays…`). Daily opts in; Repair/History stay off. */
+  indexFilter = false,
   className,
 }: {
   leaves: readonly DeskInspectorLeaf[];
@@ -105,6 +111,7 @@ export function DeskInspectorIndexShell({
   ariaLabel?: string;
   testId?: string;
   backLabel?: string;
+  indexFilter?: boolean;
   className?: string;
 }) {
   const [uncontrolledId, setUncontrolledId] = useState(defaultActiveId);
@@ -139,6 +146,24 @@ export function DeskInspectorIndexShell({
     [indexRows, resolvedLeaves],
   );
 
+  const [filterQuery, setFilterQuery] = useState('');
+  const applyFilterQuery = useCallback(
+    (next: string) => {
+      setFilterQuery(next);
+      if (!onIndex && next.trim()) setActiveId(DESK_INSPECTOR_INDEX);
+    },
+    [onIndex, setActiveId],
+  );
+  const indexFilterKeysRef = useRef<StationDisplayIndexFilterKeys | null>(null);
+
+  const filteredIndexRows = useMemo(
+    () =>
+      indexFilter
+        ? filterDisplayIndexRows(resolvedIndexRows, filterQuery)
+        : resolvedIndexRows,
+    [indexFilter, resolvedIndexRows, filterQuery],
+  );
+
   const activeLeaf = useMemo(
     () => (onIndex ? null : resolvedLeaves.find((l) => l.id === activeId) ?? null),
     [onIndex, resolvedLeaves, activeId],
@@ -167,14 +192,40 @@ export function DeskInspectorIndexShell({
     setActiveId(DESK_INSPECTOR_INDEX);
   }, [activeLeaf, onIndex, setActiveId]);
 
+  const indexTrailing =
+    onIndex && indexRightSlot != null ? (
+      <div
+        className="flex shrink-0 items-center justify-end gap-1 border-b border-border-hairline px-2 py-1"
+        data-desk-inspector-index-trailing=""
+      >
+        {indexRightSlot}
+      </div>
+    ) : null;
+
+  const indexFind =
+    onIndex && indexFilter ? (
+      <div
+        data-testid="unbox-displays-filter-row"
+        className="shrink-0 border-b border-border-hairline"
+      >
+        <TechRailSearchBar
+          variant="chrome"
+          value={filterQuery}
+          onChange={applyFilterQuery}
+          onClear={() => applyFilterQuery('')}
+          onKeyDown={(e) => indexFilterKeysRef.current?.onFilterKeyDown(e)}
+          placeholder="Filter displays…"
+          className="min-w-0 flex-1"
+        />
+      </div>
+    ) : null;
+
   const stickyHeader = onIndex
-    ? indexRightSlot != null ? (
-        <div
-          className="flex shrink-0 items-center justify-end gap-1 border-b border-border-hairline px-2 py-1"
-          data-desk-inspector-index-trailing=""
-        >
-          {indexRightSlot}
-        </div>
+    ? indexTrailing || indexFind ? (
+        <>
+          {indexTrailing}
+          {indexFind}
+        </>
       ) : null
     : (
         // BAND, not a bare mount. `StationDisplayLeafHeader` is written for the
@@ -205,10 +256,13 @@ export function DeskInspectorIndexShell({
       <DisplaysIndexLeafStage
         onIndex={onIndex}
         stickyHeader={stickyHeader}
-        rows={resolvedIndexRows}
+        rows={filteredIndexRows}
         tabs={tabs}
         onSelectLeaf={setActiveId}
         lastLeafId={lastLeafId}
+        filterQuery={indexFilter ? filterQuery : undefined}
+        onClearFilter={indexFilter ? () => applyFilterQuery('') : undefined}
+        indexFilterKeysRef={indexFilter ? indexFilterKeysRef : undefined}
         leafId={activeLeaf?.id}
         leafTestId="desk-inspector-leaf"
         leafBody={activeLeaf?.content ?? null}

@@ -59,6 +59,19 @@ export interface RightRailPanel {
   node: ReactNode;
   /** Backdrop / Escape dismiss — omitted for occupants that manage close internally. */
   onClose?: () => void;
+  /**
+   * VETO. Returns false while this occupant must not be dismissed — a transfer
+   * in flight, an irreversible step mid-run.
+   *
+   * `onClose` cannot express refusal: a handler that no-ops still lets the host
+   * run the lifecycle half, so the panel is parked and toasted "Draft saved."
+   * while the occupant believes it is still open. Both sync dialogs shipped
+   * exactly that (`if (!isRunning) onClose()`), and their own buttons carried
+   * `disabled={isRunning}` the host never consulted.
+   *
+   * Consulted BEFORE the lifecycle half, so a refusal costs nothing.
+   */
+  canClose?: () => boolean;
   /** When true, this occupant renders in the elevated `detailStack` z-band (above
    *  a workbench workspace overlay + its popovers) with a deeper darkening + blur
    *  backdrop. Opt-in per occupant — only surfaces that open OVER a `panel`-band
@@ -171,6 +184,7 @@ export function registerRightRailPanel(input: {
   priority: number;
   node: ReactNode;
   onClose?: () => void;
+  canClose?: () => boolean;
   elevated?: boolean;
   modal?: boolean;
   closeOnOutsideClick?: boolean;
@@ -186,6 +200,7 @@ export function registerRightRailPanel(input: {
     priority: input.priority,
     node: input.node,
     onClose: input.onClose,
+    canClose: input.canClose,
     elevated: input.elevated,
     modal: input.modal,
     closeOnOutsideClick: input.closeOnOutsideClick,
@@ -217,6 +232,7 @@ export function updateRightRailPanelNode(input: {
   id: string;
   node: ReactNode;
   onClose?: () => void;
+  canClose?: () => boolean;
   elevated?: boolean;
   modal?: boolean;
   closeOnOutsideClick?: boolean;
@@ -229,6 +245,7 @@ export function updateRightRailPanelNode(input: {
     id,
     node,
     onClose,
+    canClose,
     elevated,
     modal,
     closeOnOutsideClick,
@@ -242,6 +259,8 @@ export function updateRightRailPanelNode(input: {
     !current ||
     (current.node === node &&
       current.onClose === onClose &&
+      // A stale veto outlives the run it was guarding and traps the operator.
+      current.canClose === canClose &&
       current.elevated === elevated &&
       current.modal === modal &&
       current.closeOnOutsideClick === closeOnOutsideClick &&
@@ -257,6 +276,7 @@ export function updateRightRailPanelNode(input: {
     ...current,
     node,
     onClose,
+    canClose,
     elevated,
     modal,
     closeOnOutsideClick,

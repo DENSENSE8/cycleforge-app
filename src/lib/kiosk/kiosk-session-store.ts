@@ -5,6 +5,30 @@
  * `salesCartStore`). Commands (Repair / Retail / Buyback / Pickup) swap the
  * center work surface only — they never clear lines. Customer face is a view
  * layer over the same snapshot.
+ *
+ * ### Two transports, one API (plan P4)
+ *
+ * **local** (the default, unchanged): the tablet owns its own cart, exactly as
+ * before this comment existed.
+ *
+ * **shared**: a desk has claimed this device, so the cart is a MIRROR of the
+ * server's session. `mirrorSharedSession()` writes the projected snapshot in;
+ * the local line mutators become no-ops for as long as it is attached.
+ *
+ * Every existing consumer — `KioskCartLedger`, `KioskCustomerFace`, the panes —
+ * keeps calling `useKioskSession()` and the same actions. Nothing in the public
+ * API moved, which is the point: the transport changed, not the store.
+ *
+ * **The refusal is not defensive coding, it is D5.** While a desk holds this
+ * tablet, the tablet does not edit lines — that is enforced at the API door
+ * too. Letting a local mutator write here would paint an edit that the server
+ * never accepted, and the next mirror would silently erase it: a cart that
+ * disagrees with the receipt for as long as the customer is looking at it.
+ *
+ * **The phone is masked in a mirror** (`sharedCustomerPhoneMasked`), and
+ * deliberately does NOT land in `customerPhone`. The masked string is display
+ * copy; if it reached the identity field, a local submit would post `••• •••
+ * 4567` as a customer's phone number.
  */
 
 'use client';
@@ -43,6 +67,17 @@ interface KioskSessionSnapshot {
   customerEmail: string;
   /** Waiting-for-card started-at (ms). Null when not awaiting Terminal. */
   awaitingCardSinceMs: number | null;
+  /**
+   * Server session id when a desk holds this tablet; null = local transport.
+   * Non-null means the lines below are a mirror, not this device's own cart.
+   */
+  sharedSessionId: number | null;
+  /** Server version of the mirrored session — for the "in sync" chrome. */
+  sharedVersion: number;
+  /** Display-only masked phone from the shared session. Never an identity input. */
+  sharedCustomerPhoneMasked: string;
+  /** Repair lines the customer still has to sign — the tablet's actual job. */
+  sharedAwaitingSignatureLineIds: string[];
 }
 
 const INITIAL: KioskSessionSnapshot = {
@@ -56,6 +91,10 @@ const INITIAL: KioskSessionSnapshot = {
   customerName: '',
   customerEmail: '',
   awaitingCardSinceMs: null,
+  sharedSessionId: null,
+  sharedVersion: 0,
+  sharedCustomerPhoneMasked: '',
+  sharedAwaitingSignatureLineIds: [],
 };
 
 let snapshot: KioskSessionSnapshot = INITIAL;
@@ -150,6 +189,58 @@ export const kioskSessionStore = {
       awaitingCardSinceMs: active ? Date.now() : null,
     });
   },
+  /**
+   * Attach the shared transport and write one server projection in.
+   *
+   * Idempotent by version: an older projection (a poll answering after a newer
+   * event already landed) is dropped rather than rolling the customer's screen
+   * backwards mid-visit.
+   */
+  mirrorSharedSession(input: {
+    sessionId: number;
+    version: number;
+    lines: KioskCartLine[];
+    customerName: string;
+    customerPhoneMasked: string;
+    awaitingSignatureLineIds: string[];
+    activeCommand?: KioskCommandId;
+  }): void {
+    if (
+      snapshot.sharedSessionId === input.sessionId &&
+      input.version < snapshot.sharedVersion
+    ) {
+      return;
+    }
+    setSnapshot({
+      ...snapshot,
+      sharedSessionId: input.sessionId,
+      sharedVersion: input.version,
+      lines: input.lines,
+      customerName: input.customerName,
+      // Masked display copy only — see the module docblock.
+      sharedCustomerPhoneMasked: input.customerPhoneMasked,
+      customerPhone: '',
+      sharedAwaitingSignatureLineIds: input.awaitingSignatureLineIds,
+      activeCommand: input.activeCommand ?? snapshot.activeCommand,
+    });
+  },
+
+  /**
+   * Return to the local transport — the desk released this tablet, or the visit
+   * finished. The mirrored lines go with it: they were never this device's
+   * cart, and leaving them on screen would show the next customer the last
+   * one's basket.
+   */
+  detachSharedSession(): void {
+    if (snapshot.sharedSessionId === null) return;
+    setSnapshot({
+      ...INITIAL,
+      activeCommand: snapshot.activeCommand,
+      face: snapshot.face,
+      faceManualOverride: snapshot.faceManualOverride,
+    });
+  },
+
   addLine(
     input: Omit<KioskCartLine, 'id'> & { id?: string },
   ): KioskCartLine {
@@ -158,6 +249,9 @@ export const kioskSessionStore = {
       id: input.id ?? safeRandomUUID(),
       quantity: Math.max(1, Math.trunc(input.quantity) || 1),
     };
+    // D5: while a desk holds this tablet, the desk owns the lines. Painting a
+    // local edit the server never took would be erased by the next mirror.
+    if (snapshot.sharedSessionId !== null) return line;
     setSnapshot({ ...snapshot, lines: [...snapshot.lines, line] });
     return line;
   },
@@ -204,6 +298,7 @@ export const kioskSessionStore = {
     });
   },
   updateLine(id: string, patch: Partial<Omit<KioskCartLine, 'id' | 'type'>>): void {
+    if (snapshot.sharedSessionId !== null) return;
     setSnapshot({
       ...snapshot,
       lines: snapshot.lines.map((line) =>
@@ -212,6 +307,7 @@ export const kioskSessionStore = {
     });
   },
   removeLine(id: string): void {
+    if (snapshot.sharedSessionId !== null) return;
     setSnapshot({
       ...snapshot,
       lines: snapshot.lines.filter((line) => line.id !== id),

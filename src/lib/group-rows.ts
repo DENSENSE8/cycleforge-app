@@ -261,3 +261,62 @@ export function flattenVisibleRenderOrder<T>(
   }
   return out;
 }
+
+// ─── Group aggregates ────────────────────────────────────────────────────────
+
+/**
+ * A group's rolled-up numbers — what a WMS group header has to say.
+ *
+ * `RowGroup` carried `{ key, rows }` and nothing else, so every surface that
+ * wanted "12 lines · 340 units · 3 short" counted it outside the engine, in the
+ * view, per render. That is the wrong place twice over: the count is a FACT
+ * about the group (kinetic-ledger law 4 — views assemble resolved facts, they
+ * do not compute them), and two surfaces counting the same thing separately is
+ * how two surfaces come to disagree about it.
+ *
+ * `count` is always the row total. `measures` is caller-named because what a
+ * group sums is domain knowledge — units on a pick list, dollars on a PO,
+ * people on a checklist — while the folding is not.
+ */
+export interface RowGroupTotals {
+  /** Rows in the group. Always present; never a measure the caller names. */
+  count: number;
+  /** Caller-named sums, in declaration order. */
+  measures: Readonly<Record<string, number>>;
+}
+
+/** One named measure: how to read a number off a row. */
+export type RowGroupMeasure<T> = (row: T) => number;
+
+/**
+ * Roll a group up. Non-finite reads contribute NOTHING rather than poisoning
+ * the sum to `NaN` — a blank qty on one line must not erase the other eleven,
+ * which is the same reasoning that sends blanks last in `compareGridValues`.
+ */
+export function rowGroupTotals<T>(
+  group: RowGroup<T>,
+  measures: Readonly<Record<string, RowGroupMeasure<T>>> = {},
+): RowGroupTotals {
+  const out: Record<string, number> = {};
+  for (const name of Object.keys(measures)) {
+    const read = measures[name];
+    let sum = 0;
+    for (const row of group.rows) {
+      const n = read(row);
+      if (Number.isFinite(n)) sum += n;
+    }
+    out[name] = sum;
+  }
+  return { count: group.rows.length, measures: out };
+}
+
+/**
+ * `rowGroupTotals` across every group, keyed by group key — one pass for a
+ * whole band, so a header row never triggers its own scan.
+ */
+export function rowGroupTotalsByKey<T>(
+  groups: readonly RowGroup<T>[],
+  measures: Readonly<Record<string, RowGroupMeasure<T>>> = {},
+): ReadonlyMap<string, RowGroupTotals> {
+  return new Map(groups.map((g) => [g.key, rowGroupTotals(g, measures)]));
+}

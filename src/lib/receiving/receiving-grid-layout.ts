@@ -18,6 +18,7 @@
  * `_fill` owns the sole `1fr` slack — same law as Orders.
  */
 
+import { GRID_FILL_COLUMN } from '@/design-system/components/grid';
 import { gridFrozenKeys } from '@/design-system/components/grid/grid-column-editability';
 import {
   gridColumnTrackRem,
@@ -110,6 +111,11 @@ export const RECEIVING_GRID_COLUMNS: readonly ReceivingGridColumn[] = [
     width: 'minmax(5.5rem, 5.5rem)',
     ...SHARED_LINE_TRACK_META.order,
     frozen: true,
+    // Dense Sheets face: the header already says ORDER, so the body carries the
+    // platform brand DOT and no `#` glyph. This was previously a bare `plain`
+    // hardcoded in `ReceivingOrderCell`; declaring it here is what lets the
+    // Orders/To-Ship grid answer the same question from the same field.
+    omitCellIcon: true,
     resizable: false,
     labelFitRem: 4.5,
   },
@@ -171,12 +177,12 @@ export const RECEIVING_GRID_COLUMNS: readonly ReceivingGridColumn[] = [
     resizable: false,
     labelFitRem: 4.5,
   },
-  { key: 'serial', width: 'minmax(8rem, 8rem)', label: 'Serial', type: 'id', align: 'start', hideKey: 'serial', tier: 'optional', resizable: false, labelFitRem: 4.5 },
+  { key: 'serial', width: 'minmax(8rem, 8rem)', label: 'Serial', type: 'id', align: 'start', hideKey: 'serial', tier: 'optional', resizable: false, omitCellIcon: true, labelFitRem: 4.5 },
   { key: 'zoho', width: 'minmax(5.5rem, 5.5rem)', ...SHARED_LINE_TRACK_META.zoho, hideKey: 'zoho', tier: 'optional', resizable: false, labelFitRem: 4.5 },
   // Trailing filler — geometry only. Absorbs zoom-out / wide-card slack so fact
   // tracks stay content-hard. No label, type, hideKey, or tier: never in Column
   // display; Column discovery stays triage ▦ / header menus.
-  { key: '_fill', width: 'minmax(0rem, 1fr)', sortable: false, resizable: false },
+  GRID_FILL_COLUMN,
 ] as const;
 
 /**
@@ -308,7 +314,7 @@ export const INCOMING_GRID_COLUMNS: readonly IncomingGridColumn[] = [
   // Incoming and History never drift. `headerGlyphOnly` overturned 2026-08-10
   // (Inbound ↔ History one family): Incoming now follows History sentence-case;
   // `gridHeaderShowsLabel` geometry decides the narrow-track glyph fallback.
-  { key: 'order', width: 'minmax(7rem, 7rem)', ...SHARED_LINE_TRACK_META.order },
+  { key: 'order', width: 'minmax(7rem, 7rem)', ...SHARED_LINE_TRACK_META.order, omitCellIcon: true },
   // Fixed preferred track — NOT `1fr`. Incoming is the Notion-overflow pilot:
   // columns are content-sized so the row can exceed the card and scroll
   // horizontally; when the sum is narrower than the card, slack is empty canvas

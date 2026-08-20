@@ -87,6 +87,27 @@ export const TypeUpdateBody = z
   .strict()
   .refine((b) => Object.keys(b).length > 0, { message: 'At least one field must be provided' });
 
+// ─── priority_tiers ───────────────────────────────────────────────────────────
+
+/**
+ * Rename / repaint ONE rung of the priority ladder.
+ *
+ * There is deliberately no `PriorityTierCreateBody`. The ladder's length is a
+ * code constant (`PRIORITY_OVERRIDE_TIERS`) and `tier` is a storage contract
+ * with `receiving.priority_tier`, so a rung is addressed by its tier in the
+ * URL and upserted — never inserted by the client, never deleted into
+ * non-existence. Sending `colorHex: null` clears back to the built-in tone;
+ * omitting the key leaves the current paint alone.
+ */
+export const PriorityTierUpdateBody = z
+  .object({
+    label: trimmed.min(1).max(40).optional(),
+    short: trimmed.min(1).max(8).optional(),
+    colorHex,
+  })
+  .strict()
+  .refine((b) => Object.keys(b).length > 0, { message: 'At least one field must be provided' });
+
 // ─── platform_accounts ────────────────────────────────────────────────────────
 
 export const PlatformAccountCreateBody = z

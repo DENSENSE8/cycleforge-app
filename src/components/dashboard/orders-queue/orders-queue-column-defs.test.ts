@@ -41,14 +41,17 @@ describe('orders-queue mode column sets (TanStack ColumnDefs)', () => {
     );
   });
 
-  it('fulfillment.tested surfaces Tester + Tested at after Product, then Cond (no Status / Platform)', () => {
+  it('fulfillment.tested surfaces Tester + Tested at after Product, then Cond', () => {
     const defs = ordersQueueColumnDefsFor('fulfillment.tested');
     assert.deepEqual(
       defs.map((d) => d.id),
       ['select', 'order', 'age', 'title', 'tester', 'testedAt', 'packStation', 'condition', 'qty', 'tracking', '_fill'],
     );
-    assert.ok(!defs.some((d) => d.id === 'status'), 'Status pill is not on the TESTED tab');
-    assert.ok(!defs.some((d) => d.id === 'platform'), 'Platform column is retired');
+    // The `deepEqual` above IS the assertion: it pins the exact scan order, so
+    // any track that is not in that list already fails. Absence claims about
+    // individual keys were archaeology — they described what the vocabulary
+    // used to contain rather than what it is, and they go stale silently
+    // because nothing fails when the thing they name stops existing.
   });
 
   it('defs are stable references per mode (safe hook deps)', () => {

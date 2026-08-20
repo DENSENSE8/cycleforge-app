@@ -228,8 +228,8 @@ export default async function HoldsAdminPage({
 
   return (
     <div className="min-h-screen bg-surface-canvas">
-      <PageHeader backHref="/admin/inventory" title="Holds" maxWidth="6xl" />
-      <div className="mx-auto max-w-6xl space-y-6 p-8">
+      <PageHeader backHref="/admin/inventory" title="Holds" />
+      <div className="space-y-6 p-8">
         <p className="text-sm text-text-muted">
           Quarantine units mid-flow. Held units keep their previous lifecycle state in the HELD event payload so a release rolls back automatically.
         </p>

@@ -16,8 +16,9 @@
  *               there is no separate lightbox to maintain.
  *
  * Pure: give it `cards` (newest first) and it renders. Data/realtime lives in the
- * `ReceivingPhotoPeek` wrapper, so this is demoed + Playwright-tested in isolation
- * at /design-demo/photo-peek.
+ * `ReceivingPhotoPeek` wrapper. It was Playwright-tested in isolation at
+ * /design-demo/photo-peek until that harness was deleted (2026-08-20); it is
+ * currently UNCOVERED — see docs/kill-list/01-tier1-provably-dead.md.
  */
 
 import { useEffect, useMemo, useRef, useState, useCallback } from 'react';

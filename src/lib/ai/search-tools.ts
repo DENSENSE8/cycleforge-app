@@ -104,14 +104,16 @@ export async function runAskAiSearch(
   const resolveChatConfig = deps.resolveChatConfig ?? resolveOrgAiConfig;
   const recordUsage = deps.recordUsage ?? recordAiUsage;
 
-  // Per-org provider (BYOK vault → platform default). No chat capability at
-  // all → throw; the route maps this to a fallback (classic chat deep-link).
+  // Pre-flight only: fail fast with the message the route maps to its
+  // fallback (classic chat deep-link) when nothing is connected at all. The
+  // actual provider selection AND failover happen inside hermesToolCall, so
+  // this must not be read as "the provider that will serve the turn".
   const config = await resolveChatConfig(orgId, 'chat');
   if (!config) {
     throw new Error('No AI chat provider connected for this organization');
   }
 
-  const { args, model, usage } = await toolCall<{
+  const { args, model, source, usage } = await toolCall<{
     query: string;
     entityTypes?: string[];
     limit?: number;
@@ -119,13 +121,16 @@ export async function runAskAiSearch(
     systemPrompt: ASK_AI_SYSTEM_PROMPT,
     userText: question,
     tool: hybridEntitySearchTool,
-    provider: config,
+    orgId,
   });
 
   recordUsage({
     orgId,
     capability: 'chat',
-    source: config.source,
+    // The provider that ACTUALLY answered, which after failover is not
+    // necessarily the one at the head of the chain. Billing the preferred
+    // provider for a turn the fallback served would misreport spend.
+    source,
     model,
     context: 'ask_ai',
     inputTokens: usage?.input_tokens ?? 0,

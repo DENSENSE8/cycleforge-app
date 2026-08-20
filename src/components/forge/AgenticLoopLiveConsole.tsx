@@ -10,11 +10,12 @@
  *   Right — live MDX HTML via {@link DetailStackRailRegistrar} (extras);
  *            run history collapsed under Advanced
  *
- * Landing: `/?mode=forge&view=live` (`live` ≡ agent-primary).
+ * Landing: `/forge?view=live` (`live` ≡ agent-primary). Its own route since
+ * 2026-08-19 — it used to mount as Home's `?mode=forge` region.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { type CycleForgeStepRow } from '@/lib/timeline/cycle-forge';
 import { useMasterPlanDoc } from '@/hooks/useMasterPlanDoc';
@@ -34,7 +35,7 @@ import {
   forgeViewParam,
   parseForgeView,
   type ForgeView,
-} from '@/features/home/home-modes';
+} from '@/components/forge/forge-view';
 import { HorizontalButtonSlider } from '@/components/ui/HorizontalButtonSlider';
 import { FileText, Loader2, MessageSquare } from '@/components/Icons';
 import { cn } from '@/utils/_cn';
@@ -66,6 +67,7 @@ const VIEW_ITEMS = [
 
 export function AgenticLoopLiveConsole({ showRuns = true }: { showRuns?: boolean }) {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const { user, has } = useAuth();
   const plan = useMasterPlanDoc();
@@ -86,9 +88,14 @@ export function AgenticLoopLiveConsole({ showRuns = true }: { showRuns?: boolean
         else params.set(k, v);
       }
       const qs = params.toString();
-      router.replace(qs ? `/?${qs}` : '/');
+      // Write back to the path this console is MOUNTED on, never a literal. It
+      // hardcoded `/` while it was Home's `?mode=forge` region, so after the
+      // move to `/forge` (2026-08-19) the first view toggle silently threw the
+      // operator to Home with a stray `?view=doc`.
+      const base = pathname || '/forge';
+      router.replace(qs ? `${base}?${qs}` : base);
     },
-    [router, searchParams],
+    [pathname, router, searchParams],
   );
 
   const setForgeView = useCallback(

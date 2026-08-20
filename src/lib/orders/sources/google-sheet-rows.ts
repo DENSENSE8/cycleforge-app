@@ -8,10 +8,10 @@
  * Kept free of IO (no Sheets client, no DB) so header binding and row mapping
  * are unit testable — the fetch lives in the transfer-orders job.
  */
-import { toPSTDateKey, warehouseDayUtcBounds } from '@/utils/date';
 import {
   cleanText,
   parseSaleAmount,
+  resolveSpreadsheetShipByDate,
   type CanonicalOrderLine,
 } from '@/lib/orders/canonical-order';
 
@@ -120,34 +120,6 @@ function cell(row: SheetRow, index: number): string {
 }
 
 /**
- * Resolve a sheet ship-by cell to the END of that warehouse civil day.
- *
- * Two bugs live in the naive version and are fixed here:
- *
- *  1. `new Date('2026-07-15')` parses as UTC midnight, which is 5pm the
- *     PREVIOUS day in the warehouse zone — every date-only ship-by landed a day
- *     early. `toPSTDateKey` normalizes the sheet's shapes (`YYYY-MM-DD`,
- *     `M/D/YYYY`, a datetime) to one civil key first.
- *  2. A blank cell must NOT fall back to today. That stamped the import day as
- *     the deadline, so an order was born already at its due date and read as
- *     overdue the next morning — 61% of the live Pending queue carried a
- *     deadline equal to its own creation date because of it. A missing ship-by
- *     is unknown (null); display already falls back to the created date.
- *
- * End-of-day rather than midnight because a ship-by is a deadline: the order is
- * on time until that warehouse day closes (matches the FBA path's 23:59:59).
- */
-export function resolveSheetShipByDate(rawShipByDate: unknown): Date | null {
-  const raw = cleanText(rawShipByDate);
-  if (!raw) return null;
-  const dateKey = toPSTDateKey(raw);
-  if (!dateKey) return null;
-  // An unparseable civil key yields no bounds — treat it as unknown, not today.
-  const bounds = warehouseDayUtcBounds(dateKey);
-  return bounds ? new Date(bounds.endIso) : null;
-}
-
-/**
  * The order's PLACEMENT instant. Unlike the ship-by this is a real moment in
  * time when the source carries one, so it is NOT rounded to a warehouse day.
  */
@@ -189,7 +161,7 @@ export function mapSheetRowsToCanonicalLines(
       // A sheet carries no lifecycle opinion — the writer inserts 'unassigned'.
       status: null,
       trackings: tracking ? [tracking] : [],
-      shipByDate: resolveSheetShipByDate(row[colIndices.shipByDate]),
+      shipByDate: resolveSpreadsheetShipByDate(row[colIndices.shipByDate]),
       orderDate: resolveSheetOrderDate(row[colIndices.orderDate]),
       saleAmount: parseSaleAmount(row[colIndices.salePrice] ?? ''),
       // Null when the sheet has no Currency column at all, so the writer

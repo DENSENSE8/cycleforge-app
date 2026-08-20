@@ -6,12 +6,19 @@ import {
   catalogKeys,
   platformsQuery,
   platformAccountsQuery,
+  prioritiesQuery,
   typesQuery,
   workflowNodesQuery,
 } from '@/lib/queries/catalog-queries';
-import type { PlatformAccountRow, PlatformRow, TypeRow } from '@/lib/neon/catalog-queries';
+import type {
+  PlatformAccountRow,
+  PlatformRow,
+  PriorityTierRow,
+  TypeRow,
+} from '@/lib/neon/catalog-queries';
 import { SOURCE_PLATFORMS, sourcePlatformMeta, type SourcePlatformMeta } from '@/lib/source-platform';
 import { RECEIVING_TYPE_OPTS } from '@/components/sidebar/receiving/receiving-sidebar-shared';
+import { PRIORITY_OVERRIDE_TIERS } from '@/lib/receiving/priority-override';
 import { receivingLabelTypeDisplay } from '@/lib/receiving/receiving-type-display';
 import { getOrderPlatformLabel } from '@/utils/order-platform';
 
@@ -26,6 +33,12 @@ export interface CatalogOption {
   isSystem?: boolean;
   /** Optional org accent `#RRGGBB` from `platforms.color_hex` / `types.color_hex`. */
   colorHex?: string | null;
+  /**
+   * Dense collapsed label (carton bookmark). Priority rungs carry one because
+   * the bar shows `Med` where the menu shows `Medium`; platform / type derive
+   * theirs from the registry mark instead.
+   */
+  shortLabel?: string;
 }
 
 // Built-in fallback so every picker still works before the migration is applied
@@ -50,6 +63,45 @@ export function usePlatformCatalog() {
         colorHex: r.color_hex,
       }))
     : BUILTIN_PLATFORMS;
+  return { ...q, rows, options };
+}
+
+/**
+ * Org priority-ladder catalog — the rungs an operator picks from the urgency
+ * pill, with any org rename / repaint applied.
+ *
+ * Shaped DELIBERATELY unlike its siblings. `usePlatformCatalog` / `useReceivingTypeCatalog`
+ * swap the built-ins OUT the moment the DB has rows (`rows.length ? … : BUILTIN`)
+ * because there a row is the thing itself. Here the ladder is a code constant
+ * and a row is only a skin, so rows are MERGED OVER the built-ins by tier: the
+ * four rungs and their order always come from `PRIORITY_OVERRIDE_TIERS`, and an
+ * org that has customised nothing gets exactly the built-in ladder.
+ *
+ * That is also why a missing row is not a gap to fill — it is the default, and
+ * why resetting a rung is a DELETE rather than writing the built-in values back.
+ */
+export function usePriorityCatalog() {
+  const q = useQuery(prioritiesQuery());
+  const rows: PriorityTierRow[] = q.data ?? [];
+  const byTier = useMemo(() => new Map(rows.map((r) => [r.tier, r])), [rows]);
+  const options: CatalogOption[] = useMemo(
+    () =>
+      PRIORITY_OVERRIDE_TIERS.map((t) => {
+        const row = byTier.get(t.value);
+        return {
+          value: String(t.value),
+          label: row?.label ?? t.label,
+          shortLabel: row?.short ?? t.short,
+          id: row?.id,
+          sortOrder: t.value,
+          // Every rung is seeded by the ladder, so none is an org-created row —
+          // the manager renders rename + repaint only, never add or delete.
+          isSystem: true,
+          colorHex: row?.color_hex ?? null,
+        };
+      }),
+    [byTier],
+  );
   return { ...q, rows, options };
 }
 

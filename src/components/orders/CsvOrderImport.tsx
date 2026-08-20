@@ -102,6 +102,12 @@ export function CsvOrderImport() {
             <span className="text-role-caption font-semibold text-emerald-700">{result.inserted}</span>
           </div>
           <div className="flex items-center justify-between px-4 py-2.5">
+            {/* Backfill is additive — it filled blanks on orders this org
+                already had, and never overwrote a value someone typed. */}
+            <span className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">Updated (backfilled)</span>
+            <span className="text-role-caption font-semibold text-text-muted">{result.updated}</span>
+          </div>
+          <div className="flex items-center justify-between px-4 py-2.5">
             <span className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">Skipped (duplicates)</span>
             <span className="text-role-caption font-semibold text-text-muted">{result.skipped}</span>
           </div>

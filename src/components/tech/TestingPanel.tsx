@@ -15,7 +15,7 @@ import {
   STATION_DISPLAY_INDEX,
   useYieldStationDisplaysOnAssistantOpen,
 } from '@/components/station/displays';
-import { UnboxDisplaysUtilityRailBody } from '@/components/receiving/workspace/UnboxDisplaysUtilityRailBody';
+import { StationDisplaysUtilityRail } from '@/components/station/displays';
 import { UnboxLabelPreview } from '@/components/receiving/workspace/line-edit/UnboxLabelPreview';
 import { WorkspaceNotesCard } from '@/components/receiving/workspace/line-edit/WorkspaceNotesCard';
 import { StationContextBar } from '@/components/station/entity-context';
@@ -52,7 +52,6 @@ import {
 } from './testing-panel/build-testing-displays';
 import { buildTestingDisplayIndexRows } from './testing-panel/testing-display-index';
 import { shouldUseUnmatchedItemsSurface } from '@/lib/receiving/intake-items-routing';
-import { TestingDockHost } from './testing-panel/TestingDockHost';
 import { TestingDisplaysActionFloor } from './testing-panel/TestingDisplaysActionFloor';
 import { WorksAsListedDockControl } from './testing-panel/WorksAsListedDockControl';
 import { buildNotAsListedIssue } from '@/lib/receiving/seller-claimed-condition';
@@ -64,10 +63,13 @@ import { ticketReplyPresetById } from '@/lib/support/ticket-reply-presets';
 /**
  * Right-pane TESTING display — Unbox SoT anatomy.
  *
- * Centre = ops-flow only: flush PO lines + {@link UnboxLabelPreview} + dock
- * ({@link TestingDockHost}: works-as-listed · notes · Pass · Print). Never
- * centre advisory banners — ticket history / claim / listing verify open as
- * Displays beside the middle. Operator copy: Open displays / Hide right panel.
+ * Centre = ops-flow only: flush PO lines + {@link UnboxLabelPreview} + the QC
+ * **verdict slot** (works-as-listed), which is step work and therefore centre
+ * work. The dock is the Unbox floor — one raised {@link WorkspaceNotesCard}
+ * with Pass · Print on its trailing edge (2026-08-20; it used to be a second
+ * raised Panel stacked above a bare composer). Never centre advisory banners —
+ * ticket history / claim / listing verify open as Displays beside the middle.
+ * Operator copy: Open displays / Hide right panel.
  */
 
 export function TestingPanel({
@@ -97,6 +99,13 @@ export function TestingPanel({
   const closeDisplays = useCallback(() => setActiveSideTab(null), []);
   useYieldStationDisplaysOnAssistantOpen(closeDisplays);
   const openDisplays = useCallback((tab: TestingDisplayTab) => setActiveSideTab(tab), []);
+
+  /**
+   * The notes header's ⓘ → Displays → Timeline. Contextual detail opens on the
+   * right edge, never as a dialog over the work (same contract as Unbox and
+   * Arrival).
+   */
+  const openTimelineDisplay = useCallback(() => openDisplays('timeline'), [openDisplays]);
 
   /**
    * PO line serials-cell / edit click → open the right-edge Units Display
@@ -321,7 +330,7 @@ export function TestingPanel({
   const scanSessionForThisLine = sessionMatchesLine(scanSession, row);
 
   const utilityRailBody = !resolvedSideTab ? (
-    <UnboxDisplaysUtilityRailBody onOpenDisplays={openDisplaysIndex} />
+    <StationDisplaysUtilityRail onOpenDisplays={openDisplaysIndex} />
   ) : null;
 
   const exitToList = useCallback(() => {
@@ -358,6 +367,50 @@ export function TestingPanel({
     }
   }, [sellerClaimed, c, row.id, onOpenClaim]);
 
+  /**
+   * The QC verdict slot — this station's current step, in the CENTRE where a
+   * scan station's step work belongs (`source-of-truth.md` → Scan-station
+   * centre lines display names "Testing verdict slots" as centre content).
+   * It used to sit in a second raised Panel stacked above the composer; the
+   * dock now carries exactly what Unbox's does — the notes card and the
+   * terminal — so there is one raised shell on this floor, not two.
+   */
+  const verdictSlot = (
+    <div
+      className="flex flex-wrap items-center gap-2 border-t border-border-hairline inset-cozy py-2"
+      data-testing-verdict-slot
+    >
+      <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
+        {TESTING_QC_STEP_LABEL.works_as_listed}
+      </p>
+      {sellerClaimed.label ? (
+        <span className="text-role-caption text-text-faint">
+          sold as {sellerClaimed.label}
+        </span>
+      ) : null}
+      <div className="ml-auto">
+        <WorksAsListedDockControl
+          onAsListed={onAsListed}
+          onNotAsListed={onNotAsListed}
+          busy={c.isMutating}
+        />
+      </div>
+    </div>
+  );
+
+  // Pass · Print on the composer's trailing edge — the same embedded pill Unbox
+  // and Arrival mount, never a separate CTA band above the notes.
+  const bubbleTerminal = terminalVm ? (
+    <div className="shrink-0" data-testing-dock-terminal>
+      <StationTerminalDock
+        embedded
+        embeddedChrome="pill"
+        vm={terminalVm}
+        assignedTechId={row.assigned_tech_id}
+      />
+    </div>
+  ) : null;
+
   const dock = (
     <div
       className={slicedActionDockWrapperClass({ docked: false })}
@@ -372,43 +425,14 @@ export function TestingPanel({
             {terminalVm.disabledReason}
           </p>
         ) : null}
-        <TestingDockHost
-          leading={
-            <WorksAsListedDockControl
-              onAsListed={onAsListed}
-              onNotAsListed={onNotAsListed}
-              busy={c.isMutating}
-            />
-          }
-          trailing={
-            <StationTerminalDock
-              embedded
-              vm={terminalVm}
-              assignedTechId={row.assigned_tech_id}
-            />
-          }
-          stepContext={
-            <span
-              className="inline-flex min-w-0 max-w-[14rem] items-center text-role-micro uppercase leading-none tracking-widest text-text-soft"
-              data-testing-dock-step
-            >
-              {TESTING_QC_STEP_LABEL.works_as_listed}
-              {sellerClaimed.label ? (
-                <span className="ml-1 normal-case tracking-normal text-text-faint">
-                  · sold as {sellerClaimed.label}
-                </span>
-              ) : null}
-            </span>
-          }
-          notes={
-            <WorkspaceNotesCard
-              row={row}
-              c={c}
-              chrome="bare"
-              onPrimaryAction={terminalVm ? () => void terminalVm.onClick() : undefined}
-              primaryActionDisabled={Boolean(terminalVm?.disabled)}
-            />
-          }
+        <WorkspaceNotesCard
+          row={row}
+          c={c}
+          chrome="raised"
+          trailingAction={bubbleTerminal}
+          onPrimaryAction={terminalVm ? () => void terminalVm.onClick() : undefined}
+          primaryActionDisabled={Boolean(terminalVm?.disabled)}
+          onOpenStatusHistory={openTimelineDisplay}
         />
       </div>
     </div>
@@ -463,6 +487,7 @@ export function TestingPanel({
                     onViewAllUnits={openUnits}
                   />
                   <UnboxLabelPreview row={row} c={c} />
+                  {verdictSlot}
                 </div>
               </StationWorkbench>
             </div>

@@ -19,11 +19,11 @@ Twice on 2026-08-01 code shipped ahead of its column, and nothing caught either:
 `npm run verify` was green on schema-drift the whole time: that guard compares the Drizzle model
 against the DB, not "does the SQL in this repo name a column that exists".
 
-- **Gate:** — resolves every qualified
-  `alias.column` and every bare column in a single-table `SELECT` against the union of
-  `src/lib/migrations/*.sql` + `drizzle/schema.ts`. Precision over recall by design (it stays
-  quiet where its own DDL parse is unreliable); both allowlists are frozen and shrink-only.
-- **Slot discipline:** one `YYYY-MM-DD<letter>` per migration. holds the line. Two files in one
+- **Check it yourself:** every qualified `alias.column` and every bare column in a
+  single-table `SELECT` must resolve against the union of `src/lib/migrations/*.sql` +
+  `drizzle/schema.ts`. Nothing checks this automatically — `npm run verify`'s schema-drift
+  gate compares the Drizzle model to the DB, not the SQL in this repo to either.
+- **Slot discipline:** one `YYYY-MM-DD<letter>` per migration. Two files in one
   slot are ordered by their *description*, which is alphabetical and therefore arbitrary — that
   is how `2026-07-29f`'s `_contract` half came to sort **before** its `_expand` half, inverting
   the very sequence the pair was split to guarantee. Applied filenames are immutable (the ledger
@@ -36,21 +36,21 @@ against the DB, not "does the SQL in this repo name a column that exists".
 
 ## Status changes route through the state machine
 
-- **Never** `UPDATE serial_units SET current_status = …` directly. Call `transition`
+- **Never** `UPDATE serial_units SET current_status = …` directly. Call `transition()`
   (`src/lib/inventory/state-machine.ts`). It owns the allowed-transition graph (`TRANSITIONS`), the `FOR UPDATE`
   lock, the atomic `serial_units` UPDATE + `inventory_events` INSERT, and org scoping.
-- `transition` contract: `TransitionInput { unitId, to, eventType, expectedFrom? }` → `TransitionResult`
+- `transition()` contract: `TransitionInput { unitId, to, eventType, expectedFrom? }` → `TransitionResult`
   (`ok` + from/to/eventId, or 404/409). `expectedFrom` gives optimistic-concurrency rejection (409).
 - Domain verdict→status maps live as constants (e.g. `VERDICT_TO_STATUS` in `src/lib/tech/recordTestVerdict.ts`),
   not inline branching scattered across routes.
-- **Emerging (flag-gated, do not assume universal yet):** `applyTransition` (`src/lib/workflow/applyTransition.ts`)
+- **Emerging (flag-gated, do not assume universal yet):** `applyTransition()` (`src/lib/workflow/applyTransition.ts`)
   composes transition + inventory event + workflow tap as one chokepoint, gated by `isUnifiedEngineApplyTransition`.
   Prefer it when the flag path applies; it is mid-strangler, so it is not yet a hard requirement.
 
 ## Receiving lines transition through a dedicated sibling chokepoint
 
-- **Never** `UPDATE receiving_line SET workflow_status = …` directly. Call `transitionReceivingLine`
-  (`src/lib/receiving/state-machine.ts`) — the receiving-line-specific sibling of serial-unit `transition`
+- **Never** `UPDATE receiving_line SET workflow_status = …` directly. Call `transitionReceivingLine()`
+  (`src/lib/receiving/state-machine.ts`) — the receiving-line-specific sibling of serial-unit `transition()`
   above, not a call into it. Same shape: an atomic write + one `inventory_events` INSERT, executor-pattern
   `db`/`orgId` args so a caller can either own the transaction or run inside `withTenantTransaction`.
 - **An exception is an orthogonal code on the row, never a terminal status.** A missing/short/damaged/
@@ -79,7 +79,7 @@ export const POST = withAuth(async (request, ctx) => {
   // 1. validate path params (Number.isFinite / Zod) and body (enum/string/number)
   // 2. call a domain helper (recordTestVerdict, recoverItem, …) — no business logic inline
   // 3. map the domain result to HTTP: 404 / 409 / 200 / 500
-  // 4. fire-and-forget side-effects via after (Zoho sync, Ably emit) — never block the response
+  // 4. fire-and-forget side-effects via after() (Zoho sync, Ably emit) — never block the response
   // 5. await recordAudit(pool, ctx, request, { … })
   // 6. return JSON
 }, { permission: 'x.y.z' });
@@ -90,7 +90,7 @@ export const POST = withAuth(async (request, ctx) => {
 
 ## Audit logging
 
-- Use `recordAudit(db, ctx, request, args)` (`src/lib/audit-logs.ts`) — **not** `createAuditLog` directly.
+- Use `recordAudit(db, ctx, request, args)` (`src/lib/audit-logs.ts`) — **not** `createAuditLog()` directly.
   It extracts actor/role/ip/request-id server-side and never throws (failures are logged and dropped).
 - Use the `AUDIT_ACTION` / `AUDIT_ENTITY` constants. Never rename existing action/entity values — dashboards key off them.
 
@@ -124,9 +124,9 @@ compiler stays quiet about exactly the sites you missed.
   first — `findScanByTracking` → `memoizeLookupHit` overwrote attribution before
   any gated branch ran. Trace every write on the path, not just the one the
   ticket names.
-- Pair it with a guard that walks the call sites (
-  parses the argument lists), so the next site added is caught by a test rather
-  than by an operator noticing their name on someone else's work.
+- Pair it with a test that walks the call sites and parses the argument lists, so the
+  next site added is caught by a test rather than by an operator noticing their
+  name on someone else's work.
 
 ## Tenant scoping via GUC
 
@@ -143,7 +143,7 @@ compiler stays quiet about exactly the sites you missed.
 
 ## Recovery is non-destructive
 
-- Reset stuck (`blocked`/`error`) items via `recoverItem` (`src/lib/workflow/recover.ts`): it resets only the
+- Reset stuck (`blocked`/`error`) items via `recoverItem()` (`src/lib/workflow/recover.ts`): it resets only the
   engine position, writes an `inventory_events` NOTE (`action: 'workflow_recovery'`) + an append-only `workflow_runs`
   row, and emits a best-effort Ably nudge. It never mutates `serial_units.current_status`.
 
@@ -155,7 +155,7 @@ compiler stays quiet about exactly the sites you missed.
 
 ## Feature flags
 
-- **The call-site surface is the exported `isXxx` predicates** in `src/lib/feature-flags.ts` — one
+- **The call-site surface is the exported `isXxx()` predicates** in `src/lib/feature-flags.ts` — one
   per flag. `readBoolEnv(name, default)` (sync, env-only) and `resolveForOrg(orgId, flag, envVar)`
   (async, ~30s cache, DB → env fallback) are the **private** helpers behind them; reach for the
   per-org form when a new flag needs to roll out without an env redeploy. *(This row used to name
@@ -164,9 +164,9 @@ compiler stays quiet about exactly the sites you missed.
   (`src/lib/feature-flags-lifecycle.ts` — a dependency-free sibling; import it directly, not
   through `feature-flags.ts`, which carries `server-only` via `@/lib/db`)
   with `env`, `bornAt` (civil date), `area`, and a disposition: `permanent` (a real kill-switch,
-  with a reason), `rollout` (with a `plannedRemoval` date), or `undecided`. fails when a flag sits `undecided` past `FLAG_AGE_LIMIT_DAYS` (90),
-  when a `plannedRemoval` lapses, or when the registry and the exports disagree in either
-  direction.
+  with a reason), `rollout` (with a `plannedRemoval` date), or `undecided`.
+  A flag must not sit `undecided` past `FLAG_AGE_LIMIT_DAYS` (90), a `plannedRemoval` must
+  not lapse, and the registry and the exports must not disagree in either direction.
 - **A flag keeps BOTH branches reachable**, so a permanent strangler is a fork that dead-code
   tooling can never see. That is why "mid-strangler, not yet a hard requirement" needs a date
   attached rather than an open end — the losing branch is zombie code the moment nobody is
@@ -198,4 +198,4 @@ default** — which lane ran, whether a photo leaves the tenant's hardware (see
 - Detail: see `.claude/rules/polymorphic-tables.md`. Discriminator via named CHECK (enum only for small stable
   sets), BIGINT id by default, `entity_type`/`entity_id` naming, org-led unique indexes, parent-delete integrity
   via a real FK or a shared dispatch-on-`TG_ARGV[0]` trigger family, tenant-from-birth via
-  `enforce_tenant_isolation` in the same migration, and modeled in Drizzle in the same PR.
+  `enforce_tenant_isolation()` in the same migration, and modeled in Drizzle in the same PR.

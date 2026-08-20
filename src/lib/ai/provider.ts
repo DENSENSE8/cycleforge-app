@@ -12,10 +12,15 @@
  *   chat  → AI_CHAT_BASE_URL  / AI_CHAT_MODEL  / AI_CHAT_API_KEY
  *   embed → AI_EMBED_BASE_URL / AI_EMBED_MODEL / AI_EMBED_API_KEY
  *
- * Legacy dev fallback: when AI_CHAT_BASE_URL is unset, the chat capability
- * falls back to the existing local Hermes vars (HERMES_API_URL / HERMES_MODEL
- * or AI_MODEL / HERMES_API_KEY) so current dev setups keep working unchanged.
- * The embed capability has no legacy var — it must be configured explicitly.
+ * This module is the PLATFORM DEFAULT LEAF only. Tenant paths must resolve
+ * through `resolveOrgAiConfig(orgId, capability)` (org-provider.ts), which
+ * falls through to here when an org has connected nothing of its own.
+ *
+ * The legacy HERMES_API_URL / HERMES_MODEL / AI_MODEL / HERMES_API_KEY
+ * fallback was REMOVED with hermes-client.ts. Two env sets for one capability
+ * meant setting the modern vars appeared to configure the app while the legacy
+ * path ignored them — the pair agreed only because both happened to point at
+ * the same box. Configure AI_CHAT_* explicitly.
  *
  * NOTE: deliberately NOT `import 'server-only'` — DB-free unit tests import
  * this module under node:test. Nothing here touches the DOM or leaks secrets
@@ -32,6 +37,42 @@ export interface AiProviderConfig {
   apiKey: string;
   /** Gateway model string (e.g. anthropic/claude-haiku-4-5) or local model id. */
   model: string;
+  /**
+   * Extra request headers the endpoint needs BESIDES bearer auth — today only
+   * Cloudflare Access (`CF-Access-Client-Id` / `CF-Access-Client-Secret`) in
+   * front of a tunnelled self-hosted model.
+   *
+   * This exists because an edge gateway's auth is a property of the ENDPOINT,
+   * not of the model or the key, so it cannot ride on `apiKey`. It is omitted
+   * (not `{}`) when there is nothing to send, so a caller can spread it
+   * unconditionally.
+   *
+   * Callers MUST forward it. Dropping it against a CF-protected endpoint
+   * yields a Cloudflare 403 that reads like a model/auth failure — the exact
+   * trap that made this field a prerequisite for retiring hermes-client
+   * (docs/todo/ai-provider-consolidation-HANDOFF.md, Phase 0).
+   */
+  headers?: Record<string, string>;
+}
+
+/**
+ * Cloudflare Access service-token headers, or undefined when unconfigured.
+ *
+ * Mirrors the emit rule the retired `hermes-client.getHermesHeaders()` used:
+ * each header is sent only when its var is non-empty, so a half-configured
+ * pair degrades to sending the half that exists rather than throwing. Kept
+ * permissive on purpose — this is a passthrough, not a validator.
+ */
+export function resolveCloudflareAccessHeaders(
+  env: ProviderEnv = process.env,
+): Record<string, string> | undefined {
+  const id = readEnv(env, 'CLOUDFLARE_ACCESS_CLIENT_ID');
+  const secret = readEnv(env, 'CLOUDFLARE_ACCESS_CLIENT_SECRET');
+  if (!id && !secret) return undefined;
+  return {
+    ...(id ? { 'CF-Access-Client-Id': id } : {}),
+    ...(secret ? { 'CF-Access-Client-Secret': secret } : {}),
+  };
 }
 
 /** Injectable env record so unit tests never mutate process.env. */
@@ -68,22 +109,20 @@ export function resolveAiConfig(
   env: ProviderEnv = process.env,
 ): AiProviderConfig {
   if (capability === 'chat') {
-    const baseURL = readEnv(env, 'AI_CHAT_BASE_URL') || readEnv(env, 'HERMES_API_URL');
+    const baseURL = readEnv(env, 'AI_CHAT_BASE_URL');
     if (!baseURL) {
       throw new Error(
         'AI "chat" capability requested but not configured. Set AI_CHAT_BASE_URL ' +
-          '(+ AI_CHAT_MODEL, AI_CHAT_API_KEY — Vercel AI Gateway in prod), or ' +
-          'HERMES_API_URL for the local dev gateway.',
+          '(+ AI_CHAT_MODEL, AI_CHAT_API_KEY). Per-tenant providers are connected ' +
+          'in Settings → AI and resolve through resolveOrgAiConfig instead.',
       );
     }
+    const headers = resolveCloudflareAccessHeaders(env);
     return {
       baseURL: stripTrailingSlash(baseURL),
-      apiKey: readEnv(env, 'AI_CHAT_API_KEY') || readEnv(env, 'HERMES_API_KEY'),
-      model:
-        readEnv(env, 'AI_CHAT_MODEL') ||
-        readEnv(env, 'HERMES_MODEL') ||
-        readEnv(env, 'AI_MODEL') ||
-        CHAT_DEFAULT_MODEL,
+      apiKey: readEnv(env, 'AI_CHAT_API_KEY'),
+      model: readEnv(env, 'AI_CHAT_MODEL') || CHAT_DEFAULT_MODEL,
+      ...(headers ? { headers } : {}),
     };
   }
 
@@ -104,6 +143,49 @@ export function resolveAiConfig(
 }
 
 /**
+ * The PLATFORM's Anthropic key, or '' when unset.
+ *
+ * Separate from `resolveAiConfig` because the assistant's agent loop speaks
+ * Anthropic's NATIVE tool-use API, not the OpenAI wire format the rest of this
+ * module resolves — the two are different protocols, not two URLs.
+ *
+ * Lives here so provider.ts remains the single module in `src/` that reads an
+ * AI credential from env (enforced by the no-restricted-syntax rule in
+ * eslint.config.mjs). Tenant paths must prefer the org's OWN vault key and
+ * treat this only as the last-resort platform default.
+ */
+export function resolvePlatformAnthropicKey(env: ProviderEnv = process.env): string {
+  return readEnv(env, 'ANTHROPIC_API_KEY');
+}
+
+/**
+ * Build the request headers for an OpenAI-wire call against a resolved config.
+ *
+ * Replaces the retired `hermes-client.getHermesHeaders()`. Layer order is
+ * load-bearing:
+ *   1. `content-type` (overridable by `extra`)
+ *   2. `Authorization: Bearer <apiKey>` — the MODEL's credential, omitted when
+ *      the endpoint needs none (local Hermes / Ollama)
+ *   3. `config.headers` — the ENDPOINT's credential (Cloudflare Access)
+ *   4. `extra` — per-call routing/telemetry headers (session id, source)
+ *
+ * 2 and 3 are different credentials for different hops and must both be sent;
+ * an endpoint behind CF Access rejects a request carrying only the bearer with
+ * a 403 that reads like a model auth failure.
+ */
+export function aiRequestHeaders(
+  config: Pick<AiProviderConfig, 'apiKey' | 'headers'>,
+  extra?: Record<string, string>,
+): Record<string, string> {
+  return {
+    'Content-Type': 'application/json',
+    ...(config.apiKey ? { Authorization: `Bearer ${config.apiKey}` } : {}),
+    ...(config.headers ?? {}),
+    ...(extra ?? {}),
+  };
+}
+
+/**
  * Cheap configured-check so hot paths (keystroke search, outbox worker) can
  * skip the semantic arm gracefully instead of catching the loud error above.
  */
@@ -112,7 +194,7 @@ export function isAiConfigured(
   env: ProviderEnv = process.env,
 ): boolean {
   if (capability === 'chat') {
-    return Boolean(readEnv(env, 'AI_CHAT_BASE_URL') || readEnv(env, 'HERMES_API_URL'));
+    return Boolean(readEnv(env, 'AI_CHAT_BASE_URL'));
   }
   return Boolean(readEnv(env, 'AI_EMBED_BASE_URL'));
 }

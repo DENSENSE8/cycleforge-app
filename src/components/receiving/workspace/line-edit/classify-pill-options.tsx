@@ -18,6 +18,7 @@ import { platformPaintFromHex } from '@/lib/color-contrast';
 import { platformMetaBrandDot, sourcePlatformMeta } from '@/lib/source-platform';
 import { receivingTypeMeta } from '@/lib/receiving/receiving-type-meta';
 import {
+  priorityOverrideTier,
   priorityOverrideTiersForHeader,
   priorityOverrideTiersForPicker,
 } from '@/lib/receiving/priority-override';
@@ -34,6 +35,12 @@ export function urgencyClassifyOptions(args: {
   derivedTierEquivalent: number | null;
   autoActiveClass: string;
   /**
+   * Org renames / repaints from `usePriorityCatalog`, keyed by tier as a string.
+   * Absent (or an unmatched tier) falls through to the built-in rung — the
+   * ladder itself is never sourced from here, only its skin.
+   */
+  catalogOptions?: Array<{ value: string; label: string; shortLabel?: string; colorHex?: string | null }>;
+  /**
    * `header` — carton identity hover list: Low / Medium / High (no Auto, no
    * Priority). `full` — Classify Displays / Arrival / mobile keep Auto +
    * Priority as the searchable editor.
@@ -41,6 +48,7 @@ export function urgencyClassifyOptions(args: {
   surface?: 'header' | 'full';
 }): InlinePillOption[] {
   const { derivedLabel, derivedTierEquivalent, autoActiveClass, surface = 'full' } = args;
+  const skin = new Map((args.catalogOptions ?? []).map((o) => [o.value, o]));
   const tiers =
     surface === 'header' ? priorityOverrideTiersForHeader() : priorityOverrideTiersForPicker();
   const autoRow: InlinePillOption[] =
@@ -61,10 +69,18 @@ export function urgencyClassifyOptions(args: {
         ];
   return [
     ...autoRow,
-    ...tiers.map((t) => ({
+    ...tiers.map((t) => {
+      const org = skin.get(String(t.value));
+      const dot = catalogIdentityDot({
+        kind: 'priority',
+        value: String(t.value),
+        label: org?.label ?? t.label,
+        colorHex: org?.colorHex ?? null,
+      });
+      return {
       value: String(t.value),
-      label: t.label,
-      shortLabel: t.short,
+      label: org?.label ?? t.label,
+      shortLabel: org?.shortLabel ?? t.short,
       title:
         derivedTierEquivalent === t.value
           ? `${t.title} — current (auto from platform); click to pin`
@@ -72,8 +88,12 @@ export function urgencyClassifyOptions(args: {
       face: <Flag className={FACE_GLYPH} />,
       activeClass: t.activeClass,
       inactiveClass: derivedTierEquivalent === t.value ? t.activeClass : t.inactiveClass,
-      dotClass: t.dotClass,
-    })),
+      // Org accent (`priority_tiers.color_hex`) beats the built-in rung tone —
+      // same descent, and the same resolver, as platform / type marks.
+      dotClass: dot.className ?? t.dotClass,
+      dotStyle: dot.style,
+      };
+    }),
   ];
 }
 
@@ -89,13 +109,18 @@ export function urgencyClassifyOptions(args: {
  * (never both) — a derived hex has no class to name it.
  */
 export function catalogIdentityDot(args: {
-  kind: 'platform' | 'type';
-  /** Platform slug (lowercase) or type slug (uppercase) — as stored. */
+  kind: 'platform' | 'type' | 'priority';
+  /** Platform slug (lowercase), type slug (uppercase), or priority tier (0..3). */
   value: string;
   label: string;
   colorHex?: string | null;
 }): { className?: string; style?: CSSProperties } {
   const paint = args.colorHex ? platformPaintFromHex(args.colorHex) : null;
+  if (args.kind === 'priority') {
+    // ds-allow-hex: derived accent from priority_tiers.color_hex via the contrast SoT.
+    if (paint) return { style: { backgroundColor: paint.accent } };
+    return { className: priorityOverrideTier(Number(args.value))?.dotClass ?? 'bg-border-emphasis' };
+  }
   if (args.kind === 'type') {
     // ds-allow-hex: derived accent from types.color_hex via the contrast SoT.
     if (paint) return { style: { backgroundColor: paint.accent } };

@@ -40,7 +40,11 @@ export function ReceivingOrderCell({ col, rule, ctx }: ReceivingGridCellProps) {
             platformLabel={platformLabel || null}
             openHref={openHref}
             onEdit={onEditOrder}
-            plain
+            // Declared, not hardcoded — see `omitCellIcon` on the `order`
+            // column. It read a bare `plain` while TRACKING next to it derived
+            // the same answer from `col.omitCellIcon`, so two adjacent cells
+            // decided "glyph or dot" by two different rules.
+            plain={col.omitCellIcon !== false}
             dense
           />
         </span>

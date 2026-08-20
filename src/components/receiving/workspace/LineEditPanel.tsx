@@ -70,7 +70,6 @@ import {
   StationWorkbench,
   StationPanelRoot,
   StationScanPaneHost,
-  ScanStationCartonCursor,
   STATION_WORKBENCH_COLUMN,
 } from '@/components/station/workbench';
 import { slicedActionDockWrapperClass } from '@/design-system/primitives/SlicedActionDock';
@@ -102,17 +101,13 @@ import {
 } from './line-edit/unbox-side-tabs';
 import { buildUnboxDisplayIndexRows } from './line-edit/unbox-display-index';
 import { isReturnIntake } from '@/lib/receiving/triage-intake-kind';
-import { UnboxDisplaysUtilityRailBody } from './UnboxDisplaysUtilityRailBody';
+import { StationDisplaysUtilityRail } from '@/components/station/displays';
 
 export function LineEditPanel({
   row,
   staffId,
   itemTotal,
   accordionBootstrap = 'default',
-  onPrevCarton,
-  onNextCarton,
-  prevCartonDisabled = false,
-  nextCartonDisabled = false,
 }: {
   row: ReceivingLineRow;
   staffId: string;
@@ -124,10 +119,6 @@ export function LineEditPanel({
    * Carton cursor — same mapping as the left sidebar / DeskRailChromeRow:
    * ↑ previous · ↓ next via `receiving-navigate-table`.
    */
-  onPrevCarton?: () => void;
-  onNextCarton?: () => void;
-  prevCartonDisabled?: boolean;
-  nextCartonDisabled?: boolean;
 }) {
   // All state, effects, and handlers live in the controller — this panel is pure
   // composition. See useUnboxLineController / useReceivingLineCore.
@@ -823,10 +814,9 @@ export function LineEditPanel({
    *
    * Cursor mapping matches left sidebar / DeskRailChromeRow: ↑ prev · ↓ next.
    */
-  const showCartonCursor = Boolean(onPrevCarton || onNextCarton);
 
   const utilityRailBody = !showDisplays ? (
-    <UnboxDisplaysUtilityRailBody
+    <StationDisplaysUtilityRail
       onOpenDisplays={openDisplaysIndex}
       indexRail={
         <StationDisplaysParkedRail
@@ -837,20 +827,6 @@ export function LineEditPanel({
           // that leaf rather than the index the operator would then re-pick.
           onOpenLeaf={(id) => openDisplays(id as UnboxSideTab)}
         />
-      }
-      cartonCursor={
-        showCartonCursor ? (
-          <ScanStationCartonCursor
-            onPrev={onPrevCarton}
-            onNext={onNextCarton}
-            prevDisabled={prevCartonDisabled}
-            nextDisabled={nextCartonDisabled}
-            orientation="vertical"
-            prevTestId="unbox-carton-prev"
-            nextTestId="unbox-carton-next"
-            groupTestId="unbox-carton-cursor"
-          />
-        ) : null
       }
     />
   ) : null;
@@ -1016,6 +992,10 @@ export function LineEditPanel({
                           }}
                           primaryActionDisabled={Boolean(terminalVm.disabled)}
                           onOpenLocations={openLocationsDisplay}
+                          // ⓘ → Displays → Timeline, the leaf that already
+                          // carries these stamps plus the carton's audit rows.
+                          // The dialog stayed for surfaces with no right edge.
+                          onOpenStatusHistory={() => openDisplays('timeline')}
                         />
                       ) : null}
                     </div>

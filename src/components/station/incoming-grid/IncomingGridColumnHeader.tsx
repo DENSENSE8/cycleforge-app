@@ -1,6 +1,5 @@
 'use client';
 
-import { Calendar, Clock } from '@/components/Icons';
 import {
   makeLedgerGridColumnHeader,
   type LedgerHeaderLayoutApi,
@@ -44,10 +43,4 @@ export const IncomingGridColumnHeader = makeLedgerGridColumnHeader<
   selectMode: 'prop',
   // Desk default; embed mounts pass `tableId="incoming_embed"`.
   tableId: 'incoming',
-  glyphFor: (column) =>
-    column.key === 'date' ? (
-      <Calendar className="h-3 w-3 shrink-0 text-text-faint" aria-hidden />
-    ) : column.key === 'age' ? (
-      <Clock className="h-3 w-3 shrink-0 text-text-faint" aria-hidden />
-    ) : undefined,
 });

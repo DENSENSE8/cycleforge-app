@@ -205,8 +205,8 @@ export default async function BulkAllocatePage({
 
   return (
     <div className="min-h-screen bg-surface-canvas">
-      <PageHeader backHref="/admin/inventory" title="Bulk allocate" maxWidth="6xl" />
-      <div className="mx-auto max-w-6xl space-y-6 p-8">
+      <PageHeader backHref="/admin/inventory" title="Bulk allocate" />
+      <div className="space-y-6 p-8">
         <p className="text-sm text-text-muted">
           Orders with a SKU and no open allocation. Click <em>Allocate</em> to reserve STOCKED units FIFO.
         </p>

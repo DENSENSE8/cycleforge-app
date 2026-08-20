@@ -205,6 +205,17 @@ export interface OllamaCredentials {
   embedModel?: string;
   /** Optional bearer for secured self-hosted endpoints. */
   apiKey?: string;
+  /**
+   * Cloudflare Access service token, when the tenant fronts their self-hosted
+   * endpoint with CF Access (the usual way a tailnet/LAN model becomes
+   * reachable from a deployed server — see `tunnelUrl`).
+   *
+   * Per-org and vault-stored on purpose: this is one TENANT's edge credential,
+   * so reading it from a platform env var on a tenant path would serve one
+   * org's token against another org's endpoint.
+   */
+  cfAccessClientId?: string;
+  cfAccessClientSecret?: string;
 }
 
 /**
@@ -373,7 +384,17 @@ function envFallback(provider: IntegrationProvider): unknown | null {
       const baseUrl = process.env.OLLAMA_BASE_URL || process.env.OLLAMA_TUNNEL_URL,
             model = process.env.OLLAMA_MODEL;
       if (!baseUrl || !model) return null;
-      const cred: OllamaCredentials = { baseUrl, tunnelUrl: process.env.OLLAMA_TUNNEL_URL, model };
+      // Single-tenant env bootstrap only (same posture as the other cases
+      // here). The CF Access pair rides along so a dogfood setup that reached
+      // its tunnelled model through hermes-client keeps working after that
+      // module is retired; a real multi-org setup stores these in the vault.
+      const cred: OllamaCredentials = {
+        baseUrl,
+        tunnelUrl: process.env.OLLAMA_TUNNEL_URL,
+        model,
+        cfAccessClientId: process.env.CLOUDFLARE_ACCESS_CLIENT_ID,
+        cfAccessClientSecret: process.env.CLOUDFLARE_ACCESS_CLIENT_SECRET,
+      };
       return cred;
     }
     case 'stripe': {
