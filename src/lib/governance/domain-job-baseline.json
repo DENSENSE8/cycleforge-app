@@ -754,7 +754,6 @@
     "src/components/receiving/workspace/line-edit/TrackingNumbersTab.tsx",
     "src/components/receiving/workspace/line-edit/TypeBindingsEditor.tsx",
     "src/components/receiving/workspace/line-edit/UnboxDisplaysActionFloor.tsx",
-    "src/components/receiving/workspace/line-edit/UnboxDockHost.tsx",
     "src/components/receiving/workspace/line-edit/UnboxLabelPreview.tsx",
     "src/components/receiving/workspace/line-edit/UnboxPlacementSection.tsx",
     "src/components/receiving/workspace/line-edit/UnboxProcedureChecklist.tsx",

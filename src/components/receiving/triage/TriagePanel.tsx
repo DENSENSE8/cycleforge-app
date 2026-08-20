@@ -68,7 +68,6 @@ import { ReceivingPhotoPeek } from '../workspace/line-edit/ReceivingPhotoPeek';
 import { LineEditModals } from '../workspace/line-edit/LineEditModals';
 import { LineCartonContextSection } from '../workspace/line-edit/LineCartonContextSection';
 import { POUnboxingSection } from '../workspace/line-edit/POUnboxingSection';
-import { UnboxDockHost } from '../workspace/line-edit/UnboxDockHost';
 import type { ClaimModalMode } from '../workspace/claim/claim-types';
 import {
   StationDisplaysPushStack,
@@ -366,13 +365,14 @@ export function TriagePanel({
     build: buildTerminal,
   });
 
-  const embeddedTerminal = (
-    <StationTerminalDock
-      embedded
-      vm={terminalVm}
-      className="h-full w-full min-w-0 shrink-0 self-stretch"
-    />
-  );
+  // The composer's bottom-right CTA — same shape Unbox mounts (`bubbleTerminal`
+  // in LineEditPanel): an embedded pill on the notes card's trailing edge, never
+  // a separate full-width terminal strip above the dock.
+  const bubbleTerminal = terminalVm ? (
+    <div className="shrink-0" data-arrival-dock-terminal>
+      <StationTerminalDock embedded embeddedChrome="pill" vm={terminalVm} />
+    </div>
+  ) : null;
 
   // Scan-station chrome: utility rail when Displays closed (`←|` bottom
   // footer); ↑↓ on details panel top-right when open.
@@ -453,8 +453,11 @@ export function TriagePanel({
                   />
                 }
                 dock={
-                  // Unbox flush floor — inset-x-0, safe-area only. Never a raised
-                  // OmnichannelComposerDock / WorkspaceNotesCard float.
+                  // The Unbox floor, exactly: one raised WorkspaceNotesCard with
+                  // the station terminal on its trailing edge. Same component,
+                  // same geometry, same Enter-to-send grammar as
+                  // `LineEditPanel` — Arrival differs only in the note's grain
+                  // (carton) and the CTA's verb (Save for unbox).
                   <div
                     className="pointer-events-none absolute inset-x-0 bottom-0 z-fab pb-[env(safe-area-inset-bottom,0px)] pt-0" // ds-allow-spacing: fixed-overlay safe-area geometry
                     data-arrival-dock-float
@@ -469,48 +472,13 @@ export function TriagePanel({
                         </p>
                       ) : null}
                       {terminalVm ? (
-                        <div
-                          className="mb-0 flex h-11 w-full min-w-0 items-stretch border-t border-border-hairline bg-surface-card"
-                          data-arrival-dogfood-terminal
-                        >
-                          <div
-                            className="flex min-w-0 flex-1 items-stretch"
-                            data-arrival-dock-terminal
-                          >
-                            {embeddedTerminal}
-                          </div>
-                        </div>
+                        <ArrivalCartonNotesEntry
+                          row={row}
+                          trailingAction={bubbleTerminal}
+                          onPrimaryAction={() => void handleSaveForUnbox()}
+                          primaryActionDisabled={Boolean(terminalVm.disabled)}
+                        />
                       ) : null}
-                      <UnboxDockHost
-                        mode="entry"
-                        onOpenNotes={() => {}}
-                        onCloseNotes={() => {}}
-                        hasItemNote={false}
-                        showNotesToggle={false}
-                        expandBand
-                        omitTopSeam={Boolean(terminalVm)}
-                        stepContext={
-                          <div className="flex h-full min-w-0 flex-1 items-center inset-cozy">
-                            <p className="truncate text-role-caption font-semibold text-text-muted">
-                              Note
-                            </p>
-                          </div>
-                        }
-                        // The floor is ONE entry field, mirroring the Unbox dock.
-                        // The shelf/lane control moved to the centre ops-flow
-                        // plane (below), where it is the Arrival twin of Unbox's
-                        // centre UnboxPlacementSection — and there is no scan
-                        // cell here, so nothing on this bench competes with the
-                        // sidebar ingest bar for the wedge.
-                        leading={
-                          <ArrivalCartonNotesEntry
-                            receivingId={row.receiving_id}
-                            initialValue={row.receiving_support_notes ?? ''}
-                          />
-                        }
-                        trailing={null}
-                        progress={<span className="sr-only">Door staging</span>}
-                      />
                     </div>
                   </div>
                 }

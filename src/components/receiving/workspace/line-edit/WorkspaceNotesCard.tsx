@@ -7,12 +7,24 @@
  * {@link TriagePanel} share ONE notes implementation. Pure composition over the
  * controller bag; the panel owns placement (dock vs mid-canvas).
  *
- * GRAIN: this composer owns the **item note** (`receiving_line.notes`) — the
- * operator's durable note on this line (Zoho / receive payload). On Unbox
- * overview the dock draft also live-drives the carton sticker center; save
- * still patches `notes` only. Durable `label_note` is edited in the label
- * editor (`LabelEditPopover` / As Listed) and stamped from the dock draft on
- * carton print — see the two-buffer note in `useUnboxLineController`.
+ * GRAIN is a PARAMETER, not an assumption — {@link WorkspaceNotesCardProps.noteGrain}:
+ *
+ *   - `'line'` (default) — the **item note** (`receiving_line.notes`), the
+ *     operator's durable note on this line (Zoho / receive payload). Unbox and
+ *     Testing. On Unbox overview the dock draft also live-drives the carton
+ *     sticker center; save still patches `notes` only. Durable `label_note` is
+ *     edited in the label editor (`LabelEditPopover` / As Listed) and stamped
+ *     from the dock draft on carton print — see the two-buffer note in
+ *     `useUnboxLineController`.
+ *   - `'carton'` — the **door note** (`receiving.support_notes`), a remark about
+ *     the BOX. Arrival. It is a separate column because on a multi-line PO the
+ *     line buffer would mean silently picking one of N lines, and it would
+ *     collide with the note the Unbox operator later writes into that same
+ *     field. Law: `source-of-truth.md` → Note vs label grain.
+ *
+ * The grain decides the baseline it compares against and the column it patches;
+ * everything else — chrome, insert rail, trailing terminal, Enter-to-send — is
+ * identical, which is the point. One composer face across the stations.
  *
  * It hydrates from the row and saves on blur / Send. With the overview Receive
  * CTA mounted, Enter saves then fires print+receive.
@@ -44,11 +56,17 @@ type WorkspaceNotesController = {
 interface WorkspaceNotesCardProps {
   row: ReceivingLineRow;
   c: WorkspaceNotesController;
+  /**
+   * Which note buffer this composer owns — see the GRAIN block above. Defaults
+   * to the line item note; Arrival's door bench passes `'carton'`.
+   */
+  noteGrain?: 'line' | 'carton';
   /** Pass-through to OmnichannelComposerDock mount motion. */
   animateMount?: boolean;
   /**
-   * Pass-through to OmnichannelComposerDock. UnboxDockHost nests this as a
-   * notes-mode zone and must pass `bare` so the host is the only raised shell.
+   * Pass-through to OmnichannelComposerDock. `raised` is the floor face on
+   * every station that mounts this composer as its dock; `bare` is for a host
+   * that already paints the plane, so only one raised shell exists.
    */
   chrome?: 'raised' | 'bare';
   /** Terminal CTA for the composer's trailing edge (Unbox overview receive). */
@@ -68,6 +86,7 @@ interface WorkspaceNotesCardProps {
 export function WorkspaceNotesCard({
   row,
   c,
+  noteGrain = 'line',
   animateMount = true,
   chrome = 'raised',
   trailingAction,
@@ -90,13 +109,16 @@ export function WorkspaceNotesCard({
         onNotesChange={c.setItemNote}
         onSaveNotes={(override) => {
           // Returns whether it actually persisted, so the card only flashes
-          // "Saved" when the note changed. Writes `notes` ONLY — the printed
-          // face (`label_note`) is never touched from this composer. Optional
-          // override covers Enter that also accepts a ghost suggestion.
+          // "Saved" when the note changed. Writes ONE column — the grain's own —
+          // and never the printed face (`label_note`), which this composer does
+          // not own at either grain. Optional override covers Enter that also
+          // accepts a ghost suggestion.
           const next = override ?? c.itemNote;
           if (override != null && override !== c.itemNote) c.setItemNote(override);
-          if (next === (row.notes || '')) return false;
-          void c.patch({ notes: next });
+          const committed =
+            noteGrain === 'carton' ? row.receiving_support_notes || '' : row.notes || '';
+          if (next === committed) return false;
+          void c.patch(noteGrain === 'carton' ? { support_notes: next } : { notes: next });
           return true;
         }}
         showSyncToPo={!(c.isUnfound ?? false)}
