@@ -6,7 +6,6 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  ChevronUp,
   List,
   X,
 } from '../../Icons';
@@ -360,12 +359,6 @@ interface PaneHeaderActionBarProps {
   actions: PaneHeaderActionBarAction[];
   /** Optional aria-live status text (e.g. "Syncing", "Saving"). */
   status?: ReactNode;
-  onPrev?: () => void;
-  onNext?: () => void;
-  prevDisabled?: boolean;
-  nextDisabled?: boolean;
-  prevTitle?: string;
-  nextTitle?: string;
   /**
    * Dismiss the panel. Renders {@link PaneHeaderCloseButton} as the LAST item of
    * the trailing cluster, so `up · down · close` is one right-aligned group by
@@ -406,12 +399,6 @@ const PANE_HEADER_ACTION_NAV_CLASS =
 export function PaneHeaderActionBar({
   actions,
   status,
-  onPrev,
-  onNext,
-  prevDisabled,
-  nextDisabled,
-  prevTitle = 'Previous',
-  nextTitle = 'Next',
   onClose,
   closeTitle = 'Close',
   variant = 'card',
@@ -474,12 +461,11 @@ export function PaneHeaderActionBar({
       ) : null}
       {/* Spacer only when the trailing cluster needs the far edge — rightSlot
           alone stays clustered with the actions (station context bar util row). */}
-      {(onPrev || onNext || onClose) && <div className="flex-1" />}
+      {onClose && <div className="flex-1" />}
       {rightSlot}
-      {/* Close LEADS the trailing cluster — `close · up · down`. Dismiss is the
-          control an operator reaches for without looking, so it takes the
-          stable end: prev/next come and go with the queue behind the record,
-          and a trailing close would shift under the cursor every time they did. */}
+      {/* Close is the whole trailing cluster now — the ↑↓ stepper was removed
+          2026-08-19. Walking the queue from a record header duplicated the
+          recents rail, which already owns the selection. */}
       {onClose ? (
         <PaneHeaderCloseButton
           onClick={onClose}
@@ -487,30 +473,6 @@ export function PaneHeaderActionBar({
           ariaLabel={closeTitle}
           className="h-7 w-7 rounded-md"
         />
-      ) : null}
-      {onPrev ? (
-        <HoverTooltip label={prevTitle} asChild>
-          <IconButton
-            type="button"
-            onClick={onPrev}
-            disabled={prevDisabled}
-            ariaLabel={prevTitle}
-            className={cn(PANE_HEADER_ACTION_NAV_CLASS, navClassName)}
-            icon={<ChevronUp className="h-4 w-4" />}
-          />
-        </HoverTooltip>
-      ) : null}
-      {onNext ? (
-        <HoverTooltip label={nextTitle} asChild>
-          <IconButton
-            type="button"
-            onClick={onNext}
-            disabled={nextDisabled}
-            ariaLabel={nextTitle}
-            className={cn(PANE_HEADER_ACTION_NAV_CLASS, navClassName)}
-            icon={<ChevronDown className="h-4 w-4" />}
-          />
-        </HoverTooltip>
       ) : null}
     </>
   );

@@ -25,7 +25,7 @@
  * beside the one primary CTA.
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
 import { DeskInspectorIndexShell } from '@/components/right-rail/DeskInspectorIndexShell';
 import { DeskRailChromeRow } from '@/components/right-rail/DeskRailChromeRow';
@@ -49,7 +49,6 @@ import {
 import { ORDER_IMPORT_DESCRIPTOR } from '@/lib/orders/order-import-descriptor';
 import {
   clearTableImportSelection,
-  setTableImportFocusRow,
   setTableImportMapping,
   summarizeTableImportDraft,
   updateTableImportRow,
@@ -68,14 +67,14 @@ const ROW_LEAF = 'row';
 const MAP_LEAF = 'map';
 const BATCH_LEAF = 'batch';
 
-const EMPTY_LOCAL: Record<CsvOrderCanonicalKey, string> = {
-  order_number: '',
-  sku: '',
-  quantity: '',
-  customer_name: '',
-  tracking_number: '',
-  platform: '',
-};
+/**
+ * Derived, not hand-listed: a hardcoded literal here is a second declaration of
+ * the vocabulary that goes stale the moment a canonical field is added (it did,
+ * for `item_title` · `condition` · `ship_by_date` · `note`).
+ */
+const EMPTY_LOCAL = Object.fromEntries(
+  CSV_ORDER_CANONICAL_FIELDS.map((f) => [f.key, ''] as const),
+) as Record<CsvOrderCanonicalKey, string>;
 
 const FIELD_LABEL = new Map(
   CSV_ORDER_CANONICAL_FIELDS.map((f) => [f.key, f.label] as const),
@@ -199,6 +198,114 @@ function StagingRowLeaf({
   );
 }
 
+/**
+ * AI mapping suggestions for the columns the alias map could not place.
+ *
+ * Every suggestion is APPLIED BY THE OPERATOR, one click each. Nothing here
+ * auto-applies: a wrong guess and a right one look identical once written into
+ * the mapping, and the whole point of the confirm step is that they do not have
+ * to be told apart at commit time.
+ *
+ * Failure is a stated absence, never a blocked import — the manual selects
+ * below keep working whether or not a provider answered.
+ */
+function MappingSuggestions({ draft }: { draft: TableImportDraft }) {
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<{
+    suggestions: { field: string; header: string; confidence: string; reason: string }[];
+    stillUnmapped?: string[];
+    rejectedHallucinations?: string[];
+    detail?: string;
+    success?: boolean;
+  } | null>(null);
+
+  const unmappedCount = CSV_ORDER_CANONICAL_FIELDS.filter((f) => !draft.mapping[f.key]).length;
+
+  const ask = useCallback(async () => {
+    setBusy(true);
+    setResult(null);
+    try {
+      const res = await fetch('/api/orders/import/suggest-mapping', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          headers: draft.headers,
+          // A hint needs a few rows, never the whole file.
+          sampleRows: draft.rows.slice(0, 5),
+          deterministicMapping: draft.mapping,
+        }),
+      });
+      setResult(await res.json());
+    } catch {
+      setResult({ suggestions: [], detail: 'Could not reach the suggestion service.' });
+    } finally {
+      setBusy(false);
+    }
+  }, [draft.headers, draft.rows, draft.mapping]);
+
+  const apply = useCallback((field: string, header: string) => {
+    setTableImportMapping(SURFACE, { ...draft.mapping, [field]: header });
+    setResult((prev) =>
+      prev ? { ...prev, suggestions: prev.suggestions.filter((s) => s.field !== field) } : prev,
+    );
+  }, [draft.mapping]);
+
+  if (unmappedCount === 0) return null;
+
+  return (
+    <div className="space-y-2 border-b border-border-hairline px-4 py-3">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-role-micro text-text-soft">
+          {unmappedCount} field{unmappedCount === 1 ? '' : 's'} unmapped.
+        </p>
+        <Button variant="ghost" size="sm" disabled={busy} onClick={() => void ask()}>
+          {busy ? 'Reading the file…' : 'Suggest columns'}
+        </Button>
+      </div>
+
+      {result?.suggestions?.length ? (
+        <ul className="space-y-1.5">
+          {result.suggestions.map((s) => (
+            <li
+              key={s.field}
+              className={cn(
+                'flex items-start gap-2 border border-border-soft bg-surface-card px-2 py-1.5',
+                cornerClass('flush'),
+              )}
+            >
+              <span className="min-w-0 flex-1">
+                <span className="block text-role-caption font-semibold text-text-default">
+                  {CSV_ORDER_CANONICAL_FIELDS.find((f) => f.key === s.field)?.label ?? s.field} ←{' '}
+                  {s.header}
+                </span>
+                <span className="block text-role-micro text-text-soft">
+                  {s.reason} · {s.confidence} confidence
+                </span>
+              </span>
+              <Button variant="ghost" size="sm" onClick={() => apply(s.field, s.header)}>
+                Apply
+              </Button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
+      {result && !result.suggestions?.length ? (
+        <p className="text-role-micro text-text-soft">
+          {result.detail ?? 'No confident suggestions — map the remaining columns below.'}
+        </p>
+      ) : null}
+
+      {result?.rejectedHallucinations?.length ? (
+        <p className="text-role-micro text-amber-700">
+          Ignored {result.rejectedHallucinations.length} suggestion
+          {result.rejectedHallucinations.length === 1 ? '' : 's'} naming columns not in this file.
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 function StagingMapLeaf({ draft }: { draft: TableImportDraft }) {
   return (
     <div className="min-h-0 flex-1 overflow-y-auto">
@@ -206,6 +313,7 @@ function StagingMapLeaf({ draft }: { draft: TableImportDraft }) {
         Rows whose required columns are unmapped stay Action required — nothing is
         written to To-Ship until you confirm.
       </p>
+      <MappingSuggestions draft={draft} />
       <div className="divide-y divide-border-hairline border-y border-border-hairline">
         {CSV_ORDER_CANONICAL_FIELDS.map((field) => {
           const selected = draft.mapping[field.key] ?? '';
@@ -378,13 +486,6 @@ export function CsvImportStagingRail({
 
   const selectionCount = draft.selectedIndexes.size;
 
-  const step = (delta: number) => {
-    if (visibleIndexes.length === 0) return;
-    const next = cursorPos < 0 ? 0 : cursorPos + delta;
-    const clamped = Math.max(0, Math.min(visibleIndexes.length - 1, next));
-    setTableImportFocusRow(SURFACE, visibleIndexes[clamped]);
-  };
-
   return (
     <DetailStackRailRegistrar
       id={CSV_IMPORT_STAGING_RAIL_ID}
@@ -395,14 +496,6 @@ export function CsvImportStagingRail({
       <div className="flex h-full min-h-0 flex-col">
         <DeskRailChromeRow
           onClose={() => setDetailInspectorCollapsed(true)}
-          onPrev={() => step(-1)}
-          onNext={() => step(1)}
-          prevDisabled={cursorPos <= 0}
-          nextDisabled={cursorPos < 0 || cursorPos >= visibleIndexes.length - 1}
-          prevTitle="Previous staging row"
-          nextTitle="Next staging row"
-          prevTestId="csv-import-staging-prev"
-          nextTestId="csv-import-staging-next"
           columnDisplay
           cursor={
             cursorPos >= 0 ? (
