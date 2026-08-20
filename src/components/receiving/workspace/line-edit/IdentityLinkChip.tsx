@@ -11,23 +11,20 @@
 
 import { useRef, type CSSProperties, type ReactNode } from 'react';
 import { Copy, ChevronDown, ExternalLink, Pencil, Info } from '@/components/Icons';
-import { AnchoredLayer, IconButton } from '@/design-system/primitives';
+import { IconButton } from '@/design-system/primitives';
 import { CarrierMark } from '@/components/ui/CarrierMark';
 import { CopyChip, type ChipTone } from '@/components/ui/CopyChip';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { useHoverSurface } from '@/hooks/useHoverSurface';
 import {
-  CHIP_HOVER_MENU_ITEM_CLASS,
-  CHIP_HOVER_MENU_ITEM_SEAM_CLASS,
-  CHIP_HOVER_MENU_ITEM_TONE,
-  CHIP_HOVER_MENU_PANEL_CLASS,
-} from '@/components/ui/copy-chip-hover-menu-chrome';
+  ChipHoverMenuSurface,
+  type ChipHoverMenuRow,
+} from '@/components/ui/ChipHoverMenuSurface';
 import { RECEIVING_CHIP_EDIT_BTN_CLASS } from '@/components/sidebar/receiving/receiving-sidebar-shared';
 import { hasCarrierBrandPaint, resolveCarrierBrand } from '@/lib/carrier-brand';
 import { normalizeCopyText } from '@/lib/copy-chip-format';
 import { recordCopy } from '@/lib/clipboard-history';
 import { buildOpenLinksHubHref } from '@/lib/receiving/listing-links';
-import { cn } from '@/utils/_cn';
 
 export function IdentityLinkChip({
   openHref,
@@ -53,7 +50,7 @@ export function IdentityLinkChip({
   chipAction = 'copy',
   showExternalIcon = false,
   menuFirstAction = 'open',
-  menuBetween,
+  menuRows = [],
   suppressMenu = false,
   linkOptions,
   iconOnly = false,
@@ -121,11 +118,13 @@ export function IdentityLinkChip({
   /** First menu row. Listing uses Copy; PO/tracking use Open. */
   menuFirstAction?: 'open' | 'copy';
   /**
-   * Optional row(s) after the first action (Open/Copy) — e.g. ticket chip
-   * History / Message / Unlink / Sync. Caller owns separators / menuitem markup.
-   * Edit (when `editInMenu`) still renders after these rows.
+   * Rows after the first action (Open/Copy) — e.g. the ticket chip's
+   * Message / Seller / Archive / Unlink cluster. **Data, not markup:** these
+   * used to be a `menuBetween: ReactNode` where each caller hand-spelled the
+   * menuitem classes, which is a row renderer forked per host. Edit (when
+   * `editInMenu`) still renders after them.
    */
-  menuBetween?: ReactNode;
+  menuRows?: ChipHoverMenuRow[];
   /**
    * Hide the hover menu while a sibling panel is open (seller message, etc.).
    * `editOpen` already suppresses; this covers other anchored panels.
@@ -172,7 +171,7 @@ export function IdentityLinkChip({
       menuFirstAction === 'copy' ||
       !!openHref ||
       multiLinks != null ||
-      menuBetween != null);
+      menuRows.length > 0);
   const showActionMenu = hasMenuActions && !editOpen && !suppressMenu;
   const isEditing = !!editOpen;
 
@@ -355,134 +354,103 @@ export function IdentityLinkChip({
         </HoverTooltip>
       ) : null}
       {showActionMenu ? (
-        <AnchoredLayer
+        /**
+         * ONE panel for the whole carton bar — {@link ChipHoverMenuSurface}
+         * portals it bottom-CENTRED under the chip, the same grammar the
+         * listing cell and the classify pills use. It was a hand-built
+         * `AnchoredLayer` + raw rows here, a CSS-visibility box on the listing
+         * cell and a Radix popper on the pills: three mechanisms behind one set
+         * of class tokens, which is how they drifted apart.
+         */
+        <ChipHoverMenuSurface
           open={hover.isOpen}
           onClose={hover.close}
           anchorRef={hostRef}
-          // Centred under the chip and PORTALED to the body — the same grammar
-          // (and the same primitive) as the Photos gallery peek, so every menu
-          // on the carton identity row floats the same way. It was an `absolute`
-          // DOM child of the trigger until 2026-08-19: inside the locked-720
-          // centre that is an `overflow-hidden` box with stacking siblings, so
-          // the panel could be clipped by the very row it belongs to, and it
-          // hung off the chip's left edge while Photos dropped centred.
-          //
-          // A portal means `mouseleave` DOES fire crossing the seam, so the
-          // panel carries `surfaceProps` (the hook's pointer guard, not raw
-          // leave events) and `gap` stays small enough to cross.
-          placement="bottom-center"
-          level="panelPopover"
-          gap={6}
-          className="w-max"
-        >
-          <div
-            // NO fade. This row animates nothing: opening is instant, so there
-            // is no appear animation for an opacity ramp to match — it would
-            // only delay the data reaching the operator's eye.
-            {...hover.surfaceProps}
-            role="menu"
-            aria-label={`${display} actions`}
-            className={CHIP_HOVER_MENU_PANEL_CLASS}
-          >
-            {multiLinks ? (
-              <>
-                {/* ds-raw-button: text-left dropdown menuitem row (icon + label), not a standard action button */}
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={openAllLinks}
-                  aria-label={`Open all ${display} links`}
-                  className={cn(CHIP_HOVER_MENU_ITEM_CLASS, CHIP_HOVER_MENU_ITEM_TONE.accent)}
-                >
-                  <ExternalLink className="h-3.5 w-3.5 shrink-0 text-blue-600" />
-                  Open all
-                </button>
-                <div className="border-t border-border-hairline" role="separator" />
-                {multiLinks.map((opt) => (
-                  <HoverTooltip key={opt.href} label={opt.title ?? opt.label} asChild>
-                    {/* ds-raw-button: text-left dropdown menuitem row (icon + label), not a standard action button */}
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={() => window.open(opt.href, '_blank', 'noopener,noreferrer')}
-                      aria-label={`Open ${opt.label}`}
-                      className={cn(CHIP_HOVER_MENU_ITEM_CLASS, CHIP_HOVER_MENU_ITEM_TONE.accent)}
-                    >
-                      <ExternalLink className="h-3.5 w-3.5 shrink-0 text-blue-600" />
-                      <span className="min-w-0 truncate">{opt.label}</span>
-                    </button>
-                  </HoverTooltip>
-                ))}
-                <div className="border-t border-border-hairline" role="separator" />
-              </>
-            ) : null}
-            {menuFirstAction === 'open' ? (
-              <HoverTooltip label={openHref ? openTitle : 'No link available'} asChild>
-                {/* ds-raw-button: text-left dropdown menuitem row (icon + label), not a standard action button */}
-                <button
-                  type="button"
-                  role="menuitem"
-                  disabled={!openHref}
-                  onClick={openExternal}
-                  aria-label={openTitle}
-                  className={cn(CHIP_HOVER_MENU_ITEM_CLASS, CHIP_HOVER_MENU_ITEM_TONE.accent)}
-                >
-                  <ExternalLink className="h-3.5 w-3.5 shrink-0 text-blue-600" />
-                  Open
-                </button>
-              </HoverTooltip>
-            ) : (
-              // ds-raw-button: text-left dropdown menuitem row (icon + label), not a standard action button
-              <button
-                type="button"
-                role="menuitem"
-                disabled={!canCopy}
-                onClick={copyValue}
-                aria-label={`Copy ${display}`}
-                className={cn(CHIP_HOVER_MENU_ITEM_CLASS, CHIP_HOVER_MENU_ITEM_TONE.default)}
-              >
-                <Copy className="h-3.5 w-3.5 shrink-0 text-text-soft" />
-                Copy
-              </button>
-            )}
-            {menuBetween}
-            {onEdit && editInMenu ? (
-              // ds-raw-button: text-left dropdown menuitem row (icon + label), not a standard action button
-              <button
-                type="button"
-                role="menuitem"
-                onClick={onEdit}
-                aria-expanded={editOpen}
-                aria-label={editLabel}
-                className={cn(
-                  CHIP_HOVER_MENU_ITEM_CLASS,
-                  CHIP_HOVER_MENU_ITEM_SEAM_CLASS,
-                  CHIP_HOVER_MENU_ITEM_TONE.default,
-                )}
-              >
-                <Pencil className="h-3.5 w-3.5 shrink-0 text-text-soft" />
-                Edit
-              </button>
-            ) : null}
-            {onDetails ? (
-              // ds-raw-button: text-left dropdown menuitem row (icon + label)
-              <button
-                type="button"
-                role="menuitem"
-                onClick={onDetails}
-                aria-label={detailsLabel}
-                className={cn(
-                  CHIP_HOVER_MENU_ITEM_CLASS,
-                  CHIP_HOVER_MENU_ITEM_SEAM_CLASS,
-                  CHIP_HOVER_MENU_ITEM_TONE.default,
-                )}
-              >
-                <Info className="h-3.5 w-3.5 shrink-0 text-text-soft" />
-                {detailsLabel}
-              </button>
-            ) : null}
-          </div>
-        </AnchoredLayer>
+          menuLabel={`${display} actions`}
+          surfaceProps={hover.surfaceProps}
+          rows={[
+            ...(multiLinks
+              ? [
+                  {
+                    id: '__open-all__',
+                    label: 'Open all',
+                    icon: <ExternalLink className="h-3.5 w-3.5" />,
+                    tone: 'accent' as const,
+                    ariaLabel: `Open all ${display} links`,
+                    onSelect: () => {
+                      openAllLinks();
+                      hover.close();
+                    },
+                  },
+                  ...multiLinks.map((opt) => ({
+                    id: opt.href,
+                    label: opt.label,
+                    icon: <ExternalLink className="h-3.5 w-3.5" />,
+                    tone: 'accent' as const,
+                    ariaLabel: `Open ${opt.title ?? opt.label}`,
+                    onSelect: () => {
+                      window.open(opt.href, '_blank', 'noopener,noreferrer');
+                      hover.close();
+                    },
+                  })),
+                ]
+              : []),
+            menuFirstAction === 'open'
+              ? {
+                  id: '__open__',
+                  label: 'Open',
+                  icon: <ExternalLink className="h-3.5 w-3.5" />,
+                  tone: 'accent' as const,
+                  disabled: !openHref,
+                  ariaLabel: openHref ? openTitle : 'No link available',
+                  onSelect: () => {
+                    openExternal();
+                    hover.close();
+                  },
+                }
+              : {
+                  id: '__copy__',
+                  label: 'Copy',
+                  icon: <Copy className="h-3.5 w-3.5" />,
+                  disabled: !canCopy,
+                  ariaLabel: `Copy ${display}`,
+                  onSelect: () => {
+                    copyValue();
+                    hover.close();
+                  },
+                },
+            ...menuRows,
+            ...(onEdit && editInMenu
+              ? [
+                  {
+                    id: '__edit__',
+                    label: editLabel ?? 'Edit',
+                    icon: <Pencil className="h-3.5 w-3.5" />,
+                    ariaExpanded: editOpen,
+                    seam: true,
+                    onSelect: () => {
+                      onEdit();
+                      hover.close();
+                    },
+                  } satisfies ChipHoverMenuRow,
+                ]
+              : []),
+            ...(onDetails
+              ? [
+                  {
+                    id: '__details__',
+                    label: detailsLabel,
+                    icon: <Info className="h-3.5 w-3.5" />,
+                    seam: true,
+                    onSelect: () => {
+                      onDetails();
+                      hover.close();
+                    },
+                  } satisfies ChipHoverMenuRow,
+                ]
+              : []),
+          ]}
+        />
       ) : null}
     </div>
   );

@@ -1,4 +1,4 @@
-import { NextResponse, after } from 'next/server';
+import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import { logger } from '@/lib/observability/logger';
@@ -6,6 +6,7 @@ import { formatPSTTimestamp } from '@/utils/date';
 import { buildZohoReceiveNoteLine, zohoReceiveStaffName } from '@/lib/receiving/zoho-receive-note';
 import { invalidateReceivingViews } from '@/lib/receiving/invalidation';
 import { publishReceivingLogChanged } from '@/lib/realtime/publish';
+import { scheduleAfterResponse } from '@/lib/next/schedule-after-response';
 // Pure payload helpers only — every Zoho NETWORK call in this route goes
 // through the org's InventoryProvider facade (Integrations-as-SoT Wave B1).
 import {
@@ -17,6 +18,9 @@ import {
 } from '@/lib/zoho';
 import { withZohoOrg } from '@/lib/zoho/tenant-context';
 import { getInventoryProvider, type InventoryProvider } from '@/lib/integrations/inventory';
+
+/** Keep the isolate alive long enough for a slow Zoho purchase-receive POST. */
+export const maxDuration = 120;
 import { receiveLineUnits, unreceiveLineUnits } from '@/lib/receiving/receive-line';
 import { transitionReceivingLine } from '@/lib/receiving/state-machine';
 import { upsertReceivingLineZoho } from '@/lib/receiving/facts/narrow';
@@ -897,7 +901,10 @@ export const POST = withAuth(async (request, ctx) => {
     // Re-bind the tenant inside after(): the callback runs outside the
     // request's async context, so the Zoho client would otherwise see no org
     // binding (getPurchaseOrderById / createPurchaseReceive / updatePurchaseOrder).
-    after(async () => withZohoOrg(ctx.organizationId, async () => {
+    // scheduleAfterResponse: on local Next, plain `after()` holds the HTTP
+    // response open until Zoho finishes — Unbox's 30s AbortSignal then aborts
+    // mid-flight as a "network timeout". Detach locally; waitUntil on Vercel.
+    scheduleAfterResponse(async () => withZohoOrg(ctx.organizationId, async () => {
       // Mirror newly-created serial units into the operations graph
       // (fire-and-forget — tapWorkflow never throws).
       for (const tap of workflowTapQueue) {

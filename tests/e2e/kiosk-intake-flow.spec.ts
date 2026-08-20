@@ -7,6 +7,7 @@ import {
   type Browser,
   type BrowserContext,
   type Page,
+  type Locator,
 } from '@playwright/test';
 
 /**
@@ -101,6 +102,33 @@ async function newTabletPage(
   const context = await browser.newContext({ baseURL, ...descriptor, storageState: EMPTY_STORAGE });
   const page = await context.newPage();
   return { context, page };
+}
+
+/**
+ * Fill a field that a CLIENT component owns, and prove the client kept the text.
+ *
+ * A React-controlled input renders `value={state}` — so text typed into the
+ * server-rendered markup BEFORE hydration is silently discarded the moment React
+ * takes the field over (it patches the DOM value back to its own empty state).
+ * Playwright's `fill` happily lands on that pre-hydration DOM, which is how the
+ * Settings enroll test came to click "Generate code" against an empty `label`
+ * and get "Give the tablet a name first." instead of a pairing code — with a
+ * green enroll API in the same run.
+ *
+ * `toPass` retries the fill until the value survives a read-back, so this waits
+ * for INTERACTIVITY rather than for a guessed timeout, and it fails loudly if a
+ * field genuinely refuses input.
+ */
+async function fillWhenHydrated(field: Locator, value: string): Promise<void> {
+  await expect(async () => {
+    await field.fill(value);
+    // Assert the field is non-EMPTY rather than equal to `value`: several of
+    // these inputs mask as you type (the phone field turns 5035550144 into
+    // 503-555-0144), and an exact echo would fail on the formatting rather than
+    // on the thing under test. Empty is the only state hydration produces, so
+    // non-empty is exactly the signal "the client owns this field now".
+    await expect(field).not.toHaveValue('', { timeout: 1_000 });
+  }).toPass({ timeout: 15_000 });
 }
 
 /** Drive the tablet's on-screen pairing flow on the proven `/kiosk` welcome floor. */
@@ -604,7 +632,27 @@ for (const factor of TABLET_FACTORS) {
 
         await expect(page.getByRole('tablist', { name: /kiosk commands/i })).toBeVisible();
         await expect(page.getByRole('tab', { name: /repair drop-off/i })).toBeVisible();
+        // Right utility spine: cart glyph on top, paperwork under it. Panels are
+        // closed at rest — the glyph is the toggle.
+        await expect(page.getByTestId('kiosk-utility-spine')).toBeVisible();
+        await expect(page.getByTestId('kiosk-cart-ledger')).toHaveCount(0);
+        await page.getByTestId('kiosk-utility-cart').click();
         await expect(page.getByTestId('kiosk-cart-ledger')).toBeVisible();
+        await page.getByTestId('kiosk-utility-paperwork').click();
+        await expect(page.getByTestId('kiosk-paperwork-panel')).toBeVisible();
+        await expect(page.getByTestId('kiosk-cart-ledger')).toHaveCount(0);
+        await page.getByTestId('kiosk-utility-paperwork').click();
+        await expect(page.getByTestId('kiosk-paperwork-panel')).toHaveCount(0);
+
+        // Triage is the third slot — an empty ticket is itself a blocker.
+        await page.getByTestId('kiosk-utility-triage').click();
+        await expect(page.getByTestId('kiosk-triage-panel')).toBeVisible();
+        await expect(page.getByTestId('kiosk-triage-item').first()).toBeVisible();
+        // Picking a command returns the centre to the work surface — a panel
+        // must never stay parked over the thing the operator just chose to do.
+        await page.getByRole('tab', { name: /repair drop-off/i }).click();
+        await expect(page.getByTestId('kiosk-triage-panel')).toHaveCount(0);
+        await expect(page.getByTestId('kiosk-work-surface')).toBeVisible();
 
         await page.getByTestId('kiosk-spine-toggle').click();
         await expect(spine).toHaveAttribute('data-spine-expanded', 'true');
@@ -617,7 +665,7 @@ for (const factor of TABLET_FACTORS) {
         // Command switch must NOT confirm / clear the cart session.
         await page.getByRole('tab', { name: /buy \/ sell|retail/i }).click();
         await expect(page.getByRole('heading', { name: /all items/i })).toBeVisible();
-        await expect(page.getByTestId('kiosk-cart-ledger')).toBeVisible();
+        await expect(page.getByTestId('kiosk-utility-spine')).toBeVisible();
 
         await page.getByRole('tab', { name: /order pickup/i }).click();
         await expect(page.getByRole('heading', { name: /^pickup$/i })).toBeVisible();
@@ -629,12 +677,10 @@ for (const factor of TABLET_FACTORS) {
         await expect(page.getByTestId('kiosk-spine-search')).toHaveCount(0);
         await expect(page.getByRole('tab', { name: /order pickup/i })).toBeVisible();
 
-        // Customer face strips void controls.
-        await page.getByTestId('kiosk-show-customer').click();
-        await expect(page.getByTestId('kiosk-customer-face')).toBeVisible();
-        await expect(page.getByTestId('kiosk-cart-void-line')).toHaveCount(0);
-        await page.getByTestId('kiosk-return-staff').click();
-        await expect(page.getByTestId('kiosk-cart-ledger')).toBeVisible();
+        // Face toggles are gone from the chrome — orientation (or Esc) owns the flip.
+        await expect(page.getByTestId('kiosk-show-customer')).toHaveCount(0);
+        await expect(page.getByTestId('kiosk-return-staff')).toHaveCount(0);
+        await expect(page.getByTestId('kiosk-utility-spine')).toBeVisible();
       } finally {
         await context.close();
         await revokeDevice(request, deviceId);
@@ -691,7 +737,7 @@ test.describe('Settings → Kiosk devices (manager surface)', () => {
     await page.goto('/settings?section=devices');
 
     // Enroll form.
-    await page.getByPlaceholder(/tablet name/i).fill(label);
+    await fillWhenHydrated(page.getByPlaceholder(/tablet name/i), label);
     await page.getByRole('button', { name: /generate code/i }).click();
 
     // The one-time pairing code panel surfaces (shown once, never re-fetchable).
@@ -706,5 +752,278 @@ test.describe('Settings → Kiosk devices (manager surface)', () => {
     await row.getByRole('button', { name: /revoke/i }).click();
     await expect(row.getByText(/revoked/i)).toBeVisible();
     await expect(row.getByRole('button', { name: /revoke/i })).toHaveCount(0);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// D. Customer happy paths on /kiosk/v2 — can someone actually COMPLETE a
+//    transaction? (POS-modernization Phase 5)
+//
+// Everything above this line proves the device-auth LIFECYCLE: a manager can
+// enroll a tablet, the tablet can pair, and the API refuses everyone else. None
+// of it proves the thing the tablet exists to do. That gap is what let the
+// `activeField`-pinned-to-`extras` bug ship — the repair pane rendered, paired,
+// and passed every test while name and phone were unreachable and Submit could
+// never enable.
+//
+// These run at iPad-landscape only (the real device shape); duplicating a full
+// intake at desktop costs a minute of wall-clock to re-prove a viewport.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const TABLET = { ...devices['iPad Pro 11 landscape'] };
+
+/** Draw a stroke on the SignaturePad canvas — it is a <canvas>, not an input. */
+async function signOn(page: Page): Promise<void> {
+  const canvas = page.locator('canvas').first();
+  await expect(canvas).toBeVisible();
+  // The pane scrolls — a boundingBox read while the canvas is below the fold
+  // gives viewport coordinates the pointer would land somewhere else entirely.
+  await canvas.scrollIntoViewIfNeeded();
+  const box = await canvas.boundingBox();
+  if (!box) throw new Error('signature canvas has no box');
+  const midY = box.y + box.height / 2;
+  await page.mouse.move(box.x + box.width * 0.2, midY);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width * 0.4, midY + 18, { steps: 6 });
+  await page.mouse.move(box.x + box.width * 0.6, midY - 12, { steps: 6 });
+  await page.mouse.move(box.x + box.width * 0.8, midY + 6, { steps: 6 });
+  await page.mouse.up();
+}
+
+/**
+ * Repair intake up to (not including) the cart commit: pick a priced service,
+ * state the issue, fill the customer block, sign, and put the line in the cart.
+ */
+async function buildRepairLine(page: Page, customer: { name: string; phone: string }): Promise<void> {
+  await page.getByRole('tab', { name: /repair drop-off/i }).click();
+
+  // The repair catalog is the live `-RS` projection; take whatever the first
+  // priced service is rather than pinning a SKU that the store may retire.
+  const tile = page.getByTestId('product-tile').first();
+  await expect(tile).toBeVisible({ timeout: 20_000 });
+  await tile.click();
+
+  const continueBtn = page.getByRole('button', { name: /^continue$/i });
+  if (await continueBtn.count()) await continueBtn.first().click();
+
+  const pane = page.getByTestId('kiosk-repair-pane');
+  await expect(pane).toBeVisible();
+
+  // 1. Issue — notes alone satisfy the gate when the SKU carries no issue pills.
+  await fillWhenHydrated(pane.getByLabel(/repair notes/i), 'E2E: no power on boot');
+
+  // 2. Customer — the block that the extras-pin bug made unreachable.
+  // Shared KioskCustomerIntake labels the field "Name" on every channel.
+  await fillWhenHydrated(pane.getByLabel(/^name$/i), customer.name);
+  await fillWhenHydrated(pane.getByLabel(/phone number/i), customer.phone);
+  await fillWhenHydrated(pane.getByLabel(/serial number/i), `E2E-SN-${Date.now()}`);
+  const price = pane.getByLabel(/price/i);
+  if (!(await price.inputValue())) await fillWhenHydrated(price, '99');
+
+  // 3. Authorization.
+  await signOn(page);
+
+  const save = page.getByRole('button', { name: /save to cart/i });
+  await expect(save).toBeEnabled();
+  await save.click();
+}
+
+test.describe('Kiosk v2 — customer happy paths (iPad landscape)', () => {
+  test('repair drop-off completes: catalog → issue → customer → signature → cart → checked in', async ({
+    request,
+    browser,
+    baseURL,
+  }) => {
+    test.slow();
+    const { deviceId, code } = await enrollDevice(request, uniqueLabel('E2E Repair Flow'));
+    const { context, page } = await newTabletPage(browser, baseURL!, TABLET);
+    try {
+      await pairViaUiV2(page, code);
+      await buildRepairLine(page, { name: 'E2E Customer', phone: '5035550142' });
+
+      const cart = page.getByTestId('kiosk-cart-ledger');
+      await expect(cart.getByText(/^1 line$/)).toBeVisible();
+
+      // Commit WITHOUT payment — Save is the no-card path, so it needs no PIN.
+      await cart.getByRole('button', { name: /^save$/i }).click();
+
+      // The receipt face is the proof the counter-transaction waist ran: it can
+      // only render from a `CounterTransactionResult` the API returned.
+      await expect(cart.getByText(/all set/i)).toBeVisible({ timeout: 30_000 });
+      await expect(cart.getByText(/service RS-\d+ checked in|sale staged/i)).toBeVisible();
+      await expect(cart.getByRole('button', { name: /next customer/i })).toBeVisible();
+    } finally {
+      await context.close();
+      await revokeDevice(request, deviceId);
+    }
+  });
+
+  test('the cart is the session root: switching command never clears the lines', async ({
+    request,
+    browser,
+    baseURL,
+  }) => {
+    test.slow();
+    const { deviceId, code } = await enrollDevice(request, uniqueLabel('E2E Cart Root'));
+    const { context, page } = await newTabletPage(browser, baseURL!, TABLET);
+    try {
+      await pairViaUiV2(page, code);
+      await buildRepairLine(page, { name: 'E2E Root', phone: '5035550143' });
+
+      const cart = page.getByTestId('kiosk-cart-ledger');
+      await expect(cart.getByText(/^1 line$/)).toBeVisible();
+
+      // Commands SWAP the centre; they are not a new session. This is the one
+      // hard constraint the whole v2 shell rests on (kiosk-shell.md).
+      //
+      // The cart now MOUNTS in that same centre, so a command switch puts the
+      // work surface back and the ledger is no longer on screen — the invariant
+      // is that the SESSION survives, not that the column is visible. The shell
+      // publishes it as `data-cart-empty`, which is chrome-independent.
+      const shell = page.getByTestId('kiosk-shell');
+      for (const command of [/buy \/ sell|retail/i, /order pickup/i, /repair drop-off/i]) {
+        await page.getByRole('tab', { name: command }).click();
+        await expect(shell).toHaveAttribute('data-cart-empty', 'false');
+        await expect(page.getByTestId('kiosk-work-surface')).toBeVisible();
+      }
+
+      // …and reopening the ticket still shows the same one line.
+      await page.getByTestId('kiosk-utility-cart').click();
+      await expect(cart.getByText(/^1 line$/)).toBeVisible();
+
+      // UPDATE — the row opens an editor and the edit sticks on the line.
+      await cart.getByTestId('kiosk-cart-line').first().click();
+      const editor = page.getByTestId('kiosk-cart-line-editor');
+      await expect(editor).toBeVisible();
+      const serial = editor.getByTestId('kiosk-line-serial');
+      await serial.fill('E2E-EDITED-SN');
+      await expect(serial).toHaveValue('E2E-EDITED-SN');
+      await editor.getByTestId('kiosk-line-done').click();
+      await expect(editor).toHaveCount(0);
+
+      // TRIAGE — a clear ticket says so; the badge and the list agree.
+      await page.getByTestId('kiosk-utility-triage').click();
+      await expect(page.getByTestId('kiosk-triage-panel')).toBeVisible();
+
+      // DELETE — void the whole ticket (two-tap confirm).
+      await page.getByTestId('kiosk-utility-cart').click();
+      await cart.getByTestId('kiosk-cart-void-all').click();
+      await cart.getByTestId('kiosk-cart-void-all').click();
+      // Assert on the rows, not the empty-state copy: an emptied cart lets the
+      // attract loop take the screen, and the overlay hides that text.
+      await expect(cart.getByTestId('kiosk-cart-line')).toHaveCount(0, { timeout: 5_000 });
+    } finally {
+      await context.close();
+      await revokeDevice(request, deviceId);
+    }
+  });
+
+  test('Pay demands a staff PIN on the tablet — card data never reaches the customer face', async ({
+    request,
+    browser,
+    baseURL,
+  }) => {
+    test.slow();
+    const { deviceId, code } = await enrollDevice(request, uniqueLabel('E2E Pay StepUp'));
+    const { context, page } = await newTabletPage(browser, baseURL!, TABLET);
+    try {
+      await pairViaUiV2(page, code);
+      await buildRepairLine(page, { name: 'E2E Pay', phone: '5035550144' });
+
+      const cart = page.getByTestId('kiosk-cart-ledger');
+      await cart.getByRole('button', { name: /^pay$/i }).click();
+
+      // Step-up first, always: the tablet asks for a staff PIN before it will
+      // take money, and it never asks for a card number.
+      await expect(page.getByText(/pin/i).first()).toBeVisible({ timeout: 15_000 });
+      await expect(page.getByPlaceholder(/card|number|cvv/i)).toHaveCount(0);
+    } finally {
+      await context.close();
+      await revokeDevice(request, deviceId);
+    }
+  });
+
+  test('order pickup: a miss teaches, and never confirms an order exists', async ({
+    request,
+    browser,
+    baseURL,
+  }) => {
+    const { deviceId, code } = await enrollDevice(request, uniqueLabel('E2E Pickup UI'));
+    const { context, page } = await newTabletPage(browser, baseURL!, TABLET);
+    try {
+      await pairViaUiV2(page, code);
+      await page.getByRole('tab', { name: /order pickup/i }).click();
+
+      const pane = page.getByTestId('kiosk-pickup-pane');
+      await expect(pane).toBeVisible();
+
+      await fillWhenHydrated(pane.getByTestId('kiosk-pickup-order'), 'E2E-NO-SUCH-ORDER');
+      const phone = pane.getByLabel(/phone/i).first();
+      if (await phone.count()) await fillWhenHydrated(phone, '5035550199');
+      await pane.getByRole('button', { name: /look up order/i }).click();
+
+      // Oracle-safe: a miss must not distinguish "wrong phone" from "no order".
+      await expect(pane.getByText(/(couldn't|could not|no).*(find|match)|check the (number|details)/i))
+        .toBeVisible({ timeout: 15_000 });
+    } finally {
+      await context.close();
+      await revokeDevice(request, deviceId);
+    }
+  });
+  test('rail glyphs swap the CENTER stage — never a drawer over the work', async ({
+    request,
+    browser,
+    baseURL,
+  }) => {
+    test.slow();
+    const { deviceId, code } = await enrollDevice(request, uniqueLabel('E2E Center Mount'));
+    const { context, page } = await newTabletPage(browser, baseURL!, TABLET);
+    try {
+      await pairViaUiV2(page, code);
+
+      const work = page.getByTestId('kiosk-work-surface');
+      const spine = page.getByTestId('kiosk-utility-spine');
+      await expect(work).toBeVisible();
+      await page.screenshot({ path: 'test-results/kiosk-center-1-catalog.png', fullPage: false });
+
+      const spineBox = (await spine.boundingBox())!;
+
+      for (const [slot, panelId, shot] of [
+        ['cart', 'kiosk-cart-ledger', 'kiosk-center-2-cart.png'],
+        ['paperwork', 'kiosk-paperwork-panel', 'kiosk-center-3-paperwork.png'],
+        ['triage', 'kiosk-triage-panel', 'kiosk-center-4-triage.png'],
+      ] as const) {
+        await page.getByTestId(`kiosk-utility-${slot}`).click();
+        const panel = page.getByTestId(panelId);
+        await expect(panel).toBeVisible();
+
+        // 1. It REPLACED the work surface — a drawer would leave it on screen.
+        await expect(work).toBeHidden();
+
+        // 2. It occupies the centre stage, not a ~320px strip pinned to the
+        //    right edge: it must start left of the rail by much more than a
+        //    drawer would, and end where the rail begins.
+        const box = (await panel.boundingBox())!;
+        expect(box.width).toBeGreaterThan(600);
+        expect(Math.abs(box.x + box.width - spineBox.x)).toBeLessThan(4);
+
+        // 3. Nothing floats: the panel is in flow, so the page never scrolls
+        //    horizontally and no overlay sits above the work.
+        const overflows = await page.evaluate(
+          () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
+        );
+        expect(overflows).toBe(false);
+
+        await page.screenshot({ path: `test-results/${shot}`, fullPage: false });
+      }
+
+      // Toggling the active glyph returns the centre to the work surface.
+      await page.getByTestId('kiosk-utility-triage').click();
+      await expect(work).toBeVisible();
+      await expect(page.getByTestId('kiosk-triage-panel')).toHaveCount(0);
+    } finally {
+      await context.close();
+      await revokeDevice(request, deviceId);
+    }
   });
 });

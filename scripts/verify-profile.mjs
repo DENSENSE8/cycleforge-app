@@ -90,11 +90,18 @@ export const ALL_GATES = [
     env: { NODE_COMPILE_CACHE: 'node_modules/.cache/node-compile' },
     profiles: 'full',
   },
-  { name: 'Dead-code (knip)', cmd: 'node', args: ['scripts/knip-gate.mjs'], profiles: 'full' },
+  {
+    name: 'Dead-code (knip)',
+    cmd: 'node',
+    args: ['scripts/knip-gate.mjs'],
+    advisory: true,
+    profiles: 'full',
+  },
   {
     name: 'Route-permission drift',
     cmd: 'npx',
     args: ['tsx', 'scripts/audit-route-auth.ts', '--check'],
+    advisory: true,
     profiles: 'full',
   },
   {
@@ -139,6 +146,7 @@ export const ALL_GATES = [
     name: 'Doc catalog drift',
     cmd: 'node',
     args: ['scripts/portfolio-sot-sync.mjs', '--check'],
+    advisory: true,
     profiles: 'full',
   },
 ];

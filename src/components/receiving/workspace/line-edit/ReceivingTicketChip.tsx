@@ -2,19 +2,10 @@
 
 import { useRef, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Archive, Loader2, MessageSquare, Unlink } from '@/components/Icons';
+import { Archive, Loader2, MessageSquare, Send, Unlink } from '@/components/Icons';
 import { toast } from '@/lib/toast';
 import { IdentityLinkChip } from './IdentityLinkChip';
-import { cn } from '@/utils/_cn';
-import {
-  CHIP_HOVER_MENU_ITEM_CLASS,
-  CHIP_HOVER_MENU_ITEM_SEAM_CLASS,
-  CHIP_HOVER_MENU_ITEM_TONE,
-} from '@/components/ui/copy-chip-hover-menu-chrome';
-import {
-  SellerMessageAnchoredPanel,
-  SellerMessageMenuItem,
-} from './SellerMessageChip';
+import { SellerMessageAnchoredPanel } from './SellerMessageChip';
 import { threadKey } from '@/components/support/TicketThreadCard';
 import { invalidateSupportContextCaches } from '@/hooks';
 import { entitySupportTicketQueryKey } from '@/hooks/useEntitySupportTicket';
@@ -213,71 +204,63 @@ export function ReceivingTicketChip({
         disableCopy={!value.trim()}
         actionsInMenu
         suppressMenu={sellerOpen}
-        menuBetween={
-          <>
-            {onOpenTicketView ? (
-              // ds-raw-button: text-left dropdown menuitem row
-              <button
-                type="button"
-                role="menuitem"
-                onClick={openTicketHistory}
-                aria-expanded={ticketViewActive}
-                aria-label="Ticket messages"
-                className={cn(
-                  CHIP_HOVER_MENU_ITEM_CLASS,
-                  CHIP_HOVER_MENU_ITEM_SEAM_CLASS,
-                  CHIP_HOVER_MENU_ITEM_TONE.default,
-                )}
-              >
-                <MessageSquare className="h-3.5 w-3.5 shrink-0 text-text-soft" aria-hidden />
-                Message
-              </button>
-            ) : null}
-            {receivingId != null ? (
-              <SellerMessageMenuItem onClick={openSellerMessage} active={sellerOpen} />
-            ) : null}
-            {/* ds-raw-button: text-left dropdown menuitem row */}
-            <button
-              type="button"
-              role="menuitem"
-              onClick={runNasSync}
-              disabled={!ticketNumber || nasArchive.isPending}
-              aria-label="Archive this ticket's photos to the NAS claim folder"
-              className={cn(
-                CHIP_HOVER_MENU_ITEM_CLASS,
-                CHIP_HOVER_MENU_ITEM_SEAM_CLASS,
-                CHIP_HOVER_MENU_ITEM_TONE.default,
-              )}
-            >
-              {nasArchive.isPending ? (
-                <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-text-soft" aria-hidden />
-              ) : (
-                <Archive className="h-3.5 w-3.5 shrink-0 text-text-soft" aria-hidden />
-              )}
-              {nasArchive.isPending ? 'Archiving…' : 'Archive'}
-            </button>
-            {/* ds-raw-button: text-left dropdown menuitem row */}
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => unlink.mutate()}
-              disabled={unlink.isPending || receivingId == null || zendeskTicketId == null}
-              aria-label="Unlink ticket"
-              className={cn(
-                CHIP_HOVER_MENU_ITEM_CLASS,
-                CHIP_HOVER_MENU_ITEM_SEAM_CLASS,
-                CHIP_HOVER_MENU_ITEM_TONE.danger,
-              )}
-            >
-              {unlink.isPending ? (
-                <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-rose-500" aria-hidden />
-              ) : (
-                <Unlink className="h-3.5 w-3.5 shrink-0 text-rose-500" aria-hidden />
-              )}
-              Unlink
-            </button>
-          </>
-        }
+        menuRows={[
+          ...(onOpenTicketView
+            ? [
+                {
+                  id: 'ticket-message',
+                  label: 'Message',
+                  icon: <MessageSquare className="h-3.5 w-3.5" />,
+                  ariaLabel: 'Ticket messages',
+                  ariaExpanded: ticketViewActive,
+                  seam: true,
+                  onSelect: openTicketHistory,
+                },
+              ]
+            : []),
+          ...(receivingId != null
+            ? [
+                {
+                  id: 'ticket-seller',
+                  // Send, not MessageSquare — the thread row above owns that
+                  // glyph; this row composes an outbound draft to the seller.
+                  label: 'Seller',
+                  icon: <Send className="h-3.5 w-3.5" />,
+                  ariaLabel: 'Message the seller',
+                  ariaExpanded: sellerOpen,
+                  seam: true,
+                  onSelect: openSellerMessage,
+                },
+              ]
+            : []),
+          {
+            id: 'ticket-archive',
+            label: nasArchive.isPending ? 'Archiving…' : 'Archive',
+            icon: nasArchive.isPending ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Archive className="h-3.5 w-3.5" />
+            ),
+            ariaLabel: "Archive this ticket's photos to the NAS claim folder",
+            disabled: !ticketNumber || nasArchive.isPending,
+            seam: true,
+            onSelect: runNasSync,
+          },
+          {
+            id: 'ticket-unlink',
+            label: 'Unlink',
+            icon: unlink.isPending ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Unlink className="h-3.5 w-3.5" />
+            ),
+            tone: 'danger' as const,
+            ariaLabel: 'Unlink ticket',
+            disabled: unlink.isPending || receivingId == null || zendeskTicketId == null,
+            seam: true,
+            onSelect: () => unlink.mutate(),
+          },
+        ]}
       />
       {receivingId != null ? (
         <SellerMessageAnchoredPanel

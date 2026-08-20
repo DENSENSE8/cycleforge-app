@@ -17,6 +17,8 @@ import {
   KIOSK_MODE_SPINE_ROW,
   KIOSK_MODE_SPINE_ROW_COLLAPSED,
   KIOSK_MODE_SPINE_ROW_EXPANDED,
+  KIOSK_PANE_HEADER_BAND,
+  KIOSK_PANE_HEADER_TITLE,
   KIOSK_PILL,
   KIOSK_PILL_ACTIVE,
   KIOSK_PILL_ACTIVE_ISSUE,
@@ -27,14 +29,15 @@ import {
   KIOSK_POS_CANVAS,
   KIOSK_POS_CARD,
   KIOSK_POS_CARD_CAPTION,
+  KIOSK_POS_IMAGE_WELL,
   KIOSK_POS_CARD_SELECTED,
+  KIOSK_POS_CARD_SELECTED_FRAME,
   KIOSK_POS_CATEGORY,
   KIOSK_POS_CATEGORY_ACTIVE,
   KIOSK_POS_CATEGORY_IDLE,
   KIOSK_POS_CATEGORY_LABEL,
   KIOSK_POS_CATEGORY_STACK,
   KIOSK_POS_GRID,
-  KIOSK_POS_SEARCH_INPUT,
   KIOSK_POS_SIDEBAR,
   KIOSK_POS_SIDEBAR_BODY,
 } from './kiosk-pos-surface';
@@ -108,6 +111,21 @@ describe('kiosk-chrome spine source contract', () => {
     assert.match(spine, /KioskSpineToggle/);
     assert.match(spine, /kiosk-spine-search/);
   });
+
+  it('keeps repair catalog browse after a SKU pick so more services can be added', () => {
+    assert.match(shell, /onContinue=\{openRepairDetails\}/);
+    assert.match(shell, /onBack=\{returnToRepairCatalog\}/);
+    assert.match(
+      shell,
+      /const onSelectProduct = useCallback\(\(product: ProductSelection \| null\) => \{\s*setSelectedProduct\(product\);\s*\}, \[\]\)/,
+    );
+    const selector = readFileSync(
+      join(process.cwd(), 'src/components/repair/ProductSelector.tsx'),
+      'utf8',
+    );
+    assert.match(selector, /hideCartTray && selectedItems\.length > 0 && onContinue/);
+    assert.match(selector, /data-kiosk-continue/);
+  });
 });
 
 describe('kiosk v2 idle + attract source contract', () => {
@@ -153,9 +171,54 @@ describe('kiosk-pos-surface flush plane', () => {
     assert.doesNotMatch(KIOSK_POS_CARD, /\brounded-xl\b/);
     assert.doesNotMatch(KIOSK_POS_CARD, /\bshadow-elev/);
     assert.match(KIOSK_POS_CARD, /\bbg-surface-card\b/);
-    assert.match(KIOSK_POS_GRID, /\bgap-px\b/);
-    assert.match(KIOSK_POS_CARD_SELECTED, /\bring-1\b/);
+    // The grid host stays white — an unfilled trailing row must not reveal a
+    // colored gutter plane; seams ride the cells.
+    assert.match(KIOSK_POS_GRID, /\bbg-surface-card\b/);
+    assert.match(KIOSK_POS_GRID, /\bw-full\b/);
+    assert.match(KIOSK_POS_GRID, /\bgap-0\b/);
+    assert.doesNotMatch(KIOSK_POS_GRID, /\bbg-border-hairline\b/);
+    assert.match(KIOSK_POS_CARD, /\bborder-border-hairline\b/);
+    // Selection wash on the cell; squared frame is a last-child overlay so the
+    // photo cannot cover the blue perimeter (inset rings only showed on caption).
+    assert.match(KIOSK_POS_CARD_SELECTED, /\bbg-surface-accent\b/);
+    assert.doesNotMatch(KIOSK_POS_CARD_SELECTED, /\bring-inset\b/);
+    assert.doesNotMatch(KIOSK_POS_CARD_SELECTED, /\bring-2\b/);
+    assert.match(KIOSK_POS_CARD_SELECTED_FRAME, /\bborder-2\b/);
+    assert.match(KIOSK_POS_CARD_SELECTED_FRAME, /\binset-0\b/);
+    assert.match(KIOSK_POS_CARD_SELECTED_FRAME, /\bborder-blue-500\b/);
+    assert.match(KIOSK_POS_CARD_CAPTION, /\bbg-transparent\b/);
+    assert.match(KIOSK_POS_IMAGE_WELL, /\bbg-transparent\b/);
     assert.match(KIOSK_POS_CARD_CAPTION, /\bpx-3\b/);
+  });
+
+  it('pane headers are full-bleed; title owns in-band inset only', () => {
+    assert.match(KIOSK_PANE_HEADER_BAND, /\bpl-0\b/);
+    assert.match(KIOSK_PANE_HEADER_BAND, /\bpr-0\b/);
+    assert.doesNotMatch(KIOSK_PANE_HEADER_BAND, /\bpr-4\b/);
+    assert.match(KIOSK_PANE_HEADER_TITLE, /\bpx-3\b/);
+    assert.doesNotMatch(KIOSK_PANE_HEADER_TITLE, /first:pl-4/);
+  });
+
+  it('catalog browse stays flush — Band 3 height SoT; frame overlays the cell', () => {
+    const selectorSrc = readFileSync(
+      join(process.cwd(), 'src/components/repair/ProductSelector.tsx'),
+      'utf8',
+    );
+    assert.doesNotMatch(
+      selectorSrc,
+      /pos \? 'space-y-4'/,
+      'kiosk browse must not stack vertical gutters above the grid',
+    );
+    assert.match(selectorSrc, /KIOSK_POS_CARD_SELECTED_FRAME/);
+    // Same WorkbenchTriageBand height as To Ship / Unbox (PRIMARY_CHROME_ROW_FACE) —
+    // never fork a taller kiosk-only band.
+    assert.doesNotMatch(selectorSrc, /WorkbenchTriageBand[\s\S]*?className="h-14/);
+    assert.match(selectorSrc, /className="pr-0"/);
+    // Search filters the product stage only — left accordion siblings stay mounted.
+    assert.match(
+      selectorSrc,
+      /if \(kioskSplit \|\| !search\.trim\(\)\) return rows/,
+    );
   });
 
   it('caps the category column with flush divide-y rows', () => {
@@ -170,10 +233,43 @@ describe('kiosk-pos-surface flush plane', () => {
     assert.match(KIOSK_POS_CATEGORY_STACK, /\bdivide-y\b/);
   });
 
-  it('search input is flush (no rounded-lg sunken well)', () => {
-    assert.match(KIOSK_POS_SEARCH_INPUT, /\brounded-none\b/);
-    assert.match(KIOSK_POS_SEARCH_INPUT, /\bpy-3\b/);
-    assert.doesNotMatch(KIOSK_POS_SEARCH_INPUT, /\brounded-lg\b/);
-    assert.doesNotMatch(KIOSK_POS_SEARCH_INPUT, /\bbg-surface-sunken\b/);
+  it('the right utility spine owns cart + paperwork (one toggle each)', () => {
+    const shellSrc = readFileSync(SHELL, 'utf8');
+    const railSrc = readFileSync(
+      join(process.cwd(), 'src/app/kiosk/KioskUtilitySpine.tsx'),
+      'utf8',
+    );
+    // Cart is the first slot — top-right glyph.
+    assert.match(railSrc, /id: 'cart'[\s\S]*?id: 'paperwork'/);
+    assert.match(shellSrc, /KioskUtilitySpine/);
+    assert.match(shellSrc, /KioskPaperworkPanel/);
+    // ONE closer: the ledger must not re-mount its own collapse control.
+    const ledgerSrc = readFileSync(
+      join(process.cwd(), 'src/app/kiosk/v2/KioskCartLedger.tsx'),
+      'utf8',
+    );
+    assert.doesNotMatch(ledgerSrc, /kiosk-cart-toggle/);
+  });
+
+  it('search is the house find bar, not a kiosk-local input token', () => {
+    const posSurfaceSrc = readFileSync(
+      join(process.cwd(), 'src/app/kiosk/kiosk-pos-surface.ts'),
+      'utf8',
+    );
+    const spineSrc = readFileSync(SPINE, 'utf8');
+    const selectorSrc = readFileSync(
+      join(process.cwd(), 'src/components/repair/ProductSelector.tsx'),
+      'utf8',
+    );
+    // One search face across the app: MasterNav / Band-3 / To Ship / kiosk all
+    // mount TechRailSearchBar. A kiosk-local input recipe is the fork this bans.
+    assert.doesNotMatch(posSurfaceSrc, /KIOSK_POS_SEARCH_INPUT/);
+    assert.match(spineSrc, /TechRailSearchBar/);
+    assert.match(spineSrc, /variant="chrome"/);
+    assert.doesNotMatch(spineSrc, /plane=/);
+    assert.match(selectorSrc, /TechRailSearchBar/);
+    assert.match(selectorSrc, /variant="chrome"/);
+    assert.match(selectorSrc, /WorkbenchTriageBand/);
+    assert.doesNotMatch(selectorSrc, /plane=/);
   });
 });

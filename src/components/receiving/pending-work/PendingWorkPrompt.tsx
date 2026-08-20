@@ -12,7 +12,8 @@
  *   when these facts still need saying. Cannot be a toast — the reminder has to
  *   persist until it is acted on, and `@/lib/toast` is transient by contract.
  *   It is a viewport-fixed sibling of the Toaster, not a right-edge occupant,
- *   so it adds no third right-edge grammar.
+ *   so it adds no third right-edge grammar. Never mounts on `/unbox`: that
+ *   bench already shows exceptions on the carton, and the overlay covers Displays.
  *
  * ONE CARD, N SOURCES. Sources live in `@/lib/receiving/pending-work`; this
  * renders the most recent and counts the rest. A card per source would put a
@@ -24,6 +25,7 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { Archive, ChevronRight, Loader2, X } from '@/components/Icons';
 import { PoChip, TicketChip } from '@/components/ui/CopyChip';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
@@ -32,10 +34,13 @@ import { focusRing } from '@/design-system/tokens/focus-ring';
 import { elevationClass } from '@/design-system/tokens/shadows';
 import { usePendingWork } from '@/hooks/usePendingWork';
 import { useTicketNasArchive } from '@/hooks/useTicketNasArchive';
+import { isPendingWorkPromptHidden } from '@/lib/receiving/pending-work-model';
 import { cn } from '@/utils/_cn';
 
 export function PendingWorkPrompt() {
-  const { items, refresh } = usePendingWork();
+  const pathname = usePathname();
+  const hidden = isPendingWorkPromptHidden(pathname);
+  const { items, refresh } = usePendingWork({ enabled: !hidden });
   // Dismissal keys include the count, so it is a "not now", never a "never" —
   // the moment the backlog grows the key moves and the card re-arms.
   const [dismissed, setDismissed] = useState<ReadonlySet<string>>(new Set());
@@ -45,8 +50,9 @@ export function PendingWorkPrompt() {
   const live = useMemo(() => items.filter((i) => !dismissed.has(i.key)), [items, dismissed]);
 
   // Honest absence: nothing owed, nothing rendered. No empty shell.
+  // Unbox never gets this overlay — see `isPendingWorkPromptHidden`.
   const top = live[0];
-  if (!top) return null;
+  if (hidden || !top) return null;
 
   const others = live.length - 1;
   const busy = archive.isPending;

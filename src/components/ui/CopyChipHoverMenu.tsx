@@ -25,8 +25,12 @@
  * sibling), regardless of its `z-index`. A body portal escapes every row
  * stacking context so the menu is never clipped or covered.
  *
- * {@link CopyChipHoverMenuPanel} is the presentational chrome + rows — also
- * composed in-place by hosts that already own hover (e.g. photo launcher toolbar).
+ * {@link CopyChipHoverMenuPanel} is a thin ADAPTER over the one row renderer
+ * ({@link ChipHoverMenuPanel}) — it maps this module's item shape onto the
+ * shared rows and picks the roomier LedgerGrid pad. It used to re-implement the
+ * rows, which meant the grid flyout and the carton bar drew the same anatomy
+ * from two places. Hosts that already own hover (e.g. the photo launcher
+ * toolbar) still compose it in place.
  */
 
 import {
@@ -40,13 +44,7 @@ import {
 import { createPortal } from 'react-dom';
 import { cn } from '@/utils/_cn';
 import { zIndex } from '@/design-system/tokens/z-index';
-import {
-  CHIP_HOVER_MENU_ICON_CLASS,
-  CHIP_HOVER_MENU_ITEM_CLASS,
-  CHIP_HOVER_MENU_ITEM_SEAM_CLASS,
-  CHIP_HOVER_MENU_ITEM_TONE,
-  CHIP_HOVER_MENU_PANEL_CLASS,
-} from '@/components/ui/copy-chip-hover-menu-chrome';
+import { ChipHoverMenuPanel } from '@/components/ui/ChipHoverMenuSurface';
 import {
   clampPortalSideMenuPosition,
   PORTAL_BELOW_MENU_GAP,
@@ -68,11 +66,13 @@ export type CopyChipHoverMenuItem = {
 };
 
 /**
- * Presentational drop panel — same chrome / menuitem rows as the hover portal.
+ * Adapter: this module's item shape → the shared row renderer.
  *
- * `denseLabel` (carton chips / photo toolbar): short verbs inherit button
- * `uppercase tracking-widest` (OPEN / EDIT face). Default keeps sentence-case
- * dashboard labels.
+ * `denseLabel` (carton chips / photo toolbar) drops the dashboard's semibold
+ * label emphasis so a row reads as the chip face that opened it. It does NOT
+ * shout — the `uppercase tracking-widest` this flag once carried is banned on
+ * chip menus (`carton-chrome-type-unity.guard.test.ts`): pick "Medium" off a
+ * menu and it becomes a pill, so the word must not change voice on the way.
  */
 export function CopyChipHoverMenuPanel({
   items,
@@ -97,59 +97,24 @@ export function CopyChipHoverMenuPanel({
   'data-testid'?: string;
 }) {
   return (
-    <div
-      role="menu"
-      aria-label={menuLabel}
+    <ChipHoverMenuPanel
+      menuLabel={menuLabel}
+      className={className}
       data-testid={dataTestId}
-      className={cn(CHIP_HOVER_MENU_PANEL_CLASS, className)}
-    >
-      {items.map((item, i) => {
-        const toneClass =
-          item.tone === 'danger'
-            ? CHIP_HOVER_MENU_ITEM_TONE.danger
-            : item.tone === 'accent'
-              ? CHIP_HOVER_MENU_ITEM_TONE.accent
-              : CHIP_HOVER_MENU_ITEM_TONE.default;
-        const iconClass =
-          item.tone === 'danger'
-            ? 'text-rose-600'
-            : item.tone === 'accent'
-              ? 'text-blue-600'
-              : 'text-text-soft';
-        return (
-          // ds-raw-button: text-left dropdown menuitem row (icon + label)
-          <button
-            key={item.id}
-            type="button"
-            role="menuitem"
-            disabled={item.disabled}
-            onClick={(e) => {
-              e.stopPropagation();
-              if (item.disabled) return;
-              item.onSelect();
-              onItemSelect?.(item);
-            }}
-            className={cn(
-              CHIP_HOVER_MENU_ITEM_CLASS,
-              itemPad === 'default' && 'gap-2 px-3',
-              i > 0 ? CHIP_HOVER_MENU_ITEM_SEAM_CLASS : '',
-              toneClass,
-            )}
-          >
-            {item.icon ? (
-              <span className={cn(CHIP_HOVER_MENU_ICON_CLASS, iconClass)}>{item.icon}</span>
-            ) : null}
-            {denseLabel ? (
-              item.label
-            ) : (
-              <span className="min-w-0 truncate font-semibold">
-                {item.label}
-              </span>
-            )}
-          </button>
-        );
-      })}
-    </div>
+      itemPad={itemPad === 'chip' ? 'chip' : 'roomy'}
+      emphasizeLabel={!denseLabel}
+      rows={items.map((item) => ({
+        id: item.id,
+        label: item.label,
+        icon: item.icon,
+        tone: item.tone,
+        disabled: item.disabled,
+        onSelect: () => {
+          item.onSelect();
+          onItemSelect?.(item);
+        },
+      }))}
+    />
   );
 }
 
@@ -169,10 +134,7 @@ export function CopyChipHoverMenu({
   items: CopyChipHoverMenuItem[];
   menuLabel: string;
   className?: string;
-  /**
-   * Short verbs inherit button `uppercase tracking-widest` (OPEN / EDIT face) —
-   * carton IdentityLinkChip parity. Default keeps sentence-case dashboard labels.
-   */
+  /** Drop the dashboard's semibold label emphasis — carton chip-face parity. */
   denseLabel?: boolean;
   itemPad?: 'default' | 'chip';
   /**

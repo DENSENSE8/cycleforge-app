@@ -7,9 +7,10 @@
  */
 
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { Button } from '@/design-system/primitives';
+import { Button, IconButton, TextField } from '@/design-system/primitives';
+import { ChevronLeft } from '@/components/Icons';
 import { ReasonSelector } from '@/components/repair/ReasonSelector';
-import { CustomerInfoForm } from '@/components/repair/CustomerInfoForm';
+import { KioskCustomerIntake } from '@/components/kiosk/KioskCustomerIntake';
 import { SignaturePad, type SignatureData } from '@/components/repair/SignaturePad';
 import { RepairPaperworkSheet } from '@/components/repair/RepairPaperworkSheet';
 import type { ProductSelection } from '@/components/repair/ProductSelector';
@@ -38,6 +39,8 @@ interface KioskRepairPaneProps {
   selectedProduct: ProductSelection | null;
   /** Catalog price from the selection — empty until a priced SKU is picked. */
   price: string;
+  /** Return to the repair catalog without clearing selected services. */
+  onBack?: () => void;
 }
 
 function priceToCents(price: string): number {
@@ -53,7 +56,7 @@ const SECTION_LABEL = cn(
   KIOSK_SECTION_LABEL,
 );
 
-export function KioskRepairPane({ selectedProduct, price }: KioskRepairPaneProps) {
+export function KioskRepairPane({ selectedProduct, price, onBack }: KioskRepairPaneProps) {
   const session = useKioskSession();
   const actions = useKioskSessionActions();
   const [formData, setFormData] = useState<RepairFormData>(() => buildInitialFormData());
@@ -65,17 +68,20 @@ export function KioskRepairPane({ selectedProduct, price }: KioskRepairPaneProps
   const { skuIssues } = useRepairIntakeData(null, true);
   const hasProduct = Boolean(selectedProduct?.model?.trim());
 
-  // Prefer editing an existing REPAIR line for this model; else create on save.
-  const existingRepair = useMemo(
-    () =>
-      session.lines.find(
-        (l) =>
-          l.type === 'REPAIR' &&
-          isRepairPayload(l.payload) &&
-          (activeLineId ? l.id === activeLineId : l.payload.productModel === selectedProduct?.model),
-      ) ?? null,
-    [session.lines, selectedProduct?.model, activeLineId],
-  );
+  // One REPAIR ticket per visit — extra catalog SKUs update that same line.
+  const existingRepair = useMemo(() => {
+    const repairs = session.lines.filter(
+      (l) => l.type === 'REPAIR' && isRepairPayload(l.payload),
+    );
+    if (activeLineId) return repairs.find((l) => l.id === activeLineId) ?? repairs[0] ?? null;
+    return (
+      repairs.find(
+        (l) => isRepairPayload(l.payload) && l.payload.productModel === selectedProduct?.model,
+      ) ??
+      repairs[0] ??
+      null
+    );
+  }, [session.lines, selectedProduct?.model, activeLineId]);
 
   useEffect(() => {
     if (selectedProduct) {
@@ -177,6 +183,17 @@ export function KioskRepairPane({ selectedProduct, price }: KioskRepairPaneProps
   return (
     <div className="flex h-full flex-col" data-testid="kiosk-repair-pane">
       <div className={KIOSK_PANE_HEADER_BAND}>
+        {onBack ? (
+          <IconButton
+            icon={<ChevronLeft className="h-5 w-5" />}
+            ariaLabel="Back to catalog"
+            size="touch"
+            tone="neutral"
+            onClick={onBack}
+            className="shrink-0 hover:bg-surface-hover"
+            data-testid="kiosk-repair-back"
+          />
+        ) : null}
         <h2 className={KIOSK_PANE_HEADER_TITLE}>Repair details</h2>
         <RepairPaperworkSheet
           active={showPaperwork}
@@ -217,25 +234,55 @@ export function KioskRepairPane({ selectedProduct, price }: KioskRepairPaneProps
 
             <section>
               <h3 className={SECTION_LABEL}>2. Customer information</h3>
-              <div className="bg-surface-card px-4 py-4">
-                <CustomerInfoForm
-                  layout="all"
-                  customer={formData.customer}
-                  serialNumber={formData.serialNumber}
-                  price={formData.price}
-                  notes={formData.notes}
-                  onCustomerChange={updateCustomer}
-                  onSerialNumberChange={(value) =>
-                    setFormData((prev) => ({ ...prev, serialNumber: value }))
-                  }
-                  onPriceChange={(value) =>
-                    setFormData((prev) => ({ ...prev, price: value }))
-                  }
-                  onNotesChange={(value) =>
-                    setFormData((prev) => ({ ...prev, notes: value }))
-                  }
-                />
-              </div>
+              <KioskCustomerIntake
+                heading={null}
+                className="bg-surface-card"
+                value={{
+                  phone: formData.customer.phone,
+                  name: formData.customer.name,
+                  email: formData.customer.email,
+                }}
+                onChange={(next) => {
+                  updateCustomer('phone', next.phone);
+                  updateCustomer('name', next.name);
+                  updateCustomer('email', next.email);
+                }}
+                extras={
+                  <>
+                    <TextField
+                      label="Serial number"
+                      value={formData.serialNumber}
+                      mono
+                      tone="blue"
+                      inputClassName="rounded-none"
+                      onChange={(value) =>
+                        setFormData((prev) => ({ ...prev, serialNumber: value }))
+                      }
+                    />
+                    <TextField
+                      label="Price ($)"
+                      value={formData.price}
+                      inputMode="decimal"
+                      tone="emerald"
+                      inputClassName="rounded-none font-semibold text-emerald-600"
+                      onChange={(value) =>
+                        setFormData((prev) => ({ ...prev, price: value }))
+                      }
+                    />
+                    <TextField
+                      label="Notes (optional)"
+                      value={formData.notes}
+                      multiline
+                      rows={3}
+                      tone="blue"
+                      inputClassName="rounded-none"
+                      onChange={(value) =>
+                        setFormData((prev) => ({ ...prev, notes: value }))
+                      }
+                    />
+                  </>
+                }
+              />
             </section>
 
             <section>
@@ -261,6 +308,17 @@ export function KioskRepairPane({ selectedProduct, price }: KioskRepairPaneProps
 
       {hasProduct && (
         <div className={KIOSK_PANE_FOOTER_BAND} data-kiosk-footer-band>
+          {onBack ? (
+            <Button
+              variant="secondary"
+              size="lg"
+              className={cn('h-full min-h-0 flex-1 rounded-none', cornerClass('flush'))}
+              onClick={onBack}
+              data-testid="kiosk-repair-add-another"
+            >
+              Add another service
+            </Button>
+          ) : null}
           <Button
             size="lg"
             className={cn('h-full min-h-0 w-full flex-1 rounded-none', cornerClass('flush'))}

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type RefObject } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Copy, Loader2, MessageSquare, Send } from '@/components/Icons';
+import { Copy, Loader2, MessageSquare } from '@/components/Icons';
 import { toast } from '@/lib/toast';
 import { AnchoredLayer } from '@/design-system/primitives/AnchoredLayer';
 import { Panel, Button } from '@/design-system/primitives';
@@ -14,11 +14,8 @@ import { copySellerClaimMessageWithPersist } from '@/lib/receiving-claim-seller-
 import { sellerDraftMatchesTicket } from '@/lib/receiving-claim-seller-ticket-match';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
-import {
-  CHIP_HOVER_MENU_ITEM_CLASS,
-  CHIP_HOVER_MENU_ITEM_SEAM_CLASS,
-  CHIP_HOVER_MENU_ITEM_TONE,
-} from '@/components/ui/copy-chip-hover-menu-chrome';
+
+
 
 
 
@@ -108,37 +105,10 @@ function useSellerMessage(
 
 /**
  * Seller-facing claim message draft — opened from the ticket chip hover menu
- * (Open → History → Message → Archive → Unlink). Panel + Neon persistence live
- * here; the menu row is {@link SellerMessageMenuItem}.
+ * (Open → Message → Seller → Archive → Unlink). Panel + Neon persistence live
+ * here; the menu ROW is data on `ReceivingTicketChip`'s `menuRows`, not a
+ * component of its own — a per-host menuitem component is a row renderer fork.
  */
-export function SellerMessageMenuItem({
-  onClick,
-  active = false,
-}: {
-  onClick: () => void;
-  active?: boolean;
-}) {
-  return (
-    // ds-raw-button: text-left dropdown menuitem row (icon + label), not a standard action button
-    <button
-      type="button"
-      role="menuitem"
-      onClick={onClick}
-      aria-label="Message the seller"
-      aria-expanded={active}
-      className={cn(
-        CHIP_HOVER_MENU_ITEM_CLASS,
-        CHIP_HOVER_MENU_ITEM_SEAM_CLASS,
-        CHIP_HOVER_MENU_ITEM_TONE.default,
-      )}
-    >
-      {/* Send, not MessageSquare — the thread row above it now owns that glyph;
-          this row composes an outbound draft to the seller. */}
-      <Send className="h-3.5 w-3.5 shrink-0 text-text-soft" />
-      Seller
-    </button>
-  );
-}
 
 /** Anchored seller-message draft panel — composed by {@link ReceivingTicketChip}. */
 export function SellerMessageAnchoredPanel({

@@ -1,6 +1,11 @@
 import { buildZohoUrl, getAccessToken, invalidateAccessToken, loadZohoCredentials } from '@/lib/zoho/core';
 import { currentZohoOrgId } from '@/lib/zoho/tenant-context';
 import type { OrgId } from '@/lib/tenancy/constants';
+import {
+  ZOHO_HTTP_TIMEOUTS,
+  isZohoAbortError,
+  zohoRequestTimeoutMs,
+} from '@/lib/zoho/http-timeouts';
 
 const RATE_LIMIT_CONFIG = {
   reservoir: 80,
@@ -12,7 +17,8 @@ const RATE_LIMIT_CONFIG = {
   circuitFailureThreshold: 5,
   circuitFailureWindowMs: 30_000,
   circuitOpenMs: 60_000,
-  requestTimeoutMs: 10_000,
+  requestTimeoutMs: ZOHO_HTTP_TIMEOUTS.requestTimeoutMs,
+  mutationTimeoutMs: ZOHO_HTTP_TIMEOUTS.mutationTimeoutMs,
 } as const;
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
@@ -209,9 +215,13 @@ class ZohoCircuitBreaker {
 const limiter = new ZohoRateLimiter();
 const circuitBreaker = new ZohoCircuitBreaker();
 
-async function fetchWithTimeout(input: string, init: RequestInit): Promise<Response> {
+async function fetchWithTimeout(
+  input: string,
+  init: RequestInit,
+  timeoutMs: number,
+): Promise<Response> {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), RATE_LIMIT_CONFIG.requestTimeoutMs);
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
     return await fetch(input, { ...init, signal: controller.signal, cache: 'no-store' });
   } finally {
@@ -227,6 +237,7 @@ async function performZohoRequest<T>(
   query: ZohoQuery = {}
 ): Promise<T> {
   const retryableHttpStatuses = new Set([429, 500, 502, 503, 504]);
+  const timeoutMs = zohoRequestTimeoutMs(method, path);
 
   // Resolve the tenant's credentials once per attempt loop. getIntegrationCredentials
   // caches in-process for 5 min, so this is a cheap map hit on the hot path; it gives
@@ -240,16 +251,22 @@ async function performZohoRequest<T>(
 
     let response: Response;
     try {
-      response = await fetchWithTimeout(url, {
-        method,
-        headers: {
-          Authorization: `Zoho-oauthtoken ${token}`,
-          'Content-Type': 'application/json',
+      response = await fetchWithTimeout(
+        url,
+        {
+          method,
+          headers: {
+            Authorization: `Zoho-oauthtoken ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: body === undefined ? undefined : JSON.stringify(body),
         },
-        body: body === undefined ? undefined : JSON.stringify(body),
-      });
+        timeoutMs,
+      );
     } catch (error: unknown) {
-      if (attempt === RATE_LIMIT_CONFIG.maxRetries) throw error;
+      // Abort/timeout is terminal — retrying a 10s abort five times turns one
+      // slow purchase-receive into a ~65s chain that races Unbox's client abort.
+      if (isZohoAbortError(error) || attempt === RATE_LIMIT_CONFIG.maxRetries) throw error;
       await sleep(1000 * 2 ** attempt);
       continue;
     }

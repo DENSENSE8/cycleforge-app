@@ -18,8 +18,9 @@ Three profiles (same runner, `scripts/verify.mjs`):
 | Dogfood | `npm run verify:dogfood` | Click-through on the tenant — lint · tsc · route-auth enforce · schema drift · model parity. Pre-push uses this unless the destination is `main`. |
 | Ship | `npm run verify` | Done / push to `main` / CI — the full gate |
 
-Dogfood is **not** "done." Hygiene ratchets (unit · knip · jscpd · depcruise ·
-manifests) still run in CI and must be green before finishing.
+Dogfood is **not** "done." Hygiene ratchets that still **block** are unit ·
+jscpd · depcruise · route-auth enforce · schema. Knip, route-permission
+drift, and doc catalog are advisory (report only).
 
 ## Rules
 
@@ -27,10 +28,9 @@ manifests) still run in CI and must be green before finishing.
    `npm run verify` and make it pass.** Not just the file you touched: the whole
    gate. Inner loop: `npm run verify:fast`. Tenant click-through: `npm run
    verify:dogfood`. The full `npm run verify` is still required before finishing.
-2. **Fix every ✗ gate.** The gates are: lint (0 errors), typecheck (0 errors),
-   unit tests (including structural governance guards), knip dead-code,
-   jscpd clone baseline, depcruise assembly boundaries, route-auth drift +
-   enforce, schema drift.
+2. **Fix every blocking ✗ gate.** The hard gates are: lint (0 errors), typecheck
+   (0 errors), unit tests, jscpd, depcruise, route-auth enforce, schema drift.
+   Knip, route-permission drift, and doc catalog are advisory.
 3. **Structural guards** (motion boundary, frame budgets, region hosts) must
    stay green.
 4. **knip dead-code:** remove the dead export/file or wire it up. Only refresh

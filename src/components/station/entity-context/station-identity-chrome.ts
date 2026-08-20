@@ -285,15 +285,3 @@ export const STATION_IDENTITY_SCROLL_CLEARANCE = 'pt-7';
  */
 // ds-allow-spacing: stacked identity overlay = station h-7 + secondary h-6 (not a density step).
 export const STATION_IDENTITY_STACKED_SCROLL_CLEARANCE = 'pt-[52px]'; // ds-allow-spacing
-/**
- * Bottom-CENTER anchor for a menu opened by a carton-bar cell (the listing
- * menu, and any future hand-rolled bar panel). ONE definition of "how a bar
- * cell menu is placed" so the strip's menus read as one system: centered under
- * the cell, not left/right-bound to it. Radix-driven menus (classify, photos,
- * overflow) express the same intent through their own `align`/placement props;
- * this token is for the CSS-positioned panels that do not go through Radix.
- *
- * A cell that hosts one composes `relative`; the panel composes this.
- */
-export const STATION_CHROME_BAR_MENU_ANCHOR =
-  'absolute left-1/2 top-full z-panelPopover -translate-x-1/2 pt-1.5';

@@ -1,7 +1,8 @@
 /**
  * Landscape kiosk repair checkout must show every contact field at once.
- * Pinning CustomerInfoForm to CONTACT_FIELDS[length-1] ('extras') hides
- * name/phone/email and permanently disables submit.
+ * The contact block is now the shared `KioskCustomerIntake` (one intake face
+ * across Repair / Retail / Buyback / Pickup); a stepped wizard that pinned one
+ * field at a time hid name/phone/email and permanently disabled submit.
  */
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -17,8 +18,9 @@ function read(path: string): string {
 describe('KioskRepairPane customer fields', () => {
   const src = read(PANE);
 
-  it('uses CustomerInfoForm layout="all" so name/phone/email render', () => {
-    assert.match(src, /<CustomerInfoForm[\s\S]*?layout="all"/);
+  it('composes the shared KioskCustomerIntake (all contact fields at once)', () => {
+    assert.match(src, /<KioskCustomerIntake/);
+    assert.doesNotMatch(src, /CustomerInfoForm/);
   });
 
   it('does not pin the stepped wizard to extras', () => {
@@ -28,5 +30,13 @@ describe('KioskRepairPane customer fields', () => {
 
   it('uses ReasonSelector appearance="pills" (Phase 2 SoT)', () => {
     assert.match(src, /<ReasonSelector[\s\S]*?appearance="pills"/);
+  });
+
+  it('puts a back control in the header and an add-another service action', () => {
+    assert.match(src, /data-testid="kiosk-repair-back"/);
+    assert.match(src, /ariaLabel="Back to catalog"/);
+    assert.match(src, /data-testid="kiosk-repair-add-another"/);
+    assert.match(src, /Add another service/);
+    assert.match(src, /onBack\?: \(\) => void/);
   });
 });

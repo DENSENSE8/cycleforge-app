@@ -42,6 +42,7 @@ const COPY_CHIP = 'src/components/ui/CopyChip.tsx';
 const INLINE_PILL =
   'src/components/receiving/workspace/line-edit/InlinePillPicker.tsx';
 const MENU_CHROME = 'src/components/ui/copy-chip-hover-menu-chrome.ts';
+const IDENTITY_CHIPS = 'src/components/receiving/ReceivingIdentityChips.tsx';
 
 /** Strip block comments — prose documents the old values on purpose. */
 const code = (src: string) => src.replace(/\/\*[\s\S]*?\*\//g, '');
@@ -185,5 +186,34 @@ test('dense CopyChips render the same face as the bar', () => {
     chip,
     /\[&_svg\]:h-3 /,
     'Dense glyphs are h-3.5, matching STATION_CHROME_GLYPH_CLASS — a 12px glyph box beside a 14px one is a second scale.',
+  );
+});
+
+test('every carton-bar button face comes from the one builder', () => {
+  const src = code(read(ACTION_PILL));
+  const rawButtonFaces = src.match(/ds-raw-button/g) ?? [];
+  assert.equal(
+    rawButtonFaces.length,
+    1,
+    'A second `ds-raw-button` literal means a cell face was hand-rolled beside `stationContextFace` again. Six copies of this recipe is what the builder replaced: a fix to the hover seam, the focus ring or the flush corner landed on whichever copies the author happened to open.',
+  );
+  assert.match(
+    src,
+    /function stationContextFace\(/,
+    'The builder is the SoT for the strip — exit, overflow, Photos, Claim, Listing, Pickup, boxed cube.',
+  );
+});
+
+test('the pickup cell is a bar cell, not a page-local pill', () => {
+  const chips = code(read(IDENTITY_CHIPS));
+  assert.match(
+    chips,
+    /STATION_CONTEXT_PICKUP_CHROME_CLASS/,
+    'FulfillmentPickupPill variant="rail" renders INSIDE the carton bar, so it composes the bar face. It shipped as a local `RAIL_PILL_BASE` spelling `text-role-micro uppercase tracking-wide` — 10px condensed shouting beside 12px sentence-case cells — and this guard could not see it, because the fork lived outside the two files the guard read. That is why this file is now one of them.',
+  );
+  assert.doesNotMatch(
+    chips,
+    /RAIL_PILL_BASE/,
+    'The local rail face is retired; deleting it is what makes the rule above true.',
   );
 });

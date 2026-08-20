@@ -50,7 +50,8 @@ describe('ProductSelector kiosk-split meta', () => {
     assert.match(src, /KIOSK_POS_CATEGORY/);
     assert.match(src, /KIOSK_POS_CATEGORY_LABEL/);
     assert.match(src, /KIOSK_POS_SIDEBAR/);
-    assert.match(src, /KIOSK_POS_SEARCH_INPUT/);
+    assert.match(src, /TechRailSearchBar/);
+    assert.match(src, /WorkbenchTriageBand/);
     assert.match(src, /KIOSK_POS_BROWSE_SCROLL/);
   });
 
@@ -68,7 +69,8 @@ describe('ProductSelector kiosk-split meta', () => {
     assert.match(src, /onSearchQueryChange\?/);
     assert.match(src, /hideBrowseSearch/);
     assert.doesNotMatch(src, /fuse|Fuse|cmd-k|cmdk|CommandPalette/i);
-    assert.match(src, /!hideBrowseSearch && renderSearchBar\(\)/);
+    assert.match(src, /<WorkbenchTriageBand[\s\S]*?search=\{chromeFindBar\}/);
+    assert.match(src, /KIOSK_POS_CARD_SELECTED_FRAME/);
   });
 
   it('keeps whole-catalog search live after kiosk first-page paint', () => {
@@ -76,6 +78,12 @@ describe('ProductSelector kiosk-split meta', () => {
     assert.match(src, /resolveCatalogProductPool/);
     assert.match(src, /shouldHydrateRootSearchPool/);
     assert.doesNotMatch(src, /const isAtRootLevel = !currentCategoryId && !showAllProducts/);
+  });
+
+  it('search filters products only — left accordion siblings stay mounted', () => {
+    assert.match(src, /if \(kioskSplit \|\| !search\.trim\(\)\) return rows/);
+    assert.match(src, /renderCategoryAccordion/);
+    assert.match(src, /data-kiosk-catalog-sidebar/);
   });
 
   it('hides the left-rail cart tray when the shell owns the right ledger', () => {

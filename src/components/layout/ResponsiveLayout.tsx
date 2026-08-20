@@ -74,10 +74,10 @@ const ThrowTaskHost = dynamic(
   { ssr: false },
 );
 // Persistent follow-up-work card (un-synced ticket photos, open receiving
-// exceptions). Global for the
-// same reason as the two hosts above and one of its own: it has to survive the
-// operator scanning on to the next carton, which is exactly when the surface
-// that would otherwise carry the state (the carton's own ticket chip) unmounts.
+// exceptions). Mounted here so it can survive a carton swap on non-Unbox
+// routes. Unbox itself never paints it (`isPendingWorkPromptHidden`) — the
+// scan bench already carries those facts on the carton, and a corner overlay
+// sits on Displays.
 // P3 — deferred, never in the first-paint path.
 const PendingWorkPrompt = dynamic(
   () => import('@/components/receiving/pending-work/PendingWorkPrompt').then((m) => m.PendingWorkPrompt),

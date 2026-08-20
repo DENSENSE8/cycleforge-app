@@ -1,8 +1,10 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Check, ChevronLeft, ChevronRight } from '../Icons';
+import { ChevronLeft, ChevronRight } from '../Icons';
 import { Button, IconButton, TextField } from '@/design-system/primitives';
+import { WorkbenchTriageBand } from '@/components/dashboard/workbench-shell';
+import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 import { StackedRowIdentity } from '@/components/ui/StackedRowIdentity';
 import { cornerClass } from '@/design-system/tokens/radius';
 import {
@@ -17,8 +19,11 @@ import {
   KIOSK_POS_CANVAS,
   KIOSK_POS_CARD,
   KIOSK_POS_CARD_CAPTION,
-  KIOSK_POS_CARD_CHECK,
   KIOSK_POS_CARD_SELECTED,
+  KIOSK_POS_CARD_SELECTED_FRAME,
+  KIOSK_POS_CARD_SELECT_DOT,
+  KIOSK_POS_CARD_SELECT_DOT_OFF,
+  KIOSK_POS_CARD_SELECT_DOT_ON,
   KIOSK_POS_CATEGORY,
   KIOSK_POS_CATEGORY_ACTIVE,
   KIOSK_POS_CATEGORY_IDLE,
@@ -26,8 +31,6 @@ import {
   KIOSK_POS_CATEGORY_STACK,
   KIOSK_POS_GRID,
   KIOSK_POS_IMAGE_WELL,
-  KIOSK_POS_SEARCH_HOST,
-  KIOSK_POS_SEARCH_INPUT,
   KIOSK_POS_SIDEBAR,
   KIOSK_POS_SIDEBAR_BODY,
 } from '@/app/kiosk/kiosk-pos-surface';
@@ -517,7 +520,10 @@ export function ProductSelector({
     );
 
   const filterLevelCategories = (rows: CategoryNode[]) => {
-    if (!search.trim()) return rows;
+    // Kiosk left rail is navigation chrome — search filters the product stage
+    // only. Filtering siblings here empties the accordion and reads as "the
+    // catalog disappeared." Staff stacked still narrows category chips by query.
+    if (kioskSplit || !search.trim()) return rows;
     const q = search.toLowerCase();
     return rows.filter(
       (c) => c.name.toLowerCase().includes(q) || c.fullPath.toLowerCase().includes(q),
@@ -604,9 +610,6 @@ export function ProductSelector({
                       : undefined
                 }
               >
-                {pos && (onPath || isCurrent) && (
-                  <Check className="h-4 w-4 shrink-0 text-text-default" aria-hidden />
-                )}
                 <span
                   className={
                     pos
@@ -656,9 +659,6 @@ export function ProductSelector({
             active: isAtRoot && (!showAllProducts || kioskSplit),
           })}
         >
-          {pos && isAtRoot && (!showAllProducts || kioskSplit) && (
-            <Check className="h-4 w-4 shrink-0 text-text-default" aria-hidden />
-          )}
           <span
             className={
               pos
@@ -706,19 +706,33 @@ export function ProductSelector({
     </div>
   );
 
+  const searchLabel = showAllProducts
+    ? 'Search all repairs'
+    : isAtRoot
+      ? 'Search repairs or categories'
+      : 'Search products';
+
+  const chromeFindBar = (
+    <TechRailSearchBar
+      variant="chrome"
+      placeholder={searchLabel}
+      value={search}
+      onChange={setSearch}
+      className="min-w-0 flex-1"
+      data-testid={pos ? 'kiosk-catalog-search' : undefined}
+    />
+  );
+
   const renderSearchBar = () => (
-    <div
-      ref={searchInputHostRef}
-      className={cn(
-        'flex items-stretch',
-        pos
-          ? KIOSK_POS_SEARCH_HOST
-          : flush
+      <div
+        ref={searchInputHostRef}
+        className={cn(
+          'flex items-stretch',
+          flush
             ? 'gap-0 border-b border-border-hairline bg-surface-sunken'
             : 'items-center gap-2',
-      )}
-    >
-      {!kioskSplit && (
+        )}
+      >
         <IconButton
           type="button"
           onClick={goBackOneLevel}
@@ -736,24 +750,15 @@ export function ProductSelector({
           ariaLabel="Go back"
           icon={<ChevronLeft className="h-4 w-4" />}
         />
-      )}
-      <TextField
-        label={showAllProducts ? 'Search all repairs' : isAtRoot ? 'Search repairs or categories' : 'Search products'}
-        value={search}
-        onChange={setSearch}
-        className="flex-1"
-        tone="blue"
-        appearance={flush ? 'flush' : 'default'}
-        inputClassName={pos ? KIOSK_POS_SEARCH_INPUT : undefined}
-      />
-    </div>
+        {chromeFindBar}
+      </div>
   );
 
   const renderProductsGrid = () => (
     <>
       {(loadingProducts || loadingRootSearch || filteredProducts.length > 0) && (
         <div
-          className={cn(pos ? 'space-y-4' : flush ? 'gap-0' : 'space-y-2')}
+          className={cn(pos ? 'gap-0' : flush ? 'gap-0' : 'space-y-2')}
           data-kiosk-product-browse
         >
           {!pos && (
@@ -811,6 +816,7 @@ export function ProductSelector({
                   <button
                     key={product.id}
                     type="button"
+                    data-testid="product-tile"
                     onClick={() => toggleProduct(product)}
                     className={
                       pos
@@ -863,16 +869,34 @@ export function ProductSelector({
                         </div>
                       )}
 
-                      {selected && (
+                      {/* Kiosk POS: circular pick indicator, top-left of the cell. */}
+                      {pos && (
+                        <span
+                          className={cn(
+                            KIOSK_POS_CARD_SELECT_DOT,
+                            selected
+                              ? KIOSK_POS_CARD_SELECT_DOT_ON
+                              : KIOSK_POS_CARD_SELECT_DOT_OFF,
+                          )}
+                          aria-hidden
+                        >
+                          <svg
+                            className="h-3.5 w-3.5"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            strokeWidth={3}
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                        </span>
+                      )}
+                      {selected && !pos && (
                         <div
-                          className={
-                            pos
-                              ? KIOSK_POS_CARD_CHECK
-                              : cn(
-                                  'absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center bg-blue-600',
-                                  flush ? cornerClass('flush') : 'rounded-full',
-                                )
-                          }
+                          className={cn(
+                            'absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center bg-blue-600',
+                            flush ? cornerClass('flush') : 'rounded-full',
+                          )}
                         >
                           <svg className="h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
@@ -919,6 +943,10 @@ export function ProductSelector({
                         </div>
                       </div>
                     )}
+                    {/* Last child — full-cell squared frame above image + caption. */}
+                    {pos && selected ? (
+                      <span className={KIOSK_POS_CARD_SELECTED_FRAME} aria-hidden />
+                    ) : null}
                   </button>
                 );
               })}
@@ -1252,10 +1280,32 @@ export function ProductSelector({
                   <h2 className={KIOSK_PANE_HEADER_TITLE}>{browseTitle}</h2>
                 </div>
               )}
+              {!hideBrowseSearch ? (
+                <WorkbenchTriageBand
+                  search={chromeFindBar}
+                  trailing={null}
+                  className="pr-0"
+                />
+              ) : null}
               <div className={KIOSK_POS_BROWSE_SCROLL}>
-                {!hideBrowseSearch && renderSearchBar()}
                 {renderProductsGrid()}
               </div>
+              {hideCartTray && selectedItems.length > 0 && onContinue ? (
+                <div className={KIOSK_PANE_FOOTER_BAND} data-kiosk-footer-band>
+                  <Button
+                    type="button"
+                    variant="primary"
+                    size="lg"
+                    onClick={onContinue}
+                    className={cn('h-full min-h-0 w-full flex-1 rounded-none', cornerClass('flush'))}
+                    data-kiosk-continue
+                  >
+                    {selectedItems.length > 1
+                      ? `Continue · ${selectedItems.length} services`
+                      : 'Continue'}
+                  </Button>
+                </div>
+              ) : null}
             </>
           )}
         </div>

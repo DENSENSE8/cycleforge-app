@@ -8,9 +8,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { Button } from '@/design-system/primitives';
 import { SignaturePad, type SignatureData } from '@/components/repair/SignaturePad';
-import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 import {
   computeKioskCartTotals,
@@ -26,7 +24,6 @@ import {
   KIOSK_CART_LINE_ROW,
   KIOSK_CUSTOMER_FACE,
   KIOSK_META,
-  KIOSK_PANE_FOOTER_BAND,
   KIOSK_PANE_HEADER_BAND,
   KIOSK_PANE_HEADER_TITLE,
   KIOSK_SECTION_LABEL,
@@ -156,17 +153,6 @@ export function KioskCustomerFace() {
         )}
       </div>
 
-      <div className={KIOSK_PANE_FOOTER_BAND}>
-        <Button
-          variant="secondary"
-          size="lg"
-          className={cn('h-full min-h-0 w-full flex-1 rounded-none', cornerClass('flush'))}
-          onClick={() => actions.setFace('staff', { manual: true })}
-          data-testid="kiosk-return-staff"
-        >
-          Staff
-        </Button>
-      </div>
     </div>
   );
 }

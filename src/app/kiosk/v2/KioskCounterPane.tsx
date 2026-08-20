@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { Button, TextField } from '@/design-system/primitives';
+import { KioskCustomerIntake } from '@/components/kiosk/KioskCustomerIntake';
 import { Loader2, Check } from '@/components/Icons';
 import { SignaturePad, type SignatureData } from '@/components/repair/SignaturePad';
 import type { SelectedItem, ProductSelection } from '@/components/repair/ProductSelector';
@@ -317,30 +318,12 @@ export function KioskCounterPane({
 
           <section>
             <h3 className={SECTION_LABEL}>2. Customer Information</h3>
-            <div className="space-y-4 bg-surface-card px-4 py-4">
-              <TextField
-                label="Phone number"
-                value={draft.phone}
-                onChange={(v) => patch({ phone: v })}
-                inputMode="tel"
-                autoComplete="tel"
-                appearance="flush"
-              />
-              <TextField
-                label="Name"
-                value={draft.name}
-                onChange={(v) => patch({ name: v })}
-                autoComplete="name"
-                appearance="flush"
-              />
-              <TextField
-                label="Email (optional)"
-                value={draft.email}
-                onChange={(v) => patch({ email: v })}
-                inputMode="email"
-                autoComplete="email"
-                appearance="flush"
-              />
+            <KioskCustomerIntake
+              heading={null}
+              className="bg-surface-card"
+              value={{ phone: draft.phone, name: draft.name, email: draft.email }}
+              onChange={(next) => patch(next)}
+              extras={<>
               {showOrderLookup ? (
                 <TextField
                   label="Order number"
@@ -359,7 +342,8 @@ export function KioskCounterPane({
                   Have an order number?
                 </Button>
               )}
-            </div>
+              </>}
+            />
           </section>
 
           {needsSignature(draft) && (

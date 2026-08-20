@@ -7,6 +7,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { Button, TextField } from '@/design-system/primitives';
+import { KioskCustomerIntake } from '@/components/kiosk/KioskCustomerIntake';
 import { Check, Loader2 } from '@/components/Icons';
 import type { KioskPickupSummary } from '@/lib/kiosk/order-pickup';
 import {
@@ -159,35 +160,31 @@ export function KioskPickupPane({ onReset }: KioskPickupPaneProps) {
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="flex w-full flex-col divide-y divide-border-hairline">
-          <section>
-            <h3 className={cn('border-b border-border-hairline px-4 py-2', KIOSK_SECTION_LABEL)}>
-              Find your order
-            </h3>
-            <div className="space-y-3 px-4 py-4">
+          <KioskCustomerIntake
+            heading="Find your order"
+            fields={['phone']}
+            value={{ phone, name: '', email: '' }}
+            onChange={(next) => {
+              setPhone(next.phone);
+              actions.setCustomer({ phone: next.phone });
+            }}
+            lead={
               <TextField
                 label="Order or repair number"
                 value={orderNumber}
                 onChange={setOrderNumber}
                 autoComplete="off"
+                tone="blue"
                 inputClassName="rounded-none"
                 data-testid="kiosk-pickup-order"
               />
-              <TextField
-                label="Phone number on the order"
-                value={phone}
-                onChange={(v) => {
-                  setPhone(v);
-                  actions.setCustomer({ phone: v });
-                }}
-                inputMode="tel"
-                autoComplete="tel"
-                inputClassName="rounded-none"
-              />
-              {error && (
+            }
+            extras={
+              error ? (
                 <p className="text-center font-semibold text-text-danger">{error}</p>
-              )}
-            </div>
-          </section>
+              ) : null
+            }
+          />
 
           {summary && (
             <section>

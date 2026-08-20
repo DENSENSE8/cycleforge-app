@@ -1,7 +1,7 @@
 # DOC catalog — machine-generated SoT
 
 > **Do not hand-edit.** Regenerate: `node scripts/portfolio-sot-sync.mjs`  
-> Generated: `2026-08-20T07:37:30.005Z` · Files: **709** · Repo: `cycleforge-app`  
+> Generated: `2026-08-20T22:01:28.635Z` · Files: **711** · Repo: `cycleforge-app`  
 > Parent index: [INDEX.md](./INDEX.md)
 
 Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*** id  
@@ -13,7 +13,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 
 | WT-ID | Absolute path | Branch | HEAD (short) | Exists |
 |-------|---------------|--------|--------------|--------|
-| `main` | `/Users/icecube/repos/cycleforge-app` | `main` | `b15cf37d9` | yes |
+| `main` | `/Users/icecube/repos/cycleforge-app` | `main` | `8155bb78d` | yes |
 | `ai-chat` | `/Users/icecube/repos/cycleforge-ai-chat` | `topic/ai-chat` | `3f55b275e` | yes |
 | `fba` | `/Users/icecube/repos/cycleforge-fba` | `topic/fba` | `3f55b275e` | yes |
 | `glass` | `/Users/icecube/repos/cycleforge-glass` | `glass-design-system` | `a331b1247` | yes |
@@ -396,7 +396,9 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 | `DOC-TODO-KIOSK-LIGHTHOUSE-SIDEBAR-HANDOFF-800A` | `WS-TODO-MISC` | [`todo/kiosk-lighthouse-sidebar-HANDOFF.md`](../todo/kiosk-lighthouse-sidebar-HANDOFF.md) |
 | `DOC-TODO-KIOSK-PAPERWORK-ICON-HANDOFF-EA0C` | `WS-TODO-MISC` | [`todo/kiosk-paperwork-icon-HANDOFF.md`](../todo/kiosk-paperwork-icon-HANDOFF.md) |
 | `DOC-TODO-KIOSK-POS-MODERNIZATION-HANDOFF-018E` | `WS-TODO-MISC` | [`todo/kiosk-pos-modernization-HANDOFF.md`](../todo/kiosk-pos-modernization-HANDOFF.md) |
+| `DOC-TODO-KIOSK-REMAINING-AND-E2E-PLAN-34F3` | `WS-TODO-MISC` | [`todo/kiosk-remaining-and-e2e-PLAN.md`](../todo/kiosk-remaining-and-e2e-PLAN.md) |
 | `DOC-TODO-KIOSK-SALES-INTAKE-GEMINI-RESEARCH-BRIEFING-5DAF` | `WS-TODO-MISC` | [`todo/kiosk-sales-intake-GEMINI-RESEARCH-BRIEFING.md`](../todo/kiosk-sales-intake-GEMINI-RESEARCH-BRIEFING.md) |
+| `DOC-TODO-KIOSK-WALKIN-PAPERWORK-PLAN-7B7E` | `WS-TODO-MISC` | [`todo/kiosk-walkin-paperwork-PLAN.md`](../todo/kiosk-walkin-paperwork-PLAN.md) |
 | `DOC-TODO-LANE-A-PROCEDURE-MODEL-6E1B` | `WS-TODO-MISC` | [`todo/scan-station-procedure/LANE-A-procedure-model.md`](../todo/scan-station-procedure/LANE-A-procedure-model.md) |
 | `DOC-TODO-LANE-B-DECK-MOTION-SCROLL-660E` | `WS-TODO-MISC` | [`todo/scan-station-procedure/LANE-B-deck-motion-scroll.md`](../todo/scan-station-procedure/LANE-B-deck-motion-scroll.md) |
 | `DOC-TODO-LANE-C-SCAN-CUES-18A5` | `WS-TODO-MISC` | [`todo/scan-station-procedure/LANE-C-scan-cues.md`](../todo/scan-station-procedure/LANE-C-scan-cues.md) |
@@ -1047,7 +1049,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 - `DOC-TEN-SLICE-TEMPLATE-5BE0` — [`tenancy/SLICE_TEMPLATE.md`](../tenancy/SLICE_TEMPLATE.md)
 - `DOC-TEN-TABLES-9F18` — [`tenancy/_analysis/tables.md`](../tenancy/_analysis/tables.md)
 
-### `WS-TODO-MISC` (501)
+### `WS-TODO-MISC` (503)
 
 - `DOC-TODO-00-INDEX-9E1E` — [`todo/kiosk-counter-transaction/00-INDEX.md`](../todo/kiosk-counter-transaction/00-INDEX.md)
 - `DOC-TODO-01-RECEIVING-BOH-SLIM-4C77` — [`todo/foh-boh-surface-split/01-receiving-boh-slim.md`](../todo/foh-boh-surface-split/01-receiving-boh-slim.md)
@@ -1222,7 +1224,9 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 - `DOC-TODO-KIOSK-LIGHTHOUSE-SIDEBAR-HANDOFF-800A` — [`todo/kiosk-lighthouse-sidebar-HANDOFF.md`](../todo/kiosk-lighthouse-sidebar-HANDOFF.md)
 - `DOC-TODO-KIOSK-PAPERWORK-ICON-HANDOFF-EA0C` — [`todo/kiosk-paperwork-icon-HANDOFF.md`](../todo/kiosk-paperwork-icon-HANDOFF.md)
 - `DOC-TODO-KIOSK-POS-MODERNIZATION-HANDOFF-018E` — [`todo/kiosk-pos-modernization-HANDOFF.md`](../todo/kiosk-pos-modernization-HANDOFF.md)
+- `DOC-TODO-KIOSK-REMAINING-AND-E2E-PLAN-34F3` — [`todo/kiosk-remaining-and-e2e-PLAN.md`](../todo/kiosk-remaining-and-e2e-PLAN.md)
 - `DOC-TODO-KIOSK-SALES-INTAKE-GEMINI-RESEARCH-BRIEFING-5DAF` — [`todo/kiosk-sales-intake-GEMINI-RESEARCH-BRIEFING.md`](../todo/kiosk-sales-intake-GEMINI-RESEARCH-BRIEFING.md)
+- `DOC-TODO-KIOSK-WALKIN-PAPERWORK-PLAN-7B7E` — [`todo/kiosk-walkin-paperwork-PLAN.md`](../todo/kiosk-walkin-paperwork-PLAN.md)
 - `DOC-TODO-LANE-A-PROCEDURE-MODEL-6E1B` — [`todo/scan-station-procedure/LANE-A-procedure-model.md`](../todo/scan-station-procedure/LANE-A-procedure-model.md)
 - `DOC-TODO-LANE-B-DECK-MOTION-SCROLL-660E` — [`todo/scan-station-procedure/LANE-B-deck-motion-scroll.md`](../todo/scan-station-procedure/LANE-B-deck-motion-scroll.md)
 - `DOC-TODO-LANE-C-SCAN-CUES-18A5` — [`todo/scan-station-procedure/LANE-C-scan-cues.md`](../todo/scan-station-procedure/LANE-C-scan-cues.md)

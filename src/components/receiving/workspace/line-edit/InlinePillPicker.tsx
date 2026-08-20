@@ -31,22 +31,13 @@ import {
 } from '@/components/station/entity-context/station-identity-chrome';
 import { useHoverSurface } from '@/hooks/useHoverSurface';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/design-system/primitives/DropdownMenu';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { motionBezier, framerDuration } from '@/design-system/foundations/motion-framer';
 import { cn } from '@/utils/_cn';
 import {
-  CHIP_HOVER_MENU_ICON_CLASS,
-  CHIP_HOVER_MENU_ITEM_CLASS,
-  CHIP_HOVER_MENU_ITEM_SEAM_CLASS,
-  CHIP_HOVER_MENU_ITEM_TONE,
-  CHIP_HOVER_MENU_PANEL_CLASS,
-} from '@/components/ui/copy-chip-hover-menu-chrome';
+  ChipHoverMenuSurface,
+  type ChipHoverMenuRow,
+} from '@/components/ui/ChipHoverMenuSurface';
 
 export interface InlinePillOption {
   value: string;
@@ -286,11 +277,11 @@ export function InlinePillPicker({
    * Explicit closes (select, Escape, outside click) therefore route through
    * `hover.close()` as well, so the owner is told rather than inferred.
    *
-   * `modal={false}` on the Radix `Root` below is REQUIRED: the default puts
-   * `pointer-events: none` on `<body>`, so the trigger stops receiving pointer
-   * events, fires `mouseleave`, the debounce closes it, the pointer "re-enters"
-   * and it reopens — a flashing loop. Non-modal also stops the menu trapping
-   * focus, which a hover affordance must never do on a bench owned by the wedge.
+   * The panel is NON-MODAL by construction ({@link ChipHoverMenuSurface} →
+   * `AnchoredLayer`): nothing puts `pointer-events: none` on `<body>` and
+   * nothing traps focus. Both matter on a bench the wedge owns — a modal layer
+   * made the trigger stop receiving pointer events, which fired `mouseleave`,
+   * closed the panel, let the pointer "re-enter" and reopen it: a flashing loop.
    */
   const hover = useHoverSurface({
     disabled: readOnly || disabled || !isMenu,
@@ -304,7 +295,7 @@ export function InlinePillPicker({
   const menuOpen = isMenu ? hover.isOpen : open;
 
   /**
-   * Radix asking to close (Escape, outside click, item select) must reach the
+   * A close request (Escape, outside click, item select) must reach the
    * OWNER, or the registry keeps the slot and the menu never reopens. The
    * parent is still notified so the bar can unfreeze its layout.
    */
@@ -431,7 +422,59 @@ export function InlinePillPicker({
      * gesture. The menu itself already names the dimension (`aria-label`) and
      * shows the full option labels, so the tooltip said nothing it didn't.
      */
-    const menuTrigger = <DropdownMenuTrigger asChild>{collapsedButton}</DropdownMenuTrigger>;
+
+    /**
+     * ONE panel for the whole carton bar. The rows below are data, rendered by
+     * {@link ChipHoverMenuSurface} — the same portaled, bottom-CENTRED panel the
+     * identity chips and the listing cell drop. This used to be a Radix
+     * `DropdownMenu`: same class tokens, different mechanism, different
+     * anchoring, and (unlike the portal) a popper that the locked-720 centre's
+     * `overflow-hidden` could clip. Selecting a rung closes through the hover
+     * engine, which Radix used to do for us.
+     */
+    const selectAndClose = (next: string) => {
+      onSelect(next);
+      onMenuOpenChange(false);
+    };
+    const menuRows: ChipHoverMenuRow[] = [
+      ...menuLeadItems.map((item) => ({
+        id: item.id,
+        label: item.label,
+        icon: item.icon,
+        onSelect: () => {
+          item.onSelect();
+          onMenuOpenChange(false);
+        },
+      })),
+      ...options.map((opt) => ({
+        id: opt.value || '__none__',
+        label: opt.label,
+        // Dot rides the SAME 3.5 icon box every other carton-bar menu uses for
+        // its glyph. `rawIcon` keeps the identity colour the row is showing.
+        icon: <IdentityDot opt={opt} />,
+        rawIcon: true,
+        active: opt.value === value,
+        ariaLabel: opt.title ?? opt.label,
+        onSelect: () => selectAndClose(opt.value),
+      })),
+      ...(onEditCatalog
+        ? [
+            {
+              id: '__edit-catalog__',
+              label: editCatalogLabel,
+              icon: <Pencil className="h-3.5 w-3.5" />,
+              // A footer, not a second panel — the SAME seam the option rows
+              // use, never a heavier rule.
+              seam: true,
+              onSelect: () => {
+                onEditCatalog();
+                onMenuOpenChange(false);
+              },
+              'data-testid': 'inline-pill-edit-catalog',
+            } satisfies ChipHoverMenuRow,
+          ]
+        : []),
+    ];
 
     return (
       <div
@@ -443,109 +486,21 @@ export function InlinePillPicker({
           'relative flex h-full shrink-0 self-stretch items-stretch',
           disabled && 'pointer-events-none opacity-50',
         )}
-        // Menu presentation opens from the hover ENGINE (`hover.triggerProps`
-        // above → `hover.isOpen` → `menuOpen`). The inline presentation is
-        // parent-controlled, so it — and ONLY it — drives open on mouse enter.
-        // Spreading these unconditionally clobbered the engine's own
-        // onMouseEnter/onMouseLeave (later props win), so the menu never opened
-        // on hover.
-        {...(!isMenu && !readOnly
-          ? {
-              onMouseEnter: () => onOpenChange(true),
-              onMouseLeave: () => onOpenChange(false),
-            }
-          : {})}
       >
         {readOnly ? (
           <div className="flex h-full shrink-0 items-stretch">{collapsedFaceWrap}</div>
         ) : (
-          <DropdownMenu open={menuOpen} onOpenChange={onMenuOpenChange} modal={false}>
-            {menuTrigger}
-            <DropdownMenuContent
-              // Bottom-CENTER under the pill — one anchoring for every menu the
-              // carton bar opens (classify · listing · photos), so the strip
-              // reads as one system rather than cells that drop panels in
-              // different places.
-              align="center"
-              side="bottom"
-              sideOffset={6}
-              avoidCollisions={false}
-              {...hover.surfaceProps}
-              // Closing must hand focus back to the bench, not park it on the
-              // trigger — the wedge owns focus on a scan station.
-              onCloseAutoFocus={(e) => e.preventDefault()}
-              className={CHIP_HOVER_MENU_PANEL_CLASS}
-              aria-label={ariaLabel}
-            >
-              {menuLeadItems.map((item, i) => (
-                <DropdownMenuItem
-                  key={item.id}
-                  onSelect={() => item.onSelect()}
-                  className={cn(
-                    CHIP_HOVER_MENU_ITEM_CLASS,
-                    i > 0 && CHIP_HOVER_MENU_ITEM_SEAM_CLASS,
-                    CHIP_HOVER_MENU_ITEM_TONE.default,
-                  )}
-                  aria-label={item.label}
-                >
-                  {/* Same 3.5 icon box as the option dots and the Edit-colours
-                      footer, so every row in this panel starts at one x. */}
-                  {item.icon ? (
-                    <span className={cn(CHIP_HOVER_MENU_ICON_CLASS, 'text-text-soft')} aria-hidden>
-                      {item.icon}
-                    </span>
-                  ) : null}
-                  <span className="min-w-0 flex-1 truncate">{item.label}</span>
-                </DropdownMenuItem>
-              ))}
-              {options.map((opt, i) => {
-                const isActive = opt.value === value;
-                return (
-                  <DropdownMenuItem
-                    key={opt.value || '__none__'}
-                    onSelect={() => onSelect(opt.value)}
-                    className={cn(
-                      CHIP_HOVER_MENU_ITEM_CLASS,
-                      (menuLeadItems.length > 0 || i > 0) && CHIP_HOVER_MENU_ITEM_SEAM_CLASS,
-                      isActive
-                        ? CHIP_HOVER_MENU_ITEM_TONE.active
-                        : CHIP_HOVER_MENU_ITEM_TONE.default,
-                    )}
-                    aria-label={opt.title ?? opt.label}
-                  >
-                    {/* Dot rides the SAME 3.5 icon box every other carton-bar
-                        menu uses for its glyph, so option labels start at the
-                        same x as History / Edit / overflow rows. */}
-                    <span className={CHIP_HOVER_MENU_ICON_CLASS} aria-hidden>
-                      <IdentityDot opt={opt} />
-                    </span>
-                    <span className="min-w-0 flex-1 truncate">{opt.label}</span>
-                  </DropdownMenuItem>
-                );
-              })}
-              {onEditCatalog ? (
-                <DropdownMenuItem
-                  key="__edit-catalog__"
-                  onSelect={() => onEditCatalog()}
-                  className={cn(
-                    CHIP_HOVER_MENU_ITEM_CLASS,
-                    // The hairline is the SAME seam token the option rows use —
-                    // this is a footer, not a second panel, so it must not
-                    // introduce a heavier rule than the rows above it.
-                    CHIP_HOVER_MENU_ITEM_SEAM_CLASS,
-                    CHIP_HOVER_MENU_ITEM_TONE.default,
-                  )}
-                  aria-label={editCatalogLabel}
-                  data-testid="inline-pill-edit-catalog"
-                >
-                  <span className={CHIP_HOVER_MENU_ICON_CLASS} aria-hidden>
-                    <Pencil className="h-3.5 w-3.5" />
-                  </span>
-                  <span className="min-w-0 flex-1 truncate">{editCatalogLabel}</span>
-                </DropdownMenuItem>
-              ) : null}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <>
+            {collapsedButton}
+            <ChipHoverMenuSurface
+              open={menuOpen}
+              onClose={() => onMenuOpenChange(false)}
+              anchorRef={ref}
+              menuLabel={ariaLabel}
+              rows={menuRows}
+              surfaceProps={hover.surfaceProps}
+            />
+          </>
         )}
       </div>
     );
