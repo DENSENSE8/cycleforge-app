@@ -190,4 +190,102 @@ describe('Station Displays chrome rows', () => {
       'SoT must not name deleted footer components',
     );
   });
+
+  /**
+   * The PARKED strip shows the Root Index as icons and has no foot button
+   * (2026-08-19). Both halves matter: the button was a second door onto the one
+   * action the whole strip already performs, and the empty mid it sat under
+   * told the operator nothing about what was parked behind it.
+   */
+  it('the parked strip carries the index rail, not a restore button', () => {
+    const col = read(COLUMN);
+    assert.match(col, /parkedRail\?: \(open: \(\) => void\) => ReactNode;/, 'the strip takes a rail');
+    assert.doesNotMatch(
+      col,
+      /unbox-displays-parked-expand/,
+      'the foot restore button is deleted — the strip itself restores',
+    );
+    const parked = col.slice(col.indexOf('data-displays-parked'), col.indexOf('data-displays-parked') + 900);
+    assert.match(parked, /onClick=\{restore\}/, 'whole-strip click still restores');
+
+    const stack = read(STACK);
+    assert.match(stack, /parkedRail=\{\(open\) => \(/, 'the stack fills the rail');
+    assert.match(stack, /StationDisplaysParkedRail/, 'via the shared rail component');
+  });
+
+  /**
+   * The header `→|` PARKS; it does not unmount (2026-08-19). It called the
+   * host's `onClose` until then, so the icon strip was reachable only by
+   * dragging the sash past its min — a gesture most operators never find.
+   * Full close stays Esc's job, so the two controls keep two meanings.
+   */
+  it('the band close parks the column instead of unmounting it', () => {
+    const col = read(COLUMN);
+    assert.match(col, /const park = useCallback\(\(\) => setParked\(true\), \[\]\);/);
+    const band = col.slice(col.indexOf('variant="column-close"'), col.indexOf('variant="column-close"') + 200);
+    assert.match(band, /onClick=\{park\}/, 'the band `→|` parks');
+    assert.doesNotMatch(band, /onClick=\{onClose\}/, 'it must not unmount the column');
+    assert.match(col, /useEscapeClose\(true, onEscape \?\? onClose\)/, 'Esc keeps the full close');
+    assert.match(
+      col,
+      /if \(collapsed\) restore\(\);/,
+      'a parked column owns ⌘] — no edge toggle is mounted in that state',
+    );
+  });
+
+  /**
+   * BOTH closed states show the index — the parked column AND the scan-station
+   * utility rail (the one an operator actually sees, since the column unmounts
+   * on Esc). They are different components; an operator must not have to know
+   * which one they are looking at to reach a display.
+   */
+  it('the closed scan-station strip carries the same rail as the parked column', () => {
+    const body = read('src/components/receiving/workspace/UnboxDisplaysUtilityRailBody.tsx');
+    assert.match(body, /indexRail\?: ReactNode;/, 'the closed strip takes the rail');
+    assert.match(body, /\{indexRail\}/, 'and paints it in the mid');
+
+    const host = read('src/components/receiving/workspace/LineEditPanel.tsx');
+    const at = host.indexOf('<UnboxDisplaysUtilityRailBody');
+    assert.ok(at >= 0, 'Unbox mounts the closed strip');
+    const mount = host.slice(at, at + 900);
+    assert.match(mount, /StationDisplaysParkedRail/, 'fed by the SAME rail component');
+  });
+
+  /**
+   * The rail's cells are the 40px nav beam's icon chrome, not a hand-rolled
+   * twin. The first draft used its own `h-7 w-7` box with its own hover — a
+   * second answer to a question the header already answers, with a gutter
+   * either side so the wash floated instead of filling the strip.
+   */
+  it('rail cells compose the header icon token, edge to edge', () => {
+    const rail = read('src/components/station/displays/StationDisplaysParkedRail.tsx');
+    assert.match(rail, /HEADER_ICON_BTN_CLASS/, 'hover depth is the header wash');
+    assert.match(rail, /TOP_CHROME_ICON_FACE/, 'glyph box + nav stroke are the header face');
+    assert.match(rail, /HEADER_ICON_BTN_OPEN_CLASS/, 'the open/active fill is the header token too');
+    assert.match(rail, /gap-0/, 'cells abut so the wash runs across the seam');
+    assert.doesNotMatch(
+      rail,
+      /hover:bg-surface-sunken/,
+      'never re-declare the hover wash — it arrives with the header token',
+    );
+    assert.doesNotMatch(
+      rail,
+      /\.sort\(|recent|mru/i,
+      'a fixed rail is reachable by muscle memory; a reordering one is not',
+    );
+  });
+
+  it('the LEFT parked strip lost its foot button too', () => {
+    const left = read('src/components/sidebar/tech/left-dock-toggle.tsx');
+    assert.doesNotMatch(
+      left,
+      /function LeftDockExpandButton/,
+      'the left foot button is deleted, not parked',
+    );
+    assert.match(
+      left,
+      /data-testid=\{testId\}/,
+      'the strip itself carries the handle its hosts pass',
+    );
+  });
 });

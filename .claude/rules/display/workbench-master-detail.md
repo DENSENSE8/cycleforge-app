@@ -81,7 +81,8 @@ When using the sidebar map, three structural slots, in this order:
   another section; manual Back leaves the root map without stealing focus. Domains stay flat —
   an all-sections drill charged a click to reveal `Catalog › Catalog`. State is
   `stationsDrillOpen` only — never restore `drillId` / `renderRoot` / `renderDrill`.
-  A footer-pinned `TechRailSearchBar` swaps map/drill for ranked destinations.
+  A **top-pinned** `TechRailSearchBar` (under the 40px band, above the Scan
+  Stations row — 2026-08-19) swaps map/drill for ranked destinations.
   Membership: `mainGroup` / `stationGroup` / `domainGroup` via `spineSectionIdForPage`.
   **Declare membership identically in BOTH `APP_SIDEBAR_NAV` and `SIDEBAR_PAGE_NAV`**.
 

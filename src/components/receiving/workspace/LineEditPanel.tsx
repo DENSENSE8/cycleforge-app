@@ -48,6 +48,7 @@ import {
 } from './line-edit/unbox-displays-nav';
 import { yieldUnboxStationPushesOnAssistantOpen } from './line-edit/unbox-right-edge';
 import {
+  StationDisplaysParkedRail,
   StationDisplaysPushStack,
   STATION_DISPLAYS_HOST_PAD_CLASS,
   type DisplaysVisitFrame,
@@ -827,6 +828,16 @@ export function LineEditPanel({
   const utilityRailBody = !showDisplays ? (
     <UnboxDisplaysUtilityRailBody
       onOpenDisplays={openDisplaysIndex}
+      indexRail={
+        <StationDisplaysParkedRail
+          rows={displayIndexRows}
+          tabs={unboxSideTabs}
+          activeId={activeSideTab ?? null}
+          // Same contract as the parked strip: a cell names a leaf, so land
+          // that leaf rather than the index the operator would then re-pick.
+          onOpenLeaf={(id) => openDisplays(id as UnboxSideTab)}
+        />
+      }
       cartonCursor={
         showCartonCursor ? (
           <ScanStationCartonCursor

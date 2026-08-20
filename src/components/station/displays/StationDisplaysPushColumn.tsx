@@ -31,15 +31,15 @@
  */
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
-import { ArrowLeftToLine, Maximize2, Minimize2 } from '@/components/Icons';
+import { Maximize2, Minimize2 } from '@/components/Icons';
 import {
   STATION_CHROME_ROW_FACE,
   STATION_CHROME_SEAM_HAIRLINE,
 } from '@/components/station/entity-context';
-import { STATION_COLUMN_FOOTER_BAND_FACE } from '@/components/layout/header-shell';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { HorizontalEdgeResizeHandle } from '@/design-system/components/HorizontalEdgeResizeHandle';
 import { StationDisplaysEdgeToggle } from './StationDisplaysEdgeToggle';
+import { useStationDisplaysToggleHotkey } from './displays-toggle-hotkey';
 import {
   EDGE_RESIZE_COLLAPSE_SLACK_PX,
   useEscapeClose,
@@ -125,6 +125,7 @@ export function StationDisplaysPushColumn({
   headerRightSlot,
   headerActions,
   subHeader,
+  parkedRail,
   children,
 }: {
   ariaLabel: string;
@@ -182,6 +183,13 @@ export function StationDisplaysPushColumn({
    * does not refine the leaf.
    */
   subHeader?: ReactNode;
+  /**
+   * PARKED-strip content, given the restore callback so a cell can open the
+   * column ON the display it names. Rendered instead of the old empty mid +
+   * foot button: 32px of chrome that says what is behind it beats 32px that
+   * says nothing and repeats the click the whole strip already accepts.
+   */
+  parkedRail?: (open: () => void) => ReactNode;
   children: ReactNode;
 }) {
   useEscapeClose(true, onEscape ?? onClose);
@@ -214,6 +222,19 @@ export function StationDisplaysPushColumn({
   // — unless the frame is still too narrow (`stationDisplaysCollapsed`).
   const [parked, setParked] = useState(false);
   const collapsed = parked || stationDisplaysCollapsed;
+  /**
+   * The header `→|` PARKS (2026-08-19) — it does not unmount the column.
+   *
+   * It used to call the host's `onClose`, which took the column off screen
+   * entirely, so the parked icon strip was only reachable by dragging the sash
+   * past its min — a gesture most operators never find. Parking on the control
+   * they already use is what makes the strip the normal closed state.
+   *
+   * Full close still exists and is Esc's job (`onEscape` → leaf → index →
+   * `onClose`). Two controls, two meanings: `→|` gets the column out of the
+   * way and leaves the index one click away; Esc puts it away.
+   */
+  const park = useCallback(() => setParked(true), []);
   const restore = useCallback(() => {
     // Frame auto-park refuses restore while the pane still cannot seat the
     // column — that would paint Displays off-screen again.
@@ -317,6 +338,24 @@ export function StationDisplaysPushColumn({
     [],
   );
 
+  /**
+   * While PARKED, this column owns ⌘] — because nothing else does.
+   *
+   * The chord's normal owner is whichever `StationDisplaysEdgeToggle` is
+   * mounted (`←|` pane-open when the column is absent, `→|` column-close when
+   * it is open). A parked column mounts neither: the host still believes
+   * Displays is open, so the pane's `←|` is gone, and the parked strip paints
+   * no band. Without this the chord would be dead in exactly the state the
+   * operator most needs it.
+   *
+   * The callback no-ops while open, so the band's toggle stays the single
+   * ACTING owner and the two are never both live.
+   */
+  const parkedChordToggle = useCallback(() => {
+    if (collapsed) restore();
+  }, [collapsed, restore]);
+  useStationDisplaysToggleHotkey(parkedChordToggle);
+
   // Pointer into Displays claims Right as keyboard owner (← → → history; focus face).
   const { isOwner: isRightOwner, claim: claimKeyboardRegion } = useKeyboardRegionOwner();
   const rightOwnsKeyboard = isRightOwner('right');
@@ -366,30 +405,21 @@ export function StationDisplaysPushColumn({
           frameParked && 'cursor-default',
         )}
       >
-        {/* Empty mid — the whole strip is clickable when restore is allowed. */}
-        <div className="min-h-0 flex-1" aria-hidden />
-        {/* Restore control at the strip's foot — a mirror of the LEFT rail's
-            parked-strip expand, which is what this seat has always answered to.
-            It deliberately does not follow the open column's dismiss up to the
-            header band (2026-08-19): a parked strip is 32px of chrome with no
-            band to sit in, and both parked rails restore from the same corner. */}
-        <div className={cn(STATION_COLUMN_FOOTER_BAND_FACE, 'justify-center')}>
-          <HoverTooltip label={showLabel} asChild focusable={false}>
-            <IconButton
-              size="sm"
-              tone="neutral"
-              ariaLabel={showLabel}
-              disabled={frameParked}
-              icon={<ArrowLeftToLine className="h-3.5 w-3.5" />}
-              onClick={(e) => {
-                e.stopPropagation();
-                restore();
-              }}
-              className="h-full rounded-none"
-              data-testid="unbox-displays-parked-expand"
-            />
-          </HoverTooltip>
-        </div>
+        {/* The Root Index as icons (2026-08-19). The strip used to be an empty
+            mid plus a restore button at its foot; both are gone. The foot
+            button spent a permanent cell on the one action the WHOLE strip
+            already performs, and the empty mid told the operator nothing about
+            what was parked behind it. Now the strip shows the displays and a
+            cell opens the one it names — the click an operator was going to
+            make anyway, minus the intermediate open.
+
+            Whole-strip click still restores (role=button above); the rail stops
+            propagation so a cell never fires both. */}
+        {frameParked ? (
+          <div className="min-h-0 flex-1" aria-hidden />
+        ) : (
+          (parkedRail?.(restore) ?? <div className="min-h-0 flex-1" aria-hidden />)
+        )}
       </div>
     );
   }
@@ -487,7 +517,7 @@ export function StationDisplaysPushColumn({
             <span className={STATION_DISPLAYS_PUSH_TOP_CELL}>
               <StationDisplaysEdgeToggle
                 variant="column-close"
-                onClick={onClose}
+                onClick={park}
               />
             </span>
           </div>

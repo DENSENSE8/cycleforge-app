@@ -58,9 +58,11 @@ const SPINE_ROW_ICON_CLASS = 'h-4 w-4 shrink-0';
  * **Scan Stations first (2026-08-03)**, because the benches are what this
  * product is for — grouped by spacing/order alone, no rule between sections
  * (2026-08-16, the map has zero horizontal hairlines top to bottom, matching
- * the context rail beside it); a footer-pinned {@link TechRailSearchBar} (`density="row"`,
- * the shared ~33px band used by station recent rails too) sits above the
- * footer band — Operations Studio · Admin · Settings — then
+ * the context rail beside it); a TOP-pinned {@link TechRailSearchBar}
+ * (`variant="chrome"`) sits directly under the 40px top band and directly
+ * above the first section row, so find is above the list it searches — the
+ * same seat Displays row 2 and the Unbox sheet's Band 3 use. Below the map:
+ * the footer band — Operations Studio · Admin · Settings — then
  * {@link StaffAccountFooter}.
  *
  * ## The drill is gone (2026-08-02)
@@ -997,25 +999,44 @@ export function SidebarNavList({
           a click and the bench being reached for.
           Nothing is keyed or wrapped now: the three branches render different
           elements, so React swaps them on the same frame. */}
+      {/* Find sits ABOVE the list it searches (ruled 2026-08-19), directly under
+          the 40px top band and directly above the first section row (Scan
+          Stations). It was footer-pinned above Settings/Admin until then.
+
+          Two reasons it moved, and the second is the one that generalises:
+          a find field below its own results asks the operator to look down to
+          type and up to read; and this app now answers "where is the find box"
+          the same way on every surface that has one — Displays row 2, the Unbox
+          sheet's Band 3, and this spine all put it at the top, so an operator
+          never hunts for it.
+
+          `variant="chrome"` is the same face those two surfaces use. The rail
+          variant is deliberately NOT reused: it owns
+          `STATION_COLUMN_FOOTER_BAND_FACE`, whose hairline is on TOP for a
+          floor band — at the head of a column that rule would draw against the
+          band above it and leave the list below unseparated.
+
+          `shrink-0` and outside the scrollport, so it stays put while the map
+          scrolls. A find field that scrolls away is the defect this move fixes,
+          not a new one to introduce. */}
+      <div
+        data-spine-find
+        className="w-full shrink-0 border-b border-border-hairline"
+      >
+        <TechRailSearchBar
+          variant="chrome"
+          value={navFilter}
+          onChange={setNavFilter}
+          onKeyDown={handleFilterKeyDown}
+          placeholder="Go to…"
+          className="min-w-0 flex-1"
+        />
+      </div>
       <div data-spine-scrollport className="min-h-0 flex-1 overflow-y-auto p-0">
         {searching ? renderSearchResults() : renderMap()}
       </div>
 
       <div className="flex w-full shrink-0 flex-col">
-        {/* One placeholder, because the box now does ONE thing everywhere: it
-            searches every destination. It used to say "Filter sections…" at the
-            root and "Filter pages…" in a drill — two behaviours from one field,
-            and the root one described filtering categories rather than finding
-            a page. */}
-        {/* `density="row"` — shared h-8 floor band (spine + station recent rails).
-            Sign-in below is the true column floor (aligns with context filters). */}
-        <TechRailSearchBar
-          value={navFilter}
-          onChange={setNavFilter}
-          onKeyDown={handleFilterKeyDown}
-          placeholder="Go to…"
-          density="row"
-        />
         {bottomPages.length > 0 ? (
           <div className="w-full p-0">
             {bottomPages.map((page) => renderRow(page, 'bottom', neutralAccent, { pinned: true }))}
