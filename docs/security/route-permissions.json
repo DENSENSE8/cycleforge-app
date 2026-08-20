@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-08-19T18:48:24Z",
+  "generatedAt": "2026-08-20T02:21:03Z",
   "totalRoutes": 936,
   "summary": {
     "permissionGated": 796,
@@ -5368,15 +5368,6 @@
       "exemptReason": null
     },
     {
-      "path": "/api/receiving/nas-archive-pending/route.ts",
-      "methods": [
-        "GET"
-      ],
-      "gate": "withAuth",
-      "permission": "receiving.view",
-      "exemptReason": null
-    },
-    {
       "path": "/api/receiving/nas-archive-test/route.ts",
       "methods": [
         "POST"
@@ -5396,6 +5387,15 @@
     },
     {
       "path": "/api/receiving/pending-unboxing/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "receiving.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/receiving/pending-work/route.ts",
       "methods": [
         "GET"
       ],

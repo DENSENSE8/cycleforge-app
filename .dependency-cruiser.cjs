@@ -66,6 +66,18 @@ module.exports = {
       to: { path: '^src/components/dashboard/DashboardScrollShell\\.tsx$' },
     },
     {
+      name: 'pending-work-card-has-one-mount',
+      severity: 'error',
+      comment:
+        'The pending-work card is ONE card for N sources. Its whole point is that ' +
+        'follow-up work does not multiply into a corner full of competing cards on a ' +
+        'focus-locked scan bench, so only the global host (ResponsiveLayout) may mount ' +
+        'it. A feature that wants to surface pending work adds a SOURCE to ' +
+        'src/lib/receiving/pending-work.ts — it does not mount a second card.',
+      from: { pathNot: '^src/components/layout/ResponsiveLayout\\.tsx$' },
+      to: { path: '^src/components/receiving/pending-work/PendingWorkPrompt\\.tsx$' },
+    },
+    {
       name: 'use-the-scan-host-not-the-utility-rail',
       severity: 'error',
       comment:

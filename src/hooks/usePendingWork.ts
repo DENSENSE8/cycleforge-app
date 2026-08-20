@@ -9,28 +9,28 @@ import {
   getStationChannelName,
   safeChannelName,
 } from '@/lib/realtime/channels';
-import type { NasArchivePendingItem } from '@/lib/receiving/nas-archive-pending';
+import type { PendingWorkItem, PendingWorkSource } from '@/lib/receiving/pending-work-model';
 
-export type { NasArchivePendingItem };
+export type { PendingWorkItem, PendingWorkSource };
 
-/** Local — re-export it the moment a second module needs to invalidate this key. */
-const nasArchivePendingQueryKey = (receivingId?: number | null) =>
-  ['nas-archive-pending', receivingId ?? 'all'] as const;
+export const pendingWorkQueryKey = (receivingId?: number | null) =>
+  ['pending-work', receivingId ?? 'all'] as const;
 
 /**
- * Cartons whose ticket has photos this staffer took after it was filed, still
- * un-synced to the NAS.
+ * Follow-up work this staffer owes, live.
  *
  * Realtime is the SAME pair {@link useReceivingPhotosRealtimeRefresh} listens
  * on — phone-bridge `receiving_photo_uploaded` (org + staff) and station
- * `receiving-photo.changed` (org) — so the prompt lights up on the same message
- * that already swaps a new shot into the photo peek. It is deliberately NOT
- * scoped to one carton: the whole point is that it still appears after the
- * operator has scanned on to the next box.
+ * `receiving-photo.changed` (org) — so the card lights up on the same message
+ * that already swaps a new shot into the photo peek.
  *
- * `receivingId` narrows to the open carton, for the ticket chip's own state.
+ * That pair covers the photo-shaped sources completely. It does NOT cover
+ * exceptions, which have no realtime event of their own: those land via the
+ * focus refetch and the 30s staleness window instead. That is the honest
+ * behaviour for a backlog measured in hours, and adding an event for it is a
+ * separate change — not something to fake with a poll.
  */
-export function useNasArchivePending(
+export function usePendingWork(
   { receivingId, enabled = true }: { receivingId?: number | null; enabled?: boolean } = {},
 ) {
   const { user } = useAuth();
@@ -43,18 +43,17 @@ export function useNasArchivePending(
       ? Math.trunc(receivingId)
       : null;
   const active = enabled && Boolean(orgId) && staffId > 0;
-  const queryKey = useMemo(() => nasArchivePendingQueryKey(rid), [rid]);
+  const queryKey = useMemo(() => pendingWorkQueryKey(rid), [rid]);
 
-  const query = useQuery<{ items: NasArchivePendingItem[] }>({
+  const query = useQuery<{ items: PendingWorkItem[] }>({
     queryKey,
     queryFn: async () => {
       const qs = rid != null ? `?receivingId=${rid}` : '';
-      const res = await fetch(`/api/receiving/nas-archive-pending${qs}`, { cache: 'no-store' });
+      const res = await fetch(`/api/receiving/pending-work${qs}`, { cache: 'no-store' });
       if (!res.ok) throw new Error(`Request failed (${res.status})`);
-      return (await res.json()) as { items: NasArchivePendingItem[] };
+      return (await res.json()) as { items: PendingWorkItem[] };
     },
     enabled: active,
-    // Photo arrivals push, so there is nothing to poll for.
     staleTime: 30_000,
     refetchOnWindowFocus: true,
   });
@@ -64,7 +63,7 @@ export function useNasArchivePending(
   }, [queryClient, queryKey]);
 
   // Same-tab deletes / attaches dispatch this window event; without it a photo
-  // removed from the library would leave a prompt for work that no longer exists.
+  // removed from the library would leave a card for work that no longer exists.
   useEffect(() => {
     if (!active) return;
     window.addEventListener('receiving-photo.changed', refresh);
@@ -72,12 +71,7 @@ export function useNasArchivePending(
   }, [active, refresh]);
 
   const phoneChannel = safeChannelName(() => getPhoneBridgeChannelName(orgId!, staffId));
-  useAblyChannel(
-    phoneChannel,
-    'receiving_photo_uploaded',
-    refresh,
-    active && !!phoneChannel,
-  );
+  useAblyChannel(phoneChannel, 'receiving_photo_uploaded', refresh, active && !!phoneChannel);
 
   const stationChannel = safeChannelName(() => getStationChannelName(orgId!));
   useAblyChannel(stationChannel, 'receiving-photo.changed', refresh, active && !!stationChannel);
