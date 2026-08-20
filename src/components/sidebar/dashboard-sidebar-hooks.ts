@@ -95,7 +95,7 @@ export function useShippedFormSubmit(
                   productTitle: data.product_title,
                   shippingTrackingNumber: data.shipping_tracking_number,
                   sku: data.sku || null,
-                  accountSource: 'Manual',
+                  accountSource: data.accountSource?.trim() || 'Manual',
                   condition: data.condition,
                   idempotencyKey,
                 }),

@@ -59,6 +59,10 @@ export function useTableImportParam<TField extends string, TRowView>(
   const write = useCallback((params: URLSearchParams, next: boolean) => {
     if (next) {
       params.set(TABLE_IMPORT_URL_PARAM, TABLE_IMPORT_URL_VALUE);
+      // Staging owns the right rail — drop competing ingest/new-order occupants
+      // in the same replace so the two paint-pending writes cannot race.
+      params.delete('ingest');
+      params.delete('new');
       return;
     }
     params.delete(TABLE_IMPORT_URL_PARAM);

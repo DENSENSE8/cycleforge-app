@@ -26,7 +26,7 @@ import { DashboardOrderDetails } from '@/components/dashboard/DashboardOrderDeta
 import { OrdersViewChromeProvider } from '@/components/outbound/orders/orders-view-chrome-context';
 import { ToShipWmsShell } from '@/components/outbound/orders/to-ship/ToShipWmsShell';
 import { SupportOrdersFocusHost } from '@/components/support/orders/SupportOrdersFocusHost';
-import { NewOrderEntryOverlay } from '@/components/orders/NewOrderEntryOverlay';
+import { OrderIngestRail } from '@/components/outbound/orders/OrderIngestRail';
 import {
   ORDERS_DESK_CONTEXT_KEY,
   ORDERS_DESK_SUPPORT_CONTEXT,
@@ -54,7 +54,8 @@ function OutboundOrdersDeskContent({
     orderView,
     searchQuery,
     setOrderView,
-    showIntakeForm,
+    showIngestRail,
+    ingestLeaf,
     closeIntakeForm,
   } = useDashboardSearchController();
 
@@ -126,10 +127,14 @@ function OutboundOrdersDeskContent({
       />
       {/*
         Pattern E (rail-less) does not mount OutboundSidebarPanel on desktop —
-        desk owns Add / ?new=true intake so Band-1 Add always has a host.
+        desk owns Add / ingest / ?new=true so Band-1 Add always has a host.
       */}
       {!isSupportContext ? (
-        <NewOrderEntryOverlay open={showIntakeForm} onClose={closeIntakeForm} />
+        <OrderIngestRail
+          open={showIngestRail}
+          onClose={closeIntakeForm}
+          initialLeaf={ingestLeaf}
+        />
       ) : null}
     </OrdersViewChromeProvider>
   );
