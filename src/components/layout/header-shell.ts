@@ -91,12 +91,12 @@ export const SIDEBAR_RAIL_TRAILING_TRACK_CLASS =
 /**
  * Height-only atom — ops chrome **under** the navigation header (28px / `h-7`).
  *
- * Scan-station first seam (scan bar · carton identity **row 1** · Displays top
- * · MasterNav L1 / Scan Stations drill-back) · workbench tab/triage bands ·
- * grid column headers · PaneHeader. Station code aliases this as
- * `STATION_CHROME_ROW_FACE`. Secondary station eyebrow stays
- * {@link STATION_SECONDARY_BAND_FACE} (`h-6`). Prefer this over raw `h-7` /
- * `h-[28px]` on those shells.
+ * Scan-station first seam for **ops** chrome (scan bar · MasterNav L1 /
+ * workbench tab/triage bands · grid column headers · PaneHeader). Station
+ * carton identity + Displays top use `STATION_CHROME_ROW_FACE` (`h-9`) so
+ * those two abutting rows share one taller box. Secondary station eyebrow
+ * stays {@link STATION_SECONDARY_BAND_FACE} (`h-6`). Prefer this over raw
+ * `h-7` / `h-[28px]` on those shells.
  *
  * **Not** the GlobalHeader / MasterNav spine top band — that is
  * {@link TOP_CHROME_ROW_FACE} (40px). Do not collapse the two.
@@ -227,7 +227,7 @@ export const STATION_SECONDARY_BAND_FACE = 'h-6 shrink-0';
  * for the nav top). Distinct from {@link receivingHeaderHairlineClass} (top
  * inset chrome under GlobalHeader).
  */
-export const STATION_COLUMN_FOOTER_SEAM_CLASS = 'border-t border-border-hairline';
+const STATION_COLUMN_FOOTER_SEAM_CLASS = 'border-t border-border-hairline';
 
 /**
  * Shared `h-8` footer band + {@link STATION_COLUMN_FOOTER_SEAM_CLASS}.

@@ -82,10 +82,10 @@ const STATION_DISPLAYS_DEFAULT_WIDTH_PX = 420;
 /**
  * Top chrome band — widen/restore + optional progress ring / carton `↑↓`.
  *
- * **Height matches the station chrome seam** (`STATION_CHROME_ROW_FACE` /
- * `h-9`) so this band, the leaf `← →` header, and the Root Index eyebrow share
- * one row rhythm. Controls fill the band (`items-stretch` · `h-full`) — never
- * a centered island that leaves air above/below the glyph.
+ * **Height matches carton identity** (`STATION_CHROME_ROW_FACE` / `h-9`) so
+ * this band and the carton context bar share one bottom hairline. Controls
+ * fill the band (`items-stretch` · `h-full`) — never a centered island that
+ * leaves air above/below the glyph.
  *
  * Bottom rule = {@link STATION_CHROME_SEAM_HAIRLINE} (not `border-b` — that
  * double-paints against the leaf header's top hairline).

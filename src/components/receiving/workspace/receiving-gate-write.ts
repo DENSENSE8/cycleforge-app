@@ -68,7 +68,7 @@ type GateWriteFailure = { title: string; description: string };
  *
  * Exported for the guard + unit tests.
  */
-export function describeGateWriteFailure(
+function describeGateWriteFailure(
   fact: string,
   status: number | null,
   serverMessage: string | null,

@@ -66,7 +66,10 @@ export function StationDisplaysEdgeToggle({
       onLayoutAnimationStart={() => setIsMorphing(true)}
       onLayoutAnimationComplete={() => setIsMorphing(false)}
       style={{ zIndex: isMorphing ? zIndex.raised : undefined }}
-      className="inline-flex"
+      className={cn(
+        'inline-flex',
+        !paneOpen && 'h-full w-full items-stretch',
+      )}
     >
       <HoverTooltip label={label} asChild>
         <IconButton
@@ -82,7 +85,7 @@ export function StationDisplaysEdgeToggle({
             )
           }
           onClick={onClick}
-          className={cn(!paneOpen && '-ml-px rounded-none')}
+          className={cn(!paneOpen && 'h-full w-full -ml-px rounded-none')}
           data-testid={paneOpen ? 'unbox-displays-pane-toggle' : 'unbox-push-close'}
         />
       </HoverTooltip>

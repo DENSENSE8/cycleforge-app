@@ -11,7 +11,12 @@ import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 import { photoLibraryControlButtonClass, photoLibraryControlGroupClass } from './photo-library-controls';
 
-const DENSITY_ICONS: Record<PhotoGridDensity, typeof ColumnsOne> = {
+/**
+ * Which glyph means which tile size. Exported because the Media Library's Band-3
+ * strip paints its own full-height band cells (a 28px chrome row cannot host
+ * this component's boxed group) and the two must never disagree about the map.
+ */
+export const PHOTO_GRID_DENSITY_ICONS: Record<PhotoGridDensity, typeof ColumnsOne> = {
   sm: ColumnsThree,
   md: ColumnsTwo,
   lg: ColumnsOne,
@@ -57,7 +62,7 @@ export function PhotoGridDisplayControls({
       >
         {PHOTO_GRID_DENSITY_ORDER.map((id) => {
           const active = density === id;
-          const Icon = DENSITY_ICONS[id];
+          const Icon = PHOTO_GRID_DENSITY_ICONS[id];
           const label = PHOTO_GRID_DENSITY_LABELS[id];
           return (
             <HoverTooltip key={id} label={label} asChild>

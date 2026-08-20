@@ -60,7 +60,7 @@ export const INTEGRATION_MANIFEST_PATH = 'docs/integrations/integration-manifest
  * here. A provider added to the enum and forgotten in both fails CI instead of
  * quietly never reaching the marketing site.
  */
-export const INFRASTRUCTURE_ONLY: Readonly<Record<string, string>> = {
+const INFRASTRUCTURE_ONLY: Readonly<Record<string, string>> = {
   ably: 'Realtime transport for the app itself — the tenant never connects it.',
   stripe: 'Billing for CycleForge subscriptions, not a tenant-facing data integration.',
 };

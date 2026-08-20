@@ -34,15 +34,24 @@ import {
 } from '@/lib/tenancy/qa-org';
 
 /**
- * The settled header meta line — `Photos ${n} · ${subtitle}`
- * (`PhotoLibraryPage.tsx:280`).
+ * The path strip's count readout, and the SETTLED gate every test here opens
+ * with.
  *
- * The trailing ` ·` is load-bearing, not decoration: the grid footer renders a
- * bare `Photos ${n}` with no separator, so a plain `/Photos \d+/` matches two
- * elements and fails Playwright strict mode whenever both are on screen.
- * The loading branch is `Loading…` — no digits — so this cannot pass vacuously.
+ * Targeted by test id rather than by copy: this was a `/Photos \d+ ·/` regex
+ * whose trailing separator existed only to disambiguate it from the
+ * end-of-stream footer's own count, and both broke the first time the wording
+ * was improved.
+ *
+ * The assertion is `toContainText(/\d+ photo/)`, never `toBeVisible()`. The
+ * element is mounted during loading too — its loading branch is `Loading…`,
+ * which carries no digits — so a mere visibility check passes on the first
+ * frame and the test reads its tile count before any photo has arrived. The
+ * digits are what say "settled".
  */
-const META_LINE = /Photos \d+ ·/;
+const META_LINE = '[data-testid="photo-library-meta"]';
+
+/** The readout has settled on a real count. */
+const SETTLED_META = /\d+ photo/i;
 
 /** Fails the test on any uncaught page error, which a silent render crash would otherwise hide. */
 function trackPageErrors(page: import('@playwright/test').Page): string[] {
@@ -56,7 +65,7 @@ test.describe('Media Library · deep-link routing', () => {
     const errors = trackPageErrors(page);
 
     await page.goto('/ops/photos');
-    await expect(page.getByText(META_LINE)).toBeVisible();
+    await expect(page.locator(META_LINE)).toContainText(SETTLED_META);
 
     // The QA org is seeded with a known number of photos; the stream must show
     // at least that many. Other specs may add more, so this is a floor.
@@ -70,10 +79,12 @@ test.describe('Media Library · deep-link routing', () => {
     const errors = trackPageErrors(page);
 
     await page.goto('/ops/photos?sourceScope=unboxing&stage=unbox_item&view=grid-sm');
-    await expect(page.getByText(META_LINE)).toBeVisible();
+    await expect(page.locator(META_LINE)).toContainText(SETTLED_META);
 
-    // describePhotoLibraryContext → stage branch (label via photoStageLabel).
-    await expect(page.getByText(/Unboxing evidence at this stage/i)).toBeVisible();
+    // describePhotoLibraryContext → stage branch. The readout names WHAT the
+    // count is of (the stage label, via photoStageLabel), not a sentence
+    // describing the surface — the strip is a readout, not teaching text.
+    await expect(page.locator(META_LINE)).toContainText(/unbox · item/i);
 
     // Both params must survive — the navigator reads them back on reload.
     await expect(page).toHaveURL(/sourceScope=unboxing/);
@@ -88,7 +99,7 @@ test.describe('Media Library · deep-link routing', () => {
     // `packing` evidence is deliberately unseeded — the empty branch is a
     // settled state and must be distinguishable from a failed render.
     await page.goto('/ops/photos?sourceScope=packing&view=grid-sm');
-    await expect(page.getByText(META_LINE)).toBeVisible();
+    await expect(page.locator(META_LINE)).toContainText(SETTLED_META);
     await expect(page.getByTestId('photo-tile')).toHaveCount(0);
 
     expect(errors, `Uncaught page errors: ${errors.join(' | ')}`).toHaveLength(0);
@@ -98,10 +109,12 @@ test.describe('Media Library · deep-link routing', () => {
     const errors = trackPageErrors(page);
 
     await page.goto(`/ops/photos?sku=${encodeURIComponent(QA_FIXTURE_SKUS.speaker)}&view=grid-sm`);
-    await expect(page.getByText(META_LINE)).toBeVisible();
-    await expect(
-      page.getByText(/Photos linked to this SKU across intake, testing, and packing/i),
-    ).toBeVisible();
+    await expect(page.locator(META_LINE)).toContainText(SETTLED_META);
+    // Same contract as the stage branch: the readout carries the context
+    // TITLE, so the operator can see which SKU the count belongs to.
+    await expect(page.locator(META_LINE)).toContainText(
+      new RegExp(`SKU ${QA_FIXTURE_SKUS.speaker}`, 'i'),
+    );
     await expect(page).toHaveURL(new RegExp(`sku=${encodeURIComponent(QA_FIXTURE_SKUS.speaker)}`));
 
     expect(errors, `Uncaught page errors: ${errors.join(' | ')}`).toHaveLength(0);
@@ -111,7 +124,7 @@ test.describe('Media Library · deep-link routing', () => {
     const errors = trackPageErrors(page);
 
     await page.goto(`/ops/photos?tracking=${QA_FIXTURE_TRACKING}&view=grid-sm`);
-    await expect(page.getByText(META_LINE)).toBeVisible();
+    await expect(page.locator(META_LINE)).toContainText(SETTLED_META);
     await expect(page).toHaveURL(new RegExp(`tracking=${QA_FIXTURE_TRACKING}`));
 
     expect(errors, `Uncaught page errors: ${errors.join(' | ')}`).toHaveLength(0);
@@ -122,13 +135,13 @@ test.describe('Media Library · deep-link routing', () => {
 
     // `list` is non-default, so it must be serialized.
     await page.goto('/ops/photos?view=list');
-    await expect(page.getByText(META_LINE)).toBeVisible();
+    await expect(page.locator(META_LINE)).toContainText(SETTLED_META);
     await expect(page).toHaveURL(/view=list/);
 
     // `grid-sm` is DEFAULT_PHOTO_LIBRARY_VIEW — parsePhotoLibraryDisplayParams
     // omits it, so a bare landing must not carry it.
     await page.goto('/ops/photos');
-    await expect(page.getByText(META_LINE)).toBeVisible();
+    await expect(page.locator(META_LINE)).toContainText(SETTLED_META);
     await expect(page).not.toHaveURL(/view=/);
 
     expect(errors, `Uncaught page errors: ${errors.join(' | ')}`).toHaveLength(0);

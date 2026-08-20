@@ -17,7 +17,15 @@ const OPTIONS: {
   { value: 'oldest', label: 'Oldest', icon: ChevronDown },
 ];
 
-/** Right-pane sort dropdown — Newest / Oldest. Same h-8 ToolbarButton shell as media type. */
+/**
+ * Band-2 sort dropdown — Newest / Oldest.
+ *
+ * `ToolbarButton` ships the Linear board face (`h-8 rounded-lg`), which is two
+ * corrections away from an ops chrome band: it overflowed the 28px row it sits
+ * in, and a soft radius on workbench chrome is debt house-wide (`ops chrome is
+ * flush-square`). Both are overridden here so the sort pill matches the
+ * inspector toggle beside it instead of out-sizing it.
+ */
 export function PhotoSortMenu({
   sort,
   onSortChange,
@@ -77,7 +85,7 @@ export function PhotoSortMenu({
         active={open}
         onClick={() => setOpen((o) => !o)}
         onKeyDown={handleButtonKeyDown}
-        className="gap-1 normal-case tracking-normal"
+        className="h-7 gap-1 rounded-none normal-case tracking-normal"
       >
         <ArrowUpDown className="h-3.5 w-3.5 shrink-0" />
         <span className="whitespace-nowrap">{activeOption.label}</span>

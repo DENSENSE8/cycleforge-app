@@ -6,6 +6,7 @@ import {
   isSidebarRouteMobileRestricted,
   isSidebarNavActive,
   isSidebarTopPinActive,
+  isSpineBandTopPin,
   SIDEBAR_PAGE_NAV,
   getSidebarPageNav,
   getSidebarHref,
@@ -34,14 +35,14 @@ test('Home is top-pinned; Operations in Monitor; Sourcing under Inventory; Plans
 
   const plans = items.find((item) => item.id === 'plans-live');
   assert.ok(plans, 'plans-live should ship on prod nav');
-  assert.equal(plans.kind, 'top', 'plans-live is top-pinned between Media and Chat');
+  assert.equal(plans.kind, 'top', 'plans-live stays a top registry pin (parked from the spine band)');
   assert.equal(plans.label, 'Plans');
   assert.equal(plans.href, '/?mode=forge&view=live');
   assert.equal(plans.requires, 'operations.plans.view');
 
   const aiChat = items.find((item) => item.id === 'ai-chat');
   assert.ok(aiChat, 'ai-chat should ship on prod nav');
-  assert.equal(aiChat.kind, 'top', 'ai-chat is top-pinned after Plans');
+  assert.equal(aiChat.kind, 'top', 'ai-chat stays a top registry pin after Plans');
   assert.equal(aiChat.label, 'Chat');
 
   const operations = items.find((item) => item.id === 'operations');
@@ -81,6 +82,20 @@ test('plans-live pin requires operations.plans.view', () => {
   );
 });
 
+test('Plans and Chat stay in the registry but stay off the spine band', () => {
+  const items = getSidebarNavItems();
+  const bandIds = items.filter(isSpineBandTopPin).map((item) => item.id);
+  assert.deepEqual(bandIds, ['home', 'search', 'ops-photos']);
+
+  const plans = items.find((item) => item.id === 'plans-live');
+  const chat = items.find((item) => item.id === 'ai-chat');
+  assert.ok(plans && chat);
+  assert.equal(plans.spineBand, false);
+  assert.equal(chat.spineBand, false);
+  assert.equal(isSpineBandTopPin(plans), false);
+  assert.equal(isSpineBandTopPin(chat), false);
+});
+
 test('getSidebarNavItems omits mobile-restricted routes in mobile mode', () => {
   const navIds = getSidebarNavItems({ mobileRestricted: true }).map((item) => item.id);
 
@@ -98,12 +113,13 @@ test('getSidebarNavItems omits mobile-restricted routes in mobile mode', () => {
 
 test('prod nav ships every unparked page; only redirect surfaces stay off', () => {
   const navIds = new Set(getSidebarNavItems().map((item) => item.id));
-  // Dogfood parking is retired: Sourcing ships; Chat is top-pinned after Plans.
+  // Dogfood parking is retired: Sourcing ships; Plans / Chat stay in the
+  // registry (`kind: 'top'`) with spineBand false.
   // `fba` stays off the spine because /fba is a permanent redirect into Shipping,
   // which already owns that surface (no second front door).
   assert.equal(navIds.has('sourcing'), true, 'sourcing ships in Overview');
-  assert.equal(navIds.has('plans-live'), true, 'plans-live ships top-pinned between Media and Chat');
-  assert.equal(navIds.has('ai-chat'), true, 'ai-chat ships top-pinned after Plans');
+  assert.equal(navIds.has('plans-live'), true, 'plans-live stays in the nav registry');
+  assert.equal(navIds.has('ai-chat'), true, 'ai-chat stays in the nav registry');
   assert.equal(navIds.has('fba'), false, 'fba redirects into Shipping — no spine row');
   // Studio was promoted out of the parked set — it is a live page, footer-pinned
   // above Admin since 2026-08-02, so it must be present on prod nav.

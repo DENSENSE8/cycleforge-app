@@ -44,11 +44,18 @@ const hasSymbol = (sym: string) =>
 describe('sot-manifest — parity + coverage', () => {
   it('committed sot-manifest.json equals a fresh build', () => {
     const fresh = runNode('scripts/build-sot-manifest.mjs', ['--stdout']);
-    assert.equal(
-      committedRaw,
-      fresh,
-      'sot-manifest.json is stale — run: node scripts/build-sot-manifest.mjs',
-    );
+    // Compare a BOOLEAN, never the two documents. `assert.equal` on the raw
+    // strings printed ~1.2 MB of JSON into the failure — the manifest twice —
+    // which drowns the one line that says what to run, and costs an agent its
+    // whole context window to read a staleness flag.
+    if (committedRaw !== fresh) {
+      const a = JSON.parse(committedRaw) as { count: number };
+      const b = JSON.parse(fresh) as { count: number };
+      assert.fail(
+        `sot-manifest.json is stale (committed ${a.count} entries, fresh ${b.count}) — ` +
+          'run: node scripts/build-sot-manifest.mjs',
+      );
+    }
   });
 
   it('is a non-trivial catalog with a valid entry shape', () => {

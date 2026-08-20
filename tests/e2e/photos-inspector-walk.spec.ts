@@ -30,14 +30,32 @@
 import { test, expect, type Page } from '@playwright/test';
 
 /** The settled header meta line — see the deep-link spec for why `·` is load-bearing. */
-const META_LINE = /Photos \d+ ·/;
+/**
+ * The path strip's count readout, and the SETTLED gate every test here opens
+ * with.
+ *
+ * Targeted by test id rather than by copy: this was a `/Photos \d+ ·/` regex
+ * whose trailing separator existed only to disambiguate it from the
+ * end-of-stream footer's own count, and both broke the first time the wording
+ * was improved.
+ *
+ * The assertion is `toContainText(/\d+ photo/)`, never `toBeVisible()`. The
+ * element is mounted during loading too — its loading branch is `Loading…`,
+ * which carries no digits — so a mere visibility check passes on the first
+ * frame and the test reads its tile count before any photo has arrived. The
+ * digits are what say "settled".
+ */
+const META_LINE = '[data-testid="photo-library-meta"]';
+
+/** The readout has settled on a real count. */
+const SETTLED_META = /\d+ photo/i;
 
 const RAIL = '[data-testid="photo-inspector-panel"]';
 const TILE = '[data-testid="photo-tile"]';
 
 async function landOnStream(page: Page): Promise<void> {
   await page.goto('/ops/photos');
-  await expect(page.getByText(META_LINE)).toBeVisible();
+  await expect(page.locator(META_LINE)).toContainText(SETTLED_META);
   await expect(page.locator(TILE).first()).toBeVisible();
 }
 

@@ -17,10 +17,11 @@ import { SpineTopPins } from './SpineTopPins';
  *
  * ## Stack (top → bottom)
  *
- * 1. **Top band (40px)** — {@link SpineTopPins}: Home · Search · Media · Plans ·
- *    Chat as icons when the spine is open. Shares the desktop top-chrome seam
- *    with the GlobalHeader. When closed, reach them via ⌘K / opening the map —
- *    the header toggle is click-only (no hover peek).
+ * 1. **Top band (40px)** — {@link SpineTopPins}: Home · Search · Media as icons
+ *    when the spine is open. Shares the desktop top-chrome seam with the
+ *    GlobalHeader. When closed, reach them via ⌘K / opening the map — the
+ *    header toggle is click-only (no hover peek). Plans / Chat stay in the
+ *    registry (`spineBand: false`) without glyphs.
  * 2. **Body** — flat domain map + Scan Stations Vercel drill → footer
  *    {@link TechRailSearchBar} → Settings/Admin pin → staff account footer.
  *
@@ -64,12 +65,10 @@ export function MasterNavView({
           and org SWITCHING lives in Settings → Organization
           (`WorkspaceSwitcher`), the honest home for a rare, deliberate act.
 
-          What ARRIVED is {@link SpineTopPins} — Home · Search · Media · Plans ·
-          Chat. The band was blank for a day after the org control went, and a
-          blank 40px strip at the top of the navigator is worse than a used one.
-          These five are the only content that can sit here for free: the band's
-          height is already reserved by the seam, so as icons they cost the map
-          nothing, where as ROWS they cost it vertical space. */}
+          What ARRIVED is {@link SpineTopPins} — Home · Search · Media. The band
+          was blank for a day after the org control went, and a blank 40px strip
+          at the top of the navigator is worse than a used one. These pins sit
+          here for free: the band's height is already reserved by the seam. */}
       <div className={cn(TOP_CHROME_BAND_FACE, 'flex w-full min-w-0 items-stretch')}>
         <SpineTopPins />
       </div>
