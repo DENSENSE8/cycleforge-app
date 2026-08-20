@@ -21,6 +21,59 @@ import { loadTableImportDraftFromFile } from '@/lib/tables/import/staging-store'
 import { isTableImportLive } from '@/lib/tables/import/registry';
 import type { TableImportDescriptor } from '@/lib/tables/import/types';
 
+/**
+ * File-pick mechanism for a table import — shared by the labeled button and
+ * by ingest-rail / chrome callers. Presentation stays with the caller.
+ */
+export function useTableImportFilePicker<TField extends string, TRowView>(
+  descriptor: TableImportDescriptor<TField, TRowView>,
+): {
+  live: boolean;
+  error: string | null;
+  clearError: () => void;
+  input: ReactNode;
+  open: () => void;
+} {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [error, setError] = useState<string | null>(null);
+  const { setActive } = useTableImportParam(descriptor);
+  const inputId = useId();
+  const live = isTableImportLive(descriptor.surfaceId);
+
+  async function handleFile(file: File) {
+    setError(null);
+    const outcome = await loadTableImportDraftFromFile(descriptor, file);
+    if (!outcome.ok) {
+      setError(outcome.error);
+      return;
+    }
+    setActive(true);
+  }
+
+  const input = live ? (
+    <input
+      ref={inputRef}
+      id={inputId}
+      type="file"
+      accept=".csv,text/csv"
+      className="hidden"
+      onChange={(e) => {
+        const file = e.target.files?.[0];
+        if (file) void handleFile(file);
+        e.target.value = '';
+      }}
+    />
+  ) : null;
+
+  return {
+    live,
+    error,
+    clearError: () => setError(null),
+    input,
+    open: () => inputRef.current?.click(),
+  };
+}
+
 export function TableImportFileButton<TField extends string, TRowView>({
   descriptor,
   label = 'Import from CSV',
@@ -41,44 +94,18 @@ export function TableImportFileButton<TField extends string, TRowView>({
   /** Helper line under the button (what confirming will do). */
   description?: ReactNode;
 }) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [error, setError] = useState<string | null>(null);
-  const { setActive } = useTableImportParam(descriptor);
-  const inputId = useId();
-
+  const { live, error, input, open } = useTableImportFilePicker(descriptor);
   // The allowlist is the fan-out gate — a descriptor that exists but is not yet
   // mounted must not offer an entry point (`registry.ts`).
-  if (!isTableImportLive(descriptor.surfaceId)) return null;
-
-  async function handleFile(file: File) {
-    setError(null);
-    const outcome = await loadTableImportDraftFromFile(descriptor, file);
-    if (!outcome.ok) {
-      setError(outcome.error);
-      return;
-    }
-    // Paints the desk on this frame; the soft-replace follows.
-    setActive(true);
-  }
+  if (!live) return null;
 
   return (
     <>
-      <input
-        ref={inputRef}
-        id={inputId}
-        type="file"
-        accept=".csv,text/csv"
-        className="hidden"
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (file) void handleFile(file);
-          e.target.value = '';
-        }}
-      />
+      {input}
       <Button
         variant={variant}
         size={size}
-        onClick={() => inputRef.current?.click()}
+        onClick={open}
         icon={icon}
         className={className}
         disabled={disabled}

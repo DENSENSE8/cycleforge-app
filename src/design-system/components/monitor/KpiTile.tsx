@@ -25,6 +25,11 @@ export type KpiTileProps = {
   deltaVsLabel?: string;
   className?: string;
   /**
+   * Extra classes on the eyebrow label. Outbound band tiles pass
+   * `normal-case tracking-normal` so "Units stuck" is not shouted as UNITS STUCK.
+   */
+  labelClassName?: string;
+  /**
    * Hero scale. `default` = desk/rollup density (text-3xl). `wall` bumps the
    * hero + label for 3–5m unattended TV readability (HOME-OPS Phase C) — additive
    * only, so every existing Monitor tile is byte-identical.
@@ -56,6 +61,7 @@ export function KpiTile({
   footer: _footer,
   deltaVsLabel: _deltaVsLabel,
   className,
+  labelClassName,
   size = 'default',
   density = 'monitor',
   onOpen,
@@ -95,6 +101,7 @@ export function KpiTile({
           className={cn(
             'min-w-0 font-semibold uppercase tracking-widest text-text-soft',
             wall && !band ? 'text-role-caption' : band ? 'text-role-micro tracking-wide' : 'text-role-eyebrow',
+            labelClassName,
           )}
         >
           {label}

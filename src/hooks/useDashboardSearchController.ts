@@ -20,6 +20,9 @@ import {
 import { normalizeShippedSearchField, type ShippedSearchField } from '@/lib/shipped-search';
 export type ShippedTypeFilter = 'all' | 'orders' | 'sku' | 'fba';
 
+/** Ship-desk ingest rail: closed, Root Index, or the manual-entry leaf (`?new=true`). */
+export type OutboundIngestMode = 'closed' | 'index' | 'manual';
+
 export function useDashboardSearchController() {
   const pathname = usePathname();
   const router = useRouter();
@@ -58,27 +61,31 @@ export function useDashboardSearchController() {
     router.replace(nextSearch ? `${targetPath}?${nextSearch}` : targetPath, { scroll: false });
   }, [deskPath, pathname, router, searchParams]);
 
-  const urlNewOpen = useMemo(
-    () => searchParams.get('new') === 'true',
-    [searchParams],
-  );
+  const urlIngestMode = useMemo((): OutboundIngestMode => {
+    if (searchParams.get('new') === 'true') return 'manual';
+    if (searchParams.get('ingest') === 'true') return 'index';
+    return 'closed';
+  }, [searchParams]);
 
-  const replaceNew = useCallback(
+  const replaceIngest = useCallback(
     (mutate: (params: URLSearchParams) => void) => {
       updateSearch(mutate);
     },
     [updateSearch],
   );
 
-  const writeNew = useCallback((params: URLSearchParams, next: boolean) => {
-    if (next) params.set('new', 'true');
-    else params.delete('new');
+  const writeIngest = useCallback((params: URLSearchParams, next: OutboundIngestMode) => {
+    params.delete('ingest');
+    params.delete('new');
+    if (next === 'index') params.set('ingest', 'true');
+    if (next === 'manual') params.set('new', 'true');
   }, []);
 
-  const { value: showIntakeForm, setValue: setNewOpen } = useOptimisticUrlParam<boolean>({
-    urlValue: urlNewOpen,
-    replace: replaceNew,
-    write: writeNew,
+  const { value: ingestMode, setValue: setIngestMode } = useOptimisticUrlParam<OutboundIngestMode>({
+    urlValue: urlIngestMode,
+    replace: replaceIngest,
+    write: writeIngest,
+    shareKey: 'outbound-order-ingest',
   });
 
   const setSearch = useCallback(async (nextValue: string) => {
@@ -123,8 +130,13 @@ export function useDashboardSearchController() {
     writeDetailsOpenBehaviorPreference(value);
   }, []);
 
-  const openIntakeForm = useCallback(() => setNewOpen(true), [setNewOpen]);
-  const closeIntakeForm = useCallback(() => setNewOpen(false), [setNewOpen]);
+  const showIntakeForm = ingestMode === 'manual';
+  const showIngestRail = ingestMode !== 'closed';
+  const ingestLeaf: 'index' | 'manual' = ingestMode === 'manual' ? 'manual' : 'index';
+
+  const openIntakeForm = useCallback(() => setIngestMode('manual'), [setIngestMode]);
+  const openIngestIndex = useCallback(() => setIngestMode('index'), [setIngestMode]);
+  const closeIntakeForm = useCallback(() => setIngestMode('closed'), [setIngestMode]);
   useEffect(() => {
     writeShippedFilterPreference(shippedFilter);
   }, [shippedFilter]);
@@ -140,6 +152,8 @@ export function useDashboardSearchController() {
     shippedSearchField,
     detailsOpenBehavior,
     showIntakeForm,
+    showIngestRail,
+    ingestLeaf,
     detailsEnabled,
     setSearch,
     setOrderView,
@@ -147,6 +161,7 @@ export function useDashboardSearchController() {
     setShippedSearchField,
     setDetailsOpenBehavior,
     openIntakeForm,
+    openIngestIndex,
     closeIntakeForm,
   };
 }

@@ -146,6 +146,7 @@ function MetricKpiTile({
       active={active}
       onOpen={onOpen}
       className="h-full"
+      labelClassName="normal-case tracking-normal"
     />
   );
 
@@ -159,7 +160,7 @@ function MetricKpiTile({
 
 function OutboundStripSkeleton({ reservedSlots }: { reservedSlots: number }) {
   return (
-    <OpsKpiBand density="band" className="animate-pulse" aria-label="Loading outbound attention metrics">
+    <OpsKpiBand density="band" className="animate-pulse [&>*:not(:last-child)]:border-r-0" aria-label="Loading outbound attention metrics">
       <span className="sr-only">Loading outbound attention metrics…</span>
       {Array.from({ length: reservedSlots }).map((_, i) => (
         <OpsKpiBandCell key={i} density="band">
@@ -199,7 +200,7 @@ function OutboundStripLayout(data: OutboundStripData): ReactNode {
   }
 
   return (
-    <OpsKpiBand density="band" aria-label="Outbound attention metrics">
+    <OpsKpiBand density="band" aria-label="Outbound attention metrics" className="[&>*:not(:last-child)]:border-r-0">
       {tiles.map((metric) => (
         <OpsKpiBandCell key={metric.id} density="band">
           <MetricKpiTile metric={metric} filter={data.filter} toShipFilter={data.toShipFilter} />
