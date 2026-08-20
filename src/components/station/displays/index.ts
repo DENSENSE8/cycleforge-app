@@ -24,9 +24,8 @@
 export { STATION_DISPLAY_INDEX } from './display-index';
 export type { DisplayIndexGroup, DisplayIndexRow } from './display-index';
 
-export {
-  STATION_DISPLAYS_HOST_PAD_CLASS,
-} from './StationDisplaysPushColumn';
+export { STATION_DISPLAYS_HOST_PAD_CLASS } from './StationDisplaysPushColumn';
+export { STATION_DISPLAYS_PUSH_TOP_BAND } from '@/components/station/entity-context/station-identity-chrome';
 
 export { DisplaysIndexLeafStage } from './DisplaysIndexLeafStage';
 export { StationDisplaysParkedRail } from './StationDisplaysParkedRail';

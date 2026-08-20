@@ -74,6 +74,7 @@ import {
   useEscapeClose,
   useHorizontalEdgeResize,
 } from '@/design-system/hooks';
+import { STATION_CHROME_ROW_FACE } from '@/components/station/entity-context';
 import { IconButton } from '@/design-system/primitives';
 import { zIndex } from '@/design-system/tokens/z-index';
 import { useLocalStorage } from '@/hooks';
@@ -132,7 +133,10 @@ function RightRailOccupantBody({ node }: { node: ReactNode }) {
 function RightRailHostCloseAnchor({ refused = false }: { refused?: boolean }) {
   return (
     <div
-      className="absolute right-2 top-0.5 z-header p-0"
+      className={cn(
+        'absolute right-2 top-0 z-header flex w-7 items-stretch p-0',
+        STATION_CHROME_ROW_FACE,
+      )}
       data-right-rail-host-close-anchor
     >
       <HoverTooltip
@@ -143,11 +147,11 @@ function RightRailHostCloseAnchor({ refused = false }: { refused?: boolean }) {
           size="sm"
           tone="neutral"
           ariaLabel="Hide right panel"
-          icon={<X className="h-4 w-4" />}
+          icon={<X className="h-3.5 w-3.5" />}
           onClick={() => closeRightPanel()}
           disabled={refused}
           data-testid="right-rail-host-close"
-          className="active:scale-100"
+          className="h-full w-full rounded-none active:scale-100"
         />
       </HoverTooltip>
     </div>

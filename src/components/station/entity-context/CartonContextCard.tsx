@@ -707,9 +707,11 @@ export function CartonContextCard({
 
   const claimIconButton =
     showStaffPhotoRow && !zendeskTrimmed && onMakeClaim && !overflowSet.has('claim') ? (
-      <HoverTooltip label={claimViewActive ? 'Hide claim' : 'File claim'} asChild>
-        <StationContextClaimCell active={claimViewActive} onClick={onMakeClaim} />
-      </HoverTooltip>
+      <div className="flex min-h-0 self-stretch items-stretch">
+        <HoverTooltip label={claimViewActive ? 'Hide claim' : 'File claim'} asChild>
+          <StationContextClaimCell active={claimViewActive} onClick={onMakeClaim} />
+        </HoverTooltip>
+      </div>
     ) : null;
 
   const ticketInline =

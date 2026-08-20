@@ -27,6 +27,7 @@ export function InspectorColumnDisplayButton({
         icon={<ColumnsThree className="h-3.5 w-3.5" />}
         onClick={requestOpenGridColumnDetails}
         data-testid={testId}
+        className="h-full w-7 rounded-none active:scale-100"
       />
     </HoverTooltip>
   );

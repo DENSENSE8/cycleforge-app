@@ -32,10 +32,7 @@
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { Maximize2, Minimize2 } from '@/components/Icons';
-import {
-  STATION_CHROME_ROW_FACE,
-  STATION_CHROME_SEAM_HAIRLINE,
-} from '@/components/station/entity-context';
+import { STATION_DISPLAYS_PUSH_TOP_BAND } from '@/components/station/entity-context/station-identity-chrome';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { HorizontalEdgeResizeHandle } from '@/design-system/components/HorizontalEdgeResizeHandle';
 import { StationDisplaysEdgeToggle } from './StationDisplaysEdgeToggle';
@@ -78,20 +75,6 @@ export const STATION_DISPLAYS_HOST_PAD_CLASS = '';
 
 /** Default open width preference for Unbox Displays / Ticket / Claim / tool. */
 const STATION_DISPLAYS_DEFAULT_WIDTH_PX = 420;
-
-/**
- * Top chrome band — widen/restore + optional progress ring / carton `↑↓`.
- *
- * **Height matches carton identity** (`STATION_CHROME_ROW_FACE` / `h-9`) so
- * this band and the carton context bar share one bottom hairline. Controls
- * fill the band (`items-stretch` · `h-full`) — never a centered island that
- * leaves air above/below the glyph.
- *
- * Bottom rule = {@link STATION_CHROME_SEAM_HAIRLINE} (not `border-b` — that
- * double-paints against the leaf header's top hairline).
- */
-const STATION_DISPLAYS_PUSH_TOP_BAND =
-  `pointer-events-none relative z-header flex ${STATION_CHROME_ROW_FACE} items-stretch gap-0.5 pr-2 ${STATION_CHROME_SEAM_HAIRLINE}`;
 
 /** Hit cell for a top-band IconButton — stretch to the band, re-enable pointer. */
 const STATION_DISPLAYS_PUSH_TOP_CELL =

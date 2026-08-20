@@ -85,6 +85,11 @@ import {
 } from './useColumnWidths';
 import { useGridColumnWidthBounds } from './useGridColumnWidthBounds';
 import { useGridColumnWidths } from './useGridColumnWidths';
+import { RIGHT_RAIL_HOST_CLOSE_SLOT_CLASS } from '@/components/right-rail/DeskRailChromeRow';
+import {
+  STATION_CHROME_ROW_FACE,
+  STATION_CHROME_SEAM_HAIRLINE,
+} from '@/components/station/entity-context';
 import { cn } from '@/utils/_cn';
 
 /** Horizontal drag past this many px becomes a Figma-style scrub (not a click). */
@@ -101,7 +106,7 @@ const CELL_OPTS: { id: GridColumnCellMode; label: string }[] = [
  * eyebrow on the body's own content gutter and reserves the trailing cell that
  * `X` paints over, same shape as `DeskRailChromeRow`.
  */
-const TOP_BAND_CLASS = 'flex h-9 shrink-0 items-center gap-1.5 border-b border-border-soft pl-4 pr-2';
+const TOP_BAND_CLASS = `relative z-header flex ${STATION_CHROME_ROW_FACE} items-stretch gap-1.5 pl-4 pr-2 ${STATION_CHROME_SEAM_HAIRLINE}`;
 
 export function GridColumnDetailsPanel<C extends LedgerGridColumnModel>({
   open,
@@ -204,7 +209,7 @@ export function GridColumnDetailsPanel<C extends LedgerGridColumnModel>({
             </p>
           </div>
           <span
-            className="inline-block h-7 w-7 shrink-0"
+            className={RIGHT_RAIL_HOST_CLOSE_SLOT_CLASS}
             aria-hidden
             data-right-rail-host-close-slot
           />

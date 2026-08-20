@@ -47,13 +47,21 @@
 
 import type { ReactNode } from 'react';
 import { InspectorColumnDisplayButton } from '@/components/right-rail/InspectorColumnDisplayButton';
+import {
+  STATION_CHROME_ROW_FACE,
+  STATION_CHROME_SEAM_HAIRLINE,
+} from '@/components/station/entity-context';
 import { cn } from '@/utils/_cn';
 
 /** Optical `pl-2` — Unbox push-band twin so the leading mark lands on content
- *  ink. `relative z-header` keeps the row above the inset resize sash
- *  (`z-sticky`). */
-const DESK_RAIL_CHROME_ROW_CLASS =
-  'relative z-header flex h-8 shrink-0 items-center pl-2 pr-2';
+ *  ink. Height is {@link STATION_CHROME_ROW_FACE} (carton / Displays top).
+ *  `relative z-header` keeps the row above the inset resize sash
+ *  (`z-sticky`). Hairline via `after:` so it meets Displays, not a `border-b`. */
+export const DESK_RAIL_CHROME_ROW_CLASS =
+  `relative z-header flex ${STATION_CHROME_ROW_FACE} items-stretch pl-2 pr-2 ${STATION_CHROME_SEAM_HAIRLINE}`;
+
+/** Trailing spacer the host `X` paints into — matches {@link STATION_CHROME_ROW_FACE}. */
+export const RIGHT_RAIL_HOST_CLOSE_SLOT_CLASS = 'inline-block h-full w-7 shrink-0';
 
 export function DeskRailChromeRow({
   /**
@@ -88,13 +96,13 @@ export function DeskRailChromeRow({
   return (
     <div className={cn(DESK_RAIL_CHROME_ROW_CLASS, className)}>
       {columnDisplay ? (
-        <div className="flex shrink-0 items-center">
+        <div className="flex h-full shrink-0 items-stretch">
           <InspectorColumnDisplayButton />
         </div>
       ) : null}
       {actions ? (
         <div
-          className="flex min-w-0 items-center overflow-x-auto"
+          className="flex h-full min-w-0 items-stretch overflow-x-auto"
           data-testid="desk-rail-chrome-actions"
         >
           {actions}
@@ -102,15 +110,16 @@ export function DeskRailChromeRow({
       ) : null}
       <div className="flex-1" />
       {hasTrail ? (
-        <div className="flex items-center gap-0">
+        <div className="flex h-full items-stretch gap-0">
           {cursor}
           {trailing}
         </div>
       ) : null}
       {/* The host's absolute `X` lives over this cell — reserve it so nothing
-          above scrolls or truncates underneath the singleton close. */}
+          above scrolls or truncates underneath the singleton close. Square
+          matches {@link STATION_CHROME_ROW_FACE} (h-7 / 28px). */}
       <span
-        className="inline-block h-7 w-7 shrink-0"
+        className={RIGHT_RAIL_HOST_CLOSE_SLOT_CLASS}
         aria-hidden
         data-right-rail-host-close-slot
       />

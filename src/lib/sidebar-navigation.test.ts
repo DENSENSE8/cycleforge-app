@@ -37,7 +37,7 @@ test('Home is top-pinned; Operations in Monitor; Sourcing under Inventory; Plans
   assert.ok(plans, 'plans-live should ship on prod nav');
   assert.equal(plans.kind, 'top', 'plans-live stays a top registry pin (parked from the spine band)');
   assert.equal(plans.label, 'Plans');
-  assert.equal(plans.href, '/forge');
+  assert.equal(plans.href, '/?mode=forge&view=live');
   assert.equal(plans.requires, 'operations.plans.view');
 
   const aiChat = items.find((item) => item.id === 'ai-chat');
@@ -82,16 +82,20 @@ test('plans-live pin requires operations.plans.view', () => {
   );
 });
 
-test('Plans and Chat stay in the registry but stay off the spine band', () => {
+test('Search, Plans, and Chat stay in the registry but stay off the spine band', () => {
   const items = getSidebarNavItems();
   const bandIds = items.filter(isSpineBandTopPin).map((item) => item.id);
-  assert.deepEqual(bandIds, ['home', 'search', 'ops-photos']);
+  assert.deepEqual(bandIds, ['home', 'ops-photos']);
 
+  const search = items.find((item) => item.id === 'search');
   const plans = items.find((item) => item.id === 'plans-live');
   const chat = items.find((item) => item.id === 'ai-chat');
-  assert.ok(plans && chat);
+  assert.ok(search && plans && chat);
+  assert.equal(search.kind, 'top');
+  assert.equal(search.spineBand, false);
   assert.equal(plans.spineBand, false);
   assert.equal(chat.spineBand, false);
+  assert.equal(isSpineBandTopPin(search), false);
   assert.equal(isSpineBandTopPin(plans), false);
   assert.equal(isSpineBandTopPin(chat), false);
 });
@@ -113,8 +117,8 @@ test('getSidebarNavItems omits mobile-restricted routes in mobile mode', () => {
 
 test('prod nav ships every unparked page; only redirect surfaces stay off', () => {
   const navIds = new Set(getSidebarNavItems().map((item) => item.id));
-  // Dogfood parking is retired: Sourcing ships; Plans / Chat stay in the
-  // registry (`kind: 'top'`) with spineBand false.
+  // Dogfood parking is retired: Sourcing ships; Search / Plans / Chat stay in
+  // the registry (`kind: 'top'`) with spineBand false.
   // `fba` stays off the spine because /fba is a permanent redirect into Shipping,
   // which already owns that surface (no second front door).
   assert.equal(navIds.has('sourcing'), true, 'sourcing ships in Overview');

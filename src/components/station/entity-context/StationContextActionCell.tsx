@@ -7,7 +7,7 @@
  * Height is `h-full` on the chrome class. Callers cannot pass `className`
  * or swap in IconButton. Photos stay on ReceivingPhotoButton appearance=chrome.
  */
-import { useState, type CSSProperties, type ReactNode } from 'react';
+import { forwardRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Copy, ExternalLink, Pencil, Ticket } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import {
@@ -30,21 +30,22 @@ import {
   STATION_CONTEXT_LISTING_CHROME_CLASS,
 } from './station-context-action-pill';
 
-export function StationContextIconCell({
-  ariaLabel,
-  disabled,
-  onClick,
-  testId,
-  children,
-}: {
-  ariaLabel: string;
-  disabled?: boolean;
-  onClick?: () => void;
-  testId: string;
-  children: ReactNode;
-}) {
+export const StationContextIconCell = forwardRef<
+  HTMLButtonElement,
+  {
+    ariaLabel: string;
+    disabled?: boolean;
+    onClick?: () => void;
+    testId: string;
+    children: ReactNode;
+  }
+>(function StationContextIconCell(
+  { ariaLabel, disabled, onClick, testId, children },
+  ref,
+) {
   return (
     <button
+      ref={ref}
       type="button"
       aria-label={ariaLabel}
       disabled={disabled}
@@ -55,7 +56,7 @@ export function StationContextIconCell({
       {children}
     </button>
   );
-}
+});
 
 export function StationContextListingCell({
   label,
@@ -222,15 +223,13 @@ export function StationContextListingCell({
   );
 }
 
-export function StationContextClaimCell({
-  active,
-  onClick,
-}: {
-  active?: boolean;
-  onClick: () => void;
-}) {
+export const StationContextClaimCell = forwardRef<
+  HTMLButtonElement,
+  { active?: boolean; onClick: () => void }
+>(function StationContextClaimCell({ active, onClick }, ref) {
   return (
     <button
+      ref={ref}
       type="button"
       onClick={onClick}
       aria-label={active ? 'Hide claim' : 'File claim'}
@@ -242,4 +241,4 @@ export function StationContextClaimCell({
       <span className="leading-none">Claim</span>
     </button>
   );
-}
+});

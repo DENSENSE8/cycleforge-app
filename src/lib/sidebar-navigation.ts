@@ -282,13 +282,13 @@ type SidebarNavItemFields = {
   /**
    * `kind: 'top'` only. When `false`, the pin stays in the registry (⌘K,
    * dest search, deep links) but is not painted in the spine's 40px band.
-   * Omit / `true` = paint. Parked surfaces (Plans, Chat) use `false`.
+   * Omit / `true` = paint. Parked surfaces (Search, Plans, Chat) use `false`.
    */
   spineBand?: boolean;
 };
 
 /**
- * Flat spine row. `kind: 'top'` = Home/Search/Media (and parked Plans/Chat)
+ * Flat spine row. `kind: 'top'` = Home/Media (and parked Search/Plans/Chat)
  * header pin; `kind: 'bottom'` = Settings/Admin footer pin; `kind: 'main'` requires
  * `mainGroup` (Monitor / Studio); `kind: 'station'` requires `stationGroup`
  * (Scan Stations) and may set `stationSubgroup` (Receiving page-style header);
@@ -353,9 +353,9 @@ export function isMobileAllowedPath(pathname: string | null | undefined): boolea
 /**
  * Dogfood prod surface (stations + shipping + inventory + warehouse + thin support).
  *
- * Dogfood parking is retired: Home · Search · Media paint in the spine band.
- * Plans / Chat stay `kind: 'top'` with `spineBand: false` (⌘K + routes, no
- * glyph). Operations / Sourcing / Studio ship live. `/fba` stays off the spine
+ * Dogfood parking is retired: Home · Media paint in the spine band.
+ * Search / Plans / Chat stay `kind: 'top'` with `spineBand: false` (⌘K +
+ * routes, no glyph). Operations / Sourcing / Studio ship live. `/fba` stays off the spine
  * because it permanently redirects into Shipping (no second front door). Routes +
  * SIDEBAR_PAGE_NAV modes may still resolve for deep-links — do not delete those
  * until a surface is archived.
@@ -364,12 +364,14 @@ export function isMobileAllowedPath(pathname: string | null | undefined): boolea
  * along as an L2 mode rather than a second flat row.
  */
 export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
-  // Top pin — Home → Search → Media paint in the spine band. Plans / Chat stay
-  // registry rows (`spineBand: false`) so ⌘K and `/ai-chat` / forge still work.
-  // Plans deep-links Home forge (`/?mode=forge&view=live`); active state is
-  // query-aware via {@link isSidebarTopPinActive} if the glyph returns.
+  // Top pin — Home → Media paint in the spine band. Search / Plans / Chat stay
+  // registry rows (`spineBand: false`) so ⌘K, `/search`, `/ai-chat` / forge still
+  // work. Search lives in GlobalHeader (`GlobalHeaderSearch`); the spine pin
+  // would duplicate that control. Plans deep-links Home forge
+  // (`/?mode=forge&view=live`); active state is query-aware via
+  // {@link isSidebarTopPinActive} if the glyph returns.
   { id: 'home',              label: 'Home',        href: '/',                   icon: Home,            kind: 'top' },
-  { id: 'search',            label: 'Search',      href: '/search',             icon: Search,          kind: 'top' },
+  { id: 'search',            label: 'Search',      href: '/search',             icon: Search,          kind: 'top', spineBand: false },
   { id: 'ops-photos',        label: 'Media',       href: '/ops/photos',         icon: Images,          kind: 'top', requires: 'photos.view' },
   // Plans — live master-plan console (Home forge). Same landing as `/forge`.
   { id: 'plans-live',        label: 'Plans',       href: '/?mode=forge&view=live', icon: Zap,           kind: 'top', spineBand: false, requires: 'operations.plans.view' },
@@ -775,7 +777,7 @@ export function isSidebarTopPinActive(
 
 /**
  * Whether a `kind: 'top'` pin paints in {@link SpineTopPins}. Registry
- * rows with `spineBand: false` (Plans, Chat) stay reachable via ⌘K / URL.
+ * rows with `spineBand: false` (Search, Plans, Chat) stay reachable via ⌘K / URL.
  */
 export function isSpineBandTopPin(item: SidebarNavItem): boolean {
   return item.kind === 'top' && item.spineBand !== false;

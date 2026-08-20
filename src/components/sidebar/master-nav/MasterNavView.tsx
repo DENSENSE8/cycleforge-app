@@ -17,11 +17,11 @@ import { SpineTopPins } from './SpineTopPins';
  *
  * ## Stack (top → bottom)
  *
- * 1. **Top band (40px)** — {@link SpineTopPins}: Home · Search · Media as icons
+ * 1. **Top band (40px)** — {@link SpineTopPins}: Home · Media as icons
  *    when the spine is open. Shares the desktop top-chrome seam with the
  *    GlobalHeader. When closed, reach them via ⌘K / opening the map — the
- *    header toggle is click-only (no hover peek). Plans / Chat stay in the
- *    registry (`spineBand: false`) without glyphs.
+ *    header toggle is click-only (no hover peek). Search / Plans / Chat stay
+ *    in the registry (`spineBand: false`) without glyphs.
  * 2. **Body** — flat domain map + Scan Stations Vercel drill → footer
  *    {@link TechRailSearchBar} → Settings/Admin pin → staff account footer.
  *
@@ -65,7 +65,7 @@ export function MasterNavView({
           and org SWITCHING lives in Settings → Organization
           (`WorkspaceSwitcher`), the honest home for a rare, deliberate act.
 
-          What ARRIVED is {@link SpineTopPins} — Home · Search · Media. The band
+          What ARRIVED is {@link SpineTopPins} — Home · Media. The band
           was blank for a day after the org control went, and a blank 40px strip
           at the top of the navigator is worse than a used one. These pins sit
           here for free: the band's height is already reserved by the seam. */}

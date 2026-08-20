@@ -93,9 +93,10 @@ export const SIDEBAR_RAIL_TRAILING_TRACK_CLASS =
  *
  * Scan-station first seam for **ops** chrome (scan bar · MasterNav L1 /
  * workbench tab/triage bands · grid column headers · PaneHeader). Station
- * carton identity + Displays top use `STATION_CHROME_ROW_FACE` (`h-9`) so
- * those two abutting rows share one taller box. Secondary station eyebrow
- * stays {@link STATION_SECONDARY_BAND_FACE} (`h-6`). Prefer this over raw
+ * carton identity + Displays top + desk inspector chrome use
+ * `STATION_CHROME_ROW_FACE` (same 28px, with `max-h-7 min-h-0` so the row
+ * cannot grow). Secondary station eyebrow stays
+ * {@link STATION_SECONDARY_BAND_FACE} (`h-6`). Prefer this over raw
  * `h-7` / `h-[28px]` on those shells.
  *
  * **Not** the GlobalHeader / MasterNav spine top band — that is

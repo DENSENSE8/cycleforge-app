@@ -3,7 +3,7 @@
 /**
  * GlobalHeader sidebar toggle — click opens/closes the MasterNav spine.
  *
- * Click-only. When collapsed, Home · Search · Media stay in the open spine's
+ * Click-only. When collapsed, Home · Media stay in the open spine's
  * 40px band (`SpineTopPins`) and via ⌘K — no hover peek from this control.
  * Hover/focus still warms the spine chunk so the first open lands warm.
  */

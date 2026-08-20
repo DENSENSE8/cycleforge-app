@@ -14,6 +14,7 @@
  */
 
 import { useSyncExternalStore } from 'react';
+import { RIGHT_RAIL_HOST_CLOSE_SLOT_CLASS } from '@/components/right-rail/DeskRailChromeRow';
 import { Button } from '@/design-system/primitives';
 import {
   type PaneHeaderActionBarAction,
@@ -113,7 +114,7 @@ export function RailSelectionBand({
         </Button>
       </div>
       <span
-        className="inline-block h-7 w-7 shrink-0"
+        className={RIGHT_RAIL_HOST_CLOSE_SLOT_CLASS}
         aria-hidden
         data-right-rail-host-close-slot
       />

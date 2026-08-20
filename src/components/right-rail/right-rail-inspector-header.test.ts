@@ -407,11 +407,11 @@ describe('right-rail inspector header', () => {
   it('DeskRailChromeRow SoT owns the optical one-row class', () => {
     const src = code(read('src/components/right-rail/DeskRailChromeRow.tsx'));
     assert.match(src, /DESK_RAIL_CHROME_ROW_CLASS/);
+    assert.match(src, /STATION_CHROME_ROW_FACE/);
     assert.match(src, /pl-2/);
     assert.match(src, /data-right-rail-host-close-slot/);
     assert.doesNotMatch(src, /PaneHeaderCloseButton/);
     assert.match(src, /trailing/);
-    assert.match(src, /flex h-8 shrink-0 items-center pl-2 pr-2/);
     assert.match(
       src,
       /z-header/,
@@ -477,7 +477,8 @@ describe('right-rail inspector header', () => {
     // Ruled 2026-08-19: the dismiss is an `X` in the TRAILING corner, so the
     // leading cell belongs to the occupant's own chrome (Back / ▦ / icons).
     assert.match(host, /<X className/);
-    assert.match(host, /absolute right-2 top-0\.5/);
+    assert.match(host, /absolute right-2 top-0/);
+    assert.match(host, /STATION_CHROME_ROW_FACE/);
     assert.doesNotMatch(
       host,
       /ArrowRightToLine/,
