@@ -108,6 +108,9 @@ export const AUDIT_ENTITY = {
   LISTING_PHOTO: 'listing_photo',
   // External platform connection (organization_integrations vault row).
   INTEGRATION: 'integration',
+  // One row of the fixed daily checklist (daily_check_items). The per-day
+  // TICKS are not audited — daily_check_marks already carries staff + instant.
+  DAILY_CHECK_ITEM: 'daily_check_item',
   STAFF_TODO: 'staff_todo',
   STAFF_MESSAGE: 'staff_message',
   // Entity-anchored conversation thread (entity_threads)
@@ -228,6 +231,10 @@ export const AUDIT_ACTION = {
    *  (Universal Incoming Phase 4, §7.2). Distinct from RECEIVING_RELINK, which
    *  re-points a carton at a different Zoho PO. */
   RECEIVING_INBOUND_LINKED:  'receiving.inbound.linked',
+  /** An operator created / edited / reordered / deleted a durable carton listing
+   *  link (`receiving_listing_links`), or bound one to a line. One action for the
+   *  whole CRUD surface — the row payload says which. */
+  RECEIVING_LISTING_LINK_WRITE: 'receiving.listing_link.write',
   /** Manual n8n-style lifecycle advance through transitionReceivingLine(). */
   RECEIVING_LINE_ADVANCE:    'receiving_line.advance',
   /** Real "Save for unbox" transition — stamps receiving.triage_complete. */
@@ -320,6 +327,11 @@ export const AUDIT_ACTION = {
   CHECKLIST_UPDATE:  'checklist.update',
   CHECKLIST_DELETE:  'checklist.delete',
   CHECKLIST_PUBLISH: 'checklist.publish',
+  // Daily checklist STRUCTURE. Distinct from CHECKLIST_* above, which belong
+  // to the deleted checklist_templates surface — dashboards key off those
+  // values, so a new surface takes new ones rather than borrowing them.
+  DAILY_CHECK_ITEM_CREATE: 'daily_check_item.create',
+  DAILY_CHECK_ITEM_RETIRE: 'daily_check_item.retire',
   QC_RESULT_RECORD: 'qc_result.record',
   // Kit-parts / BOM templates ("what's in the box" authoring CRUD)
   KIT_PART_CREATE: 'kit_part.create',

@@ -293,6 +293,7 @@ export function buildUnboxSideTabs(input: BuildUnboxTabsInput): SectionTab[] {
           listingLinks={c.listingLinks ?? []}
           listingLink={c.listingLink}
           setListingLink={c.setListingLink}
+          receivingId={row.receiving_id ?? null}
         />
       ),
     },
