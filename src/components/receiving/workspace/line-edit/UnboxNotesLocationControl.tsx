@@ -5,9 +5,12 @@
  *   location-QR scan arm, and the Last entry · Move · New · Edit menu.
  * @hardware-target Station
  * @density floor
- * @justification Cannot reuse ArrivalDockScanEntry — that cell writes triage
- *   staging_location_id on the carton; this cluster writes receiving_line_putaway
- *   on the open line and must sit left of Print in the notes composer.
+ * @justification Writes `receiving_line_putaway` on the OPEN LINE and must sit
+ *   left of Print in the notes composer. (It could never reuse Arrival's dock
+ *   scan cell, which wrote the carton's triage `staging_location_id` — a
+ *   different column on a different entity. That cell was deleted 2026-08-20
+ *   when the Arrival floor became a single note field; the grain split it
+ *   illustrates is why this control stays separate.)
  *
  * Chrome is {@link StationLocationPill} (the shared composer pill), not a
  * Button beside an IconButton: Print already owns the accent split pill in this

@@ -6,16 +6,26 @@
  *
  * Station column anatomy (Arrival port of the Unbox golden — see
  * `display/station-port-from-unbox.md`):
- *   - CENTRE is the door flow — identity ({@link StationContextBar}
- *     `placement="flow"`) → one white door-flow plane (`DISPLAYS_FLUSH_HOST` +
- *     `appSurfaceFillClass('chrome')`) holding PO / unfound **items** (no units
- *     chrome) → **Classify**. Identity abuts items with zero air
- *     (`reserveIdentityClearance={false}`, `bodyGap="none"`). No centre Staging
- *     card, no advisory strip, no Omnichannel notes float.
+ *   - CENTRE is the door flow and NOTHING else — identity
+ *     ({@link StationContextBar} `placement="flow"`) → one white door-flow plane
+ *     (`DISPLAYS_FLUSH_HOST` + `appSurfaceFillClass('chrome')`) holding PO /
+ *     unfound **items** (no units chrome). Identity abuts items with zero air
+ *     (`reserveIdentityClearance={false}`, `bodyGap="none"`). Nothing stacks
+ *     under the items: the centre `TriageClassifySection` and the Staging
+ *     control are both deleted (2026-08-20). **Classify is the identity
+ *     header's pills and only those** — one surface for urgency · platform ·
+ *     type, at the top, never a second copy in the middle. No advisory strip,
+ *     no Omnichannel notes float.
+ *   - **Staging is Displays-only.** Shelf + lane come from
+ *     {@link ArrivalLocationsLeaf} on the right edge, whose `selectShelf`
+ *     auto-routes the lane (`resolveTriageLane`) — so one placement satisfies
+ *     BOTH fields `completeTriage` gates Save-for-unbox on. That gate is
+ *     untouched; the control moved, the requirement did not.
  *   - The bottom **dock** is Unbox flush geometry: dogfood strip =
- *     Save-for-unbox (`data-arrival-dogfood-terminal`); Band 1 =
- *     {@link ArrivalStagingDockControl} (shelf · lane ACTION); Band 2 =
- *     quiet "Staging" pager cell. Notes live on Unbox, not Arrival.
+ *     Save-for-unbox (`data-arrival-dogfood-terminal`); Band 1 = ONE carton-note
+ *     entry ({@link ArrivalCartonNotesEntry} → `receiving.support_notes`),
+ *     mirroring the Unbox dock; Band 2 = quiet "Note" pager cell. No scan cell
+ *     and no focus target here — the wedge stays the sidebar ingest bar's.
  *   - Ticket + Pairing/Linkage are the right-edge **Displays** push
  *     ({@link StationDisplaysPushStack} + {@link buildTriageDisplayTabs}),
  *     never a centre `SectionTabsSlider` strip. Ticket create/link/chat uses
@@ -23,12 +33,11 @@
  *   - {@link ScanStationUtilityRail} (slim white trailing chrome) carries the
  *     **carton cursor** (`↑` / `↓`) at the top and, when Displays is closed, the
  *     **`←|` Open displays** toggle in the **bottom** footer (left-dock twin).
- *     That control lands the Root Index (2+ displays) — never scrolls Classify /
- *     Staging (those keep their own centre / dock loci). Contextual opens
+ *     That control lands the Root Index (2+ displays). Contextual opens
  *     (PO chip → Pairing, Find ticket → Ticket) skip the index. Not carton
  *     identity — a separate scan-station rail.
  *
- * The identity classify pills expand the centre Classify section; the `# ----`
+ * The `# ----`
  * PO chip opens the Linkage display and hands the PO avenue over as DATA
  * (`setPairingFocus` → the hub's `focusTab`), read on mount — never a timed
  * event (mirrors Unbox).
@@ -72,10 +81,8 @@ import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { dispatchLineUpdated } from '@/components/station/receiving-lines-table-helpers';
 import { markTriageCompleted, hasTriageBeenCompleted } from '@/lib/receiving/triage-complete-local';
 import { useTriageStaging } from './useTriageStaging';
-import { ArrivalStagingDockControl } from './ArrivalStagingDockControl';
-import { ArrivalDockScanEntry } from './ArrivalDockScanEntry';
+import { ArrivalCartonNotesEntry } from './ArrivalCartonNotesEntry';
 import { ArrivalDisplaysActionFloor } from './ArrivalDisplaysActionFloor';
-import { TriageClassifySection } from './TriageClassifySection';
 import { deriveTriageFocusFacts, resolveTriageFocus } from '@/lib/receiving/triage-focus';
 import { buildTriageDisplayTabs, type TriageDisplayTab } from './build-triage-displays';
 import { buildTriageDisplayIndexRows } from './triage-display-index';
@@ -230,7 +237,8 @@ export function TriagePanel({
 
   // On open, tell the operator when there is nothing left to do — the carton is
   // already staged. Displays open on demand (`←|` index / PO chip / Find ticket /
-  // Macro floor Edit); Classify stays in the centre; Staging lives in the flush dock.
+  // Macro floor Edit); Staging is the Locations display; Classify is the identity
+  // header. The centre is items only.
   useEffect(() => {
     const facts = deriveTriageFocusFacts(
       row,
@@ -407,6 +415,10 @@ export function TriagePanel({
                     staffId={staffId}
                     c={c}
                     expandClassifyWhenPending={false}
+                    // Classify (urgency · platform · type) lives HERE, on the
+                    // identity header, and nowhere else on this station. The
+                    // stacked centre `TriageClassifySection` under the items is
+                    // deleted — one classify surface, at the top, not two.
                     showClassifyControls
                     classifyInteractive
                     onEditPo={openPoPairing}
@@ -431,8 +443,9 @@ export function TriagePanel({
                 reserveIdentityClearance={false}
                 // Flat data floor — no vertical air between centre surfaces.
                 bodyGap="none"
-                // `tabs` is deliberately EMPTY: Pairing is Displays; Classify
-                // stacks under items; Staging is the flush dock ACTION.
+                // `tabs` is deliberately EMPTY: Pairing and Locations are
+                // Displays; Classify is the identity header; the centre is the
+                // carton's items and nothing else.
                 feedback={
                   <WorkspaceActionFeedbackSlot
                     feedback={actionFeedback}
@@ -479,21 +492,20 @@ export function TriagePanel({
                         stepContext={
                           <div className="flex h-full min-w-0 flex-1 items-center inset-cozy">
                             <p className="truncate text-role-caption font-semibold text-text-muted">
-                              Staging
+                              Note
                             </p>
                           </div>
                         }
+                        // The floor is ONE entry field, mirroring the Unbox dock.
+                        // The shelf/lane control moved to the centre ops-flow
+                        // plane (below), where it is the Arrival twin of Unbox's
+                        // centre UnboxPlacementSection — and there is no scan
+                        // cell here, so nothing on this bench competes with the
+                        // sidebar ingest bar for the wedge.
                         leading={
-                          <ArrivalStagingDockControl
-                            staging={staging}
-                            // Procedure locus: scan a shelf, place THIS carton.
-                            // The sidebar bar stays ingest-only.
-                            scanCell={
-                              <ArrivalDockScanEntry
-                                receivingId={row.receiving_id}
-                                staging={staging}
-                              />
-                            }
+                          <ArrivalCartonNotesEntry
+                            receivingId={row.receiving_id}
+                            initialValue={row.receiving_support_notes ?? ''}
                           />
                         }
                         trailing={null}
@@ -529,13 +541,12 @@ export function TriagePanel({
                       unitsChrome={false}
                       c={c}
                     />
-                    <div>
-                      <TriageClassifySection
-                        row={row}
-                        c={c}
-                        onFindTicket={openFindTicketDisplay}
-                      />
-                    </div>
+                    {/* Nothing stacks under the items. Shelf + lane left the
+                        centre 2026-08-20 for the Locations display
+                        (ArrivalLocationsLeaf): its `selectShelf` auto-routes the
+                        lane, so one placement still satisfies both fields
+                        completeTriage gates Save-for-unbox on — the gate is
+                        untouched, only its control moved. */}
                   </div>
                 </div>
               </StationWorkbench>
