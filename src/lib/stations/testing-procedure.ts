@@ -1,7 +1,8 @@
 /**
  * Testing QC procedure vocabulary — distinct from Unbox `FOUND_CAPTURE`.
  *
- * Dock CTAs live on TestingDockHost; listing + seller-claimed condition facts
+ * The QC verdict CTA lives in the centre verdict slot (TestingPanel); the dock
+ * carries the notes card + Pass · Print. Listing + seller-claimed condition facts
  * live on Displays (`listing` leaf). Never import Unbox dock registries here.
  */
 
