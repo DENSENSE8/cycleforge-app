@@ -38,3 +38,34 @@ test('buildPackDisplayIndexRows omits gated photos/timeline; Listings always tra
   assert.equal(rows[0]?.subtitle, 'No listing');
   assert.equal(rows.some((r) => r.id === 'ticket' || r.id === 'support'), false);
 });
+
+test('Locations appears only for a real order row, and never nags', () => {
+  const withOrder = buildPackDisplayIndexRows({
+    photosVisible: false,
+    hasTimeline: false,
+    packedCount: 0,
+    totalCount: 0,
+    hasListing: false,
+    hasPlaceableOrder: true,
+  });
+  // Ahead of the trailing Listings slot, and an `assets` tool rather than an
+  // outstanding step — same contract as Arrival's and Ready-to-Pack's row.
+  assert.deepEqual(
+    withOrder.map((r) => r.id),
+    ['locations', 'listings'],
+  );
+  assert.equal(withOrder[0]?.tone, 'neutral');
+  assert.equal(withOrder[0]?.group, 'assets');
+
+  // A UNIT scan or an unknown order has no `order_pack_placements` key, so the
+  // leaf would have nothing to write — it must not offer the row at all.
+  const withoutOrder = buildPackDisplayIndexRows({
+    photosVisible: false,
+    hasTimeline: false,
+    packedCount: 0,
+    totalCount: 0,
+    hasListing: false,
+    hasPlaceableOrder: false,
+  });
+  assert.equal(withoutOrder.some((r) => r.id === 'locations'), false);
+});

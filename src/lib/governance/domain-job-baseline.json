@@ -1233,7 +1233,6 @@
     "src/components/tech/testing-panel/ActiveLineTestingSerial.tsx",
     "src/components/tech/testing-panel/TestingCartonHeader.tsx",
     "src/components/tech/testing-panel/TestingDisplaysActionFloor.tsx",
-    "src/components/tech/testing-panel/TestingDockHost.tsx",
     "src/components/tech/testing-panel/TestingLineSlot.tsx",
     "src/components/tech/testing-panel/TestingListingVerifyHost.tsx",
     "src/components/tech/testing-panel/TestingPanelModals.tsx",
