@@ -24,6 +24,7 @@ import { InstallPrompt } from "../components/station/InstallPrompt";
 import { AppearanceApplier } from "../components/settings/AppearanceApplier";
 import { ReceivingZohoSyncToaster } from "../components/receiving/ReceivingZohoSyncToaster";
 import { UserIssueResolvedToaster } from "../components/providers/UserIssueResolvedToaster";
+import { ProductUpdatesHost } from "../components/product-updates/ProductUpdatesHost";
 import { getInitialAuthUser } from "@/lib/auth/server-session";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -155,6 +156,7 @@ export default async function RootLayout({
                                     </HeaderProvider>
                                     <ReceivingZohoSyncToaster />
                                     <UserIssueResolvedToaster />
+                                    <ProductUpdatesHost />
                                     <SwitchStaffSheet />
                                     <ScanHotkeySync />
                                     <ThemeSync />
