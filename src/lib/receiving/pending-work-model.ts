@@ -8,20 +8,9 @@
  * the repo — pure helpers get their own dependency-free module and the heavy one
  * re-exports them (.claude/rules/build-gotchas.md → bundle altitude).
  */
-export type PendingWorkSource = 'nas-archive' | 'open-exception';
+type PendingWorkSource = 'nas-archive' | 'open-exception';
 
-/**
- * How much authority the card's button has.
- *
- * `commit` — the action is idempotent and needs no judgement, so the card may
- *   just do it (re-copying a ticket folder to the NAS).
- * `navigate` — the action is a DECISION. The card takes the operator to the
- *   record and stops. Resolving a SHORT or a DAMAGED means deciding what
- *   actually happened to someone's goods; a corner card with a one-click
- *   "Resolve" would be inviting an operator to clear a backlog without looking
- *   at it, which is worse than the backlog.
- */
-export type PendingWorkAction = 'commit' | 'navigate';
+
 
 interface PendingWorkBase {
   source: PendingWorkSource;

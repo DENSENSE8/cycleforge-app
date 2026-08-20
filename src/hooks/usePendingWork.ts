@@ -9,9 +9,7 @@ import {
   getStationChannelName,
   safeChannelName,
 } from '@/lib/realtime/channels';
-import type { PendingWorkItem, PendingWorkSource } from '@/lib/receiving/pending-work-model';
-
-export type { PendingWorkItem, PendingWorkSource };
+import type { PendingWorkItem } from '@/lib/receiving/pending-work-model';
 
 /** Module-local: the hook is the only consumer, so exporting it is dead surface. */
 const pendingWorkQueryKey = (receivingId?: number | null) =>

@@ -6,15 +6,6 @@ import {
 import { receivingExceptionLabel } from '@/lib/receiving/exception-codes';
 import { listPendingNasArchives } from '@/lib/receiving/nas-archive-pending';
 
-// Re-exported so server callers keep one import path for the whole concern.
-export {
-  orderPendingWork,
-  type PendingWorkItem,
-  type PendingWorkSource,
-  type PendingWorkCommitItem,
-  type PendingWorkNavigateItem,
-  type PendingWorkAction,
-} from '@/lib/receiving/pending-work-model';
 
 /**
  * Follow-up work an operator owes on a carton they have already scanned away
@@ -64,7 +55,7 @@ const EXCEPTION_RECENCY_DAYS = 7;
  * index choice and not a semantic one — if they ever diverge, `resolved_at` is
  * the fact and `status` is the cache.
  */
-export async function listOpenReceivingExceptions(
+async function listOpenReceivingExceptions(
   organizationId: string,
   staffId: number,
   opts: { receivingId?: number | null; limit?: number } = {},
