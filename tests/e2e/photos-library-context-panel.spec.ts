@@ -20,7 +20,7 @@ test.describe('Photo library · viewer context panel', () => {
 
     // grid-sm is a flat view — tiles open the shared lightbox (not a new tab).
     await page.goto('/ops/photos?view=grid-sm');
-    await expect(page.getByText(/Photos \d+ ·/)).toBeVisible();
+    await expect(page.locator('[data-testid="photo-library-meta"]')).toContainText(/\d+ photo/i);
 
     const firstTile = page.getByTestId('photo-tile').first();
     if (await firstTile.count()) {
@@ -52,7 +52,7 @@ test.describe('Photo library · viewer context panel', () => {
 
   test('the panel deep link returns to a source-scoped library view', async ({ page }) => {
     await page.goto('/ops/photos?view=grid-sm');
-    await expect(page.getByText(/Photos \d+ ·/)).toBeVisible();
+    await expect(page.locator('[data-testid="photo-library-meta"]')).toContainText(/\d+ photo/i);
 
     const firstTile = page.getByTestId('photo-tile').first();
     if (!(await firstTile.count())) test.skip(true, 'no photos seeded in this environment');
@@ -73,7 +73,7 @@ test.describe('Photo library · viewer context panel', () => {
       expect(href).toMatch(/\/ops\/photos\?/);
       await sourceLink.click();
       await expect(page).toHaveURL(/\/ops\/photos\?/);
-      await expect(page.getByText(/Photos \d+ ·/)).toBeVisible();
+      await expect(page.locator('[data-testid="photo-library-meta"]')).toContainText(/\d+ photo/i);
     }
   });
 
@@ -82,7 +82,7 @@ test.describe('Photo library · viewer context panel', () => {
     page.on('pageerror', (err) => pageErrors.push(err.message));
 
     await page.goto('/ops/photos?view=grid-sm');
-    await expect(page.getByText(/Photos \d+ ·/)).toBeVisible();
+    await expect(page.locator('[data-testid="photo-library-meta"]')).toContainText(/\d+ photo/i);
 
     const firstTile = page.getByTestId('photo-tile').first();
     if (!(await firstTile.count())) test.skip(true, 'no photos seeded in this environment');
@@ -114,19 +114,30 @@ test.describe('Photo library · viewer context panel', () => {
     const pageErrors: string[] = [];
     page.on('pageerror', (err) => pageErrors.push(err.message));
 
-    // Small grid is a flat contact sheet now (Finder-style — no day-separator
-    // bands); photo tiles render directly.
+    // The stream is day-banded at every grid density — `PhotoFlatGrid` groups
+    // by capture day and emits a sticky `DateGroupHeader` per group.
     await page.goto('/ops/photos?view=grid-sm');
-    await expect(page.getByText(/Photos \d+ ·/)).toBeVisible();
+    await expect(page.locator('[data-testid="photo-library-meta"]')).toContainText(/\d+ photo/i);
     if (await page.getByTestId('photo-tile').count()) {
       await expect(page.getByTestId('photo-tile').first()).toBeVisible();
     }
-    // The day-separator bands are intentionally gone.
-    await expect(page.locator('[data-date]')).toHaveCount(0);
+    /*
+      Day bands are part of the stream, not absent from it.
+
+      This asserted `toHaveCount(0)` and passed for one reason: the settled
+      gate above it was a bare `toBeVisible()` on an element that is mounted
+      while loading, so the count was read before a single band had rendered.
+      With an honest gate the real DOM shows five. A test that only passes
+      because it runs too early is worse than no test — it reports coverage of
+      a claim that was never true.
+    */
+    if (await page.getByTestId('photo-tile').count()) {
+      expect(await page.locator('[data-date]').count()).toBeGreaterThan(0);
+    }
 
     // Large grid switches to the masonry layout; must render error-free.
     await page.goto('/ops/photos?view=grid-lg');
-    await expect(page.getByText(/Photos \d+ ·/)).toBeVisible();
+    await expect(page.locator('[data-testid="photo-library-meta"]')).toContainText(/\d+ photo/i);
 
     expect(pageErrors, `Uncaught page errors: ${pageErrors.join(' | ')}`).toHaveLength(0);
   });

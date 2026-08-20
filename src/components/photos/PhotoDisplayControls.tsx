@@ -2,21 +2,37 @@
 
 import { LayoutDashboard, List, Loader2, Pencil, RefreshCw } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import type { PhotoGridDensity } from '@/lib/photos/photo-grid-density';
+import { WORKBENCH_CHROME_CUBE_GLYPH_CLASS } from '@/components/dashboard/workbench-chrome-cube';
+import {
+  PHOTO_GRID_DENSITY_LABELS,
+  PHOTO_GRID_DENSITY_ORDER,
+  type PhotoGridDensity,
+} from '@/lib/photos/photo-grid-density';
 import {
   DEFAULT_PHOTO_LIBRARY_VIEW,
   type PhotoLibraryViewMode,
 } from '@/lib/photos/library-filter-state';
-import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
-import { PhotoGridDisplayControls } from './PhotoGridDisplayControls';
-import { photoLibraryControlButtonClass, photoLibraryControlGroupClass } from './photo-library-controls';
+import { PHOTO_GRID_DENSITY_ICONS } from './PhotoGridDisplayControls';
+import { mediaBandCellClass, mediaBandCellGroupClass } from './photo-library-controls';
 
 /**
- * Two-mode display toggle — Icons (the flat photo stream) vs List. Built from the
- * SAME control-group primitives as the grid-density toggle so the two read as one
- * consistent, compact control cluster. "Icons" drives the default flat grid;
- * grid density sizes the tiles separately.
+ * Band 3 control strip for `/ops/photos`: density · refresh · select ·
+ * icons/list. Sort / Views / media type / filters live on Bands 1–2.
+ *
+ * **Every control is a full-height band CELL** — `self-stretch aspect-square`
+ * via {@link mediaBandCellClass}, never a pinned `h-8` square and never an
+ * `h-7` button inside a `p-0.5` bordered box. Those two shapes are what made
+ * this strip 32px and 34px tall inside a 28px row, so the controls overflowed
+ * the band and no two of them shared a top or bottom edge. Cells abut inside a
+ * group (one collapsed hairline) and groups separate by one gap unit, so the
+ * row reads as three clusters of peers.
+ *
+ * It renders the density cells itself rather than delegating to
+ * {@link PhotoGridDisplayControls}: that component serves the embedded ATTACH
+ * pickers (claim · move · media picker), which are not on a 28px chrome band
+ * and legitimately keep the boxed-group face. Only the icon MAP is shared, so
+ * the two surfaces cannot disagree about which glyph means which size.
  */
 type DisplayItem = {
   id: 'icons' | 'list';
@@ -29,10 +45,6 @@ const DISPLAY_ITEMS: DisplayItem[] = [
   { id: 'list', label: 'List', icon: List },
 ];
 
-/**
- * Path-strip control cluster for in-folder photos: density · refresh · select ·
- * icons/list. Sort / media type / filters stay in {@link PhotoLibraryWorkspaceHeader}.
- */
 export function PhotoDisplayControls({
   view,
   onViewChange,
@@ -54,52 +66,70 @@ export function PhotoDisplayControls({
   onRefresh: () => void;
   isRefreshing: boolean;
 }) {
-  // Left→right on the breadcrumb row: density → refresh → Select → display toggle.
+  // Left→right on the path strip: density → refresh · select → display toggle.
   return (
     <>
       {showDensity ? (
-        <PhotoGridDisplayControls
-          className="shrink-0"
-          density={density}
-          onDensityChange={onDensityChange}
-        />
+        <div className={mediaBandCellGroupClass} role="group" aria-label="Grid size">
+          {PHOTO_GRID_DENSITY_ORDER.map((id) => {
+            const active = density === id;
+            const Icon = PHOTO_GRID_DENSITY_ICONS[id];
+            const label = PHOTO_GRID_DENSITY_LABELS[id];
+            return (
+              <HoverTooltip key={id} label={label} placement="above" asChild>
+                <button
+                  type="button"
+                  aria-label={label}
+                  aria-pressed={active}
+                  onClick={() => onDensityChange(id)}
+                  className={mediaBandCellClass(active)}
+                >
+                  <Icon className={WORKBENCH_CHROME_CUBE_GLYPH_CLASS} />
+                </button>
+              </HoverTooltip>
+            );
+          })}
+        </div>
       ) : null}
 
-      {/* Refresh stays on the path strip across every view. */}
-      <HoverTooltip label="Refresh photos" placement="above" asChild>
-        <button
-          type="button"
-          aria-label="Refresh photos"
-          disabled={isRefreshing}
-          onClick={onRefresh}
-          className={cn(
-            'ds-raw-button flex h-8 w-8 shrink-0 items-center justify-center border border-border-soft bg-surface-card text-text-soft transition-colors hover:bg-surface-sunken hover:text-text-default disabled:cursor-not-allowed disabled:opacity-60',
-            cornerClass('flush'),
-          )}
-        >
-          {isRefreshing ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : (
-            <RefreshCw className="h-3.5 w-3.5" />
-          )}
-        </button>
-      </HoverTooltip>
+      {/*
+        Refresh + Select — two utilities, one abutting pair. Both stay on the
+        path strip across every view: every view paints photo tiles, so there is
+        no level with nothing to select.
+      */}
+      <div className={mediaBandCellGroupClass}>
+        <HoverTooltip label="Refresh photos" placement="above" asChild>
+          <button
+            type="button"
+            aria-label="Refresh photos"
+            disabled={isRefreshing}
+            onClick={onRefresh}
+            className={mediaBandCellClass(false, 'disabled:cursor-not-allowed disabled:opacity-60')}
+          >
+            {isRefreshing ? (
+              <Loader2 className={cn(WORKBENCH_CHROME_CUBE_GLYPH_CLASS, 'animate-spin')} />
+            ) : (
+              <RefreshCw className={WORKBENCH_CHROME_CUBE_GLYPH_CLASS} />
+            )}
+          </button>
+        </HoverTooltip>
 
-      {/* Select (edit) — highlighted when active. Always rendered: every view
-          now paints photo tiles, so there is no level with nothing to select. */}
-      <HoverTooltip label={selectionActive ? 'Done selecting' : 'Select'} placement="above" asChild>
-        <div className={cn(photoLibraryControlGroupClass, 'shrink-0')}>
+        <HoverTooltip
+          label={selectionActive ? 'Done selecting' : 'Select'}
+          placement="above"
+          asChild
+        >
           <button
             type="button"
             aria-label={selectionActive ? 'Done selecting' : 'Select'}
             aria-pressed={selectionActive}
             onClick={onStartSelect}
-            className={cn('ds-raw-button', photoLibraryControlButtonClass(selectionActive, 'w-7'))}
+            className={mediaBandCellClass(selectionActive)}
           >
-            <Pencil className="h-3.5 w-3.5" />
+            <Pencil className={WORKBENCH_CHROME_CUBE_GLYPH_CLASS} />
           </button>
-        </div>
-      </HoverTooltip>
+        </HoverTooltip>
+      </div>
 
       {/*
         Display toggle — Icons (the flat photo stream) vs List. ALWAYS rendered,
@@ -111,7 +141,7 @@ export function PhotoDisplayControls({
         Icons targets DEFAULT_PHOTO_LIBRARY_VIEW (the flat grid), NOT `folders`
         — pointing it back at the hierarchy would make the escape hatch a loop.
       */}
-      <div className={cn(photoLibraryControlGroupClass, 'shrink-0')} role="group" aria-label="Photo display">
+      <div className={mediaBandCellGroupClass} role="group" aria-label="Photo display">
         {DISPLAY_ITEMS.map(({ id, label, icon: Icon }) => {
           const active = (view === 'list' ? 'list' : 'icons') === id;
           return (
@@ -121,9 +151,9 @@ export function PhotoDisplayControls({
                 aria-label={label}
                 aria-pressed={active}
                 onClick={() => onViewChange(id === 'list' ? 'list' : DEFAULT_PHOTO_LIBRARY_VIEW)}
-                className={cn('ds-raw-button', photoLibraryControlButtonClass(active, 'w-7'))}
+                className={mediaBandCellClass(active)}
               >
-                <Icon className="h-3.5 w-3.5" />
+                <Icon className={WORKBENCH_CHROME_CUBE_GLYPH_CLASS} />
               </button>
             </HoverTooltip>
           );

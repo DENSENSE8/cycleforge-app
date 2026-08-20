@@ -20,7 +20,6 @@
  */
 import {
   HEADER_ICON_GAP,
-  PRIMARY_CHROME_ROW_FACE,
 } from '@/components/layout/header-shell';
 import { elevationClass } from '@/design-system/tokens/shadows';
 import { chipLabel, chipText } from '@/design-system/tokens/typography/presets';
@@ -74,17 +73,20 @@ export const stationIdentityPadClass = 'px-0';
 /* ── Identity rhythm (one-row carton bar; stacked tokens kept for overlays) ─ */
 
 /**
- * Station chrome seam — alias of {@link PRIMARY_CHROME_ROW_FACE} (28px scan bar
- * · carton identity row 1 · Displays push top). Identity rows + Displays
- * header lock to this so the hairline reads as one continuous line across the
- * station. **Not** the GlobalHeader / spine top band (`TOP_CHROME_ROW_FACE` /
- * 40px) — that seam sits above this one.
+ * Station chrome seam — carton identity row 1 and Displays push top.
+ *
+ * `h-9` (36px), not {@link PRIMARY_CHROME_ROW_FACE} (`h-7` / 28px). The
+ * photos / classify / identity cells need that taller box; pinning Displays
+ * to the 28px ops token left its top band shorter than the carton bar beside
+ * it. `min-h-0` kills flex `min-height: auto` so content cannot grow one
+ * column past the other. **Not** the GlobalHeader / spine top band
+ * (`TOP_CHROME_ROW_FACE` / 40px) — that seam sits above this one.
  */
-export const STATION_CHROME_ROW_FACE = PRIMARY_CHROME_ROW_FACE;
+export const STATION_CHROME_ROW_FACE = 'h-9 min-h-0 shrink-0';
 
 /**
  * Bottom hairline on a station chrome row — painted via `after:` so it does
- * **not** eat the `h-7` / `h-6` box (border-box `border-b` would shrink the
+ * **not** eat the `h-9` / `h-6` box (border-box `border-b` would shrink the
  * fill) and does **not** notch a parent `border-l` (Displays seam). Same token
  * as Displays top band · identity row 1 · leaf eyebrows.
  */
@@ -263,16 +265,16 @@ export const stationMoreDetailsPaneHostClass =
   `pointer-events-auto absolute ${STATION_IDENTITY_INSET_TOP} ${STATION_IDENTITY_INSET_RIGHT} z-panelPopover flex items-start`;
 
 /**
- * One-row identity clearance (~28px flush at `top-0`, zero Y-pad).
+ * One-row identity clearance (~36px flush at `top-0`, zero Y-pad).
  */
-export const STATION_IDENTITY_SCROLL_CLEARANCE = 'pt-7';
+export const STATION_IDENTITY_SCROLL_CLEARANCE = 'pt-9';
 
 /**
- * Two-row identity clearance (~52px = chrome `h-7` + secondary `h-6`, gap-0 +
+ * Two-row identity clearance (~60px = chrome `h-9` + secondary `h-6`, gap-0 +
  * zero Y-pad). Opt in via `StationWorkbench reserveIdentityClearance="stacked"`.
  */
-// ds-allow-spacing: stacked identity overlay = PRIMARY h-7 + secondary h-6 (not a density step).
-export const STATION_IDENTITY_STACKED_SCROLL_CLEARANCE = 'pt-[52px]'; // ds-allow-spacing
+// ds-allow-spacing: stacked identity overlay = station h-9 + secondary h-6 (not a density step).
+export const STATION_IDENTITY_STACKED_SCROLL_CLEARANCE = 'pt-[60px]'; // ds-allow-spacing
 /**
  * Bottom-CENTER anchor for a menu opened by a carton-bar cell (the listing
  * menu, and any future hand-rolled bar panel). ONE definition of "how a bar

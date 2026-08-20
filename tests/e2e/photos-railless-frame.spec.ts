@@ -26,7 +26,25 @@
 import { test, expect, type Page } from '@playwright/test';
 
 /** The settled header meta line — see the deep-link spec for why `·` is load-bearing. */
-const META_LINE = /Photos \d+ ·/;
+/**
+ * The path strip's count readout, and the SETTLED gate every test here opens
+ * with.
+ *
+ * Targeted by test id rather than by copy: this was a `/Photos \d+ ·/` regex
+ * whose trailing separator existed only to disambiguate it from the
+ * end-of-stream footer's own count, and both broke the first time the wording
+ * was improved.
+ *
+ * The assertion is `toContainText(/\d+ photo/)`, never `toBeVisible()`. The
+ * element is mounted during loading too — its loading branch is `Loading…`,
+ * which carries no digits — so a mere visibility check passes on the first
+ * frame and the test reads its tile count before any photo has arrived. The
+ * digits are what say "settled".
+ */
+const META_LINE = '[data-testid="photo-library-meta"]';
+
+/** The readout has settled on a real count. */
+const SETTLED_META = /\d+ photo/i;
 
 /** `MIN_WORK_SURFACE_PX` from `src/lib/right-rail/frame.ts` — the desk centre floor. */
 const MIN_WORK_SURFACE_PX = 784;
@@ -38,7 +56,7 @@ const BATCH = '[data-testid="photo-batch-inspector-panel"]';
 
 async function landOnStream(page: Page): Promise<void> {
   await page.goto('/ops/photos');
-  await expect(page.getByText(META_LINE)).toBeVisible();
+  await expect(page.locator(META_LINE)).toContainText(SETTLED_META);
 }
 
 /**
@@ -105,6 +123,85 @@ test.describe('Media Library · rail-less frame', () => {
     for (const band of bands) expect(band.width).toBe(bands[0].width);
   });
 
+  /**
+   * Every chrome control tracks the 28px row it sits in.
+   *
+   * Before 2026-08-20 this surface ran FOUR heights across its two 28px bands:
+   * a 24px Views trigger, a 28px inspector toggle, a 32px sort pill and refresh
+   * button, and 34px toggle groups (an `h-7` button inside a `border` + `p-0.5`
+   * box). The tall ones overflowed the band they lived in, so no two controls
+   * shared a top or a bottom edge and the rows read as a ragged parade.
+   *
+   * The fix was the house answer — `WORKBENCH_CHROME_CUBE_CLASS`, whose whole
+   * contract is `self-stretch aspect-square` so a cell tracks the row instead
+   * of pinning a size that overflows it. This measures the OUTCOME (shared
+   * edges) rather than the class, so a future control that reaches for a fixed
+   * `h-8` fails here even if it spells it differently.
+   */
+  test('every band control shares its row height — no control overflows its band', async ({
+    page,
+  }) => {
+    await landOnStream(page);
+
+    const rows = await page.evaluate(() => {
+      const box = (sel: string) => {
+        const el = document.querySelector(sel);
+        if (!el) return null;
+        const r = el.getBoundingClientRect();
+        return { top: Math.round(r.top), bottom: Math.round(r.bottom), h: Math.round(r.height) };
+      };
+      return {
+        // Band 2 — the sort pill and the inspector toggle are the two controls
+        // that flank the right cluster.
+        sort: box('button[aria-label^="Sort:"]'),
+        inspector: box('[data-testid="media-library-inspector-toggle"]'),
+        // Band 3 — density group, refresh, select, display toggle.
+        gridSize: box('[role="group"][aria-label="Grid size"]'),
+        refresh: box('button[aria-label="Refresh photos"]'),
+        display: box('[role="group"][aria-label="Photo display"]'),
+      };
+    });
+
+    for (const [name, cell] of Object.entries(rows)) {
+      expect(cell, `${name} is mounted`).toBeTruthy();
+      // 28px row; a cell may inset by the band's own hairline, never exceed it.
+      expect(cell!.h, `${name} fits its 28px band`).toBeLessThanOrEqual(28);
+      expect(cell!.h, `${name} fills its band`).toBeGreaterThanOrEqual(26);
+    }
+
+    /*
+      Band 3 is ONE strip: every adjacent pair of cells shares a collapsed
+      hairline (`-ml-px`, so the measured delta is -1), including across the
+      `role="group"` boundaries. A positive delta is a `gap-*` creeping back
+      onto the row and re-splitting it into floating clusters.
+    */
+    const seams = await page.evaluate(() => {
+      const inner = document
+        .querySelector('button[aria-label="Refresh photos"]')
+        ?.closest('div.flex.shrink-0');
+      const host = inner?.parentElement;
+      if (!host) return null;
+      const edges = [...host.querySelectorAll('button')].map((b) => {
+        const r = b.getBoundingClientRect();
+        return { left: Math.round(r.left), right: Math.round(r.right) };
+      });
+      return edges.slice(1).map((cell, i) => cell.left - edges[i].right);
+    });
+    expect(seams, 'Band 3 control cells are measurable').toBeTruthy();
+    expect(seams!.length, 'Band 3 has a multi-cell strip').toBeGreaterThan(1);
+    for (const seam of seams!) expect(seam).toBeLessThanOrEqual(0);
+
+    // Band 2's two flanking controls share one baseline...
+    expect(rows.sort!.bottom).toBe(rows.inspector!.bottom);
+    expect(rows.sort!.top).toBe(rows.inspector!.top);
+    // ...and Band 3's three clusters share theirs. Different edges per cluster
+    // is exactly the ragged row this test exists to keep out.
+    expect(rows.refresh!.top).toBe(rows.gridSize!.top);
+    expect(rows.display!.top).toBe(rows.gridSize!.top);
+    expect(rows.refresh!.bottom).toBe(rows.gridSize!.bottom);
+    expect(rows.display!.bottom).toBe(rows.gridSize!.bottom);
+  });
+
   test('Band-1 tabs are the scope writer and round-trip through the URL', async ({ page }) => {
     await landOnStream(page);
 
@@ -112,7 +209,7 @@ test.describe('Media Library · rail-less frame', () => {
     await expect(page).toHaveURL(/sourceScope=unboxing/);
 
     await page.reload();
-    await expect(page.getByText(META_LINE)).toBeVisible();
+    await expect(page.locator(META_LINE)).toContainText(SETTLED_META);
     await expect(page).toHaveURL(/sourceScope=unboxing/);
 
     // `all` is the default and drops out of the URL rather than serializing.
@@ -163,7 +260,7 @@ test.describe('Media Library · rail-less frame', () => {
     // 2. Outbound document types are scope-conditional — absent everywhere else,
     //    exactly as the rail's chip strip was.
     await page.goto('/ops/photos');
-    await expect(page.getByText(META_LINE)).toBeVisible();
+    await expect(page.locator(META_LINE)).toContainText(SETTLED_META);
     await refine.click();
     await expect(page.getByTestId('photo-document-types')).toHaveCount(0);
     await page.keyboard.press('Escape');
@@ -225,7 +322,7 @@ test.describe('Media Library · batch rail', () => {
     // archive. All three bands survive.
     await expect(page.locator(TYPES_CUBE)).toBeVisible();
     await expect(page.getByRole('button', { name: 'Unboxing', exact: true })).toBeVisible();
-    await expect(page.getByText(META_LINE)).toBeVisible();
+    await expect(page.locator(META_LINE)).toContainText(SETTLED_META);
 
     // One slot, two cardinalities — the n = 1 rail must not be co-mounted.
     await expect(page.locator('[data-testid="photo-inspector-panel"]')).toHaveCount(0);

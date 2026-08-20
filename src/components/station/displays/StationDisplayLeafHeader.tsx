@@ -155,7 +155,7 @@ export function StationDisplayLeafHeader({
       >
         {current ? (
           <span
-            className="h-4 min-w-0 flex-1 self-center truncate pl-1 pr-2 text-left text-role-caption font-semibold leading-4 text-text-default"
+            className="flex h-full min-w-0 flex-1 items-center truncate pl-1 pr-2 text-left text-role-caption font-semibold leading-4 text-text-default"
             data-station-displays-leaf-title=""
             data-testid="station-displays-leaf-title"
             data-breadcrumb-segment={current.id}

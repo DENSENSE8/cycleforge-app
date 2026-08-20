@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Home · Search · Media · Plans · Chat — the five app-wide destinations.
+ * Home · Search · Media — spine-band destinations.
  *
  * ## One mount, one SoT
  *
@@ -10,34 +10,15 @@
  * washes abut with no gaps. When the spine is closed, reach these via ⌘K /
  * opening the map — the header toggle is click-only (no hover peek).
  *
- * They were four full rows pinned above the map until 2026-08-03, then header
- * icons for part of that day, then spine-band only. A closed-spine hover peek
- * existed briefly and was removed so the toggle stays a plain Show/Hide
- * control. Plans joined as the fifth pin (2026-08-03) between Media and Chat.
+ * Plans and Chat stay `kind: 'top'` in `APP_SIDEBAR_NAV` with `spineBand:
+ * false` so ⌘K / dest search / `/ai-chat` / forge still work; this band
+ * does not paint those glyphs.
  *
- * As rows they cost the map vertical space. As icons in a band the spine already
- * reserves, they cost it **nothing**.
- *
- * ## The registry still owns them
- *
- * They stay `kind: 'top'` in `APP_SIDEBAR_NAV`, so ⌘K, the flat spine search and
- * `nav-destinations` keep ranking them; `SidebarNavList` simply does not draw
- * them as rows. Permission gating rides along — Media needs `photos.view`, Plans
- * needs `operations.plans.view`, Chat needs `dashboard.view` — via
+ * Permission gating rides along — Media needs `photos.view` — via
  * {@link getSidebarNavItems}, so a staffer without the permission gets no icon
  * rather than a dead one.
  *
- * Icon-only is what makes the band affordable: all five are conventional glyphs
- * (house · magnifier · images · zap · message), each carrying its label as a
- * tooltip and its `aria-label`. Five equal-fill cells span the 40px seam.
- *
- * Active state is query-aware ({@link isSidebarTopPinActive}): on forge, Plans
- * is current and Home is idle so the two never both light.
- *
- * **Named for the job, not the birthplace.** It shipped as `HeaderTopPins` for
- * the hours it lived permanently in the GlobalHeader; a shell keeping its first
- * address in its name is how `StationComposerDock` came to describe a dock that
- * Support also owned.
+ * Active state is query-aware ({@link isSidebarTopPinActive}).
  */
 
 import { useMemo } from 'react';
@@ -48,6 +29,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import {
   getSidebarNavItems,
   isSidebarTopPinActive,
+  isSpineBandTopPin,
   type SidebarNavItem,
 } from '@/lib/sidebar-navigation';
 import { cn } from '@/utils/_cn';
@@ -67,7 +49,7 @@ export function SpineTopPins() {
 
   const pins = useMemo<SidebarNavItem[]>(() => {
     const permissions = new Set(user?.permissions ?? []);
-    return getSidebarNavItems({ permissions }).filter((item) => item.kind === 'top');
+    return getSidebarNavItems({ permissions }).filter(isSpineBandTopPin);
   }, [user?.permissions]);
 
   if (pins.length === 0) return null;

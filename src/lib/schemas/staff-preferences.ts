@@ -181,13 +181,13 @@ export const StaffPreferencesPutBody = z
     onboardingDismissed: z.boolean().nullable().optional(),
     /**
      * Last product-update catalog id the staffer dismissed ("Got it").
-     * Absent/`null` = never seen; a newer PRODUCT_UPDATES[0].id auto-opens
-     * the What's-new panel on the next full document load.
+     * Kept so existing `staff_preferences` bags still parse; the What's-new
+     * host is no longer mounted.
      */
     lastSeenProductUpdateId: z.string().nullable().optional(),
     /**
-     * Last catalog buildSha the staffer dismissed. Unseen sha vs this
-     * value is a second reason to auto-open when an update exists.
+     * Last catalog buildSha the staffer dismissed. Kept for the same
+     * parse-compat reason as `lastSeenProductUpdateId`.
      */
     lastSeenBuildSha: z.string().nullable().optional(),
     /** Per-board swimlane prefs. One generic shape ({@link BOARD_PREFS}) per

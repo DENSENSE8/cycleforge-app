@@ -8,7 +8,11 @@ import { usePhotoLibrary, photoLibraryFilterParams } from '@/hooks/usePhotoLibra
 import { usePhotoLibraryUrlState } from '@/hooks/usePhotoLibraryUrlState';
 import { usePhotoSelection } from '@/hooks/usePhotoSelection';
 import { usePhotoShareLinks } from '@/hooks/usePhotoShareLinks';
-import { describePhotoLibraryContext, resolvePhotoLibraryFolderLeafLabel } from '@/lib/photos/library-context-label';
+import {
+  ALL_PHOTOS_CONTEXT_TITLE,
+  describePhotoLibraryContext,
+  resolvePhotoLibraryFolderLeafLabel,
+} from '@/lib/photos/library-context-label';
 import { photoShareTitle } from '@/lib/photos/display-names';
 import { buildPhotoDateTree } from '@/lib/photos/date-tree';
 import {
@@ -49,6 +53,19 @@ import { PhotoInspectorPanel } from './photo-inspector/PhotoInspectorPanel';
 import { photoLibraryShowsGridControls } from '@/lib/photos/photo-grid-density';
 
 /** Fixed share-link lifetime (24h) for copied links + share pages. */
+/**
+ * The one phrase for "how many photos are in view".
+ *
+ * Two places say it — the path strip's readout and the end-of-stream footer —
+ * and they are counts of the same set, so they must not drift into `Photos 48`
+ * in one and `48 photos` in the other. Pluralised because `1 photos` is the
+ * kind of small wrongness an operator reads as the surface being careless with
+ * the rest of its numbers.
+ */
+function photoCountLabel(count: number): string {
+  return `${count} ${count === 1 ? 'photo' : 'photos'}`;
+}
+
 const DEFAULT_SHARE_TTL_SECONDS = 24 * 60 * 60;
 
 /** Server cap on ids per share / share-pack request (share-links.ts MAX_PHOTOS_PER_REQUEST). */
@@ -169,7 +186,7 @@ export function PhotoLibraryPage() {
   const selectionActive = selectMode || isActive;
 
   const shareLinks = usePhotoShareLinks();
-  const { subtitle } = describePhotoLibraryContext(displayFilters);
+  const { title: contextTitle } = describePhotoLibraryContext(displayFilters);
 
   // ── The desk inspector ────────────────────────────────────────────────────
   //
@@ -348,9 +365,29 @@ export function PhotoLibraryPage() {
 
   // Infinite scroll lives in {@link PhotoLibraryLoadMoreSentinel} (needs scroll-shell root).
 
+  /**
+   * The path strip's meta is a READOUT — how many photos, and what they are of.
+   *
+   * It used to render the context *subtitle*, which on the default scope is
+   * "Browse receiving, packing, and unit photos": an instruction to a
+   * first-time visitor, parked permanently in 28px ops chrome, describing the
+   * same seven sources Band 1's tabs are already showing. It said nothing that
+   * changed as the operator worked.
+   *
+   * The count answers "how much is in view". The context TITLE is appended only
+   * when it names something narrower than the whole archive — `PO 14-14825`,
+   * `Carton #88`, `#9599` — because that is the fact the breadcrumb above does
+   * not always carry. On the whole archive it is `All photos`, which the tabs
+   * and the breadcrumb both already say, so it is dropped rather than repeated.
+   */
   const metaLine = query.isLoading
     ? 'Loading…'
-    : `Photos ${photos.length} · ${subtitle}`;
+    : [
+        photoCountLabel(photos.length),
+        contextTitle === ALL_PHOTOS_CONTEXT_TITLE ? null : contextTitle,
+      ]
+        .filter(Boolean)
+        .join(' · ');
 
   const downloadPhotoFile = useCallback(async (url: string, filename: string) => {
     const res = await fetch(url);
@@ -758,8 +795,14 @@ export function PhotoLibraryPage() {
               onLoadMore={() => void query.fetchNextPage()}
             />
           ) : !query.isLoading && photos.length > 0 ? (
+            /*
+              End-of-stream. It used to read `Photos 48` — the same count the
+              path strip already shows, in the same words, saying nothing about
+              why it is there. The operator scrolled to the bottom; what they
+              need to know is that there is no more to load.
+            */
             <p className="mt-6 text-center text-role-micro uppercase tracking-widest text-text-faint">
-              {`Photos ${photos.length}`}
+              {`End of results · ${photoCountLabel(photos.length)}`}
             </p>
           ) : null}
         </Panel>

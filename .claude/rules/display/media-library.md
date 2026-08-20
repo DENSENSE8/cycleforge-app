@@ -79,6 +79,35 @@ surface the sheet below carries `border-t` — Band 3 here is a path strip, not 
 sheet), Band 3 `border-b` against the plane. Contiguity is measured, not assumed
 (`photos-railless-frame.spec.ts`).
 
+### The band cells, and the field
+
+**Every control in Bands 1–3 is a full-height band CELL.** `WORKBENCH_CHROME_CUBE_CLASS`
+(`self-stretch aspect-square`) via `mediaBandCellClass` / `mediaBandCellGroupClass` — a
+cell tracks the 28px row instead of pinning a size that overflows it, and cells abut
+inside a group (one collapsed hairline) with no bordered box around them.
+
+Until 2026-08-20 this surface ran **four** heights across its two 28px rows — a 24px
+Views trigger, a 28px inspector toggle, a 32px sort pill and refresh button, and 34px
+toggle groups (an `h-7` button inside `border` + `p-0.5`). The tall ones overflowed
+their band, so no two controls shared a top or a bottom edge, and each group carried
+its own rhythm (`p-0.5` inside, `gap-1` around, `gap-1.5` between).
+
+- **Bands run their trailing control to the right EDGE.** Band 3 is `pl-3 pr-0`; Band 2
+  overrides the shared `pr-0.5` to `pr-0`. Two chrome rows must not disagree about
+  where the right edge is.
+- **The find field is the shared `TechRailSearchBar variant="chrome"`** — the same
+  always-open field every workbench Band 3 mounts. It is `self-stretch` and flush, so
+  it never takes a `px-*` of its own, and it owns its 250ms draft debounce: **never
+  wrap it in a second `useDebounce`.**
+- **The day band is `surface="solid"`** on `DateGroupHeader`. Full-colour photos scroll
+  under it, and the translucent default (`bg-surface-card/90` + `backdrop-blur-[2px]`)
+  tints the label and stops the band reading as white. Text-row consumers keep the
+  default — the primitive was grown, not forked.
+- **The path strip's meta is a READOUT** (`48 photos`, plus the context title when it
+  names something narrower than the whole archive) — never the context *subtitle*,
+  which was a first-time-visitor sentence parked permanently in ops chrome, describing
+  the same sources Band 1's tabs already show.
+
 ### Why Band 2 = search and Band 3 = breadcrumb (the inversion)
 
 House grammar is Band 2 = KPI, Band 3 = the lean find row
@@ -256,6 +285,7 @@ ban. Its `heroLayoutId` is now a lone `layoutId` with no partner, which is inert
 |---|---|
 | Band 1 (tabs + media-type cube; the scope writer) | `src/components/photos/PhotoLibraryScopeBand.tsx` |
 | Band 2 (search + in-field refine + sort + inspector toggle) | `src/components/photos/PhotoLibraryWorkspaceHeader.tsx` |
+| Band cell face + group | `mediaBandCellClass` / `mediaBandCellGroupClass` · `src/components/photos/photo-library-controls.ts` |
 | Band 3 (path strip) | `src/components/photos/PhotoLibraryHeader.tsx` |
 | Chrome host + planes | `src/components/photos/PhotoLibraryPage.tsx` |
 | Scope vocabulary + patches | `src/lib/photos/library-filter-state.ts` |

@@ -62,7 +62,6 @@ const PUBLIC_PATHS: ReadonlyArray<RegExp> = [
   /^\/api\/auth\//,
   /^\/api\/beta\//,                     // public marketing beta waitlist + spots counter (no auth)
   /^\/api\/health(?:$|\/)/,
-  /^\/api\/version(?:$|\/)/,          // deploy SHA probe for product-updates refresh chip
   /^\/api\/ready(?:$|\/)/,
   // TEMP Cursor debug session 251bbb — remove with /api/agent-debug-log
   /^\/api\/agent-debug-log(?:$|\/)/,

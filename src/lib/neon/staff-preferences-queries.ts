@@ -80,11 +80,11 @@ export interface StaffPreferences {
    */
   onboardingDismissed?: boolean | null;
   /**
-   * Last product-update catalog id dismissed via the What's-new panel.
-   * Absent/`null` = never seen.
+   * Last product-update catalog id dismissed via the former What's-new panel.
+   * Absent/`null` = never seen. Kept so existing preference bags still parse.
    */
   lastSeenProductUpdateId?: string | null;
-  /** Last catalog buildSha dismissed with the update id. */
+  /** Last catalog buildSha dismissed with the update id. Parse-compat only. */
   lastSeenBuildSha?: string | null;
   /**
    * Unshipped · Shelf-board layout prefs (cross-device). Lanes are PENDING /

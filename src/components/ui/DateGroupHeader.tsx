@@ -28,10 +28,34 @@ import { useMotionPresence, useMotionTransition } from '@/design-system/foundati
  * receiving / repair / sales, desktop + mobile) and the swim-lane board lanes.
  */
 
-/** Sticky row wrapper — left-aligned micro date+qty; soft fill so rows don't bleed under.
- *  Horizontal pad matches QUEUE_ROW.px so the day label shares the row title edge. */
+/**
+ * Sticky row wrapper — left-aligned micro date+qty.
+ *
+ * Two fills, and the choice is about WHAT SCROLLS UNDER the band:
+ *
+ * - **`translucent` (default)** — `bg-surface-card/90` + a hairline backdrop
+ *   blur. Right over dense TEXT rows, where a hint of the row passing beneath
+ *   reads as depth and the label still wins on contrast.
+ * - **`solid`** — plain `bg-surface-card`. Required over a media stream: full
+ *   colour PHOTOS scroll under this band, so at 90% they tint the label and the
+ *   band itself stops reading as white. It also drops `backdrop-blur-[2px]`,
+ *   an arbitrary-value class the house bans everywhere it can be avoided.
+ *
+ * The default is unchanged, so the four text-row consumers keep their look;
+ * this is the shared primitive GROWN for a second surface, not forked for it.
+ */
 export const dayGroupChipRowClass = cn(
   'flex items-center bg-surface-card/90 py-0.5 backdrop-blur-[2px]',
+  QUEUE_ROW.px,
+);
+
+/**
+ * {@link dayGroupChipRowClass} with an opaque fill — see the note above.
+ * Module-local: the `surface` prop is the door, so exporting this would be a
+ * second way to reach the same fill (and an unused export besides).
+ */
+const dayGroupChipRowSolidClass = cn(
+  'flex items-center bg-surface-card py-0.5',
   QUEUE_ROW.px,
 );
 
@@ -43,6 +67,11 @@ export const dayGroupChipClass =
 interface DateGroupHeaderProps {
   date: string;
   total: number;
+  /**
+   * Fill under the sticky band — `translucent` (default) over text rows,
+   * `solid` over a media stream. See {@link dayGroupChipRowClass}.
+   */
+  surface?: 'translucent' | 'solid';
   /** Optional controls rendered right of the count (e.g. a print button). */
   actions?: ReactNode;
   /**
@@ -73,6 +102,7 @@ interface DateGroupHeaderProps {
 export function DateGroupHeader({
   date,
   total,
+  surface = 'translucent',
   actions,
   sticky = true,
   rowIndex,
@@ -80,6 +110,7 @@ export function DateGroupHeader({
   className,
   animate = false,
 }: DateGroupHeaderProps) {
+  const rowClass = surface === 'solid' ? dayGroupChipRowSolidClass : dayGroupChipRowClass;
   const layoutTransition = useMotionTransition(framerTransition.chipColumnLayout);
   const mountTransition = useMotionTransition(framerTransition.tableRowMount);
   const countPresence = useMotionPresence(framerPresence.tableRow);
@@ -118,7 +149,7 @@ export function DateGroupHeader({
         role={rowIndex == null ? undefined : 'row'}
         aria-rowindex={rowIndex}
         data-date={date}
-        className={cn(sticky && ['sticky z-raised', stickyTopClass], dayGroupChipRowClass, className)}
+        className={cn(sticky && ['sticky z-raised', stickyTopClass], rowClass, className)}
       >
         <span className={dayGroupChipClass}>{labelEl}</span>
       </div>
@@ -133,7 +164,7 @@ export function DateGroupHeader({
       layout
       layoutScroll
       transition={{ layout: layoutTransition }}
-      className={cn(sticky && ['sticky z-raised', stickyTopClass], dayGroupChipRowClass, className)}
+      className={cn(sticky && ['sticky z-raised', stickyTopClass], rowClass, className)}
     >
       <motion.span
         layout

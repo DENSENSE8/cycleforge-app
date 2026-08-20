@@ -38,19 +38,50 @@ export function PhotoLibraryHeader({ breadcrumb, metaLine, controls }: PhotoLibr
   return (
     <div
       className={cn(
-        'flex w-full items-center justify-between gap-4 border border-l-0 border-t-0 border-border-soft bg-surface-card px-3',
+        // `pl-3 pr-0`, not `px-3`: the breadcrumb keeps its reading inset, and
+        // the control cells run to the band's own right edge. A trailing pad
+        // parked the last cell 13px inside the row while Band 2's cluster
+        // above it sat flush — two rows of chrome disagreeing about where the
+        // right edge is.
+        'flex w-full items-center justify-between gap-4 border border-l-0 border-t-0 border-border-soft bg-surface-card pl-3 pr-0',
         PRIMARY_CHROME_ROW_FACE,
       )}
     >
       <div className="flex min-w-0 flex-1 items-center gap-2">
         <div className="min-w-0 flex-1">{breadcrumb}</div>
-        <span className={cn(microBadge, 'hidden shrink-0 truncate text-text-soft md:inline')}>
+        {/*
+          `data-testid`, because six specs used to assert this readout by
+          regexing its copy (`/Photos \d+ ·/`) — a matcher that had to be
+          disambiguated from the end-of-stream footer's own count, and that
+          broke every one of them the first time the wording was improved. A
+          test should pin that the count is SHOWN, not how it is phrased.
+        */}
+        <span
+          data-testid="photo-library-meta"
+          className={cn(microBadge, 'hidden shrink-0 truncate text-text-soft md:inline')}
+        >
           {metaLine}
         </span>
       </div>
 
+      {/*
+        ONE continuous strip of cells — no gap anywhere, at any level.
+
+        `items-stretch` + `self-stretch`, not `items-center`: every control here
+        is a full-height band CELL that tracks the 28px row. Centering them let
+        a 32px refresh and a 34px bordered group sit taller than the band they
+        lived in.
+
+        `[&>*+*]:-ml-px` collapses the seam BETWEEN groups, exactly as
+        `mediaBandCellGroupClass` already collapses it between the cells inside
+        one. The groups survive for their `role="group"` semantics (Grid size,
+        Photo display are each a set), but they are not a visual rhythm — a gap
+        between them read as three floating clusters rather than one strip, and
+        it was the last of the three competing rhythms this row used to carry
+        (`p-0.5` inside, `gap-1` around, `gap-1.5` between).
+      */}
       {controls ? (
-        <div className="flex shrink-0 items-center gap-1.5">{controls}</div>
+        <div className="flex shrink-0 items-stretch self-stretch [&>*+*]:-ml-px">{controls}</div>
       ) : null}
     </div>
   );

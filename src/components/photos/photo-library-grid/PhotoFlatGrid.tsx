@@ -76,6 +76,10 @@ export function PhotoFlatGrid({
             <DateGroupHeader
               date={group.dateKey}
               total={group.photos.length}
+              // Opaque: full-colour photos scroll under this band, and at the
+              // default 90% they tint the label and stop the band reading as
+              // white. Text rows keep the translucent default.
+              surface="solid"
               // Drop the queue-row horizontal pad (px-3): the band label must sit
               // on the tile grid's own edge, and the Panel already supplies the
               // page inset. The sticky fill still spans the full width, so tiles

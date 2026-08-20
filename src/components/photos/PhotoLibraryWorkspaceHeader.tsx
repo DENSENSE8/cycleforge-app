@@ -40,25 +40,32 @@
  *   current path. That capability moved here rather than being dropped: capture
  *   day is the primary axis of an evidence archive.
  *
- * ## Scoped house-law exception: the search field is always open
+ * ## The field is the house one, and it is always open
  *
- * The DS search SoT is `TechRailSearchBar` — always-open filter+paste in
- * workbench chrome (`.claude/rules/ui-design-system.md` → Workbench scoped
- * search chrome). **This surface deliberately overrides that**, approved
- * 2026-07-28: Photos keeps the always-open `SearchField` entry-path exception.
+ * The DS search SoT is `TechRailSearchBar variant="chrome"` — the same
+ * always-open field every workbench Band 3 mounts (Unbox History, To-ship,
+ * Incoming). This surface mounts it too.
  *
- * Rationale: /ops/photos is a photo-EVIDENCE archive whose #1 job is exact
- * identifier retrieval — pulling the unboxing shots for a specific PO, serial,
- * or claim ticket to settle a damage dispute or carrier claim. On every other
- * workbench, search refines a list the operator is already reading, so
- * collapsed-at-rest correctly demotes it. Here it IS the primary entry path, and
- * a click-to-expand puts a gesture in front of the surface's main job. It is
- * also why search earns a band of its own rather than sharing one.
+ * It used to mount a bare `SearchField` instead, under an entry-path exception
+ * approved 2026-07-28. **That exception was about the field being ALWAYS OPEN,
+ * never about it being a different component** — and `variant="chrome"` is
+ * always open, so the substance survives and the fork does not. What the fork
+ * cost: a hand-rolled `useState` + `useDebounce` pair beside a component that
+ * already owns a 250ms draft debounce (stack them and the field lags ~500ms —
+ * the header-search regression, one surface over), plus a `px-3` inset that
+ * left the field floating inside a band every other surface runs flush.
+ *
+ * The always-open half is still load-bearing and must not be "fixed" to
+ * collapse-at-rest: /ops/photos is a photo-EVIDENCE archive whose #1 job is
+ * exact identifier retrieval — pulling the unboxing shots for a specific PO,
+ * serial, or claim ticket to settle a damage dispute. On every other workbench
+ * search refines a list the operator is already reading; here it IS the entry
+ * path, which is also why it earns a band of its own.
  *
  * SoT: `.claude/rules/display/media-library.md`.
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Loader2 } from '@/components/Icons';
 import {
@@ -72,9 +79,8 @@ import {
   WorkbenchFilterMenuRow,
   WorkbenchFilterPopover,
 } from '@/components/dashboard/workbench-filter-popover';
-import { SearchField } from '@/design-system/primitives';
+import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 import { useAuth } from '@/contexts/AuthContext';
-import { useDebounce } from '@/hooks';
 import { usePhotoLibrary } from '@/hooks/usePhotoLibrary';
 import { usePhotoInspectorParam } from '@/hooks/usePhotoInspectorParam';
 import { usePhotoLibraryUrlState } from '@/hooks/usePhotoLibraryUrlState';
@@ -135,53 +141,57 @@ export function PhotoLibraryWorkspaceHeader({ className }: { className?: string 
 
   const activeScope = sourceScopeFromFilters(filters);
 
-  const [searchInput, setSearchInput] = useState(() =>
-    photoLibrarySearchFace({ ...filters, sourceScope: activeScope }),
-  );
-  const debouncedInput = useDebounce(searchInput, 250);
   const [filterOpen, setFilterOpen] = useState(false);
 
-  useEffect(() => {
-    setSearchInput(photoLibrarySearchFace({ ...filters, sourceScope: activeScope }));
-  }, [filters.q, filters.poFinder, filters.ticketId, activeScope]);
+  /**
+   * The field's value IS the URL — `TechRailSearchBar` holds the typing draft
+   * and debounces it (250ms) before calling back, so there is no local mirror
+   * to keep in sync and no second debounce to stack on top of its own. The
+   * `useState` + `useDebounce` + two reconciling effects this replaced were
+   * that mirror; one of the effects existed only to undo the drift the other
+   * one caused.
+   */
+  const searchFace = photoLibrarySearchFace({ ...filters, sourceScope: activeScope });
 
-  useEffect(() => {
-    const trimmed = debouncedInput.trim();
-    const current = photoLibrarySearchFace({ ...filters, sourceScope: activeScope });
-    if (trimmed === current) return;
+  const commitSearch = useCallback(
+    (next: string) => {
+      const trimmed = next.trim();
+      if (trimmed === searchFace) return;
 
-    // Under Zendesk Claims, a typed ticket number becomes the ticket leaf filter
-    // (photos + NAS archive folder `#9599`) — same waist as ReceivingClaimModal.
-    if (activeScope === 'claims') {
-      const ticketDigits = parsePhotoLibraryTicketSearch(trimmed);
-      if (ticketDigits) {
+      // Under Zendesk Claims, a typed ticket number becomes the ticket leaf
+      // filter (photos + NAS archive folder `#9599`) — same waist as
+      // ReceivingClaimModal.
+      if (activeScope === 'claims') {
+        const ticketDigits = parsePhotoLibraryTicketSearch(trimmed);
+        if (ticketDigits) {
+          patch({
+            ticketId: ticketDigits,
+            poFinder: undefined,
+            poFinderKind: undefined,
+            q: undefined,
+            dateFrom: undefined,
+            dateTo: undefined,
+          });
+          return;
+        }
         patch({
-          ticketId: ticketDigits,
-          poFinder: undefined,
-          poFinderKind: undefined,
+          ticketId: undefined,
+          poFinder: trimmed || undefined,
+          poFinderKind: trimmed ? 'ticket' : undefined,
           q: undefined,
-          dateFrom: undefined,
-          dateTo: undefined,
+          ...(trimmed ? { dateFrom: undefined, dateTo: undefined } : {}),
         });
         return;
       }
-      patch({
-        ticketId: undefined,
-        poFinder: trimmed || undefined,
-        poFinderKind: trimmed ? 'ticket' : undefined,
-        q: undefined,
-        ...(trimmed ? { dateFrom: undefined, dateTo: undefined } : {}),
-      });
-      return;
-    }
 
-    patch({
-      poFinder: trimmed || undefined,
-      poFinderKind: trimmed ? 'any' : undefined,
-      q: undefined,
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedInput]);
+      patch({
+        poFinder: trimmed || undefined,
+        poFinderKind: trimmed ? 'any' : undefined,
+        q: undefined,
+      });
+    },
+    [activeScope, patch, searchFace],
+  );
 
   const refinements = useMemo(
     () =>
@@ -252,17 +262,22 @@ export function PhotoLibraryWorkspaceHeader({ className }: { className?: string 
       // flush mount recipe: one hairline per seam). `WorkbenchTriageBand`
       // ships `border-r` only because on its home surface the sheet below
       // carries `border-t`; Band 3 here is a path strip, not a sheet.
-      className={cn(className, 'border-b border-border-soft')}
+      // `pr-0` overrides the shared band's `pr-0.5`: on this surface all three
+      // bands run their trailing control to the same right edge, and a 2px
+      // inset here left Band 2's cluster sitting just inside Band 3's. The
+      // shared token keeps its default for every other desk.
+      className={cn(className, 'border-b border-border-soft pr-0')}
       search={
-        // Always-open by design — see the scoped house-law exception in this
-        // file's header comment. Do NOT "fix" this back to TechRailSearchBar.
-        <SearchField
-          value={searchInput}
-          onChange={setSearchInput}
-          onClear={() => setSearchInput('')}
+        // The house Band-3 find field, always open. `variant="chrome"` is
+        // `self-stretch` + flush, so it runs edge-to-edge in the band with no
+        // inset of its own — do NOT re-add a `px-*` here (this file used to
+        // carry `px-3`, which left the field floating inside its own row).
+        <TechRailSearchBar
+          variant="chrome"
+          value={searchFace}
+          onChange={commitSearch}
           placeholder={SEARCH_PLACEHOLDER}
-          tone="blue"
-          className="min-w-0 flex-1 px-3"
+          className="min-w-0 flex-1"
           trailingSuffix={
             <WorkbenchFilterPopover
               density="field"

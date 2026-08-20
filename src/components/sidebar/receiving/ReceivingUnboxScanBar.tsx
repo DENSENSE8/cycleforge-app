@@ -66,7 +66,7 @@ function modeMeta(mode: UnboxScanMode): UnboxScanModeMeta {
  * It does NOT decide resolution — an un-armed scan submits `'auto'` and the
  * server deep-scans ticket #, PO #, and tracking # before creating a carton.
  */
-export function classifyUnboxScan(value: string): UnboxScanMode {
+function classifyUnboxScan(value: string): UnboxScanMode {
   if (looksLikeTicketScan(value)) return 'ticket';
   return value.includes('-') ? 'order' : 'tracking';
 }

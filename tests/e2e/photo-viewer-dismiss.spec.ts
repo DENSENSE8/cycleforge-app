@@ -92,8 +92,12 @@ async function assertPhotoLibraryHeaderClickable(page: Page) {
   await mediumGrid.click();
   await expect(mediumGrid).toHaveAttribute('aria-pressed', 'true');
 
-  // Sidebar filter — the same control the deferViewerClose test proves focusable.
-  const filter = page.getByRole('textbox', { name: /filter po/i });
+  // The Band-2 find field. This named `/filter po/i` — the deleted left rail's
+  // "Filter POs…" box — from before `/ops/photos` went rail-less (2026-08-09),
+  // so it had been matching nothing and timing out rather than proving
+  // anything. The live field is the one control on this surface that can hold
+  // focus, which is exactly what a lingering scrim would steal.
+  const filter = page.getByPlaceholder(/PO, order, tracking, serial/i);
   await filter.click();
   await expect(filter).toBeFocused();
 }
@@ -109,7 +113,7 @@ async function hoverRotateTooltip(page: Page) {
 
 async function openLightbox(page: Page) {
   await page.goto('/ops/photos?view=grid-sm');
-  await expect(page.getByText(/Photos \d+ ·/)).toBeVisible();
+  await expect(page.locator('[data-testid="photo-library-meta"]')).toContainText(/\d+ photo/i);
   const tile = page.getByTestId('photo-tile').first();
   if (!(await tile.count())) test.skip(true, 'no photos seeded in this environment');
   await tile.click();

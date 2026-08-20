@@ -81,8 +81,8 @@ export function GlobalHeader({
             onToggleSidebar={onToggleSidebar}
           />
         ) : null}
-        {/* Home · Search · Media · Plans · Chat live in the open spine band
-            (`SpineTopPins`). The toggle is click-only — no collapsed hover peek. */}
+        {/* Home · Search · Media live in the open spine band (`SpineTopPins`).
+            The toggle is click-only — no collapsed hover peek. */}
         <HeaderPinsSwitcher />
         <HeaderRecentsSwitcher />
         <HeaderPageSwitcher />

@@ -3794,7 +3794,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/master-nav/MasterNavView.tsx",
-      "line": 31,
+      "line": 32,
       "snippet": "export MasterNavView from src/components/sidebar/master-nav/MasterNavView.tsx"
     },
     {
@@ -3807,7 +3807,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/master-nav/SidebarNavList.tsx",
-      "line": 193,
+      "line": 194,
       "snippet": "export SidebarNavList from src/components/sidebar/master-nav/SidebarNavList.tsx"
     },
     {
@@ -3820,7 +3820,7 @@
       ],
       "kind": "code",
       "source": "src/components/sidebar/master-nav/SpineTopPins.tsx",
-      "line": 62,
+      "line": 44,
       "snippet": "export SpineTopPins from src/components/sidebar/master-nav/SpineTopPins.tsx"
     },
     {
@@ -6266,19 +6266,6 @@
       "source": "src/components/sidebar/receiving/ReceivingUnboxScanBar.tsx",
       "line": 26,
       "snippet": "export UNBOX_SCAN_MODES from src/components/sidebar/receiving/ReceivingUnboxScanBar.tsx"
-    },
-    {
-      "job": "Export: classifyUnboxScan",
-      "sot": "classifyUnboxScan",
-      "path": "src/components/sidebar/receiving/ReceivingUnboxScanBar.tsx",
-      "guard": null,
-      "symbols": [
-        "classifyUnboxScan"
-      ],
-      "kind": "code",
-      "source": "src/components/sidebar/receiving/ReceivingUnboxScanBar.tsx",
-      "line": 69,
-      "snippet": "export classifyUnboxScan from src/components/sidebar/receiving/ReceivingUnboxScanBar.tsx"
     },
     {
       "job": "Export: ReceivingUnboxScanBar",
@@ -8786,7 +8773,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/displays/StationDisplaysHeaderActions.tsx",
-      "line": 48,
+      "line": 49,
       "snippet": "export STATION_DISPLAYS_HEADER_ACTION_CELL from src/components/station/displays/StationDisplaysHeaderActions.tsx"
     },
     {
@@ -8799,7 +8786,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/displays/StationDisplaysHeaderActions.tsx",
-      "line": 52,
+      "line": 53,
       "snippet": "export STATION_DISPLAYS_HEADER_ACTION_GLYPH from src/components/station/displays/StationDisplaysHeaderActions.tsx"
     },
     {
@@ -8812,7 +8799,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/displays/StationDisplaysHeaderActions.tsx",
-      "line": 55,
+      "line": 56,
       "snippet": "export STATION_DISPLAYS_HEADER_ACTION_FACE from src/components/station/displays/StationDisplaysHeaderActions.tsx"
     },
     {
@@ -8825,7 +8812,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/displays/StationDisplaysHeaderActions.tsx",
-      "line": 59,
+      "line": 60,
       "snippet": "export STATION_DISPLAYS_HEADER_ACTION_ACTIVE from src/components/station/displays/StationDisplaysHeaderActions.tsx"
     },
     {
@@ -8838,7 +8825,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/displays/StationDisplaysHeaderActions.tsx",
-      "line": 62,
+      "line": 63,
       "snippet": "export StationDisplaysHeaderActions from src/components/station/displays/StationDisplaysHeaderActions.tsx"
     },
     {
@@ -9098,7 +9085,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-identity-chrome.ts",
-      "line": 32,
+      "line": 31,
       "snippet": "export STATION_IDENTITY_INSET_TOP from src/components/station/entity-context/station-identity-chrome.ts"
     },
     {
@@ -9111,7 +9098,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-identity-chrome.ts",
-      "line": 35,
+      "line": 34,
       "snippet": "export STATION_IDENTITY_INSET_RIGHT from src/components/station/entity-context/station-identity-chrome.ts"
     },
     {
@@ -9124,7 +9111,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-identity-chrome.ts",
-      "line": 42,
+      "line": 41,
       "snippet": "export stationContextBarHostClass from src/components/station/entity-context/station-identity-chrome.ts"
     },
     {
@@ -9137,7 +9124,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-identity-chrome.ts",
-      "line": 51,
+      "line": 50,
       "snippet": "export stationContextBarFlowHostClass from src/components/station/entity-context/station-identity-chrome.ts"
     },
     {
@@ -9150,7 +9137,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-identity-chrome.ts",
-      "line": 59,
+      "line": 58,
       "snippet": "export stationIdentityPanelClass from src/components/station/entity-context/station-identity-chrome.ts"
     },
     {
@@ -9163,7 +9150,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-identity-chrome.ts",
-      "line": 65,
+      "line": 64,
       "snippet": "export stationUtilityPanelClass from src/components/station/entity-context/station-identity-chrome.ts"
     },
     {
@@ -9176,7 +9163,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-identity-chrome.ts",
-      "line": 72,
+      "line": 71,
       "snippet": "export stationIdentityPadClass from src/components/station/entity-context/station-identity-chrome.ts"
     },
     {
@@ -9189,7 +9176,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-identity-chrome.ts",
-      "line": 83,
+      "line": 85,
       "snippet": "export STATION_CHROME_ROW_FACE from src/components/station/entity-context/station-identity-chrome.ts"
     },
     {
@@ -9202,7 +9189,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-identity-chrome.ts",
-      "line": 91,
+      "line": 93,
       "snippet": "export STATION_CHROME_SEAM_HAIRLINE from src/components/station/entity-context/station-identity-chrome.ts"
     },
     {
@@ -9215,7 +9202,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-identity-chrome.ts",
-      "line": 102,
+      "line": 104,
       "snippet": "export STATION_IDENTITY_GROUP_CLASS from src/components/station/entity-context/station-identity-chrome.ts"
     },
     {
@@ -9228,7 +9215,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-identity-chrome.ts",
-      "line": 111,
+      "line": 113,
       "snippet": "export STATION_IDENTITY_LEAD_COL_CLASS from src/components/station/entity-context/station-identity-chrome.ts"
     },
     {
@@ -9241,7 +9228,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-identity-chrome.ts",
-      "line": 119,
+      "line": 121,
       "snippet": "export STATION_CHROME_CELL_PAD from src/components/station/entity-context/station-identity-chrome.ts"
     },
     {
@@ -9254,7 +9241,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-identity-chrome.ts",
-      "line": 140,
+      "line": 142,
       "snippet": "export STATION_CHROME_CELL_TEXT from src/components/station/entity-context/station-identity-chrome.ts"
     },
     {
@@ -9267,7 +9254,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-identity-chrome.ts",
-      "line": 154,
+      "line": 156,
       "snippet": "export STATION_CHROME_CELL_LABEL from src/components/station/entity-context/station-identity-chrome.ts"
     },
     {
@@ -9280,7 +9267,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-identity-chrome.ts",
-      "line": 162,
+      "line": 164,
       "snippet": "export STATION_CHROME_CELL_INK from src/components/station/entity-context/station-identity-chrome.ts"
     },
     {
@@ -9293,7 +9280,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-identity-chrome.ts",
-      "line": 168,
+      "line": 170,
       "snippet": "export STATION_CHROME_GLYPH_CLASS from src/components/station/entity-context/station-identity-chrome.ts"
     },
     {
@@ -9306,7 +9293,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-identity-chrome.ts",
-      "line": 202,
+      "line": 204,
       "snippet": "export STATION_CHROME_CELL_HOVER_SEAM from src/components/station/entity-context/station-identity-chrome.ts"
     },
     {
@@ -9319,7 +9306,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-identity-chrome.ts",
-      "line": 212,
+      "line": 214,
       "snippet": "export STATION_CHROME_CELL_HOVER_FILL from src/components/station/entity-context/station-identity-chrome.ts"
     },
     {
@@ -9332,7 +9319,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-identity-chrome.ts",
-      "line": 227,
+      "line": 229,
       "snippet": "export STATION_CHROME_HOVER_CELL_CLASS from src/components/station/entity-context/station-identity-chrome.ts"
     },
     {
@@ -9345,7 +9332,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-identity-chrome.ts",
-      "line": 240,
+      "line": 242,
       "snippet": "export STATION_CHROME_CELL_CLASS from src/components/station/entity-context/station-identity-chrome.ts"
     },
     {
@@ -9358,7 +9345,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-identity-chrome.ts",
-      "line": 247,
+      "line": 249,
       "snippet": "export stationIdentityGapClass from src/components/station/entity-context/station-identity-chrome.ts"
     },
     {
@@ -9371,7 +9358,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-identity-chrome.ts",
-      "line": 254,
+      "line": 256,
       "snippet": "export stationMoreDetailsHostClass from src/components/station/entity-context/station-identity-chrome.ts"
     },
     {
@@ -9384,7 +9371,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-identity-chrome.ts",
-      "line": 262,
+      "line": 264,
       "snippet": "export stationMoreDetailsPaneHostClass from src/components/station/entity-context/station-identity-chrome.ts"
     },
     {
@@ -9397,7 +9384,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-identity-chrome.ts",
-      "line": 268,
+      "line": 270,
       "snippet": "export STATION_IDENTITY_SCROLL_CLEARANCE from src/components/station/entity-context/station-identity-chrome.ts"
     },
     {
@@ -9410,7 +9397,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-identity-chrome.ts",
-      "line": 275,
+      "line": 277,
       "snippet": "export STATION_IDENTITY_STACKED_SCROLL_CLEARANCE from src/components/station/entity-context/station-identity-chrome.ts"
     },
     {
@@ -9423,7 +9410,7 @@
       ],
       "kind": "code",
       "source": "src/components/station/entity-context/station-identity-chrome.ts",
-      "line": 286,
+      "line": 288,
       "snippet": "export STATION_CHROME_BAR_MENU_ANCHOR from src/components/station/entity-context/station-identity-chrome.ts"
     },
     {
@@ -14597,8 +14584,21 @@
       ],
       "kind": "code",
       "source": "src/components/ui/DateGroupHeader.tsx",
-      "line": 33,
+      "line": 47,
       "snippet": "export dayGroupChipRowClass from src/components/ui/DateGroupHeader.tsx"
+    },
+    {
+      "job": "Export: dayGroupChipRowSolidClass",
+      "sot": "dayGroupChipRowSolidClass",
+      "path": "src/components/ui/DateGroupHeader.tsx",
+      "guard": null,
+      "symbols": [
+        "dayGroupChipRowSolidClass"
+      ],
+      "kind": "code",
+      "source": "src/components/ui/DateGroupHeader.tsx",
+      "line": 53,
+      "snippet": "export dayGroupChipRowSolidClass from src/components/ui/DateGroupHeader.tsx"
     },
     {
       "job": "Export: dayGroupChipClass",
@@ -14610,7 +14610,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/DateGroupHeader.tsx",
-      "line": 40,
+      "line": 60,
       "snippet": "export dayGroupChipClass from src/components/ui/DateGroupHeader.tsx"
     },
     {
@@ -14623,7 +14623,7 @@
       ],
       "kind": "code",
       "source": "src/components/ui/DateGroupHeader.tsx",
-      "line": 73,
+      "line": 98,
       "snippet": "export DateGroupHeader from src/components/ui/DateGroupHeader.tsx"
     },
     {

@@ -25,17 +25,17 @@ import { StaffAccountFooter } from './StaffAccountFooter';
 
 /**
  * Row height + glyph size for every destination row in this map (2026-08-16)
- * — deliberately its OWN local token, not `PRIMARY_CHROME_ROW_FACE` (28px,
- * shared by the scan bar / carton identity row 1 / Displays top / grid column
- * headers app-wide). A short destination list — Scan Stations' 7 benches, a
- * domain section's 2-3 pages — used to huddle at 28px rows near the top of a
- * column that runs the full viewport height, leaving most of it visibly
- * empty. Taller rows spend that space instead of wasting it, and the glyph
- * scales with the row so it stays proportionate rather than shrinking inside
- * a box that grew around it. This trades the previous cross-column seam
- * match (spine row 1 bottom ↔ the scan bar's) for legibility + fill — a
- * deliberate call, not an oversight; nothing else in the app reads this
- * token, so nothing else moved.
+ * — deliberately its OWN local token, not `PRIMARY_CHROME_ROW_FACE` (28px ops
+ * bands) and not `STATION_CHROME_ROW_FACE` (36px carton / Displays top). A
+ * short destination list — Scan Stations' 7 benches, a domain section's 2-3
+ * pages — used to huddle at 28px rows near the top of a column that runs
+ * the full viewport height, leaving most of it visibly empty. Taller rows
+ * spend that space instead of wasting it, and the glyph scales with the row
+ * so it stays proportionate rather than shrinking inside a box that grew
+ * around it. This trades the previous cross-column seam match (spine row 1
+ * bottom ↔ the scan bar's) for legibility + fill — a deliberate call, not
+ * an oversight; nothing else in the app reads this token, so nothing else
+ * moved.
  *
  * **Settled at `h-10` / 16px icon (2026-08-16, second pass).** A first pass
  * went to `h-14` (56px) paired with `role-display` (24px) text — genuinely
@@ -978,11 +978,10 @@ export function SidebarNavList({
 
   return (
     <div role="menu" aria-label="Pages" className={cn('flex h-full min-h-0 flex-col', className)}>
-      {/* Home / Search / Media / Chat used to pin here as four full rows. They
-          are icons in the spine's 40px top band (`SpineTopPins`) when open —
-          they cost 137px of the map as rows, which was five sections below the
-          fold vs one. They stay `kind:'top'` in the registry so ⌘K and the flat
-          search still rank them. */}
+      {/* Home / Search / Media used to pin here as full rows. They are icons in
+          the spine's 40px top band (`SpineTopPins`) when open. Plans / Chat stay
+          `kind:'top'` with `spineBand: false` so ⌘K and dest search still rank
+          them without painting glyphs. */}
       {/* `data-spine-scrollport` is the geometry probe's handle. The map's
           height against THIS box is the question every spine layout change has
           to answer, and `.claude/rules/verify.md` requires that answer to come

@@ -1,11 +1,11 @@
 {
   "version": 1,
-  "generatedAt": "2026-08-20T15:43:30Z",
-  "totalRoutes": 957,
+  "generatedAt": "2026-08-20T16:57:55Z",
+  "totalRoutes": 938,
   "summary": {
-    "permissionGated": 816,
+    "permissionGated": 798,
     "authenticatedNoPermission": 51,
-    "anonymousIntentional": 88,
+    "anonymousIntentional": 87,
     "serviceToService": 2,
     "ungatedRead": 0,
     "ungatedWrite": 0
@@ -592,6 +592,15 @@
       "path": "/api/ai/chat/stream/route.ts",
       "methods": [
         "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "dashboard.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/ai/health/route.ts",
+      "methods": [
+        "GET"
       ],
       "gate": "withAuth",
       "permission": "dashboard.view",
@@ -1306,25 +1315,6 @@
       "exemptReason": null
     },
     {
-      "path": "/api/catalog/priorities/[tier]/route.ts",
-      "methods": [
-        "DELETE",
-        "PATCH"
-      ],
-      "gate": "requireRoutePerm",
-      "permission": "admin.manage_features",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/catalog/priorities/route.ts",
-      "methods": [
-        "GET"
-      ],
-      "gate": "withAuth",
-      "permission": "receiving.view",
-      "exemptReason": null
-    },
-    {
       "path": "/api/catalog/types/[id]/route.ts",
       "methods": [
         "DELETE",
@@ -1360,79 +1350,6 @@
       ],
       "gate": "withAuth",
       "permission": "orders.view",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/counter/session/[id]/claim/route.ts",
-      "methods": [
-        "POST"
-      ],
-      "gate": "withAuth",
-      "permission": "walk_in.intake",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/counter/session/[id]/customer/route.ts",
-      "methods": [
-        "PATCH"
-      ],
-      "gate": "withAuth",
-      "permission": "walk_in.intake",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/counter/session/[id]/lines/[lineUuid]/route.ts",
-      "methods": [
-        "DELETE",
-        "PATCH"
-      ],
-      "gate": "withAuth",
-      "permission": "walk_in.intake",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/counter/session/[id]/lines/route.ts",
-      "methods": [
-        "POST"
-      ],
-      "gate": "withAuth",
-      "permission": "walk_in.intake",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/counter/session/[id]/release/route.ts",
-      "methods": [
-        "POST"
-      ],
-      "gate": "withAuth",
-      "permission": "walk_in.intake",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/counter/session/[id]/route.ts",
-      "methods": [
-        "GET"
-      ],
-      "gate": "withAuth",
-      "permission": "walk_in.view",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/counter/session/[id]/status/route.ts",
-      "methods": [
-        "POST"
-      ],
-      "gate": "withAuth",
-      "permission": "walk_in.intake",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/counter/session/route.ts",
-      "methods": [
-        "POST"
-      ],
-      "gate": "withAuth",
-      "permission": "walk_in.intake",
       "exemptReason": null
     },
     {
@@ -1869,45 +1786,6 @@
       ],
       "gate": "requireRoutePerm",
       "permission": "cycle_count.view",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/daily-checks/items/[id]/links/route.ts",
-      "methods": [
-        "DELETE",
-        "GET",
-        "POST"
-      ],
-      "gate": "withAuth",
-      "permission": "dashboard.view",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/daily-checks/items/route.ts",
-      "methods": [
-        "DELETE",
-        "POST"
-      ],
-      "gate": "withAuth",
-      "permission": "admin.manage_staff",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/daily-checks/mark/route.ts",
-      "methods": [
-        "POST"
-      ],
-      "gate": "withAuth",
-      "permission": "dashboard.view",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/daily-checks/route.ts",
-      "methods": [
-        "GET"
-      ],
-      "gate": "withAuth",
-      "permission": "dashboard.view",
       "exemptReason": null
     },
     {
@@ -3023,33 +2901,6 @@
       "exemptReason": null
     },
     {
-      "path": "/api/kiosk/session/customer/route.ts",
-      "methods": [
-        "PATCH"
-      ],
-      "gate": "withKioskAuth (device principal)",
-      "permission": null,
-      "exemptReason": null
-    },
-    {
-      "path": "/api/kiosk/session/route.ts",
-      "methods": [
-        "GET"
-      ],
-      "gate": "withKioskAuth (device principal)",
-      "permission": null,
-      "exemptReason": null
-    },
-    {
-      "path": "/api/kiosk/session/signature/route.ts",
-      "methods": [
-        "POST"
-      ],
-      "gate": "withKioskAuth (device principal)",
-      "permission": null,
-      "exemptReason": null
-    },
-    {
       "path": "/api/kiosk/settings/route.ts",
       "methods": [
         "GET"
@@ -3985,15 +3836,6 @@
       "exemptReason": null
     },
     {
-      "path": "/api/orders/import/suggest-mapping/route.ts",
-      "methods": [
-        "POST"
-      ],
-      "gate": "withAuth",
-      "permission": "orders.import",
-      "exemptReason": null
-    },
-    {
       "path": "/api/orders/integrity-check/route.ts",
       "methods": [
         "POST"
@@ -4889,15 +4731,6 @@
       "gate": "NONE",
       "permission": null,
       "exemptReason": "readiness probe"
-    },
-    {
-      "path": "/api/realtime/kiosk-token/route.ts",
-      "methods": [
-        "POST"
-      ],
-      "gate": "withAuth",
-      "permission": "dashboard.view",
-      "exemptReason": null
     },
     {
       "path": "/api/realtime/token/route.ts",
@@ -8158,15 +7991,6 @@
       "gate": "withAuth",
       "permission": "support.issues.view",
       "exemptReason": null
-    },
-    {
-      "path": "/api/version/route.ts",
-      "methods": [
-        "GET"
-      ],
-      "gate": "NONE",
-      "permission": null,
-      "exemptReason": "deploy sha probe (public; same class as /api/health)"
     },
     {
       "path": "/api/vision-config/route.ts",

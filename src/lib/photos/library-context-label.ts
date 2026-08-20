@@ -51,6 +51,14 @@ export function resolvePhotoLibraryFolderLeafLabel(input: {
   return null;
 }
 
+/**
+ * The title for the un-narrowed archive. Exported because a caller that only
+ * wants to SAY something when the context is narrower needs to recognise this
+ * one — comparing against a re-typed string literal is how that check goes
+ * stale the first time the copy is edited.
+ */
+export const ALL_PHOTOS_CONTEXT_TITLE = 'All photos';
+
 export function describePhotoLibraryContext(filters: PhotoLibraryFilterState): {
   title: string;
   subtitle: string;
@@ -114,7 +122,7 @@ export function describePhotoLibraryContext(filters: PhotoLibraryFilterState): {
     };
   }
   return {
-    title: 'All photos',
+    title: ALL_PHOTOS_CONTEXT_TITLE,
     subtitle: PHOTO_LIBRARY_DEFAULT_SUBTITLE,
   };
 }
