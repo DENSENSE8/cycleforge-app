@@ -26,25 +26,17 @@ import {
   type DisplayIndexRow,
   type DisplayIndexTone,
 } from '@/components/station/displays/display-index';
-import { DisplaysIndexLeafStage } from '@/components/station/displays';
-import type { StationDisplayIndexFilterKeys } from '@/components/station/displays/DisplaysIndexLeafStage';
+import {
+  DisplaysIndexLeafStage,
+  type StationDisplayIndexFilterKeys,
+} from '@/components/station/displays/DisplaysIndexLeafStage';
+import { STATION_DISPLAYS_PUSH_TOP_BAND } from '@/components/station/entity-context/station-identity-chrome';
 import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
 import { StationDisplayLeafHeader } from '@/components/station/displays/StationDisplayLeafHeader';
-import { STATION_CHROME_SEAM_HAIRLINE } from '@/components/station/entity-context/station-identity-chrome';
-import { PRIMARY_CHROME_ROW_FACE } from '@/components/layout/header-shell';
 import { cn } from '@/utils/_cn';
 
 export const DESK_INSPECTOR_INDEX = STATION_DISPLAY_INDEX;
-
-/**
- * Leaf-header band — the desk twin of `STATION_DISPLAYS_PUSH_TOP_BAND`. Fixed
- * `h-7`, `shrink-0`, `items-stretch`, hairline via `after:` so the rule does
- * not eat the box. Never drop this wrapper: the header inside is `h-full
- * flex-1` by contract.
- */
-const DESK_INSPECTOR_LEAF_BAND =
-  `relative z-header flex ${PRIMARY_CHROME_ROW_FACE} items-stretch gap-0.5 pr-2 ${STATION_CHROME_SEAM_HAIRLINE}`;
 
 export type DeskInspectorLeaf = {
   id: string;
@@ -233,8 +225,9 @@ export function DeskInspectorIndexShell({
         // — inside this COLUMN flex that `flex-1` grows the header vertically
         // and pins the leaf body to the floor (Import latest orders shipped
         // exactly that: title floating mid-panel, field + CTA at the bottom).
-        // Same `STATION_CHROME_ROW_FACE` + `after:` seam the station band uses.
-        <div className={DESK_INSPECTOR_LEAF_BAND} data-desk-inspector-leaf-band="">
+        // Same `STATION_DISPLAYS_PUSH_TOP_BAND` as Unbox Displays (carton
+        // identity height), not a `h-7` fork.
+        <div className={STATION_DISPLAYS_PUSH_TOP_BAND} data-desk-inspector-leaf-band="">
           <StationDisplayLeafHeader
             title={activeLeaf?.label ?? ''}
             onBack={goIndex}

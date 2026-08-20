@@ -503,7 +503,7 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
   // Opt-out: phone-only face (no hover action dropdown).
   if (suppressHoverGallery) {
     return (
-      <div ref={hostRef} className="relative h-full shrink-0">
+      <div ref={hostRef} className="relative flex h-full min-h-0 shrink-0 self-stretch items-stretch">
         <HoverTooltip label={title} placement="right" asChild>
           {pillButton}
         </HoverTooltip>
@@ -514,7 +514,7 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
   return (
     <div
       ref={hostRef}
-      className="relative h-full shrink-0"
+      className="relative flex h-full min-h-0 shrink-0 self-stretch items-stretch"
       onMouseEnter={openGallery}
       onMouseLeave={scheduleCloseGallery}
       onFocusCapture={openGallery}

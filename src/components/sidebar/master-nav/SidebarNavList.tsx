@@ -26,7 +26,7 @@ import { StaffAccountFooter } from './StaffAccountFooter';
 /**
  * Row height + glyph size for every destination row in this map (2026-08-16)
  * — deliberately its OWN local token, not `PRIMARY_CHROME_ROW_FACE` (28px ops
- * bands) and not `STATION_CHROME_ROW_FACE` (36px carton / Displays top). A
+ * bands) and not `STATION_CHROME_ROW_FACE` (28px carton / Displays top). A
  * short destination list — Scan Stations' 7 benches, a domain section's 2-3
  * pages — used to huddle at 28px rows near the top of a column that runs
  * the full viewport height, leaving most of it visibly empty. Taller rows
@@ -978,10 +978,10 @@ export function SidebarNavList({
 
   return (
     <div role="menu" aria-label="Pages" className={cn('flex h-full min-h-0 flex-col', className)}>
-      {/* Home / Search / Media used to pin here as full rows. They are icons in
-          the spine's 40px top band (`SpineTopPins`) when open. Plans / Chat stay
-          `kind:'top'` with `spineBand: false` so ⌘K and dest search still rank
-          them without painting glyphs. */}
+      {/* Home / Media used to pin here as full rows. They are icons in
+          the spine's 40px top band (`SpineTopPins`) when open. Search / Plans /
+          Chat stay `kind:'top'` with `spineBand: false` so ⌘K and dest search
+          still rank them without painting glyphs. */}
       {/* `data-spine-scrollport` is the geometry probe's handle. The map's
           height against THIS box is the question every spine layout change has
           to answer, and `.claude/rules/verify.md` requires that answer to come

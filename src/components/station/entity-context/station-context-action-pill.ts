@@ -95,7 +95,7 @@ export const STATION_CONTEXT_PHOTO_TONE =
  * to fill the track rather than widen it.
  */
 export const STATION_CONTEXT_PHOTO_CHROME_CLASS = [
-  'ds-raw-button relative z-base flex h-full w-11 shrink-0 items-center justify-center gap-0.5 leading-none',
+  'ds-raw-button relative z-base flex h-full w-11 min-h-0 self-stretch shrink-0 items-center justify-center gap-0.5 leading-none',
   cornerClass('flush'),
   `border-0 px-1.5 ${STATION_CHROME_CELL_TEXT} shadow-none`,
   STATION_CONTEXT_PHOTO_TONE,
@@ -136,7 +136,7 @@ const STATION_CONTEXT_CLAIM_TONE =
  * Ticket + "Claim". Never IconButton. Linked tickets stay ReceivingTicketChip.
  */
 export const STATION_CONTEXT_CLAIM_CHROME_CLASS = [
-  'ds-raw-button relative z-base flex h-full shrink-0 items-center justify-center gap-0.5 leading-none',
+  'ds-raw-button relative z-base flex h-full min-h-0 self-stretch shrink-0 items-center justify-center gap-0.5 leading-none',
   cornerClass('flush'),
   `border-0 px-1.5 ${STATION_CHROME_CELL_LABEL} shadow-none`,
   STATION_CONTEXT_CLAIM_TONE,
@@ -151,7 +151,7 @@ export const STATION_CONTEXT_CLAIM_CHROME_CLASS = [
  * from {@link platformMetaIconTone} on the icon span; the word stays default ink.
  */
 export const STATION_CONTEXT_LISTING_CHROME_CLASS = [
-  'ds-raw-button relative z-base flex h-full shrink-0 items-center justify-center gap-0.5 leading-none',
+  'ds-raw-button relative z-base flex h-full min-h-0 self-stretch shrink-0 items-center justify-center gap-0.5 leading-none',
   cornerClass('flush'),
   `border-0 bg-surface-card px-1.5 ${STATION_CHROME_CELL_LABEL} ${STATION_CHROME_CELL_INK} shadow-none`,
   `${STATION_CHROME_CELL_HOVER_FILL} disabled:text-text-faint`,

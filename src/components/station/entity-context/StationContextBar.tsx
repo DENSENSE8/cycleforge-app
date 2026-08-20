@@ -87,15 +87,16 @@ export function StationContextBar({
             stationIdentityPanelClass,
             stationIdentityPadClass,
             STATION_WORKBENCH_COLUMN,
-            // Keep overflow visible so IdentityLinkChip hover menus (top-full)
-            // are not clipped; horizontal bleed is fixed via bar px + scan rule.
-            // Height comes from identity rows (PRIMARY + secondary) — never pin
-            // h-* here or the two-row stack clips.
-            'flex items-center overflow-visible',
+            // Height comes from identity rows (`STATION_CHROME_ROW_FACE`) —
+            // stretch the measure so cells fill the bar. Never pin h-* here
+            // or a two-row stack clips. Bottom seam is the bar's
+            // `STATION_CHROME_SEAM_HAIRLINE` — never a Panel `border-b` (that
+            // sits 1px below Displays' overlay hairline).
+            'flex items-stretch overflow-visible',
           )}
           data-testid="station-identity"
         >
-          <div className="w-full min-w-0" data-testid="station-identity-measure">
+          <div className="flex w-full min-w-0 items-stretch" data-testid="station-identity-measure">
             {identity}
           </div>
         </Panel>

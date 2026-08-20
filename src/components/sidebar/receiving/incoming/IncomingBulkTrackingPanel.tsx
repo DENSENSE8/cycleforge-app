@@ -85,6 +85,11 @@ import {
   DeskInspectorIndexShell,
   type DeskInspectorLeaf,
 } from '@/components/right-rail/DeskInspectorIndexShell';
+import { RIGHT_RAIL_HOST_CLOSE_SLOT_CLASS } from '@/components/right-rail/DeskRailChromeRow';
+import {
+  STATION_CHROME_ROW_FACE,
+  STATION_CHROME_SEAM_HAIRLINE,
+} from '@/components/station/entity-context';
 import { PoChip, TrackingChip } from '@/components/ui/CopyChip';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { RightPaneOverlay } from '@/components/ui/RightPaneOverlay';
@@ -141,10 +146,11 @@ type CheckResult = {
  *
  * `pl-4` is the body's own content gutter (`px-4`), so the eyebrow's ink lands
  * on the line the heading, the icon strip and every card border beneath it
- * share. `pr-2` matches `DESK_RAIL_CHROME_ROW_CLASS` so the reserved 28px cell
- * sits under the host anchor's `right-2`.
+ * share. `pr-2` matches `DESK_RAIL_CHROME_ROW_CLASS` so the reserved `w-9`
+ * cell sits under the host anchor's `right-2`. Height is
+ * {@link STATION_CHROME_ROW_FACE} (carton / Displays top).
  */
-const TOP_BAND_CLASS = 'flex h-9 shrink-0 items-center gap-1.5 pl-4 pr-2';
+const TOP_BAND_CLASS = `relative z-header flex ${STATION_CHROME_ROW_FACE} items-stretch gap-1.5 pl-4 pr-2 ${STATION_CHROME_SEAM_HAIRLINE}`;
 
 function reasonLabel(reason: CheckZohoReceivedRow['reason']): string {
   switch (reason) {
@@ -757,12 +763,12 @@ export function IncomingBulkTrackingPanel({
             so the eyebrow can never truncate underneath it, and mounts no
             close of its own. */}
         <div className={TOP_BAND_CLASS}>
-          <p className="min-w-0 truncate text-role-eyebrow uppercase tracking-widest text-text-soft">
+          <p className="flex h-full min-w-0 items-center truncate text-role-eyebrow uppercase tracking-widest text-text-soft">
             {panelTitle}
           </p>
           <div className="flex-1" />
           <span
-            className="inline-block h-7 w-7 shrink-0"
+            className={RIGHT_RAIL_HOST_CLOSE_SLOT_CLASS}
             aria-hidden
             data-right-rail-host-close-slot
           />

@@ -27,6 +27,7 @@ import {
 } from '@/components/station/workbench/workbench-layout';
 import { PRIMARY_CHROME_ROW_FACE } from '@/components/layout/header-shell';
 import {
+  STATION_CHROME_ROW_FACE,
   stationIdentityGapClass,
   stationIdentityPadClass,
   stationIdentityPanelClass,
@@ -79,8 +80,8 @@ function IdentityTabsHeader() {
             stationIdentityPanelClass,
             stationIdentityPadClass,
             STATION_WORKBENCH_COLUMN,
-            'flex min-h-9 items-center overflow-hidden',
-            PRIMARY_CHROME_ROW_FACE,
+            'flex items-center overflow-hidden',
+            STATION_CHROME_ROW_FACE,
           )}
         >
           <div className="flex min-w-0 flex-1 items-center gap-1.5 px-0.5">
@@ -107,8 +108,8 @@ function IdentityTabsHeader() {
             stationUtilityPanelClass,
             stationIdentityPadClass,
             stationIdentityGapClass,
-            'flex min-h-9 items-center',
-            PRIMARY_CHROME_ROW_FACE,
+            'flex items-center',
+            STATION_CHROME_ROW_FACE,
           )}
         >
           <SkeletonBase width="56px" height="24px" className="rounded-full" />

@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Home · Search · Media — spine-band destinations.
+ * Home · Media — spine-band destinations.
  *
  * ## One mount, one SoT
  *
@@ -10,9 +10,10 @@
  * washes abut with no gaps. When the spine is closed, reach these via ⌘K /
  * opening the map — the header toggle is click-only (no hover peek).
  *
- * Plans and Chat stay `kind: 'top'` in `APP_SIDEBAR_NAV` with `spineBand:
- * false` so ⌘K / dest search / `/ai-chat` / forge still work; this band
- * does not paint those glyphs.
+ * Search, Plans, and Chat stay `kind: 'top'` in `APP_SIDEBAR_NAV` with
+ * `spineBand: false` so ⌘K / dest search / `/search` / `/ai-chat` / forge
+ * still work; this band does not paint those glyphs. Search is already in
+ * GlobalHeader (`GlobalHeaderSearch`).
  *
  * Permission gating rides along — Media needs `photos.view` — via
  * {@link getSidebarNavItems}, so a staffer without the permission gets no icon

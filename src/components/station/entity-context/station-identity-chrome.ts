@@ -51,18 +51,19 @@ export const stationContextBarFlowHostClass = 'relative shrink-0';
 
 /**
  * Identity strip — coplanar flush white face on the locked 720 measure: square
- * all sides, hairline bottom only, opaque card fill (same plane as PO lines).
- * Compose with `STATION_WORKBENCH_COLUMN` — do not paint this on a
- * full-bleed host.
+ * all sides, no panel border (the carton bar paints
+ * {@link STATION_CHROME_SEAM_HAIRLINE} so it meets Displays' overlay seam at
+ * one Y). Opaque card fill (same plane as PO lines). Compose with
+ * `STATION_WORKBENCH_COLUMN` — do not paint this on a full-bleed host.
  */
 export const stationIdentityPanelClass =
-  `rounded-none border-0 border-b border-border-soft bg-surface-card ${STATION_IDENTITY_ELEVATION}`;
+  `rounded-none border-0 bg-surface-card ${STATION_IDENTITY_ELEVATION}`;
 
 /**
  * Top-right utilities shell — same flush white recipe as the identity strip.
  */
 export const stationUtilityPanelClass =
-  `rounded-none border-0 border-b border-border-soft bg-surface-card ${STATION_IDENTITY_ELEVATION}`;
+  `rounded-none border-0 bg-surface-card ${STATION_IDENTITY_ELEVATION}`;
 
 /**
  * Inner pad for flush identity / utility faces — zero on all sides so
@@ -73,25 +74,34 @@ export const stationIdentityPadClass = 'px-0';
 /* ── Identity rhythm (one-row carton bar; stacked tokens kept for overlays) ─ */
 
 /**
- * Station chrome seam — carton identity row 1 and Displays push top.
+ * Station chrome seam — carton identity row 1, Displays push top, and desk
+ * inspector chrome (`DeskRailChromeRow` / leaf band / host `X`).
  *
- * `h-9` (36px), not {@link PRIMARY_CHROME_ROW_FACE} (`h-7` / 28px). The
- * photos / classify / identity cells need that taller box; pinning Displays
- * to the 28px ops token left its top band shorter than the carton bar beside
- * it. `min-h-0` kills flex `min-height: auto` so content cannot grow one
- * column past the other. **Not** the GlobalHeader / spine top band
- * (`TOP_CHROME_ROW_FACE` / 40px) — that seam sits above this one.
+ * **28px / `h-7`** — same pixel height as {@link PRIMARY_CHROME_ROW_FACE},
+ * plus `max-h-7 min-h-0` so flex content cannot grow one column past the
+ * other. Do not restyle this to `h-9`. **Not** the GlobalHeader / spine top
+ * band (`TOP_CHROME_ROW_FACE` / 40px) — that seam sits above this one.
  */
-export const STATION_CHROME_ROW_FACE = 'h-9 min-h-0 shrink-0';
+export const STATION_CHROME_ROW_FACE = 'h-7 max-h-7 min-h-0 shrink-0';
 
 /**
  * Bottom hairline on a station chrome row — painted via `after:` so it does
- * **not** eat the `h-9` / `h-6` box (border-box `border-b` would shrink the
+ * **not** eat the `h-7` / `h-6` box (border-box `border-b` would shrink the
  * fill) and does **not** notch a parent `border-l` (Displays seam). Same token
  * as Displays top band · identity row 1 · leaf eyebrows.
  */
 export const STATION_CHROME_SEAM_HAIRLINE =
   'relative after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-border-hairline';
+
+/**
+ * Displays / desk-inspector top chrome row — same face as carton identity
+ * ({@link STATION_CHROME_ROW_FACE}). {@link StationDisplaysPushColumn} and
+ * desk {@link DeskInspectorIndexShell} compose this class; do not fork a
+ * `h-7` twin. Lives here (not on the Displays barrel) so desk inspectors
+ * can import the token without evaluating CartonContextCard.
+ */
+export const STATION_DISPLAYS_PUSH_TOP_BAND =
+  `pointer-events-none relative z-header flex ${STATION_CHROME_ROW_FACE} items-stretch gap-0.5 pr-2 ${STATION_CHROME_SEAM_HAIRLINE}`;
 
 /**
  * Classify urgency·platform·type — **one token**: flush abut (`gap-0`), no
@@ -265,16 +275,16 @@ export const stationMoreDetailsPaneHostClass =
   `pointer-events-auto absolute ${STATION_IDENTITY_INSET_TOP} ${STATION_IDENTITY_INSET_RIGHT} z-panelPopover flex items-start`;
 
 /**
- * One-row identity clearance (~36px flush at `top-0`, zero Y-pad).
+ * One-row identity clearance (~28px flush at `top-0`, zero Y-pad).
  */
-export const STATION_IDENTITY_SCROLL_CLEARANCE = 'pt-9';
+export const STATION_IDENTITY_SCROLL_CLEARANCE = 'pt-7';
 
 /**
- * Two-row identity clearance (~60px = chrome `h-9` + secondary `h-6`, gap-0 +
+ * Two-row identity clearance (~52px = chrome `h-7` + secondary `h-6`, gap-0 +
  * zero Y-pad). Opt in via `StationWorkbench reserveIdentityClearance="stacked"`.
  */
-// ds-allow-spacing: stacked identity overlay = station h-9 + secondary h-6 (not a density step).
-export const STATION_IDENTITY_STACKED_SCROLL_CLEARANCE = 'pt-[60px]'; // ds-allow-spacing
+// ds-allow-spacing: stacked identity overlay = station h-7 + secondary h-6 (not a density step).
+export const STATION_IDENTITY_STACKED_SCROLL_CLEARANCE = 'pt-[52px]'; // ds-allow-spacing
 /**
  * Bottom-CENTER anchor for a menu opened by a carton-bar cell (the listing
  * menu, and any future hand-rolled bar panel). ONE definition of "how a bar

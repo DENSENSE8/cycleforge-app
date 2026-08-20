@@ -9,7 +9,7 @@
  *   Displays vs RightRailHost are separate hosts by ruling), and cannot reuse
  *   the retired bottom `StationDisplaysActionFloor` host: this row seats in the
  *   existing `STATION_DISPLAYS_PUSH_TOP_BAND` (`STATION_CHROME_ROW_FACE` /
- *   `h-9`, `items-stretch`), not in
+ *   `h-7`, `items-stretch`), not in
  *   an in-flow `FlushTerminalFooter` sibling.
  *
  * Layout (ruled 2026-08-18 — utilities moved from the bottom floor to the
