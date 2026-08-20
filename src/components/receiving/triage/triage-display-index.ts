@@ -1,5 +1,5 @@
 /**
- * Arrival Displays Root Index — Ticket + Pairing + Locations (no React).
+ * Arrival Displays Root Index — Ticket + Pairing + Locations + Timeline (no React).
  */
 
 import type { DisplayIndexRow } from '@/components/station/displays';
@@ -9,6 +9,7 @@ const LABELS: Record<TriageDisplayTab, string> = {
   ticket: 'Ticket',
   linkage: 'Pairing',
   location: 'Locations',
+  timeline: 'Timeline',
 };
 
 function enrich(
@@ -37,6 +38,10 @@ function enrich(
     case 'location':
       // A tool, not an outstanding step — it never nags with an `action` tone.
       return { subtitle: 'Place · print · new', tone: 'neutral', group: 'assets' };
+    case 'timeline':
+      // A read, never a step: what already happened to this carton and who did
+      // it. Same `neutral` reasoning as Locations — history does not nag.
+      return { subtitle: 'Scans · stamps · audit', tone: 'neutral', group: 'context' };
   }
 }
 

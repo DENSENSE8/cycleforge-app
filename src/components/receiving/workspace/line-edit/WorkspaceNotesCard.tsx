@@ -81,6 +81,8 @@ interface WorkspaceNotesCardProps {
    * item then says so instead of pretending.
    */
   onOpenLocations?: () => void;
+  /** Header ⓘ → this station's Displays → Timeline leaf (see LineNotesCard). */
+  onOpenStatusHistory?: () => void;
 }
 
 export function WorkspaceNotesCard({
@@ -93,6 +95,7 @@ export function WorkspaceNotesCard({
   onPrimaryAction,
   primaryActionDisabled,
   onOpenLocations,
+  onOpenStatusHistory,
 }: WorkspaceNotesCardProps) {
   return (
     <div id="zoho-notes-card">
@@ -128,6 +131,7 @@ export function WorkspaceNotesCard({
         onPrimaryAction={onPrimaryAction}
         primaryActionDisabled={primaryActionDisabled}
         onOpenLocations={onOpenLocations}
+        onOpenStatusHistory={onOpenStatusHistory}
         statusStamps={{
           received_at: row.received_at,
           received_by_name: row.received_by_name,

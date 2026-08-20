@@ -81,6 +81,7 @@ export function LineNotesCard({
   onPrimaryAction,
   primaryActionDisabled = false,
   statusStamps,
+  onOpenStatusHistory,
 }: {
   /** The operator's durable item note (`receiving_line.notes`) — never printed. */
   notes: string;
@@ -131,6 +132,13 @@ export function LineNotesCard({
   onPrimaryAction?: () => void;
   /** When true, Enter is a no-op (mirrors the disabled Receive pill). */
   primaryActionDisabled?: boolean;
+  /**
+   * Where the header ⓘ sends the operator. When provided it opens that station's
+   * Displays → Timeline leaf (the right edge owns contextual detail); when
+   * omitted the local {@link UnboxNotesStatusDialog} still opens, so a surface
+   * with no Displays column keeps a route to the stamps.
+   */
+  onOpenStatusHistory?: () => void;
   /** Line stamps for the notes Info dialog + current putaway face. */
   statusStamps?: LineStatusExactSource & {
     staged_location_id?: number | null;
@@ -499,7 +507,13 @@ export function LineNotesCard({
         <button
           type="button"
           aria-label="Item status history"
-          onClick={() => setStatusOpen(true)}
+          onClick={() => {
+            if (onOpenStatusHistory) {
+              onOpenStatusHistory();
+              return;
+            }
+            setStatusOpen(true);
+          }}
           className={`${NOTE_OVERLAY_ICON_BTN} text-text-faint transition hover:bg-surface-sunken hover:text-text-muted`}
         >
           <Info className={NOTE_OVERLAY_ICON} />

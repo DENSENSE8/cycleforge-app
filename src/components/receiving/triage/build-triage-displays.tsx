@@ -20,7 +20,7 @@
  */
 
 import dynamic from 'next/dynamic';
-import { Link2, MapPin, Ticket } from '@/components/Icons';
+import { History, Link2, MapPin, Ticket } from '@/components/Icons';
 import { type SectionTab } from '@/design-system/components';
 import { buildSectionTabs } from '@/components/station/workbench';
 import { shouldUseUnmatchedItemsSurface } from '@/lib/receiving/intake-items-routing';
@@ -36,6 +36,20 @@ const TicketDisplayHost = dynamic(
   { loading: () => null },
 );
 
+// Timeline is the SAME pair Unbox mounts (`unbox-tabs.tsx` → Timeline): the
+// cross-entity timeline over the carton's PO / tracking, then the carton's own
+// audit rows. Deferred for the same reason — the audit read is a per-carton
+// round-trip that has no business firing behind every other leaf.
+const WorkspaceTimelineTab = dynamic(
+  () => import('@/components/station/workbench').then((m) => m.WorkspaceTimelineTab),
+  { loading: () => null },
+);
+const ReceivingAuditPanel = dynamic(
+  () =>
+    import('../workspace/ReceivingAuditPanel').then((m) => m.ReceivingAuditPanel),
+  { loading: () => null },
+);
+
 /**
  * Arrival Displays vocabulary — Ticket + Pairing + Locations. Locations is now
  * the ONLY shelf/lane writer on this station (its `selectShelf` auto-routes the
@@ -46,7 +60,7 @@ const TicketDisplayHost = dynamic(
  * earns the right edge for the same reason Pairing does — the centre stays
  * ops-flow.
  */
-export type TriageDisplayTab = 'ticket' | 'linkage' | 'location';
+export type TriageDisplayTab = 'ticket' | 'linkage' | 'location' | 'timeline';
 
 interface BuildTriageDisplaysInput {
   row: ReceivingLineRow;
@@ -69,6 +83,8 @@ interface BuildTriageDisplaysInput {
   staging: TriageStagingController;
   /** Close Displays once the carton is on the new spot. */
   onLocationPlaced?: () => void;
+  /** Which leaf is showing — Timeline's audit read mounts only while visible. */
+  activeTab?: TriageDisplayTab | null;
 }
 
 export function buildTriageDisplayTabs({
@@ -85,6 +101,7 @@ export function buildTriageDisplayTabs({
   onFindTicket,
   staging,
   onLocationPlaced,
+  activeTab = null,
 }: BuildTriageDisplaysInput): SectionTab[] {
   const unfound = shouldUseUnmatchedItemsSurface(row);
   const ticketId = providerTicketId ?? null;
@@ -143,6 +160,33 @@ export function buildTriageDisplayTabs({
       content: (
         <ArrivalLocationsLeaf staging={staging} onPlaced={onLocationPlaced} />
       ),
+    },
+    {
+      id: 'timeline',
+      label: 'Timeline',
+      icon: History,
+      // Where the notes composer's ⓘ lands. Arrival had no history leaf at all,
+      // so the door pass's only route to "received 14:32 by Mike" was a modal
+      // over the work — one control, one destination, and the destination is
+      // the right edge.
+      content:
+        row.receiving_id != null ? (
+          <div className="space-y-4">
+            <WorkspaceTimelineTab
+              poId={row.zoho_purchaseorder_id || null}
+              tracking={row.tracking_number ?? null}
+              receivingId={row.receiving_id}
+            />
+            {activeTab === 'timeline' ? (
+              <ReceivingAuditPanel
+                open
+                receivingId={row.receiving_id}
+                onClose={() => undefined}
+                hideHeader
+              />
+            ) : null}
+          </div>
+        ) : null,
     },
   ]);
 }
