@@ -59,7 +59,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     }
 
     const lineId = body.lineId != null ? Number(body.lineId) : null;
-    const result = await draftSellerMessageWithHermes({
+    const result = await draftSellerMessageWithHermes(ctx.organizationId, {
       claimType: body.claimType,
       reason: body.reason,
       subject,

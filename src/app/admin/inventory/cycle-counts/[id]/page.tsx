@@ -379,7 +379,7 @@ export default async function CycleCountDetailPage({
 
   return (
     <div className="min-h-screen bg-surface-canvas p-8">
-      <div className="mx-auto max-w-7xl space-y-6">
+      <div className="space-y-6">
         <header className="space-y-1">
           <Link href="/admin/inventory/cycle-counts" className="text-sm text-blue-600 hover:underline">
             ← back to campaigns

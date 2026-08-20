@@ -5,7 +5,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { checkRateLimitForOrg } from '@/lib/api-guard';
 import { isAllowedAdminOrigin } from '@/lib/security/allowed-origin';
 import { withAuth } from '@/lib/auth/withAuth';
-import { getHermesApiUrl, getHermesHeaders, getHermesModel } from '@/lib/ai/hermes-client';
+import { aiRequestHeaders } from '@/lib/ai/provider';
+import { resolveOrgAiConfig } from '@/lib/ai/org-provider';
 
 export const runtime = 'nodejs';
 
@@ -61,14 +62,21 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       return NextResponse.json({ error: 'Missing search query' }, { status: 400 });
     }
 
-    const res = await fetch(`${getHermesApiUrl()}/chat/completions`, {
+    const aiConfig = await resolveOrgAiConfig(ctx.organizationId, 'chat');
+    if (!aiConfig) {
+      return NextResponse.json(
+        { error: 'No AI chat provider is connected for this workspace' },
+        { status: 503 },
+      );
+    }
+
+    const res = await fetch(`${aiConfig.baseURL}/chat/completions`, {
       method: 'POST',
-      headers: getHermesHeaders({
-        'Content-Type': 'application/json',
+      headers: aiRequestHeaders(aiConfig, {
         'X-Source': 'cycle-forge-search',
       }),
       body: JSON.stringify({
-        model: getHermesModel(),
+        model: aiConfig.model,
         messages: [
           { role: 'system', content: getSystemPrompt() },
           {

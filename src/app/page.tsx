@@ -2,14 +2,14 @@ import { Suspense } from 'react';
 import { HomeWorkspace } from '@/features/home/HomeWorkspace';
 
 /**
- * Home (`/`) — the personal triage + collaboration workbench (plan §3.1). A
- * mode rail (Today | Tasks | Collab | Plan | Brief) over `?mode=` URL state;
- * `today` composes the real My Day feed, `forge` the live master-plan console.
+ * Home (`/`) — the start-of-shift workbench. Two modes over `?mode=` URL state:
+ * `daily` (the checklist + the day's report, and the bare-`/` landing) and
+ * `today` (the My Day triage feed).
  *
  * Unparked: bare `/` mounts the workspace instead of redirecting to the
- * dashboard, and the row ships in the Overview drill. The former deep-link
- * escape hatches (`?welcome=1`, any `?mode=`) are now just ordinary entry
- * points — `/forge` → `/?mode=forge&view=live` still lands the same way.
+ * dashboard, and the row ships in the Overview drill. Inbox, Tasks and Plan
+ * were removed on 2026-08-19 — Plan (the forge console) kept working at its own
+ * `/forge` route, which is where its bookmark already pointed.
  *
  * `Suspense` wraps the client workspace because it reads `useSearchParams` for
  * the `?mode=` state (same mount shape as the Operations page).

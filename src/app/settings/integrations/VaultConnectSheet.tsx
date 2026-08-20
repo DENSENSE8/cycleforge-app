@@ -114,7 +114,12 @@ export function VaultConnectSheet({
         setFormError(data.detail || data.error || `HTTP ${res.status}`);
         return;
       }
-      toast.success(`${providerLabel} credentials saved.`);
+      // The endpoint probe can succeed with an advisory (e.g. the named model
+      // is not in the endpoint's listing). The credential IS saved, so this is
+      // a warning toast, not an error — but it must be shown, or a typo'd model
+      // name looks like a clean save and fails silently at first use.
+      if (data.warning) toast.warning(String(data.warning));
+      else toast.success(`${providerLabel} credentials saved.`);
       onSuccess?.();
       if (!onSuccess) window.location.reload();
     } catch (err) {
@@ -141,7 +146,8 @@ export function VaultConnectSheet({
         setFormError(data.detail || data.error || `HTTP ${res.status}`);
         return;
       }
-      toast.success(`${providerLabel} credentials saved.`);
+      if (data.warning) toast.warning(String(data.warning));
+      else toast.success(`${providerLabel} credentials saved.`);
       onSuccess?.();
       if (!onSuccess) window.location.reload();
     } catch (err) {

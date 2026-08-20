@@ -39,6 +39,7 @@ import { useOrdersQueueRows } from './useOrdersQueueRows';
 import { useOrdersQueuePlane } from './useOrdersQueuePlane';
 import { AddTrackingPopover } from '@/components/outbound/labels/AddTrackingPopover';
 import { useViewportForcedHidden } from './ViewportForcedHidden';
+import { useGridColumnDisplay } from '@/design-system/components/grid/useGridColumnDisplay';
 
 export interface OrdersGridHostProps {
   records: ShippedOrder[];
@@ -166,6 +167,7 @@ export function OrdersGridHost({
   scrollParentRef,
   columnTriggerPortalTarget,
 }: OrdersGridHostProps) {
+  const { displayByKey: columnDisplay } = useGridColumnDisplay(tableId);
   const searchParams = useSearchParams();
   const { isMobile } = useUIModeOptional();
   const { getStaffName } = useStaffNameMap();
@@ -262,6 +264,11 @@ export function OrdersGridHost({
       return (
         <OrdersQueueTableRow
           key={record.id}
+          // Per-staff column display, resolved ONCE in the host and threaded —
+          // the same shape Receiving uses. Orders had no `columnDisplay` in
+          // scope at all, so a staffer's muted/emphasis/warning column was
+          // honoured on Unbox History and silently dropped here.
+          columnDisplay={columnDisplay}
           disableEnterAnimation
           disableLayoutAnimation
           opaqueStripe

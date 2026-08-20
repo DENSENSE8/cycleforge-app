@@ -23,7 +23,7 @@ interface SuggestRequest {
   notes?: string | null;
 }
 
-export const POST = withAuth(async (req: NextRequest) => {
+export const POST = withAuth(async (req: NextRequest, ctx) => {
   try {
     const body = (await req.json().catch(() => null)) as SuggestRequest | null;
     const qaStatus = body?.qaStatus ?? null;
@@ -33,7 +33,7 @@ export const POST = withAuth(async (req: NextRequest) => {
       throw ApiError.badRequest('Provide at least a qaStatus, conditionGrade, or notes');
     }
 
-    const result = await classifyDispositionWithLlm({ qaStatus, conditionGrade, notes });
+    const result = await classifyDispositionWithLlm(ctx.organizationId, { qaStatus, conditionGrade, notes });
     return NextResponse.json({
       success: true,
       dispositionCode: result.dispositionCode,

@@ -309,8 +309,8 @@ export default async function EventsExplorerPage({
 
   return (
     <div className="min-h-screen bg-surface-canvas">
-      <PageHeader backHref="/admin/inventory" title="Inventory events" maxWidth="7xl" />
-      <div className="mx-auto max-w-7xl space-y-6 p-8">
+      <PageHeader backHref="/admin/inventory" title="Inventory events" />
+      <div className="space-y-6 p-8">
         <p className="text-sm text-text-muted">
           Global event log. Filters compose; the URL is shareable.
         </p>

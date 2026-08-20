@@ -17,7 +17,7 @@
  *
  * Verbs: View · Phone · Upload · Download · Media · Move · Send · Compare ·
  * Details. Drill altitude (tools → evidence): Move · Send · Compare open
- * URL-backed leaf bodies (no nested TabDisplay). Default leaf = this list.
+ * URL-backed leaf bodies (no nested switcher strip). Default leaf = this list.
  */
 
 import {

@@ -140,7 +140,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       );
     }
 
-    const result = await suggestSupportReply({
+    const result = await suggestSupportReply(ctx.organizationId, {
       ticketId,
       subject: typeof body.subject === 'string' ? body.subject : undefined,
       question,

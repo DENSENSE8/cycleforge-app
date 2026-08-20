@@ -25,7 +25,6 @@ export * from './sidebar-intake';
 export * from './FormField';
 export * from './OverlaySearch';
 export * from './TabSwitch';
-export * from './TabDisplay';
 export * from './Skeletons';
 export * from './RouteShell';
 export * from './PlatformBadge';

@@ -41,6 +41,7 @@ const PRESETS = 'src/design-system/tokens/typography/presets.ts';
 const COPY_CHIP = 'src/components/ui/CopyChip.tsx';
 const INLINE_PILL =
   'src/components/receiving/workspace/line-edit/InlinePillPicker.tsx';
+const MENU_CHROME = 'src/components/ui/copy-chip-hover-menu-chrome.ts';
 
 /** Strip block comments — prose documents the old values on purpose. */
 const code = (src: string) => src.replace(/\/\*[\s\S]*?\*\//g, '');
@@ -152,6 +153,25 @@ test('chrome labels are sentence case, never shouted', () => {
     'role-micro is 10px condensed — two steps off the row it sits on.',
   );
   assert.match(pills, /\$\{chipLabel\}/, 'Pill faces compose the word-face preset.');
+});
+
+test('a dropdown reads as the chip that opened it', () => {
+  const menu = code(read(MENU_CHROME));
+  assert.doesNotMatch(
+    menu,
+    /\buppercase\b/,
+    'Pick "Medium" off the urgency menu and it becomes the urgency pill — the same word must not change typographic voice depending on whether the control is open or closed.',
+  );
+  assert.doesNotMatch(
+    menu,
+    /\btracking-(?:widest|wide|tight)\b/,
+    'tracking-widest against the pill\'s +0.01em was the other half of the mismatch.',
+  );
+  assert.match(
+    menu,
+    /\$\{chipLabel\}/,
+    'The menu row composes the same word face as the chip face.',
+  );
 });
 
 test('dense CopyChips render the same face as the bar', () => {

@@ -1,10 +1,10 @@
 import { describe, it } from 'node:test';
+import { resolveSpreadsheetShipByDate } from '@/lib/orders/canonical-order';
 import assert from 'node:assert/strict';
 import {
   FIXED_COL_INDICES_DEFAULT,
   bindSheetColumns,
   mapSheetRowsToCanonicalLines,
-  resolveSheetShipByDate,
 } from './google-sheet-rows';
 
 describe('bindSheetColumns', () => {
@@ -38,20 +38,20 @@ describe('bindSheetColumns', () => {
   });
 });
 
-describe('resolveSheetShipByDate', () => {
+describe('resolveSpreadsheetShipByDate', () => {
   it('resolves a date-only cell to the END of that warehouse day', () => {
     // `new Date('2026-07-15')` is UTC midnight = 5pm the PREVIOUS day in the
     // warehouse zone, which landed every date-only ship-by a day early. And a
     // ship-by is a deadline, so the order is on time until the day CLOSES.
-    const resolved = resolveSheetShipByDate('2026-07-15');
+    const resolved = resolveSpreadsheetShipByDate('2026-07-15');
     assert.ok(resolved);
     assert.equal(resolved.toISOString(), '2026-07-16T06:59:59.999Z');
   });
 
   it('accepts the M/D/YYYY shape the sheet also produces', () => {
     assert.equal(
-      resolveSheetShipByDate('7/15/2026')?.toISOString(),
-      resolveSheetShipByDate('2026-07-15')?.toISOString(),
+      resolveSpreadsheetShipByDate('7/15/2026')?.toISOString(),
+      resolveSpreadsheetShipByDate('2026-07-15')?.toISOString(),
     );
   });
 
@@ -59,13 +59,13 @@ describe('resolveSheetShipByDate', () => {
     // A blank cell once fell back to the import date, so an order was born at
     // its own deadline and read as overdue the next morning — 61% of the live
     // Pending queue carried a deadline equal to its creation date.
-    assert.equal(resolveSheetShipByDate(''), null);
-    assert.equal(resolveSheetShipByDate(null), null);
-    assert.equal(resolveSheetShipByDate(undefined), null);
+    assert.equal(resolveSpreadsheetShipByDate(''), null);
+    assert.equal(resolveSpreadsheetShipByDate(null), null);
+    assert.equal(resolveSpreadsheetShipByDate(undefined), null);
   });
 
   it('returns null for an unparseable cell', () => {
-    assert.equal(resolveSheetShipByDate('whenever'), null);
+    assert.equal(resolveSpreadsheetShipByDate('whenever'), null);
   });
 });
 

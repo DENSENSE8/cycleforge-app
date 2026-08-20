@@ -45,6 +45,7 @@ import {
   PaneHeaderLabel,
   type PaneHeaderActionBarAction,
 } from '@/components/ui/pane-header';
+import { toast } from '@/lib/toast';
 import { formatDateTimePST } from '@/utils/date';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { PlatformMark } from '@/components/ui/PlatformMark';
@@ -130,9 +131,8 @@ function RecordRailHeader({
   position?: RailQueuePosition;
   onClose: () => void;
 }) {
+  // Readout only — the ↑↓ stepper it used to sit beside was removed 2026-08-19.
   const hasQueue = position != null && position.total > 1;
-  const atFirst = hasQueue && position.index <= 0;
-  const atLast = hasQueue && position.index >= position.total - 1;
 
   return (
     <PaneHeader
@@ -143,12 +143,6 @@ function RecordRailHeader({
           iconOnly
           variant="flat"
           actions={actions}
-          onPrev={hasQueue ? position.onPrev : undefined}
-          onNext={hasQueue ? position.onNext : undefined}
-          prevDisabled={atFirst}
-          nextDisabled={atLast}
-          prevTitle="Previous row"
-          nextTitle="Next row"
           onClose={onClose}
           closeTitle="Close details"
           rightSlot={
@@ -199,6 +193,27 @@ function RecordRailShell({
       </div>
     </div>
   );
+}
+
+/**
+ * What one link actually did, in the operator's nouns.
+ *
+ * Honest absence both ways: a link that healed nothing says so plainly rather
+ * than reporting "0 orders", and manuals are named only when some moved — a
+ * count that is almost always zero is noise on every other link.
+ */
+function linkResultMessage(
+  sku: string,
+  body: { ordersBackfilled?: unknown; manualsBackfilled?: unknown },
+): string {
+  const orders = Number(body.ordersBackfilled) || 0;
+  const manuals = Number(body.manualsBackfilled) || 0;
+  if (orders === 0 && manuals === 0) return `Linked to ${sku}.`;
+
+  const parts: string[] = [];
+  if (orders > 0) parts.push(`${orders} order${orders === 1 ? '' : 's'}`);
+  if (manuals > 0) parts.push(`${manuals} manual${manuals === 1 ? '' : 's'}`);
+  return `Linked to ${sku} · ${parts.join(' · ')} backfilled.`;
 }
 
 // ── Tab A · Link a listing to the catalog ─────────────────────────────────────
@@ -266,6 +281,14 @@ function CatalogLinkFormBody({
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok || !body.success) throw new Error(body.error || 'Link failed');
+      // ONE link heals EVERY order in the org whose item number normalizes to
+      // this listing — `batchPair` runs a single set-based UPDATE, including
+      // over historical rows that never enqueued a chore. The route has always
+      // returned that count and this rail has always dropped it, so the
+      // operator saw one row leave the queue and had no way to know the other
+      // eleven had just been fixed with it. The rail closes on `onDone`, so the
+      // toast is the only surface left that can say so.
+      toast.success(linkResultMessage(selected.sku, body));
       onDone();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Link failed');

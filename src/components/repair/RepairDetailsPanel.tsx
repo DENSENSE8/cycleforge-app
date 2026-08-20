@@ -182,12 +182,6 @@ export function RepairDetailsPanel({
                 // Drop redundant "Open" when the inspect panel is already up.
                 ...railHeaderActions.filter((a) => a.key !== 'rail-open'),
               ]}
-              onPrev={onMoveUp}
-              onNext={onMoveDown}
-              prevDisabled={disableMoveUp}
-              nextDisabled={disableMoveDown}
-              prevTitle="Move up a row"
-              nextTitle="Move down a row"
               onClose={onClose}
               closeTitle="Close details"
             />

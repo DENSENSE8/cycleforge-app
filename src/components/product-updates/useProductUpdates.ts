@@ -9,16 +9,36 @@ import {
 
 const VERSION_POLL_MS = 120_000;
 
+/**
+ * Device-local seen marker, written SYNCHRONOUSLY on Got it.
+ *
+ * The server pref (`lastSeenProductUpdateId`) is the durable cross-device SoT,
+ * but it lands one round-trip later — and the host remounts whenever the auth
+ * gate flips, which re-ran the auto-open before that write returned and popped
+ * the panel back open. This key closes that window.
+ */
+const SEEN_STORAGE_KEY = 'cf.productUpdateSeen';
+
 export type ProductUpdatesState = {
   latest: ProductUpdate | null;
   open: boolean;
-  unseen: boolean;
   staleDeploy: boolean;
   prefsLoading: boolean;
   dismiss: () => void;
-  reopen: () => void;
   refresh: () => void;
 };
+
+function seenToken(latest: ProductUpdate): string {
+  return `${latest.id}:${latest.buildSha ?? ''}`;
+}
+
+function readSeenToken(): string | null {
+  try {
+    return window.localStorage.getItem(SEEN_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
 
 function isUnseen(
   latest: ProductUpdate | null,
@@ -26,6 +46,7 @@ function isUnseen(
   lastSeenSha: string | null | undefined,
 ): boolean {
   if (!latest) return false;
+  if (readSeenToken() === seenToken(latest)) return false;
   if (lastSeenId !== latest.id) return true;
   if (latest.buildSha && lastSeenSha !== latest.buildSha) return true;
   return false;
@@ -34,14 +55,13 @@ function isUnseen(
 /**
  * Product-updates state machine.
  *
- * The host mounts once in the root layout, so the first mount is a full
- * document load (hard refresh / new deploy). Client-side Next navigations
- * do not remount the host and therefore do not re-pop the panel.
+ * One shot per staffer per update: an unseen update auto-opens the panel, and
+ * Got it retires it for good — there is no residual "What's new" chip and no
+ * reopen. The only thing that can claim the corner afterwards is a NEW deploy
+ * detected by the `/api/version` poll (120s), which offers a refresh chip.
  *
- * Auto-open: prefs loaded + latest unseen (id or buildSha) → start open.
- * Dismiss / Got it persists last-seen on staff_preferences.
- * Chip click reopens without requiring unseen.
- * `/api/version` poll (120s): sha changed vs page-load capture → staleDeploy.
+ * Got it persists last-seen on staff_preferences (cross-device) AND on
+ * localStorage (immediate, remount-proof).
  */
 export function useProductUpdates(): ProductUpdatesState {
   const { prefs, isLoading, update } = useStaffPreferences();
@@ -52,16 +72,13 @@ export function useProductUpdates(): ProductUpdatesState {
   const autoOpenedRef = useRef(false);
   const loadShaRef = useRef<string | null>(null);
 
-  const unseen =
-    !isLoading &&
-    prefs !== undefined &&
-    isUnseen(latest, prefs.lastSeenProductUpdateId, prefs.lastSeenBuildSha);
-
   useEffect(() => {
-    if (isLoading || autoOpenedRef.current) return;
+    if (isLoading || prefs === undefined || autoOpenedRef.current) return;
     autoOpenedRef.current = true;
-    if (unseen) setOpen(true);
-  }, [isLoading, unseen]);
+    if (isUnseen(latest, prefs.lastSeenProductUpdateId, prefs.lastSeenBuildSha)) {
+      setOpen(true);
+    }
+  }, [isLoading, prefs, latest]);
 
   useEffect(() => {
     let cancelled = false;
@@ -94,6 +111,11 @@ export function useProductUpdates(): ProductUpdatesState {
 
   const dismiss = useCallback(() => {
     if (latest) {
+      try {
+        window.localStorage.setItem(SEEN_STORAGE_KEY, seenToken(latest));
+      } catch {
+        // Private mode / quota — the server pref below still carries it.
+      }
       update({
         lastSeenProductUpdateId: latest.id,
         lastSeenBuildSha: latest.buildSha ?? null,
@@ -102,7 +124,6 @@ export function useProductUpdates(): ProductUpdatesState {
     setOpen(false);
   }, [latest, update]);
 
-  const reopen = useCallback(() => setOpen(true), []);
   const refresh = useCallback(() => {
     window.location.reload();
   }, []);
@@ -110,11 +131,9 @@ export function useProductUpdates(): ProductUpdatesState {
   return {
     latest,
     open,
-    unseen,
     staleDeploy,
     prefsLoading: isLoading,
     dismiss,
-    reopen,
     refresh,
   };
 }

@@ -19,12 +19,11 @@ Twice on 2026-08-01 code shipped ahead of its column, and nothing caught either:
 `npm run verify` was green on schema-drift the whole time: that guard compares the Drizzle model
 against the DB, not "does the SQL in this repo name a column that exists".
 
-- **Gate:** `src/lib/migrations/column-reference.guard.test.ts` — resolves every qualified
-  `alias.column` and every bare column in a single-table `SELECT` against the union of
-  `src/lib/migrations/*.sql` + `drizzle/schema.ts`. Precision over recall by design (it stays
-  quiet where its own DDL parse is unreliable); both allowlists are frozen and shrink-only.
-- **Slot discipline:** one `YYYY-MM-DD<letter>` per migration.
-  `src/lib/migrations/migration-slot-uniqueness.guard.test.ts` holds the line. Two files in one
+- **Check it yourself:** every qualified `alias.column` and every bare column in a
+  single-table `SELECT` must resolve against the union of `src/lib/migrations/*.sql` +
+  `drizzle/schema.ts`. Nothing checks this automatically — `npm run verify`'s schema-drift
+  gate compares the Drizzle model to the DB, not the SQL in this repo to either.
+- **Slot discipline:** one `YYYY-MM-DD<letter>` per migration. Two files in one
   slot are ordered by their *description*, which is alphabetical and therefore arbitrary — that
   is how `2026-07-29f`'s `_contract` half came to sort **before** its `_expand` half, inverting
   the very sequence the pair was split to guarantee. Applied filenames are immutable (the ledger
@@ -125,9 +124,9 @@ compiler stays quiet about exactly the sites you missed.
   first — `findScanByTracking` → `memoizeLookupHit` overwrote attribution before
   any gated branch ran. Trace every write on the path, not just the one the
   ticket names.
-- Pair it with a guard that walks the call sites (`lookup-scan-wiring.guard.test.ts`
-  parses the argument lists), so the next site added is caught by a test rather
-  than by an operator noticing their name on someone else's work.
+- Pair it with a test that walks the call sites and parses the argument lists, so the
+  next site added is caught by a test rather than by an operator noticing their
+  name on someone else's work.
 
 ## Tenant scoping via GUC
 
@@ -166,9 +165,8 @@ compiler stays quiet about exactly the sites you missed.
   through `feature-flags.ts`, which carries `server-only` via `@/lib/db`)
   with `env`, `bornAt` (civil date), `area`, and a disposition: `permanent` (a real kill-switch,
   with a reason), `rollout` (with a `plannedRemoval` date), or `undecided`.
-  `feature-flags.guard.test.ts` fails when a flag sits `undecided` past `FLAG_AGE_LIMIT_DAYS` (90),
-  when a `plannedRemoval` lapses, or when the registry and the exports disagree in either
-  direction.
+  A flag must not sit `undecided` past `FLAG_AGE_LIMIT_DAYS` (90), a `plannedRemoval` must
+  not lapse, and the registry and the exports must not disagree in either direction.
 - **A flag keeps BOTH branches reachable**, so a permanent strangler is a fork that dead-code
   tooling can never see. That is why "mid-strangler, not yet a hard requirement" needs a date
   attached rather than an open end — the losing branch is zombie code the moment nobody is

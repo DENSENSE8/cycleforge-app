@@ -31,8 +31,9 @@
  * (house · magnifier · images · zap · message), each carrying its label as a
  * tooltip and its `aria-label`. Five equal-fill cells span the 40px seam.
  *
- * Active state is query-aware ({@link isSidebarTopPinActive}): on forge, Plans
- * is current and Home is idle so the two never both light.
+ * Active state resolves through {@link isSidebarTopPinActive} — plain
+ * pathname matching, since Plans moved to its own `/forge` route and no longer
+ * shares `/` with Home.
  *
  * **Named for the job, not the birthplace.** It shipped as `HeaderTopPins` for
  * the hours it lived permanently in the GlobalHeader; a shell keeping its first

@@ -13,19 +13,34 @@
 
 export { parseCsv } from '@/lib/tables/import/parse-csv';
 
+/**
+ * The CSV lane's canonical vocabulary — deliberately the same field set the
+ * Google-Sheet adapter binds (`sources/google-sheet-rows.ts`), because the two
+ * lanes read the same operator-authored order lists. A field the writer accepts
+ * but this list omits is silently DROPPED on import, which is how item title,
+ * ship-by, condition and note were being thrown away until 2026-08-19.
+ */
 export const CSV_ORDER_CANONICAL_FIELDS = [
   { key: 'order_number', label: 'Order number', required: true },
+  { key: 'item_title', label: 'Item title', required: false },
   { key: 'sku', label: 'SKU', required: false },
+  { key: 'item_number', label: 'Item number', required: false },
   { key: 'quantity', label: 'Quantity', required: false },
+  { key: 'condition', label: 'Condition', required: false },
   { key: 'customer_name', label: 'Customer name', required: false },
+  { key: 'ship_by_date', label: 'Ship by date', required: false },
   { key: 'tracking_number', label: 'Tracking number', required: false },
   { key: 'platform', label: 'Platform', required: false },
+  { key: 'note', label: 'Note', required: false },
 ] as const;
 
 export type CsvOrderCanonicalKey = (typeof CSV_ORDER_CANONICAL_FIELDS)[number]['key'];
 
 export type CsvOrderImportResult = {
   inserted: number;
+  /** Existing orders the writer BACKFILLED (additive — blanks only). */
+  updated: number;
+  /** In-batch duplicate order numbers, first occurrence wins. */
   skipped: number;
   errors: Array<{ row: number; reason: string }>;
 };
@@ -40,11 +55,23 @@ export function autoMapCsvOrderHeaders(headers: string[]): Record<string, string
   const mapping: Record<string, string> = {};
   const aliases: Record<CsvOrderCanonicalKey, string[]> = {
     order_number: ['ordernumber', 'orderid', 'order', 'ordno', 'orderno'],
-    sku: ['sku', 'itemsku', 'productsku', 'itemnumber', 'itemno'],
+    // `itemnumber` / `itemno` moved OFF `sku` when `item_number` gained a field
+    // of its own. They were never SKUs: a marketplace item number (an ASIN, an
+    // eBay listing id) resolves through `sku_platform_ids.platform_item_id`,
+    // while the sku path queries `sku_catalog.sku` — so a header literally
+    // named "Item Number" landing in `sku` sent every row down a lookup that
+    // could only miss. Aliases must not overlap across fields; two entries
+    // claiming one header makes the winner depend on field order.
+    item_title: ['itemtitle', 'producttitle', 'product', 'title', 'description', 'itemname', 'productname'],
+    sku: ['sku', 'itemsku', 'productsku'],
+    item_number: ['itemnumber', 'itemno', 'itemid', 'listingid', 'asin'],
     quantity: ['quantity', 'qty', 'count'],
+    condition: ['condition', 'itemcondition', 'grade'],
     customer_name: ['customername', 'customer', 'buyer', 'buyername', 'name'],
+    ship_by_date: ['shipbydate', 'shipby', 'shipdate', 'duedate', 'deliverby'],
     tracking_number: ['trackingnumber', 'tracking', 'trackingno'],
     platform: ['platform', 'channel', 'source', 'marketplace'],
+    note: ['note', 'notes', 'comment', 'comments', 'remarks'],
   };
   for (const field of CSV_ORDER_CANONICAL_FIELDS) {
     const want = aliases[field.key];
@@ -64,7 +91,15 @@ function pickMapped(row: Record<string, string>, header: string | undefined): st
  * Ready vs Action required for a staging row.
  *
  * - Missing order number → Action required (always).
- * - When a SKU column is mapped, blank SKU → Action required (Sheets spirit).
+ * - When a SKU column is mapped, blank SKU → Action required (Sheets spirit) —
+ *   UNLESS the row carries an item number or an item title, either of which
+ *   names the product just as well — the writer resolves the catalog by SKU, by
+ *   `sku_platform_ids.platform_item_id`, or by `product_title`. Marketplace
+ *   exports routinely fill one identifier and not the others (an Amazon order
+ *   list carries the ASIN and leaves the seller SKU blank; its eBay rows carry
+ *   neither and name the product only in the title), so without this every row
+ *   of such a file would be Action required the moment the operator mapped
+ *   their SKU column at all.
  */
 export function classifyCsvOrderStagingRow(
   row: Record<string, string>,
@@ -73,7 +108,11 @@ export function classifyCsvOrderStagingRow(
   const missing: CsvOrderMissingField[] = [];
   const orderNumber = pickMapped(row, mapping.order_number);
   if (!orderNumber) missing.push('order_number');
-  if (mapping.sku && !pickMapped(row, mapping.sku)) missing.push('sku');
+  // Any of the three identifiers names the product well enough to import: the
+  // writer resolves the catalog by SKU, by item number, OR by title.
+  const namesProduct =
+    Boolean(pickMapped(row, mapping.item_number)) || Boolean(pickMapped(row, mapping.item_title));
+  if (mapping.sku && !pickMapped(row, mapping.sku) && !namesProduct) missing.push('sku');
 
   return {
     status: missing.length === 0 ? 'ready' : 'action_required',
@@ -88,11 +127,16 @@ export function projectCsvOrderRow(
 ): Record<CsvOrderCanonicalKey, string> {
   return {
     order_number: pickMapped(row, mapping.order_number),
+    item_title: pickMapped(row, mapping.item_title),
     sku: pickMapped(row, mapping.sku),
+    item_number: pickMapped(row, mapping.item_number),
     quantity: pickMapped(row, mapping.quantity),
+    condition: pickMapped(row, mapping.condition),
     customer_name: pickMapped(row, mapping.customer_name),
+    ship_by_date: pickMapped(row, mapping.ship_by_date),
     tracking_number: pickMapped(row, mapping.tracking_number),
     platform: pickMapped(row, mapping.platform),
+    note: pickMapped(row, mapping.note),
   };
 }
 
@@ -134,6 +178,7 @@ export async function postCsvOrderImport(body: {
       ok: true,
       result: {
         inserted: json.inserted ?? 0,
+        updated: json.updated ?? 0,
         skipped: json.skipped ?? 0,
         errors: Array.isArray(json.errors) ? json.errors : [],
       },

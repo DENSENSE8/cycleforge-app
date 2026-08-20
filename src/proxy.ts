@@ -51,9 +51,10 @@ const PUBLIC_PATHS: ReadonlyArray<RegExp> = [
   /^\/api\/kiosk\/settings(?:$|\/)/,     // device-authed brand/settings (withKioskAuth)
   /^\/api\/kiosk\/staff-for-stepup(?:$|\/)/, // device-authed PIN step-up roster (withKioskAuth)
   /^\/api\/kiosk\/pickup(?:$|\/)/,       // device-authed order pickup lookup/collect (withKioskAuth)
+  /^\/api\/kiosk\/session(?:$|\/)/,      // device-authed counter-session mirror: read + set-customer + signature (withKioskAuth)
+  /^\/api\/realtime\/kiosk-token(?:$|\/)/, // device-principal Ably token (withKioskAuth) — the STAFF token route stays gated
   /^\/invite\/[A-Za-z0-9_-]+(?:$|\/)/,  // org invitation accept (unauthenticated)
   /^\/offline(?:$|\/)/,                 // PWA offline fallback (matches AuthContext)
-  /^\/design-demo(?:$|\/)/,            // dev/preview DS showcase — 404s in prod via design-demo layout (matches AuthContext)
   /^\/share\/photos\//,                 // public photo share-pack viewer (token capability)
   // Anonymous share-pack read + zip download by token — a token IS the
   // capability. The `[^/]+` requires a token segment, so the bare collection
@@ -309,7 +310,7 @@ function resolveDashboardInboundRedirect(url: NextRequest['nextUrl']): NextReque
 /**
  * Dashboard bare outbound → Shipping · To-ship desk.
  * `/dashboard` (and outbound lifecycle bookmarks) → `/shipping/orders`.
- * Sales (`?mode=sales|pickup|repairs`) and retired front doors stay elsewhere.
+ * Sales (`?mode=sales|pickup|repairs`) and other front doors stay elsewhere.
  */
 function resolveDashboardOutboundRedirect(url: NextRequest['nextUrl']): NextRequest['nextUrl'] | null {
   if (url.pathname !== '/dashboard' && url.pathname !== '/dashboard/') return null;

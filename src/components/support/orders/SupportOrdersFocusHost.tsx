@@ -32,7 +32,8 @@ import {
   StationMoreDetails,
 } from '@/components/station/entity-context';
 import {
-  StationDisplaysEdgeToggle,
+  StationDisplaysParkedRail,
+  StationDisplaysUtilityRail,
   StationDisplaysPushStack,
   STATION_DISPLAY_INDEX,
   useYieldStationDisplaysOnAssistantOpen,
@@ -257,13 +258,21 @@ function SupportOrderFocus({
     return STATION_DISPLAY_INDEX;
   }, [activeSideTab, displayTabs]);
 
-  const paneUtilityRow = (
-    <div className="flex flex-col items-center gap-0 pt-0">
-      {!activeSideTab ? (
-        <StationDisplaysEdgeToggle variant="pane-open" onClick={openDisplaysIndex} />
-      ) : null}
-    </div>
-  );
+  const paneUtilityRow = !activeSideTab ? (
+    <StationDisplaysUtilityRail
+      onOpenDisplays={openDisplaysIndex}
+      indexRail={
+        <StationDisplaysParkedRail
+          rows={displayIndexRows}
+          tabs={displayTabs}
+          activeId={activeSideTab ?? null}
+          onOpenLeaf={(id) =>
+            setActiveSideTab(id as Parameters<typeof setActiveSideTab>[0])
+          }
+        />
+      }
+    />
+  ) : null;
 
   return (
     <motion.div

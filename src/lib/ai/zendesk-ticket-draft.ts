@@ -13,6 +13,7 @@
  */
 
 import { hermesToolCall } from '@/lib/ai/hermes-tool-call';
+import type { OrgId } from '@/lib/tenancy/constants';
 
 const TOOL_NAME = 'report_ticket_draft';
 
@@ -56,8 +57,11 @@ interface DraftToolArgs {
 }
 
 export async function draftTicketWithLlm(
+  /** Tenant whose AI provider serves this call — required, never defaulted. */
+  orgId: OrgId,
   input: TicketDraftInput,
 ): Promise<TicketDraftResult> {
+
   const userText = [
     `Context: ${input.context}`,
     '',
@@ -69,6 +73,7 @@ export async function draftTicketWithLlm(
   ].join('\n');
 
   const { args, model, usage } = await hermesToolCall<DraftToolArgs>({
+    orgId,
     systemPrompt: SYSTEM_PROMPT,
     userText,
     maxTokens: 1200,

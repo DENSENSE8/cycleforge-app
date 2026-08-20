@@ -9,7 +9,13 @@ import {
   type ReceivingSelectLineDetail,
 } from '@/components/sidebar/receiving/receiving-sidebar-shared';
 import { TestingPanel } from '@/components/tech/TestingPanel';
+import { TestingScanPickPanel } from '@/components/tech/testing/TestingScanPickPanel';
 import { TestingWorkspaceView } from '@/components/tech/testing/TestingWorkspaceView';
+import {
+  publishTestingScanPick,
+  resolveTestingScanPick,
+  useTestingScanPick,
+} from '@/lib/testing/testing-scan-session-bridge';
 
 import { zIndex } from '@/design-system/tokens/z-index';
 
@@ -35,6 +41,10 @@ export function TestingLineWorkspace({
   onOpenTestingLine,
 }: Props) {
   const [row, setRow] = useState<ReceivingLineRow | null>(null);
+  // An ambiguous scan (several serial / SKU / PO matches) parks its candidates
+  // here. The scan column raises them; the middle is where the operator decides,
+  // because the choice IS the active entity (display/station.md §11).
+  const pick = useTestingScanPick();
   const lastSelectedRef = useRef<number | null>(null);
   // `motionRole.swap.focus` — the pointer-driven focus-surface swap, taken as
   // one pair so the presence can never drift onto another job's timing.
@@ -80,13 +90,18 @@ export function TestingLineWorkspace({
   // No cold-load auto-restore — Testing mode lands on the history browse so
   // operators can pick a line (or scan). Selection still writes LAST_TESTING_LINE_KEY.
 
+  // The pick covers the browse the same way an open line does, and an open line
+  // outranks it — resolving a pick opens a line, so the two are never both live
+  // for the same scan.
+  const showPick = pick != null && row == null;
+
   return (
     <div className="relative h-full min-h-0 w-full overflow-hidden bg-surface-canvas">
       <div
-        className={`flex h-full min-h-0 w-full flex-col ${row ? 'pointer-events-none' : ''}`}
-        aria-hidden={row ? true : undefined}
-        inert={row ? true : undefined}
-        style={{ visibility: row ? 'hidden' : 'visible' }}
+        className={`flex h-full min-h-0 w-full flex-col ${row || showPick ? 'pointer-events-none' : ''}`}
+        aria-hidden={row || showPick ? true : undefined}
+        inert={row || showPick ? true : undefined}
+        style={{ visibility: row || showPick ? 'hidden' : 'visible' }}
       >
         <TestingWorkspaceView
           techId={staffId}
@@ -94,6 +109,26 @@ export function TestingLineWorkspace({
           onOpenLine={onOpenTestingLine}
         />
       </div>
+
+      <AnimatePresence initial={false} mode="wait">
+        {showPick && pick ? (
+          <motion.div
+            key="testing-scan-pick"
+            initial={panePresence.initial}
+            animate={panePresence.animate}
+            exit={panePresence.exit}
+            transition={paneTransition}
+            style={{ zIndex: zIndex.panel }}
+            className="absolute inset-0 flex min-h-0 flex-col bg-surface-card"
+          >
+            <TestingScanPickPanel
+              pick={pick}
+              onPick={(picked) => resolveTestingScanPick(picked)}
+              onCancel={() => publishTestingScanPick(null)}
+            />
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
 
       <AnimatePresence initial={false} mode="wait">
         {row ? (

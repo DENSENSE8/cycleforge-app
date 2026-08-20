@@ -30,11 +30,14 @@
  */
 
 import {
+  useCallback,
   useEffect,
+  useRef,
   useState,
   type CSSProperties,
   type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
+  type Ref,
 } from 'react';
 import { flushSync } from 'react-dom';
 import { Search } from '@/components/Icons';
@@ -45,6 +48,8 @@ import {
 import { useContextPanelCollapse } from '@/components/sidebar/context-panel-collapse-context';
 import { RailFilterCollapseButton } from '@/components/sidebar/tech/left-dock-toggle';
 import { SearchBar } from '@/components/ui/SearchBar';
+import { useFindFieldScan } from '@/hooks/useFindFieldScan';
+import type { ScanRoute } from '@/lib/barcode-routing';
 import { cn } from '@/utils/_cn';
 
 /** Keys that drive a sibling result list from the box — flush draft first. */
@@ -70,6 +75,7 @@ export function TechRailSearchBar({
   trailingSuffix,
   trailingAction,
   inputRef,
+  onScanHandle,
   navKeyHint,
   className,
 }: {
@@ -144,6 +150,23 @@ export function TechRailSearchBar({
    */
   inputRef?: React.Ref<HTMLInputElement>;
   /**
+   * OPT-IN: a printed handle scanned INTO this field.
+   *
+   * The global wedge listener bails on editable focus (a field the operator is
+   * typing into owns its keys), so without this a gun fired with the cursor in
+   * the box types literal characters and no decoder ever runs — the reason ~30
+   * find fields decode nothing today.
+   *
+   * Only a machine-fast burst that decodes to one of OUR labels arrives here; a
+   * human typing the same characters never can, and a carrier tracking number
+   * stays a text query (`routeScan` has no carrier vocabulary — that arm is the
+   * server's). Return `false` to keep the value in the field.
+   *
+   * Opt-in per surface: a field with nowhere to send a handle must not pretend
+   * it can accept one.
+   */
+  onScanHandle?: (route: ScanRoute, raw: string) => boolean | void;
+  /**
    * Reveal-on-arm keycap (nav-keys). Renders as the LAST in-field trailing item
    * — after paste and after {@link trailingSuffix} filters — and only while the
    * host's region is armed. Never a resident affordance: nav keys reveal on arm
@@ -183,6 +206,27 @@ export function TechRailSearchBar({
   };
 
   const chrome = variant === 'chrome';
+  /**
+   * The field's own node, merged with any caller ref, so the opt-in scan
+   * listener can bind natively without taking the ref away from the host.
+   */
+  const localInputRef = useRef<HTMLInputElement | null>(null);
+  const setInputRef = useCallback(
+    (node: HTMLInputElement | null) => {
+      localInputRef.current = node;
+      const forwarded = inputRef as Ref<HTMLInputElement> | undefined;
+      if (typeof forwarded === 'function') forwarded(node);
+      else if (forwarded && typeof forwarded === 'object') {
+        (forwarded as { current: HTMLInputElement | null }).current = node;
+      }
+    },
+    [inputRef],
+  );
+  useFindFieldScan(localInputRef, {
+    onHandle: (route, raw) => onScanHandle?.(route, raw),
+    enabled: Boolean(onScanHandle),
+  });
+
   const contextPanelCollapse = useContextPanelCollapse();
 
   // Rail footers under ContextPanelCollapseProvider inherit collapse — every
@@ -222,7 +266,7 @@ export function TechRailSearchBar({
           trailingSuffix
         )
       }
-      inputRef={inputRef}
+      inputRef={setInputRef}
     />
   );
 

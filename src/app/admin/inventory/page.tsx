@@ -40,8 +40,8 @@ export default async function InventoryAdminPage() {
 
   return (
     <div className="min-h-screen w-full bg-surface-canvas">
-      <PageHeader title="Inventory" maxWidth="7xl" />
-      <div className="mx-auto max-w-7xl space-y-8 p-8">
+      <PageHeader title="Inventory" />
+      <div className="space-y-8 p-8">
         <p className="text-sm text-text-muted">
           Operations dashboard for the state-machine inventory migration. Read-only.
           See <code className="rounded bg-surface-sunken px-1.5 py-0.5 text-xs">context/inventory_system_upgrade_plan.md</code> for the full plan.

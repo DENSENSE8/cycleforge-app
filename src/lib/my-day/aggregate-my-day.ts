@@ -3,6 +3,7 @@ import { fetchAllWorkOrderQueues } from '@/lib/work-orders/fetch-all-queues';
 import { compareWorkOrderRows, topWorkOrderForStaff } from '@/lib/work-orders/ranking';
 import { listSupportFollowupsForStaff } from '@/lib/inbox/support-followups-queries';
 import { listTechQueueItemsForStaff } from '@/lib/inbox/tech-queue-items';
+import { countUnpairedListings } from '@/lib/inbox/unpaired-listing-count';
 import { SURFACE_REGISTRY } from '@/lib/stations/surface-keys';
 import { interruptHref } from './my-day-href';
 import type { MyDayFeed, MyDayInterrupt, MyDayQueueCard } from './my-day-types';
@@ -22,12 +23,23 @@ function isMineRow(row: WorkOrderRow, staffId: number): boolean {
   );
 }
 
+/**
+ * A queue card's count comes from ONE of two places: the work-order rows this
+ * feed already fetched (`match`), or a query only this card needs
+ * (`countFrom: 'external'`). The external branch used to be a hardcoded
+ * `link.key === 'support'` check in two places; naming it on the entry is what
+ * lets a second such card exist without a third key check.
+ */
 const QUEUE_SURFACE_LINKS: Array<{
   key: string;
   label: string;
   permission: string;
   href: string;
   match: (row: WorkOrderRow) => boolean;
+  /** Count supplied by the caller rather than derived from `match`. */
+  countFrom?: 'external';
+  /** Render at zero. Default is to drop — a card reading "0" invents a story. */
+  showAtZero?: boolean;
 }> = [
   {
     key: 'orders',
@@ -73,23 +85,37 @@ const QUEUE_SURFACE_LINKS: Array<{
     permission: 'integrations.zendesk',
     href: '/support',
     match: () => false,
+    countFrom: 'external',
+    showAtZero: true,
+  },
+  {
+    // Orders that named a product the catalog does not know. Permission is the
+    // DESTINATION's gate (`/review?mode=catalog-link`), like every sibling —
+    // a card is a door, so it is filtered by whether the operator may walk
+    // through it, not by whether they may read the count behind it.
+    key: 'catalog_link',
+    label: 'Needs item number',
+    permission: 'packing.review',
+    href: '/review?mode=catalog-link',
+    match: () => false,
+    countFrom: 'external',
   },
 ];
 
 function buildQueueCards(
   rows: WorkOrderRow[],
   permissions: Set<string>,
-  interruptCount: number,
+  externalCounts: Record<string, number>,
 ): MyDayQueueCard[] {
   const cards: MyDayQueueCard[] = [];
 
   for (const link of QUEUE_SURFACE_LINKS) {
     if (!permissions.has(link.permission)) continue;
     const count =
-      link.key === 'support'
-        ? interruptCount
+      link.countFrom === 'external'
+        ? externalCounts[link.key] ?? 0
         : rows.filter((row) => isActionableRow(row) && link.match(row)).length;
-    if (link.key !== 'support' && count === 0) continue;
+    if (count === 0 && !link.showAtZero) continue;
     cards.push({
       key: link.key,
       label: link.label,
@@ -149,6 +175,9 @@ export async function aggregateMyDayFeed(args: {
   const { organizationId, staffId, permissions } = args;
 
   const canSeeWorkOrders = permissions.has('work_orders.view');
+  // Gate the query on the same permission the card is filtered by, so an
+  // operator who can never see the card never pays for its count.
+  const canSeeCatalogLink = permissions.has('packing.review');
 
   // ONE concurrent wave, not three serial ones. The queue fan-out and the two
   // interrupt queries are independent — nothing here reads another's result —
@@ -156,12 +185,13 @@ export async function aggregateMyDayFeed(args: {
   // tenant each query costs 350ms–1.0s of round-trip largely independent of how
   // many rows it returns, so every imposed wave was a full round-trip of pure
   // latency on the first screen an operator sees each morning.
-  const [allRows, techItems, supportItems] = await Promise.all([
+  const [allRows, techItems, supportItems, unpairedListings] = await Promise.all([
     canSeeWorkOrders
       ? fetchAllWorkOrderQueues(organizationId, { unified: true })
       : Promise.resolve<WorkOrderRow[]>([]),
     listTechQueueItemsForStaff(organizationId, staffId),
     listSupportFollowupsForStaff(organizationId, staffId),
+    canSeeCatalogLink ? countUnpairedListings(organizationId) : Promise.resolve(0),
   ]);
 
   const assigned = canSeeWorkOrders
@@ -177,8 +207,10 @@ export async function aggregateMyDayFeed(args: {
     ...mapTechInterrupts(techItems),
   ].sort((a, b) => b.createdAtMs - a.createdAtMs);
 
-  const supportInterruptCount = supportItems.length;
-  const queueCards = buildQueueCards(allRows, permissions, supportInterruptCount);
+  const queueCards = buildQueueCards(allRows, permissions, {
+    support: supportItems.length,
+    catalog_link: unpairedListings,
+  });
 
   const unassigned = allRows.filter(
     (row) => isActionableRow(row) && !isAssignedRow(row),

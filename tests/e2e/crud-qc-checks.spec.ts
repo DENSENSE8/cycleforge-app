@@ -1,4 +1,5 @@
 import { test, expect, type APIRequestContext } from '@playwright/test';
+import path from 'path';
 
 /**
  * Full-CRUD lifecycle coverage for the QC checklist endpoints brought onto the
@@ -10,10 +11,25 @@ import { test, expect, type APIRequestContext } from '@playwright/test';
  *   - /api/serial-units/[id]/checklist/bulk   bulk settle / clear
  *
  * API-level tests using the authenticated `request` fixture — the session
- * cookie comes from tests/.auth/admin.json (global-setup signs in as an admin).
+ * cookie comes from tests/.auth/qa-admin.json (the QA tenant; global-setup mints
+ * it). Never the dogfood org: these tests CREATE catalog rows.
  * Every test creates uniquely-named rows and tears them down in finally blocks,
  * so the suite is idempotent and leaves no residue.
  */
+
+const QA_STORAGE = path.join(__dirname, '..', '.auth', 'qa-admin.json');
+// Pin BOTH `page` and `request` to the QA tenant regardless of which project
+// runs this file. These specs MINT catalog rows, and until 2026-08-19 they ran
+// on the dogfood storage state — every crashed run left an `E2E-QC*` SKU behind
+// in USAV, and because the Products → QC picker lists exactly "SKUs that have a
+// qc_check_templates row", 29 of them buried the three real products. Cleanup:
+// `node scripts/cleanup-e2e-qc-fixtures.mjs --apply`.
+test.use({ storageState: QA_STORAGE });
+
+async function hasQaSession(request: APIRequestContext): Promise<boolean> {
+  const probe = await request.get('/api/sku-catalog/search?q=&limit=1');
+  return probe.ok();
+}
 
 const uniq = () => `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
@@ -30,6 +46,14 @@ async function makeCatalog(request: APIRequestContext) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 test.describe('qc-checks — catalog authoring CRUD', () => {
+  // The QA session is minted by global-setup; without it every request 401s and
+  // the spec would otherwise fail as if the endpoint were broken.
+  test.beforeEach(async ({ request }) => {
+    test.skip(
+      !(await hasQaSession(request)),
+      'no QA session — tests/.auth/qa-admin.json empty (run pnpm provision:qa-org)',
+    );
+  });
   test('create → read → update → publish → delete (with structured value fields)', async ({ request }) => {
     const cat = await makeCatalog(request);
     try {
@@ -205,6 +229,14 @@ test.describe('qc-checks — catalog authoring CRUD', () => {
 
 // ─────────────────────────────────────────────────────────────────────────────
 test.describe('qc-checks — tech inline authoring (receiving-lines)', () => {
+  // The QA session is minted by global-setup; without it every request 401s and
+  // the spec would otherwise fail as if the endpoint were broken.
+  test.beforeEach(async ({ request }) => {
+    test.skip(
+      !(await hasQaSession(request)),
+      'no QA session — tests/.auth/qa-admin.json empty (run pnpm provision:qa-org)',
+    );
+  });
   async function firstLineId(request: APIRequestContext): Promise<number | null> {
     const res = await request.get('/api/receiving-lines?view=recent&limit=10');
     if (!res.ok()) return null;
@@ -251,6 +283,14 @@ test.describe('qc-checks — tech inline authoring (receiving-lines)', () => {
 
 // ─────────────────────────────────────────────────────────────────────────────
 test.describe('qc-checks — per-unit execution + bulk', () => {
+  // The QA session is minted by global-setup; without it every request 401s and
+  // the spec would otherwise fail as if the endpoint were broken.
+  test.beforeEach(async ({ request }) => {
+    test.skip(
+      !(await hasQaSession(request)),
+      'no QA session — tests/.auth/qa-admin.json empty (run pnpm provision:qa-org)',
+    );
+  });
   /** Find an existing serial unit that already has a sku_catalog_id. */
   async function findCataloguedUnit(
     request: APIRequestContext,

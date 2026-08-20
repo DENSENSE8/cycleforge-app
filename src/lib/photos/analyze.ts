@@ -1,7 +1,6 @@
 import pool from '@/lib/db';
 import { readPhotoBytesById } from './read-bytes';
 import { hermesToolCall } from '@/lib/ai/hermes-tool-call';
-import { getHermesApiUrl } from '@/lib/ai/hermes-client';
 import { getOrganization } from '@/lib/tenancy/organizations';
 import { getPhotoAnalysisSettings } from '@/lib/tenancy/settings';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -102,14 +101,17 @@ async function analyzeWithVision(buffer: Buffer): Promise<PhotoAnalysisMetadata 
 }
 
 async function analyzeWithHermes(input: {
+  organizationId: string;
   poRef: string | null;
   photoType: string | null;
   entityType: string | null;
 }): Promise<{ metadata: PhotoAnalysisMetadata; model: string } | null> {
-  if (!getHermesApiUrl()) return null;
-
   try {
+    // Any provider miss (nothing connected, whole chain down) degrades to
+    // deterministic catalog metadata via the catch below — analysis never
+    // throws on a missing model.
     const { args, model } = await hermesToolCall<PhotoAnalysisMetadata>({
+      orgId: input.organizationId as OrgId,
       systemPrompt:
         'You enrich warehouse photo catalog metadata for search. ' +
         'Infer likely OCR snippets, scene labels, and visible damage from PO context and photo type. ' +

@@ -1,10 +1,24 @@
 import confetti from 'canvas-confetti';
 import { classifyInput, findSerialInCatalog, looksLikeFnsku } from '@/lib/scan-resolver';
+import { unwrapScannedSerial } from '@/lib/barcode-routing';
 import { appendSerialToSkuGroups, initSkuSerialGroups } from '@/lib/tech/sku-serial-groups';
 import type { ScanHandlerContext } from './types';
 
 export async function handleSerialScan(input: string, ctx: ScanHandlerContext): Promise<void> {
   const contextOrder = ctx.reopenScanContextOrder();
+
+  /**
+   * The serial as it should be STORED.
+   *
+   * `detectStationScanType` routes a printed unit label here as SERIAL, and a
+   * printed label carries a GS1 Digital Link / `(01)…(21)…` / `U-{serial}` —
+   * never the bare serial. Writing `input` verbatim persisted the whole label.
+   *
+   * The asymmetry this closes: `onUnitLabelScanned` below is handed the RAW
+   * value on purpose (its host gates on `scannedUnitKey`), so the photo path
+   * already decoded correctly while the write path beside it did not.
+   */
+  const scanned = unwrapScannedSerial(input);
 
   if (!contextOrder) {
     // No active order — add the serial to the last scanned tracking via SAL resolution.
@@ -16,7 +30,7 @@ export async function handleSerialScan(input: string, ctx: ScanHandlerContext): 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          serial: input.toUpperCase(),
+          serial: scanned.toUpperCase(),
           techId: ctx.userId,
           scanSessionId: ctx.scanSessionIdRef.current || undefined,
           idempotencyKey: ctx.newIdempotencyKey(),
@@ -64,8 +78,8 @@ export async function handleSerialScan(input: string, ctx: ScanHandlerContext): 
 
       ctx.setSuccessMessage(
         attachedToOrder
-          ? `Serial ${input.toUpperCase()} added ✓ (${restoredSerials.length} total)`
-          : `Serial ${input.toUpperCase()} held on exception (${restoredSerials.length} total)`,
+          ? `Serial ${scanned.toUpperCase()} added ✓ (${restoredSerials.length} total)`
+          : `Serial ${scanned.toUpperCase()} held on exception (${restoredSerials.length} total)`,
       );
       // Fire-and-forget: if the raw scan is a printed unit label, request phone
       // photos for that unit. Gated + resolved by the host; no-op otherwise.
@@ -90,15 +104,15 @@ export async function handleSerialScan(input: string, ctx: ScanHandlerContext): 
   // classifyInput returns serial_partial for ≤10-char inputs. Try to expand the
   // partial by suffix-matching it against already-scanned serials on this order.
   // Exactly one match → use the full canonical serial. Zero or multiple → passthrough.
-  const { type: scanKind } = classifyInput(input);
-  let finalSerial = input.toUpperCase();
+  const { type: scanKind } = classifyInput(scanned);
+  let finalSerial = scanned.toUpperCase();
   if (scanKind === 'serial_partial' && contextOrder.serialNumbers.length > 0) {
-    const { matchType, matches } = findSerialInCatalog(input, contextOrder.serialNumbers);
+    const { matchType, matches } = findSerialInCatalog(scanned, contextOrder.serialNumbers);
     if (matchType !== 'none' && matches.length === 1) {
       finalSerial = matches[0].toUpperCase();
       ctx.setSuccessMessage(`Partial matched → ${finalSerial}`);
     } else if (matches.length > 1) {
-      ctx.setErrorMessage(`Partial "${input}" is ambiguous — ${matches.length} serials match. Scan the full serial.`);
+      ctx.setErrorMessage(`Partial "${scanned}" is ambiguous — ${matches.length} serials match. Scan the full serial.`);
       ctx.setInputValue('');
       ctx.inputRef.current?.focus();
       return;

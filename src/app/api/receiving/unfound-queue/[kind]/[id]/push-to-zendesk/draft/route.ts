@@ -67,7 +67,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
   }
 
   try {
-    const draft = await draftTicketWithLlm({
+    const draft = await draftTicketWithLlm(ctx.organizationId, {
       context: `Unfound item — ${unfoundKindLabel(kind)}`,
       template,
     });

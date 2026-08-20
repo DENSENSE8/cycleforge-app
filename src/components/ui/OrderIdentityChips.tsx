@@ -1,5 +1,8 @@
 'use client';
 
+import { BrandIdentityDot } from '@/components/ui/grid-cells';
+import { carrierBrandDotPaint, resolveCarrierBrand } from '@/lib/carrier-brand';
+import { platformMetaBrandDot } from '@/lib/source-platform';
 import { useCallback, useRef } from 'react';
 import { Clipboard, Copy, ExternalLink, Pencil } from '@/components/Icons';
 import {
@@ -295,28 +298,59 @@ export function useOrderIdentityCellNodes({
     </CopyChipHoverMenu>
   ) : null;
 
+  /**
+   * IDENTITY LANGUAGE (ruled 2026-08-20): the leading mark on an identity cell
+   * is the BRAND DOT, never the type glyph.
+   *
+   * The type glyph (`#` for id, MapPin for tracking) says what the COLUMN is,
+   * which the header already says — so it was the same ink repeated on every
+   * row, and the 2026-08-04 text-first ruling removed exactly that redundancy
+   * from headers. The brand dot says which MARKETPLACE or which CARRIER, a fact
+   * nothing else on the row carries. One is a restatement, the other is
+   * information, so the information wins the 6px.
+   *
+   * Rides `plain` because `plain` is now derived from the column's
+   * `omitCellIcon` — declaring that flag flips a surface to this language with
+   * no component edit.
+   */
+  const orderBrandDot = platformMetaBrandDot(sourcePlatformMetaFromLabel(platformLabel));
+
   const orderChipNode = hideOrderId ? (
     <OrderIdChipPlaceholder plain={plain} />
   ) : (
     <CopyChipHoverMenu menuLabel="Order number actions" items={orderItems} onOpenChange={handleMenuOpenChange}>
-      <OrderIdChip
-        value={orderId}
-        display={getLast8(orderId)}
-        platformLabel={platformLabel}
-        plain={plain}
-        fitDisplayWidth
-      />
+      <span className="inline-flex min-w-0 items-center gap-1.5">
+        {plain ? (
+          <BrandIdentityDot className={orderBrandDot.className} style={orderBrandDot.style} />
+        ) : null}
+        <OrderIdChip
+          value={orderId}
+          display={getLast8(orderId)}
+          platformLabel={platformLabel}
+          plain={plain}
+          fitDisplayWidth
+        />
+      </span>
     </CopyChipHoverMenu>
   );
 
+  const trackingBrandDot = tracking
+    ? carrierBrandDotPaint(resolveCarrierBrand(tracking, carrierHint ?? null))
+    : null;
+
   const trackingChipNode = tracking ? (
-    <TrackingNumberMenuChip
-      value={tracking}
-      carrierHint={carrierHint}
-      plain={plain}
-      onEdit={onEditTracking}
-      onMenuOpenChange={handleMenuOpenChange}
-    />
+    <span className="inline-flex min-w-0 items-center gap-1.5">
+      {plain && trackingBrandDot ? (
+        <BrandIdentityDot className={trackingBrandDot.className} style={trackingBrandDot.style} />
+      ) : null}
+      <TrackingNumberMenuChip
+        value={tracking}
+        carrierHint={carrierHint}
+        plain={plain}
+        onEdit={onEditTracking}
+        onMenuOpenChange={handleMenuOpenChange}
+      />
+    </span>
   ) : (
     // Empty tracking: the paste / Add-TRK affordance (labels) wins; otherwise a
     // staged row folds its serial into this trailing identity cell.

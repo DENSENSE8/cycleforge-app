@@ -36,7 +36,7 @@ test('Home is top-pinned; Operations in Monitor; Sourcing under Inventory; Plans
   assert.ok(plans, 'plans-live should ship on prod nav');
   assert.equal(plans.kind, 'top', 'plans-live is top-pinned between Media and Chat');
   assert.equal(plans.label, 'Plans');
-  assert.equal(plans.href, '/?mode=forge&view=live');
+  assert.equal(plans.href, '/forge');
   assert.equal(plans.requires, 'operations.plans.view');
 
   const aiChat = items.find((item) => item.id === 'ai-chat');
@@ -562,8 +562,8 @@ test('isSidebarNavActive is pathname-only (query strings do not change the match
   assert.equal(isSidebarNavActive('/dashboard', '/ai-chat'), false);
 
   // Query on href is stripped — pathname matching stays path-only.
-  assert.equal(isSidebarNavActive('/', '/?mode=forge&view=live'), true);
-  assert.equal(isSidebarNavActive('/search', '/?mode=forge&view=live'), false);
+  assert.equal(isSidebarNavActive('/', '/?mode=today'), true);
+  assert.equal(isSidebarNavActive('/search', '/?mode=today'), false);
 
   // Pack / Test / Shipping aliases normalize.
   assert.equal(isSidebarNavActive('/pack', '/pack'), true);
@@ -576,23 +576,25 @@ test('isSidebarNavActive is pathname-only (query strings do not change the match
   assert.equal(isSidebarNavActive(null, '/'), false);
 });
 
-test('isSidebarTopPinActive: forge lights Plans, not Home', () => {
+test('isSidebarTopPinActive: Plans and Home are separate paths, never both current', () => {
   const home = { id: 'home', href: '/' };
-  const plans = { id: 'plans-live', href: '/?mode=forge&view=live' };
-  const forge = new URLSearchParams('mode=forge&view=live');
-  const today = new URLSearchParams();
-  const inbox = new URLSearchParams('mode=inbox');
+  const plans = { id: 'plans-live', href: '/forge' };
+  const live = new URLSearchParams('view=live');
+  const daily = new URLSearchParams();
+  const today = new URLSearchParams('mode=today');
 
-  assert.equal(isSidebarTopPinActive(plans, { pathname: '/', searchParams: forge }), true);
-  assert.equal(isSidebarTopPinActive(home, { pathname: '/', searchParams: forge }), false);
+  // Plans left `/` for `/forge` (2026-08-19), so no `?mode=` split is needed:
+  // the two pins can no longer collide on one pathname.
+  assert.equal(isSidebarTopPinActive(plans, { pathname: '/forge', searchParams: live }), true);
+  assert.equal(isSidebarTopPinActive(home, { pathname: '/forge', searchParams: live }), false);
 
+  // Every Home mode lights Home, and none of them lights Plans.
+  assert.equal(isSidebarTopPinActive(home, { pathname: '/', searchParams: daily }), true);
+  assert.equal(isSidebarTopPinActive(plans, { pathname: '/', searchParams: daily }), false);
   assert.equal(isSidebarTopPinActive(home, { pathname: '/', searchParams: today }), true);
   assert.equal(isSidebarTopPinActive(plans, { pathname: '/', searchParams: today }), false);
 
-  assert.equal(isSidebarTopPinActive(home, { pathname: '/', searchParams: inbox }), true);
-  assert.equal(isSidebarTopPinActive(plans, { pathname: '/', searchParams: inbox }), false);
-
-  // Off Home, neither pin is current.
+  // Off both, neither pin is current.
   assert.equal(isSidebarTopPinActive(home, { pathname: '/search', searchParams: today }), false);
-  assert.equal(isSidebarTopPinActive(plans, { pathname: '/search', searchParams: forge }), false);
+  assert.equal(isSidebarTopPinActive(plans, { pathname: '/search', searchParams: live }), false);
 });

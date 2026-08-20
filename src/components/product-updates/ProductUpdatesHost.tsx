@@ -7,6 +7,11 @@
  * mount is a full document load. Client-side Next navigations do not remount
  * this host and therefore do not re-pop the panel.
  *
+ * One-shot: an unseen update auto-opens the panel and Got it retires the
+ * corner — no residual "What's new" chip, no reopen. Only a stale-deploy
+ * refresh chip may claim the corner afterwards; the full changelog is
+ * /release-notes.
+ *
  * Auth: signed-in staff (`user.staffId`). Warehouse stations see updates;
  * dashboard.view is not required. Kiosk / signed-out renders nothing.
  */
@@ -23,29 +28,24 @@ export function ProductUpdatesHost() {
 }
 
 function ProductUpdatesHostInner() {
-  const { latest, open, staleDeploy, prefsLoading, dismiss, reopen, refresh } =
+  const { latest, open, staleDeploy, prefsLoading, dismiss, refresh } =
     useProductUpdates();
 
   if (prefsLoading || !latest) return null;
+  if (!open && !staleDeploy) return null;
 
   return (
     <div className="pointer-events-none fixed bottom-4 right-4 z-fab flex flex-col items-end gap-2">
-      {staleDeploy && open ? (
+      {staleDeploy ? (
         <div className="pointer-events-auto">
-          <ProductUpdatesChip staleDeploy onOpen={reopen} onRefresh={refresh} />
+          <ProductUpdatesChip onRefresh={refresh} />
         </div>
       ) : null}
-      <div className="pointer-events-auto">
-        {open ? (
+      {open ? (
+        <div className="pointer-events-auto">
           <ProductUpdatesPanel update={latest} onDismiss={dismiss} />
-        ) : (
-          <ProductUpdatesChip
-            staleDeploy={staleDeploy}
-            onOpen={reopen}
-            onRefresh={refresh}
-          />
-        )}
-      </div>
+        </div>
+      ) : null}
     </div>
   );
 }

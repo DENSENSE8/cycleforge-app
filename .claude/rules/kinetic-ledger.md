@@ -21,7 +21,7 @@ procedure with their hands on product, Kinetic Ledger reads as chrome that tells
 right now — evidence-derived step states, a bare slate progress ring, mono identifiers, headers that
 label rather than narrate. That is a **sub-identity, not a second language**: no new palette, no
 fourth typeface, no third right-edge grammar. Contract:
-[`display/instrument-panel.md`](display/instrument-panel.md).
+[`display/instrument-panel.md`](../../docs/rules/display/instrument-panel.md).
 
 ## Five laws
 
@@ -37,7 +37,7 @@ fourth typeface, no third right-edge grammar. Contract:
 - Random card soup.
 - Nested cards-as-rows.
 - **Floating column islands** — decorative outer gutters between spine · context · center · right
-  used as a depth cue (depth is planes; see [`source-of-truth.md`](source-of-truth.md) → Depth
+  used as a depth cue (depth is planes; see [`source-of-truth.md`](../../docs/rules/source-of-truth.md) → Depth
   elevation · Frame column budget).
 - **Dual right-edge full columns** for AI + record/ticket details (one right-edge slot; detail
   outranks assistant).
@@ -56,15 +56,15 @@ page-local hex; themes via `data-theme` + `src/design-system/themes/*`.
 ## Detail lives on-demand (read when the task touches it)
 
 - Region contracts (Station / Workbench / Monitor / Canvas), data-shape → surface, `pickArchetype` —
-  [`contextual-display.md`](contextual-display.md) (+ [`display/`](display/)).
+  [`contextual-display.md`](../../docs/rules/contextual-display.md) (+ [`display/`](../../docs/rules/display/)).
 - Instrument-panel sub-identity (procedure cockpits, scan progress chrome, fact telemetry) —
-  [`display/instrument-panel.md`](display/instrument-panel.md).
+  [`display/instrument-panel.md`](../../docs/rules/display/instrument-panel.md).
 - Frame depth / width (exact flush planes · center floor · single right edge) —
-  [`source-of-truth.md`](source-of-truth.md) → Depth elevation · Frame column budget · Right-rail modality.
+  [`source-of-truth.md`](../../docs/rules/source-of-truth.md) → Depth elevation · Frame column budget · Right-rail modality.
 - Density modes (`floor` / `ops` / `rollup` / `studio`), one-row anatomy, chips, tokens,
-  `HoverTooltip`, paired icons — [`ui-design-system.md`](ui-design-system.md).
+  `HoverTooltip`, paired icons — [`ui-design-system.md`](../../docs/rules/ui-design-system.md).
 - Monitor rollup blocks (compose from `@/design-system/components/monitor`, or grow the registry) —
-  [`display/monitor-rollup-blocks.md`](display/monitor-rollup-blocks.md).
+  [`display/monitor-rollup-blocks.md`](../../docs/rules/display/monitor-rollup-blocks.md).
 - Presentation-kind SoTs (dates, condition, platform, capabilities, search hits) —
-  [`source-of-truth.md`](source-of-truth.md).
+  [`source-of-truth.md`](../../docs/rules/source-of-truth.md).
 - Composition discipline (compose → grow → compound) — [`pattern-evolution.md`](pattern-evolution.md).

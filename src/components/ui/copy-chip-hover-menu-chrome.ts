@@ -1,3 +1,4 @@
+import { chipLabel } from '@/design-system/tokens/typography/presets';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { elevationClass } from '@/design-system/tokens/shadows';
 import { cn } from '@/utils/_cn';
@@ -14,9 +15,22 @@ export const CHIP_HOVER_MENU_PANEL_CLASS = cn(
   cornerClass('flush'),
 );
 
-/** Carton / photo-toolbar row — same pad as the chip face (`px-1.5` `gap-1.5`). */
+/**
+ * Carton / photo-toolbar row — same pad as the chip face (`px-1.5` `gap-1.5`)
+ * and the same FACE as the chip that opened it ({@link chipLabel}).
+ *
+ * A menu is the expanded form of the control that spawned it: pick "Medium" off
+ * the urgency dropdown and it becomes the urgency pill, so the two must read as
+ * one thing. This row was `uppercase tracking-widest` while the pill it fills is
+ * sentence case at +0.01em — the same word in two typographic voices depending
+ * on whether it was open or closed.
+ *
+ * No `uppercase`: labels render in the case the catalog authored them
+ * (`eBay` keeps its lowercase e). Tone still steps muted → default on hover via
+ * {@link CHIP_HOVER_MENU_ITEM_TONE}, which matches the inactive-pill ink.
+ */
 export const CHIP_HOVER_MENU_ITEM_CLASS =
-  'relative flex w-full cursor-default select-none items-center gap-1.5 rounded-none px-1.5 py-1.5 text-left text-role-caption font-semibold uppercase tracking-widest outline-none transition-colors disabled:cursor-not-allowed disabled:opacity-40 data-[disabled]:pointer-events-none data-[disabled]:opacity-50';
+  `relative flex w-full cursor-default select-none items-center gap-1.5 rounded-none px-1.5 py-1.5 text-left ${chipLabel} outline-none transition-colors disabled:cursor-not-allowed disabled:opacity-40 data-[disabled]:pointer-events-none data-[disabled]:opacity-50`;
 
 export const CHIP_HOVER_MENU_ITEM_SEAM_CLASS = 'border-t border-border-hairline';
 

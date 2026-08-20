@@ -1,7 +1,11 @@
 'use client';
 
 /**
- * Testing scan-session bridge — sidebar scan band → middle workspace.
+ * Testing scan bridge — sidebar scan band → middle workspace.
+ *
+ * Carries TWO computed values across the same tree boundary, with the same
+ * one-publisher / one-hook / last-value-replay shape: the scan SESSION (below)
+ * and the pending multi-match PICK (bottom of this file).
  *
  * The Testing scan column and the Testing workspace are sibling trees
  * (`TestingSidebarPanel` under `SidebarContextPanel`, `TestingPanel` under the
@@ -23,6 +27,8 @@
  */
 
 import { useEffect, useState } from 'react';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ResolvedVia } from '@/lib/testing/resolve-testing-scan';
 import {
   INITIAL_TESTING_SCAN_SESSION,
   type TestingScanSession,
@@ -84,4 +90,90 @@ export function sessionMatchesLine(
     return session.line.receiving_id === row.receiving_id;
   }
   return false;
+}
+
+// ─── Pending multi-match pick ────────────────────────────────────────────────
+
+/**
+ * A scan that resolved to MORE THAN ONE candidate line (`kind: 'multi'` from
+ * `resolveTestingScan`) — several serial matches, several pre-packed lines for
+ * one SKU, several items on one PO.
+ */
+export interface TestingScanPick {
+  rows: ReceivingLineRow[];
+  via?: ResolvedVia;
+  /** The raw scan that produced the ambiguity, echoed by the middle surface. */
+  value: string;
+}
+
+const TESTING_SCAN_PICK_EVENT = 'testing-scan-pick-changed';
+const TESTING_SCAN_PICK_RESOLVED_EVENT = 'testing-scan-pick-resolved';
+
+let lastPick: TestingScanPick | null = null;
+
+/**
+ * Publish (or clear) the pending choice. The scan column raises it; the middle
+ * displays it.
+ *
+ * **Why it crosses the boundary at all:** the choice is about which entity the
+ * bench is about to work, and a Station renders its active entity in exactly
+ * ONE region — the middle (`display/station.md` §11). A candidate list is also
+ * literally the banned shape for the scan column ("don't put a browsable,
+ * clickable list in the scan column"), which is where this one lived until
+ * 2026-08-19: an amber block wedged above the recent rail, so an ambiguous scan
+ * asked the operator to look away from the surface holding their work.
+ */
+export function publishTestingScanPick(pick: TestingScanPick | null): void {
+  lastPick = pick;
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(
+    new CustomEvent<TestingScanPick | null>(TESTING_SCAN_PICK_EVENT, { detail: pick }),
+  );
+}
+
+/** Subscribe to the pending choice. Seeds from the last publish on mount. */
+export function useTestingScanPick(): TestingScanPick | null {
+  const [pick, setPick] = useState<TestingScanPick | null>(lastPick);
+
+  useEffect(() => {
+    setPick(lastPick);
+    const handler = (e: Event) => {
+      setPick((e as CustomEvent<TestingScanPick | null>).detail ?? null);
+    };
+    window.addEventListener(TESTING_SCAN_PICK_EVENT, handler);
+    return () => window.removeEventListener(TESTING_SCAN_PICK_EVENT, handler);
+  }, []);
+
+  return pick;
+}
+
+/**
+ * The middle → scan column direction: the operator chose `row`.
+ *
+ * The middle deliberately does NOT open the line itself. Opening a line also
+ * anchors the scan session (tracking / unit-confirm dispatch), and the reducer
+ * that owns the session lives in the scan column — the same rule the session
+ * half of this module states: one derivation, one display. So the middle
+ * reports the choice and the column applies it, exactly as if the scan had
+ * resolved to a single line in the first place.
+ */
+export function resolveTestingScanPick(row: ReceivingLineRow): void {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(
+    new CustomEvent<ReceivingLineRow>(TESTING_SCAN_PICK_RESOLVED_EVENT, { detail: row }),
+  );
+}
+
+/** Scan-column side of {@link resolveTestingScanPick}. */
+export function useTestingScanPickResolved(
+  onResolved: (row: ReceivingLineRow) => void,
+): void {
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const row = (e as CustomEvent<ReceivingLineRow>).detail;
+      if (row) onResolved(row);
+    };
+    window.addEventListener(TESTING_SCAN_PICK_RESOLVED_EVENT, handler);
+    return () => window.removeEventListener(TESTING_SCAN_PICK_RESOLVED_EVENT, handler);
+  }, [onResolved]);
 }

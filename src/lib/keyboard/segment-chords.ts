@@ -1,6 +1,7 @@
 /**
  * Segment perspective chords — Alt+1 / Alt+2 (… up to 3) flip the active
- * leaf’s child `TabDisplay appearance="segment"` (Claim New·Link golden).
+ * leaf’s child mode control — a flush `SearchableSelectField` since 2026-08-19
+ * (Claim New·Link golden; `TabDisplay` is deleted).
  *
  * Distinct from nav-keys letters (`⌘;` → letter): these are modifier chords,
  * wedge-safe (bare digits never bind). Face labels come from

@@ -20,7 +20,7 @@ import {
   ShippingTriageBand,
   ShippingWorkspaceHeader,
 } from '@/components/tech/shipping/ShippingWorkspaceHeader';
-import { TechAllTriageTable } from '@/components/tech/all/TechAllTriageTable';
+import { TableRebuildPlaceholder } from '@/components/tables/TableRebuildPlaceholder';
 import { WORKBENCH_KPI_SURFACE } from '@/components/dashboard/workbench-kpi-collapse';
 import { OrderRailCompare } from '@/components/dashboard/rail/OrderRailCompare';
 import { OrderRailShell } from '@/components/dashboard/rail/OrderRailShell';
@@ -92,7 +92,7 @@ export function ShippingWorkspaceView({ techId }: ShippingWorkspaceViewProps) {
               toolbarPortalTarget={controlsEl}
             />
           ) : shipTab === 'all' ? (
-            <TechAllTriageTable scope="shipping" columnTriggerPortalTarget={null} />
+            <TableRebuildPlaceholder surface="Shipping · All" />
           ) : (
             <UnshippedTable
               strictSearchScope

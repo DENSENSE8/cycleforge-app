@@ -90,6 +90,7 @@ export function OperationsSidebarPanel() {
   if (mode === 'history') return <HistorySidebar />;
   if (mode === 'signals') return <SignalsSidebar />;
   if (mode === 'reconciliation') return <ReconciliationSidebar />;
+  if (mode === 'checks') return <ChecksSidebar />;
   // `plans` is no longer an Operations mode — forge/plans moved to Home and the
   // right pane redirects `?mode=plans` there (HOME-OPS §3.2). No plan-edit chrome
   // renders in Operations; a stale `?mode=plans` bookmark falls through to Live.
@@ -514,6 +515,21 @@ function ReconciliationSidebar() {
           Serial↔order binding risks and unmatched tracking holds. The right pane lists smear
           candidates (unbound tech serials on multi-order cartons) and open{' '}
           <span className="font-semibold text-text-soft">orders_exceptions</span>.
+        </p>
+      </div>
+    </SidebarShell>
+  );
+}
+
+function ChecksSidebar() {
+  return (
+    <SidebarShell bodyClassName="pt-0 pb-6">
+      <div className={cn('space-y-3 pt-3', SIDEBAR_GUTTER)}>
+        <p className={cn(sectionLabel)}>Checks</p>
+        <p className="text-role-caption leading-5 text-text-muted">
+          Who still owes today&apos;s daily list. The roster is a live read of the same marks
+          operators tick on Home — not a stored report. Open a row on Home to inspect ticket
+          connections.
         </p>
       </div>
     </SidebarShell>

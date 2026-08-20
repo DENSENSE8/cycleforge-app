@@ -29,6 +29,14 @@
       "note": "WS · main · docs/portfolio/WORKTREE-LANES.md"
     },
     {
+      "id": "cf-head",
+      "label": "cf-head · detached",
+      "path": "../cf-head",
+      "appPort": 3000,
+      "unlockParked": true,
+      "note": "WS · detached · docs/portfolio/WORKTREE-LANES.md"
+    },
+    {
       "id": "fba",
       "label": "FBA prep",
       "path": "../cycleforge-fba",

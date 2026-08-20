@@ -27,7 +27,10 @@ import { z } from 'zod';
 import { listAssistantTools, runAssistantTool } from '@/lib/assistant/tools';
 import type { AssistantToolCtx, AssistantToolDef, AssistantToolRunResult } from '@/lib/assistant/tools/types';
 import type { AssistantPageContext } from './context-store';
+import { resolveOrgAnthropicBrain } from '@/lib/ai/org-provider';
+import type { OrgId } from '@/lib/tenancy/constants';
 
+/** Fallback model when the connected provider does not name one. */
 const ASSISTANT_MODEL = 'claude-opus-4-8';
 const MAX_TURNS = 8;
 const MAX_TOKENS = 16000;
@@ -172,16 +175,33 @@ export interface AgentLoopDeps {
   runTool: typeof runAssistantTool;
 }
 
-function makeDefaultDeps(): AgentLoopDeps {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    throw new Error('ANTHROPIC_API_KEY is not configured — the assistant is unavailable.');
+/**
+ * Build the real deps for ONE org.
+ *
+ * Resolves the org's own Anthropic key from the vault before the platform's
+ * (`resolveOrgAnthropicBrain`). This used to read `process.env.ANTHROPIC_API_KEY`
+ * directly, which meant every tenant's assistant ran on a single platform key
+ * and a single hardcoded model — the same single-tenant leak `hermes-client`
+ * had, in the one surface the Phase 1 sweep did not reach.
+ *
+ * The model follows the key: an org that brought its own key may also name its
+ * own model, and billing someone else's key for a model they did not choose is
+ * the kind of surprise that shows up on an invoice.
+ */
+async function makeDefaultDeps(orgId: OrgId): Promise<AgentLoopDeps> {
+  const brain = await resolveOrgAnthropicBrain(orgId);
+  if (!brain) {
+    throw new Error(
+      'No Anthropic provider is connected for this workspace — the assistant is unavailable. ' +
+        'Connect one in Settings → AI, or set the platform ANTHROPIC_API_KEY.',
+    );
   }
-  const client = new Anthropic({ apiKey });
+  const client = new Anthropic({ apiKey: brain.apiKey });
+  const model = brain.model || ASSISTANT_MODEL;
   return {
     streamTurn: async (params, onTextDelta) => {
       const stream = client.messages.stream({
-        model: ASSISTANT_MODEL,
+        model,
         max_tokens: MAX_TOKENS,
         thinking: { type: 'adaptive' },
         system: params.system,
@@ -201,7 +221,7 @@ export async function runAssistantTurn(
   args: RunAssistantTurnArgs,
   deps: AgentLoopDeps | null = null,
 ): Promise<RunAssistantTurnResult> {
-  const d = deps ?? makeDefaultDeps();
+  const d = deps ?? (await makeDefaultDeps(args.ctx.organizationId as OrgId));
 
   const toSchema = (t: { name: string; description: string; inputSchema: z.ZodTypeAny }): Anthropic.Tool => ({
     name: t.name,

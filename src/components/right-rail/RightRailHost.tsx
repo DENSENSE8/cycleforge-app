@@ -122,19 +122,30 @@ function RightRailOccupantBody({ node }: { node: ReactNode }) {
   );
 }
 
-function RightRailHostCloseAnchor() {
+/**
+ * The singleton dismiss. `refused` mirrors the occupant's own `canClose` veto
+ * so the control READS refused instead of going inert under the pointer — the
+ * occupants that veto (both sync dialogs) already disable their own buttons
+ * mid-run, and a host X that stayed live while doing nothing is the same lie
+ * from the other side.
+ */
+function RightRailHostCloseAnchor({ refused = false }: { refused?: boolean }) {
   return (
     <div
       className="absolute right-2 top-0.5 z-header p-0"
       data-right-rail-host-close-anchor
     >
-      <HoverTooltip label="Hide right panel" asChild>
+      <HoverTooltip
+        label={refused ? 'Finishing — cancel to stop' : 'Hide right panel'}
+        asChild
+      >
         <IconButton
           size="sm"
           tone="neutral"
           ariaLabel="Hide right panel"
           icon={<X className="h-4 w-4" />}
           onClick={() => closeRightPanel()}
+          disabled={refused}
           data-testid="right-rail-host-close"
           className="active:scale-100"
         />
@@ -288,6 +299,9 @@ export function RightRailHost({ inline = true }: { inline?: boolean } = {}) {
   const showPush = isPush && !!renderable;
   const showOverlay = !isPush && !!renderable;
   const showHostClose = !!renderable && !isAssistantDock && !isCollapsed;
+  // Read the veto every render — it tracks a run that starts and ends while
+  // the panel stays mounted.
+  const closeRefused = top?.canClose ? !top.canClose() : false;
   const onHostDismiss = closeRightPanel;
 
   return (
@@ -335,7 +349,7 @@ export function RightRailHost({ inline = true }: { inline?: boolean } = {}) {
               edge="leading"
               placement="inset"
             />
-            {showHostClose ? <RightRailHostCloseAnchor /> : null}
+            {showHostClose ? <RightRailHostCloseAnchor refused={closeRefused} /> : null}
             {renderable?.node != null ? <RightRailOccupantBody node={renderable.node} /> : null}
           </aside>
         ) : null}
@@ -437,7 +451,7 @@ export function RightRailHost({ inline = true }: { inline?: boolean } = {}) {
                 placement="inset"
               />
             ) : null}
-            {showHostClose ? <RightRailHostCloseAnchor /> : null}
+            {showHostClose ? <RightRailHostCloseAnchor refused={closeRefused} /> : null}
             {body}
           </motion.aside>
         ) : null}

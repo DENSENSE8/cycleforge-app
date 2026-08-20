@@ -501,7 +501,7 @@ export default async function SkuDetailPage({ params }: { params: Promise<{ sku:
 
   return (
     <div className="min-h-screen bg-surface-canvas p-8">
-      <div className="mx-auto max-w-5xl space-y-8">
+      <div className="space-y-8">
         <header className="space-y-2">
           <Link href="/admin/inventory" className="text-sm text-blue-600 hover:underline">
             ← back to dashboard

@@ -16,7 +16,7 @@ import type { JourneyDimension } from '@/lib/timeline/journey';
 
 // ── Sidebar mode switcher ───────────────────────────────────────────────────
 
-export type OperationsMode = 'live' | 'analytics' | 'insights' | 'history' | 'signals' | 'plans' | 'reconciliation';
+export type OperationsMode = 'live' | 'analytics' | 'insights' | 'history' | 'signals' | 'plans' | 'reconciliation' | 'checks';
 
 /**
  * `live` is the default and stays on the bare `/operations` path (no `?mode=`)
@@ -30,6 +30,7 @@ export type OperationsMode = 'live' | 'analytics' | 'insights' | 'history' | 'si
  * - signals         → entity_signals timeline + browse
  * - plans           → legacy redirect to Home
  * - reconciliation  → CF-03 smear candidates + open tracking exceptions (Monitor)
+ * - checks          → daily-check roster report (who still owes today's list)
  *
  * L2 mode list + icons live in SIDEBAR_PAGE_NAV (GlobalHeader Mode switcher).
  */
@@ -45,6 +46,7 @@ export const OPERATIONS_MODES = [
   'signals',
   'plans',
   'reconciliation',
+  'checks',
 ] as const satisfies readonly OperationsMode[];
 
 export function parseOperationsMode(raw: string | null | undefined): OperationsMode {
@@ -53,7 +55,8 @@ export function parseOperationsMode(raw: string | null | undefined): OperationsM
     raw === 'history' ||
     raw === 'signals' ||
     raw === 'plans' ||
-    raw === 'reconciliation'
+    raw === 'reconciliation' ||
+    raw === 'checks'
     ? raw
     : 'live';
 }

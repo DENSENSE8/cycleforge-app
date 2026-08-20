@@ -48,10 +48,11 @@ const INSPECTOR_TOGGLE_SURFACES: readonly string[] = [
   'src/components/repair/RepairWorkspaceHeader.tsx',
   'src/components/fba/FbaWorkspaceHeader.tsx',
   'src/components/warehouse/LocationsWorkspace.tsx',
-  'src/features/my-day/MyDayWorkspace.tsx',
-  'src/features/review/catalog-link/ReviewCatalogLinkTable.tsx',
-  'src/components/outbound/orders/CsvImportStagingHost.tsx',
   'src/components/photos/PhotoLibraryWorkspaceHeader.tsx',
+  // Home → Daily (new 2026-08-19): it mounts `WorkbenchInspectorToggle` at
+  // its Band 3 trailing edge, so it belongs on THIS list by observation,
+  // not by intent — classified from what the file does.
+  'src/features/home/HomeDailyMode.tsx',
 ];
 
 /**
@@ -66,6 +67,12 @@ const INSPECTOR_TOGGLE_SURFACES: readonly string[] = [
  * Always #6: a guard names the surviving call sites, with their reason).
  */
 const NO_DESK_PEEK_SURFACES: Readonly<Record<string, string>> = {
+  'src/features/my-day/MyDayWorkspace.tsx':
+    'Its grid was deleted on 2026-08-20 while the display is rewritten, so there is no Band 3 and no peek to expose — the file is a TableRebuildPlaceholder. This is a rebuild TODO, not a ruling: the row moves back to INSPECTOR_TOGGLE_SURFACES when the sheet returns with its desk peek.',
+  'src/features/review/catalog-link/ReviewCatalogLinkTable.tsx':
+    'Its grid was deleted on 2026-08-20 while the display is rewritten, so there is no Band 3 and no peek to expose — the file is a TableRebuildPlaceholder. This is a rebuild TODO, not a ruling: the row moves back to INSPECTOR_TOGGLE_SURFACES when the sheet returns with its desk peek.',
+  'src/components/outbound/orders/CsvImportStagingHost.tsx':
+    'Its grid was deleted on 2026-08-20 while the display is rewritten, so there is no Band 3 and no peek to expose — the file is a TableRebuildPlaceholder. This is a rebuild TODO, not a ruling: the row moves back to INSPECTOR_TOGGLE_SURFACES when the sheet returns with its desk peek.',
   // Ruled 2026-08-08 — the return-queue "Show inspector" ask. Rows claim the
   // bench (`dispatchSelectLine` → `TestingPanel` covers this browse), so Band 3
   // is off screen the moment one opens; the only reusable peek

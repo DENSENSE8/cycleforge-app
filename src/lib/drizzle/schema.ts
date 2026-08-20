@@ -121,6 +121,42 @@ export const types = pgTable('types', {
   orgIdx: index('idx_types_org').on(table.organizationId),
 }));
 
+/**
+ * Org presentation overrides for the manual priority ladder.
+ *
+ * **Rows are a skin, never the ladder.** The four rungs live in
+ * `src/lib/receiving/priority-override.ts` and their numeric `tier` (0..3) is a
+ * storage contract: it is what `receiving.priority_tier` holds and what
+ * `RECEIVING_PRIORITY_RANK_SQL` sorts on via
+ * `COALESCE(priority_tier, <platform CASE>)`. So unlike {@link platforms} and
+ * {@link types} — where a row IS the thing and an org may add or retire them —
+ * an org here may only rename a rung and repaint it. There is no slug, no
+ * `is_active`, and no `sort_order`: `tier` is the identity AND the order, a
+ * missing row means "this rung is unmodified", and add / delete / reorder are
+ * deliberately not expressible. Widening this table is how the receiving queue
+ * silently mis-sorts.
+ *
+ * `color_hex` is the same optional org accent as its siblings: set → the pill
+ * dot derives paint through `src/lib/color-contrast.ts`; null → the built-in
+ * tier tone.
+ */
+export const priorityTiers = pgTable('priority_tiers', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  organizationId: orgIdCol(),
+  /** 0..3, matching PRIORITY_OVERRIDE_TIERS[].value. Identity + sort order. */
+  tier: integer('tier').notNull(),
+  /** Operator-facing name for this rung ("Medium" → "Standard"). */
+  label: text('label').notNull(),
+  /** Dense carton-bookmark label, <= 4 chars preferred. */
+  short: text('short').notNull(),
+  colorHex: varchar('color_hex', { length: 7 }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  orgTierUx: uniqueIndex('uq_priority_tiers_org_tier').on(table.organizationId, table.tier),
+  orgIdx: index('idx_priority_tiers_org').on(table.organizationId),
+}));
+
 // Amazon SP-API accounts (mirror of ebay_accounts; see 2026-06-14b_amazon_integration.sql)
 // Per-account metadata + sync state. The per-seller LWA refresh token lives
 // encrypted in organization_integrations (provider='amazon', scope='seller-{id}').
@@ -5512,6 +5548,108 @@ export const counterTransactions = pgTable('counter_transactions', {
 export type CounterTransaction = typeof counterTransactions.$inferSelect;
 export type NewCounterTransaction = typeof counterTransactions.$inferInsert;
 
+// ─── Counter session (the shared desk↔iPad cart) ────────────────────────────
+// Migration: 2026-08-20a_counter_sessions.sql
+// Plan: docs/todo/kiosk-desk-session-channel-PLAN.md
+//
+// The DRAFT that precedes counterTransactions, not a second one of it: a
+// session is edited constantly while the customer stands there, then hands off
+// exactly once via counterTransactionId. See the migration header for why the
+// two are separate tables.
+
+export const counterSessions = pgTable('counter_sessions', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  organizationId: orgIdCol(),
+  /** Live ROUTING — which paired tablet is bound right now. Unlike
+   *  counterTransactions.kioskDeviceId (an audit fact with no FK, so it
+   *  outlives revocation), this one is a FK: a device that is gone should
+   *  release its binding rather than pin a dead session open. */
+  kioskDeviceId: bigint('kiosk_device_id', { mode: 'number' }),
+  /** The lease (plan D4) — heartbeat-renewed, expiring, so a closed laptop
+   *  releases the counter instead of holding it. */
+  claimedByStaffId: integer('claimed_by_staff_id'),
+  claimExpiresAt: timestamp('claim_expires_at', { withTimezone: true }),
+  /** CHECK counter_sessions_status_chk: open | parked | submitted | voided.
+   *  Mirrored by COUNTER_SESSION_STATUSES in
+   *  src/lib/counter/session-events.ts — keep the two in lockstep. */
+  status: text('status').notNull().default('open'),
+  /** Monotonic, +1 per accepted mutation. Clients apply an event only at
+   *  version + 1 (plan D3); a mismatch refetches the snapshot. */
+  version: integer('version').notNull().default(0),
+  /** CHECK counter_sessions_active_command_chk: retail | repair | buyback |
+   *  pickup — the KioskCommandId vocabulary (which pane is on screen). */
+  activeCommand: text('active_command').notNull().default('retail'),
+  /** CHECK counter_sessions_face_chk: staff | customer. */
+  face: text('face').notNull().default('staff'),
+  /** Deterministic identity only (plan D7): phone unlocks create-or-match;
+   *  there is no searchable customer list on an unattended tablet. */
+  customerPhone: text('customer_phone'),
+  customerName: text('customer_name'),
+  customerEmail: text('customer_email'),
+  /** Minted when the session opens so it outlives the tab — a resumed park and
+   *  a retried submit carry the same id, so a replay is a no-op, not a charge. */
+  clientEventId: uuid('client_event_id').notNull(),
+  counterTransactionId: bigint('counter_transaction_id', { mode: 'number' }),
+  submittedAt: timestamp('submitted_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  clientEventUnique: uniqueIndex('ux_counter_sessions_client_event')
+    .on(table.organizationId, table.clientEventId),
+  /** Plan D4 in the DB: at most ONE open session per bound tablet. Silent
+   *  multi-claim is how POS systems double-charge. */
+  openDeviceUnique: uniqueIndex('ux_counter_sessions_open_device')
+    .on(table.organizationId, table.kioskDeviceId)
+    .where(sql`status = 'open' AND kiosk_device_id IS NOT NULL`),
+  orgStatusUpdatedIdx: index('idx_counter_sessions_org_status_updated')
+    .on(table.organizationId, table.status, table.updatedAt.desc()),
+  orgClaimedStaffIdx: index('idx_counter_sessions_org_claimed_staff')
+    .on(table.organizationId, table.claimedByStaffId)
+    .where(sql`claimed_by_staff_id IS NOT NULL`),
+}));
+
+export type CounterSession = typeof counterSessions.$inferSelect;
+export type NewCounterSession = typeof counterSessions.$inferInsert;
+
+export const counterSessionLines = pgTable('counter_session_lines', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  organizationId: orgIdCol(),
+  sessionId: bigint('session_id', { mode: 'number' }).notNull(),
+  /** The client-minted KioskCartLine.id — one identity from the moment the line
+   *  is staged through to the ledger, so an optimistic echo and the server row
+   *  are provably the same line rather than two. */
+  lineUuid: uuid('line_uuid').notNull(),
+  /** CHECK counter_session_lines_type_chk: RETAIL | REPAIR | BUYBACK — exactly
+   *  KIOSK_LINE_TYPES (src/lib/kiosk/cart-line.ts). PICKUP is a COMMAND, not a
+   *  line type; persisting a pane selection as a chargeable row is the bug this
+   *  CHECK prevents. */
+  type: text('type').notNull(),
+  title: text('title').notNull(),
+  quantity: integer('quantity').notNull().default(1),
+  /** Minor units. NEGATIVE = buyback / trade-in credit — never clamp to >= 0;
+   *  that clamp silently ate trade-in credits once already. */
+  unitAmountCents: integer('unit_amount_cents').notNull(),
+  /** True variant config only (repair reasons, serial, imei, signature ref) —
+   *  queryable business facts stay real columns above. */
+  payload: jsonb('payload').notNull().default({}),
+  sortIndex: integer('sort_index').notNull().default(0),
+  /** Soft void — a line the customer already saw is evidence, not a delete.
+   *  The device projection drops it; the desk ledger keeps it struck through. */
+  voidedAt: timestamp('voided_at', { withTimezone: true }),
+  voidReason: text('void_reason'),
+  voidedByStaffId: integer('voided_by_staff_id'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  lineUuidUnique: uniqueIndex('ux_counter_session_lines_line_uuid')
+    .on(table.organizationId, table.sessionId, table.lineUuid),
+  sessionSortIdx: index('idx_counter_session_lines_session_sort')
+    .on(table.sessionId, table.sortIndex),
+}));
+
+export type CounterSessionLine = typeof counterSessionLines.$inferSelect;
+export type NewCounterSessionLine = typeof counterSessionLines.$inferInsert;
+
 // ─── Helpdesk work outbox ───────────────────────────────────────────────────
 //
 // Birth migration: 2026-07-29d_counter_transactions.sql. Shape follows
@@ -5743,3 +5881,76 @@ export const customFieldValues = pgTable('custom_field_values', {
 
 export type CustomFieldValuesRow = typeof customFieldValues.$inferSelect;
 export type NewCustomFieldValuesRow = typeof customFieldValues.$inferInsert;
+
+// ─── Daily checklist ──────────────────────────────────────────────────────
+// Migration: 2026-08-19b_daily_checks.sql. Two tables, two questions: what is
+// on the list, and who confirmed what on which warehouse day.
+
+/**
+ * The fixed daily checklist. Soft-retired via `retiredAt` (never deleted) so a
+ * report for a past day renders the list as it stood ON that day — see the
+ * migration header for why a boolean `active` cannot do this honestly.
+ */
+export const dailyCheckItems = pgTable('daily_check_items', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  organizationId: orgIdCol(),
+  title: text('title').notNull(),
+  sortOrder: integer('sort_order').notNull().default(0),
+  /** Civil day (warehouse zone), not an instant. Item is live from this day. */
+  effectiveFrom: date('effective_from').notNull(),
+  /** Civil day the item left the list; NULL = still live. Exclusive bound. */
+  retiredAt: date('retired_at'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  windowIdx: index('idx_daily_check_items_window').on(t.organizationId, t.effectiveFrom, t.sortOrder),
+}));
+
+/**
+ * One row = this staffer confirmed this item on this warehouse day.
+ * UNIQUE (org, item, staff, day) so a retried or double-tapped mark is a no-op
+ * instead of double-counting the report.
+ */
+export const dailyCheckMarks = pgTable('daily_check_marks', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  organizationId: orgIdCol(),
+  itemId: bigint('item_id', { mode: 'number' }).notNull().references(() => dailyCheckItems.id, { onDelete: 'cascade' }),
+  staffId: integer('staff_id').notNull().references(() => staff.id, { onDelete: 'cascade' }),
+  /** Warehouse civil day resolved by the CALLER — never the server's now()::date. */
+  markedOn: date('marked_on').notNull(),
+  markedAt: timestamp('marked_at', { withTimezone: true }).notNull().defaultNow(),
+  note: text('note'),
+}, (t) => ({
+  dayUx: uniqueIndex('ux_daily_check_marks_day').on(t.organizationId, t.itemId, t.staffId, t.markedOn),
+  dayIdx: index('idx_daily_check_marks_day').on(t.organizationId, t.markedOn),
+}));
+
+export type DailyCheckItemRow = typeof dailyCheckItems.$inferSelect;
+export type NewDailyCheckItemRow = typeof dailyCheckItems.$inferInsert;
+export type DailyCheckMarkRow = typeof dailyCheckMarks.$inferSelect;
+export type NewDailyCheckMarkRow = typeof dailyCheckMarks.$inferInsert;
+
+/**
+ * Typed connections hanging off a daily-check item (Zendesk ticket, work order).
+ * Discriminator CHECK lives in 2026-08-19d; entity existence is validated in
+ * the write helper, not a DB trigger (polymorphic-tables.md §6).
+ */
+export const dailyCheckItemLinks = pgTable('daily_check_item_links', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  organizationId: orgIdCol(),
+  itemId: bigint('item_id', { mode: 'number' }).notNull().references(() => dailyCheckItems.id, { onDelete: 'cascade' }),
+  /** Discriminator: ZENDESK_TICKET | WORK_ORDER (named CHECK in SQL). */
+  entityType: text('entity_type').notNull(),
+  entityId: bigint('entity_id', { mode: 'number' }).notNull(),
+  label: text('label'),
+  createdByStaffId: integer('created_by_staff_id').references(() => staff.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  naturalUx: uniqueIndex('ux_daily_check_item_links_natural').on(t.organizationId, t.itemId, t.entityType, t.entityId),
+  itemIdx: index('idx_daily_check_item_links_item').on(t.organizationId, t.itemId),
+  entityIdx: index('idx_daily_check_item_links_entity').on(t.organizationId, t.entityType, t.entityId),
+}));
+
+export type DailyCheckItemLinkRow = typeof dailyCheckItemLinks.$inferSelect;
+export type NewDailyCheckItemLinkRow = typeof dailyCheckItemLinks.$inferInsert;

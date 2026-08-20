@@ -20,6 +20,7 @@
  */
 
 import { useCallback, useMemo } from 'react';
+import { unwrapScannedLocation } from '@/lib/barcode-routing';
 import { History, MapPin, Plus } from '@/components/Icons';
 import { StationLocationPill } from '@/components/station/location';
 import type { SlicedActionMenuItem } from '@/design-system/primitives';
@@ -51,10 +52,20 @@ export function PackLocationControl({
    * arrival decoder would never claim it. Match the benches this station
    * already holds; anything else still goes to the server by barcode, which
    * owns the authoritative answer and says so when it is not a bench.
+   *
+   * DECODE FIRST. `unwrapScannedLocation` returns the flat code (`A0101101`)
+   * for a printed rack label and the trimmed raw for everything else, so the
+   * desk-barcode case above is untouched while the labels physically on the
+   * racks today — rung-1 Digital Links and `(414)…(254)…` element strings —
+   * stop being posted to the server as `bin_barcode: "<the whole label>"`.
+   * The other consumer of this same pill (`UnboxNotesLocationControl`) already
+   * routes through the decoder; one component, two consumers, one of them
+   * decoding was the tell.
    */
   const applyScan = useCallback(
     (raw: string) => {
-      const code = raw.trim().toUpperCase();
+      const decoded = unwrapScannedLocation(raw);
+      const code = decoded.toUpperCase();
       const hit = locations.find(
         (l) =>
           (l.barcode ?? '').trim().toUpperCase() === code ||
@@ -64,7 +75,7 @@ export function PackLocationControl({
         void moveTo({ locationId: hit.id });
         return;
       }
-      void moveTo({ barcode: raw.trim() });
+      void moveTo({ barcode: decoded });
     },
     [locations, moveTo],
   );

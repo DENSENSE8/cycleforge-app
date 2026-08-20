@@ -20,7 +20,7 @@ Auto-open when prefs have loaded and the latest catalog entry is unseen:
 - `lastSeenProductUpdateId !== latest.id`, or
 - the entry has a `buildSha` and `lastSeenBuildSha` does not match.
 
-Dismiss / **Got it** writes both keys onto `staff_preferences` (same bag as `onboardingDismissed`) via `useStaffPreferences().update`. The collapsed **What's new** chip stays so staff can reopen.
+Dismiss / **Got it** writes both keys onto `staff_preferences` (same bag as `onboardingDismissed`) via `useStaffPreferences().update`, **and** a `cf.productUpdateSeen` localStorage token synchronously. The panel is **one-shot**: Got it clears the corner entirely — there is no collapsed **What's new** chip and no reopen (the full list lives at `/release-notes`). The localStorage token is what makes it stick immediately: the host remounts whenever the auth gate flips, and the auto-open used to re-fire before the server write returned, popping the panel back open.
 
 If a new deploy lands while a tab is open, the host polls `GET /api/version` every 120s. A sha change vs the page-load capture shows a quiet **New version — refresh** chip. It never force-reloads.
 

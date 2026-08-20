@@ -451,6 +451,33 @@ export default [
     },
   },
 
+  // ── AI provider consolidation: ONE resolver owns the endpoint ──────────────
+  // `resolveOrgAiConfig(orgId, capability)` is the only way to learn where an
+  // AI call goes. hermes-client.ts (the env-only twin) was deleted; this stops
+  // its vars growing a second reader, which is the shape that let the modern
+  // AI_CHAT_* set look configured while the legacy path ignored it.
+  // provider.ts is the platform-default leaf and is the ONE legal env reader.
+  //
+  // ANTHROPIC_API_KEY was added after Phase 4 found the assistant agent loop
+  // reading it directly — a single-tenant brain that the first sweep missed
+  // because it named a different var, not because it was a different mistake.
+  {
+    files: ['src/**/*.ts', 'src/**/*.tsx'],
+    ignores: ['src/lib/ai/provider.ts'],
+    languageOptions: { parser: tsParser },
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            'MemberExpression[object.object.name="process"][object.property.name="env"][property.name=/^(HERMES_API_URL|HERMES_MODEL|HERMES_API_KEY|AI_MODEL|AI_CHAT_BASE_URL|AI_CHAT_MODEL|AI_CHAT_API_KEY|ANTHROPIC_API_KEY)$/]',
+          message:
+            'Do not read an AI endpoint from env. Resolve it with resolveOrgAiConfig(orgId, capability) — src/lib/ai/provider.ts is the only legal env reader (the platform-default leaf).',
+        },
+      ],
+    },
+  },
+
   {
     files: ['**/*.test.*', '**/*.spec.*', 'tests/**/*'],
     // Tests are TypeScript — parse with tsParser so type annotations don't trip

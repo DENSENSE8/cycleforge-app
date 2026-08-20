@@ -87,14 +87,6 @@ export function PhotoInspectorPanel({
         <div className="shrink-0 border-b border-border-hairline bg-surface-card/90 backdrop-blur-xl">
           <DeskRailChromeRow
             onClose={onClose}
-            onPrev={onPrev}
-            onNext={onNext}
-            prevDisabled={prevDisabled}
-            nextDisabled={nextDisabled}
-            prevTitle="Previous photo"
-            nextTitle="Next photo"
-            prevTestId="photo-inspector-prev"
-            nextTestId="photo-inspector-next"
             cursor={<CursorPositionReadout position={position} total={total} />}
           />
         </div>

@@ -49,7 +49,7 @@ Silent-failure traps specific to this stack (Next 16, Turbopack dev, Tailwind). 
 
 **Reversed 2026-08-01.** This section used to read "App / DS code imports **`framer-motion`**"
 and the guard banned `motion/react` outright. Both are now inverted — see
-[`display/motion-crossfade.md`](display/motion-crossfade.md) → *The import boundary*.
+[`display/motion-crossfade.md`](../../docs/rules/display/motion-crossfade.md) → *The import boundary*.
 
 - **App code imports `@/design-system/motion` and never names a motion package.** The barrel
   carries the engine (`motion`, `AnimatePresence`, `useReducedMotion`, types …), `motionRole`,

@@ -386,12 +386,6 @@ export function ShippedDetailsPanel({
           <DeskRailChromeRow
             onClose={onClose}
             closeTitle="Hide right panel"
-            onPrev={handleMoveUp}
-            onNext={handleMoveDown}
-            prevDisabled={cursorPrevDisabled}
-            nextDisabled={cursorNextDisabled}
-            prevTitle="Move up a row"
-            nextTitle="Move down a row"
             cursor={<CursorPositionReadout position={cursorPosition} total={cursorTotal} />}
           />
         </div>

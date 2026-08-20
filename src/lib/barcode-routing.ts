@@ -411,6 +411,34 @@ export function unwrapScannedLocation(raw: string): string {
 }
 
 /**
+ * The route ONLY when the value genuinely DECODED — never when it was guessed.
+ *
+ * This is the single most-repeated mistake against `routeScan`, and it has cost
+ * four separate live defects. `routeScan` returns non-null for **every**
+ * non-empty string: anything it does not recognise falls through to a bare
+ * `sku` / `bin` letter-guess carrying no `redirect`. So `if (routeScan(v))` is
+ * always true, and a caller written that way silently treats ordinary text as
+ * one of our labels.
+ *
+ * What it cost, each time the same shape:
+ *
+ *  - `detectStationScanType` — real carrier numbers typed as house handles.
+ *  - `classifyHistoryCommandScan` — `Dell Latitude 7420`, `HP-PSU-450` and any
+ *    plain serial guessed `bin`, so Unbox History returned `passthrough` and
+ *    the find never ran.
+ *  - `scannedLocationCode` — got this right, and says so in its own docblock;
+ *    that comment is where the rule was first written down.
+ *
+ * The redirect is the honest signal: `routeScan` emits one exactly when it
+ * resolved the payload to a real destination. Compose this rather than
+ * re-deriving the test.
+ */
+export function decodedHandle(raw: string): ScanRoute | null {
+  const route = routeScan(raw);
+  return route?.redirect ? route : null;
+}
+
+/**
  * For a scan of a **printed carton label**, return the numeric `receiving_id`.
  * Returns `null` when the raw value is not a carton label, so a human typing a
  * PO number still falls through to text search.

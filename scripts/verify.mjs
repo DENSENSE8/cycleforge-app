@@ -19,8 +19,24 @@
  * Exit 0 iff every HARD gate in the selected profile passed. Advisory gates
  * (marked below, mirroring ci.yml continue-on-error) are reported but never
  * fail the run.
+ *
+ * CONCURRENCY. Gates are independent — every one only READS the tree — so they
+ * run concurrently and their output is buffered and printed per gate as each
+ * finishes. Sequential execution left ~14 of 16 cores idle for minutes at a
+ * time; the wall clock is now the slowest single gate rather than the sum.
+ * Two things this deliberately preserves:
+ *   - never fail-fast: every gate still runs, every failure still reports
+ *   - the summary table stays in ALL_GATES (CI) order, not finish order
+ * `--serial` restores one-at-a-time streaming output for debugging a gate;
+ * `--jobs=N` overrides the pool size.
+ *
+ * The one ordering coupling is already handled upstream: run-unit-tests.mjs
+ * excludes the jscpd integration driver (which writes probe files into src/ and
+ * shells the real gate) precisely so it cannot race the Clone-baseline gate.
+ * A gate that ever WRITES to the tree must be added to the serial set below.
  */
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
+import { availableParallelism } from 'node:os';
 import { gatesForProfile, resolveVerifyProfile } from './verify-profile.mjs';
 
 let PROFILE;
@@ -41,20 +57,87 @@ const BANNER = {
   full: 'verify — local CI mirror',
 };
 
-process.stdout.write(c('1', `▶ verify profile: ${PROFILE}`) + '\n');
+const SERIAL = process.argv.includes('--serial');
+const jobsArg = process.argv.find((a) => a.startsWith('--jobs='));
+// Each gate is itself multi-process (eslint, tsc, and `node --test`'s own
+// per-file children), so a pool the width of the machine would oversubscribe and
+// slow every member down. Four keeps the long gates overlapping without that.
+const JOBS = SERIAL
+  ? 1
+  : Math.max(1, Number(jobsArg?.slice('--jobs='.length)) || Math.min(4, availableParallelism()));
 
-const results = [];
-for (const gate of GATES) {
+process.stdout.write(
+  c('1', `▶ verify profile: ${PROFILE}`) +
+    (JOBS > 1 ? c('2', ` · ${GATES.length} gates, ${JOBS} at a time`) : '') +
+    '\n',
+);
+
+/** Windows: `npx` is npx.CMD — spawning it with shell:false is ENOENT/EINVAL,
+ *  which made every npx gate report ✗ no matter what the gate actually did. */
+const SPAWN_SHELL = process.platform === 'win32';
+
+/** @param {import('./verify-profile.mjs').VerifyGate} gate */
+function runGateSerial(gate) {
   process.stdout.write('\n' + c('1', `▶ ${gate.name}`) + '\n');
   const res = spawnSync(gate.cmd, gate.args, {
     stdio: 'inherit',
     env: { ...process.env, ...(gate.env ?? {}) },
-    // Windows: `npx` is npx.CMD — spawning it with shell:false is ENOENT/EINVAL,
-    // which made every npx gate report ✗ no matter what the gate actually did.
-    shell: process.platform === 'win32',
+    shell: SPAWN_SHELL,
   });
-  results.push({ name: gate.name, ok: res.status === 0, advisory: !!gate.advisory });
+  return { name: gate.name, ok: res.status === 0, advisory: !!gate.advisory };
 }
+
+/**
+ * Run a gate with its output buffered, then flush the whole block at once so
+ * concurrent gates never interleave mid-line.
+ * @param {import('./verify-profile.mjs').VerifyGate} gate
+ */
+function runGateBuffered(gate) {
+  return new Promise((resolve) => {
+    const child = spawn(gate.cmd, gate.args, {
+      stdio: ['ignore', 'pipe', 'pipe'],
+      env: { ...process.env, ...(gate.env ?? {}) },
+      shell: SPAWN_SHELL,
+    });
+    /** @type {Buffer[]} */
+    const chunks = [];
+    child.stdout.on('data', (d) => chunks.push(d));
+    child.stderr.on('data', (d) => chunks.push(d));
+    const finish = (ok) => {
+      const body = Buffer.concat(chunks).toString();
+      process.stdout.write(
+        '\n' +
+          c('1', `▶ ${gate.name}`) +
+          (ok ? '' : c('31', ' ✗')) +
+          '\n' +
+          (body.endsWith('\n') || body === '' ? body : body + '\n'),
+      );
+      resolve({ name: gate.name, ok, advisory: !!gate.advisory });
+    };
+    // A spawn error (missing binary) is a gate failure, not a crash of verify.
+    child.on('error', (err) => {
+      chunks.push(Buffer.from(`verify: could not run ${gate.cmd}: ${err.message}\n`));
+      finish(false);
+    });
+    child.on('close', (code) => finish(code === 0));
+  });
+}
+
+/** Fixed-width pool; results land at their ALL_GATES index so the summary keeps CI order. */
+async function runPool(gates, width) {
+  const out = new Array(gates.length);
+  let next = 0;
+  const worker = async () => {
+    while (next < gates.length) {
+      const i = next++;
+      out[i] = await runGateBuffered(gates[i]);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(width, gates.length) }, worker));
+  return out;
+}
+
+const results = SERIAL ? GATES.map(runGateSerial) : await runPool(GATES, JOBS);
 
 process.stdout.write('\n' + '─'.repeat(52) + '\n  ' + BANNER[PROFILE] + '\n' + '─'.repeat(52) + '\n');
 let hardFail = false;

@@ -97,7 +97,6 @@ export interface GridColumnHeaderBaseProps<
    */
   tableId?: TableId;
   /** Per-mount glyph override; falls back to the factory config, then the type glyph. */
-  glyphFor?: (column: C) => ReactNode;
   /** Per-mount label override (e.g. Receiving's `stage` → Unboxed / Scanned / Tested). */
   labelFor?: (column: C) => string | undefined;
   /**
@@ -141,7 +140,6 @@ export interface MakeLedgerGridColumnHeaderConfig<
   /** Defaults to `'never'` (read-only browse). */
   selectMode?: M;
   /** Family-wide glyph override (e.g. Repair's date / price / ticket icons). */
-  glyphFor?: (column: C) => ReactNode;
   /** Family-wide label override. */
   labelFor?: (column: C) => string | undefined;
 }
@@ -155,7 +153,6 @@ export function makeLedgerGridColumnHeader<
   defaultColumns,
   tableId: configTableId,
   selectMode = 'never' as M,
-  glyphFor: configGlyphFor,
   labelFor: configLabelFor,
 }: MakeLedgerGridColumnHeaderConfig<C, M>): (
   props: GridColumnHeaderProps<C, K, M>,
@@ -170,7 +167,6 @@ export function makeLedgerGridColumnHeader<
       onSortColumn,
       onResizeColumn,
       onResetColumn,
-      glyphFor,
       labelFor,
       columnMenu,
       enableColumnMenu = true,
@@ -216,7 +212,6 @@ export function makeLedgerGridColumnHeader<
         onSortColumn={onSortColumn ? (key: string) => onSortColumn(key as K) : undefined}
         onResizeColumn={onResizeColumn}
         onResetColumn={onResetColumn}
-        glyphFor={glyphFor ?? configGlyphFor}
         labelFor={labelFor ?? configLabelFor}
         columnMenu={resolvedMenu}
       />

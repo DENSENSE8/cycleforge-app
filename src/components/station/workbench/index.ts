@@ -33,7 +33,6 @@ export {
   STATION_WORKBENCH_BODY_COLUMN,
 } from './workbench-layout';
 export { StationScanPaneHost } from './StationScanPaneHost';
-export { ScanStationCartonCursor } from './ScanStationCartonCursor';
 // Station Displays SoT lives at `@/components/station/displays` — import
 // push stack / index rows from there (not re-exported here).
 // ScanStationUtilityRail + STATION_UTILITY_RAIL_CLASS are internal to

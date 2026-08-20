@@ -6,19 +6,26 @@
  * from organization_integrations (vault rows), usage from ai_usage_events,
  * the margin from organizations.settings — never code constants.
  *
- * Shows: which provider serves chat/embeddings right now (BYOK vs the
- * platform-metered default), the usage + price breakdown for the window,
- * and where to connect/disconnect providers (Settings → Integrations).
+ * Shows: the provider CHAIN for chat/embeddings (preferred first, with the
+ * fallbacks behind it), the order preference driving it, the usage + price
+ * breakdown for the window, and where to connect providers.
+ *
+ * The card names the provider a call TRIES FIRST, not the one that served the
+ * last turn — with failover those differ whenever the preferred provider is
+ * demoted. Per-turn attribution is the `source` column in the usage table
+ * below, which records whichever provider actually answered.
  */
 
 import Link from 'next/link';
 import { requirePermission } from '@/lib/auth/page-guard';
 import { PageHeader } from '@/components/ui/pane-header';
-import { resolveOrgAiConfig, type OrgAiConfig } from '@/lib/ai/org-provider';
+import { resolveOrgAiChain, type OrgAiConfig } from '@/lib/ai/org-provider';
+import { resolveAiProviderOrderForOrg } from '@/lib/ai/provider-order-deps';
 import { getAiUsageMarginPercent, summarizeAiUsage, type AiUsageSummaryRow } from '@/lib/ai/usage';
 import { applyMarginMicrocents, microcentsToUsd } from '@/lib/ai/model-pricing';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { DataTable, type DataTableColumn } from '@/design-system/components/DataTable';
+import { AiProviderOrderCard } from '@/components/settings/sections/AiProviderOrderCard';
 
 export const dynamic = 'force-dynamic';
 
@@ -84,7 +91,9 @@ const USAGE_COLUMNS: DataTableColumn<AiUsageSummaryRow>[] = [
   },
 ];
 
-function ProviderCard({ title, config, note }: { title: string; config: OrgAiConfig | null; note?: string }) {
+function ProviderCard({ title, chain, note }: { title: string; chain: OrgAiConfig[]; note?: string }) {
+  const config = chain[0] ?? null;
+  const fallbacks = chain.slice(1);
   return (
     <div className="space-y-1 rounded-none border border-border-soft bg-surface-card p-4">
       <p className="text-role-micro uppercase tracking-widest text-text-soft">{title}</p>
@@ -93,6 +102,14 @@ function ProviderCard({ title, config, note }: { title: string; config: OrgAiCon
           <p className="text-sm font-semibold text-text-default">{sourceLabel(config.source)}</p>
           <p className="truncate text-role-caption font-medium text-text-soft">
             {config.model} · via {new URL(config.baseURL).host}
+          </p>
+          {/* The fallbacks are the difference between local-first being a
+              preference and being a single point of failure. Showing them is
+              how an operator knows an outage will be survived. */}
+          <p className="truncate text-role-caption font-medium text-text-soft">
+            {fallbacks.length
+              ? `Falls back to ${fallbacks.map((f) => sourceLabel(f.source)).join(' → ')}`
+              : 'No fallback — this is the only connected provider.'}
           </p>
         </>
       ) : (
@@ -112,11 +129,12 @@ export default async function AiSettingsPage() {
   const orgId = user.organizationId as OrgId;
   const days = 30;
 
-  const [chat, embed, summary, marginPercent] = await Promise.all([
-    resolveOrgAiConfig(orgId, 'chat'),
-    resolveOrgAiConfig(orgId, 'embed'),
+  const [chatChain, embedChain, summary, marginPercent, providerOrder] = await Promise.all([
+    resolveOrgAiChain(orgId, 'chat'),
+    resolveOrgAiChain(orgId, 'embed'),
     summarizeAiUsage(orgId, days),
     getAiUsageMarginPercent(orgId),
+    resolveAiProviderOrderForOrg(orgId),
   ]);
 
   const estimated = summary.reduce((sum, r) => sum + r.costMicrocents, 0);
@@ -135,7 +153,8 @@ export default async function AiSettingsPage() {
         <section className="space-y-3">
           <div className="flex items-center justify-between">
             <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">
-              Active providers
+              Active providers ·{' '}
+              {providerOrder === 'local-first' ? 'self-hosted first' : 'cloud first'}
             </p>
             <Link
               href="/settings/integrations"
@@ -147,12 +166,12 @@ export default async function AiSettingsPage() {
           <div className="grid gap-3 md:grid-cols-2">
             <ProviderCard
               title="Search embeddings (semantic search)"
-              config={embed}
+              chain={embedChain}
               note="Keyword search keeps working; semantic ranking activates when a provider is connected."
             />
             <ProviderCard
               title="Ask AI (natural-language search)"
-              config={chat}
+              chain={chatChain}
               note="The Ask AI action falls back to the classic chat page until connected."
             />
           </div>
@@ -162,6 +181,11 @@ export default async function AiSettingsPage() {
             your organization. Without a key, your searches use the platform default and appear
             below as metered usage.
           </p>
+        </section>
+
+        {/* Order preference — which provider a call tries first. */}
+        <section>
+          <AiProviderOrderCard />
         </section>
 
         {/* Price breakdown */}

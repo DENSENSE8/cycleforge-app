@@ -24,7 +24,17 @@ export type UnboxScanIntent =
   | 'fnsku' // an FBA FNSKU
   | 'repair' // an RS-#### repair ticket
   | 'sku_lookup' // a SKU (`SKU:...`)
-  | 'command'; // a keyword command (YES/USED/NEW/PARTS/TEST)
+  | 'command' // a keyword command (YES/USED/NEW/PARTS/TEST)
+  /**
+   * One of OUR printed handles that is not a unit serial — carton, line, LPN,
+   * kit manifest, ticket, shelf address. Resolve it through `routeScan` and go
+   * where it points; never guess at it and never persist it as an identity.
+   *
+   * It is deliberately NOT folded into `open_carton`: a ticket and a shelf code
+   * decode here too, and sending those down the carton-open path would trade a
+   * wrong classification for a wrong destination.
+   */
+  | 'open_handle';
 
 export interface UnboxScanContext {
   /** The surface the scan was issued from (must be a scan surface for overrides). */
@@ -63,6 +73,8 @@ function intentFor(type: StationScanType): UnboxScanIntent {
       return 'sku_lookup';
     case 'COMMAND':
       return 'command';
+    case 'HANDLE':
+      return 'open_handle';
   }
 }
 

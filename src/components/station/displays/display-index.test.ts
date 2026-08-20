@@ -111,3 +111,13 @@ test('summarizeDisplayIndexGroup speaks only for ACTION rows', () => {
   assert.equal(summarizeDisplayIndexGroup([]).label, '');
 });
 
+test('filterDisplayIndexRows matches Daily inspector topic labels', () => {
+  const rows: DisplayIndexRow[] = [
+    { id: 'overview', label: 'Overview', subtitle: 'Your mark & roster', tone: 'neutral', group: 'verification' },
+    { id: 'ticket', label: 'Ticket', subtitle: 'Connect a ticket', tone: 'neutral', group: 'context' },
+    { id: 'who-ran', label: 'Who ran it', subtitle: 'Staff who ticked today', tone: 'neutral', group: 'context' },
+  ];
+  assert.equal(filterDisplayIndexRows(rows, 'overview')[0]?.id, 'overview');
+  assert.equal(filterDisplayIndexRows(rows, 'ticket')[0]?.id, 'ticket');
+  assert.ok(filterDisplayIndexRows(rows, 'who ran').some((r) => r.id === 'who-ran'));
+});

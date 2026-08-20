@@ -44,6 +44,8 @@ export interface AnalyzePhotoDeps {
     organizationId: string,
   ): Promise<{ bytes: Uint8Array; filename: string } | null>;
   runHermes(input: {
+    /** Whose AI provider serves this call — required, never defaulted. */
+    organizationId: string;
     poRef: string | null;
     photoType: string | null;
     entityType: string | null;
@@ -92,6 +94,7 @@ export async function analyzePhoto(
     if (metadata) model = 'gcp-vision';
   } else if (ctx.provider === 'hermes') {
     const hermes = await deps.runHermes({
+      organizationId: input.organizationId,
       poRef: ctx.poRef,
       photoType: ctx.photoType,
       entityType: ctx.entityType,

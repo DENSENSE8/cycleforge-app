@@ -31,6 +31,7 @@ import { StationScanLeadingIcon } from './StationScanLeadingIcon';
 import type { UnboxPreviewHit } from '@/lib/receiving/preview-scan';
 import { setScanEscBlock } from './scan-esc-block';
 import { getScanStance, setScanStance, useScanStance, useToggleScanStance } from './scan-stance';
+import type { StationScanStance } from './scan-stance';
 import {
   STATION_SCAN_BAR_COLLAPSE_HOVER_CLASS,
   STATION_SCAN_BAR_COLLAPSE_HOVER_DEFAULT_CLASS,
@@ -181,7 +182,20 @@ export function StationScanBar({
   const [railWidthPx, setRailWidthPx] = useState(0);
   const [face, setFace] = useState<'edit' | 'display'>('edit');
   const [committedValue, setCommittedValue] = useState('');
-  const stance = useScanStance();
+  /**
+   * A bar with no `previewLookup` HAS no Preview stance.
+   *
+   * The stance store is ONE global key (`scan:station-stance`), so without this
+   * gate an operator who armed Preview on a wired station (Unbox) walks to an
+   * unwired one and finds a bar that accepts scans and does nothing: the wedge
+   * path consumed the scan (`deliverScanValue` returned true) and `runPreview`
+   * bailed on the missing lookup, so it never routed and never reached the
+   * action sink. Falling through to Scan is the honest behaviour — the bar does
+   * what its station wired it to do.
+   */
+  const previewEnabled = Boolean(previewLookup);
+  const storedStance = useScanStance();
+  const stance: StationScanStance = previewEnabled ? storedStance : 'scan';
   const toggleStance = useToggleScanStance();
   const shouldReduceMotion = useReducedMotion();
   const displayEdit = displayEditProp ?? (hotkey && !showModeButtons);
@@ -224,7 +238,7 @@ export function StationScanBar({
    */
   const deliverScanValue = useCallback(
     (raw: string) => {
-      if (getScanStance() !== 'preview') return false;
+      if (!previewEnabled || getScanStance() !== 'preview') return false;
       const next = raw.trim();
       if (!next) return false;
       onChange(next);
@@ -235,7 +249,7 @@ export function StationScanBar({
       });
       return true;
     },
-    [onChange],
+    [onChange, previewEnabled],
   );
 
   // Insert → focus; ⌘. → clear + focus (arm next carton scan on this bar).
@@ -304,7 +318,7 @@ export function StationScanBar({
   const handleInternalSubmit = useCallback((e?: FormEvent<HTMLFormElement>) => {
     e?.preventDefault();
     const trimmed = value.trim();
-    if (getScanStance() === 'preview') {
+    if (previewEnabled && getScanStance() === 'preview') {
       // Enter RE-PREVIEWS. It never commits: Preview cannot become a Scan from
       // inside Preview, or the two stances are one stance with a shortcut.
       // Committing is the operator switching the stance themselves.
@@ -317,7 +331,7 @@ export function StationScanBar({
       setFace('display');
     }
     onSubmit(e);
-  }, [onSubmit, value, displayEdit, runPreview]);
+  }, [onSubmit, value, displayEdit, runPreview, previewEnabled]);
 
   useEffect(() => {
     if (
@@ -452,10 +466,15 @@ export function StationScanBar({
     <ScanHotkeyControl
       stance={stance}
       onSelectStance={setScanStance}
+      previewEnabled={previewEnabled}
       scanIcon={icon}
     />
   ) : (
-    <StationScanLeadingIcon stance={stance} onToggle={toggleStance} scanIcon={icon} />
+    <StationScanLeadingIcon
+      stance={stance}
+      onToggle={previewEnabled ? toggleStance : undefined}
+      scanIcon={icon}
+    />
   );
 
   const inputEl = (

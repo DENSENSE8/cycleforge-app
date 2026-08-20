@@ -4,7 +4,6 @@ import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/lib/toast';
 import { Barcode, Hash, MapPin, Package, Pencil } from '@/components/Icons';
-import { Button } from '@/design-system/primitives';
 import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
 import { appChromeClass } from '@/design-system/tokens/app-surface';
 import { TestingScanBar } from '@/components/sidebar/receiving/TestingScanBar';
@@ -18,7 +17,6 @@ import { useIsMobile } from '@/hooks';
 import { useStationTheme } from '@/hooks/useStationTheme';
 import {
   resolveTestingScan,
-  type ResolvedTestingScan,
   type ResolvedVia,
   type ForcedTestingType,
 } from '@/lib/testing/resolve-testing-scan';
@@ -26,7 +24,11 @@ import {
   INITIAL_TESTING_SCAN_SESSION,
   testingScanSessionReducer,
 } from '@/lib/testing/testing-scan-session';
-import { publishTestingScanSession } from '@/lib/testing/testing-scan-session-bridge';
+import {
+  publishTestingScanPick,
+  publishTestingScanSession,
+  useTestingScanPickResolved,
+} from '@/lib/testing/testing-scan-session-bridge';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { dispatchSelectLine } from '@/components/station/receiving-lines-table-helpers';
 import { seedReceivingSiblingsCache } from '@/lib/queries/receiving-queries';
@@ -34,7 +36,6 @@ import {
   readSelectLineDetail,
   type ReceivingSelectLineDetail,
 } from '@/components/sidebar/receiving/receiving-sidebar-shared';
-import { SerialPreviewStrip, BoxMembershipHint, serialLast8 } from '@/components/receiving/SerialPreviewStrip';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
 import { BoxWorkbenchPanel } from '@/components/receiving/BoxWorkbenchPanel';
 import { ManifestWorkbenchPanel } from '@/components/receiving/ManifestWorkbenchPanel';
@@ -142,7 +143,13 @@ export function TestingSidebarPanel({
   useEffect(() => {
     publishTestingScanSession(session);
   }, [session]);
-  const [picker, setPicker] = useState<ResolvedTestingScan & { kind: 'multi' } | null>(null);
+  // Unmounting the scan column (leaving Testing) clears any pending choice —
+  // the middle must never keep asking a question nothing can answer.
+  useEffect(() => () => publishTestingScanPick(null), []);
+  // The candidate list itself renders in the MIDDLE (`TestingScanPickPanel`) —
+  // a browsable list is the one shape the scan column must not carry
+  // (display/station.md §11). This column only raises it and applies the answer.
+  const [pendingVia, setPendingVia] = useState<ResolvedVia | null>(null);
   const [boxPanel, setBoxPanel] = useState<{ id: number; lines: ReceivingLineRow[] } | null>(null);
   const [manifestPanel, setManifestPanel] = useState<{ ref: string } | null>(null);
   const [internalSelectedRow, setInternalSelectedRow] =
@@ -235,6 +242,30 @@ export function TestingSidebarPanel({
     [requestUnitPhotos],
   );
 
+  /**
+   * The middle resolved the ambiguity. Apply it exactly as a single-line scan
+   * would have — the session reducer lives here, so opening the line has to
+   * happen here too (see `testing-scan-session-bridge` → resolveTestingScanPick).
+   */
+  const handlePickResolved = useCallback(
+    (row: ReceivingLineRow) => {
+      seedTestingOpenLine(queryClient, row);
+      dispatchSelectLine(row);
+      const via = pendingVia ?? 'receiving_id';
+      setLastAck((prev) => ({
+        via,
+        value: prev?.value ?? '',
+        line: lineAckSummary(row),
+      }));
+      applyLineToSession(row, via, lastAck?.value ?? '');
+      publishTestingScanPick(null);
+      setPendingVia(null);
+      setScanValue('');
+    },
+    [queryClient, pendingVia, lastAck?.value, applyLineToSession],
+  );
+  useTestingScanPickResolved(handlePickResolved);
+
   const runScan = useCallback(async (rawValue: string, forcedType: ForcedTestingType | null) => {
     const value = rawValue.trim();
     if (!value || inFlightRef.current) return;
@@ -244,6 +275,7 @@ export function TestingSidebarPanel({
       const result = await resolveTestingScan(value, { forcedType });
       switch (result.kind) {
         case 'line': {
+          publishTestingScanPick(null);
           seedTestingOpenLine(queryClient, result.row);
           dispatchSelectLine(result.row);
           setScanValue('');
@@ -257,7 +289,8 @@ export function TestingSidebarPanel({
           break;
         }
         case 'multi': {
-          setPicker(result);
+          publishTestingScanPick({ rows: result.rows, via: result.via, value });
+          setPendingVia(result.via ?? null);
           setArmedMode(null);
           if (result.via) setLastAck({ via: result.via, value });
           const label = viaFoundLabel(result.via);
@@ -266,7 +299,7 @@ export function TestingSidebarPanel({
         }
         case 'box': {
           setBoxPanel({ id: result.handlingUnitId, lines: result.rows });
-          setPicker(null);
+          publishTestingScanPick(null);
           setScanValue('');
           setArmedMode(null);
           setLastAck({ via: result.via, value });
@@ -275,7 +308,7 @@ export function TestingSidebarPanel({
         }
         case 'manifest': {
           setManifestPanel({ ref: result.manifestRef });
-          setPicker(null);
+          publishTestingScanPick(null);
           setScanValue('');
           setArmedMode(null);
           toast.success('Opened kit', { description: result.manifestRef });
@@ -405,63 +438,6 @@ export function TestingSidebarPanel({
         </>
       ) : null}
 
-      {picker ? (
-        <div data-testing-picker className={`border-b border-amber-200 bg-amber-50 ${SIDEBAR_GUTTER} py-2`}>
-          <p className="mb-1 text-role-eyebrow uppercase tracking-widest text-amber-700">
-            {picker.via === 'serial'
-              ? `Pick a unit — ${picker.rows.length} serial matches`
-              : picker.via === 'sku'
-                ? `Pick a line — ${picker.rows.length} pre-packed lines for this SKU`
-                : `Pick a line — ${picker.rows.length} items on this PO`}
-          </p>
-          <ul className="space-y-1">
-            {picker.rows.map((row) => (
-              <li key={row.id}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    seedTestingOpenLine(queryClient, row);
-                    dispatchSelectLine(row);
-                    setLastAck((prev) => ({
-                      via: picker.via ?? prev?.via ?? 'receiving_id',
-                      value: prev?.value ?? '',
-                      line: lineAckSummary(row),
-                    }));
-                    applyLineToSession(
-                      row,
-                      picker.via ?? 'receiving_id',
-                      lastAck?.value ?? '',
-                    );
-                    setPicker(null);
-                    setScanValue('');
-                  }}
-                  className="ds-raw-button w-full rounded-md bg-surface-card px-2 py-1.5 text-left text-role-caption font-semibold text-text-default ring-1 ring-amber-200 transition-colors hover:bg-amber-100"
-                >
-                  <span className="block truncate">{row.item_name || row.sku || `Line #${row.id}`}</span>
-                  <span className="block text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
-                    {row.quantity_received}/{row.quantity_expected ?? '?'} · {row.workflow_status || 'EXPECTED'}
-                    {row.tracking_number ? ` · TRK …${serialLast8(String(row.tracking_number))}` : ''}
-                  </span>
-                  {row.serials && row.serials.length > 0 ? (
-                    <span className="mt-1 flex flex-wrap items-center gap-1">
-                      <SerialPreviewStrip serials={row.serials} />
-                      <BoxMembershipHint serials={row.serials} />
-                    </span>
-                  ) : null}
-                </button>
-              </li>
-            ))}
-          </ul>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setPicker(null)}
-            className="mt-1.5 h-auto px-0 text-role-eyebrow uppercase tracking-widest text-amber-600 hover:bg-transparent hover:text-amber-800"
-          >
-            Cancel
-          </Button>
-        </div>
-      ) : null}
 
       <SidebarRailScrollport>
         <TestingRecentRail

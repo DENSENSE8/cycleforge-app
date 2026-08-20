@@ -20,7 +20,20 @@ const AblyContext = createContext<AblyContextValue>({
  * All data hooks share this single connection via useAblyChannel(), which prevents
  * the per-hook client pattern from exhausting Ably concurrent-connection limits.
  */
-export function AblyProvider({ children }: { children: ReactNode }) {
+export interface AblyProviderProps {
+  children: ReactNode;
+  /**
+   * Token endpoint. Defaults to the STAFF route.
+   *
+   * The kiosk passes `/api/realtime/kiosk-token`: a tablet authenticates as a
+   * device principal with no staff session and no permissions, so it cannot
+   * mint from the staff route at all — and loosening that route to let it would
+   * hand an unattended screen the whole org's dashboard feed.
+   */
+  authUrl?: string;
+}
+
+export function AblyProvider({ children, authUrl: authUrlProp }: AblyProviderProps) {
   const clientRef = useRef<any>(null);
   const pendingRef = useRef<((client: any | null) => void)[]>([]);
   const readyRef = useRef(false);
@@ -44,7 +57,7 @@ export function AblyProvider({ children }: { children: ReactNode }) {
     let connection: any = null;
     let onStateChange: ((change: any) => void) | null = null;
     const authUrl =
-      process.env.NEXT_PUBLIC_ABLY_AUTH_PATH || '/api/realtime/token';
+      authUrlProp || process.env.NEXT_PUBLIC_ABLY_AUTH_PATH || '/api/realtime/token';
 
     import('ably')
       .then((Ably) => {
@@ -90,7 +103,7 @@ export function AblyProvider({ children }: { children: ReactNode }) {
       // Teardown (sign-out / unmount) is not a degraded link.
       resetRealtimeConnectionState();
     };
-  }, []);
+  }, [authUrlProp]);
 
   return (
     <AblyContext.Provider value={contextValue}>

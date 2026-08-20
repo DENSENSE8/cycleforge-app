@@ -1,6 +1,5 @@
 'use client';
 
-import type { ReactNode } from 'react';
 import { ChevronDown, ChevronUp } from '@/components/Icons';
 import { ColumnTypeGlyph } from '@/components/ui/table-column-config/column-type-glyph';
 import { gridHeaderShowsLabel } from './grid-column-geometry';
@@ -19,13 +18,13 @@ type GridHeaderSortDir = 'asc' | 'desc';
  *
  * **Text-first (2026-08-04):** when the word fits, headers are **text only**
  * (+ sort chevron when active) — no decorative type glyph beside every title.
- * Type glyphs remain only for **glyph-only / narrow tracks** (`!showLabel`) or
- * an explicit `glyph` override. `gridHeaderShowsLabel` decides.
+ * Type glyphs remain only for **glyph-only / narrow tracks** (`!showLabel`).
+ * `gridHeaderShowsLabel` decides, and it is the ONLY thing that decides — the
+ * per-surface `glyph` override was deleted 2026-08-20.
  */
 export function GridHeaderLabel({
   column,
   label,
-  glyph,
   sortDir = null,
 }: {
   column: LedgerGridColumnModel;
@@ -35,8 +34,6 @@ export function GridHeaderLabel({
    * the word actually rendered.
    */
   label?: string;
-  /** Optional surface-specific mark; overrides the narrow-track type glyph. */
-  glyph?: ReactNode;
   /** Non-null only when THIS column is the active sort. */
   sortDir?: GridHeaderSortDir | null;
 }) {
@@ -46,11 +43,16 @@ export function GridHeaderLabel({
   const sorted = sortDir != null;
 
   /**
-   * Mark slot:
+   * Mark slot — TWO outcomes, and no third:
    * - Sorted → chevron (reuses the slot so geometry stays constant).
-   * - Explicit `glyph` → that mark.
-   * - Glyph-only / narrow (`!showLabel`) → type glyph (Incoming golden).
-   * - Text-visible headers → **no** decorative type glyph (Unbox History).
+   * - Glyph-only / narrow (`!showLabel`) → the type glyph.
+   * - Text-visible headers → **no** decorative glyph.
+   *
+   * The per-surface `glyph` override is DELETED (2026-08-20). It was the door
+   * two families walked back through after the 2026-08-04 text-first ruling:
+   * Repair kept Calendar/Ticket outright, and Incoming's became decorative the
+   * moment `headerGlyphOnly` was overturned for it. Text-first is now true by
+   * construction — there is no prop to pass.
    */
   const typeMark =
     column.type != null ? (
@@ -63,9 +65,9 @@ export function GridHeaderLabel({
     ) : (
       <ChevronDown className="h-3 w-3 shrink-0 text-text-muted opacity-80" aria-hidden />
     )
-  ) : (
-    glyph ?? (!showLabel ? typeMark : null)
-  );
+  ) : !showLabel ? (
+    typeMark
+  ) : null;
 
   if (!showLabel) {
     return (

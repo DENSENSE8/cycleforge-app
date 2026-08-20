@@ -162,10 +162,10 @@ export function StationDisplaysPushColumn({
   headerRightSlot?: ReactNode;
   /**
    * Carton Macro verbs — top-right of the band, `⋯` last
-   * ({@link StationDisplaysHeaderActions}). Moved here from the retired bottom
-   * `actionFloor` rung (2026-08-18): a control that acts on the open carton
-   * belongs in the corner the operator already looks at for chrome, not at the
-   * far end of a scrolling column. Never desk `InspectorActionFloor`.
+   * ({@link StationDisplaysHeaderActions}). A control that acts on the open
+   * carton belongs in the corner the operator already looks at for chrome, not
+   * at the far end of a scrolling column. Never a bottom `actionFloor` rung and
+   * never desk `InspectorActionFloor`.
    */
   headerActions?: ReactNode;
   /**
