@@ -181,19 +181,20 @@ describe('right-rail inspector header', () => {
     }
   });
 
-  it('Incoming Sync trails ↑↓ (ring twin) via DeskRailChromeRow trailing', () => {
+  it('Incoming keeps Sync in DeskRailChromeRow trailing — and no ↑↓ stepper', () => {
     const src = code(
       read('src/components/sidebar/receiving/incoming-details/IncomingDetailsHeader.tsx'),
     );
     assert.ok(src.includes('incoming-details-sync'), 'Sync control must remain');
-    assert.ok(src.includes('prevTestId="incoming-details-prev"'));
-    assert.ok(src.includes('nextTestId="incoming-details-next"'));
-    const prevIdx = src.indexOf('incoming-details-prev');
-    const nextIdx = src.indexOf('incoming-details-next');
-    const syncIdx = src.indexOf('incoming-details-sync');
-    assert.ok(
-      prevIdx > 0 && nextIdx > prevIdx && syncIdx > nextIdx,
-      'order must be ↑ · ↓ · ↻ (Sync most right)',
+    // ↑↓ retired 2026-08-19: walking the queue from inside the inspector was a
+    // second door onto a selection the left recents rail already owns, and the
+    // two cursors could disagree. `DeskRailChromeRow` dropped the props with
+    // it, so re-adding them here would not even compile. Picking happens in the
+    // rail; `useRecordCursor` keyboard walking moves the RAIL's cursor.
+    assert.equal(
+      /prevTestId|nextTestId/.test(src),
+      false,
+      'no inspector-local ↑↓ — the rail owns the selection',
     );
     assert.equal(/px-6/.test(src), false, 'Incoming chrome must not use px-6 gutters');
   });

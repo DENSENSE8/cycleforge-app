@@ -67,7 +67,6 @@ import { UnboxPreviewLock } from './UnboxPreviewLock';
 import { UnboxLookupReceipt } from '@/components/receiving/unbox/UnboxLookupReceipt';
 import { useUnboxPrimaryPaintOptional } from '@/components/receiving/unbox/unbox-primary-paint-context';
 import type { UnboxLookupScanDetail } from '@/components/receiving/receiving-events';
-import { emitReceiving } from '@/components/receiving/receiving-events';
 import {
   resolveWorkspacePaneSlot,
   type WorkspacePaneSlot,
@@ -248,12 +247,6 @@ export function UnboxLineWorkspace({
               // recent rail, sibling PO line, deep-link restore) — every one of
               // those is a deliberate open of one carton, so it records.
               recordView={!workspace.preview && workspace.recordView !== false}
-              onPrev={() => {
-                emitReceiving('receiving-navigate-table', 'prev');
-              }}
-              onNext={() => {
-                emitReceiving('receiving-navigate-table', 'next');
-              }}
               onClose={onCloseWorkspace}
             />
             </div>
