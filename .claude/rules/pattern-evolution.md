@@ -33,11 +33,11 @@ it never blocks serving a new one. When jobs differ, add the sibling and share t
    one.
 
    *Why this is a law and not advice:* a rules file cannot fail. `source-of-truth.md` said
-   `useIsColumnHidden` "survives only for `ChipColumns` / `RowMetaColumns`" while four surfaces
+   `useIsColumnHidden()` "survives only for `ChipColumns` / `RowMetaColumns`" while four surfaces
    called it, and `workbench-ops-queue.md` described chrome Fields as the live entry long after 11
    of 13 grids had moved to the table lip. Both sentences were true when written and silently
    stopped being true; nothing anywhere could notice. The fix is cheap — one guard test
-   ( is the reference) — and it is what turns a claim into a
+   (`use-is-column-hidden.test.ts` is the reference) — and it is what turns a claim into a
    fact.
 
    Corollary, learned the expensive way: **`knip` cannot see a fork whose doors are both imported.**
@@ -87,7 +87,7 @@ it never blocks serving a new one. When jobs differ, add the sibling and share t
 Fix the **SoT / registry primitive** over a page-local patch; capture a **general** principle (not just
 the incident) in the right `.claude/rules/` file; prune redundant always-on prose.
 
-Hard correctness (tenant GUC, `transition`, secrets, search waist) stays restrictive via SoT +
+Hard correctness (tenant GUC, `transition()`, secrets, search waist) stays restrictive via SoT +
 hooks/tests; **taste and composition** stay recipes with an evolution path.
 
 ## Documentation shape
@@ -95,4 +95,4 @@ hooks/tests; **taste and composition** stay recipes with an evolution path.
 Decision tables beat architecture essays. Progressive disclosure: root = map + hard laws;
 `.claude/rules/` = load when the task touches that domain; skills = multi-step playbooks.
 
-Full scan/recommend method: [`ui-design-system.md`](ui-design-system.md) + the `improve-ui` skill.
+Full scan/recommend method: [`ui-design-system.md`](../../docs/rules/ui-design-system.md) + the `improve-ui` skill.

@@ -85,7 +85,7 @@ export async function POST(
     if (!row.gmail_msg_id) throw ApiError.badRequest('row has no gmail_msg_id');
 
     const envelope = await fetchMessage(row.gmail_msg_id, organizationId);
-    const llm = await extractWithLlm({
+    const llm = await extractWithLlm(organizationId, {
       subject: row.email_subject ?? envelope.subject,
       from: row.email_from ?? envelope.from,
       bodyText: envelope.bodyText,

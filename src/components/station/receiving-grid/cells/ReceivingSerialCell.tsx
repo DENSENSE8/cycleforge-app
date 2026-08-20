@@ -11,7 +11,7 @@ export function ReceivingSerialCell({ col, rule, ctx }: ReceivingGridCellProps) 
     <div data-col="serial" className={receivingDataCellClass(col, rule, ctx)}
       style={receivingDataCellHighlightStyle(col, ctx)}>
       {serialsCsv ? (
-        <SerialChip value={serialsCsv} width="w-auto shrink-0" dense />
+        <SerialChip value={serialsCsv} width="w-auto shrink-0" dense plain={!!col.omitCellIcon} />
       ) : (
         <GridCellDash />
       )}

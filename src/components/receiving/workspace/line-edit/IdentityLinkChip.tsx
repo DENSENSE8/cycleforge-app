@@ -409,7 +409,7 @@ export function IdentityLinkChip({
                       className={cn(CHIP_HOVER_MENU_ITEM_CLASS, CHIP_HOVER_MENU_ITEM_TONE.accent)}
                     >
                       <ExternalLink className="h-3.5 w-3.5 shrink-0 text-blue-600" />
-                      <span className="min-w-0 truncate normal-case tracking-normal">{opt.label}</span>
+                      <span className="min-w-0 truncate">{opt.label}</span>
                     </button>
                   </HoverTooltip>
                 ))}

@@ -2,7 +2,7 @@
 
 > **Status:** Living SoT · 2026-07-12  
 > **Hub:** [README.md](./README.md) · **Lanes:** [WORKTREE-LANES.md](./WORKTREE-LANES.md) · **Review:** [review-protocol.md](./review-protocol.md)  
-> **Catalog:** [`DOC-CATALOG.md`](./DOC-CATALOG.md) (670 files, regenerated 2026-08-20) · run `node scripts/portfolio-sot-sync.mjs`
+> **Catalog:** [`DOC-CATALOG.md`](./DOC-CATALOG.md) (709 files, regenerated 2026-08-20) · run `node scripts/portfolio-sot-sync.mjs`
 > **Live tickets:** [`master-plan.mdx`](../../master-plan.mdx) → `/forge` or usav-dev  
 > **Lane registry:** [`dev-worktrees.json`](../../dev-worktrees.json) — a registry only. The
 > per-lane port resolver and `pnpm dev:switcher` were removed 2026-07-29; `pnpm dev` is a plain
@@ -59,20 +59,6 @@ Docs stay in this monorepo. Worktrees are **code lanes** only ([WORKTREE-LANES.m
 | WT-ID | Path relative to monorepo parent |
 |-------|----------------------------------|
 | `main` | `.` (parent: `cycleforge-app`) |
-| `ai-chat` | `../cycleforge-ai-chat` (parent: `cycleforge-ai-chat`) |
-| `fba` | `../cycleforge-fba` (parent: `cycleforge-fba`) |
-| `glass` | `../cycleforge-glass` (parent: `cycleforge-glass`) |
-| `home` | `../cycleforge-home` (parent: `cycleforge-home`) |
-| `inventory` | `../cycleforge-inventory` (parent: `cycleforge-inventory`) |
-| `journey-hops` | `../cycleforge-journey-hops` (parent: `cycleforge-journey-hops`) |
-| `note-grain` | `../cycleforge-note-grain` (parent: `cycleforge-note-grain`) |
-| `photo` | `../cycleforge-photo` (parent: `cycleforge-photo`) |
-| `review` | `../cycleforge-review` (parent: `cycleforge-review`) |
-| `sourcing` | `../cycleforge-sourcing` (parent: `cycleforge-sourcing`) |
-| `tables` | `../cycleforge-tables` (parent: `cycleforge-tables`) |
-| `tasks` | `../cycleforge-tasks` (parent: `cycleforge-tasks`) |
-| `unbox` | `../cycleforge-unbox` (parent: `cycleforge-unbox`) |
-| `warehouse` | `../cycleforge-warehouse` (parent: `cycleforge-warehouse`) |
 
 **Add a tree:**
 

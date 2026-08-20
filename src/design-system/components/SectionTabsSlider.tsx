@@ -7,11 +7,16 @@
  * container — panels stay mounted (`hidden`) so per-panel state survives
  * switching.
  *
- * - Primary tabs (`density="inline"`) render as industrial {@link TabDisplay}
- *   `appearance="underline"` (parent weight) — never soft `TabSwitch` pills.
- * - Tabs marked `priority: 'overflow'` collapse into a ⋯ trigger. When the
- *   active tab is in overflow (inline density), the ⋯ takes the active
- *   treatment and the active label shows beside the strip.
+ * - `density="inline"` renders ONE flush {@link SearchableSelectField} combobox
+ *   — the house switcher face, shared with the ticket claim panel's
+ *   Create|Link and every Displays child mode. It replaced a `TabDisplay`
+ *   `appearance="underline"` strip on 2026-08-19: a strip is priced in
+ *   horizontal room this component never has once a caller passes six displays
+ *   and a `rightSlot`, which is what the ⋯ bucket was papering over.
+ * - Tabs marked `priority: 'overflow'` are no longer a ⋯ menu at inline
+ *   density — they are simply the last entries in the same list, so a
+ *   deprioritized display costs one keystroke, not two clicks. The ⋯ trigger
+ *   survives only on the fixed-width icon plate below.
  * - With a single tab there is no bar — it renders exactly like the plain
  *   display, and the switcher only appears once a second display exists.
  *
@@ -40,7 +45,7 @@
  * display renders its label as visible text. No display is ever unnamed.
  */
 
-import { useId, useRef, useState, type ReactNode } from 'react';
+import { useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { MoreHorizontal, MoreVertical } from '@/components/Icons';
 import { PRIMARY_CHROME_ROW_FACE } from '@/components/layout/header-shell';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
@@ -56,7 +61,7 @@ import {
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
-import { TabDisplay } from './TabDisplay';
+import { SearchableSelectField } from './SearchableSelectField';
 
 const FLUSH = cornerClass('flush');
 
@@ -143,7 +148,7 @@ export function SectionTabsSlider({
   className,
   headerClassName,
   rightSlot,
-  showActiveLabel = false,
+  showActiveLabel: _showActiveLabel = false,
   density = 'inline',
   compact = false,
   fillHeight = false,
@@ -161,9 +166,10 @@ export function SectionTabsSlider({
   /** Context control pinned to the right of the bar row (e.g. an Edit-PO pencil). */
   rightSlot?: ReactNode;
   /**
-   * Optional eyebrow naming the active display beside the strip.
-   * Auto-enabled when the active tab lives in overflow (⋯ alone isn't enough).
-   * Suppressed for `density="icon"` — the selected cell already names itself.
+   * @deprecated No-op since 2026-08-19. The eyebrow existed because a ⋯ bucket
+   * could hide the active display's name; inline density is now a combobox
+   * whose trigger IS the active label, and the icon plate labels its own
+   * selected cell. Kept so call sites do not break; remove once none pass it.
    */
   showActiveLabel?: boolean;
   /**
@@ -203,23 +209,34 @@ export function SectionTabsSlider({
     tabs.map((t) => t.id),
     value,
   );
-  const activeTab = tabs.find((t) => t.id === activeId);
   const { primary, overflow } = partitionSectionTabs(stripTabs);
   const showPills = stripTabs.length > 1;
   const overflowActive = Boolean(activeId && overflow.some((t) => t.id === activeId));
   const activeOverflowTab = overflowActive
     ? overflow.find((t) => t.id === activeId)
     : undefined;
-  const primaryActiveId =
-    activeId && primary.some((t) => t.id === activeId) ? activeId : '';
-  // The icon rail's selected cell already labels itself — a second eyebrow
-  // beside it was the CLASSIFY-over-Checklist collision on Unbox Displays.
-  const showLabel = !iconRail && (showActiveLabel || overflowActive);
+  // Inline density is one combobox over every strip tab: `priority: 'overflow'`
+  // stops being a ⋯ bucket and just orders last, so a deprioritized display is
+  // still one keystroke away instead of two.
+  const inlineOptions = useMemo(
+    () =>
+      [...primary, ...overflow].map((tab) => ({
+        value: tab.id,
+        // The count rides the label so the closed trigger still reports it.
+        label:
+          tab.count != null && tab.count > 0
+            ? `${tab.label} · ${tab.count > 99 ? '99+' : tab.count}`
+            : tab.label,
+      })),
+    [primary, overflow],
+  );
 
   const closeOverflow = () => setOverflowOpen(false);
 
+  // Inline density lists every display inside the combobox (it filters), so
+  // the ⋯ bucket only survives on the icon plate, whose cells are fixed-width.
   const overflowControl =
-    overflow.length > 0 ? (
+    iconRail && overflow.length > 0 ? (
       <>
         {/* ds-raw-button: overflow ⋯ trigger; Popover owns dismissal */}
         <button
@@ -342,8 +359,11 @@ export function SectionTabsSlider({
         >
           <div
             className={cn(
-              'flex min-w-0 items-stretch',
-              iconRail ? 'flex-1 gap-0' : 'items-center gap-2.5',
+              // Both densities own the row's free width: the icon plate shares
+              // it between cells, inline hands it to the combobox trigger so
+              // the display name never truncates next to `rightSlot`.
+              'flex min-w-0 flex-1 items-stretch',
+              iconRail ? 'gap-0' : 'items-center gap-2.5',
             )}
           >
             {showPills ? (
@@ -436,35 +456,22 @@ export function SectionTabsSlider({
                   </div>
                 </LayoutGroup>
               ) : (
-                <div role="group" aria-label={ariaLabel} className="min-w-0">
-                  <TabDisplay
-                    tabs={primary.map((tab) => ({
-                      id: tab.id,
-                      label: tab.label,
-                      icon: tab.icon,
-                      ...(tab.count != null ? { count: tab.count } : {}),
-                    }))}
-                    activeTab={primaryActiveId}
-                    onTabChange={onChange}
-                    density="nested"
-                    fit="hug"
-                    appearance="underline"
-                    trailing={
-                      overflowControl ? (
-                        <>
-                          {hairline}
-                          {overflowControl}
-                        </>
-                      ) : null
-                    }
+                <div className="min-w-0 flex-1">
+                  <SearchableSelectField
+                    appearance="flush"
+                    value={activeId ?? null}
+                    onChange={(id) => {
+                      if (id == null) return;
+                      onChange(String(id));
+                    }}
+                    options={inlineOptions}
+                    placeholder="Pick a display…"
+                    searchPlaceholder="Type to filter…"
+                    emptyMessage="No displays match"
+                    ariaLabel={ariaLabel}
                   />
                 </div>
               )
-            ) : null}
-            {showLabel && activeTab ? (
-              <span className="truncate text-role-eyebrow uppercase tracking-widest text-text-muted">
-                {activeTab.label}
-              </span>
             ) : null}
           </div>
           {/* Icon rail: ⋯ leaves the rail and becomes a right-aligned peer of

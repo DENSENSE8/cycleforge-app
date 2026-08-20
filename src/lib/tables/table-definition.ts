@@ -107,6 +107,8 @@ const TABLE_ENTITY_FAMILIES = [
   'bins',
   'my-day',
   'tech-all',
+  // Home → Daily shift checklist.
+  'daily',
   'catalog-link',
   'station-history',
   'fba',

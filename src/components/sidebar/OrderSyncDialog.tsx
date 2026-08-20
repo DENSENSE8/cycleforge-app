@@ -6,7 +6,7 @@ import { motion } from '@/design-system/motion';
 import { AlertTriangle, Check, ChevronDown, Loader2, X } from '@/components/Icons';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cornerClass } from '@/design-system/tokens/radius';
-import { TabDisplay } from '@/design-system/components/TabDisplay';
+import { SearchableSelectField } from '@/design-system/components/SearchableSelectField';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
 import { Button, IconButton } from '@/design-system/primitives';
 import { sectionLabel, fieldLabel, microBadge, dataValue } from '@/design-system/tokens/typography/presets';
@@ -700,20 +700,22 @@ export function OrderSyncDialog({
     (exceptions.resolved?.length ?? exceptions.matched ?? 0) +
     (exceptions.stillOpen?.length ?? 0);
 
-  // Parent underline (Orders · Exceptions) + child segment (Sheets · Ecwid) —
-  // same stacked hierarchy as TicketDisplayHost Claim → ClaimModeSelect.
-  const parentTabs = useMemo(
+  // Section (Orders · Exceptions) over source (Sheets · Ecwid) — the same
+  // stacked hierarchy as TicketDisplayHost Claim → ClaimModeSelect, now on the
+  // one house control for both layers: a flush combobox. Counts ride the label
+  // so the trigger keeps saying how much is in each lane with the list closed.
+  const sectionOptions = useMemo(
     () => [
-      { id: 'orders' as const, label: 'Orders', count: ordersCount },
-      { id: 'exceptions' as const, label: 'Exceptions', count: exceptionsCount },
+      { value: 'orders', label: `Orders · ${ordersCount}` },
+      { value: 'exceptions', label: `Exceptions · ${exceptionsCount}` },
     ],
     [ordersCount, exceptionsCount],
   );
 
-  const ordersChildTabs = useMemo(
+  const orderSourceOptions = useMemo(
     () => [
-      { id: 'sheets' as const, label: 'Google Sheets', count: sheetsCount },
-      { id: 'ecwid' as const, label: 'Ecwid Direct', count: ecwidCount },
+      { value: 'sheets', label: `Google Sheets · ${sheetsCount}` },
+      { value: 'ecwid', label: `Ecwid Direct · ${ecwidCount}` },
     ],
     [sheetsCount, ecwidCount],
   );
@@ -734,6 +736,10 @@ export function OrderSyncDialog({
     <DetailStackRailRegistrar
       id="detail:order-sync"
       onClose={handleClose}
+      // `handleClose` can only decline to act; it cannot stop the host's
+      // lifecycle half, which parked this panel and toasted "Draft saved."
+      // over a live progress readout while the transfer kept running.
+      canClose={() => !isRunning}
       modal={false}
       ariaLabel="Order import progress"
     >
@@ -778,30 +784,36 @@ export function OrderSyncDialog({
           </div>
         </header>
 
-        {/* Cybertruck stack: parent underline → child segment (Claim · TicketDisplayHost). */}
+        {/* Cybertruck stack: section select over source select (Claim ·
+            TicketDisplayHost grammar). Each flush select owns its own hairline. */}
         <div className="flex shrink-0 flex-col gap-0">
-          <TabDisplay
-            tabs={parentTabs}
-            activeTab={bodyTab}
-            onTabChange={(id) => setBodyTab(id as SyncBodyTab)}
-            appearance="underline"
-            density="nested"
-            fit="fill"
-            aria-label="Order sync sections"
+          <SearchableSelectField
+            appearance="flush"
+            value={bodyTab}
+            onChange={(id) => {
+              if (id == null) return;
+              setBodyTab(id as SyncBodyTab);
+            }}
+            options={sectionOptions}
+            placeholder="Pick a section…"
+            searchPlaceholder="Type to filter…"
+            emptyMessage="No sections match"
+            ariaLabel="Order sync sections"
           />
           {bodyTab === 'orders' ? (
-            <div className="flex shrink-0 flex-col gap-0 border-b border-border-hairline">
-              <TabDisplay
-                tabs={ordersChildTabs}
-                activeTab={ordersSource}
-                onTabChange={(id) => setOrdersSource(id as OrdersSourceTab)}
-                appearance="segment"
-                density="nested"
-                fit="fill"
-                aria-label="Order import source"
-                className="rounded-none border-x-0 border-t-0"
-              />
-            </div>
+            <SearchableSelectField
+              appearance="flush"
+              value={ordersSource}
+              onChange={(id) => {
+                if (id == null) return;
+                setOrdersSource(id as OrdersSourceTab);
+              }}
+              options={orderSourceOptions}
+              placeholder="Pick a source…"
+              searchPlaceholder="Type to filter…"
+              emptyMessage="No sources match"
+              ariaLabel="Order import source"
+            />
           ) : null}
         </div>
 

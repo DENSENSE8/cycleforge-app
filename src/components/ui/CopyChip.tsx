@@ -835,6 +835,7 @@ export const SerialChip = ({
   pending,
   displayWidth = 'content',
   fitDisplayWidth = true,
+  plain,
 }: {
   value: string;
   /** Optional label override; normally derived from `value`. When set, used
@@ -853,6 +854,14 @@ export const SerialChip = ({
   displayWidth?: 'content' | 'last8';
   /** Default true — peek spreads PEEK_FACE; keep shrink-wrap for tables. */
   fitDisplayWidth?: boolean;
+  /**
+   * Omit the leading Barcode glyph — the same switch {@link OrderIdChip} has.
+   * SERIAL was the last identity chip with no way to go icon-less, so it was
+   * the one Sheets cell that could not honour its column's `omitCellIcon` and
+   * kept a body glyph while ORDER / TRACKING / PRICE beside it had dropped
+   * theirs.
+   */
+  plain?: boolean;
 }) => (
   <CopyChip
     value={value}
@@ -869,7 +878,16 @@ export const SerialChip = ({
     disableTooltip={disableTooltip}
     disableCopy={pending != null}
     dense={dense}
-    iconClass={pending === 'removing' ? 'text-text-faint' : pending === 'adding' ? 'text-emerald-400' : undefined}
+    icon={plain ? null : undefined}
+    iconClass={
+      plain
+        ? undefined
+        : pending === 'removing'
+          ? 'text-text-faint'
+          : pending === 'adding'
+            ? 'text-emerald-400'
+            : undefined
+    }
   />
 );
 

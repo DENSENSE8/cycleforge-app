@@ -18,6 +18,7 @@
 
 import { useCallback, useRef, useState, type RefObject } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { unwrapScannedSerial } from '@/lib/barcode-routing';
 import { toast } from '@/lib/toast';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { dispatchUnboxRailLineUpdated } from '@/components/sidebar/receiving/unbox-rail-events';
@@ -342,7 +343,10 @@ export function useLineSerials({
       grade?: string | null,
       targetLineId?: number,
     ): Promise<void> => {
-      const v = (raw ?? '').trim();
+      // A printed unit label carries a GS1 Digital Link / element string /
+      // `U-{serial}` — never a bare serial. Decode through the ONE decoder
+      // before anything optimistic or persisted reads it.
+      const v = unwrapScannedSerial(raw ?? '');
       if (!v || !row.receiving_id) return Promise.resolve();
       const lineId = targetLineId ?? row.id;
       const tempId = mintOptimisticSerialId();

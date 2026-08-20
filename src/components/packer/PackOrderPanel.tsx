@@ -10,7 +10,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Camera, ExternalLink, History } from '@/components/Icons';
+import { Camera, ExternalLink, History, MapPin } from '@/components/Icons';
 import { PaneHeaderCloseButton } from '@/components/ui/pane-header';
 import {
   buildSectionTabs,
@@ -32,11 +32,14 @@ import {
   StationMoreDetails,
 } from '@/components/station/entity-context';
 import {
-  StationDisplaysEdgeToggle,
+  StationDisplaysParkedRail,
+  StationDisplaysUtilityRail,
   StationDisplaysPushStack,
   STATION_DISPLAY_INDEX,
   useYieldStationDisplaysOnAssistantOpen,
 } from '@/components/station/displays';
+import { PackLocationsLeaf } from '@/components/tech/shipping/PackLocationsLeaf';
+import { usePackOrderPlacement } from '@/components/tech/shipping/usePackOrderPlacement';
 import { buildPackDisplayIndexRows } from '@/components/packer/pack-display-index';
 import { packListingIdentity } from '@/components/packer/pack-listing-identity';
 import { STATION_WORKBENCH_IDENTITY_COLUMN } from '@/components/station/workbench/workbench-layout';
@@ -113,6 +116,23 @@ export function PackOrderPanel({ activeOrder, onClose }: PackOrderPanelProps) {
    */
   const openDisplaysIndex = useCallback(() => setActiveSideTab(STATION_DISPLAY_INDEX), []);
 
+  /**
+   * The order's packing desk. Same writer as Ready-to-Pack
+   * (`order_pack_placements` via {@link usePackOrderPlacement}) and the same
+   * leaf — this station simply had no route to it, so a packer who needed to
+   * move an order to another bench had to leave the pack surface entirely.
+   * Displays-only by contract: a destination never sits in the work.
+   */
+  const packOrderId =
+    activeOrder.orderRowId != null && activeOrder.orderRowId > 0
+      ? activeOrder.orderRowId
+      : null;
+  const placement = usePackOrderPlacement({ orderId: packOrderId });
+
+  // Declared above `displayTabs`: the Locations leaf inside that memo calls it,
+  // and the memo factory runs at ITS line during render.
+  const closePackDisplays = useCallback(() => setActiveSideTab(null), []);
+
   const displayTabs = useMemo(
     () =>
       buildSectionTabs([
@@ -145,6 +165,15 @@ export function PackOrderPanel({ activeOrder, onClose }: PackOrderPanelProps) {
               tracking={tracking || null}
               serials={timelineSerials}
             />
+          ),
+        },
+        {
+          id: 'locations',
+          label: 'Locations',
+          icon: MapPin,
+          visible: packOrderId != null,
+          content: (
+            <PackLocationsLeaf placement={placement} onPlaced={closePackDisplays} />
           ),
         },
         {
@@ -195,6 +224,7 @@ export function PackOrderPanel({ activeOrder, onClose }: PackOrderPanelProps) {
         packedCount,
         totalCount,
         hasListing: Boolean(listingIdentity.listingOpenHref),
+        hasPlaceableOrder: packOrderId != null,
       }),
     [
       photosInDisplays,
@@ -202,16 +232,25 @@ export function PackOrderPanel({ activeOrder, onClose }: PackOrderPanelProps) {
       packedCount,
       totalCount,
       listingIdentity.listingOpenHref,
+      packOrderId,
     ],
   );
 
-  const paneUtilityRow = (
-    <div className="flex flex-col items-center gap-0 pt-0">
-      {!activeSideTab ? (
-        <StationDisplaysEdgeToggle variant="pane-open" onClick={openDisplaysIndex} />
-      ) : null}
-    </div>
-  );
+  const paneUtilityRow = !activeSideTab ? (
+    <StationDisplaysUtilityRail
+      onOpenDisplays={openDisplaysIndex}
+      indexRail={
+        <StationDisplaysParkedRail
+          rows={displayIndexRows}
+          tabs={displayTabs}
+          activeId={activeSideTab ?? null}
+          onOpenLeaf={(id) =>
+            setActiveSideTab(id as Parameters<typeof setActiveSideTab>[0])
+          }
+        />
+      }
+    />
+  ) : null;
 
   // Host (`PackOrderWorkspace`) owns scan-cadence swap; paint content immediately.
   return (

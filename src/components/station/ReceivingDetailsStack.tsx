@@ -352,22 +352,6 @@ export function ReceivingDetailsStack({ log, onClose, onUpdated, onDeleted }: Re
                 },
               ] satisfies PaneHeaderActionBarAction[]}
               status={form.isSaving ? 'Saving' : undefined}
-              onPrev={() =>
-                window.dispatchEvent(
-                  new CustomEvent('receiving-navigate-detail-overlay', {
-                    detail: { direction: 'prev', currentReceivingId: Number(log.id) },
-                  }),
-                )
-              }
-              onNext={() =>
-                window.dispatchEvent(
-                  new CustomEvent('receiving-navigate-detail-overlay', {
-                    detail: { direction: 'next', currentReceivingId: Number(log.id) },
-                  }),
-                )
-              }
-              prevTitle="Previous receiving"
-              nextTitle="Next receiving"
             />
           </div>
         }

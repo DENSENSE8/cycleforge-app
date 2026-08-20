@@ -33,8 +33,7 @@ import { cn } from '@/utils/_cn';
  * Flush spreadsheet body host — no horizontal gutters, no bottom float pad.
  *
  * Chrome on sheet surfaces uses {@link WORKBENCH_SHEET_CHROME} (same flush
- * left edge) — every workbench ops page is a flush sheet now (the framed
- * `WORKBENCH_CHROME_COLUMN` gutter recipe was retired 2026-08-05). Pair with
+ * left edge) — every workbench ops page is a flush sheet. Pair with
  * `TABLE_SURFACE_SHEET_CLASS` on the grid shell — never raw `p-0` at call sites.
  *
  * Golden: Unbox (major SoT) · Incoming Pipeline · History browse.
@@ -148,10 +147,10 @@ export function WorkbenchTriageBand({
   );
 }
 
-// Bounded absolute-height table hosts (`h-[calc(100dvh-15.5rem)]`) were retired
-// 2026-08-05: the `100dvh` calc ignores the app header above `<main>` and the
-// `flex-1` sheet host defeats the explicit height, so the To-ship lanes
-// collapsed to the `min-h` floor and destabilized the virtualizer. Every ops
+// Table hosts size from the flex column, never an absolute `100dvh` calc: that
+// calc cannot see the app header above `<main>`, and the `flex-1` sheet host
+// defeats an explicit height anyway — the combination collapses a lane to its
+// `min-h` floor and destabilizes the virtualizer. Every ops
 // sheet now self-scrolls via a flex-fill `WORKBENCH_SHEET_HOST` inside a
 // definite flex chain (Unbox golden) — one Y port, no absolute viewport calc.
 
@@ -187,7 +186,7 @@ export function withScopeDivider<T extends { id: string }>(
  * Pass as {@link WorkbenchChromeHeader} `trailing`. Never invent an in-card
  * `TableActionBar` (sticky docking law).
  *
- * **There is deliberately no `fields` slot** (retired 2026-08-02). Column
+ * **There is deliberately no `fields` slot.** Column
  * visibility/display is reached from the grid's own top-right header lip
  * (`LedgerGridColumnHeader` `onOpenColumnDetails` → `GridColumnDetailsPanel`):
  * Fields mutates the column set of the card it sits on, so a page-chrome
@@ -208,8 +207,8 @@ export function withScopeDivider<T extends { id: string }>(
 /**
  * Solid workbench-chrome control radius — **flush-square** (`cornerClass('flush')`
  * → `rounded-none`). Ops chrome is zero-radius industrial: solid CTAs, tab bands,
- * selects and toggle rows sit square on their hairline. The former soft-concentric
- * pill (`nestedCornerClass('card', 0.5)` → `rounded-xl`) is retired debt.
+ * selects and toggle rows sit square on their hairline. Never a soft-concentric
+ * pill (`nestedCornerClass('card', 0.5)` → `rounded-xl`) on ops chrome.
  * Law: `source-of-truth.md` → Workbench chrome flush.
  */
 export const WORKBENCH_CHROME_PILL_CLASS = cornerClass('flush');
@@ -315,8 +314,8 @@ export interface WorkbenchChromeHeaderProps {
    * select lives in the table left gutter, not here.
    *
    * **Column display is NOT here** — it is the grid's own top-right header lip
-   * (`onOpenColumnDetails` → `GridColumnDetailsPanel`), retired from chrome
-   * 2026-08-02. See {@link WorkbenchTrailingCluster}.
+   * (`onOpenColumnDetails` → `GridColumnDetailsPanel`), because Fields mutates
+   * the column set of the card it sits on. See {@link WorkbenchTrailingCluster}.
    */
   trailing?: ReactNode;
   /**

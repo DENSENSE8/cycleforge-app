@@ -1,5 +1,8 @@
 /**
- * Guard: locked / retired column width prefs must not paint `--cf-col-*`.
+ * Guard: a stored width pref paints `--cf-col-*` ONLY for a column that is in
+ * the model today and is resizable. Prefs outlive column models — a key can
+ * name a track that was renamed, locked, or never existed — so the model is
+ * the authority and the pref is the guess.
  *
  *   npx tsx --test src/design-system/components/grid/grid-column-applied-widths.test.ts
  */
@@ -21,7 +24,7 @@ describe('filterAppliedGridColumnWidths', () => {
       date: 192, // old 12rem stamp
       order: 160,
       title: 400,
-      platform: 64, // retired column
+      sidecar: 64, // a pref key with no column in the model
     };
     const applied = filterAppliedGridColumnWidths(stale, RECEIVING_GRID_COLUMNS);
     assert.deepEqual(applied, { title: 400 });
@@ -29,7 +32,7 @@ describe('filterAppliedGridColumnWidths', () => {
     assert.equal(gridColumnTrackRem(date), 4.5);
   });
 
-  it('orders queue: retired + locked prefs stay inert; only Product paints', () => {
+  it('orders queue: unknown + locked prefs stay inert; only Product paints', () => {
     const stale = {
       date: 80,
       condition: 80,

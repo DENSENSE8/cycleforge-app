@@ -25,7 +25,8 @@ import {
 } from '@/components/sourcing/sourcing-shared';
 import { parseSupportModeWire } from '@/components/sidebar/support/support-sidebar-shared';
 import { parseOperationsModeWire } from '@/components/sidebar/operations/operations-sidebar-shared';
-import { parseHomeModeWire, parseForgeViewWire } from '@/features/home/home-modes';
+import { parseForgeViewWire } from '@/components/forge/forge-view';
+import { parseHomeModeWire } from '@/features/home/home-modes';
 import { parseReviewModeWire } from '@/features/review/review-mode';
 import { parseDashboardModeWire } from '@/lib/dashboard/dashboard-domains';
 import { parseLocationsTabWire } from '@/lib/inventory/locations-path';
@@ -173,26 +174,56 @@ const DASHBOARD_ROUTE_PARAMS = defineRouteParams({
 
 
 /**
- * `/` (Home) — Today · Inbox · Tasks · Collab · Forge · Brief.
+ * `/` (Home) — Daily · Today.
  *
  * Replaces `HOME_MODE_SCOPED_PARAMS`.
+ *
+ * Shrank on 2026-08-19 with the mode list: `plan`, `view` and `ticket` belonged
+ * to the deleted Tasks mode and to forge, which moved to `/forge` and took its
+ * two params with it (see {@link FORGE_ROUTE_PARAMS}).
  */
 const HOME_ROUTE_PARAMS = defineRouteParams({
   route: '/',
   owns: {
     mode: paramRoundTrip(parseHomeModeWire),
+    /**
+     * Daily's civil day (`YYYY-MM-DD`) — the day stepper's durable state, which
+     * is what makes a past report linkable to a colleague. Undeclared until
+     * 2026-08-19, so a mode switch through `buildRouteUrl` silently dropped it
+     * (unknown keys are dropped at the boundary — that is the whole contract).
+     */
+    date: paramDateKey,
+    /**
+     * Daily checklist inspector (`HomeDailyMode`). The selected check id, so
+     * a refresh reopens the same right-rail occupant.
+     */
+    item: paramPositiveInt,
     task: paramText,
-    plan: paramText,
-    /** Forge Plans Live: `live`|`agent` (agent-primary) · `doc` (MDX-primary). */
-    view: paramRoundTrip(parseForgeViewWire),
-    /** Selected master-plan `<TicketStatus ticketId>` on forge. */
-    ticket: paramText,
     q: paramText,
     open: paramPositiveInt,
     scope: paramText,
     filter: paramText,
+    /** Today's per-staffer lens (`useMyDayView`). Undeclared until 2026-08-19. */
+    staff: paramPositiveInt,
     /** Today Watch rail — ticket or tracking intake (`?watch=1`). */
     watch: paramFlag,
+  },
+  carries: WORKBENCH_CARRIES,
+});
+
+/**
+ * `/forge` — Plans Live (master-plan MDX + TicketStatus + plan agent).
+ *
+ * Its own spec since 2026-08-19: the console moved off Home's `?mode=forge`
+ * onto a real route, and a param vocabulary belongs to the route that owns it.
+ */
+const FORGE_ROUTE_PARAMS = defineRouteParams({
+  route: '/forge',
+  owns: {
+    /** Forge Plans Live: `live`|`agent` (agent-primary) · `doc` (MDX-primary). */
+    view: paramRoundTrip(parseForgeViewWire),
+    /** Selected master-plan `<TicketStatus ticketId>`. */
+    ticket: paramText,
   },
   carries: WORKBENCH_CARRIES,
 });
@@ -209,6 +240,8 @@ const OPERATIONS_ROUTE_PARAMS = defineRouteParams({
   route: '/operations',
   owns: {
     mode: paramRoundTrip(parseOperationsModeWire),
+    /** Checks mode civil day. */
+    date: paramDateKey,
     /** Shared filter band. */
     q: paramText,
     open: paramPositiveInt,
@@ -619,6 +652,7 @@ export const QUERY_MODE_ROUTE_PARAMS: readonly RouteParamsSpec[] = [
   PACK_ROUTE_PARAMS,
   WAREHOUSE_ROUTE_PARAMS,
   SEARCH_ROUTE_PARAMS,
+  FORGE_ROUTE_PARAMS,
   // `/` is the shortest prefix in the registry, so it must never shadow another
   // route — the registry sorts longest-first, which keeps it last in practice.
   HOME_ROUTE_PARAMS,

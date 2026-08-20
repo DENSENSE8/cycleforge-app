@@ -20,6 +20,9 @@ export type {
   MakeLedgerGridColumnHeaderConfig,
 } from './makeLedgerGridColumnHeader';
 export { useGridSurface } from './useGridSurface';
+export { GridFillCell, GRID_FILL_COLUMN } from './GridFillCell';
+export { gridDataCellClass } from './grid-data-cell-class';
+export { compareGridValues, type GridSortValue } from './grid-column-sort';
 export { LedgerGridSurface } from './LedgerGridSurface';
 export type { LedgerGridColumnHeaderApi } from './LedgerGridSurface';
 export { ColumnResizeHandle } from './ColumnResizeHandle';

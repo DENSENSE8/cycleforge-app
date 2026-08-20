@@ -112,7 +112,7 @@ export const STATION_SCAN_PANE_HOST_CLASS =
  * a click the strip already accepts. (The left dock's own foot expand, which
  * this used to reference for its seat, was deleted 2026-08-19 precisely
  * because it WAS that second door.) Carton `↑↓` stay at the top of the strip.
- * Closed body ({@link UnboxDisplaysUtilityRailBody}) also opens on whole-strip
+ * Closed body ({@link StationDisplaysUtilityRail}) also opens on whole-strip
  * click.
  */
 export const STATION_UTILITY_RAIL_CLASS =

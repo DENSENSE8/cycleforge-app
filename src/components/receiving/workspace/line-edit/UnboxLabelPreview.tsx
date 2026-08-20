@@ -4,10 +4,9 @@
  * Unbox overview label preview — workspace label-type switcher (carton / unit /
  * As Listed / ticket) with editors matching Testing's hover overlays.
  *
- * The sticker is **collapsed by default**. A full-width "Show label" CTA always
- * sits under the PO lines. Typing into the dock notes field (live carton face
- * center) slowly reveals the sticker; expanded, a tiny bottom-right "Hide"
- * collapses it again.
+ * The sticker is **collapsed by default**. A full-width Show / Hide label CTA
+ * always sits under the PO lines (same face, same width). Typing into the dock
+ * notes field (live carton face center) slowly reveals the sticker.
  */
 
 import { useEffect, useRef, useState } from 'react';
@@ -109,13 +108,34 @@ export function UnboxLabelPreview({
 
   return (
     <div data-testid="unbox-label-preview">
+      {/* ds-raw-button: full-width quiet reveal / collapse — same face both states */}
+      <button
+        type="button"
+        onClick={() => setLabelOpen((open) => !open)}
+        className={cn(
+          'ds-raw-button flex h-8 w-full items-center justify-center gap-1',
+          'bg-surface-card text-role-micro font-semibold uppercase tracking-widest text-text-soft',
+          'transition-colors hover:bg-surface-hover hover:text-text-muted',
+          cornerClass('flush'),
+        )}
+        data-testid={labelOpen ? 'unbox-label-hide' : 'unbox-label-show'}
+        aria-expanded={labelOpen}
+      >
+        {labelOpen ? (
+          <ChevronUp className="h-3 w-3" aria-hidden />
+        ) : (
+          <ChevronDown className="h-3 w-3" aria-hidden />
+        )}
+        {labelOpen ? 'Hide label' : 'Show label'}
+      </button>
+
       <AnimatePresence initial={false}>
         {labelOpen ? (
           <motion.div
             key="unbox-label-body"
             {...labelCollapse}
             transition={labelReveal}
-            className="relative overflow-hidden"
+            className="overflow-hidden"
             data-testid="unbox-label-open"
           >
             <WorkspaceLabelPreviewCard
@@ -140,25 +160,6 @@ export function UnboxLabelPreview({
               editorOpen={showUnit ? unitEditorOpen : undefined}
               onEditorOpenChange={showUnit ? setUnitEditorOpen : undefined}
             />
-            <div className="pointer-events-none absolute bottom-1 right-1 z-raised flex justify-end">
-              {/* ds-raw-button: micro bottom-right collapse — not a solid Button face */}
-              <button
-                type="button"
-                onClick={() => setLabelOpen(false)}
-                aria-expanded={true}
-                data-testid="unbox-label-hide"
-                className={cn(
-                  'ds-raw-button pointer-events-auto inline-flex h-5 items-center gap-0.5 px-1.5',
-                  'bg-surface-card/90 text-role-micro font-semibold uppercase tracking-widest text-text-soft',
-                  'ring-1 ring-border-hairline backdrop-blur-sm',
-                  'transition-colors hover:bg-surface-hover hover:text-text-muted',
-                  cornerClass('flush'),
-                )}
-              >
-                <ChevronUp className="h-2.5 w-2.5" aria-hidden />
-                Hide
-              </button>
-            </div>
             {c.labelPayload && typeof c.buildLabelPayload === 'function' ? (
               <LabelEditPopover
                 open={showCarton && cartonEditorOpen}
@@ -183,25 +184,6 @@ export function UnboxLabelPreview({
           </motion.div>
         ) : null}
       </AnimatePresence>
-
-      {!labelOpen ? (
-        // ds-raw-button: full-width quiet reveal — always under PO lines when collapsed
-        <button
-          type="button"
-          onClick={() => setLabelOpen(true)}
-          className={cn(
-            'ds-raw-button flex h-8 w-full items-center justify-center gap-1',
-            'bg-surface-card text-role-micro font-semibold uppercase tracking-widest text-text-soft',
-            'transition-colors hover:bg-surface-hover hover:text-text-muted',
-            cornerClass('flush'),
-          )}
-          data-testid="unbox-label-show"
-          aria-expanded={false}
-        >
-          <ChevronDown className="h-3 w-3" aria-hidden />
-          Show label
-        </button>
-      ) : null}
     </div>
   );
 }

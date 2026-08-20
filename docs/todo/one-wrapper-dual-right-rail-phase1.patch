@@ -1,0 +1,750 @@
+# Phase 1 (split-aware frame math) — parked 2026-08-19.
+# Split is a lux feature and lands LAST; this is the finished, verified work,
+# held out of the tree until then. Reapply with:
+#   git apply docs/todo/one-wrapper-dual-right-rail-phase1.patch
+#   (plus src/lib/right-rail/useCenterSplitColumns.ts, appended below as a new file)
+#
+diff --git a/src/components/outbound/orders/OrdersCompareHost.tsx b/src/components/outbound/orders/OrdersCompareHost.tsx
+index 3663022d6..d0fae5f50 100644
+--- a/src/components/outbound/orders/OrdersCompareHost.tsx
++++ b/src/components/outbound/orders/OrdersCompareHost.tsx
+@@ -16,14 +16,19 @@ import {
+ import { useSearchParams } from 'next/navigation';
+ import {
+   defaultOrdersComparePanes,
++  ordersComparePaneColumns,
+   ordersComparePaneCount,
+   readOrdersCompareFromSearch,
+-  resolveOrdersCompareLayoutForWidth,
++  resolveOrdersCompareLayoutForColumns,
+   type OrdersCompareLayout,
+   type OrdersComparePaneId,
+   type OrdersPaneQuery,
++  ORDERS_COMPARE_PANE_GAP_PX,
+   ORDERS_COMPARE_PANE_IDS,
++  ORDERS_COMPARE_PANE_MIN_PX,
+ } from '@/lib/shipping/orders-compare-layout';
++import { centerPaneColumnsThatFit } from '@/lib/right-rail/frame';
++import { useCenterSplitDemand } from '@/lib/right-rail/useCenterSplitColumns';
+ import { OrdersPaneTable } from './OrdersPaneTable';
+ import { HorizontalEdgeResizeHandle } from '@/design-system/components/HorizontalEdgeResizeHandle';
+ import { useHorizontalEdgeResize } from '@/design-system/hooks/useHorizontalEdgeResize';
+@@ -59,34 +64,65 @@ export function OrdersCompareHost({
+     setPanes([...fromUrl.panes]);
+   }, [fromUrl]);
+ 
++  // Two halves, two owners.
++  //
++  // 1. RESERVE — the frame is the only party that can see the left rail, the
++  //    center and the right panel, so it is what must keep `columns × paneMin`
++  //    out of the panel's cap. Without this, opening the inspector at 1440 left
++  //    the right pane at 260px against a 360 min (measured, and no drag was
++  //    involved — the panel simply opened).
++  useCenterSplitDemand({
++    columns: ordersComparePaneColumns(layout),
++    paneMinPx: ORDERS_COMPARE_PANE_MIN_PX,
++    gapPx: ORDERS_COMPARE_PANE_GAP_PX,
++  });
++
++  // 2. DIVIDE — how this host splits ITSELF is local, and must use its own
++  //    measured width: the frame cannot see the sheet chrome between them (at
++  //    1440 the center is 1020 while this host is 741, and deciding from 1020
++  //    is what kept a two-up split alive at 260px). This is not the circular
++  //    input `frame.ts` refuses — splitting a known width between panes feeds
++  //    nothing back into whether the panel pushes.
++  const [hostWidth, setHostWidth] = useState(0);
+   useEffect(() => {
+     const el = hostRef.current;
+-    if (!el) return;
+-    const ro = new ResizeObserver((entries) => {
+-      const w = entries[0]?.contentRect.width ?? 0;
+-      setLayout((prev) => {
+-        const next = resolveOrdersCompareLayoutForWidth(prev, w);
+-        if (next === prev) return prev;
+-        setPanes((p) => {
+-          const defaults = defaultOrdersComparePanes(next);
+-          const count = ordersComparePaneCount(next);
+-          return Array.from({ length: count }, (_, i) => p[i] ?? defaults[i]!);
+-        });
+-        return next;
+-      });
+-    });
++    if (!el || typeof ResizeObserver === 'undefined') return undefined;
++    const publish = () => setHostWidth(Math.round(el.getBoundingClientRect().width));
++    publish();
++    const ro = new ResizeObserver(publish);
+     ro.observe(el);
+     return () => ro.disconnect();
+   }, []);
+ 
+-  const count = ordersComparePaneCount(layout);
++  const columnsFit = centerPaneColumnsThatFit(
++    hostWidth,
++    ORDERS_COMPARE_PANE_MIN_PX,
++    ORDERS_COMPARE_PANE_GAP_PX,
++  );
++
++  /**
++   * The downgrade is DERIVED, never latched into `layout`.
++   *
++   * `layout` stays what the operator asked for (the URL); `effectiveLayout` is
++   * what currently fits. Writing the downgrade back into state made it one-way:
++   * the first render has no measurement yet, so the host latched `single` and
++   * widening the viewport could never restore the split. Deriving it means the
++   * split comes back the moment the room does.
++   *
++   * `hostWidth === 0` is "not measured yet", not "nothing fits" — honour the
++   * request until there is an actual answer, or every mount flashes single.
++   */
++  const effectiveLayout =
++    hostWidth > 0 ? resolveOrdersCompareLayoutForColumns(layout, columnsFit) : layout;
++
++  const count = ordersComparePaneCount(effectiveLayout);
+   const visiblePanes = useMemo(() => {
+-    const defaults = defaultOrdersComparePanes(layout);
++    const defaults = defaultOrdersComparePanes(effectiveLayout);
+     return Array.from(
+       { length: count },
+       (_, i) => panes[i] ?? defaults[i]!,
+     );
+-  }, [count, layout, panes]);
++  }, [count, effectiveLayout, panes]);
+ 
+   const { width: leftWidth, isDragging, edgeHandleProps } =
+     useHorizontalEdgeResize({
+@@ -99,6 +135,25 @@ export function OrdersCompareHost({
+       testId: 'orders-compare-split-resize',
+     });
+ 
++  /**
++   * The fixed pane is clamped so the FLEX pane keeps its minimum.
++   *
++   * Without this the left pane holds its stored width (default 480) and the
++   * right one absorbs every squeeze — which is literally how 1440 + inspector
++   * produced `480 + 260` against a 360 min. The stored preference is untouched;
++   * only what is painted is clamped, so widening the frame restores it.
++   */
++  const clampedLeftWidth =
++    hostWidth > 0
++      ? Math.max(
++          280,
++          Math.min(
++            leftWidth,
++            hostWidth - ORDERS_COMPARE_PANE_MIN_PX - ORDERS_COMPARE_PANE_GAP_PX,
++          ),
++        )
++      : leftWidth;
++
+   const paneNodes = visiblePanes.map((query, i) => {
+     const id = ORDERS_COMPARE_PANE_IDS[i]!;
+     return (
+@@ -109,7 +164,7 @@ export function OrdersCompareHost({
+         active={activePane === id}
+         onActivate={() => setActivePane(id)}
+         selectMode={selectMode}
+-        className={layout === 'quad' ? 'min-h-[12rem]' : undefined}
++        className={effectiveLayout === 'quad' ? 'min-h-[12rem]' : undefined}
+         columnTriggerPortalTarget={
+           activePane === id ? columnTriggerPortalTarget : null
+         }
+@@ -134,14 +189,15 @@ export function OrdersCompareHost({
+     <div
+       ref={hostRef}
+       className={cn('flex h-full min-h-0 w-full min-w-0 flex-col', className)}
+-      data-orders-compare-layout={layout}
++      data-orders-compare-layout={effectiveLayout}
++      data-orders-compare-requested={layout}
+       data-testid="orders-compare-host"
+     >
+-      {layout === 'split' ? (
++      {effectiveLayout === 'split' ? (
+         <div className="flex min-h-0 flex-1">
+           <div
+             className="relative flex min-h-0 shrink-0 flex-col overflow-visible"
+-            style={{ width: leftWidth } as CSSProperties}
++            style={{ width: clampedLeftWidth } as CSSProperties}
+           >
+             {paneNodes[0]}
+             <HorizontalEdgeResizeHandle
+@@ -156,7 +212,7 @@ export function OrdersCompareHost({
+             {paneNodes[1]}
+           </div>
+         </div>
+-      ) : layout === 'quad' ? (
++      ) : effectiveLayout === 'quad' ? (
+         <div className="grid min-h-0 flex-1 grid-cols-2 grid-rows-2 gap-px bg-border-soft">
+           {paneNodes}
+         </div>
+diff --git a/src/lib/right-rail/frame.test.ts b/src/lib/right-rail/frame.test.ts
+index fea4a00fa..707272b54 100644
+--- a/src/lib/right-rail/frame.test.ts
++++ b/src/lib/right-rail/frame.test.ts
+@@ -19,6 +19,9 @@ import {
+ } from '@/components/station/workbench/workbench-layout';
+ import {
+   CONTEXT_RAIL_PARKED_PX,
++  centerPaneColumnsThatFit,
++  effectiveCenterFloorPx,
++  setCenterSplitDemand,
+   MIN_WORK_SURFACE_PX,
+   RIGHT_RAIL_GUTTER_PX,
+   RIGHT_RAIL_PUSH_MIN_FRAME_PX,
+@@ -32,12 +35,16 @@ import {
+   setStationContextSashArmed,
+   setStationDisplaysSashArmed,
+   setStationDisplaysSashDragging,
++  setRightRailDemand,
+   setStationPushDemand,
+   stationContextSashMaxPx,
+   stationDisplaysSashMaxPx,
+   subscribeStationFarRailRequest,
+ } from './frame';
+ 
++import { DETAIL_STACK_RESIZE } from '@/design-system/shells/detail-stack';
++
++const DETAIL_STACK_RESIZE_MIN = DETAIL_STACK_RESIZE.minWidthPx; // 360
+ const LEFT_MIN = CONTEXT_PANEL_RESIZE.minWidthPx; // 300
+ const DISPLAYS_MIN = STATION_DISPLAYS_MIN_WIDTH_PX; // 280
+ const FLOOR = STATION_PUSH_CENTER_FLOOR_PX; // 720
+@@ -335,3 +342,157 @@ describe('Option A — local sash clamps + the budget is sourced (no coupling)',
+     assert.equal(getRightRailFrame().stationContextSashArmed, false);
+   });
+ });
++
++
++/**
++ * Phase 1 — split-aware frame math.
++ *
++ * The measured failure this closes (`tests/e2e/frame-baseline.spec.ts`,
++ * 2026-08-19, To-ship at 1440): opening the one inspector over a two-up compare
++ * left the right pane at **260px** against its own 360 min. No drag was
++ * involved; the panel simply opened, and the floor the cap was computed against
++ * knew nothing about the split.
++ */
++describe('Phase 1 — the center floor knows about the split', () => {
++  const PANE_MIN = 360; // ORDERS_COMPARE_PANE_MIN_PX
++
++  it('no split leaves the floor exactly as it was (the stated non-goal)', () => {
++    assert.equal(
++      effectiveCenterFloorPx({ centerFloorPx: MIN_WORK_SURFACE_PX }),
++      MIN_WORK_SURFACE_PX,
++    );
++    assert.equal(
++      effectiveCenterFloorPx({
++        centerFloorPx: MIN_WORK_SURFACE_PX,
++        centerPaneColumns: 1,
++        centerPaneMinPx: PANE_MIN,
++      }),
++      MIN_WORK_SURFACE_PX,
++    );
++    // A declared column count with no declared min cannot raise the floor.
++    assert.equal(
++      effectiveCenterFloorPx({ centerFloorPx: MIN_WORK_SURFACE_PX, centerPaneColumns: 2 }),
++      MIN_WORK_SURFACE_PX,
++    );
++  });
++
++  it('2 columns raise the floor to 720 — still under the desk floor, so no change', () => {
++    // 2 × 360 = 720 < 784: the desk floor already covers a two-up split. This is
++    // why the 1440 starve was NOT a floor problem at 2 columns — see below.
++    assert.equal(
++      effectiveCenterFloorPx({
++        centerFloorPx: MIN_WORK_SURFACE_PX,
++        centerPaneColumns: 2,
++        centerPaneMinPx: PANE_MIN,
++      }),
++      MIN_WORK_SURFACE_PX,
++    );
++  });
++
++  it('4 columns raise the floor above the desk floor', () => {
++    assert.equal(
++      effectiveCenterFloorPx({
++        centerFloorPx: MIN_WORK_SURFACE_PX,
++        centerPaneColumns: 4,
++        centerPaneMinPx: PANE_MIN,
++      }),
++      1440,
++    );
++  });
++
++  it('the raised floor is what caps the panel — 1440, 4 columns, no rail', () => {
++    const noSplit = resolveRightRailFrame({
++      ...desk,
++      railCostOpenPx: 0,
++      frameWidthPx: 1440,
++    });
++    const split4 = resolveRightRailFrame({
++      ...desk,
++      railCostOpenPx: 0,
++      frameWidthPx: 1440,
++      centerPaneColumns: 4,
++      centerPaneMinPx: PANE_MIN,
++    });
++    assert.equal(noSplit.capPx, 1440 - MIN_WORK_SURFACE_PX); // 656
++    // The split floor eats the whole surplus, so the panel caps at its own min.
++    assert.equal(split4.capPx, DETAIL_STACK_RESIZE_MIN);
++    assert.ok(split4.capPx < noSplit.capPx);
++  });
++
++  it('a parked rail hands its width to the split, not to the panel', () => {
++    const open = resolveRightRailFrame({
++      ...desk,
++      frameWidthPx: 1440,
++      centerPaneColumns: 4,
++      centerPaneMinPx: PANE_MIN,
++    });
++    const parked = resolveRightRailFrame({
++      ...desk,
++      railOperatorCollapsed: true,
++      frameWidthPx: 1440,
++      centerPaneColumns: 4,
++      centerPaneMinPx: PANE_MIN,
++    });
++    // Both pin at the panel min: the 4-column floor (1440) is the whole frame.
++    assert.equal(open.capPx, DETAIL_STACK_RESIZE_MIN);
++    assert.equal(parked.capPx, DETAIL_STACK_RESIZE_MIN);
++  });
++
++  it('1920 seats 4 columns and still leaves the panel real width', () => {
++    const r = resolveRightRailFrame({
++      ...desk,
++      railCostOpenPx: 0,
++      frameWidthPx: 1920,
++      centerPaneColumns: 4,
++      centerPaneMinPx: PANE_MIN,
++    });
++    assert.equal(r.capPx, 1920 - 1440); // 480
++  });
++});
++
++describe('Phase 1 — the ONE pane-fit formula', () => {
++  const PANE_MIN = 360;
++  const GAP = 1;
++
++  it('counts columns, gap included, and never returns zero', () => {
++    assert.equal(centerPaneColumnsThatFit(0, PANE_MIN, GAP), 1);
++    assert.equal(centerPaneColumnsThatFit(359, PANE_MIN, GAP), 1);
++    assert.equal(centerPaneColumnsThatFit(721, PANE_MIN, GAP), 2);
++    assert.equal(centerPaneColumnsThatFit(720, PANE_MIN, GAP), 1);
++    assert.equal(centerPaneColumnsThatFit(1443, PANE_MIN, GAP), 4);
++  });
++
++  it('an undeclared pane min never downgrades anything', () => {
++    assert.equal(centerPaneColumnsThatFit(200, 0), 1);
++  });
++
++  it('the store answers the fit against BOTH edges — the 260px case', () => {
++    // Reproduce the measured 1440 To-ship frame: no route rail (Pattern E),
++    // inspector open at its 420 default.
++    setCenterSplitDemand({ columns: 1, paneMinPx: 0 });
++    setRightRailContextRail({ railCostOpenPx: 0, railOperatorCollapsed: false });
++    setStationPushDemand({ active: false, desiredWidthPx: 420 });
++    setRightRailFrameWidth(1440);
++    setRightRailDemand({ wantsPush: true, desiredWidthPx: 420 });
++    setCenterSplitDemand({ columns: 2, paneMinPx: PANE_MIN, gapPx: GAP });
++
++    // Center actually available = 1440 − 0 − 420 = 1020, which seats 2 columns
++    // of 360. So the split is HONEST here and stays two-up …
++    assert.equal(getRightRailFrame().centerPaneColumnsFit, 2);
++
++    // … but the old host-measured ladder had no way to know that, because it
++    // read its own 1020 against a threshold and never saw the 480px left pane
++    // that made the right one 260. The fixed-width left pane is the pane-level
++    // half of this, closed in the host.
++    // Narrow until the panel's own minimum is all that is left for it: at 1040
++    // the cap has already pinned to 360, so the center has 680 — under two
++    // columns. The split downgrades instead of starving a pane.
++    setRightRailFrameWidth(1040);
++    assert.equal(getRightRailFrame().centerPaneColumnsFit, 1);
++
++    // Reset the module singleton for any test that runs after this one.
++    setCenterSplitDemand({ columns: 1, paneMinPx: 0 });
++    setRightRailDemand({ wantsPush: false, desiredWidthPx: 420 });
++    setRightRailFrameWidth(0);
++  });
++});
+diff --git a/src/lib/right-rail/frame.ts b/src/lib/right-rail/frame.ts
+index d1fa9023c..27eecb70e 100644
+--- a/src/lib/right-rail/frame.ts
++++ b/src/lib/right-rail/frame.ts
+@@ -128,6 +128,17 @@ interface RightRailFrameInput {
+    * {@link STATION_PUSH_CENTER_FLOOR_PX} (720 — middle lock).
+    */
+   centerFloorPx: number;
++  /**
++   * How many side-by-side COLUMNS the center is currently split into
++   * (`clayout=split` → 2, `quad` → 2 columns × 2 rows, single / absent → 1).
++   *
++   * Rows do not widen the floor, so this is deliberately *columns*, not panes.
++   * Omitted / 1 leaves the floor exactly as it was — a route with no split open
++   * sees no change, which is Phase 1's stated non-goal.
++   */
++  centerPaneColumns?: number;
++  /** The narrowest a single center column may be worked at. */
++  centerPaneMinPx?: number;
+ }
+ 
+ interface RightRailFrameResolution {
+@@ -177,6 +188,24 @@ interface RightRailFrameSnapshot extends RightRailFrameResolution {
+    * {@link setStationContextSashArmed}.
+    */
+   stationContextSashArmed: boolean;
++  /**
++   * How many center columns actually fit right now, at the declared pane min,
++   * beside the resting left rail and the right panel's own minimum
++   * ({@link centerPaneColumnsThatFit}).
++   *
++   * A compare host reads THIS instead of observing its own width. That is the
++   * whole point: the host's width is downstream of the push it would otherwise
++   * be using to decide, and it cannot see the left rail or the panel at all.
++   * `1` until a host declares a pane min.
++   */
++  centerPaneColumnsFit: number;
++  /**
++   * What the center will actually have: the frame less the resting left rail and
++   * less what the right panel is entitled to. A split host clamps its own
++   * fixed-width pane against this so the FLEX pane keeps its minimum — the
++   * pane-level half of the same starve (`480 + 260` at 1440, measured).
++   */
++  centerAvailablePx: number;
+ }
+ 
+ /**
+@@ -188,14 +217,68 @@ function restingLeftPx(input: Pick<RightRailFrameInput, 'railCostOpenPx' | 'rail
+   return input.railOperatorCollapsed ? CONTEXT_RAIL_PARKED_PX : input.railCostOpenPx;
+ }
+ 
++/**
++ * How many center columns of `paneMinPx` actually fit in `availableCenterPx`.
++ *
++ * The ONE pane-fit formula. `orders-compare-layout.ts` used to answer this
++ * separately from a `ResizeObserver` on the compare host — i.e. it measured the
++ * very center the right-edge push resizes, which is the circular input this
++ * file's docblock refuses, and it measured the HOST rather than the PANES (which
++ * is how 1440 kept a two-up split with a 260px right pane while 1280 flipped to
++ * single). One formula, two callers.
++ *
++ * Returns at least 1: a center too narrow for one column still renders one and
++ * lets it scroll — never zero columns, never an overlay.
++ */
++export function centerPaneColumnsThatFit(
++  availableCenterPx: number,
++  paneMinPx: number,
++  gapPx = 0,
++): number {
++  const available = Number.isFinite(availableCenterPx) ? Math.max(0, availableCenterPx) : 0;
++  const min = Number.isFinite(paneMinPx) && paneMinPx > 0 ? paneMinPx : 0;
++  if (min <= 0) return 1;
++  const gap = Number.isFinite(gapPx) ? Math.max(0, gapPx) : 0;
++  // n columns cost n*min + (n-1)*gap.
++  const fit = Math.floor((available + gap) / (min + gap));
++  return Math.max(1, fit);
++}
++
++/**
++ * The floor the center must actually keep — its lane floor, raised to seat the
++ * columns it is currently split into.
++ *
++ * This is the whole of Phase 1: the right panel's cap is computed against a
++ * floor that KNOWS about the split, so opening (or dragging) the panel can no
++ * longer push a pane under its own minimum. Measured 2026-08-19 at 1440: split +
++ * inspector left the right pane at 260px against a 360 min, and no drag was
++ * involved — the panel simply opened.
++ */
++export function effectiveCenterFloorPx(input: {
++  centerFloorPx: number;
++  centerPaneColumns?: number;
++  centerPaneMinPx?: number;
++}): number {
++  const lane =
++    Number.isFinite(input.centerFloorPx) && input.centerFloorPx > 0 ? input.centerFloorPx : 0;
++  const columns = Math.max(1, Math.floor(input.centerPaneColumns ?? 1));
++  const paneMin = Number.isFinite(input.centerPaneMinPx ?? 0)
++    ? Math.max(0, input.centerPaneMinPx ?? 0)
++    : 0;
++  if (columns <= 1 || paneMin <= 0) return lane;
++  return Math.max(lane, columns * paneMin);
++}
++
+ /**
+  * Pure. Every worked number in the unit test comes from here, so the budget is
+  * provable without mounting anything.
+  */
+ export function resolveRightRailFrame(input: RightRailFrameInput): RightRailFrameResolution {
+-  const { frameWidthPx, wantsPush, centerFloorPx } = input;
++  const { frameWidthPx, wantsPush } = input;
+   const leftPx = restingLeftPx(input);
+-  const floor = Number.isFinite(centerFloorPx) && centerFloorPx > 0 ? centerFloorPx : 0;
++  // Split-aware (Phase 1): the floor rises with the center's column count so a
++  // panel open / drag cannot starve a pane below its own min.
++  const floor = effectiveCenterFloorPx(input);
+ 
+   // Cap against the ACTUAL left cost so the operator can keep the context rail
+   // open while the right panel grows. Station push passes
+@@ -331,6 +414,10 @@ const state: RightRailFrameInput & {
+   stationDisplaysSashArmed: boolean;
+   /** True while the context sash is armed to close Displays (reverse Stage 3). */
+   stationContextSashArmed: boolean;
++  /** Center split demand, published by the route's compare host. */
++  centerPaneColumns: number;
++  centerPaneMinPx: number;
++  centerPaneGapPx: number;
+ } = {
+   frameWidthPx: 0,
+   railCostOpenPx: 0,
+@@ -344,6 +431,9 @@ const state: RightRailFrameInput & {
+   stationDisplaysSashDragging: false,
+   stationDisplaysSashArmed: false,
+   stationContextSashArmed: false,
++  centerPaneColumns: 1,
++  centerPaneMinPx: 0,
++  centerPaneGapPx: 0,
+ };
+ 
+ let snapshot: RightRailFrameSnapshot = {
+@@ -353,6 +443,8 @@ let snapshot: RightRailFrameSnapshot = {
+   stationContextCapPx: CONTEXT_PANEL_RESIZE.minWidthPx,
+   stationDisplaysSashArmed: false,
+   stationContextSashArmed: false,
++  centerPaneColumnsFit: 1,
++  centerAvailablePx: 0,
+ };
+ 
+ const SERVER_SNAPSHOT: RightRailFrameSnapshot = {
+@@ -363,6 +455,8 @@ const SERVER_SNAPSHOT: RightRailFrameSnapshot = {
+   stationContextCapPx: CONTEXT_PANEL_RESIZE.minWidthPx,
+   stationDisplaysSashArmed: false,
+   stationContextSashArmed: false,
++  centerPaneColumnsFit: 1,
++  centerAvailablePx: 0,
+ };
+ 
+ function frameInputFromState(): RightRailFrameInput {
+@@ -375,6 +469,8 @@ function frameInputFromState(): RightRailFrameInput {
+     // Station Displays — floor = workbench lock (720) so middle never yields.
+     // Desk inspectors keep the outbound/work-surface floor.
+     centerFloorPx: station ? STATION_PUSH_CENTER_FLOOR_PX : MIN_WORK_SURFACE_PX,
++    centerPaneColumns: state.centerPaneColumns,
++    centerPaneMinPx: state.centerPaneMinPx,
+   };
+ }
+ 
+@@ -439,11 +535,33 @@ function recompute() {
+     state.frameWidthPx,
+     displaysDragging ? state.stationPushDesiredWidthPx : STATION_DISPLAYS_MIN_WIDTH_PX,
+   );
++  // How many columns fit in what the center will ACTUALLY have: the frame less
++  // the resting left rail and less whatever the right panel is entitled to.
++  // Computed here rather than in the compare host so the answer accounts for
++  // both edges — a host observing itself can see neither.
++  const rightReservedPx = next.mode === 'push' && (state.wantsPush || station)
++    ? Math.min(
++        Math.max(state.desiredWidthPx, state.stationPushDesiredWidthPx, DETAIL_STACK_RESIZE.minWidthPx),
++        next.capPx,
++      )
++    : 0;
++  const centerAvailablePx = Math.max(0, state.frameWidthPx - leftCost - rightReservedPx);
++  const centerPaneColumnsFit =
++    state.centerPaneMinPx > 0
++      ? centerPaneColumnsThatFit(
++          centerAvailablePx,
++          state.centerPaneMinPx,
++          state.centerPaneGapPx,
++        )
++      : 1;
++
+   // Cached snapshot: `useSyncExternalStore` re-renders on identity change, so a
+   // no-op publish (a ResizeObserver firing at the same width) must not churn.
+   if (
+     next.mode === snapshot.mode &&
+     next.capPx === snapshot.capPx &&
++    centerPaneColumnsFit === snapshot.centerPaneColumnsFit &&
++    centerAvailablePx === snapshot.centerAvailablePx &&
+     collapsed === snapshot.stationDisplaysCollapsed &&
+     stationDisplaysCapPx === snapshot.stationDisplaysCapPx &&
+     stationContextCapPx === snapshot.stationContextCapPx &&
+@@ -459,6 +577,8 @@ function recompute() {
+     stationContextCapPx,
+     stationDisplaysSashArmed: state.stationDisplaysSashArmed,
+     stationContextSashArmed: state.stationContextSashArmed,
++    centerPaneColumnsFit,
++    centerAvailablePx,
+   };
+   listeners.forEach((l) => l());
+ }
+@@ -499,6 +619,36 @@ export function getServerRightRailFrame(): RightRailFrameSnapshot {
+   return SERVER_SNAPSHOT;
+ }
+ 
++/**
++ * A route's compare host — how many center COLUMNS it is showing and the
++ * narrowest one may be worked at.
++ *
++ * Publishing this is what makes the right panel's cap split-aware (Phase 1):
++ * the floor rises to `columns × paneMin`, so opening or dragging the panel can
++ * no longer push a pane under its own minimum. A host with no split open
++ * publishes `{ columns: 1, paneMinPx: 0 }` and nothing changes.
++ */
++export function setCenterSplitDemand(next: {
++  columns: number;
++  paneMinPx: number;
++  gapPx?: number;
++}): void {
++  const columns = Math.max(1, Math.floor(next.columns));
++  const paneMinPx = Math.max(0, next.paneMinPx);
++  const gapPx = Math.max(0, next.gapPx ?? 0);
++  if (
++    state.centerPaneColumns === columns &&
++    state.centerPaneMinPx === paneMinPx &&
++    state.centerPaneGapPx === gapPx
++  ) {
++    return;
++  }
++  state.centerPaneColumns = columns;
++  state.centerPaneMinPx = paneMinPx;
++  state.centerPaneGapPx = gapPx;
++  recompute();
++}
++
+ /** `ResponsiveLayout` — the content row's measured width. */
+ export function setRightRailFrameWidth(frameWidthPx: number): void {
+   if (state.frameWidthPx === frameWidthPx) return;
+diff --git a/src/lib/shipping/orders-compare-layout.ts b/src/lib/shipping/orders-compare-layout.ts
+index 21d9be7f6..5a9d3d5f4 100644
+--- a/src/lib/shipping/orders-compare-layout.ts
++++ b/src/lib/shipping/orders-compare-layout.ts
+@@ -6,6 +6,7 @@
+  * Single layout omits the params (clean URL).
+  */
+ 
++import { centerPaneColumnsThatFit } from '@/lib/right-rail/frame';
+ import type { DashboardOrderView } from '@/utils/dashboard-search-state';
+ 
+ export const ORDERS_COMPARE_LAYOUT_PARAM = 'clayout';
+@@ -22,11 +23,22 @@ export const ORDERS_COMPARE_PANE_IDS: readonly OrdersComparePaneId[] = [
+   'd',
+ ];
+ 
+-/** Minimum usable width per compare pane before auto-downgrade. */
+-const ORDERS_COMPARE_PANE_MIN_PX = 360;
++/**
++ * Minimum usable width per compare pane before auto-downgrade.
++ *
++ * Exported since 2026-08-19 so the right-rail frame can reserve it: the panel's
++ * cap is computed against `columns × this`, which is what stops an inspector
++ * open from leaving a pane at 260px (measured, `tests/e2e/frame-baseline.spec.ts`).
++ */
++export const ORDERS_COMPARE_PANE_MIN_PX = 360;
++
++/** Column gap — `split` is flush; `quad` uses a 1px rule between its columns. */
++export const ORDERS_COMPARE_PANE_GAP_PX = 1;
+ 
+-/** Quad needs four mins; below this center floor, force split. */
+-const ORDERS_COMPARE_QUAD_FLOOR_PX = ORDERS_COMPARE_PANE_MIN_PX * 2 + 24;
++/** How many side-by-side COLUMNS a layout paints (quad is 2×2, not 4 wide). */
++export function ordersComparePaneColumns(layout: OrdersCompareLayout): number {
++  return layout === 'single' ? 1 : 2;
++}
+ 
+ const LAYOUT_SET = new Set<OrdersCompareLayout>(['single', 'split', 'quad']);
+ 
+@@ -127,21 +139,40 @@ export function writeOrdersCompareParams(
+   }
+ }
+ 
+-/** Downgrade quad → split (or split → single) when the center floor is tight. */
++/**
++ * Downgrade quad → split → single when the center cannot seat two columns.
++ *
++ * **Delegates to {@link centerPaneColumnsThatFit} — one pane-fit formula for the
++ * whole app.** This used to carry its own arithmetic (`< paneMin*2 + 16` for
++ * split, `+ 24` for quad) fed by a `ResizeObserver` on the compare host, which
++ * was wrong in two ways at once: it measured the HOST rather than the panes, and
++ * the host's width is downstream of the right-edge push that was squeezing it.
++ * At 1440 that combination kept a two-up split alive with a 260px right pane
++ * while 1280 flipped all the way to single.
++ *
++ * `columnsFit` now comes from the frame store, which can see the left rail and
++ * the right panel; this function stays exported for the pure/unit path and for
++ * callers that genuinely only have a width.
++ */
+ export function resolveOrdersCompareLayoutForWidth(
+   layout: OrdersCompareLayout,
+   centerWidthPx: number,
+ ): OrdersCompareLayout {
+-  if (layout === 'quad' && centerWidthPx < ORDERS_COMPARE_QUAD_FLOOR_PX) {
+-    return 'split';
+-  }
+-  if (
+-    layout === 'split'
+-    && centerWidthPx < ORDERS_COMPARE_PANE_MIN_PX * 2 + 16
+-  ) {
+-    return 'single';
+-  }
+-  return layout;
++  const fit = centerPaneColumnsThatFit(
++    centerWidthPx,
++    ORDERS_COMPARE_PANE_MIN_PX,
++    ORDERS_COMPARE_PANE_GAP_PX,
++  );
++  return resolveOrdersCompareLayoutForColumns(layout, fit);
++}
++
++/** The same downgrade, given a column count already resolved against the frame. */
++export function resolveOrdersCompareLayoutForColumns(
++  layout: OrdersCompareLayout,
++  columnsFit: number,
++): OrdersCompareLayout {
++  if (layout === 'single') return 'single';
++  return columnsFit >= 2 ? layout : 'single';
+ }
+ 
+ /** Clear compare params (used when entering drill — mutually exclusive). */
+diff --git a/src/lib/right-rail/useCenterSplitColumns.ts b/src/lib/right-rail/useCenterSplitColumns.ts
+new file mode 100644
+index 000000000..46fc02ed4
+--- /dev/null
++++ b/src/lib/right-rail/useCenterSplitColumns.ts
+@@ -0,0 +1,41 @@
++'use client';
++
++/**
++ * Publish a route's center-split demand into the right-rail frame budget.
++ *
++ * **Reserving for a split and dividing a host between panes are two jobs, and
++ * this hook is only the first.** The frame is the only place that can see all
++ * three columns, so it is what must reserve `columns × paneMin` before handing
++ * the right panel a cap — otherwise opening the inspector silently eats pane
++ * width (measured 2026-08-19 at 1440: `480 + 260` against a 360 min,
++ * `tests/e2e/frame-baseline.spec.ts`).
++ *
++ * Dividing the host is the *host's* job and uses the host's own measured width,
++ * because the frame cannot see the sheet chrome between them — at 1440 the frame
++ * knows the center is 1020 while the compare host is 741. That local measurement
++ * is not the circular input `frame.ts` refuses: splitting a known width between
++ * panes feeds nothing back into whether the panel pushes.
++ *
++ * Declaring `{ columns: 1, paneMinPx: 0 }` (or unmounting) restores the frame
++ * exactly as it was — a route with no split open sees no change.
++ */
++
++import { useEffect } from 'react';
++import { setCenterSplitDemand } from './frame';
++
++export function useCenterSplitDemand(demand: {
++  /** Side-by-side COLUMNS this host wants (quad is 2, not 4). */
++  columns: number;
++  /** The narrowest one column may be worked at. */
++  paneMinPx: number;
++  gapPx?: number;
++}): void {
++  const { columns, paneMinPx, gapPx = 0 } = demand;
++
++  useEffect(() => {
++    setCenterSplitDemand({ columns, paneMinPx, gapPx });
++    // Hand the budget back on unmount, or a route that navigated away keeps
++    // reserving pane width the next surface has no panes for.
++    return () => setCenterSplitDemand({ columns: 1, paneMinPx: 0, gapPx: 0 });
++  }, [columns, paneMinPx, gapPx]);
++}

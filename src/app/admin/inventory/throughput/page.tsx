@@ -187,7 +187,6 @@ export default async function ThroughputPage({
       <PageHeader
         backHref="/admin/inventory"
         title="Throughput"
-        maxWidth="7xl"
         rightSlot={
           <nav className="flex items-center gap-1 text-xs">
             {(['24h', '72h', '7d'] as const).map((r) => (
@@ -206,7 +205,7 @@ export default async function ThroughputPage({
           </nav>
         }
       />
-      <div className="mx-auto max-w-7xl space-y-6 p-8">
+      <div className="space-y-6 p-8">
         <p className="text-sm text-text-muted">
           Aggregations over <code className="rounded bg-surface-sunken px-1 py-0.5 text-xs">inventory_events</code>.
           Numbers stay sparse until the flagged paths start emitting.

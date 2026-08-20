@@ -13,6 +13,7 @@ import { RIGHT_RAIL_PRIORITY } from '@/lib/right-rail/store';
 export function DetailStackRailRegistrar({
   id,
   onClose,
+  canClose,
   enabled = true,
   elevated,
   modal,
@@ -26,6 +27,10 @@ export function DetailStackRailRegistrar({
   /** Stable occupant id — doubles as the AnimatePresence key in RightRailHost. */
   id: string;
   onClose: () => void;
+  /** Return false to REFUSE dismissal (a transfer in flight). Consulted by
+   *  `closeRightPanel` before the lifecycle half, so host X / Esc / scrim all
+   *  honour it — an `onClose` that merely no-ops does not. */
+  canClose?: () => boolean;
   enabled?: boolean;
   /** When true, render in the elevated `detailStack` band (above a workbench
    *  workspace overlay) + a deeper backdrop. Use for detail stacks that open
@@ -54,6 +59,7 @@ export function DetailStackRailRegistrar({
     priority: RIGHT_RAIL_PRIORITY.detail,
     node: children,
     onClose,
+    canClose,
     elevated,
     modal,
     closeOnOutsideClick,

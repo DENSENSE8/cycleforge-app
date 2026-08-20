@@ -20,14 +20,24 @@
  * not do that at all. A list makes viewing and printing the default and demotes
  * creation to one mode inside it.
  *
- * **Why a mode segment and not a print button per row.** Displays armed rows are
+ * **Why a mode control and not a print button per row.** Displays armed rows are
  * ONE control — never a nested button, kebab or icon inside the row
  * (`display/station-workbench.md` → armed-row grammar), because a second control
  * makes the row's own commit ambiguous at a bench and is unreachable by the
- * keyboard path the row already owns. So the sanctioned shape is a child
- * `TabDisplay appearance="segment"` in the leaf header's trailing slot
- * (`setLeafTrailing`, the Claim Create|Link body-combobox grammar) that says what committing a
- * row DOES. Rows stay one control; ↑↓ / Enter / click keep working unchanged.
+ * keyboard path the row already owns. So a child control above the list says
+ * what committing a row DOES. Rows stay one control; ↑↓ / Enter / click keep
+ * working unchanged.
+ *
+ * **Why a body combobox and not a leaf-header segment.** It rode
+ * `setLeafTrailing` as a `TabDisplay appearance="segment"` until 2026-08-19,
+ * where three tabs plus the header's own back / refresh / print / edit / kebab /
+ * expand / close controls truncated the leaf title to `Loca…` in a
+ * right-rail-width column. The house child-mode face is the ticket claim panel's
+ * Create|Link — `SearchableSelectField appearance="flush"` at the top of the
+ * body (`receiving/workspace/claim/components/ClaimModeSelect.tsx`) — so this
+ * leaf composes the same one: row 2, full-bleed, directly under the sticky
+ * header and above the filter. ⌥1/⌥2/⌥3 stay bound through
+ * `useSegmentChords`, exactly as the segment had them.
  *
  * **It composes, it does not fork.** Addresses are minted by the same waist the
  * bin label printer uses — `POST /api/locations/register` via
@@ -43,7 +53,7 @@
  * them.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Loader2, MapPin, Plus, Printer } from '@/components/Icons';
 import { PrintLabel } from '@/components/barcode/bin-label-printer';
 import { registerLocations } from '@/components/barcode/bin-label-printer/bin-printer-api';
@@ -51,12 +61,12 @@ import {
   StationArmedVerbList,
   type StationArmedVerb,
 } from '@/components/station/displays/StationArmedVerbList';
-import { useDisplaysLeafChrome } from '@/components/station/displays';
 import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
-import { TabDisplay } from '@/design-system/components';
+import { SearchableSelectField } from '@/design-system/components';
 import { DISPLAYS_BODY_INSET } from '@/design-system/shells/detail-stack';
 import { useOrgGs1 } from '@/hooks/useOrgGs1';
 import { parseLocationCodeFlat, type LocationSegments } from '@/lib/barcode-routing';
+import { useSegmentChords } from '@/lib/keyboard/useSegmentChords';
 import { toast } from '@/lib/toast';
 import { cn } from '@/utils/_cn';
 import { StationNewLocationForm } from './StationNewLocationForm';
@@ -65,10 +75,12 @@ import type { StationLocationPlacementPort } from './station-location-port';
 /** What committing a row does. `new` swaps the list for the create form. */
 type LocationsMode = 'place' | 'print' | 'new';
 
-const MODE_TABS = [
-  { id: 'place', label: 'Place' },
-  { id: 'print', label: 'Print' },
-  { id: 'new', label: 'New' },
+const MODE_IDS = ['place', 'print', 'new'] as const satisfies readonly LocationsMode[];
+
+const MODE_OPTIONS = [
+  { value: 'place', label: 'Place' },
+  { value: 'print', label: 'Print' },
+  { value: 'new', label: 'New' },
 ];
 
 export function StationLocationsDisplay({
@@ -87,27 +99,19 @@ export function StationLocationsDisplay({
     entityNoun,
   } = port;
   const { identity: orgGs1 } = useOrgGs1();
-  const { setLeafTrailing } = useDisplaysLeafChrome();
 
   const [mode, setMode] = useState<LocationsMode>('place');
+
+  // ⌥1 / ⌥2 / ⌥3 still switch modes with the combobox closed — the chord
+  // grammar belongs to the child mode, not to the control that paints it.
+  useSegmentChords({
+    enabled: true,
+    tabIds: MODE_IDS,
+    onTabChange: (id) => setMode(id as LocationsMode),
+  });
   const [query, setQuery] = useState('');
   const [busyId, setBusyId] = useState<string | null>(null);
   const [printSegments, setPrintSegments] = useState<LocationSegments | null>(null);
-
-  // The mode segment is leaf-wide chrome, so it rides the sticky header's
-  // trailing slot — never a second band inside the body.
-  useEffect(() => {
-    setLeafTrailing(
-      <TabDisplay
-        tabs={MODE_TABS}
-        activeTab={mode}
-        onTabChange={(id) => setMode(id as LocationsMode)}
-        appearance="segment"
-        aria-label="What a shelf row does"
-      />,
-    );
-    return () => setLeafTrailing(null);
-  }, [mode, setLeafTrailing]);
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -197,6 +201,27 @@ export function StationLocationsDisplay({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
+      {/* Row 2 — what committing a row does. Same face as the ticket claim
+          panel's Create|Link (`SearchableSelectField appearance="flush"`, which
+          owns its own bottom hairline): one child-mode grammar across every
+          right-edge leaf, full-bleed across the column. Outside the mode branch
+          so New can be left again. */}
+      <div className="shrink-0" data-testid="station-locations-mode-select">
+        <SearchableSelectField
+          appearance="flush"
+          value={mode}
+          onChange={(id) => {
+            if (id == null) return;
+            setMode(id as LocationsMode);
+          }}
+          options={MODE_OPTIONS}
+          placeholder="Place, Print or New…"
+          searchPlaceholder="Type to filter…"
+          emptyMessage="No modes match"
+          ariaLabel="What a shelf row does"
+        />
+      </div>
+
       {mode === 'new' ? (
         <StationNewLocationForm
           port={port}
@@ -205,12 +230,18 @@ export function StationLocationsDisplay({
         />
       ) : (
         <>
-          <div className={cn('shrink-0 pt-2', DISPLAYS_BODY_INSET)}>
+          {/* Row 3 — the same find face as the Root Index `Filter displays…`
+              row and the Unbox workbench Band 3 (`variant="chrome"`, full
+              width, hairline under): one component, one rhythm, wherever an
+              operator types above a list. */}
+          <div className="shrink-0 border-b border-border-hairline">
             <TechRailSearchBar
-              variant="rail"
+              variant="chrome"
               value={query}
               onChange={setQuery}
+              onClear={() => setQuery('')}
               placeholder="Filter locations…"
+              className="min-w-0 flex-1"
             />
           </div>
 

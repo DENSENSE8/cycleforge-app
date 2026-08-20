@@ -30,6 +30,7 @@ export {
 
 export { DisplaysIndexLeafStage } from './DisplaysIndexLeafStage';
 export { StationDisplaysParkedRail } from './StationDisplaysParkedRail';
+export { StationDisplaysUtilityRail } from './StationDisplaysUtilityRail';
 export { StationDisplaysPushStack } from './StationDisplaysPushStack';
 export type { DisplaysVisitFrame } from './StationDisplaysPushStack';
 // StationDisplaysHeaderActions + its face tokens are NOT re-exported here:

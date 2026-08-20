@@ -8,7 +8,12 @@ import type { StationScanStance } from './scan-stance';
 
 interface StationScanLeadingIconProps {
   stance: StationScanStance;
-  onToggle: () => void;
+  /**
+   * Omitted when the host wired no `previewLookup` — a bar that cannot preview
+   * must not offer the stance, or the toggle arms a mode that silently eats the
+   * next scan. Absent = render the glyph, not a control.
+   */
+  onToggle?: () => void;
   /** Custom glyph for scan stance. Preview always uses Search. */
   scanIcon?: ReactNode;
 }
@@ -48,6 +53,16 @@ export function StationScanLeadingIcon({
         <Barcode className={`${STATION_SCAN_BAR_DEFAULT_ICON_CLASS} transition-colors`} />
       ))
     );
+
+  // No toggle wired = the stance is not this bar's to change. Render the glyph
+  // as decoration rather than a dead button an operator can press.
+  if (!onToggle) {
+    return (
+      <span className="inline-flex size-[17px] items-center justify-center leading-none">
+        {glyph}
+      </span>
+    );
+  }
 
   return (
     <HoverTooltip label={copy.tooltip} asChild>

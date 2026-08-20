@@ -19,7 +19,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { AnimatePresence, motion, useReducedMotion } from '@/design-system/motion';
 import { ArrowLeftRight, Loader2, Package, X } from '@/components/Icons';
 import { Button, FlushTerminalFooter, IconButton } from '@/design-system/primitives';
-import { TabDisplay } from '@/design-system/components';
+import { SearchableSelectField } from '@/design-system/components';
 import {
   DenseComposeLabel,
   DenseComposeSearchInput,
@@ -78,6 +78,11 @@ interface PhotoMoveTargetRow {
 }
 
 type Direction = 'to' | 'from';
+
+const MOVE_DIRECTION_OPTIONS = [
+  { value: 'to', label: 'To another carton' },
+  { value: 'from', label: 'From another carton' },
+];
 
 interface SuccessBeat {
   direction: Direction;
@@ -439,19 +444,21 @@ export function MovePhotosBetweenPoPanel({
             className="flex min-h-0 flex-1 flex-col"
           >
             <div className="min-h-0 flex-1 space-y-0 overflow-y-auto text-role-data">
-              <div className="flex shrink-0 flex-col gap-0 border-b border-border-hairline">
-                <TabDisplay
-                  tabs={[
-                    { id: 'to', label: 'To another carton' },
-                    { id: 'from', label: 'From another carton' },
-                  ]}
-                  activeTab={direction}
-                  onTabChange={(id) => setDirection(id as Direction)}
-                  density="nested"
-                  appearance="segment"
-                  fit="fill"
-                  aria-label="Move direction"
-                  className="rounded-none border-x-0 border-t-0"
+              {/* Direction — the house child-mode combobox (claim Create|Link
+                  face). The flush select owns its own bottom hairline. */}
+              <div className="flex shrink-0 flex-col gap-0">
+                <SearchableSelectField
+                  appearance="flush"
+                  value={direction}
+                  onChange={(id) => {
+                    if (id == null) return;
+                    setDirection(id as Direction);
+                  }}
+                  options={MOVE_DIRECTION_OPTIONS}
+                  placeholder="Pick a direction…"
+                  searchPlaceholder="Type to filter…"
+                  emptyMessage="No directions match"
+                  ariaLabel="Move direction"
                 />
               </div>
 

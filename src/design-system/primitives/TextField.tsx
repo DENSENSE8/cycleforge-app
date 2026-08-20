@@ -104,8 +104,8 @@ export interface TextFieldProps
 }
 
 /**
- * Floating-label text field — the real implementation of the `/design-demo`
- * "Floating-label field" (03 · Inputs). Replaces the static label-above-input
+ * Floating-label text field — the house "Floating-label field".
+ * Replaces the static label-above-input
  * forms: the label animates into the border on focus/fill.
  *
  * The float state is derived from `value` (so it stays up when filled), while

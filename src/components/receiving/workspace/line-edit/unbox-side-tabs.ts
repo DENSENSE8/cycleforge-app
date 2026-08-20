@@ -15,7 +15,7 @@
  * Units · Prebox · Photos · Ticket · Tracking · Timeline · Support. Ticket is
  * presence-exclusive (Claim vs Chat). Inventory is a **secondary vertical drill**
  * (Information · Lines · PO notes · Activity) via `useDisplaysLeafChrome` — never
- * a nested TabDisplay and never a second LeafHeader. Photos · Linkage are
+ * a nested switcher strip and never a second LeafHeader. Photos · Linkage are
  * **armed-row verbs + local nest drills**. Prebox is an Assets peer leaf (not
  * nested under Units). `checklist` is a Displays leaf (never a floor % ring).
  *
@@ -55,7 +55,7 @@ export type UnboxDisplayNav = typeof UNBOX_DISPLAY_INDEX | UnboxSideTab;
 
 /**
  * Photos leaf surfaces (`photoAction` nest). Absent / legacy `browse` → armed
- * Actions rows (no nested TabDisplay). Move · Send · Compare are nest
+ * Actions rows (no nested switcher strip). Move · Send · Compare are nest
  * drill-downs from those rows (Compare = listing vs bench — trailing).
  *
  * {@link UNBOX_PHOTO_ACTION_ORDER}: default first, then drill surfaces — not a

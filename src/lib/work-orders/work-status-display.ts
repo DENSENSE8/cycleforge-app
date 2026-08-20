@@ -33,6 +33,26 @@ function coerce(status: string | null | undefined): WorkStatus | null {
   return status && status in LABEL ? (status as WorkStatus) : null;
 }
 
+/**
+ * Leading dot (`bg-*` only — the fill IS the dot).
+ *
+ * The module docblock has promised "label · tone · dot" since it was written,
+ * but only LABEL and CHIP existed, so every consumer rendered a dotless chip
+ * while Receiving — which has its own `workflowStageDot` — rendered dot · chip.
+ * Same state, two shapes, because half the SoT was missing rather than because
+ * anyone chose differently.
+ *
+ * Hues track CHIP's families at the 400/500 step Receiving uses, so a work
+ * status and a receiving stage read as the same object on screen.
+ */
+const DOT: Record<WorkStatus, string> = {
+  OPEN: 'bg-surface-strong',
+  ASSIGNED: 'bg-blue-500',
+  IN_PROGRESS: 'bg-amber-400',
+  DONE: 'bg-emerald-500',
+  CANCELED: 'bg-surface-strong',
+};
+
 export function workStatusLabel(status: string | null | undefined): string | null {
   const s = coerce(status);
   return s ? LABEL[s] : null;
@@ -41,4 +61,10 @@ export function workStatusLabel(status: string | null | undefined): string | nul
 export function workStatusChipClass(status: string | null | undefined): string {
   const s = coerce(status);
   return s ? CHIP[s] : CHIP.OPEN;
+}
+
+/** Leading dot class for {@link GridStatusCellValue}'s `dotClass`. */
+export function workStatusDot(status: string | null | undefined): string {
+  const s = coerce(status);
+  return s ? DOT[s] : DOT.OPEN;
 }

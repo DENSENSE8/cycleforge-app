@@ -10,7 +10,8 @@ import {
 import { buildWriteTools } from '@/lib/assistant/tools/write-tools';
 import { loadAssistantHistory, persistAssistantTurn } from '@/lib/assistant/chat-persistence';
 import type { AssistantToolCtx } from '@/lib/assistant/tools/types';
-import { getHermesApiUrl, getHermesHeaders, getHermesModel } from '@/lib/ai/hermes-client';
+import { aiRequestHeaders, type AiProviderConfig } from '@/lib/ai/provider';
+import { resolveOrgAiConfig, resolveOrgAnthropicBrain, type OrgAiConfig } from '@/lib/ai/org-provider';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -22,8 +23,10 @@ export const maxDuration = 300;
  * (meta → delta/tool/ui_tool → done).
  *
  * Pre-loop: local_ops fast path + enrichAssistantMessage (parity with Hermes
- * /api/ai/chat). Optional Hermes fallback when ANTHROPIC_API_KEY is absent and
- * ASSISTANT_HERMES_FALLBACK=1 (or Hermes is reachable in local dev).
+ * /api/ai/chat). Both brains resolve PER ORG: the agent loop takes the org's
+ * Anthropic key (vault, else the platform key), and the OpenAI-wire fallback
+ * takes the org's provider chain when no Anthropic brain is available (or when
+ * ASSISTANT_HERMES_FALLBACK forces it).
  *
  * org/staff/permissions come from ctx — never the body.
  */
@@ -52,17 +55,22 @@ function sse(event: string, data: unknown): string {
   return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
 }
 
-function hermesFallbackEnabled(): boolean {
+/**
+ * Whether to consider the OpenAI-wire fallback at all.
+ *
+ * The env flag forces it on. Otherwise the decision is made per ORG by the
+ * caller, from whether that org has an Anthropic brain — it used to read the
+ * platform key here, which answered the same way for every tenant.
+ */
+function hermesFallbackForced(): boolean {
   const flag = String(process.env.ASSISTANT_HERMES_FALLBACK || '').trim().toLowerCase();
-  if (flag === '1' || flag === 'true' || flag === 'yes') return true;
-  // Local default: when Anthropic is missing, try Hermes (dev box).
-  return !process.env.ANTHROPIC_API_KEY;
+  return flag === '1' || flag === 'true' || flag === 'yes';
 }
 
-async function isHermesReachable(): Promise<boolean> {
+async function isProviderReachable(config: AiProviderConfig): Promise<boolean> {
   try {
-    const res = await fetch(`${getHermesApiUrl()}/models`, {
-      headers: getHermesHeaders(),
+    const res = await fetch(`${config.baseURL}/models`, {
+      headers: aiRequestHeaders(config),
       signal: AbortSignal.timeout(2_000),
     });
     return res.ok;
@@ -75,16 +83,16 @@ async function streamHermesCompletion(args: {
   sessionId: string;
   enrichedMessage: string;
   write: (event: string, data: unknown) => void;
+  config: OrgAiConfig;
 }): Promise<{ ok: boolean; text: string }> {
-  const hermesRes = await fetch(`${getHermesApiUrl()}/chat/completions`, {
+  const hermesRes = await fetch(`${args.config.baseURL}/chat/completions`, {
     method: 'POST',
-    headers: getHermesHeaders({
-      'Content-Type': 'application/json',
+    headers: aiRequestHeaders(args.config, {
       'X-Hermes-Session-Id': args.sessionId,
       'X-Source': 'assistant',
     }),
     body: JSON.stringify({
-      model: getHermesModel(),
+      model: args.config.model,
       stream: true,
       messages: [
         {
@@ -154,13 +162,24 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   }
   const { sessionId, message, context } = parsed.data;
 
-  const hasAnthropic = Boolean(process.env.ANTHROPIC_API_KEY);
-  const useHermes = !hasAnthropic && hermesFallbackEnabled() && (await isHermesReachable());
+  // Both halves are now per-org. The agent loop needs an ANTHROPIC-native brain
+  // (its tool-use protocol is not the OpenAI wire format), so an org's own
+  // Anthropic key is preferred over the platform's; everything else falls to
+  // the OpenAI-wire chain.
+  const brain = await resolveOrgAnthropicBrain(ctx.organizationId);
+  const hasAnthropic = brain !== null;
+  const fallbackConfig =
+    !hasAnthropic || hermesFallbackForced()
+      ? await resolveOrgAiConfig(ctx.organizationId, 'chat')
+      : null;
+  const useHermes =
+    !hasAnthropic && fallbackConfig !== null && (await isProviderReachable(fallbackConfig));
   if (!hasAnthropic && !useHermes) {
     return NextResponse.json(
       {
         error: 'assistant_unconfigured',
-        detail: 'ANTHROPIC_API_KEY is not set and Hermes fallback is unavailable.',
+        detail:
+          'No Anthropic provider is connected for this workspace and no reachable AI provider is available. Connect one in Settings → AI.',
       },
       { status: 503 },
     );
@@ -212,6 +231,8 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
             sessionId,
             enrichedMessage: prepared.userMessage,
             write,
+            // `useHermes` is only true when this resolved non-null.
+            config: fallbackConfig!,
           });
           if (hermes.text) {
             await persistAssistantTurn(ctx.organizationId, sessionId, 'assistant', hermes.text);

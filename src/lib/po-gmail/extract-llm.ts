@@ -1,11 +1,11 @@
 /**
  * LLM-backed field extraction for PO emails (Phase 4 of PO mailbox triage).
  *
- * Local-only: posts to the Hermes gateway (OpenAI-compatible) on
- * HERMES_API_URL with the model named in AI_MODEL (defaults to
- * `gemma-4-e4b`). No cloud fallback — if the gateway is down or the
- * model returns invalid output, the operator sees a clear error and can
- * retry once Hermes is back up.
+ * Posts to THIS ORG's chat provider (resolveOrgAiConfig — vault BYOK, then
+ * the platform default), OpenAI-compatible wire. It was env-only
+ * (HERMES_API_URL / AI_MODEL), which meant one endpoint served every tenant.
+ * If the provider is unreachable or returns invalid output, the operator sees
+ * a clear error and can retry.
  *
  * The function ALWAYS marks results as low-trust at the consumer side
  * (the checklist UI requires explicit confirmation per field). The model
@@ -18,10 +18,14 @@
  * local models honor.
  */
 
-// Default model when AI_MODEL isn't set. Gemma 4 e4B has explicit tool-call
+import { aiRequestHeaders } from '@/lib/ai/provider';
+import { resolveOrgAiConfig } from '@/lib/ai/org-provider';
+import type { OrgId } from '@/lib/tenancy/constants';
+
+// Default model when the resolved provider names none. Gemma 4 e4B has explicit tool-call
 // support + reasoning, which gives the most disciplined arg adherence we
-// can get from a sub-5GB local model. Swap by setting AI_MODEL in env;
-// the runtime verifies the model is loaded in the Hermes runtime on call.
+// can get from a sub-5GB local model. Swap it by setting the model on the
+// org's connected provider (Settings → AI), not by an env var.
 const DEFAULT_AI_MODEL = 'gemma-4-e4b';
 
 const SYSTEM_PROMPT = [
@@ -231,16 +235,16 @@ interface OpenAiChatResponse {
 }
 
 export async function extractWithLlm(
+  /** Whose AI provider serves this call — required, never defaulted. */
+  orgId: OrgId,
   input: ExtractWithLlmInput,
 ): Promise<ExtractWithLlmResult> {
-  const baseUrl = String(process.env.HERMES_API_URL ?? '').trim();
-  if (!baseUrl) {
-    throw new Error(
-      'HERMES_API_URL is not set; cannot reach the local AI gateway',
-    );
+  const provider = await resolveOrgAiConfig(orgId, 'chat');
+  if (!provider) {
+    throw new Error('No AI chat provider is connected for this organization');
   }
-  const apiKey = String(process.env.HERMES_API_KEY ?? '').trim();
-  const model = String(process.env.AI_MODEL ?? DEFAULT_AI_MODEL).trim();
+  const baseUrl = provider.baseURL;
+  const model = provider.model || DEFAULT_AI_MODEL;
 
   const requestBody = {
     model,
@@ -262,10 +266,7 @@ export async function extractWithLlm(
 
   const res = await fetch(`${baseUrl.replace(/\/$/, '')}/chat/completions`, {
     method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      ...(apiKey ? { authorization: `Bearer ${apiKey}` } : {}),
-    },
+    headers: aiRequestHeaders(provider, { 'content-type': 'application/json' }),
     body: JSON.stringify(requestBody),
   });
   if (!res.ok) {

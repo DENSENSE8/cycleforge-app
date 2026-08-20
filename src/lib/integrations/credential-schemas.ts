@@ -70,6 +70,12 @@ const OllamaCredentialSchema = z.object({
   model: nonEmpty,
   embedModel: optionalNonEmpty,
   apiKey: optionalNonEmpty,
+  // Cloudflare Access service token, when the tenant fronts their self-hosted
+  // endpoint with CF Access. Without these two the vault can hold a tunnelUrl
+  // the server can reach but not authenticate against — the endpoint answers
+  // 403 and it reads like a model failure (see OllamaCredentials).
+  cfAccessClientId: optionalNonEmpty,
+  cfAccessClientSecret: optionalNonEmpty,
 });
 
 const AiGatewayCredentialSchema = z.object({

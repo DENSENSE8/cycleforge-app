@@ -14,7 +14,9 @@
  * returned args.
  */
 
-import { getHermesApiUrl, getHermesHeaders, getHermesModel } from '@/lib/ai/hermes-client';
+import { postToAiProvider } from '@/lib/ai/failover';
+import type { IntegrationProvider } from '@/lib/integrations/credentials';
+import type { OrgId } from '@/lib/tenancy/constants';
 
 // Default model when AI_MODEL isn't set — Gemma 4 e4B has explicit tool-call
 // support, the most disciplined arg adherence we get from a sub-5GB local
@@ -38,13 +40,15 @@ export interface HermesToolCallInput {
   /** Defaults to 1024. */
   maxTokens?: number;
   /**
-   * Optional provider override (AI search Phase 1): pass the resolved config
-   * from `resolveAiConfig('chat')` (src/lib/ai/provider.ts) to route this
-   * call through the capability-keyed provider layer (Vercel AI Gateway in
-   * prod) instead of the legacy Hermes env vars. Same OpenAI wire format
-   * either way — this stays the one forced-tool-call implementation.
+   * Whose provider chain serves this call — REQUIRED, never defaulted.
+   *
+   * This used to be a pre-resolved `provider` config, which meant every caller
+   * duplicated the same resolve-and-null-check and none of them could fail
+   * over. Taking the org instead lets this function own the chain, so a cold
+   * or unreachable local box falls forward to cloud instead of throwing
+   * (backend-patterns.md → a safety classification is a REQUIRED parameter).
    */
-  provider?: { baseURL: string; apiKey?: string; model?: string };
+  orgId: OrgId;
 }
 
 export interface HermesToolCallResult<T> {
@@ -52,6 +56,8 @@ export interface HermesToolCallResult<T> {
   args: T;
   /** Model id reported by the runtime (or the env default if omitted). */
   model: string;
+  /** Which provider ACTUALLY answered — report this, never the preference. */
+  source: IntegrationProvider | 'platform';
   usage: {
     input_tokens: number;
     output_tokens: number;
@@ -85,14 +91,11 @@ interface OpenAiChatResponse {
 export async function hermesToolCall<T = unknown>(
   input: HermesToolCallInput,
 ): Promise<HermesToolCallResult<T>> {
-  const baseUrl = input.provider?.baseURL?.replace(/\/$/, '') || getHermesApiUrl();
-  if (!baseUrl) {
-    throw new Error('HERMES_API_URL is not set; cannot reach the local AI gateway');
-  }
-  const model = input.provider?.model || getHermesModel(DEFAULT_AI_MODEL);
-
   const requestBody = {
-    model,
+    // The model is filled in per attempt by the failover loop below, because a
+    // fall-forward to a different provider is also a fall-forward to a
+    // different model name.
+    model: DEFAULT_AI_MODEL,
     temperature: input.temperature ?? 0,
     max_tokens: input.maxTokens ?? 1024,
     messages: [
@@ -118,22 +121,16 @@ export async function hermesToolCall<T = unknown>(
     tool_choice: 'required',
   };
 
-  const headers: HeadersInit = input.provider
-    ? {
-        'content-type': 'application/json',
-        ...(input.provider.apiKey ? { Authorization: `Bearer ${input.provider.apiKey}` } : {}),
-      }
-    : getHermesHeaders({
-        'content-type': 'application/json',
-      });
-  const res = await fetch(`${baseUrl.replace(/\/$/, '')}/chat/completions`, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(requestBody),
+  const { res, served } = await postToAiProvider(input.orgId, 'chat', {
+    path: '/chat/completions',
+    body: requestBody,
+    headers: { 'content-type': 'application/json' },
+    buildBody: (config) => ({ ...requestBody, model: config.model || DEFAULT_AI_MODEL }),
   });
+  const model = served.model || DEFAULT_AI_MODEL;
   if (!res.ok) {
     const text = (await res.text()).slice(0, 500);
-    throw new Error(`AI gateway ${res.status}: ${text}`);
+    throw new Error(`AI provider ${served.source} returned ${res.status}: ${text}`);
   }
   const data = (await res.json()) as OpenAiChatResponse;
 
@@ -155,6 +152,7 @@ export async function hermesToolCall<T = unknown>(
   return {
     args: parsed as T,
     model: data.model ?? model,
+    source: served.source,
     usage: {
       input_tokens: data.usage?.prompt_tokens ?? 0,
       output_tokens: data.usage?.completion_tokens ?? 0,

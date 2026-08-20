@@ -17,6 +17,7 @@ import {
   Layers,
   LayoutDashboard,
   Link2,
+  ListChecks,
   MessageSquare,
   Monitor,
   Package,
@@ -420,6 +421,8 @@ export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
   // permission because a nav row that 403s is worse than an absent one, and the
   // children carry front-desk / repair gates as mode `requires`.
   { id: 'sales',             label: 'Sales',       href: `/dashboard?mode=${DASHBOARD_SALES_MODE}`, icon: SalesPrice, kind: 'domain', domainGroup: 'sales', requires: 'dashboard.view' },
+  // Counter — where a sale is MADE; the rest of Sales is where one is reviewed.
+  { id: 'counter',           label: 'Counter',     href: '/counter',            icon: SalesPrice,      kind: 'domain', domainGroup: 'sales', requires: 'walk_in.view' },
   // ── Support ───────────────────────────────────────────────────────────────
   // Own root (D3). Visible with Zendesk tickets *or* warranty (Warranty Logger
   // lives under Support). `/support` mounts SurfaceGate + RouteShell like the
@@ -730,7 +733,8 @@ function getFirstPathSegment(path: string): string {
 export function isSidebarNavActive(pathname: string | null, href: string): boolean {
   if (!pathname) return false;
 
-  // Strip query/hash so `/?mode=forge&view=live` does not poison path matching.
+  // Strip query/hash so an href like `/dashboard?mode=sales` does not poison
+  // path matching.
   const hrefPath = href.split(/[?#]/, 1)[0] ?? href;
 
   const hrefSegment = getFirstPathSegment(hrefPath);
@@ -748,12 +752,16 @@ export function isSidebarNavActive(pathname: string | null, href: string): boole
 }
 
 /**
- * Top-pin active state — query-aware so Home and Plans never both light on `/`.
+ * Top-pin active state.
  *
- * Pathname-only {@link isSidebarNavActive} treats every Home mode as active for
- * `href: '/'`. Plans lands on `/?mode=forge&view=live`, so the pin renderer must
- * split that mode: forge → Plans current / Home idle; every other Home mode →
- * Home current / Plans idle. Other top pins stay pathname-only.
+ * This used to be query-aware: Plans landed on `/?mode=forge&view=live`, so both
+ * it and Home matched `href: '/'` under pathname-only
+ * {@link isSidebarNavActive}, and this function split them on `?mode=`. Plans
+ * moved to its own `/forge` route on 2026-08-19, so the two pins no longer
+ * collide on one path and every pin is plain pathname matching again.
+ *
+ * Kept as the pin renderer's entry point rather than inlined, so a future pin
+ * that DOES need location context has a declared seam to grow into.
  */
 export function isSidebarTopPinActive(
   pin: Pick<SidebarNavItem, 'id' | 'href'>,
@@ -762,16 +770,7 @@ export function isSidebarTopPinActive(
     searchParams: Pick<URLSearchParams, 'get'>;
   },
 ): boolean {
-  const { pathname, searchParams } = loc;
-  if (!pathname) return false;
-
-  if (pin.id === 'plans-live') {
-    return pathname === '/' && parseHomeMode(searchParams.get('mode')) === 'forge';
-  }
-  if (pin.id === 'home') {
-    return pathname === '/' && parseHomeMode(searchParams.get('mode')) !== 'forge';
-  }
-  return isSidebarNavActive(pathname, pin.href);
+  return isSidebarNavActive(loc.pathname, pin.href);
 }
 
 /**
@@ -801,6 +800,9 @@ export const ROUTE_PERMISSIONS: ReadonlyArray<{ prefix: string; permission: stri
   { prefix: '/o',                  permission: 'dashboard.view' },
   { prefix: '/fba',                permission: 'fba.view' },
   { prefix: '/walk-in',            permission: 'walk_in.view' },
+  // The counter desk — a Sales surface, not a Scan Station (no scanner, no
+  // Station chrome). Same gate as the rest of the walk-in family.
+  { prefix: '/counter',            permission: 'walk_in.view' },
   // Repair + Local Pickup are Receiving modes — same gate as the rest of the
   // rail. The `repair.*` tech permissions still gate the repair APIs; they no
   // longer gate the UI (a receiving operator works the whole rail).
@@ -833,6 +835,10 @@ export const ROUTE_PERMISSIONS: ReadonlyArray<{ prefix: string; permission: stri
   // permission as the /api/zendesk/* routes it calls.
   { prefix: '/support',            permission: 'integrations.zendesk' },
   { prefix: '/ai-chat',            permission: 'dashboard.view' },
+  // Plans Live (master-plan console). Same gate as the Plans spine pin and
+  // `/api/forge/master-plan`. Needed since 2026-08-19: `/forge` used to redirect
+  // into a self-gated Home mode, so the route map never had to name it.
+  { prefix: '/forge',              permission: 'operations.plans.view' },
   // /settings is intentionally NOT gated — every signed-in user can manage
   // their own workstation/appearance settings; admin tabs gate themselves.
   // (/manuals now redirects into /products)
@@ -958,7 +964,7 @@ const REVIEW = '/review';
 
 export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   // ── Home ──────────────────────────────────────────────────────────────────
-  // `?mode=` — Today (default, bare `/`) · Inbox · Tasks · Collaboration · Plan · Shift brief.
+  // `?mode=` — Daily (default, bare `/`) · Today.
   //
   // Home carried these as a full-width `HorizontalButtonSlider` band inside its
   // own page shell, which is the exact twin `display/workbench.md` forbids:
@@ -971,17 +977,18 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   {
     id: 'home', label: 'Home', href: '/', icon: Home, kind: 'top',
     children: [
-      { id: 'today',  label: 'Today',  icon: Activity,        to: () => ({ pathname: '/', params: { mode: null } }) },
-      // Inbox sits second: "what changed on things I follow" is the companion to
-      // Today's "what should I do next", so the two personal-triage modes stay
-      // adjacent rather than split by the structured-work modes.
-      { id: 'inbox',  label: 'Inbox',  icon: Inbox,           to: () => ({ pathname: '/', params: { mode: 'inbox' } }) },
-      { id: 'tasks',  label: 'Tasks',  icon: ClipboardList,   to: () => ({ pathname: '/', params: { mode: 'tasks' } }) },
-      { id: 'collab', label: 'Collaboration', icon: MessageSquare,   to: () => ({ pathname: '/', params: { mode: 'collab' } }) },
-      // "Plan" is the operator-facing label for the forge (live product plan).
-      // Same gate as the Plans spine pin + `/api/forge/master-plan`.
-      { id: 'forge',  label: 'Plan',   icon: Zap,             requires: 'operations.plans.view', to: () => ({ pathname: '/', params: { mode: 'forge' } }) },
-      { id: 'brief',  label: 'Shift brief',  icon: Sparkles,        to: () => ({ pathname: '/', params: { mode: 'brief' } }) },
+      // Daily is the LANDING (bare `/`, `mode: null`): the first screen of a
+      // shift is the checklist you run plus the report of who has run theirs.
+      // Mirrors DEFAULT_HOME_MODE — move both together or the bare path and the
+      // parser disagree about which mode owns `/`.
+      { id: 'daily',  label: 'Daily',  icon: ListChecks,     to: () => ({ pathname: '/', params: { mode: null } }) },
+      { id: 'today',  label: 'Today',  icon: Activity,        to: () => ({ pathname: '/', params: { mode: 'today' } }) },
+      // TWO children, deliberately. `inbox` (subscription feed) and `tasks`
+      // (ops-plan tasks) were deleted 2026-08-19 and `forge` (Plans Live) moved
+      // to its own `/forge` route, where the Plans spine pin now points;
+      // `collab` and `brief` went earlier the same day. Home is the first screen
+      // of a shift, and a switcher slot is not free — a mode earns one by being
+      // opened, not by existing.
     ],
     // One parser, not a second copy of the vocabulary — same discipline as
     // `parseProductsView` / `outboundModeFromPath` above.
@@ -1001,11 +1008,13 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
     id: 'sales', label: 'Sales', href: `${DASHBOARD}?mode=${DASHBOARD_SALES_MODE}`, icon: SalesPrice,
     kind: 'domain', domainGroup: 'sales', requires: 'dashboard.view',
     children: [
+      { id: 'counter', label: 'Counter', icon: SalesPrice, requires: 'walk_in.view', to: () => ({ pathname: '/counter', params: {} }) },
       { id: 'sales', label: 'Sales Board', icon: SalesPrice, requires: DASHBOARD_SALES_PERMISSION, to: () => ({ pathname: DASHBOARD, params: { mode: DASHBOARD_SALES_MODE } }) },
       { id: 'pickup', label: 'Local Pickup History', icon: ShoppingCart, requires: DASHBOARD_SALES_PERMISSION, to: () => ({ pathname: DASHBOARD, params: { mode: 'pickup' } }) },
       { id: 'repairs', label: 'Repair History', icon: RECEIVING_NAV_ICONS.repair, requires: 'repair.view', to: () => ({ pathname: DASHBOARD, params: { mode: DASHBOARD_REPAIRS_MODE } }) },
     ],
-    resolveChild: ({ params }) => {
+    resolveChild: ({ params, pathname }) => {
+      if (pathname.startsWith('/counter')) return 'counter';
       const mode = params.get('mode');
       if (mode === 'pickup') return 'pickup';
       if (mode === 'repairs') return 'repairs';
@@ -1029,6 +1038,7 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
       // and carries only `staff`; the nulls could not affect the result. Verified
       // byte-identical before and after removal for all five modes.
       { id: 'live',      label: 'Live',      icon: Activity,  to: () => ({ pathname: OPERATIONS, params: { mode: null } }) },
+      { id: 'checks',    label: 'Checks',    icon: ClipboardList, to: () => ({ pathname: OPERATIONS, params: { mode: 'checks' } }) },
       { id: 'analytics', label: 'Analytics', icon: BarChart3, to: () => ({ pathname: OPERATIONS, params: { mode: 'analytics' } }) },
       { id: 'insights',  label: 'Insights',  icon: Sparkles,  to: () => ({ pathname: OPERATIONS, params: { mode: 'insights' } }) },
       { id: 'history',   label: 'History',   icon: History,   to: () => ({ pathname: OPERATIONS, params: { mode: 'history' } }) },
@@ -1042,6 +1052,7 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
       if (m === 'history') return 'history';
       if (m === 'signals') return 'signals';
       if (m === 'reconciliation') return 'reconciliation';
+      if (m === 'checks') return 'checks';
       return 'live';
     },
   },

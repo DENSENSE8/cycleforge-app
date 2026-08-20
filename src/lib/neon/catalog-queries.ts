@@ -372,6 +372,98 @@ export async function updatePlatform(
 
 // ─── types ──────────────────────────────────────────────────────────────────
 
+export interface PriorityTierRow {
+  id: number;
+  organization_id: string;
+  /** 0..3 — PRIORITY_OVERRIDE_TIERS[].value. Identity AND display order. */
+  tier: number;
+  label: string;
+  short: string;
+  /** Optional `#RRGGBB` accent; ink/softFill derived via color-contrast SoT. */
+  color_hex: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * GET the org's priority-ladder overrides. Usually EMPTY — a row exists only
+ * for a rung someone renamed or repainted, and the client merges these over
+ * `PRIORITY_OVERRIDE_TIERS` by tier. Ordered by tier so the caller never has to
+ * re-sort into ladder order.
+ */
+export async function listPriorityTiers(organizationId: OrgId): Promise<PriorityTierRow[]> {
+  const res = await tenantQuery<PriorityTierRow>(
+    organizationId,
+    `SELECT * FROM priority_tiers WHERE organization_id = $1 ORDER BY tier ASC`,
+    [organizationId],
+  );
+  return res.rows;
+}
+
+export async function getPriorityTier(
+  organizationId: OrgId,
+  tier: number,
+): Promise<PriorityTierRow | null> {
+  const res = await tenantQuery<PriorityTierRow>(
+    organizationId,
+    `SELECT * FROM priority_tiers WHERE organization_id = $1 AND tier = $2`,
+    [organizationId, tier],
+  );
+  return res.rows[0] ?? null;
+}
+
+/**
+ * UPSERT one rung. An upsert rather than an update because the absence of a row
+ * is the default state, so the first edit of a rung must create it — and the
+ * client addresses a TIER, which it always knows, not a row id it would have to
+ * discover. `defaults` carry the built-in label/short so a first-time write of
+ * only `colorHex` still lands a complete row.
+ *
+ * `colorHex: null` clears the accent back to the built-in tone; `undefined`
+ * leaves existing paint alone, hence the explicit sentinel rather than COALESCE
+ * (same treatment as {@link updateType}'s bindings).
+ */
+export async function upsertPriorityTier(
+  organizationId: OrgId,
+  tier: number,
+  data: { label?: string; short?: string; colorHex?: string | null },
+  defaults: { label: string; short: string },
+): Promise<PriorityTierRow | null> {
+  const setColor = Object.prototype.hasOwnProperty.call(data, 'colorHex');
+  const res = await tenantQuery<PriorityTierRow>(
+    organizationId,
+    `INSERT INTO priority_tiers (organization_id, tier, label, short, color_hex)
+     VALUES ($1, $2, $3, $4, $5)
+     ON CONFLICT (organization_id, tier) DO UPDATE SET
+       label     = COALESCE($6, priority_tiers.label),
+       short     = COALESCE($7, priority_tiers.short),
+       color_hex = CASE WHEN $8::boolean THEN $5 ELSE priority_tiers.color_hex END,
+       updated_at = now()
+     RETURNING *`,
+    [
+      organizationId,
+      tier,
+      data.label ?? defaults.label,
+      data.short ?? defaults.short,
+      setColor ? (data.colorHex ?? null) : null,
+      data.label ?? null,
+      data.short ?? null,
+      setColor,
+    ],
+  );
+  return res.rows[0] ?? null;
+}
+
+/** Reset a rung to its built-in label / short / tone. */
+export async function deletePriorityTier(organizationId: OrgId, tier: number): Promise<boolean> {
+  const res = await tenantQuery(
+    organizationId,
+    `DELETE FROM priority_tiers WHERE organization_id = $1 AND tier = $2`,
+    [organizationId, tier],
+  );
+  return (res.rowCount ?? 0) > 0;
+}
+
 export async function listTypes(
   organizationId: OrgId,
   opts: { includeInactive?: boolean } = {},

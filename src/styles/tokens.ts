@@ -44,7 +44,7 @@ export const designTokens = {
     text2xl: fontSizes['2xl'],
     fontNormal: String(fontWeights.regular),
     fontMedium: String(fontWeights.medium),
-    // 600 is the ceiling — `fontBold`/`fontBlack` retired with the 700+ cuts
+    // 600 is the ceiling — there is no `fontBold`/`fontBlack`; 700+ is not a weight
     // (see typography/weights.ts).
     fontSemibold: String(fontWeights.semibold),
   },
@@ -92,7 +92,7 @@ export const designTokenCssVariables: Record<string, TokenValue> = {
   '--text-2xl': designTokens.typography.text2xl,
   '--font-normal': designTokens.typography.fontNormal,
   '--font-medium': designTokens.typography.fontMedium,
-  // 600 is the ceiling — `--font-bold` retired with the 700 cut (weights.ts).
+  // 600 is the ceiling — there is no `--font-bold`; 700 is not a weight (weights.ts).
   '--font-semibold': designTokens.typography.fontSemibold,
   '--ds-motion-fast': motionDurations.fast,
   '--ds-motion-normal': motionDurations.normal,

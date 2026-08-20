@@ -5,6 +5,7 @@ import { Plus, X } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IconButton, TextField } from '@/design-system/primitives';
 import { SerialChipWithMenu } from '@/components/receiving/workspace/SerialCard';
+import { unwrapScannedSerial } from '@/lib/barcode-routing';
 import { useRegisterScanSink } from '@/lib/station-scan-sink';
 
 interface SavedSerial {
@@ -159,8 +160,9 @@ export function InlineSerialAdder({
 
       // Replace mode — operator is finalizing an in-place edit.
       if (editing && onReplaceSerial) {
-        if (trimmed !== editing.serial_number) {
-          onReplaceSerial(lineId, editing, trimmed);
+        const next = unwrapScannedSerial(trimmed);
+        if (next !== editing.serial_number) {
+          onReplaceSerial(lineId, editing, next);
         }
         setEditing(null);
         onEditingSerialChange?.(null);
@@ -170,7 +172,17 @@ export function InlineSerialAdder({
 
       // Comma-paste → enqueue each value. Parent queues writes; clear + stay
       // focused so the wedge can keep typing while optimistic chips land.
-      const parts = trimmed.split(',').map((s) => s.trim()).filter(Boolean);
+      //
+      // DECODE PER PART, never over the joined string. This is a registered
+      // wedge sink, so it receives the raw buffer — and a printed unit label
+      // does NOT carry a bare serial: it carries a GS1 Digital Link
+      // (`…/01/{gtin}/21/{serial}`), a `(01)…(21)…` element string, or `U-{serial}`.
+      // Stored verbatim, the return lane (the one unit that comes back wearing
+      // OUR label) writes a serial that matches nothing.
+      const parts = trimmed
+        .split(',')
+        .map((s) => unwrapScannedSerial(s))
+        .filter(Boolean);
       setScan('');
       for (const sn of parts) {
         void onAdd(lineId, sn);

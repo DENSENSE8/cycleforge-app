@@ -459,10 +459,6 @@ export function HistoryCartonTriagePanel({
   const location =
     (line?.staging_location_label || carton?.location_name || '').trim() || null;
 
-  const navigate = (direction: 'prev' | 'next') => {
-    emitReceiving('receiving-navigate-table', direction);
-  };
-
   const viewStripOpen = viewOnly || viewTopicsOpen;
   // Parked (Band 3 `Hide inspector` / ⌘\) keeps this panel MOUNTED but inert at
   // zero width, so `viewStripOpen` alone cannot tell the cluster whether it is
@@ -505,10 +501,6 @@ export function HistoryCartonTriagePanel({
         <div className="shrink-0 border-b border-border-soft bg-surface-card/90 backdrop-blur-xl">
           <DeskRailChromeRow
             onClose={onClose}
-            onPrev={viewOnly ? undefined : () => navigate('prev')}
-            onNext={viewOnly ? undefined : () => navigate('next')}
-            prevTestId="history-triage-prev"
-            nextTestId="history-triage-next"
           />
 
           {/* View cluster toggle — not primary topic nav (topics live in the shell). */}

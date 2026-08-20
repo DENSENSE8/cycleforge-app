@@ -37,6 +37,16 @@
  * it. The assistant is the one occupant with no lifecycle half at all
  * (`closeAndCachePanel` early-returns on its id), so it routes straight to its
  * own `onClose` — the host already treated it that way.
+ *
+ * ## Refusal is a THIRD answer, and it comes first
+ *
+ * `onClose` can only say "I am done"; it cannot say "not now". An occupant that
+ * guarded its own handler (`if (!isRunning) onClose()`) still had the lifecycle
+ * half run against it — parked and toasted "Draft saved." over a live progress
+ * readout, with its parent's `open` flag still true and an 8s Resume toast the
+ * only route back. That is the same two-halves-disagreeing defect this module
+ * was written to close, pointed the other way: the host overriding an
+ * occupant's deliberate refusal. `canClose` is consulted BEFORE either half.
  */
 
 import { closeAndCachePanel } from '@/lib/right-rail/panel-store';
@@ -45,6 +55,10 @@ import { getRightRailTop } from '@/lib/right-rail/store';
 export function closeRightPanel(): void {
   const top = getRightRailTop();
   if (!top) return;
+
+  // Refusal outranks both halves. Checked first so a veto costs no draft
+  // capture, no park, and no toast.
+  if (top.canClose && !top.canClose()) return;
 
   if (top.id === 'assistant') {
     top.onClose?.();
