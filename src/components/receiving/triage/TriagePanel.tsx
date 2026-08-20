@@ -48,6 +48,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/lib/toast';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { StationTerminalDock, useStationTerminalAction } from '@/components/station/terminal';
+import { slicedActionDockWrapperClass } from '@/design-system/primitives/SlicedActionDock';
 import {
   StationPanelRoot,
   StationWorkbench,
@@ -436,8 +437,10 @@ export function TriagePanel({
               <StationWorkbench
                 ambientWash={false}
                 className="relative z-0 flex-1 bg-transparent"
-                // Flush dock + staging Band 1 needs pager clearance (Unbox SoT).
-                reserveScrollClearance="pager"
+                // Same dock as Unbox now (raised notes card, no staging band),
+                // so the same clearance: `pb-32`, not the `pb-56` pager reserve
+                // the two-band flush floor needed.
+                reserveScrollClearance
                 // Identity is in-flow (`StationContextBar placement="flow"`)
                 // above this workbench — no guessed stacked pt clearance.
                 reserveIdentityClearance={false}
@@ -459,7 +462,7 @@ export function TriagePanel({
                   // `LineEditPanel` — Arrival differs only in the note's grain
                   // (carton) and the CTA's verb (Save for unbox).
                   <div
-                    className="pointer-events-none absolute inset-x-0 bottom-0 z-fab pb-[env(safe-area-inset-bottom,0px)] pt-0" // ds-allow-spacing: fixed-overlay safe-area geometry
+                    className={slicedActionDockWrapperClass({ docked: false })}
                     data-arrival-dock-float
                   >
                     <div className={`pointer-events-auto w-full min-w-0 ${STATION_WORKBENCH_COLUMN}`}>
