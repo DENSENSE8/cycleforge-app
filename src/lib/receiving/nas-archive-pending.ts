@@ -15,7 +15,7 @@ import { tenantQuery } from '@/lib/tenancy/db';
  * `useReceivingPhotosRealtimeRefresh`). An org-wide sweep would put a
  * colleague's carton in this operator's corner.
  */
-export interface NasArchivePendingItem {
+interface NasArchivePendingItem {
   receivingId: number;
   /** Ticket folder name, normalized (no leading `#`) — what the API expects. */
   ticketNumber: string;
