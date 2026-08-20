@@ -72,7 +72,8 @@ Regions are I/O contracts (`MotionRegion`: `station` · `workbench` · `monitor`
 - **Never commit `.env`**, and never bypass hooks in `.claude/settings.json`.
 - **Never start, restart, or kill a dev server.** Attach to the user's on `:3050`.
 - **The user manages commits.** Never `git stash`; stage only your files; commit/push only when asked.
-- **Stay on the checkout's branch.** The worktree is the branch.
+- **Never create a git branch. Always work on `main`.** No `git branch` / `git checkout -b` / `git switch -c`, ever — not to "isolate" work, not to "keep main clean". If you need an isolated lane, it is a separate **worktree** (its own directory), never a new branch on this checkout. Every session commits and pushes to `main`. Verify with `git branch --show-current` before committing; if it is not `main`, stop and switch back.
+- **Stay on `main`.** The worktree is the lane; the branch is always `main`.
 - **Compose from the named SoT first; grow it when wrong.** Never fork a page-local twin. Lookup: `node scripts/sot-lookup.mjs "<job>"`. New AST-similar copies fail `jscpd` within an interaction contract; station-vs-support clones are filtered, not merged. Feature routes import the assembly (`WorkbenchSheetView`, `StationScanPaneHost`, `StationPanelRoot`) not its internals (`DashboardScrollShell`, `ScanStationUtilityRail`, `StationAmbientWash`).
 - **Do not paint over primitives.** `<Button>` fills and `<Panel>` radii resolve through semantic variants (`variant`, `radius`) — never `className` hue/radius overrides. Grow `button-variants.ts` instead.
 - **New feature assemblies declare `@domain-job`.** Plus `@hardware-target` (`Station` · `Workbench` · `Monitor` · `Canvas`), `@density` (`floor` · `ops` · `monitor` · `studio`), and `@justification` (why the named host cannot be reused). Guard: `src/lib/governance/domain-job.guard.test.ts`.
