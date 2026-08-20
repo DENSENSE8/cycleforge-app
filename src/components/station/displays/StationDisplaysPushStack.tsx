@@ -78,6 +78,7 @@ import {
   type StationDisplayIndexFilterKeys,
 } from './DisplaysIndexLeafStage';
 import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
+import { StationDisplaysParkedRail } from './StationDisplaysParkedRail';
 import { StationDisplayLeafHeader } from './StationDisplayLeafHeader';
 import { StationDisplaysPushColumn } from './StationDisplaysPushColumn';
 import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
@@ -436,6 +437,20 @@ export function StationDisplaysPushStack({
       headerRightSlot={rightSlot}
       headerNav={historyChrome}
       headerActions={headerActions}
+      parkedRail={(open) => (
+        <StationDisplaysParkedRail
+          rows={resolvedIndexRows}
+          tabs={tabs}
+          activeId={lastLeafId}
+          onOpenLeaf={(id) => {
+            // Open ON the display, not onto the index: a parked cell already
+            // names the leaf, so landing the index would make the operator
+            // pick the same thing twice.
+            onTabChange(id);
+            open();
+          }}
+        />
+      )}
       subHeader={
         onIndex ? (
           <div

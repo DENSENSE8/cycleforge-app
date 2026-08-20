@@ -19,13 +19,12 @@
  * icon class stay module-private so size cannot fork.
  */
 
-import { useRef, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react';
-import { ArrowLeftToLine, ArrowRightToLine } from '@/components/Icons';
+import { useRef, type KeyboardEvent, type ReactNode } from 'react';
+import { ArrowLeftToLine } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import {
   CONTEXT_PANEL_COLLAPSE,
   CONTEXT_PANEL_COLLAPSE_STRIP_CLASS,
-  CONTEXT_PANEL_COLLAPSE_STRIP_FOOTER_CLASS,
 } from '@/components/sidebar/context-panel-column';
 import type { CollapseStripPin } from '@/components/sidebar/context-panel-collapse-context';
 import { contextPanelToggleHotkeyLabel } from '@/components/sidebar/context-panel-toggle-hotkey';
@@ -63,34 +62,6 @@ export function RailFilterCollapseButton({
         ariaLabel={face}
         icon={<ArrowLeftToLine className={LEFT_DOCK_TOGGLE_ICON_CLASS} />}
         onClick={onCollapse}
-        data-testid={testId}
-        className={TOGGLE_BTN_CLASS}
-      />
-    </HoverTooltip>
-  );
-}
-
-function LeftDockExpandButton({
-  onExpand,
-  label = 'Show sidebar',
-  testId = 'left-dock-expand',
-}: {
-  onExpand: () => void;
-  label?: string;
-  testId?: string;
-}) {
-  const face = withContextPanelChord(label);
-  return (
-    <HoverTooltip label={face} asChild>
-      <IconButton
-        size="xs"
-        tone="neutral"
-        ariaLabel={face}
-        icon={<ArrowRightToLine className={LEFT_DOCK_TOGGLE_ICON_CLASS} />}
-        onClick={(e: MouseEvent) => {
-          e.stopPropagation();
-          onExpand();
-        }}
         data-testid={testId}
         className={TOGGLE_BTN_CLASS}
       />
@@ -265,10 +236,15 @@ export function CollapseStripMruPins({
 }
 
 /**
- * Parked left-dock strip — full-height age column with expand pinned to the
- * bottom filter-height footer (same seat as {@link RailFilterCollapseButton}).
- * Click / Enter / Space on the strip (empty mid or padding) restores the rail;
- * mid-strip {@link CollapseStripMruPins}: click selects, double-click expands.
+ * Parked left-dock strip — full-height age column.
+ *
+ * **The strip IS the restore control** (2026-08-19): click / Enter / Space
+ * anywhere on it (empty mid or padding) expands the rail, and it carries the
+ * host's `testId` so a spec still has one handle. The foot button that used to
+ * sit in the filter-height footer is deleted — it was a second door onto the
+ * one action the whole strip already performs.
+ *
+ * Mid-strip {@link CollapseStripMruPins}: click selects, double-click expands.
  */
 export function LeftDockCollapseStrip({
   onExpand,
@@ -303,6 +279,7 @@ export function LeftDockCollapseStrip({
         'min-h-0 cursor-pointer self-stretch',
       )}
       data-left-dock-collapsed=""
+      data-testid={testId}
       role="button"
       tabIndex={0}
       aria-label={face}
@@ -316,12 +293,11 @@ export function LeftDockCollapseStrip({
       >
         {children}
       </div>
-      <div
-        className={CONTEXT_PANEL_COLLAPSE_STRIP_FOOTER_CLASS}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <LeftDockExpandButton onExpand={onExpand} label={label} testId={testId} />
-      </div>
+      {/* No foot button (2026-08-19). It spent a permanent cell on the one
+          action the WHOLE strip already performs — the strip is `role="button"`
+          with Enter/Space above — so it was a second door onto one action, in
+          the corner where the parked column has the least room to say anything.
+          The mid content (scan cell · MRU pins) is what earns the 32px. */}
     </div>
   );
 }

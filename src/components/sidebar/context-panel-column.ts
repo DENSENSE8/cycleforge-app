@@ -1,4 +1,3 @@
-import { STATION_COLUMN_FOOTER_BAND_FACE } from '@/components/layout/header-shell';
 import { appCanvasClass } from '@/design-system/tokens/app-surface';
 import { cn } from '@/utils/_cn';
 
@@ -124,15 +123,6 @@ export const CONTEXT_PANEL_OUTER_MARGIN_Y = 'my-2';
 export const CONTEXT_PANEL_COLLAPSE_STRIP_CLASS = cn(
   'relative',
   'flex h-full w-8 shrink-0 flex-col items-center border-r border-border-soft bg-surface-card',
-);
-
-/**
- * Bottom cell of a parked left-dock strip — same height band as
- * `TechRailSearchBar` density=`row`, so expand sits where collapse was.
- */
-export const CONTEXT_PANEL_COLLAPSE_STRIP_FOOTER_CLASS = cn(
-  'justify-center',
-  STATION_COLUMN_FOOTER_BAND_FACE,
 );
 
 /**

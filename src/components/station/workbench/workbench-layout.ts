@@ -107,10 +107,13 @@ export const STATION_SCAN_PANE_HOST_CLASS =
  * (`CONTEXT_PANEL_COLLAPSE_STRIP_CLASS`), trailing hairline against center /
  * Displays.
  *
- * **Open displays (`←|`) seats at the bottom** — same footer cell as the left
- * dock expand (`CONTEXT_PANEL_COLLAPSE_STRIP_FOOTER_CLASS`). Carton `↑↓` stay
- * at the top of the strip. Closed body ({@link UnboxDisplaysUtilityRailBody})
- * also opens on whole-strip click.
+ * **Open displays (`←|`) seats at the bottom** of this rail — it opens a column
+ * that is not mounted, so it is a real control rather than a second door onto
+ * a click the strip already accepts. (The left dock's own foot expand, which
+ * this used to reference for its seat, was deleted 2026-08-19 precisely
+ * because it WAS that second door.) Carton `↑↓` stay at the top of the strip.
+ * Closed body ({@link UnboxDisplaysUtilityRailBody}) also opens on whole-strip
+ * click.
  */
 export const STATION_UTILITY_RAIL_CLASS =
   'relative z-raised flex h-full w-8 shrink-0 flex-col items-center border-l border-border-soft bg-surface-card';
