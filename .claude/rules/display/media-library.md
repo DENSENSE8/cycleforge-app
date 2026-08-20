@@ -92,6 +92,11 @@ toggle groups (an `h-7` button inside `border` + `p-0.5`). The tall ones overflo
 their band, so no two controls shared a top or a bottom edge, and each group carried
 its own rhythm (`p-0.5` inside, `gap-1` around, `gap-1.5` between).
 
+- **Band 3 is ONE strip — no gap at any level.** Cells abut inside a group
+  (`mediaBandCellGroupClass`) and the wrapper collapses the seam BETWEEN groups
+  too (`[&>*+*]:-ml-px`). The `role="group"` wrappers survive for semantics, not
+  as a visual rhythm: a gap between them read as three floating clusters rather
+  than one strip.
 - **Bands run their trailing control to the right EDGE.** Band 3 is `pl-3 pr-0`; Band 2
   overrides the shared `pr-0.5` to `pr-0`. Two chrome rows must not disagree about
   where the right edge is.
