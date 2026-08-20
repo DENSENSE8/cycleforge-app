@@ -46,6 +46,7 @@ export function ArrivalCartonNotesEntry({
   trailingAction,
   onPrimaryAction,
   primaryActionDisabled,
+  onOpenStatusHistory,
 }: {
   row: ReceivingLineRow;
   /** Station terminal (Save for unbox) — the composer's bottom-right CTA. */
@@ -53,6 +54,8 @@ export function ArrivalCartonNotesEntry({
   /** Enter → the same action the trailing CTA fires (chat Send grammar). */
   onPrimaryAction?: () => void;
   primaryActionDisabled?: boolean;
+  /** Header ⓘ → Arrival Displays → Timeline (scans · stamps · audit). */
+  onOpenStatusHistory?: () => void;
 }) {
   const receivingId = row.receiving_id ?? null;
   const committed = row.receiving_support_notes ?? '';
@@ -106,6 +109,7 @@ export function ArrivalCartonNotesEntry({
       trailingAction={trailingAction}
       onPrimaryAction={onPrimaryAction}
       primaryActionDisabled={primaryActionDisabled}
+      onOpenStatusHistory={onOpenStatusHistory}
     />
   );
 }
