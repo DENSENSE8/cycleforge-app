@@ -179,6 +179,17 @@ export const StaffPreferencesPutBody = z
      * read-time step truth is never deleted (onboarding-foundational-plan §4).
      */
     onboardingDismissed: z.boolean().nullable().optional(),
+    /**
+     * Last product-update catalog id the staffer dismissed ("Got it").
+     * Absent/`null` = never seen; a newer PRODUCT_UPDATES[0].id auto-opens
+     * the What's-new panel on the next full document load.
+     */
+    lastSeenProductUpdateId: z.string().nullable().optional(),
+    /**
+     * Last catalog buildSha the staffer dismissed. Unseen sha vs this
+     * value is a second reason to auto-open when an update exists.
+     */
+    lastSeenBuildSha: z.string().nullable().optional(),
     /** Per-board swimlane prefs. One generic shape ({@link BOARD_PREFS}) per
      *  surface; add a key here when a new board surface ships. */
     unshippedBoard: BOARD_PREFS.nullable().optional(),
