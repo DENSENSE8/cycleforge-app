@@ -329,3 +329,52 @@ test('buildOpenLinksHubHref encodes hrefs as a JSON query param', () => {
     'https://www.amazon.com/dp/B0',
   ]);
 });
+
+
+test('durable links: stored rows replace the pasted scalar and carry their row id', () => {
+  const links = collectCartonListingLinks({
+    listingLink: 'https://www.ebay.com/itm/111111111111',
+    syncNotes: null,
+    sku: null,
+    sourcePlatform: 'ebay',
+    isUnmatched: false,
+    storedLinks: [
+      { id: 7, href: 'https://www.ebay.com/itm/222222222222', label: 'Left speaker', source: 'manual' },
+      { id: 8, href: 'https://www.ebay.com/itm/333333333333', label: null, source: 'manual' },
+    ],
+  });
+  assert.deepEqual(links.map((l) => l.href), [
+    'https://www.ebay.com/itm/222222222222',
+    'https://www.ebay.com/itm/333333333333',
+  ]);
+  assert.deepEqual(links.map((l) => l.id), [7, 8]);
+  assert.equal(links[0].title, 'Left speaker');
+});
+
+test('durable links: an empty store falls back to the legacy scalar read', () => {
+  const links = collectCartonListingLinks({
+    listingLink: 'https://www.ebay.com/itm/111111111111',
+    syncNotes: null,
+    sku: null,
+    sourcePlatform: 'ebay',
+    isUnmatched: false,
+    storedLinks: [],
+  });
+  assert.deepEqual(links.map((l) => l.href), ['https://www.ebay.com/itm/111111111111']);
+  assert.equal(links[0].id, null);
+});
+
+test('durable links: a stored sync-note row suppresses catalog + derived, as the parse always did', () => {
+  const links = collectCartonListingLinks({
+    listingLink: '',
+    syncNotes: null,
+    sku: 'ABC-123',
+    sourcePlatform: 'ebay',
+    isUnmatched: false,
+    storedLinks: [
+      { id: 3, href: 'https://www.ebay.com/itm/444444444444', label: 'Lot item 1', source: 'sync_notes' },
+    ],
+    platforms: [{ platform: 'ebay', listingUrl: 'https://www.ebay.com/itm/555555555555' }],
+  });
+  assert.deepEqual(links.map((l) => l.href), ['https://www.ebay.com/itm/444444444444']);
+});

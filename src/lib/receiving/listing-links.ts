@@ -15,6 +15,13 @@ import {
 } from '@/utils/external-item-url';
 
 export interface CartonListingLink {
+  /**
+   * `receiving_listing_links.id` when this link is a DURABLE row — the handle
+   * an edit / delete / reorder needs. `null` on a computed tier (`catalog` /
+   * `derived`) and on the legacy scalar+notes fallback, which have no row to
+   * address: those are read-only by construction.
+   */
+  id?: number | null;
   href: string;
   /**
    * What KIND of link this is — `Listing`, a platform row (`eBay · acct`),
@@ -32,6 +39,18 @@ export interface CartonListingLink {
    */
   title?: string | null;
   source: 'manual' | 'sync_notes' | 'catalog' | 'derived';
+}
+
+/**
+ * The durable-row shape this resolver consumes — structural on purpose, so
+ * `listing-links.ts` stays free of the store module (and of `pg`).
+ * Satisfied by `StoredListingLink` from `listing-link-store.ts`.
+ */
+export interface StoredCartonListingLink {
+  id: number;
+  href: string;
+  label: string | null;
+  source: 'manual' | 'sync_notes';
 }
 
 export interface CatalogPlatformLinkInput {
@@ -98,6 +117,12 @@ export function collectCartonListingLinks(args: {
    */
   suppressEcwidStorefront?: boolean;
   platforms?: CatalogPlatformLinkInput[];
+  /**
+   * Durable `receiving_listing_links` rows for this carton, in the buyer's
+   * order. Non-empty supersedes `listingLink` + `syncNotes`; empty/omitted
+   * keeps the legacy read (see the strangler note in the body).
+   */
+  storedLinks?: StoredCartonListingLink[];
 }): CartonListingLink[] {
   const seen = new Set<string>();
   const candidates: CartonListingLink[] = [];
@@ -109,26 +134,43 @@ export function collectCartonListingLinks(args: {
     label: string,
     source: CartonListingLink['source'],
     title?: string | null,
+    id?: number | null,
   ) => {
     if (!href) return;
     const key = href.toLowerCase();
     if (seen.has(key)) return;
     seen.add(key);
-    candidates.push({ href, label, source, title: title?.trim() || null });
+    candidates.push({ id: id ?? null, href, label, source, title: title?.trim() || null });
   };
 
-  const manual = normalizeHref(args.listingLink);
-  if (manual) push(manual, 'Listing', 'manual');
-
-  const syncNoteLinks = parseListingLinksFromSyncNotes(args.syncNotes);
-  if (syncNoteLinks.length > 0) {
-    for (const l of syncNoteLinks) {
-      // `label` stays the kind; the buyer's own title rides in `title`, which is
-      // the only thing that tells three sync-note links apart. Order is the
-      // note's order — the buyer's order — so these deliberately skip the sort.
-      push(l.href, l.title ?? 'Listing', 'sync_notes', l.title);
+  /**
+   * Durable rows supersede BOTH legacy tiers they replace — the pasted scalar
+   * and the sync-note parse. A carton with no rows yet (nothing backfilled,
+   * nobody has edited) falls through to the legacy read unchanged, which is
+   * what makes this flip safe to land before the backfill.
+   */
+  const stored = args.storedLinks ?? [];
+  if (stored.length > 0) {
+    for (const l of stored) {
+      push(l.href, l.label?.trim() || 'Listing', l.source, l.label, l.id);
     }
-    return candidates;
+    // Same rule the sync-note tier has always had: a carton whose links the
+    // buyer authored does not also get catalog rows and a storefront guess.
+    if (stored.some((l) => l.source === 'sync_notes')) return candidates;
+  } else {
+    const manual = normalizeHref(args.listingLink);
+    if (manual) push(manual, 'Listing', 'manual');
+
+    const syncNoteLinks = parseListingLinksFromSyncNotes(args.syncNotes);
+    if (syncNoteLinks.length > 0) {
+      for (const l of syncNoteLinks) {
+        // `label` stays the kind; the buyer's own title rides in `title`, which is
+        // the only thing that tells three sync-note links apart. Order is the
+        // note's order — the buyer's order — so these deliberately skip the sort.
+        push(l.href, l.title ?? 'Listing', 'sync_notes', l.title);
+      }
+      return candidates;
+    }
   }
 
   for (const p of args.platforms ?? []) {
@@ -181,7 +223,11 @@ interface ReceivingRowListingInput {
  */
 export function listingLinksForReceivingRow(
   row: ReceivingRowListingInput,
-  opts?: { platforms?: CatalogPlatformLinkInput[]; isUnmatched?: boolean },
+  opts?: {
+    platforms?: CatalogPlatformLinkInput[];
+    isUnmatched?: boolean;
+    storedLinks?: StoredCartonListingLink[];
+  },
 ): CartonListingLink[] {
   const isZohoPo = Boolean((row.zoho_purchaseorder_id || '').trim());
   return collectCartonListingLinks({
@@ -192,6 +238,7 @@ export function listingLinksForReceivingRow(
     isUnmatched: opts?.isUnmatched ?? false,
     suppressEcwidStorefront: isZohoPo,
     platforms: opts?.platforms,
+    storedLinks: opts?.storedLinks,
   });
 }
 
