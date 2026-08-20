@@ -21,6 +21,7 @@
  */
 
 import { useEffect, useRef, type ReactNode } from 'react';
+import { chipLabel } from '@/design-system/tokens/typography/presets';
 import { AnimatePresence, motion, useReducedMotion } from '@/design-system/motion';
 import { Pencil } from '@/components/Icons';
 import { HEADER_ICON_WRAP } from '@/components/layout/header-shell';
@@ -79,7 +80,7 @@ export interface InlinePillOption {
 
 /** Carton-context flush face — square corners; fills station chrome row (h-full). */
 const PILL_BASE =
-  'inline-flex box-border h-full shrink-0 items-center gap-1.5 whitespace-nowrap rounded-none border px-1.5 text-role-micro font-semibold uppercase leading-none tracking-wide transition-colors shadow-none';
+  `inline-flex box-border h-full shrink-0 items-center gap-1.5 whitespace-nowrap rounded-none border px-1.5 ${chipLabel} transition-colors shadow-none`;
 /**
  * Locked equal-width icon-only faces — square peer of carton exit
  * ({@link STATION_CONTEXT_EXIT_PILL_CLASS}); height from the chrome row.
@@ -88,21 +89,26 @@ const INLINE_PILL_ICON_FACE =
   'inline-flex box-border h-full aspect-square shrink-0 items-center justify-center rounded-none border transition-colors shadow-none';
 /** Icon + full name — expanded option pads / default collapsed. */
 const INLINE_PILL_ICON_LABEL =
-  'inline-flex box-border h-full shrink-0 items-center gap-1.5 whitespace-nowrap rounded-none border pl-1.5 pr-2.5 text-role-micro font-semibold uppercase leading-none tracking-wide transition-colors shadow-none';
+  `inline-flex box-border h-full shrink-0 items-center gap-1.5 whitespace-nowrap rounded-none border pl-1.5 pr-2.5 ${chipLabel} transition-colors shadow-none`;
 /**
  * Carton bookmark — equal-width quiet shell. Short SoT label + identity face;
  * full name lives in HoverTooltip. Compact lock sized to icon + ≤4-char short
  * (`High` / `Med` / `Trade` truncated). Height fills station chrome row.
+ *
+ * `w-16`, not `w-14`: the lock was measured against `role-micro` (10px
+ * condensed). On {@link chipLabel} (12px proportional, sentence case) a short
+ * label plus the glyph overruns 56px and clips inside `overflow-hidden`. The
+ * lock follows the face — if the face changes again, re-measure this.
  */
 const INLINE_PILL_ICON_LABEL_BOOKMARK =
-  'inline-flex box-border h-full w-14 min-w-14 max-w-14 shrink-0 items-center justify-center gap-0.5 overflow-hidden rounded-none border px-1 text-role-micro font-medium uppercase leading-none tracking-wide transition-colors shadow-none';
+  `inline-flex box-border h-full w-16 min-w-16 max-w-16 shrink-0 items-center justify-center gap-0.5 overflow-hidden rounded-none border px-1 ${chipLabel} transition-colors shadow-none`;
 
 const DEFAULT_ACTIVE = 'border-blue-200 bg-blue-50 text-blue-700 shadow-none';
 const DEFAULT_INACTIVE =
   'border-border-soft bg-surface-card/70 text-text-muted hover:border-border-default hover:bg-surface-hover';
 
 const EMPTY_FACE = (
-  <span className="text-role-micro text-current" aria-hidden>
+  <span className="text-current" aria-hidden>
     —
   </span>
 );

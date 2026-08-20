@@ -53,7 +53,9 @@ import {
 } from './station-context-action-pill';
 import {
   STATION_CHROME_CELL_CLASS,
+  STATION_CHROME_CELL_INK,
   STATION_CHROME_CELL_PAD,
+  STATION_CHROME_CELL_TEXT,
   STATION_CHROME_GLYPH_CLASS,
   STATION_CHROME_HOVER_CELL_CLASS,
   STATION_CHROME_ROW_FACE,
@@ -617,7 +619,11 @@ export function CartonContextCard({
           label={`${filledExtraTrackingsCount} extra box${filledExtraTrackingsCount === 1 ? '' : 'es'} on this PO`}
           asChild
         >
-          <span className="shrink-0 rounded-none bg-surface-strong/90 px-0 py-0 text-role-eyebrow tabular-nums text-text-muted">
+          <span className={cn(
+              'shrink-0 rounded-none bg-surface-strong/90 px-0 py-0',
+              STATION_CHROME_CELL_TEXT,
+              STATION_CHROME_CELL_INK,
+            )}>
             +{filledExtraTrackingsCount}
           </span>
         </HoverTooltip>
@@ -639,7 +645,11 @@ export function CartonContextCard({
           label={`${filledExtraTrackingsCount} extra box${filledExtraTrackingsCount === 1 ? '' : 'es'} on this PO`}
           asChild
         >
-          <span className="shrink-0 rounded-none bg-surface-strong/90 px-0 py-0 text-role-eyebrow tabular-nums text-text-muted">
+          <span className={cn(
+              'shrink-0 rounded-none bg-surface-strong/90 px-0 py-0',
+              STATION_CHROME_CELL_TEXT,
+              STATION_CHROME_CELL_INK,
+            )}>
             +{filledExtraTrackingsCount}
           </span>
         </HoverTooltip>
@@ -818,7 +828,7 @@ export function CartonContextCard({
       className={cn(
         STATION_CHROME_CELL_CLASS,
         STATION_CHROME_CELL_PAD,
-        'gap-0.5 font-mono text-role-caption tabular-nums text-text-muted',
+        `gap-0.5 ${STATION_CHROME_CELL_TEXT} ${STATION_CHROME_CELL_INK}`,
       )}
       data-testid="carton-context-price"
     >

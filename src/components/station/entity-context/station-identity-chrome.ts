@@ -23,6 +23,7 @@ import {
   PRIMARY_CHROME_ROW_FACE,
 } from '@/components/layout/header-shell';
 import { elevationClass } from '@/design-system/tokens/shadows';
+import { chipLabel, chipText } from '@/design-system/tokens/typography/presets';
 
 /** Flat plane — no lift on the identity band. */
 const STATION_IDENTITY_ELEVATION = elevationClass('flat');
@@ -116,6 +117,49 @@ export const STATION_IDENTITY_LEAD_COL_CLASS =
  * do not invent a second pad scale.
  */
 export const STATION_CHROME_CELL_PAD = 'px-1.5';
+
+/**
+ * Text face for EVERY cell on the one-row carton bar — alias of the house
+ * {@link chipText} preset, so the bar and dense CopyChips elsewhere in the app
+ * are the same face by construction rather than by two strings that happen to
+ * agree today.
+ *
+ * A cell owns its GEOMETRY ({@link STATION_CHROME_CELL_CLASS},
+ * {@link STATION_CHROME_CELL_PAD}) and its TONE (Photos blue wash, Claim orange
+ * wash) — it does **not** own its type. No cell may declare `font-*`,
+ * `tracking-*`, or a `text-role-*` size of its own.
+ *
+ * **Ink is not in this token.** Semantic colour belongs on the GLYPH
+ * (`CHIP_TONES.price.iconClass`, `platformMetaIconTone`), never on the label:
+ * painting the label is exactly what left `$41.99` reading `text-text-muted`
+ * gray while `eBay` two cells over read default ink at the same 12px. Neutral
+ * cells compose {@link STATION_CHROME_CELL_INK}; tone cells keep their own.
+ *
+ * Guard: `carton-chrome-type-unity.guard.test.ts`.
+ */
+export const STATION_CHROME_CELL_TEXT = chipText;
+
+/**
+ * Word face for bar cells whose content is a LABEL, not a value — Claim, the
+ * platform name, the classify pills. Same metrics as
+ * {@link STATION_CHROME_CELL_TEXT}; proportional family instead of mono.
+ *
+ * Two faces, one scale. Mono is load-bearing on IDs and money (character-by-
+ * character scanning, tabular figures); it is noise on a word. Forcing `Claim`
+ * into mono to satisfy "one token" traded a real affordance for a bookkeeping
+ * win — the row reads as one system because the METRICS match, not because the
+ * family does. Family is the single axis permitted to vary here; a cell may
+ * pick this or {@link STATION_CHROME_CELL_TEXT} and nothing else.
+ */
+export const STATION_CHROME_CELL_LABEL = chipLabel;
+
+/**
+ * Default label ink for a neutral (non-tone) bar cell — order #, tracking,
+ * ticket, price, listing. Split from {@link STATION_CHROME_CELL_TEXT} so the
+ * tone cells can paint their own without two `text-*` utilities colliding in
+ * one class string.
+ */
+export const STATION_CHROME_CELL_INK = 'text-text-default';
 
 /**
  * Chrome glyph box — same optical size as exit / back (`h-3.5`).

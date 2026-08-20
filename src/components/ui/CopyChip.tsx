@@ -17,7 +17,7 @@ import { Barcode, ExternalLink, MapPin, Package, Pencil, Receipt, Tags, Ticket }
 import { IconButton } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { CarrierMark } from '@/components/ui/CarrierMark';
-import { monoValue } from '@/design-system/tokens/typography/presets';
+import { chipText, monoValue } from '@/design-system/tokens/typography/presets';
 import type { OptimisticSerialFlag } from '@/lib/receiving/optimistic-serials';
 import { useChipTooltip, useCopyChip } from '@/hooks';
 import { conditionGradeChipStyleOrPending } from '@/lib/condition-tone';
@@ -361,7 +361,7 @@ export function CopyChip({
           <span
             className={`inline-flex shrink-0 items-center justify-center ${
               dense
-                ? 'h-3 w-3 [&_svg]:h-3 [&_svg]:w-3'
+                ? 'h-3.5 w-3.5 [&_svg]:h-3.5 [&_svg]:w-3.5'
                 : 'h-4 w-4 [&_svg]:h-4 [&_svg]:w-4'
             } ${resolvedIconClass ?? ''}`}
             style={iconStyle}
@@ -370,7 +370,7 @@ export function CopyChip({
           </span>
         ) : null}
         <span
-          className={`${dense ? 'text-role-caption font-medium font-mono tabular-nums' : monoValue} ${displayWidthClass} tracking-tight leading-none text-left ${displayOverflowClass} ${
+          className={`${dense ? chipText : `${monoValue} tracking-tight leading-none`} ${displayWidthClass} text-left ${displayOverflowClass} ${
             fitDisplayWidth ? 'min-w-0 shrink-0' : 'min-w-0 flex-1'
           } ${
             isEmptyChipDisplay(faceDisplay) ? 'text-text-faint' : dense ? 'text-text-default' : ''
@@ -674,13 +674,13 @@ export function EmptySkuChipFace({ dense = true }: { dense?: boolean } = {}) {
       aria-label="No SKU"
     >
       <span className="inline-flex max-w-full items-center justify-start gap-0.5 py-0">
-        <span className={`shrink-0 ${dense ? '[&_svg]:h-3 [&_svg]:w-3' : ''} ${tone.iconClass}`}>
+        <span className={`shrink-0 ${dense ? '[&_svg]:h-3.5 [&_svg]:w-3.5' : ''} ${tone.iconClass}`}>
           {tone.icon}
         </span>
         <span
           className={`${
-            dense ? 'text-role-caption font-semibold font-mono text-text-default' : monoValue
-          } tracking-tight leading-none text-left`}
+            dense ? `${chipText} text-text-default` : `${monoValue} tracking-tight leading-none`
+          } text-left`}
         >
           {EMPTY_CHIP_DISPLAY}
         </span>
@@ -902,7 +902,7 @@ export const SerialChipSkeleton = ({
       aria-hidden
     >
       <span className="inline-flex w-auto max-w-full items-center justify-start gap-0.5">
-        <span className={`shrink-0 ${tone.iconClass} ${dense ? '[&_svg]:h-3 [&_svg]:w-3' : ''}`}>
+        <span className={`shrink-0 ${tone.iconClass} ${dense ? '[&_svg]:h-3.5 [&_svg]:w-3.5' : ''}`}>
           {tone.icon}
         </span>
         <span className="inline-flex items-end">
@@ -1044,7 +1044,7 @@ export function AddValueChipFace({
   const labelSize = size === 'chip' ? 'text-role-micro' : dense ? 'text-role-caption' : 'text-role-micro';
   return (
     <span className={`inline-flex items-center gap-0.5 ${colorClass}`}>
-      <span className={`shrink-0 ${dense ? '[&_svg]:h-3 [&_svg]:w-3' : ''}`}>{icon}</span>
+      <span className={`shrink-0 ${dense ? '[&_svg]:h-3.5 [&_svg]:w-3.5' : ''}`}>{icon}</span>
       <span
         className={`${labelSize} whitespace-nowrap font-semibold leading-none tracking-tight opacity-80`}
       >

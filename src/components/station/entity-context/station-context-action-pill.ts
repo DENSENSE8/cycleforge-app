@@ -3,6 +3,9 @@ import { cornerClass } from '@/design-system/tokens/radius';
 import {
   STATION_CHROME_CELL_HOVER_FILL,
   STATION_CHROME_CELL_HOVER_SEAM,
+  STATION_CHROME_CELL_INK,
+  STATION_CHROME_CELL_LABEL,
+  STATION_CHROME_CELL_TEXT,
 } from './station-identity-chrome';
 
 /**
@@ -16,7 +19,7 @@ import {
  * Cite the `rounded-*` CLASS or a {@link cornerClass} role, never a raw token
  * name.
  */
-const STATION_CONTEXT_ACTION_PILL_FACE = `shrink-0 gap-0 self-stretch ${cornerClass('flush')} border font-semibold tabular-nums shadow-none`;
+const STATION_CONTEXT_ACTION_PILL_FACE = `shrink-0 gap-0 self-stretch ${cornerClass('flush')} border ${STATION_CHROME_CELL_TEXT} shadow-none`;
 
 /**
  * Boxed flush cube on a primary chrome row — carton Exit / Back-to-list and
@@ -85,7 +88,7 @@ export const STATION_CONTEXT_PHOTO_TONE =
 export const STATION_CONTEXT_PHOTO_CHROME_CLASS = [
   'ds-raw-button relative z-base flex h-full shrink-0 items-center justify-center gap-0.5 leading-none',
   cornerClass('flush'),
-  'border-0 px-1.5 text-role-caption font-semibold tabular-nums shadow-none',
+  `border-0 px-1.5 ${STATION_CHROME_CELL_TEXT} shadow-none`,
   STATION_CONTEXT_PHOTO_TONE,
   STATION_CHROME_CELL_HOVER_SEAM,
   focusRing('control', 'accent'),
@@ -102,7 +105,7 @@ export const STATION_CONTEXT_PHOTO_CHROME_CLASS = [
  * the trailing vertical rule. Never stack Photos' own bottom+right borders
  * against Claim / Displays (that doubles the seam and optically shifts it).
  */
-export const STATION_CONTEXT_PHOTO_PILL_CLASS = `h-full ${STATION_CONTEXT_ACTION_PILL_FACE} w-14 justify-between px-1.5 text-role-caption border-b-0 border-r-0 ${STATION_CONTEXT_PHOTO_TONE}`;
+export const STATION_CONTEXT_PHOTO_PILL_CLASS = `h-full ${STATION_CONTEXT_ACTION_PILL_FACE} w-14 justify-between px-1.5 border-b-0 border-r-0 ${STATION_CONTEXT_PHOTO_TONE}`;
 
 /**
  * Square h-11 cell for Units explosion / joined serial rows — same blue face +
@@ -126,7 +129,7 @@ const STATION_CONTEXT_CLAIM_TONE =
 export const STATION_CONTEXT_CLAIM_CHROME_CLASS = [
   'ds-raw-button relative z-base flex h-full shrink-0 items-center justify-center gap-0.5 leading-none',
   cornerClass('flush'),
-  'border-0 px-1.5 text-role-caption font-semibold shadow-none',
+  `border-0 px-1.5 ${STATION_CHROME_CELL_LABEL} shadow-none`,
   STATION_CONTEXT_CLAIM_TONE,
   STATION_CHROME_CELL_HOVER_SEAM,
   focusRing('control', 'accent'),
@@ -141,7 +144,7 @@ export const STATION_CONTEXT_CLAIM_CHROME_CLASS = [
 export const STATION_CONTEXT_LISTING_CHROME_CLASS = [
   'ds-raw-button relative z-base flex h-full shrink-0 items-center justify-center gap-0.5 leading-none',
   cornerClass('flush'),
-  'border-0 bg-surface-card px-1.5 text-role-caption font-semibold text-text-default shadow-none',
+  `border-0 bg-surface-card px-1.5 ${STATION_CHROME_CELL_LABEL} ${STATION_CHROME_CELL_INK} shadow-none`,
   `${STATION_CHROME_CELL_HOVER_FILL} disabled:text-text-faint`,
   STATION_CHROME_CELL_HOVER_SEAM,
   focusRing('control', 'accent'),
