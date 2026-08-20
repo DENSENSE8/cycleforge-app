@@ -64,7 +64,7 @@ never the thing the user navigates by as a collection map, and never a parallel 
 - **Combine multiple spines, then sort newest-first before handing to `EventTimeline`.** The renderer day-groups in
   *array order* — it does not sort — so the merged list must already be ordered. `OrderTimelineSection`
   (`src/components/shipped/OrderTimelineSection.tsx`) is the reference: it spreads three adapters
-  (`orderAuditToTimeline` + `inventoryEventsToTimeline` + `stationActivityToTimeline`) and `.sort()`s by `at` descending.
+  (`orderAuditToTimeline` + `inventoryEventsToTimeline` + `stationActivityToTimeline`) and `.sort`s by `at` descending.
 - **Collapse adjacent identical scans with `collapseTimeline` (`src/lib/timeline/collapse.ts`).** Tech re-scans of the
   same ref by the same actor stack into near-duplicate rows; `collapseTimeline` folds an *adjacent run* of equal
   `(title + ref + actor + tone)` into one row, keeps the newest timestamp, and annotates `"N× · earliest …"` in the
@@ -142,7 +142,7 @@ except the row **shell**. It renders helpdesk messages (block markdown + attachm
 
 **Station Ticket Displays omit floor events** (Unbox · Testing · Pack). The floor spine is the peer **Timeline**
 Displays tab (`WorkspaceTimelineTab` → `EventTimeline`). Interleaving ops scans into Ticket teaches “timeline is
-Zendesk” and burns scroll before claim/reply work. Guard: `ticket-timeline-split.guard.test.ts`.
+Zendesk” and burns scroll before claim/reply work.
 
 Support service workspace may still set `mergeFloorTimeline` until an explicit Floor toggle ships.
 
@@ -186,7 +186,7 @@ collapse into one and a customer's words would silently vanish. Collapse the eve
 - **Reveal only — never a layout animation.** `EventTimeline` staggers rows in on mount: a `container`/`row` variant pair
   with `opacity + y:3 → 0`, eased by `motionBezier.easeOut` (`[0.22,1,0.36,1]`, from
   `src/design-system/foundations/motion-framer.ts`). The rail/dots/day-bands never animate their size.
-- **`prefers-reduced-motion` is honored automatically.** `useReducedMotion()` collapses the stagger to `0` and drops the
+- **`prefers-reduced-motion` is honored automatically.** `useReducedMotion` collapses the stagger to `0` and drops the
   `y` offset to a pure opacity fade — per ../ui-design-system.md and
   [Material — applying transitions](https://m3.material.io/styles/motion/transitions/applying-transitions). Don't add
   motion that ignores the reduced-motion branch.

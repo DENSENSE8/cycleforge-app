@@ -1,8 +1,7 @@
 # Scan-station cockpit — the DO / KNOW split
 
 > **Ratified 2026-08-09. Unbox Phase 1 is LIVE** (`LineEditPanel` drives
-> `openDisplays(railLeaf)` from `useUnboxProcedureSteps`; guards:
-> `scan-cockpit.guard.test.ts`). RFC:
+> `openDisplays(railLeaf)` from `useUnboxProcedureSteps`; RFC:
 > [`../../../docs/todo/scan-station-cockpit-do-know-split-RFC.md`](../../../docs/todo/scan-station-cockpit-do-know-split-RFC.md).
 > Exact Unbox step→leaf table: [`unbox-station.md`](unbox-station.md). Sibling
 > ports: [`station-port-from-unbox.md`](station-port-from-unbox.md). Do not port a
@@ -88,7 +87,7 @@ noticeboard and is banned — it stops being glanceable, which is the entire job
   gravity on the KNOW column, not a second DO primary in the centre. Never desk
   `InspectorActionFloor`.
 - **Paint order intact.** Rail strip chrome is P3; leaf **bodies** stay
-  `dynamic()` — the manual / timeline never enter first paint
+  `dynamic` — the manual / timeline never enter first paint
   (`source-of-truth.md` → Paint content order).
 - **Frame budget intact.** Center locks `STATION_PUSH_CENTER_FLOOR_PX` (720);
   Displays fills leftover (the Flex-Grow Sandwich already handles both-open).
@@ -98,7 +97,7 @@ noticeboard and is banned — it stops being glanceable, which is the entire job
 
 ## Guards
 
-- `steps/rail/scan-cockpit.guard.test.ts` — the step→`railLeaf` either-or over
+- — the step→`railLeaf` either-or over
   capture steps (mirror of the dock either-or); rail values are real
   `UnboxSideTab` leaves; no entry for a non-capture step; reasons are real; and
   `LineEditPanel` wires the cockpit (drives the rail from `railLeaf`, yields to
@@ -106,9 +105,9 @@ noticeboard and is banned — it stops being glanceable, which is the entire job
   — no new region). *(The rail either-or lives in its OWN guard, not folded into
   `procedure-step-dock.guard`: action and reference are separate concerns, and
   coupling them would make one guard fail for the other's reason.)*
-- `procedure-step-dock.guard.test.ts` — unchanged; still owns the step→action
+- — unchanged; still owns the step→action
   either-or.
-- `station-displays-reachability.guard.test.ts` — unchanged; rail leaves are
+- — unchanged; rail leaves are
   declared Displays, so reachability holds.
 
 ---
@@ -122,7 +121,7 @@ noticeboard and is banned — it stops being glanceable, which is the entire job
 | Drive rail leaf + centre action from one resolved step | Add a page-local cockpit store |
 | Default-open the existing Displays column, step-driven | Build a new always-on region beside the picker |
 | Let an explicit close stay closed until next carton | Re-open the rail over the operator on every step |
-| Keep leaf bodies `dynamic()` (P3) | Put the manual / timeline in the P1 paint path |
+| Keep leaf bodies `dynamic` (P3) | Put the manual / timeline in the P1 paint path |
 | Port Unbox first (done), then siblings behind the guard — one at a time | Port N stations in one pass |
 
 ---

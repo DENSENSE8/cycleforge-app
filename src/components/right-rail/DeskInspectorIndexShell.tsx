@@ -27,9 +27,20 @@ import {
 import { DisplaysIndexLeafStage } from '@/components/station/displays';
 import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
 import { StationDisplayLeafHeader } from '@/components/station/displays/StationDisplayLeafHeader';
+import { STATION_CHROME_SEAM_HAIRLINE } from '@/components/station/entity-context/station-identity-chrome';
+import { PRIMARY_CHROME_ROW_FACE } from '@/components/layout/header-shell';
 import { cn } from '@/utils/_cn';
 
 export const DESK_INSPECTOR_INDEX = STATION_DISPLAY_INDEX;
+
+/**
+ * Leaf-header band — the desk twin of `STATION_DISPLAYS_PUSH_TOP_BAND`. Fixed
+ * `h-7`, `shrink-0`, `items-stretch`, hairline via `after:` so the rule does
+ * not eat the box. Never drop this wrapper: the header inside is `h-full
+ * flex-1` by contract.
+ */
+const DESK_INSPECTOR_LEAF_BAND =
+  `relative z-header flex ${PRIMARY_CHROME_ROW_FACE} items-stretch gap-0.5 pr-2 ${STATION_CHROME_SEAM_HAIRLINE}`;
 
 export type DeskInspectorLeaf = {
   id: string;
@@ -166,14 +177,22 @@ export function DeskInspectorIndexShell({
         </div>
       ) : null
     : (
-        <StationDisplayLeafHeader
-          title={activeLeaf?.label ?? ''}
-          onBack={goIndex}
-          backLabel={backLabel}
-          canGoBack
-          canGoForward={false}
-          trailing={leafTrailing}
-        />
+        // BAND, not a bare mount. `StationDisplayLeafHeader` is written for the
+        // Displays column's horizontal top band, so it carries `h-full flex-1`
+        // — inside this COLUMN flex that `flex-1` grows the header vertically
+        // and pins the leaf body to the floor (Import latest orders shipped
+        // exactly that: title floating mid-panel, field + CTA at the bottom).
+        // Same `STATION_CHROME_ROW_FACE` + `after:` seam the station band uses.
+        <div className={DESK_INSPECTOR_LEAF_BAND} data-desk-inspector-leaf-band="">
+          <StationDisplayLeafHeader
+            title={activeLeaf?.label ?? ''}
+            onBack={goIndex}
+            backLabel={backLabel}
+            canGoBack
+            canGoForward={false}
+            trailing={leafTrailing}
+          />
+        </div>
       );
 
   return (

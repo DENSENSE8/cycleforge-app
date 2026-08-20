@@ -82,7 +82,7 @@ the third column is what ships instead.
 | Put the active step adjacent to the control that commits it | Float the work surface at the top of an empty canvas |
 | Render identifiers in mono, end-aligned, non-ligating | Set a serial in the sans cut, or let `fi`/`fl` ligate |
 | Name a `motionRole.*` for the motion you do keep | Wire `procedure.advance` / `layout` / `layoutId` onto the deck — the role is deferred and the deck is flat |
-| Let the wedge own focus — re-dispatch after any click | Ship an `autoFocus` or a `.focus()` on procedure chrome |
+| Let the wedge own focus — re-dispatch after any click | Ship an `autoFocus` or a `.focus` on procedure chrome |
 | Treat `skipped` as a waiver | Render `skipped` with a check mark |
 | Open the checklist from the under-dock ring or its Root Index leaf | Mount the ring on a Displays `rightSlot`, or add a Lucide checklist strip cell |
 
@@ -113,8 +113,7 @@ surface with no pointer.
   grid on Inventory Information (2026-08-08) broke WMS muscle memory — operators
   read facts as **stacked horizontal rows** (label start · value end), not a
   card grid. Compose `StationDenseFactStrip layout="rows"`; never `grid-cols-*`
-  / `layout="strip"` inside a Displays leaf. Guard:
-  `station-action-dossier.guard.test.ts`.
+  / `layout="strip"` inside a Displays leaf.
 - **Inventory Information golden (SoT).** Unbox Displays → Inventory →
   Information is `InventoryPoHeader` `variant="instrument"` over
   `StationDenseFactStrip layout="rows"` (PO # · status chip · total · vendor ·
@@ -125,7 +124,7 @@ surface with no pointer.
   sits on the white Displays card (hairlines only). A full-bleed
   `bg-surface-canvas` or `bg-surface-sunken` block behind PO # / Status / Total
   rows is debt — sunken depth-indent is exclusive to `DenseComposeBodyBand`
-  (notes · ticket/claim create/edit). Guard: `station-action-dossier.guard.test.ts`.
+  (notes · ticket/claim create/edit).
 - **A third right-edge grammar.** Exactly two exist — app push column (`RightRailHost`) and station
   push column (`StationDisplaysPushColumn`). An always-on procedure region was built and retired within a day.
   Full reasoning: [`../source-of-truth.md`](../source-of-truth.md) → Right-rail modality.

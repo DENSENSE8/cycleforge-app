@@ -3,8 +3,8 @@
 House identity is **Kinetic Ledger** — data-first reseller ops: dense, state-colored, scan-aware, multi-tenant.
 **Legible throughput** over document calm. Calm chrome (Linear discipline), not document-IA as the product shape.
 
-House identity: [kinetic-ledger.md](kinetic-ledger.md).  
-Region contracts + data→surface: [contextual-display.md](contextual-display.md).  
+House identity: [kinetic-ledger.md](kinetic-ledger.md).
+Region contracts + data→surface: [contextual-display.md](contextual-display.md).
 Token inventory: `src/design-system/DESIGN_SYSTEM.md`.
 
 These conventions recur across rails, triage panels, inspectors, boards, tables, and modals. Reuse them — don't reinvent presentation per feature.
@@ -80,10 +80,9 @@ Rails are a **recipe** for workbench pickers — not proof that every Workbench 
   add them from the grid's top-right **column-display lip** →
   `GridColumnDetailsPanel` (generated from the descriptor, persisted per
   staff as a delta). Column display is never page chrome — see
-  `display/workbench-ops-queue.md` → Trailing Display & Actions. **Never** call `useIsColumnHidden()` from a grid family —
+  `display/workbench-ops-queue.md` → Trailing Display & Actions. **Never** call `useIsColumnHidden` from a grid family —
   it is the retired cell-granularity path that left an empty ruled band instead
-  of removing the track. It survives on four surfaces, pinned shrink-only by
-  `use-is-column-hidden.guard.test.ts` — full list in
+  of removing the track. It survives on four surfaces, pinned shrink-only by — full list in
   [source-of-truth.md](source-of-truth.md) → Grid column visibility + sort.
   **Column sort** is URL-durable via `useUrlColumnSort` (`?colsort=`/`?coldir=`,
   never `?sort=` on station routes — that is server ordering).
@@ -92,7 +91,7 @@ Rails are a **recipe** for workbench pickers — not proof that every Workbench 
   shell; props: `padding`/`radius`/`elevation`/`borderless`), **`SectionCard`** (`@/design-system/
   components/monitor` — Monitor rollup zones), or **`CardShell`** (selectable/animated list rows).
   **Ops tables / spreadsheets** compose `TABLE_SURFACE_*` from `tokens/table-surface.ts`
-  (rounded-xl + raised + sunken frozen header). Guard: `surface-box-tokens.guard.test.ts` (`npm run test:surface-box-guard`)
+  (rounded-xl + raised + sunken frozen header).
   ratchets hand-rolled shells down; a true one-off carries a same-line `ds-allow-box` comment.
 
 ### Allow by surface
@@ -174,7 +173,7 @@ precedent: scroll chaining to the parent view is deliberately cut, not merely co
 sibling (a floating dock, a fixed composer).** The pairing has open, unresolved Chromium bugs —
 [issue 40055750](https://issues.chromium.org/issues/40055750) and
 [issue 365913982](https://issues.chromium.org/issues/365913982) both report `scroll-padding`
-corrupting what `Element.scrollIntoView()` considers "in view," and a
+corrupting what `Element.scrollIntoView` considers "in view," and a
 [Playwright report](https://github.com/microsoft/playwright/issues/3105) documents
 `scrollIntoView` failing specifically when the target sits under a sticky/covering element — close
 to this exact shape. **Use a physical trailing spacer element instead**: a zero-content sentinel
@@ -194,7 +193,7 @@ radius and renders as a lens/notch. For an edge accent use a **border on the ele
 
 ## Monitor surface tokens (rollup density)
 
-- **Card shell:** `rounded-2xl border border-border-soft bg-surface-card shadow-sm`  
+- **Card shell:** `rounded-2xl border border-border-soft bg-surface-card shadow-sm`
   (`MONITOR_SECTION_CARD_*` in `src/design-system/components/monitor/shell.ts`).
 - **KPI tile anatomy:** eyebrow label + compact `DeltaChip` (top-right) → hero number (tabular). No status footer row.
 - **List rows inside cards:** house one-row anatomy + `divide-y` (`MonitorListBlock` / `MonitorListRow`) — never nested
@@ -254,7 +253,7 @@ third chat renderer (`SupportChatThread` stays deleted).
   outbound) is the leading mark's identity — an avatar, a station glyph — **not**
   a bubble fill. Backgrounds default to transparent; internal notes may tint with
   `bg-surface-sunken` **and** say so in words on the row. Prove the shared edge by
-  measuring — every row's `getBoundingClientRect().left` must resolve to ONE value.
+  measuring — every row's `getBoundingClientRect.left` must resolve to ONE value.
 - **Read + reply (bubble)** — station Ticket Displays (`streamVariant="bubble"` /
   `variant="bubble"`). The job is prose top-to-bottom then answer; inbound vs
   outbound is distinguished by the bubble shell (house tokens — soft fill/border,
@@ -288,15 +287,13 @@ third chat renderer (`SupportChatThread` stays deleted).
   (`text-role-micro font-normal text-text-soft`) — **Sentence case** as authored
   (`label` / `gridLabel`); never CSS `uppercase`. Eyebrows · chips · `sectionLabel` /
   `fieldLabel` keep uppercase-tracked micro chrome. Golden consumer: Unbox History.
-  Guard: `table-header-casing.guard.test.ts`.
 - **A grid STATUS cell is that chip with a dot leading it, inside** — `GridStatusCellValue`
   (`@/components/ui/grid-cells`), never a page-local chip. Tone comes from the surface's lifecycle
-  registry (`workflowStage().badge`, `pickupOrderStatusChipClass`, …); the third layer derives from
+  registry (`workflowStage.badge`, `pickupOrderStatusChipClass`, …); the third layer derives from
   the resolved ink (`ring-current/20`), so no registry needs a new field.
   - **Lifecycle badges are pastel only** — `bg-*-50 text-*-700` (or `bg-surface-*` neutrals). Never
     solid white-ink fills (`bg-*-600 text-white`) in a status column, and never encode status as a
-    full-cell Sheets wash (that channel is staff highlight prefs only). Guard:
-    `workflow-stages.badge.guard.test.ts`. Golden consumer: Unbox History status track.
+    full-cell Sheets wash (that channel is staff highlight prefs only). Golden consumer: Unbox History status track.
   - **Why a chip and not bare text:** a state is a categorical label, and bare text in a ruled band
     reads as one more data value. Four surfaces had each grown their own local chip for this exact
     job before the primitive existed.
@@ -362,7 +359,7 @@ load-bearing (condensed keeps 10–11px chrome inside a grid column; mono keeps 
   **Unbox History / Receiving:** deterministic fact tracks are fixed (`resizable: false` +
   content-hard `minmax`); **Product** alone is `minmax(16rem, 1fr)` + resizable — Fields
   still toggles visibility.
-- Guard: `typography-tokens.guard.test.ts` (raw px, retired tokens, the weight cap, the family
+-
   bindings). Genuine one-off: same-line `ds-allow-weight`. Codemod: `scripts/codemods/cap-font-weight.mjs`.
 
 ## Instrument typography + telemetry rows
@@ -434,7 +431,7 @@ Views assemble **resolved** facts. Do not invent maps in components:
 | Lifecycle / status dots | lifecycle tone registries / `workflowStageDot` |
 | Identifiers (serial, FNSKU, tracking, …) | typed `CopyChip` variants |
 | Capabilities / providers | `capabilityNoun` / runtime provider label |
-| Staff / org identity mark | `StaffAvatar` / `IdentityMark` (`@/components/identity`) — never a page-local circle or `initials()` |
+| Staff / org identity mark | `StaffAvatar` / `IdentityMark` (`@/components/identity`) — never a page-local circle or `initials` |
 | Cross-entity search rows | `SearchHit` + `searchHitHref` |
 
 Full waist: [source-of-truth.md](source-of-truth.md).
@@ -466,7 +463,7 @@ Full waist: [source-of-truth.md](source-of-truth.md).
     the same shape of rule (`.a path` vs `.b path`), so they tie on specificity and Tailwind's
     emission order decides. The header's Unbox face stayed heavy through three separate fixes for
     exactly that reason. **Glyphs ship bare; a surface drawing nav chrome applies
-    `navIconStrokeClass()` / `NAV_ICON_STROKE_CLASS`.** A heavier control glyph, if ever wanted
+    `navIconStrokeClass` / `NAV_ICON_STROKE_CLASS`.** A heavier control glyph, if ever wanted
     again, is a NEW token with a stated job — never a wrapper baked back into an icon.
   - **GlobalHeader chrome is no longer an exception.** It ran on native stroke 2, which made the two
     halves of one beam read as different weights at an identical 16px; beam glyphs now compose
@@ -496,9 +493,9 @@ Full waist: [source-of-truth.md](source-of-truth.md).
   - **Do:** let the control's box overhang (a scale token — `pl-2` on the row, or
     `-ml-2` — never arbitrary px, so it tracks `--cf-density`). **A hit box may
     bleed past the content edge; the mark the operator reads may not sit off it.**
-  - **Don't:** trust `getBoundingClientRect()` on an `<svg>` — that is the element
+  - **Don't:** trust `getBoundingClientRect` on an `<svg>` — that is the element
     box, and it will report "aligned" for a mark you can see is not. Measure
-    `getBBox()` (viewBox units, less half the stroke, scaled to the render).
+    `getBBox` (viewBox units, less half the stroke, scaled to the render).
   - **Don't align a shared shell to one occupant.** Reference the *content gutter*
     every occupant shares. A band tuned against a sibling that is also a
     glyph-in-a-box agrees with that one surface and misses every other — and it is
@@ -506,7 +503,7 @@ Full waist: [source-of-truth.md](source-of-truth.md).
 - **Icon buttons own their box via `IconButton size`** (`xs` 24 · `sm` 28 · `md` 32 · `lg` 36 · `touch` 44px —
   `src/design-system/primitives/IconButton.tsx`), never a hand-set `h-N w-N` on the button. Omit `size` only for a
   bare glyph-button where the glyph is the whole hit target. The 44px mobile tap floor is `size="touch"` (the old
-  `tokens/touch.ts`, retired). Guard: `control-size-tokens.guard.test.ts` (`npm run test:control-size-guard`),
+  `tokens/touch.ts`, retired).
   ratcheting the hand-set-box call sites down; genuinely bespoke geometry carries `ds-allow-control-size`.
 
 ## Color only from semantic tokens
@@ -527,8 +524,8 @@ Full waist: [source-of-truth.md](source-of-truth.md).
   `inset-card` (card body) · `inset-empty` (dashed empty/error box) · `stack-tight/row/section`
   (column rhythm) · `row-gap/tight` (inline groups) — or compose the `Stack`/`Inset`/`Row` primitives.
 - **An intent is the whole padding story for its element** — never stack a raw `p-*`/`px-*` on top:
-  both survive `cn()` and the intent wins in CSS order.
-- **Never** hardcode arbitrary-px spacing (`p-[6px]`-style). Guard: `spacing-tokens.guard.test.ts`
+  both survive `cn` and the intent wins in CSS order.
+- **Never** hardcode arbitrary-px spacing (`p-[6px]`-style).
   (`npm run test:spacing-guard`); genuine safe-area / fixed-overlay geometry carries a same-line
   `ds-allow-spacing` comment. Pair→intent codemod: `scripts/codemods/spacing-intents.mjs`.
 - **`space-y-*` is `margin-block-END` in Tailwind v4 — a per-item `margin-top` cannot cancel it.**
@@ -542,7 +539,7 @@ Full waist: [source-of-truth.md](source-of-truth.md).
 ## Focus affordance from the SoT
 
 - Focus styling comes from **`focusRing(archetype, tone)`** (`src/design-system/tokens/focus-ring.ts`),
-  composed via `cn()` — never a hand-rolled `focus:ring-*` recipe. It collapses the ~670 drifted
+  composed via `cn` — never a hand-rolled `focus:ring-*` recipe. It collapses the ~670 drifted
   recipes to one canonical form per archetype × semantic tone.
 - Three archetypes by how the element takes focus: **`field`** (`:focus`, the input itself — ring +
   border shift) · **`control`** (`:focus-visible`, a button — ring + offset, so a mouse click never
@@ -550,7 +547,7 @@ Full waist: [source-of-truth.md](source-of-truth.md).
 - Tones are **semantic** (`accent` default · `danger` · `warning` · `success` · `neutral`), not raw
   shades; ring opacity is canonical per archetype (field /20, control /40). `Button`/`IconButton`
   consume `focusRing('control', 'accent')`; new inputs use `focusRing('field', …)`.
-- Guard: `control` sibling `focus-ring-tokens.guard.test.ts` (`npm run test:focus-ring-guard`) ratchets
+-
   raw `focus:ring-*` down; a genuine one-off carries a same-line `ds-allow-focus` comment.
 
 ## Async / empty / error states

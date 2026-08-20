@@ -34,7 +34,7 @@ For a credential form of **two fields** (email → password), keep both mounted 
         animate={revealPresence.animate}
         exit={revealPresence.exit}
         transition={revealTransition}               // framerTransition.signInStepSlide
-        onAnimationComplete={() => setSettled(true)}
+        onAnimationComplete={ => setSettled(true)}
         className={cn('px-1 -mx-1', settled ? 'overflow-visible' : 'overflow-hidden')}
       >
         …password field + Forgot link…

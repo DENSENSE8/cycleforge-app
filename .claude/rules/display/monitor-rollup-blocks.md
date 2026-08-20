@@ -1,23 +1,23 @@
 # Monitor rollup blocks — compose, or grow the registry
 
-> Inherits: [../ui-design-system.md](../ui-design-system.md) (Kinetic Ledger, density `rollup`), [monitor-and-canvas.md](monitor-and-canvas.md).  
-> Code SoT: `src/design-system/components/monitor/`.  
-> Golden page: `src/features/operations/workspace/OperationsAnalyticsView.tsx`.  
+> Inherits: [../ui-design-system.md](../ui-design-system.md) (Kinetic Ledger, density `rollup`), [monitor-and-canvas.md](monitor-and-canvas.md).
+> Code SoT: `src/design-system/components/monitor/`.
+> Golden page: `src/features/operations/workspace/OperationsAnalyticsView.tsx`.
 > Root law: [pattern-evolution.md](../pattern-evolution.md) + [kinetic-ledger.md](../kinetic-ledger.md) (compose → grow SoT → compose again).
 
 **Recipe registry for observe/rollup density** — not the only way every surface looks, and not a layout religion
-for Workbench/Station. Agents building **Monitor rollup** regions **compose these blocks**.  
-**Inventing a page-local** `SectionCard`, KPI grid, or card shell is a bug.  
+for Workbench/Station. Agents building **Monitor rollup** regions **compose these blocks**.
+**Inventing a page-local** `SectionCard`, KPI grid, or card shell is a bug.
 **Improving the registry primitive** when it is wrong or fights a stronger sibling is the intended upgrade path — not a freeze.
 
 ---
 
 ## When this doc applies
 
-Region is **Monitor** (`pickArchetype` → observe-only, no durable selection, filters only).  
+Region is **Monitor** (`pickArchetype` → observe-only, no durable selection, filters only).
 Examples: Operations live/analytics/history, `/dashboard` KPI strip region, reports rollups.
 
-If the user picks a record and edits it → **Workbench** (not this doc).  
+If the user picks a record and edits it → **Workbench** (not this doc).
 If the input is a scanner → **Station**.
 
 ---
@@ -59,7 +59,7 @@ import {
   DeltaChip,
 } from '@/design-system/components/monitor';
 
-export function MyMonitorView() {
+export function MyMonitorView {
   return (
     <MonitorPageShell stagger>
       <FilterBand leading={<>…title…</>}>
@@ -118,7 +118,7 @@ No status / footer third row under the hero.
 
 ### List rows inside cards
 
-House **one-row anatomy** (title → meta → trailing). Use `MonitorListRow` or plain `divide-y` rows.  
+House **one-row anatomy** (title → meta → trailing). Use `MonitorListRow` or plain `divide-y` rows.
 **Never** nest `SectionCard`s as list rows.
 
 ---
@@ -157,7 +157,7 @@ House **one-row anatomy** (title → meta → trailing). Use `MonitorListRow` or
 ## Theme / dark dashboards
 
 - Surfaces: `bg-surface-canvas`, `bg-surface-card`, `border-border-soft`, `text-text-*`, functional `text-text-success|warning|danger|info|fulfillment`.
-- Dark mode is **`data-theme`** + `src/design-system/themes/dark.ts` (and other palettes).  
+- Dark mode is **`data-theme`** + `src/design-system/themes/dark.ts` (and other palettes).
 - **No page-local hex** for Monitor chrome. Chart series colors may use the chart-theme SoT (`charts/chart-theme.ts`) when needed for series identity.
 
 ---
@@ -188,5 +188,5 @@ House **one-row anatomy** (title → meta → trailing). Use `MonitorListRow` or
 
 ## Multi-region pages
 
-`/dashboard` is **Workbench** (orders collection + optional context) with a **Monitor rollup region** (`OutboundKpiStrip`).  
+`/dashboard` is **Workbench** (orders collection + optional context) with a **Monitor rollup region** (`OutboundKpiStrip`).
 Each region keeps its archetype. The KPI strip may use `KpiStrip`/`KpiTile`; it must not grow durable selection (filter params only).

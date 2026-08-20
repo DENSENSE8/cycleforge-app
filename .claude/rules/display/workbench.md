@@ -24,7 +24,7 @@ This doc only details what's *specific* to the Workbench **contract**. Recipes l
   persists through a route — and a reload should land them back on the same record — it's a Workbench.
 - **Anti-mix:** never bolt Workbench edit onto a pure Monitor stream; never drop a browse list into a Station scan column.
 - A page may **host** a Workbench beside another contract (scan bench + collection map), but each *region* obeys exactly one.
-- **Code home:** `pickArchetype()` in `src/lib/stations/archetype.ts`; surface hints + **`workbenchBranch`** in
+- **Code home:** `pickArchetype` in `src/lib/stations/archetype.ts`; surface hints + **`workbenchBranch`** in
   `SURFACE_REGISTRY` (`src/lib/stations/surface-keys.ts`).
 
 ---
@@ -108,7 +108,7 @@ an inspector View cluster paints no trigger at all, and its columns stay at the
 descriptor default. The card-corner hover-reveal float that used to cover this
 case is **deleted** — give the surface a host rather than re-adding a float.
 Surfaces knowingly left dark are recorded in the shrink-only
-`NO_COLUMN_DISPLAY_HOST` ledger (`workbench-trailing-cluster.guard.test.ts`).
+`NO_COLUMN_DISPLAY_HOST` ledger.
 
 ### Return-to-scan contract (every scan station)
 

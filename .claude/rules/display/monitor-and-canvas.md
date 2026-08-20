@@ -36,7 +36,7 @@ are ephemeral URL params; data flows *in* (poll/query), the user does not edit.
 ### Anatomy
 
 - **Full-page right pane, routed by `?mode=`.** `OperationsWorkspace` (`src/features/operations/workspace/OperationsWorkspace.tsx`)
-  reads `useOperationsMode()` and renders one of `live | analytics | insights | history`
+  reads `useOperationsMode` and renders one of `live | analytics | insights | history`
   (`OperationsMode` SoT: `src/components/sidebar/operations/operations-sidebar-shared.ts`). `?mode=` is the single
   source of truth, owned by the sidebar's mode rail — **never** a local `useState`.
 - **Compose the Monitor block registry** — `MonitorPageShell`, `FilterBand`, `KpiStrip`/`KpiTile`, `SectionCard`,
@@ -89,7 +89,7 @@ are ephemeral URL params; data flows *in* (poll/query), the user does not edit.
 
 ### Update algorithm (Monitor)
 
-1. **MOUNT:** read `?mode=` via `useOperationsMode()` and route to the matching view. Each view reads its own filter
+1. **MOUNT:** read `?mode=` via `useOperationsMode` and route to the matching view. Each view reads its own filter
    params (`?q=`/`?station=`/`?range=`/`?section=`) from `useSearchParams` — never local component state.
 2. **FETCH:** one org-scoped query with a `staleTime` (`useQuery`, `staleTime: 30_000`); a non-OK response resolves to
    an empty array so the pane degrades, not throws.
@@ -99,7 +99,7 @@ are ephemeral URL params; data flows *in* (poll/query), the user does not edit.
 4. **RENDER:** newest-first stream (`EventTimeline`) or rollup (charts + heatmap). First load staggers in; later filter
    edits re-render without animation.
 5. **NO PERSIST:** nothing is written. A "Create report" action is a client-side CSV export (`exportReport` builds a
-   `Blob`), not a mutation. There is no audit, no `transition()`, no CRUD route on a Monitor.
+   `Blob`), not a mutation. There is no audit, no `transition`, no CRUD route on a Monitor.
 
 ---
 
@@ -181,7 +181,7 @@ model; an **inspector** is the secondary detail. URL carries version, focus, zoo
 5. **EDIT (draft only):** `canManage` + "Edit as draft" → `createDraft`. Node/edge/config/annotation mutations flow up
    via `onGraphChange`; the shell holds the canonical draft and marks it `dirty`.
 6. **PERSIST:** `saveDraft` → `publish` (or `discardDraft`, confirm-then-commit). Published = read-only again. Backend
-   mutations follow the house route pattern (`withAuth → validate → domain helper → recordAudit → after()`; see
+   mutations follow the house route pattern (`withAuth → validate → domain helper → recordAudit → after`; see
    [../backend-patterns.md](../backend-patterns.md)). Simulate never persists.
 
 ---

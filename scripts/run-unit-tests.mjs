@@ -46,13 +46,24 @@ if (files.length < 50) {
   process.exit(2);
 }
 
-const skippedGuards = walk(SRC)
+// The burn is a CEILING, not a filter. Silently skipping a non-keeper guard
+// let the population regrow 4 -> 17 in eight days: every one of those files
+// was unrun, so it enforced nothing, while still costing every agent that
+// read it a search for the rule it appeared to pin. A guard that does not run
+// is prose wearing a test's filename. Add one here only by adding it to
+// KEEPER_GUARDS — deliberately, with a reason — or put the invariant in the
+// layer that can actually hold it (dep-cruiser, ESLint AST, TS props, a
+// mounted DOM test) per AGENTS.md -> Guard authoring.
+const strayGuards = walk(SRC)
   .map((abs) => relative(ROOT, abs).split('\\').join('/'))
   .filter((rel) => rel.endsWith('.guard.test.ts') && !KEEPER_GUARDS.has(rel));
-if (skippedGuards.length) {
-  console.log(
-    `run-unit-tests: skipping ${skippedGuards.length} legacy guard tests (governance reset)`,
+if (strayGuards.length) {
+  console.error(
+    `run-unit-tests: ${strayGuards.length} guard test(s) exist outside KEEPER_GUARDS ` +
+      `and would never run:\n  ${strayGuards.join('\n  ')}\n` +
+      `Delete them, or promote to KEEPER_GUARDS in this file.`,
   );
+  process.exit(2);
 }
 
 const res = spawnSync(

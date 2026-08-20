@@ -47,8 +47,7 @@ tabs · optional closed-catalog Pin-list · Band-3 Views — house law in
 
 ## Enforcement — tiers, hard rules, CI guards (HARD SoT)
 
-This anatomy is now **mechanically enforced**, not soft. Ratchet/positive guards:
-`src/components/station/workbench/station-workbench-chrome.guard.test.ts`
+This anatomy is now **mechanically enforced**, not soft. Ratchet/positive
 (config + baselines + allowlists: `station-workbench-chrome-config.ts`) and the
 registry-sync test `src/lib/station-terminal/station-terminal.test.ts` (Guard G).
 They run under `npm run verify`. **Baselines only shrink — never raise one to
@@ -58,7 +57,7 @@ land a port** ([verify.md](../verify.md)).
 
 | Tier | Stations | Guard stance |
 |---|---|---|
-| **A — Unbox-family** | Unbox, Triage, Testing, **Pack**, **Labels** (flush column; Print·Documents·Timeline centre), **Shipping**, **Packer review** | Full chrome: `StationContextBar` + two-row `CartonContextCard` above `StationWorkbench`. Secondary / exact triage detail opens in **Displays** only — never a Show-details strip under identity (`carton-context-details-in-displays.guard.test.ts`). **Unbox + Triage + Testing + Pack + Shipping + Packer review** use Displays push for reference tools; **Labels** keeps Documents · Timeline as centre tabs with Unbox flush host (`StationPanelRoot`, `bodyGap="none"`). Pack stays **terminal-exempt** (Tier C dock). |
+| **A — Unbox-family** | Unbox, Triage, Testing, **Pack**, **Labels** (flush column; Print·Documents·Timeline centre), **Shipping**, **Packer review** | Full chrome: `StationContextBar` + two-row `CartonContextCard` above `StationWorkbench`. Secondary / exact triage detail opens in **Displays** only — never a Show-details strip under identity. **Unbox + Triage + Testing + Pack + Shipping + Packer review** use Displays push for reference tools; **Labels** keeps Documents · Timeline as centre tabs with Unbox flush host (`StationPanelRoot`, `bodyGap="none"`). Pack stays **terminal-exempt** (Tier C dock). |
 | **B — port targets** | Pickup (when focus entity exists) | Must match 720 column + compose `StationWorkbench`; terminal via registry **or** typed exempt/allowlist |
 | **C — documented exceptions** | Support ticket (`SupportTicketIdentity`, non-carton), Support orders (`ShippedPanelEditorDock` footer), Pack (no sticky dock) | Explicit allowlist below + in config |
 | **D — demote / remount** | Repair intake | Adopt `StationWorkbench` + `StationContextBar`, or drop from "Unbox-family" — not both |
@@ -103,8 +102,7 @@ land a port** ([verify.md](../verify.md)).
   ticket-history summaries, claim wizards, or dossier callouts in the locked
   centre column. Centre = **ops-flow only** (that station's exact triage / I/O).
   Contextual detail opens as a **Displays** leaf beside the middle (QC: Ticket
-  via `TicketDisplayHost` + `resolveTestingTicketContextOpen`). Guard:
-  `station-centre-ops-flow.guard.test.ts`.
+  via `TicketDisplayHost` + `resolveTestingTicketContextOpen`).
 - Raise a guard baseline to pass.
 
 ### Documented allowlists (Tier C / gaps)
@@ -250,7 +248,7 @@ them. Law: `source-of-truth.md` → Station Action vs Context planes.
     only (hard cut). Never spring / never shared layout.
   - **Armed-idle pulse** — opacity on `>` + track only via bare
     `animate-pulse` (`ARMED_CURSOR_MARKER_PULSE_CLASS`), composed when
-    `useReducedMotion()` is false. **Never** `motion-safe:animate-pulse` (that
+    `useReducedMotion` is false. **Never** `motion-safe:animate-pulse` (that
     silently no-ops under OS Reduce Motion and reads as a broken pulse).
     **Never** full-row / sky Infinity.
   - **Right-rail commit never withholds DOM.** Enter / Space / click calls
@@ -309,7 +307,7 @@ them. Law: `source-of-truth.md` → Station Action vs Context planes.
   verb in the same turn (never a pre-paint hit-marker withhold; mouse matches
   keyboard — no focus→arm frame before the rail updates). Deferred leaf chunks
   (Photos · Ticket · …) preload when Displays opens so index→leaf is not a cold
-  `dynamic()`. While
+  `dynamic`. While
   keyboard-region **Right** owns (`regionActive` on `useArmedCursorList`), ↑↓
   are claimed on window capture — pointer into the Displays column is enough;
   do not require a prior Tab into a row (ambient table cursors already yield
@@ -340,8 +338,7 @@ them. Law: `source-of-truth.md` → Station Action vs Context planes.
 - **⌘/Ctrl+] is the edge toggle.** Same action as the mounted `←|` / `→|`
   click — owned by `StationDisplaysEdgeToggle` via `displays-toggle-hotkey.ts`
   (not a per-panel listener). Closes the whole column from a leaf (toggle
-  visibility); Esc still pops leaf → index → close. Guard:
-  `station-displays-toggle-hotkey.guard.test.ts`.
+  visibility); Esc still pops leaf → index → close.
 - **Chrome is two rows and no footer (2026-08-19):** row 1 = the header band;
   **row 2 = `Filter displays…`** (`subHeader`, full width, **Root Index only**,
   `TechRailSearchBar variant="chrome"` — the same find face as the Unbox sheet's
@@ -360,13 +357,12 @@ them. Law: `source-of-truth.md` → Station Action vs Context planes.
   the open carton belongs in the corner the operator already reads for chrome,
   not at the far end of a scrolling column. The `→|` / Filter footer is
   untouched and stays the bottom band. The carton `↑↓` cursor no longer mounts
-  in this band. Desk `InspectorActionFloor` stays banned on Displays. Guard:
-  `station-displays-action-floor.guard.test.ts`.
-- **Guard:** `station-displays-reachability.guard.test.ts` asserts the operator
+  in this band. Desk `InspectorActionFloor` stays banned on Displays.
+- **
   contract (*every declared display is reachable*), not the mode string. The
   per-station guards asserted `navMode="leaf"` was present and were green
   through the entire regression — a guard that pins the mechanism blesses
-  whatever the mechanism does. Index chrome: `station-display-index.guard.test.ts`.
+  whatever the mechanism does. Index chrome:.
 - **Follow-up (out of scope):** 48–64px icon-collapsed rail — today open (≥280)
   or closed only.
 
@@ -406,8 +402,8 @@ second editor for the same three fields.
 
 **A display's URL vocabulary lives in ONE list.** `?display=` is round-tripped
 via `canonicalizeUnboxSideTab` in `UNBOX_ROUTE_PARAMS` (legacy `pairing` /
-`po-note` → `linkage`). Guards: `carton-match-hub.guard.test.ts` ·
-`unbox-side-tabs.test.ts` · `unbox-right-edge-chrome.guard.test.ts` ·
+`po-note` → `linkage`).
+`unbox-side-tabs.test.ts` · ·
 `route-params.test.ts`.
 
 ### Procedure status views (main vs unbox-work)
@@ -519,7 +515,7 @@ list is the foundation to build from.
   steps corrupts the evidence trail.
 - **Nothing here takes focus — including a clicked control.** No `autoFocus`, no
   `tabIndex` on the deck; the focus card is scrolled into view, never
-  `.focus()`ed. A pager chip or a card click *natively* focuses its button, and
+  `.focus`ed. A pager chip or a card click *natively* focuses its button, and
   the next wedge scan would then type into it and its Enter would re-activate it
   — so **every pointer control on this surface dispatches `receiving-focus-scan`
   after it acts**. The wedge owns focus, and a surface that steals it drops scans
@@ -555,11 +551,7 @@ peek by 4px until `reserveScrollClearance="pager"` landed
 (`STATION_TERMINAL_PAGER_SCROLL_CLEARANCE`). A named variant, not a bumped shared
 constant: the four stations without a pager must not pay 32px of dead canvas for
 one that has one.
-
-Guards: `procedure-step-body.guard.test.ts` (every step has a body + a dock
-control) · `procedure-step-face.guard.test.ts` (every step has an icon + hue) ·
-`procedure-divergence.guard.test.ts` (every step has a gate) ·
-`receiving-lines-procedure-gates.guard.test.ts` (every gate column survives the
+control) · (every step has an icon + hue) · (every step has a gate) · (every gate column survives the
 API normalizer — see below).
 
 **A gate column must survive the WIRE, not just the schema.** `normalizeRow` in
@@ -603,8 +595,7 @@ station `centerFloorPx` = `STATION_PUSH_CENTER_FLOOR_PX` (**720**). Displays
 drag min is `STATION_DISPLAYS_MIN_WIDTH_PX` (**280**), below the desk
 inspector 360. Host SoT: `StationScanPaneHost` + `StationDisplaysPushColumn`.
 **Continuous improvement:** Unbox is golden for the middle measure; every other
-scan-station panel in `SCAN_STATION_EDGE_MEASURE_PANELS` is watched by
-`station-edge-measure.guard.test.ts` (shrink-only missing-token + local
+scan-station panel in `SCAN_STATION_EDGE_MEASURE_PANELS` is watched by (shrink-only missing-token + local
 `max-w-[720px]` baselines). Port siblings via
 [`scan-station-edge-measure-CI-LOOP-PROMPT.md`](../../docs/todo/scan-station-edge-measure-CI-LOOP-PROMPT.md).
 **Station Ticket (or Claim) and app AI share the product law “one right details
@@ -637,7 +628,7 @@ not an imperative bridge.
    carton-terminal VM) mounts on `data-unbox-dogfood-print` just above
    `UnboxDockHost` — always-on, Displays-independent — for bench validation.
    Band 1 trailing stays null so there is never a double commit. Promote or
-   remove after dogfood. Guard: `unbox-dock-one-shell.guard.test.ts`.
+   remove after dogfood.
 4. **Serial Dominance:** On `activeKey === 'serial'`, the wedge entry field must
    consume ≥80% of the available floor band width. Peripheral utility chrome
    (FileText notes toggle) is demoted or hidden.
@@ -657,8 +648,7 @@ not an imperative bridge.
 
    **COUNTER-EXAMPLE (banned):** content-sized Band-2 “SHIPPING LABEL” chip +
    floating progress spinner in dead white; Band-1 soft ghost CTAs with `gap-*`
-   air. That is bad UX — never ship it again. Guard:
-   `unbox-dock-one-shell.guard.test.ts`.
+   air. That is bad UX — never ship it again.
 
 | Zone | Scope | Contract |
 |---|---|---|
@@ -720,7 +710,6 @@ Receive means the same thing on every step.
 
 Code: `steps/dock/` (registry + controls) · `UnboxStepDock` (the band) ·
 `buildUnboxStepDock` (slot composition, beside `buildUnboxOverview`).
-Guard: `steps/dock/procedure-step-dock.guard.test.ts` — pins the either-or
 membership, the shared carton-photo control, and that **no step body imports an
 action primitive**.
 
@@ -731,10 +720,10 @@ action primitive**.
 | Layer | Role | SoT |
 |---|---|---|
 | **1. Progress stepper** | Completeness checklist (Photos → Serial → Print), not a wizard lock | `LinearWorkflowStepper` + `deriveLinearStepStates` — lives in parent shell (`ReceivingLineWorkspace`), not inside `StationWorkbench` |
-| **2. Station identity chrome** | Coplanar flush band under GlobalHeader over the **sunken** work plane (no in-flow gray band, no raised bookmark). **Top padding SoT:** `STATION_IDENTITY_INSET_TOP` (`top-0`); `stationIdentityPanelClass` = `rounded-none` + hairline `border-b` + flat elevation + `bg-surface-card` on the **edge-to-edge measure** (`STATION_WORKBENCH_COLUMN`); `stationIdentityPadClass` = horizontal only (zero `pt`/`pb`). **Never** stack host `py-*` under the absolute identity. Unbox push is **flush** (no outer `my-2` / host `pr-2`). | `StationContextBar` (`stationContextBarHostClass`) + `StationMoreDetails` + `CartonContextCard` (two-row); pair with `StationWorkbench` `reserveIdentityClearance="stacked"` + Unbox `bodyGap="none"`. Tokens: `station-identity-chrome.ts` + flush `CONTEXT_PANEL_COLUMN_CLASS` / `DETAIL_STACK_PUSH_COLUMN_CLASS`. Guard: `unbox-push-gutter.guard.test.ts`. **Unbox:** Displays primary nav is **Root-to-Leaf** (`StationDisplaysPushStack` — index rows → leaf; horizontal `density="icon"` topic plate retired). Procedure progress ring seats **under the dock** (Band 2 right — `UnboxScanProgressControl` in `UnboxDockHost.progress`), always mounted, opening the Checklist Displays leaf; not on a Displays `rightSlot`; closed Displays opens via `←|` (utility-rail footer). Pane/utility carries **Displays `←|` open** (`StationDisplaysEdgeToggle`) beside carton `↑ ↓`. Open handoff: shared `layoutId` morphs into column footer `→|` — never a second pane dismiss, never `detail:receiving`. Nested verbs: Photos = armed rows + URL drills (trail via `useDisplaysLeafChrome`); Inventory = secondary vertical; Linkage · Units underline = debt. Child segment for Move/Prebox/Claim/Support. Ticket is presence-exclusive. Checklist is a Displays leaf (also a Root Index row), opened from that under-dock ring. Not `GoalRing`. Peer stations compose `ScanStationProgressControl` — never fork. |
+| **2. Station identity chrome** | Coplanar flush band under GlobalHeader over the **sunken** work plane (no in-flow gray band, no raised bookmark). **Top padding SoT:** `STATION_IDENTITY_INSET_TOP` (`top-0`); `stationIdentityPanelClass` = `rounded-none` + hairline `border-b` + flat elevation + `bg-surface-card` on the **edge-to-edge measure** (`STATION_WORKBENCH_COLUMN`); `stationIdentityPadClass` = horizontal only (zero `pt`/`pb`). **Never** stack host `py-*` under the absolute identity. Unbox push is **flush** (no outer `my-2` / host `pr-2`). | `StationContextBar` (`stationContextBarHostClass`) + `StationMoreDetails` + `CartonContextCard` (two-row); pair with `StationWorkbench` `reserveIdentityClearance="stacked"` + Unbox `bodyGap="none"`. Tokens: `station-identity-chrome.ts` + flush `CONTEXT_PANEL_COLUMN_CLASS` / `DETAIL_STACK_PUSH_COLUMN_CLASS`. **Unbox:** Displays primary nav is **Root-to-Leaf** (`StationDisplaysPushStack` — index rows → leaf; horizontal `density="icon"` topic plate retired). Procedure progress ring seats **under the dock** (Band 2 right — `UnboxScanProgressControl` in `UnboxDockHost.progress`), always mounted, opening the Checklist Displays leaf; not on a Displays `rightSlot`; closed Displays opens via `←|` (utility-rail footer). Pane/utility carries **Displays `←|` open** (`StationDisplaysEdgeToggle`) beside carton `↑ ↓`. Open handoff: shared `layoutId` morphs into column footer `→|` — never a second pane dismiss, never `detail:receiving`. Nested verbs: Photos = armed rows + URL drills (trail via `useDisplaysLeafChrome`); Inventory = secondary vertical; Linkage · Units underline = debt. Child segment for Move/Prebox/Claim/Support. Ticket is presence-exclusive. Checklist is a Displays leaf (also a Root Index row), opened from that under-dock ring. Not `GoalRing`. Peer stations compose `ScanStationProgressControl` — never fork. |
 | **2a. Context rail collapse** | Every left context-rail card may park via **display** `RailFilterCollapseButton` auto-seated by bottom `TechRailSearchBar` `variant="rail"` under `ContextPanelCollapseProvider` (age column / bottom-right; hosts may override `trailingAction`) **or** drag-past-min on the trailing resize edge (trailing **inset** hairline — drag-only sash, no sash-top collapse chevron; dashboard included); slim expand strip restores it — **whole-strip click / Enter / Space** (or footer chevron). Top-of-strip **mini scan cell** (`CollapseStripScanCell` — `PRIMARY_CHROME_ROW_FACE` Plus idle with staff-themed hover; focused = same bottom-up `ScanBandGlowHost` glow as the open band + visible caret, no placeholder; shares primary `StationScanBar` via `usePublishCollapseScan`). Mid-strip **MRU pins** (`CONTEXT_PANEL_COLLAPSE.mruPinCount` = 5) are the default for every `SidebarRecentRailBase` (shell publishes via `usePublishCollapsePins`) — status dots; **selected** pin uses open-rail `RailRow` ring (`bg-blue-50 ring-1 ring-inset ring-blue-400`); pin **click** selects (stay collapsed); pin **double-click** expands; when the open rail has more than five, a **`+N` overflow** control expands; pin **hover** always opens a `RailPopover` card — the feed's own `renderPopover` (Receiving · FBA) when it has one, else the shared **`RailPeekCard`** (title · status · **copyable `CopyChip` id facts** via `getCollapsePinFacts` · age · Open →). Never a text-only tooltip. Dashboard inbound recents thin-wires the same publish channel (not on the shell). Outset chrome hangs into **`CONTEXT_PANEL_HOST` shared ground**. Width-drawer + localStorage — not a page-local / in-row twin. LedgerDrill parent maps share the same filter-trailing grammar (`useLedgerDrillCollapse`). | `CONTEXT_PANEL_COLLAPSE` + `ContextPanelLayout` + `SidebarRecentRailBase` / `SidebarRailShell` + `TechRailSearchBar` + `RailFilterCollapseButton` + `LeftDockCollapseStrip` + `CollapseStripScanCell` + `CollapseStripMruPins`; Unbox/Triage roots use `appWorkCanvasLayoutClass` |
 | **2b. Mid-canvas edge jump** | Secondary surface jump (e.g. Triage → Open in Unbox) — not the terminal CTA | `StationRightEdgeAction` + `stationRightEdgeActionHostClass` on the panel `relative` root (~`top-1/4` right). Never nest under `moreDetails`; never use `SlicedActionDock` for this |
-| **3. Section tabs / Displays leaves** | Centre workbench section tabs (when used) own bar + panels; Unbox centre `tabs` stays empty. Station **Displays** navigate Root Index → leaf — never a permanent icon topic plate. Nested leaf grammar: **armed-row verbs + stack chrome** (Photos · Inventory golden — `StationArmedVerbList` / `useDisplaysLeafChrome`; no parent TabDisplay); in-tool child `segment` (Move To·From · Prebox mode · Support Team·Activity); **leaf-wide** Claim New·Link = `StationDisplayLeafHeader` trailing via `setLeafTrailing` on Displays chrome. **Debt (shrink-only):** Linkage · Units still mount one parent underline until migrated. Ticket is presence-exclusive. Soft `TabSwitch` / `rounded-full` pills banned. Guards: `tab-display-displays-hosts.guard.test.ts` · `station-displays-nested-grammar.guard.test.ts` · `photos-actions-armed.guard.test.ts`. Other non-Displays call sites may still use `SectionTabsSlider` `inline` underline. |
+| **3. Section tabs / Displays leaves** | Centre workbench section tabs (when used) own bar + panels; Unbox centre `tabs` stays empty. Station **Displays** navigate Root Index → leaf — never a permanent icon topic plate. Nested leaf grammar: **armed-row verbs + stack chrome** (Photos · Inventory golden — `StationArmedVerbList` / `useDisplaysLeafChrome`; no parent TabDisplay); in-tool child `segment` (Move To·From · Prebox mode · Support Team·Activity); **leaf-wide** Claim New·Link = `StationDisplayLeafHeader` trailing via `setLeafTrailing` on Displays chrome. **Debt (shrink-only):** Linkage · Units still mount one parent underline until migrated. Ticket is presence-exclusive. Soft `TabSwitch` / `rounded-full` pills. Other non-Displays call sites may still use `SectionTabsSlider` `inline` underline. |
 | **4. Tab body** | Whole contextual display per tab (form state survives via mounted panels) | Station-specific content. A tab-scoped action is a LOCAL control in its own body — never an imperative bridge feeding the dock (Unbox deleted all three) |
 | **5. Feedback / footer** | Inline action feedback (scroll) + receive band. **Unbox:** receive band co-mounts in the absolute dock float stack **above** `UnboxDockHost` (not the in-flow `footer` — an absolute dock would cover it). Other stations may still use sticky `footer` between body and an in-flow dock. | `WorkspaceActionFeedbackSlot`, `ReceiveFeedbackRegion` |
 | **6. Terminal dock band** | **Leading = the ACTIVE STEP's action control** (`UnboxStepDock` → `UNBOX_STEP_DOCK_CONTROLS`; a step card never carries a button) + pager + chat-style notes composer · **trailing = the carton's** primary CTA (**tab-aware only where the registry slice says so — Unbox is not**) | `STATION_TERMINAL_REGISTRY` → `StationTerminalDock` → `SlicedActionDock`. **Unbox = ONE floating shell on every carton**: `OmnichannelComposerDock` via `slicedActionDockWrapperClass({ docked: false })` (absolute over the canvas + `reserveScrollClearance`) with the CTA in its `trailingAction` (`<StationTerminalDock embedded>`), blue Send suppressed. **Unbox Displays / Ticket / Claim / tool** are flush right-edge push columns composing `StationDisplaysPushColumn` (`DETAIL_STACK_PUSH_COLUMN_CLASS`; narrow overlay may use elevated aside). Ticket reopen is carton identity Reply / `?ticketView=1`. **Flush planes:** no outer push gutters — hairline against sunken center. Identity top = `STATION_IDENTITY_INSET_TOP` only. Support/Testing Ticket *tabs* (when present) still use `SupportTicketComposerDock` + `SupportChatComposer` `variant="station-dock"`. Full-width in-flow band elsewhere |
@@ -830,7 +819,7 @@ notes (DenseCompose escalate — may grow):
 - `SlicedActionDock` `embedded` renders **only** the flush-square track (`h-11`,
   `rounded-none`, no band padding / safe-area / absolute float) — never a soft
   `rounded-xl` pill on the Unbox floor. The host control owns placement.
-  `slicedActionDockWrapperClass()` is the pure placement SoT.
+  `slicedActionDockWrapperClass` is the pure placement SoT.
 - Dock notes: Done / ⌘Enter saves + closes notes; blur still saves. Never fire
   Print·Receive from notes commit during capture. Tall `OmnichannelComposerDock`
   / insert rail are not in this band (PO-note display owns sync / insert chrome).
@@ -839,8 +828,7 @@ notes (DenseCompose escalate — may grow):
   fields into `SlicedActionDock` at a call site.
 - `disabledReason` is the host's line above the dock band (settle only).
 - **Never** mount a second `StationTerminalDock` band under the overview dock.
-- **Never** co-mount Print·Receive with an active step studio
-  (guard: `unbox-dock-one-shell.guard.test.ts`).
+- **Never** co-mount Print·Receive with an active step studio.
 
 `StationWorkbench` still accepts optional `toolbar` / `entityContext` for legacy
 or non-identity chrome (e.g. Labels Queue/Print band, Triage recommendations
@@ -863,7 +851,7 @@ terminal.
 1. Add one row to `WORKSPACE_MODES` only for receiving-family chrome; every docked adopter adds `STATION_TERMINAL_REGISTRY`
 2. Thin adapter: controller → `CartonContextCard` props (omit optional claim/photos/classify/lifecycle/PO$)
 3. Mount adapter in `StationContextBar` above `StationWorkbench` (`placement="flow"`). Refresh / Pair corner `StationHeaderToolbar` is retired on Testing — Pairing is a Displays tab; Unbox may still pane-anchor utilities when Ticket can push. Lookup utilities → `/carton/[id]`
-4. Tab defs with visibility gates → `buildSectionTabs()`
+4. Tab defs with visibility gates → `buildSectionTabs`
 5. Terminal resolver in `{station}/terminal/` — tab id → `TerminalActionVm`
 6. Compose `StationWorkbench` — never hand-roll `relative flex h-full min-h-0 flex-col`
 
@@ -881,7 +869,7 @@ this list is the part the guards do not cover.
 | # | Requirement | Status |
 |---|---|---|
 | 1 | A **single derivation hook** returning `ProcedureStepRow[]` + `activeKey` | **Must** — no bench may compute steps twice |
-| 2 | Step order from a `deriveProcedureSteps`-shaped vocabulary SoT | **Must** — pinned by `src/lib/stations/procedure-divergence.guard.test.ts` |
+| 2 | Step order from a `deriveProcedureSteps`-shaped vocabulary SoT | **Must** — pinned by |
 | 3 | Active-step pointer via `resolveActiveStep` | **Must** — shared with the read model |
 | 4 | Centre **focus deck** (`ProcedureDeck`) | **Must on `unbox-work` / derived-procedure benches**; **main Unbox exempt** (PO lines + label — see Unbox centre above) |
 | 5 | **Realtime subscription** on the evidence channel | **Must** — P6; a lagging checklist is worse than none |
@@ -908,7 +896,7 @@ not force Unbox chrome onto them.
 ### Porting gotcha — the export surface
 
 `ProcedureDeckProps` and `ProcedureCardFace` are currently **module-private**, and
-`ProcedureStepState` is not in the `procedure/` barrel. A porting bench must supply a `face()`
+`ProcedureStepState` is not in the `procedure/` barrel. A porting bench must supply a `face`
 mapper whose return type it cannot yet import. **Export those in the same change that first consumes
 them** — exporting ahead of a consumer adds a new knip finding and fails `npm run verify`.
 
@@ -999,7 +987,7 @@ competing immersive scrollports, never a modal takeover.
   bottom-anchored structural headers, both hold this floor. Give the collapsed face a clear
   state change (or a "back to Procedure" chevron) so a misclick reads as recoverable, not silent.
 - **The wedge keeps focus. Full stop.** A section-expand control is a click target, never a focus
-  target — do not `.focus()` into the newly-immersive section on expand. The scan bar's
+  target — do not `.focus` into the newly-immersive section on expand. The scan bar's
   `useRegisterScanTarget` binding must survive every expand/collapse; the same "hand focus back"
   rule the Smart Stack's own controls already follow (`instrument-panel.md` — "Let the wedge own
   focus"). Keyboard: the chrome trigger itself is a normal Tab/Enter-reachable control (WCAG

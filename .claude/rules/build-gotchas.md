@@ -8,7 +8,7 @@ Silent-failure traps specific to this stack (Next 16, Turbopack dev, Tailwind). 
   `@config "../../tailwind.config.mjs"`, then explicit `@source` globs (incl. `src/lib`).
 - PostCSS: `postcss.config.mjs` → `@tailwindcss/postcss` only (no `autoprefixer` —
   Lightning CSS handles prefixes).
-- **Do not** use v3 “function colors” (`themed()`). Theme colors must be plain
+- **Do not** use v3 “function colors” (`themed`). Theme colors must be plain
   `'var(--ds-…)'` strings; `/opacity` uses `color-mix` natively.
 - CF Type + spacing-intent plugins still live in `tailwind.config.mjs` via `@config`.
   Ship-before-adoption classes use `@source inline("…")` (replaces v3 `safelist`).

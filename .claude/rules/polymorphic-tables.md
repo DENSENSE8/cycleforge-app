@@ -41,7 +41,7 @@ column. New tables of either shape must have:
      (`receiving_exceptions`, `part_links.parent_item_id`).
    - A **BEFORE/AFTER DELETE trigger family**, one `CREATE TRIGGER trg_<action>_<child>_on_<parent>_delete`
      per parent the discriminator can name, sharing one generic trigger function that dispatches on
-     `TG_ARGV[0]` (see `fn_delete_photos_on_parent_delete()` / `fn_cancel_work_assignments_on_entity_delete()`
+     `TG_ARGV[0]` (see `fn_delete_photos_on_parent_delete` / `fn_cancel_work_assignments_on_entity_delete`
      for the two established shapes — cascade-delete vs. cancel-in-place). **When a table adds a new
      discriminator value, add its trigger in the same migration** — `work_assignments` shipped 5
      `work_entity_type_enum` values but only ever wired up 2 triggers (`ORDER`, `RECEIVING`); the other 3
@@ -76,13 +76,13 @@ BEGIN;
 
 CREATE TABLE IF NOT EXISTS <table> (
   id              BIGSERIAL PRIMARY KEY,
-  organization_id UUID NOT NULL,                 -- NO default; enforce_tenant_isolation() installs it
+  organization_id UUID NOT NULL,                 -- NO default; enforce_tenant_isolation installs it
   entity_type     TEXT NOT NULL,                 -- discriminator; named CHECK below
   entity_id       BIGINT NOT NULL,
   -- ... typed fact columns (promote queryable business facts to real columns;
   --     keep only true variant config in jsonb — see Appendix C's taxonomy) ...
-  created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT now,
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT now
 );
 
 DO $$ BEGIN

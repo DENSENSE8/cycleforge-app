@@ -129,7 +129,6 @@ they were never what the boundary is about, and funnelling them through the barr
   Because the swap happens in exactly one file, it is a dependency decision rather than a
   220-file migration next time it changes — which is the entire reason for the boundary.
 - **`framer-motion` and `motion/react` are both banned outside `src/design-system/motion/**`.**
-  Guard: `motion-major.guard.test.ts` (also still pins a single major in the lockfile — dual
   majors split React context and break nested `AnimatePresence`).
 - **`AnimateNumber` stays at `@/design-system/motion/plus`, off the main barrel.** Re-exporting
   it from the index would put `motion-plus` in the module graph of every one of the ~220 barrel
@@ -183,7 +182,7 @@ because "make room" *is* a reflow and has no transform-only spelling. Three cond
 **Not Workbench KPI Band 2 (or sibling sheet-chrome metric doors).** Those free/occupy height *above the
 grid* and must **snap instantly** (`WorkbenchKpiBand` → `hidden`) — never `collapseHeight` / opacity /
 layout tween. Warehouse ops chrome is a tool door, not a push flourish. Hard law: `AGENTS.md` → Ops chrome
-binary show/hide is instant. Guard: `workbench-kpi-collapse.guard.test.ts`.
+binary show/hide is instant.
 
 **A push column that still tweens** (photo drawer and other surfaces that elect
 `motionRole.push.rail`) needs its `AnimatePresence` to OUTLIVE its child. A presence that mounts
@@ -445,8 +444,7 @@ revealing ranked results is a genuinely different job from a navigator disclosin
 `spineBodySwap` and `spineActiveWash` ARE deleted, presets and all: they had exactly one consumer
 each and an orphan preset is both a knip finding and an invitation to re-wire it.
 
-**Do not reintroduce motion here** — not a crossfade, not a settle, not a rotate transition. Guard:
-`main-nav-groups.guard.test.ts` asserts the file imports no motion barrel, no preset, no hook.
+**Do not reintroduce motion here** — not a crossfade, not a settle, not a rotate transition.
 
 ## RESOLVED — the MasterNav nest opens INSTANTLY (no motion at all)
 
@@ -523,7 +521,7 @@ faded while holding its full box and never collapsed.
 **Still outside the floor** (each needs its own gate):
 
 - **GSAP** — different engine, no `MotionConfig`. `card-fan-carousel.tsx` gates explicitly with
-  `useReducedMotion()` zeroing every tween `duration`/`delay`.
+  `useReducedMotion` zeroing every tween `duration`/`delay`.
 - **`motion-plus` `AnimateNumber`** — separate package/context; its only consumer `AnimatedStat`
   already handles reduce manually.
 - **Tailwind `animate-*`** (~289 files) — CSS animations, mostly loaders where a spinner is a
@@ -538,8 +536,7 @@ mandatory bridge would buy **zero** additional compliance while sending every ag
 the runtime already does — and `useMotionPresence`'s own history is of *over*-reducing
 (it discarded `collapseHeight`'s height keys and left elements faded at full box).
 
-The bridge stays what it is: the escape hatch for **stronger-than-default** reduction. The
-`station-motion-bridge.guard.test.ts` allowlist — station card primitives that must suppress
+The bridge stays what it is: the escape hatch for **stronger-than-default** reduction. The allowlist — station card primitives that must suppress
 motion outright, not merely crossfade it — remains the correct scope, and it may grow. A
 blanket mandate is not on the roadmap; reopen it only with evidence the floor misses a case.
 
@@ -573,7 +570,7 @@ blanket mandate is not on the roadmap; reopen it only with evidence the floor mi
   (The MasterNav body swap was the one exception; it is instant as of 2026-08-08.)
 - **Any motion at all in the MasterNav spine** — it imports no motion barrel; see the RESOLVED section.
 - **Animating outside framer without a gate** — GSAP / `motion-plus` sit outside the `MotionConfig`
-  floor, so they need their own `useReducedMotion()` check. (Consuming `framerPresence.*` raw is
+  floor, so they need their own `useReducedMotion` check. (Consuming `framerPresence.*` raw is
   *fine* — the floor covers it.)
 - **Importing `framer-motion` / `motion/react` outside `src/design-system/motion/**`** — the barrel
   is the only motion import path; the guard fails the build.

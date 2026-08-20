@@ -52,7 +52,7 @@ constants from `src/lib/tenancy/qa-org.ts` — never on whatever rows USAV happe
 ## Measure in the real runner, not a convenience surface
 
 Geometry and layout claims come from the actual test runner (Playwright) or the browser under test.
-An embedded preview pane can report distorted rects — a measured `getBoundingClientRect()` that
+An embedded preview pane can report distorted rects — a measured `getBoundingClientRect` that
 disagrees with the viewport is a signal the surface is lying, not a result to report.
 
 Assert on the **invariant**, not a sample: for a virtualized grid the last DOM row belongs to the

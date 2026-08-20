@@ -136,15 +136,13 @@ whole paste.
 shell renders **list** and **thread** and nothing else; context is a rail occupant that registers
 itself. `ServiceWorkspaceShell` carried a private `<aside>` for one day (2026-08-01) — a second
 permanent consumer of the edge, and a duplicate of `SupportContextDetailPanel`, which was already
-registering the same `SupportContextHub` correctly. Deleted, not migrated. Guard:
-`service-workspace.guard.test.ts`.
+registering the same `SupportContextHub` correctly. Deleted, not migrated.
 
 **The rail's `push` is decided by the HOST, not the panel.** `SupportContextDetailPanel` has two
 hosts with opposite answers — Unbox nests it inside an `StationDisplaysPushColumn` (float, or two columns fight
 one edge), `/support` gives it the edge outright (push). So `push` is a **required prop with no
 default**: a default is a silent opt-out at every call site nobody visited
-(`backend-patterns.md` → a safety classification is a required parameter). Guard:
-`right-rail-push.guard.test.ts`.
+(`backend-patterns.md` → a safety classification is a required parameter).
 
 ---
 
@@ -223,8 +221,7 @@ plainly that a two-clause test admitted the surface.
 | **Timeline** (station Displays peer) | Scans · unbox · tracking · status | `WorkspaceTimelineTab` → `EventTimeline` |
 
 Scan-station Ticket Displays (Unbox · Testing · Pack) **never** interleave the
-floor spine into Ticket — that lives on the Timeline peer tab. Guard:
-`ticket-timeline-split.guard.test.ts`.
+floor spine into Ticket — that lives on the Timeline peer tab.
 
 Support service workspace may still pass `mergeFloorTimeline` (optional merge)
 until an explicit Floor toggle ships — it has no peer Timeline Displays yet.
@@ -286,7 +283,7 @@ the question an agent asks before reading a single message.
   "not linked yet" line is the correct render. A band that vanishes when
   unlinked teaches the agent that linkage is not a thing this surface has.
 - Compose `IdentityMark` / `staffInitials` — never a hand-rolled `rounded-full`
-  initials span, never a local `initials()`.
+  initials span, never a local `initials`.
 
 ### The field band is gone; each fact has ONE editable home per host
 
@@ -316,8 +313,7 @@ core loop is "work the queue." The left rail did not compensate: for Tickets it 
 `SupportTicketsRecentRail`, a **recently-selected dock**, not the queue map.
 
 **Fixed 2026-08-01.** `ServiceWorkspaceShell` renders `list` unconditionally and hides it with
-`display:none` + `inert` while the thread holds the surface. Pinned by
-`service-workspace.guard.test.ts` → *"the shell never unmounts the queue map"*, which also fails on a
+`display:none` + `inert` while the thread holds the surface. Pinned by → *"the shell never unmounts the queue map"*, which also fails on a
 re-introduced `if (!ticketId) return <Board/>` early return.
 
 **Still staged: the thread COVERS the list, it does not yet sit beside it.** Side-by-side needs a
@@ -388,8 +384,7 @@ A ticket is not a transient unit: it persists, it is assigned, it is returned to
 a **Workbench identity header** (`PaneHeader` blocks / `SupportTicketIdentity`), not a carton context
 bar.
 
-**Compose, don't fork.** `SupportTicketIdentity` is an allowlisted deliberate fork in
-`station-workbench-chrome.guard.test.ts` precisely because *a ticket is not a carton* — that
+**Compose, don't fork.** `SupportTicketIdentity` is an allowlisted deliberate fork in precisely because *a ticket is not a carton* — that
 allowlist entry is evidence for this ruling, not an exception to it. When the shell lands, grow the
 Workbench identity SoT rather than porting more carton chrome across.
 

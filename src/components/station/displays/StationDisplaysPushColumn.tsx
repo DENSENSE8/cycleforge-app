@@ -509,11 +509,7 @@ export function StationDisplaysPushColumn({
                 />
               </span>
             </HoverTooltip>
-            {/* Absolute far right, never collapses. Stays `→|` (not an X):
-                Displays PUSHES, so the panel parks back against the edge it
-                came from rather than being cancelled — the house close-glyph
-                ruling is about semantics, not position, so moving the control
-                up here does not change it. */}
+            {/* Absolute far right, never collapses. */}
             <span className={STATION_DISPLAYS_PUSH_TOP_CELL}>
               <StationDisplaysEdgeToggle
                 variant="column-close"
