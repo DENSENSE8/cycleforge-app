@@ -13,7 +13,8 @@ import type { PendingWorkItem, PendingWorkSource } from '@/lib/receiving/pending
 
 export type { PendingWorkItem, PendingWorkSource };
 
-export const pendingWorkQueryKey = (receivingId?: number | null) =>
+/** Module-local: the hook is the only consumer, so exporting it is dead surface. */
+const pendingWorkQueryKey = (receivingId?: number | null) =>
   ['pending-work', receivingId ?? 'all'] as const;
 
 /**
