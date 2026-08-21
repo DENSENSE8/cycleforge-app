@@ -42,6 +42,7 @@ import {
 import { motion } from '@/design-system/motion';
 import { cn } from '@/utils/_cn';
 import { elevationClass } from '@/design-system/tokens/shadows';
+import { COMPOSER_SHELL_CORNER } from '@/design-system/tokens/radius';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import {
   framerPresence,
@@ -308,12 +309,17 @@ export const OmnichannelComposerDock = forwardRef<
                     // deliberately does not list border-radius — the flatten
                     // must land in the same frame the panel starts peeling,
                     // not lag behind it.
-                    weldTop ? 'rounded-b-2xl rounded-t-none' : 'rounded-2xl',
+                    weldTop ? 'rounded-b-2xl rounded-t-none' : COMPOSER_SHELL_CORNER,
                     'border border-border-soft bg-surface-card',
                     elevationClass('raised'),
                   ),
               focusRing('wrapper', 'accent'),
-              'focus-within:ring-2 focus-within:ring-blue-500/20',
+              // The halo belongs to the whole silhouette, so a welded dock
+              // hands it to `WeldedStack` — two rings would draw a seam
+              // straight through the shape the weld exists to make one. The
+              // BORDER stays: this is the focused field and its own edge
+              // should say so.
+              !weldTop && 'focus-within:ring-2 focus-within:ring-blue-500/20',
             ),
         disabled && 'opacity-60',
         className,

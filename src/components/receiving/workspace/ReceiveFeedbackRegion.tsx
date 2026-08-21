@@ -37,7 +37,7 @@
  * operator is about to type in, so it must cost one line at rest.
  * ────────────────────────────────────────────────────────────────────────── */
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { AnimatePresence } from '@/design-system/motion';
 import { AlertTriangle, Check, Loader2 } from '@/components/Icons';
 import { getStationChannelName, safeChannelName } from '@/lib/realtime/channels';
@@ -62,6 +62,16 @@ import type {
   ReceiveResult,
   ReceiveSummary,
 } from './line-edit/hooks/useReceiveAction';
+
+/**
+ * The reconcile verdict for a `zoho_receive`. It is LIFTED out of the panel
+ * (2026-08-21) because the panel unmounts on dismiss and the verdict has to
+ * outlive it: the header ⓘ replays the last receive, and a replay that forgot
+ * whether inventory confirmed would either re-subscribe to a settled event
+ * that will never fire again, or silently re-run the 45s ceiling and paint a
+ * failure that never happened.
+ */
+export type ReceiveReconcileStatus = 'pending' | 'confirmed' | 'failed';
 
 /* ── The settled-success view ────────────────────────────────────────────── */
 
@@ -201,12 +211,21 @@ function ReceiveSuccessPanel({
   onRetry,
   moreOpen,
   onToggleMore,
+  replay = false,
+  reconcileStatus,
+  onReconcileStatus,
 }: {
   result: Extract<ReceiveResult, { kind: 'success' }>;
   onDismiss: () => void;
   onRetry?: () => void;
   moreOpen: boolean;
   onToggleMore: () => void;
+  /** Replaying a remembered verdict rather than one that just happened. */
+  replay?: boolean;
+  /** The verdict as it stood when this result was last live. */
+  reconcileStatus?: ReceiveReconcileStatus;
+  /** Report the verdict up so a later replay can restore it. */
+  onReconcileStatus?: (status: ReceiveReconcileStatus) => void;
 }) {
   // Reconcile the optimistic checks against the real background verdict. The
   // mark-received-po after() publishes `zohoReceive: 'ok' | 'failed'` per line
@@ -214,27 +233,30 @@ function ReceiveSuccessPanel({
   const { user } = useAuth();
   const orgId = user?.organizationId;
   const channel = safeChannelName(() => getStationChannelName(orgId!));
-  // `demoStatus` is bench-tester only (see its docblock on ReceiveResult) and
-  // seeds this directly. The panel remounts per `success-${at}` key, so each
-  // scenario activation re-seeds rather than inheriting the last verdict.
-  const demo = result.demoStatus ?? null;
-  // 'skipped' is a SETTLED success: the provider was already at or ahead of
-  // received so nothing was posted. It is deliberately not folded into
-  // 'confirmed' — "Confirmed in inventory" over a receive that posted nothing
-  // is exactly the lie this panel used to tell.
-  const [status, setStatus] = useState<'pending' | 'confirmed' | 'skipped' | 'failed'>(
-    demo ?? 'pending',
+  const [status, setStatus] = useState<ReceiveReconcileStatus>(reconcileStatus ?? 'pending');
+  // A replay watches nothing: the Ably event it was waiting for has already
+  // been and gone, and re-arming the ceiling below would invent a failure.
+  const live = result.reconcile && !replay;
+
+  // The verdict is reported up at each transition rather than from an effect —
+  // an effect that pushed state into the parent on every render would loop
+  // through the parent's own re-render.
+  const settle = useCallback(
+    (next: ReceiveReconcileStatus) => {
+      setStatus(next);
+      onReconcileStatus?.(next);
+    },
+    [onReconcileStatus],
   );
-  const live = result.reconcile && demo == null;
 
   // Hard ceiling — if Ably never delivers zohoReceive (or after() hangs on a
   // slow Zoho already-received path), flip to retryable failure instead of
   // holding "waiting for the inventory system" forever.
   useEffect(() => {
     if (!live || status !== 'pending') return;
-    const t = window.setTimeout(() => setStatus('failed'), 45_000);
+    const t = window.setTimeout(() => settle('failed'), 45_000);
     return () => window.clearTimeout(t);
-  }, [live, status]);
+  }, [live, status, settle]);
 
   useAblyChannel(
     channel,
@@ -242,13 +264,20 @@ function ReceiveSuccessPanel({
     (msg: { data?: { rowId?: unknown; zohoReceive?: unknown } }) => {
       const data = msg?.data;
       const verdict = data?.zohoReceive;
-      if (verdict !== 'ok' && verdict !== 'skipped' && verdict !== 'failed') return;
+      if (verdict !== 'ok' && verdict !== 'failed') return;
       const rowId = Number(data?.rowId);
       if (!Number.isFinite(rowId) || !result.lineIds.includes(rowId)) return;
-      setStatus(verdict === 'ok' ? 'confirmed' : verdict === 'skipped' ? 'skipped' : 'failed');
+      settle(verdict === 'ok' ? 'confirmed' : 'failed');
     },
     live && Boolean(orgId) && Boolean(channel),
   );
+
+  /**
+   * A replayed receive whose confirmation never landed while it was on screen.
+   * It is NOT a failure and NOT a confirmation — the honest render is the
+   * settled success plus a line saying the confirmation was still outstanding.
+   */
+  const replayUnsettled = replay && result.reconcile && status === 'pending';
 
   const view = buildView(result.summary, status === 'failed');
 
@@ -260,13 +289,7 @@ function ReceiveSuccessPanel({
   const tone: InlineActionFeedbackTone = reconciling ? 'loading' : view.tone;
   const steps = reconciling
     ? receivePhaseSteps({ phase: 'reconciling', summary: result.summary })
-    : [
-        status === 'confirmed'
-          ? 'Confirmed in inventory'
-          : status === 'skipped'
-            ? 'Already received in inventory — nothing posted'
-            : view.headline,
-      ];
+    : [status === 'confirmed' ? 'Confirmed in inventory' : view.headline];
 
   const cta: WeldedFeedbackCta | undefined =
     status === 'failed' && onRetry
@@ -303,7 +326,9 @@ function ReceiveSuccessPanel({
       cycling={reconciling}
       edgeProgress={reconciling}
       leading={leading}
-      meta={clockLabel(result.at)}
+      // A replay is history, so the time it happened is the fact worth showing
+      // — labelled, so it never reads as something that just occurred.
+      meta={replay ? `Last · ${clockLabel(result.at)}` : clockLabel(result.at)}
       cta={cta}
       moreOpen={moreOpen}
       onToggleMore={onToggleMore}
@@ -312,6 +337,12 @@ function ReceiveSuccessPanel({
       {/* The checklist keeps its stagger — it just replays inside the
           disclosure now instead of costing three lines above the composer. */}
       <InlineActionFeedbackChecklist tone={view.tone} items={view.items} />
+      {replayUnsettled ? (
+        <p className="mt-1.5 text-role-micro font-medium leading-snug text-text-muted">
+          Inventory confirmation was still outstanding the last time this was on
+          screen. Re-run Receive if the line has not cleared.
+        </p>
+      ) : null}
       {view.note ? (
         <p className="mt-1.5 flex items-start gap-1.5 text-role-micro font-medium leading-snug text-text-muted">
           {view.tone === 'warning' ? (
@@ -425,6 +456,9 @@ export function ReceiveFeedbackRegion({
   onDismiss,
   onRetry,
   onPhotoPolicyOverride,
+  replay = false,
+  reconcileStatus,
+  onReconcileStatus,
 }: {
   receiving: ReceiveInFlight | null;
   receiveResult: ReceiveResult | null;
@@ -444,6 +478,16 @@ export function ReceiveFeedbackRegion({
    * the block stays hard — never a dead button.
    */
   onPhotoPolicyOverride?: (code: PhotoPolicyOverrideCode) => void;
+  /**
+   * This result is a REPLAY of the last receive (the composer's ⓘ), not one
+   * that just happened. It suppresses the realtime subscription and the
+   * reconcile ceiling, and labels the timestamp as history.
+   */
+  replay?: boolean;
+  /** The reconcile verdict as it stood when the result was last live. */
+  reconcileStatus?: ReceiveReconcileStatus;
+  /** Report the verdict up so a later replay can restore it. */
+  onReconcileStatus?: (status: ReceiveReconcileStatus) => void;
 }) {
   const phase: 'progress' | 'success' | 'diagnostic' | 'none' = receiving
     ? 'progress'
@@ -460,7 +504,7 @@ export function ReceiveFeedbackRegion({
   // rather than slamming the composer's top radius open and shut three times.
   const childKey =
     phase === 'success' && receiveResult?.kind === 'success'
-      ? `success-${receiveResult.at}`
+      ? `success-${receiveResult.at}${replay ? '-replay' : ''}`
       : phase;
 
   const toggleMore = () => setResponseExpanded(!responseExpanded);
@@ -482,6 +526,9 @@ export function ReceiveFeedbackRegion({
           onRetry={onRetry}
           moreOpen={responseExpanded}
           onToggleMore={toggleMore}
+          replay={replay}
+          reconcileStatus={reconcileStatus}
+          onReconcileStatus={onReconcileStatus}
         />
       ) : phase === 'diagnostic' && receiveResult?.kind === 'diagnostic' ? (
         <ReceiveDiagnosticPanel
