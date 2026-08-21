@@ -60,10 +60,15 @@
  *
  * ## House constraints this obeys
  *
- * - **Color comes from theme tokens, never a literal.** The two dot colors are
- *   read from `--ds-color-text-faint` / `--ds-color-accent-bg` on the document
- *   element and re-read when `data-theme` or the accent class changes — a canvas
- *   cannot inherit a Tailwind class, so this is the token path for 2D context.
+ * - **Color comes from `baseColors`, never a literal.** Each dot wears one of
+ *   six pastel base tokens (`PASTEL_PALETTE`) and deepens within its own family.
+ * - **The plane is white in every theme.** Not `bg-surface-canvas`, not
+ *   `--ds-color-background-surface` — a fixed `bg-white`, by operator ruling
+ *   2026-08-21. This is the one place the field steps outside the theme layer,
+ *   which is also why its palette is base rather than semantic: pastels tuned
+ *   for white would be wrong over a dark plane, so the plane is pinned instead
+ *   of the palette chasing it. Worth knowing: on a dark theme this reads as a
+ *   bright white card while a surface loads.
  * - **Reduced motion paints ONE static frame** — no loop, no pointer listener.
  *   This is also the honest reading of the Unbox ruling that a pulsing skeleton
  *   "reads as a fault light" on a scan floor: the operator who has asked the OS
@@ -90,12 +95,10 @@ import { motionDurations } from '@/design-system/foundations/motion';
 import { useReducedMotion } from '@/design-system/motion';
 import {
   BASE_RADIUS,
-  FALLBACK_ACTIVE,
-  FALLBACK_IDLE,
   dotFill,
   latticeStyle,
-  parseCssColor,
-  type RGB,
+  pastelFor,
+  type PastelStop,
 } from './universal-loader-field';
 import { cn } from '@/utils/_cn';
 
@@ -163,14 +166,8 @@ interface Dot {
   y: number;
   vx: number;
   vy: number;
-}
-
-function readTokenColor(name: string, fallback: RGB): RGB {
-  if (typeof window === 'undefined') return fallback;
-  const resolved = window
-    .getComputedStyle(document.documentElement)
-    .getPropertyValue(name);
-  return parseCssColor(resolved, fallback);
+  /** Resolved once at grid build — the palette is static, so it never re-picks. */
+  stop: PastelStop;
 }
 
 export interface UniversalLoaderProps {
@@ -249,8 +246,6 @@ export function UniversalLoader({
     let rect = canvas.getBoundingClientRect();
     const pointer = { x: Number.NEGATIVE_INFINITY, y: Number.NEGATIVE_INFINITY };
 
-    let idle = readTokenColor('--ds-color-text-faint', FALLBACK_IDLE);
-    let active = readTokenColor('--ds-color-accent-bg', FALLBACK_ACTIVE);
 
     const buildGrid = () => {
       dots = [];
@@ -260,7 +255,15 @@ export function UniversalLoader({
         for (let j = 0; j < rows; j += 1) {
           const x = i * spacing;
           const y = j * spacing;
-          dots.push({ originX: x, originY: y, x, y, vx: 0, vy: 0 });
+          dots.push({
+            originX: x,
+            originY: y,
+            x,
+            y,
+            vx: 0,
+            vy: 0,
+            stop: pastelFor(i, j),
+          });
         }
       }
     };
@@ -329,7 +332,7 @@ export function UniversalLoader({
         const intensity = Math.max(mouseEffect, sweepEffect);
         const radius = BASE_RADIUS + mouseEffect * 1.1 + sweepEffect * 0.9;
 
-        ctx.fillStyle = dotFill(idle, active, intensity);
+        ctx.fillStyle = dotFill(dot.stop, intensity);
 
         ctx.beginPath();
         ctx.arc(dot.x, dot.y, radius, 0, Math.PI * 2);
@@ -373,18 +376,6 @@ export function UniversalLoader({
     observer.observe(container);
     resize();
 
-    // A theme swap changes the resolved token values, not any class the canvas
-    // could inherit — re-read them by hand when the document theme flips.
-    const themeObserver = new MutationObserver(() => {
-      idle = readTokenColor('--ds-color-text-faint', FALLBACK_IDLE);
-      active = readTokenColor('--ds-color-accent-bg', FALLBACK_ACTIVE);
-      if (reduceMotion) paint(0);
-    });
-    themeObserver.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ['data-theme', 'class'],
-    });
-
     if (reduceMotion) {
       paint(0);
       setFieldLive(true);
@@ -398,7 +389,6 @@ export function UniversalLoader({
       setFieldLive(false);
       stop();
       observer.disconnect();
-      themeObserver.disconnect();
       window.removeEventListener('pointermove', onPointerMove);
       document.removeEventListener('visibilitychange', onVisibility);
     };
@@ -427,7 +417,7 @@ export function UniversalLoader({
         {showField ? (
           <div
             className={cn(
-              'absolute inset-0 z-0 overflow-hidden bg-surface-canvas transition-opacity',
+              'absolute inset-0 z-0 overflow-hidden bg-white transition-opacity',
               visible ? 'opacity-100' : 'opacity-0',
               blockInteraction && visible ? 'pointer-events-auto' : 'pointer-events-none',
             )}
