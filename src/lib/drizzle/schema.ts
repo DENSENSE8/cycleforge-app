@@ -3616,6 +3616,40 @@ export const reasonCodes = pgTable('reason_codes', {
 }));
 
 /**
+ * station_command_aliases — tenant-authored scan strings that resolve to a
+ * BUILT-IN command (2026-08-20c).
+ *
+ * An alias is a second NAME for a command that already exists in code, never a
+ * new behaviour: the registries in `src/lib/stations/*-command-codes.ts` are
+ * PR-reviewed on purpose, because a scan that moves an operator or writes a
+ * verdict must not be creatable from an admin form. `targetCode` is therefore
+ * NOT a foreign key — the thing it points at is a code registry, not a table —
+ * and its membership is validated by the write route on every save.
+ *
+ * `code` is constrained to the `CMD-` namespace in the DB
+ * (`station_command_aliases_code_chk`). That is a safety control: the scan
+ * classifier claims that namespace wholesale so a command can never be read as
+ * a serial, and an alias outside it would break the guarantee both ways.
+ */
+export const stationCommandAliases = pgTable('station_command_aliases', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  organizationId: orgIdCol(),
+  /** The custom scan string. Uppercase, `CMD-` namespace (DB CHECK). */
+  code: text('code').notNull(),
+  /** The built-in command code this resolves to. Validated in the route. */
+  targetCode: text('target_code').notNull(),
+  /** Human name on the book row + the 2x1" sticker face. */
+  label: text('label').notNull(),
+  sortOrder: integer('sort_order').notNull().default(100),
+  isActive: boolean('is_active').notNull().default(true),
+  createdByStaffId: integer('created_by_staff_id'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  orgCodeUx: uniqueIndex('ux_station_command_aliases_org_code').on(table.organizationId, table.code),
+}));
+
+/**
  * printer_profiles — targets for /api/print/dispatch (2026-05-14).
  * One row per physical printer with vendor + external dispatcher id +
  * optional default label class (carton | product | bin).
@@ -5301,6 +5335,11 @@ export const kioskDevices = pgTable('kiosk_devices', {
   enrolledByStaffId: integer('enrolled_by_staff_id').references(() => staff.id, { onDelete: 'set null' }),
   lastSeenAt: timestamp('last_seen_at', { withTimezone: true }),
   revokedAt: timestamp('revoked_at', { withTimezone: true }),
+  /** Square Terminal paired to this counter lane (SQ3). NULL = no stand here
+   *  (cash / payment link) — resolveTerminalDeviceId treats that as a decision
+   *  and refuses, rather than falling back to the deployment env var. Not a FK:
+   *  the id is Square's, for a device this database has no row for. */
+  squareTerminalDeviceId: text('square_terminal_device_id'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
@@ -5591,9 +5630,23 @@ export const counterSessions = pgTable('counter_sessions', {
   clientEventId: uuid('client_event_id').notNull(),
   counterTransactionId: bigint('counter_transaction_id', { mode: 'number' }),
   submittedAt: timestamp('submitted_at', { withTimezone: true }),
+  /** CHECK counter_sessions_payment_state_chk: idle | awaiting_card | approved
+   *  | declined | canceled. Mirrored by COUNTER_PAYMENT_STATES in
+   *  src/lib/counter/session-events.ts — keep the two in lockstep.
+   *
+   *  `approved` is the TERMINAL's answer, not the money's: a device approval
+   *  and a settled payment arrive on two different webhooks, and only the
+   *  second moves counterTransactions.status (SQ1). */
+  paymentState: text('payment_state').notNull().default('idle'),
+  /** Live Square Terminal checkout — the join key for `terminal.checkout.updated`. */
+  terminalCheckoutId: text('terminal_checkout_id'),
+  awaitingCardSince: timestamp('awaiting_card_since', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
+  terminalCheckoutIdx: index('idx_counter_sessions_terminal_checkout')
+    .on(table.organizationId, table.terminalCheckoutId)
+    .where(sql`terminal_checkout_id IS NOT NULL`),
   clientEventUnique: uniqueIndex('ux_counter_sessions_client_event')
     .on(table.organizationId, table.clientEventId),
   /** Plan D4 in the DB: at most ONE open session per bound tablet. Silent

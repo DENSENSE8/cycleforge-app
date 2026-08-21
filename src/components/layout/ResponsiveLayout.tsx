@@ -22,6 +22,7 @@ import { appChromeClass } from '@/design-system/tokens/app-surface';
 import { cn } from '@/utils/_cn';
 import { usePhoneScanBridge } from '@/hooks/usePhoneScanBridge';
 import { useGlobalWedgeScanner } from '@/hooks/useGlobalWedgeScanner';
+import { useCommandAliasHydration } from '@/hooks/useCommandAliasHydration';
 import { warmSpineChunk } from '@/components/sidebar/preload-spine';
 
 // The sidebar is its own chunk: desktop mounts it immediately (the whole shell
@@ -111,6 +112,9 @@ function PhoneScanBridgeMount() {
  */
 function GlobalWedgeScannerMount() {
   useGlobalWedgeScanner();
+  // Aliases must be resolvable in the same tick a trigger is pulled, so they
+  // hydrate here rather than being fetched on the scan path.
+  useCommandAliasHydration();
   return null;
 }
 
