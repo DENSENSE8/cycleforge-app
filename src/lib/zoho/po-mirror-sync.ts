@@ -107,7 +107,16 @@ async function upsertOne(po: ZohoPurchaseOrder, orgId: OrgId): Promise<boolean> 
        SET zoho_purchaseorder_number = EXCLUDED.zoho_purchaseorder_number,
            vendor_id                 = EXCLUDED.vendor_id,
            vendor_name               = EXCLUDED.vendor_name,
-           status                    = EXCLUDED.status,
+           -- Do not demote a received-like stamp back to issued. Live Zoho for
+           -- billed POs often stays `issued` while received_status is in_transit;
+           -- overwriting staff `received` is what flipped PO 06-14980-30824
+           -- Unboxed on the recent rail after Inventory Refresh.
+           status                    = CASE
+             WHEN LOWER(COALESCE(zoho_po_mirror.status, '')) IN ('received', 'billed', 'closed')
+              AND LOWER(COALESCE(EXCLUDED.status, '')) NOT IN ('received', 'billed', 'closed')
+             THEN zoho_po_mirror.status
+             ELSE EXCLUDED.status
+           END,
            po_date                   = EXCLUDED.po_date,
            expected_delivery_date    = EXCLUDED.expected_delivery_date,
            reference_number          = EXCLUDED.reference_number,

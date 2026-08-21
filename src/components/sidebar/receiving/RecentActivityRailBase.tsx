@@ -407,7 +407,6 @@ function ReceivingPopoverContent({
   actionsSlot?: ReactNode;
 }) {
   const { current: qtyCurrent, total: qtyTotal } = getQty(row);
-  // getPreviewQty already zeros current while Unboxed (inventory pending).
   const isComplete = qtyTotal != null && qtyTotal > 0 && qtyCurrent >= qtyTotal;
   const progressPct =
     qtyTotal != null && qtyTotal > 0 ? Math.min(100, Math.round((qtyCurrent / qtyTotal) * 100)) : qtyCurrent > 0 ? 100 : 0;

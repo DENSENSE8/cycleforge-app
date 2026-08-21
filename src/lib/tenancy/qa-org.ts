@@ -30,7 +30,6 @@ export const QA_FEATURE_FLAGS: ReadonlyArray<string> = [
   'studio',
   'surface_composed_render',
   'incoming_universal',
-  'ai_search_commandbar',
   'buyer_note_signals',
   // Thrown tasks land here as durable `reason:'assigned'` rows (WS-TASKS Part A).
   'home_inbox',

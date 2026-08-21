@@ -157,7 +157,7 @@ export const PERMISSIONS = [
   // view permission, which is re-checked at read time in lib/notifications/inbox.ts.
   { id: 'home.inbox.view',          category: 'ops', label: 'View personal notification inbox' },
   { id: 'home.subscriptions.manage', category: 'ops', label: 'Manage personal subscriptions (follow / mute)' },
-  { id: 'ai.search',                category: 'ops', label: 'AI search retrieval (⌘K hybrid search + Ask AI)' },
+  { id: 'ai.search',                category: 'ops', label: 'AI search retrieval (assistant tools)' },
   { id: 'assistant.chat',           category: 'ops', label: 'Use the operations assistant (global AI dock)' },
   { id: 'photos.view',              category: 'ops', label: 'View media' },
   { id: 'photos.share',             category: 'ops', label: 'Create media share links' },

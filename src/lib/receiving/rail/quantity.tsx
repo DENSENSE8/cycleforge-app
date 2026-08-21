@@ -1,31 +1,17 @@
 /**
- * Receiving sidebar-rail quantity logic — per-feed "how does this row count?"
- * rendered into the rail row's meta and the hover-popover progress meter.
+ * Receiving sidebar-rail quantity — floor units counted vs expected.
  *
- * ## Unboxed ≠ Received (hard law)
+ * The meter shows `receiving_line.quantity_received`. Zoho does not zero it.
+ * Staff face is the local row; provider confirmation is a hover tip, not a 0/1.
  *
- * Operator **Received** on these meters means local DONE (via `isOperatorReceived`)
- * — never floor `quantity_received` alone, and never Zoho. Coarse UNBOXED
- * (counted on the floor, receive not committed) must paint **0/expected** with
- * an empty bar. A still-open provider PO is a hover tip, not a 0/1 meter.
+ * Four strategies:
+ *   - `received` → Unboxed / Viewed: counted / expected
+ *   - `scanned`  → Queue / Prioritize: door scan = whole carton
+ *   - `unfound`  → Unfound stubs: same counted/expected as `received`
+ *   - `combined` → Triage union: unmatched→unfound, else→scanned
  *
- * - **Do:** route every Received-labeled qty through `inventoryReceivedDisplayQty`
- *   / `RAIL_QTY.received` (and `unfound`, which shares that gate).
- * - **Never:** paint Received from raw `row.quantity_received`; "fix" Unboxed
- *   looking complete with blue bars, fill caps, or muted greens while still
- *   showing floor `1/1` under a Received label.
- *
- * Guard: `rail-received-qty.guard.test.ts`. SoT: source-of-truth.md → Unboxed ≠ Received.
- * Tip copy for pending confirm: `unboxed-sync-tooltip.ts`.
- *
- * Four strategies, one per quantity semantic the receiving rails use:
- *   - `received` → Unboxed / Viewed: inventory-received / expected (see law above).
- *   - `scanned`  → Queue / Prioritize: door scan = whole carton ("1/1", never "0/1").
- *   - `unfound`  → Unfound stubs: same inventory-received gate as `received`.
- *   - `combined` → Triage union: unmatched→unfound, else→scanned.
- *
- * Row anatomy + popover shell live in RecentActivityRailBase — they must call
- * `getPreviewQty` / `RAIL_QTY`, never re-derive Received from the row column.
+ * Row anatomy + popover live in RecentActivityRailBase — they call
+ * `getPreviewQty` / `RAIL_QTY`.
  */
 
 import type { ReactNode } from 'react';
@@ -38,27 +24,19 @@ export interface RailPreviewQty {
   total: number | null;
 }
 
-/** True when the operator Received stage is done (inventory confirmed / local done). */
+/** True when the coarse rail stage is Received. */
 export function isRailQtyInventoryComplete(row: ReceivingLineRow): boolean {
   return isOperatorReceived(row);
 }
 
-/**
- * Qty shown on the "Received" meter. Until inventory confirm, current is 0 —
- * Unboxed ≠ Received, even when `quantity_received` already counts floor units.
- */
+/** Qty on the recent-rail meter — local `quantity_received`, always. */
 export function inventoryReceivedDisplayQty(row: ReceivingLineRow): RailPreviewQty {
-  const total = row.quantity_expected;
-  if (!isRailQtyInventoryComplete(row)) {
-    return { current: 0, total };
-  }
-  return { current: row.quantity_received, total };
+  return {
+    current: row.quantity_received ?? 0,
+    total: row.quantity_expected,
+  };
 }
 
-/**
- * Hover tip for **Qty** fractions (grids · context). Floor unit count uses the
- * verb **counted** — never "received" (that noun is inventory-confirmed only).
- */
 export function floorQtyFractionTip(
   counted: number,
   expected: number | null | undefined,
@@ -69,7 +47,6 @@ export function floorQtyFractionTip(
   return `${counted} of ${expected} counted`;
 }
 
-/** Inline quantity for the Unboxed + Viewed rails — inventory-received / expected. */
 function renderReceivedQty(row: ReceivingLineRow): ReactNode {
   const { current, total } = inventoryReceivedDisplayQty(row);
   return (
@@ -85,12 +62,6 @@ function renderReceivedQty(row: ReceivingLineRow): ReactNode {
   );
 }
 
-/**
- * SCANNED semantics — every row in the view=scanned feed has
- * quantity_received = 0 by definition (it drops out the instant it's unboxed), so
- * a door scan brings the WHOLE carton in physically: scanned == expected.
- * Falls back to 1/? when the expected qty is unknown.
- */
 function renderScannedQty(row: ReceivingLineRow): ReactNode {
   const expected = row.quantity_expected;
   return (
@@ -100,7 +71,6 @@ function renderScannedQty(row: ReceivingLineRow): ReactNode {
   );
 }
 
-/** Unfound stubs — same inventory-received gate as the Received rails. */
 function renderUnfoundQty(row: ReceivingLineRow): ReactNode {
   const { current, total } = inventoryReceivedDisplayQty(row);
   return (
@@ -110,7 +80,6 @@ function renderUnfoundQty(row: ReceivingLineRow): ReactNode {
   );
 }
 
-/** Triage union: unmatched stubs read as unfound, matched scanned cartons as scanned. */
 function renderCombinedQty(row: ReceivingLineRow): ReactNode {
   return row.receiving_source === 'unmatched' ? renderUnfoundQty(row) : renderScannedQty(row);
 }
@@ -122,10 +91,6 @@ const scannedPreview = (row: ReceivingLineRow): RailPreviewQty => ({
   total: row.quantity_expected,
 });
 
-/**
- * Quantity-strategy registry. A rail feed selects one by id; the row renderer,
- * popover label, and popover progress values are resolved here.
- */
 export const RAIL_QTY = {
   received: {
     previewQtyLabel: 'Received',

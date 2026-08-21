@@ -3,7 +3,7 @@
  *
  * ## This is not a second search engine, and must not become one
  *
- * `hybridSearch` / `POST /api/ai/retrieve` remain the ONLY cross-entity
+ * `hybridSearch` / `GET /api/global-search` remain the cross-entity
  * search — an AGENTS.md hard law that the word "interop" does not relax. The
  * interop projection IS the agent-legible graph; the only thing missing was a
  * way to name a record in terms a partner's system also understands. So this

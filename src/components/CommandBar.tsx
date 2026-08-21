@@ -7,8 +7,7 @@
  * Raycast-style menus, shadcn/ui's CommandDialog). cmdk handles a11y,
  * roving focus, arrow-key navigation, and group rendering; this component
  * provides the visual shell (framer-motion modal + backdrop blur),
- * server-side fuzzy search via /api/global-search, recents in localStorage,
- * and an "Ask AI" affordance that deep-links into /ai-chat with the query.
+ * server-side search via /api/global-search, and recents in localStorage.
  *
  * Page destinations mirror the MasterNav spine contract (Pin →
  * SPINE_SECTIONS → Footer) via `buildCommandBarNavGroups` — never a twin map.
@@ -46,7 +45,6 @@ import {
   ClipboardList,
   Box,
   ChevronRight,
-  MessageSquare,
 } from '@/components/Icons';
 import { SearchResultRow } from '@/components/search/SearchResultRow';
 import { groupHitsForPreview } from '@/components/search/search-tabs';
@@ -64,20 +62,12 @@ import {
   type CommandBarNavGroup,
 } from '@/lib/nav/command-bar-nav-groups';
 import { useSidebarChildNav } from '@/components/sidebar/master-nav/useSidebarChildNav';
-import { looksLikeIdentifier, searchScopeHref, searchScopeLabel } from '@/lib/search/search-hit';
+import { looksLikeIdentifier } from '@/lib/search/search-hit';
 import {
   commitIdentifierFind,
   hrefForPreviewHit,
 } from '@/lib/search/commit-identifier-find';
-import { isSearchEntityType } from '@/lib/search/build-search-text';
-// AI-search rollout flag probe + retrieve POST — shared client bridge
-// (src/lib/search/ai-search-client.ts) so CommandBar and the workbench
-// quick-jumps stay on one implementation.
-import {
-  fetchAiSearchEnabled,
-  postAiRetrieve,
-  type AiSearchHit,
-} from '@/lib/search/ai-search-client';
+import type { AiSearchHit } from '@/lib/search/ai-search-client';
 import { COMMAND_BAR_OPEN_EVENT } from '@/lib/app-events';
 import { useAuth } from '@/contexts/AuthContext';
 import { navIconStrokeClass } from '@/components/icons/nav-weight';
@@ -104,7 +94,6 @@ interface SearchResult {
   title: string;
   subtitle: string;
   href: string;
-  /** Present on AI-retrieve hits only (SearchHit superset fields). */
   score?: number;
   chips?: SearchResultChip[];
 }
@@ -198,35 +187,9 @@ function buildChildPageItems(permissions?: ReadonlySet<string>): ChildPageOption
 }
 
 /**
- * Merge AI-retrieve hits with classic global-search rows, deduped by
- * (entityType, id). AI hits lead; classic-only rows follow.
+ * Map a global-search row into the shared SearchHit wire shape used by
+ * SearchResultRow / groupHitsForPreview.
  */
-function mergeSearchResults(
-  aiHits: SearchResult[],
-  globalRows: SearchResult[],
-  limit: number,
-): SearchResult[] {
-  const merged: SearchResult[] = [];
-  const seen = new Map<string, SearchResult>();
-  for (const hit of aiHits) {
-    const key = `${hit.entityType}:${hit.id}`;
-    if (seen.has(key)) continue;
-    seen.set(key, hit);
-    merged.push(hit);
-  }
-  for (const row of globalRows) {
-    const key = `${row.entityType}:${row.id}`;
-    const existing = seen.get(key);
-    if (existing) {
-      if (!existing.subtitle && row.subtitle) existing.subtitle = row.subtitle;
-      continue;
-    }
-    seen.set(key, row);
-    merged.push(row);
-  }
-  return merged.slice(0, limit);
-}
-
 function toAiSearchHit(r: SearchResult): AiSearchHit {
   return {
     id: r.id,
@@ -251,13 +214,6 @@ export function CommandBar() {
   const [resolvePending, setResolvePending] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [recents, setRecents] = useState<RecentItem[]>([]);
-  const [aiEnabled, setAiEnabled] = useState(false);
-  const [askAi, setAskAi] = useState<{
-    status: 'idle' | 'loading' | 'done';
-    hits: SearchResult[];
-    forQuery: string;
-    toolArgs?: { query: string; entityTypes?: string[] };
-  }>({ status: 'idle', hits: [], forQuery: '' });
 
   const abortRef = useRef<AbortController | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
@@ -319,9 +275,7 @@ export function CommandBar() {
     if (open) {
       setQuery('');
       setSearchResults([]);
-      setAskAi({ status: 'idle', hits: [], forQuery: '' });
       setRecents(getRecent());
-      fetchAiSearchEnabled().then(setAiEnabled);
     }
   }, [open]);
   useEffect(() => { setOpen(false); }, [pathname]);
@@ -334,66 +288,29 @@ export function CommandBar() {
     }
     setSearching(true);
     clearTimeout(debounceRef.current);
+    const q = query.trim();
+    const waitMs = looksLikeIdentifier(q) ? 0 : 80;
     debounceRef.current = setTimeout(async () => {
       abortRef.current?.abort();
       const controller = new AbortController();
       abortRef.current = controller;
-      const q = query.trim();
       try {
-        if (!aiEnabled || q.length < 2) {
-          const res = await fetch(
-            `/api/global-search?q=${encodeURIComponent(q)}&limit=12`,
-            { signal: controller.signal },
-          );
-          if (!res.ok) throw new Error('Search failed');
-          const data = await res.json();
-          if (!controller.signal.aborted) {
-            setSearchResults(data.rows || []);
-            setSearching(false);
-          }
-          return;
-        }
-
-        const fetchGlobal = () =>
-          fetch(`/api/global-search?q=${encodeURIComponent(q)}&limit=12`, {
-            signal: controller.signal,
-          })
-            .then((res) => (res.ok ? res.json() : { rows: [] }))
-            .catch((err) => {
-              if ((err as { name?: string }).name === 'AbortError') throw err;
-              return { rows: [] };
-            });
-
-        const fetchRetrieve = () =>
-          postAiRetrieve(q, { limit: 12, pageContext: pathname, signal: controller.signal });
-
-        if (looksLikeIdentifier(q)) {
-          const ai = await fetchRetrieve();
-          const aiData = ai.ok ? ai.data : null;
-          let rows: SearchResult[] = [];
-          if (!aiData) {
-            const globalData = await fetchGlobal();
-            rows = globalData.rows || [];
-          }
-          if (!controller.signal.aborted) {
-            setSearchResults(mergeSearchResults(aiData?.hits || [], rows, 12));
-            setSearching(false);
-          }
-          return;
-        }
-
-        const [globalData, ai] = await Promise.all([fetchGlobal(), fetchRetrieve()]);
+        const res = await fetch(
+          `/api/global-search?q=${encodeURIComponent(q)}&limit=12`,
+          { signal: controller.signal },
+        );
+        if (!res.ok) throw new Error('Search failed');
+        const data = await res.json();
         if (!controller.signal.aborted) {
-          const aiHits = ai.ok ? (ai.data.hits ?? []) : [];
-          setSearchResults(mergeSearchResults(aiHits, globalData.rows || [], 12));
+          setSearchResults(data.rows || []);
           setSearching(false);
         }
       } catch (err) {
         if ((err as { name?: string }).name !== 'AbortError') setSearching(false);
       }
-    }, 250);
+    }, waitMs);
     return () => clearTimeout(debounceRef.current);
-  }, [query, aiEnabled, pathname]);
+  }, [query]);
 
   const authPermissions = useMemo<ReadonlySet<string> | undefined>(() => {
     if (!authLoaded || !authUser) return undefined;
@@ -489,66 +406,8 @@ export function CommandBar() {
     [navigateChild],
   );
 
-  const openAiChat = useCallback(() => {
-    const q = query.trim();
-    const href = q ? `/ai-chat?q=${encodeURIComponent(q)}` : '/ai-chat';
-    router.push(href);
-    setOpen(false);
-  }, [query, router]);
-
-  const handleAskAi = useCallback(async () => {
-    if (!aiEnabled) {
-      openAiChat();
-      return;
-    }
-    const q = query.trim();
-    if (!q) {
-      openAiChat();
-      return;
-    }
-    setAskAi({ status: 'loading', hits: [], forQuery: q });
-    const result = await postAiRetrieve(q, { mode: 'ask', limit: 8, pageContext: pathname });
-    const data = result.ok ? result.data : null;
-    if (data) {
-      setAskAi((prev) =>
-        prev.status === 'loading' && prev.forQuery === q
-          ? { status: 'done', hits: data.hits || [], forQuery: q, toolArgs: data.toolArgs }
-          : prev,
-      );
-    } else {
-      let wasCurrent = false;
-      setAskAi((prev) => {
-        if (prev.status === 'loading' && prev.forQuery === q) {
-          wasCurrent = true;
-          return { status: 'idle', hits: [], forQuery: '' };
-        }
-        return prev;
-      });
-      if (wasCurrent) openAiChat();
-    }
-  }, [aiEnabled, query, pathname, openAiChat]);
-
-  const askAiScopeAction = useMemo(() => {
-    if (askAi.status !== 'done' || !askAi.toolArgs) return null;
-    const types = (askAi.toolArgs.entityTypes ?? []).filter(isSearchEntityType);
-    if (types.length !== 1) return null;
-    const href = searchScopeHref(types[0], askAi.toolArgs.query);
-    const label = searchScopeLabel(types[0]);
-    if (!href || !label) return null;
-    return { href, label, query: askAi.toolArgs.query };
-  }, [askAi]);
-
-  useEffect(() => {
-    setAskAi((prev) =>
-      prev.status === 'idle' || prev.forQuery === query.trim()
-        ? prev
-        : { status: 'idle', hits: [], forQuery: '' },
-    );
-  }, [query]);
-
   if (!mounted) return null;
 
-  const showAskAi = trimmedQuery.length >= 2;
   const showSearchGroup = Boolean(trimmedQuery) && !findMode;
   const showRecentGroup = !trimmedQuery && recents.length > 0;
   const showNavGroups = !findMode;
@@ -772,94 +631,6 @@ export function CommandBar() {
                         />
                       );
                     })}
-                  </Command.Group>
-                )}
-
-                {showAskAi && (
-                  <Command.Group
-                    heading={askAi.status === 'done' ? 'AI results' : 'AI'}
-                    className={GROUP_HEADING_CLASS}
-                  >
-                    {askAi.status === 'loading' && (
-                      <CmdRow
-                        value="ai asking"
-                        icon={<Loader2 className="h-4 w-4 animate-spin text-text-faint" />}
-                        label="Asking AI…"
-                        subLabel={`Searching for "${askAi.forQuery}"`}
-                        onSelect={() => {}}
-                      />
-                    )}
-                    {askAi.status === 'done' &&
-                      askAi.hits.map((r) => {
-                        const Icon = ENTITY_ICONS[r.entityType] || Search;
-                        return (
-                          <CmdRow
-                            key={`ai:${r.entityType}:${r.id}`}
-                            value={`ai result ${r.entityType} ${r.id} ${r.title}`}
-                            icon={<Icon className={navIconStrokeClass('h-4 w-4 text-text-faint')} />}
-                            label={r.title}
-                            subLabel={r.subtitle}
-                            badge={r.entityType}
-                            chips={r.chips}
-                            onSelect={() =>
-                              navigate({
-                                id: `result:${r.entityType}:${r.id}`,
-                                label: r.title,
-                                subtitle: r.subtitle,
-                                href: r.href,
-                                entityType: r.entityType,
-                              })
-                            }
-                          />
-                        );
-                      })}
-                    {askAi.status === 'done' && askAi.hits.length === 0 && (
-                      <CmdRow
-                        value="ai no matches"
-                        icon={<Search className="h-4 w-4 text-text-faint" />}
-                        label="No AI matches"
-                        subLabel="Open chat to dig deeper"
-                        onSelect={openAiChat}
-                      />
-                    )}
-                    {askAiScopeAction && (
-                      <CmdRow
-                        value={`ai scope ${askAiScopeAction.label}`}
-                        icon={<Search className="h-4 w-4 text-text-faint" />}
-                        label={`View all in ${askAiScopeAction.label}`}
-                        subLabel={`Apply "${askAiScopeAction.query}" as the list filter`}
-                        onSelect={() =>
-                          navigate({
-                            id: `ai-scope:${askAiScopeAction.href}`,
-                            label: `${askAiScopeAction.label}: ${askAiScopeAction.query}`,
-                            href: askAiScopeAction.href,
-                          })
-                        }
-                      />
-                    )}
-                    {askAi.status !== 'loading' && (
-                      <CmdRow
-                        value={`ai ask ${query}`}
-                        icon={
-                          <span className="flex h-5 w-5 items-center justify-center rounded-md bg-blue-600 text-white">
-                            <MessageSquare className="h-3 w-3" />
-                          </span>
-                        }
-                        label={
-                          askAi.status === 'done'
-                            ? 'Open in AI chat'
-                            : `Ask AI: "${query}"`
-                        }
-                        subLabel={
-                          askAi.status === 'done'
-                            ? 'Continue this question in chat'
-                            : aiEnabled
-                              ? 'Search with AI — results appear here'
-                              : 'Open chat with this question'
-                        }
-                        onSelect={askAi.status === 'done' ? openAiChat : handleAskAi}
-                      />
-                    )}
                   </Command.Group>
                 )}
               </Command.List>

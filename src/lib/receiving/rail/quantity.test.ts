@@ -1,6 +1,5 @@
 /**
- * "Received" rail meter = inventory-confirmed qty. Unboxed (pending confirm)
- * must read 0/expected with an empty bar — not floor quantity_received.
+ * Recent-rail meter shows local quantity_received. Zoho does not zero it.
  */
 
 import test from 'node:test';
@@ -46,11 +45,11 @@ function row(overrides: Partial<ReceivingLineRow> = {}): ReceivingLineRow {
   };
 }
 
-test('UNBOXED with floor qty 1 still displays Received 0/1', () => {
+test('UNBOXED with floor qty 1 displays 1/1 — local count is the meter', () => {
   const r = row({ workflow_status: 'UNBOXED', quantity_received: 1, quantity_expected: 1 });
   assert.equal(isRailQtyInventoryComplete(r), false);
-  assert.deepEqual(inventoryReceivedDisplayQty(r), { current: 0, total: 1 });
-  assert.deepEqual(RAIL_QTY.received.getPreviewQty(r), { current: 0, total: 1 });
+  assert.deepEqual(inventoryReceivedDisplayQty(r), { current: 1, total: 1 });
+  assert.deepEqual(RAIL_QTY.received.getPreviewQty(r), { current: 1, total: 1 });
 });
 
 test('DONE displays actual quantity_received', () => {

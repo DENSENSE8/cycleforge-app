@@ -2,7 +2,7 @@
 
 /**
  * SearchResultsSurface — shared results body for the `/search` find stage
- * browse list (and any host that wants the same retrieve + refine + flat RRF
+ * browse list (and any host that wants the same retrieve + refine + flat
  * list).
  *
  * Controlled: the host owns the query (URL state); the surface owns retrieval
@@ -26,7 +26,7 @@ import {
   useMotionPresence,
   useMotionTransition,
 } from '@/design-system/foundations/motion-framer-hooks';
-import { postAiRetrieve, type AiSearchHit } from '@/lib/search/ai-search-client';
+import type { AiSearchHit } from '@/lib/search/ai-search-client';
 import type { NearMatchPackout } from '@/hooks/useNearMatchPackout';
 import {
   refineSearchHits,
@@ -71,8 +71,8 @@ export interface SearchResultsSurfaceProps {
   /** Fires when the in-flight state changes. */
   onLoadingChange?: (loading: boolean) => void;
   /**
-   * Fires when retrieve ends in error / forbidden so a host can reveal the
-   * shell (stage uses this for the compact results extension).
+   * Fires when retrieve ends in error so a host can reveal the shell
+   * (stage uses this for the compact results extension).
    */
   onSettle?: () => void;
   /**
@@ -97,9 +97,8 @@ export interface SearchResultsSurfaceProps {
 }
 
 interface FetchState {
-  status: 'idle' | 'loading' | 'done' | 'forbidden' | 'error';
+  status: 'idle' | 'loading' | 'done' | 'error';
   hits: AiSearchHit[];
-  usedSemantic: boolean;
   forKey: string;
 }
 
@@ -125,11 +124,9 @@ export function SearchResultsSurface({
   const [state, setState] = useState<FetchState>({
     status: 'idle',
     hits: [],
-    usedSemantic: false,
     forKey: '',
   });
   const abortRef = useRef<AbortController | null>(null);
-  const pageContext = '/search';
   const presence = useMotionPresence(framerPresence.workbenchPaneSettle);
   const transition = useMotionTransition(framerTransition.workbenchPaneSettle);
 
@@ -143,11 +140,11 @@ export function SearchResultsSurface({
     return sortSearchHits(refineSearchHits(state.hits, { etype, hstat }), sort);
   }, [state.status, state.hits, etype, hstat, sort]);
 
-  // One unscoped retrieve per query — cross-entity page, flat RRF order.
+  // Classic cross-entity find — GET /api/global-search.
   useEffect(() => {
     const key = q;
     if (!q || q.length < 2) {
-      setState({ status: 'idle', hits: [], usedSemantic: false, forKey: key });
+      setState({ status: 'idle', hits: [], forKey: key });
       return;
     }
     abortRef.current?.abort();
@@ -155,33 +152,26 @@ export function SearchResultsSurface({
     abortRef.current = controller;
     setState((prev) => ({ ...prev, status: 'loading', forKey: key }));
 
-    // `postAiRetrieve` is the one client for this route — this file was the last
-    // raw `fetch('/api/ai/retrieve')` in the tree. The `FetchState` machine
-    // stays local: `forKey` is what keys the results crossfade.
-    postAiRetrieve(q, { limit: 50, pageContext, signal: controller.signal })
-      .then((result) => {
+    fetch(`/api/global-search?q=${encodeURIComponent(q)}&limit=50`, {
+      signal: controller.signal,
+    })
+      .then(async (res) => {
         if (controller.signal.aborted) return;
-        if (!result.ok) {
-          setState({
-            // 403 is a PERMISSION answer, not a failure — the two land on
-            // different empty states, so the status has to survive the client.
-            status: result.status === 403 ? 'forbidden' : 'error',
-            hits: [],
-            usedSemantic: false,
-            forKey: key,
-          });
+        if (!res.ok) {
+          setState({ status: 'error', hits: [], forKey: key });
           return;
         }
+        const data = await res.json();
+        if (controller.signal.aborted) return;
         setState({
           status: 'done',
-          hits: result.data.hits ?? [],
-          usedSemantic: Boolean(result.data.usedSemantic),
+          hits: (data.rows ?? []) as AiSearchHit[],
           forKey: key,
         });
       })
       .catch((err) => {
         if ((err as { name?: string }).name === 'AbortError') return;
-        setState({ status: 'error', hits: [], usedSemantic: false, forKey: key });
+        setState({ status: 'error', hits: [], forKey: key });
       });
   }, [q]);
 
@@ -195,7 +185,7 @@ export function SearchResultsSurface({
   }, [state.status, state.hits, onResults]);
 
   useEffect(() => {
-    if (state.status === 'error' || state.status === 'forbidden') onSettle?.();
+    if (state.status === 'error') onSettle?.();
   }, [state.status, onSettle]);
 
   useEffect(() => {
@@ -231,7 +221,6 @@ export function SearchResultsSurface({
               : state.hits.length}{' '}
           result
           {(hasRefine ? displayHits.length : state.hits.length) === 1 ? '' : 's'} for “{q}”
-          {state.usedSemantic ? ' · semantic + keyword' : ' · keyword'}
           {sort === 'date' ? ' · by date' : ''}
         </p>
       )}
@@ -248,17 +237,6 @@ export function SearchResultsSurface({
         />
       )}
 
-      {state.status === 'forbidden' && (
-        <EmptyState
-          tone="danger"
-          title="AI search not available"
-          description='Your role doesn’t include AI search yet — ask an admin to grant the “AI search retrieval” permission.'
-          className={cn(
-            'mx-3 mt-2 border border-dashed border-border-danger bg-surface-danger py-8',
-            cornerClass('flush'),
-          )}
-        />
-      )}
       {state.status === 'error' && (
         <EmptyState
           tone="danger"
