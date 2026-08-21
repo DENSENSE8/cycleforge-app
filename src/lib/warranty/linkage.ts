@@ -14,7 +14,7 @@
 import type { PoolClient } from 'pg';
 import { createAuthorization, findByNumber, type RmaAuthorizationRow } from '@/lib/rma/authorizations';
 import { withTenantTransaction } from '@/lib/tenancy/db';
-import { DOGFOOD_ORG_ID, type OrgId } from '@/lib/tenancy/constants';
+import type { OrgId } from '@/lib/tenancy/constants';
 import { getClaim } from './claims';
 import type { WarrantyClaimDetail } from './types';
 
@@ -37,10 +37,10 @@ interface ClaimCore {
 async function loadClaimCore(
   client: PoolClient,
   claimId: number,
-  orgId?: OrgId | null,
+  orgId: OrgId,
 ): Promise<ClaimCore | null> {
-  // warranty_claims carries organization_id — when org-scoped, filter on it so a
-  // claim id from another tenant simply isn't found (404 at the call sites).
+  // warranty_claims carries organization_id, and this filter is what makes a
+  // claim id from another tenant simply not found (404 at the call sites).
   const { rows } = await client.query<{
     id: number;
     status: string;
@@ -56,14 +56,10 @@ async function loadClaimCore(
     rma_id: number | null;
     repair_service_id: number | null;
   }>(
-    orgId
-      ? `SELECT id, status, order_id, customer_id, serial_number, serial_unit_id, sku, product_title,
+    `SELECT id, status, order_id, customer_id, serial_number, serial_unit_id, sku, product_title,
             source_system, source_order_id, source_tracking_number, rma_id, repair_service_id
-       FROM warranty_claims WHERE id = $1 AND organization_id = $2 FOR UPDATE`
-      : `SELECT id, status, order_id, customer_id, serial_number, serial_unit_id, sku, product_title,
-            source_system, source_order_id, source_tracking_number, rma_id, repair_service_id
-       FROM warranty_claims WHERE id = $1 FOR UPDATE`,
-    orgId ? [claimId, orgId] : [claimId],
+       FROM warranty_claims WHERE id = $1 AND organization_id = $2 FOR UPDATE`,
+    [claimId, orgId],
   );
   if (rows.length === 0) return null;
   const r = rows[0];
@@ -102,14 +98,12 @@ const ALREADY_RETURNED_STATUSES = new Set(['RETURNED', 'TRIAGED', 'RMA']);
 async function unitAlreadyReturned(
   client: PoolClient,
   serialUnitId: number | null,
-  orgId?: OrgId | null,
+  orgId: OrgId,
 ): Promise<boolean> {
   if (serialUnitId == null) return false;
   const { rows } = await client.query<{ current_status: string }>(
-    orgId
-      ? `SELECT current_status::text AS current_status FROM serial_units WHERE id = $1 AND organization_id = $2`
-      : `SELECT current_status::text AS current_status FROM serial_units WHERE id = $1`,
-    orgId ? [serialUnitId, orgId] : [serialUnitId],
+    `SELECT current_status::text AS current_status FROM serial_units WHERE id = $1 AND organization_id = $2`,
+    [serialUnitId, orgId],
   );
   const status = rows[0]?.current_status;
   return status != null && ALREADY_RETURNED_STATUSES.has(status);
@@ -155,20 +149,21 @@ export async function issueRmaForClaim(
     notes?: string | null;
   },
   /**
-   * Optional tenant scope. When present every warranty_claims read/write is
-   * org-filtered (a cross-tenant claim id 404s) and the RMA insert + getClaim
-   * are org-threaded. Omitted = legacy raw-pool behavior, byte-identical for
-   * session-less callers.
+   * Tenant scope — REQUIRED, and deliberately un-defaulted. This used to be
+   * optional with a `?? DOGFOOD_ORG_ID` fallback inside, which is a strictly
+   * worse failure mode than a missing filter: a caller that forgot to thread an
+   * org did not read unscoped, it ran the whole transaction under the dogfood
+   * tenant's identity and wrote warranty_claims as them. Making it required
+   * turns that miss into a compile error at every call site.
    */
-  orgId?: OrgId | null,
+  orgId: OrgId,
 ): Promise<RmaLinkResult> {
-  const txOrg: OrgId = orgId ?? DOGFOOD_ORG_ID;
   let rma: RmaAuthorizationRow | null = null;
   let alreadyReturned = false;
   try {
     // Phase 1: precheck the claim in its own transaction (mirrors the original
     // BEGIN…COMMIT that closed before createAuthorization opened its own conn).
-    const pre = await withTenantTransaction(txOrg, async (client): Promise<
+    const pre = await withTenantTransaction(orgId, async (client): Promise<
       | { ok: false; status: 404 | 409; error: string }
       | { ok: true; orderId: number | null; customerId: number | null; alreadyReturned: boolean }
     > => {
@@ -193,23 +188,21 @@ export async function issueRmaForClaim(
         createdByStaffId: args.createdByStaffId,
         notes: args.notes ?? `Warranty claim ${claimId}`,
       },
-      orgId ?? null,
+      orgId,
     );
     if (!created.ok) return { ok: false, status: 500, error: created.error };
     rma = created.rma;
 
     // Phase 2: re-check + link in a fresh transaction.
-    const linkResult = await withTenantTransaction(txOrg, async (client): Promise<
+    const linkResult = await withTenantTransaction(orgId, async (client): Promise<
       { ok: false; status: 404 | 409; error: string } | { ok: true }
     > => {
       const recheck = await loadClaimCore(client, claimId, orgId);
       if (!recheck) return { ok: false, status: 404, error: 'claim not found' };
       if (recheck.rmaId) return { ok: false, status: 409, error: 'claim already has an RMA' };
       await client.query(
-        orgId
-          ? `UPDATE warranty_claims SET rma_id = $2, updated_at = NOW() WHERE id = $1 AND organization_id = $3`
-          : `UPDATE warranty_claims SET rma_id = $2, updated_at = NOW() WHERE id = $1`,
-        orgId ? [claimId, rma!.id, orgId] : [claimId, rma!.id],
+        `UPDATE warranty_claims SET rma_id = $2, updated_at = NOW() WHERE id = $1 AND organization_id = $3`,
+        [claimId, rma!.id, orgId],
       );
       await insertEvent(
         client,
@@ -226,7 +219,7 @@ export async function issueRmaForClaim(
     return { ok: false, status: 500, error: message };
   }
 
-  const claim = await getClaim(claimId, orgId ?? undefined);
+  const claim = await getClaim(claimId, orgId);
   if (!claim || !rma) return { ok: false, status: 500, error: 'claim vanished after RMA link' };
   return { ok: true, claim, rma, alreadyReturned };
 }
@@ -235,26 +228,23 @@ export async function linkRmaByNumber(
   claimId: number,
   rmaNumber: string,
   actorStaffId: number | null,
-  /** Optional tenant scope — org-filters every warranty_claims read/write. */
-  orgId?: OrgId | null,
+  /** Tenant scope — REQUIRED, never defaulted. See issueRmaForClaim. */
+  orgId: OrgId,
 ): Promise<RmaLinkResult> {
-  const rma = await findByNumber(rmaNumber, orgId ?? null);
+  const rma = await findByNumber(rmaNumber, orgId);
   if (!rma) return { ok: false, status: 404, error: 'RMA not found' };
 
-  const txOrg: OrgId = orgId ?? DOGFOOD_ORG_ID;
   let alreadyReturned = false;
   try {
-    const linkResult = await withTenantTransaction(txOrg, async (client): Promise<
+    const linkResult = await withTenantTransaction(orgId, async (client): Promise<
       { ok: false; status: 404 | 409; error: string } | { ok: true; alreadyReturned: boolean }
     > => {
       const claim = await loadClaimCore(client, claimId, orgId);
       if (!claim) return { ok: false, status: 404, error: 'claim not found' };
       if (claim.rmaId) return { ok: false, status: 409, error: 'claim already has an RMA' };
       await client.query(
-        orgId
-          ? `UPDATE warranty_claims SET rma_id = $2, updated_at = NOW() WHERE id = $1 AND organization_id = $3`
-          : `UPDATE warranty_claims SET rma_id = $2, updated_at = NOW() WHERE id = $1`,
-        orgId ? [claimId, rma.id, orgId] : [claimId, rma.id],
+        `UPDATE warranty_claims SET rma_id = $2, updated_at = NOW() WHERE id = $1 AND organization_id = $3`,
+        [claimId, rma.id, orgId],
       );
       await insertEvent(
         client,
@@ -272,7 +262,7 @@ export async function linkRmaByNumber(
     return { ok: false, status: 500, error: message };
   }
 
-  const claim = await getClaim(claimId, orgId ?? undefined);
+  const claim = await getClaim(claimId, orgId);
   if (!claim) return { ok: false, status: 404, error: 'claim not found' };
   return { ok: true, claim, rma, alreadyReturned };
 }
@@ -293,16 +283,15 @@ export async function handoffToRepair(
   claimId: number,
   args: { issue?: string | null; notes?: string | null; createdByStaffId: number | null },
   /**
-   * Optional tenant scope — org-filters the claim precheck (cross-tenant claim
+   * Tenant scope — REQUIRED, never defaulted. Org-filters the claim precheck (cross-tenant claim
    * 404s) and the warranty_claims UPDATE. The repair_service /
    * warranty_claim_events inserts already org-derive via subquery on the parent
-   * claim, so they stay correct either way. Omitted = legacy behavior.
+   * claim, so they stay correct either way. See issueRmaForClaim.
    */
-  orgId?: OrgId | null,
+  orgId: OrgId,
 ): Promise<RepairHandoffResult> {
-  const txOrg: OrgId = orgId ?? DOGFOOD_ORG_ID;
   try {
-    const txResult = await withTenantTransaction(txOrg, async (client): Promise<
+    const txResult = await withTenantTransaction(orgId, async (client): Promise<
       { ok: false; status: 404 | 409; error: string } | { ok: true; repairServiceId: number }
     > => {
     const claim = await loadClaimCore(client, claimId, orgId);
@@ -345,20 +334,12 @@ export async function handoffToRepair(
 
     const advanced = claim.status === 'APPROVED';
     await client.query(
-      orgId
-        ? `UPDATE warranty_claims
+      `UPDATE warranty_claims
           SET repair_service_id = $2,
               status = $3,
               updated_at = NOW()
-        WHERE id = $1 AND organization_id = $4`
-        : `UPDATE warranty_claims
-          SET repair_service_id = $2,
-              status = $3,
-              updated_at = NOW()
-        WHERE id = $1`,
-      orgId
-        ? [claimId, repairServiceId, advanced ? 'IN_REPAIR' : claim.status, orgId]
-        : [claimId, repairServiceId, advanced ? 'IN_REPAIR' : claim.status],
+        WHERE id = $1 AND organization_id = $4`,
+      [claimId, repairServiceId, advanced ? 'IN_REPAIR' : claim.status, orgId],
     );
     await insertEvent(
       client,
@@ -380,7 +361,7 @@ export async function handoffToRepair(
 
     if (!txResult.ok) return txResult;
 
-    const detail = await getClaim(claimId, orgId ?? undefined);
+    const detail = await getClaim(claimId, orgId);
     if (!detail) return { ok: false, status: 500, error: 'claim vanished after handoff' };
     return { ok: true, claim: detail, repairServiceId: txResult.repairServiceId };
   } catch (err) {
@@ -406,22 +387,19 @@ export type RmaUnlinkResult =
 export async function unlinkRma(
   claimId: number,
   actorStaffId: number | null,
-  /** Optional tenant scope — org-filters every warranty_claims read/write. */
-  orgId?: OrgId | null,
+  /** Tenant scope — REQUIRED, never defaulted. See issueRmaForClaim. */
+  orgId: OrgId,
 ): Promise<RmaUnlinkResult> {
-  const txOrg: OrgId = orgId ?? DOGFOOD_ORG_ID;
   try {
-    const txResult = await withTenantTransaction(txOrg, async (client): Promise<
+    const txResult = await withTenantTransaction(orgId, async (client): Promise<
       { ok: false; status: 404 | 409; error: string } | { ok: true }
     > => {
       const claim = await loadClaimCore(client, claimId, orgId);
       if (!claim) return { ok: false, status: 404, error: 'claim not found' };
       if (!claim.rmaId) return { ok: false, status: 409, error: 'claim has no linked RMA' };
       await client.query(
-        orgId
-          ? `UPDATE warranty_claims SET rma_id = NULL, updated_at = NOW() WHERE id = $1 AND organization_id = $2`
-          : `UPDATE warranty_claims SET rma_id = NULL, updated_at = NOW() WHERE id = $1`,
-        orgId ? [claimId, orgId] : [claimId],
+        `UPDATE warranty_claims SET rma_id = NULL, updated_at = NOW() WHERE id = $1 AND organization_id = $2`,
+        [claimId, orgId],
       );
       await insertEvent(client, claimId, 'RMA_UNLINKED', { rmaId: claim.rmaId }, actorStaffId);
       return { ok: true };
@@ -430,7 +408,7 @@ export async function unlinkRma(
   } catch (err) {
     return { ok: false, status: 500, error: err instanceof Error ? err.message : 'unlink RMA failed' };
   }
-  const claim = await getClaim(claimId, orgId ?? undefined);
+  const claim = await getClaim(claimId, orgId);
   if (!claim) return { ok: false, status: 404, error: 'claim not found' };
   return { ok: true, claim };
 }
@@ -451,13 +429,12 @@ export type RepairDetachResult =
 export async function detachRepairHandoff(
   claimId: number,
   actorStaffId: number | null,
-  /** Optional tenant scope — org-filters the claim precheck + warranty_claims UPDATE. */
-  orgId?: OrgId | null,
+  /** Tenant scope — REQUIRED, never defaulted. See issueRmaForClaim. */
+  orgId: OrgId,
 ): Promise<RepairDetachResult> {
-  const txOrg: OrgId = orgId ?? DOGFOOD_ORG_ID;
   let revertedToApproved = false;
   try {
-    const txResult = await withTenantTransaction(txOrg, async (client): Promise<
+    const txResult = await withTenantTransaction(orgId, async (client): Promise<
       { ok: false; status: 404 | 409; error: string } | { ok: true }
     > => {
       const claim = await loadClaimCore(client, claimId, orgId);
@@ -472,10 +449,8 @@ export async function detachRepairHandoff(
       revertedToApproved = claim.status === 'IN_REPAIR';
       const nextStatus = revertedToApproved ? 'APPROVED' : claim.status;
       await client.query(
-        orgId
-          ? `UPDATE warranty_claims SET repair_service_id = NULL, status = $2, updated_at = NOW() WHERE id = $1 AND organization_id = $3`
-          : `UPDATE warranty_claims SET repair_service_id = NULL, status = $2, updated_at = NOW() WHERE id = $1`,
-        orgId ? [claimId, nextStatus, orgId] : [claimId, nextStatus],
+        `UPDATE warranty_claims SET repair_service_id = NULL, status = $2, updated_at = NOW() WHERE id = $1 AND organization_id = $3`,
+        [claimId, nextStatus, orgId],
       );
       await insertEvent(client, claimId, 'REPAIR_DETACH', { repairServiceId: claim.repairServiceId, revertedToApproved }, actorStaffId);
       if (revertedToApproved) {
@@ -492,7 +467,7 @@ export async function detachRepairHandoff(
   } catch (err) {
     return { ok: false, status: 500, error: err instanceof Error ? err.message : 'repair detach failed' };
   }
-  const detail = await getClaim(claimId, orgId ?? undefined);
+  const detail = await getClaim(claimId, orgId);
   if (!detail) return { ok: false, status: 500, error: 'claim vanished after detach' };
   return { ok: true, claim: detail, revertedToApproved };
 }

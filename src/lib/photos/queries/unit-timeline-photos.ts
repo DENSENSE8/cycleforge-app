@@ -1,4 +1,4 @@
-import pool from '@/lib/db';
+import { tenantQuery } from '@/lib/tenancy/db';
 import { photoContentUrl } from '@/lib/photos/display-url';
 import { UNIT_PACKING_PHOTO_TYPE, UNIT_TESTING_PHOTO_TYPE } from '@/lib/photos/types';
 import {
@@ -36,8 +36,15 @@ import {
  * the unit's own row) so cross-entity consumers (order timeline groups,
  * station journey chrome) can label media without a second lookup.
  *
- * Same `pool` + explicit `organization_id` predicate convention as the other
- * photo query helpers (tenant boundary is the predicate). Newest-first.
+ * Tenant boundary: the explicit `organization_id = $1` predicate on every arm,
+ * AND the `app.current_org` GUC via `tenantQuery`. Both are load-bearing here,
+ * for different reasons. The predicate is what isolates the `photos` /
+ * `photo_entity_links` / `serial_units` reads today, because the pool underneath
+ * still runs as the BYPASSRLS owner role. The GUC is what makes the
+ * `serial_unit_provenance` arm honest: `v_serial_unit_origins` is declared
+ * `WITH (security_invoker = true)`, so a raw-pool read of that family inherits
+ * the pool role's privileges rather than the tenant's, and the predicate is the
+ * only thing standing between it and every tenant's provenance. Newest-first.
  */
 
 export type UnitTimelinePhotoSource =
@@ -86,7 +93,8 @@ export async function listUnitTimelinePhotos(
   organizationId: string,
   serialUnitId: number,
 ): Promise<UnitTimelinePhoto[]> {
-  const res = await pool.query<DbRow>(
+  const res = await tenantQuery<DbRow>(
+    organizationId,
     `WITH origin AS (
        SELECT rl.id AS line_id, rl.receiving_id
          FROM serial_unit_provenance sp
