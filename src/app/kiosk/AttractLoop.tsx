@@ -9,6 +9,9 @@ import { motion } from '@/design-system/motion';
  * logotype's ground when the app theme flips — a brand defect, not theming.
  */
 // ds-allow-raw-neutral: brand ground, deliberately scheme-independent
+// The attract field is a fixed white stage on a mounted customer tablet — it is
+// deliberately theme-independent, like the loader plane.
+// ds-allow-raw-neutral: fixed kiosk attract stage, theme-independent.
 const PLAIN_ATTRACT_FIELD = 'fixed inset-0 z-panel flex cursor-pointer items-center justify-center bg-white px-8';
 
 /**

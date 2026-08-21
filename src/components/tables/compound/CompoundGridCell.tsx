@@ -51,6 +51,7 @@ import {
   CompoundState,
   CompoundThumb,
 } from './CompoundCells';
+import { COMPOUND_ROW_PX } from './compound-row-chrome';
 import type { CompoundRowView } from './compound-row-model';
 
 /**
@@ -107,12 +108,29 @@ export function renderCompoundGridCell<C extends CompoundCellColumn>({
 }: CompoundGridCellParams<C>): ReactNode {
   if (!isCompoundCellKey(col.key)) return null;
 
-  const className = gridDataCellClass(col, {
-    rule,
-    inset: 'grid',
-    columnDisplay,
-    frozenClass: LEDGER_GRID_FROZEN_CELL,
-  });
+  // ## The compound cell OWNS the row box
+  //
+  // `inset: 'grid'` (the flat spreadsheet's chrome) adds `py-1.5`. Stacked on
+  // the cell's own 1px bottom rule that turned a 48px constant into a 61px
+  // painted row on every compound table — the constant was sizing the cell's
+  // CONTENT while the goal, the virtualizer estimate and the operator's eye all
+  // mean the ROW. Three consumers, two different numbers, and no test could see
+  // it because they all agreed about the 48.
+  //
+  // So: horizontal inset only, and an explicit border-box height. The row shell
+  // is `items-stretch`, so one cell claiming the box sets the row and every
+  // other track stretches to it. The two-row body inside fills what is left of
+  // the height after the rule (`h-full`), which is why nothing here needs to
+  // know that the rule costs a pixel.
+  const className = cn(
+    gridDataCellClass(col, {
+      rule,
+      inset: 'cell',
+      columnDisplay,
+      frozenClass: LEDGER_GRID_FROZEN_CELL,
+    }),
+    'overflow-hidden',
+  );
 
   // The trailing frozen track owns the scroll-edge shadow. Derived from the
   // mounted array for the same reason the offset is: a family constant names a
@@ -124,15 +142,16 @@ export function renderCompoundGridCell<C extends CompoundCellColumn>({
 
   const pref = col.hideKey && columnDisplay ? columnDisplay[col.hideKey] : undefined;
   const highlight = gridColumnHighlightStyle(pref?.highlight);
-  const style =
-    col.frozen || highlight
-      ? {
-          ...highlight,
-          // Derived from the MOUNTED array. A key-only closure over a family's
-          // flat constant is what broke this before — see the file docblock.
-          ...(col.frozen ? { left: gridFrozenLeft(columns, col.key) } : null),
-        }
-      : undefined;
+  const style = {
+    // The ONE number. Border-box, so the cell's bottom rule is inside it and the
+    // painted row measures exactly `COMPOUND_ROW_PX` — the same value
+    // `compoundRowEstimateFor` hands the virtualizer.
+    height: COMPOUND_ROW_PX,
+    ...highlight,
+    // Derived from the MOUNTED array. A key-only closure over a family's flat
+    // constant is what broke this before — see the file docblock.
+    ...(col.frozen ? { left: gridFrozenLeft(columns, col.key) } : null),
+  };
 
   switch (col.key) {
     case 'thumb':
