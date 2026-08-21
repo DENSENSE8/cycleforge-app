@@ -33,10 +33,8 @@
  */
 
 import type { PoolClient } from 'pg';
-import pool from '@/lib/db';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
-import { DOGFOOD_ORG_ID } from '@/lib/tenancy/constants';
 import {
   recordInventoryEvent,
   type InventoryEventStation,
@@ -135,42 +133,43 @@ const defaultDeps: ReceivingLineTransitionDeps = { recordEvent: recordInventoryE
 /**
  * Atomically transition a receiving line and emit one inventory_event.
  *
- * Execution modes mirror serial `transition()`:
- *   - orgId + no db  → runs inside withTenantTransaction (owns BEGIN/GUC/COMMIT).
- *   - db provided    → executor pattern; GUC is set on the caller's client; the
- *                      caller owns the transaction.
- *   - neither        → legacy path: own transaction on the raw pool, no org scope.
+ * Execution modes mirror serial `transition()`, and like it there are exactly
+ * two — `orgId` is required, so there is no third:
+ *   - db OMITTED  → runs inside withTenantTransaction (owns BEGIN/GUC/COMMIT).
+ *   - db PROVIDED → executor pattern; GUC is set on the caller's client; the
+ *                   caller owns the transaction.
  */
 export async function transitionReceivingLine(
   input: ReceivingLineTransitionInput,
-  db?: Pick<PoolClient, 'query'>,
-  orgId?: OrgId,
+  /** Pass `undefined` to let this function own the transaction. */
+  db: Pick<PoolClient, 'query'> | undefined,
+  /**
+   * Tenant scope — REQUIRED, and deliberately un-defaulted, for the same reason
+   * as serial `transition()`. An org-less call did not read unscoped and find
+   * nothing: it locked and UPDATEd `receiving_line` with no `organization_id`
+   * predicate — so another tenant's line advanced its workflow_status, its
+   * stage clocks and its exception_code — and then stamped the
+   * `inventory_events` row `orgId ?? DOGFOOD_ORG_ID`, filing the audit trail
+   * under the dogfood tenant. `inventory_events` is FORCE-RLS but with a
+   * dogfood-fallback column default, so nothing failed loudly.
+   */
+  orgId: OrgId,
   deps: ReceivingLineTransitionDeps = defaultDeps,
 ): Promise<ReceivingLineTransitionResult> {
-  if (orgId && !db) {
+  if (!db) {
     return withTenantTransaction<ReceivingLineTransitionResult>(orgId, (client) =>
       runReceivingLineTransition(input, client, /* useOwnTx */ false, orgId, deps),
     );
   }
-  if (db) {
-    if (orgId) {
-      await db.query("SELECT set_config('app.current_org', $1, true)", [orgId]);
-    }
-    return runReceivingLineTransition(input, db, /* useOwnTx */ false, orgId, deps);
-  }
-  const client = await pool.connect();
-  try {
-    return await runReceivingLineTransition(input, client, /* useOwnTx */ true, undefined, deps);
-  } finally {
-    client.release();
-  }
+  await db.query("SELECT set_config('app.current_org', $1, true)", [orgId]);
+  return runReceivingLineTransition(input, db, /* useOwnTx */ false, orgId, deps);
 }
 
 async function runReceivingLineTransition(
   input: ReceivingLineTransitionInput,
   client: Pick<PoolClient, 'query'>,
   useOwnTx: boolean,
-  orgId: OrgId | undefined,
+  orgId: OrgId,
   deps: ReceivingLineTransitionDeps,
 ): Promise<ReceivingLineTransitionResult> {
   const to = String(input.to).trim().toUpperCase();
@@ -183,12 +182,9 @@ async function runReceivingLineTransition(
       receiving_id: number | null;
       sku: string | null;
     }>(
-      orgId
-        ? `SELECT workflow_status::text AS workflow_status, receiving_id, sku
-             FROM receiving_line WHERE id = $1 AND organization_id = $2 FOR UPDATE`
-        : `SELECT workflow_status::text AS workflow_status, receiving_id, sku
-             FROM receiving_line WHERE id = $1 FOR UPDATE`,
-      orgId ? [input.receivingLineId, orgId] : [input.receivingLineId],
+      `SELECT workflow_status::text AS workflow_status, receiving_id, sku
+         FROM receiving_line WHERE id = $1 AND organization_id = $2 FOR UPDATE`,
+      [input.receivingLineId, orgId],
     );
     const row = lockedQ.rows[0];
     if (!row) {
@@ -218,30 +214,17 @@ async function runReceivingLineTransition(
     // it records the FIRST time the line reached that stage) + received_by + an
     // optional exception_code set.
     await client.query(
-      orgId
-        ? `UPDATE receiving_line SET
-             workflow_status       = $2::inbound_workflow_status_enum,
-             receiving_line_status = $3,
-             scanned_at  = CASE WHEN $3 = 'SCANNED'  THEN COALESCE(scanned_at,  NOW()) ELSE scanned_at  END,
-             unboxed_at  = CASE WHEN $3 = 'UNBOXED'  THEN COALESCE(unboxed_at,  NOW()) ELSE unboxed_at  END,
-             received_at = CASE WHEN $3 = 'RECEIVED' THEN COALESCE(received_at, NOW()) ELSE received_at END,
-             received_by = CASE WHEN $3 = 'RECEIVED' AND $4::int IS NOT NULL THEN COALESCE(received_by, $4::int) ELSE received_by END,
-             exception_code = COALESCE($5, exception_code),
-             updated_at = NOW()
-           WHERE id = $1 AND organization_id = $6`
-        : `UPDATE receiving_line SET
-             workflow_status       = $2::inbound_workflow_status_enum,
-             receiving_line_status = $3,
-             scanned_at  = CASE WHEN $3 = 'SCANNED'  THEN COALESCE(scanned_at,  NOW()) ELSE scanned_at  END,
-             unboxed_at  = CASE WHEN $3 = 'UNBOXED'  THEN COALESCE(unboxed_at,  NOW()) ELSE unboxed_at  END,
-             received_at = CASE WHEN $3 = 'RECEIVED' THEN COALESCE(received_at, NOW()) ELSE received_at END,
-             received_by = CASE WHEN $3 = 'RECEIVED' AND $4::int IS NOT NULL THEN COALESCE(received_by, $4::int) ELSE received_by END,
-             exception_code = COALESCE($5, exception_code),
-             updated_at = NOW()
-           WHERE id = $1`,
-      orgId
-        ? [input.receivingLineId, to, coarse, input.receivedBy ?? null, input.exceptionCode ?? null, orgId]
-        : [input.receivingLineId, to, coarse, input.receivedBy ?? null, input.exceptionCode ?? null],
+      `UPDATE receiving_line SET
+         workflow_status       = $2::inbound_workflow_status_enum,
+         receiving_line_status = $3,
+         scanned_at  = CASE WHEN $3 = 'SCANNED'  THEN COALESCE(scanned_at,  NOW()) ELSE scanned_at  END,
+         unboxed_at  = CASE WHEN $3 = 'UNBOXED'  THEN COALESCE(unboxed_at,  NOW()) ELSE unboxed_at  END,
+         received_at = CASE WHEN $3 = 'RECEIVED' THEN COALESCE(received_at, NOW()) ELSE received_at END,
+         received_by = CASE WHEN $3 = 'RECEIVED' AND $4::int IS NOT NULL THEN COALESCE(received_by, $4::int) ELSE received_by END,
+         exception_code = COALESCE($5, exception_code),
+         updated_at = NOW()
+       WHERE id = $1 AND organization_id = $6`,
+      [input.receivingLineId, to, coarse, input.receivedBy ?? null, input.exceptionCode ?? null, orgId],
     );
 
     // skipEvent: the caller emits its own (single, combined) inventory_event —
@@ -269,7 +252,7 @@ async function runReceivingLineTransition(
             },
           },
           client,
-          orgId ?? DOGFOOD_ORG_ID,
+          orgId,
         );
 
     if (useOwnTx) await client.query('COMMIT');
