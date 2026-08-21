@@ -5,9 +5,11 @@ import {
   BASE_RADIUS,
   IDLE_ALPHA,
   PASTEL_PALETTE,
+  READABLE_LUMINANCE,
   dotAlpha,
   dotFill,
   latticeStyle,
+  luminanceOnWhite,
   pastelFor,
 } from './universal-loader-field';
 
@@ -20,6 +22,9 @@ describe('the pastel palette', () => {
     const blue = PASTEL_PALETTE.find((s) => s.name === 'blue')!;
     assert.equal(hex(blue.idle), baseColors.blue[300]);
     assert.equal(hex(blue.active), baseColors.blue[500]);
+    const yellow = PASTEL_PALETTE.find((s) => s.name === 'yellow')!;
+    assert.equal(hex(yellow.idle), baseColors.yellow[400]);
+    assert.equal(hex(yellow.active), baseColors.yellow[600]);
   });
 
   it('every stop deepens within its OWN family', () => {
@@ -35,9 +40,34 @@ describe('the pastel palette', () => {
     }
   });
 
-  it('has enough hues to read as a mix, not a two-tone', () => {
-    assert.ok(PASTEL_PALETTE.length >= 4);
+  it('has enough hues to read as a mix, not one staff accent', () => {
+    // The field used to be a single hue: `--ds-color-accent-bg`, the per-staff
+    // accent. Whatever else changes, it must not collapse back to one colour.
+    assert.ok(PASTEL_PALETTE.length >= 6, 'a pastel FIELD needs a spread of hues');
     assert.equal(new Set(PASTEL_PALETTE.map((s) => s.name)).size, PASTEL_PALETTE.length);
+  });
+
+  it('palette-reads-on-white: every resting pastel lands in the luminance band', () => {
+    // The invariant is the BAND, never a fixed step number. Yellow and green at
+    // -300 composite to 226 and 220 — lighter than every other family — so they
+    // rest at -400. Adding a family? Pick the step that lands here, not -300.
+    for (const stop of PASTEL_PALETTE) {
+      const lum = luminanceOnWhite(stop.idle);
+      assert.ok(
+        lum >= READABLE_LUMINANCE.min && lum <= READABLE_LUMINANCE.max,
+        `${stop.name} rests at luminance ${Math.round(lum)}, outside ` +
+          `[${READABLE_LUMINANCE.min}, ${READABLE_LUMINANCE.max}] — it will not read on white`,
+      );
+    }
+  });
+
+  it('every active step is darker than the pastel it deepens from', () => {
+    for (const stop of PASTEL_PALETTE) {
+      assert.ok(
+        luminanceOnWhite(stop.active) < luminanceOnWhite(stop.idle),
+        `${stop.name} must darken under the sweep, not lighten`,
+      );
+    }
   });
 });
 
