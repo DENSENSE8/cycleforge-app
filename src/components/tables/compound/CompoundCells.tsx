@@ -9,9 +9,17 @@
  * never copies a cell.
  *
  * These render the cell BODY. The surrounding `<div>` — grid cell class,
- * `data-col`, highlight style — stays with the family, because that wrapper is
- * where per-staff column display and the frozen-pane token are applied and
- * those are resolved from the family's own column model.
+ * `data-col`, row box, frozen offset — is {@link CompoundGridCell}, which is
+ * where every family enters. Nothing outside this directory composes these
+ * bodies directly.
+ *
+ * The wrapper used to be each family's job, on the reasoning that per-staff
+ * column display and the frozen-pane token resolve from the family's own model.
+ * That was wrong in a way worth remembering: the wrapper decides a cell's
+ * POSITION, so leaving it per-family forked the layout in the one place nobody
+ * compares. Receiving pinned the photo track at the wrong offset and Orders did
+ * not pin it at all — from the same `frozen: true`. Both prefs are resolved
+ * from the MOUNTED columns now, which every family already passes.
  */
 
 import { useState } from 'react';

@@ -128,7 +128,6 @@ export type ReceivingGridCellCtx = {
   ageTooltip?: string;
   markLabel?: string;
   trackingAction?: ReactNode;
-  removalFace?: { tip: string; className: string; label: string } | null;
 };
 
 /** Column model a cell may receive — Incoming keys stay a separate array. */

@@ -5,10 +5,6 @@ import { IncomingAttachTrackingButton } from '@/components/station/IncomingAttac
 import { conditionGradeTableLabel } from '@/components/station/receiving-constants';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { ReceivingLineOrderRow } from '@/components/station/ReceivingLineOrderRow';
-import {
-  INCOMING_REMOVAL_REASON_FACE,
-  resolveIncomingRemovalReasonForRow,
-} from '@/lib/receiving/incoming-removal-reason';
 import { INCOMING_GRID_CAPABILITIES } from '@/components/station/incoming-grid/incoming-grid-descriptor';
 import { LedgerGridLeafRow } from '@/design-system/components/grid';
 import type { GridSelectGutterChrome } from '@/components/ui/GridRowCheckbox';
@@ -140,12 +136,6 @@ export const IncomingGridRow = memo(function IncomingGridRow({
         )
       : undefined;
 
-  // Why this row left the lane — resolved through the shared registry, never a
-  // map in this component. `null` on every lane but `incoming_removed`, where
-  // the `removed` column is mounted.
-  const removalReason = resolveIncomingRemovalReasonForRow(row);
-  const removalFace = removalReason ? INCOMING_REMOVAL_REASON_FACE[removalReason] : null;
-
   const ctx: ReceivingGridCellCtx = {
     row,
     // The MOUNTED model — a cell's sticky-left derives from it, so this row
@@ -185,7 +175,6 @@ export const IncomingGridRow = memo(function IncomingGridRow({
     ageTooltip,
     markLabel,
     trackingAction,
-    removalFace,
     // Compound-track capabilities. `onSelect` IS "open the record" on this
     // surface, so the chevron and the row body agree about what a click means.
     onOpenRecord: onSelect,
