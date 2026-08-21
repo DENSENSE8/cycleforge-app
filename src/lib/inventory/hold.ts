@@ -26,14 +26,18 @@
  * behavior-equivalent for legitimate flows: hold's to=ON_HOLD is universal-entry
  * in the guard, and release's destination is always within RESTORABLE_STATUSES,
  * which are exactly ON_HOLD's modeled outgoing edges — so the guard never rejects.
- * (Org-scoping of these reads/writes remains a tracked tenancy follow-up: no
- * orgId is threaded, so the inventory_events column default applies as before.)
+ * Tenancy: `organizationId` is REQUIRED on both inputs. The whole helper runs
+ * inside `withTenantTransaction`, the `serial_units` locks carry an explicit
+ * org predicate (a foreign-org unit id reads as 404, not as a successful hold),
+ * and the HELD / RELEASED_HOLD events are stamped from it rather than from the
+ * `inventory_events` column default — which falls back to the dogfood org.
  *
  * Caller responsibilities: feature-flag check, permission gate,
  * actorStaffId resolution.
  */
 
-import { transaction } from '@/lib/neon-client';
+import { withTenantTransaction } from '@/lib/tenancy/db';
+import type { OrgId } from '@/lib/tenancy/constants';
 import { transition, type SerialState } from '@/lib/inventory/state-machine';
 
 const RESTORABLE_STATUSES = new Set([
@@ -50,6 +54,8 @@ export interface HoldUnitInput {
   reason: string;
   clientEventId?: string | null;
   actorStaffId: number | null;
+  /** Tenant scope — REQUIRED. Scopes the unit lock and stamps the HELD event. */
+  organizationId: OrgId;
 }
 
 export interface HoldUnitSuccess {
@@ -73,11 +79,11 @@ export async function holdUnit(input: HoldUnitInput): Promise<HoldUnitResult> {
   if (!input.reason || !input.reason.trim()) {
     return { ok: false, status: 400, error: 'reason is required' };
   }
-  return transaction<HoldUnitResult>(async (client) => {
+  return withTenantTransaction<HoldUnitResult>(input.organizationId, async (client) => {
     const unitQ = await client.query<{ id: number; sku: string | null; current_status: string }>(
       `SELECT id, sku, current_status::text AS current_status
-         FROM serial_units WHERE id = $1 LIMIT 1 FOR UPDATE`,
-      [input.serialUnitId],
+         FROM serial_units WHERE id = $1 AND organization_id = $2 LIMIT 1 FOR UPDATE`,
+      [input.serialUnitId, input.organizationId],
     );
     const unit = unitQ.rows[0];
     if (!unit) return { ok: false, status: 404, error: 'serial_units row not found' };
@@ -101,6 +107,7 @@ export async function holdUnit(input: HoldUnitInput): Promise<HoldUnitResult> {
         payload: { source: 'serial-units.hold', restore_status: unit.current_status },
       },
       client,
+      input.organizationId,
     );
     if (!result.ok) {
       return { ok: false, status: result.status, error: result.error };
@@ -123,6 +130,8 @@ export interface ReleaseUnitInput {
   forceStatus?: string | null;
   clientEventId?: string | null;
   actorStaffId: number | null;
+  /** Tenant scope — REQUIRED. Scopes the unit lock and stamps the event. */
+  organizationId: OrgId;
 }
 
 export interface ReleaseUnitSuccess {
@@ -148,11 +157,11 @@ export async function releaseUnit(input: ReleaseUnitInput): Promise<ReleaseUnitR
   if (forceStatus && !isRestorableStatus(forceStatus)) {
     return { ok: false, status: 400, error: `force_status invalid: ${forceStatus}` };
   }
-  return transaction<ReleaseUnitResult>(async (client) => {
+  return withTenantTransaction<ReleaseUnitResult>(input.organizationId, async (client) => {
     const unitQ = await client.query<{ id: number; sku: string | null; current_status: string }>(
       `SELECT id, sku, current_status::text AS current_status
-         FROM serial_units WHERE id = $1 LIMIT 1 FOR UPDATE`,
-      [input.serialUnitId],
+         FROM serial_units WHERE id = $1 AND organization_id = $2 LIMIT 1 FOR UPDATE`,
+      [input.serialUnitId, input.organizationId],
     );
     const unit = unitQ.rows[0];
     if (!unit) return { ok: false, status: 404, error: 'serial_units row not found' };
@@ -172,9 +181,10 @@ export async function releaseUnit(input: ReleaseUnitInput): Promise<ReleaseUnitR
         `SELECT payload->>'restore_status' AS restore_status
            FROM inventory_events
           WHERE serial_unit_id = $1 AND event_type = 'HELD'
+            AND organization_id = $2
           ORDER BY occurred_at DESC, id DESC
           LIMIT 1`,
-        [unit.id],
+        [unit.id, input.organizationId],
       );
       const candidate = heldQ.rows[0]?.restore_status?.toUpperCase() ?? null;
       if (candidate && isRestorableStatus(candidate)) {
@@ -210,6 +220,7 @@ export async function releaseUnit(input: ReleaseUnitInput): Promise<ReleaseUnitR
         payload: { source: 'serial-units.release', forced: !!forceStatus },
       },
       client,
+      input.organizationId,
     );
     if (!result.ok) {
       return {

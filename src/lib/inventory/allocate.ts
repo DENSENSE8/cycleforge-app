@@ -14,7 +14,6 @@
  */
 
 import type { PoolClient } from 'pg';
-import { transaction } from '@/lib/neon-client';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import {
@@ -66,34 +65,36 @@ export function isValidConditionGrade(value: string): value is ConditionGrade {
  * clientEventId on inventory_events. Returns 409 when no STOCKED units
  * match (caller should retry later or relax the condition filter).
  *
- * Tenancy: pass `orgId` to run the whole allocation inside a tenant-scoped
- * transaction (`withTenantTransaction`, which sets the `app.current_org` GUC
- * via SET LOCAL) and to add explicit `organization_id` predicates on the order
- * load, the candidate selection, and the allocation INSERT. Omitting `orgId`
- * keeps the legacy raw-pool `transaction` path byte-identical — every existing
- * caller that doesn't yet thread org behaves exactly as before. The shared
- * `transition()` writes inherit the GUC from the wrapping transaction client.
+ * Tenancy: `orgId` is REQUIRED. The whole allocation runs inside a tenant-scoped
+ * transaction (`withTenantTransaction`, which sets the `app.current_org` GUC via
+ * SET LOCAL) and the order load, candidate selection and allocation INSERT all
+ * carry explicit `organization_id` predicates. The org-less raw-pool path is
+ * gone. `transition()` receives the same org and inherits the GUC from this
+ * transaction client.
  */
 export async function allocateOrder(
   input: AllocateOrderInput,
-  orgId?: OrgId,
+  /**
+   * Tenant scope — REQUIRED, and un-defaulted. `transition()` needs it, and a
+   * default here would silently re-introduce the dogfood-org attribution this
+   * chain was migrated to remove.
+   */
+  orgId: OrgId,
 ): Promise<AllocateOrderResult> {
-  const run = (client: PoolClient) => allocateOrderInTx(client, input, orgId);
-  return orgId
-    ? withTenantTransaction<AllocateOrderResult>(orgId, run)
-    : transaction<AllocateOrderResult>(run);
+  return withTenantTransaction<AllocateOrderResult>(orgId, (client) =>
+    allocateOrderInTx(client, input, orgId),
+  );
 }
 
 /**
- * Body of the allocation transaction, shared by the raw-pool and tenant-scoped
- * entry paths. When `orgId` is supplied the reads/writes carry an explicit
+ * Body of the allocation transaction. The reads/writes carry an explicit
  * `organization_id` predicate (defence-in-depth alongside the GUC set by
- * `withTenantTransaction`); when omitted the SQL is exactly the legacy form.
+ * `withTenantTransaction`).
  */
 async function allocateOrderInTx(
   client: PoolClient,
   input: AllocateOrderInput,
-  orgId?: OrgId,
+  orgId: OrgId,
 ): Promise<AllocateOrderResult> {
   // 1. Load the order line. Resolve the canonical SKU via sku_catalog_id
   //    when the order has been paired; otherwise fall back to the raw
@@ -205,10 +206,6 @@ async function allocateOrderInTx(
     // so the guard/expectedFrom passes in the normal path; a drift means a
     // concurrent mutation and must abort the allocation we just inserted.
     //
-    // transition() is not yet org-parameterized (Phase 1 hasn't reached the
-    // state machine); it writes through this same `client`, so when orgId was
-    // supplied those writes inherit the SET LOCAL app.current_org GUC from
-    // withTenantTransaction. No org arg to pass here yet.
     const perUnitClientEventId = input.clientEventId
       ? `${input.clientEventId}:${unit.id}`
       : null;
@@ -228,7 +225,7 @@ async function allocateOrderInTx(
         platform_sku: order.sku,
         sku_catalog_id: order.sku_catalog_id,
       },
-    }, client);
+    }, client, orgId);
     if (!t.ok) {
       throw new Error(`allocate: STOCKED→ALLOCATED failed for unit ${unit.id}: ${t.error}`);
     }

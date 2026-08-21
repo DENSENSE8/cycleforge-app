@@ -13,10 +13,8 @@
  */
 
 import type { PoolClient } from 'pg';
-import pool from '@/lib/db';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
-import { DOGFOOD_ORG_ID } from '@/lib/tenancy/constants';
 import { recordInventoryEvent, type InventoryEventStation, type InventoryEventType } from './events';
 
 // ─── State vocabulary (mirrors serial_status_enum in schema.ts) ──────────────
@@ -161,96 +159,86 @@ export type TransitionResult =
  * Pass `db` to share a transaction with the caller. Without it, this function
  * opens and commits its own transaction.
  *
- * Tenancy (additive, backward-compatible): pass `orgId` to scope the unit
- * read/UPDATE to a single tenant and run the work GUC-wrapped so the
- * `inventory_events` INSERT (and any RLS-enforced table) attributes to the
- * right org.
- *   - When `orgId` is OMITTED, behavior is byte-identical to before: raw pool
- *     (or the caller-supplied `db`), no org predicate, no GUC. The many call
- *     sites that don't thread org yet keep working exactly as today.
- *   - When `orgId` is PROVIDED and `db` is OMITTED, the function runs inside
- *     `withTenantTransaction(orgId, …)` (BEGIN + `set_config('app.current_org')`
- *     + COMMIT) instead of its own bare BEGIN/COMMIT.
- *   - When `orgId` is PROVIDED and `db` is PROVIDED (executor pattern), the GUC
- *     is set on the caller's client (transaction-local) before the writes; the
- *     caller keeps owning the transaction.
- * In both org-aware modes the SELECT/UPDATE on `serial_units` get an explicit
- * `AND organization_id = $n` predicate (404 on a cross-tenant miss).
+ * Tenancy: `orgId` is REQUIRED. There are two modes, and no third:
+ *   - `db` OMITTED — the function runs inside `withTenantTransaction(orgId, …)`
+ *     (BEGIN + `set_config('app.current_org')` + COMMIT) and owns the tx.
+ *   - `db` PROVIDED (executor pattern) — the GUC is set on the caller's client
+ *     (transaction-local) before the writes; the caller keeps owning the tx.
+ * Either way the SELECT/UPDATE on `serial_units` carry an explicit
+ * `AND organization_id = $n` predicate (404 on a cross-tenant miss), and the
+ * `inventory_events` row is stamped from `orgId` rather than a column default.
  */
 export async function transition(
   input: TransitionInput,
   // Only `.query` is used when a caller passes its own client (the executor
   // path), so accept the narrow shape — lets callers thread a Pick<…'query'>
-  // tx client without an unsafe cast. The legacy path opens its own full client.
-  db?: Pick<PoolClient, 'query'>,
-  orgId?: OrgId,
+  // tx client without an unsafe cast. Pass `undefined` to let transition() own
+  // the transaction; it is positional-before-orgId, so it must be named either way.
+  db: Pick<PoolClient, 'query'> | undefined,
+  /**
+   * Tenant scope — REQUIRED, and deliberately un-defaulted.
+   *
+   * This was optional through the strangler migration, and the cost was not a
+   * missing filter: an org-less call ran the whole transition on the raw pool
+   * with no `organization_id` predicate on the `serial_units` SELECT…FOR UPDATE
+   * or UPDATE, and then stamped its `inventory_events` row `DOGFOOD_ORG_ID` via
+   * an explicit fallback — so a cross-tenant unit id transitioned successfully
+   * and the audit trail attributed it to the dogfood tenant. `inventory_events`
+   * is FORCE-RLS but with a dogfood-fallback column default, so nothing failed
+   * loudly; the row just landed under the wrong org.
+   *
+   * Required makes every unvisited call site a compile error. Do not re-add a
+   * default here, and do not make one configurable: the default IS the defect.
+   */
+  orgId: OrgId,
 ): Promise<TransitionResult> {
-  // ── Org-aware, no caller transaction: run the whole thing GUC-wrapped. ──────
+  // ── No caller transaction: run the whole thing GUC-wrapped. ────────────────
   // withTenantTransaction owns BEGIN/SET LOCAL/COMMIT, so the core helper must
   // NOT open its own transaction — pass useOwnTx=false and let the wrapper
   // commit/rollback. Errors propagate so the wrapper rolls back.
-  if (orgId && !db) {
+  if (!db) {
     return withTenantTransaction<TransitionResult>(orgId, (client) =>
       runTransition(input, client, /* useOwnTx */ false, orgId),
     );
   }
 
-  // ── Caller-owned transaction (executor pattern), optionally org-scoped. ─────
-  if (db) {
-    if (orgId) {
-      // Transaction-local GUC on the caller's client so the inventory_events
-      // INSERT (column default reads current_setting('app.current_org')) and any
-      // RLS-enforced write attribute to this org. is_local=true → auto-clears on
-      // the caller's COMMIT/ROLLBACK.
-      await db.query("SELECT set_config('app.current_org', $1, true)", [orgId]);
-    }
-    return runTransition(input, db, /* useOwnTx */ false, orgId);
-  }
-
-  // ── Legacy path: own transaction on the raw pool, no org scoping. ───────────
-  const client = await pool.connect();
-  try {
-    return await runTransition(input, client, /* useOwnTx */ true, undefined);
-  } finally {
-    client.release();
-  }
+  // ── Caller-owned transaction (executor pattern). ───────────────────────────
+  // Transaction-local GUC on the caller's client so the inventory_events INSERT
+  // (column default reads current_setting('app.current_org')) and any RLS-
+  // enforced write attribute to this org. is_local=true → auto-clears on the
+  // caller's COMMIT/ROLLBACK.
+  await db.query("SELECT set_config('app.current_org', $1, true)", [orgId]);
+  return runTransition(input, db, /* useOwnTx */ false, orgId);
 }
 
 /**
  * Core transition logic over a single client. `useOwnTx` controls whether this
- * helper issues its own BEGIN/COMMIT/ROLLBACK (true only on the legacy raw-pool
- * path; the GUC wrapper and executor-pattern callers own the transaction).
- * `orgId`, when present, adds the explicit `organization_id` predicate to the
- * serial_units read/UPDATE; the GUC is set by the caller of this helper.
+ * helper issues its own BEGIN/COMMIT/ROLLBACK — always false now that both
+ * entry modes (GUC wrapper, executor pattern) own the transaction; the flag
+ * survives because the rollback bookkeeping below reads it.
+ * `orgId` adds the explicit `organization_id` predicate to the serial_units
+ * read/UPDATE; the GUC is set by the caller of this helper.
  */
 async function runTransition(
   input: TransitionInput,
   client: Pick<PoolClient, 'query'>,
   useOwnTx: boolean,
-  orgId: OrgId | undefined,
+  orgId: OrgId,
 ): Promise<TransitionResult> {
   try {
     if (useOwnTx) await client.query('BEGIN');
 
-    // serial_units is tenant-owned (has organization_id). When orgId is provided
-    // the lock is scoped to the tenant so a cross-tenant id reads as not-found;
-    // when omitted the predicate/param are absent → byte-identical legacy SQL.
+    // serial_units is tenant-owned. The lock is scoped to the tenant, so a
+    // cross-tenant unit id reads as not-found (404) rather than transitioning.
     const lockedQ = await client.query<{ current_status: SerialState; sku: string | null; current_location: string | null }>(
-      orgId
-        ? `SELECT current_status::text AS current_status,
-                  sku,
-                  current_location
-             FROM serial_units
-            WHERE id = $1
-              AND organization_id = $2
-            FOR UPDATE`
-        : `SELECT current_status::text AS current_status,
-                  sku,
-                  current_location
-             FROM serial_units
-            WHERE id = $1
-            FOR UPDATE`,
-      orgId ? [input.unitId, orgId] : [input.unitId],
+      `SELECT current_status::text AS current_status,
+              sku,
+              current_location
+         FROM serial_units
+        WHERE id = $1
+          AND organization_id = $2
+        FOR UPDATE`,
+      [input.unitId, orgId],
     );
     const row = lockedQ.rows[0];
     if (!row) {
@@ -276,17 +264,12 @@ async function runTransition(
     }
 
     await client.query(
-      orgId
-        ? `UPDATE serial_units
-              SET current_status = $2::serial_status_enum,
-                  updated_at = NOW()
-            WHERE id = $1
-              AND organization_id = $3`
-        : `UPDATE serial_units
-              SET current_status = $2::serial_status_enum,
-                  updated_at = NOW()
-            WHERE id = $1`,
-      orgId ? [input.unitId, input.to, orgId] : [input.unitId, input.to],
+      `UPDATE serial_units
+          SET current_status = $2::serial_status_enum,
+              updated_at = NOW()
+        WHERE id = $1
+          AND organization_id = $3`,
+      [input.unitId, input.to, orgId],
     );
 
     // serial_units.current_location is TEXT and, by convention, can hold either a
@@ -298,12 +281,10 @@ async function runTransition(
       ? Number(row.current_location.trim())
       : null;
 
-    // recordInventoryEvent does not (yet) take an orgId — its INSERT relies on
-    // inventory_events.organization_id defaulting from current_setting(
-    // 'app.current_org'), which the GUC set by transition()'s caller supplies on
-    // this same client. So passing the GUC-scoped `client` is what tenant-stamps
-    // the event; in the legacy (no-org) path the column default falls back to the
-    // usav-fallback exactly as today.
+    // The event is stamped from `orgId` explicitly AND written on the GUC-scoped
+    // `client`, so it never depends on the inventory_events.organization_id
+    // column default — which falls back to the dogfood org rather than failing,
+    // and was therefore silently mis-attributing every org-less transition.
     const event = await recordInventoryEvent(
       {
         event_type: input.eventType,
@@ -326,10 +307,7 @@ async function runTransition(
         payload: input.payload ?? {},
       },
       client,
-      // runTransition's orgId is optional during the strangler migration; when a
-      // caller hasn't threaded one yet, fall back to USAV so the tenant-required
-      // inventory_events insert stamps a concrete org instead of NULL-violating.
-      orgId ?? DOGFOOD_ORG_ID,
+      orgId,
     );
 
     if (useOwnTx) await client.query('COMMIT');

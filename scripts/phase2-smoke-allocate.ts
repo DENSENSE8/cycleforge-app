@@ -47,13 +47,19 @@ async function main() {
     platform_sku: string | null;
     canonical_sku: string;
     stocked: number;
+    organization_id: string;
   }>(`
     SELECT o.id            AS order_id,
            o.order_id      AS order_label,
            o.account_source,
            o.sku           AS platform_sku,
            sc.sku          AS canonical_sku,
-           (SELECT COUNT(*)::int FROM serial_units su WHERE su.sku = sc.sku AND su.current_status = 'STOCKED') AS stocked
+           o.organization_id,
+           (SELECT COUNT(*)::int
+              FROM serial_units su
+             WHERE su.sku = sc.sku
+               AND su.current_status = 'STOCKED'
+               AND su.organization_id = o.organization_id) AS stocked
       FROM orders o
       JOIN sku_catalog sc ON sc.id = o.sku_catalog_id
      WHERE (o.status IS NULL OR o.status != 'shipped')
@@ -66,6 +72,7 @@ async function main() {
        AND EXISTS (
          SELECT 1 FROM serial_units su
           WHERE su.sku = sc.sku AND su.current_status = 'STOCKED'
+            AND su.organization_id = o.organization_id
        )
      ORDER BY stocked DESC, o.id ASC
   `);
@@ -99,7 +106,7 @@ async function main() {
       orderId: t.order_id,
       actorStaffId: null,                  // system-initiated
       clientEventId,
-    });
+    }, t.organization_id);
     if (result.ok) {
       okCount++;
       results.push({

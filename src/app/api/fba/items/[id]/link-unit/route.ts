@@ -120,7 +120,7 @@ export const POST = withAuth(async (request, ctx) => {
             fba_shipment_item_id: fbaShipmentItemId,
             fnsku: item.fnsku,
           },
-        }, client);
+        }, client, ctx.organizationId);
         // Throw (don't return) so a transition failure rolls back the
         // fba_shipment_item_units link inserted above — never commit a link
         // with the unit left un-allocated. Unreachable in practice (STOCKED→

@@ -39,7 +39,6 @@ import {
   type RecordInventoryEventInput,
 } from '@/lib/inventory/events';
 import type { OrgId } from '@/lib/tenancy/constants';
-import { DOGFOOD_ORG_ID } from '@/lib/tenancy/constants';
 import { tapWorkflow, type WorkflowTapArgs, type WorkflowTapEvent } from './tap';
 
 export interface ApplyTransitionArgs {
@@ -73,8 +72,13 @@ export interface ApplyTransitionArgs {
   /** Reject if the unit drifted from this state (optimistic concurrency). */
   expectedFrom?: SerialState;
 
-  /** Tenant id — scopes the status write + stamps the event; enrolls the tap. */
-  orgId?: OrgId | null;
+  /**
+   * Tenant id — REQUIRED. Scopes the status write, stamps the event, and
+   * enrolls the tap. Was optional with a `?? DOGFOOD_ORG_ID` fallback in
+   * `defaultDeps.recordEvent`, so an org-less call wrote a real transition and
+   * filed the audit row under the dogfood tenant.
+   */
+  orgId: OrgId;
   /** Who/what triggered this (defaults to 'manual'). */
   source?: WorkflowTapArgs['source'];
   /**
@@ -102,13 +106,13 @@ export type ApplyTransitionResult =
 /** Injectable collaborators (real impls by default; fakes in tests). */
 export interface ApplyTransitionDeps {
   transition: typeof transition;
-  recordEvent: (input: RecordInventoryEventInput, orgId?: OrgId) => Promise<{ id: number }>;
+  recordEvent: (input: RecordInventoryEventInput, orgId: OrgId) => Promise<{ id: number }>;
   tap: (args: WorkflowTapArgs) => Promise<void>;
 }
 
 const defaultDeps: ApplyTransitionDeps = {
   transition,
-  recordEvent: (input, orgId) => recordInventoryEvent(input, undefined, orgId ?? DOGFOOD_ORG_ID),
+  recordEvent: (input, orgId) => recordInventoryEvent(input, undefined, orgId),
   tap: tapWorkflow,
 };
 
@@ -116,7 +120,7 @@ export async function applyTransition(
   args: ApplyTransitionArgs,
   deps: ApplyTransitionDeps = defaultDeps,
 ): Promise<ApplyTransitionResult> {
-  const orgId = args.orgId ?? undefined;
+  const orgId = args.orgId;
 
   // 1. Guarded status write + atomic inventory_event. transition() owns the
   //    FOR UPDATE lock, the guard, and (when orgId is set) its own GUC-wrapped tx.

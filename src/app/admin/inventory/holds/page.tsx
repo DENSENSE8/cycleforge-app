@@ -143,7 +143,7 @@ async function holdAction(formData: FormData): Promise<void> {
   }
 
   try {
-    await holdUnit({ serialUnitId, reason, actorStaffId: null });
+    await holdUnit({ serialUnitId, reason, actorStaffId: null, organizationId: user.organizationId });
   } catch (err) {
     console.error('[holds.hold] failed:', err);
   }
@@ -159,8 +159,10 @@ async function releaseAction(formData: FormData): Promise<void> {
 
   const user = await requirePermission('sku_stock.adjust', { enforce: true });
 
-  // The id arrives from the form, so re-check ownership before the write —
-  // releaseUnit() itself takes no orgId.
+  // The id arrives from the form, so re-check ownership before the write. The
+  // org is threaded into releaseUnit() as well, so the unit lock and the
+  // RELEASED_HOLD event are both scoped — this pre-check is defence in depth,
+  // not the only boundary any more.
   const serialUnitId = await resolveOwnedUnitId(String(id), user.organizationId);
   if (serialUnitId <= 0) return;
 
@@ -170,6 +172,7 @@ async function releaseAction(formData: FormData): Promise<void> {
       reason,
       forceStatus,
       actorStaffId: null,
+      organizationId: user.organizationId,
     });
   } catch (err) {
     console.error('[holds.release] failed:', err);

@@ -34,6 +34,7 @@
 
 import pool from '@/lib/db';
 import { withTenantTransaction } from '@/lib/tenancy/db';
+import type { OrgId } from '@/lib/tenancy/constants';
 import { appendInventoryEvent } from '@/lib/repositories/inventory/inventoryEvents';
 import { attachTechSerial } from '@/lib/inventory/tech-serial';
 import { tapWorkflow } from '@/lib/workflow/tap';
@@ -130,8 +131,13 @@ export interface RecordTestVerdictArgs {
   notes?: string | null;
   clientEventId?: string | null;
   actorStaffId?: number | null;
-  /** Tenant id (ctx.organizationId) — threads through to the workflow tap. */
-  organizationId?: string | null;
+  /**
+   * Tenant id (ctx.organizationId) — REQUIRED, un-defaulted. Scopes every
+   * read/write below, stamps the tech_serial_numbers row, and is what
+   * applyTransition / transition need to attribute the status change and its
+   * inventory_events row to the right tenant instead of the dogfood default.
+   */
+  organizationId: OrgId;
 }
 
 export interface RecordTestVerdictResult {
@@ -154,7 +160,7 @@ export async function recordTestVerdict(
   // — `pool` is the BYPASSRLS owner connection, so this explicit predicate, not
   // RLS, is what isolates tenants here. Mirrors transition()'s `orgId ? …` shape;
   // omitting org keeps the legacy unscoped SQL for any caller that lacks one.
-  const orgId = args.organizationId ?? null;
+  const orgId = args.organizationId;
   // Verdict→status mapping — hardcoded by default; per-org override behind
   // UNIFIED_ENGINE_VERDICT_CONFIG (flag off ⇒ no settings read, identical behavior).
   const mapping = await resolveVerdictMapping(verdict, orgId);
@@ -210,7 +216,7 @@ export async function recordTestVerdict(
       receivingLineId: lineId,
       binId: null, // testing changes no placement — keep the event's bin_id null
       sku: prev.sku,
-      orgId: args.organizationId ?? null,
+      orgId: args.organizationId,
       source: 'manual',
     });
     if (!applied.ok) {
@@ -271,7 +277,7 @@ export async function recordTestVerdict(
         // which is what left tsn_links tenant-incomplete. `?? undefined` (never
         // `null`) because attachTechSerial binds the column only when the value
         // is not undefined, and NULL would violate the constraint.
-        organizationId: orgId ?? undefined,
+        organizationId: orgId,
       });
     } catch (err) {
       console.warn('[recordTestVerdict] tsn audit insert failed (non-fatal):', err);
@@ -285,7 +291,7 @@ export async function recordTestVerdict(
   if (!useChokepoint) {
     const { event, created } = await appendInventoryEvent({
       eventType: mapping.eventType,
-      organizationId: args.organizationId ?? null,
+      organizationId: args.organizationId,
       clientEventId: args.clientEventId ?? null,
       actorStaffId,
       station: 'TECH',
@@ -531,7 +537,7 @@ export async function recordTestVerdict(
       input: { verdict },
       staffId: actorStaffId,
       source: 'manual',
-      orgId: args.organizationId ?? null,
+      orgId: args.organizationId,
     });
   }
 

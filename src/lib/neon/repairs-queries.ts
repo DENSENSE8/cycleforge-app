@@ -116,7 +116,12 @@ export async function openRepair(
     staffId?: number | null;
     clientEventId?: string | null;
   },
-  orgId?: OrgId,
+  /**
+   * Tenant scope — REQUIRED, un-defaulted. `transition()` requires it, and a
+   * default here would re-introduce the dogfood-org attribution this chain was
+   * migrated to remove.
+   */
+  orgId: OrgId,
 ): Promise<UnitRepairRow> {
   const status = params.status === 'pending' ? 'pending' : 'in_progress';
 
@@ -230,7 +235,12 @@ export async function updateRepair(
     staffId?: number | null;
     clientEventId?: string | null;
   },
-  orgId?: OrgId,
+  /**
+   * Tenant scope — REQUIRED, un-defaulted. `transition()` requires it, and a
+   * default here would re-introduce the dogfood-org attribution this chain was
+   * migrated to remove.
+   */
+  orgId: OrgId,
 ): Promise<UnitRepairRow | null> {
   let serialUnitId: number | null = null;
   let becameTerminal = false;

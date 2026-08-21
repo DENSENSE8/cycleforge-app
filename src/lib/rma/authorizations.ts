@@ -23,7 +23,6 @@ import { transition } from '@/lib/inventory/state-machine';
 import { resolvePriorOutbound } from '@/lib/neon/serial-units-queries';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
-import { DOGFOOD_ORG_ID } from '@/lib/tenancy/constants';
 import { isPlacementStrangleRmaRestock } from '@/lib/feature-flags';
 import { resolveSitePlacementBin } from '@/lib/workflow/placement-policy';
 import { tapWorkflow } from '@/lib/workflow/tap';
@@ -244,13 +243,15 @@ export interface RecordDispositionInput {
   decidedByStaffId: number;
   notes?: string | null;
   /**
-   * Tenant scope. When provided the whole disposition runs inside
+   * Tenant scope — REQUIRED, un-defaulted. The whole disposition runs inside
    * `withTenantTransaction` (GUC set, RLS backstop) and the org-bearing
    * co-tables (serial_units / order_unit_allocations) get an explicit
-   * `organization_id` predicate. `null`/omitted keeps the legacy raw-pool
-   * behavior byte-identical for session-less callers.
+   * `organization_id` predicate. It used to be optional, and the two internal
+   * `orgId ?? DOGFOOD_ORG_ID` substitutions below meant an org-less caller did
+   * not fall back to an unscoped write — it wrote the event and the restock
+   * under the dogfood tenant's identity.
    */
-  organizationId?: OrgId | null;
+  organizationId: OrgId;
 }
 
 export type RecordDispositionResult =
@@ -276,7 +277,7 @@ export async function recordDisposition(
     return { ok: false, status: 400, error: 'rmaId or serialUnitId required' };
   }
 
-  const orgId = input.organizationId ?? null;
+  const orgId = input.organizationId;
 
   // The transactional body, parameterized over the client + whether an org is
   // in scope. rma_authorizations / return_dispositions have no organization_id
@@ -392,7 +393,7 @@ export async function recordDisposition(
               },
             },
             client,
-            orgId ?? DOGFOOD_ORG_ID,
+            orgId,
           );
           eventId = event.id;
 
@@ -410,7 +411,7 @@ export async function recordDisposition(
             // With no decision node authored it resolves nothing → restock stays
             // bin-less, exactly as before; an org that authors a rule gets the
             // unit physically placed + current_location set, no app change.
-            const effectiveOrg = orgId ?? DOGFOOD_ORG_ID;
+            const effectiveOrg = orgId;
             let restockBinId: number | null = null;
             let restockBinName: string | null = null;
 
@@ -468,6 +469,7 @@ export async function recordDisposition(
                 },
               },
               client,
+              orgId,
             );
             // Pre-checked RETURNED → STOCKED is a declared edge, so this is
             // expected to succeed; a failure means concurrent drift — abort.
@@ -476,8 +478,9 @@ export async function recordDisposition(
             // the SAME tx so the unit never ends STOCKED-but-not-relocated.
             if (restockBinId != null && restockBinName) {
               await client.query(
-                `UPDATE serial_units SET current_location = $1, updated_at = NOW() WHERE id = $2`,
-                [restockBinName, input.serialUnitId],
+                `UPDATE serial_units SET current_location = $1, updated_at = NOW()
+                  WHERE id = $2 AND organization_id = $3`,
+                [restockBinName, input.serialUnitId, orgId],
               );
             }
             restocked = true;

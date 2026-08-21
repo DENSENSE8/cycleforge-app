@@ -69,7 +69,12 @@ export type MirrorResult =
  */
 export async function mirrorLegacyPackToAllocations(
   input: MirrorInput,
-  orgId?: OrgId,
+  /**
+   * Tenant scope — REQUIRED, un-defaulted. `transition()` requires it, and a
+   * default here would re-introduce the dogfood-org attribution this chain was
+   * migrated to remove.
+   */
+  orgId: OrgId,
 ): Promise<MirrorResult> {
   if (input.shipmentId == null || input.shipmentId === '') {
     return { ok: true, mirrored: 0, skipped: 'no-shipment-id' };
