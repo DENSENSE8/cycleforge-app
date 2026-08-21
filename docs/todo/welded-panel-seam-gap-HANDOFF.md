@@ -1,13 +1,59 @@
 # Welded receive panel — a visible gap at the weld seam
 
-**Status:** OPEN, unresolved · **Created:** 2026-08-21
+**Status:** RESOLVED 2026-08-21 · **Created:** 2026-08-21
 **Scope:** this one defect. The rest of the welded panel works; do not redesign it.
 **Surface:** Unbox station dock — [`LineEditPanel.tsx`](../../src/components/receiving/workspace/LineEditPanel.tsx) → `WeldedStack` → `WeldedFeedbackPanel` + `WorkspaceNotesCard`
 **Port plan this blocks:** [`welded-feedback-panel-station-port-PLAN.md`](./welded-feedback-panel-station-port-PLAN.md) — do not port the weld to Arrival/Testing until this is understood.
 
 ---
 
-## 0. The symptom
+## RESOLUTION (2026-08-21)
+
+**There was never a geometric gap.** Measured in the real runner (Playwright,
+`qa-desktop`, against `:3050`) with the panel and the composer mounted in
+isolation: `seamGapPx: 0`, `dx: 0`, `dw: 0`, wrapper height == panel height, the
+peel wrapper's inline `height` settles to `auto`, and the composer's mount
+wrapper carries `transform: none`. **H1, H3 and H4 are all dead**, and H2's
+resting `matrix3d` is real but pixel-identical with `transform:none` — it is a
+stray composited layer, not this defect.
+
+What the operator was seeing was a **chrome discontinuity at the joint**, in two
+independent halves, both of which are silhouette-level chrome that only ONE half
+of the weld was painting:
+
+1. **The outline changed colour at the seam.** The panel drew `palette.border`
+   (amber-200 / blue-200) down its sides; the composer drew `border-border-soft`
+   (slate-200) down its own, *and* its `border-top` — the seam hairline — was
+   therefore a foreign cool-grey line laid straight across a warm amber box.
+   Pixel-sampled at the left border column: `254,230,133` above the seam,
+   `226,232,240` below it. §2 fixed exactly this discontinuity for the FOCUSED
+   state and left the resting state alone.
+   **Fix:** the panel's stroke is now `border-border-soft`. Tone lives in the
+   fill, the glyph and the text — which is what the focus docblock already said.
+
+2. **The elevation shadow started halfway up the shape.** `OmnichannelComposerDock`
+   paints `elevationClass('raised')` on its own shell. Outside the composer's
+   edges the plane fell away; outside the panel's it was flat. That step at the
+   joint is the "light band".
+   **Fix:** `WeldedStack` casts the shadow for the pair, and the dock drops its
+   own while `weldTop` — the same hand-off the focus halo already made.
+
+**The general law this is an instance of:** *silhouette-level chrome (focus ring,
+elevation, stroke colour) belongs to the box that contains both halves; a half
+that paints it alone puts a visible seam through the shape the weld exists to
+make one.* The halo already followed it; the stroke and the shadow did not.
+
+Verified after the fix: `seamGapPx: 0`, one outline colour at rest
+(`rgb(226,232,240)` on both halves) and focused (`rgb(43,127,255)` on both), one
+shadow on the stack, `composerShadow: none`. Screenshots at 2–5× on `loading`,
+`warning`, disclosure-open and focused all read as one silhouette.
+
+Nothing was changed about the peel, the radius tokens, the focus ratchet, or the
+`-mt-px` ban. §6's constraints all hold.
+
+---
+
+## 0. The symptom (as reported)
 
 The receive feedback panel is supposed to be welded to the notes composer: one
 silhouette, one continuous outline, a single hairline where they meet. Instead

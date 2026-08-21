@@ -27,8 +27,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
+import { InspectorColumnDisplayButton } from '@/components/right-rail/InspectorColumnDisplayButton';
 import { DeskInspectorIndexShell } from '@/components/right-rail/DeskInspectorIndexShell';
-import { DeskRailChromeRow } from '@/components/right-rail/DeskRailChromeRow';
 import {
   FLOOR_DELETE_PEER_CLASS,
   FloorIconButton,
@@ -494,19 +494,20 @@ export function CsvImportStagingRail({
       ariaLabel="CSV import staging inspector"
     >
       <div className="flex h-full min-h-0 flex-col">
-        <DeskRailChromeRow
-          onClose={() => setDetailInspectorCollapsed(true)}
-          columnDisplay
-          cursor={
-            cursorPos >= 0 ? (
-              <CursorPositionReadout
-                position={cursorPos + 1}
-                total={visibleIndexes.length}
-              />
-            ) : undefined
-          }
-        />
+        {/* No stacked chrome row — cursor + column display ride the shell's ONE
+            band beside back + title (`chrome`), the Displays-column contract. */}
         <DeskInspectorIndexShell
+          chrome={
+            <>
+              {cursorPos >= 0 ? (
+                <CursorPositionReadout
+                  position={cursorPos + 1}
+                  total={visibleIndexes.length}
+                />
+              ) : null}
+              <InspectorColumnDisplayButton />
+            </>
+          }
           leaves={leaves}
           activeId={activeId}
           onActiveIdChange={setActiveId}

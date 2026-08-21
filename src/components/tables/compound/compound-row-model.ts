@@ -74,6 +74,15 @@ export interface CompoundRowView {
   stateLabel: string;
   stateTone: CompoundStateTone;
   /**
+   * Hover detail for the state pill.
+   *
+   * The pill clips to one line inside a 10rem track, so a family whose state
+   * vocabulary is longer than the track (Incoming's `Delivered · not scanned`)
+   * needs somewhere to put the full phrase. `undefined` renders the bare pill —
+   * the label is already the whole fact on Receiving and Orders.
+   */
+  stateTip?: string;
+  /**
    * STATUS column, bottom — the DELAY, not a generic timestamp.
    *
    * A WMS row's second status line answers "is this late, and by how much" —

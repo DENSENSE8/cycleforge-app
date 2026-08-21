@@ -54,6 +54,7 @@ import { rowGroupTotals, singleBand, type RowGroup } from '@/lib/group-rows';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import { compareGridValues } from '@/design-system/components/grid';
 import {
+  TASKS_COMPOUND_COLUMNS,
   TASKS_GRID_COLUMNS,
   defaultDirForTasksGridSort,
   isTasksGridSortable,
@@ -297,7 +298,12 @@ export function TasksWorkbench() {
             <NonlinearTableHost<StaffTaskRow, TasksGridColumnKey, TasksGridColumn>
               binding={TASKS_TABLE_BINDING}
               tableId="tasks"
-              columns={TASKS_GRID_COLUMNS}
+              // COMPOUND (two-row) WMS layout — the SAME tracks Unbox,
+              // History, Testing, To-Ship and Incoming mount. A task has no
+              // photo, no order and no carrier, so those tracks read empty:
+              // that is a data difference, and it is the only kind of
+              // difference between two of these tables there is meant to be.
+              columns={TASKS_COMPOUND_COLUMNS}
               orderGroupsByDate={groups}
               rows={rows}
               getRowId={(r) => String(r.id)}
@@ -334,6 +340,7 @@ export function TasksWorkbench() {
                       key={row.id}
                       row={row}
                       columns={visible}
+                      nowMs={tasks.nowMs}
                       selected={selectedId === row.id}
                       togglePending={tasks.pending}
                       onToggle={(r) => tasks.toggle(r, !r.done)}
@@ -347,6 +354,7 @@ export function TasksWorkbench() {
                   key={row.id}
                   row={row}
                   columns={visible}
+                  nowMs={tasks.nowMs}
                   selected={selectedId === row.id}
                   togglePending={tasks.pending}
                   onToggle={(r) => tasks.toggle(r, !r.done)}

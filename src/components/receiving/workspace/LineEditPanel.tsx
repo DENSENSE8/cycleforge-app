@@ -904,9 +904,6 @@ export function LineEditPanel({
           // Move / Send rows open Displays (right rail). Click = phone;
           // double-click = Displays → Photos Actions list.
           onOpenPhotosDisplay={openPhotosDisplay}
-          // Status cell → the carton's own history leaf. Same route the ⓘ
-          // "Item status history" control takes, so both reach one surface.
-          onOpenHistory={hasTimelineTab ? () => openDisplays('timeline') : undefined}
           // Identity pills open the Displays column on their own tab — the
           // editors moved right, so the header route follows them.
           onEditTracking={hasTrackingTab ? () => openDisplays('tracking') : undefined}

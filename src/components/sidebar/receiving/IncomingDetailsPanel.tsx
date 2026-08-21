@@ -19,6 +19,7 @@ import {
 import { useIncomingDetails } from './incoming-details/useIncomingDetails';
 import {
   INCOMING_DETAILS_RAIL_ID,
+  IncomingDetailsChrome,
   IncomingDetailsHeader,
   incomingDetailsAriaLabel,
   incomingDetailsHeaderMeta,
@@ -214,6 +215,16 @@ export function IncomingDetailsPanel(props: IncomingDetailsPanelProps) {
             leaves={leaves}
             activeId={navId}
             onActiveIdChange={onNavChange}
+            chrome={
+              <IncomingDetailsChrome
+                isShipmentOnly={isShipmentOnly}
+                isInboundOnly={isInboundOnly}
+                isCartonOnly={isCartonOnly}
+                syncing={syncing}
+                onSync={() => void syncOne()}
+                selectionActions={selectionActions}
+              />
+            }
             ariaLabel="Incoming topics"
             testId="incoming-inspector-index"
             backLabel="Back to topics"

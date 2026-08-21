@@ -1,7 +1,7 @@
 # HANDOFF — Component SoT consolidation (one family at a time)
 
 **Date:** 2026-08-12 · **Pin this as the goal.** Resume without the originating chat.
-**Status:** four families landed (warranty, NumericStep, carton Displays Macro, PIN numpad theme). Next: OrderCustomerFacts vs CustomerDetailsTab (Phase 1 first).
+**Status:** four families landed (warranty, NumericStep, carton Displays Macro, PIN numpad theme). A fifth, `OrderCustomerFacts` vs `CustomerDetailsTab`, resolved 2026-08-21 by **deletion, not a `density` prop** — see below. Next: BinBuilderMobile vs RackBuilderMobile (Phase 1 first).
 
 **Companions (do not re-litigate):**
 - `docs/todo/design-system-fork-consolidation-2026-PLAN.md` — D1–D12 + ignore set
@@ -61,9 +61,24 @@ jscpd clone baseline was shrunk **114 → 111** after warranty. Re-run `--write`
 
 After that (ranked, both doors imported — cannot just delete):
 
-1. `OrderCustomerFacts` vs `CustomerDetailsTab` — same shape as warranty (`density`)
-2. `BinBuilderMobile` vs `RackBuilderMobile` — larger than NumericStep; printer-family chrome
-3. `DashboardDetailsStack` vs `TechDetailsStack` — Tech adds armed delete; maybe keep wrappers
+1. `BinBuilderMobile` vs `RackBuilderMobile` — larger than NumericStep; printer-family chrome
+2. `DashboardDetailsStack` vs `TechDetailsStack` — Tech adds armed delete; maybe keep wrappers
+
+**Resolved 2026-08-21 — `OrderCustomerFacts` vs `CustomerDetailsTab`.** It was
+ranked here as a `density` merge on the premise that *both doors were imported*.
+That premise was wrong: `OrderCustomerFacts` had **zero** importers. It was a
+fork of `CustomerDetailsTab` — same `/api/customers/:id` query and query key,
+byte-identical `fullName` / `addressLines`, the same four fields (Name · Email ·
+Phone · ship-to) and the same "Copy full address" — whose only mount had ever
+been `SearchOrderFactsColumn.tsx`, deleted wholesale in the `/search` station
+port. Its field set was a strict subset of the live component's, so the file was
+deleted rather than merged; `CustomerDetailsTab` (mounted at
+`DashboardDetailsStack.tsx:121`) is the surviving SoT and grew no props.
+
+**The transferable lesson: check importer counts before ranking a family.** A
+"consolidation" whose loser is already dead is a deletion, and costs a fraction
+of a `density` merge. Two handoffs carried this row for weeks describing a
+two-door merge that the tree did not contain.
 
 ---
 
@@ -80,4 +95,6 @@ After that (ranked, both doors imported — cannot just delete):
 1. Read this file + PLAN §1 (D1–D12).
 2. Confirm landed files still exist (losers gone; SoTs have the new props).
 3. Run `node --import tsx --test src/lib/governance/same-usecase-forks.test.ts src/design-system/foundations/retired-symbols.test.ts src/lib/receiving/station-displays-carton-floor.test.ts src/components/auth/theme-numpad.test.ts`
-4. Next family Phase 1: OrderCustomerFacts vs CustomerDetailsTab. Halt until pick.
+4. Next family Phase 1: BinBuilderMobile vs RackBuilderMobile. Halt until pick.
+   (`OrderCustomerFacts` vs `CustomerDetailsTab` is done — resolved by deleting
+   the zero-importer fork on 2026-08-21, not by a `density` merge.)

@@ -12,6 +12,16 @@
  * Lanes and buckets are resolved by `buildCartonPhotoTriage`; this file renders
  * what that model returns and decides nothing about which photo goes where.
  * Placement + lane rationale: `docs/todo/carton-photo-triage-RESEARCH-RULING.md`.
+ *
+ * Absence goes through `EmptyState` and the readiness card is flush-square
+ * (2026-08-21) — both were hand-painted `rounded-xl` dashed blocks, which is
+ * soft-radius debt on an ops surface and a fork of the house empty face.
+ *
+ * **The in-flight branch keeps its grid skeleton on purpose.** It is not one of
+ * the hand-drawn twins `UniversalLoader` replaced: it draws the SAME
+ * `photoGridLeafClass` cells the real grid will fill, so it has no geometry of
+ * its own to drift from and the swap costs no layout shift. A canvas field over
+ * an empty plane would be the weaker answer here.
  */
 
 import { useMemo, useState } from 'react';
@@ -21,9 +31,10 @@ import { PhotoViewerPortal } from '@/components/shipped/photo-gallery/PhotoViewe
 import { usePhotoGallery } from '@/components/shipped/photo-gallery/usePhotoGallery';
 import { receivingPhotoMeta } from '@/components/shipped/photo-gallery/photo-gallery-utils';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { IconButton } from '@/design-system/primitives';
+import { EmptyState, IconButton } from '@/design-system/primitives';
 import { SectionTabsSlider, type SectionTab } from '@/design-system/components/SectionTabsSlider';
 import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cornerClass } from '@/design-system/tokens/radius';
 import { photoGridLeafClass } from '@/lib/photos/photo-grid-density';
 import { photoStageLabel } from '@/lib/photos/stages';
 import { resolvePhotoThumbUrl } from '@/lib/photos/display-url';
@@ -314,7 +325,12 @@ function ClaimReadiness({
   aspectsUnwritten: boolean;
 }) {
   return (
-    <div className="space-y-1.5 rounded-xl border border-border-soft bg-surface-canvas inset-cozy">
+    <div
+      className={cn(
+        'space-y-1.5 border border-border-soft bg-surface-canvas inset-cozy',
+        cornerClass('flush'),
+      )}
+    >
       <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Claim readiness</p>
       <ul className="flex flex-wrap items-center gap-x-5 gap-y-1.5">
         {lines.map((line) => {
@@ -381,10 +397,14 @@ function PhotoTiles({
 
   if (isError) {
     return (
-      <p className="rounded-xl border border-dashed border-rose-200 bg-rose-50 inset-empty text-center text-role-caption text-text-danger">
-        Photos unavailable — this carton&rsquo;s evidence could not be loaded. This is not the same
-        as having none.
-      </p>
+      <EmptyState
+        tone="danger"
+        icon={<Camera className="h-6 w-6 text-text-danger" />}
+        title="Photos unavailable"
+        // The distinction is the whole point of a separate branch: a failed
+        // fetch must never read as "this carton has no evidence".
+        description="This carton’s evidence could not be loaded. That is not the same as having none."
+      />
     );
   }
 
@@ -401,9 +421,11 @@ function PhotoTiles({
 
   if (rows.length === 0) {
     return (
-      <p className="rounded-xl border border-dashed border-border-soft bg-surface-canvas inset-empty text-center text-role-caption text-text-muted">
-        {emptyMessage}
-      </p>
+      <EmptyState
+        icon={<Camera className="h-6 w-6 text-text-faint" />}
+        title="No photos"
+        description={emptyMessage}
+      />
     );
   }
 

@@ -4,11 +4,18 @@
  * SearchDetailWorkspace — full-bleed entity shell for `/search?sel=type:id`.
  *
  * Mounted only when a selection is active (the no-sel state is
- * {@link SearchBrowseShell}). ORDER → {@link SearchOrderStationPane} — the real
- * scan-station composition in preview stance, not a desk `ShippedDetailsPanel`
- * and no longer a hand-rolled `order-feedback` twin (retired 2026-08-20).
- * Receiving / unit / sku embed their inspectors. Repair / FBA show an in-pane
- * preview + deep-link CTA. `/o` is retired.
+ * {@link SearchBrowseShell}). ORDER → {@link SearchOrderStationPane} and UNIT →
+ * {@link SearchUnitStationPane} — the real scan-station composition in preview
+ * stance, not a desk inspector and no longer a hand-rolled `order-feedback`
+ * twin (retired 2026-08-20). Receiving / sku still embed their inspectors.
+ * Repair / FBA show an in-pane preview + deep-link CTA. `/o` is retired.
+ *
+ * **`sku` is deliberately still `SkuDetailView variant="page"`** (2026-08-21):
+ * that surface is a full EDITING page here today — stock adjust, location,
+ * deactivate — and its cards carry no capability prop, so moving it to
+ * `preview` would either strip an operator's writes silently or produce the
+ * lobotomized work chrome `pattern-evolution.md` #5 bans. It needs a required
+ * `stance` threaded through `useSkuDetailView` + its four cards first.
  *
  * **Chrome is the house primitives, never a page-local twin** (2026-08-21): the
  * three shapes this file used to hand-roll — a dashed teach card, a spinner row
@@ -38,8 +45,8 @@ import {
 } from '@/design-system/motion';
 import { ExternalLink, Package, Search } from '@/components/Icons';
 import { SearchOrderStationPane } from '@/components/search/station/SearchOrderStationPane';
+import { SearchUnitStationPane } from '@/components/search/station/SearchUnitStationPane';
 import { CartonInspector } from '@/components/receiving/inspector/CartonInspector';
-import { UnitDetailsPanel } from '@/components/inventory/panels/UnitDetailsPanel';
 import { loadDetailStack } from '@/lib/detail-stacks/load-detail-stack';
 import {
   searchHitHref,
@@ -231,13 +238,13 @@ export function SearchDetailWorkspace({
 }) {
   const { presence, transition } = useMotionRole(motionRole.swap.scan);
   /**
-   * Every branch except `order` paints its own loading face immediately (the
-   * inspectors, `PaneLoading`), so the page-level cover has nothing left to
-   * wait for. `SearchOrderStationPane` releases it itself, when resolve
-   * settles — that one really is blank until then.
+   * The two STATION branches release the page cover themselves, when their
+   * resolve settles — they really are blank until then. Every other branch
+   * paints its own loading face immediately (the inspectors, `PaneLoading`), so
+   * the cover has nothing left to wait for and must lift on mount.
    */
   const primaryPaint = useSearchPrimaryPaintOptional();
-  const branchOwnsPaint = sel?.entityType !== 'order';
+  const branchOwnsPaint = sel?.entityType !== 'order' && sel?.entityType !== 'unit';
   useEffect(() => {
     if (branchOwnsPaint) primaryPaint?.onPrimaryPainted();
   }, [branchOwnsPaint, primaryPaint]);
@@ -285,7 +292,7 @@ export function SearchDetailWorkspace({
       case 'unit':
         body = (
           <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
-            <UnitDetailsPanel ref={String(sel.id)} />
+            <SearchUnitStationPane unitRef={sel.id} onExit={onExit} />
           </div>
         );
         break;

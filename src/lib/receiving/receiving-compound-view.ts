@@ -49,6 +49,18 @@ export interface ReceivingCompoundParts {
   title: string;
   /** Resolved stage name for this surface's vocabulary (fine vs coarse). */
   stateLabel: string;
+  /**
+   * Override the state TONE.
+   *
+   * Landed lines derive it from `workflow_status` (below). Incoming rows carry
+   * the same row type but report the CARRIER's lifecycle, whose urgency is
+   * already answered by the delivery-state face SoT — so that surface passes
+   * the resolved tone rather than having this module grow a second vocabulary
+   * it would have to keep in sync with a registry it does not own.
+   */
+  stateTone?: CompoundStateTone;
+  /** Hover detail for the state pill, when the label clips its track. */
+  stateTip?: string;
   /** Whole days past this line's deadline; null when it has none. */
   delayDays: number | null;
   delayTip?: string;
@@ -81,7 +93,8 @@ export function receivingCompoundView(
     // Authoritative carrier from the shipment — the tracking dot's brand.
     carrier: row.carrier || null,
     stateLabel: parts.stateLabel,
-    stateTone: receivingStateTone(row.workflow_status),
+    stateTone: parts.stateTone ?? receivingStateTone(row.workflow_status),
+    stateTip: parts.stateTip,
     delay:
       parts.delayDays == null ? null : { days: parts.delayDays, overdue: parts.delayDays > 0 },
     delayTip: parts.delayTip,

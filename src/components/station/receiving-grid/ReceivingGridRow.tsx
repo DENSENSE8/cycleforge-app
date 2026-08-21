@@ -35,7 +35,6 @@ import {
 } from '@/lib/receiving/receiving-grid-layout';
 import { useTimeFormat } from '@/lib/time-format/useTimeFormat';
 import { formatOpsStageTime } from '@/utils/date';
-import { PRIMARY_CHROME_ROW_FACE } from '@/components/layout/header-shell';
 import { cn } from '@/utils/_cn';
 import type { GridColumnDisplayPref } from '@/design-system/components/grid';
 import type { GridSelectGutterChrome } from '@/components/ui/GridRowCheckbox';
@@ -193,6 +192,9 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
 
   const ctx: ReceivingGridCellCtx = {
     row: rowForCells,
+    // The MOUNTED model — a cell's sticky-left derives from it, so this row
+    // shell works identically under the flat and the compound column arrays.
+    columns,
     selectMode,
     isSelected: isOpen || isChecked,
     isChecked,
@@ -318,9 +320,17 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
         // Named hover group — the compound layout's chevron reveals on row
         // hover. Inert for the flat model (nothing there consumes it).
         'group/row',
-        // Same band as LedgerGridColumnHeader / Unbox chrome so the frozen
-        // select header and the first body cells share one row rhythm.
-        PRIMARY_CHROME_ROW_FACE,
+        // NO fixed row height. The row box is owned by the compound cell
+        // (`COMPOUND_ROW_PX`), exactly as it is on To-Ship, so both tables
+        // measure the same.
+        //
+        // This carried `PRIMARY_CHROME_ROW_FACE` (`h-7 shrink-0` = 28px) to
+        // share a rhythm with the column header. That is a HEADER band constant,
+        // and pinning a BODY row to it is what collapsed Receiving to a single
+        // visible line while To-Ship — which never had the class — rendered
+        // both: a 48px compound cell inside a 28px `shrink-0` row overflows, and
+        // the shell's `[contain:layout_style]` clips it silently. A body row's
+        // height is a property of what it contains.
         // Either plane fills the row; the gutter checkbox disambiguates which.
         // Linked peer wash is quieter than selection (compare crosshair).
         // Custom paint fill applies when not selected (selection wash wins).

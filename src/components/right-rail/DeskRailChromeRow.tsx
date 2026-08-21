@@ -47,9 +47,9 @@
 
 import type { ReactNode } from 'react';
 import { InspectorColumnDisplayButton } from '@/components/right-rail/InspectorColumnDisplayButton';
+import { STATION_DISPLAYS_PUSH_TOP_BAND } from '@/components/station/entity-context/station-identity-chrome';
 import {
   STATION_CHROME_ROW_FACE,
-  STATION_CHROME_SEAM_HAIRLINE,
 } from '@/components/station/entity-context';
 import { cn } from '@/utils/_cn';
 
@@ -57,8 +57,20 @@ import { cn } from '@/utils/_cn';
  *  ink. Height is {@link STATION_CHROME_ROW_FACE} (carton / Displays top).
  *  `relative z-header` keeps the row above the inset resize sash
  *  (`z-sticky`). Hairline via `after:` so it meets Displays, not a `border-b`. */
+/**
+ * The desk top row IS the Displays top band, plus a leading inset.
+ *
+ * Unified 2026-08-19. These were two hand-built strings over the same face, so
+ * the flush-trailing fix had to be made twice and the two rows could drift into
+ * different heights or seams. `STATION_DISPLAYS_PUSH_TOP_BAND` is the SoT;
+ * `pl-2` is the only desk-specific part (a flat panel has no Back chevron to
+ * own the left corner, so its leading mark needs the inset the station's does
+ * not). `pointer-events-auto` restores hits — the station band is
+ * `pointer-events-none` so a resize sash can be grabbed through empty chrome,
+ * and a desk row has no sash beneath it.
+ */
 export const DESK_RAIL_CHROME_ROW_CLASS =
-  `relative z-header flex ${STATION_CHROME_ROW_FACE} items-stretch pl-2 pr-0 ${STATION_CHROME_SEAM_HAIRLINE}`;
+  `${STATION_DISPLAYS_PUSH_TOP_BAND} pointer-events-auto pl-2`;
 
 /**
  * Trailing spacer the host's control cluster paints into — matches

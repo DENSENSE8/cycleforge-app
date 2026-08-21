@@ -60,7 +60,6 @@ export function useCartonListingLinks(receivingId: number | null | undefined): C
   const requestRef = useRef(0);
   /** Latest rows for callbacks that must not re-create as the list shrinks. */
   const rowsRef = useRef<CartonListingLinkRow[]>([]);
-  rowsRef.current = rows;
 
   const base = supported ? `/api/receiving/${receivingId}/listing-links` : null;
 
@@ -92,6 +91,12 @@ export function useCartonListingLinks(receivingId: number | null | undefined): C
       cancelled = true;
     };
   }, [base, nonce]);
+
+  // Mirror in an effect, never during render: a ref write in the render body
+  // is a side effect React is free to discard or replay under concurrency.
+  useEffect(() => {
+    rowsRef.current = rows;
+  }, [rows]);
 
   const reload = useCallback(() => setNonce((n) => n + 1), []);
 
@@ -162,13 +167,24 @@ export function useCartonListingLinks(receivingId: number | null | undefined): C
    */
   const removeAll = useCallback(async () => {
     if (!base) return false;
-    let allOk = true;
-    for (const row of rowsRef.current) {
+    const targets = rowsRef.current;
+    let failed = 0;
+    for (const row of targets) {
       // eslint-disable-next-line no-await-in-loop -- one row at a time, see above
       const ok = await remove(row.id);
-      if (!ok) allOk = false;
+      if (!ok) failed += 1;
     }
-    return allOk;
+    // Each `remove` clears the error on entry, so a failure early in the loop
+    // would be wiped by the next iteration's success. Report the run's own
+    // outcome once, after it finishes.
+    if (failed > 0) {
+      setError(
+        failed === targets.length
+          ? 'None of those links could be deleted.'
+          : `${failed} of ${targets.length} links could not be deleted.`,
+      );
+    }
+    return failed === 0;
   }, [base, remove]);
 
   const reorder = useCallback(

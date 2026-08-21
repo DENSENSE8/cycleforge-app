@@ -22,7 +22,7 @@ import {
   PaneHeaderStatusPill,
   type PaneHeaderActionBarAction,
 } from '@/components/ui/pane-header';
-import { DeskRailChromeRow } from '@/components/right-rail/DeskRailChromeRow';
+import { InspectorColumnDisplayButton } from '@/components/right-rail/InspectorColumnDisplayButton';
 import { IconButton } from '@/design-system/primitives';
 import type { DetailsResponse } from './incoming-details-shared';
 
@@ -36,6 +36,78 @@ function statusTone(
   if (s.includes('cancel') || s.includes('fail') || s.includes('exception')) return 'rose';
   if (s.includes('pending') || s.includes('open') || s.includes('issued')) return 'amber';
   return 'neutral';
+}
+
+/**
+ * Incoming chrome for the shell's ONE band — selection verbs · Sync · `▦`.
+ *
+ * Split out of the header 2026-08-19. It used to ride a `DeskRailChromeRow`
+ * stacked ABOVE `DeskInspectorIndexShell`, which made every leaf read as two
+ * bands (`[verbs ⤢ ✕]` then `[‹ Title]`). The shell owns the single band now,
+ * so the panel passes this to its `chrome` slot instead.
+ */
+export function IncomingDetailsChrome({
+  isShipmentOnly,
+  isInboundOnly,
+  isCartonOnly = false,
+  syncing,
+  onSync,
+  selectionActions = [],
+}: {
+  isShipmentOnly: boolean;
+  isInboundOnly: boolean;
+  isCartonOnly?: boolean;
+  syncing: boolean;
+  onSync: () => void;
+  selectionActions?: PaneHeaderActionBarAction[];
+}) {
+  const hideSync = isShipmentOnly || isCartonOnly;
+  const syncTitle = isInboundOnly
+    ? 'Re-pull this order from linked marketplace accounts (eBay) + re-poll its shipment'
+    : 'Re-pull this PO from inventory + re-poll its shipment';
+  const syncAria = isInboundOnly ? 'Resync this marketplace order' : 'Sync this PO';
+  return (
+    <>
+      {selectionActions.length > 0 || !hideSync ? (
+            <>
+              {selectionActions.map((action) => {
+                const label =
+                  action.title ??
+                  (typeof action.label === 'string' ? action.label : action.key);
+                return (
+                  <HoverTooltip key={action.key} label={label} asChild>
+                    <IconButton
+                      size="xs"
+                      tone="neutral"
+                      disabled={action.disabled}
+                      ariaLabel={label}
+                      onClick={action.onClick}
+                      icon={action.icon}
+                    />
+                  </HoverTooltip>
+                );
+              })}
+              {hideSync ? null : (
+                <HoverTooltip label={syncTitle} asChild>
+                  <IconButton
+                    size="xs"
+                    tone="neutral"
+                    disabled={syncing}
+                    ariaLabel={syncAria}
+                    onClick={onSync}
+                    data-testid="incoming-details-sync"
+                    className="text-emerald-700"
+                    icon={
+                      <RefreshCw className={`h-3.5 w-3.5 ${syncing ? 'animate-spin' : ''}`} />
+                    }
+                  />
+                </HoverTooltip>
+              )}
+            </>
+      ) : null}
+      <InspectorColumnDisplayButton />
+    </>
+  );
 }
 
 export function IncomingDetailsHeader({
@@ -88,51 +160,7 @@ export function IncomingDetailsHeader({
 
   return (
     <div className="shrink-0 border-b border-border-hairline bg-surface-card/90 backdrop-blur-xl">
-      <DeskRailChromeRow
-        onClose={onClose}
-        columnDisplay
-        trailing={
-          selectionActions.length > 0 || !hideSync ? (
-            <>
-              {selectionActions.map((action) => {
-                const label =
-                  action.title ??
-                  (typeof action.label === 'string' ? action.label : action.key);
-                return (
-                  <HoverTooltip key={action.key} label={label} asChild>
-                    <IconButton
-                      size="xs"
-                      tone="neutral"
-                      disabled={action.disabled}
-                      ariaLabel={label}
-                      onClick={action.onClick}
-                      icon={action.icon}
-                    />
-                  </HoverTooltip>
-                );
-              })}
-              {hideSync ? null : (
-                <HoverTooltip label={syncTitle} asChild>
-                  <IconButton
-                    size="xs"
-                    tone="neutral"
-                    disabled={syncing}
-                    ariaLabel={syncAria}
-                    onClick={onSync}
-                    data-testid="incoming-details-sync"
-                    className="text-emerald-700"
-                    icon={
-                      <RefreshCw className={`h-3.5 w-3.5 ${syncing ? 'animate-spin' : ''}`} />
-                    }
-                  />
-                </HoverTooltip>
-              )}
-            </>
-          ) : undefined
-        }
-      />
-
-      <div className="flex items-center gap-2 px-2 pb-2 pt-1">
+            <div className="flex items-center gap-2 px-2 pb-2 pt-1">
         <PaneHeaderIconBadge Icon={Inbox} bg="bg-emerald-100" tint="text-emerald-700" />
         <div className="flex min-w-0 flex-col gap-1">
           <PaneHeaderLabel

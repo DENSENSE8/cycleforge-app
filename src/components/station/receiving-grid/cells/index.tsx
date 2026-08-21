@@ -25,11 +25,8 @@ import { ReceivingTitleCell } from './ReceivingTitleCell';
 import { ReceivingTrackingCell } from './ReceivingTrackingCell';
 import { ReceivingZohoCell } from './ReceivingZohoCell';
 import {
-  ReceivingCompoundFulfillmentCell,
-  ReceivingCompoundItemCell,
-  ReceivingCompoundOpenCell,
-  ReceivingCompoundStateCell,
-  ReceivingCompoundThumbCell,
+  isCompoundCellKey,
+  renderReceivingCompoundCell,
 } from './ReceivingCompoundCells';
 import {
   receivingDataCellClass,
@@ -57,22 +54,16 @@ export function renderReceivingGridCell(
 ): ReactNode {
   const rule = !last;
   const props = { col, rule, ctx };
+  // Compound (two-row) tracks — the shared renderer paints them, wrapper and
+  // all. Checked BEFORE the flat switch on purpose: presentation swaps by
+  // column model, so the row shell and the engine below it never learn which
+  // layout is mounted.
+  if (isCompoundCellKey(col.key)) {
+    return renderReceivingCompoundCell(col, rule, ctx);
+  }
   switch (col.key) {
     case 'select':
       return <ReceivingSelectCell {...props} />;
-    // Compound (two-row) tracks — RECEIVING_COMPOUND_COLUMNS only. They share
-    // this dispatch on purpose: presentation swaps by column model, so the row
-    // shell and the engine below it never learn which layout is mounted.
-    case 'thumb':
-      return <ReceivingCompoundThumbCell {...props} />;
-    case 'item':
-      return <ReceivingCompoundItemCell {...props} />;
-    case 'fulfillment':
-      return <ReceivingCompoundFulfillmentCell {...props} />;
-    case 'state':
-      return <ReceivingCompoundStateCell {...props} />;
-    case 'open':
-      return <ReceivingCompoundOpenCell {...props} />;
     case 'title':
       return <ReceivingTitleCell {...props} />;
     case 'date':

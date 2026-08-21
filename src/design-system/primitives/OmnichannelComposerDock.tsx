@@ -311,7 +311,11 @@ export const OmnichannelComposerDock = forwardRef<
                     // not lag behind it.
                     weldTop ? 'rounded-b-2xl rounded-t-none' : COMPOSER_SHELL_CORNER,
                     'border border-border-soft bg-surface-card',
-                    elevationClass('raised'),
+                    // Elevation, like the halo below, belongs to the whole
+                    // silhouette: a welded pair whose bottom half alone casts
+                    // a shadow has a visible step at the joint. `WeldedStack`
+                    // owns it while welded.
+                    !weldTop && elevationClass('raised'),
                   ),
               focusRing('wrapper', 'accent'),
               // The halo belongs to the whole silhouette, so a welded dock

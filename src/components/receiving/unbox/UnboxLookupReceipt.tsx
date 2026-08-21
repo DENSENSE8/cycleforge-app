@@ -34,6 +34,7 @@ import {
   STATION_WORKBENCH_COLUMN,
   STATION_WORKBENCH_BODY_PAD_X,
 } from '@/components/station/workbench';
+import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 import type { UnboxLookupScanDetail } from '@/components/receiving/receiving-events';
 
@@ -102,7 +103,13 @@ export function UnboxLookupReceipt({
         <div className="space-y-4">
           <div className="flex items-start gap-3">
             <span
-              className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-surface-sunken text-text-muted"
+              className={cn(
+                'mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center bg-surface-sunken text-text-muted',
+                // Flush, like every other filled box on a station surface —
+                // `rounded-full` survives only for status dots, avatars and
+                // Switch tracks, and a soft square is neither.
+                cornerClass('flush'),
+              )}
               aria-hidden="true"
             >
               <PackageOpen className="h-5 w-5" />

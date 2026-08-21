@@ -318,6 +318,18 @@ export function ListingLinksTab({
     }
   }, [links]);
 
+  /**
+   * What "delete all" can actually remove: the durable rows, plus the legacy
+   * scalar link when the carton still carries one. Catalog / derived links are
+   * resolved at read time and own no record, so they are not counted — gating
+   * the verb on `store.rows` alone left it DISABLED (and silently inert) on
+   * every carton whose links had not been migrated yet.
+   */
+  const scalarDeletable = Boolean(
+    listingLink.trim() && links.some((l) => !l.id && l.source === 'manual'),
+  );
+  const deletableCount = store.rows.length + (scalarDeletable ? 1 : 0);
+
   const commitDraft = useCallback(async () => {
     if (!draft?.href.trim()) return;
     const created = await store.create(draft.href, draft.label);
@@ -392,7 +404,10 @@ export function ListingLinksTab({
               cell exactly where a row's open glyph sits, so the picker's text
               lands on the same rail as every link name. */}
           <div className={LISTING_COMBO_GRID}>
-            <div className={cn(LISTING_LINK_INSET_X, 'flex min-w-0 items-center gap-2')}>
+            {/* pl only: the picker's chevron is right-aligned, so the shared
+                `px-3` showed as a gap between it and the Copy-all seam. A row's
+                name is left-aligned and truncates, so it never showed there. */}
+            <div className="flex min-w-0 items-center gap-2 pl-3">
               {store.supported ? (
                 <HoverTooltip label="Add a listing link" asChild>
                   <IconButton
@@ -413,7 +428,9 @@ export function ListingLinksTab({
                 searchPlaceholder="Filter listings…"
                 emptyMessage="No listing links"
                 ariaLabel="Selected listing link"
-                className="min-w-0 flex-1 px-0"
+                // The CELL owns the left gutter; the trigger owns only the
+                // breathing room its right-aligned chevron needs.
+                className="min-w-0 flex-1 pl-0 pr-2"
               />
             </div>
             {/* Copy all heads the rows' Copy column: the same verb, whole
@@ -439,13 +456,18 @@ export function ListingLinksTab({
                 face every delete in this leaf uses. */}
             {store.supported ? (
               <ArmedDeleteCell
-                label="Delete every listing link on this carton"
-                armedLabel={`Click again to delete all ${store.rows.length} links`}
+                label={
+                  deletableCount === 0
+                    ? 'Nothing here can be deleted — these links are derived'
+                    : 'Delete every listing link on this carton'
+                }
+                armedLabel={`Click again to delete ${deletableCount} link${deletableCount === 1 ? '' : 's'}`}
                 ariaLabel="Delete every listing link"
-                armedAriaLabel={`Confirm deleting all ${store.rows.length} listing links`}
-                disabled={store.rows.length === 0}
+                armedAriaLabel={`Confirm deleting ${deletableCount} listing link${deletableCount === 1 ? '' : 's'}`}
+                disabled={deletableCount === 0}
                 onConfirm={() => {
-                  void store.removeAll();
+                  if (store.rows.length > 0) void store.removeAll();
+                  if (scalarDeletable) setListingLink('');
                   setSelectedHref(null);
                 }}
               />
@@ -481,6 +503,14 @@ export function ListingLinksTab({
                     const ok = await store.remove(id);
                     if (ok) setSelectedHref(null);
                   }}
+                  onClearScalar={
+                    !link.id && link.source === 'manual' && listingLink.trim()
+                      ? () => {
+                          setListingLink('');
+                          setSelectedHref(null);
+                        }
+                      : undefined
+                  }
                 />
               );
             })}
@@ -548,6 +578,7 @@ function ListingLinkRow({
   onSave,
   onPromote,
   onDelete,
+  onClearScalar,
 }: {
   link: DisplayLink;
   row: CartonListingLinkRow | null;
@@ -557,6 +588,8 @@ function ListingLinkRow({
   /** Computed row — pencil starts a prefilled create. */
   onPromote?: () => void;
   onDelete: (id: number) => Promise<void>;
+  /** Present only for the legacy scalar link — clears `listing_url`. */
+  onClearScalar?: () => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [label, setLabel] = useState(row?.label ?? '');
@@ -655,6 +688,11 @@ function ListingLinkRow({
           <span />
         )}
 
+        {/* Every row owns the delete column. A DURABLE row deletes its own
+            record; the legacy scalar link deletes by clearing the carton's
+            `listing_url`, which is the only fact behind it; a catalog / derived
+            row has no record to remove, so its cell is disabled and says why
+            rather than lying about a verb it cannot perform. */}
         {row ? (
           <ArmedDeleteCell
             label={`Delete ${link.name}`}
@@ -663,8 +701,26 @@ function ListingLinkRow({
             armedAriaLabel={`Confirm deleting ${link.name}`}
             onConfirm={() => void onDelete(row.id)}
           />
+        ) : onClearScalar ? (
+          <ArmedDeleteCell
+            label={`Delete ${link.name}`}
+            armedLabel={`Click again to delete ${link.name}`}
+            ariaLabel={`Delete ${link.name}`}
+            armedAriaLabel={`Confirm deleting ${link.name}`}
+            onConfirm={onClearScalar}
+          />
         ) : (
-          <span />
+          <HoverTooltip label={`${link.name} is derived — nothing to delete`} asChild>
+            <IconButton
+              type="button"
+              size="fill"
+              icon={<Trash2 className={LISTING_LEAD_GLYPH} />}
+              onClick={() => undefined}
+              disabled
+              ariaLabel={`${link.name} is derived and cannot be deleted`}
+              className={LISTING_DELETE_SQUARE}
+            />
+          </HoverTooltip>
         )}
       </div>
 

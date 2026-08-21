@@ -499,9 +499,6 @@ export function HistoryCartonTriagePanel({
         data-history-view-only={viewOnly ? '' : undefined}
       >
         <div className="shrink-0 border-b border-border-soft bg-surface-card/90 backdrop-blur-xl">
-          <DeskRailChromeRow
-            onClose={onClose}
-          />
 
           {/* View cluster toggle — not primary topic nav (topics live in the shell). */}
           {!viewOnly ? (

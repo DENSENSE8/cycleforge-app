@@ -14,7 +14,6 @@ import { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Barcode, Loader2, MessageSquare, Plus } from '@/components/Icons';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
-import { DeskRailChromeRow } from '@/components/right-rail/DeskRailChromeRow';
 import {
   DESK_INSPECTOR_INDEX,
   DeskInspectorIndexShell,
@@ -230,7 +229,6 @@ function MyDayWatchRailBody({
 function WatchRailHeader({ onClose }: { onClose: () => void }) {
   return (
     <div className="shrink-0 border-b border-border-hairline bg-surface-card/90 backdrop-blur-xl">
-      <DeskRailChromeRow onClose={onClose} closeTitle="Close watch" />
       <div className="flex min-w-0 flex-col gap-0.5 px-2 pb-2 pt-1">
         <PaneHeaderLabel
           eyebrow="Watch"

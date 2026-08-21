@@ -1,16 +1,9 @@
 'use client';
 
 import { CartonContextCard } from '@/components/station/entity-context';
-import { useCapabilityProviderLabel } from '@/hooks/useCapabilityProviderLabel';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { dispatchLineUpdated } from '@/components/station/receiving-lines-table-helpers';
 import { isLocalPickupFulfillment } from '@/lib/receiving/fulfillment-mode';
-import {
-  getReceivingStatusDot,
-  getReceivingStatusDotLabel,
-  getReceivingStatusDotTip,
-  getReceivingStatusPillClass,
-} from '@/lib/receiving/rail/status';
 import { useCartonPoTotal } from '@/components/receiving/workspace/line-edit/hooks/useCartonPoTotal';
 import type { TestingController } from './testing-panel-types';
 
@@ -48,7 +41,6 @@ export function TestingCartonHeader({
   onExitToList: () => void;
 }) {
   const poTotal = useCartonPoTotal(row.receiving_id ?? null);
-  const { label: inventoryProviderLabel } = useCapabilityProviderLabel('inventory');
 
   return (
     <CartonContextCard
@@ -68,12 +60,6 @@ export function TestingCartonHeader({
       showPoTotal
       onEditPo={onEditPo}
       poEditOpen={poEditOpen}
-      lifecycle={{
-        dotClass: getReceivingStatusDot(row),
-        pillClass: getReceivingStatusPillClass(row),
-        label: getReceivingStatusDotLabel(row),
-        tip: getReceivingStatusDotTip(row, inventoryProviderLabel),
-      }}
       lineId={row.id ?? null}
       zendeskTrimmed={c.zendeskTrimmed}
       zendeskHref={c.zendeskHref}

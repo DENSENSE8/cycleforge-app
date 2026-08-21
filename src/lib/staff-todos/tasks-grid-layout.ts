@@ -15,6 +15,7 @@
  * declaration (`GRID_FILL_COLUMN`). Nothing here re-derives geometry.
  */
 
+import { compoundColumnsFor } from '@/components/tables/compound/compound-columns';
 import { GRID_FILL_COLUMN, gridFrozenKeys } from '@/design-system/components/grid';
 import { gridFrozenLeft, gridTemplate } from '@/design-system/components/grid/grid-column-geometry';
 import type { ColumnType } from '@/lib/tables/table-columns';
@@ -28,6 +29,12 @@ export type TasksGridColumnKey =
   | 'station'
   | 'due'
   | 'updated'
+  /** Compound (two-row) presentation tracks — see {@link TASKS_COMPOUND_COLUMNS}. */
+  | 'thumb'
+  | 'item'
+  | 'fulfillment'
+  | 'state'
+  | 'open'
   | '_fill';
 
 export interface TasksGridColumn {
@@ -114,6 +121,27 @@ export const TASKS_GRID_COLUMNS: readonly TasksGridColumn[] = [
   },
   GRID_FILL_COLUMN,
 ] as const;
+
+/**
+ * COMPOUND (two-row) Tasks columns.
+ *
+ * The SAME tracks Receiving, Orders and Incoming mount — derived from
+ * `COMPOUND_TRACKS`, not copied. This line only narrows the key type.
+ *
+ * **Tasks joining this layout is the test of the seam.** Every other compound
+ * family is a warehouse line with a photo, an order and a carrier; a personal
+ * to-do has none of those. It still mounts the identical model, and the empty
+ * `fulfillment` track reads as two dashes — because a personal task genuinely
+ * has no order and no tracking number. That is a DATA difference, which the
+ * shared layout is supposed to show. Hiding the track for this one family, or
+ * giving Tasks a shorter array, would be a LAYOUT difference, which it is not.
+ *
+ * The `select` gutter keeps its meaning: on Tasks the checkbox is the surface's
+ * primary VERB (it checks the task off), not a selection. The compound model
+ * governs the geometry of that track, never what clicking it does.
+ */
+export const TASKS_COMPOUND_COLUMNS: readonly TasksGridColumn[] =
+  compoundColumnsFor<TasksGridColumn>();
 
 /** Frozen identity pane — `select · task`, derived from the model's own flag. */
 const TASKS_GRID_LOCKED_KEYS = gridFrozenKeys(TASKS_GRID_COLUMNS);

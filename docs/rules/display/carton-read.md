@@ -3,7 +3,21 @@
 Recipe for the durable **read** record of a carton — observe-first with a work **escape**, not Station Workbench and not a Monitor KPI rollup.
 
 **SoT rows:** `source-of-truth.md` → Photo gallery viewer · Carton read surface.  
-**Sharing boundary (reversed 2026-08-20):** `pattern-evolution.md` Always #5 now says a read surface composes the SAME station assembly in a declared `preview` stance — see `OrderStationPane` (`src/components/station/order/`), which `/search?sel=order:` mounts. D6's ban on Unbox layout panels / `CartonContextCard` is retired. **This surface has not been ported yet** — it still runs the parallel read layout described below. Treat that as the open follow-up, not as a standing exemption.
+**Sharing boundary (reversed 2026-08-20):** `pattern-evolution.md` Always #5 now says a read surface composes the SAME station assembly in a declared `preview` stance — see `OrderStationPane` (`src/components/station/order/`), which `/search?sel=order:` mounts. D6's ban on Unbox layout panels / `CartonContextCard` is retired. **The ASSEMBLY port is still open** — this surface still runs the parallel read layout described below. Treat that as the open follow-up, not as a standing exemption.
+
+**The DISPLAY LANGUAGE is ported, though (2026-08-21).** The two are separable, and conflating them is what let this surface drift for as long as it did: whichever layout it ends up in, its section headers, loading faces, empty faces and corner radius must already be the house ones. Concretely —
+
+| Job | SoT | What it replaced here |
+|---|---|---|
+| Section header (label · chevron · count · action) | `StationBlockLabel` · `src/components/station/collapse/` | `SectionLabel`, a byte-identical page-local fork of the very header this file donated |
+| Section header + collapsing body | `StationCollapsibleBlock` (same module) | Contents' hand-rolled `{open ? <List/> : null}`, which had no height tween |
+| Data in flight | `UniversalLoader` | two hand-rolled `Loader2` + "Loading…" rows |
+| Absence / failure | `EmptyState` (+ `tone="danger"`) | four hand-painted `rounded-xl border-dashed` blocks, two of them rose |
+| Filled boxes / cards | `cornerClass('flush')` | `rounded-xl` on the claim-readiness card |
+
+**Why this is a hard rule and not tidiness:** `/search?sel=receiving:` mounts `CartonInspector`, and `/search?sel=order:` mounts the station pane, from the SAME dispatch in `SearchDetailWorkspace`. Before this pass the two branches of one switch statement painted two different spinners and two different empty states one keystroke apart. A read surface may lag the assembly port; it may not wear a second design language while it waits.
+
+**`SectionLabel` had two jobs, and only one was a disclosure.** Contents collapses to nothing → `StationCollapsibleBlock`. Activity shows the newest event when closed and the full list when open → that is a SWAP, so it takes `StationBlockLabel` and keeps its own `AnimatePresence`; wrapping it in the block would delete the one row the section exists to show. Its toggle is also conditional (`events.length > 1`), which is why the shared header's `onToggle` is optional. Pinned by `station-collapsible-block.test.tsx` — including that the block RENDERS the label rather than re-implementing its markup, which is the assertion that makes this retirement real rather than prose (pattern-evolution law 6).
 
 ## Anatomy
 

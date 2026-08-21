@@ -10,7 +10,6 @@
 
 import { useMemo } from 'react';
 import { MoreVertical } from '@/components/Icons';
-import { DeskRailChromeRow } from '@/components/right-rail/DeskRailChromeRow';
 import { IconButton } from '@/design-system/primitives';
 import {
   DropdownMenu,
@@ -112,9 +111,10 @@ function InspectorBody({
 
   return (
     <div className="flex h-full min-h-0 flex-col" data-testid="daily-check-inspector">
-      <DeskRailChromeRow
-        onClose={onClose}
-        trailing={
+      {/* No stacked chrome row — the ⋮ rides the shell's ONE band beside
+          back + title (`chrome`), the Displays-column contract. */}
+      <DeskInspectorIndexShell
+        chrome={
           onRetire ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -147,8 +147,6 @@ function InspectorBody({
             </DropdownMenu>
           ) : null
         }
-      />
-      <DeskInspectorIndexShell
         key={item.id}
         leaves={leaves}
         defaultActiveId={DESK_INSPECTOR_INDEX}

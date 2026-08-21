@@ -7,8 +7,6 @@ import {
 import {
   ORDERS_QUEUE_COLUMNS,
   ORDERS_QUEUE_FROZEN_CELL,
-  isOrdersQueueFrozen,
-  ordersQueueFrozenLeft,
   ordersQueueGridCell,
   ordersQueueGridTemplateFor,
   ordersQueueRowShellClass,
@@ -22,8 +20,6 @@ const ORDERS_HEADER_LAYOUT: LedgerHeaderLayoutApi<OrdersQueueColumn> = {
   cellClass: ordersQueueGridCell,
   rowShellClass: ordersQueueRowShellClass,
   frozenCellClass: ORDERS_QUEUE_FROZEN_CELL,
-  frozenLeft: ordersQueueFrozenLeft,
-  isFrozen: isOrdersQueueFrozen,
   isSortable: isQueueColumnSort,
   // Trailing frozen identity cell (`title`) owns the scroll-edge shadow.
   frozenEdgeKey: 'title',
