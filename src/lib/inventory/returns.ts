@@ -29,7 +29,6 @@
  */
 
 import type { PoolClient } from 'pg';
-import { transaction } from '@/lib/neon-client';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import { resolvePriorOutbound } from '@/lib/neon/serial-units-queries';
 import { transition } from '@/lib/inventory/state-machine';
@@ -49,8 +48,17 @@ export interface ReturnsIntakeInput {
   /** UUID; per-unit suffixed for retry-safe inventory_events inserts. */
   clientEventId?: string | null;
   actorStaffId: number | null;
-  /** Tenant scope for the prior-outbound lookup; null = unscoped. */
-  organizationId?: string | null;
+  /**
+   * Tenant scope — REQUIRED, and deliberately un-defaulted. Every org predicate
+   * below is written against it, and its presence is what routes the whole
+   * intake through `withTenantTransaction`. When this was optional, a caller
+   * that omitted it did not get a scoped-but-empty result — it got the raw
+   * BYPASSRLS owner pool with every predicate short-circuited, resolving any
+   * tenant's serial by string and flipping their allocations. That is exactly
+   * how the admin dock shipped cross-tenant. Required makes the miss a compile
+   * error instead of a silent privilege escalation.
+   */
+  organizationId: string;
 }
 
 export interface ReturnsIntakeSuccess {
@@ -89,13 +97,12 @@ export async function processReturnsIntake(input: ReturnsIntakeInput): Promise<R
 
   const trackingNumber = input.trackingNumber?.trim() || null;
   const reason = input.reason?.trim() || 'customer return';
-  const orgId = input.organizationId ?? null;
+  const orgId = input.organizationId;
 
-  // Org path runs inside withTenantTransaction (app_tenant + the app.current_org
-  // GUC) so the serial_units / order_unit_allocations RLS policies apply and the
-  // sku_stock_ledger INSERT auto-stamps org from the GUC column default. Legacy
-  // callers that don't thread an org keep the raw-pool transaction (byte-identical
-  // behavior — orgId-null skips every org predicate via the $n IS NULL guard).
+  // The whole intake runs inside withTenantTransaction (app_tenant + the
+  // app.current_org GUC) so the serial_units / order_unit_allocations RLS
+  // policies apply and the sku_stock_ledger INSERT auto-stamps org from the GUC
+  // column default. There is no longer an org-less raw-pool branch to fall into.
   const run = async (client: PoolClient): Promise<ReturnsIntakeResult> => {
     const unitsQ = await client.query<{
       id: number;
@@ -107,7 +114,7 @@ export async function processReturnsIntake(input: ReturnsIntakeInput): Promise<R
          FROM serial_units
         WHERE (id = ANY($1::int[])
             OR normalized_serial = ANY($2::text[]))
-          AND ($3::uuid IS NULL OR organization_id = $3::uuid)
+          AND organization_id = $3::uuid
         FOR UPDATE`,
       [input.serialUnitIds, input.serials, orgId],
     );
@@ -137,7 +144,7 @@ export async function processReturnsIntake(input: ReturnsIntakeInput): Promise<R
       // prior order. Runs on the txn client so it sees committed allocations.
       const prior = await resolvePriorOutbound(
         { id: u.id, normalized_serial: u.normalized_serial },
-        { executor: client, organizationId: input.organizationId ?? null },
+        { executor: client, organizationId: orgId },
       );
       const resolvedOrderId = input.orderId ?? prior?.orderPk ?? null;
 
@@ -149,7 +156,7 @@ export async function processReturnsIntake(input: ReturnsIntakeInput): Promise<R
         `UPDATE order_unit_allocations
             SET state = 'RETURNED', returned_at = NOW(), returned_reason = $2
           WHERE serial_unit_id = $1 AND state = 'SHIPPED'
-            AND ($3::uuid IS NULL OR organization_id = $3::uuid)`,
+            AND organization_id = $3::uuid`,
         [u.id, reason, orgId],
       );
       const allocationReturned = (flipQ.rowCount ?? 0) > 0;
@@ -163,7 +170,7 @@ export async function processReturnsIntake(input: ReturnsIntakeInput): Promise<R
            )
            VALUES ($1, $2, 1, 'RETURN_CUSTOMER', 'WAREHOUSE', $3, $4, $5, $6)
            RETURNING id`,
-          [input.organizationId ?? null, u.sku, input.actorStaffId, u.id, resolvedOrderId, reason],
+          [orgId, u.sku, input.actorStaffId, u.id, resolvedOrderId, reason],
         );
         ledgerId = ledgerQ.rows[0]?.id ?? null;
       }
@@ -198,7 +205,7 @@ export async function processReturnsIntake(input: ReturnsIntakeInput): Promise<R
           },
         },
         client,
-        input.organizationId ?? undefined,
+        orgId,
       );
       if (!moved.ok) {
         throw new Error(
@@ -226,9 +233,7 @@ export async function processReturnsIntake(input: ReturnsIntakeInput): Promise<R
     };
   };
 
-  const result = await (orgId
-    ? withTenantTransaction<ReturnsIntakeResult>(orgId, run)
-    : transaction<ReturnsIntakeResult>(run));
+  const result = await withTenantTransaction<ReturnsIntakeResult>(orgId, run);
 
   // Studio tap (Tap 1, §7.1/§9 Stage 2.6 of the returns-unification plan):
   // fired per unit, after the transaction commits, never inside it — same
@@ -244,7 +249,7 @@ export async function processReturnsIntake(input: ReturnsIntakeInput): Promise<R
       await tapWorkflow({
         serialUnitId: u.unitId,
         event: 'return_received',
-        orgId: orgId ?? null,
+        orgId,
         staffId: input.actorStaffId,
         source: 'manual',
       });

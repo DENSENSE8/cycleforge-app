@@ -263,6 +263,15 @@ export async function recordTestVerdict(
         receivingLineId: lineId,
         scanRef: verdict,
         notes,
+        // `orgId` is in scope from the top of this function and MUST be bound.
+        // tech_serial_numbers.organization_id is NOT NULL with a
+        // `COALESCE(current_setting('app.current_org'), <dogfood uuid>)` default,
+        // so an unbound insert on the raw pool does not fail — it silently
+        // stamps every non-dogfood tenant's test-verdict row as the dogfood org,
+        // which is what left tsn_links tenant-incomplete. `?? undefined` (never
+        // `null`) because attachTechSerial binds the column only when the value
+        // is not undefined, and NULL would violate the constraint.
+        organizationId: orgId ?? undefined,
       });
     } catch (err) {
       console.warn('[recordTestVerdict] tsn audit insert failed (non-fatal):', err);

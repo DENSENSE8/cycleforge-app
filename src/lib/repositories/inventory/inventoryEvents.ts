@@ -97,12 +97,24 @@ export interface AppendEventInput {
 export async function appendInventoryEvent(
   input: AppendEventInput,
 ): Promise<{ event: InventoryEvent; created: boolean }> {
-  if (input.clientEventId) {
-    const existing = await db
-      .select()
-      .from(inventoryEvents)
-      .where(eq(inventoryEvents.clientEventId, input.clientEventId))
-      .limit(1);
+  // Idempotency lookup, org-scoped whenever the caller has an org in hand.
+  // `client_event_id` is UNIQUE **globally**, and the key is caller-supplied
+  // (mobile clients and request bodies send it), so a lookup keyed on it alone
+  // hands back whichever tenant happens to own that key — full event row, to a
+  // caller from a different org. `db` is the owner Drizzle client, which
+  // BYPASSRLS, so this predicate is the boundary; there is nothing behind it.
+  // An org-less legacy caller keeps the unscoped lookup it always had.
+  const idempotencyMatch = input.clientEventId
+    ? input.organizationId
+      ? and(
+          eq(inventoryEvents.clientEventId, input.clientEventId),
+          eq(inventoryEvents.organizationId, input.organizationId),
+        )
+      : eq(inventoryEvents.clientEventId, input.clientEventId)
+    : null;
+
+  if (idempotencyMatch) {
+    const existing = await db.select().from(inventoryEvents).where(idempotencyMatch).limit(1);
     if (existing[0]) return { event: existing[0], created: false };
   }
 
@@ -132,14 +144,19 @@ export async function appendInventoryEvent(
 
   if (inserted[0]) return { event: inserted[0], created: true };
 
-  // Conflict path: fetch the row that won the race.
-  if (input.clientEventId) {
-    const existing = await db
-      .select()
-      .from(inventoryEvents)
-      .where(eq(inventoryEvents.clientEventId, input.clientEventId))
-      .limit(1);
+  // Conflict path: fetch the row that won the race — same org scope as above.
+  if (idempotencyMatch) {
+    const existing = await db.select().from(inventoryEvents).where(idempotencyMatch).limit(1);
     if (existing[0]) return { event: existing[0], created: false };
+    // The insert was swallowed by the global UNIQUE, yet no row matches under
+    // this org: the key belongs to a different tenant. The old code answered
+    // this case by returning that tenant's row. Refusing is the only correct
+    // answer — the caller must not learn the event exists, let alone read it.
+    if (input.organizationId) {
+      throw new Error(
+        'appendInventoryEvent: client_event_id already belongs to a different organization',
+      );
+    }
   }
   throw new Error('appendInventoryEvent: insert returned no row and no clientEventId to look up');
 }
