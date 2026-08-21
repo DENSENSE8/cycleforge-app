@@ -83,6 +83,17 @@ const LISTING_COMBO_FACE = LISTING_LINK_INSET_X;
 const LISTING_EDITOR_ACTIONS =
   'grid w-full grid-cols-[minmax(0,1fr)_auto]';
 
+/**
+ * The editor opened FROM a link row lands on that row's identity rail:
+ * 2rem lead cell + the identity's own `px-3` = 44px on each side. Without it
+ * the compose fields (`px-0` by contract) start at the column edge, a third
+ * left rail under the two the row and combo already share.
+ *
+ * The CREATE editor keeps the full-bleed face — it hangs off the combo's
+ * trailing ＋, not off a row, so it has no identity to line up with.
+ */
+const LISTING_ROW_EDITOR_RAIL = 'px-11 pb-2';
+
 function ListingLinkEditor({
   name,
   href,
@@ -93,6 +104,7 @@ function ListingLinkEditor({
   saveDisabled,
   autoFocusHref = false,
   footer,
+  className,
 }: {
   name: string;
   href: string;
@@ -103,11 +115,13 @@ function ListingLinkEditor({
   saveDisabled: boolean;
   autoFocusHref?: boolean;
   footer?: ReactNode;
+  /** Rail the editor sits on. Omitted = full-bleed (the create face). */
+  className?: string;
 }) {
   const nameId = useId();
   const hrefId = useId();
   return (
-    <div className="grid grid-cols-1">
+    <div className={cn('grid grid-cols-1', className)}>
       <DenseComposeLabel htmlFor={nameId} className="mb-0 text-text-soft">
         Name
       </DenseComposeLabel>
@@ -506,6 +520,7 @@ function ListingLinkRow({
 
       {row && editing ? (
         <ListingLinkEditor
+          className={LISTING_ROW_EDITOR_RAIL}
           name={label}
           href={href}
           onNameChange={setLabel}
