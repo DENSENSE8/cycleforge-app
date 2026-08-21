@@ -89,8 +89,9 @@ const LISTING_EDITOR_ACTIONS =
  * the compose fields (`px-0` by contract) start at the column edge, a third
  * left rail under the two the row and combo already share.
  *
- * The CREATE editor keeps the full-bleed face — it hangs off the combo's
- * trailing ＋, not off a row, so it has no identity to line up with.
+ * The CREATE editor takes the same rail: it lands in the same list, under the
+ * same combo, so a second left edge there reads as a different surface rather
+ * than the next row.
  */
 const LISTING_ROW_EDITOR_RAIL = 'px-11 pb-2';
 
@@ -247,6 +248,17 @@ export function ListingLinksTab({
     recordCopy(text, { kind: 'id', display: `${all.length} listing link${all.length === 1 ? '' : 's'}` });
   }, [links]);
 
+  /**
+   * Every link, each in its own tab. Popup blockers allow this because it runs
+   * on the operator's click; a link that fails to open is the browser's answer,
+   * not a state we invent a toast for.
+   */
+  const openAll = useCallback(() => {
+    for (const l of links) {
+      if (l.href) window.open(l.href, '_blank', 'noopener,noreferrer');
+    }
+  }, [links]);
+
   const commitDraft = useCallback(async () => {
     if (!draft?.href.trim()) return;
     const created = await store.create(draft.href, draft.label);
@@ -276,21 +288,21 @@ export function ListingLinksTab({
 
       {embedOpen ? null : (
         <>
-          {/* 1 — the two verbs. Station chrome: full-bleed, one hairline seam. */}
+          {/* 1 — the two ALL verbs. Station chrome: full-bleed, one hairline
+              seam. Both act on the whole carton — one link at a time is the
+              row's own Open, not this band. */}
           <div className="grid grid-cols-2 divide-x divide-border-hairline border-b border-border-hairline">
             <Button
               type="button"
               size="sm"
               variant="primarySoft"
               icon={<ExternalLink className="h-3.5 w-3.5" />}
-              onClick={() => {
-                if (selected?.href) window.open(selected.href, '_blank', 'noopener,noreferrer');
-              }}
-              disabled={!selected?.href}
-              ariaLabel="Open the selected listing in a new tab"
+              onClick={openAll}
+              disabled={links.length === 0}
+              ariaLabel="Open every listing link in a new tab"
               className="w-full"
             >
-              Open
+              Open all
             </Button>
             <HoverTooltip label="Copy every listing link on this carton" asChild>
               <Button
@@ -341,7 +353,9 @@ export function ListingLinksTab({
           </div>
 
           {store.error ? (
-            <p className={cn(DISPLAYS_BODY_INSET, 'pt-2 text-role-caption text-rose-600')}>{store.error}</p>
+            <p className={cn(LISTING_ROW_EDITOR_RAIL, 'pt-2 text-role-caption text-rose-600')}>
+              {store.error}
+            </p>
           ) : null}
 
           {/* 3 — the rows. Selection highlights; durable rows edit in place. */}
@@ -371,6 +385,7 @@ export function ListingLinksTab({
 
             {store.supported && draft ? (
               <ListingLinkEditor
+                className={LISTING_ROW_EDITOR_RAIL}
                 name={draft.label}
                 href={draft.href}
                 onNameChange={(v) => setDraft({ ...draft, label: v })}
@@ -484,7 +499,10 @@ function ListingLinkRow({
           onClick={onSelect}
           className={cn(
             LISTING_LINK_IDENTITY_FACE,
-            'flex min-h-8 min-w-0 flex-col items-start justify-center text-left',
+            // min-h-9 = the combo's own h-9. The row sets the height for the
+            // whole line, so its lead Open and trail Edit fill the same box the
+            // combo's ＋ does — three cells in one column, not two sizes.
+            'flex min-h-9 min-w-0 flex-col items-start justify-center text-left',
             focusRing('cell'),
           )}
           aria-pressed={selected}
