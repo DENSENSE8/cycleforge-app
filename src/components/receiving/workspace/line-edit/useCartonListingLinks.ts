@@ -76,7 +76,11 @@ export function useCartonListingLinks(receivingId: number | null | undefined): C
       } catch {
         if (!cancelled) setRows([]);
       } finally {
-        if (!cancelled && seq === requestRef.current) setLoading(false);
+        // Always clear the flag, even for a superseded request: a write that
+        // lands mid-fetch bumps the sequence, and gating this on `seq` left the
+        // combo reading "Loading links…" forever behind a row that was already
+        // on screen.
+        if (!cancelled) setLoading(false);
       }
     })();
     return () => {
@@ -106,6 +110,8 @@ export function useCartonListingLinks(receivingId: number | null | undefined): C
         fail(body);
         return null;
       }
+      // A GET issued before this write must not paint over it when it lands.
+      requestRef.current += 1;
       setRows((prev) => [...prev, body.link as CartonListingLinkRow]);
       return body.link as CartonListingLinkRow;
     },
@@ -123,6 +129,7 @@ export function useCartonListingLinks(receivingId: number | null | undefined): C
       });
       const body = await res.json().catch(() => null);
       if (!res.ok || !body?.link) return fail(body);
+      requestRef.current += 1;
       setRows((prev) => prev.map((r) => (r.id === id ? (body.link as CartonListingLinkRow) : r)));
       return true;
     },
@@ -136,6 +143,7 @@ export function useCartonListingLinks(receivingId: number | null | undefined): C
       const res = await fetch(`${base}/${id}`, { method: 'DELETE' });
       const body = await res.json().catch(() => null);
       if (!res.ok) return fail(body);
+      requestRef.current += 1;
       setRows((prev) => prev.filter((r) => r.id !== id));
       return true;
     },
