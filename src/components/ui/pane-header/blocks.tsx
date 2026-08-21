@@ -14,6 +14,7 @@ import { ToolbarButton } from '../ToolbarButton';
 import { IconButton } from '@/design-system/primitives';
 import { Popover } from '@/design-system';
 import { TOOLBAR_LISTBOX_PANEL_CLASS } from '@/design-system/primitives';
+import { cornerClass } from '@/design-system/tokens';
 import { cn } from '@/utils/_cn';
 import {
   PRIMARY_CHROME_ROW_FACE,
@@ -161,7 +162,12 @@ export function PaneHeaderCloseButton({
         onClick={onClick}
         ariaLabel={ariaLabel}
         className={cn(
-          'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg hover:bg-surface-sunken active:scale-95',
+          // Flush-square: ops chrome carries no soft radius (`AGENTS.md` — only
+          // status dots / avatars / Switch tracks keep a curve). `rounded-lg`
+          // here read as a notch once the control moved flush into the panel's
+          // corner, where the button edge and the panel edge are the same line.
+          'inline-flex h-8 w-8 shrink-0 items-center justify-center hover:bg-surface-sunken active:scale-95',
+          cornerClass('flush'),
           className,
         )}
         icon={
@@ -408,10 +414,13 @@ export function PaneHeaderActionBar({
   navClassName,
   className,
 }: PaneHeaderActionBarProps) {
+  // Trailing padding is dropped when this bar OWNS the close (2026-08-19): the
+  // dismiss must sit flush in the corner, the same rule the singleton host X
+  // follows. A bar with no close keeps its symmetric inset.
   const shell =
     variant === 'card'
       ? 'flex items-center gap-2 rounded-xl border border-border-soft/70 bg-surface-card px-3 py-1.5 shadow-sm'
-      : 'flex items-center gap-2 px-2 py-1.5';
+      : cn('flex items-center gap-2 py-1.5 pl-2', onClose ? 'pr-0' : 'pr-2');
 
   const renderText = (value: ReactNode): string | undefined =>
     typeof value === 'string' ? value : undefined;
@@ -471,7 +480,7 @@ export function PaneHeaderActionBar({
           onClick={onClose}
           title={closeTitle}
           ariaLabel={closeTitle}
-          className="h-7 w-7 rounded-md"
+          className={cn('h-7 w-7', cornerClass('flush'))}
         />
       ) : null}
     </>
@@ -661,10 +670,22 @@ export function PaneHeaderPagination({
 interface CursorPositionReadoutProps {
   position?: number | null;
   total?: number;
+  /**
+   * Render the count ALONE (`4`) instead of `n / m`. Opt-in, so a caller that
+   * publishes no cursor still renders nothing by default — the honest absence
+   * above. For a collapsed picker the population is the fact worth showing:
+   * the trigger already names WHICH item is selected, and how many sit behind
+   * it is what the collapse hides (Unbox Listings combo).
+   */
+  totalOnly?: boolean;
 }
 
-export function CursorPositionReadout({ position, total }: CursorPositionReadoutProps) {
-  if (position == null || !total) return null;
+export function CursorPositionReadout({ position, total, totalOnly = false }: CursorPositionReadoutProps) {
+  if (!total) return null;
+  if (totalOnly) {
+    return <span className="text-role-micro tabular-nums text-text-soft">{total}</span>;
+  }
+  if (position == null) return null;
   return (
     <span className="text-role-micro tabular-nums text-text-soft">
       {position} / {total}

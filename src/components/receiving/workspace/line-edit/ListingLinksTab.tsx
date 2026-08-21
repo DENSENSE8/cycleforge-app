@@ -37,6 +37,7 @@ import { Check, Copy, ExternalLink, Plus, Pencil, Trash2 } from '@/components/Ic
 import { SearchBar } from '@/components/ui/SearchBar';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { SearchableSelectField, DenseComposeLabel, DenseComposeSubjectInput } from '@/design-system/components';
+import { CursorPositionReadout } from '@/components/ui/pane-header';
 import { Button, IconButton } from '@/design-system/primitives';
 import { BUTTON_VARIANTS } from '@/design-system/primitives/button-variants';
 import { focusRing } from '@/design-system/tokens/focus-ring';
@@ -54,26 +55,32 @@ import { useCartonListingLinks, type CartonListingLinkRow } from './useCartonLis
 const FLUSH_HOST_CLASS = cn('min-w-0', cornerClass('flush'));
 
 const LISTING_LEAD_GLYPH = STATION_DISPLAYS_HEADER_ACTION_GLYPH;
-/** Lead · identity · trail — plus and pencil share the last column. */
-const LISTING_LINE_GRID =
-  'grid w-full min-w-0 grid-cols-[2rem_minmax(0,1fr)_2rem] items-stretch divide-x divide-border-hairline';
 /**
- * The combo rides the SAME lead · identity · trail template as the rows it
- * names — it just leaves the lead cell empty (nothing opens a selection). It
- * used to be `[1fr_2rem]`, i.e. no lead column at all, so its text started at
- * the column edge while every link identity below it started 2rem further in:
- * two left rails in one stack.
+ * Open · edit · delete. The OPEN cell is the row: glyph + name in one
+ * full-width button, because opening the listing is what an operator wants from
+ * a row of listing links, and a 2rem target for the primary verb made them aim.
+ * The two trailing squares are the row's own edits, in the order they escalate.
  */
+const LISTING_LINE_GRID =
+  'grid w-full min-w-0 grid-cols-[minmax(0,1fr)_2rem_2rem] items-stretch divide-x divide-border-hairline';
+/** The combo rides the same three columns: picker · count · add. */
 const LISTING_COMBO_GRID = cn(LISTING_LINE_GRID, 'border-b border-border-hairline');
-const LISTING_OPEN_SQUARE = cn(
-  BUTTON_VARIANTS.primarySoft,
-  cornerClass('flush'),
-  'h-full w-full [&>svg]:h-3.5 [&>svg]:w-3.5',
-);
 const LISTING_TRAIL_SQUARE = cn(
   BUTTON_VARIANTS.secondary,
   cornerClass('flush'),
   'h-full w-full [&>svg]:h-3.5 [&>svg]:w-3.5',
+);
+/**
+ * Destructive trailing cell — the same face the serial rail's Remove serial
+ * uses (`UnitSlotList`): muted until hover, then rose. One destructive idiom
+ * for "remove this row of a list the operator is building", so a delete looks
+ * the same wherever they meet it.
+ */
+const LISTING_DELETE_SQUARE = cn(
+  cornerClass('flush'),
+  'flex h-full w-full items-center justify-center bg-surface-card p-0',
+  'text-text-muted hover:bg-rose-50 hover:text-rose-600',
+  'disabled:cursor-not-allowed disabled:opacity-60',
 );
 const LISTING_LINK_INSET_X = 'px-3';
 const LISTING_LINK_IDENTITY_FACE = LISTING_LINK_INSET_X;
@@ -322,9 +329,6 @@ export function ListingLinksTab({
 
           {/* 2 — display + selection. Trailing plus opens the create fields. */}
           <div className={LISTING_COMBO_GRID}>
-            {/* Lead cell — empty on purpose: the rows' Open lives here, and the
-                combo has nothing to open. Present so both share one rail. */}
-            <span aria-hidden />
             <SearchableSelectField
               value={selected?.href ?? null}
               onChange={(v) => setSelectedHref(typeof v === 'string' ? v : null)}
@@ -336,6 +340,12 @@ export function ListingLinksTab({
               ariaLabel="Selected listing link"
               className={LISTING_COMBO_FACE}
             />
+            {/* Middle cell — a READOUT, never a control. The count is what the
+                collapsed picker hides; the rows below spend this column on
+                Edit, so nothing here may be clickable. */}
+            <span className="flex items-center justify-center">
+              <CursorPositionReadout total={links.length} totalOnly />
+            </span>
             {store.supported ? (
               <HoverTooltip label="Add a listing link" asChild>
                 <IconButton
@@ -483,35 +493,30 @@ function ListingLinkRow({
           selected ? 'bg-surface-canvas' : 'hover:bg-surface-canvas/60',
         )}
       >
+        {/* The whole row opens the link. */}
         <HoverTooltip label={`Open ${link.name}`} asChild>
-          <IconButton
+          <button
             type="button"
-            size="fill"
-            icon={<ExternalLink className={LISTING_LEAD_GLYPH} />}
             onClick={openExact}
-            ariaLabel={`Open ${link.name} in a new tab`}
-            className={LISTING_OPEN_SQUARE}
-          />
+            aria-label={`Open ${link.name} in a new tab`}
+            className={cn(
+              LISTING_LINK_IDENTITY_FACE,
+              // min-h-9 = the combo's own h-9, so this row and the picker above
+              // it are one column of equal boxes.
+              'flex min-h-9 min-w-0 items-center gap-2 text-left',
+              'hover:bg-surface-canvas/60',
+              focusRing('cell'),
+            )}
+          >
+            <ExternalLink className={cn(LISTING_LEAD_GLYPH, 'shrink-0 text-blue-600')} aria-hidden />
+            {/* The NAME is the whole row. Where the link points is already on
+                the carton context bar, and repeating the host under every row
+                spent a second line on a fact this list was not asked for. */}
+            <span className="min-w-0 flex-1 truncate text-role-caption font-semibold text-text-default">
+              {link.name}
+            </span>
+          </button>
         </HoverTooltip>
-
-        <button
-          type="button"
-          onClick={onSelect}
-          className={cn(
-            LISTING_LINK_IDENTITY_FACE,
-            // min-h-9 = the combo's own h-9. The row sets the height for the
-            // whole line, so its lead Open and trail Edit fill the same box the
-            // combo's ＋ does — three cells in one column, not two sizes.
-            'flex min-h-9 min-w-0 flex-col items-start justify-center text-left',
-            focusRing('cell'),
-          )}
-          aria-pressed={selected}
-        >
-          {/* The NAME is the whole row. Where the link points is already on the
-              carton context bar, and repeating the host under every row spent a
-              second line on a fact the operator did not ask this list for. */}
-          <span className="w-full truncate text-role-caption font-semibold text-text-default">{link.name}</span>
-        </button>
 
         {row || onPromote ? (
           <HoverTooltip label={editing ? 'Done editing' : `Edit ${link.name}`} asChild>
@@ -522,15 +527,28 @@ function ListingLinkRow({
               onClick={() => {
                 if (!row) {
                   onPromote?.();
-                  onSelect();
                   return;
                 }
                 if (editing) commit();
                 setEditing((v) => !v);
-                onSelect();
               }}
               ariaLabel={editing ? `Done editing ${link.name}` : `Edit ${link.name}`}
               className={LISTING_TRAIL_SQUARE}
+            />
+          </HoverTooltip>
+        ) : (
+          <span />
+        )}
+
+        {row ? (
+          <HoverTooltip label={`Delete ${link.name}`} asChild>
+            <IconButton
+              type="button"
+              size="fill"
+              icon={<Trash2 className={LISTING_LEAD_GLYPH} />}
+              onClick={() => void onDelete(row.id)}
+              ariaLabel={`Delete ${link.name}`}
+              className={LISTING_DELETE_SQUARE}
             />
           </HoverTooltip>
         ) : (
@@ -555,19 +573,6 @@ function ListingLinkRow({
             setEditing(false);
           }}
           saveDisabled={!href.trim()}
-          footer={
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              icon={<Trash2 className="h-3.5 w-3.5" />}
-              onClick={() => void onDelete(row.id)}
-              ariaLabel={`Delete ${link.name}`}
-              className="w-full"
-            >
-              Delete
-            </Button>
-          }
         />
       ) : null}
     </div>
