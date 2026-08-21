@@ -56,14 +56,15 @@ const FLUSH_HOST_CLASS = cn('min-w-0', cornerClass('flush'));
 
 const LISTING_LEAD_GLYPH = STATION_DISPLAYS_HEADER_ACTION_GLYPH;
 /**
- * Open · edit · delete. The OPEN cell is the row: glyph + name in one
+ * Open · copy · edit · delete. The OPEN cell is the row: glyph + name in one
  * full-width button, because opening the listing is what an operator wants from
  * a row of listing links, and a 2rem target for the primary verb made them aim.
- * The two trailing squares are the row's own edits, in the order they escalate.
+ * The three trailing squares are that row's own verbs, in the order they
+ * escalate — take it, change it, remove it.
  */
 const LISTING_LINE_GRID =
-  'grid w-full min-w-0 grid-cols-[minmax(0,1fr)_2rem_2rem] items-stretch divide-x divide-border-hairline';
-/** The combo rides the same three columns: picker · count · add. */
+  'grid w-full min-w-0 grid-cols-[minmax(0,1fr)_2rem_2rem_2rem] items-stretch divide-x divide-border-hairline';
+/** The combo rides the same four columns: picker · — · count · add. */
 const LISTING_COMBO_GRID = cn(LISTING_LINE_GRID, 'border-b border-border-hairline');
 const LISTING_TRAIL_SQUARE = cn(
   BUTTON_VARIANTS.secondary,
@@ -295,22 +296,43 @@ export function ListingLinksTab({
 
       {embedOpen ? null : (
         <>
-          {/* 1 — the two ALL verbs. Station chrome: full-bleed, one hairline
-              seam. Both act on the whole carton — one link at a time is the
-              row's own Open, not this band. */}
-          <div className="grid grid-cols-2 divide-x divide-border-hairline border-b border-border-hairline">
-            <Button
-              type="button"
-              size="sm"
-              variant="primarySoft"
-              icon={<ExternalLink className="h-3.5 w-3.5" />}
-              onClick={openAll}
-              disabled={links.length === 0}
-              ariaLabel="Open every listing link in a new tab"
-              className="w-full"
+          {/* 1 — the band verbs: the SELECTED link, then the whole carton.
+              Station chrome: full-bleed, one hairline seam. Open reads the
+              combo below it; Open all / Copy all never need a selection. */}
+          <div className="grid grid-cols-3 divide-x divide-border-hairline border-b border-border-hairline">
+            <HoverTooltip
+              label={selected ? `Open ${selected.name}` : 'Pick a listing link below'}
+              asChild
             >
-              Open all
-            </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="primarySoft"
+                icon={<ExternalLink className="h-3.5 w-3.5" />}
+                onClick={() => {
+                  if (selected?.href) window.open(selected.href, '_blank', 'noopener,noreferrer');
+                }}
+                disabled={!selected?.href}
+                ariaLabel="Open the selected listing link in a new tab"
+                className="w-full"
+              >
+                Open
+              </Button>
+            </HoverTooltip>
+            <HoverTooltip label="Open every listing link on this carton" asChild>
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                icon={<ExternalLink className="h-3.5 w-3.5" />}
+                onClick={openAll}
+                disabled={links.length === 0}
+                ariaLabel="Open every listing link in a new tab"
+                className="w-full"
+              >
+                Open all
+              </Button>
+            </HoverTooltip>
             <HoverTooltip label="Copy every listing link on this carton" asChild>
               <Button
                 type="button"
@@ -340,9 +362,11 @@ export function ListingLinksTab({
               ariaLabel="Selected listing link"
               className={LISTING_COMBO_FACE}
             />
-            {/* Middle cell — a READOUT, never a control. The count is what the
-                collapsed picker hides; the rows below spend this column on
-                Edit, so nothing here may be clickable. */}
+            {/* Over the rows' Copy — nothing to copy for a picker. */}
+            <span />
+            {/* A READOUT, never a control. The count is what the collapsed
+                picker hides; the rows below spend this column on Edit, so
+                nothing here may be clickable. */}
             <span className="flex items-center justify-center">
               <CursorPositionReadout total={links.length} totalOnly />
             </span>
@@ -480,6 +504,14 @@ function ListingLinkRow({
     void onSave(row.id, patch);
   };
 
+  /** This row's URL, on the operator's clipboard — the single-link twin of the
+   *  band's Copy all. Recorded so the clipboard history names it. */
+  const copyHref = () => {
+    if (!link.href) return;
+    void navigator.clipboard.writeText(link.href);
+    recordCopy(link.href, { kind: 'id', display: link.name });
+  };
+
   const openExact = () => {
     onSelect();
     window.open(link.href, '_blank', 'noopener,noreferrer');
@@ -516,6 +548,17 @@ function ListingLinkRow({
               {link.name}
             </span>
           </button>
+        </HoverTooltip>
+
+        <HoverTooltip label={`Copy ${link.name}`} asChild>
+          <IconButton
+            type="button"
+            size="fill"
+            icon={<Copy className={LISTING_LEAD_GLYPH} />}
+            onClick={copyHref}
+            ariaLabel={`Copy the URL for ${link.name}`}
+            className={LISTING_TRAIL_SQUARE}
+          />
         </HoverTooltip>
 
         {row || onPromote ? (
