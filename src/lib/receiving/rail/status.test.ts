@@ -51,15 +51,15 @@ test('getReceivingStatusDotLabel — door-scanned matched carton reads Scanned',
   assert.ok(getReceivingStatusDot(r).includes('blue') || getReceivingStatusDot(r).includes('sky'));
 });
 
-test('getReceivingStatusDotLabel — Zoho issued + local DONE reads Unboxed, not Received', () => {
+test('getReceivingStatusDotLabel — Zoho issued + local DONE reads Received; tip is the pending provider write', () => {
   const r = row({
     workflow_status: 'DONE',
     zoho_status: 'issued',
     zoho_purchaseorder_id: 'PO-1',
     quantity_received: 1,
   });
-  assert.equal(getReceivingStatusDotLabel(r), 'Unboxed');
-  assert.equal(getReceivingStatusDot(r), 'bg-indigo-500');
+  assert.equal(getReceivingStatusDotLabel(r), 'Received');
+  assert.equal(getReceivingStatusDot(r), 'bg-emerald-500');
   assert.equal(getReceivingStatusDotTip(r, 'Zoho Inventory'), 'Awaiting confirmation in Zoho Inventory');
 });
 
@@ -128,7 +128,7 @@ test('getReceivingStatusDotTip — UNBOXED names inventory provider', () => {
   assert.equal(getReceivingStatusDotLabel(r), 'Unboxed');
 });
 
-test('getReceivingStatusDotTip — DONE / MATCHED → null (short label stays)', () => {
+test('getReceivingStatusDotTip — DONE / MATCHED without a provider status → null (short label stays)', () => {
   assert.equal(getReceivingStatusDotTip(row({ workflow_status: 'DONE' }), 'Zoho Inventory'), null);
   assert.equal(getReceivingStatusDotTip(row({ workflow_status: 'MATCHED' }), 'Zoho Inventory'), null);
 });
@@ -162,4 +162,16 @@ test('receivingCoarseStatusPaint — testing terminals collapse; UNBOXED keeps s
   );
   assert.equal(unboxed.label, 'Unboxed');
   assert.equal(unboxed.tip, 'Awaiting confirmation in Zoho Inventory');
+
+  const localDoneProviderOpen = receivingCoarseStatusPaint(
+    row({
+      workflow_status: 'DONE',
+      zoho_status: 'issued',
+      zoho_purchaseorder_id: 'PO-1',
+      quantity_received: 1,
+    }),
+    'Zoho Inventory',
+  );
+  assert.equal(localDoneProviderOpen.label, 'Received');
+  assert.equal(localDoneProviderOpen.tip, 'Awaiting confirmation in Zoho Inventory');
 });

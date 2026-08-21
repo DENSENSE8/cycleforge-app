@@ -7,6 +7,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   receivingCoarseUnboxedSyncTooltip,
+  receivingProviderPendingTooltip,
   receivingUnboxedSyncTooltip,
 } from './unboxed-sync-tooltip';
 
@@ -53,6 +54,13 @@ test('coarse UNBOXED → awaiting confirmation', () => {
       coarse: 'UNBOXED',
       inventoryProviderLabel: 'Zoho Inventory',
     }),
+    'Awaiting confirmation in Zoho Inventory',
+  );
+});
+
+test('receivingProviderPendingTooltip names the connected provider', () => {
+  assert.equal(
+    receivingProviderPendingTooltip('Zoho Inventory'),
     'Awaiting confirmation in Zoho Inventory',
   );
 });

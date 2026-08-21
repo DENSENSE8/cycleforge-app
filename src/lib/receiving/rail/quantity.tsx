@@ -4,10 +4,10 @@
  *
  * ## Unboxed ≠ Received (hard law)
  *
- * Operator **Received** on these meters means inventory-confirmed (or local-only
- * done via `isOperatorReceived`) — never floor `quantity_received` alone.
- * Coarse UNBOXED (awaiting inventory confirm) must paint **0/expected** with an
- * empty bar even when units were already counted on the floor.
+ * Operator **Received** on these meters means local DONE (via `isOperatorReceived`)
+ * — never floor `quantity_received` alone, and never Zoho. Coarse UNBOXED
+ * (counted on the floor, receive not committed) must paint **0/expected** with
+ * an empty bar. A still-open provider PO is a hover tip, not a 0/1 meter.
  *
  * - **Do:** route every Received-labeled qty through `inventoryReceivedDisplayQty`
  *   / `RAIL_QTY.received` (and `unfound`, which shares that gate).

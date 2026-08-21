@@ -59,6 +59,18 @@ test('DONE displays actual quantity_received', () => {
   assert.deepEqual(inventoryReceivedDisplayQty(r), { current: 1, total: 1 });
 });
 
+test('DONE with Zoho still issued displays 1/1 — local receive is the rail face', () => {
+  const r = row({
+    workflow_status: 'DONE',
+    zoho_status: 'issued',
+    zoho_purchaseorder_id: 'PO-1',
+    quantity_received: 1,
+    quantity_expected: 1,
+  });
+  assert.equal(isRailQtyInventoryComplete(r), true);
+  assert.deepEqual(inventoryReceivedDisplayQty(r), { current: 1, total: 1 });
+});
+
 test('Zoho-received-like displays actual qty even if workflow lags on UNBOXED', () => {
   const r = row({
     workflow_status: 'UNBOXED',

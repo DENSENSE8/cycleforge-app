@@ -15,7 +15,10 @@
  */
 
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
-import { receivingCoarseUnboxedSyncTooltip } from '@/lib/receiving/unboxed-sync-tooltip';
+import {
+  receivingCoarseUnboxedSyncTooltip,
+  receivingProviderPendingTooltip,
+} from '@/lib/receiving/unboxed-sync-tooltip';
 import {
   deriveReceivingLineStatus,
   type ReceivingLineStatus,
@@ -29,22 +32,26 @@ import { isZohoReceivedLikeStatus } from '@/lib/receiving/zoho-received-status';
  * and the Overview can never drift, with two row-level special cases the bare
  * workflow_status can't express:
  *   - Unmatched cartons have no PO/receive step → unboxed locally reads Received.
- *   - Vendor-side already-received (Zoho) reads Received in-warehouse.
- *   - Vendor-side still open (issued / not received-like) never reads Received —
- *     inventory is SoT; local DONE from a failed push stays Unboxed.
+ *   - Vendor-side already-received (Zoho) reads Received even if the local
+ *     line has not yet been promoted (provider can lead).
+ *   - Local DONE / coarse RECEIVED always reads Received. A still-open
+ *     provider PO is a *pending confirmation* tip, never a badge demotion —
+ *     staff floor work is the staff face (PO 06-14980-30824, 2026-08-21).
  */
+function providerReceiveStillOpen(row: ReceivingLineRow): boolean {
+  return (
+    Boolean(String(row.zoho_purchaseorder_id ?? '').trim()) &&
+    Boolean(String(row.zoho_status ?? '').trim()) &&
+    !isZohoReceivedLikeStatus(row.zoho_status)
+  );
+}
+
 function railCoarseStatus(row: ReceivingLineRow): ReceivingLineStatus {
   if (row.receiving_source === 'unmatched') {
     return row.unboxed_at || (row.quantity_received ?? 0) > 0 ? 'RECEIVED' : 'SCANNED';
   }
   if (isZohoReceivedLikeStatus(row.zoho_status)) return 'RECEIVED';
-  const derived = deriveReceivingLineStatus(row.workflow_status);
-  const zohoOpen =
-    Boolean(String(row.zoho_purchaseorder_id ?? '').trim()) &&
-    Boolean(String(row.zoho_status ?? '').trim()) &&
-    !isZohoReceivedLikeStatus(row.zoho_status);
-  if (zohoOpen && derived === 'RECEIVED') return 'UNBOXED';
-  return derived;
+  return deriveReceivingLineStatus(row.workflow_status);
 }
 
 /** @deprecated A row at/after the RECEIVED coarse stage. Prefer {@link railCoarseStatus}. */
@@ -129,10 +136,16 @@ export function getReceivingStatusDotTip(
   row: ReceivingLineRow,
   inventoryProviderLabel: string,
 ): string | null {
-  return receivingCoarseUnboxedSyncTooltip({
-    coarse: railCoarseStatus(row),
+  const coarse = railCoarseStatus(row);
+  const unboxedTip = receivingCoarseUnboxedSyncTooltip({
+    coarse,
     inventoryProviderLabel,
   });
+  if (unboxedTip) return unboxedTip;
+  if (coarse === 'RECEIVED' && providerReceiveStillOpen(row)) {
+    return receivingProviderPendingTooltip(inventoryProviderLabel);
+  }
+  return null;
 }
 
 /** One-shot coarse paint for Unbox / Receiving History status cells. */

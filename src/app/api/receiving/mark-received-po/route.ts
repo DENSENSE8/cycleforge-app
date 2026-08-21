@@ -602,15 +602,14 @@ export const POST = withAuth(async (request, ctx) => {
         disposition_code: dispositionCode,
         condition_grade: conditionGrade,
         notes,
-        // Zoho-linked receive parks at UNBOXED until after() confirms the
-        // purchase receive. Inventory is currently SoT for Received. Unfound
-        // cartons are forced local_receive after the carton load and the
-        // batch DONE below promotes them. scan_only keeps MATCHED.
+        // Local receive commits DONE on this request. The provider push in
+        // after() is a second write — success stamps zoho_purchase_receive_id,
+        // failure must not rewind the staff face (Unbox recent rail reads
+        // coarse RECEIVED from workflow_status DONE, not from Zoho).
+        // Unfound cartons already use local_receive → DONE. scan_only keeps MATCHED.
         set_workflow_status: skipZohoReceive
           ? 'MATCHED'
-          : localReceive
-            ? 'DONE'
-            : 'UNBOXED',
+          : 'DONE',
         // A real receive must not downgrade a line already unboxed at first scan;
         // scan_only ("Mark as scanned") leaves this false so its revert still works.
         advanceOnly: !skipZohoReceive,
@@ -1214,10 +1213,10 @@ export const POST = withAuth(async (request, ctx) => {
         console.warn('mark-received-po: Zoho receive background failed', err);
       }
 
-      // Inventory SoT: promote Zoho-linked lines UNBOXED → DONE only when the
-      // purchase receive succeeded (or Zoho was already received/terminal).
-      // Replay on already-DONE lines that failed yesterday: rewind to UNBOXED
-      // so the website does not keep showing Received.
+      // Local SoT: every Zoho-linked line in this receive lands DONE. Provider
+      // settled → stamp the purchase-receive id. Provider failed → leave DONE
+      // and publish the failed verdict. Never rewind to UNBOXED (that is what
+      // kept PO 06-14980-30824 purple on the recent rail after Receive).
       if (!skipZohoReceive && !isUnreceive && !localReceive) {
         const linkedAt = formatPSTTimestamp();
         const succeededIds: number[] = [];
@@ -1305,25 +1304,31 @@ export const POST = withAuth(async (request, ctx) => {
           }
         }
         if (failedIds.length > 0) {
-          await withTenantTransaction(ctx.organizationId, async (client) => {
-            for (const id of failedIds) {
-              await transitionReceivingLine(
+          logger.warn(
+            { lineIds: failedIds },
+            'mark-received-po: provider receive failed — local DONE kept; staff rail stays Received',
+          );
+          for (const l of updatedLines) {
+            if (failedIds.includes(l.id) && !localPromoted.has(l.id)) {
+              // Promote locally even when the provider call failed, so a line
+              // that parked at UNBOXED on an older build still leaves the
+              // Unboxed group without a second Receive click.
+              const promoted = await transitionReceivingLine(
                 {
-                  receivingLineId: id,
-                  to: 'UNBOXED',
+                  receivingLineId: l.id,
+                  to: 'DONE',
                   actorStaffId: staffId,
                   station,
                   skipEvent: true,
                 },
-                client,
+                undefined,
                 ctx.organizationId,
               );
+              if (promoted.ok) {
+                localPromoted.add(l.id);
+                l.workflow_status = 'DONE';
+              }
             }
-          }).catch((err) => {
-            console.warn('mark-received-po: rewind DONE→UNBOXED after Zoho fail failed', err);
-          });
-          for (const l of updatedLines) {
-            if (failedIds.includes(l.id)) l.workflow_status = 'UNBOXED';
           }
         }
       }
