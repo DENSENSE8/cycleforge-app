@@ -100,9 +100,10 @@ import {
  *            ({@link STATION_IDENTITY_LEAD_DIVIDER_CLASS}) — the one rule the
  *            bar draws at rest, because leaving this carton is a different
  *            KIND of thing from the facts about it.
- *   Left — identity: order# · lifecycle · tracking#. Status is a NAMED cell —
- *            stage dot + word in default ink, the same face as a classify pill
- *            — and it follows the identifier it qualifies.
+ *   Left — identity: order# · lifecycle · tracking#. Status is the stage DOT
+ *            alone — no word, at any width; the name lives on the accessible
+ *            name and the hover panel — and it follows the identifier it
+ *            qualifies.
  *   Middle — classify: priority · platform · type, absolutely centered
  *            in the bar. Each wears its catalog identity dot + name. Collapses
  *            to dots only when those labels would touch identity or actions.
@@ -540,26 +541,28 @@ export function CartonContextCard({
   ) : null;
 
   /**
-   * Lifecycle status — the dot KEEPS ITS NAME, and now opens a panel.
+   * Lifecycle status — the dot alone, at the END of the identity run.
    *
-   * It was a bare 8px dot wedged between the back chevron and the order #: the
-   * only mark on the strip with no word attached, sitting where the eye reads
-   * navigation. An operator could not name the state without hovering, and a
-   * colour alone cannot be read by everyone who works this bench.
+   * It was once a bare dot wedged between the back chevron and the order #, and
+   * the fix for that was read as "give it a word". It was not: the defect was
+   * that a derived FACT sat where the eye reads NAVIGATION, and relocating it
+   * to the last slot of the identity run — after tracking, before the middle
+   * cluster's classifications — is what resolved it. The word came along for
+   * the ride and cost ~70px of a strip under constant width pressure, to
+   * restate the one thing an operator at this bench already knows.
    *
-   * It now sits at the END of the identity run, immediately right of tracking —
-   * the last fact about the carton, before the middle cluster's
-   * classifications — and wears the classify-pill anatomy: stage dot + name in
-   * default ink. Face and menu live in {@link StationContextLifecycleCell};
-   * the verbs behind it are declared in `carton-bar-menu-rows.ts`, which
-   * records why Receive / Unreceive stay on the Unbox dock.
+   * So the placement stays and the word goes. The name survives as the
+   * accessible name and in the hover panel; the cost is a sighted operator who
+   * cannot separate the stage hues, which is why neither of those may be
+   * dropped. Face and menu: {@link StationContextLifecycleCell}. The verbs are
+   * declared in `carton-bar-menu-rows.ts`, which records why Receive /
+   * Unreceive stay on the Unbox dock.
    */
   const statusBadge = lifecycle ? (
     <StationContextLifecycleCell
       label={lifecycle.label}
       dotClass={lifecycle.dotClass}
       tip={lifecycle.tip}
-      compact={classifyCompact}
       onOpenHistory={onOpenHistory}
     />
   ) : null;

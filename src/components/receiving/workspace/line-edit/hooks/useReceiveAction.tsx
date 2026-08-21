@@ -100,17 +100,6 @@ export type ReceiveResult =
       lineIds: number[];
       /** Watch the realtime `zohoReceive` verdict to confirm/flip on failure. */
       reconcile: boolean;
-      /**
-       * Force the reconcile verdict instead of waiting on the station channel.
-       *
-       * A real receive NEVER sets this — it is written only by the bench
-       * tester (`RECEIVE_FEEDBACK_SCENARIOS`), because `confirmed` and the
-       * background-`failed` flip are otherwise unreachable without a live Zoho
-       * round trip or a 45-second wait. When present the panel skips the Ably
-       * subscription AND the timeout entirely, so a fixture can never leave a
-       * subscription running against a scenario that has no real lines.
-       */
-      demoStatus?: 'pending' | 'confirmed' | 'skipped' | 'failed';
       /** Raw API response — surfaced in the success card's details dropdown. */
       response: ReceiveResponseRecord;
     }

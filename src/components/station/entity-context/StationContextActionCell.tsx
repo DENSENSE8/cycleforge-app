@@ -18,7 +18,6 @@ import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 import {
   STATION_CHROME_CELL_CLASS,
-  STATION_CHROME_CELL_INK,
   STATION_CHROME_CELL_LABEL,
   STATION_CHROME_CELL_PAD,
   STATION_CHROME_GLYPH_CLASS,
@@ -164,10 +163,22 @@ export function StationContextListingCell({
 /**
  * Lifecycle status cell — the carton's coarse stage, with a hover panel.
  *
- * Face: the stage's own dot + its NAME in default ink, the same anatomy every
- * classify pill wears. Colour lives on the mark, never on the label
- * ({@link STATION_CHROME_CELL_TEXT}). `compact` (the bar's collision measure)
- * drops to the dot alone so status and the classify pills degrade together.
+ * Face: the stage's own dot, ALONE. No word, at any width.
+ *
+ * This reverses the 2026-08 ruling that put the name back (see the call site's
+ * note). That ruling was right about the mark it replaced — a bare 8px dot
+ * wedged between the back chevron and the order #, where the eye reads
+ * navigation — but it fixed the wrong half. The dot's problem was its
+ * PLACEMENT, not its wordlessness, and moving it to the end of the identity run
+ * is what actually solved it. Carrying the word along too spent ~70px of a
+ * strip that is under constant width pressure restating what the operator at
+ * this bench already knows: a carton on the Unbox bar is Received.
+ *
+ * The name is not lost, it is demoted: `aria-label` carries `Status: {label}`
+ * so assistive tech reads the state outright, and the hover panel names it for
+ * anyone who wants it. What a sighted operator who cannot separate the stage
+ * hues loses is the at-a-glance read — that is the real cost of this change,
+ * and it is the reason the accessible name and the panel both have to stay.
  *
  * The panel is {@link ChipHoverMenuSurface} on {@link useHoverSurface} — the
  * one mechanism and one anchoring every carton-bar menu uses. Its rows come
@@ -185,14 +196,13 @@ export function StationContextLifecycleCell({
   label,
   dotClass,
   tip,
-  compact = false,
   onOpenHistory,
 }: {
+  /** Never painted. Carries the accessible name and the panel's verbs. */
   label: string;
   dotClass: string;
   /** Provider-sync sentence for the awaiting-confirmation stage, if any. */
   tip?: string | null;
-  compact?: boolean;
   onOpenHistory?: () => void;
 }) {
   const hostRef = useRef<HTMLDivElement | null>(null);
@@ -240,13 +250,11 @@ export function StationContextLifecycleCell({
           focusRing('control', 'accent'),
           STATION_CHROME_CELL_CLASS,
           STATION_CHROME_CELL_PAD,
-          !compact && ['gap-1.5', STATION_CHROME_CELL_LABEL, STATION_CHROME_CELL_INK],
         )}
         data-testid="carton-context-lifecycle"
-        data-face={compact ? 'dot' : 'label'}
+        data-face="dot"
       >
         <span className={cn('h-2 w-2 shrink-0 rounded-full', dotClass)} aria-hidden />
-        {compact ? null : <span className="leading-none">{label}</span>}
       </button>
       <ChipHoverMenuSurface
         open={hover.isOpen}

@@ -99,9 +99,8 @@ const LISTING_EDITOR_ACTIONS =
  * the compose fields (`px-0` by contract) start at the column edge, a third
  * left rail under the two the row and combo already share.
  *
- * The CREATE editor takes the same rail: it lands in the same list, under the
- * same combo, so a second left edge there reads as a different surface rather
- * than the next row.
+ * The CREATE editor does NOT take it: it is a compose dock, not a row, so it
+ * runs edge to edge and its Save fills the width.
  */
 const LISTING_ROW_EDITOR_RAIL = 'px-11 pb-2';
 
@@ -488,7 +487,11 @@ export function ListingLinksTab({
 
             {store.supported && draft ? (
               <ListingLinkEditor
-                className={LISTING_ROW_EDITOR_RAIL}
+                // The CREATE editor is full-bleed: it is a compose dock, not a
+                // row, so its fields run edge to edge and its Save fills the
+                // width. Only the editor opened FROM a row takes that row's
+                // rail ({@link LISTING_ROW_EDITOR_RAIL}).
+                className="pb-2"
                 name={draft.label}
                 href={draft.href}
                 onNameChange={(v) => setDraft({ ...draft, label: v })}
