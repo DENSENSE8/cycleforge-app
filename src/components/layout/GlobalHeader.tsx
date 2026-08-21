@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation';
 import { useHeader } from '@/contexts/HeaderContext';
 import { useAuth, isClientPublicPath } from '@/contexts/AuthContext';
 import { GlobalHeaderActions } from './GlobalHeaderActions';
+import { GlobalScanDock } from './GlobalScanDock';
 import { HeaderPageSwitcher } from './HeaderPageSwitcher';
 import { HeaderPinsSwitcher } from './HeaderPinsSwitcher';
 import { HeaderRecentsSwitcher } from './HeaderRecentsSwitcher';
@@ -29,6 +30,11 @@ import { cn } from '@/utils/_cn';
  *     {@link APP_SIDEBAR_NAV} fallback) / `useQuickAccess` — never a sidebar
  *     pill twin or avatar pin list. **Never** goal / inbox / search / assistant
  *     here.
+ *   - **Scan** — {@link GlobalScanDock}: the persistent station scan input.
+ *     Renders only when a surface published a policy (`useScanDock`). It is a
+ *     zone of its own and NOT part of `panelContent` on purpose: `panelContent`
+ *     is republished by each page, which is exactly the per-route churn the
+ *     dock exists to escape.
  *   - **Context** — page `panelContent` via {@link useHeader}
  *   - **Actions** — {@link GlobalHeaderActions}: search · pace-and-next
  *     ({@link HeaderGoalChip}) · inbox · assistant (far-right)
@@ -87,6 +93,8 @@ export function GlobalHeader({
         <HeaderRecentsSwitcher />
         <HeaderPageSwitcher />
       </div>
+
+      <GlobalScanDock />
 
       <div className="flex min-w-0 flex-1 items-center">{panelContent}</div>
 
