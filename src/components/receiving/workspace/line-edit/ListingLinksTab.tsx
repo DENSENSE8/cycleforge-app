@@ -328,7 +328,7 @@ export function ListingLinksTab({
             <SearchableSelectField
               value={selected?.href ?? null}
               onChange={(v) => setSelectedHref(typeof v === 'string' ? v : null)}
-              options={links.map((l) => ({ value: l.href, label: l.name, meta: hostOf(l.href) }))}
+              options={links.map((l) => ({ value: l.href, label: l.name }))}
               appearance="flush"
               placeholder={store.loading ? 'Loading links…' : 'No listing links'}
               searchPlaceholder="Filter listings…"
@@ -507,8 +507,10 @@ function ListingLinkRow({
           )}
           aria-pressed={selected}
         >
+          {/* The NAME is the whole row. Where the link points is already on the
+              carton context bar, and repeating the host under every row spent a
+              second line on a fact the operator did not ask this list for. */}
           <span className="w-full truncate text-role-caption font-semibold text-text-default">{link.name}</span>
-          <span className="w-full truncate font-mono text-role-micro text-text-muted">{hostOf(link.href)}</span>
         </button>
 
         {row || onPromote ? (
