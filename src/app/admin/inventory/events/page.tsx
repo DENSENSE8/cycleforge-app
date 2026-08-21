@@ -1,5 +1,6 @@
 import { requirePermission } from '@/lib/auth/page-guard';
-import { queryRaw } from '@/lib/neon-client';
+import { tenantQuery } from '@/lib/tenancy/db';
+import type { OrgId } from '@/lib/tenancy/constants';
 import Link from 'next/link';
 import { PageHeader } from '@/components/ui/pane-header';
 import { Button } from '@/design-system/primitives';
@@ -27,6 +28,14 @@ export const dynamic = 'force-dynamic';
  *
  * Filters round-trip via a single <form> using GET so deep-link sharing
  * just works.
+ *
+ * Tenant scoping: every read goes through `tenantQuery(orgId, …)` with an
+ * explicit `organization_id` predicate, and `orgId` comes from the auth ctx
+ * (`requirePermission` → `user.organizationId`) — never from a query param.
+ * None of these filters is org-bearing (event type, station, SKU, unit id and
+ * staff id all collide across tenants), so a bare owner-pool read returned
+ * every tenant's event log to any authenticated admin — RLS does not bite on
+ * the owner pool. That was live here for both loaders until 2026-08-21.
  */
 
 const PAGE_SIZE = 100;
@@ -62,11 +71,17 @@ interface EventRow {
 
 interface StaffOption { id: number; name: string }
 
-async function loadStaff(): Promise<StaffOption[]> {
+async function loadStaff(orgId: OrgId): Promise<StaffOption[]> {
   try {
-    return await queryRaw<StaffOption>(
-      `SELECT id, name FROM staff WHERE active = true ORDER BY name ASC`,
+    const r = await tenantQuery<StaffOption>(
+      orgId,
+      `SELECT id, name
+         FROM staff
+        WHERE active = true AND organization_id = $1
+        ORDER BY name ASC`,
+      [orgId],
     );
+    return r.rows;
   } catch {
     return [];
   }
@@ -81,9 +96,12 @@ async function loadEvents(opts: {
   since: string | null;
   until: string | null;
   page: number;
+  orgId: OrgId;
 }): Promise<{ rows: EventRow[]; total: number }> {
-  const filters: string[] = [];
-  const params: unknown[] = [];
+  // The org predicate is always $1 — it is not optional, so it seeds both the
+  // filter list and the param list before any user-supplied filter is appended.
+  const filters: string[] = ['ie.organization_id = $1'];
+  const params: unknown[] = [opts.orgId];
 
   if (opts.eventType) {
     params.push(opts.eventType);
@@ -113,13 +131,13 @@ async function loadEvents(opts: {
     params.push(opts.until);
     filters.push(`ie.occurred_at < ($${params.length}::date + INTERVAL '1 day')`);
   }
-  const whereSql = filters.length > 0 ? `WHERE ${filters.join(' AND ')}` : '';
+  const whereSql = `WHERE ${filters.join(' AND ')}`;
 
   try {
     const countSql = `SELECT COUNT(*)::int AS n FROM inventory_events ie ${whereSql}`;
     const countParams = [...params];
-    const countRes = await queryRaw<{ n: number }>(countSql, countParams);
-    const total = countRes[0]?.n ?? 0;
+    const countRes = await tenantQuery<{ n: number }>(opts.orgId, countSql, countParams);
+    const total = countRes.rows[0]?.n ?? 0;
 
     params.push(PAGE_SIZE);
     params.push(opts.page * PAGE_SIZE);
@@ -133,14 +151,14 @@ async function loadEvents(opts: {
              ie.bin_id, l.name AS bin_name,
              ie.notes, ie.client_event_id
         FROM inventory_events ie
-        LEFT JOIN staff s ON s.id = ie.actor_staff_id
-        LEFT JOIN locations l ON l.id = ie.bin_id
+        LEFT JOIN staff s ON s.id = ie.actor_staff_id AND s.organization_id = $1
+        LEFT JOIN locations l ON l.id = ie.bin_id AND l.organization_id = $1
         ${whereSql}
        ORDER BY ie.occurred_at DESC, ie.id DESC
        LIMIT $${params.length - 1} OFFSET $${params.length}
     `;
-    const rows = await queryRaw<EventRow>(rowsSql, params);
-    return { rows, total };
+    const r = await tenantQuery<EventRow>(opts.orgId, rowsSql, params);
+    return { rows: r.rows, total };
   } catch {
     return { rows: [], total: 0 };
   }
@@ -185,7 +203,8 @@ export default async function EventsExplorerPage({
     page?: string;
   }>;
 }) {
-  await requirePermission('admin.view', { enforce: true });
+  const user = await requirePermission('admin.view', { enforce: true });
+  const orgId = user.organizationId;
 
   const params = await searchParams;
   const eventType = EVENT_TYPES.includes(params.event_type as (typeof EVENT_TYPES)[number])
@@ -200,8 +219,8 @@ export default async function EventsExplorerPage({
   const page = Math.max(0, parseInteger(params.page) ?? 0);
 
   const [staff, { rows, total }] = await Promise.all([
-    loadStaff(),
-    loadEvents({ eventType, station, sku, unitId, actorId, since, until, page }),
+    loadStaff(orgId),
+    loadEvents({ eventType, station, sku, unitId, actorId, since, until, page, orgId }),
   ]);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
