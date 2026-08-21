@@ -145,16 +145,13 @@ describe('right-rail inspector header', () => {
     assert.match(sot, /closeAndCachePanel/);
   });
 
-  it('ShippedDetailsPanel composes DeskRailChromeRow + Unbox index→leaf shell', () => {
+  it('ShippedDetailsPanel composes DeskInspectorIndexShell (Unbox index→leaf)', () => {
     const panel = code(read('src/components/shipped/ShippedDetailsPanel.tsx'));
-    assert.match(
-      panel,
-      /DeskRailChromeRow/,
-      'chrome Row 1 must compose DeskRailChromeRow (top-left →|)',
-    );
+    // Cursor rides the shell's ONE band — no stacked DeskRailChromeRow.
     assert.match(panel, /DeskInspectorIndexShell/);
     assert.match(panel, /buildOrderInspectorLeaves/);
     assert.match(panel, /orderInspectorOrderUpdateActions/);
+    assert.doesNotMatch(panel, /DeskRailChromeRow/);
     assert.doesNotMatch(panel, /SectionTabsSlider/);
     assert.doesNotMatch(panel, /density=["']icon["']/);
     assert.doesNotMatch(panel, /RecordPaneHeader/);

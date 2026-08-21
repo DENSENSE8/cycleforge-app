@@ -1,9 +1,9 @@
 {
   "version": 1,
   "generatedAt": "2026-08-21T01:05:42Z",
-  "totalRoutes": 961,
+  "totalRoutes": 960,
   "summary": {
-    "permissionGated": 821,
+    "permissionGated": 820,
     "authenticatedNoPermission": 51,
     "anonymousIntentional": 87,
     "serviceToService": 2,
@@ -595,16 +595,6 @@
       ],
       "gate": "withAuth",
       "permission": "dashboard.view",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/ai/retrieve/route.ts",
-      "methods": [
-        "GET",
-        "POST"
-      ],
-      "gate": "withAuth",
-      "permission": "ai.search",
       "exemptReason": null
     },
     {

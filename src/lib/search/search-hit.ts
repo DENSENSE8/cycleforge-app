@@ -1,6 +1,6 @@
 /**
  * SearchHit — the single tool-calling-friendly result shape every AI-search
- * consumer (CommandBar, /api/ai/retrieve, chat tools, future agents) renders.
+ * consumer (CommandBar, global-search, chat tools, future agents) renders.
  *
  * STRICT SUPERSET of global-search's SearchResult
  * (`{ id, entityType, title, subtitle, href, matchField }`) so CommandBar and

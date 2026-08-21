@@ -63,7 +63,7 @@
  * - **Color comes from `baseColors`, never a literal.** Each dot wears one of
  *   six pastel base tokens (`PASTEL_PALETTE`) and deepens within its own family.
  * - **The plane is white in every theme.** Not `bg-surface-canvas`, not
- *   `--ds-color-background-surface` — a fixed `bg-white`, by operator ruling
+ *   `--ds-color-background-surface` — a fixed white utility, by operator ruling
  *   2026-08-21. This is the one place the field steps outside the theme layer,
  *   which is also why its palette is base rather than semantic: pastels tuned
  *   for white would be wrong over a dark plane, so the plane is pinned instead
@@ -428,6 +428,7 @@ export function UniversalLoader({
         {showField ? (
           <div
             className={cn(
+              // ds-allow-raw-neutral: loader field is pinned white in every theme (operator 2026-08-21)
               'absolute inset-0 z-0 overflow-hidden bg-white transition-opacity',
               visible ? 'opacity-100' : 'opacity-0',
               blockInteraction && visible ? 'pointer-events-auto' : 'pointer-events-none',

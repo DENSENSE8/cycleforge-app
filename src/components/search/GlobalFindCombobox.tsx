@@ -47,7 +47,6 @@ import {
   groupHitsForPreview,
   flattenPreviewGroups,
 } from '@/components/search/search-tabs';
-import { useAiQuickJump } from '@/hooks/useAiQuickJump';
 import { GLOBAL_SEARCH_FOCUS_EVENT } from '@/lib/global-search-focus';
 import {
   clearGlobalHeaderSearchDraft,
@@ -73,6 +72,9 @@ import {
 
 /** Expanded search field width — shrink-0 so header siblings cannot crush it. */
 const GLOBAL_FIND_FIELD_WIDTH = 'w-[24rem] shrink-0';
+
+/** Free-text typeahead wait — identifiers fire immediately (0ms). */
+const NL_DEBOUNCE_MS = 80;
 
 /**
  * The listbox id. A module constant rather than a prop: there is exactly one
@@ -142,8 +144,8 @@ export function GlobalFindCombobox({
   const [focused, setFocused] = useState(false);
   const [hoverHeld, setHoverHeld] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
-  const [classicHits, setClassicHits] = useState<AiSearchHit[]>([]);
-  const [classicSearching, setClassicSearching] = useState(false);
+  const [previewHits, setPreviewHits] = useState<AiSearchHit[]>([]);
+  const [previewSearching, setPreviewSearching] = useState(false);
   const [resolvePending, setResolvePending] = useState(false);
   const showPendingBar = pending || resolvePending;
 
@@ -153,39 +155,37 @@ export function GlobalFindCombobox({
   const blurTimerRef = useRef<number>();
   const collapseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hoverLeaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const classicAbortRef = useRef<AbortController | null>(null);
-  const classicDebounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const searchAbortRef = useRef<AbortController | null>(null);
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout>>();
   const queryRef = useRef(query);
   queryRef.current = query;
 
   const trimmedQuery = query.trim();
   const hasValue = trimmedQuery.length > 0;
   // Identifiers (serials, tracking, order #) get the same preview dropdown as
-  // NL — hits or “No matches…”. Enter still prefers resolveSearchOrder for
-  // order/tracking fast-open; miss re-focuses so this dropdown stays open.
-  const showPreview = expanded && focused && trimmedQuery.length >= 2;
+  // free text — hits or “No matches…”. Enter still prefers resolveSearchOrder
+  // for order/tracking fast-open; miss re-focuses so this dropdown stays open.
+  const hasPreviewQuery = expanded && focused && trimmedQuery.length >= 2;
 
-  const aiQuickJump = useAiQuickJump(trimmedQuery, {
-    pageContext: pathname,
-    limit: 6,
-    enabled: showPreview,
-  });
-
+  // Classic cross-entity find only — GET /api/global-search. Keep last hits
+  // while the next request is in flight; clear only when the query drops
+  // below 2 chars. Identifiers fire immediately; NL waits a short trail.
   useEffect(() => {
-    if (!showPreview || aiQuickJump.aiEnabled) {
-      classicAbortRef.current?.abort();
-      setClassicHits([]);
-      setClassicSearching(false);
+    if (!hasPreviewQuery) {
+      searchAbortRef.current?.abort();
+      clearTimeout(searchDebounceRef.current);
+      setPreviewHits([]);
+      setPreviewSearching(false);
       return;
     }
-    classicAbortRef.current?.abort();
-    setClassicHits([]);
-    setClassicSearching(true);
-    clearTimeout(classicDebounceRef.current);
-    classicDebounceRef.current = setTimeout(async () => {
-      classicAbortRef.current?.abort();
+    searchAbortRef.current?.abort();
+    setPreviewSearching(true);
+    clearTimeout(searchDebounceRef.current);
+    const waitMs = looksLikeIdentifier(trimmedQuery) ? 0 : NL_DEBOUNCE_MS;
+    searchDebounceRef.current = setTimeout(async () => {
+      searchAbortRef.current?.abort();
       const controller = new AbortController();
-      classicAbortRef.current = controller;
+      searchAbortRef.current = controller;
       try {
         const res = await fetch(
           `/api/global-search?q=${encodeURIComponent(trimmedQuery)}&limit=6`,
@@ -194,18 +194,18 @@ export function GlobalFindCombobox({
         if (!res.ok) throw new Error('Search failed');
         const data = await res.json();
         if (!controller.signal.aborted) {
-          setClassicHits((data.rows ?? []) as AiSearchHit[]);
-          setClassicSearching(false);
+          setPreviewHits((data.rows ?? []) as AiSearchHit[]);
+          setPreviewSearching(false);
         }
       } catch {
         if (!controller.signal.aborted) {
-          setClassicHits([]);
-          setClassicSearching(false);
+          setPreviewHits([]);
+          setPreviewSearching(false);
         }
       }
-    }, 250);
-    return () => clearTimeout(classicDebounceRef.current);
-  }, [trimmedQuery, showPreview, aiQuickJump.aiEnabled]);
+    }, waitMs);
+    return () => clearTimeout(searchDebounceRef.current);
+  }, [trimmedQuery, hasPreviewQuery]);
 
   useEffect(() => {
     if (!syncAssistantDraft) return;
@@ -329,8 +329,6 @@ export function GlobalFindCombobox({
     inputRef.current?.focus();
   }, [setQuery]);
 
-  const previewHits = aiQuickJump.aiEnabled ? aiQuickJump.hits : classicHits;
-  const previewSearching = aiQuickJump.aiEnabled ? aiQuickJump.searching : classicSearching;
   const previewGroups = useMemo(() => groupHitsForPreview(previewHits), [previewHits]);
   const flatPreviewHits = useMemo(() => flattenPreviewGroups(previewGroups), [previewGroups]);
 
@@ -356,14 +354,16 @@ export function GlobalFindCombobox({
     enableRecents && fieldOpen && emptyQuery && recents.length > 0 && (focused || hoverHeld);
   const showFirstUse =
     enableRecents && fieldOpen && emptyQuery && recents.length === 0 && (focused || hoverHeld);
-  const dropdownOpen = showPreview || showRecents || showFirstUse;
+  // Open preview when there are hits, or when search settled empty. Never open
+  // a loading diary with zero hits — the field spinner is enough.
+  const showPreviewPanel =
+    hasPreviewQuery && (previewHits.length > 0 || !previewSearching);
+  const dropdownOpen = showPreviewPanel || showRecents || showFirstUse;
 
-  const dropdownState: GlobalSearchDropdownState = showPreview
-    ? previewSearching && previewHits.length === 0
-      ? 'loading'
-      : previewHits.length === 0
-        ? 'empty'
-        : 'preview'
+  const dropdownState: GlobalSearchDropdownState = showPreviewPanel
+    ? previewHits.length === 0
+      ? 'empty'
+      : 'preview'
     : showRecents
       ? 'recents'
       : 'first-use';
@@ -600,9 +600,8 @@ export function GlobalFindCombobox({
         onSearch={handleSearchSubmit}
         onClear={handleClear}
         placeholder="Order, serial, tracking…"
-        // 0 = track keystrokes straight into `query`. The RETRIEVE debounce
-        // lives in useAiQuickJump (which also owns abort); a second one here
-        // just stacked ~320ms of dead time in front of every search.
+        // 0 = track keystrokes straight into `query`. The typeahead debounce
+        // (0ms identifier / 80ms NL) lives in the fetch effect above.
         debounceMs={0}
         isSearching={previewSearching}
         tone="neutral"
@@ -624,14 +623,6 @@ export function GlobalFindCombobox({
         query={trimmedQuery}
         recents={recents}
         previewGroups={previewGroups}
-        trace={{
-          // The classic arm has no sub-phases, so it reports the open request
-          // directly; only the AI arm distinguishes debounce from retrieve.
-          phase: aiQuickJump.aiEnabled ? aiQuickJump.phase : 'retrieving',
-          arm: aiQuickJump.aiEnabled ? 'ai' : 'classic',
-          identifier: looksLikeIdentifier(trimmedQuery),
-          pageContext: pathname,
-        }}
         onClose={() => setFocused(false)}
         onHoverStart={holdHover}
         onHoverEnd={() => {

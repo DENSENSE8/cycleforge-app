@@ -213,12 +213,6 @@ export const FLAG_LIFECYCLE: Readonly<Record<string, FlagLifecycle>> = {
     area: 'orders/signals',
     disposition: { kind: 'undecided' },
   },
-  isAiSearchCommandbar: {
-    env: 'AI_SEARCH_COMMANDBAR',
-    bornAt: '2026-07-04',
-    area: 'search',
-    disposition: { kind: 'undecided' },
-  },
   isSurfaceComposedRender: {
     env: 'SURFACE_COMPOSED_RENDER',
     bornAt: '2026-07-05',

@@ -2,10 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { motion } from '@/design-system/motion';
-import { usePathname } from 'next/navigation';
 import { useDebounce } from '@/hooks';
-import { useAiQuickJump } from '@/hooks/useAiQuickJump';
-import { AiQuickJumpResults } from '@/components/search/AiQuickJumpResults';
 import { useInventorySearch, type InventoryResultRow } from '@/hooks/useInventorySearch';
 import { useInventoryUrlState } from '@/components/inventory/useInventoryUrlState';
 import { pushSearchRecent } from '@/lib/search/search-recents';
@@ -120,14 +117,6 @@ export function InventorySidebar({ embedded = true }: InventorySidebarProps) {
         field,
         buckets,
     });
-
-    // AI quick-jump (AI search Phase 2): cross-entity hybrid hits alongside
-    // the tab search. Flag-gated in the hook — off/no-permission/failed means
-    // zero hits and this sidebar is byte-identical to the classic path.
-    // pageContext ('/inventory…') soft-boosts SERIAL_UNIT + SKU hits without
-    // hiding cross-entity matches (an order id typed here still jumps).
-    const pathname = usePathname();
-    const aiQuickJump = useAiQuickJump(trimmedQuery, { pageContext: pathname, limit: 5 });
 
     // Persist a recent search entry once results resolve for a non-empty query.
     // Recents now live in the unified header store (cf_search_recents_v1).
@@ -291,11 +280,6 @@ export function InventorySidebar({ embedded = true }: InventorySidebarProps) {
                         onBucketsChange={handleBucketsChange}
                         counts={search.counts}
                         onClose={onClose}
-                        // AI-search rollout (plan §8.3 Phase 2): the per-tab
-                        // "Search By" grid collapses behind an Advanced
-                        // disclosure — 'all' is the default and searches every
-                        // field, so nothing is lost. Flag off = grid as-is.
-                        collapseFieldSelector={aiQuickJump.aiEnabled}
                     />
                 ),
             }}
@@ -312,13 +296,6 @@ export function InventorySidebar({ embedded = true }: InventorySidebarProps) {
                 <p className={`${microBadge} text-text-soft px-1`}>
                     {getInventorySearchHelperText(tab, field)}
                 </p>
-                {/* AI quick-jump — cross-entity hybrid hits (nothing when flag off/empty) */}
-                {aiQuickJump.hits.length > 0 && (
-                    <AiQuickJumpResults
-                        hits={aiQuickJump.hits}
-                        className="rounded-xl border border-border-hairline bg-surface-card"
-                    />
-                )}
                 <InventoryResultList
                     rows={search.rows}
                     isFetching={search.isFetching}

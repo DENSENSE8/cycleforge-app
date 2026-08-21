@@ -91,7 +91,7 @@ fields, pick the presentation kind and import from the SoT below (Kinetic Ledger
 | Carton read surface | `/carton/[id]` → `CartonInspector` → `inspection/CartonInspectionPage` + `carton-inspector-model.ts`. Read model + atoms only (D6 / `pattern-evolution.md`). Contents rows compose `ReceivingLineContentsRow` (Zoho thumb). Photos = DispositionBar → `CartonPhotoTriage` + shared viewer. Work escape = one quiet `openInUnboxHref` control — never `"Open in Unbox"` spam on findings/header. IA: disposition header; col1 contents·record; col2 Panel+ReceivingCartonPipeline·findings·activity·history. Linked PO suppresses Unmatched. Not Station column shell — recipe: `display/carton-read.md`. |
 | Order note (annotation on an order) | `order_notes` **only**, via `POST /api/orders/[id]/notes` (`src/lib/orders/order-notes.ts` + `useOrderNotes` / `OrderNotesTrail`). The scalar `orders.notes` is **read-only legacy** — displayed, searched, counted, never written by the product. |
 | Receiving note vs label text (**per line item**) | `receiving_line.notes` = operator item note · `receiving_line.label_note` = durable printed face center · `receiving_line.zoho_notes` = Zoho line description · `receiving.zoho_notes` / `support_notes` = PO-header / carton. **Unbox overview:** dock draft live-drives the carton sticker center (preview + Print · Receive); dock save still patches `notes` only; carton print stamps `label_note`. Label editor still owns durable `label_note` edits. |
-| Received / Qty surfaces (**Unboxed ≠ Received**) | Rail Received meter: `inventoryReceivedDisplayQty` / `RAIL_QTY` (`rail/quantity.tsx`). Qty tips: `floorQtyFractionTip` (verb **counted**, never "received"). Status dots: `getStatusDotBg` — emerald from stage only, not qty-complete. Triage read-only qty: `ScannedBadge` (not `ProgressBadge`).— see **Unboxed ≠ Received** below |
+| Received / Qty surfaces | Rail meter: local `quantity_received` via `inventoryReceivedDisplayQty` / `RAIL_QTY`. Staff badge: local `workflow_status` via `railCoarseStatus` — Zoho is a tip, not a demotion. Qty tips: `floorQtyFractionTip`. Status dots: `getStatusDotBg`. See **Staff receive vs provider receive** below |
 | Label kind → grain (what the sticker goes on) | `src/lib/print/workspace-label-kinds.ts` — `KIND_META.grain` + `workspaceLabelGrainLabel(kind)` (`PO / carton` · `Per item` · `Container`), carried into every picker by `labelOptionsForSelect`. Never hand-type a kind's name or grain at a call site |
 | Dialog / AlertDialog | `@/design-system/components/Dialog` · `AlertDialog` · `requestConfirm` / `ConfirmDialogHost` — never hand-roll `fixed inset-0` scrims for new modals; station floor confirms stay on `ConfirmSheet` |
 | Switch / Checkbox | `@/design-system/primitives` `Switch` / `Checkbox` |
@@ -2510,38 +2510,20 @@ the two that live closest together were one column until 2026-07-31.
   `tests/e2e/receiving-note-label-grain.spec.ts` (both composers in a browser,
   on the QA org).
 
-## Unboxed ≠ Received (Received noun · Qty tips · status dots)
+## Staff receive vs provider receive
 
-Same English word, two jobs. Floor unit count is not inventory confirmation.
+Local tables are the staff face. Zoho is a second write.
 
 | Operator noun / surface | Means | Source |
 |---|---|---|
-| **Unboxed** | Floor work done; inventory confirm still pending | Coarse `UNBOXED` / `workflow_status`; tip `unboxed-sync-tooltip.ts` |
-| **Received** (rail meter label) | Inventory integration confirmed, or local-only done | `isOperatorReceived` → `inventoryReceivedDisplayQty` |
-| **Qty** (grids · PO-line progress) | Floor units counted | Show floor fraction; tip via `floorQtyFractionTip` (**counted**, never "received") |
-| Status-dot emerald | Terminal Received / Passed | `getStatusDotBg` — stage only; never qty-complete shortcut |
+| **Unboxed** | Opened, receive not committed locally | `workflow_status = UNBOXED` |
+| **Received** (badge + recent rail) | Local `DONE` (or unmatched unboxed) | `railCoarseStatus` / `deriveReceivingLineStatus` |
+| **Qty** on the recent rail | Floor units on the line | `quantity_received` via `inventoryReceivedDisplayQty` — never zeroed because Zoho is still issued |
+| Provider pending | Purchase receive not confirmed | Hover tip only (`unboxed-sync-tooltip.ts`) |
 
-- **Do:** Every UI labeled **Received** (sidebar row qty + hover progress meter) goes
-  through `inventoryReceivedDisplayQty` / `RAIL_QTY.received` (and `unfound`, which
-  shares that gate) in `src/lib/receiving/rail/quantity.tsx`. Feeds compose
-  `RAIL_QTY` via `ReceivingFeedRail`; the popover reads only `getQty(row)`.
-- **Do:** While still Unboxed (not `isOperatorReceived`), paint **`0 / expected`**
-  and an **empty** bar on Received meters — even when `quantity_received` already
-  counts floor units.
-- **Do:** `GridQtyFractionValue` default tip = `floorQtyFractionTip` (counted).
-  Interactive Unbox qty = `ProgressBadge` (counted copy); triage/read-only =
-  `ScannedBadge` (door scan = expected/expected) — never swap them.
-- **Do:** Status-dot emerald only for PASSED / DONE (and terminal dispositions
-  stay rose/purple/slate). UNBOXED at floor 1/1 stays indigo.
-- **Never:** Wire raw `row.quantity_received` into a Received-labeled meter.
-- **Never:** Tip or badge copy that says "received" for floor qty; never paint
-  emerald from qty-complete while still Unboxed.
-- **Never:** "Fix" Unboxed looking complete with blue bars, fill caps, or muted
-  greens while still showing floor `1/1` under Received — change the **number**,
-  not the cosmetics.
--
-  meter) ·
-  (Qty tip · Scanned vs Progress · status-dot).
+- **Do:** `mark-received-po` commits local `DONE` on Receive. A failed provider push must not rewind to `UNBOXED`.
+- **Never:** Demote local `DONE` to Unboxed because `zoho_po_mirror.status` is `issued`.
+- **Never:** Paint the recent-rail meter as `0/1` when `quantity_received` is already 1.
 
 ## Cross-entity urgency (one entry point, binary rung)
 

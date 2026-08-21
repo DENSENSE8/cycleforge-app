@@ -225,8 +225,6 @@ When `dockOwnsCapture`:
 - Content-sized chips / soft pills / `gap-*` air in dead Band-1/2 white.
 - Co-mount Print·Receive with an active step studio.
 - Stamp `arrival_package` from a bench carton/item capture (or the reverse).
-- Paint **Received** from raw `quantity_received` — use `inventoryReceivedDisplayQty`
-  (Unboxed ≠ Received).
 - Fork a second procedure derivation for checklist vs dock.
 
 ---

@@ -96,7 +96,7 @@ export function unitStatusBadgeTone(status: string | null | undefined): string {
  */
 /**
  * Lifecycle status-dot color. Emerald means terminal Received / Passed —
- * never qty-complete alone (Unboxed ≠ Received: UNBOXED at floor 1/1 stays indigo).
+ * never qty-complete alone (UNBOXED stays indigo; DONE / PASSED are emerald).
  *
  * `qtyReceived` / `qtyExpected` are accepted for call-site compatibility but do
  * not drive emerald; stage vocabulary owns the tone.

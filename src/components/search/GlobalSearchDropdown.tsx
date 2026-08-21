@@ -2,17 +2,14 @@
 
 /**
  * GlobalSearchDropdown — find dropdown body (WAI-ARIA combobox) for
- * {@link GlobalFindCombobox} (header chrome + `/search` stage).
+ * {@link GlobalFindCombobox}.
  *
- * Five states, driven by the host (the combobox owns the query + the
+ * Four states, driven by the host (the combobox owns the query + the
  * flattened option list + activeIndex; this component only renders + reports
  * hover):
- *   recents · first-use · preview · loading · empty
+ *   recents · first-use · preview · empty
  *
- * `loading` is a QUERY TRACE, not a skeleton — it states the literal query,
- * how it was classified, which retrieval arm is running, and which step is
- * live. Placeholder bars were removed on purpose: they imply imminent rows and
- * tell an operator nothing while a slow retrieve is open.
+ * Pending is the field spinner — never a query-trace diary panel.
  *
  * The flattened option index model (must match the keyboard nav in the host):
  *   • recents  → option i = recents[i]
@@ -45,7 +42,6 @@ import { elevationClass } from '@/design-system/tokens/shadows';
 import { cn } from '@/utils/_cn';
 import { SearchResultRow } from './SearchResultRow';
 import { SearchRecentsDropdown } from './SearchRecentsDropdown';
-import { SearchQueryTrace, type SearchTracePhase } from './SearchQueryTrace';
 import { usePackPhotoCounts } from '@/hooks/usePackPhotoCounts';
 import type { PreviewGroup } from './search-tabs';
 
@@ -53,7 +49,6 @@ export type GlobalSearchDropdownState =
   | 'recents'
   | 'first-use'
   | 'preview'
-  | 'loading'
   | 'empty';
 
 export interface GlobalSearchDropdownProps {
@@ -77,16 +72,6 @@ export interface GlobalSearchDropdownProps {
    */
   onHoverStart?: () => void;
   onHoverEnd?: () => void;
-  /**
-   * Live retrieval state for the `loading` panel. The dropdown narrates the
-   * query instead of painting a skeleton — see {@link SearchQueryTrace}.
-   */
-  trace?: {
-    phase: SearchTracePhase;
-    arm: 'ai' | 'classic';
-    identifier: boolean;
-    pageContext?: string | null;
-  };
 }
 
 /** Flush header extension — square shell, matched width, soft cast (not glass). */
@@ -121,7 +106,6 @@ export function GlobalSearchDropdown({
   onNavigateHit,
   onHoverStart,
   onHoverEnd,
-  trace,
 }: GlobalSearchDropdownProps) {
   const presence = useMotionPresence(framerPresence.dropdownPanel);
   const transition = useMotionTransition(framerTransition.dropdownOpen);
@@ -217,18 +201,6 @@ export function GlobalSearchDropdown({
                     </section>
                   ))}
                 </>
-              )}
-
-              {state === 'loading' && (
-                <div aria-live="polite">
-                  <SearchQueryTrace
-                    query={query}
-                    phase={trace?.phase ?? 'retrieving'}
-                    arm={trace?.arm ?? 'ai'}
-                    identifier={trace?.identifier ?? false}
-                    pageContext={trace?.pageContext ?? null}
-                  />
-                </div>
               )}
 
               {state === 'empty' && (
