@@ -1,5 +1,5 @@
 import { requirePermission } from '@/lib/auth/page-guard';
-import { queryRaw } from '@/lib/neon-client';
+import { tenantQuery } from '@/lib/tenancy/db';
 import { processReturnsIntake } from '@/lib/inventory/returns';
 import { parseScannedUrl } from '@/lib/scan-resolver';
 import { revalidatePath } from 'next/cache';
@@ -36,19 +36,36 @@ interface RecentReturnRow {
   actor_name: string | null;
 }
 
-async function loadRecentReturns(): Promise<RecentReturnRow[]> {
+/**
+ * Recent RETURNED events for the signed-in operator's tenant.
+ *
+ * `tenantQuery` (app.current_org GUC) AND the explicit `organization_id`
+ * predicates, both: the GUC is the backstop for a forgotten filter, not a
+ * substitute for one — `tenantPool` still aliases the BYPASSRLS owner role, so
+ * today the predicate is the only thing actually isolating this read. The
+ * staff join is narrowed too, so a cross-org `actor_staff_id` yields a NULL
+ * name (LEFT JOIN — the return row itself is never dropped) instead of
+ * leaking another tenant's staff name.
+ */
+async function loadRecentReturns(orgId: string): Promise<RecentReturnRow[]> {
   try {
-    return await queryRaw<RecentReturnRow>(
+    const { rows } = await tenantQuery<RecentReturnRow>(
+      orgId,
       `SELECT ie.id, ie.occurred_at,
               ie.serial_unit_id, ie.sku,
               ie.prev_status, ie.scan_token, ie.notes, ie.payload,
               s.name AS actor_name
          FROM inventory_events ie
-         LEFT JOIN staff s ON s.id = ie.actor_staff_id
+         LEFT JOIN staff s
+           ON s.id = ie.actor_staff_id
+          AND s.organization_id = $1::uuid
         WHERE ie.event_type = 'RETURNED'
+          AND ie.organization_id = $1::uuid
         ORDER BY ie.occurred_at DESC, ie.id DESC
         LIMIT 50`,
+      [orgId],
     );
+    return rows;
   } catch {
     return [];
   }
@@ -56,6 +73,12 @@ async function loadRecentReturns(): Promise<RecentReturnRow[]> {
 
 async function intakeAction(formData: FormData): Promise<void> {
   'use server';
+  // A Server Action is independently POST-able: the `requirePermission` call in
+  // the page component below gates RENDERING, never action invocation. Gate
+  // here — and outside the intake's catch below, so the guard's own redirect
+  // reaches the caller instead of being swallowed as an intake failure.
+  const user = await requirePermission('admin.view', { enforce: true });
+
   const serialsText = String(formData.get('serials') ?? '').trim();
   const tracking = String(formData.get('tracking') ?? '').trim() || null;
   const reason = String(formData.get('reason') ?? '').trim() || null;
@@ -85,25 +108,42 @@ async function intakeAction(formData: FormData): Promise<void> {
     );
   }
 
-  try {
-    const result = await processReturnsIntake({
-      serials: normalizedSerials,
-      serialUnitIds,
-      trackingNumber: tracking,
-      reason,
-      actorStaffId: null,
-    });
-    if (!result.ok) {
-      const missing = [
-        ...(result.missingSerials ?? []),
-        ...(result.missingIds?.map(String) ?? []),
-      ];
-      const detail = missing.length > 0 ? `&missing=${encodeURIComponent(missing.join(','))}` : '';
-      redirect(`/admin/inventory/returns?error=${result.status === 404 ? 'not_found' : 'failed'}${detail}`);
-    }
-  } catch (err) {
+  // The catch is scoped to the intake call itself, and every redirect() below
+  // sits outside it. redirect() signals by THROWING a NEXT_REDIRECT error, so a
+  // bare `catch` around it swallows the redirect: the 404 branch's
+  // `?error=not_found&missing=…` used to throw straight into the catch, get
+  // logged as an intake failure, and land on the generic `?error=failed` — so
+  // the operator never saw which serials failed to resolve, and the UI that
+  // renders that list was unreachable. Narrowing the catch is the fix.
+  const result = await processReturnsIntake({
+    serials: normalizedSerials,
+    serialUnitIds,
+    trackingNumber: tracking,
+    reason,
+    actorStaffId: null,
+    // Required for tenant safety, not just filtering: a non-null org is what
+    // makes processReturnsIntake take the `withTenantTransaction` branch
+    // (app.current_org GUC on an RLS-scoped connection). With it null the
+    // intake runs on the BYPASSRLS owner pool and both org predicates
+    // collapse — the serial resolver matches any tenant's serial_units row
+    // and the order_unit_allocations SHIPPED→RETURNED flip runs unpredicated.
+    organizationId: user.organizationId,
+  }).catch((err: unknown) => {
     console.error('[returns.intake] failed:', err);
+    return null;
+  });
+
+  if (!result) {
     redirect('/admin/inventory/returns?error=failed');
+  }
+
+  if (!result.ok) {
+    const missing = [
+      ...(result.missingSerials ?? []),
+      ...(result.missingIds?.map(String) ?? []),
+    ];
+    const detail = missing.length > 0 ? `&missing=${encodeURIComponent(missing.join(','))}` : '';
+    redirect(`/admin/inventory/returns?error=${result.status === 404 ? 'not_found' : 'failed'}${detail}`);
   }
 
   revalidatePath('/admin/inventory/returns');
@@ -115,13 +155,13 @@ export default async function ReturnsIntakeAdminPage({
 }: {
   searchParams: Promise<{ ok?: string; error?: string; missing?: string }>;
 }) {
-  await requirePermission('admin.view', { enforce: true });
+  const user = await requirePermission('admin.view', { enforce: true });
 
   const params = await searchParams;
   const okFlash = params.ok === '1';
   const errorCode = params.error ?? null;
   const missing = params.missing ?? null;
-  const recent = await loadRecentReturns();
+  const recent = await loadRecentReturns(user.organizationId);
 
   const returnColumns: DataTableColumn<RecentReturnRow>[] = [
     {
