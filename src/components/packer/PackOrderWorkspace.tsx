@@ -12,8 +12,13 @@
  *   pane covers the old one — `mode="wait"` would punch a hole through the host.
  */
 
-import { useRef } from 'react';
-import { AnimatePresence, motion, motionRole, useMotionRole } from '@/design-system/motion';
+import {
+  AnimatePresence,
+  motion,
+  motionRole,
+  useMotionRole,
+  useOverlaySwapHardCut,
+} from '@/design-system/motion';
 import { PackWorkspaceView } from '@/components/packer/PackWorkspaceView';
 import { PackOrderPanel } from '@/components/packer/PackOrderPanel';
 import { PackFbaScanCard } from '@/components/packer/PackFbaScanCard';
@@ -49,9 +54,7 @@ export function PackOrderWorkspace({
   );
   const showOverlay = !!activeOrder || !!activeFba;
 
-  const overlayWasOpenRef = useRef(false);
-  const entitySwapHardCut = showOverlay && overlayWasOpenRef.current;
-  overlayWasOpenRef.current = showOverlay;
+  const entitySwapHardCut = useOverlaySwapHardCut(showOverlay);
 
   const overlayKey = activeFba
     ? `fba-${activeFba.fnsku || activeFba.shipmentRef || 'scan'}`

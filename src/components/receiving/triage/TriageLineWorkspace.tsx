@@ -12,9 +12,14 @@
  *   pane covers the old one — `mode="wait"` would punch a hole through the host.
  */
 
-import { useRef } from 'react';
 import dynamic from 'next/dynamic';
-import { AnimatePresence, motion, motionRole, useMotionRole } from '@/design-system/motion';
+import {
+  AnimatePresence,
+  motion,
+  motionRole,
+  useMotionRole,
+  useOverlaySwapHardCut,
+} from '@/design-system/motion';
 import { TriageWorkspaceSkeleton } from '@/components/receiving/triage/TriageWorkspaceSkeleton';
 
 // Phase 2 (lazy carton graph): `TriageLineWorkspace` is a co-mounted sibling of
@@ -66,9 +71,7 @@ export function TriageLineWorkspace({
   const showScanLoader =
     !!scanInFlight && scanInFlight.surface === 'triage' && !showOverlay;
 
-  const overlayWasOpenRef = useRef(false);
-  const cartonSwapHardCut = showOverlay && overlayWasOpenRef.current;
-  overlayWasOpenRef.current = showOverlay;
+  const cartonSwapHardCut = useOverlaySwapHardCut(showOverlay);
 
   const paneKey = workspace
     ? workspace.scanDriven

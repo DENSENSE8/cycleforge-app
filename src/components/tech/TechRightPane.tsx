@@ -14,8 +14,14 @@
  * (`mode="sync"`) so the host never flashes empty between entities.
  */
 
-import React, { useRef } from 'react';
-import { AnimatePresence, motion, motionRole, useMotionRole } from '@/design-system/motion';
+import React from 'react';
+import {
+  AnimatePresence,
+  motion,
+  motionRole,
+  useMotionRole,
+  useOverlaySwapHardCut,
+} from '@/design-system/motion';
 import { ShippingWorkspaceView } from '@/components/tech/shipping/ShippingWorkspaceView';
 import { ReceivingInboundFeed } from '@/components/station/ReceivingInboundFeed';
 import { ActiveOrderWorkspace } from '@/components/tech/ActiveOrderWorkspace';
@@ -106,9 +112,7 @@ function ShippingOrderWorkspace({
   );
   const showOverlay = !!activeOrderPane || !!previewOrder;
 
-  const overlayWasOpenRef = useRef(false);
-  const entitySwapHardCut = showOverlay && overlayWasOpenRef.current;
-  overlayWasOpenRef.current = showOverlay;
+  const entitySwapHardCut = useOverlaySwapHardCut(showOverlay);
 
   const overlayKey = activeOrderPane
     ? `active-${activeOrderPane.activeOrder.tracking || activeOrderPane.activeOrder.orderId}`

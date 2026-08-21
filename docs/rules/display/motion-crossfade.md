@@ -398,6 +398,19 @@ Carton→carton uses sync + hard cover (see below).
   and paints the overlay shell `bg-surface-canvas` (station fill, not card white).
 - **Browse→first open keeps `mode="wait"` + enter fade.** Do not hard-cut the
   first open or the station→browse close path without re-checking underlay paint.
+- **"Is the overlay already open?" comes from `useOverlaySwapHardCut`
+  (`@/design-system/motion`) — never a ref assigned during render.** One hook
+  answers it for all four station overlays (Unbox, Triage, Packer, Tech), and it
+  commits the previous-open flag in an EFFECT. The four surfaces used to each
+  write `wasOpenRef.current = open` on the line after reading it, which makes the
+  render answer depend on how many times React ran the body: the dev
+  double-invoke re-runs it with the ref already advanced and gets `true` where
+  the first pass got `false`. On `/unbox`, whose overlay server-renders open on
+  cold land, that split was a hydration mismatch on every load — server
+  `z-index: 100`, hydrating client `zIndex: 101`, "won't be patched up". Pinned
+  by `src/design-system/motion/overlay-swap-hard-cut.test.ts` (mounted, incl. a
+  StrictMode pass — the defect lives across renders, so source reading cannot
+  see it).
 - **This is a sibling, not a replacement.** `workbenchPaneSettle` keeps serving
   its six pointer-driven consumers (Review, Outbound, FBA, Packer, Triage, …).
   Do not retune the shared preset for a station's problem.
