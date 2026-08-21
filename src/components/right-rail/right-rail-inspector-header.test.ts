@@ -477,7 +477,11 @@ describe('right-rail inspector header', () => {
     // Ruled 2026-08-19: the dismiss is an `X` in the TRAILING corner, so the
     // leading cell belongs to the occupant's own chrome (Back / ▦ / icons).
     assert.match(host, /<X className/);
-    assert.match(host, /absolute right-2 top-0/);
+    // `right-0`, not `right-2` (2026-08-19, and the anchor says why in-line):
+    // dismiss is thrown at without looking, so the flush corner is an
+    // infinite-width target and 8px of inset turns it back into a 28px one.
+    // The chrome row reserves the cell (`pr-0` + a `w-7` spacer).
+    assert.match(host, /absolute right-0 top-0/);
     assert.match(host, /STATION_CHROME_ROW_FACE/);
     assert.doesNotMatch(
       host,
