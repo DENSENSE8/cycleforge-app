@@ -48,6 +48,12 @@ export type ReceivingGridColumnKey =
   | 'tracking'
   | 'serial'
   | 'zoho'
+  /** Compound (two-row) presentation tracks — see {@link RECEIVING_COMPOUND_COLUMNS}. */
+  | 'thumb'
+  | 'item'
+  | 'fulfillment'
+  | 'state'
+  | 'open'
   | '_fill'
   /** Org-defined custom columns (`custom:<defKey>`). */
   | CustomFieldColumnKey;
@@ -182,6 +188,102 @@ export const RECEIVING_GRID_COLUMNS: readonly ReceivingGridColumn[] = [
   // Trailing filler — geometry only. Absorbs zoom-out / wide-card slack so fact
   // tracks stay content-hard. No label, type, hideKey, or tier: never in Column
   // display; Column discovery stays triage ▦ / header menus.
+  GRID_FILL_COLUMN,
+] as const;
+
+/**
+ * COMPOUND (two-row) Unbox / History columns — the high-density WMS layout.
+ *
+ * A **sibling array, never a filter of {@link RECEIVING_GRID_COLUMNS}** — the
+ * same rule `INCOMING_GRID_COLUMNS` follows above. The two models answer
+ * different questions: the flat one is a spreadsheet (one fact per track, each
+ * independently sortable), this one is a scan list (four compound cells, each
+ * pairing an identifier with its qualifier).
+ *
+ * **The engine is unchanged.** This is only a column model: `LedgerGridSurface`
+ * still owns width, freeze, resize, per-staff visibility and virtualization,
+ * and `ReceivingGridRow` still dispatches per key. Swapping presentation is
+ * therefore a `columns` prop, not a second table component — which is why the
+ * compound layout costs one array and four cell bodies instead of a fork.
+ *
+ * Track budget, and why each is content-hard:
+ *
+ * | track         | width  | carries                                   |
+ * |---------------|--------|-------------------------------------------|
+ * | `select`      | 2rem   | frozen checkbox gutter (shared)           |
+ * | `thumb`       | 4rem   | square photo; sized for the LARGEST thumb |
+ * | `item`        | 18rem  | title / sku · code — the only resizable   |
+ * | `fulfillment` | 11rem  | PO / carrier + tracking                   |
+ * | `state`       | 10rem  | stage pill / stamp · operator             |
+ * | `open`        | 2.5rem | chevron → right rail                      |
+ *
+ * `thumb` is a FIXED 4rem across all three densities on purpose: a track that
+ * resized with the density toggle would reflow every frozen offset
+ * (`gridFrozenLeft` sums preceding frozen widths) on a control that is supposed
+ * to change only row height. The image scales inside a stable track instead.
+ *
+ * Frozen identity pane is `select · thumb` — contiguous-prefix, same law as the
+ * flat model. The thumbnail is the row handle here the way the PO is there.
+ */
+export const RECEIVING_COMPOUND_COLUMNS: readonly ReceivingGridColumn[] = [
+  // HARD RULE — column order is image · ids · title · status. Frozen prefix is
+  // `select · thumb`: the photo is the row handle an operator scans for, so it
+  // stays pinned while everything else h-scrolls.
+  { key: 'select', width: 'minmax(2rem, 2rem)', sortable: false, frozen: true, resizable: false },
+  {
+    key: 'thumb',
+    frozen: true,
+    width: 'minmax(4rem, 4rem)',
+    label: 'Photo',
+    gridLabel: '',
+    align: 'start',
+    sortable: false,
+    resizable: false,
+    labelFitRem: 2,
+  },
+  {
+    key: 'fulfillment',
+    width: 'minmax(11rem, 11rem)',
+    label: 'Fulfillment',
+    gridLabel: 'Order',
+    type: 'id',
+    align: 'start',
+    hideKey: 'tracking',
+    resizable: false,
+    labelFitRem: 5,
+  },
+  {
+    key: 'item',
+    width: 'minmax(18rem, 18rem)',
+    label: 'Item',
+    gridLabel: 'Item',
+    type: 'text',
+    align: 'start',
+    resizable: true,
+    minTrackRem: 10,
+    labelFitRem: 6,
+  },
+  {
+    key: 'state',
+    width: 'minmax(10rem, 10rem)',
+    label: 'Status',
+    gridLabel: 'Status',
+    type: 'tag',
+    align: 'start',
+    hideKey: 'status',
+    resizable: false,
+    labelFitRem: 5,
+  },
+  {
+    key: 'open',
+    width: 'minmax(2.5rem, 2.5rem)',
+    label: 'Open',
+    gridLabel: '',
+    align: 'end',
+    sortable: false,
+    resizable: false,
+    labelFitRem: 2,
+  },
   GRID_FILL_COLUMN,
 ] as const;
 

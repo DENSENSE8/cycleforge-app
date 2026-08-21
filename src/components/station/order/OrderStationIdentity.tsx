@@ -1,25 +1,34 @@
 'use client';
 
 /**
- * Support · Orders adapter for the station entity-context header SoT
- * (`CartonContextCard` via `@/components/station/entity-context`).
+ * `ShippedOrder → CartonContextCard` adapter — the ONE station identity face
+ * for an order, shared by every {@link EntityStationPane} consumer.
  *
- * Maps a ShippedOrder onto the Unbox one-row face (order# · tracking ·
- * classify). Classify is read-only; edits live in the order body / editor dock.
- * Pair host with `placement="flow"` + `reserveIdentityClearance={false}`.
+ * Promoted 2026-08-20 out of `support/orders/SupportOrderIdentity.tsx`; the
+ * mapping was never Support-specific, and `/search?sel=order:` needs the same
+ * face. Maps an order onto the Unbox one-row identity (order# · tracking ·
+ * classify). Classify is read-only here — an order's channel is a fact from the
+ * marketplace, not an operator choice. Pair the host with `placement="flow"` +
+ * `reserveIdentityClearance={false}`.
+ *
+ * The carton header has no read-only twin (root `AGENTS.md`): editability is a
+ * PROP on this one card, never a second component.
  */
 
 import { CartonContextCard } from '@/components/station/entity-context';
 import { getTrackingUrl } from '@/utils/order-links';
 import type { ShippedOrder } from '@/types/orders';
 
-export function SupportOrderIdentity({
+export function OrderStationIdentity({
   order,
   onExitToList,
+  exitLabel = 'Back to orders queue',
 }: {
   order: ShippedOrder;
   /** Identity ◁ — host must clear the focused order (same as Unbox Back to list). */
   onExitToList: () => void;
+  /** What ◁ returns to on this surface ("Back to results" on `/search`). */
+  exitLabel?: string;
 }) {
   const tracking = String(order.shipping_tracking_number || '').trim();
   const orderId = String(order.order_id || '').trim();
@@ -54,7 +63,7 @@ export function SupportOrderIdentity({
       receivingType=""
       onTypeSelect={() => {}}
       onExitToList={onExitToList}
-      exitLabel="Back to orders queue"
+      exitLabel={exitLabel}
     />
   );
 }

@@ -22,7 +22,7 @@ export interface ShippedDetailsSelection {
  *
  * **Stepping is no longer here, and the double-step went with it.** This hook
  * carried a `navigate-shipped-details` listener over `orderedRecords`
- * (`DerivedPackerRecord[]`) while the `OrdersGridHost` this table mounts runs
+ * (`DerivedPackerRecord[]`) while the outbound spreadsheet this table mounts runs
  * `useOrdersQueueSelection`, which listened to the SAME event over the same rows
  * in a different shape (`ShippedOrder[]`). One keypress therefore ran two
  * independent steps on this lane. Both branches are deleted in favour of the one

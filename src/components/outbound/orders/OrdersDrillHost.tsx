@@ -4,7 +4,8 @@
  * To-ship Orders drill — thin adapter over {@link LedgerDrillHost}.
  *
  * Parent map = order groups (the only place multi-line rollups show); child =
- * flat lines for the selected order. List mode is a single flat {@link OrdersGridHost}.
+ * flat lines for the selected order — one {@link NonlinearTableHost} fed by
+ * {@link useOrdersSpreadsheet}, the same engine every outbound lane mounts.
  */
 
 import { useCallback, useMemo, type ReactNode } from 'react';
@@ -18,7 +19,8 @@ import {
   LedgerDrillParentMap,
   type LedgerDrillParentSection,
 } from '@/design-system/components/grid';
-import { OrdersGridHost } from '@/components/dashboard/orders-queue/OrdersGridHost';
+import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
+import { useOrdersSpreadsheet } from '@/components/dashboard/orders-queue/useOrdersSpreadsheet';
 import { useOrdersQueueRows } from '@/components/dashboard/orders-queue/useOrdersQueueRows';
 import { useQueueDisplaySort } from '@/hooks/useQueueDisplaySort';
 import { useDashboardSearchController } from '@/hooks/useDashboardSearchController';
@@ -27,6 +29,10 @@ import { joinStackedIdentityKeys } from '@/components/ui/StackedRowIdentity';
 import { formatDateKeyShort } from '@/utils/date';
 import { deriveFulfillmentState } from '@/lib/unshipped-state';
 import type { ShippedOrder } from '@/types/orders';
+import type {
+  OrdersQueueColumn,
+  OrdersQueueColumnKey,
+} from '@/lib/dashboard-order-row-layout';
 import {
   ORDERS_DRILL_ORDER_PARAM,
   parseOrdersDrillLayout,
@@ -198,21 +204,60 @@ export function OrdersDrillHost({
         />
       }
     >
-      <OrdersGridHost
+      <OrdersDrillLines
         records={selectedChildRecords}
-        loading={false}
-        searchValue={searchQuery}
-        onOpenRecord={(record) => dispatchOpenShippedDetails(record, 'queue')}
+        searchQuery={searchQuery}
         onClearSearch={() => setSearch('')}
-        emptyMessage="No lines in this order."
         selectMode={selectMode}
-        selectionScope={DASHBOARD_ORDERS_SELECTION_SCOPE}
-        railSelection
-        queueMode="fulfillment"
-        ariaLabel="Order lines"
-        data-testid="orders-drill-children"
         columnTriggerPortalTarget={columnTriggerPortalTarget}
       />
     </LedgerDrillHost>
+  );
+}
+
+/**
+ * The drill's child lines grid — the one outbound spreadsheet, mounted straight
+ * onto the engine (no family GridHost).
+ * Plan: `docs/todo/one-table-engine-orders-host-PLAN.md` §5.3.
+ *
+ * Its own component on purpose: {@link LedgerDrillHost} renders `children` only
+ * once a parent is selected (and never on a narrow layout showing the map), so
+ * `useOrdersSpreadsheet` — which publishes a grid-priority record cursor for
+ * `orders-drill-children` — has to stay behind that gate rather than run in the
+ * host body on every render.
+ */
+function OrdersDrillLines({
+  records,
+  searchQuery,
+  onClearSearch,
+  selectMode,
+  columnTriggerPortalTarget,
+}: {
+  records: ShippedOrder[];
+  searchQuery: string;
+  onClearSearch: () => void;
+  selectMode: boolean;
+  columnTriggerPortalTarget: HTMLElement | null;
+}) {
+  const sheet = useOrdersSpreadsheet({
+    records,
+    loading: false,
+    searchValue: searchQuery,
+    onOpenRecord: (record) => dispatchOpenShippedDetails(record, 'queue'),
+    onClearSearch,
+    emptyMessage: 'No lines in this order.',
+    selectMode,
+    selectionScope: DASHBOARD_ORDERS_SELECTION_SCOPE,
+    railSelection: true,
+    queueMode: 'fulfillment',
+    ariaLabel: 'Order lines',
+    'data-testid': 'orders-drill-children',
+    columnTriggerPortalTarget,
+  });
+
+  return (
+    <NonlinearTableHost<ShippedOrder, OrdersQueueColumnKey, OrdersQueueColumn>
+      {...sheet}
+    />
   );
 }

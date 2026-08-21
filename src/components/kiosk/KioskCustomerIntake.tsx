@@ -21,12 +21,11 @@
 
 import type { ReactNode } from 'react';
 import { TextField } from '@/design-system/primitives';
-import { KIOSK_SECTION_LABEL } from '@/app/kiosk/kiosk-chrome';
+import { KIOSK_SECTION_LABEL_ROW } from '@/app/kiosk/kiosk-chrome';
 import {
   useKioskSession,
   useKioskSessionActions,
 } from '@/lib/kiosk/kiosk-session-store';
-import { cn } from '@/utils/_cn';
 
 type KioskCustomerField = 'phone' | 'name' | 'email';
 
@@ -107,7 +106,7 @@ export function KioskCustomerIntake({
   return (
     <section className={className} data-testid={dataTestId}>
       {heading !== null && (
-        <h3 className={cn('border-b border-border-hairline px-4 py-2', KIOSK_SECTION_LABEL)}>
+        <h3 className={KIOSK_SECTION_LABEL_ROW}>
           {heading}
         </h3>
       )}

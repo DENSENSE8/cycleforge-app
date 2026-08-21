@@ -38,6 +38,10 @@ const DOMAIN_TOOL_NAMES = new Set([
   'get_receiving_by_tracking',
   'get_ticket_entities',
   'get_packing_kpi',
+  // Reach domain query modules (receiving_line / listReceivingPhotos) rather
+  // than the injectable tenantQuery dep, same as every entry above.
+  'resolve_receiving_line_for_order',
+  'list_receiving_line_photos',
 ]);
 
 const ALLOWED_TOOL_PERMISSIONS = new Set([
@@ -81,8 +85,8 @@ function fakes(rowsFor?: (text: string) => Array<Record<string, unknown>>) {
   return { deps, cap };
 }
 
-test('registry: 26 tools, unique names, model-grade descriptions, valid permissions', () => {
-  assert.equal(ASSISTANT_TOOLS.size, 26);
+test('registry: 28 tools, unique names, model-grade descriptions, valid permissions', () => {
+  assert.equal(ASSISTANT_TOOLS.size, 28);
   const expected = [
     'get_signals_by_node', 'get_top_reasons', 'get_unit_journey', 'get_feed_state',
     'get_graph', 'get_node_detail', 'get_benchmarks', 'get_kpis',
@@ -93,6 +97,7 @@ test('registry: 26 tools, unique names, model-grade descriptions, valid permissi
     'get_assignments', 'get_my_tech_queue', 'list_support_followups',
     'search_photos', 'get_receiving_by_tracking', 'get_ticket_entities',
     'get_packing_kpi',
+    'resolve_receiving_line_for_order', 'list_receiving_line_photos',
   ];
   assert.deepEqual([...ASSISTANT_TOOLS.keys()].sort(), [...expected].sort());
   for (const t of ASSISTANT_TOOLS.values()) {

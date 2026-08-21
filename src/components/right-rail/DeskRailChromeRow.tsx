@@ -58,10 +58,15 @@ import { cn } from '@/utils/_cn';
  *  `relative z-header` keeps the row above the inset resize sash
  *  (`z-sticky`). Hairline via `after:` so it meets Displays, not a `border-b`. */
 export const DESK_RAIL_CHROME_ROW_CLASS =
-  `relative z-header flex ${STATION_CHROME_ROW_FACE} items-stretch pl-2 pr-2 ${STATION_CHROME_SEAM_HAIRLINE}`;
+  `relative z-header flex ${STATION_CHROME_ROW_FACE} items-stretch pl-2 pr-0 ${STATION_CHROME_SEAM_HAIRLINE}`;
 
-/** Trailing spacer the host `X` paints into — matches {@link STATION_CHROME_ROW_FACE}. */
-export const RIGHT_RAIL_HOST_CLOSE_SLOT_CLASS = 'inline-block h-full w-7 shrink-0';
+/**
+ * Trailing spacer the host's control cluster paints into — matches
+ * {@link STATION_CHROME_ROW_FACE}. TWO cells (`w-14`) since 2026-08-20: the
+ * host paints maximize alongside close whenever the panel is a resizable push
+ * occupant, and a one-cell reserve let occupant content scroll under it.
+ */
+export const RIGHT_RAIL_HOST_CLOSE_SLOT_CLASS = 'inline-block h-full w-14 shrink-0';
 
 export function DeskRailChromeRow({
   /**

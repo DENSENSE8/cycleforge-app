@@ -31,6 +31,7 @@ import {
   type StationDisplayIndexFilterKeys,
 } from '@/components/station/displays/DisplaysIndexLeafStage';
 import { STATION_DISPLAYS_PUSH_TOP_BAND } from '@/components/station/entity-context/station-identity-chrome';
+import { RIGHT_RAIL_HOST_CLOSE_SLOT_CLASS } from '@/components/right-rail/DeskRailChromeRow';
 import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
 import { StationDisplayLeafHeader } from '@/components/station/displays/StationDisplayLeafHeader';
@@ -84,6 +85,7 @@ export function DeskInspectorIndexShell({
   indexRows,
   indexRightSlot = null,
   leafTrailing = null,
+  chrome = null,
   ariaLabel = 'Inspector topics',
   testId = 'desk-inspector-index',
   backLabel = 'Back to topics',
@@ -100,6 +102,16 @@ export function DeskInspectorIndexShell({
   /** Index-only trailing (e.g. Orders ⋮ handoffs). */
   indexRightSlot?: ReactNode;
   leafTrailing?: ReactNode;
+  /**
+   * Panel chrome that belongs on the SAME row as back + title — the `N / M`
+   * cursor, contextual icons. Rendered before the reserved host-control cell.
+   *
+   * Before 2026-08-19 panels mounted a separate `DeskRailChromeRow` ABOVE this
+   * shell, so a leaf read as two stacked bands: `[1 / 1] [⤢] [✕]` on one row
+   * and `[‹] Documents` on the next. The Displays column it was modelled on has
+   * always been ONE band. Pass the chrome here instead of stacking a row.
+   */
+  chrome?: ReactNode;
   ariaLabel?: string;
   testId?: string;
   backLabel?: string;
@@ -184,16 +196,6 @@ export function DeskInspectorIndexShell({
     setActiveId(DESK_INSPECTOR_INDEX);
   }, [activeLeaf, onIndex, setActiveId]);
 
-  const indexTrailing =
-    onIndex && indexRightSlot != null ? (
-      <div
-        className="flex shrink-0 items-center justify-end gap-1 border-b border-border-hairline px-2 py-1"
-        data-desk-inspector-index-trailing=""
-      >
-        {indexRightSlot}
-      </div>
-    ) : null;
-
   const indexFind =
     onIndex && indexFilter ? (
       <div
@@ -212,32 +214,50 @@ export function DeskInspectorIndexShell({
       </div>
     ) : null;
 
-  const stickyHeader = onIndex
-    ? indexTrailing || indexFind ? (
-        <>
-          {indexTrailing}
-          {indexFind}
-        </>
-      ) : null
-    : (
-        // BAND, not a bare mount. `StationDisplayLeafHeader` is written for the
-        // Displays column's horizontal top band, so it carries `h-full flex-1`
-        // — inside this COLUMN flex that `flex-1` grows the header vertically
-        // and pins the leaf body to the floor (Import latest orders shipped
-        // exactly that: title floating mid-panel, field + CTA at the bottom).
-        // Same `STATION_DISPLAYS_PUSH_TOP_BAND` as Unbox Displays (carton
-        // identity height), not a `h-7` fork.
-        <div className={STATION_DISPLAYS_PUSH_TOP_BAND} data-desk-inspector-leaf-band="">
-          <StationDisplayLeafHeader
-            title={activeLeaf?.label ?? ''}
-            onBack={goIndex}
-            backLabel={backLabel}
-            canGoBack
-            canGoForward={false}
-            trailing={leafTrailing}
-          />
-        </div>
-      );
+  /**
+   * ONE band, both stages — the Displays-column contract.
+   *
+   * `[‹] Title …………… [chrome][leaf trailing][⤢ ✕ reserved]`
+   *
+   * BAND, not a bare mount: `StationDisplayLeafHeader` is written for the
+   * Displays column's horizontal top band, so it carries `h-full flex-1` —
+   * inside a COLUMN flex that `flex-1` grows the header vertically and pins the
+   * leaf body to the floor (Import latest orders shipped exactly that: title
+   * floating mid-panel, field + CTA at the bottom). Same
+   * `STATION_DISPLAYS_PUSH_TOP_BAND` as Unbox Displays (carton identity
+   * height), not a `h-7` fork.
+   *
+   * The band renders on the INDEX stage too, because the host paints `⤢` / `✕`
+   * absolutely at `top-0 right-0` and needs a row of the right height beneath
+   * them at every stage — that is what a panel's own stacked `DeskRailChromeRow`
+   * used to provide, at the cost of a second band.
+   */
+  const bandTitle = onIndex ? ariaLabel : (activeLeaf?.label ?? '');
+  const stickyHeader = (
+    <>
+      <div className={STATION_DISPLAYS_PUSH_TOP_BAND} data-desk-inspector-leaf-band="">
+        <StationDisplayLeafHeader
+          title={bandTitle}
+          onBack={goIndex}
+          backLabel={backLabel}
+          canGoBack={!onIndex}
+          canGoForward={false}
+          trailing={
+            <>
+              {onIndex ? indexRightSlot : leafTrailing}
+              {chrome}
+              <span
+                className={RIGHT_RAIL_HOST_CLOSE_SLOT_CLASS}
+                aria-hidden
+                data-right-rail-host-close-slot
+              />
+            </>
+          }
+        />
+      </div>
+      {indexFind}
+    </>
+  );
 
   return (
     <div

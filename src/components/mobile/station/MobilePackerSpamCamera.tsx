@@ -421,7 +421,7 @@ export function MobilePackerSpamCamera({
               type="button"
               variant="primary"
               onClick={attemptStart}
-              className="h-11 px-5 rounded-xl text-role-caption font-semibold uppercase tracking-wider"
+              className="h-11 px-5 rounded-none text-role-caption font-semibold uppercase tracking-wider"
             >
               Try Again
             </Button>
@@ -431,7 +431,7 @@ export function MobilePackerSpamCamera({
                 type="button"
                 variant="primary"
                 onClick={handleUseTestPhoto}
-                className="mt-3 h-11 px-5 rounded-xl bg-amber-500 text-black text-role-caption font-semibold uppercase tracking-wider hover:bg-amber-600 active:bg-amber-600"
+                className="mt-3 h-11 px-5 rounded-none bg-amber-500 text-black text-role-caption font-semibold uppercase tracking-wider hover:bg-amber-600 active:bg-amber-600"
               >
                 Use Test Photo · Dev
               </Button>
@@ -487,7 +487,7 @@ export function MobilePackerSpamCamera({
 
       {/* ── Quality-gate coaching (plan §2c) ── */}
       {gateHint && cameraLive && !atCap && (
-        <div className="absolute top-[max(4.5rem,calc(env(safe-area-inset-top)+3.5rem))] left-1/2 z-10 w-[min(92vw,22rem)] -translate-x-1/2 rounded-2xl bg-amber-500/95 px-3 py-2 text-center text-xs font-semibold text-white shadow-lg">
+        <div className="absolute top-[max(4.5rem,calc(env(safe-area-inset-top)+3.5rem))] left-1/2 z-10 w-[min(92vw,22rem)] -translate-x-1/2 rounded-none bg-amber-500/95 px-3 py-2 text-center text-xs font-semibold text-white shadow-lg">
           {gateHint}
         </div>
       )}

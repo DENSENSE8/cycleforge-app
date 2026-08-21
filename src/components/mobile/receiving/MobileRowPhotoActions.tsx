@@ -16,7 +16,7 @@ interface MobileRowPhotoActionsProps {
 }
 
 const BTN =
-  'inline-flex h-8 min-w-8 shrink-0 items-center justify-center gap-0.5 rounded-lg border px-2 transition-colors active:scale-[0.97]';
+  'inline-flex h-8 min-w-8 shrink-0 items-center justify-center gap-0.5 rounded-none border px-2 transition-colors active:scale-[0.97]';
 
 /** Match filled width (icon + xN) so empty and filled gallery buttons align in every row. */
 const GALLERY_BTN = cn(BTN, 'min-w-11');
@@ -49,7 +49,7 @@ export function MobileRowPhotoActions({
   const galleryClass = cn(
     GALLERY_BTN,
     hasPhotos
-      ? 'border-blue-200 bg-blue-50 text-blue-700 active:bg-blue-100'
+      ? 'border-border-soft bg-surface-sunken text-text-default active:bg-surface-sunken'
       : 'border-border-soft bg-surface-canvas text-text-faint active:bg-surface-sunken',
   );
 

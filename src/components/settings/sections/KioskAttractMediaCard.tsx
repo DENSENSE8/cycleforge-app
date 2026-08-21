@@ -8,7 +8,9 @@
  * CDN-hosted assets and saves with the rest of the Organization form.
  */
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import dynamic from 'next/dynamic';
 import { Button } from '@/design-system/primitives';
 import { Loader2 } from '@/components/Icons';
 import { ATTRACT_ACCEPT } from '@/lib/kiosk/attract-media';
@@ -17,6 +19,18 @@ import { cn } from '@/utils/_cn';
 
 
 
+/**
+ * The preview mounts the REAL kiosk surface, not a settings-local mock of it —
+ * an approximation would drift from the thing it claims to preview, which is
+ * the whole failure the preview exists to prevent. `dynamic` keeps AttractLoop
+ * (and the motion engine it pulls) out of the settings chunk until asked for,
+ * the same reason the kiosk runtime loads it that way.
+ */
+const AttractLoop = dynamic(
+  () => import('@/app/kiosk/AttractLoop').then((m) => m.AttractLoop),
+  { ssr: false },
+);
+
 function isVideoUrl(url: string): boolean {
   return /\.(mp4|webm|ogg)(\?|$)/i.test(url);
 }
@@ -24,14 +38,31 @@ function isVideoUrl(url: string): boolean {
 export function KioskAttractMediaCard({
   attractMediaUrl,
   onUrlChange,
+  headline,
+  subline,
+  inkColor,
 }: {
   attractMediaUrl: string;
   onUrlChange: (url: string) => void;
+  /** Draft wordmark copy — previewed live, before the form is saved. */
+  headline?: string;
+  subline?: string;
+  inkColor?: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState<'upload' | 'clear' | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showUrlPaste, setShowUrlPaste] = useState(false);
+  const [previewing, setPreviewing] = useState(false);
+
+  useEffect(() => {
+    if (!previewing) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setPreviewing(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [previewing]);
 
   const hasMedia = Boolean(attractMediaUrl.trim());
   const video = hasMedia && isVideoUrl(attractMediaUrl);
@@ -90,7 +121,7 @@ export function KioskAttractMediaCard({
         </div>
       ) : (
         <div className="flex h-24 items-center justify-center rounded-none border border-dashed border-border-soft bg-surface-card text-role-caption text-text-faint">
-          No custom media — kiosk shows brand name / logo
+          No custom media — kiosk shows the wordmark lines below
         </div>
       )}
 
@@ -141,11 +172,55 @@ export function KioskAttractMediaCard({
           type="button"
           variant="ghost"
           disabled={busy !== null}
+          onClick={() => setPreviewing(true)}
+        >
+          Preview
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          disabled={busy !== null}
           onClick={() => setShowUrlPaste((v) => !v)}
         >
           {showUrlPaste ? 'Hide URL' : 'Use a public URL instead'}
         </Button>
       </div>
+
+      {previewing && typeof document !== 'undefined'
+        ? createPortal(
+            /*
+              Portaled to <body>: the preview is the full kiosk viewport, and a
+              `fixed` child inside a transformed settings ancestor would size to
+              that ancestor instead of the screen.
+
+              `z-takeover` on the wrapper, not on AttractLoop: the kiosk's own
+              `z-panel` is correct ON the kiosk, where nothing else is mounted.
+              Here it has the whole app behind it, and app chrome (the assistant
+              bubble at `z-fab`, toasts) would otherwise float over the surface
+              being previewed. The wrapper opens one stacking context that the
+              kiosk layer sits inside, so the preview stays honest.
+            */
+            <div className="fixed inset-0 z-takeover">
+              <AttractLoop
+                mediaUrl={attractMediaUrl.trim() || null}
+                onWake={() => setPreviewing(false)}
+                active
+                plain
+                headline={headline}
+                subline={subline}
+                inkColor={inkColor}
+              />
+              {/* Preview chrome — outside AttractLoop so the surface under test
+                  stays exactly what the kiosk paints. */}
+              <div className="pointer-events-none absolute inset-x-0 bottom-8 z-panelOverlay flex justify-center">
+                <span className="bg-surface-inverse/80 px-4 py-2 text-role-caption text-white backdrop-blur-sm">
+                  Preview — click anywhere or press Esc to close
+                </span>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
 
       {showUrlPaste ? (
         <label className="block">

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { X } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
 import { formatDateTimePST } from '@/utils/date';
+import { UniversalLoader } from '@/design-system/components/UniversalLoader';
 
 type ReceivingAuditEvent = {
   id: number;
@@ -193,7 +194,7 @@ export function ReceivingAuditPanel({
       ) : null}
       <div className="min-h-0 flex-1 overflow-y-auto inset-field">
         {loading ? (
-          <p className="py-6 text-center text-role-caption text-text-soft">Loading activity…</p>
+          <UniversalLoader isLoading label="Loading activity" className="min-h-32" />
         ) : error ? (
           <p className="py-6 text-center text-role-caption font-medium text-rose-600">{error}</p>
         ) : events.length === 0 ? (

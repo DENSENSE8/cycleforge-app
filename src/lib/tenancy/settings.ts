@@ -18,6 +18,18 @@ const BrandSchema = z.object({
   /** Public image/video URL for kiosk attract. Empty string clears. */
   attractMediaUrl: z.string().url().or(z.literal('')).optional(),
   /**
+   * Wordmark painted on the kiosk screensaver when NO attract media is set —
+   * two lines, the second letterspaced to the width of the first (the logotype
+   * lockup shape). `attractMediaUrl` outranks these: an uploaded image is
+   * full-bleed and nothing composites over it.
+   *
+   * Short on purpose. This is a logotype at ~15vw, not a message board — a long
+   * string would either overflow a counter tablet or shrink to unreadable on a
+   * front-desk display.
+   */
+  attractHeadline: z.string().max(16).optional(),
+  attractSubline: z.string().max(24).optional(),
+  /**
    * Customer website opened from the public QR interstitial (phone-camera
    * scans of platform Digital Links). Stickers always mint on the Cycle Forge
    * host (`{slug}.app.cycleforge.ai`) — this field is outbound only.

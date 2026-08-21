@@ -258,3 +258,314 @@ test('feed_membership.set_state captures the PRIOR state as the inverse', async 
   const extra = JSON.parse(String(mut.params[5])) as { inverse: { payload: { state: string } } };
   assert.equal(extra.inverse.payload.state, 'active'); // restores prior
 });
+
+// ─── receiving_photo.reassign ────────────────────────────────────────────────
+// The move an operator asks for in chat ("move the photos from order A to
+// order B on this carton"). It is `auto` because it is reversible and
+// non-destructive — so the INVERSE is what makes that trust class defensible,
+// and it is pinned hardest here.
+
+/**
+ * Scripts the reads reassignReceivingPhoto makes.
+ *
+ * `origins` lets a batch test give each photo a DIFFERENT prior home, which is
+ * the case the per-photo inverse exists for.
+ */
+function makePhotoMoveRows(
+  origins: Array<{ entity_type: string; entity_id: string }> = [
+    { entity_type: 'RECEIVING_LINE', entity_id: '700' },
+  ],
+) {
+  let call = 0;
+  return function photoMoveRows(text: string): Array<Record<string, unknown>> {
+    if (text.includes('FROM photos p')) {
+      const o = origins[Math.min(call++, origins.length - 1)]!;
+      return [
+        {
+          entity_type: o.entity_type,
+          entity_id: o.entity_id,
+          photo_type: 'item',
+          receiving_id_resolved: '42',
+        },
+      ];
+    }
+    return rest(text);
+  };
+}
+
+function rest(text: string): Array<Record<string, unknown>> {
+  if (text.includes('FROM receiving_line')) {
+    return [{ id: '800', receiving_id: '42' }];
+  }
+  if (text.includes('FROM receiving_carton')) {
+    return [{ id: '42' }];
+  }
+  if (text.includes('UPDATE photo_entity_links')) return [{ ok: 1 }];
+  // resolvePoRef now joins this transaction too (executor pattern), so the
+  // fake has to answer it — proof the po_ref read is no longer a second
+  // connection outside the atomic unit.
+  if (text.includes('AS po')) return [{ po: 'PO_42' }];
+  return [];
+}
+
+const photoMoveRows = makePhotoMoveRows();
+
+test('receiving_photo.reassign applies and captures the REVERSE move as its inverse', async () => {
+  const { deps, cap } = fakes(photoMoveRows);
+
+  const out = await applyAgentMutation(
+    {
+      organizationId: ORG,
+      mutationKind: 'receiving_photo.reassign',
+      payload: { photoId: 900, targetEntityType: 'RECEIVING_LINE', targetEntityId: 800 },
+      proposedByStaffId: 7,
+    },
+    deps,
+  );
+
+  assert.equal(out.ok, true);
+  assert.equal(out.ok && out.status, 'applied', 'auto trust class applies immediately');
+  assert.equal(out.ok && out.trust, 'auto');
+  assert.equal(out.ok && out.targetRef, '900');
+
+  // The inverse must point at where the photo ACTUALLY was (line 700), not at
+  // anything the caller supplied — that is what makes revert trustworthy when
+  // the model guessed the source wrong.
+  const insert = cap.queries.find((q) => q.text.includes('INSERT INTO agent_mutations'));
+  assert.ok(insert, 'a mutation row is written');
+  // extra_audit is the last param, a JSON string of { inverse, trust }.
+  const extraAudit = JSON.parse(String(insert!.params[insert!.params.length - 1])) as {
+    inverse: { kind: string; payload: Record<string, unknown> } | null;
+  };
+  // The inverse is ALWAYS the canonical per-photo `moves[]` form, even for a
+  // single photo — so revert can re-dispatch the same kind with no special case.
+  assert.deepEqual(extraAudit.inverse, {
+    kind: 'receiving_photo.reassign',
+    payload: {
+      moves: [{ photoId: 900, targetEntityType: 'RECEIVING_LINE', targetEntityId: 700 }],
+    },
+  });
+});
+
+test('the photo move and its mutation row share ONE transaction', async () => {
+  // Not incidental: if the move committed on its own connection, a failure
+  // writing the mutation row would leave a moved photo with no audit trail and
+  // no revert path.
+  const { deps, cap } = fakes(photoMoveRows);
+
+  await applyAgentMutation(
+    {
+      organizationId: ORG,
+      mutationKind: 'receiving_photo.reassign',
+      payload: { photoId: 900, targetEntityType: 'RECEIVING_LINE', targetEntityId: 800 },
+    },
+    deps,
+  );
+
+  const sawMove = cap.queries.some((q) => q.text.includes('UPDATE photo_entity_links'));
+  const sawRow = cap.queries.some((q) => q.text.includes('INSERT INTO agent_mutations'));
+  assert.ok(sawMove && sawRow, 'both writes ran on the injected client');
+});
+
+test('a bad target entity type is rejected before any write', async () => {
+  const { deps, cap } = fakes(photoMoveRows);
+
+  const out = await applyAgentMutation(
+    {
+      organizationId: ORG,
+      mutationKind: 'receiving_photo.reassign',
+      payload: { photoId: 900, targetEntityType: 'ORDER', targetEntityId: 800 },
+    },
+    deps,
+  );
+
+  assert.equal(out.ok, false);
+  assert.equal(!out.ok && out.status, 400);
+  assert.ok(!cap.queries.some((q) => q.text.includes('UPDATE photo_entity_links')));
+});
+
+test('a non-numeric photoId is rejected, not coerced', async () => {
+  const { deps } = fakes(photoMoveRows);
+
+  const out = await applyAgentMutation(
+    {
+      organizationId: ORG,
+      mutationKind: 'receiving_photo.reassign',
+      payload: { photoId: 'the first one', targetEntityType: 'RECEIVING', targetEntityId: 42 },
+    },
+    deps,
+  );
+
+  assert.equal(out.ok, false);
+  assert.equal(!out.ok && out.status, 400);
+});
+
+test('a missing photo surfaces the domain 404 rather than throwing out of the loop', async () => {
+  // A tool error the model can route around; never a 500 out of the chokepoint.
+  const { deps } = fakes(() => []);
+
+  const out = await applyAgentMutation(
+    {
+      organizationId: ORG,
+      mutationKind: 'receiving_photo.reassign',
+      payload: { photoId: 900, targetEntityType: 'RECEIVING_LINE', targetEntityId: 800 },
+    },
+    deps,
+  );
+
+  assert.equal(out.ok, false);
+  assert.equal(!out.ok && out.status, 404);
+});
+
+test('batch: many photos to one destination move together', async () => {
+  const { deps, cap } = fakes(makePhotoMoveRows());
+
+  const out = await applyAgentMutation(
+    {
+      organizationId: ORG,
+      mutationKind: 'receiving_photo.reassign',
+      payload: { photoIds: [901, 902, 903], targetEntityType: 'RECEIVING_LINE', targetEntityId: 800 },
+    },
+    deps,
+  );
+
+  assert.equal(out.ok, true);
+  assert.equal(out.ok && out.targetRef, '3 photos');
+  const moves = cap.queries.filter((q) => q.text.includes('UPDATE photo_entity_links'));
+  assert.equal(moves.length, 3, 'one link update per photo, all on the same client');
+});
+
+test("batch inverse restores each photo to its OWN prior home", async () => {
+  // The reason the inverse is a list: three photos landing on one line can
+  // have come from three different places, so a single reverse target would
+  // send two of them somewhere they never were.
+  const { deps, cap } = fakes(
+    makePhotoMoveRows([
+      { entity_type: 'RECEIVING_LINE', entity_id: '700' },
+      { entity_type: 'RECEIVING', entity_id: '42' },
+      { entity_type: 'RECEIVING_LINE', entity_id: '701' },
+    ]),
+  );
+
+  await applyAgentMutation(
+    {
+      organizationId: ORG,
+      mutationKind: 'receiving_photo.reassign',
+      payload: { photoIds: [901, 902, 903], targetEntityType: 'RECEIVING_LINE', targetEntityId: 800 },
+    },
+    deps,
+  );
+
+  const insert = cap.queries.find((q) => q.text.includes('INSERT INTO agent_mutations'));
+  const extraAudit = JSON.parse(String(insert!.params[insert!.params.length - 1])) as {
+    inverse: { payload: { moves: Array<{ photoId: number; targetEntityType: string; targetEntityId: number }> } };
+  };
+  assert.deepEqual(extraAudit.inverse.payload.moves, [
+    { photoId: 901, targetEntityType: 'RECEIVING_LINE', targetEntityId: 700 },
+    { photoId: 902, targetEntityType: 'RECEIVING', targetEntityId: 42 },
+    { photoId: 903, targetEntityType: 'RECEIVING_LINE', targetEntityId: 701 },
+  ]);
+});
+
+test('batch is ALL-OR-NOTHING: one bad photo moves none of them', async () => {
+  // Photo 2 has no primary link. Partial success would leave the operator
+  // diffing a carton by hand to find out what actually happened.
+  let seen = 0;
+  const { deps } = fakes((text) => {
+    if (text.includes('FROM photos p')) {
+      seen += 1;
+      return seen === 2
+        ? []
+        : [{ entity_type: 'RECEIVING_LINE', entity_id: '700', photo_type: 'item', receiving_id_resolved: '42' }];
+    }
+    return rest(text);
+  });
+
+  const out = await applyAgentMutation(
+    {
+      organizationId: ORG,
+      mutationKind: 'receiving_photo.reassign',
+      payload: { photoIds: [901, 902, 903], targetEntityType: 'RECEIVING_LINE', targetEntityId: 800 },
+    },
+    deps,
+  );
+
+  assert.equal(out.ok, false);
+  assert.equal(!out.ok && out.status, 404);
+  assert.match(!out.ok ? out.error : '', /no photos were moved/);
+});
+
+test('a batch over the cap is refused before any write', async () => {
+  const { deps, cap } = fakes(makePhotoMoveRows());
+
+  const out = await applyAgentMutation(
+    {
+      organizationId: ORG,
+      mutationKind: 'receiving_photo.reassign',
+      payload: {
+        photoIds: Array.from({ length: 51 }, (_, i) => i + 1),
+        targetEntityType: 'RECEIVING_LINE',
+        targetEntityId: 800,
+      },
+    },
+    deps,
+  );
+
+  assert.equal(out.ok, false);
+  assert.equal(!out.ok && out.status, 400);
+  assert.ok(!cap.queries.some((q) => q.text.includes('UPDATE photo_entity_links')));
+});
+
+test('revert round-trip: a batch inverse re-dispatches the SAME kind and sends each photo home', async () => {
+  // The reason the forward and inverse payloads share one shape: revert needs
+  // no batch-aware special case, it just dispatches the kind again.
+  const inverse = {
+    kind: 'receiving_photo.reassign',
+    payload: {
+      moves: [
+        { photoId: 901, targetEntityType: 'RECEIVING_LINE', targetEntityId: 700 },
+        { photoId: 902, targetEntityType: 'RECEIVING', targetEntityId: 42 },
+      ],
+    },
+  };
+  const { deps, cap } = fakes((text) => {
+    if (text.includes('FROM agent_mutations') && text.includes('FOR UPDATE')) {
+      return [{ status: 'applied', mutation_kind: 'receiving_photo.reassign', extra_audit: { inverse } }];
+    }
+    if (text.includes('FROM photos p')) {
+      return [
+        { entity_type: 'RECEIVING_LINE', entity_id: '800', photo_type: 'item', receiving_id_resolved: '42' },
+      ];
+    }
+    return rest(text);
+  });
+
+  const out = await revertAgentMutation(500, ORG, 4, deps, new Set(['receiving.upload_photo']));
+
+  assert.equal(out.ok, true);
+  assert.equal(out.status, 200);
+  const moves = cap.queries.filter((q) => q.text.includes('UPDATE photo_entity_links'));
+  assert.equal(moves.length, 2, 'both photos went back');
+  assert.ok(cap.queries.some((q) => q.text.includes("SET status = 'reverted'")));
+});
+
+test('revert is refused when the actor lacks the KIND permission (gap 3, on the undo path)', async () => {
+  // Applying and undoing must require the same permission — otherwise a change
+  // can be made and not taken back.
+  const inverse = {
+    kind: 'receiving_photo.reassign',
+    payload: { moves: [{ photoId: 901, targetEntityType: 'RECEIVING', targetEntityId: 42 }] },
+  };
+  const { deps, cap } = fakes((text) => {
+    if (text.includes('FROM agent_mutations') && text.includes('FOR UPDATE')) {
+      return [{ status: 'applied', mutation_kind: 'receiving_photo.reassign', extra_audit: { inverse } }];
+    }
+    return rest(text);
+  });
+
+  const out = await revertAgentMutation(500, ORG, 4, deps, new Set(['studio.manage']));
+
+  assert.equal(out.ok, false);
+  assert.equal(out.status, 403);
+  assert.ok(!cap.queries.some((q) => q.text.includes('UPDATE photo_entity_links')));
+});

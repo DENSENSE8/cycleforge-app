@@ -32,6 +32,7 @@ export function CompactActivityRow({
   leading,
   children,
   activityAt,
+  ageText,
   showAgeColumn = true,
   actions,
   className,
@@ -45,6 +46,15 @@ export function CompactActivityRow({
    * Formats via {@link formatLaneAgeCompact} — never a prose relative string.
    */
   activityAt?: string | Date | number | null;
+  /**
+   * Pre-formatted age, overriding {@link activityAt}. Same COMPACT shape the
+   * row's own formatter produces (`5m` · `3h` · `2d`) — still never `4 hrs ago`
+   * — for a feed whose band runs longer than `formatLaneAgeCompact` reaches:
+   * that one tops out in days, so a three-month-old header recent read `92d`.
+   * Supply this only when your feed genuinely spans weeks; otherwise pass
+   * `activityAt` and let the row format it, so every rail agrees.
+   */
+  ageText?: string | null;
   /** Keep the age column so titles do not jump when one row lacks a stamp. */
   showAgeColumn?: boolean;
   /**
@@ -61,7 +71,12 @@ export function CompactActivityRow({
       : typeof activityAt === 'number'
         ? new Date(activityAt)
         : activityAt;
-  const age = ageInput == null ? null : formatLaneAgeCompact(ageInput);
+  const age =
+    ageText != null && ageText !== ''
+      ? ageText
+      : ageInput == null
+        ? null
+        : formatLaneAgeCompact(ageInput);
 
   return (
     <div

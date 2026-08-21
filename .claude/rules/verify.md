@@ -15,19 +15,31 @@ npx tsc --noEmit -p tsconfig.json          # typecheck (heavy — use when types
 npm run verify
 ```
 
-It is the local mirror of CI (`.github/workflows/ci.yml`) — lint, typecheck, unit tests (incl. the
-DS-ratchet guards), knip dead-code, route-auth drift + enforce, schema drift — and reports every
-failure at once. **Green locally ⇒ green in CI.**
+**Three gates: lint · typecheck · unit.** ~75s. It is still the local mirror of CI
+(`.github/workflows/ci.yml`) and still reports every failure at once rather than
+fail-fast. `--fast` (lint + typecheck) is the inner-loop variant; `--dogfood` is
+now identical to `--fast`.
 
-The pre-push hook (`.githooks/pre-push`, wired by `npm install`) runs it for you and blocks a red push;
-`--fast` (lint + typecheck) is the quick inner-loop variant.
+**The hygiene / drift gates are GONE** — knip, jscpd, depcruise, route-auth,
+tenancy static, schema drift, schema model parity, integration manifest and doc
+catalog were deleted on 2026-08-20 for wall clock, along with every ratchet
+baseline and `*.guard.test.ts`. Full inventory + rationale: root
+[`AGENTS.md`](../../AGENTS.md) → *What actually enforces these rules*.
 
-**When a DS-ratchet gate fails**, migrate to the DS primitive (`Button`/`IconButton`, `HoverTooltip`,
-`focusRing(...)`, `text-role-*`) or add the documented `ds-*` escape for a genuine one-off — **never**
-raise a baseline count or `--no-verify` past it. Baselines only shrink.
+Two consequences worth internalising:
 
-**When the tree holds another session's work**, run the failing gate on your files before assuming the
-red is yours; report which failures are pre-existing rather than silently fixing or inheriting them.
+- **"Green" now means much less than it used to.** A change can pass `verify`
+  while forking a page-local twin, orphaning dead code, shipping an ungated API
+  route, or naming a DB column that does not exist. Those are still hard laws —
+  they are just yours to check by reading, and the expand→code→contract rule in
+  [`backend-patterns.md`](backend-patterns.md) is now the ONLY thing standing
+  between a migration slip and a 500.
+- **Do not re-add a gate to "fix" a red.** Their removal was a deliberate
+  operator decision. Ask first.
+
+**When the tree holds another session's work**, run the failing gate on your files
+before assuming the red is yours; report which failures are pre-existing rather
+than silently fixing or inheriting them.
 
 ## E2E runs against the QA org, never the dogfood org
 

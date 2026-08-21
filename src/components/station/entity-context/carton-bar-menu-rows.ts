@@ -114,3 +114,88 @@ export function listingMenuRows({
       : []),
   ];
 }
+
+/**
+ * Verbs for the carton bar's LIFECYCLE cell, declared once — same contract as
+ * {@link listingMenuRows}: the cell's own hover panel and any `⋯` spillover
+ * read from this list, so the two can never offer different sets.
+ *
+ * **This menu does not move the carton's stage, and that is deliberate.**
+ *
+ * The stage is DERIVED (`railCoarseStatus` folds local `workflow_status`
+ * together with the inventory provider's own state), and a status only changes
+ * through `transitionReceivingLine`. A dropdown of stages on this cell would
+ * advertise a control the domain does not have.
+ *
+ * Receive / Unreceive are likewise absent on purpose. They live on the Unbox
+ * dock split menu (`unbox-terminal.tsx`), which owns the guard state that makes
+ * them safe — `canUnreceive`, the disabled reasons, and the blocking-serial
+ * check behind them — and sits beside `ReceiveFeedbackRegion`, the surface that
+ * reports whether the provider push actually landed. A second door here would
+ * have to re-derive all of it, and would put a destructive rewind behind a
+ * hover on a 28px cell.
+ *
+ * What is left is what a fact cell can honestly offer: say what the stage means
+ * right now, and take the operator to the evidence.
+ */
+export function lifecycleMenuRows({
+  label,
+  onOpenHistory,
+  historyLabel = 'View history',
+  onDone,
+  icons,
+  header,
+  qualify = false,
+}: {
+  /** Coarse stage name — `getReceivingStatusDotLabel`. */
+  label: string;
+  /** Opens the station's carton-history leaf (Unbox Displays → Timeline). */
+  onOpenHistory?: () => void;
+  historyLabel?: string;
+  /** Runs after any row fires — closes the menu that hosted it. */
+  onDone?: () => void;
+  /** Row glyphs, supplied by the caller so this module stays icon-free. */
+  icons: { history: ReactNode; copy: ReactNode };
+  /**
+   * Facts block above the verbs — stage + the provider-sync sentence. A node
+   * row, because it states rather than acts; rendering it as a disabled
+   * menuitem would put it in the keyboard order of a list it is not part of.
+   */
+  header?: ReactNode;
+  /** Name the cell in the overflow, where no neighbouring face says what it acts on. */
+  qualify?: boolean;
+}): ChipHoverMenuRow[] {
+  const done = () => onDone?.();
+  return [
+    ...(header ? [{ id: 'lifecycle-facts', node: header } satisfies ChipHoverMenuRow] : []),
+    ...(onOpenHistory
+      ? [
+          {
+            id: 'lifecycle-history',
+            label: qualify ? `${historyLabel} — ${label}` : historyLabel,
+            icon: icons.history,
+            tone: 'accent' as const,
+            ariaLabel: 'Open carton history',
+            onSelect: () => {
+              onOpenHistory();
+              done();
+            },
+          } satisfies ChipHoverMenuRow,
+        ]
+      : []),
+    {
+      id: 'lifecycle-copy',
+      label: 'Copy status',
+      icon: icons.copy,
+      ariaLabel: `Copy status ${label}`,
+      onSelect: () => {
+        const value = normalizeCopyText(label);
+        if (value && value !== '---') {
+          void navigator.clipboard.writeText(value);
+          recordCopy(value, { kind: 'status', display: label });
+        }
+        done();
+      },
+    },
+  ];
+}

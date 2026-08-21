@@ -3,7 +3,7 @@
 /**
  * GlobalHeaderSearch — icon-rail chrome for the global header. Resting state
  * matches sibling header IconButtons (search glyph only); click / focus
- * expands {@link GlobalFindCombobox} (`presentation="chrome"`).
+ * expands {@link GlobalFindCombobox}.
  *
  * Sole find surface app-wide — including on `/search`. Pending pulse while
  * browse resolve/retrieve runs comes from {@link subscribeGlobalSearchPending}.
@@ -48,8 +48,6 @@ export function GlobalHeaderSearch() {
 
   return (
     <GlobalFindCombobox
-      presentation="chrome"
-      ownsFocusEvent
       initialQuery={syncedQuery}
       pending={browsePending}
       recents={recents}

@@ -361,7 +361,7 @@ export function TestingPanel({
     // Ticket owns claim + seller-message — Listing is reference only.
     const serial = c.activeSerial;
     if (serial && row.id > 0) {
-      void c.handleSlotVerdict(row.id, serial, 'TESTING_FAILED');
+      c.requestSlotVerdict(row.id, serial, 'TESTING_FAILED');
     } else {
       onOpenClaim('create');
     }

@@ -283,20 +283,26 @@ export function KioskCartLedger({ focus }: { focus?: KioskCartFocus | null } = {
                 <span
                   className={cn(
                     'font-semibold tabular-nums',
-                    line.unitAmountCents < 0 ? 'text-emerald-700' : 'text-text-default',
+                    line.unitAmountCents < 0 ? 'text-text-success' : 'text-text-default',
                   )}
                 >
                   {formatCents(line.unitAmountCents * line.quantity)}
                 </span>
-                <button
-                  type="button"
-                  aria-label={`Remove ${line.title}`}
-                  data-testid="kiosk-cart-void-line"
-                  className="ds-raw-button p-1 text-text-soft hover:text-text-danger"
-                  onClick={() => actions.removeLine(line.id)}
-                >
-                  <X className="h-4 w-4" />
-                </button>
+                {/* Removing a line the customer already saw priced is a VOID,
+                    and a void is staff work (session plan D5/P7). While a desk
+                    holds this tablet the control is absent rather than dead —
+                    a button that quietly does nothing is worse than no button. */}
+                {session.sharedSessionId === null && (
+                  <button
+                    type="button"
+                    aria-label={`Remove ${line.title}`}
+                    data-testid="kiosk-cart-void-line"
+                    className="ds-raw-button p-1 text-text-soft hover:text-text-danger"
+                    onClick={() => actions.removeLine(line.id)}
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
               </div>
              </div>
              {editingLineId === line.id && (

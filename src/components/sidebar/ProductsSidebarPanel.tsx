@@ -27,6 +27,7 @@ import {
 import { LibraryBrowser } from '@/components/manuals/LibraryBrowser';
 import { ProductLabelsRecentRail } from '@/components/labels/ProductLabelsRecentRail';
 import { SearchBar } from '@/components/ui/SearchBar';
+import { UniversalLoader } from '@/design-system/components/UniversalLoader';
 
 const PAIRING_SORT_ITEMS: HorizontalSliderItem[] = [
   { id: 'volume',     label: 'Ordered',      icon: ShoppingCart },
@@ -246,9 +247,7 @@ function QcSidebarPicker({ query }: { query: string }) {
   return (
     <div className="flex-1 overflow-y-auto">
       {isLoading && items.length === 0 ? (
-        <div className="inset-empty text-center text-role-caption font-semibold text-text-faint">
-          Loading products…
-        </div>
+        <UniversalLoader isLoading label="Loading products" className="min-h-32" />
       ) : isError ? (
         <div className="inset-empty text-center text-role-caption font-semibold text-red-500">
           Couldn't load products.
@@ -339,9 +338,7 @@ function KitPartsPicker({ query }: { query: string }) {
   return (
     <div className="flex-1 overflow-y-auto">
       {isLoading && items.length === 0 ? (
-        <div className="inset-empty text-center text-role-caption font-semibold text-text-faint">
-          Loading products…
-        </div>
+        <UniversalLoader isLoading label="Loading products" className="min-h-32" />
       ) : isError ? (
         <div className="inset-empty text-center text-role-caption font-semibold text-red-500">
           Couldn&apos;t load products.

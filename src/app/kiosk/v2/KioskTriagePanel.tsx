@@ -26,7 +26,7 @@ import {
   KIOSK_META,
   KIOSK_PANE_HEADER_BAND,
   KIOSK_PANE_HEADER_TITLE,
-  KIOSK_SECTION_LABEL,
+  KIOSK_SECTION_LABEL_ROW,
 } from '@/app/kiosk/kiosk-chrome';
 import { cn } from '@/utils/_cn';
 
@@ -58,7 +58,7 @@ export function KioskTriagePanel({
       <div className="mx-auto min-h-0 w-full max-w-3xl flex-1 overflow-y-auto">
         {items.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center">
-            <Check className="h-8 w-8 text-emerald-600" />
+            <Check className="h-8 w-8 text-text-success" />
             <p className="text-lg font-semibold tracking-tight">Ticket is clear</p>
             <p className="text-sm font-semibold text-text-soft">
               Nothing is blocking this visit.
@@ -94,7 +94,7 @@ function TriageSection({
 }) {
   return (
     <section>
-      <h3 className={cn('border-b border-border-hairline px-4 py-2', KIOSK_SECTION_LABEL)}>
+      <h3 className={KIOSK_SECTION_LABEL_ROW}>
         {heading}
       </h3>
       <ul className="divide-y divide-border-hairline">

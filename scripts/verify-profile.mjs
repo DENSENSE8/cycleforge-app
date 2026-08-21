@@ -2,8 +2,8 @@
  * Verify profile selection — shared by `scripts/verify.mjs` and its unit test.
  *
  *   fast     lint + typecheck
- *   dogfood  + route-auth enforce + schema drift + live model parity
- *   full     CI mirror (every gate)
+ *   dogfood  same as fast (the route-auth / schema gates were removed 2026-08-20)
+ *   full     + unit tests
  *
  * @typedef {'fast' | 'dogfood' | 'full'} VerifyProfile
  * @typedef {{
@@ -49,8 +49,15 @@ export function gateInProfile(gate, profile) {
  *
  * `profiles`: which verify profiles include this gate.
  *   always  → fast + dogfood + full
- *   dogfood → dogfood + full  (runtime-safety: ungated routes, schema 500s)
- *   full    → full only       (hygiene ratchets: knip / jscpd / depcruise / …)
+ *   dogfood → dogfood + full
+ *   full    → full only
+ *
+ * The hygiene / drift gates (knip, jscpd, depcruise, route-auth, tenancy,
+ * schema drift + model parity, integration manifest, doc catalog) and their
+ * ratchet baselines were DELETED on 2026-08-20 at the operator's instruction —
+ * they were the bulk of the verify wall clock. Nothing enforces those
+ * invariants automatically any more; the rules in AGENTS.md that named them are
+ * now review-only.
  *
  * @type {VerifyGate[]}
  */
@@ -80,7 +87,7 @@ export const ALL_GATES = [
     profiles: 'always',
   },
   {
-    name: 'Unit tests + structural guards',
+    name: 'Unit tests',
     cmd: 'node',
     args: ['scripts/run-unit-tests.mjs'],
     // NODE_COMPILE_CACHE (Node 22+): persist V8 bytecode for every module the
@@ -88,65 +95,6 @@ export const ALL_GATES = [
     // re-boots tsx + esbuild from scratch, so the compile cache is paid once and
     // reused ~770 times. Inherited by the children through the environment.
     env: { NODE_COMPILE_CACHE: 'node_modules/.cache/node-compile' },
-    profiles: 'full',
-  },
-  {
-    name: 'Dead-code (knip)',
-    cmd: 'node',
-    args: ['scripts/knip-gate.mjs'],
-    advisory: true,
-    profiles: 'full',
-  },
-  {
-    name: 'Route-permission drift',
-    cmd: 'npx',
-    args: ['tsx', 'scripts/audit-route-auth.ts', '--check'],
-    advisory: true,
-    profiles: 'full',
-  },
-  {
-    name: 'Route-auth enforce',
-    cmd: 'npx',
-    args: ['tsx', 'scripts/audit-route-auth.ts', '--enforce'],
-    profiles: 'dogfood',
-  },
-  {
-    name: 'Integration manifest drift',
-    cmd: 'npx',
-    args: ['tsx', 'scripts/export-integration-manifest.ts', '--check'],
-    profiles: 'full',
-  },
-  {
-    name: 'Tenancy isolation (static)',
-    cmd: 'npx',
-    args: ['tsx', 'scripts/tenancy-guard.ts', '--check', '--static-only'],
-    advisory: true,
-    profiles: 'full',
-  },
-  {
-    name: 'Schema drift',
-    cmd: 'node',
-    args: ['scripts/schema-drift-guard.mjs', '--check'],
-    profiles: 'dogfood',
-  },
-  {
-    name: 'Schema model parity (live)',
-    cmd: 'node',
-    args: ['scripts/schema-model-parity-guard.mjs', '--check'],
-    profiles: 'dogfood',
-  },
-  { name: 'Clone baseline (jscpd)', cmd: 'node', args: ['scripts/jscpd-gate.mjs'], profiles: 'full' },
-  {
-    name: 'Assembly boundaries (depcruise)',
-    cmd: 'node',
-    args: ['scripts/depcruise-gate.mjs'],
-    profiles: 'full',
-  },
-  {
-    name: 'Doc catalog drift',
-    cmd: 'node',
-    args: ['scripts/portfolio-sot-sync.mjs', '--check'],
-    advisory: true,
     profiles: 'full',
   },
 ];

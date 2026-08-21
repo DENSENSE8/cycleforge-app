@@ -48,6 +48,8 @@ const BRIDGE_EVENTS = [
   'session.customer_changed',
   'session.status_changed',
   'session.submitted',
+  // The card prompt — the one event whose whole purpose is the customer's screen.
+  'session.payment_changed',
 ] as const;
 
 export interface KioskSharedSessionState {
@@ -79,7 +81,12 @@ function snapshotFromProjection(p: DeviceSessionProjection): CounterSessionSnaps
   };
 }
 
-function mirror(snapshot: CounterSessionSnapshot, masked: string, awaiting: string[]): void {
+function mirror(
+  snapshot: CounterSessionSnapshot,
+  masked: string,
+  awaiting: string[],
+  awaitingCardSinceMs: number | null,
+): void {
   const lines: KioskCartLine[] = snapshot.lines.map((l) => ({
     id: l.id,
     type: l.type,
@@ -96,7 +103,55 @@ function mirror(snapshot: CounterSessionSnapshot, masked: string, awaiting: stri
     customerPhoneMasked: masked,
     awaitingSignatureLineIds: awaiting,
     activeCommand: snapshot.activeCommand,
+    awaitingCardSinceMs,
   });
+}
+
+/**
+ * The write-through path for a co-edited visit.
+ *
+ * `expectedVersion` is read at SEND time from the mirror, not captured when the
+ * component rendered — the desk is editing the same cart, so a version captured
+ * a second ago is already stale and would 409 every time.
+ */
+function makeWriter(getVersion: () => number, onWrote: () => void) {
+  const send = async (path: string, method: string, body: Record<string, unknown>) => {
+    await fetch(path, {
+      method,
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ expectedVersion: getVersion(), ...body }),
+    }).catch(() => {
+      /* The mirror is the reconciler: a failed send is corrected by the next
+         projection, which is also what puts a refused edit back on screen. */
+    });
+    onWrote();
+  };
+
+  return {
+    addLine: (line: Parameters<typeof kioskSessionStore.addLine>[0] & { id: string }) =>
+      send('/api/kiosk/session/lines', 'POST', {
+        lineUuid: line.id,
+        type: line.type,
+        title: line.title,
+        quantity: line.quantity,
+        payload: line.payload,
+        sortIndex: 0,
+      }),
+    updateLine: (id: string, patch: Record<string, unknown>) =>
+      send(`/api/kiosk/session/lines/${id}`, 'PATCH', {
+        ...(patch.title !== undefined ? { title: patch.title } : {}),
+        ...(patch.quantity !== undefined ? { quantity: patch.quantity } : {}),
+        ...(patch.payload !== undefined
+          ? { payload: patch.payload, payloadType: (patch as { type?: string }).type }
+          : {}),
+      }),
+    removeLine: (_id: string) => {
+      // Deliberately not sent: a remove is a VOID, and a void is staff work
+      // (P7). The next mirror restores the line, so the customer sees it come
+      // back rather than a control that quietly did nothing.
+      onWrote();
+    },
+  };
 }
 
 export function useKioskSharedSession(): KioskSharedSessionState {
@@ -136,7 +191,12 @@ export function useKioskSharedSession(): KioskSharedSessionState {
     snapshotRef.current = snapshot;
     maskedRef.current = json.session.customerPhoneMasked;
     setSessionId(snapshot.sessionId);
-    mirror(snapshot, maskedRef.current, json.session.awaitingSignatureLineIds);
+    mirror(
+      snapshot,
+      maskedRef.current,
+      json.session.awaitingSignatureLineIds,
+      json.session.awaitingCardSinceMs,
+    );
   }, []);
 
   useEffect(() => {
@@ -163,13 +223,30 @@ export function useKioskSharedSession(): KioskSharedSessionState {
         const awaiting = result.snapshot.lines
           .filter((l) => l.type === 'REPAIR' && !(l.payload as { signatureDataUrl?: string | null })?.signatureDataUrl)
           .map((l) => l.id);
-        mirror(result.snapshot, maskedRef.current, awaiting);
+        mirror(result.snapshot, maskedRef.current, awaiting, result.snapshot.awaitingCardSinceMs);
         return;
       }
       if (needsResync(result)) void refresh();
     },
     [refresh],
   );
+
+  // Install the write-through path whenever a session is attached, and clear it
+  // the moment it is not — a stale writer could post into a session this tablet
+  // no longer belongs to.
+  useEffect(() => {
+    if (sessionId === null) {
+      kioskSessionStore.attachSharedWriter(null);
+      return;
+    }
+    kioskSessionStore.attachSharedWriter(
+      makeWriter(
+        () => snapshotRef.current?.version ?? 0,
+        () => void refresh(),
+      ),
+    );
+    return () => kioskSessionStore.attachSharedWriter(null);
+  }, [sessionId, refresh]);
 
   const enabled = !!channel;
   // `coalesce: 'frame'` — house law forbids a setState (or a store write) per
@@ -180,6 +257,7 @@ export function useKioskSharedSession(): KioskSharedSessionState {
   useAblyChannel(channel, BRIDGE_EVENTS[3], onEvent, enabled, { coalesce: 'frame' });
   useAblyChannel(channel, BRIDGE_EVENTS[4], onEvent, enabled, { coalesce: 'frame' });
   useAblyChannel(channel, BRIDGE_EVENTS[5], onEvent, enabled, { coalesce: 'frame' });
+  useAblyChannel(channel, BRIDGE_EVENTS[6], onEvent, enabled, { coalesce: 'frame' });
 
   return { sessionId, live };
 }

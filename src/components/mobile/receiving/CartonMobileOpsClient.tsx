@@ -234,7 +234,7 @@ function CartonPageInner() {
               variant="secondary"
               size="sm"
               onClick={load}
-              className="h-auto rounded-md px-2.5 py-1 text-role-caption"
+              className="h-auto rounded-none px-2.5 py-1 text-role-caption"
             >
               Refresh
             </Button>
@@ -250,7 +250,7 @@ function CartonPageInner() {
         )}
 
         {error && (
-          <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm font-semibold text-rose-700">
+          <div className="rounded-none border border-rose-200 bg-rose-50 p-3 text-sm font-semibold text-rose-700">
             {error}
           </div>
         )}
@@ -331,7 +331,7 @@ function CartonPageInner() {
                     key={line.id}
                     type="button"
                     onClick={() => router.push(`/m/l/${line.id}`)}
-                    className="block w-full text-left rounded-lg border border-border-soft bg-surface-card px-4 py-2.5 shadow-sm active:bg-surface-hover"
+                    className="block w-full text-left rounded-none border border-border-soft bg-surface-card px-4 py-2.5 shadow-sm active:bg-surface-hover"
                   >
                     {/* Slim identity row — status dot + product title. */}
                     <div className="flex min-w-0 items-center gap-2">
@@ -463,7 +463,7 @@ function CartonPageInner() {
           size="lg"
           onClick={() => setActionsOpen(true)}
           disabled={loading || lines.length === 0}
-          className="h-12 w-full rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700 font-semibold uppercase tracking-wider shadow-md shadow-blue-600/30"
+          className="h-12 w-full rounded-none bg-gradient-to-br from-blue-500 to-blue-700 font-semibold uppercase tracking-wider shadow-md shadow-blue-600/30"
         >
           {lines.length === 0 ? 'No lines to update' : `Update ${lines.length} line${lines.length === 1 ? '' : 's'}`}
         </Button>

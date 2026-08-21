@@ -10,7 +10,6 @@
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import dynamic from 'next/dynamic';
-import { Loader2 } from '@/components/Icons';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
 import { loadDetailStack, type LoadedDetailStack } from '@/lib/detail-stacks/load-detail-stack';
 import {
@@ -21,6 +20,7 @@ import {
 import { cartonReadHref } from '@/lib/receiving/surface-path';
 import { dispatchDashboardAndStationRefresh } from '@/utils/events';
 import { toast } from '@/lib/toast';
+import { UniversalLoader } from '@/design-system/components/UniversalLoader';
 
 const CompactOrderPeek = dynamic(
   () => import('@/components/order-record/CompactOrderPeek').then((m) => m.CompactOrderPeek),
@@ -46,10 +46,7 @@ function DetailStackLoadingShell({ stackId, onClose }: { stackId: string; onClos
       modal={false}
       ariaLabel="Loading details"
     >
-      <div className="flex h-full min-h-0 flex-col items-center justify-center gap-2 bg-surface-card">
-        <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
-        <p className="text-role-caption font-semibold text-text-soft">Loading…</p>
-      </div>
+      <UniversalLoader isLoading label="Loading details" className="h-full" />
     </DetailStackRailRegistrar>
   );
 }

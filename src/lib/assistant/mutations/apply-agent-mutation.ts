@@ -47,6 +47,13 @@ import {
 } from '@/lib/surfaces/feed-writes';
 import { recordEntitySignal } from '@/lib/surfaces/record-entity-signal';
 import {
+  PhotoReassignError,
+  makeReassignDepsForClient,
+  reassignReceivingPhoto,
+  type ReassignClient,
+} from '@/lib/photos/reassign-receiving-photo';
+import { normalizeReassignPayload } from './reassign-payload';
+import {
   draftAddEdge,
   draftAddNode,
   draftRemoveEdge,
@@ -132,6 +139,59 @@ async function dispatchApply(
       );
       if (!sig.ok) return { ok: false, status: 400, error: sig.error };
       return { ok: true, inverse: null, targetRef: sig.id != null ? String(sig.id) : null };
+    }
+    case 'receiving_photo.reassign': {
+      const norm = normalizeReassignPayload(p);
+      if (!norm.ok) return { ok: false, status: 400, error: norm.error };
+
+      // ALL-OR-NOTHING, on purpose. Every move runs on this transaction's
+      // client, so a failure on move 4 of 7 rolls back moves 1-3 too. The
+      // alternative — best-effort with a partial report — leaves an operator
+      // diffing a carton by hand to work out which photos actually moved, and
+      // a half-applied change cannot be cleanly reverted by a single inverse.
+      // Refusing with the reason beats silently doing most of it.
+      const undo: Array<{ photoId: number; targetEntityType: string; targetEntityId: number }> = [];
+      const deps = makeReassignDepsForClient(client as unknown as ReassignClient);
+      try {
+        for (const move of norm.moves) {
+          const r = await reassignReceivingPhoto(
+            {
+              organizationId: orgId,
+              photoId: move.photoId,
+              targetEntityType: move.targetEntityType,
+              targetEntityId: move.targetEntityId,
+            },
+            deps,
+          );
+          // Each photo's OWN prior home — a batch's photos can come from
+          // different places, which is exactly why the inverse is a list.
+          undo.push({
+            photoId: move.photoId,
+            targetEntityType: r.from.entityType,
+            targetEntityId: r.from.entityId,
+          });
+        }
+      } catch (err) {
+        if (err instanceof PhotoReassignError) {
+          return {
+            ok: false,
+            status: err.status,
+            error:
+              norm.moves.length > 1
+                ? `${err.message} (no photos were moved — the whole change was rolled back)`
+                : err.message,
+          };
+        }
+        throw err;
+      }
+
+      return {
+        ok: true,
+        inverse: { kind: 'receiving_photo.reassign', payload: { moves: undo } },
+        // One target ref for a single move; the batch is described by the
+        // mutation payload itself.
+        targetRef: undo.length === 1 ? String(undo[0]!.photoId) : `${undo.length} photos`,
+      };
     }
     case 'node_surface.set_config': {
       const r = await setNodeSurfaceConfig(client, orgId, p as never);
@@ -311,7 +371,8 @@ export async function applyAgentMutation(
 
 export interface RevertAgentMutationResult {
   ok: boolean;
-  status: 200 | 400 | 404 | 409;
+  /** 403 = the actor may not revert this KIND (see MutationKindDef.permission). */
+  status: 200 | 400 | 403 | 404 | 409;
   error?: string;
 }
 
@@ -320,6 +381,15 @@ export async function revertAgentMutation(
   orgId: OrgId,
   actorStaffId: number | null,
   deps: ApplyAgentMutationDeps = defaultDeps,
+  /**
+   * The actor's permissions. Optional ONLY so existing server-side callers
+   * (review tooling) keep working; the assistant always passes it.
+   *
+   * Checked here rather than at the tool layer because the kind is not known
+   * until the row is read — and someone able to APPLY a change must be able to
+   * undo it, which a single blanket gate could not express.
+   */
+  actorPermissions?: ReadonlySet<string>,
 ): Promise<RevertAgentMutationResult> {
   const outcome = await deps.runTransaction(orgId, async (client) => {
     const row = await client.query(
@@ -330,6 +400,13 @@ export async function revertAgentMutation(
     if (row.rows.length === 0) return { status: 404 as const, error: 'mutation not found' };
     const r = row.rows[0];
     if (r.status !== 'applied') return { status: 409 as const, error: `mutation is ${r.status}, only applied mutations revert` };
+    const revertKind = String(r.mutation_kind);
+    if (actorPermissions && isMutationKind(revertKind)) {
+      const need = MUTATION_KINDS[revertKind].permission;
+      if (!actorPermissions.has(need)) {
+        return { status: 403 as const, error: `reverting "${revertKind}" requires ${need}` };
+      }
+    }
     const extra = (r.extra_audit ?? {}) as { inverse?: Inverse };
     const inverse = extra.inverse ?? null;
     if (!inverse) return { status: 409 as const, error: 'this mutation is not revertable (append-only or missing inverse)' };

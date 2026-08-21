@@ -113,24 +113,35 @@ test.describe('Media Library · desk inspector', () => {
     expect(new URL(page.url()).searchParams.get('photoId')).toBe(opened);
   });
 
-  test('↑ is previous and ↓ is next, stepping the loaded stream', async ({ page }) => {
+  /**
+   * The inspector's ↑↓ stepper was removed 2026-08-19: walking the stream from
+   * inside the record rail was a second door onto a selection the GRID already
+   * owns. Selection moves in the grid; the inspector follows it.
+   */
+  test('the grid walks the stream and the inspector retargets — no stepper', async ({
+    page,
+  }) => {
     await landOnStream(page);
     await toggleTile(page, 1);
     await expect(page.locator(RAIL)).toBeVisible();
 
     const second = await openedPhotoId(page);
 
-    await page.getByTestId('photo-inspector-prev').click();
-    await expect(page).not.toHaveURL(new RegExp(`photoId=${second}(&|$)`));
+    // The stepper is gone from the rail entirely.
+    await expect(
+      page.getByTestId('photo-inspector-prev'),
+      'the rail no longer steps the stream — the grid does',
+    ).toHaveCount(0);
+    await expect(page.getByTestId('photo-inspector-next')).toHaveCount(0);
+
+    // Picking another tile retargets the ONE inspector; it never remounts a
+    // second one.
+    await toggleTile(page, 1);
+    await toggleTile(page, 0);
+    await expect(page.locator(RAIL)).toBeVisible();
     const first = await openedPhotoId(page);
     expect(first).not.toBe(second);
-
-    await page.getByTestId('photo-inspector-next').click();
-    await expect(page).toHaveURL(new RegExp(`photoId=${second}(&|$)`));
-
-    // Honest ends: at the head of the stream there is no previous.
-    await page.getByTestId('photo-inspector-prev').click();
-    await expect(page.getByTestId('photo-inspector-prev')).toBeDisabled();
+    await expect(page.locator(RAIL)).toHaveCount(1);
   });
 
   test('a second selection yields the record rail to the batch rail, and back', async ({ page }) => {

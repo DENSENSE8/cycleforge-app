@@ -11,7 +11,10 @@
 import { useCallback, useMemo, useState, type Ref } from 'react';
 import { Plus } from '@/components/Icons';
 import { LocationCrudDialog } from '@/components/locations/LocationCrudDialog';
-import { IconButton } from '@/design-system/primitives';
+import {
+  WorkbenchBandControl,
+  WORKBENCH_BAND_CONTROL_GLYPH_CLASS,
+} from '@/components/dashboard/workbench-band-control';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   WorkbenchSheetView,
@@ -121,12 +124,9 @@ function LocationsBinsChrome({
         controlsSlotRef={controlsSlotRef}
         trailing={
           <>
-            <IconButton
-              type="button"
-              size="sm"
-              tone="neutral"
-              ariaLabel="New location"
-              icon={<Plus className="h-3.5 w-3.5" />}
+            <WorkbenchBandControl
+              label="New location"
+              icon={<Plus className={WORKBENCH_BAND_CONTROL_GLYPH_CLASS} />}
               onClick={() => setCrudOpen(true)}
             />
             <WorkbenchInspectorToggle open={binInspectorOpen} testId="bins-inspector-toggle" />

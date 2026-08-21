@@ -8,7 +8,7 @@
  * the panel dock is carton-terminal (Print · Receive).
  */
 
-import { Check, Download, Loader2 } from '@/components/Icons';
+import { Check, Download } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import {
   WORKSPACE_NESTED_FIELD,
@@ -59,13 +59,7 @@ export function LinePoNoteCard({
           className={`min-h-[8rem] w-full resize-y ${WORKSPACE_NESTED_FIELD} ${WORKSPACE_NESTED_FIELD_PAD} text-role-caption text-text-default placeholder:text-text-faint ${NOTES_TEXTAREA_FOCUS}`}
         />
         <div className="flex items-center justify-between gap-2">
-          {loading ? (
-            <span className="inline-flex items-center gap-1 text-role-micro font-semibold uppercase tracking-wide text-blue-500">
-              <Loader2 className="h-3 w-3 animate-spin" /> Syncing from inventory…
-            </span>
-          ) : (
-            <span aria-hidden />
-          )}
+          <span aria-hidden />
           <div className="flex shrink-0 items-center gap-1.5">
             {onSyncFromInventory ? (
               <Button

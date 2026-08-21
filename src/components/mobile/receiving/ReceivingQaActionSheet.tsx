@@ -222,7 +222,7 @@ export function ReceivingQaActionSheet({ open, onClose, receivingId, lines, onMu
             type="button"
             onClick={() => setConfirmPass(true)}
             disabled={busy || lineCount === 0}
-            className="ds-raw-button flex h-14 w-full items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-700 text-sm font-semibold uppercase tracking-wider text-white shadow-md shadow-emerald-600/30 transition-transform active:scale-[0.98] disabled:opacity-40"
+            className="ds-raw-button flex h-14 w-full items-center justify-center rounded-none bg-gradient-to-br from-emerald-500 to-emerald-700 text-sm font-semibold uppercase tracking-wider text-white shadow-md shadow-emerald-600/30 transition-transform active:scale-[0.98] disabled:opacity-40"
           >
             Mark tested — PASS
           </button>
@@ -231,7 +231,7 @@ export function ReceivingQaActionSheet({ open, onClose, receivingId, lines, onMu
             type="button"
             onClick={() => setConfirmFail(true)}
             disabled={busy || lineCount === 0}
-            className="ds-raw-button flex h-14 w-full items-center justify-center rounded-2xl bg-gradient-to-br from-rose-500 to-rose-700 text-sm font-semibold uppercase tracking-wider text-white shadow-md shadow-rose-600/30 transition-transform active:scale-[0.98] disabled:opacity-40"
+            className="ds-raw-button flex h-14 w-full items-center justify-center rounded-none bg-gradient-to-br from-rose-500 to-rose-700 text-sm font-semibold uppercase tracking-wider text-white shadow-md shadow-rose-600/30 transition-transform active:scale-[0.98] disabled:opacity-40"
           >
             Mark FAILED — return
           </button>

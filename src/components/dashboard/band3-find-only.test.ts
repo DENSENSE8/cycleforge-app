@@ -53,6 +53,11 @@ const INSPECTOR_TOGGLE_SURFACES: readonly string[] = [
   // its Band 3 trailing edge, so it belongs on THIS list by observation,
   // not by intent — classified from what the file does.
   'src/features/home/HomeDailyMode.tsx',
+  // Home → Tasks (new 2026-08-21): the staffer's own `staff_todos` as a
+  // `tasks.mine` spreadsheet. Same classification and same reason as Daily —
+  // its Band 3 trailing edge mounts `WorkbenchInspectorToggle`, and a row click
+  // opens `detail:staff-task` in the rail.
+  'src/features/tasks/TasksWorkbench.tsx',
 ];
 
 /**
@@ -434,5 +439,79 @@ describe('Show / Hide inspector has one implementation', () => {
       [],
       'a new Band 3 must declare whether its grid opens a desk peek',
     );
+  });
+});
+
+/**
+ * **One icon in the find field, and it is the funnel.**
+ *
+ * A field glyph answers exactly one question — *does anything narrow these
+ * rows?* — so it has to be the same mark on every desk. Three ways it stopped
+ * being that, all live until 2026-08-20:
+ *
+ *   1. `PackBenchRefineFacet` passed `icon={<PackageCheck/>}`, so To-ship and
+ *      Shipping painted a **packed box** where every other surface painted a
+ *      funnel.
+ *   2. `StaffFilterButton density="field"` painted a **`User`**, so Testing and
+ *      Arrival showed a person instead — and Testing showed it *beside* nothing
+ *      else, meaning the surface had no funnel at all.
+ *   3. Incoming Pipeline seated Source, Kind and Filters as three separate
+ *      field popovers, each painting the SAME funnel — three identical marks in
+ *      one field, none of them saying which was which.
+ *
+ * A facet is a GROUP inside the one funnel (`StaffFilterRows`,
+ * `IncomingSourceRows`, `IncomingKindRows`), never a second trigger beside it.
+ */
+describe('the find field carries ONE icon — the funnel', () => {
+  const allFiles = walk(SRC).map((abs) => ({
+    rel: relative(ROOT, abs),
+    body: code(readFileSync(abs, 'utf8')),
+  }));
+
+  it('no field-density popover paints a domain glyph', () => {
+    for (const { rel, body } of allFiles) {
+      if (!body.includes('density="field"')) continue;
+      // `icon=` anywhere in a file that mounts a field popover is the smell;
+      // the prop is honoured for `toolbar` density only, so a field mount
+      // passing one is either dead config or a glyph that no longer renders.
+      const fieldMounts = (body.match(/density="field"/g) ?? []).length;
+      const iconProps = (body.match(/\bicon=\{/g) ?? []).length;
+      if (iconProps === 0 || fieldMounts === 0) continue;
+      assert.ok(
+        !/density="field"\s*\n\s*icon=\{/.test(body) && !/icon=\{[^}]*\}\s*\n\s*density="field"/.test(body),
+        `${rel}: a field-density filter must wear the house funnel — the glyph is the one thing every surface shares`,
+      );
+    }
+  });
+
+  it('the staff facet never mounts its own field trigger', () => {
+    for (const { rel, body } of allFiles) {
+      if (rel.endsWith('StaffFilterButton.tsx')) continue;
+      assert.doesNotMatch(
+        body,
+        /<StaffFilterButton[^>]*density="field"/s,
+        `${rel}: fold the staff facet into the field's one funnel with <StaffFilterRows/> — a User glyph is a second answer to the question the funnel already answers`,
+      );
+    }
+  });
+
+  it('a find bar seats at most one in-field refine trigger', () => {
+    // Counted per `trailingSuffix`, not per file: Unbox and Incoming each
+    // declare two field popovers on mutually exclusive tab branches, which is
+    // one on screen. What this catches is the Pipeline shape — several
+    // triggers listed inside a single slot.
+    for (const { rel, body } of allFiles) {
+      for (const m of body.matchAll(/trailingSuffix=\{([\s\S]{0,600}?)\n\s{0,14}\}/g)) {
+        const slot = m[1];
+        const triggers =
+          (slot.match(/density="field"/g) ?? []).length +
+          (slot.match(/<Incoming(Source|Kind)Filters/g) ?? []).length +
+          (slot.match(/<StaffFilterButton/g) ?? []).length;
+        assert.ok(
+          triggers <= 1,
+          `${rel}: ${triggers} refine triggers in one find field — fold the extras in as menu groups (rows), not sibling glyphs`,
+        );
+      }
+    }
   });
 });

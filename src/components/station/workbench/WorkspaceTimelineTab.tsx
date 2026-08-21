@@ -18,7 +18,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Barcode, History, Loader2, MapPin } from '@/components/Icons';
+import { Barcode, History, MapPin } from '@/components/Icons';
 import { SectionTabsSlider, type SectionTab } from '@/design-system/components';
 import {
   CarrierTrackingSection,
@@ -42,6 +42,7 @@ import {
 import { StationUnitJourneys } from './StationUnitJourneys';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
+import { UniversalLoader } from '@/design-system/components/UniversalLoader';
 
 /** Flush Displays body — no WorkspaceCard glass island (scan-station SoT). */
 const TIMELINE_FLUSH_HOST_CLASS = cn('min-w-0', cornerClass('flush'));
@@ -206,9 +207,7 @@ function CarrierPanel({ carrier }: { carrier: CarrierLoadState }) {
   }
   if (carrier.loading) {
     return (
-      <div className="flex items-center gap-2 px-1 py-4 text-role-caption text-text-muted">
-        <Loader2 className="h-4 w-4 animate-spin" /> Loading tracking…
-      </div>
+      <UniversalLoader isLoading label="Loading tracking" className="min-h-24" />
     );
   }
   return (

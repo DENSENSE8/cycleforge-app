@@ -4,22 +4,40 @@
  * SearchDetailWorkspace — full-bleed entity shell for `/search?sel=type:id`.
  *
  * Mounted only when a selection is active (the no-sel state is
- * {@link SearchBrowseShell}). ORDER → `SearchOrderFeedback` (not desk
- * `ShippedDetailsPanel`). Receiving / unit / sku embed their inspectors. Repair /
- * FBA show an in-pane preview + deep-link CTA. `/o` is retired.
+ * {@link SearchBrowseShell}). ORDER → {@link SearchOrderStationPane} — the real
+ * scan-station composition in preview stance, not a desk `ShippedDetailsPanel`
+ * and no longer a hand-rolled `order-feedback` twin (retired 2026-08-20).
+ * Receiving / unit / sku embed their inspectors. Repair / FBA show an in-pane
+ * preview + deep-link CTA. `/o` is retired.
+ *
+ * **Chrome is the house primitives, never a page-local twin** (2026-08-21): the
+ * three shapes this file used to hand-roll — a dashed teach card, a spinner row
+ * and an entity preview card with a `bg-blue-600` CTA — are now `EmptyState`,
+ * `UniversalLoader` and `Button`. The old card also carried `radius="xl"`, which
+ * is soft-radius debt on an ops surface.
+ *
+ * **This is the ONLY `AnimatePresence` on the `?sel=` path.** Neither
+ * `EntityStationPane`, `StationScanPaneHost` nor the pane mounts one, and the
+ * `receiving` / `sku` / `repair` / `fba` branches have no motion of their own —
+ * so deleting it would make every record→record swap an enter-only flash.
+ * Record→record therefore takes the station cover-replace contract Unbox uses
+ * for carton→carton: `motionRole.swap.scan` + `mode="sync"` + an opaque pane
+ * stacked over the outgoing one. `mode="wait"` punched a white hole through the
+ * host between exit and enter.
  */
 
 import { useEffect, useState, type ReactNode } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { AnimatePresence, motion } from '@/design-system/motion';
-import { ExternalLink, Loader2, Package, Search } from '@/components/Icons';
-import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
 import {
-  useMotionPresence,
-  useMotionTransition,
-} from '@/design-system/foundations/motion-framer-hooks';
-import { SearchOrderFeedback } from '@/components/search/order-feedback/SearchOrderFeedback';
+  AnimatePresence,
+  motion,
+  motionRole,
+  useMotionRole,
+  useOverlaySwapHardCut,
+} from '@/design-system/motion';
+import { ExternalLink, Package, Search } from '@/components/Icons';
+import { SearchOrderStationPane } from '@/components/search/station/SearchOrderStationPane';
 import { CartonInspector } from '@/components/receiving/inspector/CartonInspector';
 import { UnitDetailsPanel } from '@/components/inventory/panels/UnitDetailsPanel';
 import { loadDetailStack } from '@/lib/detail-stacks/load-detail-stack';
@@ -29,105 +47,52 @@ import {
   type SearchHitEntityType,
 } from '@/lib/search/search-hit';
 import type { SearchSelection } from '@/lib/search/search-selection';
-import { ENTITY_ICONS, ENTITY_TONE, CHIP_TONE_CLASSES } from '@/components/search/search-result-chips';
-import { cn } from '@/utils/_cn';
-import { Panel } from '@/design-system/primitives';
-
+import { ENTITY_ICONS } from '@/components/search/search-result-chips';
+import { useSearchPrimaryPaintOptional } from '@/components/search/search-primary-paint-context';
+import { UniversalLoader } from '@/design-system/components/UniversalLoader';
+import { Button, EmptyState } from '@/design-system/primitives';
+import { zIndex } from '@/design-system/tokens/z-index';
 
 const SkuDetailView = dynamic(
   () => import('@/components/sku/SkuDetailView'),
   { ssr: false },
 );
 
-function TeachEmpty({
-  title,
-  body,
-}: {
-  title: string;
-  body: string;
-}) {
+/** Centred host so a body-sized `EmptyState` sits in the middle of the pane. */
+function PaneCentre({ children }: { children: ReactNode }) {
   return (
     <div className="flex h-full min-h-0 flex-1 items-center justify-center bg-surface-card p-8">
-      <Panel radius="xl" padding="none" className="max-w-sm border-dashed px-6 py-10 text-center">
-        <Search className="mx-auto mb-3 h-8 w-8 text-text-faint" />
-        <p className="text-role-caption font-semibold text-text-default">{title}</p>
-        <p className="mt-1 text-role-caption text-text-muted">{body}</p>
-      </Panel>
+      <div className="w-full max-w-sm">{children}</div>
     </div>
   );
 }
 
-function LoadingShell() {
+function PaneLoading({ label }: { label: string }) {
   return (
-    <div className="flex h-full min-h-0 flex-1 items-center justify-center bg-surface-card">
-      <span className="flex items-center gap-2 text-role-caption font-semibold text-text-muted">
-        <Loader2 className="h-4 w-4 animate-spin" /> Loading…
-      </span>
+    <div className="relative flex h-full min-h-0 flex-1 flex-col bg-surface-card">
+      <UniversalLoader isLoading label={label} />
     </div>
   );
 }
 
-/** In-pane preview for entity types whose detail shells are right-rail-only. */
-function EntityPreviewCard({
+/** Deep-link CTA for entity types whose detail shells are right-rail-only. */
+function OpenRecordAction({
   entityType,
   id,
-  title,
-  subtitle,
-  loading,
-  missing,
 }: {
   entityType: SearchHitEntityType;
   id: number;
-  title: string;
-  subtitle?: string;
-  loading?: boolean;
-  missing?: boolean;
 }) {
-  const href = searchHitHref(toDbEntityType(entityType), id);
-  const Icon = ENTITY_ICONS[entityType] ?? Package;
-  const tone = ENTITY_TONE[entityType] ?? 'gray';
-
-  if (loading) return <LoadingShell />;
-  if (missing) {
-    return (
-      <TeachEmpty
-        title="Record not found"
-        body="It may have been removed. Try another result or open the home surface for this entity."
-      />
-    );
-  }
-
+  // `Link` outside, `Button` inside — the house shape for a CTA whose job is
+  // navigation (`ClaimSuccessView` is the precedent). `Button` renders a real
+  // `<button>` and carries no `href`/`asChild`, so wrapping is what keeps
+  // middle-click and prefetch working without a page-local anchor skin.
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col items-center justify-center bg-surface-card p-8">
-      <Panel radius="xl" padding="lg" className="w-full max-w-md">
-        <div className="flex items-start gap-3">
-          <span
-            className={cn(
-              'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ring-1 ring-inset',
-              CHIP_TONE_CLASSES[tone],
-            )}
-          >
-            <Icon className="h-5 w-5" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="text-role-eyebrow uppercase text-text-soft">{entityType}</p>
-            <p className="mt-0.5 truncate text-role-body font-semibold text-text-default">
-              {title}
-            </p>
-            {subtitle ? (
-              <p className="mt-1 text-role-caption text-text-muted">{subtitle}</p>
-            ) : null}
-          </div>
-        </div>
-        <Link
-          href={href}
-          className="mt-5 flex w-full items-center justify-center gap-1.5 rounded-md bg-blue-600 px-3 py-2.5 text-role-caption font-semibold text-white hover:bg-blue-500"
-        >
-          <ExternalLink className="h-3.5 w-3.5" />
-          Open full record
-        </Link>
-      </Panel>
-    </div>
+    <Link href={searchHitHref(toDbEntityType(entityType), id)}>
+      <Button variant="primary" icon={<ExternalLink className="h-3.5 w-3.5" />}>
+        Open full record
+      </Button>
+    </Link>
   );
 }
 
@@ -163,17 +128,34 @@ function SkuByIdDetail({ id }: { id: number }) {
 
   if (missing) {
     return (
-      <TeachEmpty
-        title="SKU not found"
-        body="This catalog entry may have been removed. Open the full products surface to browse."
-      />
+      <PaneCentre>
+        <EmptyState
+          icon={<Search className="h-6 w-6 text-text-faint" />}
+          title="SKU not found"
+          description="This catalog entry may have been removed. Open the full products surface to browse."
+        />
+      </PaneCentre>
     );
   }
-  if (!sku) return <LoadingShell />;
+  if (!sku) return <PaneLoading label="Loading SKU" />;
   return <SkuDetailView sku={sku} variant="page" />;
 }
 
-function RepairPreview({ id }: { id: number }) {
+/**
+ * Repair / FBA have no in-page detail shell — resolve enough of the record to
+ * name it honestly, then hand the operator its durable surface.
+ */
+function DetailStackPreview({
+  entityType,
+  id,
+  kind,
+  label,
+}: {
+  entityType: SearchHitEntityType;
+  id: number;
+  kind: 'claim' | 'shipment';
+  label: string;
+}) {
   const [title, setTitle] = useState('');
   const [subtitle, setSubtitle] = useState<string | undefined>();
   const [loading, setLoading] = useState(true);
@@ -183,47 +165,19 @@ function RepairPreview({ id }: { id: number }) {
     let cancelled = false;
     setLoading(true);
     setMissing(false);
-    void loadDetailStack({ kind: 'claim', id: String(id) }).then((result) => {
+    void loadDetailStack({ kind, id: String(id) }).then((result) => {
       if (cancelled) return;
       setLoading(false);
-      if (result.kind !== 'claim') {
-        setMissing(true);
+      if (kind === 'claim') {
+        if (result.kind !== 'claim') {
+          setMissing(true);
+          return;
+        }
+        const r = result.repair;
+        setTitle(r.ticket_number?.trim() || `Repair #${r.id}`);
+        setSubtitle([r.status, r.customer_name].filter(Boolean).join(' · ') || undefined);
         return;
       }
-      const r = result.repair;
-      setTitle(r.ticket_number?.trim() || `Repair #${r.id}`);
-      setSubtitle([r.status, r.customer_name].filter(Boolean).join(' · ') || undefined);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [id]);
-
-  return (
-    <EntityPreviewCard
-      entityType="repair"
-      id={id}
-      title={title || `Repair #${id}`}
-      subtitle={subtitle}
-      loading={loading}
-      missing={missing}
-    />
-  );
-}
-
-function FbaPreview({ id }: { id: number }) {
-  const [title, setTitle] = useState('');
-  const [subtitle, setSubtitle] = useState<string | undefined>();
-  const [loading, setLoading] = useState(true);
-  const [missing, setMissing] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setMissing(false);
-    void loadDetailStack({ kind: 'shipment', id: String(id) }).then((result) => {
-      if (cancelled) return;
-      setLoading(false);
       if (result.kind !== 'plan') {
         setMissing(true);
         return;
@@ -235,50 +189,89 @@ function FbaPreview({ id }: { id: number }) {
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, kind]);
+
+  if (loading) return <PaneLoading label={`Loading ${label.toLowerCase()}`} />;
+
+  const Icon = ENTITY_ICONS[entityType] ?? Package;
+
+  if (missing) {
+    return (
+      <PaneCentre>
+        <EmptyState
+          icon={<Icon className="h-6 w-6 text-text-faint" />}
+          title="Record not found"
+          description="It may have been removed. Try another result or open the home surface for this entity."
+        />
+      </PaneCentre>
+    );
+  }
 
   return (
-    <EntityPreviewCard
-      entityType="fba"
-      id={id}
-      title={title || `Shipment #${id}`}
-      subtitle={subtitle}
-      loading={loading}
-      missing={missing}
-    />
+    <PaneCentre>
+      <EmptyState
+        icon={<Icon className="h-6 w-6 text-text-faint" />}
+        title={title || `${label} #${id}`}
+        description={subtitle}
+        action={<OpenRecordAction entityType={entityType} id={id} />}
+      />
+    </PaneCentre>
   );
 }
 
 export function SearchDetailWorkspace({
   sel,
   hasQuery,
+  onExit,
 }: {
   sel: SearchSelection | null;
   hasQuery: boolean;
+  /** Clear `?sel=` — the station identity ◁ returns to the results list. */
+  onExit: () => void;
 }) {
-  const presence = useMotionPresence(framerPresence.workbenchPaneSettle);
-  const transition = useMotionTransition(framerTransition.workbenchPaneSettle);
+  const { presence, transition } = useMotionRole(motionRole.swap.scan);
+  /**
+   * Every branch except `order` paints its own loading face immediately (the
+   * inspectors, `PaneLoading`), so the page-level cover has nothing left to
+   * wait for. `SearchOrderStationPane` releases it itself, when resolve
+   * settles — that one really is blank until then.
+   */
+  const primaryPaint = useSearchPrimaryPaintOptional();
+  const branchOwnsPaint = sel?.entityType !== 'order';
+  useEffect(() => {
+    if (branchOwnsPaint) primaryPaint?.onPrimaryPainted();
+  }, [branchOwnsPaint, primaryPaint]);
+  // Record→record while a record is ALREADY painted: sync + hard cut so the new
+  // opaque pane covers the old one. First open and the return to the list keep
+  // wait + enter fade.
+  const hardCut = useOverlaySwapHardCut(Boolean(sel));
 
   let body: ReactNode;
   if (!sel) {
     // Prefer SearchBrowseShell at the page level; this is a defensive fallback.
-    body = hasQuery ? (
-      <TeachEmpty
-        title="Select a result"
-        body="Pick a hit under the search bar to open its record. An exact sole match opens automatically."
-      />
-    ) : (
-      <TeachEmpty
-        title="Search everything"
-        body="Type an order #, PO, tracking, serial, SKU, or customer in the search bar."
-      />
+    body = (
+      <PaneCentre>
+        {hasQuery ? (
+          <EmptyState
+            icon={<Search className="h-6 w-6 text-text-faint" />}
+            title="Select a result"
+            description="Pick a hit under the search bar to open its record. An exact sole match opens automatically."
+          />
+        ) : (
+          <EmptyState
+            icon={<Search className="h-6 w-6 text-text-faint" />}
+            title="Search everything"
+            description="Type an order #, PO, tracking, serial, SKU, or customer in the search bar."
+          />
+        )}
+      </PaneCentre>
     );
   } else {
     switch (sel.entityType) {
       case 'order':
         body = (
           <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
-            <SearchOrderFeedback orderId={sel.id} />
+            <SearchOrderStationPane orderId={sel.id} onExit={onExit} />
           </div>
         );
         break;
@@ -304,21 +297,24 @@ export function SearchDetailWorkspace({
         );
         break;
       case 'repair':
-        body = <RepairPreview id={sel.id} />;
+        body = (
+          <DetailStackPreview entityType="repair" id={sel.id} kind="claim" label="Repair" />
+        );
         break;
       case 'fba':
-        body = <FbaPreview id={sel.id} />;
+        body = (
+          <DetailStackPreview entityType="fba" id={sel.id} kind="shipment" label="Shipment" />
+        );
         break;
       default:
         body = (
-          <div className="flex h-full min-h-0 flex-1 items-center justify-center bg-surface-card p-8">
-            <div className="max-w-sm rounded-xl border border-dashed border-border-soft px-6 py-10 text-center">
-              <Package className="mx-auto mb-3 h-8 w-8 text-text-faint" />
-              <p className="text-role-caption font-semibold text-text-muted">
-                Unknown selection
-              </p>
-            </div>
-          </div>
+          <PaneCentre>
+            <EmptyState
+              icon={<Package className="h-6 w-6 text-text-faint" />}
+              title="Unknown selection"
+              description="This selection does not name an entity `/search` can open."
+            />
+          </PaneCentre>
         );
     }
   }
@@ -326,13 +322,19 @@ export function SearchDetailWorkspace({
   const key = sel ? `${sel.entityType}:${sel.id}` : hasQuery ? 'pick' : 'empty';
 
   return (
-    <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden bg-surface-card">
-      <AnimatePresence mode="wait" initial={false}>
+    <div className="relative flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden bg-surface-card">
+      <AnimatePresence initial={false} mode={hardCut ? 'sync' : 'wait'}>
         <motion.div
           key={key}
-          className="flex h-full min-h-0 flex-1 flex-col overflow-hidden"
-          {...presence}
+          // Absolute + opaque: under `mode="sync"` both panes are mounted for a
+          // frame, so the entering one must COVER the outgoing one rather than
+          // stack beneath it in flow (which would halve both their heights).
+          className="absolute inset-0 flex min-h-0 flex-col overflow-hidden bg-surface-card"
+          initial={hardCut ? false : presence.initial}
+          animate={presence.animate}
+          exit={presence.exit}
           transition={transition}
+          style={{ zIndex: zIndex.panel + (hardCut ? 1 : 0) }}
         >
           {body}
         </motion.div>

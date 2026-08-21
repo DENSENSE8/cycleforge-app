@@ -97,8 +97,8 @@ export function MobileReceivingUnitRow({
 
   return (
     <div
-      className={`-mx-1 rounded-lg px-1 transition-colors duration-700 ${
-        fresh ? 'bg-blue-50/60' : 'bg-transparent'
+      className={`-mx-1 rounded-none px-1 transition-colors duration-700 ${
+        fresh ? 'bg-surface-sunken' : 'bg-transparent'
       }`}
     >
       {/* Title — opens the richer carton sheet when wired. */}
@@ -186,7 +186,7 @@ export function MobileReceivingUnitRow({
             <ConditionGradeChip grade={row.condition_grade} />
           </div>
           {detailFields.length ? (
-            <dl className="divide-y divide-border-hairline rounded-lg border border-border-hairline bg-surface-canvas/60">
+            <dl className="divide-y divide-border-hairline rounded-none border border-border-hairline bg-surface-canvas/60">
               {detailFields.map((f) => (
                 <div key={f.k} className="flex items-baseline justify-between gap-3 px-3 py-1.5">
                   <dt className="text-role-eyebrow uppercase tracking-widest text-text-faint">{f.k}</dt>
@@ -208,8 +208,8 @@ export function MobileReceivingUnitRow({
               aria-label={hasPhotos ? `View ${photoCount} photos` : 'No photos yet'}
               className={
                 hasPhotos
-                  ? 'ds-raw-button inline-flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border border-blue-200 bg-blue-50 text-blue-600 active:bg-blue-100'
-                  : 'ds-raw-button inline-flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border border-dashed border-border-soft bg-surface-canvas text-text-faint'
+                  ? 'ds-raw-button inline-flex h-16 w-16 shrink-0 items-center justify-center rounded-none border border-border-soft bg-surface-sunken text-text-muted active:bg-surface-sunken'
+                  : 'ds-raw-button inline-flex h-16 w-16 shrink-0 items-center justify-center rounded-none border border-dashed border-border-soft bg-surface-canvas text-text-faint'
               }
             >
               <span className="inline-flex items-center gap-1.5 leading-none">
@@ -224,8 +224,8 @@ export function MobileReceivingUnitRow({
               aria-label={hasPhotos ? `View ${photoCount} photos` : 'No photos yet'}
               className={
                 hasPhotos
-                  ? 'inline-flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border border-blue-200 bg-blue-50 text-blue-600 active:bg-blue-100'
-                  : 'inline-flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border border-dashed border-border-soft bg-surface-canvas text-text-faint'
+                  ? 'inline-flex h-16 w-16 shrink-0 items-center justify-center rounded-none border border-border-soft bg-surface-sunken text-text-muted active:bg-surface-sunken'
+                  : 'inline-flex h-16 w-16 shrink-0 items-center justify-center rounded-none border border-dashed border-border-soft bg-surface-canvas text-text-faint'
               }
             >
               <span className="inline-flex items-center gap-1.5 leading-none">
@@ -238,7 +238,7 @@ export function MobileReceivingUnitRow({
             href={captureHref}
             prefetch={false}
             aria-label={`Take photos${photoCount > 0 ? ` (${photoCount} so far)` : ''}`}
-            className="inline-flex h-16 min-w-0 flex-1 items-center justify-center rounded-xl bg-blue-600 text-white shadow-[0_6px_14px_-6px_rgba(37,99,235,0.55)] transition-transform active:scale-[0.99] active:bg-blue-700"
+            className="inline-flex h-16 min-w-0 flex-1 items-center justify-center rounded-none bg-blue-600 text-white shadow-[0_6px_14px_-6px_rgba(37,99,235,0.55)] transition-transform active:scale-[0.99] active:bg-blue-700"
           >
             <Camera className="h-7 w-7" />
           </Link>

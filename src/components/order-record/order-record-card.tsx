@@ -20,6 +20,7 @@ export function OrderFactRow({
   mono,
   span,
   omitWhenEmpty = false,
+  preserveLines = false,
 }: {
   label: string;
   value: ReactNode;
@@ -31,6 +32,14 @@ export function OrderFactRow({
    * surfaces keep the default (em dash) so the full field set still teaches.
    */
   omitWhenEmpty?: boolean;
+  /**
+   * Keep the value's own newlines (`whitespace-pre-line`) — free text an
+   * operator or a buyer typed, where the line breaks carry meaning. Off by
+   * default: a scalar fact has no lines to preserve, and turning it on
+   * everywhere would let a stray newline in a SKU push the grid row taller.
+   * `OrderCommercialFacts` forked this whole cell byte-for-byte to get it.
+   */
+  preserveLines?: boolean;
 }) {
   const empty = isSearchOrderFactEmpty(value);
   if (omitWhenEmpty && empty) return null;
@@ -43,6 +52,7 @@ export function OrderFactRow({
         className={cn(
           'break-words text-role-caption font-medium text-text-default',
           mono && 'font-mono tabular-nums',
+          preserveLines && 'whitespace-pre-line',
           empty && 'text-text-faint',
         )}
       >

@@ -59,7 +59,7 @@ function intakeToneClass(tone: IntakeTone, active: boolean): string {
   };
   const I: Record<IntakeTone, string> = {
     slate: 'bg-surface-card text-text-muted border-border-soft',
-    blue: 'bg-blue-50 text-blue-700 border-blue-100',
+    blue: 'bg-surface-sunken text-text-default border-border-soft',
     rose: 'bg-rose-50 text-rose-700 border-rose-100',
     amber: 'bg-amber-50 text-amber-700 border-amber-100',
     emerald: 'bg-emerald-50 text-emerald-700 border-emerald-100',
@@ -310,12 +310,12 @@ export default function RedesignedMobileReceive({
     <div className={`relative h-full ${TOKENS.colors.background} flex flex-col`}>
       {/* Input Section */}
       <div className="px-6 pt-4 pb-4">
-        <h1 className="mb-4 text-xl font-semibold tracking-tight text-blue-950">{title}</h1>
+        <h1 className="mb-4 text-xl font-semibold tracking-tight text-text-default">{title}</h1>
         {/* Input Bar */}
         <div className="flex flex-col gap-4">
           {surface === 'triage' ? (
           <div>
-            <p className="mb-1.5 px-1 text-role-micro uppercase tracking-widest text-blue-300">
+            <p className="mb-1.5 px-1 text-role-micro uppercase tracking-widest text-text-faint">
               Receiving as
             </p>
             <div className="flex gap-2 overflow-x-auto no-scrollbar">
@@ -337,7 +337,7 @@ export default function RedesignedMobileReceive({
 
           <div className="relative group">
             <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-              <Search className="h-4 w-4 text-blue-400" />
+              <Search className="h-4 w-4 text-text-faint" />
             </div>
             <input
               autoFocus
@@ -346,19 +346,19 @@ export default function RedesignedMobileReceive({
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && lookup(input)}
               placeholder="Scan or enter tracking..."
-              className={cn("w-full bg-surface-card border border-blue-100 rounded-[24px] pl-11 pr-14 py-5 text-base font-semibold text-blue-950 transition-all shadow-sm placeholder:text-blue-300", focusRing('field', 'accent'))}
+              className={cn("w-full bg-surface-card border border-border-soft rounded-none pl-11 pr-14 py-5 text-base font-semibold text-text-default transition-all shadow-sm placeholder:text-text-faint", focusRing('field', 'accent'))}
             />
             <IconButton
               ariaLabel="Look up tracking"
               onClick={() => lookup(input)}
               icon={<Plus className="h-6 w-6" />}
-              className="absolute right-2 top-2 bottom-2 flex h-12 w-12 items-center justify-center rounded-[18px] bg-blue-600 text-white shadow-lg active:scale-90"
+              className="absolute right-2 top-2 bottom-2 flex h-12 w-12 items-center justify-center rounded-none bg-blue-600 text-white shadow-lg active:scale-90"
             />
           </div>
 
           <GlassButton
             variant={cameraActive ? 'primary' : 'secondary'}
-            className={`w-full !rounded-[24px] ${cameraActive ? 'bg-blue-600 border-blue-500 shadow-blue-600/20' : ''}`}
+            className={`w-full !rounded-none ${cameraActive ? 'bg-blue-600 border-blue-500 shadow-blue-600/20' : ''}`}
             onClick={() => setCameraActive(!cameraActive)}
             icon={Camera}
           >
@@ -384,7 +384,7 @@ export default function RedesignedMobileReceive({
               muted
             />
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="w-64 h-36 rounded-2xl border-2 border-glass/40 bg-glass/5 backdrop-blur-[1px] relative">
+              <div className="w-64 h-36 rounded-none border-2 border-glass/40 bg-glass/5 backdrop-blur-[1px] relative">
                 <motion.div
                   animate={{ top: ['5%', '95%', '5%'] }}
                   transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
@@ -418,7 +418,7 @@ export default function RedesignedMobileReceive({
                     : 'bg-rose-50 text-rose-700 border-rose-100'
                   : active
                     ? 'bg-blue-600 text-white border-blue-600'
-                    : 'bg-surface-card text-blue-600 border-blue-100';
+                    : 'bg-surface-card text-text-muted border-border-soft';
             return (
               // ds-raw-button: segmented triage filter toggle pill (with count) — not a DS Button
               <button
@@ -439,8 +439,8 @@ export default function RedesignedMobileReceive({
           className="pb-32"
           empty={
             <div className="py-12 text-center opacity-40">
-              <PackageCheck className="mx-auto mb-3 h-10 w-10 text-blue-200" />
-              <p className="text-xs font-semibold uppercase tracking-widest text-blue-300">
+              <PackageCheck className="mx-auto mb-3 h-10 w-10 text-text-faint" />
+              <p className="text-xs font-semibold uppercase tracking-widest text-text-faint">
                 {filter === 'all' ? 'Scan tracking to begin...' : `No ${filter} packages`}
               </p>
             </div>

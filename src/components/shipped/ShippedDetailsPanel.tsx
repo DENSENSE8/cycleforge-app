@@ -6,7 +6,6 @@ import { ShippedOrder } from '@/lib/neon/orders-queries';
 import { dispatchNavigateShippedDetails } from '@/utils/events';
 import { useRecordCursor } from '@/lib/record-cursor/useRecordCursor';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
-import { DeskRailChromeRow } from '@/components/right-rail/DeskRailChromeRow';
 import {
   DESK_INSPECTOR_INDEX,
   DeskInspectorIndexShell,
@@ -382,15 +381,10 @@ export function ShippedDetailsPanel({
         data-testid="order-inspector-panel"
         data-order-inspector=""
       >
-        <div className="shrink-0 border-b border-border-hairline bg-surface-card/90 backdrop-blur-xl">
-          <DeskRailChromeRow
-            onClose={onClose}
-            closeTitle="Hide right panel"
-            cursor={<CursorPositionReadout position={cursorPosition} total={cursorTotal} />}
-          />
-        </div>
-
+        {/* No stacked chrome row — the cursor rides the shell's ONE band
+            beside back + title (`chrome`), the Displays-column contract. */}
         <DeskInspectorIndexShell
+          chrome={<CursorPositionReadout position={cursorPosition} total={cursorTotal} />}
           leaves={leaves}
           activeId={navId}
           onActiveIdChange={onNavChange}

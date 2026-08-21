@@ -27,7 +27,6 @@ import {
   WorkbenchFilterMenuRow,
   WorkbenchFilterPopover,
 } from '@/components/dashboard/workbench-filter-popover';
-import { PackageCheck } from '@/components/Icons';
 import { packBenchShortLabel } from '@/lib/packing/pack-bench-display';
 import { parseStaffParam } from '@/hooks/useStaffFilter';
 import { unshippedQueueCountsQuery } from '@/lib/queries/dashboard-queries';
@@ -59,7 +58,6 @@ export function PackBenchRefineFacet() {
       hotActiveLabel={hotLabel}
       label="Filter by packing bench"
       density="field"
-      icon={<PackageCheck className="h-3.5 w-3.5" aria-hidden />}
     >
       <WorkbenchFilterGroupLabel>Packing bench</WorkbenchFilterGroupLabel>
       <WorkbenchFilterMenuRow

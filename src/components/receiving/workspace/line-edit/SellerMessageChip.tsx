@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type RefObject } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Copy, Loader2, MessageSquare } from '@/components/Icons';
+import { Copy, MessageSquare } from '@/components/Icons';
 import { toast } from '@/lib/toast';
 import { AnchoredLayer } from '@/design-system/primitives/AnchoredLayer';
 import { Panel, Button } from '@/design-system/primitives';
@@ -14,6 +14,7 @@ import { copySellerClaimMessageWithPersist } from '@/lib/receiving-claim-seller-
 import { sellerDraftMatchesTicket } from '@/lib/receiving-claim-seller-ticket-match';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
+import { UniversalLoader } from '@/design-system/components/UniversalLoader';
 
 
 
@@ -309,9 +310,7 @@ function SellerMessagePanel({
 
       <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
         {isLoading ? (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
-          </div>
+          <UniversalLoader isLoading label="Loading seller message" className="min-h-32" />
         ) : isError ? (
           <p className="rounded-md bg-rose-50 px-2 py-1.5 text-role-caption text-rose-600">
             {error instanceof Error ? error.message : 'Could not load message'}

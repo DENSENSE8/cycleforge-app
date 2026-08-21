@@ -5,10 +5,10 @@
  * One Station-density timeline (serial chips) — not N Operations embeds.
  */
 
-import { Loader2 } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import { StationUnitJourneys } from '@/components/station/workbench/StationUnitJourneys';
 import { useCartonSerials } from '@/hooks/useCartonSerials';
+import { UniversalLoader } from '@/design-system/components/UniversalLoader';
 
 export function ReceivingSerialJourneys({ receivingId }: { receivingId: number | string }) {
   const query = useCartonSerials(receivingId);
@@ -16,9 +16,7 @@ export function ReceivingSerialJourneys({ receivingId }: { receivingId: number |
 
   if (query.isLoading) {
     return (
-      <div className="flex items-center gap-2 px-1 py-6 text-role-caption font-medium text-text-faint">
-        <Loader2 className="h-4 w-4 animate-spin" /> Loading serials…
-      </div>
+      <UniversalLoader isLoading label="Loading serials" className="min-h-28" />
     );
   }
   if (query.isError) {

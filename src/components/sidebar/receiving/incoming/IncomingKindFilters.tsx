@@ -7,6 +7,7 @@
 
 import { useState } from 'react';
 import {
+  WorkbenchFilterGroupLabel,
   WorkbenchFilterHotChip,
   WorkbenchFilterMenuRow,
   WorkbenchFilterPopover,
@@ -22,6 +23,40 @@ const KIND_OPTIONS: Array<{ id: IncomingKind; label: string }> = [
 
 function kindLabel(kind: IncomingKind): string {
   return KIND_OPTIONS.find((o) => o.id === kind)?.label ?? 'Kind';
+}
+
+/** The kind facet as MENU ROWS — see {@link IncomingSourceRows} for why. */
+export function IncomingKindRows({
+  kind,
+  onChange,
+  onPick,
+}: {
+  kind: IncomingKind;
+  onChange: (next: IncomingKind) => void;
+  onPick?: () => void;
+}) {
+  const pick = (next: IncomingKind) => {
+    onChange(next);
+    onPick?.();
+  };
+  return (
+    <>
+      <WorkbenchFilterGroupLabel>Kind</WorkbenchFilterGroupLabel>
+      <WorkbenchFilterMenuRow
+        label="All kinds"
+        active={kind === 'all'}
+        onClick={() => pick('all')}
+      />
+      {KIND_OPTIONS.filter((o) => o.id !== 'all').map((opt) => (
+        <WorkbenchFilterMenuRow
+          key={opt.id}
+          label={opt.label}
+          active={kind === opt.id}
+          onClick={() => pick(opt.id)}
+        />
+      ))}
+    </>
+  );
 }
 
 export function IncomingKindFilters({

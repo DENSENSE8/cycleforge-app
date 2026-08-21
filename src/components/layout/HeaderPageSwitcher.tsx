@@ -56,16 +56,16 @@ import {
 /**
  * Shared face chrome — interactive Button and static chip stay pixel-matched.
  *
- * **Quiet by design (2026-08-19).** This face names the page you are already
- * ON, so it is a READOUT, not a destination — it says where you are, and the
- * operator never needs to find it. It briefly ran at `role-title` (18px,
- * constant black) to match the spine row of the same name; at that size the
- * one thing on the beam that cannot be clicked-to-go-anywhere was also the
- * loudest thing on it, out-shouting Pins, Recents and the toggle beside it.
- * It is `role-caption` now — one step under the spine's `role-nav` rows — and
- * the LABEL alone takes `text-text-muted`, while the glyph keeps the beam's
- * shared ink from {@link HEADER_ICON_BTN_CLASS} so the icon row reads as one
- * set. Emphasis on this beam is contrast, never size or weight.
+ * **Quiet label, `role-body` (2026-08-20).** This face names the page you
+ * are already ON — a READOUT, not a destination — so the LABEL alone stays
+ * `text-text-muted` (the 2026-08-19 "quiet by design" ruling: it is the one
+ * thing on the beam that cannot be clicked-to-go-anywhere, and full ink here
+ * out-shouted Pins / Recents / the toggle beside it). Size moved up a step
+ * same-day, `role-caption` (12px) → `role-body` (14px), to match the
+ * spine's same-day label bump (`SidebarNavList.tsx`) — quiet and legible are
+ * independent axes; the mute ruling only ever governed ink. The glyph keeps
+ * the beam's shared full-ink token from {@link HEADER_ICON_BTN_CLASS}
+ * unchanged, so only the label is quiet, never the icon.
  */
 const PAGE_FACE_CLASS = cn(
   HEADER_ICON_BTN_CLASS,
@@ -81,7 +81,7 @@ const PAGE_FACE_CLASS = cn(
   // `font-medium` is explicit because ONE branch is a `Button`, whose base
   // carries `font-semibold`; without it the interactive face would sit a weight
   // above its own static twin. Emphasis on this beam is contrast, not weight.
-  'text-role-caption font-medium leading-none transition-colors duration-150 ease-out',
+  'text-role-body font-medium leading-none transition-colors duration-150 ease-out',
 );
 
 /** The face's content — ONE render for the static chip and the menu trigger. */
@@ -96,16 +96,15 @@ function PageFaceContent({ Icon, label }: { Icon: SidebarIconComponent; label: s
         overrode the size token, which is why "the icon sizing doesn't match"
         survived a pass that set the token correctly.
       */}
-      <span className="flex min-w-0 items-end gap-1">
+      <span className="flex min-w-0 items-center gap-1">
         <span className={cn(TOP_CHROME_ICON_FACE, 'flex shrink-0 items-center justify-center')}>
           <Icon className="h-full w-full" aria-hidden />
         </span>
         {/*
-          `items-end` on the pair, `leading-none` on the word: the label's box is
-          bottom-aligned to the glyph's, so the type sits on the icon's floor
-          rather than on the middle of a line box taller than the glyph. The
-          pair is 16px tall either way, so the beam still centres it on the same
-          row as every other header glyph.
+          `items-center` on the pair, `leading-none` on the word: the label
+          sits vertically centred against the glyph rather than pinned to its
+          floor. The pair is 16px tall either way, so the beam still centres
+          it on the same row as every other header glyph.
         */}
         <span className="max-w-[10rem] truncate text-text-muted" title={label}>{label}</span>
       </span>

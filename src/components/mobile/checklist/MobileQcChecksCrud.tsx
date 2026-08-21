@@ -143,7 +143,7 @@ export function MobileQcChecksCrud({
           return (
             <li
               key={check.id}
-              className={`flex items-start gap-2 rounded-2xl px-3 py-3 ${
+              className={`flex items-start gap-2 rounded-none px-3 py-3 ${
                 isDraft ? 'bg-amber-50/70 ring-1 ring-amber-100' : 'bg-surface-canvas'
               }`}
             >
@@ -188,7 +188,7 @@ export function MobileQcChecksCrud({
                       ariaLabel="Edit step"
                       tone="accent"
                       onClick={() => openEdit(check)}
-                      className="h-10 w-10 rounded-xl text-text-muted"
+                      className="h-10 w-10 rounded-none text-text-muted"
                     />
                     <IconButton
                       icon={
@@ -201,7 +201,7 @@ export function MobileQcChecksCrud({
                       ariaLabel="Delete step"
                       onClick={() => handleRemove(check.id)}
                       disabled={removing === check.id}
-                      className="h-10 w-10 rounded-xl"
+                      className="h-10 w-10 rounded-none"
                     />
                   </div>
                 </div>
@@ -218,14 +218,14 @@ export function MobileQcChecksCrud({
             value={stepLabel}
             onChange={(e) => setStepLabel(e.target.value)}
             placeholder="Step label (e.g. Power on test)"
-            className="w-full rounded-xl border border-border-soft bg-surface-canvas px-3 py-2.5 text-role-body font-semibold text-text-default placeholder:text-text-faint"
+            className="w-full rounded-none border border-border-soft bg-surface-canvas px-3 py-2.5 text-role-body font-semibold text-text-default placeholder:text-text-faint"
             autoFocus
           />
           <select
             value={stepType}
             onChange={(e) => setStepType(e.target.value)}
             aria-label="Step type"
-            className="w-full rounded-xl border border-border-soft bg-surface-canvas px-3 py-2.5 text-role-caption font-semibold text-text-default"
+            className="w-full rounded-none border border-border-soft bg-surface-canvas px-3 py-2.5 text-role-caption font-semibold text-text-default"
           >
             {STEP_TYPES.map((t) => (
               <option key={t} value={t}>
@@ -261,7 +261,7 @@ export function MobileQcChecksCrud({
             resetForm();
             setShowAdd(true);
           }}
-          className="text-blue-600"
+          className="text-text-muted"
         >
           Add QC step
         </Button>

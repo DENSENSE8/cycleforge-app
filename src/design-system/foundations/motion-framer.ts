@@ -121,6 +121,21 @@ export const framerDuration = {
    */
   hitMarker: 0.1,
   /**
+   * Live VALUE change on a collection row — a status chip whose fact was
+   * changed by someone else (a scan at another station, an Ably push) while
+   * the operator was looking somewhere else on the table.
+   *
+   * Longer than every other feedback duration on purpose, and that is not
+   * drift: `chipCopyFeedback` / `hitMarker` acknowledge something the operator
+   * DID, under their own cursor, where 100-150ms is plenty because they are
+   * already looking at the target. This one has to be caught in peripheral
+   * vision across 40 rows, which is why it is a DOUBLE pulse — a single flash
+   * at this size reads as a repaint artifact, two reads as a signal. 420ms is
+   * the whole envelope (two 130ms pulses + a settle tail), still under the
+   * house's sub-500ms ceiling for a one-shot.
+   */
+  liveValueChange: 0.42,
+  /**
    * Armed-list ↑↓ selection geometry — binary cut (one frame). Pair with
    * `framerTransition.armedSnap`. Not a motionRole: arm snap ≠ `push.rail`
    * (column width) and ≠ `feedback.hitMarker` (commit juice). Displays Root
@@ -287,6 +302,21 @@ export const framerTransition = {
     opacity: fadeInstant,
   } satisfies Transition,
 
+  /**
+   * Welded peel-up hinge — pair with `framerPresence.weldedPanelPeel`.
+   *
+   * Height and rotation share `springSnappy` so the box and the tilt settle as
+   * ONE gesture; a tween on either half makes the panel arrive before (or
+   * after) the space it occupies. Opacity stays `fadeInstant` — the panel is
+   * carrying a state verdict the operator needs to read, not a decoration to
+   * ease in.
+   */
+  weldedPanelPeel: {
+    height: springSnappy,
+    rotateX: springSnappy,
+    opacity: fadeInstant,
+  } satisfies Transition,
+
   /** Up Next expanded block — same utilitarian height + instant opacity */
   upNextCollapse: {
     height: springSnappy,
@@ -428,6 +458,47 @@ export const framerTransition = {
   } satisfies Transition,
 
   /**
+   * Live VALUE change on a collection row — the "attention pulse & morph" a
+   * status chip runs when its fact was changed remotely.
+   *
+   * Transform + opacity ONLY (scale on the chip, opacity+scale on an absolute
+   * ring overlay, opacity dip on the label). Never box-shadow, never width —
+   * a chip in a ruled grid band must not reflow its neighbours to say a word
+   * changed.
+   *
+   * `times` is the phase map from the originating ruling, compressed to the
+   * house's one-shot envelope:
+   *   0.00 rest → 0.14 pulse 1 peak → 0.30 trough → 0.45 pulse 2 peak
+   *   → 0.62 trough → 1.00 settle
+   * Two `easeOut` peaks with an `easeInOut` middle so the second pulse reads
+   * as a deliberate beat rather than a bounce tail.
+   *
+   * Interruptible: call sites lead their keyframe arrays with `null` (keyframe
+   * wildcard) so a second scan mid-pulse restarts from the CURRENT value
+   * instead of snapping back to rest.
+   */
+  liveValueChange: {
+    type: 'tween' as const,
+    duration: framerDuration.liveValueChange,
+    times: [0, 0.14, 0.3, 0.45, 0.62, 1],
+    ease: 'easeOut' as const,
+  } satisfies Transition,
+
+  /**
+   * The label half of {@link liveValueChange} — the MORPH. A short opacity dip
+   * so the word visibly changes rather than teleporting under the pulse. Runs
+   * inside the first pulse, not after it: the chip already carries the new
+   * truth by the time React paints, and holding the old word for 300ms to
+   * "reveal" it would be chrome telling a story the data no longer supports.
+   */
+  liveValueMorph: {
+    type: 'tween' as const,
+    duration: 0.18,
+    times: [0, 0.45, 1],
+    ease: motionBezier.easeOut,
+  } satisfies Transition,
+
+  /**
    * Station scan-band glow — idle ⇄ focused opacity. Pair with
    * `scanBandGlowOpacity` + `useMotionTransition`. Opacity only (GPU).
    */
@@ -561,6 +632,29 @@ export const framerPresence = {
     initial: { height: 0, opacity: 0 },
     animate: { height: 'auto', opacity: 1 },
     exit: { height: 0, opacity: 0 },
+  },
+  /**
+   * Peel-up hinge — a panel WELDED to the top edge of the surface below it
+   * (the Unbox receive feedback panel over the notes composer). It is
+   * `collapseHeight` plus one rotation: the panel tilts back on its bottom
+   * edge and swings up, so it reads as hinging out of the composer rather
+   * than as a separate card that faded in above it.
+   *
+   * `transformOrigin: 'bottom'` is the anchor and belongs on the element's
+   * style, not this shape — a presence shape carries animated values, and a
+   * transform origin is static geometry. `transformPerspective` rides here so
+   * the tilt has depth without a `perspective` wrapper; it is in the bridge's
+   * stripped-key set, so reduced motion drops it with the rotation.
+   *
+   * Pair with `framerTransition.weldedPanelPeel`. Under reduced motion
+   * {@link useMotionPresence} strips `rotateX` / `transformPerspective` and
+   * keeps `height` + `opacity`, degrading it to exactly `collapseHeight` —
+   * the one sanctioned layout animation.
+   */
+  weldedPanelPeel: {
+    initial: { height: 0, opacity: 0, rotateX: -15, transformPerspective: 900 },
+    animate: { height: 'auto', opacity: 1, rotateX: 0, transformPerspective: 900 },
+    exit: { height: 0, opacity: 0, rotateX: -15, transformPerspective: 900 },
   },
   stationSerialRow: {
     initial: { opacity: 0, y: 6 },

@@ -1,7 +1,8 @@
 import { test, expect, type Locator } from '@playwright/test';
 
 /**
- * Outbound spreadsheet skin — Pending + Packed share OrdersGridHost / LedgerGrid
+ * Outbound spreadsheet skin — Pending + Packed share the outbound spreadsheet
+ * (`useOrdersSpreadsheet` → `NonlinearTableHost` → LedgerGrid)
  * (Airtable grid skin). Assert both tabs render the same framed table + glyphs;
  * no day-band headers.
  *
@@ -86,7 +87,7 @@ async function assertAirtableGridShell(grid: Locator) {
   expect(rightBorder, 'body has no vertical column rule (1B)').toBe(0);
 }
 
-test.describe('outbound OrdersGridHost / LedgerGrid (Pending + Packed)', () => {
+test.describe('outbound spreadsheet / LedgerGrid (Pending + Packed)', () => {
   test.skip(({ browserName }) => browserName === 'webkit', 'orders-queue grid is a desktop layout');
 
   test('Pending GRID — rounded clip shell, bottom row rules, always-select', async ({ page }) => {

@@ -91,7 +91,7 @@ export function ShippingStaffScanHistoryRail({
 
   const parsedTechId = Number(techId);
   const sessionStaffId = Number.isFinite(parsedTechId) && parsedTechId > 0 ? parsedTechId : 0;
-  const { data: rawRecords = [], isLoading } = useTechLogs(sessionStaffId, {
+  const { data: rawRecords = [] } = useTechLogs(sessionStaffId, {
     limit: SHIPPING_HISTORY_FETCH_LIMIT,
   });
   const records = useMemo(
@@ -135,7 +135,7 @@ export function ShippingStaffScanHistoryRail({
       limit={SHIPPING_HISTORY_LIMIT}
       eyebrowTitle="History"
       eyebrowSuffix="You"
-      emptyText={isLoading ? 'Loading history…' : 'No recent station scans'}
+      emptyText="No recent station scans"
       getId={techRecordRailId}
       getActivityAt={getRowActivityAt}
       onSelect={(row) => {

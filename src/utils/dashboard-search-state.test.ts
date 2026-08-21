@@ -219,3 +219,27 @@ test('every param the retired-front-door redirects forward is declared by /dashb
       'Declare them in src/lib/routing/query-mode-routes.ts.',
   );
 });
+
+/**
+ * Regression (2026-08-20): the Add-orders rail opened and closed itself.
+ *
+ * `useSurfaceParamHygiene` (mounted in `src/app/shipping/layout.tsx`) re-parses
+ * the URL against the route spec on every param change and drops anything the
+ * route does not declare. `ingest` was undeclared, so the chrome Add wrote
+ * `?ingest=true` and the very next hygiene pass stripped it — `showIngestRail`
+ * flipped false before the operator could type. Both keys that open the rail
+ * must survive the boundary parse.
+ */
+test('the To-ship desk keeps the params that open the Add-orders rail', () => {
+  const spec = routeParamsFor('/shipping/orders');
+  assert.ok(spec, 'expected a route spec for /shipping/orders');
+
+  for (const key of ['ingest', 'new']) {
+    const kept = parseRouteParams(spec, new URLSearchParams(`${key}=true`));
+    assert.equal(
+      kept.get(key),
+      'true',
+      `${key}=true must survive the boundary parse or the rail closes itself`,
+    );
+  }
+});

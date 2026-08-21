@@ -70,7 +70,8 @@ import { TABLE_SURFACE_CLIP_CLASS, TABLE_SURFACE_SHEET_CLASS } from '@/design-sy
  * layout SoT. Do **not** half-port that header onto `makeLedgerGridColumnHeader`.
  *
  * Station adopters: Incoming POS and Unbox / History /
- * Testing (`ReceivingGridHost`). Outbound: Ready + Orders (`OrdersGridHost`).
+ * Testing (`ReceivingGridHost`). Outbound: Ready + Orders
+ * (`useOrdersSpreadsheet` → `NonlinearTableHost`).
  */
 
 /** Reorder a visibility-resolved list to match a staff column-order preference. */

@@ -26,7 +26,7 @@ function qtyValue(record: QueueRowRecord): number {
 }
 
 /**
- * Same deadline source the Late cell uses (`OrdersGridHost` → `daysLate`).
+ * Same deadline source the Late cell uses (`useOrdersSpreadsheet` → `daysLate`).
  * Missing deadlines sort last in BOTH directions via ±Infinity (not a signed
  * magnitude that would invert under ASC).
  */

@@ -3,9 +3,10 @@ import { Bell, Check, Clock, RotateCcw, Barcode } from '@/components/Icons';
 import { cn } from '@/utils/_cn';
 import { Button } from '@/design-system/primitives';
 import { AnimatedStat } from '@/design-system/components/AnimatedStat';
-import { GOAL_PANEL_SHELL_CLASS, RECUR_INTERVALS, STATION_LABEL, toneFor } from './goal-chip-shared';
+import { GOAL_PANEL_SHELL_CLASS, RECUR_INTERVALS, STATION_LABEL, toneFor, type Todo } from './goal-chip-shared';
 import { GoalRing } from './GoalRing';
 import { TaskList } from './TaskList';
+import { TaskListMenu } from './TaskListMenu';
 import { NextWorkOrderRow } from './NextWorkOrderRow';
 import { GoalPanelHomeCta } from './GoalPanelHomeCta';
 import type { NextWorkOrder } from './useNextWorkOrder';
@@ -32,6 +33,7 @@ export function GoalPopover({
   hasSwitch,
   workOrder,
   onNavigate,
+  surface,
 }: {
   g: HeaderGoalChipController;
   view: View;
@@ -41,16 +43,26 @@ export function GoalPopover({
   /** Absent when there is none, or when the operator is already on its record. */
   workOrder?: NextWorkOrder | null;
   onNavigate?: () => void;
+  /**
+   * WHICH host is rendering this — required, no default. `popover` is the
+   * desktop anchor under the header button; `sheet` is the phone's full-width
+   * bottom sheet, where every row and menu item takes a 44px touch target. A
+   * panel that guessed its own density got it wrong the moment a second host
+   * mounted it.
+   */
+  surface: 'popover' | 'sheet';
 }) {
   const active = g.active!;
   const goals = g.goals!;
+  const touch = surface === 'sheet';
+  const listMax = touch ? 'max-h-[52vh]' : g.mode === 'recurring' ? 'max-h-[200px]' : 'max-h-[230px]';
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: -6, scale: 0.98 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
+      initial={touch ? false : { opacity: 0, y: -6, scale: 0.98 }}
+      animate={touch ? undefined : { opacity: 1, y: 0, scale: 1 }}
       transition={{ type: 'spring', stiffness: 420, damping: 32 }}
-      className={GOAL_PANEL_SHELL_CLASS}
+      className={touch ? 'w-full' : GOAL_PANEL_SHELL_CLASS}
     >
       {workOrder ? <NextWorkOrderRow top={workOrder} onNavigate={onNavigate} /> : null}
 
@@ -105,7 +117,11 @@ export function GoalPopover({
                   key={gg.station}
                   type="button"
                   onClick={() => g.onSelectStation(gg.station)}
-                  className={cn('flex w-full items-center gap-2.5 rounded-none px-2 py-2 text-left transition-colors', on ? 'bg-blue-50/70' : 'hover:bg-surface-hover')}
+                  className={cn(
+                    'flex w-full items-center gap-2.5 rounded-none px-2 text-left transition-colors',
+                    touch ? 'min-h-[52px] py-3' : 'py-2',
+                    on ? 'bg-blue-50/70' : 'hover:bg-surface-hover',
+                  )}
                 >
                   <GoalRing percent={pct} color={gt.ring} size={30} />
                   <span className="min-w-0 flex-1">
@@ -138,7 +154,8 @@ export function GoalPopover({
                     type="button"
                     onClick={() => g.changeMode(m)}
                     className={cn(
-                      'relative flex-1 rounded-none px-1.5 py-1.5 text-role-micro transition-colors',
+                      'relative flex-1 rounded-none px-1.5 transition-colors',
+                      touch ? 'min-h-[44px] text-role-caption' : 'py-1.5 text-role-micro',
                       g.mode === m ? 'bg-surface-card text-text-default shadow-sm ring-1 ring-border-soft' : 'text-text-soft hover:text-text-default',
                     )}
                   >
@@ -190,7 +207,8 @@ export function GoalPopover({
                         type="button"
                         onClick={() => g.changeInterval(opt.ms)}
                         className={cn(
-                          'rounded-none px-1.5 py-0.5 text-role-micro transition-colors',
+                          'rounded-none px-1.5 transition-colors',
+                          touch ? 'min-h-[40px] min-w-[44px] text-role-caption' : 'py-0.5 text-role-micro',
                           g.intervalMs === opt.ms ? 'bg-surface-card text-text-default shadow-sm ring-1 ring-border-soft' : 'text-text-soft hover:text-text-default',
                         )}
                       >
@@ -206,11 +224,22 @@ export function GoalPopover({
                   </p>
                 )}
 
-                <div className="mt-1 max-h-[200px] overflow-y-auto px-2 pb-2">
+                <ListHead
+                  label="Recurring"
+                  items={g.recurItems}
+                  onNavigate={onNavigate}
+                  touch={touch}
+                  onClear={g.clearDoneRecur}
+                  onDeleteAll={g.deleteAllRecur}
+                />
+
+                <div className={cn('mt-1 overflow-y-auto px-2 pb-2', listMax)}>
                   <TaskList
                     items={g.recurItems}
                     onToggle={g.toggleRecur}
                     onRemove={g.removeRecur}
+                    onRename={g.renameRecur}
+                    touch={touch}
                     adding={g.adding}
                     draft={g.draft}
                     onDraft={g.setDraft}
@@ -224,21 +253,33 @@ export function GoalPopover({
                 </div>
               </div>
             ) : (
-              <div className="max-h-[230px] overflow-y-auto px-2 py-2">
-                <TaskList
+              <div>
+                <ListHead
+                  label="To-do"
                   items={g.todoItems}
-                  onToggle={g.toggleTodo}
-                  onRemove={g.removeTodo}
-                  adding={g.adding}
-                  draft={g.draft}
-                  onDraft={g.setDraft}
-                  onAdd={g.onAddTodo}
-                  onStartAdd={g.onStartAdd}
-                  onCancelAdd={g.onCancelAdd}
-                  emptyHint="No tasks yet. Add your to-dos."
-                  placeholder="New task…"
-                  addLabel="Add a task"
+                  onNavigate={onNavigate}
+                  touch={touch}
+                  onClear={g.clearDoneTodos}
+                  onDeleteAll={g.deleteAllTodos}
                 />
+                <div className={cn('overflow-y-auto px-2 pb-2', listMax)}>
+                  <TaskList
+                    items={g.todoItems}
+                    onToggle={g.toggleTodo}
+                    onRemove={g.removeTodo}
+                    onRename={g.renameTodo}
+                    touch={touch}
+                    adding={g.adding}
+                    draft={g.draft}
+                    onDraft={g.setDraft}
+                    onAdd={g.onAddTodo}
+                    onStartAdd={g.onStartAdd}
+                    onCancelAdd={g.onCancelAdd}
+                    emptyHint="No tasks yet. Add your to-dos."
+                    placeholder="New task…"
+                    addLabel="Add a task"
+                  />
+                </div>
               </div>
             )}
           </motion.div>
@@ -247,5 +288,46 @@ export function GoalPopover({
 
       <GoalPanelHomeCta onNavigate={onNavigate} />
     </motion.div>
+  );
+}
+
+/**
+ * One list's head: what it is on the left, its `⋯` on the right. The dots sit
+ * at the same right edge as every row's, so scope is read from position alone.
+ */
+function ListHead({
+  label,
+  items,
+  onNavigate,
+  touch,
+  onClear,
+  onDeleteAll,
+}: {
+  label: string;
+  items: Todo[];
+  onNavigate?: () => void;
+  touch: boolean;
+  onClear: () => void;
+  onDeleteAll: () => void;
+}) {
+  const doneCount = items.filter((t) => t.done).length;
+  return (
+    <div className={cn('flex items-center justify-between gap-2', touch ? 'px-3 pt-2' : 'px-3.5 pt-2')}>
+      <span className="flex items-center gap-1.5 text-role-eyebrow uppercase tracking-wider text-text-faint">
+        {label}
+        <span className="tabular-nums">
+          {doneCount}/{items.length}
+        </span>
+      </span>
+      <TaskListMenu
+        listLabel={label}
+        doneCount={doneCount}
+        total={items.length}
+        onNavigate={onNavigate}
+        onClearCompleted={onClear}
+        onDeleteAll={onDeleteAll}
+        touch={touch}
+      />
+    </div>
   );
 }

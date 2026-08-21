@@ -13,6 +13,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { isKnownPermission } from '@/lib/auth/permission-registry';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
@@ -85,21 +86,41 @@ test('mutation kinds: dotted names, valid trust class, target kind derivable', (
     assert.ok(['auto', 'draft_scoped', 'review'].includes(def.trust), `mutation_kind ${key} trust invalid`);
     assert.match(def.targetKind, /^[a-z][a-z0-9_]*$/, `mutation_kind ${key} targetKind must be lower_snake`);
     assert.ok(def.description.length > 20, `mutation_kind ${key} needs a real description`);
+    // A kind that names a permission nobody can hold is unusable by everyone —
+    // and fails as a confusing 403 rather than as a startup error.
+    assert.ok(
+      isKnownPermission(def.permission),
+      `mutation_kind ${key} names unknown permission "${def.permission}"`,
+    );
     assert.ok((MUTATION_TARGET_KINDS as readonly string[]).includes(def.targetKind));
   }
 });
 
-test('trust model (plan §-2, locked): auto = view-layer kinds ONLY; masters are review', () => {
+test('trust model (plan §-2, locked): auto = view-layer OR reversible evidence moves; masters are review', () => {
   const autoKinds = Object.entries(MUTATION_KINDS)
     .filter(([, d]) => d.trust === 'auto')
     .map(([k]) => k)
     .sort();
-  // The locked day-one auto-apply list. Widening it is a deliberate,
-  // reviewed decision — update this assertion in the same PR as the registry.
+  // The locked auto-apply list. Widening it is a deliberate, reviewed decision
+  // — update this assertion in the same PR as the registry.
+  //
+  // WIDENED 2026-08-19 (receiving_photo.reassign): the day-one rule was
+  // "view-layer projections only". This is the first entry that writes real
+  // domain data, admitted on three properties, ALL of which are required:
+  //   1. REVERSIBLE — it captures an inverse (the reverse move) taken from the
+  //      photo's actual prior link, so revert restores the true previous home.
+  //   2. NON-DESTRUCTIVE — no pixels are deleted; only which record the photo
+  //      hangs off changes.
+  //   3. ALREADY OPERATOR-REACHABLE — the same move is one click in the carton
+  //      UI under receiving.upload_photo, so review would gate a chat path more
+  //      tightly than the hands-on path it mirrors.
+  // Anything that DELETES evidence, or that cannot state its own inverse, does
+  // NOT qualify and stays `review`.
   assert.deepEqual(autoKinds, [
     'entity_signal.insert',
     'feed_membership.set_state',
     'node_surface.set_config',
+    'receiving_photo.reassign',
     'staff_rail_exclusion.delete',
     'staff_rail_exclusion.insert',
   ]);

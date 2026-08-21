@@ -25,8 +25,11 @@ import {
   type ReactNode,
 } from 'react';
 import { ChevronDown, ChevronUp } from '@/components/Icons';
-import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { IconButton } from '@/design-system/primitives';
+import { WORKBENCH_BAND_INSET_X } from '@/components/dashboard/workbench-shell';
+import {
+  WorkbenchBandControl,
+  WORKBENCH_BAND_CONTROL_GLYPH_CLASS,
+} from '@/components/dashboard/workbench-band-control';
 import { cn } from '@/utils/_cn';
 
 /** Surface ids for `staff_preferences.kpiCollapsed`. Cohort ports add keys here. */
@@ -47,8 +50,61 @@ export type WorkbenchKpiSurfaceId =
 /** Drag ΔY (px) past which pointer-up snaps open ↔ closed. */
 const KPI_SNAP_THRESHOLD_PX = 40;
 
-const TOGGLE_ICON_CLASS = 'h-3.5 w-3.5';
-const TOGGLE_BTN_CLASS = 'shrink-0 text-text-faint hover:text-text-default';
+/**
+ * The Band-2 card face — flush strip, seam below, `py-2` for the vertical
+ * rhythm, and the shared {@link WORKBENCH_BAND_INSET_X} horizontally.
+ *
+ * Four surfaces had hand-typed this exact string (FBA twice, Locations bins,
+ * Walk-in sales) rather than composing the band, so each carried its own copy
+ * of a recipe that is a property of the BAND, not of what is in it — and none
+ * of them inherited the empty-strip collapse below.
+ */
+const WORKBENCH_BAND2_CARD_CLASS = cn(
+  'relative border-b border-r border-border-soft bg-surface-card py-2',
+  // Horizontal inset comes from the shared band token, not from here: the tile
+  // face already owns `px-2 py-1`, so a card inset stacked on top of it put
+  // Band 2's labels at 20px while the search glyph one band down sat at 8px.
+  WORKBENCH_BAND_INSET_X,
+);
+
+/**
+ * The probe the `globals.css` rule reads. `display: contents` contributes no
+ * box, so a strip lays out exactly as if it were a direct child.
+ */
+function WorkbenchBandBody({ children }: { children: ReactNode }) {
+  return (
+    <div data-workbench-kpi-body="" className="contents">
+      {children}
+    </div>
+  );
+}
+
+/**
+ * Band 2 as a RAW card — the same face and the same empty-collapse as
+ * {@link WorkbenchKpiBand}, minus the snap. Compose this for a strip that is
+ * **mode-scoped** rather than a per-staff preference (FBA's disposition tiles
+ * change with the tab and filter the board, so a collapse pref would be the
+ * wrong control), or for a pane that seats its own Band 2 outside the sheet
+ * shell (Walk-in).
+ *
+ * An empty strip paints nothing here too — same rule, same attribute.
+ */
+export function WorkbenchBand2Card({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      data-workbench-kpi-band=""
+      className={cn(WORKBENCH_BAND2_CARD_CLASS, 'shrink-0', className)}
+    >
+      <WorkbenchBandBody>{children}</WorkbenchBandBody>
+    </div>
+  );
+}
 
 export function WorkbenchKpiCollapseToggle({
   open,
@@ -65,24 +121,22 @@ export function WorkbenchKpiCollapseToggle({
 }) {
   const label = open ? hideLabel : showLabel;
   return (
-    <HoverTooltip label={label} asChild>
-      <IconButton
-        size="xs"
-        tone="neutral"
-        ariaLabel={label}
-        aria-expanded={open}
-        icon={
-          open ? (
-            <ChevronUp className={TOGGLE_ICON_CLASS} />
-          ) : (
-            <ChevronDown className={TOGGLE_ICON_CLASS} />
-          )
-        }
-        onClick={onToggle}
-        data-testid={testId}
-        className={TOGGLE_BTN_CLASS}
-      />
-    </HoverTooltip>
+    // No `lit`: the chevron's direction already says which way the band is, and
+    // a fill on top of it would be the same fact told twice — worse, KPI is
+    // open by default, so a lit-when-open control would be blue on every load.
+    <WorkbenchBandControl
+      label={label}
+      aria-expanded={open}
+      icon={
+        open ? (
+          <ChevronUp className={WORKBENCH_BAND_CONTROL_GLYPH_CLASS} />
+        ) : (
+          <ChevronDown className={WORKBENCH_BAND_CONTROL_GLYPH_CLASS} />
+        )
+      }
+      onClick={onToggle}
+      data-testid={testId}
+    />
   );
 }
 
@@ -180,13 +234,12 @@ export function WorkbenchKpiBand({
         aria-hidden={!open}
         className={cn(!open && 'pointer-events-none')}
       >
-        <div
-          className={cn(
-            'relative border-b border-r border-border-soft bg-surface-card px-3 py-2',
-            className,
-          )}
-        >
-          {children}
+        <div className={cn(WORKBENCH_BAND2_CARD_CLASS, className)}>
+          {/*
+            The probe sits INSIDE the card and the snap handle stays outside it:
+            a band with nothing in it must not offer a handle to collapse.
+          */}
+          <WorkbenchBandBody>{children}</WorkbenchBandBody>
           {open ? (
             <KpiSnapHandle
               open

@@ -13,6 +13,8 @@
  * can build it from a controller, a fetch, or a test fake.
  */
 
+import type { PutawaySuggestion } from '@/lib/receiving/suggested-putaway-location';
+
 /** The least a row needs to be listed, searched, placed on, and printed. */
 export interface StationLocationRow {
   id: number;
@@ -55,4 +57,16 @@ export interface StationLocationPlacementPort {
    * half still works, which is the half that was actually missing.
    */
   canPlaceMinted: boolean;
+  /**
+   * The DIRECTED target — "put it HERE" — painted above the searchable list.
+   *
+   * Optional, and deliberately so: only the line-grain putaway port has a
+   * source honest enough to direct with (`suggested-putaway-location`, which
+   * carries its own basis). The carton-staging and pack-desk ports leave it
+   * undefined and the leaf stays the catalog it has always been. A leaf must
+   * never fabricate one from its own list.
+   */
+  suggestion?: PutawaySuggestion | null;
+  /** First suggestion read in flight — the target slot waits instead of flashing empty. */
+  suggestionLoading?: boolean;
 }

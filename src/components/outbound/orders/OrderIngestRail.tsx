@@ -1,15 +1,33 @@
 'use client';
 
 /**
- * To-ship ingest picker — Add / Import methods as Unbox Displays index→leaf.
+ * To-ship Add-orders rail — the Unbox right-rail recipe, exactly.
  *
- * Band 1 is one Add control. Methods live here, not in a chrome dropdown.
- * Compose {@link DeskInspectorIndexShell} (never a page-local index twin;
- * never `StationDisplaysPushStack` on the desk rail).
+ * | Unbox Displays | here |
+ * |---|---|
+ * | single push column | `DetailStackRailRegistrar` → the one `RightRailHost` slot |
+ * | top chrome band | `DeskRailChromeRow` (host paints maximize + the singleton close) |
+ * | Root Index → leaf | `DeskInspectorIndexShell` |
+ * | `Filter displays…` find row + ↑↓/Enter | `indexFilter` |
+ * | Esc = leaf → index | owned by the index shell |
+ *
+ * Compose `DeskInspectorIndexShell` — never a page-local index twin, and never
+ * `StationDisplaysPushStack` on a desk rail.
+ *
+ * **The auto-close (fixed 2026-08-20) was never about the host.** `open` derives
+ * from `?ingest=true` / `?new=true`, and `useSurfaceParamHygiene` (mounted in
+ * `src/app/shipping/layout.tsx`) drops any param the route spec does not
+ * declare. `ingest` was undeclared in `ORDERS_ROUTE_PARAMS`, so the chrome Add
+ * wrote it and the next hygiene pass stripped it — the rail closed itself
+ * before the operator could type. Any new ingest param must be declared there.
+ *
+ * Hand entry is TWO leaves (Add order · Replacement) rather than one leaf with
+ * a `HorizontalButtonSlider` mode row inside it: the index already answers
+ * "which lane", so the pills were a second mode control under the first.
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { Database, FileText, Globe, Loader2, Plus, RefreshCw } from '@/components/Icons';
+import { Database, FileText, Globe, Plus, RefreshCw, RotateCcw } from '@/components/Icons';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
 import {
   DESK_INSPECTOR_INDEX,
@@ -20,20 +38,22 @@ import { DeskRailChromeRow } from '@/components/right-rail/DeskRailChromeRow';
 import { ShippedIntakeForm } from '@/components/shipped/ShippedIntakeForm';
 import { OrderSyncDialog } from '@/components/sidebar/OrderSyncDialog';
 import { useShippedFormSubmit } from '@/components/sidebar/dashboard-sidebar-hooks';
-import { useTableImportFilePicker } from '@/components/tables/import/TableImportFileButton';
 import { AwaitingEbayPanel } from '@/components/unshipped/AwaitingEbayPanel';
-import { SearchableSelectField } from '@/design-system/components';
-import { Button, TextField } from '@/design-system/primitives';
+import { useTableImportFilePicker } from '@/components/tables/import/TableImportFileButton';
 import { useAuth } from '@/contexts/AuthContext';
-import { usePlatformCatalog } from '@/hooks/useCatalog';
 import { useOrdersSync } from '@/hooks/useOrdersSync';
 import { useTableImportParam } from '@/hooks/useTableImportParam';
 import { ORDER_IMPORT_DESCRIPTOR } from '@/lib/orders/order-import-descriptor';
-import { cn } from '@/utils/_cn';
+import {
+  FileImportSection,
+  PlatformAddSection,
+  SyncImportSection,
+} from './OrderIngestPanel';
 
 const ORDER_INGEST_RAIL_ID = 'detail:order-ingest';
 
 const MANUAL_LEAF = 'manual';
+const REPLACEMENT_LEAF = 'replacement';
 const PLATFORM_LEAF = 'platform';
 const FILE_LEAF = 'file';
 const SYNC_LEAF = 'sync';
@@ -46,7 +66,7 @@ export function OrderIngestRail({
 }: {
   open: boolean;
   onClose: () => void;
-  /** `manual` lands on the form (`?new=true`); otherwise Root Index. */
+  /** `manual` lands on hand entry (`?new=true`); otherwise Root Index. */
   initialLeaf?: 'index' | 'manual';
 }) {
   const { has } = useAuth();
@@ -65,6 +85,7 @@ export function OrderIngestRail({
     setActiveId(initialLeaf === 'manual' ? MANUAL_LEAF : DESK_INSPECTOR_INDEX);
   }, [open, initialLeaf]);
 
+  // CSV staging takes over the desk; the rail steps aside while it runs.
   const ingestEnabled = open && !importActive;
 
   const leaves = useMemo((): DeskInspectorLeaf[] => {
@@ -72,12 +93,35 @@ export function OrderIngestRail({
       {
         id: MANUAL_LEAF,
         label: 'Add order manually',
-        subtitle: 'Replacement or new order',
+        subtitle: 'New order, entered here',
         icon: Plus,
         group: 'context',
         tone: 'neutral',
         content: (
-          <ShippedIntakeForm embedded onClose={onClose} onSubmit={submitNewOrder} />
+          <ShippedIntakeForm
+            embedded
+            hideModeTabs
+            initialTab="add_order"
+            onClose={onClose}
+            onSubmit={submitNewOrder}
+          />
+        ),
+      },
+      {
+        id: REPLACEMENT_LEAF,
+        label: 'Replacement',
+        subtitle: 'Reship against an existing order',
+        icon: RotateCcw,
+        group: 'context',
+        tone: 'neutral',
+        content: (
+          <ShippedIntakeForm
+            embedded
+            hideModeTabs
+            initialTab="replacement"
+            onClose={onClose}
+            onSubmit={submitNewOrder}
+          />
         ),
       },
       {
@@ -87,7 +131,7 @@ export function OrderIngestRail({
         icon: Globe,
         group: 'context',
         tone: 'neutral',
-        content: <PlatformAddLeaf onClose={onClose} />,
+        content: <PlatformAddSection onClose={onClose} />,
       },
     ];
 
@@ -101,7 +145,7 @@ export function OrderIngestRail({
           group: 'assets',
           tone: 'neutral',
           content: (
-            <FileImportLeaf
+            <FileImportSection
               error={csv.error}
               onClearError={csv.clearError}
               onChoose={csv.open}
@@ -118,7 +162,7 @@ export function OrderIngestRail({
           group: 'assets',
           tone: sync.isTransferring ? 'action' : 'neutral',
           content: (
-            <SyncImportLeaf
+            <SyncImportSection
               isTransferring={sync.isTransferring}
               manualSheetName={sync.manualSheetName}
               onSheetNameChange={sync.setManualSheetName}
@@ -182,6 +226,8 @@ export function OrderIngestRail({
               ariaLabel="Add order methods"
               testId="order-ingest-inspector"
               backLabel="Back to methods"
+              // Unbox Root Index find row + its ↑↓ / Enter keys.
+              indexFilter
             />
           </div>
         </DetailStackRailRegistrar>
@@ -197,163 +243,5 @@ export function OrderIngestRail({
         exceptions={sync.exceptionsTask}
       />
     </>
-  );
-}
-
-function PlatformAddLeaf({ onClose }: { onClose: () => void }) {
-  const submitNewOrder = useShippedFormSubmit(onClose);
-  const { options } = usePlatformCatalog();
-  const [platform, setPlatform] = useState<string | null>(null);
-
-  const selectOptions = useMemo(
-    () =>
-      options.map((o) => ({
-        value: o.value,
-        label: o.label,
-        group: 'Platforms',
-      })),
-    [options],
-  );
-
-  const selectedLabel = options.find((o) => o.value === platform)?.label ?? '';
-
-  return (
-    <div className="flex h-full min-h-0 flex-col">
-      <SearchableSelectField
-        appearance="flush"
-        label="Platform"
-        autoFocus
-        value={platform}
-        onChange={(id) => {
-          if (id == null) {
-            setPlatform(null);
-            return;
-          }
-          setPlatform(String(id));
-        }}
-        options={selectOptions}
-        placeholder="Search or select…"
-        searchPlaceholder="Type to filter…"
-        emptyMessage="No platforms match"
-        ariaLabel="Platform"
-      />
-      {platform ? (
-        <ShippedIntakeForm
-          embedded
-          hideModeTabs
-          initialTab="add_order"
-          accountSource={selectedLabel || undefined}
-          onClose={onClose}
-          onSubmit={submitNewOrder}
-        />
-      ) : (
-        <p className="px-4 py-3 text-role-caption text-text-soft">
-          Pick a platform, then enter the order.
-        </p>
-      )}
-    </div>
-  );
-}
-
-function FileImportLeaf({
-  error,
-  onClearError,
-  onChoose,
-}: {
-  error: string | null;
-  onClearError: () => void;
-  onChoose: () => void;
-}) {
-  return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <p className="border-b border-border-hairline px-4 py-3 text-role-caption text-text-soft">
-        Opens desk staging — triage Ready / Action required, then confirm into To-ship.
-      </p>
-      <div className="px-4 py-3">
-        <Button
-          variant="primary"
-          size="sm"
-          icon={<FileText className="h-3.5 w-3.5" />}
-          onClick={onChoose}
-          className={cn('font-semibold')}
-          data-testid="order-ingest-choose-csv"
-        >
-          Choose CSV
-        </Button>
-      </div>
-      {error ? (
-        <p className="px-4 py-2 text-role-caption text-rose-700" role="alert">
-          {error}{' '}
-          <button type="button" className="underline" onClick={onClearError}>
-            Dismiss
-          </button>
-        </p>
-      ) : null}
-    </div>
-  );
-}
-
-function SyncImportLeaf({
-  isTransferring,
-  manualSheetName,
-  onSheetNameChange,
-  status,
-  onImport,
-  onCancel,
-}: {
-  isTransferring: boolean;
-  manualSheetName: string;
-  onSheetNameChange: (next: string) => void;
-  status: { type: 'success' | 'error'; message: string } | null;
-  onImport: () => void;
-  onCancel: () => void;
-}) {
-  return (
-    <div className="min-h-0 flex-1 overflow-y-auto">
-      <div className="divide-y divide-border-hairline border-b border-border-hairline">
-        <TextField
-          appearance="flush"
-          label="Sheet name (optional)"
-          value={manualSheetName}
-          onChange={onSheetNameChange}
-          disabled={isTransferring}
-          mono
-        />
-      </div>
-      <div className="px-4 py-3">
-        {isTransferring ? (
-          <Button
-            variant="danger"
-            size="sm"
-            icon={<Loader2 className="h-3.5 w-3.5 animate-spin" />}
-            onClick={onCancel}
-            className="font-semibold"
-          >
-            Cancel import
-          </Button>
-        ) : (
-          <Button
-            variant="primary"
-            size="sm"
-            icon={<Database className="h-3.5 w-3.5" />}
-            onClick={onImport}
-            className="font-semibold"
-            data-testid="order-ingest-import-latest"
-          >
-            Import latest orders
-          </Button>
-        )}
-      </div>
-      {status ? (
-        <p
-          className={cn(
-            'px-4 py-2 text-role-caption',
-            status.type === 'success' ? 'text-emerald-700' : 'text-rose-700',
-          )}
-        >
-          {status.message}
-        </p>
-      ) : null}
-    </div>
   );
 }

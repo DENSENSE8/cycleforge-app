@@ -23,7 +23,7 @@ import {
   type UnboxKpiMetricCard,
   type UnboxKpiRange,
 } from '@/lib/receiving/unbox-metrics';
-import { Panel } from '@/design-system/primitives';
+import { UniversalLoader } from '@/design-system/components/UniversalLoader';
 
 
 const RANGE_SHORT: Record<UnboxKpiRange, string> = {
@@ -70,28 +70,12 @@ function QuietTextOption({
 
 function CanvasSkeleton() {
   return (
-    <div
-      className="flex min-h-[4.5rem] flex-col gap-2 animate-pulse"
-      aria-busy="true"
-      aria-live="polite"
+    <UniversalLoader
+      isLoading
+      label="Loading unbox metrics"
+      className="min-h-[4.5rem]"
       data-testid="unbox-kpi-canvas-skeleton"
-    >
-      <span className="sr-only">Loading unbox metrics…</span>
-      <div className="flex items-center gap-1.5">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="h-4 w-8 rounded bg-surface-strong" />
-        ))}
-      </div>
-      <div className="flex min-w-0 flex-wrap gap-2">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <Panel radius="xl" padding="none" className="min-h-[4rem] min-w-0 grow basis-36 p-2" key={i}>
-            <div className="h-2.5 w-14 rounded bg-surface-strong" />
-            <div className="mt-1.5 h-5 w-10 rounded bg-surface-strong" />
-            <div className="mt-2 h-5 w-full rounded bg-surface-strong" />
-          </Panel>
-        ))}
-      </div>
-    </div>
+    />
   );
 }
 

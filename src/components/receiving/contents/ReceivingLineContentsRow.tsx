@@ -9,8 +9,11 @@
  * - Carton-read `ContentsList` on `/carton/[id]`
  * - Parked Unbox `UnboxItemsPanel` on `unbox-work` (not mounted on main)
  *
- * Work surfaces (Triage / Testing accordion) keep {@link PoLineRow} — never
- * lobotomize that chrome for read (pattern-evolution D6).
+ * Work surfaces (Triage / Testing accordion) keep {@link PoLineRow}: a work row
+ * with its edits silently stripped is still the failure mode. What changed
+ * 2026-08-20 (pattern-evolution law 5) is that sharing a HOST is fine when the
+ * stance is a declared, required prop — this atom is a row, not a host, so it
+ * stays split.
  *
  * Image URLs come from {@link RECEIVING_LINE_IMAGE_URL_SQL} (Zoho document-id
  * proxy). Hosts own one `usePhotoGallery` + `PhotoViewerPortal` and pass

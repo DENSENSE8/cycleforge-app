@@ -21,7 +21,7 @@ import { Button, TextField } from '@/design-system/primitives';
 import { Trash2 } from '@/components/Icons';
 import { isBuybackPayload, isRepairPayload } from '@/lib/kiosk/cart-line';
 import type { KioskCartLine } from '@/lib/kiosk/cart-line';
-import { useKioskSessionActions } from '@/lib/kiosk/kiosk-session-store';
+import { useKioskSession, useKioskSessionActions } from '@/lib/kiosk/kiosk-session-store';
 import { KIOSK_META } from '@/app/kiosk/kiosk-chrome';
 import { cn } from '@/utils/_cn';
 
@@ -45,6 +45,8 @@ export function KioskCartLineEditor({
   onDone: () => void;
 }) {
   const actions = useKioskSessionActions();
+  // A desk holding this tablet owns the money verbs — void included.
+  const mirrored = useKioskSession().sharedSessionId !== null;
   const repair = isRepairPayload(line.payload) ? line.payload : null;
   const buyback = isBuybackPayload(line.payload) ? line.payload : null;
   // BUYBACK stores a credit as a negative amount; the operator types the offer.
@@ -103,7 +105,7 @@ export function KioskCartLineEditor({
           autoFocus={focusField === 'price'}
           tone="emerald"
           className="min-w-0 flex-1"
-          inputClassName="rounded-none font-semibold tabular-nums text-emerald-600"
+          inputClassName="rounded-none font-semibold tabular-nums text-text-success"
           data-testid="kiosk-line-price"
         />
       </div>
@@ -161,19 +163,23 @@ export function KioskCartLineEditor({
       )}
 
       <div className="flex items-center justify-between gap-3 pt-1">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => {
-            actions.removeLine(line.id);
-            onDone();
-          }}
-          className="text-text-danger"
-          data-testid="kiosk-line-delete"
-        >
-          <Trash2 className="h-4 w-4" />
-          Remove line
-        </Button>
+        {mirrored ? (
+          <span className={cn('text-text-soft', KIOSK_META)}>Ask staff to remove this line</span>
+        ) : (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              actions.removeLine(line.id);
+              onDone();
+            }}
+            className="text-text-danger"
+            data-testid="kiosk-line-delete"
+          >
+            <Trash2 className="h-4 w-4" />
+            Remove line
+          </Button>
+        )}
         <Button variant="secondary" size="sm" onClick={onDone} data-testid="kiosk-line-done">
           Done
         </Button>

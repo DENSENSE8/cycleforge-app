@@ -1,17 +1,34 @@
 import pool from '@/lib/db';
 import type { PhotoEntityType } from './types';
 
-/** Resolve po_ref denorm from the primary linked entity at upload time. */
+/** The minimum a caller-supplied executor must provide. */
+interface PoRefQueryable {
+  query<R extends Record<string, unknown> = Record<string, unknown>>(
+    sql: string,
+    params?: unknown[],
+  ): Promise<{ rows: R[]; rowCount: number | null }>;
+}
+
+/**
+ * Resolve po_ref denorm from the primary linked entity at upload time.
+ *
+ * `db` follows the house executor pattern: default to the pool, but let a
+ * caller that already owns a transaction pass its client so the read joins
+ * that transaction instead of taking a second connection. The AI mutation
+ * chokepoint needs this — its photo move and the `agent_mutations` row have to
+ * commit together.
+ */
 export async function resolvePoRef(
   entityType: PhotoEntityType,
   entityId: number,
+  db: PoRefQueryable = pool,
 ): Promise<string | null> {
   switch (entityType) {
     // Wave-2 reader cutover: the line's zoho PO id reads from receiving_line_zoho
     // (rz, 1:1 on the line PK). The carton-level zoho_purchase_receive_id fallback
     // stays on the spine (out of scope this wave).
     case 'RECEIVING': {
-      const r = await pool.query<{ po: string | null }>(
+      const r = await db.query<{ po: string | null }>(
         `SELECT COALESCE(
            NULLIF(TRIM(rz.zoho_purchaseorder_id), ''),
            NULLIF(TRIM(r.zoho_purchase_receive_id), ''),
@@ -29,7 +46,7 @@ export async function resolvePoRef(
       return r.rows[0]?.po ?? null;
     }
     case 'RECEIVING_LINE': {
-      const r = await pool.query<{ po: string | null }>(
+      const r = await db.query<{ po: string | null }>(
         `SELECT COALESCE(
            NULLIF(TRIM(rz.zoho_purchaseorder_id), ''),
            NULLIF(TRIM(r.zoho_purchase_receive_id), ''),

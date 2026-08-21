@@ -1,6 +1,7 @@
 import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
 import { fieldLabel } from '@/design-system/tokens/typography/presets';
 import type { ListRow } from './audit-log-panel-shared';
+import { UniversalLoader } from '@/design-system/components/UniversalLoader';
 
 export function SidebarListPicker({
   rows,
@@ -23,7 +24,7 @@ export function SidebarListPicker({
             {error}
           </div>
         ) : loading ? (
-          <div className="p-4 text-center text-role-caption text-text-faint">Loading…</div>
+          <UniversalLoader isLoading label="Loading list" className="min-h-32" />
         ) : rows.length === 0 ? (
           <div className="p-4 text-center text-role-caption text-text-faint">Nothing here.</div>
         ) : (

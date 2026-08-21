@@ -21,6 +21,7 @@
  */
 
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { useLiveValueChange } from '@/design-system/motion';
 import { PlatformMark } from '@/components/ui/PlatformMark';
 import { useTimeFormat } from '@/lib/time-format/useTimeFormat';
 import {
@@ -67,6 +68,23 @@ export function GridCellDash({ className }: { className?: string }) {
  * `pickupOrderStatusChipClass`, …) — **never a local map**. The ring derives from
  * the resolved ink (`ring-current/20`) so the third layer needs no new field on
  * any registry.
+ *
+ * ## The live-change pulse (2026-08-20)
+ *
+ * When `label` changes under a chip that is already mounted, the chip runs
+ * `motionRole.feedback.liveChange` — a double pulse with the label morphing
+ * inside the first beat. It is unconditional and it is here on purpose: this
+ * component is where every data-table status chip in the app resolves, so a
+ * tech scan at the bench is legible on the packer's board, the receiving grid
+ * and the home daily grid without any surface wiring a flash of its own. Rows
+ * are keyed by record id through the virtualizer (`getItemKey`), so scrolling a
+ * row into the window is a MOUNT, never a change — see `shouldPulseLiveValue`.
+ *
+ * The fourth layer the pulse needs is the `ringRef` overlay: an absolute
+ * inset-0 ring that flashes on opacity alone. The chip's own `ring-current/20`
+ * cannot do it — animating a static ring's colour would leave the resting chip
+ * changed, and a `box-shadow` spread (the shape the originating spec proposed)
+ * paints outside the chip's box in a ruled grid band.
  */
 export function GridStatusCellValue({
   label,
@@ -81,20 +99,36 @@ export function GridStatusCellValue({
   tooltip?: string | null;
   className?: string;
 }) {
+  // Before the empty-value branch: an early return above a hook is the one
+  // thing the rules of hooks will not forgive, and a cell that dashes out is
+  // exactly a cell whose next value may arrive live.
+  const { chipRef, ringRef, labelRef } = useLiveValueChange(label);
   if (!label) return <GridCellDash />;
   const chip = (
     <span
+      ref={chipRef}
       className={cn(
-        'inline-flex min-w-0 items-center gap-1.5 rounded ring-1 ring-inset ring-current/20',
+        'relative inline-flex min-w-0 items-center gap-1.5 rounded ring-1 ring-inset ring-current/20',
         'inset-chip text-role-micro uppercase tracking-widest',
+        // The colour half of the morph. The pulse animates transform+opacity;
+        // the fill/ink swap is a plain class change, so without this it snaps
+        // a frame before the pulse is over.
+        'transition-colors duration-200 ease-out motion-reduce:transition-none',
         toneClass,
         className,
       )}
     >
+      <span
+        ref={ringRef}
+        aria-hidden
+        className="pointer-events-none absolute inset-0 rounded opacity-0 ring-1 ring-inset ring-current"
+      />
       {dotClass ? (
         <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', dotClass)} aria-hidden />
       ) : null}
-      <span className="min-w-0 truncate">{label}</span>
+      <span ref={labelRef} className="min-w-0 truncate">
+        {label}
+      </span>
     </span>
   );
   if (!tooltip) return chip;

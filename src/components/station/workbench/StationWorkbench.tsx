@@ -50,6 +50,7 @@ export function StationWorkbench({
   bodyGap = 'default',
   className,
   scrollClassName,
+  onScroll,
   ambientWash = false,
 }: {
   toolbar?: ReactNode;
@@ -118,6 +119,13 @@ export function StationWorkbench({
   bodyGap?: 'default' | 'none';
   className?: string;
   scrollClassName?: string;
+  /**
+   * Scrollport `onScroll`. The port is internal to this shell, so a centre that
+   * reacts to scroll depth (Search & Details auto-collapse) has no other way to
+   * observe it than a fork of the shell. Throttle in the consumer — this fires
+   * at gesture rate.
+   */
+  onScroll?: (event: { currentTarget: { scrollTop: number } }) => void;
   /** Soft tonal blobs behind glass cards (Unbox ambient wash). */
   ambientWash?: boolean;
 }) {
@@ -150,7 +158,10 @@ export function StationWorkbench({
 
       {toolbar}
 
-      <div className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto">
+      <div
+        className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto"
+        onScroll={onScroll}
+      >
         <div
           className={cn(
             STATION_WORKBENCH_COLUMN,

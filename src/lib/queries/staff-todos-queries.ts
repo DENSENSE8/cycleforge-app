@@ -19,6 +19,8 @@ export type StaffTodoKind = 'general' | 'recurring';
 
 export interface StaffTodoItem {
   id: number;
+  /** Which station list it belongs to — present on every row the API returns. */
+  station?: string;
   kind: StaffTodoKind;
   text: string;
   sort_order: number;
@@ -26,6 +28,8 @@ export interface StaffTodoItem {
   recur_anchor_ms: number | null;
   completed_at_ms: number | null;
   last_completed_at_ms: number | null;
+  /** epoch ms when soft-deleted; null = live. Only set on the archived list. */
+  archived_at_ms?: number | null;
 }
 
 /** Start of the current recurrence cycle (epoch ms). */
@@ -45,10 +49,11 @@ export function isTodoDone(item: StaffTodoItem, nowMs: number): boolean {
   );
 }
 
-async function fetchStaffTodos(station: string): Promise<StaffTodoItem[]> {
-  const res = await fetch(`/api/staff-todos?station=${encodeURIComponent(station)}`, {
-    credentials: 'include',
-  });
+async function fetchStaffTodos(station: string, archived = false): Promise<StaffTodoItem[]> {
+  const res = await fetch(
+    `/api/staff-todos?station=${encodeURIComponent(station)}${archived ? '&archived=1' : ''}`,
+    { credentials: 'include' },
+  );
   if (!res.ok) throw new Error('Failed to fetch staff todos');
   const data = await res.json();
   return Array.isArray(data?.items) ? data.items : [];
@@ -68,6 +73,21 @@ export function staffTodosQuery(staffId: number, station: string) {
     gcTime: 10 * 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnMount: false,
+  });
+}
+
+/**
+ * The archived ("view everything") half of the same list. A separate cache key
+ * from the live list on purpose: it is fetched only while the operator is
+ * looking at it, and a restore invalidates both.
+ */
+export function staffTodosArchivedQuery(staffId: number, station: string) {
+  return queryOptions({
+    queryKey: ['staff-todos', staffId, station, 'archived'],
+    queryFn: () => fetchStaffTodos(station, true),
+    staleTime: 60 * 1000,
+    gcTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -115,6 +135,30 @@ export async function setStaffTodoIntervalApi(
   if (!res.ok) throw new Error('Failed to change interval');
   const data = await res.json();
   return Array.isArray(data?.items) ? data.items : [];
+}
+
+export async function renameStaffTodoApi(id: number, text: string): Promise<StaffTodoItem> {
+  const res = await fetch('/api/staff-todos', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ action: 'rename', id, text }),
+  });
+  if (!res.ok) throw new Error('Failed to rename task');
+  const data = await res.json();
+  return data.item as StaffTodoItem;
+}
+
+export async function restoreStaffTodoApi(id: number): Promise<StaffTodoItem> {
+  const res = await fetch('/api/staff-todos', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ action: 'unarchive', id }),
+  });
+  if (!res.ok) throw new Error('Failed to restore task');
+  const data = await res.json();
+  return data.item as StaffTodoItem;
 }
 
 export async function deleteStaffTodoApi(id: number): Promise<void> {

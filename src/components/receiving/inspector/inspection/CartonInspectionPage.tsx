@@ -3,8 +3,14 @@
 /**
  * Carton read assembly — floating identity chrome, contents column, progress rail.
  *
- * Shares the read model + atoms with Unbox. Never imports workbench editors
- * (decision D6 / anti-pattern: lobotomized work chrome).
+ * Shares the read model + atoms with Unbox.
+ *
+ * **Not yet ported to the station assembly.** Decision D6 ("never imports
+ * workbench editors") was retired 2026-08-20 when `/search?sel=order:` moved
+ * onto `EntityStationPane` in `preview` stance. The carton read job should
+ * follow — compose the station host with a declared stance rather than keep a
+ * parallel read layout. Until it does, this file stays as-is; it is a TODO,
+ * not a standing exemption.
  *
  * Progress reuses the details-stack carton pipeline (`ReceivingCartonPipeline`
  * + stage rows) on a Panel surface; photos use the same
@@ -900,7 +906,7 @@ function ProgressRail({
 /**
  * CONTENTS items — one card per line via {@link ReceivingLineContentsRow}.
  *
- * Shared ATOMS only, never `PoLinesAccordion` / `PoLineRow` (D6: no lobotomized
+ * Shared ATOMS only, never `PoLinesAccordion` / `PoLineRow` (no lobotomized
  * work chrome). It also deliberately does not mount `PoLineMetaGrid`: that is
  * the Unbox accordion's FIXED-TRACK grid. House one-row anatomy: Zoho thumb ·
  * title pinned top · details pinned bottom.

@@ -97,8 +97,12 @@ const FLUSH_PANEL = cn(
 const SCROLL = 'max-h-[min(420px,55vh)] overflow-y-auto';
 const GROUP_HEADER =
   'px-3 pb-0.5 pt-1.5 text-role-micro font-semibold uppercase tracking-widest text-text-faint';
-const RECENTS_COMPACT =
-  '[&_.text-role-caption]:text-role-micro [&_.text-role-eyebrow]:text-role-micro [&_li_a]:py-2.5';
+/**
+ * Dropdown density for the recents section. The `.text-role-eyebrow` clause is
+ * gone: the recents row now wears `CompactActivityRow` + `RailRowBody`, whose
+ * age and meta lines are already `text-role-micro` — it matched nothing.
+ */
+const RECENTS_COMPACT = '[&_.text-role-caption]:text-role-micro [&_li_a]:py-2.5';
 
 export function GlobalSearchDropdown({
   open,

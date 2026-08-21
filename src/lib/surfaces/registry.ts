@@ -259,6 +259,23 @@ export interface MutationKindDef {
   /** target_kind stamped on agent_mutation_affects rows for this kind. */
   targetKind: string;
   description: string;
+  /**
+   * The permission an actor must hold to propose THIS kind — required, and
+   * deliberately not defaulted.
+   *
+   * Trust class answers "how does it land"; this answers "who may ask". They
+   * are different questions and were conflated until 2026-08-19, when
+   * `propose_mutation` carried one blanket `studio.manage` gate: a receiving
+   * operator who could move a photo by hand could not ask the assistant to,
+   * while a Studio admin could move it without holding any receiving
+   * permission at all. Mirror the permission the equivalent hands-on route
+   * requires, so the chat path is never looser OR tighter than the UI it
+   * shadows.
+   *
+   * `Record<string, MutationKindDef>` below makes a missing entry a compile
+   * error — that is the forcing function, not review.
+   */
+  permission: string;
 }
 
 export const MUTATION_KINDS = {
@@ -268,30 +285,51 @@ export const MUTATION_KINDS = {
     trust: 'auto',
     targetKind: 'staff_rail_exclusion',
     description: 'Hide one feed item for one staff member at one station (non-destructive personal dismiss).',
+    permission: 'dashboard.view',
   },
   'staff_rail_exclusion.delete': {
     label: 'Restore rail item',
     trust: 'auto',
     targetKind: 'staff_rail_exclusion',
     description: 'Undo a personal dismiss (delete the exclusion row).',
+    permission: 'dashboard.view',
   },
   'feed_membership.set_state': {
     label: 'Set feed item state',
     trust: 'auto',
     targetKind: 'feed_membership',
     description: 'Flip a membership between active / needs_match / done. Projection-only; never touches the source record.',
+    permission: 'operations.view',
   },
   'entity_signal.insert': {
     label: 'Record signal',
     trust: 'auto',
     targetKind: 'entity_signal',
     description: 'Append a structured "why" observation about an entity (registry-validated signal_kind).',
+    permission: 'operations.view',
   },
   'node_surface.set_config': {
     label: 'Tune node surface',
     trust: 'auto',
     targetKind: 'node_surface',
     description: 'Update the config JSON of an existing node↔feed surface (sort, filters, display options).',
+    permission: 'studio.manage',
+  },
+
+  // auto — receiving evidence. NOT view-layer: this moves a real photo link.
+  // It is `auto` because it is fully REVERTABLE (the inverse is the reverse
+  // move), scoped to one carton, and non-destructive — no pixels are deleted,
+  // only which record the photo hangs off. An operator correcting a
+  // mis-attached photo through chat should not wait on a review queue for a
+  // change they can already make by hand in the carton UI. Anything that
+  // DELETED evidence would be `review`, not this.
+  'receiving_photo.reassign': {
+    label: 'Move receiving photo',
+    trust: 'auto',
+    targetKind: 'photo',
+    description:
+      "Move receiving photos to a different carton or receiving line. Payload: { photoIds: number[], targetEntityType: 'RECEIVING'|'RECEIVING_LINE', targetEntityId } for one destination, or { moves: [{ photoId, targetEntityType, targetEntityId }] } for per-photo destinations. ALL-OR-NOTHING: if any photo fails, none move. Max 50 per change. Non-destructive and revertable; the stage stamp is remapped for the destination.",
+    permission: 'receiving.upload_photo',
   },
 
   // draft_scoped — workflow draft edits (publish is the human gate)
@@ -300,48 +338,56 @@ export const MUTATION_KINDS = {
     trust: 'draft_scoped',
     targetKind: 'workflow_node',
     description: 'Add a process node to the draft graph.',
+    permission: 'studio.manage',
   },
   'workflow_draft.remove_node': {
     label: 'Remove node (draft)',
     trust: 'draft_scoped',
     targetKind: 'workflow_node',
     description: 'Remove a node (and its edges) from the draft graph.',
+    permission: 'studio.manage',
   },
   'workflow_draft.update_node_config': {
     label: 'Update node config (draft)',
     trust: 'draft_scoped',
     targetKind: 'workflow_node',
     description: "Patch one draft node's config (station binding, rules, options).",
+    permission: 'studio.manage',
   },
   'workflow_draft.add_edge': {
     label: 'Wire edge (draft)',
     trust: 'draft_scoped',
     targetKind: 'workflow_edge',
     description: 'Connect a source node port to a target node in the draft (one port → one target).',
+    permission: 'studio.manage',
   },
   'workflow_draft.remove_edge': {
     label: 'Remove edge (draft)',
     trust: 'draft_scoped',
     targetKind: 'workflow_edge',
     description: 'Disconnect an edge in the draft.',
+    permission: 'studio.manage',
   },
   'workflow_draft.set_annotations': {
     label: 'Set annotations (draft)',
     trust: 'draft_scoped',
     targetKind: 'workflow_definition',
     description: "Replace the draft's canvas sticky-note annotations.",
+    permission: 'studio.manage',
   },
   'node_surface.create': {
     label: 'Create node surface (draft)',
     trust: 'draft_scoped',
     targetKind: 'node_surface',
     description: 'Declare a new node↔feed surface on a DRAFT definition.',
+    permission: 'studio.manage',
   },
   'node_surface.delete': {
     label: 'Delete node surface (draft)',
     trust: 'draft_scoped',
     targetKind: 'node_surface',
     description: 'Remove a node↔feed surface from a DRAFT definition.',
+    permission: 'studio.manage',
   },
 
   // review — masters / live definitions
@@ -350,24 +396,28 @@ export const MUTATION_KINDS = {
     trust: 'review',
     targetKind: 'staff',
     description: 'Create a real staff row (+ roles/stations). Always review-gated: touches the identity master.',
+    permission: 'admin.manage_staff',
   },
   'staff.assign_station': {
     label: 'Assign staff station',
     trust: 'review',
     targetKind: 'staff',
     description: "Change a staff member's station assignments. Review-gated (identity master).",
+    permission: 'admin.manage_staff',
   },
   'reason_code.create': {
     label: 'Create reason code',
     trust: 'review',
     targetKind: 'reason_code',
     description: 'Add a governed vocabulary entry (reason_codes). Review-gated: vocabularies drive validation everywhere.',
+    permission: 'admin.manage_features',
   },
   'setting.update': {
     label: 'Update org setting',
     trust: 'review',
     targetKind: 'setting',
     description: 'Change a settings-registry value for the org. Review-gated: settings alter live behavior.',
+    permission: 'admin.manage_features',
   },
 } as const satisfies Record<string, MutationKindDef>;
 

@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Client shell for `/unbox` — holds the middle **skeleton** until the real
+ * Client shell for `/unbox` — holds the middle **loading field** until the real
  * carton workspace (or a settled empty scan bench) marks primary paint ready.
  *
  * Only the MIDDLE is covered. The recents rail renders normally underneath this
@@ -11,14 +11,23 @@
  * When the shell seed already warmed `receiving-siblings`, start ready: the
  * workspace derives during render (`seededWorkspace`) and must NOT sit behind
  * `opacity-0` in the SSR HTML (that hid every Era A LCP win).
+ *
+ * **The stand-in is {@link UniversalLoader}, not a drawn skeleton** (2026-08-20).
+ * `UnboxStationFirstPaint` painted bars where the identity band and line rows
+ * would land — geometry that had to be re-cut by hand every time the carton
+ * header moved. The field owns no geometry: the real workspace stays mounted
+ * underneath and keeps defining layout, so the reveal is still CLS 0 and the
+ * cover no longer has anything to drift from.
+ *
+ * The field is `pointer-events-none` (the loader's default), matching what the
+ * absolutely-positioned skeleton did here.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { UnboxStationFirstPaint } from '@/components/receiving/unbox/UnboxStationFirstPaint';
+import { UniversalLoader } from '@/design-system/components/UniversalLoader';
 import { UnboxPrimaryPaintProvider } from '@/components/receiving/unbox/unbox-primary-paint-context';
 import { useSurfacePaintMark, markTier1Priority } from '@/lib/observability/paint-timing';
-import { cn } from '@/utils/_cn';
 
 function cacheHasSeededCarton(queryClient: ReturnType<typeof useQueryClient>): boolean {
   const entries = queryClient.getQueriesData<{ receiving_lines?: unknown[] }>({
@@ -42,21 +51,14 @@ export function UnboxBrowseShell({ children }: { children: React.ReactNode }) {
 
   return (
     <UnboxPrimaryPaintProvider value={paintValue}>
-      <div className="relative flex min-h-0 w-full flex-1 flex-col">
-        {!primaryReady ? (
-          <div className="pointer-events-none absolute inset-0 z-0 flex min-h-0 flex-col">
-            <UnboxStationFirstPaint className="min-h-0 flex-1" />
-          </div>
-        ) : null}
-        <div
-          className={cn(
-            'relative z-10 flex min-h-0 w-full flex-1 flex-col',
-            !primaryReady && 'opacity-0',
-          )}
-        >
-          {children}
-        </div>
-      </div>
+      <UniversalLoader
+        isLoading={!primaryReady}
+        label="Loading carton"
+        paintSurface="unbox:primary"
+        data-testid="unbox-station-first-paint"
+      >
+        {children}
+      </UniversalLoader>
     </UnboxPrimaryPaintProvider>
   );
 }

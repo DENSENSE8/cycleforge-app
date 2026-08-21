@@ -56,6 +56,7 @@ export { StationMoreDetails } from './StationMoreDetails';
 export {
   stationContextBarHostClass,
   stationMoreDetailsPaneHostClass,
+  DESK_INSPECTOR_GUTTER_TOP_BAND,
   STATION_CHROME_ROW_FACE,
   STATION_CHROME_SEAM_HAIRLINE,
   STATION_IDENTITY_INSET_TOP,

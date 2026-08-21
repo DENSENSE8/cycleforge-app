@@ -29,13 +29,13 @@ export function CandidateCard({
   const unresolved = !c.resolved;
 
   return (
-    <div className={`rounded-2xl p-3 ${primary ? 'bg-glass/[0.06] ring-1 ring-emerald-500/40' : 'bg-glass/[0.03]'}`}>
+    <div className={`rounded-none p-3 ${primary ? 'bg-glass/[0.06] ring-1 ring-emerald-500/40' : 'bg-glass/[0.03]'}`}>
       <div className="flex items-center gap-3">
         {c.image_url ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={c.image_url} alt="" className="h-12 w-12 rounded-lg object-cover" />
+          <img src={c.image_url} alt="" className="h-12 w-12 rounded-none object-cover" />
         ) : (
-          <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-glass/10 text-white/40">
+          <div className="flex h-12 w-12 items-center justify-center rounded-none bg-glass/10 text-white/40">
             <Camera className="h-5 w-5" />
           </div>
         )}
@@ -54,7 +54,7 @@ export function CandidateCard({
           <button
             disabled={!canAdd || adding}
             onClick={() => onAdd(c)}
-            className={`shrink-0 rounded-xl px-4 py-2.5 text-sm font-semibold ${
+            className={`shrink-0 rounded-none px-4 py-2.5 text-sm font-semibold ${
               primary ? 'bg-emerald-500 text-black' : 'bg-glass/10 text-white'
             } disabled:opacity-40`}
           >
@@ -72,7 +72,7 @@ export function CandidateCard({
               <button
                 disabled={adding}
                 onClick={() => setExpand(true)}
-                className="flex-1 rounded-xl bg-emerald-500 py-2.5 text-sm font-semibold text-black disabled:opacity-40"
+                className="flex-1 rounded-none bg-emerald-500 py-2.5 text-sm font-semibold text-black disabled:opacity-40"
               >
                 {adding ? <Loader2 className="mx-auto h-4 w-4 animate-spin" /> : 'Create SKU'}
               </button>
@@ -94,14 +94,14 @@ export function CandidateCard({
                 inputMode="text"
                 autoFocus
                 placeholder="New SKU (e.g. AWRCC1)"
-                className={cn("w-full rounded-xl bg-glass/[0.06] px-3 py-2.5 text-sm text-white placeholder:text-white/30", focusRing('field', 'success'))}
+                className={cn("w-full rounded-none bg-glass/[0.06] px-3 py-2.5 text-sm text-white placeholder:text-white/30", focusRing('field', 'success'))}
               />
               <div className="flex gap-2">
                 {/* ds-raw-button: solid-emerald CTA (emerald-500/text-black) — no green Button variant */}
                 <button
                   disabled={adding || !skuInput.trim()}
                   onClick={() => onCreateSku(c, skuInput)}
-                  className="flex-1 rounded-xl bg-emerald-500 py-2.5 text-sm font-semibold text-black disabled:opacity-40"
+                  className="flex-1 rounded-none bg-emerald-500 py-2.5 text-sm font-semibold text-black disabled:opacity-40"
                 >
                   {adding ? <Loader2 className="mx-auto h-4 w-4 animate-spin" /> : canAdd ? 'Create + Add' : 'Create SKU'}
                 </button>

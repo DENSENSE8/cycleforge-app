@@ -20,38 +20,14 @@ import {
   type SpineSectionId,
   type StationSubgroupId,
 } from '@/lib/sidebar-navigation';
+import {
+  SPINE_LABEL_CLASS,
+  SPINE_ROW_FACE_CLASS,
+  SPINE_ROW_ICON_CLASS,
+  SPINE_ROW_SHELL_CLASS,
+} from '@/components/sidebar/sidebar-spine';
 import { cn } from '@/utils/_cn';
 import { StaffAccountFooter } from './StaffAccountFooter';
-
-/**
- * Row height + glyph size for every destination row in this map (2026-08-16)
- * — deliberately its OWN local token, not `PRIMARY_CHROME_ROW_FACE` (28px ops
- * bands) and not `STATION_CHROME_ROW_FACE` (28px carton / Displays top). A
- * short destination list — Scan Stations' 7 benches, a domain section's 2-3
- * pages — used to huddle at 28px rows near the top of a column that runs
- * the full viewport height, leaving most of it visibly empty. Taller rows
- * spend that space instead of wasting it, and the glyph scales with the row
- * so it stays proportionate rather than shrinking inside a box that grew
- * around it. This trades the previous cross-column seam match (spine row 1
- * bottom ↔ the scan bar's) for legibility + fill — a deliberate call, not
- * an oversight; nothing else in the app reads this token, so nothing else
- * moved.
- *
- * **Settled at `h-10` / 16px icon (2026-08-16, second pass).** A first pass
- * went to `h-14` (56px) paired with `role-display` (24px) text — genuinely
- * too much: 56px rows and 24px labels are BUTTON scale, not repeated
- * nav-list-row scale, and no reference sidebar (VS Code ~13px/22px rows,
- * Linear/GitHub ~14px/32px, Slack/Notion ~14-15px/28-32px) runs anywhere
- * near that for an item that repeats a dozen times down a column. `h-10`
- * (40px) is generous against the 28px it replaced without reading as
- * oversized, and pairs with `role-title` (18px, see below) the way the
- * glyph below pairs with it — back to 16px, proportionate at this text size
- * rather than the 20px the 24px-text pass needed.
- */
-const SPINE_ROW_FACE_CLASS = 'h-10 shrink-0';
-const SPINE_ROW_ICON_CLASS = 'h-4 w-4 shrink-0';
-/** Destination labels — nav size, regular weight (not title 18px/600). */
-const SPINE_LABEL_CLASS = 'text-role-nav font-normal';
 
 /**
  * The page list inside the sidebar spine — **ONE flat scrolling map**.
@@ -348,13 +324,15 @@ export function SidebarNavList({
    * 2. **It survives greyscale.** Same reason the section hues were deleted: the
    *    channels this column may spend are shape and grouping, not colour.
    *
-   * **Centered under the parent glyph** via a token-only gutter: `ml-2` matches
-   * the parent's `px-2`, `w-4` matches the glyph — the line sits on the icon's
-   * centre without an arbitrary `ml-[Npx]`. Width is `w-0.5` (2026-08-16, up
-   * from a `w-px` hairline) — the darkened active token needs enough width to
-   * read as a bar, not a barely-visible pixel; kept constant across idle/active
-   * (see {@link spineRailLineClass}) rather than only widening on select, so it
-   * is genuinely one element, not a line that swaps shape depending on state.
+   * **Gutter under the parent glyph** via a token-only track: `ml-2` matches
+   * the parent's `px-2`, `w-4` matches the glyph. The line sits on the
+   * **trailing edge of that track** so it abuts the row fill — no air between
+   * the bar and the highlight, and no extra pad before the label. Width is
+   * `w-0.5` (2026-08-16, up from a `w-px` hairline) — the darkened active
+   * token needs enough width to read as a bar, not a barely-visible pixel;
+   * kept constant across idle/active (see {@link spineRailLineClass}) rather
+   * than only widening on select, so it is genuinely one element, not a line
+   * that swaps shape depending on state.
    *
    * It is drawn **per row, not per group**, and that is deliberate rather than
    * lazy. Child pages arrive inside a `<ul>`, but station-subgroup members
@@ -363,9 +341,6 @@ export function SidebarNavList({
    * vertical margin, so per-row segments abut into one continuous line in both
    * shapes, and the active row's own segment darkens to mark where you are —
    * `spineRailLineClass(active)` on the SAME `<div>`, never a second element.
-   *
-   * The fill therefore starts INSIDE the rail rather than under it: a hover wash
-   * that swallowed the line would erase the one cue this adds.
    */
   const renderChildLikeRow = (
     opts: {
@@ -382,16 +357,12 @@ export function SidebarNavList({
     return (
       <div className="flex">
         {/* Rail gutter: `ml-2` matches the parent's `px-2` and `w-4` matches
-            {@link SPINE_ROW_ICON_CLASS} (16px — briefly 20px during the
-            same-day `h-14`/24px overshoot; the gutter tracks whatever the
-            glyph size settles at), so the line lands on the icon's centre
-            without an arbitrary `ml-[Npx]`. ONE line, two tokens (2026-08-16,
-            corrected same day) — {@link spineRailLineClass} toggles this SAME
-            element between the structural "lessened gray" guide (idle) and a
-            darkened bar (active); it is never joined by a second bar
-            elsewhere on the row. Full row height (`self-stretch`) puts its
-            centre on the icon's centre for free. */}
-        <div className="ml-2 flex w-4 shrink-0 justify-center" aria-hidden>
+            {@link SPINE_ROW_ICON_CLASS}. `justify-end` parks the line on the
+            fill's leading edge. ONE line, two tokens —
+            {@link spineRailLineClass} toggles this SAME element between the
+            structural guide (idle) and a darkened bar (active). Full row
+            height (`self-stretch`) is free from the face box. */}
+        <div className="ml-2 flex w-4 shrink-0 justify-end" aria-hidden>
           <div className={spineRailLineClass(opts.active)} />
         </div>
         <button
@@ -405,7 +376,7 @@ export function SidebarNavList({
           // user is already on).
           aria-current={opts.active ? 'page' : undefined}
           className={cn(
-            'ds-raw-button group flex min-w-0 flex-1 items-center gap-2 rounded-none pl-1 pr-2 text-left transition-colors duration-150',
+            'ds-raw-button group flex min-w-0 flex-1 items-center gap-2 rounded-none pl-2 pr-2 text-left transition-colors duration-150',
             SPINE_ROW_FACE_CLASS,
             opts.active ? accent.childActive : accent.childIdle,
           )}
@@ -491,7 +462,7 @@ export function SidebarNavList({
         // the current child uses `ownsActive` wash without claiming the page.
         aria-current={opts.active ? 'page' : undefined}
         className={cn(
-          'ds-raw-button group flex w-full items-center gap-2 rounded-none px-2 text-left transition-colors duration-150',
+          SPINE_ROW_SHELL_CLASS,
           SPINE_ROW_FACE_CLASS,
           opts.active
             ? accent.activePage
@@ -1007,6 +978,7 @@ export function SidebarNavList({
       >
         <TechRailSearchBar
           variant="chrome"
+          flush
           value={navFilter}
           onChange={setNavFilter}
           onKeyDown={handleFilterKeyDown}

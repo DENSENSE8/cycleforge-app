@@ -234,7 +234,7 @@ export function MobileArrivalClassifyFlow({
           onClick={onBack}
           ariaLabel="Back"
           icon={<ChevronLeft className="h-5 w-5" />}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-blue-100 bg-surface-card text-blue-500 shadow-sm"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border-soft bg-surface-card text-text-soft shadow-sm"
         />
         <div className="min-w-0 flex-1">
           <p className="text-role-micro uppercase tracking-widest text-text-muted">
@@ -277,7 +277,7 @@ export function MobileArrivalClassifyFlow({
                 disabled={saving}
                 onClick={() => void onPick(opt.value)}
                 title={opt.title}
-                className={`ds-raw-button flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl border px-2 py-3 text-center transition-all active:scale-[0.98] disabled:opacity-50 ${opt.inactiveClass}`}
+                className={`ds-raw-button flex min-h-14 flex-col items-center justify-center gap-1 rounded-none border px-2 py-3 text-center transition-all active:scale-[0.98] disabled:opacity-50 ${opt.inactiveClass}`}
                 style={opt.inactiveStyle}
               >
                 <span className="flex h-6 items-center justify-center">{opt.face}</span>

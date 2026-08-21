@@ -8,7 +8,7 @@ Shared multi-consumer adapters live as non-`*GridView` hosts (not page-local for
 | Former wrapper | Live adapter | Consumers |
 |---|---|---|
 | `ReceivingGridView` | `ReceivingGridHost` | ReceivingLinesTable · ReceivingDrillHost · ReceivingPaneTable · TestingHistoryList |
-| `OrdersGridView` | `OrdersGridHost` (keeps `useOrdersQueuePlane`) — **next cut:** [`one-table-engine-orders-host-PLAN.md`](one-table-engine-orders-host-PLAN.md) replaces this adapter with `useOrdersSpreadsheet` + `NonlinearTableHost` | 9 outbound lanes · Drill · Pane |
+| `OrdersGridView` → `OrdersGridHost` | `useOrdersSpreadsheet` + `NonlinearTableHost` (keeps `useOrdersQueuePlane`) — both wrappers deleted 2026-08-20 per [`one-table-engine-orders-host-PLAN.md`](one-table-engine-orders-host-PLAN.md) | UnshippedTable · OrdersDrillHost · OrdersPaneTable |
 | `UnitsGridView` | inlined in `UnitsWorkspaceView` | 1 |
 
 **Keep:** `OrdersQueueColumnHeader` allowlisted fork (resize + viewport force-hide).

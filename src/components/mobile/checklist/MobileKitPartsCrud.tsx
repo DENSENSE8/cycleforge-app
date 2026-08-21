@@ -136,7 +136,7 @@ export function MobileKitPartsCrud({
         {kitParts.map((part, idx) => (
           <li
             key={part.id}
-            className="flex items-start gap-2 rounded-2xl bg-surface-canvas px-3 py-3"
+            className="flex items-start gap-2 rounded-none bg-surface-canvas px-3 py-3"
           >
             <span className="mt-0.5 w-5 shrink-0 text-center text-role-micro tabular-nums text-text-faint">
               {idx + 1}
@@ -166,7 +166,7 @@ export function MobileKitPartsCrud({
                   ariaLabel="Edit part"
                   tone="accent"
                   onClick={() => openEdit(part)}
-                  className="h-10 w-10 rounded-xl text-text-muted"
+                  className="h-10 w-10 rounded-none text-text-muted"
                 />
                 <IconButton
                   icon={
@@ -179,7 +179,7 @@ export function MobileKitPartsCrud({
                   ariaLabel="Delete part"
                   onClick={() => handleRemove(part.id)}
                   disabled={removing === part.id}
-                  className="h-10 w-10 rounded-xl"
+                  className="h-10 w-10 rounded-none"
                 />
               </div>
             )}
@@ -194,7 +194,7 @@ export function MobileKitPartsCrud({
             value={componentName}
             onChange={(e) => setComponentName(e.target.value)}
             placeholder="Item name (e.g. Power adapter)"
-            className="w-full rounded-xl border border-border-soft bg-surface-canvas px-3 py-2.5 text-role-body font-semibold text-text-default placeholder:text-text-faint"
+            className="w-full rounded-none border border-border-soft bg-surface-canvas px-3 py-2.5 text-role-body font-semibold text-text-default placeholder:text-text-faint"
             autoFocus
           />
           <div className="flex gap-2">
@@ -202,7 +202,7 @@ export function MobileKitPartsCrud({
               value={componentType}
               onChange={(e) => setComponentType(e.target.value)}
               aria-label="Component type"
-              className="min-w-0 flex-1 rounded-xl border border-border-soft bg-surface-canvas px-3 py-2.5 text-role-caption font-semibold text-text-default"
+              className="min-w-0 flex-1 rounded-none border border-border-soft bg-surface-canvas px-3 py-2.5 text-role-caption font-semibold text-text-default"
             >
               {KIT_PART_TYPES.map((t) => (
                 <option key={t} value={t}>
@@ -216,7 +216,7 @@ export function MobileKitPartsCrud({
               value={qtyRequired}
               onChange={(e) => setQtyRequired(e.target.value)}
               aria-label="Quantity"
-              className="w-20 rounded-xl border border-border-soft bg-surface-canvas px-3 py-2.5 text-role-caption font-semibold text-text-default"
+              className="w-20 rounded-none border border-border-soft bg-surface-canvas px-3 py-2.5 text-role-caption font-semibold text-text-default"
             />
           </div>
           <label className="flex items-center gap-2 px-0.5 text-role-caption font-semibold text-text-muted">
@@ -224,7 +224,7 @@ export function MobileKitPartsCrud({
               type="checkbox"
               checked={isCritical}
               onChange={(e) => setIsCritical(e.target.checked)}
-              className="h-4 w-4 rounded border-border-default text-blue-600"
+              className="h-4 w-4 rounded border-border-default text-text-muted"
             />
             Required in the box
           </label>
@@ -256,7 +256,7 @@ export function MobileKitPartsCrud({
             resetForm();
             setShowAdd(true);
           }}
-          className="text-blue-600"
+          className="text-text-muted"
         >
           Add kit item
         </Button>

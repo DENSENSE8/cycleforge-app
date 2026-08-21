@@ -334,9 +334,23 @@ export async function recordTestVerdict(
     // "Why" signal (plan §2.3 emitter #3 — tech test-fail reasons). Only
     // non-PASS verdicts carry a "why"; TESTING_FAILED weighs 2, TEST_AGAIN 1.
     // Guarded by eventCreated like its neighbors so a clientEventId replay
-    // never double-emits. Governed verdict-detail reason codes are captured
-    // at the route layer (flow_context=verdict_detail), not here — free-text
-    // tech notes ride `notes`. Fire-and-forget; never fails the verdict.
+    // never double-emits. Free-text tech notes ride `notes`.
+    //
+    // The GOVERNED "why" is a `failure_modes` row tagged on the unit
+    // (`unit_failure_tags`) — written either by the bench's fail gate
+    // (`TestingFailReasonSheet` → POST /api/serial-units/[id]/failure-tags) or
+    // server-side by a failed QC step that names a mode
+    // (`/api/serial-units/[id]/checklist` auto-tag-on-fail). It is deliberately
+    // NOT written here: this function records the verdict, and the fault is a
+    // separate reversible fact with its own lifecycle (a later PASS resolves
+    // it) that must survive a re-test the verdict itself overwrites.
+    //
+    // This comment used to claim the fault was captured "at the route layer
+    // (flow_context=verdict_detail)". It never was: no route read a reason, no
+    // `verdict_detail` reason_codes row was ever seeded, and a bench fail
+    // recorded nothing but prose — which is why the columns built to tell a
+    // dead unit from a scratched one stayed empty. Fire-and-forget; never
+    // fails the verdict.
     if (verdict !== 'PASS') {
       await emitEntitySignalSafe({
         organizationId: unit.organization_id,

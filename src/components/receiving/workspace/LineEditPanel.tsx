@@ -32,6 +32,8 @@ import {
   STAGGER_REVEAL_STEP,
 } from '@/design-system/primitives/StaggerReveal';
 import { ReceiveFeedbackRegion } from './ReceiveFeedbackRegion';
+import { ReceiveFeedbackTester } from './ReceiveFeedbackTester';
+import { receiveFeedbackState } from './receive-feedback-scenarios';
 import { WorkspaceActionFeedbackSlot } from './WorkspaceActionFeedbackSlot';
 import type { InlineActionFeedbackPayload } from './InlineActionFeedbackCard';
 import { ReceivingPhotoPeek } from './line-edit/ReceivingPhotoPeek';
@@ -682,7 +684,26 @@ export function LineEditPanel({
     [focusStep],
   );
 
-  const showReceiveFeedback = Boolean(c.receiving || c.receiveResult);
+  /* ── Dev tester for the welded receive panel ───────────────────────────────
+   * Every state below a clean success needs a real Zoho round trip, a live
+   * realtime verdict, or a broken connection to reach — so refining their
+   * paint had no workflow. The ⓘ opens the tester (development only); a real
+   * receive always outranks the selection, so a scenario left up cannot mask a
+   * genuine verdict arriving. Fixtures: `receive-feedback-scenarios.ts`.
+   * ─────────────────────────────────────────────────────────────────────── */
+  const receiveTesterEnabled = process.env.NODE_ENV !== 'production';
+  const [receiveTesterOpen, setReceiveTesterOpen] = useState(false);
+  const [receiveScenario, setReceiveScenario] = useState<{ id: string; at: number } | null>(null);
+
+  const liveReceiveFeedback = Boolean(c.receiving || c.receiveResult);
+  const scenarioState =
+    receiveTesterEnabled && receiveScenario && !liveReceiveFeedback
+      ? receiveFeedbackState(receiveScenario.id, receiveScenario.at)
+      : null;
+
+  const feedbackReceiving = scenarioState ? scenarioState.receiving : c.receiving;
+  const feedbackResult = scenarioState ? scenarioState.receiveResult : c.receiveResult;
+  const showReceiveFeedback = Boolean(feedbackReceiving || feedbackResult);
 
   const reduceMotion = useReducedMotion();
   const revealContainer = staggerRevealContainer(reduceMotion ? 0 : STAGGER_REVEAL_STEP);
@@ -858,6 +879,9 @@ export function LineEditPanel({
           // Move / Send rows open Displays (right rail). Click = phone;
           // double-click = Displays → Photos Actions list.
           onOpenPhotosDisplay={openPhotosDisplay}
+          // Status cell → the carton's own history leaf. Same route the ⓘ
+          // "Item status history" control takes, so both reach one surface.
+          onOpenHistory={hasTimelineTab ? () => openDisplays('timeline') : undefined}
           // Identity pills open the Displays column on their own tab — the
           // editors moved right, so the header route follows them.
           onEditTracking={hasTrackingTab ? () => openDisplays('tracking') : undefined}
@@ -954,32 +978,56 @@ export function LineEditPanel({
                           {terminalVm.disabledReason}
                         </p>
                       ) : null}
+                      {receiveTesterEnabled && receiveTesterOpen ? (
+                        <ReceiveFeedbackTester
+                          activeId={receiveScenario?.id ?? null}
+                          onPick={(id) => setReceiveScenario({ id, at: Date.now() })}
+                          onClear={() => setReceiveScenario(null)}
+                          onClose={() => setReceiveTesterOpen(false)}
+                          onOpenStatusHistory={() => openDisplays('timeline')}
+                        />
+                      ) : null}
+                      {/* No margin: the panel is WELDED to the composer below
+                          (`weldTop`), so any gap here would break the shared
+                          silhouette the peel-up hinge depends on. */}
                       {showReceiveFeedback ? (
-                        <div className="mb-1">
-                          <ReceiveFeedbackRegion
-                            receiving={c.receiving}
-                            receiveResult={c.receiveResult}
-                            responseExpanded={c.responseExpanded}
-                            setResponseExpanded={c.setResponseExpanded}
-                            onDismiss={() => {
-                              c.setReceiveResult(null);
-                              c.setResponseExpanded(false);
-                            }}
-                            onPhotoPolicyOverride={(code) => {
-                              const blocked =
-                                c.receiveResult?.kind === 'diagnostic'
-                                  ? c.receiveResult.intent
+                        <ReceiveFeedbackRegion
+                          receiving={feedbackReceiving}
+                          receiveResult={feedbackResult}
+                          responseExpanded={c.responseExpanded}
+                          setResponseExpanded={c.setResponseExpanded}
+                          onDismiss={() => {
+                            setReceiveScenario(null);
+                            c.setReceiveResult(null);
+                            c.setResponseExpanded(false);
+                          }}
+                          onRetry={() => {
+                            // Replay the SAME intent the failed attempt used —
+                            // a retry must never silently upgrade a scan-only
+                            // or local receive into an inventory push.
+                            const attempted =
+                              feedbackResult?.kind === 'diagnostic'
+                                ? feedbackResult.intent
+                                : feedbackResult?.kind === 'success'
+                                  ? feedbackResult.summary.intent
                                   : 'zoho_receive';
-                              void c.handleReceive(blocked, { photoPolicyOverride: code });
-                            }}
-                          />
-                        </div>
+                            void c.handleReceive(attempted);
+                          }}
+                          onPhotoPolicyOverride={(code) => {
+                            const blocked =
+                              feedbackResult?.kind === 'diagnostic'
+                                ? feedbackResult.intent
+                                : 'zoho_receive';
+                            void c.handleReceive(blocked, { photoPolicyOverride: code });
+                          }}
+                        />
                       ) : null}
                       {terminalVm ? (
                         <WorkspaceNotesCard
                           row={row}
                           c={c}
                           chrome="raised"
+                          weldTop={showReceiveFeedback}
                           trailingAction={bubbleTerminal}
                           onPrimaryAction={() => {
                             if (c.isReceived) {
@@ -996,6 +1044,20 @@ export function LineEditPanel({
                           // carries these stamps plus the carton's audit rows.
                           // The dialog stayed for surfaces with no right edge.
                           onOpenStatusHistory={() => openDisplays('timeline')}
+                          // Dev only: the corner is ONE slot, so the tester
+                          // takes it rather than a second glyph appearing
+                          // beside it. Production keeps ⓘ → Timeline; the
+                          // tester carries its own Timeline button so the
+                          // route is never lost.
+                          headerAction={
+                            receiveTesterEnabled
+                              ? {
+                                  label: 'Receive panel dev tester',
+                                  pressed: receiveTesterOpen,
+                                  onClick: () => setReceiveTesterOpen((v) => !v),
+                                }
+                              : undefined
+                          }
                         />
                       ) : null}
                     </div>

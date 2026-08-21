@@ -29,7 +29,7 @@ import {
   KIOSK_META,
   KIOSK_PANE_HEADER_BAND,
   KIOSK_PANE_HEADER_TITLE,
-  KIOSK_SECTION_LABEL,
+  KIOSK_SECTION_LABEL_ROW,
 } from '@/app/kiosk/kiosk-chrome';
 import { cn } from '@/utils/_cn';
 
@@ -76,7 +76,7 @@ export function KioskPaperworkPanel() {
 
       <div className="min-h-0 flex-1 overflow-y-auto">
         <section>
-          <h3 className={cn('border-b border-border-hairline px-4 py-2', KIOSK_SECTION_LABEL)}>
+          <h3 className={KIOSK_SECTION_LABEL_ROW}>
             Customer
           </h3>
           <dl className="space-y-1 px-4 py-3">
@@ -94,7 +94,7 @@ export function KioskPaperworkPanel() {
         </section>
 
         <section>
-          <h3 className={cn('border-b border-border-hairline px-4 py-2', KIOSK_SECTION_LABEL)}>
+          <h3 className={KIOSK_SECTION_LABEL_ROW}>
             Items on this visit
           </h3>
           {session.lines.length === 0 ? (
@@ -127,7 +127,7 @@ export function KioskPaperworkPanel() {
 
         {repairPayload && (
           <section className="border-t border-border-hairline">
-            <h3 className={cn('border-b border-border-hairline px-4 py-2', KIOSK_SECTION_LABEL)}>
+            <h3 className={KIOSK_SECTION_LABEL_ROW}>
               Repair service agreement
             </h3>
             <div className="p-3">

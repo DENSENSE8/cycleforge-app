@@ -2,8 +2,9 @@ import { test, expect, type Page } from '@playwright/test';
 
 /**
  * URL param isolation for the surfaces migrated in the 2026-07-29 pass —
- * `/sourcing`, `/test`, `/walk-in` — plus the two LIVE defects that pass
- * uncovered, which are the assertions worth having most.
+ * `/sourcing`, `/test`, `/walk-in` — plus `/search` (which got the hook on
+ * 2026-08-21) and the two LIVE defects that pass uncovered, which are the
+ * assertions worth having most.
  *
  * Sibling of `receiving-param-isolation.spec.ts`: same guarantee, different
  * family. The unit tests in `src/lib/routing/route-params.test.ts` pin the
@@ -290,6 +291,56 @@ test.describe('mobile RouteShell pane toggle', () => {
  * `innerWidth`), so a narrow viewport reproduces the branch on whichever auth
  * project is healthy — the `mobile` project's own session minting is flaky.
  */
+/**
+ * `/search` mounted `SurfaceParamHygiene` on 2026-08-21, at the end of the
+ * station port. It is a LEAF route (`src/app/search/` holds only `page.tsx` and
+ * `loading.tsx`), so `page.tsx` is the correct host — the layout rule applies to
+ * routes with child segments.
+ *
+ * `SEARCH_ROUTE_PARAMS` has existed since Phase 1 of the dashboard IA rework;
+ * what was missing was anything that RAN it. Mounting the hook therefore turns
+ * the full boundary parse on for a live surface in one commit, which is exactly
+ * the change that needs a probe rather than a reading of the spec: the surface
+ * reads five keys (`q` · `sel` · `etype` · `hstat` and the ambient `colsort`
+ * behind `SEARCH_SORT_PARAM`), and any one of them being undeclared would be a
+ * deep-link that silently loses state on arrival.
+ *
+ * Landing with `?sel=` rather than `?q=`: with neither, the page bounces to
+ * `/dashboard`, and a `?q=` land runs retrieval that can write `?sel=` itself
+ * mid-assertion. A nonexistent order id settles on an empty state and writes
+ * nothing.
+ */
+test.describe('/search', () => {
+  test('runs the boundary parse and keeps all five of its own keys', async ({ page }) => {
+    await assertParamsAfterParse(
+      page,
+      '/search?sel=order:1&q=widget&etype=order&hstat=SHIPPED&colsort=date',
+      (params) => {
+        expect(params.sel).toBe('order:1');
+        expect(params.q).toBe('widget');
+        expect(params.etype).toBe('order');
+        expect(params.hstat).toBe('SHIPPED');
+        // Ambient, via `carries` — `SEARCH_SORT_PARAM` IS `GRID_COLUMN_SORT_PARAM`.
+        expect(params.colsort).toBe('date');
+      },
+    );
+  });
+
+  test('drops a param owned by another surface', async ({ page }) => {
+    // `openOrderId` is the Desk's durable-edit key and `skuId` is `/products`'.
+    // Both used to ride along because nothing parsed this route's boundary.
+    await assertParamsAfterParse(
+      page,
+      '/search?sel=order:1&openOrderId=99&skuId=4821',
+      (params) => {
+        expect(params.sel).toBe('order:1');
+        expect(params.openOrderId).toBeUndefined();
+        expect(params.skuId).toBeUndefined();
+      },
+    );
+  });
+});
+
 test.describe('the parse runs on the mobile RouteShell branch', () => {
   test.use({ viewport: { width: 390, height: 844 } });
 

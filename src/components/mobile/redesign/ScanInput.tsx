@@ -42,6 +42,13 @@ interface ScanInputProps {
   cameraButtonLabel?: string;
   /** Force-stop the camera even if the user toggled it on (e.g. a sheet is open). */
   cameraSuspended?: boolean;
+  /**
+   * A lookup is in flight for the last scan. Paints the bar's own spinner
+   * (`ThemedStationScanBar.isResolving`) so a fast operator can tell a scan that
+   * is still resolving from one the gun never read — the difference between
+   * waiting and re-scanning.
+   */
+  isResolving?: boolean;
 }
 
 export function ScanInput({
@@ -51,6 +58,7 @@ export function ScanInput({
   compact = false,
   prominentCamera = false,
   cameraSuspended = false,
+  isResolving = false,
 }: ScanInputProps) {
   const [cameraActive, setCameraActive] = useState(false);
   const [input, setInput] = useState('');
@@ -104,6 +112,7 @@ export function ScanInput({
         onSubmit={() => submit(input)}
         placeholder={placeholder}
         autoFocus={autoFocus}
+        isResolving={isResolving}
         staffId={user?.staffId}
         // No MasterNav above on mobile — rail column, not deep masternav inset.
         leadingColumn="rail"
@@ -118,13 +127,13 @@ export function ScanInput({
                 cn('ds-raw-button transition-colors', focusRing('cell', 'accent')),
                 prominentCamera
                   ? STATION_SCAN_BAR_RIGHT_CELL
-                  : 'flex h-6 w-6 items-center justify-center rounded-md',
+                  : 'flex h-6 w-6 items-center justify-center rounded-none',
                 cameraActive
                   ? prominentCamera
                     ? 'bg-blue-600 text-white hover:bg-blue-500'
-                    : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
+                    : 'bg-surface-sunken text-text-default hover:bg-surface-sunken'
                   : prominentCamera
-                    ? 'text-blue-600 hover:bg-blue-50 hover:text-blue-700'
+                    ? 'text-text-muted hover:bg-surface-sunken hover:text-text-default'
                     : 'text-text-soft hover:bg-surface-sunken hover:text-text-muted',
               )}
             >
@@ -156,7 +165,7 @@ export function ScanInput({
               muted
             />
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-              <div className={`relative ${boxSize} rounded-[32px] border-2 border-glass/40 bg-glass/5 backdrop-blur-[1px]`}>
+              <div className={`relative ${boxSize} rounded-none border-2 border-glass/40 bg-glass/5 backdrop-blur-[1px]`}>
                 <motion.div
                   animate={{ top: ['5%', '95%', '5%'] }}
                   transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}

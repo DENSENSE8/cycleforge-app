@@ -79,7 +79,7 @@ export function ConfirmDock({
         onClick={handlePrimary}
         disabled={blocked}
         loading={loading}
-        className={`h-14 w-full rounded-2xl text-sm tracking-wide shadow-md ${TONE_CLASSES[tone]}`}
+        className={`h-14 w-full rounded-none text-sm tracking-wide shadow-md ${TONE_CLASSES[tone]}`}
       >
         {label}
       </Button>

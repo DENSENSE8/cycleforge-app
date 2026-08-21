@@ -196,14 +196,14 @@ export function ScanTestingPanel({ query }: { query: string }) {
   if (state === 'idle') {
     return (
       <div className="flex flex-1 flex-col items-center justify-center px-6 py-12 text-center opacity-50">
-        <ShieldCheck className="mb-3 h-10 w-10 text-blue-200" />
-        <p className="text-xs font-semibold uppercase tracking-widest text-blue-300">Scan a PO label to test</p>
+        <ShieldCheck className="mb-3 h-10 w-10 text-text-faint" />
+        <p className="text-xs font-semibold uppercase tracking-widest text-text-faint">Scan a PO label to test</p>
       </div>
     );
   }
   if (state === 'loading') {
     return (
-      <div className="flex flex-1 items-center justify-center py-12 text-blue-300">
+      <div className="flex flex-1 items-center justify-center py-12 text-text-faint">
         <Loader2 className="h-6 w-6 animate-spin" />
       </div>
     );
@@ -220,7 +220,7 @@ export function ScanTestingPanel({ query }: { query: string }) {
 
   return (
     <div className="px-3 pb-32">
-      <p className="px-1 pb-2 pt-1 text-role-caption font-semibold uppercase tracking-[0.2em] text-blue-400">
+      <p className="px-1 pb-2 pt-1 text-role-caption font-semibold uppercase tracking-[0.2em] text-text-faint">
         PO Items · {lines.length}
       </p>
       <div className="flex flex-col gap-3">
@@ -234,10 +234,10 @@ export function ScanTestingPanel({ query }: { query: string }) {
           const qty = `${line.quantity_received}/${line.quantity_expected ?? '?'}`;
           const cond = conditionGradeTableLabel(line.condition_grade);
           return (
-            <div key={line.id} className="rounded-2xl border border-blue-100 bg-surface-card p-4 shadow-[0_8px_24px_-12px_rgba(15,23,42,0.18)]">
+            <div key={line.id} className="rounded-none border border-border-soft bg-surface-card p-4 shadow-[0_8px_24px_-12px_rgba(15,23,42,0.18)]">
               <StackedRowIdentity
                 title={
-                  <p className="text-base font-semibold leading-snug tracking-tight text-blue-950">
+                  <p className="text-base font-semibold leading-snug tracking-tight text-text-default">
                     {title}
                   </p>
                 }
@@ -261,7 +261,7 @@ export function ScanTestingPanel({ query }: { query: string }) {
                 ])}
               />
 
-              <div className="mt-4 border-t border-blue-50 pt-3">
+              <div className="mt-4 border-t border-border-hairline pt-3">
                 <TestingLinePanel
                   lineId={line.id}
                   saved={slots}

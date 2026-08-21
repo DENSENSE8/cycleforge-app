@@ -87,8 +87,8 @@ import {
 } from '@/components/right-rail/DeskInspectorIndexShell';
 import { RIGHT_RAIL_HOST_CLOSE_SLOT_CLASS } from '@/components/right-rail/DeskRailChromeRow';
 import {
+  DESK_INSPECTOR_GUTTER_TOP_BAND,
   STATION_CHROME_ROW_FACE,
-  STATION_CHROME_SEAM_HAIRLINE,
 } from '@/components/station/entity-context';
 import { PoChip, TrackingChip } from '@/components/ui/CopyChip';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
@@ -146,11 +146,11 @@ type CheckResult = {
  *
  * `pl-4` is the body's own content gutter (`px-4`), so the eyebrow's ink lands
  * on the line the heading, the icon strip and every card border beneath it
- * share. `pr-2` matches `DESK_RAIL_CHROME_ROW_CLASS` so the reserved `w-9`
+ * share. `pr-0` matches `DESK_RAIL_CHROME_ROW_CLASS` so the reserved `w-9`
  * cell sits under the host anchor's `right-2`. Height is
  * {@link STATION_CHROME_ROW_FACE} (carton / Displays top).
  */
-const TOP_BAND_CLASS = `relative z-header flex ${STATION_CHROME_ROW_FACE} items-stretch gap-1.5 pl-4 pr-2 ${STATION_CHROME_SEAM_HAIRLINE}`;
+const TOP_BAND_CLASS = DESK_INSPECTOR_GUTTER_TOP_BAND;
 
 function reasonLabel(reason: CheckZohoReceivedRow['reason']): string {
   switch (reason) {

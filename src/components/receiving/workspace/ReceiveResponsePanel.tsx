@@ -32,6 +32,14 @@ import {
  *   ✗ other        — unexpected error / network failure
  *   ✓ verified     — dashboard already DONE but Zoho GET confirms fully received
  *                    (skip_reason zoho_already_fully_received; receive_id null)
+ *
+ * CHROME is a parameter (2026-08-21). `card` is the standalone face above —
+ * its own tone card, headline, chevron and dismiss. `bare` is the DETAIL BODY
+ * only: no shell, no headline, no controls, because the host already paints
+ * all four. It exists so the welded receive panel can mount this exact verdict
+ * body inside its disclosure instead of forking a second copy of the per-PO
+ * result list and the raw-response expander — the alternative was a page-local
+ * twin of a 240-line panel to delete one border.
  * ────────────────────────────────────────────────────────────────────────── */
 
 export type ReceiveResponsePanelProps = {
@@ -45,6 +53,12 @@ export type ReceiveResponsePanelProps = {
    * which is the correct degrade for a host that can't re-run the receive.
    */
   onPhotoPolicyOverride?: (code: PhotoPolicyOverrideCode) => void;
+  /**
+   * `card` (default) — the standalone tone card with its own headline row,
+   * raw-response chevron and dismiss. `bare` — detail body only, for a host
+   * that already owns the shell, the verdict line and the controls.
+   */
+  chrome?: 'card' | 'bare';
 };
 
 export function ReceiveResponsePanel({
@@ -53,6 +67,7 @@ export function ReceiveResponsePanel({
   onToggle,
   onDismiss,
   onPhotoPolicyOverride,
+  chrome = 'card',
 }: ReceiveResponsePanelProps) {
   const body = (response.body || {}) as Record<string, unknown>;
   const classification = classifyReceiveResponse(response);
@@ -108,6 +123,94 @@ export function ReceiveResponsePanel({
     hour12: true,
   });
 
+  const rawJson = JSON.stringify(
+    response.body ?? { networkError: response.networkError },
+    null,
+    2,
+  );
+
+  const copyRaw = () => {
+    try {
+      void navigator.clipboard.writeText(rawJson);
+      toast.success('Response copied');
+    } catch {
+      /* clipboard unavailable */
+    }
+  };
+
+  /** The per-PO outcome list — the only place a partial failure is legible. */
+  const resultRows =
+    results.length > 0 && classification.verdict !== 'success' ? (
+      <ul className="space-y-0.5">
+        {results.map((r, i) => {
+          const ok = !r.error;
+          return (
+            <li key={i} className="flex items-center gap-1.5 text-role-micro leading-tight">
+              <span
+                className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${ok ? 'bg-emerald-500' : 'bg-rose-500'}`}
+                aria-hidden
+              />
+              <span className="truncate font-mono font-semibold text-text-default">
+                PO {r.purchaseorder_id ?? '?'}
+              </span>
+              <span className="text-text-faint">·</span>
+              <span className="truncate text-text-muted">
+                {ok
+                  ? `receive ${r.receive_id ?? '—'}`
+                  : `${r.error_kind ?? 'error'}: ${r.error ?? 'unknown'}`}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    ) : null;
+
+  const rawBlock = (
+    <>
+      <p className="mb-1 text-role-micro uppercase tracking-widest text-text-soft">
+        Raw response · /api/receiving/mark-received-po
+      </p>
+      <pre className="max-h-56 overflow-auto rounded border border-border-soft bg-surface-card p-1.5 font-mono text-role-eyebrow leading-relaxed text-text-muted">
+{rawJson}
+      </pre>
+      <div className="mt-1 flex justify-end">
+        <Button variant="secondary" size="sm" onClick={copyRaw}>
+          Copy JSON
+        </Button>
+      </div>
+    </>
+  );
+
+  // ── bare: detail body only ────────────────────────────────────────────────
+  // The host (welded receive panel) already paints the shell, the verdict line,
+  // the dismiss and the photo-policy CTA — so none of those render here. What
+  // is left is what the row could not hold: the reason, the per-PO outcomes,
+  // and the raw payload.
+  if (chrome === 'bare') {
+    return (
+      <div className="space-y-1.5">
+        <p className="text-role-eyebrow font-semibold tabular-nums text-text-soft">
+          {timestamp} · {response.durationMs}ms · HTTP {response.httpStatus || '—'}
+        </p>
+        {classification.detail ? (
+          <p className="text-role-micro font-medium leading-snug text-text-muted">
+            {classification.detail}
+          </p>
+        ) : null}
+        {showApiErrorCallout ? (
+          <div className="rounded border border-rose-200 bg-rose-50/90 px-1.5 py-1">
+            <p className="text-role-micro uppercase tracking-wide text-rose-800">API response</p>
+            <p className="break-words font-mono text-role-micro leading-snug text-rose-950">
+              {String(body.error)}
+            </p>
+          </div>
+        ) : null}
+        {resultRows}
+        <div>{rawBlock}</div>
+      </div>
+    );
+  }
+
   return (
     <div className={`-mx-2 mt-1.5 border-t ${toneStyles.border} px-2 pt-1.5 pb-2`}>
       <div className={`relative overflow-hidden rounded-md border ${toneStyles.border} ${toneStyles.bg}`}>
@@ -149,33 +252,7 @@ export function ReceiveResponsePanel({
                 </p>
               </div>
             ) : null}
-            {results.length > 0 && classification.verdict !== 'success' ? (
-              <ul className="mt-1.5 space-y-0.5">
-                {results.map((r, i) => {
-                  const ok = !r.error;
-                  return (
-                    <li
-                      key={i}
-                      className="flex items-center gap-1.5 text-role-micro leading-tight"
-                    >
-                      <span
-                        className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${ok ? 'bg-emerald-500' : 'bg-rose-500'}`}
-                        aria-hidden
-                      />
-                      <span className="truncate font-mono font-semibold text-text-default">
-                        PO {r.purchaseorder_id ?? '?'}
-                      </span>
-                      <span className="text-text-faint">·</span>
-                      <span className="truncate text-text-muted">
-                        {ok
-                          ? `receive ${r.receive_id ?? '—'}`
-                          : `${r.error_kind ?? 'error'}: ${r.error ?? 'unknown'}`}
-                      </span>
-                    </li>
-                  );
-                })}
-              </ul>
-            ) : null}
+            {resultRows ? <div className="mt-1.5">{resultRows}</div> : null}
           </div>
           <div className="flex shrink-0 items-center gap-0.5">
             <HoverTooltip label={expanded ? 'Hide raw response' : 'Show raw response'} asChild>
@@ -202,30 +279,7 @@ export function ReceiveResponsePanel({
         </div>
         {expanded ? (
           <div className={`border-t ${toneStyles.border} bg-surface-card/70 px-2 py-1.5`}>
-            <p className="mb-1 text-role-micro uppercase tracking-widest text-text-soft">
-              Raw response · /api/receiving/mark-received-po
-            </p>
-            <pre className="max-h-56 overflow-auto rounded border border-border-soft bg-surface-card p-1.5 font-mono text-role-eyebrow leading-relaxed text-text-muted">
-{JSON.stringify(response.body ?? { networkError: response.networkError }, null, 2)}
-            </pre>
-            <div className="mt-1 flex justify-end">
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => {
-                  try {
-                    void navigator.clipboard.writeText(
-                      JSON.stringify(response.body ?? { networkError: response.networkError }, null, 2),
-                    );
-                    toast.success('Response copied');
-                  } catch {
-                    /* clipboard unavailable */
-                  }
-                }}
-              >
-                Copy JSON
-              </Button>
-            </div>
+            {rawBlock}
           </div>
         ) : null}
       </div>

@@ -72,13 +72,24 @@ export interface PostAiRetrieveOpts {
 }
 
 /**
- * POST /api/ai/retrieve. Returns null on any failure EXCEPT an abort, which
- * re-throws so callers can distinguish "stale request" from "degrade".
+ * Outcome of a retrieve. The STATUS is carried on failure, because "your role
+ * has no `ai.search` permission" (403) and "retrieval broke" are different
+ * things to say to an operator — a caller that only sees `null` has to print
+ * "Search failed" for a permission answer, which sends them to look for an
+ * outage instead of an admin. A network throw is `status: 0`.
+ */
+export type PostAiRetrieveResult =
+  | { ok: true; data: AiRetrieveResponse }
+  | { ok: false; status: number };
+
+/**
+ * POST /api/ai/retrieve. Never throws EXCEPT on abort, which re-throws so
+ * callers can distinguish "stale request" from "degrade".
  */
 export async function postAiRetrieve(
   query: string,
   opts: PostAiRetrieveOpts = {},
-): Promise<AiRetrieveResponse | null> {
+): Promise<PostAiRetrieveResult> {
   try {
     const res = await fetch('/api/ai/retrieve', {
       method: 'POST',
@@ -92,10 +103,10 @@ export async function postAiRetrieve(
       }),
       signal: opts.signal,
     });
-    if (!res.ok) return null;
-    return (await res.json()) as AiRetrieveResponse;
+    if (!res.ok) return { ok: false, status: res.status };
+    return { ok: true, data: (await res.json()) as AiRetrieveResponse };
   } catch (err) {
     if ((err as { name?: string }).name === 'AbortError') throw err;
-    return null;
+    return { ok: false, status: 0 };
   }
 }

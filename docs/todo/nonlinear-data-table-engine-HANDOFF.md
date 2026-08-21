@@ -71,7 +71,7 @@ direct `<LedgerGridSurface>` mount remains: `NonlinearTableHost` itself.
 - Full `npm run verify` in the worktree is RED, but ENTIRELY from **another
   session's** uncommitted unbox / station-displays / testing work committed in a
   half-state into `e8795764e` (`LineEditPanel`, `TestingPanel`,
-  `UnboxDisplaysUtilityRailBody`, `station/displays/*`, 27 displays unit fails).
+  `StationDisplaysUtilityRail`, `station/displays/*`, 27 displays unit fails).
   None is table/wave work. Use targeted guards as the signal, not full verify.
 
 Run the table guard set:

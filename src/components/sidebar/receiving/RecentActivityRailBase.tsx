@@ -14,6 +14,7 @@ import { dispatchSelectLine } from '@/components/station/receiving-lines-table-h
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { railRelativeTime, type SidebarRailRowContext } from '@/components/sidebar/SidebarRailShell';
 import { SidebarRecentRailBase } from '@/components/sidebar/rail-shell/SidebarRecentRailBase';
+import type { SidebarRailShellProps } from '@/components/sidebar/rail-shell/sidebar-rail-shared';
 import { RailRowBody } from '@/components/sidebar/rail-shell/RailRowBody';
 import {
   RailPeekIdentityFacts,

@@ -121,7 +121,7 @@ function FeedList({
 }) {
   if (isLoading && items.length === 0) {
     return (
-      <div className="flex items-center justify-center py-12 text-blue-300">
+      <div className="flex items-center justify-center py-12 text-text-faint">
         <Loader2 className="h-6 w-6 animate-spin" />
       </div>
     );
@@ -129,8 +129,8 @@ function FeedList({
   if (items.length === 0) {
     return (
       <div className="py-12 text-center opacity-40">
-        <History className="mx-auto mb-3 h-10 w-10 text-blue-200" />
-        <p className="text-xs font-semibold uppercase tracking-widest text-blue-300">{empty}</p>
+        <History className="mx-auto mb-3 h-10 w-10 text-text-faint" />
+        <p className="text-xs font-semibold uppercase tracking-widest text-text-faint">{empty}</p>
       </div>
     );
   }
@@ -230,7 +230,7 @@ export function ReceivingTriagePanel() {
           size="sm"
           textTransform="capitalize"
           className="w-40"
-          buttonClassName="flex h-8 w-full items-center gap-2 rounded-lg border border-border-default bg-surface-card pl-2.5 pr-9 text-left text-xs font-semibold capitalize tracking-wide text-blue-950 outline-none transition-colors hover:bg-surface-hover"
+          buttonClassName="flex h-8 w-full items-center gap-2 rounded-none border border-border-default bg-surface-card pl-2.5 pr-9 text-left text-xs font-semibold capitalize tracking-wide text-text-default outline-none transition-colors hover:bg-surface-hover"
         />
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
@@ -282,13 +282,13 @@ export function TestingRecentPanel() {
         <SectionHeader title={hasTester ? 'Recently Tested' : 'Recent Activity'} />
       </div>
       {recent.isLoading && rows.length === 0 ? (
-        <div className="flex items-center justify-center py-12 text-blue-300">
+        <div className="flex items-center justify-center py-12 text-text-faint">
           <Loader2 className="h-6 w-6 animate-spin" />
         </div>
       ) : rows.length === 0 ? (
         <div className="py-12 text-center opacity-40">
-          <History className="mx-auto mb-3 h-10 w-10 text-blue-200" />
-          <p className="text-xs font-semibold uppercase tracking-widest text-blue-300">No tested units yet</p>
+          <History className="mx-auto mb-3 h-10 w-10 text-text-faint" />
+          <p className="text-xs font-semibold uppercase tracking-widest text-text-faint">No tested units yet</p>
         </div>
       ) : (
         <div className="pb-2">
@@ -315,9 +315,9 @@ const VERDICT_META: Record<TestingVerdict, { label: string; cls: string }> = {
 
 function TestingStatField({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl bg-surface-canvas px-3 py-2.5">
-      <p className="text-role-micro uppercase tracking-[0.15em] text-blue-300">{label}</p>
-      <p className="mt-1 truncate text-sm font-semibold tracking-tight text-blue-950">{value}</p>
+    <div className="rounded-none bg-surface-canvas px-3 py-2.5">
+      <p className="text-role-micro uppercase tracking-[0.15em] text-text-faint">{label}</p>
+      <p className="mt-1 truncate text-sm font-semibold tracking-tight text-text-default">{value}</p>
     </div>
   );
 }
@@ -390,15 +390,15 @@ function TestingRecentSheet({ line, onClose }: { line: ReceivingLineRow | null; 
           <div className="flex flex-col gap-4">
             {/* Header */}
             <div className="flex items-start gap-3">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-none bg-surface-sunken text-text-muted">
                 <Package className="h-6 w-6" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-lg font-semibold leading-snug tracking-tight text-blue-950">
+                <p className="text-lg font-semibold leading-snug tracking-tight text-text-default">
                   {row.item_name ?? row.sku ?? 'Tested Item'}
                 </p>
                 {row.sku && (
-                  <p className="mt-0.5 truncate text-xs font-semibold uppercase tracking-wider text-blue-400">SKU {row.sku}</p>
+                  <p className="mt-0.5 truncate text-xs font-semibold uppercase tracking-wider text-text-faint">SKU {row.sku}</p>
                 )}
               </div>
             </div>
@@ -424,11 +424,11 @@ function TestingRecentSheet({ line, onClose }: { line: ReceivingLineRow | null; 
                         key={s.id}
                         type="button"
                         onClick={() => setSelectedSerial(s)}
-                        className="ds-raw-button flex w-full items-center justify-between gap-3 rounded-2xl border border-blue-50 bg-surface-card px-3 py-2.5 text-left transition-colors active:bg-blue-50"
+                        className="ds-raw-button flex w-full items-center justify-between gap-3 rounded-none border border-border-hairline bg-surface-card px-3 py-2.5 text-left transition-colors active:bg-surface-sunken"
                       >
                         <div className="flex min-w-0 items-center gap-2">
-                          <QrCode className="h-4 w-4 shrink-0 text-blue-300" />
-                          <span className="truncate font-mono text-sm font-semibold text-blue-950">
+                          <QrCode className="h-4 w-4 shrink-0 text-text-faint" />
+                          <span className="truncate font-mono text-sm font-semibold text-text-default">
                             {s.serial_number || '—'}
                           </span>
                         </div>
@@ -440,20 +440,20 @@ function TestingRecentSheet({ line, onClose }: { line: ReceivingLineRow | null; 
                           >
                             {meta ? meta.label : 'Untested'}
                           </span>
-                          <ChevronRight className="h-4 w-4 text-blue-200" />
+                          <ChevronRight className="h-4 w-4 text-text-faint" />
                         </div>
                       </button>
                     );
                   })}
                 </div>
               ) : (
-                <div className="rounded-2xl bg-surface-canvas px-4 py-6 text-center">
-                  <p className="text-xs font-semibold uppercase tracking-widest text-blue-300">No serials recorded</p>
+                <div className="rounded-none bg-surface-canvas px-4 py-6 text-center">
+                  <p className="text-xs font-semibold uppercase tracking-widest text-text-faint">No serials recorded</p>
                 </div>
               )}
             </div>
 
-            <Button variant="ghost" onClick={onClose} className="mt-1 w-full text-blue-400">
+            <Button variant="ghost" onClick={onClose} className="mt-1 w-full text-text-faint">
               Done
             </Button>
           </div>
@@ -465,11 +465,11 @@ function TestingRecentSheet({ line, onClose }: { line: ReceivingLineRow | null; 
         {shownSerial && (
           <div className="flex flex-col gap-4">
             <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-none bg-surface-sunken text-text-muted">
                 <QrCode className="h-5 w-5" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate font-mono text-base font-semibold tracking-tight text-blue-950">
+                <p className="truncate font-mono text-base font-semibold tracking-tight text-text-default">
                   {shownSerial.serial_number || '—'}
                 </p>
                 <span

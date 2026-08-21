@@ -20,7 +20,7 @@ import {
   KIOSK_PANE_FOOTER_BAND,
   KIOSK_PANE_HEADER_BAND,
   KIOSK_PANE_HEADER_TITLE,
-  KIOSK_SECTION_LABEL,
+  KIOSK_SECTION_LABEL_ROW,
 } from '@/app/kiosk/kiosk-chrome';
 
 interface KioskPickupPaneProps {
@@ -127,7 +127,7 @@ export function KioskPickupPane({ onReset }: KioskPickupPaneProps) {
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-5 px-6 text-center">
           <span
             className={cn(
-              'flex h-16 w-16 items-center justify-center bg-emerald-50 text-emerald-600',
+              'flex h-16 w-16 items-center justify-center bg-surface-success text-text-success',
               cornerClass('flush'),
             )}
           >
@@ -188,7 +188,7 @@ export function KioskPickupPane({ onReset }: KioskPickupPaneProps) {
 
           {summary && (
             <section>
-              <h3 className={cn('border-b border-border-hairline px-4 py-2', KIOSK_SECTION_LABEL)}>
+              <h3 className={KIOSK_SECTION_LABEL_ROW}>
                 Order ready
               </h3>
               <div className="space-y-3 px-4 py-4">

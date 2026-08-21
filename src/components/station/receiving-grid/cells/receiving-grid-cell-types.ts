@@ -72,6 +72,19 @@ export type ReceivingGridCellCtx = {
   onEditTracking?: () => void;
   /** Opens the receiving inspector for Edit on a filled order / PO chip. */
   onEditOrder?: () => void;
+  /**
+   * Open this row's record plane (the compound layout's chevron). Distinct from
+   * `onSelect`: selecting is "this is the row I mean", opening is "show me the
+   * record" — the same split the row already makes between click and
+   * double-click. Absent on surfaces with no record plane, which is exactly why
+   * the chevron cell must render nothing rather than a dead control.
+   */
+  onOpenRecord?: () => void;
+  /**
+   * Commit an inline NOTE edit for this row. Present ⇒ the compound title
+   * cell's note line is editable; absent ⇒ read-only. Capability, not mode.
+   */
+  onCommitNote?: (next: string) => void;
   serialsCsv: string;
   statusDot: string;
   /**

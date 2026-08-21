@@ -1,5 +1,6 @@
 import { requirePermission } from '@/lib/auth/page-guard';
-import { queryRaw, queryOne } from '@/lib/neon-client';
+import { tenantQuery } from '@/lib/tenancy/db';
+import type { OrgId } from '@/lib/tenancy/constants';
 import { unitStatusBadgeClass } from '@/lib/unit-status';
 import Link from 'next/link';
 import { DataTable, type DataTableColumn } from '@/design-system/components/DataTable';
@@ -22,6 +23,13 @@ export const dynamic = 'force-dynamic';
  *
  * Each query is independent. Missing sections (e.g. SKU has no
  * sku_catalog row) degrade gracefully rather than 404-ing the page.
+ *
+ * Tenant scoping: every read here goes through `tenantQuery(orgId, …)` with an
+ * explicit `organization_id` predicate, and `orgId` comes from the auth ctx
+ * (`requirePermission` → `user.organizationId`) — never from the route param.
+ * SKU strings collide across orgs, so a bare owner-pool read keyed on `sku`
+ * alone returns another tenant's rows (RLS does not bite on the owner pool).
+ * That was live here for all eight loaders until 2026-08-21.
  */
 
 interface CatalogRow {
@@ -100,121 +108,142 @@ interface EventRow {
   actor_name: string | null;
 }
 
-async function loadCatalog(sku: string): Promise<CatalogRow | null> {
-  return queryOne<CatalogRow>`
-    SELECT id, sku, product_title, category, gtin, upc, ean, is_active
-      FROM sku_catalog WHERE sku = ${sku} LIMIT 1`;
+async function loadCatalog(sku: string, orgId: OrgId): Promise<CatalogRow | null> {
+  const r = await tenantQuery<CatalogRow>(
+    orgId,
+    `SELECT id, sku, product_title, category, gtin, upc, ean, is_active
+       FROM sku_catalog WHERE sku = $1 AND organization_id = $2 LIMIT 1`,
+    [sku, orgId],
+  );
+  return r.rows[0] ?? null;
 }
 
-async function loadStock(sku: string): Promise<StockRow | null> {
+async function loadStock(sku: string, orgId: OrgId): Promise<StockRow | null> {
   try {
-    return await queryOne<StockRow>`
-      SELECT sku, stock, boxed_stock, product_title, updated_at
-        FROM sku_stock WHERE sku = ${sku} LIMIT 1`;
+    const r = await tenantQuery<StockRow>(
+      orgId,
+      `SELECT sku, stock, boxed_stock, product_title, updated_at
+         FROM sku_stock WHERE sku = $1 AND organization_id = $2 LIMIT 1`,
+      [sku, orgId],
+    );
+    return r.rows[0] ?? null;
   } catch {
     return null;
   }
 }
 
-async function loadBins(sku: string): Promise<BinRow[]> {
+async function loadBins(sku: string, orgId: OrgId): Promise<BinRow[]> {
   try {
-    return await queryRaw<BinRow>(
+    const r = await tenantQuery<BinRow>(
+      orgId,
       `SELECT bc.location_id, l.name AS bin_name, l.barcode AS bin_barcode,
               bc.qty, bc.min_qty, bc.max_qty, bc.last_counted
          FROM bin_contents bc
-         LEFT JOIN locations l ON l.id = bc.location_id
-        WHERE bc.sku = $1
+         LEFT JOIN locations l ON l.id = bc.location_id AND l.organization_id = $2
+        WHERE bc.sku = $1 AND bc.organization_id = $2
         ORDER BY bc.qty DESC, l.name ASC`,
-      [sku],
+      [sku, orgId],
     );
+    return r.rows;
   } catch {
     return [];
   }
 }
 
-async function loadUnitStatusCounts(sku: string): Promise<UnitStatusCountRow[]> {
+async function loadUnitStatusCounts(sku: string, orgId: OrgId): Promise<UnitStatusCountRow[]> {
   try {
-    return await queryRaw<UnitStatusCountRow>(
+    const r = await tenantQuery<UnitStatusCountRow>(
+      orgId,
       `SELECT current_status::text AS current_status, COUNT(*)::int AS count
          FROM serial_units
-        WHERE sku = $1
+        WHERE sku = $1 AND organization_id = $2
         GROUP BY current_status
         ORDER BY count DESC`,
-      [sku],
+      [sku, orgId],
     );
+    return r.rows;
   } catch {
     return [];
   }
 }
 
-async function loadRecentUnits(sku: string): Promise<RecentUnitRow[]> {
+async function loadRecentUnits(sku: string, orgId: OrgId): Promise<RecentUnitRow[]> {
   try {
-    return await queryRaw<RecentUnitRow>(
+    const r = await tenantQuery<RecentUnitRow>(
+      orgId,
       `SELECT id, serial_number, current_status::text AS current_status,
               current_location, condition_grade::text AS condition_grade,
               updated_at
          FROM serial_units
-        WHERE sku = $1
+        WHERE sku = $1 AND organization_id = $2
         ORDER BY updated_at DESC, id DESC
         LIMIT 25`,
-      [sku],
+      [sku, orgId],
     );
+    return r.rows;
   } catch {
     return [];
   }
 }
 
-async function loadAllocations(sku: string): Promise<AllocationRow[]> {
+async function loadAllocations(sku: string, orgId: OrgId): Promise<AllocationRow[]> {
   try {
-    return await queryRaw<AllocationRow>(
+    const r = await tenantQuery<AllocationRow>(
+      orgId,
       `SELECT a.id, a.order_id, a.serial_unit_id, a.state::text AS state,
               a.allocated_at, s.name AS allocated_by_name
          FROM order_unit_allocations a
-         JOIN serial_units su ON su.id = a.serial_unit_id
-         LEFT JOIN staff s ON s.id = a.allocated_by_staff_id
+         JOIN serial_units su ON su.id = a.serial_unit_id AND su.organization_id = $2
+         LEFT JOIN staff s ON s.id = a.allocated_by_staff_id AND s.organization_id = $2
         WHERE su.sku = $1
+          AND a.organization_id = $2
           AND a.state <> 'RELEASED'
         ORDER BY a.allocated_at DESC, a.id DESC
         LIMIT 50`,
-      [sku],
+      [sku, orgId],
     );
+    return r.rows;
   } catch {
     return [];
   }
 }
 
-async function loadLedger(sku: string): Promise<LedgerRow[]> {
+async function loadLedger(sku: string, orgId: OrgId): Promise<LedgerRow[]> {
   try {
-    return await queryRaw<LedgerRow>(
+    const r = await tenantQuery<LedgerRow>(
+      orgId,
       `SELECT l.id, l.created_at, l.delta, l.reason, l.dimension,
               s.name AS staff_name,
               l.ref_serial_unit_id, l.ref_order_id, l.ref_receiving_line_id,
               l.notes
          FROM sku_stock_ledger l
-         LEFT JOIN staff s ON s.id = l.staff_id
-        WHERE l.sku = $1
+         LEFT JOIN staff s ON s.id = l.staff_id AND s.organization_id = $2
+        WHERE l.sku = $1 AND l.organization_id = $2
         ORDER BY l.created_at DESC, l.id DESC
         LIMIT 100`,
-      [sku],
+      [sku, orgId],
     );
+    return r.rows;
   } catch {
     return [];
   }
 }
 
-async function loadEvents(sku: string): Promise<EventRow[]> {
+async function loadEvents(sku: string, orgId: OrgId): Promise<EventRow[]> {
   try {
-    return await queryRaw<EventRow>(
+    const r = await tenantQuery<EventRow>(
+      orgId,
       `SELECT ie.id, ie.occurred_at, ie.event_type, ie.station,
               ie.serial_unit_id, ie.prev_status, ie.next_status,
               s.name AS actor_name
          FROM inventory_events ie
-         LEFT JOIN staff s ON s.id = ie.actor_staff_id
-        WHERE ie.sku = $1
+         LEFT JOIN staff s ON s.id = ie.actor_staff_id AND s.organization_id = $2
+        WHERE ie.sku = $1 AND ie.organization_id = $2
         ORDER BY ie.occurred_at DESC, ie.id DESC
         LIMIT 50`,
-      [sku],
+      [sku, orgId],
     );
+    return r.rows;
   } catch {
     return [];
   }
@@ -230,7 +259,8 @@ function StatusBadge({ status }: { status: string | null }) {
 }
 
 export default async function SkuDetailPage({ params }: { params: Promise<{ sku: string }> }) {
-  await requirePermission('admin.view', { enforce: true });
+  const user = await requirePermission('admin.view', { enforce: true });
+  const orgId = user.organizationId;
 
   const { sku } = await params;
   const cleaned = decodeURIComponent(sku || '').trim();
@@ -248,14 +278,14 @@ export default async function SkuDetailPage({ params }: { params: Promise<{ sku:
   }
 
   const [catalog, stock, bins, statusCounts, recentUnits, allocations, ledger, events] = await Promise.all([
-    loadCatalog(cleaned),
-    loadStock(cleaned),
-    loadBins(cleaned),
-    loadUnitStatusCounts(cleaned),
-    loadRecentUnits(cleaned),
-    loadAllocations(cleaned),
-    loadLedger(cleaned),
-    loadEvents(cleaned),
+    loadCatalog(cleaned, orgId),
+    loadStock(cleaned, orgId),
+    loadBins(cleaned, orgId),
+    loadUnitStatusCounts(cleaned, orgId),
+    loadRecentUnits(cleaned, orgId),
+    loadAllocations(cleaned, orgId),
+    loadLedger(cleaned, orgId),
+    loadEvents(cleaned, orgId),
   ]);
 
   const totalUnits = statusCounts.reduce((sum, r) => sum + Number(r.count || 0), 0);

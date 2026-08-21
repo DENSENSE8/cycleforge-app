@@ -7,12 +7,13 @@ import { useStaffNameMap } from '@/hooks/useStaffNameMap';
 import { useUIModeOptional } from '@/design-system/providers/UIModeProvider';
 import { OrderSearchEmptyState } from '@/components/dashboard/OrderSearchEmptyState';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
-import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
+import type { NonlinearTableHostProps } from '@/components/tables/NonlinearTableHost';
 import type { TableId } from '@/lib/tables/table-columns';
 import { useQueueDisplaySort } from '@/hooks/useQueueDisplaySort';
 import { useToShipStatusFilter } from '@/components/unshipped/useToShipStatusFilter';
 import { getDashboardOrderViewFromSearch } from '@/utils/dashboard-search-state';
 import {
+  ORDERS_COMPOUND_COLUMNS,
   type OrdersQueueColumn,
   type OrdersQueueColumnKey,
   type OrdersQueueColumnMode,
@@ -40,7 +41,7 @@ import { AddTrackingPopover } from '@/components/outbound/labels/AddTrackingPopo
 import { useViewportForcedHidden } from './ViewportForcedHidden';
 import { useGridColumnDisplay } from '@/design-system/components/grid/useGridColumnDisplay';
 
-export interface OrdersGridHostProps {
+interface UseOrdersSpreadsheetOptions {
   records: ShippedOrder[];
   loading: boolean;
   searchValue: string;
@@ -104,7 +105,7 @@ export interface OrdersGridHostProps {
   ariaLabel: string;
   /** Extra classes on the outer shell. */
   className?: string;
-  /** Stable test id for the outer shell (default pending-grid-body). */
+  /** Stable test id for the outer shell (default orders-grid-body). */
   'data-testid'?: string;
   /**
    * Page scroll ancestor (Pending under `DashboardScrollShell`). When set, the
@@ -120,19 +121,28 @@ export interface OrdersGridHostProps {
 }
 
 /**
- * **Outbound orders spreadsheet** — thin domain adapter over
- * {@link NonlinearTableHost} (plan Phase 1, wave 5).
+ * **Outbound orders spreadsheet** — the family glue that resolves a
+ * `NonlinearTableHost` prop bag for every outbound lane. Spread it onto the
+ * host; there is no second table component.
+ *
+ * ```tsx
+ * const sheet = useOrdersSpreadsheet({ ... });
+ * return <div className={WORKBENCH_SHEET_HOST}><NonlinearTableHost {...sheet} /></div>;
+ * ```
+ *
+ * Plan: `docs/todo/one-table-engine-orders-host-PLAN.md` §4.2 — the shape
+ * Incoming (`ReceivingLinesTable`) already mounts without a family GridHost.
  *
  * Shared by Pending, Packed, Labels, Staged, Review, and Shipped. Two column-mode
  * bindings (`fulfillment.default` / `.tested`) are picked by
  * {@link ordersTableBindingFor}; the selection / cursor / inspector plane lives
  * in {@link useOrdersQueuePlane} (it encodes documented race bug-fixes). This
- * file keeps only what a grid adapter owns: mode resolution, the feed, URL sort,
+ * hook keeps only what family glue owns: mode resolution, the feed, URL sort,
  * viewport force-hide geometry, and the row / header renderers. The allowlisted
  * `OrdersQueueColumnHeader` fork keeps drag-reorder UI; fat `OrdersQueueTableRow`
  * keeps triage + in-cell edit.
  */
-export function OrdersGridHost({
+export function useOrdersSpreadsheet({
   records,
   loading,
   searchValue,
@@ -155,7 +165,11 @@ export function OrdersGridHost({
   'data-testid': dataTestId = 'orders-grid-body',
   scrollParentRef,
   columnTriggerPortalTarget,
-}: OrdersGridHostProps) {
+}: UseOrdersSpreadsheetOptions): NonlinearTableHostProps<
+  ShippedOrder,
+  OrdersQueueColumnKey,
+  OrdersQueueColumn
+> {
   const { displayByKey: columnDisplay } = useGridColumnDisplay(tableId);
   const searchParams = useSearchParams();
   const { isMobile } = useUIModeOptional();
@@ -314,67 +328,69 @@ export function OrdersGridHost({
     ],
   );
 
-  return (
-    <NonlinearTableHost<ShippedOrder, OrdersQueueColumnKey, OrdersQueueColumn>
-      binding={binding}
-      ariaLabel={ariaLabel}
-      orderGroupsByDate={orderGroupsByDate}
-      rows={displayedRecords}
-      getRowId={getTableRowId}
-      sort={columnSort}
-      dir={columnSortDir}
-      onSortChange={handleSortChange}
-      loading={loading}
-      emptyMessage={emptyMessage}
-      emptyState={showFirstRun ? firstRunEmpty : undefined}
-      searchEmptyState={
-        <OrderSearchEmptyState
-          query={searchValue}
-          title={searchEmptyTitle}
-          resultLabel={searchResultLabel}
-          clearLabel={clearSearchLabel}
-          onClear={onClearSearch}
-        />
-      }
-      isSearching={isSearching}
-      shellRef={shellRef}
-      scrollParentRef={scrollParentRef}
-      columnTriggerPortalTarget={columnTriggerPortalTarget ?? null}
-      className={className}
-      testId={dataTestId}
-      tableId={tableId}
-      forceHidden={forceHidden}
-      renderColumnHeader={({
-        toggleColumnSort,
-        onResizeColumn,
-        onResetColumn,
-        columns: visible,
-      }) => (
-        <OrdersQueueColumnHeader
-          isMobile={isMobile}
-          selectionScope={selectionScope}
-          selectGutterChrome="always"
-          columns={visible}
-          tableId={tableId}
-          activeSort={columnSort && isQueueColumnSort(columnSort) ? columnSort : undefined}
-          sortDir={columnSortDir}
-          onSortColumn={urlDriven ? (key) => toggleColumnSort(key) : undefined}
-          onResizeColumn={onResizeColumn}
-          onResetColumn={onResetColumn}
-        />
-      )}
-      renderGroup={(group, baseStripeIndex, { columns: visible }) => (
-        <QueueGroupRow
-          group={group}
-          baseStripeIndex={baseStripeIndex}
-          renderRow={(record, stripeIndex, rowIndex) =>
-            renderLeaf(record, stripeIndex, visible, rowIndex)
-          }
-        />
-      )}
-      renderRow={(record, stripeIndex, { columns: visible }, rowIndex) =>
-        renderLeaf(record, stripeIndex, visible, rowIndex)
-      }
-    />
-  );
+  return {
+    binding,
+    // COMPOUND (two-row) layout — the one row shape across every table. Passed
+    // as the host's column override rather than swapped into the binding so the
+    // definition (prefs bucket, testid, shell recipe) is untouched; only the
+    // presentation model moves.
+    columns: ORDERS_COMPOUND_COLUMNS,
+    ariaLabel,
+    orderGroupsByDate,
+    rows: displayedRecords,
+    getRowId: getTableRowId,
+    sort: columnSort,
+    dir: columnSortDir,
+    onSortChange: handleSortChange,
+    loading,
+    emptyMessage,
+    emptyState: showFirstRun ? firstRunEmpty : undefined,
+    searchEmptyState: (
+      <OrderSearchEmptyState
+        query={searchValue}
+        title={searchEmptyTitle}
+        resultLabel={searchResultLabel}
+        clearLabel={clearSearchLabel}
+        onClear={onClearSearch}
+      />
+    ),
+    isSearching,
+    shellRef,
+    scrollParentRef,
+    columnTriggerPortalTarget: columnTriggerPortalTarget ?? null,
+    className,
+    testId: dataTestId,
+    tableId,
+    forceHidden,
+    renderColumnHeader: ({
+      toggleColumnSort,
+      onResizeColumn,
+      onResetColumn,
+      columns: visible,
+    }) => (
+      <OrdersQueueColumnHeader
+        isMobile={isMobile}
+        selectionScope={selectionScope}
+        selectGutterChrome="always"
+        columns={visible}
+        tableId={tableId}
+        activeSort={columnSort && isQueueColumnSort(columnSort) ? columnSort : undefined}
+        sortDir={columnSortDir}
+        onSortColumn={urlDriven ? (key) => toggleColumnSort(key) : undefined}
+        onResizeColumn={onResizeColumn}
+        onResetColumn={onResetColumn}
+      />
+    ),
+    renderGroup: (group, baseStripeIndex, { columns: visible }) => (
+      <QueueGroupRow
+        group={group}
+        baseStripeIndex={baseStripeIndex}
+        renderRow={(record, stripeIndex, rowIndex) =>
+          renderLeaf(record, stripeIndex, visible, rowIndex)
+        }
+      />
+    ),
+    renderRow: (record, stripeIndex, { columns: visible }, rowIndex) =>
+      renderLeaf(record, stripeIndex, visible, rowIndex),
+  };
 }

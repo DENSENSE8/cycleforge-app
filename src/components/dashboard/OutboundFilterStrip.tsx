@@ -26,7 +26,7 @@ import {
 } from '@/components/dashboard/workbench-filter-popover';
 import {
   FULFILLMENT_STATE_META,
-  fulfillmentCountsFromCombos,
+  fulfillmentLaneTotals,
 } from '@/lib/unshipped-state';
 import { OUTBOUND_STATE_META, type OutboundState } from '@/lib/outbound-state';
 import { unshippedQueueCountsQuery } from '@/lib/queries/dashboard-queries';
@@ -278,14 +278,15 @@ function ToShipExactFilters({ mode }: { mode: 'unshipped' | 'tested' }) {
   const searchParams = useSearchParams();
   const staffId = parseStaffParam(searchParams.get('staff')) ?? undefined;
   const { data } = useQuery(unshippedQueueCountsQuery({ staffId }));
-  const fromCombos = fulfillmentCountsFromCombos(data?.combos ?? []);
-  const blockedCount = fromCombos.BLOCKED;
-  const pendingCount = (fromCombos.PENDING || data?.byStage.pending || 0) + blockedCount;
+  // Lane totals via the shared SoT — a tab number must equal the rows it shows.
+  const laneTotals = fulfillmentLaneTotals(data);
+  const blockedCount = laneTotals.blocked;
+  const pendingCount = laneTotals.pending;
   const urgentCount = data?.urgent ?? 0;
   const blockedActive = active === 'BLOCKED';
   const allActive = !blockedActive && !urgentOnly;
   const laneHot = blockedActive || urgentOnly;
-  const tabCount = mode === 'tested' ? fromCombos.TESTED || data?.byStage.tested || 0 : pendingCount;
+  const tabCount = mode === 'tested' ? laneTotals.tested : pendingCount;
 
   return (
     <div className="flex min-w-0 shrink-0 items-center gap-1.5">

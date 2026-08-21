@@ -22,13 +22,13 @@
 
 import { useMemo } from 'react';
 import { useQueries } from '@tanstack/react-query';
-import { Loader2 } from '@/components/Icons';
 import { TimelineSection } from '@/components/ui/TimelineSection';
 import type { PhotoGalleryInput } from '@/components/shipped/photo-gallery/photo-gallery-utils';
 import { operationsJourneyFocusedQuery } from '@/lib/queries/operations-journey-queries';
 import { unitTimelinePhotosQuery } from '@/lib/timeline/journey-photos';
 import { serialJourneyFilters } from '@/lib/serial/serial-journey';
 import { mergeStationUnitJourneys } from './merge-station-unit-journeys';
+import { UniversalLoader } from '@/design-system/components/UniversalLoader';
 
 export function StationUnitJourneys({
   serials,
@@ -86,9 +86,7 @@ export function StationUnitJourneys({
 
   if (serialsLoading && list.length === 0) {
     return (
-      <div className="flex items-center gap-2 px-1 py-4 text-role-caption font-medium text-text-faint">
-        <Loader2 className="h-4 w-4 animate-spin" /> Loading serials…
-      </div>
+      <UniversalLoader isLoading label="Loading serials" className="min-h-24" />
     );
   }
 

@@ -24,9 +24,10 @@ import { UnboxBrowseShell } from '@/components/receiving/unbox/UnboxBrowseShell'
  * (`maybeSeedUnboxShell`, called from the root layout) and covers this page too,
  * so the middle's carton lines still hydrate from cache exactly as before.
  *
- * The middle shows `UnboxStationFirstPaint`'s skeleton until the interactive
- * workspace hydrates over that same cache. Workbench tables mount only after
- * Back to list (`?unboxdesk=1`).
+ * The middle shows `UniversalLoader`'s field until the interactive workspace
+ * hydrates over that same cache — the drawn skeleton that used to sit there
+ * was retired 2026-08-20. Workbench tables mount only after Back to list
+ * (`?unboxdesk=1`).
  *
  * There is no second, `sr-only` copy of the stand-in. One was mounted here as
  * "belt-and-suspenders" while the app shell was client-gated and nothing the

@@ -19,11 +19,17 @@
  * keeps calling `useKioskSession()` and the same actions. Nothing in the public
  * API moved, which is the point: the transport changed, not the store.
  *
- * **The refusal is not defensive coding, it is D5.** While a desk holds this
- * tablet, the tablet does not edit lines — that is enforced at the API door
- * too. Letting a local mutator write here would paint an edit that the server
- * never accepted, and the next mirror would silently erase it: a cart that
- * disagrees with the receipt for as long as the customer is looking at it.
+ * **Mirrored edits WRITE THROUGH (revised 2026-08-20).** The first cut made the
+ * local mutators no-ops while mirroring. That was wrong twice over: the counter
+ * is a form staff and customer fill at the same time, and a silent no-op is the
+ * worst possible way to say no — the tablet's own line editor called
+ * `updateLine` and simply did nothing, with no error and no feedback.
+ *
+ * So a mutator with a shared writer attached applies OPTIMISTICALLY and sends
+ * the edit to the server; the next mirror reconciles it. Without a writer it
+ * stays local, exactly as before. Money edits are refused server-side (price,
+ * void, submit are staff verbs) — the door that matters is the API's, not a
+ * disabled button.
  *
  * **The phone is masked in a mirror** (`sharedCustomerPhoneMasked`), and
  * deliberately does NOT land in `customerPhone`. The masked string is display
@@ -99,6 +105,21 @@ const INITIAL: KioskSessionSnapshot = {
 
 let snapshot: KioskSessionSnapshot = INITIAL;
 const listeners = new Set<() => void>();
+
+/**
+ * How a mirrored edit reaches the server.
+ *
+ * Injected by `useKioskSharedSession` rather than imported, so this module stays
+ * fetch-free and unit-testable: a test attaches a recording writer and asserts
+ * what the tablet TRIED to send, with no network.
+ */
+export interface KioskSharedWriter {
+  addLine(line: KioskCartLine): void | Promise<void>;
+  updateLine(id: string, patch: Partial<Omit<KioskCartLine, 'id' | 'type'>>): void | Promise<void>;
+  removeLine(id: string): void | Promise<void>;
+}
+
+let sharedWriter: KioskSharedWriter | null = null;
 
 function emit(): void {
   for (const l of listeners) l();
@@ -190,6 +211,16 @@ export const kioskSessionStore = {
     });
   },
   /**
+   * Install (or clear) the write-through path for a mirrored session.
+   *
+   * Cleared on detach so a stale writer cannot post an edit to a session this
+   * tablet no longer belongs to.
+   */
+  attachSharedWriter(writer: KioskSharedWriter | null): void {
+    sharedWriter = writer;
+  },
+
+  /**
    * Attach the shared transport and write one server projection in.
    *
    * Idempotent by version: an older projection (a poll answering after a newer
@@ -204,6 +235,13 @@ export const kioskSessionStore = {
     customerPhoneMasked: string;
     awaitingSignatureLineIds: string[];
     activeCommand?: KioskCommandId;
+    /**
+     * Card-present state from the server (SQ2). This is what finally drives
+     * `awaitingCardSinceMs`, which has existed here since v2 with nothing
+     * behind it — the customer face already knows how to render the calm
+     * decaying wait, it just never had a real prompt to render.
+     */
+    awaitingCardSinceMs?: number | null;
   }): void {
     if (
       snapshot.sharedSessionId === input.sessionId &&
@@ -222,6 +260,10 @@ export const kioskSessionStore = {
       customerPhone: '',
       sharedAwaitingSignatureLineIds: input.awaitingSignatureLineIds,
       activeCommand: input.activeCommand ?? snapshot.activeCommand,
+      awaitingCardSinceMs:
+        input.awaitingCardSinceMs === undefined
+          ? snapshot.awaitingCardSinceMs
+          : input.awaitingCardSinceMs,
     });
   },
 
@@ -232,6 +274,7 @@ export const kioskSessionStore = {
    * one's basket.
    */
   detachSharedSession(): void {
+    sharedWriter = null;
     if (snapshot.sharedSessionId === null) return;
     setSnapshot({
       ...INITIAL,
@@ -249,10 +292,12 @@ export const kioskSessionStore = {
       id: input.id ?? safeRandomUUID(),
       quantity: Math.max(1, Math.trunc(input.quantity) || 1),
     };
-    // D5: while a desk holds this tablet, the desk owns the lines. Painting a
-    // local edit the server never took would be erased by the next mirror.
-    if (snapshot.sharedSessionId !== null) return line;
+    // Optimistic either way; when mirrored, the edit also goes to the server and
+    // the next projection reconciles it.
     setSnapshot({ ...snapshot, lines: [...snapshot.lines, line] });
+    if (snapshot.sharedSessionId !== null && sharedWriter) {
+      void sharedWriter.addLine(line);
+    }
     return line;
   },
   addRetail(input: {
@@ -298,7 +343,9 @@ export const kioskSessionStore = {
     });
   },
   updateLine(id: string, patch: Partial<Omit<KioskCartLine, 'id' | 'type'>>): void {
-    if (snapshot.sharedSessionId !== null) return;
+    if (snapshot.sharedSessionId !== null && sharedWriter) {
+      void sharedWriter.updateLine(id, patch);
+    }
     setSnapshot({
       ...snapshot,
       lines: snapshot.lines.map((line) =>
@@ -307,7 +354,12 @@ export const kioskSessionStore = {
     });
   },
   removeLine(id: string): void {
-    if (snapshot.sharedSessionId !== null) return;
+    if (snapshot.sharedSessionId !== null && sharedWriter) {
+      // A remove on a mirrored session is a VOID server-side — staff-only, so
+      // this will be refused there and the mirror will put the line back. The
+      // customer sees it return rather than a button that quietly did nothing.
+      void sharedWriter.removeLine(id);
+    }
     setSnapshot({
       ...snapshot,
       lines: snapshot.lines.filter((line) => line.id !== id),

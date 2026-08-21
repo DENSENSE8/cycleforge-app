@@ -21,7 +21,6 @@ import {
   WorkbenchTriageBand,
 } from '@/components/dashboard/workbench-shell';
 import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
-import { SearchField } from '@/design-system/primitives/SearchField';
 import {
   LABELS_PRODUCTS_TAB_LABEL,
   type LabelsSubView,
@@ -66,11 +65,17 @@ export function LabelsProductsWorkspaceHeader({
   const isHistory = tab === 'history';
   const isProducts = tab === 'print';
 
+  // Both tabs wear the ONE band find bar. History used to mount a raw
+  // `SearchField` here, which meant it painted the bordered field face instead
+  // of the band's flush sunken plane AND inherited nothing the bar grows —
+  // including the persistent paste cell, on the one field in the product whose
+  // own placeholder asks the operator to paste. `onSearch` is the commit half
+  // (Enter, or a paste into an empty field), added to the bar for exactly this.
   const searchField = isHistory ? (
-    <SearchField
+    <TechRailSearchBar
+      variant="chrome"
       value={search}
       onChange={onSearch}
-      onClear={() => onSearch('')}
       onSearch={(raw) => {
         const value = raw.trim();
         if (!value) return;
@@ -78,8 +83,6 @@ export function LabelsProductsWorkspaceHeader({
         onSearch('');
       }}
       placeholder="Scan or paste a DataMatrix…"
-      tone="blue"
-      size="compact"
       className="min-w-0 flex-1"
     />
   ) : isProducts ? (

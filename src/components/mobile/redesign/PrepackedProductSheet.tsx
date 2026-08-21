@@ -274,20 +274,20 @@ export function PrepackedProductSheet({ scanned, onClose }: { scanned: string | 
     <>
       <BottomSheet open={scanned != null} onClose={onClose} maxWidth="32rem">
         {isLoading || !data ? (
-          <div className="flex items-center justify-center py-16 text-blue-300">
+          <div className="flex items-center justify-center py-16 text-text-faint">
             <Loader2 className="h-7 w-7 animate-spin" />
           </div>
         ) : (
           <div className="flex flex-col gap-4">
             {/* Header */}
             <div className="flex items-start gap-3">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-none bg-surface-sunken text-text-muted">
                 <Package className="h-6 w-6" />
               </div>
               <div className="min-w-0 flex-1">
                 {/* PRIMARY — product title; SKU + serial below as copy chips
                     (same primitives as the desktop identity card). */}
-                <p className="text-lg font-semibold leading-snug tracking-tight text-blue-950">{title}</p>
+                <p className="text-lg font-semibold leading-snug tracking-tight text-text-default">{title}</p>
                 <div className="mt-1.5 space-y-1">
                   {sku && (
                     <ChipRow label="SKU">
@@ -325,7 +325,7 @@ export function PrepackedProductSheet({ scanned, onClose }: { scanned: string | 
               <StatField
                 label="Location"
                 value={tracked?.unit.current_location ?? '—'}
-                icon={<MapPin className="h-3.5 w-3.5 text-blue-400" />}
+                icon={<MapPin className="h-3.5 w-3.5 text-text-faint" />}
               />
             </div>
 
@@ -334,7 +334,7 @@ export function PrepackedProductSheet({ scanned, onClose }: { scanned: string | 
               <div className="flex flex-col gap-2">
                 <GlassButton
                   variant="primary"
-                  className="w-full !rounded-[24px]"
+                  className="w-full !rounded-none"
                   icon={MapPin}
                   onClick={() => setLocationOpen(true)}
                 >
@@ -342,7 +342,7 @@ export function PrepackedProductSheet({ scanned, onClose }: { scanned: string | 
                 </GlassButton>
                 <GlassButton
                   variant="secondary"
-                  className="w-full !rounded-[24px]"
+                  className="w-full !rounded-none"
                   icon={savingPhotos ? Loader2 : Camera}
                   onClick={() => {
                     if (!savingPhotos) setCapturing(true);
@@ -352,7 +352,7 @@ export function PrepackedProductSheet({ scanned, onClose }: { scanned: string | 
                 </GlassButton>
               </div>
             ) : (
-              <div className="rounded-2xl border border-amber-100 bg-amber-50/60 px-4 py-3">
+              <div className="rounded-none border border-amber-100 bg-amber-50/60 px-4 py-3">
                 <p className="text-xs font-semibold leading-relaxed text-amber-700">
                   {data.source === 'unknown'
                     ? 'Could not resolve this label to a product.'
@@ -367,21 +367,21 @@ export function PrepackedProductSheet({ scanned, onClose }: { scanned: string | 
               {tracked && tracked.events.length > 0 ? (
                 <div className="max-h-64 space-y-2 overflow-y-auto">
                   {tracked.events.map((e) => (
-                    <div key={e.id} className="flex items-start gap-3 rounded-2xl border border-blue-50 bg-surface-card px-3 py-2.5">
-                      <History className="mt-0.5 h-4 w-4 shrink-0 text-blue-300" />
+                    <div key={e.id} className="flex items-start gap-3 rounded-none border border-border-hairline bg-surface-card px-3 py-2.5">
+                      <History className="mt-0.5 h-4 w-4 shrink-0 text-text-faint" />
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold tracking-tight text-blue-950">{humanizeEvent(e.event_type)}</p>
-                        <p className="truncate text-role-caption font-semibold text-blue-400">
+                        <p className="text-sm font-semibold tracking-tight text-text-default">{humanizeEvent(e.event_type)}</p>
+                        <p className="truncate text-role-caption font-semibold text-text-faint">
                           {[e.station, e.next_status, e.notes].filter(Boolean).join(' · ') || '—'}
                         </p>
                       </div>
-                      <span className="shrink-0 text-role-caption font-semibold text-blue-300">{formatWhen(e.occurred_at)}</span>
+                      <span className="shrink-0 text-role-caption font-semibold text-text-faint">{formatWhen(e.occurred_at)}</span>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="flex flex-col items-center gap-2 rounded-2xl bg-surface-canvas px-4 py-6 text-center">
-                  <p className="text-xs font-semibold uppercase tracking-widest text-blue-300">
+                <div className="flex flex-col items-center gap-2 rounded-none bg-surface-canvas px-4 py-6 text-center">
+                  <p className="text-xs font-semibold uppercase tracking-widest text-text-faint">
                     {tracked ? 'No history yet' : 'No history for untracked units'}
                   </p>
                   {/* Show the serial even with no events — mirrors the desktop
@@ -408,7 +408,7 @@ export function PrepackedProductSheet({ scanned, onClose }: { scanned: string | 
 
       {/* Stacked location-scan step — same ScanInput component. */}
       <BottomSheet open={locationOpen} onClose={() => setLocationOpen(false)} level={1} title="Scan location">
-        <p className="mb-3 text-center text-xs font-semibold text-blue-400">
+        <p className="mb-3 text-center text-xs font-semibold text-text-faint">
           Scan or type the bin / location QR to put this unit away.
         </p>
         <ScanInput
@@ -419,7 +419,7 @@ export function PrepackedProductSheet({ scanned, onClose }: { scanned: string | 
           onDecode={handleLocationDecode}
         />
         {moving && (
-          <div className="mt-3 flex items-center justify-center gap-2 text-blue-400">
+          <div className="mt-3 flex items-center justify-center gap-2 text-text-faint">
             <Loader2 className="h-4 w-4 animate-spin" />
             <span className="text-xs font-semibold uppercase tracking-wider">Moving…</span>
           </div>
@@ -451,7 +451,7 @@ export function PrepackedProductSheet({ scanned, onClose }: { scanned: string | 
 function ChipRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex items-center gap-2">
-      <span className="w-12 shrink-0 text-role-micro uppercase tracking-[0.14em] text-blue-300">
+      <span className="w-12 shrink-0 text-role-micro uppercase tracking-[0.14em] text-text-faint">
         {label}
       </span>
       {children}
@@ -461,11 +461,11 @@ function ChipRow({ label, children }: { label: string; children: React.ReactNode
 
 function StatField({ label, value, icon }: { label: string; value: string; icon?: React.ReactNode }) {
   return (
-    <div className="rounded-2xl bg-surface-canvas px-3 py-2.5">
-      <p className="text-role-micro uppercase tracking-[0.15em] text-blue-300">{label}</p>
+    <div className="rounded-none bg-surface-canvas px-3 py-2.5">
+      <p className="text-role-micro uppercase tracking-[0.15em] text-text-faint">{label}</p>
       <div className="mt-1 flex items-center gap-1">
         {icon}
-        <p className="truncate text-sm font-semibold tracking-tight text-blue-950">{value}</p>
+        <p className="truncate text-sm font-semibold tracking-tight text-text-default">{value}</p>
       </div>
     </div>
   );

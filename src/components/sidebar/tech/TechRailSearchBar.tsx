@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Always-open compact filter — Search glyph + field + hover-reveal paste.
+ * Always-open compact filter — Search glyph + field + paste.
  *
  * **SoT for scoped list search** (rail footers AND workbench chrome). Replaces
  * the retired icon-first `ToolbarSearchToggle`.
@@ -16,7 +16,12 @@
  * - `variant="chrome"` — workbench header / triage band. Same in-field Search
  *   glyph as rail (`SearchBar` → `SearchField`); flush sunken plane (no rounded
  *   bubble) hosts the field + optional `trailingAction`, edge-to-edge with the
- *   triage row. No rail band.
+ *   triage row. No rail band. **Paste is persistent here** (`pasteVisibility`
+ *   `always`): Band 3 is the row an operator arrives at holding a tracking
+ *   number, so the clipboard glyph keeps a fixed opaque slot instead of
+ *   appearing only once the pointer is already on the field. Rails stay
+ *   hover-reveal — a rail footer sits under a list the pointer crosses on the
+ *   way to something else, and a lit glyph there is noise.
  *
  * **Trailing icon grammar (rail footers):**
  * 1. Empty-field **paste** — hover-reveal only (`SearchField` + `group/search-bar`)
@@ -65,6 +70,7 @@ const FILTER_NAV_KEYS = new Set([
 export function TechRailSearchBar({
   value,
   onChange,
+  onSearch,
   onClear,
   onKeyDown,
   placeholder = 'Filter lines…',
@@ -73,10 +79,12 @@ export function TechRailSearchBar({
   isSearching = false,
   trailingPrefix,
   trailingSuffix,
+  pasteVisibility,
   trailingAction,
   inputRef,
   onScanHandle,
   navKeyHint,
+  flush = false,
   className,
   'data-testid': dataTestId,
 }: {
@@ -86,6 +94,14 @@ export function TechRailSearchBar({
    * Extra clear side-effects (URL wipe, etc.). Draft clear + `onChange('')`
    * always run; this fires after.
    */
+  /**
+   * COMMIT — Enter, or a paste into an empty field (paste is a commit, not a
+   * draft fill; `SearchField` owns that rule). A find bar whose query is
+   * submitted rather than filtered-as-you-type needs this: Labels History
+   * scans a DataMatrix and hands it off. Without it that surface forked a raw
+   * `SearchField` into the band and inherited none of the bar's chrome.
+   */
+  onSearch?: (value: string) => void;
   onClear?: () => void;
   /**
    * Keydown from the field, caught on the wrapper (the event bubbles). Lets a
@@ -138,6 +154,14 @@ export function TechRailSearchBar({
    */
   trailingSuffix?: ReactNode;
   /**
+   * Paste affordance visibility. Defaults by variant — `chrome` bands hold the
+   * clipboard glyph in a fixed opaque slot, rails keep it hover-reveal — so a
+   * host inherits the right one by saying nothing. Name it only to opt a
+   * specific chrome host OUT (`'hover'`); that is one word, and one word is
+   * what stops the next quiet host from forking the bar to get its old face.
+   */
+  pasteVisibility?: 'hover' | 'always';
+  /**
    * Sibling control in the rail **age column** (`SIDEBAR_RAIL_TRAILING_TRACK_CLASS`)
    * — same vertical track as row relative-time (`11h`) and the parked expand
    * strip. When omitted on `variant="rail"` inside a context panel, defaults to
@@ -174,6 +198,11 @@ export function TechRailSearchBar({
    * and vanish on disarm, so this is `undefined` at rest.
    */
   navKeyHint?: ReactNode;
+  /**
+   * `variant="chrome"` only. Zero horizontal pad / gap on the sunken plane so
+   * a host band (MasterNav find) can sit the field flush to the chrome edges.
+   */
+  flush?: boolean;
   className?: string;
   /** Host-owned hook for E2E — the band wrapper carries it. */
   'data-testid'?: string;
@@ -209,6 +238,7 @@ export function TechRailSearchBar({
   };
 
   const chrome = variant === 'chrome';
+  const chromeFlush = chrome && flush;
   /**
    * The field's own node, merged with any caller ref, so the opt-in scan
    * listener can bind natively without taking the ref away from the host.
@@ -252,12 +282,14 @@ export function TechRailSearchBar({
     <SearchBar
       value={draft}
       onChange={setDraft}
+      onSearch={onSearch}
       onClear={clear}
       placeholder={placeholder}
       size="compact"
       isSearching={chrome ? false : isSearching}
       leadingIcon={<Search className="h-3.5 w-3.5" />}
       hideUnderline
+      pasteVisibility={pasteVisibility ?? (chrome ? 'always' : 'hover')}
       trailingPrefix={trailingPrefix}
       trailingSuffix={
         navKeyHint ? (
@@ -308,7 +340,10 @@ export function TechRailSearchBar({
     >
       {chrome ? (
         <div
-          className="flex h-full min-w-0 flex-1 items-center gap-0.5 bg-surface-sunken px-2"
+          className={cn(
+            'flex h-full min-w-0 flex-1 items-center bg-surface-sunken',
+            chromeFlush ? 'gap-0 px-0' : 'gap-0.5 px-2',
+          )}
         >
           <div className="min-w-0 flex-1">{field}</div>
           {resolvedTrailingAction}

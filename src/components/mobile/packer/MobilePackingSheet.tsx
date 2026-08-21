@@ -125,7 +125,7 @@ export function MobilePackingSheet({ row, open, onClose }: MobilePackingSheetPro
               href={`/m/checklist?${checklistParams.toString()}`}
               prefetch={false}
               onClick={onClose}
-              className="rounded-2xl border border-border-soft bg-surface-canvas px-4 py-3 text-center text-role-caption font-semibold text-blue-600 active:bg-surface-sunken"
+              className="rounded-none border border-border-soft bg-surface-canvas px-4 py-3 text-center text-role-caption font-semibold text-text-muted active:bg-surface-sunken"
             >
               Edit kit / QC checklist
             </Link>
@@ -133,11 +133,11 @@ export function MobilePackingSheet({ row, open, onClose }: MobilePackingSheetPro
         })()}
 
         {photos.length > 0 ? (
-          <div className="rounded-2xl border border-border-hairline bg-surface-canvas/60 p-3">
+          <div className="rounded-none border border-border-hairline bg-surface-canvas/60 p-3">
             <PhotoGallery photos={photos} orderId={orderId} compact launcherTitle={`Photos ${photos.length}`} />
           </div>
         ) : (
-          <p className="rounded-2xl bg-amber-50 px-4 py-3 text-center text-role-caption font-semibold text-amber-700">
+          <p className="rounded-none bg-amber-50 px-4 py-3 text-center text-role-caption font-semibold text-amber-700">
             No pack photos yet — tap below to capture.
           </p>
         )}
@@ -148,12 +148,12 @@ export function MobilePackingSheet({ row, open, onClose }: MobilePackingSheetPro
             prefetch={false}
             onClick={onClose}
             aria-label="Take photos"
-            className="flex h-14 w-full items-center justify-center rounded-2xl bg-blue-600 text-white shadow-sm transition-colors active:bg-blue-700"
+            className="flex h-14 w-full items-center justify-center rounded-none bg-blue-600 text-white shadow-sm transition-colors active:bg-blue-700"
           >
             <Camera className="h-6 w-6" />
           </Link>
         ) : (
-          <p className="rounded-2xl bg-rose-50 px-4 py-3 text-center text-role-caption font-semibold text-rose-700">
+          <p className="rounded-none bg-rose-50 px-4 py-3 text-center text-role-caption font-semibold text-rose-700">
             Missing packer log id — cannot attach photos.
           </p>
         )}

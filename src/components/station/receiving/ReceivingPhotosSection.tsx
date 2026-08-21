@@ -8,6 +8,7 @@ import {
   receivingPhotoToGalleryInput,
 } from '@/components/shipped/photo-gallery/photo-gallery-utils';
 import { useReceivingPhotos } from '@/hooks/useReceivingPhotos';
+import { UniversalLoader } from '@/design-system/components/UniversalLoader';
 
 interface ReceivingPhotosSectionProps {
   receivingId: string;
@@ -80,12 +81,7 @@ export function ReceivingPhotosSection({
       {showError ? (
         <p className="text-role-caption text-text-danger">Photos unavailable</p>
       ) : loadingEmpty ? (
-        <div className="grid grid-cols-3 gap-2 rounded-xl border border-border-hairline bg-surface-canvas p-2">
-          <div className="h-16 rounded-lg bg-surface-sunken" aria-hidden />
-          <div className="h-16 rounded-lg bg-surface-sunken" aria-hidden />
-          <div className="h-16 rounded-lg bg-surface-sunken" aria-hidden />
-          <span className="sr-only">Loading photos</span>
-        </div>
+        <UniversalLoader isLoading label="Loading photos" className="min-h-20" />
       ) : (
         <PhotoGallery
           photos={galleryPhotos}

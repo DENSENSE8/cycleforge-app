@@ -12,11 +12,28 @@
  * sits on a quiet secondary line; otherwise the query is primary. Relative
  * time sits right. The remove affordance is a sibling button (never nested in
  * the link).
+ *
+ * **The row anatomy is {@link CompactActivityRow} + {@link RailRowBody}**
+ * (2026-08-21) — the same dot-track · title · one-fact · trailing-age face the
+ * station rails wear. It was a literal fork of that anatomy in local spans.
+ *
+ * Three things the composition has to keep, all of which broke on the first try:
+ *   • `group` stays on the `<li>` — `CompactActivityRow` does not declare it,
+ *     and both hover affordances are `group-hover:opacity-100`.
+ *   • the `<Link>` wraps the WHOLE row frame, with the remove `IconButton` as
+ *     an absolutely-positioned SIBLING. Putting the row inside the button's
+ *     parent loses the full-row click target; putting the button inside the
+ *     Link nests interactive content in an anchor.
+ *   • the age is {@link formatRelativeTime}, handed to the row as `ageText`.
+ *     The row's own `formatLaneAgeCompact` has no week/month/year band, so a
+ *     three-month-old recent would read `92d`.
  */
 
 import Link from 'next/link';
 import { Clock, Search, ChevronRight, X } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
+import { CompactActivityRow } from '@/components/ui/CompactActivityRow';
+import { RailRowBody } from '@/components/sidebar/rail-shell/RailRowBody';
 import { recentRerunHref, formatRelativeTime, type SearchRecentEntry } from '@/lib/search/search-recents';
 import { cn } from '@/utils/_cn';
 
@@ -76,6 +93,7 @@ export function SearchRecentsDropdown({
             entry.topHit?.entityType === 'order' && entry.topHit.title.trim()
               ? entry.topHit.title.trim()
               : null;
+          const title = orderTitle ?? entry.query;
           return (
             <li key={entry.id} className="group relative flex items-center">
               <Link
@@ -96,30 +114,34 @@ export function SearchRecentsDropdown({
                 id={asOptions ? getOptionId!(index) : undefined}
                 aria-selected={active || undefined}
                 className={cn(
-                  'flex min-w-0 flex-1 items-center gap-3 px-3 py-1.5 text-left hover:bg-surface-hover',
+                  'flex min-w-0 flex-1 items-center px-3 py-1.5 text-left hover:bg-surface-hover',
                   active && 'bg-blue-50 ring-1 ring-inset ring-blue-400',
                   onRemove && 'pr-7',
                 )}
               >
-                <span className="flex h-5 w-5 shrink-0 items-center justify-center">
-                  <Search className="h-4 w-4 text-text-faint" />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-role-caption font-semibold text-text-default">
-                    {orderTitle ?? entry.query}
-                  </span>
-                  {orderTitle ? (
-                    <span className="mt-0.5 block truncate text-role-micro font-medium text-text-faint">
-                      {entry.query}
-                    </span>
-                  ) : null}
-                </span>
-                <span className="shrink-0 text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
-                  {formatRelativeTime(entry.timestamp)}
-                </span>
-                {!onRemove && (
-                  <ChevronRight className="h-3.5 w-3.5 shrink-0 text-text-faint opacity-0 transition-opacity group-hover:opacity-100" />
-                )}
+                <CompactActivityRow
+                  leading={<Search className="h-3.5 w-3.5 text-text-faint" />}
+                  ageText={formatRelativeTime(entry.timestamp)}
+                  // A chevron is decoration, so it may live inside the anchor;
+                  // the remove BUTTON may not, and takes the sibling slot below.
+                  actions={
+                    onRemove ? undefined : (
+                      <ChevronRight className="h-3.5 w-3.5 shrink-0 text-text-faint" />
+                    )
+                  }
+                >
+                  <RailRowBody
+                    vm={{
+                      title,
+                      titleAttr: title,
+                      meta: orderTitle ? (
+                        <span className="truncate font-medium text-text-faint">
+                          {entry.query}
+                        </span>
+                      ) : undefined,
+                    }}
+                  />
+                </CompactActivityRow>
               </Link>
               {onRemove && (
                 <IconButton

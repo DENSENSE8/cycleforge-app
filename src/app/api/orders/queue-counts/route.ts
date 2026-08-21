@@ -3,7 +3,7 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import { createCacheLookupKey, getCachedJson, setCachedJson } from '@/lib/cache/upstash-cache';
 import { logRouteMetric } from '@/lib/route-metrics';
 import { SHIPPED_BY_CARRIER_SQL } from '@/lib/sql-fragments';
-import { PACK_ACTIVITY_TYPES, sqlInList } from '@/lib/station-activity';
+import { sqlOrderHasPackScan, sqlOrderHasTechScan } from '@/lib/orders/order-grain-sql';
 import { withAuth } from '@/lib/auth/withAuth';
 import { countOpenPlacementsByLocation } from '@/lib/packing/pack-placement';
 
@@ -24,6 +24,12 @@ import { countOpenPlacementsByLocation } from '@/lib/packing/pack-placement';
  * with a non-empty tracking number (blank-tracking stays on Labels), not
  * carrier-shipped, not Amazon-fulfilled, and not yet packed (no PACK event).
  * Optional `?staff=` narrows to one staff's assigned work (packer OR tech).
+ *
+ * "Mirrors" is now literal: the tech-scan and pack facts come from the shared
+ * ORDER-GRAIN fragments (`sqlOrderHasTechScan` / `sqlOrderHasPackScan`), not a
+ * second hand-rolled shipment-grain copy. A count that disagrees with the row
+ * list is a bug in this file, so there is exactly one implementation of the
+ * membership rule and both endpoints call it.
  */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   const startedAt = Date.now();
@@ -39,7 +45,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       staff: staffId ?? '',
       shipmentStatusRuleVersion: 'latest_status_relaxed_v2',
       // Bump when membership SQL / payload shape changes so stale tallies cannot outlive the fix.
-      queueScope: 'labeled_tracked_pack_placement_v1',
+      queueScope: 'labeled_tracked_order_grain_v2',
     });
 
     const CACHE_HEADERS = { 'Cache-Control': 'private, max-age=60, stale-while-revalidate=30' };
@@ -67,12 +73,28 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
 
     // GROUP BY the two raw signals only. At most 4 rows come back
     // (has_tech_scan × blocked); the client maps each via deriveFulfillmentState.
+    //
+    // ORDER-GRAIN (CF-03 / CF-04). Both membership facts below come from
+    // `@/lib/orders/order-grain-sql` — the SAME fragments `/api/orders` uses for
+    // the row list. They used to be hand-rolled shipment-grain EXISTS here, and
+    // that is precisely why the badge could disagree with the grid:
+    //
+    //   - `has_tech_scan` was `EXISTS(sal WHERE sal.shipment_id = o.shipment_id)`
+    //     with NO activity_type filter, so ANY station activity on a shared
+    //     carton — a pack scan, a receiving scan — counted as "tested". That
+    //     inflated `tested` and, since `pending = total - tested`, deflated
+    //     Pending. `sqlOrderHasTechScan` requires a real TECH_TEST activity
+    //     attributed to THIS order (tsn.order_id / metadata.order_row_id), with
+    //     the shipment-grain path only when the shipment has a single order.
+    //   - the pack exclusion was shipment-grain `NOT EXISTS`, which drops an
+    //     order because a SIBLING sharing its carton was packed — the "vanish
+    //     bug" the row route's own comment names.
+    //
+    // Two endpoints answering "is this order in the queue?" differently is the
+    // defect; there is one answer and it lives in order-grain-sql.ts.
     const sql = `
       SELECT
-        (EXISTS (
-          SELECT 1 FROM station_activity_logs sal
-          WHERE sal.shipment_id IS NOT NULL AND sal.shipment_id = o.shipment_id
-        )) AS has_tech_scan,
+        ${sqlOrderHasTechScan('o')} AS has_tech_scan,
         o.is_out_of_stock AS blocked,
         COUNT(*)::int AS n,
         COUNT(*) FILTER (WHERE o.is_urgent)::int AS urgent_n
@@ -83,11 +105,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         AND COALESCE(TRIM(stn.tracking_number_raw), '') <> ''
         AND NOT ${SHIPPED_BY_CARRIER_SQL}
         AND COALESCE(o.fulfillment_channel, '') <> 'AFN'
-        AND NOT EXISTS (
-          SELECT 1 FROM station_activity_logs sal
-          WHERE sal.shipment_id IS NOT NULL AND sal.shipment_id = o.shipment_id
-            AND sal.activity_type IN (${sqlInList(PACK_ACTIVITY_TYPES)})
-        )${staffClause}
+        AND NOT ${sqlOrderHasPackScan('o')}${staffClause}
       GROUP BY 1, 2
     `;
 

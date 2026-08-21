@@ -193,13 +193,36 @@ export function useTestingLineController(
     [queryClient],
   );
 
+  /**
+   * A fail press waiting on its fault — one unit pill, or a whole line's units.
+   * Null whenever the sheet is closed.
+   */
+  const [pendingFail, setPendingFail] = useState<{
+    lineId: number;
+    serials: UnitSlotSerial[];
+    label: string;
+  } | null>(null);
+
   // ── Per-unit verdict (optimistic) ─────────────────────────────────────────
   // Reflect the verdict IMMEDIATELY so the pill highlights and the Pass·Print
   // button enables with no processing wait, then persist in the background and
   // roll the unit status back on failure. `isMutating` stays a NON-blocking
   // "saving" chip on the toolbar — it no longer gates the verdict pills.
   const handleSlotVerdict = useCallback(
-    async (lineId: number, serial: UnitSlotSerial, next: TestingVerdict) => {
+    async (
+      lineId: number,
+      serial: UnitSlotSerial,
+      next: TestingVerdict,
+      /**
+       * The fault being claimed. REQUIRED and undefaulted: it decides what is
+       * recorded against the unit, and a default here is a silent opt-out that
+       * every call site nobody visited takes automatically
+       * (`backend-patterns.md` → a safety classification is a required
+       * parameter). `null` is only legal for a non-fail verdict — go through
+       * `requestSlotVerdict` and the fail gate answers it.
+       */
+      failureModeId: number | null,
+    ) => {
       const priorStatus = serial.current_status;
       const optimisticStatus = verdictToUnitStatus(next);
       const receivingId = row.receiving_id;
@@ -238,6 +261,27 @@ export function useTestingLineController(
           applyStatus(priorStatus); // roll back the optimistic verdict
           if (next === 'TESTING_FAILED' && lineId === row.id) setClaimOpen(false);
           return;
+        }
+
+        // Name the fault on the unit. Same shape the server already uses when a
+        // QC step with a linked mode fails (`/api/serial-units/[id]/checklist`
+        // auto-tag-on-fail), so a hand-failed unit and a step-failed one land in
+        // the same place and both resolve the same way. Best-effort: the verdict
+        // is already recorded and must not roll back because the tag missed.
+        if (next === 'TESTING_FAILED' && failureModeId != null) {
+          try {
+            await fetch(`/api/serial-units/${serial.id}/failure-tags`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                failureModeId,
+                source: 'qc',
+                notes: notes.trim() || null,
+              }),
+            });
+          } catch (tagErr) {
+            console.warn('[testing] failure tag failed (non-fatal)', tagErr);
+          }
         }
 
         // The server's unit status already equals `optimisticStatus`, so leave
@@ -323,19 +367,84 @@ export function useTestingLineController(
   );
 
   const applyLineVerdict = useCallback(
-    async (lineId: number, serials: ReadonlyArray<UnitSlotSerial>, next: TestingVerdict) => {
+    async (
+      lineId: number,
+      serials: ReadonlyArray<UnitSlotSerial>,
+      next: TestingVerdict,
+      /** Same contract as {@link handleSlotVerdict} — required, never defaulted. */
+      failureModeId: number | null,
+    ) => {
       const targets = serials.filter((s) => s.id != null);
       if (targets.length === 0) {
         toast.info('Scan a serial first, then set a verdict.');
         return;
       }
       for (const s of targets) {
-        await handleSlotVerdict(lineId, s, next);
+        await handleSlotVerdict(lineId, s, next, failureModeId);
       }
       await refreshLineWithSerials(lineId);
     },
     [handleSlotVerdict, refreshLineWithSerials],
   );
+
+  /**
+   * The ONE door every verdict press goes through. A pass / re-test records
+   * straight away; a fail parks the press and opens the fail-reason sheet, so
+   * "what is wrong with it" is asked once, in one place, no matter which control
+   * was pressed (the dock's Not as listed, or a unit pill). Mirrors the Unbox QA
+   * fail gate — a fail that names nothing is what left the fault columns empty.
+   */
+  const requestSlotVerdict = useCallback(
+    (lineId: number, serial: UnitSlotSerial, next: TestingVerdict) => {
+      if (next === 'TESTING_FAILED') {
+        setPendingFail({
+          lineId,
+          serials: [serial],
+          label: serial.serial_number || 'this unit',
+        });
+        return;
+      }
+      void handleSlotVerdict(lineId, serial, next, null);
+    },
+    [handleSlotVerdict],
+  );
+
+  /** Line grain — the same gate. One fault covers every unit the press failed. */
+  const requestLineVerdict = useCallback(
+    (lineId: number, serials: ReadonlyArray<UnitSlotSerial>, next: TestingVerdict) => {
+      if (next === 'TESTING_FAILED') {
+        const targets = serials.filter((s) => s.id != null);
+        if (targets.length === 0) {
+          toast.info('Scan a serial first, then set a verdict.');
+          return;
+        }
+        setPendingFail({
+          lineId,
+          serials: targets,
+          label:
+            targets.length === 1
+              ? targets[0].serial_number || 'this unit'
+              : `${targets.length} units`,
+        });
+        return;
+      }
+      void applyLineVerdict(lineId, serials, next, null);
+    },
+    [applyLineVerdict],
+  );
+
+  const confirmPendingFail = useCallback(
+    (failureModeId: number) => {
+      const pending = pendingFail;
+      if (!pending) return;
+      setPendingFail(null);
+      void applyLineVerdict(pending.lineId, pending.serials, 'TESTING_FAILED', failureModeId);
+    },
+    [pendingFail, applyLineVerdict],
+  );
+
+  const cancelPendingFail = useCallback(() => setPendingFail(null), []);
+
 
   const submitSerial = useCallback(
     async (lineId: number, raw: string) => {
@@ -808,7 +917,9 @@ export function useTestingLineController(
     serialSubmitting, headerSerialEdit, setHeaderSerialEdit, isMutating,
     activeSlotByLine, setActiveSlotByLine, activeSlot, activeSerial, activeAllocation,
     previewPayload, isPrinting,
-    handleSlotVerdict, handleSlotCondition, applyLineVerdict, deriveLineVerdict,
+    handleSlotVerdict, requestSlotVerdict, requestLineVerdict,
+    handleSlotCondition, applyLineVerdict, deriveLineVerdict,
+    pendingFail, confirmPendingFail, cancelPendingFail,
     enqueueSerial, deleteSerial, replaceSerial,
     handlePrimary, handleApplyAndPrint,
     // Editable carton label — preview payload + editor draft/build/apply (the

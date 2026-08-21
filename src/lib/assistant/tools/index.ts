@@ -40,6 +40,10 @@ import {
   resolveSupportTicket,
   searchNotes,
 } from './read-tools';
+import {
+  listReceivingLinePhotosTool,
+  resolveReceivingLineForOrderTool,
+} from './receiving-photo-tools';
 
 const READ_TOOLS: ReadonlyArray<AssistantToolDef<any, unknown>> = [
   getSignalsByNode,
@@ -68,6 +72,11 @@ const READ_TOOLS: ReadonlyArray<AssistantToolDef<any, unknown>> = [
   getReceivingByTracking,
   getTicketEntities,
   getPackingKpi,
+  // The two reads that make "move the photos from order A to order B on this
+  // carton" expressible: order id → line id, and line → photo ids. The move
+  // itself stays behind propose_mutation.
+  resolveReceivingLineForOrderTool,
+  listReceivingLinePhotosTool,
 ];
 
 export const ASSISTANT_TOOLS: ReadonlyMap<string, AssistantToolDef<any, unknown>> = new Map(

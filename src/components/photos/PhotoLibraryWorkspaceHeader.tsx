@@ -262,11 +262,10 @@ export function PhotoLibraryWorkspaceHeader({ className }: { className?: string 
       // flush mount recipe: one hairline per seam). `WorkbenchTriageBand`
       // ships `border-r` only because on its home surface the sheet below
       // carries `border-t`; Band 3 here is a path strip, not a sheet.
-      // `pr-0` overrides the shared band's `pr-0.5`: on this surface all three
-      // bands run their trailing control to the same right edge, and a 2px
-      // inset here left Band 2's cluster sitting just inside Band 3's. The
-      // shared token keeps its default for every other desk.
-      className={cn(className, 'border-b border-border-soft pr-0')}
+      // The `pr-0` override this used to carry is gone: `WorkbenchTriageBand`
+      // no longer ships a 2px right inset, so every desk gets the aligned right
+      // edge this surface had to patch for itself.
+      className={cn(className, 'border-b border-border-soft')}
       search={
         // The house Band-3 find field, always open. `variant="chrome"` is
         // `self-stretch` + flush, so it runs edge-to-edge in the band with no

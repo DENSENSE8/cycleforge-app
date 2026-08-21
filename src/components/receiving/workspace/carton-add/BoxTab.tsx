@@ -4,6 +4,7 @@ import { Button } from '@/design-system/primitives';
 import { printHandlingUnitLabel } from '@/lib/print/printHandlingUnitLabel';
 import { toast } from '@/lib/toast';
 import { type AssignedBox, type OpenBox } from './carton-add-types';
+import { UniversalLoader } from '@/design-system/components/UniversalLoader';
 
 // ─── Box tab — handling unit (LPN) ───────────────────────────────────────────
 
@@ -168,9 +169,7 @@ export function BoxTab({
       <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
         <p className="mb-1.5 text-role-eyebrow uppercase tracking-widest text-text-faint">Or add to an open box</p>
         {loading ? (
-          <div className="flex h-20 items-center justify-center">
-            <Loader2 className="h-5 w-5 animate-spin text-text-faint" />
-          </div>
+          <UniversalLoader isLoading label="Loading open boxes" className="min-h-20" />
         ) : error ? (
           <div className="rounded-md border border-amber-200 bg-amber-50 inset-field text-role-caption text-amber-800">{error}</div>
         ) : openBoxes.length === 0 ? (

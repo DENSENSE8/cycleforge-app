@@ -56,6 +56,7 @@ import {
 } from '@/features/signals/signals-url';
 import { SIGNAL_KIND_LIST, SIGNAL_KINDS } from '@/lib/surfaces/registry';
 import { focusRing } from '@/design-system/tokens/focus-ring';
+import { UniversalLoader } from '@/design-system/components/UniversalLoader';
 
 
 const ANALYTICS_RANGES: AnalyticsRange[] = ['24h', '7d', '30d'];
@@ -184,11 +185,16 @@ function LiveSidebar() {
                 </div>
               </li>
             ))}
-            {feed.length === 0 && (
-              <li className="py-6 text-center text-role-caption text-text-faint">
-                {isLoading ? 'Loading live activity…' : 'No matching activity.'}
-              </li>
-            )}
+            {feed.length === 0 &&
+              (isLoading ? (
+                <li>
+                  <UniversalLoader isLoading label="Loading live activity" className="min-h-24" />
+                </li>
+              ) : (
+                <li className="py-6 text-center text-role-caption text-text-faint">
+                  No matching activity.
+                </li>
+              ))}
           </ul>
         </div>
       </div>

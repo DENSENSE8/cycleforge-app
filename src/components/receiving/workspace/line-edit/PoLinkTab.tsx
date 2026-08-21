@@ -16,7 +16,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Loader2 } from '@/components/Icons';
 import { SearchBar } from '@/components/ui/SearchBar';
 import {
   PairingCandidateRow,
@@ -32,6 +31,7 @@ import { invalidateReceivingFeeds } from '@/lib/queries/receiving-queries';
 import { apiErrorMessage } from '@/lib/api-error-message';
 import { UNBOX_SURFACE_ROUTE } from '@/lib/receiving/surface-path';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import { UniversalLoader } from '@/design-system/components/UniversalLoader';
 
 interface PoCandidate {
   zoho_purchaseorder_id: string;
@@ -276,9 +276,7 @@ export function PoLinkTab({
           Couldn’t load purchase orders. Try again.
         </p>
       ) : isFetching && candidates.length === 0 ? (
-        <p className="flex items-center justify-center gap-2 py-5 text-xs text-text-soft">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading purchase orders…
-        </p>
+        <UniversalLoader isLoading label="Loading purchase orders" className="min-h-28" />
       ) : candidates.length === 0 ? (
         <p
           className={cn(

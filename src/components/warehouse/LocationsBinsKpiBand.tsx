@@ -6,6 +6,7 @@
  */
 
 import { KpiTile, OpsKpiBand, OpsKpiBandCell } from '@/design-system/components/monitor';
+import { WorkbenchBand2Card } from '@/components/dashboard/workbench-kpi-collapse';
 import type { BinsOverviewCounts } from '@/hooks/useBinsOverview';
 import type { BinFilterStatus } from '@/components/warehouse/BinsFilterBar';
 
@@ -47,7 +48,7 @@ export function LocationsBinsKpiBand({
   ];
 
   return (
-    <div className="border-b border-r border-border-soft bg-surface-card px-3 py-2">
+    <WorkbenchBand2Card>
       <OpsKpiBand>
         {tiles.map((tile) => (
           <OpsKpiBandCell key={tile.id}>
@@ -62,6 +63,6 @@ export function LocationsBinsKpiBand({
           </OpsKpiBandCell>
         ))}
       </OpsKpiBand>
-    </div>
+    </WorkbenchBand2Card>
   );
 }

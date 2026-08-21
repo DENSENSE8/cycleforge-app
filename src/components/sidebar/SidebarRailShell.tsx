@@ -18,6 +18,7 @@ import {
   type CollapseStripPeekCtx,
 } from '@/components/sidebar/context-panel-collapse-context';
 import { appSurfaceFillClass } from '@/design-system/components/AppSurfaceFill';
+import { UniversalLoader } from '@/design-system/components/UniversalLoader';
 import { useNavRegion } from '@/lib/keyboard/nav-keys';
 import { cn } from '@/utils/_cn';
 import {
@@ -310,8 +311,11 @@ export function SidebarRailShell<TRow>(props: SidebarRailShellProps<TRow>) {
         </div>
       ) : null}
       {showSkeleton ? (
-        <div className={`space-y-1 ${listInsetX} py-2`}>
-          {[0, 1, 2, 3].map((i) => <div key={i} className="h-9 w-full animate-pulse rounded-md bg-surface-sunken" />)}
+        // Column-scoped: the field sizes to the rail, so the rail sweeps on its
+        // own clock instead of showing a slice of the middle's pass. It replaced
+        // four pulsing bars — the last drawn skeleton in the rail engine.
+        <div className="relative min-h-40 flex-1">
+          <UniversalLoader isLoading label="Loading recent activity" />
         </div>
       ) : (
         <>

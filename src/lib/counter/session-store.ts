@@ -40,9 +40,16 @@ import { withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import type { KioskCartLine, KioskLinePayload } from '@/lib/kiosk/cart-line';
 import { isRepairPayload } from '@/lib/kiosk/cart-line';
+import { mapKioskCartToCounterParts } from '@/lib/kiosk/cart-to-counter';
+import { safeRandomUUID } from '@/lib/safe-uuid';
+import { submitCounterTransaction } from './submit-counter-transaction';
+import { createTerminalCheckout } from './terminal-checkout';
+import type { CounterTransactionResult } from './counter-transaction-types';
 import type { KioskCommandId } from '@/lib/kiosk/kiosk-session-store';
 import {
   emptySessionSnapshot,
+  isTerminalPaymentOutcome,
+  type CounterPaymentState,
   type CounterSessionCustomer,
   type CounterSessionEvent,
   type CounterSessionFace,
@@ -70,7 +77,15 @@ export type CounterSessionError =
   | 'CLAIMED_BY_OTHER'
   | 'DEVICE_BUSY'
   | 'LINE_NOT_FOUND'
-  | 'LINE_NOT_REPAIR';
+  | 'LINE_NOT_REPAIR'
+  | 'EMPTY_CART'
+  | 'UNSIGNED_REPAIR'
+  | 'MISSING_CUSTOMER'
+  | 'SUBMIT_REJECTED'
+  | 'NOT_SUBMITTED'
+  | 'NO_STAGED_ORDER'
+  | 'ALREADY_AWAITING_CARD'
+  | 'TERMINAL_REFUSED';
 
 export type CounterSessionResult =
   | { ok: true; snapshot: CounterSessionSnapshot; event: CounterSessionEvent }
@@ -87,6 +102,18 @@ export const COUNTER_SESSION_ERROR_STATUS: Record<CounterSessionError, number> =
   DEVICE_BUSY: 409,
   LINE_NOT_FOUND: 404,
   LINE_NOT_REPAIR: 422,
+  // 422 across the submit gates: the request is well-formed and authorized, the
+  // VISIT is not finishable yet. A 400 would read as "you sent it wrong".
+  EMPTY_CART: 422,
+  UNSIGNED_REPAIR: 422,
+  MISSING_CUSTOMER: 422,
+  SUBMIT_REJECTED: 422,
+  // Card-present gates (SQ2).
+  NOT_SUBMITTED: 409,
+  NO_STAGED_ORDER: 422,
+  ALREADY_AWAITING_CARD: 409,
+  // 502: the request was fine, the payment provider refused it.
+  TERMINAL_REFUSED: 502,
 };
 
 /** Default lease: long enough to serve one customer, short enough to recover. */
@@ -118,6 +145,11 @@ export interface LinePatch {
 }
 
 export interface HeaderPatch {
+  paymentState?: CounterPaymentState;
+  terminalCheckoutId?: string | null;
+  awaitingCardSinceMs?: number | null;
+  counterTransactionId?: number | null;
+  submittedAtMs?: number | null;
   kioskDeviceId?: number | null;
   claimedByStaffId?: number | null;
   claimExpiresAtMs?: number | null;
@@ -164,6 +196,28 @@ export interface CounterSessionDeps {
     orgId: OrgId,
     deviceId: number,
   ): Promise<number | null>;
+  /**
+   * The idempotency anchor minted when the session opened (P1).
+   *
+   * Read from the row rather than passed in, so a retried submit — from either
+   * device, or from a client that reloaded — reuses the SAME anchor and
+   * `ux_counter_transactions_client_event` turns the replay into a no-op
+   * instead of a second charge.
+   */
+  readClientEventId(tx: CounterSessionTx, orgId: OrgId, sessionId: number): Promise<string | null>;
+  /** COMPOSED, never re-implemented — this is the one path that writes money. */
+  submitTransaction: typeof submitCounterTransaction;
+  /** The Square order the submit staged, if any. */
+  readStagedOrderId(tx: CounterSessionTx, orgId: OrgId, sessionId: number): Promise<string | null>;
+  /** Ask the stand for a card. Injected so the verb is testable with no Square. */
+  startTerminal: typeof createTerminalCheckout;
+  /** The session holding a live Terminal checkout — the webhook's only key. */
+  findSessionIdByCheckout(
+    tx: CounterSessionTx,
+    orgId: OrgId,
+    checkoutId: string,
+  ): Promise<number | null>;
+  newIdempotencyKey(): string;
   /** False when no line matched — a void racing a resync, not an error to throw. */
   patchLine(
     tx: CounterSessionTx,
@@ -178,12 +232,41 @@ export interface CounterSessionDeps {
 // ── Guards ──────────────────────────────────────────────────────────────────
 
 /**
- * D5, in one place. The tablet is a display with a pen: it may name the
- * customer, sign, and confirm. It may not touch a line or a price, because an
- * unattended device that can edit money is an open till.
+ * D5, revised 2026-08-20: the counter is a form TWO PEOPLE fill at once.
+ *
+ * The first cut made the tablet read-only. That was wrong for the actual job:
+ * a customer walks in, and staff and customer fill the visit out together —
+ * the customer entering their own details and device symptoms on the tablet
+ * while staff price and correct on the desktop. A read-only tablet turns that
+ * into dictation.
+ *
+ * So the boundary moved from WHO to WHAT. The tablet may create and correct
+ * lines and identity. It may not touch **money or finality**:
+ *
+ *   price override · discount · void · claim/release · park · submit
+ *
+ * That is the line worth defending, because it is the one an unattended device
+ * makes dangerous: the device principal outlives the customer standing there,
+ * so anything it can do, a stranger can do after they leave. Editing a serial
+ * number costs a correction; zeroing a price is an open till.
  */
 function refuseDeviceWrite(actor: CounterSessionActor): CounterSessionError | null {
   return actor.kind === 'kiosk' ? 'DEVICE_FORBIDDEN' : null;
+}
+
+/**
+ * Money fields, refused for a device principal at the DOMAIN, not the route.
+ *
+ * Returns the refusal when a kiosk actor's patch touches an amount. The kiosk
+ * routes also omit the field from their schema, which is belt; this is braces —
+ * and it is the one that survives someone adding a new kiosk route later.
+ */
+function refuseDeviceMoneyEdit(
+  actor: CounterSessionActor,
+  patch: { unitAmountCents?: number },
+): CounterSessionError | null {
+  if (actor.kind !== 'kiosk') return null;
+  return patch.unitAmountCents === undefined ? null : 'DEVICE_FORBIDDEN';
 }
 
 /** A cart mutation only makes sense on an OPEN session. */
@@ -463,8 +546,12 @@ export async function addLine(
   args: { expectedVersion: number; line: NewLineInput },
   deps: CounterSessionDeps = defaultDeps,
 ): Promise<CounterSessionResult> {
-  const denied = refuseDeviceWrite(actor);
-  if (denied) return { ok: false, code: denied, snapshot: null };
+  // A tablet may stage a line — that is the customer describing what they
+  // brought in — but it may not name a NON-ZERO amount. Pricing is staff work,
+  // and a device that can price is a device that can price at zero.
+  if (actor.kind === 'kiosk' && args.line.unitAmountCents !== 0) {
+    return { ok: false, code: 'DEVICE_FORBIDDEN', snapshot: null };
+  }
 
   return mutate({
     orgId,
@@ -480,7 +567,7 @@ export async function addLine(
       type: 'line.added',
       sessionId,
       version,
-      actor: 'desk',
+      actor: actor.kind === 'kiosk' ? 'kiosk' : 'desk',
       line: toSessionLine(written),
     }),
   });
@@ -494,7 +581,7 @@ export async function updateLine(
   args: { expectedVersion: number; patch: LinePatch },
   deps: CounterSessionDeps = defaultDeps,
 ): Promise<CounterSessionResult> {
-  const denied = refuseDeviceWrite(actor);
+  const denied = refuseDeviceMoneyEdit(actor, args.patch);
   if (denied) return { ok: false, code: denied, snapshot: null };
 
   return mutate({
@@ -511,7 +598,7 @@ export async function updateLine(
       type: 'line.updated',
       sessionId,
       version,
-      actor: 'desk',
+      actor: actor.kind === 'kiosk' ? 'kiosk' : 'desk',
       // The row the caller re-reads is authoritative; this carries the id so a
       // subscriber can find its line without a second round trip.
       line: { id: lineUuid } as unknown as CounterSessionLine,
@@ -675,6 +762,233 @@ export async function setSessionStatus(
   });
 }
 
+/**
+ * What still stands between this visit and a receipt.
+ *
+ * Returned as a CODE, not a sentence, so the desk, the tablet and the E2E all
+ * name the same gate. Order matters: an empty cart is the loudest problem, and
+ * telling someone their repair is unsigned when there is nothing in the cart
+ * would send them to fix the wrong thing.
+ */
+export function submitBlocker(snapshot: CounterSessionSnapshot): CounterSessionError | null {
+  const live = snapshot.lines.filter((l) => l.voidedAtMs === null);
+  if (live.length === 0) return 'EMPTY_CART';
+  if (!snapshot.customer.phone.trim()) return 'MISSING_CUSTOMER';
+
+  const unsigned = live.some(
+    (l) => l.type === 'REPAIR' && isRepairPayload(l.payload) && !l.payload.signatureDataUrl,
+  );
+  // A repair is a legal agreement about someone's property. An unsigned one is
+  // not a slow path to fix later — it is a visit that must not be charged.
+  if (unsigned) return 'UNSIGNED_REPAIR';
+
+  return null;
+}
+
+export interface SubmitSessionOutcome {
+  transaction: CounterTransactionResult;
+}
+
+/**
+ * Finish the visit: hand the staged cart to the transaction orchestrator.
+ *
+ * **Composes `submitCounterTransaction`; it does not re-implement it.** That
+ * function owns customer create-or-match, the repair intake, provider order
+ * staging, the ticket outbox and every partial-failure rule — all of which are
+ * already tested. Mapping is `mapKioskCartToCounterParts`, the same mapper the
+ * kiosk's own submit uses, so a visit finished from the desk and one finished
+ * from the tablet produce the same two records.
+ *
+ * The session's own `client_event_id` is the anchor, so a double-submit from
+ * two devices is one transaction (D8).
+ */
+export async function submitSession(
+  orgId: OrgId,
+  actor: CounterSessionActor,
+  sessionId: number,
+  args: { expectedVersion: number; steppedUpStaffId?: number | null },
+  deps: CounterSessionDeps = defaultDeps,
+): Promise<CounterSessionResult & { outcome?: SubmitSessionOutcome }> {
+  let outcome: SubmitSessionOutcome | undefined;
+
+  const result = await mutate({
+    orgId,
+    sessionId,
+    expectedVersion: args.expectedVersion,
+    actor,
+    deps,
+    guard: (snapshot) => submitBlocker(snapshot),
+    write: async (tx, snapshot) => {
+      const clientEventId = await deps.readClientEventId(tx, orgId, sessionId);
+      if (!clientEventId) return 'SUBMIT_REJECTED' as const;
+
+      const live = snapshot.lines.filter((l) => l.voidedAtMs === null);
+      const parts = mapKioskCartToCounterParts(
+        live.map((l) => ({
+          id: l.id,
+          type: l.type,
+          title: l.title,
+          quantity: l.quantity,
+          unitAmountCents: l.unitAmountCents,
+          payload: l.payload,
+        })),
+      );
+
+      const transaction = await deps.submitTransaction(
+        {
+          customer: {
+            phone: snapshot.customer.phone,
+            name: snapshot.customer.name || null,
+            email: snapshot.customer.email || null,
+          },
+          retailLines: parts.retailLines,
+          service: parts.service,
+          clientEventId,
+          kioskDeviceId: snapshot.kioskDeviceId,
+          steppedUpStaffId: args.steppedUpStaffId ?? null,
+        },
+        orgId,
+      );
+
+      await deps.patchHeader(tx, orgId, sessionId, {
+        status: 'submitted',
+        counterTransactionId: transaction.counterTransactionId,
+        submittedAtMs: deps.now(),
+      });
+      outcome = { transaction };
+      return { transaction };
+    },
+    event: (version, written) => ({
+      type: 'session.submitted',
+      sessionId,
+      version,
+      actor: actor.kind === 'kiosk' ? 'kiosk' : 'desk',
+      counterTransactionId: written.transaction.counterTransactionId,
+    }),
+  });
+
+  return outcome ? { ...result, outcome } : result;
+}
+
+// ── Card present (SQ2) ──────────────────────────────────────────────────────
+
+/**
+ * Send the staged order to the Square Terminal and put both faces into the
+ * "present card" state.
+ *
+ * **Sequenced AFTER submit, deliberately.** The kiosk stages an order and never
+ * charges (plan D4), so the Square order — the thing a Terminal checkout
+ * collects for — does not exist until `submitSession` has run. Asking the stand
+ * for a card before that would mean inventing a second, unstaged order and
+ * charging for something no record describes.
+ *
+ * Desk-only: a device principal must not be able to summon a card prompt.
+ */
+export async function startTerminalCheckout(
+  orgId: OrgId,
+  actor: CounterSessionActor,
+  sessionId: number,
+  args: { expectedVersion: number; deviceId: string },
+  deps: CounterSessionDeps = defaultDeps,
+): Promise<CounterSessionResult> {
+  const denied = refuseDeviceWrite(actor);
+  if (denied) return { ok: false, code: denied, snapshot: null };
+  const startedAtMs = deps.now();
+
+  return mutate({
+    orgId,
+    sessionId,
+    expectedVersion: args.expectedVersion,
+    actor,
+    deps,
+    // A submitted session is "closed" to cart edits but is exactly when payment
+    // happens, so this verb opts out of that guard and states its own.
+    allowClosed: true,
+    guard: (snapshot) => {
+      if (snapshot.status !== 'submitted') return 'NOT_SUBMITTED';
+      // Two prompts on one stand is how a customer gets charged twice.
+      if (snapshot.paymentState === 'awaiting_card') return 'ALREADY_AWAITING_CARD';
+      return null;
+    },
+    write: async (tx) => {
+      const orderId = await deps.readStagedOrderId(tx, orgId, sessionId);
+      // No staged order means nothing to collect against — a repair-only visit
+      // with no retail lines, or a provider that was not connected at submit.
+      if (!orderId) return 'NO_STAGED_ORDER' as const;
+
+      const started = await deps.startTerminal(orgId, {
+        deviceId: args.deviceId,
+        orderId,
+        idempotencyKey: deps.newIdempotencyKey(),
+      });
+      if (!started.ok) return 'TERMINAL_REFUSED' as const;
+
+      await deps.patchHeader(tx, orgId, sessionId, {
+        paymentState: 'awaiting_card',
+        terminalCheckoutId: started.checkoutId,
+        awaitingCardSinceMs: startedAtMs,
+      });
+      return { checkoutId: started.checkoutId };
+    },
+    event: (version, written) => ({
+      type: 'session.payment_changed',
+      sessionId,
+      version,
+      actor: 'desk',
+      paymentState: 'awaiting_card',
+      terminalCheckoutId: written.checkoutId,
+      awaitingCardSinceMs: startedAtMs,
+    }),
+  });
+}
+
+/**
+ * Land a Terminal outcome on the session it belongs to.
+ *
+ * Called by the webhook, which knows a checkout id and nothing else — so the
+ * session is resolved from that, never from a request body.
+ *
+ * `approved` here is the DEVICE's answer. The money's answer arrives separately
+ * on `payment.completed` and settles `counter_transactions.status` (SQ1); this
+ * never touches that. A visit that reads "approved" but not yet "paid" is not a
+ * bug, it is the two facts arriving in their own time.
+ */
+export async function resolveTerminalCheckout(
+  orgId: OrgId,
+  args: { checkoutId: string; paymentState: CounterPaymentState },
+  deps: CounterSessionDeps = defaultDeps,
+): Promise<{ resolved: boolean; sessionId?: number }> {
+  const checkoutId = String(args.checkoutId ?? '').trim();
+  if (!checkoutId) return { resolved: false };
+
+  return deps.runInTransaction(orgId, async (tx) => {
+    const sessionId = await deps.findSessionIdByCheckout(tx, orgId, checkoutId);
+    // A checkout this deployment did not start (another lane, another surface).
+    if (sessionId === null) return { resolved: false };
+
+    const snapshot = await deps.readSnapshot(tx, orgId, sessionId);
+    if (!snapshot) return { resolved: false };
+    // Terminal webhooks redeliver and can arrive out of order; an outcome is
+    // final, so a later `awaiting_card` must not reopen a settled prompt.
+    if (isTerminalPaymentOutcome(snapshot.paymentState)) {
+      return { resolved: true, sessionId };
+    }
+
+    await deps.patchHeader(tx, orgId, sessionId, {
+      paymentState: args.paymentState,
+      // The prompt is down once there is an outcome; keep the id for the audit
+      // trail and for a second webhook to find the same row.
+      awaitingCardSinceMs: isTerminalPaymentOutcome(args.paymentState)
+        ? null
+        : snapshot.awaitingCardSinceMs,
+    });
+    // The version bump is intentionally NOT taken here: this is a server-side
+    // fact landing on the row, and both faces learn it from the published event
+    // (or the next poll), not from an optimistic write they raced.
+    return { resolved: true, sessionId };
+  });
+}
+
 function toSessionLine(input: NewLineInput): CounterSessionLine {
   return {
     id: input.lineUuid,
@@ -713,7 +1027,8 @@ const defaultDeps: CounterSessionDeps = {
       `SELECT s.id, s.version, s.status, s.kiosk_device_id, s.claimed_by_staff_id,
               s.claim_expires_at, s.active_command, s.face,
               s.customer_phone, s.customer_name, s.customer_email,
-              s.counter_transaction_id, st.name AS claimed_by_staff_name
+              s.counter_transaction_id, s.payment_state, s.terminal_checkout_id,
+              s.awaiting_card_since, st.name AS claimed_by_staff_name
          FROM counter_sessions s
          LEFT JOIN staff st ON st.id = s.claimed_by_staff_id
         WHERE s.id = $1 AND s.organization_id = $2
@@ -761,6 +1076,9 @@ const defaultDeps: CounterSessionDeps = {
       })),
       counterTransactionId:
         row.counter_transaction_id === null ? null : Number(row.counter_transaction_id),
+      paymentState: (row.payment_state ?? 'idle') as CounterPaymentState,
+      terminalCheckoutId: row.terminal_checkout_id ?? null,
+      awaitingCardSinceMs: msOrNull(row.awaiting_card_since),
     };
   },
 
@@ -794,6 +1112,21 @@ const defaultDeps: CounterSessionDeps = {
       sets.push(`${sql} = $${values.length}`);
     };
 
+    if (patch.paymentState !== undefined) push('payment_state', patch.paymentState);
+    if (patch.terminalCheckoutId !== undefined) {
+      push('terminal_checkout_id', patch.terminalCheckoutId);
+    }
+    if (patch.awaitingCardSinceMs !== undefined) {
+      values.push(patch.awaitingCardSinceMs === null ? null : new Date(patch.awaitingCardSinceMs));
+      sets.push(`awaiting_card_since = $${values.length}`);
+    }
+    if (patch.counterTransactionId !== undefined) {
+      push('counter_transaction_id', patch.counterTransactionId);
+    }
+    if (patch.submittedAtMs !== undefined) {
+      values.push(patch.submittedAtMs === null ? null : new Date(patch.submittedAtMs));
+      sets.push(`submitted_at = $${values.length}`);
+    }
     if ('kioskDeviceId' in patch) push('kiosk_device_id', patch.kioskDeviceId);
     if ('claimedByStaffId' in patch) push('claimed_by_staff_id', patch.claimedByStaffId);
     if (patch.claimExpiresAtMs !== undefined) {
@@ -851,6 +1184,43 @@ const defaultDeps: CounterSessionDeps = {
     );
     return res.rows.map((r) => Number(r.kiosk_device_id));
   },
+
+  async readClientEventId(tx, orgId, sessionId) {
+    const res = await asClient(tx).query(
+      `SELECT client_event_id FROM counter_sessions
+        WHERE id = $1 AND organization_id = $2 LIMIT 1`,
+      [sessionId, orgId],
+    );
+    return res.rows[0] ? String(res.rows[0].client_event_id) : null;
+  },
+
+  submitTransaction: submitCounterTransaction,
+
+  async readStagedOrderId(tx, orgId, sessionId) {
+    const res = await asClient(tx).query(
+      `SELECT ct.staged_square_order_id
+         FROM counter_sessions s
+         JOIN counter_transactions ct ON ct.id = s.counter_transaction_id
+        WHERE s.id = $1 AND s.organization_id = $2
+        LIMIT 1`,
+      [sessionId, orgId],
+    );
+    return res.rows[0]?.staged_square_order_id ?? null;
+  },
+
+  startTerminal: createTerminalCheckout,
+
+  async findSessionIdByCheckout(tx, orgId, checkoutId) {
+    const res = await asClient(tx).query(
+      `SELECT id FROM counter_sessions
+        WHERE organization_id = $1 AND terminal_checkout_id = $2
+        LIMIT 1`,
+      [orgId, checkoutId],
+    );
+    return res.rows[0] ? Number(res.rows[0].id) : null;
+  },
+
+  newIdempotencyKey: () => safeRandomUUID(),
 
   async findOpenSessionIdForDevice(tx, orgId, deviceId) {
     const res = await asClient(tx).query(

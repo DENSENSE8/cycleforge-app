@@ -77,7 +77,15 @@ async function intakeAction(formData: FormData): Promise<void> {
   // the page component below gates RENDERING, never action invocation. Gate
   // here — and outside the intake's catch below, so the guard's own redirect
   // reaches the caller instead of being swallowed as an intake failure.
-  const user = await requirePermission('admin.view', { enforce: true });
+  //
+  // The permission is the MUTATION's, not the page's. `admin.view` is what
+  // gates rendering; the twin entrypoint POST /api/returns/intake enforces
+  // `receiving.mark_received` for the identical write. `admin.view` is an
+  // ordinary registry permission — a non-admin role, or a per-staff
+  // `permissions_added` grant, can carry it without carrying
+  // `receiving.mark_received` — so gating the action on the page's permission
+  // makes this form the weaker of two doors onto the same code path.
+  const user = await requirePermission('receiving.mark_received', { enforce: true });
 
   const serialsText = String(formData.get('serials') ?? '').trim();
   const tracking = String(formData.get('tracking') ?? '').trim() || null;
@@ -121,12 +129,14 @@ async function intakeAction(formData: FormData): Promise<void> {
     trackingNumber: tracking,
     reason,
     actorStaffId: null,
-    // Required for tenant safety, not just filtering: a non-null org is what
-    // makes processReturnsIntake take the `withTenantTransaction` branch
-    // (app.current_org GUC on an RLS-scoped connection). With it null the
-    // intake runs on the BYPASSRLS owner pool and both org predicates
-    // collapse — the serial resolver matches any tenant's serial_units row
-    // and the order_unit_allocations SHIPPED→RETURNED flip runs unpredicated.
+    // Tenant safety, not just filtering. This is now a REQUIRED, un-defaulted
+    // field on ReturnsIntakeInput, so omitting it is a compile error rather
+    // than a silent escalation — which is what it used to be: with it absent
+    // the intake ran on the BYPASSRLS owner pool with both org predicates
+    // collapsed, so the serial resolver matched any tenant's serial_units row
+    // and the order_unit_allocations SHIPPED→RETURNED flip ran unpredicated.
+    // That org-less branch no longer exists in returns.ts; the requirement is
+    // what keeps it from coming back.
     organizationId: user.organizationId,
   }).catch((err: unknown) => {
     console.error('[returns.intake] failed:', err);

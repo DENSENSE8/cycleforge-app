@@ -1,9 +1,9 @@
 {
   "version": 1,
-  "generatedAt": "2026-08-20T22:01:28Z",
-  "totalRoutes": 956,
+  "generatedAt": "2026-08-21T01:05:42Z",
+  "totalRoutes": 961,
   "summary": {
-    "permissionGated": 816,
+    "permissionGated": 821,
     "authenticatedNoPermission": 51,
     "anonymousIntentional": 87,
     "serviceToService": 2,
@@ -1381,6 +1381,15 @@
       "exemptReason": null
     },
     {
+      "path": "/api/counter/session/[id]/lines/[lineUuid]/price/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "walk_in.take_payment",
+      "exemptReason": null
+    },
+    {
       "path": "/api/counter/session/[id]/lines/[lineUuid]/route.ts",
       "methods": [
         "DELETE",
@@ -1424,6 +1433,15 @@
       ],
       "gate": "withAuth",
       "permission": "walk_in.intake",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/counter/session/[id]/submit/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "walk_in.take_payment",
       "exemptReason": null
     },
     {
@@ -3026,6 +3044,24 @@
       "path": "/api/kiosk/session/customer/route.ts",
       "methods": [
         "PATCH"
+      ],
+      "gate": "withKioskAuth (device principal)",
+      "permission": null,
+      "exemptReason": null
+    },
+    {
+      "path": "/api/kiosk/session/lines/[lineUuid]/route.ts",
+      "methods": [
+        "PATCH"
+      ],
+      "gate": "withKioskAuth (device principal)",
+      "permission": null,
+      "exemptReason": null
+    },
+    {
+      "path": "/api/kiosk/session/lines/route.ts",
+      "methods": [
+        "POST"
       ],
       "gate": "withKioskAuth (device principal)",
       "permission": null,
@@ -5480,6 +5516,15 @@
       ],
       "gate": "requireRoutePerm",
       "permission": "receiving.mark_received",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/receiving/lines/[id]/suggested-location/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "receiving.view",
       "exemptReason": null
     },
     {

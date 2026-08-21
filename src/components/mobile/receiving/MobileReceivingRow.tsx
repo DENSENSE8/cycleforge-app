@@ -193,8 +193,8 @@ export function MobileReceivingRow({
               aria-label={photoCount > 0 ? `View ${photoCount} photos` : 'Open photo gallery'}
               className={
                 photoCount > 0
-                  ? 'ds-raw-button inline-flex h-full w-14 shrink-0 flex-col items-center justify-center gap-0.5 rounded-xl border border-blue-200 bg-blue-50 text-blue-700 active:bg-blue-100'
-                  : 'ds-raw-button inline-flex h-full w-14 shrink-0 flex-col items-center justify-center gap-0.5 rounded-xl border border-border-soft bg-surface-canvas text-text-faint active:bg-surface-sunken'
+                  ? 'ds-raw-button inline-flex h-full w-14 shrink-0 flex-col items-center justify-center gap-0.5 rounded-none border border-border-soft bg-surface-sunken text-text-default active:bg-surface-sunken'
+                  : 'ds-raw-button inline-flex h-full w-14 shrink-0 flex-col items-center justify-center gap-0.5 rounded-none border border-border-soft bg-surface-canvas text-text-faint active:bg-surface-sunken'
               }
             >
               <ImageIcon className="h-5 w-5" />
@@ -209,8 +209,8 @@ export function MobileReceivingRow({
               aria-label={photoCount > 0 ? `View ${photoCount} photos` : 'Open photo gallery'}
               className={
                 photoCount > 0
-                  ? 'inline-flex h-full w-14 shrink-0 flex-col items-center justify-center gap-0.5 rounded-xl border border-blue-200 bg-blue-50 text-blue-700 active:bg-blue-100'
-                  : 'inline-flex h-full w-14 shrink-0 flex-col items-center justify-center gap-0.5 rounded-xl border border-border-soft bg-surface-canvas text-text-faint active:bg-surface-sunken'
+                  ? 'inline-flex h-full w-14 shrink-0 flex-col items-center justify-center gap-0.5 rounded-none border border-border-soft bg-surface-sunken text-text-default active:bg-surface-sunken'
+                  : 'inline-flex h-full w-14 shrink-0 flex-col items-center justify-center gap-0.5 rounded-none border border-border-soft bg-surface-canvas text-text-faint active:bg-surface-sunken'
               }
             >
               <ImageIcon className="h-5 w-5" />
@@ -223,7 +223,7 @@ export function MobileReceivingRow({
             href={captureHref}
             prefetch={false}
             aria-label={`Take photos${photoCount > 0 ? ` (${photoCount} so far)` : ''}`}
-            className="inline-flex h-full min-w-0 flex-1 items-center justify-center rounded-xl bg-blue-600 text-white shadow-[0_6px_14px_-6px_rgba(37,99,235,0.55)] transition-transform active:scale-[0.98] active:bg-blue-700"
+            className="inline-flex h-full min-w-0 flex-1 items-center justify-center rounded-none bg-blue-600 text-white shadow-[0_6px_14px_-6px_rgba(37,99,235,0.55)] transition-transform active:scale-[0.98] active:bg-blue-700"
           >
             <Camera className="h-6 w-6" />
           </Link>

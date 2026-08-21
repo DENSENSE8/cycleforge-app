@@ -76,12 +76,14 @@ export function LineNotesCard({
   showSyncToPo = true,
   animateMount = true,
   chrome = 'raised',
+  weldTop = false,
   trailingAction,
   onOpenLocations,
   onPrimaryAction,
   primaryActionDisabled = false,
   statusStamps,
   onOpenStatusHistory,
+  headerAction,
 }: {
   /** The operator's durable item note (`receiving_line.notes`) — never printed. */
   notes: string;
@@ -117,6 +119,11 @@ export function LineNotesCard({
    */
   chrome?: 'raised' | 'bare';
   /**
+   * Pass-through to OmnichannelComposerDock. True while a feedback panel is
+   * welded to this composer's top edge, so the two share one silhouette.
+   */
+  weldTop?: boolean;
+  /**
    * Terminal CTA rendered at the composer's trailing edge (Unbox overview
    * mounts the Receive/Print split here). Replaces the blue Send — Enter
    * fires {@link onPrimaryAction} (chat Send); blur still saves.
@@ -139,6 +146,17 @@ export function LineNotesCard({
    * with no Displays column keeps a route to the stamps.
    */
   onOpenStatusHistory?: () => void;
+  /**
+   * Repoint the header ⓘ at a different job, with its own label.
+   *
+   * It exists so the dev receive-panel tester can take that corner without
+   * anyone forking a second composer to hold a second glyph — the corner is
+   * ONE slot, and which verb sits in it is a prop. When set it OUTRANKS
+   * {@link onOpenStatusHistory}, so a host that repoints the corner is
+   * responsible for keeping a route to the timeline (the tester mounts its own
+   * Timeline button for exactly that reason).
+   */
+  headerAction?: { label: string; onClick: () => void; pressed?: boolean };
   /** Line stamps for the notes Info dialog + current putaway face. */
   statusStamps?: LineStatusExactSource & {
     staged_location_id?: number | null;
@@ -506,21 +524,29 @@ export function LineNotesCard({
         // ds-raw-button — same overlay glyph as Recent, not a sized IconButton box.
         <button
           type="button"
-          aria-label="Item status history"
+          aria-label={headerAction?.label ?? 'Item status history'}
+          aria-pressed={headerAction ? Boolean(headerAction.pressed) : undefined}
           onClick={() => {
+            if (headerAction) {
+              headerAction.onClick();
+              return;
+            }
             if (onOpenStatusHistory) {
               onOpenStatusHistory();
               return;
             }
             setStatusOpen(true);
           }}
-          className={`${NOTE_OVERLAY_ICON_BTN} text-text-faint transition hover:bg-surface-sunken hover:text-text-muted`}
+          className={`${NOTE_OVERLAY_ICON_BTN} transition hover:bg-surface-sunken hover:text-text-muted ${
+            headerAction?.pressed ? 'text-blue-600' : 'text-text-faint'
+          }`}
         >
           <Info className={NOTE_OVERLAY_ICON} />
         </button>
       }
       trailingAction={trailingAction}
       chrome={chrome}
+      weldTop={weldTop}
       animateMount={animateMount}
       textareaRef={textareaRef}
       ghostSuffix={paintGhostSuffix}

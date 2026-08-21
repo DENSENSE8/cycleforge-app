@@ -18,6 +18,11 @@ import {
   addLine,
   getSessionForDevice,
   listClaimedDeviceIds,
+  resolveTerminalCheckout,
+  startTerminalCheckout,
+  submitBlocker,
+  submitSession,
+  type SubmitSessionOutcome,
   claimSession,
   COUNTER_SESSION_ERROR_STATUS,
   createSession,
@@ -57,6 +62,11 @@ const NOW = 1_700_000_000_000;
 interface Fake {
   deps: CounterSessionDeps;
   state: CounterSessionSnapshot;
+  /** Every CounterTransactionInput the orchestrator was handed. */
+  submitted: Array<{ customer: { phone: string }; retailLines?: unknown[]; clientEventId: string }>;
+  terminalCalls: Array<{ deviceId: string; orderId: string; idempotencyKey: string }>;
+  stagedOrderId: string | null;
+  terminalOk: boolean;
   /** Simulates another writer landing between our read and our bump. */
   raceOnNextBump: () => void;
   bumps: number;
@@ -65,6 +75,10 @@ interface Fake {
 function fakeDeps(overrides: Partial<CounterSessionSnapshot> = {}): Fake {
   const fake: Fake = {
     state: { ...emptySessionSnapshot(SESSION_ID), ...overrides },
+    submitted: [],
+    terminalCalls: [],
+    stagedOrderId: 'sq-order-1',
+    terminalOk: true,
     bumps: 0,
     raceOnNextBump: () => {
       raced = true;
@@ -128,6 +142,16 @@ function fakeDeps(overrides: Partial<CounterSessionSnapshot> = {}): Fake {
       if (patch.activeCommand) next.activeCommand = patch.activeCommand;
       if (patch.face) next.face = patch.face;
       if (patch.customer) next.customer = { ...patch.customer };
+      if (patch.counterTransactionId !== undefined) {
+        next.counterTransactionId = patch.counterTransactionId;
+      }
+      if (patch.paymentState !== undefined) next.paymentState = patch.paymentState;
+      if (patch.terminalCheckoutId !== undefined) {
+        next.terminalCheckoutId = patch.terminalCheckoutId;
+      }
+      if (patch.awaitingCardSinceMs !== undefined) {
+        next.awaitingCardSinceMs = patch.awaitingCardSinceMs;
+      }
       fake.state = next;
     },
     async insertLine(_tx, _orgId, _sessionId, input: NewLineInput) {
@@ -186,6 +210,38 @@ function fakeDeps(overrides: Partial<CounterSessionSnapshot> = {}): Fake {
       };
       return hit;
     },
+    async readStagedOrderId() {
+      return fake.stagedOrderId;
+    },
+    startTerminal: async (_orgId, req) => {
+      fake.terminalCalls.push(req);
+      return fake.terminalOk
+        ? { ok: true as const, checkoutId: 'chk-1' }
+        : { ok: false as const, error: 'Square declined the request.' };
+    },
+    async findSessionIdByCheckout(_tx, _orgId, checkoutId) {
+      return checkoutId === 'chk-1' ? fake.state.sessionId : null;
+    },
+    newIdempotencyKey: () => 'idem-1',
+    async readClientEventId() {
+      return 'ce000000-0000-4000-8000-000000000001';
+    },
+    submitTransaction: async (input) => {
+      fake.submitted.push(input);
+      return {
+        counterTransactionId: 900,
+        status: 'staged',
+        customerId: 5,
+        priorOrderRef: null,
+        repair: null,
+        sale: null,
+        ticketWork: { queued: false, outboxId: null, supportTicketId: null },
+        idempotentReplay: false,
+        subtotalCents: 0,
+        totalCents: 0,
+        warnings: [],
+      };
+    },
     now: () => NOW,
   };
 
@@ -202,6 +258,21 @@ function retailLine(overrides: Partial<NewLineInput> = {}): NewLineInput {
     payload: { variationId: 'v1', sku: 'CASE-1' },
     sortIndex: 0,
     ...overrides,
+  };
+}
+
+function retailSessionLine(): CounterSessionLine {
+  return {
+    id: 'srv-retail',
+    type: 'RETAIL',
+    title: 'Case',
+    quantity: 1,
+    unitAmountCents: 1999,
+    payload: { variationId: null, sku: 'CASE-1' },
+    sortIndex: 0,
+    voidedAtMs: null,
+    voidReason: null,
+    voidedByStaffId: null,
   };
 }
 
@@ -224,57 +295,86 @@ function refusal(result: CounterSessionResult): string | null {
   return result.ok ? null : result.code;
 }
 
-describe('the kiosk door is three verbs wide (D5)', () => {
-  it('refuses every line write from a device principal', async () => {
-    const f = fakeDeps({ lines: [repairSessionLine()] });
-    const args = { expectedVersion: 0 };
-
-    const attempts: Array<[string, Promise<CounterSessionResult>]> = [
-      ['add', addLine(ORG, KIOSK, SESSION_ID, { ...args, line: retailLine() }, f.deps)],
-      ['update', updateLine(ORG, KIOSK, SESSION_ID, 'x', { ...args, patch: { quantity: 9 } }, f.deps)],
-      ['price override', updateLine(ORG, KIOSK, SESSION_ID, 'x', { ...args, patch: { unitAmountCents: 1 } }, f.deps)],
-      ['discount to zero', updateLine(ORG, KIOSK, SESSION_ID, 'x', { ...args, patch: { unitAmountCents: 0 } }, f.deps)],
-      ['negative amount', addLine(ORG, KIOSK, SESSION_ID, { ...args, line: retailLine({ unitAmountCents: -5000 }) }, f.deps)],
-      ['void', voidLine(ORG, KIOSK, SESSION_ID, 'x', { ...args, reason: 'nope' }, f.deps)],
-      ['claim', claimSession(ORG, KIOSK, SESSION_ID, { ...args, staffName: 'nobody' }, f.deps)],
-      ['release', releaseSession(ORG, KIOSK, SESSION_ID, { ...args, reason: 'done' }, f.deps)],
-      ['park', setSessionStatus(ORG, KIOSK, SESSION_ID, { ...args, status: 'parked' }, f.deps)],
-      ['create', createSession(ORG, KIOSK, { clientEventId: 'c' }, f.deps)],
-    ];
-
-    for (const [name, promise] of attempts) {
-      assert.equal(refusal(await promise), 'DEVICE_FORBIDDEN', `${name} must 403 at the kiosk door`);
-    }
-    assert.equal(f.bumps, 0, 'a refused write must not move the version');
-    assert.equal(f.state.lines.length, 1, 'nor touch the cart');
-  });
-
-  it('allows the three verbs it is meant to have', async () => {
-    const f = fakeDeps({ lines: [repairSessionLine()] });
-
-    const customer = await setCustomer(
+describe('the money boundary (D5, revised 2026-08-20)', () => {
+  it('lets the tablet stage a line — the customer describing what they brought in', async () => {
+    const f = fakeDeps();
+    const result = await addLine(
       ORG,
       KIOSK,
       SESSION_ID,
-      { expectedVersion: 0, customer: { phone: '5551234567', name: 'Dana', email: '' } },
+      { expectedVersion: 0, line: retailLine({ unitAmountCents: 0 }) },
       f.deps,
     );
-    assert.equal(customer.ok, true);
-    assert.equal(customer.ok && customer.event.actor, 'kiosk');
 
-    const signed = await signLine(
+    assert.equal(result.ok, true, 'the counter is a form two people fill at once');
+    assert.equal(f.state.lines.length, 1);
+    assert.equal(result.ok && result.event.actor, 'kiosk', 'the event names who wrote it');
+  });
+
+  it('refuses a PRICED line from the tablet — a device that can price can price at zero', async () => {
+    const f = fakeDeps();
+    const result = await addLine(
+      ORG,
+      KIOSK,
+      SESSION_ID,
+      { expectedVersion: 0, line: retailLine({ unitAmountCents: 4999 }) },
+      f.deps,
+    );
+
+    assert.equal(refusal(result), 'DEVICE_FORBIDDEN');
+    assert.equal(f.state.lines.length, 0);
+  });
+
+  it('lets the tablet correct its own line — serial, model, quantity', async () => {
+    const f = fakeDeps({ lines: [repairSessionLine()] });
+    const result = await updateLine(
       ORG,
       KIOSK,
       SESSION_ID,
       repairSessionLine().id,
-      { expectedVersion: 1, signatureDataUrl: 'data:image/png;base64,AAA' },
+      { expectedVersion: 0, patch: { quantity: 2, title: 'QC35 II (corrected)' } },
       f.deps,
     );
-    assert.equal(signed.ok, true);
-    assert.equal(projectForDevicePrincipal(f.state).awaitingSignatureLineIds.length, 0);
+
+    assert.equal(result.ok, true);
+    assert.equal(f.state.lines[0].quantity, 2);
   });
 
-  it('refuses a DESK signature — a signature the customer did not give is not one', async () => {
+  it('refuses an AMOUNT in that same patch — the boundary is the field, not the verb', async () => {
+    const f = fakeDeps({ lines: [repairSessionLine()] });
+    const result = await updateLine(
+      ORG,
+      KIOSK,
+      SESSION_ID,
+      repairSessionLine().id,
+      { expectedVersion: 0, patch: { quantity: 2, unitAmountCents: 0 } },
+      f.deps,
+    );
+
+    assert.equal(refusal(result), 'DEVICE_FORBIDDEN');
+    assert.equal(f.state.lines[0].quantity, 1, 'and the harmless half is refused with it');
+  });
+
+  it('keeps void, claim, park and submit staff-only', async () => {
+    const f = fakeDeps({ lines: [repairSessionLine()] });
+    const args = { expectedVersion: 0 };
+
+    assert.equal(
+      refusal(await voidLine(ORG, KIOSK, SESSION_ID, 'x', { ...args, reason: null }, f.deps)),
+      'DEVICE_FORBIDDEN',
+    );
+    assert.equal(
+      refusal(await claimSession(ORG, KIOSK, SESSION_ID, { ...args, staffName: 'x' }, f.deps)),
+      'DEVICE_FORBIDDEN',
+    );
+    assert.equal(
+      refusal(await setSessionStatus(ORG, KIOSK, SESSION_ID, { ...args, status: 'parked' }, f.deps)),
+      'DEVICE_FORBIDDEN',
+    );
+    assert.equal(refusal(await createSession(ORG, KIOSK, { clientEventId: 'c' }, f.deps)), 'DEVICE_FORBIDDEN');
+  });
+
+  it('still refuses a DESK signature — that one runs toward the tablet', async () => {
     const f = fakeDeps({ lines: [repairSessionLine()] });
     const result = await signLine(
       ORG,
@@ -300,6 +400,83 @@ describe('the kiosk door is three verbs wide (D5)', () => {
     );
     assert.equal(refusal(result), 'LINE_NOT_REPAIR');
     assert.equal(COUNTER_SESSION_ERROR_STATUS.LINE_NOT_REPAIR, 422);
+  });
+});
+
+describe('submit (P8)', () => {
+  function ready() {
+    return fakeDeps({
+      lines: [retailSessionLine()],
+      customer: { phone: '5551234567', name: 'Dana', email: '' },
+    });
+  }
+
+  it('refuses an empty cart, a missing phone, and an unsigned repair — in that order', () => {
+    const empty = { ...emptySessionSnapshot(1), lines: [] };
+    assert.equal(submitBlocker(empty), 'EMPTY_CART');
+
+    const noPhone = { ...emptySessionSnapshot(1), lines: [retailSessionLine()] };
+    assert.equal(submitBlocker(noPhone), 'MISSING_CUSTOMER');
+
+    const unsigned = {
+      ...emptySessionSnapshot(1),
+      lines: [repairSessionLine()],
+      customer: { phone: '5551234567', name: 'Dana', email: '' },
+    };
+    assert.equal(
+      submitBlocker(unsigned),
+      'UNSIGNED_REPAIR',
+      'a repair is a legal agreement about someone else’s property',
+    );
+
+    const ok = {
+      ...emptySessionSnapshot(1),
+      lines: [retailSessionLine()],
+      customer: { phone: '5551234567', name: 'Dana', email: '' },
+    };
+    assert.equal(submitBlocker(ok), null);
+  });
+
+  it('a cart of only VOIDED lines is empty, not submittable', () => {
+    const snapshot = {
+      ...emptySessionSnapshot(1),
+      lines: [{ ...retailSessionLine(), voidedAtMs: 1 }],
+      customer: { phone: '5551234567', name: 'Dana', email: '' },
+    };
+    assert.equal(submitBlocker(snapshot), 'EMPTY_CART');
+  });
+
+  it('composes the orchestrator with the SESSION’s client_event_id (D8)', async () => {
+    const f = ready();
+    const result = await submitSession(ORG, DESK, SESSION_ID, { expectedVersion: 0 }, f.deps);
+
+    assert.equal(result.ok, true);
+    const outcome: SubmitSessionOutcome | undefined = result.outcome;
+    assert.equal(outcome?.transaction.counterTransactionId, 900);
+    assert.equal(f.submitted.length, 1, 'exactly one transaction');
+    assert.equal(f.submitted[0].clientEventId, 'ce000000-0000-4000-8000-000000000001');
+    assert.equal(f.submitted[0].customer.phone, '5551234567');
+    assert.equal(f.state.status, 'submitted');
+    assert.equal(f.state.counterTransactionId, 900);
+    assert.equal(result.ok && result.event.type, 'session.submitted');
+  });
+
+  it('will not submit twice — a submitted session is closed to everything', async () => {
+    const f = ready();
+    await submitSession(ORG, DESK, SESSION_ID, { expectedVersion: 0 }, f.deps);
+    const again = await submitSession(ORG, DESK, SESSION_ID, { expectedVersion: 1 }, f.deps);
+
+    assert.equal(refusal(again), 'SESSION_CLOSED');
+    assert.equal(f.submitted.length, 1, 'the second attempt never reached the orchestrator');
+  });
+
+  it('does not hand voided lines to the orchestrator', async () => {
+    const f = fakeDeps({
+      lines: [retailSessionLine(), { ...retailSessionLine(), id: 'void-me', voidedAtMs: 1 }],
+      customer: { phone: '5551234567', name: 'Dana', email: '' },
+    });
+    await submitSession(ORG, DESK, SESSION_ID, { expectedVersion: 0 }, f.deps);
+    assert.equal((f.submitted[0].retailLines as unknown[]).length, 1);
   });
 });
 
@@ -535,5 +712,114 @@ describe('createSession', () => {
     assert.equal(f.state.claimedByStaffId, 11);
     assert.equal(f.state.kioskDeviceId, 3);
     assert.equal(f.state.version, 0);
+  });
+});
+
+describe('card present (SQ2)', () => {
+  function submitted(overrides: Partial<CounterSessionSnapshot> = {}) {
+    return fakeDeps({ status: 'submitted', counterTransactionId: 900, ...overrides });
+  }
+
+  it('sends the STAGED order to the stand and puts both faces on "present card"', async () => {
+    const f = submitted();
+    const result = await startTerminalCheckout(
+      ORG,
+      DESK,
+      SESSION_ID,
+      { expectedVersion: 0, deviceId: 'dev-A' },
+      f.deps,
+    );
+
+    assert.equal(result.ok, true);
+    assert.deepEqual(f.terminalCalls, [
+      { deviceId: 'dev-A', orderId: 'sq-order-1', idempotencyKey: 'idem-1' },
+    ]);
+    assert.equal(f.state.paymentState, 'awaiting_card');
+    assert.equal(f.state.terminalCheckoutId, 'chk-1');
+    assert.equal(f.state.awaitingCardSinceMs, NOW);
+    assert.equal(result.ok && result.event.type, 'session.payment_changed');
+  });
+
+  it('refuses before submit — there is no staged order to collect against', async () => {
+    const f = fakeDeps({ status: 'open' });
+    const result = await startTerminalCheckout(
+      ORG, DESK, SESSION_ID, { expectedVersion: 0, deviceId: 'dev-A' }, f.deps,
+    );
+    assert.equal(refusal(result), 'NOT_SUBMITTED');
+    assert.deepEqual(f.terminalCalls, [], 'the stand is never asked');
+  });
+
+  it('refuses a second prompt while one is live — that is how a card gets charged twice', async () => {
+    const f = submitted({ paymentState: 'awaiting_card' });
+    const result = await startTerminalCheckout(
+      ORG, DESK, SESSION_ID, { expectedVersion: 0, deviceId: 'dev-A' }, f.deps,
+    );
+    assert.equal(refusal(result), 'ALREADY_AWAITING_CARD');
+    assert.deepEqual(f.terminalCalls, []);
+  });
+
+  it('refuses when nothing was staged (repair-only visit, or no provider)', async () => {
+    const f = submitted();
+    f.stagedOrderId = null;
+    const result = await startTerminalCheckout(
+      ORG, DESK, SESSION_ID, { expectedVersion: 0, deviceId: 'dev-A' }, f.deps,
+    );
+    assert.equal(refusal(result), 'NO_STAGED_ORDER');
+  });
+
+  it('reports a Square refusal as 502 and writes nothing', async () => {
+    const f = submitted();
+    f.terminalOk = false;
+    const result = await startTerminalCheckout(
+      ORG, DESK, SESSION_ID, { expectedVersion: 0, deviceId: 'dev-A' }, f.deps,
+    );
+    assert.equal(refusal(result), 'TERMINAL_REFUSED');
+    assert.equal(COUNTER_SESSION_ERROR_STATUS.TERMINAL_REFUSED, 502);
+    assert.equal(f.state.paymentState, 'idle');
+    assert.equal(f.bumps, 0, 'a refused checkout does not move the version');
+  });
+
+  it('is desk-only — a tablet must not summon a card prompt', async () => {
+    const f = submitted();
+    const result = await startTerminalCheckout(
+      ORG, KIOSK, SESSION_ID, { expectedVersion: 0, deviceId: 'dev-A' }, f.deps,
+    );
+    assert.equal(refusal(result), 'DEVICE_FORBIDDEN');
+    assert.deepEqual(f.terminalCalls, []);
+  });
+
+  it('lands an approval on the session and takes the prompt down', async () => {
+    const f = submitted({ paymentState: 'awaiting_card', terminalCheckoutId: 'chk-1', awaitingCardSinceMs: NOW });
+    const out = await resolveTerminalCheckout(ORG, { checkoutId: 'chk-1', paymentState: 'approved' }, f.deps);
+
+    assert.equal(out.resolved, true);
+    assert.equal(f.state.paymentState, 'approved');
+    assert.equal(f.state.awaitingCardSinceMs, null);
+    assert.equal(
+      f.state.status,
+      'submitted',
+      'a device approval is NOT the money — counter_transactions.status is SQ1’s job',
+    );
+  });
+
+  it('never reopens a settled prompt on a redelivered webhook', async () => {
+    const f = submitted({ paymentState: 'approved', terminalCheckoutId: 'chk-1' });
+    await resolveTerminalCheckout(ORG, { checkoutId: 'chk-1', paymentState: 'awaiting_card' }, f.deps);
+    assert.equal(f.state.paymentState, 'approved');
+  });
+
+  it('ignores a checkout this deployment did not start', async () => {
+    const f = submitted({ paymentState: 'awaiting_card', terminalCheckoutId: 'chk-1' });
+    const out = await resolveTerminalCheckout(ORG, { checkoutId: 'chk-other', paymentState: 'approved' }, f.deps);
+    assert.equal(out.resolved, false);
+    assert.equal(f.state.paymentState, 'awaiting_card');
+  });
+
+  it('a decline leaves the cart intact so it can be retried', async () => {
+    const f = submitted({ paymentState: 'awaiting_card', terminalCheckoutId: 'chk-1', lines: [retailSessionLine()] });
+    await resolveTerminalCheckout(ORG, { checkoutId: 'chk-1', paymentState: 'declined' }, f.deps);
+
+    assert.equal(f.state.paymentState, 'declined');
+    assert.equal(f.state.lines.length, 1);
   });
 });

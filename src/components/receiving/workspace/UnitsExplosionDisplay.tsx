@@ -32,6 +32,7 @@ import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { receivingSiblingsQueryKey } from '@/lib/queries/receiving-queries';
 import { receivingWorkspaceLineTitle } from '@/lib/receiving/po-group-title';
 import type { ActiveRowSerial } from '@/components/receiving/workspace/PoLinesAccordion';
+import { UniversalLoader } from '@/design-system/components/UniversalLoader';
 
 interface ApiResponse {
   success: boolean;
@@ -120,7 +121,7 @@ export function UnitsExplosionDisplay({
   }
 
   if (isPending && lines.length === 0) {
-    return <p className="px-3 text-role-caption text-text-soft">Loading units…</p>;
+    return <UniversalLoader isLoading label="Loading units" className="min-h-24" />;
   }
 
   if (lines.length === 0) {

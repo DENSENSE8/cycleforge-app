@@ -84,7 +84,7 @@ export function ProgressDots({
             <span
               key={i}
               aria-hidden="true"
-              className={`${base} h-2.5 w-2.5 bg-blue-500 ring-2 ring-blue-200`}
+              className={`${base} h-2.5 w-2.5 bg-blue-500 ring-2 ring-border-soft`}
             />
           );
         }

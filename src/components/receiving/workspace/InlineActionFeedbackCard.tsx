@@ -2,9 +2,14 @@
 
 /**
  * Shared inline success/error checklist card — the same visual language as
- * Receive complete (green left bar, staggered checks, optional dismiss). Used
+ * Receive complete (tone left bar, staggered checks, optional dismiss). Used
  * below action surfaces in the receiving workspace (receive feedback, item
  * description save, etc.).
+ *
+ * TONE is the shared four-state machine — `loading` · `success` · `warning` ·
+ * `error`, defined in the React-free sibling
+ * {@link ./inline-action-feedback-tone} so guards can import it. This file
+ * re-exports it for the callers that already reach for it here.
  */
 
 import type { ReactNode } from 'react';
@@ -13,8 +18,19 @@ import { AlertTriangle, Check, X } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IconButton } from '@/design-system/primitives';
 import { useMotionPresence } from '@/design-system/foundations/motion-framer-hooks';
+import {
+  INLINE_ACTION_FEEDBACK_TONE,
+  type InlineActionFeedbackTone,
+} from './inline-action-feedback-tone';
 
-export type InlineActionFeedbackTone = 'emerald' | 'amber';
+// Re-exported so the ~5 existing `from './InlineActionFeedbackCard'` imports
+// keep resolving; the map itself lives in the React-free sibling above.
+export {
+  INLINE_ACTION_FEEDBACK_TONE,
+  toneFromVerdictHue,
+  type InlineActionFeedbackTone,
+  type InlineActionFeedbackPalette,
+} from './inline-action-feedback-tone';
 
 export type InlineActionFeedbackPayload = {
   tone: InlineActionFeedbackTone;
@@ -24,25 +40,6 @@ export type InlineActionFeedbackPayload = {
   at: number;
 };
 
-export const INLINE_ACTION_FEEDBACK_TONE = {
-  emerald: {
-    border: 'border-emerald-200',
-    bg: 'bg-emerald-50',
-    bar: 'bg-emerald-500',
-    title: 'text-emerald-900',
-    icon: 'text-emerald-500',
-    body: 'text-emerald-900',
-  },
-  amber: {
-    border: 'border-amber-200',
-    bg: 'bg-amber-50',
-    bar: 'bg-amber-500',
-    title: 'text-amber-900',
-    icon: 'text-amber-500',
-    body: 'text-amber-900',
-  },
-} as const;
-
 const CHECK_ICON_VARIANTS: Variants = {
   initial: { scale: 0.5, opacity: 0 },
   animate: {
@@ -51,6 +48,53 @@ const CHECK_ICON_VARIANTS: Variants = {
     transition: { type: 'spring', stiffness: 500, damping: 26 },
   },
 };
+
+/**
+ * The staggered check list — extracted so the welded receive panel can mount
+ * the same rows inside its disclosure without re-implementing the stagger.
+ */
+export function InlineActionFeedbackChecklist({
+  tone,
+  items,
+  className = '',
+}: {
+  tone: InlineActionFeedbackTone;
+  items: string[];
+  className?: string;
+}) {
+  const reduce = useReducedMotion();
+  const item = useMotionPresence({ initial: { opacity: 0, y: 6 }, animate: { opacity: 1, y: 0 } });
+  const palette = INLINE_ACTION_FEEDBACK_TONE[tone];
+  if (items.length === 0) return null;
+  return (
+    <motion.ul
+      className={`space-y-1 ${className}`.trim()}
+      initial="initial"
+      animate="animate"
+      variants={{
+        animate: {
+          transition: {
+            staggerChildren: reduce ? 0 : 0.08,
+            delayChildren: reduce ? 0 : 0.04,
+          },
+        },
+      }}
+    >
+      {items.map((label, i) => (
+        <motion.li
+          key={`${i}-${label}`}
+          variants={item as Variants}
+          className={`flex items-start gap-1.5 text-role-caption font-semibold leading-snug ${palette.body}`}
+        >
+          <motion.span variants={reduce ? undefined : CHECK_ICON_VARIANTS} className="mt-px shrink-0">
+            <Check className={`h-4 w-4 ${palette.icon}`} />
+          </motion.span>
+          <span className="min-w-0 break-words whitespace-pre-wrap">{label}</span>
+        </motion.li>
+      ))}
+    </motion.ul>
+  );
+}
 
 export function InlineActionFeedbackCard({
   tone,
@@ -73,8 +117,6 @@ export function InlineActionFeedbackCard({
   footer?: ReactNode;
   className?: string;
 }) {
-  const reduce = useReducedMotion();
-  const item = useMotionPresence({ initial: { opacity: 0, y: 6 }, animate: { opacity: 1, y: 0 } });
   const palette = INLINE_ACTION_FEEDBACK_TONE[tone];
   const timestamp =
     at != null
@@ -101,42 +143,12 @@ export function InlineActionFeedbackCard({
             ) : null}
           </div>
 
-          {items.length > 0 ? (
-            <motion.ul
-              className="mt-1.5 space-y-1"
-              initial="initial"
-              animate="animate"
-              variants={{
-                animate: {
-                  transition: {
-                    staggerChildren: reduce ? 0 : 0.08,
-                    delayChildren: reduce ? 0 : 0.04,
-                  },
-                },
-              }}
-            >
-              {items.map((label, i) => (
-                <motion.li
-                  key={`${i}-${label}`}
-                  variants={item as Variants}
-                  className={`flex items-start gap-1.5 text-role-caption font-semibold leading-snug ${palette.body}`}
-                >
-                  <motion.span
-                    variants={reduce ? undefined : CHECK_ICON_VARIANTS}
-                    className="mt-px shrink-0"
-                  >
-                    <Check className={`h-4 w-4 ${palette.icon}`} />
-                  </motion.span>
-                  <span className="min-w-0 break-words whitespace-pre-wrap">{label}</span>
-                </motion.li>
-              ))}
-            </motion.ul>
-          ) : null}
+          <InlineActionFeedbackChecklist tone={tone} items={items} className="mt-1.5" />
 
           {note ? (
             <p className="mt-1.5 flex items-start gap-1.5 text-role-micro font-medium leading-snug text-text-muted">
-              {tone === 'amber' ? (
-                <AlertTriangle className="mt-px h-3.5 w-3.5 shrink-0 text-amber-500" />
+              {tone === 'warning' || tone === 'error' ? (
+                <AlertTriangle className={`mt-px h-3.5 w-3.5 shrink-0 ${palette.icon}`} />
               ) : null}
               <span className="min-w-0 break-words whitespace-pre-wrap">{note}</span>
             </p>

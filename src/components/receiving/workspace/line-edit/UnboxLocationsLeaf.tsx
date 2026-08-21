@@ -10,22 +10,20 @@
  *
  * Unbox Displays → Locations: the shared station leaf on the line-putaway writer.
  *
- * Adapter boundary only — the leaf is {@link StationLocationsDisplay} and the
- * writer is {@link useUnboxLinePlacement} (`receiving_line_putaway`). Never a
- * page-local twin of either; Arrival and Ready to Pack mount the same leaf with
- * their own storage behind the same port.
+ * Adapter boundary only — the leaf is {@link StationLocationsDisplay}, the port
+ * is {@link useReceivingLineLocationPort} (`receiving_line_putaway`, via
+ * {@link useUnboxLinePlacement}). Never a page-local twin of either; Arrival's
+ * product subject mounts the SAME port, and Ready to Pack mounts the same leaf
+ * with its own storage behind it.
+ *
+ * `entityNoun="carton"` is preserved deliberately: at Unbox the open line IS
+ * the box in the operator's hands, so the row subtitle reads "carton is here".
+ * Arrival says `item`, because there the carton is a separate subject on the
+ * same leaf and the two must not both claim the word.
  */
 
-import { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { useQueryClient } from '@tanstack/react-query';
-import {
-  StationLocationsDisplay,
-  type StationLocationPlacementPort,
-} from '@/components/station/location';
-import { qk } from '@/queries/keys';
-import type { Location } from '@/lib/neon/location-queries';
-import { useUnboxLinePlacement } from './useUnboxLinePlacement';
+import { StationLocationsDisplay } from '@/components/station/location';
+import { useReceivingLineLocationPort } from '@/components/receiving/line-location-port';
 
 export function UnboxLocationsLeaf({
   lineId,
@@ -36,44 +34,11 @@ export function UnboxLocationsLeaf({
   stagedLocationId?: number | null;
   onPlaced?: () => void;
 }) {
-  const { applyStage } = useUnboxLinePlacement(lineId);
-  const queryClient = useQueryClient();
-
-  // Same key as `useTriageStaging` — one catalog read across the stations that
-  // browse it, so a shelf minted at Arrival is on the Unbox list immediately.
-  const locationsQuery = useQuery<Location[]>({
-    queryKey: ['locations', 'active'] as const,
-    staleTime: 60_000,
-    queryFn: async () => {
-      const res = await fetch('/api/locations', { cache: 'no-store' });
-      if (!res.ok) return [];
-      const data = (await res.json()) as { locations?: Location[] };
-      // Real bins only — a room/zone parent isn't a scannable shelf.
-      return (data.locations ?? []).filter(
-        (l) => l.row_label != null && l.col_label != null,
-      );
-    },
+  const port = useReceivingLineLocationPort({
+    lineId,
+    stagedLocationId,
+    entityNoun: 'carton',
   });
-
-  const port = useMemo<StationLocationPlacementPort>(
-    () => ({
-      locations: (locationsQuery.data ?? []).map((l) => ({
-        id: l.id,
-        name: l.name,
-        room: l.room ?? null,
-        barcode: l.barcode ?? null,
-      })),
-      locationsLoading: locationsQuery.isLoading,
-      placedLocationId: stagedLocationId ?? null,
-      place: (locationId: number) => applyStage({ location_id: locationId }),
-      refreshCatalog: () => {
-        void queryClient.invalidateQueries({ queryKey: qk.locations.all });
-      },
-      entityNoun: 'carton',
-      canPlaceMinted: true,
-    }),
-    [applyStage, locationsQuery.data, locationsQuery.isLoading, queryClient, stagedLocationId],
-  );
 
   return <StationLocationsDisplay port={port} onPlaced={onPlaced} />;
 }

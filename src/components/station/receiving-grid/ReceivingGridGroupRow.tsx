@@ -48,6 +48,7 @@ interface ReceivingGridGroupRowProps {
   /** Live custom_field_defs for `custom:*` columns. */
   customFieldDefs?: readonly CustomFieldDef[];
   onCustomFieldCommit?: (entityId: number, defKey: string, next: string) => void;
+  onCommitNote?: (lineId: number, next: string) => void;
 }
 
 /**
@@ -82,6 +83,7 @@ export function ReceivingGridGroupRow({
   onCrosshairHover,
   customFieldDefs,
   onCustomFieldCommit,
+  onCommitNote,
 }: ReceivingGridGroupRowProps) {
   const renderLeaf = (row: ReceivingLineRow, stripeIndex: number): ReactNode => {
     const isOpen = handleToggleRow
@@ -125,6 +127,7 @@ export function ReceivingGridGroupRow({
         rowFillHex={rowFillsById?.[String(row.id)] ?? null}
         customFieldDefs={customFieldDefs}
         onCustomFieldCommit={onCustomFieldCommit}
+        onCommitNote={onCommitNote}
       />
     );
   };

@@ -38,6 +38,7 @@
 
 import { INCOMING_TABLE_BINDING } from '@/components/station/incoming-grid/incoming-table-definition';
 import { DAILY_TABLE_BINDING } from '@/features/home/grid/daily-table-definition';
+import { TASKS_TABLE_BINDING } from '@/features/tasks/grid/tasks-table-definition';
 import { RECEIVING_TABLE_BINDING } from '@/components/station/receiving-grid/receiving-table-definition';
 import {
   ORDERS_DEFAULT_TABLE_BINDING,
@@ -53,11 +54,17 @@ export const REGISTERED_BINDINGS = [
   // surface, not removing a table.
   INCOMING_TABLE_BINDING,
   // To-Ship / Packed / station queues share this parametric Orders grid.
-  // `UnshippedTable` → `OrdersGridHost` → `ordersTableBindingFor(mode)`. There
+  // `UnshippedTable` → `useOrdersSpreadsheet` → `ordersTableBindingFor(mode)`
+  // → `NonlinearTableHost`. There
   // is no desk-local `to-ship` family — that fork only isolated prefs while
   // painting the same cells, and it clipped ORDER identity.
   ORDERS_DEFAULT_TABLE_BINDING,
   ORDERS_TESTED_TABLE_BINDING,
   // Home → Daily: the shift checklist as a real collection, not a prose list.
   DAILY_TABLE_BINDING,
+  // Home → Tasks: one staffer's own `staff_todos`, ported off the hand-rolled
+  // header-popover list. Sibling of `home.daily`, never a merge with it — two
+  // stores answering two questions (personal list vs the org's rostered shift
+  // checklist), sharing this engine and nothing else.
+  TASKS_TABLE_BINDING,
 ] as const;

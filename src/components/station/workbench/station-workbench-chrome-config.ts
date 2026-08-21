@@ -152,7 +152,7 @@ export const STATION_CARTON_IDENTITY_ADAPTERS = [
   'components/tech/shipping/ShippingEntityContextHeader.tsx',
   'components/packer/PackOrderIdentity.tsx',
   'features/review/packer/ReviewOrderIdentity.tsx',
-  'components/support/orders/SupportOrderIdentity.tsx',
+  'components/station/order/OrderStationIdentity.tsx',
 ] as const;
 /**
  * Documented adoption gaps (port follow-ups) — station chrome but not yet on
@@ -199,9 +199,13 @@ export const STATION_WORKBENCH_ADOPTION_EXEMPT = [
  * focus-locked scan loop over one transient entity, Q1 of `pickArchetype` fires
  * and it becomes a Station — at which point it composes `StationWorkbench` +
  * `StationContextBar` through a thin adapter like every sibling, and its entry
- * here is deleted. Until then, porting station chrome onto them would be the
- * "lobotomized work chrome" anti-pattern (`pattern-evolution.md` Always #5):
- * station panels with the station stripped out.
+ * here is deleted. Until then, porting station chrome onto them would give
+ * them station panels with the station stripped out — no scan loop behind the
+ * chrome. *(This used to cite `pattern-evolution.md` Always #5 by its old
+ * wording; law 5 was rewritten 2026-08-20 and now permits a shared host under a
+ * declared stance. The reason THESE surfaces stay off station chrome is
+ * unchanged and independent: they have no scan loop, so `pickArchetype` Q1
+ * never fires.)*
  *
  * **Asserted** (Guard H) — a declaration that nothing checks is the prose
  * retirement `pattern-evolution.md` Always #6 exists to ban, and this one is

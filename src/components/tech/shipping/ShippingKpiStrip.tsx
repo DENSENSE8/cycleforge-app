@@ -18,7 +18,7 @@ import { useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { unshippedQueueCountsQuery } from '@/lib/queries/dashboard-queries';
 import { packPlacementQuery } from '@/lib/queries/pack-placement-queries';
-import { KpiTile, metricIntentTextClass, OpsKpiBand, OpsKpiBandCell, OpsKpiBandEmpty, OpsKpiBandError, OpsKpiBandSkeletonTile } from '@/design-system/components/monitor';
+import { KpiTile, metricIntentTextClass, OpsKpiBand, OpsKpiBandCell, OpsKpiBandEmpty, OpsKpiBandError } from '@/design-system/components/monitor';
 import {
   resolveShippingMetrics,
   splitShippingAttention,
@@ -37,6 +37,7 @@ import { computeWeekRange, toPSTDateKey } from '@/utils/date';
 import type { FulfillmentState } from '@/lib/unshipped-state';
 import type { PackPlacementCountRow } from '@/lib/packing/pack-placement';
 import { packBenchShortLabel } from '@/lib/packing/pack-bench-display';
+import { UniversalLoader } from '@/design-system/components/UniversalLoader';
 
 const EMPTY_UNSHIPPED = { total: 0, pending: 0, tested: 0, blocked: 0 };
 
@@ -96,11 +97,10 @@ function MetricKpiTile({
 
 function StripSkeleton({ reservedSlots }: { reservedSlots: number }) {
   return (
-    <OpsKpiBand density="band" className="animate-pulse" aria-label="Loading shipping attention metrics">
-      <span className="sr-only">Loading shipping attention metrics…</span>
+    <OpsKpiBand density="band" aria-label="Loading shipping attention metrics">
       {Array.from({ length: reservedSlots }).map((_, i) => (
         <OpsKpiBandCell key={i} density="band">
-          <OpsKpiBandSkeletonTile density="band" />
+          <UniversalLoader isLoading label="Loading shipping metrics" className="min-h-10" />
         </OpsKpiBandCell>
       ))}
     </OpsKpiBand>

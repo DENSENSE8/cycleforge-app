@@ -62,7 +62,7 @@ StationScanPaneHost
 ├── center        StationPanelRoot → StationWorkbench
 │                   tabs = EMPTY
 │                   body = PO lines + label preview + dock (ops-flow only)
-├── utilityRail   UnboxDisplaysUtilityRailBody     // ONLY when Displays CLOSED
+├── utilityRail   StationDisplaysUtilityRail       // ONLY when Displays CLOSED
 │                   carton ↑↓ + ←| "Open displays" → ?display=index
 └── displays      StationDisplaysPushStack         // ONLY when Displays OPEN
                     → StationDisplaysPushColumn    // flex-1 invader (Flex-Grow Sandwich)

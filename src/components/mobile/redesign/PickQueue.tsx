@@ -59,9 +59,9 @@ export default function RedesignedMobilePickQueue() {
         className="pt-2 pb-3"
         empty={
           <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center">
-            <Package className="mb-1 h-10 w-10 text-blue-200" />
-            <p className="text-xs font-semibold uppercase tracking-widest text-blue-300">Nothing pending</p>
-            <p className="max-w-[260px] text-xs font-medium text-blue-700/50">
+            <Package className="mb-1 h-10 w-10 text-text-faint" />
+            <p className="text-xs font-semibold uppercase tracking-widest text-text-faint">Nothing pending</p>
+            <p className="max-w-[260px] text-xs font-medium text-text-muted">
               No orders are waiting to be picked right now.
             </p>
           </div>

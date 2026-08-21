@@ -21,6 +21,7 @@ import { FbaErrorState } from '@/components/fba/FbaStateShells';
 import { FbaCombineWorkspace } from '@/components/fba/sidebar/FbaCombineWorkspace';
 import { FbaTriageBand, FbaWorkspaceHeader } from '@/components/fba/FbaWorkspaceHeader';
 import { FbaKpiStrip } from '@/components/fba/FbaKpiStrip';
+import { WorkbenchBand2Card } from '@/components/dashboard/workbench-kpi-collapse';
 import { ReadyWorkspaceBody } from '@/components/outbound/ready/ReadyWorkspaceBody';
 import { ReadyKpiBand } from '@/components/outbound/ready/ReadyKpiBand';
 import {
@@ -163,17 +164,17 @@ export function FbaOutboundWorkspace() {
         // than a per-staff preference.
         band2={
           isBoard ? (
-            <div className="border-b border-r border-border-soft bg-surface-card px-3 py-2">
+            <WorkbenchBand2Card>
               <FbaKpiStrip
                 counts={stageCounts}
                 activeFilter={statusFilter}
                 onToggleFilter={handleToggleFilter}
               />
-            </div>
+            </WorkbenchBand2Card>
           ) : isReady ? (
-            <div className="border-b border-r border-border-soft bg-surface-card px-3 py-2">
+            <WorkbenchBand2Card>
               <ReadyKpiBand />
-            </div>
+            </WorkbenchBand2Card>
           ) : undefined
         }
         triage={({ controlsSlotRef }) => (

@@ -17,7 +17,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { AnimatePresence, motion, useReducedMotion } from '@/design-system/motion';
-import { ArrowLeftRight, Loader2, Package, X } from '@/components/Icons';
+import { ArrowLeftRight, Package, X } from '@/components/Icons';
 import { Button, FlushTerminalFooter, IconButton } from '@/design-system/primitives';
 import { SearchableSelectField } from '@/design-system/components';
 import {
@@ -45,6 +45,7 @@ import {
   UNFOUND_PO_SENTINEL,
 } from '@/lib/receiving/po-group-title';
 import { receivingHandle, scannedReceivingId } from '@/lib/barcode-routing';
+import { UniversalLoader } from '@/design-system/components/UniversalLoader';
 
 /**
  * What the operator put in the box, in the ONE vocabulary the API understands.
@@ -513,9 +514,11 @@ export function MovePhotosBetweenPoPanel({
                   ) : null}
                   <div className="max-h-48 overflow-y-auto">
                     {poLoading ? (
-                      <p className="flex items-center justify-center gap-2 py-6 text-xs text-text-soft">
-                        <Loader2 className="h-4 w-4 animate-spin" /> Searching…
-                      </p>
+                      <UniversalLoader
+                        isLoading
+                        label="Searching cartons"
+                        className="min-h-24"
+                      />
                     ) : targetRows.length === 0 ? (
                       <p className="px-3 py-8 text-center text-role-micro text-text-soft">
                         {poSearchNeedle(search)

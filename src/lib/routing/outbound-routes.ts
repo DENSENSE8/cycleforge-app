@@ -78,6 +78,15 @@ const ORDERS_ROUTE_PARAMS = defineRouteParams({
     packStation: paramPositiveInt,
     packPlaced: paramFlag,
     new: paramEnum(['true'] as const),
+    /**
+     * Add-orders rail, opened on the method list rather than hand entry.
+     * MUST stay declared: `useSurfaceParamHygiene` (mounted in the shipping
+     * layout) re-parses the URL against this spec on every param change and
+     * drops anything undeclared. While `ingest` was missing here, the chrome
+     * Add wrote `?ingest=true` and the hygiene pass stripped it on the next
+     * tick — the rail opened and closed itself before the operator could type.
+     */
+    ingest: paramEnum(['true'] as const),
     /** CSV import staging surface on the To-Ship desk (session draft in memory). */
     import: paramEnum(['csv'] as const),
     shippedFilter: paramEnum(['all', 'orders', 'sku', 'fba'] as const),

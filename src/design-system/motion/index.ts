@@ -61,3 +61,11 @@ export { useMotionRole, useMotionPressRole } from './use-motion-role';
  * overlay that server-renders open).
  */
 export { useOverlaySwapHardCut } from './use-overlay-swap-hard-cut';
+
+/**
+ * The live-change pulse — the only symbol app code needs. Its attribute name,
+ * mark duration, predicate and ref shape stay on `./use-live-value-change`:
+ * re-exporting them here would add four barrel entries nothing imports, which
+ * is the mid-wire-SoT-reads-as-dead trap the header above describes.
+ */
+export { useLiveValueChange } from './use-live-value-change';

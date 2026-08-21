@@ -12,6 +12,7 @@ Always-on law lives in root [`AGENTS.md`](../../AGENTS.md) and
 | "What is the SoT for job X?" | `node scripts/sot-lookup.mjs "<job>"`, then [`source-of-truth.md`](source-of-truth.md) |
 | A scan bench (Unbox · Arrival · Testing · Pack · Shipping) | [`display/station.md`](display/station.md) · [`display/unbox-station.md`](display/unbox-station.md) · [`display/station-workbench.md`](display/station-workbench.md) |
 | A desk queue / spreadsheet | [`display/workbench.md`](display/workbench.md) · [`display/workbench-ops-queue.md`](display/workbench-ops-queue.md) |
+| `/search` — the 3-column read station (rail find bar · collapsible centre · Displays) | [`display/search-station.md`](display/search-station.md) |
 | A right-edge panel | [`display/right-rail-inspector.md`](display/right-rail-inspector.md) |
 | Animation | [`display/motion-crossfade.md`](display/motion-crossfade.md) |
 | A new polymorphic / typed-fact table | [`polymorphic-tables.md`](polymorphic-tables.md) |

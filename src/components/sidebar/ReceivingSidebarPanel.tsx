@@ -607,7 +607,7 @@ export function ReceivingSidebarPanel() {
                 inputRef={scanInputRef}
                 // Unbox no longer spins the scan bar on a tracking scan. Loading
                 // is the right-pane optimistic unmatched empty PO-items open
-                // (settle remount), not ReceivingWorkspaceSkeleton / Opening chrome.
+                // (settle remount), not the Unbox loading field / Opening chrome.
                 isResolving={false}
                 staffId={staffId}
                 armedMode={unboxScanMode}

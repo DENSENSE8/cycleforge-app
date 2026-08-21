@@ -368,7 +368,8 @@ export function CommandBar() {
           postAiRetrieve(q, { limit: 12, pageContext: pathname, signal: controller.signal });
 
         if (looksLikeIdentifier(q)) {
-          const aiData = await fetchRetrieve();
+          const ai = await fetchRetrieve();
+          const aiData = ai.ok ? ai.data : null;
           let rows: SearchResult[] = [];
           if (!aiData) {
             const globalData = await fetchGlobal();
@@ -381,9 +382,10 @@ export function CommandBar() {
           return;
         }
 
-        const [globalData, aiData] = await Promise.all([fetchGlobal(), fetchRetrieve()]);
+        const [globalData, ai] = await Promise.all([fetchGlobal(), fetchRetrieve()]);
         if (!controller.signal.aborted) {
-          setSearchResults(mergeSearchResults(aiData?.hits || [], globalData.rows || [], 12));
+          const aiHits = ai.ok ? (ai.data.hits ?? []) : [];
+          setSearchResults(mergeSearchResults(aiHits, globalData.rows || [], 12));
           setSearching(false);
         }
       } catch (err) {
@@ -505,7 +507,8 @@ export function CommandBar() {
       return;
     }
     setAskAi({ status: 'loading', hits: [], forQuery: q });
-    const data = await postAiRetrieve(q, { mode: 'ask', limit: 8, pageContext: pathname });
+    const result = await postAiRetrieve(q, { mode: 'ask', limit: 8, pageContext: pathname });
+    const data = result.ok ? result.data : null;
     if (data) {
       setAskAi((prev) =>
         prev.status === 'loading' && prev.forQuery === q

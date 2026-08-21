@@ -146,6 +146,35 @@ export const motionRole = {
       transition: framerTransition.hitMarker,
       regions: ['station', 'workbench'] as const satisfies readonly MotionRegion[],
     },
+    /**
+     * A VALUE on a collection row changed REMOTELY — the eighth role, and a
+     * genuinely different job from the two above it (2026-08-20).
+     *
+     * `pulse` and `hitMarker` both acknowledge something the operator just
+     * did, on the element under their own cursor. This one fires on an
+     * element nobody is looking at: a tester scans a tracking number at the
+     * bench, and the packer's Unshipped board — 40 rows, three tabs away from
+     * the row in question — has to make the change findable in peripheral
+     * vision. "Which of these do I use?" has a real answer here: if you can
+     * name the click that caused it, it is not this role.
+     *
+     * Shape: double pulse (scale + ring overlay) with the label morphing
+     * inside the first beat, then a settle. Transform + opacity only, so a
+     * ruled grid band never reflows to report a word change.
+     * Physics = `framerTransition.liveValueChange` (+ `liveValueMorph` for
+     * the label half). Consumer: `GridStatusCellValue` via
+     * `useLiveValueChange`, which is where every data-table status chip in
+     * the app already resolves.
+     *
+     * Monitor is legal here and is not a widening: a rollup board is exactly
+     * the read-only surface where a change nobody clicked is the only kind
+     * there is.
+     */
+    liveChange: {
+      transition: framerTransition.liveValueChange,
+      morph: framerTransition.liveValueMorph,
+      regions: ['station', 'workbench', 'monitor'] as const satisfies readonly MotionRegion[],
+    },
   },
 
   /**

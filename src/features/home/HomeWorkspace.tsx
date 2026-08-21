@@ -18,6 +18,7 @@
  * Composition (do not rebuild):
  *   daily → `HomeDailyMode` (the daily checklist + the day's report) — DEFAULT
  *   today → `MyDayWorkspace` (the My Day triage workbench)
+ *   tasks → `TasksWorkbench` (the staffer's own `staff_todos`, as a spreadsheet)
  *
  * TWO modes as of 2026-08-19. `inbox` and `tasks` were deleted; `forge` moved to
  * its own `/forge` route (see `app/forge/page.tsx`). `collab` and `brief` went
@@ -29,6 +30,7 @@ import { MyDayWorkspace } from '@/features/my-day/MyDayWorkspace';
 import { cn } from '@/utils/_cn';
 import { useHomeMode } from './useHomeMode';
 import { HomeDailyMode } from './HomeDailyMode';
+import { TasksWorkbench } from '@/features/tasks/TasksWorkbench';
 
 export function HomeWorkspace() {
   const { mode } = useHomeMode();
@@ -43,6 +45,7 @@ export function HomeWorkspace() {
       <div className="min-h-0 w-full min-w-0 flex-1 overflow-hidden">
         {mode === 'daily' && <HomeDailyMode />}
         {mode === 'today' && <MyDayWorkspace />}
+        {mode === 'tasks' && <TasksWorkbench />}
       </div>
     </div>
   );

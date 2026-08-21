@@ -6,6 +6,7 @@ import type { RSRecord } from '@/lib/neon/repair-service-queries';
 import { RepairActionTimeline } from '@/components/repair/mobile/RepairActionTimeline';
 import { AddRepairActionSheet } from '@/components/repair/mobile/AddRepairActionSheet';
 import { NetworkChip } from '@/components/mobile/NetworkChip';
+import { MobileDetailTopBar } from '@/components/mobile/redesign/MobileDetailTopBar';
 import { useActivityInboxOptional } from '@/contexts/ActivityInboxContext';
 import { repairStatusBadgeClass } from '@/lib/repair-status';
 import { Panel, IconButton } from '@/design-system/primitives';
@@ -105,20 +106,13 @@ function RepairMobilePageInner() {
 
   return (
     <div className="min-h-screen bg-surface-canvas flex flex-col pb-24">
-      <header className="sticky top-0 z-20 bg-surface-card border-b border-border-soft px-4 py-3">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-orange-500">
-              Repair
-            </p>
-            <h1 className="truncate text-lg font-semibold text-text-default">{rsCode}</h1>
-            {repair && (
-              <p className="mt-0.5 truncate text-role-caption font-semibold text-text-muted">
-                {customerFirstName} · {repair.product_title || 'Bose Repair'}
-              </p>
-            )}
-          </div>
-          <div className="flex flex-col items-end gap-1.5 shrink-0">
+      <MobileDetailTopBar
+        subtitle={<span className="text-orange-500">Repair</span>}
+        title={rsCode}
+        mono
+        meta={repair ? `${customerFirstName} · ${repair.product_title || 'Bose Repair'}` : undefined}
+        right={
+          <>
             <NetworkChip compact />
             {repair?.status && (
               <span
@@ -129,9 +123,9 @@ function RepairMobilePageInner() {
                 {repair.status}
               </span>
             )}
-          </div>
-        </div>
-      </header>
+          </>
+        }
+      />
 
       {/* Status pill bar — horizontal scroll */}
       <div className="sticky top-[68px] z-10 bg-surface-canvas/95 backdrop-blur border-b border-border-soft px-3 py-2 overflow-x-auto">
@@ -164,7 +158,7 @@ function RepairMobilePageInner() {
         )}
 
         {error && (
-          <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm font-semibold text-rose-700">
+          <div className="rounded-none border border-rose-200 bg-rose-50 p-3 text-sm font-semibold text-rose-700">
             {error}
           </div>
         )}

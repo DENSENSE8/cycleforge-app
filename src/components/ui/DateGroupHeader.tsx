@@ -17,7 +17,7 @@ import { useMotionPresence, useMotionTransition } from '@/design-system/foundati
  * the scroll container and *is* the live date header.
  *
  * **Outbound spreadsheets do not use this** — absolute civil date lives in a
- * per-row Date column ({@link LedgerGrid} / OrdersGridHost pass
+ * per-row Date column ({@link LedgerGrid} / the outbound spreadsheet pass
  * `showDayHeaders={false}`).
  *
  * When `animate` is on (dense queue / swimlane Show more), the sticky row + label

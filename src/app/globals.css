@@ -266,6 +266,63 @@ body {
   animation: recv-indet 1.2s ease-in-out infinite;
 }
 
+/* ── Live-change row wash ───────────────────────────────────────────────────
+   Pairs with the status-chip attention pulse (`useLiveValueChange` /
+   `motionRole.feedback.liveChange`). The chip flash says WHAT changed; this
+   says WHICH ROW, which is the half an operator scanning 40 near-identical
+   lines actually needs.
+
+   Driven by a selector rather than a prop because the row and the chip have
+   different owners: the chip is the shared `GridStatusCellValue`, the row is
+   whichever grid registry mounted it (`OrdersQueueTableRow`,
+   `ReceivingGridRow`, `IncomingGridRow` — all three carry
+   `data-order-row-id`). Threading a "did my status just change" boolean up
+   through six surfaces to paint a background is exactly the page-local wiring
+   `:has()` exists to avoid.
+
+   Longer than the chip pulse ON PURPOSE (1.4s vs 420ms): the pulse has to be
+   caught, the wash has to still be there when the eye arrives.
+
+   Duration is paired with `LIVE_VALUE_CHANGE_MARK_MS` in
+   `src/design-system/motion/use-live-value-change.ts` — the hook holds the
+   attribute for exactly as long as this runs. Shorten one without the other and
+   the wash cuts out mid-fade. */
+@keyframes cf-live-row-wash {
+  0%   { opacity: 1; }
+  35%  { opacity: 0.72; }
+  100% { opacity: 0; }
+}
+/* An OVERLAY, never the row's own `background-color`. A row already carries a
+   background from four competing sources (zebra stripe, selection wash, triage
+   flag, a per-row custom `backgroundColor` inline style), and a CSS animation
+   outranks every one of them including the inline style — so animating the row's
+   own background would strip its stripe for 1.4s and land it on `transparent`.
+   The pseudo-element is absolutely positioned, so it is out of flow and never
+   becomes a grid item on the row's `gridTemplateColumns`. */
+[data-order-row-id]:has([data-live-value-change]) {
+  position: relative;
+}
+[data-order-row-id]:has([data-live-value-change])::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-color: color-mix(in oklab, var(--ds-color-accent-bg) 12%, transparent);
+  animation: cf-live-row-wash 1.4s ease-out 1 forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* The accessible substitute is the instant colour morph, not a second
+     animation: the chip's own `transition-colors` is already suppressed by
+     `motion-reduce:transition-none`, so the row simply does not wash.
+     (`useLiveValueChange` also declines to set the attribute at all under
+     reduced motion — this is the CSS floor for when JS has not run yet.) */
+  [data-order-row-id]:has([data-live-value-change])::after {
+    content: none;
+  }
+}
+
 /* ── Light syntax-highlight theme for AI chat code blocks (rehype-highlight). */
 /* Scoped to .hljs so it only affects highlighted fenced code. GitHub-light palette. */
 .hljs { color: #24292e; background: transparent; }
@@ -311,3 +368,27 @@ body {
   backface-visibility: hidden;
 }
 .fan-card img { border-radius: inherit; }
+
+/* An empty KPI strip paints NOTHING — no card, no padding, no hairline, no snap
+   handle.
+
+   `WorkbenchSheetView` decides whether a surface has a Band 2 from whether the
+   `kpi` PROP was passed, but the truth is whether the strip has anything to
+   show, and only the strip knows that — its query resolves after the shell has
+   already committed to a band. Arrival is the case that surfaced it:
+   `TriageKpiStrip` returns `null` whenever `save_without_pair_rate` is absent,
+   which is most of the time, so `WorkbenchKpiBand` painted `px-3 py-2` plus its
+   bottom hairline around nothing. That 17px card is the gap an operator sees
+   between the context bar and the search bar on `/receiving/triage`.
+
+   No JS can see this: `React.Children.count()` counts the ELEMENT (`<Strip/>` is
+   one child whatever it renders), so the emptiness is only knowable after the
+   render — which is exactly what `:empty` reads. `display: none` keeps the React
+   subtree mounted, so the strip's query stays warm and the band reappears the
+   moment it has a number, with no remount and no fetch.
+
+   Structural, so it holds for every Band 2 on every surface and for any strip
+   added later — not a per-page patch. */
+[data-workbench-kpi-band]:has([data-workbench-kpi-body]:empty) {
+  display: none;
+}

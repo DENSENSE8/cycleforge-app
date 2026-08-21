@@ -16,7 +16,11 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { Link2, RefreshCw } from '@/components/Icons';
 import { useAuth } from '@/contexts/AuthContext';
-import { Button, EmptyState, IconButton } from '@/design-system/primitives';
+import { Button, EmptyState } from '@/design-system/primitives';
+import {
+  WorkbenchBandControl,
+  WORKBENCH_BAND_CONTROL_GLYPH_CLASS,
+} from '@/components/dashboard/workbench-band-control';
 import { SkeletonList } from '@/design-system/components/Skeletons';
 import {
   WorkbenchSheetView,
@@ -28,7 +32,6 @@ import {
   WorkbenchTriageBand,
 } from '@/components/dashboard/workbench-shell';
 import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
-import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import {
   DEFAULT_TICKET_STATUS,
   parseTicketStatus,
@@ -226,14 +229,21 @@ export function SupportTicketsBoard() {
             }
             right={
               <>
-                <HoverTooltip label="Refresh tickets" asChild>
-                  <IconButton
-                    icon={<RefreshCw className={cn('h-4 w-4', isFetching && 'animate-spin')} />}
-                    onClick={() => void queryClient.invalidateQueries({ queryKey: ['zendesk'] })}
-                    ariaLabel="Refresh tickets"
-                    className="rounded-md p-1.5 hover:bg-surface-sunken"
-                  />
-                </HoverTooltip>
+                {/* Was a `rounded-md p-1.5` IconButton — a soft cell on a flush
+                    ops row, and the only band control in the product that did
+                    not track the row. */}
+                <WorkbenchBandControl
+                  label="Refresh tickets"
+                  icon={
+                    <RefreshCw
+                      className={cn(
+                        WORKBENCH_BAND_CONTROL_GLYPH_CLASS,
+                        isFetching && 'animate-spin',
+                      )}
+                    />
+                  }
+                  onClick={() => void queryClient.invalidateQueries({ queryKey: ['zendesk'] })}
+                />
                 <ZendeskSelect
                   value={sort}
                   options={SORT_OPTIONS}

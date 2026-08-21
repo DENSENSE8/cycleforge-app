@@ -184,6 +184,8 @@ interface KioskDeviceSummary {
   lastSeenAt: string | null;
   createdAt: string;
   enrolledByStaffId: number | null;
+  /** Square Terminal paired to this lane; null = cash / payment-link only. */
+  squareTerminalDeviceId: string | null;
 }
 
 /**
@@ -194,7 +196,8 @@ interface KioskDeviceSummary {
 export async function listKioskDevices(orgId: OrgId): Promise<KioskDeviceSummary[]> {
   return withTenantTransaction(orgId, async (client) => {
     const r = await client.query(
-      `SELECT id, label, status, last_seen_at, created_at, enrolled_by_staff_id
+      `SELECT id, label, status, last_seen_at, created_at, enrolled_by_staff_id,
+              square_terminal_device_id
          FROM kiosk_devices
         WHERE organization_id = $1
         ORDER BY created_at DESC, id DESC`,
@@ -203,6 +206,7 @@ export async function listKioskDevices(orgId: OrgId): Promise<KioskDeviceSummary
     return (r.rows as Array<{
       id: number; label: string; status: KioskDeviceSummary['status'];
       last_seen_at: Date | null; created_at: Date; enrolled_by_staff_id: number | null;
+      square_terminal_device_id: string | null;
     }>).map((row) => ({
       // pg serializes bigint as a string; the summary type (and the revoke
       // route's `z.number()` body) expect a real number, so coerce at the waist.
@@ -212,7 +216,35 @@ export async function listKioskDevices(orgId: OrgId): Promise<KioskDeviceSummary
       lastSeenAt: row.last_seen_at ? row.last_seen_at.toISOString() : null,
       createdAt: row.created_at.toISOString(),
       enrolledByStaffId: row.enrolled_by_staff_id,
+      squareTerminalDeviceId: row.square_terminal_device_id,
     }));
+  });
+}
+
+/**
+ * Pair (or unpair) a Square Terminal with a counter lane.
+ *
+ * `null` clears the pairing, which is a REAL configuration — a cash-only lane —
+ * and not the same as never having set one. `resolveTerminalDeviceId` treats a
+ * cleared lane as standless and refuses rather than reaching for the
+ * deployment env, so a counter with no reader never prompts one in another room.
+ *
+ * Plan: docs/todo/counter-square-enterprise-PLAN.md (SQ3).
+ */
+export async function setKioskDeviceTerminal(
+  orgId: OrgId,
+  deviceId: number,
+  squareTerminalDeviceId: string | null,
+): Promise<boolean> {
+  const value = String(squareTerminalDeviceId ?? '').trim() || null;
+  return withTenantTransaction(orgId, async (client) => {
+    const r = await client.query(
+      `UPDATE kiosk_devices
+          SET square_terminal_device_id = $3, updated_at = now()
+        WHERE organization_id = $1 AND id = $2 AND status <> 'revoked'`,
+      [orgId, deviceId, value],
+    );
+    return (r.rowCount ?? 0) > 0;
   });
 }
 

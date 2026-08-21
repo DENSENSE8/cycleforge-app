@@ -100,7 +100,7 @@ export function MobileIdentify() {
             initial={{ opacity: 0.5 }}
             animate={{ opacity: [0.5, 0.9, 0.5] }}
             transition={{ repeat: Infinity, duration: 2.2, ease: 'easeInOut' }}
-            className="h-44 w-72 rounded-2xl border-2 border-dashed border-glass/70"
+            className="h-44 w-72 rounded-none border-2 border-dashed border-glass/70"
           />
           <p className="mt-4 text-sm text-white/80">Aim at the printed label on the bottom</p>
         </div>
@@ -112,7 +112,7 @@ export function MobileIdentify() {
           <motion.div
             animate={{ scale: liveScan.gateReason === 'ok' ? [1, 1.02, 1] : 1 }}
             transition={{ repeat: Infinity, duration: 1.1, ease: 'easeInOut' }}
-            className={`h-44 w-72 rounded-2xl border-2 transition-colors ${RETICLE_TINT[liveScan.gateReason]}`}
+            className={`h-44 w-72 rounded-none border-2 transition-colors ${RETICLE_TINT[liveScan.gateReason]}`}
           />
           <p className="mt-4 flex items-center gap-1.5 text-sm text-white/80">
             <Zap className="h-4 w-4 text-emerald-400" /> {liveScan.hint || 'Aim at the printed label'}
@@ -137,7 +137,7 @@ export function MobileIdentify() {
 
       {/* Camera error */}
       {cameraError && (
-        <div className="absolute inset-x-6 top-1/2 z-20 -translate-y-1/2 rounded-xl bg-glass/10 p-4 text-center text-sm text-white/80">
+        <div className="absolute inset-x-6 top-1/2 z-20 -translate-y-1/2 rounded-none bg-glass/10 p-4 text-center text-sm text-white/80">
           Camera unavailable ({cameraError}). Check permissions, then reload.
         </div>
       )}
@@ -201,7 +201,7 @@ export function MobileIdentify() {
                 variant="ghost"
                 size="lg"
                 onClick={retake}
-                className="h-auto w-full rounded-xl bg-stage-contrast py-3.5 text-sm font-semibold text-black active:scale-[0.99]"
+                className="h-auto w-full rounded-none bg-stage-contrast py-3.5 text-sm font-semibold text-black active:scale-[0.99]"
               >
                 Next item
               </Button>
@@ -233,7 +233,7 @@ export function MobileIdentify() {
                     variant="ghost"
                     size="lg"
                     onClick={retake}
-                    className="h-auto flex-1 rounded-xl bg-stage-contrast py-3 text-sm font-semibold text-black"
+                    className="h-auto flex-1 rounded-none bg-stage-contrast py-3 text-sm font-semibold text-black"
                   >
                     Retake
                   </Button>
@@ -242,7 +242,7 @@ export function MobileIdentify() {
                     size="lg"
                     onClick={() => recvId && (window.location.href = `/m/receive/${recvId}`)}
                     icon={<Search className="h-4 w-4" />}
-                    className="h-auto gap-1.5 rounded-xl bg-glass/10 px-4 py-3 text-sm font-medium text-white/80"
+                    className="h-auto gap-1.5 rounded-none bg-glass/10 px-4 py-3 text-sm font-medium text-white/80"
                   >
                     Search
                   </Button>

@@ -1,7 +1,18 @@
 /**
  * Shared types + constants for the Home ("/") mode switcher.
  *
- * TWO modes as of 2026-08-19: `daily` and `today`. `inbox` (subscription feed),
+ * THREE modes as of 2026-08-21: `daily`, `today` and `tasks`.
+ *
+ * `tasks` is NOT the 2026-08-19 mode of that name coming back. That one was the
+ * ops-plan task feed and it was deleted for the reason below. This one is the
+ * staffer's OWN `staff_todos` list — the thing the header pace-and-next popover
+ * previews — given a real collection surface (`tasks.mine` in the table
+ * registry) so it can be triaged, sorted and inspected instead of scrolled in a
+ * 290px popover. Same wire token deliberately: a stale `?mode=tasks` deep link
+ * lands on a personal task list, which is the closest live thing to what its
+ * author was looking for.
+ *
+ * The original note, still the standard a mode is held to: `inbox` (subscription feed),
  * `tasks` (ops-plan tasks) and `forge` (Plans Live) were removed from Home —
  * `inbox` and `tasks` deleted outright, `forge` moved to its own `/forge` route,
  * which is where its bookmark already pointed. Same disposal as `collab` and
@@ -17,7 +28,7 @@
  * the two can never disagree.
  */
 
-export type HomeMode = 'daily' | 'today';
+export type HomeMode = 'daily' | 'today' | 'tasks';
 
 /**
  * `daily` is the landing view: the first screen of a shift is the checklist you
@@ -28,10 +39,12 @@ export type HomeMode = 'daily' | 'today';
 export const DEFAULT_HOME_MODE: HomeMode = 'daily';
 
 /** Live Home modes — includes default `daily` (usually omitted from the URL). */
-export const HOME_MODES = ['daily', 'today'] as const satisfies readonly HomeMode[];
+export const HOME_MODES = ['daily', 'today', 'tasks'] as const satisfies readonly HomeMode[];
 
 export function parseHomeMode(raw: string | null | undefined): HomeMode {
-  return raw === 'today' ? 'today' : DEFAULT_HOME_MODE;
+  if (raw === 'today') return 'today';
+  if (raw === 'tasks') return 'tasks';
+  return DEFAULT_HOME_MODE;
 }
 
 /**

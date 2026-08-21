@@ -16,8 +16,9 @@ import { RECORD_CURSOR_PRIORITY } from '@/lib/record-cursor/store';
 
 /**
  * The Orders queue **selection / cursor plane** — the page concern lifted out of
- * `OrdersGridHost` (plan Phase 1, wave 5c) so the grid becomes a presentational
- * adapter over {@link NonlinearTableHost}.
+ * the old `OrdersGridHost` (plan Phase 1, wave 5c) so the grid became a
+ * presentational adapter over `NonlinearTableHost`. That adapter is now the
+ * `useOrdersSpreadsheet` hook, which is this hook's only caller.
  *
  * This is deliberately a VERBATIM move, not a rewrite: the two rail effects
  * encode at least four documented bug-fixes named in their comments — the D4

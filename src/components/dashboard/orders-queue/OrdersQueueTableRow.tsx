@@ -1,6 +1,14 @@
 'use client';
 
 import { gridDataCellClass } from '@/design-system/components/grid';
+import {
+  CompoundFulfillment,
+  CompoundItem,
+  CompoundOpen,
+  CompoundState,
+  CompoundThumb,
+} from '@/components/tables/compound/CompoundCells';
+import { ordersCompoundView } from '@/lib/orders/orders-compound-view';
 import type { GridColumnDisplayPref } from '@/design-system/components/grid/grid-column-display';
 import { Fragment, memo, useCallback, useRef, useState, type ReactNode } from 'react';
 import { motion } from '@/design-system/motion';
@@ -353,15 +361,6 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   const conditionLabel = conditionGradeTableLabel(conditionValue);
   const conditionEmpty = isEmptyMetaDash(conditionLabel);
 
-  // `omitCellIcon` on EITHER identity column drops the body glyph: the two
-  // chips are one identity face, so a half-iconed pair would read as a third
-  // style rather than a choice.
-  const identityVariant: 'icons' | 'plain' = columns.some(
-    (c) => (c.key === 'order' || c.key === 'tracking') && c.omitCellIcon,
-  )
-    ? 'plain'
-    : 'icons';
-
   const identityChipProps = {
     platformLabel,
     productPageUrl: null as string | null,
@@ -381,13 +380,17 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
           : undefined
         : undefined,
     serialChip,
-    // Identity face is DECLARED, not hardcoded. This read `variant: 'icons'`
-    // while `ReceivingOrderCell` hardcoded `plain` — the same two fields, an
-    // opposite answer on each surface, and neither derived from anything. The
-    // switch is now the column's own `omitCellIcon`, which is what the header
-    // glyph rule already keys on, so "does the body repeat what the header
-    // says" has ONE answer per column instead of one per call site.
-    variant: identityVariant,
+    // **There is no glyph face in the table engine.** The leading mark on a grid
+    // identity cell is the brand DOT — the house identity law — so this is not a
+    // choice a column gets to make any more.
+    //
+    // It used to be derived from `omitCellIcon`, which read as principled but
+    // was a fork with a trapdoor: a column model that simply did not declare
+    // `order`/`tracking` keys (the compound layout does not) fell through to the
+    // `'icons'` default and silently painted the `#` hash and the MapPin next to
+    // Unbox History's dots. A default that decides identity language is not a
+    // default, it is a second answer waiting for a caller who forgets to ask.
+    variant: 'plain' as const,
     // No platform column on this surface — order + tracking only.
     showPlatform: false,
   };
@@ -400,6 +403,18 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   const cellInset = gridSkin ? ('grid' as const) : ('cell' as const);
   const dataCell = (col: OrdersQueueColumn, rule = true) =>
     gridDataCellClass(col, { rule, inset: cellInset, columnDisplay });
+
+  // One adapter call per row — the compound cells all read this. Built here
+  // (not per cell) so a five-column row maps once, and from the SAME resolved
+  // display strings the flat layout uses rather than re-deriving them.
+  const compoundView = ordersCompoundView(record, {
+    stateLabel: rowStatus.label,
+    // `daysLate` is already the resolved lateness for this lane's deadline —
+    // the same number the flat Late column shows, so the two layouts can never
+    // disagree about whether a row is behind.
+    delayDays: daysLate,
+    delayTip: rowStatus.description,
+  });
 
   // Mobile keeps the right-packed icon cluster (order + tracking; no platform).
   const chipsNode = <OrderIdentityChips {...identityChipProps} isMobile={isMobile} />;
@@ -548,6 +563,40 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
     switch (col.key) {
       case 'select':
         return leadControls;
+      // ── Compound (two-row) tracks — ORDERS_COMPOUND_COLUMNS only ──────────
+      // Bodies come from the SHARED renderer (`components/tables/compound`);
+      // this family only supplies its grid-cell wrapper and its row adapter, so
+      // Orders and Receiving cannot drift apart on the layout.
+      case 'thumb':
+        return (
+          <div data-col="thumb" className={cn(dataCell(col, rule), 'items-center')}>
+            <CompoundThumb view={compoundView} />
+          </div>
+        );
+      case 'item':
+        return (
+          <div data-col="item" className={dataCell(col, rule)}>
+            <CompoundItem view={compoundView} />
+          </div>
+        );
+      case 'fulfillment':
+        return (
+          <div data-col="fulfillment" className={dataCell(col, rule)}>
+            <CompoundFulfillment view={compoundView} />
+          </div>
+        );
+      case 'state':
+        return (
+          <div data-col="state" className={dataCell(col, rule)}>
+            <CompoundState view={compoundView} />
+          </div>
+        );
+      case 'open':
+        return (
+          <div data-col="open" className={cn(dataCell(col, rule), 'justify-end')}>
+            <CompoundOpen onOpen={onRowOpen ? () => onRowOpen(record) : undefined} />
+          </div>
+        );
       case 'title':
         return (
           <div
