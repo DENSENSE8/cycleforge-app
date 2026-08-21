@@ -26,7 +26,7 @@ export default function RedesignedMobilePack() {
         {packerId ? (
           <MobilePackingList packerId={packerId} limit={25} />
         ) : (
-          <div className="flex h-full items-center justify-center text-xs font-semibold uppercase tracking-widest text-blue-300">
+          <div className="flex h-full items-center justify-center text-xs font-semibold uppercase tracking-widest text-text-faint">
             Sign in to view packing
           </div>
         )}

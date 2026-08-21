@@ -38,7 +38,7 @@ import { ListingLinksTab } from '../ListingLinksTab';
 import { UnboxLocationsLeaf } from '../UnboxLocationsLeaf';
 import type { ClaimModalMode } from '../../claim/claim-types';
 import { isReturnIntake } from '@/lib/receiving/triage-intake-kind';
-import { DisplaysLeafBodySkeleton } from '@/components/station/displays/DisplaysLeafBodySkeleton';
+import { UniversalLoader } from '@/design-system/components/UniversalLoader';
 
 /**
  * P3 Displays bodies — deferred chunks. Topic strip labels stay in this module;
@@ -46,9 +46,15 @@ import { DisplaysLeafBodySkeleton } from '@/components/station/displays/Displays
  * (ssr OK — they only mount when the topic is selected.)
  *
  * **Triage speed:** cold `import()` used to paint ← over an empty body
- * (`loading: () => null`). {@link DisplaysLeafBodySkeleton} holds armed-row
- * density while the chunk lands; {@link preloadUnboxDisplayLeafChunks} warms
- * every deferred leaf when Displays opens so index→leaf is a binary cut.
+ * (`loading: () => null`). The Displays column now holds its own
+ * {@link UniversalLoader} field while the chunk lands — scoped to THIS column,
+ * so its sweep is the right-edge's own and never a slice of a page-wide one;
+ * {@link preloadUnboxDisplayLeafChunks} still warms every deferred leaf when
+ * Displays opens so index→leaf is a binary cut.
+ *
+ * It replaced `DisplaysLeafBodySkeleton`, which drew nine armed rows at a fixed
+ * density — a claim about how many verbs the incoming leaf has, made before the
+ * chunk that knows is loaded.
  */
 const loadTicketDisplayHost = () =>
   import('../TicketDisplayHost').then((m) => m.TicketDisplayHost);
@@ -62,7 +68,7 @@ const loadReceivingAuditPanel = () =>
   import('../../ReceivingAuditPanel').then((m) => m.ReceivingAuditPanel);
 
 function LeafBodyLoading() {
-  return <DisplaysLeafBodySkeleton />;
+  return <UniversalLoader isLoading label="Loading display" />;
 }
 
 const TicketDisplayHost = dynamic(loadTicketDisplayHost, {

@@ -30,7 +30,7 @@ import {
 import { RECEIVING_SELECTION_SCOPE } from '@/components/station/receiving-lines-table-helpers';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import ReceivingLinesTable from '@/components/station/ReceivingLinesTable';
-import { UnboxTableCardSkeleton } from '@/components/receiving/unbox/UnboxWorkbenchSkeleton';
+import { UniversalLoader } from '@/design-system/components/UniversalLoader';
 import { UnboxWorkspaceHeader } from '@/components/receiving/unbox/UnboxWorkspaceHeader';
 import { ReceivingLineRailShell } from '@/components/receiving/rail/ReceivingLineRailShell';
 import { ReceivingClaimModal } from '@/components/receiving/workspace/ReceivingClaimModal';
@@ -165,7 +165,7 @@ export function UnboxWorkspaceView(props: {
           style={gridZoomStyle(zoom)}
           data-grid-zoom={zoom}
         >
-          <Suspense fallback={<UnboxTableCardSkeleton />}>
+          <Suspense fallback={<UniversalLoader isLoading label="Loading cartons" />}>
             {unboxView === 'all' ? (
               <TableRebuildPlaceholder surface="Unbox · All" />
             ) : isCompare ? (

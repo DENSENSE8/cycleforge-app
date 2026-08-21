@@ -53,9 +53,9 @@
  * reserves its slot at the TRAILING end; the leading edge is the occupant's.
  */
 
-import { useEffect, useRef, useSyncExternalStore, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { AnimatePresence, motion } from '@/design-system/motion';
-import { ChevronLeft, X } from '@/components/Icons';
+import { ChevronLeft, Maximize2, Minimize2, X } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { usePanelStoreKeyboard } from '@/hooks/usePanelStoreKeyboard';
 import { closeRightPanel } from '@/lib/right-rail/close';
@@ -130,15 +130,53 @@ function RightRailOccupantBody({ node }: { node: ReactNode }) {
  * mid-run, and a host X that stayed live while doing nothing is the same lie
  * from the other side.
  */
-function RightRailHostCloseAnchor({ refused = false }: { refused?: boolean }) {
+function RightRailHostTrailingCluster({
+  refused = false,
+  maximized,
+  onToggleMaximize,
+}: {
+  refused?: boolean;
+  /** Omit both to paint close alone (overlay mode has no sash to widen). */
+  maximized?: boolean;
+  onToggleMaximize?: () => void;
+}) {
+  const canMaximize = onToggleMaximize != null;
   return (
     <div
+      // `right-0`, not `right-2` (2026-08-19): dismiss is the control an
+      // operator throws the pointer at without looking, and a flush corner is
+      // an infinite-width target — 8px of inset turns it back into a 28px one.
+      // The chrome row reserves exactly this cell (`pr-0` + a `w-7` spacer), so
+      // nothing scrolls under it.
       className={cn(
-        'absolute right-2 top-0 z-header flex w-7 items-stretch p-0',
+        'absolute right-0 top-0 z-header flex items-stretch p-0',
+        canMaximize ? 'w-14' : 'w-7',
         STATION_CHROME_ROW_FACE,
       )}
       data-right-rail-host-close-anchor
     >
+      {canMaximize ? (
+        <HoverTooltip
+          label={maximized ? 'Restore panel width' : 'Maximize panel'}
+          asChild
+        >
+          <IconButton
+            size="sm"
+            tone="neutral"
+            ariaLabel={maximized ? 'Restore panel width' : 'Maximize panel'}
+            icon={
+              maximized ? (
+                <Minimize2 className="h-3.5 w-3.5" />
+              ) : (
+                <Maximize2 className="h-3.5 w-3.5" />
+              )
+            }
+            onClick={onToggleMaximize}
+            data-testid="right-rail-host-fullscreen"
+            className="h-full w-7 shrink-0 rounded-none active:scale-100"
+          />
+        </HoverTooltip>
+      ) : null}
       <HoverTooltip
         label={refused ? 'Finishing — cancel to stop' : 'Hide right panel'}
         asChild
@@ -151,7 +189,7 @@ function RightRailHostCloseAnchor({ refused = false }: { refused?: boolean }) {
           onClick={() => closeRightPanel()}
           disabled={refused}
           data-testid="right-rail-host-close"
-          className="h-full w-full rounded-none active:scale-100"
+          className="h-full w-7 shrink-0 rounded-none active:scale-100"
         />
       </HoverTooltip>
     </div>
@@ -259,7 +297,7 @@ export function RightRailHost({ inline = true }: { inline?: boolean } = {}) {
   );
   usePanelStoreKeyboard();
 
-  const { width, edgeHandleProps, isDragging } = useHorizontalEdgeResize({
+  const { width, setWidth, edgeHandleProps, isDragging } = useHorizontalEdgeResize({
     storageKey: DETAIL_STACK_RESIZE.storageKey,
     defaultWidth: DETAIL_STACK_RESIZE.defaultWidthPx,
     minWidth: DETAIL_STACK_RESIZE.minWidthPx,
@@ -271,6 +309,44 @@ export function RightRailHost({ inline = true }: { inline?: boolean } = {}) {
     label: 'Resize details panel',
     testId: 'detail-inspector-resize',
   });
+
+  /**
+   * Maximize — an in-flow sash widen to the frame cap, never a cover overlay
+   * (the Unbox Displays rule: the work surface keeps its floor). Transient by
+   * design: closing and reopening the panel restores the persisted width.
+   */
+  const [maximized, setMaximized] = useState(false);
+  const preMaxWidthRef = useRef<number | null>(null);
+  const maximizeCapPx = isPush && isResizable ? frame.capPx : null;
+
+  // A live sash drag abandons the latch — the operator owns the width.
+  useEffect(() => {
+    if (!isDragging || !maximized) return;
+    setMaximized(false);
+    preMaxWidthRef.current = null;
+  }, [isDragging, maximized]);
+
+  // Losing the cap (overlay mode, non-resizable occupant) must not strand the
+  // panel at a width the operator can no longer undo.
+  useEffect(() => {
+    if (maximizeCapPx != null || !maximized) return;
+    setMaximized(false);
+    preMaxWidthRef.current = null;
+  }, [maximizeCapPx, maximized]);
+
+  const toggleMaximize = useCallback(() => {
+    if (maximizeCapPx == null) return;
+    if (maximized) {
+      const restoreTo = preMaxWidthRef.current;
+      preMaxWidthRef.current = null;
+      setMaximized(false);
+      if (restoreTo != null) setWidth(restoreTo);
+      return;
+    }
+    preMaxWidthRef.current = width;
+    setMaximized(true);
+    setWidth(maximizeCapPx);
+  }, [maximizeCapPx, maximized, setWidth, width]);
 
   // Freeze `desiredWidthPx` while dragging so hosts that still publish desire
   // do not thrash on every pointer move; publish the final width on pointerup.
@@ -353,7 +429,13 @@ export function RightRailHost({ inline = true }: { inline?: boolean } = {}) {
               edge="leading"
               placement="inset"
             />
-            {showHostClose ? <RightRailHostCloseAnchor refused={closeRefused} /> : null}
+            {showHostClose ? (
+              <RightRailHostTrailingCluster
+                refused={closeRefused}
+                maximized={maximized}
+                onToggleMaximize={maximizeCapPx != null ? toggleMaximize : undefined}
+              />
+            ) : null}
             {renderable?.node != null ? <RightRailOccupantBody node={renderable.node} /> : null}
           </aside>
         ) : null}
@@ -455,7 +537,7 @@ export function RightRailHost({ inline = true }: { inline?: boolean } = {}) {
                 placement="inset"
               />
             ) : null}
-            {showHostClose ? <RightRailHostCloseAnchor refused={closeRefused} /> : null}
+            {showHostClose ? <RightRailHostTrailingCluster refused={closeRefused} /> : null}
             {body}
           </motion.aside>
         ) : null}

@@ -14,6 +14,8 @@ import { withAuth, type AuthContext } from '@/lib/auth/withAuth';
 import { updateLine, voidLine } from '@/lib/counter/session-store';
 import { fanOutCounterSession } from '@/lib/counter/session-fanout';
 import { deskResult, lineUuidFromPath, sessionIdFromPath } from '@/lib/counter/session-http';
+import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
+import pool from '@/lib/db';
 import { KIOSK_LINE_TYPES } from '@/lib/kiosk/cart-line';
 import { parseLinePayload } from '@/lib/counter/session-line-payload';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -24,7 +26,11 @@ const PatchSchema = z.object({
   expectedVersion: z.number().int().min(0),
   title: z.string().trim().min(1).max(200).optional(),
   quantity: z.number().int().positive().max(999).optional(),
-  unitAmountCents: z.number().int().min(-10_000_00).max(1_000_000_00).optional(),
+  // `unitAmountCents` is NOT here. A price change is money, so it has its own
+  // verb (`…/price`) with its own step-up gate and its own audit row. Leaving
+  // it on the general PATCH would mean the gate depended on which optional
+  // field a caller happened to include — a permission you can bypass by
+  // choosing a different endpoint is not a permission.
   // A payload PATCH replaces the whole payload, so the caller states which
   // shape it is sending. Without the type there is nothing to validate against,
   // and "validate against whatever it looks like" is how a repair line loses
@@ -88,15 +94,38 @@ export const DELETE = withAuth(
       return Response.json({ error: 'INVALID_REQUEST' }, { status: 400 });
     }
 
-    return deskResult(
-      await fanOutCounterSession(ctx.organizationId, await voidLine(
+    const result = await fanOutCounterSession(
+      ctx.organizationId,
+      await voidLine(
         ctx.organizationId as OrgId,
         { kind: 'desk', staffId: ctx.staffId },
         path.sessionId,
         path.lineUuid,
         { expectedVersion: parsed.data.expectedVersion, reason: parsed.data.reason ?? null },
       ),
-    ));
+    );
+
+    if (result.ok) {
+      const voided = result.snapshot.lines.find((l) => l.id === path.lineUuid);
+      ctx.markAuditWritten();
+      await recordAudit(pool, ctx, req, {
+        source: 'counter-session',
+        action: AUDIT_ACTION.COUNTER_LINE_VOID,
+        entityType: AUDIT_ENTITY.COUNTER_SESSION,
+        entityId: path.sessionId,
+        before: {
+          lineUuid: path.lineUuid,
+          title: voided?.title ?? null,
+          unitAmountCents: voided?.unitAmountCents ?? null,
+          quantity: voided?.quantity ?? null,
+        },
+        after: { lineUuid: path.lineUuid, voided: true },
+        note: parsed.data.reason ?? null,
+        method: 'manual',
+      });
+    }
+
+    return deskResult(result);
   },
-  { permission: 'walk_in.take_payment' },
+  { permission: 'walk_in.take_payment', stepUp: true },
 );

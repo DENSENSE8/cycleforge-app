@@ -56,9 +56,10 @@ const ReceivingAuditPanel = dynamic(
  * lane), which is what keeps `completeTriage`'s Save-for-unbox gate reachable.
  *
  * `location` is a TOOL, not a beat of the carton's procedure: browse the
- * shelves, place the carton, reprint a scuffed sticker, mint a new spot. It
- * earns the right edge for the same reason Pairing does — the centre stays
- * ops-flow.
+ * shelves, place the carton OR one of its products, reprint a scuffed sticker,
+ * mint a new spot. It earns the right edge for the same reason Pairing does —
+ * the centre stays ops-flow. Product placement writes line putaway, never the
+ * carton's `staging_location_id`; the two grains stay two columns.
  */
 export type TriageDisplayTab = 'ticket' | 'linkage' | 'location' | 'timeline';
 
@@ -83,7 +84,10 @@ interface BuildTriageDisplaysInput {
   staging: TriageStagingController;
   /** Close Displays once the carton is on the new spot. */
   onLocationPlaced?: () => void;
-  /** Which leaf is showing — Timeline's audit read mounts only while visible. */
+  /**
+   * Which leaf is showing — Timeline's audit read and Locations' sibling /
+   * suggestion reads mount only while visible.
+   */
   activeTab?: TriageDisplayTab | null;
 }
 
@@ -157,8 +161,17 @@ export function buildTriageDisplayTabs({
       id: 'location',
       label: 'Locations',
       icon: MapPin,
+      // Two grains behind one leaf: the CARTON's door shelf (triage
+      // `staging_location_id`, lane auto-routed) and each PRODUCT's putaway bin
+      // (`receiving_line_putaway`). The subject select lives in the adapter;
+      // the leaf and both writers are the shared ones.
       content: (
-        <ArrivalLocationsLeaf staging={staging} onPlaced={onLocationPlaced} />
+        <ArrivalLocationsLeaf
+          staging={staging}
+          row={row}
+          active={activeTab === 'location'}
+          onPlaced={onLocationPlaced}
+        />
       ),
     },
     {

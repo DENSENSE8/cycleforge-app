@@ -5,6 +5,7 @@ import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
 import { fieldLabel } from '@/design-system/tokens/typography/presets';
 import { User } from '@/components/Icons';
 import { relTime, type POSummary } from './audit-log-panel-shared';
+import { UniversalLoader } from '@/design-system/components/UniversalLoader';
 
 // ─── Receiving PO picker (lives inside the sidebar) ────────────────────────
 
@@ -57,7 +58,7 @@ export function ReceivingPOPicker({
             {error}
           </div>
         ) : loading ? (
-          <div className="p-4 text-center text-role-caption text-text-faint">Loading…</div>
+          <UniversalLoader isLoading label="Loading purchase orders" className="min-h-32" />
         ) : list.length === 0 ? (
           <div className="p-4 text-center text-role-caption text-text-faint">No POs found.</div>
         ) : (

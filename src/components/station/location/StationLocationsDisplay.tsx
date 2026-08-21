@@ -51,10 +51,19 @@
  * `useTriageStaging.selectShelf`, so the lane auto-route and its manual-wins
  * rule are inherited. One storage per station; this leaf never writes across
  * them.
+ *
+ * **The directed target (2026-08-20).** Above the list, a port MAY supply
+ * `suggestion` — "put this product here", composed as {@link PlacementSummary}
+ * with the BASIS of the claim under it. It is additive and optional on purpose:
+ * a leaf must never derive a target from its own catalog, so only a port with
+ * an auditable source (today `receiving_line_putaway` SKU history, see
+ * `lib/receiving/suggested-putaway-location.ts`) can direct anyone. The list
+ * underneath is untouched and remains the override — replacing it with the
+ * suggestion is what would make a wrong answer unrecoverable.
  */
 
 import { useCallback, useMemo, useState } from 'react';
-import { Loader2, MapPin, Plus, Printer } from '@/components/Icons';
+import { MapPin, Plus, Printer } from '@/components/Icons';
 import { PrintLabel } from '@/components/barcode/bin-label-printer';
 import { registerLocations } from '@/components/barcode/bin-label-printer/bin-printer-api';
 import {
@@ -69,8 +78,12 @@ import { parseLocationCodeFlat, type LocationSegments } from '@/lib/barcode-rout
 import { useSegmentChords } from '@/lib/keyboard/useSegmentChords';
 import { toast } from '@/lib/toast';
 import { cn } from '@/utils/_cn';
+import { PlacementSummary } from '@/components/receiving/PlacementSummary';
+import { Button } from '@/design-system/primitives';
+import { describePutawaySuggestion } from '@/lib/receiving/suggested-putaway-location';
 import { StationNewLocationForm } from './StationNewLocationForm';
 import type { StationLocationPlacementPort } from './station-location-port';
+import { UniversalLoader } from '@/design-system/components/UniversalLoader';
 
 /** What committing a row does. `new` swaps the list for the create form. */
 type LocationsMode = 'place' | 'print' | 'new';
@@ -97,6 +110,8 @@ export function StationLocationsDisplay({
     placedLocationId,
     place: placeAt,
     entityNoun,
+    suggestion = null,
+    suggestionLoading = false,
   } = port;
   const { identity: orgGs1 } = useOrgGs1();
 
@@ -179,6 +194,21 @@ export function StationLocationsDisplay({
     [port],
   );
 
+  /**
+   * Commit the DIRECTED target. Deliberately not routed through
+   * {@link commit}: that resolves the row out of the browsable catalog, and a
+   * suggested bin can legitimately be absent from it (deactivated, or filtered
+   * out as a non-bin parent). Placing must not silently no-op because the
+   * override list happens not to list the answer.
+   */
+  const placeSuggested = useCallback(() => {
+    if (!suggestion) return;
+    setBusyId(`suggested:${suggestion.location.id}`);
+    void place(suggestion.location.id, suggestion.location.name).finally(() =>
+      setBusyId(null),
+    );
+  }, [place, suggestion]);
+
   const commit = useCallback(
     (rowId: string) => {
       const loc = locations.find((l) => String(l.id) === rowId);
@@ -230,6 +260,60 @@ export function StationLocationsDisplay({
         />
       ) : (
         <>
+          {/* Row 2b — the DIRECTED target. The list below answers "which
+              addresses exist?"; this answers "where does THIS one go?", which
+              is the question an operator actually has with a product in hand.
+              It never REPLACES the list — the searchable rows underneath are
+              the override path, which is what makes a wrong suggestion
+              survivable. Only ports with an auditable source supply one
+              (`StationLocationPlacementPort.suggestion`); the rest paint
+              nothing here and the leaf stays the catalog it was.
+
+              The basis line is not decoration. A directive whose reason the
+              operator cannot see is one wrong answer away from being ignored
+              forever, so the claim ("3 of the last 10 CF-1180 went here") ships
+              with the address or the block does not ship at all. */}
+          {mode === 'place' && (suggestion || suggestionLoading) ? (
+            <div
+              className={cn('shrink-0 border-b border-border-hairline py-2', DISPLAYS_BODY_INSET)}
+              data-testid="station-locations-suggested-target"
+            >
+              {suggestion ? (
+                <PlacementSummary
+                  location={suggestion.location}
+                  eyebrow={describePutawaySuggestion(suggestion).eyebrow}
+                  footer={
+                    <div className="mt-3 flex items-center justify-between gap-3">
+                      <p className="min-w-0 text-role-caption text-text-muted">
+                        {describePutawaySuggestion(suggestion).basis}
+                      </p>
+                      <Button
+                        type="button"
+                        variant="primarySoft"
+                        size="sm"
+                        disabled={
+                          busyId != null ||
+                          suggestion.location.id === placedLocationId
+                        }
+                        onClick={() => placeSuggested()}
+                      >
+                        {suggestion.location.id === placedLocationId
+                          ? 'Already here'
+                          : 'Place here'}
+                      </Button>
+                    </div>
+                  }
+                />
+              ) : (
+                <UniversalLoader
+                  isLoading
+                  label="Finding where this goes"
+                  className="min-h-16"
+                />
+              )}
+            </div>
+          ) : null}
+
           {/* Row 3 — the same find face as the Root Index `Filter displays…`
               row and the Unbox workbench Band 3 (`variant="chrome"`, full
               width, hairline under): one component, one rhythm, wherever an
@@ -247,15 +331,11 @@ export function StationLocationsDisplay({
 
           <div className="min-h-0 flex-1 overflow-y-auto py-2">
             {locationsLoading ? (
-              <p
-                className={cn(
-                  'flex items-center gap-2 py-6 text-role-caption text-text-muted',
-                  DISPLAYS_BODY_INSET,
-                )}
-              >
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Loading locations…
-              </p>
+              <UniversalLoader
+                isLoading
+                label="Loading locations"
+                className="min-h-28"
+              />
             ) : rows.length === 0 ? (
               // Two empty answers, never one: a filter that excluded everything
               // is not the same as a warehouse with no shelves.
@@ -303,12 +383,7 @@ export function StationLocationsDisplay({
               DISPLAYS_BODY_INSET,
             )}
           >
-            {busyId ? (
-              <span className="inline-flex items-center gap-1.5">
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                Working…
-              </span>
-            ) : mode === 'print' ? (
+            {mode === 'print' ? (
               <span className="inline-flex items-center gap-1.5">
                 <Printer className="h-3.5 w-3.5 shrink-0" />
                 <span>Pick a location to reprint its label.</span>

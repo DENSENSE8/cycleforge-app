@@ -9,6 +9,7 @@ import {
   toggleStaffTodoApi,
   setStaffTodoIntervalApi,
   deleteStaffTodoApi,
+  renameStaffTodoApi,
   type StaffTodoItem,
   type StaffTodoKind,
 } from '@/lib/queries/staff-todos-queries';
@@ -40,6 +41,10 @@ export function useGoalChecklists(staffId: number | null, active: StationKey | n
     enabled: !!staffId && !!active,
   });
   const serverItems = useMemo(() => todosQuery.data ?? [], [todosQuery.data]);
+
+  // The ARCHIVED half is not read here. `Home → Tasks` (`tasks.mine`) renders
+  // it as a Deleted lane with a record plane and a Restore; a second archived
+  // list inside a 290px popover would be a twin of that surface.
 
   const todoItems = useMemo<Todo[]>(
     () =>
@@ -182,6 +187,47 @@ export function useGoalChecklists(staffId: number | null, active: StationKey | n
     [staffId, active, intervalMs, queryClient, listKey, refreshList],
   );
 
+  const renameItem = useCallback(
+    (id: string, rawText: string) => {
+      const text = rawText.trim();
+      if (!text || !staffId || !active) return;
+      const serverId = Number(id);
+      queryClient.setQueryData<StaffTodoItem[]>(listKey(), (items) =>
+        (items ?? []).map((it) => (String(it.id) === id ? { ...it, text } : it)),
+      );
+      if (serverId > 0) {
+        renameStaffTodoApi(serverId, text)
+          .then((item) =>
+            queryClient.setQueryData<StaffTodoItem[]>(listKey(), (items) =>
+              (items ?? []).map((it) => (it.id === item.id ? item : it)),
+            ),
+          )
+          .catch(refreshList);
+      }
+    },
+    [staffId, active, queryClient, listKey, refreshList],
+  );
+
+  /**
+   * Bulk delete. Both verbs archive the SAME way a single row does — one DELETE
+   * per id — so "clear" and "delete all" are as reversible as any other delete
+   * and need no second server path. The cache is emptied once, up front, so a
+   * long list does not repaint per row.
+   */
+  const removeMany = useCallback(
+    (ids: string[]) => {
+      if (!staffId || !active || ids.length === 0) return;
+      const gone = new Set(ids);
+      queryClient.setQueryData<StaffTodoItem[]>(listKey(), (items) =>
+        (items ?? []).filter((it) => !gone.has(String(it.id))),
+      );
+      void Promise.allSettled(
+        ids.map((id) => (Number(id) > 0 ? deleteStaffTodoApi(Number(id)) : Promise.resolve())),
+      ).then(refreshList);
+    },
+    [staffId, active, queryClient, listKey, refreshList],
+  );
+
   const changeInterval = useCallback(
     (ms: number) => {
       setDraftIntervalMs(ms);
@@ -213,10 +259,16 @@ export function useGoalChecklists(staffId: number | null, active: StationKey | n
     recurDue,
     toggleTodo: (id: string) => toggleItem(todoItems, id),
     removeTodo: removeItem,
+    renameTodo: renameItem,
     addTodo: (text: string) => addItem('general', text),
+    clearDoneTodos: () => removeMany(todoItems.filter((t) => t.done).map((t) => t.id)),
+    deleteAllTodos: () => removeMany(todoItems.map((t) => t.id)),
     toggleRecur: (id: string) => toggleItem(recurItems, id),
     removeRecur: removeItem,
+    renameRecur: renameItem,
     addRecur: (text: string) => addItem('recurring', text),
+    clearDoneRecur: () => removeMany(recurItems.filter((t) => t.done).map((t) => t.id)),
+    deleteAllRecur: () => removeMany(recurItems.map((t) => t.id)),
     changeInterval,
   };
 }

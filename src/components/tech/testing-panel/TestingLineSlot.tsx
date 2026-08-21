@@ -61,8 +61,8 @@ export function TestingLineSlot({
       flush={flush}
       selectedIndex={selectedIndex}
       onSelectIndex={(i) => c.setActiveSlotByLine((m) => ({ ...m, [lineId]: i }))}
-      onSetVerdict={(next) => void c.applyLineVerdict(lineId, serials, next)}
-      onSetUnitVerdict={(serial, next) => void c.handleSlotVerdict(lineId, serial, next)}
+      onSetVerdict={(next) => c.requestLineVerdict(lineId, serials, next)}
+      onSetUnitVerdict={(serial, next) => c.requestSlotVerdict(lineId, serial, next)}
       onSetUnitCondition={(serial, next) => void c.handleSlotCondition(lineId, serial, next)}
       onAddSerial={(sn) => c.enqueueSerial(lineId, sn)}
       onDeleteSerial={async (s) => {

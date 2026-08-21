@@ -7,6 +7,10 @@ import { Check, ChevronDown, User } from '@/components/Icons';
 import { ToolbarButton } from '@/components/ui/ToolbarButton';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { STAFF_FILTER_PARAM, useStaffFilter } from '@/hooks/useStaffFilter';
+import {
+  WorkbenchFilterGroupLabel,
+  WorkbenchFilterMenuRow,
+} from '@/components/dashboard/workbench-filter-popover';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 
@@ -164,5 +168,66 @@ export function StaffFilterButton({
         </Popover.Content>
       </Popover.Portal>
     </Popover.Root>
+  );
+}
+
+/**
+ * The staff facet as MENU ROWS, for hosting inside the find field's one
+ * {@link WorkbenchFilterPopover} — no trigger, no glyph, no popover of its own.
+ *
+ * **Why this exists.** `density="field"` gave the facet its own 24px cell with a
+ * `User` glyph in it, so a find bar that also had a refine funnel showed two
+ * marks, and Incoming showed four. A field glyph answers one question — *does
+ * anything narrow these rows?* — and it is the funnel that answers it. A facet
+ * is a GROUP inside that answer, not a second question beside it.
+ *
+ * The `density="field"` trigger stays for the moment (Pack and Shipping's
+ * History tabs have no find field at all, so they have no funnel to fold into —
+ * the documented `RIGHT_ZONE_FACET_RESIDENTS` carve-out). Every surface that
+ * HAS a find field uses these rows. When those two grow a find field, the
+ * trigger's field density goes.
+ */
+export function StaffFilterRows({
+  allLabel = 'All staff',
+  allToken,
+  groupLabel = 'Staff',
+  onPick,
+}: {
+  allLabel?: string;
+  allToken?: string;
+  /** Eyebrow above the rows — e.g. "Technician" on Testing. */
+  groupLabel?: string;
+  /** Called after a pick so the host funnel can close itself. */
+  onPick?: () => void;
+}) {
+  const { staffId, options, setStaff } = useStaffFilter(allToken ? { allToken } : undefined);
+  const searchParams = useSearchParams();
+  const token = allToken?.trim().toLowerCase() || null;
+  const rawStaff = searchParams.get(STAFF_FILTER_PARAM);
+  const isExplicitAll = token != null && String(rawStaff || '').trim().toLowerCase() === token;
+  const active = staffId != null;
+
+  const pick = (id: number | null) => {
+    setStaff(id);
+    onPick?.();
+  };
+
+  return (
+    <>
+      <WorkbenchFilterGroupLabel>{groupLabel}</WorkbenchFilterGroupLabel>
+      <WorkbenchFilterMenuRow
+        label={allLabel}
+        active={token ? isExplicitAll : !active}
+        onClick={() => pick(null)}
+      />
+      {options.map((option) => (
+        <WorkbenchFilterMenuRow
+          key={option.id}
+          label={option.name}
+          active={option.id === staffId}
+          onClick={() => pick(option.id)}
+        />
+      ))}
+    </>
   );
 }

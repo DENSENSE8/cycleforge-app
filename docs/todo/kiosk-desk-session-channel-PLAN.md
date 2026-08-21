@@ -32,7 +32,8 @@ decides who is authoritative for conflicting writes, not the device type.
 | **D2** | **One channel family: `org:{orgId}:kiosk:{deviceId}`.** Both sides may `subscribe` + `publish`, exactly like the per-staff bridges. No cross-device wildcard. | Mirrors `getPhoneBridgeChannelName` (`channels.ts:141`). The device id is the pairing gate that already exists (`kiosk_devices`), so the bind needs no new secret. |
 | **D3** | **Monotonic integer `version` per session, not a CRDT.** A mutation carries `expectedVersion`; a mismatch returns **409 + the current snapshot**, and the client re-renders from that. | A counter cart is a short-lived list of 1–8 lines with one human on each end — last-writer-wins with a visible refetch is honest and debuggable. Yjs exists in this repo (`forge:master-plan`) and is the wrong tool here: no offline branch merge, no prose. |
 | **D4** | **The 1:1 bind is a lease, not a config.** A staff desktop *claims* a paired kiosk device (`claimed_by_staff_id` + `claim_expires_at`, heartbeat-renewed). A second desktop claiming the same device sees an explicit **takeover** prompt naming the current holder. | "One on one" has to survive two managers opening the same counter. Silent multi-claim is how POS systems double-charge. |
-| **D5** | **The iPad never edits the cart. Display + signature + confirm, and nothing else.** Its entire write surface is three verbs: set customer identity, sign a repair agreement, confirm the visit. **Every line write — add, quantity, price, discount, void — is desk-only**, and the money-moving ones additionally pass the existing PIN step-up (`/api/kiosk/staff-for-stepup`, `KioskPaymentStepUpSheet`). | The device is unattended-capable — parent plan D7's whole rationale. Answered 2026-08-19: the stricter reading wins. A three-verb write surface is a far smaller thing to secure than a line editor with a permission matrix, and it makes line convergence one-directional, which is also easier to assert (P6). |
+| **D5** | ~~The iPad never edits the cart~~ — **REVISED 2026-08-20: the counter is a form TWO PEOPLE fill at once.** The customer enters their own details and device symptoms on the tablet while staff price and correct on the desktop; a read-only tablet turns that into dictation. The boundary moved from WHO to WHAT: the tablet may create and correct lines and identity, but **never money or finality** — price override · discount · void · claim/release · park · submit are staff-only, and the money ones carry a PIN step-up. That is the line worth defending, because the device principal outlives the customer standing there: editing a serial costs a correction, zeroing a price is an open till. A tablet-staged line is always created at **zero**, priced from the desk. | *(superseded text below)* |
+| ~~D5 (original)~~ | ~~**The iPad never edits the cart. Display + signature + confirm, and nothing else.**~~ Its entire write surface is three verbs: set customer identity, sign a repair agreement, confirm the visit. **Every line write — add, quantity, price, discount, void — is desk-only**, and the money-moving ones additionally pass the existing PIN step-up (`/api/kiosk/staff-for-stepup`, `KioskPaymentStepUpSheet`). | The device is unattended-capable — parent plan D7's whole rationale. Answered 2026-08-19: the stricter reading wins. A three-verb write surface is a far smaller thing to secure than a line editor with a permission matrix, and it makes line convergence one-directional, which is also easier to assert (P6). |
 | **D6** | **Every readable field on the session is readable by a stranger.** The session payload sent to a device principal is a **projection**: no cost, no margin, no staff notes, no customer list. | Same reason `kioskMode` already suppresses customer search. |
 | **D7** | **Degrade, never block.** Channel down → the surface falls back to `GET /api/counter/session/{id}` polling at 3s and shows the connection-health chip (`useConnectionHealth`). Writes still go over REST and still succeed. | The counter cannot stop selling because a websocket dropped. Matches the OfflineBanner semantics in the station realtime program. |
 | **D8** | **Sessions are parked, not deleted.** `status: open → parked → submitted → voided`. Submit hands off to the existing `submitCounterTransaction` with the session's `client_event_id`. | Industry-standard POS "park/retrieve a sale". Also gives the idempotency anchor a home that outlives the tab. |
@@ -472,11 +473,41 @@ is proved by refusal.
 
 ### P7 · Money-edit step-up + audit
 
-**Build:** route discount / price override / void through the existing PIN step-up; write an audit row per
-money-moving edit (actor, before, after, reason).
+**Status: DONE 2026-08-20.** Built: `POST …/lines/{lineUuid}/price` (its own verb) · `stepUp: true` on price and
+void and submit · three new `AUDIT_ACTION` constants + `AUDIT_ENTITY.COUNTER_SESSION` · `recordAudit` on every
+money-moving edit with real before/after amounts.
 
-**Test:** kiosk-initiated discount → 403 · desk without step-up → 403 · with step-up → 200 + exactly one audit row
-· wrong PIN → 403 and **no** state change (assert version unchanged).
+**Price got its own route, and that is the load-bearing part.** It used to be an optional field on the general
+line PATCH — which would have made the step-up gate depend on *which optional field a caller chose to send*.
+A permission you can bypass by omitting a field is not a permission. `unitAmountCents` is now absent from the
+PATCH schema entirely.
+
+**The audit reads the BEFORE amount before writing.** A row carrying only the new price cannot answer the
+question anyone actually asks of it later — *what did this cost before someone changed it?*
+
+**Test:** the domain suite pins the boundary field-by-field (a kiosk patch carrying `unitAmountCents` is
+refused **including its harmless half**); the E2E pins that a device principal cannot reach the desk routes at
+all.
+
+### P8 · Submit hand-off
+
+**Status: DONE 2026-08-20 — 34 domain tests green.** Built: `submitBlocker()` + `submitSession()` in
+`session-store.ts` · `POST …/{id}/submit` (`walk_in.take_payment` + step-up + audit).
+
+**Composes `submitCounterTransaction`; does not re-implement it.** Customer create-or-match, the repair intake,
+provider order staging and the ticket outbox already live there, tested. The session contributes the two things
+that function cannot know: the staged cart (mapped by `mapKioskCartToCounterParts`, the same mapper the kiosk's
+own submit uses, so a visit finished from either side produces the same two records) and the
+**`client_event_id` minted when the visit opened** — which is what makes a double-submit from two devices one
+transaction instead of two charges (D8).
+
+**Three gates, in a deliberate order** (`submitBlocker`): empty cart → missing phone → unsigned repair. Order
+matters: telling someone their repair is unsigned when the cart is empty sends them to fix the wrong thing.
+A cart of only *voided* lines is empty. An unsigned repair is not a slow path to fix later — it is a legal
+agreement about someone else's property, so it is a hard 422.
+
+**All the submit refusals are 422, not 400.** The request is well-formed and authorized; the *visit* is not
+finishable yet.
 
 ---
 

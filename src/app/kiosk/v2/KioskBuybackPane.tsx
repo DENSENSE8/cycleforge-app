@@ -19,7 +19,7 @@ import {
   KIOSK_PANE_FOOTER_BAND,
   KIOSK_PANE_HEADER_BAND,
   KIOSK_PANE_HEADER_TITLE,
-  KIOSK_SECTION_LABEL,
+  KIOSK_SECTION_LABEL_ROW,
 } from '@/app/kiosk/kiosk-chrome';
 
 export function KioskBuybackPane() {
@@ -73,7 +73,7 @@ export function KioskBuybackPane() {
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="flex w-full flex-col divide-y divide-border-hairline">
           <section>
-            <h3 className={cn('border-b border-border-hairline px-4 py-2', KIOSK_SECTION_LABEL)}>
+            <h3 className={KIOSK_SECTION_LABEL_ROW}>
               Device
             </h3>
             <div className="space-y-3 px-4 py-4">

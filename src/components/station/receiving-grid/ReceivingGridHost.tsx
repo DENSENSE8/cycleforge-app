@@ -29,6 +29,8 @@ import { ReceivingGridGroupRow } from './ReceivingGridGroupRow';
 import { mergeCustomFieldColumns } from '@/lib/custom-fields/column-model';
 import { commitCustomFieldValueClient } from '@/lib/custom-fields/commit-value-client';
 import { toast } from '@/lib/toast';
+import { useQueryClient } from '@tanstack/react-query';
+import { commitReceivingLineNote } from '@/lib/receiving/commit-receiving-line-note';
 
 interface ReceivingGridHostProps {
   /** Day-banded PO groups (Unbox / History). */
@@ -215,6 +217,7 @@ export function ReceivingGridHost({
     [customDefs],
   );
 
+
   // Column sort is DURABLE: `?colsort=`/`?coldir=` (workbench URL-as-state law),
   // so a reload or a shared link reproduces the operator's view. Mode switches
   // clear it via the route's param spec. TanStack still owns the asc↔desc cycle.
@@ -251,6 +254,7 @@ export function ReceivingGridHost({
     onControlledSortClear
     ?? clearSort;
 
+  const queryClient = useQueryClient();
   const { displayByKey } = useGridColumnDisplay(prefsTableId);
   const { fillsById } = useGridRowFills(prefsTableId);
 
@@ -294,6 +298,22 @@ export function ReceivingGridHost({
 
     return { orderGroupsByDate: [] as [string, RowGroup<ReceivingLineRow>[]][], flatRows: flat };
   }, [filteredGroupedRecords, daySections, serverSorted, columnSort, sortDir, activityAxis]);
+  // Inline NOTE commit — same shape as the custom-field commit above: the cell
+  // has already painted, this keeps every other view of the row in step, and a
+  // failure both rolls the cache back and says so.
+  const handleCommitNote = useCallback(
+    (lineId: number, next: string) => {
+      if (lineId <= 0) return;
+      const previous = flatRows.find((r) => r.id === lineId)?.notes ?? null;
+      void commitReceivingLineNote({ queryClient, lineId, previous, next }).catch(
+        (err: unknown) => {
+          toast.error(err instanceof Error ? err.message : 'Failed to save note');
+        },
+      );
+    },
+    [queryClient, flatRows],
+  );
+
 
   return (
     <NonlinearTableHost<ReceivingLineRow, ReceivingGridColumnKey, ReceivingGridColumn>
@@ -366,6 +386,7 @@ export function ReceivingGridHost({
           onCrosshairHover={onCrosshairHover}
           customFieldDefs={customDefs}
           onCustomFieldCommit={handleCustomFieldCommit}
+          onCommitNote={handleCommitNote}
         />
       )}
       renderRow={(row, stripeIndex, { columns: visible }) => (
@@ -393,6 +414,7 @@ export function ReceivingGridHost({
           onCrosshairHover={onCrosshairHover}
           customFieldDefs={customDefs}
           onCustomFieldCommit={handleCustomFieldCommit}
+          onCommitNote={handleCommitNote}
         />
       )}
     />

@@ -28,7 +28,9 @@ import {
 } from '@/components/dashboard/workbench-shell';
 import { WorkbenchKpiCollapseToggle } from '@/components/dashboard/workbench-kpi-collapse';
 import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
-import { StaffFilterButton } from '@/components/ui/StaffFilterButton';
+import { StaffFilterRows } from '@/components/ui/StaffFilterButton';
+import { WorkbenchFilterPopover } from '@/components/dashboard/workbench-filter-popover';
+import { STAFF_FILTER_PARAM } from '@/hooks/useStaffFilter';
 import { ReceivingModeArrival } from '@/components/icons/stations';
 import { ReceivingBoxChromeActions } from '@/components/receiving/ReceivingBoxChromeActions';
 import { IncomingBulkTrackingPanel } from '@/components/sidebar/receiving/incoming/IncomingBulkTrackingPanel';
@@ -161,7 +163,12 @@ function useTriageFilterParam() {
   return { value, setValue };
 }
 
-/** Band 3 — find-only: dominant carton filter with the staff facet in-field. */
+/**
+ * Band 3 — find-only: dominant carton filter with the staff facet in-field, as
+ * ROWS of the one refine funnel. It used to paint its own `User` glyph in the
+ * field; the field carries a single mark and that mark is the funnel
+ * (`workbench-filter-popover.tsx` → the one-icon law).
+ */
 export function TriageTriageBand({
   kpiOpen,
   onToggleKpi,
@@ -172,6 +179,8 @@ export function TriageTriageBand({
   className?: string;
 }) {
   const { value, setValue } = useTriageFilterParam();
+  const searchParams = useSearchParams();
+  const [refineOpen, setRefineOpen] = useState(false);
 
   return (
     <WorkbenchTriageBand
@@ -184,7 +193,17 @@ export function TriageTriageBand({
           onChange={setValue}
           placeholder="Filter arrivals…"
           className="min-w-0 flex-1"
-          trailingSuffix={<StaffFilterButton density="field" align="end" />}
+          trailingSuffix={
+            <WorkbenchFilterPopover
+              open={refineOpen}
+              onOpenChange={setRefineOpen}
+              hot={Boolean(searchParams.get(STAFF_FILTER_PARAM))}
+              label="Refine"
+              density="field"
+            >
+              <StaffFilterRows onPick={() => setRefineOpen(false)} />
+            </WorkbenchFilterPopover>
+          }
         />
       }
     />

@@ -122,7 +122,14 @@ export type TableId =
    * checklist must not touch any operator queue's density, and no queue shares
    * these keys.
    */
-  | 'daily';
+  | 'daily'
+  /**
+   * My Tasks (`staff_todos`) — one staffer's own list. Its OWN bucket, never
+   * `daily`'s: the two tables answer different questions over different stores
+   * (personal list vs the org's shift checklist with a roster), and they share
+   * only the word "task".
+   */
+  | 'tasks';
 
 /** Canonical meta-slot keys (the left-side qty | condition | rest grid). */
 export const META_KEYS = {
@@ -281,6 +288,14 @@ export const TABLE_COLUMNS: Record<TableId, TableColumnSpec[]> = {
     META_STATUS,
     GRID_COL('team', 'Team', 'number'),
     GRID_COL('marked', 'Checked', 'date'),
+  ],
+  // My Tasks. `select` and `task` are frozen identity, so neither is offered.
+  tasks: [
+    META_STATUS,
+    GRID_COL('kind', 'Kind', 'tag'),
+    GRID_COL('station', 'Station', 'text'),
+    GRID_COL('due', 'Resets', 'date'),
+    GRID_COL('updated', 'Checked', 'date'),
   ],
   'orders-import': [
     GRID_COL('sku', 'SKU', 'id'),

@@ -3,6 +3,25 @@ import { resolvePoRef } from './resolve-po-ref';
 import { remapReceivingPhotoTypeOnMove } from '@/lib/receiving/photo-intent';
 import type { PhotoEntityType } from './types';
 
+/**
+ * The minimum a caller's transaction client must provide.
+ *
+ * Executor pattern (same shape as `transitionReceivingLine`): every impl below
+ * has a `…On(client, …)` core plus a wrapper that opens its own transaction.
+ * A caller that ALREADY owns a transaction — the AI mutation chokepoint, which
+ * must write the photo move and its `agent_mutations` row atomically — passes
+ * its client via `makeReassignDepsForClient` and gets one transaction instead
+ * of four. Without this the move would commit on its own connection, and a
+ * later failure in the outer transaction would leave a moved photo with no
+ * mutation row: invisible to audit and impossible to revert.
+ */
+export interface ReassignClient {
+  query<R extends Record<string, unknown> = Record<string, unknown>>(
+    sql: string,
+    params?: unknown[],
+  ): Promise<{ rows: R[]; rowCount: number | null }>;
+}
+
 export class PhotoReassignError extends Error {
   readonly status: 400 | 404 | 409;
 
@@ -62,11 +81,12 @@ export interface ReassignReceivingPhotoDeps {
   ) => Promise<string | null>;
 }
 
-async function loadPrimaryLinkImpl(
+async function loadPrimaryLinkOn(
+  client: ReassignClient,
   organizationId: string,
   photoId: number,
 ): Promise<ReassignReceivingPhotoScope | null> {
-  return withTenantTransaction(organizationId, async (client) => {
+  {
     const res = await client.query<{
       entity_type: string;
       entity_id: string;
@@ -108,15 +128,25 @@ async function loadPrimaryLinkImpl(
       receivingLineId: entityType === 'RECEIVING_LINE' ? entityId : null,
       photoType: row.photo_type,
     };
-  });
+  }
 }
 
-async function resolveTargetImpl(
+async function loadPrimaryLinkImpl(
+  organizationId: string,
+  photoId: number,
+): Promise<ReassignReceivingPhotoScope | null> {
+  return withTenantTransaction(organizationId, (client) =>
+    loadPrimaryLinkOn(client, organizationId, photoId),
+  );
+}
+
+async function resolveTargetOn(
+  client: ReassignClient,
   organizationId: string,
   entityType: 'RECEIVING' | 'RECEIVING_LINE',
   entityId: number,
 ): Promise<ReassignReceivingPhotoScope | null> {
-  return withTenantTransaction(organizationId, async (client) => {
+  {
     if (entityType === 'RECEIVING') {
       const res = await client.query<{ id: string }>(
         `SELECT id FROM receiving_carton WHERE id = $1 AND organization_id = $2 LIMIT 1`,
@@ -148,7 +178,17 @@ async function resolveTargetImpl(
       receivingId,
       receivingLineId: entityId,
     };
-  });
+  }
+}
+
+async function resolveTargetImpl(
+  organizationId: string,
+  entityType: 'RECEIVING' | 'RECEIVING_LINE',
+  entityId: number,
+): Promise<ReassignReceivingPhotoScope | null> {
+  return withTenantTransaction(organizationId, (client) =>
+    resolveTargetOn(client, organizationId, entityType, entityId),
+  );
 }
 
 async function updateAssignmentImpl(input: {
@@ -159,7 +199,23 @@ async function updateAssignmentImpl(input: {
   poRef: string | null;
   photoType: string | null;
 }): Promise<void> {
-  await withTenantTransaction(input.organizationId, async (client) => {
+  await withTenantTransaction(input.organizationId, (client) =>
+    updateAssignmentOn(client, input),
+  );
+}
+
+async function updateAssignmentOn(
+  client: ReassignClient,
+  input: {
+    organizationId: string;
+    photoId: number;
+    targetEntityType: PhotoEntityType;
+    targetEntityId: number;
+    poRef: string | null;
+    photoType: string | null;
+  },
+): Promise<void> {
+  {
     const updated = await client.query(
       `UPDATE photo_entity_links
           SET entity_type = $3,
@@ -187,7 +243,7 @@ async function updateAssignmentImpl(input: {
         WHERE id = $1 AND organization_id = $2`,
       [input.photoId, input.organizationId, input.poRef, input.photoType],
     );
-  });
+  }
 }
 
 const defaultDeps: ReassignReceivingPhotoDeps = {
@@ -196,6 +252,25 @@ const defaultDeps: ReassignReceivingPhotoDeps = {
   updateAssignment: updateAssignmentImpl,
   resolvePoRef,
 };
+
+/**
+ * Deps bound to a caller-owned transaction client.
+ *
+ * For callers that must make the move atomic with their own writes — see
+ * {@link ReassignClient}. `resolvePoRef` keeps its own connection: it is a
+ * read of denormalised reference data, not part of the atomic unit, and
+ * threading it would widen this seam for no correctness gain.
+ */
+export function makeReassignDepsForClient(client: ReassignClient): ReassignReceivingPhotoDeps {
+  return {
+    loadPrimaryLink: (organizationId, photoId) =>
+      loadPrimaryLinkOn(client, organizationId, photoId),
+    resolveTarget: (organizationId, entityType, entityId) =>
+      resolveTargetOn(client, organizationId, entityType, entityId),
+    updateAssignment: (input) => updateAssignmentOn(client, input),
+    resolvePoRef: (entityType, entityId) => resolvePoRef(entityType, entityId, client),
+  };
+}
 
 function scopesMatch(
   a: ReassignReceivingPhotoScope,

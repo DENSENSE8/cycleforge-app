@@ -571,7 +571,14 @@ export function isRaillessOrderFeedSurface(
 const CONTEXT_PANEL_ROUTE_KEYS = new Set<SidebarRouteKey>([
   // `home` dropped 2026-08-12 — Today is rail-less (Pattern E). Saved views
   // sit on Band 3 `WorkbenchViewsMenu`; nothing is left for a left column
-  // that chrome cannot say. Same mechanism as `/ops/photos` and `/search`.
+  // that chrome cannot say. Same mechanism as `/ops/photos`.
+  //
+  // `search` ADDED 2026-08-20 with the order station port. It was rail-less on
+  // the same reasoning, and that reasoning expired: the middle now paints the
+  // scan-station composition, so the left column holds recent finds for the
+  // same reason Unbox's holds recent cartons — an operator reaches for the
+  // record they just had open, and the header dropdown is not that reach.
+  'search',
   'dashboard',
   'admin',
   'operations',
@@ -987,6 +994,10 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
       // parser disagree about which mode owns `/`.
       { id: 'daily',  label: 'Daily',  icon: ListChecks,     to: () => ({ pathname: '/', params: { mode: null } }) },
       { id: 'today',  label: 'Today',  icon: Activity,        to: () => ({ pathname: '/', params: { mode: 'today' } }) },
+      // The staffer's OWN task list (`staff_todos`) as a real spreadsheet —
+      // the surface the header pace-and-next popover previews. Not the deleted
+      // ops-plan `tasks` mode; see `home-modes.ts` for why the token is reused.
+      { id: 'tasks',  label: 'Tasks',  icon: ListChecks,      to: () => ({ pathname: '/', params: { mode: 'tasks' } }) },
       // TWO children, deliberately. `inbox` (subscription feed) and `tasks`
       // (ops-plan tasks) were deleted 2026-08-19 and `forge` (Plans Live) moved
       // to its own `/forge` route, where the Plans spine pin now points;

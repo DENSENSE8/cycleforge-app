@@ -306,7 +306,7 @@ function PackVerifyConfirm({
             autoCorrect="off"
             spellCheck={false}
             placeholder="Scan or type the tracking #"
-            className={cn("w-full rounded-xl border border-white/15 bg-white/5 px-3 py-3 font-mono text-role-body text-white placeholder:text-white/30", focusRing('field', 'accent'))} // ds-allow-raw-neutral: photo-stage overlay field
+            className={cn("w-full rounded-none border border-white/15 bg-white/5 px-3 py-3 font-mono text-role-body text-white placeholder:text-white/30", focusRing('field', 'accent'))} // ds-allow-raw-neutral: photo-stage overlay field
           />
         </label>
         {canScan ? (
@@ -314,7 +314,7 @@ function PackVerifyConfirm({
             type="button"
             onClick={onScanFromSlip}
             disabled={ocrBusy || submitting}
-            className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/15 px-3 py-2.5 text-role-caption font-semibold text-white/80 disabled:opacity-60"
+            className="flex w-full items-center justify-center gap-2 rounded-none border border-white/15 px-3 py-2.5 text-role-caption font-semibold text-white/80 disabled:opacity-60"
           >
             {ocrBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             {ocrBusy ? 'Reading slip…' : 'Read tracking from slip'}
@@ -327,7 +327,7 @@ function PackVerifyConfirm({
           type="button"
           onClick={onConfirm}
           disabled={submitting}
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-500 px-4 py-3.5 text-base font-semibold text-white disabled:opacity-60"
+          className="flex w-full items-center justify-center gap-2 rounded-none bg-emerald-500 px-4 py-3.5 text-base font-semibold text-white disabled:opacity-60"
         >
           {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
           {submitting ? 'Submitting…' : 'Verify & finish'}
@@ -336,7 +336,7 @@ function PackVerifyConfirm({
           type="button"
           onClick={onBack}
           disabled={submitting}
-          className="w-full rounded-xl border border-white/15 px-4 py-3 text-sm font-semibold text-white/80 disabled:opacity-60"
+          className="w-full rounded-none border border-white/15 px-4 py-3 text-sm font-semibold text-white/80 disabled:opacity-60"
         >
           Back to box photos
         </button>

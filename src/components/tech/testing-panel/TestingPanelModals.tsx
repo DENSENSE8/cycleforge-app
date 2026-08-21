@@ -1,6 +1,7 @@
 import { ReceivingAuditRail } from '@/components/receiving/workspace/ReceivingAuditRail';
 import { SendPhotoNoteRail } from '@/components/receiving/workspace/SendPhotoNoteRail';
 import { MovePhotosBetweenPoRail } from '@/components/receiving/workspace/line-edit/MovePhotosBetweenPoRail';
+import { TestingFailReasonSheet } from '@/components/tech/testing/TestingFailReasonSheet';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import type { TestingController } from './testing-panel-types';
 
@@ -11,6 +12,10 @@ import type { TestingController } from './testing-panel-types';
  * bench operator reads them BESIDE the carton. Claim create/link/chat lives in
  * the Ticket Displays leaf ({@link TicketDisplayHost}) — never
  * `ReceivingClaimModal` over the middle triage surface.
+ *
+ * The fail-reason sheet is the one deliberate exception to that: it is not a
+ * surface to read beside the work, it is a question that must be answered before
+ * the verdict is allowed to land — the same standing Unbox's QA fail sheet has.
  */
 export function TestingPanelModals({
   c,
@@ -35,6 +40,14 @@ export function TestingPanelModals({
         open={c.movePhotosOpen}
         receivingId={row.receiving_id}
         onClose={() => c.setMovePhotosOpen(false)}
+      />
+
+      <TestingFailReasonSheet
+        open={c.pendingFail != null}
+        unitLabel={c.pendingFail?.label ?? 'this unit'}
+        onConfirm={c.confirmPendingFail}
+        onClose={c.cancelPendingFail}
+        busy={c.isMutating}
       />
     </>
   );

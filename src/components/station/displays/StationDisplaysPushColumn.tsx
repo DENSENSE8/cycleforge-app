@@ -90,8 +90,10 @@ const STATION_DISPLAYS_PUSH_COLLAPSE_LABEL = 'Restore panel width';
  * (`pointer-events-auto` on the cell) so the band itself stays pass-through
  * for the sash hit area under empty chrome.
  *
- * The band has NO leading pad (2026-08-19): the leaf Back chevron takes the
- * column's own left corner. Trailing inset is `pr-1.5` on the band token.
+ * The band has NO leading pad AND no trailing pad (2026-08-19): the leaf Back
+ * chevron takes the column's own left corner and the close takes its right one.
+ * Both are `0` on the band token — a trailing inset left the `✕` floating off
+ * the column's own edge.
  * Maximize and close share {@link STATION_DISPLAYS_PUSH_TOP_CELL} (28px,
  * `gap-0`) — close must not `-ml-px` into fullscreen.
  */

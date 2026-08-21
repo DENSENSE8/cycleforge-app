@@ -49,6 +49,7 @@
 | Layer | SoT module |
 |---|---|
 | Host shell | `StationScanPaneHost` + `StationPanelRoot` + `StationWorkbench` (`bodyGap="none"`, `reserveIdentityClearance={false}`) |
+| Host shell (single-record siblings) | `EntityStationPane` · `src/components/station/entity/` — the same tree, pre-composed, entity-neutral (`entityKey` + an identity adapter + a centre), with a required `stance: 'work' \| 'preview'`. Consumers: `/search?sel=order:` (preview) · Support · Orders (work). Pack / ActiveOrderWorkspace still hand-type it — port follow-up. |
 | Identity | `StationContextBar` `placement="flow"` + `LineCartonContextSection` → `CartonContextCard` |
 | Centre overview | `buildUnboxOverview` → `POUnboxingSection` (`dockOwnsCapture`) + `UnboxLabelPreview` |
 | Dual edit loci | Dock owns wedge/scanner; active line mounts `ActiveLineConditionSerial` for mouse go-back (Condition → Serial → Photos peers) |

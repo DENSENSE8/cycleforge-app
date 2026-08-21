@@ -117,12 +117,35 @@ export const STATION_DISPLAYS_PUSH_TOP_CLUSTER =
  * `h-7` twin. Lives here (not on the Displays barrel) so desk inspectors
  * can import the token without evaluating CartonContextCard.
  *
- * No leading pad — Back owns the column's left corner (sash still grabs
- * under empty chrome). Trailing inset is {@link STATION_CHROME_CELL_PAD}'s
- * 6px (`pr-1.5`), not a unique `pr-2`.
+ * **No leading pad and no TRAILING pad (2026-08-19).** Back owns the column's
+ * left corner and close owns the right one (sash still grabs under empty
+ * chrome). The band used to carry a 6px `pr-1.5` trailing inset, which left the
+ * `✕` floating 6px off the column's own edge — the dismiss is the control an
+ * operator throws the pointer at without looking, and a flush corner is an
+ * infinite-width target while a 6px inset makes it a 28px one. Same ruling as
+ * the desk host `X` (`right-0`).
  */
+/**
+ * Desk inspector top band for panels whose BODY carries a `px-4` content
+ * gutter — the eyebrow's ink lands on the body's own left edge instead of a
+ * tighter chrome inset.
+ *
+ * Same contract as {@link STATION_DISPLAYS_PUSH_TOP_BAND}, one step wider on
+ * the leading edge. Promoted 2026-08-19: `GridColumnDetailsPanel` and
+ * `IncomingBulkTrackingPanel` each declared this exact string, so the trailing
+ * inset had to be fixed twice and could drift apart again at any time.
+ *
+ * `gap-1.5` here is a CONTENT gap (truncating eyebrow → reserved close cell),
+ * not an icon-cluster gap — icon clusters still abut at `gap-0`.
+ *
+ * Trailing edge is `pr-0` — these bands reserve the cell the host `X` paints
+ * over, and that `X` sits at `right-0`.
+ */
+export const DESK_INSPECTOR_GUTTER_TOP_BAND =
+  `relative z-header flex ${STATION_CHROME_ROW_FACE} items-stretch gap-1.5 pl-4 pr-0 ${STATION_CHROME_SEAM_HAIRLINE}`;
+
 export const STATION_DISPLAYS_PUSH_TOP_BAND =
-  `pointer-events-none relative z-header flex ${STATION_CHROME_ROW_FACE} items-stretch ${HEADER_ICON_GAP} pr-1.5 ${STATION_CHROME_SEAM_HAIRLINE}`;
+  `pointer-events-none relative z-header flex ${STATION_CHROME_ROW_FACE} items-stretch ${HEADER_ICON_GAP} pr-0 ${STATION_CHROME_SEAM_HAIRLINE}`;
 
 /**
  * Classify urgency·platform·type — **one token**: flush abut (`gap-0`), no
@@ -143,6 +166,28 @@ export const STATION_IDENTITY_GROUP_CLASS =
  */
 export const STATION_IDENTITY_LEAD_COL_CLASS =
   'flex h-full aspect-square shrink-0 items-stretch justify-stretch';
+
+/**
+ * The ONE vertical rule the carton bar draws at rest — between the back
+ * control and the first identity cell.
+ *
+ * Every other cell boundary on this strip is deliberately unruled:
+ * {@link STATION_CHROME_CELL_CLASS} says so explicitly ("no `border-l` /
+ * `divide-x` between cells"), because order # · status · tracking # are all
+ * facts about one carton and ruling between them would read as separate
+ * widgets. This divider is the exception because it does not separate two
+ * facts — it separates NAVIGATION from identity. Leaving this carton is a
+ * different kind of act from anything the bar states about it, and without the
+ * rule the first entity cell reads as the second half of the back control.
+ *
+ * Same ink as {@link STATION_CHROME_SEAM_HAIRLINE} (`border-hairline`) so the
+ * bar's horizontal seam and its single vertical one are one hairline family,
+ * not two greys. Full row height via `h-full` under the identity group's
+ * `items-stretch`; `w-px` rather than a `border-l` so it cannot eat a cell's
+ * box the way a border-box border would.
+ */
+export const STATION_IDENTITY_LEAD_DIVIDER_CLASS =
+  'block h-full w-px shrink-0 self-stretch bg-border-hairline';
 
 /**
  * House inset for identity / action cells that are not a chip face.

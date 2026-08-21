@@ -41,7 +41,7 @@ export interface ScanFeedItem {
 }
 
 const STATE_TILE: Record<ScanFeedItem['state'], string> = {
-  pending: 'bg-blue-50 text-blue-500',
+  pending: 'bg-surface-sunken text-text-soft',
   ok: 'bg-emerald-50 text-emerald-600',
   warn: 'bg-amber-50 text-amber-600',
   error: 'bg-rose-50 text-rose-600',
@@ -49,7 +49,7 @@ const STATE_TILE: Record<ScanFeedItem['state'], string> = {
 };
 
 const STATE_PILL: Record<ScanFeedItem['state'], string> = {
-  pending: 'bg-blue-50 border-blue-100 text-blue-600',
+  pending: 'bg-surface-sunken border-border-soft text-text-muted',
   ok: 'bg-emerald-50 border-emerald-100 text-emerald-700',
   warn: 'bg-amber-50 border-amber-100 text-amber-700',
   error: 'bg-rose-50 border-rose-100 text-rose-700',
@@ -87,14 +87,14 @@ export function ScanResultRow({
   const inner = (
     <div className="flex items-center justify-between gap-3">
       <div className="flex min-w-0 items-center gap-3">
-        <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl shadow-sm ${STATE_TILE[item.state]}`}>
+        <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-none shadow-sm ${STATE_TILE[item.state]}`}>
           <StateIcon state={item.state} />
         </div>
         <div className="min-w-0">
           {item.title ? (
-            <p className="truncate text-sm font-semibold tracking-tight text-blue-950">{item.title}</p>
+            <p className="truncate text-sm font-semibold tracking-tight text-text-default">{item.title}</p>
           ) : (
-            <p className="truncate font-mono text-sm font-semibold tracking-tight text-blue-950">{item.primary}</p>
+            <p className="truncate font-mono text-sm font-semibold tracking-tight text-text-default">{item.primary}</p>
           )}
           <div className="mt-0.5 flex items-center gap-2">
             {item.serial && (
@@ -103,7 +103,7 @@ export function ScanResultRow({
               </span>
             )}
             {item.subtitle && (
-              <span className="truncate font-mono text-role-micro uppercase tracking-wide text-blue-400">
+              <span className="truncate font-mono text-role-micro uppercase tracking-wide text-text-faint">
                 {item.subtitle}
               </span>
             )}
@@ -115,15 +115,15 @@ export function ScanResultRow({
               {item.statusLabel}
             </span>
             {item.meta && (
-              <span className="shrink-0 text-role-eyebrow uppercase tracking-wider text-blue-300">{item.meta}</span>
+              <span className="shrink-0 text-role-eyebrow uppercase tracking-wider text-text-faint">{item.meta}</span>
             )}
-            <span className="shrink-0 text-role-eyebrow uppercase text-blue-200">
+            <span className="shrink-0 text-role-eyebrow uppercase text-text-faint">
               {atLabel === '--:--' ? '' : atLabel}
             </span>
           </div>
         </div>
       </div>
-      {tappable && <ChevronRight className="h-4 w-4 shrink-0 text-blue-200" />}
+      {tappable && <ChevronRight className="h-4 w-4 shrink-0 text-text-faint" />}
     </div>
   );
 

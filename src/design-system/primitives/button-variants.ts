@@ -7,6 +7,15 @@
  * semantic rather than a `secondary` reuse). `primarySoft` is the LIGHT blue
  * face of `primary` — same accent, quiet enough to sit as a reference verb
  * inside a Displays leaf without reading as the surface's commit CTA.
+ *
+ * `warning` is the RECOVERABLE intent (amber) — the verb out of a state that
+ * committed but carries an open caveat: a receive that skipped inventory, a
+ * cooldown that will replay, a photo gate the operator can waive with a named
+ * reason. It exists because feedback surfaces have a four-tone state machine
+ * (loading · success · warning · error) and only three had a Button intent, so
+ * an amber CTA had to be painted on with a `className` hue override — the
+ * exact thing `AGENTS.md` → *Do not paint over primitives* bans. Grow the map,
+ * don't override the fill.
  */
 
 export const BUTTON_VARIANTS = {
@@ -20,6 +29,8 @@ export const BUTTON_VARIANTS = {
     'bg-surface-card text-text-default ring-1 ring-border-soft hover:bg-surface-canvas active:bg-surface-canvas',
   ghost: 'text-text-muted hover:bg-surface-canvas hover:text-text-default active:bg-surface-canvas',
   danger: 'bg-rose-600 text-white shadow-sm shadow-rose-600/25 hover:bg-rose-500 active:bg-rose-700',
+  warning:
+    'bg-amber-600 text-white shadow-sm shadow-amber-600/25 hover:bg-amber-500 active:bg-amber-700',
   success:
     'bg-emerald-600 text-white shadow-sm shadow-emerald-600/25 hover:bg-emerald-500 active:bg-emerald-700',
   execute:

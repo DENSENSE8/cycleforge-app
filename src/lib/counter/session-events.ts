@@ -54,6 +54,36 @@ export type CounterSessionActor = 'desk' | 'kiosk' | 'server';
 /** Which face the kiosk is showing. The desk decides; the tablet obeys. */
 export type CounterSessionFace = 'staff' | 'customer';
 
+export const COUNTER_PAYMENT_STATES = [
+  'idle',
+  'awaiting_card',
+  'approved',
+  'declined',
+  'canceled',
+] as const;
+
+/**
+ * Card-present state (SQ2). Mirrors `counter_sessions_payment_state_chk`.
+ *
+ * `approved` is the TERMINAL's answer, not the money's: a device approval and a
+ * settled payment arrive on two different webhooks, and the settled one drives
+ * `counter_transactions.status` (SQ1). Collapsing them would let a visit read
+ * as paid before Square says it is.
+ *
+ * "canceled" carries Square's spelling deliberately, so their webhook status
+ * maps across without a translation table nobody remembers.
+ */
+export type CounterPaymentState = (typeof COUNTER_PAYMENT_STATES)[number];
+
+export function isCounterPaymentState(value: string): value is CounterPaymentState {
+  return (COUNTER_PAYMENT_STATES as readonly string[]).includes(value);
+}
+
+/** Terminal states that end a checkout — the cart becomes editable again. */
+export function isTerminalPaymentOutcome(state: CounterPaymentState): boolean {
+  return state === 'approved' || state === 'declined' || state === 'canceled';
+}
+
 /**
  * A staged line, in the session.
  *
@@ -92,6 +122,12 @@ export interface CounterSessionSnapshot {
   customer: CounterSessionCustomer;
   lines: CounterSessionLine[];
   counterTransactionId: number | null;
+  /** Card-present state — what both faces are showing about payment (SQ2). */
+  paymentState: CounterPaymentState;
+  /** Live Square Terminal checkout, or null. The webhook's join key. */
+  terminalCheckoutId: string | null;
+  /** ms epoch the card prompt went up; drives the customer face's calm wait. */
+  awaitingCardSinceMs: number | null;
 }
 
 export const EMPTY_CUSTOMER: CounterSessionCustomer = { phone: '', name: '', email: '' };
@@ -111,6 +147,9 @@ export function emptySessionSnapshot(sessionId: number): CounterSessionSnapshot 
     customer: { ...EMPTY_CUSTOMER },
     lines: [],
     counterTransactionId: null,
+    paymentState: 'idle',
+    terminalCheckoutId: null,
+    awaitingCardSinceMs: null,
   };
 }
 
@@ -143,6 +182,12 @@ export type CounterSessionEvent = CounterSessionEventBase &
     | { type: 'session.face_changed'; face: CounterSessionFace }
     | { type: 'session.status_changed'; status: CounterSessionStatus }
     | { type: 'session.submitted'; counterTransactionId: number }
+    | {
+        type: 'session.payment_changed';
+        paymentState: CounterPaymentState;
+        terminalCheckoutId: string | null;
+        awaitingCardSinceMs: number | null;
+      }
   );
 
 /** Every event name a subscriber listens on. One family, deliberately. */
@@ -158,6 +203,7 @@ export const COUNTER_SESSION_EVENTS = [
   'session.face_changed',
   'session.status_changed',
   'session.submitted',
+  'session.payment_changed',
 ] as const;
 
 /**
@@ -282,6 +328,12 @@ export function applySessionEvent(
       next.status = 'submitted';
       next.counterTransactionId = event.counterTransactionId;
       break;
+
+    case 'session.payment_changed':
+      next.paymentState = event.paymentState;
+      next.terminalCheckoutId = event.terminalCheckoutId;
+      next.awaitingCardSinceMs = event.awaitingCardSinceMs;
+      break;
   }
 
   return { applied: true, snapshot: next };
@@ -324,6 +376,13 @@ export interface DeviceSessionProjection {
   customerPhoneMasked: string;
   /** REPAIR lines still waiting on a signature — the tablet's only real job. */
   awaitingSignatureLineIds: string[];
+  /**
+   * Card-present state. The one field on this projection that exists to make
+   * the customer's screen say something, rather than to describe the cart.
+   */
+  paymentState: CounterPaymentState;
+  /** ms epoch the prompt went up — the calm decaying wait, never a bounce. */
+  awaitingCardSinceMs: number | null;
 }
 
 /** Mask all but the last four digits: `5551234567` → `••• ••• 4567`. */
@@ -350,6 +409,10 @@ export function projectForDevicePrincipal(
     awaitingSignatureLineIds: visible
       .filter((l) => l.type === 'REPAIR' && isRepairPayload(l.payload) && !l.payload.signatureDataUrl)
       .map((l) => l.id),
+    paymentState: snapshot.paymentState,
+    awaitingCardSinceMs: snapshot.awaitingCardSinceMs,
+    // NOTE: `terminalCheckoutId` is deliberately NOT projected. The tablet has
+    // no use for it and it is a handle into the tenant's Square account.
   };
 }
 

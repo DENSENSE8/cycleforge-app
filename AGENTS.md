@@ -33,6 +33,9 @@ Regions are I/O contracts (`MotionRegion`: `station` · `workbench` · `monitor`
 | Station | Column shell | `StationWorkbench` · `src/components/station/workbench/` |
 | Station | Displays column | `StationDisplaysPushColumn` · `src/components/station/displays/` |
 | Station | Entity identity | `CartonContextCard` · `src/components/station/entity-context/` |
+| Station | Single-record station host | `EntityStationPane` · `src/components/station/entity/` |
+| Station | Centre auto-collapse (scroll · composer focus) | `useAutoCollapse` · `src/components/station/collapse/` |
+| Shared | Entity thread + composer | `ThreadPanel` · `src/components/threads/ThreadPanel.tsx` |
 | Station | Terminal dock | `StationTerminalDock` · `src/components/station/terminal/` |
 | Workbench | Sheet shell (Bands 1–3) | `WorkbenchSheetView` · `src/components/dashboard/WorkbenchSheetView.tsx` |
 | Workbench | Band-1 chrome | `WorkbenchChromeHeader` · `src/components/dashboard/workbench-shell.tsx` |
@@ -58,6 +61,7 @@ Regions are I/O contracts (`MotionRegion`: `station` · `workbench` · `monitor`
 | Grid column align | `resolveGridColumnAlign` · `src/design-system/components/grid/` |
 | Motion roles | `motionRole` · `src/design-system/motion/` |
 | Tokens (color · type · radius · z · focus) | `cornerClass` · `src/design-system/tokens/` |
+| Band-3 control cell (Views · KPI · inspector) | `WorkbenchBandControl` · `src/components/dashboard/workbench-band-control.tsx` |
 | Copy / order / PO / tracking chips | `CopyChip` · `src/components/ui/CopyChip.tsx` |
 | Platform face | `PlatformMark` · `src/lib/source-platform.ts` |
 | Stacked row identity | `StackedRowIdentity` · `src/components/ui/StackedRowIdentity.tsx` |
@@ -109,43 +113,60 @@ Regions are I/O contracts (`MotionRegion`: `station` · `workbench` · `monitor`
 - **HID wedge scans** attach via `createWedgeKeyListener` (native capture `keydown`, yield-before-React). Never a React synthetic `onKeyDown` for scanner input; never drop focus; never run scan side-effects on the keydown stack.
 - **Kiosk v2 session root is the cart** (`kioskSessionStore`) — Repair / Retail / Buyback / Pickup are commands that swap the center only and never clear lines. Mount wedge via `useWedgeScanner` + `classifyKioskScan` (not warehouse `scan-resolver`). Customer face strips void / discount / cost-basis; no Station chrome / RightRailHost on the kiosk.
 - **Live NDJSON / Ably paints** apply through `applyStreamBudget` / `createFrameCoalescer` — never `setState` per stream line or per Ably message during a burst. Orthogonal exception dimensions (SCANNED + PROBLEM) stay on the row payload.
-- **`npm run verify` before done** — lint · typecheck · unit · knip · jscpd · depcruise · route-auth · schema drift. Never raise a ratchet baseline to pass. Inner loop: `npm run verify:fast`. Tenant click-through: `npm run verify:dogfood` (lint · tsc · route-auth enforce · schema). Pre-push to non-`main` runs dogfood; push to `main` and “done” still require full verify.
+- **`npm run verify` before done** — lint · typecheck · unit. That is the WHOLE gate set as of 2026-08-20: the hygiene / drift gates were deleted (see below). Inner loop: `npm run verify:fast` (lint · typecheck). `npm run verify:dogfood` is now the same as fast. Pre-push still runs it.
 - **E2E asserts against the QA org**, not the dogfood tenant.
 
 
 ## What actually enforces these rules
 
-**Most of this file is convention, not a machine check. Know which is which.**
+**Almost all of this file is convention, not a machine check. Know which is which.**
 
 | Layer | What it is | Runs in `npm run verify`? |
 |---|---|---|
-| **13 gates** | lint · typecheck · unit · knip (advisory) · route-permission drift (advisory) · route-auth enforce · integration manifest · tenancy (advisory) · schema drift · schema model parity · jscpd clones · depcruise · doc catalog (advisory) | **Yes** — this is the whole automated surface |
-| **~757 unit tests** | any `*.test.ts` under `src/`, auto-discovered by `scripts/run-unit-tests.mjs` | **Yes**, inside the unit gate |
+| **3 gates** | lint · typecheck · unit | **Yes** — this is the whole automated surface |
+| **~6040 unit tests** | any `*.test.ts` under `src/`, auto-discovered by `scripts/run-unit-tests.mjs` | **Yes**, inside the unit gate |
 | **~182 E2E specs** | Playwright under `tests/e2e`; `qa-desktop` runs against the QA org | **No** — run them deliberately |
-| **Structural guards** | `*.guard.test.ts` | **One** on disk (`carton-chrome-type-unity`, 7 tests) — auto-discovered, so it runs. **17 exist in HEAD**; 16 are deleted only in an *uncommitted* working-tree change |
+| **Structural guards** | `*.guard.test.ts` | **None on disk.** All deleted 2026-08-20 |
 
-**124 `*.guard.test.ts` citations were pruned from these rules on 2026-08-19.**
-123 of them named files absent from HEAD as well as from the tree — prose asserting
-enforcement deleted commits ago. The 124th (`domain-job`) is alive in HEAD and was
-restored. **Check HEAD, not just the working tree, before removing a citation:** 16
-guard files are currently deleted in an uncommitted change, and reverting it brings
-them back. **Never add a citation for a file you have not confirmed exists.**
+**The gate layer was deleted on 2026-08-20 at the operator's instruction**, for
+verify wall clock. Gone from the repo — scripts, ratchet baselines and all:
 
-A rule with no gate behind it is still the house law — it is just enforced by
-review, not by CI. Say which one you mean when you write a new rule.
+| Deleted | What it had enforced |
+|---|---|
+| `knip-gate.mjs` + `knip-baseline.json` | new dead code / orphaned exports |
+| `jscpd-gate.mjs` + `jscpd-baseline.json` + `hardware-wall.mjs` | new AST-similar clones (the compose-don't-fork law) |
+| `depcruise-gate.mjs` | assembly import boundaries, `carton-bar-menus-use-the-one-surface` |
+| `audit-route-auth.ts` | ungated API routes + permission-manifest drift |
+| `schema-drift-guard.mjs` · `schema-model-parity-guard.mjs` | code naming a column the DB does not have |
+| `export-integration-manifest.ts` | integration manifest drift |
+| `portfolio-sot-sync.mjs` | doc catalog drift |
+| `src/lib/governance/**` · `*.guard.test.ts` · `button-class-override-baseline.json` | the DS ratchets + fork hunter |
 
-The machinery is intact: `run-unit-tests.mjs` picks up any `*.guard.test.ts`
-automatically, so adding a guard file back is enough to enforce it.
+**Kept:** `scripts/tenancy-guard.ts` — the LIVE tenant-role RLS-bypass invariant.
+It is a security control, it runs only in the `audit-permissions` CI job against a
+real DSN, and it costs the local loop nothing.
+
+**So: every rule in this file is now enforced by review, not by CI.** The laws did
+not change — `transition()`, `withTenantTransaction`, `orgId` from `ctx`, one SoT
+per job, no page-local twin — but nothing will catch you breaking them. When you
+write a new rule here, do not claim a gate backs it.
+
+`.dependency-cruiser.cjs`, `.jscpd.json` and `knip.json` remain in the tree (the
+`diagrams:*` and `dead-code:*` scripts still use the raw tools ad hoc), so
+restoring a gate means restoring its script from git history, not rebuilding it.
 
 ## Guard authoring
 
-When asked to "add a guard", never write `readFileSync` + regex on source.
-Match the invariant to its layer: (1) import/module boundary → `.dependency-cruiser.cjs`;
-(2) syntax/prop ban → ESLint AST in `eslint.config.mjs`; (3) layout/geometry →
-constrain TS props / a cell that owns height; (4) rendered behavior → a mounted
-DOM test, not file text. Load `.claude/skills/add-guard/SKILL.md` before creating
-any test file. There are no structural guards in the tree today (see above), so a
-new one is a genuine addition — not a change to an existing family.
+**Ask before adding one.** The gate layer was deliberately deleted for speed
+(see above), so a new guard re-opens a decision the operator already made.
+
+If one is wanted: never write `readFileSync` + regex on source. Match the
+invariant to its layer: (1) import/module boundary → `.dependency-cruiser.cjs`
+(config present; the gate script is not — `npm run diagrams:check` runs the raw
+tool); (2) syntax/prop ban → ESLint AST in `eslint.config.mjs` — **this is the
+only layer still wired into `verify`**; (3) layout/geometry → constrain TS props
+/ a cell that owns height; (4) rendered behavior → a mounted DOM test, not file
+text. Load `.claude/skills/add-guard/SKILL.md` before creating any test file.
 
 ## Workflow
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useRef, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence, type PanInfo } from '@/design-system/motion';
 import { framerTransition, tabPagerVariants } from '@/design-system/foundations/motion-framer';
@@ -22,6 +23,17 @@ import { ScanInput } from '@/components/mobile/redesign/ScanInput';
 import { PrepackedProductSheet } from '@/components/mobile/redesign/PrepackedProductSheet';
 import { ReceivingTriagePanel, TestingRecentPanel } from '@/components/mobile/redesign/ScanModeFeeds';
 import { detectScanMode, type ScanMode } from '@/components/mobile/redesign/scan-mode';
+import { MobileScanVerdictBanner } from '@/components/mobile/redesign/MobileScanVerdictBanner';
+import {
+  buildScanVerdict,
+  scanFailureVerdict,
+  type MobileScanVerdict,
+} from '@/components/mobile/redesign/scan-verdict';
+import { useRegisterNewScan } from '@/components/mobile/redesign/mobile-scan-cta';
+import { NetworkChip } from '@/components/mobile/NetworkChip';
+import { resolveViaLookupPo, type ScanResolutionMode } from '@/lib/receiving/scan';
+import { useScanFeedback } from '@/lib/scan-feedback/useScanFeedback';
+import { useAuth } from '@/contexts/AuthContext';
 import { useLabelPrintFeed, type LabelPrintFeedItem } from '@/hooks/useLabelPrintFeed';
 
 const MODES: Array<{ id: ScanMode; label: string; icon: (p: { className?: string }) => JSX.Element; placeholder: string }> = [
@@ -37,8 +49,22 @@ export default function RedesignedMobileUniversalScan() {
   const [testingQuery, setTestingQuery] = useState('');
   // The scanned unit label whose Prepacked Products sheet is open (null = closed).
   const [prepackScan, setPrepackScan] = useState<string | null>(null);
+  /**
+   * The last door-scan outcome. `seq` increments on every scan so a re-scan of
+   * the SAME label still remounts the banner — without it, rescanning a carton
+   * looks identical to a scan the gun never read.
+   */
+  const [verdict, setVerdict] = useState<{ value: MobileScanVerdict; seq: number } | null>(null);
+  const [resolving, setResolving] = useState(false);
   const queryClient = useQueryClient();
+  const router = useRouter();
+  const { user } = useAuth();
+  // Audio + haptic scan confirm — the SoT the desktop receiving station already
+  // fires (`useScanFeedback`). Both stay preference-gated; an eyes-down operator
+  // on a phone needs the non-visual cue more than the desk does, not less.
+  const { playScanFeedback } = useScanFeedback();
   const inFlight = useRef(false);
+  const scanSeq = useRef(0);
 
   // Prepacked "Recent Scans" is the persistent label-print history — the same
   // feed as Products → Labels → History (station_activity_logs LABEL_PRINTED),
@@ -88,29 +114,59 @@ export default function RedesignedMobileUniversalScan() {
     void queryClient.invalidateQueries({ queryKey: ['receiving', 'triage', 'unfound-list'] });
   }, [queryClient]);
 
+  /** Publish an outcome: paint the banner and fire its matching audio/haptic cue. */
+  const announce = useCallback(
+    (next: MobileScanVerdict) => {
+      scanSeq.current += 1;
+      setVerdict({ value: next, seq: scanSeq.current });
+      playScanFeedback(next.feedback);
+    },
+    [playScanFeedback],
+  );
+
   // ── receiving handler (door scan-in → lookup-po) ───────────────────────────
-  // Fire the door-scan lookup for feedback, then let the triage rails refetch —
-  // the new carton lands in Prioritize (matched) or Unfound (unmatched).
+  // Composes the receiving scan pipeline's `resolveViaLookupPo` rung — the same
+  // classifier the desktop station runs — instead of a page-local fetch. The
+  // inline version here THREW THE ANSWER AWAY: it read the response, returned,
+  // and left the operator with no idea whether the carton matched, landed in
+  // Unfound, or never reached the server at all.
   const runReceiving = useCallback(
-    async (raw: string) => {
+    async (raw: string, callMode: ScanResolutionMode) => {
       try {
-        const res = await fetch('/api/receiving/lookup-po', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({ trackingNumber: raw }),
-        });
-        const data = await res.json().catch(() => null);
-        if (!res.ok || !data) {
-          return;
-        }
-      } catch {
-        /* swallow — triage rails refetch in finally regardless */
+        const resolution = await resolveViaLookupPo(
+          {
+            callValue: raw,
+            callMode,
+            originalMode: callMode,
+            staffId: Number(user?.staffId ?? 0),
+            // `/m/scan` Arrival IS the door. Passed explicitly rather than left
+            // to the route's default — which surface a scan came from decides
+            // whether it stamps door-received, so it is a fact to state, not to
+            // inherit.
+            intakeSurface: 'triage',
+          },
+          {
+            lookupPo: async (body) => {
+              const res = await fetch('/api/receiving/lookup-po', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify(body),
+              });
+              return res.json();
+            },
+          },
+        );
+        announce(buildScanVerdict(raw, resolution));
+      } catch (err) {
+        // `resolveViaLookupPo` throws on a hard `!success`; `fetch` throws when
+        // the phone drops off the wifi mid-aisle. Both must reach the operator.
+        announce(scanFailureVerdict(raw, err));
       } finally {
         refreshReceivingTriage();
       }
     },
-    [refreshReceivingTriage],
+    [refreshReceivingTriage, announce, user?.staffId],
   );
 
   // ── dispatch: detect mode → animate slider → run the mode's handler ────────
@@ -143,14 +199,38 @@ export default function RedesignedMobileUniversalScan() {
           return;
         }
 
-        // Receiving: door-scan lookup → triage rails refetch (Unfound/Prioritize).
-        await runReceiving(raw);
+        // Receiving: door-scan lookup → verdict banner + triage rails refetch.
+        //
+        // An UNAMBIGUOUS carrier read stays in `tracking` mode. A value the
+        // classifier could not place falls here too, and for that one `auto` is
+        // the honest mode — it deep-scans the value as ticket#, PO#, and
+        // tracking# before minting an unfound carton, which is exactly what an
+        // un-armed universal scanner should do rather than assuming a carrier.
+        setResolving(true);
+        try {
+          await runReceiving(raw, detected === 'receiving' ? 'tracking' : 'auto');
+        } finally {
+          setResolving(false);
+        }
       } finally {
         inFlight.current = false;
       }
     },
     [mode, runReceiving, changeMode],
   );
+
+  /**
+   * "New scan" from the top-bar CTA while already standing on this surface:
+   * clear the last outcome and the open panels so the next item starts clean.
+   * The scan bar keeps focus, so the gun is armed the moment this returns.
+   */
+  const startNewScan = useCallback(() => {
+    setVerdict(null);
+    setTestingQuery('');
+    setPrepackScan(null);
+    changeMode('receiving');
+  }, [changeMode]);
+  useRegisterNewScan(startNewScan);
 
   // Prepacked "Recent Scans" is the only in-component feed left (label history).
   const { rows: feedRows, scrollRef } = useCaptureStackWindow(prepackScans, { limit: 12, anchor: 'top', freshPulse: false });
@@ -160,8 +240,12 @@ export default function RedesignedMobileUniversalScan() {
       {/* Mode slider (icons) + title */}
       <div className="px-4 pt-2 pb-1.5">
         <div className="mb-1.5 flex items-center gap-1.5 px-1">
-          <ActiveIcon className="h-4 w-4 text-blue-600" />
-          <h1 className="text-base font-semibold tracking-tight text-blue-950">{active.label}</h1>
+          <ActiveIcon className="h-4 w-4 text-text-muted" />
+          <h1 className="text-base font-semibold tracking-tight text-text-default">{active.label}</h1>
+          {/* Link state belongs on the surface that COMMITS scans: a phone that
+              silently lost wifi mid-aisle otherwise looks identical to one whose
+              scans are landing. */}
+          <NetworkChip compact className="ml-auto" />
         </div>
         <HorizontalButtonSlider
           variant="segmented"
@@ -173,13 +257,26 @@ export default function RedesignedMobileUniversalScan() {
       </div>
 
       {/* Scan surface — compact StationScanBar + optional camera viewfinder. */}
-      <div className="px-4 pb-2">
+      <div className="flex flex-col gap-2 px-4 pb-2">
         <ScanInput
           onDecode={dispatch}
           placeholder={active.placeholder}
           autoFocus
+          isResolving={resolving}
           cameraSuspended={prepackScan != null}
         />
+
+        {/* The answer to the last door scan, directly under the bar the operator
+            is already looking at. Station law: a state-changing scan lands as a
+            card, never a toast that expires while their eyes are on the carton.
+            Keyed by `seq` so a repeat scan of the same label replays. */}
+        {mode === 'receiving' && verdict && (
+          <MobileScanVerdictBanner
+            key={verdict.seq}
+            verdict={verdict.value}
+            onOpenCarton={(receivingId) => router.push(`/m/r/${receivingId}`)}
+          />
+        )}
       </div>
 
       {/* Result area — a swipeable pager across the three scan modes. Drag
@@ -229,8 +326,8 @@ export default function RedesignedMobileUniversalScan() {
                 className="pb-32"
                 empty={
                   <div className="py-12 text-center opacity-40">
-                    <History className="mx-auto mb-3 h-10 w-10 text-blue-200" />
-                    <p className="text-xs font-semibold uppercase tracking-widest text-blue-300">
+                    <History className="mx-auto mb-3 h-10 w-10 text-text-faint" />
+                    <p className="text-xs font-semibold uppercase tracking-widest text-text-faint">
                       No recently printed products…
                     </p>
                   </div>

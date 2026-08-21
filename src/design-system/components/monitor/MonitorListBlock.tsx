@@ -8,15 +8,35 @@ export type MonitorListBlockProps = {
   className?: string;
   /** Optional header row above the divide-y list. */
   header?: ReactNode;
+  /**
+   * `card` (default) draws the Monitor rollup's own shell. `flush` draws none —
+   * for a host that already owns a surface (the header find dropdown, the
+   * `/search` browse body), where the card is a card-inside-a-card.
+   *
+   * A named variant, not a `className` un-paint: `/search` was passing
+   * `rounded-none border-0 bg-transparent` to cancel three classes this
+   * component had just set, which is exactly the override the DS bans.
+   */
+  chrome?: 'card' | 'flush';
 };
 
 /**
  * Leaderboard / recent-activity list inside a Monitor card.
  * Uses `divide-y` rows — house one-row anatomy (title → meta → chips), not nested cards.
  */
-export function MonitorListBlock({ children, className, header }: MonitorListBlockProps) {
+export function MonitorListBlock({
+  children,
+  className,
+  header,
+  chrome = 'card',
+}: MonitorListBlockProps) {
   return (
-    <div className={cn('rounded-xl border border-border-soft bg-surface-card', className)}>
+    <div
+      className={cn(
+        chrome === 'card' && 'rounded-xl border border-border-soft bg-surface-card',
+        className,
+      )}
+    >
       {header}
       <ul className="divide-y divide-border-hairline">{children}</ul>
     </div>

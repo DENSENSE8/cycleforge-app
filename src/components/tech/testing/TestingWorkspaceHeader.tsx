@@ -15,7 +15,8 @@
  * source-of-truth.md → Workbench Band-1 strip · Left-edge → SCOPE decides its home.
  */
 
-import type { Ref } from 'react';
+import { useState, type Ref } from 'react';
+import { useSearchParams } from 'next/navigation';
 import {
   WorkbenchChromeHeader,
   WorkbenchTriageBand,
@@ -23,7 +24,9 @@ import {
 import { WorkbenchKpiCollapseToggle } from '@/components/dashboard/workbench-kpi-collapse';
 import { QueueSortSwitch } from '@/components/dashboard/QueueSortSwitch';
 import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
-import { StaffFilterButton } from '@/components/ui/StaffFilterButton';
+import { StaffFilterRows } from '@/components/ui/StaffFilterButton';
+import { WorkbenchFilterPopover } from '@/components/dashboard/workbench-filter-popover';
+import { STAFF_FILTER_PARAM } from '@/hooks/useStaffFilter';
 import { useWorkbenchSearchParam } from '@/hooks/useWorkbenchSearchParam';
 import { useQueueDisplaySort } from '@/hooks/useQueueDisplaySort';
 import {
@@ -141,19 +144,32 @@ export function TestingTriageBand({
 
   // Ownership facet on queue + History. History keeps Me-default (allToken);
   // queue tabs use Option A — absent = All pool, pick a tech to focus.
-  // Refine rides IN the find field (find-only Band 3); the right zone keeps
-  // display sort only.
+  //
+  // It rides IN the find field as ROWS of the one refine funnel, not as its own
+  // `User` glyph beside it: the field carries a single mark and that mark is the
+  // funnel (`workbench-filter-popover.tsx` → the one-icon law).
+  const searchParams = useSearchParams();
+  const [refineOpen, setRefineOpen] = useState(false);
+  const staffHot = Boolean(
+    tab === 'history'
+      ? (searchParams.get(STAFF_FILTER_PARAM) ?? '').trim().toLowerCase() !== 'all'
+      : searchParams.get(STAFF_FILTER_PARAM),
+  );
   const inFieldRefine = showStaff ? (
-    tab === 'history' ? (
-      <StaffFilterButton
-        density="field"
+    <WorkbenchFilterPopover
+      open={refineOpen}
+      onOpenChange={setRefineOpen}
+      hot={staffHot}
+      label="Refine"
+      density="field"
+    >
+      <StaffFilterRows
+        groupLabel="Technician"
         allLabel="All technicians"
-        allToken="all"
-        meLabel="You"
+        allToken={tab === 'history' ? 'all' : undefined}
+        onPick={() => setRefineOpen(false)}
       />
-    ) : (
-      <StaffFilterButton density="field" allLabel="All technicians" />
-    )
+    </WorkbenchFilterPopover>
   ) : null;
 
   const right = showSort ? (

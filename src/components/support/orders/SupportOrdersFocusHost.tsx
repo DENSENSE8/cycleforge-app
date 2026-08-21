@@ -7,9 +7,9 @@
  * can alias the Fulfillment desk without a second orders board.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { AnimatePresence, motion, motionRole, useMotionRole } from '@/design-system/motion';
+import { AnimatePresence } from '@/design-system/motion';
 import {
   AlertTriangle,
   ExternalLink,
@@ -22,23 +22,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { EmptyState, IconButton, Spinner } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 
-import {
-  buildSectionTabs,
-  StationPanelRoot,
-  StationScanPaneHost,
-  StationWorkbench,
-} from '@/components/station/workbench';
-import {
-  StationContextBar,
-  StationMoreDetails,
-} from '@/components/station/entity-context';
-import {
-  StationDisplaysParkedRail,
-  StationDisplaysUtilityRail,
-  StationDisplaysPushStack,
-  STATION_DISPLAY_INDEX,
-  useYieldStationDisplaysOnAssistantOpen,
-} from '@/components/station/displays';
+import { buildSectionTabs } from '@/components/station/workbench';
+import { StationMoreDetails } from '@/components/station/entity-context';
+import { STATION_DISPLAY_INDEX } from '@/components/station/displays';
+import { OrderStationIdentity } from '@/components/station/order';
+import { EntityStationPane } from '@/components/station/entity';
 import { buildSupportOrdersDisplayIndexRows } from '@/components/support/orders/support-orders-display-index';
 import { SupportContextHub } from '@/components/support/context';
 import { ShippedDetailsPanelContent } from '@/components/shipped/ShippedDetailsPanelContent';
@@ -49,7 +37,6 @@ import {
 import { deriveShippedHeaderMeta } from '@/components/shipped/details-panel/shipped-details-logic';
 import type { ShippedActiveInput } from '@/components/shipped/stacks/types';
 import { SHIPPING_ORDERS_PATH, shippingOrdersHref } from '@/lib/shipping/orders-desk';
-import { SupportOrderIdentity } from './SupportOrderIdentity';
 import { useSupportTicketClaimHost } from '@/components/support/service-workspace/useSupportTicketClaimHost';
 import { SupportCreateTicketModal } from '@/components/support/service-workspace/SupportCreateTicketModal';
 import {
@@ -84,18 +71,8 @@ function SupportOrderFocus({
   const canCreateTicket = !isLoaded || has('integrations.zendesk');
   const claim = useSupportTicketClaimHost();
   const openCreateTicket = claim.openCreate;
-  const { presence: paneMotion, transition: paneTransition } = useMotionRole(motionRole.swap.focus);
   const [activeSideTab, setActiveSideTab] = useState<SupportOrdersDisplayNav | null>(null);
   const [activeInput, setActiveInput] = useState<ShippedActiveInput>('none');
-
-  const closeDisplays = useCallback(() => setActiveSideTab(null), []);
-  useYieldStationDisplaysOnAssistantOpen(closeDisplays);
-  /**
-   * `←|` Open displays → the Root Index, never a guessed leaf — with 2
-   * displays declared, landing on a guess IS the whole surface
-   * (station-displays-reachability.guard.test.ts).
-   */
-  const openDisplaysIndex = useCallback(() => setActiveSideTab(STATION_DISPLAY_INDEX), []);
 
   const {
     shipped,
@@ -248,152 +225,96 @@ function SupportOrderFocus({
     [orderAnchor],
   );
 
-  const resolvedSideTab: SupportOrdersDisplayNav | null = useMemo(() => {
-    if (!activeSideTab) return null;
-    if (activeSideTab === STATION_DISPLAY_INDEX) return STATION_DISPLAY_INDEX;
-    if (displayTabs.some((t) => t.id === activeSideTab)) return activeSideTab;
-    // A requested leaf that gated away falls back to the INDEX, never to
-    // `displayTabs[0]` — silently swapping in an unrelated display is the
-    // failure the index exists to prevent.
-    return STATION_DISPLAY_INDEX;
-  }, [activeSideTab, displayTabs]);
-
-  const paneUtilityRow = !activeSideTab ? (
-    <StationDisplaysUtilityRail
-      onOpenDisplays={openDisplaysIndex}
-      indexRail={
-        <StationDisplaysParkedRail
-          rows={displayIndexRows}
-          tabs={displayTabs}
-          activeId={activeSideTab ?? null}
-          onOpenLeaf={(id) =>
-            setActiveSideTab(id as Parameters<typeof setActiveSideTab>[0])
-          }
-        />
-      }
-    />
-  ) : null;
-
   return (
-    <motion.div
-      key={shipped.id}
-      className="relative flex h-full min-h-0 w-full flex-col"
-      initial={paneMotion.initial}
-      animate={paneMotion.animate}
-      exit={paneMotion.exit}
-      transition={paneTransition}
-    >
-      <StationScanPaneHost
-        displaysOpen={Boolean(resolvedSideTab)}
-        centerTestId="support-orders-station-center"
-        utilityRail={!activeSideTab ? paneUtilityRow : null}
-        center={
-          <StationPanelRoot>
-            <div className="relative flex min-h-0 flex-1 flex-col overflow-visible">
-              <StationContextBar
-                placement="flow"
-                identity={
-                  <SupportOrderIdentity order={shipped} onExitToList={onClose} />
+    <>
+      <EntityStationPane
+        entityKey={shipped.id}
+        // The operator's bench: the editor dock commits, the centre edits.
+        stance="work"
+        identity={<OrderStationIdentity order={shipped} onExitToList={onClose} />}
+        moreDetails={
+          <StationMoreDetails>
+            <HoverTooltip label="Notes">
+              <IconButton
+                size="sm"
+                icon={<FileText className="h-3.5 w-3.5" />}
+                ariaLabel="Edit notes"
+                aria-pressed={activeInput === 'notes'}
+                onClick={() =>
+                  setActiveInput((prev) => (prev === 'notes' ? 'none' : 'notes'))
                 }
-                moreDetails={
-                  <StationMoreDetails>
-                    <HoverTooltip label="Notes">
-                      <IconButton
-                        size="sm"
-                        icon={<FileText className="h-3.5 w-3.5" />}
-                        ariaLabel="Edit notes"
-                        aria-pressed={activeInput === 'notes'}
-                        onClick={() =>
-                          setActiveInput((prev) => (prev === 'notes' ? 'none' : 'notes'))
-                        }
-                        className={
-                          activeInput === 'notes'
-                            ? 'rounded-md bg-surface-sunken text-text-default'
-                            : undefined
-                        }
-                      />
-                    </HoverTooltip>
-                    <HoverTooltip label="Out of stock">
-                      <IconButton
-                        size="sm"
-                        icon={<AlertTriangle className="h-3.5 w-3.5" />}
-                        ariaLabel="Toggle out of stock"
-                        aria-pressed={activeInput === 'out_of_stock'}
-                        onClick={() =>
-                          setActiveInput((prev) =>
-                            prev === 'out_of_stock' ? 'none' : 'out_of_stock',
-                          )
-                        }
-                        className={
-                          activeInput === 'out_of_stock'
-                            ? 'rounded-md bg-surface-sunken text-text-default'
-                            : undefined
-                        }
-                      />
-                    </HoverTooltip>
-                    <HoverTooltip label="Open on To ship">
-                      <IconButton
-                        size="sm"
-                        icon={<ExternalLink className="h-3.5 w-3.5" />}
-                        ariaLabel="Open on To ship"
-                        onClick={() =>
-                          router.push(shippingOrdersHref({ openOrderId: Number(shipped.id) }))
-                        }
-                      />
-                    </HoverTooltip>
-                  </StationMoreDetails>
+                className={
+                  activeInput === 'notes'
+                    ? 'rounded-md bg-surface-sunken text-text-default'
+                    : undefined
                 }
               />
-
-              <StationWorkbench
-                ambientWash={false}
-                className="relative z-0 flex-1 bg-transparent"
-                reserveScrollClearance={false}
-                reserveIdentityClearance={false}
-                bodyGap="none"
-                scrollClassName="pb-28"
-                footer={
-                  <ShippedPanelEditorDock
-                    shipped={shipped}
-                    activeInput={activeInput}
-                    setActiveInput={setActiveInput}
-                    showMarkAsShipped={false}
-                    showOutOfStock
-                    showNotes
-                    isOutOfStock={isOutOfStock}
-                    isSavingOutOfStock={isSavingOutOfStock}
-                    onSaveOutOfStock={(checked) => {
-                      void handleSaveOutOfStock(checked, () => setActiveInput('none'));
-                    }}
-                    shippingTrackingNumber={shippingTrackingNumber}
-                    onMarkShippedSuccess={() => {
-                      setActiveInput('none');
-                      onReload();
-                    }}
-                  />
+            </HoverTooltip>
+            <HoverTooltip label="Out of stock">
+              <IconButton
+                size="sm"
+                icon={<AlertTriangle className="h-3.5 w-3.5" />}
+                ariaLabel="Toggle out of stock"
+                aria-pressed={activeInput === 'out_of_stock'}
+                onClick={() =>
+                  setActiveInput((prev) =>
+                    prev === 'out_of_stock' ? 'none' : 'out_of_stock',
+                  )
                 }
-              >
-                {orderContent}
-              </StationWorkbench>
-            </div>
-          </StationPanelRoot>
+                className={
+                  activeInput === 'out_of_stock'
+                    ? 'rounded-md bg-surface-sunken text-text-default'
+                    : undefined
+                }
+              />
+            </HoverTooltip>
+            <HoverTooltip label="Open on To ship">
+              <IconButton
+                size="sm"
+                icon={<ExternalLink className="h-3.5 w-3.5" />}
+                ariaLabel="Open on To ship"
+                onClick={() =>
+                  router.push(shippingOrdersHref({ openOrderId: Number(shipped.id) }))
+                }
+              />
+            </HoverTooltip>
+          </StationMoreDetails>
         }
-        displays={
-          resolvedSideTab ? (
-            <StationDisplaysPushStack
-              ariaLabel="Support order displays"
-              storageKey="support-orders-displays-push-width"
-              testId="support-orders-displays-push"
-              resizeTestId="support-orders-displays-push-resize"
-              tabs={displayTabs}
-              indexRows={displayIndexRows}
-              activeTab={resolvedSideTab}
-              onTabChange={(id) => setActiveSideTab(id as SupportOrdersDisplayNav)}
-              onClose={closeDisplays}
-            />
-          ) : null
+        centre={orderContent}
+        scrollClassName="pb-28"
+        dock={
+          <ShippedPanelEditorDock
+            shipped={shipped}
+            activeInput={activeInput}
+            setActiveInput={setActiveInput}
+            showMarkAsShipped={false}
+            showOutOfStock
+            showNotes
+            isOutOfStock={isOutOfStock}
+            isSavingOutOfStock={isSavingOutOfStock}
+            onSaveOutOfStock={(checked) => {
+              void handleSaveOutOfStock(checked, () => setActiveInput('none'));
+            }}
+            shippingTrackingNumber={shippingTrackingNumber}
+            onMarkShippedSuccess={() => {
+              setActiveInput('none');
+              onReload();
+            }}
+          />
         }
+        displayTabs={displayTabs}
+        displayIndexRows={displayIndexRows}
+        activeSideTab={activeSideTab}
+        onSideTabChange={(next) =>
+          setActiveSideTab(next as SupportOrdersDisplayNav | null)
+        }
+        storageKey="support-orders-displays-push-width"
+        ariaLabel="Support order displays"
+        centerTestId="support-orders-station-center"
+        displaysTestId="support-orders-displays-push"
+        displaysResizeTestId="support-orders-displays-push-resize"
       />
+
 
       <SupportCreateTicketModal
         open={claim.createOpen}
@@ -412,7 +333,7 @@ function SupportOrderFocus({
           )
         }
       />
-    </motion.div>
+    </>
   );
 }
 

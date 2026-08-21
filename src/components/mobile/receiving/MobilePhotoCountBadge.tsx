@@ -35,12 +35,12 @@ export function MobilePhotoCountBadge({
       className={cn(
         'inline-flex shrink-0 items-center gap-0.5 font-semibold tabular-nums',
         textSize,
-        hasPhotos ? 'text-blue-600' : 'text-text-faint',
+        hasPhotos ? 'text-text-muted' : 'text-text-faint',
         className,
       )}
       aria-label={`Photos ${safeCount}`}
     >
-      <Camera className={cn(iconSize, hasPhotos ? 'text-blue-600' : 'text-text-faint')} />
+      <Camera className={cn(iconSize, hasPhotos ? 'text-text-muted' : 'text-text-faint')} />
       x{safeCount}
     </span>
   );
@@ -51,7 +51,7 @@ export function MobilePhotoCountBadge({
         href={href}
         prefetch={false}
         onClick={onClick}
-        className="inline-flex rounded-lg px-1 py-0.5 active:bg-blue-50"
+        className="inline-flex rounded-none px-1 py-0.5 active:bg-surface-sunken"
       >
         {inner}
       </Link>
@@ -65,7 +65,7 @@ export function MobilePhotoCountBadge({
         onClick={onClick}
         ariaLabel={`Photos ${safeCount}`}
         icon={inner}
-        className="inline-flex rounded-lg px-1 py-0.5 active:bg-blue-50"
+        className="inline-flex rounded-none px-1 py-0.5 active:bg-surface-sunken"
       />
     );
   }

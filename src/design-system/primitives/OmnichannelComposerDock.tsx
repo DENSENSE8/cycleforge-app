@@ -139,6 +139,17 @@ interface OmnichannelComposerDockProps {
    */
   chrome?: 'raised' | 'bare';
   /**
+   * Flatten the TOP corners so a panel welded to this dock's upper edge shares
+   * one silhouette with it (Unbox receive feedback — `WeldedFeedbackPanel`).
+   *
+   * It is a PROP because a welded top is a state of this shell, not a second
+   * shell: the alternative is a caller passing `className="rounded-t-none"`,
+   * which is a radius override on a primitive and exactly what the DS bans.
+   * Only `raised` + stacked density has top radius to flatten; `bare` and
+   * `compact` are already square, so this is a no-op for them.
+   */
+  weldTop?: boolean;
+  /**
    * `default` — stacked textarea over footer (chat / notes).
    * `compact` — one short row: field + trailing action inline (paste docks).
    */
@@ -196,6 +207,7 @@ export const OmnichannelComposerDock = forwardRef<
     headerEnd,
     trailingAction,
     chrome = 'raised',
+    weldTop = false,
     density = 'default',
     autoGrow = true,
     manualResize = false,
@@ -289,7 +301,17 @@ export const OmnichannelComposerDock = forwardRef<
           : cn(
               compact
                 ? 'rounded-none border border-border-soft bg-surface-card'
-                : cn('rounded-2xl border border-border-soft bg-surface-card', elevationClass('raised')),
+                : cn(
+                    // Welded: the panel above owns the top corners, so this
+                    // shell keeps only its bottom pair and the two boxes read
+                    // as one. `transition-[border-color,box-shadow]` above
+                    // deliberately does not list border-radius — the flatten
+                    // must land in the same frame the panel starts peeling,
+                    // not lag behind it.
+                    weldTop ? 'rounded-b-2xl rounded-t-none' : 'rounded-2xl',
+                    'border border-border-soft bg-surface-card',
+                    elevationClass('raised'),
+                  ),
               focusRing('wrapper', 'accent'),
               'focus-within:ring-2 focus-within:ring-blue-500/20',
             ),
@@ -299,6 +321,7 @@ export const OmnichannelComposerDock = forwardRef<
       data-testid="omnichannel-composer-dock"
       data-composer-chrome={chrome}
       data-composer-density={density}
+      data-composer-weld-top={weldTop ? 'true' : undefined}
     >
       <div className={cn('relative min-w-0', compact ? 'flex-1' : 'w-full')}>
         {headerEnd ? (

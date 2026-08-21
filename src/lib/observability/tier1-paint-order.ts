@@ -59,10 +59,15 @@ export const TIER1_PAINT_ORDER: readonly Tier1PaintRoute[] = [
     aliases: ['/receiving'],
     label: 'Unbox',
     lcpSurface: 'primary',
-    /** Route loading geometry; LCP stand-in is UnboxStationFirstPaint (MRU / empty). */
-    skeleton: 'src/components/receiving/unbox/UnboxWorkbenchSkeleton.tsx',
+    /**
+     * Route loading cover. Unbox retired its drawn skeletons on 2026-08-20:
+     * `UnboxWorkbenchSkeleton` / `UnboxStationFirstPaint` are gone and the
+     * cover is the house loading field, which owns no geometry to drift.
+     * The SSR stand-in is the field's own token plane (it renders on the
+     * server; only the canvas needs hydration) plus UnboxStationEmptyShell.
+     */
+    skeleton: 'src/design-system/components/UniversalLoader.tsx',
     lcpHosts: [
-      'src/components/receiving/unbox/UnboxStationFirstPaint.tsx',
       'src/components/receiving/unbox/UnboxLineWorkspace.tsx',
       'src/components/receiving/unbox/UnboxStationEmptyShell.tsx',
     ],
@@ -101,10 +106,18 @@ export const TIER1_PAINT_ORDER: readonly Tier1PaintRoute[] = [
     path: '/search',
     label: 'Search',
     lcpSurface: 'primary',
-    /** Header find + browse shell — not a locked-width stage field. */
+    /**
+     * Header find + the `?sel=` record body. `SearchPrimaryPaintShell` is the
+     * mark's home: it stamps `search:primary` when its cover LIFTS, so the
+     * number names a painted record rather than the blank frame behind it —
+     * `SearchBrowseShell` used to stamp both marks unconditionally on mount,
+     * which meant the `?sel=` path reported nothing at all and the `?q=` path
+     * reported a fake-fast LCP.
+     */
     lcpHosts: [
       'src/app/search/page.tsx',
-      'src/components/search/SearchBrowseShell.tsx',
+      'src/components/search/SearchPrimaryPaintShell.tsx',
+      'src/components/search/station/SearchOrderStationPane.tsx',
       'src/components/layout/GlobalHeaderSearch.tsx',
     ],
     markRoute: 'search',

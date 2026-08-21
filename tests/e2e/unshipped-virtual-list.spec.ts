@@ -4,7 +4,7 @@ import { test, expect } from '@playwright/test';
  * Unshipped queue virtualization smoke — Pending grid (LedgerGrid).
  *
  * The Board|Grid switcher is retired: the To Ship queue is the single connected
- * spreadsheet (`OrdersGridHost` / `LedgerGrid` + `VirtualGroupedSections`).
+ * spreadsheet (`useOrdersSpreadsheet` / `LedgerGrid` + `VirtualGroupedSections`).
  * The grid card is bounded to the viewport remainder (`WORKBENCH_TABLE_VIEWPORT`,
  * matching Packed / Shipped / Labels), so it owns its OWN Y scroll port
  * (`pending-grid-scroll`) rather than windowing against the dashboard page

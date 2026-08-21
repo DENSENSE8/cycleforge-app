@@ -84,7 +84,7 @@ function CompleteCartonAction({
     // reconciles against, and say what IS true meanwhile: received locally.
     if (complete.awaitsSync && complete.syncStatus === 'pending') {
       return (
-        <div className="flex items-center justify-center gap-2 rounded-2xl bg-emerald-50 px-4 py-4 text-emerald-700 ring-1 ring-inset ring-emerald-200">
+        <div className="flex items-center justify-center gap-2 rounded-none bg-emerald-50 px-4 py-4 text-emerald-700 ring-1 ring-inset ring-emerald-200">
           <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
           <span className="text-sm font-semibold">
             Carton received{lineSuffix} · saving to {inventoryProviderLabel}…
@@ -98,7 +98,7 @@ function CompleteCartonAction({
     if (complete.syncStatus === 'failed') {
       return (
         <div className="flex flex-col gap-2">
-          <div className="rounded-2xl bg-amber-50 px-4 py-3 ring-1 ring-inset ring-amber-200">
+          <div className="rounded-none bg-amber-50 px-4 py-3 ring-1 ring-inset ring-amber-200">
             <p className="text-role-caption font-semibold uppercase tracking-widest text-amber-700">
               Received · {inventoryProviderLabel} not updated
             </p>
@@ -111,7 +111,7 @@ function CompleteCartonAction({
             variant="primary"
             size="lg"
             onClick={() => void complete.run()}
-            className={cn('h-14 w-full rounded-2xl', ACCENT_CTA)}
+            className={cn('h-14 w-full rounded-none', ACCENT_CTA)}
           >
             Retry {inventoryProviderLabel} save
           </Button>
@@ -124,7 +124,7 @@ function CompleteCartonAction({
     // the operator who took that call can see it named.
     if (complete.waiver) {
       return (
-        <div className="rounded-2xl bg-amber-50 px-4 py-3 ring-1 ring-inset ring-amber-200">
+        <div className="rounded-none bg-amber-50 px-4 py-3 ring-1 ring-inset ring-amber-200">
           <p className="text-role-caption font-semibold uppercase tracking-widest text-amber-700">
             Received without photos{lineSuffix}
           </p>
@@ -136,7 +136,7 @@ function CompleteCartonAction({
     }
 
     return (
-      <div className="flex items-center justify-center gap-2 rounded-2xl bg-emerald-50 px-4 py-4 text-emerald-700 ring-1 ring-inset ring-emerald-200">
+      <div className="flex items-center justify-center gap-2 rounded-none bg-emerald-50 px-4 py-4 text-emerald-700 ring-1 ring-inset ring-emerald-200">
         <Check className="h-5 w-5 shrink-0" />
         <span className="text-sm font-semibold">Carton received{lineSuffix}</span>
       </div>
@@ -149,7 +149,7 @@ function CompleteCartonAction({
   return (
     <div className="flex flex-col gap-2">
       {complete.phase === 'blocked' ? (
-        <div className="rounded-2xl bg-amber-50 px-4 py-3 ring-1 ring-inset ring-amber-200">
+        <div className="rounded-none bg-amber-50 px-4 py-3 ring-1 ring-inset ring-amber-200">
           <p className="text-role-caption font-semibold uppercase tracking-widest text-amber-700">
             Photos needed first
           </p>
@@ -176,7 +176,7 @@ function CompleteCartonAction({
       ) : null}
 
       {complete.phase === 'error' ? (
-        <p className="rounded-2xl bg-rose-50 px-4 py-3 text-center text-role-caption font-semibold text-rose-700 ring-1 ring-inset ring-rose-200">
+        <p className="rounded-none bg-rose-50 px-4 py-3 text-center text-role-caption font-semibold text-rose-700 ring-1 ring-inset ring-rose-200">
           {complete.error}
         </p>
       ) : null}
@@ -186,7 +186,7 @@ function CompleteCartonAction({
         size="lg"
         onClick={() => void complete.run()}
         disabled={working}
-        className={cn('h-14 w-full rounded-2xl', ACCENT_CTA)}
+        className={cn('h-14 w-full rounded-none', ACCENT_CTA)}
       >
         {working ? (
           <span className="inline-flex items-center gap-2">
@@ -346,7 +346,7 @@ export function MobileCartonSheet({ row, staffId, open, onClose }: MobileCartonS
             onNavigate={onClose}
           />
         ) : receivingId ? null : (
-          <p className="rounded-2xl bg-amber-50 px-4 py-3 text-center text-role-caption font-semibold text-amber-700">
+          <p className="rounded-none bg-amber-50 px-4 py-3 text-center text-role-caption font-semibold text-amber-700">
             No package id yet — scan tracking from desktop first.
           </p>
         )}
@@ -358,7 +358,7 @@ export function MobileCartonSheet({ row, staffId, open, onClose }: MobileCartonS
             prefetch={false}
             onClick={onClose}
             aria-label={`Take photos (${photoCount} so far)`}
-            className="flex h-14 w-full items-center justify-center rounded-2xl bg-blue-600 text-white shadow-sm transition-colors active:bg-blue-700"
+            className="flex h-14 w-full items-center justify-center rounded-none bg-blue-600 text-white shadow-sm transition-colors active:bg-blue-700"
           >
             <Camera className="h-6 w-6" />
           </Link>

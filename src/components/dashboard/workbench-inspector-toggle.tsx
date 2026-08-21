@@ -24,6 +24,13 @@
  * Displays owns that chord. The bare key stands down inside an editable target,
  * or typing `]` into the band's own find field would park the inspector.
  *
+ * **The glyph is static, so the FILL carries the state.** `ColumnsTwo` looks the
+ * same parked or pushed; until 2026-08-20 the only difference between the two
+ * states was the tooltip, which means an operator had to hover a control to
+ * learn what it had already done. It now wears the band's lit face
+ * ({@link WorkbenchBandControl} `lit`) while the inspector is showing — the same
+ * solid blue Views wears while a saved view is applied.
+ *
  * Goldens: Unbox History (`unbox-history-inspector-toggle`) · To-ship
  * (`orders-inspector-toggle`). Both hand-rolled this control before 2026-08-08;
  * it is one component now — do not fork a third.
@@ -31,8 +38,10 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { ColumnsTwo } from '@/components/Icons';
-import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { IconButton } from '@/design-system/primitives';
+import {
+  WorkbenchBandControl,
+  WORKBENCH_BAND_CONTROL_GLYPH_CLASS,
+} from '@/components/dashboard/workbench-band-control';
 import {
   GRID_COLUMN_DETAILS_RAIL_ID,
   requestOpenGridColumnDetails,
@@ -139,16 +148,13 @@ export function WorkbenchInspectorToggle({
   if (!enabled) return null;
 
   return (
-    <HoverTooltip label={label} asChild>
-      <IconButton
-        size="sm"
-        tone="neutral"
-        ariaLabel={label}
-        aria-pressed={showing}
-        icon={<ColumnsTwo className="h-4 w-4" />}
-        onClick={toggle}
-        data-testid={testId}
-      />
-    </HoverTooltip>
+    <WorkbenchBandControl
+      label={label}
+      lit={showing}
+      aria-pressed={showing}
+      icon={<ColumnsTwo className={WORKBENCH_BAND_CONTROL_GLYPH_CLASS} />}
+      onClick={toggle}
+      data-testid={testId}
+    />
   );
 }

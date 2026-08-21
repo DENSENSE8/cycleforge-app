@@ -17,16 +17,12 @@
 
 import { useCallback, useEffect, useMemo, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { SearchRefineControls } from '@/components/search/SearchRefineControls';
 import { SearchResultsSurface } from '@/components/search/SearchResultsSurface';
 import type { AiSearchHit } from '@/lib/search/ai-search-client';
 import {
-  resolveSearchOrder,
-  type ResolvedSearchOrder,
-} from '@/lib/search/resolve-search-order';
-import {
-  searchOrderResolveQueryKey,
+  searchOrderResolveQuery,
   setSearchOrderResolveCache,
 } from '@/lib/search/search-order-resolve-query';
 import {
@@ -49,7 +45,7 @@ import {
   setGlobalSearchPending,
 } from '@/lib/global-search-pending';
 import { dispatchGlobalSearchFocus } from '@/lib/global-search-focus';
-import { useSurfacePaintMark } from '@/lib/observability/paint-timing';
+import { useSearchPrimaryPaintOptional } from '@/components/search/search-primary-paint-context';
 
 export function SearchBrowseShell({
   setSel,
@@ -57,8 +53,6 @@ export function SearchBrowseShell({
   /** Paint-pending sel from the page hook — browse→detail in the click commit. */
   setSel: (next: SearchSelection | null) => void;
 }) {
-  useSurfacePaintMark('search:chrome', true);
-  useSurfacePaintMark('search:primary', true);
   const searchParams = useSearchParams();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -77,7 +71,6 @@ export function SearchBrowseShell({
   );
 
   const [statusOptions, setStatusOptions] = useState<string[]>([]);
-  const [idPending, setIdPending] = useState(false);
   const [needRetrieve, setNeedRetrieve] = useState(false);
   const [retrieveLoading, setRetrieveLoading] = useState(false);
   const [retrieveSettled, setRetrieveSettled] = useState(false);
@@ -91,16 +84,55 @@ export function SearchBrowseShell({
     [setSel],
   );
 
+  // The `?q=` body is deliberately hold-free — the header `SearchPendingBar`
+  // owns loading here — so release the shell's cover as soon as this mounts.
+  // The paint marks themselves live on the shell, anchored to the moment the
+  // cover lifts; stamping `search:primary` from here reported a fast LCP for a
+  // blank plane.
+  const primaryPaint = useSearchPrimaryPaintOptional();
+  useEffect(() => {
+    primaryPaint?.onPrimaryPainted();
+  }, [primaryPaint]);
+
   // Empty land → arm header find (no page-local field).
   useEffect(() => {
     if (q.length >= 2) return;
     dispatchGlobalSearchFocus();
   }, [q]);
 
+  /**
+   * Identifier resolve goes through the SHARED query waist
+   * (`searchOrderResolveQuery`), not a hand-rolled `getQueryData` +
+   * `resolveSearchOrder` + `cancelled` flag. The warm-cache read, the
+   * de-duplication of two surfaces asking for the same token, and the 45s
+   * `staleTime` are all the factory's — this file was re-deriving each of them
+   * one branch at a time.
+   */
+  const isIdentifier = q.length >= 2 && looksLikeIdentifier(q);
+  const resolveQuery = useQuery({
+    ...searchOrderResolveQuery(q),
+    enabled: isIdentifier,
+  });
+  const resolved = isIdentifier ? resolveQuery.data : undefined;
+  // `isLoading`, not `isPending`: a disabled query is permanently "pending" in
+  // v5, which would pin the header pulse on for every non-identifier query.
+  const idResolving = isIdentifier && resolveQuery.isLoading;
+
+  /**
+   * Alias-seed the numeric pk key once a token resolves. This is NOT part of
+   * the waist — it is the same cross-key write `GlobalFindCombobox` does, and
+   * it is what lets `SearchOrderStationPane` (keyed by `sel=order:{pk}`, a
+   * different token than the operator typed) paint from memory instead of
+   * re-fetching the order it was just handed.
+   */
+  useEffect(() => {
+    if (!isIdentifier || !resolved) return;
+    setSearchOrderResolveCache(queryClient, q, resolved);
+  }, [isIdentifier, resolved, q, queryClient]);
+
   // Quiet resolve / retrieve when URL has a query — header pulse only.
   useEffect(() => {
     if (!q || q.length < 2) {
-      setIdPending(false);
       setNeedRetrieve(false);
       setRetrieveLoading(false);
       setRetrieveSettled(false);
@@ -108,47 +140,33 @@ export function SearchBrowseShell({
       return;
     }
 
-    if (looksLikeIdentifier(q)) {
-      // Warm cache (header already resolved) → skip pending paint; open sel now.
-      const cached = queryClient.getQueryData<ResolvedSearchOrder>(
-        searchOrderResolveQueryKey(q),
-      );
-      if (cached?.status === 'ok') {
-        setIdPending(false);
+    if (isIdentifier) {
+      if (idResolving) {
         setNeedRetrieve(false);
+        setRetrieveSettled(false);
         setZeroHits(false);
-        selectOrderId(cached.order.id, q);
         return;
       }
-
-      let cancelled = false;
-      setIdPending(true);
-      setNeedRetrieve(false);
+      if (resolved?.status === 'ok') {
+        setNeedRetrieve(false);
+        setZeroHits(false);
+        selectOrderId(resolved.order.id, q);
+        return;
+      }
+      // Resolved to nothing (or errored) — fall through to retrieve.
+      setNeedRetrieve(true);
       setRetrieveSettled(false);
       setZeroHits(false);
-      void resolveSearchOrder(q).then((resolved) => {
-        if (cancelled) return;
-        setSearchOrderResolveCache(queryClient, q, resolved);
-        setIdPending(false);
-        if (resolved.status === 'ok') {
-          selectOrderId(resolved.order.id, q);
-          return;
-        }
-        setNeedRetrieve(true);
-      });
-      return () => {
-        cancelled = true;
-      };
+      return;
     }
 
-    setIdPending(false);
     setNeedRetrieve(true);
     setRetrieveSettled(false);
     setZeroHits(false);
-  }, [q, selectOrderId, queryClient]);
+  }, [q, isIdentifier, idResolving, resolved, selectOrderId]);
 
-  const showPending = idPending || (needRetrieve && retrieveLoading);
-  const mountRetrieve = needRetrieve && !idPending;
+  const showPending = idResolving || (needRetrieve && retrieveLoading);
+  const mountRetrieve = needRetrieve && !idResolving;
   const showRefineChrome =
     mountRetrieve && retrieveSettled && !retrieveLoading && !zeroHits;
 
@@ -267,7 +285,7 @@ export function SearchBrowseShell({
         </div>
       ) : (
         // Identifier resolve in flight — header SearchPendingBar only; no body hold.
-        <div className="min-h-0 flex-1" aria-busy={idPending || undefined} />
+        <div className="min-h-0 flex-1" aria-busy={idResolving || undefined} />
       )}
     </div>
   );

@@ -12,7 +12,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { createPortal } from 'react-dom';
-import { Loader2 } from '@/components/Icons';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { SidebarShell } from '@/components/layout/SidebarShell';
 import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
@@ -33,6 +32,7 @@ import {
   fetchFavoriteIntakeContext,
 } from '@/components/repair/repair-favorite-intake';
 import { parseRepairTab } from '@/lib/walk-in/history-modes';
+import { UniversalLoader } from '@/design-system/components/UniversalLoader';
 
 interface RepairSidebarPanelProps {
   embedded?: boolean;
@@ -172,11 +172,8 @@ export function RepairSidebarPanel({ embedded = false, hideSectionHeader = false
       bodyClassName="relative pb-4"
     >
       {isFetchingFavorite && (
-        <div className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-surface-card/80 backdrop-blur-sm">
-          <div className="flex items-center gap-2 text-orange-500">
-            <Loader2 className="h-5 w-5 animate-spin" />
-            <span className={sectionLabel}>Loading…</span>
-          </div>
+        <div className="absolute inset-0 z-10 flex">
+          <UniversalLoader isLoading label="Loading favourite" />
         </div>
       )}
 

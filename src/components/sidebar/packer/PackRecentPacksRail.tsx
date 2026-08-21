@@ -90,7 +90,7 @@ export function PackRecentPacksRail({
     return { startStr, endStr };
   }, []);
 
-  const { data: records = [], isLoading } = usePackerLogs(packerId, { weekRange });
+  const { data: records = [] } = usePackerLogs(packerId, { weekRange });
 
   const filteredRecords = useMemo(
     () =>
@@ -153,7 +153,7 @@ export function PackRecentPacksRail({
       limit={PACK_HISTORY_LIMIT}
       eyebrowTitle="Recent packs"
       eyebrowSuffix="You"
-      emptyText={isLoading ? 'Loading recent packs…' : 'No packs yet this week'}
+      emptyText="No packs yet this week"
       getId={packerRecordRailId}
       getActivityAt={getRowActivityAt}
       onSelect={handleSelect}

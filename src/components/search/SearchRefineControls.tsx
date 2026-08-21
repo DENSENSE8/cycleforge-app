@@ -1,9 +1,20 @@
 'use client';
 
 /**
- * `/search` refine chrome — field-density filter icon for SearchBar
- * `trailingSuffix` (after hover-reveal paste). Type + Status + Sort over the
- * retrieved top-50; URL-durable.
+ * `/search` browse refine strip — Type + Status + Sort over the retrieved
+ * top-50, URL-durable.
+ *
+ * Its seat is the strip `SearchBrowseShell` paints above the results list
+ * (`px-3 py-1.5`, right-aligned), NOT a `trailingSuffix` slot on the find
+ * field — the docblock claimed a seat this component has never had, and
+ * `density="field"` was sized for it. `toolbar` is the density that matches the
+ * strip's row height.
+ *
+ * **`SEARCH_SORT_PARAM` is deliberately `GRID_COLUMN_SORT_PARAM` (`?colsort=`)
+ * with no `?coldir=` companion.** This is a two-option display sort
+ * (relevance | date), not a spreadsheet column sort, so there is no direction
+ * to carry — do not "fix" it by routing it through `useUrlColumnSort`, which
+ * would start writing a `coldir` key nothing here reads.
  */
 
 import { useCallback, useMemo, useState } from 'react';
@@ -97,7 +108,7 @@ export function SearchRefineControls({
       hot={hot}
       label="Filters"
       hotActiveLabel={hotLabel}
-      density="field"
+      density="toolbar"
       contentClassName="w-52"
     >
       <WorkbenchFilterGroupLabel>Type</WorkbenchFilterGroupLabel>

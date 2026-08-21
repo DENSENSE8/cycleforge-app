@@ -25,7 +25,6 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { unitStatusBadgeTone } from '@/components/station/receiving-constants';
 import {
-  ChevronLeft,
   Check,
   X,
   MapPin,
@@ -36,6 +35,7 @@ import {
 import { timeAgo } from '@/utils/_date';
 import { unwrapScannedLocation } from '@/lib/barcode-routing';
 import { Button, IconButton } from '@/design-system/primitives';
+import { MobileDetailTopBar } from '@/components/mobile/redesign/MobileDetailTopBar';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 
@@ -246,27 +246,37 @@ export default function MobileUnitPage() {
     );
   }
 
+  // The bar renders on the loading and error states too. It is page CHROME, not
+  // part of the loaded record — leaving it inside the success branch is exactly
+  // how the SCAN corner disappears on the screens where a scan failed and the
+  // operator most needs to try another one.
   if (isLoading) {
     return (
-      <div className="flex min-h-dvh items-center justify-center bg-surface-card text-role-caption text-text-faint">
-        Loading unit…
+      <div className="min-h-dvh bg-surface-card">
+        <MobileDetailTopBar subtitle="Unit" title="Loading…" />
+        <div className="flex flex-1 items-center justify-center py-16 text-role-caption text-text-faint">
+          Loading unit…
+        </div>
       </div>
     );
   }
 
   if (isError || !data) {
     return (
-      <div className="flex min-h-dvh flex-col items-center justify-center bg-surface-card px-6 text-center">
-        <AlertTriangle className="mb-3 h-8 w-8 text-amber-400" />
-        <p className="text-role-eyebrow uppercase tracking-[0.18em] text-amber-600">
-          Couldn't load unit
-        </p>
-        <p className="mt-2 text-role-caption text-text-soft">
-          {error instanceof Error ? error.message : 'Try scanning again.'}
-        </p>
-        <Button variant="secondary" onClick={() => router.back()} className="mt-6">
-          Back
-        </Button>
+      <div className="min-h-dvh bg-surface-card">
+        <MobileDetailTopBar subtitle="Unit" title="Not found" />
+        <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
+          <AlertTriangle className="mb-3 h-8 w-8 text-amber-400" />
+          <p className="text-role-eyebrow uppercase tracking-[0.18em] text-amber-600">
+            Couldn&apos;t load unit
+          </p>
+          <p className="mt-2 text-role-caption text-text-soft">
+            {error instanceof Error ? error.message : 'Try scanning again.'}
+          </p>
+          <Button variant="secondary" onClick={() => router.back()} className="mt-6">
+            Back
+          </Button>
+        </div>
       </div>
     );
   }
@@ -275,28 +285,16 @@ export default function MobileUnitPage() {
 
   return (
     <div className="min-h-dvh bg-surface-canvas pb-10">
-      {/* Header */}
-      <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-border-hairline bg-surface-card px-3 py-3">
-        <IconButton
-          icon={<ChevronLeft className="h-5 w-5" />}
-          onClick={() => router.back()}
-          ariaLabel="Back"
-          className="flex h-9 w-9 items-center justify-center rounded-xl hover:bg-surface-sunken"
-        />
-        <div className="min-w-0 flex-1">
-          <p className="text-role-eyebrow uppercase tracking-[0.18em] text-text-faint">
-            Unit
-          </p>
-          <p className="truncate font-mono text-role-caption font-semibold text-text-default">
-            {unit.serial_number}
-          </p>
-        </div>
-        <StatusPill status={unit.current_status} />
-      </header>
+      <MobileDetailTopBar
+        subtitle="Unit"
+        title={unit.serial_number}
+        mono
+        right={<StatusPill status={unit.current_status} />}
+      />
 
       <main className="mx-auto w-full max-w-md space-y-3 px-3 pt-3">
         {/* Identity card */}
-        <section className="rounded-2xl bg-surface-card p-4 shadow-sm ring-1 ring-border-soft/60">
+        <section className="rounded-none bg-surface-card p-4 shadow-sm ring-1 ring-border-soft/60">
           {unit.product_title ? (
             <p className="line-clamp-3 text-sm font-semibold leading-snug text-text-default">
               {unit.product_title}
@@ -417,7 +415,7 @@ function ActionButton({
     <button
       type="button"
       onClick={onClick}
-      className={`flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-role-caption font-semibold shadow-sm transition-colors ${
+      className={`flex items-center justify-center gap-2 rounded-none px-4 py-3 text-role-caption font-semibold shadow-sm transition-colors ${
         active
           ? 'bg-blue-600 text-white'
           : 'bg-surface-card text-text-default ring-1 ring-border-soft hover:bg-surface-hover'
@@ -450,7 +448,7 @@ function ActionPanel({
 }) {
   return (
     <form
-      className="rounded-2xl bg-surface-card p-4 shadow-sm ring-1 ring-border-soft/60"
+      className="rounded-none bg-surface-card p-4 shadow-sm ring-1 ring-border-soft/60"
       onSubmit={(e) => {
         e.preventDefault();
         onSubmit();
@@ -464,7 +462,7 @@ function ActionPanel({
           icon={<X className="h-3.5 w-3.5" />}
           onClick={onCancel}
           ariaLabel="Cancel"
-          className="flex h-7 w-7 items-center justify-center rounded-lg hover:bg-surface-sunken"
+          className="flex h-7 w-7 items-center justify-center rounded-none hover:bg-surface-sunken"
         />
       </div>
       <input
@@ -475,7 +473,7 @@ function ActionPanel({
         autoFocus
         autoComplete="off"
         spellCheck={false}
-        className={cn("w-full rounded-xl border border-border-soft bg-surface-card px-3 py-2.5 text-role-caption font-mono text-text-default placeholder:text-text-faint", focusRing('field', 'accent'))}
+        className={cn("w-full rounded-none border border-border-soft bg-surface-card px-3 py-2.5 text-role-caption font-mono text-text-default placeholder:text-text-faint", focusRing('field', 'accent'))}
       />
       <Button
         type="submit"
@@ -498,7 +496,7 @@ function Timeline({ events }: { events: TimelineEvent[] }) {
     [events],
   );
   return (
-    <section className="rounded-2xl bg-surface-card shadow-sm ring-1 ring-border-soft/60">
+    <section className="rounded-none bg-surface-card shadow-sm ring-1 ring-border-soft/60">
       <header className="flex items-center gap-2 px-4 py-3">
         <HistoryIcon className="h-4 w-4 text-text-faint" />
         <p className="text-role-eyebrow uppercase tracking-[0.18em] text-text-soft">

@@ -15,7 +15,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { qk } from '@/queries/keys';
 import { OUTBOUND_QUERY_PREFIXES } from '@/lib/outbound/outbound-cache-keys';
 import { receivingFeedsRecentlyInvalidatedLocally } from '@/lib/queries/receiving-queries';
-import { invalidateUnshippedCounts } from '@/lib/queries/dashboard-cache-patch';
+import {
+  invalidateUnshippedCounts,
+  patchUnshippedOrderTested,
+} from '@/lib/queries/dashboard-cache-patch';
 
 function invalidateOutboundQueues(queryClient: ReturnType<typeof useQueryClient>) {
   for (const queryKey of OUTBOUND_QUERY_PREFIXES) {
@@ -126,10 +129,11 @@ export function useRealtimeInvalidation({
     ordersChannel,
     'order.tested',
     () => {
-      // Phase 3: the Unshipped rows are patched IN PLACE by UnshippedTable's own
-      // order.tested handler (has_tech_scan → the row moves pending → tested lane),
-      // so do NOT broad-invalidate the row list here — a tech scan on an idle
-      // dashboard causes 0 full /api/orders refetch. Just refresh the cheap counts.
+      // Phase 3: the Unshipped rows are patched IN PLACE by the sibling
+      // subscription below (has_tech_scan → the row moves pending → tested
+      // lane), so do NOT broad-invalidate the row list here — a tech scan on an
+      // idle dashboard causes 0 full /api/orders refetch. Just refresh the
+      // cheap counts.
       invalidateUnshippedCounts(queryClient);
       queryClient.invalidateQueries({ queryKey: ['dashboard-table', 'shipped'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-table', 'shipped-fba'] });
@@ -138,6 +142,32 @@ export function useRealtimeInvalidation({
     },
     !!ordersChannel && dashboard,
     frameCoalesce,
+  );
+
+  // …and the in-place half, as its OWN subscription. Two reasons it is not
+  // folded into the handler above:
+  //
+  //  1. **Coalescing.** The invalidate half is last-wins-per-frame, which is
+  //     right for "refetch something". This half reads `orderId` off the
+  //     payload, so a coalesced burst would patch the last scan and silently
+  //     drop every other bench's.
+  //  2. **Ownership.** The patch used to live only inside `UnshippedTable`.
+  //     Every other reader of the unshipped cache — the compare panes
+  //     (`OrdersPaneTable`) and the drill host (`OrdersDrillHost`) — queries it
+  //     without mounting that table, so on those surfaces a bench scan changed
+  //     nothing until an unrelated event happened to invalidate. The desk hook
+  //     is mounted once per surface; the patch belongs at that altitude.
+  //
+  // Downstream, `GridStatusCellValue` runs the live-change pulse off the label
+  // this patch produces — so this subscription is what makes a scan at the
+  // bench visible as motion on someone else's board.
+  useAblyChannel(
+    ordersChannel,
+    'order.tested',
+    (message: any) => {
+      patchUnshippedOrderTested(queryClient, message?.data ?? {});
+    },
+    !!ordersChannel && dashboard,
   );
 
   useAblyChannel(

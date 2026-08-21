@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Check, Loader2, Package } from '@/components/Icons';
+import { Check, Package } from '@/components/Icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { formatReturnSerialProductTitle } from '@/components/station/receiving-line-serials';
 import {
@@ -17,6 +17,7 @@ import {
 import { conditionGradeTextClass } from '@/lib/condition-tone';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Panel, Button } from '@/design-system/primitives';
+import { UniversalLoader } from '@/design-system/components/UniversalLoader';
 
 interface ReceivingLine {
   id: number;
@@ -184,7 +185,7 @@ export function PoLinesSection({ receivingId, trackingNumber }: PoLinesSectionPr
   return (
     <div className="space-y-2">
       {isFetching && lines.length === 0 ? (
-        <Loader2 className="h-3 w-3 animate-spin text-text-faint" />
+        <UniversalLoader isLoading label="Loading PO lines" className="min-h-20" />
       ) : null}
 
       {lines.length === 0 ? (

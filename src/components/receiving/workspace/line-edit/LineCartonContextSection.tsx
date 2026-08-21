@@ -102,6 +102,12 @@ interface LineCartonContextSectionProps {
    */
   onOpenPhotosDisplay?: () => void;
   /**
+   * Opens the carton-history leaf (Displays → Timeline) from the status cell's
+   * hover menu. Omit on a host with no Timeline tab — the row is dropped rather
+   * than painted dead.
+   */
+  onOpenHistory?: () => void;
+  /**
    * Opt-out: suppress Photos hover toolbar. Unbox keeps the strip — Move /
    * Send open Displays via the external callbacks. Pill click stays
    * send-to-phone; double-click opens Displays when {@link onOpenPhotosDisplay}
@@ -134,6 +140,7 @@ export function LineCartonContextSection({
   onOpenMovePhotosExternal,
   onSendToTicketExternal,
   onOpenPhotosDisplay,
+  onOpenHistory,
   suppressPhotoHoverGallery = false,
 }: LineCartonContextSectionProps) {
   void expandClassifyWhenPending;
@@ -224,6 +231,7 @@ export function LineCartonContextSection({
       }
       onOpenMovePhotosExternal={onOpenMovePhotosExternal}
       onOpenPhotosDisplay={onOpenPhotosDisplay}
+      onOpenHistory={onOpenHistory}
       suppressPhotoHoverGallery={suppressPhotoHoverGallery}
     />
   );

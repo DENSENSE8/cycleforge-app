@@ -87,7 +87,7 @@ export function MobileChecklistOrderQueue({
             }}
             placeholder="Product title or item #"
             enterKeyHint="search"
-            className="min-w-0 flex-1 rounded-2xl border border-border-soft bg-surface-canvas px-3 py-3 text-role-body font-semibold text-text-default placeholder:text-text-faint"
+            className="min-w-0 flex-1 rounded-none border border-border-soft bg-surface-canvas px-3 py-3 text-role-body font-semibold text-text-default placeholder:text-text-faint"
             aria-label="Filter orders by product title or item number"
           />
           <Button
@@ -95,7 +95,7 @@ export function MobileChecklistOrderQueue({
             size="sm"
             icon={<Search className="h-4 w-4" />}
             onClick={applySearch}
-            className="h-auto shrink-0 rounded-2xl px-4"
+            className="h-auto shrink-0 rounded-none px-4"
             ariaLabel="Search orders"
           >
             Go
@@ -123,11 +123,11 @@ export function MobileChecklistOrderQueue({
             className="pt-2 pb-3"
             empty={
               <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center">
-                <Package className="mb-1 h-10 w-10 text-blue-200" />
-                <p className="text-xs font-semibold uppercase tracking-widest text-blue-300">
+                <Package className="mb-1 h-10 w-10 text-text-faint" />
+                <p className="text-xs font-semibold uppercase tracking-widest text-text-faint">
                   {submittedQ ? 'No matches' : 'Nothing pending'}
                 </p>
-                <p className="max-w-[260px] text-xs font-medium text-blue-700/50">
+                <p className="max-w-[260px] text-xs font-medium text-text-muted">
                   {submittedQ
                     ? 'Try a different product title or item number.'
                     : 'No orders are waiting to be packed right now.'}

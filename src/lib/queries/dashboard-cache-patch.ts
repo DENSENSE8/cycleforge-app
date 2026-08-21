@@ -36,11 +36,71 @@ export function patchUnshippedOrderCache(
     let changed = false;
     const next = current.map((row: OrderRow) => {
       if (Number(row?.id) !== orderId) return row;
+      // Matching the id is not the same as changing the row. This used to set
+      // `changed` on the id match alone, which contradicted the identity
+      // promise in the header above: every redundant patch (two subscribers on
+      // one event, an Ably echo of a scan this tab already applied) handed
+      // React Query a fresh array and re-rendered the whole queue for nothing.
+      // With the live-change chip pulse downstream, "re-render for nothing" is
+      // no longer free — it is one keystroke away from flashing a status that
+      // did not move.
+      const rowChanged = Object.keys(patch).some(
+        (key) => row[key] !== (patch as Record<string, unknown>)[key],
+      );
+      if (!rowChanged) return row;
       changed = true;
       return { ...row, ...patch };
     });
     return changed ? next : current;
   });
+}
+
+/**
+ * The tech-verdict patch — one shape for the ONE event that flips an order out
+ * of the pending lane (`order.tested`, published by `/api/tech/scan` when a
+ * tracking number is scanned at the bench).
+ *
+ * It lives here rather than in a component because more than one surface reads
+ * the unshipped cache and only one of them used to subscribe: `UnshippedTable`
+ * owned this patch inline, so the compare panes (`OrdersPaneTable`) and the
+ * drill host (`OrdersDrillHost`) — which query the same cache without mounting
+ * that table — went stale on a scan until something else invalidated them.
+ *
+ * Never clobbers an existing `tested_by` with a null: the event carries the
+ * tester only when the scan resolved one.
+ */
+export function patchUnshippedOrderTested(
+  queryClient: QueryClient,
+  event: {
+    orderId: unknown;
+    testedBy?: unknown;
+    packLocationId?: unknown;
+    packLocationName?: unknown;
+  },
+): boolean {
+  const orderId = Number(event?.orderId);
+  if (!Number.isFinite(orderId)) return false;
+
+  const testedByRaw = event?.testedBy == null ? null : Number(event.testedBy);
+  const testedBy = testedByRaw != null && Number.isFinite(testedByRaw) ? testedByRaw : null;
+
+  const patch: Partial<OrderRow> = { has_tech_scan: true };
+  if (testedBy != null) patch.tested_by = testedBy;
+
+  // The bench, when the scan was made at an armed one. `publishOrderTested` has
+  // always carried `packLocationId` / `packLocationName`; the patch dropped
+  // them, so the Station chip on every board kept showing an em dash until some
+  // unrelated event forced a refetch. Same event, same round trip — the data
+  // was already on the wire.
+  const packLocationId = Number(event?.packLocationName != null ? event.packLocationId : NaN);
+  if (Number.isFinite(packLocationId)) {
+    patch.pack_location_id = packLocationId;
+    patch.pack_location_name = String(event.packLocationName);
+  }
+
+  patchUnshippedOrderCache(queryClient, orderId, patch);
+  invalidateUnshippedCounts(queryClient);
+  return true;
 }
 
 /**

@@ -27,6 +27,7 @@ import {
   KIOSK_META,
   KIOSK_PANE_FOOTER_BAND,
   KIOSK_SECTION_LABEL,
+  KIOSK_SECTION_LABEL_ROW,
 } from '@/app/kiosk/kiosk-chrome';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
@@ -44,8 +45,7 @@ function formatCents(cents: number): string {
 }
 
 const SECTION_LABEL = cn(
-  'border-b border-border-hairline px-4 py-2',
-  KIOSK_SECTION_LABEL,
+  KIOSK_SECTION_LABEL_ROW,
 );
 
 /**
@@ -205,7 +205,7 @@ export function KioskCounterPane({
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-5 px-6 text-center">
           <span
             className={cn(
-              'flex h-16 w-16 items-center justify-center bg-emerald-50 text-emerald-600',
+              'flex h-16 w-16 items-center justify-center bg-surface-success text-text-success',
               cornerClass('flush'),
             )}
           >

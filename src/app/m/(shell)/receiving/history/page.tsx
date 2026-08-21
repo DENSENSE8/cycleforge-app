@@ -4,7 +4,6 @@ import { useCallback, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import {
-  Menu,
   Barcode,
   Search,
   X,
@@ -13,7 +12,6 @@ import {
   Clock,
   Calendar,
 } from '@/components/Icons';
-import { QuickAccessButton } from '@/components/layout/QuickAccessButton';
 import { HorizontalButtonSlider, type HorizontalSliderItem } from '@/components/ui/HorizontalButtonSlider';
 import { MobileReceivingViewPills } from '@/components/mobile/receiving/MobileReceivingViewPills';
 import { MobilePoQrScanSheet } from '@/components/mobile/receiving/MobilePoQrScanSheet';
@@ -50,10 +48,6 @@ const SORTS: HorizontalSliderItem[] = [
   { id: 'scanned_oldest', label: 'Oldest scan', icon: Clock },
   { id: 'unboxed_newest', label: 'Unboxed',     icon: PackageCheck },
 ];
-
-function openDrawer() {
-  window.dispatchEvent(new CustomEvent('open-mobile-drawer'));
-}
 
 export default function MobileReceivingPipelinePage() {
   const [filter, setFilter] = useState<FilterKey>('all');
@@ -132,21 +126,6 @@ export default function MobileReceivingPipelinePage() {
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden bg-surface-card">
-      <header className="sticky top-0 z-header flex min-h-14 items-center gap-3 border-b border-border-hairline bg-surface-card px-3 pt-[env(safe-area-inset-top)]">
-        <IconButton
-          onClick={openDrawer}
-          ariaLabel="Open navigation"
-          icon={<Menu className="h-6 w-6 text-text-muted" />}
-          className="flex h-11 w-11 items-center justify-center rounded-xl active:bg-surface-sunken outline-none"
-        />
-
-        <h1 className="flex-1 text-lg font-semibold tracking-tight text-text-default">
-          Receiving
-        </h1>
-
-        <QuickAccessButton className="h-10 w-10" />
-      </header>
-
       <main className="relative min-h-0 flex-1 overflow-y-auto">
         {/* Floating overlay — sticky, transparent, list scrolls behind. */}
         <div className="sticky top-0 z-sticky flex flex-col gap-2 px-3 pt-2 pb-3 pointer-events-none">
@@ -211,7 +190,7 @@ export default function MobileReceivingPipelinePage() {
             {Array.from({ length: 6 }).map((_, i) => (
               <div
                 key={i}
-                className="h-[72px] animate-pulse rounded-2xl bg-surface-sunken"
+                className="h-[72px] animate-pulse rounded-none bg-surface-sunken"
                 aria-hidden
               />
             ))}

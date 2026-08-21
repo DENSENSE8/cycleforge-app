@@ -94,6 +94,7 @@ export interface Email {
 // chunk, which is the exact fan-in the split removed.
 import type { TodoItem, TodoResponse } from '@/components/receiving/incoming-todo-shared';
 import { focusRing } from '@/design-system/tokens/focus-ring';
+import { UniversalLoader } from '@/design-system/components/UniversalLoader';
 
 
 /**
@@ -547,9 +548,7 @@ export function EmailTriagePanel({ emails, onLinkTracking, className }: EmailTri
       {/* Body */}
       <div className="flex min-h-0 flex-1 flex-col">
         {isLoading ? (
-          <p className="flex items-center gap-1.5 px-3 py-3 text-role-caption text-text-faint">
-            <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading…
-          </p>
+          <UniversalLoader isLoading label="Loading email triage" className="min-h-32" />
         ) : isError ? (
           <div className="px-3 py-4">
             <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 inset-empty text-center text-role-caption text-rose-600">

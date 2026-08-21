@@ -1,5 +1,5 @@
 /**
- * Map Review queue / order rows into the OrdersGridHost `ShippedOrder` shape
+ * Map Review queue / order rows into the outbound spreadsheet's `ShippedOrder` shape
  * so History (and any verification-enriched open) can reuse the SoT table.
  */
 

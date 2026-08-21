@@ -15,6 +15,7 @@
 
 import { useMemo } from 'react';
 import { WORKBENCH_SHEET_HOST } from '@/components/dashboard/workbench-shell';
+import { WorkbenchBand2Card } from '@/components/dashboard/workbench-kpi-collapse';
 import { SalesKpiStrip } from '@/components/walk-in/SalesKpiStrip';
 import { SalesTransactionsFeed } from '@/components/walk-in/SalesTransactionsFeed';
 import { summarizeTransactions, type WalkInTransaction } from '@/lib/walk-in/transactions';
@@ -42,9 +43,9 @@ export function WalkInFeedPane({
   return (
     <div className="flex min-h-0 w-full flex-1 flex-col bg-surface-canvas">
       {/* Band 2 — KPI, seated in the flush chrome seam (border-b border-r). */}
-      <div className="shrink-0 border-b border-r border-border-soft bg-surface-card px-3 py-2">
+      <WorkbenchBand2Card>
         <SalesKpiStrip rollup={rollup} isLoading={isLoading} label={label} />
-      </div>
+      </WorkbenchBand2Card>
       {/* Feed flush in the sheet host; the scroll lives here so the day-band
           headers dock at top-0 of this region (RepairTable pattern). */}
       <div className={WORKBENCH_SHEET_HOST}>

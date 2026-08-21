@@ -32,22 +32,41 @@ export function StationPanelRoot({
    * hoist the stamp to an ancestor that contains it (custom properties inherit).
    */
   density,
+  /**
+   * The column plane.
+   *
+   * - `sunken` (default) — the scan-station recipe: a sunken centre reading as
+   *   a recessed plane on the shared canvas, with the ambient wash over it.
+   * - `card` — a flat white column (`--ds-color-surface-card`, `#ffffff` in the
+   *   light theme). Read surfaces that are ALL work-surface and carry no rails
+   *   of their own use this: on `/search` the three columns are meant to read as
+   *   one continuous sheet, and a sunken centre between two white rails paints
+   *   two seams that mean nothing there.
+   *
+   * Selecting `card` also drops the ambient wash — a gradient backdrop on a flat
+   * white plane is exactly the off-white cast it is supposed to remove.
+   */
+  surface = 'sunken',
   className,
 }: {
   children: ReactNode;
   wash?: boolean;
   density?: 'floor';
+  surface?: 'sunken' | 'card';
   className?: string;
 }) {
+  const flat = surface === 'card';
   return (
     <div
       data-density={density}
+      data-station-surface={surface}
       className={cn(
-        'relative flex h-full min-h-0 flex-col bg-surface-sunken',
+        'relative flex h-full min-h-0 flex-col',
+        flat ? 'bg-surface-card' : 'bg-surface-sunken',
         className,
       )}
     >
-      {wash ? <StationAmbientWash /> : null}
+      {wash && !flat ? <StationAmbientWash /> : null}
       {children}
     </div>
   );

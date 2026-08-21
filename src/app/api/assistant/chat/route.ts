@@ -254,7 +254,9 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
           history,
           userMessage: prepared.userMessage,
           context: context ?? null,
-          writeTools: buildWriteTools(sessionId),
+          // Permissions narrow the advertised kind list; enforcement is
+          // per-kind inside the tools themselves.
+          writeTools: buildWriteTools(sessionId, undefined, ctx.permissions),
           emit,
         });
 

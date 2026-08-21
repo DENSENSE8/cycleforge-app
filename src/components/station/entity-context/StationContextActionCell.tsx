@@ -8,13 +8,19 @@
  * or swap in IconButton. Photos stay on ReceivingPhotoButton appearance=chrome.
  */
 import { forwardRef, useRef, type CSSProperties, type ReactNode } from 'react';
-import { Copy, ExternalLink, Pencil, Ticket } from '@/components/Icons';
+import { Copy, ExternalLink, History, Pencil, Ticket } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { ChipHoverMenuSurface } from '@/components/ui/ChipHoverMenuSurface';
 import { useHoverSurface } from '@/hooks/useHoverSurface';
-import { listingMenuRows } from './carton-bar-menu-rows';
+import { lifecycleMenuRows, listingMenuRows } from './carton-bar-menu-rows';
 import { normalizeCopyText } from '@/lib/copy-chip-format';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
 import {
+  STATION_CHROME_CELL_CLASS,
+  STATION_CHROME_CELL_INK,
+  STATION_CHROME_CELL_LABEL,
+  STATION_CHROME_CELL_PAD,
   STATION_CHROME_GLYPH_CLASS,
 } from './station-identity-chrome';
 import {
@@ -28,6 +34,12 @@ export const LISTING_MENU_ICONS = {
   open: <ExternalLink className="h-3.5 w-3.5" />,
   copy: <Copy className="h-3.5 w-3.5" />,
   edit: <Pencil className="h-3.5 w-3.5" />,
+} as const;
+
+/** Row glyphs for the lifecycle verbs — same 3.5 box as every other menu. */
+const LIFECYCLE_MENU_ICONS = {
+  history: <History className="h-3.5 w-3.5" />,
+  copy: <Copy className="h-3.5 w-3.5" />,
 } as const;
 
 export const StationContextIconCell = forwardRef<
@@ -145,6 +157,105 @@ export function StationContextListingCell({
           surfaceProps={hover.surfaceProps}
         />
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * Lifecycle status cell — the carton's coarse stage, with a hover panel.
+ *
+ * Face: the stage's own dot + its NAME in default ink, the same anatomy every
+ * classify pill wears. Colour lives on the mark, never on the label
+ * ({@link STATION_CHROME_CELL_TEXT}). `compact` (the bar's collision measure)
+ * drops to the dot alone so status and the classify pills degrade together.
+ *
+ * The panel is {@link ChipHoverMenuSurface} on {@link useHoverSurface} — the
+ * one mechanism and one anchoring every carton-bar menu uses. Its rows come
+ * from {@link lifecycleMenuRows}, whose docblock records why Receive /
+ * Unreceive and a stage picker are deliberately NOT on it.
+ *
+ * The panel never repeats the stage name — the face beneath the pointer is
+ * already showing it. Its head is the one thing the face cannot hold: the sync
+ * sentence for a stage that is locally done but not yet confirmed by the
+ * inventory provider (`getReceivingStatusDotTip`), and only when there is one.
+ * That sentence plus the route to the evidence is why this cell earns a panel
+ * rather than a tooltip.
+ */
+export function StationContextLifecycleCell({
+  label,
+  dotClass,
+  tip,
+  compact = false,
+  onOpenHistory,
+}: {
+  label: string;
+  dotClass: string;
+  /** Provider-sync sentence for the awaiting-confirmation stage, if any. */
+  tip?: string | null;
+  compact?: boolean;
+  onOpenHistory?: () => void;
+}) {
+  const hostRef = useRef<HTMLDivElement | null>(null);
+  const hover = useHoverSurface({});
+
+  /**
+   * The head carries ONLY what the face cannot: the provider-sync sentence.
+   *
+   * It opened with the stage dot + name — which is the cell the pointer is
+   * already resting on. A panel that repeats its own trigger spends its first
+   * row saying nothing, and pushes the one line the operator came for down
+   * below it. No tip, no head.
+   */
+  const header = tip ? (
+    <div
+      className={`max-w-56 px-1.5 py-1.5 text-text-soft ${STATION_CHROME_CELL_LABEL}`}
+      data-testid="carton-context-lifecycle-facts"
+    >
+      {tip}
+    </div>
+  ) : null;
+
+  const menuRows = lifecycleMenuRows({
+    label,
+    onOpenHistory,
+    onDone: hover.close,
+    icons: LIFECYCLE_MENU_ICONS,
+    header,
+  });
+
+  return (
+    <div
+      ref={hostRef}
+      className="relative flex h-full shrink-0 items-stretch"
+      onClick={(e) => e.stopPropagation()}
+      {...hover.triggerProps}
+    >
+      <button
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded={hover.isOpen}
+        aria-label={tip ? `Status: ${label} — ${tip}` : `Status: ${label}`}
+        className={cn(
+          'ds-raw-button outline-none',
+          focusRing('control', 'accent'),
+          STATION_CHROME_CELL_CLASS,
+          STATION_CHROME_CELL_PAD,
+          !compact && ['gap-1.5', STATION_CHROME_CELL_LABEL, STATION_CHROME_CELL_INK],
+        )}
+        data-testid="carton-context-lifecycle"
+        data-face={compact ? 'dot' : 'label'}
+      >
+        <span className={cn('h-2 w-2 shrink-0 rounded-full', dotClass)} aria-hidden />
+        {compact ? null : <span className="leading-none">{label}</span>}
+      </button>
+      <ChipHoverMenuSurface
+        open={hover.isOpen}
+        onClose={hover.close}
+        anchorRef={hostRef}
+        menuLabel="Status"
+        rows={menuRows}
+        surfaceProps={hover.surfaceProps}
+      />
     </div>
   );
 }

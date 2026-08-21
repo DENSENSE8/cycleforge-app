@@ -51,7 +51,14 @@ describe('ProductSelector kiosk-split meta', () => {
     assert.match(src, /KIOSK_POS_CATEGORY_LABEL/);
     assert.match(src, /KIOSK_POS_SIDEBAR/);
     assert.match(src, /TechRailSearchBar/);
-    assert.match(src, /WorkbenchTriageBand/);
+    // The browse search band is the KIOSK band, not `WorkbenchTriageBand`
+    // (changed 2026-08-21). The desk band carries `gap-2`, `pr-0.5`, a
+    // `border-r`, a `shadow-sm` and the h-7 desk row face — on the counter that
+    // reads as a gap between the find bar and the right rail, and it blended a
+    // Workbench contract into a Station surface. The `className="pr-0"` patch
+    // that used to sit on it was treating the symptom.
+    assert.match(src, /KIOSK_BAND_SEARCH_ROW/);
+    assert.doesNotMatch(src, /<WorkbenchTriageBand/);
     assert.match(src, /KIOSK_POS_BROWSE_SCROLL/);
   });
 
@@ -69,7 +76,10 @@ describe('ProductSelector kiosk-split meta', () => {
     assert.match(src, /onSearchQueryChange\?/);
     assert.match(src, /hideBrowseSearch/);
     assert.doesNotMatch(src, /fuse|Fuse|cmd-k|cmdk|CommandPalette/i);
-    assert.match(src, /<WorkbenchTriageBand[\s\S]*?search=\{chromeFindBar\}/);
+    // ONE controlled find bar, mounted in the kiosk browse band. The assertion
+    // pins the intent (a single engine, one mount) — not which band component
+    // hosts it, which is what made this test fail when the band was corrected.
+    assert.match(src, /KIOSK_BAND_SEARCH_ROW\}>\{chromeFindBar\}/);
     assert.match(src, /KIOSK_POS_CARD_SELECTED_FRAME/);
   });
 

@@ -114,6 +114,8 @@ interface OrgProfileResponse {
     name?: string;
     logoUrl?: string;
     primaryColor?: string;
+    attractHeadline?: string;
+    attractSubline?: string;
     attractMediaUrl?: string;
     publicLandingUrl?: string;
   };
@@ -573,7 +575,49 @@ export function OrganizationSection() {
             placeholder="#2563EB"
           />
         </label>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="block">
+            <span className="mb-1 block text-xs font-medium text-text-muted">
+              Kiosk wordmark — line 1
+            </span>
+            <input
+              type="text"
+              maxLength={16}
+              value={draft.brand.attractHeadline ?? ''}
+              onChange={(e) =>
+                setDraft({ ...draft, brand: { ...draft.brand, attractHeadline: e.target.value } })
+              }
+              className={FIELD_CLS}
+              placeholder="USAV"
+            />
+            <span className="mt-1 block text-xs text-text-soft">
+              Shown on the screensaver when no kiosk image is uploaded. Painted in your primary
+              color.
+            </span>
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-xs font-medium text-text-muted">
+              Kiosk wordmark — line 2
+            </span>
+            <input
+              type="text"
+              maxLength={24}
+              value={draft.brand.attractSubline ?? ''}
+              onChange={(e) =>
+                setDraft({ ...draft, brand: { ...draft.brand, attractSubline: e.target.value } })
+              }
+              className={FIELD_CLS}
+              placeholder="Solutions"
+            />
+            <span className="mt-1 block text-xs text-text-soft">
+              Letterspaced automatically to the width of line 1.
+            </span>
+          </label>
+        </div>
         <KioskAttractMediaCard
+          headline={draft.brand.attractHeadline ?? ''}
+          subline={draft.brand.attractSubline ?? ''}
+          inkColor={draft.brand.primaryColor ?? ''}
           attractMediaUrl={draft.brand.attractMediaUrl ?? ''}
           onUrlChange={(url) =>
             setDraft({ ...draft, brand: { ...draft.brand, attractMediaUrl: url } })

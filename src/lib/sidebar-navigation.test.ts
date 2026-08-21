@@ -573,10 +573,12 @@ test('Home is rail-less — no context column for Today', () => {
   assert.equal(hasSidebarContextPanel('/'), false);
 });
 
-test('/search declares its own route key and does not reserve a context column', () => {
+test('/search declares its own route key and reserves a context column', () => {
   assert.equal(getSidebarRouteKey('/search'), 'search');
   assert.equal(getSidebarRouteKey('/search/anything'), 'search');
-  assert.equal(hasSidebarContextPanel('/search'), false);
+  // Rail-ful since 2026-08-20 (order station port): the middle paints the scan
+  // station, so the left column holds recent finds — `SearchRecentRail`.
+  assert.equal(hasSidebarContextPanel('/search'), true);
   // Spine top pin so MasterNav selects Search instead of falling through to Dashboard.
   const searchNav = APP_SIDEBAR_NAV.find((item) => item.id === 'search');
   assert.ok(searchNav, 'search must be in APP_SIDEBAR_NAV');

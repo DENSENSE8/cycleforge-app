@@ -25,7 +25,7 @@ is already ported onto the Unbox method (see its docstring + `station-port-from-
 | Flush Unbox dock (`UnboxDockHost` two-band, `data-arrival-dogfood-terminal`) | ✅ present | done — *the station-port scorecard row saying "Omnichannel float / advisory remains" is STALE* |
 | `StationDisplaysPushStack` (index→leaf) | ✅ `TriagePanel.tsx:524` | done |
 | Displays leaves | Pairing only (`linkage`) — `build-triage-displays.tsx` | done |
-| Utility rail `←|` + carton cursor `↑↓` | ✅ `UnboxDisplaysUtilityRailBody` / `ScanStationCartonCursor` | done |
+| Utility rail (index icons, whole-strip open) | ✅ `StationDisplaysUtilityRail` | done — the `←|` footer and the carton `↑↓` were removed 2026-08-19 |
 | **Icons-first `StationDisplaysActionFloor` (carton Macro floor)** | ❌ **MISSING** — `StationDisplaysPushStack` mounts with **no `actionFloor`** | **THIS PORT** |
 
 So the entire deliverable is: add an **`ArrivalDisplaysActionFloor`** and pass it to

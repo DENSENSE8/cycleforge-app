@@ -84,7 +84,8 @@ export function RailSelectionBand({
   return (
     <div
       className={cn(
-        'flex items-center gap-2 border-b border-border-soft py-2 pl-4 pr-2',
+        // `pr-0`: this band reserves the host `X` cell, which sits at `right-0`.
+        'flex items-center gap-2 border-b border-border-soft py-2 pl-4 pr-0',
         className,
       )}
     >

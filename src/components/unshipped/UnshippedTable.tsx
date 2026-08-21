@@ -5,17 +5,29 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { getOrdersChannelName, safeChannelName } from '@/lib/realtime/channels';
 import type { DashboardSearchSectionProps } from '@/components/dashboard/DashboardSearchSectionProps';
-import { UnshippedShelfBoard } from '@/components/unshipped/UnshippedShelfBoard';
+import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
+import { useOrdersSpreadsheet } from '@/components/dashboard/orders-queue/useOrdersSpreadsheet';
+import { WORKBENCH_SHEET_HOST } from '@/components/dashboard/workbench-shell';
+import { DASHBOARD_ORDERS_SELECTION_SCOPE } from '@/lib/selection/dashboard-scopes';
+import { useRecordCursorKeyboard } from '@/hooks/useRecordCursorKeyboard';
 import { OrdersFirstRunEmptyState } from '@/components/dashboard/OrdersFirstRunEmptyState';
-import { dispatchOpenShippedDetails } from '@/utils/events';
+import { dispatchCloseShippedDetails, dispatchOpenShippedDetails } from '@/utils/events';
 import { unshippedOrdersQuery, unshippedQueueCountsQuery } from '@/lib/queries/dashboard-queries';
 import { Button } from '@/design-system/primitives';
 import { useAblyChannel } from '@/hooks/useAblyChannel';
 import { useAuth } from '@/contexts/AuthContext';
-import { deriveFulfillmentState, fulfillmentCountsFromCombos, type FulfillmentState } from '@/lib/unshipped-state';
-import { patchUnshippedOrderCache, invalidateUnshippedCounts } from '@/lib/queries/dashboard-cache-patch';
+import { deriveFulfillmentState, fulfillmentLaneTotals, type FulfillmentState } from '@/lib/unshipped-state';
+import {
+  patchUnshippedOrderCache,
+  patchUnshippedOrderTested,
+  invalidateUnshippedCounts,
+} from '@/lib/queries/dashboard-cache-patch';
 import { SHIPPING_PATH } from '@/components/outbound/outbound-sidebar-shared';
 import type { ShippedOrder } from '@/types/orders';
+import type {
+  OrdersQueueColumn,
+  OrdersQueueColumnKey,
+} from '@/lib/dashboard-order-row-layout';
 import { useRefreshSignal } from '@/lib/refresh/bus';
 import { PACK_PLACED_PARAM, PACK_STATION_PARAM } from '@/lib/packing/pack-station-arm';
 
@@ -231,23 +243,24 @@ export function UnshippedTable({
   );
 
   // Pending-stage rows live in this merged queue too, so reflect tech-test
-  // verdicts (has_tech_scan) in place — same patch the old Pending table did.
+  // verdicts (has_tech_scan) in place — a tracking scan at the bench moves the
+  // row pending → tested and the status chip morphs under the operator's eye.
+  //
+  // The patch itself is `patchUnshippedOrderTested` (cache SoT), not inline:
+  // `useRealtimeInvalidation` runs the same helper for the desk surfaces that
+  // read this cache WITHOUT mounting this table (compare panes, drill host).
+  // Both subscriptions firing is fine and deliberate — the /tech embed has no
+  // dashboard hook above it, and the second patch is identity-preserving, so
+  // it costs a comparison rather than a re-render.
+  //
+  // NOT frame-coalesced: this handler reads its payload, and `coalesce:'frame'`
+  // is last-wins, so two benches scanning in the same frame would patch one row
+  // and silently drop the other.
   useAblyChannel(
     ordersChannelName,
     'order.tested',
     (message: any) => {
-      const orderId = Number(message?.data?.orderId);
-      const testedByIdRaw = message?.data?.testedBy;
-      const testedById = testedByIdRaw == null ? null : Number(testedByIdRaw);
-      const normalizedTestedById = testedById != null && Number.isFinite(testedById) ? testedById : null;
-      if (!Number.isFinite(orderId)) return;
-
-      // A tech verdict flips has_tech_scan (pending → tested lane). Patch in place
-      // (never clobber an existing tested_by with a null) + refresh the counts.
-      const patch: Record<string, unknown> = { has_tech_scan: true };
-      if (normalizedTestedById != null) patch.tested_by = normalizedTestedById;
-      patchUnshippedOrderCache(queryClient, orderId, patch);
-      invalidateUnshippedCounts(queryClient);
+      patchUnshippedOrderTested(queryClient, message?.data ?? {});
     },
     !!ordersChannelName,
   );
@@ -362,12 +375,17 @@ export function UnshippedTable({
   // Phase 2 "Load more": the stage-aware total (server, dedup-independent) exceeds
   // the loaded ceiling ⇒ more rows exist. Bumping the ceiling refetches the wider
   // page. Hidden during search (results are already the full match set).
+  // A dashboard LANE (`fulfillmentLane`) is the PENDING/TESTED/BLOCKED mapping,
+  // so its total comes from the lane SoT — `byStage` is the RAW hasTechScan
+  // split and adding BLOCKED to it double-counts every untested blocked order.
+  // A `?stage=` facet IS that raw split (the server filters on it), so those
+  // two branches keep reading `byStage`.
+  const laneTotals = fulfillmentLaneTotals(queueCounts);
   const stageTotal =
     fulfillmentLane === 'pending'
-      ? (queueCounts?.byStage.pending ?? 0) +
-        (fulfillmentCountsFromCombos(queueCounts?.combos ?? []).BLOCKED || 0)
+      ? laneTotals.pending
       : fulfillmentLane === 'tested'
-        ? (queueCounts?.byStage.tested ?? 0)
+        ? laneTotals.tested
         : stageFilter === 'pending'
           ? (queueCounts?.byStage.pending ?? 0)
           : stageFilter === 'tested'
@@ -386,7 +404,7 @@ export function UnshippedTable({
   ) : null;
 
   return (
-    <UnshippedShelfBoard
+    <UnshippedSheet
       records={records}
       loading={query.isLoading}
       searchValue={searchQuery}
@@ -406,5 +424,95 @@ export function UnshippedTable({
       footer={footer}
       toolbarPortalTarget={toolbarPortalTarget}
     />
+  );
+}
+
+/**
+ * Unshipped · Pending sheet — the To Ship fulfillment queue as a single
+ * connected spreadsheet (`useOrdersSpreadsheet` → {@link NonlinearTableHost} →
+ * `LedgerGridSurface`). One grid surface, no Board|Grid switcher: search renders
+ * the same grid over filtered records.
+ *
+ * Local to this file on purpose. The feed above gates a brand-new org onto
+ * `OrdersFirstRunEmptyState` BEFORE any grid mounts, so the spreadsheet hook
+ * (which publishes a grid-priority record cursor) has to sit behind that gate
+ * rather than run unconditionally in the feed. The old `UnshippedShelfBoard`
+ * module was deleted into this component
+ * (`docs/todo/one-table-engine-orders-host-PLAN.md` §5.2); its `selectedId`
+ * state and `open/close-shipped-details` bridge came with it and are gone —
+ * nothing ever read that value.
+ *
+ * Workbench contract: URL-addressable selection (`?openOrderId`) + right-pane
+ * detail. Do not refactor onto SidebarRailShell (single-list rail engine).
+ *
+ * Scroll: KPI strip is pinned in `DashboardOrdersView` sheet chrome; the
+ * table host is a flex-fill `WORKBENCH_SHEET_HOST` inside a definite flex chain
+ * (Unbox golden) so the grid self-scrolls — one Y port, no absolute viewport
+ * calc. Column header sticks inside the grid; no page-level sticky.
+ */
+function UnshippedSheet({
+  records,
+  loading,
+  searchValue,
+  onOpenRecord,
+  onClearSearch,
+  searchEmptyTitle = 'No orders found',
+  searchResultLabel = 'orders to ship',
+  clearSearchLabel = 'Show All Pending Orders',
+  selectMode = false,
+  railSelection = false,
+  footer,
+  toolbarPortalTarget,
+}: {
+  records: ShippedOrder[];
+  loading: boolean;
+  searchValue: string;
+  onOpenRecord: (record: ShippedOrder) => void;
+  onClearSearch: () => void;
+  searchEmptyTitle?: string;
+  searchResultLabel?: string;
+  clearSearchLabel?: string;
+  selectMode?: boolean;
+  /** Rail-selection model: the check-set is the single selection SoT and drives
+   *  the right-rail inspector (History / order-rail SoT). */
+  railSelection?: boolean;
+  footer?: React.ReactNode;
+  toolbarPortalTarget?: HTMLElement | null;
+}) {
+  const sheet = useOrdersSpreadsheet({
+    ariaLabel: 'Shelved unshipped orders',
+    records,
+    loading,
+    searchValue,
+    onOpenRecord,
+    onCloseRecord: () => {
+      dispatchCloseShippedDetails();
+    },
+    onClearSearch,
+    selectMode,
+    selectionScope: DASHBOARD_ORDERS_SELECTION_SCOPE,
+    railSelection,
+    queueMode: 'fulfillment',
+    searchEmptyTitle,
+    searchResultLabel,
+    clearSearchLabel,
+    'data-testid': 'pending-grid-body',
+    columnTriggerPortalTarget: toolbarPortalTarget ?? null,
+  });
+
+  // The spreadsheet hook publishes the cursor (it owns grouping + folds);
+  // this lane only turns the keyboard on.
+  useRecordCursorKeyboard({ enabled: true, scope: 'record' });
+
+  return (
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+      {/* Flush sheet host — flex-fill self-scroll (Unbox golden), definite chain. */}
+      <div className={WORKBENCH_SHEET_HOST}>
+        <NonlinearTableHost<ShippedOrder, OrdersQueueColumnKey, OrdersQueueColumn>
+          {...sheet}
+        />
+      </div>
+      {footer}
+    </div>
   );
 }

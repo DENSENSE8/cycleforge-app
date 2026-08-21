@@ -3,8 +3,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight } from '../Icons';
 import { Button, IconButton, TextField } from '@/design-system/primitives';
-import { WorkbenchTriageBand } from '@/components/dashboard/workbench-shell';
 import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
+import { KIOSK_BAND_SEARCH_ROW } from '@/app/kiosk/kiosk-chrome';
 import { StackedRowIdentity } from '@/components/ui/StackedRowIdentity';
 import { cornerClass } from '@/design-system/tokens/radius';
 import {
@@ -1281,11 +1281,21 @@ export function ProductSelector({
                 </div>
               )}
               {!hideBrowseSearch ? (
-                <WorkbenchTriageBand
-                  search={chromeFindBar}
-                  trailing={null}
-                  className="pr-0"
-                />
+                /*
+                 * The kiosk band, NOT `WorkbenchTriageBand`.
+                 *
+                 * That component is desk chrome: it carries `gap-2`, `pr-0.5`,
+                 * a `border-r`, a `shadow-sm` and the `h-7`
+                 * PRIMARY_CHROME_ROW_FACE. On the counter that reads as a gap
+                 * between the find bar and the right rail — and it blended two
+                 * region contracts on one surface (`kinetic-ledger.md`: one
+                 * contract per region). The `className="pr-0"` patch that used
+                 * to sit here was treating the symptom.
+                 *
+                 * KIOSK_BAND_SEARCH_ROW is full-bleed (`px-0`) at the 56px band
+                 * height, so the search runs edge-to-edge into the rail seam.
+                 */
+                <div className={KIOSK_BAND_SEARCH_ROW}>{chromeFindBar}</div>
               ) : null}
               <div className={KIOSK_POS_BROWSE_SCROLL}>
                 {renderProductsGrid()}

@@ -104,6 +104,9 @@ const TABLE_ENTITY_FAMILIES = [
   'tech-all',
   // Home → Daily shift checklist.
   'daily',
+  /** Home → Tasks: one staffer's own `staff_todos`. A SIBLING of `daily`, not
+   *  a view of it — different store, different question, different row shape. */
+  'tasks',
   'catalog-link',
   'station-history',
   'fba',

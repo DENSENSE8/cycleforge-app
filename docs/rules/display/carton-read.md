@@ -3,7 +3,7 @@
 Recipe for the durable **read** record of a carton — observe-first with a work **escape**, not Station Workbench and not a Monitor KPI rollup.
 
 **SoT rows:** `source-of-truth.md` → Photo gallery viewer · Carton read surface.  
-**Sharing boundary:** `pattern-evolution.md` Always #5 (D6) — read model + atoms only; never Unbox layout panels / `CartonContextCard` / lobotomized work chrome.
+**Sharing boundary (reversed 2026-08-20):** `pattern-evolution.md` Always #5 now says a read surface composes the SAME station assembly in a declared `preview` stance — see `OrderStationPane` (`src/components/station/order/`), which `/search?sel=order:` mounts. D6's ban on Unbox layout panels / `CartonContextCard` is retired. **This surface has not been ported yet** — it still runs the parallel read layout described below. Treat that as the open follow-up, not as a standing exemption.
 
 ## Anatomy
 

@@ -12,8 +12,11 @@ export const GET = withKioskAuth(async (req: NextRequest, ctx) => {
     return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
   }
   // `kiosk` is behaviour (idle timing), `brand` is identity — the shell reads
-  // both and resolves idle timing through src/lib/kiosk/idle.ts.
+  // both and resolves idle timing through src/lib/kiosk/idle.ts. `orgId` rides
+  // along so the runtime can resolve the tenant-specific attract face (the
+  // dogfood wordmark screensaver); it is the tablet's own org, never a scope.
   return NextResponse.json({
+    orgId: ctx.organizationId,
     brand: settings.brand ?? {},
     kiosk: settings.kiosk ?? {},
   });

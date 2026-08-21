@@ -106,14 +106,14 @@ export function useAiQuickJump(
       abortRef.current = controller;
       setPhase('retrieving');
       try {
-        const data = await postAiRetrieve(q, {
+        const result = await postAiRetrieve(q, {
           entityTypes: entityTypesKey ? entityTypesKey.split(',') : undefined,
           pageContext,
           limit,
           signal: controller.signal,
         });
         if (!controller.signal.aborted) {
-          setHits(data?.hits ?? []);
+          setHits(result.ok ? (result.data.hits ?? []) : []);
           setSearching(false);
           setPhase('idle');
         }

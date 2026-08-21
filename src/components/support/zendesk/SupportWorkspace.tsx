@@ -32,7 +32,8 @@ const WarrantyWorkspace = dynamic(
  *
  * - tickets   → `service-workspace` shell (`SupportTicketsWorkspace`: board map
  *   keep-alive + thread focus when `?ticket=`). Sidebar shows recently selected.
- * - orders    → Dashboard To Ship board (`UnshippedTable` / OrdersGridHost) +
+ * - orders    → Dashboard To Ship board (`UnshippedTable` → the outbound
+ *   spreadsheet) +
  *   Station order focus when `?openOrderId=` is set.
  * - voicemail → selected voicemail detail (`?vm=`), Workbench crossfade.
  * - calls     → the org call-log Monitor stream (read-only).

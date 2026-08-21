@@ -75,6 +75,65 @@ export function fulfillmentCountsFromCombos(
   return counts;
 }
 
+/** What a To-ship LANE tab counts. `pending` is the Pending tab, which shows
+ *  BLOCKED rows too (the grid only hides `TESTED`), so it is PENDING + BLOCKED. */
+export interface FulfillmentLaneTotals {
+  pending: number;
+  tested: number;
+  blocked: number;
+}
+
+/**
+ * Lane totals for the To-ship tabs / filter strip / "Showing X of Y".
+ *
+ * **The tab number must be countable off the rows the tab shows.** The Pending
+ * grid hides only `TESTED`, so its total is `PENDING + BLOCKED` — both taken
+ * from the SAME lane mapping the rows use ({@link fulfillmentCountsFromCombos}
+ * → {@link deriveFulfillmentState}).
+ *
+ * Three call sites each hand-rolled this and each got it wrong the same way
+ * (fixed 2026-08-20). The shape was:
+ *
+ * ```ts
+ * (fromCombos.PENDING || byStage.pending || 0) + fromCombos.BLOCKED   // ✗
+ * ```
+ *
+ * `byStage` is the RAW `hasTechScan` split, and `resolveFulfillmentLane` puts
+ * `isOutOfStock` FIRST — so an untested blocked order sits in `byStage.pending`
+ * *and* in `BLOCKED`. Two ways that misreports:
+ *
+ * - `??`/unconditional form: every untested blocked order is counted twice.
+ * - `||` form: worse and sneakier, because a legitimate **zero** is falsy. With
+ *   0 truly-pending and 1 blocked order it fell through to `byStage.pending`
+ *   (=1, the blocked one) and added `BLOCKED` (=1) — the tab read **2** over a
+ *   grid holding **1 row**.
+ *
+ * `byStage` is therefore only a fallback for a payload carrying NO combos at
+ * all (degraded route / older cache entry), and in that case blocked is not
+ * added: the raw pending bucket already contains it, and the raw split cannot
+ * separate the lanes anyway.
+ */
+export function fulfillmentLaneTotals(
+  counts:
+    | {
+        combos?: ReadonlyArray<{ hasTechScan: boolean; blocked: boolean; count: number }>;
+        byStage?: { pending: number; tested: number };
+      }
+    | null
+    | undefined,
+): FulfillmentLaneTotals {
+  const combos = counts?.combos ?? [];
+  if (combos.length > 0) {
+    const c = fulfillmentCountsFromCombos(combos);
+    return { pending: c.PENDING + c.BLOCKED, tested: c.TESTED, blocked: c.BLOCKED };
+  }
+  return {
+    pending: counts?.byStage?.pending ?? 0,
+    tested: counts?.byStage?.tested ?? 0,
+    blocked: 0,
+  };
+}
+
 interface UnshippedStateMeta {
   label: string;
   /** One‑line plain‑English meaning — surfaced as the hover tooltip on dots + legend chips. */

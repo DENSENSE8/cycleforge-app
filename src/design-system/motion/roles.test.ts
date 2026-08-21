@@ -81,16 +81,37 @@ test('routeHistory rises on appear — desk tables never wipe left→right', () 
   assert.equal((animate as { y?: number }).y, 0);
 });
 
-test('there are exactly seven roles', () => {
+test('there are exactly eight roles', () => {
   const leaves = Object.values(motionRole).flatMap((group) => Object.keys(group));
   assert.equal(
     leaves.length,
-    7,
-    `Roles: ${leaves.join(', ')}. An eighth role is a claim that a new JOB exists — ` +
+    8,
+    `Roles: ${leaves.join(', ')}. A ninth role is a claim that a new JOB exists — ` +
       'wanting a different duration for an existing job is the drift this layer prevents. ' +
       '`feedback.hitMarker` (2026-08-07) is the seventh: middle confirm depth ≠ pulse ack ' +
-      '(Displays open must not withhold DOM behind it).',
+      '(Displays open must not withhold DOM behind it). `feedback.liveChange` (2026-08-20) ' +
+      'is the eighth: a value changed REMOTELY, on an element nobody is looking at — the ' +
+      'other two feedback roles both acknowledge something the operator just did under ' +
+      'their own cursor, which is why 100-150ms is enough for them and not for this.',
   );
+});
+
+/**
+ * `feedback.liveChange` is the one role whose keyframes live at the call site
+ * (`useLiveValueChange` hands `animate()` arrays, rather than a `motion.*`
+ * component reading a presence shape). That makes the `times` map part of the
+ * contract: Motion requires `keyframes.length === times.length`, and a mismatch
+ * throws at runtime on the exact surface nobody is watching.
+ */
+test('feedback.liveChange carries a double-pulse map and a shorter morph', () => {
+  const { transition, morph } = motionRole.feedback.liveChange;
+  assert.equal(transition.times.length, 6, 'double pulse: rest · peak · trough · peak · trough · settle');
+  assert.equal(morph.times.length, 3, 'label dip: in · out · back');
+  assert.ok(
+    morph.duration < transition.duration,
+    'the morph resolves INSIDE the first beat — the word must not still be swapping at settle',
+  );
+  assert.ok(transition.duration < 0.5, 'a one-shot ack stays under the house half-second ceiling');
 });
 
 /**

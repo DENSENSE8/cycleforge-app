@@ -23,6 +23,15 @@ describe('Button semantic intents (2a)', () => {
     assert.match(BUTTON_VARIANTS.execute, /ring-1 ring-border-soft/);
   });
 
+  it('warning is the amber recoverable intent', () => {
+    // The four-tone feedback state machine (loading · success · warning ·
+    // error) needs an amber CTA. Without this intent the only way to paint one
+    // is a `className` hue override on <Button>, which the DS bans.
+    assert.ok('warning' in BUTTON_VARIANTS, 'warning (recoverable) must be a Button variant');
+    assert.match(BUTTON_VARIANTS.warning, /bg-amber-600/);
+    assert.match(BUTTON_VARIANTS.warning, /hover:bg-amber-500/);
+  });
+
   it('every variant is a non-empty class string', () => {
     for (const [name, classes] of Object.entries(BUTTON_VARIANTS)) {
       assert.ok(typeof classes === 'string' && classes.length > 8, `${name} fill is empty`);

@@ -10,7 +10,7 @@
  */
 import assert from 'node:assert/strict';
 import { beforeEach, describe, it } from 'node:test';
-import { kioskSessionStore } from './kiosk-session-store';
+import { kioskSessionStore, type KioskSharedWriter } from './kiosk-session-store';
 import type { KioskCartLine } from './cart-line';
 
 function line(overrides: Partial<KioskCartLine> = {}): KioskCartLine {
@@ -38,6 +38,7 @@ function mirrorOnce(version: number, lines: KioskCartLine[], masked = '•••
 
 beforeEach(() => {
   kioskSessionStore.resetSession();
+  kioskSessionStore.attachSharedWriter(null);
 });
 
 describe('local transport — unchanged by the shared one', () => {
@@ -101,46 +102,84 @@ describe('shared transport — the tablet mirrors the desk', () => {
   });
 });
 
-describe('D5 — while a desk holds the tablet, the desk owns the lines', () => {
-  it('refuses a local add', () => {
+describe('write-through — staff and customer fill the same form at once', () => {
+  interface Recorder {
+    added: KioskCartLine[];
+    updated: Array<{ id: string; patch: Record<string, unknown> }>;
+    removed: string[];
+  }
+
+  function recorder(): Recorder {
+    const rec: Recorder = { added: [], updated: [], removed: [] };
+    const writer: KioskSharedWriter = {
+      addLine: (l) => void rec.added.push(l),
+      updateLine: (id, patch) => void rec.updated.push({ id, patch: patch as Record<string, unknown> }),
+      removeLine: (id) => void rec.removed.push(id),
+    };
+    kioskSessionStore.attachSharedWriter(writer);
+    return rec;
+  }
+
+  it('applies a local add optimistically AND sends it', () => {
     mirrorOnce(1, [line()]);
+    const rec = recorder();
+
     kioskSessionStore.addRetail({
-      title: 'Sneaky',
-      unitAmountCents: 100,
+      title: 'Customer added this',
+      unitAmountCents: 0,
       payload: { variationId: null, sku: 'X' },
     });
+
     assert.deepEqual(
       kioskSessionStore.getSnapshot().lines.map((l) => l.title),
-      ['Case'],
-      'a local edit the server never took would be erased by the next mirror anyway',
+      ['Case', 'Customer added this'],
+      'the customer sees their own line immediately',
     );
+    assert.equal(rec.added.length, 1, 'and the desk learns about it');
+    assert.equal(rec.added[0].title, 'Customer added this');
   });
 
-  it('refuses a local quantity or price edit', () => {
+  it('sends a correction — the customer knows their own serial better than the operator', () => {
     mirrorOnce(1, [line()]);
-    kioskSessionStore.updateLine('srv-1', { quantity: 99, unitAmountCents: 1 });
+    const rec = recorder();
 
-    const l = kioskSessionStore.getSnapshot().lines[0];
-    assert.equal(l.quantity, 1);
-    assert.equal(l.unitAmountCents, 1999);
+    kioskSessionStore.updateLine('srv-1', { quantity: 3 });
+
+    assert.deepEqual(rec.updated, [{ id: 'srv-1', patch: { quantity: 3 } }]);
+    assert.equal(kioskSessionStore.getSnapshot().lines[0].quantity, 3);
   });
 
-  it('refuses a local remove', () => {
+  it('routes a remove to the writer rather than silently dropping it', () => {
+    // A remove on a shared session is a VOID — staff work. The writer decides
+    // not to send it, and the next mirror puts the line back. What must NOT
+    // happen is the store swallowing it with no trace, which is how the tablet's
+    // own line editor came to call a method that did nothing at all.
     mirrorOnce(1, [line()]);
+    const rec = recorder();
+
     kioskSessionStore.removeLine('srv-1');
-    assert.equal(kioskSessionStore.getSnapshot().lines.length, 1);
+    assert.deepEqual(rec.removed, ['srv-1']);
   });
 
-  it('lets those same edits through once the desk lets go', () => {
+  it('stays purely local when no writer is attached', () => {
+    kioskSessionStore.attachSharedWriter(null);
     mirrorOnce(1, [line()]);
+
+    kioskSessionStore.updateLine('srv-1', { quantity: 9 });
+    assert.equal(kioskSessionStore.getSnapshot().lines[0].quantity, 9, 'no server to defer to');
+  });
+
+  it('detach clears the writer — a stale one could post into someone else’s visit', () => {
+    mirrorOnce(1, [line()]);
+    const rec = recorder();
     kioskSessionStore.detachSharedSession();
 
     kioskSessionStore.addRetail({
-      title: 'Local again',
-      unitAmountCents: 500,
+      title: 'After detach',
+      unitAmountCents: 100,
       payload: { variationId: null, sku: 'Y' },
     });
-    assert.deepEqual(kioskSessionStore.getSnapshot().lines.map((l) => l.title), ['Local again']);
+    assert.equal(rec.added.length, 0);
   });
 });
 

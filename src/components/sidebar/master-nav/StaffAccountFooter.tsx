@@ -61,8 +61,13 @@ type OpenMenu = 'none' | 'more' | 'history' | 'feedback' | 'phone-qr';
  * notifications. (The docblock here used to read "Kiosk stays header-only";
  * that is exactly the ruling that was reversed.)
  *
- * Mobile does not follow: it has no spine, therefore no account overflow, so
- * `GlobalHeaderActions` keeps clipboard + phone QR in its own icon cluster.
+ * **Mobile now follows** (2026-08-21). This line used to read "Mobile does not
+ * follow: it has no spine, therefore no account overflow, so
+ * `GlobalHeaderActions` keeps clipboard + phone QR in its own icon cluster."
+ * That mobile cluster is gone — the phone mounts THIS component at the bottom
+ * of its navigation drawer ({@link MobileSidebarDrawer}), which is the drawer's
+ * spine-footer equivalent. Same band, same ⋯ menu, same rows; the drawer is
+ * simply the surface that has room for it.
  *
  * **Clipboard history stays here, and now carries its chord** (D5, decided
  * 2026-08-02). Every comparable product — Windows `Win+V`, Paste, Maccy,

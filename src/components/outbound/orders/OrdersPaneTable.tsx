@@ -10,7 +10,8 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import dynamic from 'next/dynamic';
 import { PackedOrdersTable } from '@/components/dashboard/PackedOrdersTable';
-import { OrdersGridHost } from '@/components/dashboard/orders-queue/OrdersGridHost';
+import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
+import { useOrdersSpreadsheet } from '@/components/dashboard/orders-queue/useOrdersSpreadsheet';
 import { unshippedOrdersQuery } from '@/lib/queries/dashboard-queries';
 import { deriveFulfillmentState } from '@/lib/unshipped-state';
 import { dispatchOpenShippedDetails } from '@/utils/events';
@@ -18,6 +19,10 @@ import { useDashboardSearchController } from '@/hooks/useDashboardSearchControll
 import { DASHBOARD_ORDER_VIEW_LABEL, type DashboardOrderView } from '@/utils/dashboard-search-state';
 import type { OrdersComparePaneId } from '@/lib/shipping/orders-compare-layout';
 import type { ShippedOrder } from '@/types/orders';
+import type {
+  OrdersQueueColumn,
+  OrdersQueueColumnKey,
+} from '@/lib/dashboard-order-row-layout';
 import { cn } from '@/utils/_cn';
 
 function fulfillmentSignals(r: ShippedOrder) {
@@ -126,20 +131,26 @@ function UnshippedComparePane({
     });
   }, [data, view]);
 
+  // One outbound spreadsheet, mounted straight onto the engine (no family
+  // GridHost). Plan: `one-table-engine-orders-host-PLAN.md`.
+  const sheet = useOrdersSpreadsheet({
+    records,
+    loading: isPending,
+    searchValue: searchQuery,
+    onOpenRecord: (record) => dispatchOpenShippedDetails(record, 'queue'),
+    onClearSearch,
+    emptyMessage: view === 'tested' ? 'No tested orders' : 'No pending orders',
+    selectMode,
+    selectionScope,
+    railSelection: false,
+    queueMode: 'fulfillment',
+    ariaLabel: `${DASHBOARD_ORDER_VIEW_LABEL[view]} compare pane`,
+    columnTriggerPortalTarget,
+  });
+
   return (
-    <OrdersGridHost
-      records={records}
-      loading={isPending}
-      searchValue={searchQuery}
-      onOpenRecord={(record) => dispatchOpenShippedDetails(record, 'queue')}
-      onClearSearch={onClearSearch}
-      emptyMessage={view === 'tested' ? 'No tested orders' : 'No pending orders'}
-      selectMode={selectMode}
-      selectionScope={selectionScope}
-      railSelection={false}
-      queueMode="fulfillment"
-      ariaLabel={`${DASHBOARD_ORDER_VIEW_LABEL[view]} compare pane`}
-      columnTriggerPortalTarget={columnTriggerPortalTarget}
+    <NonlinearTableHost<ShippedOrder, OrdersQueueColumnKey, OrdersQueueColumn>
+      {...sheet}
     />
   );
 }

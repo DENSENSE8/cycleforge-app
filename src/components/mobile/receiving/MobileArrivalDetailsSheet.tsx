@@ -59,8 +59,8 @@ function OptionGrid({
             onClick={() => onPick(opt.value)}
             title={opt.title}
             className={cn(
-              'ds-raw-button flex min-h-14 flex-col items-center justify-center gap-1 rounded-2xl border px-2 py-3 text-center transition-all active:scale-[0.98] disabled:opacity-50',
-              active ? opt.activeClass ?? 'border-blue-300 bg-blue-50 text-blue-800 shadow-sm' : opt.inactiveClass,
+              'ds-raw-button flex min-h-14 flex-col items-center justify-center gap-1 rounded-none border px-2 py-3 text-center transition-all active:scale-[0.98] disabled:opacity-50',
+              active ? opt.activeClass ?? 'border-border-soft bg-surface-sunken text-text-default shadow-sm' : opt.inactiveClass,
             )}
             style={active ? opt.activeStyle : opt.inactiveStyle}
           >

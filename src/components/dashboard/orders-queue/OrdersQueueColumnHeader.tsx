@@ -44,7 +44,7 @@ const ORDERS_HEADER_LAYOUT: LedgerHeaderLayoutApi<OrdersQueueColumn> = {
  * Half the fork was also dead: its `gridSkin={false}` branch carried a whole
  * second "board / Packed" header look (centered labels, `bg-surface-canvas/95`
  * backdrop-blur, `inset: 'cell'`), and the one live mount
- * (`OrdersGridHost`) always passed `gridSkin`. Nothing rendered it.
+ * (the outbound spreadsheet) always passed `gridSkin`. Nothing rendered it.
  *
  * Retiring it lines Orders up with Unbox History — the table SoT — and Orders
  * *gains* what the fork never had: the Sheets header context menu, and header

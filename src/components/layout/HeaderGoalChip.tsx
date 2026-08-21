@@ -1,6 +1,8 @@
 'use client';
 
 import { AnchoredLayer } from '@/design-system';
+import { BottomSheet } from '@/components/ui/BottomSheet';
+import { useIsMobile } from '@/hooks/_ui';
 import { IconButton } from '@/design-system/primitives';
 import { ClipboardList } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
@@ -42,6 +44,18 @@ import { HEADER_ICON_BTN_CLASS, HEADER_ICON_BTN_OPEN_CLASS, HEADER_ICON_WRAP } f
  *   goal set would be chrome inventing a second story.
  * - Neither, once both have settled → nothing. Absent, never disabled.
  *
+ * ## Mobile is a SHEET, not the same 290px popover shrunk
+ *
+ * `MobileTopBar` mounts this exact component, so the panel has to work on a
+ * phone — and an anchored 290px card hanging off a 390px bar is a desktop
+ * artifact, not a mobile surface. Under `md` the same `GoalPopover` renders
+ * inside {@link BottomSheet} (the house responsive-overlay SoT) in its `sheet`
+ * stance: full width, drag-to-dismiss, 44px rows and 44px menu items.
+ *
+ * `surface` is a **required prop with no default** on the panel — a second host
+ * cannot inherit the wrong density by omission, and the compiler names every
+ * mount that has not answered.
+ *
  * ## Corner mark is recurring-due only
  *
  * A recurring task coming due is time-critical and owns the corner with a rose
@@ -52,6 +66,7 @@ import { HEADER_ICON_BTN_CLASS, HEADER_ICON_BTN_OPEN_CLASS, HEADER_ICON_WRAP } f
 export function HeaderGoalChip() {
   const g = useHeaderGoalChip();
   const wo = useNextWorkOrder();
+  const isMobile = useIsMobile();
 
   const hasGoal = Boolean(g.user && g.goals && g.active && g.activeGoal && g.view);
 
@@ -76,18 +91,27 @@ export function HeaderGoalChip() {
             icon={<ClipboardList className={cn('h-4 w-4', wo.top ? 'text-text-muted' : 'text-text-faint')} />}
           />
         </HoverTooltip>
-        <AnchoredLayer
-          open={g.open && !!wo.top}
-          onClose={g.closePopover}
-          anchorRef={g.wrapRef}
-          placement="bottom-end"
-          gap={0}
-        >
-          <div className={GOAL_PANEL_SHELL_CLASS}>
-            {wo.top ? <NextWorkOrderRow top={wo.top} onNavigate={g.closePopover} /> : null}
-            <GoalPanelHomeCta onNavigate={g.closePopover} />
-          </div>
-        </AnchoredLayer>
+        {isMobile ? (
+          <BottomSheet open={g.open && !!wo.top} onClose={g.closePopover} title="Up next">
+            <div className="pb-2">
+              {wo.top ? <NextWorkOrderRow top={wo.top} onNavigate={g.closePopover} /> : null}
+              <GoalPanelHomeCta onNavigate={g.closePopover} />
+            </div>
+          </BottomSheet>
+        ) : (
+          <AnchoredLayer
+            open={g.open && !!wo.top}
+            onClose={g.closePopover}
+            anchorRef={g.wrapRef}
+            placement="bottom-end"
+            gap={0}
+          >
+            <div className={GOAL_PANEL_SHELL_CLASS}>
+              {wo.top ? <NextWorkOrderRow top={wo.top} onNavigate={g.closePopover} /> : null}
+              <GoalPanelHomeCta onNavigate={g.closePopover} />
+            </div>
+          </AnchoredLayer>
+        )}
       </div>
     );
   }
@@ -124,17 +148,33 @@ export function HeaderGoalChip() {
         </span>
       ) : null}
 
-      <AnchoredLayer open={g.open} onClose={g.closePopover} anchorRef={g.wrapRef} placement="bottom-end" gap={0}>
-        <GoalPopover
-          g={g}
-          view={view}
-          tone={tone}
-          chipCount={chipCount}
-          hasSwitch={hasSwitch}
-          workOrder={wo.top}
-          onNavigate={g.closePopover}
-        />
-      </AnchoredLayer>
+      {isMobile ? (
+        <BottomSheet open={g.open} onClose={g.closePopover}>
+          <GoalPopover
+            g={g}
+            view={view}
+            tone={tone}
+            chipCount={chipCount}
+            hasSwitch={hasSwitch}
+            workOrder={wo.top}
+            onNavigate={g.closePopover}
+            surface="sheet"
+          />
+        </BottomSheet>
+      ) : (
+        <AnchoredLayer open={g.open} onClose={g.closePopover} anchorRef={g.wrapRef} placement="bottom-end" gap={0}>
+          <GoalPopover
+            g={g}
+            view={view}
+            tone={tone}
+            chipCount={chipCount}
+            hasSwitch={hasSwitch}
+            workOrder={wo.top}
+            onNavigate={g.closePopover}
+            surface="popover"
+          />
+        </AnchoredLayer>
+      )}
     </div>
   );
 }

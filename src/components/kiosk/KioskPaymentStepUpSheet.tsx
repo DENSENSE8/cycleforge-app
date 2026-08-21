@@ -125,7 +125,7 @@ export function KioskPaymentStepUpSheet({
             </div>
           )}
           {loadError && !loading && (
-            <div className="rounded-lg bg-red-50 px-3 py-2 text-center text-xs font-medium text-red-700">
+            <div className="rounded-lg bg-surface-danger px-3 py-2 text-center text-xs font-medium text-text-danger">
               {loadError}
             </div>
           )}

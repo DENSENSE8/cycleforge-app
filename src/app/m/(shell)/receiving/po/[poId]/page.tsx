@@ -6,7 +6,7 @@ import { useMemo, useState, use as useUnwrap } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { ChevronRight, Camera } from '@/components/Icons';
-import { MobileTopBar } from '@/components/mobile/receiving/MobileTopBar';
+import { MobileDetailTopBar } from '@/components/mobile/redesign/MobileDetailTopBar';
 import { PhotoFab } from '@/components/mobile/receiving/PhotoFab';
 import { MobileReceivingPhotoStrip } from '@/components/mobile/receiving/MobileReceivingPhotoStrip';
 import { useRealtimeInvalidation } from '@/hooks/useRealtimeInvalidation';
@@ -87,7 +87,7 @@ export default function MobilePoDetailPage(props: { params: Promise<{ poId: stri
 
   return (
     <div className="min-h-screen bg-surface-card pb-24">
-      <MobileTopBar
+      <MobileDetailTopBar
         title={header?.po_number ? `PO ${header.po_number}` : 'Purchase Order'}
         subtitle={header ? `${header.item_count} items · ${header.qty_received}/${header.qty_expected || '?'} received` : 'Loading…'}
         backHref="/m/receiving/history"
@@ -190,7 +190,7 @@ function ItemsList({ poId, items }: { poId: string; items: PoItem[] }) {
               prefetch={false}
               className="flex items-center gap-3 px-4 py-3 active:bg-surface-hover"
             >
-              <div className="relative h-14 w-14 flex-none overflow-hidden rounded-xl bg-surface-sunken">
+              <div className="relative h-14 w-14 flex-none overflow-hidden rounded-none bg-surface-sunken">
                 {it.image_url ? (
                   <Image
                     src={it.image_url}

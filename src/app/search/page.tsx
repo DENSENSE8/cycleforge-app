@@ -8,28 +8,23 @@
  *   • No `?sel=` → {@link SearchBrowseShell} (empty hint / full-bleed multi-hit
  *     browse; identifier resolve publishes header pending pulse).
  *   • `?sel=type:id` → full-bleed {@link SearchDetailWorkspace} entity shell.
+ *     ORDER renders the scan-station composition in preview stance.
  *   • `?q=` is the query; client refine: `?etype=` / `?hstat=` / `?colsort=`.
  *   • Sole / exact identifier hits set `?sel=` in-page (do not navigate away).
  *
- * Region contract: Workbench. No context rail.
+ * Region contract: Workbench. Context rail = `SearchRecentRail` (recent finds,
+ * the way back to a record you just had open) — find itself still lives only in
+ * the header.
  */
 
 import { Suspense, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Loader2 } from '@/components/Icons';
+import { RouteLoading } from '@/design-system/components/RouteLoading';
+import { SurfaceParamHygiene } from '@/components/routing/SurfaceParamHygiene';
 import { SearchBrowseShell } from '@/components/search/SearchBrowseShell';
 import { SearchDetailWorkspace } from '@/components/search/SearchDetailWorkspace';
+import { SearchPrimaryPaintShell } from '@/components/search/SearchPrimaryPaintShell';
 import { useSearchSelParam } from '@/hooks/useSearchSelParam';
-
-function SearchPageFallback() {
-  return (
-    <div className="flex h-full min-h-0 flex-1 items-center justify-center bg-surface-card">
-      <span className="flex items-center gap-2 text-role-caption font-semibold text-text-muted">
-        <Loader2 className="h-4 w-4 animate-spin" /> Loading search…
-      </span>
-    </div>
-  );
-}
 
 function SearchPageContent() {
   const router = useRouter();
@@ -51,14 +46,28 @@ function SearchPageContent() {
     return <SearchBrowseShell setSel={setSel} />;
   }
 
-  return <SearchDetailWorkspace sel={sel} hasQuery={Boolean(q)} />;
+  return (
+    <SearchDetailWorkspace
+      sel={sel}
+      hasQuery={Boolean(q)}
+      onExit={() => setSel(null)}
+    />
+  );
 }
 
 export default function SearchPage() {
   return (
     <div className="flex min-h-0 w-full flex-1 overflow-hidden">
-      <Suspense fallback={<SearchPageFallback />}>
-        <SearchPageContent />
+      {/* Leaf route — `/search` has no child segments, so `page.tsx` is the
+          right host (a route WITH children needs this in `layout.tsx`). The
+          spec is `SEARCH_ROUTE_PARAMS` (`query-mode-routes.ts`): it owns
+          q · sel · etype · hstat and carries staff · colsort · coldir, which
+          is every key this surface reads. */}
+      <SurfaceParamHygiene />
+      <Suspense fallback={<RouteLoading label="Loading search…" />}>
+        <SearchPrimaryPaintShell>
+          <SearchPageContent />
+        </SearchPrimaryPaintShell>
       </Suspense>
     </div>
   );

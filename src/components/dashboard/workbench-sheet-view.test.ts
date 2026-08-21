@@ -91,10 +91,6 @@ const OUT_OF_COHORT: Readonly<Record<string, string>> = {
     'Unbox renders ONE band here — Bands 2 and 3 live INSIDE UnboxWorkspaceHeader ' +
     '(its KPI canvas + LEAN row are the header’s own, and its View cluster is on the ' +
     'inspector). There is no three-band stack in this file to lift.',
-  'src/components/receiving/unbox/UnboxWorkbenchSkeleton.tsx':
-    'A PAINT STAND-IN, not a workbench: it mirrors Unbox chrome as cheap geometry on ' +
-    'the Tier-1 LCP path. Composing the shell would put a motion hook and a Suspense ' +
-    'boundary in a loading fallback. It also mirrors Unbox, which is itself out.',
   'src/components/photos/PhotoLibraryPage.tsx':
     'A DOCUMENTED three-band INVERSION (display/media-library.md): Band 2 is search and ' +
     'Band 3 is the path strip — not tabs/KPI/triage — so the shell’s `kpi` and `triage` ' +
@@ -265,6 +261,83 @@ describe('WorkbenchSheetView owns the Sheets flush recipe', () => {
       [],
       'Every WORKBENCH_SHEET_CHROME consumer must be in COHORT (composes the shell) or ' +
         `OUT_OF_COHORT (with a stated reason). Unclassified: ${unclassified.join(', ')}`,
+    );
+  });
+});
+
+/**
+ * **Band 2 has ONE card face, and an empty strip paints nothing.**
+ *
+ * `WorkbenchSheetView` decides a surface has a Band 2 from whether the `kpi`
+ * prop was passed — but the truth is whether the strip has anything to show,
+ * and only the strip knows that, after its query resolves. Arrival is the case:
+ * `TriageKpiStrip` returns `null` whenever its one metric is absent, which is
+ * most of the time, so the band painted `px-3 py-2` plus a hairline around
+ * nothing — the gap an operator sees between the context bar and the search bar.
+ *
+ * The collapse is structural (`globals.css` → `[data-workbench-kpi-band]:has(
+ * [data-workbench-kpi-body]:empty)`), so it only reaches a surface that
+ * composes the band. Four did not: FBA typed the card twice, Locations bins and
+ * Walk-in sales once each — byte-identical copies of a recipe that belongs to
+ * the BAND, not to what sits in it, and all four therefore immune to the fix.
+ *
+ * A fifth copy is the fork this asserts against.
+ */
+describe('Band 2 card face', () => {
+  const CARD_OWNER = 'src/components/dashboard/workbench-kpi-collapse.tsx';
+  /**
+   * The SEAM, not the whole class string. Pinning the full recipe
+   * (`… px-3 py-2`) made this fail the moment the horizontal inset moved out to
+   * `WORKBENCH_BAND_INSET_X` — a guard that breaks when the thing it protects is
+   * improved is measuring the wrong constant. The seam is what identifies a
+   * Band-2 card; its inset is free to move.
+   */
+  const CARD_RECIPE = 'border-b border-r border-border-soft bg-surface-card';
+
+  it('only the band module declares the card', () => {
+    // grep exits 1 on no matches, which is a PASS here, not a crash.
+    let out = '';
+    try {
+      out = execFileSync('grep', ['-rl', CARD_RECIPE, join(ROOT, 'src'), '--include=*.tsx'], {
+        encoding: 'utf8',
+      });
+    } catch {
+      out = '';
+    }
+    const hits = out
+      .trim()
+      .split('\n')
+      .filter(Boolean)
+      .map((abs) => relative(ROOT, abs).split('\\').join('/'));
+
+    assert.deepEqual(
+      hits,
+      [CARD_OWNER],
+      'compose <WorkbenchBand2Card> (or <WorkbenchKpiBand>) instead of re-typing the ' +
+        'Band-2 card — a hand-rolled copy does not inherit the empty-strip collapse',
+    );
+  });
+
+  it('the card carries the probe the collapse rule reads', () => {
+    const src = code(read(CARD_OWNER));
+    assert.match(
+      src,
+      /data-workbench-kpi-band=""/,
+      'the band root must carry data-workbench-kpi-band for the globals.css rule to match',
+    );
+    assert.match(
+      src,
+      /data-workbench-kpi-body=""/,
+      'the strip must be wrapped in the :empty probe, or an empty band cannot be detected',
+    );
+  });
+
+  it('the collapse rule is actually in the stylesheet', () => {
+    const css = read('src/app/globals.css');
+    assert.match(
+      css,
+      /\[data-workbench-kpi-band\]:has\(\[data-workbench-kpi-body\]:empty\)/,
+      'the probe attributes are inert without the rule that reads them',
     );
   });
 });

@@ -31,6 +31,10 @@ import { contextPanelToggleHotkeyLabel } from '@/components/sidebar/context-pane
 import { RailPopover } from '@/components/sidebar/rail-shell/RailPopover';
 import { useRailHoverPreview } from '@/components/sidebar/rail-shell/useRailHoverPreview';
 import { IconButton } from '@/design-system/primitives';
+import {
+  FIELD_ACTION_GLYPH_CLASS,
+  FIELD_ACTION_TONE_CLASS,
+} from '@/design-system/primitives/field-action';
 import { cn } from '@/utils/_cn';
 
 function withContextPanelChord(base: string): string {
@@ -40,9 +44,14 @@ function withContextPanelChord(base: string): string {
 export { CollapseStripScanCell } from '@/components/sidebar/tech/collapse-strip-scan-cell';
 
 /** Shared glyph box for collapse + expand — never a bare `h-4` twin. */
-const LEFT_DOCK_TOGGLE_ICON_CLASS = 'h-3.5 w-3.5';
+const LEFT_DOCK_TOGGLE_ICON_CLASS = FIELD_ACTION_GLYPH_CLASS;
 
-const TOGGLE_BTN_CLASS = 'shrink-0 text-text-faint hover:text-text-default';
+/**
+ * Collapse rides the search field's trailing row beside paste and refine, so it
+ * wears their tone. It hovered to `text-text-default` while both peers hovered
+ * blue — one row, two hover answers, until 2026-08-20.
+ */
+const TOGGLE_BTN_CLASS = `shrink-0 ${FIELD_ACTION_TONE_CLASS}`;
 
 export function RailFilterCollapseButton({
   onCollapse,

@@ -6,9 +6,10 @@
  * authenticated staffer reads and writes only their OWN list; staffId always
  * comes from the verified session, never the request.
  *
- *   GET    ?station=TECH               → { items: StaffTodoRow[] }
+ *   GET    ?station=TECH|ALL[&archived=1] → { items: StaffTodoRow[] }
  *   POST   { station, kind, text, intervalMs?, idempotencyKey? } → { item }
  *   PATCH  { action: 'toggle', id, done }                        → { item }
+ *   PATCH  { action: 'rename', id, text }                        → { item }
  *   PATCH  { action: 'set_interval', station, intervalMs }       → { items }
  *   DELETE ?id=123                                               → { success }
  *
@@ -23,7 +24,7 @@ import { parseBody } from '@/lib/schemas/parse';
 import {
   StaffTodoCreateBody,
   StaffTodoPatchBody,
-  StaffTodoStation,
+  StaffTodoStationQuery,
 } from '@/lib/schemas/staff-todos';
 import {
   archiveStaffTodo,
@@ -31,6 +32,7 @@ import {
   createStaffTodo,
   getStaffTodo,
   listStaffTodos,
+  renameStaffTodo,
   setStaffTodoDone,
   setStaffTodoInterval,
 } from '@/lib/neon/staff-todos-queries';
@@ -47,8 +49,13 @@ export const runtime = 'nodejs';
 const ROUTE_STAFF_TODO_POST = 'staff-todos.post';
 const AUDIT_SOURCE = 'staff-todos-api';
 
-function parseStation(value: string | null): string | NextResponse {
-  const parsed = StaffTodoStation.safeParse(String(value ?? '').toUpperCase());
+/**
+ * Read-side station — a real list, or `ALL` (every list at once). Writes never
+ * come through here: they carry their station in the validated body, so `ALL`
+ * cannot reach a create / rename / toggle.
+ */
+function parseStationQuery(value: string | null): string | NextResponse {
+  const parsed = StaffTodoStationQuery.safeParse(String(value ?? '').toUpperCase());
   if (!parsed.success) {
     return NextResponse.json({ error: 'INVALID_STATION' }, { status: 400 });
   }
@@ -56,9 +63,12 @@ function parseStation(value: string | null): string | NextResponse {
 }
 
 export const GET = withAuth(async (req, ctx) => {
-  const station = parseStation(req.nextUrl.searchParams.get('station'));
+  const station = parseStationQuery(req.nextUrl.searchParams.get('station'));
   if (station instanceof NextResponse) return station;
-  const items = await listStaffTodos(ctx.staffId, station, ctx.organizationId);
+  // `archived=1` is the "view everything" half — the soft-deleted tasks, so a
+  // DELETE that was always an archive is reversible from the UI that ran it.
+  const archived = req.nextUrl.searchParams.get('archived') === '1';
+  const items = await listStaffTodos(ctx.staffId, station, ctx.organizationId, archived);
   return NextResponse.json({ items });
 });
 
@@ -114,6 +124,22 @@ export const PATCH = withAuth(async (req: NextRequest, ctx) => {
     if (!item) return NextResponse.json({ error: 'NOT_FOUND' }, { status: 404 });
     // Check/uncheck is high-frequency and fully reconstructable from
     // staff_todo_completions — no audit row for plain toggles.
+    return NextResponse.json({ success: true, item });
+  }
+
+  if (parsed.action === 'rename') {
+    const before = await getStaffTodo(ctx.staffId, parsed.id, ctx.organizationId);
+    const renamed = await renameStaffTodo(ctx.staffId, parsed.id, parsed.text, ctx.organizationId);
+    if (!renamed) return NextResponse.json({ error: 'NOT_FOUND' }, { status: 404 });
+    const item = await getStaffTodo(ctx.staffId, parsed.id, ctx.organizationId);
+    await recordAudit(pool, ctx, req, {
+      source: AUDIT_SOURCE,
+      action: AUDIT_ACTION.STAFF_TODO_RENAME,
+      entityType: AUDIT_ENTITY.STAFF_TODO,
+      entityId: parsed.id,
+      before: before ? { text: before.text } : null,
+      after: { text: parsed.text },
+    });
     return NextResponse.json({ success: true, item });
   }
 

@@ -26,6 +26,7 @@ export * from './FormField';
 export * from './OverlaySearch';
 export * from './TabSwitch';
 export * from './Skeletons';
+export * from './UniversalLoader';
 export * from './RouteShell';
 export * from './PlatformBadge';
 export * from './StaffBadge';

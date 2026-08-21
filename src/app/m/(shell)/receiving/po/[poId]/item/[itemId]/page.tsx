@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { use as useUnwrap } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Camera } from '@/components/Icons';
-import { MobileTopBar } from '@/components/mobile/receiving/MobileTopBar';
+import { MobileDetailTopBar } from '@/components/mobile/redesign/MobileDetailTopBar';
 import { PhotoFab } from '@/components/mobile/receiving/PhotoFab';
 import { useRealtimeInvalidation } from '@/hooks/useRealtimeInvalidation';
 import { normalizePhotoDisplayUrl } from '@/lib/nas-photo-url';
@@ -97,7 +97,7 @@ export default function MobilePurchaseOrderItemDetailPage(
 
   return (
     <div className="min-h-screen bg-surface-card pb-24">
-      <MobileTopBar
+      <MobileDetailTopBar
         title={item?.item_name || item?.sku || 'Purchase Order Item'}
         subtitle={header ? `PO ${header.po_number || header.po_id}` : ''}
         backHref={`/m/receiving/po/${encodeURIComponent(poId)}`}
@@ -113,7 +113,7 @@ export default function MobilePurchaseOrderItemDetailPage(
         ) : (
           <>
             <div className="flex items-start gap-3">
-              <div className="relative h-16 w-16 flex-none overflow-hidden rounded-xl bg-surface-sunken">
+              <div className="relative h-16 w-16 flex-none overflow-hidden rounded-none bg-surface-sunken">
                 {item.image_url ? (
                   <Image src={item.image_url} alt="" fill sizes="64px" className="object-cover" />
                 ) : (
@@ -160,7 +160,7 @@ export default function MobilePurchaseOrderItemDetailPage(
             <Link
               href={galleryHref}
               prefetch={false}
-              className="text-role-caption font-semibold uppercase tracking-wider text-blue-600 active:text-blue-700"
+              className="text-role-caption font-semibold uppercase tracking-wider text-text-muted active:text-text-default"
             >
               View all
             </Link>
@@ -170,7 +170,7 @@ export default function MobilePurchaseOrderItemDetailPage(
           <Link
             href={captureHref}
             prefetch={false}
-            className="flex h-24 items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-border-soft bg-surface-canvas text-role-caption font-semibold uppercase tracking-[0.18em] text-text-soft active:bg-surface-sunken"
+            className="flex h-24 items-center justify-center gap-2 rounded-none border-2 border-dashed border-border-soft bg-surface-canvas text-role-caption font-semibold uppercase tracking-[0.18em] text-text-soft active:bg-surface-sunken"
           >
             <Camera className="h-5 w-5" /> Take first photo
           </Link>
@@ -181,7 +181,7 @@ export default function MobilePurchaseOrderItemDetailPage(
                 key={p.id}
                 href={galleryHref}
                 prefetch={false}
-                className="relative aspect-square overflow-hidden rounded-xl bg-surface-sunken"
+                className="relative aspect-square overflow-hidden rounded-none bg-surface-sunken"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img

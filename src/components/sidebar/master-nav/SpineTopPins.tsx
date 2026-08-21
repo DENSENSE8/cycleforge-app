@@ -83,7 +83,9 @@ export function SpineTopPins() {
                 // glyph on the other half of the same beam.
                 className={cn(
                   HEADER_ICON_BTN_CLASS,
-                  'text-text-default',
+                  // Fill the 40px band cell — IconButton's `active:scale-95`
+                  // would inset the wash from the bar on press.
+                  'text-text-default active:scale-100',
                   active && HEADER_ICON_BTN_OPEN_CLASS,
                 )}
                 icon={<Icon className={TOP_CHROME_ICON_FACE} />}

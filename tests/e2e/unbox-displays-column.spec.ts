@@ -209,8 +209,11 @@ test.describe('Unbox Displays column', () => {
    * behavior, and an operator who reached for it lost their carton.
    *
    * So the dismiss moved into the column's own header band and closes the
-   * column; `↑ ↓` step the carton (utility rail when closed, column header when
-   * open); the procedure ring lives on the Displays strip `rightSlot`.
+   * column; the procedure ring lives on the Displays strip `rightSlot`.
+   *
+   * The carton `↑ ↓` stepper is GONE (2026-08-19) — it duplicated the recents
+   * rail, which owns the selection. The strip now paints the Displays index
+   * icons instead, so the at-rest assertion below checks for those.
    *
    * The assertion that matters most is the LAST one: clicking the panel's
    * dismiss must leave the carton open. Everything above it is geometry, and
@@ -225,15 +228,22 @@ test.describe('Unbox Displays column', () => {
     await openUnbox(page, receivingId, lineId);
 
     const paneOpen = page.getByTestId('unbox-displays-pane-toggle');
-    const prev = page.getByTestId('unbox-carton-prev');
-    const next = page.getByTestId('unbox-carton-next');
     const panelClose = page.getByTestId('unbox-push-close');
+    const openStrip = page.getByTestId('scan-station-displays-open-strip');
 
-    // At rest: ←| + carton cursor. Ring mounts only while Displays is open.
+    // At rest: the closed strip IS the open control, and it carries the Displays
+    // index icons. Ring mounts only while Displays is open.
     await expect(paneOpen).toBeVisible({ timeout: 15_000 });
     await expect(page.getByTestId('unbox-displays-expand-button')).toHaveCount(0);
-    await expect(prev, 'the cursor steps the CARTON, not the column').toBeVisible();
-    await expect(next).toBeVisible();
+    await expect(
+      openStrip,
+      'the closed strip is the open control on every scan station',
+    ).toBeVisible();
+    await expect(
+      page.getByTestId('unbox-carton-prev'),
+      'the carton stepper was removed — the recents rail owns selection',
+    ).toHaveCount(0);
+    await expect(page.getByTestId('unbox-carton-next')).toHaveCount(0);
     await expect(
       panelClose,
       'no column is open, so there is no column to dismiss',
@@ -278,7 +288,10 @@ test.describe('Unbox Displays column', () => {
       'ring unmounts with Displays — re-open via ←|',
     ).toHaveCount(0);
     await expect(paneOpen, '←| must still be able to re-open the column').toBeVisible();
-    await expect(prev, 'the carton cursor outlives the column').toBeVisible();
+    await expect(
+      openStrip,
+      'the closed strip — index icons and all — outlives the column',
+    ).toBeVisible();
     await paneOpen.click();
     await expect(column).toBeVisible({ timeout: 15_000 });
   });

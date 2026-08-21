@@ -72,7 +72,7 @@ export function useSyncedPoNote(
             description: 'Your draft is kept. Refresh, then save again.',
           });
           onActionFeedback({
-            tone: 'amber',
+            tone: 'warning',
             headline: 'Inventory changed — Refresh',
             items: [],
             note: 'Draft kept — do not overwrite until you pull the latest inventory state.',
@@ -88,7 +88,7 @@ export function useSyncedPoNote(
         if (res.ok) {
           dispatchLineUpdated({ id: row.id, receiving_zoho_notes: text || null });
           onActionFeedback({
-            tone: 'emerald',
+            tone: 'success',
             headline: text ? 'Synced notes updated' : 'Synced notes cleared',
             // Show the FULL PO notes (multi-line, pre-wrapped) so the operator sees
             // exactly what landed in inventory — not a truncated first-line preview.
@@ -103,7 +103,7 @@ export function useSyncedPoNote(
         }
 
         onActionFeedback({
-          tone: 'amber',
+          tone: 'warning',
           headline: 'Could not save synced notes',
           items: [],
           note: data?.error?.trim() || 'Save failed',
@@ -112,7 +112,7 @@ export function useSyncedPoNote(
         return { ok: false };
       } catch {
         onActionFeedback({
-          tone: 'amber',
+          tone: 'warning',
           headline: 'Could not save synced notes',
           items: [],
           note: 'Save failed',

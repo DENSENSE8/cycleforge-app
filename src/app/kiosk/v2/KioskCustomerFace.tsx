@@ -26,7 +26,7 @@ import {
   KIOSK_META,
   KIOSK_PANE_HEADER_BAND,
   KIOSK_PANE_HEADER_TITLE,
-  KIOSK_SECTION_LABEL,
+  KIOSK_SECTION_LABEL_ROW,
 } from '@/app/kiosk/kiosk-chrome';
 
 function formatCents(cents: number): string {
@@ -120,7 +120,7 @@ export function KioskCustomerFace() {
 
       {hasRepair && unsigned && (
         <section className="shrink-0 border-t border-border-soft">
-          <h3 className={cn('border-b border-border-hairline px-6 py-2', KIOSK_SECTION_LABEL)}>
+          <h3 className={KIOSK_SECTION_LABEL_ROW}>
             Sign to authorize service
           </h3>
           <div className="px-6 py-4">

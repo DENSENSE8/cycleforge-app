@@ -1,9 +1,10 @@
 /**
  * Outbound Orders table definitions (plan Phase 1, wave 5).
  *
- * Orders is the one **shared parametric grid**: `OrdersGridHost` mounts across
- * ~9 consumers (To-ship, Packed, Shipped, Staged, Labels, Review pairing/packing,
- * compare pane, drill host). What varies is TWO things, on two different axes:
+ * Orders is the one **shared parametric grid**: `useOrdersSpreadsheet` resolves
+ * it onto `NonlinearTableHost` for every outbound consumer (To-ship, compare
+ * pane, drill host today; Packed / Shipped / Staged / Labels / Review once their
+ * displays are rebuilt). What varies is TWO things, on two different axes:
  *
  * - **Column mode** — `fulfillment.default` vs `fulfillment.tested` (tester +
  *   tested-at layout). This is the definition axis: two column models, two

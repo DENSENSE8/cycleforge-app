@@ -2,7 +2,7 @@
  * Carton inspector — the pure read model.
  *
  * The inspector is the READ view of a carton; `/unbox` is the WORK view.
- * Decision D6: share this read model + atoms with the work surface; assembly
+ * Shares this read model + atoms with the work surface; assembly
  * may diverge. This module derives display facts and nothing else — no
  * fetching, no writes, no component imports.
  *

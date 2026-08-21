@@ -20,6 +20,9 @@ export type StaffTodoKind = 'general' | 'recurring';
 
 export interface StaffTodoRow {
   id: number;
+  /** Which station list the task belongs to — carried so an ALL-station
+   *  triage table can show and group by it without a second fetch. */
+  station: string;
   kind: StaffTodoKind;
   text: string;
   sort_order: number;
@@ -31,6 +34,8 @@ export interface StaffTodoRow {
   completed_at_ms: number | null;
   /** recurring only — epoch ms of the latest check-off ever (null = never). */
   last_completed_at_ms: number | null;
+  /** epoch ms when the task was archived (soft-deleted); null = live. */
+  archived_at_ms: number | null;
 }
 
 const HOUR_MS = 60 * 60_000;
@@ -44,12 +49,14 @@ export function cyclePeriodStartMs(anchorMs: number, intervalMs: number, nowMs: 
 
 const SELECT_ROW = `
   SELECT t.id::int,
+         t.station,
          t.kind,
          t.text,
          t.sort_order,
          t.recur_interval_ms::bigint AS recur_interval_ms,
          (EXTRACT(EPOCH FROM t.recur_anchor) * 1000)::bigint AS recur_anchor_ms,
          (EXTRACT(EPOCH FROM t.completed_at) * 1000)::bigint AS completed_at_ms,
+         (EXTRACT(EPOCH FROM t.archived_at) * 1000)::bigint AS archived_at_ms,
          (SELECT (EXTRACT(EPOCH FROM MAX(c.completed_at)) * 1000)::bigint
             FROM staff_todo_completions c
            WHERE c.todo_id = t.id) AS last_completed_at_ms
@@ -59,6 +66,7 @@ function mapRow(row: Record<string, unknown>): StaffTodoRow {
   const num = (v: unknown): number | null => (v == null ? null : Number(v));
   return {
     id: Number(row.id),
+    station: String(row.station ?? ''),
     kind: row.kind as StaffTodoKind,
     text: String(row.text),
     sort_order: Number(row.sort_order) || 0,
@@ -66,15 +74,34 @@ function mapRow(row: Record<string, unknown>): StaffTodoRow {
     recur_anchor_ms: num(row.recur_anchor_ms),
     completed_at_ms: num(row.completed_at_ms),
     last_completed_at_ms: num(row.last_completed_at_ms),
+    archived_at_ms: num(row.archived_at_ms),
   };
 }
 
-/** All live (non-archived) todos for one staff + station, list order. */
+/**
+ * Todos for one staff + station, list order.
+ *
+ * `station` may be the literal `ALL` — every station list at once, which is what
+ * the Tasks workbench triages. The per-station form stays the header chip's
+ * hot path.
+ *
+ * `archived` chooses WHICH half of the list you get, and it has **no default at
+ * the call site that matters**: the live list (`false`) is what the checklist
+ * renders, the archived list (`true`) is what "view everything" shows so a
+ * soft-deleted task can be restored instead of being lost behind a DELETE that
+ * was never really a delete.
+ */
 export async function listStaffTodos(
   staffId: number,
   station: string,
   orgId?: OrgId,
+  archived = false,
 ): Promise<StaffTodoRow[]> {
+  const archiveWhere = archived ? 't.archived_at IS NOT NULL' : 't.archived_at IS NULL';
+  // `ALL` is a station-agnostic read. The predicate keeps referencing $2 rather
+  // than dropping out, because a placeholder that disappears from the SQL while
+  // its value stays in the params array is a bind-count error, not a no-op.
+  const stationWhere = "($2 = 'ALL' OR t.station = $2)";
   // Lateral top-1 probe on idx_staff_todo_completions_todo_time instead of
   // SELECT_ROW's correlated subquery — this is the hot path (the header chip
   // fetches it on every page).
@@ -84,12 +111,14 @@ export async function listStaffTodos(
     const r = await tenantQuery(
       orgId,
       `SELECT t.id::int,
+              t.station,
               t.kind,
               t.text,
               t.sort_order,
               t.recur_interval_ms::bigint AS recur_interval_ms,
               (EXTRACT(EPOCH FROM t.recur_anchor) * 1000)::bigint AS recur_anchor_ms,
               (EXTRACT(EPOCH FROM t.completed_at) * 1000)::bigint AS completed_at_ms,
+              (EXTRACT(EPOCH FROM t.archived_at) * 1000)::bigint AS archived_at_ms,
               (EXTRACT(EPOCH FROM lc.last_completed_at) * 1000)::bigint AS last_completed_at_ms
          FROM staff_todos t
          LEFT JOIN LATERAL (
@@ -99,21 +128,23 @@ export async function listStaffTodos(
             ORDER BY c.completed_at DESC
             LIMIT 1
          ) lc ON true
-        WHERE t.staff_id = $1 AND t.station = $2 AND t.archived_at IS NULL
+        WHERE t.staff_id = $1 AND ${stationWhere} AND ${archiveWhere}
           AND EXISTS (SELECT 1 FROM staff s WHERE s.id = t.staff_id AND s.organization_id = $3)
-        ORDER BY t.sort_order ASC, t.id ASC`,
+        ORDER BY t.station ASC, t.sort_order ASC, t.id ASC`,
       [staffId, station, orgId],
     );
     return r.rows.map(mapRow);
   }
   const r = await pool.query(
     `SELECT t.id::int,
+            t.station,
             t.kind,
             t.text,
             t.sort_order,
             t.recur_interval_ms::bigint AS recur_interval_ms,
             (EXTRACT(EPOCH FROM t.recur_anchor) * 1000)::bigint AS recur_anchor_ms,
             (EXTRACT(EPOCH FROM t.completed_at) * 1000)::bigint AS completed_at_ms,
+            (EXTRACT(EPOCH FROM t.archived_at) * 1000)::bigint AS archived_at_ms,
             (EXTRACT(EPOCH FROM lc.last_completed_at) * 1000)::bigint AS last_completed_at_ms
        FROM staff_todos t
        LEFT JOIN LATERAL (
@@ -123,8 +154,8 @@ export async function listStaffTodos(
           ORDER BY c.completed_at DESC
           LIMIT 1
        ) lc ON true
-      WHERE t.staff_id = $1 AND t.station = $2 AND t.archived_at IS NULL
-      ORDER BY t.sort_order ASC, t.id ASC`,
+      WHERE t.staff_id = $1 AND ${stationWhere} AND ${archiveWhere}
+      ORDER BY t.station ASC, t.sort_order ASC, t.id ASC`,
     [staffId, station],
   );
   return r.rows.map(mapRow);
@@ -463,6 +494,38 @@ export async function archiveStaffTodo(
     `UPDATE staff_todos SET archived_at = now(), updated_at = now()
       WHERE id = $2 AND staff_id = $1 AND archived_at IS NULL`,
     [staffId, id],
+  );
+  return (r.rowCount ?? 0) > 0;
+}
+
+/**
+ * Rename a task — the U in this list's CRUD, and the only field a staffer can
+ * edit after creation. Scoped to the owner and guarded on `archived_at IS NULL`
+ * (an archived task is restored first, then renamed), so a foreign or dead id
+ * is a clean no-op the route reports as NOT_FOUND. Text is validated at the
+ * schema edge; this layer only trusts that it arrived non-empty.
+ */
+export async function renameStaffTodo(
+  staffId: number,
+  id: number,
+  text: string,
+  orgId?: OrgId,
+): Promise<boolean> {
+  // No organization_id column → gate via the `staff` parent.
+  if (orgId) {
+    const r = await tenantQuery(
+      orgId,
+      `UPDATE staff_todos t SET text = $3, updated_at = now()
+        WHERE t.id = $2 AND t.staff_id = $1 AND t.archived_at IS NULL
+          AND EXISTS (SELECT 1 FROM staff s WHERE s.id = t.staff_id AND s.organization_id = $4)`,
+      [staffId, id, text, orgId],
+    );
+    return (r.rowCount ?? 0) > 0;
+  }
+  const r = await pool.query(
+    `UPDATE staff_todos SET text = $3, updated_at = now()
+      WHERE id = $2 AND staff_id = $1 AND archived_at IS NULL`,
+    [staffId, id, text],
   );
   return (r.rowCount ?? 0) > 0;
 }

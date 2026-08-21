@@ -155,7 +155,7 @@ export default function RedesignedMobileOrderDetail({ orderId }: { orderId: stri
   if (state === 'loading') {
     return (
       <div className={`min-h-screen ${TOKENS.colors.background} flex items-center justify-center`}>
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-100 border-t-blue-600" />
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-border-soft border-t-blue-600" />
       </div>
     );
   }
@@ -165,16 +165,16 @@ export default function RedesignedMobileOrderDetail({ orderId }: { orderId: stri
       <div className={`min-h-screen ${TOKENS.colors.background} px-4 pt-2`}>
         <div className="flex items-center justify-between py-2 px-1">
           <IconButton
-            icon={<X className="h-5 w-5 text-blue-400" />}
+            icon={<X className="h-5 w-5 text-text-faint" />}
             onClick={() => router.back()}
             ariaLabel="Go back"
-            className="h-10 w-10 rounded-full bg-surface-card border border-blue-100 flex items-center justify-center shadow-sm"
+            className="h-10 w-10 rounded-full bg-surface-card border border-border-soft flex items-center justify-center shadow-sm"
           />
         </div>
         <MobileCard className="mt-10 py-12 text-center">
-          <Package className="mx-auto mb-3 h-10 w-10 text-blue-200" />
-          <p className="text-sm font-semibold text-blue-950">Order not found</p>
-          <p className="mt-1 text-xs font-medium text-blue-700/50">
+          <Package className="mx-auto mb-3 h-10 w-10 text-text-faint" />
+          <p className="text-sm font-semibold text-text-default">Order not found</p>
+          <p className="mt-1 text-xs font-medium text-text-muted">
             Couldn&apos;t load <span className="font-mono">{orderId}</span>.
           </p>
         </MobileCard>
@@ -187,22 +187,22 @@ export default function RedesignedMobileOrderDetail({ orderId }: { orderId: stri
       {/* Header */}
       <div className="flex items-center justify-between py-2 px-1">
         <IconButton
-          icon={<X className="h-5 w-5 text-blue-400" />}
+          icon={<X className="h-5 w-5 text-text-faint" />}
           onClick={() => router.back()}
           ariaLabel="Go back"
-          className="h-10 w-10 rounded-full bg-surface-card border border-blue-100 flex items-center justify-center shadow-sm"
+          className="h-10 w-10 rounded-full bg-surface-card border border-border-soft flex items-center justify-center shadow-sm"
         />
         <div className="flex items-center gap-2">
           {order.status && (
-            <div className="bg-blue-50 text-blue-700 px-3 py-1.5 rounded-full text-role-eyebrow uppercase tracking-[0.1em] border border-blue-100 shadow-sm">
+            <div className="bg-surface-sunken text-text-default px-3 py-1.5 rounded-full text-role-eyebrow uppercase tracking-[0.1em] border border-border-soft shadow-sm">
               {order.status}
             </div>
           )}
           <IconButton
-            icon={<Copy className="h-5 w-5 text-blue-600" />}
+            icon={<Copy className="h-5 w-5 text-text-muted" />}
             onClick={copyId}
             ariaLabel="Copy order number"
-            className="h-10 w-10 rounded-full bg-surface-card border border-blue-100 flex items-center justify-center shadow-sm"
+            className="h-10 w-10 rounded-full bg-surface-card border border-border-soft flex items-center justify-center shadow-sm"
           />
         </div>
       </div>
@@ -215,17 +215,17 @@ export default function RedesignedMobileOrderDetail({ orderId }: { orderId: stri
             return (
               <HoverTooltip label={extUrl ? 'Open listing' : 'No listing link'} asChild>
                 <IconButton
-                  icon={<ExternalLink className="h-4 w-4 text-blue-500" />}
+                  icon={<ExternalLink className="h-4 w-4 text-text-soft" />}
                   disabled={!extUrl}
                   onClick={() => extUrl && window.open(extUrl, '_blank', 'noopener,noreferrer')}
                   ariaLabel="Open listing in new tab"
-                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md hover:bg-blue-50"
+                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-none hover:bg-surface-sunken"
                 />
               </HoverTooltip>
             );
           })()}
         </div>
-        <p className="mt-1.5 flex flex-wrap items-center gap-1.5 text-sm font-medium text-blue-700/60">
+        <p className="mt-1.5 flex flex-wrap items-center gap-1.5 text-sm font-medium text-text-muted">
           {(() => {
             const platformMeta = sourcePlatformMeta(order.source);
             return platformMeta.value ? (
@@ -243,18 +243,18 @@ export default function RedesignedMobileOrderDetail({ orderId }: { orderId: stri
       <div className="grid grid-cols-2 gap-4 mt-2">
         {/* Product Card */}
         <BentoItem title="Product" icon={Package} className="col-span-2" variant="glass">
-          <p className="text-base font-semibold text-blue-950 leading-snug tracking-tight">{order.product}</p>
+          <p className="text-base font-semibold text-text-default leading-snug tracking-tight">{order.product}</p>
           <div className="mt-4 flex flex-wrap items-center gap-2">
             {order.sku && (
-              <span className="text-role-micro uppercase tracking-wider bg-blue-50 text-blue-600 px-2.5 py-1 rounded-lg border border-blue-100 font-mono">
+              <span className="text-role-micro uppercase tracking-wider bg-surface-sunken text-text-muted px-2.5 py-1 rounded-none border border-border-soft font-mono">
                 {order.sku}
               </span>
             )}
-            <span className="text-role-micro uppercase tracking-wider bg-emerald-50 text-emerald-600 px-2.5 py-1 rounded-lg border border-emerald-100">
+            <span className="text-role-micro uppercase tracking-wider bg-emerald-50 text-emerald-600 px-2.5 py-1 rounded-none border border-emerald-100">
               {order.quantity} Unit{order.quantity === 1 ? '' : 's'}
             </span>
             {order.serials.length > 0 && (
-              <span className="text-role-micro uppercase tracking-wider bg-surface-canvas text-text-muted px-2.5 py-1 rounded-lg border border-border-soft">
+              <span className="text-role-micro uppercase tracking-wider bg-surface-canvas text-text-muted px-2.5 py-1 rounded-none border border-border-soft">
                 {order.serials.length} Serial{order.serials.length === 1 ? '' : 's'}
               </span>
             )}
@@ -266,7 +266,7 @@ export default function RedesignedMobileOrderDetail({ orderId }: { orderId: stri
           <SectionHeader title="Activity Timeline" />
           <MobileCard className="py-5">
             {order.activity.length === 0 ? (
-              <p className="py-2 text-center text-role-caption font-semibold uppercase tracking-widest text-blue-200">
+              <p className="py-2 text-center text-role-caption font-semibold uppercase tracking-widest text-text-faint">
                 No recorded activity yet
               </p>
             ) : (
@@ -274,17 +274,17 @@ export default function RedesignedMobileOrderDetail({ orderId }: { orderId: stri
                 {order.activity.map((ev, i) => (
                   <div key={i} className="flex gap-4 items-start pl-1 relative">
                     {i < order.activity.length - 1 && (
-                      <div className="absolute left-[10px] top-6 bottom-[-24px] w-px bg-blue-50" />
+                      <div className="absolute left-[10px] top-6 bottom-[-24px] w-px bg-surface-sunken" />
                     )}
                     <div className="relative mt-1 shrink-0">
-                      <div className={`h-2.5 w-2.5 rounded-full ${i === 0 ? 'bg-blue-600' : 'bg-blue-100'} z-10 relative`} />
+                      <div className={`h-2.5 w-2.5 rounded-full ${i === 0 ? 'bg-blue-600' : 'bg-surface-sunken'} z-10 relative`} />
                       {i === 0 && <div className="absolute -inset-1.5 bg-blue-400/20 rounded-full animate-ping" />}
                     </div>
                     <div className="min-w-0">
-                      <p className="text-xs font-semibold text-blue-950 uppercase tracking-tight">
+                      <p className="text-xs font-semibold text-text-default uppercase tracking-tight">
                         {[ev.work_type, ev.status].filter(Boolean).join(' · ') || 'Update'}
                       </p>
-                      <p className="text-role-micro text-blue-300 uppercase tracking-widest mt-1 flex items-center gap-1.5">
+                      <p className="text-role-micro text-text-faint uppercase tracking-widest mt-1 flex items-center gap-1.5">
                         <Clock className="h-3 w-3" />
                         {fmtDateTime(ev.event_at)}
                         {ev.actor_name ? ` • ${ev.actor_name}` : ''}
@@ -304,7 +304,7 @@ export default function RedesignedMobileOrderDetail({ orderId }: { orderId: stri
         <div className="flex gap-3 pointer-events-auto">
           <GlassButton
             variant="secondary"
-            className="w-14 px-0 shadow-lg border-blue-100"
+            className="w-14 px-0 shadow-lg border-border-soft"
             onClick={copyId}
             icon={Clipboard}
           >

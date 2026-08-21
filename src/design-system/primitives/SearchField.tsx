@@ -10,6 +10,7 @@ import {
   useState,
 } from 'react';
 import { Clipboard, Loader2, Search, X } from '@/components/Icons';
+import { FIELD_ACTION_CLASS, FIELD_ACTION_GLYPH_CLASS } from './field-action';
 
 export type SearchFieldTone =
   | 'blue'
@@ -47,6 +48,14 @@ const loaderToneClass: Record<SearchFieldTone, string> = {
   neutral: 'text-text-soft',
   gray:    'text-text-muted',
 };
+
+/**
+ * Hover-reveal chrome — paste stays secondary on an empty field (Cmd/Ctrl+V
+ * still works). Reveals on THIS field or on a `group/search-bar` host like
+ * `TechRailSearchBar`, never the whole rail/nav.
+ */
+const PASTE_HOVER_REVEAL_CLASS =
+  'pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover/search-bar:pointer-events-auto group-hover/search-bar:opacity-100 group-focus-within/search-bar:pointer-events-auto group-focus-within/search-bar:opacity-100 focus-visible:pointer-events-auto focus-visible:opacity-100';
 
 export interface SearchFieldProps {
   value: string;
@@ -103,6 +112,22 @@ export interface SearchFieldProps {
   trailingSuffix?: ReactNode;
   /** When true, trailing slot shows only paste (clipboard); never the clear (X) button when the field has text. */
   pasteOnlyTrailing?: boolean;
+  /**
+   * Where the paste affordance lives in the trailing row.
+   *
+   * - `hover` (default) — quiet: the clipboard button is `opacity-0` until this
+   *   field (or its `group/search-bar` host) is hovered or focused, and it
+   *   yields the slot to clear (X) the moment the field fills.
+   * - `always` — the clipboard button holds a FIXED slot at the head of the
+   *   trailing row, opaque, whatever the field contains (clear follows it when
+   *   there is text). Band-3 find bars take this: an operator arriving with a
+   *   tracking number already on the clipboard has to see where it goes, and a
+   *   control that only exists once you hover it is not a control they can find.
+   *
+   * Ignored when {@link customTrailingSlot} is set (the caller owns the whole
+   * slot) or {@link pasteOnlyTrailing} is on (already an always-visible paste).
+   */
+  pasteVisibility?: 'hover' | 'always';
 }
 
 /**
@@ -139,6 +164,7 @@ export function SearchField({
   trailingPrefix,
   trailingSuffix,
   pasteOnlyTrailing = false,
+  pasteVisibility = 'hover',
 }: SearchFieldProps) {
   // Internal draft — avoid churn from async parent updates during typing.
   const [draft, setDraft] = useState(value);
@@ -288,6 +314,30 @@ export function SearchField({
 
   const icon = leadingIcon || <Search className="h-4 w-4" />;
 
+  const pasteButton = (persistent: boolean) => (
+    <button
+      type="button"
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={handlePaste}
+      className={
+        persistent
+          ? FIELD_ACTION_CLASS
+          : `${FIELD_ACTION_CLASS} ${PASTE_HOVER_REVEAL_CLASS}`
+      }
+      aria-label="Paste from clipboard"
+    >
+      <Clipboard className={FIELD_ACTION_GLYPH_CLASS} />
+    </button>
+  );
+
+  /**
+   * Paste leaves the conditional chain and takes a fixed slot ahead of it, so
+   * the glyph does not move (or vanish) when a spinner starts, when the first
+   * character lands, or when the pointer leaves the row.
+   */
+  const persistentPaste =
+    pasteVisibility === 'always' && customTrailingSlot === undefined && !pasteOnlyTrailing;
+
   const trailingControl =
     customTrailingSlot !== undefined ? (
       customTrailingSlot
@@ -300,15 +350,7 @@ export function SearchField({
         />
       </span>
     ) : pasteOnlyTrailing ? (
-      <button
-        type="button"
-        onMouseDown={(e) => e.preventDefault()}
-        onClick={handlePaste}
-        className="inline-flex h-6 w-6 shrink-0 items-center justify-center text-text-faint transition-colors duration-100 ease-out hover:text-blue-600 active:scale-95"
-        aria-label="Paste from clipboard"
-      >
-        <Clipboard className="h-3.5 w-3.5" />
-      </button>
+      pasteButton(true)
     ) : hasValue ? (
       hideClear ? (
         <span className="h-3.5 w-3.5 shrink-0" aria-hidden />
@@ -323,21 +365,11 @@ export function SearchField({
           <X className="h-3.5 w-3.5" />
         </button>
       )
-    ) : (
-      // Empty-field paste is secondary (Cmd/Ctrl+V still works) — hover-reveal
-      // only on THIS field (or a `group/search-bar` host like TechRailSearchBar),
-      // never the whole rail/nav. Same quiet chrome as StationScanBar paste.
-      // Paste shares the field-action 24px control / 14px glyph box with
-      // field-density filters and rail collapse; opacity keeps it secondary.
-      <button
-        type="button"
-        onMouseDown={(e) => e.preventDefault()}
-        onClick={handlePaste}
-        className="pointer-events-none inline-flex h-6 w-6 shrink-0 items-center justify-center text-text-faint opacity-0 transition-[opacity,color] duration-100 ease-out hover:text-blue-600 active:scale-95 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover/search-bar:pointer-events-auto group-hover/search-bar:opacity-100 group-focus-within/search-bar:pointer-events-auto group-focus-within/search-bar:opacity-100 focus-visible:pointer-events-auto focus-visible:opacity-100"
-        aria-label="Paste from clipboard"
-      >
-        <Clipboard className="h-3.5 w-3.5" />
-      </button>
+    ) : persistentPaste ? null : (
+      // Empty-field paste is secondary here (Cmd/Ctrl+V still works) —
+      // hover-reveal on THIS field or a `group/search-bar` host like
+      // TechRailSearchBar, never the whole rail/nav.
+      pasteButton(false)
     );
 
   return (
@@ -365,11 +397,12 @@ export function SearchField({
           className={`w-full border-0 bg-transparent px-0 font-semibold text-text-default outline-none placeholder:font-medium placeholder:text-text-faint ${sizeClasses.input}`.trim()}
         />
 
-        {/* Trailing row: prefix → spinner/pending/clear/paste → suffix */}
+        {/* Trailing row: prefix → [persistent paste] → spinner/pending/clear/paste → suffix */}
         <span
           className={`flex shrink-0 items-center gap-0.5 ${sizeClasses.rightSlot}`.trim()}
         >
           {trailingPrefix}
+          {persistentPaste ? pasteButton(true) : null}
           {trailingControl}
           {trailingSuffix}
         </span>

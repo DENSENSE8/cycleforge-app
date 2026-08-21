@@ -131,6 +131,7 @@ describe('vocabulary exports', () => {
       'session.face_changed',
       'session.status_changed',
       'session.submitted',
+      'session.payment_changed',
     ];
     assert.deepEqual([...COUNTER_SESSION_EVENTS].sort(), [...producible].sort());
     assert.equal(new Set(COUNTER_SESSION_EVENTS).size, COUNTER_SESSION_EVENTS.length);
@@ -418,11 +419,13 @@ describe('projectForDevicePrincipal — D6 allowlist', () => {
     const projected: DeviceSessionProjection = projectForDevicePrincipal(staffOnly);
     assert.deepEqual(Object.keys(projected).sort(), [
       'activeCommand',
+      'awaitingCardSinceMs',
       'awaitingSignatureLineIds',
       'customerName',
       'customerPhoneMasked',
       'face',
       'lines',
+      'paymentState',
       'sessionId',
       'status',
       'version',
@@ -430,6 +433,11 @@ describe('projectForDevicePrincipal — D6 allowlist', () => {
     const serialized = JSON.stringify(projected);
     assert.equal(serialized.includes('Ari'), false, 'lease holder must not reach the tablet');
     assert.equal(serialized.includes('claim'), false);
+    assert.equal(
+      'terminalCheckoutId' in projected,
+      false,
+      'a Square checkout id is a handle into the tenant’s account — not the tablet’s business',
+    );
   });
 
   it('never carries the customer email, and masks the phone to four digits', () => {

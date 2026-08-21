@@ -11,6 +11,7 @@
 
 import { useState } from 'react';
 import {
+  WorkbenchFilterGroupLabel,
   WorkbenchFilterHotChip,
   WorkbenchFilterMenuRow,
   WorkbenchFilterPopover,
@@ -36,7 +37,59 @@ function sourceLabel(source: IncomingSource): string {
   return SOURCE_OPTIONS.find((o) => o.id === source)?.label ?? 'Filter';
 }
 
-/** Field-density source filter for the Pipeline search bar trailing slot. */
+/**
+ * The source facet as MENU ROWS, for the Pipeline find field's ONE refine
+ * funnel. Pipeline used to seat three `density="field"` popovers side by side —
+ * Source, Kind and Filters — each painting the SAME funnel glyph, so the field
+ * showed three identical marks and none of them said which was which. A facet
+ * is a group inside the one funnel, never a second funnel beside it.
+ */
+export function IncomingSourceRows({
+  source,
+  onChange,
+  onPick,
+}: {
+  source: IncomingSource;
+  onChange: (next: IncomingSource) => void;
+  onPick?: () => void;
+}) {
+  const pick = (next: IncomingSource) => {
+    onChange(next);
+    onPick?.();
+  };
+  return (
+    <>
+      <WorkbenchFilterGroupLabel>Source</WorkbenchFilterGroupLabel>
+      <WorkbenchFilterMenuRow
+        label="All sources"
+        active={source === 'all'}
+        onClick={() => pick('all')}
+      />
+      {SOURCE_OPTIONS.filter((o) => o.id !== 'all').map((opt) => (
+        <WorkbenchFilterMenuRow
+          key={opt.id}
+          label={opt.label}
+          active={source === opt.id}
+          leading={
+            opt.platform ? (
+              <PlatformMark
+                platformValue={opt.platform}
+                preferBrandTile
+                textClassName="text-current"
+              />
+            ) : undefined
+          }
+          onClick={() => pick(opt.id)}
+        />
+      ))}
+    </>
+  );
+}
+
+/**
+ * Field-density source filter — the standalone trigger. Kept for a surface that
+ * has no funnel of its own to fold into; Pipeline uses {@link IncomingSourceRows}.
+ */
 export function IncomingSourceFilters({
   source,
   onChange,

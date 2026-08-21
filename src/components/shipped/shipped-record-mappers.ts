@@ -6,11 +6,11 @@ import type { QueueRowRecord } from '@/components/dashboard/orders-queue/helpers
 /**
  * Pure shape-mappers between the two record types the Shipped table juggles:
  * the `PackerRecord` rows that come back from the week query / scan-out, and the
- * `ShippedOrder` shape the details panel / OrdersGridHost expects.
+ * `ShippedOrder` shape the details panel / the outbound spreadsheet expects.
  */
 
 /**
- * Flat spreadsheet row for {@link OrdersGridHost}. Uses the packer-log id as the
+ * Flat spreadsheet row for the outbound spreadsheet. Uses the packer-log id as the
  * list key (unique per package) and carries `outboundState` for status chrome.
  */
 export function derivedPackerRecordToQueueRow(record: DerivedPackerRecord): QueueRowRecord {

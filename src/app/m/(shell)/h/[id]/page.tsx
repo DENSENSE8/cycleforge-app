@@ -28,8 +28,9 @@ import { getLast8 } from '@/components/ui/CopyChip';
 import { unwrapScannedSerial } from '@/lib/barcode-routing';
 import { printHandlingUnitLabel } from '@/lib/print/printHandlingUnitLabel';
 import { HandlingUnitChip } from '@/components/receiving/HandlingUnitChip';
-import { ChevronLeft, Check, X, Printer, Plus, Package } from '@/components/Icons';
+import { Check, X, Printer, Plus, Package } from '@/components/Icons';
 import { Panel, IconButton } from '@/design-system/primitives';
+import { MobileDetailTopBar } from '@/components/mobile/redesign/MobileDetailTopBar';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 
@@ -171,34 +172,32 @@ export default function MobileHandlingUnitPage() {
   return (
     <div className="min-h-screen bg-surface-canvas pb-24">
       {/* Header */}
-      <div className="sticky top-0 z-10 flex items-center gap-2 border-b border-border-soft bg-surface-card px-3 py-2.5">
-        <IconButton
-          onClick={() => router.push('/m/scan')}
-          ariaLabel="Back to scan"
-          icon={<ChevronLeft className="h-5 w-5 text-text-soft" />}
-          className="rounded-lg p-1.5 active:bg-surface-sunken"
-        />
-        <Package className="h-5 w-5 text-teal-600" />
-        <div className="flex-1 truncate text-base font-semibold tracking-tight text-text-default">
-          {box ? box.code : 'Box'}
-        </div>
-        {box && (
-          <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${handlingUnitStatusChipClass(box.status)}`}>
-            {box.status}
-          </span>
-        )}
-        <IconButton
-          onClick={printLabel}
-          disabled={!box}
-          ariaLabel="Print box label"
-          icon={<Printer className="h-5 w-5 text-text-soft" />}
-          className="rounded-lg p-1.5 active:bg-surface-sunken disabled:opacity-40"
-        />
-      </div>
+      <MobileDetailTopBar
+        backHref="/m/scan"
+        lead={<Package className="h-5 w-5 shrink-0 text-teal-600" />}
+        title={box ? box.code : 'Box'}
+        mono={!!box}
+        right={
+          <>
+            {box && (
+              <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${handlingUnitStatusChipClass(box.status)}`}>
+                {box.status}
+              </span>
+            )}
+            <IconButton
+              onClick={printLabel}
+              disabled={!box}
+              ariaLabel="Print box label"
+              icon={<Printer className="h-5 w-5 text-text-soft" />}
+              className="rounded-none p-1.5 active:bg-surface-sunken disabled:opacity-40"
+            />
+          </>
+        }
+      />
 
       {flash && (
         <div
-          className={`mx-3 mt-3 flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold ${
+          className={`mx-3 mt-3 flex items-center gap-2 rounded-none px-3 py-2 text-sm font-semibold ${
             flash.kind === 'ok' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
           }`}
         >
@@ -243,7 +242,7 @@ export default function MobileHandlingUnitPage() {
                 if (e.key === 'Enter') submitAdd();
               }}
               placeholder="Scan unit (U-… / serial) to add"
-              className={cn("flex-1 rounded-lg border border-border-default px-3 py-2 text-sm", focusRing('field', 'success'))}
+              className={cn("flex-1 rounded-none border border-border-default px-3 py-2 text-sm", focusRing('field', 'success'))}
               autoCapitalize="characters"
               autoCorrect="off"
             />
@@ -251,7 +250,7 @@ export default function MobileHandlingUnitPage() {
             <button
               onClick={submitAdd}
               disabled={!addInput.trim() || busy === 'add'}
-              className="flex items-center gap-1 rounded-lg bg-teal-600 px-3 py-2 text-sm font-semibold text-white active:bg-teal-700 disabled:opacity-40"
+              className="flex items-center gap-1 rounded-none bg-teal-600 px-3 py-2 text-sm font-semibold text-white active:bg-teal-700 disabled:opacity-40"
             >
               <Plus className="h-4 w-4" /> Add
             </button>
@@ -260,7 +259,7 @@ export default function MobileHandlingUnitPage() {
           {/* Member units */}
           <div className="mx-3 mt-3 space-y-1.5">
             {box.units.length === 0 && (
-              <div className="rounded-xl border border-dashed border-border-default p-6 text-center text-sm text-text-faint">
+              <div className="rounded-none border border-dashed border-border-default p-6 text-center text-sm text-text-faint">
                 Empty box — scan a unit above to add it.
               </div>
             )}
@@ -286,7 +285,7 @@ export default function MobileHandlingUnitPage() {
                   disabled={busy === 'remove'}
                   ariaLabel="Remove from box"
                   icon={<X className="h-4 w-4 text-text-faint" />}
-                  className="rounded-lg p-1.5 active:bg-surface-sunken disabled:opacity-40"
+                  className="rounded-none p-1.5 active:bg-surface-sunken disabled:opacity-40"
                 />
               </Panel>
             ))}

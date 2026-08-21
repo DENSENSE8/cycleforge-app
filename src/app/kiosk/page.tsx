@@ -293,7 +293,7 @@ export default function KioskPage() {
         {err && (
           <div
             className={cn(
-              'mt-4 shrink-0 border border-dashed border-rose-200 bg-rose-50 px-4 py-3 text-center text-sm font-semibold text-rose-700',
+              'mt-4 shrink-0 border border-dashed border-border-danger bg-surface-danger px-4 py-3 text-center text-sm font-semibold text-text-danger',
               cornerClass('card'),
             )}
           >

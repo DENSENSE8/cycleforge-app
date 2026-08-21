@@ -37,7 +37,7 @@ import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 import { useDashboardSearchController } from '@/hooks/useDashboardSearchController';
 import { parseStaffParam } from '@/hooks/useStaffFilter';
 import { unshippedQueueCountsQuery } from '@/lib/queries/dashboard-queries';
-import { fulfillmentCountsFromCombos } from '@/lib/unshipped-state';
+import { fulfillmentLaneTotals } from '@/lib/unshipped-state';
 import { useOrdersViewChrome } from '@/components/outbound/orders/orders-view-chrome-context';
 import { useRailActionSnapshot } from '@/components/dashboard/rail/OrderRailActions';
 import { WorkbenchInspectorToggle } from '@/components/dashboard/workbench-inspector-toggle';
@@ -72,10 +72,9 @@ export function OutboundWorkspaceHeader({
   const { data: queueCounts } = useQuery(unshippedQueueCountsQuery({ staffId }));
   const { openIngestIndex } = useDashboardSearchController();
 
-  const fromCombos = fulfillmentCountsFromCombos(queueCounts?.combos ?? []);
-  const pendingCount =
-    (fromCombos.PENDING || queueCounts?.byStage.pending || 0) + (fromCombos.BLOCKED || 0);
-  const testedCount = fromCombos.TESTED || queueCounts?.byStage.tested || 0;
+  // Lane totals come from the shared SoT so a tab number always equals the rows
+  // that tab shows (Pending = PENDING + BLOCKED). See `fulfillmentLaneTotals`.
+  const { pending: pendingCount, tested: testedCount } = fulfillmentLaneTotals(queueCounts);
 
   const tabs = useMemo(
     () =>

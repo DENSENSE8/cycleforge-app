@@ -38,7 +38,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Loader2, MapPin, Printer } from '@/components/Icons';
+import { MapPin, Printer } from '@/components/Icons';
 import { PrintLabel } from '@/components/barcode/bin-label-printer';
 import { registerLocations } from '@/components/barcode/bin-label-printer/bin-printer-api';
 import { DISPLAYS_BODY_INSET } from '@/design-system/shells/detail-stack';
@@ -215,7 +215,7 @@ export function StationNewLocationForm({
               onChange={(e) => setRoom(e.target.value)}
               aria-label="Room"
             >
-              {roomsLoading ? <option value="">Loading…</option> : null}
+
               {roomNames.map((name) => (
                 <option key={name} value={name}>
                   {name}
@@ -266,12 +266,7 @@ export function StationNewLocationForm({
 
       <FlushTerminalFooter
         leading={
-          busy ? (
-            <span className="inline-flex items-center gap-1.5 text-role-caption text-text-muted">
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              Working…
-            </span>
-          ) : null
+          null
         }
       >
         <Button

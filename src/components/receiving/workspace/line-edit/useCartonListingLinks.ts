@@ -35,6 +35,8 @@ interface CartonListingLinksApi {
   create: (href: string, label?: string | null) => Promise<CartonListingLinkRow | null>;
   update: (id: number, patch: { href?: string; label?: string | null }) => Promise<boolean>;
   remove: (id: number) => Promise<boolean>;
+  /** Every durable row on this carton. Returns false if any delete refused. */
+  removeAll: () => Promise<boolean>;
   reorder: (orderedIds: number[]) => Promise<boolean>;
   reload: () => void;
 }
@@ -56,6 +58,9 @@ export function useCartonListingLinks(receivingId: number | null | undefined): C
   const [nonce, setNonce] = useState(0);
   // A carton switch mid-flight must not paint the previous box's links.
   const requestRef = useRef(0);
+  /** Latest rows for callbacks that must not re-create as the list shrinks. */
+  const rowsRef = useRef<CartonListingLinkRow[]>([]);
+  rowsRef.current = rows;
 
   const base = supported ? `/api/receiving/${receivingId}/listing-links` : null;
 
@@ -150,6 +155,22 @@ export function useCartonListingLinks(receivingId: number | null | undefined): C
     [base, fail],
   );
 
+  /**
+   * Sequential, not Promise.all: each DELETE is its own row and a failure
+   * halfway through must leave the survivors on screen rather than blank the
+   * list on optimism. The rows that did delete are already gone from state.
+   */
+  const removeAll = useCallback(async () => {
+    if (!base) return false;
+    let allOk = true;
+    for (const row of rowsRef.current) {
+      // eslint-disable-next-line no-await-in-loop -- one row at a time, see above
+      const ok = await remove(row.id);
+      if (!ok) allOk = false;
+    }
+    return allOk;
+  }, [base, remove]);
+
   const reorder = useCallback(
     async (orderedIds: number[]) => {
       if (!base) return false;
@@ -176,5 +197,5 @@ export function useCartonListingLinks(receivingId: number | null | undefined): C
     [base, fail, reload],
   );
 
-  return { supported, rows, loading, error, create, update, remove, reorder, reload };
+  return { supported, rows, loading, error, create, update, remove, removeAll, reorder, reload };
 }

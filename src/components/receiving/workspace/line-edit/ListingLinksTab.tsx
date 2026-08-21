@@ -12,18 +12,21 @@
  *     `collectCartonListingLinks` and are NOT editable — materializing a
  *     fallback would freeze a guess into a fact. They carry no `id`.
  *
- * ANATOMY (top to bottom):
- *   1. **Open · Copy all** — the two verbs, full-bleed chrome. Open takes the
- *      SELECTED link; Copy all takes every href on the carton.
- *   2. **The combo** — display + selection. Trailing plus starts a new link.
- *      It names which link Open acts on and highlights that row.
- *   3. **The link rows** — one row per link, in the buyer's triage order:
- *      open-square on the left (that exact link, no select-then-open detour),
- *      identity in the middle (click = select), edit-icon on the right. Edit
- *      opens the inline name + URL fields under the row, with delete beside
- *      them. Trailing pencil is always on the right: durable rows edit in
- *      place; computed rows open a prefilled create so the operator can own
- *      the link.
+ * ANATOMY (top to bottom) — three stacked rows on ONE four-column rail
+ * (`open · copy · edit · delete`), so every cell in a column does the same
+ * kind of job:
+ *   1. **Open · Open all** — full-bleed chrome. Open acts on the SELECTED
+ *      link; Open all takes every href on the carton.
+ *   2. **The header row** — ＋ · picker | Copy all | count | Delete all. Each
+ *      trailing cell heads the row column beneath it: the same verb at carton
+ *      scale. ＋ leads the wide cell where a row's open glyph sits, so the
+ *      picker's text lands on the link-name rail. Delete all ARMS on the first
+ *      click and commits on the second.
+ *   3. **The link rows** — one per link, in the buyer's triage order. The row
+ *      itself is the open button (glyph + name), then copy · edit · delete.
+ *      Edit opens the inline name + URL fields beneath; a computed row has no
+ *      id, so its pencil opens a prefilled create instead and it carries no
+ *      delete.
  *
  * A host with no carton id (order-side Pack / Testing) gets the read-only face
  * plus the legacy single `listing_url` field — CRUD needs a carton to hang off.
@@ -85,7 +88,6 @@ const LISTING_DELETE_SQUARE = cn(
 );
 const LISTING_LINK_INSET_X = 'px-3';
 const LISTING_LINK_IDENTITY_FACE = LISTING_LINK_INSET_X;
-const LISTING_COMBO_FACE = LISTING_LINK_INSET_X;
 
 /** Save fills the row; Cancel sits on the trailing edge — no gap, no pad. */
 const LISTING_EDITOR_ACTIONS =
@@ -102,6 +104,56 @@ const LISTING_EDITOR_ACTIONS =
  * than the next row.
  */
 const LISTING_ROW_EDITOR_RAIL = 'px-11 pb-2';
+
+/**
+ * The ONE delete face in this leaf — row delete and Delete all both mount it.
+ *
+ * It arms on the first click and commits on the second: `receiving_listing_links`
+ * has no soft-delete column and no undo behind it, so a single click on a
+ * destructive verb is a slip the operator cannot take back. Moving the pointer
+ * away or tabbing off disarms, which is why the confirm can live in the cell
+ * instead of a modal over a scan bench.
+ */
+function ArmedDeleteCell({
+  label,
+  armedLabel,
+  ariaLabel,
+  armedAriaLabel,
+  onConfirm,
+  disabled = false,
+}: {
+  label: string;
+  armedLabel: string;
+  ariaLabel: string;
+  armedAriaLabel: string;
+  onConfirm: () => void;
+  disabled?: boolean;
+}) {
+  const [armed, setArmed] = useState(false);
+
+  return (
+    <HoverTooltip label={armed ? armedLabel : label} asChild>
+      <IconButton
+        type="button"
+        size="fill"
+        icon={<Trash2 className={LISTING_LEAD_GLYPH} />}
+        onClick={() => {
+          if (!armed) {
+            setArmed(true);
+            return;
+          }
+          setArmed(false);
+          onConfirm();
+        }}
+        onMouseLeave={() => setArmed(false)}
+        onBlur={() => setArmed(false)}
+        disabled={disabled}
+        ariaLabel={armed ? armedAriaLabel : ariaLabel}
+        className={cn(LISTING_DELETE_SQUARE, armed && 'bg-rose-50 text-rose-600')}
+      />
+    </HoverTooltip>
+  );
+}
 
 function ListingLinkEditor({
   name,
@@ -298,8 +350,9 @@ export function ListingLinksTab({
         <>
           {/* 1 — the band verbs: the SELECTED link, then the whole carton.
               Station chrome: full-bleed, one hairline seam. Open reads the
-              combo below it; Open all / Copy all never need a selection. */}
-          <div className="grid grid-cols-3 divide-x divide-border-hairline border-b border-border-hairline">
+              combo below it; Open all never needs a selection. Copy all is not
+              here — it heads the rows' Copy column on the combo seam. */}
+          <div className="grid grid-cols-2 divide-x divide-border-hairline border-b border-border-hairline">
             <HoverTooltip
               label={selected ? `Open ${selected.name}` : 'Pick a listing link below'}
               asChild
@@ -333,54 +386,70 @@ export function ListingLinksTab({
                 Open all
               </Button>
             </HoverTooltip>
+          </div>
+
+          {/* 2 — the header row, on the rows' own four columns:
+              ＋ · picker | Copy all | count | Delete all. ＋ leads the wide
+              cell exactly where a row's open glyph sits, so the picker's text
+              lands on the same rail as every link name. */}
+          <div className={LISTING_COMBO_GRID}>
+            <div className={cn(LISTING_LINK_INSET_X, 'flex min-w-0 items-center gap-2')}>
+              {store.supported ? (
+                <HoverTooltip label="Add a listing link" asChild>
+                  <IconButton
+                    type="button"
+                    icon={<Plus className={LISTING_LEAD_GLYPH} />}
+                    onClick={() => setDraft({ href: '', label: '' })}
+                    ariaLabel="Add a listing link"
+                    className={cn(cornerClass('flush'), 'shrink-0 text-blue-600 hover:text-blue-700')}
+                  />
+                </HoverTooltip>
+              ) : null}
+              <SearchableSelectField
+                value={selected?.href ?? null}
+                onChange={(v) => setSelectedHref(typeof v === 'string' ? v : null)}
+                options={links.map((l) => ({ value: l.href, label: l.name }))}
+                appearance="flush"
+                placeholder={store.loading ? 'Loading links…' : 'No listing links'}
+                searchPlaceholder="Filter listings…"
+                emptyMessage="No listing links"
+                ariaLabel="Selected listing link"
+                className="min-w-0 flex-1 px-0"
+              />
+            </div>
+            {/* Copy all heads the rows' Copy column: the same verb, whole
+                carton, directly above the per-row twins. */}
             <HoverTooltip label="Copy every listing link on this carton" asChild>
-              <Button
+              <IconButton
                 type="button"
-                size="sm"
-                variant="secondary"
-                icon={<Copy className="h-3.5 w-3.5" />}
+                size="fill"
+                icon={<Copy className={LISTING_LEAD_GLYPH} />}
                 onClick={copyAll}
                 disabled={links.length === 0}
                 ariaLabel="Copy every listing link"
-                className="w-full"
-              >
-                Copy all
-              </Button>
+                className={LISTING_TRAIL_SQUARE}
+              />
             </HoverTooltip>
-          </div>
-
-          {/* 2 — display + selection. Trailing plus opens the create fields. */}
-          <div className={LISTING_COMBO_GRID}>
-            <SearchableSelectField
-              value={selected?.href ?? null}
-              onChange={(v) => setSelectedHref(typeof v === 'string' ? v : null)}
-              options={links.map((l) => ({ value: l.href, label: l.name }))}
-              appearance="flush"
-              placeholder={store.loading ? 'Loading links…' : 'No listing links'}
-              searchPlaceholder="Filter listings…"
-              emptyMessage="No listing links"
-              ariaLabel="Selected listing link"
-              className={LISTING_COMBO_FACE}
-            />
-            {/* Over the rows' Copy — nothing to copy for a picker. */}
-            <span />
             {/* A READOUT, never a control. The count is what the collapsed
                 picker hides; the rows below spend this column on Edit, so
                 nothing here may be clickable. */}
             <span className="flex items-center justify-center">
               <CursorPositionReadout total={links.length} totalOnly />
             </span>
+            {/* Delete all heads the rows' Delete column, on the same armed
+                face every delete in this leaf uses. */}
             {store.supported ? (
-              <HoverTooltip label="Add a listing link" asChild>
-                <IconButton
-                  type="button"
-                  size="fill"
-                  icon={<Plus className={LISTING_LEAD_GLYPH} />}
-                  onClick={() => setDraft({ href: '', label: '' })}
-                  ariaLabel="Add a listing link"
-                  className={LISTING_TRAIL_SQUARE}
-                />
-              </HoverTooltip>
+              <ArmedDeleteCell
+                label="Delete every listing link on this carton"
+                armedLabel={`Click again to delete all ${store.rows.length} links`}
+                ariaLabel="Delete every listing link"
+                armedAriaLabel={`Confirm deleting all ${store.rows.length} listing links`}
+                disabled={store.rows.length === 0}
+                onConfirm={() => {
+                  void store.removeAll();
+                  setSelectedHref(null);
+                }}
+              />
             ) : (
               <span />
             )}
@@ -584,16 +653,13 @@ function ListingLinkRow({
         )}
 
         {row ? (
-          <HoverTooltip label={`Delete ${link.name}`} asChild>
-            <IconButton
-              type="button"
-              size="fill"
-              icon={<Trash2 className={LISTING_LEAD_GLYPH} />}
-              onClick={() => void onDelete(row.id)}
-              ariaLabel={`Delete ${link.name}`}
-              className={LISTING_DELETE_SQUARE}
-            />
-          </HoverTooltip>
+          <ArmedDeleteCell
+            label={`Delete ${link.name}`}
+            armedLabel={`Click again to delete ${link.name}`}
+            ariaLabel={`Delete ${link.name}`}
+            armedAriaLabel={`Confirm deleting ${link.name}`}
+            onConfirm={() => void onDelete(row.id)}
+          />
         ) : (
           <span />
         )}

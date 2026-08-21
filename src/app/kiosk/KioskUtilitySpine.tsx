@@ -84,7 +84,7 @@ export function KioskUtilitySpine({
               <Icon className={KIOSK_MODE_SPINE_ICON} />
               {id === 'triage' && blockerCount > 0 && (
                 <span
-                  className={cn(KIOSK_CART_COUNT_BADGE, 'right-2 top-2 bg-red-600')}
+                  className={cn(KIOSK_CART_COUNT_BADGE, 'right-2 top-2 bg-fill-danger')}
                   data-testid="kiosk-triage-count"
                 >
                   {blockerCount}

@@ -105,6 +105,8 @@ interface ReceivingGridRowProps {
   selectGutterChrome?: GridSelectGutterChrome;
   customFieldDefs?: readonly CustomFieldDef[];
   onCustomFieldCommit?: (entityId: number, defKey: string, next: string) => void;
+  /** Inline note edit. Absent ⇒ the note line is read-only on this surface. */
+  onCommitNote?: (lineId: number, next: string) => void;
 }
 
 /**
@@ -139,6 +141,7 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
   selectGutterChrome = 'always',
   customFieldDefs,
   onCustomFieldCommit,
+  onCommitNote,
 }: ReceivingGridRowProps) {
   useTimeFormat();
   const resolvePlatformMeta = usePlatformMeta();
@@ -213,6 +216,9 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
     trackingValue: displayTrackingNumber(row) ?? '',
     onEditTracking: onSelect,
     onEditOrder: onSelect,
+    // Double-click's destination, reused by the compound chevron.
+    onOpenRecord: onOpenWorkspace,
+    onCommitNote: onCommitNote ? (next: string) => onCommitNote(row.id, next) : undefined,
     serialsCsv: resolveReceivingLineSerialsCsv(row),
     statusDot:
       coarsePaint?.dot
@@ -309,6 +315,9 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
       }
       className={cn(
         receivingGridRowShellClass(false, { scrollMinContent: true }),
+        // Named hover group — the compound layout's chevron reveals on row
+        // hover. Inert for the flat model (nothing there consumes it).
+        'group/row',
         // Same band as LedgerGridColumnHeader / Unbox chrome so the frozen
         // select header and the first body cells share one row rhythm.
         PRIMARY_CHROME_ROW_FACE,

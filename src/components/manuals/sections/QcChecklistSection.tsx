@@ -1,12 +1,13 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { AnimatePresence, motion } from '@/design-system/motion';
 import { ChevronDown, Plus, Loader2, Trash2, Pencil } from '@/components/Icons';
 import { FILTER_DROPDOWN_SELECT_CLASS } from '@/design-system/components/FilterDropdownSelect';
 import { microBadge } from '@/design-system/tokens/typography/presets';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Panel, Button, IconButton } from '@/design-system/primitives';
+import { useFailureModes } from '@/hooks/useFailureModes';
 
 interface QcCheckRow {
   id: number;
@@ -23,12 +24,6 @@ interface QcCheckRow {
   pass_max?: string | number | null;
   /** Failure mode auto-tagged on the unit when this step fails. */
   failure_mode_id?: number | null;
-}
-
-interface FailureModeOption {
-  id: number;
-  label: string;
-  severity: string;
 }
 
 interface QcChecklistSectionProps {
@@ -96,29 +91,12 @@ export function QcChecklistSection({ catalogId, qcChecks, onRefresh }: QcCheckli
   const [passMin, setPassMin] = useState('');
   const [passMax, setPassMax] = useState('');
   const [failureModeId, setFailureModeId] = useState('');
-  const [failureModes, setFailureModes] = useState<FailureModeOption[]>([]);
+  // Failure-mode taxonomy for the "auto-tag on fail" picker. Shared read with
+  // the bench's fail gate (`TestingFailReasonSheet`) — one vocabulary, one door.
+  const failureModes = useFailureModes() ?? [];
   const [saving, setSaving] = useState(false);
   const [removing, setRemoving] = useState<number | null>(null);
   const [publishing, setPublishing] = useState<number | null>(null);
-
-  // Failure-mode taxonomy for the "auto-tag on fail" picker (active only).
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const res = await fetch('/api/failure-modes?activeOnly=1', { cache: 'no-store' });
-        const json = await res.json();
-        if (!cancelled && res.ok && json?.success) {
-          setFailureModes(
-            (json.modes as { id: number; label: string; severity: string }[]).map((m) => ({
-              id: m.id, label: m.label, severity: m.severity,
-            })),
-          );
-        }
-      } catch { /* picker just stays empty */ }
-    })();
-    return () => { cancelled = true; };
-  }, []);
 
   const resetForm = () => {
     setStepLabel('');

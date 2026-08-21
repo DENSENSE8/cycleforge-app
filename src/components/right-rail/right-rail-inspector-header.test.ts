@@ -497,4 +497,39 @@ describe('right-rail inspector header', () => {
       'host close is IconButton + ArrowRightToLine, not the pane-header twin',
     );
   });
+
+  /**
+   * Maximize ported from the Unbox Displays column (2026-08-20).
+   *
+   * It is a sash WIDEN to the frame cap — never a cover overlay, so the work
+   * surface keeps its floor. It rides the host's trailing cluster beside the
+   * singleton close, and only in push mode: overlay mode has no sash to widen,
+   * so the control would be a dead face.
+   */
+  it('host paints maximize beside the singleton close, and only under push', () => {
+    const host = readFileSync(
+      join(ROOT, 'src/components/right-rail/RightRailHost.tsx'),
+      'utf8',
+    );
+    assert.match(host, /right-rail-host-fullscreen/);
+    assert.match(host, /Maximize2/);
+    assert.match(host, /Minimize2/);
+    // Widen-to-cap, exactly the Displays mechanism.
+    assert.match(host, /setWidth\(maximizeCapPx\)/);
+    assert.match(host, /isPush && isResizable \? frame\.capPx : null/);
+    // Still ONE closer — maximize must not grow into a second dismiss.
+    assert.equal(
+      (host.match(/onClick=\{\(\) => closeRightPanel\(\)\}/g) ?? []).length,
+      1,
+      'the host keeps exactly one closer — maximize must not become a second dismiss',
+    );
+  });
+
+  it('the chrome row reserves both trailing cells so nothing scrolls under them', () => {
+    const row = readFileSync(
+      join(ROOT, 'src/components/right-rail/DeskRailChromeRow.tsx'),
+      'utf8',
+    );
+    assert.match(row, /RIGHT_RAIL_HOST_CLOSE_SLOT_CLASS = 'inline-block h-full w-14 shrink-0'/);
+  });
 });

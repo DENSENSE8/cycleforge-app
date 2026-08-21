@@ -24,6 +24,8 @@ interface KioskDeviceRow {
   lastSeenAt: string | null;
   createdAt: string;
   enrolledByStaffId: number | null;
+  /** Square Terminal paired to this lane; null = cash / payment-link only. */
+  squareTerminalDeviceId: string | null;
 }
 
 interface FreshCode {
@@ -129,6 +131,30 @@ export function KioskDevicesSection() {
     await refresh();
   }, [refresh]);
 
+  /**
+   * Pair (or clear) the card reader that sits at this lane (SQ3).
+   *
+   * Clearing is a real configuration — a cash-only counter — not an unset: a
+   * lane with no stand refuses a card prompt rather than reaching for the
+   * deployment fallback and waking a reader at another counter.
+   */
+  const pairTerminal = useCallback(
+    async (deviceId: number, current: string | null) => {
+      const next = window.prompt(
+        'Square Terminal device ID for this lane (blank = no reader at this counter)',
+        current ?? '',
+      );
+      if (next === null) return; // dismissed, not cleared
+      await fetch('/api/kiosk/devices/terminal', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ deviceId, squareTerminalDeviceId: next.trim() || null }),
+      });
+      await refresh();
+    },
+    [refresh],
+  );
+
   const deviceColumns: DataTableColumn<KioskDeviceRow>[] = [
     {
       key: 'tablet',
@@ -145,6 +171,26 @@ export function KioskDevicesSection() {
           {STATUS_LABEL[row.status]}
         </span>
       ),
+    },
+    {
+      key: 'terminal',
+      header: 'Card reader',
+      type: 'text',
+      cell: (row) =>
+        row.status === 'revoked' ? null : (
+          <button
+            type="button"
+            onClick={() => void pairTerminal(row.id, row.squareTerminalDeviceId)}
+            className="ds-raw-button text-xs text-text-soft underline-offset-2 hover:text-text-default hover:underline"
+          >
+            {row.squareTerminalDeviceId ? (
+              <span className="font-mono">{row.squareTerminalDeviceId}</span>
+            ) : (
+              // Honest absence: this lane takes cash or a payment link.
+              'No reader'
+            )}
+          </button>
+        ),
     },
     {
       key: 'last_seen',

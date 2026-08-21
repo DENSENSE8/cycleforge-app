@@ -69,6 +69,12 @@ interface WorkspaceNotesCardProps {
    * that already paints the plane, so only one raised shell exists.
    */
   chrome?: 'raised' | 'bare';
+  /**
+   * Pass-through to OmnichannelComposerDock. Set while this station has a
+   * feedback panel welded to the composer's top edge (Unbox receive), so the
+   * dock drops its top radius and the pair reads as one shape.
+   */
+  weldTop?: boolean;
   /** Terminal CTA for the composer's trailing edge (Unbox overview receive). */
   trailingAction?: ReactNode;
   /** Enter → same primary as the trailing Receive CTA (print + receive). */
@@ -83,6 +89,11 @@ interface WorkspaceNotesCardProps {
   onOpenLocations?: () => void;
   /** Header ⓘ → this station's Displays → Timeline leaf (see LineNotesCard). */
   onOpenStatusHistory?: () => void;
+  /**
+   * Repoint the header ⓘ (dev receive-panel tester). Outranks
+   * {@link onOpenStatusHistory} — see the prop's docblock on LineNotesCard.
+   */
+  headerAction?: { label: string; onClick: () => void; pressed?: boolean };
 }
 
 export function WorkspaceNotesCard({
@@ -91,11 +102,13 @@ export function WorkspaceNotesCard({
   noteGrain = 'line',
   animateMount = true,
   chrome = 'raised',
+  weldTop = false,
   trailingAction,
   onPrimaryAction,
   primaryActionDisabled,
   onOpenLocations,
   onOpenStatusHistory,
+  headerAction,
 }: WorkspaceNotesCardProps) {
   return (
     <div id="zoho-notes-card">
@@ -127,11 +140,13 @@ export function WorkspaceNotesCard({
         showSyncToPo={!(c.isUnfound ?? false)}
         animateMount={animateMount}
         chrome={chrome}
+        weldTop={weldTop}
         trailingAction={trailingAction}
         onPrimaryAction={onPrimaryAction}
         primaryActionDisabled={primaryActionDisabled}
         onOpenLocations={onOpenLocations}
         onOpenStatusHistory={onOpenStatusHistory}
+        headerAction={headerAction}
         statusStamps={{
           received_at: row.received_at,
           received_by_name: row.received_by_name,

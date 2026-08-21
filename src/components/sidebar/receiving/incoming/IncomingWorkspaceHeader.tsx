@@ -71,13 +71,13 @@ import { IncomingAddInboundOverlay } from './IncomingAddInboundOverlay';
 import { IncomingImportCsvOverlay } from './IncomingImportCsvOverlay';
 import { IncomingBulkTrackingPanel } from './IncomingBulkTrackingPanel';
 import {
-  IncomingSourceFilters,
   IncomingSourceHotChip,
+  IncomingSourceRows,
   type IncomingSource,
 } from './IncomingSourceFilters';
 import {
-  IncomingKindFilters,
   IncomingKindHotChip,
+  IncomingKindRows,
   type IncomingKind,
 } from './IncomingKindFilters';
 import { TILES, TONE } from './incoming-tiles';
@@ -262,17 +262,25 @@ export function IncomingWorkspaceHeader({
 
   const [filterOpen, setFilterOpen] = useState(false);
   const filterHot = isPipeline
-    ? Boolean(filters.dateRange?.from) || filters.state != null
+    ? Boolean(filters.dateRange?.from) ||
+      filters.state != null ||
+      activeSource !== 'all' ||
+      activeKind !== 'all'
     : (dockedTab === 'triage' && searchScope !== 'all') || searchField !== 'all';
 
   const clearWorkbenchFilters = useCallback(() => {
     if (isPipeline) {
       filters.setDateRange(undefined);
       filters.setState(null);
+      // Source + Kind are groups of this same funnel now, and they count toward
+      // `filterHot` — clearing without them would leave the trigger lit with no
+      // visible reason why.
+      setSource('all');
+      setKind('all');
     } else {
       replaceParams(setReceivingHistoryUrlParams(searchParams, { scope: 'all', field: 'all' }));
     }
-  }, [filters, isPipeline, replaceParams, searchParams]);
+  }, [filters, isPipeline, replaceParams, searchParams, setKind, setSource]);
 
   const dockedSubTabs = useMemo(
     () =>
@@ -317,6 +325,22 @@ export function IncomingWorkspaceHeader({
               density="field"
               contentClassName="w-72 max-h-[min(70vh,32rem)] overflow-y-auto"
             >
+              <IncomingSourceRows
+                source={activeSource}
+                onChange={setSource}
+                onPick={() => setFilterOpen(false)}
+              />
+
+              <WorkbenchFilterDivider />
+
+              <IncomingKindRows
+                kind={activeKind}
+                onChange={setKind}
+                onPick={() => setFilterOpen(false)}
+              />
+
+              <WorkbenchFilterDivider />
+
               <WorkbenchFilterGroupLabel>PO purchased between</WorkbenchFilterGroupLabel>
               <div className="px-2 pb-2">
                 <DateRangePickerField
@@ -510,17 +534,12 @@ export function IncomingWorkspaceHeader({
                   ? 'Filter purchase order #, tracking, SKU…'
                   : getReceivingHistoryPlaceholder(searchField).replace(/^Search/, 'Filter')
               }
-              trailingSuffix={
-                <>
-                  {isPipeline ? (
-                    <>
-                      <IncomingSourceFilters source={activeSource} onChange={setSource} />
-                      <IncomingKindFilters kind={activeKind} onChange={setKind} />
-                    </>
-                  ) : null}
-                  {incomingInFieldFilter}
-                </>
-              }
+              // ONE in-field control. Pipeline used to seat Source, Kind and
+              // Filters here as three separate `density="field"` popovers, each
+              // painting the same funnel glyph — three identical marks, none of
+              // them saying which was which. Source and Kind are now the first
+              // two groups inside the one funnel.
+              trailingSuffix={incomingInFieldFilter}
               trailingAction={
                 isPipeline ? (
                   <HoverTooltip label="Paste a list of tracking numbers" asChild>

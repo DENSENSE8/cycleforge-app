@@ -21,12 +21,23 @@ it never blocks serving a new one. When jobs differ, add the sibling and share t
 3. **Promote, then compose** — improve the registry so the *next* caller inherits the better pattern.
 4. Pair every hard "don't" with a concrete "do" (prefer / extend / import X) — bare prohibition lists
    cause conservative half-fixes.
-5. **Read/work pairs share the read model + atoms only.** Carton **read** (`/carton`) vs Unbox
-   **work**: never require shared layout panels or identity cards. A new assembly for the read job is
-   correct. Anti-pattern name: **lobotomized work chrome** (work panels with edits stripped).
-   Photos on the read surface use the gallery viewer SoT (`usePhotoGallery` + `PhotoViewerPortal`) —
-   never a second page-local photo UI. Work escape = one quiet `openInUnboxHref` control; never
-   repeated `"Open in Unbox"` marketing CTAs on findings. Recipe: `display/carton-read.md`.
+5. **A read surface composes the SAME station assembly, in a declared stance.**
+   *(Reversed 2026-08-20. This slot used to read "read/work pairs share the read model + atoms
+   only — never shared layout panels or identity cards", and named the port an anti-pattern,
+   "lobotomized work chrome". It cost us a 1001-line hand-rolled twin of the order station on
+   `/search` that drifted from the face it was imitating. The rule was solving the wrong problem:
+   the failure mode is a work panel with its edits SILENTLY stripped, not a read surface that
+   composes the same host.)*
+
+   The discipline that replaces it: **the stance is a required prop with no default**
+   (`EntityStationPane`'s `stance: 'work' | 'preview'`), so a read mount cannot inherit work
+   behaviour by omission and the compiler names every site that has not answered. Read-only-ness
+   is then the ABSENCE of a capability prop (`/search` omits `editableShippingFields`), never a
+   forked component with the editors deleted. A preview mount carries no dock; its right-edge
+   Displays leaves may still write.
+
+   Photos on a read surface still use the gallery viewer SoT (`usePhotoGallery` +
+   `PhotoViewerPortal`) — never a second page-local photo UI. Recipe: `display/carton-read.md`.
 6. **A retirement is not done until the old path is DELETED, or a guard names the exact surviving
    call sites.** A prose-only retirement is a TODO wearing a ruling's clothes. Write the allowlist
    shrink-only, like every other ratchet — finishing the migration removes a line; nothing may add

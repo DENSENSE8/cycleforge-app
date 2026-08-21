@@ -12,7 +12,7 @@ import {
   type ReactElement,
 } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link2, Package, Truck, X, Loader2 } from '@/components/Icons';
+import { Link2, Package, Truck, X } from '@/components/Icons';
 import { Button, IconButton } from '@/design-system/primitives';
 import { Dialog, DialogContent, DialogTitle } from '@/design-system/components/Dialog';
 import { SearchBar } from '@/components/ui/SearchBar';
@@ -20,6 +20,7 @@ import { getLast8 } from '@/components/ui/CopyChip';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { toast } from '@/lib/toast';
 import { invalidateReceivingFeeds } from '@/lib/queries/receiving-queries';
+import { UniversalLoader } from '@/design-system/components/UniversalLoader';
 
 interface PoHit {
   po_id: string;
@@ -329,9 +330,11 @@ export function IncomingAttachTrackingPopover({
                         Type at least 2 characters to search incoming POs.
                       </p>
                     ) : isFetching ? (
-                      <p className="flex items-center gap-1.5 px-1 py-2 text-role-caption text-text-faint">
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" /> Searching…
-                      </p>
+                      <UniversalLoader
+                        isLoading
+                        label="Searching incoming POs"
+                        className="min-h-16"
+                      />
                     ) : !hits || hits.length === 0 ? (
                       <p className="px-1 py-2 text-role-caption text-text-faint">No matching POs.</p>
                     ) : (
@@ -395,9 +398,11 @@ export function IncomingAttachTrackingPopover({
                   <div className="mt-2 max-h-56 overflow-y-auto">
                     {shownBoxes.length === 0 ? (
                       loadingBoxes ? (
-                        <p className="flex items-center gap-1.5 px-1 py-2 text-role-caption text-text-faint">
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading attached boxes…
-                        </p>
+                        <UniversalLoader
+                          isLoading
+                          label="Loading attached boxes"
+                          className="min-h-16"
+                        />
                       ) : (
                         <p className="px-1 py-2 text-role-caption text-text-faint">
                           Scan each carton’s tracking # — they’ll attach to this PO as boxes.

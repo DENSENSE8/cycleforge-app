@@ -53,6 +53,48 @@ export const KIOSK_PANE_HEADER_TITLE =
   'min-w-0 flex-1 px-3 text-lg font-semibold tracking-tight text-text-default';
 
 /**
+ * THE band search row — one face for every search that sits in a top band.
+ *
+ * Extracted 2026-08-20 because the two search rows on this screen had drifted
+ * apart: the command spine's row carried `border-border-hairline` while the
+ * pane bands beside it carried `border-border-soft`, and the repairs search
+ * (ProductSelector, flush) was built at `h-11` — 44px in a 56px system, on a
+ * `bg-surface-sunken` plane. Three different answers to "what does a row at the
+ * top of this screen look like", visible side by side.
+ *
+ * Full-bleed like every other band: the host stays `px-0` and the content owns
+ * its inset. Anything mounting a search in a top band composes THIS.
+ */
+export const KIOSK_BAND_SEARCH_ROW = cn(
+  'flex h-14 shrink-0 items-stretch gap-0 bg-surface-card px-0',
+  'border-b border-border-soft',
+  cornerClass('flush'),
+);
+
+/**
+ * In-body section label row — the `KIOSK_SECTION_LABEL` + divider + inset
+ * triple, which was hand-composed at eight sites (one of them at `px-6`,
+ * silently out of line with the other seven).
+ *
+ * The seam here is deliberately `border-border-hairline`, NOT the
+ * `border-border-soft` of a band: a divider *inside* a body is a lighter fact
+ * than the seam that closes a band. That distinction was the thing nothing
+ * wrote down, which is why the two weights had been used interchangeably.
+ */
+export const KIOSK_SECTION_LABEL_ROW = cn(
+  'border-b border-border-hairline px-4 py-2',
+  'text-role-micro uppercase tracking-[0.16em] text-text-soft',
+);
+
+/**
+ * The one horizontal inset for pane bodies.
+ *
+ * The surface carried four (`px-4` ×25, `px-6` ×7, `px-3` ×2, `px-8` ×1). Bands
+ * are full-bleed and their titles inset themselves; bodies use this.
+ */
+export const KIOSK_BODY_INSET = 'px-4';
+
+/**
  * Dense meta chrome — SKU, category row labels, quiet status (not form fields).
  * Keep body/input type at tablet-readable size so iOS does not zoom.
  */
@@ -146,9 +188,15 @@ export const KIOSK_MODE_SPINE_LABEL = 'min-w-0 truncate text-sm font-semibold le
 /** Spine glyph — smaller than the old 24px MasterNav-scale icon. */
 export const KIOSK_MODE_SPINE_ICON = 'h-5 w-5 shrink-0';
 
-/** Expanded Search row — first row of the named rail (edge-to-edge, no column gutter). */
-export const KIOSK_MODE_SPINE_SEARCH_ROW =
-  'flex min-h-14 shrink-0 items-center gap-0 border-b border-border-hairline px-0';
+/**
+ * Expanded Search row — first row of the named rail (edge-to-edge, no gutter).
+ *
+ * Composes {@link KIOSK_BAND_SEARCH_ROW} as of 2026-08-20. It used to carry its
+ * own `border-border-hairline`, which put a lighter seam on the rail than the
+ * pane band it sits flush against — the two read as different weights across
+ * one continuous Y.
+ */
+export const KIOSK_MODE_SPINE_SEARCH_ROW = cn(KIOSK_BAND_SEARCH_ROW, 'items-center');
 
 /**
  * Right cart ledger panel — ~320px / `w-80` so the center work surface stays

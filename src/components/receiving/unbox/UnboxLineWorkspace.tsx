@@ -46,7 +46,7 @@ import {
   useMotionRole,
   useOverlaySwapHardCut,
 } from '@/design-system/motion';
-import { ReceivingWorkspaceSkeleton } from '@/components/receiving/workspace/ReceivingWorkspaceSkeleton';
+import { LoaderFieldCover, UniversalLoader } from '@/design-system/components/UniversalLoader';
 
 // Phase 2 (lazy carton graph): `ReceivingLineWorkspace` pulls the ~1.1k-LOC
 // `LineEditPanel` + the whole Displays registry — the heaviest module on
@@ -60,14 +60,14 @@ const ReceivingLineWorkspace = dynamic(
     import('@/components/receiving/workspace/ReceivingLineWorkspace').then(
       (m) => m.ReceivingLineWorkspace,
     ),
-  { loading: () => <ReceivingWorkspaceSkeleton /> },
+  { loading: () => <UniversalLoader isLoading label="Loading carton" /> },
 );
 const UnboxWorkspaceView = dynamic(
   () =>
     import('@/components/receiving/unbox/UnboxWorkspaceView').then(
       (m) => m.UnboxWorkspaceView,
     ),
-  { ssr: false, loading: () => <ReceivingWorkspaceSkeleton /> },
+  { ssr: false, loading: () => <UniversalLoader isLoading label="Loading Unbox desk" /> },
 );
 import { UnboxPreviewLock } from './UnboxPreviewLock';
 import { UnboxLookupReceipt } from '@/components/receiving/unbox/UnboxLookupReceipt';
@@ -175,15 +175,20 @@ export function UnboxLineWorkspace({
         inert={showOverlay ? true : undefined}
         style={{ visibility: showOverlay ? 'hidden' : 'visible' }}
       >
-        {showRestoreSkeleton ? (
-          <ReceivingWorkspaceSkeleton />
-        ) : (
-          <UnboxWorkspaceView
-            selectedLine={row}
-            recordInspectOpen={recordInspectOpen}
-            inspectorOpen={inspectorOpen}
-          />
-        )}
+        {/* This pane stays mounted but `visibility: hidden` while the carton
+            overlay owns the middle — tell any loading field inside it not to
+            paint a second, invisible copy of the one on top. */}
+        <LoaderFieldCover covered={showOverlay}>
+          {showRestoreSkeleton ? (
+            <UniversalLoader isLoading label="Restoring carton" />
+          ) : (
+            <UnboxWorkspaceView
+              selectedLine={row}
+              recordInspectOpen={recordInspectOpen}
+              inspectorOpen={inspectorOpen}
+            />
+          )}
+        </LoaderFieldCover>
       </div>
 
       {/* Defensive canvas plate under the keyed overlay — matches station fill

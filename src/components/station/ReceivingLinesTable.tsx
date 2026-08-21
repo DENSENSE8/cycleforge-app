@@ -80,6 +80,7 @@ import { useReceivingAutoWeek } from '@/components/station/useReceivingAutoWeek'
 import { ReceivingLineOrderRow } from '@/components/station/ReceivingLineOrderRow';
 import { GridDegradedBox } from '@/design-system/components/grid';
 import { ReceivingGridHost } from '@/components/station/receiving-grid/ReceivingGridHost';
+import { RECEIVING_COMPOUND_COLUMNS } from '@/lib/receiving/receiving-grid-layout';
 import { ReceivingDrillHost } from '@/components/station/receiving-grid/ReceivingDrillHost';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { StationPipelineBoard } from '@/components/station/StationPipelineBoard';
@@ -684,8 +685,14 @@ export default function ReceivingLinesTable({
         columnTriggerPortalTarget={columnDisplayPortalTarget}
       />
     ) : (
+      // COMPOUND (two-row) WMS layout — the receiving spreadsheet's row shape,
+      // not a per-lane variant. Unbox, History and Testing all mount it: they
+      // are the same table read at different moments, so a lane-conditional
+      // column model would be exactly the fork this engine exists to prevent.
+      // Density is an operator control in Column display, not chrome here.
       <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <ReceivingGridHost
+          columns={RECEIVING_COMPOUND_COLUMNS}
           filteredGroupedRecords={filteredGroupedRecords}
           serverSorted={mode.serverSorted}
           loading={isLoading && localRows.length === 0}

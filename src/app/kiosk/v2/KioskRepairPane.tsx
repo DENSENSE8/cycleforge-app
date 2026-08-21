@@ -30,7 +30,7 @@ import {
   KIOSK_PANE_FOOTER_BAND,
   KIOSK_PANE_HEADER_BAND,
   KIOSK_PANE_HEADER_TITLE,
-  KIOSK_SECTION_LABEL,
+  KIOSK_SECTION_LABEL_ROW,
 } from '@/app/kiosk/kiosk-chrome';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
@@ -51,10 +51,7 @@ function priceToCents(price: string): number {
   return Math.round(dollars * 100);
 }
 
-const SECTION_LABEL = cn(
-  'border-b border-border-hairline px-4 py-2',
-  KIOSK_SECTION_LABEL,
-);
+const SECTION_LABEL = KIOSK_SECTION_LABEL_ROW;
 
 export function KioskRepairPane({ selectedProduct, price, onBack }: KioskRepairPaneProps) {
   const session = useKioskSession();
@@ -264,7 +261,7 @@ export function KioskRepairPane({ selectedProduct, price, onBack }: KioskRepairP
                       value={formData.price}
                       inputMode="decimal"
                       tone="emerald"
-                      inputClassName="rounded-none font-semibold text-emerald-600"
+                      inputClassName="rounded-none font-semibold text-text-success"
                       onChange={(value) =>
                         setFormData((prev) => ({ ...prev, price: value }))
                       }

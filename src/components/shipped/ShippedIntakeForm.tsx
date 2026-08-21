@@ -315,6 +315,12 @@ export function ShippedIntakeForm({
               onChange={(next) =>
                 setReplacementData((prev) => ({ ...prev, condition: normalizeCondition(next) }))
               }
+              // Same stance as the Unbox PO line (PoLineCaptureRow): collapse to
+              // the Tags face, expand the grade strip on hover / focus.
+              collapsible
+              startCollapsed
+              labelVariant="full"
+              layout="barDistribute"
             />
           </FormField>
 
@@ -361,6 +367,12 @@ export function ShippedIntakeForm({
               onChange={(next) =>
                 setAddOrderData((prev) => ({ ...prev, condition: normalizeCondition(next) }))
               }
+              // Same stance as the Unbox PO line (PoLineCaptureRow): collapse to
+              // the Tags face, expand the grade strip on hover / focus.
+              collapsible
+              startCollapsed
+              labelVariant="full"
+              layout="barDistribute"
             />
           </FormField>
 

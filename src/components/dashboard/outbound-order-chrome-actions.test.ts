@@ -14,6 +14,17 @@ const ACTIONS = readFileSync(join(ROOT, 'src/components/dashboard/OutboundOrderC
 const HEADER = readFileSync(join(ROOT, 'src/components/dashboard/OutboundWorkspaceHeader.tsx'), 'utf8');
 const DESK = readFileSync(join(ROOT, 'src/components/outbound/orders/OutboundOrdersDesk.tsx'), 'utf8');
 const RAIL = readFileSync(join(ROOT, 'src/components/outbound/orders/OrderIngestRail.tsx'), 'utf8');
+const PANEL = readFileSync(join(ROOT, 'src/components/outbound/orders/OrderIngestPanel.tsx'), 'utf8');
+
+/**
+ * Comments explain WHY a component is not used and therefore name it. Assert on
+ * code only, or every "deliberately not X" docblock reads as a use of X.
+ */
+function code(src: string): string {
+  return src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+}
+const RAIL_CODE = code(RAIL);
+const PANEL_CODE = code(PANEL);
 
 describe('OutboundOrderChromeActions — ship ingest rail', () => {
   it('To-ship Band 1 mounts the ingest layout (not a split dropdown)', () => {
@@ -32,15 +43,48 @@ describe('OutboundOrderChromeActions — ship ingest rail', () => {
     assert.doesNotMatch(ingestFace, /tracking-widest/);
   });
 
-  it('ship desk mounts OrderIngestRail over DeskInspectorIndexShell', () => {
+  it('ship desk mounts OrderIngestRail through the single RightRailHost slot', () => {
     assert.match(DESK, /OrderIngestRail/);
-    assert.match(RAIL, /DeskInspectorIndexShell/);
-    assert.match(RAIL, /Add order manually/);
-    assert.match(RAIL, /Add from platform/);
-    assert.match(RAIL, /Import from file/);
-    assert.match(RAIL, /Import latest orders/);
-    assert.match(RAIL, /Backfill/);
-    assert.match(RAIL, /SearchableSelectField/);
+    assert.match(RAIL, /DetailStackRailRegistrar/);
     assert.match(RAIL, /modal=\{false\}/);
+    // Pushed inspector, never a floating drawer over the work.
+    assert.doesNotMatch(RAIL_CODE, /RightPaneOverlay/);
   });
+
+  it('the rail is the Unbox recipe — index shell, find row, host-owned chrome', () => {
+    assert.match(RAIL, /DeskInspectorIndexShell/);
+    assert.match(RAIL, /DeskRailChromeRow/);
+    // `indexFilter` is what carries Unbox's Root Index find row and its
+    // ↑↓ / Enter keys; without it the index is a plain list.
+    assert.match(RAIL_CODE, /indexFilter/);
+    // No page-local index twin, and never the station push stack on a desk rail.
+    assert.doesNotMatch(RAIL_CODE, /StationDisplaysPushStack/);
+  });
+
+  it('every ingest lane is a leaf on that index', () => {
+    for (const label of [
+      'Add order manually',
+      'Replacement',
+      'Add from platform',
+      'Import from file',
+      'Import latest orders',
+      'Backfill',
+    ]) {
+      assert.match(RAIL, new RegExp(`label: '${label}'`));
+    }
+  });
+
+  it('hand entry is two leaves, not one leaf with a mode pill row inside it', () => {
+    const mounts = RAIL.match(/<ShippedIntakeForm[\s\S]*?\/>/g) ?? [];
+    assert.equal(mounts.length, 2, 'expected an Add order leaf and a Replacement leaf');
+    for (const mount of mounts) assert.match(mount, /hideModeTabs/);
+    assert.doesNotMatch(RAIL_CODE, /HorizontalButtonSlider/);
+  });
+
+  it('the leaf bodies paint no chrome of their own', () => {
+    assert.doesNotMatch(PANEL_CODE, /aria-label="Close/);
+    assert.doesNotMatch(PANEL_CODE, /<header/);
+    assert.doesNotMatch(PANEL_CODE, /rounded-(?:sm|md|lg|xl|full|\[)/);
+  });
+
 });

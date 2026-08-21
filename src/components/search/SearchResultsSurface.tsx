@@ -26,7 +26,7 @@ import {
   useMotionPresence,
   useMotionTransition,
 } from '@/design-system/foundations/motion-framer-hooks';
-import type { AiSearchHit } from '@/lib/search/ai-search-client';
+import { postAiRetrieve, type AiSearchHit } from '@/lib/search/ai-search-client';
 import type { NearMatchPackout } from '@/hooks/useNearMatchPackout';
 import {
   refineSearchHits,
@@ -39,6 +39,7 @@ import {
   isSearchSelActive,
   type SearchSelection,
 } from '@/lib/search/search-selection';
+import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 
 export interface SearchResultsSurfaceProps {
@@ -154,28 +155,27 @@ export function SearchResultsSurface({
     abortRef.current = controller;
     setState((prev) => ({ ...prev, status: 'loading', forKey: key }));
 
-    fetch('/api/ai/retrieve', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        query: q,
-        limit: 50,
-        pageContext,
-      }),
-      signal: controller.signal,
-    })
-      .then(async (res) => {
+    // `postAiRetrieve` is the one client for this route — this file was the last
+    // raw `fetch('/api/ai/retrieve')` in the tree. The `FetchState` machine
+    // stays local: `forKey` is what keys the results crossfade.
+    postAiRetrieve(q, { limit: 50, pageContext, signal: controller.signal })
+      .then((result) => {
         if (controller.signal.aborted) return;
-        if (res.status === 403) {
-          setState({ status: 'forbidden', hits: [], usedSemantic: false, forKey: key });
+        if (!result.ok) {
+          setState({
+            // 403 is a PERMISSION answer, not a failure — the two land on
+            // different empty states, so the status has to survive the client.
+            status: result.status === 403 ? 'forbidden' : 'error',
+            hits: [],
+            usedSemantic: false,
+            forKey: key,
+          });
           return;
         }
-        if (!res.ok) throw new Error(`search failed (${res.status})`);
-        const data = await res.json();
         setState({
           status: 'done',
-          hits: data.hits ?? [],
-          usedSemantic: Boolean(data.usedSemantic),
+          hits: result.data.hits ?? [],
+          usedSemantic: Boolean(result.data.usedSemantic),
           forKey: key,
         });
       })
@@ -213,8 +213,7 @@ export function SearchResultsSurface({
    * flush shells; the nested one survived because it lives a component down,
    * where their guards do not read.
    */
-  const hostOwnsShell = density === 'dropdown';
-  const listShell = hostOwnsShell ? 'rounded-none border-0 bg-transparent' : undefined;
+  const listChrome = density === 'dropdown' ? 'flush' : 'card';
 
   function isActive(hit: AiSearchHit): boolean {
     if (activeSel) return isSearchSelActive(activeSel, hit);
@@ -242,22 +241,33 @@ export function SearchResultsSurface({
           icon={<Search className="h-6 w-6 text-text-faint" />}
           title="Search everything, from anywhere"
           description="Orders, serial units, receiving cartons, SKUs, repairs and FBA shipments — one query."
-          className="mx-3 mt-2 rounded-xl border border-dashed border-border-soft bg-surface-canvas py-10"
+          className={cn(
+            'mx-3 mt-2 border border-dashed border-border-soft bg-surface-canvas py-10',
+            cornerClass('flush'),
+          )}
         />
       )}
 
       {state.status === 'forbidden' && (
         <EmptyState
+          tone="danger"
           title="AI search not available"
           description='Your role doesn’t include AI search yet — ask an admin to grant the “AI search retrieval” permission.'
-          className="mx-3 mt-2 rounded-xl border border-dashed border-rose-200 bg-rose-50 py-8 [&_h3]:text-rose-800 [&_p]:text-rose-700"
+          className={cn(
+            'mx-3 mt-2 border border-dashed border-border-danger bg-surface-danger py-8',
+            cornerClass('flush'),
+          )}
         />
       )}
       {state.status === 'error' && (
         <EmptyState
+          tone="danger"
           title="Search failed"
           description="Try again in a moment."
-          className="mx-3 mt-2 rounded-xl border border-dashed border-rose-200 bg-rose-50 py-8 [&_h3]:text-rose-800 [&_p]:text-rose-700"
+          className={cn(
+            'mx-3 mt-2 border border-dashed border-border-danger bg-surface-danger py-8',
+            cornerClass('flush'),
+          )}
         />
       )}
       {/* Absolute zero hits: header dropdown owns feedback — no page EmptyState. */}
@@ -267,7 +277,8 @@ export function SearchResultsSurface({
           title="No results match these filters"
           description="Clear a refine chip or pick a broader type / status."
           className={cn(
-            'mx-3 rounded-xl border border-dashed border-border-soft bg-surface-canvas',
+            'mx-3 border border-dashed border-border-soft bg-surface-canvas',
+            cornerClass('flush'),
             isCompact ? 'py-6' : 'py-8',
           )}
         />
@@ -281,7 +292,7 @@ export function SearchResultsSurface({
             transition={transition}
             className="pb-4"
           >
-            <MonitorListBlock className={listShell}>
+            <MonitorListBlock chrome={listChrome}>
               {displayHits.map((hit) => (
                 <li key={`${hit.entityType}:${hit.id}`}>
                   <SearchResultRow

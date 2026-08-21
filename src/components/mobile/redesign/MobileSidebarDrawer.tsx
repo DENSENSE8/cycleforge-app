@@ -4,10 +4,8 @@ import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from '@/design-system/motion';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
-  Barcode,
   PackageOpen,
   ClipboardList,
-  Lock,
   MapPin,
   ChevronDown,
   X,
@@ -15,8 +13,19 @@ import {
 } from '@/components/Icons';
 import { navIconStrokeClass } from '@/components/icons/nav-weight';
 import { IconButton } from '@/design-system/primitives';
+import { StaffAccountFooter } from '@/components/sidebar/master-nav/StaffAccountFooter';
 import { useAuth } from '@/contexts/AuthContext';
-import { toast } from '@/lib/toast';
+import { SPINE_ACCENT, spineRailLineClass } from '@/lib/nav/spine-section-accent';
+import {
+  SIDEBAR_SPINE_WIDTH,
+  SPINE_LABEL_CLASS,
+  SPINE_ROW_FACE_CLASS,
+  SPINE_ROW_ICON_CLASS,
+  SPINE_ROW_SHELL_CLASS,
+} from '@/components/sidebar/sidebar-spine';
+import { appChromeClass } from '@/design-system/tokens/app-surface';
+import { cornerClass } from '@/design-system/tokens/radius';
+import { cn } from '@/utils/_cn';
 
 /**
  * Left slide-over navigation drawer for the mobile shell (2026 redesign).
@@ -27,10 +36,27 @@ import { toast } from '@/lib/toast';
  * accidental taps that plagued the bar and frees the very bottom of each page for
  * the page's own contextual content/actions.
  *
- * Structure mirrors the contextual-display "workbench picker" idea on a phone:
- *   Recent · Picks · Scan · Receiving ▸ (Unboxing / Local Pickup / Repair) · Packing
- * with Sign out pinned to the very bottom (a deliberate, low-frequency action kept
- * away from the primary nav so it can't be fat-fingered).
+ * ## It renders the DESKTOP spine row, not a phone-shaped approximation
+ *
+ * Rows compose `SPINE_ROW_SHELL_CLASS` + `SPINE_ROW_FACE_CLASS` +
+ * `SPINE_ACCENT` — the same three tokens `SidebarNavList` paints with, at the
+ * same 40px height, the same 16px glyph, the same `role-body` label. Until
+ * 2026-08-21 this drawer hand-rolled `rounded-2xl` rows with a `bg-blue-50` /
+ * `ring-blue-200` active state, which broke three rulings at once: ops chrome
+ * is flush-square, the spine treatment is monochrome ("No hue, anywhere"), and
+ * selection carries no ring or shadow. Nesting uses the same ONE-line,
+ * two-token rail (`spineRailLineClass`) rather than a static hairline.
+ *
+ * ## Why the DESTINATIONS are still local
+ *
+ * The rows are the spine's; the list is not. `MasterNav` resolves `/receiving`,
+ * `/unbox`, `/pack` — the desktop shell's routes — while this drawer navigates
+ * the `/m/*` app, a separate shell with its own scan-first surfaces. Mounting
+ * `MasterNav` here would walk operators out of the mobile app. Shared face,
+ * different map, and that difference is the reason this component exists.
+ *
+ * Below the map sits {@link StaffAccountFooter} — the desktop spine's own
+ * footer, mounted verbatim.
  *
  * The "Receiving" item is a drill-down group: tapping it expands the modes
  * that have dedicated phone support for capturing/updating photos.
@@ -60,11 +86,17 @@ type GroupItem = {
 
 type NavItem = LeafItem | GroupItem;
 
-// Single source of truth for the drawer's destinations. Scan is pinned to the
-// very top (the headline action). Receiving is a drill-down group into its
-// photo-capable modes. Mode icons mirror the desktop station registry.
+// Single source of truth for the drawer's destinations. Receiving is a
+// drill-down group into its photo-capable modes; mode icons mirror the desktop
+// station registry.
+//
+// **Scan is deliberately absent** (2026-08-21). It used to be pinned to the very
+// top as the headline action, which was right when the drawer was the only way
+// to reach the scanner. It now has a permanent seat in the top-right corner of
+// every mobile screen ({@link MobileScanCta}), so a row here would be a second
+// door to one destination — the operator learns whichever they happen to hit
+// first, and the corner stops being the answer.
 const NAV_ITEMS: NavItem[] = [
-  { kind: 'leaf', id: 'scan', label: 'Scan', icon: Barcode, href: '/m/scan' },
   { kind: 'leaf', id: 'home', label: 'Recent', href: '/m/home' },
   { kind: 'leaf', id: 'picks', label: 'Picks', href: '/m/pick' },
   {
@@ -126,7 +158,7 @@ export const MobileSidebarDrawer = ({
   const router = useRouter();
   const searchParams = useSearchParams();
   const currentMode = searchParams?.get('mode') ?? null;
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
 
   // Auto-expand the Receiving group when the user is somewhere inside it.
   const receivingActive = isGroupActive(pathname, [
@@ -164,16 +196,6 @@ export const MobileSidebarDrawer = ({
     onClose();
   };
 
-  const handleSignOut = async () => {
-    onClose();
-    try {
-      await signOut();
-      toast.success('Signed out');
-    } catch {
-      router.replace('/signin');
-    }
-  };
-
   return (
     <AnimatePresence>
       {open && user && (
@@ -206,24 +228,37 @@ export const MobileSidebarDrawer = ({
             onDragEnd={(_, info) => {
               if (info.offset.x < -80 || info.velocity.x < -500) onClose();
             }}
-            className="fixed inset-y-0 left-0 z-panel flex h-[100dvh] w-[82%] max-w-[320px] flex-col border-r border-border-soft bg-surface-card shadow-[12px_0_48px_-16px_rgba(15,23,42,0.35)]"
+            className={cn(
+              // Flush-square, spine-width, chrome ground — the desktop push column
+              // in a slide-over. The old panel carried an arbitrary rgba shadow;
+              // depth here is the border + the scrim behind it, per the accent
+              // module's "no ring, no shadow, no bevel".
+              'fixed inset-y-0 left-0 z-panel flex h-[100dvh] max-w-[86vw] flex-col border-r border-border-soft',
+              SIDEBAR_SPINE_WIDTH,
+              appChromeClass,
+              cornerClass('flush'),
+            )}
           >
             {/* Header */}
-            <div className="flex shrink-0 items-center justify-between border-b border-border-hairline px-4 pb-3 pt-[calc(env(safe-area-inset-top)+0.75rem)]">
-              <span className="text-role-caption font-semibold uppercase tracking-[0.2em] text-blue-400">
+            <div className="flex h-10 shrink-0 items-center justify-between border-b border-border-hairline px-2 mt-[env(safe-area-inset-top)]">
+              <span className="px-1 text-role-caption font-semibold uppercase tracking-[0.18em] text-text-soft">
                 Menu
               </span>
               <IconButton
-                icon={<X className="h-5 w-5" />}
+                icon={<X className={SPINE_ROW_ICON_CLASS} />}
                 onClick={onClose}
                 ariaLabel="Close menu"
-                className="flex h-9 w-9 items-center justify-center rounded-full border border-border-soft bg-surface-card text-text-soft shadow-sm transition-all active:scale-90"
+                size="md"
+                className={cn(
+                  'flex items-center justify-center text-text-soft transition-colors hover:bg-surface-hover',
+                  cornerClass('flush'),
+                )}
               />
             </div>
 
             {/* Nav list */}
-            <nav className="flex-1 overflow-y-auto overscroll-contain px-2 py-3">
-              <ul className="space-y-1">
+            <nav className="flex-1 overflow-y-auto overscroll-contain px-2 py-2">
+              <ul>
                 {NAV_ITEMS.map((item) => {
                   if (item.kind === 'leaf') {
                     const active = isLeafActive(pathname, item.href);
@@ -233,16 +268,26 @@ export const MobileSidebarDrawer = ({
                         {/* ds-raw-button: text-left nav row (optional tool icon + label), not a standard action button */}
                         <button
                           onClick={() => navigate(item.href)}
-                          className={`flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left transition-colors active:scale-[0.98] ${
-                            active
-                              ? 'bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-200'
-                              : 'text-text-muted hover:bg-surface-hover'
-                          }`}
+                          aria-current={active ? 'page' : undefined}
+                          className={cn(
+                            SPINE_ROW_SHELL_CLASS,
+                            SPINE_ROW_FACE_CLASS,
+                            active ? SPINE_ACCENT.activePage : SPINE_ACCENT.idlePage,
+                          )}
                         >
                           {Icon ? (
-                            <Icon className={navIconStrokeClass(`h-5 w-5 shrink-0 ${active ? 'text-blue-600' : 'text-text-faint'}`)} />
+                            <Icon
+                              className={navIconStrokeClass(
+                                cn(
+                                  SPINE_ROW_ICON_CLASS,
+                                  active ? SPINE_ACCENT.activePageIcon : SPINE_ACCENT.idlePageIcon,
+                                ),
+                              )}
+                            />
                           ) : null}
-                          <span className="text-role-body font-semibold tracking-tight">{item.label}</span>
+                          <span className={cn('min-w-0 flex-1 truncate', SPINE_LABEL_CLASS)}>
+                            {item.label}
+                          </span>
                         </button>
                       </li>
                     );
@@ -257,15 +302,20 @@ export const MobileSidebarDrawer = ({
                       <button
                         onClick={() => setExpanded((cur) => (cur === item.id ? null : item.id))}
                         aria-expanded={isOpen}
-                        className={`flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left transition-colors active:scale-[0.98] ${
-                          groupActive
-                            ? 'bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-200'
-                            : 'text-text-muted hover:bg-surface-hover'
-                        }`}
+                        className={cn(
+                          SPINE_ROW_SHELL_CLASS,
+                          SPINE_ROW_FACE_CLASS,
+                          // A parent that OWNS the current child gets the quieter
+                          // wash, never `aria-current` — two strengths, one
+                          // location, exactly as the spine resolves it.
+                          groupActive ? SPINE_ACCENT.ownsActive : SPINE_ACCENT.idlePage,
+                        )}
                       >
-                        <span className="flex-1 text-role-body font-semibold tracking-tight">{item.label}</span>
+                        <span className={cn('min-w-0 flex-1 truncate', SPINE_LABEL_CLASS)}>
+                          {item.label}
+                        </span>
                         <motion.span animate={{ rotate: isOpen ? 180 : 0 }} transition={{ duration: 0.2 }}>
-                          <ChevronDown className={`h-4 w-4 ${groupActive ? 'text-blue-400' : 'text-text-faint'}`} />
+                          <ChevronDown className={cn(SPINE_ROW_ICON_CLASS, 'text-text-default')} />
                         </motion.span>
                       </button>
 
@@ -276,27 +326,41 @@ export const MobileSidebarDrawer = ({
                             animate={{ height: 'auto', opacity: 1 }}
                             exit={{ height: 0, opacity: 0 }}
                             transition={{ duration: 0.22, ease: [0.23, 1, 0.32, 1] }}
-                            className="overflow-hidden pl-3"
+                            className="overflow-hidden"
                           >
-                            <div className="ml-2 space-y-1 border-l border-border-hairline pl-2 pt-1">
+                            <div className="pl-2">
                               {item.children.map((child) => {
                                 const ChildIcon = child.icon;
                                 const childActive = isChildActive(pathname, currentMode, child.href);
                                 return (
-                                  <li key={child.id}>
+                                  <li key={child.id} className="flex items-stretch">
+                                    {/* ONE rail line, always mounted, always in the
+                                        same place — only its colour token changes
+                                        with selection. Never a second bar. */}
+                                    <span className={spineRailLineClass(childActive)} aria-hidden />
                                     {/* ds-raw-button: text-left sub-mode nav row (icon + label + active fill), not a standard action button */}
                                     <button
                                       onClick={() => navigate(child.href)}
-                                      className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors active:scale-[0.98] ${
-                                        childActive
-                                          ? 'bg-blue-50 text-blue-700'
-                                          : 'text-text-soft hover:bg-surface-hover'
-                                      }`}
+                                      aria-current={childActive ? 'page' : undefined}
+                                      className={cn(
+                                        SPINE_ROW_SHELL_CLASS,
+                                        SPINE_ROW_FACE_CLASS,
+                                        childActive ? SPINE_ACCENT.childActive : SPINE_ACCENT.childIdle,
+                                      )}
                                     >
                                       {ChildIcon ? (
-                                        <ChildIcon className={`h-4 w-4 shrink-0 ${childActive ? 'text-blue-600' : 'text-text-faint'}`} />
+                                        <ChildIcon
+                                          className={cn(
+                                            SPINE_ROW_ICON_CLASS,
+                                            childActive
+                                              ? SPINE_ACCENT.childActiveIcon
+                                              : SPINE_ACCENT.childIdleIcon,
+                                          )}
+                                        />
                                       ) : null}
-                                      <span className="text-role-body font-semibold">{child.label}</span>
+                                      <span className={cn('min-w-0 flex-1 truncate', SPINE_LABEL_CLASS)}>
+                                        {child.label}
+                                      </span>
                                     </button>
                                   </li>
                                 );
@@ -311,18 +375,26 @@ export const MobileSidebarDrawer = ({
               </ul>
             </nav>
 
-            {/* Footer — low-frequency actions pinned to the very bottom, away from
-                the primary nav so they can't be accidentally pressed. */}
-            <div className="shrink-0 border-t border-border-hairline px-2 py-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)]">
-              {/* ds-raw-button: text-left full-width sign-out row (icon + label), not a standard action button */}
-              <button
-                onClick={handleSignOut}
-                className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-text-soft transition-colors hover:bg-rose-50 active:scale-[0.98]"
-              >
-                <Lock className="h-5 w-5 shrink-0 text-text-faint" />
-                <span className="text-role-body font-semibold tracking-tight">Sign out</span>
-              </button>
-            </div>
+            {/*
+              Footer — the DESKTOP spine footer component, mounted verbatim.
+              Identity · ⋯ (phone history · throw a task · clipboard · open on
+              your phone · kiosk preview · report an issue · quick-access
+              settings) · sign out.
+
+              Notifications briefly rode along here in a `trailing` slot. They
+              are a DESK surface — you triage an inbox sitting down, not with a
+              carton in your hands — so mobile carries none of it, and the slot
+              that existed only to hold it was removed with it.
+
+              This is deliberately NOT a mobile-shaped rewrite. A first pass
+              built one — a `MobileAccountFooter` with the same rows in a
+              different face — and that is precisely the page-local twin the
+              house bans: two components answering "who am I signed in as and
+              what else can I reach", drifting apart the moment either changes.
+              Mounting the real one means the phone inherits every row desktop
+              adds, for free and forever.
+            */}
+            <StaffAccountFooter />
           </motion.aside>
         </>
       )}

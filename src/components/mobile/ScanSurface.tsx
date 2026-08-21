@@ -39,7 +39,7 @@ interface ScanSurfaceProps {
 }
 
 const BRACKET_TONE: Record<NonNullable<ScanSurfaceProps['bracketTone']>, string> = {
-  blue:    'border-blue-400',
+  blue:    'border-border-default',
   emerald: 'border-emerald-400',
   amber:   'border-amber-400',
 };
@@ -88,7 +88,7 @@ export function ScanSurface({
   const isPulse = scanner.lastScannedValue != null;
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-border-soft bg-stage-raised">
+    <div className="overflow-hidden rounded-none border border-border-soft bg-stage-raised">
       {/* Camera frame */}
       <div className="relative w-full bg-stage" style={{ aspectRatio }}>
         <video
@@ -183,7 +183,7 @@ export function ScanSurface({
               placeholder={manualPlaceholder}
               autoComplete="off"
               inputMode="text"
-              className={cn("h-11 flex-1 rounded-xl border border-glass/10 bg-glass/5 px-3 text-sm text-white placeholder:text-white/40", focusRing('field', 'accent'))}
+              className={cn("h-11 flex-1 rounded-none border border-glass/10 bg-glass/5 px-3 text-sm text-white placeholder:text-white/40", focusRing('field', 'accent'))}
             />
             <Button
               type="submit"

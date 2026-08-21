@@ -6,9 +6,9 @@
  * Mirrors StationWorkbench identity + section tabs + stacked flush cards so the
  * handoff to LineEditPanel / TriagePanel feels continuous. Section cards use
  * flush Panel radius (ops chrome) — never soft `rounded-2xl` / pill bars.
- * Bar geometry matches {@link UnboxWorkbenchSkeleton}: `cornerClass('flush')`.
+ * Bar geometry is flush ops chrome: `cornerClass('flush')`.
  *
- * Domain wrappers (`ReceivingWorkspaceSkeleton`, `TriageWorkspaceSkeleton`)
+ * Domain wrappers (`TriageWorkspaceSkeleton`)
  * pick the header variant, body preset, and column recipe.
  */
 

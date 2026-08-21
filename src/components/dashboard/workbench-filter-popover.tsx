@@ -34,6 +34,10 @@ import { Filter, X } from '@/components/Icons';
 import { ToolbarButton } from '@/components/ui/ToolbarButton';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { ToolbarListboxOption } from '@/design-system/primitives';
+import {
+  FIELD_ACTION_CLASS,
+  FIELD_ACTION_GLYPH_CLASS,
+} from '@/design-system/primitives/field-action';
 import { cn } from '@/utils/_cn';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 
@@ -49,8 +53,11 @@ export function WorkbenchFilterPopover({
   /** Override content width (default `w-56`). Use a wider class when the menu
    *  hosts date pickers / multi-column tables (e.g. Incoming PO date). */
   contentClassName,
-  /** Trigger glyph — defaults to the house Filter funnel. Pass a domain icon
-   *  when the popover is a sibling control with a different job. */
+  /**
+   * Trigger glyph — **`toolbar` density only**. In the FIELD the glyph is the
+   * Filter funnel and nothing else (see the one-icon law below), so a custom
+   * icon passed with `density="field"` is ignored rather than honoured.
+   */
   icon,
   /**
    * `toolbar` (default) — h-8 ToolbarButton for chrome right clusters.
@@ -81,7 +88,26 @@ export function WorkbenchFilterPopover({
     wasOpenRef.current = open;
   }, [open]);
 
-  const glyph = icon ?? <Filter className="h-3.5 w-3.5" />;
+  /**
+   * **One icon in the find field, and it is the funnel.**
+   *
+   * A field glyph answers exactly one question — *does anything narrow these
+   * rows?* — so it must be the same mark on every surface. Domain glyphs had
+   * started answering a different one: To-ship and Shipping painted a
+   * `PackageCheck` box for the packing-bench facet, and the staff facet paints a
+   * `User`, so an operator moving between three desks met three different marks
+   * for "refine" and no mark that meant it everywhere. A funnel that is
+   * sometimes a box is not a funnel.
+   *
+   * `toolbar` density keeps the escape: out on a chrome row a popover sits
+   * beside unrelated controls and its glyph is what distinguishes it.
+   */
+  const glyph =
+    density === 'field' ? (
+      <Filter className={FIELD_ACTION_GLYPH_CLASS} />
+    ) : (
+      icon ?? <Filter className={FIELD_ACTION_GLYPH_CLASS} />
+    );
   const ariaLabel =
     hot && hotActiveLabel ? `${label} (${hotActiveLabel} active)` : label;
   const hotDot = hot ? (
@@ -102,15 +128,21 @@ export function WorkbenchFilterPopover({
             aria-label={ariaLabel}
             // Keep focus in the search field when opening the menu.
             onMouseDown={(e) => e.preventDefault()}
+            // `relative` hosts the hot dot; the rest is the shared in-field
+            // action cell, so refine and paste stay peers by construction.
             className={cn(
-              'ds-raw-button relative inline-flex h-6 w-6 shrink-0 items-center justify-center transition-colors duration-100 ease-out active:scale-95',
-              open || hot
-                ? 'text-blue-600'
-                : 'text-text-faint hover:text-blue-600',
+              'ds-raw-button relative',
+              FIELD_ACTION_CLASS,
+              (open || hot) && 'text-blue-600',
             )}
           >
             <HoverTooltip label={ariaLabel} focusable={false} asChild>
-              <span className="relative inline-flex h-3.5 w-3.5 items-center justify-center leading-none">
+              <span
+                className={cn(
+                  'relative inline-flex items-center justify-center leading-none',
+                  FIELD_ACTION_GLYPH_CLASS,
+                )}
+              >
                 {glyph}
                 {hotDot}
               </span>

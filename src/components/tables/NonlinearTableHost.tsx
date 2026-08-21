@@ -42,7 +42,7 @@ import type { TableSurfaceBinding } from './table-surface-binding';
  * definition under its own prefs bucket (`tableId`), its own testid, and with
  * day bands on.
  */
-interface NonlinearTableHostProps<Row, K extends string, C extends LedgerGridColumnModel> {
+export interface NonlinearTableHostProps<Row, K extends string, C extends LedgerGridColumnModel> {
   /** Definition + typed columns + descriptor factory for this family. */
   binding: TableSurfaceBinding<Row, C>;
 

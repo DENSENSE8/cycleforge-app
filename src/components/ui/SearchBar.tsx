@@ -33,6 +33,12 @@ export interface SearchBarProps {
   trailingSuffix?: React.ReactNode;
   /** Trailing slot shows clipboard paste only (no clear X when filled). */
   pasteOnlyTrailing?: boolean;
+  /**
+   * `hover` (default) — paste reveals on hover/focus of an empty field.
+   * `always` — paste holds a fixed, opaque slot whatever the field contains.
+   * Passed through to {@link SearchField}; chrome-band find bars use `always`.
+   */
+  pasteVisibility?: SearchFieldProps['pasteVisibility'];
 }
 
 function toSearchFieldTone(variant: SearchBarProps['variant']): SearchFieldTone {
@@ -79,6 +85,7 @@ export function SearchBar({
   trailingPrefix,
   trailingSuffix,
   pasteOnlyTrailing,
+  pasteVisibility,
 }: SearchBarProps) {
   const isMobile = useIsMobile();
   const internalRef = useRef<HTMLInputElement>(null);
@@ -120,6 +127,7 @@ export function SearchBar({
         trailingPrefix={trailingPrefix}
         trailingSuffix={trailingSuffix}
         pasteOnlyTrailing={pasteOnlyTrailing}
+        pasteVisibility={pasteVisibility}
       />
     </div>
   );

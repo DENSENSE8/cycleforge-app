@@ -226,7 +226,7 @@ export function MobileChecklistEditor({
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
         {noIdentity && (
-          <p className="rounded-2xl bg-amber-50 px-3 py-3 text-role-caption font-semibold text-amber-900">
+          <p className="rounded-none bg-amber-50 px-3 py-3 text-role-caption font-semibold text-amber-900">
             This order has no item number or SKU to resolve a product checklist.
           </p>
         )}
@@ -239,7 +239,7 @@ export function MobileChecklistEditor({
         )}
 
         {resolveQuery.isError && (
-          <p className="rounded-2xl bg-rose-50 px-3 py-3 text-role-caption font-semibold text-rose-700">
+          <p className="rounded-none bg-rose-50 px-3 py-3 text-role-caption font-semibold text-rose-700">
             {(resolveQuery.error as Error)?.message || 'Lookup failed'}
           </p>
         )}
@@ -255,7 +255,7 @@ export function MobileChecklistEditor({
                   <button
                     type="button"
                     onClick={() => pickCandidate(c)}
-                    className="flex w-full items-center gap-3 rounded-2xl bg-surface-canvas px-3 py-3 text-left active:bg-surface-sunken"
+                    className="flex w-full items-center gap-3 rounded-none bg-surface-canvas px-3 py-3 text-left active:bg-surface-sunken"
                   >
                     <CandidateThumb imageUrl={c.imageUrl} />
                     <div className="min-w-0 flex-1">
@@ -276,7 +276,7 @@ export function MobileChecklistEditor({
 
         {showUnresolved && (
           <div className="space-y-4">
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-3">
+            <div className="rounded-none border border-amber-200 bg-amber-50 px-3 py-3">
               <p className="text-role-caption font-semibold text-amber-900">
                 No catalog product linked
                 {itemNumber ? (
@@ -300,7 +300,7 @@ export function MobileChecklistEditor({
                 <select
                   value={pairPlatform}
                   onChange={(e) => setPairPlatform(e.target.value)}
-                  className="w-full rounded-xl border border-border-soft bg-surface-card px-3 py-2.5 text-role-caption font-semibold text-text-default"
+                  className="w-full rounded-none border border-border-soft bg-surface-card px-3 py-2.5 text-role-caption font-semibold text-text-default"
                 >
                   {PAIR_PLATFORMS.map((p) => (
                     <option key={p.id} value={p.id}>
@@ -317,7 +317,7 @@ export function MobileChecklistEditor({
                       if (e.key === 'Enter') void searchForPair();
                     }}
                     placeholder="Search catalog title / SKU"
-                    className="min-w-0 flex-1 rounded-xl border border-border-soft bg-surface-card px-3 py-2.5 text-role-caption font-semibold text-text-default placeholder:text-text-faint"
+                    className="min-w-0 flex-1 rounded-none border border-border-soft bg-surface-card px-3 py-2.5 text-role-caption font-semibold text-text-default placeholder:text-text-faint"
                   />
                   <Button
                     variant="secondary"
@@ -339,7 +339,7 @@ export function MobileChecklistEditor({
                         type="button"
                         disabled={pairing}
                         onClick={() => void pairToCatalog(row.id)}
-                        className="flex w-full items-center gap-3 rounded-2xl bg-surface-canvas px-3 py-3 text-left active:bg-surface-sunken disabled:opacity-60"
+                        className="flex w-full items-center gap-3 rounded-none bg-surface-canvas px-3 py-3 text-left active:bg-surface-sunken disabled:opacity-60"
                       >
                         <CandidateThumb imageUrl={row.image_url ?? null} />
                         <div className="min-w-0 flex-1">
@@ -348,7 +348,7 @@ export function MobileChecklistEditor({
                           </p>
                           <p className="font-mono text-role-micro text-text-soft">{row.sku}</p>
                         </div>
-                        <span className="shrink-0 text-role-micro font-semibold uppercase tracking-wider text-blue-600">
+                        <span className="shrink-0 text-role-micro font-semibold uppercase tracking-wider text-text-muted">
                           {pairing ? '…' : 'Pair'}
                         </span>
                       </button>
@@ -362,7 +362,7 @@ export function MobileChecklistEditor({
 
         {resolvedCatalogId != null && catalogHeader && (
           <div className="space-y-4">
-            <div className="flex items-center gap-3 rounded-2xl bg-surface-canvas px-3 py-3">
+            <div className="flex items-center gap-3 rounded-none bg-surface-canvas px-3 py-3">
               <CandidateThumb imageUrl={catalogHeader.image_url ?? null} />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-role-body font-semibold text-text-default">
@@ -372,7 +372,7 @@ export function MobileChecklistEditor({
               </div>
             </div>
 
-            <div className="flex gap-1 rounded-2xl bg-surface-sunken p-1">
+            <div className="flex gap-1 rounded-none bg-surface-sunken p-1">
               <TabButton
                 active={tab === 'kit'}
                 label={`Kit (${kit.data?.parts.length ?? 0})`}
@@ -434,7 +434,7 @@ function TabButton({
     <button
       type="button"
       onClick={onClick}
-      className={`flex-1 rounded-xl px-3 py-2.5 text-role-caption font-semibold transition-colors ${
+      className={`flex-1 rounded-none px-3 py-2.5 text-role-caption font-semibold transition-colors ${
         active
           ? 'bg-surface-card text-text-default shadow-sm'
           : 'text-text-soft active:bg-surface-card/60'
@@ -447,7 +447,7 @@ function TabButton({
 
 function CandidateThumb({ imageUrl }: { imageUrl: string | null }) {
   return (
-    <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-surface-sunken ring-1 ring-border-soft">
+    <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-none bg-surface-sunken ring-1 ring-border-soft">
       {imageUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img

@@ -291,8 +291,8 @@ test.describe('P6 · desk drives, tablet mirrors', () => {
 // B. Refusal — the properties that a missing button does NOT prove.
 // ─────────────────────────────────────────────────────────────────────────────
 
-test.describe('P6 · the tablet door is three verbs wide (D5)', () => {
-  test('every line write is refused at the door, even from the bound device', async ({
+test.describe('P6 · the money boundary (D5, revised 2026-08-20)', () => {
+  test('the tablet co-edits, but every MONEY verb is refused at the door', async ({
     request,
     baseURL,
   }) => {
@@ -307,8 +307,24 @@ test.describe('P6 · the tablet door is three verbs wide (D5)', () => {
       const lineId = snapshot.lines[0].id;
       const body = { headers: { 'content-type': 'application/json' } };
 
-      // There is no kiosk route for these at all — which is the point. The
-      // tablet cannot reach the desk family, because that family is withAuth.
+      // The counter is a form two people fill at once, so the tablet CAN stage
+      // and correct lines — through its own routes, at zero price:
+      const staged = await tablet.post('/api/kiosk/session/lines', {
+        ...body,
+        data: {
+          expectedVersion: snapshot.version,
+          lineUuid: crypto.randomUUID(),
+          type: 'REPAIR',
+          title: 'Customer-described repair',
+          quantity: 1,
+          payload: { productModel: 'Pixel 8', serialNumber: 'SN-CUST', price: '0' },
+          sortIndex: 1,
+        },
+      });
+      expect(staged.ok(), `tablet may stage a line (HTTP ${staged.status()})`).toBeTruthy();
+
+      // …and what it must never reach is MONEY. These are desk routes (withAuth),
+      // so a device principal cannot touch them at all.
       const attempts = [
         tablet.post(`/api/counter/session/${sessionId}/lines`, {
           ...body,
@@ -350,10 +366,11 @@ test.describe('P6 · the tablet door is three verbs wide (D5)', () => {
         expect(res.status()).toBeLessThan(500);
       }
 
-      // The cart is exactly as the desk left it.
+      // The desk's own line is untouched; the customer's staged line is there.
       const desk = await deskSnapshot(request, sessionId);
-      expect(desk.lines).toHaveLength(1);
-      expect(desk.lines[0].quantity).toBe(1);
+      expect(desk.lines).toHaveLength(2);
+      expect(desk.lines.find((l) => l.title === 'Case')?.quantity).toBe(1);
+      expect(desk.lines.some((l) => l.title === 'Customer-described repair')).toBe(true);
     } finally {
       await tablet.dispose();
       await request.post('/api/kiosk/revoke', { data: { deviceId } }).catch(() => {});

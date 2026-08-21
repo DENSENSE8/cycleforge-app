@@ -94,7 +94,7 @@ export function ReceivingShareToPhoneSheet() {
   return (
     <BottomSheet open={shared != null} onClose={close} title="Shared from computer">
       <div className="flex flex-col items-center gap-4 text-center">
-        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
+        <div className="flex h-14 w-14 items-center justify-center rounded-none bg-surface-sunken text-text-muted">
           <Monitor className="h-7 w-7" />
         </div>
         <div>
@@ -107,7 +107,7 @@ export function ReceivingShareToPhoneSheet() {
           variant="primary"
           onClick={takePhotos}
           icon={<Camera className="h-5 w-5" />}
-          className="h-12 w-full rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700 shadow-md shadow-blue-600/30"
+          className="h-12 w-full rounded-none bg-gradient-to-br from-blue-500 to-blue-700 shadow-md shadow-blue-600/30"
         >
           Take photos
         </Button>

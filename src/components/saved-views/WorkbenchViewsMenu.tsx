@@ -14,16 +14,24 @@
  *     surface's `paramKeys` (`useSavedViews`). Personal by default; optional
  *     org-share via `is_shared`.
  *
- * Trigger: flush icon-only Lucide **Bookmark** — Band-3 peer of KPI /
- * inspector (`IconButton` `xs`, no pad). Active fill is the icon box only
- * (never a full-row / full-band wash). Tooltip carries "Views" or the active
- * view name. SoT: source-of-truth.md → Left-edge occupant.
+ * Trigger: flush **Bookmark + name** on the shared band face
+ * ({@link WorkbenchBandControl}) — one rung, one resting tone and one lit fill
+ * with its KPI / inspector peers. The label carries the ACTIVE VIEW'S NAME,
+ * falling back to `Views` when none is applied, because the one thing an
+ * operator needs from this control while it is closed is *which view am I
+ * looking at* — and a name that lives only in a tooltip answers that for nobody
+ * scanning the band. Truncated at 14ch with the full name still in the tooltip
+ * and the accessible name. Lit fill is the control box only (never a full-row /
+ * full-band wash). SoT: source-of-truth.md → Left-edge occupant.
  */
 
 import { useState } from 'react';
-import { AnchoredLayer, IconButton } from '@/design-system/primitives';
-import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { AnchoredLayer } from '@/design-system/primitives';
 import { Bookmark } from '@/components/Icons';
+import {
+  WorkbenchBandControl,
+  WORKBENCH_BAND_CONTROL_GLYPH_CLASS,
+} from '@/components/dashboard/workbench-band-control';
 import { HeaderChromeMenu } from '@/components/layout/header-chrome-menu';
 import { SavedViewsList } from '@/components/saved-views/SavedViewsList';
 import { useSavedViews } from '@/hooks/useSavedViews';
@@ -88,7 +96,7 @@ export function ViewsMenuShell({
   children,
 }: {
   open: boolean;
-  /** Tooltip + aria: the active view's name, else `Views`. */
+  /** Visible label + tooltip + aria: the active view's name, else `Views`. */
   tip: string;
   /**
    * A saved view is currently applied. Pass `false` where the surface cannot
@@ -104,23 +112,17 @@ export function ViewsMenuShell({
   const lit = open || active;
   return (
     <div ref={setWrapEl} className="relative inline-flex shrink-0 items-center p-0">
-      <HoverTooltip label={tip} asChild>
-        <IconButton
-          size="xs"
-          tone="neutral"
-          ariaLabel={active ? `Saved view: ${tip}` : 'Saved views'}
-          aria-expanded={open}
-          aria-haspopup="menu"
-          aria-pressed={lit}
-          onClick={onToggle}
-          icon={<Bookmark className="h-3.5 w-3.5 shrink-0" />}
-          className={
-            lit
-              ? 'bg-blue-600 text-white hover:bg-blue-600 hover:text-white'
-              : 'text-text-muted hover:bg-surface-hover hover:text-text-default'
-          }
-        />
-      </HoverTooltip>
+      <WorkbenchBandControl
+        icon={<Bookmark className={WORKBENCH_BAND_CONTROL_GLYPH_CLASS} />}
+        label={tip}
+        ariaLabel={active ? `Saved view: ${tip}` : 'Saved views'}
+        text={tip}
+        lit={lit}
+        aria-expanded={open}
+        aria-haspopup="menu"
+        aria-pressed={lit}
+        onClick={onToggle}
+      />
       <AnchoredLayer
         open={open}
         onClose={onClose}

@@ -17,6 +17,7 @@ import { resolveKioskIdleTiming } from '@/lib/kiosk/idle';
 import { pairKioskTablet } from '@/lib/kiosk/pair-tablet';
 import { kioskSessionStore } from '@/lib/kiosk/kiosk-session-store';
 import { cartIsEmpty } from '@/lib/kiosk/cart-line';
+import { DOGFOOD_ORG_ID } from '@/lib/tenancy/constants';
 import { KioskCatalogFirstPaint } from '../KioskCatalogFirstPaint';
 
 const AttractLoop = dynamic(
@@ -39,6 +40,14 @@ export function KioskV2Runtime() {
   const [attractMediaUrl, setAttractMediaUrl] = useState<string | null>(null);
   const [brandName, setBrandName] = useState<string | null>(null);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  // Dogfood org #1 gets the wordmark screensaver (white field, black brand
+  // text, no tap prompt); every other tenant keeps the attract media loop.
+  const [plainAttract, setPlainAttract] = useState(false);
+  // Wordmark copy + ink for the plain screensaver, tenant-editable in
+  // Settings → Organization ▸ Branding. Unset falls back to the dogfood pair.
+  const [headline, setHeadline] = useState<string | null>(null);
+  const [subline, setSubline] = useState<string | null>(null);
+  const [inkColor, setInkColor] = useState<string | null>(null);
   const [idleTime, setIdleTime] = useState(0);
   // Resolved from org settings; defaults to 60 → 70 until settings land, so a
   // slow/failed fetch never leaves the tablet without an idle path.
@@ -56,12 +65,16 @@ export function KioskV2Runtime() {
       .then((data) => {
         if (!data) return;
         setIdleTiming(resolveKioskIdleTiming(data.kiosk?.idleTimeoutSeconds));
+        setPlainAttract(data.orgId === DOGFOOD_ORG_ID);
         if (!data.brand) return;
         if (typeof data.brand.attractMediaUrl === 'string') {
           setAttractMediaUrl(data.brand.attractMediaUrl);
         }
         if (typeof data.brand.name === 'string') setBrandName(data.brand.name);
         if (typeof data.brand.logoUrl === 'string') setLogoUrl(data.brand.logoUrl);
+        if (typeof data.brand.attractHeadline === 'string') setHeadline(data.brand.attractHeadline);
+        if (typeof data.brand.attractSubline === 'string') setSubline(data.brand.attractSubline);
+        if (typeof data.brand.primaryColor === 'string') setInkColor(data.brand.primaryColor);
       })
       .catch(() => {});
   }, []);
@@ -158,6 +171,10 @@ export function KioskV2Runtime() {
         logoUrl={logoUrl}
         onWake={resetIdle}
         active
+        plain={plainAttract}
+        headline={headline}
+        subline={subline}
+        inkColor={inkColor}
       />
     );
   }
@@ -168,7 +185,7 @@ export function KioskV2Runtime() {
       data-testid="kiosk-pair-screen"
     >
       {err && (
-        <div className="mb-4 w-full max-w-md shrink-0 rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-3 text-center text-sm font-semibold text-rose-700">
+        <div className="mb-4 w-full max-w-md shrink-0 rounded-xl border border-dashed border-border-danger bg-surface-danger px-4 py-3 text-center text-sm font-semibold text-text-danger">
           {err}
         </div>
       )}

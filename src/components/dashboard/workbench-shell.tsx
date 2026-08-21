@@ -49,6 +49,39 @@ export const WORKBENCH_SHEET_HOST = 'relative flex min-h-0 min-w-0 flex-1 flex-c
 export const WORKBENCH_SHEET_CHROME = 'relative w-full min-w-0';
 
 /**
+ * Horizontal inset for EVERY band in the sheet chrome stack — **zero**.
+ *
+ * The bands sit one above the other, so their left and right edges are read as
+ * a column. Each band used to set its own inset by hand and they did not agree:
+ *
+ * | Band | container | inner | box edge |
+ * |---|---|---|---|
+ * | 1 (`band` density) | `p-0` | tab rail `p-0` | **0** |
+ * | 2 (KPI card) | `px-3` | tile `px-2 py-1` | **12px** |
+ * | 3 (triage row) | `pl-0 pr-0.5` | field plane `px-2` | **0 / 2px** |
+ *
+ * So a stack read 0 · 12 · 0 down the left and 0 · 12 · 2 down the right. The
+ * right-hand raggedness was already known and already patched in the wrong
+ * place: Media Library carried `pr-0` on its own band with a comment explaining
+ * that the shared `pr-0.5` "left Band 2's cluster sitting just inside Band 3's".
+ * That is a shared-token defect wearing a page-local fix — the 2px was wrong on
+ * every desk, not just that one.
+ *
+ * **The inset belongs to the CONTENT, not to the band.** A tab owns `px-2.5`, a
+ * KPI tile owns `px-2 py-1` (`MONITOR_KPI_BAND_CLASS` — documented as a "flush
+ * industrial instrument, no card island"), and the find field's sunken plane
+ * owns `px-2`. Band 2's `px-3` was a second inset stacked on top of the tile's
+ * own, which is why its labels landed at 20px while the search glyph beside it
+ * landed at 8px. Zero here lets each band's own content face govern, and the
+ * three then agree: box edges flush at 0, label text at 8px.
+ *
+ * Vertical is deliberately NOT shared: bands 1 and 3 are fixed
+ * `PRIMARY_CHROME_ROW_FACE` rows, band 2 is content-driven (`py-2`) because
+ * tiles wrap.
+ */
+export const WORKBENCH_BAND_INSET_X = 'px-0';
+
+/**
  * Flush data-table triage band (Unbox History golden) — search flush left ·
  * refine / controls · view toggles right. Sits under KPI, above the sheet.
  * `border-r` only: KPI owns the seam above; the sheet owns `border-t` below.
@@ -64,6 +97,12 @@ export const WORKBENCH_SHEET_CHROME = 'relative w-full min-w-0';
  *   **view toggles** (`kpiToggle` → `trailing` inspector). KPI hide sits
  *   immediately left of the right-rail inspector so layout-modifying controls
  *   share one cluster.
+ *
+ * Every control in that right cluster wears ONE face —
+ * `WorkbenchBandControl` (`workbench-band-control.tsx`): the row's own rung,
+ * one resting tone, one lit fill, one 14px glyph box. Views · KPI · inspector
+ * ran three rungs and three tones until 2026-08-20. A new band control composes
+ * that face; it does not hand-roll a fourth.
  *
  * Views moved out of the find group 2026-08-10: it is a page-scoped *control*,
  * not part of the query, so abutting the search field read as chrome belonging
@@ -123,19 +162,28 @@ export function WorkbenchTriageBand({
   return (
     <div
       className={cn(
-        'flex min-w-0 items-stretch justify-between gap-2 border-r border-border-soft bg-surface-card pl-0 pr-0.5 shadow-sm',
+        'flex min-w-0 items-stretch justify-between gap-2 border-r border-border-soft bg-surface-card shadow-sm',
+        WORKBENCH_BAND_INSET_X,
         PRIMARY_CHROME_ROW_FACE,
         className,
       )}
     >
       {/* Find owns the whole left — no control shares the search group. */}
       <div className="flex min-w-0 flex-1 items-stretch">{search}</div>
-      <div className="flex shrink-0 items-center gap-2 self-center">
+      {/*
+        `empty:hidden` on both boxes below: a flex item with no content is still
+        an ITEM, so the row's `gap-2` reserves 8px beside it. A surface that
+        passes a `controlsSlotRef` its grid never portals into (Arrival, and any
+        band whose ▦ has no host) paid that gap on every paint, and a band with
+        no controls at all paid it twice — dead space that reads as a broken
+        right edge rather than as an absent control.
+      */}
+      <div className="flex shrink-0 items-center gap-2 self-center empty:hidden">
         {right}
         {controlsSlotRef !== undefined || controlsSlotProps ? (
           <div
             ref={controlsSlotRef}
-            className="flex shrink-0 items-center gap-2"
+            className="flex shrink-0 items-center gap-2 empty:hidden"
             {...controlsSlotProps}
           />
         ) : null}
@@ -441,7 +489,12 @@ export function WorkbenchChromeHeader({
       >
         {search}
         {right}
-        <div ref={controlsSlotRef} className="flex shrink-0 items-center gap-2" {...controlsSlotProps} />
+        {/* Empty portal = a gap-2 item with nothing in it. See Band 3 above. */}
+        <div
+          ref={controlsSlotRef}
+          className="flex shrink-0 items-center gap-2 empty:hidden"
+          {...controlsSlotProps}
+        />
         {trailing}
       </div>
     </div>

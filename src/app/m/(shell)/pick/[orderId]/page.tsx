@@ -23,10 +23,10 @@
 import { Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import { NetworkChip } from '@/components/mobile/NetworkChip';
+import { MobileDetailTopBar } from '@/components/mobile/redesign/MobileDetailTopBar';
 import { ProgressDots } from '@/components/mobile/ProgressDots';
 import { ConfirmDock } from '@/components/mobile/ConfirmDock';
 import { ShortPickSheet } from '@/components/mobile/picker/ShortPickSheet';
-import { IconButton } from '@/design-system/primitives';
 import { useMobilePicker } from './_picker/useMobilePicker';
 import { PickerTaskCard } from './_picker/PickerTaskCard';
 import { LoadingShell, ErrorShell, EmptyShell, CompleteCard } from './_picker/PickerShells';
@@ -53,7 +53,16 @@ function PickerInner() {
   // ── Render gates
   if (!isLoaded || !user) return null;
   if (loadError) return <ErrorShell error={loadError} onBack={() => router.push('/m/pick')} />;
-  if (!order) return <LoadingShell label="Loading tasks…" />;
+  // Chrome first: an order that has not resolved still needs the back button and
+  // the SCAN corner, or a bad deep link is a dead end.
+  if (!order) {
+    return (
+      <div className="flex h-full flex-col bg-surface-canvas">
+        <MobileDetailTopBar backHref="/m/pick" subtitle="Order" title="Loading…" />
+        <LoadingShell label="Loading tasks…" />
+      </div>
+    );
+  }
   if (totalTasks === 0) return <EmptyShell onBack={() => router.push('/m/pick')} />;
 
   // ── Render
@@ -64,36 +73,22 @@ function PickerInner() {
   return (
     <div className="flex h-full flex-col bg-surface-canvas">
       {/* ─── Status strip ──────────────────────────────────────────────── */}
-      <header
-        className="sticky top-0 z-10 border-b border-border-soft bg-surface-card/95 backdrop-blur"
-        style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
-      >
-        <div className="flex items-center justify-between gap-3 px-4 py-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <IconButton
-              onClick={() => router.push('/m/pick')}
-              ariaLabel="Back to queue"
-              icon={
-                <svg viewBox="0 0 24 24" className="h-5 w-5 text-text-muted" fill="none" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-                </svg>
-              }
-              className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-surface-sunken active:bg-surface-strong"
-            />
-            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-blue-100 text-sm font-semibold text-blue-800">
-              {order.customerInitials}
-            </span>
-            <div className="min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-wider text-text-soft">Order</p>
-              <p className="truncate text-base font-semibold text-text-default">{order.orderLabel}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
+      <MobileDetailTopBar
+        backHref="/m/pick"
+        lead={
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-surface-sunken text-sm font-semibold text-text-default">
+            {order.customerInitials}
+          </span>
+        }
+        subtitle="Order"
+        title={order.orderLabel}
+        right={
+          <>
             <ProgressDots done={doneCount} total={totalTasks} />
             <NetworkChip compact />
-          </div>
-        </div>
-      </header>
+          </>
+        }
+      />
 
       {/* ─── Task content ──────────────────────────────────────────────── */}
       <main className="flex-1 overflow-y-auto px-4 pt-4 pb-2">

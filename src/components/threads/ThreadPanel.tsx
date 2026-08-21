@@ -29,7 +29,7 @@ import { useThread, type ThreadConnectionRow, type ThreadAssignmentRow } from '@
 import type { ThreadMessage, ThreadStatus } from '@/lib/threads/types';
 import { seedComposerDraft, type ComposerDraftMode } from '@/lib/threads/composer-draft';
 import { requestConfirm } from '@/design-system/components/confirm';
-import { initials } from '@/components/support/zendesk/chat/support-chat-utils';
+import { StaffAvatar } from '@/components/identity';
 import { renderInlineMarkdown } from '@/lib/support/markdown';
 import { formatDateTimePST } from '@/utils/date';
 import { cn } from '@/utils/_cn';
@@ -143,16 +143,25 @@ function MessageBubble({
     );
   }
 
+  // The author's REAL avatar — `StaffAvatar` resolves `staff.avatar_photo_id`
+  // through the authenticated photo route and falls back to initials + the
+  // staffer's assigned colour only when no photo is linked. Text initials were
+  // the only face here until 2026-08-21.
   const mark = (
     <div className={CONVERSATION_MARK_BOX}>
-      <span
-        className={cn(
-          'flex h-5 w-5 items-center justify-center rounded-full text-role-micro',
-          CONVERSATION_MARK,
-        )}
-      >
-        {initials(name)}
-      </span>
+      {m.authorStaffId != null ? (
+        <StaffAvatar staffId={m.authorStaffId} name={name} size="xs" alt={name} />
+      ) : (
+        <span
+          className={cn(
+            'flex h-5 w-5 items-center justify-center rounded-full text-role-micro',
+            CONVERSATION_MARK,
+          )}
+        >
+          {/* System / provider messages have no staffer to resolve. */}
+          ·
+        </span>
+      )}
     </div>
   );
 
@@ -294,9 +303,13 @@ function AssigneeControl({
   const name = assignment?.assignedStaffName?.trim() || (assignment ? 'Assigned' : null);
   const chip = name ? (
     <span className="inline-flex items-center gap-1.5 rounded-full bg-surface-strong px-2 py-0.5 text-role-eyebrow uppercase tracking-widest text-text-muted">
-      <span className="flex h-4 w-4 items-center justify-center rounded-full bg-blue-100 text-role-micro text-blue-700">
-        {initials(name)}
-      </span>
+      <StaffAvatar
+        staffId={assignment?.assignedStaffId ?? null}
+        name={name}
+        size="xs"
+        ring={false}
+        alt={name}
+      />
       {name}
     </span>
   ) : (
@@ -335,9 +348,7 @@ function AssigneeControl({
                 onClick={() => { setOpen(false); onAssign(s.id); }}
                 className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-role-caption text-text-default hover:bg-surface-sunken"
               >
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-surface-strong text-role-micro text-text-muted">
-                  {initials(s.name)}
-                </span>
+                <StaffAvatar staffId={s.id} name={s.name} size="xs" alt={s.name} />
                 <span className="truncate">{s.name}</span>
                 {assignment?.assignedStaffId === s.id ? <Check className="ml-auto h-3.5 w-3.5 text-text-faint" /> : null}
               </button>
@@ -459,6 +470,7 @@ export function ThreadPanel({
   /** Hide the inline Add note / Send — the host StationTerminalDock owns submit. */
   externalSubmit = false,
   onBridgeChange,
+  onComposerFocusChange,
 }: {
   /** Canonical anchor vocab (SURFACE_ENTITY_TYPES key, e.g. 'ORDER'). */
   entityType: string;
@@ -468,6 +480,11 @@ export function ThreadPanel({
   className?: string;
   externalSubmit?: boolean;
   onBridgeChange?: (bridge: ThreadComposerBridge | null) => void;
+  /**
+   * "The operator started writing" — the Search & Details centre collapses its
+   * reference blocks on focus so the thread gets the column.
+   */
+  onComposerFocusChange?: (focused: boolean) => void;
 }) {
   const { user, has, isLoaded } = useAuth();
   const canView = isLoaded && has('support.thread.view');
@@ -636,7 +653,11 @@ export function ThreadPanel({
             Couldn’t load the conversation.
           </div>
         ) : messages.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-8 text-center">
+          // Transparent, not `bg-surface-canvas`: the dashed outline already
+          // carries the empty state, and a canvas fill paints an off-white
+          // block on any host whose column is white (the /search station). On
+          // a canvas ground it reads exactly as it did before.
+          <div className="rounded-xl border border-dashed border-border-soft px-4 py-8 text-center">
             <MessageSquare className="mx-auto mb-2 h-5 w-5 text-text-faint" />
             <p className="text-role-caption text-text-faint">
               No messages yet — start the conversation.
@@ -673,6 +694,8 @@ export function ThreadPanel({
             externalSubmit={externalSubmit}
             errorMessage={postMessage.isError ? 'Couldn’t send — try again.' : null}
             textareaRef={composerRef}
+            onFocus={onComposerFocusChange ? () => onComposerFocusChange(true) : undefined}
+            onBlur={onComposerFocusChange ? () => onComposerFocusChange(false) : undefined}
           />
         </div>
       ) : null}
