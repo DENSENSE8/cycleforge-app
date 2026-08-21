@@ -20,10 +20,8 @@ import { REPAIR_FAILURE_REASONS } from '@/lib/repair/repair-failure-reasons';
 import { RECEIVING_EXCEPTION_CODES, RECEIVING_EXCEPTION_META } from '@/lib/receiving/exception-codes';
 import { SKU_STOCK_REASONS } from '@/lib/sku/sku-stock-reasons';
 import { SERIAL_ABSENT_REASONS } from '@/lib/receiving/serial-absent-reasons';
-import {
-  STATION_COMMAND_CODES,
-  STATION_COMMAND_FLOW_CONTEXT,
-} from '@/lib/stations/station-command-codes';
+import { STATION_COMMAND_FLOW_CONTEXT } from '@/lib/stations/station-command-codes';
+import { listSeedableCommandCodes } from '@/lib/stations/command-book';
 
 export interface PlatformRow {
   id: number;
@@ -189,11 +187,19 @@ export async function seedOrgCatalog(organizationId: OrgId): Promise<void> {
         [organizationId, r.code, r.label, saSort],
       );
     }
-    // Station command barcodes (flow_context='station_command') — physical CMD-*
-    // stickers that arm scan-station session modes. Built-in registry SoT is
-    // station-command-codes.ts; seeded for Admin view + 2×1 print. Mirrors
-    // migration 2026-08-04_reason_codes_station_command.sql.
-    for (const r of STATION_COMMAND_CODES) {
+    // Station command barcodes (flow_context='station_command') — every physical
+    // CMD-* sticker: jumps between surfaces, verdict/compound actions, and the
+    // session modes this block originally covered. Seeded for Admin view +
+    // 2×1 print; behaviour stays code-owned in the registries.
+    //
+    // The list is DERIVED (`listSeedableCommandCodes` unions all three
+    // registries) rather than iterating one of them. This block read only
+    // STATION_COMMAND_CODES until 2026-08-20, which was correct while that was
+    // the whole vocabulary — but it meant every code added to the nav or action
+    // registry was invisible in Admin for every org, with nothing to notice.
+    // Backfill for orgs that already existed:
+    // migration 2026-08-20d_reason_codes_command_vocabulary.sql.
+    for (const r of listSeedableCommandCodes()) {
       await client.query(
         `INSERT INTO reason_codes (organization_id, code, label, category, direction, flow_context, sort_order)
          VALUES ($1, $2, $3, NULL, 'either', $4, $5)
