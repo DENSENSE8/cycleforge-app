@@ -304,7 +304,6 @@ export type IncomingGridColumnKey =
   | 'order'
   | 'tracking'
   | 'zoho'
-  | 'removed'
   /** Compound (two-row) presentation tracks — see {@link INCOMING_COMPOUND_COLUMNS}. */
   | 'thumb'
   | 'item'
@@ -397,46 +396,22 @@ export const INCOMING_GRID_COLUMNS: readonly IncomingGridColumn[] = [
 ] as const;
 
 /**
- * Why the row left the lane — the recently-removed lane's whole point.
+ * The `removed` lane's reason column, and the lane-conditional model that
+ * appended it, were DELETED when Incoming moved to the compound layout
+ * (2026-08-21).
  *
- * Declared OUTSIDE {@link INCOMING_GRID_COLUMNS} rather than as another
- * `optional` member, because on every other lane it could only ever render the
- * dash: a row still ON Incoming has not been removed. An opt-in that can only
- * be empty is not a column an operator should be offered, so this one is
- * ABSENT from the default model and appended for the one lane it means
- * something on. No `hideKey`: the lane exists to show it.
- */
-const INCOMING_REMOVED_REASON_COLUMN: IncomingGridColumn = {
-  key: 'removed',
-  width: 'minmax(7rem, 7rem)',
-  label: 'Left because',
-  type: 'tag',
-};
-
-/**
- * The Incoming column model for a given lane.
+ * `incomingGridColumnsFor()` existed to hand the recently-removed lane a sixth
+ * track no other lane could use, and to promote `zoho` when a tracking filter
+ * mixed vendor rows in. The compound model has no room for a per-lane track and
+ * wants none: the removal reason rides the STATE pill via `incomingStateFace`,
+ * which is how Incoming keeps a column array byte-identical to Receiving's,
+ * Orders' and Tasks'.
  *
- * Column tier is a PER-DESCRIPTOR answer, so a lane that mixes vendor-received
- * rows in promotes the `zoho` chip for itself rather than flipping the shared
- * model — which would turn it on for every receiving grid and re-create the
- * constant-value problem on the lane that does not mix.
+ * Deleted rather than left standing, per `pattern-evolution.md`: "a retirement
+ * is not done until the old path is DELETED". Its only two call sites now mount
+ * {@link INCOMING_COMPOUND_COLUMNS}. `INCOMING_GRID_COLUMNS` itself stays — it
+ * is the registered table definition and the row/header default.
  */
-export function incomingGridColumnsFor(opts: {
-  /** `?tracking_in=` is active — the lane predicate is relaxed, so rows mix. */
-  trackingFiltered?: boolean;
-  /** The recently-removed lane — "received upstream" is one of its exits. */
-  removedLane?: boolean;
-}): readonly IncomingGridColumn[] {
-  if (!opts.trackingFiltered && !opts.removedLane) return INCOMING_GRID_COLUMNS;
-  const promoted = INCOMING_GRID_COLUMNS.map((col) =>
-    col.key === 'zoho' ? { ...col, tier: 'core' as const } : col,
-  );
-  if (!opts.removedLane) return promoted;
-  // The reason leads the fact columns: it is what the operator came for.
-  const at = promoted.findIndex((c) => c.key === 'date');
-  const index = at >= 0 ? at : promoted.length;
-  return [...promoted.slice(0, index), INCOMING_REMOVED_REASON_COLUMN, ...promoted.slice(index)];
-}
 
 /**
  * COMPOUND (two-row) Incoming columns.

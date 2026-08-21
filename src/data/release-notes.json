@@ -1,7 +1,57 @@
 {
-  "generatedAt": "2026-08-21T20:20:05.912Z",
+  "generatedAt": "2026-08-21T20:39:14.431Z",
   "count": 197,
   "commits": [
+    {
+      "sha": "01de746f97216dbbcd095caf020338828a7b733c",
+      "shortSha": "01de746f9",
+      "date": "2026-08-21T13:35:20-07:00",
+      "author": "DENSENSE8",
+      "subject": "test(right-rail): repin the header guard to the one-band contract",
+      "body": "The guard asserted every desk rail composes `DeskRailChromeRow`. Five of\nthem now compose `DeskInspectorIndexShell`'s band instead — the same\nface, the same reserved host cell, one row. Pinning the old shape would\nhave forced the stacked band back.\n\nRepinned STRICTER, not looser: a desk rail must compose exactly ONE\ntop-row SoT, and mounting BOTH is now an explicit failure — that pair is\nthe stacked-band defect itself. Also pins that `DESK_RAIL_CHROME_ROW_CLASS`\ncomposes `STATION_DISPLAYS_PUSH_TOP_BAND` rather than re-declaring the\nface, and that Incoming's verbs are exported for the band.\n\nMarks two deliberate raw neutrals the ratchet caught, both pre-existing:\nthe loader plane (fixed white by operator ruling — theming it loses the\nground the pastels were chosen against) and the kiosk attract field.\nMarkers, not a raised baseline.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "type": "test",
+      "title": "repin the header guard to the one-band contract"
+    },
+    {
+      "sha": "1643d1ea9104f976da450aee83b7d91340a0e267",
+      "shortSha": "1643d1ea9",
+      "date": "2026-08-21T13:21:53-07:00",
+      "author": "DENSENSE8",
+      "subject": "feat(right-rail): one SoT top row for every right-edge panel",
+      "body": "Right rails carried two stacked bands: a `DeskRailChromeRow`\n(`[cursor] [⤢] [✕]`) above the leaf band (`[‹] Title`). The Displays\ncolumn they were modelled on has always been ONE band.\n\n- `DeskInspectorIndexShell` gains `chrome` and paints a single band in\n  BOTH stages (index and leaf), carrying back · title · panel chrome ·\n  the cell the host paints `⤢ ✕` into. It rendered a band only on\n  leaves before, which is why panels bolted a second row on top.\n- 10 panels migrated off the stacked row: Shipped, CSV import staging,\n  Warranty, Unfound, Incoming details, Daily check, Support context,\n  History triage, Order ingest, My Day watch.\n- `IncomingDetailsChrome` split out of the header so its verbs ride the\n  band instead of the panel keeping a private row.\n- `DESK_RAIL_CHROME_ROW_CLASS` now composes\n  `STATION_DISPLAYS_PUSH_TOP_BAND`. They were two hand-built strings\n  over the same face, so a fix had to be made twice.\n\nDismiss goes flush to the corner, everywhere:\n\n- host `X` `right-2` → `right-0`; the rows that reserve its cell drop\n  their trailing pad (`DeskRailChromeRow`, `GridColumnDetailsPanel`,\n  `IncomingBulkTrackingPanel`, `RailSelectionActions`,\n  `STATION_DISPLAYS_PUSH_TOP_BAND`).\n- `PaneHeaderCloseButton` squares via `cornerClass('flush')`.\n- `DESK_INSPECTOR_GUTTER_TOP_BAND` promoted — two files declared that\n  band string verbatim.\n\nAlso removes the ↑↓ record steppers (three implementations:\n`DeskRailChromeRow`, `PaneHeaderActionBar`, and the deleted\n`ScanStationCartonCursor`) — they duplicated the recents rail, which\nowns selection. Keyboard walking via `useRecordCursor` is untouched.\nStation strips unify on `StationDisplaysUtilityRail`, replacing four\npage-local twins, and the parked rail now orders icons through\n`groupDisplayIndexRows` so parked and open agree.\n\nIncludes concurrent work from other sessions in this shared tree\n(compound grid cells, search-station port, welded panel seam, carton\ninspection). Committed together at the operator's instruction.\n\nGates: `npm run verify` green (lint · typecheck · unit);\n`pnpm run build` green (all routes compiled).\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "type": "feature",
+      "title": "one SoT top row for every right-edge panel"
+    },
+    {
+      "sha": "62e73521c91b663136e484c5ef446132676f43ba",
+      "shortSha": "62e73521c",
+      "date": "2026-08-21T13:29:03-07:00",
+      "author": "DENSENSE8",
+      "subject": "fix(zoho): escape SQL comment that broke the po-mirror template literal.",
+      "body": "Co-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "fix",
+      "title": "escape SQL comment that broke the po-mirror template literal."
+    },
+    {
+      "sha": "4b0666c706844d5036bac110548b42fbd485e78b",
+      "shortSha": "4b0666c70",
+      "date": "2026-08-21T13:27:42-07:00",
+      "author": "DENSENSE8",
+      "subject": "Strip AI typeahead from operator find; use classic global-search.",
+      "body": "Header, CommandBar, /search browse, and inventory rail drop retrieve/embeddings/Ask-AI and the query-trace diary. Identifiers fire immediately via GET /api/global-search. Also pin the loader white-plane allow marker and align the shipped inspector chrome test.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "other",
+      "title": "Strip AI typeahead from operator find; use classic global-search."
+    },
+    {
+      "sha": "7ba4c96624de94e2fb5b3e67e16f6de1d861e1c7",
+      "shortSha": "7ba4c9662",
+      "date": "2026-08-21T13:17:15-07:00",
+      "author": "DENSENSE8",
+      "subject": "Paint Unbox recent Received from local DONE, not Zoho.",
+      "body": "The rail stayed indigo because a Zoho-linked receive parked (and rewound) the line at UNBOXED; staff face now commits DONE on Receive and keeps it if the provider push fails.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "other",
+      "title": "Paint Unbox recent Received from local DONE, not Zoho."
+    },
     {
       "sha": "bc205bfc36336ab783b67b26e9658fdb7bdbd4e4",
       "shortSha": "bc205bfc3",
@@ -1921,56 +1971,6 @@
       "body": "184 findings retired by the 1A–1D deletions. Down only, never up: a delete that\nraised this number would mean something else had been orphaned.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
       "type": "chore",
       "title": "re-baseline after the burn-down — 3,072 → 2,888"
-    },
-    {
-      "sha": "c2e398ab0340855cd29d7eee9b50ce4b2b6c1d25",
-      "shortSha": "c2e398ab0",
-      "date": "2026-08-02T09:27:22-07:00",
-      "author": "DENSENSE8",
-      "subject": "refactor(exports): one door per symbol — drop redundant defaults, trim the hooks barrel",
-      "body": "Two shapes of the same defect: a symbol reachable by more than one name, which\nis what let the retired-Fields fork hide from `knip` (both doors were imported,\nso both were \"used\").\n\n**Redundant default exports (12).** Each of these modules exported one symbol\nboth named and default, and nothing anywhere default-imported them. The named\nexport stays; `export default` goes. None is a Next.js page, where a default\nexport is the framework contract.\n\n**The hooks barrel.** `src/hooks/index.ts` re-exported ~27 domain hooks and 29\ntypes with **zero** barrel consumers, while the same hooks were imported by\npath 150+ times (`useAblyChannel` 33, `usePackerLogs` 17, `useTechLogs` 16,\n`useStationTheme` 14). Its docblock said \"always import hooks from '@/hooks'\";\nthe codebase had already voted the other way years of call sites ago. The rule\nnow matches the code, and the barrel keeps only the `_*` category hooks plus\nthe four domain hooks that genuinely have barrel consumers.\n\nThat trim is the interesting half. The dead re-exports made five hook files\nreachable from an entry point, so file-level dead-code detection could never\nsee them — `useUnifiedKeyboard`, `useTodayStaffAvailability`,\n`useStationHistory`, `useInfiniteScroll` and `useRepairQueries` had no consumer\nat all. Deleted here: 638 LOC that `knip` reported as zero orphaned files. A\nbarrel that re-exports something nothing imports doesn't just widen the public\nsurface, it hides the corpse.\n\n`useRepairsTable` is untouched — it lives in the separate, live `useRepairs.ts`.\n\n17 files changed; 5 deleted.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
-      "type": "refactor",
-      "title": "one door per symbol — drop redundant defaults, trim the hooks barrel"
-    },
-    {
-      "sha": "f05c4a586284fbefddbfadeece0c5edfded60d1a",
-      "shortSha": "f05c4a586",
-      "date": "2026-08-02T09:22:51-07:00",
-      "author": "DENSENSE8",
-      "subject": "refactor(operations): delete the mutual-reference island under features/operations",
-      "body": "Eleven files that were reachable only from each other. `/operations` mounts\n`workspace/OperationsWorkspace`, and every live import into this feature points\nat `workspace/**` (charts, `useOperationsRoi`, `useGatedOperationsRoi`) or at\n`components/operations-dashboard-logic`. Nothing outside the island imported\nthe island; its references were internal, which is exactly why `knip` could see\nit and a reader could not.\n\nIncludes `features/operations/index.ts` — a barrel whose only consumers were the\nfiles deleted alongside it.\n\nThe DS radius ratchet shrinks with them: `StaffGoalsRail.tsx` (3) and\n`OperationsAgentsRow.tsx` (1) leave `KNOWN_ARBITRARY`, retiring 4 arbitrary\nradii. Baseline moves down only, per verify.md.\n\n11 files, 1,500 LOC.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
-      "type": "refactor",
-      "title": "delete the mutual-reference island under features/operations"
-    },
-    {
-      "sha": "dec99fc099aec479920614abe7db90be3ac2f6de",
-      "shortSha": "dec99fc09",
-      "date": "2026-08-02T09:20:52-07:00",
-      "author": "DENSENSE8",
-      "subject": "refactor(walk-in): delete the orphaned walk-in components; correct the cart SoT",
-      "body": "`/walk-in/page.tsx` became a redirect stub to `/dashboard?mode=sales`\n(Local Pickup: `?mode=pickup`), and these ten components have rendered nowhere\nsince. The redirect page, `useWalkInTaskRedirect` and `WALK_IN_ROUTE_PARAMS`\nall stay — the intake deep-links (`?new=`, `?openRepair=`) are still live and\nstill land on `/pickup` and `/m/rs/{id}`.\n\n`salesCartStore.ts` goes with them, and verifying that was the point. Five\ndocblocks across the kiosk and counter claimed it was live — \"the kiosk\ncomposes that store rather than forking a second cart\", \"remains the staff\n`/pickup` walk-in cart\" — and every one was false. Nothing outside\n`components/walk-in/` ever imported it: `/pickup` is a single page with no cart,\nand the counter has always carried its own `CounterDraft.retailLines`. Those\ncomments are corrected here rather than deleted, because a prose claim that\noutlived its code is the drift this burn-down exists to remove; after this there\nis exactly one counter cart, which is what they were reaching for.\n\nOne real consequence, surfaced not buried: `salesCartStore.checkout()` was the\nONLY emitter of `refreshDomain('replenish')`, so `ReplenishSidebarPanel`'s\n`useRefreshSignal('replenish', …)` now has no emitter. It never fired anyway —\nthe emitter sat behind zero call sites — so this is a latent gap made visible,\nnot a regression. Noted in `refresh/bus.ts` for whoever owns completing a sale.\n\n10 files, 1,372 LOC.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
-      "type": "refactor",
-      "title": "delete the orphaned walk-in components; correct the cart SoT"
-    },
-    {
-      "sha": "38e20c3f16942b1e1850274c359ab1e4c2f66067",
-      "shortSha": "38e20c3f1",
-      "date": "2026-08-02T09:18:03-07:00",
-      "author": "DENSENSE8",
-      "subject": "refactor(audit): delete the unreachable audit-log client cluster",
-      "body": "There is no `/audit-log` page route — only `src/app/api/audit-log/**`. These\nsixteen client components rendered nowhere and had no importer outside their\nown directory: eight top-level clients plus the whole `receiving/` subtree.\n\n`AuditLogFilterStrip.tsx` stays — `AuditLogSidebarPanel` imports\n`useAuditLogFilterRefinements` / `AuditLogFilterDropdown` from it, so it is the\none live file in the directory.\n\nFree win inside the cluster: `audit-log/receiving/EventTimeline.tsx` was a\n135-line page-local fork of the `EventTimeline` primitive — hand-rolled `<ol>`\nplus its own event cards — which is exactly the second timeline component\n`display/reference-timeline.md` bans (\"Never build a second timeline\ncomponent\"). Deleting the cluster retires that violation at zero risk.\n\n`AuditTimeline` is untouched: reference-timeline.md names it the ONE sanctioned\nfork and it has five live consumers.\n\n16 files, 2,238 LOC.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
-      "type": "refactor",
-      "title": "delete the unreachable audit-log client cluster"
-    },
-    {
-      "sha": "d9f60da79df5cf46a1836c350046500092d6944b",
-      "shortSha": "d9f60da79",
-      "date": "2026-08-02T09:04:03-07:00",
-      "author": "DENSENSE8",
-      "subject": "docs(debt): hand off zombie-code elimination — burn down, then close the door",
-      "body": "Generalises 7367c9441 (chrome Fields → table lip). That change removed a \"two\ndoors, one destination\" fork that `knip` could not see, because both doors were\nimported and both were used. This handoff carries the measured dead-code state\nand translates five industry standards into this repo's own enforcement idiom.\n\nMeasured 2026-08-02: 82 orphaned files / 10,540 LOC; knip baseline holds 3,063\nparked findings; DS ratchets ~1,686 more. 48% of the orphaned code is three\ncoherent clusters — audit-log (16 files, no route), walk-in (10, page is now a\nredirect stub), operations/components (9, a mutual-reference island).\n\nThe translation is the point: the repo already has 96 guard tests,\n`no-restricted-syntax` in eslint.config.mjs, and its own two-tier flag SoT, so\nthe standards land as guards rather than as Nx / LaunchDarkly / an APM —\nimporting those would be the foreign-architecture move pattern-evolution.md\nbans. Runtime coverage is called out as the one genuine gap that costs money and\nneeds the user's decision, not a ticket; a repo-native proxy over the existing\naudit / inventory-event / station-activity vocabularies is proposed first.\n\nRecords three traps for the next agent: AuditLogFilterStrip is live inside the\notherwise-dead audit-log directory, /walk-in/page.tsx and useWalkInTaskRedirect\nstill serve intake deep-links, and HEAD does not currently typecheck (the\nProcedureColumn rename in 92fdb3593 left its barrel dangling).\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
-      "type": "docs",
-      "title": "hand off zombie-code elimination — burn down, then close the door"
     }
   ]
 }

@@ -17,7 +17,6 @@ import { ReceivingOrderCell } from './ReceivingOrderCell';
 import { ReceivingPlatformCell } from './ReceivingPlatformCell';
 import { ReceivingPriceCell } from './ReceivingPriceCell';
 import { ReceivingQtyCell } from './ReceivingQtyCell';
-import { ReceivingRemovedCell } from './ReceivingRemovedCell';
 import { ReceivingSelectCell } from './ReceivingSelectCell';
 import { ReceivingSerialCell } from './ReceivingSerialCell';
 import { ReceivingStatusCell } from './ReceivingStatusCell';
@@ -90,8 +89,6 @@ export function renderReceivingGridCell(
         : <ReceivingStatusCell {...props} />;
     case 'platform':
       return <ReceivingPlatformCell {...props} />;
-    case 'removed':
-      return <ReceivingRemovedCell {...props} />;
     case 'location':
       return <ReceivingLocationCell {...props} />;
     case 'order':

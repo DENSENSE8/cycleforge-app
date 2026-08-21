@@ -71,6 +71,16 @@ export function LedgerGridLeafRow<C extends LedgerGridColumnModel>({
 
   return (
     <div
+      // The neutral row marker the airtable skin keys its BOTTOM-rule language
+      // off. It used to key off `[data-order-row-id]`, so Receiving and Incoming
+      // stamped an ORDERS-named attribute on rows that have no order, purely to
+      // be matched — and any family that did not know the trick (Tasks) fell
+      // outside the language and kept a container hairline the others had moved
+      // onto their cells. That is a 1px row-height difference between two tables
+      // mounting the identical column model, which is exactly what must not
+      // happen. Every row this shell renders now says "I am a grid row" in a
+      // word that belongs to no family.
+      data-grid-row=""
       {...rest}
       className={cn(
         ledgerGridRowShellClass(isMobile, { scrollMinContent }),

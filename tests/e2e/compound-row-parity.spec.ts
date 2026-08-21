@@ -55,16 +55,53 @@ const SURFACES: readonly Surface[] = [
   { name: 'Tasks', paths: ['/?mode=tasks'], rowSelector: '[data-staff-task-id]' },
 ];
 
+/**
+ * Seed one task when the lane is empty.
+ *
+ * Tasks are per-STAFF rows, so `provision:qa-org` cannot fixture them the way
+ * it fixtures cartons and orders. Creating one through the composer is both the
+ * honest way to get a row and a check that the surface still works end to end —
+ * and it beats `test.skip`, which would quietly drop the family this whole
+ * change exists to bring onto the shared layout.
+ */
+async function seedTask(page: Page): Promise<void> {
+  const composer = page.getByLabel('New task');
+  if ((await composer.count()) === 0) return;
+  await composer.fill(`QA compound parity ${Date.now()}`);
+  // Enter, not the Add button: the composer binds Enter to the same
+  // `onSubmit('general')`, and the two footer buttons are both disabled until
+  // the draft is non-empty — so a click race on a controlled input is a flake
+  // this does not need.
+  await composer.press('Enter');
+  await page
+    .locator('[data-staff-task-id]')
+    .first()
+    .waitFor({ state: 'visible', timeout: 20_000 })
+    .catch(() => undefined);
+}
+
 /** Load the first lane of this family that has a compound row; '' when none do. */
 async function openSurface(page: Page, surface: Surface): Promise<string> {
   for (const path of surface.paths) {
     await page.goto(path);
     const cell = page.locator(`${surface.rowSelector} [data-col="item"]`).first();
+    // 45s: `/unbox` resolves a station record on mount before the grid paints,
+    // and a short wait here reads as "empty lane" — which is how a surface with
+    // 20 rows silently skipped its own parity check.
     const ok = await cell
-      .waitFor({ state: 'visible', timeout: 20_000 })
+      .waitFor({ state: 'visible', timeout: 45_000 })
       .then(() => true)
       .catch(() => false);
     if (ok) return path;
+
+    if (surface.rowSelector === '[data-staff-task-id]') {
+      await seedTask(page);
+      const seeded = await cell
+        .waitFor({ state: 'visible', timeout: 20_000 })
+        .then(() => true)
+        .catch(() => false);
+      if (seeded) return path;
+    }
   }
   return '';
 }
@@ -76,6 +113,9 @@ test.describe('every compound table paints the same row', () => {
 
   for (const surface of SURFACES) {
     test(`${surface.name} — 48px row, both lines, canonical tracks`, async ({ page }) => {
+      // Generous: a family may probe several lanes before one has rows, and
+      // `/unbox` resolves a station record on mount before its grid paints.
+      test.setTimeout(180_000);
       const path = await openSurface(page, surface);
       if (!path) test.skip(true, `no rows on any ${surface.name} lane for this tenant`);
 
@@ -141,21 +181,33 @@ test.describe('column widths are draggable from the header', () => {
   test.use({ viewport: { width: 1440, height: 900 } });
 
   test('dragging the Order track edge changes its width and the rows follow', async ({ page }) => {
+    test.setTimeout(180_000);
     // Any compound family will do — the tracks are the same objects, so a drag
-    // proven on one is proven on all. Incoming is simply the lane the QA tenant
-    // reliably has rows on.
-    const surface = SURFACES[1];
-    const path = await openSurface(page, surface);
+    // proven on one is proven on all. Take the first that has rows rather than
+    // naming a lane, so an empty fixture moves the test instead of skipping it.
+    let surface = SURFACES[0];
+    let path = '';
+    for (const candidate of SURFACES) {
+      path = await openSurface(page, candidate);
+      if (path) {
+        surface = candidate;
+        break;
+      }
+    }
     if (!path) test.skip(true, 'no compound rows on this tenant');
 
     const header = page.locator('[role="columnheader"][data-col="fulfillment"]').first();
     await expect(header).toBeVisible();
 
     const before = (await header.boundingBox())!;
-    const grip = header.locator('[role="separator"], [data-resize-handle]').last();
+    // The grip is a `<button>` named by `ColumnResizeHandle`; it is
+    // `opacity-0` until the header cell is hovered, so hover first and then
+    // drive it by coordinates rather than `.click()`.
+    const grip = header.getByRole('button', { name: /^Resize .* column/ }).last();
     if ((await grip.count()) === 0) {
       test.skip(true, 'resize grips are not mounted on this surface');
     }
+    await header.hover();
 
     const g = (await grip.boundingBox())!;
     await page.mouse.move(g.x + g.width / 2, g.y + g.height / 2);
