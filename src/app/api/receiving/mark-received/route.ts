@@ -393,7 +393,7 @@ async function applyInventoryV2Effects(input: {
           stockLedgerId: ledgerId,
           binId: input.destinationBinId,
           payload: { qty: input.qtyReceived, condition_grade: input.conditionGrade },
-        }, client);
+        }, client, input.organizationId as OrgId);
         if (t.ok) {
           putawayEventId = t.eventId;
           await client.query(

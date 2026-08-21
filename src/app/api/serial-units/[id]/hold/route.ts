@@ -53,6 +53,7 @@ export const POST = withAuth(async (request, ctx) => {
       reason: String(body?.reason || '').trim(),
       clientEventId: String(body?.client_event_id || '').trim() || null,
       actorStaffId,
+      organizationId: orgId,
     });
     if (!result.ok) return NextResponse.json(result, { status: result.status });
     return NextResponse.json(result);

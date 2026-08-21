@@ -7,7 +7,7 @@ import {
   findLocationByBarcode,
   findLocationByName,
 } from '@/lib/repositories/inventory/locations';
-import { DOGFOOD_ORG_ID, type OrgId } from '@/lib/tenancy/constants';
+import type { OrgId } from '@/lib/tenancy/constants';
 import type { DecisionRule } from '@/lib/workflow/decision-eval';
 import { observePlacementParity } from '@/lib/workflow/placement-parity';
 import { resolveSitePlacementBin } from '@/lib/workflow/placement-policy';
@@ -152,7 +152,14 @@ export async function sortSerialUnitToParts(
     return { sorted: false, reason: 'committed' };
   }
 
-  const orgId = (unit.organization_id as OrgId | null) ?? DOGFOOD_ORG_ID;
+  // serial_units.organization_id is NOT NULL (2026-05-23 business-table pass,
+  // restated in 2026-06-19_serial_units_org_scoped_unique.sql:22), so this is a
+  // data-integrity check, not a fallback. It used to read
+  // `?? DOGFOOD_ORG_ID` — a default on a column that cannot be null, which
+  // could only ever fire if the row shape lied, and would then silently sort
+  // another tenant's unit into the dogfood org's parts bin.
+  const orgId = unit.organization_id as OrgId | null;
+  if (!orgId) return { sorted: false, reason: 'not_found' };
 
   // Resolve the destination bin. CUTOVER (PLACEMENT_STRANGLE_PARTS_SORT): source
   // it from the declarative policy — the org's Studio decision nodes first, then
@@ -224,6 +231,7 @@ export async function sortSerialUnitToParts(
         payload: { auto_parts_sort: true, from: unit.current_location, to: bin.name },
       },
       txc,
+      orgId,
     );
     if (!moved.ok) {
       console.warn(

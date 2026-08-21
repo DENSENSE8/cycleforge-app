@@ -366,7 +366,7 @@ export async function startSession(input: StartSessionInput, orgId?: OrgId): Pro
   }
 }
 
-export async function confirmPick(input: ConfirmPickInput, orgId?: OrgId): Promise<ConfirmPickResult> {
+export async function confirmPick(input: ConfirmPickInput, orgId: OrgId): Promise<ConfirmPickResult> {
   // ── Org-scoped path: GUC-wrapped transaction; org-ownership predicates on
   // the allocation read/write (404 on a foreign-org allocation) + orgId
   // threaded into the shared transition() helper running on the same client.
@@ -469,6 +469,7 @@ export async function confirmPick(input: ConfirmPickInput, orgId?: OrgId): Promi
         payload: { source: 'picking.confirm', sessionId: input.sessionId, allocationId: alloc.id },
       },
       client,
+      orgId,
     );
     if (!unitResult.ok) {
       await client.query('ROLLBACK');
@@ -497,7 +498,7 @@ export async function confirmPick(input: ConfirmPickInput, orgId?: OrgId): Promi
   }
 }
 
-export async function recordShortPick(input: RecordShortPickInput, orgId?: OrgId): Promise<RecordShortPickResult> {
+export async function recordShortPick(input: RecordShortPickInput, orgId: OrgId): Promise<RecordShortPickResult> {
   // ── Org-scoped path: GUC-wrapped transaction; org-ownership predicates on
   // the allocation read/write (404 on a foreign-org allocation) + orgId
   // threaded into the shared transition() helper running on the same client.
@@ -603,6 +604,7 @@ export async function recordShortPick(input: RecordShortPickInput, orgId?: OrgId
         },
       },
       client,
+      orgId,
     );
     if (!unitResult.ok) {
       await client.query('ROLLBACK');
