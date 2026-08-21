@@ -612,6 +612,28 @@ export function assertPurchaseOrderReceivable(
 }
 
 /**
+ * Does Zoho already consider this PO received?
+ *
+ * `purchaseorder.status` is NOT the answer: a billed PO sits at
+ * `status: 'issued'` while `received_status` tracks receipt separately. PO
+ * 06-14980-30824 read `status: 'issued'`, `billed_status: 'billed'`,
+ * `received_status: 'in_transit'`, `quantity_yet_to_receive: 0`, `receives: []`
+ * — nothing to post per line, and still not received. Callers use this to tell
+ * "genuine no-op" from "must fall back to whole-PO markasreceived".
+ */
+export function isPurchaseOrderFlaggedReceived(
+  header: Record<string, unknown> | null | undefined,
+): boolean {
+  if (!header) return false;
+  if (header.is_po_marked_as_received === true) return true;
+  const received = String(header.received_status ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, '_');
+  return received === 'received';
+}
+
+/**
  * Line-item edits (e.g. description) are allowed for Draft or Issued POs in Zoho Inventory.
  */
 export function assertPurchaseOrderLineItemsEditable(
@@ -868,17 +890,27 @@ export async function markPurchaseOrderAsUnreceived(
 }
 
 /**
- * Fallback: tell Zoho to mark the entire PO as received in one shot. Used when
- * the standard purchasereceives POST is rejected with code 36504 ("Select an
- * item.") on the billed-PO path — Zoho requires bill_item_id from the bill
- * which is unreachable without the ZohoInventory.bills.READ OAuth scope.
+ * Tell Zoho to mark the entire PO as received in one shot — the API twin of the
+ * "Mark as Received" button in Zoho's own PO screen.
+ *
+ * Two callers:
+ *  1. Fallback when the standard purchasereceives POST is rejected with code
+ *     36504 ("Select an item.") on the billed-PO path — Zoho requires
+ *     bill_item_id from the bill, unreachable without the
+ *     ZohoInventory.bills.READ OAuth scope.
+ *  2. `mark-received-po` when our pending-quantity math yields nothing to post
+ *     but Zoho still reports the PO un-received. A billed PO can report
+ *     `quantity_yet_to_receive: 0` with `received_status: 'in_transit'` and no
+ *     `receives[]` at all (PO 06-14980-30824, 2026-08-21) — there is no line to
+ *     post, yet the PO is genuinely not received. Without this the receive
+ *     no-ops forever and the PO sits in transit.
  *
  * Caveat: receives the FULL pending quantity on EVERY open line of the PO.
  * Callers that submit only a partial-line subset would over-receive missing
  * lines; the existing mark-received-po caller always submits the full pending
  * quantity per line so this is safe in practice.
  */
-async function markPurchaseOrderAsReceived(
+export async function markPurchaseOrderAsReceived(
   poId: string,
 ): Promise<ZohoPagedResponse<ZohoPurchaseReceive> & { purchasereceive?: ZohoPurchaseReceive }> {
   try {

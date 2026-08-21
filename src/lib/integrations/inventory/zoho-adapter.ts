@@ -96,6 +96,9 @@ export class ZohoInventoryProviderAdapter implements InventoryProvider {
   markPurchaseOrderReceived: InventoryProvider['markPurchaseOrderReceived'] = (params) =>
     this.bound((z) => z.createPurchaseReceive(params));
 
+  markPurchaseOrderReceivedWhole: InventoryProvider['markPurchaseOrderReceivedWhole'] = (poId) =>
+    this.bound((z) => z.markPurchaseOrderAsReceived(poId));
+
   markPurchaseOrderUnreceived: InventoryProvider['markPurchaseOrderUnreceived'] = (poId) =>
     this.bound((z) => z.markPurchaseOrderAsUnreceived(poId));
 

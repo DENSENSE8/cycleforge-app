@@ -23,7 +23,7 @@ import { describe, it } from 'node:test';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 
-const ROOT = resolve(import.meta.dirname, '../../..');
+const ROOT = process.cwd();
 const SRC = join(ROOT, 'src');
 
 function read(rel: string): string {

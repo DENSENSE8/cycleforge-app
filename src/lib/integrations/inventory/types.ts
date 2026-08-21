@@ -20,6 +20,7 @@ import type {
   getPurchaseReceiveById,
   listPurchaseOrders,
   markPurchaseOrderAsUnreceived,
+  markPurchaseOrderAsReceived,
   searchItemBySku,
   sumWarehouseReceivedByPoLineItem,
   updatePurchaseOrder,
@@ -60,6 +61,13 @@ export interface InventoryProvider {
   updatePurchaseOrder: typeof updatePurchaseOrder;
   /** Create a purchase receive (the "mark received" push). */
   markPurchaseOrderReceived: typeof createPurchaseReceive;
+  /**
+   * Mark the WHOLE PO received without posting line quantities — the API twin
+   * of Zoho's own "Mark as Received" button. Needed when a billed PO reports
+   * nothing pending yet is still un-received, where a line-item purchase
+   * receive is impossible but the PO must still leave transit.
+   */
+  markPurchaseOrderReceivedWhole: typeof markPurchaseOrderAsReceived;
   /** Reverse a prior receive so the PO returns to issued. */
   markPurchaseOrderUnreceived: typeof markPurchaseOrderAsUnreceived;
   getPurchaseReceive: typeof getPurchaseReceiveById;

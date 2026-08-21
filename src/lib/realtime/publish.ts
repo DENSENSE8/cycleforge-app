@@ -83,8 +83,14 @@ type ReceivingLogChangedPayload = {
   /**
    * Terminal Zoho purchase-receive verdict for this line, emitted from the
    * mark-received-po background sync so the inline receive checklist can
-   * reconcile its optimistic green checks: 'ok' confirms, 'failed' flips the
-   * card to a retryable failure. Omitted for non-receive updates.
+   * reconcile its optimistic green checks: 'ok' confirms a receive that really
+   * posted, 'skipped' settles a deliberate no-op (the provider was already at
+   * or ahead of received — nothing was written, and the card must not claim
+   * otherwise), 'failed' flips the card to a retryable failure. Omitted for
+   * non-receive updates, local-only receives, and a disconnected integration.
+   *
+   * Exactly ONE line per receive carries this — the rest are plain grid
+   * updates — so the station renders a single settled response.
    */
   zohoReceive?: 'ok' | 'failed' | 'skipped';
 };
