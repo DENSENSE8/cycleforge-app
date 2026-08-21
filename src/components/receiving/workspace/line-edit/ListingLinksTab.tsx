@@ -57,8 +57,14 @@ const LISTING_LEAD_GLYPH = STATION_DISPLAYS_HEADER_ACTION_GLYPH;
 /** Lead · identity · trail — plus and pencil share the last column. */
 const LISTING_LINE_GRID =
   'grid w-full min-w-0 grid-cols-[2rem_minmax(0,1fr)_2rem] items-stretch divide-x divide-border-hairline';
-const LISTING_COMBO_GRID =
-  'grid w-full min-w-0 grid-cols-[minmax(0,1fr)_2rem] items-stretch divide-x divide-border-hairline border-b border-border-hairline';
+/**
+ * The combo rides the SAME lead · identity · trail template as the rows it
+ * names — it just leaves the lead cell empty (nothing opens a selection). It
+ * used to be `[1fr_2rem]`, i.e. no lead column at all, so its text started at
+ * the column edge while every link identity below it started 2rem further in:
+ * two left rails in one stack.
+ */
+const LISTING_COMBO_GRID = cn(LISTING_LINE_GRID, 'border-b border-border-hairline');
 const LISTING_OPEN_SQUARE = cn(
   BUTTON_VARIANTS.primarySoft,
   cornerClass('flush'),
@@ -290,6 +296,9 @@ export function ListingLinksTab({
 
           {/* 2 — display + selection. Trailing plus opens the create fields. */}
           <div className={LISTING_COMBO_GRID}>
+            {/* Lead cell — empty on purpose: the rows' Open lives here, and the
+                combo has nothing to open. Present so both share one rail. */}
+            <span aria-hidden />
             <SearchableSelectField
               value={selected?.href ?? null}
               onChange={(v) => setSelectedHref(typeof v === 'string' ? v : null)}
