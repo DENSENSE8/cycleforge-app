@@ -25,7 +25,6 @@
 
 import type { ReactNode } from 'react';
 import { cn } from '@/utils/_cn';
-import { COMPOUND_ROW_PX } from './compound-row-chrome';
 
 export interface CompoundCellProps {
   /** Top line — the identifying fact. */
@@ -45,8 +44,13 @@ export function CompoundCell({
   const justify = align === 'end' ? 'justify-end text-right' : 'justify-start text-left';
   return (
     <div
-      className={cn('grid grid-rows-2 items-center gap-0 min-w-0', className)}
-      style={{ minHeight: COMPOUND_ROW_PX }}
+      // `h-full`, NOT a min-height. The wrapper cell owns the row box
+      // (`COMPOUND_ROW_PX`, border-box, see `CompoundGridCell`); a min-height
+      // here would re-declare that number from inside and, because the cell's
+      // bottom rule eats a pixel of it, would overflow the box it is supposed to
+      // fit — which is the shape of the bug that made every compound row paint
+      // 61px against a 48px constant.
+      className={cn('grid h-full grid-rows-2 items-center gap-0 min-w-0', className)}
     >
       <div
         className={cn(

@@ -57,7 +57,10 @@ const RECORD_RAIL_MUST_USE_PANE_HEADER = [
 
 /** Desk rails that must compose the Unbox-aligned one-row SoT. */
 const DESK_RAIL_CHROME_ROW_GOLDEN = [
-  'src/components/sidebar/receiving/incoming-details/IncomingDetailsHeader.tsx',
+  // The PANEL owns the top row, not the header: `IncomingDetailsHeader` was
+  // split 2026-08-19 so its verbs (`IncomingDetailsChrome`) ride the shell's
+  // band, leaving the header as identity only.
+  'src/components/sidebar/receiving/IncomingDetailsPanel.tsx',
   'src/components/receiving/unfound/UnfoundQueueDetailsPanel.tsx',
   'src/components/warehouse/BinDetailFlyout.tsx',
   'src/components/support/context/SupportContextDetailPanel.tsx',
@@ -145,10 +148,19 @@ describe('right-rail inspector header', () => {
     assert.match(sot, /closeAndCachePanel/);
   });
 
-  it('ShippedDetailsPanel composes DeskInspectorIndexShell (Unbox index→leaf)', () => {
+  it('ShippedDetailsPanel composes the ONE band — index shell, no stacked row', () => {
     const panel = code(read('src/components/shipped/ShippedDetailsPanel.tsx'));
-    // Cursor rides the shell's ONE band — no stacked DeskRailChromeRow.
+    // 2026-08-19: the shell paints the single top band (back · title · chrome ·
+    // the reserved host-control cell) at BOTH stages. A panel that also mounted
+    // `DeskRailChromeRow` stacked a second band above it — `[1 / 1][⤢][✕]` over
+    // `[‹] Documents`. That is the anti-pattern this now pins.
+    assert.doesNotMatch(
+      panel,
+      /<DeskRailChromeRow/,
+      'no stacked chrome row — pass panel chrome to the shell via `chrome`',
+    );
     assert.match(panel, /DeskInspectorIndexShell/);
+    assert.match(panel, /chrome=/, 'the cursor must ride the shell band');
     assert.match(panel, /buildOrderInspectorLeaves/);
     assert.match(panel, /orderInspectorOrderUpdateActions/);
     assert.doesNotMatch(panel, /DeskRailChromeRow/);
@@ -158,12 +170,24 @@ describe('right-rail inspector header', () => {
     assert.doesNotMatch(panel, /WorkOrderAssignmentCard/);
   });
 
-  it('Incoming / Unfound / Bin / Support-context / Media Library compose DeskRailChromeRow', () => {
+  it('every desk rail composes exactly ONE top-row SoT — never two stacked', () => {
     for (const rel of DESK_RAIL_CHROME_ROW_GOLDEN) {
       const src = code(read(rel));
+      // Two SoTs paint the one band: `DeskRailChromeRow` for a flat panel, and
+      // `DeskInspectorIndexShell`'s own band for an index→leaf panel (it carries
+      // back · title · `chrome` · the reserved host cell). Both compose the same
+      // `STATION_DISPLAYS_PUSH_TOP_BAND` face. A panel must have one of them —
+      // and mounting BOTH is the stacked-band defect fixed 2026-08-19.
+      const flat = /<DeskRailChromeRow/.test(src);
+      const shell = /<DeskInspectorIndexShell/.test(src);
       assert.ok(
-        src.includes('DeskRailChromeRow'),
-        `${rel} must compose DeskRailChromeRow (Desk single-card chrome SoT)`,
+        flat || shell,
+        `${rel} must compose a top-row SoT (DeskRailChromeRow or DeskInspectorIndexShell)`,
+      );
+      assert.equal(
+        flat && shell,
+        false,
+        `${rel} stacks TWO top rows — pass the chrome row's payload to the shell's \`chrome\` prop instead`,
       );
       assert.equal(
         src.includes('stationMoreDetailsPaneHostClass'),
@@ -178,11 +202,18 @@ describe('right-rail inspector header', () => {
     }
   });
 
-  it('Incoming keeps Sync in DeskRailChromeRow trailing — and no ↑↓ stepper', () => {
+  it('Incoming keeps Sync on the ONE band — and no ↑↓ stepper', () => {
     const src = code(
       read('src/components/sidebar/receiving/incoming-details/IncomingDetailsHeader.tsx'),
     );
+    // Sync rides `IncomingDetailsChrome` since 2026-08-19 — the same file, but
+    // handed to the shell's band instead of a private stacked row.
     assert.ok(src.includes('incoming-details-sync'), 'Sync control must remain');
+    assert.match(
+      src,
+      /export function IncomingDetailsChrome/,
+      'the verbs must be exported for the shell band, not locked in a stacked row',
+    );
     // ↑↓ retired 2026-08-19: walking the queue from inside the inspector was a
     // second door onto a selection the left recents rail already owns, and the
     // two cursors could disagree. `DeskRailChromeRow` dropped the props with
@@ -404,15 +435,19 @@ describe('right-rail inspector header', () => {
   it('DeskRailChromeRow SoT owns the optical one-row class', () => {
     const src = code(read('src/components/right-rail/DeskRailChromeRow.tsx'));
     assert.match(src, /DESK_RAIL_CHROME_ROW_CLASS/);
-    assert.match(src, /STATION_CHROME_ROW_FACE/);
+    // Composes the station band rather than re-declaring the face (2026-08-19):
+    // they were two hand-built strings over the same row, so the flush-trailing
+    // fix had to be made twice and the two could drift in height or seam.
+    assert.match(src, /STATION_DISPLAYS_PUSH_TOP_BAND/);
     assert.match(src, /pl-2/);
     assert.match(src, /data-right-rail-host-close-slot/);
     assert.doesNotMatch(src, /PaneHeaderCloseButton/);
     assert.match(src, /trailing/);
+    // `z-header` now lives on the composed band token, so assert it there.
     assert.match(
-      src,
-      /z-header/,
-      'chrome row must sit above the inset resize sash (z-sticky)',
+      code(read('src/components/station/entity-context/station-identity-chrome.ts')),
+      /STATION_DISPLAYS_PUSH_TOP_BAND[\s\S]{0,240}z-header/,
+      'the shared band must sit above the inset resize sash (z-sticky)',
     );
   });
 
