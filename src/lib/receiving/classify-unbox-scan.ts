@@ -24,7 +24,21 @@ export type UnboxScanIntent =
   | 'fnsku' // an FBA FNSKU
   | 'repair' // an RS-#### repair ticket
   | 'sku_lookup' // a SKU (`SKU:...`)
-  | 'command' // a keyword command (YES/USED/NEW/PARTS/TEST)
+  | 'command' // an unregistered/session `CMD-*` sticker — nack or arm a mode
+  /**
+   * A registered `CMD-GO-*` sticker. Unbox does not act on it: the scan bar and
+   * the global wedge listener claim nav commands one level up, so a scan that
+   * reaches this classifier as `NAV` is one the station must pass over rather
+   * than resolve. Naming it keeps the switch exhaustive — folding it into
+   * `command` would let a jump sticker arm a session mode.
+   */
+  | 'navigate'
+  /**
+   * A registered action / compound sticker. Like `navigate`, Unbox passes over
+   * it — the write is claimed one level up and belongs to the QC bench, not to
+   * a carton.
+   */
+  | 'station_action'
   /**
    * One of OUR printed handles that is not a unit serial — carton, line, LPN,
    * kit manifest, ticket, shelf address. Resolve it through `routeScan` and go
@@ -71,6 +85,10 @@ function intentFor(type: StationScanType): UnboxScanIntent {
       return 'repair';
     case 'SKU':
       return 'sku_lookup';
+    case 'NAV':
+      return 'navigate';
+    case 'ACTION':
+      return 'station_action';
     case 'COMMAND':
       return 'command';
     case 'HANDLE':
