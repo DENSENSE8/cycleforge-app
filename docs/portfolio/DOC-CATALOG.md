@@ -1,7 +1,7 @@
 # DOC catalog — machine-generated SoT
 
 > **Do not hand-edit.** Regenerate: `node scripts/portfolio-sot-sync.mjs`  
-> Generated: `2026-08-20T22:58:16.553Z` · Files: **712** · Repo: `cycleforge-app`  
+> Generated: `2026-08-21T00:54:22.534Z` · Files: **713** · Repo: `cycleforge-app`  
 > Parent index: [INDEX.md](./INDEX.md)
 
 Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*** id  
@@ -13,7 +13,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 
 | WT-ID | Absolute path | Branch | HEAD (short) | Exists |
 |-------|---------------|--------|--------------|--------|
-| `main` | `/Users/icecube/repos/cycleforge-app` | `main` | `e2cce0c4a` | yes |
+| `main` | `/Users/icecube/repos/cycleforge-app` | `main` | `ba335d759` | yes |
 | `ai-chat` | `/Users/icecube/repos/cycleforge-ai-chat` | `topic/ai-chat` | `3f55b275e` | yes |
 | `fba` | `/Users/icecube/repos/cycleforge-fba` | `topic/fba` | `3f55b275e` | yes |
 | `glass` | `/Users/icecube/repos/cycleforge-glass` | `glass-design-system` | `a331b1247` | yes |
@@ -446,6 +446,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 | `DOC-TODO-NONLINEAR-TABLE-FOREST-FINISH-HANDOFF-4F55` | `WS-TODO-MISC` | [`todo/nonlinear-table-forest-finish-HANDOFF.md`](../todo/nonlinear-table-forest-finish-HANDOFF.md) |
 | `DOC-TODO-NOTE-GRAIN-E2E-AND-FOLLOWUPS-EXECUTION-PROMPT-CAA2` | `WS-TODO-MISC` | [`todo/note-grain-e2e-and-followups-EXECUTION-PROMPT.md`](../todo/note-grain-e2e-and-followups-EXECUTION-PROMPT.md) |
 | `DOC-TODO-ONBOARDING-FOUNDATIONAL-PLAN-8E4E` | `WS-ONB` | [`todo/onboarding-foundational-plan.md`](../todo/onboarding-foundational-plan.md) |
+| `DOC-TODO-ONE-TABLE-ENGINE-ORDERS-HOST-PLAN-AC2B` | `WS-TODO-MISC` | [`todo/one-table-engine-orders-host-PLAN.md`](../todo/one-table-engine-orders-host-PLAN.md) |
 | `DOC-TODO-ONE-WRAPPER-DUAL-RIGHT-RAIL-GEMINI-RESEARCH-BRIE-51D6` | `WS-TODO-MISC` | [`todo/one-wrapper-dual-right-rail-GEMINI-RESEARCH-BRIEFING.md`](../todo/one-wrapper-dual-right-rail-GEMINI-RESEARCH-BRIEFING.md) |
 | `DOC-TODO-ONE-WRAPPER-DUAL-RIGHT-RAIL-PLAN-CB8E` | `WS-TODO-MISC` | [`todo/one-wrapper-dual-right-rail-PLAN.md`](../todo/one-wrapper-dual-right-rail-PLAN.md) |
 | `DOC-TODO-OPERATOR-LABEL-VOCABULARY-HANDOFF-1C67` | `WS-TODO-MISC` | [`todo/operator-label-vocabulary-HANDOFF.md`](../todo/operator-label-vocabulary-HANDOFF.md) |
@@ -1050,7 +1051,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 - `DOC-TEN-SLICE-TEMPLATE-5BE0` — [`tenancy/SLICE_TEMPLATE.md`](../tenancy/SLICE_TEMPLATE.md)
 - `DOC-TEN-TABLES-9F18` — [`tenancy/_analysis/tables.md`](../tenancy/_analysis/tables.md)
 
-### `WS-TODO-MISC` (504)
+### `WS-TODO-MISC` (505)
 
 - `DOC-TODO-00-INDEX-9E1E` — [`todo/kiosk-counter-transaction/00-INDEX.md`](../todo/kiosk-counter-transaction/00-INDEX.md)
 - `DOC-TODO-01-RECEIVING-BOH-SLIM-4C77` — [`todo/foh-boh-surface-split/01-receiving-boh-slim.md`](../todo/foh-boh-surface-split/01-receiving-boh-slim.md)
@@ -1273,6 +1274,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 - `DOC-TODO-NONLINEAR-TABLE-BURN-FOREST-AND-RATCHET-HANDOFF-7EFE` — [`todo/nonlinear-table-burn-forest-and-ratchet-HANDOFF.md`](../todo/nonlinear-table-burn-forest-and-ratchet-HANDOFF.md)
 - `DOC-TODO-NONLINEAR-TABLE-FOREST-FINISH-HANDOFF-4F55` — [`todo/nonlinear-table-forest-finish-HANDOFF.md`](../todo/nonlinear-table-forest-finish-HANDOFF.md)
 - `DOC-TODO-NOTE-GRAIN-E2E-AND-FOLLOWUPS-EXECUTION-PROMPT-CAA2` — [`todo/note-grain-e2e-and-followups-EXECUTION-PROMPT.md`](../todo/note-grain-e2e-and-followups-EXECUTION-PROMPT.md)
+- `DOC-TODO-ONE-TABLE-ENGINE-ORDERS-HOST-PLAN-AC2B` — [`todo/one-table-engine-orders-host-PLAN.md`](../todo/one-table-engine-orders-host-PLAN.md)
 - `DOC-TODO-ONE-WRAPPER-DUAL-RIGHT-RAIL-GEMINI-RESEARCH-BRIE-51D6` — [`todo/one-wrapper-dual-right-rail-GEMINI-RESEARCH-BRIEFING.md`](../todo/one-wrapper-dual-right-rail-GEMINI-RESEARCH-BRIEFING.md)
 - `DOC-TODO-ONE-WRAPPER-DUAL-RIGHT-RAIL-PLAN-CB8E` — [`todo/one-wrapper-dual-right-rail-PLAN.md`](../todo/one-wrapper-dual-right-rail-PLAN.md)
 - `DOC-TODO-OPERATOR-LABEL-VOCABULARY-HANDOFF-1C67` — [`todo/operator-label-vocabulary-HANDOFF.md`](../todo/operator-label-vocabulary-HANDOFF.md)

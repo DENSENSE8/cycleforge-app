@@ -4,7 +4,7 @@
 **Date:** 2026-08-07  
 **Owner:** Cycle Forge Engineering  
 **Briefing:** [`nonlinear-data-table-engine-GEMINI-RESEARCH-BRIEFING.md`](nonlinear-data-table-engine-GEMINI-RESEARCH-BRIEFING.md)  
-**Related:** [`ledgergrid-unified-table-sot-RESEARCH-HANDOFF.md`](ledgergrid-unified-table-sot-RESEARCH-HANDOFF.md) · Horizon B [`grid-industry-actions-HORIZON-B-PLAN.md`](grid-industry-actions-HORIZON-B-PLAN.md) · Horizon C research [`tenant-table-extensibility-HORIZON-C-GEMINI-RESEARCH-BRIEFING.md`](tenant-table-extensibility-HORIZON-C-GEMINI-RESEARCH-BRIEFING.md)
+**Related:** [`ledgergrid-unified-table-sot-RESEARCH-HANDOFF.md`](ledgergrid-unified-table-sot-RESEARCH-HANDOFF.md) · Horizon B [`grid-industry-actions-HORIZON-B-PLAN.md`](grid-industry-actions-HORIZON-B-PLAN.md) · Horizon C research [`tenant-table-extensibility-HORIZON-C-GEMINI-RESEARCH-BRIEFING.md`](tenant-table-extensibility-HORIZON-C-GEMINI-RESEARCH-BRIEFING.md) · **Next forest cut:** [`one-table-engine-orders-host-PLAN.md`](one-table-engine-orders-host-PLAN.md) (collapse `OrdersGridHost` onto `NonlinearTableHost`)
 
 **Topic:** Transition from page-coupled `*GridView` forest → decoupled, **registry-driven** data-table engine + constrained AI authoring of **definitions** (not JSX / DDL).
 
