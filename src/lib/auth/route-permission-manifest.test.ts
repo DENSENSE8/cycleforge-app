@@ -672,20 +672,28 @@ test('walk_in.take_payment is a registered permission', () => {
   assert.equal(isKnownPermission('walk_in.take_payment'), true);
 });
 
-test('taking counter payment is NOT gated by a route permission — it is a PIN step-up', () => {
-  // The counter write path is device-authed, so there is no staff session for
+test('taking counter payment is NOT a route gate on any DEVICE-authed kiosk route', () => {
+  // The kiosk write path is device-authed, so there is no staff session for
   // withAuth to check a permission against. `walk_in.take_payment` is instead
   // verified inside resolveKioskStepUp against the PIN'd staff's effective
-  // permissions. This test pins that architecture: if someone later "fixes" the
-  // route to require the permission via withAuth, the device principal breaks and
-  // the whole unattended-tablet model goes with it.
+  // permissions. This test pins that architecture: if someone later "fixes" a
+  // /api/kiosk route to require the permission via withAuth, the device
+  // principal breaks and the whole unattended-tablet model goes with it.
+  //
+  // Narrowed from "no route anywhere" 2026-08-20: the desk twin
+  // (/api/counter/session/**) runs under withAuth with a real staff session, so
+  // gating THOSE on the permission is the correct check, not a violation. The
+  // invariant was always about the device principal — it now says so.
   const r = routeByPath('/api/kiosk/intake/route.ts');
   assert.ok(r, 'intake route should be in the manifest');
   assert.equal(r.permission, null, 'device-authed: no route-level staff permission');
-  assert.equal(
-    routesGatedBy('walk_in.take_payment').length,
-    0,
-    'walk_in.take_payment is a step-up permission, not a route gate',
+  const kioskGated = routesGatedBy('walk_in.take_payment').filter((route) =>
+    route.path.startsWith('/api/kiosk/'),
+  );
+  assert.deepEqual(
+    kioskGated.map((route) => route.path),
+    [],
+    'walk_in.take_payment is a step-up permission on the kiosk, not a route gate',
   );
 });
 
