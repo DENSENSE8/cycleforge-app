@@ -398,7 +398,18 @@ export function UniversalLoader({
     <FieldCoverContext.Provider value={coveredByAncestor || mounted}>
       <div
         ref={containerRef}
-        className={cn('relative flex min-h-0 w-full flex-1 flex-col', className)}
+        className={cn(
+          'relative flex w-full flex-1 flex-col',
+          // A childless field has NOTHING in normal flow — the overlay is
+          // absolute, so it contributes no height. In a flex-COLUMN parent with
+          // a definite height, `flex-1` saves it; in a block or flex-ROW parent
+          // it collapses to 0 and the white plane paints nothing at all.
+          // Measured: 200px in the good case, 0px in both bad ones. The floor is
+          // what makes "always white" true rather than layout-dependent.
+          // `cn` is twMerge, so a caller's own `min-h-*` still wins.
+          showField && !children ? 'min-h-24' : 'min-h-0',
+          className,
+        )}
       >
         {children ? (
           <div
