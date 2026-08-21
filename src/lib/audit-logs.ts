@@ -77,6 +77,7 @@ async function createAuditLog(
 // dashboards key off these constants.
 
 export const AUDIT_ENTITY = {
+  COUNTER_SESSION: 'counter_session',
   PO: 'purchase_order',
   RECEIVING: 'receiving',
   RECEIVING_LINE: 'receiving_line',
@@ -123,6 +124,8 @@ export const AUDIT_ENTITY = {
   /** Org-defined custom grid column (custom_field_defs). */
   CUSTOM_FIELD_DEF: 'custom_field_def',
   REASON_CODE: 'reason_code',
+  /** A tenant-authored scan string that resolves to a built-in command. */
+  STATION_COMMAND_ALIAS: 'station_command_alias',
   RMA: 'rma',
   REPAIR_SERVICE: 'repair_service',
   QC_CHECK_TEMPLATE: 'qc_check_template',
@@ -182,8 +185,15 @@ export const AUDIT_ACTION = {
   KIOSK_ENROLLED: 'kiosk.enrolled',   // manager minted a pairing code for a new tablet
   KIOSK_PAIRED:   'kiosk.paired',     // a tablet exchanged its code for a device token
   KIOSK_REVOKED:  'kiosk.revoked',    // a device was revoked (token dies server-side)
+  KIOSK_TERMINAL_PAIRED: 'kiosk.terminal_paired', // a Square Terminal was paired to / cleared from a lane
   KIOSK_INTAKE:   'kiosk.intake',     // an intake was created from the kiosk device principal
   KIOSK_PICKUP_COLLECT: 'kiosk.pickup_collect', // customer collected a ready repair via order pickup
+  // Counter session (the shared desk↔tablet cart). Only the MONEY-moving edits
+  // are audited: a serial correction is not an audit event, a price override is.
+  COUNTER_LINE_PRICE_OVERRIDE: 'counter_session.line.price_override',
+  COUNTER_LINE_VOID:           'counter_session.line.void',
+  COUNTER_SESSION_SUBMIT:      'counter_session.submit',
+  COUNTER_TERMINAL_CHECKOUT:   'counter_session.terminal_checkout',
   // PO / receiving
   PO_RECEIVE:                'po.receive',
   PO_RECEIVE_REVERSE:        'po.receive.reverse',
@@ -347,6 +357,7 @@ export const AUDIT_ACTION = {
   STAFF_TODO_CREATE:       'staff_todo.create',
   STAFF_TODO_SET_INTERVAL: 'staff_todo.set_interval',
   STAFF_TODO_ARCHIVE:      'staff_todo.archive',
+  STAFF_TODO_RENAME:       'staff_todo.rename',
   STAFF_TODO_UNARCHIVE:    'staff_todo.unarchive',
   // Strategic ops plans (Operations Plan Mode)
   OPS_PLAN_CREATE:         'ops_plan.create',
@@ -506,6 +517,12 @@ export const AUDIT_ACTION = {
   PART_LINK_MARK_NOT_PART: 'part_link.mark_not_a_part',
   // Reason codes (CRUD)
   REASON_CODE_CREATE: 'reason_code.create',
+  // Station command aliases (2026-08-20c). Retire, not delete: a printed
+  // sticker outlives its row, so the row is what lets an operator be told the
+  // code was retired instead of getting the generic unknown-command nack.
+  STATION_COMMAND_ALIAS_CREATE: 'station_command_alias.create',
+  STATION_COMMAND_ALIAS_UPDATE: 'station_command_alias.update',
+  STATION_COMMAND_ALIAS_RETIRE: 'station_command_alias.retire',
   REASON_CODE_UPDATE: 'reason_code.update',
   REASON_CODE_DELETE: 'reason_code.delete',
   // RMA (record-level CRUD; lifecycle transitions live in verb routes)
