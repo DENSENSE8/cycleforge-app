@@ -45,27 +45,64 @@ function rgb(hex: string): RGB {
   ] as RGB;
 }
 
+/** Composite an RGB over white at {@link IDLE_ALPHA} and return its luminance. */
+export function luminanceOnWhite(c: RGB): number {
+  const [r, g, b] = c.map((ch) => IDLE_ALPHA * ch + (1 - IDLE_ALPHA) * 255);
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
 /**
- * The field's palette: the `-300` step of six base families at rest, each
- * deepening to its own `-500` under the sweep or the pointer.
+ * The band every resting pastel must land in, as composited over white.
  *
- * **Straight off `baseColors`, never a literal.** These are the house base
- * scales, not the semantic/theme layer — deliberately, because the plane under
- * them is now fixed white in every theme (see the background note on
- * {@link UniversalLoader}), so a palette that flipped with `data-theme` would
- * be answering a question the surface no longer asks.
+ * Below it a dot stops reading as pastel and starts reading as ink; above it,
+ * it washes out into the plane. Measured, not guessed: the first six families
+ * at `-300` sit between 183 (navy) and 213 (emerald).
+ */
+export const READABLE_LUMINANCE = { min: 175, max: 218 } as const;
+
+type Family = 'blue' | 'purple' | 'emerald' | 'orange' | 'red' | 'navy' | 'green' | 'yellow';
+
+/**
+ * One palette entry: a base family at a chosen resting step, deepening two
+ * steps for the sweep and the pointer.
+ *
+ * **The resting step is not always `-300`.** Yellow and green are far lighter
+ * at that step than the rest of the scale (luminance 226 and 220 against a
+ * 183–213 band), so at `-300` they wash out on white while their neighbours
+ * read fine — a palette that looks even in a swatch strip and uneven in the
+ * field. They rest at `-400` instead. The invariant is the LUMINANCE BAND,
+ * never a fixed step number, and `palette-reads-on-white` pins it.
+ */
+function stop(name: Family, idleStep: 300 | 400): PastelStop {
+  const scale = baseColors[name] as Record<number, string>;
+  return { name, idle: rgb(scale[idleStep]), active: rgb(scale[idleStep + 200]) };
+}
+
+/**
+ * The field's palette: eight base families, each resting on a pastel and
+ * deepening within its own family under the sweep or the pointer.
+ *
+ * **Straight off `baseColors`, and deliberately NOT the staff accent.** The
+ * field used to read `--ds-color-accent-bg`, which is the per-staff accent — so
+ * the whole loader was one operator's colour, and every dot in it was the same
+ * hue. These are the house base scales rather than the semantic/theme layer
+ * because the plane under them is now fixed white in every theme (see the
+ * background note on {@link UniversalLoader}), so a palette that flipped with
+ * `data-theme` would be answering a question the surface no longer asks.
  *
  * A dot deepens within its OWN family rather than blending toward one shared
  * accent: cross-family blending sends a green dot through grey on its way to
  * blue, and a field full of that reads as dirty rather than as pastel.
  */
 export const PASTEL_PALETTE: readonly PastelStop[] = [
-  { name: 'blue', idle: rgb(baseColors.blue[300]), active: rgb(baseColors.blue[500]) },
-  { name: 'purple', idle: rgb(baseColors.purple[300]), active: rgb(baseColors.purple[500]) },
-  { name: 'emerald', idle: rgb(baseColors.emerald[300]), active: rgb(baseColors.emerald[500]) },
-  { name: 'orange', idle: rgb(baseColors.orange[300]), active: rgb(baseColors.orange[500]) },
-  { name: 'red', idle: rgb(baseColors.red[300]), active: rgb(baseColors.red[500]) },
-  { name: 'navy', idle: rgb(baseColors.navy[300]), active: rgb(baseColors.navy[500]) },
+  stop('blue', 300),
+  stop('purple', 300),
+  stop('emerald', 300),
+  stop('orange', 300),
+  stop('red', 300),
+  stop('navy', 300),
+  stop('green', 400),
+  stop('yellow', 400),
 ] as const;
 
 /**
@@ -119,7 +156,11 @@ export function latticeStyle(spacing: number): {
   backgroundPosition: string;
 } {
   const tile = spacing * 2;
-  const stops = PASTEL_PALETTE.slice(0, 4);
+  // Sample ACROSS the palette rather than taking the first four, so the
+  // pre-hydration lattice previews the field's real spread and the handoff to
+  // the canvas is not a widening of the range.
+  const step = Math.max(1, Math.floor(PASTEL_PALETTE.length / 4));
+  const stops = [0, 1, 2, 3].map((i) => PASTEL_PALETTE[(i * step) % PASTEL_PALETTE.length]);
   const dot = (c: RGB) =>
     `radial-gradient(circle, rgba(${c[0]}, ${c[1]}, ${c[2]}, ${IDLE_ALPHA}) ${BASE_RADIUS}px, transparent ${BASE_RADIUS + 0.5}px)`;
   return {
