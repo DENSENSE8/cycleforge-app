@@ -19,6 +19,10 @@ import { usePublishCollapseScan } from '@/components/sidebar/context-panel-colla
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IconButton } from '@/design-system/primitives/IconButton';
 import { useRegisterScanTarget } from '@/lib/scan-hotkey/useScanHotkey';
+import { useStationCommandScan } from '@/hooks/useStationCommandScan';
+import { detectStationScanType } from '@/lib/station-scan-routing';
+import { unwrapScannedSerial } from '@/lib/barcode-routing';
+import { setScanSubject } from '@/lib/stations/scan-subject-store';
 import {
   PRIMARY_CHROME_ROW_FACE,
   SIDEBAR_RAIL_DOT_TRACK,
@@ -109,6 +113,14 @@ export interface StationScanBarProps {
    */
   hotkey?: boolean;
   /**
+   * Honour `CMD-*` command stickers typed or scanned into this bar. Default
+   * true — this is what makes the bar universal rather than a receiving
+   * control, so a jump sticker works at every bench without each host wiring
+   * it. Set false only for a field that must take a command string as literal
+   * text (there is no such field today).
+   */
+  navCommands?: boolean;
+  /**
    * After a preview decode or a committed scan value, show a read-only face
    * (click → select-all edit). Default on for station bars; off when
    * `hotkey={false}` or Plan/Select mode buttons are showing.
@@ -150,6 +162,7 @@ export function StationScanBar({
   value,
   onChange,
   onSubmit,
+  navCommands = true,
   inputRef,
   placeholder = 'Tracking, Amazon SKU, Repair, Serial',
   autoFocus = false,
@@ -315,9 +328,21 @@ export function StationScanBar({
     runPreview(pending);
   }, [previewMode, runPreview]);
 
+  const tryCommand = useStationCommandScan();
+
   const handleInternalSubmit = useCallback((e?: FormEvent<HTMLFormElement>) => {
     e?.preventDefault();
     const trimmed = value.trim();
+    // Commands are read HERE, at the one submit every station bar shares, not
+    // per host. A physical scan into a focused input never reaches the global
+    // wedge listener (it stands down over editable targets), so the bar itself
+    // is the only place a typed-or-scanned `CMD-*` can be caught — and catching
+    // it once here is what makes every bench inherit the vocabulary instead of
+    // twenty hosts each remembering to.
+    //
+    // Ordered AFTER the preview check on purpose: Preview means "show me what
+    // this is, change nothing", and a stance that still navigated would not be
+    // a stance.
     if (previewEnabled && getScanStance() === 'preview') {
       // Enter RE-PREVIEWS. It never commits: Preview cannot become a Scan from
       // inside Preview, or the two stances are one stance with a shortcut.
@@ -325,13 +350,41 @@ export function StationScanBar({
       runPreview(trimmed);
       return;
     }
+    if (navCommands && trimmed && tryCommand(trimmed)) {
+      // Claimed — navigated, or deliberately refused. Clear the bar either way
+      // so the next scan starts from empty; never fall through to the host's
+      // resolver, which would look the command up as a serial.
+      setScanKey((prev) => prev + 1);
+      onChange('');
+      return;
+    }
+    // Not a command — so it may be the NOUN a later command sticker acts on.
+    // Recorded here rather than per host for the same reason the command is
+    // read here: this is the one submit every station bar shares, and a subject
+    // only some benches published would make `CMD-PASS` work at some of them.
+    //
+    // Only a SERIAL qualifies. A tracking number or a carton handle names work,
+    // not a unit, and a verdict sticker landing on one of those would have to
+    // guess which unit inside it was meant.
+    if (navCommands && trimmed && detectStationScanType(trimmed) === 'SERIAL') {
+      setScanSubject('unit', unwrapScannedSerial(trimmed));
+    }
     setScanKey((prev) => prev + 1);
     if (trimmed && displayEdit) {
       setCommittedValue(trimmed);
       setFace('display');
     }
     onSubmit(e);
-  }, [onSubmit, value, displayEdit, runPreview, previewEnabled]);
+  }, [
+    onSubmit,
+    onChange,
+    value,
+    displayEdit,
+    runPreview,
+    previewEnabled,
+    navCommands,
+    tryCommand,
+  ]);
 
   useEffect(() => {
     if (

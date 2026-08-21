@@ -6,8 +6,23 @@
 
 import { classifyInput, looksLikeFnsku, looksLikeFnskuPrefix } from './scan-resolver';
 import { decodedHandle, scannedUnitKey } from './barcode-routing';
+import { isCommandNamespace, parseNavCommand } from './stations/nav-command-codes';
+import { parseActionCommand } from './stations/action-command-codes';
 
 export type StationScanType =
+  /**
+   * A registered `CMD-GO-*` sticker — move the operator to another surface.
+   * Added 2026-08-20 with the universal scan router
+   * (`docs/todo/universal-scan-router-PLAN.md`). A NAV scan never writes:
+   * status changes stay on the ACTION family and its own endpoint.
+   */
+  | 'NAV'
+  /**
+   * A registered `CMD-<VERB>` / `CMD-<VERB>-GO-<TARGET>` sticker — record a
+   * verdict on the unit in hand, and (for a compound) then move. The only scan
+   * type that writes.
+   */
+  | 'ACTION'
   | 'TRACKING'
   | 'SERIAL'
   | 'FNSKU'
@@ -40,6 +55,18 @@ export type StationInputMode = 'tracking' | 'fba' | 'repair' | 'serial';
 export function detectStationScanType(val: string): StationScanType {
   const input = val.trim();
   if (!input) return 'SERIAL';
+
+  // COMMANDS BEFORE EVERYTHING. The `CMD-` namespace is claimed wholesale, and
+  // that ordering is the point: before it, `CMD-GO-QC` and even the already-live
+  // `CMD-BATCH-SORT` fell through the whole cascade to `classifyInput` and came
+  // back `SERIAL` — so a nav sticker scanned at the tech bench was a candidate
+  // to be persisted into `tech_serial_numbers` as a unit identity.
+  //
+  // An UNREGISTERED `CMD-…` answers `COMMAND`, not `SERIAL`. Refusing a command
+  // we do not know is a nack; guessing it is a serial is data corruption.
+  if (parseNavCommand(input)) return 'NAV';
+  if (parseActionCommand(input)) return 'ACTION';
+  if (isCommandNamespace(input)) return 'COMMAND';
 
   // DECODE BEFORE HEURISTICS. Everything below is a shape guess over a string a
   // human might type; a payload we PRINTED has an exact answer, and asking for
@@ -85,6 +112,14 @@ export function getStationInputMode(val: string): StationInputMode {
   // A house handle rides the tracking lane: that is the mode whose resolver
   // opens a carton / line / LPN, and it is the only one that will not try to
   // persist the value as a unit identity.
-  if (type === 'TRACKING' || type === 'COMMAND' || type === 'HANDLE') return 'tracking';
+  if (
+    type === 'TRACKING' ||
+    type === 'COMMAND' ||
+    type === 'NAV' ||
+    type === 'ACTION' ||
+    type === 'HANDLE'
+  ) {
+    return 'tracking';
+  }
   return 'serial';
 }

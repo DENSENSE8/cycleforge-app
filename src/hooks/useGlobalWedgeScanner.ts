@@ -7,6 +7,7 @@ import { routeScan } from '@/lib/barcode-routing';
 import { dispatchScanToActiveSink } from '@/lib/station-scan-sink';
 import { deliverScanToTarget } from '@/lib/scan-hotkey/store';
 import { isScanPreview } from '@/components/station/scan-bar/scan-stance';
+import { useStationCommandScan } from '@/hooks/useStationCommandScan';
 
 /**
  * Mount once at the app root. Every wedge scan is classified via
@@ -26,9 +27,23 @@ import { isScanPreview } from '@/components/station/scan-bar/scan-stance';
  */
 export function useGlobalWedgeScanner(): void {
   const router = useRouter();
+  const tryCommand = useStationCommandScan();
 
   const onScan = useCallback(
     (value: string) => {
+      // ── Commands are read FIRST, ahead of every page claimer.
+      //
+      // A `CMD-*` sticker is addressed to the app, not to the surface the
+      // operator happens to be standing on, and the claimers below do not know
+      // that: Unbox History's Band-3 find, for one, buckets anything it cannot
+      // decode as search text — so a jump sticker would have been typed into a
+      // filter box instead of moving anyone.
+      //
+      // Preview stance still wins over it (`isScanPreview` below is checked
+      // inside the bar's own path); a command that reaches here reached a
+      // non-editable target, which is the case Preview cannot serve anyway.
+      if (tryCommand(value)) return;
+
       const route = routeScan(value);
 
       // Cancelable so a page handler (e.g. Unbox History Band 3 find) can claim
@@ -67,7 +82,7 @@ export function useGlobalWedgeScanner(): void {
         });
       }
     },
-    [router],
+    [router, tryCommand],
   );
 
   useWedgeScanner({ onScan });
