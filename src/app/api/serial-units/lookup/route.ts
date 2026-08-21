@@ -3,9 +3,9 @@ import { withAuth } from '@/lib/auth/withAuth';
 import {
   findByNormalizedSerial,
   findShippedOrderForSerialUnit,
-  findShippedOrderByTsnSerial,
   type MatchedOrderForSerial,
 } from '@/lib/neon/serial-units-queries';
+import { findShippedOrderByTsnSerial } from '@/lib/neon/tsn-shipped-order';
 
 /**
  * GET /api/serial-units/lookup?serial=<value>
@@ -54,7 +54,8 @@ export const GET = withAuth(async (request, ctx) => {
     //   2. legacy/tech ships: tech_serial_numbers.shipment_id → orders, which
     //      is where most of our shipped serials actually live (they were never
     //      written to serial_units). Used as the fallback so a real shipped
-    //      serial still matches even with no v2 row.
+    //      serial still matches even with no v2 row. Post-PACK_COMPLETED tech
+    //      attaches on that shipment are leftover context, not a ship.
     // Both are org-scoped so a serial never surfaces another tenant's order.
     let matched: (MatchedOrderForSerial & { serial_number?: string }) | null =
       row && row.current_status === 'SHIPPED'

@@ -17,12 +17,14 @@ import {
   KIOSK_MODE_SPINE_ROW,
   KIOSK_MODE_SPINE_ROW_COLLAPSED,
   KIOSK_MODE_SPINE_ROW_EXPANDED,
+  KIOSK_MODE_SPINE_SEARCH_ROW,
   KIOSK_PANE_HEADER_BAND,
   KIOSK_PANE_HEADER_TITLE,
   KIOSK_PILL,
   KIOSK_PILL_ACTIVE,
   KIOSK_PILL_ACTIVE_ISSUE,
   KIOSK_PILL_IDLE,
+  KIOSK_UTILITY_SPINE_FACE,
   kioskSpineShortLabel,
 } from './kiosk-chrome';
 import {
@@ -110,6 +112,37 @@ describe('kiosk-chrome spine source contract', () => {
     assert.doesNotMatch(shell, /confirm\(/);
     assert.match(spine, /KioskSpineToggle/);
     assert.match(spine, /kiosk-spine-search/);
+  });
+
+  it('flush command spine — no column gutters; Exit at bottom-left', () => {
+    assert.match(spine, /flex min-h-0 flex-1 flex-col gap-0 p-0/);
+    assert.doesNotMatch(spine, /gap-1 p-1\.5/);
+    assert.match(KIOSK_MODE_SPINE_SEARCH_ROW, /\bgap-0\b/);
+    assert.match(KIOSK_MODE_SPINE_SEARCH_ROW, /\bpx-0\b/);
+    assert.doesNotMatch(KIOSK_MODE_SPINE_SEARCH_ROW, /\bpx-2\b/);
+    assert.match(KIOSK_UTILITY_SPINE_FACE, /\bgap-0\b/);
+    assert.match(KIOSK_UTILITY_SPINE_FACE, /\bpy-0\b/);
+    assert.doesNotMatch(KIOSK_UTILITY_SPINE_FACE, /\bpy-1\.5\b/);
+    assert.match(spine, /data-testid="kiosk-spine-exit"/);
+    assert.match(spine, /router\.push\('\/'\)/);
+    assert.match(spine, /aria-label="Exit kiosk"/);
+  });
+
+  it('cart utility glyph is ShoppingCart; Pickup command is PackageCheck', () => {
+    const railSrc = readFileSync(
+      join(process.cwd(), 'src/app/kiosk/KioskUtilitySpine.tsx'),
+      'utf8',
+    );
+    const servicesSrc = readFileSync(
+      join(process.cwd(), 'src/lib/kiosk/services.ts'),
+      'utf8',
+    );
+    assert.match(railSrc, /ShoppingCart/);
+    assert.match(railSrc, /id: 'cart'[\s\S]*?Icon: ShoppingCart/);
+    assert.doesNotMatch(railSrc, /Icon: Ticket/);
+    assert.match(servicesSrc, /PackageCheck/);
+    assert.match(servicesSrc, /id: 'pickup'[\s\S]*?icon: PackageCheck/);
+    assert.doesNotMatch(servicesSrc, /icon: ReceivingModePickup/);
   });
 
   it('keeps repair catalog browse after a SKU pick so more services can be added', () => {

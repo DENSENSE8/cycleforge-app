@@ -139,6 +139,21 @@ export const STATION_WORKBENCH_REQUIRED = [
   'components/packer/PackOrderPanel.tsx',
   'components/support/orders/SupportOrdersFocusHost.tsx',
 ] as const;
+
+/**
+ * Identity adapters that compose `CartonContextCard`. Each takes a required
+ * `onExitToList` — the host closer must clear that station's selection SoT
+ * (not overlay React state alone). Pickup / Repair / Scan-out do not mount
+ * CartonContextCard.
+ */
+export const STATION_CARTON_IDENTITY_ADAPTERS = [
+  'components/receiving/workspace/line-edit/LineCartonContextSection.tsx',
+  'components/tech/testing-panel/TestingCartonHeader.tsx',
+  'components/tech/shipping/ShippingEntityContextHeader.tsx',
+  'components/packer/PackOrderIdentity.tsx',
+  'features/review/packer/ReviewOrderIdentity.tsx',
+  'components/support/orders/SupportOrderIdentity.tsx',
+] as const;
 /**
  * Documented adoption gaps (port follow-ups) — station chrome but not yet on
  * `StationWorkbench`. Not asserted; listed so the exemption is explicit.
@@ -272,8 +287,9 @@ export const SCAN_STATION_EDGE_MEASURE_PANELS = [
  * `STATION_WORKBENCH_COLUMN`. Shrink-only (port → remove from missing set).
  * Never raise — that hides a regression on a golden station.
  *
- * Census 2026-08-07: Shipping · Pack · Packer review · Labels still on local
- * column recipes; Unbox · Arrival · Testing already edge-to-edge.
+ * Census 2026-08-20: Shipping · Pack · Packer review · Labels still on local
+ * column recipes (missing STATION_WORKBENCH_COLUMN token); Unbox · Arrival ·
+ * Testing already edge-to-edge. Support Orders now flow + PanelRoot.
  */
 export const SCAN_STATION_EDGE_MEASURE_MISSING_BASELINE = 4;
 
@@ -282,5 +298,7 @@ export const SCAN_STATION_EDGE_MEASURE_MISSING_BASELINE = 4;
  * that are not yet migrated (e.g. terminal `maxWidth` VM fields). Shrink-only —
  * never raise. Prefer composing `STATION_WORKBENCH_COLUMN` and dropping the
  * dock's own max-w so notes + identity stay one measure.
+ *
+ * Emptied 2026-08-20: Packer review terminal now uses `STATION_WORKBENCH_COLUMN`.
  */
-export const SCAN_STATION_LOCAL_720_MAX_BASELINE = 1;
+export const SCAN_STATION_LOCAL_720_MAX_BASELINE = 0;

@@ -85,8 +85,8 @@ export interface UnmatchedItemsSectionProps {
    */
   readOnly?: boolean;
   /**
-   * When false, meta collapses to qty | SKU | price (Arrival — no units chrome).
-   * Defaults true.
+   * When false (Arrival door flow), unit editors / serial stamp stay off;
+   * PoLineRow still paints Unbox five-track meta. Defaults true.
    */
   unitsChrome?: boolean;
   /**

@@ -12,15 +12,15 @@
  * `requestId`, which defeats its "already handled this log" dedupe so a manual
  * re-send always lands.
  *
- * Face + captured count come from the shared station pill tokens, so Pack and
- * Unbox read identically in the identity row.
+ * Mount via {@link CartonContextCard} `photosCell` — same chrome face as Unbox
+ * Photos (`STATION_CONTEXT_PHOTO_CHROME_CLASS`), never a sibling beside the card.
  */
 
 import { useCallback } from 'react';
-import { Camera, Plus } from '@/components/Icons';
-import { Button } from '@/design-system/primitives';
+import { Camera } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { STATION_CONTEXT_PHOTO_PILL_CLASS } from '@/components/station/entity-context/station-context-action-pill';
+import { STATION_CONTEXT_PHOTO_CHROME_CLASS } from '@/components/station/entity-context/station-context-action-pill';
+import { STATION_CHROME_GLYPH_CLASS } from '@/components/station/entity-context/station-identity-chrome';
 import { useSendToDevice } from '@/components/station/send-to-device/useSendToDevice';
 import { useSendToDeviceToast } from '@/components/station/send-to-device/useSendToDeviceToast';
 import { useAblyClient } from '@/contexts/AblyContext';
@@ -85,28 +85,28 @@ export function PackSendToPhoneButton({
 
   const hasPhotos = count > 0;
 
-  const pill = (
-    <HoverTooltip
-      label={hasPhotos ? `Photos ${count} · phone` : 'Send to phone'}
-      asChild
-    >
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        onClick={() => void handleSend()}
-        disabled={phone.pending}
-        ariaLabel={hasPhotos ? `Photos ${count}; send to phone` : 'Send to phone'}
-        icon={<Camera className="h-4 w-4" />}
-        iconRight={hasPhotos ? undefined : <Plus className="h-3 w-3" />}
-        className={STATION_CONTEXT_PHOTO_PILL_CLASS}
-      >
-        {hasPhotos ? count : null}
-      </Button>
-    </HoverTooltip>
-  );
-
   // Waiting/answered/unreachable renders on the house toast surface — the
-  // identity row keeps the exact pill geometry regardless of phone.state.
-  return pill;
+  // identity row keeps the exact chrome geometry regardless of phone.state.
+  // Face matches Unbox ReceivingPhotoButton appearance="chrome": camera + count.
+  return (
+    <div className="relative flex h-full min-h-0 shrink-0 self-stretch items-stretch">
+      <HoverTooltip
+        label={hasPhotos ? `Photos ${count} · phone` : 'Send to phone'}
+        placement="right"
+        asChild
+      >
+        <button
+          type="button"
+          onClick={() => void handleSend()}
+          disabled={phone.pending}
+          aria-label={hasPhotos ? `Photos ${count}; send to phone` : 'Send to phone'}
+          className={STATION_CONTEXT_PHOTO_CHROME_CLASS}
+          data-testid="pack-send-to-phone"
+        >
+          <Camera className={STATION_CHROME_GLYPH_CLASS} aria-hidden />
+          <span className="leading-none tabular-nums">{count}</span>
+        </button>
+      </HoverTooltip>
+    </div>
+  );
 }

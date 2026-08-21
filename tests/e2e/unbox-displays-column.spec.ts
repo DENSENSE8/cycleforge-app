@@ -289,8 +289,8 @@ test.describe('Unbox Displays column', () => {
    *
    * Asserted on the `<svg>` boxes, not the buttons: the button boxes are
    * deliberately different sizes (28px shell control, 26px icon cell, 28px
-   * ring). 1px is sub-pixel rounding only — the shell's `-ml-px` pays off the
-   * 28-vs-26 difference on the leading edge.
+   * ring). 1px is sub-pixel rounding only. Window controls share the same
+   * 28px cell as verbs; close must not overlap fullscreen.
    *
    * This lives in the real runner because it is a layout claim, and a layout
    * claim read off the source is a guess (`verify.md` → Measure in the real

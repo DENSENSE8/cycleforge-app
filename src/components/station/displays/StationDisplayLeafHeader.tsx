@@ -45,7 +45,7 @@ import type { DisplaysBreadcrumbSegment } from './displays-leaf-chrome';
  * at the very start of a session, since the forward twin is gone.
  */
 const HISTORY_BTN =
-  'pointer-events-auto inline-flex h-full w-6 shrink-0 items-center justify-center ' +
+  'pointer-events-auto inline-flex h-full w-7 shrink-0 items-center justify-center ' +
   'text-text-default hover:bg-surface-sunken ' +
   'disabled:pointer-events-none disabled:opacity-30 disabled:text-text-soft ' +
   `${focusRing('control', 'accent')} outline-none`;
@@ -155,7 +155,7 @@ export function StationDisplayLeafHeader({
       >
         {current ? (
           <span
-            className="flex h-full min-w-0 flex-1 items-center truncate pl-1 pr-2 text-left text-role-caption font-semibold leading-4 text-text-default"
+            className="flex h-full min-w-0 flex-1 items-center truncate pl-1.5 pr-1.5 text-left text-role-caption font-semibold leading-4 text-text-default"
             data-station-displays-leaf-title=""
             data-testid="station-displays-leaf-title"
             data-breadcrumb-segment={current.id}

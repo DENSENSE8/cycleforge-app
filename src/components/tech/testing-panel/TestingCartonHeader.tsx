@@ -3,7 +3,7 @@
 import { CartonContextCard } from '@/components/station/entity-context';
 import { useCapabilityProviderLabel } from '@/hooks/useCapabilityProviderLabel';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
-import { dispatchLineUpdated, dispatchSelectLine } from '@/components/station/receiving-lines-table-helpers';
+import { dispatchLineUpdated } from '@/components/station/receiving-lines-table-helpers';
 import { isLocalPickupFulfillment } from '@/lib/receiving/fulfillment-mode';
 import {
   getReceivingStatusDot,
@@ -17,7 +17,7 @@ import type { TestingController } from './testing-panel-types';
 /**
  * Testing adapter for the station entity-context header SoT
  * (`CartonContextCard` via `@/components/station/entity-context`).
- * Two-row family face (same as Unbox / Triage). Pair host with
+ * One-row family face (same as Unbox / Triage). Pair host with
  * `placement="flow"` + `reserveIdentityClearance={false}`.
  */
 export function TestingCartonHeader({
@@ -44,8 +44,8 @@ export function TestingCartonHeader({
   /** Filed ticket chip → toggle Ticket display. */
   onToggleTicketView?: () => void;
   ticketViewActive?: boolean;
-  /** Identity ◁ — prefer host browse clear when provided. */
-  onExitToList?: () => void;
+  /** Identity ◁ — host must clear Testing selection (not overlay-only). */
+  onExitToList: () => void;
 }) {
   const poTotal = useCartonPoTotal(row.receiving_id ?? null);
   const { label: inventoryProviderLabel } = useCapabilityProviderLabel('inventory');
@@ -103,7 +103,7 @@ export function TestingCartonHeader({
       }}
       priorityTier={c.priorityTier}
       onPrioritySelect={(tier) => void c.handlePrioritySelect(tier)}
-      onExitToList={onExitToList ?? (() => dispatchSelectLine(null))}
+      onExitToList={onExitToList}
       onSendToTicket={() => c.setPhotoNoteOpen(true)}
       // Testing is always downstream of Unbox — a carton reaching this bench
       // has necessarily already been opened, so its carton photos are

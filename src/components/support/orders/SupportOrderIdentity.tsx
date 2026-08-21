@@ -4,36 +4,36 @@
  * Support · Orders adapter for the station entity-context header SoT
  * (`CartonContextCard` via `@/components/station/entity-context`).
  *
- * Mirrors PackOrderIdentity — maps a ShippedOrder onto the two-row station
- * identity face (order# · tracking). Read-only in this mode; edits live in the
- * Order tab / editor dock. Pair host with `reserveIdentityClearance="stacked"`.
+ * Maps a ShippedOrder onto the Unbox one-row face (order# · tracking ·
+ * classify). Classify is read-only; edits live in the order body / editor dock.
+ * Pair host with `placement="flow"` + `reserveIdentityClearance={false}`.
  */
 
-import { useEffect, useState } from 'react';
 import { CartonContextCard } from '@/components/station/entity-context';
 import { getTrackingUrl } from '@/utils/order-links';
 import type { ShippedOrder } from '@/types/orders';
 
-export function SupportOrderIdentity({ order }: { order: ShippedOrder }) {
+export function SupportOrderIdentity({
+  order,
+  onExitToList,
+}: {
+  order: ShippedOrder;
+  /** Identity ◁ — host must clear the focused order (same as Unbox Back to list). */
+  onExitToList: () => void;
+}) {
   const tracking = String(order.shipping_tracking_number || '').trim();
   const orderId = String(order.order_id || '').trim();
   const poDisplay = orderId || tracking || '—';
-
-  const [platformValue, setPlatformValue] = useState(String(order.account_source || ''));
-  const [receivingType, setReceivingType] = useState('');
-
-  useEffect(() => {
-    setPlatformValue(String(order.account_source || ''));
-  }, [order.id, order.order_id, order.shipping_tracking_number, order.account_source]);
+  const platformValue = String(order.account_source || '').trim();
 
   return (
     <CartonContextCard
       receivingId={null}
       staffId=""
       isUnmatched={false}
-      showStaffPhotoRow={false}
-      // Inert: receivingId is always null here, so the photo pill never
-      // renders regardless of stage. Required prop, no meaningful default.
+      showStaffPhotoRow
+      classifyInteractive={false}
+      // Inert: no receiving photos. Required prop, no meaningful default.
       photoStage="unbox_carton"
       listingLink=""
       listingOpenHref={null}
@@ -50,9 +50,11 @@ export function SupportOrderIdentity({ order }: { order: ShippedOrder }) {
       filledExtraTrackingsCount={0}
       isLocalPickup={false}
       platformValue={platformValue}
-      onPlatformSelect={setPlatformValue}
-      receivingType={receivingType}
-      onTypeSelect={setReceivingType}
+      onPlatformSelect={() => {}}
+      receivingType=""
+      onTypeSelect={() => {}}
+      onExitToList={onExitToList}
+      exitLabel="Back to orders queue"
     />
   );
 }

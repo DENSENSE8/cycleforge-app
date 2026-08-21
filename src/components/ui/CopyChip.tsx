@@ -530,8 +530,18 @@ export const TrackingChip = ({
    * sits in a wide grid/flex slot (e.g. FBA tracking bundle header beside “N SKUs · M units”).
    */
   fitDisplayWidth = true,
-  /** Fixed last-8 footprint — same as OrderIdChip / PoChip in peek headers. */
-  displayWidth = 'content',
+  /**
+   * Fixed last-8 footprint — Unbox carton SoT. Never default to `content` +
+   * CSS `truncate`: a narrow flex slot then ellipsizes the *already* last-8
+   * face from the wrong end (`052400…` instead of the full eight digits).
+   */
+  displayWidth = 'last8',
+  /**
+   * Keep the full last-8 visible. Unbox {@link IdentityLinkChip} tracking
+   * locks this off; TrackingChip must match so dense rails / grids cannot
+   * reintroduce Arrival's proportional truncate bug.
+   */
+  truncateDisplay = false,
   dense,
   disableTooltip = false,
 }: {
@@ -545,6 +555,8 @@ export const TrackingChip = ({
   carrierHint?: string | null;
   fitDisplayWidth?: boolean;
   displayWidth?: 'content' | 'last8';
+  /** When true, allow CSS ellipsis — only for deliberately cramped non-SoT slots. */
+  truncateDisplay?: boolean;
   dense?: boolean;
   /** Skip the site hover copy bubble — click still copies. */
   disableTooltip?: boolean;
@@ -577,6 +589,7 @@ export const TrackingChip = ({
       outerPad={showIcon ? 'chip' : 'flush'}
       fitDisplayWidth={fitDisplayWidth}
       displayWidth={displayWidth}
+      truncateDisplay={truncateDisplay}
       dense={dense}
       carrierHint={carrierHint}
     />

@@ -27,6 +27,7 @@ import {
   Search,
   Settings,
   SalesPrice,
+  SalesModeCounter,
   Share2,
   ShieldCheck,
   ShoppingCart,
@@ -423,8 +424,7 @@ export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
   // permission because a nav row that 403s is worse than an absent one, and the
   // children carry front-desk / repair gates as mode `requires`.
   { id: 'sales',             label: 'Sales',       href: `/dashboard?mode=${DASHBOARD_SALES_MODE}`, icon: SalesPrice, kind: 'domain', domainGroup: 'sales', requires: 'dashboard.view' },
-  // Counter — where a sale is MADE; the rest of Sales is where one is reviewed.
-  { id: 'counter',           label: 'Counter',     href: '/counter',            icon: SalesPrice,      kind: 'domain', domainGroup: 'sales', requires: 'walk_in.view' },
+  // Counter is a Sales child (`SIDEBAR_PAGE_NAV`), not its own L1 row.
   // ── Support ───────────────────────────────────────────────────────────────
   // Own root (D3). Visible with Zendesk tickets *or* warranty (Warranty Logger
   // lives under Support). `/support` mounts SurfaceGate + RouteShell like the
@@ -689,6 +689,8 @@ export function getSidebarNavPageId(
   // L1 row of its own, so the `?mode=` DOMAIN decides which page owns the URL.
   // The route + its `?mode=` wire values are untouched — every bookmark still
   // opens the same board; only the nav identity moved.
+  // Counter desk is a Sales child (`/counter`), not its own L1.
+  if (pathname === '/counter' || pathname.startsWith('/counter/')) return 'sales';
   if (pathname === '/dashboard' || pathname.startsWith('/dashboard/')) {
     const domain = String(searchParams?.get('mode') ?? '').trim().toLowerCase();
     if (domain === 'inbound' || domain === 'receiving') return 'incoming';
@@ -1010,10 +1012,10 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
     id: 'sales', label: 'Sales', href: `${DASHBOARD}?mode=${DASHBOARD_SALES_MODE}`, icon: SalesPrice,
     kind: 'domain', domainGroup: 'sales', requires: 'dashboard.view',
     children: [
-      { id: 'counter', label: 'Counter', icon: SalesPrice, requires: 'walk_in.view', to: () => ({ pathname: '/counter', params: {} }) },
+      { id: 'counter', label: 'Counter', icon: SalesModeCounter, requires: 'walk_in.view', to: () => ({ pathname: '/counter', params: {} }) },
       { id: 'sales', label: 'Sales Board', icon: SalesPrice, requires: DASHBOARD_SALES_PERMISSION, to: () => ({ pathname: DASHBOARD, params: { mode: DASHBOARD_SALES_MODE } }) },
-      { id: 'pickup', label: 'Local Pickup History', icon: ShoppingCart, requires: DASHBOARD_SALES_PERMISSION, to: () => ({ pathname: DASHBOARD, params: { mode: 'pickup' } }) },
-      { id: 'repairs', label: 'Repair History', icon: RECEIVING_NAV_ICONS.repair, requires: 'repair.view', to: () => ({ pathname: DASHBOARD, params: { mode: DASHBOARD_REPAIRS_MODE } }) },
+      { id: 'pickup', label: 'Local Pickup', icon: ShoppingCart, requires: DASHBOARD_SALES_PERMISSION, to: () => ({ pathname: DASHBOARD, params: { mode: 'pickup' } }) },
+      { id: 'repairs', label: 'Repair Service', icon: RECEIVING_NAV_ICONS.repair, requires: 'repair.view', to: () => ({ pathname: DASHBOARD, params: { mode: DASHBOARD_REPAIRS_MODE } }) },
     ],
     resolveChild: ({ params, pathname }) => {
       if (pathname.startsWith('/counter')) return 'counter';

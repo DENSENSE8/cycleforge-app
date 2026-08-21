@@ -55,7 +55,7 @@ const RECEIVING_MODE_OPTIONS: MobileContextOption[] = [
 ];
 
 const WALK_IN_MODE_OPTIONS: MobileContextOption[] = [
-  { id: 'repairs', label: 'Repair History' },
+  { id: 'repairs', label: 'Repair Service' },
   { id: 'sales', label: 'Sales' },
   { id: 'pickups', label: 'Pickups' },
 ];

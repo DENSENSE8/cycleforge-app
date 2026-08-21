@@ -1037,9 +1037,10 @@ count SoT. Current place for a labeled outbound order =
   (`clearUnitPackPlacement`) run in the SAME transaction. Both counts already
   exclude off-floor statuses (`SHIPPED`/`SCRAPPED`/…), so the clear only removes
   the lingering row (returns false when nothing was staged).
-- Counts feed Ready to Pack station KPIs — per-bench ORDER tiles **plus** a
-  compact per-bench UNIT strip (`unit-bench-strip`, kept visually separate, no
-  merged number) — and To-ship **At stations** (`?packPlaced=1` / `?packStation=`).
+- Counts feed Ready to Pack station KPIs (per-bench ORDER tiles click-to-filter
+  `?packStation=`) and the shared find-field bench facet
+  (`PackBenchRefineFacet` on Ready to Pack and To-ship). To-ship also has the
+  aggregate **At stations** tile (`?packPlaced=1` / `?packStation=`).
   Post-pack dock `PACKED_STAGED` is a different job.
 
 ## Scan vs desk right-edge — C2 thin waist (ruled 2026-08-09)
@@ -2969,7 +2970,7 @@ DOT   = cornerClass('pill') — status dots · avatars · Switch tracks only
   identity in the workbench `entityContext` / `toolbar` slots.
 - **Compose for Unbox / Triage / Testing / Shipping (active order)** via thin adapters
   (`LineCartonContextSection`, `TestingCartonHeader`, `ShippingEntityContextHeader`,
-  `PackOrderIdentity`, `PickupEntityContextHeader`).
+  `PackOrderIdentity`, `ReviewOrderIdentity`).
   Omit optional props to hide claim / photos / classify / lifecycle / PO$ per station.
 - **Never fork** a second condensed identity header (no page-local title + "Open listing" card).
   Former one-row `bar` and glass `card` densities are deleted — one face only.

@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import {
   Camera,
   ChevronLeft,
@@ -120,7 +120,8 @@ import {
  * Thin adapters
  * (`LineCartonContextSection` · `TestingCartonHeader` ·
  * `ShippingEntityContextHeader` · `PackOrderIdentity` · `ReviewOrderIdentity` ·
- * `SupportOrderIdentity`) wire domain controllers only.
+ * `SupportOrderIdentity`) wire domain controllers only. Pack photos use
+ * `photosCell`; never a sibling control beside this card.
  *
  * Layout decisions preserved from the original inline implementation:
  *  - The listing chip uses a full-color brand tile ({@link PlatformMark}
@@ -193,6 +194,7 @@ export function CartonContextCard({
   onOpenMovePhotosExternal,
   onOpenPhotosDisplay,
   suppressPhotoHoverGallery = false,
+  photosCell = null,
 }: {
   receivingId: number | null;
   staffId: string;
@@ -333,7 +335,9 @@ export function CartonContextCard({
   /**
    * Far-left back button that closes the active entity so the right pane
    * crossfades back to this page's list/history display (in-page — NOT a route
-   * change). Wire each adapter's existing close handler; omit to hide the button.
+   * change). Scan-station adapters always pass the host closer that clears
+   * that station's selection SoT (Unbox desk, Testing select-line, Pack /
+   * Shipping controller). Omit only hides the control — never pass a no-op.
    */
   onExitToList?: () => void;
   /** Tooltip + aria-label for the back button. Default "Back to list". */
@@ -359,6 +363,13 @@ export function CartonContextCard({
    * is set.
    */
   suppressPhotoHoverGallery?: boolean;
+  /**
+   * Station-owned Photos track (e.g. Pack send-to-phone). When set, occupies
+   * the trailing photos slot instead of {@link ReceivingPhotoButton} — same
+   * geometry as Unbox chrome; never a sibling beside this card. Omit on
+   * receiving stations that use `receivingId` + `ReceivingPhotoButton`.
+   */
+  photosCell?: ReactNode;
 }) {
   // One classify menu at a time — chip-anchored dropdown; identity band stays put.
   const [openPicker, setOpenPicker] = useState<'urgency' | 'platform' | 'type' | null>(null);
@@ -729,21 +740,25 @@ export function CartonContextCard({
       </div>
     ) : null;
 
-  const photosCell =
-    showStaffPhotoRow && receivingId != null && !overflowSet.has('photos') ? (
-      <ReceivingPhotoButton
-        receivingId={receivingId}
-        staffId={Number(staffId) || 0}
-        poRef={effectiveOrder || null}
-        photoStage={photoStage}
-        appearance="chrome"
-        galleryPlacement="below"
-        onSendToTicket={onSendToTicket}
-        onOpenMovePhotosExternal={onOpenMovePhotosExternal}
-        onOpenPhotosDisplay={onOpenPhotosDisplay}
-        suppressHoverGallery={suppressPhotoHoverGallery}
-      />
-    ) : null;
+  // Custom `photosCell` always stays on the bar (Pack has no Displays Photos
+  // leaf to park in ⋯). Receiving photos still overflow with listing / claim.
+  const photosCellNode =
+    photosCell != null
+      ? photosCell
+      : showStaffPhotoRow && receivingId != null && !overflowSet.has('photos') ? (
+          <ReceivingPhotoButton
+            receivingId={receivingId}
+            staffId={Number(staffId) || 0}
+            poRef={effectiveOrder || null}
+            photoStage={photoStage}
+            appearance="chrome"
+            galleryPlacement="below"
+            onSendToTicket={onSendToTicket}
+            onOpenMovePhotosExternal={onOpenMovePhotosExternal}
+            onOpenPhotosDisplay={onOpenPhotosDisplay}
+            suppressHoverGallery={suppressPhotoHoverGallery}
+          />
+        ) : null;
 
   /**
    * Overflow rows — the SAME verbs the inline cells offer, never a second list.
@@ -800,7 +815,12 @@ export function CartonContextCard({
       });
     }
   }
-  if (showStaffPhotoRow && receivingId != null && overflowSet.has('photos')) {
+  if (
+    photosCell == null &&
+    showStaffPhotoRow &&
+    receivingId != null &&
+    overflowSet.has('photos')
+  ) {
     overflowItems.push({
       id: 'photos',
       label: 'Photos',
@@ -907,7 +927,7 @@ export function CartonContextCard({
         {priceFace}
         {listingIconButton}
         {ticketInline ?? claimIconButton}
-        {photosCell}
+        {photosCellNode}
         {overflowMenu}
       </div>
 

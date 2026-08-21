@@ -7,7 +7,7 @@
  * workbench identity bar can never disagree about which listing an operator is
  * about to seal:
  *   - `PackOrderWorkspace` (the pack bench's active-entity pane)
- *   - `PackOrderIdentity` → `CartonContextCard` (workbench identity bar)
+ *   - `resolvePackOrderIdentityChips` → `PackOrderIdentity` → `CartonContextCard`
  *   - Pack Displays Listings leaf (`ListingLinksTab`)
  *
  * URL + label derivation stays in the `external-item-url` SoT; this only maps

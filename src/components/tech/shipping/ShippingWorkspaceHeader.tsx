@@ -30,6 +30,7 @@ import {
 } from '@/components/dashboard/workbench-shell';
 import { WorkbenchKpiCollapseToggle } from '@/components/dashboard/workbench-kpi-collapse';
 import { OutboundOrderChromeActions } from '@/components/dashboard/OutboundOrderChromeActions';
+import { PackBenchRefineFacet } from '@/components/packing/PackBenchRefineFacet';
 import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 import { StaffFilterButton } from '@/components/ui/StaffFilterButton';
 import { useWorkbenchSearchParam } from '@/hooks/useWorkbenchSearchParam';
@@ -138,6 +139,7 @@ export function ShippingTriageBand({
               : 'Filter orders…'
         }
         className="min-w-0 flex-1"
+        trailingSuffix={queueTab ? <PackBenchRefineFacet /> : undefined}
       />
     ) : null;
 

@@ -28,6 +28,7 @@ import {
   PackageOpen,
   Receipt,
   ShoppingCart,
+  Store,
   Truck,
 } from './commerce';
 import { ClipboardList, Inbox, Printer } from './media';
@@ -60,6 +61,9 @@ export const StationPacking: IconComponent = Box;
 
 /** Sales mode / sale-line price mark — same Receipt as CHIP_TONES.price. */
 export const SalesPrice: IconComponent = Receipt;
+
+/** Front-desk POS (`/counter`) — storefront, not Receipt (Sales Board). */
+export const SalesModeCounter: IconComponent = Store;
 
 // ── Receiving L2 modes (chrome — modes own icons) ────────────────────────────
 

@@ -10,10 +10,8 @@
 
 import type { OrgId } from '@/lib/tenancy/constants';
 import { tenantQuery } from '@/lib/tenancy/db';
-import {
-  findShippedOrderByTsnSerial,
-  findShippedOrderForSerialUnit,
-} from '@/lib/neon/serial-units-queries';
+import { findShippedOrderForSerialUnit } from '@/lib/neon/serial-units-queries';
+import { findShippedOrderByTsnSerial } from '@/lib/neon/tsn-shipped-order';
 
 type SellerClaimedFactsInput = {
   serialUnitId?: number | null;

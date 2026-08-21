@@ -35,6 +35,7 @@ import {
 import {
   applyUnboxDeskParam,
   applyUnboxOpenReceivingParams,
+  isUnboxDesk,
   pickReceivingLineForDeepLink,
   shouldAutoOpenUnboxMru,
   shouldRestoreOpenReceiving,
@@ -160,8 +161,15 @@ export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
    * down in Preview removes the race rather than ordering it.
    */
   const scanStance = useScanStance();
+  // `history.replaceState` writes `?unboxdesk=1` without notifying Next's
+  // `useSearchParams`. Hold the same flag in React so Back to list cannot
+  // lose a race with the station-first MRU seed.
+  const [unboxDeskHeld, setUnboxDeskHeld] = useState(
+    () => isUnboxSurface && isUnboxDesk(searchParams),
+  );
   const wantMruAutoOpen =
-    shouldAutoOpenUnboxMru(isUnboxSurface, searchParams) && scanStance !== 'preview';
+    shouldAutoOpenUnboxMru(isUnboxSurface, searchParams, unboxDeskHeld) &&
+    scanStance !== 'preview';
   const unboxRailStaffId = useMemo(() => {
     const feed = RECEIVING_RAIL_FEEDS.unboxRecent;
     if (!feed.usesStaffFilter) return null;
@@ -262,6 +270,7 @@ export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
 
   /** Back to list / delete recovery — clear carton + enter desk (tables). */
   const enterUnboxDesk = useCallback(() => {
+    setUnboxDeskHeld(true);
     replaceUnboxUrl((params) => {
       applyUnboxOpenReceivingParams(params, null);
       applyUnboxDeskParam(params, true);
@@ -279,6 +288,7 @@ export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
           : searchParams;
       const receivingId = row?.receiving_id;
       if (row != null && receivingId != null && Number.isFinite(Number(receivingId))) {
+        setUnboxDeskHeld(false);
         const nextKey = `${receivingId}:${row.id}`;
         const currentOpen = liveParams.get('openReceivingId');
         const currentLine = liveParams.get('lineId');
@@ -349,7 +359,12 @@ export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
       workspaceRef.current = null;
       setWorkspace(null);
       setNav(null);
-      if (shouldClearUrl) syncUnboxOpenUrl(null);
+      if (!shouldClearUrl) return;
+      // Always enter desk on Unbox — even when `?openReceivingId=` is not
+      // written yet (MRU seed). `syncUnboxOpenUrl(null)` no-ops without that
+      // param, and the seed would reopen the carton in the same tick.
+      if (isUnboxSurface) enterUnboxDesk();
+      else syncUnboxOpenUrl(null);
     };
     const handleUpdate = (e: Event) => {
       const partial = (e as CustomEvent<Partial<ReceivingLineRow> & { id: number }>).detail;
@@ -416,7 +431,7 @@ export function useReceivingWorkspacePane(): ReceivingWorkspacePane {
       window.removeEventListener('receiving-scan-resolved', handleResolved);
       if (showTimer) clearTimeout(showTimer);
     };
-  }, [syncUnboxOpenUrl]);
+  }, [enterUnboxDesk, isUnboxSurface, syncUnboxOpenUrl]);
 
   useEffect(() => {
     const handler = (e: Event) => {

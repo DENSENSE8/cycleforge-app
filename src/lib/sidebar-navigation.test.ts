@@ -165,6 +165,12 @@ test('prod nav ships every unparked page; only redirect surfaces stay off', () =
     assert.equal(navIds.has(id), false, `${id} must not own a spine row`);
   }
   assert.equal(navIds.has('sales'), true, 'Sales is its own root section (D4)');
+  assert.equal(navIds.has('counter'), false, 'Counter is a Sales child, not an L1 spine row');
+  assert.equal(
+    getSidebarPageNav('sales')?.children?.some((m) => m.id === 'counter'),
+    true,
+    'Counter lives under Sales',
+  );
 });
 
 test('isSidebarRouteMobileRestricted only flags mobile-blocked routes', () => {
@@ -276,7 +282,7 @@ test('every dashboard-board mode clears Search-scoped openOrderId/map/q', () => 
       assert.equal(params.get('q'), null, `${page.id}/${mode.id} should clear q`);
     }
   }
-  // Sales Board + Local Pickup History + Repairs (Orders moved to
+  // Sales Board + Local Pickup + Repair Service (Orders moved to
   // `/shipping/orders`; Inbound Board folded into `/incoming`).
   assert.equal(checked, 3, `expected 3 dashboard-board modes, found ${checked}`);
 });
@@ -393,6 +399,11 @@ test('getSidebarRouteKey maps the Pack surface + legacy alias to packer', () => 
   assert.equal(getSidebarRouteKey('/pack'), 'packer');
   assert.equal(getSidebarRouteKey('/pack/'), 'packer');
   assert.equal(getSidebarRouteKey('/packer'), 'packer');
+});
+
+test('getSidebarNavPageId keeps Packing as the MasterNav L1 on /pack', () => {
+  assert.equal(getSidebarNavPageId('/pack'), 'packer');
+  assert.equal(getSidebarNavPageId('/packer'), 'packer');
 });
 
 // Spot-check the gnarly real-world deep-links the panels read today, so the
@@ -515,6 +526,8 @@ test('resolver matches existing panel derivations for known deep-links', () => {
   assert.equal(resolveSidebarChild('sales', at('/dashboard', 'mode=sales')), 'sales');
   assert.equal(resolveSidebarChild('sales', at('/dashboard', 'mode=pickup')), 'pickup');
   assert.equal(resolveSidebarChild('sales', at('/dashboard', 'mode=repairs')), 'repairs');
+  assert.equal(getSidebarNavPageId('/counter'), 'sales');
+  assert.equal(resolveSidebarChild('sales', at('/counter')), 'counter');
   assert.equal(resolveSidebarChild('support', at('/support', 'mode=warranty')), 'warranty');
   assert.equal(resolveSidebarChild('support', at('/support', 'mode=orders')), 'orders');
   // Support › Inquiries aliases the To-ship desk — Support owns the pin.

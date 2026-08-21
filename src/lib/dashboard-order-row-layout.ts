@@ -136,7 +136,10 @@ export const ORDERS_QUEUE_COLUMNS: readonly OrdersQueueColumn[] = [
     // derives its chip `variant` from it, and the shared painter swaps the
     // glyph for the platform/carrier dot.
     omitCellIcon: true,
-    width: 'minmax(4.5rem, 4.5rem)',
+    // Same track as Unbox History ORDER (`RECEIVING_GRID_COLUMNS`) so last-8 +
+    // brand-dot identity fits without ellipsis. 4.5rem was the to-ship fork
+    // clipping marketplace ids into `66-47…`.
+    width: 'minmax(5.5rem, 5.5rem)',
     label: 'Order',
     type: 'id',
     align: 'start',
@@ -239,7 +242,7 @@ export const ORDERS_QUEUE_TESTED_COLUMNS: readonly OrdersQueueColumn[] = [
     // derives its chip `variant` from it, and the shared painter swaps the
     // glyph for the platform/carrier dot.
     omitCellIcon: true,
-    width: 'minmax(4.5rem, 4.5rem)',
+    width: 'minmax(5.5rem, 5.5rem)',
     label: 'Order',
     type: 'id',
     align: 'start',

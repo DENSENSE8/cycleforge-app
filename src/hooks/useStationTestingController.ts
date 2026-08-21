@@ -23,6 +23,7 @@ import {
   writeArmedPackStation,
 } from '@/lib/packing/pack-station-arm';
 import { looksLikeUnitId } from '@/lib/testing/resolve-testing-scan';
+import { TECH_CLOSE_ACTIVE_ORDER_EVENT } from '@/components/tech/tech-active-order-events';
 
 // Re-export types consumed by external components — import paths unchanged.
 export type { StationInputMode, StationScanType };
@@ -231,6 +232,14 @@ export function useStationTestingController({
       : null;
     window.dispatchEvent(new CustomEvent('tech-active-order-changed', { detail: payload }));
   }, [activeOrder, resolvedManuals, isManualLoading]);
+
+  // Identity ◁ / Back to list — stand the controller down so a later manuals
+  // resolve cannot republish the order and reopen the overlay.
+  useEffect(() => {
+    const close = () => syncActiveOrderState(null);
+    window.addEventListener(TECH_CLOSE_ACTIVE_ORDER_EVENT, close);
+    return () => window.removeEventListener(TECH_CLOSE_ACTIVE_ORDER_EVENT, close);
+  }, []);
 
   useEffect(() => {
     const handleUndoApplied = (e: any) => {

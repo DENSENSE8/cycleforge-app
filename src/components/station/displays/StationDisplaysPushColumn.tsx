@@ -32,10 +32,15 @@
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { Maximize2, Minimize2 } from '@/components/Icons';
-import { STATION_DISPLAYS_PUSH_TOP_BAND } from '@/components/station/entity-context/station-identity-chrome';
+import {
+  STATION_DISPLAYS_PUSH_TOP_BAND,
+  STATION_DISPLAYS_PUSH_TOP_CELL,
+  STATION_DISPLAYS_PUSH_TOP_CLUSTER,
+} from '@/components/station/entity-context/station-identity-chrome';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { HorizontalEdgeResizeHandle } from '@/design-system/components/HorizontalEdgeResizeHandle';
 import { StationDisplaysEdgeToggle } from './StationDisplaysEdgeToggle';
+import { STATION_DISPLAYS_HEADER_ACTION_FACE } from './StationDisplaysHeaderActions';
 import { useStationDisplaysToggleHotkey } from './displays-toggle-hotkey';
 import {
   EDGE_RESIZE_COLLAPSE_SLACK_PX,
@@ -76,10 +81,6 @@ export const STATION_DISPLAYS_HOST_PAD_CLASS = '';
 /** Default open width preference for Unbox Displays / Ticket / Claim / tool. */
 const STATION_DISPLAYS_DEFAULT_WIDTH_PX = 420;
 
-/** Hit cell for a top-band IconButton — stretch to the band, re-enable pointer. */
-const STATION_DISPLAYS_PUSH_TOP_CELL =
-  'pointer-events-auto flex h-full shrink-0 items-stretch';
-
 const STATION_DISPLAYS_PUSH_EXPAND_LABEL = 'Widen panel';
 const STATION_DISPLAYS_PUSH_COLLAPSE_LABEL = 'Restore panel width';
 
@@ -90,8 +91,9 @@ const STATION_DISPLAYS_PUSH_COLLAPSE_LABEL = 'Restore panel width';
  * for the sash hit area under empty chrome.
  *
  * The band has NO leading pad (2026-08-19): the leaf Back chevron takes the
- * column's own left corner. The trailing `pr-2` is the window controls' optical
- * inset.
+ * column's own left corner. Trailing inset is `pr-1.5` on the band token.
+ * Maximize and close share {@link STATION_DISPLAYS_PUSH_TOP_CELL} (28px,
+ * `gap-0`) — close must not `-ml-px` into fullscreen.
  */
 export function StationDisplaysPushColumn({
   ariaLabel,
@@ -459,7 +461,7 @@ export function StationDisplaysPushColumn({
         <div className={STATION_DISPLAYS_PUSH_TOP_BAND}>
           {headerNav}
           {headerNav == null ? <div className="flex-1" /> : null}
-          <div className="pointer-events-auto flex h-full shrink-0 items-stretch gap-0.5">
+          <div className={STATION_DISPLAYS_PUSH_TOP_CLUSTER}>
             {headerRightSlot}
             {headerActions}
             <HoverTooltip
@@ -487,7 +489,7 @@ export function StationDisplaysPushColumn({
                     )
                   }
                   onClick={toggleMaximize}
-                  className="h-full w-full rounded-none"
+                  className={STATION_DISPLAYS_HEADER_ACTION_FACE}
                   data-testid="unbox-push-fullscreen"
                 />
               </span>

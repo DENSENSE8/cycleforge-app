@@ -10,6 +10,14 @@ whitespace as the product shape. Ops density is **exact flush + plane depth** (s
 **zero-radius industrial** — flush-square CTAs, tabs, selects, chips and toggle bands (`cornerClass('flush')`);
 soft radius and horizontal pill bands are debt. `rounded-full` survives only for status dots · avatars · Switch tracks.
 
+**The one exemption: the kiosk counter face.** `/kiosk/**` is the only surface a **customer**
+touches — untrained, once, on a mounted tablet — and its own contract already called it
+"a form, not a scanner station". It resolves radius and touch size through `counterCorner()` /
+`COUNTER_*` (`src/app/kiosk/kiosk-counter-surface.ts`), NOT `cornerClass()`: soft corners,
+≥48px targets, ≥16px input text. That is a sibling scale over the same role vocabulary and the
+same color/type/motion tokens — never a second design language, and never a licence to round
+an ops surface. Contract: [`display/kiosk-shell.md`](../../docs/rules/display/kiosk-shell.md) §2a.
+
 **Better** means stronger *within* this family and house tokens — never a foreign kit or a second
 design language. Industry blend: ops density (Carbon / Stripe Dashboard) + Linear chrome + POS/scan
 floors + Studio canvas.

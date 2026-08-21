@@ -11,7 +11,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Camera, ExternalLink, History, MapPin } from '@/components/Icons';
-import { PaneHeaderCloseButton } from '@/components/ui/pane-header';
 import {
   buildSectionTabs,
   StationPanelRoot,
@@ -27,10 +26,7 @@ import type { PackActiveOrderPane } from '@/components/packer/usePackerOrderPane
 import { PackOrderIdentity } from '@/components/packer/PackOrderIdentity';
 import { PackPapersStatusCard } from '@/components/packer/PackPapersStatusCard';
 import { UnitPackPhotoPeek } from '@/components/packer/UnitPackPhotoPeek';
-import {
-  StationContextBar,
-  StationMoreDetails,
-} from '@/components/station/entity-context';
+import { StationContextBar } from '@/components/station/entity-context';
 import {
   StationDisplaysParkedRail,
   StationDisplaysUtilityRail,
@@ -42,9 +38,6 @@ import { PackLocationsLeaf } from '@/components/tech/shipping/PackLocationsLeaf'
 import { usePackOrderPlacement } from '@/components/tech/shipping/usePackOrderPlacement';
 import { buildPackDisplayIndexRows } from '@/components/packer/pack-display-index';
 import { packListingIdentity } from '@/components/packer/pack-listing-identity';
-import { STATION_WORKBENCH_IDENTITY_COLUMN } from '@/components/station/workbench/workbench-layout';
-import { cornerClass } from '@/design-system/tokens/radius';
-import { cn } from '@/utils/_cn';
 
 /** Scan/pack Displays only — no Ticket · Support hubs. */
 type PackDisplayTab = 'photos' | 'timeline' | 'listings';
@@ -86,11 +79,6 @@ export function PackOrderPanel({ activeOrder, onClose }: PackOrderPanelProps) {
     : activeOrder.orderRowId
       ? `row-${activeOrder.orderRowId}`
       : `${activeOrder.sku || activeOrder.tracking}`;
-
-  const hasRollup =
-    Boolean(checklist) &&
-    (checklist?.orderRowIds.length ?? 0) > 0 &&
-    (checklist?.progress.total ?? 0) > 1;
 
   const timelineSerials = useMemo(() => {
     const fromLines = (checklist?.lines ?? []).flatMap((l) => l.serials ?? []);
@@ -214,7 +202,6 @@ export function PackOrderPanel({ activeOrder, onClose }: PackOrderPanelProps) {
 
   const packedCount = checklist?.progress.packedLines ?? 0;
   const totalCount = checklist?.progress.total ?? 0;
-  const rollupComplete = packedCount >= totalCount && totalCount > 0;
 
   const displayIndexRows = useMemo(
     () =>
@@ -266,54 +253,9 @@ export function PackOrderPanel({ activeOrder, onClose }: PackOrderPanelProps) {
               <StationContextBar
                 placement="flow"
                 identity={
-                  <div className="w-full min-w-0">
-                    <PackOrderIdentity activeOrder={activeOrder} />
-                  </div>
-                }
-                moreDetails={
-                  <StationMoreDetails>
-                    <PaneHeaderCloseButton
-                      onClick={onClose}
-                      ariaLabel="Return to pack queue"
-                      title="Return to pack queue"
-                    />
-                  </StationMoreDetails>
+                  <PackOrderIdentity activeOrder={activeOrder} onExitToList={onClose} />
                 }
               />
-
-              {/* Pack papers / manuals status + Reprint — middle only. */}
-              <PackPapersStatusCard orderRowId={activeOrder.orderRowId} />
-
-              {hasRollup ? (
-                <div
-                  className={cn(
-                    'shrink-0 border-b border-border-hairline bg-surface-card',
-                    STATION_WORKBENCH_IDENTITY_COLUMN,
-                  )}
-                >
-                  <div className="flex items-center justify-between gap-2 px-3 py-2">
-                    <div className="min-w-0">
-                      <p className="text-role-eyebrow uppercase tracking-widest text-text-faint">
-                        Order rollup
-                      </p>
-                      <p className="text-role-caption font-semibold text-text-muted">
-                        Multi-line order — verify each line is packed before sealing.
-                      </p>
-                    </div>
-                    <span
-                      className={cn(
-                        cornerClass('flush'),
-                        'shrink-0 px-2 py-0.5 text-role-eyebrow uppercase tracking-widest ring-1 ring-inset tabular-nums',
-                        rollupComplete
-                          ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
-                          : 'bg-amber-50 text-amber-700 ring-amber-200',
-                      )}
-                    >
-                      {packedCount}/{totalCount} packed
-                    </span>
-                  </div>
-                </div>
-              ) : null}
 
               <StationWorkbench
                 ambientWash={false}
@@ -321,6 +263,12 @@ export function PackOrderPanel({ activeOrder, onClose }: PackOrderPanelProps) {
                 reserveScrollClearance={false}
                 reserveIdentityClearance={false}
                 bodyGap="none"
+                // Print-bundle status is action feedback (Unbox feedback slot),
+                // never an advisory strip between identity and the checklist.
+                // Rollup lives on Displays → Timeline subtitle — not a centre band.
+                feedback={
+                  <PackPapersStatusCard orderRowId={activeOrder.orderRowId} />
+                }
               >
                 {isUnitScan ? (
                   <div className="space-y-3">

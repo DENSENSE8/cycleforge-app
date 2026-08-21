@@ -6,6 +6,7 @@ import {
   Box as LucideBox,
   PackageCheck as LucidePackageCheck,
   Receipt as LucideReceipt,
+  Store as LucideStore,
 } from 'lucide-react';
 
 export const Package = ({ className = "w-6 h-6" }: { className?: string }) => (
@@ -45,6 +46,11 @@ export const PackageOpen = ({ className = "w-6 h-6" }: { className?: string }) =
 /** PO unit cost / money total — LedgerGrid Price header + CHIP_TONES.price + SalesPrice. */
 export const Receipt = ({ className = "w-6 h-6" }: { className?: string }) => (
     <LucideReceipt className={className} />
+);
+
+/** Storefront — Counter desk (`/counter`), not Receipt (Sales Board). */
+export const Store = ({ className = "w-6 h-6" }: { className?: string }) => (
+    <LucideStore className={className} />
 );
 
 export const ShoppingCart = ({ className = "w-6 h-6" }: { className?: string }) => (

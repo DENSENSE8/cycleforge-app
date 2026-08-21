@@ -477,7 +477,6 @@
     "src/components/packer/PackerSurfacePage.tsx",
     "src/components/packer/UnitPackPhotoPeek.tsx",
     "src/components/packing/OrderPackChecklist.tsx",
-    "src/components/packing/PackBenchChipRow.tsx",
     "src/components/packing/PackChecklistLineRow.tsx",
     "src/components/packing/PackProfileEditor.tsx",
     "src/components/photos/ListingPhotoGallery.tsx",

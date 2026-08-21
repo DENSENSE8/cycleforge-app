@@ -24,6 +24,7 @@ import { useTechOrderPanes } from '@/components/tech/useTechOrderPanes';
 import { useTechDetailOverlays } from '@/components/tech/useTechDetailOverlays';
 import { TechRightPane } from '@/components/tech/TechRightPane';
 import { TechDashboardOverlays } from '@/components/tech/TechDashboardOverlays';
+import { dispatchTechCloseActiveOrder } from '@/components/tech/tech-active-order-events';
 
 interface TechDashboardProps {
   techId: string;
@@ -79,7 +80,11 @@ export default function TechDashboard({ techId }: TechDashboardProps) {
               testingSelectMode={testingSelectMode}
               onOpenTestingLine={openTestingLine}
               activeOrderPane={activeOrderPane}
-              onCloseActiveOrder={() => setActiveOrderPane(null)}
+              onCloseActiveOrder={() => {
+                dispatchTechCloseActiveOrder();
+                setActiveOrderPane(null);
+                setPreviewOrder(null);
+              }}
               onActiveOrderChange={(next) =>
                 setActiveOrderPane((prev) => (prev ? { ...prev, activeOrder: next } : null))
               }

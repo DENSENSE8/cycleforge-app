@@ -7,8 +7,8 @@
  * Unbox centre mounts this with `editLines` + `serialScan` + `dockOwnsCapture`
  * — dual loci: meta chips → dock step; active line mounts mouse editor.
  * Arrival (`TriagePanel`) mounts `editLines` with `serialScan={false}` +
- * `unitsChrome={false}` (door flow — no condition · serial / Units). Testing
- * composes it too.
+ * `unitsChrome={false}` (door flow — no serial stamp / Units editors; meta
+ * still paints the Unbox five-track face). Testing composes it too.
  *
  * Package Pairing left it on 2026-08-02 and is the `pairing` Displays tab on
  * the right edge ({@link buildUnboxSideTabs}).
@@ -41,8 +41,8 @@ interface POUnboxingSectionProps {
    */
   activeStep?: string | null;
   /**
-   * When false, meta is qty | SKU | price only and unit editors stay off
-   * (Arrival). Defaults true.
+   * When false (Arrival door flow), unit editors / serial stamp stay off;
+   * PoLineRow still paints Unbox five-track meta. Defaults true.
    */
   unitsChrome?: boolean;
   c: UnboxLineController;

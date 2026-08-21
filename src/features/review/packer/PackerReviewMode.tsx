@@ -32,7 +32,6 @@ import {
   Loader2,
   Truck,
 } from '@/components/Icons';
-import { PaneHeaderCloseButton } from '@/components/ui/pane-header';
 import {
   buildSectionTabs,
   StationPanelRoot,
@@ -40,6 +39,7 @@ import {
   StationWorkbench,
   WorkspaceTimelineTab,
 } from '@/components/station/workbench';
+import { STATION_WORKBENCH_COLUMN } from '@/components/station/workbench/workbench-layout';
 import {
   StationContextBar,
   StationMoreDetails,
@@ -311,7 +311,7 @@ export function PackerReviewMode({
     loading: busy && decide.variables === 'REVIEW_APPROVED',
     docked: true,
     fullWidth: true,
-    maxWidth: 'max-w-[720px]',
+    maxWidth: STATION_WORKBENCH_COLUMN,
     menuLabel: 'More review actions',
     menuTitle: 'Flag or other actions',
     menu: [
@@ -368,7 +368,7 @@ export function PackerReviewMode({
               identity={
                 <motion.div initial="hidden" animate="show" variants={revealContainer}>
                   <motion.div variants={revealItem}>
-                    <ReviewOrderIdentity row={row} />
+                    <ReviewOrderIdentity row={row} onExitToList={clearSelection} />
                   </motion.div>
                 </motion.div>
               }
@@ -397,11 +397,6 @@ export function PackerReviewMode({
                     {row.skuCatalogId != null ? 'Edit pack size' : 'Link catalog'}
                   </Button>
                   <OutcomeChip outcome={row.outcome} />
-                  <PaneHeaderCloseButton
-                    onClick={clearSelection}
-                    ariaLabel="Return to review table"
-                    title="Return to review table"
-                  />
                 </StationMoreDetails>
               }
             />

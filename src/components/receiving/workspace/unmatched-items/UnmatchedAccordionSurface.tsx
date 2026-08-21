@@ -9,8 +9,9 @@
  *   - ≥1 line (or a known placeholderActiveRow) → {@link PoLinesAccordion}.
  *     Default leaf is `ActiveLineConditionSerial`; Testing overrides via
  *     `activeRowSlot` (verdict pills). No standing carton scanner beside rows.
- *   - 0 lines and no placeholder → {@link ReturnScanCard} (scan-first return).
- *     Shown ONLY when the carton has no line yet — no double-row.
+ *   - 0 lines and no placeholder → {@link ReturnScanCard} (Unbox PoLineRow face).
+ *     Shown ONLY when the carton has no line yet — no double-row. Arrival still
+ *     paints the face (`unitsChrome={false}`); capture body is Unbox-only.
  *
  * A return import (`handleReturnSerialScan`) writes the accordion's own
  * {@link receivingSiblingsQueryKey} cache via the wrapped `onLinked`, so the new
@@ -751,9 +752,11 @@ export function UnmatchedAccordionSurface(props: UnmatchedItemsSectionProps) {
                 : undefined
           }
         />
-      ) : unitsChrome && showSerialScan ? (
-        // Empty carton: the "scan the first return" active-row affordance. Shown
-        // ONLY at 0 lines, so it never stands beside a line row (no double-row).
+      ) : (
+        // Empty carton: Unbox PoLineRow face via ReturnScanCard. Shown ONLY at
+        // 0 lines (no double-row). Arrival door flow (`unitsChrome={false}` /
+        // no serial scan) still paints the face — never null the centre.
+        // Capture body only when Unbox serial scan is on.
         <ReturnScanCard
           condition={c.cartonScanCondition}
           onConditionChange={(next) => c.handleCartonConditionChange(next)}
@@ -765,8 +768,10 @@ export function UnmatchedAccordionSurface(props: UnmatchedItemsSectionProps) {
           dockOwnsCapture={dockOwnsCapture}
           receivingId={receivingId}
           staffId={Number(staffId) || 0}
+          unitsChrome={unitsChrome}
+          body={showSerialScan ? 'serial' : 'none'}
         />
-      ) : null}
+      )}
     </div>
   );
 

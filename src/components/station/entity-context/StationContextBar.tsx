@@ -45,7 +45,7 @@ export function StationContextBar({
   className,
   placement = 'overlay',
 }: {
-  /** CartonContextCard (or pack identity equivalent). */
+  /** CartonContextCard (or thin station adapter). */
   identity: ReactNode;
   /** {@link StationMoreDetails} cluster — optional for identity-only hosts. */
   moreDetails?: ReactNode;

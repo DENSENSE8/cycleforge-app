@@ -45,6 +45,7 @@ function MetricKpiTile({ metric, toShipFilter }: { metric: ComputedMetric; toShi
         clickable ? () => toShipFilter?.toggle(metric.filterUstatus as FulfillmentState) : undefined
       }
       className="h-full"
+      labelClassName={clickable ? 'normal-case tracking-normal' : undefined}
     />
   );
 

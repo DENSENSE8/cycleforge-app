@@ -391,7 +391,36 @@ export default [
               message:
                 'The Displays filter is row 2 of StationDisplaysPushStack (index-only). Do not mount a page-local find field on a Displays host.',
             },
+            {
+              name: '@/components/packer/PackSendToPhoneButton',
+              message:
+                'Pack photos mount via CartonContextCard photosCell inside PackOrderIdentity — not as a sibling on the panel.',
+            },
           ],
+        },
+      ],
+    },
+  },
+  {
+    // Pack identity must keep Unbox classify chrome (never showClassifyControls={false}).
+    files: ['src/components/packer/PackOrderIdentity.tsx'],
+    languageOptions: {
+      parser: tsParser,
+      parserOptions: { ecmaFeatures: { jsx: true } },
+    },
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            'JSXAttribute[name.name="showClassifyControls"] > JSXExpressionContainer > Literal[value=false]',
+          message:
+            'Pack uses the Unbox one-row CartonContextCard face — do not turn off classify. Use classifyInteractive={false} for read-only.',
+        },
+        {
+          selector: 'JSXAttribute[name.name="showClassifyControls"] > Literal[value=false]',
+          message:
+            'Pack uses the Unbox one-row CartonContextCard face — do not turn off classify. Use classifyInteractive={false} for read-only.',
         },
       ],
     },

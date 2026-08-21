@@ -39,10 +39,8 @@ import {
   getDashboardOrderViewFromSearch,
   type DashboardOrderView,
 } from '@/utils/dashboard-search-state';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { PACK_PLACED_PARAM, PACK_STATION_PARAM } from '@/lib/packing/pack-station-arm';
-import { PackBenchChipRow } from '@/components/packing/PackBenchChipRow';
-import type { PackPlacementCountRow } from '@/lib/packing/pack-placement';
+import { useSearchParams } from 'next/navigation';
+import { PACK_PLACED_PARAM } from '@/lib/packing/pack-station-arm';
 
 const EMPTY_UNSHIPPED = {
   total: 0,
@@ -210,40 +208,6 @@ function OutboundStripLayout(data: OutboundStripData): ReactNode {
   );
 }
 
-/**
- * Per-bench ORDER breakdown under the To-ship band (P3d) — parity with the
- * Ready-to-Pack strip, which already answers "how many at each bench" for the
- * desk operator. Counts come from `queue-counts.packPlacement.counts`, the same
- * payload the aggregate "At stations" tile reads, so this costs no extra fetch.
- *
- * It stays a chip row rather than KPI tiles on purpose: a bench breakdown is
- * context beside the aggregate, and the band's attention zone caps at four
- * tiles — N benches would crowd out pending / urgent / out-of-stock.
- *
- * Clicking a bench filters the board (`?packStation=`); it does NOT arm a place
- * target. Arming is a scan destination and belongs to the bench itself.
- */
-function OrderBenchStrip({
-  counts,
-  activeLocationId,
-  onSelect,
-}: {
-  counts: readonly PackPlacementCountRow[];
-  activeLocationId: number | null;
-  onSelect: (row: { locationId: number }) => void;
-}) {
-  return (
-    <PackBenchChipRow
-      label="Orders at bench"
-      rows={counts}
-      testId="order-bench"
-      itemNoun="order"
-      activeLocationId={activeLocationId}
-      onSelect={onSelect}
-    />
-  );
-}
-
 function ShippedStrip() {
   const { total, metrics, isPending, isError, refetch } = useShippedScanOutData();
   const { roi, pending: roiPending } = useGatedOperationsRoi();
@@ -262,8 +226,6 @@ function ShippedStrip() {
 
 function UnshippedStrip() {
   const searchParams = useSearchParams();
-  const pathname = usePathname();
-  const router = useRouter();
   const staffId = parseStaffParam(searchParams.get('staff')) ?? undefined;
   const query = useQuery(unshippedQueueCountsQuery({ staffId }));
   const { roi, pending: roiPending } = useGatedOperationsRoi();
@@ -275,44 +237,12 @@ function UnshippedStrip() {
     toggleUrgent,
     selectPendingTab,
     selectLifecycleTab,
+    togglePackPlaced,
   } = useToShipFilterActions();
   const orderView = getDashboardOrderViewFromSearch(searchParams);
   const packPlacedOnly =
     searchParams.get(PACK_PLACED_PARAM) === '1' ||
     searchParams.get(PACK_PLACED_PARAM) === 'true';
-
-  const packStationParam = Number(searchParams.get(PACK_STATION_PARAM));
-  const activePackStationId =
-    Number.isFinite(packStationParam) && packStationParam > 0 ? packStationParam : null;
-
-  /**
-   * Bench filter — mutually exclusive with the aggregate `?packPlaced=1`, the
-   * same way {@link togglePackPlaced} clears the bench param. "Placed anywhere"
-   * and "placed at THIS bench" are two answers to one question; holding both
-   * would let the board show a filter combination neither chip is claiming.
-   */
-  const togglePackStation = (locationId: number) => {
-    const params = new URLSearchParams(searchParams.toString());
-    if (activePackStationId === locationId) {
-      params.delete(PACK_STATION_PARAM);
-    } else {
-      params.set(PACK_STATION_PARAM, String(locationId));
-      params.delete(PACK_PLACED_PARAM);
-    }
-    const qs = params.toString();
-    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
-  };
-
-  const togglePackPlaced = () => {
-    const params = new URLSearchParams(searchParams.toString());
-    if (packPlacedOnly) params.delete(PACK_PLACED_PARAM);
-    else {
-      params.set(PACK_PLACED_PARAM, '1');
-      params.delete(PACK_STATION_PARAM);
-    }
-    const qs = params.toString();
-    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
-  };
 
   const toShipFilter: ToShipFilter = {
     active,
@@ -340,7 +270,7 @@ function UnshippedStrip() {
   };
 
   // The per-bench ORDER breakdown moved into the Band-3 find field on
-  // 2026-08-10 (`BenchRefineFacet`) — it narrows rows, so it belongs beside the
+  // 2026-08-10 (`PackBenchRefineFacet`) — it narrows rows, so it belongs beside the
   // query, and a full-width chip row here cost a band of height on the densest
   // desk in the app. The aggregate "At stations" tile stays: that is the
   // at-a-glance number, and it is an attention metric rather than a facet.

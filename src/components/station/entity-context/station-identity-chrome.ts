@@ -94,14 +94,35 @@ export const STATION_CHROME_SEAM_HAIRLINE =
   'relative after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-border-hairline';
 
 /**
+ * Square hit cell on the Displays top band — same 28px as
+ * {@link STATION_CHROME_ROW_FACE} and `IconButton size="sm"`. Verbs, maximize,
+ * and close all compose this so ⤢ and X share one pitch (never a `w-8` verb
+ * beside an unsized window control, and never `-ml-px` overlap on close).
+ */
+export const STATION_DISPLAYS_PUSH_TOP_CELL =
+  'pointer-events-auto flex h-full w-7 shrink-0 items-stretch';
+
+/**
+ * Trailing cluster on the Displays top band — verbs · ⤢ · X. Same
+ * {@link HEADER_ICON_GAP} (`gap-0`) as GlobalHeader and carton identity;
+ * hover seam is the divider. Never a nested `gap-0.5`.
+ */
+export const STATION_DISPLAYS_PUSH_TOP_CLUSTER =
+  `pointer-events-auto flex h-full shrink-0 items-stretch ${HEADER_ICON_GAP}`;
+
+/**
  * Displays / desk-inspector top chrome row — same face as carton identity
  * ({@link STATION_CHROME_ROW_FACE}). {@link StationDisplaysPushColumn} and
  * desk {@link DeskInspectorIndexShell} compose this class; do not fork a
  * `h-7` twin. Lives here (not on the Displays barrel) so desk inspectors
  * can import the token without evaluating CartonContextCard.
+ *
+ * No leading pad — Back owns the column's left corner (sash still grabs
+ * under empty chrome). Trailing inset is {@link STATION_CHROME_CELL_PAD}'s
+ * 6px (`pr-1.5`), not a unique `pr-2`.
  */
 export const STATION_DISPLAYS_PUSH_TOP_BAND =
-  `pointer-events-none relative z-header flex ${STATION_CHROME_ROW_FACE} items-stretch gap-0.5 pr-2 ${STATION_CHROME_SEAM_HAIRLINE}`;
+  `pointer-events-none relative z-header flex ${STATION_CHROME_ROW_FACE} items-stretch ${HEADER_ICON_GAP} pr-1.5 ${STATION_CHROME_SEAM_HAIRLINE}`;
 
 /**
  * Classify urgency·platform·type — **one token**: flush abut (`gap-0`), no

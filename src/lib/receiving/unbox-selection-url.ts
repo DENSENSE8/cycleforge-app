@@ -71,12 +71,19 @@ export function isUnboxDesk(
 /**
  * Station-first cold land: auto-open Unboxed MRU when Unbox has no focused
  * carton and the operator has not entered desk (Back to list).
+ *
+ * `deskHeld` is the same intent as `?unboxdesk=1` when the URL was written
+ * with `history.replaceState` (no Next `searchParams` subscription). Without
+ * it, Back to list clears the overlay and the MRU seed paints the carton
+ * back in the same render.
  */
 export function shouldAutoOpenUnboxMru(
   isUnboxSurface: boolean,
   searchParams: Pick<URLSearchParams, 'get'>,
+  deskHeld = false,
 ): boolean {
   if (!isUnboxSurface) return false;
+  if (deskHeld) return false;
   if (isUnboxDesk(searchParams)) return false;
   const open = searchParams.get('openReceivingId');
   if (open && /^\d+$/.test(open)) return false;
