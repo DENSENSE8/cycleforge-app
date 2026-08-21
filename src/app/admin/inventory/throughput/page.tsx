@@ -1,5 +1,6 @@
 import { requirePermission } from '@/lib/auth/page-guard';
-import { queryRaw } from '@/lib/neon-client';
+import { tenantQuery } from '@/lib/tenancy/db';
+import type { OrgId } from '@/lib/tenancy/constants';
 import Link from 'next/link';
 import { PageHeader } from '@/components/ui/pane-header';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
@@ -24,6 +25,15 @@ export const dynamic = 'force-dynamic';
  *   - By event_type bar
  *   - By station × hour heatmap (last 24h only — fits a 6×24 grid)
  *   - By actor table
+ *
+ * Tenant scoping: every loader goes through `tenantQuery(orgId, …)` with an
+ * explicit `organization_id` predicate, and `orgId` comes from the auth ctx
+ * (`requirePermission` → `user.organizationId`) — never from a query param.
+ * The only filter here is a time window, which is org-blind, so a bare
+ * owner-pool read aggregated every tenant's events into one tenant's
+ * throughput numbers and leaked other orgs' staff names in the actor table
+ * (RLS does not bite on the owner pool). Live in all four loaders until
+ * 2026-08-21.
  */
 
 type Range = '24h' | '72h' | '7d';
@@ -58,68 +68,79 @@ interface HourlyRow {
   count: number;
 }
 
-async function loadTotals(hours: number): Promise<Totals> {
+async function loadTotals(hours: number, orgId: OrgId): Promise<Totals> {
   try {
-    const r = await queryRaw<Totals>(
+    const r = await tenantQuery<Totals>(
+      orgId,
       `SELECT COUNT(*)::int AS events,
               COUNT(DISTINCT actor_staff_id)::int AS actors,
               COUNT(DISTINCT serial_unit_id)::int AS units
          FROM inventory_events
-        WHERE occurred_at > NOW() - ($1::int * INTERVAL '1 hour')`,
-      [hours],
+        WHERE occurred_at > NOW() - ($1::int * INTERVAL '1 hour')
+          AND organization_id = $2`,
+      [hours, orgId],
     );
-    return r[0] ?? { events: 0, actors: 0, units: 0 };
+    return r.rows[0] ?? { events: 0, actors: 0, units: 0 };
   } catch {
     return { events: 0, actors: 0, units: 0 };
   }
 }
 
-async function loadByType(hours: number): Promise<ByTypeRow[]> {
+async function loadByType(hours: number, orgId: OrgId): Promise<ByTypeRow[]> {
   try {
-    return await queryRaw<ByTypeRow>(
+    const r = await tenantQuery<ByTypeRow>(
+      orgId,
       `SELECT event_type, COUNT(*)::int AS count
          FROM inventory_events
         WHERE occurred_at > NOW() - ($1::int * INTERVAL '1 hour')
+          AND organization_id = $2
         GROUP BY event_type
         ORDER BY count DESC, event_type ASC`,
-      [hours],
+      [hours, orgId],
     );
+    return r.rows;
   } catch {
     return [];
   }
 }
 
-async function loadByActor(hours: number): Promise<ByActorRow[]> {
+async function loadByActor(hours: number, orgId: OrgId): Promise<ByActorRow[]> {
   try {
-    return await queryRaw<ByActorRow>(
+    const r = await tenantQuery<ByActorRow>(
+      orgId,
       `SELECT ie.actor_staff_id, s.name AS actor_name,
               COUNT(*)::int AS count,
               MAX(ie.occurred_at) AS last_active
          FROM inventory_events ie
-         LEFT JOIN staff s ON s.id = ie.actor_staff_id
+         LEFT JOIN staff s ON s.id = ie.actor_staff_id AND s.organization_id = $2
         WHERE ie.occurred_at > NOW() - ($1::int * INTERVAL '1 hour')
+          AND ie.organization_id = $2
         GROUP BY ie.actor_staff_id, s.name
         ORDER BY count DESC, last_active DESC NULLS LAST
         LIMIT 50`,
-      [hours],
+      [hours, orgId],
     );
+    return r.rows;
   } catch {
     return [];
   }
 }
 
-async function loadHourly(hours: number): Promise<HourlyRow[]> {
+async function loadHourly(hours: number, orgId: OrgId): Promise<HourlyRow[]> {
   try {
-    return await queryRaw<HourlyRow>(
+    const r = await tenantQuery<HourlyRow>(
+      orgId,
       `SELECT COALESCE(station, 'UNKNOWN') AS station,
               date_trunc('hour', occurred_at) AS hour_bucket,
               COUNT(*)::int AS count
          FROM inventory_events
         WHERE occurred_at > NOW() - ($1::int * INTERVAL '1 hour')
+          AND organization_id = $2
         GROUP BY station, hour_bucket
         ORDER BY hour_bucket DESC, station ASC`,
-      [hours],
+      [hours, orgId],
     );
+    return r.rows;
   } catch {
     return [];
   }
@@ -134,17 +155,18 @@ export default async function ThroughputPage({
 }: {
   searchParams: Promise<{ range?: string }>;
 }) {
-  await requirePermission('admin.view', { enforce: true });
+  const user = await requirePermission('admin.view', { enforce: true });
+  const orgId = user.organizationId;
 
   const params = await searchParams;
   const range: Range = isValidRange(params.range) ? params.range : '24h';
   const hours = RANGE_HOURS[range];
 
   const [totals, byType, byActor, hourly] = await Promise.all([
-    loadTotals(hours),
-    loadByType(hours),
-    loadByActor(hours),
-    loadHourly(hours),
+    loadTotals(hours, orgId),
+    loadByType(hours, orgId),
+    loadByActor(hours, orgId),
+    loadHourly(hours, orgId),
   ]);
 
   const maxTypeCount = byType[0]?.count ?? 1;

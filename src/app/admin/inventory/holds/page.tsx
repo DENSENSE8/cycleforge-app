@@ -1,5 +1,6 @@
 import { requirePermission } from '@/lib/auth/page-guard';
-import { queryRaw } from '@/lib/neon-client';
+import { tenantQuery } from '@/lib/tenancy/db';
+import type { OrgId } from '@/lib/tenancy/constants';
 import { holdUnit, releaseUnit } from '@/lib/inventory/hold';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
@@ -25,9 +26,27 @@ export const dynamic = 'force-dynamic';
  * Both server actions use the same code path as
  * /api/serial-units/[id]/{hold,release}.
  *
- * Permission gate: admin.view at render time; underlying API permission
- * is sku_stock.adjust which the action enforces implicitly by being
- * in this admin-only page.
+ * Permission gate: `admin.view` at render time, and `sku_stock.adjust` inside
+ * EACH server action. A server action is its own POST entrypoint — the page's
+ * render-time guard does not gate it, so "the action enforces it implicitly by
+ * being in this admin-only page" (what this docblock claimed until 2026-08-21)
+ * was never true. `sku_stock.adjust` is the permission the twin routes
+ * /api/serial-units/[id]/{hold,release} enforce, and `hold.ts` names the
+ * permission gate a caller responsibility.
+ *
+ * Tenant scoping: the held-units read and both server actions' ref lookups go
+ * through `tenantQuery(orgId, …)` with an explicit `organization_id` predicate,
+ * and `orgId` comes from the auth ctx (`requirePermission` →
+ * `user.organizationId`) — never from the form body. Nothing an operator types
+ * here is org-bearing: a unit id, a normalized serial and a status enum all
+ * collide across tenants, so a bare owner-pool read listed every tenant's held
+ * units and let an admin in org A hold or release a unit in org B (RLS does not
+ * bite on the owner pool). Live until 2026-08-21.
+ *
+ * Note the actions resolve the ref to an org-owned `serial_units.id` BEFORE
+ * calling `holdUnit` / `releaseUnit` — those helpers take no orgId of their own
+ * (a tracked follow-up in `src/lib/inventory/hold.ts`), so this page's ownership
+ * check is what keeps the write inside the caller's tenant.
  */
 
 interface HeldUnitRow {
@@ -42,9 +61,10 @@ interface HeldUnitRow {
   held_by_name: string | null;
 }
 
-async function loadHeldUnits(): Promise<HeldUnitRow[]> {
+async function loadHeldUnits(orgId: OrgId): Promise<HeldUnitRow[]> {
   try {
-    return await queryRaw<HeldUnitRow>(
+    const r = await tenantQuery<HeldUnitRow>(
+      orgId,
       `SELECT su.id, su.serial_number, su.sku,
               su.condition_grade::text AS condition_grade,
               su.notes,
@@ -58,16 +78,45 @@ async function loadHeldUnits(): Promise<HeldUnitRow[]> {
              FROM inventory_events ie
             WHERE ie.serial_unit_id = su.id
               AND ie.event_type = 'HELD'
+              AND ie.organization_id = $1
             ORDER BY ie.occurred_at DESC, ie.id DESC
             LIMIT 1
          ) h ON TRUE
-         LEFT JOIN staff s ON s.id = h.actor_staff_id
+         LEFT JOIN staff s ON s.id = h.actor_staff_id AND s.organization_id = $1
         WHERE su.current_status = 'ON_HOLD'::serial_status_enum
+          AND su.organization_id = $1
         ORDER BY h.occurred_at DESC NULLS LAST, su.id DESC
         LIMIT 200`,
+      [orgId],
     );
+    return r.rows;
   } catch {
     return [];
+  }
+}
+
+/**
+ * Resolve a "unit id or serial" operator ref to a serial_units.id the CALLER'S
+ * ORG owns, or 0. Both branches carry the org predicate: the numeric branch
+ * matters just as much as the serial one, since a raw id typed into the form
+ * (or posted straight at the server action) is otherwise a cross-tenant handle.
+ */
+async function resolveOwnedUnitId(refRaw: string, orgId: OrgId): Promise<number> {
+  const numeric = Number(refRaw);
+  const byId = Number.isInteger(numeric) && numeric > 0;
+  try {
+    const r = await tenantQuery<{ id: number }>(
+      orgId,
+      byId
+        ? `SELECT id FROM serial_units
+            WHERE id = $1 AND organization_id = $2 LIMIT 1`
+        : `SELECT id FROM serial_units
+            WHERE normalized_serial = UPPER(TRIM($1)) AND organization_id = $2 LIMIT 1`,
+      [byId ? numeric : refRaw, orgId],
+    );
+    return r.rows[0]?.id ?? 0;
+  } catch {
+    return 0;
   }
 }
 
@@ -81,20 +130,15 @@ async function holdAction(formData: FormData): Promise<void> {
     redirect('/admin/inventory/holds?error=missing_input');
   }
 
-  // ref may be either a numeric id or a serial string
-  let serialUnitId = Number(refRaw);
-  if (!Number.isFinite(serialUnitId) || serialUnitId <= 0) {
-    try {
-      const lookup = await queryRaw<{ id: number }>(
-        `SELECT id FROM serial_units WHERE normalized_serial = UPPER(TRIM($1)) LIMIT 1`,
-        [refRaw],
-      );
-      serialUnitId = lookup[0]?.id ?? 0;
-    } catch {
-      serialUnitId = 0;
-    }
-  }
-  if (!Number.isFinite(serialUnitId) || serialUnitId <= 0) {
+  // A server action is its own POST entrypoint — the page's render-time guard
+  // does not gate it, so this re-gates permission AND takes the org from the
+  // session here, never from the form.
+  const user = await requirePermission('sku_stock.adjust', { enforce: true });
+
+  // ref may be either a numeric id or a serial string; either way it only
+  // resolves against units this org owns.
+  const serialUnitId = await resolveOwnedUnitId(refRaw, user.organizationId);
+  if (serialUnitId <= 0) {
     redirect('/admin/inventory/holds?error=not_found');
   }
 
@@ -113,9 +157,16 @@ async function releaseAction(formData: FormData): Promise<void> {
   const reason = String(formData.get('reason') ?? '').trim() || null;
   if (!Number.isFinite(id) || id <= 0) return;
 
+  const user = await requirePermission('sku_stock.adjust', { enforce: true });
+
+  // The id arrives from the form, so re-check ownership before the write —
+  // releaseUnit() itself takes no orgId.
+  const serialUnitId = await resolveOwnedUnitId(String(id), user.organizationId);
+  if (serialUnitId <= 0) return;
+
   try {
     await releaseUnit({
-      serialUnitId: id,
+      serialUnitId,
       reason,
       forceStatus,
       actorStaffId: null,
@@ -137,11 +188,11 @@ export default async function HoldsAdminPage({
 }: {
   searchParams: Promise<{ error?: string }>;
 }) {
-  await requirePermission('admin.view', { enforce: true });
+  const user = await requirePermission('admin.view', { enforce: true });
 
   const params = await searchParams;
   const errorCode = params.error ?? null;
-  const held = await loadHeldUnits();
+  const held = await loadHeldUnits(user.organizationId);
 
   const heldColumns: DataTableColumn<HeldUnitRow>[] = [
     {
