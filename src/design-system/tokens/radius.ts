@@ -120,6 +120,28 @@ export function cornerClass(role: CornerRole): string {
 }
 
 /**
+ * The ONE soft corner on an ops surface: the composer-shell family.
+ *
+ * `OmnichannelComposerDock` is a declared carve-out from the zero-radius law —
+ * it is the ChatGPT-style prompt dock, and its shell (`rounded-2xl`), its
+ * commit control (`rounded-full`) and its footer track
+ * (`SlicedActionDock`'s `COMPOSER_PILL_TRACK`) have always been soft. Three
+ * places had that corner as a literal and nothing named it, so a fourth
+ * surface welded to the same shell had no way to match it except by guessing.
+ *
+ * It is deliberately NOT a `CornerRole`. The role ladder is the ops scale and
+ * every non-`pill` rung renders flush; adding a soft rung there would hand
+ * every workbench CTA a way to round itself. This is a named exemption for one
+ * shell family, and a call site that reaches for it is claiming membership in
+ * that family — which is checkable in review, unlike `rounded-2xl`.
+ *
+ * Law: `.claude/rules/kinetic-ledger.md` — ops chrome is flush-square; the
+ * composer dock and the kiosk counter face are the exemptions, and neither is
+ * a licence to round anything else.
+ */
+export const COMPOSER_SHELL_CORNER = 'rounded-2xl';
+
+/**
  * Concentric inner corner: **inner = outer − padding**.
  *
  * A box nested inside a rounded container looks wrong unless its radius is the
