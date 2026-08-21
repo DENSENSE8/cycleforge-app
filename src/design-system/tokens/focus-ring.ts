@@ -23,6 +23,20 @@
  *                INSET ring — an offset ring would paint outside the cell and
  *                be clipped by adjacent cells / the frozen pane. (Pending grid
  *                editable cells; the Sheets navigate-mode cell cursor.)
+ *  - `halo`    — a container that OWNS the focus affordance for a composite
+ *                built from several boxes (`:focus-within`): a 2px tinted ring
+ *                and no border shift, because the halo's job is to trace the
+ *                whole silhouette while each part keeps its own edge.
+ *                (`WeldedStack` — the receive panel welded to the notes
+ *                composer.)
+ *  - `grouped` — a part INSIDE such a composite, following its container's
+ *                focus (`group-focus-within:`): the same border shift as
+ *                `wrapper`, scoped to the Tailwind `group` on that container.
+ *                It exists because an outline cannot change colour halfway up
+ *                a single shape: without it the welded panel kept its tone
+ *                border while the composer below went blue, and the seam the
+ *                weld exists to erase reappeared as a colour break. Requires
+ *                `group` on the container.
  *
  * Tones are SEMANTIC (accent/danger/warning/success/neutral) — not the 9 raw
  * Tailwind shades the old recipes sprawled across. `accent` (blue) is the
@@ -37,7 +51,7 @@
  * `focus:ring-*` recipe (guard: control-size sibling `focus-ring-tokens.guard.test.ts`).
  */
 
-export type FocusArchetype = 'field' | 'control' | 'wrapper' | 'cell';
+export type FocusArchetype = 'field' | 'control' | 'wrapper' | 'cell' | 'halo' | 'grouped';
 export type FocusTone = 'accent' | 'danger' | 'warning' | 'success' | 'neutral';
 
 const FIELD_BASE = 'outline-none focus:ring-2';
@@ -66,6 +80,23 @@ const WRAPPER: Record<FocusTone, string> = {
   neutral: 'focus-within:border-border-strong',
 };
 
+const HALO_BASE = 'focus-within:ring-2';
+const HALO: Record<FocusTone, string> = {
+  accent: 'focus-within:ring-blue-500/20',
+  danger: 'focus-within:ring-red-500/20',
+  warning: 'focus-within:ring-amber-500/20',
+  success: 'focus-within:ring-emerald-500/20',
+  neutral: 'focus-within:ring-border-strong/15',
+};
+
+const GROUPED: Record<FocusTone, string> = {
+  accent: 'group-focus-within:border-blue-500',
+  danger: 'group-focus-within:border-red-500',
+  warning: 'group-focus-within:border-amber-500',
+  success: 'group-focus-within:border-emerald-500',
+  neutral: 'group-focus-within:border-border-strong',
+};
+
 const CELL_BASE = 'outline-none focus-visible:ring-2 focus-visible:ring-inset';
 const CELL: Record<FocusTone, string> = {
   accent: 'focus-visible:ring-blue-500/40',
@@ -83,5 +114,7 @@ export function focusRing(archetype: FocusArchetype = 'field', tone: FocusTone =
   if (archetype === 'field') return `${FIELD_BASE} ${FIELD[tone]}`;
   if (archetype === 'control') return `${CONTROL_BASE} ${CONTROL[tone]}`;
   if (archetype === 'cell') return `${CELL_BASE} ${CELL[tone]}`;
+  if (archetype === 'halo') return `${HALO_BASE} ${HALO[tone]}`;
+  if (archetype === 'grouped') return GROUPED[tone];
   return WRAPPER[tone];
 }

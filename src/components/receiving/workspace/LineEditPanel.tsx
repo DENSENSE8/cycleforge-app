@@ -31,9 +31,12 @@ import {
   staggerRevealContainer,
   STAGGER_REVEAL_STEP,
 } from '@/design-system/primitives/StaggerReveal';
-import { ReceiveFeedbackRegion } from './ReceiveFeedbackRegion';
-import { ReceiveFeedbackTester } from './ReceiveFeedbackTester';
-import { receiveFeedbackState } from './receive-feedback-scenarios';
+import {
+  ReceiveFeedbackRegion,
+  type ReceiveReconcileStatus,
+} from './ReceiveFeedbackRegion';
+import { WeldedStack } from './WeldedFeedbackPanel';
+import type { ReceiveResult } from './line-edit/hooks/useReceiveAction';
 import { WorkspaceActionFeedbackSlot } from './WorkspaceActionFeedbackSlot';
 import type { InlineActionFeedbackPayload } from './InlineActionFeedbackCard';
 import { ReceivingPhotoPeek } from './line-edit/ReceivingPhotoPeek';
@@ -684,26 +687,48 @@ export function LineEditPanel({
     [focusStep],
   );
 
-  /* ── Dev tester for the welded receive panel ───────────────────────────────
-   * Every state below a clean success needs a real Zoho round trip, a live
-   * realtime verdict, or a broken connection to reach — so refining their
-   * paint had no workflow. The ⓘ opens the tester (development only); a real
-   * receive always outranks the selection, so a scenario left up cannot mask a
-   * genuine verdict arriving. Fixtures: `receive-feedback-scenarios.ts`.
+  /* ── Replay the last receive (the composer's ⓘ) ────────────────────────────
+   * Dismissing the receive panel used to destroy the only record of what just
+   * happened: `setReceiveResult(null)` and the verdict was gone. An operator
+   * who cleared it to get the note field back — or who moved a carton and came
+   * back — had no way to re-read whether inventory actually took it.
+   *
+   * So the last verdict is REMEMBERED here, keyed to the line it belongs to.
+   * The key is the whole safety property: a "Receive complete" replayed above
+   * a different carton's composer would be a lie about which carton it
+   * describes, and the panel does not name one. No line match, no offer — the
+   * ⓘ falls back to its Displays → Timeline job.
+   *
+   * Memory is per-mount and in-process on purpose. This is "what did I just
+   * do", not an audit trail; the durable record is the carton's timeline, one
+   * click away through the same glyph.
    * ─────────────────────────────────────────────────────────────────────── */
-  const receiveTesterEnabled = process.env.NODE_ENV !== 'production';
-  const [receiveTesterOpen, setReceiveTesterOpen] = useState(false);
-  const [receiveScenario, setReceiveScenario] = useState<{ id: string; at: number } | null>(null);
+  const [remembered, setRemembered] = useState<{
+    lineId: number;
+    result: ReceiveResult;
+    reconcileStatus: ReceiveReconcileStatus;
+  } | null>(null);
+  const [replayFor, setReplayFor] = useState<number | null>(null);
 
+  useEffect(() => {
+    if (!c.receiveResult) return;
+    setRemembered({ lineId: row.id, result: c.receiveResult, reconcileStatus: 'pending' });
+  }, [c.receiveResult, row.id]);
+
+  const rememberReconcile = useCallback((status: ReceiveReconcileStatus) => {
+    setRemembered((prev) =>
+      prev && prev.reconcileStatus !== status ? { ...prev, reconcileStatus: status } : prev,
+    );
+  }, []);
+
+  // The line guard, not a reset effect: switching cartons makes the remembered
+  // verdict unreadable rather than racing an effect to clear it.
+  const recentVerdict = remembered?.lineId === row.id ? remembered : null;
   const liveReceiveFeedback = Boolean(c.receiving || c.receiveResult);
-  const scenarioState =
-    receiveTesterEnabled && receiveScenario && !liveReceiveFeedback
-      ? receiveFeedbackState(receiveScenario.id, receiveScenario.at)
-      : null;
+  const replaying = replayFor === row.id && recentVerdict != null && !liveReceiveFeedback;
 
-  const feedbackReceiving = scenarioState ? scenarioState.receiving : c.receiving;
-  const feedbackResult = scenarioState ? scenarioState.receiveResult : c.receiveResult;
-  const showReceiveFeedback = Boolean(feedbackReceiving || feedbackResult);
+  const feedbackResult = c.receiveResult ?? (replaying ? recentVerdict.result : null);
+  const showReceiveFeedback = Boolean(c.receiving || feedbackResult);
 
   const reduceMotion = useReducedMotion();
   const revealContainer = staggerRevealContainer(reduceMotion ? 0 : STAGGER_REVEAL_STEP);
@@ -978,26 +1003,24 @@ export function LineEditPanel({
                           {terminalVm.disabledReason}
                         </p>
                       ) : null}
-                      {receiveTesterEnabled && receiveTesterOpen ? (
-                        <ReceiveFeedbackTester
-                          activeId={receiveScenario?.id ?? null}
-                          onPick={(id) => setReceiveScenario({ id, at: Date.now() })}
-                          onClear={() => setReceiveScenario(null)}
-                          onClose={() => setReceiveTesterOpen(false)}
-                          onOpenStatusHistory={() => openDisplays('timeline')}
-                        />
-                      ) : null}
-                      {/* No margin: the panel is WELDED to the composer below
-                          (`weldTop`), so any gap here would break the shared
-                          silhouette the peel-up hinge depends on. */}
+                      {/* One box for the pair. No margin between them — a gap
+                          would break the shared silhouette the peel hinges on
+                          — and the focus ring lives out here, on the whole
+                          shape, rather than around the composer half only. */}
+                      <WeldedStack welded={showReceiveFeedback}>
                       {showReceiveFeedback ? (
                         <ReceiveFeedbackRegion
-                          receiving={feedbackReceiving}
+                          receiving={c.receiving}
                           receiveResult={feedbackResult}
+                          replay={replaying}
+                          reconcileStatus={recentVerdict?.reconcileStatus}
+                          onReconcileStatus={rememberReconcile}
                           responseExpanded={c.responseExpanded}
                           setResponseExpanded={c.setResponseExpanded}
                           onDismiss={() => {
-                            setReceiveScenario(null);
+                            // Clears what is SHOWN, never the memory — that is
+                            // what makes the ⓘ able to bring it back.
+                            setReplayFor(null);
                             c.setReceiveResult(null);
                             c.setResponseExpanded(false);
                           }}
@@ -1044,22 +1067,24 @@ export function LineEditPanel({
                           // carries these stamps plus the carton's audit rows.
                           // The dialog stayed for surfaces with no right edge.
                           onOpenStatusHistory={() => openDisplays('timeline')}
-                          // Dev only: the corner is ONE slot, so the tester
-                          // takes it rather than a second glyph appearing
-                          // beside it. Production keeps ⓘ → Timeline; the
-                          // tester carries its own Timeline button so the
-                          // route is never lost.
+                          // The corner is ONE slot. When this line has a
+                          // receive to re-read, the glyph offers it; otherwise
+                          // it keeps its Timeline job above. Never both, and
+                          // never a second glyph beside it.
                           headerAction={
-                            receiveTesterEnabled
+                            recentVerdict && !liveReceiveFeedback
                               ? {
-                                  label: 'Receive panel dev tester',
-                                  pressed: receiveTesterOpen,
-                                  onClick: () => setReceiveTesterOpen((v) => !v),
+                                  label: replaying
+                                    ? 'Hide the last receive result'
+                                    : 'Show the last receive result',
+                                  pressed: replaying,
+                                  onClick: () => setReplayFor(replaying ? null : row.id),
                                 }
                               : undefined
                           }
                         />
                       ) : null}
+                      </WeldedStack>
                     </div>
                   </div>
                 }
