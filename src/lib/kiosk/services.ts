@@ -7,7 +7,7 @@
  */
 
 import {
-  ReceivingModePickup,
+  PackageCheck,
   ReceivingModeRepair,
   SalesPrice,
   RefreshCw,
@@ -68,7 +68,9 @@ export const KIOSK_SERVICES: ReadonlyArray<KioskServiceTile> = [
     blurb: 'Collect a ready order',
     status: 'live',
     welcome: true,
-    icon: ReceivingModePickup,
+    // PackageCheck — collect a ready order. ShoppingCart is reserved for the
+    // right utility Cart slot; leave ReceivingModePickup alone for receiving.
+    icon: PackageCheck,
   },
 ];
 

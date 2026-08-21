@@ -63,10 +63,30 @@ test('PO line meta chips: SKU precedes condition (price no longer mid-row)', () 
   assert.ok(conditionIdx < priceIdx, 'UnitPriceChip must be last among identity chips');
 });
 
+test('PO line meta: SKU uses last-8 lock (displayWidth last8)', () => {
+  assert.ok(
+    /displayWidth=["']last8["']/.test(SRC),
+    'PoLineRow SkuScanRefChip must lock last-8 width (Arrival/Unbox SKU face parity)',
+  );
+});
+
 test('PO line meta: empty SKU uses EmptySkuChipFace (not a bare em-dash)', () => {
   assert.ok(
     /EmptySkuChipFace/.test(SRC),
     'PoLineRow must render EmptySkuChipFace when line.sku is blank',
+  );
+});
+
+test('PO line meta: Arrival unitsChrome=false still paints condition (read-only)', () => {
+  // unitsChrome gates editors only — condition chip must not be omitted when false.
+  assert.ok(
+    /ConditionGradeChip/.test(SRC),
+    'PoLineRow must always render ConditionGradeChip in meta',
+  );
+  assert.doesNotMatch(
+    SRC,
+    /condition=\{\s*unitsChrome\s*\?/,
+    'must not gate the condition column on unitsChrome (layout collapse fork)',
   );
 });
 

@@ -90,8 +90,8 @@ interface LinePoItemsSectionProps {
   /** Serials cell click → Units Displays. */
   onViewAllUnits?: (line: ReceivingLineRow) => void;
   /**
-   * When false, meta collapses to qty | SKU | price and unit editors stay off
-   * (Arrival door flow). Defaults true.
+   * When false (Arrival door flow), unit editors / serial stamp stay off;
+   * PoLineRow still paints Unbox five-track meta. Defaults true.
    */
   unitsChrome?: boolean;
   /** RETURN match → Displays Timeline (full serial genealogy). */

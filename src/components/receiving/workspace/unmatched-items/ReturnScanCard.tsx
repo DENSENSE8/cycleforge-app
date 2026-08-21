@@ -1,27 +1,24 @@
 'use client';
 
-import { ChevronDown } from '@/components/Icons';
-import { ConditionGradeChip, EmptySkuChipFace, UnitPriceChip } from '@/components/ui/CopyChip';
-import { META_COL } from '@/components/ui/RowMetaColumns';
-import { QUEUE_ROW } from '@/components/ui/queue-row-chrome';
+import { useMemo } from 'react';
 import { SerialCard } from '@/components/receiving/workspace/SerialCard';
-import { ProgressBadge } from '@/components/receiving/workspace/PoLineBadges';
-import { PoLineMetaGrid } from '@/components/receiving/workspace/PoLineMetaGrid';
-import { PoLineHeaderThumb } from '@/components/receiving/workspace/PoLineHeaderThumb';
+import { PoLineRow } from '@/components/receiving/workspace/PoLineRow';
 import { NoSerialControl } from '@/components/receiving/workspace/line-edit/NoSerialControl';
 import { PoLineCaptureRow } from '@/components/receiving/workspace/line-edit/PoLineCaptureRow';
-import { cn } from '@/utils/_cn';
-import { PO_LINE_HEADER_FACE } from '@/components/receiving/workspace/station-scan-face';
 import { resolveCaptureEntry } from '@/components/receiving/workspace/line-receive-mode';
-import { UNFOUND_PO_DISPLAY } from '@/lib/receiving/po-group-title';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import {
+  UNFOUND_PO_DISPLAY,
+  UNFOUND_PO_SENTINEL,
+} from '@/lib/receiving/po-group-title';
 
 /**
  * Empty unfound carton — "scan the first return" affordance.
  *
- * Unbox dual loci (`dockOwnsCapture`): same invariant capture face as found /
- * lined unfound — always-collapsed Tags (`USED_A`) + open Serial with autofocus.
- * Photos stays off until a real line exists (item-scoped strip needs a
- * receiving line id).
+ * Ledger face is Unbox {@link PoLineRow} (thumb · title · five-track meta) —
+ * never a hand-built meta twin. Capture body mounts only when
+ * {@link body} is `serial` and {@link unitsChrome} is true (Unbox dual loci);
+ * Arrival door flow keeps unitsChrome false so this card is face-only when shown.
  */
 export function ReturnScanCard({
   condition,
@@ -36,6 +33,7 @@ export function ReturnScanCard({
   dockOwnsCapture = false,
   receivingId = null,
   staffId = 0,
+  unitsChrome = true,
 }: {
   condition: string;
   onConditionChange: (next: string) => void;
@@ -49,9 +47,15 @@ export function ReturnScanCard({
   dockOwnsCapture?: boolean;
   receivingId?: number | null;
   staffId?: number;
+  /**
+   * When false (Arrival door flow), paint PoLineRow face only — no serial
+   * capture under the row. Defaults true (Unbox / packing scan-first).
+   */
+  unitsChrome?: boolean;
 }) {
+  const showCapture = unitsChrome && body === 'serial';
   const captureRow =
-    body === 'serial' &&
+    showCapture &&
     resolveCaptureEntry({
       dockOwnsCapture,
       receivingId,
@@ -72,51 +76,75 @@ export function ReturnScanCard({
         )
     : undefined;
 
+  const stubLine = useMemo<ReceivingLineRow>(() => {
+    // Map operator "Unfound order" back to the DB sentinel so
+    // receivingWorkspaceLineTitle → UNFOUND_PO_DISPLAY (same as lined stubs).
+    const itemName =
+      title === UNFOUND_PO_DISPLAY || title === UNFOUND_PO_SENTINEL
+        ? UNFOUND_PO_SENTINEL
+        : title;
+    return {
+      id: receivingId != null && receivingId > 0 ? -receivingId : -1,
+      receiving_id: receivingId != null && receivingId > 0 ? receivingId : null,
+      tracking_number: null,
+      carrier: null,
+      zoho_item_id: null,
+      zoho_line_item_id: null,
+      zoho_purchase_receive_id: null,
+      zoho_purchaseorder_id: null,
+      zoho_purchaseorder_number: null,
+      item_name: itemName,
+      sku: null,
+      quantity_received: 0,
+      quantity_expected: 1,
+      qa_status: 'PENDING',
+      workflow_status: 'ARRIVED',
+      disposition_code: 'HOLD',
+      condition_grade: condition || 'USED_A',
+      disposition_audit: [],
+      needs_test: true,
+      assigned_tech_id: null,
+      zoho_sync_source: null,
+      zoho_last_modified_time: null,
+      zoho_synced_at: null,
+      receiving_type: 'PO',
+      notes: null,
+      created_at: null,
+      last_activity_at: null,
+      image_url: null,
+      source_platform: null,
+      receiving_source: 'unmatched',
+      serials: [],
+      unit_price: null,
+      serial_absent: serialAbsent ?? false,
+      serial_absent_reason: serialAbsentReason ?? null,
+    };
+  }, [
+    condition,
+    receivingId,
+    serialAbsent,
+    serialAbsentReason,
+    title,
+  ]);
+
   return (
     <div
-      className={cn(
-        'relative min-w-0 overflow-hidden rounded-none border-0 border-b border-border-soft',
-        QUEUE_ROW.selectedStationClass,
-      )}
+      className="relative min-w-0"
       aria-current="true"
       data-return-scan-capture={captureRow || undefined}
       data-receiving-id={receivingId != null && receivingId > 0 ? receivingId : undefined}
       data-staff-id={staffId > 0 ? staffId : undefined}
     >
-      <div className="w-full min-w-0 py-0 pl-0 pr-0 text-left">
-        <div
-          className={cn(
-            'grid min-w-0',
-            PO_LINE_HEADER_FACE.minH,
-            PO_LINE_HEADER_FACE.thumbGrid,
-          )}
-        >
-          <PoLineHeaderThumb />
-          <div className="flex min-h-0 min-w-0 flex-col justify-between self-stretch">
-            <div className="flex min-w-0 items-start px-2 py-1">
-              <p className="min-w-0 flex-1 text-role-caption font-semibold leading-tight text-text-default">
-                {title}
-              </p>
-              <span
-                className={cn(
-                  'flex shrink-0 items-center justify-center self-center',
-                  META_COL.dotTrackWide,
-                )}
-                aria-hidden
-              >
-                <ChevronDown className="h-3.5 w-3.5 text-text-faint" />
-              </span>
-            </div>
-            <PoLineMetaGrid
-              qty={<ProgressBadge received={0} expected={1} />}
-              sku={<EmptySkuChipFace dense />}
-              condition={<ConditionGradeChip grade={condition} dense />}
-              price={<UnitPriceChip amount={null} dense />}
-            />
-          </div>
-        </div>
-      </div>
-      {body === 'serial' ? (
+      <ul className="flex min-w-0 flex-col gap-0">
+        <PoLineRow
+          line={stubLine}
+          isActive
+          readOnly
+          unitsChrome={unitsChrome}
+          animateLayout={false}
+        />
+      </ul>
+      {showCapture ? (
         <div className="min-w-0 overflow-hidden border-t border-border-hairline bg-surface-card">
           <div className="min-w-0 bg-surface-card px-0 py-0">
             {captureRow ? (

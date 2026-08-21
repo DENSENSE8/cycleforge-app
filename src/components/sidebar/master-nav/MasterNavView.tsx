@@ -28,6 +28,9 @@ import { SpineTopPins } from './SpineTopPins';
  * Global search + AI stay in GlobalHeader (`GlobalHeaderSearch`). L2 Mode +
  * Recents + Quick Access pins/actions stay in GlobalHeader. Page selection is
  * the selected body row — not a twin label in the top band.
+ *
+ * **Face:** `font-spine` (Overpass) is local to this column. App sans /
+ * condensed / mono cuts are unchanged.
  */
 export function MasterNavView({
   activePage,
@@ -51,7 +54,7 @@ export function MasterNavView({
   className?: string;
 }) {
   return (
-    <div className={cn('isolate flex h-full min-h-0 flex-col', className)}>
+    <div className={cn('isolate flex h-full min-h-0 flex-col font-spine', className)}>
       {/* The band's HEIGHT is geometry, not content. The spine is a flex SIBLING
           of the header+content column (see ResponsiveLayout), so this primary face
           is what puts the spine's bottom hairline on the same Y as the

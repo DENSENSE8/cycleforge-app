@@ -101,8 +101,9 @@ interface Props {
   onEditConditionInDock?: (line: ReceivingLineRow) => void;
   onEditSerialInDock?: (line: ReceivingLineRow) => void;
   /**
-   * When false, meta collapses to qty | SKU | price (Arrival door flow — no
-   * condition · serial / Units chrome). Defaults true.
+   * When false (Arrival door flow), omit interactive condition · serial /
+   * Units editors — meta still paints the Unbox five-track face with
+   * read-only chips / honest empty serial. Defaults true.
    */
   unitsChrome?: boolean;
 }
@@ -306,54 +307,70 @@ export function PoLineRow({
                     value={line.sku as string}
                     display={getLast8(line.sku)}
                     dense
+                    displayWidth="last8"
                   />
                 ) : (
                   <EmptySkuChipFace dense />
                 )
               }
               condition={
-                unitsChrome ? (
-                  onEditConditionInDock && !readOnly ? (
-                    <HoverTooltip label="Edit condition in dock" asChild>
-                      <button
-                        type="button"
-                        aria-label="Edit condition in dock"
-                        className={cn(
-                          'ds-raw-button flex h-full min-w-0 items-center',
-                          focusRing('control', 'neutral'),
-                        )}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setActiveSinkId(`po-line:${line.id}`);
-                          if (!isActive) dispatchSelectLine(line);
-                          onEditConditionInDock(line);
-                          setTimeout(() => emitReceiving('receiving-focus-scan'), 60);
-                        }}
-                      >
-                        <ConditionGradeChip
-                          grade={
-                            isActive && activeConditionOverride
-                              ? activeConditionOverride
-                              : line.condition_grade
-                          }
-                          dense
-                        />
-                      </button>
-                    </HoverTooltip>
-                  ) : (
-                    <ConditionGradeChip
-                      grade={
-                        isActive && activeConditionOverride
-                          ? activeConditionOverride
-                          : line.condition_grade
-                      }
-                      dense
-                    />
-                  )
-                ) : undefined
+                unitsChrome && onEditConditionInDock && !readOnly ? (
+                  <HoverTooltip label="Edit condition in dock" asChild>
+                    <button
+                      type="button"
+                      aria-label="Edit condition in dock"
+                      className={cn(
+                        'ds-raw-button flex h-full min-w-0 items-center',
+                        focusRing('control', 'neutral'),
+                      )}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveSinkId(`po-line:${line.id}`);
+                        if (!isActive) dispatchSelectLine(line);
+                        onEditConditionInDock(line);
+                        setTimeout(() => emitReceiving('receiving-focus-scan'), 60);
+                      }}
+                    >
+                      <ConditionGradeChip
+                        grade={
+                          isActive && activeConditionOverride
+                            ? activeConditionOverride
+                            : line.condition_grade
+                        }
+                        dense
+                      />
+                    </button>
+                  </HoverTooltip>
+                ) : (
+                  <ConditionGradeChip
+                    grade={
+                      isActive && activeConditionOverride
+                        ? activeConditionOverride
+                        : line.condition_grade
+                    }
+                    dense
+                  />
+                )
               }
               serial={
-                !unitsChrome ? undefined : serialsLoading ? (
+                !unitsChrome ? (
+                  <span className="flex h-full min-w-0 w-full items-center gap-0.5 overflow-hidden px-2 py-1">
+                    <Barcode
+                      className="h-3 w-3 shrink-0 text-emerald-500"
+                      aria-hidden
+                    />
+                    <span className="min-w-0 truncate tabular-nums text-text-muted normal-case tracking-normal">
+                      {serialNumbers.length > 0
+                        ? serialNumbers
+                            .slice(-SERIAL_PREVIEW_CAP)
+                            .map((sn) => getLast8(sn))
+                            .join(', ')
+                        : line.serial_absent
+                          ? 'No serial'
+                          : '—'}
+                    </span>
+                  </span>
+                ) : serialsLoading ? (
                   <SerialChipSkeleton width="w-fit max-w-full" dense />
                 ) : serialNumbers.length > 0 ||
                   canOpenUnits ||

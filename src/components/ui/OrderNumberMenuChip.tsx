@@ -11,7 +11,8 @@
  *     row travel). Placement lives in {@link CopyChipHoverMenu}.
  *   • Dense uppercase verbs + ExternalLink / Pencil
  *
- * Used by Unbox History / Receiving LedgerGrid ORDER cells. Plain
+ * Used by Unbox History / Receiving LedgerGrid ORDER cells and the outbound
+ * orders queue identity cell (To-Ship / Packed / …). Plain
  * {@link OrderIdChip} remains for read-only / non-menu surfaces.
  */
 

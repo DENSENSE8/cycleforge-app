@@ -17,9 +17,9 @@ import { getAssignmentsWithStaff } from '@/lib/neon/assignments-queries';
 import { isPrimaryTechStaff } from '@/lib/neon/staff-stations-queries';
 import {
   findByNormalizedSerial,
-  findShippedOrderByTsnSerial,
   findShippedOrderForSerialUnit,
 } from '@/lib/neon/serial-units-queries';
+import { findShippedOrderByTsnSerial } from '@/lib/neon/tsn-shipped-order';
 import type { JourneyDimension } from '@/lib/operations/journey-helpers';
 import {
   formatPhotoSearchForPrompt,

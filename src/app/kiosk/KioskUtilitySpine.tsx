@@ -17,7 +17,7 @@
  * chrome.
  */
 
-import { AlertTriangle, FileText, Ticket } from '@/components/Icons';
+import { AlertTriangle, FileText, ShoppingCart } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { cn } from '@/utils/_cn';
 import {
@@ -39,11 +39,9 @@ interface KioskUtilitySlot {
 
 /** Order is the rail order, top → bottom. Cart is always first. */
 export const KIOSK_UTILITY_SLOTS: readonly KioskUtilitySlot[] = [
-  // Ticket, not ShoppingCart or Receipt: the left spine already spends both —
-  // Pickup is `ReceivingModePickup` (= ShoppingCart) and Retail is `SalesPrice`
-  // (= Receipt). One glyph must not mean two things on one screen, and "the
-  // ticket" is the noun the rest of this surface already uses for the visit.
-  { id: 'cart', label: 'Cart', Icon: Ticket },
+  // ShoppingCart is the checkout noun. Pickup on the left command spine uses
+  // PackageCheck so one glyph never means two things on one screen.
+  { id: 'cart', label: 'Cart', Icon: ShoppingCart },
   { id: 'paperwork', label: 'Paperwork', Icon: FileText },
   { id: 'triage', label: 'Triage', Icon: AlertTriangle },
 ];

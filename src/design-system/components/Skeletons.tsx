@@ -13,7 +13,7 @@ interface SkeletonProps {
 export function SkeletonBase({ className = '', width, height, circle }: SkeletonProps) {
   return (
     <div
-      className={`bg-surface-strong animate-pulse ${circle ? 'rounded-full' : 'rounded-md'} ${className}`}
+      className={`bg-surface-strong animate-pulse ${circle ? 'rounded-full' : 'rounded-none'} ${className}`}
       style={{
         width: width ?? '100%',
         height: height ?? '1rem',

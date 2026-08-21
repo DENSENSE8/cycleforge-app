@@ -120,6 +120,18 @@ module.exports = {
       to: { path: '^src/design-system/primitives/DropdownMenu' },
     },
     {
+      name: 'pack-photos-live-in-carton-context-photosCell',
+      severity: 'error',
+      comment:
+        'Pack send-to-phone mounts via CartonContextCard photosCell inside ' +
+        'PackOrderIdentity — never a sibling beside the card on PackOrderPanel. ' +
+        'Unbox Photos is the chrome SoT; a flex gap-2 twin was the pack display fork.',
+      from: {
+        path: '^src/components/packer/PackOrderPanel\\.tsx$',
+      },
+      to: { path: '^src/components/packer/PackSendToPhoneButton\\.tsx$' },
+    },
+    {
       name: 'no-retired-rack-numeric-step',
       severity: 'error',
       comment:

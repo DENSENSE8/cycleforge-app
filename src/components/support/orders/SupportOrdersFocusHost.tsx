@@ -24,6 +24,7 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 
 import {
   buildSectionTabs,
+  StationPanelRoot,
   StationScanPaneHost,
   StationWorkbench,
 } from '@/components/station/workbench';
@@ -47,7 +48,6 @@ import {
 } from '@/components/shipped/details-panel/shipped-details-hooks';
 import { deriveShippedHeaderMeta } from '@/components/shipped/details-panel/shipped-details-logic';
 import type { ShippedActiveInput } from '@/components/shipped/stacks/types';
-import { PaneHeaderCloseButton } from '@/components/ui/pane-header';
 import { SHIPPING_ORDERS_PATH, shippingOrdersHref } from '@/lib/shipping/orders-desk';
 import { SupportOrderIdentity } from './SupportOrderIdentity';
 import { useSupportTicketClaimHost } from '@/components/support/service-workspace/useSupportTicketClaimHost';
@@ -277,7 +277,7 @@ function SupportOrderFocus({
   return (
     <motion.div
       key={shipped.id}
-      className="relative flex h-full min-h-0 w-full flex-col bg-surface-canvas"
+      className="relative flex h-full min-h-0 w-full flex-col"
       initial={paneMotion.initial}
       animate={paneMotion.animate}
       exit={paneMotion.exit}
@@ -288,93 +288,95 @@ function SupportOrderFocus({
         centerTestId="support-orders-station-center"
         utilityRail={!activeSideTab ? paneUtilityRow : null}
         center={
-          <div className="relative flex h-full min-h-0 w-full flex-col">
-            <StationContextBar
-              identity={<SupportOrderIdentity order={shipped} />}
-              moreDetails={
-                <StationMoreDetails>
-                  <HoverTooltip label="Notes">
-                    <IconButton
-                      size="sm"
-                      icon={<FileText className="h-3.5 w-3.5" />}
-                      ariaLabel="Edit notes"
-                      aria-pressed={activeInput === 'notes'}
-                      onClick={() =>
-                        setActiveInput((prev) => (prev === 'notes' ? 'none' : 'notes'))
-                      }
-                      className={
-                        activeInput === 'notes'
-                          ? 'rounded-md bg-surface-sunken text-text-default'
-                          : undefined
-                      }
-                    />
-                  </HoverTooltip>
-                  <HoverTooltip label="Out of stock">
-                    <IconButton
-                      size="sm"
-                      icon={<AlertTriangle className="h-3.5 w-3.5" />}
-                      ariaLabel="Toggle out of stock"
-                      aria-pressed={activeInput === 'out_of_stock'}
-                      onClick={() =>
-                        setActiveInput((prev) =>
-                          prev === 'out_of_stock' ? 'none' : 'out_of_stock',
-                        )
-                      }
-                      className={
-                        activeInput === 'out_of_stock'
-                          ? 'rounded-md bg-surface-sunken text-text-default'
-                          : undefined
-                      }
-                    />
-                  </HoverTooltip>
-                  <HoverTooltip label="Open on To ship">
-                    <IconButton
-                      size="sm"
-                      icon={<ExternalLink className="h-3.5 w-3.5" />}
-                      ariaLabel="Open on To ship"
-                      onClick={() =>
-                        router.push(shippingOrdersHref({ openOrderId: Number(shipped.id) }))
-                      }
-                    />
-                  </HoverTooltip>
-                  <PaneHeaderCloseButton
-                    onClick={onClose}
-                    ariaLabel="Back to orders queue"
-                    title="Back to orders queue"
-                  />
-                </StationMoreDetails>
-              }
-            />
+          <StationPanelRoot>
+            <div className="relative flex min-h-0 flex-1 flex-col overflow-visible">
+              <StationContextBar
+                placement="flow"
+                identity={
+                  <SupportOrderIdentity order={shipped} onExitToList={onClose} />
+                }
+                moreDetails={
+                  <StationMoreDetails>
+                    <HoverTooltip label="Notes">
+                      <IconButton
+                        size="sm"
+                        icon={<FileText className="h-3.5 w-3.5" />}
+                        ariaLabel="Edit notes"
+                        aria-pressed={activeInput === 'notes'}
+                        onClick={() =>
+                          setActiveInput((prev) => (prev === 'notes' ? 'none' : 'notes'))
+                        }
+                        className={
+                          activeInput === 'notes'
+                            ? 'rounded-md bg-surface-sunken text-text-default'
+                            : undefined
+                        }
+                      />
+                    </HoverTooltip>
+                    <HoverTooltip label="Out of stock">
+                      <IconButton
+                        size="sm"
+                        icon={<AlertTriangle className="h-3.5 w-3.5" />}
+                        ariaLabel="Toggle out of stock"
+                        aria-pressed={activeInput === 'out_of_stock'}
+                        onClick={() =>
+                          setActiveInput((prev) =>
+                            prev === 'out_of_stock' ? 'none' : 'out_of_stock',
+                          )
+                        }
+                        className={
+                          activeInput === 'out_of_stock'
+                            ? 'rounded-md bg-surface-sunken text-text-default'
+                            : undefined
+                        }
+                      />
+                    </HoverTooltip>
+                    <HoverTooltip label="Open on To ship">
+                      <IconButton
+                        size="sm"
+                        icon={<ExternalLink className="h-3.5 w-3.5" />}
+                        ariaLabel="Open on To ship"
+                        onClick={() =>
+                          router.push(shippingOrdersHref({ openOrderId: Number(shipped.id) }))
+                        }
+                      />
+                    </HoverTooltip>
+                  </StationMoreDetails>
+                }
+              />
 
-            <StationWorkbench
-              className="min-h-0 flex-1"
-              reserveScrollClearance={false}
-              reserveIdentityClearance="stacked"
-              scrollClassName="pb-28"
-              footer={
-                <ShippedPanelEditorDock
-                  shipped={shipped}
-                  activeInput={activeInput}
-                  setActiveInput={setActiveInput}
-                  showMarkAsShipped={false}
-                  showOutOfStock
-                  showNotes
-                  isOutOfStock={isOutOfStock}
-                  isSavingOutOfStock={isSavingOutOfStock}
-                  onSaveOutOfStock={(checked) => {
-                    void handleSaveOutOfStock(checked, () => setActiveInput('none'));
-                  }}
-                  shippingTrackingNumber={shippingTrackingNumber}
-                  onMarkShippedSuccess={() => {
-                    setActiveInput('none');
-                    onReload();
-                  }}
-                />
-              }
-            >
-              {orderContent}
-            </StationWorkbench>
-          </div>
+              <StationWorkbench
+                ambientWash={false}
+                className="relative z-0 flex-1 bg-transparent"
+                reserveScrollClearance={false}
+                reserveIdentityClearance={false}
+                bodyGap="none"
+                scrollClassName="pb-28"
+                footer={
+                  <ShippedPanelEditorDock
+                    shipped={shipped}
+                    activeInput={activeInput}
+                    setActiveInput={setActiveInput}
+                    showMarkAsShipped={false}
+                    showOutOfStock
+                    showNotes
+                    isOutOfStock={isOutOfStock}
+                    isSavingOutOfStock={isSavingOutOfStock}
+                    onSaveOutOfStock={(checked) => {
+                      void handleSaveOutOfStock(checked, () => setActiveInput('none'));
+                    }}
+                    shippingTrackingNumber={shippingTrackingNumber}
+                    onMarkShippedSuccess={() => {
+                      setActiveInput('none');
+                      onReload();
+                    }}
+                  />
+                }
+              >
+                {orderContent}
+              </StationWorkbench>
+            </div>
+          </StationPanelRoot>
         }
         displays={
           resolvedSideTab ? (

@@ -36,18 +36,18 @@
  */
 
 import type { ReactNode } from 'react';
+import {
+  STATION_DISPLAYS_PUSH_TOP_CELL,
+  STATION_DISPLAYS_PUSH_TOP_CLUSTER,
+} from '@/components/station/entity-context/station-identity-chrome';
 import { cn } from '@/utils/_cn';
 
 /**
- * Hit cell for one top-band verb — stretches to the band and re-enables
- * pointer events (the band itself is pass-through so the resize sash stays
- * grabbable under empty chrome).
- *
- * Mirrors `STATION_DISPLAYS_PUSH_TOP_CELL` in {@link StationDisplaysPushColumn}
- * so the maximize control and these verbs share one cell rhythm.
+ * Hit cell for one top-band verb — same square as maximize / close
+ * ({@link STATION_DISPLAYS_PUSH_TOP_CELL}). Alias kept so carton Macro
+ * compounds keep importing from this module.
  */
-export const STATION_DISPLAYS_HEADER_ACTION_CELL =
-  'pointer-events-auto flex h-full w-8 shrink-0 items-stretch';
+export const STATION_DISPLAYS_HEADER_ACTION_CELL = STATION_DISPLAYS_PUSH_TOP_CELL;
 
 /** Glyph size for a top-band verb — matches the maximize control's `h-3.5`. */
 export const STATION_DISPLAYS_HEADER_ACTION_GLYPH = 'h-3.5 w-3.5';
@@ -79,7 +79,7 @@ export function StationDisplaysHeaderActions({
   return (
     <div
       className={cn(
-        'pointer-events-auto flex h-full shrink-0 items-stretch gap-0.5',
+        STATION_DISPLAYS_PUSH_TOP_CLUSTER,
         className,
       )}
       data-testid={testId}

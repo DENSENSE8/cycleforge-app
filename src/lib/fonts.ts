@@ -1,4 +1,4 @@
-import { IBM_Plex_Mono, IBM_Plex_Sans_Condensed, Inter } from 'next/font/google';
+import { IBM_Plex_Mono, IBM_Plex_Sans_Condensed, Inter, Overpass } from 'next/font/google';
 
 /**
  * Kinetic Ledger type — **Inter** for the sans cut, IBM Plex for the two
@@ -70,5 +70,17 @@ export const ibmPlexMono = IBM_Plex_Mono({
   subsets: ['latin'],
   weight: ['400', '500', '600'],
   variable: '--font-ibm-plex-mono',
+  display: 'swap',
+});
+
+/**
+ * Master-nav spine only (`font-spine` on `MasterNavView`). Highway-gothic
+ * cousin — not the app condensed cut (eyebrows / micro stay Plex unless
+ * they sit inside the spine).
+ */
+export const overpass = Overpass({
+  subsets: ['latin'],
+  weight: ['400', '500', '600'],
+  variable: '--font-spine',
   display: 'swap',
 });

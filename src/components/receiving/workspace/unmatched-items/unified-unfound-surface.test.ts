@@ -112,6 +112,14 @@ test('ReturnScanCard gates on empty carton only (no double-row)', () => {
     /double-row/.test(SURFACE),
     'surface documents the double-row invariant',
   );
+  assert.ok(
+    !/unitsChrome && showSerialScan \?/.test(SURFACE),
+    'Arrival must not null the empty centre — ReturnScanCard paints face when !unitsChrome',
+  );
+  assert.ok(
+    /body=\{showSerialScan \? 'serial' : 'none'\}/.test(SURFACE),
+    'capture body only when serial scan is on; Arrival paints face-only',
+  );
 });
 
 test('Testing centre is a pure ledger row — no per-unit activeRowSlot list', () => {
@@ -145,34 +153,36 @@ test('Testing centre is a pure ledger row — no per-unit activeRowSlot list', (
   );
 });
 
-test('empty unfound ReturnScanCard matches PoLineRow anatomy (title + empty SKU + condition)', () => {
+test('empty unfound ReturnScanCard composes PoLineRow (Unbox SoT face)', () => {
   assert.ok(
     /UNFOUND_PO_DISPLAY/.test(RETURN_CARD),
     'empty stub paints the unmatched purchase order title via UNFOUND_PO_DISPLAY',
   );
-  assert.ok(/<PoLineMetaGrid\b/.test(RETURN_CARD), 'meta uses the shared PoLineMetaGrid columns');
   assert.ok(
-    /<EmptySkuChipFace\b/.test(RETURN_CARD),
-    'empty SKU slot uses EmptySkuChipFace (matched-row parity)',
+    /UNFOUND_PO_SENTINEL/.test(RETURN_CARD),
+    'stub item_name uses UNFOUND_PO_SENTINEL so PoLineRow title maps to Unfound order',
+  );
+  assert.ok(/<PoLineRow\b/.test(RETURN_CARD), 'ledger face is Unbox PoLineRow — not a hand-built twin');
+  assert.ok(
+    !/<PoLineMetaGrid\b/.test(RETURN_CARD),
+    'ReturnScanCard must not hand-build PoLineMetaGrid beside PoLineRow',
   );
   assert.ok(
-    /<UnitPriceChip\b/.test(RETURN_CARD),
-    'empty price slot uses UnitPriceChip (Receipt + —; matched-row parity)',
+    !/<EmptySkuChipFace\b/.test(RETURN_CARD),
+    'SKU empty face lives inside PoLineRow — not a ReturnScanCard twin',
   );
   assert.ok(
-    /<ConditionGradeChip\b/.test(RETURN_CARD),
-    'condition stays in the meta row ConditionGradeChip slot',
+    !/ChevronDown/.test(RETURN_CARD),
+    'collapse chevron removed — PoLineRow has no title chevron',
   );
-  assert.ok(/embedded/.test(RETURN_CARD), 'SerialCard is embedded inside the row body');
+  assert.ok(/unitsChrome/.test(RETURN_CARD), 'door-flow unitsChrome gates capture body only');
+  assert.ok(/embedded/.test(RETURN_CARD), 'SerialCard is embedded inside the capture body');
 });
 
 test('ReturnScanCard uses flat PoLineRow chrome (no blue card bubble)', () => {
-  // Same data-floor contract as po-line-flat-chrome.guard.test.ts — unfound
-  // empty stub must not reintroduce the rounded blue card that found lines lost.
-  assert.ok(/QUEUE_ROW\.selectedStationClass/.test(RETURN_CARD), 'opaque station selected face');
-  assert.ok(/rounded-none/.test(RETURN_CARD), 'no card radius');
-  assert.ok(/border-b border-border-soft/.test(RETURN_CARD), 'hairline bottom only');
-  assert.ok(/pl-0 pr-0/.test(RETURN_CARD), 'flush left/right — no side pad');
+  // Chrome lives on PoLineRow (po-line-flat-chrome) — this card must not
+  // reintroduce a rounded blue wash around the SoT row.
+  assert.ok(/<PoLineRow\b/.test(RETURN_CARD), 'opaque station face comes from PoLineRow');
   assert.ok(
     !/border-blue-300 bg-blue-50\/60/.test(RETURN_CARD),
     'must not paint the legacy blue unfound card wash',

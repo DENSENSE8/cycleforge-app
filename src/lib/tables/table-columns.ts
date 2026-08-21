@@ -77,11 +77,6 @@ export type TableId =
    */
   | 'incoming_embed'
   | 'orders'
-  /**
-   * To-Ship desk queue — its OWN prefs bucket so column Fields on the desk
-   * never touch station embeds (Ready-to-Pack / Packing) that stay on `orders`.
-   */
-  | 'to-ship-desk'
   | 'shipped'
   | 'tech'
   | 'testing'
@@ -199,9 +194,6 @@ export const TABLE_COLUMNS: Record<TableId, TableColumnSpec[]> = {
   // Fields deltas persist under this key, not `incoming`.
   incoming_embed: [META_QTY, META_CONDITION, META_REST, CHIP_PLATFORM, CHIP_ORDERID, CHIP_TRACKING],
   orders: [META_STATUS, META_QTY, META_CONDITION, META_REST, CHIP_PLATFORM, CHIP_ORDERID, CHIP_TRACKING],
-  // To-Ship desk fork — same Fields vocabulary as `orders` today; diverges when
-  // the desk column model cuts station-only tracks.
-  'to-ship-desk': [META_STATUS, META_QTY, META_CONDITION, META_REST, CHIP_PLATFORM, CHIP_ORDERID, CHIP_TRACKING],
   shipped: [META_QTY, META_CONDITION, META_REST, CHIP_PLATFORM, CHIP_ORDERID, CHIP_TRACKING, CHIP_SERIAL],
   tech: [META_QTY, META_CONDITION, META_REST, CHIP_PLATFORM, CHIP_ORDERID, CHIP_TRACKING, CHIP_SERIAL],
   testing: [META_QTY, META_CONDITION, META_REST, CHIP_PLATFORM, CHIP_ORDERID, CHIP_TRACKING, CHIP_SERIAL],

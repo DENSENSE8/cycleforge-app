@@ -56,15 +56,19 @@
  * | child idle      | ~~`text-text-soft` `#64748b`~~ → `text-text-default` | none (the spine's own ground)|
  * | parent idle     | ~~`text-text-muted` `#475569`~~ → `text-text-default` | none                         |
  * | hover           | ~~one ink step up~~ (ink is constant now) | `bg-surface-hover`  `#f8fafc`|
- * | **current page**| `text-text-default` `#0f172a`| `bg-surface-card`   `#ffffff`|
+ * | **owns child**  | `text-text-default`                  | `bg-surface-hover`  `#f8fafc`|
+ * | **current page**| `text-text-default` `#0f172a`| `bg-surface-canvas`  `#eef2f7`|
  *
- * **The fill ASCENDS toward white, and that is deliberate.** The spine sits
- * one plane below the work surface (`bg-surface-canvas` `#eef2f7`), so the
- * row you are standing on rises to meet the surface it opens rather than
- * pressing into the column. Darkening instead would need `surface-strong`,
- * which at this size reads as a pressed button. Same direction Linear uses
- * (its dark sidebar selects LIGHTER); inverted here only because the theme
- * is light. Dark themes flip automatically — every value is a token.
+ * **The fill is a plane step against chrome, not against the work canvas.**
+ * MasterNav's host is {@link appChromeClass} (`bg-surface-card` white) —
+ * same token as GlobalHeader / `<body>`. Painting the current row in
+ * `bg-surface-card` too made "you are here" identical to idle on every
+ * leaf L1 (Packing · Scan out): nested benches still had
+ * {@link spineRailLineClass}, leaves had nothing. The current row therefore
+ * steps to `bg-surface-canvas`, the same canvas/chrome delta the content
+ * shell already uses. No hue, no `surface-strong` press, no leading bar on
+ * L1 — just a fill that actually contrasts. Dark themes flip with the
+ * tokens.
  *
  * **The icon shares its label's ink exactly, at every state.** A glyph one
  * step lighter than its own label makes a row read as two objects; sharing
@@ -77,17 +81,23 @@
  *   not on a hardcoded list, so a new hue cannot sneak in under a new name.
  * - **No ring, no shadow, no bevel.** Ops chrome is flush-square and flat;
  *   "depth" is the plane step, never an inset highlight.
- * - **No second fill for `expanded`.** A parent that is merely open gets
- *   NOTHING — its chevron and its revealed children already say so, and
- *   giving it a wash makes an expanded sibling compete with the page you are
- *   actually on. The fill means "you are here" and nothing else.
+ * - **No fill for `expanded` alone.** A parent that is merely open gets
+ *   nothing from expansion. A parent that **owns the current child** gets
+ *   {@link SpineAccentClasses.ownsActive} — lighter than the child's
+ *   current fill, never `aria-current`. Two strengths, one location.
  */
 
+import { appCanvasClass } from '@/design-system/tokens/app-surface';
 import { cn } from '@/utils/_cn';
 
 export type SpineAccentClasses = {
-  /** The page you are ON — the only row that fills. */
+  /** The page you are ON — the strongest fill. */
   activePage: string;
+  /**
+   * L1 / subgroup that owns the current child — lighter than
+   * {@link SpineAccentClasses.activePage}. Never `aria-current`.
+   */
+  ownsActive: string;
   /** Every other L1 / section row. */
   idlePage: string;
   /** Active L1 icon — SAME ink value as its label. */
@@ -112,13 +122,17 @@ export type SpineAccentClasses = {
 };
 
 /**
- * Current page: rises to the work surface's own white, ink to full contrast.
+ * Current page: canvas fill on chrome, ink to full contrast.
  * No `border-l` here — the child rail carries "you are here" for nested rows
  * (see {@link spineRailLineClass}); L1 rows carry it on the fill alone,
  * matching a top-level item in a reference sidebar (filled row, no bar) vs a
- * nested one (bar, per the rail below).
+ * nested one (bar, per the rail below). The fill token MUST differ from
+ * {@link appChromeClass} or leaf destinations paint as idle.
  */
-const CURRENT_PAGE = 'bg-surface-card text-text-default';
+const CURRENT_PAGE = `${appCanvasClass} text-text-default`;
+
+/** Parent of the current child — hover-plane wash, quieter than canvas. */
+const OWNS_ACTIVE = 'bg-surface-hover text-text-default';
 
 /**
  * ONE rail-line element, TWO tokens (2026-08-16, corrected same day).
@@ -171,16 +185,18 @@ export function spineRailLineClass(active: boolean): string {
  *
  * Ink is now `text-text-default` at every state, for both L1 and child rows
  * and their icons — matching the rail's ink exactly. "You are here" is
- * carried by the background step (`CURRENT_PAGE` fill vs
- * `hover:bg-surface-hover` vs nothing); nested rows add
- * {@link spineRailLineClass}'s darkened token on top, since a plain fill is
- * a weaker signal on an indented row than on a full-width L1 one. The label
- * WEIGHT moved with it — see `SidebarNavList.tsx` (`text-role-body
- * font-semibold` for spine rows: same `font-semibold` the rail's title
- * carries, bumped up for nav-row legibility at this density).
+ * carried by the background step (`CURRENT_PAGE` canvas vs chrome idle vs
+ * `hover:bg-surface-hover`); nested rows add {@link spineRailLineClass}'s
+ * darkened token on top, since a plain fill is a weaker signal on an
+ * indented row than on a full-width L1 one. The label WEIGHT moved with it
+ * — see `SidebarNavList.tsx` (`text-role-body font-semibold` for spine
+ * rows: same `font-semibold` the rail's title carries, bumped up for
+ * nav-row legibility at this density). `spine-section-accent.test.ts`
+ * fails if this fill collapses back onto chrome.
  */
 export const SPINE_ACCENT: SpineAccentClasses = {
   activePage: CURRENT_PAGE,
+  ownsActive: OWNS_ACTIVE,
   idlePage: 'text-text-default hover:bg-surface-hover',
   activePageIcon: 'text-text-default',
   idlePageIcon: 'text-text-default',
@@ -188,7 +204,7 @@ export const SPINE_ACCENT: SpineAccentClasses = {
   childIdle: 'text-text-default hover:bg-surface-hover',
   childActiveIcon: 'text-text-default',
   childIdleIcon: 'text-text-default',
-  cmdkSelected: 'data-[selected=true]:bg-surface-card data-[selected=true]:text-text-default',
+  cmdkSelected: 'data-[selected=true]:bg-surface-canvas data-[selected=true]:text-text-default',
   cmdkSelectedIcon: 'group-data-[selected=true]:[&_svg]:text-text-default',
 };
 

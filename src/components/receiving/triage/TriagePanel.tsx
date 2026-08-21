@@ -486,9 +486,10 @@ export function TriagePanel({
                       staffId={staffId}
                       // Door-flow items: matched → PoLinesAccordion; unfound →
                       // interactive UnmatchedAccordionSurface without units
-                      // chrome (no condition · serial / Units). No "Open in
-                      // unbox" — save for unbox from the dock. Suppress the
-                      // "PO items · N" eyebrow — identity abuts the lines.
+                      // editors (no serial stamp / Units). Meta still paints
+                      // Unbox five-track PoLineRow. No "Open in unbox" — save
+                      // for unbox from the dock. Suppress the "PO items · N"
+                      // eyebrow — identity abuts the lines.
                       suppressItemsHeader
                       poItems
                       matching

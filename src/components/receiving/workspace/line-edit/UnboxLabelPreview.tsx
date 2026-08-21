@@ -114,7 +114,8 @@ export function UnboxLabelPreview({
         onClick={() => setLabelOpen((open) => !open)}
         className={cn(
           'ds-raw-button flex h-8 w-full items-center justify-center gap-1',
-          'bg-surface-card text-role-micro font-semibold uppercase tracking-widest text-text-soft',
+          'border-b border-border-hairline bg-surface-card',
+          'text-role-micro font-semibold uppercase tracking-widest text-text-soft',
           'transition-colors hover:bg-surface-hover hover:text-text-muted',
           cornerClass('flush'),
         )}

@@ -135,7 +135,7 @@ export function StaffAccountFooter({ className }: { className?: string }) {
               moreOpen && 'bg-surface-hover text-text-default',
             )}
           >
-            <span className="min-w-0 flex-1 truncate text-left text-role-nav font-medium leading-none text-text-default">
+            <span className="min-w-0 flex-1 truncate text-left text-role-nav font-normal leading-none text-text-default">
               {displayName}
             </span>
             <MoreHorizontal className="h-3.5 w-3.5 shrink-0" aria-hidden />

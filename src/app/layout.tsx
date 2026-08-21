@@ -39,7 +39,7 @@ import { PostHogProvider } from "../components/analytics/PostHogProvider";
 import { ShellQuerySeed } from "@/components/providers/ShellQuerySeed";
 import { maybeSeedShell } from "@/lib/queries/unbox-shell-seed.server";
 import { PRODUCT_NAME } from "@/lib/branding/constants";
-import { cfSans, ibmPlexMono, ibmPlexSansCondensed } from "@/lib/fonts";
+import { cfSans, ibmPlexMono, ibmPlexSansCondensed, overpass } from "@/lib/fonts";
 import { appChromeClass } from "@/design-system/tokens/app-surface";
 
 export default async function RootLayout({
@@ -83,7 +83,7 @@ export default async function RootLayout({
     return (
         <html
             lang="en"
-            className={`${cfSans.variable} ${ibmPlexSansCondensed.variable} ${ibmPlexMono.variable} h-full overflow-hidden`}
+            className={`${cfSans.variable} ${ibmPlexSansCondensed.variable} ${ibmPlexMono.variable} ${overpass.variable} h-full overflow-hidden`}
             suppressHydrationWarning
         >
             <head>

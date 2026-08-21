@@ -29,6 +29,7 @@ import { IconButton } from '@/design-system/primitives';
 import { motion, motionRole, useMotionRole, useReducedMotion } from '@/design-system/motion';
 import { zIndex } from '@/design-system/tokens/z-index';
 import { cn } from '@/utils/_cn';
+import { STATION_DISPLAYS_HEADER_ACTION_FACE } from './StationDisplaysHeaderActions';
 import {
   stationDisplaysToggleHotkeyLabel,
   useStationDisplaysToggleHotkey,
@@ -85,7 +86,7 @@ export function StationDisplaysEdgeToggle({
             )
           }
           onClick={onClick}
-          className={cn(!paneOpen && 'h-full w-full -ml-px rounded-none')}
+          className={cn(!paneOpen && STATION_DISPLAYS_HEADER_ACTION_FACE)}
           data-testid={paneOpen ? 'unbox-displays-pane-toggle' : 'unbox-push-close'}
         />
       </HoverTooltip>

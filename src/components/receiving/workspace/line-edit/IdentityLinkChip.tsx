@@ -310,8 +310,11 @@ export function IdentityLinkChip({
             // ticket icon (same inset as Claim · Photos).
             disableCopy={disableCopy || isEditing}
             fitDisplayWidth={!grow}
+            // Unbox SoT: locked last-8 never CSS-truncates (Arrival's old
+            // TrackingChip dense fork ellipsized mid–last-8). Grow/listing
+            // faces may truncate; identity locks do not.
             displayWidth={lockLast8Width ? 'last8' : 'content'}
-            truncateDisplay={grow}
+            truncateDisplay={lockLast8Width ? false : grow}
             carrierHint={tone === 'tracking' ? carrierHint : null}
             platformLabel={tone === 'id' ? platformLabel : null}
             // Hover shows the full value via the site tooltip above. Open/Edit

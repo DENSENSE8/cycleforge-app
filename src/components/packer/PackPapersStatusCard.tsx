@@ -1,7 +1,9 @@
 'use client';
 
 /**
- * Pack papers / manuals print status — middle-pane surface (not the scan column).
+ * Pack papers / manuals print status — StationWorkbench `feedback` slot
+ * (Unbox action-feedback plane), never an advisory strip between identity
+ * and the checklist.
  *
  * Reprint must not steal wedge focus: preventDefault on mousedown keeps the
  * scan input focused; emitPackerFocusScan hands focus back after the act.

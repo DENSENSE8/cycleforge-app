@@ -9,8 +9,9 @@
  *    `carton-context-details-in-displays.guard.test.ts`).
  *    Listing/tracking Edit navigate to Unbox SectionTabs (`tracking` /
  *    `listings`); PO# is copy/open-only. Every station that shows inbound
- *    carton **or** Shipping active-order chrome composes this — never fork a
- *    parallel header.
+ *    carton **or** Shipping / Pack active-order chrome composes this — never
+ *    fork a parallel header. Pack photos use `photosCell` (send-to-phone), not
+ *    a sibling beside the card.
  * 2. **Identity chrome** — {@link StationContextBar} + {@link StationMoreDetails}:
  *    flush-under-header identity strip + corner utilities
  *    (`stationContextBarHostClass`). Top inset SoT:
@@ -25,9 +26,9 @@
  *    `StationRightEdgeAction` (import from
  *    `@/components/station/entity-context/StationRightEdgeAction`) on the panel
  *    root — not inside `moreDetails`.
- * 3. **Corner utilities** — Pack may mount a close control via
- *    {@link StationMoreDetails}. Unbox / Arrival / Testing leave the slot empty
- *    (PO / Pairing live on carton `#` chip and Displays). Workspace mode
+ * 3. **Corner utilities** — Unbox / Arrival / Testing / Pack leave the slot
+ *    empty (Pack exit is the card back chevron). Packer review may still mount
+ *    pack-size controls via {@link StationMoreDetails}. Workspace mode
  *    registry ({@link WORKSPACE_MODES}) still owns terminal-slice / nav metadata.
  *
  * ```ts

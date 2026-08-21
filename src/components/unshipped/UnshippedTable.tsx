@@ -6,7 +6,6 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { getOrdersChannelName, safeChannelName } from '@/lib/realtime/channels';
 import type { DashboardSearchSectionProps } from '@/components/dashboard/DashboardSearchSectionProps';
 import { UnshippedShelfBoard } from '@/components/unshipped/UnshippedShelfBoard';
-import { ToShipDeskShelfBoard } from '@/components/outbound/orders/to-ship/ToShipDeskShelfBoard';
 import { OrdersFirstRunEmptyState } from '@/components/dashboard/OrdersFirstRunEmptyState';
 import { dispatchOpenShippedDetails } from '@/utils/events';
 import { unshippedOrdersQuery, unshippedQueueCountsQuery } from '@/lib/queries/dashboard-queries';
@@ -50,11 +49,6 @@ export interface UnshippedTableProps extends DashboardSearchSectionProps {
   fulfillmentLane?: 'pending' | 'tested';
   /** SSR stand-in handoff — primary queue has paintable rows (seed or fetch). */
   onPrimaryPainted?: () => void;
-  /**
-   * Grid mount: `desk` = To-Ship desk fork (`to-ship-desk` prefs / definition);
-   * `station` = shared `OrdersGridHost` / `entityFamily: 'orders'`.
-   */
-  variant?: 'desk' | 'station';
 }
 
 /** Map an assignment/order-changed event payload to the flat row patch it implies
@@ -113,7 +107,6 @@ export function UnshippedTable({
   onOpenRecord,
   fulfillmentLane,
   onPrimaryPainted,
-  variant = 'station',
 }: UnshippedTableProps = {}) {
   const pathname = usePathname();
   const router = useRouter();
@@ -392,10 +385,8 @@ export function UnshippedTable({
     </div>
   ) : null;
 
-  const ShelfBoard = variant === 'desk' ? ToShipDeskShelfBoard : UnshippedShelfBoard;
-
   return (
-    <ShelfBoard
+    <UnshippedShelfBoard
       records={records}
       loading={query.isLoading}
       searchValue={searchQuery}

@@ -146,9 +146,9 @@ export const KIOSK_MODE_SPINE_LABEL = 'min-w-0 truncate text-sm font-semibold le
 /** Spine glyph — smaller than the old 24px MasterNav-scale icon. */
 export const KIOSK_MODE_SPINE_ICON = 'h-5 w-5 shrink-0';
 
-/** Expanded Search row — first row of the named rail. */
+/** Expanded Search row — first row of the named rail (edge-to-edge, no column gutter). */
 export const KIOSK_MODE_SPINE_SEARCH_ROW =
-  'flex min-h-14 shrink-0 items-center gap-2 border-b border-border-hairline px-2';
+  'flex min-h-14 shrink-0 items-center gap-0 border-b border-border-hairline px-0';
 
 /**
  * Right cart ledger panel — ~320px / `w-80` so the center work surface stays
@@ -175,7 +175,7 @@ export const KIOSK_CART_COUNT_BADGE = cn(
  * back to the cart.
  */
 export const KIOSK_UTILITY_SPINE_FACE = cn(
-  'flex h-full w-14 shrink-0 flex-col items-center gap-1 bg-surface-card py-1.5',
+  'flex h-full w-14 shrink-0 flex-col items-center gap-0 bg-surface-card py-0',
   'border-l border-border-soft',
   cornerClass('flush'),
 );

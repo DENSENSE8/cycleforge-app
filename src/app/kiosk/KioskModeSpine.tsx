@@ -8,9 +8,12 @@
  * Width + label/search opacity tween via `motionRole.push.rail`.
  *
  * Commands swap the center work surface only — they never clear the cart.
+ * Flush footer Exit returns staff preview to ops chrome (`/`).
  * Region contract: docs/todo/kiosk-pos-modernization-HANDOFF.md.
  */
 
+import { useRouter } from 'next/navigation';
+import { X } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 import { motion, motionRole, useMotionRole } from '@/design-system/motion';
@@ -52,6 +55,7 @@ export function KioskModeSpine({
   onSearchChange: (value: string) => void;
   searchLabel?: string;
 }) {
+  const router = useRouter();
   const { transition } = useMotionRole(motionRole.push.rail);
   const width = expanded ? KIOSK_MODE_SPINE_EXPANDED_W_PX : KIOSK_MODE_SPINE_COLLAPSED_W_PX;
 
@@ -97,7 +101,7 @@ export function KioskModeSpine({
         role="tablist"
         aria-label="Kiosk commands"
         aria-orientation="vertical"
-        className="flex min-h-0 flex-1 flex-col gap-1 p-1.5"
+        className="flex min-h-0 flex-1 flex-col gap-0 p-0"
       >
         {KIOSK_SERVICES.map((tab) => {
           const live = tab.status === 'live';
@@ -148,6 +152,35 @@ export function KioskModeSpine({
           );
         })}
       </div>
+
+      {/* Flush bottom-left Exit — staff preview leave-mode (not device unpair). */}
+      <HoverTooltip label="Exit kiosk" asChild>
+        <button
+          type="button"
+          aria-label="Exit kiosk"
+          data-testid="kiosk-spine-exit"
+          onClick={() => router.push('/')}
+          className={cn(
+            KIOSK_MODE_SPINE_ROW,
+            'border-t border-border-soft',
+            expanded ? KIOSK_MODE_SPINE_ROW_EXPANDED : KIOSK_MODE_SPINE_ROW_COLLAPSED,
+            focusRing('control', 'neutral'),
+            KIOSK_MODE_SPINE_ROW_IDLE,
+          )}
+        >
+          <X className={cn(KIOSK_MODE_SPINE_ICON, 'text-text-soft')} />
+          {expanded ? (
+            <motion.span
+              className={KIOSK_MODE_SPINE_LABEL}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={transition}
+            >
+              Exit
+            </motion.span>
+          ) : null}
+        </button>
+      </HoverTooltip>
     </motion.aside>
   );
 }

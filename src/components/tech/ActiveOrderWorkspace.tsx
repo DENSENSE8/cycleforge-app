@@ -2,7 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, ExternalLink, History, MapPin, Package, Tags } from '@/components/Icons';
-import { StationContextBar } from '@/components/station/entity-context';
+import {
+  StationContextBar,
+  StationMoreDetails,
+} from '@/components/station/entity-context';
 import {
   StationPanelRoot,
   StationScanPaneHost,
@@ -21,6 +24,7 @@ import {
 import { StationConditionEditor } from '@/components/tech/StationConditionEditor';
 import { ListingLinksTab } from '@/components/receiving/workspace/line-edit/ListingLinksTab';
 import { DISPLAYS_BODY_INSET } from '@/design-system/shells/detail-stack';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { cn } from '@/utils/_cn';
 import type { ActiveStationOrder } from '@/hooks/useStationTestingController';
 import type { Order } from '@/components/station/upnext/upnext-types';
@@ -29,7 +33,6 @@ import { ShippingScanWorkspace } from './shipping/ShippingScanWorkspace';
 import { ShippingCapturedUnits } from './shipping/ShippingCapturedUnits';
 import {
   ShippingEntityContextHeader,
-  ShippingOutOfStockNotice,
 } from './shipping/ShippingEntityContextHeader';
 import { PackLocationsLeaf } from './shipping/PackLocationsLeaf';
 import { usePackOrderPlacement } from './shipping/usePackOrderPlacement';
@@ -373,6 +376,41 @@ export function ActiveOrderWorkspace({
                   onExitToList={onClose}
                 />
               }
+              moreDetails={
+                Boolean(previewOrder?.is_out_of_stock) || pendingCount > 0 ? (
+                  <StationMoreDetails>
+                    {Boolean(previewOrder?.is_out_of_stock) ? (
+                      <HoverTooltip label="Out of stock" asChild>
+                        <span
+                          className="inline-flex items-center gap-1 rounded-none bg-red-50 px-1.5 py-0.5 text-role-micro font-semibold uppercase tracking-widest text-red-800 ring-1 ring-inset ring-red-200"
+                          data-testid="shipping-oos-corner"
+                        >
+                          <AlertTriangle className="h-3 w-3" aria-hidden />
+                          OOS
+                        </span>
+                      </HoverTooltip>
+                    ) : null}
+                    {pendingCount > 0 ? (
+                      <HoverTooltip
+                        label={
+                          pendingCount === 1
+                            ? 'A substitution awaits supervisor approval'
+                            : `${pendingCount} substitutions await supervisor approval`
+                        }
+                        asChild
+                      >
+                        <span
+                          className="inline-flex items-center gap-1 rounded-none bg-amber-50 px-1.5 py-0.5 text-role-micro font-semibold uppercase tracking-widest text-amber-800 ring-1 ring-inset ring-amber-200"
+                          data-testid="shipping-sub-pending-corner"
+                        >
+                          <AlertTriangle className="h-3 w-3" aria-hidden />
+                          Sub {pendingCount}
+                        </span>
+                      </HoverTooltip>
+                    ) : null}
+                  </StationMoreDetails>
+                ) : undefined
+              }
             />
             <StationWorkbench
               ambientWash={false}
@@ -380,36 +418,14 @@ export function ActiveOrderWorkspace({
               reserveScrollClearance={isPreview && Boolean(previewOrder)}
               reserveIdentityClearance={false}
               bodyGap="none"
-              entityContext={
-                <>
-                  <ShippingOutOfStockNotice
-                    isOutOfStock={Boolean(previewOrder?.is_out_of_stock)}
-                  />
-                  {pendingCount > 0 ? (
-                    <div className="flex items-start gap-2 rounded-none border border-amber-200 bg-amber-50 px-4 py-3">
-                      <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600" />
-                      <div className="space-y-0.5">
-                        <p className="text-role-caption font-semibold text-amber-800">
-                          Substitution pending approval
-                        </p>
-                        <p className="text-role-micro font-semibold text-amber-700">
-                          {pendingCount === 1
-                            ? 'A substitution on this order is'
-                            : `${pendingCount} substitutions on this order are`}{' '}
-                          awaiting supervisor approval — the order cannot pack or ship until
-                          approved.
-                        </p>
-                      </div>
-                    </div>
-                  ) : null}
-                </>
-              }
               // No footer band. The pack-desk picker left the centre 2026-08-20:
               // choosing a bench is a DESTINATION, and a destination sitting in
               // the work surface stops the operator's eye before they have done
               // the job. Desks now live only in Displays → Locations
               // (`PackLocationsLeaf`), the same place every other station's
               // placement lives.
+              // Advisories (OOS · sub pending) live in StationMoreDetails — never
+              // a centre entityContext strip (Unbox centre = ops-flow only).
               tabs={
                 <ShippingScanWorkspace
                   activeOrder={activeOrder}

@@ -1,7 +1,7 @@
 # DOC catalog — machine-generated SoT
 
 > **Do not hand-edit.** Regenerate: `node scripts/portfolio-sot-sync.mjs`  
-> Generated: `2026-08-20T22:01:28.635Z` · Files: **711** · Repo: `cycleforge-app`  
+> Generated: `2026-08-20T22:58:16.553Z` · Files: **712** · Repo: `cycleforge-app`  
 > Parent index: [INDEX.md](./INDEX.md)
 
 Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*** id  
@@ -13,7 +13,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 
 | WT-ID | Absolute path | Branch | HEAD (short) | Exists |
 |-------|---------------|--------|--------------|--------|
-| `main` | `/Users/icecube/repos/cycleforge-app` | `main` | `8155bb78d` | yes |
+| `main` | `/Users/icecube/repos/cycleforge-app` | `main` | `e2cce0c4a` | yes |
 | `ai-chat` | `/Users/icecube/repos/cycleforge-ai-chat` | `topic/ai-chat` | `3f55b275e` | yes |
 | `fba` | `/Users/icecube/repos/cycleforge-fba` | `topic/fba` | `3f55b275e` | yes |
 | `glass` | `/Users/icecube/repos/cycleforge-glass` | `glass-design-system` | `a331b1247` | yes |
@@ -390,6 +390,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 | `DOC-TODO-KINETIC-LEDGER-STATION-SAFETY-EXECUTION-PROMPT-DECE` | `WS-TODO-MISC` | [`todo/kinetic-ledger-station-safety-EXECUTION-PROMPT.md`](../todo/kinetic-ledger-station-safety-EXECUTION-PROMPT.md) |
 | `DOC-TODO-KINETIC-LEDGER-STATION-SAFETY-PLAN-97BC` | `WS-TODO-MISC` | [`todo/kinetic-ledger-station-safety-PLAN.md`](../todo/kinetic-ledger-station-safety-PLAN.md) |
 | `DOC-TODO-KIOSK-COUNTER-TRANSACTION-PLAN-0689` | `WS-TODO-MISC` | [`todo/kiosk-counter-transaction-PLAN.md`](../todo/kiosk-counter-transaction-PLAN.md) |
+| `DOC-TODO-KIOSK-CUSTOMER-FORM-FACE-PLAN-FB1A` | `WS-TODO-MISC` | [`todo/kiosk-customer-form-face-PLAN.md`](../todo/kiosk-customer-form-face-PLAN.md) |
 | `DOC-TODO-KIOSK-DESK-SESSION-CHANNEL-PLAN-0AF6` | `WS-TODO-MISC` | [`todo/kiosk-desk-session-channel-PLAN.md`](../todo/kiosk-desk-session-channel-PLAN.md) |
 | `DOC-TODO-KIOSK-IPAD-NATIVE-SHELL-GEMINI-RESEARCH-BRIEFING-D94F` | `WS-TODO-MISC` | [`todo/kiosk-ipad-native-shell-GEMINI-RESEARCH-BRIEFING.md`](../todo/kiosk-ipad-native-shell-GEMINI-RESEARCH-BRIEFING.md) |
 | `DOC-TODO-KIOSK-LANDSCAPE-SHELL-PLAN-1830` | `WS-TODO-MISC` | [`todo/kiosk-landscape-shell-PLAN.md`](../todo/kiosk-landscape-shell-PLAN.md) |
@@ -1049,7 +1050,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 - `DOC-TEN-SLICE-TEMPLATE-5BE0` — [`tenancy/SLICE_TEMPLATE.md`](../tenancy/SLICE_TEMPLATE.md)
 - `DOC-TEN-TABLES-9F18` — [`tenancy/_analysis/tables.md`](../tenancy/_analysis/tables.md)
 
-### `WS-TODO-MISC` (503)
+### `WS-TODO-MISC` (504)
 
 - `DOC-TODO-00-INDEX-9E1E` — [`todo/kiosk-counter-transaction/00-INDEX.md`](../todo/kiosk-counter-transaction/00-INDEX.md)
 - `DOC-TODO-01-RECEIVING-BOH-SLIM-4C77` — [`todo/foh-boh-surface-split/01-receiving-boh-slim.md`](../todo/foh-boh-surface-split/01-receiving-boh-slim.md)
@@ -1218,6 +1219,7 @@ Every file under `docs/` (and extensionless roadmap files) gets a stable **DOC-*
 - `DOC-TODO-KINETIC-LEDGER-STATION-SAFETY-EXECUTION-PROMPT-DECE` — [`todo/kinetic-ledger-station-safety-EXECUTION-PROMPT.md`](../todo/kinetic-ledger-station-safety-EXECUTION-PROMPT.md)
 - `DOC-TODO-KINETIC-LEDGER-STATION-SAFETY-PLAN-97BC` — [`todo/kinetic-ledger-station-safety-PLAN.md`](../todo/kinetic-ledger-station-safety-PLAN.md)
 - `DOC-TODO-KIOSK-COUNTER-TRANSACTION-PLAN-0689` — [`todo/kiosk-counter-transaction-PLAN.md`](../todo/kiosk-counter-transaction-PLAN.md)
+- `DOC-TODO-KIOSK-CUSTOMER-FORM-FACE-PLAN-FB1A` — [`todo/kiosk-customer-form-face-PLAN.md`](../todo/kiosk-customer-form-face-PLAN.md)
 - `DOC-TODO-KIOSK-DESK-SESSION-CHANNEL-PLAN-0AF6` — [`todo/kiosk-desk-session-channel-PLAN.md`](../todo/kiosk-desk-session-channel-PLAN.md)
 - `DOC-TODO-KIOSK-IPAD-NATIVE-SHELL-GEMINI-RESEARCH-BRIEFING-D94F` — [`todo/kiosk-ipad-native-shell-GEMINI-RESEARCH-BRIEFING.md`](../todo/kiosk-ipad-native-shell-GEMINI-RESEARCH-BRIEFING.md)
 - `DOC-TODO-KIOSK-LANDSCAPE-SHELL-PLAN-1830` — [`todo/kiosk-landscape-shell-PLAN.md`](../todo/kiosk-landscape-shell-PLAN.md)

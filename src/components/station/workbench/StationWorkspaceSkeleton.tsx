@@ -3,10 +3,10 @@
 /**
  * Station focused-overlay workspace skeleton — **SoT**.
  *
- * Mirrors StationWorkbench identity + section tabs + stacked glass cards so the
- * handoff to LineEditPanel / TriagePanel feels continuous. Section cards
- * compose {@link Panel} / {@link WorkspaceCard} — never hand-roll
- * `rounded-2xl border…`.
+ * Mirrors StationWorkbench identity + section tabs + stacked flush cards so the
+ * handoff to LineEditPanel / TriagePanel feels continuous. Section cards use
+ * flush Panel radius (ops chrome) — never soft `rounded-2xl` / pill bars.
+ * Bar geometry matches {@link UnboxWorkbenchSkeleton}: `cornerClass('flush')`.
  *
  * Domain wrappers (`ReceivingWorkspaceSkeleton`, `TriageWorkspaceSkeleton`)
  * pick the header variant, body preset, and column recipe.
@@ -35,22 +35,26 @@ import {
   stationMoreDetailsHostClass,
   stationUtilityPanelClass,
 } from '@/components/station/entity-context/station-identity-chrome';
+import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 
 type StationWorkspaceSkeletonHeader = 'identity-tabs' | 'toolbar' | 'none';
 type StationWorkspaceSkeletonBody = 'unbox-overview' | 'sections';
 
+/** Force flush over SkeletonBase's default `rounded-md` (no twMerge there). */
+const FLUSH_BAR = cn(cornerClass('flush'), '!rounded-none');
+
 function SkeletonSectionCard({ rows }: { rows: number }) {
   return (
-    <Panel padding="md" radius="2xl" elevation="sm">
-      <SkeletonBase width="96px" height="10px" className="mb-3 rounded-full" />
+    <Panel padding="md" radius="none" elevation="none" className="border-b border-border-soft">
+      <SkeletonBase width="96px" height="10px" className={cn('mb-3', FLUSH_BAR)} />
       <div className="space-y-2">
         {Array.from({ length: rows }).map((_, i) => (
           <SkeletonBase
             key={i}
             width={`${100 - i * 12}%`}
             height="12px"
-            className="rounded-full"
+            className={FLUSH_BAR}
           />
         ))}
       </div>
@@ -73,7 +77,7 @@ function IdentityTabsHeader() {
       >
         <Panel
           padding="none"
-          radius="2xl"
+          radius="none"
           elevation="none"
           borderless
           className={cn(
@@ -86,14 +90,14 @@ function IdentityTabsHeader() {
         >
           <div className="flex min-w-0 flex-1 items-center gap-1.5 px-0.5">
             <div className="flex shrink-0 items-center gap-1">
-              <SkeletonBase width="64px" height="22px" className="rounded-full" />
-              <SkeletonBase width="52px" height="22px" className="rounded-full" />
-              <SkeletonBase width="36px" height="22px" className="rounded-full" />
+              <SkeletonBase width="64px" height="22px" className={FLUSH_BAR} />
+              <SkeletonBase width="52px" height="22px" className={FLUSH_BAR} />
+              <SkeletonBase width="36px" height="22px" className={FLUSH_BAR} />
             </div>
             <div className="mx-auto flex min-w-0 items-center justify-center gap-2">
-              <SkeletonBase width="72px" height="14px" className="rounded-full" />
-              <SkeletonBase width="48px" height="14px" className="rounded-full" />
-              <SkeletonBase width="40px" height="14px" className="rounded-full" />
+              <SkeletonBase width="72px" height="14px" className={FLUSH_BAR} />
+              <SkeletonBase width="48px" height="14px" className={FLUSH_BAR} />
+              <SkeletonBase width="40px" height="14px" className={FLUSH_BAR} />
             </div>
           </div>
         </Panel>
@@ -101,7 +105,7 @@ function IdentityTabsHeader() {
       <div className={stationMoreDetailsHostClass}>
         <Panel
           padding="none"
-          radius="2xl"
+          radius="none"
           elevation="none"
           borderless
           className={cn(
@@ -112,10 +116,10 @@ function IdentityTabsHeader() {
             STATION_CHROME_ROW_FACE,
           )}
         >
-          <SkeletonBase width="56px" height="24px" className="rounded-full" />
-          <SkeletonBase circle width="28px" height="28px" />
-          <SkeletonBase circle width="28px" height="28px" />
-          <SkeletonBase circle width="28px" height="28px" />
+          <SkeletonBase width="56px" height="24px" className={FLUSH_BAR} />
+          <SkeletonBase width="28px" height="28px" className={FLUSH_BAR} />
+          <SkeletonBase width="28px" height="28px" className={FLUSH_BAR} />
+          <SkeletonBase width="28px" height="28px" className={FLUSH_BAR} />
         </Panel>
       </div>
     </div>
@@ -127,38 +131,38 @@ function SectionTabsStrip() {
   return (
     <div className="flex items-center justify-between gap-2" aria-hidden>
       <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-        <SkeletonBase width="72px" height="32px" className="rounded-full" />
-        <SkeletonBase width="80px" height="32px" className="rounded-full" />
-        <SkeletonBase width="64px" height="32px" className="rounded-full" />
-        <SkeletonBase width="56px" height="32px" className="rounded-full" />
-        <SkeletonBase width="52px" height="32px" className="rounded-full" />
+        <SkeletonBase width="72px" height="32px" className={FLUSH_BAR} />
+        <SkeletonBase width="80px" height="32px" className={FLUSH_BAR} />
+        <SkeletonBase width="64px" height="32px" className={FLUSH_BAR} />
+        <SkeletonBase width="56px" height="32px" className={FLUSH_BAR} />
+        <SkeletonBase width="52px" height="32px" className={FLUSH_BAR} />
       </div>
-      <SkeletonBase circle width="32px" height="32px" className="shrink-0" />
+      <SkeletonBase width="32px" height="32px" className={cn('shrink-0', FLUSH_BAR)} />
     </div>
   );
 }
 
-/** POUnboxingSection / SerialCard overview geometry. */
+/** POUnboxingSection / SerialCard overview geometry — flush ledger face. */
 function UnboxProductSerialCard() {
   return (
     <WorkspaceCard variant="glass" bodyDensity="nested" bodyClassName="px-3 pt-3 pb-2">
       <div className="space-y-3" aria-hidden>
-        <SkeletonBase width="68%" height="18px" className="rounded-md" />
+        <SkeletonBase width="68%" height="18px" className={FLUSH_BAR} />
         <div className="flex flex-wrap items-center gap-2">
-          <SkeletonBase width="28px" height="16px" className="rounded-full" />
-          <SkeletonBase width="48px" height="16px" className="rounded-full" />
-          <SkeletonBase width="56px" height="16px" className="rounded-full" />
-          <SkeletonBase width="44px" height="16px" className="rounded-full" />
-          <SkeletonBase width="64px" height="16px" className="ml-auto rounded-md" />
+          <SkeletonBase width="28px" height="16px" className={FLUSH_BAR} />
+          <SkeletonBase width="48px" height="16px" className={FLUSH_BAR} />
+          <SkeletonBase width="56px" height="16px" className={FLUSH_BAR} />
+          <SkeletonBase width="44px" height="16px" className={FLUSH_BAR} />
+          <SkeletonBase width="64px" height="16px" className={cn('ml-auto', FLUSH_BAR)} />
         </div>
         <div className="flex items-center gap-2">
-          <SkeletonBase circle width="36px" height="36px" className="shrink-0" />
+          <SkeletonBase width="36px" height="36px" className={cn('shrink-0', FLUSH_BAR)} />
           <SkeletonBase
             width="100%"
             height="40px"
-            className="min-w-0 flex-1 rounded-xl"
+            className={cn('min-w-0 flex-1', FLUSH_BAR)}
           />
-          <SkeletonBase width="40px" height="40px" className="shrink-0 rounded-xl" />
+          <SkeletonBase width="40px" height="40px" className={cn('shrink-0', FLUSH_BAR)} />
         </div>
       </div>
     </WorkspaceCard>
@@ -173,21 +177,21 @@ function UnboxLabelCard() {
         className={cn(WORKSPACE_NESTED_FIELD, WORKSPACE_NESTED_FIELD_PAD)}
         aria-hidden
       >
-        <div className="mx-auto aspect-[2/1] w-full max-w-[480px] overflow-hidden rounded-sm bg-white ring-1 ring-border-soft/60"> {/* ds-allow-raw-neutral: print-preview paper face */}
+        <div className="mx-auto aspect-[2/1] w-full max-w-[480px] overflow-hidden rounded-none bg-white ring-1 ring-border-soft/60"> {/* ds-allow-raw-neutral: print-preview paper face */}
           <div className="flex h-full items-stretch gap-1 p-1.5">
             <div className="flex min-w-0 flex-1 flex-col justify-between py-0.5">
               <div className="flex items-start justify-between gap-2">
-                <SkeletonBase width="72px" height="10px" className="rounded-full" />
-                <SkeletonBase width="40px" height="10px" className="rounded-full" />
+                <SkeletonBase width="72px" height="10px" className={FLUSH_BAR} />
+                <SkeletonBase width="40px" height="10px" className={FLUSH_BAR} />
               </div>
               <div className="flex items-end justify-between gap-2">
-                <SkeletonBase width="56px" height="10px" className="rounded-full" />
-                <SkeletonBase width="48px" height="10px" className="rounded-full" />
+                <SkeletonBase width="56px" height="10px" className={FLUSH_BAR} />
+                <SkeletonBase width="48px" height="10px" className={FLUSH_BAR} />
               </div>
             </div>
             <div className="flex shrink-0 flex-col items-center justify-center gap-0.5">
-              <div className="aspect-square h-[86%] w-auto animate-pulse rounded-sm bg-surface-strong" />
-              <SkeletonBase width="40px" height="8px" className="rounded-full" />
+              <div className="aspect-square h-[86%] w-auto animate-pulse rounded-none bg-surface-strong" />
+              <SkeletonBase width="40px" height="8px" className={FLUSH_BAR} />
             </div>
           </div>
         </div>
@@ -252,10 +256,10 @@ export function StationWorkspaceSkeleton({
           )}
         >
           <div className={cn(headerColumnClassName, 'flex items-center justify-between')}>
-            <SkeletonBase width="120px" height="24px" className="rounded-full" />
+            <SkeletonBase width="120px" height="24px" className={FLUSH_BAR} />
             <div className="flex items-center gap-2">
               {Array.from({ length: 4 }).map((_, i) => (
-                <SkeletonBase key={i} circle width="32px" height="32px" />
+                <SkeletonBase key={i} width="32px" height="32px" className={FLUSH_BAR} />
               ))}
             </div>
           </div>

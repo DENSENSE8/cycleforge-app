@@ -21,7 +21,7 @@
 @source not '../../docs';
 @source not '../../.claude';
 /* Ship-before-adoption roles + spacing intents (were safelist in v3). */
-@source inline("text-role-display text-role-title text-role-body text-role-data text-role-caption text-role-eyebrow text-role-micro inset-chip inset-field inset-cozy inset-card inset-empty stack-tight stack-row stack-section row-gap row-tight");
+@source inline("text-role-display text-role-title text-role-body text-role-data text-role-caption text-role-eyebrow text-role-micro font-spine inset-chip inset-field inset-cozy inset-card inset-empty stack-tight stack-row stack-section row-gap row-tight");
 
 .font-dm-sans {
   font-family: var(--font-sans);

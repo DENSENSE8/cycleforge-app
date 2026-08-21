@@ -15,31 +15,33 @@
  * ANATOMY (top to bottom):
  *   1. **Open · Copy all** — the two verbs, full-bleed chrome. Open takes the
  *      SELECTED link; Copy all takes every href on the carton.
- *   2. **The combo** — display + selection only. It names which link Open acts
- *      on and highlights that row; it is not an edit or create surface.
+ *   2. **The combo** — display + selection. Trailing plus starts a new link.
+ *      It names which link Open acts on and highlights that row.
  *   3. **The link rows** — one row per link, in the buyer's triage order:
- *      open-icon on the left (that exact link, no select-then-open detour),
+ *      open-square on the left (that exact link, no select-then-open detour),
  *      identity in the middle (click = select), edit-icon on the right. Edit
  *      opens the inline name + URL fields under the row, with delete beside
- *      them. A computed row has no edit glyph — there is nothing to write. The
- *      last row adds a new link.
+ *      them. Trailing pencil is always on the right: durable rows edit in
+ *      place; computed rows open a prefilled create so the operator can own
+ *      the link.
  *
  * A host with no carton id (order-side Pack / Testing) gets the read-only face
  * plus the legacy single `listing_url` field — CRUD needs a carton to hang off.
  *
  * Flush Displays body (no WorkspaceCard glass island) — parent push column owns
- * the inset; body rows opt into `DISPLAYS_BODY_INSET`, chrome rows stay
- * edge-to-edge.
+ * the inset; chrome rows stay edge-to-edge.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useState, type ReactNode } from 'react';
 import { Check, Copy, ExternalLink, Plus, Pencil, Trash2 } from '@/components/Icons';
 import { SearchBar } from '@/components/ui/SearchBar';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { SearchableSelectField } from '@/design-system/components';
-import { Button, IconButton, Row, TextField } from '@/design-system/primitives';
+import { SearchableSelectField, DenseComposeLabel, DenseComposeSubjectInput } from '@/design-system/components';
+import { Button, IconButton } from '@/design-system/primitives';
+import { BUTTON_VARIANTS } from '@/design-system/primitives/button-variants';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { DISPLAYS_BODY_INSET } from '@/design-system/shells/detail-stack';
+import { STATION_DISPLAYS_HEADER_ACTION_GLYPH } from '@/components/station/displays/StationDisplaysHeaderActions';
 import { RECEIVING_SCAN_RULE_LINE_CLASS } from '@/components/sidebar/receiving/receiving-sidebar-shared';
 import type { CartonListingLink } from '@/lib/receiving/listing-links';
 import { recordCopy } from '@/lib/clipboard-history';
@@ -51,15 +53,94 @@ import { useCartonListingLinks, type CartonListingLinkRow } from './useCartonLis
 /** Flush Displays body — parent push column owns inset; no glass island. */
 const FLUSH_HOST_CLASS = cn('min-w-0', cornerClass('flush'));
 
-/**
- * The inline-edit field grain. A `flush` TextField still paints
- * `bg-surface-card` at `h-11`, which on a SELECTED row (canvas step) reads as a
- * little card sitting inside the row — the island the flush host exists to
- * avoid. Transparent fill + the row's own caption size + a shorter box makes
- * the field read as the row continuing, not as chrome dropped on top of it.
- */
-const INLINE_FIELD_CLASS = 'h-9';
-const INLINE_FIELD_INPUT_CLASS = 'bg-transparent px-0 text-role-caption';
+const LISTING_LEAD_GLYPH = STATION_DISPLAYS_HEADER_ACTION_GLYPH;
+/** Lead · identity · trail — plus and pencil share the last column. */
+const LISTING_LINE_GRID =
+  'grid w-full min-w-0 grid-cols-[2rem_minmax(0,1fr)_2rem] items-stretch divide-x divide-border-hairline';
+const LISTING_COMBO_GRID =
+  'grid w-full min-w-0 grid-cols-[minmax(0,1fr)_2rem] items-stretch divide-x divide-border-hairline border-b border-border-hairline';
+const LISTING_OPEN_SQUARE = cn(
+  BUTTON_VARIANTS.primarySoft,
+  cornerClass('flush'),
+  'h-full w-full [&>svg]:h-3.5 [&>svg]:w-3.5',
+);
+const LISTING_TRAIL_SQUARE = cn(
+  BUTTON_VARIANTS.secondary,
+  cornerClass('flush'),
+  'h-full w-full [&>svg]:h-3.5 [&>svg]:w-3.5',
+);
+const LISTING_LINK_INSET_X = 'px-3';
+const LISTING_LINK_IDENTITY_FACE = LISTING_LINK_INSET_X;
+const LISTING_COMBO_FACE = LISTING_LINK_INSET_X;
+
+/** Save fills the row; Cancel sits on the trailing edge — no gap, no pad. */
+const LISTING_EDITOR_ACTIONS =
+  'grid w-full grid-cols-[minmax(0,1fr)_auto]';
+
+function ListingLinkEditor({
+  name,
+  href,
+  onNameChange,
+  onHrefChange,
+  onSave,
+  onCancel,
+  saveDisabled,
+  autoFocusHref = false,
+  footer,
+}: {
+  name: string;
+  href: string;
+  onNameChange: (v: string) => void;
+  onHrefChange: (v: string) => void;
+  onSave: () => void;
+  onCancel: () => void;
+  saveDisabled: boolean;
+  autoFocusHref?: boolean;
+  footer?: ReactNode;
+}) {
+  const nameId = useId();
+  const hrefId = useId();
+  return (
+    <div className="grid grid-cols-1">
+      <DenseComposeLabel htmlFor={nameId} className="mb-0 text-text-soft">
+        Name
+      </DenseComposeLabel>
+      <DenseComposeSubjectInput
+        id={nameId}
+        value={name}
+        onChange={(e) => onNameChange(e.target.value)}
+        placeholder="Name"
+      />
+      <DenseComposeLabel htmlFor={hrefId} className="mb-0 text-text-soft">
+        Listing link
+      </DenseComposeLabel>
+      <DenseComposeSubjectInput
+        id={hrefId}
+        value={href}
+        onChange={(e) => onHrefChange(e.target.value)}
+        placeholder="https://…"
+        autoFocus={autoFocusHref}
+        className="font-mono"
+      />
+      <div className={LISTING_EDITOR_ACTIONS}>
+        <Button
+          type="button"
+          size="sm"
+          variant="primarySoft"
+          onClick={onSave}
+          disabled={saveDisabled}
+          className="w-full"
+        >
+          Save link
+        </Button>
+        <Button type="button" size="sm" variant="ghost" onClick={onCancel}>
+          Cancel
+        </Button>
+      </div>
+      {footer}
+    </div>
+  );
+}
 
 /** One row of the picker — durable rows carry `id`, computed tiers do not. */
 interface DisplayLink {
@@ -207,33 +288,33 @@ export function ListingLinksTab({
             </HoverTooltip>
           </div>
 
-          {/* 2 — display + selection, with create on the same seam. The combo
-              itself stays display-only: it never carries an "add" option. */}
-          <div className="flex items-stretch divide-x divide-border-hairline border-b border-border-hairline">
-            <div className="min-w-0 flex-1">
-              <SearchableSelectField
-                value={selected?.href ?? null}
-                onChange={(v) => setSelectedHref(typeof v === 'string' ? v : null)}
-                options={links.map((l) => ({ value: l.href, label: l.name, meta: hostOf(l.href) }))}
-                appearance="flush"
-                placeholder={store.loading ? 'Loading links…' : 'No listing links'}
-                searchPlaceholder="Filter listings…"
-                emptyMessage="No listing links"
-                ariaLabel="Selected listing link"
-              />
-            </div>
+          {/* 2 — display + selection. Trailing plus opens the create fields. */}
+          <div className={LISTING_COMBO_GRID}>
+            <SearchableSelectField
+              value={selected?.href ?? null}
+              onChange={(v) => setSelectedHref(typeof v === 'string' ? v : null)}
+              options={links.map((l) => ({ value: l.href, label: l.name, meta: hostOf(l.href) }))}
+              appearance="flush"
+              placeholder={store.loading ? 'Loading links…' : 'No listing links'}
+              searchPlaceholder="Filter listings…"
+              emptyMessage="No listing links"
+              ariaLabel="Selected listing link"
+              className={LISTING_COMBO_FACE}
+            />
             {store.supported ? (
               <HoverTooltip label="Add a listing link" asChild>
                 <IconButton
                   type="button"
-                  size="md"
-                  icon={<Plus className="h-4 w-4" />}
+                  size="fill"
+                  icon={<Plus className={LISTING_LEAD_GLYPH} />}
                   onClick={() => setDraft({ href: '', label: '' })}
                   ariaLabel="Add a listing link"
-                  className={cornerClass('flush')}
+                  className={LISTING_TRAIL_SQUARE}
                 />
               </HoverTooltip>
-            ) : null}
+            ) : (
+              <span />
+            )}
           </div>
 
           {store.error ? (
@@ -252,6 +333,11 @@ export function ListingLinksTab({
                   selected={selected?.href === link.href}
                   onSelect={() => setSelectedHref(link.href)}
                   onSave={store.update}
+                  onPromote={
+                    store.supported
+                      ? () => setDraft({ href: link.href, label: link.name })
+                      : undefined
+                  }
                   onDelete={async (id) => {
                     const ok = await store.remove(id);
                     if (ok) setSelectedHref(null);
@@ -260,52 +346,17 @@ export function ListingLinksTab({
               );
             })}
 
-            {/* The add row lives with the rows it creates — no separate band. */}
-            {store.supported ? (
-              draft ? (
-                <div className={cn(DISPLAYS_BODY_INSET, 'space-y-1 py-2')}>
-                  <TextField
-                    label="Name (optional)"
-                    value={draft.label}
-                    onChange={(v) => setDraft({ ...draft, label: v })}
-                    appearance="flush"
-                    className={INLINE_FIELD_CLASS}
-                    inputClassName={INLINE_FIELD_INPUT_CLASS}
-                  />
-                  <TextField
-                    label="URL"
-                    value={draft.href}
-                    onChange={(v) => setDraft({ ...draft, href: v })}
-                    appearance="flush"
-                    mono
-                    autoFocus
-                    className={INLINE_FIELD_CLASS}
-                    inputClassName={INLINE_FIELD_INPUT_CLASS}
-                  />
-                  <Row>
-                    <Button type="button" size="sm" variant="primarySoft" onClick={commitDraft} disabled={!draft.href.trim()}>
-                      Save link
-                    </Button>
-                    <Button type="button" size="sm" variant="ghost" onClick={() => setDraft(null)}>
-                      Cancel
-                    </Button>
-                  </Row>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setDraft({ href: '', label: '' })}
-                  className={cn(
-                    DISPLAYS_BODY_INSET,
-                    'flex w-full items-center gap-2 py-2 text-left text-role-caption text-text-muted',
-                    'hover:bg-surface-canvas hover:text-text-default',
-                    focusRing('cell'),
-                  )}
-                >
-                  <Plus className="h-3.5 w-3.5" aria-hidden />
-                  Add listing link
-                </button>
-              )
+            {store.supported && draft ? (
+              <ListingLinkEditor
+                name={draft.label}
+                href={draft.href}
+                onNameChange={(v) => setDraft({ ...draft, label: v })}
+                onHrefChange={(v) => setDraft({ ...draft, href: v })}
+                onSave={() => void commitDraft()}
+                onCancel={() => setDraft(null)}
+                saveDisabled={!draft.href.trim()}
+                autoFocusHref
+              />
             ) : null}
           </div>
 
@@ -334,16 +385,16 @@ export function ListingLinksTab({
 }
 
 /**
- * One link row: **open-icon · identity · edit-icon**.
+ * One link row: **open-square · identity · edit-icon**.
  *
- * The row reads as one line — the left glyph opens THAT exact link (no
+ * The row reads as one line — the left square opens THAT exact link (no
  * select-then-open detour), the middle names it and takes the selection the
  * band verbs follow, and the right glyph reveals the inline editor. Editing is
  * in place under the same row: name + URL commit on blur, delete lives with
  * them, so a link is never edited in a surface that hides the list.
  *
- * A computed row (`catalog` / `derived`) has no id, so it opens and selects but
- * carries no edit glyph — there is nothing to write.
+ * A computed row (`catalog` / `derived`) has no id — the trailing pencil
+ * still shows and promotes that href into a create draft.
  */
 function ListingLinkRow({
   link,
@@ -351,6 +402,7 @@ function ListingLinkRow({
   selected,
   onSelect,
   onSave,
+  onPromote,
   onDelete,
 }: {
   link: DisplayLink;
@@ -358,6 +410,8 @@ function ListingLinkRow({
   selected: boolean;
   onSelect: () => void;
   onSave: (id: number, patch: { href?: string; label?: string | null }) => Promise<boolean>;
+  /** Computed row — pencil starts a prefilled create. */
+  onPromote?: () => void;
   onDelete: (id: number) => Promise<void>;
 }) {
   const [editing, setEditing] = useState(false);
@@ -384,78 +438,80 @@ function ListingLinkRow({
   };
 
   return (
-    <div
-      className={cn(
-        DISPLAYS_BODY_INSET,
-        'py-1.5',
-        // Selection is a surface step on the shared ground — not an island.
-        selected ? 'bg-surface-canvas' : 'hover:bg-surface-canvas/60',
-      )}
-      data-selected={selected ? '' : undefined}
-    >
-      <Row gap="tight">
+    <div data-selected={selected ? '' : undefined}>
+      <div
+        className={cn(
+          LISTING_LINE_GRID,
+          selected ? 'bg-surface-canvas' : 'hover:bg-surface-canvas/60',
+        )}
+      >
         <HoverTooltip label={`Open ${link.name}`} asChild>
           <IconButton
             type="button"
-            size="sm"
-            tone="accent"
-            icon={<ExternalLink className="h-3.5 w-3.5" />}
+            size="fill"
+            icon={<ExternalLink className={LISTING_LEAD_GLYPH} />}
             onClick={openExact}
             ariaLabel={`Open ${link.name} in a new tab`}
-            className={cornerClass('flush')}
+            className={LISTING_OPEN_SQUARE}
           />
         </HoverTooltip>
 
         <button
           type="button"
           onClick={onSelect}
-          className={cn('flex min-w-0 flex-1 flex-col items-start text-left', focusRing('cell'))}
+          className={cn(
+            LISTING_LINK_IDENTITY_FACE,
+            'flex min-h-8 min-w-0 flex-col items-start justify-center text-left',
+            focusRing('cell'),
+          )}
           aria-pressed={selected}
         >
           <span className="w-full truncate text-role-caption font-semibold text-text-default">{link.name}</span>
           <span className="w-full truncate font-mono text-role-micro text-text-muted">{hostOf(link.href)}</span>
         </button>
 
-        {row ? (
+        {row || onPromote ? (
           <HoverTooltip label={editing ? 'Done editing' : `Edit ${link.name}`} asChild>
             <IconButton
               type="button"
-              size="sm"
-              icon={editing ? <Check className="h-3.5 w-3.5" /> : <Pencil className="h-3.5 w-3.5" />}
+              size="fill"
+              icon={editing ? <Check className={LISTING_LEAD_GLYPH} /> : <Pencil className={LISTING_LEAD_GLYPH} />}
               onClick={() => {
+                if (!row) {
+                  onPromote?.();
+                  onSelect();
+                  return;
+                }
                 if (editing) commit();
                 setEditing((v) => !v);
                 onSelect();
               }}
               ariaLabel={editing ? `Done editing ${link.name}` : `Edit ${link.name}`}
-              className={cornerClass('flush')}
+              className={LISTING_TRAIL_SQUARE}
             />
           </HoverTooltip>
-        ) : null}
-      </Row>
+        ) : (
+          <span />
+        )}
+      </div>
 
       {row && editing ? (
-        <div className="space-y-1 pt-1">
-          <TextField
-            label="Name"
-            value={label}
-            onChange={setLabel}
-            onBlur={commit}
-            appearance="flush"
-            className={INLINE_FIELD_CLASS}
-            inputClassName={INLINE_FIELD_INPUT_CLASS}
-          />
-          <TextField
-            label="URL"
-            value={href}
-            onChange={setHref}
-            onBlur={commit}
-            appearance="flush"
-            mono
-            className={INLINE_FIELD_CLASS}
-            inputClassName={INLINE_FIELD_INPUT_CLASS}
-          />
-          <Row>
+        <ListingLinkEditor
+          name={label}
+          href={href}
+          onNameChange={setLabel}
+          onHrefChange={setHref}
+          onSave={() => {
+            commit();
+            setEditing(false);
+          }}
+          onCancel={() => {
+            setLabel(row.label ?? '');
+            setHref(row.href);
+            setEditing(false);
+          }}
+          saveDisabled={!href.trim()}
+          footer={
             <Button
               type="button"
               size="sm"
@@ -463,11 +519,12 @@ function ListingLinkRow({
               icon={<Trash2 className="h-3.5 w-3.5" />}
               onClick={() => void onDelete(row.id)}
               ariaLabel={`Delete ${link.name}`}
+              className="w-full"
             >
               Delete
             </Button>
-          </Row>
-        </div>
+          }
+        />
       ) : null}
     </div>
   );

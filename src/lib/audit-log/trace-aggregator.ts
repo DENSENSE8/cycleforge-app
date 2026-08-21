@@ -25,9 +25,9 @@ import { readInventorySpine, type InventoryEventRecord } from './inventory-spine
 import type { InventoryTimelineRow } from '@/lib/timeline/inventory-events';
 import {
   findShippedOrderForSerialUnit,
-  findShippedOrderByTsnSerial,
   normalizeSerial,
 } from '@/lib/neon/serial-units-queries';
+import { findShippedOrderByTsnSerial } from '@/lib/neon/tsn-shipped-order';
 
 /** The resolved unit identity shown at the head of the trace. */
 export interface TraceUnit {

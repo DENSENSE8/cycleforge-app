@@ -104,4 +104,12 @@ describe('unboxdesk + station-first MRU gate', () => {
     );
     assert.equal(shouldAutoOpenUnboxMru(false, new URLSearchParams()), false);
   });
+
+  it('shouldAutoOpenUnboxMru stays off while desk is held in session (replaceState lag)', () => {
+    assert.equal(shouldAutoOpenUnboxMru(true, new URLSearchParams(), true), false);
+    assert.equal(
+      shouldAutoOpenUnboxMru(true, new URLSearchParams('unboxdesk=1'), true),
+      false,
+    );
+  });
 });

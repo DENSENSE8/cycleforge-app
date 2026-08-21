@@ -50,6 +50,8 @@ import { StaffAccountFooter } from './StaffAccountFooter';
  */
 const SPINE_ROW_FACE_CLASS = 'h-10 shrink-0';
 const SPINE_ROW_ICON_CLASS = 'h-4 w-4 shrink-0';
+/** Destination labels — nav size, regular weight (not title 18px/600). */
+const SPINE_LABEL_CLASS = 'text-role-nav font-normal';
 
 /**
  * The page list inside the sidebar spine — **ONE flat scrolling map**.
@@ -117,14 +119,8 @@ const SPINE_ROW_ICON_CLASS = 'h-4 w-4 shrink-0';
  * no longer dims idle rows. L1 / drill-back / nested children share
  * {@link SPINE_ROW_FACE_CLASS} (`h-10`, 40px — bumped from the shared
  * `PRIMARY_CHROME_ROW_FACE`'s 28px, settled here after a `h-14`/56px
- * overshoot; see the constant's own docblock above). **`text-role-title`**
- * label (18px, bumped from `role-body`'s 14px — a `role-display`/24px
- * overshoot came and went the same day). `role-title` bakes its own 600
- * weight, the same `font-semibold` value the rail's `RailRowBody` title
- * carries at its own (`role-caption`) size — so the spine and the rail
- * beside it read as one typographic FAMILY (weight + ink), each sized for
- * its own row height and density — the 36px-parent / 24px-child jump that
- * preceded it was 1.5×, which is enough to read as two systems.
+ * overshoot; see the constant's own docblock above). Labels are
+ * {@link SPINE_LABEL_CLASS} (`role-nav` + regular) — not `role-title`.
  *
  * Nothing on a row travels on hover: the glyph's 2px CSS lift stays deleted,
  * because a structural anchor in a 20-row column should not move under the
@@ -335,17 +331,10 @@ export function SidebarNavList({
    * (2.25) would out-draw its own parent at 1.5, which inverts the ladder it
    * was supposed to express.
    *
-   * **Same {@link SPINE_ROW_FACE_CLASS} box (40px) and same `text-role-title`
-   * label as its parent** (rail-matched 2026-08-16, both bumped same day from
-   * a 28px/`role-body` (14px) box that was reading thin against the column's
-   * full height — see the constant's own docblock for the `h-14`/56px
-   * overshoot that came before this size). It used to be a 24px row at 12px
-   * against a 36px/14px parent; a 1.5× height jump inside one list makes
-   * parent and child read as two different kinds of object rather than two
-   * altitudes of one. Weight is now constant (600) — the fill on
+   * **Same {@link SPINE_ROW_FACE_CLASS} box (40px) and same
+   * {@link SPINE_LABEL_CLASS} as its parent.** Regular weight — the fill on
    * `accent.child*` plus the rail line's darkened token (below)
-   * is what says "you are here", same two-signal shape industry side-nav
-   * tokens use (a paired width + colour token on ONE element).
+   * is what says "you are here".
    *
    * ## The rail (2026-08-03; centered 2026-08-03; width bumped 2026-08-16)
    *
@@ -438,7 +427,7 @@ export function SidebarNavList({
           {/* `title` — a long child label (a station name, a deep page) truncates
               with no other way to reveal itself. RailRowBody does this
               (`titleAttr`); the spine rows never had. */}
-          <span className="min-w-0 flex-1 truncate text-role-title" title={opts.label}>
+          <span className={cn('min-w-0 flex-1 truncate', SPINE_LABEL_CLASS)} title={opts.label}>
             {opts.label}
           </span>
         </button>
@@ -472,6 +461,11 @@ export function SidebarNavList({
     label: string;
     icon: SidebarPageNav['icon'];
     active: boolean;
+    /**
+     * Lighter wash: this disclosure owns the current child. Never
+     * `aria-current` — the child row is the page.
+     */
+    ownsActive?: boolean;
     ariaLabel: string;
     onClick: () => void;
     onMouseEnter?: () => void;
@@ -493,18 +487,17 @@ export function SidebarNavList({
         onMouseEnter={opts.onMouseEnter}
         aria-label={opts.ariaLabel}
         aria-expanded={opts.disclosure ? opts.disclosure.expanded : undefined}
-        // See renderChildLikeRow — same `aria-current="page"` signal for the
-        // same reason. A disclosure-only row (multi-child parent, subgroup
-        // header) never passes `active: true` in the first place, so this
-        // stays `undefined` there without a separate check.
+        // `aria-current="page"` only on the destination. A parent that owns
+        // the current child uses `ownsActive` wash without claiming the page.
         aria-current={opts.active ? 'page' : undefined}
         className={cn(
           'ds-raw-button group flex w-full items-center gap-2 rounded-none px-2 text-left transition-colors duration-150',
-          // L1 + Scan Stations enter + drill-back share SPINE_ROW_FACE_CLASS.
-          // Nested children stay the same height too (renderChildLikeRow) —
-          // one size, every altitude (see the module docblock).
           SPINE_ROW_FACE_CLASS,
-          opts.active ? accent.activePage : accent.idlePage,
+          opts.active
+            ? accent.activePage
+            : opts.ownsActive
+              ? accent.ownsActive
+              : accent.idlePage,
         )}
       >
         <PageIcon
@@ -518,12 +511,12 @@ export function SidebarNavList({
             text-text-default`, same as RailRowBody's title line, bumped to
             `role-title` (18px, see the module docblock) for nav-row
             legibility + fill. "You are here" reads from `accent.activePage`'s
-            background fill alone — an L1 row is full-width, so the fill reads
-            clearly with no bar (a nested row's fill is narrower against its
-            indent, which is why THAT row also gets `spineRailLineClass`'s
-            darkened rail token). `title` — same truncation-tooltip reasoning
-            as renderChildLikeRow. */}
-        <span className="min-w-0 flex-1 truncate text-role-title" title={opts.label}>{opts.label}</span>
+            canvas fill against chrome (`appChromeClass`) — an L1 row is
+            full-width, so that plane step is the whole signal (a nested
+            row's fill is narrower against its indent, which is why THAT row
+            also gets `spineRailLineClass`'s darkened rail token). `title` —
+            same truncation-tooltip reasoning as renderChildLikeRow. */}
+        <span className={cn('min-w-0 flex-1 truncate', SPINE_LABEL_CLASS)} title={opts.label}>{opts.label}</span>
         {opts.drill ? (
           <ChevronsRight className={cn(SPINE_ROW_ICON_CLASS, 'text-text-faint')} aria-hidden />
         ) : opts.disclosure ? (
@@ -619,20 +612,12 @@ export function SidebarNavList({
           {
             label: page.label,
             icon: page.icon,
-            // The fill means "you are here" and NOTHING else (2026-08-08).
-            //
-            // It first also meant "expanded", so standing on Sales with
-            // Shipping open showed two filled rows. Dropping that left one
-            // case behind: an ANCESTOR of the current page still filled,
-            // because `activePage` for `/products?view=manuals` IS Products —
-            // so Products and Manuals both lit.
-            //
-            // `!hasChildren` closes it. A multi-child parent is never a
-            // destination (its click discloses), and whenever it owns the
-            // active page its children are force-open, so the actually-current
-            // child row is always on screen carrying the fill. The parent
-            // adds nothing but a second lit row.
+            // Leaf L1: full current fill. Multi-child parent: lighter
+            // `ownsActive` wash while a child carries `aria-current` + the
+            // canvas fill. A parent that is only expanded (not owning the
+            // URL) stays idle so two open nests do not both look selected.
             active: isPageActive && !hasChildren,
+            ownsActive: isPageActive && hasChildren,
             // Cardinality survives HERE and only here, for the same reason the
             // badge was deleted: a screen reader benefits from "7 pages", and an
             // accessible name competes with nothing for the operator's eye. It
@@ -739,12 +724,10 @@ export function SidebarNavList({
               {
                 label: def.label,
                 icon: def.icon,
-                // A subgroup header NEVER fills. It is a disclosure, not a
-                // destination, and when it owns the active station that
-                // station is force-expanded — so the row that is genuinely
-                // current is always rendered directly beneath it. Filling
-                // both is the ancestor duplication this rule removes.
+                // Destination stays on the member row. The subgroup header
+                // takes the lighter `ownsActive` wash when a member is current.
                 active: false,
+                ownsActive: subgroupActive,
                 // Disclosure only — never navigates. Same contract as
                 // multi-child L1 pages (Shipping · Locations): expand shows
                 // the benches; the operator picks Arrival / Unbox / etc.
@@ -818,7 +801,7 @@ export function SidebarNavList({
           <ChevronLeft className={cn(SPINE_ROW_ICON_CLASS, 'justify-self-start')} aria-hidden />
           {/* Rail-matched title role (2026-08-16) — see renderPageHeader.
               `title` — same truncation-tooltip reasoning too. */}
-          <span className="min-w-0 truncate text-center text-role-title" title={section.label}>
+          <span className={cn('min-w-0 truncate text-center', SPINE_LABEL_CLASS)} title={section.label}>
             {section.label}
           </span>
           <span className={SPINE_ROW_ICON_CLASS} aria-hidden />
@@ -929,7 +912,7 @@ export function SidebarNavList({
                 `title` carries the raw label — the truncated content here is
                 highlight spans, not plain text, so the tooltip can't just
                 read the DOM like the other rows; it needs the source string. */}
-            <span className="block truncate text-role-title" title={destination.label}>
+            <span className={cn('block truncate', SPINE_LABEL_CLASS)} title={destination.label}>
               {splitNavHighlight(destination.label, match.ranges).map((part, i) =>
                 part.hit ? (
                   // Marks the characters that justified the row. Underline, not

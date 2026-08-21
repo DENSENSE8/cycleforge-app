@@ -124,7 +124,7 @@ test.describe('Unit pack placement — loose units on benches', () => {
     expect(noop.status, 'moving to the same bench is rejected').toBe(409);
   });
 
-  test('a placed loose unit surfaces on the per-bench unit KPI strip (P3b)', async ({
+  test('a placed loose unit updates per-bench unit placement counts (P3b)', async ({
     page,
   }) => {
     const placement = await apiGet(page, '/api/units/pack-placement');
@@ -148,15 +148,16 @@ test.describe('Unit pack placement — loose units on benches', () => {
     expect(place.status, 'place succeeds').toBe(200);
     expect(placeBody.success).toBe(true);
 
-    // Fresh mount so the KPI strip fetches the updated per-bench unit counts.
+    // Fresh mount — per-bench unit counts live on the unit placement API, not
+    // a KPI chip row (that display strip was retired; benches filter via the
+    // find-field facet / `?packStation=`).
     await page.goto('/test');
-    const strip = page.locator('[data-testid="unit-bench-strip"]').first();
-    await expect(strip, 'per-bench unit strip renders').toBeVisible({ timeout: 20_000 });
-
-    // The strip is SEPARATE from the order station tiles — the desk 1 unit count
-    // reflects the loose unit we just staged.
-    const benchCount = strip.locator(`[data-testid="unit-bench-count-${desk1.id}"]`);
-    await expect(benchCount, 'desk 1 unit chip is present').toBeVisible();
-    await expect(benchCount, 'desk 1 unit count is at least 1').toHaveText(/[1-9]\d*/);
+    const after = await apiGet(page, '/api/units/pack-placement');
+    const visibleCount =
+      ((after.body.counts ?? []) as Array<{ locationId: number; count: number }>).find(
+        (c) => c.locationId === desk1.id,
+      )?.count ?? 0;
+    expect(visibleCount, 'desk 1 unit count reflects the placement').toBeGreaterThanOrEqual(1);
+    await expect(page.locator('[data-testid="unit-bench-strip"]')).toHaveCount(0);
   });
 });

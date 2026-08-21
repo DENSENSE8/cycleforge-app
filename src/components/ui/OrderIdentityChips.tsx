@@ -4,9 +4,8 @@ import { BrandIdentityDot } from '@/components/ui/grid-cells';
 import { carrierBrandDotPaint, resolveCarrierBrand } from '@/lib/carrier-brand';
 import { platformMetaBrandDot } from '@/lib/source-platform';
 import { useCallback, useRef } from 'react';
-import { Clipboard, Copy, ExternalLink, Pencil } from '@/components/Icons';
+import { Clipboard, Copy, Pencil } from '@/components/Icons';
 import {
-  OrderIdChip,
   OrderIdChipPlaceholder,
   PlatformChip,
   getLast8,
@@ -14,6 +13,7 @@ import {
 import { ChipColumns, CHIP_COL, type ChipColumn } from '@/components/ui/ChipColumns';
 import { CopyChipHoverMenu, type CopyChipHoverMenuItem } from '@/components/ui/CopyChipHoverMenu';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { OrderNumberMenuChip } from '@/components/ui/OrderNumberMenuChip';
 import { PlatformMark } from '@/components/ui/PlatformMark';
 import { TrackingNumberMenuChip } from '@/components/ui/TrackingNumberMenuChip';
 import { useIsColumnHidden } from '@/components/ui/table-column-config/TableColumnConfig';
@@ -191,21 +191,6 @@ export function useOrderIdentityCellNodes({
     });
   }
 
-  // Clicking the chip already copies the order number (OrderIdChip → handleCopy),
-  // so the menu carries only the secondary "open on platform" action. When there
-  // is no marketplace URL the menu is empty → CopyChipHoverMenu disables itself
-  // and the chip is a plain copy-on-click.
-  const orderItems: CopyChipHoverMenuItem[] = [];
-  if (marketplaceOrderUrl) {
-    orderItems.push({
-      id: 'open-order',
-      label: platformLabel ? `Open on ${platformLabel}` : 'Open on platform',
-      icon: <ExternalLink />,
-      tone: 'accent',
-      onSelect: () => openExternal(marketplaceOrderUrl),
-    });
-  }
-
   const emptyTrackingNode = (() => {
     if (tracking) return null;
     if (lastTracking && onPasteTracking) {
@@ -318,20 +303,19 @@ export function useOrderIdentityCellNodes({
   const orderChipNode = hideOrderId ? (
     <OrderIdChipPlaceholder plain={plain} />
   ) : (
-    <CopyChipHoverMenu menuLabel="Order number actions" items={orderItems} onOpenChange={handleMenuOpenChange}>
-      <span className="inline-flex min-w-0 items-center gap-1.5">
-        {plain ? (
-          <BrandIdentityDot className={orderBrandDot.className} style={orderBrandDot.style} />
-        ) : null}
-        <OrderIdChip
-          value={orderId}
-          display={getLast8(orderId)}
-          platformLabel={platformLabel}
-          plain={plain}
-          fitDisplayWidth
-        />
-      </span>
-    </CopyChipHoverMenu>
+    <span className="inline-flex min-w-0 items-center gap-1.5">
+      {plain ? (
+        <BrandIdentityDot className={orderBrandDot.className} style={orderBrandDot.style} />
+      ) : null}
+      <OrderNumberMenuChip
+        value={orderId}
+        platformLabel={platformLabel || null}
+        openHref={marketplaceOrderUrl}
+        onMenuOpenChange={handleMenuOpenChange}
+        plain={plain}
+        dense
+      />
+    </span>
   );
 
   const trackingBrandDot = tracking

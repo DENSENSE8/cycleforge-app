@@ -43,10 +43,6 @@ import {
   ORDERS_DEFAULT_TABLE_BINDING,
   ORDERS_TESTED_TABLE_BINDING,
 } from '@/components/dashboard/orders-queue/orders-table-definition';
-import {
-  TO_SHIP_DESK_DEFAULT_BINDING,
-  TO_SHIP_DESK_TESTED_BINDING,
-} from '@/components/outbound/orders/to-ship/to-ship-desk-table-definition';
 
 export const REGISTERED_BINDINGS = [
   // Unbox / History / Testing — the golden spreadsheet.
@@ -56,14 +52,12 @@ export const REGISTERED_BINDINGS = [
   // survives because deleting it would mean cutting a branch out of the kept
   // surface, not removing a table.
   INCOMING_TABLE_BINDING,
-  // To-Ship runs on the shared parametric Orders grid: `ToShipDeskTable` mounts
-  // `OrdersGridHost`, which resolves `ordersTableBindingFor(mode)`. So the two
-  // Orders definitions are To-Ship's ENGINE, not a second surface — the
-  // dashboard Orders queue that used to mount them is gone.
+  // To-Ship / Packed / station queues share this parametric Orders grid.
+  // `UnshippedTable` → `OrdersGridHost` → `ordersTableBindingFor(mode)`. There
+  // is no desk-local `to-ship` family — that fork only isolated prefs while
+  // painting the same cells, and it clipped ORDER identity.
   ORDERS_DEFAULT_TABLE_BINDING,
   ORDERS_TESTED_TABLE_BINDING,
-  TO_SHIP_DESK_DEFAULT_BINDING,
-  TO_SHIP_DESK_TESTED_BINDING,
   // Home → Daily: the shift checklist as a real collection, not a prose list.
   DAILY_TABLE_BINDING,
 ] as const;

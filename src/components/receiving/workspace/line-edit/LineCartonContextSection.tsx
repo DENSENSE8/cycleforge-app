@@ -216,8 +216,8 @@ export function LineCartonContextSection({
       onPrioritySelect={(tier) => void c.handlePrioritySelect(tier)}
       onToggleTicketView={onToggleTicketView}
       ticketViewActive={ticketViewActive}
-      // Close the focused line → the right pane crossfades back to the browse
-      // feed. Unbox + triage share the same window-event close mechanism.
+      // Unbox + Arrival share this close. Unbox's pane hook must enter desk
+      // (`?unboxdesk=1`) so station-first MRU does not reopen the carton.
       onExitToList={() => dispatchReceivingWorkspaceClose()}
       onSendToTicket={
         onSendToTicketExternal ?? (() => c.setPhotoNoteOpen(true))

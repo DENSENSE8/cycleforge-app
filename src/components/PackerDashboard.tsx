@@ -3,7 +3,11 @@
 import React from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { PackerRightPane } from '@/components/packer/PackerRightPane';
-import { usePackerOrderPane } from '@/components/packer/usePackerOrderPane';
+import {
+  dispatchPackActiveFba,
+  dispatchPackActiveOrder,
+  usePackerOrderPane,
+} from '@/components/packer/usePackerOrderPane';
 import { StationDetailsHandler } from './station/StationDetailsHandler';
 import { useRealtimeToasts } from '@/hooks/useRealtimeToasts';
 import { useRefreshSignal } from '@/lib/refresh/bus';
@@ -32,6 +36,8 @@ export default function PackerDashboard({ packerId }: PackerDashboardProps) {
             activeOrderPane={activeOrderPane}
             activeFbaPane={activeFbaPane}
             onCloseActiveOrder={() => {
+              dispatchPackActiveOrder(null);
+              dispatchPackActiveFba(null);
               setActiveOrderPane(null);
               setActiveFbaPane(null);
             }}

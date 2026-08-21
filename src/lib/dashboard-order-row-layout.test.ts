@@ -121,6 +121,11 @@ describe('ORDERS_QUEUE_COLUMNS — the column model header + template share', ()
     assert.equal(byKey.condition.label, 'Cond');
     assert.equal(byKey.tracking.label, 'Tracking');
     assert.equal(byKey.tracking.gridLabel, undefined, 'no Track short-label — full Tracking when it fits');
+    assert.equal(
+      byKey.order.width,
+      'minmax(5.5rem, 5.5rem)',
+      'ORDER track matches Unbox History so last-8 + brand dot does not ellipsis',
+    );
   });
 
   it('hideable columns map to their TableColumnConfig keys', () => {
