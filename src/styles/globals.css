@@ -746,6 +746,7 @@ html[data-color-scheme='dark'] .react-flow__attribution a { color: #94a3b8; }
 /* Internal grid: BOTTOM row rules only — header + body + summary share one
    horizontal-line language. No border-right (1B). Shell owns the outer perimeter. */
 [data-grid-skin='airtable'] [data-grid-col-header] [role='row'] > *,
+[data-grid-skin='airtable'] [data-grid-row] > *,
 [data-grid-skin='airtable'] [data-order-row-id] > *,
 [data-grid-skin='airtable'] [data-grid-summary-row] > * {
   border-bottom: var(--cf-grid-line-w) solid var(--cf-grid-line);
@@ -756,6 +757,7 @@ html[data-color-scheme='dark'] .react-flow__attribution a { color: #94a3b8; }
 
 /* Drop React container hairlines so cell bottom rules are the only seams (no doubles). */
 [data-grid-skin='airtable'] [role='row'],
+[data-grid-skin='airtable'] [data-grid-row],
 [data-grid-skin='airtable'] [data-order-row-id],
 [data-grid-skin='airtable'] [data-grid-summary-row] {
   border-bottom-width: 0;
