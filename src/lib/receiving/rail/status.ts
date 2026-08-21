@@ -67,18 +67,6 @@ const COARSE_DOT: Record<ReceivingLineStatus, string> = {
   RECEIVED: 'bg-emerald-500',
 };
 
-/**
- * Coarse status → carton-identity status pill tone (border · wash · ink).
- * Same 3-state map as {@link COARSE_DOT}; carton chrome composes the
- * tone onto a content-width cell after tracking.
- */
-const COARSE_PILL: Record<ReceivingLineStatus, string> = {
-  INCOMING: 'border-amber-200 bg-amber-50 text-amber-700',
-  SCANNED: 'border-blue-200 bg-blue-50 text-blue-700',
-  UNBOXED: 'border-indigo-200 bg-indigo-50 text-indigo-700',
-  RECEIVED: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-};
-
 const COARSE_LABEL: Record<ReceivingLineStatus, string> = {
   INCOMING: 'Incoming',
   SCANNED: 'Scanned',
@@ -89,7 +77,7 @@ const COARSE_LABEL: Record<ReceivingLineStatus, string> = {
 /**
  * Coarse status → grid status-chip tone (wash + ink, no border).
  * Matches `workflowStageBadge` / `GridStatusCellValue` — the chip owns its own
- * ring. Distinct from {@link COARSE_PILL} (carton-identity locked pill).
+ * ring.
  */
 const COARSE_BADGE: Record<ReceivingLineStatus, string> = {
   INCOMING: 'bg-amber-50 text-amber-700',
@@ -100,14 +88,6 @@ const COARSE_BADGE: Record<ReceivingLineStatus, string> = {
 
 export function getReceivingStatusDot(row: ReceivingLineRow): string {
   return COARSE_DOT[railCoarseStatus(row)];
-}
-
-/**
- * Locked carton-identity status pill tone for row 2 — same coarse stage as
- * {@link getReceivingStatusDot}. Compose onto the carton chrome status cell.
- */
-export function getReceivingStatusPillClass(row: ReceivingLineRow): string {
-  return COARSE_PILL[railCoarseStatus(row)];
 }
 
 /**

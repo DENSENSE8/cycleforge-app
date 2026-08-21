@@ -8,6 +8,7 @@ import {
 } from '@/design-system/components/grid';
 import type { RowGroup } from '@/lib/group-rows';
 import type { TableId } from '@/lib/tables/table-columns';
+import { compoundRowEstimateFor } from './compound/compound-columns';
 import type { TableSurfaceBinding } from './table-surface-binding';
 
 /**
@@ -155,11 +156,20 @@ export function NonlinearTableHost<Row, K extends string, C extends LedgerGridCo
   columnTriggerPortalTarget = null,
 }: NonlinearTableHostProps<Row, K, C>) {
   const { definition } = binding;
+  const mounted = columns ?? binding.columns;
 
   return (
     <LedgerGridSurface<Row, K, C>
       ariaLabel={ariaLabel ?? definition.ariaLabel}
-      columns={columns ?? binding.columns}
+      columns={mounted}
+      // The row box is a property of the MODEL, not of the mount. A compound
+      // table paints a 48px row (`COMPOUND_ROW_PX` — the same constant the cell
+      // uses for its min-height and the thumbnail sizes against), so the
+      // virtualizer must estimate 48 or its scroll math drifts by 8px per row.
+      // Derived here so no surface hand-passes a number that can fall out of
+      // sync with the cells, and so a family joining the compound layout gets
+      // the right estimate by mounting the columns.
+      rowEstimate={compoundRowEstimateFor(mounted)}
       makeDescriptor={binding.makeDescriptor}
       orderGroupsByDate={orderGroupsByDate}
       rows={rows}

@@ -18,17 +18,10 @@
  */
 
 import { CartonContextCard } from '@/components/station/entity-context';
-import { useCapabilityProviderLabel } from '@/hooks/useCapabilityProviderLabel';
 import { dispatchReceivingWorkspaceClose } from '@/utils/events';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { dispatchLineUpdated } from '@/components/station/receiving-lines-table-helpers';
 import { isLocalPickupFulfillment } from '@/lib/receiving/fulfillment-mode';
-import {
-  getReceivingStatusDot,
-  getReceivingStatusDotLabel,
-  getReceivingStatusDotTip,
-  getReceivingStatusPillClass,
-} from '@/lib/receiving/rail/status';
 import { useCartonPoTotal } from './hooks/useCartonPoTotal';
 import type { UnboxLineController } from './unbox-line-controller';
 
@@ -102,12 +95,6 @@ interface LineCartonContextSectionProps {
    */
   onOpenPhotosDisplay?: () => void;
   /**
-   * Opens the carton-history leaf (Displays → Timeline) from the status cell's
-   * hover menu. Omit on a host with no Timeline tab — the row is dropped rather
-   * than painted dead.
-   */
-  onOpenHistory?: () => void;
-  /**
    * Opt-out: suppress Photos hover toolbar. Unbox keeps the strip — Move /
    * Send open Displays via the external callbacks. Pill click stays
    * send-to-phone; double-click opens Displays when {@link onOpenPhotosDisplay}
@@ -140,7 +127,6 @@ export function LineCartonContextSection({
   onOpenMovePhotosExternal,
   onSendToTicketExternal,
   onOpenPhotosDisplay,
-  onOpenHistory,
   suppressPhotoHoverGallery = false,
 }: LineCartonContextSectionProps) {
   void expandClassifyWhenPending;
@@ -148,7 +134,6 @@ export function LineCartonContextSection({
   // PO money total — carton grain by construction (a sum over the carton's
   // lines), derived via the SoT (`cartonPoTotal`), never summed in the card.
   const poTotal = useCartonPoTotal(row.receiving_id ?? null);
-  const { label: inventoryProviderLabel } = useCapabilityProviderLabel('inventory');
 
   return (
     <CartonContextCard
@@ -165,16 +150,6 @@ export function LineCartonContextSection({
       // Keeping it here doubled the same fraction in two places with two grains
       // (active-line vs carton), which is how they drifted.
       qty={null}
-      // Same coarse stage the operator just clicked in the sidebar rail — the
-      // rail SoT owns the unmatched / Zoho-received special cases, so the band
-      // and the rail can never disagree about a carton's stage. Tip adds the
-      // inventory-sync sentence when coarse status is Unboxed.
-      lifecycle={{
-        dotClass: getReceivingStatusDot(row),
-        pillClass: getReceivingStatusPillClass(row),
-        label: getReceivingStatusDotLabel(row),
-        tip: getReceivingStatusDotTip(row, inventoryProviderLabel),
-      }}
       showStaffPhotoRow
       photoStage={photoStage}
       onMakeClaim={onToggleClaimView ?? (() => c.openClaimModal('create'))}
@@ -231,7 +206,6 @@ export function LineCartonContextSection({
       }
       onOpenMovePhotosExternal={onOpenMovePhotosExternal}
       onOpenPhotosDisplay={onOpenPhotosDisplay}
-      onOpenHistory={onOpenHistory}
       suppressPhotoHoverGallery={suppressPhotoHoverGallery}
     />
   );

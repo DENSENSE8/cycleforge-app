@@ -242,19 +242,29 @@ export function CompoundState({ view }: { view: CompoundRowView }) {
       <CompoundLine className="text-text-faint">On time</CompoundLine>
     );
 
+  const pill = (
+    <span
+      className={cn(
+        // Flush-square: ops chrome carries no radius (kinetic-ledger law).
+        'inline-flex min-w-0 items-center gap-1 px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide',
+        tone.pill,
+      )}
+    >
+      <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', tone.dot)} aria-hidden />
+      <CompoundLine>{view.stateLabel}</CompoundLine>
+    </span>
+  );
+
   return (
     <CompoundCell
       primary={
-        <span
-          className={cn(
-            // Flush-square: ops chrome carries no radius (kinetic-ledger law).
-            'inline-flex min-w-0 items-center gap-1 px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide',
-            tone.pill,
-          )}
-        >
-          <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', tone.dot)} aria-hidden />
-          <CompoundLine>{view.stateLabel}</CompoundLine>
-        </span>
+        view.stateTip ? (
+          <HoverTooltip label={view.stateTip} asChild>
+            {pill}
+          </HoverTooltip>
+        ) : (
+          pill
+        )
       }
       secondary={
         view.delayTip ? (

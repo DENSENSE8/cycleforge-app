@@ -101,6 +101,13 @@ export function useStaffTasks(staffId: number | null) {
   return {
     liveRows,
     archivedRows,
+    /**
+     * The clock every row on this table was resolved against. Exposed so the
+     * row's compound view computes lateness from the SAME instant the done-ness
+     * and reset stamps came from — two cells on one row must never disagree
+     * about what time it is.
+     */
+    nowMs,
     loading: live.isLoading || (archived.isLoading && archived.isFetching),
     isError: live.isError,
     pending,

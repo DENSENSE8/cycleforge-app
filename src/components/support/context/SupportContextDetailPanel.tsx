@@ -5,7 +5,6 @@ import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRai
 // Direct, not via the barrel this file is itself exported from — a member
 // importing its own barrel is a module cycle.
 import { SupportContextHub } from './SupportContextHub';
-import { DeskRailChromeRow } from '@/components/right-rail/DeskRailChromeRow';
 import {
   DESK_INSPECTOR_INDEX,
   DeskInspectorIndexShell,
@@ -143,10 +142,6 @@ export function SupportContextDetailPanel({
     >
       <div className="flex h-full min-h-0 flex-col overflow-hidden">
         <div className="shrink-0 border-b border-border-hairline bg-surface-card/90 backdrop-blur-xl">
-          <DeskRailChromeRow
-            onClose={onClose}
-            closeTitle="Close support context"
-          />
           <div className="px-2 pb-2 pt-1">
             {/* Identity is the SHORT DURABLE KEY, with the mode as the eyebrow —
                 `right-rail-inspector.md`. This header used to invert them (`Ticket

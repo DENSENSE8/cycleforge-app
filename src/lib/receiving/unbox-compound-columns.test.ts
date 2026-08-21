@@ -41,18 +41,21 @@ describe('compound column model', () => {
     assert.ok(!frozen.slice(firstUnfrozen).includes(true), 'frozen columns must be a prefix');
   });
 
-  it('keeps the thumbnail track fixed, leftmost and frozen', () => {
+  it('keeps the thumbnail track leftmost and frozen', () => {
     const thumb = RECEIVING_COMPOUND_COLUMNS.find((c) => c.key === 'thumb')!;
     assert.equal(thumb.width, 'minmax(4rem, 4rem)');
-    assert.equal(thumb.resizable, false);
     assert.ok(thumb.frozen, 'the image is the pinned row handle');
     // Only the select gutter may precede it.
     assert.equal(RECEIVING_COMPOUND_COLUMNS.findIndex((c) => c.key === 'thumb'), 1);
   });
 
-  it('exposes exactly one resizable track, and it is the variable-length one', () => {
+  it('lets an operator drag every content track', () => {
+    // Was `['item']` only, which is how an 11rem `fulfillment` could leave a
+    // gutter beside a short order chip with no way for the floor to close it.
+    // Resizing a FROZEN track is safe: `gridFrozenLeft` builds its sticky-left
+    // offsets from the same `--cf-col-*` vars the drag writes.
     const resizable = RECEIVING_COMPOUND_COLUMNS.filter((c) => c.resizable).map((c) => c.key);
-    assert.deepEqual(resizable, ['item']);
+    assert.deepEqual(resizable, ['thumb', 'fulfillment', 'item', 'state']);
   });
 
   it('never offers sort on chrome tracks', () => {

@@ -8,10 +8,8 @@ import {
   DAILY_GRID_COLUMNS,
   DAILY_GRID_FROZEN_CELL,
   dailyGridCell,
-  dailyGridFrozenLeft,
   dailyGridRowShellClass,
   dailyGridTemplate,
-  isDailyGridFrozen,
   isDailyGridSortable,
   type DailyGridColumn,
   type DailyGridColumnKey,
@@ -22,8 +20,6 @@ const DAILY_HEADER_LAYOUT: LedgerHeaderLayoutApi<DailyGridColumn> = {
   cellClass: dailyGridCell,
   rowShellClass: dailyGridRowShellClass,
   frozenCellClass: DAILY_GRID_FROZEN_CELL,
-  frozenLeft: dailyGridFrozenLeft,
-  isFrozen: isDailyGridFrozen,
   isSortable: isDailyGridSortable,
 };
 

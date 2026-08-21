@@ -173,7 +173,16 @@ retired shell before deleting `InventoryShell`.
   (`modal={false}`, `DeskRailChromeRow`) keyed on `?open=<kind>:<ref>`; `unit`/`alert`/`count`
   bodies real, `sku`/`bin` deferred to W3 (honest hint — their full-page shells are unsafe raw in
   a push rail). `UnitsWorkspaceView` row-click retargeted. No deletions.
-- **W2** — delete `UnitDetailsPanel` (coordinate its `SearchDetailWorkspace` `'unit'` consumer).
+- **W2** — delete `UnitDetailsPanel`. **Half done (2026-08-21): the
+  `SearchDetailWorkspace` `'unit'` consumer is retargeted.** `/search?sel=unit:` now mounts
+  `SearchUnitStationPane` (`EntityStationPane`, `stance="preview"`), so the only remaining
+  consumer is `InventoryDetailsOverlay.tsx:15,97` — this wave is now blocked solely on the
+  Tier-B panels → shell → overlay teardown, not on `/search`.
+  **The grade / hold writes did NOT move with it**: preview forces `resolvedDock = null`, and
+  `GradeActionCard` / `HoldActionCard` live on in `UnitDetailsPanel` for the overlay. Whoever
+  deletes that panel owns re-homing those two POSTs (`/api/serial-units/{id}/grade`,
+  `/hold`, `/release`) onto the surviving work surface — deleting the file without them is a
+  silent capability loss, not a cleanup.
   **NOT `ByUnitView`** — Wave 1 made it the surviving unit inspector body (see Tier C).
 - **W3** — `/inventory/skus` + `/inventory/bins`; build the **real** `sku`/`bin` inspector bodies
   (replace `InventoryInspectorRail`'s deferred hint — compose `SkuDetailView` panel-mode /

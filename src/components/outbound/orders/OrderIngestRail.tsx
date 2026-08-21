@@ -34,7 +34,6 @@ import {
   DeskInspectorIndexShell,
   type DeskInspectorLeaf,
 } from '@/components/right-rail/DeskInspectorIndexShell';
-import { DeskRailChromeRow } from '@/components/right-rail/DeskRailChromeRow';
 import { ShippedIntakeForm } from '@/components/shipped/ShippedIntakeForm';
 import { OrderSyncDialog } from '@/components/sidebar/OrderSyncDialog';
 import { useShippedFormSubmit } from '@/components/sidebar/dashboard-sidebar-hooks';
@@ -218,7 +217,6 @@ export function OrderIngestRail({
           ariaLabel="Add orders"
         >
           <div className="flex h-full min-h-0 flex-col" data-testid="order-ingest-rail">
-            <DeskRailChromeRow onClose={onClose} closeTitle="Hide add orders" />
             <DeskInspectorIndexShell
               leaves={leaves}
               activeId={activeId}

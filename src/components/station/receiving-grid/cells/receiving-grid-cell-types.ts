@@ -12,10 +12,11 @@ import {
   type GridColumnDisplayPref,
 } from '@/design-system/components/grid';
 import type { GridSelectGutterChrome } from '@/components/ui/GridRowCheckbox';
+import { gridFrozenLeft } from '@/design-system/components/grid/grid-column-geometry';
 import {
+  RECEIVING_GRID_COLUMNS,
   RECEIVING_GRID_FROZEN_CELL,
   RECEIVING_GRID_FROZEN_EDGE_KEY,
-  receivingGridFrozenLeft,
   type IncomingGridColumn,
   type ReceivingGridColumn,
 } from '@/lib/receiving/receiving-grid-layout';
@@ -29,6 +30,16 @@ export type ReceivingActivityDateCell = {
 
 export type ReceivingGridCellCtx = {
   row: ReceivingLineRow;
+  /**
+   * The column model actually MOUNTED on this row.
+   *
+   * Sticky-left offsets must derive from it, never from a family constant: a
+   * surface that swaps between the flat and compound models freezes a different
+   * prefix in each, and a key-only closure over one of them silently resolves
+   * the wrong slot for the other (the compound `thumb` pinned on top of the
+   * checkbox for exactly this reason).
+   */
+  columns?: readonly ReceivingGridCellColumn[];
   selectMode: boolean;
   /** Either plane is live on this row — used for the row fill only. */
   isSelected: boolean;
@@ -155,7 +166,9 @@ export function receivingDataCellStyle(
   if (!col.frozen && !highlight) return undefined;
   return {
     ...highlight,
-    ...(col.frozen ? { left: receivingGridFrozenLeft(col.key) } : null),
+    ...(col.frozen
+      ? { left: gridFrozenLeft(ctx?.columns ?? RECEIVING_GRID_COLUMNS, col.key) }
+      : null),
   };
 }
 

@@ -20,6 +20,7 @@
  * anatomy regardless of viewport width.
  */
 
+import { compoundColumnsFor } from '@/components/tables/compound/compound-columns';
 import {
   gridFrozenKeys,
   isGridColumnResizable,
@@ -380,75 +381,25 @@ export function ordersQueueContentMinWidthRem(
 const VIEWPORT_SHOW_ALL_PX = 640;
 
 /**
- * COMPOUND (two-row) Orders columns — the same WMS layout Receiving mounts.
+ * COMPOUND (two-row) Orders / To-Ship columns.
  *
  * A **sibling array, never a filter of {@link ORDERS_QUEUE_COLUMNS}**. The two
  * models answer different questions: the flat one is a spreadsheet (one fact
  * per sortable track), this one is a scan list (four compound cells pairing an
  * identifier with its qualifier).
  *
- * The tracks are IDENTICAL in key and width to `RECEIVING_COMPOUND_COLUMNS` on
- * purpose — that is what makes the two tables read as one product rather than
- * two teams' interpretations of a brief. They stay separate arrays because
- * width/freeze/visibility are per-family prefs, but if these ever need to
- * diverge in geometry, that is the signal something is wrong, not a licence.
+ * **The geometry is not declared here.** It comes from `COMPOUND_TRACKS`
+ * (`components/tables/compound/compound-columns.ts`) — the same objects
+ * Receiving, Incoming and Tasks mount. This used to be a hand-copied array kept
+ * equal to Receiving's by a unit test; deriving both from one declaration makes
+ * "the two tables read as one product" a property of construction rather than
+ * a promise someone has to keep.
  *
  * The engine is unchanged: `LedgerGridSurface` still owns width, freeze,
- * resize, per-staff visibility and virtualization. Presentation swaps by column
- * model, so this costs one array plus five thin wrappers — not a second table.
+ * resize, per-staff visibility and virtualization.
  */
-export const ORDERS_COMPOUND_COLUMNS: readonly OrdersQueueColumn[] = [
-  // HARD RULE — column order is image · ids · title · status. Frozen prefix is
-  // `select · thumb`: the photo is the row handle an operator scans for, so it
-  // stays pinned while everything else h-scrolls.
-  { key: 'select', width: 'minmax(2rem, 2rem)', frozen: true, resizable: false },
-  {
-    key: 'thumb',
-    frozen: true,
-    width: 'minmax(4rem, 4rem)',
-    label: 'Photo',
-    gridLabel: '',
-    align: 'start',
-    resizable: false,
-  },
-  {
-    key: 'fulfillment',
-    width: 'minmax(11rem, 11rem)',
-    label: 'Fulfillment',
-    gridLabel: 'Order',
-    type: 'id',
-    align: 'start',
-    resizable: false,
-  },
-  {
-    key: 'item',
-    width: 'minmax(18rem, 18rem)',
-    label: 'Item',
-    gridLabel: 'Item',
-    type: 'text',
-    align: 'start',
-    resizable: true,
-    minTrackRem: 10,
-  },
-  {
-    key: 'state',
-    width: 'minmax(10rem, 10rem)',
-    label: 'Status',
-    gridLabel: 'Status',
-    type: 'tag',
-    align: 'start',
-    resizable: false,
-  },
-  {
-    key: 'open',
-    width: 'minmax(2.5rem, 2.5rem)',
-    label: 'Open',
-    gridLabel: '',
-    align: 'end',
-    resizable: false,
-  },
-  { key: '_fill', width: 'minmax(0rem, 1fr)', resizable: false },
-] as const;
+export const ORDERS_COMPOUND_COLUMNS: readonly OrdersQueueColumn[] =
+  compoundColumnsFor<OrdersQueueColumn>();
 
 export function ordersQueueViewportForceHidden(widthPx: number): ReadonlySet<OrdersQueueColumnKey> {
   if (!Number.isFinite(widthPx) || widthPx >= VIEWPORT_SHOW_ALL_PX) return new Set();

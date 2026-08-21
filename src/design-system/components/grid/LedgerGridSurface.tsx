@@ -209,6 +209,15 @@ interface LedgerGridSurfaceProps<Row, K extends string, C extends LedgerGridColu
   /** Scroll a row (by getRowKey) into view — deep-link / keyboard focus. */
   scrollToKey?: string | null;
   /**
+   * First-paint row height estimate (px) for the virtualizer.
+   *
+   * Resolved by the CALLER from the column model it is mounting — a surface
+   * that paints a taller row box must say so, or the scrollbar and every
+   * scroll-to computation are wrong by the difference on every row. Omitted →
+   * the house default (`LEDGER_GRID_ROW_ESTIMATE_PX`).
+   */
+  rowEstimate?: number;
+  /**
    * Optional ref on the outer shell — Orders attaches viewport force-hide
    * observation here.
    */
@@ -298,6 +307,7 @@ export function LedgerGridSurface<Row, K extends string, C extends LedgerGridCol
   isSearching = false,
   showDayHeaders = false,
   scrollRef,
+  rowEstimate,
   scrollParentRef,
   scrollToKey,
   shellRef,
@@ -479,6 +489,11 @@ export function LedgerGridSurface<Row, K extends string, C extends LedgerGridCol
               contentMinWidthPx={contentMinWidthPx}
               columnVars={columnVars}
               gridSkin="airtable"
+              // The virtualizer's scroll math must agree with the row box the
+              // cells actually paint, or the scrollbar lies by ~17% per row on
+              // a compound table. Resolved by the caller from the MOUNTED
+              // column model, never guessed here.
+              rowEstimate={rowEstimate}
               showDayHeaders={dayHeadersActive}
               aria-label={ariaLabel}
               data-testid={`${testId}-scroll`}

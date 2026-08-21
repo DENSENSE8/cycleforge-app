@@ -6,7 +6,6 @@ import {
   getReceivingStatusDot,
   getReceivingStatusDotLabel,
   getReceivingStatusDotTip,
-  getReceivingStatusPillClass,
   getUnboxRecentStatusDot,
   getUnboxRecentStatusDotLabel,
   receivingCoarseStatusPaint,
@@ -72,21 +71,6 @@ test('getReceivingStatusDotLabel — Zoho received + local DONE still reads Rece
   });
   assert.equal(getReceivingStatusDotLabel(r), 'Received');
   assert.equal(getReceivingStatusDot(r), 'bg-emerald-500');
-});
-
-test('getReceivingStatusPillClass — tracks the same coarse stage as the rail dot', () => {
-  assert.match(
-    getReceivingStatusPillClass(row({ workflow_status: 'MATCHED' })),
-    /border-blue-200/,
-  );
-  assert.match(
-    getReceivingStatusPillClass(row({ workflow_status: 'UNBOXED' })),
-    /border-indigo-200/,
-  );
-  assert.match(
-    getReceivingStatusPillClass(row({ workflow_status: 'DONE' })),
-    /border-emerald-200/,
-  );
 });
 
 test('getUnboxRecentStatusDot — matched-but-not-unboxed carton reads Scanned', () => {

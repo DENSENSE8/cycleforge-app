@@ -6,11 +6,17 @@
  * Distinct from the shared {@link WorkspaceTimelineTab} used on Unbox / Testing /
  * Shipping. Journey thumbs open the full carton receiving-photo set
  * (`GET /api/receiving-photos?receivingId=`), not the capped stage preview.
+ *
+ * Loading and absence go through `UniversalLoader` / `EmptyState` (2026-08-21),
+ * the same faces `/search` wears — this file had a hand-rolled spinner row and
+ * two hand-painted dashed cards, and `/search?sel=receiving:` renders it right
+ * beside the order branch that uses the house primitives.
  */
 
 import { useMemo } from 'react';
-import { Loader2 } from '@/components/Icons';
-import { Button } from '@/design-system/primitives';
+import { Barcode } from '@/components/Icons';
+import { Button, EmptyState } from '@/design-system/primitives';
+import { UniversalLoader } from '@/design-system/components/UniversalLoader';
 import { StationUnitJourneys } from '@/components/station/workbench/StationUnitJourneys';
 import type { PhotoGalleryInput } from '@/components/shipped/photo-gallery/photo-gallery-utils';
 import { useCartonSerials } from '@/hooks/useCartonSerials';
@@ -40,31 +46,32 @@ export function CartonUnitJourneyHistory({
   }, [photos]);
 
   if (serialQuery.isLoading) {
-    return (
-      <div className="flex items-center gap-2 px-1 py-6 text-role-caption font-medium text-text-faint">
-        <Loader2 className="h-4 w-4 animate-spin" /> Loading serials…
-      </div>
-    );
+    return <UniversalLoader isLoading label="Loading serials" className="min-h-24" />;
   }
   if (serialQuery.isError) {
     return (
-      <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-6 text-center text-role-caption font-semibold text-rose-600">
-        Could not load this carton&rsquo;s serials.
-        <Button
-          variant="ghost"
-          onClick={() => serialQuery.refetch()}
-          className="ml-2 inline h-auto p-0 align-baseline text-rose-600 underline decoration-dotted hover:bg-transparent hover:text-rose-700"
-        >
-          Retry
-        </Button>
-      </div>
+      <EmptyState
+        tone="danger"
+        icon={<Barcode className="h-6 w-6 text-text-danger" />}
+        title="Could not load this carton’s serials"
+        description="The journey feed is unavailable — the rest of the record is unaffected."
+        // Retry is a real action, so it wears the house secondary button rather
+        // than a rose underline hand-painted onto a ghost.
+        action={
+          <Button variant="secondary" onClick={() => serialQuery.refetch()}>
+            Retry
+          </Button>
+        }
+      />
     );
   }
   if (serials.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-8 text-center text-role-caption font-medium text-text-soft">
-        No serialized units on this receiving yet.
-      </div>
+      <EmptyState
+        icon={<Barcode className="h-6 w-6 text-text-faint" />}
+        title="No serialized units yet"
+        description="Nothing on this receiving has been given a serial."
+      />
     );
   }
 

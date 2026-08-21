@@ -27,8 +27,47 @@
 | Zone | Host | SoT |
 |---|---|---|
 | 1 · rail | `SearchSidebarPanel` | `TechRailSearchBar` + `SidebarRecentRailBase` + `SearchRailQuickNote` |
-| 2 · centre | `EntityStationPane` `stance="preview"` | `SearchOrderCentre` |
-| 3 · edge | `StationDisplaysPushStack` | `buildSearchOrderDisplayIndexRows` |
+| 2 · centre | `EntityStationPane` `stance="preview"` | `SearchOrderCentre` · `SearchUnitCentre` |
+| 3 · edge | `StationDisplaysPushStack` | `buildSearchOrderDisplayIndexRows` · `buildSearchUnitDisplayIndexRows` |
+
+## Which `?sel=` branches are stations
+
+| `?sel=` | Host | Why |
+|---|---|---|
+| `order:` | `SearchOrderStationPane` | ported 2026-08-20 |
+| `unit:` | `SearchUnitStationPane` | ported 2026-08-21 — see below |
+| `receiving:` | `CartonInspector` | a thin re-export shared with `/carton/[id]`; its DISPLAY LANGUAGE is ported (`carton-read.md`), its assembly is the open follow-up |
+| `sku:` | `SkuDetailView variant="page"` | **deliberately not a station** — see below |
+| `repair:` · `fba:` | `EmptyState` + deep-link CTA | no in-page detail shell exists |
+
+- **A unit's identity bar is THIN, and that is the ruling.** `UnitStationIdentity`
+  maps only the serial (into the lead slot `OrderStationIdentity` already puts an
+  order number in) and the unit's tracking. SKU · grade · status · location go to
+  the CENTRE facts, because `CartonContextCard` has no slot for any of them and
+  its own 2026-08-21 ruling took the lifecycle chip OFF that strip for width.
+  Cramming a SKU into `poDisplay` — a PO slot with `onEditPo` / `poOpenHref`
+  semantics — is a page-local twin wearing the SoT's clothes.
+  `unit-station-identity-vm.ts` was written against that deleted `lifecycle`
+  prop; its resolved status face now lands on a fact row in `SearchUnitCentre`.
+  Same SoT, different seat — and the VM finally has a consumer.
+
+- **The unit preview has no grade / hold, deliberately.** `stance="preview"`
+  forces `resolvedDock = null`, and grading a unit from a find surface has no
+  station context behind it — the same reason the order centre omits
+  `editableShippingFields`. Read-only-ness is the ABSENCE of the capability;
+  `UnitDetailsPanel` (the inventory overlay, a WORK surface) still owns
+  `GradeActionCard` and `HoldActionCard`. Two hosts, two region contracts, one
+  read model — the split `SearchOrderStationPane` already has with
+  `ShippedDetailsPanel`.
+
+- **`sku:` stays `SkuDetailView`.** It is a full EDITING page on this surface
+  today — stock adjust, location, deactivate — spread over four cards with **19
+  interactive sites and no capability prop**. Moving it to `preview` would either
+  strip an operator's writes silently or produce the lobotomized work chrome
+  `pattern-evolution.md` #5 bans. The port is real but it is a REQUIRED `stance`
+  threaded through `useSkuDetailView` + its four cards first (no default — a
+  defaulted classification is a silent opt-in for every site you did not visit),
+  visiting all three mounts: here, `BySkuView`, and the panel path.
 
 ## Hard rules
 

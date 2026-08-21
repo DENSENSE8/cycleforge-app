@@ -41,12 +41,14 @@ import {
   useWorkbenchSheetChrome,
 } from '@/components/dashboard/WorkbenchSheetView';
 import {
-  incomingGridColumnsFor,
+  INCOMING_COMPOUND_COLUMNS,
   defaultDirForIncomingGridSort,
   isIncomingGridSortable,
   type IncomingGridColumn,
   type IncomingGridColumnKey,
 } from '@/lib/receiving/receiving-grid-layout';
+import { useQueryClient } from '@tanstack/react-query';
+import { commitReceivingLineNote } from '@/lib/receiving/commit-receiving-line-note';
 import { compareIncomingGridRows } from '@/lib/receiving/incoming-grid-compare';
 import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
@@ -569,6 +571,30 @@ export default function ReceivingLinesTable({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filteredGroupedRecords, mode.serverSorted, incomingColumnSort, incomingSortDir]);
 
+  /**
+   * Inline note commit for an Incoming row.
+   *
+   * An Incoming row IS a `receiving_line`, so its note is the same scalar
+   * working field Unbox edits and it writes through the same helper — not a
+   * second commit path. Optimistic with a rollback toast: `ReceivingGridHost`
+   * makes exactly this call for its own lanes.
+   */
+  const queryClient = useQueryClient();
+  const handleIncomingCommitNote = useCallback(
+    (row: ReceivingLineRow, next: string) => {
+      if (row.id <= 0) return;
+      void commitReceivingLineNote({
+        queryClient,
+        lineId: row.id,
+        previous: row.notes ?? null,
+        next,
+      }).catch((err: unknown) => {
+        toast.error(err instanceof Error ? err.message : 'Failed to save note');
+      });
+    },
+    [queryClient],
+  );
+
   // Pipeline (board) layout for Incoming / History (behind the boards flag). The
   // board buckets the flat rows by the receiving lane SoT and day-bands per lane;
   // it replaces the header + dense list (SwimlaneBoard supplies its own toolbar).
@@ -763,10 +789,12 @@ export default function ReceivingLinesTable({
             <NonlinearTableHost<ReceivingLineRow, IncomingGridColumnKey, IncomingGridColumn>
               binding={INCOMING_TABLE_BINDING}
               tableId="incoming_embed"
-              columns={incomingGridColumnsFor({
-                trackingFiltered: modeContext.trackingIn.length > 0,
-                removedLane: mode.id === 'incoming_removed',
-              })}
+              // COMPOUND (two-row) WMS layout — the SAME tracks Unbox, History,
+              // Testing, To-Ship and Tasks mount. No lane variant: the
+              // recently-removed lane's reason rides the STATE pill
+              // (`incomingStateFace`) instead of a sixth column only that lane
+              // can use.
+              columns={INCOMING_COMPOUND_COLUMNS}
               orderGroupsByDate={incomingGroups}
               rows={incomingFlatRows}
               sort={incomingColumnSort}
@@ -804,6 +832,7 @@ export default function ReceivingLinesTable({
                   clickSelect={incomingClickSelect}
                   selectGutterChrome={selectGutterChrome}
                   columns={visible}
+                  onCommitNote={handleIncomingCommitNote}
                 />
               )}
               renderRow={(row, stripeIndex, { columns: visible }) => (
@@ -819,6 +848,7 @@ export default function ReceivingLinesTable({
                   clickSelect={incomingClickSelect}
                   selectGutterChrome={selectGutterChrome}
                   columns={visible}
+                  onCommitNote={handleIncomingCommitNote}
                 />
               )}
             />
@@ -871,10 +901,8 @@ export default function ReceivingLinesTable({
               ) : (
                 <NonlinearTableHost<ReceivingLineRow, IncomingGridColumnKey, IncomingGridColumn>
                   binding={INCOMING_TABLE_BINDING}
-                  columns={incomingGridColumnsFor({
-                    trackingFiltered: modeContext.trackingIn.length > 0,
-                    removedLane: mode.id === 'incoming_removed',
-                  })}
+                  // COMPOUND (two-row) WMS layout — see the embedded mount above.
+                  columns={INCOMING_COMPOUND_COLUMNS}
                   orderGroupsByDate={incomingGroups}
                   rows={incomingFlatRows}
                   sort={incomingColumnSort}
@@ -911,6 +939,7 @@ export default function ReceivingLinesTable({
                       clickSelect={incomingClickSelect}
                       selectGutterChrome={selectGutterChrome}
                       columns={visible}
+                      onCommitNote={handleIncomingCommitNote}
                     />
                   )}
                   renderRow={(row, stripeIndex, { columns: visible }) => (
@@ -926,6 +955,7 @@ export default function ReceivingLinesTable({
                       clickSelect={incomingClickSelect}
                       selectGutterChrome={selectGutterChrome}
                       columns={visible}
+                      onCommitNote={handleIncomingCommitNote}
                     />
                   )}
                 />

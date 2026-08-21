@@ -16,7 +16,8 @@
 
 import { use } from 'react';
 import { CartonInspector } from '@/components/receiving/inspector/CartonInspector';
-import { Panel } from '@/design-system/primitives';
+import { Search } from '@/components/Icons';
+import { EmptyState } from '@/design-system/primitives';
 
 
 export default function CartonInspectorPage({
@@ -29,10 +30,15 @@ export default function CartonInspectorPage({
 
   if (!Number.isFinite(receivingId) || receivingId <= 0) {
     return (
+      // The house empty face, not a soft-radius dashed Panel: this is the same
+      // "you asked for a record that cannot exist" state `/search` paints, and
+      // the two are one click apart.
       <div className="flex h-full w-full items-center justify-center bg-surface-canvas p-6">
-        <Panel radius="xl" padding="none" className="border-dashed inset-empty text-center text-role-caption text-text-muted">
-          “{id}” is not a carton id.
-        </Panel>
+        <EmptyState
+          icon={<Search className="h-6 w-6 text-text-faint" />}
+          title="Not a carton id"
+          description={`“${id}” is not a number this surface can open. Check the link, or search for the carton.`}
+        />
       </div>
     );
   }

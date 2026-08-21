@@ -32,6 +32,7 @@ const LEDGER_HEADER_ROW_FACE = PRIMARY_CHROME_ROW_FACE;
 import { ColumnResizeHandle } from './ColumnResizeHandle';
 import { GridHeaderLabel, gridHeaderAriaSort } from './GridHeaderLabel';
 import { isGridColumnResizable, isGridColumnFillTrack, isGridColumnPaintTrack } from './grid-column-editability';
+import { gridFrozenLeft } from './grid-column-geometry';
 import {
   resolveColumnResizeEdges,
   type GridColumnResizeEdge,
@@ -56,8 +57,21 @@ export type LedgerHeaderLayoutApi<C extends LedgerGridColumnModel> = {
   cellClass: (opts: { inset: 'none' | 'grid'; rule: boolean }) => string;
   rowShellClass: (isMobile: boolean, opts?: { scrollMinContent?: boolean }) => string;
   frozenCellClass: string;
-  frozenLeft: (key: string) => string;
-  isFrozen: (key: string) => boolean;
+  /**
+   * NOTE — there is deliberately no `frozenLeft` / `isFrozen` here.
+   *
+   * Both used to be family closures over the family's FLAT column constant, and
+   * the header called them by key. That silently broke the moment a family
+   * mounted a SECOND column model: Receiving's compound layout freezes
+   * `select · thumb`, but `isReceivingGridFrozen` answered for `select · order`,
+   * so the pinned photo track resolved `left` as if it were the first frozen
+   * column and pinned on top of the checkbox under horizontal scroll.
+   *
+   * The header already receives the columns actually mounted. Freeze membership
+   * (`column.frozen`) and the sticky offset (`gridFrozenLeft(columns, key)`) now
+   * derive from THAT array, so a header cannot disagree with the model beneath
+   * it — whichever model a surface swaps in.
+   */
   isSortable: (key: string) => boolean;
   /** Column key that draws `data-frozen-edge`. Default `title`. */
   frozenEdgeKey?: string;
@@ -135,7 +149,14 @@ export function LedgerGridColumnHeader<C extends LedgerGridColumnModel>({
   const hasSelect = columns.some((c) => c.key === 'select');
   const template = layout.template(columns);
   const dataColumns = columns.filter((c) => c.key !== 'select');
-  const frozenEdgeKey = layout.frozenEdgeKey ?? 'title';
+  // The frozen edge IS the last frozen track, so derive it from the MOUNTED
+  // model. A family constant (`RECEIVING_GRID_FROZEN_EDGE_KEY = 'order'`) names
+  // a key the compound model does not have, so the scroll-edge shadow simply
+  // never painted on a compound table — the same class of bug as the sticky
+  // offsets above, and the same fix. `layout.frozenEdgeKey` remains the
+  // fallback for a model with no frozen tracks at all.
+  const frozenEdgeKey =
+    [...columns].reverse().find((c) => c.frozen)?.key ?? layout.frozenEdgeKey ?? 'title';
   const resizeEdges = onResizeColumn
     ? resolveColumnResizeEdges(dataColumns, frozenEdgeKey)
     : null;
@@ -166,7 +187,7 @@ export function LedgerGridColumnHeader<C extends LedgerGridColumnModel>({
             emptyGutter ? 'items-stretch overflow-hidden p-0' : 'justify-center',
             layout.frozenCellClass,
           )}
-          style={{ left: layout.frozenLeft('select') }}
+          style={{ left: gridFrozenLeft(columns, 'select') }}
           data-frozen-edge={frozenEdgeKey === 'select' ? true : undefined}
         >
           {selectActive ? (
@@ -230,6 +251,7 @@ export function LedgerGridColumnHeader<C extends LedgerGridColumnModel>({
             column={headerColumn}
             last={last}
             layout={layout}
+            columns={columns}
             frozenEdgeKey={frozenEdgeKey}
             sortActive={sortable}
             isActiveSort={isActiveSort}
@@ -260,6 +282,7 @@ function LedgerHeaderCell<C extends LedgerGridColumnModel>({
   last,
   layout,
   frozenEdgeKey,
+  columns,
   sortActive = false,
   isActiveSort = false,
   sortDir = null,
@@ -274,6 +297,8 @@ function LedgerHeaderCell<C extends LedgerGridColumnModel>({
   last: boolean;
   layout: LedgerHeaderLayoutApi<C>;
   frozenEdgeKey: string;
+  /** The MOUNTED model — freeze membership and sticky offsets derive from it. */
+  columns: readonly C[];
   sortActive?: boolean;
   isActiveSort?: boolean;
   sortDir?: GridSortDir | null;
@@ -284,7 +309,7 @@ function LedgerHeaderCell<C extends LedgerGridColumnModel>({
   columnMenu?: LedgerGridColumnMenuApi<C>;
   widthBound?: { min?: number; max?: number };
 }) {
-  const frozen = layout.isFrozen(column.key);
+  const frozen = Boolean(column.frozen);
   const label = column.label ?? column.key;
   const ariaSort = gridHeaderAriaSort(isActiveSort, sortDir, sortActive);
   const tip =
@@ -318,7 +343,7 @@ function LedgerHeaderCell<C extends LedgerGridColumnModel>({
         sortActive && 'cursor-pointer hover:text-text-default',
         isActiveSort && 'text-text-default',
       )}
-      style={frozen ? { left: layout.frozenLeft(column.key) } : undefined}
+      style={frozen ? { left: gridFrozenLeft(columns, column.key) } : undefined}
     >
       <GridHeaderLabel column={column} sortDir={isActiveSort ? sortDir : null} />
       {onResize && onReset && resizeEdges

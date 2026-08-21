@@ -57,9 +57,15 @@ jscpd clone baseline was shrunk **114 → 111** after warranty. Re-run `--write`
 After that (ranked, both doors imported — cannot just delete):
 
 1. `SetPinPad` vs `StaffPinPad` — extract shared `THEME_NUMPAD`, keep both jobs
-2. `OrderCustomerFacts` vs `CustomerDetailsTab` — same shape as warranty (`density`)
-3. `BinBuilderMobile` vs `RackBuilderMobile` — larger than NumericStep; printer-family chrome
-4. `DashboardDetailsStack` vs `TechDetailsStack` — Tech adds armed delete; maybe keep wrappers
+2. `BinBuilderMobile` vs `RackBuilderMobile` — larger than NumericStep; printer-family chrome
+3. `DashboardDetailsStack` vs `TechDetailsStack` — Tech adds armed delete; maybe keep wrappers
+
+~~`OrderCustomerFacts` vs `CustomerDetailsTab`~~ — **resolved 2026-08-21 by
+deletion.** It was ranked under "both doors imported" but had zero importers:
+a fork of `CustomerDetailsTab` whose only mount died with
+`SearchOrderFactsColumn.tsx` in the `/search` station port. Rationale +
+the lesson about verifying importer counts before ranking:
+[`component-sot-consolidation-HANDOFF.md`](component-sot-consolidation-HANDOFF.md).
 
 ---
 

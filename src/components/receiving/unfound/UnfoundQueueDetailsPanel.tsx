@@ -28,12 +28,12 @@ import { useCallback, useEffect, useState } from 'react';
 import { Copy, ExternalLink } from '@/components/Icons';
 import { formatDateTimePST } from '@/utils/date';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
-import { DeskRailChromeRow } from '@/components/right-rail/DeskRailChromeRow';
 import {
   DESK_INSPECTOR_INDEX,
   DeskInspectorIndexShell,
   type DeskInspectorLeaf,
 } from '@/components/right-rail/DeskInspectorIndexShell';
+import { InspectorColumnDisplayButton } from '@/components/right-rail/InspectorColumnDisplayButton';
 import {
   FLOOR_DELETE_PEER_CLASS,
   FloorIconButton,
@@ -148,7 +148,6 @@ export function UnfoundQueueDetailsPanel(props: UnfoundQueueDetailsPanelProps) {
     >
       <div className="flex h-full min-h-0 flex-col overflow-hidden">
         <div className="shrink-0 border-b border-border-hairline bg-surface-card/90 backdrop-blur-xl">
-          <DeskRailChromeRow onClose={onClose} closeTitle="Close details" columnDisplay />
           <div className="flex items-center gap-2 px-2 pb-2 pt-1">
             <PaneHeaderIconBadge Icon={Icon} bg={meta.bg} tint="text-white" />
             <PaneHeaderLabel
@@ -168,6 +167,7 @@ export function UnfoundQueueDetailsPanel(props: UnfoundQueueDetailsPanelProps) {
 
         {isEmailPo ? (
           <DeskInspectorIndexShell
+          chrome={<InspectorColumnDisplayButton />}
             leaves={leaves}
             activeId={navId}
             onActiveIdChange={onNavChange}

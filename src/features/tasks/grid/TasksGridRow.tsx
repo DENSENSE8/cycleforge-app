@@ -1,41 +1,50 @@
 'use client';
 
+/**
+ * One My Tasks row — the shared compound row, in the Tasks family's stance.
+ *
+ * This file used to hand-roll seven cells and its own row shell: a bare `<div>`
+ * with a local `cursor-pointer border-b hover:bg-surface-hover` and a
+ * `bg-surface-accent` selection wash. That is the same job
+ * {@link LedgerGridLeafRow} + `ledgerRowFillClass` already do for Unbox,
+ * Incoming and To-Ship, so Tasks had its OWN answer to "what does a selected
+ * row look like" — a different wash, no triage flag support, and no shared
+ * scroll-min width var. Selection now paints from the one place it paints
+ * everywhere else.
+ *
+ * The five compound tracks come from {@link renderCompoundGridCell}. What stays
+ * here is the one thing that is genuinely this surface's:
+ *
+ * **The gutter checkbox is the PRIMARY VERB, not a selection.** Ticking it
+ * checks the task off; clicking anywhere else opens the record in the right
+ * rail. One row, two gestures — which is why the checkbox cell stops
+ * propagation. The compound model governs that track's geometry; it has never
+ * governed what clicking it does.
+ */
+
 import type { ReactNode } from 'react';
 import { Checkbox } from '@/design-system/primitives';
 import {
-  GridCellDash,
-  GridDateTimeCellValue,
-  GridStatusCellValue,
-} from '@/components/ui/grid-cells';
-import { gridDataCellClass } from '@/design-system/components/grid';
+  isCompoundCellKey,
+  renderCompoundGridCell,
+} from '@/components/tables/compound/CompoundGridCell';
+import { gridDataCellClass, LedgerGridLeafRow } from '@/design-system/components/grid';
+import { gridFrozenLeft } from '@/design-system/components/grid/grid-column-geometry';
 import {
-  workStatusChipClass,
-  workStatusDot,
-  workStatusLabel,
-} from '@/lib/work-orders/work-status-display';
-import { STATION_LABEL, type StationKey } from '@/components/layout/goal-chip/goal-chip-shared';
-import {
-  TASKS_GRID_COLUMNS,
+  TASKS_COMPOUND_COLUMNS,
   TASKS_GRID_FROZEN_CELL,
-  tasksGridFrozenLeft,
-  tasksGridRowShellClass,
   tasksGridTemplate,
   type TasksGridColumn,
 } from '@/lib/staff-todos/tasks-grid-layout';
+import { TASKS_GRID_CAPABILITIES } from './tasks-grid-descriptor';
+import { staffTaskCompoundView } from './staff-task-compound-view';
 import type { StaffTaskRow } from './staff-task-row';
 import { cn } from '@/utils/_cn';
 
-/**
- * One My Tasks row.
- *
- * The gutter checkbox is the surface's PRIMARY VERB, not a selection — ticking
- * it checks the task off. Clicking anywhere ELSE opens the record in the right
- * rail, which is why the checkbox cell stops propagation: one row, two gestures,
- * and each one has to stay predictable.
- */
 export function TasksGridRow({
   row,
-  columns = TASKS_GRID_COLUMNS,
+  columns = TASKS_COMPOUND_COLUMNS,
+  nowMs,
   isMobile = false,
   selected,
   togglePending,
@@ -44,23 +53,44 @@ export function TasksGridRow({
 }: {
   row: StaffTaskRow;
   columns?: readonly TasksGridColumn[];
+  /** The SAME clock every row on this table read — never `Date.now()` here. */
+  nowMs: number;
   isMobile?: boolean;
   selected: boolean;
   togglePending: boolean;
   onToggle: (row: StaffTaskRow) => void;
   onSelect: (row: StaffTaskRow) => void;
 }) {
-  const dataCell = (col: TasksGridColumn, rule = true) =>
-    gridDataCellClass(col, { rule, inset: 'grid', frozenClass: TASKS_GRID_FROZEN_CELL });
+  const view = staffTaskCompoundView(row, { nowMs });
 
   const renderCell = (col: TasksGridColumn, last: boolean): ReactNode => {
     const rule = !last;
+
+    if (isCompoundCellKey(col.key)) {
+      return renderCompoundGridCell({
+        col,
+        columns,
+        rule,
+        view,
+        // No `onCommitNote`: `staff_todos` has no note column, so the second
+        // line is the station and it is read-only. Capability, not mode.
+        onOpen: () => onSelect(row),
+      });
+    }
+
     switch (col.key) {
       case 'select':
         return (
           <div
-            className={cn(dataCell(col, true), 'justify-center')}
-            style={{ left: tasksGridFrozenLeft('select') }}
+            className={cn(
+              gridDataCellClass(col, {
+                rule: true,
+                inset: 'grid',
+                frozenClass: TASKS_GRID_FROZEN_CELL,
+              }),
+              'justify-center',
+            )}
+            style={{ left: gridFrozenLeft(columns, 'select') }}
             // The verb lives here, so the click must not also open the record.
             onClick={(e) => e.stopPropagation()}
           >
@@ -72,102 +102,22 @@ export function TasksGridRow({
             />
           </div>
         );
-      case 'task':
+      case '_fill':
         return (
           <div
-            data-col="task"
-            className={dataCell(col, rule)}
-            style={{ left: tasksGridFrozenLeft('task') }}
-            data-frozen-edge
-          >
-            <span
-              className={cn(
-                'min-w-0 flex-1 truncate text-role-data',
-                row.done || row.archived ? 'text-text-soft line-through' : 'text-text-default',
-              )}
-            >
-              {row.text}
-            </span>
-          </div>
+            data-col="_fill"
+            role="presentation"
+            aria-hidden
+            className={gridDataCellClass(col, { rule: false, inset: 'grid' })}
+          />
         );
-      // Lifecycle STATE: dot · chip, resolved through `work-status-display` —
-      // never a cell-local tone map. Deleted outranks done: an archived row's
-      // check state is history, but what you need to read first is that it is
-      // not on the list any more.
-      case 'status': {
-        const workStatus = row.archived ? 'CANCELED' : row.done ? 'DONE' : 'OPEN';
-        return (
-          <div data-col="status" className={dataCell(col, rule)}>
-            <GridStatusCellValue
-              label={row.archived ? 'Deleted' : workStatusLabel(workStatus)}
-              toneClass={workStatusChipClass(workStatus)}
-              dotClass={workStatusDot(workStatus)}
-              tooltip={
-                row.archived
-                  ? 'Deleted — restore it from the inspector'
-                  : row.done
-                    ? 'Checked off'
-                    : 'Not checked off'
-              }
-            />
-          </div>
-        );
-      }
-      case 'kind':
-        return (
-          <div data-col="kind" className={dataCell(col, rule)}>
-            <span className="truncate text-role-caption text-text-muted">
-              {row.kind === 'recurring' ? 'Recurring' : 'To-do'}
-            </span>
-          </div>
-        );
-      case 'station':
-        return (
-          <div data-col="station" className={dataCell(col, rule)}>
-            {row.station ? (
-              <span className="truncate text-role-caption text-text-muted">
-                {STATION_LABEL[row.station as StationKey] ?? row.station}
-              </span>
-            ) : (
-              <GridCellDash />
-            )}
-          </div>
-        );
-      case 'due':
-        return (
-          <div data-col="due" className={dataCell(col, rule)}>
-            {row.resetsAtMs != null ? (
-              <GridDateTimeCellValue
-                raw={new Date(row.resetsAtMs).toISOString()}
-                className="text-role-caption"
-              />
-            ) : (
-              <GridCellDash />
-            )}
-          </div>
-        );
-      case 'updated':
-        return (
-          <div data-col="updated" className={dataCell(col, rule)}>
-            {row.checkedAtMs != null ? (
-              <GridDateTimeCellValue
-                raw={new Date(row.checkedAtMs).toISOString()}
-                className="text-role-caption"
-              />
-            ) : (
-              <GridCellDash />
-            )}
-          </div>
-        );
-      case '_fill':
-        return <div data-col="_fill" role="presentation" aria-hidden className={dataCell(col, false)} />;
       default:
-        return <span className={dataCell(col, rule)} />;
+        return <span className={gridDataCellClass(col, { rule, inset: 'grid' })} />;
     }
   };
 
   return (
-    <div
+    <LedgerGridLeafRow
       data-staff-task-id={row.id}
       role="button"
       tabIndex={0}
@@ -180,18 +130,13 @@ export function TasksGridRow({
           onSelect(row);
         }
       }}
-      className={cn(
-        tasksGridRowShellClass(isMobile),
-        'cursor-pointer border-b border-border-hairline hover:bg-surface-hover',
-        selected && 'bg-surface-accent',
-      )}
-      style={isMobile ? undefined : { gridTemplateColumns: tasksGridTemplate(columns) }}
-    >
-      {columns.map((col, i) => (
-        <div key={col.key} className="contents">
-          {renderCell(col, i === columns.length - 1)}
-        </div>
-      ))}
-    </div>
+      className="group/row cursor-pointer"
+      columns={columns}
+      template={tasksGridTemplate(columns)}
+      selected={selected}
+      capabilities={TASKS_GRID_CAPABILITIES}
+      isMobile={isMobile}
+      renderCell={(col, { last }) => renderCell(col, last)}
+    />
   );
 }

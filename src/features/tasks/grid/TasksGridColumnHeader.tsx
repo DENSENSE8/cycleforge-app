@@ -8,10 +8,8 @@ import {
   TASKS_GRID_COLUMNS,
   TASKS_GRID_FROZEN_CELL,
   tasksGridCell,
-  tasksGridFrozenLeft,
   tasksGridRowShellClass,
   tasksGridTemplate,
-  isTasksGridFrozen,
   isTasksGridSortable,
   type TasksGridColumn,
   type TasksGridColumnKey,
@@ -22,8 +20,6 @@ const TASKS_HEADER_LAYOUT: LedgerHeaderLayoutApi<TasksGridColumn> = {
   cellClass: tasksGridCell,
   rowShellClass: tasksGridRowShellClass,
   frozenCellClass: TASKS_GRID_FROZEN_CELL,
-  frozenLeft: tasksGridFrozenLeft,
-  isFrozen: isTasksGridFrozen,
   isSortable: isTasksGridSortable,
 };
 

@@ -26,7 +26,6 @@ import {
   LISTING_MENU_ICONS,
   StationContextClaimCell,
   StationContextIconCell,
-  StationContextLifecycleCell,
   StationContextListingCell,
 } from './StationContextActionCell';
 import { listingMenuRows } from './carton-bar-menu-rows';
@@ -100,10 +99,14 @@ import {
  *            ({@link STATION_IDENTITY_LEAD_DIVIDER_CLASS}) — the one rule the
  *            bar draws at rest, because leaving this carton is a different
  *            KIND of thing from the facts about it.
- *   Left — identity: order# · lifecycle · tracking#. Status is the stage DOT
- *            alone — no word, at any width; the name lives on the accessible
- *            name and the hover panel — and it follows the identifier it
- *            qualifies.
+ *   Left — identity: order# · tracking#. **No lifecycle chip.** The stage is
+ *            already on every row of the sidebar rail the operator selected
+ *            this carton from, so a copy of it here spent bar width — on a
+ *            strip under constant width pressure — restating what the surface
+ *            beside it never stops showing. Removed 2026-08-21 after two passes
+ *            (dot, then dot + word) failed to earn the space. The rail dot SoT
+ *            (`getReceivingStatusDot`) is unchanged and still the one status
+ *            face; this bar simply is not one of its consumers.
  *   Middle — classify: priority · platform · type, absolutely centered
  *            in the bar. Each wears its catalog identity dot + name. Collapses
  *            to dots only when those labels would touch identity or actions.
@@ -120,14 +123,11 @@ import {
  * `carton-context-details-in-displays.guard.test.ts`).
  *
  * The bar never wraps. Classify pills collapse and trailing verbs park in
- * `⋯` before a second row appears. Status is a dot **plus its name** (coloured
- * dot, default-ink label — the classify-pill face), dropping to the dot alone
- * under the same collision measure that dots the classify pills; a floating
- * unlabelled dot is not a status face. No brand tiles. Never IconButton on
- * this row.
- * Omit optional props (`onMakeClaim`, `showStaffPhotoRow`, `lifecycle`,
- * `showPoTotal`, classify, …) to hide that affordance per station — do not
- * invent empty placeholder tracks.
+ * `⋯` before a second row appears. No brand tiles. Never IconButton on this
+ * row.
+ * Omit optional props (`onMakeClaim`, `showStaffPhotoRow`, `showPoTotal`,
+ * classify, …) to hide that affordance per station — do not invent empty
+ * placeholder tracks.
  *
  * Thin adapters
  * (`LineCartonContextSection` · `TestingCartonHeader` ·
@@ -200,12 +200,10 @@ export function CartonContextCard({
   exitLabel = 'Back to list',
   poTotal = null,
   showPoTotal = false,
-  lifecycle = null,
   qty = null,
   onSendToTicket,
   onOpenMovePhotosExternal,
   onOpenPhotosDisplay,
-  onOpenHistory,
   suppressPhotoHoverGallery = false,
   photosCell = null,
 }: {
@@ -225,23 +223,6 @@ export function CartonContextCard({
    * identity) never grows a money column it cannot fill.
    */
   showPoTotal?: boolean;
-  /**
-   * Resolved lifecycle status for the identity run's status cell — the SAME
-   * coarse stage the operator just clicked in the sidebar rail. Resolve via the
-   * receiving rail SoT (`getReceivingStatusDot` / `getReceivingStatusPillClass`
-   * / `getReceivingStatusDotLabel`, `src/lib/receiving/rail/status.ts`); this
-   * card never maps a status itself. Omit to hide.
-   *
-   * The bar paints `dotClass` + `label`. `pillClass` (the rail's wash + ink) is
-   * carried for surfaces that DO paint a filled badge — the flush strip is one
-   * continuous face, so a tinted block mid-row would be a second surface on it.
-   */
-  lifecycle?: {
-    dotClass: string;
-    pillClass: string;
-    label: string;
-    tip?: string | null;
-  } | null;
   /**
    * Carton-wide received / expected counts, resolved via `cartonQtyRollup`
    * (`src/lib/receiving/po-total.ts`) so this shares the PO total's carton
@@ -367,12 +348,6 @@ export function CartonContextCard({
   /**
    * Unbox: open Move photos in the station tool push instead of a center overlay.
    */
-  /**
-   * Opens the station's carton-history leaf (Unbox Displays → Timeline) from
-   * the status cell's menu. Omit and the row simply is not offered — a station
-   * with no history surface must not paint a dead verb.
-   */
-  onOpenHistory?: () => void;
   onOpenMovePhotosExternal?: () => void;
   /**
    * Unbox: double-click Photos pill → Displays → Photos (Actions). Replaces
@@ -538,33 +513,6 @@ export function CartonContextCard({
         <ChevronLeft className="block h-3.5 w-3.5 shrink-0" aria-hidden />
       </button>
     </HoverTooltip>
-  ) : null;
-
-  /**
-   * Lifecycle status — the dot alone, at the END of the identity run.
-   *
-   * It was once a bare dot wedged between the back chevron and the order #, and
-   * the fix for that was read as "give it a word". It was not: the defect was
-   * that a derived FACT sat where the eye reads NAVIGATION, and relocating it
-   * to the last slot of the identity run — after tracking, before the middle
-   * cluster's classifications — is what resolved it. The word came along for
-   * the ride and cost ~70px of a strip under constant width pressure, to
-   * restate the one thing an operator at this bench already knows.
-   *
-   * So the placement stays and the word goes. The name survives as the
-   * accessible name and in the hover panel; the cost is a sighted operator who
-   * cannot separate the stage hues, which is why neither of those may be
-   * dropped. Face and menu: {@link StationContextLifecycleCell}. The verbs are
-   * declared in `carton-bar-menu-rows.ts`, which records why Receive /
-   * Unreceive stay on the Unbox dock.
-   */
-  const statusBadge = lifecycle ? (
-    <StationContextLifecycleCell
-      label={lifecycle.label}
-      dotClass={lifecycle.dotClass}
-      tip={lifecycle.tip}
-      onOpenHistory={onOpenHistory}
-    />
   ) : null;
 
   const classifyFace = classifyCompact ? 'dot' : 'label';
@@ -957,9 +905,6 @@ export function CartonContextCard({
             <div className={STATION_CHROME_HOVER_CELL_CLASS}>{orderChip}</div>
           ) : null}
           {trackingSlot}
-          {/* Status closes the identity run — the last fact about this carton,
-              immediately right of the tracking number it qualifies. */}
-          {statusBadge}
           {qty ? (
             <div className={STATION_CHROME_CELL_CLASS}>
               <GridQtyFractionValue received={qty.received} expected={qty.expected} />

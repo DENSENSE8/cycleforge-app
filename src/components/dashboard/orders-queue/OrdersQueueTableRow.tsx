@@ -2,12 +2,9 @@
 
 import { gridDataCellClass } from '@/design-system/components/grid';
 import {
-  CompoundFulfillment,
-  CompoundItem,
-  CompoundOpen,
-  CompoundState,
-  CompoundThumb,
-} from '@/components/tables/compound/CompoundCells';
+  isCompoundCellKey,
+  renderCompoundGridCell,
+} from '@/components/tables/compound/CompoundGridCell';
 import { ordersCompoundView } from '@/lib/orders/orders-compound-view';
 import type { GridColumnDisplayPref } from '@/design-system/components/grid/grid-column-display';
 import { Fragment, memo, useCallback, useRef, useState, type ReactNode } from 'react';
@@ -560,43 +557,28 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   // over the same ordered list, so reorder is a list change — not a CSS trick.
   const renderDesktopCell = (col: OrdersQueueColumn, last: boolean): ReactNode => {
     const rule = !last;
+    // ── Compound (two-row) tracks — ORDERS_COMPOUND_COLUMNS only ────────────
+    // The SHARED renderer paints these, wrapper and all. This family used to
+    // supply its own wrappers; that is where it silently lost the frozen photo
+    // track (`thumb` is declared `frozen: true` and never got the sticky class),
+    // which is why the box around a compound cell is no longer a family's job.
+    //
+    // No `onCommitNote`: `order_notes` is an append-only trail, so the note line
+    // is read-only here — the capability is the ABSENCE of the prop, never a
+    // second component with the editor deleted.
+    if (isCompoundCellKey(col.key)) {
+      return renderCompoundGridCell({
+        col,
+        columns,
+        rule,
+        view: compoundView,
+        columnDisplay,
+        onOpen: onRowOpen ? () => onRowOpen(record) : undefined,
+      });
+    }
     switch (col.key) {
       case 'select':
         return leadControls;
-      // ── Compound (two-row) tracks — ORDERS_COMPOUND_COLUMNS only ──────────
-      // Bodies come from the SHARED renderer (`components/tables/compound`);
-      // this family only supplies its grid-cell wrapper and its row adapter, so
-      // Orders and Receiving cannot drift apart on the layout.
-      case 'thumb':
-        return (
-          <div data-col="thumb" className={cn(dataCell(col, rule), 'items-center')}>
-            <CompoundThumb view={compoundView} />
-          </div>
-        );
-      case 'item':
-        return (
-          <div data-col="item" className={dataCell(col, rule)}>
-            <CompoundItem view={compoundView} />
-          </div>
-        );
-      case 'fulfillment':
-        return (
-          <div data-col="fulfillment" className={dataCell(col, rule)}>
-            <CompoundFulfillment view={compoundView} />
-          </div>
-        );
-      case 'state':
-        return (
-          <div data-col="state" className={dataCell(col, rule)}>
-            <CompoundState view={compoundView} />
-          </div>
-        );
-      case 'open':
-        return (
-          <div data-col="open" className={cn(dataCell(col, rule), 'justify-end')}>
-            <CompoundOpen onOpen={onRowOpen ? () => onRowOpen(record) : undefined} />
-          </div>
-        );
       case 'title':
         return (
           <div

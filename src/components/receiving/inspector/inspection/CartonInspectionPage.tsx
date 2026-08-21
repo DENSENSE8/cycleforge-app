@@ -12,6 +12,15 @@
  * parallel read layout. Until it does, this file stays as-is; it is a TODO,
  * not a standing exemption.
  *
+ * **Its DISPLAY LANGUAGE is ported, though** (2026-08-21). The section header
+ * is `StationBlockLabel` / `StationCollapsibleBlock` — the promotion this file
+ * donated in the first place, which it then kept a byte-identical `SectionLabel`
+ * fork of — and loading / absence go through `UniversalLoader` and `EmptyState`
+ * instead of a hand-rolled spinner row and a rose dashed paragraph. That matters
+ * beyond tidiness here: `/search?sel=receiving:` mounts this component next to
+ * `/search?sel=order:`, so the two branches of ONE dispatch were wearing two
+ * different empty states and two different spinners.
+ *
  * Progress reuses the details-stack carton pipeline (`ReceivingCartonPipeline`
  * + stage rows) on a Panel surface; photos use the same
  * `ReceivingPhotosSection` (read-only) below the stepper. Header floats as a
@@ -19,7 +28,7 @@
  * plus quiet actions — never an in-flow pinned band.
  */
 
-import { useCallback, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { AnimatePresence, motion } from '@/design-system/motion';
@@ -28,15 +37,19 @@ import {
   useMotionPresence,
   useMotionTransition,
 } from '@/design-system/foundations/motion-framer-hooks';
-import { Button, IconButton, Panel } from '@/design-system/primitives';
+import { Button, EmptyState, IconButton, Panel } from '@/design-system/primitives';
+import { UniversalLoader } from '@/design-system/components/UniversalLoader';
+import {
+  StationBlockLabel,
+  StationCollapsibleBlock,
+} from '@/components/station/collapse';
 import {
   Camera,
-  ChevronDown,
   Copy,
   ExternalLink,
   History,
-  Loader2,
   Maximize2,
+  Package,
   Wrench,
 } from '@/components/Icons';
 import {
@@ -422,14 +435,15 @@ export function CartonInspectionPage({ receivingId }: { receivingId: number }) {
 
       <div className={cn('min-h-0 flex-1 overflow-y-auto', STATION_IDENTITY_SCROLL_CLEARANCE)}>
         {isLoading ? (
-          <div className="flex items-center gap-2 inset-card text-role-caption text-text-muted">
-            <Loader2 className="h-4 w-4 animate-spin" /> Loading carton…
-          </div>
+          <UniversalLoader isLoading label="Loading carton" />
         ) : isError || !receiving || !disposition ? (
           <div className="inset-card">
-            <p className="rounded-xl border border-dashed border-rose-200 bg-rose-50 inset-empty text-center text-role-caption text-text-danger">
-              Could not load this carton. It may have been removed, or belong to another workspace.
-            </p>
+            <EmptyState
+              tone="danger"
+              icon={<Package className="h-6 w-6 text-text-danger" />}
+              title="Carton not found"
+              description="It may have been removed, or belong to another workspace."
+            />
           </div>
         ) : (
           <div className="pb-16">
@@ -658,53 +672,6 @@ function DispositionBar({
  * `action` is the one control the section owns. `onToggle` turns the label into
  * the disclosure so the chevron sits inside the word it opens.
  */
-function SectionLabel({
-  label,
-  count,
-  action,
-  open,
-  onToggle,
-}: {
-  label: string;
-  count?: ReactNode;
-  action?: ReactNode;
-  open?: boolean;
-  onToggle?: () => void;
-}) {
-  const face = 'inline-flex min-w-0 items-center gap-1.5 text-role-eyebrow uppercase tracking-widest text-text-soft';
-  return (
-    <div className="flex min-h-6 items-center justify-between gap-2">
-      {onToggle ? (
-        <button
-          type="button"
-          onClick={onToggle}
-          aria-expanded={open}
-          className={cn('ds-raw-button rounded-md text-left', face, focusRing('control', 'accent'))}
-        >
-          <ChevronDown
-            className={cn(
-              'h-3.5 w-3.5 shrink-0 transition-transform duration-150',
-              open && 'rotate-180',
-            )}
-          />
-          {label}
-        </button>
-      ) : (
-        <span className={face}>{label}</span>
-      )}
-
-      <span className="flex shrink-0 items-center gap-1">
-        {count != null ? (
-          <span className="text-role-micro uppercase tracking-widest tabular-nums text-text-faint">
-            {count}
-          </span>
-        ) : null}
-        {action}
-      </span>
-    </div>
-  );
-}
-
 function ContentsColumn({
   receiving,
   lines,
@@ -729,14 +696,20 @@ function ContentsColumn({
     // what a per-section `border-b` would do on two columns of unequal length.
     <section className="divide-y divide-border-hairline" data-testid="carton-contents-column">
       {lines.length > 0 ? (
-        <div className="inset-card space-y-2">
-          <SectionLabel
+        <div className="inset-card">
+          {/* A true disclosure, so it takes the BLOCK rather than the bare
+              header — which also gives the line list the house height tween it
+              never had (it used to appear and vanish on a frame). */}
+          <StationCollapsibleBlock
             label="Contents"
             count={totalsSummary}
-            open={linesOpen}
+            collapsed={!linesOpen}
             onToggle={() => setLinesOpen((v) => !v)}
-          />
-          {linesOpen ? <ContentsList lines={lines} /> : null}
+            bodyClassName="pt-2"
+            testId="carton-contents-block"
+          >
+            <ContentsList lines={lines} />
+          </StationCollapsibleBlock>
         </div>
       ) : hideEmptyContents ? null : (
         <p className="inset-card text-role-caption text-text-muted">No lines on this carton yet.</p>
@@ -744,7 +717,7 @@ function ContentsColumn({
 
       {(purchaseOrders?.length ?? 0) > 1 ? (
         <div className="inset-card space-y-2">
-          <SectionLabel label="Purchase orders" />
+          <StationBlockLabel label="Purchase orders" />
           <ul className="divide-y divide-border-hairline">
             {purchaseOrders!.map((po) => (
               <li
@@ -765,7 +738,7 @@ function ContentsColumn({
 
       {receiving.support_notes?.trim() ? (
         <div className="inset-card space-y-2">
-          <SectionLabel label="Note" />
+          <StationBlockLabel label="Note" />
           <p className="whitespace-pre-wrap text-role-caption text-text-default">
             {receiving.support_notes.trim()}
           </p>
@@ -799,7 +772,7 @@ function RecordSection({
   }
   return (
     <div className="inset-card space-y-3">
-      <SectionLabel label="Record" />
+      <StationBlockLabel label="Record" />
       {facts.length > 0 ? (
         <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-x-4 gap-y-2">
           {facts.slice(0, 6).map((f) => (
@@ -858,7 +831,7 @@ function ProgressRail({
         be a second front door to one surface.
       */}
       <div className="inset-card space-y-2">
-        <SectionLabel label="Progress" />
+        <StationBlockLabel label="Progress" />
         <ReceivingCartonPipeline log={log} readiness={readiness} />
       </div>
 
@@ -869,7 +842,7 @@ function ProgressRail({
       */}
       {disposition.exceptions.length > 0 ? (
         <div className="inset-card space-y-2">
-          <SectionLabel label="Findings" />
+          <StationBlockLabel label="Findings" />
           <ul className="space-y-1.5">
             {disposition.exceptions.map((ex) => (
               // A finding keeps its tone — that is state, not decoration — but
@@ -896,7 +869,7 @@ function ProgressRail({
       {events.length > 0 ? <ActivitySection events={events} /> : null}
 
       <div className="inset-card space-y-2">
-        <SectionLabel label="History" />
+        <StationBlockLabel label="History" />
         <CartonUnitJourneyHistory receivingId={receiving.id} />
       </div>
     </section>
@@ -989,7 +962,11 @@ function ActivitySection({ events }: { events: CartonInspectorEvent[] }) {
 
   return (
     <div className="inset-card space-y-2">
-      <SectionLabel
+      {/* The header only. This body is a SWAP — newest event when closed, the
+          full list when open — so `StationCollapsibleBlock` would remove the one
+          row the section exists to show. `onToggle` is deliberately conditional:
+          with a single event there is nothing to open. */}
+      <StationBlockLabel
         label="Activity"
         count={countLabel}
         open={listOpen}
