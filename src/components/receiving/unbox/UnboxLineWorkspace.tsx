@@ -37,9 +37,15 @@
  */
 
 import { useEffect, useRef } from 'react';
-// useRef also gates the render-time primary-paint release below
+// useRef carries the render-time pane slot below (see `paneSlotRef`)
 import dynamic from 'next/dynamic';
-import { AnimatePresence, motion, motionRole, useMotionRole } from '@/design-system/motion';
+import {
+  AnimatePresence,
+  motion,
+  motionRole,
+  useMotionRole,
+  useOverlaySwapHardCut,
+} from '@/design-system/motion';
 import { ReceivingWorkspaceSkeleton } from '@/components/receiving/workspace/ReceivingWorkspaceSkeleton';
 
 // Phase 2 (lazy carton graph): `ReceivingLineWorkspace` pulls the ~1.1k-LOC
@@ -139,9 +145,10 @@ export function UnboxLineWorkspace({
   // Carton→carton while the overlay is already open: sync + hard-cut so the
   // new opaque pane covers the old one — `mode="wait"` would uncover the host
   // between exit and enter. Browse→first open still uses wait + enter fade.
-  const overlayWasOpenRef = useRef(false);
-  const cartonSwapHardCut = showOverlay && overlayWasOpenRef.current;
-  overlayWasOpenRef.current = showOverlay;
+  // The "already open" flag commits in an effect, never during render — this
+  // overlay is server-rendered open on cold land, so a render-time answer that
+  // moves between React's double-invoke passes is a hydration mismatch.
+  const cartonSwapHardCut = useOverlaySwapHardCut(showOverlay);
 
   // Read-only "already unboxed" receipt — shown over the editor when THIS
   // carton is the one the lookup scan resolved to. Scoped by carton id so a

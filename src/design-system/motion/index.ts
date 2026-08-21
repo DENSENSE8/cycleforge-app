@@ -53,3 +53,11 @@ export type {
 export { motionRole } from './roles';
 
 export { useMotionRole, useMotionPressRole } from './use-motion-role';
+
+/**
+ * The station overlay's cover-replace flag — one hook so the four surfaces that
+ * switch `mode` / `initial` / stacking on "already open?" cannot each re-derive
+ * it, and cannot re-derive it during render (a hydration mismatch on any
+ * overlay that server-renders open).
+ */
+export { useOverlaySwapHardCut } from './use-overlay-swap-hard-cut';
