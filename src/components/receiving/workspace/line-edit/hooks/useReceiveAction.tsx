@@ -110,7 +110,7 @@ export type ReceiveResult =
        * subscription AND the timeout entirely, so a fixture can never leave a
        * subscription running against a scenario that has no real lines.
        */
-      demoStatus?: 'pending' | 'confirmed' | 'failed';
+      demoStatus?: 'pending' | 'confirmed' | 'skipped' | 'failed';
       /** Raw API response — surfaced in the success card's details dropdown. */
       response: ReceiveResponseRecord;
     }

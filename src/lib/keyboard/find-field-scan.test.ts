@@ -74,7 +74,7 @@ test('a non-character key resets the run', () => {
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-const ROOT = join(import.meta.dirname, '../../..');
+const ROOT = process.cwd();
 const read = (p: string) => readFileSync(join(ROOT, p), 'utf8');
 
 test('the field adapter binds NATIVE capture, never a React synthetic handler', () => {

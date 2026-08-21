@@ -5,6 +5,7 @@ import { logger } from '@/lib/observability/logger';
 import { formatPSTTimestamp } from '@/utils/date';
 import { buildZohoReceiveNoteLine, zohoReceiveStaffName } from '@/lib/receiving/zoho-receive-note';
 import { invalidateReceivingViews } from '@/lib/receiving/invalidation';
+import { resolveReceiveVerdict, type ZohoPoOutcome } from '@/lib/receiving/receive-verdict';
 import { publishReceivingLogChanged } from '@/lib/realtime/publish';
 import { scheduleAfterResponse } from '@/lib/next/schedule-after-response';
 // Pure payload helpers only — every Zoho NETWORK call in this route goes
@@ -12,6 +13,7 @@ import { scheduleAfterResponse } from '@/lib/next/schedule-after-response';
 import {
   assertPurchaseOrderLineItemsEditable,
   assertPurchaseOrderReceivable,
+  isPurchaseOrderFlaggedReceived,
   buildPurchaseOrderLineItemsForDescriptionPut,
   catalogItemIdFromZohoPoLineItem,
   getPurchaseReceiveIdFromCreateResponse,
@@ -1013,8 +1015,28 @@ export const POST = withAuth(async (request, ctx) => {
         byPo.get(poId)!.add(liId);
       }
 
-      const poZohoReceiveSucceeded = new Map<string, boolean>();
+      // Three outcomes, not a boolean. `posted` means a purchase receive (or a
+      // markasunreceived) actually reached the provider; `noop` means we
+      // deliberately sent nothing because the provider is already at or ahead
+      // of received; `failed` means the call errored.
+      //
+      // This used to be Map<string, boolean> and four separate branches set it
+      // `true` WITHOUT calling the provider — so the station card printed
+      // "Confirmed in inventory" for a receive that never left the building.
+      // `zohoSettled()` keeps the old "posted-or-noop" meaning for the local
+      // promotion; the realtime verdict now tells the two apart.
+      const poZohoOutcome = new Map<string, ZohoPoOutcome>();
+      /** Why a PO came back `noop` — logged, and carried into the response. */
+      const poZohoNoopReason = new Map<string, string>();
+      const zohoSettled = (poId: string) => {
+        const outcome = poZohoOutcome.get(poId);
+        return outcome === 'posted' || outcome === 'noop';
+      };
       const poZohoReceiveId = new Map<string, string>();
+      /** receiving_line ids whose local UNBOXED→DONE promotion actually committed. */
+      const localPromoted = new Set<number>();
+      /** receiving_line id → why its promotion did not land. */
+      const localPromotionFailed = new Map<number, string>();
       try {
         if (!inventory) {
           // No inventory integration connected: the local receive stands; every
@@ -1025,7 +1047,7 @@ export const POST = withAuth(async (request, ctx) => {
               'mark-received-po: no inventory integration connected — provider receive skipped',
             );
           }
-          // Do not stamp poZohoReceiveSucceeded=false — the response already
+          // Do not stamp poZohoOutcome='failed' — the response already
           // carries skip_reason inventory_not_connected; publishing
           // zohoReceive:'failed' would fire the generic "saved locally" toast
           // on top of the clearer reconnect diagnostic.
@@ -1036,9 +1058,9 @@ export const POST = withAuth(async (request, ctx) => {
           for (const zohoPoId of byPo.keys()) {
             try {
               await inventory.markPurchaseOrderUnreceived(zohoPoId);
-              poZohoReceiveSucceeded.set(zohoPoId, true);
+              poZohoOutcome.set(zohoPoId, 'posted');
             } catch (err) {
-              poZohoReceiveSucceeded.set(zohoPoId, false);
+              poZohoOutcome.set(zohoPoId, 'failed');
               console.error(
                 'mark-received-po: markasunreceived failed (background)',
                 zohoPoId,
@@ -1068,7 +1090,8 @@ export const POST = withAuth(async (request, ctx) => {
                 .toLowerCase()
                 .replace(/[\s-]+/g, '_');
               if (poStatus === 'received' || poStatus === 'billed' || poStatus === 'closed') {
-                poZohoReceiveSucceeded.set(zohoPoId, true);
+                poZohoOutcome.set(zohoPoId, 'noop');
+                poZohoNoopReason.set(zohoPoId, `po_already_${poStatus}`);
                 logger.info(
                   { zohoPoId, poStatus },
                   'mark-received-po: PO already terminal in Zoho (background, treated as success)',
@@ -1093,7 +1116,52 @@ export const POST = withAuth(async (request, ctx) => {
                 skuByLineItemId,
               );
               if (lineItemsPosted.length === 0) {
-                poZohoReceiveSucceeded.set(zohoPoId, true);
+                // Nothing to post per line. Two very different worlds hide here,
+                // and collapsing them is what left PO 06-14980-30824 in transit
+                // through seven Receive clicks:
+                //
+                //  a) The PO really is received — Zoho's own receives cover the
+                //     ordered quantity. A genuine no-op.
+                //  b) The PO is NOT received, but no line-item receive is
+                //     possible. A billed PO reports `quantity_yet_to_receive: 0`
+                //     with `received_status: 'in_transit'` and `receives: []` —
+                //     Zoho requires bill_item_id we cannot read without the
+                //     ZohoInventory.bills.READ scope, so the per-line math has
+                //     nothing to work with while the PO is still open.
+                //
+                // (b) is exactly what an operator resolves by pressing "Mark as
+                // Received" on the PO in Zoho, so do that: whole-PO
+                // markasreceived, no line quantities. Previously this branch
+                // returned success without calling Zoho at all, which meant the
+                // one fallback that could have closed the PO
+                // (markPurchaseOrderAsReceived, reachable only from inside
+                // createPurchaseReceive) was never reached.
+                const header = (poResp.purchaseorder ?? {}) as Record<string, unknown>;
+                const receivedStatus = String(header.received_status ?? '').trim();
+
+                if (isPurchaseOrderFlaggedReceived(header)) {
+                  poZohoOutcome.set(zohoPoId, 'noop');
+                  poZohoNoopReason.set(zohoPoId, 'already_received_in_provider');
+                  continue;
+                }
+
+                logger.warn(
+                  {
+                    zohoPoId,
+                    receivedStatus,
+                    billedStatus: String(header.billed_status ?? ''),
+                    lineItemIds: [...byPo.get(zohoPoId)!],
+                  },
+                  'mark-received-po: nothing pending per line but PO is not received — falling back to whole-PO markasreceived',
+                );
+                const wholeResp = await inventory.markPurchaseOrderReceivedWhole(zohoPoId);
+                const wholeReceiveId = getPurchaseReceiveIdFromCreateResponse(wholeResp);
+                poZohoOutcome.set(zohoPoId, 'posted');
+                if (wholeReceiveId) poZohoReceiveId.set(zohoPoId, wholeReceiveId);
+                logger.info(
+                  { zohoPoId, receiveId: wholeReceiveId },
+                  'mark-received-po: whole-PO markasreceived ok (background)',
+                );
                 continue;
               }
               const receiveResp = await inventory.markPurchaseOrderReceived({
@@ -1104,7 +1172,7 @@ export const POST = withAuth(async (request, ctx) => {
                 ...(zohoBillNumber ? { billNumberHint: zohoBillNumber } : {}),
               });
               const receiveId = getPurchaseReceiveIdFromCreateResponse(receiveResp);
-              poZohoReceiveSucceeded.set(zohoPoId, true);
+              poZohoOutcome.set(zohoPoId, 'posted');
               if (receiveId) poZohoReceiveId.set(zohoPoId, receiveId);
               logger.info(
                 { zohoPoId, lineItems: lineItemsPosted, receiveId },
@@ -1121,13 +1189,14 @@ export const POST = withAuth(async (request, ctx) => {
                 /already\s+(fully\s+)?received/i.test(message) ||
                 /marked\s+as\s+received/i.test(message);
               if (alreadyReceived) {
-                poZohoReceiveSucceeded.set(zohoPoId, true);
+                poZohoOutcome.set(zohoPoId, 'noop');
+                poZohoNoopReason.set(zohoPoId, 'provider_reports_already_received');
                 logger.info(
                   { zohoPoId },
                   'mark-received-po: PO already received in Zoho (background, treated as success)',
                 );
               } else {
-                poZohoReceiveSucceeded.set(zohoPoId, false);
+                poZohoOutcome.set(zohoPoId, 'failed');
                 console.error(
                   'mark-received-po: createPurchaseReceive failed (background)',
                   zohoPoId,
@@ -1156,7 +1225,7 @@ export const POST = withAuth(async (request, ctx) => {
         for (const l of updatedLines) {
           const poId = String(l.zoho_purchaseorder_id || '').trim();
           if (!poId) continue;
-          if (poZohoReceiveSucceeded.get(poId)) succeededIds.push(l.id);
+          if (zohoSettled(poId)) succeededIds.push(l.id);
           else failedIds.push(l.id);
         }
         if (succeededIds.length > 0) {
@@ -1177,8 +1246,14 @@ export const POST = withAuth(async (request, ctx) => {
             };
             for (const l of updatedLines) {
               const poId = String(l.zoho_purchaseorder_id || '').trim();
-              if (!poId || !poZohoReceiveSucceeded.get(poId)) continue;
-              await transitionReceivingLine(
+              if (!poId || !zohoSettled(poId)) continue;
+              // transitionReceivingLine RETURNS {ok:false,status:409} for a
+              // disallowed edge — it does not throw. Ignoring the result (as
+              // this loop did until 2026-08-21) meant a line that never left
+              // EXPECTED was still reported to the operator as received, and
+              // the Incoming board kept computing delivery_state='IN_TRANSIT'
+              // from `workflow_status = 'EXPECTED'`. Record the verdict.
+              const promoted = await transitionReceivingLine(
                 {
                   receivingLineId: l.id,
                   to: 'DONE',
@@ -1189,6 +1264,11 @@ export const POST = withAuth(async (request, ctx) => {
                 client,
                 ctx.organizationId,
               );
+              if (!promoted.ok) {
+                localPromotionFailed.set(l.id, promoted.error || `status ${promoted.status}`);
+                continue;
+              }
+              localPromoted.add(l.id);
               const receiveId = poZohoReceiveId.get(poId);
               if (receiveId) {
                 await upsertReceivingLineZoho(
@@ -1200,10 +1280,28 @@ export const POST = withAuth(async (request, ctx) => {
               }
             }
           }).catch((err) => {
+            // The whole transaction rolled back: NOTHING was promoted, whatever
+            // the per-line loop recorded before the throw. Reset the trackers so
+            // the verdict below reports failure instead of inheriting a rolled-
+            // back success.
+            for (const id of succeededIds) {
+              localPromoted.delete(id);
+              localPromotionFailed.set(id, err instanceof Error ? err.message : String(err));
+            }
             console.warn('mark-received-po: UNBOXED→DONE after Zoho ok failed', err);
           });
+          // Mirror ONLY what actually committed into the response rows. The old
+          // code stamped every succeeded id 'DONE' in memory even when the
+          // transition was refused or the transaction rolled back — the response
+          // then told the client the line was received when the row was not.
           for (const l of updatedLines) {
-            if (succeededIds.includes(l.id)) l.workflow_status = 'DONE';
+            if (localPromoted.has(l.id)) l.workflow_status = 'DONE';
+          }
+          if (localPromotionFailed.size > 0) {
+            logger.warn(
+              { failures: [...localPromotionFailed.entries()].map(([id, reason]) => ({ id, reason })) },
+              'mark-received-po: provider settled but the local DONE promotion did not land (background)',
+            );
           }
         }
         if (failedIds.length > 0) {
@@ -1233,7 +1331,7 @@ export const POST = withAuth(async (request, ctx) => {
       try {
         if (!skipZohoReceive && !isUnreceive && inventory) {
           for (const zohoPoId of byPo.keys()) {
-            if (!poZohoReceiveSucceeded.get(zohoPoId)) continue;
+            if (!zohoSettled(zohoPoId)) continue;
           const serialMap = serialNotesByPo.get(zohoPoId);
           const hasSerialLines = Boolean(serialMap && Object.keys(serialMap).length > 0);
           if (!hasSerialLines && !needsHeaderPatch) continue;
@@ -1319,24 +1417,54 @@ export const POST = withAuth(async (request, ctx) => {
 
       try {
         await invalidateReceivingViews(ctx.organizationId, ['serial-units']);
-        for (const l of updatedLines) {
-          // Terminal Zoho verdict for this line so the inline checklist can
-          // confirm ('ok') or flip to a retryable failure ('failed'). Only
-          // meaningful for a real zoho_receive against a linked PO — scan-only
-          // (markasunreceived) and local-only lines carry no verdict.
-          let zohoReceive: 'ok' | 'failed' | undefined;
-          if (!skipZohoReceive && !isUnreceive) {
-            const poId = String(l.zoho_purchaseorder_id || '').trim();
-            if (poId) zohoReceive = poZohoReceiveSucceeded.get(poId) ? 'ok' : 'failed';
-          }
-          await publishReceivingLogChanged({
-            organizationId: ctx.organizationId,
-            action: 'update',
-            rowId: String(l.id),
-            source: 'receiving.mark-received-po',
-            ...(zohoReceive ? { zohoReceive } : {}),
+
+        // ── ONE verdict for the whole receive ────────────────────────────
+        // The station card renders a single welded panel, so it needs exactly
+        // one terminal answer — not one per line. Previously every line
+        // published its own verdict and the panel raced them; now the rows
+        // publish plain grid updates and the FIRST one carries the verdict.
+        // Same message count as before, one response on screen.
+        //
+        //   'ok'      → a purchase receive really posted AND the line is DONE.
+        //   'skipped' → the provider was already at/ahead of received, nothing
+        //               was posted, and the line is DONE. Honest green, but it
+        //               does not claim we wrote anything.
+        //   'failed'  → the provider call failed, OR it settled but the local
+        //               promotion did not land. That second case is the one
+        //               that used to render as "Confirmed in inventory" while
+        //               the row sat at EXPECTED and the board said In transit.
+        // `localReceive` deliberately never touches the provider, and a
+        // disconnected integration is already reported via `skip_reason` — both
+        // stay verdict-less so the panel keeps its clearer diagnostic instead of
+        // the generic retry warning.
+        let verdict: ReturnType<typeof resolveReceiveVerdict>;
+        if (!skipZohoReceive && !isUnreceive && !localReceive && inventory) {
+          const linkedLines = updatedLines.filter((l) =>
+            String(l.zoho_purchaseorder_id || '').trim(),
+          );
+          verdict = resolveReceiveVerdict({
+            outcomes: [
+              ...new Set(linkedLines.map((l) => String(l.zoho_purchaseorder_id).trim())),
+            ].map((id) => poZohoOutcome.get(id)),
+            linkedLineIds: linkedLines.map((l) => l.id),
+            promotedLineIds: localPromoted,
+            anyPromotionFailed: localPromotionFailed.size > 0,
           });
         }
+
+        // Fan the row updates out in parallel — they are independent Ably
+        // publishes and the operator is waiting on this card.
+        await Promise.all(
+          updatedLines.map((l, i) =>
+            publishReceivingLogChanged({
+              organizationId: ctx.organizationId,
+              action: 'update',
+              rowId: String(l.id),
+              source: 'receiving.mark-received-po',
+              ...(verdict && i === 0 ? { zohoReceive: verdict } : {}),
+            }),
+          ),
+        );
       } catch (err) {
         console.warn('mark-received-po: cache/realtime failed', err);
       }

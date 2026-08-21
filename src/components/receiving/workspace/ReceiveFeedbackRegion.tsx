@@ -218,7 +218,13 @@ function ReceiveSuccessPanel({
   // seeds this directly. The panel remounts per `success-${at}` key, so each
   // scenario activation re-seeds rather than inheriting the last verdict.
   const demo = result.demoStatus ?? null;
-  const [status, setStatus] = useState<'pending' | 'confirmed' | 'failed'>(demo ?? 'pending');
+  // 'skipped' is a SETTLED success: the provider was already at or ahead of
+  // received so nothing was posted. It is deliberately not folded into
+  // 'confirmed' — "Confirmed in inventory" over a receive that posted nothing
+  // is exactly the lie this panel used to tell.
+  const [status, setStatus] = useState<'pending' | 'confirmed' | 'skipped' | 'failed'>(
+    demo ?? 'pending',
+  );
   const live = result.reconcile && demo == null;
 
   // Hard ceiling — if Ably never delivers zohoReceive (or after() hangs on a
@@ -236,10 +242,10 @@ function ReceiveSuccessPanel({
     (msg: { data?: { rowId?: unknown; zohoReceive?: unknown } }) => {
       const data = msg?.data;
       const verdict = data?.zohoReceive;
-      if (verdict !== 'ok' && verdict !== 'failed') return;
+      if (verdict !== 'ok' && verdict !== 'skipped' && verdict !== 'failed') return;
       const rowId = Number(data?.rowId);
       if (!Number.isFinite(rowId) || !result.lineIds.includes(rowId)) return;
-      setStatus(verdict === 'ok' ? 'confirmed' : 'failed');
+      setStatus(verdict === 'ok' ? 'confirmed' : verdict === 'skipped' ? 'skipped' : 'failed');
     },
     live && Boolean(orgId) && Boolean(channel),
   );
@@ -254,7 +260,13 @@ function ReceiveSuccessPanel({
   const tone: InlineActionFeedbackTone = reconciling ? 'loading' : view.tone;
   const steps = reconciling
     ? receivePhaseSteps({ phase: 'reconciling', summary: result.summary })
-    : [status === 'confirmed' ? 'Confirmed in inventory' : view.headline];
+    : [
+        status === 'confirmed'
+          ? 'Confirmed in inventory'
+          : status === 'skipped'
+            ? 'Already received in inventory — nothing posted'
+            : view.headline,
+      ];
 
   const cta: WeldedFeedbackCta | undefined =
     status === 'failed' && onRetry
