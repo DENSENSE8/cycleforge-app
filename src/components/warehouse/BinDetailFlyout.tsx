@@ -14,6 +14,19 @@
  * operator is comparing against. Modal is reserved for blocking wizards and
  * destructive confirms — the delete here is already a two-step arm-then-confirm
  * inside the panel, not a blocking dialog.
+ *
+ * **Chrome is ONE band** ({@link DeskInspectorIndexShell}, `stance="standalone"`).
+ * Nothing routes through an index above this panel — the bin table / floor plan
+ * behind it is the list — so it declares `standalone` and is owed no Back cell.
+ * The band carries the contextual verbs (column display · reprint label · open
+ * the full page) and then the reserved cell the host paints its `⤢` / `✕` into.
+ *
+ * **The panel paints NO close.** `RightRailHost` owns the singleton `✕` and
+ * `closeRightPanel()` runs both the lifecycle half and this occupant's own
+ * `onClose`. Until 2026-08-21 this stacked a `DeskRailChromeRow` over an
+ * eyebrow ("Bin") + barcode identity pair — two rows of chrome where the
+ * contract allows one. The barcode and its room / row / column line moved into
+ * the body, which is where identity that does not fit a one-word title belongs.
  */
 
 import { useEffect, useState } from 'react';
@@ -21,7 +34,8 @@ import Link from 'next/link';
 import type { BinsOverviewRow } from '@/hooks/useBinsOverview';
 import { AuditTimeline } from '@/components/audit/AuditTimeline';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
-import { DeskRailChromeRow } from '@/components/right-rail/DeskRailChromeRow';
+import { DeskInspectorIndexShell } from '@/components/right-rail/DeskInspectorIndexShell';
+import { InspectorColumnDisplayButton } from '@/components/right-rail/InspectorColumnDisplayButton';
 import { PaneHeaderLabel } from '@/components/ui/pane-header';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { FillBar } from './FillBar';
@@ -110,14 +124,16 @@ export function BinDetailFlyout({ row, onClose, onDeleted }: Props) {
       ariaLabel={`Bin ${identity}`}
     >
       <div className="flex h-full min-h-0 flex-col overflow-hidden">
-        <div className="shrink-0 border-b border-border-hairline bg-surface-card/90 backdrop-blur-xl">
-          <DeskRailChromeRow
-            onClose={onClose}
-            closeTitle="Close bin detail"
-            columnDisplay
-            trailing={
-              row.barcode ? (
-                <div className="flex items-center gap-1">
+        <DeskInspectorIndexShell
+          stance="standalone"
+          title="Bin"
+          ariaLabel="Bin detail"
+          testId="bin-detail-inspector"
+          headerRightSlot={
+            <>
+              <InspectorColumnDisplayButton testId="bin-detail-column-display" />
+              {row.barcode ? (
+                <span className="flex h-full items-center gap-1">
                   {isSpecialBinBarcode(row.barcode) ? (
                     <HoverTooltip label="Reprint 2×1 special-bin label" asChild>
                       <IconButton
@@ -144,29 +160,31 @@ export function BinDetailFlyout({ row, onClose, onDeleted }: Props) {
                       }}
                     />
                   </HoverTooltip>
-                </div>
-              ) : null
-            }
-          />
-          <div className="flex min-w-0 flex-col gap-0.5 px-2 pb-2 pt-1">
-            <PaneHeaderLabel
-              eyebrow="Bin"
-              // Identifier → the mono cut, per the typeface SoT. It was
-              // `text-lg font-semibold` before, which is hero density on a rail.
-              valueClassName="truncate font-mono text-role-caption font-semibold text-text-default"
-              value={identity}
-              valueTitle={identity ?? undefined}
-            />
-            <p className="truncate text-role-caption text-text-soft">
-              {row.room ?? '—'}
-              {row.zone_letter ? ` [${row.zone_letter}]` : ''} · Row {row.row_label ?? '—'} · Col{' '}
-              {row.col_label ?? '—'}
-            </p>
-          </div>
-        </div>
+                </span>
+              ) : null}
+            </>
+          }
+          body={
+            <div className="space-y-4 p-4">
+            {/* Identity — body, never a second header line. The band's title
+                cell is the one-word segment ("Bin"); the barcode and its
+                room / row / column address are facts about the record. */}
+            <div className="flex min-w-0 flex-col gap-0.5">
+              <PaneHeaderLabel
+                eyebrow="Bin"
+                // Identifier → the mono cut, per the typeface SoT. It was
+                // `text-lg font-semibold` before, which is hero density on a rail.
+                valueClassName="truncate font-mono text-role-caption font-semibold text-text-default"
+                value={identity}
+                valueTitle={identity ?? undefined}
+              />
+              <p className="truncate text-role-caption text-text-soft">
+                {row.room ?? '—'}
+                {row.zone_letter ? ` [${row.zone_letter}]` : ''} · Row {row.row_label ?? '—'} · Col{' '}
+                {row.col_label ?? '—'}
+              </p>
+            </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          <div className="space-y-4 p-4">
             {/* Summary */}
             <Panel radius="2xl" padding="sm">
               <div className="grid grid-cols-3 gap-3 text-center">
@@ -240,8 +258,9 @@ export function BinDetailFlyout({ row, onClose, onDeleted }: Props) {
               </h3>
               <AuditTimeline binId={row.id} limit={20} compact noHeader />
             </section>
-          </div>
-        </div>
+            </div>
+          }
+        />
 
         {/* Floor — soft-delete this bin (endpoint refuses non-empty bins). */}
         {row.barcode ? (

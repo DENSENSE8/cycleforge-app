@@ -158,9 +158,25 @@ function ConditionHeaderChip({
 export function ProductDetailsSection({
   shipped,
   editableShippingFields,
+  canEditProduct,
 }: {
   shipped: ShippedOrder;
   editableShippingFields?: EditableShippingFields;
+  /**
+   * May THIS surface mutate the order's product facts — re-grade condition,
+   * reimport from Amazon?
+   *
+   * Required, and never defaulted (AGENTS.md → "a safety classification is a
+   * REQUIRED parameter"). Until 2026-08-21 the condition editor was gated on
+   * `isOrderShipped` ALONE, so `/search?sel=order:` — a surface whose whole
+   * contract is `stance="preview"`, which the centre expressed by *omitting*
+   * `editableShippingFields` — happily committed a re-grade on any unshipped
+   * order. Read-only-ness is the absence of a capability only if the capability
+   * is actually consulted; here nothing consulted it. A default would have left
+   * every call site I did not visit silently writable, which is the precise
+   * failure this law exists to catch.
+   */
+  canEditProduct: boolean;
 }) {
   const [conditionValue, setConditionValue] = useState<ConditionGrade>(normalizeCondition(shipped.condition));
   const [isSavingCondition, setIsSavingCondition] = useState(false);
@@ -168,8 +184,9 @@ export function ProductDetailsSection({
   const [amazonRefreshing, setAmazonRefreshing] = useState(false);
   const orderAssignmentMutation = useOrderAssignment();
   const skuIdentity = useSkuIdentity(shipped.sku, shipped.account_source);
-  // Condition freezes once the order has shipped — you can't re-grade what's gone.
-  const conditionLocked = isOrderShipped(shipped);
+  // Two independent locks: a surface that may not write at all, and an order
+  // that has shipped (you can't re-grade what's gone).
+  const conditionLocked = !canEditProduct || isOrderShipped(shipped);
 
   useEffect(() => {
     setConditionValue(normalizeCondition(shipped.condition));
@@ -222,7 +239,8 @@ export function ProductDetailsSection({
     editableShippingFields?.itemNumber ?? shipped.item_number ?? '',
   ).trim();
   const hasItemNumber = Boolean(itemNumberValue);
-  const canAmazonRefresh = isAmazonOrderForItemRefresh(shipped.order_id, shipped.account_source);
+  const canAmazonRefresh =
+    canEditProduct && isAmazonOrderForItemRefresh(shipped.order_id, shipped.account_source);
   const itemExternalUrl = hasItemNumber ? getExternalUrlByItemNumber(itemNumberValue) : null;
 
   const handleAmazonRefresh = async () => {

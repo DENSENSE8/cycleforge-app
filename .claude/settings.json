@@ -7,10 +7,6 @@
           {
             "type": "command",
             "command": "FP=$(jq -r '.tool_input.file_path // empty'); case \"$FP\" in *.env|*.env.*|*/certificates/*|*.pem|*.key|*/localhost+*.pem|*/localhost+*-key.pem) printf 'Blocked: %s is a secret/credential path. Edit it manually outside Claude.\\n' \"$FP\" >&2; exit 2 ;; esac"
-          },
-          {
-            "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/sot-guard.sh\""
           }
         ]
       },

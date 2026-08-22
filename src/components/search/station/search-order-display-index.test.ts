@@ -14,6 +14,7 @@ import {
   buildSearchOrderDisplayIndexRows,
   type SearchOrderDisplaySignals,
 } from './search-order-display-index';
+import { defaultDisplayIndexGroup } from '@/components/station/displays/display-index';
 
 /** Every leaf `SearchOrderStationPane` can build, in its own order. */
 const LEAF_IDS = [
@@ -99,4 +100,20 @@ test('no order # leaves the Ticket row honest about having nothing to anchor', (
   const ticket = rows.find((r) => r.id === 'ticket');
   assert.equal(ticket?.subtitle, 'No order # to anchor');
   assert.equal(ticket?.tone, 'neutral');
+});
+
+test('every Root Index row takes the shared default group', () => {
+  // Regression (2026-08-21): the `units` row hardcoded `group: 'context'` while
+  // `defaultDisplayIndexGroup('units')` is `'assets'`, so Units sat in a
+  // different band on /search than on every station that takes the default —
+  // a silent divergence with no stated reason. A leaf that genuinely needs a
+  // different band must say why in-line (the shape `testing-display-index.ts`
+  // uses), and then this test is what makes you write the reason down.
+  for (const row of buildSearchOrderDisplayIndexRows(SETTLED)) {
+    assert.equal(
+      row.group,
+      defaultDisplayIndexGroup(row.id),
+      `row "${row.id}" overrides its default group without a stated reason`,
+    );
+  }
 });

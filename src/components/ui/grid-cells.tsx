@@ -298,22 +298,64 @@ export function GridStaffCellValue({
 }
 
 /**
+ * Punches a transparent core out of the dot, turning the same paint into a ring.
+ *
+ * A mask rather than a border, because the paint arrives in TWO shapes —
+ * `{ style: { backgroundColor: '#hex' } }` for a branded platform/carrier, and
+ * `{ className: 'bg-blue-500' }` for the fallbacks. A border would need that
+ * colour on the border channel, and converting `bg-*` to `border-*` at runtime
+ * is the classic Tailwind trap: a class assembled from a string is never
+ * scanned, so the utility is never generated and the border silently does not
+ * paint (`build-gotchas.md` → an un-scanned class renders invisible).
+ *
+ * A mask needs no colour channel at all. It works on whichever shape the paint
+ * arrived in, and the hole is genuinely transparent — so the row's own
+ * background (hover wash, selection, zebra) shows through and the ring stays
+ * correct on every row state without knowing what any of them are.
+ */
+const BRAND_DOT_RING = {
+  WebkitMaskImage: 'radial-gradient(circle, transparent 38%, black 40%)',
+  maskImage: 'radial-gradient(circle, transparent 38%, black 40%)',
+} as const;
+
+/**
  * Dense Sheets brand-identity micro-dot — platform / carrier paint beside a
  * quiet last-8 face when `#` / MapPin are omitted. Same size as the lifecycle
  * dot inside {@link GridStatusCellValue}, different meaning: paint comes only
  * from `platformMetaBrandDot` / `carrierBrandDotPaint`, never a status map.
+ *
+ * ## `variant` says WHICH KIND of identifier the dot marks
+ *
+ * `'filled'` is an ORDER handle (platform brand); `'ring'` is a TRACKING number
+ * (carrier brand). The compound row stacks one of each, and the two chips beside
+ * them are deliberately face-less — their own docblocks say the quiet face is
+ * for "Sheets grids whose header already labels ORDER / TRACK". Stacked in one
+ * cell under a single header, that precondition only half held: colour alone
+ * asked an operator to learn which brand palette meant which line, and told
+ * them nothing at all on a row where the order id and the tracking number are
+ * the same digits.
+ *
+ * Shape is the answer that stays inside the house law. It is still a colour
+ * dot — no glyph, no type mark, nothing the table engine could flag back on —
+ * but solid-vs-hollow reads instantly and survives scrolling past the header.
+ * Both variants are the SAME 6px box, so the text beside them starts at the
+ * same x on both lines; a larger ring would misalign the very baselines the
+ * compound cell exists to hold level.
  */
 export function BrandIdentityDot({
   className,
   style,
+  variant = 'filled',
 }: {
   className?: string;
   style?: { backgroundColor: string };
+  /** `'filled'` = order / platform. `'ring'` = tracking / carrier. */
+  variant?: 'filled' | 'ring';
 }) {
   return (
     <span
       className={cn('h-1.5 w-1.5 shrink-0 rounded-full', className)}
-      style={style}
+      style={variant === 'ring' ? { ...style, ...BRAND_DOT_RING } : style}
       aria-hidden
     />
   );

@@ -384,6 +384,7 @@ export function ShippedDetailsPanel({
         {/* No stacked chrome row — the cursor rides the shell's ONE band
             beside back + title (`chrome`), the Displays-column contract. */}
         <DeskInspectorIndexShell
+          stance="index"
           chrome={<CursorPositionReadout position={cursorPosition} total={cursorTotal} />}
           leaves={leaves}
           activeId={navId}

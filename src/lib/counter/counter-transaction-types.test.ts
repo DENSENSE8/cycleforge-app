@@ -46,14 +46,14 @@ test('computeCounterTotals is zero for an empty visit', () => {
 test('a service line adds to total but never to the retail subtotal', () => {
   const { subtotalCents, totalCents } = computeCounterTotals({
     retailLines: [retail({ unitAmountCents: 500 })],
-    service: service({ price: '130' }),
+    services: [service({ price: '130' })],
   });
   assert.equal(subtotalCents, 500, 'subtotal stays retail-only');
   assert.equal(totalCents, 13500);
 });
 
 test('a repair-only visit totals the service line alone', () => {
-  const { subtotalCents, totalCents } = computeCounterTotals({ service: service({ price: '89.99' }) });
+  const { subtotalCents, totalCents } = computeCounterTotals({ services: [service({ price: '89.99' })] });
   assert.equal(subtotalCents, 0);
   assert.equal(totalCents, 8999);
 });
@@ -96,8 +96,8 @@ test('fractional quantities truncate rather than producing fractional cents', ()
 });
 
 test('requiresSignature tracks the presence of a service line', () => {
-  assert.equal(requiresSignature({ service: service() }), true);
-  assert.equal(requiresSignature({ service: null }), false, 'retail-only must not demand an agreement');
+  assert.equal(requiresSignature({ services: [service()] }), true);
+  assert.equal(requiresSignature({ services: [] }), false, 'retail-only must not demand an agreement');
   assert.equal(requiresSignature({}), false);
 });
 

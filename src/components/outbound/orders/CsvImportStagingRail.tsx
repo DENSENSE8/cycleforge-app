@@ -497,6 +497,7 @@ export function CsvImportStagingRail({
         {/* No stacked chrome row — cursor + column display ride the shell's ONE
             band beside back + title (`chrome`), the Displays-column contract. */}
         <DeskInspectorIndexShell
+          stance="index"
           chrome={
             <>
               {cursorPos >= 0 ? (

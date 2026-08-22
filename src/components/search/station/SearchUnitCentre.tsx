@@ -33,7 +33,7 @@ import { ThreadPanel } from '@/components/threads/ThreadPanel';
 import { StationCollapsibleBlock } from '@/components/station/collapse';
 import type { AutoCollapseController } from '@/components/station/collapse';
 import type { UnitStationIdentityVM } from '@/components/station/unit';
-import { cn } from '@/utils/_cn';
+import { GridStatusCellValue } from '@/components/ui/grid-cells';
 
 export function SearchUnitCentre({
   unitId,
@@ -64,12 +64,16 @@ export function SearchUnitCentre({
             label="Status"
             value={
               vm.lifecycle ? (
-                <span className="inline-flex items-center gap-1.5">
-                  {/* The resolved unit-status face — dot + pill from the SoT,
-                      never a locally invented tone. */}
-                  <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', vm.lifecycle.dotClass)} />
-                  <span className={vm.lifecycle.pillClass}>{vm.lifecycle.label}</span>
-                </span>
+                // The house status chip, not a hand-rolled dot+span pair. The
+                // local version dropped the chip geometry (ring, inset, micro
+                // caps, live-value morph) that every other status face in the
+                // app carries — `UnitLifecycleFace` is already this prop shape.
+                <GridStatusCellValue
+                  label={vm.lifecycle.label}
+                  toneClass={vm.lifecycle.pillClass}
+                  dotClass={vm.lifecycle.dotClass}
+                  tooltip={vm.lifecycle.tip}
+                />
               ) : null
             }
           />

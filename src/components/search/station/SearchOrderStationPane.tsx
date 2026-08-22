@@ -187,10 +187,18 @@ export function SearchOrderStationPane({
   );
 
   /**
-   * Centre = the Search & Details Zone 2 stack: collapsible Status & timeline
-   * over the warehouse thread. `editableShippingFields` is deliberately absent
-   * from every read path here — preview is the absence of that capability, not
-   * a stripped fork.
+   * Centre = the Search & Details Zone 2 stack: a collapsible **Items** block
+   * over the warehouse thread. Status — both the stepper and the activity
+   * trail — is NOT here; it is the right-edge `timeline` leaf (ruling
+   * 2026-08-21), and this docblock still said "Status & timeline" long after
+   * that block left the centre.
+   *
+   * `editableShippingFields` is genuinely absent from every read path in this
+   * file. Note what that does and does not buy: it makes the SHIPPING editors
+   * inert, and nothing more. The centre's read-only-ness is carried by
+   * `canEditProduct={false}` in {@link SearchOrderCentre} — until 2026-08-21
+   * the product section's condition editor consulted neither prop and this
+   * "preview" surface committed re-grades.
    */
   const centre = useMemo(
     () =>

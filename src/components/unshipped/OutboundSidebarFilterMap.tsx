@@ -59,6 +59,21 @@ function UnshippedSegments() {
   const { myStaffId, activeUnshippedSegment, selectUnshippedSegment } =
     useOutboundSidebarScope();
 
+  /**
+   * NOT the same answer as the desk's canonical `{ staffId: null }` counts, so
+   * it is deliberately NOT merged onto that key. `?staff=` on
+   * `/api/orders/queue-counts` adds a `work_assignments` EXISTS clause, and the
+   * unscoped payload carries no per-staff breakdown to `select` this total off
+   * — total / byStage / urgent / combos are all org-wide there. Merging the two
+   * keys would paint the whole backlog on the "My queue" row.
+   *
+   * The cost is real: `myStaffId` comes from the session, not `?staff=`, so a
+   * desk with no staff filter runs this ~15s query a SECOND time alongside the
+   * unscoped one (they collapse only while the operator is filtered to
+   * themselves). The fix is a `mine` tally on the unscoped payload — one
+   * `COUNT(*) FILTER (WHERE assigned to $me)` in the route — after which this
+   * becomes a `select` off the canonical key. Do not "dedupe" it before then.
+   */
   const { data: myCounts } = useQuery({
     ...unshippedQueueCountsQuery({ staffId: myStaffId ?? undefined }),
     enabled: myStaffId != null,

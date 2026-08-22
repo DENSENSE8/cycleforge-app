@@ -48,9 +48,11 @@ import {
   CompoundFulfillment,
   CompoundItem,
   CompoundOpen,
+  CompoundSelect,
   CompoundState,
   CompoundThumb,
 } from './CompoundCells';
+import { isCompoundColumnModel } from './compound-columns';
 import { COMPOUND_ROW_PX } from './compound-row-chrome';
 import type { CompoundRowView } from './compound-row-model';
 
@@ -80,9 +82,35 @@ export interface CompoundGridCellParams<C extends CompoundCellColumn> {
   onCommitNote?: (next: string) => void;
   /** Present ⇒ the trailing chevron renders. Absent ⇒ empty track. */
   onOpen?: () => void;
+  /**
+   * The SELECTION capability for this row.
+   *
+   * Present ⇒ the leading gutter paints the checkmark face; absent ⇒ the track
+   * renders as an empty (still edge-to-edge) cell. Inside it, `onToggle`
+   * decides interactive-vs-decorative — see {@link CompoundSelect}.
+   *
+   * What a tick MEANS is the family's: bulk membership on Receiving, Incoming
+   * and To-Ship; "done" on Tasks. The picture is the same everywhere, which is
+   * the point — an operator learns one mark.
+   */
+  select?: {
+    checked: boolean | 'mixed';
+    onToggle?: () => void;
+    label: string;
+    disabled?: boolean;
+  };
 }
 
-/** Is this a compound track — i.e. will {@link renderCompoundGridCell} paint it? */
+/**
+ * Is this a compound track — i.e. will {@link renderCompoundGridCell} paint it?
+ *
+ * **`select` is deliberately NOT in this list.** Every flat spreadsheet in the
+ * repo also has a `select` column, and a family dispatcher that routed the key
+ * unconditionally would hand the compound 48px gutter to Pickup, Catalog and
+ * Repair — surfaces that never opted into this layout. The select track is
+ * claimed by {@link isCompoundColumnModel} instead: the compound cell paints it
+ * only when a compound MODEL is mounted.
+ */
 export function isCompoundCellKey(key: string): boolean {
   return (
     key === 'thumb' ||
@@ -91,6 +119,16 @@ export function isCompoundCellKey(key: string): boolean {
     key === 'state' ||
     key === 'open'
   );
+}
+
+/**
+ * The two GUTTER tracks: full-bleed, zero inset, equal width.
+ *
+ * They are the only cells in the grid with no horizontal padding — everything
+ * they contain goes corner to corner.
+ */
+function isCompoundGutterKey(key: string): boolean {
+  return key === 'select' || key === 'thumb';
 }
 
 /**
@@ -105,8 +143,13 @@ export function renderCompoundGridCell<C extends CompoundCellColumn>({
   columnDisplay,
   onCommitNote,
   onOpen,
+  select,
 }: CompoundGridCellParams<C>): ReactNode {
-  if (!isCompoundCellKey(col.key)) return null;
+  // `select` is only ours when a COMPOUND model is mounted — see
+  // `isCompoundCellKey`'s docblock for the surfaces that would otherwise be
+  // hijacked.
+  const gutterSelect = col.key === 'select' && isCompoundColumnModel(columns);
+  if (!gutterSelect && !isCompoundCellKey(col.key)) return null;
 
   // ## The compound cell OWNS the row box
   //
@@ -122,14 +165,22 @@ export function renderCompoundGridCell<C extends CompoundCellColumn>({
   // other track stretches to it. The two-row body inside fills what is left of
   // the height after the rule (`h-full`), which is why nothing here needs to
   // know that the rule costs a pixel.
+  //
+  // The two GUTTERS go further and take NO inset at all (`'none'`): the check
+  // and the photo are asked to run edge to edge. `'none'` does not carry
+  // `overflow-hidden` the way the other insets do, so it is re-added by hand —
+  // without it a full-bleed image bleeds into the next track under h-scroll.
+  const gutter = isCompoundGutterKey(col.key);
   const className = cn(
     gridDataCellClass(col, {
       rule,
-      inset: 'cell',
+      inset: gutter ? 'none' : 'cell',
       columnDisplay,
       frozenClass: LEDGER_GRID_FROZEN_CELL,
     }),
     'overflow-hidden',
+    // A full-bleed child must stretch to the box, not centre inside it.
+    gutter && 'items-stretch p-0',
   );
 
   // The trailing frozen track owns the scroll-edge shadow. Derived from the
@@ -153,10 +204,36 @@ export function renderCompoundGridCell<C extends CompoundCellColumn>({
     ...(col.frozen ? { left: gridFrozenLeft(columns, col.key) } : null),
   };
 
+  if (gutterSelect) {
+    return (
+      <div
+        data-col="select"
+        // Kept from the Orders row this cell replaced — it is how a spec finds
+        // the gutter, and it now means the same thing on every family.
+        data-select-gutter
+        data-frozen-edge={frozenEdge}
+        className={className}
+        style={style}
+        // The face owns the toggle; a click on the flush plane AROUND it must
+        // not fall through to the row and open the record instead.
+        onClick={(event) => event.stopPropagation()}
+      >
+        {select ? (
+          <CompoundSelect
+            checked={select.checked}
+            onToggle={select.onToggle}
+            label={select.label}
+            disabled={select.disabled}
+          />
+        ) : null}
+      </div>
+    );
+  }
+
   switch (col.key) {
     case 'thumb':
       return (
-        <div data-col="thumb" data-frozen-edge={frozenEdge} className={cn(className, 'items-center')} style={style}>
+        <div data-col="thumb" data-frozen-edge={frozenEdge} className={className} style={style}>
           <CompoundThumb view={view} />
         </div>
       );

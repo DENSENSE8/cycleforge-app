@@ -5,12 +5,21 @@
  * recents, future global search actions) without navigating away from the
  * operator's current page or mode. Renders into the shared RightRailHost slot
  * via each panel's DetailStackRailRegistrar.
+ *
+ * **Exactly ONE registrar is mounted at a time** — the loading shell OR the one
+ * resolved panel, never both. Two registrars rendered as siblings evict each
+ * other from the single RightRailHost slot, so the early return below (`loading
+ * || !loaded`) is a correctness boundary, not a formatting choice.
+ *
+ * The panels themselves own their band (Back · title · host close cell); this
+ * host only decides which one is on screen, plus the placeholder band below.
  */
 
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import dynamic from 'next/dynamic';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
+import { DeskInspectorIndexShell } from '@/components/right-rail/DeskInspectorIndexShell';
 import { loadDetailStack, type LoadedDetailStack } from '@/lib/detail-stacks/load-detail-stack';
 import {
   closeDetailStack,
@@ -35,6 +44,15 @@ const RepairDetailsPanel = dynamic(
   { ssr: false },
 );
 
+/**
+ * The half-second placeholder before the real inspector mounts.
+ *
+ * It wears the SAME band as the panel it hands off to (2026-08-21) — a bare
+ * spinner in the rail had no title row at all, so the host's `⤢` / `✕` floated
+ * over a blank column and the band appeared to arrive late. `standalone`
+ * because this shell is not routed through an index: it is opened straight from
+ * a global action (assistant recents), so it owes no Back.
+ */
 function DetailStackLoadingShell({ stackId, onClose }: { stackId: string; onClose: () => void }) {
   return (
     // Non-modal like every panel it hands off to — otherwise the half-second
@@ -46,7 +64,15 @@ function DetailStackLoadingShell({ stackId, onClose }: { stackId: string; onClos
       modal={false}
       ariaLabel="Loading details"
     >
-      <UniversalLoader isLoading label="Loading details" className="h-full" />
+      <div className="flex h-full min-h-0 flex-col overflow-hidden bg-surface-card">
+        <DeskInspectorIndexShell
+          stance="standalone"
+          title="Details"
+          ariaLabel="Loading details"
+          testId="global-detail-stack-loading"
+          body={<UniversalLoader isLoading label="Loading details" className="h-full" />}
+        />
+      </div>
     </DetailStackRailRegistrar>
   );
 }

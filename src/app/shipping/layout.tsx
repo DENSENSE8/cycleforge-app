@@ -1,13 +1,24 @@
 'use client';
 
 import { Suspense, type ReactNode } from 'react';
+import dynamic from 'next/dynamic';
 import { RouteShell } from '@/design-system/components/RouteShell';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { OutboundSidebarPanel } from '@/components/sidebar/OutboundSidebarPanel';
 import { RightPaneOverlayHost } from '@/components/ui/RightPaneOverlay';
 import { SurfaceGate } from '@/components/surfaces/SurfaceGate';
 import { useRealtimeInvalidation } from '@/hooks/useRealtimeInvalidation';
 import { useSurfaceParamHygiene } from '@/hooks/useSurfaceParamHygiene';
+
+// `RouteShell`'s `actions` slot is the MOBILE tab only — it returns `history`
+// alone when `!isMobile`, and this frame is `hidden md:flex` besides — so the
+// panel never paints on the desktop desk. `SidebarContextPanel` already
+// code-splits this exact module on the route key; a static import here
+// re-anchored those ~107 modules into the shipping layout chunk and undid that
+// split. Same plain `dynamic()` form as the dispatcher (SSR stays on), so both
+// mounts resolve to the one chunk.
+const OutboundSidebarPanel = dynamic(() =>
+  import('@/components/sidebar/OutboundSidebarPanel').then((m) => m.OutboundSidebarPanel),
+);
 
 /**
  * `/shipping` — the frame every Shipping mode shares.

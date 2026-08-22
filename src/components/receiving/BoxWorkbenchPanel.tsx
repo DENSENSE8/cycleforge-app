@@ -14,11 +14,23 @@
  *   - adds a scanned unit via POST /api/handling-units/[id]/assign
  *   - removes a unit via POST /api/handling-units/[id]/unassign
  * Both mutations already emit HANDLING_UNIT_ASSIGN / _UNASSIGN audit server-side.
+ *
+ * **ONE band, ONE close (2026-08-21).** The header was hand-rolled — box code,
+ * status chip, Print, and an `X` of its own — so the panel painted a second
+ * dismiss under the host's singleton `✕` and the two meant different things
+ * (this one only flipped the parent's `boxPanel` state; the host's also ran the
+ * lifecycle half). It now composes the house {@link DeskInspectorIndexShell}
+ * band in `stance='standalone'`: this workbench opens from a SCAN of an H-####
+ * plate, never off an index, so it owes no Back. The status chip is the band's
+ * read-only metric; Print moved down beside the rollup's own box chip, since
+ * the band's trailing cell is reserved for the host's `⤢ ✕` and a metric, not
+ * for verbs.
  */
 
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { toast } from '@/lib/toast';
-import { X, Package, Printer, Loader2, History } from '@/components/Icons';
+import { X, Printer, Loader2, History } from '@/components/Icons';
+import { DeskInspectorIndexShell } from '@/components/right-rail/DeskInspectorIndexShell';
 import { IconButton } from '@/design-system/primitives';
 import { getLast8 } from '@/components/ui/CopyChip';
 import { unwrapScannedSerial } from '@/lib/barcode-routing';
@@ -38,13 +50,16 @@ import { cn } from '@/utils/_cn';
 
 export function BoxWorkbenchPanel({
   handlingUnitId,
-  onClose,
   lines,
 }: {
   handlingUnitId: number;
-  /** Non-modal occupant — no scrim to click off, so the header X owns close
-   *  (Escape on RightRailHost still works). */
-  onClose: () => void;
+  /**
+   * Ignored since 2026-08-21 — dismissal is the host's singleton `✕`
+   * (`closeRightPanel`), and the registrar around this body in
+   * `TestingSidebarPanel` already passes the same teardown as its `onClose`.
+   * Kept in the signature so that mount compiles unchanged.
+   */
+  onClose?: () => void;
   /** The scan's receiving lines — used to label each unit's origin line. */
   lines?: ReceivingLineRow[];
 }) {
@@ -122,48 +137,54 @@ export function BoxWorkbenchPanel({
   const pct = rollup.total > 0 ? Math.round((rollup.tested / rollup.total) * 100) : 0;
 
   return (
-    <div className="flex h-full flex-col">
-      {/* Header — box identity + status + close. */}
-      <div className="flex items-center gap-2 border-b border-border-soft px-4 py-3">
-        <Package className="h-4 w-4 shrink-0 text-teal-600" />
-        <span className="min-w-0 flex-1 truncate text-role-caption font-semibold text-text-default">
-          {box?.code || `H-${handlingUnitId}`}
-        </span>
-        {box ? (
-          <span
-            className={`rounded-full px-2 py-0.5 text-role-eyebrow uppercase tracking-widest ${handlingUnitStatusChipClass(box.status)}`}
-          >
-            {box.status}
-          </span>
-        ) : null}
-        <IconButton
-          ariaLabel="Print box label"
-          icon={<Printer className="h-4 w-4" />}
-          disabled={!box}
-          onClick={() =>
-            box &&
-            printHandlingUnitLabel({
-              handlingUnitId: box.id,
-              code: box.code,
-              unitCount: rollup.total,
-              locationName: box.location_name,
-            })
-          }
-        />
-        <IconButton
-          ariaLabel="Close box workbench"
-          icon={<X className="h-4 w-4" />}
-          onClick={onClose}
-        />
-      </div>
-
-      {/* Rollup band — k/n tested + progress. */}
-      <div className="border-b border-border-soft px-4 py-2.5">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden">
+      <DeskInspectorIndexShell
+        // Scan-opened at the bench — no index above it, so no Back is owed.
+        stance="standalone"
+        title={box?.code || `H-${handlingUnitId}`}
+        ariaLabel={`Box H-${handlingUnitId} workbench`}
+        testId="box-workbench"
+        headerRightSlot={
+          box ? (
+            <span className="flex h-full shrink-0 items-center px-2">
+              {/* Flat chip, flush corners — ops chrome, not the `rounded-full`
+                  the hand-rolled header used to paint here. */}
+              <span
+                className={cn(
+                  'inset-chip text-role-eyebrow uppercase tracking-widest',
+                  handlingUnitStatusChipClass(box.status),
+                )}
+              >
+                {box.status}
+              </span>
+            </span>
+          ) : null
+        }
+        body={
+          <div className="flex h-full min-h-0 flex-col">
+      {/* Rollup band — k/n tested + progress + the box's own verbs. */}
+      <div className="shrink-0 border-b border-border-soft px-4 py-2.5">
         <div className="flex items-center justify-between gap-2">
           <span className="text-role-caption font-semibold text-text-muted">
             {rollup.tested}/{rollup.total} tested
           </span>
-          <HandlingUnitChip handlingUnitId={handlingUnitId} code={box?.code} unitCount={rollup.total} dense />
+          <div className="flex shrink-0 items-center gap-1">
+            <HandlingUnitChip handlingUnitId={handlingUnitId} code={box?.code} unitCount={rollup.total} dense />
+            <IconButton
+              ariaLabel="Print box label"
+              icon={<Printer className="h-4 w-4" />}
+              disabled={!box}
+              onClick={() =>
+                box &&
+                printHandlingUnitLabel({
+                  handlingUnitId: box.id,
+                  code: box.code,
+                  unitCount: rollup.total,
+                  locationName: box.location_name,
+                })
+              }
+            />
+          </div>
         </div>
         <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-surface-sunken">
           <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${pct}%` }} />
@@ -171,7 +192,7 @@ export function BoxWorkbenchPanel({
       </div>
 
       {/* Scan-in add. */}
-      <div className="border-b border-border-soft px-4 py-2">
+      <div className="shrink-0 border-b border-border-soft px-4 py-2">
         <div className="flex items-center gap-2">
           <input
             ref={inputRef}
@@ -254,6 +275,9 @@ export function BoxWorkbenchPanel({
           </ul>
         )}
       </div>
+        </div>
+        }
+      />
     </div>
   );
 }

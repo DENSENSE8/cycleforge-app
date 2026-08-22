@@ -8,6 +8,7 @@ import {
   useLayoutEffect,
   useRef,
   useState,
+  type MutableRefObject,
   type ReactElement,
   type ReactNode,
 } from 'react';
@@ -18,6 +19,11 @@ import {
   type PortalTooltipPlacement,
 } from '@/lib/ui/portal-anchor';
 import { cornerClass } from '@/design-system/tokens/radius';
+import {
+  useDeferredHoverEngine,
+  useDeferredHoverMount,
+  type DeferredHoverBridge,
+} from '@/components/ui/deferred-hover-mount';
 import { cn } from '@/utils/_cn';
 
 /**
@@ -34,6 +40,21 @@ import { cn } from '@/utils/_cn';
  * and flipped above/below as needed, so it NEVER renders off the page. Untrusted
  * / near-origin anchors are rejected so the bubble cannot flash at the
  * viewport's top-left corner.
+ *
+ * ## Deferred machinery
+ *
+ * Everything above is the BUBBLE's job, and a bubble cannot exist before a
+ * pointer or a focus ring arrives. So this component is only the trigger shell —
+ * two hooks, no effects — and {@link HoverTooltipBubble} (timers, portal, rect
+ * clamp, scroll teardown: 12 more hooks) mounts on the first activating
+ * interaction and stays mounted, via {@link useDeferredHoverMount}. That first
+ * interaction is carried in, so the hover that pays for the mount is the hover
+ * that shows the label.
+ *
+ * This is invisible to the 350+ call sites: the trigger DOM, the props, and the
+ * bubble's behavior are unchanged. The tooltip is never in the DOM before it
+ * opens — it was not before this split either — so no accessible name or
+ * description moves.
  */
 export function HoverTooltip({
   label,
@@ -77,7 +98,114 @@ export function HoverTooltip({
    */
   disabled?: boolean;
 }) {
-  const triggerRef = useRef<HTMLElement | null>(null);
+  const { mounted, triggerRef, bridge, activate, release } = useDeferredHoverMount<
+    HTMLElement,
+    HoverTooltipHandle
+  >();
+
+  const onEnter = () => {
+    if (disabled) return;
+    activate('hover', (h) => h.scheduleShow());
+  };
+  const onFocusTrigger = () => {
+    if (disabled) return;
+    activate('focus', (h) => h.show());
+  };
+  const dismiss = () => release((h) => h.hide());
+
+  const bubble = mounted ? (
+    <HoverTooltipBubble
+      bridge={bridge}
+      triggerRef={triggerRef}
+      label={label}
+      placement={placement}
+      openDelayMs={openDelayMs}
+      disabled={disabled}
+    />
+  ) : null;
+
+  // asChild: attach handlers to the single child element — no wrapper <span>, so
+  // flex/grid layout is untouched. Falls back to the span wrapper if the child
+  // isn't a valid element.
+  if (asChild && isValidElement(children)) {
+    const child = children as ReactElement<Record<string, unknown>>;
+    const p = child.props;
+    const compose =
+      (theirs: unknown, ours: () => void) =>
+      (e: unknown) => {
+        if (typeof theirs === 'function') (theirs as (ev: unknown) => void)(e);
+        ours();
+      };
+    const childRef = (p as { ref?: unknown }).ref;
+    const setRef = (node: HTMLElement | null) => {
+      triggerRef.current = node;
+      if (typeof childRef === 'function') (childRef as (n: unknown) => void)(node);
+      else if (childRef && typeof childRef === 'object') {
+        (childRef as { current: unknown }).current = node;
+      }
+    };
+    return (
+      <>
+        {cloneElement(child, {
+          ref: setRef,
+          onMouseEnter: compose(p.onMouseEnter, onEnter),
+          onMouseLeave: compose(p.onMouseLeave, dismiss),
+          ...(focusable
+            ? {
+                onFocus: compose(p.onFocus, onFocusTrigger),
+                onBlur: compose(p.onBlur, dismiss),
+              }
+            : null),
+        } as Record<string, unknown>)}
+        {bubble}
+      </>
+    );
+  }
+
+  return (
+    <span
+      ref={triggerRef as MutableRefObject<HTMLSpanElement | null>}
+      className={className}
+      onMouseEnter={onEnter}
+      onMouseLeave={dismiss}
+      onFocus={focusable ? onFocusTrigger : undefined}
+      onBlur={focusable ? dismiss : undefined}
+      tabIndex={focusable ? 0 : undefined}
+    >
+      {children}
+      {bubble}
+    </span>
+  );
+}
+
+/** What the trigger shell may ask of a mounted bubble. */
+type HoverTooltipHandle = {
+  /** Immediate — focus, and the `openDelayMs === 0` hover path. */
+  show: () => void;
+  scheduleShow: () => void;
+  hide: () => void;
+};
+
+/**
+ * The bubble machinery. Mounted only after the first hover/focus, then kept —
+ * so its timers, portal and scroll listener exist once per *reached* trigger
+ * rather than once per painted row.
+ */
+function HoverTooltipBubble({
+  bridge,
+  triggerRef,
+  label,
+  placement,
+  openDelayMs,
+  disabled,
+}: {
+  bridge: DeferredHoverBridge<HoverTooltipHandle>;
+  triggerRef: MutableRefObject<HTMLElement | null>;
+  label: ReactNode;
+  placement: PortalTooltipPlacement;
+  openDelayMs: number;
+  disabled: boolean;
+}) {
   const bubbleRef = useRef<HTMLSpanElement | null>(null);
   const openTimerRef = useRef<number | null>(null);
   const placementRef = useRef(placement);
@@ -104,7 +232,7 @@ export function HoverTooltip({
       setAnchor(r);
       setPos(null);
     }
-  }, [disabled]);
+  }, [disabled, triggerRef]);
 
   const hide = useCallback(() => {
     clearOpenTimer();
@@ -124,6 +252,15 @@ export function HoverTooltip({
       show();
     }, openDelayMs);
   }, [clearOpenTimer, disabled, openDelayMs, show]);
+
+  // Publish the handle, then act on the interaction that mounted us — the whole
+  // point of the split is that the FIRST hover still shows a label. `readIntent`
+  // is non-destructive, so a StrictMode remount re-applies it instead of
+  // swallowing it; the trigger's `release` is what clears it.
+  useDeferredHoverEngine(bridge, { show, hide, scheduleShow }, (intent, h) => {
+    if (intent === 'focus') h.show();
+    else h.scheduleShow();
+  });
 
   // Tear down immediately when a sibling surface takes the hover face — do not
   // wait for mouseleave (the pointer often stays on the still-mounted trigger).
@@ -157,76 +294,25 @@ export function HoverTooltip({
     return () => window.removeEventListener('scroll', onScroll, true);
   }, [anchor, hide]);
 
-  const bubble =
-    anchor && typeof document !== 'undefined'
-      ? createPortal(
-          <span
-            ref={bubbleRef}
-            role="tooltip"
-            style={{
-              position: 'fixed',
-              top: pos?.top ?? -9999,
-              left: pos?.left ?? -9999,
-              visibility: pos ? 'visible' : 'hidden',
-            }}
-            className={cn(
-              'pointer-events-none z-tooltip max-w-[15rem] bg-surface-inverse px-2 py-1 text-role-caption font-semibold leading-snug text-white shadow-lg whitespace-pre-line',
-              cornerClass('flush'),
-            )}
-          >
-            {label}
-          </span>,
-          document.body,
-        )
-      : null;
+  if (!anchor || typeof document === 'undefined') return null;
 
-  // asChild: attach handlers to the single child element — no wrapper <span>, so
-  // flex/grid layout is untouched. Falls back to the span wrapper if the child
-  // isn't a valid element.
-  if (asChild && isValidElement(children)) {
-    const child = children as ReactElement<Record<string, unknown>>;
-    const p = child.props;
-    const compose =
-      (theirs: unknown, ours: () => void) =>
-      (e: unknown) => {
-        if (typeof theirs === 'function') (theirs as (ev: unknown) => void)(e);
-        ours();
-      };
-    const childRef = (p as { ref?: unknown }).ref;
-    const setRef = (node: HTMLElement | null) => {
-      triggerRef.current = node;
-      if (typeof childRef === 'function') (childRef as (n: unknown) => void)(node);
-      else if (childRef && typeof childRef === 'object') {
-        (childRef as { current: unknown }).current = node;
-      }
-    };
-    return (
-      <>
-        {cloneElement(child, {
-          ref: setRef,
-          onMouseEnter: compose(p.onMouseEnter, scheduleShow),
-          onMouseLeave: compose(p.onMouseLeave, hide),
-          ...(focusable
-            ? { onFocus: compose(p.onFocus, show), onBlur: compose(p.onBlur, hide) }
-            : null),
-        } as Record<string, unknown>)}
-        {bubble}
-      </>
-    );
-  }
-
-  return (
+  return createPortal(
     <span
-      ref={triggerRef}
-      className={className}
-      onMouseEnter={scheduleShow}
-      onMouseLeave={hide}
-      onFocus={focusable ? show : undefined}
-      onBlur={focusable ? hide : undefined}
-      tabIndex={focusable ? 0 : undefined}
+      ref={bubbleRef}
+      role="tooltip"
+      style={{
+        position: 'fixed',
+        top: pos?.top ?? -9999,
+        left: pos?.left ?? -9999,
+        visibility: pos ? 'visible' : 'hidden',
+      }}
+      className={cn(
+        'pointer-events-none z-tooltip max-w-[15rem] bg-surface-inverse px-2 py-1 text-role-caption font-semibold leading-snug text-white shadow-lg whitespace-pre-line',
+        cornerClass('flush'),
+      )}
     >
-      {children}
-      {bubble}
-    </span>
+      {label}
+    </span>,
+    document.body,
   );
 }

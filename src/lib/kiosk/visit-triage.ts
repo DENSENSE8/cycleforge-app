@@ -194,15 +194,20 @@ export function collectKioskTriage(session: KioskTriageSession): KioskTriageItem
     });
   }
 
-  const repairCount = session.lines.filter((l) => isRepairPayload(l.payload)).length;
-  if (repairCount > 1) {
-    cartLevel.push({
-      id: 'cart:extra-repairs',
-      severity: 'block',
-      target: 'cart',
-      message: `Only one repair per visit is submitted — remove ${repairCount - 1} extra.`,
-    });
-  }
+  /*
+   * There used to be a cart-level BLOCKER here — "Only one repair per visit is
+   * submitted — remove N extra." It existed because the submit path kept the
+   * first repair and silently discarded the rest, so refusing the visit was the
+   * least-bad option: better to make the operator delete a device than to take
+   * it in and lose the record.
+   *
+   * Removed 2026-08-21 with SQ6: `submitCounterTransaction` now writes one
+   * `repair_service` row per device (the DB always allowed it —
+   * repair_service.counter_transaction_id is many→one). A second device is a
+   * normal visit, and each one raises its own per-line blockers (serial, price,
+   * signature) from `repairIssues` above, so nothing is under-checked by
+   * dropping the cap.
+   */
 
   const lineLevel = session.lines.flatMap((line) => [
     ...repairIssues(line),

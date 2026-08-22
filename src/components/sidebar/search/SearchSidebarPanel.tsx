@@ -18,13 +18,23 @@
  * Selecting a recent that resolved to a record sets `?sel=` in place —
  * `router.replace`, no navigation, so the centre swaps without a reload.
  *
+ * **ONE age render per row (2026-08-21).** The row's age is the rail shell's
+ * own age column, fed by `getActivityAt` — the Unbox face. This panel used to
+ * ALSO pass a `metaTrailing` age through `formatRelativeTime`, so every row
+ * carried the same instant twice in two grammars (`16d` beside `2w`,
+ * `formatLaneAgeCompact` topping out in days while the other banded to weeks).
+ *
+ * **No floating quick-note.** `SearchRailQuickNote` and the `pb-16` clearance
+ * that existed solely for it were deleted in the Unbox parity teardown — the
+ * Unbox rail is find + recents, and nothing else.
+ *
  * *(This rail is a documented exception to "find lives only in
  * GlobalHeaderSearch" — see `docs/rules/display/search-station.md`.)*
  */
 
 import { useCallback, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { SidebarRecentRailBase } from '@/components/sidebar/rail-shell/SidebarRecentRailBase';
 import { SidebarRailScrollport } from '@/components/sidebar/rail-shell/SidebarRailScrollport';
 import { RailRowBody } from '@/components/sidebar/rail-shell/RailRowBody';
@@ -39,8 +49,11 @@ import {
   searchRecentStatusDotLabel,
   searchRecentTitle,
 } from './search-recent-rail-vm';
-import { SearchRailQuickNote } from './SearchRailQuickNote';
-import { formatRelativeTime, type SearchRecentEntry } from '@/lib/search/search-recents';
+import type { SearchRecentEntry } from '@/lib/search/search-recents';
+import {
+  pushStaffRecentClient,
+  SEARCH_RECENTS_RAIL_KEY_PREFIX,
+} from '@/lib/search/staff-recents-client';
 import {
   SEARCH_SEL_PARAM,
   formatSearchSel,
@@ -68,7 +81,7 @@ async function fetchSearchRecents(limit: number): Promise<SearchRecentEntry[]> {
  * `isLoading` was permanently false (the fetcher was synchronous), which is why
  * the empty text had to hand-roll a loading arm the shell already owns.
  */
-const SEARCH_RAIL_QUERY_KEY = ['search.recents.rail', SEARCH_RAIL_LIMIT] as const;
+const SEARCH_RAIL_QUERY_KEY = [SEARCH_RECENTS_RAIL_KEY_PREFIX, SEARCH_RAIL_LIMIT] as const;
 const railFetch = () => fetchSearchRecents(SEARCH_RAIL_LIMIT);
 
 export function SearchSidebarPanel() {
@@ -80,6 +93,7 @@ export function SearchSidebarPanel() {
     [searchParams],
   );
 
+  const queryClient = useQueryClient();
   const [filterText, setFilterText] = useState('');
 
   // The panel reads the SAME entry the shell reads — it needs the rows itself
@@ -127,8 +141,13 @@ export function SearchSidebarPanel() {
       // painting a detail the operator did not ask for.
       params.delete(SEARCH_SEL_PARAM);
       router.replace(`/search?${params.toString()}`, { scroll: false });
+      // A query committed from the rail is a recent like any other. Without
+      // this the rail was a read-only window onto a table nothing wrote, so an
+      // operator's own searches never appeared in their own recents.
+      pushStaffRecentClient({ query: value, scope: 'global' });
+      void queryClient.invalidateQueries({ queryKey: [SEARCH_RECENTS_RAIL_KEY_PREFIX] });
     },
-    [router, searchParams],
+    [router, searchParams, queryClient],
   );
 
   return (
@@ -155,12 +174,7 @@ export function SearchSidebarPanel() {
         flush
         data-testid="search-rail-find"
       />
-      <SidebarRailScrollport
-        // Clearance for the floating quick-note. Without it the composer sits
-        // permanently over the last recent row, which is unreachable rather
-        // than merely obscured — the rail scrolls to an end it cannot show.
-        bodyClassName="pb-16"
-      >
+      <SidebarRailScrollport>
         <SidebarRecentRailBase<SearchRecentEntry>
           queryKey={SEARCH_RAIL_QUERY_KEY}
           fetchFn={railFetch}
@@ -175,6 +189,10 @@ export function SearchSidebarPanel() {
           getId={searchRecentRowId}
           getReconcileId={(row) => row.id}
           getActivityAt={(row) => row.timestamp}
+          // Arms the LEFT nav-keys region, the same opt-in `RecentActivityRailBase`
+          // makes. Without it the leader armed Right on /search and Left was
+          // dead, so the rail could not be walked from the keyboard at all.
+          navRegionId="left"
           onSelect={selectRow}
           getStatusDot={searchRecentStatusDot}
           getStatusDotLabel={searchRecentStatusDotLabel}
@@ -192,20 +210,11 @@ export function SearchSidebarPanel() {
                     <span className="truncate text-text-muted">{meta}</span>
                   ) : null;
                 })(),
-                metaTrailing: (
-                  <span className="text-text-faint">
-                    {formatRelativeTime(row.timestamp)}
-                  </span>
-                ),
               }}
             />
           )}
         />
       </SidebarRailScrollport>
-
-      {/* Bottom, floating, no container plane — it sits over the rail rather
-          than docking into a band, so the recents scroll behind it. */}
-      <SearchRailQuickNote sel={sel} />
     </div>
   );
 }

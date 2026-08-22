@@ -12,6 +12,19 @@
  *
  * Topic nav: {@link DeskInspectorIndexShell} (index → leaf). Never
  * PaneHeaderTabs / StationDisplaysPushStack.
+ *
+ * **Chrome is ONE band**, painted by that same shell:
+ * `[‹ Back] [Overview] ……… [verbs] [⤢] [✕]`. Back is the shell's, never a
+ * hand-rolled chevron; the title cell is the CURRENT topic and nothing else.
+ *
+ * Until 2026-08-21 a `PaneHeader` sat above the shell carrying (a) its own
+ * `PaneHeaderActionBar` close — a second dismiss beside the host's singleton
+ * `✕`, which only ran `onClose` and skipped the lifecycle half — and (b) a
+ * stacked identity pair (eyebrow "Repair ticket" over the editable TK number,
+ * with a status pill under it). Both are gone: the verbs ride the band's
+ * trailing cluster, the host owns the only close, and the ticket editor + status
+ * moved into the Overview leaf body, which is where a record's identity belongs
+ * once the band's title is the topic.
  */
 
 import { useCallback, useEffect, useState } from 'react';
@@ -29,7 +42,6 @@ import { InspectorFlushDelete } from '@/components/right-rail/InspectorFlushDele
 import { useRailHeaderActions } from '@/components/right-rail/RailSelectionActions';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import {
-  PaneHeader,
   PaneHeaderActionBar,
   PaneHeaderIconBadge,
   PaneHeaderLabel,
@@ -87,12 +99,143 @@ export function RepairDetailsPanel({
     [c.setActiveTab],
   );
 
+  /**
+   * Record identity — the editable TK number + live status. BODY, not a second
+   * header line: the band's title cell is the current topic, and an inline text
+   * input cannot live in a `h-7` chrome row without deforming it.
+   */
+  const identityBlock = (
+    <div className="mb-4 flex items-center gap-2">
+      <PaneHeaderIconBadge Icon={Clock} bg="bg-orange-100" tint="text-orange-600" />
+      <div className="flex min-w-0 flex-col gap-1">
+        <PaneHeaderLabel
+          eyebrow={c.isSavingTicket ? 'Saving ticket...' : 'Repair ticket'}
+          value={
+            c.isEditingTicket ? (
+              <input
+                ref={c.ticketInputRef}
+                type="text"
+                value={c.ticketNumber}
+                onChange={(e) => c.setTicketNumber(e.target.value)}
+                onBlur={c.handleSaveTicket}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.currentTarget.blur();
+                  }
+                  if (e.key === 'Escape') {
+                    c.setTicketNumber(repair.ticket_number || '');
+                    c.setIsEditingTicket(false);
+                  }
+                }}
+                className={"w-full border-none bg-transparent p-0 text-sm font-semibold uppercase tracking-tight text-text-default focus:ring-0" /* ds-allow-focus: identity/one-off hue or ring-0 */}
+                placeholder="TK Number"
+                disabled={c.isSavingTicket}
+              />
+            ) : c.zendeskTicketUrl ? (
+              <HoverTooltip label={`Open Zendesk ticket ${c.ticketNumber}`} asChild>
+                <a
+                  href={c.zendeskTicketUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block truncate transition-colors hover:text-blue-600"
+                >
+                  {c.ticketNumber}
+                </a>
+              </HoverTooltip>
+            ) : (
+              <span className="text-text-faint">TK Number</span>
+            )
+          }
+          valueTitle={c.ticketNumber || 'TK Number'}
+        />
+        <PaneHeaderStatusPill
+          tone={getRepairStatusTone(repair.status)}
+          pulse
+          className={
+            repair.status === 'Repaired, Contact Customer'
+              ? 'text-role-micro tracking-[0.14em]'
+              : undefined
+          }
+        >
+          {repair.status || 'No status'}
+        </PaneHeaderStatusPill>
+      </div>
+    </div>
+  );
+
+  /**
+   * The band's trailing verb cluster — same cell on the index and on a leaf, so
+   * a verb never appears or disappears with the stage. No close here: the host
+   * paints the singleton `✕` into the cell the shell reserves after this.
+   */
+  const bandVerbs = (
+    <PaneHeaderActionBar
+      iconOnly
+      variant="flat"
+      className="py-0"
+      actions={[
+        {
+          key: 'column-display',
+          label: 'Column display',
+          icon: <ColumnsThree className="h-3.5 w-3.5" />,
+          onClick: requestOpenGridColumnDetails,
+        },
+        {
+          key: 'edit-ticket',
+          label: 'Edit ticket number',
+          icon: <Pencil className="h-4 w-4" />,
+          onClick: () => c.setIsEditingTicket(true),
+          disabled: c.isSavingTicket,
+        },
+        ...c.panelActions.map((action) => ({
+          key: action.key,
+          label: action.label,
+          icon: <span className={action.toneClassName}>{action.icon}</span>,
+          onClick: action.onAction,
+        })),
+        {
+          key: 'print',
+          label: 'Repair document',
+          icon: (
+            <span className="text-blue-600">
+              <PrinterAlt className="h-3.5 w-3.5" />
+            </span>
+          ),
+          onClick: c.printRepairDocument,
+        },
+        ...(c.canCreateSquarePayment
+          ? [
+              {
+                key: 'square-pay',
+                label: c.isPaying
+                  ? 'Creating payment link…'
+                  : c.hasSourceSku
+                    ? 'Square payment (catalog SKU)'
+                    : 'Square payment (price)',
+                icon: (
+                  <span className="text-emerald-600">
+                    <Receipt className="h-3.5 w-3.5" />
+                  </span>
+                ),
+                onClick: () => {
+                  if (!c.isPaying) void c.openSquarePayment();
+                },
+              },
+            ]
+          : []),
+        // Drop redundant "Open" when the inspect panel is already up.
+        ...railHeaderActions.filter((a) => a.key !== 'rail-open'),
+      ]}
+    />
+  );
+
   const leaves: DeskInspectorLeaf[] = [
     {
       id: 'overview',
       label: 'Overview',
       content: (
         <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+          {identityBlock}
           <RepairOverviewTab repair={repair} c={c} />
         </div>
       ),
@@ -109,10 +252,10 @@ export function RepairDetailsPanel({
   ];
 
   return (
-    // STABLE occupant id (`detail:repair`, not `detail:repair:<id>`): the header
-    // action bar has prev/next, so row→row is the loop here, and the host keys
-    // its crossfade on the occupant id — a per-record id played exit→empty→enter
-    // on every step. Safe because `useRepairDetailsPanel` re-seeds notes, ticket,
+    // STABLE occupant id (`detail:repair`, not `detail:repair:<id>`): the repair
+    // queue behind this rail is walked row by row, and the host keys its
+    // crossfade on the occupant id — a per-record id played exit→empty→enter on
+    // every step. Safe because `useRepairDetailsPanel` re-seeds notes, ticket,
     // linkage editors and the open tab on `repair.id` change.
     <DetailStackRailRegistrar
       id="detail:repair"
@@ -121,132 +264,8 @@ export function RepairDetailsPanel({
       ariaLabel={`Repair ${repairIdentity} details`}
     >
       <div className="flex h-full min-h-0 flex-col overflow-hidden">
-        <PaneHeader
-          className="border-border-hairline bg-surface-card/90 backdrop-blur-xl"
-          rowClassName="px-2"
-          leftSlot={
-            <PaneHeaderActionBar
-              iconOnly
-              variant="flat"
-              className="w-full px-0 py-0"
-              actions={[
-                {
-                  key: 'column-display',
-                  label: 'Column display',
-                  icon: <ColumnsThree className="h-3.5 w-3.5" />,
-                  onClick: requestOpenGridColumnDetails,
-                },
-                {
-                  key: 'edit-ticket',
-                  label: 'Edit ticket number',
-                  icon: <Pencil className="h-4 w-4" />,
-                  onClick: () => c.setIsEditingTicket(true),
-                  disabled: c.isSavingTicket,
-                },
-                ...c.panelActions.map((action) => ({
-                  key: action.key,
-                  label: action.label,
-                  icon: <span className={action.toneClassName}>{action.icon}</span>,
-                  onClick: action.onAction,
-                })),
-                {
-                  key: 'print',
-                  label: 'Repair document',
-                  icon: (
-                    <span className="text-blue-600">
-                      <PrinterAlt className="h-3.5 w-3.5" />
-                    </span>
-                  ),
-                  onClick: c.printRepairDocument,
-                },
-                ...(c.canCreateSquarePayment
-                  ? [
-                      {
-                        key: 'square-pay',
-                        label: c.isPaying
-                          ? 'Creating payment link…'
-                          : c.hasSourceSku
-                            ? 'Square payment (catalog SKU)'
-                            : 'Square payment (price)',
-                        icon: (
-                          <span className="text-emerald-600">
-                            <Receipt className="h-3.5 w-3.5" />
-                          </span>
-                        ),
-                        onClick: () => {
-                          if (!c.isPaying) void c.openSquarePayment();
-                        },
-                      },
-                    ]
-                  : []),
-                // Drop redundant "Open" when the inspect panel is already up.
-                ...railHeaderActions.filter((a) => a.key !== 'rail-open'),
-              ]}
-              onClose={onClose}
-              closeTitle="Close details"
-            />
-          }
-          belowSlot={
-            <div className="flex items-center gap-2 px-2 pb-2">
-              <PaneHeaderIconBadge Icon={Clock} bg="bg-orange-100" tint="text-orange-600" />
-              <div className="flex min-w-0 flex-col gap-1">
-                <PaneHeaderLabel
-                  eyebrow={c.isSavingTicket ? 'Saving ticket...' : 'Repair ticket'}
-                  value={
-                    c.isEditingTicket ? (
-                      <input
-                        ref={c.ticketInputRef}
-                        type="text"
-                        value={c.ticketNumber}
-                        onChange={(e) => c.setTicketNumber(e.target.value)}
-                        onBlur={c.handleSaveTicket}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.currentTarget.blur();
-                          }
-                          if (e.key === 'Escape') {
-                            c.setTicketNumber(repair.ticket_number || '');
-                            c.setIsEditingTicket(false);
-                          }
-                        }}
-                        className={"w-full border-none bg-transparent p-0 text-sm font-semibold uppercase tracking-tight text-text-default focus:ring-0" /* ds-allow-focus: identity/one-off hue or ring-0 */}
-                        placeholder="TK Number"
-                        disabled={c.isSavingTicket}
-                      />
-                    ) : c.zendeskTicketUrl ? (
-                      <HoverTooltip label={`Open Zendesk ticket ${c.ticketNumber}`} asChild>
-                        <a
-                          href={c.zendeskTicketUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="block truncate transition-colors hover:text-blue-600"
-                        >
-                          {c.ticketNumber}
-                        </a>
-                      </HoverTooltip>
-                    ) : (
-                      <span className="text-text-faint">TK Number</span>
-                    )
-                  }
-                  valueTitle={c.ticketNumber || 'TK Number'}
-                />
-                <PaneHeaderStatusPill
-                  tone={getRepairStatusTone(repair.status)}
-                  pulse
-                  className={
-                    repair.status === 'Repaired, Contact Customer'
-                      ? 'text-role-micro tracking-[0.14em]'
-                      : undefined
-                  }
-                >
-                  {repair.status || 'No status'}
-                </PaneHeaderStatusPill>
-              </div>
-            </div>
-          }
-        />
-
         <DeskInspectorIndexShell
+          stance="index"
           leaves={leaves}
           activeId={navId}
           onActiveIdChange={onNavChange}
@@ -254,6 +273,10 @@ export function RepairDetailsPanel({
           ariaLabel="Repair topics"
           testId="repair-inspector-index"
           backLabel="Back to topics"
+          // Same verbs on both stages — spillover changes WHERE a verb lives,
+          // never WHICH verbs exist.
+          indexRightSlot={bandVerbs}
+          leafTrailing={bandVerbs}
         />
 
         <InspectorActionFloor

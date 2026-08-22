@@ -94,8 +94,25 @@ export type CounterTicketWorkInput =
 export interface CounterTransactionInput {
   customer: CounterCustomerInput;
   retailLines?: CounterRetailLine[];
-  /** Omit or null for a retail-only visit (no signature step, no repair row). */
-  service?: CounterServiceLine | null;
+  /**
+   * Every device dropped off in this visit. Empty for a retail-only visit.
+   *
+   * **Was `service` (singular) until 2026-08-21.** The mapper kept only the
+   * FIRST repair line and counted the rest into an `extraRepairCount` nobody
+   * consumed, so a customer dropping off two devices silently lost one — no
+   * error, and a receipt that looked correct.
+   *
+   * The DB never required that: `repair_service.counter_transaction_id` is a
+   * many→one link and `counter_transactions` has no repair column at all. The
+   * 1:1 lived only here.
+   *
+   * The singular field was REMOVED rather than kept as an alias, deliberately:
+   * a defaulted or aliased shape is a silent opt-out that every call site
+   * nobody visited takes automatically (`backend-patterns.md` → *A safety
+   * classification is a REQUIRED parameter*). Removing it makes the compiler
+   * name every site instead.
+   */
+  services?: CounterServiceLine[];
   priorOrder?: CounterPriorOrderInput | null;
   ticketWork?: CounterTicketWorkInput;
   /**
@@ -158,7 +175,12 @@ export interface CounterTransactionResult {
   customerId: number;
   /** Resolved public order number, or null when no prior order matched. */
   priorOrderRef: string | null;
-  repair: CounterRepairOutcome | null;
+  /**
+   * One outcome per device taken in. Empty when the visit was retail-only —
+   * and empty on an idempotent replay, which reports the ORIGINAL transaction
+   * rather than re-deriving sub-writes it deliberately did not perform.
+   */
+  repairs: CounterRepairOutcome[];
   sale: CounterSaleOutcome | null;
   ticketWork: CounterTicketWorkOutcome;
   /**
@@ -190,7 +212,7 @@ export interface CounterTransactionResult {
  */
 export function computeCounterTotals(input: {
   retailLines?: CounterRetailLine[];
-  service?: CounterServiceLine | null;
+  services?: CounterServiceLine[];
 }): { subtotalCents: number; totalCents: number } {
   const subtotalCents = (input.retailLines ?? []).reduce((sum, line) => {
     const qty = Number.isFinite(line.quantity) ? Math.max(0, Math.trunc(line.quantity)) : 0;
@@ -200,10 +222,15 @@ export function computeCounterTotals(input: {
     return sum + qty * unit;
   }, 0);
 
-  return {
-    subtotalCents,
-    totalCents: subtotalCents + serviceLineCents(input.service),
-  };
+  // Every device is quoted separately, so the visit total is their sum. A
+  // single `serviceLineCents` here was the shape that made a second drop-off
+  // invisible on the receipt as well as in the ledger.
+  const serviceCents = (input.services ?? []).reduce(
+    (sum, service) => sum + serviceLineCents(service),
+    0,
+  );
+
+  return { subtotalCents, totalCents: subtotalCents + serviceCents };
 }
 
 /**
@@ -226,6 +253,9 @@ export function serviceLineCents(service?: CounterServiceLine | null): number {
 }
 
 /** A visit with a service line requires a signed intake agreement; retail alone does not. */
-export function requiresSignature(input: { service?: CounterServiceLine | null }): boolean {
-  return !!input.service;
+export function requiresSignature(input: { services?: CounterServiceLine[] }): boolean {
+  // Any device taken in needs the customer's signature. With N devices this is
+  // still one boolean for the DRAFT form (which holds one signature); the
+  // session path gates per line instead — see submitBlocker in session-store.ts.
+  return (input.services?.length ?? 0) > 0;
 }

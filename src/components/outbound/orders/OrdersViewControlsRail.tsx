@@ -9,10 +9,19 @@
  * Selected-order `detail:order` (`ShippedDetailsPanel`) is order facts only —
  * it must never remount {@link OrdersViewTopicsCluster}. Batch / compare rails
  * may still compose the cluster for multi-pane layout chrome.
+ *
+ * **ONE band, and it is titled** (2026-08-21). This rail used to stack a bare
+ * `DeskRailChromeRow` (host-close reserve, nothing else) over a second `h-9`
+ * chrome-painted row holding the topics — two bands, and neither said what the
+ * panel was. It now mounts {@link DeskInspectorIndexShell} in the `standalone`
+ * stance: no index routes here (Band 3 toggles it directly), so it owes no
+ * Back and declares that rather than inheriting it. The topics stay CONTENT
+ * under the band's hairline — the band's trailing cells belong to the host's
+ * `⤢` / `✕`, and this cluster is far too wide to share them.
  */
 
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
-import { DeskRailChromeRow } from '@/components/right-rail/DeskRailChromeRow';
+import { DeskInspectorIndexShell } from '@/components/right-rail/DeskInspectorIndexShell';
 import { OrdersViewTopicsCluster } from '@/components/outbound/orders/OrdersViewTopicsCluster';
 import {
   OrdersViewChromeBridge,
@@ -44,20 +53,23 @@ export function OrdersViewControlsRail() {
           data-testid="orders-view-controls-rail"
           data-orders-view-only=""
         >
-          <div className="shrink-0 border-b border-border-hairline bg-surface-card/90 backdrop-blur-xl">
-            <DeskRailChromeRow
-              onClose={() => setViewShellOpen(false)}
-              closeTitle="Hide inspector"
-            />
-            <div
-              className="flex h-9 min-w-0 items-center gap-2 border-t border-border-hairline px-2"
-              role="toolbar"
-              aria-label="Orders view topics"
-            >
-              <div className="min-w-0 flex-1" />
-              <OrdersViewTopicsCluster hidePaint />
-            </div>
-          </div>
+          <DeskInspectorIndexShell
+            stance="standalone"
+            title="View"
+            ariaLabel="Orders view controls"
+            testId="orders-view-inspector"
+            className="bg-surface-card/90 backdrop-blur-xl"
+            body={
+              <div
+                className="flex h-9 min-w-0 items-center gap-2 border-b border-border-hairline px-2"
+                role="toolbar"
+                aria-label="Orders view topics"
+              >
+                <div className="min-w-0 flex-1" />
+                <OrdersViewTopicsCluster hidePaint />
+              </div>
+            }
+          />
         </div>
       </OrdersViewChromeBridge>
     </DetailStackRailRegistrar>

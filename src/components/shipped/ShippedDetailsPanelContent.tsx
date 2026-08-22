@@ -41,6 +41,12 @@ interface ShippedDetailsPanelContentProps {
   /** Prefer in-place create when already on Support Orders. */
   onReportIssue?: () => void;
   editableShippingFields?: EditableShippingFields;
+  /**
+   * May this surface mutate the order's PRODUCT facts (condition re-grade,
+   * Amazon reimport)? Required and undefaulted — see {@link ProductDetailsSection}.
+   * A read surface passes `false`; a work surface passes `true`.
+   */
+  canEditProduct: boolean;
   /** When set, gates section rendering to just the active tab. Undefined = render all (legacy single-scroll view). */
   activeSection?: ShippedActiveSection;
   /**
@@ -73,6 +79,7 @@ export function ShippedDetailsPanelContent({
   showSupportActions = true,
   onReportIssue,
   editableShippingFields,
+  canEditProduct,
   activeSection,
   replaceTrackingNonce = 0,
   variant = 'flat',
@@ -91,6 +98,13 @@ export function ShippedDetailsPanelContent({
   const [prepackedSku, setPrepackedSku] = useState<PrepackedSkuInfo | null>(null);
 
   useEffect(() => {
+    // `prepackedSku` only ever feeds the SHIPPING section, so a product-only
+    // mount (the `/search` centre) was paying for a by-tracking round trip it
+    // could never render. `showShipping` is in the deps because
+    // `DashboardDetailsStack` flips `activeSection` on a LIVE mount — guarding
+    // without it would leave an operator who switches product→shipping with no
+    // fetch at all.
+    if (!showShipping) return;
     const tracking = String(shipped.shipping_tracking_number || '').trim();
     if (!tracking) return;
 
@@ -108,10 +122,14 @@ export function ShippedDetailsPanelContent({
       .catch(() => {});
 
     return () => { cancelled = true; };
-  }, [shipped.shipping_tracking_number]);
+  }, [shipped.shipping_tracking_number, showShipping]);
 
   const productDetailsSection = (
-    <ProductDetailsSection shipped={shipped} editableShippingFields={editableShippingFields} />
+    <ProductDetailsSection
+      shipped={shipped}
+      editableShippingFields={editableShippingFields}
+      canEditProduct={canEditProduct}
+    />
   );
 
   return (

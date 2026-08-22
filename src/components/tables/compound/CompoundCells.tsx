@@ -28,6 +28,7 @@ import { LedgerCellEditor } from '@/design-system/components/grid';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { ChevronRight, Package } from '@/components/Icons';
 import { BrandIdentityDot, GridCellDash } from '@/components/ui/grid-cells';
+import { GridClickSelectFace, GridRowCheckbox } from '@/components/ui/GridRowCheckbox';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { OrderNumberMenuChip } from '@/components/ui/OrderNumberMenuChip';
 import { TrackingNumberMenuChip } from '@/components/ui/TrackingNumberMenuChip';
@@ -35,27 +36,40 @@ import { carrierBrandDotPaint, resolveCarrierBrand } from '@/lib/carrier-brand';
 import { platformMetaBrandDot, sourcePlatformMeta } from '@/lib/source-platform';
 import { cn } from '@/utils/_cn';
 import { CompoundCell, CompoundLine } from './CompoundCell';
-import { COMPOUND_THUMB_PX } from './compound-row-chrome';
+import { COMPOUND_GUTTER_PX, COMPOUND_ROW_PX } from './compound-row-chrome';
 import type { CompoundRowView, CompoundStateTone } from './compound-row-model';
 
 /**
- * Column 1 — the visual anchor: one square centred against the row box, so it
- * reads as a single object beside two lines rather than a third stacked
- * element. Fixed in BOTH axes: a non-square source letterboxes inside the row
- * and can never set the row's height.
+ * Column 2 — the photo, EDGE TO EDGE.
+ *
+ * It fills its cell corner to corner: no inset, no border, no centring slack.
+ * The cell is a square of the row box (`COMPOUND_GUTTER_TRACK_REM`), so a
+ * square source lands unscaled and uncropped.
+ *
+ * It used to be a 32px chip with a hairline border floating in a 64px track —
+ * 9px of gap on three sides and 25px on the fourth, which read as a column of
+ * postage stamps rather than a strip of product. The operator's ask was
+ * literally "full width, no padding, edge to edge", and a photo is the one cell
+ * content that gains from every pixel: it is what an operator matches against
+ * the box in their hands.
+ *
+ * `object-cover` (not `contain`): a non-square source fills the square and
+ * crops rather than letterboxing, because a band of empty ground inside the
+ * cell would reintroduce exactly the inset this removes. The image can still
+ * never set the row's height — the cell's height is fixed by
+ * {@link COMPOUND_ROW_PX} and clips.
  */
 export function CompoundThumb({ view }: { view: CompoundRowView }) {
   return (
-    <div
-      className="relative shrink-0 overflow-hidden border border-border-hairline bg-surface-sunken"
-      style={{ width: COMPOUND_THUMB_PX, height: COMPOUND_THUMB_PX }}
-    >
+    <div className="relative h-full w-full overflow-hidden bg-surface-sunken">
       {view.thumbUrl ? (
         <Image
           src={view.thumbUrl}
           alt={view.title || 'Item photo'}
-          width={COMPOUND_THUMB_PX}
-          height={COMPOUND_THUMB_PX}
+          // Intrinsic hint only — the painted size is `h-full w-full`, so a
+          // density-scaled track still fills.
+          width={COMPOUND_GUTTER_PX}
+          height={COMPOUND_ROW_PX}
           className="h-full w-full object-cover"
           // The title beside it already names the item, so a slow photo must
           // never hold up the row paint.
@@ -64,10 +78,61 @@ export function CompoundThumb({ view }: { view: CompoundRowView }) {
         />
       ) : (
         <div className="flex h-full w-full items-center justify-center text-text-faint">
-          <Package className="h-3.5 w-3.5" aria-hidden />
+          <Package className="h-4 w-4" aria-hidden />
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * Column 1 — the SELECTION mark, edge to edge, and never blank.
+ *
+ * A full-bleed square that always paints a checkmark: faded when the row is not
+ * selected, solid on an accent ground when it is. That is the whole affordance
+ * — an operator can see at a glance that the leftmost column is a checkmark
+ * column, and can read straight down it to see what is ticked.
+ *
+ * **One face, no chrome flag.** The flat spreadsheets still choose between
+ * `'always'` / `'selected-only'` / `'sheets'` gutter chrome; the compound row
+ * does not, because it has one display method by rule. The face here is fixed.
+ *
+ * ## Interactive vs decorative is the presence of `onToggle`
+ *
+ * With a handler this is a real `role="checkbox"` button whose hit plane is the
+ * entire 48px cell — an operator never has to aim at a glyph, and Playwright's
+ * `.check()` keeps working. Without one it is the same face, `aria-hidden`,
+ * for the surfaces where the ROW owns the toggle (click-select) — the row's own
+ * `role="checkbox"` is the control there, and a second one would be a duplicate
+ * a screen reader has to disambiguate.
+ *
+ * What the tick MEANS is the caller's business: bulk membership on Receiving,
+ * Incoming and To-Ship; "this task is done" on Tasks. Same control, same
+ * picture, different handler.
+ */
+export function CompoundSelect({
+  checked,
+  onToggle,
+  label,
+  disabled = false,
+}: {
+  checked: boolean | 'mixed';
+  /** Present ⇒ a real checkbox. Absent ⇒ a decorative face (row owns toggle). */
+  onToggle?: () => void;
+  label: string;
+  disabled?: boolean;
+}) {
+  if (!onToggle) {
+    return <GridClickSelectFace checked={checked} className="absolute inset-0" />;
+  }
+  return (
+    <GridRowCheckbox
+      checked={checked}
+      onToggle={onToggle}
+      label={label}
+      disabled={disabled}
+      chrome="flush"
+    />
   );
 }
 
@@ -175,8 +240,15 @@ export function CompoundItem({
  * This shipped wrong once: it used `OrderIdChip` / `TrackingChip`, whose
  * default faces carry the `#` hash and the MapPin. Two tables then answered
  * "glyph or dot?" by two different rules — a fork hiding inside the SHARED
- * renderer, which is the worst place for one because it looks unified. The
- * header already names the column; the body carries brand identity.
+ * renderer, which is the worst place for one because it looks unified.
+ *
+ * **The dot's SHAPE says which identifier it marks:** filled for the order
+ * handle, a ring for the carrier tracking number. Colour alone could not do it.
+ * Both chips drop their own type mark on the stated promise that "the header
+ * already labels ORDER / TRACK", and this cell stacks both under one header —
+ * so an operator was left inferring the type from a brand palette, and on a row
+ * whose order id and tracking number are the same digits (Incoming does this
+ * routinely) there was nothing to infer from at all.
  *
  * Copy / Open / Edit verbs are not hand-rolled — the two menu chips own them.
  */
@@ -201,7 +273,12 @@ export function CompoundFulfillment({ view }: { view: CompoundRowView }) {
       secondary={
         view.tracking && carrierDot ? (
           <span className="inline-flex min-w-0 items-center gap-1.5">
-            <BrandIdentityDot className={carrierDot.className} style={carrierDot.style} />
+            <BrandIdentityDot
+              className={carrierDot.className}
+              style={carrierDot.style}
+              // RING = tracking. The filled dot on the line above is the order.
+              variant="ring"
+            />
             <TrackingNumberMenuChip
               value={view.tracking}
               carrierHint={view.carrier}

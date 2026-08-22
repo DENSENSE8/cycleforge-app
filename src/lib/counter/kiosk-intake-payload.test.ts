@@ -18,7 +18,8 @@ test('buildKioskSalesIntakeBody — retail-only, no pay', () => {
   const body = buildKioskSalesIntakeBody(draft, { takePayment: false });
   assert.equal(body.service, 'sales');
   assert.equal(body.takePayment, false);
-  assert.equal(body.serviceLine, null);
+  // Was `serviceLine: null`; the wire carries a LIST of devices now (SQ6).
+  assert.deepEqual(body.serviceLines, []);
   assert.deepEqual(body.ticketWork, { mode: 'none' });
   assert.equal(body.staffId, undefined);
 });
@@ -45,10 +46,15 @@ test('buildKioskSalesIntakeBody — service + signature + step-up', () => {
   assert.equal(body.staffId, 9);
   assert.equal(body.pin, '123456');
   assert.deepEqual(body.ticketWork, { mode: 'create' });
-  const serviceLine = body.serviceLine as { productModel: string; price: string; signatureDataUrl: string };
-  assert.equal(serviceLine.productModel, 'QC35');
-  assert.equal(serviceLine.price, '129.00');
-  assert.equal(serviceLine.signatureDataUrl, 'data:image/png;base64,abc');
+  const serviceLines = body.serviceLines as Array<{
+    productModel: string;
+    price: string;
+    signatureDataUrl: string;
+  }>;
+  assert.equal(serviceLines.length, 1, 'the draft form is single-device by construction');
+  assert.equal(serviceLines[0].productModel, 'QC35');
+  assert.equal(serviceLines[0].price, '129.00');
+  assert.equal(serviceLines[0].signatureDataUrl, 'data:image/png;base64,abc');
 });
 
 test('buildKioskSalesIntakeBody — blank service model is omitted', () => {
@@ -60,5 +66,6 @@ test('buildKioskSalesIntakeBody — blank service model is omitted', () => {
     price: '',
   };
   const body = buildKioskSalesIntakeBody(draft, { takePayment: false });
-  assert.equal(body.serviceLine, null);
+  // Was `serviceLine: null`; the wire carries a LIST of devices now (SQ6).
+  assert.deepEqual(body.serviceLines, []);
 });

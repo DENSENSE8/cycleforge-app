@@ -76,7 +76,11 @@ export function buildSearchOrderDisplayIndexRows(
             // Presence of units is informational on a read surface, same rule
             // as Photos — never `action`.
             tone: 'ok',
-            group: 'context',
+            // `assets`, matching `defaultDisplayIndexGroup('units')`. It read
+            // `context` until 2026-08-21, which put Units in a different band
+            // from Photos on /search than on every station that takes the
+            // default — the row moved column for no stated reason.
+            group: 'assets',
           },
         ] satisfies DisplayIndexRow[])
       : []),

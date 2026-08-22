@@ -3,12 +3,13 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from '@/design-system/motion';
-import { AlertTriangle, Check, ChevronDown, Loader2, X } from '@/components/Icons';
+import { AlertTriangle, Check, ChevronDown, Loader2 } from '@/components/Icons';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { SearchableSelectField } from '@/design-system/components/SearchableSelectField';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
-import { Button, IconButton } from '@/design-system/primitives';
+import { Button } from '@/design-system/primitives';
+import { RIGHT_RAIL_HOST_CLOSE_SLOT_CLASS } from '@/components/right-rail/DeskRailChromeRow';
 import { sectionLabel, fieldLabel, microBadge, dataValue } from '@/design-system/tokens/typography/presets';
 import { TrackingChip, OrderIdChip, SkuScanRefChip, getLast8 } from '@/components/ui/CopyChip';
 import { PlatformMark } from '@/components/ui/PlatformMark';
@@ -663,7 +664,33 @@ function ExceptionList({
  * hierarchy as TicketDisplayHost Claim surface → ClaimModeSelect). Cancel is the
  * only intentional abort while a transfer is in flight.
  */
-export function OrderSyncDialog({
+export function OrderSyncDialog(props: OrderSyncDialogProps) {
+  if (!props.open) return null;
+  return (
+    <DetailStackRailRegistrar
+      id="detail:order-sync"
+      onClose={props.onClose}
+      // `handleClose` can only decline to act; it cannot stop the host's
+      // lifecycle half, which parked this panel and toasted "Draft saved."
+      // over a live progress readout while the transfer kept running.
+      canClose={() => !props.isRunning}
+      modal={false}
+      ariaLabel="Order import progress"
+    >
+      <OrderSyncPanelBody {...props} />
+    </DetailStackRailRegistrar>
+  );
+}
+
+/**
+ * The progress body with NO registrar of its own.
+ *
+ * `OrderIngestRail` renders this inside its `sync` leaf: mounting the wrapper
+ * from there registered `detail:order-sync` into the single `RightRailHost`
+ * slot and EVICTED the ingest rail that spawned it, so starting an import
+ * closed the panel you started it from.
+ */
+export function OrderSyncPanelBody({
   open,
   onClose,
   isRunning,
@@ -720,10 +747,9 @@ export function OrderSyncDialog({
     [sheetsCount, ecwidCount],
   );
 
-  // Block dismiss while a transfer is in flight; Cancel is the only intentional abort.
-  const handleClose = () => {
-    if (!isRunning) onClose();
-  };
+  // Mid-run dismissal is refused by the wrapper's `canClose` veto, which the
+  // host consults before BOTH halves of closeRightPanel — an onClose that
+  // merely no-ops does not stop the lifecycle half.
 
   const goResolveMissingItemNumbers = () => {
     onClose();
@@ -733,16 +759,7 @@ export function OrderSyncDialog({
   if (!open) return null;
 
   return (
-    <DetailStackRailRegistrar
-      id="detail:order-sync"
-      onClose={handleClose}
-      // `handleClose` can only decline to act; it cannot stop the host's
-      // lifecycle half, which parked this panel and toasted "Draft saved."
-      // over a live progress readout while the transfer kept running.
-      canClose={() => !isRunning}
-      modal={false}
-      ariaLabel="Order import progress"
-    >
+    <>
       <div
         className="flex h-full min-h-0 flex-col overflow-hidden bg-surface-card"
         data-testid="order-sync-panel"
@@ -773,13 +790,14 @@ export function OrderSyncDialog({
                 Cancel
               </Button>
             ) : null}
-            <IconButton
-              icon={<X className="h-3.5 w-3.5" />}
-              size="sm"
-              ariaLabel="Close"
-              onClick={handleClose}
-              disabled={isRunning}
-              className={`hover:bg-surface-sunken ${FLUSH}`}
+            {/* NO close here. `RightRailHost` paints the ONE dismiss at the
+                flush top-right corner, and the `canClose={() => !isRunning}`
+                veto above already refuses it mid-transfer — which is all this
+                `disabled` X was doing, at the cost of a second closer. */}
+            <span
+              className={RIGHT_RAIL_HOST_CLOSE_SLOT_CLASS}
+              aria-hidden
+              data-right-rail-host-close-slot
             />
           </div>
         </header>
@@ -852,17 +870,8 @@ export function OrderSyncDialog({
               <span>{statusLabel(exceptions.status, exceptions.summary)}</span>
             </span>
           </div>
-          <Button
-            variant="brand"
-            size="sm"
-            onClick={handleClose}
-            disabled={isRunning}
-            className="h-7 px-2.5 text-role-micro"
-          >
-            {isRunning ? 'Running…' : 'Close'}
-          </Button>
         </footer>
       </div>
-    </DetailStackRailRegistrar>
+    </>
   );
 }

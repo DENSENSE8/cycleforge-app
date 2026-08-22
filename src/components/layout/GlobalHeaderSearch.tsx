@@ -19,6 +19,11 @@ import { GlobalFindCombobox } from '@/components/search/GlobalFindCombobox';
 import { useSearchRecents } from '@/hooks/useSearchRecents';
 import { subscribeGlobalSearchPending } from '@/lib/global-search-pending';
 import { isUnifiedHeaderSearchEnabled } from '@/lib/search/unified-header-search';
+import { useQueryClient } from '@tanstack/react-query';
+import {
+  pushStaffRecentClient,
+  SEARCH_RECENTS_RAIL_KEY_PREFIX,
+} from '@/lib/search/staff-recents-client';
 
 export function GlobalHeaderSearch() {
   const pathname = usePathname();
@@ -29,6 +34,7 @@ export function GlobalHeaderSearch() {
 
   const onSearchPage = pathname === '/search' || Boolean(pathname?.startsWith('/search/'));
 
+  const queryClient = useQueryClient();
   const unifiedOn = isUnifiedHeaderSearchEnabled();
   const {
     recents,
@@ -56,13 +62,27 @@ export function GlobalHeaderSearch() {
       onClearRecents={() => clearRecents()}
       onPushRecent={
         unifiedOn
-          ? (entry) =>
+          ? (entry) => {
               pushRecent({
                 query: entry.query,
                 scope: entry.scope,
                 scopeHref: entry.scopeHref,
                 topHit: entry.topHit,
-              })
+              });
+              // …and the DB store the `/search` rail reads. Restored 2026-08-21:
+              // `POST /api/search/recents` had no caller at all, so the rail
+              // could only ever show rows a deleted code path left behind.
+              // Fire-and-forget — never gate the navigation on bookkeeping.
+              pushStaffRecentClient({
+                query: entry.query,
+                scope: entry.scope,
+                scopeHref: entry.scopeHref,
+                topHit: entry.topHit,
+              });
+              void queryClient.invalidateQueries({
+                queryKey: [SEARCH_RECENTS_RAIL_KEY_PREFIX],
+              });
+            }
           : undefined
       }
       syncAssistantDraft

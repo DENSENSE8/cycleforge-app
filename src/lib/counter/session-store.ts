@@ -842,7 +842,7 @@ export async function submitSession(
             email: snapshot.customer.email || null,
           },
           retailLines: parts.retailLines,
-          service: parts.service,
+          services: parts.services,
           clientEventId,
           kioskDeviceId: snapshot.kioskDeviceId,
           steppedUpStaffId: args.steppedUpStaffId ?? null,

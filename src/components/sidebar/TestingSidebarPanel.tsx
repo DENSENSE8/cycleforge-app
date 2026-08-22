@@ -299,6 +299,11 @@ export function TestingSidebarPanel({
         }
         case 'box': {
           setBoxPanel({ id: result.handlingUnitId, lines: result.rows });
+          // ONE registrar per rendered rail: box and kit are two occupants of
+          // the single RightRailHost slot, so a kit scan followed by a box scan
+          // used to leave both registrars mounted and the second silently
+          // evicted the first. Opening one closes the other.
+          setManifestPanel(null);
           publishTestingScanPick(null);
           setScanValue('');
           setArmedMode(null);
@@ -308,6 +313,8 @@ export function TestingSidebarPanel({
         }
         case 'manifest': {
           setManifestPanel({ ref: result.manifestRef });
+          // Same single-slot rule as the box branch above.
+          setBoxPanel(null);
           publishTestingScanPick(null);
           setScanValue('');
           setArmedMode(null);
@@ -470,7 +477,13 @@ export function TestingSidebarPanel({
       {/* Box / manifest workbenches are non-modal rail inspectors: an operator
           re-sorting units at the bench needs the scan feed and the recent rail
           beside them, and a scrim hid exactly that. Ids stay per-entity — these
-          open from a SCAN, not from walking a queue row by row. */}
+          open from a SCAN, not from walking a queue row by row.
+
+          EXACTLY ONE of these is ever mounted (the scan branches clear the
+          other), because both claim the single RightRailHost slot: two live
+          registrars means the loser is evicted with no trace of why. Each body
+          owns the ONE band and paints NO close — the host's singleton `✕` fires
+          `closeRightPanel`, which runs the `onClose` below as its teardown. */}
       {boxPanel ? (
         <DetailStackRailRegistrar
           id={`box:${boxPanel.id}`}

@@ -10,7 +10,6 @@ import {
   DeskInspectorIndexShell,
   type DeskInspectorLeaf,
 } from '@/components/right-rail/DeskInspectorIndexShell';
-import { PaneHeaderLabel } from '@/components/ui/pane-header';
 import type { SectionTab } from '@/design-system/components';
 import type { SupportContextAnchor } from '@/hooks/useSupportContext';
 
@@ -70,7 +69,9 @@ export interface SupportContextDetailPanelProps {
  *
  * NON-MODAL (`modal={false}`): reference context read BESIDE the ticket thread —
  * a scrim would hide the very conversation the linkage is about. A non-modal
- * surface has no backdrop to click off, so the header close button is mandatory.
+ * surface has no backdrop to click off, so a visible dismiss is mandatory —
+ * and it is the HOST's singleton `✕` at the flush top-right, which this panel
+ * reserves a cell for (via the shell's band) and never paints a twin of.
  *
  * **This is the only right-edge home for ticket context.** `ServiceWorkspaceShell`
  * shipped a private `<aside>` rendering the same `SupportContextHub` until
@@ -127,6 +128,17 @@ export function SupportContextDetailPanel({
 
   const variant = embedded ? 'station' : 'workbench';
 
+  /**
+   * The short durable key as a band METRIC, never a title and never a second
+   * header line. `right-rail-inspector.md` wants the scannable key visible at
+   * every stage; the band's flex-1 title cell belongs to the current segment.
+   */
+  const ticketKey = (
+    <span className="flex h-full items-center px-1 font-mono text-role-micro text-text-soft">
+      #{ticketId}
+    </span>
+  );
+
   return (
     <DetailStackRailRegistrar
       id={`detail:support-context:${ticketId}`}
@@ -141,23 +153,22 @@ export function SupportContextDetailPanel({
       ariaLabel={`Ticket #${ticketId} support context`}
     >
       <div className="flex h-full min-h-0 flex-col overflow-hidden">
-        <div className="shrink-0 border-b border-border-hairline bg-surface-card/90 backdrop-blur-xl">
-          <div className="px-2 pb-2 pt-1">
-            {/* Identity is the SHORT DURABLE KEY, with the mode as the eyebrow —
-                `right-rail-inspector.md`. This header used to invert them (`Ticket
-                #N` as the eyebrow over a `text-role-body` "Support context" heading),
-                which put a generic noun where the scannable key belongs and broke the
-                caption-density cap for rail identity. */}
-            <PaneHeaderLabel eyebrow="Support context" value={`#${ticketId}`} />
-          </div>
-        </div>
-
         {/* Display state lives HERE, above the registrar, so switching pushes a
             fresh node through `updateRightRailPanelNode` without touching the
             occupant id — the host keys its AnimatePresence on that id, so a
-            re-key would replay the whole panel crossfade on every click. */}
+            re-key would replay the whole panel crossfade on every click.
+
+            ONE band, and it is the top row. The `PaneHeaderLabel` identity
+            block that used to lead this stack ("Support context" over `#N`)
+            was a second header line above the shell's own band, and it sat
+            under the host's absolutely-positioned `⤢ ✕`. The durable key is
+            not lost: `#N` is a read-only metric, so it rides the band's
+            trailing cell beside the current segment's name. */}
         {hasDisplays ? (
           <DeskInspectorIndexShell
+            stance="index"
+            title="Context"
+            headerRightSlot={ticketKey}
             leaves={leaves}
             activeId={navId}
             onActiveIdChange={setNavId}
@@ -166,16 +177,26 @@ export function SupportContextDetailPanel({
             backLabel="Back to topics"
           />
         ) : (
-          <div className="min-h-0 flex-1 overflow-y-auto">
-            <SupportContextHub
-              anchor={anchor}
-              variant={variant}
-              defaultSegment="activity"
-              hideCustomerSegment
-              surface="flush"
-              className="h-full"
-            />
-          </div>
+          // The historical body — one hub, no topics above it, so no Back is
+          // owed and the stance says so rather than defaulting into an index
+          // shape this branch has never had.
+          <DeskInspectorIndexShell
+            stance="standalone"
+            title="Context"
+            headerRightSlot={ticketKey}
+            ariaLabel="Ticket context"
+            testId="support-inspector-index"
+            body={
+              <SupportContextHub
+                anchor={anchor}
+                variant={variant}
+                defaultSegment="activity"
+                hideCustomerSegment
+                surface="flush"
+                className="h-full"
+              />
+            }
+          />
         )}
       </div>
     </DetailStackRailRegistrar>

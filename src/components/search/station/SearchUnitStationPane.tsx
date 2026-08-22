@@ -43,6 +43,7 @@ import {
 } from '@/components/station/unit';
 import { useAutoCollapse } from '@/components/station/collapse';
 import { useSearchPrimaryPaintOptional } from '@/components/search/search-primary-paint-context';
+import { unitTimelinePhotosQuery } from '@/lib/timeline/journey-photos';
 import { SearchUnitCentre } from './SearchUnitCentre';
 import { buildSearchUnitDisplayIndexRows } from './search-unit-display-index';
 import { OrderFactList, OrderFactRow } from '@/components/order-record/order-record-card';
@@ -123,7 +124,21 @@ export function SearchUnitStationPane({
   const unitId = Number(unit?.id ?? 0);
   const hasUnitRow = Number.isFinite(unitId) && unitId > 0;
   const serial = vm?.leadIsMintedUid ? '' : (vm?.serialValue ?? '');
-  const photoCount = query.data?.photos?.length ?? null;
+  /**
+   * The count and the leaf must come from ONE query (2026-08-21).
+   *
+   * The subtitle used to count `photos` on `/api/serial-units/{token}?include=full`
+   * while the leaf rendered `SerialUnitTimelineSection`, which runs
+   * `unitTimelinePhotosQuery` against a DIFFERENT route — so the index could
+   * advertise "3 photos" and open a leaf that rendered nothing at all
+   * (`SerialUnitTimelineSection` returns null on empty by design: its docblock
+   * was written for a desk pane where it is one section among many, not for a
+   * whole Displays column). Observing the leaf's own query options here means
+   * the two can no longer disagree, and the leaf reuses the fetch.
+   */
+  const photosQuery = useQuery(unitTimelinePhotosQuery(hasUnitRow ? unitId : null));
+  const photosSettled = hasUnitRow && !photosQuery.isLoading;
+  const photoCount = photosQuery.data?.photos?.length ?? null;
   const allocations = useMemo(() => query.data?.allocations ?? [], [query.data]);
 
   const centre = useMemo(
@@ -142,11 +157,25 @@ export function SearchUnitStationPane({
           // `SerialUnitTimelineSection` is the pane that OWNS media for a unit
           // (its own docblock) — which is exactly why the journey leaf beside it
           // passes `withPhotos={false}`.
-          content: hasUnitRow ? (
+          // A leaf reachable from the Root Index must land on a real empty
+          // state, never a blank column — the same rule the order pane states.
+          content: !hasUnitRow ? (
+            <EmptyState
+              icon={<Camera className="h-6 w-6 text-text-faint" />}
+              title="No unit record"
+              description="This selection has no serial-unit row, so there is no photo spine to show."
+            />
+          ) : photosSettled && (photoCount ?? 0) === 0 ? (
+            <EmptyState
+              icon={<Camera className="h-6 w-6 text-text-faint" />}
+              title="No photos"
+              description="Nothing was captured for this unit at receiving, testing, packing or return."
+            />
+          ) : (
             <div className="pb-4">
               <SerialUnitTimelineSection serialUnitId={unitId} />
             </div>
-          ) : null,
+          ),
         },
         {
           id: 'journey',

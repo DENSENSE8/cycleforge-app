@@ -112,7 +112,12 @@ export function CounterIntakeForm({ onClose, onSubmit, apiBasePath }: CounterInt
   }, []);
 
   const totals = useMemo(
-    () => computeCounterTotals({ retailLines: draft.retailLines, service: draft.service }),
+    () => // The draft form holds ONE device (one `service`, one signature); it
+      // contributes a one-element list rather than being widened here.
+      computeCounterTotals({
+        retailLines: draft.retailLines,
+        services: draft.service ? [draft.service] : [],
+      }),
     [draft.retailLines, draft.service],
   );
 
@@ -200,13 +205,15 @@ export function CounterIntakeForm({ onClose, onSubmit, apiBasePath }: CounterInt
               email: draft.email || null,
             },
             retailLines: draft.retailLines,
-            service: draft.service
-              ? {
-                  ...draft.service,
-                  signatureDataUrl: draft.signatureDataUrl,
-                  signatureStrokes: draft.signatureStrokes,
-                }
-              : null,
+            services: draft.service
+              ? [
+                  {
+                    ...draft.service,
+                    signatureDataUrl: draft.signatureDataUrl,
+                    signatureStrokes: draft.signatureStrokes,
+                  },
+                ]
+              : [],
             priorOrder: draft.priorOrderNumber.trim()
               ? { orderNumber: draft.priorOrderNumber.trim(), phone: draft.phone }
               : null,
@@ -263,8 +270,8 @@ export function CounterIntakeForm({ onClose, onSubmit, apiBasePath }: CounterInt
         <div className="space-y-1">
           <h2 className="text-2xl font-semibold tracking-tight">All set</h2>
           <p className="text-role-caption font-semibold text-text-soft">
-            {result.repair?.rsNumber
-              ? `Service ${result.repair.rsNumber} checked in.`
+            {result.repairs[0]?.rsNumber
+              ? `Service ${result.repairs[0]!.rsNumber} checked in.`
               : 'Sale staged at the register.'}
           </p>
         </div>

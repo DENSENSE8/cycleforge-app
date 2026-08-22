@@ -24,8 +24,65 @@ export const SQL_SHIPMENT_IS_SOLE_ORDER = `(
 )`;
 
 /**
+ * ONE correlated `EXISTS` over `station_activity_logs` covering BOTH grains
+ * (order-grain metadata attribution + the sole-shipment legacy fallback).
+ *
+ * **Why one EXISTS and not two under `OR`.** Postgres only pulls an EXISTS
+ * sublink up into a semi/anti-join when it is a top-level `AND` conjunct
+ * (`pull_up_sublinks`, which runs *before* `eval_const_expressions` — so
+ * De Morgan on `NOT (EXISTS … OR EXISTS …)` comes too late to help). Under an
+ * `OR` both branches stay correlated SubPlans re-executed per outer row, which
+ * is what made `AND NOT sqlOrderHasPackScan('o')` scan SAL twice for every
+ * order on the to-ship list. Pushing the disjunction *inside* one subquery
+ * keeps the truth value identical and leaves a single sublink the planner can
+ * pull up (semi-join positive / anti-join negated), with the inner `OR` free to
+ * become a BitmapOr over the per-branch indexes.
+ *
+ * **Why it is exact.** Both branches select from the same relation under the
+ * same `organization_id` + `activity_type` prefix, so
+ * `EXISTS(σ_A) ∨ EXISTS(σ_B) ≡ EXISTS(σ_{A∨B})`. The sole-order guard does not
+ * reference `sal` and is strictly two-valued (`IS NOT NULL` / `NOT EXISTS`
+ * never yield NULL), so hoisting it into the second arm is a no-op:
+ * `S ∧ EXISTS(σ_B) ≡ EXISTS(σ_{B ∧ S})`.
+ *
+ * Arm order is load-bearing for cost, not for truth: the cheap column
+ * comparisons are evaluated before the correlated sibling-exclusion sublink, and
+ * the `~ '^[0-9]+$'` guard stays immediately left of its `::int` cast inside the
+ * same nested `AND` (nested BoolExpr args short-circuit left-to-right, unlike a
+ * top-level qual list the planner may reorder).
+ */
+function sqlOrderHasStationActivity(alias: string, activityTypes: readonly string[]): string {
+  const a = alias;
+  return `EXISTS (
+      SELECT 1 FROM station_activity_logs sal
+      WHERE sal.organization_id = ${a}.organization_id
+        AND sal.activity_type IN (${sqlInList(activityTypes)})
+        AND (
+          (
+            (sal.metadata->>'order_row_id') ~ '^[0-9]+$'
+              AND (sal.metadata->>'order_row_id')::int = ${a}.id
+            OR (
+              sal.metadata->>'order_id' IS NOT NULL
+              AND sal.metadata->>'order_id' = ${a}.order_id
+            )
+          )
+          OR (
+            sal.shipment_id IS NOT NULL
+            AND sal.shipment_id = ${a}.shipment_id
+            AND (sal.metadata->>'order_row_id') IS NULL
+            AND ${SQL_SHIPMENT_IS_SOLE_ORDER.replace(/\bo\./g, `${a}.`)}
+          )
+        )
+    )`;
+}
+
+/**
  * Order has a Testing bench scan attributed to it (order-grain).
  * Used by Up Next / has_tech_scan projections.
+ *
+ * Stays a two-branch `OR` because the first branch reads a different relation
+ * (`tech_serial_numbers`); folding it in with `UNION ALL` would only *lose* the
+ * pullup (`simplify_EXISTS_query` rejects set operations) without saving a scan.
  */
 export function sqlOrderHasTechScan(alias = 'o'): string {
   const a = alias;
@@ -35,63 +92,21 @@ export function sqlOrderHasTechScan(alias = 'o'): string {
       WHERE tsn.order_id = ${a}.id
         AND tsn.organization_id = ${a}.organization_id
     )
-    OR EXISTS (
-      SELECT 1 FROM station_activity_logs sal
-      WHERE sal.organization_id = ${a}.organization_id
-        AND sal.activity_type IN (${sqlInList(TECH_TEST_ACTIVITY_TYPES)})
-        AND (
-          (sal.metadata->>'order_row_id') ~ '^[0-9]+$'
-            AND (sal.metadata->>'order_row_id')::int = ${a}.id
-          OR (
-            sal.metadata->>'order_id' IS NOT NULL
-            AND sal.metadata->>'order_id' = ${a}.order_id
-          )
-        )
-    )
-    OR (
-      ${SQL_SHIPMENT_IS_SOLE_ORDER.replace(/\bo\./g, `${a}.`)}
-      AND EXISTS (
-        SELECT 1 FROM station_activity_logs sal
-        WHERE sal.shipment_id IS NOT NULL
-          AND sal.shipment_id = ${a}.shipment_id
-          AND sal.organization_id = ${a}.organization_id
-          AND sal.activity_type IN (${sqlInList(TECH_TEST_ACTIVITY_TYPES)})
-          AND (sal.metadata->>'order_row_id') IS NULL
-      )
-    )
+    OR ${sqlOrderHasStationActivity(a, TECH_TEST_ACTIVITY_TYPES)}
   )`;
 }
 
 /**
  * Order has been packed (order-grain). Used by excludePacked / fulfillmentScope.
+ *
+ * ONE sublink, so `AND sqlOrderHasPackScan('o')` plans as a semi-join and
+ * `AND NOT sqlOrderHasPackScan('o')` as an anti-join instead of a per-row
+ * SubPlan pair.
  */
 export function sqlOrderHasPackScan(alias = 'o'): string {
   const a = alias;
   return `(
-    EXISTS (
-      SELECT 1 FROM station_activity_logs sal
-      WHERE sal.organization_id = ${a}.organization_id
-        AND sal.activity_type IN (${sqlInList(PACK_ACTIVITY_TYPES)})
-        AND (
-          (sal.metadata->>'order_row_id') ~ '^[0-9]+$'
-            AND (sal.metadata->>'order_row_id')::int = ${a}.id
-          OR (
-            sal.metadata->>'order_id' IS NOT NULL
-            AND sal.metadata->>'order_id' = ${a}.order_id
-          )
-        )
-    )
-    OR (
-      ${SQL_SHIPMENT_IS_SOLE_ORDER.replace(/\bo\./g, `${a}.`)}
-      AND EXISTS (
-        SELECT 1 FROM station_activity_logs sal
-        WHERE sal.shipment_id IS NOT NULL
-          AND sal.shipment_id = ${a}.shipment_id
-          AND sal.organization_id = ${a}.organization_id
-          AND sal.activity_type IN (${sqlInList(PACK_ACTIVITY_TYPES)})
-          AND (sal.metadata->>'order_row_id') IS NULL
-      )
-    )
+    ${sqlOrderHasStationActivity(a, PACK_ACTIVITY_TYPES)}
   )`;
 }
 

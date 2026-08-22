@@ -100,7 +100,7 @@ export function KioskCartLedger({ focus }: { focus?: KioskCartFocus | null } = {
   const postIntake = useCallback(
     async (opts: { takePayment: boolean; staffId?: number; pin?: string }) => {
       if (!idemKey.current) idemKey.current = safeRandomUUID();
-      const { retailLines, service } = mapKioskCartToCounterParts(session.lines);
+      const { retailLines, services } = mapKioskCartToCounterParts(session.lines);
       const res = await fetch('/api/kiosk/intake', {
         method: 'POST',
         headers: {
@@ -116,9 +116,9 @@ export function KioskCartLedger({ focus }: { focus?: KioskCartFocus | null } = {
                 email: session.customerEmail || null,
               },
               retailLines,
-              service,
+              services,
               priorOrder: null,
-              ticketWork: service ? { mode: 'create' } : { mode: 'none' },
+              ticketWork: services.length > 0 ? { mode: 'create' } : { mode: 'none' },
             },
             opts,
           ),
@@ -196,9 +196,15 @@ export function KioskCartLedger({ focus }: { focus?: KioskCartFocus | null } = {
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 px-4 text-center">
           <p className="text-lg font-semibold tracking-tight">All set</p>
           <p className="text-sm font-semibold text-text-soft">
-            {result.repair?.rsNumber
-              ? `Service ${result.repair.rsNumber} checked in.`
-              : 'Sale staged at the register.'}
+            {result.repairs.length === 1
+              ? `Service ${result.repairs[0].rsNumber} checked in.`
+              : result.repairs.length > 1
+                ? // Name every device: "two of your things are here" is the fact
+                  // the customer is standing there to confirm.
+                  `${result.repairs.length} services checked in — ${result.repairs
+                    .map((r) => r.rsNumber)
+                    .join(', ')}.`
+                : 'Sale staged at the register.'}
           </p>
         </div>
         <div className={KIOSK_PANE_FOOTER_BAND}>

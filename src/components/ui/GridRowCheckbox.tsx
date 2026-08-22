@@ -21,19 +21,27 @@
  * - `'selected-only'`: legacy pilot — full-cell hit plane, blank until
  *   checked/mixed; then the same 16px accent face. Kept until callers migrate.
  * - `'sheets'` (header select-all on click-select surfaces): full-cell hit
- *   plane; paints {@link GridClickSelectFace} when checked / mixed (flush
- *   accent wash + check). Blank while unchecked. Body rows on Unbox History /
- *   Incoming mount decorative {@link GridClickSelectFace} separately (row owns
- *   toggle). To-ship Orders uses `'always'` on header **and** body so every
- *   leftmost cell is a real checklist square with a full-cell hit plane.
+ *   plane painting {@link GridClickSelectFace}. Body rows on Unbox History /
+ *   Incoming mount that face decoratively (the row owns toggle).
+ * - `'flush'` (the COMPOUND row): the same full-cell face, edge to edge in a
+ *   48px square gutter, with a FADED check when unselected so the column reads
+ *   as a checkmark column at rest. See `CompoundSelect`.
  */
 
 import { Check } from '@/components/Icons';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 
-/** How the select-gutter face (or lack of one) is painted. */
-export type GridSelectGutterChrome = 'always' | 'selected-only' | 'sheets';
+/**
+ * How the select-gutter face is painted.
+ *
+ * `'flush'` is the COMPOUND row's face and is deliberately not selectable at a
+ * mount: `CompoundSelect` hardcodes it, because the compound row has one
+ * display method by rule. The other three serve the flat spreadsheets, whose
+ * 16px checklist square is a different (and still correct) answer for a 28px
+ * row.
+ */
+export type GridSelectGutterChrome = 'always' | 'selected-only' | 'sheets' | 'flush';
 
 /**
  * Every chrome fills the select track as the hit plane; only the painted face
@@ -55,14 +63,24 @@ function faceClassName(isOn: boolean, isMixed: boolean): string {
 }
 
 /**
- * Decorative select-track face for click-select surfaces (Unbox History /
- * Incoming Pipeline). The row owns bulk toggle (`role="checkbox"`); this
- * paints membership only — never a second interactive control.
+ * The select-track FACE — full-bleed, and never blank.
  *
- * Fills the frozen select track (`2rem` × row `h-10`) flush — full-cell
- * accent wash + centered glyph when checked / mixed; blank when unchecked.
- * No inset 16px checklist square (that face belongs to interactive
- * `'always'` gutter chrome only).
+ * Fills its track flush: accent wash + white check when on, a quiet wash + dash
+ * when mixed, and a FADED check when off.
+ *
+ * ## Why "off" is a faded check rather than nothing
+ *
+ * This painted nothing when unchecked until 2026-08-21, which made the leftmost
+ * column of a grid indistinguishable from an empty gutter. On Incoming — where
+ * every body row uses this face — the column read as dead space: an operator
+ * could not tell it was a selection column at all, let alone scan down it to
+ * see what was ticked. "Nothing" is also ambiguous in the one way that matters
+ * on a floor: it cannot be told apart from "not loaded" or "not selectable".
+ *
+ * A faded check answers all three at once. It says *this column is a checkmark
+ * column*, it says *this row is not selected*, and the contrast step to the
+ * filled state is large enough to read down a 40-row list at a glance without
+ * putting a saturated colour on every row.
  *
  * Callers mount this inside a `relative overflow-hidden` track cell and pass
  * `absolute inset-0` so the wash cannot inflate the grid track or bleed into
@@ -70,7 +88,7 @@ function faceClassName(isOn: boolean, isMixed: boolean): string {
  * was painting a wash strip into Platform).
  *
  * Also composed inside {@link GridRowCheckbox} `chrome="sheets"` for header
- * select-all so the top-left control shows the same check when all/mixed.
+ * select-all, so the top-left control carries the same three states.
  */
 export function GridClickSelectFace({
   checked,
@@ -89,17 +107,21 @@ export function GridClickSelectFace({
           ? 'bg-accent-bg text-text-inverse'
           : isMixed
             ? 'bg-accent-bg/20 text-accent-bg'
-            : null,
+            : // Off: no wash — the row's own fill shows through, so selection
+              // stays the only thing that paints a band down the column.
+              'text-text-faint/60',
         className,
       )}
       aria-hidden
       data-click-select-face={isOn ? 'on' : isMixed ? 'mixed' : 'off'}
     >
-      {isOn ? (
-        <Check className="h-3.5 w-3.5" />
-      ) : isMixed ? (
+      {isMixed ? (
         <span className="h-0.5 w-2.5 rounded-full bg-current" />
-      ) : null}
+      ) : (
+        // The SAME glyph at both weights. A different shape for off would make
+        // the operator decode two symbols; only the ink changes.
+        <Check className="h-3.5 w-3.5" />
+      )}
     </div>
   );
 }
@@ -111,6 +133,7 @@ export function GridRowCheckbox({
   label,
   className,
   chrome = 'always',
+  disabled = false,
 }: {
   checked: boolean | 'mixed';
   onToggle: () => void;
@@ -119,10 +142,20 @@ export function GridRowCheckbox({
   className?: string;
   /** Defaults to `'always'`. Unbox History / Incoming click-select use `'sheets'`. */
   chrome?: GridSelectGutterChrome;
+  /**
+   * Greys the control and blocks the toggle. Tasks needs it — an archived task
+   * cannot be checked off, and an in-flight toggle must not be double-fired —
+   * and a disabled REAL control is the honest form: it stays in the a11y tree
+   * announcing why it cannot be used, where omitting it would silently drop the
+   * column's affordance on exactly the rows that most need explaining.
+   */
+  disabled?: boolean;
 }) {
   const isMixed = checked === 'mixed';
   const isOn = checked === true;
-  const sheetsChrome = chrome === 'sheets';
+  // Both paint the same full-cell face; `'flush'` is the compound row's 48px
+  // square, `'sheets'` the flat grids' select-all.
+  const fullBleedFace = chrome === 'sheets' || chrome === 'flush';
   const selectedOnly = chrome === 'selected-only';
 
   const face = (
@@ -148,10 +181,14 @@ export function GridRowCheckbox({
       aria-checked={isMixed ? 'mixed' : isOn}
       aria-label={label}
       data-select-chrome={chrome}
+      disabled={disabled}
       // The row underneath opens the record — a check must never do both.
+      // Propagation stops even when disabled: a dead control must not fall
+      // through to "open the record", which would make a greyed box look like
+      // it did something unrelated.
       onClick={(event) => {
         event.stopPropagation();
-        onToggle();
+        if (!disabled) onToggle();
       }}
       onKeyDown={(event) => {
         if (event.key === 'Enter' || event.key === ' ') event.stopPropagation();
@@ -161,12 +198,13 @@ export function GridRowCheckbox({
         // Full-track hit plane for every chrome — the 16px square is the face,
         // not the only clickable pixels.
         'ds-raw-button flex h-full w-full shrink-0 items-center justify-center self-stretch rounded-none border-0 bg-transparent',
-        sheetsChrome && 'relative overflow-hidden',
+        fullBleedFace && 'relative overflow-hidden',
+        disabled && 'cursor-not-allowed opacity-50',
         focusRing('control'),
         className,
       )}
     >
-      {sheetsChrome ? (
+      {fullBleedFace ? (
         <GridClickSelectFace checked={checked} className="absolute inset-0" />
       ) : selectedOnly ? (
         isOn || isMixed ? checklistFace : null

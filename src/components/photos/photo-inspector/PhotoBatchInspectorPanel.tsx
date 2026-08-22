@@ -4,9 +4,7 @@
  * Media Library desk inspector — the n ≠ 1 face of the selection plane.
  *
  * ```text
- * [→|] ……………………………………………………     ← DeskRailChromeRow (chrome ONLY)
- * ───────────────────────────────────
- * 2 SELECTED                          ← identity: what the verbs will act on
+ * [‹] Selection ………… 2 selected [⤢][✕]  ← the ONE band (DeskInspectorIndexShell)
  * ───────────────────────────────────
  * > Select all 48                     ← armed rows (↑↓ / Home / End / Enter)
  *   Select all matching
@@ -59,8 +57,20 @@
  *
  * A destructive verb does not sit in the verb list beside its peers: it is the
  * flush trailing child of {@link InspectorActionFloor}, the desk Macro floor
- * (`right-rail-inspector.md` → *Workbench inspector action floor*). Park stays on
- * the top `DeskRailChromeRow`, so a dismiss never sits beside a delete.
+ * (`right-rail-inspector.md` → *Workbench inspector action floor*). Dismiss stays
+ * the host's `✕` on the top band, so it never sits beside a delete.
+ *
+ * ## One band, titled, with the count as its metric (2026-08-21)
+ *
+ * The top row was a bare {@link DeskRailChromeRow} — the host-close reserve and
+ * nothing else — with `2 SELECTED` as the first row of the body beneath it.
+ * That is a nameless band over a second identity line, where the contract wants
+ * one band reading `[‹] Title …… [read-only metric] [⤢] [✕]`. It now composes
+ * {@link DeskInspectorIndexShell} in the `standalone` stance: this rail is not
+ * routed through an index (the grid selection opens it), so it owes no Back and
+ * says so rather than defaulting into one. The count keeps its
+ * `photo-batch-count` identity — it moved cells, it did not change job: still a
+ * read-only statement of what the verbs below will act on.
  *
  * **The floor carries the TERMINAL pair — Download then Delete** (ruled
  * 2026-08-10). A single-peer floor is legal (`BinDetailFlyout` · `SkuDetailView`
@@ -104,7 +114,7 @@ import {
 } from 'react';
 import { Check, ChevronRight, Layers } from '@/components/Icons';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
-import { DeskRailChromeRow } from '@/components/right-rail/DeskRailChromeRow';
+import { DeskInspectorIndexShell } from '@/components/right-rail/DeskInspectorIndexShell';
 import {
   FLOOR_DELETE_PEER_CLASS,
   FloorIconButton,
@@ -285,92 +295,99 @@ export function PhotoBatchInspectorPanel<T>({
         className="flex h-full min-h-0 flex-col overflow-hidden"
         data-testid="photo-batch-inspector-panel"
       >
-        <div className="shrink-0 border-b border-border-hairline bg-surface-card">
-          {/* Chrome row is chrome ONLY — close, and nothing else. There is no
-              record cursor to step: a selection is a set, not a position. */}
-          <DeskRailChromeRow onClose={onClear} />
-        </div>
-
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          <p
-            className="border-b border-border-hairline px-3 py-2 text-role-eyebrow uppercase tracking-widest text-text-soft"
-            data-testid="photo-batch-count"
-          >
-            {shownCount} selected
-          </p>
-
-          <div
-            ref={rootRef}
-            data-station-action-dossier=""
-            data-testid="photo-batch-actions-list"
-            {...{ [LIST_KEY_OWNER_ATTR]: '' }}
-            tabIndex={-1}
-            className="outline-none"
-          >
-            <ul
-              aria-labelledby={listId}
-              className="divide-y divide-border-hairline border-b border-border-hairline"
+        <DeskInspectorIndexShell
+          // No index above a selection — the grid opens this rail directly — so
+          // it owes no Back, and the stance is how it declares that.
+          stance="standalone"
+          title="Selection"
+          ariaLabel={`${shownCount} photos selected`}
+          testId="photo-batch-inspector"
+          className="bg-surface-card"
+          // Read-only metric, never a verb: what the rows below will act on.
+          // There is no record cursor to step — a selection is a set, not a
+          // position.
+          headerRightSlot={
+            <span
+              className="flex h-full items-center px-2 text-role-eyebrow uppercase tracking-widest tabular-nums text-text-soft"
+              data-testid="photo-batch-count"
             >
-              <li className="sr-only">
-                <h3 id={listId}>Actions for the selected photos</h3>
-              </li>
-              {batchRows.map((row) => {
-                const isArmed = cursorId != null && cursorId === row.id;
-                const Icon = row.icon;
-                return (
-                  <li key={row.id}>
-                    <button
-                      type="button"
-                      ref={(el) => {
-                        if (el) rowRefs.current.set(row.id, el);
-                        else rowRefs.current.delete(row.id);
-                      }}
-                      disabled={row.disabled}
-                      onPointerDown={(e) => {
-                        if (row.disabled) return;
-                        handleCommitPointerDown(e, row.id, runRow);
-                      }}
-                      onClick={() => {
-                        if (row.disabled) return;
-                        handleCommitClick(row.id, runRow);
-                      }}
-                      onFocus={() => setCursorId(row.id)}
-                      onKeyDown={(e) => onRowKeyDown(e, row.id)}
-                      className={cn(
-                        'group/row ds-raw-button relative flex w-full items-center gap-2 px-3 py-3 text-left',
-                        'hover:bg-surface-hover disabled:pointer-events-none disabled:opacity-40',
-                        // Armed face = `>` + bottom track; no focusRing twin
-                        // while armed (it would band the row twice). ds-allow-focus
-                        isArmed ? 'outline-none' : focusRing('control', 'accent'),
-                        cornerClass('flush'),
-                      )}
-                      data-testid={`photo-batch-action-${row.id}`}
-                      data-active={isArmed ? 'true' : undefined}
-                      aria-current={isArmed ? 'true' : undefined}
-                    >
-                      {isArmed ? (
-                        <span className={ARMED_CURSOR_TRACK_CLASS} aria-hidden />
-                      ) : null}
-                      <span className="relative z-raised flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
+              {shownCount} selected
+            </span>
+          }
+          body={
+            <div
+              ref={rootRef}
+              data-station-action-dossier=""
+              data-testid="photo-batch-actions-list"
+              {...{ [LIST_KEY_OWNER_ATTR]: '' }}
+              tabIndex={-1}
+              className="outline-none"
+            >
+              <ul
+                aria-labelledby={listId}
+                className="divide-y divide-border-hairline border-b border-border-hairline"
+              >
+                <li className="sr-only">
+                  <h3 id={listId}>Actions for the selected photos</h3>
+                </li>
+                {batchRows.map((row) => {
+                  const isArmed = cursorId != null && cursorId === row.id;
+                  const Icon = row.icon;
+                  return (
+                    <li key={row.id}>
+                      <button
+                        type="button"
+                        ref={(el) => {
+                          if (el) rowRefs.current.set(row.id, el);
+                          else rowRefs.current.delete(row.id);
+                        }}
+                        disabled={row.disabled}
+                        onPointerDown={(e) => {
+                          if (row.disabled) return;
+                          handleCommitPointerDown(e, row.id, runRow);
+                        }}
+                        onClick={() => {
+                          if (row.disabled) return;
+                          handleCommitClick(row.id, runRow);
+                        }}
+                        onFocus={() => setCursorId(row.id)}
+                        onKeyDown={(e) => onRowKeyDown(e, row.id)}
+                        className={cn(
+                          'group/row ds-raw-button relative flex w-full items-center gap-2 px-3 py-3 text-left',
+                          'hover:bg-surface-hover disabled:pointer-events-none disabled:opacity-40',
+                          // Armed face = `>` + bottom track; no focusRing twin
+                          // while armed (it would band the row twice). ds-allow-focus
+                          isArmed ? 'outline-none' : focusRing('control', 'accent'),
+                          cornerClass('flush'),
+                        )}
+                        data-testid={`photo-batch-action-${row.id}`}
+                        data-active={isArmed ? 'true' : undefined}
+                        aria-current={isArmed ? 'true' : undefined}
+                      >
                         {isArmed ? (
-                          <span aria-hidden>
-                            <ChevronRight className={ARMED_CURSOR_CHEVRON_CLASS} />
-                          </span>
+                          <span className={ARMED_CURSOR_TRACK_CLASS} aria-hidden />
                         ) : null}
-                        <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center text-accent-bg [&>svg]:h-4 [&>svg]:w-4">
-                          <Icon className="h-4 w-4" />
+                        <span className="relative z-raised flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
+                          {isArmed ? (
+                            <span aria-hidden>
+                              <ChevronRight className={ARMED_CURSOR_CHEVRON_CLASS} />
+                            </span>
+                          ) : null}
+                          <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center text-accent-bg [&>svg]:h-4 [&>svg]:w-4">
+                            <Icon className="h-4 w-4" />
+                          </span>
+                          <span className="truncate text-role-caption font-semibold text-text-default">
+                            {row.label}
+                          </span>
                         </span>
-                        <span className="truncate text-role-caption font-semibold text-text-default">
-                          {row.label}
-                        </span>
-                      </span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        </div>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          }
+        />
 
         {/* Macro floor — the terminal pair, Download then Delete. Coplanar with
             the panel (`surface="card"`); peers disabled, never unmounted, at

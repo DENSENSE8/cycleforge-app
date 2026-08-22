@@ -23,23 +23,16 @@
  */
 
 import type { ReactNode } from 'react';
-import { Checkbox } from '@/design-system/primitives';
-import {
-  isCompoundCellKey,
-  renderCompoundGridCell,
-} from '@/components/tables/compound/CompoundGridCell';
+import { renderCompoundGridCell } from '@/components/tables/compound/CompoundGridCell';
 import { gridDataCellClass, LedgerGridLeafRow } from '@/design-system/components/grid';
-import { gridFrozenLeft } from '@/design-system/components/grid/grid-column-geometry';
 import {
   TASKS_COMPOUND_COLUMNS,
-  TASKS_GRID_FROZEN_CELL,
   tasksGridTemplate,
   type TasksGridColumn,
 } from '@/lib/staff-todos/tasks-grid-layout';
 import { TASKS_GRID_CAPABILITIES } from './tasks-grid-descriptor';
 import { staffTaskCompoundView } from './staff-task-compound-view';
 import type { StaffTaskRow } from './staff-task-row';
-import { cn } from '@/utils/_cn';
 
 export function TasksGridRow({
   row,
@@ -66,42 +59,28 @@ export function TasksGridRow({
   const renderCell = (col: TasksGridColumn, last: boolean): ReactNode => {
     const rule = !last;
 
-    if (isCompoundCellKey(col.key)) {
-      return renderCompoundGridCell({
-        col,
-        columns,
-        rule,
-        view,
-        // No `onCommitNote`: `staff_todos` has no note column, so the second
-        // line is the station and it is read-only. Capability, not mode.
-        onOpen: () => onSelect(row),
-      });
-    }
+    const compoundCell = renderCompoundGridCell({
+      col,
+      columns,
+      rule,
+      view,
+      // No `onCommitNote`: `staff_todos` has no note column, so the second
+      // line is the station and it is read-only. Capability, not mode.
+      onOpen: () => onSelect(row),
+      // The gutter's MEANING here is "check this task off", not "select this
+      // row" — same control, same picture, a different handler. It reads
+      // `row.done`, never the table-selection scope, which is also why the
+      // descriptor declares `multiSelect: false` and the header stays inert.
+      select: {
+        checked: row.done,
+        onToggle: () => onToggle(row),
+        disabled: row.archived || togglePending,
+        label: `Mark "${row.text}" ${row.done ? 'not done' : 'done'}`,
+      },
+    });
+    if (compoundCell) return compoundCell;
 
     switch (col.key) {
-      case 'select':
-        return (
-          <div
-            className={cn(
-              gridDataCellClass(col, {
-                rule: true,
-                inset: 'grid',
-                frozenClass: TASKS_GRID_FROZEN_CELL,
-              }),
-              'justify-center',
-            )}
-            style={{ left: gridFrozenLeft(columns, 'select') }}
-            // The verb lives here, so the click must not also open the record.
-            onClick={(e) => e.stopPropagation()}
-          >
-            <Checkbox
-              checked={row.done}
-              disabled={row.archived || togglePending}
-              onCheckedChange={() => onToggle(row)}
-              aria-label={`Mark "${row.text}" ${row.done ? 'not done' : 'done'}`}
-            />
-          </div>
-        );
       case '_fill':
         return (
           <div

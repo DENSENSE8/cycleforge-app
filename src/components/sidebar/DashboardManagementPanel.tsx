@@ -23,7 +23,7 @@ interface DashboardManagementPanelProps {
  * order across the app); the import stream lives in {@link useOrdersImport}; the
  * cards live under `./dashboard-management/`.
  *
- * New-order intake (`?new=true`) is owned by {@link NewOrderEntryOverlay} on
+ * New-order intake (`?new=true`) is owned by {@link OrderIngestRail} on
  * the dashboard context panel — not swapped into this sidebar.
  */
 export function DashboardManagementPanel({

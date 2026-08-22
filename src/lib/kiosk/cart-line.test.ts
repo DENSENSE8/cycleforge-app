@@ -96,7 +96,7 @@ describe('computeCounterTotals — negative buyback', () => {
 });
 
 describe('mapKioskCartToCounterParts', () => {
-  it('maps retail + buyback + first repair; counts extras', () => {
+  it('maps retail + buyback + EVERY repair', () => {
     const mapped = mapKioskCartToCounterParts([
       retail(),
       buyback(),
@@ -105,8 +105,10 @@ describe('mapKioskCartToCounterParts', () => {
     ]);
     assert.equal(mapped.retailLines.length, 2);
     assert.equal(mapped.retailLines[1]?.unitAmountCents, -5000);
-    assert.ok(mapped.service);
-    assert.equal(mapped.service?.productModel, 'QC35 II');
-    assert.equal(mapped.extraRepairCount, 1);
+    assert.ok(mapped.services[0]);
+    assert.equal(mapped.services[0]?.productModel, 'QC35 II');
+    // Was `extraRepairCount === 1` — an assertion that pinned the silent drop as
+    // correct behaviour. Both devices now map (SQ6).
+    assert.equal(mapped.services.length, 2);
   });
 });

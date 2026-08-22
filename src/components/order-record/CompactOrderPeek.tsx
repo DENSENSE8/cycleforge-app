@@ -57,13 +57,13 @@ export function CompactOrderPeek({
           className="shrink-0 border-b border-border-soft bg-surface-card/90 backdrop-blur-xl"
           rowClassName="px-4"
           leftSlot={
+            // No `onClose`: RightRailHost owns the ONE dismiss at the flush
+            // top-right corner. An ActionBar close split it across two corners.
             <PaneHeaderActionBar
               iconOnly
               variant="flat"
               className="w-full px-0 py-0"
               actions={[]}
-              onClose={onClose}
-              closeTitle="Close"
             />
           }
           belowSlot={

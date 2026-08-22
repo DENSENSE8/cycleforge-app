@@ -149,12 +149,17 @@ function RightRailHostTrailingCluster({
       // The chrome row reserves exactly this cell (`pr-0` + a `w-7` spacer), so
       // nothing scrolls under it.
       className={cn(
-        'absolute right-0 top-0 z-header flex items-stretch p-0',
-        canMaximize ? 'w-14' : 'w-7',
+        // ALWAYS two cells wide. The occupant reserves a fixed `w-14`
+        // (RIGHT_RAIL_HOST_CLOSE_SLOT_CLASS) and cannot know whether this
+        // panel is a resizable push occupant, so a `w-7` cluster here would
+        // leave 28px of dead gap on every overlay/non-resizable occupant.
+        // When maximize is unavailable its cell renders as an empty spacer.
+        'absolute right-0 top-0 z-header flex w-14 items-stretch p-0',
         STATION_CHROME_ROW_FACE,
       )}
       data-right-rail-host-close-anchor
     >
+      {!canMaximize ? <span className="h-full w-7 shrink-0" aria-hidden /> : null}
       {canMaximize ? (
         <HoverTooltip
           label={maximized ? 'Restore panel width' : 'Maximize panel'}

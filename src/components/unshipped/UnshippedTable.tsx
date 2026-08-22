@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useDeferredValue } from 'react';
+import { useCallback, useEffect, useMemo, useState, useDeferredValue } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { getOrdersChannelName, safeChannelName } from '@/lib/realtime/channels';
@@ -62,6 +62,11 @@ export interface UnshippedTableProps extends DashboardSearchSectionProps {
   /** SSR stand-in handoff — primary queue has paintable rows (seed or fetch). */
   onPrimaryPainted?: () => void;
 }
+
+/** Stable empty page. `query.data || []` minted a fresh array on every render
+ *  while the query was undefined/loading, which by itself defeats any memo keyed
+ *  on the row list — the identity changed even though nothing had. */
+const EMPTY_UNSHIPPED_ROWS: ShippedOrder[] = [];
 
 /** Map an assignment/order-changed event payload to the flat row patch it implies
  *  (only the fields the event carries). Applied to the cache via
@@ -300,56 +305,82 @@ export function UnshippedTable({
     invalidateUnshippedCounts(queryClient);
   });
 
-  const clearSearch = () => {
+  // Stable across renders: both callbacks feed `useOrdersSpreadsheet`, which is
+  // where the grouped row model is built. A fresh closure per render there is the
+  // same defeat-the-memo problem as an unmemoized `records`.
+  const clearSearch = useCallback(() => {
     const params = new URLSearchParams(searchParams.toString());
     params.delete('search');
     const nextSearch = params.toString();
     const nextPath = pathname || '/shipping/orders';
     router.replace(nextSearch ? `${nextPath}?${nextSearch}` : nextPath);
-  };
+  }, [searchParams, pathname, router]);
 
-  const allRecords = query.data || [];
+  const handleOpenRecord = useCallback(
+    (record: ShippedOrder) => {
+      if (onOpenRecord) {
+        onOpenRecord(record);
+        return;
+      }
+      dispatchOpenShippedDetails(record, 'queue');
+    },
+    [onOpenRecord],
+  );
+
+  const allRecords = query.data ?? EMPTY_UNSHIPPED_ROWS;
   // `?stage` (pending/tested) is filtered SERVER-side now (Phase 1), so the query
   // data already reflects it. Dashboard tabs force the lane via `fulfillmentLane`;
   // stations still honor `?ustatus`. `?attention=1` keeps urgent-only rows.
-  const records = allRecords.filter((r) => {
-    const row = r as {
-      has_tech_scan?: boolean;
-      is_out_of_stock?: boolean;
-      is_urgent?: boolean;
-      tracking_number?: string | null;
-      shipping_tracking_number?: string | null;
-      pack_location_id?: number | null;
-    };
-    // Pre-pack board is labeled + tracked only — no-tracking rows belong on Labels.
-    // Server fulfillmentScope / queue-counts already require non-empty tracking_number_raw;
-    // keep this client gate as defense-in-depth for cached / legacy payloads.
-    const tracking = String(row.tracking_number || row.shipping_tracking_number || '').trim();
-    if (!tracking) return false;
-    const state = deriveFulfillmentState({
-      hasTechScan: Boolean(row.has_tech_scan),
-      isOutOfStock: Boolean(row.is_out_of_stock),
-    });
-    if (fulfillmentLane === 'tested') {
-      if (state !== 'TESTED') return false;
-    } else if (fulfillmentLane === 'pending') {
-      // Pending tab = awaiting test + OOS; never TESTED (that's the Tested tab).
-      if (state === 'TESTED') return false;
-      // Optional Blocked-only refine within Pending.
-      if (statusFilter === 'BLOCKED' && state !== 'BLOCKED') return false;
-      if (statusFilter && statusFilter !== 'BLOCKED' && state !== statusFilter) return false;
-    } else if (statusFilter && state !== statusFilter) {
-      return false;
-    }
-    if (urgentOnly && !row.is_urgent) return false;
-    const placedId = row.pack_location_id != null ? Number(row.pack_location_id) : null;
-    if (packStationId != null) {
-      if (placedId !== packStationId) return false;
-    } else if (packPlacedOnly && !(placedId != null && placedId > 0)) {
-      return false;
-    }
-    return true;
-  });
+  //
+  // Memoized because this list is the input to the grouped row model below it —
+  // an unmemoized re-derive here re-identifies every row on every render (a
+  // keystroke, an Ably patch, a parent re-render) and the whole grid re-groups.
+  // The dep array is the COMPLETE set of free variables the predicate reads:
+  // `allRecords` plus the five filter facets. Do not trim it — a stale row model
+  // here means an operator looks at rows that no longer match their filter.
+  // (`deriveFulfillmentState` is a module import, so it is not a dep.)
+  const records = useMemo(
+    () =>
+      allRecords.filter((r) => {
+        const row = r as {
+          has_tech_scan?: boolean;
+          is_out_of_stock?: boolean;
+          is_urgent?: boolean;
+          tracking_number?: string | null;
+          shipping_tracking_number?: string | null;
+          pack_location_id?: number | null;
+        };
+        // Pre-pack board is labeled + tracked only — no-tracking rows belong on Labels.
+        // Server fulfillmentScope / queue-counts already require non-empty tracking_number_raw;
+        // keep this client gate as defense-in-depth for cached / legacy payloads.
+        const tracking = String(row.tracking_number || row.shipping_tracking_number || '').trim();
+        if (!tracking) return false;
+        const state = deriveFulfillmentState({
+          hasTechScan: Boolean(row.has_tech_scan),
+          isOutOfStock: Boolean(row.is_out_of_stock),
+        });
+        if (fulfillmentLane === 'tested') {
+          if (state !== 'TESTED') return false;
+        } else if (fulfillmentLane === 'pending') {
+          // Pending tab = awaiting test + OOS; never TESTED (that's the Tested tab).
+          if (state === 'TESTED') return false;
+          // Optional Blocked-only refine within Pending.
+          if (statusFilter === 'BLOCKED' && state !== 'BLOCKED') return false;
+          if (statusFilter && statusFilter !== 'BLOCKED' && state !== statusFilter) return false;
+        } else if (statusFilter && state !== statusFilter) {
+          return false;
+        }
+        if (urgentOnly && !row.is_urgent) return false;
+        const placedId = row.pack_location_id != null ? Number(row.pack_location_id) : null;
+        if (packStationId != null) {
+          if (placedId !== packStationId) return false;
+        } else if (packPlacedOnly && !(placedId != null && placedId > 0)) {
+          return false;
+        }
+        return true;
+      }),
+    [allRecords, fulfillmentLane, statusFilter, urgentOnly, packStationId, packPlacedOnly],
+  );
 
   // First-run teaching state: a brand-new org with zero unshipped orders and no
   // active search/filter sees the "connect a sales channel" CTA instead of three
@@ -410,13 +441,7 @@ export function UnshippedTable({
       searchValue={searchQuery}
       selectMode={selectMode}
       railSelection={railSelection}
-      onOpenRecord={(record) => {
-        if (onOpenRecord) {
-          onOpenRecord(record);
-          return;
-        }
-        dispatchOpenShippedDetails(record, 'queue');
-      }}
+      onOpenRecord={handleOpenRecord}
       onClearSearch={clearSearch}
       searchEmptyTitle={searchEmptyTitle}
       searchResultLabel={searchResultLabel}

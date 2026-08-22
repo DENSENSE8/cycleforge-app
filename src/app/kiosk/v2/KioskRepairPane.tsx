@@ -65,18 +65,29 @@ export function KioskRepairPane({ selectedProduct, price, onBack }: KioskRepairP
   const { skuIssues } = useRepairIntakeData(null, true);
   const hasProduct = Boolean(selectedProduct?.model?.trim());
 
-  // One REPAIR ticket per visit — extra catalog SKUs update that same line.
+  /**
+   * The repair line this pane is editing, or null to start a new one.
+   *
+   * **A DIFFERENT device is a NEW line (changed 2026-08-21, SQ6).** This used
+   * to fall back to `repairs[0]`, so selecting a second product overwrote the
+   * first device's payload — serial, issues, signature and all — before submit
+   * ever ran. That was a worse silent loss than the mapper's, because it
+   * destroyed data the customer had already given.
+   *
+   * Now: an explicitly opened line wins; otherwise a MODEL MATCH re-opens that
+   * device (choosing the same SKU twice is still one device, which is the
+   * behaviour the old comment was reaching for); anything else starts fresh.
+   */
   const existingRepair = useMemo(() => {
     const repairs = session.lines.filter(
       (l) => l.type === 'REPAIR' && isRepairPayload(l.payload),
     );
-    if (activeLineId) return repairs.find((l) => l.id === activeLineId) ?? repairs[0] ?? null;
+    if (activeLineId) return repairs.find((l) => l.id === activeLineId) ?? null;
+    if (!selectedProduct?.model) return null;
     return (
       repairs.find(
-        (l) => isRepairPayload(l.payload) && l.payload.productModel === selectedProduct?.model,
-      ) ??
-      repairs[0] ??
-      null
+        (l) => isRepairPayload(l.payload) && l.payload.productModel === selectedProduct.model,
+      ) ?? null
     );
   }, [session.lines, selectedProduct?.model, activeLineId]);
 

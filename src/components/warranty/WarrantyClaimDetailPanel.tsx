@@ -4,12 +4,19 @@
  * Warranty claim inspector — Desk-family `RightRailHost` card (`detail:warranty`,
  * non-modal **push**), reached by clicking a row on the claims grid.
  *
- * Stack (chrome → identity → index|leaf → floor), the Unfound / History shape:
- *   1. `[→|] …………………………` — navigation only ({@link DeskRailChromeRow})
- *   2. status + clock chips over the claim number
- *   3. {@link DeskInspectorIndexShell} — Overview · Subject · Repairs ·
- *      Timeline · Conversation
- *   4. {@link InspectorActionFloor} — Source · Ticket, flush trailing Delete
+ * Stack (ONE band → index|leaf → floor):
+ *   1. {@link DeskInspectorIndexShell} paints the single top band —
+ *      `[‹ Back] Claim …… [warranty clock] [▦] [⤢ ✕ reserved]` — and, beneath
+ *      it, Overview · Subject · Repairs · Timeline · Conversation
+ *   2. {@link InspectorActionFloor} — Source · Ticket, flush trailing Delete
+ *
+ * **There is no identity header (2026-08-21.)** The rail used to lead with a
+ * `PaneHeaderLabel` — status + clock chips as an eyebrow OVER the claim
+ * number — so a leaf read as two stacked header lines above its own band, and
+ * the host's absolutely-positioned `⤢ ✕` sat on that header rather than on a
+ * band cell. The claim number, its status and the product now open the
+ * Overview leaf (identity is a fact, and facts live with the facts); the
+ * clock is a read-only metric, so it rides the band's trailing cell.
  *
  * `WarrantyClaimActions` (deny / repair / quote / RMA forms) sits under the
  * Overview leaf rather than on the floor: the floor is icons-first and terminal,
@@ -51,7 +58,6 @@ import { WarrantyTicketButton } from '@/components/warranty/WarrantyTicketPopove
 import { WarrantyQuotesSection } from '@/components/warranty/WarrantyQuotesSection';
 import { SourceThisButton } from '@/components/sourcing/SourceThisButton';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
-import { DeskRailChromeRow } from '@/components/right-rail/DeskRailChromeRow';
 import {
   DeskInspectorIndexShell,
   type DeskInspectorLeaf,
@@ -63,7 +69,6 @@ import {
 } from '@/components/right-rail/InspectorActionFloor';
 import { InspectorFlushDelete } from '@/components/right-rail/InspectorFlushDelete';
 import { OrderFactList, OrderFactRow } from '@/components/order-record/order-record-card';
-import { PaneHeaderLabel } from '@/components/ui/pane-header';
 import { EventTimeline } from '@/components/ui/EventTimeline';
 import { ThreadPanel } from '@/components/threads/ThreadPanel';
 import { requestConfirm } from '@/design-system/components/confirm';
@@ -121,6 +126,22 @@ export function WarrantyClaimDetailPanel({ claimId, onClose }: WarrantyClaimDeta
 
   const identity = claim?.productTitle || claim?.sku || claim?.serialNumber || 'Warranty claim';
 
+  /**
+   * Band trailing cluster — the read-only warranty clock, then the ▦ door onto
+   * the claims grid's column display. Metric before verb, and both before the
+   * host's reserved `⤢ ✕` cell, which the shell appends itself.
+   */
+  const bandTrailing = (
+    <>
+      {claim ? (
+        <span className="flex h-full items-center pr-1">
+          <WarrantyClockChip daysRemaining={claim.daysRemaining} basis={claim.clockBasis} />
+        </span>
+      ) : null}
+      <InspectorColumnDisplayButton />
+    </>
+  );
+
   const leaves: DeskInspectorLeaf[] = claim
     ? [
         {
@@ -128,6 +149,22 @@ export function WarrantyClaimDetailPanel({ claimId, onClose }: WarrantyClaimDeta
           label: 'Overview',
           content: (
             <LeafBody>
+              {/* Identity in the BODY, not a second header line (2026-08-21).
+                  The band carries the current segment and nothing else; the
+                  claim number, its status and the product it is about are
+                  facts, so they read where the other facts are. */}
+              <div className="mb-5 space-y-1">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="font-mono text-role-caption text-text-primary">
+                    {claim.claimNumber}
+                  </span>
+                  <WarrantyStatusBadge status={claim.status} />
+                </div>
+                <p className="text-role-caption text-text-soft" title={identity}>
+                  {identity}
+                </p>
+              </div>
+
               <Group title="Warranty clock">
                 <OrderFactList>
                   <OrderFactRow
@@ -317,49 +354,17 @@ export function WarrantyClaimDetailPanel({ claimId, onClose }: WarrantyClaimDeta
       ariaLabel={`Warranty claim ${claim?.claimNumber ?? ''} details`}
     >
       <div className="flex h-full min-h-0 flex-col overflow-hidden">
-        <div className="shrink-0 border-b border-border-hairline bg-surface-card/90 backdrop-blur-xl">
-          <div className="flex items-center gap-2 px-2 pb-2 pt-1">
-            <PaneHeaderLabel
-              eyebrow={
-                claim ? (
-                  <span className="inline-flex items-center gap-1.5">
-                    <WarrantyStatusBadge status={claim.status} />
-                    <WarrantyClockChip
-                      daysRemaining={claim.daysRemaining}
-                      basis={claim.clockBasis}
-                    />
-                  </span>
-                ) : (
-                  'WARRANTY'
-                )
-              }
-              value={claim?.claimNumber ?? '—'}
-              valueTitle={identity}
-            />
-          </div>
-        </div>
-
-        {remove.isError && (
-          <p className="shrink-0 border-b border-border-danger bg-surface-danger px-5 py-2 text-role-caption text-text-danger">
-            {remove.error instanceof Error ? remove.error.message : 'Delete failed.'}
-          </p>
-        )}
-
-        {isLoading ? (
-          <div className="flex flex-1 items-center justify-center gap-2 text-role-caption text-text-faint">
-            <Loader2 className="h-4 w-4 animate-spin" /> Loading…
-          </div>
-        ) : error ? (
-          <div className="m-5 border border-dashed border-rose-200 bg-rose-50 px-4 py-6 text-center text-role-caption text-text-danger">
-            {error instanceof Error ? error.message : 'Failed to load claim.'}
-          </div>
-        ) : !claim ? (
-          <div className="m-5 border border-dashed border-border-soft bg-surface-sunken px-4 py-6 text-center text-role-caption text-text-faint">
-            Claim not found.
-          </div>
-        ) : (
+        {/* ONE band, and it is the TOP row — the host paints `⤢ ✕` absolutely
+            at `top-0 right-0`, so anything above the band would sit under
+            them. The identity header that used to lead this stack (eyebrow
+            chips over the claim number) was a second header line; it moved
+            into the Overview leaf, and the clock — a read-only metric — rides
+            the band's own trailing cell. */}
+        {claim ? (
           <DeskInspectorIndexShell
-          chrome={<InspectorColumnDisplayButton />}
+            stance="index"
+            title="Claim"
+            headerRightSlot={bandTrailing}
             leaves={leaves}
             activeId={navId}
             onActiveIdChange={setNavId}
@@ -368,6 +373,41 @@ export function WarrantyClaimDetailPanel({ claimId, onClose }: WarrantyClaimDeta
             testId="warranty-inspector-index"
             backLabel="Back to topics"
           />
+        ) : (
+          // No claim yet (loading / error / gone) — there is still no index
+          // above this rail's states, so the band declares itself standalone
+          // rather than painting a chevron that goes nowhere.
+          <DeskInspectorIndexShell
+            stance="standalone"
+            title="Claim"
+            headerRightSlot={bandTrailing}
+            ariaLabel="Warranty claim"
+            testId="warranty-inspector-index"
+            body={
+              isLoading ? (
+                <div className="flex flex-1 items-center justify-center gap-2 py-10 text-role-caption text-text-faint">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+                </div>
+              ) : error ? (
+                <div className="m-5 border border-dashed border-rose-200 bg-rose-50 px-4 py-6 text-center text-role-caption text-text-danger">
+                  {error instanceof Error ? error.message : 'Failed to load claim.'}
+                </div>
+              ) : (
+                <div className="m-5 border border-dashed border-border-soft bg-surface-sunken px-4 py-6 text-center text-role-caption text-text-faint">
+                  Claim not found.
+                </div>
+              )
+            }
+          />
+        )}
+
+        {/* The delete error belongs beside the control that produced it — and
+            above the band it would have pushed the host's window controls off
+            the top row. */}
+        {remove.isError && (
+          <p className="shrink-0 border-t border-border-danger bg-surface-danger px-5 py-2 text-role-caption text-text-danger">
+            {remove.error instanceof Error ? remove.error.message : 'Delete failed.'}
+          </p>
         )}
 
         {claim && (

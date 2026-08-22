@@ -10,18 +10,24 @@
  * the one thing with no SoT anywhere: mapping the payload's `unitPhotos` and
  * the legacy `packer_photos_url` blob onto gallery inputs.
  *
- * **One shape per query key.** The key is the plain `['order-timeline', id]`
- * that `OrderTimelineSection` and `OrderReturnsCard` already use, so all three
- * share ONE fetch of the route. It therefore parses the FULL payload and
- * selects only what it needs — a narrower parse under the same key would make
- * whichever consumer mounted first decide what the other two see.
+ * **One shape per query key**, and since 2026-08-21 that is enforced by sharing
+ * the fetcher, not by asking each consumer to remember. The rule above this
+ * line was already written down while the code below it did the opposite: it
+ * parsed the payload down to `{ unitPhotos }` under the key
+ * `OrderTimelineSection` and `OrderReturnsCard` also read, and on `/search` it
+ * mounts FIRST (the Displays index row needs the photo count), so the Activity
+ * trail and the Returns card were reading a cache entry with their fields
+ * missing. Both rendered blank, silently.
+ *
+ * It now spreads {@link orderTimelineQuery} and narrows with `select` — which
+ * is per-observer and cannot reshape what anyone else reads.
  */
 
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type { PhotoGalleryInput } from '@/components/shipped/PhotoGallery';
 import { buildOrderGalleryPhotos } from '@/lib/photos/order-gallery-photos';
-import type { UnitTimelinePhotoRow } from '@/lib/timeline';
+import { orderTimelineQuery } from '@/lib/queries/order-timeline-query';
 import type { ShippedOrder } from '@/types/orders';
 
 export function useSearchOrderPhotos(order: ShippedOrder | null): {
@@ -33,20 +39,13 @@ export function useSearchOrderPhotos(order: ShippedOrder | null): {
   const enabled = Number.isFinite(numericId) && numericId > 0;
 
   const query = useQuery({
-    queryKey: ['order-timeline', numericId],
-    queryFn: async (): Promise<{ unitPhotos: UnitTimelinePhotoRow[] }> => {
-      const res = await fetch(`/api/orders/${numericId}/timeline`);
-      if (!res.ok) throw new Error('Failed to fetch order timeline');
-      const json = await res.json();
-      return { unitPhotos: (json.unitPhotos ?? []) as UnitTimelinePhotoRow[] };
-    },
-    enabled,
-    staleTime: 30_000,
+    ...orderTimelineQuery(numericId),
+    // Per-observer narrowing. The cache still holds the full payload.
+    select: (data) => data.unitPhotos,
   });
 
   const photos = useMemo(
-    () =>
-      order ? buildOrderGalleryPhotos(query.data?.unitPhotos ?? [], order.packer_photos_url) : [],
+    () => (order ? buildOrderGalleryPhotos(query.data ?? [], order.packer_photos_url) : []),
     [order, query.data],
   );
 

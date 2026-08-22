@@ -17,24 +17,9 @@ import {
   unitPhotosToTimeline,
   collapseTimeline,
   type TimelineItem,
-  type OrderAuditRow,
-  type InventoryTimelineRow,
-  type StationActivityRow,
-  type ThreadMessageTimelineRow,
-  type CarrierEvent,
-  type RmaTimelineRow,
   type UnitTimelinePhotoRow,
 } from '@/lib/timeline';
-
-interface OrderTimelinePayload {
-  events: OrderAuditRow[];
-  lifecycle: InventoryTimelineRow[];
-  stationEvents: StationActivityRow[];
-  threadMessages: ThreadMessageTimelineRow[];
-  carrierEvents: CarrierEvent[];
-  rmaEvents: RmaTimelineRow[];
-  unitPhotos: UnitTimelinePhotoRow[];
-}
+import { orderTimelineQuery } from '@/lib/queries/order-timeline-query';
 
 /**
  * Order activity timeline — merges every spine the order touches, newest-first,
@@ -105,25 +90,7 @@ export function OrderTimelineSection({
   const [lens, setLens] = useState<OrderTimelineLens>('all');
   const [showPhotos, setShowPhotos] = useState(false);
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['order-timeline', orderId],
-    queryFn: async (): Promise<OrderTimelinePayload> => {
-      const res = await fetch(`/api/orders/${orderId}/timeline`);
-      if (!res.ok) throw new Error('Failed to fetch order timeline');
-      const json = await res.json();
-      return {
-        events: (json.events ?? []) as OrderAuditRow[],
-        lifecycle: (json.lifecycle ?? []) as InventoryTimelineRow[],
-        stationEvents: (json.stationEvents ?? []) as StationActivityRow[],
-        threadMessages: (json.threadMessages ?? []) as ThreadMessageTimelineRow[],
-        carrierEvents: (json.carrierEvents ?? []) as CarrierEvent[],
-        rmaEvents: (json.rmaEvents ?? []) as RmaTimelineRow[],
-        unitPhotos: (json.unitPhotos ?? []) as UnitTimelinePhotoRow[],
-      };
-    },
-    enabled: Number.isFinite(orderId) && orderId > 0,
-    staleTime: 30_000,
-  });
+  const { data, isLoading } = useQuery(orderTimelineQuery(orderId));
 
   // Serial-grouped photo stage rows: bucket the flat photo payload by the
   // serial each row carries, run each unit through the shared stage adapter,

@@ -32,6 +32,7 @@
  * | Case                          | Behavior                                        |
  * |-------------------------------|-------------------------------------------------|
  * | Repair declined, retail sold  | header carries no repair link                    |
+ * | Device 2 fails, device 1 kept | device 1 stays logged; warning names which failed |
  * | Sale staged, repair fails     | header stays `partially_paid`, reconcilable      |
  * | Helpdesk down                 | outbox absorbs it; the counter is never blocked |
  * | Any sub-write fails           | the signed agreement survives (ON DELETE SET NULL) |
@@ -40,6 +41,7 @@
 import { confirmOrderNumberForPhone } from '@/lib/ecwid/client';
 import { createRepairCustomer } from '@/lib/neon/customer-queries';
 import {
+  missingRepairIntakeFields,
   RepairIntakeValidationError,
   submitRepairIntake,
 } from '@/lib/repair/submit-repair-intake';
@@ -316,7 +318,10 @@ export async function submitCounterTransaction(
 ): Promise<CounterTransactionResult> {
   const warnings: string[] = [];
   const retailLines = (input.retailLines ?? []).filter((l) => l.quantity > 0);
-  const service = input.service ?? null;
+  // One entry per device dropped off. Was a single `service` until 2026-08-21;
+  // see CounterTransactionInput.services for why the singular field was removed
+  // outright rather than aliased.
+  const services = (input.services ?? []).filter(Boolean);
 
   // ── Validate ──────────────────────────────────────────────────────────────
   const missing: string[] = [];
@@ -325,7 +330,48 @@ export async function submitCounterTransaction(
   if (!phone) missing.push('Phone');
   else if (phoneDigits.length < 7) missing.push('A complete phone number');
   if (!String(input.clientEventId ?? '').trim()) missing.push('clientEventId');
-  if (retailLines.length === 0 && !service) missing.push('At least one item or a service');
+  if (retailLines.length === 0 && services.length === 0) {
+    missing.push('At least one item or a service');
+  }
+  /*
+   * PRE-FLIGHT EVERY DEVICE, before a single row is written.
+   *
+   * Validating inside the write loop made the outcome depend on cart ORDER,
+   * and one of the two orders lost a device permanently:
+   *
+   *   [invalid, valid] → threw AFTER insertHeader, so an orphan header owned
+   *                      this visit's client_event_id forever. The retry hit
+   *                      the replay short-circuit and returned "unchanged"
+   *                      with no repairs — the valid device was never recorded.
+   *   [valid, invalid] → the first device was already written, so the throw
+   *                      was downgraded to a warning and the visit returned 200.
+   *
+   * Same two devices, opposite failure modes, decided by scan order. Hoisting
+   * the check above `insertHeader` makes an invalid visit fail cleanly with
+   * nothing written and the idempotency key still free to retry.
+   *
+   * The rule itself is IMPORTED from submit-repair-intake — copying its six
+   * conditions here would be the fork this repo's compose-don't-fork law
+   * exists to prevent, and the drift would be invisible until a device went
+   * missing.
+   */
+  services.forEach((service, index) => {
+    const label = services.length > 1 ? `Device ${index + 1}` : 'Service';
+    for (const field of missingRepairIntakeFields({
+      // Identity is shared across the visit, so a missing name/phone is
+      // reported once by the customer check above rather than N times here.
+      name: 'pre-flight',
+      phone: 'pre-flight',
+      productTitle: String(service.productModel ?? '').trim(),
+      reasons: (service.repairReasons ?? []).map((r) => String(r ?? '').trim()).filter(Boolean),
+      repairNotes: String(service.repairNotes ?? '').trim(),
+      serialNumber: String(service.serialNumber ?? '').trim(),
+      price: String(service.price ?? '').trim(),
+    })) {
+      missing.push(`${label}: ${field}`);
+    }
+  });
+
   if (missing.length > 0) throw new CounterTransactionValidationError(missing);
 
   const clientEventId = input.clientEventId.trim();
@@ -344,7 +390,7 @@ export async function submitCounterTransaction(
       // Deliberately not re-derived: the replay reports the ORIGINAL
       // transaction, and re-running the sub-writes to describe them is exactly
       // the double-effect this branch exists to prevent.
-      repair: null,
+      repairs: [],
       sale: existing.stagedSquareOrderId
         ? { providerOrderId: existing.stagedSquareOrderId, totalCents: existing.totalCents }
         : null,
@@ -385,7 +431,7 @@ export async function submitCounterTransaction(
     }
   }
 
-  const { subtotalCents, totalCents } = computeCounterTotals({ retailLines, service });
+  const { subtotalCents, totalCents } = computeCounterTotals({ retailLines, services });
 
   // ── The header ────────────────────────────────────────────────────────────
   const header = await deps.insertHeader(orgId, {
@@ -397,10 +443,15 @@ export async function submitCounterTransaction(
     clientEventId,
   });
 
-  // ── The repair (composed) ────────────────────────────────────────────────
-  let repair: CounterTransactionResult['repair'] = null;
+  // ── The repairs (composed) ───────────────────────────────────────────────
+  //
+  // One `repair_service` row per device. The DB always allowed this —
+  // `repair_service.counter_transaction_id` is many→one — so the 1:1 lived only
+  // in this loop's absence.
+  const repairs: CounterTransactionResult['repairs'] = [];
   let repairFailed = false;
-  if (service) {
+
+  for (const [index, service] of services.entries()) {
     try {
       const result = await deps.submitRepair(
         {
@@ -418,32 +469,51 @@ export async function submitCounterTransaction(
           assignedTechId: service.assignedTechId ?? null,
           signatureDataUrl: service.signatureDataUrl ?? null,
           signatureStrokes: service.signatureStrokes,
-          idempotencyKey: clientEventId,
+          // PER DEVICE, not per visit. The key dedupes the helpdesk ticket, so
+          // sharing `clientEventId` across a two-device visit would collapse
+          // both devices onto one ticket. Suffixed by cart position, which is
+          // stable across a retry of the same submit.
+          idempotencyKey: `${clientEventId}:${index}`,
           // Counter owns CREATE_TICKET / ATTACH via ticket_work_outbox below —
-          // skip the inline create so we never mint two tickets for one visit.
+          // skip the inline create so we never mint two tickets for one device.
           ticketWork: 'skip',
         },
         orgId,
       );
-      repair = {
+      repairs.push({
         id: result.id,
         rsNumber: result.rsNumber,
         ticketNumber: result.zendeskTicketNumber,
         documentId: result.documentId,
         signatureUrl: result.signatureUrl,
-      };
+      });
       if (result.signatureWarning) warnings.push(result.signatureWarning);
       await deps.linkRepairToHeader(orgId, result.id, header.id);
     } catch (err) {
       if (err instanceof RepairIntakeValidationError) {
-        // The service half is unusable. Fail loudly rather than silently selling
-        // the retail lines and dropping the repair the customer came in for.
-        throw new CounterTransactionValidationError(err.missing);
+        /*
+         * A backstop, not the gate. Everything this can catch was already
+         * checked above `insertHeader` by the pre-flight, so reaching here
+         * means the shared rule and this path disagree — which is a bug in the
+         * pre-flight, not in the operator's input.
+         *
+         * It does NOT throw: the header exists by now, and throwing would let
+         * an orphan header keep the visit's idempotency key while the customer's
+         * other device sits recorded. Degrade to the same reconcilable warning
+         * as any other post-header failure and name the device.
+         */
+        console.error('[counter] pre-flight missed a repair validation error', err.missing);
       }
-      // A non-validation failure AFTER the header exists is reconcilable, not
-      // fatal: the customer may already be paying for the retail half.
+      // A failure AFTER a device is already logged is reconcilable, not fatal:
+      // throwing here would report the whole visit as failed while device #1
+      // sits in the system with the customer's property attached to it. Same
+      // reasoning the original single-repair path used for non-validation
+      // errors, now extended to the only case N can produce.
       repairFailed = true;
-      warnings.push('The repair record could not be created — this visit needs reconciling.');
+      warnings.push(
+        `Device ${index + 1} of ${services.length} (${service.productModel || 'unnamed'}) ` +
+          'could not be recorded — this visit needs reconciling.',
+      );
       console.error('[counter] repair intake failed after header insert', err);
     }
   }
@@ -476,33 +546,52 @@ export async function submitCounterTransaction(
   // Narrow the discriminated union itself rather than an extracted `mode`
   // string — only the union carries `ticketId` on the 'attach' arm.
   const ticketRequest = input.ticketWork ?? { mode: 'none' as const };
-  if (ticketRequest.mode !== 'none' && repair) {
-    const queued = await deps.enqueueTicket({
-      orgId,
-      workType: ticketRequest.mode === 'attach' ? 'ATTACH_TICKET' : 'CREATE_TICKET',
-      entityType: 'REPAIR',
-      entityId: repair.id,
-      counterTransactionId: header.id,
-      providerTicketId: ticketRequest.mode === 'attach' ? ticketRequest.ticketId : null,
-      payload: {
-        subject: `${repair.rsNumber} — ${service?.productModel ?? 'counter service'}`,
-        body: [
-          `Counter drop-off ${repair.rsNumber}.`,
-          service?.serialNumber ? `Serial: ${service.serialNumber}` : null,
-          priorOrderRef ? `Prior order: ${priorOrderRef}` : null,
-        ]
-          .filter(Boolean)
-          .join('\n'),
-        requesterName: effectiveName || null,
-        requesterEmail: email ?? null,
-        idempotencyKey: clientEventId,
-      },
-    });
-    ticketWork = { queued: queued.queued, outboxId: queued.outboxId, supportTicketId: null };
-    if (!queued.queued) {
-      warnings.push('The helpdesk ticket could not be queued.');
+  if (ticketRequest.mode !== 'none' && repairs.length > 0) {
+    // ONE PER DEVICE. Each repair carries its own RS# and its own lifecycle, so
+    // each gets its own ticket — the outbox's unique index is keyed on
+    // `entity_id`, so N rows are naturally distinct rather than colliding.
+    let allQueued = true;
+    let firstOutboxId: number | null = null;
+
+    for (const [index, repair] of repairs.entries()) {
+      const service = services[index];
+      const queued = await deps.enqueueTicket({
+        orgId,
+        workType: ticketRequest.mode === 'attach' ? 'ATTACH_TICKET' : 'CREATE_TICKET',
+        entityType: 'REPAIR',
+        entityId: repair.id,
+        counterTransactionId: header.id,
+        providerTicketId: ticketRequest.mode === 'attach' ? ticketRequest.ticketId : null,
+        payload: {
+          subject: `${repair.rsNumber} — ${service?.productModel ?? 'counter service'}`,
+          body: [
+            `Counter drop-off ${repair.rsNumber}.`,
+            service?.serialNumber ? `Serial: ${service.serialNumber}` : null,
+            services.length > 1 ? `Device ${index + 1} of ${services.length} this visit.` : null,
+            priorOrderRef ? `Prior order: ${priorOrderRef}` : null,
+          ]
+            .filter(Boolean)
+            .join('\n'),
+          requesterName: effectiveName || null,
+          requesterEmail: email ?? null,
+          // PER DEVICE. This key is the provider-side dedupe; sharing the
+          // visit's `clientEventId` across devices would collapse a two-device
+          // drop-off into a single helpdesk ticket.
+          idempotencyKey: `${clientEventId}:${repair.id}`,
+        },
+      });
+      if (firstOutboxId === null) firstOutboxId = queued.outboxId;
+      if (!queued.queued) {
+        allQueued = false;
+        warnings.push(`The helpdesk ticket for ${repair.rsNumber} could not be queued.`);
+      }
     }
-  } else if (ticketRequest.mode !== 'none' && !repair) {
+
+    // Aggregate: `queued` is true only when EVERY device's ticket was queued —
+    // a partial success reported as success is how one device's conversation
+    // goes missing without anyone noticing. `outboxId` names the first of N.
+    ticketWork = { queued: allQueued, outboxId: firstOutboxId, supportTicketId: null };
+  } else if (ticketRequest.mode !== 'none' && repairs.length === 0) {
     warnings.push('No service line — no helpdesk ticket was created.');
   }
 
@@ -521,7 +610,7 @@ export async function submitCounterTransaction(
     status,
     customerId: customer.id,
     priorOrderRef,
-    repair,
+    repairs,
     sale,
     ticketWork,
     idempotentReplay: false,

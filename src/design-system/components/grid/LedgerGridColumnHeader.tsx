@@ -31,7 +31,12 @@ import { cn } from '@/utils/_cn';
 const LEDGER_HEADER_ROW_FACE = PRIMARY_CHROME_ROW_FACE;
 import { ColumnResizeHandle } from './ColumnResizeHandle';
 import { GridHeaderLabel, gridHeaderAriaSort } from './GridHeaderLabel';
-import { isGridColumnResizable, isGridColumnFillTrack, isGridColumnPaintTrack } from './grid-column-editability';
+import {
+  isGridColumnResizable,
+  isGridColumnFillTrack,
+  isGridColumnFlushTrack,
+  isGridColumnPaintTrack,
+} from './grid-column-editability';
 import { gridFrozenLeft } from './grid-column-geometry';
 import {
   resolveColumnResizeEdges,
@@ -147,6 +152,10 @@ export function LedgerGridColumnHeader<C extends LedgerGridColumnModel>({
   if (isMobile) return null;
 
   const hasSelect = columns.some((c) => c.key === 'select');
+  // The compound row's gutters are flush and its select-all shares the body's
+  // face. Probed from the MOUNTED model — never a prop, so a header cannot
+  // disagree with the cells beneath it.
+  const compoundModel = columns.some((c) => isGridColumnFlushTrack(c) && c.key === 'thumb');
   const template = layout.template(columns);
   const dataColumns = columns.filter((c) => c.key !== 'select');
   // The frozen edge IS the last frozen track, so derive it from the MOUNTED
@@ -195,10 +204,17 @@ export function LedgerGridColumnHeader<C extends LedgerGridColumnModel>({
               checked={allSelected ? true : someSelected ? 'mixed' : false}
               onToggle={onToggleAll}
               label={allSelected ? 'Deselect all' : 'Select all'}
-              chrome={selectGutterChrome}
+              // Under a compound model the select-all must be the SAME face the
+              // body rows below it paint, or the top-left control is a 16px
+              // square sitting over a column of 48px flush checkmarks. The
+              // model decides; a mount cannot pass a face that disagrees.
+              chrome={compoundModel ? 'flush' : selectGutterChrome}
             />
           ) : (
-            <span className="h-4 w-4 shrink-0" aria-hidden />
+            // Inert on a surface with no select-all (Tasks declares
+            // `multiSelect: false`). Deliberately EMPTY rather than a ghost
+            // check: a mark here would look like a control that does nothing.
+            <span aria-hidden />
           )}
         </div>
       ) : null}
@@ -310,6 +326,7 @@ function LedgerHeaderCell<C extends LedgerGridColumnModel>({
   widthBound?: { min?: number; max?: number };
 }) {
   const frozen = Boolean(column.frozen);
+  const flushTrack = isGridColumnFlushTrack(column);
   const label = column.label ?? column.key;
   const ariaSort = gridHeaderAriaSort(isActiveSort, sortDir, sortActive);
   const tip =
@@ -337,7 +354,11 @@ function LedgerHeaderCell<C extends LedgerGridColumnModel>({
         'group/hcell relative gap-1',
         LEDGER_HEADER_ROW_FACE,
         gridHeaderCellAlignClass(resolveGridColumnAlign(column)),
-        layout.cellClass({ rule: !last, inset: 'grid' }),
+        // The two GUTTER tracks are flush in the body, so their headers must be
+        // too — a `px-2` header over a zero-inset body column puts the sort
+        // affordance and the column rule at different x than the cells under it.
+        layout.cellClass({ rule: !last, inset: flushTrack ? 'none' : 'grid' }),
+        flushTrack && 'overflow-hidden p-0',
         frozen && layout.frozenCellClass,
         tableHeader,
         sortActive && 'cursor-pointer hover:text-text-default',

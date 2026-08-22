@@ -23,10 +23,21 @@
  *
  * The verdict itself is in `lib/right-rail/order-compare-model.ts` (pure,
  * unit-tested); this file only paints it.
+ *
+ * **ONE band (2026-08-21).** The panel opened straight onto the shared
+ * `RailSelectionBand`, so it had no title of its own and the host's `✕` sat over
+ * a selection count. The house {@link DeskInspectorIndexShell} band now leads,
+ * titled `Compare`, with the divergence verdict as its read-only metric — the
+ * one fact this pane exists to say, in the one cell the contract reserves for a
+ * metric. `stance='standalone'`: a compare opens from CHECKING TWO ROWS, not by
+ * routing down an index, so there is nothing above it to go Back to. Dismiss
+ * stays the host's singleton `✕` → `closeRightPanel`, which runs `handleClose`
+ * (the selection clear) as the occupant half.
  */
 
 import { useMemo, useState } from 'react';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
+import { DeskInspectorIndexShell } from '@/components/right-rail/DeskInspectorIndexShell';
 import { GridCellDash } from '@/components/ui/grid-cells';
 import { PlatformMark } from '@/components/ui/PlatformMark';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
@@ -202,56 +213,76 @@ export function OrderRailCompare() {
     >
       <OrdersViewChromeBridge value={viewChrome}>
       <div className="flex h-full min-h-0 flex-col overflow-hidden bg-surface-card">
-        <RailSelectionBand />
-        {active && viewChrome ? (
-          <div
-            className="flex h-9 min-w-0 items-center justify-end gap-2 border-b border-border-hairline px-2"
-            role="toolbar"
-            aria-label="Orders view topics"
-          >
-            <OrdersViewTopicsCluster />
-          </div>
-        ) : null}
-
-        {compare ? (
-          <>
-            {/* Compare-scoped chrome lives here rather than inside the shared
-                RailSelectionBand, which the 3+ roster also mounts. */}
-            <div className="flex items-center justify-between gap-2 border-b border-border-soft px-4 py-2">
-              <p className="truncate text-role-eyebrow uppercase tracking-widest text-text-soft">
+        <DeskInspectorIndexShell
+          stance="standalone"
+          title="Compare"
+          ariaLabel="Comparing 2 orders"
+          testId="order-compare"
+          headerRightSlot={
+            compare ? (
+              // A READ-ONLY metric, which is exactly what this cell is for — the
+              // verdict, never a verb. Select all / Clear stay on the selection
+              // band below, where the roster shells also keep them.
+              <span className="flex h-full shrink-0 items-center px-2 text-role-eyebrow uppercase tracking-widest text-text-soft">
                 {compare.divergentCount === 0
-                  ? 'These two agree'
-                  : `${compare.divergentCount} of ${compare.comparableCount} differ`}
-              </p>
-              <label className="flex shrink-0 cursor-pointer items-center gap-1.5">
-                <Checkbox
-                  checked={differencesOnly}
-                  onCheckedChange={(next) => setDifferencesOnly(next === true)}
-                />
-                <span className="text-role-eyebrow uppercase tracking-widest text-text-soft">
-                  Differences only
-                </span>
-              </label>
-            </div>
+                  ? 'Agree'
+                  : `${compare.divergentCount}/${compare.comparableCount} differ`}
+              </span>
+            ) : null
+          }
+          body={
+            // `h-full` + column flex inside the shell's scrollport: the facts
+            // list keeps its OWN scroller, so the selection band and the filter
+            // stay pinned instead of scrolling away with a long compare.
+            <div className="flex h-full min-h-0 flex-col">
+              <RailSelectionBand />
+              {active && viewChrome ? (
+                <div
+                  className="flex h-9 min-w-0 shrink-0 items-center justify-end gap-2 border-b border-border-hairline px-2"
+                  role="toolbar"
+                  aria-label="Orders view topics"
+                >
+                  <OrdersViewTopicsCluster />
+                </div>
+              ) : null}
 
-            <div className="min-h-0 flex-1 overflow-y-auto">
-              {visibleFacts.length === 0 ? (
-                // Settled-with-nothing is a POSITIVE answer on this pane — the
-                // two orders agree on every comparable fact. Not an absence, so
-                // not a dashed teaching box.
-                <p className="px-4 py-6 text-center text-role-caption text-text-soft">
-                  No differences between these two orders.
-                </p>
-              ) : (
-                <ul className="divide-y divide-border-soft">
-                  {visibleFacts.map((fact) => (
-                    <CompareFactRow key={fact.key} fact={fact} />
-                  ))}
-                </ul>
-              )}
+              {compare ? (
+                <>
+                  {/* Compare-scoped chrome lives here rather than inside the shared
+                      RailSelectionBand, which the 3+ roster also mounts. */}
+                  <div className="flex shrink-0 items-center gap-2 border-b border-border-soft px-4 py-2">
+                    <label className="flex shrink-0 cursor-pointer items-center gap-1.5">
+                      <Checkbox
+                        checked={differencesOnly}
+                        onCheckedChange={(next) => setDifferencesOnly(next === true)}
+                      />
+                      <span className="text-role-eyebrow uppercase tracking-widest text-text-soft">
+                        Differences only
+                      </span>
+                    </label>
+                  </div>
+
+                  <div className="min-h-0 flex-1 overflow-y-auto">
+                    {visibleFacts.length === 0 ? (
+                      // Settled-with-nothing is a POSITIVE answer on this pane — the
+                      // two orders agree on every comparable fact. Not an absence, so
+                      // not a dashed teaching box.
+                      <p className="px-4 py-6 text-center text-role-caption text-text-soft">
+                        No differences between these two orders.
+                      </p>
+                    ) : (
+                      <ul className="divide-y divide-border-soft">
+                        {visibleFacts.map((fact) => (
+                          <CompareFactRow key={fact.key} fact={fact} />
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </>
+              ) : null}
             </div>
-          </>
-        ) : null}
+          }
+        />
 
         <RailActionRegion />
       </div>
