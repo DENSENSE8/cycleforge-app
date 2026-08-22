@@ -57,6 +57,29 @@ These are security / correctness / process, not design taste:
 - **`npm run verify` before done** — lint · typecheck · unit. That is the whole
   automated gate set.
 
+## Performance
+
+**Target: Lighthouse ≥ 90 in every category, every route.** Only Performance is
+short — A11y 93–95, Best Practices 96, SEO 91, CLS ~0 and TBT 22–158 ms already
+clear it. Performance sits at 67–78 and the entire gap is **LCP (5.9–12.3 s)**.
+
+The cause is one thing, not many: the data-heavy workbenches (`/dashboard`,
+`/unbox`, `/triage`, `/search`, `/test`) render a shell, hydrate, and only then
+fetch their first collection, so LCP waits on a post-hydration round trip.
+Streaming that first payload server-side moves all five. Bundle weight was
+already cut 61–68% and is no longer the constraint — do not re-run that hunt.
+
+- **Payload budgets ratchet down, never up.** `bundle-budget.json` holds the
+  per-route First Load JS ceiling; `npm run perf:budget` checks a build log
+  against it. Fix a regression, don't re-seed around it.
+- **`formFactor` in the `ROUTES` manifest is a claim about hardware**, and it
+  drives throttling as well as viewport. Desk workbenches are `desktop` (LAN
+  workstation), `/m/*` is `mobile`, `/kiosk*` is a mounted tablet. Do not repin a
+  route to make a number move.
+- **Scores are only comparable within one profile.** Change a route's form factor
+  and its baseline floor is void — `--check` fails it until you re-seed.
+- Runbook, CI wiring and how to re-seed: [`docs/performance/LIGHTHOUSE.md`](docs/performance/LIGHTHOUSE.md).
+
 ## Verify
 
 ```bash

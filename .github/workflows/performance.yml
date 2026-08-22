@@ -1,0 +1,185 @@
+name: Performance
+
+# Two tiers, because they cost very different amounts.
+#
+#   bundle-budget  — every PR + push to main. One production build, then Next's
+#                    own "First Load JS" table is ratcheted against
+#                    bundle-budget.json. Payload weight is the input to most of
+#                    what Lighthouse measures, it is deterministic, and it needs
+#                    no browser.
+#   lighthouse     — nightly + on demand. The real thing: production server,
+#                    minted session, median-of-3 across the Tier-1 manifest,
+#                    checked against lighthouse-baseline.json. ~30-60 min, which
+#                    is why it must not sit on the commit path.
+#
+# Both jobs SKIP (with a warning) rather than fail when their secrets are absent,
+# so a fork or an unconfigured repo does not get a permanently red required check.
+# A real regression, once configured, does fail.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  schedule:
+    # 08:00 UTC daily — after the US warehouse day, before the next one.
+    - cron: '0 8 * * *'
+  workflow_dispatch:
+    inputs:
+      update_baseline:
+        description: 'Re-seed the Lighthouse floors / JS budgets from this run'
+        type: boolean
+        default: false
+
+concurrency:
+  group: perf-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NEXT_TELEMETRY_DISABLED: '1'
+
+jobs:
+  bundle-budget:
+    name: JS payload budget
+    if: github.event_name == 'pull_request' || github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      # The build needs the same env the deploy job pulls from Vercel. Without it
+      # the route table never prints, so there is nothing to measure — that is a
+      # skip, not a failure.
+      - name: Production build
+        id: build
+        continue-on-error: true
+        env:
+          DATABASE_URL: ${{ secrets.PERF_DATABASE_URL || secrets.DATABASE_URL }}
+          NODE_OPTIONS: '--max-old-space-size=8192'
+        run: npx next build 2>&1 | tee build.log
+
+      - name: Explain a skipped build
+        if: steps.build.outcome != 'success'
+        run: |
+          echo "::warning title=Bundle budget skipped::next build did not complete. \
+          Set the PERF_DATABASE_URL (or DATABASE_URL) repository secret to enable this gate."
+
+      - name: Check budget
+        if: steps.build.outcome == 'success' && github.event.inputs.update_baseline != 'true'
+        run: node scripts/bundle-budget.mjs --log build.log
+
+      - name: Re-seed budget (manual dispatch only)
+        if: steps.build.outcome == 'success' && github.event.inputs.update_baseline == 'true'
+        run: |
+          node scripts/bundle-budget.mjs --log build.log --update
+          echo "Re-seeded. Commit bundle-budget.json to lock the new ceilings in."
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: build.log
+          retention-days: 7
+          if-no-files-found: ignore
+
+  lighthouse:
+    name: Lighthouse (Tier 1)
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Check perf environment
+        id: env
+        # Passed through env rather than interpolated into the script body — a
+        # secret spliced into shell source is an injection surface.
+        env:
+          PERF_DATABASE_URL: ${{ secrets.PERF_DATABASE_URL }}
+        run: |
+          if [ -z "$PERF_DATABASE_URL" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=Lighthouse skipped::PERF_DATABASE_URL is not set. \
+            The audit needs a seeded database to mint a session cookie — without one every \
+            authenticated route redirects to /signin and the numbers are meaningless."
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Isolated distDir so a perf build never collides with anything else, the
+      # same discipline the local runbook uses against the operator's dev server.
+      - name: Production build
+        if: steps.env.outputs.configured == 'true'
+        env:
+          DATABASE_URL: ${{ secrets.PERF_DATABASE_URL }}
+          NEXT_DIST_DIR: .next-perf
+          NODE_OPTIONS: '--max-old-space-size=8192'
+        run: npx next build
+
+      - name: Start server
+        if: steps.env.outputs.configured == 'true'
+        env:
+          DATABASE_URL: ${{ secrets.PERF_DATABASE_URL }}
+          NEXT_DIST_DIR: .next-perf
+          # Lets the mint script obtain a staff session without a PIN prompt.
+          AUTH_PINLESS_SIGNIN: 'true'
+        run: |
+          npx next start -p 3100 &
+          for i in $(seq 1 60); do
+            curl -sf -o /dev/null "http://localhost:3100/signin" && break
+            sleep 2
+          done
+          curl -sf -o /dev/null "http://localhost:3100/signin" || {
+            echo "::error::Server did not come up on :3100"; exit 1; }
+
+      - name: Audit
+        if: steps.env.outputs.configured == 'true'
+        env:
+          LH_BASE_URL: http://localhost:3100
+        run: |
+          export LH_COOKIE="$(node scripts/lighthouse-mint-session.mjs)"
+          if [ "${{ github.event.inputs.update_baseline }}" = "true" ]; then
+            node scripts/lighthouse-audit.mjs --tier 1 --update-baseline
+            echo "Re-seeded. Commit lighthouse-baseline.json to lock the new floors in."
+          else
+            node scripts/lighthouse-audit.mjs --tier 1 --check
+          fi
+
+      - name: Upload report
+        if: always() && steps.env.outputs.configured == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-report
+          path: |
+            lighthouse/summary.md
+            lighthouse/*.json
+          retention-days: 14
+          if-no-files-found: ignore
+
+      - name: Summary
+        if: always() && steps.env.outputs.configured == 'true'
+        run: |
+          if [ -f lighthouse/summary.md ]; then
+            cat lighthouse/summary.md >> "$GITHUB_STEP_SUMMARY"
+          fi
