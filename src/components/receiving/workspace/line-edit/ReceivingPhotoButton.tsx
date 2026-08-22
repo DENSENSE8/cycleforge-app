@@ -130,7 +130,7 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
   /**
    * Capture stage this pill stamps — required, never defaulted (a defaulted
    * safety classification is how bench photos silently became arrival
-   * evidence; see `.claude/rules/backend-patterns.md`). Triage chrome passes
+ * evidence;). Triage chrome passes
    * `arrival_package` explicitly; the unbox header passes `unbox_carton`; the
    * unbox active-line camera passes `unbox_item` together with
    * `receivingLineId`.

@@ -23,7 +23,7 @@
  *
  * Not for Station Displays / station docks (that shell is
  * `StationDisplaysHeaderActions` — the station half of the same display method).
- * Law: `.claude/rules/display/right-rail-inspector.md` · SoT Macro CTA.
+ * Law: SoT Macro CTA.
  */
 
 import type { MouseEvent, ReactNode } from 'react';

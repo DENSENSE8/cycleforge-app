@@ -7,7 +7,6 @@
  *   thread   = SupportTicketFocus  (`?ticket=`, crossfades on ticket id)
  *   inspector = SupportContextDetailPanel, a `RightRailHost` occupant that PUSHES
  *
- * Law: `.claude/rules/display/workbench-service.md`.
  *
  * The context pane is mounted here rather than passed into the shell: it is a
  * rail occupant, so it registers itself and renders nothing in place. The shell

@@ -12,7 +12,7 @@
  * It was named `StationComposerDock` until 2026-08-01 — the name recorded where
  * it was BORN (the Unbox station dock), not who owns it. It was never Station-
  * contract property, and Support's `/support` is Workbench branch
- * `service-workspace` (`.claude/rules/display/workbench-service.md`), so a
+ * `service-workspace`, so a
  * Station-prefixed name made a shared primitive read as borrowed. Renamed, not
  * split: a second `SupportComposerDock` beside this is the fork the SoT bans.
  *

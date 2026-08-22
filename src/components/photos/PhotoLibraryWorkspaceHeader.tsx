@@ -62,7 +62,6 @@
  * search refines a list the operator is already reading; here it IS the entry
  * path, which is also why it earns a band of its own.
  *
- * SoT: `.claude/rules/display/media-library.md`.
  */
 
 import { useCallback, useMemo, useState } from 'react';

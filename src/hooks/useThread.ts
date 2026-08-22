@@ -10,7 +10,7 @@ import type { EntityThread, ThreadMessage, ThreadMessageVisibility } from '@/lib
  * TanStack Query hook behind the ThreadPanel — resolve/create the entity's
  * conversation thread and post messages with the house optimistic contract
  * (`onMutate` snapshot+apply → `onError` rollback → `onSettled` invalidate;
- * .claude/rules/display/workbench.md). A client-minted `clientEventId`
+ * A client-minted `clientEventId`
  * (safeRandomUUID) makes a flaky-network retry an idempotent no-op server-side.
  */
 

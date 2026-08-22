@@ -30,7 +30,7 @@
  * an empty slot between — ~0.8s of blank rail on the core loop of arrowing down a
  * queue. With one id per mode the occupant stays mounted and its node swaps in
  * place via the store's `updateRightRailPanelNode` path, which exists for exactly
- * this. See `.claude/rules/display/motion-crossfade.md` → the queue-processing
+ * this. → the queue-processing
  * inspector exception, and D5 in the plan.
  *
  * Mode→mode IS a real crossfade (different id, entirely different body). That is

@@ -9,7 +9,7 @@
  * — the operator's ITEM note. So the copy promised a reason nobody could give,
  * and the wiring behind it, had anyone finished it, would have overwritten the
  * desktop operator's note on every line in the carton
- * (`.claude/rules/source-of-truth.md` → Note vs label grain).
+ * (Note vs label grain).
  *
  * The reason is now a code from the system registry's QA-fail slice, which:
  *   - lands in `receiving_exceptions` (queryable, OPEN/RESOLVED, reversible),

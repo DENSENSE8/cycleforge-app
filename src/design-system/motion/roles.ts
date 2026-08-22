@@ -22,8 +22,8 @@
  * `presence` through `useMotionPresence` and `transition` through
  * `useMotionTransition`, exactly as they do with raw presets today.
  *
- * Law + region matrix: `.claude/rules/display/motion-crossfade.md`.
- * SoT row: `.claude/rules/source-of-truth.md` → Motion roles + import path.
+ * Law + region matrix:.
+ * SoT row: Motion roles + import path.
  */
 
 import {

@@ -13,7 +13,6 @@
  * ```
  *
  * Region contract (I/O + persistence per layer):
- *   `.claude/rules/display/station-workbench.md`
  */
 
 export { StationWorkbench } from './StationWorkbench';

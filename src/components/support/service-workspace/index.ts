@@ -1,6 +1,6 @@
 /**
  * Workbench branch `service-workspace` — the one home for the Support agent
- * workspace shell. Law: `.claude/rules/display/workbench-service.md`.
+ * workspace shell. Law:.
  *
  * Only the shell is public. The layout tokens are the shell's own geometry, so
  * they are imported directly by it and deliberately NOT re-exported: a token a

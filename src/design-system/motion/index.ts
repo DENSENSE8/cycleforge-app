@@ -18,7 +18,7 @@
  * What it deliberately does NOT carry:
  *   - `AnimateNumber` — stays at `@/design-system/motion/plus`. Re-exporting it
  *     here would put `motion-plus` in the module graph of every consumer of this
- *     barrel, which is the bundle-altitude trap in `.claude/rules/build-gotchas.md`.
+ * barrel, which is the bundle-altitude trap in.
  *     (This barrel used to export exactly that one symbol, and nothing imported
  *     it — knip had it baselined as dead since it landed.)
  *   - the 60-literal preset CATALOG (`framerPresence` / `framerTransition` / …)
@@ -27,7 +27,7 @@
  *     not packages, so they were never what the boundary is about — and funnelling
  *     them through here would add ~60 re-exports nothing imports from this file.
  *
- * Law: `.claude/rules/display/motion-crossfade.md` → The import boundary.
+ * Law: The import boundary.
  */
 
 export {

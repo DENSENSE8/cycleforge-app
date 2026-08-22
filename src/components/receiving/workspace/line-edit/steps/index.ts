@@ -25,7 +25,7 @@
  * Every control that advances a step lives in the bottom dock — `./dock/index.ts`
  * → `UNBOX_STEP_DOCK_CONTROLS`, rendered by `../UnboxStepDock`. These bodies are
  * the step's evidence: the photos taken, the label face, the line list, the
- * grade on record. Law: `.claude/rules/display/station-workbench.md` →
+ * grade on record. Law:
  * *The dock's LEADING zone is the step's ACTION surface*.
  */
 

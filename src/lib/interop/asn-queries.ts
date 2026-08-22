@@ -74,7 +74,7 @@ export async function fetchAsnCartons(args: {
  * `sku_catalog` is joined ONLY through `receiving_line.sku_catalog_id`. A join
  * on the SKU string would silently attach one product's GTIN to another
  * product's line — `items` and `sku_catalog` are independent numbering schemes
- * whose SKUs collide (`.claude/rules/source-of-truth.md` → SKU identity).
+ * whose SKUs collide (SKU identity).
  */
 export async function fetchAsnLines(args: {
   orgId: string;

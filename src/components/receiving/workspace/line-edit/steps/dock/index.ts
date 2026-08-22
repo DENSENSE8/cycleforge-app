@@ -5,7 +5,7 @@
  *
  * A procedure step card carries **no action button**. Every control the operator
  * clicks to advance a step lives in the bottom dock, contextual to whichever
- * step is active. Law: `.claude/rules/display/station-workbench.md` →
+ * step is active. Law:
  * *The dock's LEADING zone is the step's ACTION surface*.
  *
  * ## Why `Partial`, unlike `UNBOX_STEP_BODIES`

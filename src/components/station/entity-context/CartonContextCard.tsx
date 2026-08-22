@@ -257,7 +257,7 @@ export function CartonContextCard({
   /**
    * Carton capture stage the header photo pill stamps (stage SoT) — required,
    * never defaulted (a defaulted safety classification is how bench photos
-   * silently became arrival evidence; see `.claude/rules/backend-patterns.md`).
+ * silently became arrival evidence;).
    * Triage passes `arrival_package` explicitly; unbox chrome passes
    * `unbox_carton`. Item evidence never comes from this card — it is
    * line-scoped, so the active-line camera owns it.

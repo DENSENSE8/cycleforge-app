@@ -14,7 +14,7 @@
  * list and this collapses to a single org-scoped call.
  *
  * The `deps` seam keeps domain view-invalidators unit-testable with zero Redis
- * (mirrors the `Deps`-injection rule in `.claude/rules/backend-patterns.md`).
+ * (mirrors the `Deps`-injection rule in).
  */
 import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
 

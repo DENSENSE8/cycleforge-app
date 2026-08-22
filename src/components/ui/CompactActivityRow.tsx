@@ -15,7 +15,7 @@
  * rows may paint house `OrderIdChip` / `TrackingChip` via
  * {@link joinStackedIdentityKeys} on meta (identity SoT), not mono prose.
  *
- * Detail: `.claude/rules/source-of-truth.md` → Compact activity row.
+ * Detail: Compact activity row.
  * Guard: `compact-activity-row.guard.test.ts`.
  */
 

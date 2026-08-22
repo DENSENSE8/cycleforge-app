@@ -15,7 +15,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
  * FORCE policy entirely and reads/writes across every tenant. A defaulted or
  * optional org on a call that decides which tenant's money a row belongs to is
  * a silent opt-out, and the sites you forget are exactly the ones the compiler
- * stays quiet about (`.claude/rules/backend-patterns.md`). The explicit
+ * stays quiet about. The explicit
  * `organization_id` predicates below hold the line independently of whichever
  * role the pool happens to connect as.
  *

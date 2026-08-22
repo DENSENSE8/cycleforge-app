@@ -27,7 +27,7 @@
  * **The code is a safety classification, not a note.** Only the `LOSS_EXCEPTION_CODES`
  * slice of the receiving-exception system registry is accepted, validated
  * server-side, and `code` is a REQUIRED parameter with no default
- * (`.claude/rules/backend-patterns.md` → "a safety classification is a REQUIRED
+ * ("a safety classification is a REQUIRED
  * parameter, never a defaulted one"). A defaulted code would silently write every
  * caller's carton off as the same kind of lost.
  *
@@ -47,7 +47,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 // TYPE-only: `./exceptions` reaches `@/lib/tenancy/db` (`server-only`) at module
 // load, which would make this module unimportable from a test (and drag the Neon
 // pool behind any client that touched it). The real writers are resolved lazily in
-// `realDeps()` — `.claude/rules/build-gotchas.md` → bundle altitude.
+// `realDeps()` — bundle altitude.
 import type { recordReceivingException, resolveReceivingExceptions } from './exceptions';
 import {
   LOSS_EXCEPTION_CODES,

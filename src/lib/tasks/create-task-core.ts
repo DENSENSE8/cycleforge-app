@@ -3,7 +3,7 @@
  *
  * Split from its server binding so the refusals, the urgency coupling and the
  * degrade rules unit-test with zero database and zero helpdesk network
- * (`.claude/rules/backend-patterns.md` → Dependency injection for testability).
+ * (Dependency injection for testability).
  *
  * ## The two effects, and why one of them may fail without failing the throw
  *

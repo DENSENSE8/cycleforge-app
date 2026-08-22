@@ -57,7 +57,7 @@ interface Props {
  * `(qaStatus, dispositionCode, notes)` triple, because those three were free to
  * disagree: the FAIL path posted a hardcoded `FAILED_FUNCTIONAL` for every
  * failure mode and carried the real reason as free text in `notes` — the
- * operator's ITEM note (`.claude/rules/source-of-truth.md` → Note vs label
+ * operator's ITEM note (Note vs label
  * grain). A fail now names a code, the route derives the `qa_status` from it,
  * and nothing on this path writes a note at all.
  */

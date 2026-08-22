@@ -10,7 +10,7 @@
  * STATUS CHANGES ROUTE THROUGH THE STATE MACHINE (relational-reuse §2).
  * ────────────────────────────────────────────────────────────────────
  * The façade does NOT stamp `serial_units.current_status` directly. The SoT
- * rule (`.claude/rules/backend-patterns.md`) is that every status change on a
+ * rule is that every status change on a
  * *pre-existing* unit goes through the guarded `transition()` chokepoint
  * (`src/lib/inventory/state-machine.ts`) so the allow-list, the `FOR UPDATE`
  * lock, optimistic-concurrency (`expectedFrom`), and the atomic

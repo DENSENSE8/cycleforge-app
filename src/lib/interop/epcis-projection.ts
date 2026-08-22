@@ -76,7 +76,7 @@ import {
  * `gtin` arrives via `serial_units.sku_catalog_id` ONLY. Joining `items` to
  * `sku_catalog` on the SKU *string* is a house hard law violation — the two
  * are independent numbering schemes and the strings collide
- * (`.claude/rules/source-of-truth.md` → SKU identity). A unit with no
+ * (SKU identity). A unit with no
  * `sku_catalog_id` therefore has no GTIN here, and gets an internal EPC.
  */
 export interface EpcisSourceRow {

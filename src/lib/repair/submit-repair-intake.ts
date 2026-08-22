@@ -8,7 +8,7 @@
  * (`/api/kiosk/repair/submit`, `withKioskAuth` device principal, no PIN) both
  * call this one helper, so the two surfaces can never drift. Extracting the
  * former inline route body into this helper is the route → domain-helper
- * pattern from `.claude/rules/backend-patterns.md`.
+ * pattern from.
  *
  * Validation failures throw `RepairIntakeValidationError` (callers map → 400);
  * any other throw is an internal error (callers map → 500).

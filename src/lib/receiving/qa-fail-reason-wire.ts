@@ -4,7 +4,7 @@
  *
  * A QA fail reason is a receiving EXCEPTION, not a note. The mobile QA action
  * sheet used to offer free text and post it to `mark-received` as `notes`, i.e.
- * the operator's item note (`.claude/rules/source-of-truth.md` → Note vs label
+ * the operator's item note (Note vs label
  * grain): a phone-side fail would have overwritten whatever the desktop operator
  * typed, on every line in the carton, and the reason itself stayed unqueryable
  * prose. It now travels as a code from the narrow `QA_FAIL_EXCEPTION_STATUS`
@@ -34,7 +34,7 @@ export const QA_FAIL_REASON_FLOW_CONTEXT = 'receiving_exception';
  * `code` is REQUIRED with no default: absence of a reason is expressed by NOT
  * calling this (a PASS), never by a defaulted code. A default here would file
  * every caller that forgot to think about it under someone else's reason —
- * `.claude/rules/backend-patterns.md` → a safety classification is never
+ * a safety classification is never
  * defaulted.
  *
  * There is deliberately NO free-text sibling: the reason IS the code

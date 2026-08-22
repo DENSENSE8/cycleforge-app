@@ -1,6 +1,6 @@
 /**
  * Tier-1 paint content order — declared LCP surfaces + forbidden `ssr: false`
- * hosts. Product law: `.claude/rules/source-of-truth.md` → Paint content order.
+ * hosts. Product law: Paint content order.
  *
  * Priority ladder (must paint in order):
  *   P0 chrome → P1 primary → P2 context → P3 trailing (strip only; bodies wait)

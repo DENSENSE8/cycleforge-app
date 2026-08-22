@@ -3,7 +3,7 @@
  * chrome, whatever the record is.
  *
  * Per-entity identity adapters live beside their domain (`station/order/` for
- * `OrderStationIdentity`). Recipe: `docs/rules/display/unbox-station.md`.
+ * `OrderStationIdentity`). Recipe:.
  */
 
 export { EntityStationPane } from './EntityStationPane';

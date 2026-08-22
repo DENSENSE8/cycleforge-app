@@ -18,7 +18,7 @@ import { useEffect, useRef } from 'react';
  * `false` on the first open (browse→overlay: wait + enter fade) and on close;
  * `true` only while the overlay stays open across a key change (sync + hard-cut
  * enter, new pane covering the old one). Law:
- * `docs/rules/display/motion-crossfade.md` → Carton→carton uses `mode="sync"`.
+ * Carton→carton uses `mode="sync"`.
  *
  * **The previous-open flag is committed in an effect, never assigned during
  * render.** Four surfaces used to write it inline —

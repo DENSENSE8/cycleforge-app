@@ -21,7 +21,7 @@ import {
  * Replaces the toast as the completion/failure signal for background photo
  * uploads. Station law: pass/fail is a big card state the operator can read at
  * ~3 ft with their hands full, never a four-second corner toast
- * (`.claude/rules/display/station.md` §6). A failed upload stays on screen with
+ * (6). A failed upload stays on screen with
  * a **Retry** the operator can actually press — before this, `retry()` existed
  * on all three queues and was reachable from no UI at all.
  *

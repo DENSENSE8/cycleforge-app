@@ -83,7 +83,7 @@ export function SidebarContextPanel({ onBackToAppNav }: { onBackToAppNav?: () =>
   // (Pattern E, 2026-08-09). Its lifecycle scopes are Band-1 tabs and its
   // capture days ride the Band-2 refine popover; `CONTEXT_PANEL_ROUTE_KEYS`
   // drops the key so the column collapses rather than reserving 360px of empty
-  // chrome. SoT: `.claude/rules/display/media-library.md`.
+ // chrome. SoT:.
   if (routeKey === 'packer') return <PackerSidebarPanel />;
   if (routeKey === 'outbound') return <OutboundSidebarPanel />;
   if (routeKey === 'review') return <ReviewSidebarPanel />;

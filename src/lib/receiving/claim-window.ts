@@ -9,7 +9,7 @@
  * imports at all, and `claims-escalation.ts` re-exports them rather than keeping a
  * second copy. A UI module importing the cron module directly would drag its
  * dynamic `server-only` graph toward the client bundle
- * (`.claude/rules/build-gotchas.md` → bundle altitude).
+ * (bundle altitude).
  *
  * Views stay dumb: this resolves label + tip + description, the cell renders them
  * (Kinetic Ledger law 4 — presentation kinds resolve via SoT).
@@ -27,7 +27,7 @@ export const CLAIM_DUE_LEAD_DAYS = 5;
  *
  * Civil-date math only — never `new Date('YYYY-MM-DD')`, which parses as UTC
  * midnight and shifts the answer a day for a Pacific warehouse
- * (`.claude/rules/source-of-truth.md` → Dates & times, the banned list).
+ * (Dates & times, the banned list).
  */
 export function daysUntilClaimDeadline(claimByDate: string, todayKey: string): number {
   const toUtcMs = (key: string): number => {

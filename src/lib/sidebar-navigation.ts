@@ -603,7 +603,6 @@ const CONTEXT_PANEL_ROUTE_KEYS = new Set<SidebarRouteKey>([
   // the honest mechanism — the same one `/search` and `/reports` already use;
   // `isRaillessOrderFeedSurface` is deliberately NOT widened (it is named for,
   // and guarded as, the To-ship ORDER feed). SoT:
-  // `.claude/rules/display/media-library.md`.
   // `/search` is header find + browse/detail in main (no context rail)
   // when `?sel=` is set. See `SearchBrowseShell` / `SearchDetailWorkspace`.
 ]);

@@ -19,7 +19,7 @@
  * {@link CompactActivityRow} for the activity frame, but paints the same
  * order/tracking chips on its meta strip (never mono prose).
  *
- * Detail: `.claude/rules/source-of-truth.md` → Stacked row identity.
+ * Detail: Stacked row identity.
  */
 
 import type { ReactNode } from 'react';

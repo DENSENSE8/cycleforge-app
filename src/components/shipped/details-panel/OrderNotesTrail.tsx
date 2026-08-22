@@ -16,7 +16,7 @@
  * carrying whatever note the SOURCE sent at ingest, is still
  * searched by the queue's ILIKE predicate, and still lights the row's corner
  * indicator — but nothing in the product writes it. Every new annotation lands
- * here, attributed and append-only. See `.claude/rules/source-of-truth.md`
+ * here, attributed and append-only.
  * → Order note grain.
  *
  * Mounted on the desk order inspector dock (`ShippedPanelEditorDock` with

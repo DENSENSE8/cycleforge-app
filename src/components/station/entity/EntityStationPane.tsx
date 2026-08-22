@@ -11,7 +11,7 @@
  * nothing else), and `unit` / `sku` previews need the identical tree. What is
  * genuinely per-entity is the IDENTITY adapter and the CENTRE — both props.
  *
- * The tree is the Unbox anatomy (`docs/rules/display/unbox-station.md`):
+ * The tree is the Unbox anatomy:
  *
  *   StationScanPaneHost
  *     └ StationPanelRoot
@@ -60,7 +60,7 @@ export type StationDisplayNav = string;
  * **REQUIRED — no default, deliberately.** A defaulted classification is a
  * silent opt-in for every call site you did not visit, and the compiler stays
  * quiet about exactly the ones you missed (same law as `scanKind` /
- * `intakeSurface` in `.claude/rules/backend-patterns.md`).
+ * `intakeSurface` in).
  *
  *   • `work`    — the operator's bench. A dock may mount; the centre commits.
  *   • `preview` — a read surface (`/search?sel=order:`). No dock, and the

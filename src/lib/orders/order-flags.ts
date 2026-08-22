@@ -10,7 +10,6 @@ import { isOrderRowFlagId, type OrderRowFlagId } from './order-row-flags';
  * The vocabulary and every presentation decision live in the dependency-free
  * `order-row-flags.ts`; this module is only the persistence half, so the API
  * route stays thin (validate → domain helper → audit) per
- * `.claude/rules/backend-patterns.md`.
  *
  * Reads do NOT come through here. The queue needs the flag on every row, and a
  * per-row fetch would be an N+1 against a virtualized grid — it is joined into

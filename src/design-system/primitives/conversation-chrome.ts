@@ -4,7 +4,6 @@
  *
  * Compose {@link ConversationMessageCard} + these tokens; never fork a
  * page-local bubble shell, blue/amber fill, or 75% chat bubble. Lookup:
- * `node scripts/sot-lookup.mjs "conversation message"`.
  *
  * Face: white column plane · gray public cards · amber internal wash · Inter
  * sans (`font-sans`) · circular header actions for thread chrome clusters.

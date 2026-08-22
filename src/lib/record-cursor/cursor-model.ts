@@ -74,7 +74,7 @@ export function recordIdKey(id: RecordId | null | undefined): string | null {
 
 /**
  * Why a record is being opened. **Required and undefaulted everywhere** it is
- * threaded (`.claude/rules/backend-patterns.md` → *A safety classification is a
+ * threaded (*A safety classification is a
  * REQUIRED parameter*): it decides whether the open clears `scanMatchedRows`,
  * steals scroll, or pushes history, and a default is a silent opt-out that
  * every call site nobody visited takes automatically.

@@ -9,7 +9,7 @@
  *    (`html[data-theme='dark']`) canvas, so they never need a remap.
  *  - **Axes / grid / labels** instead use `currentColor` inside a Tailwind
  *    `text-gray-*` wrapper, so they inherit the global dark-mode remap for free
- *    (no `dark:` prefixes, no JS theme probing). See `.claude/rules/build-gotchas`.
+ * (no `dark:` prefixes, no JS theme probing)..
  *
  * Series tones mirror `semanticColors.dashboard` primaries so a station/source
  * keeps the same colour across the gauge, the line chart and the tables.

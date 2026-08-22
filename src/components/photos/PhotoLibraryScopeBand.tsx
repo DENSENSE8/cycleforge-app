@@ -32,7 +32,6 @@
  * Band-1 **trailing is deliberately empty**: this surface has no import / add /
  * return-to-scan CTA, and honest absence beats an invented one.
  *
- * SoT: `.claude/rules/display/media-library.md`.
  */
 
 import { useState } from 'react';

@@ -29,7 +29,7 @@
  * Unbox rail is find + recents, and nothing else.
  *
  * *(This rail is a documented exception to "find lives only in
- * GlobalHeaderSearch" — see `docs/rules/display/search-station.md`.)*
+ * GlobalHeaderSearch" —.)*
  */
 
 import { useCallback, useMemo, useState } from 'react';

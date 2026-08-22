@@ -28,7 +28,7 @@
  * Next cohort (MasterNav / other armed lists): compose these tokens +
  * {@link useArmedCursorList} — never a page-local twin.
  *
- * Law: `.claude/rules/display/station-workbench.md` → Displays Root Index.
+ * Law: Displays Root Index.
  */
 
 /** Shared width budget for tone chip — tabular, no layout expand. */

@@ -95,7 +95,6 @@ Scaffold these with the **`new-route`** skill. Conventions specific to integrati
 - Verify:
   ```bash
   npx tsc --noEmit                 # registry Record coverage is a compile gate
-  npm run audit-route-auth:check   # if you added connect/callback routes
   npx --no-install next lint --file <changed files>
   ```
   Report what you added (provider, auth kind, capabilities, sync resource). Don't commit.

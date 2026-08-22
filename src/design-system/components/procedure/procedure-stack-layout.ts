@@ -5,7 +5,7 @@
  * outline-only. Evidence mounts in a band under the list — faces never grow.
  * No peek pull-up, no space budget.
  *
- * Law: `.claude/rules/display/station-workbench.md` → Procedure Focus Deck.
+ * Law: Procedure Focus Deck.
  */
 
 /** Face row height — 40px at default root (matches checklist row). */

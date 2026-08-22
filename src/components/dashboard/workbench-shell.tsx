@@ -247,7 +247,7 @@ export function withScopeDivider<T extends { id: string }>(
  *
  * Hybrid scan stations (Unbox / Testing / Pack): put the **return-to-scan CTA**
  * in `actions` — solid primary, every strip tab, top-right of the context bar
- * above KPIs. SoT: `.claude/rules/display/workbench.md` → Multi-region pages.
+ * above KPIs. SoT: Multi-region pages.
  *
  * @see docs/todo/table-action-bar-fields-PLAN.md
  */

@@ -33,7 +33,7 @@
  * displayed here under any framing.
  *
  * Copy uses capability nouns, never vendor product names
- * (`.claude/rules/source-of-truth.md` → integrations).
+ * (integrations).
  */
 
 import { useCallback, useMemo, useRef, useState } from 'react';

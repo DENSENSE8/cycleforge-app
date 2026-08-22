@@ -51,7 +51,7 @@
  * crossfades (the class swap is already an instant colour morph), the pulse
  * and the ring are suppressed.
  *
- * Law: `.claude/rules/display/motion-crossfade.md` → roles + reduced motion.
+ * Law: roles + reduced motion.
  */
 
 import { useEffect, useRef, type RefObject } from 'react';

@@ -26,7 +26,7 @@ import type { PhotoGridViewProps } from './types';
  * without the calendar being a place you descend into. Grouping order comes
  * from the server sort (see `groupPhotosByCaptureDay` — it does not sort).
  *
- * Sticky discipline (`.claude/rules/display/workbench.md` → one sticky layer per
+ * Sticky discipline (one sticky layer per
  * scroll port): the workbench chrome renders OUTSIDE the scroll body via
  * `DashboardScrollShell`'s `chrome` slot, so these bands are the only sticky
  * layer inside the port and dock at `top-0` with no offset math.

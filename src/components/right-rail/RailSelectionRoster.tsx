@@ -9,7 +9,7 @@
  * sit on row 2 with platform-aware tooltip + `#` glyph tone. Never a
  * single-line `title | mono id` twin with `ml-auto`.
  *
- * Detail: `.claude/rules/source-of-truth.md` → Stacked row identity.
+ * Detail: Stacked row identity.
  */
 
 import type { ReactNode } from 'react';

@@ -135,7 +135,7 @@ export function cornerClass(role: CornerRole): string {
  * shell family, and a call site that reaches for it is claiming membership in
  * that family — which is checkable in review, unlike `rounded-2xl`.
  *
- * Law: `.claude/rules/kinetic-ledger.md` — ops chrome is flush-square; the
+ * Law: ops chrome is flush-square; the
  * composer dock and the kiosk counter face are the exemptions, and neither is
  * a licence to round anything else.
  */

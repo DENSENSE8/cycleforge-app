@@ -3,7 +3,7 @@
 /**
  * /warehouse/rma/disposition — the per-unit disposition station.
  *
- * Station archetype (.claude/rules/display/station.md): staff physically hold
+ * Station archetype: staff physically hold
  * an already-received, already-graded returned unit and scan its serial to
  * decide its fate — ACCEPT (restock) / HOLD / RTV / REWORK / SCRAP. Scanner-
  * driven, one active unit at a time, act-and-clear. This is the UI Gap #2/

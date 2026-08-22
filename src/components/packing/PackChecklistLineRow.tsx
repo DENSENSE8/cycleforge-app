@@ -70,7 +70,7 @@ const PART_TYPE_TAG: Record<string, string> = {
  * The clip is RELEASED once settled: `overflow-hidden` is needed while the
  * height tweens, but the View control's focus ring is outward and would be
  * sheared off by a permanent clip (same trap as the auth step panel —
- * .claude/rules/display/auth-step-panel.md).
+ *
  *
  * EVIDENCE. Print is the durable path (spool intent at the bench); View is
  * recognition-only; the parent row's checkbox remains the advisory
