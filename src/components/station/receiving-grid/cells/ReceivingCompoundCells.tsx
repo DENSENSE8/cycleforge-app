@@ -16,6 +16,7 @@
  */
 
 import type { ReactNode } from 'react';
+import { isCompoundColumnModel } from '@/components/tables/compound/compound-columns';
 import {
   isCompoundCellKey,
   renderCompoundGridCell,
@@ -63,6 +64,29 @@ function viewFor(ctx: ReceivingGridCellCtx): CompoundRowView {
 }
 
 /**
+ * The row's SELECTION capability, in the family's own terms.
+ *
+ * Two planes, and the gutter serves whichever this surface split out:
+ *
+ * - **click-select** (Unbox History / Incoming Sheets): the ROW carries
+ *   `role="checkbox"` and owns the toggle, so the gutter is DECORATIVE — no
+ *   `onToggle`, no second control for a screen reader to disambiguate. It still
+ *   paints the face, which is the whole point of the change: that column was
+ *   blank at rest and read as dead space.
+ * - **split planes** (row body opens the record, gutter ticks): a real
+ *   checkbox, hit plane the full 48px cell.
+ */
+function selectFor(ctx: ReceivingGridCellCtx) {
+  return {
+    checked: ctx.isChecked,
+    onToggle: ctx.clickSelect ? undefined : ctx.onToggle,
+    label: ctx.isChecked
+      ? `Deselect receiving line ${ctx.row.id}`
+      : `Select receiving line ${ctx.row.id} for bulk actions`,
+  };
+}
+
+/**
  * Paint one compound track for this family, or `null` if the key is not one.
  *
  * `ctx.columns` is the mounted model. It has a fallback at the call site rather
@@ -74,13 +98,47 @@ export function renderReceivingCompoundCell(
   rule: boolean,
   ctx: ReceivingGridCellCtx,
 ): ReactNode {
+  const columns = ctx.columns ?? [col];
   return renderCompoundGridCell({
     col,
-    columns: ctx.columns ?? [col],
+    columns,
     rule,
-    view: viewFor(ctx),
+    // Only the five view tracks need the adapter run; the gutter does not, and
+    // this is called once per visible cell.
+    view: col.key === 'select' ? EMPTY_VIEW : viewFor(ctx),
     columnDisplay: ctx.columnDisplay,
     onCommitNote: ctx.onCommitNote,
     onOpen: ctx.onOpenRecord,
+    select: selectFor(ctx),
   });
+}
+
+/**
+ * Placeholder for the one track that reads nothing off the row.
+ *
+ * `renderCompoundGridCell` takes the view as a value rather than a thunk (it is
+ * a pure mapper and every other track needs it), so the select cell hands it a
+ * constant instead of paying for an adapter call it will not read.
+ */
+const EMPTY_VIEW: CompoundRowView = {
+  id: '',
+  thumbUrl: null,
+  title: '',
+  note: null,
+  orderId: null,
+  tracking: null,
+  platformValue: null,
+  carrier: null,
+  stateLabel: '',
+  stateTone: 'neutral',
+  delay: null,
+};
+
+/** Does this family's dispatcher own the key under the MOUNTED model? */
+export function claimsCompoundCell(
+  key: string,
+  columns: readonly { key: string }[] | undefined,
+): boolean {
+  if (isCompoundCellKey(key)) return true;
+  return key === 'select' && isCompoundColumnModel(columns ?? []);
 }

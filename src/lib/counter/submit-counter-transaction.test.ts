@@ -16,7 +16,18 @@ const ORG = '00000000-0000-0000-0000-000000000002';
 const KEY = 'aaaaaaaa-1111-2222-3333-444444444444';
 
 function service(patch: Partial<CounterServiceLine> = {}): CounterServiceLine {
-  return { productModel: 'QC35 II', serialNumber: 'SN1', price: '130', ...patch };
+  // `repairReasons` is required by the shared intake rule (reason OR notes).
+  // It was absent here and the tests still passed, because the FAKE
+  // `submitRepair` never validated — so the fixture described an input the real
+  // helper would have rejected. The counter's pre-flight (SQ6) checks the same
+  // rule up front, which is what surfaced it.
+  return {
+    productModel: 'QC35 II',
+    serialNumber: 'SN1',
+    price: '130',
+    repairReasons: ['audio'],
+    ...patch,
+  };
 }
 
 function input(patch: Partial<CounterTransactionInput> = {}): CounterTransactionInput {
@@ -31,6 +42,8 @@ interface FakeOpts {
   existingCustomer?: { id: number; storedPhone: string; storedName: string } | null;
   existingHeader?: boolean;
   repairThrows?: Error;
+  /** Fail only the Nth device — for the partial-failure case N repairs adds. */
+  repairThrowsOnIndex?: number;
   stageReturns?: { providerOrderId: string; totalCents: number | null } | null;
   stageThrows?: Error;
   priorOrderConfirms?: string | null;
@@ -89,6 +102,12 @@ function fakes(opts: FakeOpts = {}) {
     async submitRepair(repairInput) {
       calls.repairInputs.push(repairInput as Record<string, unknown>);
       if (opts.repairThrows) throw opts.repairThrows;
+      if (
+        opts.repairThrowsOnIndex !== undefined &&
+        calls.repairInputs.length - 1 === opts.repairThrowsOnIndex
+      ) {
+        throw new Error('device-specific failure');
+      }
       return {
         success: true,
         rsNumber: 'RS-1001',
@@ -143,7 +162,7 @@ test('a visit with no items and no service is rejected', async () => {
 test('a partial phone number is rejected — it cannot identify anyone', async () => {
   const { deps } = fakes();
   await assert.rejects(
-    () => submitCounterTransaction(input({ customer: { phone: '555' }, service: service() }), ORG, deps),
+    () => submitCounterTransaction(input({ customer: { phone: '555' }, services: [service()] }), ORG, deps),
     (err: unknown) => err instanceof CounterTransactionValidationError,
   );
 });
@@ -151,7 +170,7 @@ test('a partial phone number is rejected — it cannot identify anyone', async (
 test('a missing clientEventId is rejected — a replay would double-charge', async () => {
   const { deps } = fakes();
   await assert.rejects(
-    () => submitCounterTransaction(input({ clientEventId: '', service: service() }), ORG, deps),
+    () => submitCounterTransaction(input({ clientEventId: '', services: [service()] }), ORG, deps),
     (err: unknown) => {
       assert.ok(err instanceof CounterTransactionValidationError);
       assert.ok(err.missing.includes('clientEventId'));
@@ -166,7 +185,7 @@ test('a replayed clientEventId is a no-op that reports the ORIGINAL transaction'
   const { deps, calls } = fakes({ existingHeader: true });
 
   const res = await submitCounterTransaction(
-    input({ service: service(), retailLines: [line()] }),
+    input({ services: [service()], retailLines: [line()] }),
     ORG,
     deps,
   );
@@ -198,10 +217,10 @@ function line(patch: Record<string, unknown> = {}) {
 test('repair-only: a repair is created and linked, nothing is staged', async () => {
   const { deps, calls } = fakes();
 
-  const res = await submitCounterTransaction(input({ service: service() }), ORG, deps);
+  const res = await submitCounterTransaction(input({ services: [service()] }), ORG, deps);
 
-  assert.equal(res.repair?.id, 321);
-  assert.equal(res.repair?.rsNumber, 'RS-1001');
+  assert.equal(res.repairs[0]?.id, 321);
+  assert.equal(res.repairs[0]?.rsNumber, 'RS-1001');
   assert.equal(res.sale, null);
   assert.deepEqual(calls.staged, [], 'no retail lines means no provider order');
   assert.deepEqual(calls.repairLinks, [{ repairId: 321, headerId: 900 }]);
@@ -214,7 +233,7 @@ test('retail-only: an order is staged and NO repair record is created', async ()
 
   const res = await submitCounterTransaction(input({ retailLines: [line()] }), ORG, deps);
 
-  assert.equal(res.repair, null, 'a retail-only visit must not mint a repair');
+  assert.deepEqual(res.repairs, [], 'a retail-only visit must not mint a repair');
   assert.deepEqual(calls.repairInputs, []);
   assert.equal(res.sale?.providerOrderId, 'sq-new');
   assert.equal(res.subtotalCents, 1000);
@@ -227,12 +246,12 @@ test('combined: both halves persist against one header', async () => {
   const { deps, calls } = fakes();
 
   const res = await submitCounterTransaction(
-    input({ service: service(), retailLines: [line({ unitAmountCents: 500 })] }),
+    input({ services: [service()], retailLines: [line({ unitAmountCents: 500 })] }),
     ORG,
     deps,
   );
 
-  assert.equal(res.repair?.id, 321);
+  assert.equal(res.repairs[0]?.id, 321);
   assert.equal(res.sale?.providerOrderId, 'sq-new');
   assert.equal(calls.headers.length, 1, 'one visit is one header');
   assert.equal(res.subtotalCents, 500);
@@ -245,13 +264,13 @@ test('sale staged + repair fails → header goes partially_paid and is reconcila
   const { deps, calls } = fakes({ repairThrows: new Error('constraint violation') });
 
   const res = await submitCounterTransaction(
-    input({ service: service(), retailLines: [line()] }),
+    input({ services: [service()], retailLines: [line()] }),
     ORG,
     deps,
   );
 
   assert.equal(res.status, 'partially_paid');
-  assert.equal(res.repair, null);
+  assert.deepEqual(res.repairs, []);
   assert.equal(res.sale?.providerOrderId, 'sq-new', 'the paid half survives');
   assert.ok(res.warnings.some((w) => /reconcil/i.test(w)));
   assert.ok(calls.patches.some((p) => p.status === 'partially_paid'));
@@ -259,26 +278,54 @@ test('sale staged + repair fails → header goes partially_paid and is reconcila
 
 test('repair fails with NO sale → stays staged, still reported as a warning', async () => {
   const { deps } = fakes({ repairThrows: new Error('boom') });
-  const res = await submitCounterTransaction(input({ service: service() }), ORG, deps);
+  const res = await submitCounterTransaction(input({ services: [service()] }), ORG, deps);
   assert.equal(res.status, 'staged');
-  assert.equal(res.repair, null);
+  assert.deepEqual(res.repairs, []);
   assert.ok(res.warnings.length > 0);
 });
 
 test('an INVALID service line fails the whole submit rather than quietly selling the retail half', async () => {
   // Silently dropping the repair the customer came in for, while charging them
   // for headphones, is worse than a 400.
-  const { deps, calls } = fakes({ repairThrows: new RepairIntakeValidationError(['Serial #']) });
+  //
+  // Now driven by REAL invalid input rather than an injected throw: the check
+  // moved above the first write (SQ6 pre-flight), so this asserts the product
+  // rule at the boundary that actually enforces it.
+  const { deps, calls } = fakes();
 
   await assert.rejects(
-    () => submitCounterTransaction(input({ service: service(), retailLines: [line()] }), ORG, deps),
+    () =>
+      submitCounterTransaction(
+        input({ services: [service({ serialNumber: '' })], retailLines: [line()] }),
+        ORG,
+        deps,
+      ),
     (err: unknown) => {
       assert.ok(err instanceof CounterTransactionValidationError);
-      assert.deepEqual(err.missing, ['Serial #']);
+      assert.ok((err as CounterTransactionValidationError).missing.some((m) => m.includes('Serial #')));
       return true;
     },
   );
   assert.deepEqual(calls.staged, [], 'nothing was staged for payment');
+  assert.deepEqual(calls.headers, [], 'and no header claimed the idempotency key');
+});
+
+test('a validation error that slips PAST the pre-flight degrades, it does not strand the visit', async () => {
+  // Reaching this arm means the shared rule and the intake path disagree — a
+  // bug in the pre-flight. Throwing here would leave an orphan header holding
+  // the visit's client_event_id while the customer's other device is already
+  // recorded, so it warns and stays reconcilable instead.
+  const { deps, calls } = fakes({ repairThrows: new RepairIntakeValidationError(['Serial #']) });
+
+  const res = await submitCounterTransaction(
+    input({ services: [service()], retailLines: [line()] }),
+    ORG,
+    deps,
+  );
+
+  assert.equal(res.repairs.length, 0);
+  assert.equal(calls.headers.length, 1, 'the header stands, so the visit can be reconciled');
+  assert.ok(res.warnings.some((w) => w.includes('needs reconciling')));
 });
 
 test('no payment provider connected → warns, does not fail the visit', async () => {
@@ -291,12 +338,12 @@ test('no payment provider connected → warns, does not fail the visit', async (
 test('a provider throw during staging degrades to a warning', async () => {
   const { deps } = fakes({ stageThrows: new Error('square 503') });
   const res = await submitCounterTransaction(
-    input({ service: service(), retailLines: [line()] }),
+    input({ services: [service()], retailLines: [line()] }),
     ORG,
     deps,
   );
   assert.equal(res.sale, null);
-  assert.equal(res.repair?.id, 321, 'the repair half still landed');
+  assert.equal(res.repairs[0]?.id, 321, 'the repair half still landed');
   assert.ok(res.warnings.some((w) => /could not be staged/i.test(w)));
 });
 
@@ -306,7 +353,7 @@ test('helpdesk work is QUEUED, never called inline — the counter is never bloc
   const { deps, calls } = fakes();
 
   const res = await submitCounterTransaction(
-    input({ service: service(), ticketWork: { mode: 'create' } }),
+    input({ services: [service()], ticketWork: { mode: 'create' } }),
     ORG,
     deps,
   );
@@ -328,7 +375,7 @@ test('helpdesk work is QUEUED, never called inline — the counter is never bloc
 test('attach mode forwards the provider ticket id', async () => {
   const { deps, calls } = fakes();
   await submitCounterTransaction(
-    input({ service: service(), ticketWork: { mode: 'attach', ticketId: 8080 } }),
+    input({ services: [service()], ticketWork: { mode: 'attach', ticketId: 8080 } }),
     ORG,
     deps,
   );
@@ -339,12 +386,12 @@ test('attach mode forwards the provider ticket id', async () => {
 test('a failed enqueue is a warning, not a failed transaction', async () => {
   const { deps } = fakes({ enqueueQueued: false });
   const res = await submitCounterTransaction(
-    input({ service: service(), ticketWork: { mode: 'create' } }),
+    input({ services: [service()], ticketWork: { mode: 'create' } }),
     ORG,
     deps,
   );
   assert.equal(res.ticketWork.queued, false);
-  assert.equal(res.repair?.id, 321, 'the repair still landed');
+  assert.equal(res.repairs[0]?.id, 321, 'the repair still landed');
   assert.ok(res.warnings.some((w) => /could not be queued/i.test(w)));
 });
 
@@ -366,7 +413,7 @@ test('an existing customer is matched on phone DIGITS, ignoring formatting', asy
     existingCustomer: { id: 42, storedPhone: '555-123-4567', storedName: 'Jane D.' },
   });
 
-  const res = await submitCounterTransaction(input({ service: service() }), ORG, deps);
+  const res = await submitCounterTransaction(input({ services: [service()] }), ORG, deps);
 
   assert.equal(res.customerId, 42);
   assert.deepEqual(calls.phoneLookups, ['5551234567']);
@@ -381,7 +428,7 @@ test('the STORED phone is threaded into the repair so the shared helper matches 
     existingCustomer: { id: 42, storedPhone: '555-123-4567', storedName: 'Jane D.' },
   });
 
-  await submitCounterTransaction(input({ service: service() }), ORG, deps);
+  await submitCounterTransaction(input({ services: [service()] }), ORG, deps);
 
   const repairCustomer = calls.repairInputs[0].customer as { phone: string; name: string };
   assert.equal(repairCustomer.phone, '555-123-4567');
@@ -393,7 +440,7 @@ test('a returning customer who types no name gets the name ON FILE, not their ph
   });
 
   await submitCounterTransaction(
-    input({ customer: { phone: '(555) 123-4567' }, service: service() }),
+    input({ customer: { phone: '(555) 123-4567' }, services: [service()] }),
     ORG,
     deps,
   );
@@ -407,7 +454,7 @@ test('a typed name overrides the one on file', async () => {
     existingCustomer: { id: 42, storedPhone: '555-123-4567', storedName: 'J. Doe' },
   });
   await submitCounterTransaction(
-    input({ customer: { phone: '5551234567', name: 'Jane Q. Doe' }, service: service() }),
+    input({ customer: { phone: '5551234567', name: 'Jane Q. Doe' }, services: [service()] }),
     ORG,
     deps,
   );
@@ -418,7 +465,7 @@ test('a typed name overrides the one on file', async () => {
 test('a brand-new phone with no name is rejected rather than creating a nameless record', async () => {
   const { deps } = fakes({ existingCustomer: null });
   await assert.rejects(
-    () => submitCounterTransaction(input({ customer: { phone: '5559998888' }, service: service() }), ORG, deps),
+    () => submitCounterTransaction(input({ customer: { phone: '5559998888' }, services: [service()] }), ORG, deps),
     (err: unknown) => err instanceof CounterTransactionValidationError,
   );
 });
@@ -429,7 +476,7 @@ test('a prior order attaches only when the check confirms it', async () => {
   const { deps, calls } = fakes({ priorOrderConfirms: 'ORD-4787' });
 
   const res = await submitCounterTransaction(
-    input({ service: service(), priorOrder: { orderNumber: '4787', phone: '5551234567' } }),
+    input({ services: [service()], priorOrder: { orderNumber: '4787', phone: '5551234567' } }),
     ORG,
     deps,
   );
@@ -442,7 +489,7 @@ test('a prior order that does not confirm is dropped with a warning, not attache
   const { deps } = fakes({ priorOrderConfirms: null });
 
   const res = await submitCounterTransaction(
-    input({ service: service(), priorOrder: { orderNumber: '4787', phone: '5550000000' } }),
+    input({ services: [service()], priorOrder: { orderNumber: '4787', phone: '5550000000' } }),
     ORG,
     deps,
   );
@@ -459,7 +506,7 @@ test('the prior-order check uses the IDENTITY phone, never a second free-typed o
   await submitCounterTransaction(
     input({
       customer: { phone: '(555) 123-4567', name: 'Jane Doe' },
-      service: service(),
+      services: [service()],
       priorOrder: { orderNumber: '4787', phone: '9999999999' },
     }),
     ORG,
@@ -473,9 +520,9 @@ test('the prior-order check uses the IDENTITY phone, never a second free-typed o
 
 test('the orchestrator never returns a paid status — only the payment webhook may promote', async () => {
   for (const patch of [
-    { service: service() },
+    { services: [service()] },
     { retailLines: [line()] },
-    { service: service(), retailLines: [line()] },
+    { services: [service()], retailLines: [line()] },
   ]) {
     const { deps } = fakes();
     const res = await submitCounterTransaction(input(patch), ORG, deps);
@@ -483,15 +530,101 @@ test('the orchestrator never returns a paid status — only the payment webhook 
   }
 });
 
-test('the transaction idempotency key is threaded into the repair and the staged order', async () => {
+test('the staged order carries the visit key; each device carries its OWN', async () => {
   const { deps, calls } = fakes();
   await submitCounterTransaction(
-    input({ service: service(), retailLines: [line()] }),
+    input({ services: [service()], retailLines: [line()] }),
     ORG,
     deps,
   );
-  assert.equal(calls.repairInputs[0].idempotencyKey, KEY);
+  // One order per visit → the visit's key.
   assert.equal(calls.staged[0].idempotencyKey, KEY);
+  // One ticket per DEVICE → a key per device. This suffix is why a two-device
+  // drop-off produces two helpdesk tickets instead of the second deduping onto
+  // the first (the key is the provider-side dedupe).
+  assert.equal(calls.repairInputs[0].idempotencyKey, `${KEY}:0`);
+});
+
+test('two devices in one visit each get their own repair, ticket key and RS#', async () => {
+  const { deps, calls } = fakes();
+  const res = await submitCounterTransaction(
+    input({
+      services: [
+        service({ productModel: 'QC35 II', serialNumber: 'SN-A' }),
+        service({ productModel: 'Pixel 8', serialNumber: 'SN-B' }),
+      ],
+    }),
+    ORG,
+    deps,
+  );
+
+  assert.equal(calls.repairInputs.length, 2, 'both devices are taken in');
+  assert.equal(calls.repairInputs[0].product.model, 'QC35 II');
+  assert.equal(calls.repairInputs[1].product.model, 'Pixel 8');
+  assert.deepEqual(
+    calls.repairInputs.map((r) => r.idempotencyKey),
+    [`${KEY}:0`, `${KEY}:1`],
+    'a shared key would collapse both devices onto one ticket',
+  );
+  assert.equal(res.repairs.length, 2, 'and the caller learns about both');
+  // Both link to the SAME header — repair_service.counter_transaction_id is
+  // many→one, which is why this needed no migration.
+  assert.equal(calls.repairLinks.length, 2);
+});
+
+test('an INVALID device fails the visit BEFORE anything is written, whatever its position', async () => {
+  // The bug this pins: validating inside the write loop made the outcome depend
+  // on cart order. [invalid, valid] threw after insertHeader, so an orphan
+  // header owned the visit's client_event_id forever and the retry returned
+  // "unchanged" — the valid device was never recorded at all.
+  for (const services of [
+    [service({ serialNumber: '' }), service()],
+    [service(), service({ serialNumber: '' })],
+  ]) {
+    const { deps, calls } = fakes();
+    await assert.rejects(
+      () => submitCounterTransaction(input({ services }), ORG, deps),
+      (err: Error) => err instanceof CounterTransactionValidationError,
+    );
+    assert.deepEqual(calls.headers, [], 'no header — the idempotency key stays free to retry');
+    assert.deepEqual(calls.repairInputs, [], 'and no device is half-taken-in');
+  }
+});
+
+test('a pre-flight failure names WHICH device, so the operator knows where to look', async () => {
+  const { deps } = fakes();
+  await assert.rejects(
+    () => submitCounterTransaction(
+      input({ services: [service(), service({ price: '' })] }),
+      ORG,
+      deps,
+    ),
+    (err: CounterTransactionValidationError) => {
+      assert.ok(
+        err.missing.some((m) => m.includes('Device 2') && m.includes('Price')),
+        `expected a Device 2 / Price message, got ${JSON.stringify(err.missing)}`,
+      );
+      return true;
+    },
+  );
+});
+
+test('device 2 failing does not erase device 1 — the visit is reconcilable, not failed', async () => {
+  // Throwing here would report the whole visit as failed while device 1 sits in
+  // the system with the customer's property attached to it.
+  const { deps, calls } = fakes({ repairThrowsOnIndex: 1 });
+  const res = await submitCounterTransaction(
+    input({ services: [service({ productModel: 'Kept' }), service({ productModel: 'Lost' })] }),
+    ORG,
+    deps,
+  );
+
+  assert.equal(res.repairs.length, 1, 'device 1 stays logged');
+  assert.equal(calls.repairLinks.length, 1);
+  assert.ok(
+    res.warnings.some((w) => w.includes('Device 2 of 2') && w.includes('Lost')),
+    `a warning must name WHICH device failed — got ${JSON.stringify(res.warnings)}`,
+  );
 });
 
 test('zero-quantity lines are dropped before totalling', async () => {

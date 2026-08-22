@@ -3,12 +3,19 @@
 /**
  * Plans Live right-rail occupant — live MDX HTML Monitor + collapsed run history.
  * Registers on the house {@link DetailStackRailRegistrar} (push, non-modal).
+ *
+ * **ONE band (2026-08-21).** The rail used to stack a `DeskRailChromeRow` over a
+ * `PaneHeaderLabel`, so the top of the panel read as two rows — `[⤢][✕]` on one
+ * and `Master plan / Live preview` on the next. It now composes the house
+ * {@link DeskInspectorIndexShell} band in `stance='standalone'`: this rail opens
+ * from the console's own toggle, never off an index, so it owes no Back — and
+ * the eyebrow's second line is gone, its identity being the console around it.
+ * The dismiss is the host's singleton `✕`, whose cell the band reserves.
  */
 
 import { useState } from 'react';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
-import { DeskRailChromeRow } from '@/components/right-rail/DeskRailChromeRow';
-import { PaneHeaderLabel } from '@/components/ui/pane-header';
+import { DeskInspectorIndexShell } from '@/components/right-rail/DeskInspectorIndexShell';
 import { EventTimeline } from '@/components/ui/EventTimeline';
 import { cycleForgeStepsToTimeline, type CycleForgeStepRow } from '@/lib/timeline/cycle-forge';
 import { MasterPlanView } from '@/components/forge/MasterPlanView';
@@ -122,7 +129,6 @@ export function ForgePlanRail({
   open,
   onClose,
   title,
-  eyebrow,
   mdx,
   highlightTicketId,
   planStatus,
@@ -136,8 +142,13 @@ export function ForgePlanRail({
 }: {
   open: boolean;
   onClose: () => void;
+  /** The band's ONE title — the current segment, never a path or a crumb. */
   title: string;
-  eyebrow: string;
+  /**
+   * Ignored since 2026-08-21 — the band is one line. Kept so the console
+   * compiles; the plan's provenance reads from the console around this rail.
+   */
+  eyebrow?: string;
   mdx: string;
   highlightTicketId?: string | null;
   planStatus: string;
@@ -160,44 +171,48 @@ export function ForgePlanRail({
       ariaLabel="Live master plan"
     >
       <div className="flex h-full min-h-0 flex-col overflow-hidden">
-        <div className="shrink-0 border-b border-border-hairline bg-surface-card/90 backdrop-blur-xl">
-          <DeskRailChromeRow onClose={onClose} closeTitle="Hide plan panel" />
-          <div className="px-3 pb-2">
-            <PaneHeaderLabel eyebrow={eyebrow} value={title} />
-          </div>
-        </div>
-        {showPreview ? (
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3">
-            {planStatus === 'connecting' && (
-              <p className="flex items-center gap-2 text-role-caption text-text-muted">
-                <Loader2 className="h-4 w-4 animate-spin" /> Loading the live plan…
-              </p>
-            )}
-            {planStatus === 'error' && (
-              <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-6 text-center text-role-caption text-rose-700">
-                Could not join the live plan{planError ? ` — ${planError}` : ''}. The file copy in
-                <code className="mx-1 font-mono">master-plan.mdx</code> is still the source of truth.
+        <DeskInspectorIndexShell
+          // No index above this rail — the console's own toggle opens it — so
+          // it declares `standalone` and owes no Back.
+          stance="standalone"
+          title={title}
+          ariaLabel="Live master plan"
+          testId="forge-plan-rail"
+          body={
+            showPreview ? (
+              <div className="px-3 py-3">
+                {planStatus === 'connecting' && (
+                  <p className="flex items-center gap-2 text-role-caption text-text-muted">
+                    <Loader2 className="h-4 w-4 animate-spin" /> Loading the live plan…
+                  </p>
+                )}
+                {planStatus === 'error' && (
+                  <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-6 text-center text-role-caption text-rose-700">
+                    Could not join the live plan{planError ? ` — ${planError}` : ''}. The file copy in
+                    <code className="mx-1 font-mono">master-plan.mdx</code> is still the source of truth.
+                  </div>
+                )}
+                {(planStatus === 'live' || (mdx && planStatus !== 'connecting')) && (
+                  <MasterPlanView mdx={mdx} highlightTicketId={highlightTicketId} />
+                )}
               </div>
-            )}
-            {(planStatus === 'live' || (mdx && planStatus !== 'connecting')) && (
-              <MasterPlanView mdx={mdx} highlightTicketId={highlightTicketId} />
-            )}
-          </div>
-        ) : (
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3">
-            {highlightTicketId ? (
-              <p className="mb-3 text-role-caption text-text-muted">
-                Selected{' '}
-                <span className="font-semibold text-text-default">{highlightTicketId}</span>
-                {' — '}visible in the document.
-              </p>
             ) : (
-              <p className="mb-3 text-role-caption text-text-muted">
-                Pick a ticket in the outline, or expand run history below.
-              </p>
-            )}
-          </div>
-        )}
+              <div className="px-3 py-3">
+                {highlightTicketId ? (
+                  <p className="mb-3 text-role-caption text-text-muted">
+                    Selected{' '}
+                    <span className="font-semibold text-text-default">{highlightTicketId}</span>
+                    {' — '}visible in the document.
+                  </p>
+                ) : (
+                  <p className="mb-3 text-role-caption text-text-muted">
+                    Pick a ticket in the outline, or expand run history below.
+                  </p>
+                )}
+              </div>
+            )
+          }
+        />
         {showRuns ? (
           <div className="shrink-0">
             <RunHistoryAdvanced runs={runs} loading={runsLoading} error={runsError} defaultOpen={!showPreview} />

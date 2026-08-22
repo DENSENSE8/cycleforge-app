@@ -4,7 +4,7 @@ import { useCallback } from 'react';
 import { AnimatePresence, motion } from '@/design-system/motion';
 import { LabelsOrderWorkspace } from '@/components/outbound/labels/LabelsOrderWorkspace';
 import { LabelsWorkspaceView } from '@/components/outbound/labels/LabelsWorkspaceView';
-import { NewOrderEntryOverlay } from '@/components/orders/NewOrderEntryOverlay';
+import { OrderIngestRail } from '@/components/outbound/orders/OrderIngestRail';
 import { useOutboundUrlState } from '@/hooks/useOutboundUrlState';
 import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
 import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
@@ -60,7 +60,7 @@ export function LabelsWorkspace() {
         ) : null}
       </AnimatePresence>
 
-      <NewOrderEntryOverlay open={newOpen} onClose={closeNew} />
+      <OrderIngestRail open={newOpen} onClose={closeNew} initialLeaf="manual" />
     </div>
   );
 }

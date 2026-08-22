@@ -2,7 +2,7 @@
 
 import { useCallback, useRef, type ReactNode, type RefObject } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { getDaysLateNullable } from '@/utils/date';
+import { getCurrentPSTDateKey, getDaysLateNullable } from '@/utils/date';
 import { useStaffNameMap } from '@/hooks/useStaffNameMap';
 import { useUIModeOptional } from '@/design-system/providers/UIModeProvider';
 import { OrderSearchEmptyState } from '@/components/dashboard/OrderSearchEmptyState';
@@ -40,6 +40,34 @@ import { useOrdersQueuePlane } from './useOrdersQueuePlane';
 import { AddTrackingPopover } from '@/components/outbound/labels/AddTrackingPopover';
 import { useViewportForcedHidden } from './ViewportForcedHidden';
 import { useGridColumnDisplay } from '@/design-system/components/grid/useGridColumnDisplay';
+
+/**
+ * `getDaysLateNullable`, memoized on `(today, deadline)`.
+ *
+ * The row list called it once per ROW per render, and each call builds TWO
+ * `Intl.DateTimeFormat` instances — one to fold the deadline into a PST civil
+ * date, one for today's. A 62-row To-ship window therefore constructed ~124
+ * formatters on every render of the table, for a value that is a pure function
+ * of a string and the civil date.
+ *
+ * `todayKey` is part of the key rather than captured, so the answer self-heals
+ * across a PST midnight instead of pinning a desk left open overnight to
+ * yesterday's lateness. The underlying resolver is untouched — this is a cache
+ * in front of the date SoT, never a second implementation of the arithmetic.
+ */
+const DAYS_LATE_CACHE = new Map<string, number | null>();
+
+function daysLateOn(todayKey: string, deadlineAt: string | null | undefined): number | null {
+  const key = `${todayKey}\u0000${deadlineAt ?? ''}`;
+  const cached = DAYS_LATE_CACHE.get(key);
+  if (cached !== undefined) return cached;
+  const value = getDaysLateNullable(deadlineAt);
+  // Bounded: one entry per distinct deadline string per civil day. Dropping the
+  // whole map on overflow is fine — it is a cache, not state.
+  if (DAYS_LATE_CACHE.size > 4096) DAYS_LATE_CACHE.clear();
+  DAYS_LATE_CACHE.set(key, value);
+  return value;
+}
 
 interface UseOrdersSpreadsheetOptions {
   records: ShippedOrder[];
@@ -171,6 +199,10 @@ export function useOrdersSpreadsheet({
   OrdersQueueColumn
 > {
   const { displayByKey: columnDisplay } = useGridColumnDisplay(tableId);
+  // Resolved ONCE per table render and threaded into every row's lateness
+  // lookup — see `daysLateOn`. Reading it per row is what made the civil-date
+  // formatter a per-row cost.
+  const todayKey = getCurrentPSTDateKey();
   const searchParams = useSearchParams();
   const { isMobile } = useUIModeOptional();
   const { getStaffName } = useStaffNameMap();
@@ -292,7 +324,8 @@ export function useOrdersSpreadsheet({
           testerId={(r.tested_by as number | null) ?? (r.tester_id as number | null)}
           packerId={(r.packed_by as number | null) ?? (r.packer_id as number | null)}
           rowStatus={resolveRowStatus(r, queueMode)}
-          daysLate={getDaysLateNullable(
+          daysLate={daysLateOn(
+            todayKey,
             (r.deadline_at as string | null | undefined) ||
               (r.ship_by_date as string | null | undefined),
           )}
@@ -313,6 +346,13 @@ export function useOrdersSpreadsheet({
       );
     },
     [
+      // `columnDisplay` is READ in the body (threaded to every row) — omitting
+      // it froze this closure on the prefs that happened to be resolved at
+      // first render, so a staffer who changed a column's emphasis saw the
+      // Fields menu update and the grid keep the old paint until something
+      // unrelated (a selection, a sort) happened to rebuild the callback.
+      columnDisplay,
+      todayKey,
       getStaffName,
       selectMode,
       selectedIds,

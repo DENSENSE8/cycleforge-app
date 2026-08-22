@@ -8,6 +8,14 @@
  *
  * Ticket → self-assign (`support_ticket_assignments` → Today Attention).
  * Tracking → subscribe to the linked inbound carton (`staff_subscriptions`).
+ *
+ * **ONE band (2026-08-21).** The rail used to paint a `WatchRailHeader` above
+ * the shell — an eyebrow (`Watch`) over `Ticket or tracking`, a second header
+ * line restating on two rows what the index below it already lists as two rows.
+ * `Watch` is now the band's single-word title on the index stage, and each leaf
+ * replaces it with its own segment (`Ticket` / `Tracking`). Back and the
+ * reserved host `⤢ ✕` cell come with the shell's band; the rail paints no close
+ * of its own.
  */
 
 import { useCallback, useEffect, useId, useMemo, useState } from 'react';
@@ -19,7 +27,6 @@ import {
   DeskInspectorIndexShell,
   type DeskInspectorLeaf,
 } from '@/components/right-rail/DeskInspectorIndexShell';
-import { PaneHeaderLabel } from '@/components/ui/pane-header';
 import { Button, TextField } from '@/design-system/primitives';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/lib/toast';
@@ -56,11 +63,7 @@ export function MyDayWatchRail({
       ariaLabel="Watch ticket or tracking"
     >
       {open ? (
-        <MyDayWatchRailBody
-          canTicket={canTicket}
-          canTracking={canTracking}
-          onClose={onClose}
-        />
+        <MyDayWatchRailBody canTicket={canTicket} canTracking={canTracking} />
       ) : null}
     </DetailStackRailRegistrar>
   );
@@ -69,11 +72,9 @@ export function MyDayWatchRail({
 function MyDayWatchRailBody({
   canTicket,
   canTracking,
-  onClose,
 }: {
   canTicket: boolean;
   canTracking: boolean;
-  onClose: () => void;
 }) {
   const queryClient = useQueryClient();
   const defaultKind: WatchKind = canTicket ? 'ticket' : 'tracking';
@@ -200,21 +201,33 @@ function MyDayWatchRailBody({
     tracking,
   ]);
 
+  // No permitted topic ⇒ no index to route through, so the band declares
+  // `standalone` (and owes no Back) rather than offering a chevron to nowhere.
   if (leaves.length === 0) {
     return (
       <div className="flex h-full min-h-0 flex-col overflow-hidden">
-        <WatchRailHeader onClose={onClose} />
-        <p className="p-4 text-role-caption text-text-muted">
-          You do not have permission to watch tickets or tracking.
-        </p>
+        <DeskInspectorIndexShell
+          stance="standalone"
+          title="Watch"
+          ariaLabel="Watch"
+          testId="my-day-watch-inspector-index"
+          body={
+            <p className="p-4 text-role-caption text-text-muted">
+              You do not have permission to watch tickets or tracking.
+            </p>
+          }
+        />
       </div>
     );
   }
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
-      <WatchRailHeader onClose={onClose} />
       <DeskInspectorIndexShell
+        stance="index"
+        // Index-stage title. On a leaf the band paints that leaf's own segment
+        // (`Ticket` / `Tracking`) — the current segment, never a trail.
+        title="Watch"
         leaves={leaves}
         activeId={navId}
         onActiveIdChange={setNavId}
@@ -222,20 +235,6 @@ function MyDayWatchRailBody({
         testId="my-day-watch-inspector-index"
         backLabel="Back to topics"
       />
-    </div>
-  );
-}
-
-function WatchRailHeader({ onClose }: { onClose: () => void }) {
-  return (
-    <div className="shrink-0 border-b border-border-hairline bg-surface-card/90 backdrop-blur-xl">
-      <div className="flex min-w-0 flex-col gap-0.5 px-2 pb-2 pt-1">
-        <PaneHeaderLabel
-          eyebrow="Watch"
-          value="Ticket or tracking"
-          valueClassName="truncate text-role-caption font-semibold text-text-default"
-        />
-      </div>
     </div>
   );
 }

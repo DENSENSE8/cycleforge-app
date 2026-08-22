@@ -5,11 +5,21 @@
  * occupant (`modal={false}`) keyed on `?open=<kind>:<ref>`, replacing the legacy
  * inline `InventoryDetailsOverlay` for the migrated `/inventory/units` route.
  *
- * Chrome is the Desk single-card golden (`BinDetailFlyout`): `DeskRailChromeRow`
- * (`→|` close) over a dense `PaneHeaderLabel` identity — never the hero-title
+ * Chrome is the ONE band: `DeskInspectorIndexShell` in `stance="standalone"`.
+ * Nothing routes into this rail through an index — a grid row writes
+ * `?open=unit:<ref>` directly — so it owes no Back and declares that with the
+ * stance instead of by omitting a header. Never the hero-title
  * `InventoryDetailPanelShell` header, which the right-rail SoT bans on a record
  * inspector (`display/right-rail-inspector.md`). The work surface reflows beside
  * it (push, `edgeCollapse` / resize inherited from the host).
+ *
+ * **One line, not two (2026-08-21).** The chrome used to stack a
+ * `DeskRailChromeRow` over a `PaneHeaderLabel` whose eyebrow (`Unit`) sat above
+ * the mono record ref — an eyebrow/title pair on a second header line under the
+ * band. The kind is now the band's single-word title and the ref rides the
+ * band's trailing cell as a read-only mono cursor, beside the `▦` door onto
+ * grid column details. Close stays the host's singleton `✕`; the band reserves
+ * its cell.
  *
  * Body scope — the units grid only ever writes `unit:`, so `unit` is the only
  * kind Wave 1 exercises:
@@ -27,8 +37,8 @@
  */
 
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
-import { DeskRailChromeRow } from '@/components/right-rail/DeskRailChromeRow';
-import { PaneHeaderLabel } from '@/components/ui/pane-header';
+import { DeskInspectorIndexShell } from '@/components/right-rail/DeskInspectorIndexShell';
+import { InspectorColumnDisplayButton } from '@/components/right-rail/InspectorColumnDisplayButton';
 import type {
   InventoryDetailKind,
   OpenInventoryDetailsPayload,
@@ -37,7 +47,8 @@ import { ByUnitView } from './ByUnitView';
 import { AlertDetailsPanel } from './panels/AlertDetailsPanel';
 import { CountCampaignDetailsPanel } from './panels/CountCampaignDetailsPanel';
 
-const KIND_EYEBROW: Record<InventoryDetailKind, string> = {
+/** Band title — the CURRENT segment, one noun. The ref is identity, not title. */
+const KIND_TITLE: Record<InventoryDetailKind, string> = {
   unit: 'Unit',
   sku: 'SKU',
   bin: 'Bin',
@@ -87,7 +98,7 @@ export function InventoryInspectorRail({
   if (!selection) return null;
 
   const { kind, ref: recordRef } = selection;
-  const eyebrow = KIND_EYEBROW[kind];
+  const title = KIND_TITLE[kind];
 
   return (
     // STABLE occupant id per KIND (`detail:inventory-unit`, not per-ref): the host
@@ -97,25 +108,31 @@ export function InventoryInspectorRail({
       id={`detail:inventory-${kind}`}
       onClose={onClose}
       modal={false}
-      ariaLabel={`${eyebrow} details`}
+      ariaLabel={`${title} details`}
     >
       <div className="flex h-full min-h-0 flex-col overflow-hidden">
-        <div className="shrink-0 border-b border-border-hairline bg-surface-card/90 backdrop-blur-xl">
-          <DeskRailChromeRow onClose={onClose} closeTitle="Close details" columnDisplay />
-          <div className="flex min-w-0 flex-col gap-0.5 px-2 pb-2 pt-1">
-            <PaneHeaderLabel
-              eyebrow={eyebrow}
-              valueClassName="truncate font-mono text-role-caption font-semibold text-text-default"
-              value={recordRef}
-              valueTitle={recordRef}
-            />
-          </div>
-        </div>
-
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          {/* Remount the body on record change so it re-fetches server truth. */}
-          <InspectorBody key={`${kind}:${recordRef}`} kind={kind} recordRef={recordRef} />
-        </div>
+        <DeskInspectorIndexShell
+          stance="standalone"
+          title={title}
+          ariaLabel={`${title} details`}
+          testId="inventory-inspector-rail"
+          headerRightSlot={
+            <>
+              {/* Read-only identity cell — the record this rail is showing,
+                  never a verb. Verbs (`▦`) follow it, then the host's cells. */}
+              <span
+                className="flex h-full max-w-[18ch] items-center truncate px-1.5 font-mono text-role-caption text-text-soft"
+                title={recordRef}
+                data-testid="inventory-inspector-ref"
+              >
+                {recordRef}
+              </span>
+              <InspectorColumnDisplayButton />
+            </>
+          }
+          // Remount the body on record change so it re-fetches server truth.
+          body={<InspectorBody key={`${kind}:${recordRef}`} kind={kind} recordRef={recordRef} />}
+        />
       </div>
     </DetailStackRailRegistrar>
   );

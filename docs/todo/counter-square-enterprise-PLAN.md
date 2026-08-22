@@ -123,7 +123,42 @@ A repair line joins the staged Order as a line item (deposit or full — **produ
 "View the exact details and process it better" = compose the station SoTs rather than a new twin: `EntityStationPane` with `stance: 'preview'` for the read view, `CartonContextCard` as the identity header, `StationDisplaysPushColumn` for the leaves. `pattern-evolution.md` §5 is explicit that a read surface composes the SAME assembly in a declared stance — the `/search` 1001-line hand-rolled twin is the anti-pattern this avoids.
 
 ### SQ6 · Multi-repair (the silent drop)
-Either block it in `visit-triage` (cheap, honest) or link N repairs per header (schema change). §3.
+
+**Status: DONE 2026-08-21 — full `npm run verify` green (6,322 unit tests).** No migration was needed:
+`repair_service.counter_transaction_id` is a **many→one** link and `counter_transactions` has no repair column,
+so N repairs per visit was always schema-supported. The 1:1 lived only in the mapper and the orchestrator.
+
+`service` → `services[]` end to end: types, mapper, orchestrator loop, wire contract, session-store, ledger,
+intake form, repair pane, and every test. The singular field was **removed, not aliased** — an alias is a silent
+opt-out every unvisited call site takes (`backend-patterns.md`), and removal made the compiler name all six
+sites, including the desk lane that lost a device with no warning at all.
+
+**Three defects found and fixed that were NOT the reported one:**
+
+1. **`KioskRepairPane` overwrote device #1.** Selecting a second product fell back to `repairs[0]`, so the first
+   device's serial, issues and signature were destroyed *before submit ever ran* — a worse loss than the
+   mapper's, because it discarded data the customer had already given. A different model is now a new line.
+2. **`visit-triage` blocked the visit** ("Only one repair per visit — remove N extra"). That cap existed only
+   because submit dropped the extras; refusing the visit was the least-bad option. Removed — each device still
+   raises its own per-line blockers, so nothing is under-checked.
+3. **The wire rename silently stripped the old key.** `BodySchema` was a plain `z.object`, which *discards*
+   unknown keys: a tablet on the old build posting `serviceLine` parsed to `{}` and staged a retail sale with
+   the customer's device recorded **nowhere**, behind a success screen. Now `.strict()`, with a distinguishable
+   `STALE_CLIENT` answer so the operator is told to reload rather than seeing "Transaction failed".
+
+**Validation was hoisted above the first write.** Validating inside the loop made the outcome depend on cart
+ORDER: `[invalid, valid]` threw *after* `insertHeader`, so an orphan header owned the visit's `client_event_id`
+forever and the retry short-circuited — the valid device was never recorded. `[valid, invalid]` returned 200
+with the error downgraded to a warning. Both are gone; the rule itself is **imported** from
+`submitRepairIntake` (`missingRepairIntakeFields`) rather than copied, so the two cannot drift.
+
+**Per-device idempotency:** the repair key is `${clientEventId}:${index}` and the outbox key
+`${clientEventId}:${repair.id}` — a shared visit key would collapse a two-device drop-off onto one helpdesk
+ticket. Replay safety is unchanged and rests on one ordering: `findHeaderByClientEvent` → early return →
+`insertHeader` → the loop. **Never move staging or the loop above `insertHeader`.**
+
+**Partial failure:** device 2 failing leaves device 1 logged and names which device failed, rather than
+reporting the whole visit as failed while the customer's property sits in the system.
 
 ## 3. Decisions I cannot make for you
 

@@ -135,3 +135,21 @@ interface FrozenLike {
 export function gridFrozenKeys<C extends FrozenLike>(columns: readonly C[]): C['key'][] {
   return columns.filter((c) => c.frozen).map((c) => c.key);
 }
+
+/**
+ * A FLUSH track — zero cell inset, contents edge to edge.
+ *
+ * The compound row's two gutters (`select` · `thumb`): a 48px checkmark square
+ * and a 48px photo, both asked to run corner to corner with no padding. Every
+ * other track keeps the spreadsheet's `px-2` so its text does not touch the
+ * column rule.
+ *
+ * Declared here beside {@link isGridColumnFillTrack} / {@link isGridColumnPaintTrack}
+ * so the header and the body cell read ONE answer. They diverged once already
+ * on exactly this kind of question — a header that insets a track whose body
+ * does not puts the column rule and the sort affordance at a different x than
+ * the cells beneath them, which is visible as a wobble down the whole grid.
+ */
+export function isGridColumnFlushTrack(column: { key: string }): boolean {
+  return column.key === 'select' || column.key === 'thumb';
+}

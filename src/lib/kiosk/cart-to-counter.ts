@@ -2,9 +2,8 @@
  * Map polymorphic kiosk cart lines → `CounterTransactionInput` parts.
  *
  * D1 preserved: UI cart is polymorphic; persist is still a counter header +
- * optional retail staging + optional single repair_service row. Extra REPAIR
- * lines beyond the first are reported in `extraRepairCount` so the host can
- * warn — orchestrator remains 1:1 for service in this shift.
+ * optional retail staging + a repair_service row PER device dropped off.
+ * (Was 1:1 until 2026-08-21 — see `services` below.)
  *
  * BUYBACK → retail lines with negative `unitAmountCents` (credit).
  */
@@ -22,17 +21,22 @@ import type {
 
 interface KioskCartMappedParts {
   retailLines: CounterRetailLine[];
-  service: CounterServiceLine | null;
-  /** REPAIR lines not mapped into `service` (orchestrator is still 1:1). */
-  extraRepairCount: number;
+  /**
+   * Every REPAIR line, in cart order.
+   *
+   * Was `service` + `extraRepairCount` until 2026-08-21: the first repair won
+   * and the rest were counted into a field with no consumer anywhere, so a
+   * two-device drop-off silently became a one-device record. There is nothing
+   * left to count, so the counter is gone rather than left reporting zero.
+   */
+  services: CounterServiceLine[];
 }
 
 export function mapKioskCartToCounterParts(
   lines: readonly KioskCartLine[],
 ): KioskCartMappedParts {
   const retailLines: CounterRetailLine[] = [];
-  let service: CounterServiceLine | null = null;
-  let extraRepairCount = 0;
+  const services: CounterServiceLine[] = [];
 
   for (const line of lines) {
     if (line.type === 'RETAIL' && isRetailPayload(line.payload)) {
@@ -75,10 +79,9 @@ export function mapKioskCartToCounterParts(
         signatureDataUrl: p.signatureDataUrl ?? null,
         signatureStrokes: p.signatureStrokes,
       };
-      if (!service) service = mapped;
-      else extraRepairCount += 1;
+      services.push(mapped);
     }
   }
 
-  return { retailLines, service, extraRepairCount };
+  return { retailLines, services };
 }

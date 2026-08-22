@@ -5,6 +5,21 @@
  * activity. Thin composition shell: data + fetch live in {@link useFbaBoardDetail};
  * the plan-entry card + armed delete control are presentational components
  * under `./board-detail/`.
+ *
+ * **Chrome is ONE band** ({@link DeskInspectorIndexShell}, `stance="standalone"`).
+ * There is no index above this panel — the board grid is the list, and a row
+ * click lands here directly — so it declares `standalone` and is owed no Back
+ * cell. Everything else rides the single band: the read-only expected / actual
+ * metric, then the contextual verbs, then the host's own `⤢` / `✕` in the
+ * reserved trailing cell the shell paints for them.
+ *
+ * **The panel paints NO close.** `RightRailHost` owns the singleton `✕` and
+ * fires `closeRightPanel()`, which runs the lifecycle half AND this occupant's
+ * `onClose`. This file used to stack a `DeskRailChromeRow` over a
+ * `PaneHeaderLabel` identity line over an FNSKU + totals row — three rows of
+ * chrome where the contract allows one — and the identity pair (eyebrow
+ * "FBA Item" over the product title) was a second header line. Identity moved
+ * into the body, where a long title can wrap without deforming the band.
  */
 
 import { Check, ClipboardList, Loader2 } from '@/components/Icons';
@@ -13,7 +28,8 @@ import { FnskuChip } from '@/components/ui/CopyChip';
 import { PaneHeaderActionBar, PaneHeaderLabel } from '@/components/ui/pane-header';
 import { FnskuCatalogInfoPanel } from './FnskuCatalogInfoPanel';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
-import { DeskRailChromeRow } from '@/components/right-rail/DeskRailChromeRow';
+import { DeskInspectorIndexShell } from '@/components/right-rail/DeskInspectorIndexShell';
+import { InspectorColumnDisplayButton } from '@/components/right-rail/InspectorColumnDisplayButton';
 import { scanActionLabel, formatCreatedAt, type FbaBoardDetailPanelProps } from './board-detail/board-detail-shared';
 import { useFbaBoardDetail } from './board-detail/useFbaBoardDetail';
 import { PlanEntryCard } from './board-detail/PlanEntryCard';
@@ -34,8 +50,8 @@ export function FbaBoardDetailPanel({
   } = useFbaBoardDetail({ item, onSaved });
 
   return (
-    // Non-modal + STABLE occupant id: the header action bar walks the board
-    // up/down, and the host keys its crossfade on the occupant id — a per-FNSKU
+    // Non-modal + STABLE occupant id: the board walks up/down behind this
+    // panel, and the host keys its crossfade on the occupant id — a per-FNSKU
     // id played exit→empty→enter on every step while the board sat dimmed
     // behind a scrim it needed to read.
     <DetailStackRailRegistrar
@@ -45,74 +61,57 @@ export function FbaBoardDetailPanel({
       ariaLabel={`FBA ${item.fnsku} details`}
     >
       <div className="flex h-full min-h-0 flex-col overflow-hidden">
-      {/* ── Fixed header — never scrolls ───────────────────────────────
-          Desk single-card chrome (`display/right-rail-inspector.md`):
-          Row 1 is close + contextual icons + ↑↓ in ONE in-flow row; Row 2 is
-          dense identity (eyebrow + the FNSKU, the short durable key).
-
-          This replaced a 4-row header whose Row 2 was a fixed `h-[100px]`
-          `line-clamp-4 text-lg` product title — a wrapping hero title, banned
-          on a record inspector — and whose Row 3 routed close through
-          `PanelActionBar`, which **drops `onClose`** ("close lives on
-          RightRailHost (backdrop / Esc)"). That has not been true since the
-          non-modal flip: there is no scrim, so this panel shipped with no
-          visible dismiss at all. `DeskRailChromeRow` restores it.
-
-          Passing contextual `actions` and prev/next to ONE `PaneHeaderActionBar`
-          is also banned; here ↑↓ belong to the chrome row and the actions ride
-          its `actions` slot. */}
-      <div className="shrink-0 overflow-hidden bg-surface-card">
-        <DeskRailChromeRow
-          onClose={onClose}
-          columnDisplay
-          actions={
-            panelActions.length ? (
-              <PaneHeaderActionBar
-                iconOnly
-                // `variant` DEFAULTS to 'card' — the deleted chrome pill. It is
-                // banned on a registrar file, and the ban only ever matched an
-                // explicit `variant="card"`, so omitting it passed the guard
-                // while rendering the thing the guard exists to stop.
-                variant="flat"
-                actions={panelActions.map((a) => ({
-                  key: a.key,
-                  label: a.label,
-                  icon: <span className={a.toneClassName}>{a.icon}</span>,
-                  onClick: a.onAction,
-                }))}
-              />
-            ) : undefined
+        <DeskInspectorIndexShell
+          stance="standalone"
+          title="FBA"
+          ariaLabel="FBA item"
+          testId="fba-board-detail"
+          headerRightSlot={
+            <>
+              {/* Read-only metric — planned vs scanned for this FNSKU. */}
+              <span className="flex h-full items-center gap-3 px-1 text-role-caption">
+                <span className="flex items-center gap-1 font-semibold text-text-muted">
+                  <ClipboardList className="h-3 w-3 text-purple-500" />
+                  <span className="tabular-nums">{totalExpected}</span>
+                </span>
+                <span className="flex items-center gap-1 font-semibold text-emerald-700">
+                  <Check className="h-3 w-3 text-emerald-500" />
+                  <span className="tabular-nums">{totalActual}</span>
+                </span>
+              </span>
+              <InspectorColumnDisplayButton testId="fba-board-column-display" />
+              {panelActions.length ? (
+                <PaneHeaderActionBar
+                  iconOnly
+                  // `variant` DEFAULTS to 'card' — the deleted chrome pill. It is
+                  // banned on a registrar file, and the ban only ever matched an
+                  // explicit `variant="card"`, so omitting it passed the guard
+                  // while rendering the thing the guard exists to stop.
+                  variant="flat"
+                  className="py-0"
+                  actions={panelActions.map((a) => ({
+                    key: a.key,
+                    label: a.label,
+                    icon: <span className={a.toneClassName}>{a.icon}</span>,
+                    onClick: a.onAction,
+                  }))}
+                />
+              ) : null}
+            </>
           }
-        />
+          body={
+            <div className="px-6 py-4">
+              {/* Identity — body, never a second header line. */}
+              <div className="mb-3 flex items-start justify-between gap-3">
+                <PaneHeaderLabel
+                  eyebrow="FBA Item"
+                  value={headerTitle}
+                  valueTitle={headerTitle}
+                />
+                <FnskuChip value={item.fnsku} />
+              </div>
 
-        <div className="border-b border-border-soft px-6 pb-2">
-          <PaneHeaderLabel
-            eyebrow="FBA Item"
-            value={headerTitle}
-            valueTitle={headerTitle}
-          />
-        </div>
-
-        {/* FNSKU + totals */}
-        <div className="flex items-center justify-between px-6 pt-2 pb-2">
-          <div className="flex items-center gap-4 text-role-caption">
-            <span className="flex items-center gap-1 font-semibold text-text-muted">
-              <ClipboardList className="h-3 w-3 text-purple-500" />
-              <span className="tabular-nums">{totalExpected}</span>
-            </span>
-            <span className="flex items-center gap-1 font-semibold text-emerald-700">
-              <Check className="h-3 w-3 text-emerald-500" />
-              <span className="tabular-nums">{totalActual}</span>
-            </span>
-          </div>
-          <FnskuChip value={item.fnsku} />
-        </div>
-      </div>
-
-      {/* ── Scrollable body ────────────────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="px-6 py-4">
-          <FnskuCatalogInfoPanel
+              <FnskuCatalogInfoPanel
             fnsku={item.fnsku}
             productTitle={item.display_title}
             condition={item.condition}
@@ -230,8 +229,9 @@ export function FbaBoardDetailPanel({
           <section className="py-4">
             <FbaDeleteControl entries={entries} onDeleted={() => { onClose(); onSaved(); }} />
           </section>
-        </div>
-      </div>
+            </div>
+          }
+        />
       </div>
     </DetailStackRailRegistrar>
   );

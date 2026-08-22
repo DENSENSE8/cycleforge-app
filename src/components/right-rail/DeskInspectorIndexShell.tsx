@@ -39,6 +39,9 @@ import { cn } from '@/utils/_cn';
 
 export const DESK_INSPECTOR_INDEX = STATION_DISPLAY_INDEX;
 
+/** Stable identity so `stance='standalone'` never re-renders on a fresh []. */
+const EMPTY_LEAVES: readonly DeskInspectorLeaf[] = Object.freeze([]);
+
 export type DeskInspectorLeaf = {
   id: string;
   label: string;
@@ -74,7 +77,9 @@ function leafToSectionTab(leaf: DeskInspectorLeaf): SectionTab {
 }
 
 export function DeskInspectorIndexShell({
-  leaves,
+  stance,
+  body = null,
+  leaves = EMPTY_LEAVES,
   activeId: activeIdProp,
   onActiveIdChange,
   /**
@@ -86,6 +91,8 @@ export function DeskInspectorIndexShell({
   indexRightSlot = null,
   leafTrailing = null,
   chrome = null,
+  headerRightSlot = null,
+  title,
   ariaLabel = 'Inspector topics',
   testId = 'desk-inspector-index',
   backLabel = 'Back to topics',
@@ -93,7 +100,29 @@ export function DeskInspectorIndexShell({
   indexFilter = false,
   className,
 }: {
-  leaves: readonly DeskInspectorLeaf[];
+  /**
+   * REQUIRED, no default — the enforcement hinge.
+   *
+   * `'index'` mounts the Root Index → leaf stage (Back is owed on every leaf).
+   * `'standalone'` paints the same band over a plain `body` (no index, no Back).
+   *
+   * It has no default on purpose: a rail that has not answered "am I routed
+   * through the one index?" must not compile. Defaulting it would let every
+   * surface that was never migrated keep the old shape silently — which is how
+   * 31 of 44 rails ended up with no Back and no route to an index.
+   */
+  stance: 'index' | 'standalone';
+  /** `stance='standalone'` only — the panel body under the band. */
+  body?: ReactNode;
+  /** `stance='index'` only. */
+  leaves?: readonly DeskInspectorLeaf[];
+  /** Band title. Required for `standalone`; `index` derives it from the leaf. */
+  title?: string;
+  /**
+   * Read-only metric on the band — `N / M` cursor, elapsed, progress ring.
+   * NEVER a verb: verbs crowd the two window controls off the flush corner.
+   */
+  headerRightSlot?: ReactNode;
   activeId?: string;
   onActiveIdChange?: (id: string) => void;
   defaultActiveId?: string;
@@ -111,6 +140,7 @@ export function DeskInspectorIndexShell({
    * and `[‹] Documents` on the next. The Displays column it was modelled on has
    * always been ONE band. Pass the chrome here instead of stacking a row.
    */
+  /** @deprecated Use {@link headerRightSlot}. Kept so the 13 existing callers compile. */
   chrome?: ReactNode;
   ariaLabel?: string;
   testId?: string;
@@ -232,7 +262,12 @@ export function DeskInspectorIndexShell({
    * them at every stage — that is what a panel's own stacked `DeskRailChromeRow`
    * used to provide, at the cost of a second band.
    */
-  const bandTitle = onIndex ? ariaLabel : (activeLeaf?.label ?? '');
+  const standalone = stance === 'standalone';
+  const bandTitle = standalone
+    ? (title ?? ariaLabel)
+    : onIndex
+      ? (title ?? ariaLabel)
+      : (activeLeaf?.label ?? '');
   const stickyHeader = (
     <>
       <div className={STATION_DISPLAYS_PUSH_TOP_BAND} data-desk-inspector-leaf-band="">
@@ -240,12 +275,13 @@ export function DeskInspectorIndexShell({
           title={bandTitle}
           onBack={goIndex}
           backLabel={backLabel}
-          canGoBack={!onIndex}
+          // Standalone owes no Back — there is no index above it to return to.
+          canGoBack={!standalone && !onIndex}
           canGoForward={false}
           trailing={
             <>
-              {onIndex ? indexRightSlot : leafTrailing}
-              {chrome}
+              {standalone ? null : onIndex ? indexRightSlot : leafTrailing}
+              {headerRightSlot ?? chrome}
               <span
                 className={RIGHT_RAIL_HOST_CLOSE_SLOT_CLASS}
                 aria-hidden
@@ -266,6 +302,14 @@ export function DeskInspectorIndexShell({
       aria-label={ariaLabel}
       className={cn('flex min-h-0 flex-1 flex-col', className)}
     >
+      {standalone ? (
+        <>
+          {stickyHeader}
+          <div className="min-h-0 flex-1 overflow-y-auto" data-desk-inspector-body="">
+            {body}
+          </div>
+        </>
+      ) : (
       <DisplaysIndexLeafStage
         onIndex={onIndex}
         stickyHeader={stickyHeader}
@@ -280,6 +324,7 @@ export function DeskInspectorIndexShell({
         leafTestId="desk-inspector-leaf"
         leafBody={activeLeaf?.content ?? null}
       />
+      )}
     </div>
   );
 }

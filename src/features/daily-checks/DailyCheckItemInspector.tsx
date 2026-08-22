@@ -114,6 +114,7 @@ function InspectorBody({
       {/* No stacked chrome row — the ⋮ rides the shell's ONE band beside
           back + title (`chrome`), the Displays-column contract. */}
       <DeskInspectorIndexShell
+        stance="index"
         chrome={
           onRetire ? (
             <DropdownMenu>

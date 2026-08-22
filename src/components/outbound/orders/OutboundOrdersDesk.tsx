@@ -9,6 +9,7 @@
  */
 
 import { Suspense, useCallback, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { QueryClient } from '@tanstack/react-query';
 import { BootGate } from '@/components/boot/BootGate';
@@ -25,8 +26,8 @@ import { DashboardOrdersView } from '@/components/dashboard/DashboardOrdersView'
 import { DashboardOrderDetails } from '@/components/dashboard/DashboardOrderDetails';
 import { OrdersViewChromeProvider } from '@/components/outbound/orders/orders-view-chrome-context';
 import { ToShipWmsShell } from '@/components/outbound/orders/to-ship/ToShipWmsShell';
-import { SupportOrdersFocusHost } from '@/components/support/orders/SupportOrdersFocusHost';
 import { OrderIngestRail } from '@/components/outbound/orders/OrderIngestRail';
+import { UniversalLoader } from '@/design-system/components/UniversalLoader';
 import {
   ORDERS_DESK_CONTEXT_KEY,
   ORDERS_DESK_SUPPORT_CONTEXT,
@@ -38,6 +39,23 @@ import {
 } from '@/lib/shipping/orders-desk';
 import { refreshDomain } from '@/lib/refresh/bus';
 import { getOpenShippedDetailsPayload } from '@/utils/events';
+
+// Support › Inquiries only. This host mounts behind TWO url params
+// (`?context=support` + `?openOrderId=`) and never on the default
+// `/shipping/orders` paint, but a static import anchored the whole support
+// station graph — EntityStationPane, the Displays registry, the Zendesk ticket
+// hub — into the desk's first-load chunk. `ssr: false` for the same reason
+// `UnboxWorkspaceView` opts out behind `?unboxdesk=1`: it is a client-only
+// branch already gated on a URL selection, so it is never this route's LCP
+// surface. The fallback stands in for the host's own "Loading order…" state,
+// which is what the operator saw here before the split.
+const SupportOrdersFocusHost = dynamic(
+  () =>
+    import('@/components/support/orders/SupportOrdersFocusHost').then(
+      (m) => m.SupportOrdersFocusHost,
+    ),
+  { ssr: false, loading: () => <UniversalLoader isLoading label="Loading order" /> },
+);
 
 function OutboundOrdersDeskContent({
   onPrimaryPainted,

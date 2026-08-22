@@ -9,7 +9,9 @@
  *                uploaded + free-form notes
  *   • Email    — full Gmail body
  *
- * For non-email_po kinds the panel renders only Overview (no index shell).
+ * For non-email_po kinds there is only Overview, so the same shell mounts in
+ * the `standalone` stance: one band, one title, no Back to an index that
+ * does not exist.
  *
  * Serial numbers were intentionally cut from this surface — they belong
  * on the receiving workspace where the operator scans them during the
@@ -40,10 +42,7 @@ import {
   InspectorActionFloor,
 } from '@/components/right-rail/InspectorActionFloor';
 import { InspectorFlushDelete } from '@/components/right-rail/InspectorFlushDelete';
-import {
-  PaneHeaderIconBadge,
-  PaneHeaderLabel,
-} from '@/components/ui/pane-header';
+import { PaneHeaderIconBadge } from '@/components/ui/pane-header';
 import { useUnfoundDetailsPanel } from './details-panel/useUnfoundDetailsPanel';
 import type { DetailsTab, UnfoundQueueDetailsPanelProps } from './details-panel/unfound-details-helpers';
 import { OverviewTab } from './details-panel/OverviewTab';
@@ -77,14 +76,38 @@ export function UnfoundQueueDetailsPanel(props: UnfoundQueueDetailsPanelProps) {
   );
 
   const overviewBody = (
-    <OverviewTab
-      row={row}
-      subjectPrefix={c.subjectPrefix}
-      poNumbers={c.poNumbers}
-      pushing={c.pushing}
-      onPushToZendesk={c.handlePushToZendesk}
-      detail={detail}
-    />
+    <>
+      {/* Identity in the BODY, not a second header line (2026-08-21). This
+          was a `PaneHeaderLabel` band above the shell — kind + arrival time as
+          an eyebrow over the subject — which made a leaf read as two stacked
+          headers and put the host's absolute `⤢ ✕` over a row that had no cell
+          reserved for them. It opens Overview instead, where the rest of the
+          row's facts already are. */}
+      <div className="mb-5 flex items-start gap-2">
+        <PaneHeaderIconBadge Icon={Icon} bg={meta.bg} tint="text-white" />
+        <div className="min-w-0">
+          <p
+            className="truncate text-role-caption text-text-primary"
+            title={c.identityLabel}
+          >
+            {c.identityLabel}
+          </p>
+          <p className="text-role-micro uppercase tracking-widest text-text-soft">
+            {meta.label}{' '}
+            <span className="text-text-faint">· {formatDateTimePST(row.created_at)}</span>
+          </p>
+        </div>
+      </div>
+
+      <OverviewTab
+        row={row}
+        subjectPrefix={c.subjectPrefix}
+        poNumbers={c.poNumbers}
+        pushing={c.pushing}
+        onPushToZendesk={c.handlePushToZendesk}
+        detail={detail}
+      />
+    </>
   );
 
   const leaves: DeskInspectorLeaf[] = !isEmailPo
@@ -147,27 +170,14 @@ export function UnfoundQueueDetailsPanel(props: UnfoundQueueDetailsPanelProps) {
       ariaLabel={`Unfound ${c.identityLabel} details`}
     >
       <div className="flex h-full min-h-0 flex-col overflow-hidden">
-        <div className="shrink-0 border-b border-border-hairline bg-surface-card/90 backdrop-blur-xl">
-          <div className="flex items-center gap-2 px-2 pb-2 pt-1">
-            <PaneHeaderIconBadge Icon={Icon} bg={meta.bg} tint="text-white" />
-            <PaneHeaderLabel
-              eyebrow={
-                <>
-                  {meta.label.toUpperCase()}{' '}
-                  <span className="text-text-soft">
-                    · {formatDateTimePST(row.created_at)}
-                  </span>
-                </>
-              }
-              value={c.identityLabel}
-              valueTitle={c.identityLabel}
-            />
-          </div>
-        </div>
-
+        {/* ONE band, and it is the TOP row of the card — the host paints its
+            `⤢ ✕` absolutely at `top-0 right-0`, so nothing may sit above the
+            row that reserves that cell. */}
         {isEmailPo ? (
           <DeskInspectorIndexShell
-          chrome={<InspectorColumnDisplayButton />}
+            stance="index"
+            title="Unfound"
+            headerRightSlot={<InspectorColumnDisplayButton />}
             leaves={leaves}
             activeId={navId}
             onActiveIdChange={onNavChange}
@@ -177,7 +187,17 @@ export function UnfoundQueueDetailsPanel(props: UnfoundQueueDetailsPanelProps) {
             backLabel="Back to topics"
           />
         ) : (
-          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">{overviewBody}</div>
+          // Non-`email_po` kinds have exactly one body and no topics above it,
+          // so they owe no Back and say so — rather than shipping a bare
+          // scroll port with the host's window controls floating over it.
+          <DeskInspectorIndexShell
+            stance="standalone"
+            title="Unfound"
+            headerRightSlot={<InspectorColumnDisplayButton />}
+            ariaLabel="Unfound row"
+            testId="unfound-inspector-index"
+            body={<div className="px-6 py-5">{overviewBody}</div>}
+          />
         )}
 
         <InspectorActionFloor

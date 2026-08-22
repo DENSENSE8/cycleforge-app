@@ -6,14 +6,24 @@
  * Platform · Type · Priority use the house flush combobox
  * (`SearchableSelectField` — same import + `appearance="flush"` as receiving
  * Claim compose). Goodwill / other → ingest `manual` + stamp `source_platform`.
- * Macro floor = Add CTA + `→|` close.
+ * Macro floor = the Add CTA, and nothing else — the dismiss is the host's.
+ *
+ * **The band is the shell's** (2026-08-21). The panel used to lead with
+ * `PaneHeaderLabel eyebrow="Add inbound"` over `PO intake`, a stacked
+ * eyebrow+title pair where the band contract wants ONE current segment. It now
+ * mounts {@link DeskInspectorIndexShell} in the `standalone` stance — the
+ * Incoming / Unbox / Triage chrome opens this form directly, with no index
+ * above it, so it owes no Back and declares that rather than defaulting into
+ * it. The receiving type rides the band as a read-only metric (it is the one
+ * fact the old second line carried), and the shell reserves the cell the host
+ * paints its singleton `X` into.
  */
 
 import { useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
-import { PaneHeaderLabel } from '@/components/ui/pane-header';
+import { DeskInspectorIndexShell } from '@/components/right-rail/DeskInspectorIndexShell';
 import { SearchableSelectField } from '@/design-system/components';
 import { Button, FlushTerminalFooter, TextField } from '@/design-system/primitives';
 import { useDebounce } from '@/hooks';
@@ -267,225 +277,238 @@ export function IncomingAddInboundOverlay({
       ariaLabel="Add inbound purchase or return"
     >
       <div className="flex h-full min-h-0 flex-col overflow-hidden bg-surface-card">
-        <div className="shrink-0 border-b border-border-hairline px-3.5 py-2">
-          <PaneHeaderLabel eyebrow="Add inbound" value={`${typeLabel} intake`} />
-        </div>
-
-        <div className="min-h-0 flex-1 overflow-y-auto bg-surface-card">
-          {/* One card plane — flush combobox cells (floating labels), no canvas
-              gutters between Platform · Type · Priority. Keyboard: Tab walks
-              triggers; ArrowDown/Enter/typeahead open; Escape returns focus. */}
-          <div
-            className="divide-y divide-border-hairline border-b border-border-hairline"
-            data-testid="add-inbound-classify"
-          >
-            <SearchableSelectField
-              appearance="flush"
-              label="Platform"
-              autoFocus
-              value={platform}
-              onChange={(id) => {
-                if (id == null) return;
-                const next = String(id);
-                setPlatform(next);
-                if (next === 'goodwill' && !seller.trim()) setSeller('Goodwill');
-              }}
-              options={platformOptions}
-              placeholder="Search or select…"
-              searchPlaceholder="Type to filter…"
-              emptyMessage="No platforms match"
-              ariaLabel="Platform"
-            />
-            <SearchableSelectField
-              appearance="flush"
-              label="Type"
-              value={receivingType}
-              onChange={(id) => {
-                if (id == null) return;
-                setReceivingType(String(id));
-              }}
-              options={typeOptions}
-              placeholder="Search or select…"
-              searchPlaceholder="Type to filter…"
-              emptyMessage="No types match"
-              ariaLabel="Type"
-            />
-            <SearchableSelectField
-              appearance="flush"
-              label="Priority"
-              value={priority}
-              onChange={(id) => {
-                if (id == null) return;
-                setPriority(String(id));
-              }}
-              options={priorityOptions}
-              placeholder="Search or select…"
-              searchPlaceholder="Type to filter…"
-              emptyMessage="No priorities match"
-              ariaLabel="Priority"
-            />
-          </div>
-
-          <div className="divide-y divide-border-hairline">
-            <TextField
-              label={orderLabel}
-              value={orderId}
-              onChange={setOrderId}
-              required
-              tone="amber"
-              appearance="flush"
-            />
-            {manualMode ? (
-              <>
-                <TextField
-                  label="SKU"
-                  value={sku}
-                  onChange={setSku}
-                  tone="neutral"
-                  appearance="flush"
-                />
-                <TextField
-                  label="Item title"
-                  value={itemName}
-                  onChange={setItemName}
-                  tone="neutral"
-                  appearance="flush"
-                />
-                <div className="flex items-center justify-between inset-cozy">
-                  <span className="text-role-caption text-text-faint">
-                    Manual item — not paired to inventory.
-                  </span>
-                  {/* ds-raw-button: inline text toggle, not a padded Button */}
-                  <button
-                    type="button"
-                    className="shrink-0 text-role-caption font-medium text-blue-600 hover:underline"
-                    onClick={() => setManualMode(false)}
-                  >
-                    Search inventory
-                  </button>
-                </div>
-              </>
-            ) : (
-              <>
+        <DeskInspectorIndexShell
+          // No index routes here — the workspace chrome opens this form
+          // directly — so it owes no Back, and the stance says so out loud.
+          stance="standalone"
+          title="Inbound"
+          ariaLabel="Add inbound purchase or return"
+          testId="add-inbound-inspector"
+          // Read-only metric, not a control: the Type combobox in the body is
+          // still the only way to change it.
+          headerRightSlot={
+            <span className="flex h-full items-center px-2 text-role-caption font-semibold uppercase tracking-wide text-text-soft">
+              {typeLabel}
+            </span>
+          }
+          body={
+            <>
+              {/* One card plane — flush combobox cells (floating labels), no canvas
+                  gutters between Platform · Type · Priority. Keyboard: Tab walks
+                  triggers; ArrowDown/Enter/typeahead open; Escape returns focus. */}
+              <div
+                className="divide-y divide-border-hairline border-b border-border-hairline"
+                data-testid="add-inbound-classify"
+              >
                 <SearchableSelectField
                   appearance="flush"
-                  label="Product (Zoho inventory)"
-                  value={pickedItem ? String(pickedItem.id) : null}
-                  onChange={(_id, opt) => {
-                    const it = (opt?.data ?? null) as SkuCatalogItem | null;
-                    if (!it) return;
-                    setPickedItem(it);
-                    setSku(it.sku ?? '');
-                    setItemName(it.product_title ?? '');
+                  label="Platform"
+                  autoFocus
+                  value={platform}
+                  onChange={(id) => {
+                    if (id == null) return;
+                    const next = String(id);
+                    setPlatform(next);
+                    if (next === 'goodwill' && !seller.trim()) setSeller('Goodwill');
                   }}
-                  options={itemOptions}
-                  onSearchChange={setItemQuery}
-                  loading={itemSearch.isFetching}
-                  placeholder="Search inventory by title or SKU…"
-                  searchPlaceholder="Type a product title…"
-                  emptyMessage={
-                    debouncedItemQuery.trim() ? 'No inventory matches' : 'Type to search inventory'
-                  }
-                  ariaLabel="Product"
+                  options={platformOptions}
+                  placeholder="Search or select…"
+                  searchPlaceholder="Type to filter…"
+                  emptyMessage="No platforms match"
+                  ariaLabel="Platform"
                 />
-                <div className="flex items-center justify-between inset-cozy">
-                  {pickedItem ? (
-                    <span className="min-w-0 truncate text-role-caption text-text-muted">
-                      Paired · <span className="font-mono">{pickedItem.sku}</span>
-                    </span>
-                  ) : (
-                    <span className="text-role-caption text-text-faint">
-                      Search Zoho inventory to pair a SKU.
-                    </span>
-                  )}
-                  {/* ds-raw-button: inline text toggle, not a padded Button */}
-                  <button
-                    type="button"
-                    className="shrink-0 text-role-caption font-medium text-blue-600 hover:underline"
-                    onClick={() => {
-                      setManualMode(true);
-                      setPickedItem(null);
-                      setSku('');
-                      setItemName('');
-                    }}
-                  >
-                    Not in inventory?
-                  </button>
-                </div>
-              </>
-            )}
-            <TextField
-              label="Quantity"
-              type="number"
-              min={1}
-              value={quantity}
-              onChange={setQuantity}
-              tone="neutral"
-              appearance="flush"
-            />
-            <TextField
-              label="Tracking #"
-              value={trackingNumber}
-              onChange={setTrackingNumber}
-              tone="neutral"
-              appearance="flush"
-            />
-            <TextField
-              label="Listing URL"
-              value={listingUrl}
-              onChange={setListingUrl}
-              tone="neutral"
-              appearance="flush"
-            />
-            <TextField
-              label="Seller / vendor"
-              value={seller}
-              onChange={setSeller}
-              tone="neutral"
-              appearance="flush"
-            />
-            {platform === 'ebay' ? (
-              <TextField
-                label="Buyer account"
-                value={accountName}
-                onChange={setAccountName}
-                tone="neutral"
-                appearance="flush"
-              />
-            ) : null}
-            {isReturn ? (
-              <>
-                <TextField
-                  label="RMA / return id"
-                  value={rmaId}
-                  onChange={setRmaId}
-                  tone="neutral"
+                <SearchableSelectField
                   appearance="flush"
+                  label="Type"
+                  value={receivingType}
+                  onChange={(id) => {
+                    if (id == null) return;
+                    setReceivingType(String(id));
+                  }}
+                  options={typeOptions}
+                  placeholder="Search or select…"
+                  searchPlaceholder="Type to filter…"
+                  emptyMessage="No types match"
+                  ariaLabel="Type"
                 />
-                <TextField
-                  label="Return reason"
-                  value={returnReason}
-                  onChange={setReturnReason}
-                  tone="neutral"
+                <SearchableSelectField
                   appearance="flush"
+                  label="Priority"
+                  value={priority}
+                  onChange={(id) => {
+                    if (id == null) return;
+                    setPriority(String(id));
+                  }}
+                  options={priorityOptions}
+                  placeholder="Search or select…"
+                  searchPlaceholder="Type to filter…"
+                  emptyMessage="No priorities match"
+                  ariaLabel="Priority"
                 />
-              </>
-            ) : null}
-          </div>
+              </div>
 
-          <div className="inset-cozy">
-            {error ? (
-              <p className="text-role-caption font-medium text-red-600" role="alert">
-                {error}
-              </p>
-            ) : (
-              <p className="text-role-caption text-text-faint">
-                Amazon / Goodwill CSV bulk upload lives under Import → Upload CSV.
-                Priority applies when a carton is linked (e.g. tracking).
-              </p>
-            )}
-          </div>
-        </div>
+              <div className="divide-y divide-border-hairline">
+                <TextField
+                  label={orderLabel}
+                  value={orderId}
+                  onChange={setOrderId}
+                  required
+                  tone="amber"
+                  appearance="flush"
+                />
+                {manualMode ? (
+                  <>
+                    <TextField
+                      label="SKU"
+                      value={sku}
+                      onChange={setSku}
+                      tone="neutral"
+                      appearance="flush"
+                    />
+                    <TextField
+                      label="Item title"
+                      value={itemName}
+                      onChange={setItemName}
+                      tone="neutral"
+                      appearance="flush"
+                    />
+                    <div className="flex items-center justify-between inset-cozy">
+                      <span className="text-role-caption text-text-faint">
+                        Manual item — not paired to inventory.
+                      </span>
+                      {/* ds-raw-button: inline text toggle, not a padded Button */}
+                      <button
+                        type="button"
+                        className="shrink-0 text-role-caption font-medium text-blue-600 hover:underline"
+                        onClick={() => setManualMode(false)}
+                      >
+                        Search inventory
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <SearchableSelectField
+                      appearance="flush"
+                      label="Product (Zoho inventory)"
+                      value={pickedItem ? String(pickedItem.id) : null}
+                      onChange={(_id, opt) => {
+                        const it = (opt?.data ?? null) as SkuCatalogItem | null;
+                        if (!it) return;
+                        setPickedItem(it);
+                        setSku(it.sku ?? '');
+                        setItemName(it.product_title ?? '');
+                      }}
+                      options={itemOptions}
+                      onSearchChange={setItemQuery}
+                      loading={itemSearch.isFetching}
+                      placeholder="Search inventory by title or SKU…"
+                      searchPlaceholder="Type a product title…"
+                      emptyMessage={
+                        debouncedItemQuery.trim() ? 'No inventory matches' : 'Type to search inventory'
+                      }
+                      ariaLabel="Product"
+                    />
+                    <div className="flex items-center justify-between inset-cozy">
+                      {pickedItem ? (
+                        <span className="min-w-0 truncate text-role-caption text-text-muted">
+                          Paired · <span className="font-mono">{pickedItem.sku}</span>
+                        </span>
+                      ) : (
+                        <span className="text-role-caption text-text-faint">
+                          Search Zoho inventory to pair a SKU.
+                        </span>
+                      )}
+                      {/* ds-raw-button: inline text toggle, not a padded Button */}
+                      <button
+                        type="button"
+                        className="shrink-0 text-role-caption font-medium text-blue-600 hover:underline"
+                        onClick={() => {
+                          setManualMode(true);
+                          setPickedItem(null);
+                          setSku('');
+                          setItemName('');
+                        }}
+                      >
+                        Not in inventory?
+                      </button>
+                    </div>
+                  </>
+                )}
+                <TextField
+                  label="Quantity"
+                  type="number"
+                  min={1}
+                  value={quantity}
+                  onChange={setQuantity}
+                  tone="neutral"
+                  appearance="flush"
+                />
+                <TextField
+                  label="Tracking #"
+                  value={trackingNumber}
+                  onChange={setTrackingNumber}
+                  tone="neutral"
+                  appearance="flush"
+                />
+                <TextField
+                  label="Listing URL"
+                  value={listingUrl}
+                  onChange={setListingUrl}
+                  tone="neutral"
+                  appearance="flush"
+                />
+                <TextField
+                  label="Seller / vendor"
+                  value={seller}
+                  onChange={setSeller}
+                  tone="neutral"
+                  appearance="flush"
+                />
+                {platform === 'ebay' ? (
+                  <TextField
+                    label="Buyer account"
+                    value={accountName}
+                    onChange={setAccountName}
+                    tone="neutral"
+                    appearance="flush"
+                  />
+                ) : null}
+                {isReturn ? (
+                  <>
+                    <TextField
+                      label="RMA / return id"
+                      value={rmaId}
+                      onChange={setRmaId}
+                      tone="neutral"
+                      appearance="flush"
+                    />
+                    <TextField
+                      label="Return reason"
+                      value={returnReason}
+                      onChange={setReturnReason}
+                      tone="neutral"
+                      appearance="flush"
+                    />
+                  </>
+                ) : null}
+              </div>
+
+              <div className="inset-cozy">
+                {error ? (
+                  <p className="text-role-caption font-medium text-red-600" role="alert">
+                    {error}
+                  </p>
+                ) : (
+                  <p className="text-role-caption text-text-faint">
+                    Amazon / Goodwill CSV bulk upload lives under Import → Upload CSV.
+                    Priority applies when a carton is linked (e.g. tracking).
+                  </p>
+                )}
+              </div>
+            </>
+          }
+        />
 
         {/* The dismiss is the host's singleton `X` at the column's
             top-right (`closeRightPanel`) — never a second `→|` down here

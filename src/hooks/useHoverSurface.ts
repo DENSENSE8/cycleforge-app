@@ -143,6 +143,22 @@ export function useHoverSurface({
     }, closeMs);
   }, [clearCloseTimer, closeMs, registry, surfaceId]);
 
+  /**
+   * Does the REGISTRY say this surface owns the slot right now?
+   *
+   * `isOpen` is React state, so it lags the registry by a commit. A caller that
+   * opens from a mount effect (a deferred surface carrying its first hover in)
+   * can render with `isOpen === false` while the registry already says
+   * otherwise — and an eviction watcher keyed on `isOpen` alone reads that
+   * window as "someone else took the slot" and closes the surface it just
+   * opened. Whether the window ever opens depends on when React flushes the
+   * subscribe effect; ask the registry and it stops mattering.
+   */
+  const isActive = useCallback(
+    () => !disabled && registry.activeId === surfaceId,
+    [disabled, registry, surfaceId],
+  );
+
   /** Immediate — Escape, select, explicit dismiss. */
   const close = useCallback(() => {
     clearCloseTimer();
@@ -164,6 +180,7 @@ export function useHoverSurface({
 
   return {
     isOpen,
+    isActive,
     surfaceId,
     open,
     close,

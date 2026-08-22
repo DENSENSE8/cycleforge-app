@@ -19,7 +19,7 @@ interface KioskIntakeBodyOpts {
 
 type SalesIntakeParts = Pick<
   CounterTransactionInput,
-  'customer' | 'retailLines' | 'service' | 'priorOrder' | 'ticketWork'
+  'customer' | 'retailLines' | 'services' | 'priorOrder' | 'ticketWork'
 >;
 
 /**
@@ -34,7 +34,7 @@ export function buildKioskSalesIntakeBodyFromInput(
     service: 'sales',
     customer: input.customer,
     retailLines: input.retailLines,
-    serviceLine: input.service,
+    serviceLines: input.services ?? [],
     priorOrder: input.priorOrder,
     ticketWork: input.ticketWork,
     takePayment: opts.takePayment,
@@ -51,6 +51,9 @@ export function buildKioskSalesIntakeBody(
   draft: CounterDraft,
   opts: KioskIntakeBodyOpts,
 ): Record<string, unknown> {
+  // The draft form is structurally single-device (one `service`, one
+  // signature), so it contributes at most one entry. Widening THAT model is a
+  // separate surface — see counter-intake-steps.ts.
   const service = activeServiceLine(draft);
   return buildKioskSalesIntakeBodyFromInput(
     {
@@ -60,13 +63,15 @@ export function buildKioskSalesIntakeBody(
         email: draft.email || null,
       },
       retailLines: draft.retailLines,
-      service: service
-        ? {
-            ...service,
-            signatureDataUrl: draft.signatureDataUrl,
-            signatureStrokes: draft.signatureStrokes,
-          }
-        : null,
+      services: service
+        ? [
+            {
+              ...service,
+              signatureDataUrl: draft.signatureDataUrl,
+              signatureStrokes: draft.signatureStrokes,
+            },
+          ]
+        : [],
       priorOrder: draft.priorOrderNumber.trim()
         ? { orderNumber: draft.priorOrderNumber.trim(), phone: draft.phone }
         : null,

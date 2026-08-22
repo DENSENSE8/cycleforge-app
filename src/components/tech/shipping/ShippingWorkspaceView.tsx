@@ -27,7 +27,7 @@ import { OrderRailShell } from '@/components/dashboard/rail/OrderRailShell';
 import { useOrderRailSelection } from '@/hooks/useOrderRailSelection';
 import { useShippingWorkspaceTab } from '@/hooks/useShippingWorkspaceTab';
 import { useNewOrderParam } from '@/hooks/useNewOrderParam';
-import { NewOrderEntryOverlay } from '@/components/orders/NewOrderEntryOverlay';
+import { OrderIngestRail } from '@/components/outbound/orders/OrderIngestRail';
 
 const TechTable = dynamic(
   () => import('@/components/TechTable').then((m) => m.TechTable),
@@ -103,7 +103,7 @@ export function ShippingWorkspaceView({ techId }: ShippingWorkspaceViewProps) {
           )
         }
       </WorkbenchSheetView>
-      <NewOrderEntryOverlay open={newOpen} onClose={closeNew} />
+      <OrderIngestRail open={newOpen} onClose={closeNew} initialLeaf="manual" />
     </div>
   );
 }

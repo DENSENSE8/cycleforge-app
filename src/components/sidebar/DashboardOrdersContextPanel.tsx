@@ -6,7 +6,7 @@ import { DashboardManagementPanel } from '@/components/sidebar/DashboardManageme
 import { DashboardRecentsPanel } from '@/components/sidebar/dashboard/DashboardRecentsPanel';
 import { WalkInHistorySidebar } from '@/components/walk-in/WalkInHistorySidebar';
 import { RepairSidebarPanel } from '@/components/sidebar/RepairSidebarPanel';
-import { NewOrderEntryOverlay } from '@/components/orders/NewOrderEntryOverlay';
+import { OrderIngestRail } from '@/components/outbound/orders/OrderIngestRail';
 import { useDashboardSearchController } from '@/hooks/useDashboardSearchController';
 import {
   getDashboardDomainFromSearch,
@@ -30,7 +30,7 @@ import {
  * alone — no capped recents footer under the picker.
  *
  * New-order intake (`?new=true`) opens the shared detail-stack overlay
- * ({@link NewOrderEntryOverlay}) — same shell as `/shipping?new=true`.
+ * ({@link OrderIngestRail} at its `manual` leaf) — same rail as `/shipping?new=true`.
  */
 // TODO(daily-triage F0→F1): mount MyDayRail here pending OQ1
 // (`docs/todo/daily-triage-FRONTEND-PLAN-VALIDATION.md`) — does the personal
@@ -78,9 +78,10 @@ export function DashboardOrdersContextPanel() {
           />
         )}
       </div>
-      <NewOrderEntryOverlay
+      <OrderIngestRail
         open={dashboardSearch.showIntakeForm}
         onClose={dashboardSearch.closeIntakeForm}
+        initialLeaf="manual"
       />
     </div>
   );

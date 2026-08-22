@@ -15,10 +15,10 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import type { RmaTimelineRow } from '@/lib/timeline';
 import { OrderRecordCard } from '@/components/order-record/order-record-card';
 import { formatDateTimePST } from '@/utils/date';
 import { cn } from '@/utils/_cn';
+import { orderTimelineQuery } from '@/lib/queries/order-timeline-query';
 
 const OPEN_STATUSES = new Set(['AUTHORIZED', 'RECEIVED', 'DISPOSITIONED']);
 
@@ -44,18 +44,9 @@ export function OrderReturnsCard({
    */
   chrome?: 'panel' | 'flush';
 }) {
-  const { data, isLoading } = useQuery({
-    queryKey: ['order-timeline', orderId],
-    queryFn: async () => {
-      const res = await fetch(`/api/orders/${orderId}/timeline`);
-      if (!res.ok) throw new Error('Failed to fetch order timeline');
-      return res.json();
-    },
-    enabled: Number.isFinite(orderId) && orderId > 0,
-    staleTime: 30_000,
-  });
+  const { data, isLoading } = useQuery(orderTimelineQuery(orderId));
 
-  const rmas = (data?.rmaEvents ?? []) as RmaTimelineRow[];
+  const rmas = data?.rmaEvents ?? [];
 
   // Presence-driven: an order with no return history shows no card at all,
   // rather than a permanent empty "no returns" panel on every record.

@@ -61,10 +61,14 @@ export function SearchOrderCentre({
         bodyClassName="pt-1"
       >
         <ShippedDetailsPanelContent
+          // Preview writes NOTHING. Omitting `editableShippingFields` was never
+          // enough: the product section's condition editor consulted only
+          // `isOrderShipped`, so any unshipped order was re-gradeable from the
+          // find surface. This says it out loud instead.
+          canEditProduct={false}
           shipped={order}
           durationData={{}}
           activeSection="product"
-          showSerialNumber
           // `flush` drops the component's own `px-8 pb-8` — the centre column
           // pad belongs to StationWorkbench, not to a block body.
           flush

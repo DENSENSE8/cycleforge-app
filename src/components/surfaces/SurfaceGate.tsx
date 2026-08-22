@@ -13,9 +13,26 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
+import dynamic from 'next/dynamic';
 import type { ReactNode } from 'react';
-import { SurfaceRenderer } from './SurfaceRenderer';
 import type { SurfaceKey } from '@/lib/stations/surface-keys';
+
+// The composed branch is live but OFF the default paint: it needs a published
+// composition AND the per-org `surface_composed_render` flag, and it can never
+// render during SSR (the resolve query has no data there, so `children` wins).
+// Statically importing it pulled `StationSlot` + the whole block runtime into
+// the first-load chunk of all eleven gated surfaces. `ssr: false` is therefore
+// free here, and the fallback holds the renderer's own canvas so an org that
+// HAS opted in sees no flash of a different ground while the chunk lands.
+const SurfaceRenderer = dynamic(
+  () => import('./SurfaceRenderer').then((m) => m.SurfaceRenderer),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-full w-full flex-col overflow-hidden bg-surface-canvas" />
+    ),
+  },
+);
 
 interface SurfaceResolveResp {
   success?: boolean;

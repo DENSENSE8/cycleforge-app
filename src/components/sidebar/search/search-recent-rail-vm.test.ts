@@ -88,3 +88,28 @@ test('the rail filter matches the record title AND the typed query', () => {
   assert.equal(searchRecentMatchesFilter(row, 'unit'), true, 'by entity type');
   assert.equal(searchRecentMatchesFilter(row, 'campagnolo'), false);
 });
+
+test('the secondary line is never the scope label', () => {
+  // Regression (2026-08-21): `searchRecentMeta` fell back to `entry.scopeLabel`,
+  // a persisted column, so 89 dogfood rows carrying a retired path's `Search`
+  // label painted that word under every rail row. The Unbox rail's second line
+  // is the record's own facts — a scope bucket is not one.
+  const queryOnly = entry({ scopeLabel: 'Search' });
+  assert.equal(searchRecentMeta(queryOnly), null);
+
+  const resolved = entry({
+    scopeLabel: 'Search',
+    topHit: { title: 'Shimano Deore XT', href: '/search?sel=order%3A1', entityType: 'order' },
+  });
+  assert.equal(searchRecentMeta(resolved), '0325-11223', 'the typed query, not the scope');
+
+  // A title that IS the query leaves nothing to say — null, not a scope.
+  assert.equal(
+    searchRecentMeta(entry({
+      scopeLabel: 'Everywhere',
+      query: 'Shimano Deore XT',
+      topHit: { title: 'Shimano Deore XT', href: '/search?sel=order%3A1', entityType: 'order' },
+    })),
+    null,
+  );
+});

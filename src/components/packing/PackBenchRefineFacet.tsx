@@ -19,7 +19,6 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useSearchParams } from 'next/navigation';
 import { useToShipFilterActions } from '@/components/dashboard/OutboundFilterStrip';
 import {
   WorkbenchFilterDivider,
@@ -28,18 +27,37 @@ import {
   WorkbenchFilterPopover,
 } from '@/components/dashboard/workbench-filter-popover';
 import { packBenchShortLabel } from '@/lib/packing/pack-bench-display';
-import { parseStaffParam } from '@/hooks/useStaffFilter';
 import { unshippedQueueCountsQuery } from '@/lib/queries/dashboard-queries';
+import type { UnshippedQueueCounts } from '@/lib/orders/queue-counts-normalize';
+
+/**
+ * The bench tallies are ORG-scoped, not staff-scoped: the route builds them from
+ * `countOpenPlacementsByLocation(orgId)`, which never sees `?staff=` — only
+ * total / byStage / urgent / combos take the staff clause. So this facet rides
+ * the CANONICAL unscoped counts key (`{ staffId: null }`) — the one BOTH RSC
+ * seeds dehydrate (`unshipped-queue-seed.server.ts`,
+ * `ready-to-pack-shell-seed.server.ts`) and every other To-ship / Ready-to-Pack
+ * consumer already shares — and narrows to the placement slice with `select`.
+ *
+ * It used to key on `?staff=`, which forked a SECOND ~15s
+ * `/api/orders/queue-counts` request (its own Upstash entry too — `staff` is
+ * part of `createCacheLookupKey`) for a payload slice that is byte-identical
+ * across every staff id, and missed the seed so the benches stayed invisible
+ * until it settled. `select` keeps the key shared (so react-query dedupes)
+ * while re-rendering this popover only when the placement slice moves.
+ */
+const selectPackPlacement = (counts: UnshippedQueueCounts) => counts.packPlacement;
 
 export function PackBenchRefineFacet() {
   const [open, setOpen] = useState(false);
-  const searchParams = useSearchParams();
-  const staffId = parseStaffParam(searchParams.get('staff')) ?? undefined;
-  const { data } = useQuery(unshippedQueueCountsQuery({ staffId }));
+  const { data: placement } = useQuery({
+    ...unshippedQueueCountsQuery(),
+    select: selectPackPlacement,
+  });
   const { packStationId, packPlacedOnly, togglePackStation, togglePackPlaced, clearPackPlacement } =
     useToShipFilterActions();
 
-  const benches = data?.packPlacement?.counts ?? [];
+  const benches = placement?.counts ?? [];
   if (benches.length === 0) return null;
 
   const activeBench = benches.find((b) => b.locationId === packStationId) ?? null;
@@ -70,7 +88,7 @@ export function PackBenchRefineFacet() {
       />
       <WorkbenchFilterMenuRow
         label="At a bench"
-        count={data?.packPlacement?.totalPlaced ?? 0}
+        count={placement?.totalPlaced ?? 0}
         active={packPlacedOnly}
         onClick={() => {
           togglePackPlaced();

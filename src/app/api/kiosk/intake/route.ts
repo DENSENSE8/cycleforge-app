@@ -89,7 +89,18 @@ const BodySchema = z.object({
     })
     .optional(),
   retailLines: z.array(RetailLineSchema).max(200).optional(),
-  serviceLine: ServiceSchema.nullable().optional(),
+  /**
+   * One entry per device dropped off. Was `serviceLine` (singular) until
+   * 2026-08-21 — the orchestrator kept only the first and the rest vanished.
+   *
+   * The schema is `.strict()` (below) SPECIFICALLY because of this rename. A
+   * plain `z.object` STRIPS unknown keys: a tablet still running the old build
+   * would post `serviceLine`, have it silently removed, and stage a retail sale
+   * with the customer's device recorded nowhere — while showing them a success
+   * screen. Verified against this repo's zod: `{serviceLine: {...}}` parses to
+   * `{success: true, data: {}}`.
+   */
+  serviceLines: z.array(ServiceSchema).max(20).optional(),
   priorOrder: z
     .object({ orderNumber: z.string().trim().min(1), phone: z.string().trim().min(1) })
     .nullable()
@@ -101,11 +112,24 @@ const BodySchema = z.object({
       z.object({ mode: z.literal('attach'), ticketId: z.number().int().positive() }),
     ])
     .optional(),
-});
+})
+  // STRICT: an unknown key is a stale client, not noise to discard. Without
+  // this, an old tablet's `serviceLine` is stripped and the visit stages a sale
+  // with the customer's device recorded nowhere.
+  .strict();
 
 export const POST = withKioskAuth(async (req: NextRequest, ctx) => {
   const parsed = BodySchema.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) {
+    // Name the stale-client case specifically: an operator seeing
+    // "Transaction failed" reloads nothing, and the device stays unrecorded.
+    const unknownKeys = parsed.error.issues.some((i) => i.code === 'unrecognized_keys');
+    if (unknownKeys) {
+      return NextResponse.json(
+        { error: 'STALE_CLIENT', message: 'This tablet is running an old build — reload it.' },
+        { status: 400 },
+      );
+    }
     return NextResponse.json({ error: 'INVALID_REQUEST', issues: parsed.error.issues }, { status: 400 });
   }
   const { service, note, staffId, pin } = parsed.data;
@@ -146,7 +170,8 @@ export const POST = withKioskAuth(async (req: NextRequest, ctx) => {
   const idempotencyKey = req.headers.get('Idempotency-Key')?.trim() || '';
   const hasTransaction =
     !!parsed.data.customer &&
-    ((parsed.data.retailLines?.length ?? 0) > 0 || !!parsed.data.serviceLine);
+    ((parsed.data.retailLines?.length ?? 0) > 0 ||
+      (parsed.data.serviceLines?.length ?? 0) > 0);
 
   let result: CounterTransactionResult | null = null;
   if (hasTransaction) {
@@ -163,7 +188,7 @@ export const POST = withKioskAuth(async (req: NextRequest, ctx) => {
         email: parsed.data.customer!.email ?? null,
       },
       retailLines: parsed.data.retailLines ?? [],
-      service: parsed.data.serviceLine ?? null,
+      services: parsed.data.serviceLines ?? [],
       priorOrder: parsed.data.priorOrder ?? null,
       ticketWork: parsed.data.ticketWork ?? { mode: 'none' },
       clientEventId: idempotencyKey,
@@ -205,8 +230,8 @@ export const POST = withKioskAuth(async (req: NextRequest, ctx) => {
             ? {
                 counter_transaction_id: result.counterTransactionId,
                 counter_status: result.status,
-                repair_id: result.repair?.id ?? null,
-                rs_number: result.repair?.rsNumber ?? null,
+                repair_ids: result.repairs.map((r) => r.id),
+                rs_numbers: result.repairs.map((r) => r.rsNumber),
                 staged_order_id: result.sale?.providerOrderId ?? null,
                 idempotent_replay: result.idempotentReplay,
               }

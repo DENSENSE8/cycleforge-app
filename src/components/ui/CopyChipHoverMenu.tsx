@@ -39,10 +39,16 @@ import {
   useLayoutEffect,
   useRef,
   useState,
+  type MutableRefObject,
   type ReactNode,
 } from 'react';
 import { createPortal } from 'react-dom';
 import { cn } from '@/utils/_cn';
+import {
+  useDeferredHoverEngine,
+  useDeferredHoverMount,
+  type DeferredHoverBridge,
+} from '@/components/ui/deferred-hover-mount';
 import { zIndex } from '@/design-system/tokens/z-index';
 import { ChipHoverMenuPanel } from '@/components/ui/ChipHoverMenuSurface';
 import {
@@ -158,7 +164,85 @@ export function CopyChipHoverMenu({
   onOpenChange?: (open: boolean) => void;
 }) {
   const enabled = items.length > 0;
-  const triggerRef = useRef<HTMLDivElement | null>(null);
+  const { mounted, triggerRef, bridge, activate, release } = useDeferredHoverMount<
+    HTMLDivElement,
+    ChipMenuHandle
+  >();
+
+  return (
+    <div
+      ref={triggerRef}
+      className={cn('group relative inline-flex shrink-0 items-center', className)}
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => e.stopPropagation()}
+      onMouseEnter={() => {
+        if (!enabled) return;
+        activate('hover', (h) => h.open());
+      }}
+      onMouseLeave={() => release((h) => h.scheduleClose())}
+    >
+      {children}
+      {mounted ? (
+        <ChipMenuPortal
+          bridge={bridge}
+          triggerRef={triggerRef}
+          enabled={enabled}
+          items={items}
+          menuLabel={menuLabel}
+          denseLabel={denseLabel}
+          itemPad={itemPad}
+          placement={placement}
+          align={align}
+          avoidCollisions={avoidCollisions}
+          onOpenChange={onOpenChange}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+/** What the trigger shell may ask of a mounted menu. */
+type ChipMenuHandle = {
+  open: () => void;
+  scheduleClose: () => void;
+};
+
+/**
+ * The menu machinery — hover registry, trigger rect, portal clamp, scroll and
+ * resize teardown. ~25 hooks and a module-scope registry subscription, none of
+ * which can paint before a pointer arrives, so it mounts on the first hover
+ * (carrying that hover in) and stays mounted.
+ *
+ * The subscription is the reason this split is worth more than its hook count:
+ * every mounted `useHoverSurface` re-renders when ANY surface opens anywhere.
+ * At 62 order rows that was 62 re-renders per hover; now it is one per row the
+ * operator has actually reached for.
+ */
+function ChipMenuPortal({
+  bridge,
+  triggerRef,
+  enabled,
+  items,
+  menuLabel,
+  denseLabel,
+  itemPad,
+  placement,
+  align,
+  avoidCollisions,
+  onOpenChange,
+}: {
+  bridge: DeferredHoverBridge<ChipMenuHandle>;
+  triggerRef: MutableRefObject<HTMLDivElement | null>;
+  enabled: boolean;
+  items: CopyChipHoverMenuItem[];
+  menuLabel: string;
+  denseLabel: boolean;
+  itemPad: 'default' | 'chip';
+  placement: PortalSideMenuPlacement;
+  align: PortalSideMenuAlign;
+  avoidCollisions: boolean;
+  onOpenChange?: (open: boolean) => void;
+}) {
   const menuRef = useRef<HTMLDivElement | null>(null);
   const placementRef = useRef(placement);
   placementRef.current = placement;
@@ -188,7 +272,7 @@ export function CopyChipHoverMenu({
       setAnchor(r);
       setPos(null);
     }
-  }, [enabled, hover]);
+  }, [enabled, hover, triggerRef]);
 
   const close = useCallback(() => {
     hover.close();
@@ -198,21 +282,43 @@ export function CopyChipHoverMenu({
 
   const scheduleClose = hover.scheduleClose;
 
+  // Publish the handle, then act on the hover that mounted us — the first reach
+  // must open the menu, not merely pay for it. `readIntent` is non-destructive;
+  // the trigger's `release` is what clears it, so a StrictMode remount
+  // re-applies rather than swallows it.
+  useDeferredHoverEngine(bridge, { open, scheduleClose }, (_intent, h) => h.open());
+
   // Evicted by another hover surface (a rail peek, a classify menu) — drop the
   // rect so the portal unmounts. Without this the registry would say "closed"
   // while this menu stayed painted.
+  //
+  // `isActive()` (the registry) rather than `isOpen` alone (React state).
+  // `isOpen` lags the registry by a commit, and the mount effect above now opens
+  // from a layout effect rather than from a pointer handler — so whether this
+  // watcher ever observes the window where the registry says "ours" and `isOpen`
+  // still says "no" depends on when React flushes the passive effect that
+  // subscribes. Today's React flushes it first and the window never opens; this
+  // guard is what keeps that an implementation detail instead of the reason the
+  // first hover closes itself. Eviction by another surface is pinned in
+  // `deferred-hover-activation.test.ts`.
+  const isRegistryActive = hover.isActive;
   useEffect(() => {
-    if (!hover.isOpen && anchor) {
+    if (anchor && !hover.isOpen && !isRegistryActive()) {
       setAnchor(null);
       setPos(null);
     }
-  }, [hover.isOpen, anchor]);
+  }, [hover.isOpen, isRegistryActive, anchor]);
 
   // Notify the host on open/close transitions (keyed on the boolean, not the rect).
+  // The mount pass is skipped: this component now mounts on the hover that
+  // opens it, so firing `false` first would report a close that never happened.
   const isOpen = anchor != null;
   const onOpenChangeRef = useRef(onOpenChange);
   onOpenChangeRef.current = onOpenChange;
+  const wasOpenRef = useRef(false);
   useEffect(() => {
+    if (wasOpenRef.current === isOpen) return;
+    wasOpenRef.current = isOpen;
     onOpenChangeRef.current?.(isOpen);
   }, [isOpen]);
 
@@ -246,49 +352,33 @@ export function CopyChipHoverMenu({
     };
   }, [anchor, close]);
 
+  if (!anchor || typeof document === 'undefined') return null;
 
-  const menu =
-    anchor && typeof document !== 'undefined'
-      ? createPortal(
-          <div
-            ref={menuRef}
-            style={{
-              position: 'fixed',
-              top: pos?.top ?? -9999,
-              left: pos?.left ?? -9999,
-              visibility: pos ? 'visible' : 'hidden',
-              zIndex: zIndex.panelPopover,
-            }}
-            // No appear transition. The bench reads the panel the instant it
-            // exists; a 100ms fade is latency between the reach and the answer,
-            // and it made this menu behave differently from every other hover
-            // surface on the same row.
-            onClick={(e) => e.stopPropagation()}
-            {...hover.surfaceProps}
-          >
-            <CopyChipHoverMenuPanel
-              items={items}
-              menuLabel={menuLabel}
-              denseLabel={denseLabel}
-              itemPad={itemPad}
-              onItemSelect={() => close()}
-            />
-          </div>,
-          document.body,
-        )
-      : null;
-
-  return (
+  return createPortal(
     <div
-      ref={triggerRef}
-      className={cn('group relative inline-flex shrink-0 items-center', className)}
+      ref={menuRef}
+      style={{
+        position: 'fixed',
+        top: pos?.top ?? -9999,
+        left: pos?.left ?? -9999,
+        visibility: pos ? 'visible' : 'hidden',
+        zIndex: zIndex.panelPopover,
+      }}
+      // No appear transition. The bench reads the panel the instant it
+      // exists; a 100ms fade is latency between the reach and the answer,
+      // and it made this menu behave differently from every other hover
+      // surface on the same row.
       onClick={(e) => e.stopPropagation()}
-      onKeyDown={(e) => e.stopPropagation()}
-      onMouseEnter={open}
-      onMouseLeave={scheduleClose}
+      {...hover.surfaceProps}
     >
-      {children}
-      {menu}
-    </div>
+      <CopyChipHoverMenuPanel
+        items={items}
+        menuLabel={menuLabel}
+        denseLabel={denseLabel}
+        itemPad={itemPad}
+        onItemSelect={() => close()}
+      />
+    </div>,
+    document.body,
   );
 }

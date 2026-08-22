@@ -7,17 +7,30 @@
  * Unbox). Mutually exclusive with LineEditPanel / StationDisplaysPushColumn — opening the
  * workspace closes this rail.
  *
- * Stack (chrome → View → slim key → index|leaf → floor):
- *   1. `[→|] ………………………………… [↑ · ↓]` — navigation only ({@link DeskRailChromeRow})
- *   2. View toggle (+ View topics cluster when open; forced in View-only shell)
- *   3. status + short PO / Carton key (slim — no icon hero, no CTA row)
- *   4. {@link DeskInspectorIndexShell} — Details · Logistics · Evidence · History
- *   5. {@link InspectorActionFloor} bottom dock (n=1) — primary CTA (Print ·
+ * Stack (ONE band → index|leaf → View strip → floor):
+ *   1. {@link DeskInspectorIndexShell} — the single band
+ *      (`[‹ Back] [Details] ……… [View toggle] [⤢] [✕]`) over the Root Index →
+ *      leaf stage: Details · Logistics · Evidence · History.
+ *   2. The View topics cluster, a disclosure docked UNDER the work (forced open
+ *      in the View-only shell, where the band reads `View` and owes no Back).
+ *   3. {@link InspectorActionFloor} bottom dock (n=1) — primary CTA (Print ·
  *      Open/Continue/Match in Unbox) + More on the dominant side, flush trailing
  *      Delete carton isolated at the far edge. This is the record's edit gravity;
- *      the top chrome row stays navigation-only so a Park never sits by a Delete.
+ *      the band stays navigation-only so a Park never sits by a Delete.
  * Topics live ONLY on this push inspector — never on Unbox History Band 3.
  * Never mounts station Displays push stack on RightRailHost.
+ *
+ * **Three rows of chrome collapsed to one on 2026-08-21.** A `h-9` View-toggle
+ * row, the View strip and a status + PO identity pair each sat ABOVE the shell's
+ * band, so the panel read as four stacked headers; worse, on the View-only and
+ * loading paths the shell was not mounted at all, so no band existed and nothing
+ * reserved the cell the host paints its singleton `✕` / `⤢` into — the controls
+ * landed on top of whatever content happened to be under them. The toggle moved
+ * into the band's trailing cluster, the identity pair into the Details leaf
+ * (a record's identity is a body fact once the title cell is the topic), the
+ * loading skeleton into that same leaf so the band is always mounted, and the
+ * View strip below the stage. This panel paints NO close of its own — the host
+ * owns it, and `closeRightPanel()` runs this occupant's `onClose` teardown.
  */
 
 import {
@@ -36,7 +49,6 @@ import {
 } from '@/components/Icons';
 import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
-import { DeskRailChromeRow } from '@/components/right-rail/DeskRailChromeRow';
 import { DeskInspectorIndexShell } from '@/components/right-rail/DeskInspectorIndexShell';
 import {
   FLOOR_DELETE_PEER_CLASS,
@@ -476,6 +488,25 @@ export function HistoryCartonTriagePanel({
     return () => window.removeEventListener(DETAIL_INSPECTOR_COLLAPSE_EVENT, onCollapse);
   }, []);
 
+  /**
+   * The band's only verb — show / hide the View topics cluster. It is NOT topic
+   * nav (topics live in the shell's index), and it never appears in the
+   * View-only shell, where the cluster is the whole job and forced open.
+   */
+  const viewToggle = viewOnly ? null : (
+    <span className="flex h-full items-center" data-testid="history-triage-view-chrome">
+      <IconButton
+        size="xs"
+        tone="neutral"
+        ariaLabel={viewTopicsOpen ? 'Hide view controls' : 'Show view controls'}
+        aria-pressed={viewTopicsOpen}
+        icon={<SlidersHorizontal className="h-3.5 w-3.5" />}
+        onClick={() => setViewTopicsOpen((open) => !open)}
+        data-testid="history-triage-view-toggle"
+      />
+    </span>
+  );
+
   return (
     <DetailStackRailRegistrar
       id={HISTORY_TRIAGE_RAIL_ID}
@@ -498,96 +529,32 @@ export function HistoryCartonTriagePanel({
         data-testid="history-carton-triage-panel"
         data-history-view-only={viewOnly ? '' : undefined}
       >
-        <div className="shrink-0 border-b border-border-soft bg-surface-card/90 backdrop-blur-xl">
-
-          {/* View cluster toggle — not primary topic nav (topics live in the shell). */}
-          {!viewOnly ? (
-            <div
-              className="flex h-9 items-center justify-end border-t border-border-soft px-2"
-              data-testid="history-triage-view-chrome"
-            >
-              <IconButton
-                size="xs"
-                tone="neutral"
-                ariaLabel={
-                  viewTopicsOpen ? 'Hide view controls' : 'Show view controls'
-                }
-                aria-pressed={viewTopicsOpen}
-                icon={<SlidersHorizontal className="h-3.5 w-3.5" />}
-                onClick={() => setViewTopicsOpen((open) => !open)}
-                data-testid="history-triage-view-toggle"
-              />
-            </div>
-          ) : (
-            <div
-              className="border-t border-border-soft"
-              data-testid="history-triage-view-chrome"
-              data-history-view-only-tabs=""
+        {/* View-only shell — no carton, so no index above it and no Back owed.
+            It still paints the ONE band so the host's `⤢` / `✕` have a row of
+            the right height under them. `shrink-0` keeps the View strip docked
+            directly beneath the hint instead of at the far bottom. */}
+        {viewOnly ? (
+          <div className="flex shrink-0 flex-col">
+            <DeskInspectorIndexShell
+              stance="standalone"
+              title="View"
+              ariaLabel="Unbox view controls"
+              testId="history-view-shell"
+              body={
+                <p
+                  className="px-3 py-2 text-role-caption text-text-soft"
+                  data-testid="history-triage-view-only-hint"
+                >
+                  Sheet layout &amp; filters — select a row for carton details.
+                </p>
+              }
             />
-          )}
-
-          {/*
-            The host stays mounted so the strip does not remount on every
-            toggle, but the cluster only PUBLISHES its ▦ portal target while it
-            is visibly interactive (`active`). Band 3 stopped hosting the column
-            trigger on 2026-08-08, so this is its only portal host: a target
-            published from a hidden or parked rail would swallow ▦ into an inert
-            node and suppress the card-corner fallback. The old comment here
-            ("Always mount portal host so week / ▦ do not detach when
-            collapsed") was the premise that broke.
-          */}
-          <div
-            className={cn(
-              'border-t border-border-soft px-2 py-1',
-              !viewStripOpen && 'hidden',
-            )}
-            data-testid="history-triage-view-strip"
-          >
-            <HistoryViewChromeBridge value={viewChrome}>
-              <HistoryViewTopicsCluster
-                hidePaint={viewOnly}
-                active={viewStripOpen && !inspectorParked}
-              />
-            </HistoryViewChromeBridge>
           </div>
-
-          {!viewOnly ? (
-            // Slim key row (H3) — status + short PO/Carton key only. The record
-            // actions (Print · Open in Unbox · More) moved to the bottom dock
-            // (InspectorActionFloor) so the queue-redundant icon hero is gone and
-            // the CTAs anchor at fixed spatial gravity regardless of scroll.
-            <div
-              className="flex items-center gap-2 border-t border-border-soft px-3 pb-1.5 pt-1"
-              data-testid="history-triage-identity"
-            >
-              {statusLabel ? (
-                <PaneHeaderStatusPill tone="neutral">{statusLabel}</PaneHeaderStatusPill>
-              ) : null}
-              <PaneHeaderLabel
-                eyebrow={poNumber ? 'Purchase order #' : 'Carton'}
-                value={poNumber ?? `#${target!.receivingId}`}
-                valueTitle={poNumber ?? `Carton #${target!.receivingId}`}
-              />
-            </div>
-          ) : (
-            <div
-              className="border-t border-border-soft px-3 py-2"
-              data-testid="history-triage-view-only-hint"
-            >
-              <p className="text-role-caption text-text-soft">
-                Sheet layout &amp; filters — select a row for carton details.
-              </p>
-            </div>
-          )}
-        </div>
+        ) : null}
 
         {!viewOnly && target ? (
-          cartonQuery.isLoading && !carton ? (
-            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-3 py-3">
-              <SkeletonList count={4} type="row" />
-            </div>
-          ) : (
             <DeskInspectorIndexShell
+              stance="index"
               leaves={buildHistoryInspectorLeaves({
                 topics: topicSpecs.display.map(
                   (spec) => spec.key as HistoryInspectorDisplayTopic,
@@ -598,6 +565,26 @@ export function HistoryCartonTriagePanel({
                       className="min-h-0 flex-1 space-y-4 overflow-y-auto px-3 py-3"
                       data-history-topic="summary"
                     >
+                      {/* Record identity — status + the short PO / Carton key.
+                          BODY, not a second header line: the band's title cell
+                          is the current topic. */}
+                      <div
+                        className="flex items-center gap-2"
+                        data-testid="history-triage-identity"
+                      >
+                        {statusLabel ? (
+                          <PaneHeaderStatusPill tone="neutral">{statusLabel}</PaneHeaderStatusPill>
+                        ) : null}
+                        <PaneHeaderLabel
+                          eyebrow={poNumber ? 'Purchase order #' : 'Carton'}
+                          value={poNumber ?? `#${target.receivingId}`}
+                          valueTitle={poNumber ?? `Carton #${target.receivingId}`}
+                        />
+                      </div>
+
+                      {cartonQuery.isLoading && !carton ? (
+                        <SkeletonList count={4} type="row" />
+                      ) : (
                       <section className="space-y-2">
                         <h3 className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
                           {unfound ? 'PO linking' : 'Order summary'}
@@ -626,6 +613,7 @@ export function HistoryCartonTriagePanel({
                           </OrderFactList>
                         )}
                       </section>
+                      )}
                     </div>
                   ),
                   logistics: (
@@ -723,9 +711,30 @@ export function HistoryCartonTriagePanel({
               ariaLabel="History topics"
               testId="history-inspector-index"
               backLabel="Back to topics"
+              // View toggle rides the ONE band on both stages — it used to own
+              // a `h-9` row of its own above it.
+              indexRightSlot={viewToggle}
+              leafTrailing={viewToggle}
             />
-          )
         ) : null}
+
+        {/* View topics cluster — a disclosure docked under the work, never a
+            second header band. Mounted in BOTH stances so its ▦ portal target
+            never detaches; `active` is what gates publishing it. */}
+        <div
+          className={cn(
+            'shrink-0 border-t border-border-soft px-2 py-1',
+            !viewStripOpen && 'hidden',
+          )}
+          data-testid="history-triage-view-strip"
+        >
+          <HistoryViewChromeBridge value={viewChrome}>
+            <HistoryViewTopicsCluster
+              hidePaint={viewOnly}
+              active={viewStripOpen && !inspectorParked}
+            />
+          </HistoryViewChromeBridge>
+        </div>
 
         {/* Icons-first Macro floor (n=1) — the record's edit gravity:
             `⋯` More · 🖨 Print · ✏️ Edit (Open in Unbox) · 🗑 Delete as equal

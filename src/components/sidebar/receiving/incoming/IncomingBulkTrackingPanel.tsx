@@ -42,10 +42,19 @@
  * That shell leads with a 32px circled `X` and a wrapping hero title, which is
  * right for a create/import form and wrong here: this panel has no form, and it
  * now has a switcher that wants the top-left corner. It wears the house
- * push-column chrome instead: the band leads with the panel's eyebrow and ends
- * with the reserved cell the host's singleton `X` paints into. Its entry in
+ * push-column chrome instead. Its entry in
  * `INTAKE_SHELL_WITH_REGISTRAR_ALLOWLIST` was removed in the same change; that
  * allowlist is shrink-only.
+ *
+ * ## ONE band, painted by the shell (2026-08-21)
+ *
+ * The replacement chrome was still hand-rolled — an eyebrow, a spacer and the
+ * reserved host cell — and it sat ABOVE `DeskInspectorIndexShell`, which
+ * paints a band of its own. So the moment a paste produced buckets the rail
+ * read as two stacked bands, with the shell's Back chevron on the lower one.
+ * The shell owns the single band at both stages now (`stance='index'` once
+ * there are buckets, `stance='standalone'` before), and the paste feedback
+ * that used to sit between them moved to the strip above the composer.
  *
  * **It used to mount its own close, stacked under the host's.** The band paid
  * `pl-1.5` for a `PaneHeaderCloseButton` sitting at exactly the coordinates
@@ -85,11 +94,6 @@ import {
   DeskInspectorIndexShell,
   type DeskInspectorLeaf,
 } from '@/components/right-rail/DeskInspectorIndexShell';
-import { RIGHT_RAIL_HOST_CLOSE_SLOT_CLASS } from '@/components/right-rail/DeskRailChromeRow';
-import {
-  DESK_INSPECTOR_GUTTER_TOP_BAND,
-  STATION_CHROME_ROW_FACE,
-} from '@/components/station/entity-context';
 import { PoChip, TrackingChip } from '@/components/ui/CopyChip';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { RightPaneOverlay } from '@/components/ui/RightPaneOverlay';
@@ -138,19 +142,6 @@ type CheckResult = {
   undetermined: CheckZohoReceivedRow[];
   stats: CheckZohoReceivedStats;
 };
-
-/**
- * The panel's chrome band — `DeskRailChromeRow`'s shape for a rail that has no
- * cursor and no contextual icons: eyebrow at the leading gutter, flex spacer,
- * then the reserved cell the host's singleton `X` paints over.
- *
- * `pl-4` is the body's own content gutter (`px-4`), so the eyebrow's ink lands
- * on the line the heading, the icon strip and every card border beneath it
- * share. `pr-0` matches `DESK_RAIL_CHROME_ROW_CLASS` so the reserved `w-9`
- * cell sits under the host anchor's `right-2`. Height is
- * {@link STATION_CHROME_ROW_FACE} (carton / Displays top).
- */
-const TOP_BAND_CLASS = DESK_INSPECTOR_GUTTER_TOP_BAND;
 
 function reasonLabel(reason: CheckZohoReceivedRow['reason']): string {
   switch (reason) {
@@ -463,6 +454,12 @@ export function IncomingBulkTrackingPanel({
   const activeFilter = checkOnly ? '' : (searchParams.get(TRACKING_IN_PARAM) || '').trim();
   const panelTitle =
     checkOnly || action === 'check' ? 'Checking unreceived orders' : 'Tracking list';
+  /**
+   * The BAND title is the current segment — one short noun, never the sentence.
+   * `panelTitle` stays the accessible region name, which is where a full phrase
+   * belongs; the band's flex-1 cell is a label, not a narration.
+   */
+  const bandTitle = checkOnly || action === 'check' ? 'Receipts' : 'Tracking';
   const pasteExpandTitle = checkOnly ? 'Paste tracking or order numbers' : 'Paste tracking list';
 
   useEffect(() => {
@@ -623,7 +620,7 @@ export function IncomingBulkTrackingPanel({
           subtitle: `${filterResult.hidden.length} hidden`,
           icon: History,
           content: (
-            <div className="min-h-0 flex-1 overflow-y-auto px-1">
+            <div className="min-h-0 flex-1 overflow-y-auto px-4">
               <BucketBody
                 hint="These exist, but the default list hides them. Each row says why."
                 copyLabel="hidden rows"
@@ -658,7 +655,7 @@ export function IncomingBulkTrackingPanel({
           subtitle: `${filterResult.not_found.length} unknown`,
           icon: AlertCircle,
           content: (
-            <div className="min-h-0 flex-1 overflow-y-auto px-1">
+            <div className="min-h-0 flex-1 overflow-y-auto px-4">
               <BucketBody
                 hint="Nothing in this workspace carries these numbers at all."
                 copyLabel="not found"
@@ -694,7 +691,7 @@ export function IncomingBulkTrackingPanel({
         subtitle: `${rows.length}`,
         icon,
         content: (
-          <div className="min-h-0 flex-1 overflow-y-auto px-1">
+          <div className="min-h-0 flex-1 overflow-y-auto px-4">
             <BucketBody
               hint={hint}
               copyLabel={label.toLowerCase()}
@@ -747,6 +744,102 @@ export function IncomingBulkTrackingPanel({
     return [];
   }, [action, filterResult, checkResult, focusTracking]);
 
+  /**
+   * Paste feedback — errors, the help line, truncation, the active filter chip
+   * and the resolve summary. Rendered as the standalone body before a paste
+   * resolves, and as the strip above the composer once buckets exist. It is
+   * never the top row: the band is.
+   */
+  const feedback = (
+    <>
+        {error ? (
+          <p className="text-role-caption font-medium text-red-600" role="alert">
+            {error}
+          </p>
+        ) : leaves.length === 0 ? (
+          <p className="text-role-caption text-text-faint">
+            {checkOnly ? (
+              <>
+                Paste tracking or order numbers, one per line (or comma-separated). Asks the
+                purchasing source whether each is received. Max {CHECK_ZOHO_RECEIVED_MAX_INPUTS}.
+              </>
+            ) : (
+              <>
+                One per line (or comma-separated). Tracking or order numbers work.{' '}
+                <strong>Filter</strong> narrows the list to these rows — including ones the lane
+                normally hides. <strong>Check receipts</strong> asks the purchasing source
+                whether they are received. Max {CHECK_ZOHO_RECEIVED_MAX_INPUTS}.
+              </>
+            )}
+          </p>
+        ) : null}
+
+        {selection.truncated > 0 ? (
+          <p className="rounded-none bg-amber-50 px-2 py-1.5 text-role-caption text-amber-800 ring-1 ring-inset ring-amber-200">
+            {selection.requested} pasted — only the first {selection.keys.length} will be used.
+          </p>
+        ) : null}
+
+        {!checkOnly && activeFilter ? (
+          <div className="flex items-center justify-between gap-2 rounded-none bg-blue-50 px-2 py-1.5 ring-1 ring-inset ring-blue-200">
+            <p className="text-role-caption text-blue-800">
+              {(() => {
+                const n = activeFilter.split(',').filter(Boolean).length;
+                return `The list is filtered to ${n} tracking number${n === 1 ? '' : 's'}.`;
+              })()}
+            </p>
+            <Button variant="ghost" size="sm" onClick={clearFilter}>
+              Clear
+            </Button>
+          </div>
+        ) : null}
+
+        {!checkOnly && action === 'filter' && filterStats ? (
+          /* "tracking numbers" is load-bearing: these counts are per KEY,
+             while the table below counts LINES, and one PO can carry several.
+             Measured on real data a 42-tracking paste resolved to 46 rows —
+             without the unit the two numbers read as a bug. */
+          <p className="text-role-micro text-text-muted">
+            {matched} of {filterStats.applied} tracking numbers matched
+            {filterStats.not_found > 0 ? ` · ${filterStats.not_found} not found` : ''}
+            {filterStats.truncated > 0
+              ? ` · showing the first ${filterStats.applied} of ${filterStats.requested}`
+              : ''}
+          </p>
+        ) : null}
+
+        {action === 'check' && checkResult ? (
+          <div className="space-y-2">
+            <p className="text-role-micro text-text-muted">
+              {checkResult.stats.unique_count} unique · {checkResult.stats.mirror_hits} cached ·{' '}
+              {checkResult.stats.zoho_lookups} live
+              {checkResult.stats.errors > 0 ? ` · ${checkResult.stats.errors} failed` : ''}
+            </p>
+            {checkResult.stats.erp_ahead > 0 ? (
+              <p className="rounded-none bg-rose-50 px-2 py-1.5 text-role-caption text-rose-700 ring-1 ring-inset ring-rose-200">
+                {checkResult.stats.erp_ahead} received upstream with no warehouse record — these
+                appear on no watch list today.
+              </p>
+            ) : null}
+            {checkResult.stats.warehouse_ahead > 0 ? (
+              <p className="rounded-none bg-amber-50 px-2 py-1.5 text-role-caption text-amber-800 ring-1 ring-inset ring-amber-200">
+                {checkResult.stats.warehouse_ahead} received here but not upstream.
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+
+    </>
+  );
+
+  const hasFeedback =
+    Boolean(error) ||
+    leaves.length === 0 ||
+    selection.truncated > 0 ||
+    Boolean(!checkOnly && activeFilter) ||
+    Boolean(!checkOnly && action === 'filter' && filterStats) ||
+    Boolean(action === 'check' && checkResult);
+
   if (!open) return null;
 
   return (
@@ -758,118 +851,54 @@ export function IncomingBulkTrackingPanel({
       ariaLabel={panelTitle}
     >
       <div className="flex h-full min-h-0 flex-col bg-surface-card">
-        {/* Chrome band. The dismiss is the HOST's singleton `X` at the
-            top-right (`RightRailHostCloseAnchor`); this row reserves that cell
-            so the eyebrow can never truncate underneath it, and mounts no
-            close of its own. */}
-        <div className={TOP_BAND_CLASS}>
-          <p className="flex h-full min-w-0 items-center truncate text-role-eyebrow uppercase tracking-widest text-text-soft">
-            {panelTitle}
-          </p>
-          <div className="flex-1" />
-          <span
-            className={RIGHT_RAIL_HOST_CLOSE_SLOT_CLASS}
-            aria-hidden
-            data-right-rail-host-close-slot
+        {/*
+          ONE band, and it is the TOP row of the card.
+
+          This panel used to hand-roll its band (an eyebrow, a spacer and the
+          reserved host cell) and then mount `DeskInspectorIndexShell` — which
+          paints a band of its own — a few rows lower. The moment a paste
+          produced buckets the rail read as TWO stacked bands, and the shell's
+          Back chevron sat below a header that had already claimed the top
+          corner. The shell owns the single band at both stages now: it leads
+          with Back on a bucket, carries the current segment as the title, and
+          ends with the cell the host's `⤢ ✕` paints into.
+
+          The paste feedback that used to sit above the shell moved to the
+          strip directly over the composer — beside the control that produced
+          it, and out of the row the host's window controls occupy.
+        */}
+        {leaves.length > 0 ? (
+          <DeskInspectorIndexShell
+            stance="index"
+            title={bandTitle}
+            leaves={leaves}
+            activeId={activeTab}
+            onActiveIdChange={setActiveTab}
+            ariaLabel={
+              action === 'check' ? 'Unreceived order check results' : 'Tracking results'
+            }
+            testId="incoming-bulk-tracking-inspector-index"
+            backLabel="Back to topics"
+            className="min-h-0 flex-1"
           />
-        </div>
+        ) : (
+          // Nothing pasted yet (or the paste failed): one body, no topics above
+          // it, so no Back is owed and the stance says so.
+          <DeskInspectorIndexShell
+            stance="standalone"
+            title={bandTitle}
+            ariaLabel={panelTitle}
+            testId="incoming-bulk-tracking-inspector-index"
+            className="min-h-0 flex-1"
+            body={<div className="space-y-3 px-4 pb-2 pt-3">{feedback}</div>}
+          />
+        )}
 
-        {/* Stats / paste feedback above the topic shell; buckets own their scroll. */}
-        <div className="flex min-h-0 flex-1 flex-col">
-        <div className="shrink-0 space-y-3 px-4 pb-2 pt-3">
-          {error ? (
-            <p className="text-role-caption font-medium text-red-600" role="alert">
-              {error}
-            </p>
-          ) : leaves.length === 0 ? (
-            <p className="text-role-caption text-text-faint">
-              {checkOnly ? (
-                <>
-                  Paste tracking or order numbers, one per line (or comma-separated). Asks the
-                  purchasing source whether each is received. Max {CHECK_ZOHO_RECEIVED_MAX_INPUTS}.
-                </>
-              ) : (
-                <>
-                  One per line (or comma-separated). Tracking or order numbers work.{' '}
-                  <strong>Filter</strong> narrows the list to these rows — including ones the lane
-                  normally hides. <strong>Check receipts</strong> asks the purchasing source
-                  whether they are received. Max {CHECK_ZOHO_RECEIVED_MAX_INPUTS}.
-                </>
-              )}
-            </p>
-          ) : null}
-
-          {selection.truncated > 0 ? (
-            <p className="rounded-none bg-amber-50 px-2 py-1.5 text-role-caption text-amber-800 ring-1 ring-inset ring-amber-200">
-              {selection.requested} pasted — only the first {selection.keys.length} will be used.
-            </p>
-          ) : null}
-
-          {!checkOnly && activeFilter ? (
-            <div className="flex items-center justify-between gap-2 rounded-none bg-blue-50 px-2 py-1.5 ring-1 ring-inset ring-blue-200">
-              <p className="text-role-caption text-blue-800">
-                {(() => {
-                  const n = activeFilter.split(',').filter(Boolean).length;
-                  return `The list is filtered to ${n} tracking number${n === 1 ? '' : 's'}.`;
-                })()}
-              </p>
-              <Button variant="ghost" size="sm" onClick={clearFilter}>
-                Clear
-              </Button>
-            </div>
-          ) : null}
-
-          {!checkOnly && action === 'filter' && filterStats ? (
-            /* "tracking numbers" is load-bearing: these counts are per KEY,
-               while the table below counts LINES, and one PO can carry several.
-               Measured on real data a 42-tracking paste resolved to 46 rows —
-               without the unit the two numbers read as a bug. */
-            <p className="text-role-micro text-text-muted">
-              {matched} of {filterStats.applied} tracking numbers matched
-              {filterStats.not_found > 0 ? ` · ${filterStats.not_found} not found` : ''}
-              {filterStats.truncated > 0
-                ? ` · showing the first ${filterStats.applied} of ${filterStats.requested}`
-                : ''}
-            </p>
-          ) : null}
-
-          {action === 'check' && checkResult ? (
-            <div className="space-y-2">
-              <p className="text-role-micro text-text-muted">
-                {checkResult.stats.unique_count} unique · {checkResult.stats.mirror_hits} cached ·{' '}
-                {checkResult.stats.zoho_lookups} live
-                {checkResult.stats.errors > 0 ? ` · ${checkResult.stats.errors} failed` : ''}
-              </p>
-              {checkResult.stats.erp_ahead > 0 ? (
-                <p className="rounded-none bg-rose-50 px-2 py-1.5 text-role-caption text-rose-700 ring-1 ring-inset ring-rose-200">
-                  {checkResult.stats.erp_ahead} received upstream with no warehouse record — these
-                  appear on no watch list today.
-                </p>
-              ) : null}
-              {checkResult.stats.warehouse_ahead > 0 ? (
-                <p className="rounded-none bg-amber-50 px-2 py-1.5 text-role-caption text-amber-800 ring-1 ring-inset ring-amber-200">
-                  {checkResult.stats.warehouse_ahead} received here but not upstream.
-                </p>
-              ) : null}
-            </div>
-          ) : null}
-
-        </div>
-
-          {leaves.length > 0 ? (
-            <DeskInspectorIndexShell
-              leaves={leaves}
-              activeId={activeTab}
-              onActiveIdChange={setActiveTab}
-              ariaLabel={
-                action === 'check' ? 'Unreceived order check results' : 'Tracking results'
-              }
-              testId="incoming-bulk-tracking-inspector-index"
-              backLabel="Back to topics"
-              className="min-h-0 flex-1 px-3"
-            />
-          ) : null}
-        </div>
+        {leaves.length > 0 && hasFeedback ? (
+          <div className="shrink-0 space-y-3 border-t border-border-soft px-4 py-2">
+            {feedback}
+          </div>
+        ) : null}
 
         <div className="shrink-0 border-t border-border-soft bg-surface-card px-3 py-2">
           <OmnichannelComposerDock

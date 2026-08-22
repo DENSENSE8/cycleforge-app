@@ -109,11 +109,30 @@ describe('kiosk visit triage', () => {
     assert.equal(countKioskBlockers(zeroQty), 1);
   });
 
-  it('two repairs on one visit blocks with the count to remove', () => {
+  it('two complete repairs on one visit is a NORMAL visit, not a blocker', () => {
+    // This used to assert /remove 1 extra/ — a cart-level block that existed
+    // only because submit kept the first repair and silently dropped the rest.
+    // SQ6 writes one repair_service row per device, so two devices is a visit,
+    // not an error the operator has to undo.
     const s = session({
       lines: [repairLine(), { ...repairLine(), id: 'l2' } as KioskCartLine],
     });
-    assert.match(firstKioskBlocker(s) ?? '', /remove 1 extra/);
+    assert.equal(firstKioskBlocker(s), null);
+  });
+
+  it('each device still raises its OWN blockers — nothing is under-checked', () => {
+    const s = session({
+      lines: [
+        repairLine(),
+        { ...repairLine({ serialNumber: '' }), id: 'l2' } as KioskCartLine,
+      ],
+    });
+    const items = collectKioskTriage(s);
+    assert.ok(
+      items.some((i) => i.id === 'l2:serial'),
+      'the second device is checked as thoroughly as the first',
+    );
+    assert.equal(items.some((i) => i.id === 'l1:serial'), false);
   });
 
   it('a short phone blocks even though the field is non-empty', () => {

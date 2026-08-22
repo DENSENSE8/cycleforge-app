@@ -16,14 +16,6 @@ import { ReceivingProgressTab } from './receiving/ReceivingProgressTab';
 import { ReceivingItemsTab } from './receiving/ReceivingItemsTab';
 import { ReceivingSerialJourneys } from './receiving/ReceivingSerialJourneys';
 import { useReceivingDetailForm } from '@/hooks/useReceivingDetailForm';
-import {
-  PaneHeader,
-  PaneHeaderIconBadge,
-  PaneHeaderLabel,
-  PaneHeaderActionBar,
-  type PaneHeaderActionBarAction,
-} from '@/components/ui/pane-header';
-import { paneHeaderLabelValueClass } from '@/components/ui/pane-header/blocks';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
 import {
   DeskInspectorIndexShell,
@@ -62,7 +54,6 @@ export function ReceivingDetailsStack({ log, onClose, onUpdated, onDeleted }: Re
   const [navId, setNavId] = useState<string>('progress');
   const [isCopying, setIsCopying] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
-  const [copiedPoNumber, setCopiedPoNumber] = useState(false);
 
   useEffect(() => {
     setNavId('progress');
@@ -89,26 +80,15 @@ export function ReceivingDetailsStack({ log, onClose, onUpdated, onDeleted }: Re
     toast.success('Refreshed');
   };
 
-  const handleClose = () => {
-    if (form.isSaving || form.isDeleting) return;
-    onClose();
-  };
+  /**
+   * Dismissal REFUSAL, not a no-op handler. `onClose` can only say "I am done";
+   * a guarded `onClose` still let the host run its lifecycle half (park + the
+   * "Draft saved." toast) over an in-flight save. `closeRightPanel` consults
+   * this before either half, so host `✕` / Esc / click-off all honour it.
+   */
+  const canClose = () => !form.isSaving && !form.isDeleting;
 
   const poNumber = (log.zoho_purchaseorder_number || '').trim();
-  const headerTitle = poNumber
-    ? `Purchase order #${poNumber}`
-    : `Carton #${log.id} (no purchase order linked)`;
-
-  const handleCopyPoNumber = async () => {
-    if (!poNumber || copiedPoNumber) return;
-    const ok = await copyToClipboard(poNumber);
-    if (!ok) {
-      toast.error('Could not copy to clipboard');
-      return;
-    }
-    setCopiedPoNumber(true);
-    window.setTimeout(() => setCopiedPoNumber(false), 1500);
-  };
 
   const handleCopyAll = async () => {
     if (isCopying) return;
@@ -177,31 +157,68 @@ export function ReceivingDetailsStack({ log, onClose, onUpdated, onDeleted }: Re
     }
   };
 
-  // Readiness-driven next action only. Edit PO / Search purchase order are deliberately
-  // absent — operators match or edit lines from the Unbox workspace (or the
-  // triage "open in unbox" icon), not from this read-focused details header.
-  const primaryCta =
-    readiness.cta === 'continue_unbox'
-      ? { label: 'Unbox', onClick: handleEditPO }
-      : null;
+  /**
+   * Band verbs — the one trailing cluster, `[Unbox] [Refresh] [Copy]`.
+   *
+   * These were three separate affordances on a stacked header: a primary
+   * `Unbox` CTA in the PaneHeader `rightSlot`, a triage-only `Open in unbox`
+   * IconButton (the SAME `handleEditPO`, gated on the surface instead of on
+   * readiness), and a `PaneHeaderActionBar` on a third row below both. Two
+   * doors onto one verb is the shape the carton-bar ruling bans, so Unbox is
+   * one cell that lights when EITHER gate says so.
+   *
+   * Edit PO / Search purchase order stay deliberately absent — operators match
+   * or edit lines from the Unbox workspace, not from this read-focused rail.
+   */
+  const showUnbox = isTriageSurface || readiness.cta === 'continue_unbox';
 
-  const backdropClose = () => {
-    handleClose();
-  };
-
-  const triageOpenSlot = isTriageSurface ? (
-    <HoverTooltip label="Open this carton in unbox" asChild focusable={false}>
-      <IconButton
-        icon={<PackageOpen className="h-4 w-4" />}
-        ariaLabel="Open in unbox"
-        tone="accent"
-        size="sm"
-        onClick={() => void handleEditPO()}
-        disabled={isOpeningEditor || form.isSaving}
-        className="border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
-      />
-    </HoverTooltip>
-  ) : null;
+  const bandVerbs = (
+    <>
+      {/* Read-only metric, leading the cluster — the `status` readout the
+          deleted ActionBar carried. Never a verb. */}
+      {form.isSaving ? (
+        <span
+          className="flex h-full items-center px-1.5 text-role-micro uppercase tracking-wider text-text-soft"
+          aria-live="polite"
+        >
+          Saving
+        </span>
+      ) : null}
+      {showUnbox ? (
+        <HoverTooltip label="Open this carton in unbox" asChild focusable={false}>
+          <IconButton
+            icon={<PackageOpen className="h-3.5 w-3.5" />}
+            ariaLabel="Open in unbox"
+            tone="accent"
+            size="xs"
+            onClick={() => void handleEditPO()}
+            disabled={isOpeningEditor || form.isSaving}
+            data-testid="receiving-details-unbox"
+          />
+        </HoverTooltip>
+      ) : null}
+      <HoverTooltip label="Refetch this receiving log" asChild focusable={false}>
+        <IconButton
+          icon={<RefreshCw className="h-3.5 w-3.5" />}
+          ariaLabel="Refresh"
+          tone="neutral"
+          size="xs"
+          onClick={handleRefresh}
+          disabled={form.isSaving}
+        />
+      </HoverTooltip>
+      <HoverTooltip label="Copy receiving details to clipboard" asChild focusable={false}>
+        <IconButton
+          icon={<Copy className={`h-3.5 w-3.5 ${isCopying ? 'animate-pulse' : ''}`} />}
+          ariaLabel="Copy receiving details"
+          tone="neutral"
+          size="xs"
+          onClick={() => void handleCopyAll()}
+          disabled={isCopying}
+        />
+      </HoverTooltip>
+    </>
+  );
 
   const leaves = useMemo<DeskInspectorLeaf[]>(
     () => [
@@ -266,104 +283,41 @@ export function ReceivingDetailsStack({ log, onClose, onUpdated, onDeleted }: Re
       // the right-rail store exists to prevent. Stays a float pending the
       // right-edge ownership ruling.
       push={false}
-      onClose={backdropClose}
+      onClose={onClose}
+      canClose={canClose}
       elevated
       modal={false}
       closeOnOutsideClick
       ariaLabel={poNumber ? `Receiving details for order ${poNumber}` : 'Receiving details'}
     >
       <div className="flex h-full min-h-0 flex-col overflow-hidden">
-      {/* Header — PO order# identity (not carton/receiving id); Unbox CTA only
-          when deriveCartonReadiness asks for continue_unbox. */}
-      <PaneHeader
-        className="shrink-0 border-border-hairline bg-surface-card"
-        rowClassName="px-6"
-        leftSlot={
-          <>
-            <PaneHeaderIconBadge Icon={PackageOpen} bg="bg-blue-600" tint="text-white" />
-            <PaneHeaderLabel
-              eyebrow={poNumber ? 'Order #' : undefined}
-              value={
-                poNumber ? (
-                  <HoverTooltip label={copiedPoNumber ? 'Copied' : 'Copy'} asChild>
-                    {/* ds-raw-button: text-left inline value (click-to-copy order #).
-                        Affordance is the tooltip only — no hover color shift. */}
-                    <button
-                      type="button"
-                      onClick={() => void handleCopyPoNumber()}
-                      className="truncate text-left text-text-default"
-                      aria-label={`Copy order number ${poNumber}`}
-                    >
-                      {poNumber}
-                      {copiedPoNumber ? (
-                        <span className="ml-1 text-text-muted" aria-hidden>
-                          ✓
-                        </span>
-                      ) : null}
-                    </button>
-                  </HoverTooltip>
-                ) : (
-                  'No PO'
-                )
-              }
-              valueTitle={headerTitle}
-              valueClassName={paneHeaderLabelValueClass}
-            />
-          </>
-        }
-        rightSlot={
-          primaryCta ? (
-            <Button
-              type="button"
-              variant="primary"
-              onClick={primaryCta.onClick}
-              disabled={isOpeningEditor || form.isSaving}
-              loading={isOpeningEditor}
-              icon={<PackageOpen />}
-              className="text-role-caption font-semibold uppercase tracking-wider"
-            >
-              {isOpeningEditor ? 'Working…' : primaryCta.label}
-            </Button>
-          ) : null
-        }
-        belowSlot={
-          /* Utility toolbar — same shape as the LineEditPanel toolbar, so
-              detail panes have one consistent action surface. Sits ABOVE
-              the index→leaf shell. */
-          <div className="px-6 pb-2">
-            <PaneHeaderActionBar
-              iconOnly
-              actions={[
-                {
-                  key: 'refresh',
-                  label: 'Refresh',
-                  icon: <RefreshCw className="h-3.5 w-3.5" />,
-                  onClick: handleRefresh,
-                  disabled: form.isSaving,
-                  title: 'Refetch this receiving log',
-                },
-                {
-                  key: 'copy',
-                  label: 'Copy',
-                  icon: <Copy className={`h-3.5 w-3.5 ${isCopying ? 'animate-pulse' : ''}`} />,
-                  onClick: () => void handleCopyAll(),
-                  disabled: isCopying,
-                  title: 'Copy receiving details to clipboard',
-                },
-              ] satisfies PaneHeaderActionBarAction[]}
-              status={form.isSaving ? 'Saving' : undefined}
-            />
-          </div>
-        }
-      />
+      {/*
+        ONE band, no stacked header (2026-08-21).
 
+        This used to paint a `PaneHeader` above the shell: an icon badge, an
+        eyebrow (`Order #`) over the click-to-copy PO number, an `Unbox` CTA in
+        `rightSlot`, and a `PaneHeaderActionBar` on a third row in `belowSlot`.
+        That is three chrome rows above a shell whose own band already carries
+        back · title · trailing — the exact stacked-band defect the Displays
+        column contract exists to prevent, and an eyebrow/title pair on two
+        lines besides.
+
+        The PO number is NOT lost with the header: the Progress leaf renders it
+        as a copyable `PO number` field (`ReceivingInventoryLinkageSection`),
+        which is where record identity belongs once the band carries the
+        segment. Verbs moved into the band's one trailing cluster.
+      */}
       <DeskInspectorIndexShell
+        stance="index"
         leaves={leaves}
         activeId={navId}
         onActiveIdChange={onNavChange}
         defaultActiveId="progress"
-        indexRightSlot={triageOpenSlot}
-        leafTrailing={triageOpenSlot}
+        // Index-stage title only — a leaf paints its own segment (`Progress` /
+        // `Items` / `Serial journey`).
+        title="Carton"
+        indexRightSlot={bandVerbs}
+        leafTrailing={bandVerbs}
         ariaLabel="Receiving topics"
         testId="receiving-inspector-index"
         backLabel="Back to topics"

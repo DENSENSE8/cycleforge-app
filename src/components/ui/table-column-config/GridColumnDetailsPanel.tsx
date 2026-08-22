@@ -87,8 +87,7 @@ import { useGridColumnWidthBounds } from './useGridColumnWidthBounds';
 import { useGridColumnWidths } from './useGridColumnWidths';
 import { RIGHT_RAIL_HOST_CLOSE_SLOT_CLASS } from '@/components/right-rail/DeskRailChromeRow';
 import {
-  STATION_CHROME_ROW_FACE,
-  STATION_CHROME_SEAM_HAIRLINE,
+  DESK_INSPECTOR_GUTTER_TOP_BAND,
 } from '@/components/station/entity-context';
 import { cn } from '@/utils/_cn';
 
@@ -106,7 +105,16 @@ const CELL_OPTS: { id: GridColumnCellMode; label: string }[] = [
  * eyebrow on the body's own content gutter and reserves the trailing cell that
  * `X` paints over, same shape as `DeskRailChromeRow`.
  */
-const TOP_BAND_CLASS = `relative z-header flex ${STATION_CHROME_ROW_FACE} items-stretch gap-1.5 pl-4 pr-2 ${STATION_CHROME_SEAM_HAIRLINE}`;
+/**
+ * The band is the SoT token, not a retype.
+ *
+ * This was a character-for-character copy of `DESK_INSPECTOR_GUTTER_TOP_BAND`
+ * except `pr-2` where the token says `pr-0` — and that 8px is exactly why this
+ * panel's dismiss lost the flush corner every other rail has. The dismiss is
+ * the control an operator throws the pointer at without looking; inset, it
+ * stops being an infinite-width target.
+ */
+const TOP_BAND_CLASS = DESK_INSPECTOR_GUTTER_TOP_BAND;
 
 export function GridColumnDetailsPanel<C extends LedgerGridColumnModel>({
   open,
@@ -408,7 +416,7 @@ export function GridColumnDetailsPanel<C extends LedgerGridColumnModel>({
 
         <div className="border-t border-border-soft bg-surface-card p-4">
           {/* Reset acts on the whole table's delta, not the selected column, so
-              it sits beside Done rather than under the per-column controls.
+              it sits on the footer rather than under the per-column controls.
               Absent while pristine — a reset that resets nothing teaches nothing. */}
           <div className="flex items-center gap-2">
             {dirtyTotal > 0 ? (
@@ -421,9 +429,8 @@ export function GridColumnDetailsPanel<C extends LedgerGridColumnModel>({
                 Reset
               </Button>
             ) : null}
-            <Button variant="primary" className="flex-1" onClick={onClose}>
-              Done
-            </Button>
+            {/* No `Done`. Every control in this panel persists live, so it
+                was a pure second dismiss — the host X is the one closer. */}
           </div>
         </div>
       </div>

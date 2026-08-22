@@ -18,8 +18,9 @@ import {
   compoundRowEstimateFor,
 } from '@/components/tables/compound/compound-columns';
 import {
+  COMPOUND_GUTTER_PX,
+  COMPOUND_GUTTER_TRACK_REM,
   COMPOUND_ROW_PX,
-  COMPOUND_THUMB_PX,
 } from '@/components/tables/compound/compound-row-chrome';
 import { receivingStateTone } from '@/lib/receiving/receiving-compound-view';
 import { ordersStateTone } from '@/lib/orders/orders-compound-view';
@@ -106,20 +107,46 @@ describe('compound layout is shared, not forked', () => {
   });
 });
 
+describe('the two gutters are one square', () => {
+  const select = COMPOUND_TRACKS.find((c) => c.key === 'select')!;
+  const thumb = COMPOUND_TRACKS.find((c) => c.key === 'thumb')!;
+
+  it('gives select and thumb exactly the same width', () => {
+    // The operator's words: "the selection column must be exactly the same size
+    // as the photos column". Both read `COMPOUND_GUTTER_TRACK_REM`, so this is
+    // a property of construction — but pin it, because the failure mode is two
+    // literals that drift by a rem and look merely "a bit off".
+    assert.equal(select.width, thumb.width);
+    assert.equal(select.width, `minmax(${COMPOUND_GUTTER_TRACK_REM}rem, ${COMPOUND_GUTTER_TRACK_REM}rem)`);
+  });
+
+  it('makes that square the ROW BOX, so a photo fills it uncropped', () => {
+    assert.equal(COMPOUND_GUTTER_PX, COMPOUND_ROW_PX);
+    assert.equal(COMPOUND_GUTTER_TRACK_REM * 16, COMPOUND_ROW_PX);
+  });
+
+  it('pins BOTH gutters, because a drag could only break the equality', () => {
+    // `isGridColumnResizable` refuses `select` unconditionally, so a draggable
+    // `thumb` cannot stay equal to it. Fixing both is the only coherent answer.
+    assert.equal(select.resizable, false);
+    assert.equal(thumb.resizable, false);
+  });
+});
+
 describe('column widths are operator-adjustable', () => {
-  it('every content track can be dragged', () => {
+  it('every DATA track can be dragged', () => {
     // The complaint this answers: a fixed 11rem `fulfillment` left a visible
     // gutter between a short order chip and the item title on every row, and no
     // operator could close it. Width is now a default, not a ceiling.
     const resizable = COMPOUND_TRACKS.filter((c) => c.resizable !== false).map((c) => c.key);
-    assert.deepEqual(resizable, ['thumb', 'fulfillment', 'item', 'state']);
+    assert.deepEqual(resizable, ['fulfillment', 'item', 'state']);
   });
 
   it('leaves only fixed-content chrome un-draggable', () => {
-    // `select` is a 2rem checkbox, `open` a 2.5rem chevron, `_fill` structural
-    // slack. Dragging any of them could only add or steal whitespace.
+    // The two 48px gutters, `open` (a 2.5rem chevron) and `_fill` (structural
+    // slack). Dragging any of them could only add or steal whitespace.
     const fixed = COMPOUND_TRACKS.filter((c) => c.resizable === false).map((c) => c.key);
-    assert.deepEqual(fixed, ['select', 'open', '_fill']);
+    assert.deepEqual(fixed, ['select', 'thumb', 'open', '_fill']);
   });
 
   it('gives every draggable track a content floor', () => {
@@ -177,10 +204,6 @@ describe('every table measures the same row', () => {
     // The rule this pins: a compound row's height is a property of what it
     // CONTAINS, and it comes from exactly one number.
     assert.equal(COMPOUND_ROW_PX, 48);
-    assert.ok(
-      COMPOUND_THUMB_PX < COMPOUND_ROW_PX,
-      'the image is the one cell whose content could outgrow the row box',
-    );
   });
 
   it('feeds that SAME constant to the virtualizer', () => {
@@ -207,6 +230,6 @@ describe('every table measures the same row', () => {
     // and every family imports it rather than declaring its own.
     const mod = await import('@/components/tables/compound/compound-row-chrome');
     assert.equal(mod.COMPOUND_ROW_PX, COMPOUND_ROW_PX);
-    assert.equal(mod.COMPOUND_THUMB_PX, COMPOUND_THUMB_PX);
+    assert.equal(mod.COMPOUND_GUTTER_PX, COMPOUND_GUTTER_PX);
   });
 });

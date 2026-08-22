@@ -121,6 +121,7 @@ function SupportOrderFocus({
     () => (
       <div className="space-y-3 pb-4">
         <ShippedDetailsPanelContent
+          canEditProduct
           shipped={shipped}
           durationData={{}}
           onUpdate={onReload}

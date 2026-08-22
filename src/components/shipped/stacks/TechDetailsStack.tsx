@@ -163,6 +163,7 @@ export function TechDetailsStack({
     <div className={flush ? 'flex min-h-full flex-col pb-6 pt-3' : 'flex min-h-full flex-col pb-8 pt-4'}>
       <div className={flush ? 'flex-1 px-4' : 'flex-1'}>
       <ShippedDetailsPanelContent
+        canEditProduct
         shipped={{
           ...shipped,
           order_id: orderNumber,

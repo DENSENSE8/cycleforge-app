@@ -8,7 +8,11 @@
  *   Center — Plan Agent (SEND is the work) + centered composer; or MDX when
  *            `?view=doc`
  *   Right — live MDX HTML via {@link DetailStackRailRegistrar} (extras);
- *            run history collapsed under Advanced
+ *            run history collapsed under Advanced. {@link ForgePlanRail} owns
+ *            the rail's ONE band; this console passes it a single-segment
+ *            title and never a second identity line. Dismiss is the host's
+ *            singleton `✕` (it runs `onClose` → `setRailOpen(false)`), with
+ *            {@link ForgePlanRailReopenButton} as the re-open.
  *
  * Landing: `/forge?view=live` (`live` ≡ agent-primary). Its own route since
  * 2026-08-19 — it used to mount as Home's `?mode=forge` region.
@@ -270,8 +274,10 @@ export function AgenticLoopLiveConsole({ showRuns = true }: { showRuns?: boolean
       <ForgePlanRail
         open={railOpen}
         onClose={() => setRailOpen(false)}
-        eyebrow="Master plan"
-        title={agentPrimary ? 'Live preview' : 'Runs'}
+        // ONE title cell, one segment. `Master plan` used to ride above this as
+        // an eyebrow, making the rail's top two rows deep; the plan's
+        // provenance is the console around the rail, not a second header line.
+        title={agentPrimary ? 'Preview' : 'Runs'}
         mdx={plan.mdx}
         highlightTicketId={selectedTicketId}
         planStatus={plan.status}

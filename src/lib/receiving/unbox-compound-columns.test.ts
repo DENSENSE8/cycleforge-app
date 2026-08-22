@@ -43,19 +43,24 @@ describe('compound column model', () => {
 
   it('keeps the thumbnail track leftmost and frozen', () => {
     const thumb = RECEIVING_COMPOUND_COLUMNS.find((c) => c.key === 'thumb')!;
-    assert.equal(thumb.width, 'minmax(4rem, 4rem)');
     assert.ok(thumb.frozen, 'the image is the pinned row handle');
     // Only the select gutter may precede it.
     assert.equal(RECEIVING_COMPOUND_COLUMNS.findIndex((c) => c.key === 'thumb'), 1);
   });
 
-  it('lets an operator drag every content track', () => {
+  it('sizes the photo gutter exactly like the select gutter', () => {
+    // The operator's invariant, stated as one: two equal squares open the row.
+    const select = RECEIVING_COMPOUND_COLUMNS.find((c) => c.key === 'select')!;
+    const thumb = RECEIVING_COMPOUND_COLUMNS.find((c) => c.key === 'thumb')!;
+    assert.equal(thumb.width, select.width);
+  });
+
+  it('lets an operator drag every DATA track', () => {
     // Was `['item']` only, which is how an 11rem `fulfillment` could leave a
     // gutter beside a short order chip with no way for the floor to close it.
-    // Resizing a FROZEN track is safe: `gridFrozenLeft` builds its sticky-left
-    // offsets from the same `--cf-col-*` vars the drag writes.
+    // The two gutters are excluded on purpose — see the width test above.
     const resizable = RECEIVING_COMPOUND_COLUMNS.filter((c) => c.resizable).map((c) => c.key);
-    assert.deepEqual(resizable, ['thumb', 'fulfillment', 'item', 'state']);
+    assert.deepEqual(resizable, ['fulfillment', 'item', 'state']);
   });
 
   it('never offers sort on chrome tracks', () => {

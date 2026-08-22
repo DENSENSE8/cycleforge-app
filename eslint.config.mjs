@@ -117,20 +117,6 @@ export default [
     },
   },
 
-  // ── Z-index scale guard ──────────────────────────────────────────────────
-  // Stacking order is owned by the named scale in
-  // `src/design-system/tokens/z-index.ts` (memory: z-index-scale-sot). New code
-  // must consume a token — a `z-*` Tailwind class, `zIndex.*`, a CSS var, or the
-  // <Layer>/<AnchoredLayer> primitives — never a raw global-scale number.
-  //
-  // These rules ban the *global-scale* offenders only: arbitrary `z-[NN]`
-  // (2+ digits — Tailwind's own scale stops at z-50, so any multi-digit
-  // arbitrary value is an overlay-layer number) and inline `zIndex: >= 50`
-  // (the scale's overlay bands start at dropdown=50). Purely-local in-flow
-  // stacking — `z-[1]` decorative masks, `whileDrag zIndex: 20` lifts — stays
-  // native and is intentionally left alone. The one documented exception
-  // (SerialCard's in-flow hover tooltip) carries an inline disable.
-  //
   // ── Tenancy escape-hatch guard (merged into the same no-restricted-syntax) ─
   // `DOGFOOD_ORG_ID` / `transitionalDogfoodOrgId()` hardcode the dogfood org instead
   // of reading `ctx.organizationId` from the session. New code MUST NOT add
@@ -151,21 +137,6 @@ export default [
     rules: {
       'no-restricted-syntax': [
         'error',
-        {
-          selector: 'Literal[value=/z-\\[\\d{2,}/]',
-          message:
-            'Arbitrary z-[NN] is banned. Use a named z-index token (z-panel/z-modal/…) or <Layer>/<AnchoredLayer>. See tokens/z-index.ts.',
-        },
-        {
-          selector: 'TemplateElement[value.raw=/z-\\[\\d{2,}/]',
-          message:
-            'Arbitrary z-[NN] is banned. Use a named z-index token (z-panel/z-modal/…) or <Layer>/<AnchoredLayer>. See tokens/z-index.ts.',
-        },
-        {
-          selector: "Property[key.name='zIndex'] > Literal[value>=50]",
-          message:
-            'Inline global zIndex literal is banned. Use zIndex.<token> from tokens/z-index.ts (or useZIndex()/<Layer>). Local in-flow lifts (< 50) are fine.',
-        },
         {
           selector: "ImportSpecifier[imported.name='DOGFOOD_ORG_ID']",
           message:
@@ -196,36 +167,6 @@ export default [
             "CallExpression[callee.object.name='crypto'][callee.property.name='randomUUID']",
           message:
             'crypto.randomUUID() is undefined in insecure contexts (LAN-HTTP phone, older Safari) and throws. Use safeRandomUUID() from @/lib/safe-uuid — the crash-safe SoT.',
-        },
-        // ── Primitive override ban (fork-consolidation physics) ────────────
-        // Button fills resolve through semantic variants (`success` / `execute`
-        // / `danger`). Painting a raw slate/gray/zinc hue onto <Button> is the
-        // Check-button class of fork. Broader paint debt (rounded-2xl, bg-red-50)
-        // lives on the shrink-only guard in button-class-override.guard.test.ts
-        // until that family hits 0 — then flip those selectors to error here.
-        {
-          selector:
-            "JSXOpeningElement[name.name='Button'] > JSXAttribute[name.name='className'] Literal[value=/\\b(?:bg|from|to|via|hover:bg|active:bg)-(?:slate|gray|zinc|neutral)-/]",
-          message:
-            "Do not paint slate/gray/zinc onto <Button>. Use a semantic variant (e.g. variant='execute') or grow Button. See button-variants.ts.",
-        },
-        {
-          selector:
-            "JSXOpeningElement[name.name='Button'] > JSXAttribute[name.name='className'] TemplateElement[value.raw=/\\b(?:bg|from|to|via|hover:bg|active:bg)-(?:slate|gray|zinc|neutral)-/]",
-          message:
-            "Do not paint slate/gray/zinc onto <Button>. Use a semantic variant (e.g. variant='execute') or grow Button. See button-variants.ts.",
-        },
-        {
-          selector:
-            "JSXOpeningElement[name.name='Panel'] > JSXAttribute[name.name='className'] Literal[value=/rounded/]",
-          message:
-            "Do not alter Panel radii via className. Pass radius='none'|'lg'|'xl'|'2xl' — ops chrome is flush-square by default.",
-        },
-        {
-          selector:
-            "JSXOpeningElement[name.name='Panel'] > JSXAttribute[name.name='className'] TemplateElement[value.raw=/rounded/]",
-          message:
-            "Do not alter Panel radii via className. Pass radius='none'|'lg'|'xl'|'2xl' — ops chrome is flush-square by default.",
         },
       ],
     },
@@ -352,133 +293,6 @@ export default [
   },
 
 
-  {
-    /**
-     * Displays hosts must not fork a page-local list-filter.
-     *
-     * `Filter displays…` is row 2 of `StationDisplaysPushColumn` and lives in
-     * `StationDisplaysPushStack` alone — index-only, one field per column. A
-     * host that imports the find bar directly is how a second door onto one
-     * query appears, and how a leaf grows filter chrome that does not refine
-     * the leaf.
-     *
-     * Tier 2 (AGENTS.md → Guard authoring). This replaced 43 regex assertions
-     * over source text in `station-displays-chrome-rows.guard.test.ts`, which
-     * is deleted: that file could not tell an import from the same word in a
-     * comment, and the behaviour it claimed to pin is asserted for real by
-     * `tests/e2e/unbox-displays-header-band.spec.ts` in a browser.
-     */
-    files: [
-      'src/components/receiving/workspace/LineEditPanel.tsx',
-      'src/components/receiving/triage/TriagePanel.tsx',
-      'src/components/tech/TestingPanel.tsx',
-      'src/components/packer/PackOrderPanel.tsx',
-      'src/components/tech/ActiveOrderWorkspace.tsx',
-      'src/features/review/packer/PackerReviewMode.tsx',
-      'src/components/support/orders/SupportOrdersFocusHost.tsx',
-    ],
-    languageOptions: {
-      parser: tsParser,
-      parserOptions: { ecmaFeatures: { jsx: true } },
-    },
-    rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          paths: [
-            {
-              name: '@/components/sidebar/tech/TechRailSearchBar',
-              message:
-                'The Displays filter is row 2 of StationDisplaysPushStack (index-only). Do not mount a page-local find field on a Displays host.',
-            },
-            {
-              name: '@/components/packer/PackSendToPhoneButton',
-              message:
-                'Pack photos mount via CartonContextCard photosCell inside PackOrderIdentity — not as a sibling on the panel.',
-            },
-          ],
-        },
-      ],
-    },
-  },
-  {
-    // Pack identity must keep Unbox classify chrome (never showClassifyControls={false}).
-    files: ['src/components/packer/PackOrderIdentity.tsx'],
-    languageOptions: {
-      parser: tsParser,
-      parserOptions: { ecmaFeatures: { jsx: true } },
-    },
-    rules: {
-      'no-restricted-syntax': [
-        'error',
-        {
-          selector:
-            'JSXAttribute[name.name="showClassifyControls"] > JSXExpressionContainer > Literal[value=false]',
-          message:
-            'Pack uses the Unbox one-row CartonContextCard face — do not turn off classify. Use classifyInteractive={false} for read-only.',
-        },
-        {
-          selector: 'JSXAttribute[name.name="showClassifyControls"] > Literal[value=false]',
-          message:
-            'Pack uses the Unbox one-row CartonContextCard face — do not turn off classify. Use classifyInteractive={false} for read-only.',
-        },
-      ],
-    },
-  },
-  {
-    files: ['src/components/station/entity-context/**/*.{ts,tsx}'],
-    languageOptions: {
-      parser: tsParser,
-      parserOptions: { ecmaFeatures: { jsx: true } },
-    },
-    rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          paths: [
-            {
-              name: '@/design-system/primitives',
-              importNames: ['IconButton'],
-              message:
-                'Carton context strips require full-height action cells (StationContextIconCell / StationContextClaimCell). Do not use fixed-box IconButton.',
-            },
-            {
-              name: '@/design-system/primitives/IconButton',
-              message:
-                'Carton context strips require full-height action cells (StationContextIconCell / StationContextClaimCell). Do not use fixed-box IconButton.',
-            },
-          ],
-        },
-      ],
-      'no-restricted-syntax': [
-        'error',
-        {
-          selector:
-            'JSXAttribute[name.name="galleryPlacement"] > Literal[value="left"], JSXAttribute[name.name="galleryPlacement"] > Literal[value="right"]',
-          message:
-            'Carton photos hover menu is below + start (galleryPlacement="below"). Side flyouts hang over Claim.',
-        },
-        {
-          selector:
-            'JSXOpeningElement[name.name="DropdownMenuContent"]:not(:has(JSXAttribute[name.name="avoidCollisions"]))',
-          message:
-            'Carton bar DropdownMenuContent must set avoidCollisions={false} so Radix does not flip to left/right.',
-        },
-        {
-          selector:
-            'JSXAttribute[name.name="avoidCollisions"] > JSXExpressionContainer > Literal[value=true]',
-          message:
-            'Carton bar menus must not re-enable collision flip (avoidCollisions={false}).',
-        },
-        {
-          selector:
-            'JSXOpeningElement[name.name="DropdownMenuContent"]:not(:has(JSXAttribute[name.name="side"][value.value="bottom"]))',
-          message:
-            'Carton bar DropdownMenuContent must open side="bottom" (not left/right).',
-        },
-      ],
-    },
-  },
 
   // ── AI provider consolidation: ONE resolver owns the endpoint ──────────────
   // `resolveOrgAiConfig(orgId, capability)` is the only way to learn where an

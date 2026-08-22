@@ -1,7 +1,7 @@
 'use client';
 
-import { useMemo } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMemo, useSyncExternalStore } from 'react';
+import { QueryObserver, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import {
   catalogKeys,
   platformsQuery,
@@ -205,6 +205,130 @@ export function useWorkflowNodeOptions() {
   return { ...q, nodes: q.data ?? [] };
 }
 
+/** `resolve(orderId, accountSource)` → the channel label for one order row. */
+export type OrderChannelLabelResolver = (
+  orderId: string | null | undefined,
+  accountSource: string | null | undefined,
+) => string;
+
+/** Stable empties so "no rows yet" never churns the resolver's identity. */
+const NO_PLATFORM_ROWS: readonly PlatformRow[] = [];
+const NO_ACCOUNT_ROWS: readonly PlatformAccountRow[] = [];
+
+/**
+ * The lookup itself — three Maps + the built-in fallback. Pure, so the shared
+ * cell below can build it exactly once per (platforms, accounts) pair instead
+ * of once per consumer.
+ */
+function buildOrderChannelLabelResolver(
+  platforms: readonly PlatformRow[],
+  accounts: readonly PlatformAccountRow[],
+): OrderChannelLabelResolver {
+  const platformById = new Map(platforms.map((p) => [p.id, p]));
+  const accountBySlug = new Map(accounts.map((a) => [a.slug.toLowerCase(), a]));
+  const platformBySlug = new Map(platforms.map((p) => [p.slug.toLowerCase(), p]));
+  return (orderId: string | null | undefined, accountSource: string | null | undefined): string => {
+    const key = String(accountSource ?? '').trim().toLowerCase();
+    if (key) {
+      const acct = accountBySlug.get(key);
+      const platform = acct ? platformById.get(acct.platform_id) : platformBySlug.get(key);
+      if (platform) return platform.label;
+    }
+    return getOrderPlatformLabel(orderId, accountSource);
+  };
+}
+
+/**
+ * ONE catalog subscription for every consumer of {@link useOrderChannelLabel}.
+ *
+ * ## Why this is not just `useQuery` twice
+ *
+ * The resolver is a PER-ROW hook: `OrdersQueueTableRow` calls it, and a To-ship
+ * window holds ~30 rows. Written as two `useQuery` calls it minted two
+ * `QueryObserver`s per row — ~60 live observers that react-query has to build,
+ * register on the query, run `select` for, structurally compare and tear down
+ * again on every virtualizer scroll — plus ~90 `Map` builds, for one lookup
+ * table that is identical on every row. React Query dedupes the FETCH, never
+ * the observer.
+ *
+ * So the observers are hoisted out of the component tree entirely: one pair per
+ * `QueryClient`, and components attach to it through `useSyncExternalStore`
+ * (a listener in a `Set` — no observer, no `select`, no structural sharing).
+ * `select` runs once, the Maps are built once, and every row is handed the SAME
+ * resolver function, which is also what makes the row's `memo` comparator work.
+ *
+ * These are REAL `QueryObserver`s rather than a `getQueryData` peek, because a
+ * peek is only as fresh as whoever else happens to be mounted: `useInvalidateCatalog`
+ * refetches ACTIVE queries, and on the To-ship desk this resolver is often the
+ * only consumer of the platform catalog on the page. Attaching on the first
+ * listener and detaching on the last reproduces `useQuery`'s mount semantics
+ * (fetch-on-mount, refetch-on-invalidate, staleTime) — once instead of 60 times.
+ */
+function createOrderChannelLabelCell(client: QueryClient) {
+  const platformObserver = new QueryObserver(client, platformsQuery());
+  const accountObserver = new QueryObserver(client, platformAccountsQuery());
+  const listeners = new Set<() => void>();
+  let platforms: readonly PlatformRow[] = NO_PLATFORM_ROWS;
+  let accounts: readonly PlatformAccountRow[] = NO_ACCOUNT_ROWS;
+  let resolver = buildOrderChannelLabelResolver(platforms, accounts);
+  let detach: (() => void) | null = null;
+
+  const read = (notify: boolean) => {
+    const nextPlatforms = platformObserver.getCurrentResult().data ?? NO_PLATFORM_ROWS;
+    const nextAccounts = accountObserver.getCurrentResult().data ?? NO_ACCOUNT_ROWS;
+    // Reference equality is the whole test — react-query already structurally
+    // shares its data, so an unchanged ref means an unchanged resolver.
+    if (nextPlatforms === platforms && nextAccounts === accounts) return;
+    platforms = nextPlatforms;
+    accounts = nextAccounts;
+    resolver = buildOrderChannelLabelResolver(platforms, accounts);
+    if (notify) for (const listener of [...listeners]) listener();
+  };
+
+  // Seed from whatever the cache already holds, so the FIRST render resolves
+  // against real rows exactly as `useQuery` (which reads the cache during
+  // render) used to — never a frame of fallback labels.
+  read(false);
+
+  return {
+    getResolver: (): OrderChannelLabelResolver => resolver,
+    subscribe(listener: () => void): () => void {
+      listeners.add(listener);
+      if (!detach) {
+        const unsubscribePlatforms = platformObserver.subscribe(() => read(true));
+        const unsubscribeAccounts = accountObserver.subscribe(() => read(true));
+        detach = () => {
+          unsubscribePlatforms();
+          unsubscribeAccounts();
+        };
+        read(false);
+      }
+      return () => {
+        listeners.delete(listener);
+        if (listeners.size === 0) {
+          detach?.();
+          detach = null;
+        }
+      };
+    },
+  };
+}
+
+type OrderChannelLabelCell = ReturnType<typeof createOrderChannelLabelCell>;
+
+/** Keyed by client so a test / second provider gets its own cell, and so the
+ *  cell dies with the client rather than pinning rows in a module forever. */
+const orderChannelLabelCells = new WeakMap<QueryClient, OrderChannelLabelCell>();
+
+function orderChannelLabelCell(client: QueryClient): OrderChannelLabelCell {
+  let cell = orderChannelLabelCells.get(client);
+  if (!cell) {
+    cell = createOrderChannelLabelCell(client);
+    orderChannelLabelCells.set(client, cell);
+  }
+  return cell;
+}
+
 /**
  * Catalog-aware order-channel label resolver. Returns `resolve(orderId,
  * accountSource)` → the channel label, preferring the org catalog (so a renamed
@@ -214,27 +338,13 @@ export function useWorkflowNodeOptions() {
  * ('ecwid','fba') — so we match accounts first, then platforms. This is the
  * read-side unlock the plan defers to Phase 2 (orders.account_source → catalog
  * label across the order tables). The text column stays the cache.
+ *
+ * Safe to call per row: every caller shares ONE catalog subscription and ONE
+ * resolver instance (see {@link createOrderChannelLabelCell}).
  */
-export function useOrderChannelLabel(): (
-  orderId: string | null | undefined,
-  accountSource: string | null | undefined,
-) => string {
-  const { rows: platforms } = usePlatformCatalog();
-  const { rows: accounts } = usePlatformAccountCatalog();
-  return useMemo(() => {
-    const platformById = new Map(platforms.map((p) => [p.id, p]));
-    const accountBySlug = new Map(accounts.map((a) => [a.slug.toLowerCase(), a]));
-    const platformBySlug = new Map(platforms.map((p) => [p.slug.toLowerCase(), p]));
-    return (orderId: string | null | undefined, accountSource: string | null | undefined): string => {
-      const key = String(accountSource ?? '').trim().toLowerCase();
-      if (key) {
-        const acct = accountBySlug.get(key);
-        const platform = acct ? platformById.get(acct.platform_id) : platformBySlug.get(key);
-        if (platform) return platform.label;
-      }
-      return getOrderPlatformLabel(orderId, accountSource);
-    };
-  }, [platforms, accounts]);
+export function useOrderChannelLabel(): OrderChannelLabelResolver {
+  const cell = orderChannelLabelCell(useQueryClient());
+  return useSyncExternalStore(cell.subscribe, cell.getResolver, cell.getResolver);
 }
 
 /** Invalidate every catalog list — call after a CRUD mutation. */

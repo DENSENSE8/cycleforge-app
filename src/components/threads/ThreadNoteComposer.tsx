@@ -23,19 +23,23 @@ import { cn } from '@/utils/_cn';
  * — it is intentionally NOT the Zendesk `VisibilityToggle`, because a team note
  * here is never emailed. It rides the dock's `footerStart` slot.
  *
- * ## Two variants, one composer
+ * ## One shape (the `float` variant was retired 2026-08-21)
  *
- * `panel` (default) is the bordered composer at the foot of a {@link ThreadPanel}:
- * header eyebrow, visibility toggle, footer status line.
+ * This is the bordered composer at the foot of a {@link ThreadPanel}: header
+ * eyebrow, visibility toggle, footer status line.
  *
- * `float` is the shell-less entry that hovers over a rail — no header, no
- * toggle, no status line, `chrome="bare"` on the dock. Visibility there is a
- * FIXED declaration by the host rather than an operator choice, so `isOnRecord`
- * stays a required prop with no default (the host must say which kind of note
- * this field posts) while `onIsOnRecordChange` becomes optional. The
- * `/search` rail forked this whole component to get that shape — it mounted
- * `OmnichannelComposerDock` raw and hardcoded `visibility: 'internal'` where
- * the dock's own docblock bans exactly that.
+ * A second `float` variant existed for ONE day — a shell-less entry that
+ * hovered over the `/search` rail with `chrome="bare"`, no header and no
+ * toggle. Its only consumer, `SearchRailQuickNote`, was deleted in the Unbox
+ * parity teardown, so the branch went with it rather than sitting here as a
+ * reachable-but-unreached fork: `pattern-evolution.md` §6 — a retirement is not
+ * done until the old path is DELETED. `onIsOnRecordChange` is required again,
+ * because `float` was the only caller that legitimately omitted it, and
+ * `isOnRecord` stays required-and-undefaulted for the reason it always was —
+ * what a note claims is a safety classification.
+ *
+ * If a shell-less composer is ever wanted again, the dock's own `chrome="bare"`
+ * is still there; bring the variant back with a consumer in the same change.
  */
 export function ThreadNoteComposer({
   value,
@@ -51,21 +55,18 @@ export function ThreadNoteComposer({
   textareaRef,
   onFocus,
   onBlur,
-  variant = 'panel',
-  placeholder: placeholderOverride,
 }: {
   value: string;
   onChange: (next: string) => void;
   /**
    * false = team-only; true = visible on the warehouse entity record.
    *
-   * Required in BOTH variants and never defaulted: what a note claims is a
-   * safety classification, and a default would let a host that never thought
-   * about it post on-record by omission.
+   * Never defaulted: what a note claims is a safety classification, and a
+   * default would let a host that never thought about it post on-record by
+   * omission.
    */
   isOnRecord: boolean;
-  /** Omit in `float`, where visibility is fixed and no toggle is rendered. */
-  onIsOnRecordChange?: (next: boolean) => void;
+  onIsOnRecordChange: (next: boolean) => void;
   onSubmit: () => void;
   loading?: boolean;
   disabled?: boolean;
@@ -80,14 +81,9 @@ export function ThreadNoteComposer({
    */
   onFocus?: () => void;
   onBlur?: () => void;
-  /** `panel` = thread foot (header · toggle · status). `float` = shell-less rail entry. */
-  variant?: 'panel' | 'float';
-  /** Override the computed placeholder — e.g. a float with no anchor selected. */
-  placeholder?: string;
 }) {
   const localRef = useRef<HTMLTextAreaElement>(null);
   const ref = textareaRef ?? localRef;
-  const floating = variant === 'float';
 
   const computedPlaceholder = isOnRecord
     ? externalSubmit
@@ -96,7 +92,7 @@ export function ThreadNoteComposer({
     : externalSubmit
       ? 'Team note…  (dock Add note)'
       : 'Team note — not sent to customer…';
-  const placeholder = placeholderOverride ?? computedPlaceholder;
+  const placeholder = computedPlaceholder;
 
   const status = errorMessage
     ? errorMessage
@@ -120,33 +116,23 @@ export function ThreadNoteComposer({
       commitDisabled={disabled || loading || !value.trim()}
       commitAriaLabel={isOnRecord ? 'Post note' : 'Add note'}
       commitTooltip={isOnRecord ? 'Post (Enter)' : 'Add note (Enter)'}
-      // `bare` is the dock's own no-shell mode: transparent ground, no border,
-      // no fill, so a rail's list scrolls behind the float instead of being cut
-      // short by a footer band.
-      chrome={floating ? 'bare' : 'raised'}
-      density={floating || dense ? 'compact' : 'default'}
-      animateMount={!floating}
+      chrome="raised"
+      density={dense ? 'compact' : 'default'}
       textareaRef={ref as React.Ref<HTMLTextAreaElement>}
       onFocus={onFocus}
       onBlur={onBlur}
       footerStart={
-        floating ? undefined : (
-          <span
-            className={cn(
-              'truncate text-role-caption',
-              errorMessage ? 'text-rose-600' : 'text-text-faint',
-            )}
-          >
-            {status}
-          </span>
-        )
+        <span
+          className={cn(
+            'truncate text-role-caption',
+            errorMessage ? 'text-rose-600' : 'text-text-faint',
+          )}
+        >
+          {status}
+        </span>
       }
     />
   );
-
-  // A float has no header row: it carries no shell to hang one on, and the
-  // rail it hovers over is already labelled. Visibility rides the placeholder.
-  if (floating) return dock;
 
   return (
     <div className="space-y-2">
@@ -154,9 +140,7 @@ export function ThreadNoteComposer({
         <p className="text-role-eyebrow uppercase tracking-widest text-violet-600/80">
           Warehouse thread
         </p>
-        {onIsOnRecordChange ? (
-          <ThreadRecordToggle value={isOnRecord} onChange={onIsOnRecordChange} />
-        ) : null}
+        <ThreadRecordToggle value={isOnRecord} onChange={onIsOnRecordChange} />
       </div>
 
       {dock}

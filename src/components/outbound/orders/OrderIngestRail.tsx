@@ -6,7 +6,7 @@
  * | Unbox Displays | here |
  * |---|---|
  * | single push column | `DetailStackRailRegistrar` → the one `RightRailHost` slot |
- * | top chrome band | `DeskRailChromeRow` (host paints maximize + the singleton close) |
+ * | top chrome band | the shell's own band (host paints maximize + the singleton close) |
  * | Root Index → leaf | `DeskInspectorIndexShell` |
  * | `Filter displays…` find row + ↑↓/Enter | `indexFilter` |
  * | Esc = leaf → index | owned by the index shell |
@@ -35,7 +35,7 @@ import {
   type DeskInspectorLeaf,
 } from '@/components/right-rail/DeskInspectorIndexShell';
 import { ShippedIntakeForm } from '@/components/shipped/ShippedIntakeForm';
-import { OrderSyncDialog } from '@/components/sidebar/OrderSyncDialog';
+import { OrderSyncPanelBody } from '@/components/sidebar/OrderSyncDialog';
 import { useShippedFormSubmit } from '@/components/sidebar/dashboard-sidebar-hooks';
 import { AwaitingEbayPanel } from '@/components/unshipped/AwaitingEbayPanel';
 import { useTableImportFilePicker } from '@/components/tables/import/TableImportFileButton';
@@ -161,16 +161,33 @@ export function OrderIngestRail({
           group: 'assets',
           tone: sync.isTransferring ? 'action' : 'neutral',
           content: (
-            <SyncImportSection
-              isTransferring={sync.isTransferring}
-              manualSheetName={sync.manualSheetName}
-              onSheetNameChange={sync.setManualSheetName}
-              status={sync.status}
-              onImport={() => {
-                void sync.handleTransfer();
-              }}
-              onCancel={sync.handleCancelTransfer}
-            />
+            <div className="flex min-h-0 flex-1 flex-col">
+              <SyncImportSection
+                isTransferring={sync.isTransferring}
+                manualSheetName={sync.manualSheetName}
+                onSheetNameChange={sync.setManualSheetName}
+                status={sync.status}
+                onImport={() => {
+                  void sync.handleTransfer();
+                }}
+                onCancel={sync.handleCancelTransfer}
+              />
+              {/* Progress lives IN the leaf. Mounting `OrderSyncDialog` here
+                  registered a second occupant (`detail:order-sync`) into the
+                  one RightRailHost slot and evicted this very rail. */}
+              {sync.isSyncDialogOpen ? (
+                <OrderSyncPanelBody
+                  open
+                  onClose={() => sync.setIsSyncDialogOpen(false)}
+                  isRunning={sync.isTransferring}
+                  elapsedMs={sync.elapsedMs}
+                  onCancel={sync.handleCancelTransfer}
+                  sheets={sync.sheetsTask}
+                  ecwid={sync.ecwidTask}
+                  exceptions={sync.exceptionsTask}
+                />
+              ) : null}
+            </div>
           ),
         },
         {
@@ -218,6 +235,7 @@ export function OrderIngestRail({
         >
           <div className="flex h-full min-h-0 flex-col" data-testid="order-ingest-rail">
             <DeskInspectorIndexShell
+              stance="index"
               leaves={leaves}
               activeId={activeId}
               onActiveIdChange={setActiveId}
@@ -230,16 +248,6 @@ export function OrderIngestRail({
           </div>
         </DetailStackRailRegistrar>
       ) : null}
-      <OrderSyncDialog
-        open={sync.isSyncDialogOpen}
-        onClose={() => sync.setIsSyncDialogOpen(false)}
-        isRunning={sync.isTransferring}
-        elapsedMs={sync.elapsedMs}
-        onCancel={sync.handleCancelTransfer}
-        sheets={sync.sheetsTask}
-        ecwid={sync.ecwidTask}
-        exceptions={sync.exceptionsTask}
-      />
     </>
   );
 }

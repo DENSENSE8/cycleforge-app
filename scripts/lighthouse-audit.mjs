@@ -34,6 +34,13 @@ const BASE_URL = process.env.LH_BASE_URL || 'http://localhost:3000';
 export const ROUTES = [
   { path: '/signin', tier: 1, auth: false },
   { path: '/dashboard', tier: 1, auth: true },
+  // Fulfillment To-ship desk — the canonical outbound queue, and tier 1 because
+  // it is where the shipper spends the day. Bare `/dashboard` 308s HERE
+  // (`resolveDashboardOutboundRedirect` in `src/proxy.ts`), so the row above has
+  // been measuring this surface plus a redirect hop under the wrong name; this
+  // entry measures it directly. Left on the run-wide form factor (like
+  // `/dashboard`) so the two rows stay comparable.
+  { path: '/shipping/orders', tier: 1, auth: true },
   { path: '/receiving', tier: 1, auth: true },
   // Desktop `/unbox` is the operator's real Unbox surface (the seeded
   // `UnboxBrowseShell` first-paint path). It is pinned `formFactor: 'desktop'`

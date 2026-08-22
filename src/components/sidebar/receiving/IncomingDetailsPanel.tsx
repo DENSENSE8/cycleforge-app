@@ -20,9 +20,7 @@ import { useIncomingDetails } from './incoming-details/useIncomingDetails';
 import {
   INCOMING_DETAILS_RAIL_ID,
   IncomingDetailsChrome,
-  IncomingDetailsHeader,
   incomingDetailsAriaLabel,
-  incomingDetailsHeaderMeta,
 } from './incoming-details/IncomingDetailsHeader';
 import { buildIncomingInspectorLeaves } from './incoming-details/build-incoming-inspector-leaves';
 import { PoTab } from './incoming-details/PoTab';
@@ -45,7 +43,16 @@ export type { IncomingDetailsPanelProps } from './incoming-details/incoming-deta
  * Arrival's `CartonMatchHub` — desk inspector, not Station Displays push.
  *
  * Thin composition shell: data + actions live in {@link useIncomingDetails};
- * chrome + identity above {@link DeskInspectorIndexShell} (Unbox index→leaf).
+ * the ONE band + index→leaf stage is {@link DeskInspectorIndexShell} (Unbox).
+ *
+ * **ONE band (2026-08-21).** The panel used to stack an identity header
+ * (`Purchase order` eyebrow over the PO number) ABOVE the shell, so every leaf
+ * read as two rows — `[‹ Shipment … ⤢ ✕]` under `[▣ Purchase order / PO-1234]`.
+ * The band now carries a single-segment title (`Incoming` on the index,
+ * the leaf's own label on a leaf) and nothing else; the row's identity —
+ * PO number, vendor, status — reads from the body (`InventoryPoHeader` on the
+ * PO leaf) and from the grid row that opened it, which is where an identity
+ * that does not fit a one-word title belongs.
  *
  * NON-MODAL inspector (`modal={false}`) — same metric as `detail:order`: picking
  * an Incoming row and reading/editing it is a pick+edit job, not a blocking
@@ -77,7 +84,6 @@ export function IncomingDetailsPanel(props: IncomingDetailsPanelProps) {
     invalidateIncoming,
   } = c;
   const visibleTabs = tabsForData(data);
-  const { statusLabel, vendorName } = incomingDetailsHeaderMeta(data);
   const identity = headerPo || headerOrder || headerTracking;
   // Selection actions self-gate on the rail-actions store — only light when
   // History/Incoming is publishing via useReceivingLineRailSelection.
@@ -177,41 +183,44 @@ export function IncomingDetailsPanel(props: IncomingDetailsPanelProps) {
       ariaLabel={incomingDetailsAriaLabel(identity)}
     >
       <div className="flex h-full min-h-0 flex-col overflow-hidden">
-        <IncomingDetailsHeader
-          headerPo={headerPo}
-          headerTracking={headerTracking}
-          headerOrder={headerOrder}
-          vendorName={vendorName}
-          statusLabel={statusLabel}
-          isShipmentOnly={isShipmentOnly}
-          isInboundOnly={isInboundOnly}
-          isCartonOnly={isCartonOnly}
-          syncing={syncing}
-          onSync={() => void syncOne()}
-          onClose={onClose}
-          selectionActions={selectionActions}
-        />
-
-        {isLoading ? (
-          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
-            <SkeletonList count={7} />
-          </div>
-        ) : isError || !data?.success ? (
-          <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 px-6 text-center">
-            <p className="text-role-caption font-semibold text-rose-600">
-              Could not load PO details.
-            </p>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => void refetch()}
-              ariaLabel="Retry loading details"
-            >
-              Retry
-            </Button>
-          </div>
+        {isLoading || isError || !data?.success ? (
+          /* Pre-data stages keep the SAME band — the host paints its `✕`
+             absolutely at the flush corner and needs a row of the right height
+             under it at every stage. No index has loaded yet, so there is
+             nothing to go Back to: `standalone`. */
+          <DeskInspectorIndexShell
+            stance="standalone"
+            title="Incoming"
+            ariaLabel="Incoming details"
+            testId="incoming-inspector-index"
+            body={
+              isLoading ? (
+                <div className="px-6 py-5">
+                  <SkeletonList count={7} />
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center gap-3 px-6 py-10 text-center">
+                  <p className="text-role-caption font-semibold text-rose-600">
+                    Could not load PO details.
+                  </p>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => void refetch()}
+                    ariaLabel="Retry loading details"
+                  >
+                    Retry
+                  </Button>
+                </div>
+              )
+            }
+          />
         ) : (
           <DeskInspectorIndexShell
+            stance="index"
+            // The band's ONE title: the current segment. `Incoming` on the
+            // index; a leaf's own label once you step into one.
+            title="Incoming"
             leaves={leaves}
             activeId={navId}
             onActiveIdChange={onNavChange}

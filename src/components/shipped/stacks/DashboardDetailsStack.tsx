@@ -141,6 +141,7 @@ export function DashboardDetailsStack({
 
             <div className={flush ? 'px-4' : undefined}>
               <ShippedDetailsPanelContent
+                canEditProduct
                 shipped={{
                   ...shipped,
                   order_id: orderNumber,

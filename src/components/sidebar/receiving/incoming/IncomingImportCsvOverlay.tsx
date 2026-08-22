@@ -10,12 +10,19 @@
  * Macro floor = the Import CTA alone (`FlushTerminalFooter layout="bleed"`).
  * The dismiss is the host's singleton `X` at the top-right — a floor is for
  * committing, never a second close beside the commit.
+ *
+ * **ONE band, ONE word (2026-08-21).** The top row was a `PaneHeaderLabel`
+ * stacking `Upload CSV` over `Amazon · Goodwill · eBay`, which is a path read as
+ * two lines. It is now the house {@link DeskInspectorIndexShell} band titled
+ * `CSV`; the accepted sources moved into the body's own instructions, where the
+ * desk columns they belong beside already live. `stance='standalone'` because
+ * this overlay opens from the Incoming chrome, not off an index — so no Back.
  */
 
 import { useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
-import { PaneHeaderLabel } from '@/components/ui/pane-header';
+import { DeskInspectorIndexShell } from '@/components/right-rail/DeskInspectorIndexShell';
 import { Button, FlushTerminalFooter } from '@/design-system/primitives';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { focusRing } from '@/design-system/tokens/focus-ring';
@@ -134,13 +141,16 @@ export function IncomingImportCsvOverlay({
       ariaLabel="Upload inbound CSV"
     >
       <div className="flex h-full min-h-0 flex-col overflow-hidden bg-surface-canvas">
-        <div className="shrink-0 border-b border-border-hairline inset-cozy">
-          <PaneHeaderLabel eyebrow="Upload CSV" value="Amazon · Goodwill · eBay" />
-        </div>
-
-        <div className="min-h-0 flex-1 overflow-y-auto">
+        <DeskInspectorIndexShell
+          stance="standalone"
+          title="CSV"
+          ariaLabel="Upload inbound CSV"
+          testId="incoming-import-csv"
+          body={
+            <>
           <p className="inset-cozy text-role-caption text-text-faint">
-            Desk columns: kind, source (amazon|goodwill|ebay), order_id, tracking, listing_url,
+            Amazon · Goodwill · eBay. Desk columns: kind, source (amazon|goodwill|ebay),
+            order_id, tracking, listing_url,
             sku, item_name, qty, seller, rma_id. Or paste Seller Central Manage Returns CSV
             (comma or tab) — Tracking ID lands on Incoming so Unbox can find it. Cancelled
             rows are skipped.
@@ -226,7 +236,9 @@ export function IncomingImportCsvOverlay({
               {error}
             </p>
           ) : null}
-        </div>
+            </>
+          }
+        />
 
         {/* The dismiss is the host's singleton `X` at the column's
             top-right (`closeRightPanel`) — never a second `→|` down here

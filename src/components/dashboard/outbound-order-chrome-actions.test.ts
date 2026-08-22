@@ -5,7 +5,7 @@
  */
 
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
 
@@ -53,7 +53,12 @@ describe('OutboundOrderChromeActions — ship ingest rail', () => {
 
   it('the rail is the Unbox recipe — index shell, find row, host-owned chrome', () => {
     assert.match(RAIL, /DeskInspectorIndexShell/);
-    assert.match(RAIL, /DeskRailChromeRow/);
+    // ONE band: the shell paints it at both stages, so a DeskRailChromeRow
+    // above it would be the stacked second band (audit tier T2, 10 files).
+    assert.doesNotMatch(RAIL_CODE, /DeskRailChromeRow/);
+    // stance is the enforcement hinge — a rail that never answered "am I
+    // routed through the one index?" must not compile.
+    assert.match(RAIL, /stance="index"/);
     // `indexFilter` is what carries Unbox's Root Index find row and its
     // ↑↓ / Enter keys; without it the index is a plain list.
     assert.match(RAIL_CODE, /indexFilter/);
@@ -87,4 +92,28 @@ describe('OutboundOrderChromeActions — ship ingest rail', () => {
     assert.doesNotMatch(PANEL_CODE, /rounded-(?:sm|md|lg|xl|full|\[)/);
   });
 
+
+  /**
+   * Regression (2026-08-21): starting an import closed the rail it was started
+   * from. `OrderSyncDialog` mounts its own DetailStackRailRegistrar, so
+   * rendering it from inside this rail registered `detail:order-sync` into the
+   * ONE RightRailHost slot and evicted `detail:order-ingest`. The leaf renders
+   * the registrar-free body instead.
+   */
+  it('the sync leaf renders the progress body, never a second rail occupant', () => {
+    assert.match(RAIL, /OrderSyncPanelBody/);
+    assert.doesNotMatch(RAIL_CODE, /<OrderSyncDialog/);
+    const registrars = RAIL_CODE.match(/<DetailStackRailRegistrar/g) ?? [];
+    assert.equal(registrars.length, 1, 'exactly one rail occupant per rail');
+  });
+
+  /**
+   * The operator's ask: Import from file / Import latest orders must be
+   * reachable only through the one index, with a Back. A duplicate door that
+   * mounts the intake form directly bypasses both.
+   */
+  it('NewOrderEntryOverlay is gone — hand entry has one door', () => {
+    const dead = join(ROOT, 'src/components/orders/NewOrderEntryOverlay.tsx');
+    assert.equal(existsSync(dead), false, 'the duplicate intake door must stay deleted');
+  });
 });

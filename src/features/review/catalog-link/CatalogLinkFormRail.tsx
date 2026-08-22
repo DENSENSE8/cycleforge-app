@@ -18,9 +18,18 @@
  * mounts when a row is picked and pushes the grid rather than shrinking it
  * forever (`source-of-truth.md` → Right-rail modality).
  *
- * **Header:** `PaneHeader` + dense `PaneHeaderLabel` (short key) + contextual
- * icon actions — never `SidebarIntakeFormShell` (intake hero-title chrome).
- * Recipe: `display/right-rail-inspector.md`.
+ * **Chrome is ONE band** ({@link DeskInspectorIndexShell}, `stance="standalone"`):
+ * `[Title] ……… [N / M] [verbs] [⤢] [✕]`. These two rails are reached by picking a
+ * row on the queue behind them, not by walking an index, so they declare
+ * `standalone` and are owed no Back cell.
+ *
+ * Until 2026-08-21 the header here was a `PaneHeader` whose `PaneHeaderActionBar`
+ * carried its own `onClose` — a SECOND dismiss beside the host's singleton `✕`
+ * that ran only the occupant's teardown and skipped `closeRightPanel`'s lifecycle
+ * half — over a stacked `PaneHeaderIconBadge` + eyebrow/identity pair on a second
+ * line. The verbs and the `N / M` readout moved onto the one band; the identity
+ * (item number / order id, platform, counts) was already a body fact row, which
+ * is where it stays. Recipe: `display/right-rail-inspector.md`.
  *
  * **Occupant ids are STABLE** (`detail:catalog-link` / `detail:import-exception`),
  * not per-record: walking the queue row by row is the loop here, and a per-record
@@ -32,17 +41,15 @@
  */
 
 import { useEffect, useState, type ReactNode } from 'react';
-import { AlertTriangle, Check, Flag, Link2, Loader2, Package } from '@/components/Icons';
+import { AlertTriangle, Check, Flag, Link2, Loader2 } from '@/components/Icons';
 import { SearchField } from '@/design-system/primitives';
 import { ListingApprovalSection } from '@/features/review/catalog-link/ListingApprovalSection';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
+import { DeskInspectorIndexShell } from '@/components/right-rail/DeskInspectorIndexShell';
 import { OrderIdChip, TrackingChip } from '@/components/ui/CopyChip';
 import {
   CursorPositionReadout,
-  PaneHeader,
   PaneHeaderActionBar,
-  PaneHeaderIconBadge,
-  PaneHeaderLabel,
   type PaneHeaderActionBarAction,
 } from '@/components/ui/pane-header';
 import { toast } from '@/lib/toast';
@@ -107,90 +114,73 @@ function SeenLine({ firstSeenAt, lastSeenAt }: { firstSeenAt: string; lastSeenAt
 }
 
 /**
- * Record-inspector header — icon row (contextual + ↑↓×) over dense identity.
- * Long product titles stay out of this chrome (body fact rows only).
+ * ONE band + one body — the whole rail chrome.
+ *
+ * The band is {@link DeskInspectorIndexShell} in its `standalone` stance: no
+ * index sits above these forms, so no Back cell is owed and none is painted.
+ * `headerRightSlot` carries the read-only `N / M` queue readout and then the
+ * contextual verbs; the shell reserves the trailing cell the host paints its
+ * `⤢` / `✕` into, so this file paints no close of its own.
  */
-function RecordRailHeader({
-  eyebrow,
-  identity,
-  identityTitle,
-  badgeIcon: BadgeIcon = Package,
-  badgeBg = 'bg-blue-100',
-  badgeTint = 'text-blue-700',
-  actions,
+function RecordRailShell({
+  title,
+  ariaLabel,
+  testId,
   position,
-  onClose,
+  actions,
+  facts,
+  children,
 }: {
-  eyebrow: string;
-  identity: string;
-  identityTitle?: string;
-  badgeIcon?: typeof Package;
-  badgeBg?: string;
-  badgeTint?: string;
-  actions: PaneHeaderActionBarAction[];
+  /** The CURRENT segment, one short noun phrase — never a path or an eyebrow pair. */
+  title: string;
+  ariaLabel: string;
+  testId: string;
   position?: RailQueuePosition;
-  onClose: () => void;
+  actions: PaneHeaderActionBarAction[];
+  facts?: ReactNode;
+  children: ReactNode;
 }) {
   // Readout only — the ↑↓ stepper it used to sit beside was removed 2026-08-19.
   const hasQueue = position != null && position.total > 1;
 
   return (
-    <PaneHeader
-      className="shrink-0 border-border-hairline bg-surface-card/90 backdrop-blur-xl"
-      rowClassName="px-4"
-      leftSlot={
-        <PaneHeaderActionBar
-          iconOnly
-          variant="flat"
-          actions={actions}
-          onClose={onClose}
-          closeTitle="Close details"
-          rightSlot={
-            hasQueue ? (
-              <CursorPositionReadout
-                position={position.index + 1}
-                total={position.total}
-              />
-            ) : undefined
-          }
-          className="min-w-0 flex-1 w-full px-0 py-0"
-        />
-      }
-      belowSlot={
-        <div className="flex min-w-0 items-center gap-2 px-4 pb-2">
-          <PaneHeaderIconBadge Icon={BadgeIcon} bg={badgeBg} tint={badgeTint} size="sm" />
-          <PaneHeaderLabel
-            eyebrow={eyebrow}
-            value={identity}
-            valueTitle={identityTitle ?? identity}
-            valueClassName="truncate text-role-caption font-semibold tracking-tight text-text-default"
-          />
-        </div>
-      }
-    />
-  );
-}
-
-function RecordRailShell({
-  header,
-  facts,
-  children,
-}: {
-  header: ReactNode;
-  facts?: ReactNode;
-  children: ReactNode;
-}) {
-  return (
     <div className="flex h-full min-h-0 flex-col bg-surface-card">
-      {header}
-      {facts ? (
-        <div className="shrink-0 space-y-1.5 border-b border-border-hairline px-4 py-3">
-          {facts}
-        </div>
-      ) : null}
-      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto bg-surface-card p-4 scrollbar-hide">
-        {children}
-      </div>
+      <DeskInspectorIndexShell
+        stance="standalone"
+        title={title}
+        ariaLabel={ariaLabel}
+        testId={testId}
+        headerRightSlot={
+          <>
+            {hasQueue ? (
+              <span className="flex h-full items-center">
+                <CursorPositionReadout
+                  position={position.index + 1}
+                  total={position.total}
+                />
+              </span>
+            ) : null}
+            <PaneHeaderActionBar
+              iconOnly
+              variant="flat"
+              className="py-0"
+              actions={actions}
+            />
+          </>
+        }
+        body={
+          <div className="flex min-h-0 flex-col">
+            {facts ? (
+              <div className="shrink-0 space-y-1.5 border-b border-border-hairline px-4 py-3">
+                {facts}
+              </div>
+            ) : null}
+            <div className="min-h-0 flex-1 space-y-4 bg-surface-card p-4">
+              {children}
+            </div>
+          </div>
+        }
+      />
     </div>
   );
 }
@@ -221,12 +211,10 @@ function linkResultMessage(
 function CatalogLinkFormBody({
   chore,
   position,
-  onClose,
   onDone,
 }: {
   chore: CatalogLinkChoreRow;
   position?: RailQueuePosition;
-  onClose: () => void;
   onDone: () => void;
 }) {
   // Seeded from the listing title — the operator's first search is almost always
@@ -317,7 +305,6 @@ function CatalogLinkFormBody({
     }
   };
 
-  const identity = chore.itemNumber;
   const headerActions: PaneHeaderActionBarAction[] = [
     {
       key: 'link',
@@ -347,17 +334,11 @@ function CatalogLinkFormBody({
 
   return (
     <RecordRailShell
-      header={
-        <RecordRailHeader
-          eyebrow="Catalog link"
-          identity={identity}
-          identityTitle={identity}
-          badgeIcon={Link2}
-          actions={headerActions}
-          position={position}
-          onClose={onClose}
-        />
-      }
+      title="Catalog"
+      ariaLabel="Link listing to catalog"
+      testId="catalog-link-rail"
+      position={position}
+      actions={headerActions}
       facts={
         <>
           {chore.productTitle ? (
@@ -480,7 +461,6 @@ export function CatalogLinkFormRail({
           key={chore.id}
           chore={chore}
           position={position}
-          onClose={onClose}
           onDone={onDone}
         />
       ) : null}
@@ -493,12 +473,10 @@ export function CatalogLinkFormRail({
 function ImportExceptionFormBody({
   row,
   position,
-  onClose,
   onDone,
 }: {
   row: ImportExceptionRow;
   position?: RailQueuePosition;
-  onClose: () => void;
   onDone: () => void;
 }) {
   const [itemNumber, setItemNumber] = useState('');
@@ -556,7 +534,6 @@ function ImportExceptionFormBody({
     }
   };
 
-  const identity = row.accountOrderId;
   const headerActions: PaneHeaderActionBarAction[] = [
     {
       key: 'resolve',
@@ -584,19 +561,11 @@ function ImportExceptionFormBody({
 
   return (
     <RecordRailShell
-      header={
-        <RecordRailHeader
-          eyebrow="Supply item number"
-          identity={identity}
-          identityTitle={identity}
-          badgeIcon={Package}
-          badgeBg="bg-amber-100"
-          badgeTint="text-amber-700"
-          actions={headerActions}
-          position={position}
-          onClose={onClose}
-        />
-      }
+      title="Item number"
+      ariaLabel="Supply the missing item number"
+      testId="import-exception-rail"
+      position={position}
+      actions={headerActions}
       facts={
         <>
           {row.productTitle ? <FieldRow label="Product">{row.productTitle}</FieldRow> : null}
@@ -679,7 +648,6 @@ export function ImportExceptionFormRail({
           key={row.id}
           row={row}
           position={position}
-          onClose={onClose}
           onDone={onDone}
         />
       ) : null}

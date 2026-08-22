@@ -24,7 +24,7 @@ import { ReceivingTitleCell } from './ReceivingTitleCell';
 import { ReceivingTrackingCell } from './ReceivingTrackingCell';
 import { ReceivingZohoCell } from './ReceivingZohoCell';
 import {
-  isCompoundCellKey,
+  claimsCompoundCell,
   renderReceivingCompoundCell,
 } from './ReceivingCompoundCells';
 import {
@@ -57,7 +57,10 @@ export function renderReceivingGridCell(
   // all. Checked BEFORE the flat switch on purpose: presentation swaps by
   // column model, so the row shell and the engine below it never learn which
   // layout is mounted.
-  if (isCompoundCellKey(col.key)) {
+  //
+  // `select` is claimed only under a compound model — the FLAT Unbox / Testing
+  // / Pickup grids keep `ReceivingSelectCell` and its 16px checklist square.
+  if (claimsCompoundCell(col.key, ctx.columns)) {
     return renderReceivingCompoundCell(col, rule, ctx);
   }
   switch (col.key) {

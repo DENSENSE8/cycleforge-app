@@ -1,42 +1,25 @@
 'use client';
 
 /**
- * Incoming details stack header — composes {@link DeskRailChromeRow} (SoT):
+ * Incoming inspector chrome + rail identity.
  *
- * ```text
- * [→|] ……………………………… [↑][↓][↻]
- * identity
- * ```
+ * **The identity band is GONE (2026-08-21).** This file used to export an
+ * `IncomingDetailsHeader` that painted `[▣ Purchase order / PO-1234]` as a
+ * SECOND row above {@link DeskInspectorIndexShell}'s band — an eyebrow+title
+ * pair on two lines, on a rail whose contract is ONE band. The band now carries
+ * a single-segment title, so the header had no job left and was deleted with
+ * its status/vendor derivation; the row's identity reads from the body
+ * (`InventoryPoHeader`) and from the grid row that opened the rail.
  *
- * Topic nav lives in {@link DeskInspectorIndexShell} below — never PaneHeaderTabs.
- *
- * NON-MODAL: Escape via RightRailHost; outset edge-collapse suppressed
- * (`edgeCollapse={false}`).
+ * What remains: the verbs the shell's band renders ({@link
+ * IncomingDetailsChrome}) and the stable occupant id.
  */
 
-import { Inbox, RefreshCw } from '@/components/Icons';
+import { RefreshCw } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import {
-  PaneHeaderIconBadge,
-  PaneHeaderLabel,
-  PaneHeaderStatusPill,
-  type PaneHeaderActionBarAction,
-} from '@/components/ui/pane-header';
+import type { PaneHeaderActionBarAction } from '@/components/ui/pane-header';
 import { InspectorColumnDisplayButton } from '@/components/right-rail/InspectorColumnDisplayButton';
 import { IconButton } from '@/design-system/primitives';
-import type { DetailsResponse } from './incoming-details-shared';
-
-function statusTone(
-  status: string | null | undefined,
-): 'neutral' | 'blue' | 'emerald' | 'amber' | 'rose' {
-  if (!status) return 'neutral';
-  const s = status.toLowerCase();
-  if (s.includes('deliver')) return 'emerald';
-  if (s.includes('transit') || s.includes('ship')) return 'blue';
-  if (s.includes('cancel') || s.includes('fail') || s.includes('exception')) return 'rose';
-  if (s.includes('pending') || s.includes('open') || s.includes('issued')) return 'amber';
-  return 'neutral';
-}
 
 /**
  * Incoming chrome for the shell's ONE band — selection verbs · Sync · `▦`.
@@ -108,101 +91,6 @@ export function IncomingDetailsChrome({
       <InspectorColumnDisplayButton />
     </>
   );
-}
-
-export function IncomingDetailsHeader({
-  headerPo,
-  headerTracking,
-  headerOrder,
-  vendorName,
-  statusLabel,
-  isShipmentOnly,
-  isInboundOnly,
-  isCartonOnly = false,
-  syncing,
-  onSync,
-  onClose,
-  /** Selection-plane actions (Copy / Print / Ticket) when the check-set is published. */
-  selectionActions = [],
-}: {
-  headerPo: string;
-  headerTracking: string;
-  headerOrder: string;
-  vendorName: string | null;
-  statusLabel: string | null;
-  isShipmentOnly: boolean;
-  isInboundOnly: boolean;
-  /** Unpaired carton — no Zoho Sync yet. */
-  isCartonOnly?: boolean;
-  syncing: boolean;
-  onSync: () => void;
-  onClose: () => void;
-  selectionActions?: PaneHeaderActionBarAction[];
-}) {
-  const hideSync = isShipmentOnly || isCartonOnly;
-  const eyebrow = isInboundOnly
-    ? 'Marketplace order'
-    : isCartonOnly
-      ? 'Unpaired carton'
-      : isShipmentOnly
-        ? 'Shipment'
-        : 'Purchase order';
-
-  const value =
-    headerPo ||
-    headerOrder ||
-    (headerTracking ? headerTracking : '—');
-
-  const syncTitle = isInboundOnly
-    ? 'Re-pull this order from linked marketplace accounts (eBay) + re-poll its shipment'
-    : 'Re-pull this PO from inventory + re-poll its shipment';
-  const syncAria = isInboundOnly ? 'Resync this marketplace order' : 'Sync this PO';
-
-  return (
-    <div className="shrink-0 border-b border-border-hairline bg-surface-card/90 backdrop-blur-xl">
-            <div className="flex items-center gap-2 px-2 pb-2 pt-1">
-        <PaneHeaderIconBadge Icon={Inbox} bg="bg-emerald-100" tint="text-emerald-700" />
-        <div className="flex min-w-0 flex-col gap-1">
-          <PaneHeaderLabel
-            eyebrow={eyebrow}
-            value={value}
-            valueTitle={value}
-          />
-          {(statusLabel || vendorName) ? (
-            <div className="flex flex-wrap items-center gap-2">
-              {statusLabel ? (
-                <PaneHeaderStatusPill tone={statusTone(statusLabel)} pulse={false}>
-                  {statusLabel}
-                </PaneHeaderStatusPill>
-              ) : null}
-              {vendorName ? (
-                <span className="truncate text-role-caption font-semibold text-text-soft">
-                  {vendorName}
-                </span>
-              ) : null}
-            </div>
-          ) : null}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/** Derive status + vendor strings once data lands. */
-export function incomingDetailsHeaderMeta(data: DetailsResponse | undefined): {
-  statusLabel: string | null;
-  vendorName: string | null;
-} {
-  if (!data) return { statusLabel: null, vendorName: null };
-  const statusLabel =
-    data.po?.status?.trim() ||
-    data.shipment?.latest_status_category?.trim() ||
-    null;
-  const vendorName =
-    data.po?.vendor_name?.trim() ||
-    data.inbound?.seller_name?.trim() ||
-    null;
-  return { statusLabel, vendorName };
 }
 
 /**

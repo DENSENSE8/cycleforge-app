@@ -44,12 +44,21 @@ export function searchRecentTitle(entry: SearchRecentEntry): string {
   return entry.query.trim() || 'Untitled search';
 }
 
-/** Secondary line — the typed query when the title is already the record. */
+/**
+ * Secondary line — the typed query when the title is already the record.
+ *
+ * **Never the scope.** This used to fall back to `entry.scopeLabel`, a column
+ * read straight off `search_recents` and never re-resolved, so 89 dogfood rows
+ * written by a code path deleted on 2026-08-21 painted the literal word
+ * "Search" under every row. The Unbox rail's second line is the record's own
+ * facts; a scope bucket is not one. Null is the honest answer when the title
+ * already IS the query.
+ */
 export function searchRecentMeta(entry: SearchRecentEntry): string | null {
   const hit = entry.topHit?.title?.trim();
   const query = entry.query.trim();
   if (hit && query && hit !== query) return query;
-  return entry.scopeLabel?.trim() || null;
+  return null;
 }
 
 /**
