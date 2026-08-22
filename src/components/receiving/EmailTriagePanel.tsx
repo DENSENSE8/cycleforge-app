@@ -3,7 +3,7 @@
 /**
  * EmailTriagePanel — the "Email Triage" right-pane view for `/receiving?mode=incoming`.
  *
- * House-archetype note (see `.claude/rules/contextual-display.md`): this is a
+ * House-archetype note (): this is a
  * **Monitor-leaning** surface — the operator *observes* the unmatched-shipping-email
  * worklist and acts-and-clears each row (archive / link-to-PO / reply). It is the
  * single home for the email worklist (it replaced the old sidebar to-do list). It

@@ -14,7 +14,7 @@
  * four seconds, it cannot be retried, and an operator three feet from the
  * screen with their hands on a carton never sees it. Station law is explicit
  * that pass/fail belongs on a card, not a corner toast
- * (`.claude/rules/display/station.md` §6).
+ * (6).
  *
  * Program: `docs/todo/station-realtime-capture-visibility-CLAUDE-CODE-PROMPT.md`
  * (P0 · D1 · D10).

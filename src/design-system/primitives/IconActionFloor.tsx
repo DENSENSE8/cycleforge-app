@@ -22,7 +22,7 @@
  * on desk; Filter / `→|` band **above** this floor on station), never inside
  * this floor.
  *
- * Law: `.claude/rules/display/right-rail-inspector.md` · SoT Macro CTA.
+ * Law: SoT Macro CTA.
  */
 
 import type { ReactNode } from 'react';

@@ -1,7 +1,7 @@
 /**
  * Layout tokens for the Workbench branch `service-workspace`.
  *
- * Law: `.claude/rules/display/workbench-service.md`. Geometry lives here so the
+ * Law:. Geometry lives here so the
  * shell and its panes cannot drift apart, and so a second Support surface
  * composes the numbers instead of re-typing them.
  */

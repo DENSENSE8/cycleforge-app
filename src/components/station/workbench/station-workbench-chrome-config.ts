@@ -13,7 +13,7 @@
  * a count to make a port pass — migrate onto the SoT or mark a genuine one-off
  * with the documented same-line escape marker.
  *
- * Full rule: `.claude/rules/display/station-workbench.md`.
+ * Full rule:.
  */
 
 /**

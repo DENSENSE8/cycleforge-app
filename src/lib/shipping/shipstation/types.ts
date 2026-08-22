@@ -5,7 +5,7 @@
  * ONLY through these normalized shapes — the raw provider JSON is mapped into
  * them inside `client.ts` and never leaks past the lib boundary. Endpoints and
  * UI consume these dumb, presentation-ready shapes ("format in lib, render
- * dumb"; see .claude/rules/source-of-truth.md).
+ * dumb";).
  *
  * These types are provider-agnostic on purpose: if the engine is ever swapped
  * (or a second engine added), only the mapping in `client.ts` changes, not the

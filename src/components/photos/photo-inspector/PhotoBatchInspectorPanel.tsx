@@ -101,7 +101,6 @@
  * loop this rail exists for. Mutually exclusive with `detail:photo` by
  * construction (one `inspectorPhoto === null` split decides which mounts).
  *
- * SoT: `.claude/rules/display/media-library.md`.
  */
 
 import {

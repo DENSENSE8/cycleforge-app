@@ -33,7 +33,7 @@ interface LineCartonContextSectionProps {
    * Carton photo-pill stage (stage SoT) forwarded to {@link CartonContextCard}
    * — required, never defaulted (a defaulted safety classification is how
    * bench photos silently became arrival evidence; see
-   * `.claude/rules/backend-patterns.md`). The card renders identically in
+ * The card renders identically in
    * unbox and triage — both show the staff photo row and Claim — but the
    * capture STAGE differs: triage passes `arrival_package` explicitly, unbox
    * passes `unbox_carton`.

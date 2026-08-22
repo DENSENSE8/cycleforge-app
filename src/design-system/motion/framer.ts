@@ -21,7 +21,7 @@
  * `AnimateNumber` is deliberately NOT here — it lives in `./plus`, off the main
  * barrel, so `motion-plus` stays out of every barrel consumer's module graph.
  *
- * Law: `.claude/rules/display/motion-crossfade.md` → The import boundary.
+ * Law: The import boundary.
  * Guard: `../foundations/motion-major.guard.test.ts`.
  */
 

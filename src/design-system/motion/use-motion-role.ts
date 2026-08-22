@@ -33,7 +33,7 @@ import type { PresenceRole, motionRole } from './roles';
  * already verified frame-by-frame. This hook adds no third mechanism — it just
  * makes a role carry its pair.
  *
- * Law: `.claude/rules/display/motion-crossfade.md` → Pick a ROLE, not a literal.
+ * Law: Pick a ROLE, not a literal.
  */
 export function useMotionRole<T extends PresenceRole>(
   role: T,

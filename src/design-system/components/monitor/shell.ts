@@ -3,7 +3,6 @@
  *
  * Theme-driven only (`bg-surface-card`, `border-border-soft`) so light/dark and
  * other palettes restyle without page-local hex. See
- * `.claude/rules/display/monitor-rollup-blocks.md`.
  *
  * Two KPI altitudes:
  * - {@link MONITOR_KPI_TILE_CLASS} — Monitor / analytics **cards** (rounded-2xl p-4)

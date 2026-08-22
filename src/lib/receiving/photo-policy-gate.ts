@@ -27,7 +27,7 @@
  *   such a line has no unbox photo surface either).
  *
  * Deps-injected (default = real tenant-scoped query) so unit tests run
- * DB-free per `.claude/rules/backend-patterns.md`.
+ * DB-free per.
  */
 
 import { tenantQuery } from '@/lib/tenancy/db';

@@ -4,7 +4,7 @@
  * Packing-mode sidebar rail — the signed-in packer's recently packed orders for
  * the current week. Selecting a row re-opens that pack in the right pane, which
  * crossfades the Queue/History table → `PackOrderPanel` (the Unbox rail →
- * workspace contract; see `.claude/rules/display/workbench.md`).
+ * workspace contract;).
  *
  * Composes {@link SidebarRecentRailBase} — the shell owns fetch/skeleton/
  * selection/keyboard-nav/stagger; this wrapper supplies only the row renderers

@@ -700,7 +700,7 @@ export function PhotoLibraryPage() {
         // free, not displaced); search is this surface's approved entry path
         // rather than a refinement, so it earns its own band; and a path strip
         // is a context readout, which is the altitude a KPI strip occupies on a
-        // queue. Recorded in `.claude/rules/display/media-library.md`.
+ // queue. Recorded in.
         //
         // The bands STAY MOUNTED under selection (2026-08-09). A bulk-action
         // toolbar used to swap itself in over all three, so ticking two photos

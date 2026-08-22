@@ -11,7 +11,7 @@ import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
  * list, the grade it currently carries. It never renders the button that
  * advances the step. Those live in the bottom dock, contextual to the active
  * step: `./dock/index.ts` → `UNBOX_STEP_DOCK_CONTROLS`, rendered by
- * `../UnboxStepDock`. Law: `.claude/rules/display/station-workbench.md` →
+ * `../UnboxStepDock`. Law:
  * *The dock's LEADING zone is the step's ACTION surface*.
  *
  * Which is why this bag has no action handlers on it and must not grow any: a

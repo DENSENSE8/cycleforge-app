@@ -40,7 +40,7 @@ const loadedPhotoUrls = new Set<string>();
  *
  * Loading is now an honest static placeholder. The other four consumers
  * (pickers, folder covers, claim attachments) never passed `heroId` and are
- * unaffected. SoT: `.claude/rules/display/media-library.md`.
+ * unaffected. SoT:.
  */
 export function PhotoThumb({
   src,

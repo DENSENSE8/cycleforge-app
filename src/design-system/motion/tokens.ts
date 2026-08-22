@@ -10,7 +10,7 @@
  * `framerTransition.*` / `motionRole.*` that points here, or compose a
  * dense primitive (`DenseRowReveal` / `DenseList` / `ActionFlashRow`).
  *
- * Law: `.claude/rules/display/motion-crossfade.md` → Spring vs cubic-bezier.
+ * Law: Spring vs cubic-bezier.
  */
 
 import type { Transition } from './framer';

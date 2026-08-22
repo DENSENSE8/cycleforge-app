@@ -5,7 +5,7 @@
  * so the routing, the refusals, and the idempotency rules unit-test with zero
  * network and zero database — the same shape as `support/reply-persona.ts` +
  * `reply-persona-deps.ts` and `photos/analyze-core.ts` + `analyze.ts`
- * (`.claude/rules/backend-patterns.md` → Dependency injection for testability).
+ * (Dependency injection for testability).
  *
  * ## What this is NOT
  *

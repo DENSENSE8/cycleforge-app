@@ -761,7 +761,7 @@ export const itemLocationStock = pgTable('item_location_stock', {
  * (2026-06-28g). Keyed on the logical part (base+color+condition, from
  * parsePartSku().logicalKey) and the Zoho `items` scheme (parent_item_id FK),
  * never the sku string (items/sku_catalog are independent numbering schemes
- * that collide on the same string — see .claude/rules/source-of-truth.md).
+ * that collide on the same string —).
  * status='confirmed' → parent_item_id NOT NULL (many parents allowed).
  * status='not_a_part' → parent_item_id NULL (at most one row per child).
  */
@@ -4295,7 +4295,7 @@ export const pgVector768 = customType<{ data: number[] }>({
 
 /**
  * entity_search_docs — the hybrid AI-search index for the P0 CommandBar
- * entities (migration 2026-07-03d, per .claude/rules/polymorphic-tables.md).
+ * entities (migration 2026-07-03d, per).
  * entity_type CHECK (entity_search_docs_entity_type_chk):
  *   'ORDER' | 'SERIAL_UNIT' | 'RECEIVING' | 'SKU' | 'REPAIR' | 'FBA_SHIPMENT'
  * Written ONLY by the search-outbox worker (src/lib/search/search-outbox-worker.ts);

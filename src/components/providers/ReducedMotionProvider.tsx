@@ -18,7 +18,7 @@ import { MotionConfig } from '@/design-system/motion';
  *   - Layout animations (`layout` / `layoutId`) likewise get `type: false`.
  *   - Everything else — critically `opacity` — animates at its normal duration.
  *
- * That is the house intent from `.claude/rules/display/motion-crossfade.md`:
+ * That is the house intent from:
  * reduced motion means "replace slides with crossfades", not "no motion". The
  * slide is removed; the crossfade survives.
  *

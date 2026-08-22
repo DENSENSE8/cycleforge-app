@@ -1,6 +1,6 @@
 /**
  * Monitor rollup block registry — compose these; do not invent local card shells.
- * Rules: `.claude/rules/display/monitor-rollup-blocks.md`
+ * Rules:
  */
 
 export {

@@ -13,7 +13,7 @@
  *
  * Wrap any such layout-level subtree in this boundary so its failure degrades
  * to a slim, contained fallback while the rest of the frame keeps rendering —
- * the house "degrade-not-fail" rule (see `.claude/rules/display/*`), now applied
+ * the house "degrade-not-fail" rule (*`), now applied
  * to the app shell itself.
  *
  * React error boundaries must be class components; this is the one sanctioned

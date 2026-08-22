@@ -1,6 +1,6 @@
 /**
  * DB-free unit tests for the entity-threads domain layer (house Deps pattern —
- * .claude/rules/backend-patterns.md). A scripted fake client answers by SQL
+ * A scripted fake client answers by SQL
  * fragment; assertions cover BOTH the return value and what was threaded into
  * the deps (org scoping, idempotency, ops_events emission).
  *

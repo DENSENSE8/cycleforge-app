@@ -9,7 +9,6 @@
  *   └────────────┴──────────────────────────┘  └─────────────────┘
  *          the shell's two slots                 not the shell's
  *
- * Law: `.claude/rules/display/workbench-service.md`.
  *
  * THE SHELL HAS TWO SLOTS, AND THE THIRD PANE IS NOT ONE OF THEM. It rendered a
  * private `<aside>` for ticket context until 2026-08-01 — a second permanent

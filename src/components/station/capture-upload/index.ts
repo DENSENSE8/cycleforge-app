@@ -19,7 +19,7 @@
  * the same trap documented on `design-system/components/capture-stack/index.ts`.
  * Add a name here when a real caller needs it from this path, not before.
  *
- * Law: `.claude/rules/display/station.md` §6 (pass/fail is a card, not a toast).
+ * Law: 6 (pass/fail is a card, not a toast).
  * Program: `docs/todo/station-realtime-capture-visibility-CLAUDE-CODE-PROMPT.md`.
  */
 

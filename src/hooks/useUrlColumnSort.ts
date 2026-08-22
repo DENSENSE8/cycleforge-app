@@ -6,7 +6,7 @@
  * `@/lib/tables/grid-column-sort-params`, deliberately NOT `?sort=`/`?dir=`,
  * which the station routes already use for SERVER ordering).
  *
- * Workbench law (`.claude/rules/display/workbench.md`): durable view state
+ * Workbench law: durable view state
  * lives in the URL, so a reload or a shared link reproduces the exact view.
  * Station grids used to hold sort in `useState`, which meant a column sort
  * silently died on reload and could not be sent to a colleague.

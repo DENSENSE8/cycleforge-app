@@ -6,7 +6,7 @@
  * DB-free total math. No DB import, no server-only import, no vendor SDK — so
  * the kiosk form (a client component) and the server orchestrator can both
  * import it without either dragging the other's graph into its bundle
- * (`.claude/rules/build-gotchas.md` → bundle altitude).
+ * (bundle altitude).
  *
  * It lands ahead of the orchestrator on purpose: the form work builds against
  * these types while phase 04 implements them.

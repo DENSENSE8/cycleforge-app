@@ -7,7 +7,7 @@
  * after one lands.
  *
  * `order_notes` is the ONLY writable home for an order annotation — the legacy
- * scalar `orders.notes` is read-only history (`.claude/rules/source-of-truth.md`
+ * scalar `orders.notes` is read-only history (
  * → Order note grain). There is deliberately no update/delete: the trail is
  * append-only, because a note is a statement someone made at a time.
  */

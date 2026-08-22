@@ -27,7 +27,7 @@
  * actually succeeded does not mint a second ticket.
  *
  * NEVER import Zendesk here. Helpdesk access is `getHelpdeskProvider` only
- * (`.claude/rules/source-of-truth.md` → capability facades).
+ * (capability facades).
  */
 
 import pool from '@/lib/db';

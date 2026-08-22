@@ -24,7 +24,7 @@ import pool from '@/lib/db';
  * client bundles, the notification vocabulary, DB-free tests — must not have to
  * pull that graph in to read a list of strings). It is re-exported here so
  * every existing `from '@/lib/ops-events'` import keeps resolving unchanged.
- * See .claude/rules/build-gotchas.md → bundle altitude.
+ * → bundle altitude.
  */
 export { OPS_EVENT_ENTITY_TYPES, type OpsEntityType } from './ops-event-types';
 import type { OpsEntityType } from './ops-event-types';

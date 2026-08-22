@@ -291,7 +291,6 @@ export const SURFACE_REGISTRY: Record<SurfaceKey, SurfaceDefinition> = {
   //
   // The branch is a Layer C composition on Workbench, NOT a fifth archetype:
   // `ARCHETYPE_IDS` stays four (`archetype.ts`). Branch law:
-  // `.claude/rules/display/workbench-service.md`.
   //
   // Desktop console (mobile-restricted), no `workflowNodeType` (Support isn't
   // an engine step). Gated by `integrations.zendesk` — same as the

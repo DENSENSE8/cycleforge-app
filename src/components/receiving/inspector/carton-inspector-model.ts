@@ -16,7 +16,7 @@
  * instants**. `formatDateTimePST` parses that naive shape purely (no `Date`
  * reparse), so it renders identically under any host TZ. Do NOT hand these to
  * anything that constructs a `Date` from them — that is the banned host-local
- * reparse in `.claude/rules/source-of-truth.md` → Dates. `events[].occurred_at`
+ * reparse in Dates. `events[].occurred_at`
  * IS a real ISO instant; the same formatter branches correctly for it.
  */
 

@@ -6,7 +6,7 @@
  *
  * Why a card and not a toast: the Station contract says an outcome is a big
  * card state the operator can read from three feet away with their hands full,
- * never a 4-second corner toast (`.claude/rules/display/station.md` §6).
+ * never a 4-second corner toast (6).
  *
  * Why read-only: the scan did not claim the work server-side (no
  * `scanned_by` overwrite, no `UNBOX_SCAN_OPENED`), so the pane must not present

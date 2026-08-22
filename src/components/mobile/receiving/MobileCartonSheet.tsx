@@ -55,7 +55,7 @@ const ACCENT_CTA = `${operatorAccentClasses.bg} ${operatorAccentClasses.hover} a
 /**
  * Receive CTA + its outcome, as ONE region that swaps state in place.
  *
- * Station law (`.claude/rules/display/station.md` §6): pass/fail is a big card
+ * Station law (6): pass/fail is a big card
  * state, not a corner toast — an operator three feet from a phone with their
  * hands in a box does not see a 3.5s toast. So success stays on screen until
  * dismissed, and a photo-policy block renders its blockers as a fixable amber

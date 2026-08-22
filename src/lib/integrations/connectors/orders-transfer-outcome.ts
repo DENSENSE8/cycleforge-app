@@ -1,7 +1,7 @@
 /**
  * Pure job-result → SyncOutcome mapping for the Sheets/Ecwid connectors.
  *
- * Dependency-free ON PURPOSE (bundle altitude — .claude/rules/build-gotchas.md):
+ * Dependency-free ON PURPOSE (bundle altitude —):
  * `orders-transfer.ts` imports the transfer job, which reaches `@/lib/db` and
  * its `server-only` guard, so anything living beside it is unimportable from a
  * test or a client. Only the TYPE is imported here, and types erase at runtime.

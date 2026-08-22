@@ -13,7 +13,7 @@ import { humanizeUploadError } from '@/components/station/capture-upload/capture
  * committed for all three capture domains and carries the **Retry** this file
  * never could. Station law wanted that all along: pass/fail is a card the
  * operator can read at ~3 ft, not a four-second corner toast
- * (`.claude/rules/display/station.md` §6).
+ * (6).
  *
  * What is left here, and why it is not a twin:
  *

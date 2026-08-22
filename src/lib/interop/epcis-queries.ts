@@ -4,7 +4,7 @@
  * Deliberately NOT re-exported from any barrel: `./epcis-projection.ts` and
  * the vocabulary modules are pure and client-safe, and a barrel that mixed
  * them with this file would drag the Neon driver into every client bundle
- * that touched interop (`.claude/rules/build-gotchas.md` → bundle altitude).
+ * that touched interop (bundle altitude).
  * Callers import this path explicitly.
  */
 
@@ -27,7 +27,7 @@ import type { EpcisCursor, EpcisSourceRow } from './epcis-projection';
  * `sku_catalog` is reached ONLY through `serial_units.sku_catalog_id`. Joining
  * it on the SKU *string* is a house hard law violation — `items` and
  * `sku_catalog` are independent numbering schemes whose SKUs collide
- * (`.claude/rules/source-of-truth.md` → SKU identity), so a string join would
+ * (SKU identity), so a string join would
  * silently attach one product's GTIN to another product's unit. A unit with no
  * `sku_catalog_id` simply has no GTIN, and the projection falls back to an
  * internal EPC.

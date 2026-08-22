@@ -10,7 +10,7 @@
  * Data: org-scoped endpoints via `useOperationsAnalytics` (kpi-table + reports),
  * plus cached `useOperationsDashboardData` for the top KPI strip. No new backend.
  *
- * Archetype: Monitor — see `.claude/rules/display/monitor-rollup-blocks.md`.
+ * Archetype: Monitor —.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';

@@ -21,7 +21,7 @@
  * `parsePhotoAspect` returns `null` on an unknown value and has no fallback
  * (`./photo-aspects.ts` rule 1), and this helper takes `aspect` as a REQUIRED
  * field whose `null` means *clear the claim* — never *leave it alone*. See
- * `.claude/rules/backend-patterns.md` § *A safety classification is a REQUIRED
+ * *A safety classification is a REQUIRED
  * parameter*: this codebase has already paid twice for a defaulted
  * classification (`intakeSurface` → `'triage'`, `scanKind` → `'work'`).
  *

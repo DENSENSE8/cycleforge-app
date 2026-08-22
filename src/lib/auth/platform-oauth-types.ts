@@ -4,7 +4,7 @@
  * and the rest of the OAuth engine into the browser bundle.
  *
  * `platform-oauth.ts` re-exports these, so existing server import paths are
- * unchanged. See `.claude/rules/build-gotchas.md` → bundle altitude.
+ * unchanged. → bundle altitude.
  */
 
 export type PlatformProvider = 'google' | 'microsoft';

@@ -765,7 +765,6 @@ export const framerPresence = {
    * crossfades). Opacity + small y. Consume via `useMotionPresence(...)` so
    * `prefers-reduced-motion` collapses it to opacity-only automatically — never
    * hand-branch on reduced motion at the call site. See
-   * `.claude/rules/display/motion-crossfade.md`.
    */
   workbenchPane: {
     initial: { opacity: 0, y: 6 },
@@ -851,7 +850,7 @@ export const framerPresence = {
    *
    * Pair with `framerTransition.sidebarNavColumnMount` (the sanctioned push
    * tween, never a spring), exactly as `ContextPanelLayout` does on the left
-   * edge. See `.claude/rules/display/motion-crossfade.md` → the deliberate PUSH
+ * edge. → the deliberate PUSH
    * toggle.
    */
   detailStackPush: {
@@ -868,7 +867,7 @@ export const framerPresence = {
    * (`staggerRevealRiseItem`), so the pane fade and the card rise never compound
    * on the same element. Opacity is GPU-composited, so a big subtree only fades
    * (no per-frame layout). Pair with `framerTransition.workbenchPaneSettle` and
-   * consume via `useMotionPresence`. See `.claude/rules/display/motion-crossfade.md`.
+ * consume via `useMotionPresence`..
    */
   workbenchPaneSettle: {
     initial: { opacity: 0 },
@@ -993,7 +992,6 @@ export const tabPagerVariants: Variants = {
 // NOTE: `signInStepVariants` / `signInStepVariantsReduced` were removed when
 // /signin stopped swapping panels. Both credential fields now stay mounted and
 // the password row reveals via `framerPresence.collapseHeight` — see
-// `.claude/rules/display/auth-step-panel.md`.
 
 // ─── Mobile-specific durations ───────────────────────────────────────────────
 

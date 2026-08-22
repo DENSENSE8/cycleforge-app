@@ -51,7 +51,7 @@ import { cn } from '@/utils/_cn';
 // Kept lazy, exactly as they were when this mounted from the app shell: the
 // dispatcher code-splits every route panel behind it, so a shell-chunk static
 // import here would pull each feature's graph into the shared bundle
-// (`.claude/rules/build-gotchas.md` → bundle altitude).
+// (bundle altitude).
 //
 // `ssr: false` was REMOVED (2026-08-12). It was never what bought the bundle
 // split — `dynamic()` code-splits the client chunk either way — it only meant

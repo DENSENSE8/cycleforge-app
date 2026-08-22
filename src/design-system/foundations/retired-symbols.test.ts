@@ -149,7 +149,7 @@ describe('retired design-system symbols stay retired (1a + 1d)', () => {
         s.hits.length <= max,
         `${s.symbol} reappeared in ${s.hits.length} shipped file(s) (max ${max}): ${s.hits.join(', ')}.\n` +
           `It is retired — ${s.retiredBy}\n` +
-          `Compose the SoT (node scripts/sot-lookup.mjs "${s.symbol}"), do not re-fork it.`,
+          `Compose the existing module, do not re-fork it.`,
       );
     });
   }

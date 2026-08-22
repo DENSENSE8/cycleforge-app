@@ -1,6 +1,6 @@
 /**
  * `WorkStatus` → label · tone · dot — the presentation SoT for a work-order's
- * lifecycle state (`.claude/rules/source-of-truth.md` → Presentation kinds).
+ * lifecycle state (Presentation kinds).
  *
  * There was no SoT for this, so the one surface that rendered it invented a map
  * inline: the My Day context pane painted `row.status.replace('_', ' ')` into a

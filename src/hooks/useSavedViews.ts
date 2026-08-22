@@ -19,7 +19,7 @@ import { surfaceFromStorageKey } from '@/lib/saved-views/surfaces';
  *
  * **Saved views are operator-defined facet combinations (inner refinement).
  * They are NOT the lifecycle strip** — see
- * `.claude/rules/display/workbench-ops-queue.md` → Tabs vs. saved views.
+ * Tabs vs. saved views.
  *
  * Sharing: personal by default (`is_shared=false`); optional org-share. List =
  * own ∪ org-shared; only the owner mutates.

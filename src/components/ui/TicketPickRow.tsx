@@ -10,7 +10,7 @@
  * a mono `#{id}` beside the subject — that was the third identity grammar
  * StackedRowIdentity retired.
  *
- * Detail: `.claude/rules/source-of-truth.md` → Stacked row identity.
+ * Detail: Stacked row identity.
  */
 
 import type { ReactNode } from 'react';

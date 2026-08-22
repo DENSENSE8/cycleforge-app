@@ -15,7 +15,7 @@ import {
 
 /**
  * The Dashboard route's context panel — the stable sidebar picker/scope
- * for the dashboard Workbench (`.claude/rules/display/workbench.md`).
+ * for the dashboard Workbench.
  *
  * Three domains (`getDashboardDomainFromSearch`), each with a picker:
  *   • outbound — the order feed (UnshippedSidebar / management panel)

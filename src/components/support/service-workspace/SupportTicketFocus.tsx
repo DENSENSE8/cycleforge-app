@@ -2,7 +2,7 @@
 
 /**
  * Support · Tickets THREAD — the focus surface of the Workbench branch
- * `service-workspace` (`.claude/rules/display/workbench-service.md`).
+ * `service-workspace`.
  *
  *   SupportTicketPaneHeader → split header: icon action row over dense identity
  *   body                    → the customer conversation, and nothing else

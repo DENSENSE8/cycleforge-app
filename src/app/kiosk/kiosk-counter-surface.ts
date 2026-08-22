@@ -8,7 +8,7 @@
  *   once, standing at a counter — and its region contract already called it
  *   "a form, not a scanner station". Ops chrome is zero-radius industrial
  *   because an operator lives in it all day; a customer form is not that job.
- *   Ratified 2026-08-20 in `kinetic-ledger.md` + `docs/rules/display/kiosk-shell.md` §2a.
+ * Ratified 2026-08-20 in `kinetic-ledger.md` + 2a.
  *
  * ## Why this is not a change to `cornerClass()`
  *

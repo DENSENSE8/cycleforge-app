@@ -38,7 +38,7 @@
  * Colour is operator accent (`accent-bg` → `--ds-color-accent-bg`, staff-
  * themeable), never a page-local hex and never `bg-amber-*` — the same family
  * as the armed-cursor (`armed-cursor-face.ts`). Law:
- * `.claude/rules/source-of-truth.md` → Unbox centre (main) · Active-step outline.
+ * Unbox centre (main) · Active-step outline.
  */
 
 import { cornerClass } from '@/design-system/tokens/radius';

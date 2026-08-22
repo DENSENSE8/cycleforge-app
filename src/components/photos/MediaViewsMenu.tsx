@@ -25,7 +25,6 @@
  * worse than an honest silence. The trigger lights while the menu is open and
  * not otherwise.
  *
- * SoT: `.claude/rules/display/media-library.md`.
  */
 
 import { useState } from 'react';
