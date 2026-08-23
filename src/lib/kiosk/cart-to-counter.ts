@@ -75,6 +75,14 @@ export function mapKioskCartToCounterParts(
           .join('\n') || null,
         serialNumber: p.serialNumber,
         price: p.price,
+        // Was discarded here until 2026-08-22, which meant every kiosk-cart
+        // repair's money could only reach the header/staged-order total by a
+        // second, independent parse of `price` (the text quote) —
+        // `serviceLineCents`'s fallback path. The cart already computed this
+        // integer for its own on-screen total; carrying it through means that
+        // total and the counter's are the SAME number, not two parses of one
+        // quote that can drift.
+        unitAmountCents: Math.max(0, Math.trunc(line.unitAmountCents)),
         notes: p.notes ?? null,
         signatureDataUrl: p.signatureDataUrl ?? null,
         signatureStrokes: p.signatureStrokes,

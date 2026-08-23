@@ -3,11 +3,15 @@ import test from 'node:test';
 
 import { RepairIntakeValidationError } from '@/lib/repair/submit-repair-intake';
 import {
+  buildStageOrderBody,
   CounterTransactionValidationError,
+  interpretStageOrderResponse,
   submitCounterTransaction,
+  type StageOrderResult,
   type SubmitCounterTransactionDeps,
 } from './submit-counter-transaction';
 import type {
+  CounterRetailLine,
   CounterServiceLine,
   CounterTransactionInput,
 } from './counter-transaction-types';
@@ -44,7 +48,8 @@ interface FakeOpts {
   repairThrows?: Error;
   /** Fail only the Nth device — for the partial-failure case N repairs adds. */
   repairThrowsOnIndex?: number;
-  stageReturns?: { providerOrderId: string; totalCents: number | null } | null;
+  /** Override the fake `stageOrder`'s result outright (e.g. a rejection). */
+  stageReturns?: StageOrderResult;
   stageThrows?: Error;
   priorOrderConfirms?: string | null;
   enqueueQueued?: boolean;
@@ -58,7 +63,7 @@ function fakes(opts: FakeOpts = {}) {
     patches: [] as Array<Record<string, unknown>>,
     repairInputs: [] as Array<Record<string, unknown>>,
     repairLinks: [] as Array<{ repairId: number; headerId: number }>,
-    staged: [] as Array<{ count: number; idempotencyKey: string }>,
+    staged: [] as Array<{ count: number; idempotencyKey: string; lines: CounterRetailLine[] }>,
     priorOrderChecks: [] as Array<{ orderNumber: string; phone: string }>,
     enqueued: [] as Array<Record<string, unknown>>,
   };
@@ -125,11 +130,15 @@ function fakes(opts: FakeOpts = {}) {
       calls.repairLinks.push({ repairId, headerId });
     },
     async stageOrder(_orgId, lines, idempotencyKey) {
-      calls.staged.push({ count: lines.length, idempotencyKey });
+      calls.staged.push({ count: lines.length, idempotencyKey, lines: [...lines] });
       if (opts.stageThrows) throw opts.stageThrows;
-      return opts.stageReturns === undefined
-        ? { providerOrderId: 'sq-new', totalCents: 2000 }
-        : opts.stageReturns;
+      if (opts.stageReturns) return opts.stageReturns;
+      // Mirrors what Square actually returns: the order total is the sum of
+      // its line items. Computed rather than a fixed stub so the total-parity
+      // tests below assert against something that would actually catch a
+      // mismatch, not a number nobody derived from `lines`.
+      const totalCents = lines.reduce((sum, l) => sum + l.quantity * l.unitAmountCents, 0);
+      return { staged: true, providerOrderId: 'sq-new', totalCents };
     },
     async confirmPriorOrder(args) {
       calls.priorOrderChecks.push({ orderNumber: args.orderNumber, phone: args.phone });
@@ -214,18 +223,33 @@ function line(patch: Record<string, unknown> = {}) {
 
 // ── The three transaction shapes ────────────────────────────────────────────
 
-test('repair-only: a repair is created and linked, nothing is staged', async () => {
+test('repair-only: a repair is created, linked, AND staged as its own Square order', async () => {
+  // Design choice, stated explicitly: a repair-only visit now stages too.
+  // Before this fix `stageOrder` only ever saw `retailLines`, so a repair-only
+  // drop-off had NO way to be charged — the repair's money lived solely in
+  // `repair_service.price` (TEXT). Gating staging on "any retail lines" would
+  // leave that case exactly as unpayable as before, so it is deliberately not
+  // preserved: a repair alone is a billable visit and gets a staged order.
   const { deps, calls } = fakes();
 
   const res = await submitCounterTransaction(input({ services: [service()] }), ORG, deps);
 
   assert.equal(res.repairs[0]?.id, 321);
   assert.equal(res.repairs[0]?.rsNumber, 'RS-1001');
-  assert.equal(res.sale, null);
-  assert.deepEqual(calls.staged, [], 'no retail lines means no provider order');
+  assert.equal(res.sale?.providerOrderId, 'sq-new');
+  assert.equal(calls.staged.length, 1, 'the repair alone is enough to stage an order');
+  assert.equal(calls.staged[0].count, 1);
+  // The line the fake receiver actually sees — proves the money and the name
+  // both made it out of `service()`'s price/repairReasons, not an opaque id.
+  assert.equal(calls.staged[0].lines[0].unitAmountCents, 13000);
+  assert.match(calls.staged[0].lines[0].productTitle, /QC35 II/);
+  assert.match(calls.staged[0].lines[0].productTitle, /audio/);
   assert.deepEqual(calls.repairLinks, [{ repairId: 321, headerId: 900 }]);
   assert.equal(res.status, 'staged');
   assert.equal(res.totalCents, 13000);
+  // The identity this whole fix exists for: the staged charge and the header
+  // quote must be the SAME number.
+  assert.equal(res.sale?.totalCents, res.totalCents);
 });
 
 test('retail-only: an order is staged and NO repair record is created', async () => {
@@ -242,7 +266,7 @@ test('retail-only: an order is staged and NO repair record is created', async ()
   assert.ok(calls.patches.some((p) => p.stagedSquareOrderId === 'sq-new'));
 });
 
-test('combined: both halves persist against one header', async () => {
+test('combined: both halves persist against one header, and ONE staged order covers both', async () => {
   const { deps, calls } = fakes();
 
   const res = await submitCounterTransaction(
@@ -256,6 +280,15 @@ test('combined: both halves persist against one header', async () => {
   assert.equal(calls.headers.length, 1, 'one visit is one header');
   assert.equal(res.subtotalCents, 500);
   assert.equal(res.totalCents, 13500);
+  // ONE stageOrder call, carrying BOTH the retail line and the repair line —
+  // a customer with a laptop drop-off and a cable settles on one card
+  // presentation rather than two.
+  assert.equal(calls.staged.length, 1, 'one card presentation for the whole visit');
+  assert.equal(calls.staged[0].count, 2);
+  assert.equal(calls.staged[0].idempotencyKey, KEY, 'the VISIT key, not a per-line one');
+  // The core identity this fix exists to hold: what gets staged for payment
+  // equals what the header claims the visit is worth.
+  assert.equal(res.sale?.totalCents, res.totalCents);
 });
 
 // ── Partial failure (doc 04 §5) ─────────────────────────────────────────────
@@ -329,10 +362,41 @@ test('a validation error that slips PAST the pre-flight degrades, it does not st
 });
 
 test('no payment provider connected → warns, does not fail the visit', async () => {
-  const { deps } = fakes({ stageReturns: null });
+  const { deps } = fakes({ stageReturns: { staged: false, reason: 'not_configured' } });
   const res = await submitCounterTransaction(input({ retailLines: [line()] }), ORG, deps);
   assert.equal(res.sale, null);
   assert.ok(res.warnings.some((w) => /provider is connected/i.test(w)));
+});
+
+test('a Square REJECTION is distinguishable from "no provider connected" and names the actual error', async () => {
+  // The defect this pins: `stageOrder` used to collapse "provider rejected the
+  // request" and "no provider configured" into the same `null`, so an
+  // operator staring at a malformed-request error saw "No payment provider is
+  // connected" — true of neither what happened nor what to do about it.
+  const { deps } = fakes({
+    stageReturns: {
+      staged: false,
+      reason: 'rejected',
+      error: 'INVALID_REQUEST_ERROR | order.line_items[0].base_price_money.currency required',
+    },
+  });
+  const res = await submitCounterTransaction(
+    input({ services: [service()], retailLines: [line()] }),
+    ORG,
+    deps,
+  );
+  assert.equal(res.sale, null);
+  assert.ok(
+    res.warnings.some((w) => w.includes('base_price_money.currency required')),
+    `expected Square's own error text in a warning, got ${JSON.stringify(res.warnings)}`,
+  );
+  assert.ok(
+    !res.warnings.some((w) => /no payment provider is connected/i.test(w)),
+    'a rejection must not be reported as "no provider connected" — a provider IS connected here',
+  );
+  // The repair half still landed; a Square rejection degrades to a warning
+  // like every other post-header failure, it does not fail the visit.
+  assert.equal(res.repairs[0]?.id, 321);
 });
 
 test('a provider throw during staging degrades to a warning', async () => {
@@ -625,6 +689,12 @@ test('device 2 failing does not erase device 1 — the visit is reconcilable, no
     res.warnings.some((w) => w.includes('Device 2 of 2') && w.includes('Lost')),
     `a warning must name WHICH device failed — got ${JSON.stringify(res.warnings)}`,
   );
+  // The line this pins: a device whose repair intake never landed has no
+  // `repair_service` row, so charging for it would be a card presentation for
+  // a repair the system has no record of — the same hazard a voided cart line
+  // guards against. Only the device that actually recorded is billable.
+  assert.equal(calls.staged[0]?.count, 1, 'only the SURVIVING device is staged for payment');
+  assert.match(calls.staged[0]?.lines[0]?.productTitle ?? '', /Kept/);
 });
 
 test('zero-quantity lines are dropped before totalling', async () => {
@@ -636,4 +706,82 @@ test('zero-quantity lines are dropped before totalling', async () => {
   );
   assert.equal(res.subtotalCents, 1000);
   assert.equal(calls.staged[0].count, 1);
+});
+
+// ── stageOrder request/response (pure, split out the same way
+//    `buildTerminalCheckoutBody` / `paymentStateForTerminalStatus` are in
+//    terminal-checkout.test.ts) ───────────────────────────────────────────
+
+test('buildStageOrderBody sends the ORG location_id and currency — was missing/hardcoded', () => {
+  // Defects 1 and 2: CreateOrder had no `location_id` at all (Square requires
+  // it) and hardcoded `currency: 'USD'` rather than reading it off the
+  // resolved SquareConfig. Asserted here, without a network call, against the
+  // exact two fields the fix touches.
+  const cfg = { locationId: 'LOC-CA-1', currency: 'CAD' };
+  const retail: CounterRetailLine = {
+    variationId: null,
+    sku: 'SKU1',
+    productTitle: 'Widget',
+    quantity: 2,
+    unitAmountCents: 750,
+  };
+
+  const body = buildStageOrderBody([retail], cfg, 'idem-key-1') as {
+    idempotency_key: string;
+    order: { location_id: string; line_items: Array<Record<string, unknown>> };
+  };
+
+  assert.equal(body.idempotency_key, 'idem-key-1');
+  assert.equal(body.order.location_id, 'LOC-CA-1', 'location_id must be on the order');
+  assert.deepEqual(body.order.line_items[0], {
+    name: 'Widget',
+    quantity: '2',
+    base_price_money: { amount: 750, currency: 'CAD' },
+  });
+});
+
+test('buildStageOrderBody charges a catalog line by variation id, not name+price', () => {
+  const cfg = { locationId: 'LOC-1', currency: 'USD' };
+  const catalogLine: CounterRetailLine = {
+    variationId: 'VAR-9',
+    sku: 'SKU9',
+    productTitle: 'Case',
+    quantity: 1,
+    unitAmountCents: 1999,
+  };
+  const body = buildStageOrderBody([catalogLine], cfg, 'idem-2') as {
+    order: { line_items: Array<Record<string, unknown>> };
+  };
+  assert.deepEqual(body.order.line_items[0], { catalog_object_id: 'VAR-9', quantity: '1' });
+});
+
+test('interpretStageOrderResponse surfaces the REAL Square error rather than swallowing it', () => {
+  // Defect 3: `if (!res.ok || !orderId) return null` discarded `res.errors`
+  // outright. The caller then reported "No payment provider is connected" for
+  // a request Square explicitly rejected.
+  const outcome = interpretStageOrderResponse({
+    ok: false,
+    status: 400,
+    data: {},
+    errors: [
+      { code: 'INVALID_REQUEST_ERROR', detail: 'location_id is required', field: 'location_id' },
+    ],
+  } as unknown as Parameters<typeof interpretStageOrderResponse>[0]);
+
+  assert.equal(outcome.staged, false);
+  assert.equal((outcome as { reason: string }).reason, 'rejected');
+  assert.match((outcome as { error: string }).error, /location_id is required/);
+});
+
+test('interpretStageOrderResponse treats a 200 with no order id as a rejection, not a silent success', () => {
+  const outcome = interpretStageOrderResponse({ ok: true, data: {}, errors: undefined });
+  assert.equal(outcome.staged, false);
+});
+
+test('interpretStageOrderResponse reads the provider order id and total on success', () => {
+  const outcome = interpretStageOrderResponse({
+    ok: true,
+    data: { order: { id: 'sq-order-9', total_money: { amount: 13500 } } },
+  });
+  assert.deepEqual(outcome, { staged: true, providerOrderId: 'sq-order-9', totalCents: 13500 });
 });

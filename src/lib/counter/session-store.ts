@@ -40,6 +40,7 @@ import { withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import type { KioskCartLine, KioskLinePayload } from '@/lib/kiosk/cart-line';
 import { isRepairPayload } from '@/lib/kiosk/cart-line';
+import { submitBlocker } from './submit-blocker';
 import { mapKioskCartToCounterParts } from '@/lib/kiosk/cart-to-counter';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { submitCounterTransaction } from './submit-counter-transaction';
@@ -763,27 +764,13 @@ export async function setSessionStatus(
 }
 
 /**
- * What still stands between this visit and a receipt.
- *
- * Returned as a CODE, not a sentence, so the desk, the tablet and the E2E all
- * name the same gate. Order matters: an empty cart is the loudest problem, and
- * telling someone their repair is unsigned when there is nothing in the cart
- * would send them to fix the wrong thing.
+ * The staged-cart gate. Lives in `./submit-blocker` so the DESK can call it
+ * too — this module imports `pg`, which puts anything defined here out of a
+ * client component's reach. Re-exported rather than moved-and-forgotten so
+ * every existing server caller keeps working and there is still one answer to
+ * "can this be submitted".
  */
-export function submitBlocker(snapshot: CounterSessionSnapshot): CounterSessionError | null {
-  const live = snapshot.lines.filter((l) => l.voidedAtMs === null);
-  if (live.length === 0) return 'EMPTY_CART';
-  if (!snapshot.customer.phone.trim()) return 'MISSING_CUSTOMER';
-
-  const unsigned = live.some(
-    (l) => l.type === 'REPAIR' && isRepairPayload(l.payload) && !l.payload.signatureDataUrl,
-  );
-  // A repair is a legal agreement about someone's property. An unsigned one is
-  // not a slow path to fix later — it is a visit that must not be charged.
-  if (unsigned) return 'UNSIGNED_REPAIR';
-
-  return null;
-}
+export { submitBlocker, type CounterSubmitBlocker } from './submit-blocker';
 
 export interface SubmitSessionOutcome {
   transaction: CounterTransactionResult;

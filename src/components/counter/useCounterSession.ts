@@ -23,6 +23,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAblyChannel } from '@/hooks/useAblyChannel';
 import { useAuth } from '@/contexts/AuthContext';
+import { fetchWithStepUp } from '@/components/auth/StepUpModal';
+import { useStepUp } from '@/components/providers/StepUpProvider';
+import { safeRandomUUID } from '@/lib/safe-uuid';
 import {
   applySessionEvent,
   needsResync,
@@ -30,6 +33,7 @@ import {
   type CounterSessionSnapshot,
 } from '@/lib/counter/session-events';
 import { getKioskBridgeChannelName, safeChannelName } from '@/lib/realtime/channels';
+import type { CounterTransactionResult } from '@/lib/counter/counter-transaction-types';
 import type { KioskLinePayload, KioskLineType } from '@/lib/kiosk/cart-line';
 
 /**
@@ -58,15 +62,56 @@ interface MutationBody {
   [key: string]: unknown;
 }
 
-async function call(path: string, method: string, body?: MutationBody) {
-  const res = await fetch(path, {
+/** What a write answers with — `json` so submit can reach past the snapshot. */
+interface MutationResult {
+  ok: boolean;
+  json: { snapshot?: CounterSessionSnapshot; transaction?: CounterTransactionResult; error?: string };
+}
+
+/**
+ * One request. `requestStepUp` is threaded through rather than captured so the
+ * four money verbs (create is not one; submit, checkout and price are) can
+ * clear a `403 STEPUP_REQUIRED` and retry, while the free verbs pay nothing for
+ * the capability. Without this the desk's Pay button would 403 silently and
+ * read as "that did not go through" — a PIN prompt is the whole difference
+ * between a stuck counter and a charged card.
+ */
+async function call(
+  path: string,
+  method: string,
+  body?: MutationBody,
+  requestStepUp?: (scope: string) => Promise<boolean>,
+) {
+  const init: RequestInit = {
     method,
     headers: body ? { 'content-type': 'application/json' } : undefined,
     body: body ? JSON.stringify(body) : undefined,
     cache: 'no-store',
-  });
+  };
+  const res = requestStepUp
+    ? await fetchWithStepUp(path, init, requestStepUp)
+    : await fetch(path, init);
   const json = await res.json().catch(() => ({}));
   return { ok: res.ok, status: res.status, json } as const;
+}
+
+/**
+ * Open a visit. Not part of the hook: there is no session to hook onto yet.
+ *
+ * The `clientEventId` is minted here and is what makes a double-tap on "Start
+ * visit" one session instead of two — the same idempotency contract the submit
+ * path uses, applied at the other end of the visit.
+ */
+export async function createCounterSession(
+  kioskDeviceId?: number | null,
+): Promise<{ sessionId: number } | { error: string }> {
+  const { ok, status, json } = await call('/api/counter/session', 'POST', {
+    clientEventId: safeRandomUUID(),
+    kioskDeviceId: kioskDeviceId ?? null,
+  });
+  const sessionId = json?.snapshot?.sessionId;
+  if (ok && typeof sessionId === 'number') return { sessionId };
+  return { error: operatorCopy(json?.error, status) };
 }
 
 /** Server refusal → what an operator standing at the counter needs to read. */
@@ -86,6 +131,31 @@ function operatorCopy(code: string | undefined, status: number): string {
       return 'Not allowed from this device.';
     case 'INVALID_PAYLOAD':
       return 'That line is missing a required field.';
+
+    // ── The money verbs. Each of these is read by someone standing in front of
+    // a customer with a card in their hand, so each says what to DO next.
+    case 'EMPTY_CART':
+      return 'Add a line before taking payment.';
+    case 'MISSING_CUSTOMER':
+      return 'Needs a phone number before taking payment.';
+    case 'UNSIGNED_REPAIR':
+      return 'The repair still needs the customer’s signature.';
+    case 'NOT_CLAIMED':
+      return 'Claim this counter before finishing the visit.';
+    case 'NOT_SUBMITTED':
+      return 'Finish the visit first — the card comes after.';
+    case 'NO_STAGED_ORDER':
+      return 'Nothing to charge — no payable order was staged for this visit.';
+    case 'NO_TERMINAL_PAIRED':
+      return 'No card reader is paired to this counter. Pair one in settings.';
+    case 'ALREADY_AWAITING_CARD':
+      return 'The reader is already waiting for this card. Cancel it there first.';
+    case 'TERMINAL_REFUSED':
+      return 'The card reader refused the request. Check it is on and connected.';
+    case 'SUBMIT_REJECTED':
+      return 'The visit could not be finished. Nothing was charged.';
+    case 'STEPUP_REQUIRED':
+      return 'That needs a PIN — the prompt was cancelled.';
     default:
       return status === 403 ? 'You do not have permission for that.' : 'That did not go through.';
   }
@@ -94,6 +164,7 @@ function operatorCopy(code: string | undefined, status: number): string {
 export function useCounterSession(sessionId: number | null) {
   const { user } = useAuth();
   const orgId = user?.organizationId ?? '';
+  const requestStepUp = useStepUp();
 
   const [state, setState] = useState<CounterSessionState>({
     snapshot: null,
@@ -135,17 +206,29 @@ export function useCounterSession(sessionId: number | null) {
     return () => clearInterval(timer);
   }, [sessionId, refresh, state.live]);
 
+  /**
+   * `stepUp` is opt-in per verb, not global: only the routes that actually
+   * declare `stepUp: true` should be able to raise a PIN prompt. Threading it
+   * per call keeps a stray 403 on, say, a quantity nudge from popping a PIN
+   * sheet the operator has no reason to expect.
+   *
+   * Returns the parsed body so the caller can read what the route answered
+   * with beyond the snapshot — submit carries the `transaction`, and that is
+   * the only place the counter transaction id and the RS numbers ever appear.
+   */
   const mutate = useCallback(
-    (path: string, method: string, body: MutationBody = {}) => {
-      const run = async () => {
+    (path: string, method: string, body: MutationBody = {}, stepUp = false) => {
+      const run = async (): Promise<MutationResult> => {
         const snapshot = snapshotRef.current;
-        if (!snapshot) return;
+        if (!snapshot) return { ok: false, json: {} };
         setState((s) => ({ ...s, busy: true, error: null }));
 
-        const { ok, status, json } = await call(path, method, {
-          expectedVersion: snapshot.version,
-          ...body,
-        });
+        const { ok, status, json } = await call(
+          path,
+          method,
+          { expectedVersion: snapshot.version, ...body },
+          stepUp ? requestStepUp : undefined,
+        );
 
         setState((s) => ({
           ...s,
@@ -155,12 +238,14 @@ export function useCounterSession(sessionId: number | null) {
           snapshot: json?.snapshot ?? s.snapshot,
           error: ok ? null : operatorCopy(json?.error, status),
         }));
+        return { ok, json };
       };
 
-      chain.current = chain.current.then(run, run);
-      return chain.current;
+      const next = chain.current.then(run, run);
+      chain.current = next;
+      return next;
     },
-    [],
+    [requestStepUp],
   );
 
   // ── The bridge (D2) ───────────────────────────────────────────────────────
@@ -257,6 +342,56 @@ export function useCounterSession(sessionId: number | null) {
     setStatus: useCallback(
       (status: 'open' | 'parked' | 'voided') =>
         mutate(`/api/counter/session/${id}/status`, 'POST', { status }),
+      [id, mutate],
+    ),
+
+    // ── The money verbs ──────────────────────────────────────────────────────
+    //
+    // All three routes existed, permission-gated and unit-tested, with no
+    // client caller — the desk could stage a cart and never finish it. Each
+    // declares `stepUp: true` server-side, so each passes `true` here.
+
+    /**
+     * Override a line price. Its own route, not the general line PATCH: the
+     * PATCH schema deliberately omits `unitAmountCents`, because a step-up gate
+     * you can bypass by omitting a field is not a gate. The desk's discount
+     * button pointed at the PATCH and was silently stripped by Zod, which
+     * surfaced as "That line is already gone."
+     */
+    setLinePrice: useCallback(
+      (lineUuid: string, unitAmountCents: number, reason?: string) =>
+        mutate(
+          `/api/counter/session/${id}/lines/${lineUuid}/price`,
+          'POST',
+          { unitAmountCents, reason: reason ?? null },
+          true,
+        ),
+      [id, mutate],
+    ),
+
+    /**
+     * Finish the visit: write the transaction, the repairs and the staged
+     * order. Answers with the `transaction` — the only place the counter
+     * transaction id and the RS numbers are ever handed to the client, so the
+     * caller must keep what it returns or lose the receipt.
+     */
+    submit: useCallback(
+      () => mutate(`/api/counter/session/${id}/submit`, 'POST', {}, true),
+      [id, mutate],
+    ),
+
+    /**
+     * Ask the Square Terminal for a card. Runs AFTER submit — the order a
+     * checkout collects against does not exist until the visit is submitted.
+     */
+    checkout: useCallback(
+      (deviceId?: string) =>
+        mutate(
+          `/api/counter/session/${id}/checkout`,
+          'POST',
+          deviceId ? { deviceId } : {},
+          true,
+        ),
       [id, mutate],
     ),
   };

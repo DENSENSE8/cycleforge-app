@@ -58,6 +58,21 @@ export interface CounterServiceLine {
   repairNotes?: string | null;
   serialNumber: string;
   price: string;
+  /**
+   * The quote in minor units, when the caller already has it as an integer.
+   *
+   * `price` is and stays the TEXT the `repair_service.price` column holds — but
+   * a text column is not a thing you can put on a card. The kiosk cart already
+   * carries `unitAmountCents` for every line and the mapper used to throw the
+   * repair one away, so the only number the money path could reach was whatever
+   * `serviceLineCents` managed to scrape back out of the string. Carrying the
+   * integer alongside the string means the staged order and the header total
+   * are the SAME number rather than two independent parses of one quote.
+   *
+   * Optional because a repair created anywhere but the kiosk cart (the staff
+   * intake form, an import) still only has the string. Absent → parse `price`.
+   */
+  unitAmountCents?: number | null;
   notes?: string | null;
   assignedTechId?: number | null;
   signatureDataUrl?: string | null;
@@ -234,12 +249,27 @@ export function computeCounterTotals(input: {
 }
 
 /**
- * Parse a repair quote (`repair_service.price`, a text column holding things
- * like `"130"`, `"$130.00"`, `"130.50"`) into cents. Returns 0 for anything
- * unparseable.
+ * A repair quote in cents.
+ *
+ * Prefers `unitAmountCents` when the caller carried the integer through, and
+ * falls back to parsing `repair_service.price` — a text column holding things
+ * like `"130"`, `"$130.00"`, `"130.50"`. Returns 0 for anything unparseable.
+ *
+ * ONE function, deliberately: the header total and the staged provider order
+ * are both built from this, so they cannot disagree about what a device costs.
+ * Two parses of one quote is exactly how a visit ends up `partially_paid` with
+ * nobody at the counter any the wiser.
+ *
+ * A negative or non-integral `unitAmountCents` is ignored rather than trusted —
+ * a repair is never a credit (that is what a BUYBACK retail line is for), and a
+ * fractional cent on a card is not a thing.
  */
 export function serviceLineCents(service?: CounterServiceLine | null): number {
   if (!service) return 0;
+  const carried = service.unitAmountCents;
+  if (typeof carried === 'number' && Number.isFinite(carried) && carried >= 0) {
+    return Math.trunc(carried);
+  }
   const raw = String(service.price ?? '').trim();
   // Reject a negative quote BEFORE stripping punctuation. Stripping first would
   // delete the minus sign and silently turn "-50" into a positive $50 charge on
