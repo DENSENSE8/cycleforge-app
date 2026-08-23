@@ -27,6 +27,20 @@
  * physical terminal or behind a staff PIN step-up. No card data is entered,
  * accepted, or forwarded anywhere in this path, under any framing.
  *
+ * ## One staged order per visit, not one per money type
+ *
+ * The staged order carries retail lines AND every repair whose intake already
+ * succeeded (built from `repair_service.price` via `serviceLineCents`, the
+ * SAME function the header total is built from). A visit that mixed a repair
+ * and a retail item used to have no way to settle both on one card — the
+ * repair's money lived only in a TEXT column, invisible to Square — so the
+ * header could go `partially_paid` after the webhook even though nothing at
+ * the counter said why. A repair that fails intake never reaches the staged
+ * order (see `stageableRepairLines` below): there is no `repair_service` row
+ * to charge for, so including it would be a card presentation for a repair
+ * the system has no record of.
+ *
+
  * ## Partial failure is designed for, not hoped against
  *
  * | Case                          | Behavior                                        |
@@ -45,13 +59,16 @@ import {
   RepairIntakeValidationError,
   submitRepairIntake,
 } from '@/lib/repair/submit-repair-intake';
-import { squareFetchForOrg } from '@/lib/square/server';
+import { formatSquareErrors, type SquareConfig, type SquareError } from '@/lib/square/client';
+import { resolveSquareConfig, squareFetchForOrg } from '@/lib/square/server';
 import { enqueueTicketWork } from '@/lib/support/ticket-outbox';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import {
   computeCounterTotals,
+  serviceLineCents,
   type CounterRetailLine,
+  type CounterServiceLine,
   type CounterTransactionInput,
   type CounterTransactionResult,
   type CounterTransactionStatus,
@@ -138,12 +155,26 @@ export interface SubmitCounterTransactionDeps {
   submitRepair: typeof submitRepairIntake;
   linkRepairToHeader(orgId: OrgId, repairId: number, headerId: number): Promise<void>;
 
-  /** Creates a provider order and stops. Null when no provider is connected. */
+  /**
+   * Creates a provider order and stops.
+   *
+   * `lines` is the WHOLE staged charge for this visit — retail plus every
+   * repair whose intake already succeeded — never retail alone. A cart that
+   * mixed a repair and a cable used to have no way to settle both on one card
+   * (the repair's money lived only in `repair_service.price`, a TEXT column);
+   * see the module docblock and `submitCounterTransaction`'s staging step.
+   *
+   * Returns a discriminated result rather than `null` on any failure: a
+   * missing/unconnected provider and a provider REJECTING the request are
+   * different operator-facing problems, and collapsing them to one `null` is
+   * exactly how "Square said your line items are malformed" became the
+   * misleading "No payment provider is connected."
+   */
   stageOrder(
     orgId: OrgId,
     lines: CounterRetailLine[],
     idempotencyKey: string,
-  ): Promise<{ providerOrderId: string; totalCents: number | null } | null>;
+  ): Promise<StageOrderResult>;
 
   /** Two-key prior-order confirmation. Null on any disagreement. */
   confirmPriorOrder(args: {
@@ -159,6 +190,99 @@ export interface SubmitCounterTransactionDeps {
 function lastDigits(value: string | null | undefined, n = 10): string {
   const digits = String(value ?? '').replace(/\D/g, '');
   return digits.length <= n ? digits : digits.slice(-n);
+}
+
+/**
+ * `stageOrder`'s outcome. `'not_configured'` and `'rejected'` are kept
+ * distinct on purpose — see the Deps docblock above.
+ */
+export type StageOrderResult = StageOrderNetworkResult | { staged: false; reason: 'not_configured' };
+
+/**
+ * The subset {@link interpretStageOrderResponse} can actually produce — it
+ * only ever sees a Square response, so it can never report `'not_configured'`
+ * (that reason comes from config RESOLUTION failing, one layer up in
+ * `defaultDeps.stageOrder`, before any request is sent). Narrower than
+ * {@link StageOrderResult} so a caller of the pure function does not have to
+ * defensively handle a branch it cannot reach.
+ */
+export type StageOrderNetworkResult =
+  | { staged: true; providerOrderId: string; totalCents: number | null }
+  | { staged: false; reason: 'rejected'; error: string };
+
+/**
+ * A repair's Square line-item name — the device plus what is being fixed,
+ * never a bare id. A customer reading the emailed Square receipt has no other
+ * way to tell "RS-1042" apart from the cable they also bought at the counter.
+ * Falls back to the RS# only when no reason was recorded.
+ */
+function repairLineItemName(service: CounterServiceLine, rsNumber: string): string {
+  const reasons = (service.repairReasons ?? [])
+    .map((r) => String(r ?? '').trim())
+    .filter(Boolean);
+  const summary = reasons.length > 0 ? reasons.join(', ') : rsNumber;
+  return `${service.productModel} repair — ${summary}`;
+}
+
+/**
+ * The CreateOrder request body. Pure — no fetch, no config resolution — so the
+ * two defects this exists to pin (missing `location_id`, hardcoded `'USD'`)
+ * can be asserted without a network call. Mirrors `buildTerminalCheckoutBody`
+ * in `terminal-checkout.ts`.
+ *
+ * Two line shapes, same as the walk-in route this was modeled on
+ * (`/api/walk-in/orders`): a catalog line charges by `catalog_object_id` (the
+ * provider's price is authoritative at charge time), a manual line — every
+ * repair line, and any retail line with no catalog id — as an ad-hoc name +
+ * `base_price_money` in the ORG's currency, never a hardcoded one.
+ */
+export function buildStageOrderBody(
+  lines: CounterRetailLine[],
+  cfg: Pick<SquareConfig, 'locationId' | 'currency'>,
+  idempotencyKey: string,
+): Record<string, unknown> {
+  const line_items = lines.map((l) =>
+    l.variationId
+      ? { catalog_object_id: l.variationId, quantity: String(l.quantity) }
+      : {
+          name: l.productTitle,
+          quantity: String(l.quantity),
+          base_price_money: { amount: l.unitAmountCents, currency: cfg.currency },
+        },
+  );
+  return {
+    idempotency_key: idempotencyKey,
+    order: { location_id: cfg.locationId, line_items },
+  };
+}
+
+/**
+ * Turn a Square CreateOrder response into a {@link StageOrderResult}. Pure —
+ * the caller is responsible for logging; this only decides WHAT happened.
+ *
+ * A missing `order.id` on a 200 is treated the same as `!ok`: Square has never
+ * been observed doing this, but trusting an order that has no id to charge
+ * against is worse than a defensive rejection.
+ */
+export function interpretStageOrderResponse(res: {
+  ok: boolean;
+  data: { order?: { id?: string; total_money?: { amount?: number } } };
+  errors?: SquareError[];
+}): StageOrderNetworkResult {
+  const orderId = res.data?.order?.id;
+  if (!res.ok || !orderId) {
+    return {
+      staged: false,
+      reason: 'rejected',
+      error: formatSquareErrors(res.errors) || 'Square declined the request.',
+    };
+  }
+  const amount = res.data.order?.total_money?.amount;
+  return {
+    staged: true,
+    providerOrderId: orderId,
+    totalCents: typeof amount === 'number' ? amount : null,
+  };
 }
 
 const defaultDeps: SubmitCounterTransactionDeps = {
@@ -264,34 +388,32 @@ const defaultDeps: SubmitCounterTransactionDeps = {
   },
 
   async stageOrder(orgId, lines, idempotencyKey) {
-    if (lines.length === 0) return null;
-    // Two line shapes: a catalog line charges by variation id (the provider's
-    // price is authoritative at charge time), a manual line as an ad-hoc name +
-    // amount.
-    const line_items = lines.map((l) =>
-      l.variationId
-        ? { catalog_object_id: l.variationId, quantity: String(l.quantity) }
-        : {
-            name: l.productTitle,
-            quantity: String(l.quantity),
-            base_price_money: { amount: l.unitAmountCents, currency: 'USD' },
-          },
-    );
+    // Config resolution (Nango token, or env fallback) THROWS when nothing is
+    // connected — that is the actual "no provider" signal, and it is distinct
+    // from Square answering and rejecting the request. Conflating the two is
+    // the defect this branch exists to fix: an operator was being told "No
+    // payment provider is connected" for a request Square flatly rejected.
+    let cfg: SquareConfig;
+    try {
+      cfg = await resolveSquareConfig(orgId);
+    } catch (err) {
+      console.error('[counter] Square is not configured for this org — cart not staged', err);
+      return { staged: false, reason: 'not_configured' };
+    }
+
     const res = await squareFetchForOrg<{ order?: { id?: string; total_money?: { amount?: number } } }>(
       orgId,
       '/orders',
-      {
-        method: 'POST',
-        body: { idempotency_key: idempotencyKey, order: { line_items } },
-      },
+      { method: 'POST', body: buildStageOrderBody(lines, cfg, idempotencyKey) },
     );
-    const orderId = res.data?.order?.id;
-    if (!res.ok || !orderId) return null;
-    const amount = res.data.order?.total_money?.amount;
-    return {
-      providerOrderId: orderId,
-      totalCents: typeof amount === 'number' ? amount : null,
-    };
+
+    const outcome = interpretStageOrderResponse(res);
+    if (!outcome.staged) {
+      // Log the provider's actual errors — swallowing them here is what made
+      // a malformed request look identical to no provider at all.
+      console.error('[counter] Square rejected the staged order', outcome.error, res.errors);
+    }
+    return outcome;
   },
 
   confirmPriorOrder: (args) => confirmOrderNumberForPhone(args),
@@ -450,6 +572,15 @@ export async function submitCounterTransaction(
   // in this loop's absence.
   const repairs: CounterTransactionResult['repairs'] = [];
   let repairFailed = false;
+  /**
+   * The billable half of the repairs, built up ONLY on success. A device whose
+   * intake threw never got a `repair_service` row, so charging for it would be
+   * a card presentation for a repair the system has no record of — the same
+   * hazard a soft-voided cart line guards against, just reached from the other
+   * direction. This is why staging happens AFTER this loop rather than beside
+   * `retailLines` at the top of the function.
+   */
+  const stageableRepairLines: CounterRetailLine[] = [];
 
   for (const [index, service] of services.entries()) {
     try {
@@ -487,6 +618,16 @@ export async function submitCounterTransaction(
         documentId: result.documentId,
         signatureUrl: result.signatureUrl,
       });
+      // Same function the header total is built from (`serviceLineCents`) —
+      // the staged charge and the quote can never disagree about what this
+      // device costs, which is the whole point of routing both through it.
+      stageableRepairLines.push({
+        variationId: null,
+        sku: `REPAIR-${result.id}`,
+        productTitle: repairLineItemName(service, result.rsNumber),
+        quantity: 1,
+        unitAmountCents: serviceLineCents(service),
+      });
       if (result.signatureWarning) warnings.push(result.signatureWarning);
       await deps.linkRepairToHeader(orgId, result.id, header.id);
     } catch (err) {
@@ -519,17 +660,35 @@ export async function submitCounterTransaction(
   }
 
   // ── The staged sale (never charged) ──────────────────────────────────────
+  //
+  // RETAIL + every repair that actually landed, as ONE Square order. A visit
+  // with a repair and a cable used to have no way to settle both on one card:
+  // the repair's money lived only in `repair_service.price` (TEXT), so a
+  // retail-only guard here left the repair uncharged with the header total
+  // covering it regardless — a header that quietly went `partially_paid` after
+  // the webhook, with nothing at the counter to say why.
+  //
+  // A repair-only visit now stages too, deliberately: the point of widening
+  // this list is that a repair becomes payable at all, and gating staging on
+  // `retailLines.length` (the pre-existing guard) would leave that case
+  // exactly as broken as before.
+  const stageLines: CounterRetailLine[] = [...retailLines, ...stageableRepairLines];
   let sale: CounterTransactionResult['sale'] = null;
-  if (retailLines.length > 0) {
+  if (stageLines.length > 0) {
     try {
-      const staged = await deps.stageOrder(orgId, retailLines, clientEventId);
-      if (staged) {
+      const staged = await deps.stageOrder(orgId, stageLines, clientEventId);
+      if (staged.staged) {
         sale = { providerOrderId: staged.providerOrderId, totalCents: staged.totalCents };
         await deps.patchHeader(orgId, header.id, {
           stagedSquareOrderId: staged.providerOrderId,
         });
-      } else {
+      } else if (staged.reason === 'not_configured') {
         warnings.push('No payment provider is connected — the cart was not staged.');
+      } else {
+        // Distinct from the "not connected" warning above on purpose — a
+        // provider IS connected here, it rejected this specific request, and
+        // the operator needs Square's own words to act on it.
+        warnings.push(`Square declined the staged order: ${staged.error}`);
       }
     } catch (err) {
       warnings.push('The cart could not be staged for payment — retry from the register.');

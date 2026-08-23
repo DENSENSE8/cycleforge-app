@@ -1,0 +1,505 @@
+/**
+ * loadCounterVisit — the reader for a submitted counter visit.
+ *
+ * Every other statement against `counter_transactions` in this tree is a
+ * write: `submitCounterTransaction` inserts the header,
+ * `reconcileCounterPayment` patches its status from the money, `session-store`
+ * patches it from the cart. Nothing reads one back whole. That gap means the
+ * operator-facing receipt for a finished visit — "what did we sell, what did
+ * we take in for repair, did it get paid, who touched it" — cannot be built at
+ * all today. This module is that reader, and only that: it never writes.
+ *
+ * ## The join, in one transaction
+ *
+ * A counter visit is never one row. The header
+ * (`counter_transactions`) joins:
+ *
+ *   - N `repair_service` rows (devices) — a visit can drop off more than one,
+ *     see `submitCounterTransaction`'s per-device loop.
+ *   - the `counter_session_lines` that staged it, IF it went through the
+ *     shared desk↔tablet cart (`session-store.ts`). A visit submitted via the
+ *     direct kiosk-intake path (`/api/kiosk/intake`) has no session and
+ *     therefore no lines — that is a normal outcome, not a gap in the read.
+ *   - the settled `square_transactions` row, once the payment webhook has
+ *     landed one.
+ *   - the `counter_sessions` row's `payment_state` — the TERMINAL's answer,
+ *     landed by `resolveTerminalCheckout`. Deliberately NOT the same field as
+ *     `counter_transactions.status` — the money's answer, landed by
+ *     `reconcileCounterPayment`. They arrive on two different Square webhooks
+ *     and can legitimately disagree (a Terminal `approved` before the
+ *     settlement webhook lands `paid`), so this reader models BOTH rather than
+ *     picking one to report.
+ *   - the `audit_logs` rows for the four counter-session actions that move
+ *     money or finality (price override, void, submit, terminal checkout) —
+ *     joined through the SAME session, since that is the `entity_id` every
+ *     counter-session audit row is stamped with (see the routes under
+ *     `src/app/api/counter/session/**`).
+ *
+ * All of it is fetched inside ONE `withTenantTransaction` — one connection
+ * checkout, a handful of statements. Each statement returns every row of its
+ * kind for this visit in one query (`findDevices` returns all N devices,
+ * `findLines` returns all lines), so a two-device visit costs the same as a
+ * one-device visit. There is no per-repair, per-line, or per-audit-row round
+ * trip anywhere in this module.
+ *
+ * ## Voided lines are evidence, not noise
+ *
+ * `findLines` does NOT filter on `voided_at`. This is the operator-facing
+ * ledger, not the customer-facing projection — a line the customer saw and
+ * then had corrected off their total is exactly the kind of fact a receipt
+ * exists to preserve. Each voided line carries its reason and the staff
+ * member's name, not just their id, because "who voided this" is the question
+ * a receipt gets asked.
+ *
+ * ## Money stays integer cents
+ *
+ * `repair_service.price` is a TEXT column (see the note on
+ * `CounterServiceLine.price` in `counter-transaction-types.ts`). Rather than
+ * parse it a second way here, `findDevices` calls the SAME `serviceLineCents`
+ * the submit path uses, so a device's quote on this receipt can never disagree
+ * with the number that produced the header's total. The raw text is carried
+ * alongside the parsed cents so a receipt can still show exactly what was
+ * recorded even when it fails to parse.
+ */
+
+import type { PoolClient } from 'pg';
+import { withTenantTransaction } from '@/lib/tenancy/db';
+import type { OrgId } from '@/lib/tenancy/constants';
+import { AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
+import { normalizePSTTimestamp } from '@/utils/date';
+import type { KioskCartLine, KioskLinePayload } from '@/lib/kiosk/cart-line';
+import {
+  serviceLineCents,
+  type CounterTransactionStatus,
+} from './counter-transaction-types';
+import type { CounterPaymentState } from './session-events';
+
+// ── The result shape ────────────────────────────────────────────────────────
+
+export interface CounterVisitCustomer {
+  id: number;
+  name: string | null;
+  phone: string | null;
+  email: string | null;
+}
+
+export interface CounterVisitDevice {
+  id: number;
+  /** repair_service.ticket_number — the RS#. */
+  rsNumber: string;
+  serialNumber: string;
+  productTitle: string;
+  /** Free-text lifecycle status. See REPAIR_STATUS_OPTIONS in repair-service-queries.ts. */
+  status: string;
+  /** Parsed via serviceLineCents — the SAME parser the header total was built from. */
+  quoteCents: number;
+  /** repair_service.price AS STORED (a text column), for a receipt that shows what was actually recorded. */
+  quoteRaw: string;
+  /** True when a signed intake agreement (a `documents` row) exists for this device. */
+  hasSignature: boolean;
+  /** The uploaded PNG, if the blob upload succeeded — null even when hasSignature is true is a recorded, known failure mode (see submit-repair-intake.ts's signatureWarning). */
+  signatureUrl: string | null;
+  signedAt: string | null;
+  createdAt: string | null;
+}
+
+export interface CounterVisitLine {
+  /** The client-minted line id (counter_session_lines.line_uuid). */
+  id: string;
+  type: KioskCartLine['type'];
+  title: string;
+  quantity: number;
+  /** Minor units. Negative = buyback / trade-in credit — never clamped. */
+  unitAmountCents: number;
+  payload: KioskLinePayload;
+  sortIndex: number;
+  /**
+   * Present → voided. A voided line is evidence and is NEVER dropped here —
+   * that is the one thing that separates this ledger from the customer-facing
+   * projection (see session-events.ts's device-facing note).
+   */
+  voidedAt: string | null;
+  voidReason: string | null;
+  voidedByStaffId: number | null;
+  voidedByStaffName: string | null;
+}
+
+export interface CounterVisitSquareTransaction {
+  id: string;
+  squareOrderId: string;
+  squarePaymentId: string | null;
+  status: string | null;
+  paymentMethod: string | null;
+  receiptUrl: string | null;
+  subtotalCents: number | null;
+  taxCents: number | null;
+  totalCents: number | null;
+  discountCents: number | null;
+  createdAt: string | null;
+}
+
+export interface CounterVisitPayment {
+  /** The MONEY's answer — the settled square_transactions row, once the payment webhook has landed one. */
+  squareTransaction: CounterVisitSquareTransaction | null;
+  /**
+   * The TERMINAL's answer (counter_sessions.payment_state). Null when this
+   * visit was never routed through a shared counter_session (the direct
+   * kiosk-intake path has no session at all, and so no Terminal state to
+   * report). `'approved'` here and `status !== 'paid'` on the visit itself is
+   * not a bug — the two facts arrive on different webhooks and are modeled
+   * separately on purpose. See reconcile-payment.ts.
+   */
+  sessionPaymentState: CounterPaymentState | null;
+}
+
+export interface CounterVisitAuditEntry {
+  id: number;
+  /** One of AUDIT_ACTION.COUNTER_{LINE_PRICE_OVERRIDE,LINE_VOID,SESSION_SUBMIT,TERMINAL_CHECKOUT}. */
+  action: string;
+  createdAt: string | null;
+  actorStaffId: number | null;
+  actorStaffName: string | null;
+  actorRole: string | null;
+  before: unknown;
+  after: unknown;
+  /** audit_logs.metadata.note, when the actor left one (e.g. a void reason). */
+  note: string | null;
+}
+
+export interface CounterVisit {
+  id: number;
+  status: CounterTransactionStatus;
+  subtotalCents: number;
+  totalCents: number;
+  /** The STAGED provider order id — never a charged one; see submit-counter-transaction.ts. */
+  stagedSquareOrderId: string | null;
+  priorOrderRef: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+  /** Null when the header's customer_id is null, or the customer row is gone (ON DELETE SET NULL). */
+  customer: CounterVisitCustomer | null;
+  /** Every repair_service row this visit's devices produced. Empty for a retail-only visit. */
+  devices: CounterVisitDevice[];
+  /** Every counter_session_lines row for the session that produced this visit, INCLUDING voided ones. Empty when this visit has no session. */
+  lines: CounterVisitLine[];
+  payment: CounterVisitPayment;
+  /** Who was working the register — counter_sessions.claimed_by_staff_id. Null when this visit has no session. */
+  claimedByStaffId: number | null;
+  claimedByStaffName: string | null;
+  auditTrail: CounterVisitAuditEntry[];
+}
+
+// ── Deps ────────────────────────────────────────────────────────────────────
+
+/** Opaque transaction handle — a `PoolClient` in production, anything in tests. Mirrors CounterSessionTx (session-store.ts). */
+export type ReadVisitTx = PoolClient | { readonly __fake: true };
+
+interface VisitHeaderRow {
+  id: number;
+  status: CounterTransactionStatus;
+  customerId: number | null;
+  priorOrderRef: string | null;
+  stagedSquareOrderId: string | null;
+  subtotalCents: number;
+  totalCents: number;
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
+interface VisitSessionRow {
+  sessionId: number;
+  claimedByStaffId: number | null;
+  claimedByStaffName: string | null;
+  paymentState: CounterPaymentState;
+}
+
+export interface ReadVisitDeps {
+  runInTransaction<T>(orgId: OrgId, fn: (tx: ReadVisitTx) => Promise<T>): Promise<T>;
+  findHeader(tx: ReadVisitTx, orgId: OrgId, counterTransactionId: number): Promise<VisitHeaderRow | null>;
+  findCustomer(tx: ReadVisitTx, orgId: OrgId, customerId: number): Promise<CounterVisitCustomer | null>;
+  /** ALL devices for this visit, in one query — never one call per repair. */
+  findDevices(tx: ReadVisitTx, orgId: OrgId, counterTransactionId: number): Promise<CounterVisitDevice[]>;
+  /** The session that produced this visit, if it went through the shared cart. At most one per `ux_counter_transactions_client_event`-style expectation; the most recently updated wins if more than one somehow points here. */
+  findSession(tx: ReadVisitTx, orgId: OrgId, counterTransactionId: number): Promise<VisitSessionRow | null>;
+  /** ALL lines for a session, in one query, voided included. */
+  findLines(tx: ReadVisitTx, orgId: OrgId, sessionId: number): Promise<CounterVisitLine[]>;
+  findSquareTransaction(
+    tx: ReadVisitTx,
+    orgId: OrgId,
+    counterTransactionId: number,
+  ): Promise<CounterVisitSquareTransaction | null>;
+  /** The money-moving/finality audit rows for this visit's session(s), in one query. Empty input → empty output, no round trip. */
+  findAuditTrail(tx: ReadVisitTx, orgId: OrgId, sessionIds: number[]): Promise<CounterVisitAuditEntry[]>;
+}
+
+/** The four counter-session actions this reader surfaces. Everything else on `counter_session` (claim, release, customer edits) is not money or finality — see AUDIT_ACTION's own comment. */
+const VISIT_AUDIT_ACTIONS: readonly string[] = [
+  AUDIT_ACTION.COUNTER_LINE_PRICE_OVERRIDE,
+  AUDIT_ACTION.COUNTER_LINE_VOID,
+  AUDIT_ACTION.COUNTER_SESSION_SUBMIT,
+  AUDIT_ACTION.COUNTER_TERMINAL_CHECKOUT,
+];
+
+function asClient(tx: ReadVisitTx): PoolClient {
+  return tx as PoolClient;
+}
+
+function pstOrNull(value: unknown): string | null {
+  return normalizePSTTimestamp(value as string | Date | null | undefined);
+}
+
+/** audit_logs.metadata.note, defensively — metadata is jsonb and its shape is not enforced. */
+function extractNote(metadata: unknown): string | null {
+  if (!metadata || typeof metadata !== 'object') return null;
+  const note = (metadata as Record<string, unknown>).note;
+  return typeof note === 'string' ? note : null;
+}
+
+const defaultDeps: ReadVisitDeps = {
+  runInTransaction(orgId, fn) {
+    return withTenantTransaction(orgId, (client) => fn(client));
+  },
+
+  async findHeader(tx, orgId, counterTransactionId) {
+    const res = await asClient(tx).query<Record<string, unknown>>(
+      `SELECT id, status, customer_id, prior_order_ref, staged_square_order_id,
+              subtotal_cents, total_cents, created_at, updated_at
+         FROM counter_transactions
+        WHERE organization_id = $1 AND id = $2
+        LIMIT 1`,
+      [orgId, counterTransactionId],
+    );
+    const row = res.rows[0];
+    if (!row) return null;
+    return {
+      id: Number(row.id),
+      status: String(row.status) as CounterTransactionStatus,
+      customerId: row.customer_id == null ? null : Number(row.customer_id),
+      priorOrderRef: (row.prior_order_ref as string | null) ?? null,
+      stagedSquareOrderId: (row.staged_square_order_id as string | null) ?? null,
+      subtotalCents: Number(row.subtotal_cents ?? 0),
+      totalCents: Number(row.total_cents ?? 0),
+      createdAt: pstOrNull(row.created_at),
+      updatedAt: pstOrNull(row.updated_at),
+    };
+  },
+
+  async findCustomer(tx, orgId, customerId) {
+    const res = await asClient(tx).query<Record<string, unknown>>(
+      `SELECT id,
+              COALESCE(
+                NULLIF(display_name, ''),
+                NULLIF(customer_name, ''),
+                NULLIF(TRIM(CONCAT_WS(' ', first_name, last_name)), '')
+              ) AS name,
+              COALESCE(phone, mobile) AS phone,
+              email
+         FROM customers
+        WHERE organization_id = $1 AND id = $2
+        LIMIT 1`,
+      [orgId, customerId],
+    );
+    const row = res.rows[0];
+    if (!row) return null;
+    return {
+      id: Number(row.id),
+      name: (row.name as string | null) ?? null,
+      phone: (row.phone as string | null) ?? null,
+      email: (row.email as string | null) ?? null,
+    };
+  },
+
+  async findDevices(tx, orgId, counterTransactionId) {
+    // LEFT JOIN LATERAL, not a second query: the latest documents row per
+    // repair (signed PNG preferred, most recently signed otherwise) rides
+    // along in the SAME statement, so N devices cost one round trip.
+    const res = await asClient(tx).query<Record<string, unknown>>(
+      `SELECT rs.id, rs.ticket_number, rs.serial_number, rs.product_title, rs.status,
+              rs.price, rs.created_at,
+              doc.signature_url, doc.signed_at
+         FROM repair_service rs
+         LEFT JOIN LATERAL (
+           SELECT signature_url, signed_at
+             FROM documents
+            WHERE organization_id = $1 AND entity_type = 'REPAIR' AND entity_id = rs.id
+            ORDER BY signed_at DESC NULLS LAST, id DESC
+            LIMIT 1
+         ) doc ON true
+        WHERE rs.organization_id = $1 AND rs.counter_transaction_id = $2
+        ORDER BY rs.created_at ASC NULLS LAST, rs.id ASC`,
+      [orgId, counterTransactionId],
+    );
+    return res.rows.map((row) => {
+      const raw = (row.price as string | null) ?? '';
+      return {
+        id: Number(row.id),
+        rsNumber: (row.ticket_number as string | null) ?? '',
+        serialNumber: (row.serial_number as string | null) ?? '',
+        productTitle: (row.product_title as string | null) ?? '',
+        status: (row.status as string | null) ?? '',
+        // The ONE canonical parser (counter-transaction-types.ts) — never a
+        // second, independent parse of the same TEXT column.
+        quoteCents: serviceLineCents({ productModel: '', serialNumber: '', price: raw }),
+        quoteRaw: raw,
+        hasSignature: row.signed_at != null,
+        signatureUrl: (row.signature_url as string | null) ?? null,
+        signedAt: pstOrNull(row.signed_at),
+        createdAt: pstOrNull(row.created_at),
+      };
+    });
+  },
+
+  async findSession(tx, orgId, counterTransactionId) {
+    const res = await asClient(tx).query<Record<string, unknown>>(
+      `SELECT s.id, s.claimed_by_staff_id, st.name AS claimed_by_staff_name, s.payment_state
+         FROM counter_sessions s
+         LEFT JOIN staff st ON st.id = s.claimed_by_staff_id
+        WHERE s.organization_id = $1 AND s.counter_transaction_id = $2
+        ORDER BY s.updated_at DESC
+        LIMIT 1`,
+      [orgId, counterTransactionId],
+    );
+    const row = res.rows[0];
+    if (!row) return null;
+    return {
+      sessionId: Number(row.id),
+      claimedByStaffId: row.claimed_by_staff_id == null ? null : Number(row.claimed_by_staff_id),
+      claimedByStaffName: (row.claimed_by_staff_name as string | null) ?? null,
+      paymentState: ((row.payment_state as string | null) ?? 'idle') as CounterPaymentState,
+    };
+  },
+
+  async findLines(tx, orgId, sessionId) {
+    // No `voided_at IS NULL` filter — this is the operator ledger, not the
+    // customer-facing projection. A voided line is evidence.
+    const res = await asClient(tx).query<Record<string, unknown>>(
+      `SELECT l.line_uuid, l.type, l.title, l.quantity, l.unit_amount_cents, l.payload,
+              l.sort_index, l.voided_at, l.void_reason, l.voided_by_staff_id,
+              st.name AS voided_by_staff_name
+         FROM counter_session_lines l
+         LEFT JOIN staff st ON st.id = l.voided_by_staff_id
+        WHERE l.organization_id = $1 AND l.session_id = $2
+        ORDER BY l.sort_index ASC, l.id ASC`,
+      [orgId, sessionId],
+    );
+    return res.rows.map((row) => ({
+      id: String(row.line_uuid),
+      type: row.type as KioskCartLine['type'],
+      title: (row.title as string | null) ?? '',
+      quantity: Number(row.quantity ?? 0),
+      unitAmountCents: Number(row.unit_amount_cents ?? 0),
+      payload: (row.payload ?? {}) as KioskLinePayload,
+      sortIndex: Number(row.sort_index ?? 0),
+      voidedAt: pstOrNull(row.voided_at),
+      voidReason: (row.void_reason as string | null) ?? null,
+      voidedByStaffId: row.voided_by_staff_id == null ? null : Number(row.voided_by_staff_id),
+      voidedByStaffName: (row.voided_by_staff_name as string | null) ?? null,
+    }));
+  },
+
+  async findSquareTransaction(tx, orgId, counterTransactionId) {
+    const res = await asClient(tx).query<Record<string, unknown>>(
+      `SELECT id, square_order_id, square_payment_id, status, payment_method, receipt_url,
+              subtotal, tax, total, discount, created_at
+         FROM square_transactions
+        WHERE organization_id = $1 AND counter_transaction_id = $2
+        ORDER BY created_at DESC
+        LIMIT 1`,
+      [orgId, counterTransactionId],
+    );
+    const row = res.rows[0];
+    if (!row) return null;
+    return {
+      id: String(row.id),
+      squareOrderId: String(row.square_order_id),
+      squarePaymentId: (row.square_payment_id as string | null) ?? null,
+      status: (row.status as string | null) ?? null,
+      paymentMethod: (row.payment_method as string | null) ?? null,
+      receiptUrl: (row.receipt_url as string | null) ?? null,
+      subtotalCents: row.subtotal == null ? null : Number(row.subtotal),
+      taxCents: row.tax == null ? null : Number(row.tax),
+      totalCents: row.total == null ? null : Number(row.total),
+      discountCents: row.discount == null ? null : Number(row.discount),
+      createdAt: pstOrNull(row.created_at),
+    };
+  },
+
+  async findAuditTrail(tx, orgId, sessionIds) {
+    if (sessionIds.length === 0) return [];
+    const res = await asClient(tx).query<Record<string, unknown>>(
+      `SELECT a.id, a.action, a.created_at, a.actor_staff_id, st.name AS actor_staff_name,
+              a.actor_role, a.before_data, a.after_data, a.metadata
+         FROM audit_logs a
+         LEFT JOIN staff st ON st.id = a.actor_staff_id
+        WHERE a.organization_id = $1
+          AND a.entity_type = $2
+          AND a.entity_id = ANY($3::text[])
+          AND a.action = ANY($4::text[])
+        ORDER BY a.created_at ASC, a.id ASC`,
+      [orgId, AUDIT_ENTITY.COUNTER_SESSION, sessionIds.map(String), VISIT_AUDIT_ACTIONS],
+    );
+    return res.rows.map((row) => ({
+      id: Number(row.id),
+      action: String(row.action),
+      createdAt: pstOrNull(row.created_at),
+      actorStaffId: row.actor_staff_id == null ? null : Number(row.actor_staff_id),
+      actorStaffName: (row.actor_staff_name as string | null) ?? null,
+      actorRole: (row.actor_role as string | null) ?? null,
+      before: row.before_data ?? null,
+      after: row.after_data ?? null,
+      note: extractNote(row.metadata),
+    }));
+  },
+};
+
+// ── The reader ───────────────────────────────────────────────────────────────
+
+/**
+ * Load a submitted counter visit whole — header, devices, lines, money and
+ * the audit trail — in one round trip.
+ *
+ * Returns null when `counterTransactionId` does not exist IN THIS ORG. Every
+ * sub-query is org-scoped independently (never just the header), so a visit
+ * that somehow resolved for the wrong org cannot leak a device, a line, a
+ * receipt or an audit row that belongs to someone else — `orgId` always comes
+ * from the caller's `ctx.organizationId`, never from the request body.
+ */
+export async function loadCounterVisit(
+  orgId: OrgId,
+  counterTransactionId: number,
+  deps: ReadVisitDeps = defaultDeps,
+): Promise<CounterVisit | null> {
+  return deps.runInTransaction(orgId, async (tx) => {
+    const header = await deps.findHeader(tx, orgId, counterTransactionId);
+    if (!header) return null;
+
+    const customer = header.customerId
+      ? await deps.findCustomer(tx, orgId, header.customerId)
+      : null;
+    const devices = await deps.findDevices(tx, orgId, header.id);
+    const session = await deps.findSession(tx, orgId, header.id);
+    const squareTransaction = await deps.findSquareTransaction(tx, orgId, header.id);
+    // A visit with no session (the direct kiosk-intake path) has no lines and
+    // nothing to audit here — both are empty rather than an extra round trip.
+    const lines = session ? await deps.findLines(tx, orgId, session.sessionId) : [];
+    const auditTrail = await deps.findAuditTrail(tx, orgId, session ? [session.sessionId] : []);
+
+    return {
+      id: header.id,
+      status: header.status,
+      subtotalCents: header.subtotalCents,
+      totalCents: header.totalCents,
+      stagedSquareOrderId: header.stagedSquareOrderId,
+      priorOrderRef: header.priorOrderRef,
+      createdAt: header.createdAt,
+      updatedAt: header.updatedAt,
+      customer,
+      devices,
+      lines,
+      payment: { squareTransaction, sessionPaymentState: session?.paymentState ?? null },
+      claimedByStaffId: session?.claimedByStaffId ?? null,
+      claimedByStaffName: session?.claimedByStaffName ?? null,
+      auditTrail,
+    };
+  });
+}

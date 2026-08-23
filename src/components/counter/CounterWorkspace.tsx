@@ -30,13 +30,16 @@
  */
 
 import { useCallback, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button, Panel, TextField } from '@/design-system/primitives';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { computeKioskCartTotals } from '@/lib/kiosk/cart-line';
-import { useCounterSession } from './useCounterSession';
-import type { CounterSessionLine } from '@/lib/counter/session-events';
+import { submitBlocker, submitBlockerCopy } from '@/lib/counter/submit-blocker';
+import { useCounterSession, createCounterSession } from './useCounterSession';
+import type { CounterSessionLine, CounterSessionSnapshot } from '@/lib/counter/session-events';
+import type { CounterTransactionResult } from '@/lib/counter/counter-transaction-types';
 
 function formatCents(cents: number): string {
   const sign = cents < 0 ? '-' : '';
@@ -60,6 +63,17 @@ export function CounterWorkspace({ sessionId }: { sessionId: number | null }) {
   const [price, setPrice] = useState('');
   const [phone, setPhone] = useState('');
   const [name, setName] = useState('');
+
+  // The submit response is the ONLY place the counter transaction id and the
+  // RS numbers ever reach the client — the snapshot that follows never carries
+  // them again. Held here so the receipt and repair-ticket links survive a
+  // poll refresh without a second round trip.
+  const [lastTransaction, setLastTransaction] = useState<CounterTransactionResult | null>(null);
+
+  const finishVisit = useCallback(async () => {
+    const result = await session.submit();
+    if (result.json.transaction) setLastTransaction(result.json.transaction);
+  }, [session]);
 
   const visible = useMemo(() => snapshot?.lines ?? [], [snapshot]);
   const totals = useMemo(
@@ -188,7 +202,7 @@ export function CounterWorkspace({ sessionId }: { sessionId: number | null }) {
                   line={line}
                   disabled={parked || session.busy}
                   onQuantity={(q) => void session.updateLine(line.id, { quantity: q })}
-                  onPrice={(cents) => void session.updateLine(line.id, { unitAmountCents: cents })}
+                  onPrice={(cents) => void session.setLinePrice(line.id, cents, 'desk discount')}
                   onVoid={() => void session.voidLine(line.id, 'desk void')}
                 />
               ))
@@ -241,9 +255,127 @@ export function CounterWorkspace({ sessionId }: { sessionId: number | null }) {
             )}
           </div>
         </Panel>
+
+        {/* Finish + pay + paper. Its own band: it is the whole reason the desk
+            exists, and it was previously nowhere on this surface — the four
+            money verbs had routes, permissions and tests, and zero callers. */}
+        <FinishPanel
+          snapshot={snapshot}
+          busy={session.busy}
+          lastTransaction={lastTransaction}
+          onSubmit={finishVisit}
+          onCheckout={() => void session.checkout()}
+        />
       </div>
     </div>
   );
+}
+
+/**
+ * Submit → charge → print. Three steps, each gated on the last, because each
+ * is a different kind of point of no return: submit writes the transaction,
+ * checkout summons a card reader, print hands the customer paper.
+ */
+function FinishPanel({
+  snapshot,
+  busy,
+  lastTransaction,
+  onSubmit,
+  onCheckout,
+}: {
+  snapshot: CounterSessionSnapshot;
+  busy: boolean;
+  lastTransaction: CounterTransactionResult | null;
+  onSubmit: () => void;
+  onCheckout: () => void;
+}) {
+  const blocker = useMemo(() => submitBlocker(snapshot), [snapshot]);
+  const submitted = snapshot.status === 'submitted';
+  const transactionId = snapshot.counterTransactionId ?? lastTransaction?.counterTransactionId ?? null;
+
+  return (
+    <Panel padding="md" radius="none" className="flex w-[22rem] flex-col gap-3">
+      <span className={SECTION_LABEL}>Finish</span>
+
+      {!submitted ? (
+        <>
+          <Button
+            variant="primary"
+            disabled={busy || blocker !== null}
+            onClick={onSubmit}
+          >
+            Finish visit
+          </Button>
+          {blocker && (
+            <p className="text-role-caption text-amber-700">{submitBlockerCopy(blocker)}</p>
+          )}
+        </>
+      ) : (
+        <>
+          <p className="text-role-body text-text-default">
+            Visit finished
+            {transactionId !== null && (
+              <span className="text-text-muted"> · #{transactionId}</span>
+            )}
+            .
+          </p>
+
+          <div className="flex flex-col gap-1">
+            <span className={SECTION_LABEL}>Card</span>
+            <span className="text-role-value">{paymentStateCopy(snapshot.paymentState)}</span>
+          </div>
+
+          <Button
+            variant="primary"
+            disabled={busy || snapshot.paymentState === 'awaiting_card'}
+            onClick={onCheckout}
+          >
+            {snapshot.paymentState === 'awaiting_card' ? 'Waiting for card…' : 'Take payment'}
+          </Button>
+
+          {transactionId !== null && (
+            <Button
+              variant="secondary"
+              onClick={() => window.open(`/api/counter/visit/${transactionId}/receipt?print=1`, '_blank', 'noreferrer')}
+            >
+              Print receipt
+            </Button>
+          )}
+
+          {lastTransaction && lastTransaction.repairs.length > 0 && (
+            <div className="flex flex-col gap-1">
+              <span className={SECTION_LABEL}>Repair tickets</span>
+              {lastTransaction.repairs.map((repair) => (
+                <Button
+                  key={repair.id}
+                  variant="secondary"
+                  onClick={() => window.open(`/api/repair-service/print/${repair.id}`, '_blank', 'noreferrer')}
+                >
+                  Print {repair.rsNumber}
+                </Button>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+    </Panel>
+  );
+}
+
+/** Card-present state → what an operator standing at the counter needs to read. */
+function paymentStateCopy(state: CounterSessionSnapshot['paymentState']): string {
+  switch (state) {
+    case 'idle':
+      return 'Not started';
+    case 'awaiting_card':
+      return 'Waiting for the customer to present a card';
+    case 'approved':
+      return 'Approved — reader confirmed';
+    case 'declined':
+      return 'Declined — try another card';
+    case 'canceled':
+      return 'Canceled at the reader';
+  }
 }
 
 function LedgerRow({
@@ -315,14 +447,39 @@ function LedgerRow({
   );
 }
 
+/**
+ * The desk had a URL contract (`?session=<id>`) and no way to mint the id it
+ * asks for — every prior visit to `/counter` cold read as a dead end. This is
+ * the one call `useCounterSession` cannot make for itself: there is no
+ * session to hook onto until this button is pressed.
+ */
 function EmptyCounter() {
+  const router = useRouter();
+  const [starting, setStarting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const start = useCallback(async () => {
+    setStarting(true);
+    setError(null);
+    const result = await createCounterSession();
+    setStarting(false);
+    if ('sessionId' in result) {
+      router.push(`/counter?session=${result.sessionId}`);
+    } else {
+      setError(result.error);
+    }
+  }, [router]);
+
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-2 bg-surface-canvas text-center">
+    <div className="flex h-full flex-col items-center justify-center gap-3 bg-surface-canvas text-center">
       <p className="text-role-body text-text-default">No session open.</p>
       <p className="text-role-caption text-text-muted">
-        Open one with <span className="font-mono">?session=&lt;id&gt;</span>, or start a visit from
-        the tablet once P4 lands.
+        Open one with <span className="font-mono">?session=&lt;id&gt;</span>, or start a new visit.
       </p>
+      <Button variant="primary" disabled={starting} onClick={() => void start()}>
+        {starting ? 'Starting…' : 'Start visit'}
+      </Button>
+      {error && <p className="text-role-caption text-amber-700">{error}</p>}
     </div>
   );
 }
