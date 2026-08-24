@@ -455,11 +455,11 @@ of workspace defaults (D7).
 
 ---
 
-## 10 · Law candidates — unnumbered until ruled
+## 10 · Law candidates — retired with the catalog (2026-08-24)
 
-Per **X4** numbers are append-only and another session is editing this corpus
-concurrently, so these carry no numbers until the operator rules; they then take
-the next free C-slots.
+Do not number these. The Warehouse OS law corpus was wiped so the shell can
+be rewritten from an AI session-first model. The rows below are historical
+notes only.
 
 | Candidate | Statement | Why | Status if adopted |
 |---|---|---|---|
