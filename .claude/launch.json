@@ -6,6 +6,11 @@
       "name": "cycleforge-dev",
       "url": "http://localhost:3050",
       "port": 3050
+    },
+    {
+      "name": "warehouse-os-worktree",
+      "url": "http://localhost:3051",
+      "port": 3051
     }
   ]
 }

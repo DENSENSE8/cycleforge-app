@@ -67,8 +67,9 @@ export interface UseFindFieldScanOptions {
 }
 
 /**
- * Attach field-scoped wedge + paste detection to one input or textarea.
- * Returns a ref callback; attach it to the element. Human typing needs no
+ * Attach field-scoped wedge + paste detection to one input, textarea, or
+ * contenteditable (the Omni-Command Composer). Returns a ref callback; attach
+ * it to the element. Human typing needs no
  * handler here — anything unclaimed is the field's own behaviour, which is
  * what makes the third `source` value structural rather than inferred.
  */
@@ -82,7 +83,7 @@ export function useFindFieldScan({ onScan, onPaste }: UseFindFieldScanOptions) {
   onPasteRef.current = onPaste;
   const detach = useRef<(() => void) | null>(null);
 
-  return useCallback((el: HTMLInputElement | HTMLTextAreaElement | null) => {
+  return useCallback((el: HTMLElement | null) => {
     detach.current?.();
     detach.current = null;
     if (!el) return;

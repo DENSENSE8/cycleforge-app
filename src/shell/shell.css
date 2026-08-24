@@ -2068,7 +2068,8 @@
 
   .feed-entry:focus-within { border-color: var(--border-accent); }
 
-  .feed-entry textarea {
+  .feed-entry textarea,
+  .feed-entry .occ-editor {
     width: 100%;
     border: none;
     background: transparent;
@@ -2081,6 +2082,107 @@
     min-height: 44px;
     max-height: 140px;
     line-height: 1.45;
+  }
+
+  .occ-root {
+    position: relative;
+    width: 100%;
+  }
+
+  .occ-editor {
+    display: block;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .occ-paragraph {
+    margin: 0;
+  }
+
+  .occ-placeholder {
+    position: absolute;
+    top: var(--sp-2);
+    left: var(--sp-3);
+    right: var(--sp-3);
+    pointer-events: none;
+    color: var(--text-muted);
+    font-size: var(--sz-sm);
+    line-height: 1.45;
+  }
+
+  .occ-chip-host {
+    display: inline;
+  }
+
+  .occ-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0 2px;
+    padding: 1px 8px;
+    border: 1px solid var(--border-strong);
+    background: var(--surface-containerHigh);
+    font-size: var(--sz-xs);
+    line-height: 1.4;
+    vertical-align: baseline;
+  }
+
+  .occ-chip-platform {
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .occ-chip-label {
+    color: var(--text-primary);
+    font-family: var(--font-mono, ui-monospace, monospace);
+  }
+
+  .occ-typeahead {
+    min-width: 280px;
+    max-width: 420px;
+    margin: 4px 0 0;
+    padding: 4px 0;
+    list-style: none;
+    border: 1px solid var(--border-strong);
+    background: var(--surface-containerLow);
+    z-index: 40;
+  }
+
+  .occ-typeahead-item {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 6px 10px;
+    padding: 6px 12px;
+    cursor: pointer;
+  }
+
+  .occ-typeahead-item.is-active {
+    background: var(--surface-containerHigh);
+  }
+
+  .occ-typeahead-label {
+    font-size: var(--sz-sm);
+    color: var(--text-primary);
+  }
+
+  .occ-typeahead-sub {
+    font-size: var(--sz-xs);
+    color: var(--text-muted);
+    flex: 1 1 12rem;
+  }
+
+  .occ-typeahead-platform {
+    font-size: var(--sz-xs);
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .occ-hint-grammar {
+    color: var(--text-muted);
   }
 
   .feed-entry-meta {

@@ -5,10 +5,13 @@
  * HARD LAW (AGENTS.md): the user owns the dev server.
  * This script ATTACHES to it and never starts, restarts, or kills one — the
  * legacy shell's dev harness spawned `npm run dev` itself, which is exactly the
- * behaviour that rule forbids. If :3050 is not up, we say so and exit; we do not
- * "helpfully" boot a second server that would fight for the port.
+ * behaviour that rule forbids. If nothing is listening we say so and exit; we
+ * do not "helpfully" boot a second server that would fight for the port.
  *
- *   pnpm dev            # you, in your own terminal (port 3050)
+ * Warehouse OS worktree (this branch) serves on :3051; main dogfood is :3050.
+ * With no ELECTRON_START_URL we probe 3051 first, then 3050.
+ *
+ *   pnpm dev            # you, in your own terminal (:3050 or :3051)
  *   pnpm desktop:dev    # this script, in another
  *
  * Override the target with ELECTRON_START_URL to attach to a deployed
@@ -17,7 +20,10 @@
 
 import { spawn } from 'node:child_process';
 
-const TARGET = (process.env.ELECTRON_START_URL || 'http://127.0.0.1:3050').replace(/\/+$/, '');
+const EXPLICIT = (process.env.ELECTRON_START_URL || '').replace(/\/+$/, '');
+const CANDIDATES = EXPLICIT
+  ? [EXPLICIT]
+  : ['http://127.0.0.1:3051', 'http://127.0.0.1:3050'];
 
 /** Probe without failing the process — any HTTP answer means something is listening. */
 async function isUp(url) {
@@ -33,17 +39,25 @@ async function isUp(url) {
   }
 }
 
-const up = await isUp(TARGET);
-if (!up) {
+let TARGET = '';
+for (const url of CANDIDATES) {
+  if (await isUp(url)) {
+    TARGET = url;
+    break;
+  }
+}
+
+if (!TARGET) {
   console.error(
     [
       '',
-      `  Nothing is answering at ${TARGET}.`,
+      `  Nothing is answering at ${CANDIDATES.join(' or ')}.`,
       '',
       '  This script attaches to your dev server — it will not start one.',
       '  Start it yourself in another terminal:',
       '',
-      '      pnpm dev',
+      '      pnpm dev            # :3050 (main)',
+      '      next dev --turbopack -p 3051   # Warehouse OS worktree',
       '',
       '  …then re-run `pnpm desktop:dev`.',
       '  (Attaching somewhere else? Set ELECTRON_START_URL.)',

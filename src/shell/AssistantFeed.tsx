@@ -10,11 +10,17 @@
  *
  * The feed's turns live in `useShell` (`feed` / `sendToAssistant`), not here —
  * the header narrates the session lifecycle this feed drives, so the state has
- * to be visible to siblings. Only the draft is local.
+ * to be visible to siblings. Draft state is local; entity chips live in the
+ * Omni-Command Composer.
  */
 
 import { useEffect, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useFindFieldScan } from '@/hooks/useFindFieldScan';
+import { OmniCommandComposer, type OmniCommandComposerHandle } from '@/components/composer/OmniCommandComposer';
+import { commitIdentifierFind } from '@/lib/search/commit-identifier-find';
+import type { ComposerEntityChip } from '@/lib/composer/document';
+import type { FindFieldSource } from '@/lib/keyboard/find-field-scan';
 import { Icon } from '@/shell/icons';
 import { FEED_WELCOME, TOOLS } from '@/shell/model';
 import type { ShellApi } from '@/shell/useShell';
@@ -26,7 +32,19 @@ const GLOBAL_TOOLS = TOOLS.filter((tool) => tool.scope === 'global');
 export function AssistantFeed({ shell }: { shell: ShellApi }) {
   const [draft, setDraft] = useState('');
   const scrollRef = useRef<HTMLDivElement | null>(null);
-  const { feed, sendToAssistant, runFeedAction, handleFieldScan, handleFieldPaste } = shell;
+  const composerRef = useRef<OmniCommandComposerHandle | null>(null);
+  const queryClient = useQueryClient();
+  const { feed, sendToAssistant, runFeedAction, handleFieldScan, handleFieldPaste, onComposerCommit } =
+    shell;
+
+  const onCommitEntity = async (chip: ComposerEntityChip, source: FindFieldSource) => {
+    if (chip.entityType === 'order') {
+      const result = await commitIdentifierFind(queryClient, chip.label);
+      onComposerCommit(chip, source, result.kind === 'navigate' ? result.order : undefined);
+      return;
+    }
+    onComposerCommit(chip, source);
+  };
 
   /* The input truth layer (Phase 1): the composer opts in to field-scoped
      wedge detection and paste stamping. A claimed burst's characters were
@@ -34,8 +52,10 @@ export function AssistantFeed({ shell }: { shell: ShellApi }) {
      them from its own state here — the adapter never fights React. */
   const scanCapture = useFindFieldScan({
     onScan: (claim) => {
-      setDraft((d) => (d.endsWith(claim.value) ? d.slice(0, d.length - claim.value.length) : d));
-      handleFieldScan(claim);
+      composerRef.current?.stripTrailing(claim.value);
+      void composerRef.current?.commitToken(claim.value, 'scanner').then((chipped) => {
+        if (!chipped) handleFieldScan(claim);
+      });
     },
     onPaste: (paste) => handleFieldPaste(paste),
   });
@@ -47,8 +67,10 @@ export function AssistantFeed({ shell }: { shell: ShellApi }) {
   }, [feed]);
 
   const send = () => {
-    if (!draft.trim()) return;
-    sendToAssistant(draft);
+    const text = composerRef.current?.getPlainText() || draft.trim();
+    if (!text) return;
+    sendToAssistant(text);
+    composerRef.current?.clear();
     setDraft('');
   };
 
@@ -100,24 +122,21 @@ export function AssistantFeed({ shell }: { shell: ShellApi }) {
 
         <div className="feed-composer">
           <div className="feed-entry">
-            <textarea
-              ref={scanCapture}
-              rows={2}
-              value={draft}
-              autoFocus
-              aria-label="Message the assistant"
-              placeholder="Describe the work, or scan — it lands here…"
-              onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  send();
-                }
+            <OmniCommandComposer
+              ref={composerRef}
+              scanRef={scanCapture}
+              onSend={(text) => {
+                sendToAssistant(text);
+                composerRef.current?.clear();
+                setDraft('');
               }}
+              onCommitEntity={onCommitEntity}
+              onDraftChange={setDraft}
             />
             <div className="feed-entry-meta">
               <span className="feed-hint">
                 <span className="kbd">Enter</span> send
+                <span className="occ-hint-grammar"> · # orders · / actions</span>
               </span>
               <span className="feed-context mono" title="What the assistant can see">
                 {contextLabel}

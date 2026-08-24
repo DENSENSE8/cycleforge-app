@@ -35,6 +35,12 @@ import {
 import { useWorkspace } from '@/lib/workspace/useWorkspace';
 import type { TabDescriptor } from '@/lib/workspace/types';
 import type { ScanRoute } from '@/lib/barcode-routing';
+import type { ComposerAction } from '@/lib/composer/actions';
+import type { ComposerEntityChip } from '@/lib/composer/document';
+import type { FindFieldSource } from '@/lib/keyboard/find-field-scan';
+import type { ShippedOrder } from '@/types/orders';
+import { getOrderPlatformLabel } from '@/utils/order-platform';
+import { dispatchOpenShippedDetails } from '@/utils/events';
 import type { IconName } from '@/shell/icons';
 import {
   ACCENTS,
@@ -540,6 +546,42 @@ export function useShell() {
     [recordFieldInput],
   );
 
+  /**
+   * A chip committed in the Omni-Command Composer. Orders hydrate the feed +
+   * orders tile; `/` actions open the same destinations as the launcher.
+   */
+  const onComposerCommit = useCallback(
+    (chip: ComposerEntityChip, source: FindFieldSource, order?: ShippedOrder) => {
+      recordFieldInput(chip.label, source);
+      if (chip.entityType === 'action') {
+        const action = chip.payload as ComposerAction;
+        if (action?.ref) openTile(action.ref, action.title, action.tileType);
+        narrate(`${action?.label ?? chip.label} — opened from the composer.`);
+        return;
+      }
+      if (chip.entityType === 'order' && order) {
+        const platform = getOrderPlatformLabel(order.order_id, order.account_source);
+        const id = `f${++feedSeq.current}`;
+        setFeed((prev) => [
+          ...prev,
+          {
+            id,
+            role: 'assistant',
+            text: `${platform || 'Order'} ${order.order_id} — ${order.product_title}. Full detail is on the orders table.`,
+            actions: [{ label: 'Open orders', ref: 'orders', title: 'Orders', type: 'table' }],
+          },
+        ]);
+        openTile('orders', 'Orders', 'table');
+        dispatchOpenShippedDetails(order, 'queue');
+        return;
+      }
+      if (chip.entityType === 'order') {
+        narrate(`No exact match for ${chip.label}.`);
+      }
+    },
+    [narrate, openTile, recordFieldInput],
+  );
+
   const runFeedAction = useCallback(
     (action: FeedAction) => openTile(action.ref, action.title, action.type),
     [openTile],
@@ -620,6 +662,7 @@ export function useShell() {
     feed,
     sendToAssistant,
     runFeedAction,
+    onComposerCommit,
 
     /* input truth */
     inputTruth,
