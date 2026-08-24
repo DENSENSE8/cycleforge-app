@@ -21,6 +21,7 @@ import { RECEIVING_EXCEPTION_CODES, RECEIVING_EXCEPTION_META } from '@/lib/recei
 import { SKU_STOCK_REASONS } from '@/lib/sku/sku-stock-reasons';
 import { SERIAL_ABSENT_REASONS } from '@/lib/receiving/serial-absent-reasons';
 import { STATION_COMMAND_FLOW_CONTEXT } from '@/lib/stations/station-command-codes';
+import { listSeedableCommandCodes } from '@/lib/stations/command-book';
 import { SYSTEM_PURPOSES } from '@/lib/sessions/purpose-catalog';
 
 export interface PlatformRow {

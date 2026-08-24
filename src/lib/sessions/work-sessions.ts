@@ -289,34 +289,41 @@ export async function beginSession(
       return { ok: false, status: 400, error: 'TITLE_REQUIRED' };
     }
 
-    const isScan = purpose.defaultKind === 'scan' && isScanSessionType(purpose.key);
-    const startArgs: StartSessionArgs = isScan
-      ? {
-          orgId: args.orgId,
-          kind: 'scan',
-          scanType: purpose.key,
-          surfaceKey: purpose.defaultSurfaceKey,
-          arm: true,
-          staffId: args.staffId,
-          deviceId: args.deviceId,
-          clientEventId: args.clientEventId,
-          title: instanceTitle,
-          purposeId: purpose.id,
-          notes: args.notes ?? null,
-        }
-      : {
-          orgId: args.orgId,
-          kind: 'task',
-          surfaceKey: purpose.defaultSurfaceKey,
-          staffId: args.staffId,
-          deviceId: args.deviceId,
-          clientEventId: args.clientEventId,
-          title: instanceTitle,
-          purposeId: purpose.id,
-          notes: args.notes ?? null,
-        };
+    const started =
+      purpose.defaultKind === 'scan' && isScanSessionType(purpose.key)
+        ? await startWithin(
+            db,
+            {
+              orgId: args.orgId,
+              kind: 'scan',
+              scanType: purpose.key,
+              surfaceKey: purpose.defaultSurfaceKey,
+              arm: true,
+              staffId: args.staffId,
+              deviceId: args.deviceId,
+              clientEventId: args.clientEventId,
+              title: instanceTitle,
+              purposeId: purpose.id,
+              notes: args.notes ?? null,
+            },
+            deps.newClientEventId,
+          )
+        : await startWithin(
+            db,
+            {
+              orgId: args.orgId,
+              kind: 'task',
+              surfaceKey: purpose.defaultSurfaceKey,
+              staffId: args.staffId,
+              deviceId: args.deviceId,
+              clientEventId: args.clientEventId,
+              title: instanceTitle,
+              purposeId: purpose.id,
+              notes: args.notes ?? null,
+            },
+            deps.newClientEventId,
+          );
 
-    const started = await startWithin(db, startArgs, deps.newClientEventId);
     if (!started.ok) return started;
     return { ...started, purpose };
   });
