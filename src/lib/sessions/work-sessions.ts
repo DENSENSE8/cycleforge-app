@@ -23,6 +23,7 @@
 
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import type { OrgId } from '@/lib/tenancy/constants';
+import { ensureSystemPurposes, findOrCreatePurpose, getPurpose } from './purposes';
 import {
   isScanSessionType,
   type ScanSessionType,
@@ -30,6 +31,8 @@ import {
   type SessionKind,
   type SessionResult,
   type WorkSession,
+  type WorkSessionPurpose,
+  type WrapUpSource,
 } from './types';
 
 /** The narrow slice of a pg client this module uses (fakes implement 3 lines). */
@@ -74,7 +77,7 @@ export const DEFAULT_CLAIM_TTL_SECONDS = 900;
 const COLUMNS = `
   id, organization_id, kind, scan_type, armed, surface_key, status, version,
   staff_id, claimed_by_staff_id, claim_expires_at, device_id, client_event_id,
-  started_at, ended_at, state
+  started_at, ended_at, state, title, purpose_id, notes, wrap_up, wrap_up_source
 `;
 
 function toIso(value: unknown): string | null {
@@ -102,6 +105,11 @@ export function mapWorkSession(row: Record<string, unknown>): WorkSession {
     startedAt: toIso(row.started_at) ?? '',
     endedAt: toIso(row.ended_at),
     state: (row.state as Record<string, unknown> | null) ?? {},
+    title: (row.title as string | null) ?? null,
+    purposeId: row.purpose_id == null ? null : Number(row.purpose_id),
+    notes: (row.notes as string | null) ?? null,
+    wrapUp: (row.wrap_up as string | null) ?? null,
+    wrapUpSource: (row.wrap_up_source as WrapUpSource | null) ?? null,
   };
 }
 
@@ -137,6 +145,10 @@ interface StartSessionCommon {
   /** Retry-safe anchor. Re-posting the same id returns the same row. */
   clientEventId?: string | null;
   state?: Record<string, unknown>;
+  /** Instance name. Seeded from the purpose label when omitted on system starts. */
+  title?: string | null;
+  purposeId?: number | null;
+  notes?: string | null;
 }
 
 /**
@@ -186,85 +198,9 @@ export async function startSession(
     return { ok: false, status: 400, error: 'ARM_REQUIRES_SCAN_KIND' };
   }
 
-  const clientEventId = args.clientEventId ?? deps.newClientEventId();
-
-  return deps.withTenantTransaction(args.orgId, async (db) => {
-    // Idempotent create: a retried POST lands on the same row rather than a
-    // second session (ux_work_sessions_client_event).
-    const inserted = await db.query(
-      `INSERT INTO work_sessions
-         (organization_id, kind, scan_type, surface_key, staff_id, device_id,
-          client_event_id, state)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb)
-       ON CONFLICT (organization_id, client_event_id) DO NOTHING
-       RETURNING ${COLUMNS}`,
-      [
-        args.orgId,
-        args.kind,
-        scanType,
-        args.surfaceKey ?? null,
-        args.staffId ?? null,
-        args.deviceId ?? null,
-        clientEventId,
-        JSON.stringify(args.state ?? {}),
-      ],
-    );
-
-    let session = (inserted.rows[0] as Record<string, unknown> | undefined)
-      ? mapWorkSession(inserted.rows[0] as Record<string, unknown>)
-      : null;
-    let idempotent = false;
-
-    if (!session) {
-      const existing = await db.query(
-        `SELECT ${COLUMNS} FROM work_sessions
-          WHERE organization_id = $1 AND client_event_id = $2`,
-        [args.orgId, clientEventId],
-      );
-      const row = existing.rows[0] as Record<string, unknown> | undefined;
-      if (!row) return { ok: false, status: 409, error: 'SESSION_CREATE_LOST' } as const;
-      session = mapWorkSession(row);
-      idempotent = true;
-    }
-
-    // The session's first stretch. Opened ONLY on a real create: a replayed
-    // start must not fabricate a second active interval, which would trip
-    // ux_work_session_intervals_open and turn a harmless retry into a 500.
-    if (!idempotent) {
-      await openInterval(db, args.orgId, session.id, 'active', args.staffId ?? null);
-    }
-
-    if (!wantsArm || session.armed) {
-      return {
-        ok: true, status: 200, session, idempotent, disarmedSessionIds: [], armRaceLostTo: null,
-      } as const;
-    }
-
-    const armed = await armWithin(db, args.orgId, session);
-    if (!armed.won) {
-      // The session EXISTS and is usable — only the wedge went elsewhere. A 409
-      // here would make the client re-POST to get back a row it already has,
-      // over a floor network, for a case that is not an error. Report who won
-      // instead; the shell shows "Unbox is armed at Station 3" and the operator
-      // knows where their next scan lands.
-      return {
-        ok: true,
-        status: 200,
-        session,
-        idempotent,
-        disarmedSessionIds: [],
-        armRaceLostTo: armed.armedSessionId,
-      } as const;
-    }
-    return {
-      ok: true,
-      status: 200,
-      session: armed.session,
-      idempotent,
-      disarmedSessionIds: armed.disarmedSessionIds,
-      armRaceLostTo: null,
-    } as const;
-  });
+  return deps.withTenantTransaction(args.orgId, (db) =>
+    startWithin(db, args, deps.newClientEventId),
+  );
 }
 
 function validateKind(kind: SessionKind, scanType: ScanSessionType | null): string | null {
@@ -280,6 +216,294 @@ function validateKind(kind: SessionKind, scanType: ScanSessionType | null): stri
     return null;
   }
   return 'UNKNOWN_SESSION_KIND';
+}
+
+// ── begin from the purpose catalog ──────────────────────────────────────────
+
+export interface BeginSessionArgs {
+  orgId: OrgId;
+  staffId?: number | null;
+  deviceId?: string | null;
+  clientEventId?: string | null;
+  /** Existing catalog row. */
+  purposeId?: number | null;
+  /** Create-or-reuse by org+lower(label). */
+  purposeLabel?: string | null;
+  /**
+   * Instance name. Required when the purpose is not system. When the operator
+   * types only one string, that string is BOTH title and purposeLabel.
+   */
+  title?: string | null;
+  notes?: string | null;
+  /** Park this session in the same transaction (S12 ⌘N). */
+  parkSessionId?: number | null;
+}
+
+export type BeginSessionResult = SessionResult<{
+  session: WorkSession;
+  purpose: WorkSessionPurpose;
+  idempotent: boolean;
+  disarmedSessionIds: number[];
+  armRaceLostTo: number | null;
+}>;
+
+/**
+ * Start a session FROM THE CATALOG, creating a custom purpose if needed, in
+ * one transaction. Kind/scan_type come from the purpose, never from the title.
+ */
+export async function beginSession(
+  args: BeginSessionArgs,
+  deps: WorkSessionDeps = defaultWorkSessionDeps,
+): Promise<BeginSessionResult> {
+  const titleIn = args.title?.trim() || null;
+  const labelIn = args.purposeLabel?.trim() || null;
+  // One string → it is the instance title AND a new/reused purpose label.
+  const title = titleIn ?? labelIn;
+  const purposeLabel = labelIn ?? titleIn;
+
+  if (args.purposeId == null && !purposeLabel) {
+    return { ok: false, status: 400, error: 'PURPOSE_OR_TITLE_REQUIRED' };
+  }
+
+  return deps.withTenantTransaction(args.orgId, async (db) => {
+    await ensureSystemPurposes(db, args.orgId);
+
+    if (args.parkSessionId != null) {
+      const parked = await parkWithin(db, args.orgId, args.parkSessionId, args.staffId ?? null);
+      if (!parked.ok && parked.status === 404) {
+        return { ok: false, status: 404, error: 'PARK_TARGET_NOT_FOUND' };
+      }
+      // Already ended / already parked: keep going. ⌘N must still cut the new block.
+    }
+
+    let purpose: WorkSessionPurpose | null = null;
+    if (args.purposeId != null) {
+      purpose = await getPurpose(db, args.orgId, args.purposeId);
+      if (!purpose) return { ok: false, status: 404, error: 'PURPOSE_NOT_FOUND' };
+    } else {
+      purpose = await findOrCreatePurpose(db, args.orgId, purposeLabel!);
+    }
+
+    const instanceTitle = title ?? purpose.label;
+    if (!purpose.isSystem && !instanceTitle) {
+      return { ok: false, status: 400, error: 'TITLE_REQUIRED' };
+    }
+
+    const isScan = purpose.defaultKind === 'scan' && isScanSessionType(purpose.key);
+    const startArgs: StartSessionArgs = isScan
+      ? {
+          orgId: args.orgId,
+          kind: 'scan',
+          scanType: purpose.key,
+          surfaceKey: purpose.defaultSurfaceKey,
+          arm: true,
+          staffId: args.staffId,
+          deviceId: args.deviceId,
+          clientEventId: args.clientEventId,
+          title: instanceTitle,
+          purposeId: purpose.id,
+          notes: args.notes ?? null,
+        }
+      : {
+          orgId: args.orgId,
+          kind: 'task',
+          surfaceKey: purpose.defaultSurfaceKey,
+          staffId: args.staffId,
+          deviceId: args.deviceId,
+          clientEventId: args.clientEventId,
+          title: instanceTitle,
+          purposeId: purpose.id,
+          notes: args.notes ?? null,
+        };
+
+    const started = await startWithin(db, startArgs, deps.newClientEventId);
+    if (!started.ok) return started;
+    return { ...started, purpose };
+  });
+}
+
+/**
+ * INSERT + first interval + optional arm, against a caller-owned transaction.
+ * beginSession parks then starts in one txn; startSession owns the txn itself.
+ */
+async function startWithin(
+  db: SessionQueryable,
+  args: StartSessionArgs,
+  newClientEventId: () => string,
+): Promise<StartSessionResult> {
+  const scanType = (args as { scanType?: ScanSessionType | null }).scanType ?? null;
+  const wantsArm = (args as { arm?: boolean }).arm === true;
+  const kindError = validateKind(args.kind, scanType);
+  if (kindError) return { ok: false, status: 400, error: kindError };
+  if (wantsArm && args.kind !== 'scan') {
+    return { ok: false, status: 400, error: 'ARM_REQUIRES_SCAN_KIND' };
+  }
+  const clientEventId = args.clientEventId ?? newClientEventId();
+
+  const inserted = await db.query(
+    `INSERT INTO work_sessions
+       (organization_id, kind, scan_type, surface_key, staff_id, device_id,
+        client_event_id, state, title, purpose_id, notes)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9, $10, $11)
+     ON CONFLICT (organization_id, client_event_id) DO NOTHING
+     RETURNING ${COLUMNS}`,
+    [
+      args.orgId,
+      args.kind,
+      scanType,
+      args.surfaceKey ?? null,
+      args.staffId ?? null,
+      args.deviceId ?? null,
+      clientEventId,
+      JSON.stringify(args.state ?? {}),
+      args.title ?? null,
+      args.purposeId ?? null,
+      args.notes ?? null,
+    ],
+  );
+
+  let session = (inserted.rows[0] as Record<string, unknown> | undefined)
+    ? mapWorkSession(inserted.rows[0] as Record<string, unknown>)
+    : null;
+  let idempotent = false;
+
+  if (!session) {
+    const existing = await db.query(
+      `SELECT ${COLUMNS} FROM work_sessions
+        WHERE organization_id = $1 AND client_event_id = $2`,
+      [args.orgId, clientEventId],
+    );
+    const row = existing.rows[0] as Record<string, unknown> | undefined;
+    if (!row) return { ok: false, status: 409, error: 'SESSION_CREATE_LOST' };
+    session = mapWorkSession(row);
+    idempotent = true;
+  }
+
+  if (!idempotent) {
+    await openInterval(db, args.orgId, session.id, 'active', args.staffId ?? null);
+  }
+
+  if (!wantsArm || session.armed) {
+    return {
+      ok: true, status: 200, session, idempotent, disarmedSessionIds: [], armRaceLostTo: null,
+    };
+  }
+
+  const armed = await armWithin(db, args.orgId, session);
+  if (!armed.won) {
+    return {
+      ok: true,
+      status: 200,
+      session,
+      idempotent,
+      disarmedSessionIds: [],
+      armRaceLostTo: armed.armedSessionId,
+    };
+  }
+  return {
+    ok: true,
+    status: 200,
+    session: armed.session,
+    idempotent,
+    disarmedSessionIds: armed.disarmedSessionIds,
+    armRaceLostTo: null,
+  };
+}
+
+async function parkWithin(
+  db: SessionQueryable,
+  orgId: OrgId,
+  sessionId: number,
+  staffId: number | null,
+  expectedVersion?: number,
+): Promise<ParkSessionResult> {
+  const session = await selectForUpdate(db, orgId, sessionId);
+  if (!session) return { ok: false, status: 404, error: 'SESSION_NOT_FOUND' };
+  if (session.status === 'ended') {
+    return { ok: false, status: 409, error: 'SESSION_ALREADY_ENDED' };
+  }
+  if (versionConflict(session, expectedVersion)) {
+    return { ok: false, status: 409, error: 'VERSION_CONFLICT', currentVersion: session.version };
+  }
+  if (session.status === 'parked') {
+    return { ok: true, status: 200, session, idempotent: true };
+  }
+  const open = await readOpenInterval(db, orgId, sessionId);
+  await closeOpenInterval(db, orgId, sessionId);
+  await openInterval(db, orgId, sessionId, 'parked', staffId ?? open?.staffId ?? null);
+  const { rows } = await db.query(
+    `UPDATE work_sessions
+        SET status = 'parked', armed = false, version = version + 1, updated_at = now()
+      WHERE organization_id = $1 AND id = $2
+      RETURNING ${COLUMNS}`,
+    [orgId, sessionId],
+  );
+  return {
+    ok: true,
+    status: 200,
+    session: mapWorkSession(rows[0] as Record<string, unknown>),
+    idempotent: false,
+  };
+}
+
+export interface RenameSessionArgs {
+  orgId: OrgId;
+  sessionId: number;
+  title?: string | null;
+  notes?: string | null;
+  expectedVersion?: number;
+}
+
+export type RenameSessionResult = SessionResult<{ session: WorkSession }>;
+
+/**
+ * Rename the INSTANCE. Does not touch purpose_id, kind, scan_type, or
+ * surface_key — that is A2. Past ops_events.session_type stays whatever
+ * attributionOf stamped at write time.
+ */
+export async function renameSession(
+  args: RenameSessionArgs,
+  deps: WorkSessionDeps = defaultWorkSessionDeps,
+): Promise<RenameSessionResult> {
+  const title = args.title != null ? args.title.trim() : undefined;
+  if (title === '') return { ok: false, status: 400, error: 'TITLE_REQUIRED' };
+
+  return deps.withTenantTransaction(args.orgId, async (db) => {
+    const session = await selectForUpdate(db, args.orgId, args.sessionId);
+    if (!session) return { ok: false, status: 404, error: 'SESSION_NOT_FOUND' };
+    if (versionConflict(session, args.expectedVersion)) {
+      return { ok: false, status: 409, error: 'VERSION_CONFLICT', currentVersion: session.version };
+    }
+    if (title === undefined && args.notes === undefined) {
+      return { ok: true, status: 200, session };
+    }
+    const { rows } = await db.query(
+      `UPDATE work_sessions
+          SET title = COALESCE($3, title),
+              notes = COALESCE($4, notes),
+              version = version + 1,
+              updated_at = now()
+        WHERE organization_id = $1 AND id = $2
+        RETURNING ${COLUMNS}`,
+      [args.orgId, args.sessionId, title ?? null, args.notes ?? null],
+    );
+    return { ok: true, status: 200, session: mapWorkSession(rows[0] as Record<string, unknown>) };
+  });
+}
+
+export async function getWorkSession(
+  args: { orgId: OrgId; sessionId: number },
+  deps: WorkSessionDeps = defaultWorkSessionDeps,
+): Promise<WorkSession | null> {
+  return deps.withTenantTransaction(args.orgId, async (db) => {
+    const { rows } = await db.query(
+      `SELECT ${COLUMNS} FROM work_sessions
+        WHERE organization_id = $1 AND id = $2`,
+      [args.orgId, args.sessionId],
+    );
+    const row = rows[0] as Record<string, unknown> | undefined;
+    return row ? mapWorkSession(row) : null;
+  });
 }
 
 // ── arm ─────────────────────────────────────────────────────────────────────
@@ -563,47 +787,9 @@ export async function parkSession(
   args: ParkSessionArgs,
   deps: WorkSessionDeps = defaultWorkSessionDeps,
 ): Promise<ParkSessionResult> {
-  return deps.withTenantTransaction(args.orgId, async (db) => {
-    const session = await selectForUpdate(db, args.orgId, args.sessionId);
-    if (!session) return { ok: false, status: 404, error: 'SESSION_NOT_FOUND' } as const;
-    if (session.status === 'ended') {
-      return { ok: false, status: 409, error: 'SESSION_ALREADY_ENDED' } as const;
-    }
-    if (versionConflict(session, args.expectedVersion)) {
-      return { ok: false, status: 409, error: 'VERSION_CONFLICT', currentVersion: session.version } as const;
-    }
-    if (session.status === 'parked') {
-      return { ok: true, status: 200, session, idempotent: true } as const;
-    }
-
-    // Close the stretch that was being worked before opening the parked one —
-    // ux_work_session_intervals_open is not deferrable. The parker inherits the
-    // closed stretch's staff when the caller did not name one, so a park with no
-    // actor still attributes to whoever was working.
-    const open = await readOpenInterval(db, args.orgId, args.sessionId);
-    await closeOpenInterval(db, args.orgId, args.sessionId);
-    await openInterval(
-      db,
-      args.orgId,
-      args.sessionId,
-      'parked',
-      args.staffId ?? open?.staffId ?? null,
-    );
-
-    const { rows } = await db.query(
-      `UPDATE work_sessions
-          SET status = 'parked', armed = false, version = version + 1, updated_at = now()
-        WHERE organization_id = $1 AND id = $2
-        RETURNING ${COLUMNS}`,
-      [args.orgId, args.sessionId],
-    );
-    return {
-      ok: true,
-      status: 200,
-      session: mapWorkSession(rows[0] as Record<string, unknown>),
-      idempotent: false,
-    } as const;
-  });
+  return deps.withTenantTransaction(args.orgId, (db) =>
+    parkWithin(db, args.orgId, args.sessionId, args.staffId ?? null, args.expectedVersion),
+  );
 }
 
 export interface ResumeSessionArgs {
@@ -681,6 +867,9 @@ export interface EndSessionArgs {
   orgId: OrgId;
   sessionId: number;
   expectedVersion?: number;
+  /** End-of-block recap: from → to, why. Not a clock. */
+  wrapUp?: string | null;
+  wrapUpSource?: WrapUpSource | null;
 }
 
 export type EndSessionResult = SessionResult<{ session: WorkSession; idempotent: boolean }>;
@@ -706,14 +895,17 @@ export async function endSession(
     // every later duration read grow forever against `dbNow`.
     await closeOpenInterval(db, args.orgId, args.sessionId);
 
+    const wrapUp = args.wrapUp?.trim() || null;
     const { rows } = await db.query(
       `UPDATE work_sessions
           SET status = 'ended', armed = false, ended_at = now(),
               claimed_by_staff_id = NULL, claim_expires_at = NULL,
+              wrap_up = COALESCE($3, wrap_up),
+              wrap_up_source = COALESCE($4, wrap_up_source),
               version = version + 1, updated_at = now()
         WHERE organization_id = $1 AND id = $2
         RETURNING ${COLUMNS}`,
-      [args.orgId, args.sessionId],
+      [args.orgId, args.sessionId, wrapUp, args.wrapUpSource ?? null],
     );
     return {
       ok: true,

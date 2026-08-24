@@ -2296,7 +2296,142 @@
     font-variant-numeric: tabular-nums;
   }
 
+  .feed-block-purpose {
+    font-family: var(--font-condensed);
+    font-size: var(--sz-technical-label);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 28%;
+  }
+
+  .feed-block-staff {
+    font-size: var(--sz-technical-label);
+    color: var(--text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 18%;
+  }
+
+  .feed-block-notes,
+  .feed-block-wrap {
+    margin: 0;
+    font-size: var(--sz-xs);
+    color: var(--text-secondary);
+    line-height: 1.4;
+    white-space: pre-wrap;
+  }
+
+  .feed-block-wrap-label {
+    display: block;
+    font-family: var(--font-condensed);
+    font-size: var(--sz-technical-label);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    margin-bottom: 2px;
+  }
+
   .feed-block-act { flex-shrink: 0; }
+
+  /* Session start / wrap-up — instant show/hide, no geometry tween (M1). */
+  .session-composer {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-2);
+    padding: var(--sp-3);
+    border: 1px solid var(--border-hud);
+    background: var(--surface-containerLowest);
+  }
+
+  .session-composer-head {
+    font-family: var(--font-condensed);
+    font-weight: 700;
+    font-size: var(--sz-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-primary);
+  }
+
+  .session-composer-hint {
+    margin: 0;
+    font-size: var(--sz-xs);
+    color: var(--text-muted);
+    line-height: 1.4;
+  }
+
+  .session-composer-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: var(--sz-xs);
+    color: var(--text-secondary);
+  }
+
+  .session-composer-field input,
+  .session-composer-field textarea {
+    width: 100%;
+    border: 1px solid var(--border-subtle);
+    background: var(--surface-containerLow);
+    color: var(--text-primary);
+    padding: 6px var(--sp-2);
+    font: inherit;
+    font-size: var(--sz-sm);
+    outline: none;
+    resize: vertical;
+  }
+
+  .session-composer-field input:focus,
+  .session-composer-field textarea:focus {
+    border-color: var(--border-accent);
+  }
+
+  .session-composer-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--border-subtle);
+    max-height: 180px;
+    overflow-y: auto;
+  }
+
+  .session-composer-list button {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--sp-2);
+    width: 100%;
+    padding: 6px var(--sp-2);
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--border-subtle);
+    color: var(--text-primary);
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .session-composer-list li:last-child button,
+  .session-composer-list li:last-child { border-bottom: none; }
+  .session-composer-list button:hover { background: var(--surface-container); }
+  .session-composer-list button span { color: var(--text-muted); font-size: var(--sz-technical-label); }
+
+  .session-composer-create {
+    padding: 6px var(--sp-2);
+    font-size: var(--sz-xs);
+    color: var(--text-secondary);
+  }
+
+  .session-composer-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--sp-2);
+  }
 
   .feed-block-items {
     display: flex;

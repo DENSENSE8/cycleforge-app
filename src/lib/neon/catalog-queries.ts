@@ -21,7 +21,7 @@ import { RECEIVING_EXCEPTION_CODES, RECEIVING_EXCEPTION_META } from '@/lib/recei
 import { SKU_STOCK_REASONS } from '@/lib/sku/sku-stock-reasons';
 import { SERIAL_ABSENT_REASONS } from '@/lib/receiving/serial-absent-reasons';
 import { STATION_COMMAND_FLOW_CONTEXT } from '@/lib/stations/station-command-codes';
-import { listSeedableCommandCodes } from '@/lib/stations/command-book';
+import { SYSTEM_PURPOSES } from '@/lib/sessions/purpose-catalog';
 
 export interface PlatformRow {
   id: number;
@@ -205,6 +205,22 @@ export async function seedOrgCatalog(organizationId: OrgId): Promise<void> {
          VALUES ($1, $2, $3, NULL, 'either', $4, $5)
          ON CONFLICT (organization_id, flow_context, code) DO NOTHING`,
         [organizationId, r.code, r.label, STATION_COMMAND_FLOW_CONTEXT, r.sortOrder],
+      );
+    }
+    for (const seed of SYSTEM_PURPOSES) {
+      await client.query(
+        `INSERT INTO work_session_purposes
+           (organization_id, key, label, default_kind, default_surface_key, is_system, sort_order)
+         VALUES ($1, $2, $3, $4, $5, true, $6)
+         ON CONFLICT (organization_id, key) DO NOTHING`,
+        [
+          organizationId,
+          seed.key,
+          seed.label,
+          seed.defaultKind,
+          seed.defaultSurfaceKey,
+          seed.sortOrder,
+        ],
       );
     }
     await syncEbayAccountsToPlatformAccounts(organizationId, client);

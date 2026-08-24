@@ -187,6 +187,7 @@ export const AUDIT_ACTION = {
   WORK_SESSION_PARK:   'work_session.park',
   WORK_SESSION_RESUME: 'work_session.resume',
   WORK_SESSION_END:    'work_session.end',
+  WORK_SESSION_RENAME: 'work_session.rename',
   // PO / receiving
   PO_RECEIVE:                'po.receive',
   PO_RECEIVE_REVERSE:        'po.receive.reverse',
