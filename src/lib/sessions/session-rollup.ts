@@ -454,6 +454,8 @@ export interface WorkSessionWithMetrics {
   purpose: SessionPurposeRef | null;
   staffName: string | null;
   metric: SessionMetric;
+  /** Park/resume stretches — timestamps + kind + staffId. */
+  intervals: WorkSessionInterval[];
 }
 
 export interface SessionSeriesResult {
@@ -604,6 +606,12 @@ async function readSeries(
 
   const series = sessionSeries({ sessions, intervals, punches, dbNow });
   const byId = new Map(series.map((m) => [m.sessionId, m]));
+  const intervalsBySession = new Map<number, WorkSessionInterval[]>();
+  for (const interval of intervals) {
+    const list = intervalsBySession.get(interval.sessionId) ?? [];
+    list.push(interval);
+    intervalsBySession.set(interval.sessionId, list);
+  }
 
   return {
     // Oldest-first, matching the series: a report reads down the day, and
@@ -615,6 +623,7 @@ async function readSeries(
         purpose: extra?.purpose ?? null,
         staffName: extra?.staffName ?? null,
         metric: byId.get(metric.sessionId)!,
+        intervals: intervalsBySession.get(metric.sessionId) ?? [],
       };
     }),
     totals: seriesTotals(series),
@@ -704,6 +713,9 @@ export interface SessionReport {
   staffName: string | null;
   active: Duration;
   parked: Duration;
+  /** Σ active ms — the timesheet number. Same value as `active.ms`. */
+  activeMs: number;
+  parkedMs: number;
   intervals: WorkSessionInterval[];
   contents: SessionContents;
   dbNow: string;
@@ -741,6 +753,8 @@ export async function getSessionReport(
     const clockRow = await db.query('SELECT now() AS db_now', []);
     const dbNow = iso((clockRow.rows[0] as Record<string, unknown>).db_now);
 
+    const active = activeDuration(session, intervals, dbNow);
+    const parked = parkedDuration(session, intervals, dbNow);
     return {
       session,
       purpose:
@@ -748,8 +762,10 @@ export async function getSessionReport(
           ? { id: session.purposeId, key: String(row.purpose_key), label: String(row.purpose_label ?? '') }
           : null,
       staffName: row.staff_name == null ? null : String(row.staff_name),
-      active: activeDuration(session, intervals, dbNow),
-      parked: parkedDuration(session, intervals, dbNow),
+      active,
+      parked,
+      activeMs: active.ms,
+      parkedMs: parked.ms,
       intervals,
       dbNow,
     };

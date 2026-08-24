@@ -144,6 +144,14 @@ export function fakes(seed: Row[] = []): WorkSessionFake {
         return { rows: [{ ...row }], rowCount: 1 };
       }
 
+      if (text.includes('UPDATE work_session_purposes')) {
+        const [orgId, id] = p;
+        const row = purposes.find((r) => r.organization_id === orgId && r.id === id);
+        if (!row) return { rows: [], rowCount: 0 };
+        row.archived_at = nowIso();
+        return { rows: [{ ...row }], rowCount: 1 };
+      }
+
       if (text.includes('FROM work_session_purposes')) {
         const [orgId] = p;
         if (text.includes('lower(label)')) {

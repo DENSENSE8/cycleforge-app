@@ -13,6 +13,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { FAKE_ORG as ORG, fakes } from './work-sessions.fake';
+import { archivePurpose } from './purposes';
 import {
   armScanSession,
   beginSession,
@@ -389,5 +390,25 @@ test('one string is both title and a new purpose label', async () => {
   assert.equal(r.session.title, 'Helped Sam with inventory identification');
   assert.equal(r.purpose.label, 'Helped Sam with inventory identification');
   assert.equal(r.session.kind, 'task');
+});
+
+test('archivePurpose does not rewrite sessions that used the row', async () => {
+  const f = fakes();
+  const started = await beginSession(
+    { orgId: ORG, title: 'Helped Sam with inventory identification', purposeLabel: 'Staff assist' },
+    f.deps,
+  );
+  assert.ok(started.ok);
+  if (!started.ok) return;
+  const purposeId = started.session.purposeId;
+  assert.ok(purposeId);
+
+  const archived = await archivePurpose({ orgId: ORG, purposeId }, f.deps);
+  assert.equal(archived.ok, true);
+  if (!archived.ok) return;
+  assert.ok(archived.purpose.archivedAt);
+
+  const still = f.rows.find((r) => r.id === started.session.id);
+  assert.equal(still?.purpose_id, purposeId);
 });
 

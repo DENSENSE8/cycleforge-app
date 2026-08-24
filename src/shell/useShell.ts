@@ -159,6 +159,24 @@ function intervalsFromActiveMs(
   return [{ start: startedAtMs, end: startedAtMs + ms }];
 }
 
+function blockIntervalsFromRows(
+  rows:
+    | ReadonlyArray<{ kind: 'active' | 'parked'; startedAt: string; endedAt: string | null }>
+    | undefined,
+  startedAtMs: number,
+  activeMs: number,
+  running: boolean,
+  now: number,
+): readonly BlockInterval[] {
+  if (!rows?.length) return intervalsFromActiveMs(startedAtMs, activeMs, running, now);
+  const active = rows.filter((i) => i.kind === 'active');
+  if (active.length === 0) return intervalsFromActiveMs(startedAtMs, activeMs, running, now);
+  return active.map((i) => ({
+    start: Date.parse(i.startedAt),
+    ...(i.endedAt ? { end: Date.parse(i.endedAt) } : {}),
+  }));
+}
+
 /* ── comfort prefs → CSS custom properties ───────────────────────────── */
 
 function applyPrefs(prefs: ShellPrefs, theme: ShellTheme): void {
@@ -372,6 +390,11 @@ export function useShell() {
             purpose: { id: number; key: string; label: string } | null;
             staffName: string | null;
             metric: { active: { ms: number } };
+            intervals?: ReadonlyArray<{
+              kind: 'active' | 'parked';
+              startedAt: string;
+              endedAt: string | null;
+            }>;
           }>;
         } | null) => {
           if (cancelled || !body?.sessions?.length) return;
@@ -400,7 +423,8 @@ export function useShell() {
               title: row.session.title || row.purpose?.label || `Session ${row.session.id}`,
               sessionKind: row.session.kind,
               state,
-              intervals: intervalsFromActiveMs(
+              intervals: blockIntervalsFromRows(
+                row.intervals,
                 Date.parse(row.session.startedAt),
                 row.metric.active.ms,
                 isArmed,
@@ -491,11 +515,7 @@ export function useShell() {
     syncElapsed(blockElapsedSeconds(closeIntervals(block.intervals, at), at), false);
     setSessionState('parked');
     if (block.workSessionId) {
-      void fetch(`/api/sessions/${block.workSessionId}`, {
-        method: 'PATCH',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ action: 'park' }),
-      });
+      void fetch(`/api/sessions/${block.workSessionId}/park`, { method: 'POST' });
     }
   }, [armedBlock, tiles]);
 

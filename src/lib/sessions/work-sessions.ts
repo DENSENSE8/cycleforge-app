@@ -23,6 +23,7 @@
 
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import type { OrgId } from '@/lib/tenancy/constants';
+import { isSurfaceKey } from '@/lib/stations/surface-keys';
 import { ensureSystemPurposes, findOrCreatePurpose, getPurpose } from './purposes';
 import {
   isScanSessionType,
@@ -344,6 +345,9 @@ async function startWithin(
   if (kindError) return { ok: false, status: 400, error: kindError };
   if (wantsArm && args.kind !== 'scan') {
     return { ok: false, status: 400, error: 'ARM_REQUIRES_SCAN_KIND' };
+  }
+  if (args.surfaceKey != null && !isSurfaceKey(args.surfaceKey)) {
+    return { ok: false, status: 400, error: 'UNKNOWN_SURFACE_KEY' };
   }
   const clientEventId = args.clientEventId ?? newClientEventId();
 
