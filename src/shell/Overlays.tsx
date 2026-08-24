@@ -44,17 +44,6 @@ export function ContextMenu({ shell }: { shell: ShellApi }) {
         className="context-item"
         role="menuitem"
         onClick={() => {
-          shell.splitTile(tileId);
-          close();
-        }}
-      >
-        <Icon name="split" size={14} /> Split tile
-      </button>
-      <button
-        type="button"
-        className="context-item"
-        role="menuitem"
-        onClick={() => {
           if (tileId) {
             const tile = shell.tiles.find((t) => t.id === tileId);
             // The prototype renames through `prompt`. Replacing it with the
