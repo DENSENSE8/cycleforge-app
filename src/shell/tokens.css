@@ -4,11 +4,18 @@
    This file is the design system for the shell. Nothing here may be
    replaced by a `@/design-system` import.
 
-   DESIGN LAW (from the prototype's own header, unchanged):
-     1. RADIUS EXISTS ONCE. `--r-hud` on the workspace frame. Nothing
-        else may carry a border-radius. There is no --r-sm/md/lg/xl/full
-        to reach for; they do not exist, so the rule is enforced by
-        absence rather than by discipline.
+   DESIGN LAW (from the prototype's own header; LAW 1 amended 2026-08-24):
+     1. RADIUS EXISTS NOWHERE. Every element is square, full stop — the
+        well's own exception (`--r-hud`) is retired now that the well
+        runs flush to the display's own edges (a rounded corner jammed
+        against a square viewport corner read as a notch, not a card).
+        There is no --r-sm/md/lg/xl/full to reach for; they do not exist,
+        so the rule is enforced by absence rather than by discipline. The
+        reset alone is not sufficient — Safari (and some Chrome/OS
+        combinations) paint a NATIVE rounded chrome on
+        `<button>`/`<input>`/`<textarea>` that ignores `border-radius`
+        entirely, so `appearance: none` on form controls is load-bearing
+        too, not decoration.
      2. NOTHING ANIMATES GEOMETRY. No transition and no keyframe may
         touch width, height, top/left/right/bottom, margin, padding,
         transform or flex. The only animatable properties are colour
@@ -48,11 +55,13 @@
   --sz-2xl: 1.5rem;                  /* 24px */
 
   /* ---- RADIUS ----------------------------------------------------
-     Two tokens. That is the whole set.
-     --r-hud is the boundary between chrome and work; it is the only
-     non-zero radius in the application. Set it to 0 for a fully flush
-     terminal read, or up to 16px for the visor read — one line, whole-app
-     effect. Nothing else may declare a radius. */
+     `--r-none` is the only one anything in the shell actually uses now
+     (2026-08-24) — the well's own `--r-hud` exception is retired (see
+     `.well` in shell.css). `--r-hud` is kept defined, unused by the
+     shell, because the orphaned prefs radius slider in `TileBody.tsx`
+     still writes to it — that file is dead code (nothing imports `Tile`/
+     `TileBody` since the Phase 1 canvas deletion), not a live exception
+     to this law; it is a separate cleanup, not this one. */
   --r-none: 0px;
   --r-hud: 4px;
 

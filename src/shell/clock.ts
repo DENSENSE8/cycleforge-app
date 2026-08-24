@@ -16,7 +16,10 @@
 import { useSyncExternalStore } from 'react';
 
 export interface ClockSnapshot {
-  /** Session elapsed, seconds. Auto-started when the session opened. */
+  /** Wall clock, ms — the once-a-second re-render pulse the block headers
+      derive their elapsed from (blocks own intervals, not counters). */
+  readonly now: number;
+  /** Session elapsed, seconds. Mirrors the ARMED block since Phase 2. */
   readonly elapsed: number;
   readonly elapsedRunning: boolean;
   /** Lap timing, seconds. */
@@ -24,10 +27,13 @@ export interface ClockSnapshot {
   readonly stopwatchRunning: boolean;
 }
 
-/** The prototype opens mid-session at 263s with the session clock running. */
+/** Boots idle: the session clock belongs to the armed block, and nothing is
+    armed until the operator opens a block (the prototype's mid-session 263s
+    seed died with the canvas). */
 let snapshot: ClockSnapshot = {
-  elapsed: 263,
-  elapsedRunning: true,
+  now: Date.now(),
+  elapsed: 0,
+  elapsedRunning: false,
   stopwatch: 0,
   stopwatchRunning: false,
 };
@@ -43,9 +49,11 @@ function commit(next: ClockSnapshot): void {
 function ensureTicking(): void {
   if (interval !== null) return;
   interval = setInterval(() => {
-    if (!snapshot.elapsedRunning && !snapshot.stopwatchRunning) return;
+    // `now` always advances — parked blocks print a frozen elapsed from their
+    // closed intervals, but the pulse itself never pauses.
     commit({
       ...snapshot,
+      now: Date.now(),
       elapsed: snapshot.elapsedRunning ? snapshot.elapsed + 1 : snapshot.elapsed,
       stopwatch: snapshot.stopwatchRunning ? snapshot.stopwatch + 1 : snapshot.stopwatch,
     });
@@ -71,6 +79,16 @@ function getServerSnapshot(): ClockSnapshot {
 
 export function useClock(): ClockSnapshot {
   return useSyncExternalStore(subscribe, () => snapshot, getServerSnapshot);
+}
+
+/**
+ * Blocks of time (Phase 2): the beam's session clock MIRRORS the armed block.
+ * Arm/resume hand in the block's accumulated seconds and start it; park/end
+ * freeze it. The block's intervals stay the source of truth — this is a
+ * display feed, not a second counter.
+ */
+export function syncElapsed(seconds: number, running: boolean): void {
+  commit({ ...snapshot, elapsed: Math.max(0, Math.floor(seconds)), elapsedRunning: running });
 }
 
 export function toggleElapsed(): void {

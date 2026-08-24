@@ -20,9 +20,23 @@
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
-  /* LAW 1, enforced. Every element is square unless it opts in by
-     literally naming --r-hud, and only the well frame does. */
+  /* LAW 1, enforced, and now WITHOUT EXCEPTION (2026-08-24, operator
+     ruling — `--r-hud` on the well is gone; see the well's own comment).
+     Every element is square, full stop. `border-radius:0` alone is not
+     enough: Safari (and some Chrome/OS combinations) paints a NATIVE
+     rounded control chrome on `<button>`/`<input>`/`<textarea>` that
+     ignores the CSS box-model radius entirely — `getComputedStyle` can
+     read `border-radius: 0px` while the control still visibly rounds.
+     `appearance: none` is what actually turns that native rendering off;
+     the border-radius reset alone was never sufficient on its own, it
+     just happened to be enough on non-WebKit engines to hide the gap. */
   *, *::before, *::after { border-radius: var(--r-none); }
+  button, input, textarea, select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    border-radius: var(--r-none);
+  }
 
   /* PORT: the `html, body` base rules live in app/globals.css, which owns
      the document. See the header note. */
@@ -48,16 +62,25 @@
      Pairing and the timers are TOOLS and live in the right rail; they
      are not header chrome, because the beam reports identity and never
      verbs. ================================================================ */
+  /* No hairline (2026-08-24) and no horizontal inset — the corner toggle
+     buttons need to sit truly flush at the top-left and top-right, not
+     4px shy of them. */
   .wos-header {
     height: var(--header-height);
     background: var(--surface-containerLowest);
-    border-bottom: 1px solid var(--border-strong);
     display: flex;
     align-items: center;
-    padding: 0 var(--sp-1);
+    padding: 0;
     gap: var(--sp-1);
     flex-shrink: 0;
-    z-index: var(--z-header);
+    /* The identity dropdown opens BELOW the beam, over the rail's column —
+       and `.rail` is its own stacking context at `--z-panel` (100). A
+       `--z-header` (40) context loses to that regardless of the dropdown's
+       own z-index, because z-index only competes within the nearest shared
+       stacking context: the rail's whole box wins over the header's whole
+       box, dropdown included. `--z-panelPopover` clears every rail — the
+       one thing anchored here that must never be clipped by one. */
+    z-index: var(--z-panelPopover);
     position: relative;
   }
 
@@ -71,14 +94,18 @@
     z-index: 2;
   }
 
+  /* No border, no resting fill (2026-08-24) — a permanent background one
+     shade off the header's own is the same seam a border draws, just
+     painted instead of stroked. Transparent at rest, tinted only on
+     hover/open, the same pattern as every other unboxed chip on this
+     beam. */
   .identity-face {
     display: flex;
     align-items: center;
     gap: var(--sp-2);
     max-width: 220px;
-    padding: 0 var(--sp-2) 0 var(--sp-1);
-    border: 1px solid var(--border-strong);
-    background: var(--surface-containerLow);
+    padding: 0 var(--sp-2) 0 var(--sp-2);
+    background: transparent;
     color: var(--text-primary);
     cursor: pointer;
     font: inherit;
@@ -325,17 +352,11 @@
 
   .identity-facts dd { color: var(--text-primary); text-align: right; }
 
-  /* --- remaining cluster: armed target · carton context --- */
-  .corner-cluster {
-    display: flex;
-    align-items: stretch;
-    height: var(--control-h);
-    flex-shrink: 0;
-    border: 1px solid var(--border-strong);
-    background: var(--surface-containerLow);
-  }
-
-  .corner-cluster > * + * { border-left: 1px solid var(--border-strong); }
+  /* The corner cluster, the carton chip and the context line (armed pill ·
+     C-8842-A chip · RECEIVING/narration text) are GONE (2026-08-24,
+     operator ruling) — the beam is identity · timer · rail toggle ·
+     overflow now (`GlobalHeader`'s own docblock has the why). */
+  .header-spacer { flex: 1; min-width: 0; }
 
   .zone-scan {
     display: flex;
@@ -404,40 +425,6 @@
      as input-mode | query-mode and not as one four-way switch. */
   .mode-toggle .axis-gap { border-left: 3px solid var(--text-primary); }
 
-  /* SCAN-ARMED — permanent, and welded to the scan field.
-     Not a toast. The operator must be able to see where the next scan
-     lands without leaving the carton, so it never auto-hides and it
-     never moves. */
-  .scan-armed {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    padding: 0 var(--sp-2);
-    font-size: var(--sz-technical-label);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    font-family: var(--font-condensed);
-    font-weight: 600;
-    background: var(--surfaceSubtle-success);
-    color: var(--text-success);
-    white-space: nowrap;
-    flex-shrink: 0;
-  }
-
-  .scan-armed .mark {
-    width: 7px;
-    height: 7px;
-    background: var(--text-success);
-    flex-shrink: 0;
-  }
-
-  .scan-armed.parked { background: var(--surfaceSubtle-warning); color: var(--text-warning); }
-  .scan-armed.parked .mark { background: var(--text-warning); }
-  .scan-armed.ended { background: var(--surface-container); color: var(--text-muted); }
-  .scan-armed.ended .mark { background: var(--text-muted); }
-  .scan-armed.error { background: var(--surfaceSubtle-danger); color: var(--text-danger); }
-  .scan-armed.error .mark { background: var(--text-danger); }
-
   .cluster-btn {
     width: 28px;
     display: flex;
@@ -454,65 +441,6 @@
 
   .cluster-btn:hover { background: var(--surface-container); color: var(--text-primary); }
   .cluster-btn.active { background: var(--text-primary); color: var(--text-inverse); }
-
-  .zone-context {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    padding: 0 var(--sp-2);
-    color: var(--text-secondary);
-    font-size: var(--sz-xs);
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    font: inherit;
-    transition: background-color var(--t-tint);
-  }
-
-  .zone-context:hover { background: var(--surface-container); }
-
-  /* --- the context line: the only place that says what is happening --- */
-  .context-line {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--sp-2);
-    height: var(--control-h);
-    font-size: var(--sz-xs);
-    overflow: hidden;
-    white-space: nowrap;
-  }
-
-  .ctx-seg {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    min-width: 0;
-    overflow: hidden;
-  }
-
-  .ctx-sep {
-    width: 1px;
-    height: 14px;
-    background: var(--border-strong);
-    flex-shrink: 0;
-  }
-
-  /* Segment 1 — global context / process stage. Scan type IS the
-     pipeline position, so the stage strip lives here, not in its own
-     zone. Squares, not dots: a 6px square is more legible than a 6px
-     circle and it reads as a step in a track. */
-  .ctx-global {
-    font-family: var(--font-condensed);
-    font-size: 10px;
-    font-weight: 600;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--text-secondary);
-    flex-shrink: 0;
-  }
 
   .pipeline { display: flex; align-items: stretch; height: 14px; border: 1px solid var(--border-subtle); }
 
@@ -603,8 +531,6 @@
   .session-state.ended  { border-color: var(--border-strong); background: var(--surface-container); color: var(--text-muted); }
   .session-state.error  { border-color: var(--border-danger); background: var(--surfaceSubtle-danger); color: var(--text-danger); }
 
-  /* Segment 3 — carton context of scan type */
-  .ctx-carton { color: var(--text-secondary); min-width: 0; }
   .ctx-fallback { display: flex; align-items: center; gap: 5px; }
   .ctx-fallback[hidden] { display: none; }
   .ctx-fallback #ctxFallbackHint { font-size: var(--sz-technical-label); color: var(--text-muted); }
@@ -635,6 +561,10 @@
 
   /* Fixed width, so the context line's budget is a constant and not a
      lottery. Everything here is tabular so the digits do not jitter. */
+  /* UNBOXED, matching the corner cluster: state is the background tint,
+     not a bordered frame around it (`.scan-armed` proved the pattern
+     first). idle keeps no tint at all, which is the point — a resting
+     readout should not read as a control waiting to be pressed. */
   .header-face {
     flex-shrink: 0;
     display: flex;
@@ -644,13 +574,11 @@
     width: 128px;
     justify-content: center;
     padding: 0 var(--sp-2);
-    border: 1px solid var(--border-strong);
-    background: var(--surface-containerLow);
     color: var(--text-secondary);
     font: inherit;
     font-size: var(--sz-xs);
     cursor: pointer;
-    transition: background-color var(--t-tint), color var(--t-tint), border-color var(--t-tint);
+    transition: background-color var(--t-tint), color var(--t-tint);
   }
 
   .header-face:hover { background: var(--surface-container); }
@@ -658,9 +586,9 @@
   .header-face .mono { color: inherit; }
 
   /* State is carried by the pair, not by a separate badge. */
-  .header-face.on-target { border-color: var(--border-success); color: var(--text-success); background: var(--surfaceSubtle-success); }
-  .header-face.near      { border-color: var(--border-warning); color: var(--text-warning); background: var(--surfaceSubtle-warning); }
-  .header-face.over      { border-color: var(--border-danger);  color: var(--text-danger);  background: var(--surfaceSubtle-danger); }
+  .header-face.on-target { color: var(--text-success); background: var(--surfaceSubtle-success); }
+  .header-face.near      { color: var(--text-warning); background: var(--surfaceSubtle-warning); }
+  .header-face.over      { color: var(--text-danger);  background: var(--surfaceSubtle-danger); }
   .header-face.idle      { color: var(--text-muted); }
 
   .header-overflow { flex-shrink: 0; display: flex; align-items: center; }
@@ -673,13 +601,42 @@
     position: relative;
   }
 
+  /* ===== BOTH RAILS' HOT-ZONES =======================================
+     Both rails are fully closeable (2026-08-24, left joined right for
+     parity) — the nav UNMOUNTS rather than hiding, so there is no
+     invisible-but-focusable trap for keyboard/screen-reader users. This
+     wrapper is what stays mounted either way: it is the hover surface
+     (`RailSessions` / `RailTools` schedule the peek open/close on it via
+     `useRailPeek`) and, closed, the only thing left at its edge — a bare
+     10px sliver, no background, no border, wide enough to catch a
+     pointer and nothing else. Open, it hugs whatever width the nav
+     inside declares (40 or 208px) rather than sizing itself.
+
+     ROW, not column — the single child (`.rail`) needs the CROSS axis
+     (vertical) stretched to fill height, and stretch only ever applies
+     cross-axis. A column here would make height the MAIN axis, and a
+     child with no `flex-grow` sits at its content height on that axis
+     regardless of `align-items` — which is exactly the bug this row
+     avoids. */
+  .rail-left-zone,
+  .rail-right-zone {
+    display: flex;
+    flex-shrink: 0;
+    height: 100%;
+    min-width: 10px;
+    position: relative;
+  }
+
   /* ===== RAILS ======================================================
      Persistent icon strips. Expanding is a width change and therefore
      is INSTANT — no transition. A rail that tweens open occupies the
      canvas for the length of the tween while handing nothing back. */
+  /* RIGHT carries no background (2026-08-24, operator ruling) — falls
+     through to `body`'s own `--bg-canvas` (globals.css), the well's own
+     colour, so it and the well share one plane with no seam painted
+     between them. LEFT keeps its own plane, per the same ruling. */
   .rail {
     width: var(--rail-width);
-    background: var(--surface-containerLowest);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -691,8 +648,13 @@
     z-index: var(--z-panel);
   }
 
-  .rail.left { border-right: 1px solid var(--border-strong); }
-  .rail.right { border-left: 1px solid var(--border-strong); }
+  .rail.left { background: var(--surface-containerLowest); }
+
+  /* UNBOXED (2026-08-24, operator ruling): both rails already share the
+     well-ground's own background token — they ARE one chrome plane by
+     design (see the Well's docblock), so the 1px seam here was drawing a
+     boundary between two things declared identical. The rail-edge grip
+     still marks where the drag control lives. */
   .rail.expanded {
     width: var(--rail-expanded);
     align-items: stretch;
@@ -742,11 +704,14 @@
   .rail-btn { position: relative; }
   .rail.expanded .rail-badge { position: static; margin-left: auto; }
 
+  /* UNBOXED: spacing does the separating job now, not a drawn rule — the
+     rail's own gradient (PERMANENCE DECREASES DOWNWARD) already orders the
+     groups; a line between them was restating an order the layout states
+     on its own. */
   .rail-divider {
     width: 24px;
-    height: 1px;
-    background: var(--border-subtle);
-    margin: var(--sp-1) 0;
+    height: 0;
+    margin: var(--sp-2) 0;
     flex-shrink: 0;
   }
 
@@ -771,8 +736,6 @@
     cursor: pointer;
     background: transparent;
     border: none;
-    border-top: 1px solid var(--border-subtle);
-    border-bottom: 1px solid var(--border-subtle);
     width: 100%;
     display: flex;
     justify-content: center;
@@ -793,95 +756,18 @@
     letter-spacing: 0.16em;
   }
 
-  /* THE RAIL'S INNER EDGE IS THE CONTROL, AND IT IS THE ONLY ONE.
-     The border between rail and canvas is the line that actually moves
-     when the rail expands, so it is the line you grab — the same gesture
-     as every splitter in every editor. Full height, so it is the longest
-     target on the screen and it never changes size with the rail's
-     contents; 6px wide, which is what a splitter has been for thirty
-     years, and it fits the gutter beside a 28px button in a 40px rail
-     without stealing a single click from one.
-     There is no chevron and no collapse button anywhere: a second visible
-     control for one verb was an apology for not trusting the first. */
-  .rail-edge {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    width: 6px;
-    border: none;
-    background: transparent;
-    padding: 0;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1;
-    transition: background-color var(--t-tint);
-  }
+  /* THE TOGGLE. The inner-edge drag handle is gone (2026-08-24) — it was
+     a 6px sliver only findable by touch. `.rail-slack`, the full-width
+     strip that replaced it, is ALSO gone (2026-08-24) — it was a flex:1
+     filler that pushed Recents to the bottom of an otherwise-empty rail,
+     spending "remove the padding" as a literal instruction. `.rail-label`
+     is the rail's one toggle now; the right rail also has an explicit
+     header button (`GlobalHeader`'s `.cluster-btn`), because a rail that
+     is not always visible earns a discoverable, not just a reachable,
+     toggle. */
 
-  .rail.left  .rail-edge { right: 0; }
-  .rail.right .rail-edge { left: 0; }
-  .rail-edge:hover { background: var(--surface-container); }
-
-  /* The gutter the strip lives in. Collapsed it is already there — a 28px
-     button centred in a 40px rail leaves 6px a side. Expanded, buttons go
-     full-width, so the rail reserves it. */
-  .rail.left.expanded  { padding-right: 8px; }
-  .rail.right.expanded { padding-left: 8px; }
-
-  /* THE SLACK stays live as a forgiving second target for the same verb.
-     It carries no mark of its own — the edge owns that — and it costs
-     nothing, because it is the one region of the rail that can never hold
-     a tab, a pin or a recent. */
-  .rail-slack {
-    flex: 1;
-    min-height: 20px;
-    width: 100%;
-    border: none;
-    background: transparent;
-    padding: 0;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background-color var(--t-tint);
-  }
-
-  .rail-slack:hover { background: var(--surface-container); }
-
-  /* The grip. Squares, not dots — the same reasoning as the stage strip —
-     and permanently inked, because a mark that only appears on hover does
-     not exist on a mounted tablet. */
-  .grip {
-    display: block;
-    width: 2px;
-    height: 14px;
-    background: repeating-linear-gradient(
-      to bottom, var(--border-strong) 0 2px, transparent 2px 5px);
-  }
-
-  .rail-edge:hover .grip { background: repeating-linear-gradient(
-      to bottom, var(--text-secondary) 0 2px, transparent 2px 5px); }
-
-  /* THE BOTTOM-LEFT CORNER. One control, and it is the SAME SIZE as the
-     control at the top of the rail — a 28px cell with a 16px glyph. The
-     rail is one column, so it gets one column width and one glyph size;
-     a settings gear drawn smaller than the add button above it reads as
-     a lesser control, and it is not one. No divider — the border is the
-     divider — and theme lives in settings, not out here. */
-  .rail-footer {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    width: 100%;
-    flex-shrink: 0;
-    border-top: 1px solid var(--border-subtle);
-    padding-top: 2px;
-    margin-top: 2px;
-  }
-
-  .rail.expanded .rail-footer { flex-direction: row; align-items: stretch; gap: 2px; }
-  .rail.expanded .rail-footer .rail-btn { width: auto; flex: 1; }
+  /* THE BOTTOM-LEFT CORNER's gear button — and `.rail-footer`, its wrapper
+     — are gone (settings moved into the identity dropdown, 2026-08-24). */
 
   .rail-group {
     display: flex;
@@ -979,6 +865,8 @@
     text-align: left;
   }
 
+  /* A label, not a button (2026-08-24) — Recents has no collapse state to
+     toggle any more, so it carries no cursor:pointer and no hover tint. */
   .recents-header {
     display: flex;
     align-items: center;
@@ -990,27 +878,19 @@
     color: var(--text-muted);
     font-family: var(--font-condensed);
     font-weight: 700;
-    cursor: pointer;
     user-select: none;
-    background: transparent;
-    border: none;
     width: 100%;
     justify-content: center;
     /* It is a row in the rail's one column, so it holds its row height
        instead of being the thing that gives way when the rail is tight —
        the tab list is the designated scroller, not this. */
     flex-shrink: 0;
-    transition: color var(--t-tint);
   }
 
   .rail:not(.expanded) .recents-header { height: 26px; }
   .rail.expanded .recents-header { justify-content: flex-start; padding: 2px var(--sp-2); }
-  .recents-header:hover { color: var(--text-primary); }
   .recents-header svg { flex-shrink: 0; }
-  .rail:not(.expanded) .recents-chevron { display: none; }
   .rail.expanded .recents-icon { display: none; }
-  /* The chevron flips instantly. It is a state read, not a performance. */
-  .recents-header.collapsed svg { transform: rotate(-90deg); }
 
   /* Bottom-anchored and BOUNDED. Two independent scroll ports — a long tab
      list cannot starve recents and a long history cannot starve the tabs.
@@ -1029,9 +909,8 @@
     flex-shrink: 0;
   }
   .rail.expanded .recents-list { align-items: stretch; }
-  .recents-list.collapsed { display: none; }
 
-  /* ===== RECENTS — per staff, per org. Never per session. =============
+  /* ===== RECENTS — scoped to the current session (H1a). =============
      Banded by kind in a FIXED order, MRU within a band. The band is what
      makes the list reachable by muscle memory: cartons sit at the same
      offset from the top whatever you did at another bench. Recency is
@@ -1085,18 +964,13 @@
     font-family: var(--font-mono);
   }
 
-  /* Leading edge = this entry was touched by the LIVE session. It is a
-     mark, not a scope: the entry outlives the session that made it. */
-  .recent-item.in-session::before {
-    content: '';
-    position: absolute;
-    left: 0; top: 2px; bottom: 2px;
-    width: 3px;
-    background: var(--text-success);
-  }
+  /* The leading-edge "touched by the live session" mark is gone
+     (2026-08-24): every row rendered here already IS from the current
+     session — the filter does that job now, not a stripe on top of an
+     unscoped list (H1 superseded). */
 
-  /* Trailing edge = the single most recent selection, anywhere in the
-     list. One per rail, by definition. */
+  /* The single most recent selection, anywhere in the list. One per
+     rail, by definition. */
   /* The most recent selection is marked by the ROW, not by a caret beside
      it. A 9px triangle hung off the right edge of a 40px rail had to be
      absolutely positioned to avoid shoving the label, and it still crowded
@@ -1108,29 +982,41 @@
      The inversion (HANDOFF-ai-centre §1): the feed IS the surface. The
      ground around it is the chrome plane — continuous with the beam and
      rails — and the well is SUNKEN into it: `--bg-canvas` is the one
-     token darker than chrome in BOTH themes, under a 1px hairline and
-     the application's one radius. Planes and strokes only (F1/F3); no
-     shadow fakes the depth. Clamped to the prose measure; below the
-     440px floor the ground scrolls rather than crushing the column —
-     the same honesty rule the tiles followed. */
+     token darker than chrome in BOTH themes. UNBOXED (2026-08-24): the
+     sunken read now comes from that colour step ALONE, plane against
+     plane, with no stroke drawing its own edge on top — the purer
+     execution of "planes and strokes only" is planes WITHOUT a stroke
+     when the colour contrast already does the boundary's job on its own
+     (F1/F3). Clamped to the prose measure; below the 440px floor the
+     ground scrolls rather than crushing the column — the same honesty
+     rule the tiles followed. */
+  /* No gutter (2026-08-24) — the well runs flush to the display's own
+     edges, chrome-inset style: no padding, no spacing, on any side. The
+     centred clamp (440–680px) still keeps the well itself from stretching
+     edge-to-edge on a wide screen; this only removes the buffer AROUND
+     it. */
   .well-ground {
     flex: 1;
     min-width: 0;
     display: flex;
-    padding: var(--sp-2);
+    padding: 0;
     overflow-x: auto;
     overflow-y: hidden;
     background: var(--surface-containerLowest);
   }
 
+  /* No radius (2026-08-24, operator ruling — F1's last exception is
+     retired). It made sense when the well floated with a gutter around
+     it; now that the well runs flush to the display's own edges (chrome
+     inset, zero padding), a rounded corner there is a rounded corner
+     jammed against the viewport's own square corner — a visible notch,
+     not a floating card. Square, full stop, same as everything else. */
   .well {
     flex: 0 1 680px;
     min-width: 440px;
     min-height: 0;
     margin-inline: auto;
     display: flex;
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--r-hud);
     background: var(--bg-canvas);
     overflow: hidden;
   }
@@ -1751,14 +1637,8 @@
 
   .session-field input:focus { border-color: var(--border-accent); }
 
-  /* Responsive — the beam degrades by dropping the least identifying
-     segment first: carton context, then the stage strip. The session
-     title is the last thing standing because it is the only segment
-     that names the work. */
-  @media (max-width: 1440px) {
-    .ctx-carton, .ctx-carton + .ctx-sep { display: none; }
-  }
-
+  /* Responsive — the beam has one segment left to degrade: the stage
+     strip. */
   @media (max-width: 1180px) {
     .pipeline { display: none; }
   }
@@ -2099,51 +1979,332 @@
     gap: var(--sp-1);
   }
 
-  .feed-context { flex-shrink: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
   .feed-send:disabled { color: var(--text-muted); cursor: default; }
 
-  /* The tool row — the very bottom, chips with real spacing. */
-  .feed-tools {
+  /* ===== THE OMNI-COMMAND COMPOSER (occ) =============================
+     The one field. A Lexical contenteditable inside `.feed-entry`; chips
+     are inline receipts of a resolved commit; the typeahead is the
+     control's OWN listbox — absolutely anchored above the field inside
+     `.occ-root`, never a floating instrument on document.body (I6).
+     Mount/unmount is a conditional render: instant, colour transitions
+     only, nothing tweens geometry (M1). */
+  .occ-root { position: relative; }
+
+  .occ-editor {
+    width: 100%;
+    padding: var(--sp-2) var(--sp-3);
+    font: inherit;
+    font-size: var(--sz-sm);
+    color: var(--text-primary);
+    outline: none;
+    min-height: 44px;
+    max-height: 140px;
+    overflow-y: auto;
+    line-height: 1.45;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .occ-paragraph { margin: 0; }
+
+  .occ-placeholder {
+    position: absolute;
+    top: var(--sp-2);
+    left: var(--sp-3);
+    font-size: var(--sz-sm);
+    line-height: 1.45;
+    color: var(--text-muted);
+    pointer-events: none;
+    user-select: none;
+  }
+
+  .occ-chip-host { display: inline-flex; vertical-align: baseline; }
+
+  .occ-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 0 var(--sp-2);
+    border: 1px solid var(--border-accent);
+    background: var(--surface-container);
+    color: var(--text-primary);
+    font-size: var(--sz-xs);
+    line-height: 1.6;
+    white-space: nowrap;
+  }
+
+  .occ-chip-platform {
+    font-family: var(--font-condensed);
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 10px;
+    color: var(--text-accent);
+  }
+
+  .occ-chip-id { font-family: var(--font-mono); }
+
+  /* The plugin's positioning anchor — parked under .occ-root and inert;
+     the real listbox renders inline below and positions itself. */
+  .occ-typeahead-anchor {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 0 !important;
+    height: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .occ-typeahead {
+    position: absolute;
+    bottom: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    max-height: 260px;
+    overflow-y: auto;
+    margin: 0;
+    padding: 4px;
+    list-style: none;
+    background: var(--surface-containerLow);
+    border: 1px solid var(--border-strong);
+    z-index: 30;
+  }
+
+  .occ-typeahead-item {
+    display: flex;
+    align-items: baseline;
+    gap: var(--sp-2);
+    padding: var(--sp-1) var(--sp-2);
+    cursor: pointer;
+    border-left: 3px solid transparent;
+    transition: background-color var(--t-tint);
+  }
+
+  .occ-typeahead-item.selected {
+    background: var(--surface-container);
+    border-left-color: var(--border-accent);
+  }
+
+  .occ-typeahead-title {
+    font-size: var(--sz-sm);
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .occ-typeahead-meta {
+    margin-left: auto;
+    font-size: var(--sz-xs);
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 45%;
+  }
+
+  .occ-typeahead-kbd {
+    font-size: 10px;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+  }
+
+  /* ===== THE TOOLS COMBOBOX (2026-08-24) =============================
+     A dropdown, not six spelled-out labels — Files / Import orders /
+     Calculator / Photo library / Manuals / Label printer collapse into
+     one pill naming whichever tool is open (or "Tools" when none is),
+     the same shape as a Claude-Code-style "Bypass permissions ▾" mode
+     selector. Same unboxed pattern as every other chip on the beam:
+     quiet at rest, tinted on hover/open. */
+  .composer-mode-slot { position: relative; flex-shrink: 0; }
+
+  .composer-mode {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px var(--sp-2);
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: var(--sz-xs);
+    font-family: var(--font-condensed);
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color var(--t-tint), color var(--t-tint);
+  }
+
+  .composer-mode:hover,
+  .composer-mode.open { background: var(--surface-container); color: var(--text-primary); }
+  .composer-mode.open svg { transform: rotate(180deg); }
+
+  /* Opens UPWARD — the composer sits at the well's own bottom edge, so a
+     panel opening down would run straight off-screen. */
+  .composer-mode-menu {
+    position: absolute;
+    bottom: calc(100% + var(--sp-1));
+    left: 0;
+    width: 220px;
+    background: var(--surface-containerLowest);
+    border: 1px solid var(--border-hud);
+    z-index: var(--z-dropdown);
+    display: flex;
+    flex-direction: column;
+    padding: var(--sp-1) 0;
+  }
+
+  .composer-mode-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-2);
+    width: 100%;
+    padding: 6px var(--sp-3);
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    text-align: left;
+    cursor: pointer;
+    transition: background-color var(--t-tint);
+  }
+
+  .composer-mode-item:hover { background: var(--surface-container); }
+  .composer-mode-item svg { flex-shrink: 0; color: var(--text-success); }
+
+  .composer-mode-item-copy { display: flex; flex-direction: column; min-width: 0; }
+  .composer-mode-item-title { font-size: var(--sz-xs); font-weight: 600; }
+  .composer-mode-item-hint {
+    font-size: var(--sz-technical-label);
+    color: var(--text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* ===== THE CONTEXT RING (2026-08-24) ===============================
+     Replaces the plain-text "what the assistant can see" readout — a
+     coloured dot, session-state palette (the same one `.scan-armed`
+     used), full text moved to `title`. Bottom-right, the composer's
+     final element. */
+  .context-ring {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    cursor: default;
+  }
+
+  .context-ring-dot {
+    width: 8px;
+    height: 8px;
+    background: var(--text-muted);
+    outline: 2px solid var(--surface-container);
+    outline-offset: 2px;
+  }
+
+  .context-ring.armed .context-ring-dot { background: var(--text-success); }
+  .context-ring.parked .context-ring-dot { background: var(--text-warning); }
+  .context-ring.error .context-ring-dot { background: var(--text-danger); }
+
+  /* The tool row — its own row, BELOW the composer box (2026-08-24,
+     corrected: not folded into the composer's meta line). Six labels
+     collapsed into one combobox (`ToolsCombobox`), same row it always
+     sat in. The context ring joined it here too — tools on the left,
+     the ring pushed to the right by the same row, not a second one. */
+  .feed-tools-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  /* ── Blocks of time (Phase 2) ──────────────────────────────────────
+     A session is a bounded stretch of the chronology. The header line is
+     condensed chrome — title · state · elapsed — and the interior is the
+     same turns the feed renders everywhere. State is a colour on a
+     CONSTANT-width edge, so it can never reflow; collapse is a
+     conditional render — instant, M1-clean. */
+  .feed-collapse-all {
+    position: sticky;
+    top: 0;
+    z-index: var(--z-raised);
+    align-self: flex-start;
+    padding: 2px var(--sp-2);
+    border: 1px solid var(--border-subtle);
+    background: var(--bg-canvas);
+    color: var(--text-secondary);
+    font-family: var(--font-condensed);
+    font-size: var(--sz-technical-label);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    transition: color var(--t-tint), border-color var(--t-tint);
+  }
+  .feed-collapse-all:hover { color: var(--text-primary); border-color: var(--border-strong); }
+
+  .feed-block {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--border-subtle);
+    border-left: 2px solid var(--border-strong);
+  }
+  .feed-block[data-state="armed"] { border-left-color: var(--border-accent); }
+  .feed-block[data-state="ended"] { border-left-color: var(--border-subtle); }
+
+  .feed-block-line {
     display: flex;
     align-items: center;
     gap: var(--sp-2);
-    flex-wrap: wrap;
+    padding: var(--sp-1) var(--sp-2);
+    min-height: var(--control-h);
   }
 
-  .feed-tool {
+  .feed-block-toggle {
     display: inline-flex;
     align-items: center;
-    gap: var(--sp-1);
-    padding: 3px var(--sp-2);
-    border: 1px solid var(--border-subtle);
-    background: transparent;
-    color: var(--text-secondary);
-    font-size: var(--sz-xs);
-    cursor: pointer;
-    transition: background-color var(--t-tint), color var(--t-tint), border-color var(--t-tint);
-  }
-
-  .feed-tool:hover {
-    background: var(--surface-container);
-    color: var(--text-primary);
-    border-color: var(--border-strong);
-  }
-
-  /* The beam's lifecycle narration, beside the global context. Muted by
-     default; green is the one verdict it renders — "session started". */
-  .ctx-narration {
-    font-family: var(--font-condensed);
-    font-size: 10px;
-    font-weight: 600;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--text-muted);
+    justify-content: center;
+    width: 18px;
+    height: 18px;
     flex-shrink: 0;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+  }
+  /* Static rotate — a state, never a transition (M1). */
+  .feed-block-toggle[aria-expanded="false"] svg { transform: rotate(-90deg); }
+
+  .feed-block-title {
+    font-family: var(--font-condensed);
+    font-weight: 700;
+    font-size: var(--sz-xs);
+    color: var(--text-primary);
   }
 
-  .ctx-narration.armed { color: var(--text-success); }
-  .ctx-narration.error { color: var(--text-danger); }
+  .feed-block-state {
+    font-family: var(--font-condensed);
+    font-size: var(--sz-technical-label);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--text-muted);
+  }
+  .feed-block[data-state="armed"] .feed-block-state { color: var(--text-success); }
+
+  .feed-block-elapsed {
+    margin-left: auto;
+    font-size: var(--sz-xs);
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .feed-block-act { flex-shrink: 0; }
+
+  .feed-block-items {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-3);
+    padding: var(--sp-2);
+    border-top: 1px solid var(--border-subtle);
+  }
 
   /* ===== FILES TOOL (N6 — native file workspaces) ==================== */
   .files-tool { min-height: 0; }

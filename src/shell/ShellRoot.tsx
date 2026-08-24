@@ -21,7 +21,7 @@ import { Well } from '@/shell/Well';
 import { GlobalHeader } from '@/shell/GlobalHeader';
 import { Launcher } from '@/shell/Launcher';
 import { ContextMenu, OfflineBanner, SessionPopover, SettingsPopover } from '@/shell/Overlays';
-import { RailPages } from '@/shell/RailPages';
+import { RailSessions } from '@/shell/RailSessions';
 import { RailTools } from '@/shell/RailTools';
 import { ShellIconSprite } from '@/shell/icons';
 import { ToolPanel } from '@/shell/ToolPanel';
@@ -55,14 +55,15 @@ function ShellFrame() {
   const shell = useShell();
   const {
     closeLauncher,
+    cutSession,
     openLauncher,
     setContextMenu,
     setSessionPopoverOpen,
     setSettingsPopoverOpen,
     closeTile,
     focusedTileId,
-    toggleLeftRail,
-    toggleRightRail,
+    toggleLeftRailOpen,
+    toggleRightRailOpen,
     toggleOffline,
   } = shell;
 
@@ -89,7 +90,12 @@ function ShellFrame() {
       }
       if (!(e.metaKey || e.ctrlKey) || e.altKey) return;
       const k = e.key.toLowerCase();
-      if (k === 'n' || k === 'k') {
+      if (k === 'n') {
+        // S12 — ⌘N cuts a new session block and parks the current one.
+        // The launcher was never entitled to two chords: ⌘K keeps it (T19).
+        e.preventDefault();
+        cutSession();
+      } else if (k === 'k') {
         e.preventDefault();
         openLauncher('');
       } else if (k === 'o' && e.shiftKey) {
@@ -97,8 +103,8 @@ function ShellFrame() {
         toggleOffline();
       } else if (k === 'b') {
         e.preventDefault();
-        if (e.shiftKey) toggleRightRail();
-        else toggleLeftRail();
+        if (e.shiftKey) toggleRightRailOpen();
+        else toggleLeftRailOpen();
       } else if (k === 'w' && !e.shiftKey) {
         e.preventDefault();
         if (focusedTileId) closeTile(focusedTileId);
@@ -109,14 +115,15 @@ function ShellFrame() {
   }, [
     closeLauncher,
     closeTile,
+    cutSession,
     focusedTileId,
     openLauncher,
     setContextMenu,
     setSessionPopoverOpen,
     setSettingsPopoverOpen,
-    toggleLeftRail,
+    toggleLeftRailOpen,
     toggleOffline,
-    toggleRightRail,
+    toggleRightRailOpen,
   ]);
 
   return (
@@ -126,7 +133,7 @@ function ShellFrame() {
       <GlobalHeader shell={shell} />
 
       <div className="wos-body">
-        <RailPages shell={shell} />
+        <RailSessions shell={shell} />
         <Well shell={shell} />
         <ToolPanel shell={shell} />
         <RailTools shell={shell} />
