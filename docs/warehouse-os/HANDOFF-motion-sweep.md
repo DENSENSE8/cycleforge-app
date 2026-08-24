@@ -13,15 +13,16 @@ You are executing a **mechanical motion sweep** in
 Do not redesign anything. Do not improve anything you were not asked to change.
 Three tasks, in order. Task C is report-only.
 
-## The law you are enforcing
+## The constraint this sweep still applies
 
-From `docs/warehouse-os/LAWS.md`:
+The numbered catalog is gone. This sweep still treats geometry tweens as
+out of scope for a warehouse floor:
 
-> **M1 — Nothing animates geometry.** No transition and no keyframe may touch
+> No transition and no keyframe may touch
 > `width`, `height`, `top`/`left`/`right`/`bottom`, margin, padding, `transform`,
 > or framer's `layout` / `layoutScroll` / `layoutId`.
 >
-> **M2 — Only colour and opacity may animate.**
+> Only colour and opacity may animate.
 
 Why: a collapse that tweens its height still occupies the space for the length of
 the tween, which is backwards for an interaction whose only purpose is to hand
@@ -202,7 +203,7 @@ work — say so in the report and do not fix it.
   are live GS1 Digital Link and short-URL resolvers printed on stickers already
   on boxes.
 - **Do not add tests.** Especially not any test that `readFileSync`s a source
-  file and regex-asserts its contents — that pattern is banned (LAWS.md X1).
+  file and regex-asserts its contents — that pattern is banned.
 - **Do not "improve" motion you find along the way.** Remove what is listed.
   Report what is not.
 

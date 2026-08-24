@@ -1,8 +1,8 @@
 # HANDOFF — the AI-first, keyboard-only upgrade
 
 **Paste everything below the rule into a fresh session pointed at this worktree.**
-Written 2026-08-22 after auditing what already exists. Read
-[`LAWS.md`](LAWS.md) before proposing anything.
+Written 2026-08-22 after auditing what already exists. The numbered law
+catalog was wiped 2026-08-24 — do not restore it.
 
 ---
 
@@ -338,5 +338,5 @@ being asked:
    case was put and rejected; this is a pivot, not a misunderstanding. Do not
    re-open it. The single carve-out is **T31**, the sticker resolvers.
 
-What is still genuinely open is in [`LAWS.md`](LAWS.md) § *Open — not yet law*.
-Read that before assuming something is settled.
+The numbered open-question list was retired with the catalog. Do not treat
+historical law numbers in this file as live.

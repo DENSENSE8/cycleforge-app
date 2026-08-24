@@ -17,9 +17,8 @@
 ## 0. ~~Locked verdict (do not re-litigate)~~ — **SUPERSEDED 2026-08-22**
 
 > ⚠️ **"Browser stays primary" was overturned by operator ruling on 2026-08-22.**
-> The product is now an installed native application — see `docs/warehouse-os/LAWS.md`
-> **T30** (native is the product) and **T31** (the GS1 resolvers stay on the public
-> web). The engineering below — thin wrapper, sandboxed preload, no `nodeIntegration`,
+> The product is now an installed native application. GS1 resolvers stay on the
+> public web. The engineering below — thin wrapper, sandboxed preload, no `nodeIntegration`,
 > no DOM-scrape macros, one renderer seam — **still stands and is still correct**;
 > what changed is that the shell is no longer optional and no longer thin. Read the
 > table below as the *starting point* of the port, not as the verdict.
