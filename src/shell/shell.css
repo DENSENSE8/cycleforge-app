@@ -825,6 +825,8 @@
 
   /* Collapsed, a rail is icons only — labels would spill past 40px. */
   .rail:not(.expanded) .tab-name,
+  .rail:not(.expanded) .tab-purpose,
+  .rail:not(.expanded) .tab-elapsed,
   .rail:not(.expanded) .recents-header span { display: none; }
 
   .tab:hover, .pin:hover, .recent-item:hover { background: var(--surface-container); color: var(--text-primary); }
@@ -863,6 +865,28 @@
     white-space: nowrap;
     flex: 1;
     text-align: left;
+    min-width: 0;
+  }
+
+  .tab-purpose {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 36%;
+    font-family: var(--font-condensed);
+    font-size: var(--sz-technical-label);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    flex-shrink: 1;
+  }
+
+  .tab-elapsed {
+    margin-left: auto;
+    font-size: 10px;
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+    flex-shrink: 0;
   }
 
   /* A label, not a button (2026-08-24) — Recents has no collapse state to

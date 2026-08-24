@@ -134,6 +134,34 @@ export async function findOrCreatePurpose(
   return mapPurpose(inserted.rows[0] as Record<string, unknown>);
 }
 
+/**
+ * Archive a catalog row. Sessions that already used it keep `purpose_id`
+ * (ON DELETE RESTRICT) — this does not rewrite history.
+ */
+export async function archivePurpose(
+  args: { orgId: OrgId; purposeId: number },
+  deps: PurposeDeps = defaultPurposeDeps,
+): Promise<
+  | { ok: true; purpose: WorkSessionPurpose }
+  | { ok: false; status: 404; error: 'PURPOSE_NOT_FOUND' }
+> {
+  return deps.withTenantTransaction(args.orgId, async (db) => {
+    const existing = await getPurpose(db, args.orgId, args.purposeId);
+    if (!existing) return { ok: false, status: 404, error: 'PURPOSE_NOT_FOUND' };
+    if (existing.archivedAt) return { ok: true, purpose: existing };
+    const { rows } = await db.query(
+      `UPDATE work_session_purposes
+          SET archived_at = now(), updated_at = now()
+        WHERE organization_id = $1 AND id = $2
+        RETURNING ${PURPOSE_COLUMNS}`,
+      [args.orgId, args.purposeId],
+    );
+    const row = rows[0] as Record<string, unknown> | undefined;
+    if (!row) return { ok: false, status: 404, error: 'PURPOSE_NOT_FOUND' };
+    return { ok: true, purpose: mapPurpose(row) };
+  });
+}
+
 async function keysInOrg(db: PurposeQueryable, orgId: OrgId): Promise<Set<string>> {
   const { rows } = await db.query(
     `SELECT key FROM work_session_purposes WHERE organization_id = $1`,

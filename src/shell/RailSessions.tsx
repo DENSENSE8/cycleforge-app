@@ -19,7 +19,8 @@
  */
 
 import { Icon } from '@/shell/icons';
-import { RECENT_KINDS, type RecentEntry } from '@/shell/model';
+import { hhmmss, useClock } from '@/shell/clock';
+import { RECENT_KINDS, blockElapsedSeconds, type RecentEntry, type SessionBlock } from '@/shell/model';
 import type { ShellApi } from '@/shell/useShell';
 import { useRailPeek } from '@/shell/useRailPeek';
 
@@ -78,6 +79,21 @@ function Recents({ shell }: { shell: ShellApi }) {
   );
 }
 
+function lastFeedBlock(feed: ShellApi['feed'], ref: string): SessionBlock | null {
+  for (let i = feed.length - 1; i >= 0; i--) {
+    const e = feed[i];
+    if (e.kind === 'block' && e.ref === ref) return e;
+  }
+  return null;
+}
+
+function TabElapsed({ block }: { block: SessionBlock }) {
+  const clock = useClock();
+  return (
+    <span className="tab-elapsed mono">{hhmmss(blockElapsedSeconds(block.intervals, clock.now))}</span>
+  );
+}
+
 export function RailSessions({ shell }: { shell: ShellApi }) {
   const expanded = shell.leftExpanded;
   const { visible, handleEnter, handleLeave } = useRailPeek(shell.leftRailOpen);
@@ -124,12 +140,16 @@ export function RailSessions({ shell }: { shell: ShellApi }) {
           </button>
 
           <div className="tab-list">
-            {shell.tabs.map((tab) => (
+            {shell.tabs.map((tab) => {
+              const block = lastFeedBlock(shell.feed, tab.ref);
+              const purpose = block?.purposeLabel;
+              const title = purpose ? `${tab.title} · ${purpose}` : tab.title;
+              return (
               <button
                 type="button"
                 key={tab.ref}
                 className={`tab${tab.ref === shell.activeRef ? ' active' : ''}`}
-                title={tab.title}
+                title={title}
                 onClick={() => shell.focusRef(tab.ref)}
                 onContextMenu={(e) => {
                   e.preventDefault();
@@ -139,9 +159,12 @@ export function RailSessions({ shell }: { shell: ShellApi }) {
               >
                 <Icon name={tab.icon} size={15} />
                 <span className="tab-name">{tab.title}</span>
+                {purpose ? <span className="tab-purpose">{purpose}</span> : null}
+                {block ? <TabElapsed block={block} /> : null}
                 {tab.color ? <span className="tab-color" style={{ background: tab.color }} /> : null}
               </button>
-            ))}
+              );
+            })}
           </div>
 
           {/* No slack, no gap — `.tab-list` is a `flex: 0 1 auto` strip, so

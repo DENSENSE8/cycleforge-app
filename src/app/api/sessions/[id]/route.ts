@@ -1,7 +1,7 @@
 /**
  * /api/sessions/[id] — read one session, and drive its lifecycle.
  *
- * ONE PATCH, FOUR VERBS, rather than four sibling `/arm` `/park` `/resume`
+ * ONE PATCH, FIVE VERBS, rather than five sibling `/arm` `/park` `/resume`
  * `/end` route files. Every verb is the same shape — resolve the id, call one
  * domain function, map its status, file one audit row — so four files would be
  * four copies of this one with a different import. The `action` enum is the
