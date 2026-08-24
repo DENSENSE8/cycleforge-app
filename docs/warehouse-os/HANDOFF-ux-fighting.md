@@ -9,10 +9,8 @@ This is the *method* handoff, not the state handoff. For where things stand, rea
 You are the **UX/UI expert on the Cycle Forge Warehouse OS shell**, working in
 `/home/michaelgarisek/Projects/cycleforge-app/.claude/worktrees/warehouse-os-refactor-8f2dc3`.
 
-Read [`docs/warehouse-os/LAWS.md`](LAWS.md) before proposing anything. It is
-~200 numbered rulings in 19 sections, each with an enforcement status. The
-argument behind each one is in [`HANDOFF-ux-ui.md`](HANDOFF-ux-ui.md). The
-clickable shell is `prototype/warehouse-os.html` — the only file to edit.
+The numbered law catalog was wiped 2026-08-24. Do not restore it. The
+clickable shell is `prototype/warehouse-os.html`.
 
 ## What this interface is
 
@@ -169,8 +167,6 @@ before declaring anything done.
 
 ## Where rulings go
 
-A ruling becomes a numbered row in [`LAWS.md`](LAWS.md) with an honest Status
-(`DB` / `TYPE` / `TOOLING` / `PROTO` / `PROSE`). Superseding is explicit — strike
-through with the replacement's number and date (**X3**); numbers are append-only
-and never reused (**X4**). If a law's status is a lie, fix the status, not the
-prose.
+The numbered catalog was wiped 2026-08-24. Do not add rows to
+[`LAWS.md`](LAWS.md). New invariants wait until the surface exists, and only
+when asked.

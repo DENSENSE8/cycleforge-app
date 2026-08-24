@@ -2,9 +2,9 @@
 
 **Paste everything below the rule into a fresh session pointed at this worktree.**
 Written 2026-08-23, after the desktop pivot (T30) and the Phase 1 input truth
-layer landed. Read [`LAWS.md`](LAWS.md) before proposing anything, and
-[`HANDOFF-ux-fighting.md`](HANDOFF-ux-fighting.md) for how the operator wants to
-be argued with.
+layer landed. The numbered law catalog was wiped 2026-08-24 — do not restore
+it. See [`HANDOFF-ux-fighting.md`](HANDOFF-ux-fighting.md) for how the operator
+wants to be argued with.
 
 **Supersession, stated exactly:** this brief REWRITES the framing of
 [`HANDOFF-ai-first.md`](HANDOFF-ai-first.md) — the screen is no longer built

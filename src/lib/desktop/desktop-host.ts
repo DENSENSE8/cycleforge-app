@@ -1,7 +1,7 @@
 /**
  * Desktop host seam — the ONLY module in `src/` that names the Electron bridge.
  *
- * THE DESKTOP IS THE PRODUCT (operator ruling 2026-08-23, LAWS.md T30 — the
+ * THE DESKTOP IS THE PRODUCT (operator ruling 2026-08-23 — the
  * earlier browser-first framing is superseded). The desktop app (`electron/`)
  * carries the native capabilities N1–N6, N6 being the file workspaces that
  * make it a real desktop application; a plain browser remains a degraded

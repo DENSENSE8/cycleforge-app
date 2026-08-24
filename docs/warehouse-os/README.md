@@ -20,13 +20,13 @@ staff member.
 | [`06-work-order-migration-path.md`](06-work-order-migration-path.md) | **Ruled.** The work order session — a titled wrapper around N assignments. Expand → code → contract, with the dangerous steps isolated |
 | [`07-configurability.md`](07-configurability.md) | **The configurability brief, fought** (2026-08-23) — modes vs tree states, "Spacesuit" snap grids settled by arithmetic, spacing, the beam configure button, rail mirroring, the shipped 15-verb AI contract, and the two prefs keys that finish it |
 | [`HANDOFF-continue.md`](HANDOFF-continue.md) | **Start here in a fresh session.** State of play, working method, open questions, the concurrent-session divergence |
-| [`LAWS.md`](LAWS.md) | **The design and architecture laws**, numbered and referenceable. Each carries its enforcement status — `DB` / `TYPE` / `TOOLING` / `PROTO` / `PROSE` |
-| [`HANDOFF-ux-ui.md`](HANDOFF-ux-ui.md) | The visual layer, and the argument behind every law |
+| [`LAWS.md`](LAWS.md) | **Empty on purpose (2026-08-24).** Numbered HUD/tile corpus wiped; rewrite from AI session-first only when a surface exists |
+| [`HANDOFF-ux-ui.md`](HANDOFF-ux-ui.md) | Historical visual notes. Not a live law index |
 | [`HANDOFF-ai-centre.md`](HANDOFF-ai-centre.md) | **The current rewrite prompt** (2026-08-23). The AI pinned centre as a SUNKEN feed — no tile, no backdrop — blocks of time instead of pages, the support-call scenario as the acceptance spec, draft blocks with a morphing commit, AI-proposed keybinds. Supersedes the FRAMING of HANDOFF-ai-first; its Phase 1 is done and stands |
-| [`HANDOFF-ai-first.md`](HANDOFF-ai-first.md) | The prior upgrade prompt — framing superseded by HANDOFF-ai-centre; still authoritative for its §1 audit, the paste correction, and the laws it cites |
+| [`HANDOFF-ai-first.md`](HANDOFF-ai-first.md) | The prior upgrade prompt — framing superseded by HANDOFF-ai-centre; still useful for its §1 audit and the paste correction |
 | [`HANDOFF-ux-fighting.md`](HANDOFF-ux-fighting.md) | **The UX/UI expert brief.** Paste into a fresh session — what the interface is, how the operator wants to be argued with, six worked fights, and the measurement snippets |
 | [`prototype/warehouse-os.html`](prototype/warehouse-os.html) | The clickable shell. Where rulings get discovered before they get written down |
-| [`HANDOFF-motion-sweep.md`](HANDOFF-motion-sweep.md) | **Executable.** Paste into a fast-model session — the mechanical half of law M1 in `src/` |
+| [`HANDOFF-motion-sweep.md`](HANDOFF-motion-sweep.md) | Motion sweep notes for `src/` — no longer bound to a numbered law table |
 
 ## The five pillars
 

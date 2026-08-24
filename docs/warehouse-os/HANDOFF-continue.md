@@ -12,8 +12,8 @@ You are continuing the **UX/UI design of the Cycle Forge Warehouse OS shell** in
 
 | File | What it is |
 |---|---|
-| [`docs/warehouse-os/LAWS.md`](LAWS.md) | **150 numbered laws in 18 sections, plus 9 open questions.** Each carries an enforcement status. This is the index — read it before proposing anything |
-| [`docs/warehouse-os/HANDOFF-ux-ui.md`](HANDOFF-ux-ui.md) | The argument behind every law. LAWS.md states; this explains |
+| [`docs/warehouse-os/LAWS.md`](LAWS.md) | **Wiped 2026-08-24.** Numbered corpus retired; do not treat historical handoffs as live law |
+| [`docs/warehouse-os/HANDOFF-ux-ui.md`](HANDOFF-ux-ui.md) | Historical visual notes only |
 | [`docs/warehouse-os/prototype/warehouse-os.html`](prototype/warehouse-os.html) | ~4,100 lines. The clickable shell — **the only file to edit** |
 
 The prototype is published at
@@ -29,7 +29,7 @@ The loop that has been working:
 
 1. **Fight the premise.** Find the category error, the conflated axis, the
    unstated assumption. Nearly every question this session contained one.
-2. **Read the actual code first.** Every strong argument in LAWS.md came from a
+2. **Read the actual code first.** Strong arguments come from a
    migration header, a schema constraint or a docblock — not from taste. The
    codebase argues for itself better than you will; go find where it does.
 3. **Concede fast and loudly when they are right.** They have been right about
@@ -71,7 +71,8 @@ keybinding matcher.
 
 ## Questions the operator has not answered
 
-`LAWS.md` § *Open — not yet law* has all nine. The two that block real work:
+Geometry questions still open in the tree (the numbered O-list was retired
+with the catalog). The two that block real work:
 
 - **O1** — the triage table needs ~720px, not the 520px `tableMinWidthPx`. At
   1600 the canvas is ~1504 wide, so `784 + 720` leaves zero room for a sash.
@@ -81,7 +82,8 @@ keybinding matcher.
 
 ## ⚠️ Another session is editing the same prototype
 
-Confirmed repeatedly. It has made **three rulings that contradict the laws**:
+Confirmed repeatedly. It has made **three rulings that contradict earlier
+shell notes**:
 
 | Their change | Contradicts |
 |---|---|
@@ -121,8 +123,8 @@ verify first that your local build still contains both sessions' markers.
 - **Never `git add -A`, never `git stash`, never commit unless asked.**
 - **Never delete `/01/**`, `/414/**`, `/l/**`, `/p/**`, `/s/**`, `/q/**`** —
   live GS1 resolvers printed on stickers already on boxes.
-- **Never add a test that `readFileSync`s a source file and regex-asserts it**
-  (LAWS.md **X1**). That pattern was deleted from this repo on purpose.
+- **Never add a test that `readFileSync`s a source file and regex-asserts it.**
+  That pattern was deleted from this repo on purpose.
 
 ## Also ready to run, untouched
 

@@ -24,9 +24,8 @@ like and how they feel.
 > nine places it contradicts this document, and the exact details still to design. Change
 > the prototype, look at it, then record the ruling here.
 
-> **The numbered laws live in [`LAWS.md`](LAWS.md).** This document is the
-> argument; that one is the index. When a section here settles something, it gets
-> a law number there, with an honest note on whether anything actually enforces it.
+> **The numbered law catalog was wiped 2026-08-24.** This file is historical
+> visual notes, not a live index. Do not add law numbers here.
 
 ## 0 · The feel
 
