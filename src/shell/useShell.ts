@@ -26,6 +26,8 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import type { WorkSessionPurpose } from '@/lib/sessions/types';
 import {
   closeTab as closeWorkspaceTab,
   focusTab as focusWorkspaceTab,
@@ -65,6 +67,7 @@ import {
   type RecentEntry,
   type ScanMode,
   type SessionBlock,
+  type SessionKind,
   type SessionState,
   type ShellPin,
   type ShellPrefs,
@@ -128,6 +131,32 @@ function lastBlockByRef(feed: readonly FeedEntry[], ref: string): SessionBlock |
     if (e.kind === 'block' && e.ref === ref) return e;
   }
   return null;
+}
+
+/** Scan benches keep their surface ref; task sessions are `session-<id>`. */
+function sessionBlockRef(
+  kind: SessionKind,
+  sessionId: number,
+  scanType?: string | null,
+  purposeKey?: string | null,
+): string {
+  if (kind === 'scan') return scanType || purposeKey || 'unbox';
+  return `session-${sessionId}`;
+}
+
+/**
+ * Reconstruct feed intervals from Σ active ms so the clock matches B11
+ * (parked time is not work) without shipping every interval row to the client.
+ */
+function intervalsFromActiveMs(
+  startedAtMs: number,
+  activeMs: number,
+  running: boolean,
+  now: number,
+): readonly BlockInterval[] {
+  const ms = Math.max(0, activeMs);
+  if (running) return [{ start: now - ms }];
+  return [{ start: startedAtMs, end: startedAtMs + ms }];
 }
 
 /* ── comfort prefs → CSS custom properties ───────────────────────────── */
@@ -298,11 +327,125 @@ export function useShell() {
   const [feed, setFeed] = useState<readonly FeedEntry[]>([]);
   const feedSeq = useRef(0);
   const blockSeq = useRef(0);
+  const [composerMode, setComposerMode] = useState<null | 'start' | 'end'>(null);
+  const [purposes, setPurposes] = useState<readonly WorkSessionPurpose[]>([]);
+  const [composerBusy, setComposerBusy] = useState(false);
+  const { user, isLoaded } = useAuth();
+  const myStaffId = user?.staffId ?? null;
+  const feedRef = useRef<readonly FeedEntry[]>([]);
 
   const armedBlock = useMemo(
     () => feed.find((e): e is SessionBlock => e.kind === 'block' && e.state === 'armed') ?? null,
     [feed],
   );
+  feedRef.current = feed;
+
+  /* Today's org timeline — staff can see each other's blocks. Fail open if
+     the purpose migration is not applied yet (404/500). */
+  useEffect(() => {
+    if (!isLoaded) return;
+    let cancelled = false;
+    const from = new Date();
+    from.setHours(0, 0, 0, 0);
+    const to = new Date(from);
+    to.setDate(to.getDate() + 1);
+    void fetch(
+      `/api/sessions/summary?from=${encodeURIComponent(from.toISOString())}&to=${encodeURIComponent(to.toISOString())}`,
+    )
+      .then((r) => (r.ok ? r.json() : null))
+      .then(
+        (body: {
+          sessions?: ReadonlyArray<{
+            session: {
+              id: number;
+              kind: SessionKind;
+              scanType: string | null;
+              status: 'open' | 'parked' | 'ended';
+              armed: boolean;
+              title: string | null;
+              purposeId: number | null;
+              notes: string | null;
+              wrapUp: string | null;
+              staffId: number | null;
+              startedAt: string;
+            };
+            purpose: { id: number; key: string; label: string } | null;
+            staffName: string | null;
+            metric: { active: { ms: number } };
+          }>;
+        } | null) => {
+          if (cancelled || !body?.sessions?.length) return;
+          const now = Date.now();
+          const mineOpen = body.sessions.filter(
+            (row) =>
+              row.session.status === 'open' &&
+              (myStaffId == null || row.session.staffId === myStaffId),
+          );
+          const armedScan = mineOpen.find((row) => row.session.kind === 'scan' && row.session.armed);
+          const armedId = (armedScan ?? mineOpen[mineOpen.length - 1])?.session.id ?? null;
+          const mapped: SessionBlock[] = body.sessions.map((row) => {
+            const mine = myStaffId == null || row.session.staffId === myStaffId;
+            const isArmed = row.session.id === armedId && row.session.status === 'open';
+            const state: SessionBlock['state'] =
+              row.session.status === 'ended' ? 'ended' : isArmed ? 'armed' : 'parked';
+            return {
+              kind: 'block',
+              id: `ws${row.session.id}`,
+              ref: sessionBlockRef(
+                row.session.kind,
+                row.session.id,
+                row.session.scanType,
+                row.purpose?.key,
+              ),
+              title: row.session.title || row.purpose?.label || `Session ${row.session.id}`,
+              sessionKind: row.session.kind,
+              state,
+              intervals: intervalsFromActiveMs(
+                Date.parse(row.session.startedAt),
+                row.metric.active.ms,
+                isArmed,
+                now,
+              ),
+              items: [],
+              collapsed: state !== 'armed',
+              workSessionId: row.session.id,
+              purposeLabel: row.purpose?.label,
+              purposeId: row.session.purposeId ?? undefined,
+              notes: row.session.notes ?? undefined,
+              wrapUp: row.session.wrapUp ?? undefined,
+              staffName: row.staffName ?? undefined,
+              mine,
+            };
+          });
+          const already = feedRef.current.some(
+            (e) => e.kind === 'block' && e.workSessionId != null,
+          );
+          if (already) return;
+          const protoArmed = feedRef.current.some((e) => e.kind === 'block' && e.state === 'armed');
+          const incoming = protoArmed
+            ? mapped.map((b) =>
+                b.state === 'armed' ? { ...b, state: 'parked' as const, collapsed: true } : b,
+              )
+            : mapped;
+          setFeed((prev) => {
+            if (prev.some((e) => e.kind === 'block' && e.workSessionId != null)) return prev;
+            return [...incoming, ...prev];
+          });
+          const mineArmed = protoArmed ? null : incoming.find((b) => b.state === 'armed' && b.mine);
+          if (mineArmed) {
+            setSessionName(mineArmed.title);
+            setSessionState('armed');
+            syncElapsed(blockElapsedSeconds(mineArmed.intervals, now), true);
+          }
+        },
+      )
+      .catch(() => {
+        /* fail open — composer still works against a live API */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoaded, myStaffId]);
 
   /** A line item lands INSIDE the armed block when there is one, and at the
       chronology's top level when nothing is armed. */
@@ -335,7 +478,7 @@ export function useShell() {
    */
   const parkArmedBlock = useCallback((): void => {
     const block = armedBlock;
-    if (!block) return;
+    if (!block || block.mine === false) return;
     const at = Date.now();
     setFeed((prev) =>
       prev.map((e) =>
@@ -347,6 +490,13 @@ export function useShell() {
     for (const tile of tiles) if (tile.ref === block.ref) closeWorkspaceTab(tile.id);
     syncElapsed(blockElapsedSeconds(closeIntervals(block.intervals, at), at), false);
     setSessionState('parked');
+    if (block.workSessionId) {
+      void fetch(`/api/sessions/${block.workSessionId}`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ action: 'park' }),
+      });
+    }
   }, [armedBlock, tiles]);
 
   /**
@@ -358,6 +508,7 @@ export function useShell() {
     (ref: string) => {
       const block = lastBlockByRef(feed, ref);
       if (!block || block.state === 'ended') return;
+      if (block.mine === false) return;
       if (block.state === 'armed') {
         const open = tiles.find((t) => t.ref === ref);
         if (open) focusWorkspaceTab(open.id);
@@ -377,20 +528,29 @@ export function useShell() {
             : e,
         ),
       );
-      openWorkspaceTab({
-        kind: 'session',
-        ref,
-        params: {
-          title: block.title,
-          color: PALETTE[tiles.length % PALETTE.length],
-          icon: 'box',
-          sessionKind: block.sessionKind,
-        },
-      });
+      if (block.sessionKind === 'scan') {
+        openWorkspaceTab({
+          kind: 'session',
+          ref,
+          params: {
+            title: block.title,
+            color: PALETTE[tiles.length % PALETTE.length],
+            icon: 'box',
+            sessionKind: block.sessionKind,
+          },
+        });
+      }
       setSessionName(block.title);
       setSessionState('armed');
       setCurrentStage(Math.max(0, PIPELINE.indexOf(ref)));
       syncElapsed(blockElapsedSeconds(block.intervals, at), true);
+      if (block.workSessionId) {
+        void fetch(`/api/sessions/${block.workSessionId}`, {
+          method: 'PATCH',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ action: 'resume' }),
+        });
+      }
     },
     [feed, parkArmedBlock, tiles],
   );
@@ -466,40 +626,153 @@ export function useShell() {
   );
 
   /**
-   * ⌘N — CUT a new session block (S12). The armed block parks — losslessly,
-   * one keystroke, no dialog (S2/S3/S4) — and a fresh block opens armed at
-   * the tail of the chronology. The operator's words are "new session", not
-   * "open the launcher": the launcher keeps ⌘K (T19, R2).
+   * ⌘N — CUT a new session block (S12). Parks the current block losslessly
+   * and opens the purpose composer. Does not mint a fake `Session N` scan.
    */
   const cutSession = useCallback(() => {
     parkArmedBlock();
-    const n = ++blockSeq.current;
-    const ref = `session-${n}`;
-    const title = `Session ${n}`;
-    const at = Date.now();
-    setFeed((prev) => [
-      ...prev,
-      {
-        kind: 'block',
-        id: `b${n}`,
-        ref,
-        title,
-        sessionKind: 'scan',
-        state: 'armed',
-        intervals: [{ start: at }],
-        items: [],
-        collapsed: false,
-      },
-    ]);
-    openWorkspaceTab({
-      kind: 'session',
-      ref,
-      params: { title, color: PALETTE[tiles.length % PALETTE.length], icon: 'box', sessionKind: 'scan' },
-    });
-    setSessionName(title);
-    setSessionState('armed');
-    syncElapsed(0, true);
-  }, [parkArmedBlock, tiles]);
+    setComposerMode('start');
+    void fetch('/api/sessions/purposes')
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((body: { purposes?: WorkSessionPurpose[] }) => setPurposes(body.purposes ?? []))
+      .catch(() => setPurposes([]));
+  }, [parkArmedBlock]);
+
+  const closeSessionComposer = useCallback(() => {
+    setComposerMode(null);
+    setComposerBusy(false);
+  }, []);
+
+  const confirmStart = useCallback(
+    async (input: { title: string; purposeId?: number; purposeLabel?: string; notes: string }) => {
+      setComposerBusy(true);
+      try {
+        const res = await fetch('/api/sessions', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            title: input.title,
+            purposeId: input.purposeId,
+            purposeLabel: input.purposeLabel,
+            notes: input.notes || undefined,
+            parkSessionId: armedBlock?.workSessionId,
+          }),
+        });
+        const body = (await res.json().catch(() => null)) as
+          | {
+              session?: {
+                id: number;
+                kind: SessionKind;
+                scanType: string | null;
+                title: string | null;
+                purposeId: number | null;
+                notes: string | null;
+                armed: boolean;
+              };
+              purpose?: { id: number; key: string; label: string };
+              error?: string;
+            }
+          | null;
+        if (!res.ok || !body?.session) {
+          narrate(`Could not start session${body?.error ? ` — ${body.error}` : ''}.`);
+          setComposerBusy(false);
+          return;
+        }
+        const n = ++blockSeq.current;
+        const session = body.session;
+        const purposeLabel = body.purpose?.label;
+        const kind = session.kind;
+        const ref = sessionBlockRef(kind, session.id, session.scanType, body.purpose?.key);
+        const title = session.title ?? input.title;
+        const at = Date.now();
+        setFeed((prev) => [
+          ...prev.map((e) =>
+            e.kind === 'block' && e.state === 'armed'
+              ? { ...e, state: 'parked' as const, collapsed: true, intervals: closeIntervals(e.intervals, at) }
+              : e,
+          ),
+          {
+            kind: 'block',
+            id: `b${n}`,
+            ref,
+            title,
+            sessionKind: kind,
+            state: 'armed',
+            intervals: [{ start: at }],
+            items: [],
+            collapsed: false,
+            workSessionId: session.id,
+            purposeLabel,
+            purposeId: session.purposeId ?? undefined,
+            notes: session.notes ?? input.notes,
+            mine: true,
+          },
+        ]);
+        if (kind === 'scan') {
+          openWorkspaceTab({
+            kind: 'session',
+            ref,
+            params: { title, color: PALETTE[tiles.length % PALETTE.length], icon: 'box', sessionKind: kind },
+          });
+        }
+        setSessionName(title);
+        setSessionState('armed');
+        syncElapsed(0, true);
+        setComposerMode(null);
+      } catch {
+        narrate('Could not start session.');
+      } finally {
+        setComposerBusy(false);
+      }
+    },
+    [armedBlock?.workSessionId, narrate, tiles.length],
+  );
+
+  const confirmEnd = useCallback(
+    async (input: { wrapUp: string }) => {
+      const block = armedBlock;
+      if (!block) {
+        setComposerMode(null);
+        return;
+      }
+      setComposerBusy(true);
+      const at = Date.now();
+      if (block.workSessionId) {
+        try {
+          await fetch(`/api/sessions/${block.workSessionId}`, {
+            method: 'PATCH',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ action: 'end', wrapUp: input.wrapUp || undefined, wrapUpSource: 'staff' }),
+          });
+        } catch {
+          /* local end still stands — the row may already be ended */
+        }
+      }
+      setFeed((prev) =>
+        prev.map((e) =>
+          e.kind === 'block' && e.id === block.id
+            ? {
+                ...e,
+                state: 'ended' as const,
+                collapsed: true,
+                wrapUp: input.wrapUp || e.wrapUp,
+                intervals: closeIntervals(e.intervals, at),
+              }
+            : e,
+        ),
+      );
+      syncElapsed(blockElapsedSeconds(closeIntervals(block.intervals, at), at), false);
+      setSessionState('ended');
+      setComposerMode(null);
+      setComposerBusy(false);
+    },
+    [armedBlock],
+  );
+
+  const openEndComposer = useCallback(() => {
+    if (!armedBlock || armedBlock.mine === false) return;
+    setComposerMode('end');
+  }, [armedBlock]);
 
   const focusTile = useCallback((id: string) => {
     focusWorkspaceTab(id);
@@ -594,24 +867,13 @@ export function useShell() {
   /** End seals the block: interval closed, collapsed to one line, no recents
       row — an ended session is history, not a resumable (S5). */
   const endSession = useCallback(() => {
-    const block = armedBlock;
-    if (block) {
-      const at = Date.now();
-      setFeed((prev) =>
-        prev.map((e) =>
-          e.kind === 'block' && e.id === block.id
-            ? { ...e, state: 'ended' as const, collapsed: true, intervals: closeIntervals(e.intervals, at) }
-            : e,
-        ),
-      );
-      syncElapsed(blockElapsedSeconds(closeIntervals(block.intervals, at), at), false);
+    if (armedBlock && armedBlock.mine !== false) {
+      setComposerMode('end');
+      return;
     }
     setSessionState('ended');
-    for (const tile of tiles) {
-      if (tile.type === 'session') closeWorkspaceTab(tile.id);
-    }
     setSessionPopoverOpen(false);
-  }, [armedBlock, tiles]);
+  }, [armedBlock]);
 
   /* ── tools ─────────────────────────────────────────────────────────── */
 
@@ -847,6 +1109,13 @@ export function useShell() {
     parkArmedBlock,
     toggleBlockCollapsed,
     collapseAllBlocks,
+    composerMode,
+    purposes,
+    composerBusy,
+    closeSessionComposer,
+    confirmStart,
+    confirmEnd,
+    openEndComposer,
 
     /* input truth */
     inputTruth,

@@ -81,6 +81,36 @@ export interface WorkSession {
   startedAt: string;
   endedAt: string | null;
   state: Record<string, unknown>;
+  /**
+   * What the operator calls THIS block. Data, renameable, never an enum (S10,
+   * K12). Seeded from the purpose label on system starts; required on custom
+   * starts. Reporting must never GROUP BY this — A2.
+   */
+  title: string | null;
+  /** L1 bucket. NULL = legacy row not yet backfilled. */
+  purposeId: number | null;
+  /** Running notes during the block. Not a clock. */
+  notes: string | null;
+  /** End-of-block recap (from → to, why). Duration is still Σ active. */
+  wrapUp: string | null;
+  /** Who wrote `wrapUp`. Physics, not vocabulary. */
+  wrapUpSource: WrapUpSource | null;
+}
+
+export const WRAP_UP_SOURCES = ['staff', 'assistant'] as const;
+export type WrapUpSource = (typeof WRAP_UP_SOURCES)[number];
+
+/** One `work_session_purposes` row, camel-cased. */
+export interface WorkSessionPurpose {
+  id: number;
+  organizationId: string;
+  key: string;
+  label: string;
+  defaultSurfaceKey: string | null;
+  defaultKind: SessionKind;
+  isSystem: boolean;
+  sortOrder: number;
+  archivedAt: string | null;
 }
 
 /**
