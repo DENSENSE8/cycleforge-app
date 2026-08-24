@@ -48,6 +48,7 @@ import {
   PHOTO_POLICY_ERROR_CODE,
   PHOTO_POLICY_OVERRIDE_BODY_KEY,
 } from './photo-policy-override-wire';
+import { NO_SESSION } from '@/lib/sessions/attribution';
 
 /**
  * The wire tokens now live in the dependency-free `./photo-policy-override-wire`
@@ -185,6 +186,7 @@ export async function recordPhotoPolicyOverride(
   const exceptionIds: number[] = [];
   for (const receivingLineId of lineIds) {
     const { id } = await deps.recordException(orgId, {
+      session: NO_SESSION,
       receivingLineId,
       receivingId: input.receivingId ?? null,
       exceptionCode: input.code,

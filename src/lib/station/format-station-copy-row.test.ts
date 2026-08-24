@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import type { TechRecord } from '@/hooks/useTechLogs';
-import type { PackerRecord } from '@/hooks/usePackerLogs';
+import type { TechRecord } from '@/lib/station/useTechLogs';
+import type { PackerRecord } from '@/lib/station/usePackerLogs';
 import {
   formatTechCopyRow,
   formatPackerCopyRow,
@@ -13,8 +13,8 @@ import {
   BINS_COPY_HEADER,
   CATALOG_COPY_HEADER,
 } from './format-station-copy-row';
-import type { BinsOverviewRow } from '@/hooks/useBinsOverview';
-import type { CatalogListRow } from '@/components/products/catalog/types';
+import type { BinsOverviewRow } from '@/lib/station/useBinsOverview';
+import type { CatalogListRow } from '@/lib/products/catalog-types';
 
 test('formatTechCopyRow emits tab-separated, whitespace-normalized cells', () => {
   const rec = {

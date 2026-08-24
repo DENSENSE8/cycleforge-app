@@ -1,4 +1,4 @@
-import type { WorkOrderRow } from '@/components/work-orders/types';
+import type { WorkOrderRow } from '@/lib/work-orders/types';
 import { fetchAllWorkOrderQueues } from '@/lib/work-orders/fetch-all-queues';
 import { compareWorkOrderRows, topWorkOrderForStaff } from '@/lib/work-orders/ranking';
 import { listSupportFollowupsForStaff } from '@/lib/inbox/support-followups-queries';

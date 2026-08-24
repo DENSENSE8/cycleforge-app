@@ -56,8 +56,8 @@ export function gateInProfile(gate, profile) {
  * schema drift + model parity, integration manifest, doc catalog) and their
  * ratchet baselines were DELETED on 2026-08-20 at the operator's instruction —
  * they were the bulk of the verify wall clock. Nothing enforces those
- * invariants automatically any more; the rules in AGENTS.md that named them are
- * now review-only.
+ * invariants automatically any more; those rules were review-only and the
+ * doctrine was deleted with the Warehouse OS refactor.
  *
  * @type {VerifyGate[]}
  */

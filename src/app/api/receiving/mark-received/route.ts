@@ -52,6 +52,7 @@ import { observePlacementParity } from '@/lib/workflow/placement-parity';
 import { resolveSitePlacementBin } from '@/lib/workflow/placement-policy';
 import type { PlacementResolverDeps } from '@/lib/workflow/placement';
 import { receivingDefaultPutawayPolicy } from '@/lib/receiving/putaway-placement';
+import { NO_SESSION } from '@/lib/sessions/attribution';
 
 // Default putaway bin (cached per Function instance). When the receive
 // caller doesn't supply destination_bin_id, mark-received falls back to
@@ -248,6 +249,7 @@ async function applyInventoryV2Effects(input: {
         // the receive succeeds exactly as before; the RECEIVED/PUTAWAY events
         // below still record the intake.
         const reset = await transition({
+          session: NO_SESSION,
           unitId: serialUnitId,
           to: 'RECEIVED',
           eventType: 'ADJUSTED',
@@ -381,6 +383,7 @@ async function applyInventoryV2Effects(input: {
         // (unit not RECEIVED — e.g. an already-stocked re-scan) leaves the unit
         // as-is rather than force-stocking it.
         const t = await transition({
+          session: NO_SESSION,
           unitId: serialUnitId,
           to: 'STOCKED',
           eventType: 'PUTAWAY',
@@ -805,6 +808,7 @@ export const POST = withAuth(async (request, ctx) => {
     if (qaFailCode) {
       try {
         await recordReceivingException(ctx.organizationId as OrgId, {
+          session: NO_SESSION,
           receivingLineId,
           receivingId: beforeRow?.line_receiving_id ?? receivingId,
           exceptionCode: qaFailCode,

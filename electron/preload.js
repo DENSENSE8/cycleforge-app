@@ -5,10 +5,12 @@
  * is limited to Electron's own subset. `contextBridge` + `ipcRenderer` are
  * available, which is the whole reason `sandbox: false` was not needed.
  *
- * ONE global. Every entry maps to a named capability (N1–N5 in
- * docs/todo/electron-desktop-shell-PLAN.md). There is no filesystem, no
- * `require`, no generic `invoke`, and no `executeJavaScript` macro channel —
- * a renderer compromise cannot reach anything the main process did not name.
+ * ONE global. Every entry maps to a named capability (N1–N6). The filesystem
+ * arrived with N6 (operator ruling 2026-08-23, desktop-first pivot) and is
+ * scoped in MAIN to operator-opened workspace roots — there is still no
+ * `require`, no generic `invoke`, and no `executeJavaScript` macro channel:
+ * a renderer compromise cannot reach anything the main process did not name,
+ * and cannot reach a byte outside a folder the operator opened.
  *
  * The renderer must NOT read this global directly. Exactly one module names it:
  *   src/lib/desktop/desktop-host.ts
@@ -35,6 +37,18 @@ contextBridge.exposeInMainWorld('cycleForgeDesktop', {
 
   /** Open a URL in the OS browser (allowlisted http(s) only in main). */
   openExternal: (url) => ipcRenderer.invoke('cf:open-external', url),
+
+  /**
+   * Mirror the operator's keybindings to the shell so they fire without focus.
+   *
+   * The renderer's own keydown listener is dead behind a vendor WebContentsView,
+   * a print dialog, or any other app in front — which on a bench is most of the
+   * shift. Main re-registers these as `globalShortcut`s and injects the keystroke
+   * back into the page, the same way the scan hotkey already works.
+   *
+   * @param {ReadonlyArray<{ id: string, accelerator: string }>} list
+   */
+  setKeybindings: (list) => ipcRenderer.invoke('cf:set-keybindings', list),
 
   /**
    * N5 — open a partitioned VendorView (WebContentsView).
@@ -74,6 +88,28 @@ contextBridge.exposeInMainWorld('cycleForgeDesktop', {
     };
     ipcRenderer.on(channel, handler);
     return () => ipcRenderer.removeListener(channel, handler);
+  },
+
+  /**
+   * N6 — native file workspaces. Every call resolves
+   * `{ ok: true, ... } | { ok: false, error }`; paths outside an
+   * operator-opened root are refused in MAIN, structurally.
+   */
+  files: {
+    /** OS folder picker → registers a workspace root, returns its listing. */
+    openFolder: () => ipcRenderer.invoke('cf:files-open-folder'),
+    /** Roots currently open in this app instance. */
+    roots: () => ipcRenderer.invoke('cf:files-roots'),
+    /** One directory level: dirs first, then files. */
+    scan: (dir) => ipcRenderer.invoke('cf:files-scan', { dir }),
+    /** { ok, base64, size } — 64 MB ceiling. */
+    read: (p) => ipcRenderer.invoke('cf:files-read', { path: p }),
+    write: (p, base64) => ipcRenderer.invoke('cf:files-write', { path: p, base64 }),
+    mkdir: (p) => ipcRenderer.invoke('cf:files-mkdir', { path: p }),
+    /** Rename and move are one operation; cross-device falls back to copy+rm. */
+    move: (from, to) => ipcRenderer.invoke('cf:files-move', { from, to }),
+    /** Delete = OS trash. Recoverable, like every other D on this bench. */
+    trash: (p) => ipcRenderer.invoke('cf:files-trash', { path: p }),
   },
 
   /** Surfaced read-only in Settings → About. */

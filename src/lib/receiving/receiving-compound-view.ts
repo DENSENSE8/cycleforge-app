@@ -11,8 +11,8 @@ import {
   firstNote,
   type CompoundRowView,
   type CompoundStateTone,
-} from '@/components/tables/compound/compound-row-model';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+} from '@/lib/tables/compound-row-model';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 
 /**
  * Workflow status → the three-tone vocabulary.

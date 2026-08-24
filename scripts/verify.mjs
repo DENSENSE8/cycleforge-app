@@ -9,7 +9,7 @@
  *   "Green here ⇒ green in CI."  (full profile only)
  *
  * Wired into the pre-push hook (.githooks/pre-push) and named in the agent
- * rules (.cursor/rules/verify-before-done.mdc + AGENTS.md) so Cursor/Codex/etc.
+ * rules so Cursor/Codex/etc.
  * self-check before finishing.
  *
  *   npm run verify              # full gate — CI mirror; required before done / main
@@ -159,8 +159,7 @@ if (hardFail) {
     '\n' +
       c('31', 'verify FAILED') +
       hint +
-      'Compose named SoTs from AGENTS.md / sot-lookup; never raise a ratchet\n' +
-      'baseline to pass a gate.\n\n',
+      '\n',
   );
   process.exit(1);
 }

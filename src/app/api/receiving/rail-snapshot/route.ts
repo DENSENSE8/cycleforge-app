@@ -25,7 +25,7 @@ import {
   RAIL_SNAPSHOT_TTL_SECONDS,
   railSnapshotCacheKey,
 } from '@/lib/receiving/rail/rail-snapshot-cache';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 
 /** The client-composed feed identity (feedId:scope:staffFilter) — bounded charset. */
 const FEED_PARAM = z.string().min(1).max(200).regex(/^[A-Za-z0-9:_.-]+$/);

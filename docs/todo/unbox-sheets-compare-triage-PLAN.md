@@ -1,5 +1,17 @@
 # Unbox Sheets-class triage + TradingView compare — initiative handoff
 
+> **SUPERSEDED 2026-08-21 — the compare feature this plan builds no longer exists.**
+>
+> `unbox-compare-layout.ts`, `orders-compare-layout.ts`, `UnboxCompareHost` and
+> `OrdersCompareHost` were deleted (-1,556 LOC), and with them `?clayout=`,
+> `c0…c3` and the pane tables. Every phase below that mentions a pane, a
+> `clayout` value or a compare host describes code that is gone. The tiling job
+> moved to the workspace canvas — see
+> [`docs/warehouse-os/02-target-architecture.md`](../warehouse-os/02-target-architecture.md)
+> §1 and [`04-roadmap.md`](../warehouse-os/04-roadmap.md) Phase 6. Kept for the
+> LOCKED DECISIONS and the measurements, which are still the record; do not plan
+> new work from the phase map.
+
 **Status:** implementing · **Lane:** main
 **Plan:** Cursor plan `Unbox Sheets Triage` (do not re-litigate locked decisions).
 

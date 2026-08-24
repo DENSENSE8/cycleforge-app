@@ -21,8 +21,8 @@ import {
   PackageOpen,
   Truck,
   Unlink,
-} from '@/components/Icons';
-import type { IncomingDeliveryState, IncomingSummary } from '@/components/sidebar/receiving/incoming/incoming-summary-types';
+} from '@/lib/icons';
+import type { IncomingDeliveryState, IncomingSummary } from '@/lib/receiving/incoming-summary-types';
 
 type IncomingDeliveryStateFace = {
   state: IncomingDeliveryState;

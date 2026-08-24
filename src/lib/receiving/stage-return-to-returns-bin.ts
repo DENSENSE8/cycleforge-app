@@ -7,8 +7,8 @@
 import { toast } from '@/lib/toast';
 import { isReturnIntake } from '@/lib/receiving/triage-intake-kind';
 import { DEFAULT_RETURNS_TEST_BIN_BARCODE, returnsTestBinSymbol } from '@/lib/inventory/returns-test-bin-symbol';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
-import { dispatchLineUpdated } from '@/components/station/receiving-lines-table-helpers';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
+import { dispatchLineUpdated } from '@/lib/receiving/receiving-lines-table-helpers';
 
 type StageReturnResult =
   | 'staged'

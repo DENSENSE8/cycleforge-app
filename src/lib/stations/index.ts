@@ -1,22 +1,19 @@
 /**
  * Station builder registries — public surface (Operations Studio layer 2).
  *
- * Importing this module registers the builtin blocks, data sources and
- * actions as a side effect (same pattern as src/lib/workflow/index.ts), so
- * any consumer — the renderer, the palette, the /api/stations validator —
+ * Importing this module registers the builtin data sources and actions as a
+ * side effect (same pattern as src/lib/workflow/index.ts), so every consumer
  * sees one consistent registry set.
  *
- * Blocks/sources/actions are CODE (registered here, PR-reviewed); station
- * compositions are DATA (station_definitions rows, edited in the builder,
- * published without deploys). See docs/operations-studio/station-builder-ui-plan.md.
+ * The BLOCK registry and the slot-composition renderer were deleted 2026-08-22:
+ * slots carried no geometry and could not express a tile layout, and the whole
+ * path was flag-gated off in every deployment. Sources and actions survive
+ * because live code reads them.
  */
 
 import { registerBuiltinDataSources } from './data-sources';
 import { registerBuiltinActions } from './actions';
 import { registerBuiltinProcedures } from './procedure';
-import { registerChecklistBlock } from './blocks/checklist.block';
-import { registerScanBandBlock } from './blocks/scan-band.block';
-import { registerRailFeedBlock } from './blocks/rail-feed.block';
 
 let builtinsRegistered = false;
 export function registerStationBuiltins(): void {
@@ -25,15 +22,11 @@ export function registerStationBuiltins(): void {
   registerBuiltinDataSources();
   registerBuiltinActions();
   registerBuiltinProcedures();
-  registerChecklistBlock();
-  registerScanBandBlock();
-  registerRailFeedBlock();
 }
 
 // Side-effect registration on import — consumers just import and read.
 registerStationBuiltins();
 
-export { getBlock, listBlockMeta } from './blocks/registry';
 export { getDataSource, listDataSources, listDataSourceMeta } from './data-sources';
 export { getAction, listActionMeta, actionsForSource } from './actions';
 // The procedure registry is deliberately NOT re-exported here: its only
@@ -42,14 +35,12 @@ export { getAction, listActionMeta, actionsForSource } from './actions';
 // second, unused path to the same module in every station bundle.
 export * from './contract';
 
-// ─── Operator surfaces (Studio-driven operator surfaces refactor) ────────────
-// Surface keys/registry (capability declaration), the archetype decision, and
-// the legacy-vs-composed resolver. Surfaces are CODE (the closed set the app can
-// render); per-org compositions are DATA (station_definitions rows).
+// ─── Operator surfaces ───────────────────────────────────────────────────────
+// The closed surface registry + the archetype decision. This registry is the
+// seed of the Warehouse OS session-type registry — see docs/warehouse-os/.
 export * from './archetype';
 export * from './surface-keys';
 // surface-resolver is deliberately NOT re-exported: it imports tenancy/db
 // (server-only Neon driver), and this barrel is consumed by client station
 // surfaces — re-exporting it shipped the DB driver in every station bundle.
-// Server callers import '@/lib/stations/surface-resolver' directly
-// (src/app/api/surfaces/[key]/resolve/route.ts).
+// Server callers import '@/lib/stations/surface-resolver' directly.

@@ -6,7 +6,7 @@
  * disagree on what a staged carton looks like.
  */
 
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 
 export interface TriageDoneRow {
   id: number;

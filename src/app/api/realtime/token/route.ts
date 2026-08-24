@@ -23,9 +23,6 @@ import {
   getForgeRunsChannelName,
 } from '@/lib/realtime/channels';
 import { withAuth, type AuthContext } from '@/lib/auth/withAuth';
-import { deskKioskCapability } from '@/lib/realtime/kiosk-capability';
-import { listClaimedDeviceIds } from '@/lib/counter/session-store';
-import type { OrgId } from '@/lib/tenancy/constants';
 
 export const runtime = 'nodejs';
 
@@ -104,16 +101,6 @@ async function createTokenRequest(req: NextRequest, ctx: AuthContext) {
 
   if (aiSessionChannel) {
     capability[aiSessionChannel] = ['subscribe', 'publish'];
-  }
-
-  // Counter bridges for the tablets THIS staffer currently holds a live lease
-  // on (docs/todo/kiosk-desk-session-channel-PLAN.md P3). Resolved from the
-  // lease server-side — never `kiosk:*`, which would let anyone with
-  // dashboard.view watch every counter in the org, customer identity and
-  // signature traffic included. An expired lease drops out on the next mint.
-  if (ctx.permissions.has('walk_in.view')) {
-    const claimed = await listClaimedDeviceIds(orgId as OrgId, staffId);
-    Object.assign(capability, deskKioskCapability(orgId, claimed));
   }
 
   // Agentic-loop master plan (Yjs over Ably) + ops-plans change feed.

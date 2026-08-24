@@ -1,19 +1,16 @@
 'use client';
 
 /**
- * Per-route error boundary for the main app tree.
+ * Per-route error boundary. Rewritten for the Warehouse-OS worktree
+ * (2026-08-23): the old card imported the deleted `@/design-system`
+ * primitives, which turned every route error into a module-not-found build
+ * error — a boundary that cannot compile protects nothing.
  *
- * Catches an uncaught render error in a *route segment's* page content and
- * renders a recoverable card in its place — the root layout (sidebar, header,
- * offline banner) stays mounted, so the user keeps their navigation and can
- * retry or move on. Layout-shell failures fall through to `global-error.tsx`
- * instead; the sidebar has its own `ErrorBoundary` in `ResponsiveLayout`.
+ * Dependency-free on purpose, styled inline from the shell's tokens: this is
+ * the component that must still render when everything else is on fire.
  */
 
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { AlertTriangle, RotateCcw } from '@/components/Icons';
-import { Button } from '@/design-system/primitives';
 
 export default function RouteError({
   error,
@@ -22,36 +19,60 @@ export default function RouteError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
-  const router = useRouter();
-
   useEffect(() => {
     console.error('[app/error] uncaught route render error:', error);
   }, [error]);
 
   return (
-    <div className="flex min-h-0 flex-1 items-center justify-center p-6">
-      <div className="w-full max-w-md rounded-xl border border-dashed border-rose-200 bg-rose-50 px-6 py-8 text-center">
-        <AlertTriangle className="mx-auto h-6 w-6 text-rose-500" />
-        <p className="mt-3 text-role-eyebrow uppercase tracking-widest text-rose-500">
-          Something broke
-        </p>
-        <h1 className="mt-1 text-base font-semibold text-text-default">This page hit an error</h1>
-        <p className="mx-auto mt-2 max-w-sm text-role-caption font-semibold text-text-soft">
+    <div
+      style={{
+        minHeight: '100dvh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'var(--surface-background)',
+        color: 'var(--text-primary)',
+        fontFamily: 'var(--font-sans)',
+        padding: '24px',
+      }}
+    >
+      <div
+        style={{
+          border: '1px solid var(--border-danger)',
+          background: 'var(--surfaceSubtle-danger)',
+          padding: '24px',
+          maxWidth: '420px',
+          textAlign: 'center',
+        }}
+      >
+        <p style={{ fontSize: '13px', fontWeight: 600 }}>This screen hit an error</p>
+        <p
+          style={{
+            fontSize: '12px',
+            color: 'var(--text-secondary)',
+            marginTop: '8px',
+            overflowWrap: 'anywhere',
+          }}
+        >
           {error?.message || 'Unexpected error.'}
-          {error?.digest ? (
-            <span className="block text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
-              ref: {error.digest}
-            </span>
-          ) : null}
+          {error?.digest ? ` · ref ${error.digest}` : ''}
         </p>
-        <div className="mt-5 flex items-center justify-center gap-2">
-          <Button variant="primary" icon={<RotateCcw />} onClick={() => reset()}>
-            Try again
-          </Button>
-          <Button variant="secondary" onClick={() => router.push('/')}>
-            Go home
-          </Button>
-        </div>
+        <button
+          type="button"
+          onClick={() => reset()}
+          style={{
+            marginTop: '16px',
+            padding: '5px 12px',
+            border: '1px solid var(--border-strong)',
+            background: 'var(--surface-container)',
+            color: 'var(--text-primary)',
+            fontSize: '12px',
+            fontWeight: 600,
+            cursor: 'pointer',
+          }}
+        >
+          Try again
+        </button>
       </div>
     </div>
   );

@@ -40,8 +40,20 @@ import {
 } from '@/lib/inventory/events';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { tapWorkflow, type WorkflowTapArgs, type WorkflowTapEvent } from './tap';
+import { NO_SESSION, type SessionAttribution } from '@/lib/sessions/attribution';
 
 export interface ApplyTransitionArgs {
+  /**
+   * WHICH WORK SESSION THIS HAPPENED INSIDE. Required, un-defaulted — this is a
+   * SHARED chokepoint called from many places, and a hard-coded `NO_SESSION`
+   * inside it would write unattributed rows on behalf of every caller, silently.
+   * That is the exact "shared resolver writes before the branch that was
+   * supposed to decide" failure this repo has already paid for once.
+   *
+   * Pass {@link NO_SESSION} when the caller genuinely has no session.
+   */
+  session: SessionAttribution;
+
   /** serial_units.id */
   unitId: number;
   /** Target lifecycle state (guarded against the unit's current state). */
@@ -126,6 +138,7 @@ export async function applyTransition(
   //    FOR UPDATE lock, the guard, and (when orgId is set) its own GUC-wrapped tx.
   const result = await deps.transition(
     {
+      session: args.session,
       unitId: args.unitId,
       to: args.to,
       eventType: args.eventType,
@@ -159,6 +172,7 @@ export async function applyTransition(
   if (args.expectedFrom === undefined && result.status === 409 && result.from === args.to) {
     const event = await deps.recordEvent(
       {
+        session: args.session,
         event_type: args.eventType,
         actor_staff_id: args.actorStaffId ?? null,
         station: args.station ?? null,

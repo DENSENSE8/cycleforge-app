@@ -4,11 +4,11 @@
  *
  * Everything here is scoped by `orgId` + the submitted body; NOTHING depends on
  * a staff actor. That is deliberate: the staff route (`/api/repair/submit`,
- * `withAuth` + `repair.intake`) and the headless kiosk route
- * (`/api/kiosk/repair/submit`, `withKioskAuth` device principal, no PIN) both
- * call this one helper, so the two surfaces can never drift. Extracting the
- * former inline route body into this helper is the route → domain-helper
- * pattern from `.claude/rules/backend-patterns.md`.
+ * `withAuth` + `repair.intake`) calls this one helper rather than inlining the
+ * work, so any future intake surface shares one code path. (A headless kiosk
+ * route was the second caller until the kiosk product was removed 2026-08-22.)
+ * Extracting the former inline route body into this helper is the route →
+ * domain-helper pattern from `.claude/rules/backend-patterns.md`.
  *
  * Validation failures throw `RepairIntakeValidationError` (callers map → 400);
  * any other throw is an internal error (callers map → 500).

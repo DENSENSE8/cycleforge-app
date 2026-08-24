@@ -55,13 +55,6 @@ import { IBM_Plex_Mono, IBM_Plex_Sans_Condensed, Inter, Overpass } from 'next/fo
 export const cfSans = Inter({
   subsets: ['latin'],
   weight: ['400', '500', '600'],
-  // Italic is loaded for ONE consumer: the kiosk attract wordmark, which paints
-  // a tenant's logotype (`src/app/kiosk/AttractLoop.tsx`). Without the real cut
-  // the browser synthesises an oblique at an engine-dependent angle, which is
-  // not good enough for a brand mark sitting on an always-on front-desk screen.
-  // This is NOT a licence for italic app chrome — hierarchy here still comes
-  // from colour and tracking, never from slant.
-  style: ['normal', 'italic'],
   variable: '--font-cf-sans',
   display: 'swap',
 });

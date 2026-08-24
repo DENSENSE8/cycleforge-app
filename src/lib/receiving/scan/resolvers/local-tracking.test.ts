@@ -7,7 +7,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { resolveLocalTracking } from './local-tracking';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 
 function row(p: Partial<ReceivingLineRow>): ReceivingLineRow {
   return {

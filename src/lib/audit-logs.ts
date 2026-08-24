@@ -77,7 +77,8 @@ async function createAuditLog(
 // dashboards key off these constants.
 
 export const AUDIT_ENTITY = {
-  COUNTER_SESSION: 'counter_session',
+  // Operator work session (work_sessions) — one bench occupancy from start to end.
+  WORK_SESSION: 'work_session',
   PO: 'purchase_order',
   RECEIVING: 'receiving',
   RECEIVING_LINE: 'receiving_line',
@@ -100,8 +101,6 @@ export const AUDIT_ENTITY = {
   ORDERS_EXCEPTION: 'orders_exception',
   PACKER_LOG: 'PACKER_LOG',
   STAFF: 'staff',
-  // Enrolled customer-facing kiosk tablet (device principal — kiosk_devices).
-  KIOSK_DEVICE: 'kiosk_device',
   PHOTO: 'photo',
   PHOTO_FOLDER: 'photo_folder',
   PHOTO_IMAGE_TYPE: 'photo_image_type',
@@ -181,19 +180,13 @@ export const AUDIT_ENTITY = {
 } as const;
 
 export const AUDIT_ACTION = {
-  // Kiosk device principal (/kiosk — FOH/BOH surface split doc 06)
-  KIOSK_ENROLLED: 'kiosk.enrolled',   // manager minted a pairing code for a new tablet
-  KIOSK_PAIRED:   'kiosk.paired',     // a tablet exchanged its code for a device token
-  KIOSK_REVOKED:  'kiosk.revoked',    // a device was revoked (token dies server-side)
-  KIOSK_TERMINAL_PAIRED: 'kiosk.terminal_paired', // a Square Terminal was paired to / cleared from a lane
-  KIOSK_INTAKE:   'kiosk.intake',     // an intake was created from the kiosk device principal
-  KIOSK_PICKUP_COLLECT: 'kiosk.pickup_collect', // customer collected a ready repair via order pickup
-  // Counter session (the shared desk↔tablet cart). Only the MONEY-moving edits
-  // are audited: a serial correction is not an audit event, a price override is.
-  COUNTER_LINE_PRICE_OVERRIDE: 'counter_session.line.price_override',
-  COUNTER_LINE_VOID:           'counter_session.line.void',
-  COUNTER_SESSION_SUBMIT:      'counter_session.submit',
-  COUNTER_TERMINAL_CHECKOUT:   'counter_session.terminal_checkout',
+  // Operator work session lifecycle (work_sessions). `arm` is the scan-ownership
+  // claim; park/resume bracket a suspension; end is terminal.
+  WORK_SESSION_START:  'work_session.start',
+  WORK_SESSION_ARM:    'work_session.arm',
+  WORK_SESSION_PARK:   'work_session.park',
+  WORK_SESSION_RESUME: 'work_session.resume',
+  WORK_SESSION_END:    'work_session.end',
   // PO / receiving
   PO_RECEIVE:                'po.receive',
   PO_RECEIVE_REVERSE:        'po.receive.reverse',

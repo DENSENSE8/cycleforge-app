@@ -1,6 +1,6 @@
 /**
  * Scan-focus hotkey — a tiny framework-agnostic store shared by EVERY
- * StationScanBar across the app.
+ * ScanBar across the app.
  *
  * Responsibilities:
  *   1. Hold the current focus binding (any non-reserved key; default "Insert").
@@ -26,23 +26,50 @@ import {
   isBindableFocusScanHotkey,
 } from '@/lib/schemas/staff-preferences';
 
-const STORAGE_KEY = 'scan:focus-hotkey';
+/**
+ * localStorage namespace for the device mirror. Scoped per (org, staff) by
+ * {@link setScanHotkeyIdentity} — the bare prefix is never a key on its own.
+ *
+ * It WAS a bare `'scan:focus-hotkey'`, and on this floor that is a leak rather
+ * than a nicety. A shared terminal is the normal case here: staffer A binds
+ * ScrollLock, signs out, staffer B signs in, and between page load and the
+ * prefs GET resolving, B's benches are listening on A's reclaim key. The server
+ * value does win once `hydrateHotkey` lands, so it was a window rather than a
+ * permanent swap — but it is the same `cf.quickAccess` hazard the workspace and
+ * keybinding mirrors are both keyed to avoid, and those two set the house shape
+ * (`${prefix}:${orgId}:${staffId}`).
+ */
+const STORAGE_PREFIX = 'scan:focus-hotkey';
 
 function isBrowser(): boolean {
   return typeof window !== 'undefined';
 }
 
+/** Whose hotkey this tab is holding. Null until the session identifies. */
+let identity: string | null = null;
+
+function storageKey(): string | null {
+  return identity ? `${STORAGE_PREFIX}:${identity}` : null;
+}
+
 function readStored(): string {
-  if (!isBrowser()) return DEFAULT_FOCUS_SCAN_HOTKEY;
+  const key = storageKey();
+  if (!isBrowser() || !key) return DEFAULT_FOCUS_SCAN_HOTKEY;
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
+    const raw = window.localStorage.getItem(key);
     return raw && isBindableFocusScanHotkey(raw) ? raw : DEFAULT_FOCUS_SCAN_HOTKEY;
   } catch {
     return DEFAULT_FOCUS_SCAN_HOTKEY;
   }
 }
 
-let hotkey = readStored();
+/*
+ * Starts at the DEFAULT rather than at a stored value, because at module-eval
+ * time nobody has signed in yet and there is no honest per-staff answer to
+ * read. The mirror is adopted a moment later by {@link setScanHotkeyIdentity},
+ * which is the first point at which "whose hotkey?" has an answer.
+ */
+let hotkey: string = DEFAULT_FOCUS_SCAN_HOTKEY;
 const listeners = new Set<() => void>();
 
 type ScanBarTarget = {
@@ -74,12 +101,36 @@ function emit(): void {
 }
 
 function writeStored(key: string): void {
-  if (!isBrowser()) return;
+  const storage = storageKey();
+  // No identity, no write. An unscoped key is exactly what the next staffer on
+  // this terminal would read, so declining to write it is the fix; the value is
+  // still live in memory for this session and still PUT to the server.
+  if (!isBrowser() || !storage) return;
   try {
-    window.localStorage.setItem(STORAGE_KEY, key);
+    window.localStorage.setItem(storage, key);
   } catch {
     /* storage blocked — store still works in-memory for the session */
   }
+}
+
+/**
+ * Name whose hotkey this tab holds, and adopt their device mirror.
+ *
+ * Called by `ScanHotkeySync` as soon as the verified session resolves, and
+ * again with `null` on sign-out. Signing out resets to the default rather than
+ * leaving the previous staffer's binding in memory — the mirror keeps their
+ * value under their own key, so signing back in restores it.
+ */
+export function setScanHotkeyIdentity(
+  next: { orgId: string; staffId: string | number } | null,
+): void {
+  const token = next ? `${next.orgId}:${next.staffId}` : null;
+  if (token === identity) return;
+  identity = token;
+  const adopted = readStored();
+  if (adopted === hotkey) return;
+  hotkey = adopted;
+  emit();
 }
 
 export function getHotkey(): string {

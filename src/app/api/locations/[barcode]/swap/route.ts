@@ -23,6 +23,7 @@ import type { AnonymousAuthContext } from '@/lib/auth/withAuth';
 import { getCurrentUserBySid } from '@/lib/auth/current-user';
 import { readSessionSid } from '@/lib/auth/session';
 import { DOGFOOD_ORG_ID, type OrgId } from '@/lib/tenancy/constants';
+import { NO_SESSION } from '@/lib/sessions/attribution';
 
 const ROUTE_LOCATION_SWAP = 'locations.barcode.swap';
 
@@ -189,6 +190,7 @@ export async function POST(
     try {
       await withTenantTransaction(idempotencyOrgId, (client) =>
         recordInventoryEvent({
+          session: NO_SESSION,
           event_type: 'MOVED',
           actor_staff_id: staffId,
           station: 'MOBILE',

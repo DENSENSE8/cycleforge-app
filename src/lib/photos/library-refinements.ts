@@ -1,4 +1,4 @@
-import type { FilterRefinement } from '@/design-system/components/FilterRefinementBar';
+import type { FilterRefinement } from '@/lib/design/filter-refinement';
 import {
   applyDatePreset,
   countActivePhotoLibraryFilters,

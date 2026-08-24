@@ -1,0 +1,2258 @@
+/* ================================================================
+   WAREHOUSE OS — SHELL CSS
+   Ported from docs/warehouse-os/prototype/warehouse-os.html
+   (lines 195–1688 of the prototype's <style> block), verbatim except
+   for the notes marked PORT: below.
+
+   PORT NOTES — the only intentional deviations from the prototype:
+     · `html, body` base rules moved to app/globals.css, which owns the
+       document; everything here is scoped to the shell's own classes so
+       the surviving chromeless routes (signin / invite / offline) are
+       not restyled by the window manager's stylesheet.
+     · `.wos` uses 100dvh, not 100vh — a mounted tablet's URL bar makes
+       100vh taller than the visual viewport and clips the bottom rail.
+     · Every hard-coded inline style the prototype wrote into a
+       `innerHTML` string became a class here; nothing was restyled.
+
+   Tokens: ./tokens.css. Nothing in this file may declare a colour, a
+   radius or a geometry transition of its own.
+   ================================================================ */
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  /* LAW 1, enforced. Every element is square unless it opts in by
+     literally naming --r-hud, and only the canvas frame does. */
+  *, *::before, *::after { border-radius: var(--r-none); }
+
+  /* PORT: the `html, body` base rules live in app/globals.css, which owns
+     the document. See the header note. */
+
+  /* One square focus ring, inset so it never nudges layout. */
+  :focus-visible {
+    outline: 2px solid var(--border-accent);
+    outline-offset: -2px;
+  }
+
+  .wos {
+    display: flex;
+    flex-direction: column;
+    /* PORT: dvh, not vh — a mounted tablet's URL bar makes 100vh taller
+       than the visual viewport and clips the bottom of both rails. */
+    height: 100dvh;
+    width: 100vw;
+    overflow: hidden;
+  }
+
+  /* ===== HEADER — the beam ==========================================
+     Three parts only: corner cluster · context line · overflow.
+     Pairing and the timers are TOOLS and live in the right rail; they
+     are not header chrome, because the beam reports identity and never
+     verbs. ================================================================ */
+  .wos-header {
+    height: var(--header-height);
+    background: var(--surface-containerLowest);
+    border-bottom: 1px solid var(--border-strong);
+    display: flex;
+    align-items: center;
+    padding: 0 var(--sp-1);
+    gap: var(--sp-1);
+    flex-shrink: 0;
+    z-index: var(--z-header);
+    position: relative;
+  }
+
+  /* --- identity pin (Linear / Vercel) — first thing on the beam --- */
+  .identity-slot {
+    position: relative;
+    display: flex;
+    align-items: stretch;
+    height: var(--control-h);
+    flex-shrink: 0;
+    z-index: 2;
+  }
+
+  .identity-face {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    max-width: 220px;
+    padding: 0 var(--sp-2) 0 var(--sp-1);
+    border: 1px solid var(--border-strong);
+    background: var(--surface-containerLow);
+    color: var(--text-primary);
+    cursor: pointer;
+    font: inherit;
+    transition: background-color var(--t-tint), color var(--t-tint);
+  }
+
+  .identity-face:hover,
+  .identity-face.open {
+    background: var(--surface-container);
+  }
+
+  .identity-mark {
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    background: var(--text-primary);
+    color: var(--text-inverse);
+    font-family: var(--font-condensed);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+  }
+
+  .identity-mark.sm {
+    width: 16px;
+    height: 16px;
+    font-size: 8px;
+  }
+
+  .identity-copy {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    min-width: 0;
+    line-height: 1.15;
+  }
+
+  .identity-name {
+    max-width: 148px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: var(--sz-xs);
+    font-weight: 600;
+  }
+
+  .identity-org {
+    max-width: 148px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: var(--font-condensed);
+    font-size: var(--sz-technical-label);
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .identity-chevron {
+    display: flex;
+    color: var(--text-muted);
+    flex-shrink: 0;
+  }
+
+  .identity-face.open .identity-chevron { color: var(--text-primary); }
+
+  .identity-menu {
+    position: absolute;
+    top: calc(100% + 1px);
+    left: 0;
+    width: 248px;
+    background: var(--surface-containerLowest);
+    border: 1px solid var(--border-hud);
+    z-index: var(--z-dropdown);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .identity-menu-header {
+    padding: var(--sp-2) var(--sp-3);
+    border-bottom: 1px solid var(--border-strong);
+    background: var(--surface-containerLow);
+  }
+
+  .identity-menu-header-row {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    font-family: var(--font-condensed);
+    font-size: var(--sz-technical-label);
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+  }
+
+  .identity-menu-org {
+    font-family: var(--font-condensed);
+    font-size: var(--sz-technical-label);
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .identity-menu-title {
+    font-size: var(--sz-sm);
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .identity-menu-meta {
+    font-size: var(--sz-xs);
+    color: var(--text-muted);
+  }
+
+  .identity-item {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    width: 100%;
+    padding: 7px var(--sp-3);
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    cursor: pointer;
+    font: inherit;
+    font-size: var(--sz-xs);
+    text-align: left;
+    transition: background-color var(--t-tint);
+  }
+
+  .identity-item:hover { background: var(--surface-container); }
+  .identity-item.current { background: var(--surface-containerLow); }
+  .identity-item.danger { color: var(--text-danger); }
+  .identity-item svg { flex-shrink: 0; color: var(--text-secondary); }
+  .identity-item.danger svg { color: var(--text-danger); }
+
+  .identity-item-copy {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1;
+    line-height: 1.2;
+  }
+
+  .identity-item-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 600;
+  }
+
+  .identity-item-meta {
+    color: var(--text-muted);
+    font-size: var(--sz-technical-label);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-family: var(--font-condensed);
+  }
+
+  .identity-divider { height: 1px; background: var(--border-strong); }
+
+  .identity-back {
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border-subtle);
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    font: inherit;
+  }
+
+  .identity-staff-list {
+    max-height: 240px;
+    overflow-y: auto;
+  }
+
+  .identity-empty {
+    padding: var(--sp-3);
+    font-size: var(--sz-xs);
+    color: var(--text-muted);
+  }
+
+  .identity-empty.danger { color: var(--text-danger); }
+
+  .identity-pin {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-2);
+    padding: var(--sp-3);
+  }
+
+  .identity-pin label {
+    font-size: var(--sz-technical-label);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--text-muted);
+    font-family: var(--font-condensed);
+    font-weight: 700;
+  }
+
+  .identity-pin input {
+    border: 1px solid var(--border-strong);
+    padding: 4px var(--sp-2);
+    font: inherit;
+    font-size: var(--sz-xs);
+    background: var(--surface-containerLowest);
+    color: var(--text-primary);
+    outline: none;
+  }
+
+  .identity-pin input:focus { border-color: var(--border-accent); }
+
+  .identity-facts {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-2);
+    padding: var(--sp-3);
+  }
+
+  .identity-facts > div {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--sp-3);
+    font-size: var(--sz-xs);
+  }
+
+  .identity-facts dt {
+    font-family: var(--font-condensed);
+    font-size: var(--sz-technical-label);
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .identity-facts dd { color: var(--text-primary); text-align: right; }
+
+  /* --- remaining cluster: armed target · carton context --- */
+  .corner-cluster {
+    display: flex;
+    align-items: stretch;
+    height: var(--control-h);
+    flex-shrink: 0;
+    border: 1px solid var(--border-strong);
+    background: var(--surface-containerLow);
+  }
+
+  .corner-cluster > * + * { border-left: 1px solid var(--border-strong); }
+
+  .zone-scan {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-1);
+    min-width: 300px;
+    padding: 0 var(--sp-2);
+    background: var(--surface-containerLowest);
+  }
+
+  .zone-scan:focus-within { background: var(--surfaceSubtle-accent); }
+  .zone-scan > svg { flex-shrink: 0; color: var(--text-secondary); }
+
+  .scan-input-wrap { display: flex; align-items: center; flex: 1; min-width: 0; }
+
+  .scan-input-wrap input {
+    border: none;
+    background: transparent;
+    outline: none;
+    font: inherit;
+    color: inherit;
+    width: 100%;
+    font-size: var(--sz-xs);
+    min-width: 0;
+    letter-spacing: 0.01em;
+  }
+
+  .scan-input-wrap input::placeholder { color: var(--text-muted); }
+
+  /* The 2x2 mode matrix — two axes, drawn as two square segment pairs */
+  .mode-toggle {
+    display: flex;
+    align-items: stretch;
+    font-size: var(--sz-technical-label);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    flex-shrink: 0;
+    font-family: var(--font-condensed);
+    font-weight: 600;
+    border: 1px solid var(--border-subtle);
+    height: 16px;
+    align-self: center;
+  }
+
+  .mode-toggle span,
+  .mode-toggle button {
+    cursor: pointer;
+    padding: 0 var(--sp-1);
+    display: flex;
+    align-items: center;
+    transition: background-color var(--t-tint), color var(--t-tint);
+    user-select: none;
+  }
+
+  .mode-toggle span + span,
+  .mode-toggle button + button { border-left: 1px solid var(--border-subtle); }
+  .mode-toggle span:hover,
+  .mode-toggle button:hover { color: var(--text-secondary); background: var(--surface-containerLow); }
+  .mode-toggle span.active,
+  .mode-toggle button.active {
+    background: var(--text-primary);
+    color: var(--text-inverse);
+  }
+  /* The two axes are separated by a heavier rule so the matrix reads
+     as input-mode | query-mode and not as one four-way switch. */
+  .mode-toggle .axis-gap { border-left: 3px solid var(--text-primary); }
+
+  /* SCAN-ARMED — permanent, and welded to the scan field.
+     Not a toast. The operator must be able to see where the next scan
+     lands without leaving the carton, so it never auto-hides and it
+     never moves. */
+  .scan-armed {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 0 var(--sp-2);
+    font-size: var(--sz-technical-label);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-family: var(--font-condensed);
+    font-weight: 600;
+    background: var(--surfaceSubtle-success);
+    color: var(--text-success);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .scan-armed .mark {
+    width: 7px;
+    height: 7px;
+    background: var(--text-success);
+    flex-shrink: 0;
+  }
+
+  .scan-armed.parked { background: var(--surfaceSubtle-warning); color: var(--text-warning); }
+  .scan-armed.parked .mark { background: var(--text-warning); }
+  .scan-armed.ended { background: var(--surface-container); color: var(--text-muted); }
+  .scan-armed.ended .mark { background: var(--text-muted); }
+  .scan-armed.error { background: var(--surfaceSubtle-danger); color: var(--text-danger); }
+  .scan-armed.error .mark { background: var(--text-danger); }
+
+  .cluster-btn {
+    width: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: background-color var(--t-tint), color var(--t-tint);
+    flex-shrink: 0;
+    font: inherit;
+  }
+
+  .cluster-btn:hover { background: var(--surface-container); color: var(--text-primary); }
+  .cluster-btn.active { background: var(--text-primary); color: var(--text-inverse); }
+
+  .zone-context {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 0 var(--sp-2);
+    color: var(--text-secondary);
+    font-size: var(--sz-xs);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font: inherit;
+    transition: background-color var(--t-tint);
+  }
+
+  .zone-context:hover { background: var(--surface-container); }
+
+  /* --- the context line: the only place that says what is happening --- */
+  .context-line {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--sp-2);
+    height: var(--control-h);
+    font-size: var(--sz-xs);
+    overflow: hidden;
+    white-space: nowrap;
+  }
+
+  .ctx-seg {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .ctx-sep {
+    width: 1px;
+    height: 14px;
+    background: var(--border-strong);
+    flex-shrink: 0;
+  }
+
+  /* Segment 1 — global context / process stage. Scan type IS the
+     pipeline position, so the stage strip lives here, not in its own
+     zone. Squares, not dots: a 6px square is more legible than a 6px
+     circle and it reads as a step in a track. */
+  .ctx-global {
+    font-family: var(--font-condensed);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+  }
+
+  .pipeline { display: flex; align-items: stretch; height: 14px; border: 1px solid var(--border-subtle); }
+
+  .pipeline-step {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 0 5px;
+    font-size: var(--sz-technical-label);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    font-family: var(--font-condensed);
+    font-weight: 600;
+  }
+
+  .pipeline-step + .pipeline-step { border-left: 1px solid var(--border-subtle); }
+
+  .pipeline-mark {
+    width: 5px;
+    height: 5px;
+    background: var(--surface-containerHighest);
+    flex-shrink: 0;
+  }
+
+  .pipeline-step.done { color: var(--text-success); }
+  .pipeline-step.done .pipeline-mark { background: var(--text-success); }
+  .pipeline-step.current {
+    color: var(--text-inverse);
+    background: var(--text-primary);
+  }
+  .pipeline-step.current .pipeline-mark { background: var(--text-accent); }
+
+  /* Segment 2 — the session title, renamed in place, right here. */
+  .ctx-session {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    min-width: 0;
+  }
+
+  .session-title {
+    font-weight: 600;
+    font-size: var(--sz-xs);
+    color: var(--text-primary);
+    background: transparent;
+    border: none;
+    border-bottom: 1px dashed transparent;
+    padding: 1px 4px;
+    cursor: text;
+    font-family: inherit;
+    max-width: 260px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    transition: background-color var(--t-tint), border-color var(--t-tint);
+  }
+
+  .session-title:hover { border-bottom-color: var(--border-strong); }
+  .session-title.unnamed { color: var(--text-muted); font-weight: 500; font-style: italic; }
+
+  .session-title-input {
+    font: inherit;
+    font-size: var(--sz-xs);
+    font-weight: 600;
+    color: var(--text-primary);
+    background: var(--surface-containerLowest);
+    border: 1px solid var(--border-accent);
+    outline: none;
+    padding: 1px 4px;
+    width: 200px;
+  }
+
+  .session-state {
+    font-family: var(--font-condensed);
+    font-size: var(--sz-technical-label);
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 1px 5px;
+    border: 1px solid var(--border-success);
+    background: var(--surfaceSubtle-success);
+    color: var(--text-success);
+    flex-shrink: 0;
+  }
+
+  .session-state.parked { border-color: var(--border-warning); background: var(--surfaceSubtle-warning); color: var(--text-warning); }
+  .session-state.ended  { border-color: var(--border-strong); background: var(--surface-container); color: var(--text-muted); }
+  .session-state.error  { border-color: var(--border-danger); background: var(--surfaceSubtle-danger); color: var(--text-danger); }
+
+  /* Segment 3 — carton context of scan type */
+  .ctx-carton { color: var(--text-secondary); min-width: 0; }
+  .ctx-fallback { display: flex; align-items: center; gap: 5px; }
+  .ctx-fallback[hidden] { display: none; }
+  .ctx-fallback #ctxFallbackHint { font-size: var(--sz-technical-label); color: var(--text-muted); }
+
+  /* ===== SESSION TILE SPINE =========================================
+     The session's identity now lives ON the session, which is where the
+     operator is already looking. Full tile width buys the pipeline a real
+     strip instead of four squeezed segments in shared chrome — and it is
+     the level the procedure STEPS slot into later (A7 / P1). */
+  .tile-spine {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-2);
+    border-bottom: 1px solid var(--border-strong);
+    padding-bottom: var(--sp-2);
+    margin-bottom: var(--sp-2);
+  }
+
+  .tile-spine-identity {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    flex-wrap: wrap;
+  }
+
+  .tile-spine .pipeline { height: 20px; width: 100%; }
+  .tile-spine .pipeline-step { flex: 1; justify-content: center; }
+
+  /* Fixed width, so the context line's budget is a constant and not a
+     lottery. Everything here is tabular so the digits do not jitter. */
+  .header-face {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    height: var(--control-h);
+    width: 128px;
+    justify-content: center;
+    padding: 0 var(--sp-2);
+    border: 1px solid var(--border-strong);
+    background: var(--surface-containerLow);
+    color: var(--text-secondary);
+    font: inherit;
+    font-size: var(--sz-xs);
+    cursor: pointer;
+    transition: background-color var(--t-tint), color var(--t-tint), border-color var(--t-tint);
+  }
+
+  .header-face:hover { background: var(--surface-container); }
+  .header-face .face-sep { color: var(--text-muted); }
+  .header-face .mono { color: inherit; }
+
+  /* State is carried by the pair, not by a separate badge. */
+  .header-face.on-target { border-color: var(--border-success); color: var(--text-success); background: var(--surfaceSubtle-success); }
+  .header-face.near      { border-color: var(--border-warning); color: var(--text-warning); background: var(--surfaceSubtle-warning); }
+  .header-face.over      { border-color: var(--border-danger);  color: var(--text-danger);  background: var(--surfaceSubtle-danger); }
+  .header-face.idle      { color: var(--text-muted); }
+
+  .header-overflow { flex-shrink: 0; display: flex; align-items: center; }
+
+  /* ===== BODY ===== */
+  .wos-body {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* ===== RAILS ======================================================
+     Persistent icon strips. Expanding is a width change and therefore
+     is INSTANT — no transition. A rail that tweens open occupies the
+     canvas for the length of the tween while handing nothing back. */
+  .rail {
+    width: var(--rail-width);
+    background: var(--surface-containerLowest);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: var(--sp-1) 0;
+    gap: 2px;
+    flex-shrink: 0;
+    overflow: hidden;
+    position: relative;
+    z-index: var(--z-panel);
+  }
+
+  .rail.left { border-right: 1px solid var(--border-strong); }
+  .rail.right { border-left: 1px solid var(--border-strong); }
+  .rail.expanded {
+    width: var(--rail-expanded);
+    align-items: stretch;
+    padding: var(--sp-1);
+  }
+
+  .rail-btn {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--text-secondary);
+    transition: background-color var(--t-tint), color var(--t-tint);
+    flex-shrink: 0;
+    border: none;
+    background: transparent;
+    font: inherit;
+  }
+
+  .rail.expanded .rail-btn { width: 100%; justify-content: flex-start; padding: 0 var(--sp-2); gap: var(--sp-2); font-size: var(--sz-xs); }
+  .rail-btn:hover { background: var(--surface-container); color: var(--text-primary); }
+  .rail-btn.active { background: var(--text-primary); color: var(--text-inverse); }
+  .rail-btn svg { width: 16px; height: 16px; flex-shrink: 0; }
+  .rail-btn .rail-btn-label { display: none; }
+  .rail.expanded .rail-btn .rail-btn-label { display: inline; }
+
+  /* A queued proposal is a fact the operator must see WITHOUT opening the
+     panel — so it badges the icon. Square, like every other mark. */
+  .rail-badge {
+    position: absolute;
+    top: 1px;
+    right: 1px;
+    min-width: 12px;
+    height: 12px;
+    padding: 0 2px;
+    background: var(--text-warning);
+    color: var(--text-inverse);
+    font-family: var(--font-condensed);
+    font-size: 9px;
+    font-weight: 700;
+    line-height: 12px;
+    text-align: center;
+  }
+
+  .rail-btn { position: relative; }
+  .rail.expanded .rail-badge { position: static; margin-left: auto; }
+
+  .rail-divider {
+    width: 24px;
+    height: 1px;
+    background: var(--border-subtle);
+    margin: var(--sp-1) 0;
+    flex-shrink: 0;
+  }
+
+  .rail.expanded .rail-divider { width: 100%; }
+
+  /* The rail's own name, and its collapse control once it is open.
+     COLLAPSED IT IS NOT SHOWN AT ALL — a 40px strip of icons has no room
+     for prose, and a vertical word is prose read sideways. What the label
+     was also doing collapsed, separating pins from tabs, a 1px divider
+     does better and silently. */
+  .rail-label {
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    font-size: var(--sz-technical-label);
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: var(--sp-2) 0;
+    font-weight: 700;
+    font-family: var(--font-condensed);
+    user-select: none;
+    cursor: pointer;
+    background: transparent;
+    border: none;
+    border-top: 1px solid var(--border-subtle);
+    border-bottom: 1px solid var(--border-subtle);
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background-color var(--t-tint), color var(--t-tint);
+  }
+
+  .rail:not(.expanded) .rail-label { display: none; }
+  .rail.expanded .rail-divider-collapsed { display: none; }
+  .rail-label:hover { background: var(--surface-container); color: var(--text-primary); }
+
+  .rail.expanded .rail-label {
+    writing-mode: horizontal-tb;
+    text-orientation: initial;
+    padding: var(--sp-1) var(--sp-2);
+    justify-content: flex-start;
+    font-size: 10px;
+    letter-spacing: 0.16em;
+  }
+
+  /* THE RAIL'S INNER EDGE IS THE CONTROL, AND IT IS THE ONLY ONE.
+     The border between rail and canvas is the line that actually moves
+     when the rail expands, so it is the line you grab — the same gesture
+     as every splitter in every editor. Full height, so it is the longest
+     target on the screen and it never changes size with the rail's
+     contents; 6px wide, which is what a splitter has been for thirty
+     years, and it fits the gutter beside a 28px button in a 40px rail
+     without stealing a single click from one.
+     There is no chevron and no collapse button anywhere: a second visible
+     control for one verb was an apology for not trusting the first. */
+  .rail-edge {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 6px;
+    border: none;
+    background: transparent;
+    padding: 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1;
+    transition: background-color var(--t-tint);
+  }
+
+  .rail.left  .rail-edge { right: 0; }
+  .rail.right .rail-edge { left: 0; }
+  .rail-edge:hover { background: var(--surface-container); }
+
+  /* The gutter the strip lives in. Collapsed it is already there — a 28px
+     button centred in a 40px rail leaves 6px a side. Expanded, buttons go
+     full-width, so the rail reserves it. */
+  .rail.left.expanded  { padding-right: 8px; }
+  .rail.right.expanded { padding-left: 8px; }
+
+  /* THE SLACK stays live as a forgiving second target for the same verb.
+     It carries no mark of its own — the edge owns that — and it costs
+     nothing, because it is the one region of the rail that can never hold
+     a tab, a pin or a recent. */
+  .rail-slack {
+    flex: 1;
+    min-height: 20px;
+    width: 100%;
+    border: none;
+    background: transparent;
+    padding: 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color var(--t-tint);
+  }
+
+  .rail-slack:hover { background: var(--surface-container); }
+
+  /* The grip. Squares, not dots — the same reasoning as the stage strip —
+     and permanently inked, because a mark that only appears on hover does
+     not exist on a mounted tablet. */
+  .grip {
+    display: block;
+    width: 2px;
+    height: 14px;
+    background: repeating-linear-gradient(
+      to bottom, var(--border-strong) 0 2px, transparent 2px 5px);
+  }
+
+  .rail-edge:hover .grip { background: repeating-linear-gradient(
+      to bottom, var(--text-secondary) 0 2px, transparent 2px 5px); }
+
+  /* THE BOTTOM-LEFT CORNER. One control, and it is the SAME SIZE as the
+     control at the top of the rail — a 28px cell with a 16px glyph. The
+     rail is one column, so it gets one column width and one glyph size;
+     a settings gear drawn smaller than the add button above it reads as
+     a lesser control, and it is not one. No divider — the border is the
+     divider — and theme lives in settings, not out here. */
+  .rail-footer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    flex-shrink: 0;
+    border-top: 1px solid var(--border-subtle);
+    padding-top: 2px;
+    margin-top: 2px;
+  }
+
+  .rail.expanded .rail-footer { flex-direction: row; align-items: stretch; gap: 2px; }
+  .rail.expanded .rail-footer .rail-btn { width: auto; flex: 1; }
+
+  .rail-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    width: 100%;
+    flex-shrink: 0;
+  }
+
+  .rail.expanded .rail-group { align-items: stretch; }
+
+  .tab-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    width: 100%;
+    align-items: center;
+    /* Rail overflow (open question 6) answered as SCROLL: the strip is
+       a fixed-width vertical column, so the tab list is the part that
+       shrinks and scrolls. Pins and recents keep their height. */
+    flex: 0 1 auto;
+    min-height: 0;
+  }
+
+  .rail.expanded .tab-list { align-items: stretch; }
+
+  .tab, .pin, .recent-item {
+    width: 28px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    position: relative;
+    color: var(--text-secondary);
+    transition: background-color var(--t-tint), color var(--t-tint);
+    flex-shrink: 0;
+    border: none;
+    background: transparent;
+    font: inherit;
+  }
+
+  .rail.expanded .tab,
+  .rail.expanded .pin,
+  .rail.expanded .recent-item {
+    width: 100%;
+    justify-content: flex-start;
+    padding: 0 var(--sp-2) 0 var(--sp-3);
+    gap: var(--sp-2);
+    font-size: var(--sz-xs);
+  }
+
+  /* Collapsed, a rail is icons only — labels would spill past 40px. */
+  .rail:not(.expanded) .tab-name,
+  .rail:not(.expanded) .recents-header span { display: none; }
+
+  .tab:hover, .pin:hover, .recent-item:hover { background: var(--surface-container); color: var(--text-primary); }
+  .tab.active { background: var(--surface-containerHigh); color: var(--text-primary); font-weight: 600; }
+
+  /* The active tab's lit cell — a square 3px edge bar, not a pill */
+  .tab.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: var(--text-primary);
+  }
+
+  .pin { color: var(--text-primary); }
+
+  /* Per-tab colour is a 3px edge stripe, not a dot: it stays legible
+     at rail width, it never becomes confetti because it is structural,
+     and it reads the same expanded or collapsed. */
+  .tab-color {
+    width: 3px;
+    height: 100%;
+    position: absolute;
+    right: 0;
+    top: 0;
+    flex-shrink: 0;
+  }
+
+  .rail.expanded .tab-color { right: 0; }
+
+  .tab-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    text-align: left;
+  }
+
+  .recents-header {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px var(--sp-1);
+    font-size: var(--sz-technical-label);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--text-muted);
+    font-family: var(--font-condensed);
+    font-weight: 700;
+    cursor: pointer;
+    user-select: none;
+    background: transparent;
+    border: none;
+    width: 100%;
+    justify-content: center;
+    /* It is a row in the rail's one column, so it holds its row height
+       instead of being the thing that gives way when the rail is tight —
+       the tab list is the designated scroller, not this. */
+    flex-shrink: 0;
+    transition: color var(--t-tint);
+  }
+
+  .rail:not(.expanded) .recents-header { height: 26px; }
+  .rail.expanded .recents-header { justify-content: flex-start; padding: 2px var(--sp-2); }
+  .recents-header:hover { color: var(--text-primary); }
+  .recents-header svg { flex-shrink: 0; }
+  .rail:not(.expanded) .recents-chevron { display: none; }
+  .rail.expanded .recents-icon { display: none; }
+  /* The chevron flips instantly. It is a state read, not a performance. */
+  .recents-header.collapsed svg { transform: rotate(-90deg); }
+
+  /* Bottom-anchored and BOUNDED. Two independent scroll ports — a long tab
+     list cannot starve recents and a long history cannot starve the tabs.
+     That is a fuller answer to rail overflow than "the tab list scrolls". */
+  .recents-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    width: 100%;
+    align-items: center;
+    /* Bounded tighter than half the rail: the bottom-left corner is a
+       trail, not a second workspace. */
+    max-height: 34vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    flex-shrink: 0;
+  }
+  .rail.expanded .recents-list { align-items: stretch; }
+  .recents-list.collapsed { display: none; }
+
+  /* ===== RECENTS — per staff, per org. Never per session. =============
+     Banded by kind in a FIXED order, MRU within a band. The band is what
+     makes the list reachable by muscle memory: cartons sit at the same
+     offset from the top whatever you did at another bench. Recency is
+     not lost to the banding — it is carried by the marker instead, which
+     is why the marker exists. */
+  .recent-band { display: flex; flex-direction: column; width: 100%; align-items: center; }
+  .rail.expanded .recent-band { align-items: stretch; }
+
+  .recent-band-label {
+    display: none;
+    font-family: var(--font-condensed);
+    font-size: var(--sz-technical-label);
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: 4px var(--sp-2) 2px;
+  }
+
+  .rail.expanded .recent-band-label { display: block; }
+  /* Collapsed, a band is separated by SPACE, never by a rule.
+     A hairline in this column already has a meaning — it is what divides
+     pins from tabs from recents from the footer, i.e. "a different kind of
+     thing starts here". Spending that same ink on "same kind of thing,
+     next group" made five bands of one list read as five separate
+     displays. Proximity groups them for free and adds no ink. */
+  .rail:not(.expanded) .recent-band + .recent-band { margin-top: 5px; }
+
+  /* A recent is a row in the same column as a tab and a pin, so it is the
+     same cell: 28 x 26, glyph centred, glyph at 15px. It used to be 24px
+     tall with a left-aligned 12px glyph, because the cell also had to fit
+     the most-recent caret on its trailing edge without the two touching.
+     That caret is gone, and with it the reason for a second row size. */
+  .recent-item {
+    color: var(--text-secondary);
+    position: relative;
+  }
+
+  .rail.expanded .recent-item { height: auto; min-height: 26px; padding: 2px var(--sp-3) 2px var(--sp-3); }
+
+  .recent-text { display: none; min-width: 0; flex: 1; text-align: left; }
+  .rail.expanded .recent-text { display: block; }
+  .recent-title { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--sz-xs); }
+  .recent-sub {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: var(--sz-technical-label);
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+  }
+
+  /* Leading edge = this entry was touched by the LIVE session. It is a
+     mark, not a scope: the entry outlives the session that made it. */
+  .recent-item.in-session::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 2px; bottom: 2px;
+    width: 3px;
+    background: var(--text-success);
+  }
+
+  /* Trailing edge = the single most recent selection, anywhere in the
+     list. One per rail, by definition. */
+  /* The most recent selection is marked by the ROW, not by a caret beside
+     it. A 9px triangle hung off the right edge of a 40px rail had to be
+     absolutely positioned to avoid shoving the label, and it still crowded
+     the row it was pointing at. The tint says the same thing and costs no
+     space. */
+  .recent-item.is-last { color: var(--text-primary); background: var(--surfaceSubtle-accent); }
+
+  /* ===== CANVAS =====================================================
+     The one place radius exists. --r-hud, one stroke, four sides. */
+  .canvas-wrap {
+    flex: 1;
+    padding: var(--sp-2);
+    overflow: hidden;
+    position: relative;
+    background: var(--bg-canvas);
+    min-width: 0;
+    display: flex;
+  }
+
+  .canvas {
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    border: 1.5px solid var(--border-hud);
+    border-radius: var(--r-hud);
+    background: var(--surface-containerLowest);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+  }
+
+  .canvas-scroll {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  /* ===== TILES ======================================================
+     Four states, four distinct treatments — because in a tiling
+     manager hover and focus are different facts and one of them
+     decides where the keystrokes go.
+       hover       1px grey inset ring, no fill
+       focused     2px accent inset ring + accent header + edge bar
+       dragging    dashed ring + 40% opacity
+       snap-target dashed accent ring + accent wash
+     All four are `outline` or `background`, so none of them reflow. */
+  .tile {
+    flex: 1 1 0;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--border-strong);
+    position: relative;
+    min-width: var(--tile-min-table);
+    background: var(--surface-containerLowest);
+  }
+
+  .tile[data-type="session"] { min-width: var(--tile-min-session); }
+  .tile:last-child { border-right: none; }
+
+  .tile:hover { outline: 1px solid var(--border-strong); outline-offset: -1px; }
+
+  .tile.focused {
+    outline: 2px solid var(--border-accent);
+    outline-offset: -2px;
+  }
+  .tile.focused .tile-header {
+    background: var(--surfaceSubtle-accent);
+    color: var(--text-primary);
+    border-bottom-color: var(--border-accent);
+  }
+  .tile.focused .tile-header::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: var(--border-accent);
+  }
+
+  .tile.dragging {
+    opacity: 0.4;
+    outline: 2px dashed var(--border-strong);
+    outline-offset: -2px;
+  }
+
+  .tile.snap-target {
+    background: var(--surfaceSubtle-accent);
+    outline: 2px dashed var(--border-accent);
+    outline-offset: -2px;
+  }
+
+  .tile-header {
+    height: 26px;
+    border-bottom: 1px solid var(--border-strong);
+    display: flex;
+    align-items: center;
+    padding: 0 var(--sp-2);
+    gap: var(--sp-2);
+    font-size: 11px;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+    background: var(--surface-containerLow);
+    position: relative;
+    transition: background-color var(--t-tint), color var(--t-tint);
+  }
+
+  .tile-header .tile-identity {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    flex: 1;
+    min-width: 0;
+  }
+
+  .tile-header .tile-color { width: 8px; height: 8px; flex-shrink: 0; }
+
+  .tile-header .tile-title {
+    font-weight: 600;
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .tile-header .tile-type {
+    font-size: var(--sz-technical-label);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--text-muted);
+    font-family: var(--font-condensed);
+    font-weight: 700;
+    border: 1px solid var(--border-subtle);
+    padding: 0 4px;
+  }
+
+  /* Tile actions are always present — an opacity reveal is a hover
+     dependency, and a mounted tablet has no hover. */
+  .tile-header .tile-actions { display: flex; gap: 2px; flex-shrink: 0; }
+
+  /* Close is the last thing in the header and the only red thing in it.
+     Destructive, so it reads destructive before it is pressed — and it is
+     always present, because a mounted tablet has no hover to reveal it. */
+  .tile-header .tile-close:hover {
+    background: var(--surfaceSubtle-danger);
+    color: var(--text-danger);
+  }
+
+  .tile-body {
+    flex: 1;
+    overflow: auto;
+    padding: var(--sp-3);
+    font-size: var(--sz-data-value);
+    line-height: 1.45;
+    position: relative;
+  }
+
+  .tile-split-handle {
+    position: absolute;
+    right: -3px;
+    top: 0;
+    bottom: 0;
+    width: 6px;
+    cursor: col-resize;
+    z-index: var(--z-raised);
+    background: transparent;
+    transition: background-color var(--t-tint);
+  }
+
+  .tile-split-handle:hover { background: var(--border-accent); }
+
+  /* ===== EMPTY SLATE ===== */
+  .empty-slate {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    width: 100%;
+    gap: var(--sp-4);
+    color: var(--text-muted);
+    text-align: center;
+    padding: var(--sp-6);
+  }
+
+  .empty-slate h2 {
+    font-size: var(--sz-xl);
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    font-family: var(--font-condensed);
+    color: var(--text-secondary);
+  }
+
+  .empty-slate p { font-size: var(--sz-sm); max-width: 380px; line-height: 1.55; }
+  .empty-slate-actions { display: flex; gap: var(--sp-2); flex-wrap: wrap; justify-content: center; }
+  .empty-slate-hints {
+    margin-top: var(--sp-2);
+    font-size: var(--sz-xs);
+    color: var(--text-muted);
+    display: flex;
+    gap: var(--sp-3);
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  /* ===== TOOL PANEL =================================================
+     It PUSHES. `position: absolute` + a shadow was the easy answer and
+     the wrong one: on a bench a panel over the work is a panel you
+     cannot read past. It is a flex sibling in normal flow, it appears
+     and disappears instantly, and the canvas simply gets narrower. */
+  .tool-panel {
+    width: var(--tool-panel-width);
+    flex-shrink: 0;
+    background: var(--surface-containerLowest);
+    border-left: 1px solid var(--border-strong);
+    z-index: var(--z-panel);
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .tool-panel.open { display: flex; }
+
+  .tool-panel-header {
+    height: 26px;
+    border-bottom: 1px solid var(--border-strong);
+    display: flex;
+    align-items: center;
+    padding: 0 var(--sp-1) 0 var(--sp-3);
+    font-size: var(--sz-technical-label);
+    font-family: var(--font-condensed);
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    justify-content: space-between;
+    flex-shrink: 0;
+    background: var(--surface-containerLow);
+  }
+
+  .tool-panel-body { padding: var(--sp-3); font-size: var(--sz-xs); overflow: auto; flex: 1; }
+
+  .tool-panel-footer {
+    border-top: 1px solid var(--border-subtle);
+    padding: var(--sp-1) var(--sp-3);
+    font-size: var(--sz-technical-label);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-family: var(--font-condensed);
+    font-weight: 600;
+    color: var(--text-muted);
+    flex-shrink: 0;
+  }
+
+  /* ===== SETTINGS — anchored to the corner that opens it ===== */
+  .settings-popover {
+    position: absolute;
+    left: var(--sp-1);
+    bottom: var(--sp-1);
+    width: 248px;
+    background: var(--surface-containerLowest);
+    border: 1px solid var(--border-hud);
+    z-index: var(--z-panelPopover);
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .settings-popover.open { display: flex; }
+
+  .settings-note {
+    font-size: var(--sz-technical-label);
+    line-height: 1.6;
+    color: var(--text-muted);
+  }
+
+  /* ===== CONTEXT MENU ===== */
+  .context-menu {
+    position: fixed;
+    background: var(--surface-containerLowest);
+    border: 1px solid var(--border-strong);
+    z-index: var(--z-dropdown);
+    min-width: 184px;
+    display: none;
+    flex-direction: column;
+    padding: 0;
+  }
+
+  .context-menu.open { display: flex; }
+
+  .context-item {
+    padding: 6px var(--sp-3);
+    font-size: var(--sz-xs);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    color: var(--text-primary);
+    border: none;
+    background: transparent;
+    font: inherit;
+    width: 100%;
+    text-align: left;
+    transition: background-color var(--t-tint);
+  }
+
+  .context-item:hover { background: var(--surface-container); }
+  .context-item.danger { color: var(--text-danger); }
+  .context-item.danger:hover { background: var(--surfaceSubtle-danger); }
+  .context-item svg { width: 14px; height: 14px; flex-shrink: 0; }
+  .context-divider { height: 1px; background: var(--border-subtle); }
+
+  /* ===== BUTTONS =====
+     A press is a colour swap. The old translateY(1px) moved the label
+     under the operator's finger for 0 gain. */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--sp-1);
+    padding: 5px var(--sp-3);
+    background: var(--surface-container);
+    border: 1px solid var(--border-strong);
+    color: var(--text-primary);
+    font-size: var(--sz-xs);
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color var(--t-tint), color var(--t-tint), border-color var(--t-tint);
+    font-family: inherit;
+    line-height: 1.4;
+    white-space: nowrap;
+  }
+
+  .btn:hover { background: var(--surface-containerHigh); }
+  .btn:active { background: var(--surface-containerHighest); }
+
+  .btn-primary { background: var(--text-primary); color: var(--text-inverse); border-color: var(--text-primary); }
+  .btn-primary:hover { background: var(--text-accent); border-color: var(--text-accent); color: #ffffff; }
+  .btn-primary:active { background: var(--text-accent); }
+  .btn-sm { padding: 3px 10px; font-size: 11px; }
+  .btn-icon { padding: 0; width: 26px; height: 26px; }
+
+  /* ===== BADGES ===== */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0 5px;
+    font-size: var(--sz-technical-label);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-family: var(--font-condensed);
+    border: 1px solid currentColor;
+    line-height: 15px;
+  }
+
+  .badge-success { background: var(--surfaceSubtle-success); color: var(--text-success); }
+  .badge-warning { background: var(--surfaceSubtle-warning); color: var(--text-warning); }
+  .badge-danger  { background: var(--surfaceSubtle-danger);  color: var(--text-danger); }
+  .badge-accent  { background: var(--surfaceSubtle-accent);  color: var(--text-accent); }
+
+  /* ===== UTILITIES ===== */
+  .mono {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+    font-size: var(--sz-xs);
+    color: var(--text-secondary);
+    letter-spacing: -0.01em;
+  }
+
+  .kbd {
+    display: inline-flex;
+    align-items: center;
+    padding: 0 5px;
+    background: var(--surface-container);
+    border: 1px solid var(--border-strong);
+    border-bottom-width: 2px;
+    font-size: 10px;
+    font-family: var(--font-mono);
+    color: var(--text-secondary);
+    line-height: 15px;
+  }
+
+  /* Data table — a grid, with column rules and zebra banding, because
+     the job is reading one row across without losing it. */
+  .data-table {
+    width: 100%;
+    font-size: var(--sz-xs);
+    border-collapse: collapse;
+  }
+
+  .data-table th {
+    text-align: left;
+    padding: 5px var(--sp-2);
+    font-size: var(--sz-technical-label);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--text-secondary);
+    font-family: var(--font-condensed);
+    font-weight: 700;
+    background: var(--surface-container);
+    border: 1px solid var(--border-strong);
+    white-space: nowrap;
+    position: sticky;
+    top: 0;
+  }
+
+  .data-table td {
+    padding: 4px var(--sp-2);
+    border: 1px solid var(--border-subtle);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 220px;
+  }
+
+  .data-table tbody tr:nth-child(even) td { background: var(--surface-containerLow); }
+  .data-table tbody tr:hover td { background: var(--surfaceSubtle-accent); }
+  .data-table .col-xs { width: 22px; }
+  .data-table .col-s { width: 108px; }
+  .data-table .col-m { width: 168px; }
+
+  /* Status marks are squares. At 7px a square is more legible than a
+     circle and it matches everything else in the frame. */
+  .status-dot { width: 7px; height: 7px; display: inline-block; flex-shrink: 0; }
+  .status-dot.ok { background: var(--text-success); }
+  .status-dot.warn { background: var(--text-warning); }
+  .status-dot.err { background: var(--text-danger); }
+  .status-dot.info { background: var(--text-accent); }
+
+  /* Composer */
+  .composer {
+    border-top: 1px solid var(--border-strong);
+    padding: var(--sp-2);
+    display: flex;
+    gap: var(--sp-2);
+    align-items: flex-end;
+    background: var(--surface-containerLow);
+  }
+
+  .composer-wrap { flex: 1; display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; }
+
+  .composer-toggle {
+    display: flex;
+    align-self: flex-start;
+    border: 1px solid var(--border-subtle);
+    font-size: var(--sz-technical-label);
+    font-family: var(--font-condensed);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  .composer-toggle span,
+  .composer-toggle button {
+    padding: 1px var(--sp-2);
+    cursor: pointer;
+    color: var(--text-muted);
+    transition: background-color var(--t-tint), color var(--t-tint);
+    user-select: none;
+  }
+
+  .composer-toggle span + span,
+  .composer-toggle button + button { border-left: 1px solid var(--border-subtle); }
+  .composer-toggle span:hover,
+  .composer-toggle button:hover { color: var(--text-secondary); background: var(--surface-container); }
+  .composer-toggle span.active,
+  .composer-toggle button.active { background: var(--text-primary); color: var(--text-inverse); }
+
+  .composer textarea {
+    width: 100%;
+    border: 1px solid var(--border-strong);
+    padding: 5px var(--sp-2);
+    font: inherit;
+    font-size: var(--sz-xs);
+    background: var(--surface-containerLowest);
+    color: var(--text-primary);
+    resize: none;
+    outline: none;
+    min-height: 28px;
+    max-height: 80px;
+    line-height: 1.4;
+  }
+
+  .composer textarea:focus { border-color: var(--border-accent); }
+
+  /* Offline banner — in the beam's flow band, appears instantly. */
+  .offline-banner {
+    height: 24px;
+    background: var(--surfaceSubtle-warning);
+    border-bottom: 1px solid var(--border-warning);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: var(--sp-2);
+    font-size: var(--sz-technical-label);
+    font-family: var(--font-condensed);
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-warning);
+    z-index: var(--z-banner);
+    flex-shrink: 0;
+  }
+
+  .offline-banner.open { display: flex; }
+
+  /* Launcher */
+  .launcher {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.35);
+    z-index: var(--z-command);
+    display: none;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 14vh;
+  }
+
+  .launcher.open { display: flex; }
+
+  .launcher-box {
+    width: 560px;
+    max-width: 92vw;
+    background: var(--surface-containerLowest);
+    border: 2px solid var(--border-hud);
+    overflow: hidden;
+  }
+
+  .launcher-input {
+    width: 100%;
+    border: none;
+    border-bottom: 1px solid var(--border-strong);
+    padding: var(--sp-3) var(--sp-4);
+    font: inherit;
+    font-size: var(--sz-md);
+    background: var(--surface-containerLowest);
+    color: var(--text-primary);
+    outline: none;
+  }
+
+  .launcher-input::placeholder { color: var(--text-muted); }
+  .launcher-results { max-height: 340px; overflow: auto; }
+  .launcher-group + .launcher-group { border-top: 1px solid var(--border-subtle); }
+
+  .launcher-group-label {
+    padding: 4px var(--sp-4);
+    font-size: var(--sz-technical-label);
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: var(--text-secondary);
+    font-family: var(--font-condensed);
+    font-weight: 700;
+    background: var(--surface-containerLow);
+  }
+
+  .launcher-item {
+    padding: 6px var(--sp-4);
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    cursor: pointer;
+    transition: background-color var(--t-tint), color var(--t-tint);
+    border-left: 3px solid transparent;
+  }
+
+  .launcher-item:hover { background: var(--surface-containerLow); }
+  .launcher-item.selected {
+    background: var(--surfaceSubtle-accent);
+    border-left-color: var(--border-accent);
+  }
+
+  .launcher-item-icon {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border-subtle);
+    background: var(--surface-container);
+    color: var(--text-secondary);
+    flex-shrink: 0;
+  }
+
+  .launcher-item-title { font-size: var(--sz-sm); font-weight: 600; }
+  .launcher-item-meta { font-size: var(--sz-xs); color: var(--text-muted); }
+  .launcher-item-kbd { margin-left: auto; font-size: 10px; color: var(--text-muted); font-family: var(--font-mono); }
+
+  /* Session popover */
+  .session-popover {
+    position: absolute;
+    top: var(--header-height);
+    right: var(--sp-1);
+    width: 296px;
+    background: var(--surface-containerLowest);
+    border: 1px solid var(--border-hud);
+    z-index: var(--z-panelPopover);
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .session-popover.open { display: flex; }
+
+  .session-popover-header {
+    padding: var(--sp-1) var(--sp-1) var(--sp-1) var(--sp-3);
+    border-bottom: 1px solid var(--border-strong);
+    background: var(--surface-containerLow);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-family: var(--font-condensed);
+    font-size: var(--sz-technical-label);
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+  }
+
+  .session-popover-body {
+    padding: var(--sp-3);
+    font-size: var(--sz-xs);
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-3);
+  }
+
+  .session-field { display: flex; flex-direction: column; gap: 3px; }
+
+  .session-field label {
+    font-size: var(--sz-technical-label);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--text-muted);
+    font-family: var(--font-condensed);
+    font-weight: 700;
+  }
+
+  .session-field input {
+    border: 1px solid var(--border-strong);
+    padding: 4px var(--sp-2);
+    font: inherit;
+    font-size: var(--sz-xs);
+    background: var(--surface-containerLowest);
+    color: var(--text-primary);
+    outline: none;
+  }
+
+  .session-field input:focus { border-color: var(--border-accent); }
+
+  /* Responsive — the beam degrades by dropping the least identifying
+     segment first: carton context, then the stage strip. The session
+     title is the last thing standing because it is the only segment
+     that names the work. */
+  @media (max-width: 1440px) {
+    .ctx-carton, .ctx-carton + .ctx-sep { display: none; }
+  }
+
+  @media (max-width: 1180px) {
+    .pipeline { display: none; }
+  }
+
+  /* Reduced motion — near-empty by construction. Colour tints are the
+     only thing left to shorten, and they already do not move anything. */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  /* Scrollbars — square, and wide enough to hit with a glove. */
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: var(--surface-containerLow); }
+  ::-webkit-scrollbar-thumb { background: var(--surface-containerHighest); border: 2px solid var(--surface-containerLow); }
+  ::-webkit-scrollbar-thumb:hover { background: var(--surface-dim); }
+
+  /* ================================================================
+     PORT ADDITIONS
+     The prototype built most tile / panel bodies as `innerHTML` strings
+     with inline styles. React has no innerHTML here, so each of those
+     inline declarations became a class. Every value below is copied
+     from the prototype string it replaces — nothing was restyled, and
+     nothing here introduces a colour, a radius or a geometry
+     transition that the prototype did not already have.
+     ================================================================ */
+
+  /* rail-btn at the two smaller cells the prototype hard-coded:
+     22px for a panel's close control, 20px for a tile-header action. */
+  .rail-btn.rail-btn-sm { width: 22px; height: 22px; }
+  .rail-btn.rail-btn-xs { width: 20px; height: 20px; }
+
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  /* `.recent-band-label` doubles as the house section label; the
+     prototype reused it with `display:block` inline everywhere it did. */
+  .recent-band-label.standalone { display: block; padding: 0 0 4px; }
+  .recent-band-label.stage-head {
+    display: block;
+    padding: 2px 0 4px;
+    border-bottom: 1px solid var(--border-strong);
+  }
+
+  .session-field input.readonly { color: var(--text-muted); }
+
+  /* ---- session tile ---- */
+  .session-tile { display: flex; flex-direction: column; gap: var(--sp-3); height: 100%; }
+  .spine-title { font-weight: 600; font-size: var(--sz-sm); }
+
+  .scan-await {
+    padding: var(--sp-4);
+    border: 1.5px dashed var(--border-strong);
+    text-align: center;
+    color: var(--text-muted);
+  }
+
+  .scan-await-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-family: var(--font-condensed);
+    font-weight: 700;
+    color: var(--text-secondary);
+  }
+
+  .scan-await-line { margin-top: 6px; }
+  .scan-await-next { font-size: 11px; margin-top: 6px; }
+  .tile-hint { font-size: 11px; color: var(--text-muted); }
+  .tile-note { margin-top: 10px; font-size: 11px; color: var(--text-muted); }
+  .tile-placeholder { color: var(--text-muted); font-size: var(--sz-xs); padding: var(--sp-5); }
+
+  /* The docked composer sits flush to the tile's three inner edges, so
+     it cancels the tile body's padding rather than floating inside it. */
+  .composer.docked {
+    margin-top: auto;
+    margin-left: calc(var(--sp-3) * -1);
+    margin-right: calc(var(--sp-3) * -1);
+    margin-bottom: calc(var(--sp-3) * -1);
+  }
+
+  .composer.framed { border: 1px solid var(--border-hud); }
+  .composer.inset { margin: 0; border: 1px solid var(--border-strong); }
+
+  /* ---- empty slate ---- */
+  .empty-slate-ask { width: min(520px, 90%); }
+
+  /* ---- settings tile ---- */
+  .settings-tile { display: flex; flex-direction: column; gap: var(--sp-4); max-width: 620px; }
+  .settings-copy { font-size: 11px; color: var(--text-muted); line-height: 1.5; }
+  .settings-copy.spaced { margin-bottom: var(--sp-3); }
+  .settings-row { display: flex; align-items: center; gap: 10px; margin-bottom: var(--sp-2); }
+  .settings-row-label { width: 92px; font-size: var(--sz-xs); }
+  .pref-range { flex: 1; max-width: 200px; }
+  .accent-swatches { display: flex; gap: var(--sp-1); flex-wrap: wrap; }
+  .status-legend { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 6px; }
+  .status-legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; }
+
+  /* ---- tool panel bodies ---- */
+  .tool-block { display: flex; flex-direction: column; gap: 10px; }
+  .tool-copy { font-size: 11px; color: var(--text-secondary); line-height: 1.5; }
+  .tool-empty { color: var(--text-muted); text-align: center; padding: var(--sp-6) 0; }
+  .tool-empty-sub { font-size: 11px; }
+  .tool-actions { display: flex; gap: var(--sp-2); justify-content: center; }
+  .tool-readout { text-align: center; padding: 10px 0; }
+
+  .tool-readout-value {
+    font-size: 34px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+    font-family: var(--font-mono);
+  }
+
+  .tool-readout-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: var(--sp-1);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+  }
+
+  .tool-section { margin-top: 14px; }
+  .tool-note { font-size: 11px; color: var(--text-muted); margin-top: 6px; line-height: 1.45; }
+  .agent-card { border: 1px solid var(--border-strong); padding: 6px; margin-bottom: var(--sp-1); }
+  .agent-card-title { font-weight: 600; }
+  .agent-card-kind { font-size: 10px; color: var(--text-muted); }
+  .agent-card-why { font-size: 11px; color: var(--text-secondary); margin-top: 3px; }
+  .agent-card-actions { display: flex; gap: var(--sp-1); margin-top: 6px; }
+  .calc-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px; }
+  .calc-grid .btn { padding: 10px var(--sp-1); }
+  .pair-arrow { text-align: center; color: var(--text-muted); font-size: var(--sz-md); }
+
+  /* ---- popovers ---- */
+  .session-popover-actions { display: flex; gap: var(--sp-2); margin-top: 2px; }
+
+  /* A segment is a real <button> here, not a <span> with an onclick: it has to
+     take the keyboard and the focus ring. These two lines are the whole
+     difference — every other declaration is shared with the `span` rules
+     above, which is why they were widened rather than duplicated. */
+  .mode-toggle button,
+  .composer-toggle button {
+    font: inherit;
+    color: inherit;
+    border: none;
+    background: transparent;
+  }
+
+  /* `.launcher-item` is a real <button> here (the prototype made it a div
+     with an onclick), so it needs the element reset. The `border-left`
+     accent edge is set by the rule above and must survive. */
+  .launcher-item {
+    width: 100%;
+    text-align: left;
+    font: inherit;
+    color: inherit;
+    background: transparent;
+    border-top: none;
+    border-right: none;
+    border-bottom: none;
+  }
+
+  /* `.session-field label` styles the field's caption; a segmented control
+     is not labelled by a <label> (it has no single control to point at), so
+     the same caption on a <span> gets the same treatment. */
+  .settings-field-label {
+    font-size: var(--sz-technical-label);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--text-muted);
+    font-family: var(--font-condensed);
+    font-weight: 700;
+  }
+
+  /* ===== ASSISTANT FEED =============================================
+     THE FIRST SCREEN. AI-first: the empty canvas is a conversation, not
+     a menu. One centred column, clamped to a prose measure — the canvas
+     frame stays full-bleed around it. The composer is the coding-
+     assistant shape: the entry, the context readout at the entry's
+     bottom-right, and the tool row on the very bottom. */
+  .assistant-feed {
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    background: var(--surface-containerLowest);
+  }
+
+  /* Locked measure: never wider than 680, never narrower than 440. The
+     canvas scrolls below the minimum rather than crushing the column —
+     the same honesty rule the tiles follow. */
+  .feed-column {
+    width: 100%;
+    max-width: 680px;
+    min-width: 440px;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-3);
+    padding: var(--sp-6) var(--sp-4) var(--sp-4);
+  }
+
+  /* The welcome — centred in the middle while the feed is empty. */
+  .feed-welcome {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--sp-3);
+    text-align: center;
+    color: var(--text-muted);
+  }
+
+  .feed-welcome-mark {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border-strong);
+    background: var(--surface-containerLow);
+    color: var(--text-secondary);
+  }
+
+  .feed-welcome h2 {
+    font-size: var(--sz-xl);
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    font-family: var(--font-condensed);
+    color: var(--text-secondary);
+  }
+
+  .feed-welcome p {
+    font-size: var(--sz-sm);
+    max-width: 420px;
+    line-height: 1.55;
+  }
+
+  /* The feed — industry-standard bubbles: operator right, assistant
+     left, a condensed micro-label naming each turn's author. */
+  .feed-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-3);
+    padding-top: var(--sp-2);
+  }
+
+  .feed-msg {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-1);
+  }
+
+  .feed-msg.operator { align-items: flex-end; }
+  .feed-msg.assistant { align-items: flex-start; }
+
+  .feed-role {
+    font-size: var(--sz-technical-label);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--text-muted);
+    font-family: var(--font-condensed);
+    font-weight: 700;
+  }
+
+  .feed-bubble {
+    max-width: 85%;
+    padding: var(--sp-2) var(--sp-3);
+    border: 1px solid var(--border-subtle);
+    font-size: var(--sz-sm);
+    line-height: 1.5;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    color: var(--text-primary);
+  }
+
+  .feed-msg.operator .feed-bubble { background: var(--surface-container); }
+  .feed-msg.assistant .feed-bubble { background: var(--bg-subtle); }
+
+  .feed-actions {
+    display: flex;
+    gap: var(--sp-2);
+    flex-wrap: wrap;
+    padding-top: var(--sp-1);
+  }
+
+  /* The composer — entry framed as one control; meta row inside it with
+     the context readout and send at the bottom-right. */
+  .feed-composer {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-2);
+  }
+
+  .feed-entry {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--border-strong);
+    background: var(--surface-containerLow);
+    transition: border-color var(--t-tint);
+  }
+
+  .feed-entry:focus-within { border-color: var(--border-accent); }
+
+  .feed-entry textarea {
+    width: 100%;
+    border: none;
+    background: transparent;
+    padding: var(--sp-2) var(--sp-3);
+    font: inherit;
+    font-size: var(--sz-sm);
+    color: var(--text-primary);
+    resize: none;
+    outline: none;
+    min-height: 44px;
+    max-height: 140px;
+    line-height: 1.45;
+  }
+
+  .feed-entry-meta {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    padding: 0 var(--sp-2) var(--sp-2) var(--sp-3);
+  }
+
+  .feed-hint {
+    margin-right: auto;
+    font-size: var(--sz-xs);
+    color: var(--text-muted);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-1);
+  }
+
+  .feed-context { flex-shrink: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .feed-send:disabled { color: var(--text-muted); cursor: default; }
+
+  /* The tool row — the very bottom, chips with real spacing. */
+  .feed-tools {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    flex-wrap: wrap;
+  }
+
+  .feed-tool {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-1);
+    padding: 3px var(--sp-2);
+    border: 1px solid var(--border-subtle);
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: var(--sz-xs);
+    cursor: pointer;
+    transition: background-color var(--t-tint), color var(--t-tint), border-color var(--t-tint);
+  }
+
+  .feed-tool:hover {
+    background: var(--surface-container);
+    color: var(--text-primary);
+    border-color: var(--border-strong);
+  }
+
+  /* The beam's lifecycle narration, beside the global context. Muted by
+     default; green is the one verdict it renders — "session started". */
+  .ctx-narration {
+    font-family: var(--font-condensed);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    flex-shrink: 0;
+  }
+
+  .ctx-narration.armed { color: var(--text-success); }
+  .ctx-narration.error { color: var(--text-danger); }
+
+  /* ===== FILES TOOL (N6 — native file workspaces) ==================== */
+  .files-tool { min-height: 0; }
+
+  .files-crumbs {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding-bottom: var(--sp-1);
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .files-list {
+    display: flex;
+    flex-direction: column;
+    max-height: 260px;
+    overflow-y: auto;
+    border: 1px solid var(--border-subtle);
+  }
+
+  .files-row {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-1);
+    padding: 3px var(--sp-2);
+    font-size: var(--sz-xs);
+    color: var(--text-secondary);
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--border-subtle);
+    text-align: left;
+    width: 100%;
+    transition: background-color var(--t-tint), color var(--t-tint);
+  }
+
+  .files-row:last-child { border-bottom: none; }
+  .files-row.selected { background: var(--surfaceSubtle-accent); color: var(--text-primary); }
+  button.files-row { cursor: pointer; }
+  button.files-row:hover { background: var(--surface-container); }
+
+  .files-open {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-1);
+    flex: 1;
+    min-width: 0;
+    background: transparent;
+    border: none;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+    text-align: left;
+  }
+
+  .files-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .files-size { flex-shrink: 0; }
+
+  .files-act {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 2px;
+    transition: color var(--t-tint);
+  }
+
+  .files-act:hover { color: var(--text-primary); }
+
+  .files-rename,
+  .files-newfolder input {
+    flex: 1;
+    min-width: 0;
+    border: 1px solid var(--border-strong);
+    background: var(--surface-containerLowest);
+    color: var(--text-primary);
+    font: inherit;
+    font-size: var(--sz-xs);
+    padding: 2px var(--sp-1);
+    outline: none;
+  }
+
+  .files-rename:focus,
+  .files-newfolder input:focus { border-color: var(--border-accent); }
+
+  .files-newfolder {
+    display: flex;
+    gap: var(--sp-1);
+    align-items: center;
+  }
+
+  .files-actions {
+    display: flex;
+    gap: var(--sp-1);
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .files-note {
+    font-size: var(--sz-xs);
+    color: var(--text-warning);
+    border: 1px solid var(--border-warning);
+    background: var(--surfaceSubtle-warning);
+    padding: var(--sp-1) var(--sp-2);
+    overflow-wrap: anywhere;
+  }

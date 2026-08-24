@@ -17,7 +17,7 @@ import { format, parseISO } from 'date-fns';
 import type { TimelineItem } from '@/lib/timeline/types';
 // Type-only import: the URL-state module is `'use client'`, but a type import is
 // erased at build time, so this stays a server-safe pure module.
-import type { JourneyUrlFilters } from '@/components/sidebar/operations/useOperationsTimelineUrlState';
+import type { JourneyUrlFilters } from '@/lib/operations/useOperationsTimelineUrlState';
 
 /** The focused-journey filter snapshot for a single serial (dim=serial). */
 export function serialJourneyFilters(serial: string): JourneyUrlFilters {

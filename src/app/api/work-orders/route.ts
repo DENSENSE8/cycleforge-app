@@ -15,7 +15,7 @@ import { invalidateFbaViews } from '@/lib/fba/invalidation';
 import { compareWorkOrderRows } from '@/lib/work-orders/ranking';
 import { fetchAllWorkOrderQueues } from '@/lib/work-orders/fetch-all-queues';
 import { syncLinkProgressFromWorkAssignment } from '@/lib/ops-plans/task-links';
-import type { WorkOrderRow as SharedWorkOrderRow } from '@/components/work-orders/types';
+import type { WorkOrderRow as SharedWorkOrderRow } from '@/lib/work-orders/types';
 import { WORK_ASSIGNMENTS_ACTIVE_ON_CONFLICT } from '@/lib/neon/work-assignments-conflict';
 
 type QueueKey =

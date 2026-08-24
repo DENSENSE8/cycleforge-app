@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback } from 'react';
-import { usePageSettings } from '@/hooks/useSettings';
+import { usePageSettings } from '@/lib/settings/useSettings';
 import { playScanTone, vibrateScan, type ScanFeedbackKind } from './play';
 import { flashScanBand } from './visual';
 

@@ -1,4 +1,4 @@
-import { getLast8 } from '@/components/ui/CopyChip';
+import { getLast8 } from '@/lib/copy-chip-format';
 import { encodePrintMatrix, type PrintMatrix } from '@/lib/qr/platform-link';
 import { type LabelFaceModel } from '@/lib/print/labelFace';
 import { conditionLabel } from '@/lib/conditions';

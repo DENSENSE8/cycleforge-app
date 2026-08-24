@@ -16,7 +16,7 @@
  * they stay navigation (the sidebar), never rows in the task table.
  */
 
-import type { WorkOrderRow } from '@/components/work-orders/types';
+import type { WorkOrderRow } from '@/lib/work-orders/types';
 import { getCurrentPSTDateKey, toPSTDateKey } from '@/utils/date';
 import type { MyDayFeed, MyDayInterrupt, MyDaySelectedItem } from './my-day-types';
 import { workOrderHref } from './my-day-href';

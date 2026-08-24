@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { appCanvasClass, appChromeClass } from '@/design-system/tokens/app-surface';
+import { appCanvasClass, appChromeClass } from '@/lib/design/app-surface';
 import { SPINE_ACCENT } from './spine-section-accent';
 
 describe('spine selected fill vs chrome', () => {

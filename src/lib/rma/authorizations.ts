@@ -27,6 +27,7 @@ import { isPlacementStrangleRmaRestock } from '@/lib/feature-flags';
 import { resolveSitePlacementBin } from '@/lib/workflow/placement-policy';
 import { tapWorkflow } from '@/lib/workflow/tap';
 import type { PlacementResolverDeps } from '@/lib/workflow/placement';
+import { NO_SESSION } from '@/lib/sessions/attribution';
 
 /**
  * A bin lookup (for the placement strangle) scoped to an open tenant client +
@@ -375,6 +376,7 @@ export async function recordDisposition(
 
           const event = await recordInventoryEvent(
             {
+              session: NO_SESSION,
               event_type: 'NOTE',
               actor_staff_id: input.decidedByStaffId,
               station: 'SYSTEM',
@@ -454,6 +456,7 @@ export async function recordDisposition(
 
             const t = await transition(
               {
+                session: NO_SESSION,
                 unitId: input.serialUnitId,
                 to: 'STOCKED',
                 eventType: 'ADJUSTED',

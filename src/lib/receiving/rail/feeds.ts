@@ -23,9 +23,9 @@
  * fetchers.
  */
 
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import type { ReceivingRailRowTitleMode } from '@/lib/receiving/po-group-title';
-import type { ApiResponse } from '@/components/sidebar/receiving/RecentActivityRailBase';
+import type { ApiResponse } from '@/lib/receiving/rail/recent-activity-response';
 import {
   transformUnboxOpenedRows,
   UNBOX_SIDEBAR_LIMIT,

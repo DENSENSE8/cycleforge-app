@@ -18,7 +18,7 @@ import React, {
 import { useQueryClient } from '@tanstack/react-query';
 import { qk } from '@/queries/keys';
 import { useAuth } from '@/contexts/AuthContext';
-import { useAblyChannel } from '@/hooks/useAblyChannel';
+import { useAblyChannel } from '@/lib/realtime/useAblyChannel';
 import { useIdleReady } from '@/hooks/useIdleReady';
 import { getInboxChannelName, safeChannelName } from '@/lib/realtime/channels';
 import { toast } from '@/lib/toast';

@@ -43,7 +43,7 @@
 import {
   deriveProcedureSteps,
   type DeriveCaptureStepStatesInput,
-} from '@/components/receiving/workspace/derive-capture-step-states';
+} from '@/lib/receiving/derive-capture-step-states';
 import {
   getProcedure,
   registerBuiltinProcedures,

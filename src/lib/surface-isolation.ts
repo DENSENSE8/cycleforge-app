@@ -20,7 +20,7 @@ import {
   GRID_COLUMN_DIR_PARAM,
   GRID_COLUMN_SORT_PARAM,
 } from '@/lib/tables/grid-column-sort-params';
-import type { ReceivingMode } from '@/components/sidebar/receiving/receiving-sidebar-shared';
+import type { ReceivingMode } from '@/lib/receiving/receiving-sidebar-shared';
 
 /** Dashboard route — hosts the inbound-cartons mode (`?mode=inbound`). */
 const DASHBOARD_SURFACE_ROUTE = '/dashboard';

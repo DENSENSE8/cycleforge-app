@@ -10,13 +10,13 @@
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { CONTEXT_PANEL_RESIZE } from '@/components/sidebar/context-panel-column';
+import { CONTEXT_PANEL_RESIZE } from '@/lib/sidebar/context-panel-column';
 import {
   STATION_COLUMN_BUDGET,
   STATION_DISPLAYS_AUTO_CLOSE_FRAME_PX,
   STATION_DISPLAYS_MIN_WIDTH_PX,
   STATION_WORKBENCH_LOCK_PX,
-} from '@/components/station/workbench/workbench-layout';
+} from '@/lib/station/workbench-layout';
 import {
   CONTEXT_RAIL_PARKED_PX,
   MIN_WORK_SURFACE_PX,

@@ -5,11 +5,12 @@
  * Every query is scoped by BOTH the verified session's staff_id and the org
  * (explicit filter + GUC via tenantQuery), so a staffer only ever touches their
  * own prefs and never crosses tenants. First consumer: the configurable
- * focus-scan hotkey shared by every StationScanBar.
+ * focus-scan hotkey shared by every ScanBar.
  */
 
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
+import type { WorkspacePrefs } from '@/lib/workspace/prefs-schema';
 
 /**
  * Per-lane prefs inside a swimlane board. Lane ids and `sort` are open strings:
@@ -179,6 +180,17 @@ export interface StaffPreferences {
    * `[]` = the staffer explicitly cleared their strip (never re-inherits).
    */
   unboxPinnedExtraTabs?: Array<'incoming'> | null;
+  /**
+   * Window-manager tabs — open set, pins, focus. Absent = start from empty; no
+   * migration and no seeded default (see `@/lib/workspace/prefs-schema`).
+   *
+   * The PUT side is typed by that Zod schema and this READ side is a separately
+   * maintained interface, so the key is listed here too — otherwise a reader
+   * has to cast to see `prefs.workspace`. The shallow JSONB merge means a
+   * writer sends the WHOLE sub-map (`serializeWorkspace`), never a nested
+   * partial.
+   */
+  workspace?: WorkspacePrefs | null;
 }
 
 /** Read one staffer's prefs bag (empty object when no row yet). */

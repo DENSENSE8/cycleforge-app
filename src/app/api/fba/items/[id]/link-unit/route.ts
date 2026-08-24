@@ -3,6 +3,7 @@ import { withTenantTransaction } from '@/lib/tenancy/db';
 import { withAuth } from '@/lib/auth/withAuth';
 import { parseScannedUrl } from '@/lib/scan-resolver';
 import { transition } from '@/lib/inventory/state-machine';
+import { NO_SESSION } from '@/lib/sessions/attribution';
 
 /**
  * POST /api/fba/items/[id]/link-unit
@@ -108,6 +109,7 @@ export const POST = withAuth(async (request, ctx) => {
       if (prevStatus === 'STOCKED') {
         const key = clientEventId ? `${clientEventId}:fba-alloc:${unit.id}` : null;
         const t = await transition({
+          session: NO_SESSION,
           unitId: unit.id,
           to: 'ALLOCATED',
           eventType: 'ALLOCATED',

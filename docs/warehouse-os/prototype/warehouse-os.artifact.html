@@ -1,0 +1,4173 @@
+<title>Cycle Forge Warehouse OS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap">
+<style>
+  /* ================================================================
+     CYCLE FORGE — WAREHOUSE OS
+     Iteration-ready HTML prototype. Self-contained. No build step.
+
+     DESIGN LAW, as of 2026-08-22 — squared-off WMS pass:
+       1. RADIUS EXISTS ONCE. `--r-hud` on the workspace frame. Nothing
+          else in this file may carry a border-radius. There is no
+          --r-sm/md/lg/xl/full to reach for; they were deleted so the
+          rule is enforced by absence rather than by discipline.
+       2. NOTHING ANIMATES GEOMETRY. No transition and no keyframe may
+          touch width, height, top/left/right/bottom, margin, padding,
+          transform or flex. Rails expand instantly. Panels appear
+          instantly. Banners appear instantly. The only animatable
+          properties in this file are colour and opacity, and they are
+          capped at --t-tint (80ms), which composites off the main
+          thread and never moves a neighbour.
+       3. BORDERS CARRY THE STRUCTURE. No drop shadows anywhere. With
+          no radius and no elevation, a 1px stroke is the only thing
+          separating one surface from the next, so strokes are pitched
+          up until they can actually do that job.
+       4. STATE IS DRAWN WITH OUTLINE, NOT BORDER. `outline` does not
+          participate in layout, so a hover/focus ring can be 2px
+          without shifting a single pixel of content.
+     ================================================================ */
+
+  :root {
+    /* Typography */
+    --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --font-condensed: "IBM Plex Sans Condensed", "Inter", sans-serif;
+    --font-mono: "IBM Plex Mono", "SF Mono", Monaco, monospace;
+
+    /* Size scale (rem) */
+    --sz-technical-label: 0.5625rem;   /* 9px */
+    --sz-xs: 0.75rem;                  /* 12px */
+    --sz-data-value: 0.8125rem;        /* 13px */
+    --sz-sm: 0.875rem;                 /* 14px */
+    --sz-md: 1rem;                     /* 16px */
+    --sz-lg: 1.125rem;                 /* 18px */
+    --sz-xl: 1.25rem;                  /* 20px */
+    --sz-2xl: 1.5rem;                  /* 24px */
+
+    /* ---- RADIUS ----------------------------------------------------
+       Two tokens. That is the whole set.
+       --r-hud is the boundary between chrome and work; it is the only
+       non-zero radius in the application. Set it to 0 for a fully
+       flush terminal read, or back up to 16px for the visor read —
+       one line, whole-app effect. Nothing else may declare a radius. */
+    --r-none: 0px;
+    --r-hud: 4px;
+
+    /* Spacing scale */
+    --sp-0: 0px;
+    --sp-1: 4px;
+    --sp-2: 8px;
+    --sp-3: 12px;
+    --sp-4: 16px;
+    --sp-5: 20px;
+    --sp-6: 24px;
+    --sp-8: 32px;
+
+    /* Elevation bands (stacking order only — no shadows exist) */
+    --z-base: 0;
+    --z-raised: 10;
+    --z-sticky: 30;
+    --z-header: 40;
+    --z-dropdown: 50;
+    --z-panel: 100;
+    --z-panelPopover: 120;
+    --z-modal: 200;
+    --z-banner: 350;
+    --z-command: 1000;
+
+    /* ---- MOTION ----------------------------------------------------
+       One duration, and it is only ever spent on colour or opacity.
+       There is no --t-normal / --t-slow, and no easing curve token,
+       because an eased tint is indistinguishable from a linear one at
+       80ms and an easing token invites geometry to borrow it. */
+    --t-tint: 80ms;
+
+    /* Geometry */
+    --header-height: 40px;
+    --rail-width: 40px;
+    --rail-expanded: 208px;
+    --tool-panel-width: 280px;
+    --control-h: 26px;
+
+    /* Tile floors — the application's real minimums, not a guess.
+       D4 is still open: 784 is the session/scan-bench floor and 520 is
+       the proposed table floor. The canvas scrolls rather than crushing
+       below them, which is what makes the geometry problem visible
+       instead of silent. */
+    --tile-min-session: 784px;
+    --tile-min-table: 520px;
+
+    /* LIGHT THEME — semantic tokens */
+    --text-primary: #111111;
+    --text-secondary: #52525b;
+    --text-muted: #71717a;
+    --text-inverse: #ffffff;
+    --text-accent: #1d4ed8;
+    --text-success: #15803d;
+    --text-warning: #b45309;
+    --text-danger: #b91c1c;
+    --text-label: #52525b;
+    --text-value: #111111;
+    --text-technical: #71717a;
+
+    --surface-background: #f4f4f5;
+    --surface-containerLowest: #ffffff;
+    --surface-containerLow: #f4f4f5;
+    --surface-container: #e9e9ec;
+    --surface-containerHigh: #dcdce0;
+    --surface-containerHighest: #c4c4cb;
+    --surface-dim: #a1a1aa;
+
+    --bg-canvas: #dcdce0;
+    --bg-surface: #f4f4f5;
+    --bg-subtle: #fafafa;
+    --bg-inverse: #111111;
+
+    --surfaceSubtle-success: rgba(21, 128, 61, 0.10);
+    --surfaceSubtle-warning: rgba(180, 83, 9, 0.10);
+    --surfaceSubtle-danger: rgba(185, 28, 28, 0.10);
+    --surfaceSubtle-accent: rgba(29, 78, 216, 0.10);
+
+    /* Strokes do all the structural work now — pitched up accordingly */
+    --border-subtle: #d4d4d8;
+    --border-strong: #a1a1aa;
+    --border-hud: #71717a;
+    --border-accent: #1d4ed8;
+    --border-success: #15803d;
+    --border-warning: #b45309;
+    --border-danger: #b91c1c;
+  }
+
+  :root[data-theme="dark"] {
+    --text-primary: #f4f4f5;
+    --text-secondary: #a1a1aa;
+    --text-muted: #7c7c86;
+    --text-inverse: #09090b;
+    --text-accent: #60a5fa;
+    --text-success: #4ade80;
+    --text-warning: #fbbf24;
+    --text-danger: #f87171;
+    --text-label: #a1a1aa;
+    --text-value: #f4f4f5;
+    --text-technical: #7c7c86;
+
+    --surface-background: #0b0b0d;
+    --surface-containerLowest: #151518;
+    --surface-containerLow: #1c1c20;
+    --surface-container: #26262b;
+    --surface-containerHigh: #33333a;
+    --surface-containerHighest: #4a4a53;
+    --surface-dim: #6b6b76;
+
+    --bg-canvas: #060607;
+    --bg-surface: #151518;
+    --bg-subtle: #1c1c20;
+    --bg-inverse: #f4f4f5;
+
+    --surfaceSubtle-success: rgba(74, 222, 128, 0.12);
+    --surfaceSubtle-warning: rgba(251, 191, 36, 0.12);
+    --surfaceSubtle-danger: rgba(248, 113, 113, 0.12);
+    --surfaceSubtle-accent: rgba(96, 165, 250, 0.14);
+
+    --border-subtle: #303036;
+    --border-strong: #52525b;
+    --border-hud: #6b6b76;
+    --border-accent: #60a5fa;
+    --border-success: #4ade80;
+    --border-warning: #fbbf24;
+    --border-danger: #f87171;
+  }
+
+  /* Default "system" state stamps nothing — only the media query separates them. */
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --text-primary: #f4f4f5;
+      --text-secondary: #a1a1aa;
+      --text-muted: #7c7c86;
+      --text-inverse: #09090b;
+      --text-accent: #60a5fa;
+      --text-success: #4ade80;
+      --text-warning: #fbbf24;
+      --text-danger: #f87171;
+      --text-label: #a1a1aa;
+      --text-value: #f4f4f5;
+      --text-technical: #7c7c86;
+  
+      --surface-background: #0b0b0d;
+      --surface-containerLowest: #151518;
+      --surface-containerLow: #1c1c20;
+      --surface-container: #26262b;
+      --surface-containerHigh: #33333a;
+      --surface-containerHighest: #4a4a53;
+      --surface-dim: #6b6b76;
+  
+      --bg-canvas: #060607;
+      --bg-surface: #151518;
+      --bg-subtle: #1c1c20;
+      --bg-inverse: #f4f4f5;
+  
+      --surfaceSubtle-success: rgba(74, 222, 128, 0.12);
+      --surfaceSubtle-warning: rgba(251, 191, 36, 0.12);
+      --surfaceSubtle-danger: rgba(248, 113, 113, 0.12);
+      --surfaceSubtle-accent: rgba(96, 165, 250, 0.14);
+  
+      --border-subtle: #303036;
+      --border-strong: #52525b;
+      --border-hud: #6b6b76;
+      --border-accent: #60a5fa;
+      --border-success: #4ade80;
+      --border-warning: #fbbf24;
+      --border-danger: #f87171;
+    }
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  /* LAW 1, enforced. Every element is square unless it opts in by
+     literally naming --r-hud, and only the canvas frame does. */
+  *, *::before, *::after { border-radius: var(--r-none); }
+
+  html, body {
+    height: 100%;
+    font-family: var(--font-sans);
+    font-size: 16px;
+    line-height: 1.45;
+    color: var(--text-primary);
+    background: var(--bg-canvas);
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+  }
+
+  /* One square focus ring, inset so it never nudges layout. */
+  :focus-visible {
+    outline: 2px solid var(--border-accent);
+    outline-offset: -2px;
+  }
+
+  .wos {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+  }
+
+  /* ===== HEADER — the beam ==========================================
+     Three parts only: corner cluster · context line · overflow.
+     Pairing and the timers are TOOLS and live in the right rail; they
+     are not header chrome, because the beam reports identity and never
+     verbs. ================================================================ */
+  .wos-header {
+    height: var(--header-height);
+    background: var(--surface-containerLowest);
+    border-bottom: 1px solid var(--border-strong);
+    display: flex;
+    align-items: center;
+    padding: 0 var(--sp-1);
+    gap: var(--sp-1);
+    flex-shrink: 0;
+    z-index: var(--z-header);
+    position: relative;
+  }
+
+  /* --- corner cluster: SCAN · SEARCH · CONTEXT, in that order --- */
+  .corner-cluster {
+    display: flex;
+    align-items: stretch;
+    height: var(--control-h);
+    flex-shrink: 0;
+    border: 1px solid var(--border-strong);
+    background: var(--surface-containerLow);
+  }
+
+  .corner-cluster > * + * { border-left: 1px solid var(--border-strong); }
+
+  .zone-scan {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-1);
+    min-width: 300px;
+    padding: 0 var(--sp-2);
+    background: var(--surface-containerLowest);
+  }
+
+  .zone-scan:focus-within { background: var(--surfaceSubtle-accent); }
+  .zone-scan > svg { flex-shrink: 0; color: var(--text-secondary); }
+
+  .scan-input-wrap { display: flex; align-items: center; flex: 1; min-width: 0; }
+
+  .scan-input-wrap input {
+    border: none;
+    background: transparent;
+    outline: none;
+    font: inherit;
+    color: inherit;
+    width: 100%;
+    font-size: var(--sz-xs);
+    min-width: 0;
+    letter-spacing: 0.01em;
+  }
+
+  .scan-input-wrap input::placeholder { color: var(--text-muted); }
+
+  /* The 2x2 mode matrix — two axes, drawn as two square segment pairs */
+  .mode-toggle {
+    display: flex;
+    align-items: stretch;
+    font-size: var(--sz-technical-label);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    flex-shrink: 0;
+    font-family: var(--font-condensed);
+    font-weight: 600;
+    border: 1px solid var(--border-subtle);
+    height: 16px;
+    align-self: center;
+  }
+
+  .mode-toggle span {
+    cursor: pointer;
+    padding: 0 var(--sp-1);
+    display: flex;
+    align-items: center;
+    transition: background-color var(--t-tint), color var(--t-tint);
+    user-select: none;
+  }
+
+  .mode-toggle span + span { border-left: 1px solid var(--border-subtle); }
+  .mode-toggle span:hover { color: var(--text-secondary); background: var(--surface-containerLow); }
+  .mode-toggle span.active {
+    background: var(--text-primary);
+    color: var(--text-inverse);
+  }
+  /* The two axes are separated by a heavier rule so the matrix reads
+     as input-mode | query-mode and not as one four-way switch. */
+  .mode-toggle .axis-gap { border-left: 3px solid var(--text-primary); }
+
+  /* SCAN-ARMED — permanent, and welded to the scan field.
+     Not a toast. The operator must be able to see where the next scan
+     lands without leaving the carton, so it never auto-hides and it
+     never moves. */
+  .scan-armed {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 0 var(--sp-2);
+    font-size: var(--sz-technical-label);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-family: var(--font-condensed);
+    font-weight: 600;
+    background: var(--surfaceSubtle-success);
+    color: var(--text-success);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .scan-armed .mark {
+    width: 7px;
+    height: 7px;
+    background: var(--text-success);
+    flex-shrink: 0;
+  }
+
+  .scan-armed.parked { background: var(--surfaceSubtle-warning); color: var(--text-warning); }
+  .scan-armed.parked .mark { background: var(--text-warning); }
+  .scan-armed.ended { background: var(--surface-container); color: var(--text-muted); }
+  .scan-armed.ended .mark { background: var(--text-muted); }
+  .scan-armed.error { background: var(--surfaceSubtle-danger); color: var(--text-danger); }
+  .scan-armed.error .mark { background: var(--text-danger); }
+
+  .cluster-btn {
+    width: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: background-color var(--t-tint), color var(--t-tint);
+    flex-shrink: 0;
+    font: inherit;
+  }
+
+  .cluster-btn:hover { background: var(--surface-container); color: var(--text-primary); }
+  .cluster-btn.active { background: var(--text-primary); color: var(--text-inverse); }
+
+  .zone-context {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 0 var(--sp-2);
+    color: var(--text-secondary);
+    font-size: var(--sz-xs);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font: inherit;
+    transition: background-color var(--t-tint);
+  }
+
+  .zone-context:hover { background: var(--surface-container); }
+
+  /* Structurally the carton chip: leading glyph + mono value, transparent
+     until hover. The one addition is the STATE MARK, because a session has a
+     state and a carton does not. Square, per F4 — at 7px it reads where a
+     dot does not, and it matches the frame. */
+  .zone-session {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 0 var(--sp-2);
+    height: var(--control-h);
+    color: var(--text-secondary);
+    font-size: var(--sz-xs);
+    background: transparent;
+    border: 1px solid var(--border-strong);
+    cursor: pointer;
+    font: inherit;
+    white-space: nowrap;
+    transition: background-color var(--t-tint), color var(--t-tint);
+  }
+
+  .zone-session:hover { background: var(--surface-container); }
+
+  .zone-session .mark {
+    width: 7px;
+    height: 7px;
+    flex-shrink: 0;
+    background: var(--text-success);
+  }
+
+  /* Session state is a SHARED VOCABULARY (U4) — the same four colours the
+     tile spine uses, so the beam and the object never disagree. */
+  .zone-session.parked .mark { background: var(--text-warning); }
+  .zone-session.parked { color: var(--text-warning); }
+  .zone-session.ended .mark { background: var(--text-muted); }
+  .zone-session.ended { color: var(--text-muted); }
+  .zone-session.error .mark { background: var(--text-danger); }
+  .zone-session.error { color: var(--text-danger); }
+
+  /* --- the context line: the only place that says what is happening --- */
+  .context-line {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--sp-2);
+    height: var(--control-h);
+    font-size: var(--sz-xs);
+    overflow: hidden;
+    white-space: nowrap;
+  }
+
+  .ctx-seg {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .ctx-sep {
+    width: 1px;
+    height: 14px;
+    background: var(--border-strong);
+    flex-shrink: 0;
+  }
+
+  /* Segment 1 — global context / process stage. Scan type IS the
+     pipeline position, so the stage strip lives here, not in its own
+     zone. Squares, not dots: a 6px square is more legible than a 6px
+     circle and it reads as a step in a track. */
+  .ctx-global {
+    font-family: var(--font-condensed);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+  }
+
+  .pipeline { display: flex; align-items: stretch; height: 14px; border: 1px solid var(--border-subtle); }
+
+  .pipeline-step {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 0 5px;
+    font-size: var(--sz-technical-label);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    font-family: var(--font-condensed);
+    font-weight: 600;
+  }
+
+  .pipeline-step + .pipeline-step { border-left: 1px solid var(--border-subtle); }
+
+  .pipeline-mark {
+    width: 5px;
+    height: 5px;
+    background: var(--surface-containerHighest);
+    flex-shrink: 0;
+  }
+
+  .pipeline-step.done { color: var(--text-success); }
+  .pipeline-step.done .pipeline-mark { background: var(--text-success); }
+  .pipeline-step.current {
+    color: var(--text-inverse);
+    background: var(--text-primary);
+  }
+  .pipeline-step.current .pipeline-mark { background: var(--text-accent); }
+
+  /* Segment 2 — the session title, renamed in place, right here. */
+  .ctx-session {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    min-width: 0;
+  }
+
+  .session-title {
+    font-weight: 600;
+    font-size: var(--sz-xs);
+    color: var(--text-primary);
+    background: transparent;
+    border: none;
+    border-bottom: 1px dashed transparent;
+    padding: 1px 4px;
+    cursor: text;
+    font-family: inherit;
+    max-width: 260px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    transition: background-color var(--t-tint), border-color var(--t-tint);
+  }
+
+  .session-title:hover { border-bottom-color: var(--border-strong); }
+  .session-title.unnamed { color: var(--text-muted); font-weight: 500; font-style: italic; }
+
+  .session-title-input {
+    font: inherit;
+    font-size: var(--sz-xs);
+    font-weight: 600;
+    color: var(--text-primary);
+    background: var(--surface-containerLowest);
+    border: 1px solid var(--border-accent);
+    outline: none;
+    padding: 1px 4px;
+    width: 200px;
+  }
+
+  .session-state {
+    font-family: var(--font-condensed);
+    font-size: var(--sz-technical-label);
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 1px 5px;
+    border: 1px solid var(--border-success);
+    background: var(--surfaceSubtle-success);
+    color: var(--text-success);
+    flex-shrink: 0;
+  }
+
+  .session-state.parked { border-color: var(--border-warning); background: var(--surfaceSubtle-warning); color: var(--text-warning); }
+  .session-state.ended  { border-color: var(--border-strong); background: var(--surface-container); color: var(--text-muted); }
+  .session-state.error  { border-color: var(--border-danger); background: var(--surfaceSubtle-danger); color: var(--text-danger); }
+
+  /* Segment 3 — carton context of scan type */
+  .ctx-carton { color: var(--text-secondary); min-width: 0; }
+  .ctx-fallback { display: flex; align-items: center; gap: 5px; }
+  .ctx-fallback[hidden] { display: none; }
+  .ctx-fallback #ctxFallbackHint { font-size: var(--sz-technical-label); color: var(--text-muted); }
+
+  /* ===== SESSION TILE SPINE =========================================
+     The session's identity now lives ON the session, which is where the
+     operator is already looking. Full tile width buys the pipeline a real
+     strip instead of four squeezed segments in shared chrome — and it is
+     the level the procedure STEPS slot into later (A7 / P1). */
+  .tile-spine {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-2);
+    border-bottom: 1px solid var(--border-strong);
+    padding-bottom: var(--sp-2);
+    margin-bottom: var(--sp-2);
+  }
+
+  .tile-spine-identity {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    flex-wrap: wrap;
+  }
+
+  .tile-spine .pipeline { height: 20px; width: 100%; }
+  .tile-spine .pipeline-step { flex: 1; justify-content: center; }
+
+  /* Fixed width, so the context line's budget is a constant and not a
+     lottery. Everything here is tabular so the digits do not jitter. */
+  .header-face {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    height: var(--control-h);
+    width: 128px;
+    justify-content: center;
+    padding: 0 var(--sp-2);
+    border: 1px solid var(--border-strong);
+    background: var(--surface-containerLow);
+    color: var(--text-secondary);
+    font: inherit;
+    font-size: var(--sz-xs);
+    cursor: pointer;
+    transition: background-color var(--t-tint), color var(--t-tint), border-color var(--t-tint);
+  }
+
+  .header-face:hover { background: var(--surface-container); }
+  .header-face .face-sep { color: var(--text-muted); }
+  .header-face .mono { color: inherit; }
+
+  /* State is carried by the pair, not by a separate badge. */
+  .header-face.on-target { border-color: var(--border-success); color: var(--text-success); background: var(--surfaceSubtle-success); }
+  .header-face.near      { border-color: var(--border-warning); color: var(--text-warning); background: var(--surfaceSubtle-warning); }
+  .header-face.over      { border-color: var(--border-danger);  color: var(--text-danger);  background: var(--surfaceSubtle-danger); }
+  .header-face.idle      { color: var(--text-muted); }
+
+  /* Pinned tools are RAIL cells — same 28px column as a pin, a tab and a
+     recent on the left. The drop line is horizontal because the rail is a
+     column, not a row. */
+  #headerTools .cluster-btn {
+    position: relative;
+    width: 28px;
+    height: 28px;
+    color: var(--text-secondary);
+  }
+  .rail.expanded #headerTools .cluster-btn { width: 100%; justify-content: flex-start; padding: 0 var(--sp-2); gap: var(--sp-2); }
+  #headerTools .cluster-btn:hover { background: var(--surface-container); color: var(--text-primary); }
+  #headerTools .cluster-btn[draggable="true"] { cursor: grab; }
+  #headerTools.drop-target { outline: 2px dashed var(--border-accent); outline-offset: -2px; }
+  #headerTools .cluster-btn.drop-before::before {
+    content: ''; position: absolute; left: 2px; right: 2px; top: -1px;
+    height: 2px; background: var(--border-accent);
+  }
+  .hp-chord {
+    position: absolute; bottom: 0; right: 1px;
+    font-family: var(--font-mono); font-size: 8px; line-height: 8px;
+    color: var(--text-muted); pointer-events: none;
+  }
+
+  /* The overflow list is the DRAG SOURCE for pinning. */
+  .tool-drop {
+    position: absolute;
+    top: var(--header-height);
+    right: calc(var(--rail-width) + var(--sp-1));
+    width: 248px;
+    background: var(--surface-containerLowest);
+    border: 1px solid var(--border-hud);
+    z-index: var(--z-panelPopover);
+    display: none;
+    flex-direction: column;
+  }
+  .tool-drop.open { display: flex; }
+  .tool-drop .row {
+    display: flex; align-items: center; gap: var(--sp-2);
+    padding: 5px var(--sp-3); font-size: var(--sz-xs);
+    cursor: grab; border: none; background: transparent; color: var(--text-primary);
+    width: 100%; text-align: left; font: inherit;
+    transition: background-color var(--t-tint);
+  }
+  .tool-drop .row:hover { background: var(--surface-container); }
+  .tool-drop .row.is-pinned { color: var(--text-muted); }
+  .tool-drop .row .mono { margin-left: auto; font-size: 10px; }
+
+  .header-overflow { flex-shrink: 0; display: flex; align-items: center; }
+
+  /* ===== BODY ===== */
+  .wos-body {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* ===== RAILS ======================================================
+     Persistent icon strips. Expanding is a width change and therefore
+     is INSTANT — no transition. A rail that tweens open occupies the
+     canvas for the length of the tween while handing nothing back. */
+  .rail {
+    width: var(--rail-width);
+    background: var(--surface-containerLowest);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: var(--sp-1) 0;
+    gap: 2px;
+    flex-shrink: 0;
+    overflow: hidden;
+    position: relative;
+    z-index: var(--z-panel);
+  }
+
+  .rail.left { border-right: 1px solid var(--border-strong); }
+  .rail.right { border-left: 1px solid var(--border-strong); }
+  .rail.expanded {
+    width: var(--rail-expanded);
+    align-items: stretch;
+    padding: var(--sp-1);
+  }
+
+  .rail-btn {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--text-secondary);
+    transition: background-color var(--t-tint), color var(--t-tint);
+    flex-shrink: 0;
+    border: none;
+    background: transparent;
+    font: inherit;
+  }
+
+  .rail.expanded .rail-btn { width: 100%; justify-content: flex-start; padding: 0 var(--sp-2); gap: var(--sp-2); font-size: var(--sz-xs); }
+  .rail-btn:hover { background: var(--surface-container); color: var(--text-primary); }
+  .rail-btn.active { background: var(--text-primary); color: var(--text-inverse); }
+  .rail-btn svg { width: 16px; height: 16px; flex-shrink: 0; }
+  .rail-btn .rail-btn-label { display: none; }
+  .rail.expanded .rail-btn .rail-btn-label { display: inline; }
+
+  /* A queued proposal is a fact the operator must see WITHOUT opening the
+     panel — so it badges the icon. Square, like every other mark. */
+  .rail-badge {
+    position: absolute;
+    top: 1px;
+    right: 1px;
+    min-width: 12px;
+    height: 12px;
+    padding: 0 2px;
+    background: var(--text-warning);
+    color: var(--text-inverse);
+    font-family: var(--font-condensed);
+    font-size: 9px;
+    font-weight: 700;
+    line-height: 12px;
+    text-align: center;
+  }
+
+  .rail-btn { position: relative; }
+  .rail.expanded .rail-badge { position: static; margin-left: auto; }
+
+  .rail-divider {
+    width: 24px;
+    height: 1px;
+    background: var(--border-subtle);
+    margin: var(--sp-1) 0;
+    flex-shrink: 0;
+  }
+
+  .rail.expanded .rail-divider { width: 100%; }
+
+  /* The rail's own name, and its collapse control once it is open.
+     COLLAPSED IT IS NOT SHOWN AT ALL — a 40px strip of icons has no room
+     for prose, and a vertical word is prose read sideways. What the label
+     was also doing collapsed, separating pins from tabs, a 1px divider
+     does better and silently. */
+  .rail-label {
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    font-size: var(--sz-technical-label);
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: var(--sp-2) 0;
+    font-weight: 700;
+    font-family: var(--font-condensed);
+    user-select: none;
+    cursor: pointer;
+    background: transparent;
+    border: none;
+    border-top: 1px solid var(--border-subtle);
+    border-bottom: 1px solid var(--border-subtle);
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background-color var(--t-tint), color var(--t-tint);
+  }
+
+  .rail:not(.expanded) .rail-label { display: none; }
+  .rail.expanded .rail-divider-collapsed { display: none; }
+  .rail-label:hover { background: var(--surface-container); color: var(--text-primary); }
+
+  .rail.expanded .rail-label {
+    writing-mode: horizontal-tb;
+    text-orientation: initial;
+    padding: var(--sp-1) var(--sp-2);
+    justify-content: flex-start;
+    font-size: 10px;
+    letter-spacing: 0.16em;
+  }
+
+  /* THE RAIL'S INNER EDGE IS THE CONTROL, AND IT IS THE ONLY ONE.
+     The border between rail and canvas is the line that actually moves
+     when the rail expands, so it is the line you grab — the same gesture
+     as every splitter in every editor. Full height, so it is the longest
+     target on the screen and it never changes size with the rail's
+     contents; 6px wide, which is what a splitter has been for thirty
+     years, and it fits the gutter beside a 28px button in a 40px rail
+     without stealing a single click from one.
+     There is no chevron and no collapse button anywhere: a second visible
+     control for one verb was an apology for not trusting the first. */
+  .rail-edge {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 6px;
+    border: none;
+    background: transparent;
+    padding: 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1;
+    transition: background-color var(--t-tint);
+  }
+
+  .rail.left  .rail-edge { right: 0; }
+  .rail.right .rail-edge { left: 0; }
+  .rail-edge:hover { background: var(--surface-container); }
+
+  /* The gutter the strip lives in. Collapsed it is already there — a 28px
+     button centred in a 40px rail leaves 6px a side. Expanded, buttons go
+     full-width, so the rail reserves it. */
+  .rail.left.expanded  { padding-right: 8px; }
+  .rail.right.expanded { padding-left: 8px; }
+
+  /* THE SLACK stays live as a forgiving second target for the same verb.
+     It carries no mark of its own — the edge owns that — and it costs
+     nothing, because it is the one region of the rail that can never hold
+     a tab, a pin or a recent. */
+  .rail-slack {
+    flex: 1;
+    min-height: 20px;
+    width: 100%;
+    border: none;
+    background: transparent;
+    padding: 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color var(--t-tint);
+  }
+
+  .rail-slack:hover { background: var(--surface-container); }
+
+  /* The grip. Squares, not dots — the same reasoning as the stage strip —
+     and permanently inked, because a mark that only appears on hover does
+     not exist on a mounted tablet. */
+  .grip {
+    display: block;
+    width: 2px;
+    height: 14px;
+    background: repeating-linear-gradient(
+      to bottom, var(--border-strong) 0 2px, transparent 2px 5px);
+  }
+
+  .rail-edge:hover .grip { background: repeating-linear-gradient(
+      to bottom, var(--text-secondary) 0 2px, transparent 2px 5px); }
+
+  /* THE BOTTOM-LEFT CORNER. One control, and it is the SAME SIZE as the
+     control at the top of the rail — a 28px cell with a 16px glyph. The
+     rail is one column, so it gets one column width and one glyph size;
+     a settings gear drawn smaller than the add button above it reads as
+     a lesser control, and it is not one. No divider — the border is the
+     divider — and theme lives in settings, not out here. */
+  .rail-footer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    flex-shrink: 0;
+    border-top: 1px solid var(--border-subtle);
+    padding-top: 2px;
+    margin-top: 2px;
+  }
+
+  .rail.expanded .rail-footer { flex-direction: row; align-items: stretch; gap: 2px; }
+  .rail.expanded .rail-footer .rail-btn { width: auto; flex: 1; }
+
+  .rail-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    width: 100%;
+    flex-shrink: 0;
+  }
+
+  .rail.expanded .rail-group { align-items: stretch; }
+
+  .tab-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    width: 100%;
+    align-items: center;
+    /* Rail overflow (open question 6) answered as SCROLL: the strip is
+       a fixed-width vertical column, so the tab list is the part that
+       shrinks and scrolls. Pins and recents keep their height. */
+    flex: 0 1 auto;
+    min-height: 0;
+  }
+
+  .rail.expanded .tab-list { align-items: stretch; }
+
+  .tab, .pin, .recent-item {
+    width: 28px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    position: relative;
+    color: var(--text-secondary);
+    transition: background-color var(--t-tint), color var(--t-tint);
+    flex-shrink: 0;
+    border: none;
+    background: transparent;
+    font: inherit;
+  }
+
+  .rail.expanded .tab,
+  .rail.expanded .pin,
+  .rail.expanded .recent-item {
+    width: 100%;
+    justify-content: flex-start;
+    padding: 0 var(--sp-2) 0 var(--sp-3);
+    gap: var(--sp-2);
+    font-size: var(--sz-xs);
+  }
+
+  /* Collapsed, a rail is icons only — labels would spill past 40px. */
+  .rail:not(.expanded) .tab-name,
+  .rail:not(.expanded) .recents-header span { display: none; }
+
+  .tab:hover, .pin:hover, .recent-item:hover { background: var(--surface-container); color: var(--text-primary); }
+  .tab.active { background: var(--surface-containerHigh); color: var(--text-primary); font-weight: 600; }
+
+  /* The active tab's lit cell — a square 3px edge bar, not a pill */
+  .tab.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: var(--text-primary);
+  }
+
+  .pin { color: var(--text-primary); }
+
+  /* Per-tab colour is a 3px edge stripe, not a dot: it stays legible
+     at rail width, it never becomes confetti because it is structural,
+     and it reads the same expanded or collapsed. */
+  .tab-color {
+    width: 3px;
+    height: 100%;
+    position: absolute;
+    right: 0;
+    top: 0;
+    flex-shrink: 0;
+  }
+
+  .rail.expanded .tab-color { right: 0; }
+
+  .tab-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    text-align: left;
+  }
+
+  .recents-header {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px var(--sp-1);
+    font-size: var(--sz-technical-label);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--text-muted);
+    font-family: var(--font-condensed);
+    font-weight: 700;
+    cursor: pointer;
+    user-select: none;
+    background: transparent;
+    border: none;
+    width: 100%;
+    justify-content: center;
+    /* It is a row in the rail's one column, so it holds its row height
+       instead of being the thing that gives way when the rail is tight —
+       the tab list is the designated scroller, not this. */
+    flex-shrink: 0;
+    transition: color var(--t-tint);
+  }
+
+  .rail:not(.expanded) .recents-header { height: 26px; }
+  .rail.expanded .recents-header { justify-content: flex-start; padding: 2px var(--sp-2); }
+  .recents-header:hover { color: var(--text-primary); }
+  .recents-header svg { flex-shrink: 0; }
+  .rail:not(.expanded) .recents-chevron { display: none; }
+  .rail.expanded .recents-icon { display: none; }
+  /* The chevron flips instantly. It is a state read, not a performance. */
+  .recents-header.collapsed svg { transform: rotate(-90deg); }
+
+  /* Bottom-anchored and BOUNDED. Two independent scroll ports — a long tab
+     list cannot starve recents and a long history cannot starve the tabs.
+     That is a fuller answer to rail overflow than "the tab list scrolls". */
+  .recents-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    width: 100%;
+    align-items: center;
+    /* Bounded tighter than half the rail: the bottom-left corner is a
+       trail, not a second workspace. */
+    max-height: 34vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    flex-shrink: 0;
+  }
+  .rail.expanded .recents-list { align-items: stretch; }
+  .recents-list.collapsed { display: none; }
+
+  /* ===== RECENTS — per staff, per org. Never per session. =============
+     Banded by kind in a FIXED order, MRU within a band. The band is what
+     makes the list reachable by muscle memory: cartons sit at the same
+     offset from the top whatever you did at another bench. Recency is
+     not lost to the banding — it is carried by the marker instead, which
+     is why the marker exists. */
+  .recent-band { display: flex; flex-direction: column; width: 100%; align-items: center; }
+  .rail.expanded .recent-band { align-items: stretch; }
+
+  .recent-band-label {
+    display: none;
+    font-family: var(--font-condensed);
+    font-size: var(--sz-technical-label);
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: 4px var(--sp-2) 2px;
+  }
+
+  .rail.expanded .recent-band-label { display: block; }
+  /* Collapsed, a band is separated by SPACE, never by a rule.
+     A hairline in this column already has a meaning — it is what divides
+     pins from tabs from recents from the footer, i.e. "a different kind of
+     thing starts here". Spending that same ink on "same kind of thing,
+     next group" made five bands of one list read as five separate
+     displays. Proximity groups them for free and adds no ink. */
+  .rail:not(.expanded) .recent-band + .recent-band { margin-top: 5px; }
+
+  /* A recent is a row in the same column as a tab and a pin, so it is the
+     same cell: 28 x 26, glyph centred, glyph at 15px. It used to be 24px
+     tall with a left-aligned 12px glyph, because the cell also had to fit
+     the most-recent caret on its trailing edge without the two touching.
+     That caret is gone, and with it the reason for a second row size. */
+  .recent-item {
+    color: var(--text-secondary);
+    position: relative;
+  }
+
+  .rail.expanded .recent-item { height: auto; min-height: 26px; padding: 2px var(--sp-3) 2px var(--sp-3); }
+
+  .recent-text { display: none; min-width: 0; flex: 1; text-align: left; }
+  .rail.expanded .recent-text { display: block; }
+  .recent-title { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--sz-xs); }
+  .recent-sub {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: var(--sz-technical-label);
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+  }
+
+  /* Leading edge = this entry was touched by the LIVE session. It is a
+     mark, not a scope: the entry outlives the session that made it. */
+  .recent-item.in-session::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 2px; bottom: 2px;
+    width: 3px;
+    background: var(--text-success);
+  }
+
+  /* Trailing edge = the single most recent selection, anywhere in the
+     list. One per rail, by definition. */
+  /* The most recent selection is marked by the ROW, not by a caret beside
+     it. A 9px triangle hung off the right edge of a 40px rail had to be
+     absolutely positioned to avoid shoving the label, and it still crowded
+     the row it was pointing at. The tint says the same thing and costs no
+     space. */
+  .recent-item.is-last { color: var(--text-primary); background: var(--surfaceSubtle-accent); }
+
+  /* ===== CANVAS =====================================================
+     The one place radius exists. --r-hud, one stroke, four sides. */
+  .canvas-wrap {
+    flex: 1;
+    padding: var(--sp-2);
+    overflow: hidden;
+    position: relative;
+    background: var(--bg-canvas);
+    min-width: 0;
+    display: flex;
+  }
+
+  .canvas {
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    border: 1.5px solid var(--border-hud);
+    border-radius: var(--r-hud);
+    background: var(--surface-containerLowest);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+  }
+
+  .canvas-scroll {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  /* ===== TILES ======================================================
+     Four states, four distinct treatments — because in a tiling
+     manager hover and focus are different facts and one of them
+     decides where the keystrokes go.
+       hover       1px grey inset ring, no fill
+       focused     2px accent inset ring + accent header + edge bar
+       dragging    dashed ring + 40% opacity
+       snap-target dashed accent ring + accent wash
+     All four are `outline` or `background`, so none of them reflow. */
+  .tile {
+    flex: 1 1 0;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--border-strong);
+    position: relative;
+    min-width: var(--tile-min-table);
+    background: var(--surface-containerLowest);
+  }
+
+  .tile[data-type="session"] { min-width: var(--tile-min-session); }
+  .tile:last-child { border-right: none; }
+
+  .tile:hover { outline: 1px solid var(--border-strong); outline-offset: -1px; }
+
+  .tile.focused {
+    outline: 2px solid var(--border-accent);
+    outline-offset: -2px;
+  }
+  .tile.focused .tile-header {
+    background: var(--surfaceSubtle-accent);
+    color: var(--text-primary);
+    border-bottom-color: var(--border-accent);
+  }
+  .tile.focused .tile-header::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: var(--border-accent);
+  }
+
+  .tile.dragging {
+    opacity: 0.4;
+    outline: 2px dashed var(--border-strong);
+    outline-offset: -2px;
+  }
+
+  .tile.snap-target {
+    background: var(--surfaceSubtle-accent);
+    outline: 2px dashed var(--border-accent);
+    outline-offset: -2px;
+  }
+
+  .tile-header {
+    height: 26px;
+    border-bottom: 1px solid var(--border-strong);
+    display: flex;
+    align-items: center;
+    padding: 0 var(--sp-2);
+    gap: var(--sp-2);
+    font-size: 11px;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+    background: var(--surface-containerLow);
+    position: relative;
+    transition: background-color var(--t-tint), color var(--t-tint);
+  }
+
+  .tile-header .tile-identity {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    flex: 1;
+    min-width: 0;
+  }
+
+  .tile-header .tile-color { width: 8px; height: 8px; flex-shrink: 0; }
+
+  .tile-header .tile-title {
+    font-weight: 600;
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .tile-header .tile-type {
+    font-size: var(--sz-technical-label);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--text-muted);
+    font-family: var(--font-condensed);
+    font-weight: 700;
+    border: 1px solid var(--border-subtle);
+    padding: 0 4px;
+  }
+
+  /* Tile actions are always present — an opacity reveal is a hover
+     dependency, and a mounted tablet has no hover. */
+  .tile-header .tile-actions { display: flex; gap: 2px; flex-shrink: 0; }
+
+  /* Close is the last thing in the header and the only red thing in it.
+     Destructive, so it reads destructive before it is pressed — and it is
+     always present, because a mounted tablet has no hover to reveal it. */
+  .tile-header .tile-close:hover {
+    background: var(--surfaceSubtle-danger);
+    color: var(--text-danger);
+  }
+
+  .tile-body {
+    flex: 1;
+    overflow: auto;
+    padding: var(--sp-3);
+    font-size: var(--sz-data-value);
+    line-height: 1.45;
+    position: relative;
+  }
+
+  .tile-split-handle {
+    position: absolute;
+    right: -3px;
+    top: 0;
+    bottom: 0;
+    width: 6px;
+    cursor: col-resize;
+    z-index: var(--z-raised);
+    background: transparent;
+    transition: background-color var(--t-tint);
+  }
+
+  .tile-split-handle:hover { background: var(--border-accent); }
+
+  /* ===== EMPTY SLATE ===== */
+  .empty-slate {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    width: 100%;
+    gap: var(--sp-4);
+    color: var(--text-muted);
+    text-align: center;
+    padding: var(--sp-6);
+  }
+
+  .empty-slate h2 {
+    font-size: var(--sz-xl);
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    font-family: var(--font-condensed);
+    color: var(--text-secondary);
+  }
+
+  .empty-slate p { font-size: var(--sz-sm); max-width: 380px; line-height: 1.55; }
+  .empty-slate-actions { display: flex; gap: var(--sp-2); flex-wrap: wrap; justify-content: center; }
+  .empty-slate-hints {
+    margin-top: var(--sp-2);
+    font-size: var(--sz-xs);
+    color: var(--text-muted);
+    display: flex;
+    gap: var(--sp-3);
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  /* ===== TOOL PANEL =================================================
+     It PUSHES. `position: absolute` + a shadow was the easy answer and
+     the wrong one: on a bench a panel over the work is a panel you
+     cannot read past. It is a flex sibling in normal flow, it appears
+     and disappears instantly, and the canvas simply gets narrower. */
+  .tool-panel {
+    width: var(--tool-panel-width);
+    flex-shrink: 0;
+    background: var(--surface-containerLowest);
+    border-left: 1px solid var(--border-strong);
+    z-index: var(--z-panel);
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .tool-panel.open { display: flex; }
+
+  .tool-panel-header {
+    height: 26px;
+    border-bottom: 1px solid var(--border-strong);
+    display: flex;
+    align-items: center;
+    padding: 0 var(--sp-1) 0 var(--sp-3);
+    font-size: var(--sz-technical-label);
+    font-family: var(--font-condensed);
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    justify-content: space-between;
+    flex-shrink: 0;
+    background: var(--surface-containerLow);
+  }
+
+  .tool-panel-body { padding: var(--sp-3); font-size: var(--sz-xs); overflow: auto; flex: 1; }
+
+  .tool-panel-footer {
+    border-top: 1px solid var(--border-subtle);
+    padding: var(--sp-1) var(--sp-3);
+    font-size: var(--sz-technical-label);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-family: var(--font-condensed);
+    font-weight: 600;
+    color: var(--text-muted);
+    flex-shrink: 0;
+  }
+
+  /* ===== SETTINGS — anchored to the corner that opens it ===== */
+  .settings-popover {
+    position: absolute;
+    left: var(--sp-1);
+    bottom: var(--sp-1);
+    width: 248px;
+    background: var(--surface-containerLowest);
+    border: 1px solid var(--border-hud);
+    z-index: var(--z-panelPopover);
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .settings-popover.open { display: flex; }
+
+  .settings-note {
+    font-size: var(--sz-technical-label);
+    line-height: 1.6;
+    color: var(--text-muted);
+  }
+
+  /* ===== CONTEXT MENU ===== */
+  .context-menu {
+    position: fixed;
+    background: var(--surface-containerLowest);
+    border: 1px solid var(--border-strong);
+    z-index: var(--z-dropdown);
+    min-width: 184px;
+    display: none;
+    flex-direction: column;
+    padding: 0;
+  }
+
+  .context-menu.open { display: flex; }
+
+  .context-item {
+    padding: 6px var(--sp-3);
+    font-size: var(--sz-xs);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    color: var(--text-primary);
+    border: none;
+    background: transparent;
+    font: inherit;
+    width: 100%;
+    text-align: left;
+    transition: background-color var(--t-tint);
+  }
+
+  .context-item:hover { background: var(--surface-container); }
+  .context-item.danger { color: var(--text-danger); }
+  .context-item.danger:hover { background: var(--surfaceSubtle-danger); }
+  .context-item svg { width: 14px; height: 14px; flex-shrink: 0; }
+  .context-divider { height: 1px; background: var(--border-subtle); }
+
+  /* ===== BUTTONS =====
+     A press is a colour swap. The old translateY(1px) moved the label
+     under the operator's finger for 0 gain. */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--sp-1);
+    padding: 5px var(--sp-3);
+    background: var(--surface-container);
+    border: 1px solid var(--border-strong);
+    color: var(--text-primary);
+    font-size: var(--sz-xs);
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color var(--t-tint), color var(--t-tint), border-color var(--t-tint);
+    font-family: inherit;
+    line-height: 1.4;
+    white-space: nowrap;
+  }
+
+  .btn:hover { background: var(--surface-containerHigh); }
+  .btn:active { background: var(--surface-containerHighest); }
+
+  .btn-primary { background: var(--text-primary); color: var(--text-inverse); border-color: var(--text-primary); }
+  .btn-primary:hover { background: var(--text-accent); border-color: var(--text-accent); color: #ffffff; }
+  .btn-primary:active { background: var(--text-accent); }
+  .btn-sm { padding: 3px 10px; font-size: 11px; }
+  .btn-icon { padding: 0; width: 26px; height: 26px; }
+
+  /* ===== BADGES ===== */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0 5px;
+    font-size: var(--sz-technical-label);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-family: var(--font-condensed);
+    border: 1px solid currentColor;
+    line-height: 15px;
+  }
+
+  .badge-success { background: var(--surfaceSubtle-success); color: var(--text-success); }
+  .badge-warning { background: var(--surfaceSubtle-warning); color: var(--text-warning); }
+  .badge-danger  { background: var(--surfaceSubtle-danger);  color: var(--text-danger); }
+  .badge-accent  { background: var(--surfaceSubtle-accent);  color: var(--text-accent); }
+
+  /* ===== UTILITIES ===== */
+  .mono {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+    font-size: var(--sz-xs);
+    color: var(--text-secondary);
+    letter-spacing: -0.01em;
+  }
+
+  .kbd {
+    display: inline-flex;
+    align-items: center;
+    padding: 0 5px;
+    background: var(--surface-container);
+    border: 1px solid var(--border-strong);
+    border-bottom-width: 2px;
+    font-size: 10px;
+    font-family: var(--font-mono);
+    color: var(--text-secondary);
+    line-height: 15px;
+  }
+
+  /* Data table — a grid, with column rules and zebra banding, because
+     the job is reading one row across without losing it. */
+  .data-table {
+    width: 100%;
+    font-size: var(--sz-xs);
+    border-collapse: collapse;
+  }
+
+  .data-table th {
+    text-align: left;
+    padding: 5px var(--sp-2);
+    font-size: var(--sz-technical-label);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--text-secondary);
+    font-family: var(--font-condensed);
+    font-weight: 700;
+    background: var(--surface-container);
+    border: 1px solid var(--border-strong);
+    white-space: nowrap;
+    position: sticky;
+    top: 0;
+  }
+
+  .data-table td {
+    padding: 4px var(--sp-2);
+    border: 1px solid var(--border-subtle);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 220px;
+  }
+
+  .data-table tbody tr:nth-child(even) td { background: var(--surface-containerLow); }
+  .data-table tbody tr:hover td { background: var(--surfaceSubtle-accent); }
+  .data-table .col-xs { width: 22px; }
+  .data-table .col-s { width: 108px; }
+  .data-table .col-m { width: 168px; }
+
+  /* Status marks are squares. At 7px a square is more legible than a
+     circle and it matches everything else in the frame. */
+  .status-dot { width: 7px; height: 7px; display: inline-block; flex-shrink: 0; }
+  .status-dot.ok { background: var(--text-success); }
+  .status-dot.warn { background: var(--text-warning); }
+  .status-dot.err { background: var(--text-danger); }
+  .status-dot.info { background: var(--text-accent); }
+
+  /* Composer */
+  .composer {
+    border-top: 1px solid var(--border-strong);
+    padding: var(--sp-2);
+    display: flex;
+    gap: var(--sp-2);
+    align-items: flex-end;
+    background: var(--surface-containerLow);
+  }
+
+  .composer-wrap { flex: 1; display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; }
+
+  .composer-toggle {
+    display: flex;
+    align-self: flex-start;
+    border: 1px solid var(--border-subtle);
+    font-size: var(--sz-technical-label);
+    font-family: var(--font-condensed);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  .composer-toggle span {
+    padding: 1px var(--sp-2);
+    cursor: pointer;
+    color: var(--text-muted);
+    transition: background-color var(--t-tint), color var(--t-tint);
+    user-select: none;
+  }
+
+  .composer-toggle span + span { border-left: 1px solid var(--border-subtle); }
+  .composer-toggle span:hover { color: var(--text-secondary); background: var(--surface-container); }
+  .composer-toggle span.active { background: var(--text-primary); color: var(--text-inverse); }
+
+  .composer textarea {
+    width: 100%;
+    border: 1px solid var(--border-strong);
+    padding: 5px var(--sp-2);
+    font: inherit;
+    font-size: var(--sz-xs);
+    background: var(--surface-containerLowest);
+    color: var(--text-primary);
+    resize: none;
+    outline: none;
+    min-height: 28px;
+    max-height: 80px;
+    line-height: 1.4;
+  }
+
+  .composer textarea:focus { border-color: var(--border-accent); }
+
+  /* Offline banner — in the beam's flow band, appears instantly. */
+  .offline-banner {
+    height: 24px;
+    background: var(--surfaceSubtle-warning);
+    border-bottom: 1px solid var(--border-warning);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: var(--sp-2);
+    font-size: var(--sz-technical-label);
+    font-family: var(--font-condensed);
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-warning);
+    z-index: var(--z-banner);
+    flex-shrink: 0;
+  }
+
+  .offline-banner.open { display: flex; }
+
+  /* Launcher */
+  .launcher {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.35);
+    z-index: var(--z-command);
+    display: none;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 14vh;
+  }
+
+  .launcher.open { display: flex; }
+
+  .launcher-box {
+    width: 560px;
+    max-width: 92vw;
+    background: var(--surface-containerLowest);
+    border: 2px solid var(--border-hud);
+    overflow: hidden;
+  }
+
+  .launcher-input {
+    width: 100%;
+    border: none;
+    border-bottom: 1px solid var(--border-strong);
+    padding: var(--sp-3) var(--sp-4);
+    font: inherit;
+    font-size: var(--sz-md);
+    background: var(--surface-containerLowest);
+    color: var(--text-primary);
+    outline: none;
+  }
+
+  .launcher-input::placeholder { color: var(--text-muted); }
+  .launcher-results { max-height: 340px; overflow: auto; }
+  .launcher-group + .launcher-group { border-top: 1px solid var(--border-subtle); }
+
+  .launcher-group-label {
+    padding: 4px var(--sp-4);
+    font-size: var(--sz-technical-label);
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: var(--text-secondary);
+    font-family: var(--font-condensed);
+    font-weight: 700;
+    background: var(--surface-containerLow);
+  }
+
+  .launcher-item {
+    padding: 6px var(--sp-4);
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    cursor: pointer;
+    transition: background-color var(--t-tint), color var(--t-tint);
+    border-left: 3px solid transparent;
+  }
+
+  .launcher-item:hover { background: var(--surface-containerLow); }
+  .launcher-item.selected {
+    background: var(--surfaceSubtle-accent);
+    border-left-color: var(--border-accent);
+  }
+
+  .launcher-item-icon {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border-subtle);
+    background: var(--surface-container);
+    color: var(--text-secondary);
+    flex-shrink: 0;
+  }
+
+  .launcher-item-title { font-size: var(--sz-sm); font-weight: 600; }
+  .launcher-item-meta { font-size: var(--sz-xs); color: var(--text-muted); }
+  .launcher-item-kbd { margin-left: auto; font-size: 10px; color: var(--text-muted); font-family: var(--font-mono); }
+
+  /* Session popover */
+  .session-popover {
+    position: absolute;
+    top: var(--header-height);
+    right: var(--sp-1);
+    width: 296px;
+    background: var(--surface-containerLowest);
+    border: 1px solid var(--border-hud);
+    z-index: var(--z-panelPopover);
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .session-popover.open { display: flex; }
+
+  .session-popover-header {
+    padding: var(--sp-1) var(--sp-1) var(--sp-1) var(--sp-3);
+    border-bottom: 1px solid var(--border-strong);
+    background: var(--surface-containerLow);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-family: var(--font-condensed);
+    font-size: var(--sz-technical-label);
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+  }
+
+  .session-popover-body {
+    padding: var(--sp-3);
+    font-size: var(--sz-xs);
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-3);
+  }
+
+  .session-field { display: flex; flex-direction: column; gap: 3px; }
+
+  .session-field label {
+    font-size: var(--sz-technical-label);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--text-muted);
+    font-family: var(--font-condensed);
+    font-weight: 700;
+  }
+
+  .session-field input {
+    border: 1px solid var(--border-strong);
+    padding: 4px var(--sp-2);
+    font: inherit;
+    font-size: var(--sz-xs);
+    background: var(--surface-containerLowest);
+    color: var(--text-primary);
+    outline: none;
+  }
+
+  .session-field input:focus { border-color: var(--border-accent); }
+
+  /* Responsive — the beam degrades by dropping the least identifying
+     segment first: carton context, then the stage strip. The session
+     title is the last thing standing because it is the only segment
+     that names the work. */
+  @media (max-width: 1440px) {
+    .ctx-carton, .ctx-carton + .ctx-sep { display: none; }
+  }
+
+  @media (max-width: 1180px) {
+    .pipeline { display: none; }
+  }
+
+  /* Reduced motion — near-empty by construction. Colour tints are the
+     only thing left to shorten, and they already do not move anything. */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  /* Scrollbars — square, and wide enough to hit with a glove. */
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: var(--surface-containerLow); }
+  ::-webkit-scrollbar-thumb { background: var(--surface-containerHighest); border: 2px solid var(--surface-containerLow); }
+  ::-webkit-scrollbar-thumb:hover { background: var(--surface-dim); }
+</style>
+
+<!-- SVG ICON SPRITE -->
+<svg style="display:none">
+  <defs>
+    <symbol id="icon-scan" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/>
+    </symbol>
+    <symbol id="icon-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+    </symbol>
+    <symbol id="icon-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/>
+    </symbol>
+    <symbol id="icon-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+    </symbol>
+    <symbol id="icon-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+    </symbol>
+    <symbol id="icon-more" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/>
+    </symbol>
+    <symbol id="icon-box" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+    </symbol>
+    <symbol id="icon-table" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/>
+    </symbol>
+    <symbol id="icon-file" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+    </symbol>
+    <symbol id="icon-timer" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+    </symbol>
+    <symbol id="icon-stopwatch" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 9 15"/>
+    </symbol>
+    <symbol id="icon-image" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+    </symbol>
+    <symbol id="icon-book" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+    </symbol>
+    <symbol id="icon-printer" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>
+    </symbol>
+    <symbol id="icon-calc" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="16" y1="14" x2="16" y2="14"/><line x1="12" y1="14" x2="12" y2="14"/><line x1="8" y1="14" x2="8" y2="14"/><line x1="16" y1="18" x2="16" y2="18"/><line x1="12" y1="18" x2="12" y2="18"/><line x1="8" y1="18" x2="8" y2="18"/>
+    </symbol>
+    <symbol id="icon-settings" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.67 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.67a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+    </symbol>
+    <!-- The most-recent-selection cursor. Solid, left-pointing, sitting on
+         the row's trailing edge — the terminal-list "this one" glyph. It is a
+         SEPARATE device from the session stripe on the leading edge, so an
+         entry can be both without the two readings colliding. -->
+    <symbol id="icon-assistant" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 3v4M12 17v4M3 12h4M17 12h4"/><rect x="8" y="8" width="8" height="8"/>
+    </symbol>
+    <symbol id="icon-last" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+      <polygon points="19 4 19 20 6 12"/>
+    </symbol>
+    <symbol id="icon-history" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
+    </symbol>
+    <symbol id="icon-chevron-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="6 9 12 15 18 9"/>
+    </symbol>
+    <symbol id="icon-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+    </symbol>
+    <symbol id="icon-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="20 6 9 17 4 12"/>
+    </symbol>
+    <symbol id="icon-split" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="3" width="18" height="18" rx="2"/><line x1="12" y1="3" x2="12" y2="21"/>
+    </symbol>
+    <symbol id="icon-edit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+    </symbol>
+    <symbol id="icon-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+    </symbol>
+    <symbol id="icon-palette" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/>
+    </symbol>
+    <symbol id="icon-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+    </symbol>
+    <symbol id="icon-wifi-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="1" y1="1" x2="23" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/><path d="M10.71 5.05A16 16 0 0 1 22.58 9"/><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/>
+    </symbol>
+    <symbol id="icon-send" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+    </symbol>
+    <symbol id="icon-play" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="5 3 19 12 5 21 5 3"/>
+    </symbol>
+    <symbol id="icon-pause" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>
+    </symbol>
+  </defs>
+</svg>
+
+<!-- APP -->
+<div class="wos" id="app">
+  <!-- OFFLINE BANNER — in the flow band under the beam, not floating -->
+  <div class="offline-banner" id="offlineBanner">
+    <svg width="12" height="12"><use href="#icon-wifi-off"/></svg>
+    <span>Offline — changes queued locally</span>
+  </div>
+
+  <!-- ===== GLOBAL HEADER — the beam ================================
+       Corner cluster · context line · overflow. That is all it holds.
+       Pairing and the timers are tools; the beam reports identity and
+       never verbs. =============================================== -->
+  <header class="wos-header" id="header">
+
+    <!-- corner cluster: SCAN · SEARCH · CONTEXT, in that order.
+         Scan is the most top-left thing in the application. -->
+    <div class="corner-cluster">
+      <div class="zone-scan" id="scanZone">
+        <svg width="14" height="14"><use href="#icon-scan"/></svg>
+        <div class="scan-input-wrap">
+          <input type="text" placeholder="SCAN · OR TYPE TO SEARCH" id="scanInput" autocomplete="off">
+        </div>
+        <!-- The 2x2 matrix, with the axes doing their REAL jobs.
+             Input axis  — does my TYPING count as a scan? `auto` = wedge only
+                           (typing searches); `key` = hand-enter a damaged
+                           barcode into the session. That is the only genuine
+                           mode here; scan-vs-search is not a mode, because a
+                           wedge burst and human typing are different input
+                           paths and both work at once.
+             Query axis  — what a query does: search the org, or filter the
+                           focused tile. -->
+        <div class="mode-toggle" id="scanModes" title="Typing: auto = searches · key = counts as a scan   |   find = search org · flt = filter focused tile">
+          <span class="active" data-mode="auto">auto</span>
+          <span data-mode="manual">key</span>
+          <span class="axis-gap active" data-mode="search">find</span>
+          <span data-mode="filter">flt</span>
+        </div>
+      </div>
+
+      <button class="zone-context" id="contextZone" title="Session context">
+        <svg width="14" height="14"><use href="#icon-box"/></svg>
+        <span class="mono" id="contextValue">C-8842-A</span>
+      </button>
+    </div>
+
+    <!-- the context line — the only place that says what is happening now -->
+    <!-- THE CONTEXT LINE, after 2026-08-22.
+         §2 was transcribed before the session tile existed. Once S2 rules that
+         exactly ONE session tile is on canvas, the session's identity has a
+         home ON THE OBJECT, and repeating it 700px away in centred chrome is
+         a saccade for nothing.
+         What stays: only what is GENUINELY GLOBAL, plus a FALLBACK that
+         renders the session identity when — and only when — the session tile
+         is not on screen. The canvas scrolls horizontally below its floors,
+         so the tile CAN be scrolled away; the beam is the one surface that
+         cannot. No duplication in the normal case, a safety net in the one
+         case that needs it. -->
+    <div class="context-line" id="contextLine"></div>
+
+    <!-- THE HEADER FACE — one slot, fixed width, readouts only.
+         It is `elapsed / target`, not two counters: "how long am I taking"
+         and "is there a limit" are the same question and one pair answers
+         both at a glance. It is also its own button — click it to open the
+         timer panel — so the drill-down exists without a dropdown. A readout
+         behind a dropdown is not a readout. -->
+    <button class="header-face" id="headerFace" onclick="App.toggleTool('timer')"
+      title="Session elapsed against the target for this task type. Click for the timer.">
+      <span class="mono" id="faceElapsed">00:00</span>
+      <span class="face-sep">/</span>
+      <span class="mono" id="faceTarget">--:--</span>
+    </button>
+
+    <!-- THE SESSION CHIP — the beam's right-hand bookend, and the mirror of
+         the carton chip at the left. Same component: a leading square mark,
+         a mono value, one hover tint, no radius. The carton says WHAT IS IN
+         MY HANDS; this says WHAT WORK IT IS AGAINST. Two facts, two ends of
+         the beam, 699px of deliberate nothing between them.
+         It is a readout first and a button second (B9): the state and the
+         name are legible with no action, and clicking opens the session
+         popover — which was already anchored to this corner. -->
+    <div class="header-overflow">
+      <button class="zone-session" id="zoneSession" onclick="App.toggleSessionPopover()"
+        title="The session this bench is working — state and name. Click for rename, park, close.">
+        <div class="mark"></div>
+        <span class="mono" id="sessionValue">Packing #7</span>
+      </button>
+    </div>
+
+    <!-- The drag SOURCE. Right-click works from here and from the cluster. -->
+    <div class="tool-drop" id="toolDrop"></div>
+  </header>
+
+  <!-- BODY -->
+  <div class="wos-body">
+
+    <!-- ===== LEFT RAIL — PAGES =====================================
+         Order is meaningful: add · pins · label · tabs · recents.
+         A pin is always-there; a tab is currently-open. ========== -->
+    <nav class="rail left" id="leftRail">
+      <!-- The edge that moves is the edge you grab. -->
+      <button class="rail-edge" onclick="App.toggleRail('left')"
+        title="Show or hide the page labels (Ctrl+B)">
+        <span class="grip"></span>
+      </button>
+      <button class="rail-btn" onclick="App.openLauncher()" title="Add a page or table (Ctrl+N)">
+        <svg width="16" height="16"><use href="#icon-plus"/></svg>
+        <span class="rail-btn-label">Add page or table</span>
+      </button>
+      <div class="rail-divider"></div>
+
+      <!-- PINNED — above the tabs, and that ordering is the point -->
+      <div class="rail-group" id="leftPins"></div>
+
+      <div class="rail-divider rail-divider-collapsed"></div>
+      <button class="rail-label" onclick="App.toggleRail('left')" title="Collapse the pages rail">Pages</button>
+
+      <div class="tab-list" id="leftTabs"></div>
+
+      <!-- THE SLACK. Both content blocks are anchored to an edge and the
+           unused space sits between them, where nothing can be destabilized
+           by it. Tabs grow DOWN from a fixed origin under PAGES; recents grow
+           UP from a fixed origin above the utility block. Neither ever
+           translates because the other changed size.
+           It is also the rail's open/close: the one region here that can
+           never hold a tab, so a click in it cannot mean anything else. -->
+      <button class="rail-slack" onclick="App.toggleRail('left')"
+        title="Click the empty rail to show or hide labels (Ctrl+B)"></button>
+
+      <div class="rail-divider"></div>
+      <button class="recents-header" id="recentsHeader" onclick="App.toggleRecents()" title="Recents — yours, per org. Banded by kind; the caret marks your most recent selection.">
+        <svg class="recents-icon" width="15" height="15"><use href="#icon-history"/></svg>
+        <svg class="recents-chevron" width="10" height="10"><use href="#icon-chevron-down"/></svg>
+        <span>Recents</span>
+      </button>
+      <div class="recents-list" id="recentsList"></div>
+
+      <!-- The corner carries one control. Theme went into settings — a
+           palette swap is a preference, not a floor control — and the rail's
+           width is the edge strip's job. -->
+      <div class="rail-footer">
+        <button class="rail-btn" id="btnSettings"
+          onclick="event.stopPropagation();App.addTile('settings','Settings','table')" title="Settings — opens as a tile">
+          <svg width="16" height="16"><use href="#icon-settings"/></svg>
+          <span class="rail-btn-label">Settings</span>
+        </button>
+      </div>
+    </nav>
+
+    <!-- ===== CANVAS — the one radius in the application ===== -->
+    <div class="canvas-wrap" id="canvasWrap">
+      <div class="canvas">
+        <div class="canvas-scroll" id="canvas"></div>
+      </div>
+    </div>
+
+    <!-- ===== TOOL PANEL — pushes, never floats ===== -->
+    <div class="tool-panel" id="toolPanel">
+      <div class="tool-panel-header">
+        <span id="toolPanelTitle">Timer</span>
+        <button class="rail-btn" style="width:22px;height:22px" onclick="App.closeToolPanel()" title="Close tool">
+          <svg width="12" height="12"><use href="#icon-close"/></svg>
+        </button>
+      </div>
+      <div class="tool-panel-body" id="toolPanelBody"></div>
+      <div class="tool-panel-footer" id="toolPanelFooter"></div>
+    </div>
+
+    <!-- ===== RIGHT RAIL — TOOLS ==================================
+         Mirror of the left: overflow · add · pins · label. ====== -->
+    <nav class="rail right" id="rightRail">
+      <button class="rail-edge" onclick="App.toggleRail('right')"
+        title="Show or hide the tool labels (Ctrl+Shift+B)">
+        <span class="grip"></span>
+      </button>
+      <!-- THE one tool surface. The beam's three-dots is gone — its corner
+           now carries the session, so a tool overflow up there would be a
+           second menu in a corner that already has a job. Tools are what you
+           USE, the right rail is where they live (R3), and this is its add
+           control. Ctrl+K still reaches every tool by name (T19). -->
+      <button class="rail-btn" onclick="App.toggleToolDrop()" title="Add or search tools — drag one onto the pins to pin it">
+        <svg width="16" height="16"><use href="#icon-plus"/></svg>
+        <span class="rail-btn-label">Add tool</span>
+      </button>
+      <div class="rail-divider"></div>
+
+      <!-- Rendered from the TOOL REGISTRY, banded by `scope`. The session
+           band renders nothing at all when no session is armed. -->
+      <!-- PINNED TOOLS — top of the rail, directly under the add control,
+           which is exactly where PINNED PAGES sit in the left rail. That is
+           the symmetry: same position, same meaning, same gestures. Drop a
+           tool here to pin it; right-click any tool to pin or unpin; drag a
+           pin onto another to reorder. -->
+      <div class="rail-group" id="headerTools"
+        title="Drop a tool here to pin it · right-click to pin or unpin"></div>
+      <div class="rail-group" id="toolsGlobal"></div>
+
+      <button class="rail-slack" onclick="App.toggleRail('right')"
+        title="Click the empty rail to show or hide labels (Ctrl+Shift+B)"></button>
+      <!-- THE VOLATILE BAND, bottom-anchored — the mirror of the left rail's
+           recents. Both rails run the same gradient: PERMANENCE DECREASES
+           DOWNWARD. Left: pins → tabs → recents. Right: assistant → global
+           tools → session tools. An operator who learns one has learned both,
+           and the rule is a rule rather than a coincidence of layout. -->
+      <div class="rail-group" id="toolsSession"></div>
+      <button class="rail-label" onclick="App.toggleRail('right')" title="Collapse the tools rail">Tools</button>
+    </nav>
+  </div>
+
+  <!-- CONTEXT MENU -->
+  <div class="context-menu" id="ctxMenu">
+    <button class="context-item" onclick="App.ctxSplit()">
+      <svg width="14" height="14"><use href="#icon-split"/></svg> Split tile
+    </button>
+    <button class="context-item" onclick="App.ctxRename()">
+      <svg width="14" height="14"><use href="#icon-edit"/></svg> Rename
+    </button>
+    <button class="context-item" onclick="App.ctxIcon()">
+      <svg width="14" height="14"><use href="#icon-box"/></svg> Change icon
+    </button>
+    <button class="context-item" onclick="App.ctxColor()">
+      <svg width="14" height="14"><use href="#icon-palette"/></svg> Change color
+    </button>
+    <div class="context-divider"></div>
+    <button class="context-item danger" onclick="App.ctxClose()">
+      <svg width="14" height="14"><use href="#icon-trash"/></svg> Close
+    </button>
+  </div>
+
+  <!-- SESSION POPOVER -->
+  <div class="session-popover" id="sessionPopover">
+    <div class="session-popover-header">
+      <span>Session</span>
+      <button class="rail-btn" style="width:22px;height:22px" onclick="App.toggleSessionPopover()">
+        <svg width="12" height="12"><use href="#icon-close"/></svg>
+      </button>
+    </div>
+    <div class="session-popover-body">
+      <div class="session-field">
+        <label>Session name</label>
+        <input type="text" value="Packing #7" id="sessionNameInput" onchange="App.renameSession(this.value)">
+      </div>
+      <div class="session-field">
+        <label>Type</label>
+        <input type="text" value="scan — packing" readonly style="color:var(--text-muted)">
+      </div>
+      <div class="session-field">
+        <label>Started</label>
+        <input type="text" value="10:04 — 23m elapsed" readonly style="color:var(--text-muted)">
+      </div>
+      <div style="display:flex;gap:8px;margin-top:2px">
+        <button class="btn btn-sm" onclick="App.parkSession()">Park session</button>
+        <button class="btn btn-sm btn-primary" onclick="App.closeSession()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SETTINGS POPOVER — opens from the bottom-left corner, and is where
+       theme lives now. -->
+  <div class="settings-popover" id="settingsPopover" onclick="event.stopPropagation()">
+    <div class="session-popover-header">
+      <span>Settings</span>
+      <button class="rail-btn" style="width:22px;height:22px" onclick="App.toggleSettings()" title="Close settings">
+        <svg width="12" height="12"><use href="#icon-close"/></svg>
+      </button>
+    </div>
+    <div class="session-popover-body">
+      <div class="session-field">
+        <label>Theme</label>
+        <div class="mode-toggle" id="themeToggle">
+          <span data-theme-set="light">light</span>
+          <span data-theme-set="dark">dark</span>
+        </div>
+      </div>
+      <div class="session-field">
+        <label>Rails</label>
+        <div class="mode-toggle" id="railToggle">
+          <span data-rail="left">pages</span>
+          <span data-rail="right">tools</span>
+        </div>
+      </div>
+      <div class="settings-note">
+        An expanded rail shows every icon with its label. The chevron in each
+        rail footer and the vertical PAGES / TOOLS label do the same thing.
+      </div>
+    </div>
+  </div>
+
+  <!-- LAUNCHER — the one index. There is no second "+". -->
+  <div class="launcher" id="launcher" onclick="App.closeLauncher()">
+    <div class="launcher-box" onclick="event.stopPropagation()">
+      <input type="text" class="launcher-input" placeholder="Search sessions, tables, tools…" id="launcherInput" autocomplete="off">
+      <div class="launcher-results" id="launcherResults"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* ================================================================
+   WAREHOUSE OS — APPLICATION LOGIC
+
+   Motion policy, enforced here as well as in CSS: nothing in this file
+   may schedule a geometry change over time. No setTimeout that hides a
+   thing, no rAF that eases a size, no class that starts a keyframe.
+   Every state change below paints on the next frame and stays put.
+   ================================================================ */
+
+const App = (function() {
+  // ---- STATE ----
+  const state = {
+    tiles: [
+      { id: 't1', tab: 'packing', title: 'Packing', color: '#15803d', icon: 'box', type: 'session', focused: true },
+      { id: 't2', tab: 'units', title: 'Units', color: '#1d4ed8', icon: 'table', type: 'table', focused: false }
+    ],
+    pins: [
+      { id: 'daily', title: 'Daily check', icon: 'check' },
+      { id: 'shiftlog', title: 'Shift log', icon: 'file' }
+    ],
+    tabs: [
+      { id: 'packing', title: 'Packing', color: '#15803d', icon: 'box', type: 'session' },
+      { id: 'units', title: 'Units', color: '#1d4ed8', icon: 'table', type: 'table' },
+      { id: 'orders', title: 'Orders', color: null, icon: 'file', type: 'table' }
+    ],
+    activeTab: 'packing',
+    leftExpanded: false,
+    rightExpanded: false,
+    openTool: 'timer',
+    /* Closed on load. A pushing panel that opens itself takes 280px of
+       canvas from an operator who did not ask for it. */
+    toolPanelOpen: false,
+    scanMode: { input: 'auto', action: 'search' },
+    ctxTarget: null,
+    dragId: null,
+    timer: 263,
+    timerRunning: true,
+    /* Targets belong to the WORK, not to the operator. A per-person target
+       is a performance ranking rendered into the operator's chrome; that
+       belongs in the manager view if it belongs anywhere. */
+    stageTargets: { unbox: 360, packing: 300, ready: 180, qc: 420 },
+    /* FACE MODE — a per-staff DISPLAY preference. Three states, because
+       "hide it" and "show it" are not the whole answer:
+         pace    elapsed / target, coloured        — the clock and the verdict
+         elapsed elapsed only, never coloured      — the clock, no verdict
+         off     no face at all
+       `elapsed` is the one that matters: an operator who wants to time
+       themselves without being told they are late gets exactly that.
+       MEASUREMENT IS NOT AFFECTED BY ANY OF THESE. ops_events records the
+       work regardless, and the settings copy says so — a preference that
+       quietly implies it stops the recording is worse than no preference. */
+    faceMode: 'pace',
+    stopwatch: 0,
+    swRunning: false,
+    recentsCollapsed: false,
+    /* RECENTS — per staff, per org. Modelled on
+       `staff_preferences.prefs.workspace.recents`: one schema entry beside
+       openTabs / pinnedTabs / keybindings / pinnedTools, no migration.
+       NOT session state and NOT localStorage. `sessionId` MARKS an entry;
+       it never scopes it, so closing a batch does not delete the trail.
+       Capped per KIND, so a 12-label print run can only evict labels. */
+    recents: [
+      { kind:'carton',  id:'C-8842-A', title:'C-8842-A',  sub:'UPS 1Z999AA1 · grade B', at:6, sessionId:'s7' },
+      { kind:'carton',  id:'C-8839-B', title:'C-8839-B',  sub:'FedEx 7742 · grade A',   at:2 },
+      { kind:'carton',  id:'C-8830-K', title:'C-8830-K',  sub:'USPS 9410 · grade C',    at:1 },
+      { kind:'pack',    id:'P-2210',   title:'Pack #2210', sub:'6 units · bin B-04-2',  at:5, sessionId:'s7' },
+      { kind:'pack',    id:'P-2209',   title:'Pack #2209', sub:'2 units · bin B-04-3',  at:3 },
+      { kind:'label',   id:'L-4471',   title:'SN-9912-D', sub:'Zebra-ZT411 · 1 label',  at:4 },
+      { kind:'search',  id:'q-18',     title:'grade:B bin:B-04*', sub:'18 results',     at:0 },
+      { kind:'session', id:'s6',       title:'Bin 4 recount', sub:'closed 09:41',       at:0 },
+    ],
+    sessionName: 'Packing #7',
+    /* open | armed | parked | ended | error */
+    sessionState: 'armed',
+    offline: false,
+    theme: matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light',
+    globalContext: 'Receiving',
+    pipeline: ['unbox','packing','ready','qc'],
+    currentStage: 1,
+    launcherIndex: 0,
+    launcherFlat: [],
+
+    /* SAVED WORKSPACES — geometry + which TABLE/TOOL tabs sit where.
+       A workspace NEVER stores a session. It stores a session SLOT, and the
+       currently-armed session drops into it. Storing a session id would mean
+       switching workspaces parks and arms sessions as a side effect of
+       navigation, which violates S3 (parking is a work event, not a lookup)
+       and would collide with S1's one-armed-scan index. */
+    /* Proposals the assistant queued instead of applying — the trust class
+       for that mutation kind said "review". This count must be legible
+       WITHOUT opening the panel, so it badges the rail icon. */
+    agentQueue: [
+      { id:'m1', kind:'receiving.grade.set', summary:'Set C-8830-K grade C \u2192 B', why:'3 photos show no damage', reversible:true },
+      { id:'m2', kind:'shipment.split',      summary:'Split Pack #2210 into two cartons', why:'over weight limit for one box', reversible:true },
+    ],
+    agentApplied: 14,
+
+    importStep: 'select',
+    fbaPicked: 2,
+    importRows: [
+      { sku:'SKU-9921', qty:2, bin:'B-04-2', err:null },
+      { sku:'SKU-1104', qty:1, bin:'B-11-0', err:null },
+      { sku:'SKU-4452', qty:3, bin:'',       err:'bin required' },
+    ],
+
+    /* CUSTOMIZATION — three tiers, and the line between them is one question:
+       DOES CHANGING THIS CHANGE WHAT SOMETHING MEANS?
+         arrangement  what is open and where          — unrestricted, per staff
+         comfort      density, radius, accent, theme  — BOUNDED, per staff
+         meaning      semantic state colour           — locked. Not a preference.
+       Density is ONE scale, not N padding knobs: the tile floors (784 / 520 /
+       360 / 320) were measured against a density, so the floor math has to
+       consume the same number. Individual padding values would be an untested
+       combinatorial space with silently wrong floors. */
+    prefs: { density: 'default', radius: 4, accent: 'blue' },
+
+    /* PINNED TOOLS — an ORDERED array, because the order IS the placement.
+       `prefs.workspace.pinnedTools` already exists in the WorkspacePrefs
+       contract, with the reasoning written down: "a pin is about the person,
+       not the workstation."
+       The assistant is NOT in here. It is the rail's fixed head, structural
+       like the add/search button — which is also what keeps this compatible
+       with D7 (never seed workspace defaults): the pinned band starts empty
+       for a new operator, and the shell still has a head to reach for. */
+    pinnedTools: ['photos', 'printer'],
+    /* binding id -> chord. Three states, same shape as the real contract:
+       absent = no binding, a string = an override. Every chord MUST carry a
+       modifier — see the guard in setKeybind. */
+    keybinds: { 'tool.photos': 'Ctrl+1', 'tool.printer': 'Ctrl+2' },
+
+    savedWorkspaces: [
+      { id:'w-recv',  name:'Receiving bench', sessionSlot:true,  tabs:['triage','units'] },
+      { id:'w-audit', name:'Manager audit',   sessionSlot:false, tabs:['staff','orders'] },
+    ],
+
+    /* MANAGER VIEW — per staff, driven the way the real one will be.
+       The list renders from HEARTBEATS only: {staffId, sessionId, version,
+       sessionType, stage}. `work_sessions.version` is monotonic and bumped by
+       exactly one per accepted mutation, so it is the whole change-detection
+       primitive — the manager's list never carries event bodies. Opening a
+       staffer fetches their ops_events page and re-fetches only when `version`
+       moves past what it already holds. */
+    staff: [
+      { id:'s-marisol', name:'Marisol R.', live:true,  session:'Packing #7',    type:'pack',   stage:'packing', version:214, lastEvent:'update · receiving_line', today:186 },
+      { id:'s-devon',   name:'Devon K.',   live:true,  session:'Bin 4 recount', type:'unbox',  stage:'unbox',   version:88,  lastEvent:'create · serial_unit',    today:91  },
+      { id:'s-anh',     name:'Anh T.',     live:true,  session:'QC sweep',      type:'test',   stage:'qc',      version:47,  lastEvent:'update · serial_unit',    today:52  },
+      { id:'s-rob',     name:'Rob M.',     live:false, session:'Triage AM',     type:'triage', stage:'triage',  version:130, lastEvent:'delete · receiving_line', today:130 },
+      { id:'s-priya',   name:'Priya N.',   live:false, session:'\u2014',           type:'task',   stage:'\u2014',      version:0,   lastEvent:'\u2014',                      today:0   },
+    ],
+    /* An ops_events page for one session, grouped by STAGE — the spine that
+       exists today (`ops_events.session_type`). When staff procedures land the
+       STEP becomes a finer grouping inside each stage, and the step id is what
+       turns "what happened" into "why". Free-text why is deferred. */
+    trail: {
+      's-marisol': { session:'Packing #7', type:'pack', status:'armed', groups:[
+        { stage:'unbox', events:[
+          { t:'10:04:12', verb:'create', entity:'receiving_line', detail:'RCV-8842 / L-1 \u00b7 SKU-9921' },
+          { t:'10:04:31', verb:'update', entity:'receiving_line', detail:'qty 0 \u2192 6' },
+          { t:'10:05:02', verb:'create', entity:'serial_unit',    detail:'SN-7742-A' },
+          { t:'10:05:09', verb:'create', entity:'serial_unit',    detail:'SN-7742-B' },
+          { t:'10:06:44', verb:'update', entity:'receiving_line', detail:'grade \u2014 \u2192 B' },
+        ]},
+        { stage:'packing', events:[
+          { t:'10:19:03', verb:'create', entity:'shipment',    detail:'Pack #2210 \u00b7 bin B-04-2' },
+          { t:'10:19:51', verb:'update', entity:'serial_unit', detail:'SN-7742-A \u2192 packed' },
+          { t:'10:20:06', verb:'update', entity:'serial_unit', detail:'SN-7742-B \u2192 packed' },
+          { t:'10:22:18', verb:'delete', entity:'serial_unit', detail:'SN-9912-E removed \u00b7 damaged' },
+          { t:'10:24:40', verb:'update', entity:'shipment',    detail:'6 units \u00b7 ready to pack' },
+        ]},
+      ]},
+    }
+  };
+
+  const PALETTE = ['#15803d','#1d4ed8','#b45309','#b91c1c','#6d28d9','#0f766e','#a16207'];
+
+  /* A scan session is discriminated by `scan_type`; a task session by the
+     SURFACE_KEY whose job it is doing (work_sessions, 2026-08-22b). Anything
+     not listed here is a scan session. */
+  const SESSION_KINDS = { 'fba-build': 'task' };
+
+  /* CORRECTED 2026-08-22 — an import is NOT a session.
+     Orders arrive by cron / webhook sync. The sync already streams an
+     exceptions list (orders-sync/client.ts: "a 400-row exceptions stream").
+     So there are three things, and only one of them is a session:
+       PRODUCER  cron · webhook · manual upload   → a TOOL (Actuator)
+       QUEUE     what the sync could not resolve  → a TABLE
+       WORK      resolving one exception          → a ROW ACTION
+     A manual upload is just another producer feeding the same queue — you
+     build ONE triage surface, not one per source.
+     The unit of work is the ROW, each fix commits immediately, so nothing is
+     staged and K1 says table, not session.
+     The session case is when the unit of work is the BATCH — an FBA shipment
+     is one object built from N selected units, and half a shipment is not a
+     thing. That state has to survive, so that one IS a task session. */
+  const FBA_STEPS = ['select', 'box', 'label', 'ship'];
+
+  /* TOOL REGISTRY — `scope` is the only availability field.
+       global  · always listed. Needs no session, receives none.
+       session · listed only while a session is armed; RECEIVES it.
+       tile    · listed only while a tile is focused; receives it.
+     `appliesTo` narrows a session tool to specific scan types.
+     `class` is the input/attention class (T1) — it decides where the tool may
+     live and whether it may ever auto-summon, not how big it is. */
+  const TOOLS = [
+    /* `agent` is a scope of one, and the band exists because the distinction
+       is real: the assistant is the ONLY tool that writes on your behalf.
+       `agent_mutations.actor_kind` already separates 'agent' from 'operator'
+       in the ledger; the rail says the same thing. */
+    { key:'ai',        label:'Assistant',     icon:'assistant', scope:'agent',   cls:'instrument' },
+    { key:'import',    label:'Import orders', icon:'file',      scope:'global',  cls:'actuator'   },
+    { key:'calc',      label:'Calculator',    icon:'calc',      scope:'global',  cls:'instrument' },
+    { key:'photos',    label:'Photo library', icon:'image',     scope:'global',  cls:'library'    },
+    { key:'manuals',   label:'Manuals',       icon:'book',      scope:'global',  cls:'library'    },
+    { key:'printer',   label:'Label printer', icon:'printer',   scope:'global',  cls:'actuator'   },
+    { key:'stopwatch', label:'Stopwatch',     icon:'stopwatch', scope:'session', cls:'readout'    },
+    { key:'pairing',   label:'Pairing',       icon:'split',     scope:'session', cls:'instrument', appliesTo:['unbox','packing'] },
+  ];
+
+  const toolAvailable = t =>
+    t.scope === 'global' ||
+    (t.scope === 'session'
+      && state.sessionState === 'armed'
+      && (!t.appliesTo || t.appliesTo.includes(state.activeTab)));
+
+  /* Band order is FIXED and is the whole point: a band never moves, so the
+     operator reaches for cartons at the same offset from the top no matter
+     what they did at another bench. MRU applies inside a band only. */
+  const RECENT_KINDS = [
+    { kind:'carton',  label:'Cartons',  icon:'box',     cap:3 },
+    { kind:'pack',    label:'Packs',    icon:'table',   cap:3 },
+    { kind:'label',   label:'Labels',   icon:'printer', cap:2 },
+    { kind:'pickup',  label:'Pickups',  icon:'file',    cap:2 },
+    { kind:'ticket',  label:'Tickets',  icon:'book',    cap:2 },
+    { kind:'search',  label:'Searches', icon:'search',  cap:2 },
+    { kind:'session', label:'Sessions', icon:'check',   cap:2 },
+  ];
+  const ICONS = ['box','table','file','printer','image','book','check'];
+
+  // ---- DOM REFS ----
+  const $ = id => document.getElementById(id);
+  const canvas = $('canvas');
+  const leftTabs = $('leftTabs');
+  const leftPins = $('leftPins');
+  const recentsList = $('recentsList');
+  const toolPanel = $('toolPanel');
+  const toolPanelBody = $('toolPanelBody');
+  const toolPanelTitle = $('toolPanelTitle');
+  const toolPanelFooter = $('toolPanelFooter');
+  const ctxMenu = $('ctxMenu');
+  const launcher = $('launcher');
+  const launcherInput = $('launcherInput');
+  const launcherResults = $('launcherResults');
+  const sessionPopover = $('sessionPopover');
+  const settingsPopover = $('settingsPopover');
+  const zoneSession = $('zoneSession');
+
+  // ---- RENDER: PINNED PAGES ----
+  /* Pins sit ABOVE the tabs and above the PAGES label. A pin is a
+     destination the operator always wants within reach; a tab is
+     something currently open. The daily check is the canonical pin. */
+  function renderPins() {
+    leftPins.innerHTML = '';
+    state.pins.forEach(pin => {
+      const el = document.createElement('button');
+      el.className = 'pin';
+      el.title = pin.title + ' — pinned';
+      el.onclick = () => addTile(pin.id, pin.title, 'table');
+      el.innerHTML = iconFor(pin.icon, 15) + '<span class="tab-name">' + escapeHtml(pin.title) + '</span>';
+      leftPins.appendChild(el);
+    });
+  }
+
+  // ---- RENDER: TABS ----
+  function renderTabs() {
+    leftTabs.innerHTML = '';
+    state.tabs.forEach(tab => {
+      const el = document.createElement('button');
+      el.className = 'tab' + (tab.id === state.activeTab ? ' active' : '');
+      el.dataset.tab = tab.id;
+      el.title = tab.title;
+      el.onclick = () => focusTab(tab.id);
+      el.oncontextmenu = e => {
+        e.preventDefault();
+        const tile = state.tiles.find(t => t.tab === tab.id);
+        showCtx(e, tile ? tile.id : null);
+      };
+      el.innerHTML = iconFor(tab.icon, 15) +
+        '<span class="tab-name">' + escapeHtml(tab.title) + '</span>' +
+        (tab.color ? '<span class="tab-color" style="background:' + tab.color + '"></span>' : '');
+      leftTabs.appendChild(el);
+    });
+  }
+
+  // ---- RENDER: RECENTS ----
+  /* Per staff, per org — the rail shows the staffer's own trail and nothing
+     else. Two edge devices, deliberately on opposite edges so an entry can
+     carry both without ambiguity:
+       leading  3px green — touched by the LIVE session (a mark, not a scope)
+       trailing solid caret — the single most recent selection, anywhere
+     The marker exists BECAUSE of the banding. Banding buys position
+     stability and costs you "the newest thing is at the top"; the marker
+     buys that back without moving a row. */
+  function renderRecents() {
+    const list = $('recentsList');
+    list.innerHTML = '';
+
+    const newest = state.recents.reduce(
+      (best, r) => (best === null || r.at > best.at ? r : best), null);
+
+    RECENT_KINDS.forEach(band => {
+      const rows = state.recents
+        .filter(r => r.kind === band.kind)
+        .sort((a, b) => b.at - a.at)
+        .slice(0, band.cap);
+      if (!rows.length) return;
+
+      const wrap = document.createElement('div');
+      wrap.className = 'recent-band';
+      wrap.dataset.kind = band.kind;
+
+      const label = document.createElement('div');
+      label.className = 'recent-band-label';
+      label.textContent = band.label;
+      wrap.appendChild(label);
+
+      rows.forEach(r => {
+        const isLast = newest && r.id === newest.id;
+        const el = document.createElement('button');
+        el.className = 'recent-item'
+          + (r.sessionId === 's7' ? ' in-session' : '')
+          + (isLast ? ' is-last' : '');
+        el.title = (isLast ? 'Most recent selection · ' : '')
+          + band.label.replace(/s$/, '') + ' · ' + r.title + ' — ' + r.sub
+          + (r.sessionId === 's7' ? ' · this session' : '');
+        el.onclick = () => touchRecent(r.id);
+        el.innerHTML =
+          iconFor(band.icon, 15) +
+          '<span class="recent-text">' +
+            '<span class="recent-title">' + escapeHtml(r.title) + '</span>' +
+            '<span class="recent-sub">' + escapeHtml(r.sub) + '</span>' +
+          '</span>' +
+          '';
+        wrap.appendChild(el);
+      });
+      list.appendChild(wrap);
+    });
+
+    list.classList.toggle('collapsed', state.recentsCollapsed);
+    $('recentsHeader').classList.toggle('collapsed', state.recentsCollapsed);
+  }
+
+  /* Selecting a recent re-stamps it as the newest — the marker moves, the
+     band does not. That is the banding/recency trade made visible. */
+  function touchRecent(id) {
+    const hit = state.recents.find(r => r.id === id);
+    if (!hit) return;
+    hit.at = Math.max(...state.recents.map(r => r.at)) + 1;
+    /* A parked session in recents is RESUMABLE, not just a bookmark — which
+       is the whole reason one-session-at-a-time costs nothing. Resuming
+       parks whatever is open, by the same rule. */
+    if (hit.kind === 'session') {
+      const title = hit.title;
+      state.recents = state.recents.filter(r => r !== hit);
+      addTile(hit.id, title, 'session');
+      return;
+    }
+    renderRecents();
+  }
+
+  // ---- RENDER: TILES ----
+  function renderTiles() {
+    if (state.tiles.length === 0) {
+      canvas.innerHTML = `
+        <div class="empty-slate">
+          <!-- Arch drops you at a TTY, not at a window manager with one app in
+               it. So the first screen is the ASSISTANT, full canvas — not a
+               menu of things to open. The rails are empty on purpose; the
+               operator builds the workspace by asking for it. As soon as
+               anything is open the assistant recedes to its rail band. -->
+          <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 3v4M12 17v4M3 12h4M17 12h4"/><rect x="8" y="8" width="8" height="8"/></svg>
+          <h2>What do you need?</h2>
+          <p>Nothing is open and nothing is pinned. Describe the work and this
+             builds the workspace for it — or open something yourself.</p>
+          <div style="width:min(520px,90%);">
+            <div class="composer" style="border:1px solid var(--border-hud);">
+              <div class="composer-wrap">
+                <textarea id="slateAsk" placeholder="Unbox the UPS delivery that landed this morning\u2026" rows="1"></textarea>
+              </div>
+              <button class="btn btn-icon" title="Ask" onclick="App.toggleTool('ai')">
+                <svg width="14" height="14"><use href="#icon-send"/></svg>
+              </button>
+            </div>
+          </div>
+          <div class="empty-slate-actions">
+            <button class="btn" onclick="App.addTile('packing','Packing','session')">Start packing session</button>
+            <button class="btn" onclick="App.addTile('triage','Triage','table')">Open triage queue</button>
+          </div>
+          <div class="empty-slate-hints">
+            <span><span class="kbd">Ctrl</span> <span class="kbd">K</span> launcher</span>
+            <span><span class="kbd">Ctrl</span> <span class="kbd">\\</span> split</span>
+            <span><span class="kbd">Ctrl</span> <span class="kbd">W</span> close</span>
+          </div>
+        </div>`;
+      return;
+    }
+
+    canvas.innerHTML = '';
+    state.tiles.forEach((tile, idx) => {
+      const el = document.createElement('div');
+      el.className = 'tile' + (tile.focused ? ' focused' : '');
+      el.dataset.id = tile.id;
+      el.dataset.type = tile.type;
+      el.style.flex = tile.flex || '1 1 0';
+      el.innerHTML = `
+        <div class="tile-header" draggable="true">
+          <div class="tile-identity">
+            <span class="tile-color" style="background:${tile.color || 'var(--text-muted)'}"></span>
+            <span class="tile-title">${escapeHtml(tile.title)}</span>
+          </div>
+          <span class="tile-type">${tile.type}</span>
+          <div class="tile-actions">
+            <button class="rail-btn" style="width:20px;height:20px" title="Tile menu"
+              onclick="event.stopPropagation();App.showCtx(event,'${tile.id}')">
+              <svg width="12" height="12"><use href="#icon-more"/></svg>
+            </button>
+            <button class="rail-btn tile-close" style="width:20px;height:20px" title="Close this tile and its tab (Ctrl+W)"
+              onclick="event.stopPropagation();App.closeTile('${tile.id}')">
+              <svg width="12" height="12"><use href="#icon-close"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="tile-body">${tileBody(tile)}</div>
+      `;
+      /* FOCUS FOLLOWS THE MOUSE — sloppy focus, the same rule as
+         Hyprland's `follow_mouse = 1` and every tiling WM that has it.
+         Entering the tile focuses it; no click is spent on saying "this
+         one". mousedown is kept for touch, where there is no pointer to
+         follow and a tap has to do the same job. */
+      el.addEventListener('mouseenter', () => focusTile(tile.id));
+      el.addEventListener('mousedown', () => focusTile(tile.id));
+      el.addEventListener('contextmenu', e => { e.preventDefault(); showCtx(e, tile.id); });
+
+      /* Drag reorder — the point here is that .dragging and
+         .snap-target are visibly DIFFERENT from .focused and :hover.
+         Four facts, four treatments, and none of them move anything. */
+      const head = el.querySelector('.tile-header');
+      head.addEventListener('dragstart', e => {
+        state.dragId = tile.id;
+        el.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', tile.id);
+      });
+      head.addEventListener('dragend', () => {
+        state.dragId = null;
+        document.querySelectorAll('.tile').forEach(t => t.classList.remove('dragging','snap-target'));
+      });
+      el.addEventListener('dragover', e => {
+        if (!state.dragId || state.dragId === tile.id) return;
+        e.preventDefault();
+        el.classList.add('snap-target');
+      });
+      el.addEventListener('dragleave', () => el.classList.remove('snap-target'));
+      el.addEventListener('drop', e => {
+        e.preventDefault();
+        el.classList.remove('snap-target');
+        if (!state.dragId || state.dragId === tile.id) return;
+        const from = state.tiles.findIndex(t => t.id === state.dragId);
+        const to = state.tiles.findIndex(t => t.id === tile.id);
+        if (from < 0 || to < 0) return;
+        const [moved] = state.tiles.splice(from, 1);
+        state.tiles.splice(to, 0, moved);
+        state.dragId = null;
+        renderTiles();
+      });
+
+      if (idx < state.tiles.length - 1) {
+        const handle = document.createElement('div');
+        handle.className = 'tile-split-handle';
+        handle.title = 'Drag to resize';
+        el.appendChild(handle);
+      }
+      canvas.appendChild(el);
+    });
+    renderPipeline();
+  }
+
+  /* Focus is a CLASS TOGGLE, never a re-render. It used to call
+     renderTiles(), which rebuilds every tile's innerHTML — tolerable when a
+     click triggered it, ruinous now that crossing a tile does: a full
+     rebuild would throw away a half-typed note, reset every tile's scroll
+     position, and re-lay out both tables on every sweep of the pointer.
+     Nothing about which tile has focus needs new markup. */
+  function focusTile(id) {
+    if (state.tiles.find(t => t.id === id && t.focused)) return;
+    state.tiles.forEach(t => {
+      t.focused = (t.id === id);
+      const el = canvas.querySelector('.tile[data-id="' + t.id + '"]');
+      if (el) el.classList.toggle('focused', t.focused);
+    });
+  }
+
+  function tileBody(tile) {
+    /* MANAGER — the staff list. Renders from heartbeats only: no event
+       bodies cross the wire to draw this. */
+    if (tile.tab === 'staff') {
+      return `
+        <table class="data-table">
+          <thead><tr>
+            <th class="col-xs"></th>
+            <th class="col-s">staff</th>
+            <th class="col-m">session</th>
+            <th class="col-s">type</th>
+            <th class="col-s">stage</th>
+            <th class="col-xs">ver</th>
+            <th>last event</th>
+            <th class="col-xs">today</th>
+          </tr></thead>
+          <tbody>
+            ${state.staff.map(p => `<tr onclick="App.openStaffTrail('${p.id}')" style="cursor:pointer" title="Open ${escapeHtml(p.name)}'s session replay">
+              <td><span class="status-dot ${p.live ? 'ok' : 'warn'}"></span></td>
+              <td>${escapeHtml(p.name)}</td>
+              <td>${escapeHtml(p.session)}</td>
+              <td class="mono">${p.type}</td>
+              <td>${p.stage}</td>
+              <td class="mono" data-ver="${p.id}">${p.version}</td>
+              <td class="mono">${escapeHtml(p.lastEvent)}</td>
+              <td class="mono">${p.today}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+        <div style="margin-top:10px;font-size:11px;color:var(--text-muted);">
+          Live rows tick <span class="mono">ver</span> as mutations land. The list carries
+          heartbeats only — opening a staffer fetches their <span class="mono">ops_events</span> page.
+        </div>
+      `;
+    }
+
+    /* MANAGER — one staffer's session replay. Spined on STAGE today; the
+       procedure STEP slots in as a finer level once procedures exist. */
+    if (tile.tab.startsWith('trail:')) {
+      const who = tile.tab.slice(6);
+      const person = state.staff.find(p => p.id === who);
+      const tr = state.trail[who];
+      if (!tr) return `<div style="color:var(--text-muted);padding:20px;font-size:12px;">No recorded trail for ${escapeHtml(person?.name || who)} yet.</div>`;
+      const VERB = { create:'badge-success', update:'badge-accent', delete:'badge-danger' };
+      return `
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <span class="badge badge-accent">${escapeHtml(tr.type)}</span>
+            <span style="font-weight:600;">${escapeHtml(person?.name || who)}</span>
+            <span class="mono">${escapeHtml(tr.session)}</span>
+            <span class="session-state">${escapeHtml(tr.status)}</span>
+            <span class="mono" style="margin-left:auto;">ver ${person?.version ?? 0}</span>
+          </div>
+          ${tr.groups.map(g => `
+            <div>
+              <div class="recent-band-label" style="display:block;padding:2px 0 4px;border-bottom:1px solid var(--border-strong);">${g.stage} \u00b7 ${g.events.length} events</div>
+              <table class="data-table" style="margin-top:4px;">
+                <tbody>
+                  ${g.events.map(e => `<tr>
+                    <td class="col-s mono">${e.t}</td>
+                    <td class="col-xs"><span class="badge ${VERB[e.verb]}">${e.verb}</span></td>
+                    <td class="col-s mono">${e.entity}</td>
+                    <td>${escapeHtml(e.detail)}</td>
+                  </tr>`).join('')}
+                </tbody>
+              </table>
+            </div>`).join('')}
+          <div style="font-size:11px;color:var(--text-muted);">
+            Who \u00b7 what \u00b7 when come from <span class="mono">ops_events</span> columns.
+            <b>Why</b> is deferred \u2014 stage carries intent today; procedure step ids will carry it exactly.
+          </div>
+        </div>
+      `;
+    }
+
+    /* SETTINGS IS A TILE, not a modal and not a page. It is a view of data
+       you edit, so K1 puts it in a table tile — which means it tiles beside
+       the thing you are adjusting and you watch the change land live. */
+    if (tile.tab === 'settings') {
+      const seg = (key, val, label) =>
+        `<span class="${state.prefs[key]===val?'active':''}" onclick="App.setPref('${key}','${val}')">${label}</span>`;
+      const sw = (name) => `<button class="btn btn-sm" style="border-color:${ACCENTS[name].light};color:${ACCENTS[name].light};${state.prefs.accent===name?'font-weight:700':''}"
+        onclick="App.setPref('accent','${name}')">${name}${state.prefs.accent===name?' \u00b7':''}</button>`;
+      const fs = DENSITY[state.prefs.density].floorScale;
+      return `
+        <div style="display:flex;flex-direction:column;gap:16px;max-width:620px;">
+          <div>
+            <div class="recent-band-label" style="display:block;padding:0 0 4px;">Arrangement \u2014 yours, unrestricted</div>
+            <div style="font-size:11px;color:var(--text-muted);line-height:1.5;margin-bottom:10px;">
+              Per staff, per org. Nothing here is bounded, because none of it changes what
+              anything <b>means</b>. An unpinned tool is not hidden \u2014 it is one
+              <span class="kbd">Ctrl</span> <span class="kbd">K</span> away in the launcher.
+            </div>
+
+            <table class="data-table">
+              <thead><tr><th class="col-xs"></th><th class="col-s">tool</th><th class="col-s">scope</th><th class="col-s">class</th><th class="col-s">keybind</th><th class="col-s">place</th></tr></thead>
+              <tbody>
+                ${TOOLS.filter(t => t.scope !== 'agent').map(t => {
+                  const pinned = state.pinnedTools.includes(t.key);
+                  const idx = state.pinnedTools.indexOf(t.key);
+                  return `<tr>
+                    <td><span class="status-dot ${pinned ? 'ok' : 'info'}" title="${pinned ? 'pinned' : 'launcher only'}"></span></td>
+                    <td>${t.label}</td>
+                    <td class="mono" style="font-size:10px;">${t.scope}</td>
+                    <td class="mono" style="font-size:10px;">${t.cls}</td>
+                    <td><input value="${state.keybinds['tool.'+t.key] || ''}" placeholder="Ctrl+\u2026"
+                        onchange="App.setKeybind('tool.${t.key}', this.value)"
+                        style="width:76px;border:1px solid var(--border-strong);background:var(--surface-containerLowest);color:var(--text-primary);font:inherit;font-size:10px;font-family:var(--font-mono);padding:1px 4px;outline:none;"></td>
+                    <td style="white-space:nowrap;">
+                      <button class="btn btn-sm" onclick="App.togglePin('${t.key}')">${pinned ? 'Unpin' : 'Pin'}</button>
+                      ${pinned ? `<button class="btn btn-sm" ${idx===0?'disabled style="opacity:.4"':''} onclick="App.movePin('${t.key}',-1)">\u2191</button>
+                                  <button class="btn btn-sm" ${idx===state.pinnedTools.length-1?'disabled style="opacity:.4"':''} onclick="App.movePin('${t.key}',1)">\u2193</button>` : ''}
+                    </td>
+                  </tr>`;
+                }).join('')}
+              </tbody>
+            </table>
+            ${state.keybindError ? `<div style="margin-top:6px;font-size:11px;color:var(--text-danger);">${escapeHtml(state.keybindError)}</div>` : ''}
+            <div style="margin-top:6px;font-size:11px;color:var(--text-muted);line-height:1.5;">
+              A chord must carry a modifier. A wedge scanner emits keystrokes, so a bare key
+              is a scan waiting to fire a tool \u2014 the same hazard the wedge detector (I3)
+              exists for. Collisions are refused, never silently shadowed.<br>
+              The <b>Assistant</b> is not in this list: it is the rail's fixed head, structural
+              like the add button, so it cannot be unpinned or reordered.
+            </div>
+          </div>
+
+          <div>
+            <div class="recent-band-label" style="display:block;padding:0 0 4px;">Comfort \u2014 yours, bounded</div>
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+              <span style="width:92px;font-size:var(--sz-xs);">Density</span>
+              <div class="composer-toggle">${seg('density','compact','compact')}${seg('density','default','default')}${seg('density','roomy','roomy')}</div>
+              <span class="mono" style="font-size:10px;color:var(--text-muted);">floors \u00d7${fs.toFixed(2)}</span>
+            </div>
+            <div style="font-size:11px;color:var(--text-muted);line-height:1.5;margin-bottom:12px;">
+              One scale, not separate padding knobs. The tile floors were measured against a
+              density, so they scale with it \u2014 session ${Math.round(784*fs)}px, table
+              ${Math.round(520*fs)}px. Separate knobs would be an untested combination with
+              silently wrong floors.
+            </div>
+
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+              <span style="width:92px;font-size:var(--sz-xs);">Frame radius</span>
+              <input type="range" min="0" max="16" step="1" value="${state.prefs.radius}"
+                oninput="App.setPref('radius', this.value)" style="flex:1;max-width:200px;">
+              <span class="mono">${state.prefs.radius}px</span>
+            </div>
+            <div style="font-size:11px;color:var(--text-muted);line-height:1.5;margin-bottom:12px;">
+              Safe to expose <i>because</i> the control radius tokens were deleted. Radius
+              appears in exactly one place \u2014 the workspace frame \u2014 so this
+              parameterizes that place instead of reopening the question.
+            </div>
+
+            <div style="display:flex;align-items:center;gap:10px;">
+              <span style="width:92px;font-size:var(--sz-xs);">Accent</span>
+              <div style="display:flex;gap:4px;flex-wrap:wrap;">${Object.keys(ACCENTS).map(sw).join('')}</div>
+            </div>
+          </div>
+
+          <div>
+            <div class="recent-band-label" style="display:block;padding:0 0 4px;">Meaning \u2014 locked</div>
+            <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:6px;">
+              ${[['ok','packed / on target'],['warn','pending / near limit'],['err','damaged / over'],['info','received']].map(([k,l])=>
+                `<span style="display:flex;align-items:center;gap:5px;font-size:11px;"><span class="status-dot ${k}"></span>${l}</span>`).join('')}
+            </div>
+            <div style="font-size:11px;color:var(--text-muted);line-height:1.5;">
+              Not a preference. Semantic colour is a <b>shared vocabulary</b>: if two staff
+              recolour their own, they read the same screen differently, and a lead walking
+              the floor cannot read anyone's. Org-level only, and only for accessibility \u2014
+              never taste.
+            </div>
+          </div>
+        </div>`;
+    }
+
+    /* THE EXCEPTIONS QUEUE — a TABLE, not a session. The unit of work is the
+       ROW: each fix commits on its own, so two operators can work the same
+       queue, a crash loses nothing, and there is no "unsaved changes" dialog
+       on a warehouse floor. */
+    if (tile.tab === 'orders-exceptions') {
+      const bad = state.importRows.filter(r => r.err);
+      if (!bad.length) return `<div style="color:var(--text-muted);padding:20px;font-size:12px;">Nothing unresolved. The sync placed every row.</div>`;
+      return `
+        <table class="data-table">
+          <thead><tr><th class="col-xs"></th><th class="col-s">sku</th><th class="col-xs">qty</th><th class="col-s">bin</th><th>problem</th><th class="col-s">source</th><th class="col-s"></th></tr></thead>
+          <tbody>
+            ${bad.map(r => `<tr>
+              <td><span class="status-dot err"></span></td>
+              <td class="mono">${r.sku}</td><td class="mono">${r.qty}</td><td class="mono">${r.bin || '\u2014'}</td>
+              <td style="color:var(--text-danger)">${r.err}</td>
+              <td class="mono" style="font-size:10px;">${r.src || 'sync'}</td>
+              <td><button class="btn btn-sm" onclick="App.importFix('${r.sku}')">Resolve</button></td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+        <div style="margin-top:10px;font-size:11px;color:var(--text-muted);">
+          One queue, every producer \u2014 cron, webhook and manual upload all land here.
+          Each Resolve commits on its own; nothing is staged.
+        </div>`;
+    }
+
+    if (tile.type === 'table') {
+      /* This is what a work queue looks like once it stops being a rail:
+         real columns, a sort affordance, a selection column and room for
+         the identity facts the rail's peek card had to hide. */
+      const rows = [
+        ['ok',   'C-8842-A', 'UPS',   '1Z999AA10123456784', 'B', 'unbox',   '4m'],
+        ['ok',   'C-8839-B', 'FedEx', '7742 8891 0021',     'A', 'unbox',   '11m'],
+        ['warn', 'C-8830-K', 'USPS',  '9410 8036 9930 41',  'C', 'triage',  '38m'],
+        ['err',  'C-8827-D', 'UPS',   '1Z999AA10987654321', '—', 'triage',  '1h 02m'],
+        ['info', 'C-8821-M', 'DHL',   'JVGL0999 8812 34',   'B', 'testing', '2h 14m'],
+        ['ok',   'C-8814-P', 'FedEx', '7742 8890 5510',     'A', 'packing', '3h 40m'],
+      ];
+      return `
+        <table class="data-table">
+          <thead><tr>
+            <th class="col-xs"></th>
+            <th class="col-s">carton</th>
+            <th>carrier</th>
+            <th class="col-m">tracking</th>
+            <th class="col-xs">gr</th>
+            <th class="col-s">stage</th>
+            <th class="col-s">age</th>
+          </tr></thead>
+          <tbody>
+            ${rows.map(r => `<tr>
+              <td><span class="status-dot ${r[0]}"></span></td>
+              <td class="mono">${r[1]}</td>
+              <td>${r[2]}</td>
+              <td class="mono">${r[3]}</td>
+              <td class="mono">${r[4]}</td>
+              <td>${r[5]}</td>
+              <td class="mono">${r[6]}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      `;
+    }
+    /* TASK SESSION — one container, several VIEWS. Step `source` renders a
+       FORM; step `triage` renders a GRID. Neither is a different kind of
+       object; both are renderings of one session's current step, and the
+       staged rows survive closing the tile because they live in the
+       session's state. */
+    if (tile.type === 'session' && tile.sessionKind === 'task') {
+      const step = state.importStep;
+      const i = FBA_STEPS.indexOf(step);
+      const picked = state.fbaPicked;
+      const spine = `
+        <div class="tile-spine">
+          <div class="tile-spine-identity">
+            <span class="session-state">${picked ? 'building' : 'open'}</span>
+            <span style="font-weight:600;font-size:var(--sz-sm);">${escapeHtml(tile.title)}</span>
+            <span class="badge badge-accent">task</span>
+            <span class="mono">${picked} units selected</span>
+          </div>
+          <div class="pipeline">
+            ${FBA_STEPS.map((sName, idx) => `<div class="pipeline-step ${idx<i?'done':idx===i?'current':''}" style="flex:1;justify-content:center;">
+              <div class="pipeline-mark"></div><span>${sName}</span></div>`).join('')}
+          </div>
+        </div>`;
+
+      if (step === 'select') {
+        return spine + `
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div style="font-size:11px;color:var(--text-secondary);line-height:1.5;">
+              The unit of work here is the <b>shipment</b>, not the row. Half a
+              shipment is not a thing \u2014 so the selection has to survive closing
+              this tile, and that is what makes it a session rather than a table.
+            </div>
+            <table class="data-table">
+              <thead><tr><th class="col-xs"></th><th class="col-s">serial</th><th class="col-s">sku</th><th class="col-s">bin</th></tr></thead>
+              <tbody>
+                ${['SN-7742-A','SN-7742-B','SN-9912-D','SN-2210-F'].map((sn,ix) => `<tr>
+                  <td><span class="status-dot ${ix < picked ? 'ok' : 'info'}"></span></td>
+                  <td class="mono">${sn}</td><td class="mono">SKU-99${21+ix}</td><td class="mono">B-04-${ix+1}</td>
+                </tr>`).join('')}
+              </tbody>
+            </table>
+            <div style="display:flex;gap:8px;">
+              <button class="btn" onclick="App.fbaPick(1)">Select one more</button>
+              <button class="btn btn-primary" ${picked?'':'disabled style="opacity:.45;cursor:not-allowed"'} onclick="App.importStep('box')">Box ${picked} units</button>
+            </div>
+          </div>`;
+      }
+      if (step === 'box') {
+        return spine + `
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <div class="session-field"><label>Carton</label><input type="text" value="FBA-BOX-0041" readonly style="color:var(--text-muted)"></div>
+            <div class="session-field"><label>Weight</label><input type="text" value="14.2 lb"></div>
+            <div style="display:flex;gap:8px;margin-top:4px;">
+              <button class="btn" onclick="App.importStep('select')">Back</button>
+              <button class="btn btn-primary" onclick="App.importStep('label')">Generate label</button></div>
+          </div>`;
+      }
+      if (step === 'label') {
+        return spine + `
+          <div style="text-align:center;padding:16px 0;">
+            <div class="mono" style="font-size:var(--sz-lg);">FBA15K9XQ2M</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">Zebra-ZT411 \u00b7 4x6</div>
+            <div style="display:flex;gap:8px;justify-content:center;margin-top:12px;">
+              <button class="btn" onclick="App.importStep('box')">Back</button>
+              <button class="btn btn-primary" onclick="App.importStep('ship')">Confirm shipped</button></div>
+          </div>`;
+      }
+      return spine + `
+        <div style="text-align:center;padding:24px 0;">
+          <div style="font-size:var(--sz-lg);font-weight:600;">Shipment closed</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">${picked} units \u00b7 one ops_event per unit \u00b7 actor_kind = operator</div>
+        </div>`;
+    }
+
+    if (tile.type === 'session') {
+      return `
+        <div style="display:flex;flex-direction:column;gap:12px;height:100%;">
+          <!-- THE SPINE — identity, stage, carton. On the object, not in the beam. -->
+          <div class="tile-spine">
+            <div class="tile-spine-identity">
+              <span class="session-state ${state.sessionState==='armed'?'':state.sessionState}">${state.sessionState}</span>
+              <span style="font-weight:600;font-size:var(--sz-sm);">${escapeHtml(state.sessionName)}</span>
+              <!-- The carton itself is a BENCH fact and lives in the beam (B21).
+                   What stays here is the session's PROGRESS through it, which is
+                   the one part of that string the session actually owns. -->
+              <span class="mono">unit 3 of 12</span>
+            </div>
+            <div class="pipeline" id="tilePipeline"></div>
+          </div>
+          <div style="padding:16px;border:1.5px dashed var(--border-strong);text-align:center;color:var(--text-muted);">
+            <div style="font-size:11px;text-transform:uppercase;letter-spacing:.14em;font-family:var(--font-condensed);font-weight:700;color:var(--text-secondary);">Awaiting scan</div>
+            <div style="margin-top:6px;">Scan a unit to pack</div>
+            <div style="font-size:11px;margin-top:6px;">Next expected: <span class="mono">SN-8842-X</span></div>
+          </div>
+          <div style="font-size:11px;color:var(--text-muted)">Last scan landed in this tile · <span class="kbd">Enter</span> to confirm</div>
+          <div class="composer" style="margin-top:auto;margin-left:-12px;margin-right:-12px;margin-bottom:-12px;">
+            <div class="composer-wrap">
+              <div class="composer-toggle">
+                <span class="active">internal</span>
+                <span>public</span>
+              </div>
+              <textarea placeholder="Add a note…" rows="1"></textarea>
+            </div>
+            <button class="btn btn-icon" title="Send">
+              <svg width="14" height="14"><use href="#icon-send"/></svg>
+            </button>
+          </div>
+        </div>
+      `;
+    }
+    return '<div style="color:var(--text-muted);font-size:12px;padding:20px;">Tile content</div>';
+  }
+
+  // ---- RENDER: TOOL PANEL ----
+  /* The rail is rendered from the registry, banded by scope. A session band
+     with no available tools renders NOTHING — a heading over an empty band
+     spends the rail's scarcest resource on saying there is nothing to say. */
+  function renderToolRail() {
+    const paint = (host, list, bandLabel) => {
+      if (!host) return;
+      host.innerHTML = '';
+      if (!list.length) return;
+      if (bandLabel) {
+        const lbl = document.createElement('div');
+        lbl.className = 'recent-band-label';
+        lbl.textContent = bandLabel;
+        host.appendChild(lbl);
+      }
+      list.forEach(t => {
+        const el = document.createElement('button');
+        el.className = 'rail-btn' + (state.openTool === t.key && state.toolPanelOpen ? ' active' : '');
+        el.title = `${t.label} \u2014 ${t.scope} \u00b7 ${t.cls}`;
+        el.dataset.tool = t.key;
+        el.onclick = () => toggleTool(t.key);
+        const badge = t.key === 'ai' && state.agentQueue.length
+          ? `<span class="rail-badge">${state.agentQueue.length}</span>` : '';
+        el.innerHTML = iconFor(t.icon, 15) + `<span class="rail-btn-label">${t.label}</span>` + badge;
+        host.appendChild(el);
+      });
+    };
+    /* The rail shows the FIXED HEAD, then only what the operator PINNED,
+       in their order. An unpinned tool is not hidden — it is one Ctrl+K away
+       in the launcher, which is the one index. */
+    /* The rail does NOT repeat the beam's pins. One pin surface, and it is
+       the top-right cluster. The rail keeps discovery (add/search) and the
+       contextual band; the beam keeps the fixed set. */
+    paint($('toolsGlobal'), [], null);
+    paint($('toolsSession'), TOOLS.filter(t => t.scope === 'session' && toolAvailable(t)), 'Session');
+  }
+
+  function renderTool() {
+    /* The rail is painted from the registry, so the active tint is read off
+       `data-tool` — the hand-kept btnTool* id map it replaced pointed at
+       elements that no longer exist, and threw on every panel open. */
+    document.querySelectorAll('.rail.right .rail-btn[data-tool]').forEach(b => {
+      b.classList.toggle('active', state.toolPanelOpen && b.dataset.tool === state.openTool);
+    });
+
+    const big = 'font-size:34px;font-weight:600;font-variant-numeric:tabular-nums;font-feature-settings:\'tnum\' 1;font-family:var(--font-mono);';
+
+    if (state.openTool === 'import') {
+      toolPanelTitle.textContent = 'Import orders';
+      toolPanelBody.innerHTML = `
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div style="font-size:11px;color:var(--text-secondary);line-height:1.5;">
+            Orders sync on a schedule. This is the manual path \u2014 a fallback when the
+            sync is down, or a one-off file. Either way the rows land in the same
+            exceptions queue.
+          </div>
+          <div class="session-field"><label>Channel</label><input type="text" value="eBay" readonly style="color:var(--text-muted)"></div>
+          <div class="session-field"><label>File</label><input type="text" value="orders-2026-08-22.csv" readonly style="color:var(--text-muted)"></div>
+          <button class="btn btn-primary" onclick="App.runImport()">Import ${state.importRows.length} rows</button>
+          <div style="font-size:11px;color:var(--text-muted);">
+            Last sync 04:12 \u00b7 <span class="mono">${state.importRows.filter(r=>r.err).length}</span> unresolved
+          </div>
+        </div>`;
+      toolPanelFooter.textContent = 'Actuator \u00b7 single act \u00b7 nothing staged';
+    } else if (state.openTool === 'ai') {
+      toolPanelTitle.textContent = 'Assistant';
+      toolPanelBody.innerHTML = `
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          ${state.agentQueue.length ? `
+            <div>
+              <div class="recent-band-label" style="display:block;padding:0 0 4px;">Awaiting review \u00b7 ${state.agentQueue.length}</div>
+              ${state.agentQueue.map(m => `
+                <div style="border:1px solid var(--border-strong);padding:6px;margin-bottom:4px;">
+                  <div style="font-weight:600;">${escapeHtml(m.summary)}</div>
+                  <div class="mono" style="font-size:10px;color:var(--text-muted);">${m.kind}</div>
+                  <div style="font-size:11px;color:var(--text-secondary);margin-top:3px;">${escapeHtml(m.why)}</div>
+                  <div style="display:flex;gap:4px;margin-top:6px;">
+                    <button class="btn btn-sm btn-primary" onclick="App.agentApply('${m.id}')">Apply</button>
+                    <button class="btn btn-sm" onclick="App.agentDismiss('${m.id}')">Dismiss</button>
+                  </div>
+                </div>`).join('')}
+            </div>` : `<div style="color:var(--text-muted);text-align:center;padding:12px 0;">Nothing awaiting review</div>`}
+          <div>
+            <div class="recent-band-label" style="display:block;padding:0 0 4px;">Applied today \u00b7 ${state.agentApplied}</div>
+            <button class="btn btn-sm" onclick="App.agentUndo()">Undo last</button>
+          </div>
+          <div class="composer" style="margin:0;border:1px solid var(--border-strong);">
+            <div class="composer-wrap">
+              <textarea placeholder="Ask, or tell it what to set up\u2026" rows="1"></textarea>
+            </div>
+            <button class="btn btn-icon" title="Send"><svg width="14" height="14"><use href="#icon-send"/></svg></button>
+          </div>
+        </div>`;
+      toolPanelFooter.textContent = 'Writes land in agent_mutations \u00b7 every row reversible';
+    } else if (state.openTool === 'pairing') {
+      /* Pairing is an operation, so it lives here and not in the beam. */
+      toolPanelTitle.textContent = 'Pairing';
+      toolPanelBody.innerHTML = `
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <div class="session-field"><label>Tracking number</label><input type="text" value="1Z999AA10123456784"></div>
+          <div style="text-align:center;color:var(--text-muted);font-size:16px;">&#8597;</div>
+          <div class="session-field"><label>Serial</label><input type="text" placeholder="Scan serial…"></div>
+          <button class="btn btn-primary" style="margin-top:4px;">Commit pair</button>
+        </div>`;
+      toolPanelFooter.textContent = 'Operation — not header chrome';
+    } else if (state.openTool === 'timer') {
+      toolPanelTitle.textContent = 'Timer';
+      toolPanelBody.innerHTML = `
+        <div style="text-align:center;padding:10px 0;">
+          <div style="${big}">${fmtTime(state.timer)}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px;text-transform:uppercase;letter-spacing:.12em;">Session elapsed</div>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:center;">
+          <button class="btn" onclick="App.toggleTimer()">${state.timerRunning?'Pause':'Resume'}</button>
+          <button class="btn" onclick="App.resetTimer()">Reset</button>
+        </div>
+        <div style="margin-top:14px;">
+          <div class="recent-band-label" style="display:block;padding:0 0 4px;">Header readout</div>
+          <div class="composer-toggle" style="align-self:stretch;">
+            <span class="${state.faceMode==='pace'?'active':''}"    onclick="App.setFaceMode('pace')">pace</span>
+            <span class="${state.faceMode==='elapsed'?'active':''}" onclick="App.setFaceMode('elapsed')">elapsed</span>
+            <span class="${state.faceMode==='off'?'active':''}"     onclick="App.setFaceMode('off')">off</span>
+          </div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:6px;line-height:1.45;">
+            <b>pace</b> shows the target and colours when you are near or over it.
+            <b>elapsed</b> shows the clock only and is never coloured.
+            <b>off</b> hides the readout.<br>
+            This is a display setting for you alone. Work is recorded either way \u2014
+            it changes what you see, not what is measured.
+          </div>
+        </div>`;
+      toolPanelFooter.textContent = 'Auto-started when session opened';
+    } else if (state.openTool === 'stopwatch') {
+      toolPanelTitle.textContent = 'Stopwatch';
+      const total = Math.floor(state.stopwatch);
+      const m = Math.floor(total/60).toString().padStart(2,'0');
+      const s = (total%60).toString().padStart(2,'0');
+      const ms = Math.floor((state.stopwatch%1)*100).toString().padStart(2,'0');
+      toolPanelBody.innerHTML = `
+        <div style="text-align:center;padding:10px 0;">
+          <div style="${big}">${m}:${s}.${ms}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px;text-transform:uppercase;letter-spacing:.12em;">Lap timing</div>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:center;">
+          <button class="btn btn-primary" onclick="App.toggleSw()">${state.swRunning?'Stop':'Start'}</button>
+          <button class="btn" onclick="App.resetSw()">Reset</button>
+        </div>`;
+      toolPanelFooter.textContent = 'User-pinned tool';
+    } else if (state.openTool === 'photos') {
+      toolPanelTitle.textContent = 'Photo library';
+      toolPanelBody.innerHTML = `<div style="color:var(--text-muted);text-align:center;padding:24px 0;">12 photos<br><span style="font-size:11px;">Drag onto a tile to attach</span></div>`;
+      toolPanelFooter.textContent = 'Auto-summoned on unit scan';
+    } else if (state.openTool === 'manuals') {
+      toolPanelTitle.textContent = 'Manuals';
+      toolPanelBody.innerHTML = `<div style="color:var(--text-muted);text-align:center;padding:24px 0;">3 manuals linked<br><span style="font-size:11px;">Auto-summoned on scan</span></div>`;
+      toolPanelFooter.textContent = 'Testing stage only';
+    } else if (state.openTool === 'printer') {
+      toolPanelTitle.textContent = 'Label printer';
+      toolPanelBody.innerHTML = `<div style="color:var(--text-muted);text-align:center;padding:24px 0;">Printer: Zebra-ZT411<br><span style="font-size:11px;">Paired · 42 labels today</span></div>`;
+      toolPanelFooter.textContent = 'USB/serial — workstation bound';
+    } else if (state.openTool === 'calc') {
+      toolPanelTitle.textContent = 'Calculator';
+      const keys = ['7','8','9','÷','4','5','6','×','1','2','3','−','0','.','=','+'];
+      toolPanelBody.innerHTML = `
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:3px;">
+          ${keys.map(k => `<button class="btn${k==='='?' btn-primary':''}" style="padding:10px 4px">${k}</button>`).join('')}
+        </div>`;
+      toolPanelFooter.textContent = 'Pinned tool';
+    }
+    toolPanel.classList.toggle('open', state.toolPanelOpen);
+    renderToolRail();
+  }
+
+  // ---- RENDER: PIPELINE (segment 1 of the context line) ----
+  /* Scan type IS the process stage, so the stage strip is part of what
+     the session is — it renders inside the context line, not in a
+     header zone of its own. */
+  function renderPipeline() {
+    const el = $('tilePipeline');
+    if (!el) return;
+    el.innerHTML = state.pipeline.map((stage, i) => {
+      let cls = '';
+      if (i < state.currentStage) cls = 'done';
+      else if (i === state.currentStage) cls = 'current';
+      const label = stage === 'ready' ? 'ready to pack' : stage;
+      return `<div class="pipeline-step ${cls}"><div class="pipeline-mark"></div><span>${label}</span></div>`;
+    }).join('');
+  }
+
+  /* The beam carries the session identity ONLY while the session tile is not
+     on screen. That is the one case the tile cannot cover: the canvas scrolls
+     horizontally below its floors, and the beam cannot scroll away. */
+  /* No beam fallback for session identity. Two reasons it is not needed:
+     the session tile cannot be fully scrolled away at these floors (max
+     overflow is smaller than the tile), and "is anything armed / where does
+     my scan land" is already answered permanently by the scan-armed cell in
+     the corner cluster — it reads 'no session' and 'parked' in exactly the
+     states a fallback would have covered. */
+
+  // ---- RENDER: SESSION STATE ----
+  /* The face reads against the target for the CURRENT STAGE. No session, no
+     target — the slot goes muted rather than lying with a zero. */
+  function renderFace() {
+    const face = $('headerFace');
+    if (!face) return;
+
+    if (state.faceMode === 'off') { face.style.display = 'none'; return; }
+    face.style.display = '';
+
+    const armed = state.sessionState === 'armed';
+    const paced = state.faceMode === 'pace';
+    const stage = state.pipeline[state.currentStage];
+    const target = armed && paced ? state.stageTargets[stage] : null;
+    const mmss = t => `${Math.floor(t/60).toString().padStart(2,'0')}:${(t%60).toString().padStart(2,'0')}`;
+
+    $('faceElapsed').textContent = armed ? mmss(state.timer % 3600) : '--:--';
+    /* In `elapsed` mode the target half is not blanked — it is REMOVED, so the
+       slot narrows and stops implying a hidden number. */
+    $('faceTarget').textContent = target ? mmss(target) : '';
+    face.querySelector('.face-sep').style.display = target ? '' : 'none';
+    face.style.width = paced ? '128px' : '78px';
+
+    let cls = 'idle';
+    if (armed && target) {
+      const r = state.timer / target;
+      cls = r >= 1 ? 'over' : r >= 0.8 ? 'near' : 'on-target';
+    }
+    /* `elapsed` mode is NEVER coloured. Colour is the verdict, and this mode
+       exists precisely for the operator who wants the clock without one. */
+    face.className = 'header-face ' + (paced ? cls : 'idle');
+    face.title = paced
+      ? 'Session elapsed against the target for this task type. Click for the timer.'
+      : 'Session elapsed. No target shown. Click for the timer.';
+  }
+
+  function setFaceMode(mode) {
+    state.faceMode = mode;
+    renderFace();
+    if (state.openTool === 'timer' && state.toolPanelOpen) renderTool();
+  }
+
+  function renderSession() {
+    const named = state.sessionName && state.sessionName.trim().length > 0;
+
+    zoneSession.className = 'zone-session ' + (state.sessionState === 'armed' ? '' : state.sessionState);
+    renderFace();
+    $('sessionValue').textContent =
+      state.sessionState === 'armed' ? (named ? state.sessionName : 'Unnamed session')
+      : state.sessionState === 'parked' ? 'parked — no target'
+      : state.sessionState === 'ended' ? 'no session'
+      : 'scan blocked';
+  }
+
+  // ---- ACTIONS ----
+  /* Instant. A rail that tweens its width holds the canvas hostage for
+     the length of the tween and hands back nothing during it. */
+  function toggleRail(side) {
+    const rail = $(side + 'Rail');
+    const expanded = rail.classList.toggle('expanded');
+    if (side === 'left') state.leftExpanded = expanded;
+    else state.rightExpanded = expanded;
+    renderSettings();
+  }
+
+  function toggleTool(tool) {
+    if (state.openTool === tool && state.toolPanelOpen) {
+      state.toolPanelOpen = false;
+    } else {
+      state.openTool = tool;
+      state.toolPanelOpen = true;
+    }
+    renderTool();
+  }
+
+  function closeToolPanel() {
+    state.toolPanelOpen = false;
+    renderTool();
+  }
+
+  function focusTab(tabId) {
+    state.activeTab = tabId;
+    renderTabs();
+    state.tiles.forEach(t => t.focused = (t.tab === tabId));
+    if (!state.tiles.some(t => t.tab === tabId)) {
+      const tab = state.tabs.find(t => t.id === tabId);
+      if (tab) return addTile(tabId, tab.title, tab.type);
+    }
+    renderTiles();
+  }
+
+  let seq = 0;
+  function addTile(tabId, title, type) {
+    /* ONE SCAN-SESSION TILE ON THE CANVAS, EVER.
+       `ux_work_sessions_armed_scan` already makes two ARMED scan sessions
+       impossible in the database. What the DB cannot stop is the UI showing
+       two session tiles that look identical while only one owns the wedge —
+       and a tile you believe is armed but is not is a mis-scan generator.
+       So opening a session PARKS the one that is open and swaps it in.
+       Parking is lossless: `work_sessions.state` JSONB holds the draft
+       buffers and tile geometry, `status='parked'` is a first-class state,
+       and the claim lease exists so a parked session can be resumed — by
+       this operator or by a lead. The parked one drops into the recents
+       Sessions band, which is how you get back to it. */
+    /* S2 is about SCAN sessions. `kind='task'` sessions are N — the schema
+       says so explicitly, and they do not own the wedge, so they cannot
+       compete for a barcode. Treating every session as exclusive was a bug:
+       it made an order import park the packing bench. */
+    const sessionKind = SESSION_KINDS[tabId] ?? 'scan';
+    if (type === 'session' && sessionKind === 'scan') {
+      const openSession = state.tiles.find(t => t.type === 'session' && t.sessionKind === 'scan');
+      if (openSession) {
+        if (openSession.tab === tabId) {
+          /* Re-opening the session that is already on canvas focuses it — and
+             RE-ARMS it if it was parked. S4 says parking is lossless and the
+             claim lease exists so a parked session can be resumed; a resume
+             that leaves the arm on the floor would mean the operator is back
+             at the bench with nothing owning the wedge. */
+          if (state.sessionState !== 'armed') {
+            state.sessionState = 'armed';
+            renderSession();
+            renderTool();
+          }
+          focusTile(openSession.id);
+          return;
+        }
+        parkSessionTile(openSession);
+      }
+    }
+    /* ONE APPLICATION PER TILE, AND ONE TILE PER APPLICATION.
+       Opening something already on the canvas focuses it instead of dealing
+       a second copy. Two tiles of one page means two places for the same
+       state to be edited and no way to tell which one you are looking at —
+       pressing the gear twice must not produce two settings pages. Splitting
+       is the deliberate exception and goes through ctxSplit, which pushes
+       its own tile and never comes through here. */
+    const already = state.tiles.find(t => t.tab === tabId);
+    if (already) {
+      focusTile(already.id);
+      state.activeTab = tabId;
+      renderTabs();
+      return;
+    }
+
+    const id = 't' + (++seq) + '-' + tabId;
+    const existingTab = state.tabs.find(t => t.id === tabId);
+    const color = existingTab?.color || PALETTE[state.tiles.length % PALETTE.length];
+    state.tiles.push({ id, tab: tabId, title, color, icon: type==='table'?'table':'box', type, sessionKind, focused: true });
+    state.tiles.forEach(t => t.focused = (t.id === id));
+    state.activeTab = tabId;
+    if (type === 'session' && sessionKind === 'scan') {
+      state.sessionName = title;
+      state.sessionState = 'armed';
+      state.currentStage = Math.max(0, state.pipeline.indexOf(tabId));
+      $('sessionNameInput').value = title;
+      renderSession();
+      renderPipeline();
+    }
+    renderTiles();
+    if (!existingTab) state.tabs.push({ id: tabId, title, color, icon: type==='table'?'table':'box', type });
+    renderTabs();
+  }
+
+  /* Park, don't close. The row survives with its state; only the arm and the
+     canvas slot are given up. It lands in recents so it is one click back. */
+  function parkSessionTile(tile) {
+    state.tiles = state.tiles.filter(t => t.id !== tile.id);
+    state.tabs = state.tabs.filter(t => t.id !== tile.tab);
+    state.recents = state.recents.filter(r => !(r.kind === 'session' && r.id === tile.tab));
+    state.recents.push({
+      kind: 'session', id: tile.tab, title: tile.title,
+      sub: 'parked · state kept', at: Math.max(...state.recents.map(r => r.at)) + 1,
+    });
+    renderRecents();
+  }
+
+  /* Opening a replay is a TABLE tile, not a session — so it never contends
+     with the one-scan-session-tile rule, and a manager can hold several open. */
+  function openStaffTrail(staffId) {
+    const person = state.staff.find(p => p.id === staffId);
+    addTile('trail:' + staffId, (person?.name || staffId) + ' \u2014 replay', 'table');
+  }
+
+  function importStep(step) { state.importStep = step; renderTiles(); }
+  function fbaPick(n) { state.fbaPicked = Math.min(4, state.fbaPicked + n); renderTiles(); }
+  function runImport() {
+    state.importRows.forEach(r => { if (!r.src) r.src = 'manual'; });
+    addTile('orders-exceptions', 'Orders exceptions', 'table');
+    renderTool();
+  }
+  function importFix(sku) {
+    const row = state.importRows.find(r => r.sku === sku);
+    if (row) { row.bin = 'B-07-1'; row.err = null; }
+    renderTiles();
+  }
+
+  const DENSITY = {
+    compact: { sp2:'6px',  sp3:'9px',  ctrl:'22px', floorScale:0.92 },
+    default: { sp2:'8px',  sp3:'12px', ctrl:'26px', floorScale:1.00 },
+    roomy:   { sp2:'11px', sp3:'16px', ctrl:'32px', floorScale:1.14 },
+  };
+  const ACCENTS = {
+    blue:   { light:'#1d4ed8', dark:'#60a5fa' },
+    teal:   { light:'#0f766e', dark:'#2dd4bf' },
+    violet: { light:'#6d28d9', dark:'#a78bfa' },
+    amber:  { light:'#a16207', dark:'#fbbf24' },
+  };
+
+  function applyPrefs() {
+    const r = document.documentElement.style;
+    const d = DENSITY[state.prefs.density] ?? DENSITY.default;
+    r.setProperty('--sp-2', d.sp2);
+    r.setProperty('--sp-3', d.sp3);
+    r.setProperty('--control-h', d.ctrl);
+    /* Safe to expose BECAUSE F2 deleted the other radius tokens. There is
+       exactly one place radius appears, so this parameterizes that place
+       rather than reopening the question. */
+    r.setProperty('--r-hud', state.prefs.radius + 'px');
+    const a = ACCENTS[state.prefs.accent] ?? ACCENTS.blue;
+    const dark = document.body.getAttribute('data-theme') === 'dark';
+    r.setProperty('--text-accent', dark ? a.dark : a.light);
+    r.setProperty('--border-accent', dark ? a.dark : a.light);
+    /* The floors move WITH the density — otherwise `roomy` silently makes
+       every measured minimum wrong. */
+    r.setProperty('--tile-min-session', Math.round(784 * d.floorScale) + 'px');
+    r.setProperty('--tile-min-table',   Math.round(520 * d.floorScale) + 'px');
+  }
+
+  /* The beam is finite. 8 × 28px = 224px, which still leaves the context
+     line ~500px at 1440. The ceiling is enforced with a reason, not trusted. */
+  /* The rail is a column, so the ceiling is height, not beam width. At 28px
+     a cell, 10 pins is 280px — comfortable above the slack on a 900px rail. */
+  const MAX_HEADER_PINS = 10;
+
+  function renderHeaderTools() {
+    const host = $('headerTools');
+    if (!host) return;
+    host.innerHTML = '';
+    const items = [
+      TOOLS.find(t => t.key === 'ai'),
+      ...state.pinnedTools.map(k => TOOLS.find(t => t.key === k)),
+    ].filter(Boolean);
+
+    items.forEach((t) => {
+      const fixed = t.key === 'ai';
+      const el = document.createElement('button');
+      el.className = 'cluster-btn rail-btn' + (state.openTool === t.key && state.toolPanelOpen ? ' active' : '');
+      el.dataset.pin = t.key;
+      el.draggable = !fixed;
+      const chord = state.keybinds['tool.' + t.key];
+      el.title = `${t.label}${fixed ? ' — fixed head, cannot be unpinned' : ' — drag to reorder · right-click to unpin'}${chord ? ' · ' + chord : ''}`;
+      const badge = t.key === 'ai' && state.agentQueue.length
+        ? `<span class="rail-badge">${state.agentQueue.length}</span>` : '';
+      el.innerHTML = iconFor(t.icon, 15)
+        + `<span class="rail-btn-label">${t.label}</span>` + badge
+        + (chord ? `<span class="hp-chord">${chord.replace(/^Ctrl\+/i,'^')}</span>` : '');
+      el.onclick = () => toggleTool(t.key);
+      el.oncontextmenu = e => { e.preventDefault(); e.stopPropagation(); showPinCtx(e, t.key, fixed); };
+      if (!fixed) {
+        el.addEventListener('dragstart', ev => {
+          state.dragTool = t.key;
+          ev.dataTransfer.effectAllowed = 'move';
+          ev.dataTransfer.setData('text/plain', t.key);
+        });
+        el.addEventListener('dragover', ev => { ev.preventDefault(); el.classList.add('drop-before'); });
+        el.addEventListener('dragleave', () => el.classList.remove('drop-before'));
+        el.addEventListener('drop', ev => {
+          ev.preventDefault(); ev.stopPropagation();
+          el.classList.remove('drop-before');
+          dropPin(state.dragTool, t.key);
+        });
+      }
+      host.appendChild(el);
+    });
+
+    host.ondragover = e => { e.preventDefault(); host.classList.add('drop-target'); };
+    host.ondragleave = () => host.classList.remove('drop-target');
+    host.ondrop = e => { e.preventDefault(); host.classList.remove('drop-target'); dropPin(state.dragTool, null); };
+  }
+
+  /* One drop handler for both gestures: from the list it PINS, from inside
+     the cluster it REORDERS. `before` is the key to insert ahead of, or null
+     for "append". */
+  function dropPin(key, before) {
+    if (!key) return;
+    const cur = state.pinnedTools.indexOf(key);
+    if (cur < 0 && state.pinnedTools.length >= MAX_HEADER_PINS) {
+      state.pinError = `The rail holds ${MAX_HEADER_PINS} pins. Unpin one first.`;
+      state.dragTool = null; renderHeaderTools(); renderToolDrop(); return;
+    }
+    state.pinError = null;
+    if (cur >= 0) state.pinnedTools.splice(cur, 1);
+    const at = before ? state.pinnedTools.indexOf(before) : -1;
+    if (at >= 0) state.pinnedTools.splice(at, 0, key);
+    else state.pinnedTools.push(key);
+    state.dragTool = null;
+    renderHeaderTools(); renderToolDrop(); renderTool(); renderTiles();
+  }
+
+  function renderToolDrop() {
+    const host = $('toolDrop');
+    if (!host) return;
+    host.innerHTML = TOOLS.filter(t => t.key !== 'ai').map(t => {
+      const pinned = state.pinnedTools.includes(t.key);
+      const chord = state.keybinds['tool.' + t.key] || '';
+      return `<button class="row${pinned ? ' is-pinned' : ''}" draggable="true" data-drag="${t.key}"
+        oncontextmenu="event.preventDefault();event.stopPropagation();App.showPinCtx(event,'${t.key}',false)"
+        onclick="App.toggleTool('${t.key}')">
+        ${iconFor(t.icon, 14)}<span>${t.label}</span>
+        <span class="mono">${pinned ? 'pinned' : chord || ''}</span>
+      </button>`;
+    }).join('') + (state.pinError ? `<div style="padding:6px 12px;font-size:11px;color:var(--text-danger);border-top:1px solid var(--border-subtle);">${escapeHtml(state.pinError)}</div>` : '');
+
+    host.querySelectorAll('[data-drag]').forEach(row => {
+      row.addEventListener('dragstart', ev => {
+        state.dragTool = row.dataset.drag;
+        ev.dataTransfer.effectAllowed = 'move';
+        ev.dataTransfer.setData('text/plain', row.dataset.drag);
+      });
+    });
+  }
+
+  function toggleToolDrop() {
+    const host = $('toolDrop');
+    renderToolDrop();
+    host.classList.toggle('open');
+  }
+
+  /* PIN IN LINE. Right-click the icon itself — the control is on the thing
+     it controls, not three surfaces away in a settings pane. */
+  function showPinCtx(e, key, fixed) {
+    const tool = TOOLS.find(t => t.key === key);
+    /* An unknown key is a caller bug, not a crash. The registry is the
+       authority on what a tool is; anything not in it has no menu. */
+    if (!tool) { closeCtx(); return; }
+    const pinned = state.pinnedTools.includes(key);
+    ctxMenu.innerHTML = fixed
+      ? `<button class="context-item" disabled style="opacity:.5;cursor:default">${tool.label} — fixed head</button>`
+      : `<button class="context-item" onclick="App.dropPinFromMenu('${key}')">
+           ${iconFor(pinned ? 'close' : 'check', 14)} ${pinned ? 'Unpin from rail' : 'Pin to rail'}
+         </button>
+         <button class="context-item" onclick="App.toggleTool('${key}');App.closeCtx()">
+           ${iconFor(tool.icon, 14)} Open ${tool.label}
+         </button>`;
+    ctxMenu.style.left = Math.min(e.clientX, window.innerWidth - 200) + 'px';
+    ctxMenu.style.top = Math.min(e.clientY, window.innerHeight - 120) + 'px';
+    ctxMenu.classList.add('open');
+  }
+
+  function dropPinFromMenu(key) {
+    if (state.pinnedTools.includes(key)) togglePin(key);
+    else dropPin(key, null);
+    closeCtx();
+  }
+
+  function togglePin(key) {
+    const i = state.pinnedTools.indexOf(key);
+    if (i >= 0) state.pinnedTools.splice(i, 1);
+    else state.pinnedTools.push(key);
+    renderTool(); renderTiles(); renderHeaderTools(); renderToolDrop();
+  }
+
+  /* Placement is the array order, so moving a pin is moving an index. In the
+     real shell this is a drag inside the rail; the arrows are the keyboard
+     path, which has to exist anyway. */
+  function movePin(key, delta) {
+    const i = state.pinnedTools.indexOf(key);
+    const j = i + delta;
+    if (i < 0 || j < 0 || j >= state.pinnedTools.length) return;
+    [state.pinnedTools[i], state.pinnedTools[j]] = [state.pinnedTools[j], state.pinnedTools[i]];
+    renderTool(); renderTiles(); renderHeaderTools();
+  }
+
+  /* A BARE KEY MAY NEVER BE BOUND. A wedge scanner emits keystrokes, so a
+     single-character binding is a scan waiting to fire a tool — the same
+     hazard I3 exists for. Modifier required, and collisions are refused
+     rather than silently shadowing an existing chord. */
+  function setKeybind(id, chord) {
+    const c = (chord || '').trim();
+    if (!c) { delete state.keybinds[id]; renderTiles(); return; }
+    if (!/^(Ctrl|Alt|Shift|Meta)\+/i.test(c)) { state.keybindError = `${c} needs a modifier \u2014 a bare key can be fired by a scanner`; renderTiles(); return; }
+    const clash = Object.entries(state.keybinds).find(([k, v]) => v.toLowerCase() === c.toLowerCase() && k !== id);
+    if (clash) { state.keybindError = `${c} is already ${clash[0]}`; renderTiles(); return; }
+    state.keybindError = null;
+    state.keybinds[id] = c;
+    renderTiles();
+  }
+
+  function setPref(key, value) {
+    state.prefs[key] = key === 'radius' ? Number(value) : value;
+    applyPrefs();
+    renderTiles();
+  }
+
+  function showCtx(e, tileId) {
+    state.ctxTarget = tileId;
+    ctxMenu.style.left = Math.min(e.clientX, window.innerWidth - 200) + 'px';
+    ctxMenu.style.top = Math.min(e.clientY, window.innerHeight - 180) + 'px';
+    ctxMenu.classList.add('open');
+  }
+
+  function ctxSplit() {
+    const tile = state.tiles.find(t => t.id === state.ctxTarget) || state.tiles.find(t => t.focused);
+    if (!tile) return;
+    const id = 't' + (++seq) + '-split';
+    state.tiles.push({ id, tab: tile.tab, title: tile.title + ' (2)', color: tile.color, icon: tile.icon, type: tile.type, focused: true });
+    state.tiles.forEach(t => t.focused = (t.id === id));
+    renderTiles();
+    closeCtx();
+  }
+
+  function ctxRename() {
+    const tile = state.tiles.find(t => t.id === state.ctxTarget);
+    if (!tile) return closeCtx();
+    const name = prompt('Rename tab:', tile.title);
+    if (name) {
+      tile.title = name;
+      const tab = state.tabs.find(t => t.id === tile.tab);
+      if (tab) tab.title = name;
+      renderTiles(); renderTabs();
+    }
+    closeCtx();
+  }
+
+  function ctxIcon() {
+    const tile = state.tiles.find(t => t.id === state.ctxTarget);
+    if (!tile) return closeCtx();
+    const tab = state.tabs.find(t => t.id === tile.tab);
+    const next = ICONS[(ICONS.indexOf(tile.icon) + 1) % ICONS.length];
+    tile.icon = next;
+    if (tab) tab.icon = next;
+    renderTabs();
+    closeCtx();
+  }
+
+  function ctxColor() {
+    const tile = state.tiles.find(t => t.id === state.ctxTarget);
+    if (!tile) return closeCtx();
+    const tab = state.tabs.find(t => t.id === tile.tab);
+    const next = PALETTE[(PALETTE.indexOf(tile.color) + 1) % PALETTE.length];
+    tile.color = next;
+    if (tab) tab.color = next;
+    renderTiles(); renderTabs();
+    closeCtx();
+  }
+
+  /* Closing a tile closes its TAB too. A tab is "currently open" — that is
+     the whole difference between a tab and a pin — so leaving the tab behind
+     after the tile is gone would be the rail claiming something is open when
+     nothing is. A pin is untouched; that is what a pin is for. */
+  function closeTile(id) {
+    const tile = state.tiles.find(t => t.id === id);
+    if (!tile) return;
+    state.tiles = state.tiles.filter(t => t.id !== id);
+    if (tile.tab) {
+      state.tabs = state.tabs.filter(t => t.id !== tile.tab);
+      if (state.activeTab === tile.tab) state.activeTab = null;
+    }
+    if (state.tiles.length && !state.tiles.some(t => t.focused)) {
+      state.tiles[0].focused = true;
+      state.activeTab = state.tiles[0].tab || state.activeTab;
+    }
+    renderTiles();
+    renderTabs();
+  }
+
+  function ctxClose() {
+    closeTile(state.ctxTarget);
+    closeCtx();
+  }
+
+  function closeCtx() { ctxMenu.classList.remove('open'); state.ctxTarget = null; }
+
+  function toggleRecents() {
+    state.recentsCollapsed = !state.recentsCollapsed;
+    renderRecents();
+  }
+
+  /* Applying a queued proposal makes it an APPLIED agent mutation. It does
+     not become an operator action — `actor_kind` stays 'agent', because the
+     trust stats read acceptance rate and a human approving a proposal is
+     exactly the signal that widens that kind's trust class. */
+  function agentApply(id) {
+    state.agentQueue = state.agentQueue.filter(m => m.id !== id);
+    state.agentApplied += 1;
+    renderTool();
+  }
+  function agentDismiss(id) {
+    state.agentQueue = state.agentQueue.filter(m => m.id !== id);
+    renderTool();
+  }
+  function agentUndo() {
+    if (state.agentApplied > 0) state.agentApplied -= 1;
+    renderTool();
+  }
+
+  function toggleTimer() { state.timerRunning = !state.timerRunning; renderTool(); }
+  function resetTimer() { state.timer = 0; renderTool(); }
+  function toggleSw() { state.swRunning = !state.swRunning; renderTool(); }
+  function resetSw() { state.stopwatch = 0; renderTool(); }
+
+  function toggleSessionPopover() { sessionPopover.classList.toggle('open'); }
+
+  /* Rename in place, in the beam. The operator names the work while
+     doing it. Enter commits, Escape reverts, blur commits. */
+  function beginRename() {
+    const btn = $('sessionTitle');
+    if (btn.dataset.editing === '1') return;
+    const input = document.createElement('input');
+    input.className = 'session-title-input';
+    input.value = state.sessionName;
+    input.setAttribute('aria-label', 'Session name');
+    btn.dataset.editing = '1';
+    btn.replaceWith(input);
+    input.focus();
+    input.select();
+
+    let done = false;
+    const finish = commit => {
+      if (done) return;
+      done = true;
+      if (commit) state.sessionName = input.value.trim();
+      const fresh = document.createElement('button');
+      fresh.className = 'session-title';
+      fresh.id = 'sessionTitle';
+      fresh.title = 'Click to rename this session';
+      fresh.onclick = beginRename;
+      input.replaceWith(fresh);
+      $('sessionNameInput').value = state.sessionName;
+      renderSession();
+      renderTiles();
+    };
+    input.addEventListener('keydown', e => {
+      e.stopPropagation();
+      if (e.key === 'Enter') finish(true);
+      if (e.key === 'Escape') finish(false);
+    });
+    input.addEventListener('blur', () => finish(true));
+  }
+
+  function renameSession(name) {
+    state.sessionName = name;
+    renderSession();
+    renderTiles();
+  }
+
+  function parkSession() {
+    state.sessionState = 'parked';
+    renderSession();
+    renderTool();   // session-scoped tools leave the rail with the arm
+    toggleSessionPopover();
+  }
+
+  function closeSession() {
+    state.sessionState = 'ended';
+    state.tiles = state.tiles.filter(t => t.type !== 'session');
+    if (state.tiles.length) state.tiles[0].focused = true;
+    renderTiles();
+    renderSession();
+    renderTool();
+    toggleSessionPopover();
+  }
+
+  function setTheme(next) {
+    state.theme = next;
+    document.documentElement.setAttribute('data-theme', next);
+    renderSettings();
+  }
+
+  function toggleTheme() { setTheme(state.theme === 'light' ? 'dark' : 'light'); }
+
+  /* SETTINGS — the bottom-left corner's one panel. Theme lives here, and so
+     does a second way to expand either rail, for an operator who found the
+     preference before they found the chevron. */
+  function toggleSettings() {
+    const open = settingsPopover.classList.toggle('open');
+    $('btnSettings').classList.toggle('active', open);
+    if (open) renderSettings();
+  }
+
+  function renderSettings() {
+    document.querySelectorAll('#themeToggle span').forEach(el => {
+      el.classList.toggle('active', el.dataset.themeSet === state.theme);
+    });
+    document.querySelectorAll('#railToggle span').forEach(el => {
+      el.classList.toggle('active', el.dataset.rail === 'left'
+        ? state.leftExpanded
+        : state.rightExpanded);
+    });
+  }
+
+  function toggleOffline() {
+    state.offline = !state.offline;
+    $('offlineBanner').classList.toggle('open', state.offline);
+  }
+
+  // ---- LAUNCHER ----
+  const GROUPS = [
+    { label: 'Sessions', items: [
+      { title: 'Unbox session', meta: 'Start receiving cartons', icon: 'box', run: () => addTile('unbox','Unbox','session') },
+      { title: 'Packing session', meta: 'Pack graded units', icon: 'box', run: () => addTile('packing','Packing','session') },
+      { title: 'QC session', meta: 'Quality control', icon: 'box', run: () => addTile('qc','QC','session') },
+      { title: 'FBA shipment build', meta: 'Task session \u00b7 the unit of work is the BATCH', icon: 'box', run: () => addTile('fba-build','FBA shipment','session') }
+    ]},
+    /* The work QUEUES live here now, not in a rail. A queue is a table:
+       it wants width, columns, sort and virtualization, none of which a
+       208px strip can give it. Every one of these was a sidebar rail. */
+    { label: 'Tables', items: [
+      { title: 'Triage queue', meta: 'Was: receiving triage rail', icon: 'table', run: () => addTile('triage','Triage','table') },
+      { title: 'Receiving feed', meta: 'Was: unbox recent rail', icon: 'table', run: () => addTile('receiving','Receiving','table') },
+      { title: 'Pickup queue', meta: 'Was: pickup sidebar rail', icon: 'table', run: () => addTile('pickup','Pickup','table') },
+      { title: 'Label prints', meta: 'Was: product-labels rail', icon: 'table', run: () => addTile('labels','Labels','table') },
+      { title: 'Settings', meta: 'A tile like everything else \u00b7 arrangement \u00b7 comfort \u00b7 meaning', icon: 'settings', run: () => addTile('settings','Settings','table') },
+      { title: 'Orders exceptions', meta: 'What the sync could not place \u00b7 one row = one fix', icon: 'table', run: () => addTile('orders-exceptions','Orders exceptions','table') },
+      { title: 'Staff activity', meta: 'Per staff \u00b7 live session heartbeats', icon: 'check', run: () => addTile('staff','Staff activity','table') },
+      { title: 'Units', meta: 'All inventory units', icon: 'table', run: () => addTile('units','Units','table') },
+      { title: 'Orders', meta: 'Open orders', icon: 'table', run: () => addTile('orders','Orders','table') },
+      { title: 'Returns', meta: 'Return merchandise', icon: 'table', run: () => addTile('returns','Returns','table') }
+    ]},
+    { label: 'Tools', items: [
+      { title: 'Pairing', meta: 'TRK# to serial', icon: 'split', run: () => toggleTool('pairing') },
+      { title: 'Timer', meta: 'Session elapsed time', icon: 'timer', run: () => toggleTool('timer') },
+      { title: 'Stopwatch', meta: 'Lap timing', icon: 'stopwatch', run: () => toggleTool('stopwatch') },
+      { title: 'Photo library', meta: 'Unit photos', icon: 'image', run: () => toggleTool('photos') },
+      { title: 'Manuals', meta: 'Product documentation', icon: 'book', run: () => toggleTool('manuals') },
+      { title: 'Label printer', meta: 'Print shipping labels', icon: 'printer', run: () => toggleTool('printer') },
+      { title: 'Calculator', meta: 'Quick math', icon: 'calc', run: () => toggleTool('calc') }
+    ]},
+    /* Workspaces live in the launcher, not in new rail furniture. */
+    { label: 'Workspaces', items: [
+      { title: 'Save current workspace\u2026', meta: 'Geometry + tables. Never the session', icon: 'check', run: () => saveWorkspace() },
+    ]},
+    { label: 'Admin', items: [
+      { title: 'Toggle theme', meta: 'Light / dark', icon: 'palette', run: () => toggleTheme() },
+      { title: 'Header readout \u2014 pace', meta: 'Elapsed + target, coloured', icon: 'timer', run: () => setFaceMode('pace') },
+      { title: 'Header readout \u2014 elapsed only', meta: 'The clock, never a verdict', icon: 'timer', run: () => setFaceMode('elapsed') },
+      { title: 'Header readout \u2014 off', meta: 'Hide it. Work is still recorded', icon: 'timer', run: () => setFaceMode('off') },
+      { title: 'Simulate offline', meta: 'Show the queued-changes banner', icon: 'wifi-off', run: () => toggleOffline() }
+    ]}
+  ];
+
+  /* Applying a workspace rebuilds the TABLE tabs and leaves the session tile
+     exactly where it is. Nothing is parked, nothing is armed — switching a
+     workspace is navigation, and S3 says parking is a work event. */
+  function applyWorkspace(id) {
+    const w = state.savedWorkspaces.find(x => x.id === id);
+    if (!w) return;
+    const session = state.tiles.find(t => t.type === 'session');
+    const keep = session && w.sessionSlot ? [session] : [];
+    state.tiles = [...keep];
+    state.tabs = state.tabs.filter(t => keep.some(k => k.tab === t.id));
+    w.tabs.forEach((ref, i) => {
+      const title = ref.charAt(0).toUpperCase() + ref.slice(1);
+      const color = PALETTE[i % PALETTE.length];
+      state.tiles.push({ id:'w'+i+'-'+ref, tab:ref, title, color, icon:'table', type:'table', focused:false });
+      if (!state.tabs.some(t => t.id === ref)) {
+        state.tabs.push({ id:ref, title, color, icon:'table', type:'table' });
+      }
+    });
+    if (state.tiles.length) state.tiles[0].focused = true;
+    renderTiles(); renderTabs(); renderTool();
+  }
+
+  function saveWorkspace() {
+    const name = prompt('Name this workspace:', 'Bench ' + (state.savedWorkspaces.length + 1));
+    if (!name) return;
+    state.savedWorkspaces.push({
+      id: 'w-' + (++seq),
+      name,
+      /* A SLOT, never a session id. */
+      sessionSlot: state.tiles.some(t => t.type === 'session'),
+      tabs: state.tiles.filter(t => t.type !== 'session').map(t => t.tab),
+    });
+    closeLauncher();
+  }
+
+  function openLauncher(prefill) {
+    launcher.classList.add('open');
+    launcherInput.value = prefill || '';
+    state.launcherIndex = 0;
+    renderLauncherResults(launcherInput.value);
+    launcherInput.focus();
+  }
+
+  function closeLauncher() { launcher.classList.remove('open'); }
+  function openToolLauncher() { openLauncher('tool'); }
+
+  function renderLauncherResults(query) {
+    const q = (query || '').toLowerCase().trim();
+    state.launcherFlat = [];
+    let html = '';
+    const savedRows = state.savedWorkspaces.map(w => ({
+      title: w.name,
+      meta: `${w.tabs.length} tables${w.sessionSlot ? ' \u00b7 keeps your session' : ' \u00b7 no session slot'}`,
+      icon: 'table',
+      run: () => applyWorkspace(w.id),
+    }));
+    const ALL = GROUPS.map(g =>
+      g.label === 'Workspaces' ? { ...g, items: [...savedRows, ...g.items] } : g);
+    ALL.forEach(g => {
+      const items = g.items.filter(i =>
+        !q || i.title.toLowerCase().includes(q) || i.meta.toLowerCase().includes(q) || g.label.toLowerCase().includes(q));
+      if (!items.length) return;
+      html += `<div class="launcher-group"><div class="launcher-group-label">${g.label}</div>`;
+      items.forEach(item => {
+        const i = state.launcherFlat.length;
+        state.launcherFlat.push(item);
+        html += `
+          <div class="launcher-item${i === state.launcherIndex ? ' selected' : ''}" data-i="${i}" onclick="App.launcherRun(${i})">
+            <div class="launcher-item-icon">${iconFor(item.icon, 13)}</div>
+            <div>
+              <div class="launcher-item-title">${escapeHtml(item.title)}</div>
+              <div class="launcher-item-meta">${escapeHtml(item.meta)}</div>
+            </div>
+            ${i === state.launcherIndex ? '<span class="launcher-item-kbd">↵</span>' : ''}
+          </div>`;
+      });
+      html += '</div>';
+    });
+    /* No exact match is not a dead end — it is the orchestration case. The
+       launcher is already the one "tell me what you want" surface, so natural
+       language belongs HERE, not behind a second input. */
+    if (!html && q) {
+      state.launcherFlat = [{ run: () => { toggleTool('ai'); } }];
+      html = `<div class="launcher-group">
+        <div class="launcher-group-label">Assistant</div>
+        <div class="launcher-item selected" data-i="0" onclick="App.launcherRun(0)">
+          <div class="launcher-item-icon">${iconFor('assistant', 13)}</div>
+          <div>
+            <div class="launcher-item-title">Ask the assistant</div>
+            <div class="launcher-item-meta">\u201c${escapeHtml(query)}\u201d \u2014 no exact match</div>
+          </div>
+          <span class="launcher-item-kbd">\u21b5</span>
+        </div></div>`;
+    } else if (!html) {
+      html = '<div style="padding:24px;text-align:center;color:var(--text-muted);font-size:13px;">Type to search</div>';
+    }
+    launcherResults.innerHTML = html;
+  }
+
+  function moveLauncher(delta) {
+    if (!state.launcherFlat.length) return;
+    state.launcherIndex = (state.launcherIndex + delta + state.launcherFlat.length) % state.launcherFlat.length;
+    renderLauncherResults(launcherInput.value);
+    const sel = launcherResults.querySelector('.launcher-item.selected');
+    if (sel) sel.scrollIntoView({ block: 'nearest' });
+  }
+
+  function launcherRun(i) {
+    const item = state.launcherFlat[i];
+    if (item) { item.run(); closeLauncher(); }
+  }
+
+  // ---- UTILS ----
+  function iconFor(name, size=14) {
+    const map = {
+      box: 'icon-box', table: 'icon-table', file: 'icon-file',
+      timer: 'icon-timer', stopwatch: 'icon-stopwatch', image: 'icon-image',
+      book: 'icon-book', printer: 'icon-printer', calc: 'icon-calc',
+      check: 'icon-check', split: 'icon-split', palette: 'icon-palette',
+      search: 'icon-search', last: 'icon-last', assistant: 'icon-assistant',
+      settings: 'icon-settings',
+      'wifi-off': 'icon-wifi-off'
+    };
+    const href = map[name] || 'icon-box';
+    return `<svg width="${size}" height="${size}"><use href="#${href}"/></svg>`;
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str == null ? '' : str;
+    return div.innerHTML;
+  }
+
+  function fmtTime(s) {
+    const h = Math.floor(s/3600).toString().padStart(2,'0');
+    const m = Math.floor((s%3600)/60).toString().padStart(2,'0');
+    const sec = (s%60).toString().padStart(2,'0');
+    return `${h}:${m}:${sec}`;
+  }
+
+  // ---- EVENTS ----
+  document.addEventListener('click', () => {
+    closeCtx();
+    if (settingsPopover.classList.contains('open')) toggleSettings();
+  });
+  ctxMenu.addEventListener('click', e => e.stopPropagation());
+
+  $('themeToggle').addEventListener('click', e => {
+    const next = e.target.dataset.themeSet;
+    if (next) setTheme(next);
+  });
+
+  $('railToggle').addEventListener('click', e => {
+    const side = e.target.dataset.rail;
+    if (side) toggleRail(side);
+  });
+
+  /* Mode errors are prevented by naming the DESTINATION, not by asking the
+     operator to remember which mode they are in. The placeholder is that
+     readout: it always says where this field's contents are going. */
+  function renderScanMode() {
+    document.querySelectorAll('#scanModes span').forEach(el => {
+      const m = el.dataset.mode;
+      if (!m) return;
+      el.classList.toggle('active', (m === 'auto' || m === 'manual')
+        ? state.scanMode.input === m
+        : state.scanMode.action === m);
+    });
+    const target = state.scanMode.input === 'manual'
+      ? 'SCAN · TYPING COUNTS AS A SCAN'
+      : state.scanMode.action === 'filter'
+        ? 'SCAN · OR TYPE TO FILTER THIS TILE'
+        : 'SCAN · OR TYPE TO SEARCH';
+    $('scanInput').placeholder = target;
+  }
+
+  $('scanModes').addEventListener('click', e => {
+    const mode = e.target.dataset.mode;
+    if (!mode) return;
+    if (mode === 'auto' || mode === 'manual') state.scanMode.input = mode;
+    else state.scanMode.action = mode;
+    renderScanMode();
+  });
+
+  /* Typing opens the launcher in place — no button, no mode switch, and the
+     session is NOT parked: a wedge burst and human typing are different input
+     paths, so the arm never drops for a lookup. */
+  $('scanInput').addEventListener('input', e => {
+    const v = e.target.value;
+    if (state.scanMode.input === 'manual' || state.scanMode.action === 'filter') return;
+    if (v.length >= 2) { openLauncher(v); e.target.value = ''; }
+  });
+
+  launcherInput.addEventListener('input', e => { state.launcherIndex = 0; renderLauncherResults(e.target.value); });
+
+  launcherInput.addEventListener('keydown', e => {
+    if (e.key === 'ArrowDown') { e.preventDefault(); moveLauncher(1); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); moveLauncher(-1); }
+    else if (e.key === 'Enter') { e.preventDefault(); launcherRun(state.launcherIndex); }
+  });
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      closeLauncher();
+      closeCtx();
+      if (sessionPopover.classList.contains('open')) toggleSessionPopover();
+      if (settingsPopover.classList.contains('open')) toggleSettings();
+      return;
+    }
+    if ((e.metaKey || e.ctrlKey) && !e.altKey) {
+      const k = e.key.toLowerCase();
+      if (k === 'n' || k === 'k') { e.preventDefault(); openLauncher(); }
+      else if (e.key === '\\') { e.preventDefault(); ctxSplit(); }
+      else if (k === 'o' && e.shiftKey) { e.preventDefault(); toggleOffline(); }
+      else if (k === 'b') { e.preventDefault(); toggleRail(e.shiftKey ? 'right' : 'left'); }
+      else if (k === 'w' && !e.shiftKey) {
+        e.preventDefault();
+        const focused = state.tiles.find(t => t.focused);
+        if (focused) closeTile(focused.id);
+      }
+    }
+  });
+
+  // ---- CLOCK ----
+  /* The heartbeat. Only `version` moves — no event bodies. A real client
+     re-fetches a staffer's ops_events page only when their version passes
+     what it already holds. */
+  setInterval(() => {
+    state.staff.forEach(p => {
+      if (!p.live) return;
+      p.version += 1;
+      p.today += 1;
+      const cell = document.querySelector(`[data-ver="${p.id}"]`);
+      if (cell) cell.textContent = p.version;
+    });
+  }, 3000);
+
+  setInterval(() => {
+    if (state.timerRunning) {
+      state.timer++;
+      renderFace();
+      if (state.openTool === 'timer' && state.toolPanelOpen) renderTool();
+    }
+    if (state.swRunning) {
+      state.stopwatch += 1;
+      if (state.openTool === 'stopwatch' && state.toolPanelOpen) renderTool();
+    }
+  }, 1000);
+
+  // ---- INIT ----
+  renderPins();
+  renderTabs();
+  renderRecents();
+  renderTiles();
+  renderTool();
+  renderPipeline();
+  renderSession();
+  renderFace();
+  renderHeaderTools();
+  renderToolDrop();
+  applyPrefs();
+
+  renderScanMode();
+  renderSettings();
+
+  return {
+    toggleRail, toggleTool, closeToolPanel, focusTab, addTile,
+    showCtx, ctxSplit, ctxRename, ctxIcon, ctxColor, ctxClose, closeTile,
+    toggleRecents, toggleTimer, resetTimer, toggleSw, resetSw,
+    toggleSessionPopover, beginRename, renameSession, parkSession, closeSession, openStaffTrail,
+    toggleTheme, toggleSettings, toggleOffline, openLauncher, closeLauncher, openToolLauncher, launcherRun,
+    applyWorkspace, saveWorkspace, agentApply, agentDismiss, agentUndo, setFaceMode,
+    importStep, importFix, fbaPick, runImport, setPref, togglePin, movePin, setKeybind,
+    toggleToolDrop, showPinCtx, dropPinFromMenu, closeCtx
+  };
+})();
+</script>
