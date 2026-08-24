@@ -15,11 +15,12 @@
  * declaration (`GRID_FILL_COLUMN`). Nothing here re-derives geometry.
  */
 
-import { compoundColumnsFor } from '@/components/tables/compound/compound-columns';
-import { GRID_FILL_COLUMN, gridFrozenKeys } from '@/design-system/components/grid';
-import { gridFrozenLeft, gridTemplate } from '@/design-system/components/grid/grid-column-geometry';
+import { compoundColumnsFor } from '@/lib/tables/compound-columns';
+import { GRID_FILL_COLUMN } from '@/lib/grid/grid-fill-column';
+import { gridFrozenKeys } from '@/lib/grid/grid-column-editability';
+import { gridFrozenLeft, gridTemplate } from '@/lib/grid/grid-column-geometry';
 import type { ColumnType } from '@/lib/tables/table-columns';
-import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
+import type { GridSortDir } from '@/lib/grid/grid-sort-dir';
 
 export type TasksGridColumnKey =
   | 'select'
@@ -178,4 +179,4 @@ export {
   LEDGER_GRID_FROZEN_CELL as TASKS_GRID_FROZEN_CELL,
   ledgerGridCell as tasksGridCell,
   ledgerGridRowShellClass as tasksGridRowShellClass,
-} from '@/design-system/components/grid/grid-cell-chrome';
+} from '@/lib/grid/grid-cell-chrome';

@@ -1,4 +1,4 @@
-import type { WorkOrderRow } from '@/components/work-orders/types';
+import type { WorkOrderRow } from '@/lib/work-orders/types';
 import { getOrders } from '@/lib/work-orders/queries';
 import { isOpsPlansUnifiedInbox } from '@/lib/ops-plans/flags';
 import {

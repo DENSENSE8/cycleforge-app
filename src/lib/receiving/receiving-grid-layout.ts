@@ -18,18 +18,18 @@
  * `_fill` owns the sole `1fr` slack — same law as Orders.
  */
 
-import { compoundColumnsFor } from '@/components/tables/compound/compound-columns';
-import { GRID_FILL_COLUMN } from '@/design-system/components/grid';
-import { gridFrozenKeys } from '@/design-system/components/grid/grid-column-editability';
+import { compoundColumnsFor } from '@/lib/tables/compound-columns';
+import { GRID_FILL_COLUMN } from '@/lib/grid/grid-fill-column';
+import { gridFrozenKeys } from '@/lib/grid/grid-column-editability';
 import {
   gridColumnTrackRem,
   gridContentMinWidthRem,
   gridFrozenLeft,
   gridHeaderShowsLabel,
   gridTemplate,
-} from '@/design-system/components/grid/grid-column-geometry';
-import type { LedgerGridColumnModel } from '@/design-system/components/grid/grid-surface-descriptor';
-import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
+} from '@/lib/grid/grid-column-geometry';
+import type { LedgerGridColumnModel } from '@/lib/grid/grid-surface-descriptor';
+import type { GridSortDir } from '@/lib/grid/grid-sort-dir';
 import {
   isCustomFieldColumnKey,
   type CustomFieldColumnKey,
@@ -285,7 +285,7 @@ export {
   LEDGER_GRID_FROZEN_CELL as RECEIVING_GRID_FROZEN_CELL,
   ledgerGridCell as receivingGridCell,
   ledgerGridRowShellClass as receivingGridRowShellClass,
-} from '@/design-system/components/grid/grid-cell-chrome';
+} from '@/lib/grid/grid-cell-chrome';
 
 // ---------------------------------------------------------------------------
 // Incoming POS — separate column array. Do not filter/merge into
@@ -513,4 +513,4 @@ export {
   LEDGER_GRID_FROZEN_CELL as INCOMING_GRID_FROZEN_CELL,
   ledgerGridCell as incomingGridCell,
   ledgerGridRowShellClass as incomingGridRowShellClass,
-} from '@/design-system/components/grid/grid-cell-chrome';
+} from '@/lib/grid/grid-cell-chrome';

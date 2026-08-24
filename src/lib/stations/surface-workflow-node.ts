@@ -4,7 +4,7 @@
  * A station surface knows "where in the tenant's own flow" it sits via the
  * org's active `station_definitions` row (`workflow_node_id`, soft-linked to
  * `workflow_nodes.id`) — the same row `resolveSurface` already loads for the
- * legacy/composed render decision. This helper extracts just that node id so
+ * composition render decision. This helper extracts just that node id so
  * event writers (`recordOpsEvent`) can stamp the tenant-customizable "where"
  * axis (`ops_events.workflow_node_id`) without learning about compositions.
  *

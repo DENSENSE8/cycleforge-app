@@ -36,13 +36,6 @@
  *                                      names a port the node doesn't declare in
  *                                      config.outputs — that lane can't be wired.
  *
- * Composition rules (only when station summaries are supplied — server-side):
- *   station-unmapped-role   (error) — a block in the node's bound station
- *                                     leaves a REQUIRED role unmapped, so it
- *                                     can't bind its data.
- *   station-unknown-action  (error) — a block references an action id that's
- *                                     no longer in the registry (dangling).
- *
  * Integration rules (v2, studio-integrations-master-plan P1 §3.1 — only when
  * a connections summary is supplied, server-side via listConnections):
  *   integration-disconnected (error)   — a node whose config names a
@@ -69,8 +62,6 @@ export interface Diagnostic {
     | 'dead-end-port'
     | 'terminal-node'
     | 'no-station'
-    | 'station-unmapped-role'
-    | 'station-unknown-action'
     | 'port-fan-out'
     | 'decision-no-rules'
     | 'decision-port-undeclared'
@@ -82,25 +73,6 @@ export interface Diagnostic {
   message: string;
   /** One-line suggested fix shown in the Issues rail. */
   fix?: string;
-}
-
-/** One block instance in a node's bound station, resolved against the registry. */
-export interface NodeStationBlockSummary {
-  blockLabel: string;
-  /** Role keys the block DECLARES as required. */
-  requiredRoles: string[];
-  /** Role keys the instance actually mapped to a source field. */
-  mappedRoles: string[];
-  /** Referenced action ids that are not in the registry. */
-  unknownActions: string[];
-}
-
-/** A node's bound station composition (server-resolved by summarizeStations). */
-export interface NodeStationSummary {
-  label: string;
-  /** The station still renders its hand-coded tree — not composed from blocks. */
-  legacy: boolean;
-  blocks: NodeStationBlockSummary[];
 }
 
 /**
@@ -153,12 +125,6 @@ export interface DiagnosticsInput {
   stationKeys: ReadonlySet<string>;
   /** Display label for a node (falls back to its type). */
   labelOf?: (node: DiagnosticsGraphNode) => string;
-  /**
-   * Per-node station composition summary, keyed by node id (server-resolved by
-   * summarizeStations in src/lib/studio/station-diagnostics). Optional — omitted
-   * client-side, where only the graph is edited, so composition rules stay quiet.
-   */
-  stationsByNode?: ReadonlyMap<string, NodeStationSummary>;
   /**
    * Org integration connections (server-supplied, best-effort — the graph
    * route degrades to undefined on a fetch failure). Optional — omitted
@@ -436,37 +402,6 @@ export function runDiagnostics(input: DiagnosticsInput): Diagnostic[] {
         message: `“${labelOf(n)}” has no station bound — nobody on the floor owns this step.`,
         fix: 'Set config.station to an operations-catalog station key.',
       });
-    }
-  }
-
-  // ── Station composition (only when summaries are supplied — server-side). ──
-  if (input.stationsByNode) {
-    for (const n of nodes) {
-      const summary = input.stationsByNode.get(n.id);
-      if (!summary || summary.legacy) continue;
-      for (const block of summary.blocks) {
-        for (const role of block.requiredRoles) {
-          if (block.mappedRoles.includes(role)) continue;
-          out.push({
-            id: `station-unmapped-role:${n.id}:${block.blockLabel}:${role}`,
-            severity: 'error',
-            rule: 'station-unmapped-role',
-            nodeId: n.id,
-            message: `“${labelOf(n)}” station — the “${block.blockLabel}” block needs its “${role}” field bound, but nothing is mapped.`,
-            fix: `Map the “${role}” role to a source field in the station's Config Sheet.`,
-          });
-        }
-        for (const action of block.unknownActions) {
-          out.push({
-            id: `station-unknown-action:${n.id}:${block.blockLabel}:${action}`,
-            severity: 'error',
-            rule: 'station-unknown-action',
-            nodeId: n.id,
-            message: `“${labelOf(n)}” station — the “${block.blockLabel}” block references action “${action}”, which no longer exists.`,
-            fix: `Remove the “${action}” action from the block, or register it.`,
-          });
-        }
-      }
     }
   }
 

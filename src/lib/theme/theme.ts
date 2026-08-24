@@ -17,7 +17,7 @@ import {
   isThemeName,
   resolveTheme,
   type ThemeName,
-} from '@/design-system/themes/registry';
+} from '@/lib/design/themes/registry';
 
 export const THEME_STORAGE_KEY = 'ds-theme';
 

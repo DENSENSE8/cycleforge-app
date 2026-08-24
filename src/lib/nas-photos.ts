@@ -10,7 +10,7 @@
  * POST /api/receiving-photos — no bytes through Vercel.
  */
 
-import type { PhotoScope } from '@/components/mobile/receiving/PhotoUploadQueue';
+import type { PhotoScope } from '@/lib/photos/photo-scope';
 
 // Base URL of the NAS file server, e.g. "https://nas.usav.local" or, for local
 // dev, "http://192.168.1.50:8088" / "/api/nas-dev". No trailing slash.

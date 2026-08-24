@@ -4,7 +4,7 @@
  * America/Los_Angeles so they line up with the rest of the library's PST date
  * grouping, and each day's PO refs come from `poRef`.
  */
-import type { LibraryPhoto } from '@/components/photos/photo-library-types';
+import type { LibraryPhoto } from '@/lib/photos/photo-library-types';
 
 export interface DatePoNode {
   ref: string;

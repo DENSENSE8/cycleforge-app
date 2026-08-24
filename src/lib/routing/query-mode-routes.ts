@@ -12,22 +12,22 @@
  * through, and it disappears when the surface graduates.
  */
 
-import { parseLabelsView } from '@/components/labels/labels-view';
+import { parseLabelsView } from '@/lib/labels/labels-view';
 import {
   parseCatalogPlatform,
   parseLinkFilter,
-} from '@/components/products/catalog/catalog-url-state';
-import { PAIRING_SORTS } from '@/components/products/pairing/types';
-import { parseProductsView } from '@/components/products/products-view';
+} from '@/lib/products/catalog-url-state';
+import { PAIRING_SORTS } from '@/lib/products/pairing-types';
+import { parseProductsView } from '@/lib/products/products-view';
 import {
   parseSourcingAnalyticsRange,
   parseSourcingModeWire,
-} from '@/components/sourcing/sourcing-shared';
-import { parseSupportModeWire } from '@/components/sidebar/support/support-sidebar-shared';
-import { parseOperationsModeWire } from '@/components/sidebar/operations/operations-sidebar-shared';
-import { parseForgeViewWire } from '@/components/forge/forge-view';
-import { parseHomeModeWire } from '@/features/home/home-modes';
-import { parseReviewModeWire } from '@/features/review/review-mode';
+} from '@/lib/sourcing/sourcing-shared';
+import { parseSupportModeWire } from '@/lib/support/support-sidebar-shared';
+import { parseOperationsModeWire } from '@/lib/operations/operations-sidebar-shared';
+import { parseForgeViewWire } from '@/lib/forge/forge-view';
+import { parseHomeModeWire } from '@/lib/home/home-modes';
+import { parseReviewModeWire } from '@/lib/review/review-mode';
 import { parseDashboardModeWire } from '@/lib/dashboard/dashboard-domains';
 import { parseLocationsTabWire } from '@/lib/inventory/locations-path';
 import {

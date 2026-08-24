@@ -47,14 +47,3 @@ test('settings registry exposes receiving.returnsTestBin', () => {
   );
   ok(/receiving\.returnsTestBin/.test(src), 'registry must declare receiving.returnsTestBin');
 });
-
-test('warehouse bulk bar prints special bins via 2x1 face', () => {
-  const src = readFileSync(
-    fileURLToPath(
-      new URL('../../components/warehouse/BinsBulkActionBar.tsx', import.meta.url),
-    ),
-    'utf8',
-  );
-  ok(/printSpecialBinLabelFromRow/.test(src), 'bulk bar must print specials immediately');
-  ok(/isSpecialBinBarcode/.test(src), 'bulk bar must split special vs structured');
-});

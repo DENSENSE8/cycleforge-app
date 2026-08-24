@@ -1,394 +1,74 @@
-@import '../styles/globals.css';
-/* Typefaces: next/font self-hosts IBM Plex Sans + Sans Condensed + Mono
-   (`src/lib/fonts.ts`). */
+/* ================================================================
+   THE DOCUMENT'S STYLESHEET.
+
+   The Warehouse OS shell brings its own design system — the tokens and
+   the component CSS ported from the operator's prototype. There is no
+   `@/design-system` import here and there must not be one: that tree is
+   gone, and the prototype's CSS is what replaced it.
+
+   Tailwind is kept, WITHOUT the `@config` bridge. The bridge pulled
+   `src/design-system/tokens/{z-index,spacing}.mjs` into the CSS build,
+   so it cannot survive that tree's deletion — and the shell never
+   needed it, because the shell is written in the prototype's own
+   classes. What Tailwind still buys is baseline utilities for the
+   chromeless routes the shell does not own (signin / signup / invite /
+   not-authorized / offline). Those routes' *themed* classes
+   (`text-role-*`, `bg-surface-*`) came from the deleted config and no
+   longer resolve — restyling them is a reconcile-phase job, not this
+   lane's.
+   ================================================================ */
 
 @import 'tailwindcss';
-/* Bridge: keep JS theme + CF Type / spacing-intent plugins until fully
-   migrated into @theme / @utility. See docs/todo/tailwind-v4-SPIKE.md. */
-@config '../../tailwind.config.mjs';
-/* Explicit sources — v4 auto-detect can miss SoT modules that only emit
-   class strings (outbound-state, etc.). Mirror the v3 content globs. */
-@source '../pages/**/*.{js,ts,jsx,tsx,mdx}';
-@source '../components/**/*.{js,ts,jsx,tsx,mdx}';
-@source '../design-system/**/*.{js,ts,jsx,tsx,mdx}';
+@import '../shell/tokens.css';
+@import '../shell/shell.css';
+
+/* Explicit sources. The deleted trees (`components`, `design-system`,
+   `features`) are gone from this list; the shell is added. */
 @source '../app/**/*.{js,ts,jsx,tsx,mdx}';
-@source '../features/**/*.{js,ts,jsx,tsx,mdx}';
-@source '../utils/**/*.{js,ts,jsx,tsx,mdx}';
+@source '../shell/**/*.{js,ts,jsx,tsx,mdx}';
 @source '../lib/**/*.{js,ts,jsx,tsx,mdx}';
-/* Docs / briefs / Claude rules often paste truncated arbitrary classes that
-   Lightning CSS then rejects. Keep auto-detect for hooks/contexts, but never
-   scan markdown plans or rule docs as utility sources. */
+@source '../contexts/**/*.{js,ts,jsx,tsx,mdx}';
+
+/* v4 auto-detect still scans the repo. Truncated Tailwind arbitrary
+   classes pasted into markdown (ellipsis placeholders inside a
+   `pb-[max(…)]`-style fence) get emitted as invalid CSS and Lightning
+   CSS fails the build, so these two trees are never utility sources. */
 @source not '../../docs';
 @source not '../../.claude';
-/* Ship-before-adoption roles + spacing intents (were safelist in v3). */
-@source inline("text-role-display text-role-title text-role-body text-role-data text-role-caption text-role-eyebrow text-role-micro font-spine inset-chip inset-field inset-cozy inset-card inset-empty stack-tight stack-row stack-section row-gap row-tight");
 
-.font-dm-sans {
+/* ================================================================
+   BASE — from the prototype's `html, body` rule. It lives here rather
+   than in `shell/shell.css` because it belongs to the DOCUMENT, and
+   the shell stylesheet is scoped to the window manager's own classes.
+
+   `overflow: hidden` pins the app to the visual viewport: the shell is
+   a fixed frame with its own scroll ports (the canvas, the tab list,
+   the recents list), and a scrolling document behind it is what puts a
+   second scrollbar beside them.
+   ================================================================ */
+
+html,
+body {
+  height: 100%;
   font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.45;
+  color: var(--text-primary);
+  background: var(--bg-canvas);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
 }
 
-/* Identifier legibility: the mono cut never ligates. IBM Plex Mono ships `fi`
-   / `fl` ligatures that fuse two characters into one glyph — in a serial,
-   FNSKU, tracking number, or SKU that means an operator reading the screen
-   transcribes a string that is not the one stored. Scoped to the mono family
-   (the `font-mono` utility + code elements), so prose keeps its ligatures. */
-.font-mono,
+/* Identifier legibility: the mono cut never ligates. IBM Plex Mono
+   ships `fi` / `fl` ligatures that fuse two characters into one glyph —
+   in a serial, FNSKU, tracking number or SKU that means an operator
+   reading the screen transcribes a string that is not the one stored. */
+.mono,
 code,
 kbd,
 samp,
 pre {
   font-variant-ligatures: none;
-}
-
-/* `--background` / `--foreground` are OWNED by the theme registry
-   (src/design-system/themes/registry.ts → `<style id="app-theme-palettes">`),
-   which emits them in its `:root` light default AND in every
-   `html[data-theme='<name>']` block. A static pair here was permanently
-   shadowed by that injected block (see the head-order note in
-   src/styles/globals.css) — it pinned `body` to light-theme values that never
-   applied. Removed 2026-07-26; `body` below is now theme-varying. */
-
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: var(--font-sans);
-  margin: 0;
-  overflow: hidden;
-}
-
-/* 2026 Modern Scrollbar — a hairline, not a pill.
-   The old rounded 4px thumb painted a grey capsule on the sidebar seam, which
-   operators read as a collapse handle rather than scroll position. Rails scroll
-   by wheel/trackpad (most rail scrollports opt out entirely via
-   `.scrollbar-hide`), so position feedback is all this has to carry. */
-::-webkit-scrollbar {
-  width: 1px;
-  height: 1px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.1);
-  border-radius: 0;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(37, 99, 235, 0.4);
-}
-
-.dark ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
-}
-
-/* Hide scrollbar utility (also alias `no-scrollbar` used by tables/boards) */
-.scrollbar-hide::-webkit-scrollbar,
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-.scrollbar-hide,
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-
-@layer base {
-  * {
-    @apply border-gray-200;
-  }
-  html {
-    -webkit-tap-highlight-color: transparent;
-    /* Prevent iOS font size inflation on orientation change */
-    -webkit-text-size-adjust: 100%;
-    height: 100%;
-    overflow: hidden;
-  }
-}
-
-/* Station-specific iOS touch optimizations */
-.touch-manipulation {
-  /* Prevent double-tap zoom on interactive elements */
-  touch-action: manipulation;
-}
-
-/*
- * Print-only render zone used by the Location Label Printer.
- * On screen the zone is hidden; on print, the entire document is masked
- * except the labels in `.label-print-zone`, giving a clean page.
- */
-.label-print-zone {
-  display: none;
-}
-@media print {
-  body {
-    overflow: visible !important;
-    height: auto !important;
-    background: #fff !important;
-    padding: 0 !important;
-  }
-  body * {
-    visibility: hidden;
-  }
-  .label-print-zone,
-  .label-print-zone * {
-    visibility: visible;
-  }
-  .label-print-zone {
-    display: block !important;
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-  }
-  .label-print-card {
-    page-break-inside: avoid;
-    break-inside: avoid;
-    page-break-after: always;
-    break-after: page;
-  }
-  @page {
-    /* 3in × 2in thermal label stock — bin + rack labels share the same
-     * media so a single label printer can drive both flows. Margin is
-     * zero because the print card itself reserves padding inside the
-     * 3in × 2in box (see labelCardStyle in BinLabelPrinter /
-     * RackLabelPrinter). */
-    size: 3in 2in;
-    margin: 0;
-  }
-}
-
-/* iOS PWA: smooth momentum scrolling in overflow containers */
-.overflow-y-auto,
-.overflow-y-scroll,
-.overflow-auto,
-.overflow-scroll {
-  -webkit-overflow-scrolling: touch;
-}
-
-/* Prevent iOS callout on long-press (images, links) */
-.station-no-callout {
-  -webkit-touch-callout: none;
-}
-
-/* Safe area padding utility — apply on mobile chrome, not <body>. */
-.safe-area-padding {
-  padding-top: env(safe-area-inset-top, 0px);
-  padding-right: env(safe-area-inset-right, 0px);
-  padding-bottom: env(safe-area-inset-bottom, 0px);
-  padding-left: env(safe-area-inset-left, 0px);
-}
-.pb-safe {
-  padding-bottom: env(safe-area-inset-bottom, 0px);
-}
-.mb-safe {
-  margin-bottom: env(safe-area-inset-bottom, 0px);
-}
-
-/* Prevent iOS Safari from auto-zooming on input focus (it zooms when the focused
-   field is < 16px). This floor is ONLY needed on touch devices — on desktop the
-   attribute selector (specificity 0,1,1) silently overrode every design-system
-   input size (e.g. the text-xs station scan bar rendered at 16px), so scope it
-   to coarse pointers and let the token sizes win everywhere else. */
-@media (pointer: coarse) {
-  input[type='text'],
-  input[type='search'],
-  textarea {
-    font-size: max(16px, 1rem);
-  }
-}
-
-/* Glassmorphism utilities */
-.glass {
-  @apply bg-white/70 backdrop-blur-xl border border-white/20;
-}
-
-.glass-dark {
-  @apply bg-black/70 backdrop-blur-xl border border-white/10;
-}
-
-.fnsku-panel {
-  container-type: size;
-  container-name: fnsku;
-}
-
-/* Sidebar embed: size containment breaks flex intrinsic height and stacks content */
-.fnsku-panel.fnsku-panel--sidebar {
-  container-type: normal;
-  container-name: none;
-}
-
-.fnsku-panel .fnsku-step-body {
-  scrollbar-width: thin;
-}
-
-.fnsku-panel .fnsku-step-body::-webkit-scrollbar {
-  width: 6px;
-}
-
-.fnsku-panel .fnsku-step-body::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.6);
-  border-radius: 999px;
-}
-
-.fnsku-panel .fnsku-header .fnsku-step-dots span {
-  transition: opacity 0.2s ease;
-}
-
-@container fnsku (max-height: 420px) {
-  .fnsku-panel .fnsku-header .fnsku-step-dots span {
-    opacity: 0;
-  }
-  .fnsku-panel .fnsku-footer button {
-    font-size: 9px;
-  }
-}
-
-@container fnsku (max-height: 360px) {
-  .fnsku-panel .fnsku-footer {
-    padding-top: 4px;
-    padding-bottom: 4px;
-  }
-  .fnsku-panel .fnsku-footer button {
-    padding-top: 4px;
-    padding-bottom: 4px;
-  }
-}
-
-/* Indeterminate progress bar for long-running background tasks
-   (e.g. the Receive→Zoho roundtrip surfaced in a bottom-right toast). */
-@keyframes recv-indet {
-  0%   { transform: translateX(-100%); }
-  100% { transform: translateX(300%); }
-}
-.recv-indet-bar {
-  animation: recv-indet 1.2s ease-in-out infinite;
-}
-
-/* ── Live-change row wash ───────────────────────────────────────────────────
-   Pairs with the status-chip attention pulse (`useLiveValueChange` /
-   `motionRole.feedback.liveChange`). The chip flash says WHAT changed; this
-   says WHICH ROW, which is the half an operator scanning 40 near-identical
-   lines actually needs.
-
-   Driven by a selector rather than a prop because the row and the chip have
-   different owners: the chip is the shared `GridStatusCellValue`, the row is
-   whichever grid registry mounted it (`OrdersQueueTableRow`,
-   `ReceivingGridRow`, `IncomingGridRow` — all three carry
-   `data-order-row-id`). Threading a "did my status just change" boolean up
-   through six surfaces to paint a background is exactly the page-local wiring
-   `:has()` exists to avoid.
-
-   Longer than the chip pulse ON PURPOSE (1.4s vs 420ms): the pulse has to be
-   caught, the wash has to still be there when the eye arrives.
-
-   Duration is paired with `LIVE_VALUE_CHANGE_MARK_MS` in
-   `src/design-system/motion/use-live-value-change.ts` — the hook holds the
-   attribute for exactly as long as this runs. Shorten one without the other and
-   the wash cuts out mid-fade. */
-@keyframes cf-live-row-wash {
-  0%   { opacity: 1; }
-  35%  { opacity: 0.72; }
-  100% { opacity: 0; }
-}
-/* An OVERLAY, never the row's own `background-color`. A row already carries a
-   background from four competing sources (zebra stripe, selection wash, triage
-   flag, a per-row custom `backgroundColor` inline style), and a CSS animation
-   outranks every one of them including the inline style — so animating the row's
-   own background would strip its stripe for 1.4s and land it on `transparent`.
-   The pseudo-element is absolutely positioned, so it is out of flow and never
-   becomes a grid item on the row's `gridTemplateColumns`. */
-[data-order-row-id]:has([data-live-value-change]) {
-  position: relative;
-}
-[data-order-row-id]:has([data-live-value-change])::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background-color: color-mix(in oklab, var(--ds-color-accent-bg) 12%, transparent);
-  animation: cf-live-row-wash 1.4s ease-out 1 forwards;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  /* The accessible substitute is the instant colour morph, not a second
-     animation: the chip's own `transition-colors` is already suppressed by
-     `motion-reduce:transition-none`, so the row simply does not wash.
-     (`useLiveValueChange` also declines to set the attribute at all under
-     reduced motion — this is the CSS floor for when JS has not run yet.) */
-  [data-order-row-id]:has([data-live-value-change])::after {
-    content: none;
-  }
-}
-
-/* ── Light syntax-highlight theme for AI chat code blocks (rehype-highlight). */
-/* Scoped to .hljs so it only affects highlighted fenced code. GitHub-light palette. */
-.hljs { color: #24292e; background: transparent; }
-.hljs-comment, .hljs-quote { color: #6a737d; font-style: italic; }
-.hljs-keyword, .hljs-selector-tag, .hljs-type, .hljs-doctag { color: #d73a49; }
-.hljs-string, .hljs-attr, .hljs-meta .hljs-string { color: #032f62; }
-.hljs-number, .hljs-literal, .hljs-variable, .hljs-template-variable, .hljs-tag .hljs-attr { color: #005cc5; }
-.hljs-title, .hljs-section, .hljs-name, .hljs-selector-id, .hljs-selector-class { color: #6f42c1; }
-.hljs-built_in, .hljs-builtin-name, .hljs-symbol, .hljs-bullet { color: #e36209; }
-.hljs-attribute, .hljs-link { color: #005cc5; }
-.hljs-meta { color: #6a737d; }
-.hljs-emphasis { font-style: italic; }
-.hljs-strong { font-weight: 600; }
-.hljs-addition { color: #22863a; background: #f0fff4; }
-.hljs-deletion { color: #b31d28; background: #ffeef0; }
-
-/* ── Card fan carousel (src/components/ui/card-fan-carousel.tsx) ──────────────
-   The component positions/animates `.fan-card` purely with GSAP transforms but
-   relies on this CSS for the card box (absolute, centered, portrait) and for the
-   `.fan-layout` reserved height per breakpoint (the height multipliers in the
-   component are documented against these exact values). Cards are absolutely
-   centered (top/left 50% + negative half-size margins) so GSAP's x/y/rotation
-   translate them out into the fan. */
-.fan-layout { height: 22rem; }
-@media (min-width: 480px)  { .fan-layout { height: 26rem; } }
-@media (min-width: 640px)  { .fan-layout { height: 28rem; } }
-@media (min-width: 768px)  { .fan-layout { height: 34rem; } }
-@media (min-width: 1024px) { .fan-layout { height: 38rem; } }
-
-.fan-card {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 13rem;
-  height: 18.2rem;            /* 5:7 portrait of the 13rem width */
-  margin-top: -9.1rem;        /* -height / 2 — keeps the card centered */
-  margin-left: -6.5rem;       /* -width / 2 */
-  border-radius: 1rem;
-  overflow: hidden;
-  background: #e5e7eb;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
-  will-change: transform;
-  backface-visibility: hidden;
-}
-.fan-card img { border-radius: inherit; }
-
-/* An empty KPI strip paints NOTHING — no card, no padding, no hairline, no snap
-   handle.
-
-   `WorkbenchSheetView` decides whether a surface has a Band 2 from whether the
-   `kpi` PROP was passed, but the truth is whether the strip has anything to
-   show, and only the strip knows that — its query resolves after the shell has
-   already committed to a band. Arrival is the case that surfaced it:
-   `TriageKpiStrip` returns `null` whenever `save_without_pair_rate` is absent,
-   which is most of the time, so `WorkbenchKpiBand` painted `px-3 py-2` plus its
-   bottom hairline around nothing. That 17px card is the gap an operator sees
-   between the context bar and the search bar on `/receiving/triage`.
-
-   No JS can see this: `React.Children.count()` counts the ELEMENT (`<Strip/>` is
-   one child whatever it renders), so the emptiness is only knowable after the
-   render — which is exactly what `:empty` reads. `display: none` keeps the React
-   subtree mounted, so the strip's query stays warm and the band reappears the
-   moment it has a number, with no remount and no fetch.
-
-   Structural, so it holds for every Band 2 on every surface and for any strip
-   added later — not a per-page patch. */
-[data-workbench-kpi-band]:has([data-workbench-kpi-body]:empty) {
-  display: none;
 }

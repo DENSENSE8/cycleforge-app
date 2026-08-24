@@ -39,6 +39,7 @@
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { transition, type SerialState } from '@/lib/inventory/state-machine';
+import { NO_SESSION } from '@/lib/sessions/attribution';
 
 const RESTORABLE_STATUSES = new Set([
   'STOCKED', 'TRIAGED', 'IN_REPAIR', 'REPAIR_DONE', 'IN_TEST',
@@ -96,6 +97,7 @@ export async function holdUnit(input: HoldUnitInput): Promise<HoldUnitResult> {
     // the guard never rejects here. restore_status is load-bearing for release().
     const result = await transition(
       {
+        session: NO_SESSION,
         unitId: unit.id,
         to: 'ON_HOLD',
         eventType: 'HELD',
@@ -209,6 +211,7 @@ export async function releaseUnit(input: ReleaseUnitInput): Promise<ReleaseUnitR
     // edges (state-machine.ts), so the guard never rejects.
     const result = await transition(
       {
+        session: NO_SESSION,
         unitId: unit.id,
         to: restoreStatus as SerialState,
         eventType: 'RELEASED_HOLD',

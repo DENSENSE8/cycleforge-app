@@ -7,9 +7,7 @@ import { getPublicLandingUrl, parseOrgSettings } from '@/lib/tenancy/settings';
 
 test('platformQrOriginForSlug builds tenant staff origin', () => {
   const prevApp = process.env.NEXT_PUBLIC_APP_URL;
-  const prevKiosk = process.env.NEXT_PUBLIC_KIOSK_HOST_SUFFIX;
   process.env.NEXT_PUBLIC_APP_URL = 'https://app.cycleforge.ai';
-  process.env.NEXT_PUBLIC_KIOSK_HOST_SUFFIX = 'kiosk.app.cycleforge.ai';
   try {
     assert.equal(platformQrOriginForSlug('usav'), 'https://usav.app.cycleforge.ai');
     assert.equal(platformQrOriginForSlug(''), null);
@@ -17,8 +15,6 @@ test('platformQrOriginForSlug builds tenant staff origin', () => {
   } finally {
     if (prevApp === undefined) delete process.env.NEXT_PUBLIC_APP_URL;
     else process.env.NEXT_PUBLIC_APP_URL = prevApp;
-    if (prevKiosk === undefined) delete process.env.NEXT_PUBLIC_KIOSK_HOST_SUFFIX;
-    else process.env.NEXT_PUBLIC_KIOSK_HOST_SUFFIX = prevKiosk;
   }
 });
 

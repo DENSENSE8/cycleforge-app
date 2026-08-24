@@ -1,7 +1,7 @@
 import type { JourneyDimension } from '@/lib/timeline/journey';
-import type { JourneyUrlFilters } from '@/components/sidebar/operations/useOperationsTimelineUrlState';
+import type { JourneyUrlFilters } from '@/lib/operations/useOperationsTimelineUrlState';
 import type { SurfaceEntityType } from '@/lib/surfaces/registry';
-import { buildOperationsSignalsHref } from '@/features/signals/signals-url';
+import { buildOperationsSignalsHref } from '@/lib/signals/signals-url';
 
 /**
  * Cross-link href SoT between Operations → History (Trace) and → Signals

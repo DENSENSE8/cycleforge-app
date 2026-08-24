@@ -10,7 +10,7 @@
  * read and write keys can never drift; the server namespaces it by org + viewer.
  */
 
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { RAIL_SNAPSHOT_MAX_ROWS } from './rail-snapshot-cache';
 
 /** The viewer's last-known rows for a rail feed, or null. Never throws. */

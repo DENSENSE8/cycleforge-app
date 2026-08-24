@@ -62,6 +62,28 @@
  * {@link resolveRightRailFrame}; its budget is proved by `frame.test.ts`, which
  * also proves the station caps + collapse.
  *
+ * ## The cap arithmetic now lives in the N-pane solver (2026-08-22)
+ *
+ * All three cap functions here were computing the same thing by hand —
+ * `frame − what the other panes hold − the center floor`, floored at the pane's
+ * own minimum. The tiling canvas needs that answer for N panes, not three, so it
+ * moved to `@/lib/canvas/geometry`'s {@link paneCapPx} and these three call it.
+ *
+ * Nothing about the budget changed: the 22 cases in `frame.test.ts` pass
+ * unchanged, which is the entire point of moving it this way round. What the
+ * three functions still own — and what a generic solver must never learn — is
+ * **which** width to feed it: a peer's MIN (a loose cap, "grow until they are at
+ * their floor") or a peer's ACTUAL width (a tight cap, "grow into the leftover").
+ * That choice is the station cascade, and only the caller knows which sash the
+ * operator has hold of.
+ *
+ * One behaviour did change, deliberately: a non-finite `frameWidthPx` now reads
+ * as `0` instead of poisoning the subtraction and returning `NaN` as a cap. The
+ * two station functions already sanitized exactly this way; the desk resolver
+ * did not, so a `NaN` frame produced a `NaN` ceiling that a consumer's
+ * `Math.min(width, cap)` would silently turn into a `NaN` width. The unmeasured
+ * frame (`0` on first paint) reaches the same floor by both routes.
+ *
  * ## Why the inputs cannot oscillate
  *
  * `frameWidthPx` is measured on the content ROW, whose width is invariant under
@@ -78,14 +100,15 @@ import {
   CONTEXT_PANEL_COLLAPSE,
   CONTEXT_PANEL_RESIZE,
   CONTEXT_PANEL_WIDTH_PX,
-} from '@/components/sidebar/context-panel-column';
+} from '@/lib/sidebar/context-panel-column';
 import {
   STATION_DISPLAYS_AUTO_CLOSE_FRAME_PX,
   STATION_DISPLAYS_AUTO_CLOSE_HYSTERESIS_PX,
   STATION_DISPLAYS_MIN_WIDTH_PX,
   STATION_WORKBENCH_LOCK_PX,
-} from '@/components/station/workbench/workbench-layout';
-import { DETAIL_STACK_RESIZE } from '@/design-system/shells/detail-stack';
+} from '@/lib/station/workbench-layout';
+import { DETAIL_STACK_RESIZE } from '@/lib/design/detail-stack-resize';
+import { paneCapPx } from '@/lib/canvas/geometry';
 
 /** Flush planes — no outer gutter island between rail / center / push (2026-08-03). */
 export const RIGHT_RAIL_GUTTER_PX = 0;
@@ -191,6 +214,9 @@ function restingLeftPx(input: Pick<RightRailFrameInput, 'railCostOpenPx' | 'rail
 /**
  * Pure. Every worked number in the unit test comes from here, so the budget is
  * provable without mounting anything.
+ *
+ * Three panes — the route rail, the center, the inspector — expressed as the
+ * N-pane solver's question: "how wide may the inspector be, beside these two?"
  */
 export function resolveRightRailFrame(input: RightRailFrameInput): RightRailFrameResolution {
   const { frameWidthPx, wantsPush, centerFloorPx } = input;
@@ -200,10 +226,13 @@ export function resolveRightRailFrame(input: RightRailFrameInput): RightRailFram
   // Cap against the ACTUAL left cost so the operator can keep the context rail
   // open while the right panel grows. Station push passes
   // STATION_PUSH_CENTER_FLOOR_PX (720); desk inspectors pass MIN_WORK_SURFACE_PX.
-  const capPx = Math.max(
-    DETAIL_STACK_RESIZE.minWidthPx,
-    frameWidthPx - leftPx - floor - RIGHT_RAIL_GUTTER_PX * 2,
-  );
+  const capPx = paneCapPx({
+    framePx: frameWidthPx,
+    minPx: DETAIL_STACK_RESIZE.minWidthPx,
+    reservedPx: [leftPx, floor],
+    gutterPx: RIGHT_RAIL_GUTTER_PX,
+    gutters: 2,
+  });
 
   if (!wantsPush) {
     return { mode: 'overlay', capPx };
@@ -273,9 +302,11 @@ export function stationDisplaysSashMaxPx(
   centerFloorPx = STATION_PUSH_CENTER_FLOOR_PX,
   displaysMinPx = STATION_DISPLAYS_MIN_WIDTH_PX,
 ): number {
-  const frame = Number.isFinite(frameWidthPx) ? Math.max(0, frameWidthPx) : 0;
-  const left = Number.isFinite(leftCostPx) ? Math.max(0, leftCostPx) : 0;
-  return Math.max(displaysMinPx, frame - centerFloorPx - left);
+  return paneCapPx({
+    framePx: frameWidthPx,
+    minPx: displaysMinPx,
+    reservedPx: [centerFloorPx, leftCostPx],
+  });
 }
 
 /**
@@ -293,9 +324,11 @@ export function stationContextSashMaxPx(
   centerFloorPx = STATION_PUSH_CENTER_FLOOR_PX,
   leftMinPx = CONTEXT_PANEL_RESIZE.minWidthPx,
 ): number {
-  const frame = Number.isFinite(frameWidthPx) ? Math.max(0, frameWidthPx) : 0;
-  const displays = Number.isFinite(displaysWidthPx) ? Math.max(0, displaysWidthPx) : 0;
-  return Math.max(leftMinPx, frame - centerFloorPx - displays);
+  return paneCapPx({
+    framePx: frameWidthPx,
+    minPx: leftMinPx,
+    reservedPx: [centerFloorPx, displaysWidthPx],
+  });
 }
 
 // ── The store ────────────────────────────────────────────────────────────────

@@ -16,7 +16,7 @@
  * dashboard only previews (`'preview'`).
  */
 
-import type { ShippedActiveSection } from '@/components/shipped/stacks/types';
+import type { ShippedActiveSection } from '@/lib/shipped/stack-types';
 import type { DashboardOrderView } from '@/utils/dashboard-search-state';
 
 /** Every context the shared order inspector is mounted under. */

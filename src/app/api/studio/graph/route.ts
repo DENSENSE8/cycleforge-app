@@ -1,19 +1,17 @@
 import { NextResponse } from 'next/server';
-import { and, asc, desc, eq, inArray } from 'drizzle-orm';
+import { asc, desc, eq } from 'drizzle-orm';
 import { withAuth } from '@/lib/auth/withAuth';
 import { db } from '@/lib/drizzle/db';
 import {
-  stationDefinitions,
   workflowDefinitions,
   workflowEdges,
   workflowNodes,
 } from '@/lib/drizzle/schema';
 import { getNode, hasNode, listNodeMeta } from '@/lib/workflow';
 import { runDiagnostics, type DiagnosticsConnection } from '@/lib/workflow/diagnostics';
-import { summarizeStations } from '@/lib/studio/station-diagnostics';
 import { listConnections } from '@/lib/integrations/connectors/connections';
-import { STATIONS } from '@/components/admin/workflow/operations-catalog';
-import type { StudioGraphResponse } from '@/components/studio/studio-types';
+import { STATIONS } from '@/lib/workflow/operations-catalog';
+import type { StudioGraphResponse } from '@/lib/studio/studio-types';
 
 /**
  * GET /api/studio/graph?v=<definitionId>
@@ -113,26 +111,6 @@ export const GET = withAuth(
       // so new node types appear without touching the Studio UI.
       const palette = listNodeMeta();
 
-      // Station composition bound to these nodes — feeds the composition rules
-      // (unmapped required role / dangling action) in the diagnostics linter.
-      const nodeIds = nodeRows.map((n) => n.id);
-      const stationRows = nodeIds.length
-        ? await db
-            .select({
-              workflowNodeId: stationDefinitions.workflowNodeId,
-              label: stationDefinitions.label,
-              config: stationDefinitions.config,
-            })
-            .from(stationDefinitions)
-            .where(
-              and(
-                eq(stationDefinitions.organizationId, ctx.organizationId),
-                eq(stationDefinitions.isActive, true),
-                inArray(stationDefinitions.workflowNodeId, nodeIds),
-              ),
-            )
-        : [];
-
       // Org integration connections feed the v2 integration rules
       // (integration-disconnected / integration-sync-stale). Best-effort: a
       // failed fetch degrades to undefined — the rules stay quiet and the
@@ -164,7 +142,6 @@ export const GET = withAuth(
         portsOf: (type) => (hasNode(type) ? getNode(type).outputs.map((o) => o.id) : null),
         stationKeys: new Set(STATIONS.map((s) => s.key)),
         labelOf: (n) => (hasNode(n.type) ? getNode(n.type).label : n.type),
-        stationsByNode: summarizeStations(stationRows),
         connections,
       });
 

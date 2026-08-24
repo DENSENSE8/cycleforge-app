@@ -23,6 +23,7 @@ import { getClaim } from './claims';
 import { REPAIR_ALLOWED_FROM, WARRANTY_LIFECYCLE, repairNextStatus } from './transitions';
 import type { WarrantyClaimDetail, WarrantyClaimStatus } from './types';
 import { emitEntitySignalSafe } from '@/lib/surfaces/record-entity-signal';
+import { NO_SESSION } from '@/lib/sessions/attribution';
 
 // ─── Claim-number generation (per-year, RMA-number precedent) ────────────────
 
@@ -559,6 +560,7 @@ export async function denyClaim(
     // is THE warranty reason moment (governed reason_codes, flow_context
     // warranty_denial). Post-commit, fire-and-forget; never fails the deny.
     await emitEntitySignalSafe({
+      session: NO_SESSION,
       organizationId: orgId,
       entityType: 'WARRANTY_CLAIM',
       entityId: claimId,

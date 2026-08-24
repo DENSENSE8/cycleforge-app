@@ -19,6 +19,7 @@ import {
   type AgentMutationSideEffects,
   type ApplyAgentMutationDeps,
 } from './apply-agent-mutation';
+import { applySessionAction } from '@/lib/reversibility/apply-session-action';
 
 const ORG = '11111111-2222-3333-4444-555555555555';
 
@@ -59,7 +60,17 @@ test('review-class (staff.create): proposes only, never applies', async () => {
     { organizationId: ORG, mutationKind: 'staff.create', payload: { name: 'New Tech' }, proposedByStaffId: 3 },
     deps,
   );
-  assert.deepEqual(out, { ok: true, status: 'proposed', mutationId: 500, trust: 'review', targetRef: null });
+  assert.deepEqual(out, {
+    ok: true,
+    status: 'proposed',
+    mutationId: 500,
+    trust: 'review',
+    targetRef: null,
+    // A proposal APPLIED nothing, so it is not 'irreversible' either — that
+    // word describes a change that happened.
+    reversibility: 'unknown',
+    irreversibleReason: null,
+  });
   // Only the proposal INSERT (+ no affects, no dispatch write).
   const inserts = cap.queries.filter((q) => q.text.includes('INSERT INTO agent_mutations'));
   assert.equal(inserts.length, 1);
@@ -238,7 +249,10 @@ test('revert of an append-only mutation (null inverse) is 409', async () => {
   );
   const out = await revertAgentMutation(500, ORG, 4, deps);
   assert.equal(out.status, 409);
-  assert.match(out.error ?? '', /not revertable/);
+  // The refusal now states WHY, using the kind's declared reason, instead of
+  // making an operator guess between "append-only" and "nobody wrote an
+  // inverse" — two very different situations behind one old message.
+  assert.match(out.error ?? '', /append-only observation/);
 });
 
 test('feed_membership.set_state captures the PRIOR state as the inverse', async () => {
@@ -333,8 +347,11 @@ test('receiving_photo.reassign applies and captures the REVERSE move as its inve
   // the model guessed the source wrong.
   const insert = cap.queries.find((q) => q.text.includes('INSERT INTO agent_mutations'));
   assert.ok(insert, 'a mutation row is written');
-  // extra_audit is the last param, a JSON string of { inverse, trust }.
-  const extraAudit = JSON.parse(String(insert!.params[insert!.params.length - 1])) as {
+  // extra_audit is param $6, a JSON string of { inverse, trust,
+  // irreversibleReason }. Indexed, not "the last param" — 2026-08-23a appended
+  // actor_kind / work_session_id / reversibility AFTER it precisely so this
+  // position could stay put.
+  const extraAudit = JSON.parse(String(insert!.params[5])) as {
     inverse: { kind: string; payload: Record<string, unknown> } | null;
   };
   // The inverse is ALWAYS the canonical per-photo `moves[]` form, even for a
@@ -457,7 +474,7 @@ test("batch inverse restores each photo to its OWN prior home", async () => {
   );
 
   const insert = cap.queries.find((q) => q.text.includes('INSERT INTO agent_mutations'));
-  const extraAudit = JSON.parse(String(insert!.params[insert!.params.length - 1])) as {
+  const extraAudit = JSON.parse(String(insert!.params[5])) as {
     inverse: { payload: { moves: Array<{ photoId: number; targetEntityType: string; targetEntityId: number }> } };
   };
   assert.deepEqual(extraAudit.inverse.payload.moves, [
@@ -568,4 +585,183 @@ test('revert is refused when the actor lacks the KIND permission (gap 3, on the 
   assert.equal(out.ok, false);
   assert.equal(out.status, 403);
   assert.ok(!cap.queries.some((q) => q.text.includes('UPDATE photo_entity_links')));
+});
+
+// ─── operator actions ────────────────────────────────────────────────────────
+// The same chokepoint, the same ledger, a different actor. These pin the three
+// things that make the Process tool honest: the actor is recorded as a person
+// rather than as the assistant, a park captures a resume it can actually
+// replay, and an action with no inverse says WHY instead of going quiet.
+
+const SESSION = { workSessionId: 77, sessionType: 'unbox' } as const;
+
+/** A work_sessions row as the fake client would return it. */
+function sessionRow(over: Record<string, unknown> = {}) {
+  return {
+    id: 77,
+    organization_id: ORG,
+    kind: 'scan',
+    scan_type: 'unbox',
+    armed: false,
+    surface_key: 'unbox',
+    status: 'open',
+    version: 3,
+    staff_id: 9,
+    claimed_by_staff_id: null,
+    claim_expires_at: null,
+    device_id: null,
+    client_event_id: 'ce-1',
+    started_at: '2026-08-23T10:00:00.000Z',
+    ended_at: null,
+    state: {},
+    ...over,
+  };
+}
+
+test('operator park: recorded as an operator + session, with a replayable resume inverse', async () => {
+  // Matches the UPDATE … RETURNING statements as well as the SELECT … FOR
+  // UPDATE; work-sessions.ts reads its own writes back.
+  const { deps, cap } = fakes((text) =>
+    text.includes('work_sessions') ? [sessionRow({ armed: true })] : [],
+  );
+
+  const out = await applySessionAction(
+    {
+      organizationId: ORG,
+      staffId: 9,
+      session: SESSION,
+      kind: 'work_session.park',
+      payload: { sessionId: 77 },
+    },
+    deps,
+  );
+
+  assert.equal(out.ok, true);
+  assert.equal((out as { trust: string }).trust, 'operator');
+  assert.equal((out as { reversibility: string }).reversibility, 'revertable');
+
+  const mut = cap.queries.find((q) => q.text.includes('INSERT INTO agent_mutations'))!;
+  // actor_kind / work_session_id ride in the columns 2026-08-23a added, AFTER
+  // extra_audit so the existing param positions are untouched.
+  assert.equal(mut.params[6], 'operator');
+  assert.equal(mut.params[7], 77);
+  assert.equal(mut.params[8], 'revertable');
+
+  // The session held the wedge, so the inverse must give it back — an unpark
+  // that left the scanner dead would be a half-undo.
+  const extra = JSON.parse(String(mut.params[5])) as {
+    inverse: { kind: string; payload: { rearm: boolean } };
+  };
+  assert.equal(extra.inverse.kind, 'work_session.resume');
+  assert.equal(extra.inverse.payload.rearm, true);
+
+  assert.ok(cap.queries.some((q) => q.text.includes("SET status = 'parked'")));
+  assert.equal(cap.side[0].actorKind, 'operator');
+  assert.deepEqual(cap.side[0].session, SESSION);
+});
+
+test('operator end: applied, and classified irreversible WITH the reason', async () => {
+  const { deps, cap } = fakes((text) => (text.includes('work_sessions') ? [sessionRow()] : []));
+
+  const out = await applySessionAction(
+    {
+      organizationId: ORG,
+      staffId: 9,
+      session: SESSION,
+      kind: 'work_session.end',
+      payload: { sessionId: 77 },
+    },
+    deps,
+  );
+
+  assert.equal(out.ok, true);
+  assert.equal((out as { reversibility: string }).reversibility, 'irreversible');
+  assert.match((out as { irreversibleReason: string }).irreversibleReason, /terminal/);
+
+  const mut = cap.queries.find((q) => q.text.includes('INSERT INTO agent_mutations'))!;
+  assert.equal(mut.params[8], 'irreversible');
+  const extra = JSON.parse(String(mut.params[5])) as { inverse: unknown; irreversibleReason: string };
+  assert.equal(extra.inverse, null);
+  // The reason is STORED, not re-derived later — a row must be able to explain
+  // itself even if the registry's wording changes.
+  assert.match(extra.irreversibleReason, /SESSION_ALREADY_ENDED/);
+});
+
+test('an operator kind cannot be applied through the agent path (and vice versa)', async () => {
+  // Mixing them would file human work in the AI's trust statistics, which are
+  // the evidence used to widen a mutation kind's trust class.
+  const asAgent = fakes();
+  const r1 = await applyAgentMutation(
+    { organizationId: ORG, mutationKind: 'work_session.park', payload: { sessionId: 77 }, proposedByStaffId: 9 },
+    asAgent.deps,
+  );
+  assert.equal(r1.ok, false);
+  assert.match((r1 as { error: string }).error, /requires an operator actor/);
+  assert.equal(asAgent.cap.queries.length, 0);
+
+  const asOperator = fakes();
+  const r2 = await applyAgentMutation(
+    {
+      organizationId: ORG,
+      mutationKind: 'feed_membership.set_state',
+      payload: {},
+      actor: { kind: 'operator', staffId: 9, session: SESSION },
+    },
+    asOperator.deps,
+  );
+  assert.equal(r2.ok, false);
+  assert.match((r2 as { error: string }).error, /cannot be applied as an operator action/);
+  assert.equal(asOperator.cap.queries.length, 0);
+});
+
+test('revert replays a SESSION inverse (the guard now asks both registries)', async () => {
+  // Before this change the inverse-kind guard knew only MUTATION_KINDS and the
+  // `workflow_draft.` prefix, so a captured `work_session.resume` would have
+  // been rejected as an unknown inverse kind — an undo that could not run.
+  const inverse = { kind: 'work_session.resume', payload: { sessionId: 77, rearm: false } };
+  const { deps, cap } = fakes((text) => {
+    if (text.includes('FROM agent_mutations') && text.includes('FOR UPDATE')) {
+      return [
+        {
+          status: 'applied',
+          mutation_kind: 'work_session.park',
+          extra_audit: { inverse },
+          actor_kind: 'operator',
+          work_session_id: 77,
+          reversibility: 'revertable',
+        },
+      ];
+    }
+    if (text.includes('work_sessions')) return [sessionRow({ status: 'parked' })];
+    return [];
+  });
+
+  const out = await revertAgentMutation(500, ORG, 9, deps, new Set(['operations.view']));
+
+  assert.equal(out.ok, true);
+  assert.equal(out.status, 200);
+  assert.ok(cap.queries.some((q) => q.text.includes("SET status = 'open'")));
+  assert.ok(cap.queries.some((q) => q.text.includes("SET status = 'reverted'")));
+  // The revert is filed against the operator, not as assistant activity.
+  assert.equal(cap.side[0].actorKind, 'operator');
+  assert.equal(cap.side[0].mutationKind, 'work_session.park');
+});
+
+test('an idempotent operator action still lands a row, classified as a no-op', async () => {
+  const { deps, cap } = fakes((text) =>
+    text.includes('work_sessions') ? [sessionRow({ status: 'parked' })] : [],
+  );
+
+  const out = await applySessionAction(
+    { organizationId: ORG, staffId: 9, session: SESSION, kind: 'work_session.park', payload: { sessionId: 77 } },
+    deps,
+  );
+
+  assert.equal(out.ok, true);
+  // The operator pressed the button, so the record says so — but an undo
+  // control on a no-op would either do nothing or do the opposite.
+  assert.equal((out as { reversibility: string }).reversibility, 'irreversible');
+  assert.match((out as { irreversibleReason: string }).irreversibleReason, /Nothing changed/);
+  assert.ok(cap.queries.some((q) => q.text.includes('INSERT INTO agent_mutations')));
+  assert.ok(!cap.queries.some((q) => q.text.includes("SET status = 'parked'")));
 });

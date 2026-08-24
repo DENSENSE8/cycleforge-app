@@ -19,10 +19,10 @@ import {
 } from '@/design-system/components/Dialog';
 import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
 import { pushOverlay } from '@/lib/overlay-stack/store';
-import { DISPLAY_LEAF_NAV_KEY } from '@/components/station/displays/display-index';
+import { DISPLAY_LEAF_NAV_KEY } from '@/lib/station/display-index';
 import { UNBOX_BAND3_NAV_KEY } from '@/lib/receiving/unbox-band3-nav-keys';
 import { UNBOX_MIDDLE_CARTON_NAV_KEY } from '@/lib/receiving/unbox-middle-carton-nav-keys';
-import { PHOTO_VERB_NAV_KEY } from '@/components/receiving/workspace/line-edit/photo-verb-nav-keys';
+import { PHOTO_VERB_NAV_KEY } from '@/lib/receiving/photo-verb-nav-keys';
 import { NAV_REGIONS } from './nav-regions';
 import { getHotkey } from '@/lib/scan-hotkey/store';
 

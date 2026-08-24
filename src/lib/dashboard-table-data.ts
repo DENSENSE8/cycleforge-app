@@ -1,7 +1,7 @@
 'use client';
 
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
-import type { PackerRecord } from '@/hooks/usePackerLogs';
+import type { PackerRecord } from '@/lib/station/usePackerLogs';
 import type { ShippedSearchField } from '@/lib/shipped-search';
 import {
   ZERO_QUEUE_COUNTS,

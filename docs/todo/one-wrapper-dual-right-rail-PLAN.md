@@ -1,5 +1,17 @@
 # Plan — One right-edge wrapper + side-by-side record work
 
+> **SUPERSEDED 2026-08-21 — the compare feature this plan builds no longer exists.**
+>
+> `unbox-compare-layout.ts`, `orders-compare-layout.ts`, `UnboxCompareHost` and
+> `OrdersCompareHost` were deleted (-1,556 LOC), and with them `?clayout=`,
+> `c0…c3` and the pane tables. Every phase below that mentions a pane, a
+> `clayout` value or a compare host describes code that is gone. The tiling job
+> moved to the workspace canvas — see
+> [`docs/warehouse-os/02-target-architecture.md`](../warehouse-os/02-target-architecture.md)
+> §1 and [`04-roadmap.md`](../warehouse-os/04-roadmap.md) Phase 6. Kept for the
+> LOCKED DECISIONS and the measurements, which are still the record; do not plan
+> new work from the phase map.
+
 **Status:** Phase 0 baseline MEASURED 2026-08-19. **Split is a lux feature and lands LAST** (ruled 2026-08-19), so every split-dependent phase — 1, 2, 3, 6, 7 — is parked behind it. The three Phase 0 rulings stay open; ruling 2 can now be answered from real numbers.
 **Research input:** [`one-wrapper-dual-right-rail-GEMINI-RESEARCH-BRIEFING.md`](one-wrapper-dual-right-rail-GEMINI-RESEARCH-BRIEFING.md) — ANSWERED 2026-08-19, winner **A3** (one inspector host + center split), fallback **A5** (tabbed inspector), **A4** (detached window) as a utility.
 **Shape:** 8 phases. Each ends with something you can verify yourself in a browser or one command. No phase depends on a later phase's code.

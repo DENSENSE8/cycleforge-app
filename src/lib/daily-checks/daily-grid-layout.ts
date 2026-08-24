@@ -11,16 +11,14 @@
  * text-vs-glyph answer all come from the shared helpers.
  */
 
-import {
-  GRID_FILL_COLUMN,
-  gridFrozenKeys,
-} from '@/design-system/components/grid';
+import { GRID_FILL_COLUMN } from '@/lib/grid/grid-fill-column';
+import { gridFrozenKeys } from '@/lib/grid/grid-column-editability';
 import {
   gridFrozenLeft,
   gridTemplate,
-} from '@/design-system/components/grid/grid-column-geometry';
+} from '@/lib/grid/grid-column-geometry';
 import type { ColumnType } from '@/lib/tables/table-columns';
-import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
+import type { GridSortDir } from '@/lib/grid/grid-sort-dir';
 
 export type DailyGridColumnKey =
   | 'select'
@@ -134,4 +132,4 @@ export {
   LEDGER_GRID_FROZEN_CELL as DAILY_GRID_FROZEN_CELL,
   ledgerGridCell as dailyGridCell,
   ledgerGridRowShellClass as dailyGridRowShellClass,
-} from '@/design-system/components/grid/grid-cell-chrome';
+} from '@/lib/grid/grid-cell-chrome';

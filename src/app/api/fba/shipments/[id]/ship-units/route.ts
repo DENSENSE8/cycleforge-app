@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import { withAuth } from '@/lib/auth/withAuth';
 import { transition, guard, type SerialState } from '@/lib/inventory/state-machine';
+import { NO_SESSION } from '@/lib/sessions/attribution';
 
 /**
  * POST /api/fba/shipments/[id]/ship-units
@@ -169,6 +170,7 @@ export const POST = withAuth(async (request, ctx) => {
         const shippedKey = clientEventId ? `${clientEventId}:fba:${link.serial_unit_id}:SHIPPED` : null;
         const shipped = await transition(
           {
+            session: NO_SESSION,
             unitId: link.serial_unit_id,
             to: 'SHIPPED',
             eventType: 'SHIPPED',

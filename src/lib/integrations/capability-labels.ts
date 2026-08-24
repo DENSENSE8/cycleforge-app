@@ -15,7 +15,7 @@
  *   provider label   → PROVIDER_CATALOG (settings display SoT)
  *   capability words → the maps below (extend here, never inline in a view)
  */
-import { PROVIDER_CATALOG } from '@/app/settings/integrations/registry';
+import { PROVIDER_CATALOG } from '@/lib/integrations/provider-catalog';
 import type { Capability } from '@/lib/integrations/connectors/types';
 
 /** Lowercase noun for mid-sentence interpolation ("Save to {noun}"). */

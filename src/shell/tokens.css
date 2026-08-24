@@ -1,0 +1,227 @@
+/* ================================================================
+   WAREHOUSE OS — TOKENS
+   Ported verbatim from docs/warehouse-os/prototype/warehouse-os.html.
+   This file is the design system for the shell. Nothing here may be
+   replaced by a `@/design-system` import.
+
+   DESIGN LAW (from the prototype's own header, unchanged):
+     1. RADIUS EXISTS ONCE. `--r-hud` on the workspace frame. Nothing
+        else may carry a border-radius. There is no --r-sm/md/lg/xl/full
+        to reach for; they do not exist, so the rule is enforced by
+        absence rather than by discipline.
+     2. NOTHING ANIMATES GEOMETRY. No transition and no keyframe may
+        touch width, height, top/left/right/bottom, margin, padding,
+        transform or flex. The only animatable properties are colour
+        and opacity, capped at --t-tint (80ms).
+     3. BORDERS CARRY THE STRUCTURE. No drop shadows anywhere.
+     4. STATE IS DRAWN WITH OUTLINE, NOT BORDER. `outline` does not
+        participate in layout, so a hover/focus ring can be 2px without
+        shifting a single pixel of content.
+
+   THEME RESOLVES IN ALL THREE VIEWER STATES:
+     bare :root                                  → light
+     :root[data-theme="dark"]                    → dark (explicit)
+     prefers-color-scheme:dark + no light stamp  → dark (system default)
+   The dark palette is therefore written twice, on purpose. A colour
+   whose ONLY definition lives inside a media query has no light value.
+   ================================================================ */
+
+:root {
+  /* Typography — the three faces the design depends on. Self-hosted by
+     next/font (src/lib/fonts.ts), whose CSS variables are stamped on
+     <html> by app/layout.tsx. The prototype loaded these from Google
+     Fonts; naming a face is not loading it, and every condensed
+     technical label silently fell back to a non-condensed cut until
+     2026-08-22. The fallback stacks below are the prototype's. */
+  --font-sans: var(--font-cf-sans), "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-condensed: var(--font-ibm-plex-condensed), "IBM Plex Sans Condensed", "Inter", sans-serif;
+  --font-mono: var(--font-ibm-plex-mono), "IBM Plex Mono", "SF Mono", Monaco, monospace;
+
+  /* Size scale (rem) */
+  --sz-technical-label: 0.5625rem;   /* 9px */
+  --sz-xs: 0.75rem;                  /* 12px */
+  --sz-data-value: 0.8125rem;        /* 13px */
+  --sz-sm: 0.875rem;                 /* 14px */
+  --sz-md: 1rem;                     /* 16px */
+  --sz-lg: 1.125rem;                 /* 18px */
+  --sz-xl: 1.25rem;                  /* 20px */
+  --sz-2xl: 1.5rem;                  /* 24px */
+
+  /* ---- RADIUS ----------------------------------------------------
+     Two tokens. That is the whole set.
+     --r-hud is the boundary between chrome and work; it is the only
+     non-zero radius in the application. Set it to 0 for a fully flush
+     terminal read, or up to 16px for the visor read — one line, whole-app
+     effect. Nothing else may declare a radius. */
+  --r-none: 0px;
+  --r-hud: 4px;
+
+  /* Spacing scale */
+  --sp-0: 0px;
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+
+  /* Elevation bands (stacking order only — no shadows exist) */
+  --z-base: 0;
+  --z-raised: 10;
+  --z-sticky: 30;
+  --z-header: 40;
+  --z-dropdown: 50;
+  --z-panel: 100;
+  --z-panelPopover: 120;
+  --z-modal: 200;
+  --z-banner: 350;
+  --z-command: 1000;
+
+  /* ---- MOTION ----------------------------------------------------
+     One duration, and it is only ever spent on colour or opacity.
+     There is no --t-normal / --t-slow and no easing token, because an
+     eased tint is indistinguishable from a linear one at 80ms and an
+     easing token invites geometry to borrow it. */
+  --t-tint: 80ms;
+
+  /* Geometry */
+  --header-height: 40px;
+  --rail-width: 40px;
+  --rail-expanded: 208px;
+  --tool-panel-width: 280px;
+  --control-h: 26px;
+
+  /* Tile floors — the application's real minimums, not a guess. The
+     canvas scrolls rather than crushing below them, which is what makes
+     the geometry problem visible instead of silent. */
+  --tile-min-session: 784px;
+  --tile-min-table: 520px;
+
+  /* LIGHT THEME — semantic tokens */
+  --text-primary: #111111;
+  --text-secondary: #52525b;
+  --text-muted: #71717a;
+  --text-inverse: #ffffff;
+  --text-accent: #1d4ed8;
+  --text-success: #15803d;
+  --text-warning: #b45309;
+  --text-danger: #b91c1c;
+  --text-label: #52525b;
+  --text-value: #111111;
+  --text-technical: #71717a;
+
+  --surface-background: #f4f4f5;
+  --surface-containerLowest: #ffffff;
+  --surface-containerLow: #f4f4f5;
+  --surface-container: #e9e9ec;
+  --surface-containerHigh: #dcdce0;
+  --surface-containerHighest: #c4c4cb;
+  --surface-dim: #a1a1aa;
+
+  --bg-canvas: #dcdce0;
+  --bg-surface: #f4f4f5;
+  --bg-subtle: #fafafa;
+  --bg-inverse: #111111;
+
+  --surfaceSubtle-success: rgba(21, 128, 61, 0.10);
+  --surfaceSubtle-warning: rgba(180, 83, 9, 0.10);
+  --surfaceSubtle-danger: rgba(185, 28, 28, 0.10);
+  --surfaceSubtle-accent: rgba(29, 78, 216, 0.10);
+
+  /* Strokes do all the structural work now — pitched up accordingly */
+  --border-subtle: #d4d4d8;
+  --border-strong: #a1a1aa;
+  --border-hud: #71717a;
+  --border-accent: #1d4ed8;
+  --border-success: #15803d;
+  --border-warning: #b45309;
+  --border-danger: #b91c1c;
+}
+
+/* DARK — explicit stamp. Wins over the system preference in both
+   directions, which is what makes the settings toggle a real control. */
+:root[data-theme="dark"] {
+  --text-primary: #f4f4f5;
+  --text-secondary: #a1a1aa;
+  --text-muted: #7c7c86;
+  --text-inverse: #09090b;
+  --text-accent: #60a5fa;
+  --text-success: #4ade80;
+  --text-warning: #fbbf24;
+  --text-danger: #f87171;
+  --text-label: #a1a1aa;
+  --text-value: #f4f4f5;
+  --text-technical: #7c7c86;
+
+  --surface-background: #0b0b0d;
+  --surface-containerLowest: #151518;
+  --surface-containerLow: #1c1c20;
+  --surface-container: #26262b;
+  --surface-containerHigh: #33333a;
+  --surface-containerHighest: #4a4a53;
+  --surface-dim: #6b6b76;
+
+  --bg-canvas: #060607;
+  --bg-surface: #151518;
+  --bg-subtle: #1c1c20;
+  --bg-inverse: #f4f4f5;
+
+  --surfaceSubtle-success: rgba(74, 222, 128, 0.12);
+  --surfaceSubtle-warning: rgba(251, 191, 36, 0.12);
+  --surfaceSubtle-danger: rgba(248, 113, 113, 0.12);
+  --surfaceSubtle-accent: rgba(96, 165, 250, 0.14);
+
+  --border-subtle: #303036;
+  --border-strong: #52525b;
+  --border-hud: #6b6b76;
+  --border-accent: #60a5fa;
+  --border-success: #4ade80;
+  --border-warning: #fbbf24;
+  --border-danger: #f87171;
+}
+
+/* DARK — system default, i.e. no stamp at all. The boot script stamps
+   an attribute only once the operator has chosen; before that there is
+   nothing on <html> and only this block separates dark from light. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --text-primary: #f4f4f5;
+    --text-secondary: #a1a1aa;
+    --text-muted: #7c7c86;
+    --text-inverse: #09090b;
+    --text-accent: #60a5fa;
+    --text-success: #4ade80;
+    --text-warning: #fbbf24;
+    --text-danger: #f87171;
+    --text-label: #a1a1aa;
+    --text-value: #f4f4f5;
+    --text-technical: #7c7c86;
+
+    --surface-background: #0b0b0d;
+    --surface-containerLowest: #151518;
+    --surface-containerLow: #1c1c20;
+    --surface-container: #26262b;
+    --surface-containerHigh: #33333a;
+    --surface-containerHighest: #4a4a53;
+    --surface-dim: #6b6b76;
+
+    --bg-canvas: #060607;
+    --bg-surface: #151518;
+    --bg-subtle: #1c1c20;
+    --bg-inverse: #f4f4f5;
+
+    --surfaceSubtle-success: rgba(74, 222, 128, 0.12);
+    --surfaceSubtle-warning: rgba(251, 191, 36, 0.12);
+    --surfaceSubtle-danger: rgba(248, 113, 113, 0.12);
+    --surfaceSubtle-accent: rgba(96, 165, 250, 0.14);
+
+    --border-subtle: #303036;
+    --border-strong: #52525b;
+    --border-hud: #6b6b76;
+    --border-accent: #60a5fa;
+    --border-success: #4ade80;
+    --border-warning: #fbbf24;
+    --border-danger: #f87171;
+  }
+}

@@ -72,8 +72,6 @@ export interface ProcedureStepView {
    * are what the bench walks them through" instead of implying all nine are.
    */
   phase: ProcedurePhase;
-  /** The station registry drives this step; false = hand-coded UI over a hand-coded route. */
-  composed: boolean;
   endpoints: ProcedureEndpointView[];
   sources: Array<{ id: string; label: string; integration: string; endpoint: string }>;
   actions: Array<{ id: string; label: string }>;
@@ -99,8 +97,6 @@ export interface StationProcedureMap {
   channels: string[];
   counts: {
     steps: number;
-    composed: number;
-    codeOnly: number;
     reads: number;
     writes: number;
     unresolved: number;
@@ -182,7 +178,6 @@ export function buildStationProcedureMap(
       summary: step.summary,
       index: i + 1,
       phase: step.phase,
-      composed: step.composed,
       endpoints,
       sources,
       actions,
@@ -209,8 +204,6 @@ export function buildStationProcedureMap(
     channels: uniqueSorted(steps.flatMap((s) => s.channels)),
     counts: {
       steps: steps.length,
-      composed: steps.filter((s) => s.composed).length,
-      codeOnly: steps.filter((s) => !s.composed).length,
       reads: readTables.length,
       writes: writeTables.length,
       unresolved: steps.reduce((n, s) => n + s.unresolved.length, 0),

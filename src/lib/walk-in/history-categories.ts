@@ -6,8 +6,8 @@
  * front-desk category. Sales / Pickups / Repairs narrow that same feed.
  */
 
-import { Layers, Package, SalesPrice, Wrench } from '@/components/Icons';
-import type { HorizontalSliderItem } from '@/components/ui/HorizontalButtonSlider';
+import { Layers, Package, SalesPrice, Wrench } from '@/lib/icons';
+import type { HorizontalSliderItem } from '@/lib/ui/horizontal-slider-item';
 
 export const WALK_IN_HISTORY_CATEGORIES = ['all', 'sales', 'pickups', 'repairs'] as const;
 export type WalkInHistoryCategory = (typeof WALK_IN_HISTORY_CATEGORIES)[number];

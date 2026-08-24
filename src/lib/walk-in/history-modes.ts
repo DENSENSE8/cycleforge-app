@@ -19,8 +19,8 @@
  * Legacy `?category=` coercion still lives in `history-categories.ts`.
  */
 
-import { ReceivingModeRepair, SalesPrice, ShoppingCart } from '@/components/Icons';
-import type { HorizontalSliderItem } from '@/components/ui/HorizontalButtonSlider';
+import { ReceivingModeRepair, SalesPrice, ShoppingCart } from '@/lib/icons';
+import type { HorizontalSliderItem } from '@/lib/ui/horizontal-slider-item';
 import type { PermissionString } from '@/lib/auth/permissions-shared';
 import type { RepairTab } from '@/lib/neon/repair-service-queries';
 

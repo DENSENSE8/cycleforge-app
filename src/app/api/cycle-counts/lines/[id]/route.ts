@@ -15,6 +15,7 @@ import {
 import { requireRoutePerm } from '@/lib/auth/dynamic-route-guard';
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
+import { NO_SESSION } from '@/lib/sessions/attribution';
 
 const ROUTE_CC_LINE = 'cycle-counts.line.patch';
 
@@ -74,6 +75,7 @@ async function applyVariance(line: LineRow, countedQty: number, staffId: number 
   // Tie the variance to the lifecycle timeline.
   try {
     await recordInventoryEvent({
+      session: NO_SESSION,
       event_type: 'ADJUSTED',
       actor_staff_id: staffId,
       station: 'MOBILE',

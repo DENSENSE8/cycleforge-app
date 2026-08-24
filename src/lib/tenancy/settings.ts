@@ -30,6 +30,17 @@ const BrandSchema = z.object({
   attractHeadline: z.string().max(16).optional(),
   attractSubline: z.string().max(24).optional(),
   /**
+   * Which face the idle kiosk paints — the dark "tap anywhere to start"
+   * welcome screen, or the white logotype sign. Attract media plays under
+   * either; the face decides the ground, the crop, and whether a tap prompt is
+   * painted at all. Bounds + fallback resolve in src/lib/kiosk/attract-style.ts.
+   *
+   * OPTIONAL with no zod default on purpose: this replaced a hardcoded
+   * `orgId === DOGFOOD_ORG_ID` gate, and the resolver — not the schema — is the
+   * single place that says an unset org gets 'welcome'.
+   */
+  attractStyle: z.enum(['welcome', 'wordmark']).optional(),
+  /**
    * Customer website opened from the public QR interstitial (phone-camera
    * scans of platform Digital Links). Stickers always mint on the Cycle Forge
    * host (`{slug}.app.cycleforge.ai`) — this field is outbound only.

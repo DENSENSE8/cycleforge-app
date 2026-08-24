@@ -7,6 +7,7 @@
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { receiveLineUnits } from '@/lib/receiving/receive-line';
+import { NO_SESSION } from '@/lib/sessions/attribution';
 
 interface ReceiveIfUnboxedHit {
   receivingLineId: number;
@@ -74,6 +75,7 @@ export async function receiveImportedLineIfCartonUnboxed(
 
   const unitsToAdd = Math.max(0, expected - received);
   await deps.receiveLineUnits({
+    session: NO_SESSION,
     organizationId: orgId,
     receiving_line_id: receivingLineId,
     units: unitsToAdd,

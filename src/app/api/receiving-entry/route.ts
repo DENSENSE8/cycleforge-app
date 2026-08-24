@@ -13,6 +13,7 @@ import { withZohoOrg } from '@/lib/zoho/tenant-context';
 import { importZohoPurchaseOrderToReceiving } from '@/lib/zoho-receiving-sync';
 import { getReceivingSchema } from '@/lib/receiving-schema-cache';
 import { registerShipmentPermissive } from '@/lib/shipping/sync-shipment';
+import { NO_SESSION } from '@/lib/sessions/attribution';
 import { recordReceivingScan } from '@/lib/receiving/record-scan';
 import { upsertReceivingTriage } from '@/lib/receiving/streets/carton-street-write';
 import { withAuth } from '@/lib/auth/withAuth';
@@ -271,6 +272,10 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
                 detectedCarrier,
                 ctx.staffId,
                 source === 'zoho_po' ? 'zoho_po' : 'unmatched',
+                // Manual receiving entry is keyboard work, not a wedge scan —
+                // it has no scan session by construction. A task session for the
+                // Incoming surface would be the right owner if one is ever opened.
+                { session: NO_SESSION },
             );
         } catch (err) {
             console.warn('receiving-entry: recordReceivingScan failed (non-fatal)', err);

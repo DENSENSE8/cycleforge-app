@@ -5,6 +5,7 @@ import { resolveSurfaceWorkflowNodeId } from '@/lib/stations/surface-workflow-no
 import { upsertReceivingTriage } from '@/lib/receiving/streets/carton-street-write';
 import { promoteShipmentTicketToReceiving } from '@/lib/support/ticket-link';
 import type { UnboxScanKind } from '@/lib/receiving/unbox-scan-kind';
+import type { SessionAttribution } from '@/lib/sessions/attribution';
 
 export type ReceivingScanSource = 'zoho_po' | 'unmatched';
 
@@ -38,6 +39,16 @@ export interface RecordReceivingScanOptions {
    * tracking (`fulfillment-mode.ts`).
    */
   registerTracking?: boolean;
+  /**
+   * The session this scan happened inside. REQUIRED, which is why `options` no
+   * longer defaults to `{}` — a default on the container would opt every call
+   * site out of attribution just as surely as a default on the field.
+   *
+   * `TRACKING_SCANNED` is THE work event for a carton arriving at a bench. If
+   * any single event in this app deserves to be attributable to the session
+   * that produced it, it is this one.
+   */
+  session: SessionAttribution;
 }
 
 /**
@@ -98,7 +109,7 @@ export async function recordReceivingScan(
   carrier: string,
   staffId: number | null,
   source: ReceivingScanSource,
-  options: RecordReceivingScanOptions = {},
+  options: RecordReceivingScanOptions,
 ): Promise<number> {
   const intakeSurface: ReceivingIntakeSurface = options.intakeSurface ?? 'triage';
   const scanKind: UnboxScanKind = options.scanKind ?? 'work';
@@ -152,6 +163,7 @@ export async function recordReceivingScan(
         organizationId: orgId,
         entityType: 'receiving',
         entityId: receivingId,
+        session: options.session,
         eventType: 'TRACKING_SCANNED',
         actorStaffId: staffId,
         clientEventId: `receiving-scan:${scanId}`,

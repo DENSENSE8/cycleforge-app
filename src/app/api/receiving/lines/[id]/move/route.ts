@@ -6,6 +6,7 @@ import {
 } from '@/lib/inventory/events';
 import { requireRoutePerm } from '@/lib/auth/dynamic-route-guard';
 import { withTenantTransaction } from '@/lib/tenancy/db';
+import { NO_SESSION } from '@/lib/sessions/attribution';
 
 /**
  * Move units between bins. Differs from /putaway in that the prior bin is
@@ -175,6 +176,7 @@ export async function POST(
       for (let i = 0; i < qty; i++) {
         const ev = await recordInventoryEvent(
           {
+            session: NO_SESSION,
             event_type: 'MOVED',
             actor_staff_id: staffId,
             station,

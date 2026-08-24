@@ -3,7 +3,7 @@
  * leaf views, and embedded pickers (Zendesk claim, support attach).
  */
 
-import type { LibraryPhoto } from '@/components/photos/photo-library-types';
+import type { LibraryPhoto } from '@/lib/photos/photo-library-types';
 import type { PhotoLibraryViewMode } from '@/lib/photos/library-filter-state';
 
 export type PhotoGridDensity = 'sm' | 'md' | 'lg';

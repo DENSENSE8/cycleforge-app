@@ -10,7 +10,7 @@ import {
   firstNote,
   type CompoundRowView,
   type CompoundStateTone,
-} from '@/components/tables/compound/compound-row-model';
+} from '@/lib/tables/compound-row-model';
 import type { ShippedOrder } from '@/types/orders';
 
 /**

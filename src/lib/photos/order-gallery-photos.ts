@@ -16,7 +16,7 @@
  * a photo this surface has no permission to touch.
  */
 
-import type { PhotoGalleryInput } from '@/components/shipped/photo-gallery/photo-gallery-utils';
+import type { PhotoGalleryInput } from '@/lib/photos/photo-gallery-utils';
 import { photoStageLabel } from '@/lib/photos/stages';
 import type { UnitTimelinePhotoRow } from '@/lib/timeline';
 

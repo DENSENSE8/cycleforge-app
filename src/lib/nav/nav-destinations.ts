@@ -29,7 +29,40 @@ import {
   type SpineSectionId,
 } from '@/lib/sidebar-navigation';
 
-export interface NavDestination {
+/**
+ * What SELECTING a destination does.
+ *
+ * A destination used to have exactly one answer — push a route — because the
+ * only things you could reach were pages. The Warehouse OS shell adds three
+ * more kinds of openable thing (a session, a table, a tool), and all four have
+ * to live in ONE searchable index or the operator has to know which door a
+ * thing is behind before they can look for it.
+ *
+ * `'page'` is spelled out in the union but is also the ABSENCE of the field:
+ * every destination that existed before this type did keeps navigating, and
+ * `CommandBar` / `SidebarNavList` did not have to change a line. That is the
+ * whole reason it is optional rather than required — a required launch kind
+ * would have been a type error at ~40 call sites for a value every one of them
+ * would have written the same way.
+ */
+export type NavLaunchKind = 'page' | 'session' | 'table' | 'tool';
+
+/**
+ * The launch half of a destination. Mixed into {@link NavDestination} and into
+ * the palette's page row, so one row shape can describe both a route and a tab.
+ */
+export interface NavLaunchTarget {
+  /** Absent ⇒ `'page'`: navigate, exactly as this row always has. */
+  kind?: NavLaunchKind;
+  /**
+   * `openTab({ kind, ref })`'s `ref` — a session key, a `TableId`, a tool key.
+   * Meaningless for a page, required for everything else; the launch index is
+   * what pairs them, so nothing downstream has to check.
+   */
+  ref?: string;
+}
+
+export interface NavDestination extends NavLaunchTarget {
   /** Stable row key. `pageId` for a page, `pageId:childId` for a child page. */
   key: string;
   pageId: string;

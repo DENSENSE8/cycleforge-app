@@ -1,7 +1,8 @@
 import { z } from 'zod';
-import { THEME_NAMES, type ThemeName } from '@/design-system/themes/registry';
+import { THEME_NAMES, type ThemeName } from '@/lib/design/themes/registry';
 import { MAX_PINS } from '@/lib/quick-access/types';
 import { UNBOX_PINNED_EXTRA_TABS_MAX } from '@/lib/receiving/unbox-extra-tabs';
+import { WorkspacePrefs } from '@/lib/workspace/prefs-schema';
 
 /**
  * Keys that reclaim focus even while an editable field is focused — warehouse
@@ -315,6 +316,17 @@ export const StaffPreferencesPutBody = z
       .max(UNBOX_PINNED_EXTRA_TABS_MAX)
       .nullable()
       .optional(),
+    /**
+     * Window-manager workspace: which tabs are open, which are pinned, which
+     * one is focused, and each tab's OWN params. Schema + rationale live with
+     * the store (`@/lib/workspace/prefs-schema`).
+     *
+     * **No migration.** `prefs` is an open JSONB bag; an ABSENT key IS "start
+     * from empty", so nothing seeds a default here. The bag merge is SHALLOW —
+     * writers send the whole `workspace` sub-map (`serializeWorkspace`), never
+     * a nested partial, or the half they left out is deleted.
+     */
+    workspace: WorkspacePrefs.nullable().optional(),
   })
   .strict();
 

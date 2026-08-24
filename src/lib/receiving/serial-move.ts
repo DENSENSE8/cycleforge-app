@@ -3,6 +3,7 @@ import { withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { recordInventoryEvent } from '@/lib/inventory/events';
 import { safeRandomUUID } from '@/lib/safe-uuid';
+import { NO_SESSION } from '@/lib/sessions/attribution';
 
 /**
  * serial-move.ts
@@ -130,6 +131,7 @@ export async function moveSerialToLine(
     // status, so the testing verdict is carried forward untouched.
     const event = await deps.recordInventoryEvent(
       {
+        session: NO_SESSION,
         event_type: 'MOVED',
         actor_staff_id: input.staff_id ?? null,
         station: 'RECEIVING',

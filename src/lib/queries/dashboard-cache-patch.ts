@@ -62,9 +62,11 @@ export function patchUnshippedOrderCache(
  *
  * It lives here rather than in a component because more than one surface reads
  * the unshipped cache and only one of them used to subscribe: `UnshippedTable`
- * owned this patch inline, so the compare panes (`OrdersPaneTable`) and the
- * drill host (`OrdersDrillHost`) — which query the same cache without mounting
- * that table — went stale on a scan until something else invalidated them.
+ * owned this patch inline, so the drill host (`OrdersDrillHost`) — which queries
+ * the same cache without mounting that table — went stale on a scan until
+ * something else invalidated it. (The compare panes were a second such reader
+ * until they were deleted on 2026-08-21; one consumer is still one too many for
+ * a patch to hide inside a table.)
  *
  * Never clobbers an existing `tested_by` with a null: the event carries the
  * tester only when the scan resolved one.

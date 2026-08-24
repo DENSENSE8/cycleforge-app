@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import type { StickyActionTone } from '@/design-system/components/StickyActionBar';
+import type { StickyActionTone } from '@/lib/design/sticky-action-tone';
 
 /**
  * One contextual bulk action for a selection of table rows.

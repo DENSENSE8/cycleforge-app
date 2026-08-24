@@ -1,4 +1,4 @@
-import type { WorkOrderRow, WorkStatus } from '@/components/work-orders/types';
+import type { WorkOrderRow, WorkStatus } from '@/lib/work-orders/types';
 
 /**
  * Shared work-order ranking SoT.

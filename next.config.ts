@@ -163,65 +163,21 @@ const nextConfig: NextConfig = {
         }
         return config;
     },
-    // Phase C of the Products / Inventory / Warehouse rename. /sku-stock is
-    // the legacy path; the same content now lives at /inventory. Order matters:
-    // longer-prefix rules (e.g. /location) must precede the bare :sku catch.
+    // Warehouse-OS rebuild (2026-08-22): the redirect table is EMPTY on purpose.
+    //
+    // Every rule that used to live here pointed at a page route that has since
+    // been deleted with the rest of the operator surface (/inventory, /shipping,
+    // /products, /admin, /receiving, /onboarding, /warehouse, /manuals,
+    // /sku-stock, /outbound). A redirect whose destination 404s is strictly
+    // worse than no redirect at all, and most of these were `permanent: true`
+    // (308) — which browsers cache INDEFINITELY. Leaving them would pin every
+    // client that touched a legacy URL during the rebuild to a dead
+    // destination, and they would keep landing there even after the new shell
+    // reintroduces the route under the same path.
+    //
+    // Re-add a rule only when its destination exists again in the new shell.
     async redirects() {
-        return [
-            { source: '/sku-stock', destination: '/inventory', permanent: true },
-            { source: '/sku-stock/location/:path*', destination: '/inventory/location/:path*', permanent: true },
-            { source: '/sku-stock/:sku', destination: '/inventory/sku/:sku', permanent: true },
-            // Shipping surface: `/outbound` → `/shipping` (proxy also normalizes; this
-            // covers static/CDN hits and keeps query strings via Next redirects).
-            { source: '/outbound', destination: '/shipping', permanent: true },
-            { source: '/outbound/', destination: '/shipping', permanent: true },
-            // Shipping modes moved from `?mode=` onto their own segments.
-            // `permanent: false` (307) ON PURPOSE while the old links drain: a
-            // 308 is cached by browsers forever, so it cannot be taken back if
-            // the mapping turns out wrong. Switch to 308 at sunset, not before.
-            // The stale `?mode=` rides along to the destination and is dropped
-            // there by the boundary parse — it is not declared on any mode spec.
-            // Ready folded into FBA as `?fbaMode=ready` (lifecycle stage tab).
-            { source: '/shipping/ready', destination: '/shipping/fba?fbaMode=ready', permanent: true },
-            { source: '/shipping', has: [{ type: 'query', key: 'mode', value: 'ready' }], destination: '/shipping/fba?fbaMode=ready', permanent: false },
-            { source: '/shipping', has: [{ type: 'query', key: 'mode', value: 'fba' }], destination: '/shipping/fba', permanent: false },
-            { source: '/shipping', has: [{ type: 'query', key: 'mode', value: 'scan-out' }], destination: '/shipping/scan-out', permanent: false },
-            { source: '/shipping', has: [{ type: 'query', key: 'mode', value: 'labels' }], destination: '/shipping/labels', permanent: false },
-            // Locations desk folded under Inventory (P4 condensation).
-            // Orphan children `/warehouse/rma` and `/warehouse/replenishment` stay.
-            { source: '/warehouse', destination: '/inventory/locations', permanent: true },
-            // D2 — the product detail page moved under a static segment:
-            // `/products/:sku` → `/products/sku/:sku`. A BARE dynamic child
-            // cannot coexist with the view segments `/products` will grow,
-            // because static beats dynamic in Next.js: the day `/products/qc`
-            // exists as a page, the SKU literally named "qc" becomes
-            // unreachable. Every sibling surface already namespaces its dynamic
-            // child (/inventory/sku/:sku, /inventory/location/:barcode,
-            // /receiving/lines/:id), so this is the house shape, not a new one.
-            //
-            // The negative lookahead is what keeps this redirect from swallowing
-            // those future segments — without it, `/products/qc` would bounce to
-            // `/products/sku/qc` before the page could ever render.
-            //
-            // Each alternative is terminated by `(?:$|/)`, NOT by `$` alone.
-            // With `sku$` the exemption only covers the bare `/products/sku`, so
-            // `/products/sku/CABLE-001` — the redirect's own destination — still
-            // matched and rewrote to `/products/sku/sku/CABLE-001`, forever.
-            // Anchoring on "segment ends" instead of "path ends" fixes the loop
-            // and lets a view grow a nested child later.
-            //
-            // Keep the list in sync with PRODUCTS_VIEWS
-            // (src/components/products/products-view.ts); the guard in
-            // src/lib/routing/products-detail-redirect.guard.test.ts compiles
-            // this source and fails on drift or a self-match.
-            // `permanent: false` for the same reason as the shipping rules
-            // above — a 308 is cached by browsers forever.
-            {
-                source: '/products/:sku((?!(?:sku|catalog|manuals|labels|pairing|qc|kit)(?:$|/)).*)',
-                destination: '/products/sku/:sku',
-                permanent: false,
-            },
-        ];
+        return [];
     },
     serverExternalPackages: [
         '@anthropic-ai/sdk',
