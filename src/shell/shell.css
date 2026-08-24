@@ -21,7 +21,7 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
   /* LAW 1, enforced. Every element is square unless it opts in by
-     literally naming --r-hud, and only the canvas frame does. */
+     literally naming --r-hud, and only the well frame does. */
   *, *::before, *::after { border-radius: var(--r-none); }
 
   /* PORT: the `html, body` base rules live in app/globals.css, which owns
@@ -1104,39 +1104,41 @@
      space. */
   .recent-item.is-last { color: var(--text-primary); background: var(--surfaceSubtle-accent); }
 
-  /* ===== CANVAS =====================================================
-     The one place radius exists. --r-hud, one stroke, four sides. */
-  .canvas-wrap {
+  /* ===== THE WELL ===================================================
+     The inversion (HANDOFF-ai-centre §1): the feed IS the surface. The
+     ground around it is the chrome plane — continuous with the beam and
+     rails — and the well is SUNKEN into it: `--bg-canvas` is the one
+     token darker than chrome in BOTH themes, under a 1px hairline and
+     the application's one radius. Planes and strokes only (F1/F3); no
+     shadow fakes the depth. Clamped to the prose measure; below the
+     440px floor the ground scrolls rather than crushing the column —
+     the same honesty rule the tiles followed. */
+  .well-ground {
     flex: 1;
+    min-width: 0;
+    display: flex;
     padding: var(--sp-2);
-    overflow: hidden;
-    position: relative;
-    background: var(--bg-canvas);
-    min-width: 0;
-    display: flex;
-  }
-
-  .canvas {
-    flex: 1;
-    min-width: 0;
-    height: 100%;
-    border: 1.5px solid var(--border-hud);
-    border-radius: var(--r-hud);
-    background: var(--surface-containerLowest);
-    position: relative;
-    overflow: hidden;
-    display: flex;
-  }
-
-  .canvas-scroll {
-    display: flex;
-    flex: 1;
-    min-width: 0;
     overflow-x: auto;
     overflow-y: hidden;
+    background: var(--surface-containerLowest);
+  }
+
+  .well {
+    flex: 0 1 680px;
+    min-width: 440px;
+    min-height: 0;
+    margin-inline: auto;
+    display: flex;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--r-hud);
+    background: var(--bg-canvas);
+    overflow: hidden;
   }
 
   /* ===== TILES ======================================================
+     UNMOUNTED since the inversion — the canvas was demoted off the
+     default screen; these rules wait for the panel phases, where what
+     a tile used to show becomes right-panel detail.
      Four states, four distinct treatments — because in a tiling
      manager hover and focus are different facts and one of them
      decides where the keystrokes go.
@@ -1934,9 +1936,10 @@
   }
 
   /* ===== ASSISTANT FEED =============================================
-     THE FIRST SCREEN. AI-first: the empty canvas is a conversation, not
-     a menu. One centred column, clamped to a prose measure — the canvas
-     frame stays full-bleed around it. The composer is the coding-
+     THE SURFACE. AI-first: the feed is a conversation, not a menu, and
+     since the inversion it never unmounts and never yields the centre.
+     The well (above) owns the 440–680 clamp, the sunken ground and the
+     hairline; this is the column inside it. The composer is the coding-
      assistant shape: the entry, the context readout at the entry's
      bottom-right, and the tool row on the very bottom. */
   .assistant-feed {
@@ -1945,16 +1948,11 @@
     height: 100%;
     display: flex;
     justify-content: center;
-    background: var(--surface-containerLowest);
   }
 
-  /* Locked measure: never wider than 680, never narrower than 440. The
-     canvas scrolls below the minimum rather than crushing the column —
-     the same honesty rule the tiles follow. */
   .feed-column {
     width: 100%;
-    max-width: 680px;
-    min-width: 440px;
+    min-width: 0;
     min-height: 0;
     display: flex;
     flex-direction: column;

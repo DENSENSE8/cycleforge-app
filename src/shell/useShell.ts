@@ -239,11 +239,23 @@ export function useShell() {
     [recents],
   );
 
+  /* ── the feed — THE SURFACE ────────────────────────────────────────────
+     Declared ahead of the open/park handlers so state churn can narrate
+     into it: since the inversion the feed never unmounts, so the feed IS
+     where the operator sees an open or a park land. Line items for now;
+     blocks of time are Phase 2. */
+  const [feed, setFeed] = useState<readonly AssistantFeedMessage[]>([]);
+  const feedSeq = useRef(0);
+
+  const narrate = useCallback((text: string) => {
+    setFeed((prev) => [...prev, { id: `f${++feedSeq.current}`, role: 'assistant', text }]);
+  }, []);
+
   /* ── tiles ─────────────────────────────────────────────────────────── */
 
   /**
-   * Park, don't close. The row survives with its state; only the arm and the
-   * canvas slot are given up. It lands in recents so it is one click back.
+   * Park, don't close. The state survives; only the arm is given up. It
+   * lands in recents so it is one click back.
    */
   const parkTile = useCallback(
     (tile: ShellTile) => {
@@ -258,17 +270,18 @@ export function useShell() {
           at: prev.reduce((max, r) => Math.max(max, r.at), 0) + 1,
         },
       ]);
+      narrate(`Parked ${tile.title} — state kept.`);
     },
-    [],
+    [narrate],
   );
 
   /**
-   * ONE SCAN-SESSION TILE ON THE CANVAS, EVER.
+   * ONE ARMED SCAN SESSION, EVER.
    *
    * `ux_work_sessions_armed_scan` already makes two ARMED scan sessions
    * impossible in the database. What the DB cannot stop is the UI showing two
-   * session tiles that look identical while only one owns the wedge — and a
-   * tile you believe is armed but is not is a mis-scan generator. So opening a
+   * session rows that look identical while only one owns the wedge — and a
+   * row you believe is armed but is not is a mis-scan generator. So opening a
    * session PARKS the one that is open and swaps it in.
    *
    * `kind='task'` sessions are N. They do not own the wedge, so they cannot
@@ -312,9 +325,12 @@ export function useShell() {
         setSessionName(title);
         setSessionState('armed');
         setCurrentStage(Math.max(0, PIPELINE.indexOf(ref)));
+        narrate(`Opened ${title} — session armed. Scans land in it.`);
+      } else {
+        narrate(`Opened ${title}.`);
       }
     },
-    [parkTile, tiles],
+    [narrate, parkTile, tiles],
   );
 
   const focusTile = useCallback((id: string) => {
@@ -340,23 +356,8 @@ export function useShell() {
     closeWorkspaceTab(id);
   }, []);
 
-  const splitTile = useCallback(
-    (id: string | null) => {
-      const tile = tiles.find((t) => t.id === (id ?? focusedTileId)) ?? focusedTile;
-      if (!tile) return;
-      openWorkspaceTab({
-        kind: tile.type,
-        ref: tile.ref,
-        params: {
-          title: `${tile.title} (2)`,
-          color: tile.color,
-          icon: tile.icon,
-          sessionKind: tile.sessionKind,
-        },
-      });
-    },
-    [focusedTile, focusedTileId, tiles],
-  );
+  /* Split died with the canvas (the inversion): two views of one ref was a
+     tiling verb, and the well is not a tiling surface. */
 
   /**
    * Rename / recolour / re-icon apply to every tile of the ref, so the rail
@@ -476,16 +477,16 @@ export function useShell() {
   const openLauncher = useCallback((prefill = '') => setLauncherQuery(prefill), []);
   const closeLauncher = useCallback(() => setLauncherQuery(null), []);
 
-  /* ── assistant feed — THE FIRST SCREEN ─────────────────────────────── */
+  /* ── assistant feed — turns and input truth ────────────────────────── */
 
   /**
    * Display-first: the agent loop is not wired in this lane, so the one
    * scripted assistant turn offers REAL starter actions instead of
-   * pretending to reason. `runFeedAction` opens real tiles; the reply text
-   * never claims more than that.
+   * pretending to reason. `runFeedAction` opens real refs — they land on
+   * the left rail and narrate into the feed; the reply text never claims
+   * more than that. (The feed state itself is declared above the tile
+   * handlers, which narrate into it.)
    */
-  const [feed, setFeed] = useState<readonly AssistantFeedMessage[]>([]);
-  const feedSeq = useRef(0);
 
   /* ── the input truth layer (Phase 1, HANDOFF-ai-first) ─────────────────
      Every value the mounted field emits lands here with its source stamped:
@@ -582,7 +583,6 @@ export function useShell() {
     focusTile,
     focusRef,
     closeTile,
-    splitTile,
     renameTile,
     cycleTileIcon,
     cycleTileColor,

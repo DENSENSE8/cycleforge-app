@@ -388,12 +388,12 @@ export interface AssistantFeedMessage {
 }
 
 /**
- * The centred welcome. AI-first: the empty canvas is a conversation that
- * offers to get the canvas tiles started, not a menu of things to open.
+ * The centred welcome. AI-first: the empty feed is a conversation, not a
+ * menu of things to open — and since the inversion it is the surface itself.
  */
 export const FEED_WELCOME = {
   title: 'Welcome back',
-  body: 'Tell me the work in front of you and I’ll get your canvas tiles started.',
+  body: 'Tell me the work in front of you, or scan — everything runs through this feed.',
 } as const;
 
 /**
@@ -403,7 +403,7 @@ export const FEED_WELCOME = {
  * starter buttons when the feed replaced it as the first screen.)
  */
 export const FEED_STARTER_REPLY =
-  'Let’s get your canvas started — I can open these now, or keep describing the work and we’ll refine from there.';
+  'I can open these now, or keep describing the work and we’ll refine from there.';
 
 export const FEED_STARTERS: readonly FeedAction[] = [
   { label: 'Start packing session', ref: 'packing', title: 'Packing', type: 'session' },

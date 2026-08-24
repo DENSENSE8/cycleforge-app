@@ -1,14 +1,12 @@
 'use client';
 
 /**
- * THE FIRST SCREEN — the AI chat feed.
- *
- * AI-first means the empty canvas is a CONVERSATION, not a menu: one centred
- * column clamped to a prose measure, a welcome that offers to get the canvas
- * tiles started, and a coding-assistant composer — the entry, the context
- * readout at the entry's bottom-right, and the tool row on the very bottom.
- * The moment a tile opens, the canvas takes over and the assistant recedes to
- * its rail band; this component simply stops rendering.
+ * THE SURFACE — the AI feed, pinned centre, always mounted (the inversion,
+ * HANDOFF-ai-centre §1). The conversation is the workspace: opens, parks and
+ * scans land here as line items (blocks of time are Phase 2), inside the one
+ * sunken plane on the screen (the well, which wraps this component). It never
+ * recedes and never yields the centre; wide detail belongs to the right
+ * panel, not to this column.
  *
  * The feed's turns live in `useShell` (`feed` / `sendToAssistant`), not here —
  * the header narrates the session lifecycle this feed drives, so the state has
@@ -22,7 +20,7 @@ import { FEED_WELCOME, TOOLS } from '@/shell/model';
 import type { ShellApi } from '@/shell/useShell';
 
 /** The bottom tool row: global-scope tools only. Session tools need an armed
- *  session, and the feed exists precisely while there is none. */
+ *  session (T6) and live on the right rail; the composer's row stays global. */
 const GLOBAL_TOOLS = TOOLS.filter((tool) => tool.scope === 'global');
 
 export function AssistantFeed({ shell }: { shell: ShellApi }) {
@@ -108,7 +106,7 @@ export function AssistantFeed({ shell }: { shell: ShellApi }) {
               value={draft}
               autoFocus
               aria-label="Message the assistant"
-              placeholder="Describe the work — I’ll open the tiles for it…"
+              placeholder="Describe the work, or scan — it lands here…"
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {

@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * THE FRAME. One always-mounted shell: beam · rails · canvas · tool panel.
+ * THE FRAME. One always-mounted shell: beam · rails · well · tool panel.
  *
  * `app/layout.tsx` mounts exactly this and nothing else, so the shell never
  * unmounts and a tab survives navigation — which is the whole reason the tab
@@ -17,7 +17,7 @@
 
 import { useEffect } from 'react';
 import { usePathname } from 'next/navigation';
-import { Canvas } from '@/shell/Canvas';
+import { Well } from '@/shell/Well';
 import { GlobalHeader } from '@/shell/GlobalHeader';
 import { Launcher } from '@/shell/Launcher';
 import { ContextMenu, OfflineBanner, SessionPopover, SettingsPopover } from '@/shell/Overlays';
@@ -59,7 +59,6 @@ function ShellFrame() {
     setContextMenu,
     setSessionPopoverOpen,
     setSettingsPopoverOpen,
-    splitTile,
     closeTile,
     focusedTileId,
     toggleLeftRail,
@@ -93,9 +92,6 @@ function ShellFrame() {
       if (k === 'n' || k === 'k') {
         e.preventDefault();
         openLauncher('');
-      } else if (e.key === '\\') {
-        e.preventDefault();
-        splitTile(null);
       } else if (k === 'o' && e.shiftKey) {
         e.preventDefault();
         toggleOffline();
@@ -118,7 +114,6 @@ function ShellFrame() {
     setContextMenu,
     setSessionPopoverOpen,
     setSettingsPopoverOpen,
-    splitTile,
     toggleLeftRail,
     toggleOffline,
     toggleRightRail,
@@ -132,7 +127,7 @@ function ShellFrame() {
 
       <div className="wos-body">
         <RailPages shell={shell} />
-        <Canvas shell={shell} />
+        <Well shell={shell} />
         <ToolPanel shell={shell} />
         <RailTools shell={shell} />
         <SettingsPopover shell={shell} />
