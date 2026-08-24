@@ -1,0 +1,24 @@
+'use client';
+
+import { type ReactNode } from 'react';
+import { useUIModeOptional } from '../providers/UIModeProvider';
+
+interface DetailGridProps {
+  children: ReactNode;
+  className?: string;
+}
+
+export function DetailGrid({ children, className = '' }: DetailGridProps) {
+  const { isMobile } = useUIModeOptional();
+  return (
+    <div
+      className={`grid gap-2 ${
+        isMobile
+          ? 'grid-cols-1 sm:grid-cols-2 text-role-caption font-semibold uppercase tracking-[0.16em] text-text-muted'
+          : 'grid-cols-2'
+      } ${className}`}
+    >
+      {children}
+    </div>
+  );
+}

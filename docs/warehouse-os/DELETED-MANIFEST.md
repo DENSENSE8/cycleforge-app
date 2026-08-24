@@ -51,6 +51,73 @@ recovered from that session's own transcript or editor history — not from this
 
 ---
 
+## Restored during reconcile (2026-08-23) — 87 files · 8,602 LOC of `design-system`
+
+The zero-base cut deleted `src/design-system` wholesale, same as everything else. Reconcile
+found that `/signin` — a KEPT page, the only way into the app — needs a real dependency
+closure from it, plus a handful of auth components and the `useStaffColorVersion` chain. That
+closure was restored **file by file, checking each one's own imports as it went**, not by
+restoring the tree wholesale (design-system is *not* self-contained — 60 of its files reach
+into `@/components`, which is gone; each one either had a live consumer worth fixing or was
+trimmed instead, see below).
+
+**Restored** (87 files, 8,602 LOC — 29% of the original 29,675):
+```
+git checkout main -- \
+  src/design-system/primitives src/design-system/tokens src/design-system/motion \
+  src/design-system/foundations/motion-framer.ts src/design-system/foundations/motion-framer-hooks.ts \
+  src/design-system/foundations/motion.ts src/design-system/components/Dialog.tsx \
+  src/design-system/components/RouteLoading.tsx src/design-system/components/Skeletons.tsx \
+  src/design-system/components/StaffBadge.tsx src/design-system/providers/UIModeProvider.tsx \
+  src/design-system/hooks \
+  src/components/Icons.tsx src/components/icons src/components/identity \
+  src/utils/staff-colors.ts src/contexts/StaffColorsProvider.tsx src/hooks/useIdleReady.ts \
+  src/hooks/_ui.ts \
+  src/components/auth/ProviderSignInButton.tsx src/components/auth/SetPinPad.tsx \
+  src/components/auth/SignInAuthStepPanels.tsx src/components/auth/StaffPickerList.tsx \
+  src/components/auth/StaffPinPad.tsx src/components/auth/StaffSigningIn.tsx \
+  src/components/auth/PinPadKey.tsx src/components/auth/PinPadStaffHeader.tsx \
+  src/components/auth/theme-numpad.ts src/components/boot/BootSplash.tsx
+```
+
+**Deleted a second time, deliberately** — restored by the bulk `git checkout main --
+src/design-system` first, then removed once nothing real needed them (each one only existed
+to serve another dead file, or reached into deleted `@/components/**` chat/grid/admin UI with
+no surviving consumer):
+`AppTopBar.tsx` · `ConversationMessageCard.tsx` · `ConversationHeaderActionButton.tsx` ·
+`OmnichannelComposerDock.tsx(+.test)` · `SlicedActionDock.tsx(+.test)` · `conversation-chrome.ts(+.test)` ·
+`design-system/index.ts` (the root barrel — nothing outside `design-system` imports it once
+`StaffAvatarEditor` is gone) · `components/identity/StaffAvatarEditor.tsx` (only consumer of
+the root barrel; not used by the signin flow — `StaffAvatar` is, `Editor` isn't).
+
+**Note for whoever mounts staff colors for real:** `StaffColorsProvider` is restored but
+**not mounted** — `ShellProviders` deliberately carries only auth + react-query. Until it (or
+a replacement) is mounted, `useStaffColorVersion()` returns an unpopulated cache and staff
+avatars fall back to their default theme rather than a staff-chosen one. Compiles and renders
+correctly either way; this is a visual gap, not a bug.
+
+Also deleted, orphaned scaffolding from an earlier lane that assumed a component layout the
+shell agent didn't build (nothing in `src/app`, `src/app/api`, or `src/shell` — the real,
+load-bearing tree — imported any of it):
+`src/lib/nav/launch-index.ts(+.test)` · `src/lib/canvas/{session,table}-tiles.ts` ·
+`src/lib/canvas/table-tile-views.ts` · `src/lib/tools/descriptors.ts` ·
+`src/lib/workspace/process-descriptor.ts` · `src/lib/workspace/panel-registry.tsx` ·
+`src/contexts/{ActivityInboxContext,FbaWorkspaceContext}.tsx` ·
+`src/lib/keyboard/nav-keys/KeyboardShortcutsCheatSheet.tsx` · `src/styles/tokens.ts` ·
+two dead e2e specs (`unbox-procedure-deck.spec.ts`, `dashboard-inspector-non-modal.spec.ts`)
+that drove pages (`/dashboard`, the receiving workspace deck) which no longer exist.
+
+One real Rescue-phase miss, fixed here: `src/components/receiving/receiving-events.ts` — the
+typed contract for the receiving cross-pane event bus, pure logic with no JSX — was left
+behind in the UI tree and 11 `lib` files depended on `dispatchDashboardAndStationRefresh` in
+`utils/events.ts`, which imports it. Moved to `src/lib/receiving/receiving-events.ts`; its two
+UI-coupled event payloads (`NavState`/`WorkspaceState`, from the now-deleted receiving
+workspace panel) were inlined as local types instead of chasing that import further.
+
+`tsc --noEmit` and `eslint src` both exit 0 after this pass.
+
+---
+
 # Restore first — the highest-value pieces
 
 If you rebuild nothing else, these are the ones the survey, the operator's own words, and
