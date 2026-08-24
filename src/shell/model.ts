@@ -91,11 +91,18 @@ export interface ShellPin {
 }
 
 /**
- * RECENTS — per staff, per org. Never per session.
+ * RECENTS — scoped to the CURRENT SESSION (2026-08-24 ruling, superseding
+ * H1's "per staff, per org, never per session" — struck through in
+ * LAWS.md). `sessionId` now SCOPES an entry: `RailSessions` filters to
+ * `sessionId === armedBlock?.ref`, so parking a block clears its trail from
+ * view — the same shift, a different session, starts clean. Capped per
+ * KIND within that scope, so a 12-label print run can only evict labels.
  *
- * `sessionId` MARKS an entry; it never scopes it, so closing a batch does not
- * delete the trail. Capped per KIND, so a 12-label print run can only evict
- * labels.
+ * There is no `session`-kind band any more: a parked session is resumed
+ * from its own block in the well (its "Resume" control), not bookmarked
+ * here — and the rail this list lives in is itself now named Sessions, so
+ * a second "Sessions" band inside it would have named two different things
+ * the same word.
  */
 export interface RecentEntry {
   readonly kind: RecentKind;
@@ -107,14 +114,7 @@ export interface RecentEntry {
   readonly sessionId?: string;
 }
 
-export type RecentKind =
-  | 'carton'
-  | 'pack'
-  | 'label'
-  | 'pickup'
-  | 'ticket'
-  | 'search'
-  | 'session';
+export type RecentKind = 'carton' | 'pack' | 'label' | 'pickup' | 'ticket' | 'search';
 
 /**
  * Band order is FIXED and is the whole point: a band never moves, so the
@@ -133,7 +133,6 @@ export const RECENT_KINDS: readonly {
   { kind: 'pickup', label: 'Pickups', icon: 'file', cap: 2 },
   { kind: 'ticket', label: 'Tickets', icon: 'book', cap: 2 },
   { kind: 'search', label: 'Searches', icon: 'search', cap: 2 },
-  { kind: 'session', label: 'Sessions', icon: 'check', cap: 2 },
 ];
 
 /* ── tools ───────────────────────────────────────────────────────────── */
@@ -323,18 +322,21 @@ export const PROTOTYPE_SEED = {
     { id: 'daily', title: 'Daily check', icon: 'check' as IconName },
     { id: 'shiftlog', title: 'Shift log', icon: 'file' as IconName },
   ],
+  /**
+   * Tagged to `sessionId: 'packing'` — the ref `FEED_STARTERS`' "Start
+   * packing session" opens — so the seed actually demonstrates the
+   * current-session scoping rule instead of sitting behind an id nothing
+   * can ever arm again.
+   */
   recents: [
-    { kind: 'carton', id: 'C-8842-A', title: 'C-8842-A', sub: 'UPS 1Z999AA1 · grade B', at: 6, sessionId: 's7' },
-    { kind: 'carton', id: 'C-8839-B', title: 'C-8839-B', sub: 'FedEx 7742 · grade A', at: 2 },
-    { kind: 'carton', id: 'C-8830-K', title: 'C-8830-K', sub: 'USPS 9410 · grade C', at: 1 },
-    { kind: 'pack', id: 'P-2210', title: 'Pack #2210', sub: '6 units · bin B-04-2', at: 5, sessionId: 's7' },
-    { kind: 'pack', id: 'P-2209', title: 'Pack #2209', sub: '2 units · bin B-04-3', at: 3 },
-    { kind: 'label', id: 'L-4471', title: 'SN-9912-D', sub: 'Zebra-ZT411 · 1 label', at: 4 },
-    { kind: 'search', id: 'q-18', title: 'grade:B bin:B-04*', sub: '18 results', at: 0 },
-    { kind: 'session', id: 's6', title: 'Bin 4 recount', sub: 'closed 09:41', at: 0 },
+    { kind: 'carton', id: 'C-8842-A', title: 'C-8842-A', sub: 'UPS 1Z999AA1 · grade B', at: 6, sessionId: 'packing' },
+    { kind: 'carton', id: 'C-8839-B', title: 'C-8839-B', sub: 'FedEx 7742 · grade A', at: 2, sessionId: 'packing' },
+    { kind: 'carton', id: 'C-8830-K', title: 'C-8830-K', sub: 'USPS 9410 · grade C', at: 1, sessionId: 'packing' },
+    { kind: 'pack', id: 'P-2210', title: 'Pack #2210', sub: '6 units · bin B-04-2', at: 5, sessionId: 'packing' },
+    { kind: 'pack', id: 'P-2209', title: 'Pack #2209', sub: '2 units · bin B-04-3', at: 3, sessionId: 'packing' },
+    { kind: 'label', id: 'L-4471', title: 'SN-9912-D', sub: 'Zebra-ZT411 · 1 label', at: 4, sessionId: 'packing' },
+    { kind: 'search', id: 'q-18', title: 'grade:B bin:B-04*', sub: '18 results', at: 0, sessionId: 'packing' },
   ] satisfies RecentEntry[],
-  /** The live session id the leading-edge "touched by this session" mark reads. */
-  liveSessionId: 's7',
   sessionName: 'Packing #7',
   globalContext: 'Receiving',
   contextValue: 'C-8842-A',
@@ -385,6 +387,56 @@ export interface AssistantFeedMessage {
   readonly text: string;
   /** Offered by a scripted turn — real shell actions, never fake output. */
   readonly actions?: readonly FeedAction[];
+}
+
+/* ── blocks of time (Phase 2, HANDOFF-ai-centre §2) ──────────────────── */
+
+/**
+ * One stretch of active work inside a block — the UI twin of
+ * `work_session_intervals` (who worked it, when). An open `end` means armed
+ * right now.
+ */
+export interface BlockInterval {
+  readonly start: number;
+  readonly end?: number;
+}
+
+export type BlockState = 'armed' | 'parked' | 'ended';
+
+/**
+ * A session rendered as a BLOCK OF TIME in the feed chronology. It opens
+ * (⌘N, a scan session, an assistant action), carries what happened as line
+ * items (`ops_events` is the durable twin), and parks or ends. Elapsed is
+ * the SUM OF ITS INTERVALS, never wall time — parking closes the interval
+ * and stops the clock, which is what makes one-armed-block-at-a-time cost
+ * nothing (S2/S3/S4). A parked block collapses to one line — title · state
+ * · elapsed — and reopens in place.
+ */
+export interface SessionBlock {
+  readonly kind: 'block';
+  readonly id: string;
+  readonly ref: string;
+  readonly title: string;
+  readonly sessionKind: SessionKind;
+  readonly state: BlockState;
+  readonly intervals: readonly BlockInterval[];
+  readonly items: readonly AssistantFeedMessage[];
+  readonly collapsed: boolean;
+}
+
+/**
+ * The chronology: plain turns between blocks, blocks of time within it.
+ * Scrolling up is scrolling back in time — never visiting a page.
+ */
+export type FeedEntry =
+  | ({ readonly kind: 'message' } & AssistantFeedMessage)
+  | SessionBlock;
+
+/** Elapsed worked seconds — closed intervals plus the open one against `now`. */
+export function blockElapsedSeconds(intervals: readonly BlockInterval[], now: number): number {
+  let ms = 0;
+  for (const iv of intervals) ms += Math.max(0, (iv.end ?? now) - iv.start);
+  return Math.floor(ms / 1000);
 }
 
 /**

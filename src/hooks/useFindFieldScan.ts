@@ -67,7 +67,8 @@ export interface UseFindFieldScanOptions {
 }
 
 /**
- * Attach field-scoped wedge + paste detection to one input or textarea.
+ * Attach field-scoped wedge + paste detection to one editable element — an
+ * input, a textarea, or a contenteditable (the omni-command composer).
  * Returns a ref callback; attach it to the element. Human typing needs no
  * handler here — anything unclaimed is the field's own behaviour, which is
  * what makes the third `source` value structural rather than inferred.
@@ -82,13 +83,13 @@ export function useFindFieldScan({ onScan, onPaste }: UseFindFieldScanOptions) {
   onPasteRef.current = onPaste;
   const detach = useRef<(() => void) | null>(null);
 
-  return useCallback((el: HTMLInputElement | HTMLTextAreaElement | null) => {
+  return useCallback((el: HTMLElement | null) => {
     detach.current?.();
     detach.current = null;
     if (!el) return;
 
-    // Takes `Event`: the input|textarea UNION collapses addEventListener to
-    // its untyped overload, so the narrowing happens here instead.
+    // Takes `Event`: keydown/paste listeners are attached generically, so the
+    // KeyboardEvent/ClipboardEvent narrowing happens here instead.
     const onKeyDown = (raw: Event) => {
       const event = raw as KeyboardEvent;
       // A chord is never part of a burst — mirrors `wedgeReduce`'s first arm.

@@ -3,7 +3,7 @@
 /**
  * THE LAUNCHER — the one index. There is no second "+".
  *
- * `Ctrl+N` or `Ctrl+K`; the scan field also opens it in place once two
+ * `Ctrl+K` (S12 gave ⌘N to the session block); the scan field also opens it in place once two
  * characters are typed, without parking the session. ↑/↓ move across grouped
  * results, Enter runs, Escape closes, and the selected row carries a 3px
  * accent edge and a `↵` marker.

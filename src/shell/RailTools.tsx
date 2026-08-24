@@ -1,25 +1,40 @@
 'use client';
 
 /**
- * RIGHT RAIL — TOOLS. The mirror of the left: overflow · add · pins · label.
+ * RIGHT RAIL — TOOLS. The mirror of the left: add · global tools · session
+ * tools.
  *
  * Rendered from the TOOL REGISTRY, banded by `scope`. A session band with no
  * available tools renders NOTHING — a heading over an empty band spends the
  * rail's scarcest resource on saying there is nothing to say.
  *
- * Both rails run the same gradient, PERMANENCE DECREASES DOWNWARD:
- * left is pins → tabs → recents, right is assistant → global tools → session
- * tools. An operator who learns one has learned both, and the rule is a rule
- * rather than a coincidence of layout.
+ * NO `agent` BAND (2026-08-24, operator ruling): the well IS the assistant
+ * now (the inversion, HANDOFF-ai-centre §1) — a second "Assistant" entry
+ * here opened a tool panel standing in for the one surface that is already
+ * permanently mounted and pinned centre. Two assistants was the bug.
+ *
+ * Both rails run the same gradient, PERMANENCE DECREASES DOWNWARD: left is
+ * pins → tabs → recents, right is global tools → session tools. An operator
+ * who learns one has learned both.
  *
  * There is ONE overflow in the application and it is the header's. A second
  * three-dots in the top-right corner is two menus claiming the same job;
  * unpinned tools are reachable from the launcher, which is the one index.
+ *
+ * FULLY CLOSEABLE (2026-08-24, operator ruling — amends R1 for this rail;
+ * the left rail joined it for parity, see `RailSessions`). `shell.
+ * rightRailOpen` PINS it open or closed; the header's button is the click
+ * path and always works. This component adds a hover hot-zone at the
+ * viewport's right edge (`useRailPeek`) that PEEKS it open without pinning
+ * — a preview, never the only way in (R1's own clause), which is what keeps
+ * a `(hover: none)` tablet unaffected: the click path is untouched by any
+ * of this.
  */
 
 import { Icon } from '@/shell/icons';
 import { TOOLS, toolAvailable, type ToolDescriptor } from '@/shell/model';
 import type { ShellApi } from '@/shell/useShell';
+import { useRailPeek } from '@/shell/useRailPeek';
 
 function ToolBand({
   shell,
@@ -60,61 +75,42 @@ function ToolBand({
 
 export function RailTools({ shell }: { shell: ShellApi }) {
   const expanded = shell.rightExpanded;
+  const { visible, handleEnter, handleLeave } = useRailPeek(shell.rightRailOpen);
   const sessionTools = TOOLS.filter(
     (t) => t.scope === 'session' && toolAvailable(t, shell.sessionState, shell.activeRef),
   );
 
   return (
-    <nav className={`rail right${expanded ? ' expanded' : ''}`} aria-label="Tools">
-      <button
-        type="button"
-        className="rail-edge"
-        onClick={shell.toggleRightRail}
-        title="Show or hide the tool labels (Ctrl+Shift+B)"
-        aria-label="Show or hide the tool labels"
-        aria-expanded={expanded}
-      >
-        <span className="grip" />
-      </button>
+    <div className="rail-right-zone" onMouseEnter={handleEnter} onMouseLeave={handleLeave}>
+      {visible ? (
+        <nav className={`rail right${expanded ? ' expanded' : ''}`} aria-label="Tools">
+          <button
+            type="button"
+            className="rail-btn"
+            onClick={() => shell.openLauncher('tool')}
+            title="Add or search tools"
+          >
+            <Icon name="plus" size={16} />
+            <span className="rail-btn-label">Add tool</span>
+          </button>
+          <div className="rail-divider" />
 
-      <button
-        type="button"
-        className="rail-btn"
-        onClick={() => shell.openLauncher('tool')}
-        title="Add or search tools"
-      >
-        <Icon name="plus" size={16} />
-        <span className="rail-btn-label">Add tool</span>
-      </button>
-      <div className="rail-divider" />
+          <ToolBand shell={shell} tools={TOOLS.filter((t) => t.scope === 'global')} />
 
-      {/* `agent` is a scope of one, and the band exists because the
-          distinction is real: the assistant is the ONLY tool that writes on
-          your behalf. `agent_mutations.actor_kind` already separates 'agent'
-          from 'operator' in the ledger; the rail says the same thing. */}
-      <ToolBand shell={shell} tools={TOOLS.filter((t) => t.scope === 'agent')} />
-      <div className="rail-divider" />
-      <ToolBand shell={shell} tools={TOOLS.filter((t) => t.scope === 'global')} />
-
-      <button
-        type="button"
-        className="rail-slack"
-        onClick={shell.toggleRightRail}
-        title="Click the empty rail to show or hide labels (Ctrl+Shift+B)"
-        aria-label="Show or hide the tool labels"
-      />
-
-      {/* THE VOLATILE BAND, bottom-anchored — the mirror of the left rail's
-          recents. It renders nothing at all when no session is armed. */}
-      <ToolBand shell={shell} tools={sessionTools} label="Session" />
-      <button
-        type="button"
-        className="rail-label"
-        onClick={shell.toggleRightRail}
-        title="Collapse the tools rail"
-      >
-        Tools
-      </button>
-    </nav>
+          {/* THE VOLATILE BAND, bottom-anchored — the mirror of the left
+              rail's recents. It renders nothing at all when no session is
+              armed. */}
+          <ToolBand shell={shell} tools={sessionTools} label="Session" />
+          <button
+            type="button"
+            className="rail-label"
+            onClick={shell.toggleRightRail}
+            title="Switch between icon-only and labelled"
+          >
+            Tools
+          </button>
+        </nav>
+      ) : null}
+    </div>
   );
 }

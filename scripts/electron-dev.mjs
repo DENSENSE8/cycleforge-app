@@ -17,7 +17,14 @@
 
 import { spawn } from 'node:child_process';
 
-const TARGET = (process.env.ELECTRON_START_URL || 'http://127.0.0.1:3050').replace(/\/+$/, '');
+/**
+ * Attach order: an explicit ELECTRON_START_URL wins; otherwise probe the
+ * Warehouse OS worktree server (:3051) first, then the main checkout (:3050).
+ * Both are the operator's servers — this script still never starts one.
+ */
+const CANDIDATES = process.env.ELECTRON_START_URL
+  ? [process.env.ELECTRON_START_URL.replace(/\/+$/, '')]
+  : ['http://127.0.0.1:3051', 'http://127.0.0.1:3050'];
 
 /** Probe without failing the process — any HTTP answer means something is listening. */
 async function isUp(url) {
@@ -33,12 +40,19 @@ async function isUp(url) {
   }
 }
 
-const up = await isUp(TARGET);
-if (!up) {
+let TARGET = null;
+for (const candidate of CANDIDATES) {
+  if (await isUp(candidate)) {
+    TARGET = candidate;
+    break;
+  }
+}
+
+if (!TARGET) {
   console.error(
     [
       '',
-      `  Nothing is answering at ${TARGET}.`,
+      `  Nothing is answering at ${CANDIDATES.join(' or ')}.`,
       '',
       '  This script attaches to your dev server — it will not start one.',
       '  Start it yourself in another terminal:',

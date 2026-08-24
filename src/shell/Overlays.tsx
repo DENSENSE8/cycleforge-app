@@ -200,7 +200,7 @@ export function SettingsPopover({ shell }: { shell: ShellApi }) {
               aria-pressed={shell.leftExpanded}
               onClick={shell.toggleLeftRail}
             >
-              pages
+              sessions
             </button>
             <button
               type="button"

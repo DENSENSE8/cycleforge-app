@@ -92,9 +92,9 @@ second input, the design is wrong at that step.
 - Blocks are **collapsible line items** with a collapse-all (absorbed from
   HANDOFF-ai-first Phase 4): a parked repair block collapses to one line —
   title · state · elapsed — and reopens in place.
-- **⌘N cuts a new block.** Note the collision honestly: the shell currently
-  binds Ctrl+N to the launcher (`ShellRoot.tsx`). Re-rule it: ⌘N = new session
-  block (the operator's words), launcher keeps ⌘K. One law row when done.
+- **⌘N cuts a new block.** The collision is RE-RULED (2026-08-23, **S12**):
+  ⌘N = new session block (the operator's words), the launcher keeps ⌘K
+  (T19, R2). The law row is in; the binding is live in `ShellRoot.tsx`.
 
 ### 3 · Drafts are blocks; the commit button morphs
 
@@ -134,7 +134,7 @@ second input, the design is wrong at that step.
 | Piece | State | Where |
 |---|---|---|
 | Input truth layer — scanner/paste/human stamped `{value, source}` | **DONE**, 14/14 tests incl. mounted DOM suite | `src/hooks/useFindFieldScan.ts` (+ `.test.ts`), `src/lib/keyboard/find-field-scan.ts`, wired in `AssistantFeed.tsx` |
-| The feed (to be re-parented, not rewritten) | built as canvas fallback; welcome · bubbles · composer · context chip · tools row · `data-last-input-source` | `src/shell/AssistantFeed.tsx`, state in `useShell.ts` (`feed`, `inputTruth`, `sessionNarration`) |
+| The feed — THE SURFACE (inverted 2026-08-23) | **permanent centre** inside the sunken well; the chronology is BLOCKS OF TIME (Phase 2 done): ⌘N cuts/parks (S12), blocks collapse to title · state · elapsed and resume in place, line items land inside the armed block, collapse-all at top | `src/shell/Well.tsx` (Canvas.tsx deleted), `src/shell/AssistantFeed.tsx` (`BlockView`), state in `useShell.ts` (`feed: FeedEntry[]`, `cutSession`, `resumeBlock`, `parkArmedBlock`, `appendItem`), `SessionBlock` in `model.ts`, beam mirror in `clock.ts` (`syncElapsed`) |
 | Shell frame | beam (narrates *starting session / session started*) · rails · canvas · tool panel | `src/shell/*` |
 | Desktop app — NATIVE IS THE PRODUCT (T30/T31) | **built + runs**: Linux x64 AppImage, N6 file layer (open folder, CRUD, trash), selftest 7/7 in the packaged binary | `electron/files.js`, `desktop-dist/CycleForge-0.1.1-x86_64.AppImage`, Files tool `src/shell/FilesPanel.tsx` |
 | Import mouth (forward-compatible seam) | authenticated, validating, honestly **501** until the documents migration lands (D6) | `src/app/api/imports/desktop-files/route.ts` |
@@ -152,10 +152,32 @@ Each phase shippable alone; do not start one before verifying the last.
    no tile chrome, no backdrop; canvas demoted out of the default screen;
    right panel = detail. *Verify:* feed mounted and y-stable through every
    state; zero tile chrome around it; M1 audit stays 0.
+   **DONE 2026-08-23, measured live on `:3051`:** well 680px, centered, clamp
+   holding; ground `--surface-containerLowest` (chrome) vs well `--bg-canvas`
+   — darker in BOTH themes; 1px `--border-subtle` hairline; `--r-hud` the one
+   radius. Drove message → arm Packing → open Triage: `.tile` count 0
+   throughout, both refs landed as rail rows, well rect pixel-identical
+   (x300 · y48 · w680 before and after), M1 audit 0 transitions / 0 shadows.
+   `Canvas.tsx` deleted; split (⌘\ and the context-menu item) died with the
+   canvas. Opens/parks narrate into the feed as line items — Phase 2 turns
+   those lines into blocks.
 2. **Blocks of time.** Session open/park/end render as collapsible blocks in
    the feed; ⌘N cuts a new block and parks the current (re-bind from
    launcher); collapse-all at top. *Verify:* ⌘N twice mid-work loses nothing;
    a parked block resumes in place with elapsed intact.
+   **DONE 2026-08-23, driven live on `:3051`:** ⌘N cut "Session 1" (launcher
+   stayed shut), the mid-call message landed INSIDE the block; second ⌘N
+   parked it collapsed at **00:00:20** and armed "Session 2"; after a further
+   wait the parked line still read 00:00:20 (frozen — interval sum, not wall
+   time); Resume re-armed it **in place** (chronology order unchanged:
+   collapse-all · Session 1 · Session 2), items intact, elapsed continuing
+   20→21s while Session 2 auto-parked. Collapse-all left 0 expanded
+   interiors; ⌘K opens the launcher; Escape closes it; M1 audit 0/0
+   throughout; the well clamp held at 482px in a narrow pane (≥ the 440
+   floor). `SessionBlock.intervals` is the UI twin of
+   `work_session_intervals`; the beam clock now MIRRORS the armed block
+   (`syncElapsed`) and the prototype's fake 263s seed is dead. Law row:
+   **S12**.
 3. **The lookup moment.** Order number in (typed / scanned / pasted — sources
    already stamped) → order block with the warranty verdict readable at a
    glance; full detail right. *Verify:* the scenario through step 5 with all

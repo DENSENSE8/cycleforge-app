@@ -35,7 +35,11 @@ import {
 import { useWorkspace } from '@/lib/workspace/useWorkspace';
 import type { TabDescriptor } from '@/lib/workspace/types';
 import type { ScanRoute } from '@/lib/barcode-routing';
+import type { ComposerCommit } from '@/lib/composer/commit';
+import { getOrderPlatformLabel } from '@/utils/order-platform';
+import { dispatchOpenShippedDetails } from '@/utils/events';
 import type { IconName } from '@/shell/icons';
+import { syncElapsed } from '@/shell/clock';
 import {
   ACCENTS,
   DENSITY,
@@ -48,15 +52,19 @@ import {
   TILE_FLOOR_TABLE_PX,
   TILE_ICONS,
   THEME_STORAGE_KEY,
+  blockElapsedSeconds,
   sessionKindOf,
   type AgentProposal,
   type AssistantFeedMessage,
+  type BlockInterval,
   type FaceMode,
   type FeedAction,
+  type FeedEntry,
   type FieldInputRecord,
   type RailTab,
   type RecentEntry,
   type ScanMode,
+  type SessionBlock,
   type SessionState,
   type ShellPin,
   type ShellPrefs,
@@ -100,6 +108,26 @@ function deriveTabs(tiles: readonly ShellTile[]): RailTab[] {
     });
   }
   return rows;
+}
+
+/* ── blocks of time — pure helpers ───────────────────────────────────── */
+
+/** Close every open interval; the elapsed sum freezes with it (S4 lossless). */
+function closeIntervals(intervals: readonly BlockInterval[], at: number): readonly BlockInterval[] {
+  return intervals.map((iv) => (iv.end === undefined ? { ...iv, end: at } : iv));
+}
+
+/**
+ * The NEWEST block for a ref — an ended block from earlier in the shift must
+ * not shadow the parked one the operator means to resume (S5: reopening an
+ * ended type is a new session, never a mutation of the old row).
+ */
+function lastBlockByRef(feed: readonly FeedEntry[], ref: string): SessionBlock | null {
+  for (let i = feed.length - 1; i >= 0; i--) {
+    const e = feed[i];
+    if (e.kind === 'block' && e.ref === ref) return e;
+  }
+  return null;
 }
 
 /* ── comfort prefs → CSS custom properties ───────────────────────────── */
@@ -172,11 +200,34 @@ export function useShell() {
   /* rails */
   const [leftExpanded, setLeftExpanded] = useState(false);
   const [rightExpanded, setRightExpanded] = useState(false);
+  /**
+   * WHETHER EACH RAIL EXISTS AT ALL — independent of `leftExpanded` /
+   * `rightExpanded` (icons vs labels, which only matter once a rail does).
+   * Default CLOSED, both sides (2026-08-24, operator ruling — the left
+   * rail joined the right's ruling by explicit request for full parity).
+   * A header button PINS each one open or closed (top-left for the left
+   * rail, top-right for the right); a hover hot-zone at the matching
+   * viewport edge (`RailSessions` / `RailTools`) PEEKS it open WITHOUT
+   * pinning, on top of — never instead of — the click control, so a
+   * `(hover: none)` tablet always has the click path. R1 ("rails are
+   * persistent narrow icon strips") is amended by this ruling: neither
+   * rail is always present any more, in exchange for both always being
+   * reachable by an explicit click.
+   */
+  const [leftRailOpen, setLeftRailOpen] = useState(false);
+  const [rightRailOpen, setRightRailOpen] = useState(false);
 
-  /* pins + recents — per staff, per org. Never per session. */
+  /* Pins are per staff, per org. Recents are SCOPED TO THE CURRENT SESSION
+     since 2026-08-24 (H1 superseded — see LAWS.md) — the rail shows the
+     armed block's own recent items, not the whole shift's cross-session
+     trail. `RailSessions` filters `recents` by `armedBlock?.ref`. */
   const [pins] = useState<readonly ShellPin[]>(PROTOTYPE_SEED.pins);
   const [recents, setRecents] = useState<readonly RecentEntry[]>(PROTOTYPE_SEED.recents);
-  const [recentsCollapsed, setRecentsCollapsed] = useState(false);
+  /* Recents is ALWAYS expanded (2026-08-24, operator ruling — supersedes
+     the 2026-08-23 default-collapsed ruling above). It no longer needs a
+     collapse state at all: since H1a the list is scoped to the current
+     session (a handful of rows at most, never a shift-long history), so
+     there is nothing left to collapse it AGAINST. */
 
   /* session — boots with NONE. The first screen is the assistant feed
      (AI-first), so there is no session until the operator starts one and
@@ -239,73 +290,162 @@ export function useShell() {
     [recents],
   );
 
-  /* ── the feed — THE SURFACE ────────────────────────────────────────────
-     Declared ahead of the open/park handlers so state churn can narrate
-     into it: since the inversion the feed never unmounts, so the feed IS
-     where the operator sees an open or a park land. Line items for now;
-     blocks of time are Phase 2. */
-  const [feed, setFeed] = useState<readonly AssistantFeedMessage[]>([]);
+  /* ── the feed — THE SURFACE, a chronology of blocks ────────────────────
+     Declared ahead of the open/park handlers so state churn can land in it.
+     The chronology is heterogeneous (Phase 2): plain turns between blocks,
+     BLOCKS OF TIME within it. One block is armed at a time — the
+     chronology's open stretch — and line items land inside it while it is. */
+  const [feed, setFeed] = useState<readonly FeedEntry[]>([]);
   const feedSeq = useRef(0);
+  const blockSeq = useRef(0);
 
-  const narrate = useCallback((text: string) => {
-    setFeed((prev) => [...prev, { id: `f${++feedSeq.current}`, role: 'assistant', text }]);
+  const armedBlock = useMemo(
+    () => feed.find((e): e is SessionBlock => e.kind === 'block' && e.state === 'armed') ?? null,
+    [feed],
+  );
+
+  /** A line item lands INSIDE the armed block when there is one, and at the
+      chronology's top level when nothing is armed. */
+  const appendItem = useCallback((msg: Omit<AssistantFeedMessage, 'id'>) => {
+    const full: AssistantFeedMessage = { id: `f${++feedSeq.current}`, ...msg };
+    setFeed((prev) => {
+      const i = prev.findIndex((e) => e.kind === 'block' && e.state === 'armed');
+      if (i < 0) return [...prev, { kind: 'message', ...full }];
+      const block = prev[i] as SessionBlock;
+      const next = [...prev];
+      next[i] = { ...block, items: [...block.items, full] };
+      return next;
+    });
   }, []);
 
-  /* ── tiles ─────────────────────────────────────────────────────────── */
+  const narrate = useCallback(
+    (text: string) => appendItem({ role: 'assistant', text }),
+    [appendItem],
+  );
+
+  /* ── blocks of time — the session verbs ────────────────────────────── */
 
   /**
-   * Park, don't close. The state survives; only the arm is given up. It
-   * lands in recents so it is one click back.
+   * Park the armed block: its interval closes, it collapses to one line
+   * (title · state · elapsed) in place, and its rail tab closes. S3: parking
+   * is a work event, never a lookup. S4: lossless — the items and the
+   * elapsed survive. Resuming it is the block's own "Resume" control in the
+   * well (2026-08-24) — recents no longer double as a cross-session
+   * bookmark list; see the ruling on `recents` below.
    */
-  const parkTile = useCallback(
-    (tile: ShellTile) => {
-      closeWorkspaceTab(tile.id);
-      setRecents((prev) => [
-        ...prev.filter((r) => !(r.kind === 'session' && r.id === tile.ref)),
-        {
-          kind: 'session',
-          id: tile.ref,
-          title: tile.title,
-          sub: 'parked · state kept',
-          at: prev.reduce((max, r) => Math.max(max, r.at), 0) + 1,
+  const parkArmedBlock = useCallback((): void => {
+    const block = armedBlock;
+    if (!block) return;
+    const at = Date.now();
+    setFeed((prev) =>
+      prev.map((e) =>
+        e.kind === 'block' && e.id === block.id
+          ? { ...e, state: 'parked' as const, collapsed: true, intervals: closeIntervals(e.intervals, at) }
+          : e,
+      ),
+    );
+    for (const tile of tiles) if (tile.ref === block.ref) closeWorkspaceTab(tile.id);
+    syncElapsed(blockElapsedSeconds(closeIntervals(block.intervals, at), at), false);
+    setSessionState('parked');
+  }, [armedBlock, tiles]);
+
+  /**
+   * Resume a parked block IN PLACE: a new interval opens (the UI twin of a
+   * `work_session_intervals` row) and elapsed continues from where it froze.
+   * The incumbent armed block parks first — one armed block, ever.
+   */
+  const resumeBlock = useCallback(
+    (ref: string) => {
+      const block = lastBlockByRef(feed, ref);
+      if (!block || block.state === 'ended') return;
+      if (block.state === 'armed') {
+        const open = tiles.find((t) => t.ref === ref);
+        if (open) focusWorkspaceTab(open.id);
+        return;
+      }
+      parkArmedBlock();
+      const at = Date.now();
+      setFeed((prev) =>
+        prev.map((e) =>
+          e.kind === 'block' && e.id === block.id
+            ? {
+                ...e,
+                state: 'armed' as const,
+                collapsed: false,
+                intervals: [...closeIntervals(e.intervals, at), { start: at }],
+              }
+            : e,
+        ),
+      );
+      openWorkspaceTab({
+        kind: 'session',
+        ref,
+        params: {
+          title: block.title,
+          color: PALETTE[tiles.length % PALETTE.length],
+          icon: 'box',
+          sessionKind: block.sessionKind,
         },
-      ]);
-      narrate(`Parked ${tile.title} — state kept.`);
+      });
+      setSessionName(block.title);
+      setSessionState('armed');
+      setCurrentStage(Math.max(0, PIPELINE.indexOf(ref)));
+      syncElapsed(blockElapsedSeconds(block.intervals, at), true);
     },
-    [narrate],
+    [feed, parkArmedBlock, tiles],
   );
 
   /**
-   * ONE ARMED SCAN SESSION, EVER.
+   * ONE ARMED SCAN SESSION, EVER — and since Phase 2 it IS a block of time.
    *
    * `ux_work_sessions_armed_scan` already makes two ARMED scan sessions
    * impossible in the database. What the DB cannot stop is the UI showing two
-   * session rows that look identical while only one owns the wedge — and a
-   * row you believe is armed but is not is a mis-scan generator. So opening a
-   * session PARKS the one that is open and swaps it in.
+   * blocks that look armed while only one owns the wedge — and a block you
+   * believe is armed but is not is a mis-scan generator. So opening a scan
+   * session PARKS the armed block and cuts a new one at the chronology's
+   * tail; reopening a ref with a live block RESUMES that block in place.
    *
-   * `kind='task'` sessions are N. They do not own the wedge, so they cannot
-   * compete for a barcode; treating every session as exclusive made an order
-   * import park the packing bench.
+   * `kind='task'` sessions are N (S6). They do not own the wedge, so they
+   * cannot compete for a barcode; treating every session as exclusive made an
+   * order import park the packing bench. They stay tabs + a narration line,
+   * not blocks.
    */
   const openTile = useCallback(
     (ref: string, title: string, type: TileType) => {
       const kind = sessionKindOf(ref);
 
       if (type === 'session' && kind === 'scan') {
-        const openSession = tiles.find((t) => t.type === 'session' && t.sessionKind === 'scan');
-        if (openSession) {
-          if (openSession.ref === ref) {
-            // Re-opening the session already on canvas focuses it — and
-            // RE-ARMS it if it was parked. A resume that leaves the arm on the
-            // floor means the operator is back at the bench with nothing
-            // owning the wedge.
-            setSessionState((s) => (s === 'armed' ? s : 'armed'));
-            focusWorkspaceTab(openSession.id);
-            return;
-          }
-          parkTile(openSession);
+        const existing = lastBlockByRef(feed, ref);
+        if (existing && existing.state !== 'ended') {
+          resumeBlock(ref);
+          return;
         }
+        parkArmedBlock();
+        const at = Date.now();
+        setFeed((prev) => [
+          ...prev,
+          {
+            kind: 'block',
+            id: `b${++blockSeq.current}`,
+            ref,
+            title,
+            sessionKind: kind,
+            state: 'armed',
+            intervals: [{ start: at }],
+            items: [],
+            collapsed: false,
+          },
+        ]);
+        openWorkspaceTab({
+          kind: 'session',
+          ref,
+          params: { title, color: PALETTE[tiles.length % PALETTE.length], icon: 'box', sessionKind: kind },
+        });
+        setSessionName(title);
+        setSessionState('armed');
+        setCurrentStage(Math.max(0, PIPELINE.indexOf(ref)));
+        syncElapsed(0, true);
+        return;
       }
 
       const sibling = tiles.find((t) => t.ref === ref);
@@ -320,18 +460,46 @@ export function useShell() {
           sessionKind: kind,
         },
       });
-
-      if (type === 'session' && kind === 'scan') {
-        setSessionName(title);
-        setSessionState('armed');
-        setCurrentStage(Math.max(0, PIPELINE.indexOf(ref)));
-        narrate(`Opened ${title} — session armed. Scans land in it.`);
-      } else {
-        narrate(`Opened ${title}.`);
-      }
+      narrate(`Opened ${title}.`);
     },
-    [narrate, parkTile, tiles],
+    [feed, narrate, parkArmedBlock, resumeBlock, tiles],
   );
+
+  /**
+   * ⌘N — CUT a new session block (S12). The armed block parks — losslessly,
+   * one keystroke, no dialog (S2/S3/S4) — and a fresh block opens armed at
+   * the tail of the chronology. The operator's words are "new session", not
+   * "open the launcher": the launcher keeps ⌘K (T19, R2).
+   */
+  const cutSession = useCallback(() => {
+    parkArmedBlock();
+    const n = ++blockSeq.current;
+    const ref = `session-${n}`;
+    const title = `Session ${n}`;
+    const at = Date.now();
+    setFeed((prev) => [
+      ...prev,
+      {
+        kind: 'block',
+        id: `b${n}`,
+        ref,
+        title,
+        sessionKind: 'scan',
+        state: 'armed',
+        intervals: [{ start: at }],
+        items: [],
+        collapsed: false,
+      },
+    ]);
+    openWorkspaceTab({
+      kind: 'session',
+      ref,
+      params: { title, color: PALETTE[tiles.length % PALETTE.length], icon: 'box', sessionKind: 'scan' },
+    });
+    setSessionName(title);
+    setSessionState('armed');
+    syncElapsed(0, true);
+  }, [parkArmedBlock, tiles]);
 
   const focusTile = useCallback((id: string) => {
     focusWorkspaceTab(id);
@@ -405,39 +573,45 @@ export function useShell() {
 
   /**
    * Selecting a recent re-stamps it as the newest — the marker moves, the band
-   * does not. That is the banding/recency trade made visible. A parked session
-   * in recents is RESUMABLE, not just a bookmark, which is the whole reason
-   * one-session-at-a-time costs nothing.
+   * does not. That is the banding/recency trade made visible.
    */
   const touchRecent = useCallback(
     (id: string) => {
-      const hit = recents.find((r) => r.id === id);
-      if (!hit) return;
-      if (hit.kind === 'session') {
-        setRecents((prev) => prev.filter((r) => r !== hit));
-        openTile(hit.id, hit.title, 'session');
-        return;
-      }
       const at = nextTouch();
       setRecents((prev) => prev.map((r) => (r.id === id ? { ...r, at } : r)));
     },
-    [nextTouch, openTile, recents],
+    [nextTouch],
   );
 
   /* ── session ───────────────────────────────────────────────────────── */
 
   const parkSession = useCallback(() => {
+    parkArmedBlock();
     setSessionState('parked');
     setSessionPopoverOpen(false);
-  }, []);
+  }, [parkArmedBlock]);
 
+  /** End seals the block: interval closed, collapsed to one line, no recents
+      row — an ended session is history, not a resumable (S5). */
   const endSession = useCallback(() => {
+    const block = armedBlock;
+    if (block) {
+      const at = Date.now();
+      setFeed((prev) =>
+        prev.map((e) =>
+          e.kind === 'block' && e.id === block.id
+            ? { ...e, state: 'ended' as const, collapsed: true, intervals: closeIntervals(e.intervals, at) }
+            : e,
+        ),
+      );
+      syncElapsed(blockElapsedSeconds(closeIntervals(block.intervals, at), at), false);
+    }
     setSessionState('ended');
     for (const tile of tiles) {
       if (tile.type === 'session') closeWorkspaceTab(tile.id);
     }
     setSessionPopoverOpen(false);
-  }, [tiles]);
+  }, [armedBlock, tiles]);
 
   /* ── tools ─────────────────────────────────────────────────────────── */
 
@@ -501,19 +675,12 @@ export function useShell() {
     setInputTruth((prev) => [...prev.slice(-4), { value, source, at: Date.now() }]);
   }, []);
 
-  /** A machine burst decoded to a printed handle inside the composer. */
+  /** A machine burst claimed inside the composer. The stamp is the whole job
+      now — the omni-command composer owns the outcome (chip, typeahead, or
+      plain text), and its commit narrates into the armed block. */
   const handleFieldScan = useCallback(
     (claim: { value: string; route: ScanRoute }) => {
       recordFieldInput(claim.value, 'scanner');
-      const id = `f${++feedSeq.current}`;
-      setFeed((prev) => [
-        ...prev,
-        {
-          id,
-          role: 'assistant',
-          text: `Scanned ${claim.value} — a ${claim.route.type} handle. It landed as a scan (source: scanner), not as typed text.`,
-        },
-      ]);
     },
     [recordFieldInput],
   );
@@ -529,16 +696,66 @@ export function useShell() {
       const trimmed = text.trim();
       if (!trimmed) return;
       recordFieldInput(trimmed, 'human');
-      const opId = `f${++feedSeq.current}`;
-      const reId = `f${++feedSeq.current}`;
-      setFeed((prev) => [
-        ...prev,
-        { id: opId, role: 'operator', text: trimmed },
-        { id: reId, role: 'assistant', text: FEED_STARTER_REPLY, actions: FEED_STARTERS },
-      ]);
+      appendItem({ role: 'operator', text: trimmed });
+      appendItem({ role: 'assistant', text: FEED_STARTER_REPLY, actions: FEED_STARTERS });
     },
-    [recordFieldInput],
+    [appendItem, recordFieldInput],
   );
+
+  /* ── the omni-command composer's commit sink ───────────────────────────
+     One hydration point (docs/omni-command-composer.md): a chip paints the
+     feed summary AND opens the orders tile — commit is an OS event, never a
+     navigation. Scan-sourced commits skip the truth record here because the
+     field's own scan handler already stamped them. */
+  const onComposerCommit = useCallback(
+    (commit: ComposerCommit) => {
+      switch (commit.kind) {
+        case 'order': {
+          if (commit.source === 'human') recordFieldInput(commit.token, 'human');
+          const { order } = commit;
+          const platform = getOrderPlatformLabel(order.order_id, order.account_source);
+          appendItem({
+            role: 'assistant',
+            text: `${order.order_id} — ${order.product_title || 'Order'}${platform ? ` · ${platform}` : ''}`,
+          });
+          openTile('orders', 'Orders', 'table');
+          // Beside the OS hydration: any mounted shipped-details listener
+          // receives the same resolved row.
+          dispatchOpenShippedDetails(order, 'queue');
+          break;
+        }
+        case 'action': {
+          const { run } = commit.action;
+          if (run.kind === 'tool') toggleTool(run.tool);
+          else openTile(run.ref, run.title, run.type);
+          break;
+        }
+        case 'miss': {
+          if (commit.source === 'human') recordFieldInput(commit.token, 'human');
+          narrate(`No order matched “${commit.token}”.`);
+          break;
+        }
+        case 'prose':
+          sendToAssistant(commit.text);
+          break;
+      }
+    },
+    [appendItem, narrate, openTile, recordFieldInput, sendToAssistant, toggleTool],
+  );
+
+  /* ── blocks — collapse ─────────────────────────────────────────────── */
+
+  const toggleBlockCollapsed = useCallback((id: string) => {
+    setFeed((prev) =>
+      prev.map((e) => (e.kind === 'block' && e.id === id ? { ...e, collapsed: !e.collapsed } : e)),
+    );
+  }, []);
+
+  /** Collapse-all — the shift reads as one line per block: title · state ·
+      elapsed (absorbed from HANDOFF-ai-first Phase 4). */
+  const collapseAllBlocks = useCallback(() => {
+    setFeed((prev) => prev.map((e) => (e.kind === 'block' ? { ...e, collapsed: true } : e)));
+  }, []);
 
   const runFeedAction = useCallback(
     (action: FeedAction) => openTile(action.ref, action.title, action.type),
@@ -590,16 +807,19 @@ export function useShell() {
     /* rails */
     leftExpanded,
     rightExpanded,
+    leftRailOpen,
+    rightRailOpen,
     toggleLeftRail: useCallback(() => setLeftExpanded((v) => !v), []),
     toggleRightRail: useCallback(() => setRightExpanded((v) => !v), []),
+    toggleLeftRailOpen: useCallback(() => setLeftRailOpen((v) => !v), []),
+    toggleRightRailOpen: useCallback(() => setRightRailOpen((v) => !v), []),
+    setLeftRailOpen,
+    setRightRailOpen,
 
     /* pins + recents */
     pins,
     recents,
-    recentsCollapsed,
-    toggleRecents: useCallback(() => setRecentsCollapsed((v) => !v), []),
     touchRecent,
-    liveSessionId: PROTOTYPE_SEED.liveSessionId,
 
     /* session */
     sessionName,
@@ -616,10 +836,17 @@ export function useShell() {
     globalContext: PROTOTYPE_SEED.globalContext,
     contextValue: PROTOTYPE_SEED.contextValue,
 
-    /* assistant feed */
+    /* assistant feed + blocks of time */
     feed,
+    armedBlock,
     sendToAssistant,
+    onComposerCommit,
     runFeedAction,
+    cutSession,
+    resumeBlock,
+    parkArmedBlock,
+    toggleBlockCollapsed,
+    collapseAllBlocks,
 
     /* input truth */
     inputTruth,

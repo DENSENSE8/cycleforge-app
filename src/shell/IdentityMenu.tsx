@@ -7,8 +7,8 @@
  * The signed-in name is pinned here; the click is workspace identity
  * (switch staff · settings · more), not a page readout.
  *
- * Scan is still the floor verb — it lives on Ctrl+K / Ctrl+N via the
- * launcher, not as a 300px header field.
+ * Scan is still the floor verb — it lives on Ctrl+K via the launcher
+ * (⌘N cuts a session block, S12), not as a 300px header field.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
