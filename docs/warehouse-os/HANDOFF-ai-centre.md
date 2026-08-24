@@ -70,10 +70,10 @@ second input, the design is wrong at that step.
 - The canvas/tile layer is **not the screen anymore**. `Canvas.tsx` currently
   renders tiles when any are open and the feed only at zero — that inversion
   flips: the feed is permanent; whatever a "tile" used to show is either a
-  **block in the feed** or **detail in the right panel**. (The one honest open
-  question: wide tables — queues want columns. First answer: a block may
-  expand wide inside the feed; second: the right panel widens. Measure, then
-  rule. Do not quietly resurrect tiles.)
+  **block in the feed** or **detail in the right panel**. (Wide tables are
+  measured and ruled — see *Fight 1, settled* below: summary block in the
+  feed, the table in the widened right panel. A block never expands past the
+  measure — a 976px "block" is a tile wearing a block's name.)
 - Keep the **left rail** (pages + recents — the mouse/triage path) and the
   **right panel** (context/detail). They frame the well; they never cover it.
 
@@ -190,12 +190,63 @@ The operator asks to be argued with (see HANDOFF-ux-fighting). Two premises a
 fresh session should test rather than swallow:
 
 1. **"No tiles at all"** vs. the triage queue: a 720px grid inside a 680px
-   well does not fit. Measure the real queue widths before ruling where wide
-   data lives (wide block vs. widened right panel). Do not reopen the tiles
-   question by the back door; do not pretend a grid fits where it does not.
+   well does not fit. **Settled 2026-08-23, by measurement.** The 720 was
+   real: the queue's fact columns are hard `minmax(X, X)` floors
+   (`src/lib/dashboard-order-row-layout.ts`) summing to **45rem = 720px** in
+   `fulfillment.default` and **61rem = 976px** in `fulfillment.tested`,
+   against a well that tops out at 680. Ruling: **the well carries the
+   chronology, not the database.** A summoned queue renders in the feed as a
+   summary block (count · verdict · exceptions) and the table itself in the
+   **widened right panel**, which meets the prototype's ruled
+   `--tile-min-table: 520px` floor and leans on the existing
+   `ordersQueueViewportForceHidden` below its floors. The well never widens
+   past its clamp; no block expands past the measure.
 2. **"Always display the AI"** vs. the manager replay and settings: both are
    blocks or right-panel detail under this model. If one genuinely cannot be,
    bring the measurement, not the assertion.
 
 What is already ruled — T30, T28, the work-order model, magnetic snap, the
 suggestion row's job — is not reopened without new evidence (X3).
+
+## The external master plan (2026-08-23) — reconciled
+
+An external model (no codebase access) answered this brief with a "master
+plan": sunken well · blocks of time · morphing commit · gated keybinds. Where
+it restates the rulings above it is accepted — its five-step sequence IS the
+order of work. Where it adds, the laws and the code answer:
+
+- **Fight 1: its ruling stands, now with the measurement** (above). It picked
+  the right answer — summary in the feed, table in the widened right panel —
+  by assertion; the column floors are what make it stick.
+- **Fight 2 accepted.** An asked-for settings change is a T28-gated block in
+  the feed; the manual settings surface is right-panel detail. The well never
+  unmounts.
+- **REFUSED — Shift+Tab as the physical↔admin mode toggle.** Not just banned
+  by law: `Tab` is a shipping wedge TERMINATOR
+  (`registry.ts` — `WEDGE_TERMINATOR_CODES`), and only ⌘/Ctrl/⌥ are out of a
+  scanner's reach — Shift is not. Shift+Tab is a chord real scans type
+  (I2/I3, T20/T21); the plan's own keybind section cites the refusal
+  machinery this item violates. What it wanted — session variables carried
+  into ticketing — is already ruling 3: the draft block is prefilled from the
+  block it came from.
+- **REFUSED — a permanently mounted search input in the right rail**,
+  asserted twice as a "critical override" with no evidence (X3). A standing
+  second free-text field is the fork the launcher exists to remove (T11, R2,
+  One field), and a permanently focusable field is where a stray wedge burst
+  lands. What survives, per I6: a right-panel surface that IS a queue keeps
+  its own filter field visible while that panel is mounted.
+  Search-as-navigation stays ⌘K.
+- **REFUSED — the metrics-loaded global header** (order # · value · type ·
+  platform · time-boxing · escalation buttons). The beam's emptiness is a
+  measured ruling — bookends, deliberate nothing between (B1, B19).
+  Escalation is a session-chip / suggestion-row action, not beam furniture.
+- **Corrected — "escalation populates a draft in the composer."** Drafts are
+  blocks (ruling 3); the composer holds no draft — its button morphs to
+  commit one. One field.
+- **Flagged — the left rail re-scoped to sessions only** (Start · Pinned ·
+  Recent). Sessions on the left fit R3 ("left is where you go"), but the plan
+  silently drops pages — the mouse/triage path. Pages stay until that fight
+  is actually fought.
+- Its "the well never yields focus" conflates centre with focus. The well
+  never yields the **centre** (geometry). Focus follows the work — a queue in
+  the right panel takes keyboard focus while the operator drives it.
