@@ -20,6 +20,7 @@
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { emitEntitySignalSafe } from '@/lib/surfaces/record-entity-signal';
+import type { SessionAttribution } from '@/lib/sessions/attribution';
 
 export interface ReceivingExceptionRow {
   id: number;
@@ -42,6 +43,17 @@ export interface RecordReceivingExceptionInput {
   supportNotes?: string | null;
   zendeskTicket?: string | null;
   createdBy?: number | null;
+  /**
+   * The session the exception was raised in. Required, no default.
+   *
+   * Threaded rather than hard-coded because this is the writer behind
+   * `SessionContents.exceptionCount` (src/lib/sessions/session-rollup.ts) — the
+   * count reads `signal_recorded` ops_events by `session_id`, so an
+   * unattributed emitter here makes "exceptions raised this session" report
+   * zero forever. A zero that means "not wired" is indistinguishable from a
+   * zero that means "clean shift", and the second is good news.
+   */
+  session: SessionAttribution;
 }
 
 export interface ReceivingExceptionsDeps {
@@ -92,6 +104,7 @@ export async function recordReceivingException(
     reasonCode: input.exceptionCode,
     notes: input.reason ?? null,
     actorStaffId: input.createdBy ?? null,
+    session: input.session,
     meta: { receivingId: input.receivingId ?? null, receivingExceptionId: id },
   });
 

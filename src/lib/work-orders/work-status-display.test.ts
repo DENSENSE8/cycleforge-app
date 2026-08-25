@@ -6,7 +6,7 @@
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import type { WorkStatus } from '@/components/work-orders/types';
+import type { WorkStatus } from '@/lib/work-orders/types';
 import {
   workStatusChipClass,
   workStatusDot,

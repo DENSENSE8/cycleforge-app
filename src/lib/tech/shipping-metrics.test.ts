@@ -4,7 +4,7 @@
  */
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import type { OperationsRoiData } from '@/features/operations/workspace/useOperationsRoi';
+import type { OperationsRoiData } from '@/lib/operations/useOperationsRoi';
 import {
   resolveShippingMetrics,
   splitShippingAttention,

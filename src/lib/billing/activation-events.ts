@@ -12,6 +12,7 @@
 
 import type { OrgId } from '@/lib/tenancy/constants';
 import { recordOpsEvent, type RecordOpsEventInput } from '@/lib/ops-events';
+import { NO_SESSION } from '@/lib/sessions/attribution';
 
 /** Known activation milestones. String-typed union so new milestones are
  *  additive (the ops_events side is free-text `event_type`). */
@@ -50,6 +51,9 @@ export async function recordActivationEvent(
 ): Promise<void> {
   try {
     await deps.recordOpsEvent({
+      // Billing activations are account-lifecycle facts, not bench work — no
+      // operator is holding a session when a subscription flips state.
+      session: NO_SESSION,
       organizationId: orgId,
       entityType: 'other',
       entityId: 0,

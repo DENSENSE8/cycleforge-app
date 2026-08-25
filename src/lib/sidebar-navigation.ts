@@ -27,7 +27,6 @@ import {
   Search,
   Settings,
   SalesPrice,
-  SalesModeCounter,
   Share2,
   ShieldCheck,
   ShoppingCart,
@@ -42,7 +41,7 @@ import {
   StationWalkIn,
   Phone,
   Voicemail,
-} from '@/components/Icons';
+} from '@/lib/icons';
 import {
   DASHBOARD_REPAIRS_MODE,
   DASHBOARD_SALES_MODE,
@@ -54,9 +53,9 @@ import {
   STATION_PAGE_ICONS,
   TECH_NAV_ICONS,
 } from '@/lib/nav/station-nav-icons';
-import { parseHomeMode } from '@/features/home/home-modes';
-import { parseProductsView } from '@/components/products/products-view';
-import { OUTBOUND_MODE_PATHS, outboundModeFromPath } from '@/components/outbound/outbound-sidebar-shared';
+import { parseHomeMode } from '@/lib/home/home-modes';
+import { parseProductsView } from '@/lib/products/products-view';
+import { OUTBOUND_MODE_PATHS, outboundModeFromPath } from '@/lib/outbound/outbound-sidebar-shared';
 import { SHIPPING_ORDERS_PATH } from '@/lib/shipping/orders-desk';
 import { routeParamsFor } from '@/lib/routing/registry';
 import { parseRouteParams } from '@/lib/routing/route-params';
@@ -327,7 +326,6 @@ const MOBILE_RESTRICTED_SIDEBAR_IDS = new Set<SidebarRouteKey>([
 const MOBILE_ALLOWED_PREFIXES: ReadonlyArray<string> = [
   '/m',
   '/signin',
-  '/kiosk', // customer-intake tablet — a tablet-first surface, so touch/mobile devices must reach it (never bounce to /m/home)
   '/receiving',
   '/unbox',
   '/triage',
@@ -395,10 +393,9 @@ export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
   // the canonical URL without a redirect hop. Route key still resolves to
   // 'packer' (reuses the packer panel), so the item stays active on /pack + /packer.
   { id: 'packer',            label: 'Packing',     href: '/pack',               icon: STATION_PAGE_ICONS.packer,    kind: 'station', stationGroup: 'floor', requires: 'packing.view' },
-  // Scan out stays on the floor as a modeless dock-confirm station. Labels /
-  // Ready / FBA live under Desk › Shipping. Route key still resolves to
-  // 'outbound' for panel chrome across every shipping mode.
-  { id: 'scan-out',          label: 'Scan out',    href: OUTBOUND_MODE_PATHS['scan-out'], icon: SHIPPING_NAV_ICONS['scan-out'], kind: 'station', stationGroup: 'floor', requires: 'shipping.view' },
+  // Scan out was a floor dock-confirm station at `/shipping/scan-out`. Its page
+  // and workspace were deleted 2026-08-21, so the row is gone rather than
+  // pointing the floor at a 404. FBA lives under Desk › Shipping.
   // ── Inbound ───────────────────────────────────────────────────────────────
   // The pointer-driven COUNTERPART of the receiving benches: what is on its way
   // and what landed. The benches themselves stay on Scan Stations (D6) — a
@@ -417,14 +414,13 @@ export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
   // Locations folded under Inventory L2 (`/inventory/locations`) — P4 condensation.
   // ── Shipping (fulfillment) ────────────────────────────────────────────────
   // Orders leaving the building. Carrier postage lives here — not a print task.
-  { id: 'outbound',          label: 'Shipping',    href: OUTBOUND_MODE_PATHS.labels, icon: STATION_PAGE_ICONS.outbound,  kind: 'domain', domainGroup: 'fulfillment', requires: 'shipping.view' },
+  { id: 'outbound',          label: 'Shipping',    href: SHIPPING_ORDERS_PATH, icon: STATION_PAGE_ICONS.outbound,  kind: 'domain', domainGroup: 'fulfillment', requires: 'shipping.view' },
   // ── Sales ─────────────────────────────────────────────────────────────────
   // Own root (D4) — front-desk history, not a fulfillment lane. Feeds live on
   // `/dashboard` (`?mode=sales|pickup|repairs`); the row is gated on the ROUTE
   // permission because a nav row that 403s is worse than an absent one, and the
   // children carry front-desk / repair gates as mode `requires`.
   { id: 'sales',             label: 'Sales',       href: `/dashboard?mode=${DASHBOARD_SALES_MODE}`, icon: SalesPrice, kind: 'domain', domainGroup: 'sales', requires: 'dashboard.view' },
-  // Counter is a Sales child (`SIDEBAR_PAGE_NAV`), not its own L1 row.
   // ── Support ───────────────────────────────────────────────────────────────
   // Own root (D3). Visible with Zendesk tickets *or* warranty (Warranty Logger
   // lives under Support). `/support` mounts SurfaceGate + RouteShell like the
@@ -656,8 +652,6 @@ export function getSidebarRouteKey(pathname: string | null): SidebarRouteKey {
   // panel + station, so it resolves to the `packer` key (legacy `/packer` too).
   if (pathname === '/pack' || pathname.startsWith('/pack/')) return 'packer';
   if (pathname === '/packer' || pathname.startsWith('/packer/')) return 'packer';
-  // Review station (WS-REVIEW) — resolves to its own key across every mode.
-  if (pathname === '/review' || pathname.startsWith('/review/')) return 'review';
   // `/shipping` is the first-class Shipping surface; it reuses the `outbound`
   // sidebar panel + station key (legacy `/outbound` too).
   if (pathname === '/shipping' || pathname.startsWith('/shipping/')) return 'outbound';
@@ -695,8 +689,6 @@ export function getSidebarNavPageId(
   // L1 row of its own, so the `?mode=` DOMAIN decides which page owns the URL.
   // The route + its `?mode=` wire values are untouched — every bookmark still
   // opens the same board; only the nav identity moved.
-  // Counter desk is a Sales child (`/counter`), not its own L1.
-  if (pathname === '/counter' || pathname.startsWith('/counter/')) return 'sales';
   if (pathname === '/dashboard' || pathname.startsWith('/dashboard/')) {
     const domain = String(searchParams?.get('mode') ?? '').trim().toLowerCase();
     if (domain === 'inbound' || domain === 'receiving') return 'incoming';
@@ -705,24 +697,15 @@ export function getSidebarNavPageId(
     // queue, which Fulfillment owns.
     return 'outbound';
   }
-  // Review splits by `?mode=` (D10): packing QA is Fulfillment work, pairing and
-  // catalog-link are Catalog work. The `/review` page and its three modes are
-  // untouched — only which domain claims the URL in the spine moved.
-  if (pathname === '/review' || pathname.startsWith('/review/')) {
-    const mode = String(searchParams?.get('mode') ?? '').trim().toLowerCase();
-    return mode === 'pairing' || mode === 'catalog-link' ? 'products' : 'outbound';
-  }
-  // Shipping: Scan out is its own Scan Stations L1; Labels/Ready/FBA are Fulfillment.
-  // Support › Inquiries aliases `/shipping/orders?context=support` — Support owns the spine pin.
+  // Shipping: FBA and the To-ship desk are Fulfillment. Support › Inquiries
+  // aliases `/shipping/orders?context=support` — Support owns the spine pin.
   if (
     (pathname === '/shipping/orders' || pathname.startsWith('/shipping/orders/')) &&
     String(searchParams?.get('context') ?? '').trim().toLowerCase() === 'support'
   ) {
     return 'support';
   }
-  const outboundMode = outboundModeFromPath(pathname);
-  if (outboundMode === 'scan-out') return 'scan-out';
-  if (outboundMode) return 'outbound';
+  if (outboundModeFromPath(pathname)) return 'outbound';
   if (pathname === '/shipping/orders' || pathname.startsWith('/shipping/orders/')) return 'outbound';
   return getSidebarRouteKey(pathname);
 }
@@ -810,9 +793,6 @@ export const ROUTE_PERMISSIONS: ReadonlyArray<{ prefix: string; permission: stri
   { prefix: '/o',                  permission: 'dashboard.view' },
   { prefix: '/fba',                permission: 'fba.view' },
   { prefix: '/walk-in',            permission: 'walk_in.view' },
-  // The counter desk — a Sales surface, not a Scan Station (no scanner, no
-  // Station chrome). Same gate as the rest of the walk-in family.
-  { prefix: '/counter',            permission: 'walk_in.view' },
   // Repair + Local Pickup are Receiving modes — same gate as the rest of the
   // rail. The `repair.*` tech permissions still gate the repair APIs; they no
   // longer gate the UI (a receiving operator works the whole rail).
@@ -831,7 +811,6 @@ export const ROUTE_PERMISSIONS: ReadonlyArray<{ prefix: string; permission: stri
   { prefix: '/pack',               permission: 'packing.view' },
   { prefix: '/packer',             permission: 'packing.view' },
   { prefix: '/packers',            permission: 'packing.view' },
-  { prefix: '/review',             permission: 'packing.review' },
   // To-ship desk is orders-entity gated (shared with Support › Inquiries).
   // Longer prefix must beat `/shipping` → shipping.view.
   { prefix: '/shipping/orders',    permission: 'orders.view' },
@@ -970,7 +949,6 @@ const SUPPORT = '/support';
 // operator-surfaces refactor Phase 7); its modes navigate there. Legacy
 // `/packer` still resolves (proxy redirect + shared page).
 const PACK = '/pack';
-const REVIEW = '/review';
 
 export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   // ── Home ──────────────────────────────────────────────────────────────────
@@ -1022,13 +1000,11 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
     id: 'sales', label: 'Sales', href: `${DASHBOARD}?mode=${DASHBOARD_SALES_MODE}`, icon: SalesPrice,
     kind: 'domain', domainGroup: 'sales', requires: 'dashboard.view',
     children: [
-      { id: 'counter', label: 'Counter', icon: SalesModeCounter, requires: 'walk_in.view', to: () => ({ pathname: '/counter', params: {} }) },
       { id: 'sales', label: 'Sales Board', icon: SalesPrice, requires: DASHBOARD_SALES_PERMISSION, to: () => ({ pathname: DASHBOARD, params: { mode: DASHBOARD_SALES_MODE } }) },
       { id: 'pickup', label: 'Local Pickup', icon: ShoppingCart, requires: DASHBOARD_SALES_PERMISSION, to: () => ({ pathname: DASHBOARD, params: { mode: 'pickup' } }) },
       { id: 'repairs', label: 'Repair Service', icon: RECEIVING_NAV_ICONS.repair, requires: 'repair.view', to: () => ({ pathname: DASHBOARD, params: { mode: DASHBOARD_REPAIRS_MODE } }) },
     ],
-    resolveChild: ({ params, pathname }) => {
-      if (pathname.startsWith('/counter')) return 'counter';
+    resolveChild: ({ params }) => {
       const mode = params.get('mode');
       if (mode === 'pickup') return 'pickup';
       if (mode === 'repairs') return 'repairs';
@@ -1182,43 +1158,26 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   // **Orders is the former `/dashboard` outbound board** at `/shipping/orders`.
   // Support › To ship aliases the same desk with `?context=support`.
   {
-    id: 'outbound', label: 'Shipping', href: OUTBOUND_MODE_PATHS.labels, icon: STATION_PAGE_ICONS.outbound, kind: 'domain', domainGroup: 'fulfillment', requires: 'shipping.view',
+    id: 'outbound', label: 'Shipping', href: SHIPPING_ORDERS_PATH, icon: STATION_PAGE_ICONS.outbound, kind: 'domain', domainGroup: 'fulfillment', requires: 'shipping.view',
+    // TWO children as of 2026-08-21. Labels (`/shipping/labels`), Scan out
+    // (`/shipping/scan-out`) and Packing Review (`/review`) all had their pages
+    // deleted the same day; a child that 404s is worse than an absent one, so
+    // the rows are gone rather than repointed at a neighbour's surface.
     children: [
       { id: 'orders',   label: 'To ship',   icon: LayoutDashboard,              requires: 'orders.view', to: () => ({ pathname: SHIPPING_ORDERS_PATH, params: {} }) },
-      { id: 'labels',   label: 'Labels',   icon: SHIPPING_NAV_ICONS.labels,   to: () => ({ pathname: OUTBOUND_MODE_PATHS.labels }) },
       { id: 'fba',      label: 'Amazon Prep', icon: SHIPPING_NAV_ICONS.fba,      to: () => ({ pathname: OUTBOUND_MODE_PATHS.fba }) },
-      // Packing QA — the former Review L1's default (bare `/review`). Its other
-      // two modes are Catalog work and hang off the Catalog page instead (D10).
-      // Empty delta, not `{ mode: null }`: `/review` declares a param spec, so
-      // `applyChildTarget` CONSTRUCTS the URL and a null would be dead weight.
-      // Packing is the bare-URL lane, so omitting `mode` IS selecting it.
-      { id: 'review',   label: 'Packing Review', icon: ClipboardList,           requires: 'packing.review', to: () => ({ pathname: REVIEW, params: {} }) },
     ],
     resolveChild: ({ pathname, params }) => {
-      if (pathname === REVIEW || pathname.startsWith(`${REVIEW}/`)) return 'review';
-      if (
-        pathname === SHIPPING_ORDERS_PATH ||
-        pathname.startsWith(`${SHIPPING_ORDERS_PATH}/`) ||
-        pathname === DASHBOARD ||
-        pathname.startsWith(`${DASHBOARD}/`)
-      ) {
-        // Support › Inquiries alias — Support's resolveChild owns the pin.
-        if (params.get('context') === 'support') return null;
-        return 'orders';
-      }
       const fromPath = outboundModeFromPath(pathname);
-      if (fromPath === 'fba' || fromPath === 'labels') return fromPath;
+      if (fromPath === 'fba') return 'fba';
       // Legacy `/shipping/ready` redirects to FBA; treat residual path as FBA.
       if (pathname === '/shipping/ready' || pathname.startsWith('/shipping/ready/')) return 'fba';
       const m = params.get('mode');
       if (m === 'fba' || m === 'ready') return 'fba';
-      return 'labels';
+      // Support › Inquiries alias — Support's resolveChild owns the pin.
+      if (params.get('context') === 'support') return null;
+      return 'orders';
     },
-  },
-  // ── Scan out (Scan Stations) ──────────────────────────────────────────────
-  // Modeless dock ship-confirm station. Shares route key `outbound` for panels.
-  {
-    id: 'scan-out', label: 'Scan out', href: OUTBOUND_MODE_PATHS['scan-out'], icon: SHIPPING_NAV_ICONS['scan-out'], kind: 'station', stationGroup: 'floor', requires: 'shipping.view',
   },
   // ── Packing ───────────────────────────────────────────────────────────────
   // Standard-only / modeless. Legacy `?packMode=fragile|multi` deep-links may
@@ -1244,7 +1203,7 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   // different row types) — see `desk-contract-unification-CLAUDE-CODE-PROMPT.md`.
   // ── Catalog (Manage Products) ─────────────────────────────────────────────
   // Catalog L1. `?view=manuals|catalog|labels|pairing|qc|kit`; default `manuals`
-  // (param cleared). Vocabulary SoT: `@/components/products/products-view`.
+  // (param cleared). Vocabulary SoT: `@/lib/products/products-view`.
   //
   // The former Print Stations rows (`print-labels` / `print-documents`) were
   // deleted here, not moved: every mode they carried was an ALIAS of a URL some
@@ -1268,22 +1227,15 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
       { id: 'manuals', label: 'Manuals', icon: FileText, to: () => ({ pathname: PRODUCTS, params: { view: null } }) },
       { id: 'labels',  label: 'SKU Barcodes',  icon: Barcode,  to: () => ({ pathname: PRODUCTS, params: { view: 'labels' } }) },
       { id: 'pairing', label: 'Pairing', icon: Link2,    to: () => ({ pathname: PRODUCTS, params: { view: 'pairing' } }) },
-      // Absorbed from the Review station (D10). An ALIAS, not a clone: the mode
-      // navigates to `/review?mode=catalog-link`, which is where the chore
-      // workspace lives. Catalog is simply its nav home now.
-      { id: 'catalog-link', label: 'Listing match', icon: Link2, requires: 'packing.review', to: () => ({ pathname: REVIEW, params: { mode: 'catalog-link' } }) },
+      // Listing match came from the Review station (D10) and pointed at
+      // `/review?mode=catalog-link`. That page was deleted 2026-08-21, so the
+      // row is gone rather than pointing the spine at a 404. The chore
+      // workspace itself (`features/review/catalog-link`) is untouched and
+      // still mounts from the order-import surfaces that own the chores.
       { id: 'qc',      label: 'QC Checklist', icon: Check,     to: () => ({ pathname: PRODUCTS, params: { view: 'qc' } }) },
       { id: 'kit',     label: 'Kit Parts', icon: PackageOpen, to: () => ({ pathname: PRODUCTS, params: { view: 'kit' } }) },
     ],
-    resolveChild: ({ pathname, params }) => {
-      // Catalog is the nav home for the Review station's catalog work (D10), so
-      // a `/review` pairing / catalog-link URL highlights a Catalog mode rather
-      // than leaving the spine pointing at Fulfillment's packing lane.
-      if (pathname === REVIEW || pathname.startsWith(`${REVIEW}/`)) {
-        return params.get('mode') === 'pairing' ? 'pairing' : 'catalog-link';
-      }
-      return parseProductsView(params.get('view'));
-    },
+    resolveChild: ({ params }) => parseProductsView(params.get('view')),
   },
   // ── Inventory ─────────────────────────────────────────────────────────────
   // `?mode=triage|pulse` or `?section=replenish`; default `ledger`.

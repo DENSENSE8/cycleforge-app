@@ -7,7 +7,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { resolveInternalCode } from './internal-code';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import type { ResolvedTestingScan } from '@/lib/testing/resolve-testing-scan';
 
 function row(p: Partial<ReceivingLineRow>): ReceivingLineRow {

@@ -10,7 +10,7 @@
  * on one baseline.
  */
 
-import { cornerClass } from '@/design-system/tokens/radius';
+import { cornerClass } from '@/lib/design/radius';
 import { cn } from '@/utils/_cn';
 
 export const NAV_KEY_HINT_CLASS = cn(

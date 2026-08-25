@@ -181,8 +181,17 @@ export function AuthProvider({ initial = null, kioskHost = false, children }: Pr
   // that points to a revoked/expired/idle-killed session sails past the proxy.
   // When AuthContext hydrates with user:null on a non-public path, bounce to
   // /signin and preserve the current path as ?next= so we land back here.
+  //
+  // 🚨 BREAK-GLASS (mirrors proxy.ts's AUTH_V2_ENABLED knob, added 2026-08-23):
+  // NEXT_PUBLIC_AUTH_V2_ENABLED=false / "0" / "off" disables this client
+  // fallback the same way the server knob disables the edge redirect — for a
+  // DB-less worktree preview where /signin itself cannot compile. It removes
+  // only the bounce; every API route stays gated by `withAuth` regardless, so
+  // a signed-out shell renders chrome over 401s, never data.
+  const clientGateEnv = (process.env.NEXT_PUBLIC_AUTH_V2_ENABLED ?? '').toLowerCase().trim();
+  const clientGateOff = clientGateEnv === 'false' || clientGateEnv === '0' || clientGateEnv === 'off';
   const onPublicPath = isClientPublicPath(pathname) || kioskHost;
-  const mustRedirect = isLoaded && !user && !onPublicPath;
+  const mustRedirect = isLoaded && !user && !onPublicPath && !clientGateOff;
 
   useEffect(() => {
     if (!mustRedirect) return;

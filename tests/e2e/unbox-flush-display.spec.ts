@@ -21,7 +21,7 @@ test.use({ storageState: QA_STORAGE });
 
 const uniq = () => `${Date.now().toString(36)}${Math.floor(Math.random() * 1e4)}`;
 
-import { STATION_WORKBENCH_LOCK_PX } from '@/components/station/workbench/workbench-layout';
+import { STATION_WORKBENCH_LOCK_PX } from '@/lib/station/workbench-layout';
 
 /** Station center floor — the elastic center holds at/above this (never below). */
 const STATION_CENTER_LOCK_PX = STATION_WORKBENCH_LOCK_PX;

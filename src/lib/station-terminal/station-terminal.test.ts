@@ -6,11 +6,11 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { WORKSPACE_MODES, type WorkspaceMode } from '@/components/station/entity-context';
+import { WORKSPACE_MODES, type WorkspaceMode } from '@/lib/station/workspace-mode-registry';
 import { STATION_TERMINAL_REGISTRY, getTerminalSlice } from './registry';
 import { resolveTerminalKind } from './resolve-terminal-action';
 import type { TerminalWorkspaceMode } from './types';
-import { TERMINAL_MODES_WITHOUT_HEADER_CHROME } from '@/components/station/workbench/station-workbench-chrome-config';
+import { TERMINAL_MODES_WITHOUT_HEADER_CHROME } from '@/lib/station/workbench-chrome-config';
 
 const TERMINAL_MODES = Object.keys(STATION_TERMINAL_REGISTRY) as TerminalWorkspaceMode[];
 

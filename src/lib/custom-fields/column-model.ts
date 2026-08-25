@@ -3,7 +3,7 @@
  * (before trailing `_fill` when present).
  */
 
-import type { LedgerGridColumnModel } from '@/design-system/components/grid/grid-surface-descriptor';
+import type { LedgerGridColumnModel } from '@/lib/grid/grid-surface-descriptor';
 import type { ColumnType } from '@/lib/tables/table-columns';
 import { customFieldColumnKey } from '@/lib/tables/custom-field-keys';
 import type { CustomFieldDef, CustomFieldValueType } from './types';

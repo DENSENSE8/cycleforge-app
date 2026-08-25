@@ -1,6 +1,6 @@
 'use client';
 
-import type { EntityType, WorkStatus } from '@/components/work-orders/types';
+import type { EntityType, WorkStatus } from '@/lib/work-orders/types';
 
 export interface SaveWorkOrderParams {
   entityType: EntityType;

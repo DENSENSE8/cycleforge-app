@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import type { TechRecord } from '@/hooks/useTechLogs';
+import type { TechRecord } from '@/lib/station/useTechLogs';
 import { dedupeTechRecords, getTechRecordRowKey } from '@/lib/station/dedupe-tech-records';
 import {
   techRecordRailId,
   techRecordToPreviewOrder,
-} from '@/components/sidebar/shipping/shipping-rail-shared';
+} from '@/lib/shipping/shipping-rail-shared';
 
 function baseRecord(overrides: Partial<TechRecord> = {}): TechRecord {
   return {

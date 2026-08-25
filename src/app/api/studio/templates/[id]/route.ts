@@ -5,7 +5,7 @@ import { db } from '@/lib/drizzle/db';
 import { workflowTemplates } from '@/lib/drizzle/schema';
 import { getNode, hasNode } from '@/lib/workflow';
 import type { TemplateGraph } from '@/lib/studio/templates';
-import type { StudioTemplateDetail } from '@/components/studio/studio-types';
+import type { StudioTemplateDetail } from '@/lib/studio/studio-types';
 
 /**
  * GET /api/studio/templates/[id]

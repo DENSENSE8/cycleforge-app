@@ -10,7 +10,7 @@ import { toast } from '@/lib/toast';
 import { writeReceivingSiblingLine } from '@/lib/queries/receiving-queries';
 import { refreshDomains } from '@/lib/refresh/bus';
 import { REFRESH_BUNDLES } from '@/lib/refresh/domains';
-import type { EcwidProductSelection } from '@/components/receiving/unfound/ecwid-search/ecwid-search-shared';
+import type { EcwidProductSelection } from '@/lib/receiving/ecwid-search-shared';
 
 type AddUnmatchedLineSelection = EcwidProductSelection;
 

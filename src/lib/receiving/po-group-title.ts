@@ -7,12 +7,12 @@
  * — never `Amazon · Order {full id}`.
  */
 
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import {
   formatReturnSerialProductTitle,
   parseReturnSerialTitle,
   resolveReceivingLinePrimarySerial,
-} from '@/components/station/receiving-line-serials';
+} from '@/lib/receiving/receiving-line-serials';
 import { formatMarketplaceReturnIdentityTitle } from '@/lib/receiving/marketplace-return-identity';
 
 /** DB / wire sentinel for an unmatched carton line — never paint this raw. */

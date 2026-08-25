@@ -5,10 +5,10 @@
  * order. Station history (Tech / Packer) plus Workbench multi-select grids
  * (bins · catalog) share {@link toTsvBlock}.
  */
-import type { TechRecord } from '@/hooks/useTechLogs';
-import type { PackerRecord } from '@/hooks/usePackerLogs';
-import type { BinsOverviewRow } from '@/hooks/useBinsOverview';
-import type { CatalogListRow } from '@/components/products/catalog/types';
+import type { TechRecord } from '@/lib/station/useTechLogs';
+import type { PackerRecord } from '@/lib/station/usePackerLogs';
+import type { BinsOverviewRow } from '@/lib/station/useBinsOverview';
+import type { CatalogListRow } from '@/lib/products/catalog-types';
 
 /** Tab-join, normalizing nullish/whitespace cells to '' so columns stay aligned. */
 function tsv(cells: (string | number | null | undefined)[]): string {

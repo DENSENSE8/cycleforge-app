@@ -15,7 +15,7 @@ import {
 } from '@/lib/receiving/receiving-grid-layout';
 import { TABLE_COLUMNS } from '@/lib/tables/table-columns';
 import { compareIncomingGridRows } from '@/lib/receiving/incoming-grid-compare';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 
 describe('INCOMING_GRID_COLUMNS — matches Pending SoT scan order', () => {
   it('is select · order · title · date · age · qty · condition · status · platform · tracking · zoho', () => {

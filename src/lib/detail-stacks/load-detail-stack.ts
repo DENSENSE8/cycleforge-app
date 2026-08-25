@@ -4,7 +4,7 @@
  * Fetch detail-stack entity data for global slide-over open (no navigation).
  */
 
-import type { ReceivingDetailsLog } from '@/components/station/receiving-details-log';
+import type { ReceivingDetailsLog } from '@/lib/receiving/receiving-details-log';
 import { fetchDashboardOrderRowById } from '@/lib/dashboard-table-data';
 import type { FbaBoardItem } from '@/lib/fba/types';
 import { fetchReceivingDetailsEnrich } from '@/lib/receiving/receiving-details-overlay';

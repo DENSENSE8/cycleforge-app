@@ -10,7 +10,7 @@
  * Recipe: `.claude/rules/display/right-rail-inspector.md` + Unbox Displays plate.
  */
 
-import type { ShippedActiveSection } from '@/components/shipped/stacks/types';
+import type { ShippedActiveSection } from '@/lib/shipped/stack-types';
 import type { OrderInspectorRecordCta } from '@/lib/selection-context/order-inspector-context';
 
 /** Locked Display topics — Unbox-style icon topic plate (never Assign). */

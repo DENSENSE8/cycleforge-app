@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { isReturnIntake, isIntakeClassified } from './triage-intake-kind';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 
 /** isReturnIntake only reads intake_type/receiving_type/carton_intake_type. */
 function row(partial: {

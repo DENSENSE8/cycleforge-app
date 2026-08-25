@@ -7,7 +7,7 @@ import {
   ZERO_OUTBOUND_METRICS,
   type OutboundMetricCtx,
 } from './outbound-metrics';
-import type { OperationsRoiData } from '@/features/operations/workspace/useOperationsRoi';
+import type { OperationsRoiData } from '@/lib/operations/useOperationsRoi';
 
 const roi = (over: Partial<OperationsRoiData> = {}): OperationsRoiData => ({
   hasData: true,

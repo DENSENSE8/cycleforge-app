@@ -6,8 +6,8 @@
  * FBA metrics removed 2026-07-29 (IA row L) — FBA owns `/shipping/fba`.
  */
 
-import type { MetricIntent } from '@/design-system/components/monitor';
-import type { OperationsRoiData } from '@/features/operations/workspace/useOperationsRoi';
+import type { MetricIntent } from '@/lib/design/metric-intent';
+import type { OperationsRoiData } from '@/lib/operations/useOperationsRoi';
 import {
   computeRoiPackedMetric,
   computeRoiStuckMetric,

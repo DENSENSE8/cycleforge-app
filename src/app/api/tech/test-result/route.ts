@@ -3,6 +3,7 @@ import { withTenantTransaction } from '@/lib/tenancy/db';
 import { withAuth } from '@/lib/auth/withAuth';
 import { transition } from '@/lib/inventory/state-machine';
 import { recordInventoryEvent } from '@/lib/inventory/events';
+import { NO_SESSION } from '@/lib/sessions/attribution';
 
 /**
  * POST /api/tech/test-result
@@ -107,6 +108,7 @@ export const POST = withAuth(async (request, ctx) => {
 
         const t = await transition(
           {
+            session: NO_SESSION,
             unitId: unit.id,
             to: target,
             eventType: 'ADJUSTED',
@@ -221,6 +223,7 @@ export const POST = withAuth(async (request, ctx) => {
         // the event directly; status is already correct.
         const ev = await recordInventoryEvent(
           {
+            session: NO_SESSION,
             event_type: eventType,
             actor_staff_id: actorStaffId,
             station: 'TECH',
@@ -239,6 +242,7 @@ export const POST = withAuth(async (request, ctx) => {
       } else {
         const t = await transition(
           {
+            session: NO_SESSION,
             unitId: unit.id,
             to: nextStatus,
             eventType,

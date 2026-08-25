@@ -12,7 +12,9 @@ import {
   type StaffTheme,
   type TimeFormat,
 } from '@/lib/schemas/staff-preferences-constants';
-import type { ThemeName } from '@/design-system/themes/registry';
+/* Merge 2026-08-25: the themes registry moved with the warehouse-os
+   zero-base — `@/lib/design/themes/registry` is its home now. */
+import type { ThemeName } from '@/lib/design/themes/registry';
 
 /**
  * The constants live in `staff-preferences-constants.ts` — a module with no
@@ -34,6 +36,7 @@ export {
 export type { StaffTheme, TimeFormat };
 import { MAX_PINS } from '@/lib/quick-access/types';
 import { UNBOX_PINNED_EXTRA_TABS_MAX } from '@/lib/receiving/unbox-extra-tabs';
+import { WorkspacePrefs } from '@/lib/workspace/prefs-schema';
 
 /** ISO day-range filter — `null` clears it. Shared by board + per-lane prefs. */
 const BOARD_RANGE = z
@@ -277,6 +280,17 @@ export const StaffPreferencesPutBody = z
       .max(UNBOX_PINNED_EXTRA_TABS_MAX)
       .nullable()
       .optional(),
+    /**
+     * Window-manager workspace: which tabs are open, which are pinned, which
+     * one is focused, and each tab's OWN params. Schema + rationale live with
+     * the store (`@/lib/workspace/prefs-schema`).
+     *
+     * **No migration.** `prefs` is an open JSONB bag; an ABSENT key IS "start
+     * from empty", so nothing seeds a default here. The bag merge is SHALLOW —
+     * writers send the whole `workspace` sub-map (`serializeWorkspace`), never
+     * a nested partial, or the half they left out is deleted.
+     */
+    workspace: WorkspacePrefs.nullable().optional(),
   })
   .strict();
 

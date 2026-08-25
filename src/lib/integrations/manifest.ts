@@ -17,7 +17,7 @@
  *
  *   - `connectors/registry.ts`                    — BEHAVIOR SoT: capabilities,
  *     auth kind, and which of sync/refresh/validate/pushInventory/reconcile exist.
- *   - `src/app/settings/integrations/registry.ts` — DISPLAY SoT: label,
+ *   - `src/lib/integrations/provider-catalog.ts` — DISPLAY SoT: label,
  *     description, category, connect method, docs link.
  *
  * Re-typing those into marketing copy is how a site ends up claiming a
@@ -41,7 +41,7 @@
  * them moved, the bytes do not move either. Same reasoning as the marketing
  * sitemap's omitted `lastModified`.
  */
-import { INTEGRATION_CATEGORIES, PROVIDER_CATALOG } from '@/app/settings/integrations/registry';
+import { INTEGRATION_CATEGORIES, PROVIDER_CATALOG } from '@/lib/integrations/provider-catalog';
 import { capabilityTitle } from '@/lib/integrations/capability-labels';
 import { listConnectors } from '@/lib/integrations/connectors/registry';
 import type { Capability } from '@/lib/integrations/connectors/types';

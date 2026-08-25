@@ -76,6 +76,7 @@ import {
   type InventoryEventStation,
 } from '@/lib/inventory/events';
 import { transition } from '@/lib/inventory/state-machine';
+import { NO_SESSION, type SessionAttribution } from '@/lib/sessions/attribution';
 
 export interface UnitEventLedger {
   /** Signed quantity delta; 0 is ignored (no ledger row written). */
@@ -89,6 +90,17 @@ export interface UnitEventLedger {
 }
 
 export interface RecordUnitEventInput {
+  /**
+   * WHICH WORK SESSION THIS HAPPENED INSIDE. Required, un-defaulted — this is a
+   * SHARED chokepoint called from many places, and a hard-coded `NO_SESSION`
+   * inside it would write unattributed rows on behalf of every caller, silently.
+   * That is the exact "shared resolver writes before the branch that was
+   * supposed to decide" failure this repo has already paid for once.
+   *
+   * Pass {@link NO_SESSION} when the caller genuinely has no session.
+   */
+  session: SessionAttribution;
+
   // ── tenant ──
   /** Owning tenant — required so the org-scoped serial_units upsert can stamp it. */
   organizationId: OrgId;
@@ -305,6 +317,7 @@ export async function recordUnitEvent(
   if (wantsStatusChange) {
     const result = await deps.transition(
       {
+        session: input.session,
         unitId,
         to: input.targetStatus!, // SerialStatus ⊂ SerialState
         eventType: input.eventType,
@@ -339,6 +352,7 @@ export async function recordUnitEvent(
       : upserted.unit.current_status;
     const event = await deps.recordInventoryEvent(
       {
+        session: input.session,
         event_type: input.eventType,
         actor_staff_id: input.actorStaffId ?? null,
         station: input.station ?? null,

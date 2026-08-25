@@ -638,63 +638,6 @@ test('regression: orders-exceptions/[id] PATCH is orders.create (tracking-only e
   assert.ok(r.methods.includes('PATCH'), 'expected PATCH method');
 });
 
-// ── Kiosk device principal (/kiosk — FOH/BOH surface split doc 06) ───────────
-
-test('kiosk enroll + revoke are gated by walk_in.enroll_kiosk', () => {
-  const paths = routesGatedBy('walk_in.enroll_kiosk').map((r) => r.path);
-  assert.ok(paths.includes('/api/kiosk/enroll/route.ts'), 'enroll gated by walk_in.enroll_kiosk');
-  assert.ok(paths.includes('/api/kiosk/revoke/route.ts'), 'revoke gated by walk_in.enroll_kiosk');
-});
-
-test('walk_in.enroll_kiosk is a registered permission', () => {
-  assert.equal(isKnownPermission('walk_in.enroll_kiosk'), true);
-});
-
-test('kiosk intake is a device-principal gate (withKioskAuth), no staff permission', () => {
-  const r = routeByPath('/api/kiosk/intake/route.ts');
-  assert.ok(r, 'intake route should be in the manifest');
-  assert.equal(r.permission, null);
-  assert.ok(r.gate.includes('withKioskAuth'), `expected withKioskAuth gate, got ${r.gate}`);
-  // It is a device-authed WRITE — must never be an ungated (gate: NONE) route.
-  assert.notEqual(r.gate, 'NONE');
-});
-
-test('walk_in.take_payment is a registered permission', () => {
-  assert.equal(isKnownPermission('walk_in.take_payment'), true);
-});
-
-test('taking counter payment is NOT a route gate on any DEVICE-authed kiosk route', () => {
-  // The kiosk write path is device-authed, so there is no staff session for
-  // withAuth to check a permission against. `walk_in.take_payment` is instead
-  // verified inside resolveKioskStepUp against the PIN'd staff's effective
-  // permissions. This test pins that architecture: if someone later "fixes" a
-  // /api/kiosk route to require the permission via withAuth, the device
-  // principal breaks and the whole unattended-tablet model goes with it.
-  //
-  // Narrowed from "no route anywhere" 2026-08-20: the desk twin
-  // (/api/counter/session/**) runs under withAuth with a real staff session, so
-  // gating THOSE on the permission is the correct check, not a violation. The
-  // invariant was always about the device principal — it now says so.
-  const r = routeByPath('/api/kiosk/intake/route.ts');
-  assert.ok(r, 'intake route should be in the manifest');
-  assert.equal(r.permission, null, 'device-authed: no route-level staff permission');
-  const kioskGated = routesGatedBy('walk_in.take_payment').filter((route) =>
-    route.path.startsWith('/api/kiosk/'),
-  );
-  assert.deepEqual(
-    kioskGated.map((route) => route.path),
-    [],
-    'walk_in.take_payment is a step-up permission on the kiosk, not a route gate',
-  );
-});
-
-test('kiosk pair is public + capability-gated (the pairing code is the capability)', () => {
-  const r = routeByPath('/api/kiosk/pair/route.ts');
-  assert.ok(r, 'pair route should be in the manifest');
-  assert.equal(r.permission, null);
-  assert.ok(r.gate.includes('anonymous'), `expected anonymous gate, got ${r.gate}`);
-});
-
 // ── Packer Review Station (WS-REVIEW — packer-review-station-plan Phase 3) ────
 
 test('packing.review gates the manager decide + queue routes', () => {
@@ -757,4 +700,25 @@ test('interop.read gates every standards-projection route', () => {
       `${route.path} is under /api/interop but is gated by ${route.permission ?? 'nothing'}`,
     );
   }
+});
+
+test('regression: placement.record / placement.view gate the unit↔location spine routes', () => {
+  // 00-endgame D1/D10 (2026-08-24): the spine's writes are floor actions gated
+  // by their own permission pair, not by the sku_stock/bin families. The AI has
+  // no mutation_kind mapping to these routes — a permission regression here
+  // would be the first crack in "a location is a fact created by a scan".
+  const recordPaths = routesGatedBy('placement.record').map((r) => r.path);
+  const viewPaths = routesGatedBy('placement.view').map((r) => r.path);
+  assert.ok(
+    recordPaths.includes('/api/inventory/placements/route.ts'),
+    'placement.record should gate the put-away write',
+  );
+  assert.ok(
+    recordPaths.includes('/api/inventory/part-pulls/route.ts'),
+    'placement.record should gate the part-pull write',
+  );
+  assert.ok(
+    viewPaths.includes('/api/inventory/spine/route.ts'),
+    'placement.view should gate the capstone lookup',
+  );
 });

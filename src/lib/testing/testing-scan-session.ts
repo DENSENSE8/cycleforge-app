@@ -7,7 +7,7 @@
  * and feed the results in.
  */
 
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import type { ResolvedVia } from '@/lib/testing/resolve-testing-scan';
 
 export type TestingScanSessionPhase = 'idle' | 'anchored' | 'confirmed';

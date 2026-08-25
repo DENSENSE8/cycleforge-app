@@ -1,5 +1,5 @@
-import type { WorkOrderRow } from '@/components/work-orders/types';
-import { buildSourceHref } from '@/components/work-orders/types';
+import type { WorkOrderRow } from '@/lib/work-orders/types';
+import { buildSourceHref } from '@/lib/work-orders/types';
 import type { MyDayInterrupt } from './my-day-types';
 
 export function workOrderHref(row: WorkOrderRow): string {

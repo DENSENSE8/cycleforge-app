@@ -15,7 +15,7 @@
  */
 
 import type { ReactNode } from 'react';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { isOperatorReceived } from '@/lib/receiving/rail/status';
 
 /** { current, total } for the hover-popover progress meter. */

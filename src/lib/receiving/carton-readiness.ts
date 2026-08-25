@@ -1,5 +1,5 @@
 import { workflowStage } from '@/lib/receiving/workflow-stages';
-import type { ReceivingDetailsLog } from '@/components/station/receiving-details-log';
+import type { ReceivingDetailsLog } from '@/lib/receiving/receiving-details-log';
 
 export type CartonPipelineKey = 'scanned' | 'unboxed' | 'received';
 export type CartonPipelineState = 'done' | 'active' | 'pending';

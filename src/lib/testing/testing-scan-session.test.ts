@@ -6,7 +6,7 @@ import {
   testingScanSessionReducer,
   unitBelongsToAnchor,
 } from './testing-scan-session';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 
 function line(overrides: Partial<ReceivingLineRow> = {}): ReceivingLineRow {
   return {

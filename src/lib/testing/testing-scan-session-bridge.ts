@@ -27,7 +27,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import type { ResolvedVia } from '@/lib/testing/resolve-testing-scan';
 import {
   INITIAL_TESTING_SCAN_SESSION,

@@ -14,8 +14,7 @@ import { test, expect, type Page } from '@playwright/test';
  * on, and a **rail-less** surface (Pattern E), so `context` reads null by design
  * rather than by failure.
  *
- * States: no panel · one panel (Band-3 "Show inspector" → the View-only shell)
- * · compare split (`?clayout=split`).
+ * States: no panel · one panel (Band-3 "Show inspector" → the View-only shell).
  */
 
 const VIEWPORTS = [1280, 1440, 1920] as const;
@@ -26,8 +25,6 @@ interface FrameGeom {
   context: number | null;
   center: number | null;
   inspector: number | null;
-  paneWidths: number[];
-  compareLayout: string | null;
   scrollW: number;
   clientW: number;
 }
@@ -43,10 +40,6 @@ async function frame(page: Page): Promise<FrameGeom> {
     const w = (el: Element | null | undefined) =>
       el ? Math.round(el.getBoundingClientRect().width) : null;
     const row = document.querySelector('main')?.firstElementChild ?? null;
-    const compare = document.querySelector('[data-testid="orders-compare-host"]');
-    const panes = compare
-      ? Array.from(compare.querySelectorAll('[data-orders-compare-pane]'))
-      : [];
     // The center is the content row's own work column — the rail's sibling.
     const railHost = document.querySelector('[data-context-panel]')?.parentElement ?? null;
     const center = railHost
@@ -58,8 +51,6 @@ async function frame(page: Page): Promise<FrameGeom> {
       context: w(document.querySelector('[data-context-panel]:not([data-collapsed="true"])')),
       center: w(center),
       inspector: w(document.querySelector('[data-right-rail-column]')),
-      paneWidths: panes.map((p) => Math.round(p.getBoundingClientRect().width)),
-      compareLayout: compare?.getAttribute('data-orders-compare-layout') ?? null,
       scrollW: document.documentElement.scrollWidth,
       clientW: document.documentElement.clientWidth,
     };
@@ -81,22 +72,12 @@ const rows: string[] = [];
 
 function record(viewport: number, state: string, g: FrameGeom) {
   const cell = (n: number | null) => (n == null ? '—' : String(n));
-  const starved = g.paneWidths.some((w) => w < PANE_MIN_PX);
   rows.push(
     `| ${viewport} | ${state} | ${cell(g.frame)} | ${cell(g.spine)} | ${cell(g.context)} | ` +
       `${cell(g.center)} | ${cell(g.inspector)} | ` +
-      `${g.paneWidths.length ? g.paneWidths.join(' + ') : '—'}${starved ? ' ⚠' : ''} | ` +
-      `${g.compareLayout ?? '—'} | ${g.scrollW > g.clientW ? 'YES' : 'no'} |`,
+      `${g.scrollW > g.clientW ? 'YES' : 'no'} |`,
   );
 }
-
-/**
- * Recorded, not asserted: the compare host's own per-pane minimum. The probe
- * REPORTS pane widths against it rather than failing on it, because clamping to
- * it is Phase 1 work and Phase 1 is parked with the split feature. A row under
- * this number is a known, documented gap — not a broken test.
- */
-const PANE_MIN_PX = 360;
 
 test.describe('frame baseline (Phase 0)', () => {
   for (const width of VIEWPORTS) {
@@ -117,31 +98,14 @@ test.describe('frame baseline (Phase 0)', () => {
       }
       const onePanel = await frame(page);
       record(width, 'one panel', onePanel);
-
-      // ── State 3: compare split ───────────────────────────────────────────
-      await openToShip(page, '?clayout=split');
-      const split = await frame(page);
-      record(width, 'compare split', split);
-
-      // ── State 4: compare split + inspector ───────────────────────────────
-      // The case the plan's Phase 0 ruling 2 turns on — two panes AND the one
-      // inspector, which is what Phase 3 asks an operator to work in.
-      const toggle2 = page.getByRole('button', { name: /Show inspector/i }).first();
-      if (await toggle2.count()) {
-        await toggle2.click();
-        await page.waitForTimeout(800);
-      }
-      const splitPanel = await frame(page);
-      record(width, 'split + inspector', splitPanel);
-
     });
   }
 
   test.afterAll(() => {
     // eslint-disable-next-line no-console
     console.log(
-      '\n| viewport | state | frame | spine | context | center | inspector | panes | layout | h-scroll |\n' +
-        '|---|---|---|---|---|---|---|---|---|---|\n' +
+      '\n| viewport | state | frame | spine | context | center | inspector | h-scroll |\n' +
+        '|---|---|---|---|---|---|---|---|\n' +
         rows.join('\n') +
         '\n',
     );

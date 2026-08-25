@@ -15,7 +15,7 @@
  * module re-exports everything here, so existing importers are unaffected and
  * server-side validation is unchanged.
  */
-import { THEME_NAMES, type ThemeName } from '@/design-system/themes/registry';
+import { THEME_NAMES, type ThemeName } from '@/lib/design/themes/registry';
 
 /**
  * Keys that reclaim focus even while an editable field is focused — warehouse

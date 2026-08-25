@@ -49,11 +49,24 @@
  * occupant's deliberate refusal. `canClose` is consulted BEFORE either half.
  */
 
-import { closeAndCachePanel } from '@/lib/right-rail/panel-store';
-import { getRightRailTop } from '@/lib/right-rail/store';
+import { closeAndCachePanel, getPanelStore } from '@/lib/right-rail/panel-store';
+import { getRightRailPanel, getRightRailTop } from '@/lib/right-rail/store';
 
-export function closeRightPanel(): void {
-  const top = getRightRailTop();
+/**
+ * Close ONE occupant.
+ *
+ * `instanceId` names which. Omitted, it means "the one in the slot" — which is
+ * what Escape and a one-slot host's corner `X` mean, and it is why the argument
+ * is optional rather than required: `usePanelStoreKeyboard` injects this
+ * function as a bare `() => void` closer, and a required argument there would
+ * have to be invented at the keyboard, where the answer genuinely is "whatever
+ * is on top".
+ *
+ * The N-tile host passes an id, because with three tiles up "the top one" is no
+ * longer the same question as "the one whose X the operator clicked".
+ */
+export function closeRightPanel(instanceId?: string): void {
+  const top = instanceId ? getRightRailPanel(instanceId) : getRightRailTop();
   if (!top) return;
 
   // Refusal outranks both halves. Checked first so a veto costs no draft
@@ -65,6 +78,13 @@ export function closeRightPanel(): void {
     return;
   }
 
-  closeAndCachePanel();
+  // The lifecycle half is a SINGLETON: `closeAndCachePanel` parks whatever the
+  // panel store currently calls the active view and toasts one "Draft saved."
+  // With N tiles up, closing a tile that is not the active view would park a
+  // DIFFERENT tile than the one being closed — so it runs only when the target
+  // is in fact the active view. The teardown half always runs; it is the half
+  // that belongs to this occupant.
+  const isActiveView = getPanelStore().activeView?.id === top.id;
+  if (isActiveView) closeAndCachePanel();
   top.onClose?.();
 }
