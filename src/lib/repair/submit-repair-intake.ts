@@ -4,11 +4,11 @@
  *
  * Everything here is scoped by `orgId` + the submitted body; NOTHING depends on
  * a staff actor. That is deliberate: the staff route (`/api/repair/submit`,
- * `withAuth` + `repair.intake`) calls this one helper rather than inlining the
- * work, so any future intake surface shares one code path. (A headless kiosk
- * route was the second caller until the kiosk product was removed 2026-08-22.)
- * Extracting the former inline route body into this helper is the route →
- * domain-helper pattern from `.claude/rules/backend-patterns.md`.
+ * `withAuth` + `repair.intake`) and the headless kiosk route
+ * (`/api/kiosk/repair/submit`, `withKioskAuth` device principal, no PIN) both
+ * call this one helper, so the two surfaces can never drift. Extracting the
+ * former inline route body into this helper is the route → domain-helper
+ * pattern.
  *
  * Validation failures throw `RepairIntakeValidationError` (callers map → 400);
  * any other throw is an internal error (callers map → 500).
@@ -48,6 +48,41 @@ interface SubmitRepairIntakeInput {
    * `'skip'` — counter owns enqueue via ticket_work_outbox (avoids double create).
    */
   ticketWork?: RepairIntakeTicketWork;
+}
+
+/**
+ * What a repair intake is still missing — the ONE definition of the rule.
+ *
+ * Extracted 2026-08-21 (SQ6) so the counter can pre-flight EVERY device before
+ * it writes anything. It used to exist only inline here, which meant a
+ * multi-device visit discovered device 2 was invalid *after* device 1 (and the
+ * header) had been committed — and the header permanently owned the visit's
+ * idempotency key, so the retry short-circuited and the valid device was never
+ * recorded at all.
+ *
+ * Pure, and takes already-normalized values: the caller trims, this decides.
+ * Copying these six rules into the counter instead would be the fork this
+ * repo's compose-don't-fork law exists to prevent — the two would drift on the
+ * first rule change, and the drift would be invisible until a customer's device
+ * went missing.
+ */
+export function missingRepairIntakeFields(input: {
+  name?: string | null;
+  phone?: string | null;
+  productTitle: string;
+  reasons: string[];
+  repairNotes: string;
+  serialNumber: string;
+  price: string;
+}): string[] {
+  const missing: string[] = [];
+  if (!input.name) missing.push('Name');
+  if (!input.phone) missing.push('Phone');
+  if (!input.productTitle) missing.push('Product Title');
+  if (!input.reasons.length && !input.repairNotes) missing.push('Repair Reason or Notes');
+  if (!input.serialNumber) missing.push('Serial #');
+  if (!input.price) missing.push('Price');
+  return missing;
 }
 
 export interface SubmitRepairIntakeResult {
@@ -104,24 +139,22 @@ export async function submitRepairIntake(
   const normalizedSourceSku = String(product?.sourceSku || '').trim();
   const techId = assignedTechId ? Number(assignedTechId) : null;
 
+  // Normalize identity the same way every other field is normalized above, so
+  // validation and use share one value instead of re-deriving it.
+  const normalizedName = String(customer?.name ?? '').trim();
+  const normalizedPhone = String(customer?.phone ?? '').trim();
+
   // Validate required fields (email is optional)
-  if (
-    !customer?.name ||
-    !customer?.phone ||
-    !normalizedProductTitle ||
-    (!normalizedReasons.length && !normalizedRepairNotes) ||
-    !normalizedSerialNumber ||
-    !normalizedPrice
-  ) {
-    const missing: string[] = [];
-    if (!customer?.name) missing.push('Name');
-    if (!customer?.phone) missing.push('Phone');
-    if (!normalizedProductTitle) missing.push('Product Title');
-    if (!normalizedReasons.length && !normalizedRepairNotes) missing.push('Repair Reason or Notes');
-    if (!normalizedSerialNumber) missing.push('Serial #');
-    if (!normalizedPrice) missing.push('Price');
-    throw new RepairIntakeValidationError(missing);
-  }
+  const missing = missingRepairIntakeFields({
+    name: normalizedName,
+    phone: normalizedPhone,
+    productTitle: normalizedProductTitle,
+    reasons: normalizedReasons,
+    repairNotes: normalizedRepairNotes,
+    serialNumber: normalizedSerialNumber,
+    price: normalizedPrice,
+  });
+  if (missing.length > 0) throw new RepairIntakeValidationError(missing);
 
   const postedAt = formatPSTTimestamp();
 
@@ -131,9 +164,9 @@ export async function submitRepairIntake(
   const productString = normalizedProductTitle;
 
   // Format contact info (email is optional) — kept for backward compatibility
-  const contactInfo = customer.email
-    ? `${customer.name}, ${customer.phone}, ${customer.email}`
-    : `${customer.name}, ${customer.phone}`;
+  const contactInfo = customer?.email
+    ? `${normalizedName}, ${normalizedPhone}, ${customer?.email}`
+    : `${normalizedName}, ${normalizedPhone}`;
 
   // Format issue (repair reasons + repair notes from step 2)
   const issueString =
@@ -143,9 +176,9 @@ export async function submitRepairIntake(
   // Step 1: Find or create customer record
   const customerRecord = await findOrCreateRepairCustomer(
     {
-      name: customer.name,
-      phone: customer.phone,
-      email: customer.email || undefined,
+      name: normalizedName,
+      phone: normalizedPhone,
+      email: customer?.email || undefined,
     },
     orgId,
   );
@@ -214,16 +247,16 @@ export async function submitRepairIntake(
         [
           dbId,
           signatureUrl,
-          customer.name,
+          normalizedName,
           JSON.stringify({
             ticketNumber: finalRSNumber,
             product: productString,
             serialNumber: normalizedSerialNumber,
             issue: issueString,
             price: normalizedPrice,
-            customerName: customer.name,
-            customerPhone: customer.phone,
-            customerEmail: customer.email || null,
+            customerName: normalizedName,
+            customerPhone: normalizedPhone,
+            customerEmail: customer?.email || null,
             signatureStrokes: Array.isArray(signatureStrokes) ? signatureStrokes : null,
             terms:
               'Your Bose product has been received into our repair center. Under normal circumstances it will be repaired within the next 3-10 working days. There is a 30 day Warranty on all our repair services.',
@@ -246,9 +279,9 @@ export async function submitRepairIntake(
     orgId,
     repairServiceId: dbId,
     repairServiceNumber: finalRSNumber,
-    customerName: customer.name,
-    customerPhone: customer.phone,
-    customerEmail: customer.email || '',
+    customerName: normalizedName,
+    customerPhone: normalizedPhone,
+    customerEmail: customer?.email || '',
     productTitle: productString,
     contactInfo,
     issue: issueString,

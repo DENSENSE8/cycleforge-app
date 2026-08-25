@@ -21,7 +21,7 @@
  *
  * Idempotent via `receiving_triage.triage_client_event_id` (org-led partial
  * UNIQUE, ux_receiving_triage_client_event_id), mirroring the
- * `inventory_events.client_event_id` pattern in .claude/rules/backend-patterns.md
+ * `inventory_events.client_event_id` pattern in
  * — a retried click/network-flake resolves the SAME row instead of erroring or
  * double-writing.
  *

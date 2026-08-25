@@ -26,7 +26,7 @@
  *
  * NOTE: this operates only on the Zoho `items` SKU scheme. Never cross it with
  * `sku_catalog` — the two are independent SKU numbering schemes that collide on
- * the same string (see `.claude/rules/source-of-truth.md`).
+ * the same string ().
  */
 
 /** Canonical color codes → labels. GR and GY both mean Gray. */

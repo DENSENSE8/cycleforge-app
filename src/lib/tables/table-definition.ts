@@ -36,7 +36,7 @@
  * - and a default set that keeps growing is how a dense 1080p ops queue turns
  *   into soup one "just one more column" at a time.
  *
- * Invariants mirror `.claude/rules/source-of-truth.md` → Grid identity pane ·
+ * Invariants mirror Grid identity pane ·
  * Grid column visibility + sort.
  */
 

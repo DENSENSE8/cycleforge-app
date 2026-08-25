@@ -6,7 +6,7 @@
  * hook) importing the shape from there is one careless value-import away from a
  * build error, and the unit test cannot load it at all. Same rule as the rest of
  * the repo — pure helpers get their own dependency-free module and the heavy one
- * re-exports them (.claude/rules/build-gotchas.md → bundle altitude).
+ * re-exports them (bundle altitude).
  */
 type PendingWorkSource = 'nas-archive' | 'open-exception';
 

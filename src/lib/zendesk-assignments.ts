@@ -4,7 +4,7 @@
  *
  * Pure DB helpers (get / upsert / clear). The route owns the side-effects
  * (notifying the assignee via staff_messages + audit), per the house route
- * skeleton in .claude/rules/backend-patterns.md.
+ * skeleton in
  *
  * Tenant-scoped via withTenantTransaction / tenantQuery — organization_id
  * auto-stamps from the app.current_org GUC (see the migration).

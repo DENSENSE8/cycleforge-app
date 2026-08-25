@@ -53,7 +53,7 @@ interface ConfirmContentsInput {
    * Required, with no default. A writer that decides whether a claim is being
    * MADE or WITHDRAWN must be told which; defaulting it is the "safety
    * classification with a default" this codebase has already paid for twice
-   * (`.claude/rules/backend-patterns.md` — `intakeSurface`, `scanKind`).
+ * (`intakeSurface`, `scanKind`).
    */
   confirmed: boolean;
 }

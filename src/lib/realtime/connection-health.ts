@@ -17,7 +17,7 @@
  *
  * No React, no Ably import, no DOM: the debounce is the part that must be
  * provable by a test rather than by unplugging a router
- * (`.claude/rules/display/station.md` §8 — station-down is first-class and
+ * (8 — station-down is first-class and
  * degrade-not-block). Visible chrome today is the Operations TV pill + mobile
  * `NetworkChip` — there is no app-root banner.
  *

@@ -25,7 +25,7 @@
  * *evidence of aspect X*, so it must never inflate an aspect's count and thereby
  * complete a step nobody worked.
  *
- * `Deps`-injected per `.claude/rules/backend-patterns.md`, so the unit test runs
+ * `Deps`-injected per, so the unit test runs
  * with zero DB.
  */
 

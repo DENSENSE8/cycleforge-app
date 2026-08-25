@@ -37,7 +37,7 @@
  * `parseBizStep` / `parseDisposition` return `null` on an unknown value. A
  * CBV term is a CLAIM about what happened to someone else's goods, which
  * makes it a safety classification in the sense of
- * `.claude/rules/backend-patterns.md` — and a defaulted classification is a
+ * and a defaulted classification is a
  * bug this repo has now paid for three times (`intakeSurface` defaulting to
  * `'triage'`, `scanKind` defaulting to `'work'`, and the photo-aspect
  * vocabulary that was written to avoid repeating them). A caller that cannot

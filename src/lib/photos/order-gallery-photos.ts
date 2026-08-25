@@ -10,7 +10,6 @@
  * `receivingPhotoToGalleryInput` for the receiving side and nothing for this
  * one. Dependency-free and NOT `'use client'`, so a server caller can reach it
  * without pulling the gallery component's graph — the bundle-altitude rule in
- * `.claude/rules/build-gotchas.md`.
  *
  * Read-only inputs: no `id`, so the viewer never offers a destructive action on
  * a photo this surface has no permission to touch.

@@ -16,6 +16,7 @@
 
 import { tenantQuery, withTenantConnection } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
+import { resolveSearchScopeLabel } from '@/lib/search/search-scope-labels';
 import type { SearchRecentEntry } from '@/lib/search/search-recents';
 
 /** Max rows retained per staffer (across scopes). Reads default to this too. */
@@ -32,12 +33,22 @@ interface SearchRecentDbRow {
   created_at: Date | string;
 }
 
+/**
+ * `scope_label` is RE-RESOLVED on read, never trusted (2026-08-21).
+ *
+ * The column is a snapshot of whatever the writer's surface called itself at
+ * insert time, and rows outlive the code path that wrote them: 89 dogfood rows
+ * still carried `Search` from `GlobalFindCombobox`'s retired
+ * `scope: isStage ? 'dashboard' : 'global'` line. `scope` is the durable fact;
+ * the label is a presentation of it, so it resolves through the one SoT
+ * ({@link resolveSearchScopeLabel}) on every read.
+ */
 function toEntry(row: SearchRecentDbRow): SearchRecentEntry {
   return {
     id: String(row.id),
     query: row.query,
     scope: row.scope,
-    scopeLabel: row.scope_label ?? undefined,
+    scopeLabel: resolveSearchScopeLabel(row.scope),
     scopeHref: row.scope_href ?? undefined,
     resultCount: row.result_count ?? undefined,
     topHit: row.top_hit ?? undefined,

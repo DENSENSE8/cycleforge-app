@@ -25,7 +25,7 @@
  * nor smuggle one past the vocabulary.
  *
  * `code` is a required parameter with no default everywhere it appears
- * (`.claude/rules/backend-patterns.md` → "a safety classification is a REQUIRED
+ * ("a safety classification is a REQUIRED
  * parameter"): a defaulted override code would silently waive the gate for
  * every call site that forgot to pass one.
  *

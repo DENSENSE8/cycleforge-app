@@ -106,7 +106,7 @@ export const RECORD_CURSOR_PRIORITY = {
 /**
  * How a surface opens a record on the cursor's behalf.
  *
- * `intent` is REQUIRED and undefaulted (`.claude/rules/backend-patterns.md` → a
+ * `intent` is REQUIRED and undefaulted (a
  * safety classification takes no default): it decides whether the open counts as
  * operator navigation. `'click'` clears `scanMatchedRows`, `'step'` must not —
  * that difference is the entire reason `receiving-highlight-line` was forked

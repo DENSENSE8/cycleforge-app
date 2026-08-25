@@ -28,23 +28,26 @@
  *
  * ## Operator resize
  *
- * Every content track is `resizable: true`. The engine already owns the
- * mechanics (drag handle in `LedgerGridColumnHeader`, `--cf-col-*` vars written
- * by `ColumnResizeHandle`, per-staff persistence via `useGridColumnWidths`), so
- * this is a flag, not a feature build. Only `select` (a 2rem checkbox gutter),
- * `open` (a 2.5rem chevron) and `_fill` (structural slack) stay fixed: their
- * contents have no variable length, so a drag there could only add or steal
- * whitespace around a glyph.
+ * Every DATA track is `resizable: true`. The engine already owns the mechanics
+ * (drag handle in `LedgerGridColumnHeader`, `--cf-col-*` vars written by
+ * `ColumnResizeHandle`, per-staff persistence via `useGridColumnWidths`), so
+ * this is a flag, not a feature build.
  *
- * The widths below are DEFAULTS, not a ceiling. `fulfillment` used to be 11rem,
- * which left a visible gutter between a short order chip and the item title on
- * every row; it is 8.5rem now and an operator who works long PO numbers drags
- * it wider once and it sticks.
+ * The four CHROME tracks stay fixed: `select` and `thumb` (the two equal
+ * gutters — see `COMPOUND_GUTTER_TRACK_REM` for why a drag there would break
+ * the equality), `open` (a 2.5rem chevron) and `_fill` (structural slack).
+ * None of their contents has a variable length, so a drag could only add or
+ * steal whitespace around a fixed mark.
+ *
+ * The widths below are DEFAULTS, not a ceiling. `fulfillment` was 11rem, then
+ * 8.5rem, and is 6.5rem now — each step measured against what the cell actually
+ * renders rather than estimated. An operator who works long PO numbers drags it
+ * wider once and it sticks.
  */
 
 import { GRID_FILL_COLUMN } from '@/lib/grid/grid-fill-column';
 import type { ColumnType } from '@/lib/tables/table-columns';
-import { COMPOUND_ROW_PX, COMPOUND_THUMB_TRACK_REM } from './compound-row-chrome';
+import { COMPOUND_GUTTER_TRACK_REM, COMPOUND_ROW_PX } from './compound-row-chrome';
 
 /**
  * The compound track keys, in canonical order.
@@ -88,52 +91,84 @@ export interface CompoundTrack {
 }
 
 /**
+ * The gutter track, as a CSS `minmax()`.
+ *
+ * Kept as a `minmax(Xrem, Xrem)` string on purpose: `gridColumnTrackRem` parses
+ * the rem out of this shape to build the frozen pane's sticky-left `calc()`,
+ * and falls back to 12rem for any width string that names no rem — which
+ * silently un-pins the pane.
+ */
+const GUTTER_TRACK = `minmax(${COMPOUND_GUTTER_TRACK_REM}rem, ${COMPOUND_GUTTER_TRACK_REM}rem)`;
+
+/**
  * The ONE compound geometry declaration.
  *
  * | track         | width  | resize | carries                              |
  * |---------------|--------|--------|--------------------------------------|
- * | `select`      | 2rem   | no     | frozen checkbox gutter               |
- * | `thumb`       | 4rem   | yes    | square photo (frozen row handle)     |
- * | `fulfillment` | 8.5rem | yes    | order / PO over carrier tracking     |
+ * | `select`      | 3rem   | no     | full-bleed checkmark (frozen)        |
+ * | `thumb`       | 3rem   | no     | full-bleed square photo (frozen)     |
+ * | `fulfillment` | 6.5rem | yes    | order / PO over carrier tracking     |
  * | `item`        | 18rem  | yes    | title over the operator note         |
  * | `state`       | 10rem  | yes    | state pill over lateness             |
  * | `open`        | 2.5rem | no     | chevron → the record                 |
  * | `_fill`       | 1fr    | no     | sole slack track                     |
  *
+ * The two gutters are EQUAL BY CONSTRUCTION — both read
+ * `COMPOUND_GUTTER_TRACK_REM`, which is the row box in rem. They are the only
+ * tracks whose contents go edge to edge with no cell inset at all.
+ *
  * The frozen pane is `select · thumb` — a contiguous prefix, because
  * `gridFrozenLeft` sums the widths of preceding frozen tracks and a gap would
- * pin the sticky pane at the wrong origin. The thumbnail resizes safely inside
- * that pane: those offsets are a `calc()` over the same `--cf-col-*` vars the
- * drag writes, so pinned cells follow a resized track with no extra machinery.
+ * pin the sticky pane at the wrong origin. Those offsets are a `calc()` over
+ * the same `--cf-col-*` vars a drag writes, so the pane would follow a resized
+ * track if either gutter were ever unpinned.
  */
 export const COMPOUND_TRACKS: readonly CompoundTrack[] = [
   {
     key: 'select',
-    width: 'minmax(2rem, 2rem)',
+    // The SAME width as `thumb`, from one constant — the two full-bleed squares
+    // that open every row. Declared equal rather than written equal.
+    width: GUTTER_TRACK,
+    label: 'Select',
+    // No header word: the column is a 48px checkmark square and the faded check
+    // in every body cell already says what it is.
+    gridLabel: '',
     sortable: false,
     frozen: true,
     resizable: false,
+    labelFitRem: 2,
   },
   {
     key: 'thumb',
     frozen: true,
-    width: `minmax(${COMPOUND_THUMB_TRACK_REM}rem, ${COMPOUND_THUMB_TRACK_REM}rem)`,
+    width: GUTTER_TRACK,
     label: 'Photo',
-    // Empty grid label: the column is a 32px square with no room for a word,
-    // and the thumbnails themselves say what the track is.
+    // Empty grid label: the column is a 48px square with no room for a word,
+    // and the photos themselves say what the track is.
     gridLabel: '',
     align: 'start',
     sortable: false,
-    resizable: true,
-    minTrackRem: 2.5,
+    // NOT resizable, and that is the point: `isGridColumnResizable` refuses
+    // `select` unconditionally, so a draggable photo track could only ever end
+    // up a different width from the checkmark track beside it.
+    resizable: false,
     labelFitRem: 2,
   },
   {
     key: 'fulfillment',
-    // 8.5rem fits `#`-less order chips and a last-8 tracking face with a hair
-    // of slack. Wider read as a gap between two columns rather than as one
-    // column with breathing room.
-    width: 'minmax(8.5rem, 8.5rem)',
+    // MEASURED, not guessed: an 8-character order id renders 69px including its
+    // brand dot and gap. At 8.5rem (136px, less 16px of cell inset) that left
+    // 51px of dead space piled against the Item title, because a fixed track
+    // puts ALL its slack on one side and this cell is left-aligned. 6.5rem
+    // leaves ~19px — enough that a slightly longer id still fits, little enough
+    // that it reads as one column breathing rather than two columns apart.
+    //
+    // It cannot be content-sized. Every ROW is its own CSS grid, so a
+    // `max-content` track would resolve per row and no two rows' columns would
+    // land at the same x — the tracks are fixed precisely so the grid stays a
+    // grid. An operator who works longer ids drags this wider once (it is the
+    // resizable track it always was) and it sticks.
+    width: 'minmax(6.5rem, 6.5rem)',
     label: 'Fulfillment',
     gridLabel: 'Order',
     type: 'id',
@@ -222,4 +257,16 @@ export function compoundRowEstimateFor(
   return columns.some((c) => c.key === 'thumb' || c.key === 'item')
     ? COMPOUND_ROW_PX
     : undefined;
+}
+
+/**
+ * Is this the compound model, rather than a family's flat spreadsheet?
+ *
+ * Keyed off the presence of a compound-only track. The `select` cell is the
+ * reason this exists: every grid in the repo has a `select` column, so the
+ * shared compound renderer can only claim that key once it knows which layout
+ * is mounted. A flag would be one more thing that can disagree with the model.
+ */
+export function isCompoundColumnModel(columns: readonly { key: string }[]): boolean {
+  return columns.some((c) => c.key === 'thumb' || c.key === 'item');
 }

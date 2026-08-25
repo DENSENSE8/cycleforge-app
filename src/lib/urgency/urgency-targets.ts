@@ -42,7 +42,7 @@
  *
  * Pure and dependency-free so a client surface can import the vocabulary
  * without dragging the server write path into its bundle
- * (`.claude/rules/build-gotchas.md` → bundle altitude). The write half lives in
+ * (bundle altitude). The write half lives in
  * `promote-urgency-core.ts` (pure orchestration) + `promote-urgency.ts`
  * (server binding).
  */

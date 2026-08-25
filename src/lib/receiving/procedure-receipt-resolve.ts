@@ -7,7 +7,7 @@
  * it the same fact set it feeds the bench. This half imports `tenancy/db`, which
  * transitively pulls the Neon driver. Keeping them in one file would put that
  * whole graph behind any client import of the receipt TYPES
- * (`.claude/rules/build-gotchas.md` → bundle altitude: keep light helpers out of
+ * (bundle altitude: keep light helpers out of
  * heavy modules). The route imports this; a view imports the types.
  *
  * ## A carton-level receipt over per-LINE facts

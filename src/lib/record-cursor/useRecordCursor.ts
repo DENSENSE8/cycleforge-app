@@ -234,7 +234,7 @@ const NO_CURSOR: RecordCursorControls = {
  * list these controls step, and receiving publishes two at once — a `'sibling'`
  * panel that inherited a `'record'` default would read "3 of 47 cartons" where it
  * must read "2 of 5 lines", silently, on the surface nobody re-checked. Same law
- * as `intent` below (`.claude/rules/backend-patterns.md` — a classification takes
+ * as `intent` below (a classification takes
  * no default).
  */
 export function useRecordCursor(scope: CursorScope): RecordCursorControls {

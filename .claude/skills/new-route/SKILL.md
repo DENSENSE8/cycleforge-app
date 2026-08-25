@@ -6,9 +6,13 @@ allowed-tools: Read, Grep, Glob, Edit, Write, Bash
 
 # New API route scaffolder
 
-Generates a route that already satisfies what `api-route-reviewer`, `route-auth-check`,
-and `permission-registry-guard` police, so it passes review on the first pass. Read
-`AGENTS.md` (auth / orgId / audit hard laws) before starting — this skill operationalizes them.
+Generates a route that already carries the auth gate, validation, audit row and org
+scoping, so it passes review on the first pass. Read `AGENTS.md` (auth / orgId / audit
+hard laws) before starting — this skill operationalizes them.
+
+The reviewer agents and the route-auth audit script that used to police this were
+deleted in the 2026-08-21 governance teardown. Nothing checks these invariants
+automatically now, so the checklist below is the whole enforcement.
 
 The reference templates live next to this file:
 - `templates/collection-route.ts.tmpl` — a non-dynamic `route.ts` (uses `withAuth`).
@@ -95,14 +99,14 @@ All audit vocabulary lives in `src/lib/audit-logs.ts`. To add one:
    - Append a row to `PERMISSIONS` in `src/lib/auth/permission-registry.ts` (right category;
      `destructive: true` / `stepUp: true` as needed). Everything else derives automatically.
    - Add a regression test to `src/lib/auth/route-permission-manifest.test.ts` asserting
-     `routesGatedBy('<perm>')` includes the new path. (`permission-registry-guard` requires this pairing.)
-   - Regenerate the committed manifest: `npm run audit-route-auth:emit`.
+     `routesGatedBy('<perm>')` includes the new path. That test is the only thing left
+     pinning route/permission pairing — keep it honest.
 
-10. **Verify** — run the guards this skill is designed to satisfy:
+10. **Verify:**
     ```bash
-    npm run audit-route-auth:check
     npx --no-install next lint --file <relative path to route.ts>
-    npm test -- route-permission-manifest    # if you touched the registry
+    npx tsx --test src/lib/auth/route-permission-manifest.test.ts  # if you touched the registry
+    npm run verify                                                 # before done
     ```
     Report results. Do not commit (user commits via GitHub Desktop).
 

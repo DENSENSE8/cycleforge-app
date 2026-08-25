@@ -14,7 +14,7 @@
  * chosen by {@link pickAnchorFromLinkage}.
  *
  * Deps-injected (default real impls) so unit tests run DB-free and without a live
- * helpdesk connector (.claude/rules/backend-patterns.md). Runtime ticket-link /
+ * helpdesk connector. Runtime ticket-link /
  * helpdesk imports stay dynamic so this module stays importable from tests.
  */
 import type { OrgId } from '@/lib/tenancy/constants';

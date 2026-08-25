@@ -189,12 +189,11 @@ test.describe('Search & Details station layout', () => {
     await expect(itemsToggle).toHaveAttribute('aria-expanded', 'false');
   });
 
-  // The floating note SURVIVED the 2026-08-21 station port (operator call): it
-  // is the only note entry on `/search` for `?sel=receiving:` and `?sel=unit:`,
-  // because neither `CartonInspector` nor `UnitDetailsPanel` mounts a thread.
-  // It now composes `ThreadNoteComposer variant="float"` rather than forking it,
-  // which is why `bodyClassName="pb-16"` on the scrollport must also stay.
-  test('the rail stacks find → recents → floating note, and the recents get the height', async ({ page }) => {
+  // TWO bands, not three. The floating quick-note and the `pb-16` clearance
+  // that existed solely for it were deleted in the 2026-08-21 Unbox parity
+  // teardown — the Unbox rail is find + recents and nothing else. A third child
+  // here means a page-local dock has crept back onto the rail.
+  test('the rail stacks find → recents, and the recents get the height', async ({ page }) => {
     await openOrder(page);
 
     const boxes = await page.locator(RAIL).evaluate((rail) =>
@@ -204,8 +203,8 @@ test.describe('Search & Details station layout', () => {
       }),
     );
 
-    expect(boxes.length, 'find bar · recents · floating note').toBe(3);
-    const [find, recents, note] = boxes;
+    expect(boxes.length, 'find bar · recents — no third band').toBe(2);
+    const [find, recents] = boxes;
 
     // Regression: `TechRailSearchBar variant="chrome"` is `h-full`, built for a
     // horizontal band. In this flex COLUMN it took the entire rail and squashed
@@ -213,7 +212,25 @@ test.describe('Search & Details station layout', () => {
     expect(find.h, 'the find bar is a band, not the whole rail').toBeLessThan(80);
     expect(recents.h, 'the recents get the remaining height').toBeGreaterThan(300);
     expect(find.y, 'find leads').toBeLessThan(recents.y);
-    expect(note.y, 'the note floats at the bottom').toBeGreaterThan(recents.y);
+  });
+
+  // Regression for the double timestamp: the row age is the rail shell's ONE
+  // age column (`getActivityAt` → `formatLaneAgeCompact`). A second age render
+  // through `formatRelativeTime` put `16d` beside `2w` on every row.
+  test('a recent row renders exactly one age', async ({ page }) => {
+    await openOrder(page);
+
+    // No testid on rail rows — the status dot is the stable row marker.
+    const row = page.locator(`${RAIL} button:has([data-rail-status-dot])`).first();
+    if (!(await row.count())) test.skip(true, 'no recents seeded for the QA staffer');
+
+    const ages = await row.evaluate((el) => {
+      const AGE = /^\s*\d+\s*(s|m|h|d|w|mo|y)\s*(ago)?\s*$/i;
+      return Array.from(el.querySelectorAll('*'))
+        .filter((n) => n.children.length === 0 && AGE.test(n.textContent ?? ''))
+        .map((n) => (n.textContent ?? '').trim());
+    });
+    expect(ages, 'one instant, one grammar').toHaveLength(1);
   });
 
   test('Items AND the composer both fit on first paint', async ({ page }) => {

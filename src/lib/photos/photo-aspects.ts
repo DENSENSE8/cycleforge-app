@@ -22,7 +22,7 @@
  *
  *   1. **`parsePhotoAspect` returns `null` on an unknown value and has no
  *      default.** An aspect is a CLAIM about what a photo shows, so it is a
- *      safety classification in the sense of `.claude/rules/backend-patterns.md`
+ * safety classification in the sense of
  *      — and a defaulted classification is the bug that shipped twice here
  *      (`intakeSurface` defaulting to `'triage'`, `scanKind` defaulting to
  *      `'work'`). A caller that cannot name the aspect must send none.

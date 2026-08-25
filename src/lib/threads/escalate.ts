@@ -15,7 +15,7 @@
  *     attach the resulting support ticket to the thread.
  *
  * Deps-injected (default real impls) so unit tests run DB-free and without a
- * live Zendesk connector (.claude/rules/backend-patterns.md).
+ * live Zendesk connector.
  */
 
 import { withTenantConnection } from '@/lib/tenancy/db';

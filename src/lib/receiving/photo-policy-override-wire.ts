@@ -44,7 +44,7 @@ export const PHOTO_POLICY_OVERRIDE_FLOW_CONTEXT = 'receiving_exception';
  * `code` is REQUIRED with no default: absence of an override is expressed by
  * NOT calling this, which leaves the gate hard-blocking. That is the safe
  * direction — a defaulted code here would waive the gate for every caller that
- * forgot to think about it (`.claude/rules/backend-patterns.md`).
+ * forgot to think about it.
  */
 export function photoPolicyOverrideField(
   code: PhotoPolicyOverrideCode,
