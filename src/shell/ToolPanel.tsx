@@ -126,14 +126,11 @@ function AssistantBody({ shell }: { shell: ShellApi }) {
           Undo last
         </button>
       </div>
-      <div className="composer inset">
-        <div className="composer-wrap">
-          <textarea rows={1} aria-label="Ask the assistant" placeholder="Ask, or tell it what to set up…" />
-        </div>
-        <button type="button" className="btn btn-icon" title="Send">
-          <Icon name="send" size={14} />
-        </button>
-      </div>
+      {/* HARD RULE (operator, 2026-08-24): the shell has ONE composer.
+          The panel's own "Ask the assistant" textarea was deleted — asking
+          the assistant IS the main composer's prose path; a panel that
+          grows a second mouth splits where words go. */}
+      <div className="tool-empty-sub">Ask through the main composer — it is the one input.</div>
     </div>
   );
 }

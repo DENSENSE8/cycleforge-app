@@ -15,6 +15,9 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { useReducedMotion } from 'motion/react';
+import { playFeedback } from '@/shell/feedback';
 import { useFindFieldScan } from '@/hooks/useFindFieldScan';
 import {
   OmniCommandComposer,
@@ -23,7 +26,6 @@ import {
 import { hhmmss, useClock } from '@/shell/clock';
 import { Icon } from '@/shell/icons';
 import {
-  FEED_WELCOME,
   TOOLS,
   blockElapsedSeconds,
   type AssistantFeedMessage,
@@ -33,17 +35,40 @@ import {
 import type { ShellApi } from '@/shell/useShell';
 
 /** One turn — the same bubble whether it sits between blocks or inside one. */
+/**
+ * ONE TURN — JUST TEXT (2026-08-24, operator ruling: "no bubbles wrapper
+ * for the text, just the text itself, on the left side is the agent on
+ * the right is you — it's that simple").
+ *
+ * Gone: the bordered, filled `.feed-bubble` box and the "ASSISTANT" /
+ * "YOU" eyebrow above every turn. Both were saying the same thing SIDE
+ * already says — a label naming the author of a message that is already
+ * aligned to that author's side is the label restating the layout.
+ *
+ * The bubble had a second cost the operator's screenshot shows: an
+ * elevated white box on the white composer pane reads as a control, and
+ * a one-line answer ("Opened Orders.") became a chip floating in space.
+ * Text on the plane is text; only alignment marks who said it.
+ */
 function Turn({ msg, run }: { msg: AssistantFeedMessage; run: (action: FeedAction) => void }) {
+  const operator = msg.role === 'operator';
   return (
-    <div className={`feed-msg ${msg.role}`}>
-      <span className="feed-role">{msg.role === 'operator' ? 'You' : 'Assistant'}</span>
-      <div className="feed-bubble">{msg.text}</div>
+    <div className={`flex flex-col gap-1 ${operator ? 'items-end' : 'items-start'}`}>
+      <p
+        className={`max-w-[85%] whitespace-pre-wrap break-words text-sm leading-relaxed ${
+          /* The operator's own words sit one step back; the agent's answer
+             is the thing being read, so it takes the full ink. */
+          operator ? 'text-right text-muted-foreground' : 'text-foreground'
+        }`}
+      >
+        {msg.text}
+      </p>
       {msg.actions ? (
-        <div className="feed-actions">
+        <div className="flex flex-wrap gap-2 pt-1">
           {msg.actions.map((action) => (
-            <button key={action.ref} type="button" className="btn" onClick={() => run(action)}>
+            <Button key={action.ref} variant="outline" size="sm" onClick={() => run(action)}>
               {action.label}
-            </button>
+            </Button>
           ))}
         </div>
       ) : null}
@@ -207,8 +232,28 @@ function ContextRing({ shell, label }: { shell: ShellApi; label: string }) {
 export function AssistantFeed({ shell }: { shell: ShellApi }) {
   const [hasDraft, setHasDraft] = useState(false);
   const composerHandle = useRef<OmniComposerHandle | null>(null);
+
+  /* FEEDBACK MOTION — the one call site so far (see shell/feedback.ts).
+     The entry swells 1.5% for 140ms when a commit lands, which is what
+     tells an operator mid-scan that the gun's burst was taken. It is
+     REINFORCEMENT: the committed value also appears as a chip in the
+     field, so the surface reads correctly with motion disabled. */
+  const entryRef = useRef<HTMLDivElement | null>(null);
+  const reduced = useReducedMotion() ?? false;
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const { feed, runFeedAction, handleFieldScan, handleFieldPaste, onComposerCommit } = shell;
+
+  /* Wrapped, not replaced. The commit runs FIRST and synchronously; the
+     animation is fired after and never awaited, so nothing on the scan
+     path can be delayed by a paint (guardrail 2). */
+  const commitWithFeedback = useCallback<typeof onComposerCommit>(
+    (...args) => {
+      const result = onComposerCommit(...args);
+      playFeedback(entryRef.current, 'commit', reduced);
+      return result;
+    },
+    [onComposerCommit, reduced],
+  );
 
   /* The input truth layer (Phase 1): the composer opts in to field-scoped
      wedge detection and paste stamping. A claimed burst's characters were
@@ -248,15 +293,7 @@ export function AssistantFeed({ shell }: { shell: ShellApi }) {
   return (
     <div className="assistant-feed" data-last-input-source={lastInput?.source}>
       <div className="feed-column">
-        {feed.length === 0 ? (
-          <div className="feed-welcome">
-            <div className="feed-welcome-mark" aria-hidden>
-              <Icon name="assistant" size={20} />
-            </div>
-            <h2>{FEED_WELCOME.title}</h2>
-            <p>{FEED_WELCOME.body}</p>
-          </div>
-        ) : (
+        {feed.length === 0 ? null : (
           <div className="feed-scroll" ref={scrollRef} aria-label="Conversation">
             {hasBlocks ? (
               <button
@@ -279,19 +316,45 @@ export function AssistantFeed({ shell }: { shell: ShellApi }) {
         )}
 
         <div className="feed-composer">
-          <div className="feed-entry">
+          {/* THE WRITE TARGET (Phase 7's `target`, first landing): while an
+              order is focused, prose in the One Field is a comment ON THAT
+              ORDER. The chip is a status readout, never an input (I6); the ✕
+              releases prose back to the assistant. */}
+          {shell.composerTarget ? (
+            <div className="feed-target-row">
+              <span className="feed-target-chip">
+                → <span className="mono">#{shell.composerTarget.orderKey}</span>
+                <span className="feed-target-what">prose writes an internal note</span>
+              </span>
+              <button
+                type="button"
+                className="rail-btn rail-btn-xs"
+                title="Stop writing to this order — prose returns to the assistant"
+                onClick={shell.clearComposerTarget}
+              >
+                <Icon name="close" size={10} />
+              </button>
+            </div>
+          ) : null}
+          <div className="feed-entry" ref={entryRef}>
             {/* THE ONE FIELD (HANDOFF-ai-centre): identifiers chip, `/` runs
                 actions, prose talks, and the gun lands here too. */}
             <OmniCommandComposer
-              onCommit={onComposerCommit}
+              onCommit={commitWithFeedback}
               onDraftChange={setHasDraft}
               handleRef={composerHandle}
               attachScanCapture={scanCapture}
             />
             <div className="feed-entry-meta">
+              {/* A LINEAR KEYBIND PREVIEW, not buttons (2026-08-24
+                  ruling). These were never clickable and are not made
+                  clickable now — a tactile keycap that does nothing when
+                  pressed is a worse lie than a flat label. They are the
+                  legend for chords the ONE FIELD already accepts. */}
               <span className="feed-hint">
-                <span className="kbd">#</span> order · <span className="kbd">/</span> action ·{' '}
-                <span className="kbd">Enter</span> send
+                <span className="keycap"><span className="kbd">#</span> order</span>
+                <span className="keycap"><span className="kbd">/</span> action</span>
+                <span className="keycap"><span className="kbd">Enter</span> send</span>
               </span>
               <button
                 type="button"

@@ -16,7 +16,10 @@
  * task-session stepper. See `followUps`.
  */
 
-import { Icon } from '@/shell/icons';
+import { useCallback } from 'react';
+import { OrderDetailTile, OrdersQueueTile } from '@/components/tiles/orders/OrdersTile';
+import type { OrderHeaderFacts } from '@/components/tiles/orders/orders-tile-data';
+import { ProductTile } from '@/components/tiles/product/ProductTile';
 import { ACCENTS, DENSITY, PIPELINE, TILE_FLOOR_SESSION_PX, TILE_FLOOR_TABLE_PX, pipelineLabel, type AccentKey, type DensityKey, type ShellTile } from '@/shell/model';
 import type { ShellApi } from '@/shell/useShell';
 
@@ -74,20 +77,11 @@ function SessionTile({ tile, shell }: { tile: ShellTile; shell: ShellApi }) {
         Last scan landed in this tile · <span className="kbd">Enter</span> to confirm
       </div>
 
-      <div className="composer docked">
-        <div className="composer-wrap">
-          <div className="composer-toggle">
-            <button type="button" className="active">
-              internal
-            </button>
-            <button type="button">public</button>
-          </div>
-          <textarea placeholder="Add a note…" rows={1} aria-label="Add a note" />
-        </div>
-        <button type="button" className="btn btn-icon" title="Send">
-          <Icon name="send" size={14} />
-        </button>
-      </div>
+      {/* HARD RULE (operator, 2026-08-24): the shell has ONE composer.
+          The prototype's docked per-tile composer was deleted here — a
+          session's notes enter through the main composer like every other
+          text, so a tile never mounts its own input surface. */}
+      <div className="tile-hint">Notes go through the main composer — it is the one input.</div>
     </div>
   );
 }
@@ -260,8 +254,41 @@ function SettingsTile({ shell }: { shell: ShellApi }) {
   );
 }
 
+function OrderDetailHost({ tile, shell }: { tile: ShellTile; shell: ShellApi }) {
+  const tileId = tile.id;
+  const setHeaderPayload = shell.setHeaderPayload;
+  const onHeaderFacts = useCallback(
+    (facts: OrderHeaderFacts | null) => setHeaderPayload(tileId, facts),
+    [setHeaderPayload, tileId],
+  );
+  return (
+    <OrderDetailTile
+      orderKey={tile.ref.slice('order:'.length)}
+      onOpenProduct={shell.openProductTile}
+      narrate={shell.narrate}
+      onFocusResolved={shell.setOrdersWriteTarget}
+      onReleased={shell.releaseOrdersWriteTarget}
+      onHeaderFacts={onHeaderFacts}
+    />
+  );
+}
+
 export function TileBody({ tile, shell }: { tile: ShellTile; shell: ShellApi }) {
   if (tile.ref === 'settings') return <SettingsTile shell={shell} />;
+  // The first REAL data tiles (HANDOFF-orders-first). This mapping is the
+  // whole host adapter — the tiles themselves import nothing from the shell,
+  // so the D2 canvas rebuild re-parents them by moving these lines. Hard
+  // rule (2026-08-24): the queue tile and an order's detail tile are
+  // SEPARATE tiles — a display never overrides another tile's surface.
+  if (tile.ref === 'orders') {
+    return <OrdersQueueTile onOpenOrder={shell.openOrderDetailTile} />;
+  }
+  if (tile.ref.startsWith('order:')) {
+    return <OrderDetailHost tile={tile} shell={shell} />;
+  }
+  if (tile.ref.startsWith('product:')) {
+    return <ProductTile sku={tile.ref.slice('product:'.length)} />;
+  }
   if (tile.type === 'session') return <SessionTile tile={tile} shell={shell} />;
   if (tile.type === 'table') return <TableTile />;
   return <div className="tile-placeholder">Tile content</div>;
