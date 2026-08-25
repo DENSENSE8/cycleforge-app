@@ -91,6 +91,11 @@ already cut 61–68% and is no longer the constraint — do not re-run that hunt
 - **Scores are only comparable within one profile.** Change a route's form factor
   and its baseline floor is void — `--check` fails it until you re-seed.
 - Runbook, CI wiring and how to re-seed: [`docs/performance/LIGHTHOUSE.md`](docs/performance/LIGHTHOUSE.md).
+- **Request shape** (how many calls a route fires, not how big the bundle is) is
+  a separate axis with its own harness: `npm run perf:requests -- --route=…`
+  captures depth / width / redundancy / poll-vs-push against a production build.
+  Method + fix catalog + the suspects already ruled out:
+  [`.claude/skills/request-shape/SKILL.md`](.claude/skills/request-shape/SKILL.md).
 
 ## Verify
 

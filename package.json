@@ -130,6 +130,7 @@
     "lighthouse:check": "node scripts/lighthouse-audit.mjs --tier 1 --check",
     "perf:budget": "node scripts/bundle-budget.mjs",
     "perf:budget:update": "node scripts/bundle-budget.mjs --update",
+    "perf:requests": "node scripts/request-shape.mjs",
     "e2e:install": "playwright install chromium webkit",
     "test:station-workbench": "tsx --test src/lib/station-terminal/station-terminal.test.ts",
     "test:perf": "tsx --test src/lib/perf/*.test.ts src/lib/keyboard/wedge-scan-machine.test.ts src/lib/keyboard/wedge-scan-listener.test.ts src/lib/orders-sync/parse-ndjson.test.ts src/lib/orders-sync/client.test.ts src/hooks/useWedgeScanner.sot.test.ts src/design-system/components/grid/grid-paint.test.ts"

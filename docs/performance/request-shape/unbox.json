@@ -1,0 +1,667 @@
+{
+  "url": "http://localhost:3100/unbox?openReceivingId=51971",
+  "ttfb": 2479,
+  "isDev": false,
+  "rows": [
+    {
+      "url": "/api/station-commands/aliases",
+      "start": 2874,
+      "end": 3972,
+      "ms": 1099,
+      "bytes": 324
+    },
+    {
+      "url": "/api/nav",
+      "start": 2875,
+      "end": 4529,
+      "ms": 1654,
+      "bytes": 349
+    },
+    {
+      "url": "/api/staff-goals/me",
+      "start": 2876,
+      "end": 4941,
+      "ms": 2064,
+      "bytes": 488
+    },
+    {
+      "url": "/api/work-orders/mine",
+      "start": 2877,
+      "end": 4757,
+      "ms": 1879,
+      "bytes": 624
+    },
+    {
+      "url": "/api/catalog/platforms",
+      "start": 2881,
+      "end": 3920,
+      "ms": 1039,
+      "bytes": 2632
+    },
+    {
+      "url": "/api/integrations/capability-label?cap=inventory",
+      "start": 2882,
+      "end": 3428,
+      "ms": 546,
+      "bytes": 380
+    },
+    {
+      "url": "/api/receiving/rail-exclusions?feedKey=receiving_unbox",
+      "start": 2883,
+      "end": 4593,
+      "ms": 1710,
+      "bytes": 467
+    },
+    {
+      "url": "/api/settings?page=receiving",
+      "start": 2884,
+      "end": 4689,
+      "ms": 1805,
+      "bytes": 4654
+    },
+    {
+      "url": "/api/staff-preferences",
+      "start": 2886,
+      "end": 4872,
+      "ms": 1986,
+      "bytes": 1943
+    },
+    {
+      "url": "/api/surfaces/unbox/resolve",
+      "start": 2972,
+      "end": 5100,
+      "ms": 2127,
+      "bytes": 430
+    },
+    {
+      "url": "/api/receiving-lines?receiving_id=51971",
+      "start": 3121,
+      "end": 5256,
+      "ms": 2135,
+      "bytes": 533
+    },
+    {
+      "url": "/api/receiving-photos?receivingId=51971&photoIntent=carton",
+      "start": 3326,
+      "end": 5821,
+      "ms": 2496,
+      "bytes": 6629
+    },
+    {
+      "url": "/api/catalog/types",
+      "start": 3327,
+      "end": 5264,
+      "ms": 1937,
+      "bytes": 1999
+    },
+    {
+      "url": "/api/catalog/priorities",
+      "start": 3327,
+      "end": 5372,
+      "ms": 2044,
+      "bytes": 332
+    },
+    {
+      "url": "/api/receiving-lines?receiving_id=51971",
+      "start": 3328,
+      "end": 7260,
+      "ms": 3931,
+      "bytes": 533
+    },
+    {
+      "url": "/api/receiving/51971/acknowledge-unbox",
+      "start": 3329,
+      "end": 5440,
+      "ms": 2111,
+      "bytes": 316
+    },
+    {
+      "url": "/api/receiving/51971",
+      "start": 3330,
+      "end": 6352,
+      "ms": 3023,
+      "bytes": 1542
+    },
+    {
+      "url": "/api/locations",
+      "start": 3331,
+      "end": 5785,
+      "ms": 2454,
+      "bytes": 8165
+    },
+    {
+      "url": "/api/org/gs1",
+      "start": 3332,
+      "end": 5532,
+      "ms": 2200,
+      "bytes": 329
+    },
+    {
+      "url": "/api/receiving/recent-label-note",
+      "start": 3334,
+      "end": 5877,
+      "ms": 2543,
+      "bytes": 455
+    },
+    {
+      "url": "/api/receiving-photos?receivingId=51971&photoIntent=carton",
+      "start": 3335,
+      "end": 6546,
+      "ms": 3211,
+      "bytes": 6629
+    },
+    {
+      "url": "/api/support/tickets/by-entity?receivingId=51971",
+      "start": 3336,
+      "end": 6064,
+      "ms": 2728,
+      "bytes": 596
+    },
+    {
+      "url": "/api/receiving-photos?receivingId=51971",
+      "start": 3337,
+      "end": 7191,
+      "ms": 3854,
+      "bytes": 6629
+    },
+    {
+      "url": "/api/staff?active=false",
+      "start": 3500,
+      "end": 6552,
+      "ms": 3052,
+      "bytes": 3734
+    },
+    {
+      "url": "/api/inbox/tech-queue",
+      "start": 3510,
+      "end": 7507,
+      "ms": 3997,
+      "bytes": 2208
+    },
+    {
+      "url": "/api/inbox/support",
+      "start": 3511,
+      "end": 6730,
+      "ms": 3219,
+      "bytes": 322
+    },
+    {
+      "url": "/api/staff-messages?unread=1",
+      "start": 3511,
+      "end": 7252,
+      "ms": 3740,
+      "bytes": 312
+    },
+    {
+      "url": "/api/staff-todos?station=TECH",
+      "start": 4944,
+      "end": 7112,
+      "ms": 2168,
+      "bytes": 793
+    },
+    {
+      "url": "/api/receiving/pending-work?receivingId=51971",
+      "start": 6072,
+      "end": 7500,
+      "ms": 1428,
+      "bytes": 312
+    },
+    {
+      "url": "/api/photos/5996/content?variant=thumb",
+      "start": 6549,
+      "end": 8245,
+      "ms": 1696,
+      "bytes": 6976
+    },
+    {
+      "url": "/api/photos/5995/content?variant=thumb",
+      "start": 6555,
+      "end": 8304,
+      "ms": 1749,
+      "bytes": 8907
+    },
+    {
+      "url": "/api/photos/5993/content?variant=thumb",
+      "start": 6556,
+      "end": 8630,
+      "ms": 2075,
+      "bytes": 12826
+    },
+    {
+      "url": "/api/photos/5994/content?variant=thumb",
+      "start": 6556,
+      "end": 9132,
+      "ms": 2577,
+      "bytes": 10606
+    },
+    {
+      "url": "/api/photos/5992/content",
+      "start": 6556,
+      "end": 10822,
+      "ms": 4266,
+      "bytes": 0
+    },
+    {
+      "url": "/api/photos/5993/content",
+      "start": 6556,
+      "end": 10893,
+      "ms": 4337,
+      "bytes": 0
+    },
+    {
+      "url": "/api/photos/5994/content",
+      "start": 6556,
+      "end": 11266,
+      "ms": 4710,
+      "bytes": 0
+    },
+    {
+      "url": "/api/photos/5995/content",
+      "start": 6556,
+      "end": 11814,
+      "ms": 5258,
+      "bytes": 0
+    },
+    {
+      "url": "/api/photos/5996/content",
+      "start": 6556,
+      "end": 11946,
+      "ms": 5389,
+      "bytes": 0
+    },
+    {
+      "url": "/api/realtime/token?rnd=0045234415928759875",
+      "start": 7270,
+      "end": 8140,
+      "ms": 870,
+      "bytes": 1855
+    },
+    {
+      "url": "/api/receiving/unbox-kpi?mode=queue&urange=7d",
+      "start": 7287,
+      "end": 10052,
+      "ms": 2765,
+      "bytes": 2227
+    },
+    {
+      "url": "/api/staff?active=true",
+      "start": 7288,
+      "end": 8979,
+      "ms": 1691,
+      "bytes": 3734
+    },
+    {
+      "url": "/api/receiving-lines?limit=1&offset=0&count_only=1&view=scanned&sort=priority",
+      "start": 7288,
+      "end": 9475,
+      "ms": 2187,
+      "bytes": 369
+    },
+    {
+      "url": "/api/receiving-lines?limit=1&offset=0&count_only=1&view=viewed",
+      "start": 7289,
+      "end": 9814,
+      "ms": 2525,
+      "bytes": 370
+    },
+    {
+      "url": "/api/custom-fields/defs?entityType=RECEIVING",
+      "start": 7290,
+      "end": 9251,
+      "ms": 1961,
+      "bytes": 327
+    },
+    {
+      "url": "/api/receiving-lines?limit=50&offset=0&view=scanned&sort=priority&phase=spine",
+      "start": 7291,
+      "end": 10887,
+      "ms": 3596,
+      "bytes": 43781
+    },
+    {
+      "url": "/api/zendesk/tickets/9808/bundle",
+      "start": 7292,
+      "end": 11156,
+      "ms": 3864,
+      "bytes": 6772
+    },
+    {
+      "url": "/api/zoho/items/5623409000001862936/image",
+      "start": 10968,
+      "end": 11999,
+      "ms": 1031,
+      "bytes": 65801
+    },
+    {
+      "url": "/api/zoho/items/5623409000001860328/image",
+      "start": 10969,
+      "end": 11871,
+      "ms": 902,
+      "bytes": 22380
+    },
+    {
+      "url": "/api/zoho/items/5623409000001866263/image",
+      "start": 10969,
+      "end": 12559,
+      "ms": 1591,
+      "bytes": 76530
+    },
+    {
+      "url": "/api/integrations/capability-label?cap=helpdesk",
+      "start": 11172,
+      "end": 12299,
+      "ms": 1127,
+      "bytes": 358
+    },
+    {
+      "url": "/api/photos/5992/content",
+      "start": 11177,
+      "end": 12302,
+      "ms": 1125,
+      "bytes": 0
+    }
+  ],
+  "focus": [
+    {
+      "count": 0,
+      "bytes": 0,
+      "rows": []
+    },
+    {
+      "count": 4,
+      "bytes": 20354,
+      "rows": [
+        {
+          "url": "/api/receiving/rail-exclusions?feedKey=receiving_unbox",
+          "ms": 628,
+          "bytes": 467
+        },
+        {
+          "url": "/api/receiving-photos?receivingId=51971",
+          "ms": 1471,
+          "bytes": 6629
+        },
+        {
+          "url": "/api/receiving-photos?receivingId=51971&photoIntent=carton",
+          "ms": 1372,
+          "bytes": 6629
+        },
+        {
+          "url": "/api/receiving-photos?receivingId=51971&photoIntent=carton",
+          "ms": 1771,
+          "bytes": 6629
+        }
+      ]
+    }
+  ],
+  "analysis": {
+    "duplicates": [
+      {
+        "url": "/api/receiving-photos?receivingId=51971&photoIntent=carton",
+        "count": 2,
+        "wastedBytes": 6629
+      },
+      {
+        "url": "/api/receiving-lines?receiving_id=51971",
+        "count": 2,
+        "wastedBytes": 533
+      },
+      {
+        "url": "/api/photos/5992/content",
+        "count": 2,
+        "wastedBytes": 0
+      }
+    ],
+    "multiShape": [
+      {
+        "endpoint": "/api/receiving-lines",
+        "shapes": [
+          "/api/receiving-lines?receiving_id=51971",
+          "/api/receiving-lines?limit=1&offset=0&count_only=1&view=scanned&sort=priority",
+          "/api/receiving-lines?limit=1&offset=0&count_only=1&view=viewed",
+          "/api/receiving-lines?limit=50&offset=0&view=scanned&sort=priority&phase=spine"
+        ],
+        "totalBytes": 45586
+      },
+      {
+        "endpoint": "/api/receiving-photos",
+        "shapes": [
+          "/api/receiving-photos?receivingId=51971&photoIntent=carton",
+          "/api/receiving-photos?receivingId=51971"
+        ],
+        "totalBytes": 19887
+      },
+      {
+        "endpoint": "/api/photos/5993/content",
+        "shapes": [
+          "/api/photos/5993/content?variant=thumb",
+          "/api/photos/5993/content"
+        ],
+        "totalBytes": 12826
+      },
+      {
+        "endpoint": "/api/photos/5994/content",
+        "shapes": [
+          "/api/photos/5994/content?variant=thumb",
+          "/api/photos/5994/content"
+        ],
+        "totalBytes": 10606
+      },
+      {
+        "endpoint": "/api/photos/5995/content",
+        "shapes": [
+          "/api/photos/5995/content?variant=thumb",
+          "/api/photos/5995/content"
+        ],
+        "totalBytes": 8907
+      },
+      {
+        "endpoint": "/api/staff",
+        "shapes": [
+          "/api/staff?active=false",
+          "/api/staff?active=true"
+        ],
+        "totalBytes": 7468
+      },
+      {
+        "endpoint": "/api/photos/5996/content",
+        "shapes": [
+          "/api/photos/5996/content?variant=thumb",
+          "/api/photos/5996/content"
+        ],
+        "totalBytes": 6976
+      },
+      {
+        "endpoint": "/api/integrations/capability-label",
+        "shapes": [
+          "/api/integrations/capability-label?cap=inventory",
+          "/api/integrations/capability-label?cap=helpdesk"
+        ],
+        "totalBytes": 738
+      }
+    ],
+    "chains": [
+      {
+        "from": "/api/zendesk/tickets/9808/bundle",
+        "to": "/api/photos/5992/content",
+        "gapMs": 21,
+        "tailEnd": 12302
+      },
+      {
+        "from": "/api/zendesk/tickets/9808/bundle",
+        "to": "/api/integrations/capability-label?cap=helpdesk",
+        "gapMs": 16,
+        "tailEnd": 12299
+      },
+      {
+        "from": "/api/photos/5993/content",
+        "to": "/api/zoho/items/5623409000001862936/image",
+        "gapMs": 75,
+        "tailEnd": 11999
+      },
+      {
+        "from": "/api/staff?active=false",
+        "to": "/api/photos/5996/content",
+        "gapMs": 4,
+        "tailEnd": 11946
+      },
+      {
+        "from": "/api/staff?active=false",
+        "to": "/api/photos/5995/content",
+        "gapMs": 4,
+        "tailEnd": 11814
+      },
+      {
+        "from": "/api/staff?active=false",
+        "to": "/api/photos/5994/content",
+        "gapMs": 4,
+        "tailEnd": 11266
+      },
+      {
+        "from": "/api/receiving-lines?receiving_id=51971",
+        "to": "/api/zendesk/tickets/9808/bundle",
+        "gapMs": 32,
+        "tailEnd": 11156
+      },
+      {
+        "from": "/api/staff?active=false",
+        "to": "/api/photos/5993/content",
+        "gapMs": 4,
+        "tailEnd": 10893
+      },
+      {
+        "from": "/api/receiving-lines?receiving_id=51971",
+        "to": "/api/receiving-lines?limit=50&offset=0&view=scanned&sort=priority&phase=spine",
+        "gapMs": 31,
+        "tailEnd": 10887
+      },
+      {
+        "from": "/api/staff?active=false",
+        "to": "/api/photos/5992/content",
+        "gapMs": 4,
+        "tailEnd": 10822
+      }
+    ],
+    "peakConcurrency": 26,
+    "countProbes": [],
+    "heaviest": [
+      {
+        "url": "/api/zoho/items/5623409000001866263/image",
+        "start": 10969,
+        "end": 12559,
+        "ms": 1591,
+        "bytes": 76530
+      },
+      {
+        "url": "/api/zoho/items/5623409000001862936/image",
+        "start": 10968,
+        "end": 11999,
+        "ms": 1031,
+        "bytes": 65801
+      },
+      {
+        "url": "/api/receiving-lines?limit=50&offset=0&view=scanned&sort=priority&phase=spine",
+        "start": 7291,
+        "end": 10887,
+        "ms": 3596,
+        "bytes": 43781
+      },
+      {
+        "url": "/api/zoho/items/5623409000001860328/image",
+        "start": 10969,
+        "end": 11871,
+        "ms": 902,
+        "bytes": 22380
+      },
+      {
+        "url": "/api/photos/5993/content?variant=thumb",
+        "start": 6556,
+        "end": 8630,
+        "ms": 2075,
+        "bytes": 12826
+      },
+      {
+        "url": "/api/photos/5994/content?variant=thumb",
+        "start": 6556,
+        "end": 9132,
+        "ms": 2577,
+        "bytes": 10606
+      },
+      {
+        "url": "/api/photos/5995/content?variant=thumb",
+        "start": 6555,
+        "end": 8304,
+        "ms": 1749,
+        "bytes": 8907
+      },
+      {
+        "url": "/api/locations",
+        "start": 3331,
+        "end": 5785,
+        "ms": 2454,
+        "bytes": 8165
+      }
+    ],
+    "slowest": [
+      {
+        "url": "/api/photos/5996/content",
+        "start": 6556,
+        "end": 11946,
+        "ms": 5389,
+        "bytes": 0
+      },
+      {
+        "url": "/api/photos/5995/content",
+        "start": 6556,
+        "end": 11814,
+        "ms": 5258,
+        "bytes": 0
+      },
+      {
+        "url": "/api/photos/5994/content",
+        "start": 6556,
+        "end": 11266,
+        "ms": 4710,
+        "bytes": 0
+      },
+      {
+        "url": "/api/photos/5993/content",
+        "start": 6556,
+        "end": 10893,
+        "ms": 4337,
+        "bytes": 0
+      },
+      {
+        "url": "/api/photos/5992/content",
+        "start": 6556,
+        "end": 10822,
+        "ms": 4266,
+        "bytes": 0
+      },
+      {
+        "url": "/api/inbox/tech-queue",
+        "start": 3510,
+        "end": 7507,
+        "ms": 3997,
+        "bytes": 2208
+      },
+      {
+        "url": "/api/receiving-lines?receiving_id=51971",
+        "start": 3328,
+        "end": 7260,
+        "ms": 3931,
+        "bytes": 533
+      },
+      {
+        "url": "/api/zendesk/tickets/9808/bundle",
+        "start": 7292,
+        "end": 11156,
+        "ms": 3864,
+        "bytes": 6772
+      }
+    ]
+  },
+  "route": "/unbox",
+  "base": "http://localhost:3100",
+  "capturedAt": "2026-08-25T06:06:47.881Z"
+}
