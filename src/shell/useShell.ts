@@ -36,8 +36,19 @@ import { useWorkspace } from '@/lib/workspace/useWorkspace';
 import type { TabDescriptor } from '@/lib/workspace/types';
 import type { ScanRoute } from '@/lib/barcode-routing';
 import type { ComposerCommit } from '@/lib/composer/commit';
+import {
+  appendOrderNote,
+  dispatchOrdersTileNoteAppended,
+} from '@/components/tiles/orders/orders-tile-data';
+import { orderDetailTileVerdict } from '@/components/tiles/orders/order-tile-policy';
 import { getOrderPlatformLabel } from '@/utils/order-platform';
 import { dispatchOpenShippedDetails } from '@/utils/events';
+import {
+  applyHeaderTileClose,
+  applyHeaderTileHover,
+  type HeaderEntity,
+} from '@/shell/header-entity';
+import type { OrderHeaderFacts } from '@/components/tiles/orders/orders-tile-data';
 import type { IconName } from '@/shell/icons';
 import { syncElapsed } from '@/shell/clock';
 import {
@@ -154,6 +165,23 @@ function applyPrefs(prefs: ShellPrefs, theme: ShellTheme): void {
 
 /* ── the hook ────────────────────────────────────────────────────────── */
 
+/**
+ * The composer's WRITE TARGET (Phase 7's `target`, first landing): prose
+ * committed while this is set becomes an internal note on the named order
+ * instead of a turn to the assistant. Set by an order chip commit and by the
+ * Orders tile's focused detail; cleared by its chip's ✕, by leaving the
+ * detail, or by the tile closing. ORDER-only until a second entity earns it.
+ */
+export interface ComposerWriteTarget {
+  readonly entityId: number;
+  readonly orderKey: string;
+  readonly title: string;
+}
+
+function factsToEntity(tileId: string, facts: OrderHeaderFacts): HeaderEntity {
+  return { kind: 'order', tileId, ...facts };
+}
+
 export type ShellApi = ReturnType<typeof useShell>;
 
 export function useShell() {
@@ -196,6 +224,32 @@ export function useShell() {
   const focusedTileId = workspace.focusedTabId;
   const focusedTile = tiles.find((t) => t.id === focusedTileId) ?? null;
   const activeRef = focusedTile?.ref ?? null;
+
+  /* beam identity — last hovered entity tile (composer/assistant never steal) */
+  const [headerPayloads, setHeaderPayloads] = useState<Readonly<Record<string, HeaderEntity>>>(
+    {},
+  );
+  const headerPayloadsRef = useRef(headerPayloads);
+  headerPayloadsRef.current = headerPayloads;
+  const focusedTileIdRef = useRef(focusedTileId);
+  focusedTileIdRef.current = focusedTileId;
+  const [headerEntity, setHeaderEntity] = useState<HeaderEntity | null>(null);
+
+  const setHeaderPayload = useCallback((tileId: string, facts: OrderHeaderFacts | null) => {
+    const entity = facts ? factsToEntity(tileId, facts) : null;
+    setHeaderPayloads((prev) => {
+      if (entity === null) {
+        const { [tileId]: _dropped, ...rest } = prev;
+        return rest;
+      }
+      return { ...prev, [tileId]: entity };
+    });
+    setHeaderEntity((cur) => {
+      if (entity === null) return cur;
+      if (cur?.tileId === tileId || focusedTileIdRef.current === tileId) return entity;
+      return cur;
+    });
+  }, []);
 
   /* rails */
   const [leftExpanded, setLeftExpanded] = useState(false);
@@ -448,7 +502,15 @@ export function useShell() {
         return;
       }
 
+      // HARD RULE (operator, 2026-08-24): a display never overrides another
+      // tile and never stacks a duplicate of itself — reopening a ref goes
+      // to the MOST RELEVANT tile, which is the one already showing it.
+      // (Split, when it exists, duplicates deliberately and bypasses this.)
       const sibling = tiles.find((t) => t.ref === ref);
+      if (sibling && type !== 'session') {
+        focusWorkspaceTab(sibling.id);
+        return;
+      }
       const color = sibling?.color ?? PALETTE[tiles.length % PALETTE.length];
       openWorkspaceTab({
         kind: type,
@@ -505,11 +567,24 @@ export function useShell() {
     focusWorkspaceTab(id);
   }, []);
 
+  /** Focus-follows-mouse AND promotes the tile's header payload when it has one. */
+  const hoverTile = useCallback((id: string, ref: string) => {
+    focusWorkspaceTab(id);
+    setHeaderEntity((cur) =>
+      applyHeaderTileHover(cur, ref, headerPayloadsRef.current[id] ?? null),
+    );
+  }, []);
+
   /** Focusing a rail row focuses that ref's first tile. */
   const focusRef = useCallback(
     (ref: string) => {
       const hit = tiles.find((t) => t.ref === ref);
-      if (hit) focusWorkspaceTab(hit.id);
+      if (hit) {
+        focusWorkspaceTab(hit.id);
+        setHeaderEntity((cur) =>
+          applyHeaderTileHover(cur, hit.ref, headerPayloadsRef.current[hit.id] ?? null),
+        );
+      }
     },
     [tiles],
   );
@@ -520,9 +595,24 @@ export function useShell() {
    * claiming something is open when nothing is. A pin is untouched; that is
    * what a pin is for.
    */
-  const closeTile = useCallback((id: string) => {
-    closeWorkspaceTab(id);
-  }, []);
+  const closeTile = useCallback(
+    (id: string) => {
+      const remaining = tiles.filter((t) => t.id !== id);
+      const fallbackId =
+        focusedTileId && focusedTileId !== id ? focusedTileId : remaining[0]?.id;
+      const fallback =
+        fallbackId && fallbackId !== id
+          ? (headerPayloadsRef.current[fallbackId] ?? null)
+          : null;
+      closeWorkspaceTab(id);
+      setHeaderPayloads((prev) => {
+        const { [id]: _dropped, ...rest } = prev;
+        return rest;
+      });
+      setHeaderEntity((cur) => applyHeaderTileClose(cur, id, fallback));
+    },
+    [tiles, focusedTileId],
+  );
 
   /* Split died with the canvas (the inversion): two views of one ref was a
      tiling verb, and the well is not a tiling surface. */
@@ -702,6 +792,60 @@ export function useShell() {
     [appendItem, recordFieldInput],
   );
 
+  /* ── orders tiles ⇄ composer (HANDOFF-orders-first) ────────────────────
+     The queue is ref `orders`; a focused order is ALWAYS ITS OWN TILE, ref
+     `order:<orderKey>` (hard rule, 2026-08-24: a display never overrides a
+     tile — it opens as another tile, or goes to the most relevant one
+     already showing that display). `composerTarget` is the write-target the
+     mounted detail tile reports; see `ComposerWriteTarget` above. */
+  const [composerTarget, setComposerTarget] = useState<ComposerWriteTarget | null>(null);
+
+  const clearComposerTarget = useCallback(() => setComposerTarget(null), []);
+
+  /** The mounted order-detail tile resolved — the write-target snaps to it. */
+  const setOrdersWriteTarget = useCallback(
+    (focus: ComposerWriteTarget) => setComposerTarget(focus),
+    [],
+  );
+
+  /** A detail tile left the canvas. Release the target ONLY if it still
+      points at that order — a retargeted tile's unmount must not wipe the
+      claim its successor just made. */
+  const releaseOrdersWriteTarget = useCallback((orderKey: string) => {
+    setComposerTarget((cur) => (cur && cur.orderKey === orderKey ? null : cur));
+  }, []);
+
+  /**
+   * Open (or refocus) an order's OWN detail tile. The decision is
+   * `orderDetailTileVerdict` — the pure, unit-pinned half of the hard rule:
+   * one order-detail tile at a time, a different order RETARGETS it, and
+   * the queue tile is never touched.
+   */
+  const openOrderDetailTile = useCallback(
+    (orderKey: string) => {
+      const verdict = orderDetailTileVerdict(tiles, orderKey);
+      if (verdict.kind === 'focus') {
+        focusWorkspaceTab(verdict.tileId);
+        return;
+      }
+      if (verdict.kind === 'retarget') closeWorkspaceTab(verdict.closeTileId);
+      openTile(verdict.ref, `#${orderKey}`, 'table');
+    },
+    [openTile, tiles],
+  );
+
+  /** An order line's product opens beside it — `product:<key>` refs mount
+      the Product tile (Step 3). `openTile` dedupes by ref, so a product
+      already on the canvas is refocused, never doubled. */
+  const openProductTile = useCallback(
+    (ref: { sku: string | null; itemNumber: string | null; title: string }) => {
+      const key = ref.sku || ref.itemNumber;
+      if (!key) return;
+      openTile(`product:${key}`, key, 'table');
+    },
+    [openTile],
+  );
+
   /* ── the omni-command composer's commit sink ───────────────────────────
      One hydration point (docs/omni-command-composer.md): a chip paints the
      feed summary AND opens the orders tile — commit is an OS event, never a
@@ -718,7 +862,17 @@ export function useShell() {
             role: 'assistant',
             text: `${order.order_id} — ${order.product_title || 'Order'}${platform ? ` · ${platform}` : ''}`,
           });
+          // The queue tile opens (or refocuses) AND the order lands as its
+          // own tile beside it — never inside it (hard rule). The write-
+          // target snaps to the order immediately; the detail tile confirms
+          // it when its lookup resolves.
           openTile('orders', 'Orders', 'table');
+          openOrderDetailTile(order.order_id);
+          setComposerTarget({
+            entityId: order.id,
+            orderKey: order.order_id,
+            title: order.product_title || '',
+          });
           // Beside the OS hydration: any mounted shipped-details listener
           // receives the same resolved row.
           dispatchOpenShippedDetails(order, 'queue');
@@ -735,12 +889,39 @@ export function useShell() {
           narrate(`No order matched “${commit.token}”.`);
           break;
         }
-        case 'prose':
+        case 'prose': {
+          // Phase 7's target: prose with a write-target set is a COMMENT ON
+          // THE ORDER — an append-only `order_notes` row through the existing
+          // gated route — not a turn to the assistant.
+          if (composerTarget) {
+            const target = composerTarget;
+            const text = commit.text.trim();
+            if (!text) break;
+            recordFieldInput(text, 'human');
+            appendItem({ role: 'operator', text });
+            appendOrderNote(target.entityId, text)
+              .then(() => {
+                narrate(`Noted on #${target.orderKey}.`);
+                dispatchOrdersTileNoteAppended(target.entityId);
+              })
+              .catch(() => narrate(`Note failed on #${target.orderKey} — not saved.`));
+            break;
+          }
           sendToAssistant(commit.text);
           break;
+        }
       }
     },
-    [appendItem, narrate, openTile, recordFieldInput, sendToAssistant, toggleTool],
+    [
+      appendItem,
+      composerTarget,
+      narrate,
+      openOrderDetailTile,
+      openTile,
+      recordFieldInput,
+      sendToAssistant,
+      toggleTool,
+    ],
   );
 
   /* ── blocks — collapse ─────────────────────────────────────────────── */
@@ -798,8 +979,11 @@ export function useShell() {
     activeRef,
     openTile,
     focusTile,
+    hoverTile,
     focusRef,
     closeTile,
+    headerEntity,
+    setHeaderPayload,
     renameTile,
     cycleTileIcon,
     cycleTileColor,
@@ -839,8 +1023,17 @@ export function useShell() {
     /* assistant feed + blocks of time */
     feed,
     armedBlock,
+    narrate,
     sendToAssistant,
     onComposerCommit,
+
+    /* orders tiles ⇄ composer target */
+    composerTarget,
+    setOrdersWriteTarget,
+    releaseOrdersWriteTarget,
+    clearComposerTarget,
+    openOrderDetailTile,
+    openProductTile,
     runFeedAction,
     cutSession,
     resumeBlock,
