@@ -65,6 +65,7 @@
     "test:zip": "tsx --test src/lib/zip/*.test.ts",
     "test:sync-hash": "tsx --test src/lib/integrations/sync-hash.test.ts",
     "test:workflow": "tsx --test src/lib/workflow/*.test.ts",
+    "test:placements": "tsx --test src/lib/inventory/placements.test.ts",
     "test:threads": "tsx --test src/lib/threads/*.test.ts",
     "test:onboarding-steps": "tsx --test src/lib/onboarding/steps.test.ts",
     "test:shipping-usps": "tsx --test src/lib/shipping/providers/usps-subscription.test.ts",
