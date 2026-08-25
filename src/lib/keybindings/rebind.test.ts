@@ -328,7 +328,7 @@ describe('applying a rebind', () => {
     const before = listKeybindings();
     setKeybindingOverride('tool.manuals.open', 'Mod+Alt+KeyQ');
     assert.notEqual(listKeybindings(), before);
-    assert.equal(keybindingFace('tool.manuals.open'), formatChord(parseChord('Mod+Alt+KeyQ')!, false));
+    assert.equal(keybindingFace('tool.manuals.open'), formatChord(parseChord('Mod+Alt+KeyQ')!));
   });
 
   it('displaces by DISABLING, never by clearing', () => {

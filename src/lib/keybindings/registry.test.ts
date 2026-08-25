@@ -21,7 +21,7 @@ import {
   setKeybindingOverrides,
   wedgeReachability,
 } from './registry';
-import { parseChord } from './chord';
+import { formatChord, parseChord } from './chord';
 import {
   serializeKeybindingsForDesktop,
   toElectronAccelerator,
@@ -359,7 +359,7 @@ describe('overrides', () => {
     assert.equal(fire({ key: '™', code: 'Digit2', altKey: true }).id, 'tool.manuals.open');
     assert.equal(ran, 1);
     // The hint and the listener come from one declaration, so they cannot drift.
-    assert.equal(keybindingFace('tool.manuals.open'), 'Alt+2');
+    assert.equal(keybindingFace('tool.manuals.open'), formatChord(parseChord('Alt+2')!));
   });
 
   it('`null` disables a binding without restoring the default', () => {
