@@ -71,17 +71,15 @@
      Pairing and the timers are TOOLS and live in the right rail; they
      are not header chrome, because the beam reports identity and never
      verbs. ================================================================ */
-  /* No hairline. The horizontal inset came BACK 2026-08-24 with the
-     control-radius ruling: a rounded hover plate flush against the
-     viewport's own square corner is the exact notch LAW 1 was written
-     to prevent, so the plates now sit in a 4px gutter and the corner
-     stays square. Flush-to-the-corner was only ever load-bearing while
-     the plates were square too. */
+  /* Horizontal inset: a rounded hover plate flush against the viewport's
+     own square corner is the exact notch LAW 1 was written to prevent, so
+     the plates sit in a 4px gutter and the corner stays square. */
   .wos-header {
     height: var(--header-height);
     background: var(--plane-edge);
-    /* NO BOTTOM HAIRLINE (2026-08-24). Reverses the border added one
-       ruling earlier: the beam blends into the edge plane. */
+    /* Bottom hairline restored 2026-08-25 — 1px separator between the beam
+       and the canvas (reverses the 2026-08-24 "blend into the edge plane"). */
+    border-bottom: 1px solid var(--border-strong);
     display: flex;
     align-items: center;
     padding: 0 var(--sp-1);

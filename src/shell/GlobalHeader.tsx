@@ -12,11 +12,9 @@
  *     every parked block in the queue, which is where it is actually read.
  *   · SEARCH AND ADD — gone one ruling earlier, down to the rail.
  *
- * NO BOTTOM HAIRLINE (2026-08-24). This REVERSES the border added one
- * ruling earlier ("subtle 1px borders to neatly separate the left rail,
- * top header, and the main canvas"). The beam now blends into the edge
- * plane; with the light palette at #F9FAFB the plane step is 1.05:1, so
- * "seamless" here means genuinely invisible, not merely quiet.
+ * Bottom hairline restored 2026-08-25 (`border-bottom` on `.wos-header`) —
+ * the 1px separator between the beam and the canvas. The 2026-08-24
+ * "blend into the edge plane" ruling is reversed.
  *
  * THE SESSION TITLE STAYS. "Top Left: ONLY a single, circular staff
  * avatar" reads as an exclusion list for CHROME CONTROLS — it names
