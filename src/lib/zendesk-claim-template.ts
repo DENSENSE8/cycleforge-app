@@ -1,5 +1,5 @@
 import pool from '@/lib/db';
-import { conditionLabel } from '@/components/receiving/zoho-po-types';
+import { conditionLabel } from '@/lib/receiving/zoho-po-types';
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { getOrgPlatforms, getOrgTypes } from '@/lib/catalog/org-catalog';

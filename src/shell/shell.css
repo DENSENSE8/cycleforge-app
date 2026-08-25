@@ -1,0 +1,1077 @@
+/* ================================================================
+   WAREHOUSE OS — SHELL CSS
+   Ported from docs/warehouse-os/prototype/warehouse-os.html
+   (lines 195–1688 of the prototype's <style> block), verbatim except
+   for the notes marked PORT: below.
+
+   PORT NOTES — the only intentional deviations from the prototype:
+     · `html, body` base rules moved to app/globals.css, which owns the
+       document; everything here is scoped to the shell's own classes so
+       the surviving chromeless routes (signin / invite / offline) are
+       not restyled by the window manager's stylesheet.
+     · `.wos` uses 100dvh, not 100vh — a mounted tablet's URL bar makes
+       100vh taller than the visual viewport and clips the bottom rail.
+     · Every hard-coded inline style the prototype wrote into a
+       `innerHTML` string became a class here; nothing was restyled.
+
+   Tokens: ./tokens.css. Nothing in this file may declare a colour, a
+   radius or a geometry transition of its own.
+   ================================================================ */
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  /* LAW 1 / F9 / F10, enforced as a DEFAULT rather than as an absolute
+     (amended 2026-08-24, then optically 2026-08-25): viewport-flush
+     planes stay square; everything else opts in below. The zeroing
+     reset stays — a radius on screen is always a decision somebody
+     wrote down. `border-radius:0` alone is not enough: Safari (and some
+     Chrome/OS combinations) paints a NATIVE rounded control chrome on
+     `<button>`/`<input>`/`<textarea>` that ignores the CSS box-model
+     radius entirely — `getComputedStyle` can read `border-radius: 0px`
+     while the control still visibly rounds. `appearance: none` is what
+     actually turns that native rendering off; the border-radius reset
+     alone was never sufficient on its own, it just happened to be
+     enough on non-WebKit engines to hide the gap.
+
+     F10: a radius you cannot see is still square. Hairline tracks and
+     dashed wells conceal the curve; filled strips and solid strokes
+     are what make the ladder read. */
+  *, *::before, *::after { border-radius: var(--r-none); }
+  button, input, textarea, select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    border-radius: var(--r-none);
+  }
+
+  /* PORT: the `html, body` base rules live in app/globals.css, which owns
+     the document. See the header note. */
+
+  /* One square focus ring, inset so it never nudges layout. */
+  :focus-visible {
+    outline: 2px solid var(--border-accent);
+    outline-offset: -2px;
+  }
+
+  .wos {
+    display: flex;
+    flex-direction: column;
+    /* PORT: dvh, not vh — a mounted tablet's URL bar makes 100vh taller
+       than the visual viewport and clips the bottom of both rails. */
+    height: 100dvh;
+    width: 100vw;
+    overflow: hidden;
+    /* The frame is the EDGE plane (tokens.css → PLANES). Everything the
+       operator does not read all day recedes; the centre is what lifts. */
+    background: var(--plane-edge);
+  }
+
+  /* ===== HEADER — the beam ==========================================
+     Three parts only: corner cluster · context line · overflow.
+     Pairing and the timers are TOOLS and live in the right rail; they
+     are not header chrome, because the beam reports identity and never
+     verbs. ================================================================ */
+  /* No hairline. The horizontal inset came BACK 2026-08-24 with the
+     control-radius ruling: a rounded hover plate flush against the
+     viewport's own square corner is the exact notch LAW 1 was written
+     to prevent, so the plates now sit in a 4px gutter and the corner
+     stays square. Flush-to-the-corner was only ever load-bearing while
+     the plates were square too. */
+  .wos-header {
+    height: var(--header-height);
+    background: var(--plane-edge);
+    /* NO BOTTOM HAIRLINE (2026-08-24). Reverses the border added one
+       ruling earlier: the beam blends into the edge plane. */
+    display: flex;
+    align-items: center;
+    padding: 0 var(--sp-1);
+    gap: 2px;
+    flex-shrink: 0;
+    /* The identity dropdown opens BELOW the beam, over the rail's column —
+       and `.rail` is its own stacking context at `--z-panel` (100). A
+       `--z-header` (40) context loses to that regardless of the dropdown's
+       own z-index, because z-index only competes within the nearest shared
+       stacking context: the rail's whole box wins over the header's whole
+       box, dropdown included. `--z-panelPopover` clears every rail — the
+       one thing anchored here that must never be clipped by one. */
+    z-index: var(--z-panelPopover);
+    position: relative;
+  }
+
+  /* THE ACTIVE SESSION TITLE — beam-only (2026-08-24 ruling). It sits
+     immediately right of the avatar, in the reading weight rather than
+     the technical-label cut: it is a name, not a field label. It is one
+     of exactly two places this string may appear (the other is the left
+     rail's list); the canvas never restates it. */
+  .header-session {
+    font-size: var(--sz-sm);
+    font-weight: 500;
+    color: var(--text-primary);
+    padding-left: var(--sp-1);
+    max-width: 320px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex-shrink: 1;
+    min-width: 0;
+  }  /* The corner cluster, the carton chip and the context line (armed pill ·
+     C-8842-A chip · RECEIVING/narration text) are GONE (2026-08-24,
+     operator ruling) — the beam is identity · timer · rail toggle ·
+     overflow now (`GlobalHeader`'s own docblock has the why). */
+  .header-spacer { flex: 1; min-width: 0; }
+
+  /* Last-hovered entity readout — CartonContextCard three-zone face:
+     identity left · classify absolutely centered · actions right.
+     Color lives on the classify dots and the right-side glyphs, not as
+     a left-packed grey run. */
+  .header-entity {
+    flex: 1;
+    min-width: 0;
+    position: relative;
+    display: flex;
+    align-items: stretch;
+    overflow: hidden;
+    height: 100%;
+    container-type: inline-size;
+    container-name: header-entity;
+  }
+
+  .header-entity-middle {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: stretch;
+    justify-content: center;
+    pointer-events: none;
+    gap: 0;
+  }
+
+  .header-entity-left,
+  .header-entity-right {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: stretch;
+    background: var(--plane-edge);
+    pointer-events: auto;
+  }
+
+  .header-entity-right { margin-left: auto; }
+
+  .header-entity-slot,
+  .header-entity-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+    flex-shrink: 1;
+    padding: 0 var(--sp-2);
+    color: var(--text-primary);
+    text-decoration: none;
+    font-size: var(--sz-xs);
+    white-space: nowrap;
+    pointer-events: auto;
+  }
+
+  .header-entity-slot { font-family: var(--font-mono); }
+  .header-entity-pill { font-family: var(--font-sans); font-weight: 500; }
+
+  .header-entity-slot.tone-tracking { color: var(--text-accent); }
+  .header-entity-slot.tone-price { color: var(--text-success); }
+  .header-entity-slot.tone-claim { color: var(--text-warning); }
+  .header-entity-slot.tone-photos { color: var(--text-accent); }
+  .header-entity-slot.tone-danger,
+  .header-entity-pill.tone-danger { color: var(--text-danger); }
+  .header-entity-slot.tone-muted { color: var(--text-muted); }
+
+  a.header-entity-slot:hover { color: var(--text-primary); }
+
+  .header-entity-value {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 18ch;
+  }
+
+  .header-entity-dot {
+    width: 7px;
+    height: 7px;
+    display: inline-block;
+    flex-shrink: 0;
+    background: currentColor;
+  }
+
+  @container header-entity (max-width: 52rem) {
+    .header-entity-pill-label { display: none; }
+  }
+
+  .zone-scan {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-1);
+    min-width: 300px;
+    padding: 0 var(--sp-2);
+    background: var(--surface-containerLowest);
+  }
+
+  .zone-scan:focus-within { background: var(--surfaceSubtle-accent); }
+  .zone-scan > svg { flex-shrink: 0; color: var(--text-secondary); }
+
+  .scan-input-wrap { display: flex; align-items: center; flex: 1; min-width: 0; }
+
+  .scan-input-wrap input {
+    border: none;
+    background: transparent;
+    outline: none;
+    font: inherit;
+    color: inherit;
+    width: 100%;
+    font-size: var(--sz-xs);
+    min-width: 0;
+    letter-spacing: 0.01em;
+  }
+
+  .scan-input-wrap input::placeholder { color: var(--text-muted); }  /* Every other chip in the shell runs the same grammar, so the plate
+     means the same thing wherever the operator meets it. Radius only —
+     each rule keeps its own fills, which were already on this ramp.
+     (Trimmed 2026-08-25: the rail/tab/pin/recent, launcher, identity,
+     context and popover selectors left with their components — every one
+     is Tailwind + shadcn now, and F11 says the css shrinks with them.) */
+  .files-row,
+  .btn,
+  .feed-collapse-all {
+    border-radius: var(--r-control);
+  }
+
+  /* Floating surfaces — over the frame, never butted against the
+     viewport, so the notch argument does not reach them. */
+  .occ-typeahead {
+    border-radius: var(--r-surface);
+  }
+
+  /* Text controls are controls too — a square field beside a rounded
+     button is the mismatch you notice without being able to name it. */
+  .zone-scan {
+    border-radius: var(--r-control);
+  }
+
+  /* Status marks — a 4px soften, never a pill, never `--r-circle`. */
+  .occ-chip {
+    border-radius: var(--r-keycap);
+  }
+
+  /* The press step, for the chips that had a hover but no pressed
+     state. A control that tints on hover and then does nothing at all
+     under the finger reads as not having fired. */
+  .btn:active { background: var(--surface-containerHigh); }
+
+  /* `.session-state` left with the SessionTile placeholder (2026-08-25):
+     the armed session's face is the composer's SessionHeader, on shadcn
+     `Badge`. `.wos-body` converted to Tailwind in ShellRoot the same day. */
+
+  /* ===== RAILS ======================================================
+     DELETED 2026-08-25. The whole `.rail` / `.rail-btn` / `.tab` /
+     `.pin` / `.recent-item` / `.recent-band` family matched nothing:
+     `RailSessions` and `RailTools` are Tailwind + shadcn icon stacks
+     floating on the canvas ground — no bar, no fill, no width token.
+     Removed rather than left orphaned (F11: a dead block that still
+     matches nothing is what makes the next reader think the CSS is the
+     source of truth). ============================================== */
+
+  /* ===== THE WELL ===================================================
+     The inversion (HANDOFF-ai-centre §1): the feed IS the surface. The
+     ground around it is the chrome plane — continuous with the beam and
+     rails — and the well is SUNKEN into it: `--bg-canvas` is the one
+     token darker than chrome in BOTH themes. UNBOXED (2026-08-24): the
+     sunken read now comes from that colour step ALONE, plane against
+     plane, with no stroke drawing its own edge on top — the purer
+     execution of "planes and strokes only" is planes WITHOUT a stroke
+     when the colour contrast already does the boundary's job on its own
+     (F1/F3). Clamped to the prose measure; below the 440px floor the
+     ground scrolls rather than crushing the column — the same honesty
+     rule the tiles followed. */
+  /* No gutter (2026-08-24) — the well runs flush to the display's own
+     edges, chrome-inset style: no padding, no spacing, on any side. The
+     centred clamp (440–680px) still keeps the well itself from stretching
+     edge-to-edge on a wide screen; this only removes the buffer AROUND
+     it. */
+  .well-ground {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    padding: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    background: var(--plane-edge);
+  }
+
+  /* No radius (2026-08-24, operator ruling — F1's last exception is
+     retired). It made sense when the well floated with a gutter around
+     it; now that the well runs flush to the display's own edges (chrome
+     inset, zero padding), a rounded corner there is a rounded corner
+     jammed against the viewport's own square corner — a visible notch,
+     not a floating card. Square, full stop, same as everything else. */
+  /* THE STAGE. Inverted 2026-08-24: the centre used to carry
+     `--bg-canvas`, the darkest value in the palette, with the lightest
+     chrome wrapped around it. It now carries `--plane-stage` and the
+     chrome carries the dark — the operator reads the middle all day, so
+     the middle is the thing that lifts.
+
+     The second half of that inversion is the RAMP. Every card, row,
+     bubble and input inside the well is written against
+     `--surface-container*`, which is anchored to the frame. Left alone,
+     a "raised" card in the centre would be a step off the WRONG plane —
+     in dark it landed within a couple of values of the stage and simply
+     vanished. Re-anchoring the ramp here, on the one element that owns
+     the stage, moves every descendant at once without touching a single
+     component rule: inside the well, "container" means one step off the
+     CENTRE. The seam is a single hairline, per LAW 3 — no shadow. */
+  /* THE CANVAS GROUND. The 440–680px centred clamp is retired
+     (2026-08-24) — see Well.tsx. It fills the space between the rails and
+     hosts two panes.
+
+     It takes `--plane-stage-sunken`, one step BELOW the panes, so the
+     panes are the brightest thing on screen and the canvas reads as
+     recessed. The inversion still holds where it matters: the centre
+     (panes at `--plane-stage`) is lighter than the edges. */
+  .well {
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+    display: flex;
+    background: var(--plane-stage-sunken);
+    overflow: hidden;
+
+    --surface-containerLowest: var(--stage-containerLowest);
+    --surface-containerLow: var(--stage-containerLow);
+    --surface-container: var(--stage-container);
+    --surface-containerHigh: var(--stage-containerHigh);
+    --surface-containerHighest: var(--stage-containerHighest);
+    --surface-background: var(--stage-containerLow);
+    --bg-canvas: var(--stage-sunken);
+    --bg-surface: var(--stage-containerLowest);
+    --bg-subtle: var(--stage-subtle);
+  }
+
+  /* ===== THE TWO-PANE SPLIT =========================================
+     Composer left at a fixed width, data right taking the remainder.
+     `min-width: 0` on the queue pane is load-bearing: a flex child
+     defaults to `min-width: auto`, so a wide table inside it would push
+     the pane past its share and squeeze the composer instead of
+     scrolling itself. */
+  .canvas-split {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    gap: var(--sp-3);
+    padding: var(--sp-3);
+    overflow: hidden;
+  }
+
+  .pane {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    background: var(--plane-stage);
+    border: 1px solid var(--stroke-plane);
+    border-radius: var(--r-pane);
+    overflow: hidden;
+  }
+
+  /* INVERTED 2026-08-24. The composer pane used to hold a fixed
+     `--pane-composer-w` basis and the queue took the remainder; the
+     operator described the opposite shape — a large work surface with a
+     COLUMN of work orders beside it — so the basis moved to the queue.
+     `--pane-composer-w` is retired; the queue's width is now operator-set
+     at runtime (`pane-resize.ts`, 280–480px) and applied inline, because
+     an operator-dragged value cannot live in a stylesheet.
+
+     THE ONE OUTER SHADOW IN THE SHELL (LAW 3, as amended) stays on the
+     work surface. It is `none` in dark, where there is nothing behind it
+     left to darken — the 1px stroke above carries the pane there. */
+  /* NO WRAPPER TILE AT ALL (2026-08-24, operator ruling, third pass:
+     "remove the component from behind the composer … the composer
+     display should be the only one without a wrapper tile for it").
+
+     Removing the shadow was not enough — the pane still painted
+     `--plane-stage` inside a 1px stroke at a 16px radius, which IS a
+     tile, just an unlit one. So `.pane-composer` now un-declares
+     everything `.pane` gives it: no fill, no stroke, no radius. The chat
+     sits directly on the canvas ground.
+
+     This is the asymmetry the ruling asks for, and it is meaningful
+     rather than decorative. A TILE IS A THING YOU CAN CLOSE, MOVE AND
+     RESIZE — the queue is one, and every future data tile will be one.
+     The composer is none of those: it is permanent and unremovable (D2).
+     Giving it the same chrome as a tile said it was one. Now the shell
+     has exactly one un-tiled region, and that region is the one thing
+     that never goes away.
+
+     What still carries treatment inside it is the ENTRY — sunken, per
+     the Grok reference — and nothing else. The conversation is text on
+     the ground, which is the same ruling that removed the bubbles. */
+  .pane-composer {
+    flex: 1;
+    min-width: 0;
+    background: transparent;
+    border: none;
+    border-radius: var(--r-none);
+  }
+
+  /* No `flex` at all — width comes from the inline style Well.tsx sets,
+     and `flex-shrink: 0` is what stops the flex algorithm from quietly
+     overriding it when the work surface asks for room. */
+  .pane-queue {
+    flex: 0 0 auto;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  /* Idle-invisible resize cue. The queue card's left edge can still read
+     as a splitter at rest; keep the other three sides and light the left
+     stroke with the Well hairline (separator hover / focus / drag). Color
+     only. The tiles pane keeps the full box — it is not a resize target. */
+  .pane-queue:not(.canvas-tiles) {
+    border-left-color: transparent;
+  }
+  .canvas-split:has([role='separator']:hover) .pane-queue:not(.canvas-tiles),
+  .canvas-split:has([role='separator']:focus-visible) .pane-queue:not(.canvas-tiles),
+  .canvas-split[data-queue-resize] .pane-queue:not(.canvas-tiles) {
+    border-left-color: var(--stroke-plane);
+  }
+  @media (hover: none) {
+    .pane-queue:not(.canvas-tiles) {
+      border-left-color: var(--stroke-plane);
+    }
+  }
+
+  /* ===== TILES ======================================================
+     DELETED 2026-08-25. The legacy `.tile` block was a DEAD SELECTOR —
+     `Tile.tsx` is Tailwind + shadcn (`rounded-lg border …`) and nothing
+     rendered `className="tile"` any more. It was also §6's first suspect
+     for the square-corner bug; removed so the next reader cannot mistake
+     it for the source of truth. The four-state treatment lives in
+     `Tile.tsx` with its own docblock. ================================ */
+
+  /* ===== BUTTONS =====
+     A press is a colour swap. The old translateY(1px) moved the label
+     under the operator's finger for 0 gain. */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--sp-1);
+    padding: 5px var(--sp-3);
+    background: var(--surface-container);
+    border: 1px solid var(--border-strong);
+    color: var(--text-primary);
+    font-size: var(--sz-xs);
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color var(--t-tint), color var(--t-tint), border-color var(--t-tint);
+    font-family: inherit;
+    line-height: 1.4;
+    white-space: nowrap;
+  }
+
+  .btn:hover { background: var(--surface-containerHigh); }
+  .btn:active { background: var(--surface-containerHighest); }  .btn-sm { padding: 3px 10px; font-size: 11px; }  /* `.badge` deleted 2026-08-25 — every badge is shadcn `Badge` now. */
+
+  /* ===== UTILITIES ===== */
+  .mono {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+    font-size: var(--sz-xs);
+    color: var(--text-secondary);
+    letter-spacing: -0.01em;
+  }
+
+  /* `.kbd` / `.keycap` deleted 2026-08-25 — the keycap legend left the
+     composer on 2026-08-24 and the last consumers rendered the chip in
+     Tailwind (`rounded-keycap border-b-2 …`) instead. */
+
+  /* Data table — a grid, with column rules and zebra banding, because
+     the job is reading one row across without losing it. */
+  .data-table {
+    width: 100%;
+    font-size: var(--sz-xs);
+    border-collapse: collapse;
+  }
+
+  .data-table th {
+    text-align: left;
+    padding: 5px var(--sp-2);
+    font-size: var(--sz-technical-label);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--text-secondary);
+    font-family: var(--font-condensed);
+    font-weight: 700;
+    background: var(--surface-container);
+    border: 1px solid var(--border-strong);
+    white-space: nowrap;
+    position: sticky;
+    top: 0;
+  }
+
+  .data-table td {
+    padding: 4px var(--sp-2);
+    border: 1px solid var(--border-subtle);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 220px;
+  }
+
+  .data-table tbody tr:nth-child(even) td { background: var(--surface-containerLow); }
+  .data-table tbody tr:hover td { background: var(--surfaceSubtle-accent); }
+  .data-table .col-xs { width: 22px; }
+  .data-table .col-s { width: 108px; }  /* Status marks are squares. At 7px a square is more legible than a
+     circle and it matches everything else in the frame. */
+  .status-dot { width: 7px; height: 7px; display: inline-block; flex-shrink: 0; }
+  .status-dot.ok { background: var(--text-success); }
+  .status-dot.warn { background: var(--text-warning); }
+  .status-dot.err { background: var(--text-danger); }
+  .status-dot.info { background: var(--text-accent); }
+
+  /* The legacy `.composer` / `.composer-toggle` family and the
+     `.pipeline` media query are deleted (2026-08-25) — the docked
+     per-tile composer died with the session tile, and the stage strip is
+     Tailwind inside `SessionHeader`. */
+
+  /* Reduced motion — near-empty by construction. Colour tints are the
+     only thing left to shorten, and they already do not move anything. */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  /* Scrollbars — square, and wide enough to hit with a glove. */
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: var(--surface-containerLow); }
+  ::-webkit-scrollbar-thumb { background: var(--surface-containerHighest); border: 2px solid var(--surface-containerLow); }
+  ::-webkit-scrollbar-thumb:hover { background: var(--surface-dim); }
+
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  /* The session-tile family — `.session-tile`, `.scan-await`,
+     `.tile-hint`, `.tile-note`, the docked `.composer` variants,
+     `.settings-copy`, `.mode-toggle` — deleted 2026-08-25 with the
+     SessionTile placeholder. The session's face is `SessionHeader` in
+     the composer, Tailwind + shadcn throughout. */
+
+  /* ===== ASSISTANT FEED =============================================
+     THE SURFACE. AI-first: the feed is a conversation, not a menu, and
+     since the inversion it never unmounts and never yields the centre.
+     The well (above) owns the 440–680 clamp, the sunken ground and the
+     hairline; this is the column inside it. The composer is the coding-
+     assistant shape: the entry, the context readout at the entry's
+     bottom-right, and the tool row on the very bottom. */
+  .assistant-feed {
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+    display: flex;
+  }
+
+  /* The chronology grows from the top and the composer is pinned to the
+     bottom of the pane — `margin-top: auto` on the composer, so an empty
+     conversation leaves the entry where a full one does rather than
+     floating it mid-pane. */
+  .feed-column {
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-3);
+    /* 8px pad so `.feed-entry` / bubbles can take `--r-surface` inside
+       a 16px pane (16 − 8 = 8). Matching `--r-pane` on the composer was
+       inverted concentric: the inner well was rounder than the hole. */
+    padding: var(--sp-2);
+  }
+
+  /* `margin-top: auto` IS REQUIRED — restored 2026-08-25 after it was
+     removed on a wrong assumption. The reasoning for dropping it was that
+     `.feed-scroll` is `flex: 1` and therefore always absorbs the slack,
+     leaving the composer pinned at the bottom for free. That holds only
+     while the scroller EXISTS: `AssistantFeed` renders it conditionally
+     (`feed.length === 0 ? null : …`), so on an empty feed — which is the
+     first thing every operator sees — nothing took the slack and the
+     composer sat at the TOP of the pane.
+
+     The auto margin is correct in both states and costs nothing in
+     either. Flexbox resolves flexible lengths BEFORE distributing free
+     space to auto margins (Flexbox §9.7 then §9.5), so with the scroller
+     mounted there is no free space left and the margin computes to 0;
+     with it absent the margin takes all of it and pushes the composer
+     down. One declaration, both cases, no conditional. */
+
+  /* ===== THE QUEUE COLUMN ==========================================
+     MIGRATED OUT (2026-08-24). Every `.stage-*` rule that lived here is
+     now Tailwind utilities in `StageQueue.tsx`, against the `@theme
+     inline` bridge in globals.css. Deleted rather than left orphaned:
+     a dead block that still matches nothing is the thing that makes the
+     next reader think the CSS is the source of truth.
+     ================================================================ */
+
+  /* The feed — industry-standard bubbles: operator right, assistant
+     left, a condensed micro-label naming each turn's author. */
+  /* BOTTOM-ANCHORED (2026-08-25). The newest turn sits directly above the
+     composer; history runs off the top. Two reasons beyond convention:
+
+       · The operator's gaze is fixed on the composer — it is where they
+         type and where the wedge lands a scan. Anchoring the newest turn
+         there puts every confirmation inside the existing gaze locus
+         instead of ~950px away at the top of a 1080px pane, which at a
+         few hundred scans a shift is a saccade tax on the whole loop.
+       · `model.ts` already rules the direction: "scrolling up is
+         scrolling back in time — never visiting a page." Newest-at-top
+         would invert the chronology the blocks and parking model assume.
+
+     `margin-top: auto` ON THE FIRST CHILD is what does it — NOT
+     `justify-content: flex-end`, which was the obvious answer and is
+     broken. MEASURED 2026-08-25 on :3051 at a 250px port: with
+     `flex-end`, content taller than the scroller overflows the START
+     edge, and overflow at the start edge is UNREACHABLE — the first turn
+     sat 449px above the port while the scroller still reported
+     `scrollHeight === clientHeight`, `scrollTop: 0` and `canScrollUp:
+     false`. The whole transcript above the fold was unscrollable.
+
+     An auto margin has neither problem: with slack it absorbs all of it
+     and pushes the turns to the bottom; with none it resolves to zero and
+     the scroller overflows the END edge like any normal block. Same
+     visual result, no unreachable history.
+
+     `overflow-anchor` is left at its default (`auto`) deliberately: the
+     browser's own scroll anchoring keeps the reading position stable when
+     content is inserted ABOVE the viewport, which is exactly the history
+     case. Turning it off would make loading older turns jump the view. */
+  .feed-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-3);
+    padding-top: var(--sp-2);
+  }
+
+  .feed-scroll > *:first-child { margin-top: auto; }
+
+  /* A flex child in a `justify-content: flex-end` column will not shrink
+     past its content, but it CAN be squeezed by `min-height: auto` when
+     the transcript is long. Turns opt out so the scroller scrolls instead
+     of compressing them. */
+  .feed-scroll > * { flex-shrink: 0; }
+
+  /* ===== FEED TURNS ================================================
+     DELETED 2026-08-24. `.feed-msg` / `.feed-role` / `.feed-bubble` /
+     `.feed-actions` are gone: a turn is now plain text aligned left or
+     right (`Turn` in AssistantFeed.tsx), with no bordered bubble and no
+     author eyebrow. Removed rather than left orphaned.
+     ================================================================ */
+
+  /* The composer — entry framed as one control; meta row inside it with
+     the context readout and send at the bottom-right. */
+  .feed-composer {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-1);
+    margin-top: auto;
+  }
+
+  /*      THE SUNKEN COMPOSER (2026-08-24, operator ruling — the Grok/Gemini
+     reference). Three things make it read as pressed-IN rather than
+     raised, and all three are needed:
+
+       1. `--shadow-inset`, an INSET shadow. Never an outer one; a drop
+          shadow on the same box would cancel the effect and re-raise it.
+       2. A fill one step BELOW the pane it sits in. The pane is
+          `--plane-stage`; the entry takes `--plane-stage-sunken`, so the
+          dent exists in colour as well as in shading — which is what
+          keeps it legible when a shadow is imperceptible.
+       3. `--r-surface`, concentric with the 16px pane at 8px pad
+          (16 − 8 = 8). Matching `--r-pane` was argued as "a well cut
+          into the panel" — that only holds if the field is flush to the
+          pane edge. With a gutter it is a nested card, rounder than the
+          hole.
+
+     Point 2 is load-bearing for dark. The reference's `rgba(0,0,0,0.08)`
+     is invisible on a #17171b surface; the token carries ~7x the alpha
+     there (tokens.css), and the fill step covers what is left. */
+  /* A ROW, not a column (2026-08-25, operator ruling): a leading `+`, the
+     one field, and send — all inside the well itself.
+
+     `align-items: flex-end` rather than `center`: the field grows
+     downward as it wraps, and centred flanking buttons would drift down
+     with it, leaving the `+` floating beside line three of a paragraph.
+     Anchored to the bottom edge they stay on the baseline of the line
+     being typed, which is where the operator is looking.
+
+     `padding: 2px` gives the 28px buttons a 2px inset from the stroke so
+     their hover plates never collide with it — the concentric clamp
+     (8px well − 2px pad = 6px legal inner radius) is exactly
+     `--r-control`, which is what the buttons already use. */
+  .feed-entry {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-end;
+    gap: 2px;
+    padding: 2px;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--r-surface);
+    background: var(--plane-stage-sunken);
+    box-shadow: var(--shadow-inset);
+    transition: border-color var(--t-tint);
+  }
+
+  /* The field takes the row; the two buttons are fixed. */
+  .feed-entry .occ-root { flex: 1; min-width: 0; }
+
+  .feed-entry:focus-within { border-color: var(--border-accent); }
+
+  /* The textarea fallback follows the contenteditable's geometry so the
+     row does not change height depending on which one mounts. */
+  .feed-entry textarea {
+    width: 100%;
+    border-radius: var(--r-surface);
+    border: none;
+    background: transparent;
+    padding: 4px var(--sp-2);
+    font: inherit;
+    font-size: var(--sz-sm);
+    color: var(--text-primary);
+    resize: none;
+    outline: none;
+    min-height: 28px;
+    max-height: 140px;
+    line-height: 1.45;
+  }
+
+  /* THE COMPOSER ROW — OUTSIDE the well (2026-08-25). It used to live
+     inside `.feed-entry`, which meant the sunken stroke wrapped the text
+     field AND its controls, saying they were part of the field. They act
+     on it; they are not in it. The well now holds the input alone.
+
+     Padding is asymmetric on purpose: `2px` at the leading edge lines the
+     tools label up with the field's own text inset above it, and `4px`
+     trailing lets the send button's 24px hover plate sit flush with the
+     well's right edge rather than 4px shy of it. `align-items: center`
+     is what puts the ring on the send button's own centre line. */
+  .composer-row {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-1);
+    padding: 0 var(--sp-1) 0 2px;
+    min-height: 26px;
+  }
+
+  /* ===== THE OMNI-COMMAND COMPOSER (occ) =============================
+     The one field. A Lexical contenteditable inside `.feed-entry`; chips
+     are inline receipts of a resolved commit; the typeahead is the
+     control's OWN listbox — absolutely anchored above the field inside
+     `.occ-root`, never a floating instrument on document.body (I6).
+     Mount/unmount is a conditional render: instant, colour transitions
+     only, nothing tweens geometry (M1). */
+  .occ-root { position: relative; }
+
+  /* ONE ROW (2026-08-25). `min-height: 44px` with `padding: 8px` held a
+     single 20.3px line (14px x 1.45) at the TOP of a 44px box, leaving
+     ~16px of dead space beneath it. `.feed-entry` bottom-aligns its
+     children, so the `+` and send buttons landed in that gap — MEASURED
+     8px below the text's own centre line, which is the misalignment.
+
+     The box now hugs one line: 20.3px of text + 4px + 4px = 28.3px,
+     which is the buttons' own 28px height. Everything on the row shares a
+     centre because they are all the same height, not because three rules
+     agree about alignment. `max-height` is untouched, so wrapping still
+     grows the field downward and `align-items: flex-end` keeps the
+     buttons on the line being typed. */
+  .occ-editor {
+    width: 100%;
+    padding: 4px var(--sp-2);
+    font: inherit;
+    font-size: var(--sz-sm);
+    color: var(--text-primary);
+    outline: none;
+    min-height: 28px;
+    max-height: 140px;
+    overflow-y: auto;
+    line-height: 1.45;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .occ-paragraph { margin: 0; }
+
+  .occ-placeholder {
+    position: absolute;
+    top: var(--sp-2);
+    left: var(--sp-3);
+    font-size: var(--sz-sm);
+    line-height: 1.45;
+    color: var(--text-muted);
+    pointer-events: none;
+    user-select: none;
+  }
+
+  .occ-chip-host { display: inline-flex; vertical-align: baseline; }
+
+  .occ-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 0 var(--sp-2);
+    border: 1px solid var(--border-accent);
+    background: var(--surface-container);
+    color: var(--text-primary);
+    font-size: var(--sz-xs);
+    line-height: 1.6;
+    white-space: nowrap;
+  }
+
+  .occ-chip-platform {
+    font-family: var(--font-condensed);
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 10px;
+    color: var(--text-accent);
+  }
+
+  .occ-chip-id { font-family: var(--font-mono); }
+
+  /* The plugin's positioning anchor — parked under .occ-root and inert;
+     the real listbox renders inline below and positions itself. */
+  .occ-typeahead-anchor {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 0 !important;
+    height: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .occ-typeahead {
+    position: absolute;
+    bottom: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    max-height: 260px;
+    overflow-y: auto;
+    margin: 0;
+    padding: 4px;
+    list-style: none;
+    background: var(--surface-containerLow);
+    border: 1px solid var(--border-strong);
+    z-index: 30;
+  }
+
+  .occ-typeahead-item {
+    display: flex;
+    align-items: baseline;
+    gap: var(--sp-2);
+    padding: var(--sp-1) var(--sp-2);
+    cursor: pointer;
+    border-left: 3px solid transparent;
+    transition: background-color var(--t-tint);
+  }
+
+  .occ-typeahead-item.selected {
+    background: var(--surface-container);
+    border-left-color: var(--border-accent);
+  }
+
+  .occ-typeahead-title {
+    font-size: var(--sz-sm);
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .occ-typeahead-meta {
+    margin-left: auto;
+    font-size: var(--sz-xs);
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 45%;
+  }
+
+  .occ-typeahead-kbd {
+    font-size: 10px;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+  }
+
+  /* ===== THE TOOLS COMBOBOX ==========================================
+     DELETED 2026-08-25 (operator ruling — HANDOFF-session-composer-ux
+     §5/§8): tools do not live beneath the composer. The row's successor
+     is the planned contextual MODE ROW (PLAN-composer-modes.md); the
+     tools themselves are the right rail and the beam's ⋯.
+     ================================================================ */
+
+  /* ===== THE CONTEXT RING (2026-08-24) ===============================
+     Replaces the plain-text "what the assistant can see" readout — a
+     coloured dot, session-state palette (the same one `.scan-armed`
+     used), full text moved to `title`. Bottom-right, the composer's
+     final element. */
+  .context-ring {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    cursor: default;
+  }
+
+  /* A RING IS HOLLOW (2026-08-25, second correction). Rounding the dot
+     made it a circle and it was still a DOT — a filled disc with a halo,
+     which is a bullet, not a ring. A ring is an ANNULUS: the fill is
+     absent and the stroke is the whole mark.
+
+     So: transparent centre, 2px border, colour on the BORDER rather than
+     the background. The halo outline is gone with it — it existed to fake
+     the ring the fill was preventing, and two concentric strokes at this
+     size just read as a thicker blur. */
+  .context-ring-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: var(--r-circle);
+    border: 2px solid var(--text-muted);
+    background: transparent;
+    transition: border-color var(--t-tint);
+  }
+
+  /* State lands on the STROKE now — the fill has to stay absent or the
+     mark stops being a ring the moment a session arms. */
+  .context-ring.armed .context-ring-dot { border-color: var(--text-success); }
+  .context-ring.parked .context-ring-dot { border-color: var(--text-warning); }
+  .context-ring.error .context-ring-dot { border-color: var(--text-danger); }
+
+
+  /* ── Blocks of time (Phase 2) ──────────────────────────────────────
+     A session is a bounded stretch of the chronology. The header line is
+     condensed chrome — title · state · elapsed — and the interior is the
+     same turns the feed renders everywhere. State is a colour on a
+     CONSTANT-width edge, so it can never reflow; collapse is a
+     conditional render — instant, M1-clean. */
+  .feed-collapse-all {
+    position: sticky;
+    top: 0;
+    z-index: var(--z-raised);
+    align-self: flex-start;
+    padding: 2px var(--sp-2);
+    border: 1px solid var(--border-subtle);
+    background: var(--bg-canvas);
+    color: var(--text-secondary);
+    font-family: var(--font-condensed);
+    font-size: var(--sz-technical-label);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    transition: color var(--t-tint), border-color var(--t-tint);
+  }
+  .feed-collapse-all:hover { color: var(--text-primary); border-color: var(--border-strong); }
+
+  .feed-block {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--r-surface);
+    border-left: 2px solid var(--border-strong);
+  }
+  .feed-block[data-state="armed"] { border-left-color: var(--border-accent); }
+  .feed-block[data-state="ended"] { border-left-color: var(--border-subtle); }
+
+  .feed-block-line {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    padding: var(--sp-1) var(--sp-2);
+    min-height: var(--control-h);
+  }
+
+  .feed-block-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+  }
+  /* Static rotate — a state, never a transition (M1). */
+  .feed-block-toggle[aria-expanded="false"] svg { transform: rotate(-90deg); }
+
+  .feed-block-title {
+    font-family: var(--font-condensed);
+    font-weight: 700;
+    font-size: var(--sz-xs);
+    color: var(--text-primary);
+  }
+
+  .feed-block-state {
+    font-family: var(--font-condensed);
+    font-size: var(--sz-technical-label);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--text-muted);
+  }
+  .feed-block[data-state="armed"] .feed-block-state { color: var(--text-success); }
+
+  .feed-block-elapsed {
+    margin-left: auto;
+    font-size: var(--sz-xs);
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .feed-block-act { flex-shrink: 0; }
+
+  .feed-block-items {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-3);
+    padding: var(--sp-2);
+    border-top: 1px solid var(--border-subtle);
+  }  .files-row {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-1);
+    padding: 3px var(--sp-2);
+    font-size: var(--sz-xs);
+    color: var(--text-secondary);
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--border-subtle);
+    text-align: left;
+    width: 100%;
+    transition: background-color var(--t-tint), color var(--t-tint);
+  }
+
+  .files-row:last-child { border-bottom: none; }
+  .files-row.selected { background: var(--surfaceSubtle-accent); color: var(--text-primary); }
+  button.files-row { cursor: pointer; }
+  button.files-row:hover { background: var(--surface-container); }  /* ===== THE TILES ROW =================================================
+     The `.canvas-tiles` variant of the data pane lays open tiles out in
+     a row (HANDOFF-orders-first). The tiles themselves are Tailwind +
+     shadcn (operator, 2026-08-25) — this rule is pane plumbing only.
+     Wide content scrolls INSIDE its tile; the pane scrolls horizontally
+     only when the floors force it. */
+  .canvas-tiles {
+    flex-direction: row;
+    gap: var(--sp-3);
+    overflow-x: auto;
+    background: var(--plane-stage);
+  }
+

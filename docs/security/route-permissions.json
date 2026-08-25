@@ -1,9 +1,9 @@
 {
   "version": 1,
   "generatedAt": "2026-08-21T01:05:42Z",
-  "totalRoutes": 960,
+  "totalRoutes": 966,
   "summary": {
-    "permissionGated": 820,
+    "permissionGated": 826,
     "authenticatedNoPermission": 51,
     "anonymousIntentional": 87,
     "serviceToService": 2,
@@ -2851,6 +2851,15 @@
       "exemptReason": null
     },
     {
+      "path": "/api/inventory/part-pulls/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "placement.record",
+      "exemptReason": null
+    },
+    {
       "path": "/api/inventory/parts-graph/route.ts",
       "methods": [
         "GET"
@@ -2887,12 +2896,30 @@
       "exemptReason": null
     },
     {
+      "path": "/api/inventory/placements/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "placement.record",
+      "exemptReason": null
+    },
+    {
       "path": "/api/inventory/sku-search/route.ts",
       "methods": [
         "GET"
       ],
       "gate": "withAuth",
       "permission": "sku_stock.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/inventory/spine/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "placement.view",
       "exemptReason": null
     },
     {
@@ -8653,6 +8680,33 @@
       ],
       "gate": "withAuth",
       "permission": "admin.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/workspace/process/discard/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "operations.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/workspace/process/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "operations.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/workspace/process/undo/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "operations.view",
       "exemptReason": null
     },
     {

@@ -11,14 +11,14 @@
  * text-vs-glyph answer all come from the shared helpers.
  */
 
-import { compoundColumnsFor } from '@/components/tables/compound/compound-columns';
+import { compoundColumnsFor } from '@/lib/tables/compound-columns';
 import {
   GRID_FILL_COLUMN,
-} from '@/design-system/components/grid';
+} from '@/lib/grid/grid-fill-column';
 
 
 import type { ColumnType } from '@/lib/tables/table-columns';
-import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
+import type { GridSortDir } from '@/lib/grid/grid-sort-dir';
 
 export type DailyGridColumnKey =
   | 'select'

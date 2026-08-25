@@ -1,4 +1,4 @@
-import type { WorkOrderRow } from '@/components/work-orders/types';
+import type { WorkOrderRow } from '@/lib/work-orders/types';
 import { compareWorkOrderRows } from '@/lib/work-orders/ranking';
 import { QUEUE_KEY_TO_STATION } from './constants';
 import type { InboxItem, TaskRow } from './types';

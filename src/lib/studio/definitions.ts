@@ -29,8 +29,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import { getNode, hasNode } from '@/lib/workflow/registry';
 import { validateNodeConfig } from '@/lib/workflow/validate-config';
 import { runDiagnostics, type Diagnostic } from '@/lib/workflow/diagnostics';
-import { summarizeStations } from '@/lib/studio/station-diagnostics';
-import { STATIONS } from '@/components/admin/workflow/operations-catalog';
+import { STATIONS } from '@/lib/workflow/operations-catalog';
 
 type TxClient = Pick<PoolClient, 'query'>;
 
@@ -181,7 +180,6 @@ export interface PublishDefinitionDeps {
   runDiagnostics: typeof runDiagnostics;
   hasNode: typeof hasNode;
   getNode: typeof getNode;
-  summarizeStations: typeof summarizeStations;
   /** Operations-catalog station keys — the diagnostics linter's allow-set. */
   stationKeys: Set<string>;
 }
@@ -190,7 +188,6 @@ const defaultPublishDeps: PublishDefinitionDeps = {
   runDiagnostics,
   hasNode,
   getNode,
-  summarizeStations,
   stationKeys: new Set(STATIONS.map((s) => s.key)),
 };
 
@@ -231,17 +228,6 @@ export async function publishDefinition(
     `SELECT id, source_node, source_port, target_node FROM workflow_edges WHERE workflow_definition_id = $1`,
     [definitionId],
   );
-  // Station composition bound to the draft's nodes — feeds the composition
-  // rules so an unmapped required role / dangling action blocks publish too.
-  const stationRows = nodes.rows.length
-    ? (
-        await client.query<{ workflow_node_id: string | null; label: string; config: Record<string, unknown> }>(
-          `SELECT workflow_node_id, label, config FROM station_definitions
-            WHERE organization_id = $1 AND is_active = TRUE AND workflow_node_id = ANY($2)`,
-          [orgId, nodes.rows.map((n) => n.id)],
-        )
-      ).rows
-    : [];
   const diagnostics = deps.runDiagnostics({
     nodes: nodes.rows.map((n) => ({ id: n.id, type: n.type, config: n.config ?? {} })),
     edges: edges.rows.map((e) => ({
@@ -253,9 +239,6 @@ export async function publishDefinition(
     portsOf: (type) => (deps.hasNode(type) ? deps.getNode(type).outputs.map((o) => o.id) : null),
     stationKeys: deps.stationKeys,
     labelOf: (n) => (deps.hasNode(n.type) ? deps.getNode(n.type).label : n.type),
-    stationsByNode: deps.summarizeStations(
-      stationRows.map((r) => ({ workflowNodeId: r.workflow_node_id, label: r.label, config: r.config })),
-    ),
   });
   // Config-schema gate: a node whose jsonb `config` violates its type's
   // configSchema blocks publish, the same way a granular write is rejected —

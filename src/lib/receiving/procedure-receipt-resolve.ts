@@ -46,7 +46,7 @@ import {
   type ProcedureReceipt,
   type StepEvidence,
 } from './procedure-receipt';
-import type { DeriveCaptureStepStatesInput } from '@/components/receiving/workspace/derive-capture-step-states';
+import type { DeriveCaptureStepStatesInput } from '@/lib/receiving/derive-capture-step-states';
 
 interface CartonRow {
   id: number;

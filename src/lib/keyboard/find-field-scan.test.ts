@@ -67,37 +67,20 @@ test('a non-character key resets the run', () => {
 });
 
 // ── Wiring contract ────────────────────────────────────────────────────────
-// A listener living inside a field the operator TYPES into is only safe while
-// every one of these holds. They are asserted on source because the hazards are
-// structural (which phase, which event, what gets prevented), not behavioural.
+// The adapter itself (`src/hooks/useFindFieldScan.ts`) is guarded by MOUNTED
+// DOM tests beside it (`useFindFieldScan.test.ts`): capture binding, the
+// single claimed preventDefault, off-stack side effects and the paste
+// short-circuit are all asserted as behaviour there. Three source-text guards
+// stood here while the adapter did not exist; they were deleted 2026-08-23
+// when it landed (X1 — a regex over source pins a shape, not a behaviour).
+// The two checks below survive because they guard OTHER modules' contracts
+// this feature composes and must never loosen.
 
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const ROOT = process.cwd();
 const read = (p: string) => readFileSync(join(ROOT, p), 'utf8');
-
-test('the field adapter binds NATIVE capture, never a React synthetic handler', () => {
-  const src = read('src/hooks/useFindFieldScan.ts');
-  // Same law `createWedgeKeyListener` obeys: a wedge burst must not enter a
-  // fiber per character.
-  assert.match(src, /addEventListener\('keydown', onKeyDown, true\)/);
-  assert.match(src, /removeEventListener\('keydown', onKeyDown, true\)/);
-  assert.ok(!/onKeyDown=\{/.test(src), 'no React synthetic binding');
-});
-
-test('characters are never prevented — only a decoded Enter is claimed', () => {
-  const src = read('src/hooks/useFindFieldScan.ts');
-  // Exactly one preventDefault, and it sits behind the handle branch. Preventing
-  // a character would break live filtering; preventing a typed Enter would break
-  // the field's own submit.
-  assert.equal((src.match(/preventDefault\(\)/g) ?? []).length, 1);
-  assert.match(src, /if \(scan\.kind !== 'handle'\) return;[\s\S]*?event\.preventDefault\(\)/);
-});
-
-test('side effects run OFF the keydown stack', () => {
-  assert.match(read('src/hooks/useFindFieldScan.ts'), /yieldToInput\(\)\.then\(/);
-});
 
 test('the GLOBAL wedge keeps its editable bail — this is opt-in, not a loosening', () => {
   // The reducer's editable reset is the law that makes a field own its own keys.

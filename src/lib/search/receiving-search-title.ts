@@ -4,7 +4,7 @@
  * multi distinct SKU → PO/order identity; single product → item name.
  */
 
-import { formatReturnSerialProductTitle } from '@/components/station/receiving-line-serials';
+import { formatReturnSerialProductTitle } from '@/lib/receiving/receiving-line-serials';
 import { formatMarketplaceReturnIdentityTitle } from '@/lib/receiving/marketplace-return-identity';
 
 interface ReceivingSearchTitleInput {

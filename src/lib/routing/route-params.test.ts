@@ -29,7 +29,7 @@ import {
   normalizeUnboxWorkspaceTabParams,
   type UnboxWorkspaceTab,
 } from '@/utils/unbox-workspace-state';
-import { SUPPORT_MODES } from '@/components/sidebar/support/support-sidebar-shared';
+import { SUPPORT_MODES } from '@/lib/support/support-sidebar-shared';
 
 const DEMO = defineRouteParams({
   route: '/demo',

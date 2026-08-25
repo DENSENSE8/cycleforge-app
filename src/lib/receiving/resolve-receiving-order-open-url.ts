@@ -3,7 +3,7 @@
  * first, then marketplace order page. Never invents a Google search.
  */
 
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { normalizeListingHref } from '@/lib/receiving/listing-links';
 import { marketplaceOrderUrl } from '@/utils/order-platform';
 

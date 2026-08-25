@@ -11,7 +11,7 @@
  * focus simply no-ops on that target today.
  */
 
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { isReturnIntake } from './triage-intake-kind';
 
 export type TriageFocusTarget =

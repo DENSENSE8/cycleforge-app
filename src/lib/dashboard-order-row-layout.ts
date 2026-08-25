@@ -20,11 +20,11 @@
  * anatomy regardless of viewport width.
  */
 
-import { compoundColumnsFor } from '@/components/tables/compound/compound-columns';
+import { compoundColumnsFor } from '@/lib/tables/compound-columns';
 import {
   gridFrozenKeys,
   isGridColumnResizable,
-} from '@/design-system/components/grid/grid-column-editability';
+} from '@/lib/grid/grid-column-editability';
 import {
   gridColVar,
   gridColumnTrackRem,
@@ -32,15 +32,15 @@ import {
   gridFrozenLeft,
   gridHeaderShowsLabel,
   gridTemplate,
-} from '@/design-system/components/grid/grid-column-geometry';
-import type { LedgerGridColumnModel } from '@/design-system/components/grid/grid-surface-descriptor';
+} from '@/lib/grid/grid-column-geometry';
+import type { LedgerGridColumnModel } from '@/lib/grid/grid-surface-descriptor';
 import {
   LEDGER_GRID_CELL_INSET,
   LEDGER_GRID_FROZEN_CELL,
   ledgerGridCell,
   ledgerGridRowShellClass,
   ledgerGridWidthVarValue,
-} from '@/design-system/components/grid/grid-cell-chrome';
+} from '@/lib/grid/grid-cell-chrome';
 /** Stable key set for the desktop orders-queue columns (scan order). */
 export type OrdersQueueColumnKey =
   | 'select'

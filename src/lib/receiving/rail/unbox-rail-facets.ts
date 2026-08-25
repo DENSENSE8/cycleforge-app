@@ -5,7 +5,7 @@
  * Applied as a display keep-filter on already-fetched rail rows.
  */
 
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
 import { platformPriorityRank } from '@/lib/receiving/display/precedence';
 import { PRIORITY_OVERRIDE_TIERS } from '@/lib/receiving/priority-override';
 import { sourcePlatformLabel } from '@/lib/source-platform';

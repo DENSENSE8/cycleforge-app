@@ -21,6 +21,7 @@ import {
   pickableSerialUnitsWhereClause,
 } from '@/lib/inventory/pickability';
 import { transition } from '@/lib/inventory/state-machine';
+import { NO_SESSION } from '@/lib/sessions/attribution';
 
 const VALID_GRADES = ['BRAND_NEW', 'LIKE_NEW', 'REFURBISHED', 'USED_A', 'USED_B', 'USED_C', 'PARTS'] as const;
 export type ConditionGrade = (typeof VALID_GRADES)[number];
@@ -210,6 +211,7 @@ async function allocateOrderInTx(
       ? `${input.clientEventId}:${unit.id}`
       : null;
     const t = await transition({
+      session: NO_SESSION,
       unitId: unit.id,
       to: 'ALLOCATED',
       eventType: 'ALLOCATED',

@@ -4,6 +4,7 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { findByNormalizedSerial } from '@/lib/neon/serial-units-queries';
 import { recordInventoryEvent } from '@/lib/inventory/events';
+import { NO_SESSION } from '@/lib/sessions/attribution';
 
 /**
  * POST /api/serial-units/[id]/move — move a unit into a bin/zone.
@@ -123,6 +124,7 @@ export const POST = withAuth(
     // 4. Lifecycle event.
     try {
       await recordInventoryEvent({
+        session: NO_SESSION,
         event_type: 'MOVED',
         actor_staff_id: ctx.staffId ?? null,
         station: 'MOBILE',

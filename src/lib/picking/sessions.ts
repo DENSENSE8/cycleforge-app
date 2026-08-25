@@ -19,6 +19,7 @@ import { transition } from '@/lib/inventory/state-machine';
 import { recordInventoryEvent } from '@/lib/inventory/events';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
+import { NO_SESSION } from '@/lib/sessions/attribution';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -395,6 +396,7 @@ export async function confirmPick(input: ConfirmPickInput, orgId: OrgId): Promis
 
       const unitResult = await transition(
         {
+          session: NO_SESSION,
           unitId: alloc.serial_unit_id,
           to: 'PICKED',
           eventType: 'PICKED',
@@ -460,6 +462,7 @@ export async function confirmPick(input: ConfirmPickInput, orgId: OrgId): Promis
     // can emit it separately when needed.)
     const unitResult = await transition(
       {
+        session: NO_SESSION,
         unitId: alloc.serial_unit_id,
         to: 'PICKED',
         eventType: 'PICKED',
@@ -525,6 +528,7 @@ export async function recordShortPick(input: RecordShortPickInput, orgId: OrgId)
       // back to STOCKED so re-allocation can hand it to another order.
       const unitResult = await transition(
         {
+          session: NO_SESSION,
           unitId: alloc.serial_unit_id,
           to: 'STOCKED',
           eventType: 'NOTE',
@@ -587,6 +591,7 @@ export async function recordShortPick(input: RecordShortPickInput, orgId: OrgId)
     // back to STOCKED so re-allocation can hand it to another order.
     const unitResult = await transition(
       {
+        session: NO_SESSION,
         unitId: alloc.serial_unit_id,
         to: 'STOCKED',
         eventType: 'NOTE',
@@ -654,6 +659,7 @@ export async function completeSession(input: { sessionId: number; actorStaffId: 
       // Log the close as a session-level note so audit timelines reflect it.
       await recordInventoryEvent(
         {
+          session: NO_SESSION,
           event_type: 'NOTE',
           actor_staff_id: input.actorStaffId,
           station: 'MOBILE',

@@ -36,6 +36,7 @@ import {
   workflowNodes,
 } from '@/lib/drizzle/schema';
 import { recordOpsEvent, type RecordOpsEventInput } from '@/lib/ops-events';
+import { NO_SESSION } from '@/lib/sessions/attribution';
 import { isWorkflowTapOutboxEnabled } from '@/lib/feature-flags';
 import type { NodeContext } from './contract';
 import type { AdvanceArgs, AdvanceOutcome } from './advance';
@@ -334,6 +335,12 @@ async function emitDrop(
   if (!orgId) return;
   try {
     await deps.emitOps({
+      // A DIAGNOSTIC about the engine diverging from the domain spine, not a
+      // record of operator work — so it carries no session even when a scan
+      // triggered the tap. Threading one here would push a required argument
+      // through ten `tapWorkflow` callers to classify an event no session
+      // report reads, and would put engine noise into "what this operator did".
+      session: NO_SESSION,
       organizationId: orgId,
       entityType: 'serial_unit',
       entityId: args.serialUnitId,

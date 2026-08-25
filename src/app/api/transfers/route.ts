@@ -14,6 +14,7 @@ import {
 import { TransfersBody } from '@/lib/schemas/locations';
 import { parseBody } from '@/lib/schemas/parse';
 import { withAuth } from '@/lib/auth/withAuth';
+import { NO_SESSION } from '@/lib/sessions/attribution';
 
 const ROUTE_TRANSFERS = 'transfers.post';
 
@@ -151,6 +152,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
     // 3. Single lifecycle event linking the two legs.
     try {
       await recordInventoryEvent({
+        session: NO_SESSION,
         event_type: 'MOVED',
         actor_staff_id: staffId,
         station: 'MOBILE',

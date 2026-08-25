@@ -39,7 +39,7 @@ import { isRepairColumnSort } from '@/lib/repair/repair-display-sort';
 import { parseRepairTab } from '@/lib/walk-in/history-modes';
 import { resolveTriageView } from '@/utils/triage-workspace-state';
 import { parseUnboxViewWire } from '@/utils/unbox-workspace-state';
-import type { ReceivingMode } from '@/components/sidebar/receiving/receiving-sidebar-shared';
+import type { ReceivingMode } from '@/lib/receiving/receiving-sidebar-shared';
 import {
   defineRouteParams,
   paramDateKey,
@@ -141,18 +141,8 @@ export const UNBOX_ROUTE_PARAMS = defineRouteParams({
     /** Band 2 KPI canvas viz mode — tiles · bars · pie · line. Default pie. */
     uviz: paramEnum(['tiles', 'bars', 'pie', 'line'] as const),
     /**
-     * TradingView-like compare layout — `single` (default, omitted) · `split`
-     * · `quad`. Pane recipes ride `c0`…`c3`.
-     */
-    clayout: paramEnum(['single', 'split', 'quad'] as const),
-    c0: paramText,
-    c1: paramText,
-    c2: paramText,
-    c3: paramText,
-    /**
      * History linked parent→child drill vs folded list. Default (omitted) =
      * list (classic single PO-fold grid). `drill` opts into linked dual panes.
-     * Orthogonal to `clayout` compare.
      */
     hlayout: paramEnum(['drill', 'list'] as const),
     /** Selected PO-group key while History drill is active (`po:…` / `src:…` / `line:…`). */

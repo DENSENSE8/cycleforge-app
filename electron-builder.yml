@@ -82,12 +82,15 @@ nsis:
   artifactName: CycleForge-Setup-${version}.${ext}
 
 # ---------------------------------------------------------------------------
-# Linux (optional bench images)
+# Linux — first-class since the desktop-first ruling (T30, 2026-08-23).
+# AppImage is the Linux ".app": one self-contained x86_64 binary.
 # ---------------------------------------------------------------------------
 linux:
   category: Office
+  artifactName: CycleForge-${version}-${arch}.${ext}
   target:
-    - AppImage
+    - target: AppImage
+      arch: [x64]
 
 # ---------------------------------------------------------------------------
 # Auto-update — GitHub Releases (N4)

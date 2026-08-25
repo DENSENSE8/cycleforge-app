@@ -16,6 +16,7 @@ import type { PoolClient } from 'pg';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { recordInventoryEvent, type InventoryEventStation, type InventoryEventType } from './events';
+import type { SessionAttribution } from '@/lib/sessions/attribution';
 
 // ─── State vocabulary (mirrors serial_status_enum in schema.ts) ──────────────
 
@@ -127,6 +128,19 @@ export interface TransitionInput {
   /** Pass to make mobile retries idempotent. */
   clientEventId?: string | null;
   notes?: string | null;
+  /**
+   * WHICH WORK SESSION THIS TRANSITION HAPPENED INSIDE. Required, un-defaulted,
+   * for the same reason `orgId` below is: this is the guarded chokepoint every
+   * unit status change routes through, so it is the EARLIEST write on the path.
+   * A default here would silently unattribute every transition in the app and
+   * the compiler would say nothing.
+   *
+   * Sessions ANNOTATE work; they do not become a second way to change status.
+   * Nothing about this value affects whether the transition is legal.
+   *
+   * Pass {@link NO_SESSION} when the caller genuinely has no session.
+   */
+  session: SessionAttribution;
   payload?: Record<string, unknown>;
   /**
    * Optional caller-supplied expected `from` state. When provided, the
@@ -287,6 +301,7 @@ async function runTransition(
     // and was therefore silently mis-attributing every org-less transition.
     const event = await recordInventoryEvent(
       {
+        session: input.session,
         event_type: input.eventType,
         actor_staff_id: input.actorStaffId ?? null,
         station: input.station ?? null,

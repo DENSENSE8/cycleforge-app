@@ -20,6 +20,7 @@
  */
 
 import type { ArchetypeId } from './archetype';
+import type { SurfaceSessionBinding } from '@/lib/sessions/types';
 
 /**
  * Workbench Layer C recipe / branch ids. Declared on every
@@ -109,6 +110,23 @@ export interface SurfaceDefinition {
   /** `station_definitions.mode_key` — the sub-variant within `pageKey`. */
   modeKey: string;
   /**
+   * WHICH SESSION THIS SURFACE STARTS — required, with **no default**.
+   *
+   * `kind: 'scan'` carries a `scanType` and competes for the ONE armed scan
+   * session app-wide (`work_sessions`, `ux_work_sessions_armed_scan`).
+   * `kind: 'task'` carries none, and N may be open at once. That two-value
+   * discriminator is the whole scan-ownership model — tiles never compete for
+   * a barcode, so there is no per-tile scan focus.
+   *
+   * It is required *because* the registry is a closed `Record<SurfaceKey, …>`:
+   * the compiler enumerates every surface that has not answered, so a new
+   * surface cannot inherit a session kind by omission. A default here would be
+   * a silent opt-out taken by every site nobody visited.
+   *
+   * Vocabulary: `@/lib/sessions/types`. Table: `work_sessions`.
+   */
+  session: SurfaceSessionBinding;
+  /**
    * Scan policy: which focus-locked scan classifier this Station surface owns.
    * `null` = not a scan surface (Workbench/Monitor). Consumed by the
    * surface-aware scan classifier (Phase 3a). Pickup opens/matches LCPU orders
@@ -136,6 +154,7 @@ export interface SurfaceDefinition {
 export const SURFACE_REGISTRY: Record<SurfaceKey, SurfaceDefinition> = {
   unbox: {
     key: 'unbox',
+    session: { kind: 'scan', scanType: 'unbox' },
     label: 'Unbox',
     route: '/unbox',
     archetype: 'station',
@@ -151,6 +170,7 @@ export const SURFACE_REGISTRY: Record<SurfaceKey, SurfaceDefinition> = {
   },
   triage: {
     key: 'triage',
+    session: { kind: 'scan', scanType: 'triage' },
     label: 'Arrival',
     route: '/triage',
     archetype: 'station',
@@ -165,6 +185,8 @@ export const SURFACE_REGISTRY: Record<SurfaceKey, SurfaceDefinition> = {
   },
   incoming: {
     key: 'incoming',
+    // Inbound queue: a Workbench worklist, nothing to scan into.
+    session: { kind: 'task' },
     label: 'Inbound',
     route: '/incoming',
     archetype: 'workbench',
@@ -186,6 +208,7 @@ export const SURFACE_REGISTRY: Record<SurfaceKey, SurfaceDefinition> = {
   // (later) shares the same POST /api/local-pickup-orders contract.
   pickup: {
     key: 'pickup',
+    session: { kind: 'scan', scanType: 'pickup' },
     label: 'Local Pickup',
     route: '/pickup',
     archetype: 'workbench',
@@ -203,6 +226,8 @@ export const SURFACE_REGISTRY: Record<SurfaceKey, SurfaceDefinition> = {
   // the rail; `repair.*` still gates the repair APIs.
   repair: {
     key: 'repair',
+    // Repair intake is a queue, not a bench — `scan` is already null.
+    session: { kind: 'task' },
     label: 'Repair',
     route: '/repair',
     archetype: 'workbench',
@@ -217,6 +242,8 @@ export const SURFACE_REGISTRY: Record<SurfaceKey, SurfaceDefinition> = {
   },
   history: {
     key: 'history',
+    // A Monitor read. Never owns the wedge.
+    session: { kind: 'task' },
     label: 'Receiving History',
     route: '/receiving/history',
     archetype: 'monitor',
@@ -230,6 +257,9 @@ export const SURFACE_REGISTRY: Record<SurfaceKey, SurfaceDefinition> = {
   },
   pack: {
     key: 'pack',
+    // A packing bench IS a scan bench; the legacy `scan` field never grew
+    // a 'pack' classifier, which is exactly the gap the session kind closes.
+    session: { kind: 'scan', scanType: 'pack' },
     label: 'Packing',
     route: '/pack',
     archetype: 'station',
@@ -245,6 +275,8 @@ export const SURFACE_REGISTRY: Record<SurfaceKey, SurfaceDefinition> = {
   },
   test: {
     key: 'test',
+    // Same as pack: a real scan bench the legacy `scan` field could not name.
+    session: { kind: 'scan', scanType: 'test' },
     label: 'Testing',
     route: '/test',
     archetype: 'station',
@@ -260,8 +292,40 @@ export const SURFACE_REGISTRY: Record<SurfaceKey, SurfaceDefinition> = {
   },
   outbound: {
     key: 'outbound',
+    // Scan-out is a bench (`/shipping/scan-out`), so this is a scan session.
+    session: { kind: 'scan', scanType: 'outbound' },
     label: 'Shipping',
-    route: '/shipping',
+    // ⚠️ THIS ROUTE 404s TODAY. Left pointing at the deleted page on purpose —
+    // every way of "fixing" it is an operator decision, not a wiring one.
+    //
+    // The Labels, Scan out and Packing Review PAGES were all deleted on
+    // 2026-08-21; `src/app/shipping` now holds only `fba/` and `orders/`.
+    // `sidebar-navigation.ts` took that on the chin the same day: it dropped
+    // the child rows ("a child that 404s is worse than an absent one") and
+    // pointed the domain `href` at `SHIPPING_ORDERS_PATH`. This registry entry
+    // never caught up, so anything resolving the canonical route for this
+    // surface — nav, the launch index, the legacy `/outbound` redirect, and
+    // now the canvas session tile — lands on a 404.
+    //
+    // Repointing it at `/shipping/orders` was TRIED and is wrong as a silent
+    // edit: that path is deliberately gated `orders.view`, not `shipping.view`
+    // (see ROUTE_PERMISSIONS — the longer prefix is there specifically to beat
+    // `/shipping`), so the move would hand the Shipping surface a different
+    // permission boundary and send `shipping.view`-only staff to a desk they
+    // cannot open. `surface-routing.test.ts` catches exactly that and is right
+    // to. The To-ship desk is also a different JOB from Labels, so pointing
+    // here would rename the surface rather than restore it.
+    //
+    // The two coherent fixes, both needing a decision:
+    //   1. Restore `src/app/shipping/labels/page.tsx` (the surface comes back).
+    //   2. Retire the `outbound` surface, or redefine it AS the To-ship desk —
+    //      which means moving `permission` to `orders.view` and `modeKey` to
+    //      `orders` together, and accepting the access change.
+    //
+    // `modeKey` is NOT a URL either way: it is half of the `pageKey::modeKey`
+    // pair `surface-resolver` looks a studio surface-definition ROW up by, so
+    // it moves only as part of decision 2, never on its own.
+    route: '/shipping/labels',
     archetype: 'station',
     workbenchBranch: null,
     permission: 'shipping.view',
@@ -297,6 +361,8 @@ export const SURFACE_REGISTRY: Record<SurfaceKey, SurfaceDefinition> = {
   // /api/zendesk/* routes it calls.
   support: {
     key: 'support',
+    // An agent workspace — pointer-driven, never scanner-driven.
+    session: { kind: 'task' },
     label: 'Support',
     route: '/support',
     archetype: 'workbench',

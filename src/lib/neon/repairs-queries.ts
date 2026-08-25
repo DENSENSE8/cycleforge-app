@@ -3,6 +3,7 @@ import { transition } from '@/lib/inventory/state-machine';
 import { tapWorkflow } from '@/lib/workflow/tap';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
+import { NO_SESSION } from '@/lib/sessions/attribution';
 
 /**
  * Per-serial repair history (unit_repairs) + the failure modes each repair
@@ -174,6 +175,7 @@ export async function openRepair(
     // read/write inside transition() is org-scoped on the same client.
     const t = await transition(
       {
+        session: NO_SESSION,
         unitId: params.serialUnitId,
         to: 'IN_REPAIR',
         eventType: 'REPAIR_STARTED',
@@ -339,6 +341,7 @@ export async function updateRepair(
       // Thread orgId so transition()'s unit read/write is org-scoped.
       const t = await transition(
         {
+          session: NO_SESSION,
           unitId: serialUnitId,
           to: 'REPAIR_DONE',
           eventType: 'REPAIR_COMPLETED',

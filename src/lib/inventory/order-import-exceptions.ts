@@ -27,7 +27,7 @@ import { ingestCanonicalOrders } from '@/lib/orders/ingest-canonical-orders';
 import type {
   ImportExceptionRow,
   ImportExceptionStatus,
-} from '@/features/review/catalog-link/import-exception-types';
+} from '@/lib/review/import-exception-types';
 
 export type EnqueueImportExceptionInput = {
   accountOrderId: string;

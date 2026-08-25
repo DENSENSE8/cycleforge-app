@@ -1,9 +1,6 @@
 import { createHmac } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { squareFetch } from '@/lib/square/client';
-import { reconcileCounterPayment } from '@/lib/counter/reconcile-payment';
-import { resolveTerminalCheckout } from '@/lib/counter/session-store';
-import { paymentStateForTerminalStatus } from '@/lib/counter/terminal-checkout';
 import { insertSquareTransaction } from '@/lib/neon/square-transaction-queries';
 import { publishSaleCompleted } from '@/lib/realtime/walkin-events';
 import { resolveWebhookOrgForSquareMerchant } from '@/lib/shipping/webhook-org-resolver';
@@ -155,67 +152,11 @@ export async function POST(req: NextRequest) {
         order_source: orderSource,
       }, orgId);
 
-      // Close the counter loop (SQ1). The `square_transactions` row exists by
-      // now; this stamps `counter_transaction_id` onto it and settles the
-      // header that staged this order.
-      //
-      // AFTER the insert, deliberately: the row must exist to be linked, and a
-      // walk-in sale rung up directly on the stand has no counter visit at all
-      // — that is `no_staged_header`, a normal outcome, not a failure. Guarded
-      // anyway so a reconciliation fault can never cost us the sale record or
-      // the realtime publish below.
-      const paidCents =
-        (typeof payment.total_money?.amount === 'number' ? payment.total_money.amount : null) ??
-        (typeof order?.total_money?.amount === 'number' ? order.total_money.amount : 0);
-
-      try {
-        const reconciled = await reconcileCounterPayment(orgId, {
-          squareOrderId: payment.order_id,
-          paidCents,
-        });
-        if (reconciled.linked) {
-          console.warn('[square-webhook] counter visit reconciled', {
-            counterTransactionId: reconciled.counterTransactionId,
-            status: reconciled.status,
-            idempotent: reconciled.idempotent,
-          });
-        }
-      } catch (err) {
-        console.error('[square-webhook] counter reconciliation failed', err);
-      }
-
       await publishSaleCompleted({
         orgId,
         squareOrderId: payment.order_id,
         source: 'square-webhook',
       }).catch((err) => console.error('Failed to publish sale event:', err));
-    }
-
-    /*
-     * Terminal outcome → the counter session (SQ2).
-     *
-     * A DIFFERENT fact from `payment.completed` above, arriving on its own
-     * webhook: this is the STAND saying the card was taken, cancelled, or the
-     * customer walked away. It moves the session's card prompt; it never
-     * settles the money, which is `payment.completed`'s job (SQ1). Keeping them
-     * apart is what stops a visit reading as paid because a device said OK.
-     */
-    if (event.type === 'terminal.checkout.updated') {
-      const checkout = (event.data?.object as { checkout?: { id?: string; status?: string } } | undefined)
-        ?.checkout;
-      const merchantId = typeof event.merchant_id === 'string' ? event.merchant_id : '';
-      const orgId = merchantId ? await resolveWebhookOrgForSquareMerchant(merchantId) : null;
-
-      if (orgId && checkout?.id) {
-        try {
-          await resolveTerminalCheckout(orgId, {
-            checkoutId: checkout.id,
-            paymentState: paymentStateForTerminalStatus(checkout.status ?? ''),
-          });
-        } catch (err) {
-          console.error('[square-webhook] terminal checkout resolve failed', err);
-        }
-      }
     }
 
     return NextResponse.json({ received: true });

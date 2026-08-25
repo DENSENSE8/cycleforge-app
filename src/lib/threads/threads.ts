@@ -323,6 +323,100 @@ export async function postThreadMessage(
   });
 }
 
+// ─── postEntityMessage ───────────────────────────────────────────────────────
+
+export interface PostEntityMessageInput {
+  orgId: OrgId;
+  entityType: SurfaceEntityType | (string & {});
+  entityId: number;
+  authorStaffId?: number | null;
+  provider?: ThreadMessageProvider;
+  visibility?: ThreadMessageVisibility;
+  body: string;
+  clientEventId?: string | null;
+  meta?: Record<string, unknown> | null;
+}
+
+export type PostEntityMessageResult =
+  | { ok: true; thread: EntityThread; message: ThreadMessage; idempotent: boolean }
+  | { ok: false; status: 400 | 404; error: string };
+
+/**
+ * Post a message to an entity's thread, creating the thread if it does not
+ * exist yet. **The single server-side waist for "write this operator's words
+ * onto that record."**
+ *
+ * ## Why this exists now
+ *
+ * Phase 7 collapses the app's composers onto one component whose `target` names
+ * a destination. The destination that matters — `thread_message` — needed a
+ * caller-facing entry point shaped like the target itself
+ * (`{ entityType, entityId, body }`), because the two-step
+ * get-or-create-then-post dance is exactly the kind of sequencing that a route
+ * gets subtly wrong once per route. It also gives a repointed writer (the order
+ * record's `createOrderNote`, the receiving-line note routes) a one-line
+ * migration instead of a rewrite.
+ *
+ * ## Two transactions, on purpose
+ *
+ * `getOrCreateThread` and `postThreadMessage` each open their own tenant
+ * transaction, and this composes them rather than inlining a merged one.
+ *
+ * The failure mode of two transactions here is a thread row with no messages —
+ * which is a legal, already-reachable state (a `ThreadPanel` mounted on an
+ * entity creates one before anyone types), costs one narrow row, and is
+ * self-healing: the next attempt finds it by the natural key and posts into it.
+ * The failure mode of a merged transaction is a THIRD copy of the anchor
+ * validation, the upsert and the `ops_events` emission living in a function
+ * that has to be kept byte-identical to the two it duplicates. The one-row
+ * orphan is the cheaper bug.
+ *
+ * Idempotency is unchanged and still exact: `client_event_id` collapses a
+ * retried post whether or not the thread step ran twice.
+ */
+export async function postEntityMessage(
+  input: PostEntityMessageInput,
+  deps: ThreadsDeps = defaultDeps,
+): Promise<PostEntityMessageResult> {
+  const body = input.body ?? '';
+  if (body.trim().length === 0) {
+    return { ok: false, status: 400, error: 'body must not be empty' };
+  }
+
+  const ensured = await getOrCreateThread(
+    {
+      orgId: input.orgId,
+      entityType: input.entityType,
+      entityId: input.entityId,
+      createdBy: input.authorStaffId ?? null,
+    },
+    deps,
+  );
+  if (!ensured.ok) return ensured;
+
+  const posted = await postThreadMessage(
+    {
+      orgId: input.orgId,
+      threadId: ensured.thread.id,
+      authorStaffId: input.authorStaffId ?? null,
+      provider: input.provider,
+      visibility: input.visibility,
+      body,
+      clientEventId: input.clientEventId ?? null,
+      meta: input.meta ?? null,
+    },
+    deps,
+  );
+  if (!posted.ok) return posted;
+
+  return {
+    ok: true,
+    thread: ensured.thread,
+    message: posted.message,
+    idempotent: posted.idempotent,
+  };
+}
+
 // ─── listThreadMessages ──────────────────────────────────────────────────────
 
 export interface ListThreadMessagesInput {

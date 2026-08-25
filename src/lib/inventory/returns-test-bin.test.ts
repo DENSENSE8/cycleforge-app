@@ -26,19 +26,12 @@ test('migration seeds RETURNS-TEST with RETURNS role', () => {
   ok(/Returns — Testing/.test(src), 'migration must name the bin');
 });
 
-test('receiving scan hook auto-stages return cartons', () => {
-  const src = readFileSync(
-    fileURLToPath(
-      new URL('../../components/sidebar/receiving/useTrackingScan.ts', import.meta.url),
-    ),
-    'utf8',
-  );
-  ok(/maybeStageReturnCarton/.test(src), 'scan hook must call maybeStageReturnCarton');
-  ok(
-    /stageReturnCartonToReturnsTestBin/.test(src),
-    'scan hook must import stageReturnCartonToReturnsTestBin',
-  );
-});
+/* The scan-hook wiring subtest left with its subject (merge, 2026-08-25):
+   the sidebar receiving `useTrackingScan` hook was deleted by the
+   warehouse-os zero-base. The domain half survives —
+   `stage-return-to-returns-bin.ts` and the settings registry rows below
+   are still pinned; the rebuilt shell's scan path re-earns a wiring pin
+   when that surface lands. */
 
 test('settings registry exposes receiving.returnsTestBin', () => {
   const src = readFileSync(
@@ -46,15 +39,4 @@ test('settings registry exposes receiving.returnsTestBin', () => {
     'utf8',
   );
   ok(/receiving\.returnsTestBin/.test(src), 'registry must declare receiving.returnsTestBin');
-});
-
-test('warehouse bulk bar prints special bins via 2x1 face', () => {
-  const src = readFileSync(
-    fileURLToPath(
-      new URL('../../components/warehouse/BinsBulkActionBar.tsx', import.meta.url),
-    ),
-    'utf8',
-  );
-  ok(/printSpecialBinLabelFromRow/.test(src), 'bulk bar must print specials immediately');
-  ok(/isSpecialBinBarcode/.test(src), 'bulk bar must split special vs structured');
 });

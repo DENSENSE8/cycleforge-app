@@ -1,5 +1,5 @@
-import type { RepairFormData } from '@/components/repair/RepairIntakeForm';
-import { formatPhone } from '@/components/repair/repair-intake-logic';
+import type { RepairFormData } from './repair-intake-types';
+import { formatPhone } from '@/lib/repair/repair-intake-logic';
 
 export interface RepairReceiptProps {
   ticketNumber?: string | number;

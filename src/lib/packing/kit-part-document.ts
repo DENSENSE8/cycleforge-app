@@ -18,7 +18,7 @@
  * exactly as it did before this feature existed. Pure + DB-free.
  */
 
-import type { DocumentPreviewMimeHint } from '@/design-system/components/document-preview-mime';
+import type { DocumentPreviewMimeHint } from '@/lib/documents/document-preview-mime';
 
 /** What the bench needs to show and open one insert. */
 export interface KitPartDocument {

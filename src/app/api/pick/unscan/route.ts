@@ -3,6 +3,7 @@ import { withTenantTransaction } from '@/lib/tenancy/db';
 import { withAuth } from '@/lib/auth/withAuth';
 import { parseScannedUrl } from '@/lib/scan-resolver';
 import { transition } from '@/lib/inventory/state-machine';
+import { NO_SESSION } from '@/lib/sessions/attribution';
 
 /**
  * POST /api/pick/unscan — clean inverse of /api/pick/scan.
@@ -85,6 +86,7 @@ export const POST = withAuth(async (request, ctx) => {
       //    guards + emits the inventory_event). A non-PICKED unit fails the guard.
       const t = await transition(
         {
+          session: NO_SESSION,
           unitId: unit.id,
           to: 'ALLOCATED',
           eventType: 'ALLOCATED',

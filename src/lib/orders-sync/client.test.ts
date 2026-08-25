@@ -86,18 +86,9 @@ describe('streamNdjson — shipped client', () => {
     assert.match(String(seen[0]?.error), /500|nope/);
   });
 
-  it('Incoming / Unshipped consumers paint via onBatch, not per-line setState', () => {
-    const importSrc = readFileSync(
-      join(process.cwd(), 'src/components/sidebar/dashboard-management/useOrdersImport.ts'),
-      'utf8',
-    );
-    const syncSrc = readFileSync(join(process.cwd(), 'src/hooks/useOrdersSync.ts'), 'utf8');
-    const realtimeSrc = readFileSync(
-      join(process.cwd(), 'src/hooks/useRealtimeInvalidation.ts'),
-      'utf8',
-    );
-    assert.match(importSrc, /onBatch:/);
-    assert.match(syncSrc, /onBatch:/);
-    assert.match(realtimeSrc, /coalesce:\s*'frame'/);
-  });
+  /* The onBatch consumer-wiring subtest left with its subjects (merge,
+     2026-08-25): `useOrdersImport` / `useOrdersSync` /
+     `useRealtimeInvalidation` were deleted by the warehouse-os zero-base.
+     The stream client's own batching contract stays pinned above; the
+     rebuilt consumers re-earn a wiring pin when they land. */
 });

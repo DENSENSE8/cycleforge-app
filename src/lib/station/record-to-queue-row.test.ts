@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import type { TechRecord } from '@/hooks/useTechLogs';
-import type { PackerRecord } from '@/hooks/usePackerLogs';
+import type { TechRecord } from '@/lib/station/useTechLogs';
+import type { PackerRecord } from '@/lib/station/usePackerLogs';
 import {
   getStationSourceKind,
   getStationSourceRecord,

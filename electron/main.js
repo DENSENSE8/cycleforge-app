@@ -1,25 +1,26 @@
 /**
- * Cycle Forge desktop shell — main process.
+ * Cycle Forge desktop — main process.
  *
- * A THIN host for the hosted Next app. It ships no application code and no
- * bundled Next build: it points a hardened BrowserWindow at the deployed origin,
- * so shipping app code never requires shipping an installer.
+ * NATIVE IS THE PRODUCT (operator ruling — LAWS.md T30, which struck T29's
+ * browser-first posture; T31 keeps only the printed GS1 resolvers on the
+ * public web). The app renders the Cycle Forge UI from its origin and carries
+ * the native capabilities that make it a desktop application:
  *
- * Plan + locked verdict: docs/todo/electron-desktop-shell-PLAN.md
- *
- * It exists to close the gaps a browser cannot close at a bench:
  *   N1  silent print to a NAMED OS/office printer   (browsers: dialog only)
  *   N2  enumerate installed printers                (browsers: no API)
  *   N3  scan hotkey while the window is unfocused   (browsers: focus-scoped)
- *   N4  versioned, auto-updating, chrome-less host  (browsers: "keep a tab open")
+ *   N4  versioned, auto-updating, chrome-less host
  *   N5  VendorView — partitioned WebContentsView    (signed-in vendor escape hatch)
+ *   N6  native file workspaces — open folder, scan, full CRUD, import feed
+ *       (files.js; scoped to operator-opened roots, Cursor's trust model)
  *
- * HARD BANS:
+ * HARD BANS (security engineering — these survive every product pivot):
  *   - Legacy <webview> TAG stays false (will-attach-webview deny). N5 uses the
  *     WebContentsView API + session.fromPartition — never DOM-injection macros.
  *   - No nodeIntegration, no `sandbox: false`.
  *   - No local HTTP sidecar. No file-path printing.
  *   - No generic invoke / executeJavaScript channel for vendor form-fill.
+ *   - No file access outside an operator-opened workspace root (N6's guard).
  *
  * Logs (path derives from productName in electron-builder.yml):
  *   macOS:   ~/Library/Logs/Cycle Forge/main.log
@@ -42,6 +43,7 @@ const {
   registerVendorViewHandlers,
   isVendorViewOpen,
 } = require('./vendor-view');
+const { registerFileHandlers, runFilesSelftest } = require('./files');
 const { startBuildWatch, stopBuildWatch } = require('./build-watch');
 const { attachInsetCanvas, chromeFileUrl } = require('./inset-canvas');
 
@@ -262,6 +264,53 @@ function registerPrintHandlers() {
   });
 
   /** Deep links out. The renderer can only ever ask for http(s). */
+  /**
+   * Mirror the renderer's keybinding table as OS-level accelerators.
+   *
+   * The renderer's own keydown listener only fires while the window has focus,
+   * so every operator-remapped chord is dead behind a vendor WebContentsView, a
+   * print dialog, or another app. Registering here and injecting the keystroke
+   * back with `sendInputEvent` means the page handles it through exactly the
+   * same path as a physical press — the shell learns no app vocabulary, it just
+   * re-delivers the key.
+   *
+   * The whole table is replaced on every call: the renderer is the source of
+   * truth and a diff would be a second, drift-prone copy of it here.
+   */
+  ipcMain.handle('cf:set-keybindings', async (_event, list) => {
+    for (const accelerator of mirroredAccelerators) {
+      try {
+        globalShortcut.unregister(accelerator);
+      } catch {
+        /* already gone — unregistering twice is not an error worth surfacing */
+      }
+    }
+    mirroredAccelerators = [];
+
+    if (!Array.isArray(list)) return { success: true, registered: 0 };
+
+    for (const entry of list) {
+      const accelerator = String(entry?.accelerator || '');
+      if (!accelerator) continue;
+      try {
+        const bound = globalShortcut.register(accelerator, () => {
+          if (!mainWindow || mainWindow.isDestroyed()) return;
+          if (mainWindow.isMinimized()) mainWindow.restore();
+          mainWindow.show();
+          mainWindow.focus();
+          const wc = mainWindow.webContents;
+          wc.sendInputEvent({ type: 'keyDown', keyCode: accelerator });
+          wc.sendInputEvent({ type: 'keyUp', keyCode: accelerator });
+        });
+        if (bound) mirroredAccelerators.push(accelerator);
+        else log.warn(`[keybindings] ${accelerator} is held by another app — not mirrored`);
+      } catch (err) {
+        log.error(`[keybindings] ${accelerator} register failed:`, err?.message || err);
+      }
+    }
+    return { success: true, registered: mirroredAccelerators.length };
+  });
+
   ipcMain.handle('cf:open-external', async (_event, url) => {
     try {
       const parsed = new URL(String(url));
@@ -291,11 +340,21 @@ function registerPrintHandlers() {
  * shell never reads, buffers, or routes barcode data; `routeScan` stays the one
  * decoder.
  *
- * Limitation (documented, not silent): this binds the DEFAULT `Insert`. A staff
- * override stored in the renderer is not mirrored to the shell yet.
+ * This binds the DEFAULT `Insert`. Operator OVERRIDES are mirrored separately,
+ * through `cf:set-keybindings` below — the renderer pushes its whole binding
+ * table whenever it changes and main re-registers the accelerators. The two do
+ * not overlap: this one is the scan wedge's reclaim key, those are the app's
+ * own chords.
  */
 const SCAN_HOTKEY = 'Insert';
 let scanHotkeyRegistered = false;
+
+/**
+ * Accelerators currently mirrored from the renderer's keybinding table. Held so
+ * the next `cf:set-keybindings` can unregister exactly what it registered —
+ * `globalShortcut.unregisterAll()` would take the scan hotkey down with it.
+ */
+let mirroredAccelerators = [];
 
 function registerScanHotkey() {
   if (scanHotkeyRegistered || !mainWindow) return;
@@ -550,9 +609,24 @@ if (!app.requestSingleInstanceLock()) {
   });
 
   app.whenReady().then(() => {
+    // Prove the native file layer inside a real (even packaged) binary with no
+    // UI: one JSON line on stdout, exit 0/1. Used by the build verification.
+    if (process.argv.includes('--cf-selftest')) {
+      runFilesSelftest()
+        .then((result) => {
+          console.log(`CF_SELFTEST ${JSON.stringify(result)}`);
+          app.exit(result.ok ? 0 : 1);
+        })
+        .catch((err) => {
+          console.log(`CF_SELFTEST ${JSON.stringify({ ok: false, error: String(err) })}`);
+          app.exit(1);
+        });
+      return;
+    }
     try {
       registerPrintHandlers();
       registerVendorViewHandlers(ipcMain, () => mainWindow);
+      registerFileHandlers(ipcMain, () => mainWindow, log);
       createWindow();
       initAutoUpdater();
 
@@ -573,6 +647,18 @@ if (!app.requestSingleInstanceLock()) {
 }
 
 app.on('will-quit', unregisterScanHotkey);
+// The mirrored chords are ours too — an OS-level accelerator outliving the app
+// that registered it is a key the operator can no longer use anywhere.
+app.on('will-quit', () => {
+  for (const accelerator of mirroredAccelerators) {
+    try {
+      globalShortcut.unregister(accelerator);
+    } catch {
+      /* already gone */
+    }
+  }
+  mirroredAccelerators = [];
+});
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();

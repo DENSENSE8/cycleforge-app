@@ -135,6 +135,9 @@ export const PERMISSIONS = [
   { id: 'replenish.create_po',      category: 'inventory', label: 'Create replenishment PO' },
   { id: 'replenish.approve_po',     category: 'inventory', label: 'Approve replenishment PO', destructive: true, stepUp: true },
   { id: 'stock_alerts.ack',          category: 'inventory', label: 'Acknowledge stock alerts' },
+  // ─ The unit↔location spine (00-endgame D1) — put-away, part pulls, lookup ─
+  { id: 'placement.record',         category: 'inventory', label: 'Record put-away / part pull' },
+  { id: 'placement.view',           category: 'inventory', label: 'Look up the unit↔location spine' },
 
   // ─ Sourcing (Bose parts compatibility + alternative sourcing engine) ─
   { id: 'sourcing.view',            category: 'sourcing', label: 'View sourcing & compatibility' },

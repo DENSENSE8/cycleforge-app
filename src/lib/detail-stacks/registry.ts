@@ -12,7 +12,7 @@
  */
 
 import type { ComponentType } from 'react';
-import { Box, Camera, FileText, Layers, Package, Truck, Wrench } from '@/components/Icons';
+import { Box, Camera, FileText, Layers, Package, Truck, Wrench } from '@/lib/icons';
 import { shippingOrdersHref } from '@/lib/shipping/orders-desk';
 
 export type DetailStackKind = 'shipment' | 'receiving' | 'order' | 'claim' | 'photo' | 'plan' | 'po';

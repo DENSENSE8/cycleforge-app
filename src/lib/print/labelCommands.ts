@@ -26,6 +26,16 @@ import {
   resolveReceivingQrValue,
 } from '@/lib/print/printReceivingLabel';
 import { conditionLabel } from '@/lib/conditions';
+import {
+  cellsForDots,
+  drawFittedText,
+  ESCPOS_FONT_A_COLUMNS,
+  labelFont,
+  TSPL_FONT_CELL_WIDTH,
+  wrapMonospace,
+  wrapToWidth,
+  zplCellsForDots,
+} from '@/lib/print/labelText';
 
 const DPI = 203;
 const MM_PER_INCH = 25.4;
@@ -33,6 +43,10 @@ const MM_PER_INCH = 25.4;
 const LABEL_FACE_FONT_SIZE = Math.round((9 * DPI) / 96);
 const LABEL_NOTE_FONT_SIZE = Math.round((7.5 * DPI) / 96);
 const LABEL_HRI_FONT_SIZE = Math.round((9 * DPI) / 96);
+const LABEL_NOTE_WEIGHT = 600;
+const NOTE_MAX_LINES = 3;
+/** Gutter between the info column and the 2D code, in dots. */
+const MATRIX_GUTTER = 8;
 
 function inchesToMillimeters(inches: number): string {
   return (inches * MM_PER_INCH).toFixed(1);
@@ -46,24 +60,6 @@ function sanitize(s: string): string {
     .trim();
 }
 
-function wrap(text: string, maxChars: number, maxLines: number): string[] {
-  const words = text.split(/\s+/).filter(Boolean);
-  const lines: string[] = [];
-  let cur = '';
-  for (const w of words) {
-    const candidate = cur ? `${cur} ${w}` : w;
-    if (candidate.length > maxChars) {
-      if (cur) lines.push(cur);
-      cur = w;
-    } else {
-      cur = candidate;
-    }
-    if (lines.length >= maxLines) break;
-  }
-  if (cur && lines.length < maxLines) lines.push(cur);
-  return lines.slice(0, maxLines);
-}
-
 function qrValueFor(p: ReceivingLabelPayload): string {
   return resolveReceivingQrValue(p);
 }
@@ -73,7 +69,12 @@ interface LabelFields {
   date: string;
   cond: string;
   po: string;
-  noteLines: string[];
+  /**
+   * Raw, sanitized note text. Wrapping happens per RENDERER, not here: the
+   * raster face measures real Arial while the native languages count cells in
+   * a printer-resident font, and one shared line list cannot be right for both.
+   */
+  notes: string;
   data: string;
 }
 
@@ -83,7 +84,7 @@ function fieldsFor(p: ReceivingLabelPayload): LabelFields {
     date: sanitize(p.date),
     cond: sanitize(conditionLabel(p.conditionCode, 'label')),
     po: sanitize(receivingLabelPoCornerDisplay(p)),
-    noteLines: wrap(sanitize((p.notes || '').trim()), 22, 3),
+    notes: sanitize((p.notes || '').trim()),
     data: sanitize(qrValueFor(p)),
   };
 }
@@ -128,24 +129,6 @@ export function packMonochromeBitmap(
     }
   }
   return bitmap;
-}
-
-function drawFittedText(
-  context: CanvasRenderingContext2D,
-  text: string,
-  x: number,
-  y: number,
-  maxWidth: number,
-  initialSize: number,
-  weight = 700,
-): void {
-  let size = initialSize;
-  do {
-    context.font = `${weight} ${size}px Arial, sans-serif`;
-    if (context.measureText(text).width <= maxWidth || size <= 8) break;
-    size -= 1;
-  } while (size > 8);
-  context.fillText(text, x, y);
 }
 
 /**
@@ -195,8 +178,13 @@ export function buildReceivingLabelBitmapCommands(
   context.textAlign = 'left';
 
   let noteY = 51;
-  for (const line of f.noteLines) {
-    drawFittedText(context, line, padding, noteY, infoWidth, LABEL_NOTE_FONT_SIZE, 600);
+  const noteLines = wrapToWidth(f.notes, {
+    font: labelFont(LABEL_NOTE_WEIGHT, LABEL_NOTE_FONT_SIZE),
+    maxWidth: infoWidth,
+    maxLines: NOTE_MAX_LINES,
+  }).lines;
+  for (const line of noteLines) {
+    drawFittedText(context, line, padding, noteY, infoWidth, LABEL_NOTE_FONT_SIZE, LABEL_NOTE_WEIGHT);
     noteY += 22;
   }
 
@@ -284,8 +272,14 @@ function tspl(f: LabelFields, size: PaperSize, copies: number): string {
   const padding = 10;
   const dm = Math.min(hDots - padding * 2, Math.round(0.84 * DPI));
   const dmX = Math.max(wDots - dm - padding, padding);
-  const infoRight = dmX - 8;
+  const infoRight = dmX - MATRIX_GUTTER;
   const dateX = Math.max(padding, infoRight - Math.max(72, f.date.length * 8));
+  // Font "2" is a 12-dot fixed-pitch firmware font, so the budget is exact.
+  // It used to be a flat 22, which is 264 dots on a line that only has ~207.
+  const noteLines = wrapMonospace(f.notes, {
+    maxCells: cellsForDots(infoRight - padding, TSPL_FONT_CELL_WIDTH['2']),
+    maxLines: NOTE_MAX_LINES,
+  }).lines;
 
   const L: string[] = [
     `SIZE ${inchesToMillimeters(size.widthIn)} mm,${inchesToMillimeters(heightIn)} mm`,
@@ -299,7 +293,7 @@ function tspl(f: LabelFields, size: PaperSize, copies: number): string {
     `TEXT ${dateX},12,"1",0,1,1,"${f.date}"`,
   ];
   let y = 50;
-  for (const line of f.noteLines) {
+  for (const line of noteLines) {
     L.push(`TEXT ${padding},${y},"2",0,1,1,"${line}"`);
     y += 26;
   }
@@ -314,11 +308,18 @@ function tspl(f: LabelFields, size: PaperSize, copies: number): string {
 // ---------------------------------------------------------------------------
 // ZPL
 // ---------------------------------------------------------------------------
+/** `^A0N,h,w` cell for the note rows. */
+const ZPL_NOTE_CHAR_WIDTH = 20;
+
 function zpl(f: LabelFields, size: PaperSize, copies: number): string {
   const heightIn = size.heightIn > 0 ? size.heightIn : 1;
   const wDots = Math.round(size.widthIn * DPI);
   const hDots = Math.round(heightIn * DPI);
   const dmX = Math.max(wDots - 170, 12);
+  const noteLines = wrapMonospace(f.notes, {
+    maxCells: zplCellsForDots(dmX - 12 - MATRIX_GUTTER, ZPL_NOTE_CHAR_WIDTH),
+    maxLines: NOTE_MAX_LINES,
+  }).lines;
 
   const L: string[] = [
     '^XA',
@@ -329,8 +330,8 @@ function zpl(f: LabelFields, size: PaperSize, copies: number): string {
     `^FO${Math.round(wDots * 0.6)},14^A0N,18,18^FD${f.date}^FS`,
   ];
   let y = 52;
-  for (const line of f.noteLines) {
-    L.push(`^FO12,${y}^A0N,20,20^FD${line}^FS`);
+  for (const line of noteLines) {
+    L.push(`^FO12,${y}^A0N,${ZPL_NOTE_CHAR_WIDTH},${ZPL_NOTE_CHAR_WIDTH}^FD${line}^FS`);
     y += 24;
   }
   L.push(`^FO12,${hDots - 43}^A0N,30,30^FD${f.cond}^FS`);
@@ -363,12 +364,16 @@ function escposQr(data: string): string {
 }
 
 function escpos(f: LabelFields, copies: number): string {
+  const noteLines = wrapMonospace(f.notes, {
+    maxCells: ESCPOS_FONT_A_COLUMNS,
+    maxLines: NOTE_MAX_LINES,
+  }).lines;
   const body =
     `${ESC}@` + // init
     `${ESC}a\x01` + // center
     `${ESC}!\x18${f.platform}\n` + // double height/width title
     `${ESC}!\x00${f.date}\n` +
-    (f.noteLines.length ? `${f.noteLines.join('\n')}\n` : '') +
+    (noteLines.length ? `${noteLines.join('\n')}\n` : '') +
     `${ESC}!\x10${f.cond}   ${f.po}\n` + // emphasized
     `${ESC}!\x00\n` +
     escposQr(f.data) +
@@ -405,7 +410,7 @@ export function buildTestLabelCommands(
     date: sanitize(dateStr),
     cond: sanitize(deviceLabel),
     po: size.label,
-    noteLines: [],
+    notes: '',
     data: 'CF-TEST',
   };
   if (language === 'zpl') return zpl(f, size, copies);

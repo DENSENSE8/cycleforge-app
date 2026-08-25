@@ -6,10 +6,11 @@
  *    through (shadow), redirects HTML to /signin, or returns 401 JSON
  *    for API routes when AUTH_V2_ENABLED is set.
  *
- * 2. Legacy QR-code rewrites — printed labels point to /m/b, /m/l, /m/u;
- *    rewrite those to their canonical app paths in-place (no extra
- *    round-trip). Device-specific routes (/m/enroll, /m/r/*, /m/scan)
- *    stay at /m/* untouched.
+ * 2. (RETIRED 2026-08-22) Edge rewrites. Both the printed-label prefix
+ *    rewrites (/m/b, /m/l, /m/u) and the phone-UA rewrites onto /m/* were
+ *    removed with the page tree in the Warehouse-OS rebuild — every target
+ *    route was deleted. See the two block comments below for what went and
+ *    which printed-label handles are now unresolved.
  *
  * Edge runtime caveat: this file is bundled for the Edge runtime, where
  * `node:crypto`, `pg`, and the existing pool can't run. It does NOT touch
@@ -19,43 +20,21 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import {
-  isBareKioskPlatformHost,
-  isKioskHost,
-  isKioskHostAllowedPath,
-  kioskPathDogfoodActive,
-  staffKioskRedirectOrigin,
-} from '@/lib/tenancy/kiosk-host';
 
 // Inlined (not imported) to keep the Edge bundle free of node:crypto / pg.
 // Must stay in sync with `src/lib/auth/session.ts` (SESSION_COOKIE_NAME +
 // LEGACY_SESSION_COOKIE_NAME). During the cookie rename the edge accepts EITHER
 // the canonical `cf_sid` or the legacy `usav_sid` — the migrate-on-touch to a
 // single cf_sid happens in the /api/auth/session heartbeat (Node runtime).
-// Kiosk host helpers are pure string/env (no db) — safe to import here.
 const SESSION_COOKIE_NAME = 'cf_sid';
 const LEGACY_SESSION_COOKIE_NAME = 'usav_sid';
 
 const PUBLIC_PATHS: ReadonlyArray<RegExp> = [
   /^\/signin(?:$|\/)/,
   /^\/signup(?:$|\/)/,                  // public account creation
-  /^\/account\/signin(?:$|\/)/,         // account-level (email/passkey) sign-in
-  /^\/m\/signin(?:$|\/)/,
   /^\/not-authorized(?:$|\/)/,
-  /^\/m\/enroll\//,
-  /^\/kiosk(?:$|\/)/,                    // customer-facing kiosk (device-token principal; no staff session)
-  /^\/api\/kiosk\/pair(?:$|\/)/,         // tablet exchanges a pairing code for a device token (code IS the capability)
-  /^\/api\/kiosk\/intake(?:$|\/)/,       // device-authed intake write (gated by withKioskAuth inside the handler)
-  /^\/api\/kiosk\/repair(?:$|\/)/,       // device-authed headless repair intake (withKioskAuth; NOT the staff enroll/revoke/devices siblings)
-  /^\/api\/kiosk\/sales(?:$|\/)/,        // device-authed retail catalog (withKioskAuth)
-  /^\/api\/kiosk\/settings(?:$|\/)/,     // device-authed brand/settings (withKioskAuth)
-  /^\/api\/kiosk\/staff-for-stepup(?:$|\/)/, // device-authed PIN step-up roster (withKioskAuth)
-  /^\/api\/kiosk\/pickup(?:$|\/)/,       // device-authed order pickup lookup/collect (withKioskAuth)
-  /^\/api\/kiosk\/session(?:$|\/)/,      // device-authed counter-session mirror: read + set-customer + signature (withKioskAuth)
-  /^\/api\/realtime\/kiosk-token(?:$|\/)/, // device-principal Ably token (withKioskAuth) — the STAFF token route stays gated
   /^\/invite\/[A-Za-z0-9_-]+(?:$|\/)/,  // org invitation accept (unauthenticated)
   /^\/offline(?:$|\/)/,                 // PWA offline fallback (matches AuthContext)
-  /^\/share\/photos\//,                 // public photo share-pack viewer (token capability)
   // Anonymous share-pack read + zip download by token — a token IS the
   // capability. The `[^/]+` requires a token segment, so the bare collection
   // route (`POST /api/photos/share-packs`, create) stays gated by withAuth.
@@ -80,6 +59,14 @@ const PUBLIC_PATHS: ReadonlyArray<RegExp> = [
   /^\/qr(?:$|\/)/,
   /^\/414\/[0-9]+\/254\/[A-Za-z0-9]+(?:$|\/)/,
   // Platform carton Digital Link — anon → branded interstitial; staff → ops.
+  // Platform carton Digital Link, PRINTED ON PHYSICAL STICKERS. The page
+  // (`src/app/m/(shell)/r/[id]`) was deleted with the rest of `/m/**` in the
+  // Warehouse-OS rebuild, so this currently allowlists a 404 — deliberately
+  // LEFT IN PLACE. `src/lib/barcode-routing.ts` still resolves scanned label
+  // payloads to `/m/r/{id}`, so the handle has to come back; keeping the anon
+  // allowlist entry means it works the moment a landing exists again, instead
+  // of silently bouncing customers to /signin. Do not "clean up" without
+  // also changing `barcode-routing.ts`.
   /^\/m\/r\/\d+(?:$|\/)/,
   /^\/_next\//,
   /^\/favicon\.ico$/,
@@ -103,8 +90,8 @@ const RESERVED_SUBDOMAINS = new Set<string>([
   'status',
   'staging',
   'preview',
-  // Platform kiosk apex (`kiosk.app.cycleforge.ai`) — not a tenant. Tenant
-  // kiosks live at `{slug}.kiosk.app.cycleforge.ai` (first label = slug).
+  // Retired customer kiosk product (removed 2026-08-22). Stays reserved so the
+  // label cannot be claimed as a tenant staff host by a later signup.
   'kiosk',
   // Named Cloudflare dev tunnel (pnpm dev:tunnel:named) — not a tenant slug.
   'usav-dev',
@@ -140,56 +127,25 @@ function extractTenantSlug(host: string | null): string | null {
   return candidate;
 }
 
-const REWRITES: ReadonlyArray<{ prefix: string; target: string }> = [
-  { prefix: '/m/b/', target: '/bin/' },
-  { prefix: '/m/l/', target: '/receiving/lines/' },
-  { prefix: '/m/u/', target: '/serial/' },
-];
-
-// Dual-route pages that have a dedicated mobile counterpart. When the request
-// comes from a phone-class device we rewrite at the edge before any JS runs,
-// so old browsers that can't hydrate the React tree still get the right view.
-// Exact path match only — sub-pages (e.g. /receiving/lines/[id]) are not
-// rewritten because they have no /m/ counterpart.
-const MOBILE_UA_REWRITES: ReadonlyMap<string, string> = new Map([
-  ['/receiving', '/m/receiving'],
-  ['/receiving/', '/m/receiving'],
-  // Unbox + Triage surfaces (operator-surfaces refactor) → the mobile receiving
-  // shell, whose bottom nav already labels itself "Unbox".
-  ['/unbox', '/m/receiving'],
-  ['/unbox/', '/m/receiving'],
-  ['/triage', '/m/triage'],
-  ['/triage/', '/m/triage'],
-  ['/incoming', '/m/receiving'],
-  ['/incoming/', '/m/receiving'],
-  // Walk-In station + Receiving History surfaces (operator-surfaces refactor Phase 9)
-  // → the mobile receiving shell (same feed, its bottom nav labels itself).
-  //
-  // FOH/BOH split (lane 05·P6): the Walk-In station decoupled from Receiving on
-  // desktop (own nav key + `walk_in.view` gate), but the phone rewrite STAYS on
-  // `/m/receiving` — there is no `/m/walk-in` shell, and inventing one is out of
-  // scope here. Revisit with lane 02's mobile pass; until then a phone hitting
-  // `/pickup` gets the receiving feed exactly as it does today.
-  ['/pickup', '/m/receiving'],
-  ['/pickup/', '/m/receiving'],
-  ['/receiving/history', '/m/receiving'],
-  ['/receiving/history/', '/m/receiving'],
-  // Pack surface (operator-surfaces refactor Phase 7) → the redesigned mobile
-  // packing shell. Both the canonical `/pack` and the legacy `/packer` land here
-  // on phones (the bottom nav already labels it "Packing").
-  ['/pack', '/m/pack'],
-  ['/pack/', '/m/pack'],
-  ['/packer', '/m/pack'],
-  ['/packer/', '/m/pack'],
-  ['/signin', '/m/signin'],
-  ['/signin/', '/m/signin'],
-]);
-
-// Phones only — exclude iPad/Android tablets so they keep the desktop view.
-// Android phone UA always contains "Mobile"; tablets omit it. iPadOS reports
-// a macOS UA (no "iPad" token) so it falls through here as desktop, which is
-// the desired behavior. Old iOS and old Android phones do match this pattern.
-const MOBILE_UA_RE = /iPhone|iPod|Android.+Mobile|webOS|BlackBerry|IEMobile|Opera Mini/i;
+// Edge rewrites are RETIRED (Warehouse-OS rebuild, 2026-08-22).
+//
+// Two families lived here and both pointed into the page tree that was just
+// deleted:
+//
+//   1. Printed-label prefix rewrites — `/m/b/` → `/bin/`, `/m/l/` →
+//      `/receiving/lines/`, `/m/u/` → `/serial/`. Every target is gone.
+//   2. Phone-UA rewrites — `/receiving`, `/unbox`, `/triage`, `/pack`,
+//      `/signin`, … → the `/m/*` mobile product, which was deleted whole.
+//
+// Family 2 had to go FIRST and is the reason this is not a cosmetic cleanup:
+// it mapped `/signin` → `/m/signin`. With `/m/**` deleted, leaving it in place
+// would have rewritten every phone-class sign-in attempt onto a 404 — locking
+// warehouse staff out of the app on exactly the devices they carry, while
+// desktop looked fine.
+//
+// See the lane report for the printed-label handles (`/m/r/{id}`, `/m/l/{id}`,
+// `/m/u/{serial}`, `/m/b/{barcode}`) that `src/lib/barcode-routing.ts` STILL
+// mints for physical stickers and that now have no landing.
 
 function isPublic(pathname: string): boolean {
   return PUBLIC_PATHS.some((re) => re.test(pathname));
@@ -216,319 +172,14 @@ function isAuthV2Enabled(): boolean {
   return v !== 'false' && v !== '0' && v !== 'shadow' && v !== 'off';
 }
 
-function resolveRewrite(pathname: string): string | null {
-  for (const { prefix, target } of REWRITES) {
-    if (pathname.startsWith(prefix)) {
-      return target + pathname.slice(prefix.length);
-    }
-  }
-  return null;
-}
-
-function resolveMobileUaRewrite(pathname: string, ua: string | null): string | null {
-  if (!ua || !MOBILE_UA_RE.test(ua)) return null;
-  // Don't double-rewrite if the client already navigated to /m/*.
-  if (pathname.startsWith('/m/')) return null;
-  return MOBILE_UA_REWRITES.get(pathname) ?? null;
-}
-
-/**
- * Surface-migration redirect (Studio-driven operator surfaces refactor). The
- * Unbox + Triage + Incoming + Pickup + History receiving modes graduated to their
- * own first-class routes (`/unbox`, `/triage`, `/incoming`, `/pickup`,
- * `/receiving/history`), so the address bar names the operator's job. Bare
- * `/receiving` (the Unbox default) and each `/receiving?mode=…` normalize to the
- * new canonical URL, dropping the now-redundant `mode` param (mode-specific
- * search params like History's `?q=`/`?field=`/`?scope=` ride along). Exact path
- * only — sub-routes (`/receiving/lines/[id]`, `/receiving/history`,
- * `/receiving/unfound`, …) keep their URLs.
- *
- * FOH/BOH split redirect matrix (lane 05·P5) — this function is the single
- * source for the `/receiving?mode=` legacy family:
- *   `?mode=pickup`  → `/pickup`             (Local Pickup mode)
- *   `?mode=repair`  → `/repair`             (Repair mode)
- *   `?mode=history` → `/incoming?lane=docked` (Inbound desk Docked lane)
- * The rest of the matrix:
- *   `/pickup?job=…`  → `resolveWalkInJobRedirect` below
- *   `/walk-in?mode=repair|repairs` browse → `/dashboard?mode=repairs`
- *   `/walk-in?mode=repair` + `new`/`openRepair` → `/repair` (task door)
- *   `/walk-in?mode=sales` / other `?category=` → in-page (`useWalkInTaskRedirect`)
- */
-function resolveReceivingSurfaceRedirect(url: NextRequest['nextUrl']): NextRequest['nextUrl'] | null {
-  if (url.pathname !== '/receiving') return null;
-  const mode = url.searchParams.get('mode');
-  const dest =
-    mode === null || mode === 'receive'
-      ? '/unbox'
-      : mode === 'triage'
-        ? '/triage'
-        : mode === 'incoming'
-          ? '/incoming'
-          : mode === 'pickup'
-            ? '/pickup'
-            : mode === 'repair'
-              ? '/repair'
-              : mode === 'history'
-                ? '/incoming'
-                : null;
-  if (!dest) return null;
-  const next = url.clone();
-  next.pathname = dest;
-  next.searchParams.delete('mode'); // being on the surface route IS the mode
-  if (mode === 'history') next.searchParams.set('lane', 'docked');
-  return next;
-}
-
-/**
- * `/receiving/history` → Inbound desk Docked lane (`/incoming?lane=docked`).
- * Preserves history search/sort params (`sort`, `rh_*`, `page`, `dir`).
- */
-function resolveReceivingHistoryRedirect(url: NextRequest['nextUrl']): NextRequest['nextUrl'] | null {
-  if (url.pathname !== '/receiving/history' && url.pathname !== '/receiving/history/') return null;
-  const next = url.clone();
-  next.pathname = '/incoming';
-  next.searchParams.set('lane', 'docked');
-  return next;
-}
-
-/**
- * Dashboard inbound domain → Inbound desk Docked lane.
- * `/dashboard?mode=inbound|receiving` → `/incoming?lane=docked` (+ sort / rh_*).
- */
-function resolveDashboardInboundRedirect(url: NextRequest['nextUrl']): NextRequest['nextUrl'] | null {
-  if (url.pathname !== '/dashboard' && url.pathname !== '/dashboard/') return null;
-  const mode = String(url.searchParams.get('mode') || '').trim().toLowerCase();
-  if (mode !== 'inbound' && mode !== 'receiving') return null;
-  const next = url.clone();
-  next.pathname = '/incoming';
-  next.searchParams.delete('mode');
-  next.searchParams.set('lane', 'docked');
-  return next;
-}
-
-/**
- * Dashboard bare outbound → Shipping · To-ship desk.
- * `/dashboard` (and outbound lifecycle bookmarks) → `/shipping/orders`.
- * Sales (`?mode=sales|pickup|repairs`) and other front doors stay elsewhere.
- */
-function resolveDashboardOutboundRedirect(url: NextRequest['nextUrl']): NextRequest['nextUrl'] | null {
-  if (url.pathname !== '/dashboard' && url.pathname !== '/dashboard/') return null;
-  const mode = String(url.searchParams.get('mode') || '').trim().toLowerCase();
-  if (
-    mode === 'sales' ||
-    mode === 'pickup' ||
-    mode === 'repairs' ||
-    mode === 'inbound' ||
-    mode === 'receiving' ||
-    mode === 'search'
-  ) {
-    return null;
-  }
-  // Legacy warranty / fba presence flags still client-redirect on the dashboard.
-  if (url.searchParams.has('warranty') || url.searchParams.has('fba')) return null;
-  const next = url.clone();
-  next.pathname = '/shipping/orders';
-  next.searchParams.delete('mode');
-  return next;
-}
-
-/**
- * Support › Inquiries → shared To-ship desk with support context.
- * `/support?mode=orders` → `/shipping/orders?context=support`.
- */
-function resolveSupportOrdersRedirect(url: NextRequest['nextUrl']): NextRequest['nextUrl'] | null {
-  if (url.pathname !== '/support' && url.pathname !== '/support/') return null;
-  const mode = String(url.searchParams.get('mode') || '').trim().toLowerCase();
-  if (mode !== 'orders') return null;
-  const next = url.clone();
-  next.pathname = '/shipping/orders';
-  next.searchParams.delete('mode');
-  next.searchParams.set('context', 'support');
-  return next;
-}
-
-/**
- * Walk-In job-switcher redirect. `/pickup?job=repair` was how the short-lived
- * "Walk-In station" addressed its Repair job; Repair is now its own Receiving
- * mode at `/repair`. `?job=sales` had no mode of its own — Sales lives on the
- * `/walk-in` Sales page — so it lands there. Any other `?job=` (incl. `pickup`,
- * the default) is just Local Pickup: strip the param and stay.
- */
-function resolveWalkInJobRedirect(url: NextRequest['nextUrl']): NextRequest['nextUrl'] | null {
-  if (url.pathname !== '/pickup' && url.pathname !== '/pickup/') return null;
-  const job = url.searchParams.get('job');
-  if (job === null) return null;
-  const next = url.clone();
-  next.pathname = job === 'repair' ? '/repair' : job === 'sales' ? '/walk-in' : '/pickup';
-  next.searchParams.delete('job'); // the route IS the mode now
-  return next;
-}
-
-/**
- * Sales-hub Repair mode redirect (dual-door RepairTable).
- *
- * Browse bookmarks (`mode`/`category` = repair|repairs, no task keys) → Sales
- * history desk `/dashboard?mode=repairs`. Task deep-links (`new`, `openRepair`)
- * → station `/repair`. Preserve queue params (`tab`, `search`, `sort`, `dir`).
- */
-function resolveWalkInRepairModeRedirect(url: NextRequest['nextUrl']): NextRequest['nextUrl'] | null {
-  if (url.pathname !== '/walk-in' && url.pathname !== '/walk-in/') return null;
-  const mode = url.searchParams.get('mode');
-  const category = url.searchParams.get('category');
-  const isRepair =
-    mode === 'repair' || mode === 'repairs' || category === 'repair' || category === 'repairs';
-  if (!isRepair) return null;
-  const hasTaskKey =
-    url.searchParams.has('new') || url.searchParams.has('openRepair');
-  const next = url.clone();
-  next.searchParams.delete('mode');
-  next.searchParams.delete('category');
-  if (hasTaskKey) {
-    next.pathname = '/repair';
-    return next;
-  }
-  next.pathname = '/dashboard';
-  next.searchParams.set('mode', 'repairs');
-  return next;
-}
-
-/**
- * Pack-surface redirect (operator-surfaces refactor Phase 7). The packing station
- * graduated from `/packer` to the first-class `/pack` route, so the address bar
- * names the operator's job. Bare `/packer` (and `/packer/`) normalize to `/pack`,
- * preserving the `?packMode=` sub-view param. Exact path only — no `/packer`
- * sub-routes exist, but guard against a future one leaking. Desktop only; phones
- * fall through to the `/m/pack` UA rewrite computed above.
- */
-function resolvePackSurfaceRedirect(url: NextRequest['nextUrl']): NextRequest['nextUrl'] | null {
-  if (url.pathname !== '/packer' && url.pathname !== '/packer/') return null;
-  const next = url.clone();
-  next.pathname = '/pack';
-  return next;
-}
-
-/**
- * Test-surface redirect (operator-surfaces refactor Phase 8). The testing station
- * graduated from `/tech` to the first-class `/test` route, so the address bar
- * names the operator's job. `/tech` (and `/tech/`) normalize to `/test`,
- * preserving `?view=testing` (and rewriting legacy `?view=testing-history` →
- * `?view=testing` — history browse now lives inside Testing mode).
- * Exact path only — the `/tech/*` sub-routes (none today) keep their URLs.
- */
-function resolveTestSurfaceRedirect(url: NextRequest['nextUrl']): NextRequest['nextUrl'] | null {
-  if (url.pathname !== '/tech' && url.pathname !== '/tech/') return null;
-  const next = url.clone();
-  next.pathname = '/test';
-  if (next.searchParams.get('view') === 'testing-history') {
-    next.searchParams.set('view', 'testing');
-  }
-  return next;
-}
-
-/**
- * Shipping-surface redirect. The shipping station lives at `/shipping` only —
- * there is no `/outbound` page. Bare `/outbound` (and `/outbound/`) 308 to
- * `/shipping`, preserving `?mode=` / FBA params for bookmarks and printed links.
- */
-function resolveShippingSurfaceRedirect(url: NextRequest['nextUrl']): NextRequest['nextUrl'] | null {
-  if (url.pathname !== '/outbound' && url.pathname !== '/outbound/') return null;
-  const next = url.clone();
-  next.pathname = '/shipping';
-  return next;
-}
-
-/**
- * Legacy top-level History mode (`?view=testing-history`) now redirects to
- * Testing mode — the tested-lines browse surface is the empty state of
- * TestingLineWorkspace when no line is selected.
- */
-function resolveTestingHistoryViewRedirect(url: NextRequest['nextUrl']): NextRequest['nextUrl'] | null {
-  if (url.pathname !== '/test' && url.pathname !== '/test/') return null;
-  if (url.searchParams.get('view') !== 'testing-history') return null;
-  const next = url.clone();
-  next.searchParams.set('view', 'testing');
-  return next;
-}
-
-// Per-section browse filters — mirrors SYSTEM_SAVED_VIEWS in
-// `src/lib/operations/saved-view-presets.ts`, INLINED here to keep the Edge
-// bundle self-contained (this file's convention; see SESSION_COOKIE_NAME). The
-// `view` marker highlights the matching preset chip on landing.
-const AUDIT_LOG_SECTION_PARAMS: Readonly<Record<string, Readonly<Record<string, string>>>> = {
-  receiving: { stations: 'RECEIVING', sources: 'sal,inventory', view: 'sys:receiving-audit' },
-  packing: { stations: 'PACK', view: 'sys:pack-audit' },
-  tech: { stations: 'TECH', view: 'sys:tech-audit' },
-};
-
-/**
- * Redirect a legacy `/audit-log/*` URL to its Operations History equivalent
- * (plan §4.1), preferring a system saved-view preset and carrying record params
- * across. **Unconditional as of the Phase 7 cutover** — the `/audit-log` route
- * files are removed, so these URLs (bookmarks / old links) must always land on
- * History rather than 404. (`/settings/audit` is a distinct route, unaffected.)
- */
-function resolveAuditLogRedirect(url: NextRequest['nextUrl']): NextRequest['nextUrl'] | null {
-  const p = url.pathname;
-  if (p !== '/audit-log' && !p.startsWith('/audit-log/')) return null;
-
-  const section =
-    p === '/audit-log' || p === '/audit-log/'
-      ? ''
-      : p.slice('/audit-log/'.length).replace(/\/+$/, '');
-  const src = url.searchParams;
-  const next = url.clone();
-  next.pathname = '/operations';
-  const sp = next.searchParams;
-  for (const k of [...sp.keys()]) sp.delete(k); // drop audit-log-specific params
-  sp.set('mode', 'history');
-
-  const preset = AUDIT_LOG_SECTION_PARAMS[section];
-  if (preset) for (const [k, v] of Object.entries(preset)) sp.set(k, v);
-
-  switch (section) {
-    case 'trace': {
-      const serial = src.get('serial');
-      const tracking = src.get('tracking');
-      const order = src.get('order');
-      if (serial) {
-        sp.set('dim', 'serial');
-        sp.set('serial', serial);
-      } else if (tracking) {
-        sp.set('dim', 'tracking');
-        sp.set('tracking', tracking);
-      } else if (order) {
-        sp.set('dim', 'order');
-        sp.set('order', order);
-      }
-      break;
-    }
-    case 'receiving': {
-      const po = src.get('po');
-      if (po) sp.set('q', po);
-      break;
-    }
-    case 'packing': {
-      const tracking = src.get('tracking');
-      if (tracking) {
-        sp.set('dim', 'tracking');
-        sp.set('tracking', tracking);
-      }
-      break;
-    }
-    case 'tech': {
-      const session = src.get('session') ?? src.get('staffId');
-      if (session && /^\d+$/.test(session)) sp.set('staffId', session);
-      break;
-    }
-    case 'sku': {
-      const sku = src.get('sku');
-      if (sku) sp.set('q', sku);
-      break;
-    }
-    // '' (bare /audit-log), 'staff', or any other section → plain History landing.
-  }
-  return next;
-}
+// The surface-migration redirect matrix is RETIRED with the page tree
+// (Warehouse-OS rebuild, 2026-08-22). It held twelve resolvers — receiving
+// surface/history, dashboard inbound/outbound, support orders, walk-in job +
+// repair mode, pack, test, shipping, testing-history and the `/audit-log`
+// family — and every single destination (`/incoming`, `/shipping/orders`,
+// `/repair`, `/walk-in`, `/dashboard`, `/pack`, `/test`, `/operations`,
+// `/pickup`) is now a deleted route. A 30x into a 404 is worse than no rule
+// at all, so they are removed rather than left dangling.
 
 /**
  * Security response headers. Attached to every response we hand back from
@@ -582,58 +233,10 @@ export function proxy(req: NextRequest): NextResponse {
     req.cookies.get(SESSION_COOKIE_NAME)?.value || req.cookies.get(LEGACY_SESSION_COOKIE_NAME)?.value,
   );
 
-  // ── Kiosk host surface (`{slug}.kiosk.app.cycleforge.ai`) ─────────────────
-  // Hard isolation: only the intake UI + device-authed kiosk APIs. Staff
-  // enroll/revoke/devices and every other app path → 404 (no chrome leak).
-  if (isBareKioskPlatformHost(hostHeader)) {
-    return applySecurityHeaders(
-      pathname.startsWith('/api/')
-        ? NextResponse.json({ error: 'NOT_FOUND' }, { status: 404 })
-        : new NextResponse('Not Found', { status: 404 }),
-    );
-  }
-
-  if (isKioskHost(hostHeader)) {
-    if (!isKioskHostAllowedPath(pathname)) {
-      return applySecurityHeaders(
-        pathname.startsWith('/api/')
-          ? NextResponse.json({ error: 'NOT_FOUND' }, { status: 404 })
-          : new NextResponse('Not Found', { status: 404 }),
-      );
-    }
-
-    const requestHeaders = new Headers(req.headers);
-    const tenantSlug = extractTenantSlug(hostHeader);
-    if (tenantSlug) {
-      requestHeaders.set('x-tenant-slug', tenantSlug);
-    }
-
-    // MDM pins the origin root — rewrite `/` → `/kiosk`.
-    const effectivePath = pathname === '/' ? '/kiosk' : pathname;
-    requestHeaders.set('x-pathname', effectivePath);
-
-    if (pathname === '/') {
-      const url = req.nextUrl.clone();
-      url.pathname = '/kiosk';
-      return applySecurityHeaders(
-        NextResponse.rewrite(url, { request: { headers: requestHeaders } }),
-      );
-    }
-
-    return applySecurityHeaders(
-      NextResponse.next({ request: { headers: requestHeaders } }),
-    );
-  }
-
-  // Path-prefix rewrites take precedence; UA-based rewrites are a fallback
-  // for exact paths with a /m/* counterpart (see MOBILE_UA_REWRITES).
-  const rewriteTarget =
-    resolveRewrite(pathname) ?? resolveMobileUaRewrite(pathname, req.headers.get('user-agent'));
-
   // Pass the resolved pathname to RSC pages — used by requirePermission to
   // build a `?next=` query when it redirects to /signin.
   const requestHeaders = new Headers(req.headers);
-  requestHeaders.set('x-pathname', rewriteTarget ?? pathname);
+  requestHeaders.set('x-pathname', pathname);
   // …and the query beside it. A ROOT LAYOUT is handed no `searchParams`, so a
   // shell-level paint seed (`maybeSeedShell`) could otherwise only be gated on
   // the path — and on a station whose tabs live in the URL that means paying
@@ -649,65 +252,11 @@ export function proxy(req: NextRequest): NextResponse {
     requestHeaders.set('x-tenant-slug', tenantSlug);
   }
 
-  // Staff-host `/kiosk*` → tenant kiosk origin (308) once subdomain DNS is live.
-  // While `kioskPathDogfoodActive()` (HUMAN-TODO J7b pending), serve the path on
-  // the staff host so tablets can use `https://app.cycleforge.ai/kiosk/v2`.
-  if (
-    !kioskPathDogfoodActive() &&
-    (pathname === '/kiosk' || pathname.startsWith('/kiosk/'))
-  ) {
-    const kioskDest = staffKioskRedirectOrigin({
-      tenantSlug,
-      defaultTenantSlug: process.env.DEFAULT_TENANT_SLUG,
-      isProduction: process.env.NODE_ENV === 'production',
-    });
-    if (kioskDest) {
-      // Preserve path so staff same-origin preview `/kiosk/v2` lands on the
-      // tenant kiosk shell, not the kiosk root.
-      return applySecurityHeaders(NextResponse.redirect(new URL(`${kioskDest}${pathname}`), 308));
-    }
-    if (process.env.NODE_ENV === 'production') {
-      const url = req.nextUrl.clone();
-      url.pathname = '/signin';
-      url.searchParams.set('next', '/kiosk');
-      url.searchParams.set('reason', 'kiosk-workspace');
-      return applySecurityHeaders(NextResponse.redirect(url));
-    }
-  }
-
-  const applyRewriteOrNext = (): NextResponse => {
-    if (rewriteTarget) {
-      const url = req.nextUrl.clone();
-      url.pathname = rewriteTarget;
-      return applySecurityHeaders(NextResponse.rewrite(url, { request: { headers: requestHeaders } }));
-    }
-    return applySecurityHeaders(NextResponse.next({ request: { headers: requestHeaders } }));
-  };
-
-  // Normalize legacy receiving-surface URLs to their first-class routes
-  // (`/receiving` → `/unbox`, `?mode=triage` → `/triage`). Desktop only —
-  // phones fall through to the `/m/*` rewrite computed above (rewriteTarget set).
-  if (!rewriteTarget) {
-    const surfaceRedirect =
-      resolveAuditLogRedirect(req.nextUrl) ??
-      resolveReceivingSurfaceRedirect(req.nextUrl) ??
-      resolveReceivingHistoryRedirect(req.nextUrl) ??
-      resolveDashboardInboundRedirect(req.nextUrl) ??
-      resolveDashboardOutboundRedirect(req.nextUrl) ??
-      resolveSupportOrdersRedirect(req.nextUrl) ??
-      resolveWalkInJobRedirect(req.nextUrl) ??
-      resolveWalkInRepairModeRedirect(req.nextUrl) ??
-      resolvePackSurfaceRedirect(req.nextUrl) ??
-      resolveTestSurfaceRedirect(req.nextUrl) ??
-      resolveShippingSurfaceRedirect(req.nextUrl) ??
-      resolveTestingHistoryViewRedirect(req.nextUrl);
-    if (surfaceRedirect) {
-      return applySecurityHeaders(NextResponse.redirect(surfaceRedirect));
-    }
-  }
+  const passThrough = (): NextResponse =>
+    applySecurityHeaders(NextResponse.next({ request: { headers: requestHeaders } }));
 
   if (isPublic(pathname)) {
-    return applyRewriteOrNext();
+    return passThrough();
   }
 
   // Break-glass off: never block. Default: redirect HTML routes / 401 JSON.
@@ -722,7 +271,7 @@ export function proxy(req: NextRequest): NextResponse {
     return applySecurityHeaders(NextResponse.redirect(url));
   }
 
-  return applyRewriteOrNext();
+  return passThrough();
 }
 
 export const config = {

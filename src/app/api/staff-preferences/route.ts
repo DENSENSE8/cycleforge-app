@@ -9,7 +9,7 @@
  *   PUT  { focusScanHotkey?: 'Insert' | 'ScrollLock' | 'F1'..'F12' | null } → { prefs }
  *
  * First consumer: the configurable focus-scan hotkey shared by every
- * StationScanBar across the app.
+ * ScanBar across the app.
  */
 
 import { NextRequest, NextResponse } from 'next/server';

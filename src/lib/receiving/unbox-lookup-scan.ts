@@ -26,6 +26,7 @@ import {
   lookupScanClientEventId,
   type UnboxScanKind,
 } from '@/lib/receiving/unbox-scan-kind';
+import type { SessionAttribution } from '@/lib/sessions/attribution';
 
 export interface UnboxLookupScanDeps {
   query: (text: string, params: unknown[]) => Promise<{ rows: Array<Record<string, unknown>> }>;
@@ -132,6 +133,13 @@ interface RecordUnboxLookupScanArgs {
   trackingNumber: string;
   /** Occurrence instant; defaults to now. Also keys the client-event id. */
   occurredAt?: Date;
+  /**
+   * The unbox session this lookup happened inside. Required, un-defaulted —
+   * a lookup scan is operator work at a bench, so it is exactly the kind of
+   * event a session report is expected to contain. Pass `NO_SESSION` until the
+   * Unbox surface opens one.
+   */
+  session: SessionAttribution;
 }
 
 /**
@@ -150,6 +158,7 @@ export async function recordUnboxLookupScan(
   try {
     const workflowNodeId = await deps.resolveWorkflowNodeId('unbox', args.organizationId);
     await deps.recordOpsEvent({
+      session: args.session,
       organizationId: args.organizationId,
       entityType: 'receiving',
       entityId: args.receivingId,

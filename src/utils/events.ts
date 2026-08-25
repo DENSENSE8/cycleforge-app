@@ -1,8 +1,8 @@
 import type { ShippedOrder } from '@/types/orders';
-import type { Order } from '@/components/station/upnext/upnext-types';
-import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
-import type { ReceivingDetailsLog } from '@/components/station/receiving-details-log';
-import { emitReceiving } from '@/components/receiving/receiving-events';
+import type { Order } from '@/lib/station/upnext-types';
+import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
+import type { ReceivingDetailsLog } from '@/lib/receiving/receiving-details-log';
+import { emitReceiving } from '@/lib/receiving/receiving-events';
 import { refreshDomains } from '@/lib/refresh/bus';
 import { REFRESH_BUNDLES } from '@/lib/refresh/domains';
 

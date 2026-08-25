@@ -2,6 +2,7 @@ import pool from '@/lib/db';
 import type { PoolClient } from 'pg';
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
+import { isAttributed, type SessionAttribution } from '@/lib/sessions/attribution';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -64,12 +65,42 @@ export interface RecordInventoryEventInput {
   /** UNIQUE — pass to make mobile retries idempotent. */
   client_event_id?: string | null;
   notes?: string | null;
+  /**
+   * WHICH WORK SESSION THIS HAPPENED INSIDE. Required, with NO DEFAULT.
+   *
+   * Columns: 2026-08-23d_inventory_events_session_columns.sql. This spine is
+   * where unit lifecycle lives — RECEIVED, TEST_*, PUTAWAY, MOVED, PICKED,
+   * PACKED, SHIPPED — so it is the spine that answers "what was actually added
+   * during this session". Attributing only `ops_events` would produce a
+   * session-contents read that can report signals and scans but not a single
+   * unit.
+   *
+   * REQUIRED, not optional, and that is the load-bearing part. An optional
+   * field compiles at all 35 existing call sites and writes NULL at every one,
+   * and the compiler stays silent about precisely the ones that were missed.
+   * Required, {@link NO_SESSION} is a visible token in the source:
+   * `grep -rn NO_SESSION src/` is the work list for threading sessions through
+   * the rest of the app, and it only shrinks.
+   *
+   * ONE VALUE, NOT TWO FIELDS — a row can never carry an id whose type went
+   * missing, which matters because `ON DELETE SET NULL` clears the id and the
+   * type is what has to survive it.
+   *
+   * STAMP IT AT THE EARLIEST WRITE ON THE PATH, not the most obvious one. A
+   * shared resolver that writes before the branch meant to decide attribution
+   * silently produces unattributed rows.
+   */
+  session: SessionAttribution;
   payload?: Record<string, unknown>;
 }
 
 export interface InventoryEventRow {
   id: number;
   occurred_at: string;
+  /** work_sessions.id, or null for an unattributed event (2026-08-23d). */
+  session_id?: number | null;
+  /** Denormalized session discriminator — survives session_id being cleared. */
+  session_type?: string | null;
   event_type: string;
   actor_staff_id: number | null;
   station: string | null;
@@ -121,6 +152,9 @@ export async function recordInventoryEvent(
   db?: Pick<PoolClient, 'query'>,
   orgId?: OrgId,
 ): Promise<InventoryEventRow> {
+  const sessionId = isAttributed(input.session) ? input.session.sessionId : null;
+  const sessionType = isAttributed(input.session) ? input.session.sessionType : null;
+
   const baseParams = [
     input.event_type,
     input.actor_staff_id ?? null,
@@ -138,6 +172,8 @@ export async function recordInventoryEvent(
     input.client_event_id ?? null,
     input.notes ?? null,
     JSON.stringify(input.payload ?? {}),
+    sessionId,
+    sessionType,
   ];
 
   // ── Org-scoped path: stamp organization_id explicitly. ────────────────────
@@ -153,6 +189,7 @@ export async function recordInventoryEvent(
        prev_status, next_status,
        stock_ledger_id,
        scan_token, client_event_id, notes, payload,
+       session_id, session_type,
        organization_id
      ) VALUES (
        $1, $2, $3,
@@ -161,7 +198,8 @@ export async function recordInventoryEvent(
        $10, $11,
        $12,
        $13, $14, $15, $16::jsonb,
-       $17
+       $17::bigint, $18,
+       $19
      )
      ON CONFLICT (client_event_id) DO UPDATE
        SET event_type = inventory_events.event_type   -- no-op, return existing row
@@ -187,14 +225,16 @@ export async function recordInventoryEvent(
        bin_id, prev_bin_id,
        prev_status, next_status,
        stock_ledger_id,
-       scan_token, client_event_id, notes, payload
+       scan_token, client_event_id, notes, payload,
+       session_id, session_type
      ) VALUES (
        $1, $2, $3,
        $4, $5, $6, $7,
        $8, $9,
        $10, $11,
        $12,
-       $13, $14, $15, $16::jsonb
+       $13, $14, $15, $16::jsonb,
+       $17::bigint, $18
      )
      ON CONFLICT (client_event_id) DO UPDATE
        SET event_type = inventory_events.event_type   -- no-op, return existing row
