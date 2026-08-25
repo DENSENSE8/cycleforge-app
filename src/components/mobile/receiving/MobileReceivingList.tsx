@@ -2,7 +2,6 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useUIModeOptional } from '@/design-system/providers/UIModeProvider';
 import { useAblyChannel } from '@/hooks/useAblyChannel';
 import {
   safeChannelName,
@@ -32,26 +31,20 @@ import { CaptureStack, useCaptureStackWindow, useCaptureStackQuery } from '@/des
 import { receivingLinePhotoHrefs } from '@/lib/photos/mobile-gallery-url';
 import { mobileArrivalPhotosThenClassifyHref } from '@/lib/receiving/arrival-mobile-flow';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import {
+  mobileFeedParams,
+  mobileFeedQueryKey,
+} from '@/lib/receiving/mobile-feed-query-key';
 
 interface ApiResponse {
   success: boolean;
   receiving_lines: ReceivingLineRow[];
 }
 
-// Mirror the desktop UNBOX-mode rail exactly — the "Unboxed" sub-view of
-// /receiving?mode=receive is ReceivingRecentRail (view=activity, sort=
-// unboxed_newest, all-staff). Same view+sort here ⇒ the mobile feed renders the
-// identical list. Distinct `rail` key (vs ReceivingRecentRail's 6-segment
-// staff-keyed key) because this query returns a plain array while the rail
-// caches the full ApiResponse object — same key would collide on shape. Still
-// under the 'receiving-lines-table' prefix so broad invalidations refresh it.
-// Mirror the desktop Unbox-mode rail (view=unbox_opened) or Triage Prioritize
-// (view=scanned, sort=priority). Distinct query keys so the two mobile surfaces
-// never share a stale cache entry.
-const queryKeyForSurface = (surface: 'triage' | 'unbox') =>
-  surface === 'triage'
-    ? (['receiving-lines-table', 'rail', 'scanned', 'mobile-triage'] as const)
-    : (['receiving-lines-table', 'rail', 'unbox-opened', 'mobile-unbox'] as const);
+// The feed's query key and list params are shared with the SERVER SEED that
+// paints this list into the first HTML (`mobile-feed-seed.server.ts`) — they
+// live in `@/lib/receiving/mobile-feed-query-key` because a seed only works
+// while both sides agree on the key to the character.
 
 /**
  * Mobile receiving surface — single scrollable list of receiving lines, newest
@@ -71,11 +64,13 @@ export function MobileReceivingList({
   surface?: 'triage' | 'unbox';
 } = {}) {
   const { user } = useAuth();
-  // ReceivingSurfacePage mounts this hidden on DESKTOP too (CSS `md:hidden`
-  // visibility selection, deliberately not a JS branch) — gate the feed query on
-  // the real UI mode so an invisible desktop mount never pays the 100-row
-  // authoritative fetch (it was the single heaviest request on /unbox load).
-  const { isMobile } = useUIModeOptional();
+  // No `enabled: isMobile` gate. It existed because `ReceivingSurfacePage` used
+  // to mount this feed hidden on desktop behind `md:hidden`, and an invisible
+  // mount must not pay the 100-row fetch. That mount is gone — this component
+  // renders only on the `/m/*` tree now — and the gate had become the feed's
+  // slowest link: `isMobile` resolves in a client effect, so the request could
+  // not be issued until after hydration, on top of the bundle it already waits
+  // for. The server seed below paints the first screen; this fetch reconciles.
   const orgId = user?.organizationId;
   const staffId = user?.staffId ?? 0;
   const stationBridgeChannel = safeChannelName(() => getStaffStationBridgeChannelName(orgId!, staffId));
@@ -84,7 +79,7 @@ export function MobileReceivingList({
   // Seed runtime NAS base (/api/nas) before capture routes or the carton sheet open.
   useNasConfig();
 
-  const queryKey = queryKeyForSurface(surface);
+  const queryKey = mobileFeedQueryKey(surface);
 
   const { data, isLoading, refetch } = useCaptureStackQuery<ReceivingLineRow>({
     queryKey,
@@ -92,22 +87,14 @@ export function MobileReceivingList({
     // realtime photo push fires while this list is unmounted (no rewind). Always
     // refetch on return so the camera ×N badge reconciles past the staleTime
     // window — the optimistic bump in notifyReceivingPhotoChanged covers the gap.
+    //
+    // Tried `true` (staleTime-respecting) on the theory that the post-hydration
+    // refetch was replacing the seeded DOM and moving LCP. Measured on the
+    // preview: LCP 7.3s → 7.6s, score 62 → 54. It is not the cause; the reload
+    // behaviour this comment describes is worth more than the non-existent win.
     refetchOnMount: 'always',
-    enabled: isMobile,
     queryFn: async () => {
-      const params = new URLSearchParams({
-        // Display windows to ≤20 rows (useCaptureStackWindow) — 100 gives carton-grouping
-        // headroom; the old 500-row window was pure over-fetch on a phone feed.
-        limit: '100',
-        offset: '0',
-        include: 'serials',
-      });
-      if (surface === 'triage') {
-        params.set('view', 'scanned');
-        params.set('sort', 'priority');
-      } else {
-        params.set('view', 'unbox_opened');
-      }
+      const params = mobileFeedParams(surface);
       const res = await fetch(`/api/receiving-lines?${params.toString()}`);
       if (!res.ok) throw new Error('fetch failed');
       const json = (await res.json()) as ApiResponse;

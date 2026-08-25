@@ -27,14 +27,12 @@
  * Store search always uses `chrome="bare"` on the flush Displays plane (D5).
  */
 
-import { useEffect, useRef, useState, type ComponentType, type ReactNode, type SVGProps } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from '@/design-system/motion';
 import { openInUnboxHref, TRIAGE_SURFACE_ROUTE } from '@/lib/receiving/surface-path';
 import { useQueryClient } from '@tanstack/react-query';
 import {
-  Check,
-  ChevronDown,
   ChevronRight,
   Link2,
   Loader2,
@@ -49,7 +47,7 @@ import {
   dispatchSelectLine,
 } from '@/components/station/receiving-lines-table-helpers';
 import { invalidateReceivingFeeds } from '@/lib/queries/receiving-queries';
-import { WorkspaceCard } from '@/design-system/components';
+import { SearchableSelectField, WorkspaceCard } from '@/design-system/components';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
@@ -63,12 +61,6 @@ import {
 } from '@/design-system/foundations/motion-framer-hooks';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Button, IconButton } from '@/design-system/primitives';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/design-system/primitives/DropdownMenu';
 import {
   HorizontalButtonSlider,
   type HorizontalSliderItem,
@@ -86,14 +78,19 @@ import { emitReceiving } from '@/components/receiving/receiving-events';
 import { WorkspaceSectionTitle } from '../WorkspaceSectionLabel';
 import { RECEIVING_OPEN_PAIRING_PO_EVENT } from '@/utils/events';
 
-type IconComponent = ComponentType<SVGProps<SVGSVGElement>>;
-
 // These were exported for `TriageLineMatchingSection`'s `Omit<CartonMatchHubProps, …>`;
 // that centre wrapper is deleted (Arrival Package Pairing is now the Linkage
 // Displays body), so they are internal to this component again.
 type CartonMatchTabSet = 'unbox' | 'arrival';
 /** Pairing avenues — Inventory Item is Unbox-only. */
 type MatchTab = 'zoho_item' | 'zoho_po' | 'ecwid';
+
+/** Short "what this avenue does" line for the bare-chrome combobox's option list. */
+const AVENUE_META: Record<MatchTab, string> = {
+  zoho_item: 'Match to an item already in inventory',
+  zoho_po: 'Attach to a Zoho purchase order',
+  ecwid: 'Search recent store orders',
+};
 
 type CartonMatchHubChrome = 'card' | 'bare';
 
@@ -449,21 +446,18 @@ function MatchHubCard({
           { id: 'ecwid', label: 'Store', icon: ShoppingCart },
         ];
 
-  const pairingModes: { id: MatchTab; label: string; icon: IconComponent }[] = tabs.map(
-    (item) => ({
-      id: item.id as MatchTab,
-      label: item.label,
-      icon: (item.icon ?? Search) as IconComponent,
-    }),
-  );
-
   const selectAvenue = (id: MatchTab) => {
     setTab(id);
     if (id === 'ecwid') setForcePicker(true);
   };
 
-  const activeModeMeta =
-    pairingModes.find((m) => m.id === tab) ?? pairingModes[0];
+  // Options for the bare-chrome avenue combobox — see `avenueSwitcher` below.
+  const avenueOptions = tabs.map((item) => ({
+    value: item.id,
+    label: item.label,
+    meta: AVENUE_META[item.id as MatchTab],
+    group: 'Pairing mode',
+  }));
 
   const headerActions = (
     <div className="flex shrink-0 items-center gap-1.5">
@@ -514,53 +508,29 @@ function MatchHubCard({
       />
     ) : null;
 
-  const ActiveIcon = activeModeMeta.icon;
-
   const avenueSwitcher = bareChrome ? (
-    <div ref={cardTopRef} className="mb-3 space-y-2">
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            type="button"
-            variant="secondary"
-            size="md"
-            icon={<ActiveIcon className="h-4 w-4 shrink-0" />}
-            iconRight={<ChevronDown className="h-4 w-4 shrink-0 text-text-faint" />}
-            className={cn('h-11 w-full justify-start gap-2 px-3', cornerClass('flush'))}
-            aria-label="Pairing mode"
-          >
-            <span className="min-w-0 flex-1 text-left text-role-caption font-semibold">
-              {activeModeMeta.label}
-            </span>
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent
-          align="start"
-          side="bottom"
-          className="w-[var(--radix-dropdown-menu-trigger-width)] p-1"
-        >
-          {pairingModes.map((item) => {
-            const Icon = item.icon;
-            const selected = tab === item.id;
-            return (
-              <DropdownMenuItem
-                key={item.id}
-                onSelect={() => selectAvenue(item.id)}
-                className="gap-2"
-              >
-                <span className="flex h-4 w-4 shrink-0 items-center justify-center">
-                  {selected ? (
-                    <Check className="h-3.5 w-3.5" />
-                  ) : (
-                    <Icon className="h-3.5 w-3.5 text-text-soft" />
-                  )}
-                </span>
-                {item.label}
-              </DropdownMenuItem>
-            );
-          })}
-        </DropdownMenuContent>
-      </DropdownMenu>
+    // Pairing avenue — same flush combobox grammar as the ticket claim's
+    // Create|Link picker (ClaimModeSelect): keyboard-searchable, filters the
+    // option list as you type. This used to be a plain click-only
+    // DropdownMenu (no search, no keyboard filter) — the fork this replaces
+    // (2026-08-24). Flush select owns its own bottom hairline.
+    // No bottom margin — the search bar below sits flush under the combobox's
+    // own bottom hairline, same edge-to-edge contract as everything else in
+    // this panel (2026-08-24 fix).
+    <div ref={cardTopRef} data-testid="pairing-avenue-select">
+      <SearchableSelectField
+        appearance="flush"
+        value={tab}
+        onChange={(id) => {
+          if (id == null) return;
+          selectAvenue(id as MatchTab);
+        }}
+        options={avenueOptions}
+        placeholder="Pick a pairing avenue…"
+        searchPlaceholder="Type to filter…"
+        emptyMessage="No avenues match"
+        ariaLabel="Pairing mode"
+      />
     </div>
   ) : (
     <div ref={cardTopRef} className="mb-2 flex min-w-0 items-center gap-2">
@@ -603,7 +573,12 @@ function MatchHubCard({
     );
 
   const body = (
-    <div className="min-w-0 max-w-full">
+    // `bareChrome` (right-rail Store panel) fills whatever height its host
+    // gives it: the combobox takes its natural height, `tabBody` (the search
+    // results) takes the rest and scrolls internally — never a fixed-height
+    // block that leaves dead space below it. `card` / `embedded` keep their
+    // natural content height (unchanged).
+    <div className={cn('min-w-0 max-w-full', bareChrome && 'flex min-h-0 flex-1 flex-col')}>
       {/*
        * FIND LEADS (2026-08-19). Avenue combobox + that avenue's search field
        * sit at the TOP; the Auto-match toolkit follows below the results.
@@ -618,13 +593,18 @@ function MatchHubCard({
        * this hub (Arrival · Testing · Incoming) keep it inline.
        */}
       {avenueSwitcher}
-      {tabBody}
+      <div className={cn(bareChrome && 'min-h-0 flex-1 overflow-hidden')}>{tabBody}</div>
       {!embedded && quickMatchStrip ? <div className="mt-3">{quickMatchStrip}</div> : null}
     </div>
   );
 
   const content = (
-    <div className="min-w-0 max-w-full space-y-2">
+    <div
+      className={cn(
+        'min-w-0 max-w-full space-y-2',
+        bareChrome && 'flex min-h-0 flex-1 flex-col',
+      )}
+    >
       {pickerCollapsed ? (
         <div className="flex items-center gap-2">
           <HoverTooltip label="Re-open the picker to change or add a pairing" asChild focusable={false}>
@@ -735,7 +715,15 @@ function MatchHubCard({
   }
 
   if (bareChrome) {
-    return <div className={PAIRING_FLUSH_HOST_CLASS}>{content}</div>;
+    // Fills the host's flex column (LinkageDisplayHost's `flex-1` link body)
+    // instead of sizing to content — the fixed `max-h-[60vh]` cap this used
+    // to inherit (a leftover from the retired popover shell) left dead space
+    // under the results list on any column taller than 60% of the viewport.
+    return (
+      <div className={cn(PAIRING_FLUSH_HOST_CLASS, 'flex h-full min-h-0 flex-col overflow-hidden')}>
+        {content}
+      </div>
+    );
   }
 
   return (

@@ -38,10 +38,10 @@ function focusInput(el: HTMLInputElement): boolean {
  */
 function selectLineOwningSerial(el: HTMLInputElement): void {
   const row = el.closest<HTMLElement>(
-    '[data-po-line-row][data-receiving-line-id]',
+    '[data-item-record-row][data-item-record-id]',
   );
   if (!row) return;
-  const raw = row.getAttribute('data-receiving-line-id');
+  const raw = row.getAttribute('data-item-record-id');
   const lineId = raw ? Number(raw) : NaN;
   if (!Number.isFinite(lineId) || lineId <= 0) return;
   setActiveSinkId(`po-line:${lineId}`);
@@ -73,7 +73,7 @@ function focusUnboxCaptureSerialInLine(lineId: number): boolean {
     return false;
   }
   const row = document.querySelector<HTMLElement>(
-    `[data-po-line-row][data-receiving-line-id="${lineId}"]`,
+    `[data-item-record-row][data-item-record-id="${lineId}"]`,
   );
   const el =
     row?.querySelector<HTMLInputElement>(

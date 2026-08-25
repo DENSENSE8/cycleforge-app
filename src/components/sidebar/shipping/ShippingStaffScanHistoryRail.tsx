@@ -134,7 +134,6 @@ export function ShippingStaffScanHistoryRail({
       selectedId={selectedOrderId}
       limit={SHIPPING_HISTORY_LIMIT}
       eyebrowTitle="History"
-      eyebrowSuffix="You"
       emptyText="No recent station scans"
       getId={techRecordRailId}
       getActivityAt={getRowActivityAt}

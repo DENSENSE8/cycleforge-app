@@ -48,6 +48,7 @@ export function StationWorkbench({
   reserveIdentityClearance = true,
   bodyAlign = 'start',
   bodyGap = 'default',
+  bodyFill = false,
   className,
   scrollClassName,
   onScroll,
@@ -117,6 +118,23 @@ export function StationWorkbench({
    * between centre surfaces. `'default'` keeps `space-y-4` / `gap-4`.
    */
   bodyGap?: 'default' | 'none';
+  /**
+   * Hand the port's height to the centre instead of to the content.
+   *
+   * The scroll column is normally content-sized, so a child that asks for
+   * `flex-1` resolves against its own content and gets nothing. That is
+   * correct for a stack of blocks; it is wrong for a centre whose LAST block
+   * is a conversation, because the composer that commits it then floats
+   * wherever the messages happen to end rather than sitting on the floor of
+   * the pane.
+   *
+   * With this on, the column becomes `flex min-h-full flex-col`: at least a
+   * port tall (so `flex-1` has something definite to divide) and still free to
+   * grow past the fold and scroll when the blocks above are tall. Unlike
+   * {@link bodyAlign} `'end'` it does not push the stack down — blocks stay
+   * top-anchored and only the flexible child absorbs the slack.
+   */
+  bodyFill?: boolean;
   className?: string;
   scrollClassName?: string;
   /**
@@ -184,9 +202,14 @@ export function StationWorkbench({
                   'flex min-h-full flex-col justify-end',
                   bodyGap === 'none' ? 'gap-0' : 'gap-4',
                 )
-              : bodyGap === 'none'
-                ? 'space-y-0'
-                : 'space-y-4',
+              : bodyFill
+                ? cn(
+                    'flex min-h-full flex-col',
+                    bodyGap === 'none' ? 'gap-0' : 'gap-4',
+                  )
+                : bodyGap === 'none'
+                  ? 'space-y-0'
+                  : 'space-y-4',
             scrollClassName,
           )}
         >

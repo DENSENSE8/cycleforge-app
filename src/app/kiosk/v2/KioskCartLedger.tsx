@@ -12,7 +12,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/design-system/primitives';
 import { KioskCustomerIntake } from '@/components/kiosk/KioskCustomerIntake';
 import { KioskCartLineEditor } from '@/components/kiosk/KioskCartLineEditor';
-import { Loader2, X } from '@/components/Icons';
+import { CompoundRow } from '@/components/tables/compound/CompoundRow';
+import { cartLineCompoundView } from '@/lib/kiosk/cart-compound-view';
+import { CART_COMPOUND_COLUMNS } from '@/lib/kiosk/cart-grid-layout';
+import { Loader2 } from '@/components/Icons';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 import { toast } from '@/lib/toast';
@@ -35,12 +38,18 @@ import {
 } from '@/components/kiosk/KioskPaymentStepUpSheet';
 import {
   KIOSK_UTILITY_PANEL_FACE,
-  KIOSK_CART_LINE_ROW,
   KIOSK_META,
   KIOSK_PANE_FOOTER_BAND,
   KIOSK_PANE_HEADER_BAND,
   KIOSK_PANE_HEADER_TITLE,
 } from '@/app/kiosk/kiosk-chrome';
+
+/**
+ * The cart has no triage flags — a line is not a carton somebody paints. The
+ * shared row takes the bag rather than a boolean so a family cannot half-answer
+ * the question.
+ */
+const KIOSK_CART_CAPABILITIES = { rowTriageFlags: false } as const;
 
 function formatCents(cents: number): string {
   const sign = cents < 0 ? '-' : '';
@@ -58,6 +67,25 @@ export function KioskCartLedger({ focus }: { focus?: KioskCartFocus | null } = {
   const session = useKioskSession();
   const actions = useKioskSessionActions();
   const [submitting, setSubmitting] = useState(false);
+  /**
+   * Bulk selection over the cart lines.
+   *
+   * Local to the ledger rather than in the session store: a selection is a
+   * VIEW state of the staff face, not a fact about the transaction, and
+   * mirroring it into `counter_sessions.version` would bump the shared version
+   * (and repaint the customer tablet) every time a cashier ticked a box.
+   */
+  const [selectedLineIds, setSelectedLineIds] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+  const toggleLineSelected = useCallback((id: string) => {
+    setSelectedLineIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<CounterTransactionResult | null>(null);
   const [stepUpOpen, setStepUpOpen] = useState(false);
@@ -260,68 +288,87 @@ export function KioskCartLedger({ focus }: { focus?: KioskCartFocus | null } = {
         className="mx-auto w-full max-w-3xl shrink-0 border-b border-border-hairline"
       />
 
-      <ul className="mx-auto min-h-0 w-full max-w-3xl flex-1 divide-y divide-border-hairline overflow-y-auto">
+      {/*
+        The cart LINE LIST is the shared compound table — the same row Unbox,
+        Incoming, To-Ship, Tasks and Daily paint. It used to be a hand-rolled
+        `<li>` with a title, a meta line, a figure and a naked ✕. That row had
+        no selection at all (so nothing could be voided or discounted in bulk)
+        and exactly one verb, because a bare ✕ can only ever say one thing.
+
+        `counter_session_lines` is a DB table, so it reads as one.
+      */}
+      <div
+        role="table"
+        aria-label="Cart lines"
+        className="mx-auto min-h-0 w-full max-w-3xl flex-1 overflow-y-auto"
+      >
         {session.lines.length === 0 ? (
-          <li className="px-4 py-8 text-center text-sm font-semibold text-text-soft">
+          <p className="px-4 py-8 text-center text-sm font-semibold text-text-soft">
             Scan a UPC or pick from the catalog.
-          </li>
+          </p>
         ) : (
           session.lines.map((line) => (
-            <li key={line.id}>
-             <div className={KIOSK_CART_LINE_ROW}>
-              {/* ds-raw-button: the row IS the edit affordance (tap to correct). */}
-              <button
-                type="button"
-                className="ds-raw-button min-w-0 flex-1 text-left"
-                aria-expanded={editingLineId === line.id}
+            <div key={line.id}>
+              <CompoundRow
+                data-cart-line-id={line.id}
                 data-testid="kiosk-cart-line"
+                role="button"
+                tabIndex={0}
+                aria-expanded={editingLineId === line.id}
+                aria-label={`Cart line ${line.title}`}
+                className="group/row cursor-pointer"
+                // The row IS the edit affordance (tap to correct) — the same
+                // gesture the hand-rolled row had, kept.
                 onClick={() =>
                   setEditingLineId((prev) => (prev === line.id ? null : line.id))
                 }
-              >
-                <p className="truncate text-sm font-semibold text-text-default">{line.title}</p>
-                <p className={cn('uppercase tracking-widest', KIOSK_META)}>
-                  {lineTypeLabel(line.type)}
-                  {line.quantity > 1 ? ` · ×${line.quantity}` : ''}
-                </p>
-              </button>
-              <div className="flex shrink-0 items-center gap-2">
-                <span
-                  className={cn(
-                    'font-semibold tabular-nums',
-                    line.unitAmountCents < 0 ? 'text-text-success' : 'text-text-default',
-                  )}
-                >
-                  {formatCents(line.unitAmountCents * line.quantity)}
-                </span>
-                {/* Removing a line the customer already saw priced is a VOID,
-                    and a void is staff work (session plan D5/P7). While a desk
-                    holds this tablet the control is absent rather than dead —
-                    a button that quietly does nothing is worse than no button. */}
-                {session.sharedSessionId === null && (
-                  <button
-                    type="button"
-                    aria-label={`Remove ${line.title}`}
-                    data-testid="kiosk-cart-void-line"
-                    className="ds-raw-button p-1 text-text-soft hover:text-text-danger"
-                    onClick={() => actions.removeLine(line.id)}
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
-             </div>
-             {editingLineId === line.id && (
-               <KioskCartLineEditor
-                 line={line}
-                 focusField={editFocusField ?? undefined}
-                 onDone={() => setEditingLineId(null)}
-               />
-             )}
-            </li>
+                onKeyDown={(event: React.KeyboardEvent<HTMLDivElement>) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    setEditingLineId((prev) => (prev === line.id ? null : line.id));
+                  }
+                }}
+                columns={CART_COMPOUND_COLUMNS}
+                capabilities={KIOSK_CART_CAPABILITIES}
+                selected={selectedLineIds.has(line.id)}
+                // The family's only contribution: its DATA.
+                view={cartLineCompoundView(line)}
+                select={{
+                  checked: selectedLineIds.has(line.id),
+                  onToggle: () => toggleLineSelected(line.id),
+                  label: selectedLineIds.has(line.id)
+                    ? `Deselect ${line.title}`
+                    : `Select ${line.title}`,
+                }}
+                onOpen={() => setEditingLineId(line.id)}
+                actions={
+                  // Removing a line the customer already saw priced is a VOID,
+                  // and a void is staff work (session plan D5/P7). While a desk
+                  // holds this tablet the verb is ABSENT rather than dead — a
+                  // control that quietly does nothing is worse than no control.
+                  session.sharedSessionId === null
+                    ? [
+                        {
+                          key: 'void',
+                          label: `Void ${lineTypeLabel(line.type).toLowerCase()} line`,
+                          tone: 'danger' as const,
+                          onSelect: () => actions.removeLine(line.id),
+                        },
+                      ]
+                    : undefined
+                }
+              />
+              {editingLineId === line.id && (
+                <KioskCartLineEditor
+                  line={line}
+                  focusField={editFocusField ?? undefined}
+                  onDone={() => setEditingLineId(null)}
+                />
+              )}
+            </div>
           ))
         )}
-      </ul>
+      </div>
 
       <div className="mx-auto w-full max-w-3xl shrink-0 border-t border-border-soft px-4 py-3">
         <div className="flex items-baseline justify-between gap-3">

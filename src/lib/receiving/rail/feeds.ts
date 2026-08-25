@@ -14,6 +14,7 @@
  *   - triageCombined → Triage      (scanned ∪ unfound, door-scan recency)
  *   - triageUnfound  → Unfound     (unfound-queue stubs)
  *   - triageDone     → Done        (triage_complete stubs)
+ *   - searchRecent   → Recently searched (`/search` rail; same view=viewed feed)
  *
  * Stable identity matters: `refreshEvents` arrays and the `getActivityAt` fns are
  * module-scope so the rail shell's listener effects subscribe once (a fresh
@@ -32,6 +33,7 @@ import {
 } from '@/lib/receiving/rail/unbox-opened-rows';
 import { getViewedAt, type RailStatusId } from './status';
 import type { RailQtyId } from './quantity';
+import type { RailRowActionsId } from './row-actions';
 import {
   toStubRow,
   matchesQuery as matchesUnfoundQueue,
@@ -71,6 +73,11 @@ interface ReceivingRailFeed {
   eyebrowTitle: string;
   qty: RailQtyId;
   status: RailStatusId;
+  /**
+   * Which verbs this feed's rows offer in their ⋮ menu (see `./row-actions`).
+   * Omit and the rail paints no row menu at all.
+   */
+  rowActions?: RailRowActionsId;
   /** Module-scope array — stable identity for the shell's refresh listener. */
   refreshEvents: string[];
   /** Refresh domains this rail renders (see `@/lib/refresh/domains`). */
@@ -355,6 +362,7 @@ const FEEDS = {
     eyebrowTitle: 'Unboxed',
     qty: 'received',
     status: 'unbox-recent',
+    rowActions: 'receiving',
     buildFetcher: buildUnboxReceivedFetcher,
     // Unboxed rail time axis = first Unbox-open (`unbox_opened_at`). Stable —
     // a re-scan opens the carton but does not rewrite this stamp / reorder.
@@ -392,6 +400,7 @@ const FEEDS = {
     eyebrowTitle: 'Door queue',
     qty: 'scanned',
     status: 'receiving',
+    rowActions: 'receiving',
     view: 'scanned',
     sort: 'priority',
     postFilter: notUnmatched,
@@ -410,6 +419,7 @@ const FEEDS = {
     eyebrowTitle: 'At dock',
     qty: 'scanned',
     status: 'receiving',
+    rowActions: 'receiving',
     view: 'scanned',
     sort: 'priority',
     postFilter: notUnmatched,
@@ -428,6 +438,7 @@ const FEEDS = {
     eyebrowTitle: 'Viewed',
     qty: 'received',
     status: 'receiving',
+    rowActions: 'receiving',
     view: 'viewed',
     getActivityAt: getViewedAt,
     autoSelectFirstWhenEmpty: false,
@@ -440,6 +451,7 @@ const FEEDS = {
     eyebrowTitle: 'Triage',
     qty: 'combined',
     status: 'receiving',
+    rowActions: 'receiving',
     buildFetcher: buildTriageCombinedFetcher,
     getActivityAt: triageDoorScanAt,
     usesStaffFilter: true,
@@ -454,6 +466,7 @@ const FEEDS = {
     eyebrowTitle: 'Unfound',
     qty: 'unfound',
     status: 'receiving',
+    rowActions: 'receiving',
     buildFetcher: buildUnfoundFetcher,
     getActivityAt: triageDoorScanAt,
     autoSelectFirstWhenEmpty: true,
@@ -461,12 +474,46 @@ const FEEDS = {
     refreshEvents: TRIAGE_REFRESH,
     refreshDomains: RECEIVING_RAIL_DOMAINS,
   },
+  /**
+   * `/search` "Recently searched" — the records this operator recently opened.
+   *
+   * Unbox's OWN feed shape (`view=viewed` → `receiving_line_views`, ordered by
+   * this viewer's `viewed_at`), off `/api/receiving-lines`. That is the point:
+   * the rows are real receiving lines, so they arrive carrying
+   * `catalog_product_title` / `zoho_item_title` and the rail's normal title
+   * resolver paints a PRODUCT TITLE — not the identifier the operator typed.
+   *
+   * It is also why `/search` needs no endpoint, no resolver, no row adapter and
+   * no rail of its own: only a different eyebrow over a query the app already
+   * answers. A stub feed off `search_recents` was tried and abandoned — that
+   * table stores typed strings and no record, so it can only ever paint ids.
+   */
+  searchRecent: {
+    segment: 'search-recent',
+    eyebrowTitle: 'Recently searched',
+    qty: 'received',
+    status: 'receiving',
+    rowActions: 'searchRecent',
+    view: 'viewed',
+    getActivityAt: getViewedAt,
+    autoSelectFirstWhenEmpty: false,
+    // The server orders by this viewer's `viewed_at DESC` — "most recently
+    // opened" is the axis, so a client re-sort could only fight it.
+    preserveServerOrder: true,
+    pinSelectedLead: false,
+    staggerRevealMotion: 'slide',
+    limit: 20,
+    refreshEvents: UNBOX_REFRESH,
+    refreshDomains: RECEIVING_RAIL_DOMAINS,
+    rowTitleMode: 'adaptive-po',
+  },
   /** Triage "Done" — cartons staged + saved for unbox (triage_complete = true). */
   triageDone: {
     segment: 'done',
     eyebrowTitle: 'Done',
     qty: 'unfound',
     status: 'receiving',
+    rowActions: 'receiving',
     buildFetcher: buildDoneFetcher,
     getActivityAt: triageDoorScanAt,
     autoSelectFirstWhenEmpty: true,

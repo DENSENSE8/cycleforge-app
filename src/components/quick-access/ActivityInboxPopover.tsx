@@ -237,9 +237,13 @@ export function ActivityInboxPopover({ onClose }: ActivityInboxPopoverProps) {
             const href = hrefFor(it);
             const navigable = href != null;
             const primary = primaryFor(it);
-            // Inbox items do not carry a platform key today — still resolve
-            // through the catalog so OrderIdChip hover/glyph tone stay SoT.
-            const platformMeta = resolvePlatformMeta('');
+            // `it.sourcePlatform` (tech-queue items only — see
+            // ActivityInboxItem's doc) resolves through the same catalog the
+            // carton-context peek uses (RailPeekIdentityFacts), so this
+            // OrderIdChip paints the identical platform icon/color/tooltip
+            // instead of the flat unstyled fallback it fell back to when this
+            // always resolved `''` (2026-08-24) — that was the fork.
+            const platformMeta = resolvePlatformMeta(it.sourcePlatform ?? '');
             const platformLabel =
               platformMeta && platformMeta.label !== UNKNOWN_PLATFORM.label
                 ? platformMeta.label
@@ -335,9 +339,17 @@ export function ActivityInboxPopover({ onClose }: ActivityInboxPopoverProps) {
                           <span className="pointer-events-auto relative z-10 min-w-0 truncate text-text-soft">
                             {metaFactFor(it, platformLabel, platformIconTone)}
                             {it.kind === 'repair_status' && (it.undone || it.undoFailed) ? (
+                              // `text-role-eyebrow` bundles its own ~13.2px line-height
+                              // (taller than this line's `text-role-micro` ~12px), so
+                              // without `leading-none` a repair row carrying this badge
+                              // rendered ~1px taller than one without it — the same
+                              // "conditional inline content taller than its host line"
+                              // shape as the RecentActivityRailBase ticket flag
+                              // (2026-08-24). `leading-none` collapses it to the font's
+                              // own glyph height so every row stays the same height.
                               <span
                                 className={cn(
-                                  'ml-1.5 text-role-eyebrow font-semibold uppercase tracking-widest',
+                                  'ml-1.5 text-role-eyebrow font-semibold uppercase tracking-widest leading-none',
                                   it.undoFailed ? 'text-rose-600' : 'text-text-faint',
                                 )}
                               >

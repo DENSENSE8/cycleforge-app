@@ -22,14 +22,12 @@ export function TriageRecentRail({
   selectedRow = null,
   filterText = '',
   includeRow,
-  hideEyebrow = false,
 }: {
   selectedLineId: number | null;
   selectedRow?: ReceivingLineRow | null;
   /** Desktop search text from the sidebar SearchBar (filters the list). */
   filterText?: string;
   includeRow?: (row: ReceivingLineRow) => boolean;
-  hideEyebrow?: boolean;
 }) {
   const stagingMap = useTriageStagingMap();
   return (
@@ -40,7 +38,6 @@ export function TriageRecentRail({
       selectedRow={selectedRow}
       filterText={filterText}
       includeRow={includeRow}
-      hideEyebrow={hideEyebrow}
       renderPopoverContext={(row) => (
         <TriageStagingChips
           ctx={row.receiving_id != null ? stagingMap.get(row.receiving_id) : undefined}

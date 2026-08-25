@@ -690,13 +690,10 @@ export function StationScanBar({
 
   return (
     <div className={cn('group relative', className)}>
-      <motion.form
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.15, ease: motionBezier.easeOut }}
-        onSubmit={handleInternalSubmit}
-        className="relative"
-      >
+      {/* NO mount fade — this form server-renders and is first-paint chrome on
+          every station bench. Mounting it at `opacity: 0` deferred its reveal to
+          hydration, so LCP measured the bundle rather than the HTML. */}
+      <form onSubmit={handleInternalSubmit} className="relative">
         <div
           className={cn(
             'relative isolate flex w-full items-stretch',
@@ -737,7 +734,7 @@ export function StationScanBar({
             </AnimatePresence>
           </div>
         </div>
-      </motion.form>
+      </form>
     </div>
   );
 }

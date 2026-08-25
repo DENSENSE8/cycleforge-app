@@ -29,6 +29,11 @@ import { cn } from '@/utils/_cn';
 
 /** Primary chrome row — LedgerGrid header / select / fact cells. One seam height. */
 const LEDGER_HEADER_ROW_FACE = PRIMARY_CHROME_ROW_FACE;
+import {
+  LEDGER_GRID_FROZEN_CELL,
+  ledgerGridCell,
+  ledgerGridRowShellClass,
+} from './grid-cell-chrome';
 import { ColumnResizeHandle } from './ColumnResizeHandle';
 import { GridHeaderLabel, gridHeaderAriaSort } from './GridHeaderLabel';
 import {
@@ -37,7 +42,7 @@ import {
   isGridColumnFlushTrack,
   isGridColumnPaintTrack,
 } from './grid-column-editability';
-import { gridFrozenLeft } from './grid-column-geometry';
+import { gridFrozenLeft, gridTemplate } from './grid-column-geometry';
 import {
   resolveColumnResizeEdges,
   type GridColumnResizeEdge,
@@ -57,13 +62,21 @@ import {
 } from './LedgerGridColumnContextMenu';
 
 
-export type LedgerHeaderLayoutApi<C extends LedgerGridColumnModel> = {
-  template: (cols: readonly C[]) => string;
-  cellClass: (opts: { inset: 'none' | 'grid'; rule: boolean }) => string;
-  rowShellClass: (isMobile: boolean, opts?: { scrollMinContent?: boolean }) => string;
-  frozenCellClass: string;
+export type LedgerHeaderLayoutApi = {
   /**
-   * NOTE — there is deliberately no `frozenLeft` / `isFrozen` here.
+   * NOTE — there is deliberately no `template`, `cellClass`, `rowShellClass`,
+   * `frozenCellClass`, `frozenLeft` or `isFrozen` here.
+   *
+   * All six were per-family fields, and five of them were the SAME shared
+   * function under a family-flavoured alias: every layout module re-exported
+   * `gridTemplate`, `ledgerGridCell`, `ledgerGridRowShellClass` and
+   * `LEDGER_GRID_FROZEN_CELL` as `receivingGridTemplate`, `tasksGridCell`,
+   * `dailyGridRowShellClass` and so on. Six declarations of one answer is a
+   * fork whether or not the bodies match today — it is a rename, not a
+   * decision, and it gives six places for the next fix to miss.
+   *
+   * What is left is the one field that genuinely differs per surface: which
+   * columns offer click-to-sort.
    *
    * Both used to be family closures over the family's FLAT column constant, and
    * the header called them by key. That silently broke the moment a family
@@ -84,7 +97,7 @@ export type LedgerHeaderLayoutApi<C extends LedgerGridColumnModel> = {
 
 export type LedgerGridColumnHeaderProps<C extends LedgerGridColumnModel> = {
   columns: readonly C[];
-  layout: LedgerHeaderLayoutApi<C>;
+  layout: LedgerHeaderLayoutApi;
   isMobile?: boolean;
   selectMode?: boolean;
   selectionScope?: string;
@@ -156,7 +169,7 @@ export function LedgerGridColumnHeader<C extends LedgerGridColumnModel>({
   // face. Probed from the MOUNTED model — never a prop, so a header cannot
   // disagree with the cells beneath it.
   const compoundModel = columns.some((c) => isGridColumnFlushTrack(c) && c.key === 'thumb');
-  const template = layout.template(columns);
+  const template = gridTemplate(columns);
   const dataColumns = columns.filter((c) => c.key !== 'select');
   // The frozen edge IS the last frozen track, so derive it from the MOUNTED
   // model. A family constant (`RECEIVING_GRID_FROZEN_EDGE_KEY = 'order'`) names
@@ -183,7 +196,7 @@ export function LedgerGridColumnHeader<C extends LedgerGridColumnModel>({
       className={cn(
         'group/hrow grid border-b border-border-default bg-surface-card px-0 py-0',
         LEDGER_HEADER_ROW_FACE,
-        layout.rowShellClass(false, { scrollMinContent: true }),
+        ledgerGridRowShellClass(false, { scrollMinContent: true }),
         className,
       )}
       style={{ gridTemplateColumns: template }}
@@ -191,10 +204,10 @@ export function LedgerGridColumnHeader<C extends LedgerGridColumnModel>({
       {hasSelect ? (
         <div
           className={cn(
-            layout.cellClass({ inset: 'none', rule: true }),
+            ledgerGridCell({ inset: 'none', rule: true }),
             LEDGER_HEADER_ROW_FACE,
             emptyGutter ? 'items-stretch overflow-hidden p-0' : 'justify-center',
-            layout.frozenCellClass,
+            LEDGER_GRID_FROZEN_CELL,
           )}
           style={{ left: gridFrozenLeft(columns, 'select') }}
           data-frozen-edge={frozenEdgeKey === 'select' ? true : undefined}
@@ -230,7 +243,7 @@ export function LedgerGridColumnHeader<C extends LedgerGridColumnModel>({
               aria-hidden
               className={cn(
                 LEDGER_HEADER_ROW_FACE,
-                layout.cellClass({ rule: false, inset: 'none' }),
+                ledgerGridCell({ rule: false, inset: 'none' }),
               )}
             />
           );
@@ -241,7 +254,7 @@ export function LedgerGridColumnHeader<C extends LedgerGridColumnModel>({
               key={column.key}
               data-col={column.key}
               className={cn(
-                layout.cellClass({ inset: 'none', rule: true }),
+                ledgerGridCell({ inset: 'none', rule: true }),
                 'flex items-center justify-center',
                 LEDGER_HEADER_ROW_FACE,
               )}
@@ -266,7 +279,6 @@ export function LedgerGridColumnHeader<C extends LedgerGridColumnModel>({
             key={column.key}
             column={headerColumn}
             last={last}
-            layout={layout}
             columns={columns}
             frozenEdgeKey={frozenEdgeKey}
             sortActive={sortable}
@@ -296,7 +308,6 @@ export function LedgerGridColumnHeader<C extends LedgerGridColumnModel>({
 function LedgerHeaderCell<C extends LedgerGridColumnModel>({
   column,
   last,
-  layout,
   frozenEdgeKey,
   columns,
   sortActive = false,
@@ -311,7 +322,6 @@ function LedgerHeaderCell<C extends LedgerGridColumnModel>({
 }: {
   column: C;
   last: boolean;
-  layout: LedgerHeaderLayoutApi<C>;
   frozenEdgeKey: string;
   /** The MOUNTED model — freeze membership and sticky offsets derive from it. */
   columns: readonly C[];
@@ -357,9 +367,9 @@ function LedgerHeaderCell<C extends LedgerGridColumnModel>({
         // The two GUTTER tracks are flush in the body, so their headers must be
         // too — a `px-2` header over a zero-inset body column puts the sort
         // affordance and the column rule at different x than the cells under it.
-        layout.cellClass({ rule: !last, inset: flushTrack ? 'none' : 'grid' }),
+        ledgerGridCell({ rule: !last, inset: flushTrack ? 'none' : 'grid' }),
         flushTrack && 'overflow-hidden p-0',
-        frozen && layout.frozenCellClass,
+        frozen && LEDGER_GRID_FROZEN_CELL,
         tableHeader,
         sortActive && 'cursor-pointer hover:text-text-default',
         isActiveSort && 'text-text-default',

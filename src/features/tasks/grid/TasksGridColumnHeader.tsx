@@ -6,20 +6,12 @@ import {
 } from '@/design-system/components/grid';
 import {
   TASKS_GRID_COLUMNS,
-  TASKS_GRID_FROZEN_CELL,
-  tasksGridCell,
-  tasksGridRowShellClass,
-  tasksGridTemplate,
   isTasksGridSortable,
   type TasksGridColumn,
   type TasksGridColumnKey,
 } from '@/lib/staff-todos/tasks-grid-layout';
 
-const TASKS_HEADER_LAYOUT: LedgerHeaderLayoutApi<TasksGridColumn> = {
-  template: tasksGridTemplate,
-  cellClass: tasksGridCell,
-  rowShellClass: tasksGridRowShellClass,
-  frozenCellClass: TASKS_GRID_FROZEN_CELL,
+const TASKS_HEADER_LAYOUT: LedgerHeaderLayoutApi = {
   isSortable: isTasksGridSortable,
 };
 

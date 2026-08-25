@@ -55,15 +55,31 @@ import { IBM_Plex_Mono, IBM_Plex_Sans_Condensed, Inter, Overpass } from 'next/fo
 export const cfSans = Inter({
   subsets: ['latin'],
   weight: ['400', '500', '600'],
-  // Italic is loaded for ONE consumer: the kiosk attract wordmark, which paints
-  // a tenant's logotype (`src/app/kiosk/AttractLoop.tsx`). Without the real cut
-  // the browser synthesises an oblique at an engine-dependent angle, which is
-  // not good enough for a brand mark sitting on an always-on front-desk screen.
-  // This is NOT a licence for italic app chrome — hierarchy here still comes
-  // from colour and tracking, never from slant.
-  style: ['normal', 'italic'],
   variable: '--font-cf-sans',
   display: 'swap',
+});
+
+/**
+ * Inter's REAL italic cut, loaded for ONE consumer: the kiosk attract wordmark,
+ * which paints a tenant's logotype (`src/app/kiosk/AttractLoop.tsx`). Without it
+ * the browser synthesises an oblique at an engine-dependent angle, which is not
+ * good enough for a brand mark sitting on an always-on front-desk screen. This
+ * is NOT a licence for italic app chrome — hierarchy here still comes from
+ * colour and tracking, never from slant.
+ *
+ * `preload: false` and a SEPARATE call, not `style: ['normal','italic']` on the
+ * cut above: next/font preloads every file a call produces, so folding italic
+ * into the app's sans put three faces nothing outside the kiosk renders into the
+ * `<head>` of every document, at the priority reserved for what paints first.
+ * Split out, the browser fetches them when the kiosk actually asks.
+ */
+export const cfSansItalic = Inter({
+  subsets: ['latin'],
+  weight: ['400', '500', '600'],
+  style: ['italic'],
+  variable: '--font-cf-sans-italic',
+  display: 'swap',
+  preload: false,
 });
 
 export const ibmPlexSansCondensed = IBM_Plex_Sans_Condensed({
@@ -90,4 +106,11 @@ export const overpass = Overpass({
   weight: ['400', '500', '600'],
   variable: '--font-spine',
   display: 'swap',
+  // PRELOADED, deliberately. `preload: false` was tried here on the theory that
+  // one component renders this cut and it never owns a first-paint element —
+  // and it cost the desk workbenches 13 Lighthouse points (`/unbox` 92 → 79,
+  // LCP 1.0s → 2.4s, measured desktop, 3 runs). The spine is chrome that paints
+  // in the first frame on every desk route, so dropping its preload only moved
+  // the request later and made the swap land inside the LCP window. Do not
+  // re-try this without re-measuring the desk routes.
 });

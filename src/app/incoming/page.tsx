@@ -35,7 +35,7 @@ async function IncomingSeededSurface() {
   return (
     <HydrationBoundary state={seed.state}>
       <SurfaceGate surfaceKey="incoming">
-        <ReceivingSurfacePage mobileTitle="Inbound" />
+        <ReceivingSurfacePage />
       </SurfaceGate>
     </HydrationBoundary>
   );

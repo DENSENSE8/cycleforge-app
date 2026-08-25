@@ -17,7 +17,7 @@
  * Pure module, no React imports — consumed via useTimeFormat() (useSyncExternalStore).
  */
 
-import { DEFAULT_TIME_FORMAT, TIME_FORMAT_VALUES, type TimeFormat } from '@/lib/schemas/staff-preferences';
+import { DEFAULT_TIME_FORMAT, TIME_FORMAT_VALUES, type TimeFormat } from '@/lib/schemas/staff-preferences-constants';
 
 const STORAGE_KEY = 'cf.time-format';
 

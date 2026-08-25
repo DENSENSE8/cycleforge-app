@@ -57,9 +57,7 @@ export function MasterNavView({
     <div className={cn('isolate flex h-full min-h-0 flex-col font-spine', className)}>
       {/* The band's HEIGHT is geometry, not content. The spine is a flex SIBLING
           of the header+content column (see ResponsiveLayout), so this primary face
-          is what puts the spine's bottom hairline on the same Y as the
-          GlobalHeader's — drop it and the header's border runs into the spine
-          mid-row.
+          is what keeps the spine's 40px band on the same Y as GlobalHeader.
 
           What left is the org/workspace control. This is small-business
           software: an operator belongs to one org, so a permanent row naming it

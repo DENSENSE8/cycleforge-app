@@ -15,7 +15,7 @@ import { WASH_PRESETS } from '@/design-system/tokens/app-surface';
 import { useStaffPreferences } from '@/hooks/useStaffPreferences';
 import { useTimeFormat } from '@/lib/time-format/useTimeFormat';
 import { setTimeFormat } from '@/lib/time-format/store';
-import { TIME_FORMAT_VALUES, type TimeFormat } from '@/lib/schemas/staff-preferences';
+import { TIME_FORMAT_VALUES, type TimeFormat } from '@/lib/schemas/staff-preferences-constants';
 import { formatTime12hPST } from '@/utils/date';
 import { applyTheme, applyAccentTheme, type ThemeName } from '@/lib/theme/theme';
 import {

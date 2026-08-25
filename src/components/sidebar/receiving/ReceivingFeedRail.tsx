@@ -24,7 +24,15 @@ import { parseStaffParam } from '@/hooks/useStaffFilter';
 import { RecentActivityRailBase, type ApiResponse } from './RecentActivityRailBase';
 import { useHydrateVisibleSerials } from './useHydrateVisibleSerials';
 import { useRailExclusions } from './useRailExclusions';
+import { useRailRowDismiss } from './useRailRowDismiss';
+import { useRailRowDelete } from './useRailRowDelete';
+import { receivingShareUrl } from './receiving-sidebar-shared';
+import { shareRailLink } from '@/components/sidebar/rail-shell/rail-row-copy';
+import { useAuth } from '@/contexts/AuthContext';
+import { useRailEditMode } from '@/components/sidebar/rail-edit-mode';
 import { railExclusionFeedKey } from '@/lib/receiving/rail/exclusion-feed-key';
+import type { RailRowActionsResolver } from '@/components/sidebar/rail-shell/rail-row-actions';
+import { buildRailRowActions } from '@/lib/receiving/rail/row-actions';
 import {
   RECEIVING_RAIL_FEEDS,
   fetchReceivingLines,
@@ -57,8 +65,6 @@ interface ReceivingFeedRailProps {
    * contract as rail dismiss — not part of the queryKey.
    */
   includeRow?: (row: ReceivingLineRow) => boolean;
-  /** Hide the TITLE · N eyebrow when workbench chrome owns tabs + select. */
-  hideEyebrow?: boolean;
   emptyText?: string;
   /** Optional read-only context node under the popover badges (e.g. unfound exception dot). */
   renderPopoverContext?: (row: ReceivingLineRow) => ReactNode;
@@ -75,7 +81,6 @@ export function ReceivingFeedRail({
   scope,
   filterText = '',
   includeRow,
-  hideEyebrow = false,
   emptyText,
   renderPopoverContext,
   renderPopoverActions,
@@ -155,6 +160,42 @@ export function ReceivingFeedRail({
   const qty = RAIL_QTY[feed.qty];
   const dot = RAIL_STATUS[feed.status];
 
+  // Per-row ⋮ menu. The feed declares WHICH verbs its rows offer (registry);
+  // this is where the implementations are injected, because this is the one
+  // node that knows the mounted rail's exclusion feed key. No key (Recently
+  // searched) → `dismiss: null` → the verb is omitted, never shown dead.
+  const dismissRow = useRailRowDismiss(exclusionFeedKey);
+  const deleteCarton = useRailRowDelete();
+  // The DELETE route enforces `receiving.mark_received`; mirror the gate here so
+  // an operator without it never sees a button that can only 403.
+  const { has } = useAuth();
+  const canDelete = has('receiving.mark_received');
+  // Bulk multi-select entry point — reads the ambient `RailEditModeProvider`
+  // (mounted by the panel that owns this rail). No provider above (FBA,
+  // Testing) → `enabled: false` → the verb is omitted, not offered broken.
+  const editMode = useRailEditMode();
+  const rowActionsId = feed.rowActions;
+  const rowActions = useMemo<RailRowActionsResolver<ReceivingLineRow> | undefined>(() => {
+    if (!rowActionsId) return undefined;
+    return (row, ctx) => {
+      const cartonId = Number(row.receiving_id);
+      const hasCarton = Number.isFinite(cartonId) && cartonId > 0;
+      return buildRailRowActions(rowActionsId, {
+        select: editMode.enabled
+          ? () => {
+              if (!editMode.active) editMode.toggleActive();
+              editMode.toggle(row.id);
+            }
+          : null,
+        share: hasCarton
+          ? () => void shareRailLink(receivingShareUrl(cartonId, row.id), ctx.rowLabel)
+          : null,
+        hide: exclusionFeedKey ? () => void dismissRow(row.id, ctx.rowLabel) : null,
+        remove: hasCarton && canDelete ? () => void deleteCarton(cartonId, ctx.rowLabel) : null,
+      });
+    };
+  }, [rowActionsId, exclusionFeedKey, dismissRow, deleteCarton, canDelete, editMode]);
+
   // Tier A serial pre-seed: read-only observer of the rail cache the base owns
   // (enabled:false → never fetches), so we can hand the visible rows to the
   // batch-serial hydrator. It only fires for rows still lacking serials, so once
@@ -198,8 +239,8 @@ export function ReceivingFeedRail({
       // unbox/triage prev/next are a no-op (the history table listens on the
       // same name but its rows aren't the rail's PO list).
       navigateEvent="receiving-navigate-table"
+      rowActions={rowActions}
       eyebrowTitle={feed.eyebrowTitle}
-      hideEyebrow={hideEyebrow}
       emptyText={emptyText}
       autoSelectFirstWhenEmpty={feed.autoSelectFirstWhenEmpty}
       pinSelectedLead={feed.pinSelectedLead}

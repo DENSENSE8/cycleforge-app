@@ -19,7 +19,7 @@ import {
   DEFAULT_FOCUS_SCAN_HOTKEY,
   FOCUS_SCAN_HOTKEY_OPTIONS,
   isBindableFocusScanHotkey,
-} from '@/lib/schemas/staff-preferences';
+} from '@/lib/schemas/staff-preferences-constants';
 import { NEXT_SCAN_CHORD_LABEL } from '@/lib/scan-hotkey/store';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { focusRing } from '@/design-system/tokens/focus-ring';

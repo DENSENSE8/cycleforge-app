@@ -152,7 +152,6 @@ export function PackRecentPacksRail({
       selectedId={selectedId}
       limit={PACK_HISTORY_LIMIT}
       eyebrowTitle="Recent packs"
-      eyebrowSuffix="You"
       emptyText="No packs yet this week"
       getId={packerRecordRailId}
       getActivityAt={getRowActivityAt}

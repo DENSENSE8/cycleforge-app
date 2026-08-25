@@ -1,45 +1,35 @@
 import "./globals.css";
 import Providers from "../components/Providers";
-import { ResponsiveLayout } from "../components/layout/ResponsiveLayout";
-import { HeaderProvider } from "../contexts/HeaderContext";
-import { FbaWorkspaceProvider } from "../contexts/FbaWorkspaceContext";
-import { StudioWorkspaceProvider } from "../components/studio/StudioWorkspaceContext";
-import { AuthProvider } from "../contexts/AuthContext";
-import { ActivityInboxProvider } from "../contexts/ActivityInboxContext";
-import { StaffColorsProvider } from "../contexts/StaffColorsProvider";
-import { StaffSwitcherProvider } from "../contexts/StaffSwitcherContext";
-import { SwitchStaffSheet } from "../components/auth/SwitchStaffSheet";
-import { ScanHotkeySync } from "../components/scan/ScanHotkeySync";
-import { ThemeSync } from "../components/theme/ThemeSync";
-import { TimeFormatSync } from "../components/time-format/TimeFormatSync";
-import { QuickAccessSync } from "../components/quick-access/QuickAccessSync";
-import { AuthenticatedAblyProvider } from "../components/providers/AuthenticatedAblyProvider";
-import { AssistantProvider } from "../components/assistant/AssistantProvider";
+import dynamic from "next/dynamic";
+
+/**
+ * The warehouse client, code-split. A STATIC import here would put every
+ * provider in the bundle of every route this layout renders — including the
+ * signed-out `/signin` card, which renders none of them. This is a code-split,
+ * not `ssr: false`: the shell still server-renders.
+ */
+const WarehouseShell = dynamic(() =>
+  import("@/components/layout/WarehouseShell").then((m) => m.WarehouseShell),
+);
 import { THEME_BOOT_SCRIPT } from "@/lib/theme/theme";
 import { BOOT_SPLASH_SCRIPT } from "@/lib/boot-splash-script";
 import { designTokenStyleText } from '@/styles/tokens';
 import { themePaletteStyleText } from '@/design-system/themes/registry';
 import { ReducedMotionProvider } from "../components/providers/ReducedMotionProvider";
-import { InstallPrompt } from "../components/station/InstallPrompt";
-import { AppearanceApplier } from "../components/settings/AppearanceApplier";
-import { ReceivingZohoSyncToaster } from "../components/receiving/ReceivingZohoSyncToaster";
-import { UserIssueResolvedToaster } from "../components/providers/UserIssueResolvedToaster";
 import { getInitialAuthUser } from "@/lib/auth/server-session";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { isKioskHost, isKioskUiPath } from "@/lib/tenancy/kiosk-host";
+import { isPublicChromePath } from "@/lib/auth/public-chrome-paths";
 import {
   ACTIVATION_REDIRECT_HREF,
   isActivationBlocked,
 } from "@/lib/onboarding/activation-gate";
-import { Analytics } from "@vercel/analytics/next";
-import { SpeedInsights } from "@vercel/speed-insights/next";
+import { DeferredWebTelemetry } from "@/components/analytics/DeferredWebTelemetry";
 import { PaintTimingHud } from "@/components/dev/PaintTimingHud";
-import { PostHogProvider } from "../components/analytics/PostHogProvider";
-import { ShellQuerySeed } from "@/components/providers/ShellQuerySeed";
 import { maybeSeedShell } from "@/lib/queries/unbox-shell-seed.server";
 import { PRODUCT_NAME } from "@/lib/branding/constants";
-import { cfSans, ibmPlexMono, ibmPlexSansCondensed, overpass } from "@/lib/fonts";
+import { cfSans, cfSansItalic, ibmPlexMono, ibmPlexSansCondensed, overpass } from "@/lib/fonts";
 import { appChromeClass } from "@/design-system/tokens/app-surface";
 
 export default async function RootLayout({
@@ -62,6 +52,18 @@ export default async function RootLayout({
     // by each route as they adopt it — see docs/cycle-forge-branding-spec.md §3).
     const documentTitle = initialUser ? initialUser.organizationName : PRODUCT_NAME;
 
+    // Signed-out public entry surfaces (`/signin`, `/signup`, share links) get
+    // a MINIMAL provider tree — see `public-chrome-paths.ts`. The full stack
+    // below exists to run a warehouse; none of it is reachable from a sign-in
+    // card, and mounting it made the one public route in the app pay for the
+    // whole operator client before it could paint a password field.
+    const publicChrome = !initialUser && isPublicChromePath(pathname);
+    // `/m/*` is the handheld tree. The edge proxy only ever serves those paths
+    // to phones, so this is a routing fact the server already knows — deciding
+    // it here (rather than from client-side device detection) is what lets the
+    // two frames be separate chunks; see `WarehouseShell`.
+    const mobileTree = pathname === '/m' || pathname.startsWith('/m/');
+
     // Paint seed for routes whose first-paint content lives in the SHELL rather
     // than the page (Unbox recents rail; the Testing station's Ready-to-Pack
     // grid + KPI band, whose keys the left rail mounts first). `null` on every
@@ -83,7 +85,7 @@ export default async function RootLayout({
     return (
         <html
             lang="en"
-            className={`${cfSans.variable} ${ibmPlexSansCondensed.variable} ${ibmPlexMono.variable} ${overpass.variable} h-full overflow-hidden`}
+            className={`${cfSans.variable} ${cfSansItalic.variable} ${ibmPlexSansCondensed.variable} ${ibmPlexMono.variable} ${overpass.variable} h-full overflow-hidden`}
             suppressHydrationWarning
         >
             <head>
@@ -127,52 +129,30 @@ export default async function RootLayout({
                   Wraps InstallPrompt too — it animates and sits outside Providers.
                 */}
                 <ReducedMotionProvider>
-                <div id="app-root" className="fixed inset-0 flex min-h-0 flex-col overflow-hidden">
-                    <PostHogProvider>
-                    <Providers>
-                        <AuthProvider initial={initialUser} kioskHost={kioskHost}>
-                            <AuthenticatedAblyProvider>
-                                <ActivityInboxProvider>
-                                <StaffColorsProvider>
-                                <StaffSwitcherProvider>
-                                    <HeaderProvider>
-                                        <FbaWorkspaceProvider>
-                                            <StudioWorkspaceProvider>
-                                                <AssistantProvider>
-                                                    {/* Station paint seed. It wraps the SHELL, not
-                                                        the page, because the route's rail is a
-                                                        sibling of `children` and renders first —
-                                                        see `maybeSeedUnboxShell`. Null on every
-                                                        other route, where this renders nothing. */}
-                                                    <ShellQuerySeed state={shellSeed}>
-                                                        <ResponsiveLayout kioskHost={kioskHost}>
-                                                            {children}
-                                                        </ResponsiveLayout>
-                                                    </ShellQuerySeed>
-                                                </AssistantProvider>
-                                            </StudioWorkspaceProvider>
-                                        </FbaWorkspaceProvider>
-                                    </HeaderProvider>
-                                    <ReceivingZohoSyncToaster />
-                                    <UserIssueResolvedToaster />
-                                    <SwitchStaffSheet />
-                                    <ScanHotkeySync />
-                                    <ThemeSync />
-                                    <TimeFormatSync />
-                                    <QuickAccessSync />
-                                </StaffSwitcherProvider>
-                                </StaffColorsProvider>
-                                </ActivityInboxProvider>
-                            </AuthenticatedAblyProvider>
-                        </AuthProvider>
-                    </Providers>
-                    </PostHogProvider>
-                </div>
-                <InstallPrompt />
-                <AppearanceApplier />
+                {publicChrome ? (
+                  /*
+                    PUBLIC CHROME — signed-out entry surfaces only. `Providers`
+                    is the floor the card genuinely uses (query client, toaster,
+                    confirm host, tooltips); the whole warehouse client below is
+                    skipped, and because it is behind `next/dynamic` it is not
+                    downloaded either. The `<div id="app-root">` box is identical,
+                    so the page's own layout is unchanged.
+                  */
+                  <div id="app-root" className="fixed inset-0 flex min-h-0 flex-col overflow-hidden">
+                    <Providers publicChrome>{children}</Providers>
+                  </div>
+                ) : (
+                  <WarehouseShell
+                    initialUser={initialUser}
+                    kioskHost={kioskHost}
+                    mobileTree={mobileTree}
+                    shellSeed={shellSeed}
+                  >
+                    {children}
+                  </WarehouseShell>
+                )}
                 </ReducedMotionProvider>
-                <Analytics />
-                <SpeedInsights />
+                <DeferredWebTelemetry />
                 <PaintTimingHud />
             </body>
         </html>

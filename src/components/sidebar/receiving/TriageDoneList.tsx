@@ -20,12 +20,10 @@ export function TriageDoneList({
   selectedLineId,
   filterText = '',
   includeRow,
-  hideEyebrow = false,
 }: {
   selectedLineId: number | null;
   filterText?: string;
   includeRow?: (row: ReceivingLineRow) => boolean;
-  hideEyebrow?: boolean;
 }) {
   const stagingMap = useTriageStagingMap();
   return (
@@ -34,7 +32,6 @@ export function TriageDoneList({
       selectedLineId={selectedLineId}
       filterText={filterText}
       includeRow={includeRow}
-      hideEyebrow={hideEyebrow}
       renderPopoverContext={(row) => (
         <TriageStagingChips
           ctx={row.receiving_id != null ? stagingMap.get(row.receiving_id) : undefined}

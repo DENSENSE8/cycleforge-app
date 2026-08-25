@@ -1,8 +1,8 @@
 'use client';
 
 import { useSyncExternalStore } from 'react';
-import type { TimeFormat } from '@/lib/schemas/staff-preferences';
-import { DEFAULT_TIME_FORMAT } from '@/lib/schemas/staff-preferences';
+import type { TimeFormat } from '@/lib/schemas/staff-preferences-constants';
+import { DEFAULT_TIME_FORMAT } from '@/lib/schemas/staff-preferences-constants';
 import { getTimeFormat, subscribe } from './store';
 
 /**

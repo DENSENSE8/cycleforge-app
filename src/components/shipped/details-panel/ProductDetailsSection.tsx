@@ -1,32 +1,20 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { ShippedOrder } from '@/lib/neon/orders-queries';
-import { useOrderAssignment } from '@/hooks';
 import { useSkuIdentity } from '@/hooks/useSkuIdentity';
-import { CopyableValueFieldBlock } from '@/components/shipped/details-panel/blocks/CopyableValueFieldBlock';
+import { useExternalItemUrl } from '@/hooks/useExternalItemUrl';
 import { ContextualManualLinkRow } from '@/components/shipped/details-panel/blocks/ContextualManualLinkRow';
-import { ConditionPills } from '@/components/receiving/workspace/ConditionPills';
 import { FnskuCatalogInfoPanel } from '@/components/fba/FnskuCatalogInfoPanel';
 import { getFnskuCatalogValue, isFnskuCatalogContext } from '@/utils/fnsku-catalog';
 import { CopyChip } from '@/components/ui/CopyChip';
 import { PlatformMark } from '@/components/ui/PlatformMark';
 import { LedgerValue } from '@/design-system/components/LedgerValue';
-import { DetailsPanelRow } from '@/design-system/components/DetailsPanelRow';
-import { Button, IconButton } from '@/design-system/primitives';
-import { Copy, ExternalLink, Lock } from '@/components/Icons';
+import { ItemRecordCard, type ItemRecordFact } from '@/design-system/components/item-record';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import type { EditableShippingFields } from '@/components/shipped/details-panel/ShippingInformationSection';
-import { useExternalItemUrl } from '@/hooks/useExternalItemUrl';
-import { isOrderShipped } from '@/components/shipped/details-panel/shipped-details-logic';
-import { isAmazonOrderForItemRefresh } from '@/lib/amazon/order-item-refresh-shared';
-import { conditionGradeTone } from '@/lib/condition-tone';
-import { conditionLabel } from '@/lib/conditions';
+import { shippedOrderToItemRecords } from '@/lib/item-record/shipped-order-item-record';
 import { sourcePlatformMeta } from '@/lib/source-platform';
-import { toast } from '@/lib/toast';
-
-import { normalizeCondition, type ConditionGrade } from '@/components/tech/StationConditionEditor';
-import { refreshDomain } from '@/lib/refresh/bus';
 
 interface PlatformSkuEntry {
   platform: string;
@@ -66,162 +54,57 @@ function PlatformSkuRow({ entry }: { entry: PlatformSkuEntry }) {
   );
 }
 
-function SkuPlatformList({
-  canonicalSku,
-  platforms,
-  loading,
-}: {
-  canonicalSku: string;
-  platforms: PlatformSkuEntry[];
-  loading: boolean;
-}) {
-  const rows = useMemo<PlatformSkuEntry[]>(
-    () => [
-      ...(canonicalSku ? [{ platform: 'zoho', value: canonicalSku } satisfies PlatformSkuEntry] : []),
-      ...platforms,
-    ],
-    [canonicalSku, platforms],
-  );
-
-  if (loading && rows.length === 0) {
-    return (
-      <div className="py-2">
-        <div className="h-6 w-32 animate-pulse rounded bg-surface-sunken" />
-      </div>
-    );
-  }
-
-  if (rows.length === 0) {
-    return (
-      <div className="py-2 text-xs text-text-faint">No SKU mappings</div>
-    );
-  }
-
-  return (
-    <div className="py-1.5">
-      {rows.map((row, i) => (
-        <PlatformSkuRow key={`${row.platform}-${i}-${row.value}`} entry={row} />
-      ))}
-    </div>
-  );
-}
-
-function ConditionHeaderChip({
-  value,
-  locked,
-  saving,
-  expanded,
-  onToggle,
-}: {
-  value: ConditionGrade;
-  locked: boolean;
-  saving: boolean;
-  expanded: boolean;
-  onToggle: () => void;
-}) {
-  const tone = conditionGradeTone(value);
-  const label = conditionLabel(value, 'pill');
-  const chip = (
-    <span
-      className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-role-micro font-semibold uppercase tracking-wider ring-1 ring-inset ${tone.badge}`}
-    >
-      {label}
-      {locked ? <Lock className="h-3 w-3 opacity-70" aria-hidden /> : null}
-      {saving ? <span className="text-text-info">…</span> : null}
-    </span>
-  );
-
-  if (locked) {
-    return (
-      <HoverTooltip label="Condition locked after shipping" asChild focusable={false}>
-        <span className="inline-flex">{chip}</span>
-      </HoverTooltip>
-    );
-  }
-
-  return (
-    <HoverTooltip label={expanded ? 'Hide condition picker' : 'Change condition'} asChild>
-      {/* ds-raw-button: compact condition chip in Product Title header — not a DS Button CTA */}
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-expanded={expanded}
-        aria-label={`Condition ${label}${expanded ? ' — collapse' : ' — change'}`}
-        className="ds-raw-button inline-flex rounded-md transition-opacity hover:opacity-90"
-      >
-        {chip}
-      </button>
-    </HoverTooltip>
-  );
-}
-
+/**
+ * The order's product facts, painted on the shared item surface.
+ *
+ * **This section is READ-ONLY, everywhere, by construction** (operator ruling,
+ * 2026-08-22). It used to be the panel's second write surface and carried
+ * three mutations: an inline condition re-grade, "Reimport from Amazon", and
+ * an open-listing jump. All three are gone, and with them the `canEditProduct`
+ * capability prop that five call sites had to remember to pass — a prop whose
+ * whole existence traced to a bug where the condition editor consulted no
+ * capability at all and `/search` silently committed re-grades. A section that
+ * cannot write needs no permission to describe.
+ *
+ * Condition re-grade still exists where the work is: the receiving workspace
+ * (`ConditionPills`) and the tech station (`StationConditionEditor`).
+ *
+ * The face itself is {@link ItemRecordCard} — the same ledger the scan
+ * stations paint in the middle context display, and the same one `/search`
+ * mounts. Identifiers render last-8 with no truncation and no way to ask for
+ * anything else.
+ */
 export function ProductDetailsSection({
   shipped,
   editableShippingFields,
-  canEditProduct,
 }: {
   shipped: ShippedOrder;
-  editableShippingFields?: EditableShippingFields;
   /**
-   * May THIS surface mutate the order's product facts — re-grade condition,
-   * reimport from Amazon?
-   *
-   * Required, and never defaulted (AGENTS.md → "a safety classification is a
-   * REQUIRED parameter"). Until 2026-08-21 the condition editor was gated on
-   * `isOrderShipped` ALONE, so `/search?sel=order:` — a surface whose whole
-   * contract is `stance="preview"`, which the centre expressed by *omitting*
-   * `editableShippingFields` — happily committed a re-grade on any unshipped
-   * order. Read-only-ness is the absence of a capability only if the capability
-   * is actually consulted; here nothing consulted it. A default would have left
-   * every call site I did not visit silently writable, which is the precise
-   * failure this law exists to catch.
+   * Live SHIPPING-section edit state. Read for display only: while the
+   * operator is typing an item number in the shipping editors, this section
+   * reflects the uncommitted value rather than the stale stored one. This
+   * section writes nothing back.
    */
-  canEditProduct: boolean;
+  editableShippingFields?: EditableShippingFields;
 }) {
-  const [conditionValue, setConditionValue] = useState<ConditionGrade>(normalizeCondition(shipped.condition));
-  const [isSavingCondition, setIsSavingCondition] = useState(false);
-  const [conditionExpanded, setConditionExpanded] = useState(false);
-  const [amazonRefreshing, setAmazonRefreshing] = useState(false);
-  const orderAssignmentMutation = useOrderAssignment();
   const skuIdentity = useSkuIdentity(shipped.sku, shipped.account_source);
-  // Two independent locks: a surface that may not write at all, and an order
-  // that has shipped (you can't re-grade what's gone).
-  const conditionLocked = !canEditProduct || isOrderShipped(shipped);
-
-  useEffect(() => {
-    setConditionValue(normalizeCondition(shipped.condition));
-    setConditionExpanded(false);
-  }, [shipped.id, shipped.condition]);
-
-  const handleConditionChange = async (nextCondition: string) => {
-    if (conditionLocked || isSavingCondition) return;
-    const grade = normalizeCondition(nextCondition);
-    setConditionValue(grade);
-    setConditionExpanded(false);
-    setIsSavingCondition(true);
-    try {
-      await orderAssignmentMutation.mutateAsync({
-        orderId: shipped.id,
-        condition: grade,
-      });
-    } catch (error) {
-      console.error('Failed to update condition:', error);
-    } finally {
-      setIsSavingCondition(false);
-    }
-  };
-
   const { getExternalUrlByItemNumber } = useExternalItemUrl();
-  const fnskuCatalogValue = getFnskuCatalogValue(shipped);
-  const showFnskuCatalog = isFnskuCatalogContext(shipped) && Boolean(fnskuCatalogValue);
 
-  const refreshAfterCatalogSave = () => {
-    refreshDomain('orders.outbound');
-  };
+  const itemNumberValue = String(
+    editableShippingFields?.itemNumber ?? shipped.item_number ?? '',
+  ).trim();
+  // Opening a listing is a READ. It rode out with the write bundle when this
+  // section went read-only and came straight back — a jump to the marketplace
+  // page mutates nothing, and it is how an operator checks what the buyer saw.
+  const itemExternalUrl = itemNumberValue
+    ? getExternalUrlByItemNumber(itemNumberValue)
+    : null;
 
-  const canonicalSku = (skuIdentity.canonicalSku || shipped.sku || '').trim();
   const platformEntries = useMemo<PlatformSkuEntry[]>(() => {
-    const list: PlatformSkuEntry[] = [];
+    const canonical = (skuIdentity.canonicalSku || shipped.sku || '').trim();
+    const list: PlatformSkuEntry[] = canonical
+      ? [{ platform: 'zoho', value: canonical }]
+      : [];
     for (const p of skuIdentity.platforms || []) {
       const value = (p.platformSku && p.platformSku.trim()) || (p.platformItemId || '').trim();
       if (!value) continue;
@@ -233,159 +116,75 @@ export function ProductDetailsSection({
       });
     }
     return list;
-  }, [skuIdentity.platforms]);
+  }, [skuIdentity.canonicalSku, skuIdentity.platforms, shipped.sku]);
 
-  const itemNumberValue = String(
-    editableShippingFields?.itemNumber ?? shipped.item_number ?? '',
-  ).trim();
-  const hasItemNumber = Boolean(itemNumberValue);
-  const canAmazonRefresh =
-    canEditProduct && isAmazonOrderForItemRefresh(shipped.order_id, shipped.account_source);
-  const itemExternalUrl = hasItemNumber ? getExternalUrlByItemNumber(itemNumberValue) : null;
-
-  const handleAmazonRefresh = async () => {
-    if (amazonRefreshing || !canAmazonRefresh) return;
-    setAmazonRefreshing(true);
-    try {
-      const res = await fetch(`/api/orders/${shipped.id}/amazon-refresh`, { method: 'POST' });
-      const data = await res.json().catch(() => ({})) as {
-        success?: boolean;
-        error?: string;
-        itemNumber?: string;
-        productTitle?: string;
-      };
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || `Amazon refresh failed (HTTP ${res.status})`);
-      }
-      const nextItem = String(data.itemNumber || '').trim();
-      if (nextItem && editableShippingFields) {
-        editableShippingFields.onItemNumberChange(nextItem);
-        editableShippingFields.onBlur();
-      }
-      toast.success(nextItem ? `Item number ${nextItem}` : 'Amazon listing refreshed');
-      refreshAfterCatalogSave();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Amazon refresh failed');
-    } finally {
-      setAmazonRefreshing(false);
-    }
-  };
-
-  const itemNumberRow = (
-    <DetailsPanelRow
-      label="Item Number"
-      actions={
-        hasItemNumber ? (
-          <div className="flex items-center gap-1.5">
-            {itemExternalUrl ? (
-              <HoverTooltip label="Open listing" asChild>
-                <IconButton
-                  tone="accent"
-                  onClick={() => window.open(itemExternalUrl, '_blank', 'noopener,noreferrer')}
-                  ariaLabel="Open item number listing"
-                  icon={<ExternalLink className="h-3.5 w-3.5" />}
-                />
-              </HoverTooltip>
-            ) : null}
-            <HoverTooltip label="Copy Item Number" asChild>
-              <IconButton
-                tone="neutral"
-                onClick={() => {
-                  void navigator.clipboard.writeText(itemNumberValue);
-                }}
-                ariaLabel="Copy Item Number"
-                icon={<Copy className="h-3.5 w-3.5" />}
-              />
-            </HoverTooltip>
+  const items = useMemo(() => {
+    const facts: ItemRecordFact[] = [
+      {
+        id: 'item-number',
+        label: 'Item Number',
+        copyValue: itemNumberValue || null,
+        href: itemExternalUrl,
+        hrefLabel: 'Open listing',
+        value: itemNumberValue ? (
+          <div className="space-y-0">
+            <p className="truncate text-sm font-semibold text-text-default">{itemNumberValue}</p>
+            <ContextualManualLinkRow
+              sku={shipped.sku}
+              itemNumber={itemNumberValue}
+              allowEmbeddedItemNumberInput={false}
+              embedded
+            />
           </div>
-        ) : null
-      }
-    >
-      {hasItemNumber ? (
-        <div className="space-y-0">
-          <p className="truncate text-sm font-semibold text-text-default">{itemNumberValue}</p>
-          <ContextualManualLinkRow
-            sku={shipped.sku}
-            itemNumber={itemNumberValue}
-            allowEmbeddedItemNumberInput={false}
-            embedded
-          />
-        </div>
-      ) : (
-        <div className="space-y-2">
+        ) : (
           <p className="text-sm font-medium text-text-faint">No item number</p>
-          {canAmazonRefresh ? (
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              className="text-xs"
-              disabled={amazonRefreshing}
-              onClick={() => { void handleAmazonRefresh(); }}
-            >
-              {amazonRefreshing ? 'Reimporting…' : 'Reimport from Amazon'}
-            </Button>
-          ) : null}
-        </div>
-      )}
-    </DetailsPanelRow>
-  );
+        ),
+      },
+    ];
+
+    if (platformEntries.length > 0 || skuIdentity.loading) {
+      facts.push({
+        id: 'platform-skus',
+        label: 'Marketplace SKUs',
+        value: skuIdentity.loading ? (
+          <p className="text-sm font-medium text-text-faint">Resolving…</p>
+        ) : (
+          <div className="space-y-0">
+            {platformEntries.map((entry) => (
+              <PlatformSkuRow key={`${entry.platform}:${entry.value}`} entry={entry} />
+            ))}
+          </div>
+        ),
+      });
+    }
+
+    return shippedOrderToItemRecords(shipped).map((item) => ({ ...item, facts }));
+  }, [shipped, itemNumberValue, itemExternalUrl, platformEntries, skuIdentity.loading]);
+
+  const fnskuCatalogValue = getFnskuCatalogValue(shipped);
+  const showFnskuCatalog = isFnskuCatalogContext(shipped) && Boolean(fnskuCatalogValue);
 
   return (
     <section className="space-y-3">
-      {showFnskuCatalog ? (
-        <div className="space-y-3">
-          <FnskuCatalogInfoPanel
-            fnsku={fnskuCatalogValue}
-            productTitle={shipped.product_title}
-            condition={shipped.condition}
-            sku={shipped.sku}
-            asin={(shipped as { asin?: string | null }).asin ?? null}
-            sourceKey={shipped.id}
-            onCatalogSaved={refreshAfterCatalogSave}
-          />
-          {hasItemNumber ? (
-            <ContextualManualLinkRow
+      <ItemRecordCard
+        items={items}
+        emptyTitle="No item"
+        emptyDescription="This order carries no product facts."
+        footer={
+          showFnskuCatalog ? (
+            <FnskuCatalogInfoPanel
+              fnsku={fnskuCatalogValue}
+              productTitle={shipped.product_title}
+              condition={shipped.condition}
               sku={shipped.sku}
-              itemNumber={shipped.item_number}
-              allowEmbeddedItemNumberInput={false}
+              asin={(shipped as { asin?: string | null }).asin ?? null}
+              sourceKey={shipped.id}
+              // Read-only section — the catalog quick-add is a write.
+              allowEdit={false}
             />
-          ) : null}
-        </div>
-      ) : (
-        <div className="space-y-0">
-          <CopyableValueFieldBlock
-            label="Product Title"
-            value={shipped.product_title || 'Not provided'}
-            noTruncate
-            variant="flat"
-            valueClassName="font-sans"
-            headerAccessory={
-              <ConditionHeaderChip
-                value={conditionValue}
-                locked={conditionLocked}
-                saving={isSavingCondition}
-                expanded={conditionExpanded}
-                onToggle={() => setConditionExpanded((v) => !v)}
-              />
-            }
-          />
-
-          {!conditionLocked && conditionExpanded ? (
-            <div className="border-b border-border-hairline py-2">
-              <ConditionPills value={conditionValue} onChange={handleConditionChange} />
-            </div>
-          ) : null}
-
-          {itemNumberRow}
-
-          <SkuPlatformList
-            canonicalSku={canonicalSku}
-            platforms={platformEntries}
-            loading={skuIdentity.loading}
-          />
-        </div>
-      )}
+          ) : null
+        }
+      />
     </section>
   );
 }

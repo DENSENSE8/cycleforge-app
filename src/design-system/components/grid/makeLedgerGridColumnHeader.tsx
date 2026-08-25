@@ -127,7 +127,7 @@ export interface MakeLedgerGridColumnHeaderConfig<
   C extends LedgerGridColumnModel,
   M extends GridHeaderSelectMode,
 > {
-  layout: LedgerHeaderLayoutApi<C>;
+  layout: LedgerHeaderLayoutApi;
   /** The family's full column model — the default when a caller passes none. */
   defaultColumns: readonly C[];
   /**

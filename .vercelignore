@@ -8,6 +8,12 @@ out
 coverage
 lighthouse
 tmp
+# Local vision dataset — 13GB of captures/derivatives, regenerated locally and
+# never tracked (`.gitignore` has it too). It must be named HERE as well: Vercel
+# consults `.gitignore` only when no `.vercelignore` exists, so with this file
+# present the CLI was packing all 13GB into every deployment and the upload
+# aborted before a build could start.
+vision/data
 
 # Local/runtime metadata
 .git

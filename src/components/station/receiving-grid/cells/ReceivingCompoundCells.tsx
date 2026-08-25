@@ -132,6 +132,7 @@ const EMPTY_VIEW: CompoundRowView = {
   stateLabel: '',
   stateTone: 'neutral',
   delay: null,
+  amount: null,
 };
 
 /** Does this family's dispatcher own the key under the MOUNTED model? */

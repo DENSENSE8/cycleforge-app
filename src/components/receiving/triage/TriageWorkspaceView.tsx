@@ -98,7 +98,6 @@ export function TriageWorkspaceView({
               selectedRow={selectedRow}
               leadingRow={triageView === 'triage' ? leadingRow : null}
               filterText={filterText}
-              hideEyebrow
             />
           )}
         </WorkbenchSheetView>

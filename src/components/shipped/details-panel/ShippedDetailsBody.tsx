@@ -232,7 +232,6 @@ export function ShippedDetailsBody({
       <div className={cn('flex min-h-full flex-col', DISPLAYS_BODY_INSET, 'pb-6 pt-3')}>
         <div className="flex-1 space-y-4">
           <ShippedDetailsPanelContent
-            canEditProduct
             activeSection={stackSection}
             shipped={{
               ...shipped,

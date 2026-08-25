@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
+import { useState, useRef, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
 import type { Variants } from '@/design-system/motion';
 import { motion } from '@/design-system/motion';
 import { framerPresence, framerTransition, motionBezier } from '@/design-system/foundations/motion-framer';
@@ -14,6 +14,8 @@ import { NAV_KEY_HINT_CLASS } from '@/lib/keyboard/nav-keys';
 import { cn } from '@/utils/_cn';
 import type { SidebarRailRowContext } from './sidebar-rail-shared';
 import { RailPopover } from './RailPopover';
+import { RailRowMenu } from './RailRowMenu';
+import type { RailRowAction } from './rail-row-actions';
 import { useRailHoverPreview } from './useRailHoverPreview';
 
 /**
@@ -25,9 +27,30 @@ import { useRailHoverPreview } from './useRailHoverPreview';
  */
 const keepOnMainThread = () => {};
 
+/**
+ * Hides the row's trailing age while the ⋮ is showing. Three triggers, matching
+ * the three ways the ⋮ itself appears: row hover, keyboard focus inside the row,
+ * and the menu being open (`data-rail-row-menu-armed`, set below — CSS cannot
+ * see an open portalled menu). Plus `coarse:`, where the ⋮ is permanently
+ * resident and so the age never has the column at all.
+ *
+ * Applied to a node INSIDE the row button, not the row itself: a
+ * `group-hover/railrow:` variant on the element that also carries
+ * `group/railrow` would compile to a selector matching its own descendants —
+ * i.e. never itself.
+ */
+const AGE_YIELDS_TO_ROW_MENU = cn(
+  '[&_[data-compact-activity-age]]:transition-opacity [&_[data-compact-activity-age]]:duration-100',
+  'group-hover/railrow:[&_[data-compact-activity-age]]:opacity-0',
+  'group-focus-within/railrow:[&_[data-compact-activity-age]]:opacity-0',
+  'group-data-[rail-row-menu-armed]/railrow:[&_[data-compact-activity-age]]:opacity-0',
+  'coarse:[&_[data-compact-activity-age]]:opacity-0',
+);
+
 export function RailRow<TRow>({
   row, index, isSelected, isFocused, editActive, isChecked, isDisabled, groupSize, groupIndex, isCollapsed, showInlinePkgChip,
   staggerItemVariants, onToggleGroup, getStatusDot, getStatusDotLabel, getActivityAt, renderRowMain, renderPopover, onClick, navKey, reconcileKey,
+  rowActions, rowLabel,
 }: {
   row: TRow;
   index: number;
@@ -62,6 +85,13 @@ export function RailRow<TRow>({
   getActivityAt?: (row: TRow) => string | null | undefined;
   renderRowMain: (row: TRow, ctx: SidebarRailRowContext) => ReactNode;
   renderPopover?: (row: TRow, ctx: { groupSize: number; openWorkspace: () => void; dismiss: () => void }) => ReactNode;
+  /**
+   * This row's overflow (⋮) menu items, already resolved by the shell. Empty
+   * (the default) paints no trigger at all — see {@link RailRowMenu}.
+   */
+  rowActions?: RailRowAction[];
+  /** Row identity for the ⋮ trigger's accessible name (`Actions for {rowLabel}`). */
+  rowLabel?: string;
   /** Event is absent when invoked synthetically (popover "Open →"). */
   onClick: (e?: ReactMouseEvent<HTMLButtonElement>) => void;
 }) {
@@ -72,10 +102,14 @@ export function RailRow<TRow>({
   const railIsLast = isCollapsed ? isLeader : isGroupLast;
 
   const rowRef = useRef<HTMLLIElement | null>(null);
+  const hasRowMenu = (rowActions?.length ?? 0) > 0 && !editActive && !isDisabled;
+  const [menuOpen, setMenuOpen] = useState(false);
   // Shared hover-preview engine. Disabled in edit mode — that surface is for
-  // picking rows, and the popover's "Open →" CTA contradicts click-to-check.
+  // picking rows, and the popover's "Open →" CTA contradicts click-to-check —
+  // and while the ⋮ menu is up, where two stacked overlays for one row is one
+  // too many (the menu is the deliberate act; the peek is incidental).
   const { isOpen: previewOpen, scheduleOpen, scheduleClose, dismiss } = useRailHoverPreview({
-    enabled: Boolean(renderPopover) && !editActive && !isDisabled,
+    enabled: Boolean(renderPopover) && !editActive && !isDisabled && !menuOpen,
   });
 
   const crudPresence = useMotionPresence(framerPresence.sidebarRailRow);
@@ -136,7 +170,14 @@ export function RailRow<TRow>({
       // Full-bleed host: selection wash / ring paints edge-to-edge. Content
       // column pad nests inside (gutter + SIDEBAR_SCAN_DOCK_LEADING_ROW) so
       // titles still share the dense scan-dock column with the scan bar.
-      className="relative"
+      // `group/railrow` is NAMED so the ⋮ trigger — a sibling of the row button,
+      // not a child — can key its reveal off row hover without colliding with
+      // the unnamed `group` the button itself owns for its own content.
+      className="group/railrow relative"
+      // Set while the ⋮ menu is OPEN, so the age stays hidden after the pointer
+      // has left the row to travel into the menu. Hover and focus cover the
+      // other two entrances; this covers the one CSS cannot see.
+      data-rail-row-menu-armed={hasRowMenu && menuOpen ? '' : undefined}
       onMouseEnter={scheduleOpen}
       onMouseLeave={scheduleClose}
     >
@@ -160,18 +201,48 @@ export function RailRow<TRow>({
         aria-disabled={isDisabled || undefined}
         onClick={onClick}
         onMouseDown={(e) => { if (editActive && e.shiftKey) e.preventDefault(); }}
+        // Shift+F10 / the ContextMenu key is the ARIA APG invocation for a
+        // context-specific menu, and the rail's keyboard model focuses THIS
+        // button (roving tabindex), so it is where the shortcut has to land.
+        onKeyDown={(e) => {
+          if (!hasRowMenu) return;
+          if (e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10')) {
+            e.preventDefault();
+            e.stopPropagation();
+            setMenuOpen(true);
+          }
+        }}
         className={cn(
           'ds-raw-button group relative w-full text-left transition-colors',
           isDisabled ? 'cursor-wait opacity-80' : '',
+          // HARD CONSTRAINT (2026-08-24): every row renders identically —
+          // selected or not, first or not. This used to special-case the
+          // first row's own top pad to clear the scan band; that made row 1
+          // a different component shape than row 2, which is worse than the
+          // gap it was chasing. Clearance under the band is
+          // `SidebarRailShell`'s job (its list top pad), never this row's.
+          'py-1',
           (editActive ? isChecked : isSelected)
-            ? cn(QUEUE_ROW.selectedClass, 'py-1')
-            : `py-1 ${isFocused ? 'bg-surface-canvas ring-1 ring-inset ring-border-soft' : 'hover:bg-surface-hover'}`,
+            ? QUEUE_ROW.selectedClass
+            : isFocused ? 'bg-surface-canvas ring-1 ring-inset ring-border-soft' : 'hover:bg-surface-hover',
         )}
       >
-        {/* Nested pads ADD (outer gutter + leading pl-2) — never stack both pl-*
-            on one node or Tailwind collapses them. CompactActivityRow owns the
+        {/* SIDEBAR_RAIL_INSET_LEFT is zero (2026-08-24) — the leading row's own
+            `pl-2` is the ONE gutter, matching GlobalHeader's nav icon inset.
+            Do not give this span a pad of its own; that is the stacked-gutter
+            bug this seam existed to warn against. CompactActivityRow owns the
             status-mark · title/meta · short-age face (SoT). */}
-        <span className={cn(SIDEBAR_RAIL_INSET_LEFT, 'block w-full')}>
+        <span
+          className={cn(
+            SIDEBAR_RAIL_INSET_LEFT,
+            'block w-full',
+            // The ⋮ shares the trailing track with the age, and it carries no
+            // plate of its own — so the age yields the column whenever the ⋮ is
+            // up. Opacity, never `display`/`width`: the age must keep occupying
+            // its cell or every title in the rail would re-flow on hover.
+            hasRowMenu && AGE_YIELDS_TO_ROW_MENU,
+          )}
+        >
           <CompactActivityRow
             leading={
               editActive ? (
@@ -201,7 +272,11 @@ export function RailRow<TRow>({
               )
             }
             activityAt={getActivityAt ? activityAt : undefined}
-            showAgeColumn={Boolean(getActivityAt)}
+            // Keep the trailing cell even on a feed with no age stamp: the ⋮
+            // takes THIS column, and without it reserved the trigger would
+            // float over the end of the title instead of swapping cleanly with
+            // the mark that sits there at rest.
+            showAgeColumn={Boolean(getActivityAt) || hasRowMenu}
           >
             <div data-rail-row-title className="min-w-0">
               {renderRowMain(row, { isSelected, isFocused, pkgChip })}
@@ -209,6 +284,25 @@ export function RailRow<TRow>({
           </CompactActivityRow>
         </span>
       </button>
+      {/* Row overflow menu — a SIBLING of the row button (never nested: a button
+          inside a button is invalid, and the row's own click must stay "open the
+          record"). Absolute over the trailing age track, so revealing it moves
+          nothing. */}
+      {hasRowMenu && rowActions ? (
+        <RailRowMenu
+          actions={rowActions}
+          rowLabel={rowLabel ?? String(reconcileKey ?? index + 1)}
+          open={menuOpen}
+          onOpenChange={(next) => {
+            // Never leave the peek stacked under the menu — two overlays for one
+            // row is one too many, and the late unmount closed the menu.
+            if (next) dismiss();
+            setMenuOpen(next);
+          }}
+          onPointerEnter={dismiss}
+          isFocusedRow={isFocused}
+        />
+      ) : null}
       {/* Reveal-on-arm nav-key keycap — absolute so it never reflows the row;
           present only while this rail's region is armed by the leader. */}
       {navKey ? (

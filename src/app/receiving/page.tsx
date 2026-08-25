@@ -7,5 +7,5 @@ import { ReceivingSurfacePage } from '@/components/receiving/ReceivingSurfacePag
  * during the Studio-driven operator-surfaces migration.
  */
 export default function ReceivingPage() {
-  return <ReceivingSurfacePage mobileTitle="Receiving" />;
+  return <ReceivingSurfacePage />;
 }

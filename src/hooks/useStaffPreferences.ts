@@ -10,6 +10,25 @@ export const STAFF_PREFERENCES_QUERY_KEY = ['staff-preferences'] as const;
 const QUERY_KEY = STAFF_PREFERENCES_QUERY_KEY;
 
 /**
+ * Side-car for the sibling field on the SAME `/api/staff-preferences` response
+ * that {@link STAFF_PREFERENCES_QUERY_KEY} throws away.
+ *
+ * `useUnboxDefaultPins` used to fetch the identical response a second time
+ * under its own key — measured on cold `/unbox`, two GETs of the same 1943-byte
+ * body, 4.7s apart, plus one more of each on every window-focus refetch. It
+ * cannot simply read the main cache: that entry is `setQueryData`-written as
+ * raw `StaffPreferences` by seven surfaces (column widths / visibility / display,
+ * row fills, KPI collapse, TableColumnConfig), so widening its VALUE is unsafe.
+ * Writing the sibling field to its own key keeps both shapes exactly as they
+ * were and still costs one request.
+ *
+ * The reader observes this key with `skipToken`, so it never fetches on its own.
+ * If the entry is absent it resolves to `[]` — which is already the defined
+ * behaviour when the fetch fails, so the degradation is not new.
+ */
+export const UNBOX_DEFAULT_PINS_QUERY_KEY = ['staff-preferences', 'unbox-default-pins'] as const;
+
+/**
  * Apply only the keys present in `patch`, reading confirmed values from the
  * server `prefs` response. A full `setQueryData(serverPrefs)` clobbers nested
  * maps (kpiCollapsed · tableColumns · …) that a concurrent writer already
@@ -47,7 +66,16 @@ export function useStaffPreferences() {
     queryFn: async (): Promise<StaffPreferences> => {
       const res = await fetch('/api/staff-preferences');
       if (!res.ok) throw new Error(`staff-preferences ${res.status}`);
-      const data = (await res.json()) as { prefs: StaffPreferences };
+      const data = (await res.json()) as {
+        prefs: StaffPreferences;
+        unboxDefaultPins?: string[];
+      };
+      // Park the sibling field so `useUnboxDefaultPins` reads it instead of
+      // re-fetching this exact response. See UNBOX_DEFAULT_PINS_QUERY_KEY.
+      queryClient.setQueryData<string[]>(
+        UNBOX_DEFAULT_PINS_QUERY_KEY,
+        data.unboxDefaultPins ?? [],
+      );
       return data.prefs ?? {};
     },
   });

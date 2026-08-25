@@ -59,8 +59,27 @@ export function AblyProvider({ children, authUrl: authUrlProp }: AblyProviderPro
     const authUrl =
       authUrlProp || process.env.NEXT_PUBLIC_ABLY_AUTH_PATH || '/api/realtime/token';
 
-    import('ably')
+    /**
+     * The SDK import is deferred past `load` and then to an idle callback.
+     *
+     * It was already dynamic, but the effect fired during hydration, so the
+     * browser fetched and evaluated ~177KB of realtime client inside the window
+     * that decides LCP — on the mobile profile it was one of the two largest
+     * chunks on the critical path of every authenticated route, and realtime has
+     * nothing to do with first paint.
+     *
+     * Deferring is safe BY CONSTRUCTION here: `getClient()` returns a promise
+     * that parks callers in `pendingRef` until the client is ready, which is the
+     * same path they already took whenever they mounted before the import
+     * resolved. Subscribers attach a beat later; the feeds they drive all
+     * refetch on mount anyway, so no push is lost — it is reconciled.
+     */
+    let idle: number | undefined;
+    let cancelled = false;
+    const loadClient = () =>
+      import('ably')
       .then((Ably) => {
+        if (cancelled) return;
         if (disposed) return;
         const client = new Ably.Realtime({ authUrl });
         clientRef.current = client;
@@ -90,8 +109,21 @@ export function AblyProvider({ children, authUrl: authUrlProp }: AblyProviderPro
         pendingRef.current = [];
       });
 
+    const schedule = () => {
+      if (cancelled) return;
+      const ric = window.requestIdleCallback;
+      idle = ric
+        ? ric(() => void loadClient(), { timeout: 3000 })
+        : window.setTimeout(() => void loadClient(), 1000);
+    };
+    if (document.readyState === 'complete') schedule();
+    else window.addEventListener('load', schedule, { once: true });
+
     return () => {
       disposed = true;
+      cancelled = true;
+      window.removeEventListener('load', schedule);
+      if (idle != null) window.cancelIdleCallback?.(idle);
       try {
         if (onStateChange) connection?.off?.(onStateChange);
       } catch {}

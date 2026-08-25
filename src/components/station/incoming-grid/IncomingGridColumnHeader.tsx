@@ -6,20 +6,12 @@ import {
 } from '@/design-system/components/grid';
 import {
   INCOMING_GRID_COLUMNS,
-  INCOMING_GRID_FROZEN_CELL,
-  incomingGridCell,
-  incomingGridRowShellClass,
-  incomingGridTemplate,
   isIncomingGridSortable,
   type IncomingGridColumn,
   type IncomingGridColumnKey,
 } from '@/lib/receiving/receiving-grid-layout';
 
-const INCOMING_HEADER_LAYOUT: LedgerHeaderLayoutApi<IncomingGridColumn> = {
-  template: incomingGridTemplate,
-  cellClass: incomingGridCell,
-  rowShellClass: incomingGridRowShellClass,
-  frozenCellClass: INCOMING_GRID_FROZEN_CELL,
+const INCOMING_HEADER_LAYOUT: LedgerHeaderLayoutApi = {
   isSortable: isIncomingGridSortable,
   // Sheets-class (Unbox golden): only the select gutter is frozen — edge cue hangs there.
   frozenEdgeKey: 'select',

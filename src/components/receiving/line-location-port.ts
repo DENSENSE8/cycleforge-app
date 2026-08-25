@@ -20,12 +20,20 @@ import { useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { StationLocationPlacementPort } from '@/components/station/location';
 import { qk } from '@/queries/keys';
-import type { Location } from '@/lib/neon/location-queries';
+import { locationsListQueryOptions, selectScannableBins } from '@/hooks/useLocations';
 import type { PutawaySuggestion } from '@/lib/receiving/suggested-putaway-location';
 import { useUnboxLinePlacement } from './workspace/line-edit/useUnboxLinePlacement';
 
-/** React Query key for the shelf catalog every station Locations leaf browses. */
-export const STATION_LOCATION_CATALOG_KEY = ['locations', 'active'] as const;
+/**
+ * React Query key for the shelf catalog every station Locations leaf browses.
+ *
+ * This is now the SAME key `useLocations` reads (`qk.locations.list()`), not a
+ * second one over the same endpoint. It used to be `['locations','active']`
+ * with its own fetcher, which meant cold `/triage` fetched the identical
+ * 8165-byte `/api/locations` body twice. The bin filter that made the two look
+ * like different data is a `select` now — see `selectScannableBins`.
+ */
+export const STATION_LOCATION_CATALOG_KEY = qk.locations.list();
 
 export function receivingLineSuggestionQueryKey(lineId: number | null | undefined) {
   return ['receiving', 'suggested-putaway-location', lineId ?? null] as const;
@@ -36,19 +44,10 @@ export function receivingLineSuggestionQueryKey(lineId: number | null | undefine
  * Arrival is on the Unbox list immediately.
  */
 function useStationLocationCatalog(enabled: boolean) {
-  return useQuery<Location[]>({
-    queryKey: STATION_LOCATION_CATALOG_KEY,
+  return useQuery({
+    ...locationsListQueryOptions(),
     enabled,
-    staleTime: 60_000,
-    queryFn: async () => {
-      const res = await fetch('/api/locations', { cache: 'no-store' });
-      if (!res.ok) return [];
-      const data = (await res.json()) as { locations?: Location[] };
-      // Real bins only — a room/zone parent isn't a scannable shelf.
-      return (data.locations ?? []).filter(
-        (l) => l.row_label != null && l.col_label != null,
-      );
-    },
+    select: selectScannableBins,
   });
 }
 

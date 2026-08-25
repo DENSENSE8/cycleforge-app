@@ -323,12 +323,13 @@ export function PhotoLibraryWorkspaceHeader({ className }: { className?: string 
                   was still in flight, and again when the library endpoint was
                   500ing: both said the archive was empty.
 
-                  `failureCount` too, not just `isError`: with
-                  `refetchOnWindowFocus: 'always'` (Providers.tsx) a query with no
-                  data flips back to `pending` on every focus, so during a real
-                  outage `isError` is false at most sampled moments and this would
-                  spin forever. A fetch that has failed at least once is an error
-                  to the operator either way.
+                  `failureCount` too, not just `isError`: a query with no data is
+                  stale by definition, so `refetchOnWindowFocus` (Providers.tsx)
+                  flips it back to `pending` on every focus no matter what
+                  `staleTime` says. During a real outage `isError` is therefore
+                  false at most sampled moments and this would spin forever. A
+                  fetch that has failed at least once is an error to the operator
+                  either way.
                 */
                 query.isError || query.failureCount > 0 ? (
                   <p className="px-2.5 py-1.5 text-role-caption text-text-danger">

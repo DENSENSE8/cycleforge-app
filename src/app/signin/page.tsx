@@ -24,21 +24,54 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import dynamic from 'next/dynamic';
+
+/**
+ * WebAuthn, the QR dialog's renderer and the whole shared-station (PIN) tree are
+ * loaded ON DEMAND, not with the page.
+ *
+ * This is the app's one public route and the only one measured on the mobile
+ * profile, so everything in its initial bundle is paid for by every signed-out
+ * visitor on a phone. None of these is on the primary path — the primary path is
+ * email + password. `@simplewebauthn/browser` runs only when someone picks a
+ * passkey, `react-qr-code` only inside a dialog that has to be opened, and the
+ * PIN bricks only after station mode is disclosed.
+ */
+type StartAuthentication = typeof import('@simplewebauthn/browser')['startAuthentication'];
+const startAuthentication: StartAuthentication = async (...args) => {
+  const mod = await import('@simplewebauthn/browser');
+  return mod.startAuthentication(...args);
+};
 import { flushSync } from 'react-dom';
 import { AnimatePresence, motion } from '@/design-system/motion';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { startAuthentication } from '@simplewebauthn/browser';
 import {
   framerPresence,
   framerTransition,
 } from '@/design-system/foundations/motion-framer';
 import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
 import { SignInAuthStepPanels } from '@/components/auth/SignInAuthStepPanels';
-import QRCode from 'react-qr-code';
-import { StaffPickerList, type StaffPickerRow } from '@/components/auth/StaffPickerList';
-import { StaffPinPad } from '@/components/auth/StaffPinPad';
-import { StaffSigningIn } from '@/components/auth/StaffSigningIn';
-import { SetPinPad } from '@/components/auth/SetPinPad';
+const QRCode = dynamic(() => import('react-qr-code'), {
+  ssr: false,
+  loading: () => <div className="h-[196px] w-[196px] animate-pulse rounded-lg bg-surface-sunken" />,
+});
+import type { StaffPickerRow } from '@/components/auth/StaffPickerList';
+const StaffPickerList = dynamic(
+  () => import('@/components/auth/StaffPickerList').then((m) => m.StaffPickerList),
+  { ssr: false },
+);
+const StaffPinPad = dynamic(
+  () => import('@/components/auth/StaffPinPad').then((m) => m.StaffPinPad),
+  { ssr: false },
+);
+const StaffSigningIn = dynamic(
+  () => import('@/components/auth/StaffSigningIn').then((m) => m.StaffSigningIn),
+  { ssr: false },
+);
+const SetPinPad = dynamic(
+  () => import('@/components/auth/SetPinPad').then((m) => m.SetPinPad),
+  { ssr: false },
+);
 import { BootSplash } from '@/components/boot/BootSplash';
 import { armBootSplash } from '@/lib/boot-flag';
 import { Button, Checkbox, Panel } from '@/design-system/primitives';
@@ -1057,21 +1090,20 @@ function SignInTitle({ workspaceName }: { workspaceName: string | null }) {
  *     color rather than the body underneath.
  */
 function Shell({ children }: { children: React.ReactNode }) {
-  const cardPresence = useMotionPresence(framerPresence.signInCard);
-  const cardTransition = useMotionTransition(framerTransition.signInCardMount);
-
   return (
     <div className="fixed inset-0 z-modal overflow-y-auto overscroll-none bg-surface-canvas text-text-default antialiased">
       <div className="pointer-events-none fixed inset-0 z-base bg-surface-canvas" aria-hidden />
       <div className="relative z-sticky flex min-h-full flex-col items-center justify-center px-6 py-12">
-        <motion.div
-          initial={cardPresence.initial}
-          animate={cardPresence.animate}
-          transition={cardTransition}
-          className="flex w-full justify-center"
-        >
-          {children}
-        </motion.div>
+        {/*
+          NO mount entrance here. The card is the LCP element of the one public
+          route, and it server-renders. A framer mount fade SSRs it at
+          `opacity: 0` and only reveals it once hydration runs the animation, so
+          LCP stopped tracking the HTML (~0.4s) and started tracking hydration
+          (~8.7s simulated on the mobile profile) — a 24-point Lighthouse hit
+          for a 260ms fade. First-paint content shows immediately; see
+          `framerPresence.signInCard`, which is now exit-only.
+        */}
+        <div className="flex w-full justify-center">{children}</div>
       </div>
     </div>
   );

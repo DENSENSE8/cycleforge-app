@@ -1,77 +1,39 @@
 import { z } from 'zod';
-import { THEME_NAMES, type ThemeName } from '@/design-system/themes/registry';
+import {
+  ACCENT_HEX_RE,
+  DEFAULT_FOCUS_SCAN_HOTKEY,
+  DEFAULT_THEME,
+  DEFAULT_TIME_FORMAT,
+  FOCUS_SCAN_ALWAYS_AVAILABLE_RE,
+  FOCUS_SCAN_HOTKEY_OPTIONS,
+  isBindableFocusScanHotkey,
+  STAFF_THEMES,
+  TIME_FORMAT_VALUES,
+  type StaffTheme,
+  type TimeFormat,
+} from '@/lib/schemas/staff-preferences-constants';
+import type { ThemeName } from '@/design-system/themes/registry';
+
+/**
+ * The constants live in `staff-preferences-constants.ts` — a module with no
+ * `zod` import — and are re-exported here so every existing importer keeps
+ * working. Import them from the CONSTANTS module in client code: reaching them
+ * through this file pulls Zod into the bundle. See that file's docblock.
+ */
+export {
+  ACCENT_HEX_RE,
+  DEFAULT_FOCUS_SCAN_HOTKEY,
+  DEFAULT_THEME,
+  DEFAULT_TIME_FORMAT,
+  FOCUS_SCAN_ALWAYS_AVAILABLE_RE,
+  FOCUS_SCAN_HOTKEY_OPTIONS,
+  isBindableFocusScanHotkey,
+  STAFF_THEMES,
+  TIME_FORMAT_VALUES,
+};
+export type { StaffTheme, TimeFormat };
 import { MAX_PINS } from '@/lib/quick-access/types';
 import { UNBOX_PINNED_EXTRA_TABS_MAX } from '@/lib/receiving/unbox-extra-tabs';
-
-/**
- * Keys that reclaim focus even while an editable field is focused — warehouse
- * classics a barcode wedge can emit without colliding with typed text.
- * Printable / named keys outside this set are still bindable, but the global
- * listener yields over inputs (see `isEditableKeyTarget`).
- */
-export const FOCUS_SCAN_ALWAYS_AVAILABLE_RE =
-  /^(Insert|ScrollLock|F([1-9]|1[0-2]))$/;
-
-/** Modifier / cancel / dead keys — never a reclaim binding. */
-const FOCUS_SCAN_RESERVED_KEYS = new Set([
-  'Escape',
-  'Meta',
-  'Control',
-  'Alt',
-  'Shift',
-  'Dead',
-  'Unidentified',
-  'Process',
-  'Compose',
-]);
-
-/**
- * True when `key` (`KeyboardEvent.key`) may be stored as the focus-scan reclaim
- * binding. Any non-reserved key is allowed; always-available keys keep working
- * mid-field, others yield while typing.
- */
-export function isBindableFocusScanHotkey(key: string): boolean {
-  if (!key || key.length > 32) return false;
-  if (FOCUS_SCAN_RESERVED_KEYS.has(key)) return false;
-  return true;
-}
-
-/**
- * Preset chips in Settings — classic non-typing keys. Operators can also capture
- * any other bindable key via the scan-bar gear or Settings “Press a key…”.
- */
-export const FOCUS_SCAN_HOTKEY_OPTIONS: readonly string[] = [
-  'Insert',
-  'ScrollLock',
-  ...Array.from({ length: 12 }, (_, i) => `F${i + 1}`),
-];
-
-/** Default binding when a staffer has never customized it. */
-export const DEFAULT_FOCUS_SCAN_HOTKEY = 'Insert';
-
-/**
- * Color themes — derived from the theme registry
- * (src/design-system/themes/registry.ts, the SoT), so registering a new
- * palette makes it valid here with zero schema changes. `light` is the
- * default when a staffer has never customized it.
- */
-export const STAFF_THEMES = THEME_NAMES;
-export type StaffTheme = ThemeName;
-export const DEFAULT_THEME: StaffTheme = 'light';
-
-/**
- * Clock display format for every timestamp the app renders. `12h` = h:mm AM/PM
- * (the historical default — existing users are unaffected); `24h` = HH:mm.
- * A personal display preference stored per-account (cross-device), mirrored to
- * localStorage for flash-free reads; see src/lib/time-format/store.ts. Storage /
- * API timestamp formats never change — this is display-only.
- */
-export const TIME_FORMAT_VALUES = ['12h', '24h'] as const;
-export type TimeFormat = (typeof TIME_FORMAT_VALUES)[number];
-export const DEFAULT_TIME_FORMAT: TimeFormat = '12h';
-
-/** `#RRGGBB` personal accent override when `useStaffAccent` is false. */
-export const ACCENT_HEX_RE = /^#[0-9a-fA-F]{6}$/;
 
 /** ISO day-range filter — `null` clears it. Shared by board + per-lane prefs. */
 const BOARD_RANGE = z

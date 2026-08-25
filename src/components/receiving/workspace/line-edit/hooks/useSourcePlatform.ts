@@ -1,7 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useEventBridge } from '@/hooks';
+import { receivingSiblingsQueryKey } from '@/lib/queries/receiving-queries';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import {
   detectPlatformFromUrl,
@@ -28,6 +30,7 @@ export function useSourcePlatform(row: ReceivingLineRow, { listingLink }: { list
     () => (row.source_platform || '').toLowerCase(),
   );
   const [platformSaving, setPlatformSaving] = useState(false);
+  const queryClient = useQueryClient();
 
   // Load the parent receiving row's source_platform so the dropdown reflects
   // the current shipment-level override. Skip the GET when the list/rail row
@@ -41,6 +44,24 @@ export function useSourcePlatform(row: ReceivingLineRow, { listingLink }: { list
     // Re-seed synchronously from the row on every line change — no empty frame.
     setSourcePlatform((row.source_platform || '').toLowerCase());
     if ((row.source_platform || '').trim()) return;
+
+    // The accordion's siblings query fetches this exact URL and keeps the whole
+    // envelope, `receiving_package` included. When it has already resolved,
+    // read the platform off that cache instead of issuing a second GET of the
+    // same body — cold /triage was fetching `?receiving_id=` twice.
+    // Server-seeded cache entries carry only `receiving_lines`, so a miss here
+    // simply falls through to the fetch below, exactly as before.
+    const cached = queryClient.getQueryData<{
+      receiving_package?: unknown;
+    }>(receivingSiblingsQueryKey(row.receiving_id));
+    const cachedPlatform = (
+      parseReceivingPackage(cached?.receiving_package)?.source_platform || ''
+    ).toLowerCase();
+    if (cachedPlatform) {
+      setSourcePlatform(cachedPlatform);
+      return;
+    }
+
     let cancelled = false;
     fetch(`/api/receiving-lines?receiving_id=${row.receiving_id}`)
       .then((r) => r.json())
@@ -54,7 +75,7 @@ export function useSourcePlatform(row: ReceivingLineRow, { listingLink }: { list
       })
       .catch(() => {});
     return () => { cancelled = true; };
-  }, [row.receiving_id, row.source_platform]);
+  }, [row.receiving_id, row.source_platform, queryClient]);
 
   // Mirror platform edits from Classify / claim compose (same carton).
   useEventBridge({

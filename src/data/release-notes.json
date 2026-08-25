@@ -1,7 +1,87 @@
 {
-  "generatedAt": "2026-08-21T20:39:14.431Z",
-  "count": 197,
+  "generatedAt": "2026-08-25T04:48:47.951Z",
+  "count": 198,
   "commits": [
+    {
+      "sha": "2f6dcd784ae985a31c8a8d6a21135b54ffc156a2",
+      "shortSha": "2f6dcd784",
+      "date": "2026-08-22T17:26:48-07:00",
+      "author": "DENSENSE8",
+      "subject": "chore(ci): remove all GitHub Actions workflows",
+      "body": "Deletes ci.yml, performance.yml, desktop-release.yml, and\nclaude-fix-issue.yml. No CI, no Lighthouse perf gate, no desktop\ninstaller publishing, no issue auto-fix pipeline — at the operator's\nexplicit request, confirmed after flagging the scope (this repo has no\nbranch protection requiring these checks).\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "type": "chore",
+      "title": "remove all GitHub Actions workflows"
+    },
+    {
+      "sha": "ad870c7943a5d784d9ef6023e5d06461bfd643c8",
+      "shortSha": "ad870c794",
+      "date": "2026-08-22T17:03:44-07:00",
+      "author": "DENSENSE8",
+      "subject": "feat(counter): finish the desk — submit, pay, and print a receipt",
+      "body": "B1 from the counter-visit-detail-surface handoff: build the counter as\nprops-only panels on main today, structured so the later Warehouse OS\ntile port is one file. Closes the gap where the desk could stage a cart\nand never finish it.\n\nDomain:\n- read-visit.ts: loadCounterVisit(orgId, id) — the first read path for a\n  submitted visit. One round trip: header, N repairs, lines (including\n  voided, with who/why), payment (Terminal state vs money state kept as\n  two separate fields, never collapsed), audit trail.\n- visit-receipt.ts / visit-receipt-html.ts: the customer-facing receipt —\n  a pure document model rendered to fully self-contained HTML (inline\n  CSS, server-side barcode via bwip-js, no external references, so it\n  prints with the shop's internet down). Voided lines excluded; repairs\n  de-duplicated against their cart line.\n- GET /api/counter/visit/[id]/receipt — text/html, ?print=1 auto-fires\n  window.print(), gated by the existing walk_in.view permission.\n- submit-blocker.ts: pulled the submit gate out of session-store (which\n  imports pg) into a pure module the client can call directly, so the\n  desk shows why Pay is blocked before the click, not just after a 422.\n- submit-counter-transaction.ts: fixed the staged Square order — it was\n  missing location_id, hardcoded 'USD' instead of the org's currency,\n  and silently swallowed rejections as \"no payment provider configured\".\n  Widened staging to include repair lines (previously retail-only), so\n  one card presentation settles a mixed device+retail visit instead of\n  silently landing partially_paid with no warning at the counter.\n- cart-to-counter.ts / counter-transaction-types.ts: stopped discarding\n  the kiosk cart's integer unitAmountCents for repair lines; the header\n  total and the staged order now derive from the same number.\n\nDesk UI (CounterWorkspace.tsx / useCounterSession.ts):\n- Wired the four money verbs that had routes, permissions and tests but\n  zero callers: create, submit, checkout, and line-price override, each\n  with PIN step-up handling via the existing StepUpProvider.\n- Fixed the discount button, which pointed at the general line PATCH\n  (whose schema strips unitAmountCents) and read as \"That line is\n  already gone\" — now calls the dedicated price route.\n- The desk can now be opened cold: Start visit mints a session instead\n  of dead-ending on \"open one with ?session=<id>\".\n- Finish panel: submit, take payment, then print the receipt and any\n  repair claim tickets — the whole reason the desk exists, previously\n  nowhere on this surface.\n\nnpm run verify: lint + typecheck + 6280/6287 unit tests green.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "type": "feature",
+      "title": "finish the desk — submit, pay, and print a receipt"
+    },
+    {
+      "sha": "b40da834814febbdb2c40a16e9c9e80872b0664e",
+      "shortSha": "b40da8348",
+      "date": "2026-08-22T01:37:09-07:00",
+      "author": "DENSENSE8",
+      "subject": "perf(ci): two-tier performance gate, and fix the measurement it depends on",
+      "body": "Target is Lighthouse >=90 in every category on every route. Only Performance is\nshort: A11y 93-95, BP 96, SEO 91, CLS ~0 and TBT 22-158ms already clear it.\nPerformance sits at 67-78 and the entire gap is LCP (5.9-12.3s) on the five\ndata-heavy workbenches that render a shell, hydrate, then fetch their first\ncollection. Bundle weight was already cut 61-68% and is not the constraint.\n\nFix the instrument first — two bugs were distorting every number:\n\n1. lhOptions set `formFactor: 'desktop'` but never set `throttling`. Lighthouse\n   derives only screenEmulation from form factor; throttling defaults to\n   mobileSlow4G regardless. So /unbox, /test and /kiosk* were measured at a\n   desktop viewport over a phone's cellular link with 4x CPU slowdown — a device\n   that does not exist. Throttling now follows the form factor.\n2. The other five desk workbenches were never pinned at all. This is a warehouse\n   management system: sheet/grid workbenches run on LAN workstations, /m/* is the\n   handheld tree, /kiosk* is a mounted tablet. All 22 routes now declare the\n   hardware they ship on (15 desktop, 7 mobile, 0 unpinned). /signin stays mobile\n   as the public worst-case canary.\n\nScores only compare within one profile, so the baseline records formFactor and\n--check now fails loudly on a profile mismatch instead of silently passing floors\nmeasured under different conditions. lighthouse-baseline.json is marked stale for\nexactly that reason — it must be re-seeded. A route with no baseline entry now\nfails too; an unpinned surface is a coverage hole, not a pass.\n\nCI (.github/workflows/performance.yml), two tiers by cost:\n- bundle-budget — every PR + push. One build, then Next's own First Load JS table\n  ratcheted against bundle-budget.json. Deterministic, no browser.\n- lighthouse — nightly + workflow_dispatch. Build, server, minted session,\n  median-of-3 over Tier 1. 30-60 min, so it stays off the commit path.\n\nBudgets parse the printed build table rather than .next/app-build-manifest.json,\nwhich Turbopack does not emit. Ceilings only move DOWN. Both jobs skip with a\nwarning when PERF_DATABASE_URL is absent, so an unconfigured repo does not carry\na permanently red check.\n\nAlso: lighthouse-audit.mjs exports ROUTES, but called main() unconditionally, so\nimporting the manifest launched Chrome and audited all 22 routes. Guarded.\n\nNote: `npm run verify` is red in the working tree from another session's\nin-flight search-recents work (one TS2307 on a file it added then deleted).\nNothing here touches TypeScript under src/.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "type": "performance",
+      "title": "two-tier performance gate, and fix the measurement it depends on"
+    },
+    {
+      "sha": "1a02d61f4c5bc3e3825f2dde6cfbcd1502df7013",
+      "shortSha": "1a02d61f4",
+      "date": "2026-08-22T00:56:16-07:00",
+      "author": "DENSENSE8",
+      "subject": "chore(agents): retire stale skills and sweep dead rule pointers from src",
+      "body": "Context hygiene for the Warehouse OS refactor — what an agent inherits at\nsession start should describe the app being built, not the one being replaced.\n\nSkills (their descriptions load into every session):\n- delete reseller-flow, workflow-node, url-param-isolation — all three model\n  the page-oriented architecture being strangled\n- new-route + integration-connector cited `npm run audit-route-auth:{emit,check}`\n  and the `permission-registry-guard` agent, all deleted on 2026-08-21, so the\n  instructions could only fail. Repointed at the surviving manifest test and\n  said plainly that nothing enforces these automatically now.\n\nAlso delete `/execute-task` (it read docs/CYCLE-FORGE-ROADMAP.md, which does not\nexist) and the four finished tier0-* tenant-sweep workflows.\n\nsrc docblocks: 178 pointers to `.claude/rules/**`, `docs/rules/**` and\nscripts/sot-lookup.mjs across 157 files — every one a dead link an agent would\nchase and then reconstruct doctrine to fill. 148 rewritten across 136 files;\nthe citation was almost always redundant because the rule is stated inline\nbeside it. 30 remain where the path is woven mid-sentence (\"the trap X names\nunder…\") — a regex cannot make those read well, so they were left alone rather\nthan mangled.\n\nAll src changes here are comment-only save one assertion string that named the\ndeleted sot-lookup script.\n\nNote: `npm run verify` is currently red in the working tree from another\nsession's in-flight search-recents refactor (typecheck + lint + 9 unit\nfailures, all under src/lib/search and its consumers). None of those files are\ntouched here.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "type": "chore",
+      "title": "retire stale skills and sweep dead rule pointers from src"
+    },
+    {
+      "sha": "0cd8cfdc7e96216021303ddd98588e233c4242aa",
+      "shortSha": "0cd8cfdc7",
+      "date": "2026-08-22T00:31:20-07:00",
+      "author": "DENSENSE8",
+      "subject": "refactor: delete the design-law guard tests; restate the process rules",
+      "body": "Removes the 15 remaining `*.test.ts` guards that readFileSync a `.tsx` and\nregex-assert which component composes which chrome primitive — 2,111 lines\nof composition doctrine, the same species as the right-rail guard dropped\nin 0c2fd3746 (567 lines, 16 files and ~2.7k lines total).\n\nObjective line for what went: a test whose assertions are majority source\ntext regex over `.tsx`. Behaviour tests that merely happen to read a file\nstayed — client-capture-roundtrip, catalog-search-pool, DataTable,\ngrid-paint, po-lines-accordion-meta-order, KioskCustomerIntake. So did the\ntoken tests (focus-ring-tokens, surface-box-tokens, color-neutrals), which\ncarry no regex assertions at all and were never guards.\n\nAGENTS.md keeps the operator-owned process rules and states two that the\n42-line rewrite had dropped:\n\n- the tunnel (dev:tunnel / :quick / dev:phone) is the operator's, main-only,\n  and a dead tunnel URL is a report — same contract as the dev server\n- never create a branch; an isolated lane is a worktree, still on main\n\nAlso fixes a command that could not work: AGENTS.md documented\n`npm run verify --fast`, which exits EUNKNOWNCONFIG because npm eats the\nflag before the script sees it. The script is `npm run verify:fast`.\n\nnpm run verify: lint, typecheck and unit all green.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "type": "refactor",
+      "title": "delete the design-law guard tests; restate the process rules"
+    },
+    {
+      "sha": "0c2fd37461b891a5a49ad94025479203aef1caa7",
+      "shortSha": "0c2fd3746",
+      "date": "2026-08-21T23:55:30-07:00",
+      "author": "DENSENSE8",
+      "subject": "refactor: delete the house-law corpus for the Warehouse OS rebuild",
+      "body": "Removes ~100k lines of governance that described the page-oriented\narchitecture now being replaced. Following it would actively fight the\nrefactor, so it goes rather than rots:\n\n- .claude/rules/** + docs/rules/**  the two-tier house-law corpus\n- .cursor/**                        the parallel Cursor rule/skill tree\n- sot-manifest.json (35,646 lines) + its generator and lookup scripts\n- .claude/agents/**                 the specialized reviewers\n- .claude/hooks/sot-guard.sh        the SoT PreToolUse hook\n- .dependency-cruiser.cjs, .jscpd.json, knip.config.ts\n- ~190 lines of design-law ESLint rules (z-index, Button/Panel paint,\n  carton-bar selectors)\n- right-rail-inspector-header.test.ts, a readFileSync+regex guard that\n  pinned which component composes which chrome primitive\n\nAGENTS.md goes 200 lines -> 42, CLAUDE.md 20 -> 7. What survives is\nsecurity and correctness, not taste: the .env secret-path hook, orgId\nfrom ctx + withTenantTransaction, expand->code->contract migrations,\nthe dev-server and commit-discipline rules, and `npm run verify`.\n\n.gitignore now pins the deleted paths so they cannot silently return,\nand excludes .claude/worktrees/ (local-only agent lanes).\n\nAlso carries in-flight working-tree work from concurrent sessions, at\nthe operator's instruction to commit the whole tree.\n\nnpm run verify: lint, typecheck and unit all green.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "type": "refactor",
+      "title": "delete the house-law corpus for the Warehouse OS rebuild"
+    },
+    {
+      "sha": "16926ed21f6785343b40d7b05392496e338a1261",
+      "shortSha": "16926ed21",
+      "date": "2026-08-21T14:40:02-07:00",
+      "author": "DENSENSE8",
+      "subject": "Give the carton identity chip the same Received/Unboxed tones as the recent-rail dot.",
+      "body": "Co-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "other",
+      "title": "Give the carton identity chip the same Received/Unboxed tones as the recent-rail dot."
+    },
+    {
+      "sha": "421e2a32756aba73765e944322aa05042eca9897",
+      "shortSha": "421e2a327",
+      "date": "2026-08-21T14:38:59-07:00",
+      "author": "DENSENSE8",
+      "subject": "chore: land the shared working tree on main",
+      "body": "Sweeps every uncommitted change in this tree at the operator's\ninstruction — compound grid cells, receiving/incoming grid rows, the\nremoved-cell retirement, release notes, and the compound-row parity\nspec. Authored across several concurrent sessions, committed together.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "type": "chore",
+      "title": "land the shared working tree on main"
+    },
     {
       "sha": "01de746f97216dbbcd095caf020338828a7b733c",
       "shortSha": "01de746f9",
@@ -1901,76 +1981,6 @@
       "body": "Phase B of the spine work. The answer was already in the code: every child\ncarries `to(): { pathname, params }` and every parent a `resolveChild(location)`,\nand the two round-trip — so they are distinct, deep-linkable, reload-safe URLs.\n`nav-destinations.ts` said it outright (\"/products?view=qc is a place, not a\nsetting\"); the flatten made it structural, since a child is now an ordinary\nspine row beside its parent. \"Mode\" named a drill that no longer exists.\n\nB1 — renamed across 22 nav files, compiler-guarded one symbol at a time:\n  SidebarModeItem      → SidebarChildPage       .modes        → .children\n  resolveMode          → resolveChild           modeId        → childId\n  filterPageModes      → filterPageChildren     applyModeTarget → applyChildTarget\n  resolveSidebarMode   → resolveSidebarChild    useRecentModes  → useRecentPages\n  useSidebarModeNav    → useSidebarChildNav     useActiveSidebarMode → useActiveSidebarChild\n  HeaderModeSwitcher   → HeaderPageSwitcher     MODE_ICON_GLYPH_KEYS → STATION_GLYPH_KEYS\n  RECEIVING/TECH/SHIPPING_MODE_ICONS → *_NAV_ICONS\n\nThe wire is UNTOUCHED and must stay so: `?mode=` is bookmarked\n(/dashboard?mode=sales, /support?mode=voicemail, /review?mode=catalog-link) and\n`getSidebarNavPageId` parses it. Proven, not eyeballed — all 74 param\nexpressions byte-identical to HEAD. The `sidebar.recentModes` localStorage key\nis deliberately kept for the same reason; renaming it would silently empty every\noperator's recents.\n\nTwo names deliberately NOT changed: `PACKING_MODE_ICONS` (packing styles —\nstandard/fragile/multi — are a genuine mode vocabulary, not child pages, and\n/pack declares no children), and SettingsSidebarPanel's page-local resolveMode.\n\nThe §2 fork settled as KEEP, on a measured fact rather than taste:\nResponsiveLayout holds `navOpen` in an unpersisted useState(false) — the spine\nis closed on every cold load (sidebar-open-close.spec.ts asserts it). Deleting\nthe header control would leave a bench operator with no visible way to switch a\npage's children. The master-detail law now bans a twin RAIL rather than\nasserting the spine cannot reach a child, which the flatten retired.\n\nB2 — 8 of 10 labels. The three-way `Labels` collision is gone:\n  Catalog › Labels    → SKU Barcodes      Fulfillment › Labels → Postage\n  Locations › Labels  → Bin Tags          Catalog link         → Listing match\n  Fulfillment › Orders → To ship          Support › Orders     → Inquiries\n  Analytics Monitor   → Live Ops          Fulfillment          → Outbound\n\"To ship\", not the brief's \"Queue\" — Sourcing already owns a Queue, which is\nexactly why an overloaded word cannot identify one list. Zero ids, hrefs or\npermissions moved: 180/180 literals identical to HEAD.\n\nDeclined two, with reasons rather than silently:\n  · Scan Stations → Workstations — loses the scanner-driven meaning that defines\n    the section and that the whole Station region contract rests on.\n  · Local Pickup → Will Call — resolves no collision, and the nav is 1 of 7\n    surfaces naming that destination, so renaming only the nav splits the\n    vocabulary while renaming all 7 exceeds \"labels only\" and reaches the\n    receiving-kind registry.\n\nknip baseline SHRANK by 2: the two dead barrel re-exports the rename surfaced\nwere deleted rather than re-baselined — the file's own comment already argued\n`MasterNav` is the only thing that barrel owes the app.\n\nVerify green (lint · typecheck · unit+DS guards · route-auth · schema · doc\ncatalog); 24/24 nav E2E pass. Remaining knip findings belong to a concurrent\nsession's Support work and are untracked files, not this change.\n\nRule-file prose for this phase is written but left uncommitted — those .md files\nare ~90% another session's in-flight edits and cannot be split without\ninteractive staging.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
       "type": "refactor",
       "title": "a page's \"modes\" are CHILD PAGES — spine vocabulary + label pass"
-    },
-    {
-      "sha": "905ee4ffe829912b060583b2a7dcd6d68d202558",
-      "shortSha": "905ee4ffe",
-      "date": "2026-08-02T20:14:50-07:00",
-      "author": "DENSENSE8",
-      "subject": "docs(todo): hand off station SoT consolidation — Unbox is the pattern",
-      "body": "Scan of the station family against Unbox, written up for a fresh session.\n\nThe headline correction it carries: the identity layer is NOT missing its port.\nAll five adapters — LineCartonContextSection, TestingCartonHeader,\nShippingEntityContextHeader, PackOrderIdentity, ReviewOrderIdentity — already\ncompose `CartonContextCard`, and all five mount in a workspace panel. What\nTesting, Shipping and Packing also do is render the same entity a SECOND time in\nthe sidebar: `TestingScanSessionFeedback`, `ActiveOrderScanFeedback` (twice in\n`ShippingScanBand`), and `PackerSidebarPanel` mounting the whole 772-line\n`StationPacking`. So Part 1 is deletion, not migration — much cheaper than the\ndrift looks, and it inverts the obvious plan.\n\nSecond load-bearing fact: the procedure waist already exists and is already\nsurface-keyed. `lib/stations/procedure.ts` has `getProcedure(surface)` +\n`resolveProcedureSteps`, the DS ships station-agnostic `ProcedureDeck` /\n`ProcedureChecklist`, and `SurfaceKey` already carries triage/pickup/repair. It\ndeclares exactly ONE surface — `unbox`. Pinning a station is therefore mostly\nwriting a `ProcedureDefinition`, not a rewrite.\n\nTwo things the handoff deliberately protects rather than sweeps: the four\nper-station scan bars all correctly compose `ThemedStationScanBar` (leave them),\nand a packing kit-BOM check may be a genuinely different JOB from unbox evidence\ncapture — the target is one waist with different step vocabularies, never one\nmerged procedure.\n\nEvery ruling lands as a guard entry, per pattern-evolution.md #6 — a prose-only\nretirement is what this repo has been paying for all week.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
-      "type": "docs",
-      "title": "hand off station SoT consolidation — Unbox is the pattern"
-    },
-    {
-      "sha": "85d60dabe683351aeb3e0e89f276cda7b021d4ec",
-      "shortSha": "85d60dabe",
-      "date": "2026-08-02T10:29:46-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat(debt): repo-native dead-surface probe — what has nobody used?",
-      "body": "The one standard that could not be built from what was already here. `knip`\nanswers \"is this code reachable from an entry point\"; it cannot answer \"does a\nhuman ever do this\" — which is precisely how chrome Fields and the grid lip both\nstayed \"used\" for months while only one of them was ever opened.\n\n`npm run debt:surfaces` reads the typed action vocabularies out of the code\n(`AUDIT_ACTION`, `InventoryEventType`, `ACTIVITY_MAP`) and asks the database\nwhich of them have written no rows in 90 days. A code the product DECLARES but\nthe data has never SEEN is a surface with no users.\n\nChosen over an APM deliberately. Sentry/Datadog/PostHog give real statement\ncoverage, but cost a bill plus a client bundle this repo actively polices\n(`build-gotchas.md` → bundle altitude); Vercel-native is request-level and would\nnot have caught the Fields fork, since both doors were live routes. This is the\n~80% answer at ~0% cost and it composes the SoT the app already writes.\n\n**REPORT ONLY.** Never a gate, never in `verify`, always exits 0 on a finding —\nit reads production-shaped data, and a warehouse's quiet quarter must not be\nable to fail a build. It also finds dead SURFACES, not dead BRANCHES: rows prove\nsomeone reached the surface, never that every path inside it runs. Both caveats\nprint with the output, because a report that gets read as coverage is worse than\nno report.\n\nFirst run on the dogfood tenant: 170 silent codes (audit 157/236, inventory\n12/19, station 1/9) — a worklist, not a verdict. Rare-but-critical paths\n(revoke, recovery, conflict branches) are supposed to be quiet.\n\nIt also reports the OTHER drift direction, which was not asked for and turned\nout to matter: 26 codes exist in the database that no SoT declares. The\nvocabulary is incomplete, and an undeclared code is invisible to every consumer\nthat switches on the registry.\n\n`occurred_at`, not `created_at`, on `inventory_events` — that table records when\nthe thing happened, and a backfilled row's insert time would claim a surface was\nused the day we migrated it.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
-      "type": "feature",
-      "title": "repo-native dead-surface probe — what has nobody used?"
-    },
-    {
-      "sha": "635c9286c149842f34e1c76b66ffe5c06c74e55b",
-      "shortSha": "635c9286c",
-      "date": "2026-08-02T09:48:01-07:00",
-      "author": "DENSENSE8",
-      "subject": "fix(debt): the ledger must never report zero because it could not read",
-      "body": "`ratchets()` asked `git ls-files` and swallowed the failure, returning `[]`.\nAnywhere git cannot answer — a `git archive` export, a CI cache, a tarball —\nthe ledger printed \"DS ratchets 0 across 0\" and read as a codebase carrying no\nDS debt at all.\n\nThat is the exact false-clean signal this script was written to remove, so it\nis a worse bug here than it would be anywhere else: a ledger that reports zero\nwhen it cannot read is worse than no ledger. Caught by running it inside a\npristine `git archive` copy of HEAD while verifying attribution.\n\nWalks `src/` directly now — the filesystem is the thing being measured — and\nexits non-zero if `src/` itself is missing rather than reporting a total it did\nnot compute.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
-      "type": "fix",
-      "title": "the ledger must never report zero because it could not read"
-    },
-    {
-      "sha": "539fe2457729213f87f1e24da2d7984c02b17408",
-      "shortSha": "539fe2457",
-      "date": "2026-08-02T09:46:20-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat(flags): every flag declares an owner and an ending",
-      "body": "`src/lib/feature-flags.ts` was already a sound two-tier SoT — private\n`readBoolEnv` / `resolveForOrg`, a flat public surface of 28 `isXxx()`\npredicates. What it had no answer for is *when a flag stops*.\n\nThat gap is not cosmetic. A flag keeps BOTH branches reachable, so every\ndead-code tool sees two live paths for as long as the flag exists — a permanent\nstrangler is a fork that has been made invisible on purpose, which is the same\nblind spot as a two-door fork wearing a config file. Several flags here are\nexplicitly mid-migration (`isUnifiedEngine*`, the four `isPlacementStrangle*`,\n`surface_composed_render`), and `backend-patterns.md` called the unified-engine\npath \"mid-strangler, so it is not yet a hard requirement\". A strangler with no\ndeadline is how the losing branch becomes zombie code.\n\n`FLAG_LIFECYCLE` now gives each flag `env`, `bornAt`, `area`, and a disposition:\n`permanent` (with a reason), `rollout` (with a date), or `undecided`.\n`feature-flags.guard.test.ts` fails on an overdue `undecided` (90 days), a\nlapsed `plannedRemoval`, a flag with no entry, or an entry with no flag — that\nlast one being the direction that rots silently.\n\nTwo things deliberately not done:\n\n**No vendor.** LaunchDarkly would be a second flag system beside the SoT module.\nOne file, one guard, no dependency, no dashboard.\n\n**No invented dates.** Every `bornAt` is the first commit that introduced the\npredicate, read out of git history. 26 flags land as `undecided`, which is the\nhonest state — fabricating removal dates nobody committed to would recreate the\nunfalsifiable prose this guard exists to replace. The oldest flag is ~74 days\nagainst a 90-day limit, so this lands green and starts biting in the ordinary\ncourse rather than failing a build on arrival.\n\nThe registry lives in a dependency-free sibling and is re-exported: importing\n`feature-flags.ts` pulls `@/lib/db` and its `server-only`, which threw the\nmoment the guard imported it. `build-gotchas.md` → bundle altitude, applied.\n\n`backend-patterns.md` corrected: it documented the two private helpers as the\nAPI, which is not what anything imports.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
-      "type": "feature",
-      "title": "every flag declares an owner and an ending"
-    },
-    {
-      "sha": "f6c0cc2e0626d4ddc1c20def1bc1b26bae8bed32",
-      "shortSha": "f6c0cc2e0",
-      "date": "2026-08-02T09:33:29-07:00",
-      "author": "DENSENSE8",
-      "subject": "chore(debt): publish the ledger — verify PASSED is not the same as clean",
-      "body": "`npm run debt` prints what the shrink-only ratchets are currently forgiving:\n`knip-baseline.json` (2,888 parked findings) plus every `const *_BASELINE = N`\nin a guard test (1,686 across 9). `verify` echoes the one-line total on success.\n\nThe design of the ratchets is right: they stop NEW debt without blocking an\nunrelated change on a full migration. But shrink-only never *forces* cleanup, it\nonly forbids growth — so a number nobody reads quietly legitimises whatever it\nholds. That is precisely how 10,540 LOC sat orphaned across 82 files with every\ngate green: verify printed PASS, and PASS was true. It just meant \"no new debt\",\nwhich is not what a green run reads as.\n\nSo the ledger rides on the PASS line, not behind a flag nobody types.\n\nReports BASELINES, not live counts — for a shrink-only ratchet the baseline IS\nthe debt the codebase has agreed to carry, and a guard prints its actual count\nonly when it fails. Baselines already at 0 are excluded: a closed door forbidding\na pattern outright is a finished job, not debt, and listing it would misreport\nthat.\n\nLargest single target is `RAW_FOCUS_BASELINE` at 1,075 — mechanical, one\ncanonical `focusRing(archetype, tone)` per call site.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
-      "type": "chore",
-      "title": "publish the ledger — verify PASSED is not the same as clean"
-    },
-    {
-      "sha": "4ef824c259ab103d3c76c551ffe8fa156edcce6d",
-      "shortSha": "4ef824c25",
-      "date": "2026-08-02T09:31:15-07:00",
-      "author": "DENSENSE8",
-      "subject": "docs(rules): a retirement is not done until the old path is deleted or guarded",
-      "body": "Institutionalises the lesson from the two retirements that quietly rotted this\nweek, and closes the live instance.\n\n**The rule** (`pattern-evolution.md` → Always #6): a retirement is not done until\nthe old path is DELETED, or a guard names the exact surviving call sites,\nshrink-only. A prose-only retirement is a TODO wearing a ruling's clothes.\n\nThe reason it has to be a law rather than advice is that a rules file cannot\nfail. `source-of-truth.md` said `useIsColumnHidden()` \"survives only for\n`ChipColumns` / `RowMetaColumns`\" while FOUR surfaces called it;\n`workbench-ops-queue.md` described chrome Fields as the live entry long after 11\nof 13 grids had moved to the lip. Both sentences were true when written and\nstopped being true in silence.\n\nRecorded alongside it: `knip` cannot see a fork whose doors are both imported.\nIt answers \"is this reachable\", never \"is this the only way in\" — which is why\nthe Fields fork survived months of clean dead-code runs.\n\n**The instance.** `use-is-column-hidden.guard.test.ts` pins the real four —\n`ChipColumns`, `RowMetaColumns`, `OrderIdentityChips` (chip/meta SLOTS that\npaint inside a cell the row already owns, so there is no track to remove) and\nthe pre-LedgerGrid `StationRowColumnHeader`. It fails in both directions: a new\nconsumer, and a stale allowlist line left behind by a finished migration. Both\nwere exercised before landing.\n\nIt counts CALLS, not mentions — the grid families reference the hook in\ndocblocks to explain why they no longer use it, parens included, so the guard\nstrips comments first. A guard that flags its own explanation teaches people to\ndelete the explanation.\n\nBoth SoT rows now say four and name them.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
-      "type": "docs",
-      "title": "a retirement is not done until the old path is deleted or guarded"
-    },
-    {
-      "sha": "25ca93964674bbcc6302de476cca0adde2cdc5f6",
-      "shortSha": "25ca93964",
-      "date": "2026-08-02T09:28:01-07:00",
-      "author": "DENSENSE8",
-      "subject": "chore(knip): re-baseline after the burn-down — 3,072 → 2,888",
-      "body": "184 findings retired by the 1A–1D deletions. Down only, never up: a delete that\nraised this number would mean something else had been orphaned.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
-      "type": "chore",
-      "title": "re-baseline after the burn-down — 3,072 → 2,888"
     }
   ]
 }

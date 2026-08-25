@@ -43,7 +43,7 @@ import {
 
 // Active-work tabs first; Done (history-like) sits rightmost with a divider —
 // mirrors UnboxWorkspaceHeader (Queue · Viewed · History).
-// Rail bulk-dismiss uses the sidebar RailEditPencil, not chrome.
+// Rail bulk-dismiss uses the row ⋮ menu's "Select" verb, not chrome.
 const TABS: TriageWorkspaceTab[] = ['triage', 'found', 'unfound', 'done'];
 
 /** Band 1 — lifecycle tabs + Check · Add · Arrival resume. */
@@ -62,8 +62,11 @@ export function TriageWorkspaceHeader({
   const { data: unfoundCount } = useQuery({
     queryKey: ['triage-unfound-badge'] as const,
     queryFn: async () => {
+      // `count_only=1`. Without it this route's `total` is the PAGE size, so
+      // `limit=1` answered 1 and the badge showed 1 for any non-empty queue.
       const params = new URLSearchParams({
         kind: 'unmatched_receiving',
+        count_only: '1',
         limit: '1',
         offset: '0',
       });

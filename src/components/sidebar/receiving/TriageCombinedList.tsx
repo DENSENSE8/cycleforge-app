@@ -30,7 +30,6 @@ export function TriageCombinedList({
   isRowDisabled,
   filterText = '',
   includeRow,
-  hideEyebrow = false,
 }: {
   selectedLineId: number | null;
   selectedRow?: ReceivingLineRow | null;
@@ -40,7 +39,6 @@ export function TriageCombinedList({
   isRowDisabled?: (row: ReceivingLineRow) => boolean;
   filterText?: string;
   includeRow?: (row: ReceivingLineRow) => boolean;
-  hideEyebrow?: boolean;
 }) {
   // E10 — a carton that finished triage stays in this combined list (re-sorted,
   // never hidden); this adds the "Staged" badge + a shelf/lane chip (A3),
@@ -56,7 +54,6 @@ export function TriageCombinedList({
       getRowDisabled={isRowDisabled}
       filterText={filterText}
       includeRow={includeRow}
-      hideEyebrow={hideEyebrow}
       renderPopoverContext={(row) => (
         <TriageStagingChips
           ctx={row.receiving_id != null ? stagingMap.get(row.receiving_id) : undefined}

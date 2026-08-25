@@ -1,24 +1,17 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { cn } from '@/utils/_cn';
-import { EmptySkuChipFace, UnitPriceChip } from '@/components/ui/CopyChip';
+import { ItemRecordMetaGrid } from '@/design-system/components/item-record';
 
 /**
- * Boxed meta sub-grid for PO line accordion rows.
- * Order: qty | SKU | condition | serial | price (price last — variable width).
- * Empty SKU uses the mono `----` face (same slot as a filled SkuScanRefChip).
- * Empty price uses {@link UnitPriceChip} with no amount — Receipt mark + `—`
- * so unfound / unpriced lines keep the price column (never a blank cell).
+ * Boxed meta sub-grid for PO line rows — the receiving name for the shared
+ * five-track ledger, whose implementation moved to
+ * `design-system/components/item-record` (2026-08-22).
  *
- * Always five tracks (Unbox SoT). {@link unitsChrome} is retained only as a
- * data attribute for hosts that still gate *editors* / Units / serial stamp —
- * it must not collapse the layout (Arrival door-flow SKU face parity).
- *
- * Tracks: `auto auto auto 1fr auto` so qty/SKU/condition/price hug content and
- * the serials cell absorbs remaining width. Column separation is `gap-x-3`
- * whitespace (no `divide-x` / vertical meta hairlines). Nested CSS grid, not
- * floating flex columns.
+ * Kept as a named door because the tech shipping rows compose the same grid
+ * without being PO lines. The two legacy flags are inert and stay that way:
+ * neither ever changed the layout, and `unitsChrome` in particular must never
+ * collapse a track (Arrival door-flow SKU face parity).
  */
 export function PoLineMetaGrid({
   qty,
@@ -26,7 +19,8 @@ export function PoLineMetaGrid({
   condition,
   serial,
   price,
-  unitsChrome = true,
+  unitsChrome: _unitsChrome,
+  indent: _indent,
   className,
 }: {
   qty: ReactNode;
@@ -34,57 +28,20 @@ export function PoLineMetaGrid({
   condition?: ReactNode;
   serial?: ReactNode;
   price?: ReactNode;
-  /**
-   * Host door-flow flag (Arrival). Layout always keeps condition + serial
-   * columns; callers pass read-only chips / honest `—` when editors are off.
-   * Defaults true (Unbox / Testing).
-   */
+  /** @deprecated Host editor gate — never affected this layout. Ignored. */
   unitsChrome?: boolean;
-  /**
-   * @deprecated Thumb is the left rail on the nested grid row — meta no longer
-   * indents under a chevron track. Ignored when present.
-   */
+  /** @deprecated Thumb is the left rail on the nested grid row. Ignored. */
   indent?: string;
   className?: string;
 }) {
   return (
-    <div
-      data-po-line-meta-grid
-      data-units-chrome={unitsChrome ? 'true' : 'false'}
-      className={cn(
-        'grid min-w-0 items-stretch border-t border-border-soft',
-        'grid-cols-[auto_auto_auto_minmax(2.5rem,1fr)_auto]',
-        'gap-x-3',
-        'text-role-eyebrow uppercase tracking-widest leading-none',
-        className,
-      )}
-    >
-      <span
-        data-col="qty"
-        className="flex min-w-0 items-center justify-start truncate tabular-nums px-2 py-1 pb-[0.375rem] font-semibold text-text-muted"
-      >
-        {qty}
-      </span>
-      <span data-col="sku" className="flex min-w-0 items-center justify-start truncate px-2 py-1">
-        {sku ?? <EmptySkuChipFace dense />}
-      </span>
-      <span data-col="condition" className="flex min-w-0 items-center justify-start truncate px-2 py-1">
-        {condition}
-      </span>
-      <span
-        data-col="serial"
-        className="flex min-w-0 items-stretch justify-start overflow-hidden p-0"
-      >
-        {serial ?? (
-          <span className="px-2 py-1 text-text-faint/40">—</span>
-        )}
-      </span>
-      <span
-        className="flex items-center justify-end text-right tabular-nums px-2 py-1"
-        data-col="price"
-      >
-        {price ?? <UnitPriceChip amount={null} dense />}
-      </span>
-    </div>
+    <ItemRecordMetaGrid
+      qty={qty}
+      sku={sku}
+      condition={condition}
+      serial={serial}
+      price={price}
+      className={className}
+    />
   );
 }

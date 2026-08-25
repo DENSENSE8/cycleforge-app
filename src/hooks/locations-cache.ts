@@ -7,6 +7,8 @@
 export interface LocationRecord {
   id: number;
   name: string;
+  /** Operator nickname; null = read {@link name}. Not unique. */
+  display_name?: string | null;
   room: string | null;
   description: string | null;
   barcode: string | null;

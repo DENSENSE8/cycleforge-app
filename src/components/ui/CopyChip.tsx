@@ -300,8 +300,27 @@ export function CopyChip({
     fitDisplayWidth && width === 'w-auto' ? 'w-fit max-w-full' : width;
 
   const normalizedDisplay = normalizeCopyText(faceDisplay);
-  const displayOverflowClass = truncateDisplay ? 'truncate' : 'whitespace-nowrap';
-  const displayWidthClass = displayWidth === 'last8' ? 'w-[8ch]' : '';
+  /**
+   * A last-8 face is a FIXED-CHARACTER footprint, and `getLast8` caps the value
+   * at eight characters — so it can never legitimately overflow and must never
+   * lose a character to an ellipsis.
+   *
+   * It did, on every last-8 chip in the app. `w-[8ch]` buys eight `0`-advances
+   * (8 x 7.2px = 58px at the dense 12px face) but the chip also carries
+   * `letter-spacing: 0.12px`, and eight of those add ~1px the width never
+   * accounted for. Measured on a real SKU chip: clientWidth 58, scrollWidth 59.
+   * One pixel over, so `truncate` fired and `0106-P-5` painted as `0106-P…` —
+   * a last-8 display silently showing seven.
+   *
+   * `8.25ch` covers the tracking with room to spare and keeps the fixed
+   * footprint that makes last-8 columns align. Truncation is off for these
+   * faces: with a hard eight-character cap upstream there is nothing to trim,
+   * and leaving it on only re-arms the same clipping if the metrics shift.
+   */
+  const isLastEight = displayWidth === 'last8';
+  const displayOverflowClass =
+    isLastEight || !truncateDisplay ? 'whitespace-nowrap' : 'truncate';
+  const displayWidthClass = isLastEight ? 'w-[8.25ch] shrink-0' : '';
   const outerPx = outerPad === 'flush' ? 'px-0' : 'px-1.5';
   const hoverTooltipEnabled = !disableTooltip && !editing && tooltipTrigger === 'hover';
 
@@ -371,7 +390,7 @@ export function CopyChip({
         ) : null}
         <span
           className={`${dense ? chipText : `${monoValue} tracking-tight leading-none`} ${displayWidthClass} text-left ${displayOverflowClass} ${
-            fitDisplayWidth ? 'min-w-0 shrink-0' : 'min-w-0 flex-1'
+            isLastEight ? '' : fitDisplayWidth ? 'min-w-0 shrink-0' : 'min-w-0 flex-1'
           } ${
             isEmptyChipDisplay(faceDisplay) ? 'text-text-faint' : dense ? 'text-text-default' : ''
           }${editing ? ' text-text-muted' : ''}`}

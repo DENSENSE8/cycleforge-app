@@ -204,7 +204,14 @@ export function LinkageDisplayHost({
         </div>
       ) : null}
       {verb === 'link' ? (
-        <div className={cn('min-h-0 flex-1 pt-3', DISPLAYS_BODY_INSET)}>
+        // Flush — no `DISPLAYS_BODY_INSET` (`px-4`). Same contract as
+        // TicketDisplayHost's Claim body: "Host stays flush; the search field
+        // and result rows own their own internal inset, never the whole
+        // detail." Wrapping the Store avenue combobox + its results in the
+        // standard gutter here (2026-08-24 fix) is what made it read as
+        // padded/not-edge-to-edge next to the Ticket panel's Create|Link
+        // combobox, which never had this wrapper.
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <CartonMatchHub
             row={row}
             staffId={staffId}

@@ -133,10 +133,12 @@ test.describe('To Ship · Pending Sheets-like grid', () => {
     const row = table.locator('[data-order-row-id]').first();
     await expect(row).toBeVisible({ timeout: 20_000 });
 
-    // Top-left select-all + every leftmost row cell — always-painted square.
-    const headerCheck = headerRow.locator('[role="checkbox"][data-select-chrome="always"]');
+    // Top-left select-all + every leftmost row cell — the compound row's
+    // full-bleed checkmark gutter (`'flush'`), not the flat grid's inset 16px
+    // square. To-Ship mounts ORDERS_COMPOUND_COLUMNS.
+    const headerCheck = headerRow.locator('[role="checkbox"][data-select-chrome="flush"]');
     await expect(headerCheck).toBeVisible();
-    const rowCheck = row.locator('[data-select-gutter] [role="checkbox"][data-select-chrome="always"]');
+    const rowCheck = row.locator('[data-select-gutter] [role="checkbox"][data-select-chrome="flush"]');
     await expect(rowCheck).toBeVisible();
 
     // Condition micro-tag on Product: house status chip (dot + uppercase label).

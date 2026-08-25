@@ -93,6 +93,8 @@ export function staffTaskCompoundView(
         : row.kind === 'recurring'
           ? 'Not checked off this cycle'
           : 'Not checked off',
+    // A checklist item is not worth money. An empty cell, never a `$0.00`.
+    amount: null,
     delay: overdueBy == null ? null : { days: overdueBy, overdue: overdueBy > 0 },
     delayTip:
       row.resetsAtMs != null

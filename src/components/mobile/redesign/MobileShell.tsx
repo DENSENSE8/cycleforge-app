@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, Suspense } from 'react';
+import { useState, useRef, useEffect, Suspense } from 'react';
 import { motion, AnimatePresence } from '@/design-system/motion';
 import { usePathname } from 'next/navigation';
 import { MobileTopBar } from './MobileTopBar';
@@ -74,6 +74,13 @@ export const RedesignedMobileShell = ({ children }: { children: React.ReactNode 
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const showHeader = !!pathname && !ownsItsOwnTopBar(pathname);
+  // True only while the document's first page is mounting (SSR + hydration).
+  // Read during render, flipped after — every later `key={pathname}` mount is a
+  // client navigation and gets the crossfade.
+  const firstPaintRef = useRef(true);
+  useEffect(() => {
+    firstPaintRef.current = false;
+  }, []);
 
   return (
     // The scan provider wraps BOTH the header and the page: the top-right SCAN
@@ -88,7 +95,14 @@ export const RedesignedMobileShell = ({ children }: { children: React.ReactNode 
           <AnimatePresence mode="wait">
             <motion.div
               key={pathname}
-              initial={{ opacity: 0 }}
+              // FIRST PAINT IS NEVER ANIMATED. `initial={{opacity:0}}` applies
+              // to the SSR mount too, so every `/m/*` document shipped its whole
+              // page inside `style="opacity:0"` and only revealed it once
+              // hydration ran the fade — LCP stopped measuring the HTML (~0.4s)
+              // and started measuring the bundle (~9s on the mobile profile).
+              // Route-to-route crossfades still animate; the document's first
+              // mount shows immediately.
+              initial={firstPaintRef.current ? false : { opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{

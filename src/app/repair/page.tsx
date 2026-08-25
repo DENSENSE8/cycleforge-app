@@ -20,7 +20,7 @@ export default function RepairPage() {
     <>
       <SurfaceParamHygiene />
       <SurfaceGate surfaceKey="repair">
-        <ReceivingSurfacePage mobileTitle="Repair" />
+        <ReceivingSurfacePage />
       </SurfaceGate>
     </>
   );

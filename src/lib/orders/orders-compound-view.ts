@@ -12,6 +12,7 @@ import {
   type CompoundStateTone,
 } from '@/components/tables/compound/compound-row-model';
 import type { ShippedOrder } from '@/types/orders';
+import { formatCurrency } from '@/utils/_number';
 
 /**
  * Fulfillment lane → the three-tone vocabulary.
@@ -71,5 +72,12 @@ export function ordersCompoundView(
     delay:
       parts.delayDays == null ? null : { days: parts.delayDays, overdue: parts.delayDays > 0 },
     delayTip: parts.delayTip,
+    // What the order sold for. `sale_amount` arrives as a string or a number
+    // depending on the query path, and an order with no recorded sale renders an
+    // empty cell rather than a `$0.00` nobody charged.
+    amount: (() => {
+      const sale = Number(record.sale_amount);
+      return Number.isFinite(sale) ? formatCurrency(sale) : null;
+    })(),
   };
 }

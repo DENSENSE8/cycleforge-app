@@ -2,87 +2,37 @@
 
 /**
  * Shared receiving-surface page shell — the desktop sidebar + right-pane
- * (`RouteShell`) and the mobile photo feed, mounted by BOTH `/receiving`
- * (legacy) and `/unbox` (the first-class Unbox surface, Studio-driven operator
- * surfaces refactor Phase 1). The only per-surface difference is the mobile
- * header title (the operator's *job*: "Unbox" vs "Receiving"); the desktop
- * sidebar switches modes via `useReceivingMode`, which is surface-aware and
- * routes the Unbox mode to `/unbox`.
+ * (`RouteShell`) mounted by `/unbox`, `/triage`, `/receiving` (legacy),
+ * `/receiving/history`, `/incoming`, `/pickup` and `/repair`. The sidebar
+ * switches modes via `useReceivingMode`, which is surface-aware and routes the
+ * Unbox mode to `/unbox`.
  *
- * Mobile vs desktop selection is done with CSS visibility, not a JS branch, so
- * old browsers that can't hydrate still render the correct view from SSR HTML.
+ * **There is no narrow-width mobile branch here, and there must not be one
+ * again.** This surface used to carry a second, complete `md:hidden` tree — a
+ * photo-only feed with its own header, drawer button and `MobileReceivingList`
+ * — selected by viewport width. Mobile is a ROUTING decision in this app, not a
+ * width decision: the edge proxy serves phones the `/m/*` shell, and a phone
+ * that lands on a desk path bounces to `/m/home` (`ResponsiveLayout`). So that
+ * tree never rendered for a real device; it only server-rendered a duplicate
+ * page into every desk document and pulled the mobile feed's components into
+ * the desk bundle. Narrow-width treatments that a desk surface genuinely needs
+ * belong in CSS on the one tree below.
  */
 
-import { Suspense, useCallback } from 'react';
+import { Suspense } from 'react';
 import ReceivingDashboard from '@/components/ReceivingDashboard';
 import { ReceivingSidebarPanel } from '@/components/sidebar/ReceivingSidebarPanel';
 import { RouteShell } from '@/design-system/components/RouteShell';
-import { MobileReceivingList } from '@/components/mobile/receiving/MobileReceivingList';
-import { MobileReceivingViewPills } from '@/components/mobile/receiving/MobileReceivingViewPills';
-import { Menu } from '@/components/Icons';
-import { IconButton } from '@/design-system/primitives';
-import { QuickAccessButton } from '@/components/layout/QuickAccessButton';
 import { ZohoSplitPane } from '@/components/receiving/workspace/ZohoSplitPane';
-import { appChromeClass } from '@/design-system/tokens/app-surface';
-import { cn } from '@/utils/_cn';
 
-export interface ReceivingSurfacePageProps {
-  /** Mobile header title — the operator's job for this surface ("Unbox" / "Triage"). */
-  mobileTitle?: string;
-  /** Which receiving surface this page mounts — drives the mobile feed query. */
-  surface?: 'triage' | 'unbox';
-}
-
-function ReceivingSurfacePageInner({
-  mobileTitle = 'Receiving',
-  surface = 'unbox',
-}: ReceivingSurfacePageProps) {
-  const openDrawer = useCallback(() => {
-    window.dispatchEvent(new CustomEvent('open-mobile-drawer'));
-  }, []);
-
+function ReceivingSurfacePageInner() {
   return (
     <>
-      {/* Mobile (<768px) — photo-only feed with camera FAB. */}
-      <div className={cn('flex h-full w-full flex-col overflow-hidden md:hidden', appChromeClass)}>
-        <header
-          className={cn(
-            'sticky top-0 z-header flex min-h-14 items-center gap-3 border-b border-border-hairline px-3 pt-[env(safe-area-inset-top)]',
-            appChromeClass,
-          )}
-        >
-          <IconButton
-            type="button"
-            onClick={openDrawer}
-            ariaLabel="Open navigation"
-            icon={<Menu className="h-6 w-6" />}
-            className="flex h-11 w-11 items-center justify-center rounded-xl text-text-muted active:bg-surface-sunken outline-none"
-          />
-
-          <h1 className="flex-1 text-lg font-semibold tracking-tight text-text-default">
-            {mobileTitle}
-          </h1>
-
-          <QuickAccessButton className="h-10 w-10" />
-        </header>
-
-        <div className="relative min-h-0 flex-1">
-          {/* Floating overlay above the list — pills sit on top, list scrolls behind. */}
-          <div className="pointer-events-none absolute top-0 left-0 right-0 z-30 px-3 pt-2 pb-3">
-            <div className="pointer-events-auto">
-              <MobileReceivingViewPills active="lines" />
-            </div>
-          </div>
-
-          <MobileReceivingList limit={20} surface={surface} />
-        </div>
-      </div>
-
-      {/* Desktop (≥768px) — sidebar + form flows. Wash lives on
-          CONTEXT_PANEL_HOST_RECEIVING (shared behind rail + workspace), not
-          on this workspace-only wrapper — a workspace wash re-painted the
-          seam and sheared outset collapse chrome. */}
-      <div className="hidden h-full w-full overflow-hidden md:flex">
+      {/* Sidebar + form flows. Wash lives on CONTEXT_PANEL_HOST_RECEIVING
+          (shared behind rail + workspace), not on this workspace-only wrapper —
+          a workspace wash re-painted the seam and sheared outset collapse
+          chrome. */}
+      <div className="flex h-full w-full overflow-hidden">
         <RouteShell
           actions={<ReceivingSidebarPanel />}
           history={<ReceivingDashboard />}
@@ -96,12 +46,12 @@ function ReceivingSurfacePageInner({
   );
 }
 
-export function ReceivingSurfacePage(props: ReceivingSurfacePageProps) {
+export function ReceivingSurfacePage() {
   return (
     // Fallback fills the page slot with the app wash while useSearchParams
     // suspends (SSR/hydration) — a bare Suspense here rendered a white void.
-    <Suspense fallback={<div className={cn('h-full w-full',)} aria-hidden />}>
-      <ReceivingSurfacePageInner {...props} />
+    <Suspense fallback={<div className="h-full w-full" aria-hidden />}>
+      <ReceivingSurfacePageInner />
     </Suspense>
   );
 }

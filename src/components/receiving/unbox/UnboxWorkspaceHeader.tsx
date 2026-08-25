@@ -387,9 +387,15 @@ export function UnboxWorkspaceHeader({
   const { data: queueCount } = useQuery({
     queryKey: ['unbox-queue-badge', staffId ?? 'all', queueStage ?? 'all', queueLane ?? 'all'],
     queryFn: async () => {
+      // `count_only=1`, not `limit=1`: this route runs the list SQL alongside
+      // the count, and `view=scanned` sorts on a joined column, so `limit=1`
+      // still paid ~15 display laterals over the whole candidate set — 3513ms
+      // measured on a cold load, for one integer. See the count_only arm in
+      // src/app/api/receiving-lines/route.ts.
       const params = new URLSearchParams({
         limit: '1',
         offset: '0',
+        count_only: '1',
         view: 'scanned',
         sort: 'priority',
       });
@@ -416,7 +422,14 @@ export function UnboxWorkspaceHeader({
   const { data: recentCount } = useQuery({
     queryKey: ['unbox-recent-badge'],
     queryFn: async () => {
-      const params = new URLSearchParams({ limit: '1', offset: '0', view: 'viewed' });
+      // count_only — same reason as the queue badge above. `view=viewed` was
+      // the slowest request on a cold /unbox at 5767ms, for one integer.
+      const params = new URLSearchParams({
+        limit: '1',
+        offset: '0',
+        count_only: '1',
+        view: 'viewed',
+      });
       const res = await fetch(`/api/receiving-lines?${params.toString()}`, { cache: 'no-store' });
       if (!res.ok) return 0;
       const body = (await res.json()) as { total?: number; receiving_lines?: unknown[] };

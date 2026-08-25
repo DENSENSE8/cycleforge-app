@@ -6,6 +6,18 @@
 /* Bridge: keep JS theme + CF Type / spacing-intent plugins until fully
    migrated into @theme / @utility. See docs/todo/tailwind-v4-SPIKE.md. */
 @config '../../tailwind.config.mjs';
+
+/* `coarse:` — a device with NO hover and/or a coarse pointer (a mounted /kiosk
+   tablet, a phone at /m/*). Gated on the INPUT, never on viewport width: a wall
+   tablet is desktop-width and still has no hover, so a `md:` twin would hide
+   touch affordances on exactly the surface that needs them. Used by row
+   overflow (⋮) affordances that are hover-revealed on a mouse and permanently
+   resident, at a real tap size, on a finger. */
+@custom-variant coarse {
+  @media (hover: none), (pointer: coarse) {
+    @slot;
+  }
+}
 /* Explicit sources — v4 auto-detect can miss SoT modules that only emit
    class strings (outbound-state, etc.). Mirror the v3 content globs. */
 @source '../pages/**/*.{js,ts,jsx,tsx,mdx}';

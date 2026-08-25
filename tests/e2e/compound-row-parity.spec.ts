@@ -24,7 +24,7 @@ import { test, expect, type Page } from '@playwright/test';
 const COMPOUND_ROW_PX = 48;
 
 /** Canonical track order. The photo is leftmost by hard rule. */
-const EXPECTED_TRACKS = ['thumb', 'fulfillment', 'item', 'state', 'open'];
+const EXPECTED_TRACKS = ['thumb', 'fulfillment', 'item', 'state', 'amount', 'actions'];
 
 interface Surface {
   name: string;
@@ -53,6 +53,7 @@ const SURFACES: readonly Surface[] = [
     rowSelector: '[data-order-row-id]',
   },
   { name: 'Tasks', paths: ['/?mode=tasks'], rowSelector: '[data-staff-task-id]' },
+  { name: 'Daily', paths: ['/', '/?mode=daily'], rowSelector: '[data-daily-task-id]' },
 ];
 
 /**
@@ -64,8 +65,8 @@ const SURFACES: readonly Surface[] = [
  * and it beats `test.skip`, which would quietly drop the family this whole
  * change exists to bring onto the shared layout.
  */
-async function seedTask(page: Page): Promise<void> {
-  const composer = page.getByLabel('New task');
+async function seedTask(page: Page, label: string): Promise<void> {
+  const composer = page.getByLabel(label);
   if ((await composer.count()) === 0) return;
   await composer.fill(`QA compound parity ${Date.now()}`);
   // Enter, not the Add button: the composer binds Enter to the same
@@ -73,12 +74,14 @@ async function seedTask(page: Page): Promise<void> {
   // the draft is non-empty — so a click race on a controlled input is a flake
   // this does not need.
   await composer.press('Enter');
-  await page
-    .locator('[data-staff-task-id]')
-    .first()
-    .waitFor({ state: 'visible', timeout: 20_000 })
-    .catch(() => undefined);
+  await page.waitForTimeout(1_500);
 }
+
+/** Row hook → the composer that can seed one, for the two checklist families. */
+const COMPOSER_LABEL: Readonly<Record<string, string>> = {
+  '[data-staff-task-id]': 'New task',
+  '[data-daily-task-id]': 'New daily task',
+};
 
 /** Load the first lane of this family that has a compound row; '' when none do. */
 async function openSurface(page: Page, surface: Surface): Promise<string> {
@@ -94,8 +97,13 @@ async function openSurface(page: Page, surface: Surface): Promise<string> {
       .catch(() => false);
     if (ok) return path;
 
-    if (surface.rowSelector === '[data-staff-task-id]') {
-      await seedTask(page);
+    // Both checklists are per-STAFF / per-DAY rows, which `provision:qa-org`
+    // cannot fixture the way it fixtures cartons and orders. Creating one
+    // through the composer is the honest way to get a row, and it beats
+    // `test.skip`, which would quietly drop the family from the parity check.
+    const composerLabel = COMPOSER_LABEL[surface.rowSelector];
+    if (composerLabel) {
+      await seedTask(page, composerLabel);
       const seeded = await cell
         .waitFor({ state: 'visible', timeout: 20_000 })
         .then(() => true)
