@@ -4,23 +4,45 @@
    This file is the design system for the shell. Nothing here may be
    replaced by a `@/design-system` import.
 
-   DESIGN LAW (from the prototype's own header; LAW 1 amended 2026-08-24):
-     1. RADIUS EXISTS NOWHERE. Every element is square, full stop — the
-        well's own exception (`--r-hud`) is retired now that the well
-        runs flush to the display's own edges (a rounded corner jammed
-        against a square viewport corner read as a notch, not a card).
-        There is no --r-sm/md/lg/xl/full to reach for; they do not exist,
-        so the rule is enforced by absence rather than by discipline. The
-        reset alone is not sufficient — Safari (and some Chrome/OS
-        combinations) paint a NATIVE rounded chrome on
-        `<button>`/`<input>`/`<textarea>` that ignores `border-radius`
-        entirely, so `appearance: none` on form controls is load-bearing
-        too, not decoration.
+   DESIGN LAW (LAW 1 → F9 + F10, 2026-08-24 / 2026-08-25):
+     1. PLANES STAY SQUARE; CONTROLS AND NESTED REGIONS ROUND,
+        CONCENTRICALLY, AND THE CURVE MUST BE VISIBLE. The old "radius
+        exists nowhere" law was right about viewport-flush chrome (a
+        radius against the display corner is a notch) and wrong about
+        interiors of a `--r-pane` card staying 0px (that is two products
+        glued together). A token that does not read is still CAD.
+
+          · PLANES stay `--r-none`. Beam, rails, well-ground, tool panel.
+          · PANES take `--r-pane` (16px) — they float on the canvas.
+          · INSIDE a pane, used = min(role, outer − padding). Pad is 8px
+            so `--r-surface` is legal. Round the strip, clip the cells.
+          · CONTROLS round so a hover plate reads as pressable, not as a
+            filled cell. `--r-control` on 28px plates; `--r-keycap` on
+            16–20px strips (6px there is a lozenge).
+
+        No --r-sm/md/lg/xl/full. The reset in shell.css still zeroes
+        everything by default. `appearance: none` stays load-bearing so
+        Safari native chrome cannot override the deliberate radius.
      2. NOTHING ANIMATES GEOMETRY. No transition and no keyframe may
         touch width, height, top/left/right/bottom, margin, padding,
         transform or flex. The only animatable properties are colour
         and opacity, capped at --t-tint (80ms).
-     3. BORDERS CARRY THE STRUCTURE. No drop shadows anywhere.
+     3. BORDERS CARRY THE STRUCTURE — EXCEPT ON THE TWO CANVAS PANES.
+        AMENDED 2026-08-24 (operator ruling: "clear depth hierarchy using
+        modern, layered drop shadows"). Everything structural still gets
+        its separation from a 1px stroke and a plane change. The one
+        exception is a pane that FLOATS ON the canvas rather than butting
+        against it — today that is the composer pane, and `--shadow-pane`
+        is the only shadow token that exists.
+
+        MEASURED CAVEAT, and it is why this stays an exception rather
+        than becoming a system: a drop shadow is LIGHT-THEME-ONLY
+        physics. Layered shadows work by darkening what is behind them,
+        and the dark theme's edge plane is #050506 — there is nothing
+        left to darken. `--shadow-pane` is therefore `none` in dark, and
+        the stroke carries the pane there. Any future depth idea has to
+        answer that question before it ships, or it ships a hierarchy
+        that exists for half the operators.
      4. STATE IS DRAWN WITH OUTLINE, NOT BORDER. `outline` does not
         participate in layout, so a hover/focus ring can be 2px without
         shifting a single pixel of content.
@@ -55,15 +77,108 @@
   --sz-2xl: 1.5rem;                  /* 24px */
 
   /* ---- RADIUS ----------------------------------------------------
-     `--r-none` is the only one anything in the shell actually uses now
-     (2026-08-24) — the well's own `--r-hud` exception is retired (see
-     `.well` in shell.css). `--r-hud` is kept defined, unused by the
-     shell, because the orphaned prefs radius slider in `TileBody.tsx`
-     still writes to it — that file is dead code (nothing imports `Tile`/
-     `TileBody` since the Phase 1 canvas deletion), not a live exception
-     to this law; it is a separate cleanup, not this one. */
+     Named ladder (F9). Planes flush to the viewport stay `--r-none`.
+     Everything that floats or sits *inside* a pane opts in.
+
+       --r-none     beam, rails, well-ground, tool panel
+       --r-keycap   4px — status marks, short segmented TRACKS (not cells),
+                    15px keycaps. 6px on a 16–20px strip is a lozenge.
+       --r-control  6px — 28px hover plates, buttons, isolated fields
+       --r-surface  8px — nested regions (scan well, composer well, cards,
+                    bubbles) AND floating overlays (menus, launcher)
+       --r-pane     16px — `.pane` only. Never on an inner field.
+       --r-circle   50% — enumerated: identity mark + its plate, status dot
+
+     CONCENTRIC CLAMP: used = min(role, outer − padding).
+     A 16px pane with 12px pad leaves 4px of legal inner radius, which
+     is why tile-body / feed-column / StageQueue pad is 8px: that is
+     the inset at which `--r-surface` is legal. Matching `--r-pane` on
+     an inset composer is inverted concentric (inner rounder than the
+     hole). Round the strip, clip the cells; never round the cell.
+
+     OPTICAL (F10): a radius you cannot see is still square. The strip
+     must be a filled rounded rect, not a hairline. Dashed strokes are
+     banned on rounded wells (dashes skip the corner). Side-tabs (a
+     thick colored edge on a rounded card) are banned — tone lives in
+     the badge. Repeatable hint chips become one track.
+
+     `--r-hud` stays defined because the orphaned prefs slider in
+     `TileBody.tsx` still writes to it. */
   --r-none: 0px;
+  --r-control: 6px;
+  --r-surface: 8px;
   --r-hud: 4px;
+
+  /* THE CIRCLE — two named uses, and only two (LAW 1's one shape
+     exception; renamed from `--r-avatar` on 2026-08-25).
+
+     It was introduced as "the ONE circle", scoped to the identity mark,
+     on the argument that an avatar is the only thing in the shell
+     depicting a PERSON. That argument was right about the avatar and too
+     narrow as a rule: the composer's context ring is a STATUS MARK, and a
+     status mark is the other thing in an interface that is conventionally
+     round — it is a lamp, not a control and not a plane. It had been
+     painting as an 8px SQUARE with a square 2px halo since the universal
+     reset zeroes every radius and nothing opted it back in. A thing named
+     "ring" rendering square is the law producing a wrong answer, not the
+     surface breaking the law.
+
+     So the token is renamed to what it actually is, and the exception is
+     an ENUMERATED LIST rather than a claim about a single element:
+
+       1. `.identity-mark` / shadcn `Avatar`, AND the button plate it sits
+          in — a person. The plate is listed explicitly because a square
+          hover plate around a round mark is visibly wrong, and because a
+          self-audit found it painting 50% while this list claimed two
+          entries: an enumeration that does not match the DOM is worse
+          than no enumeration.
+       2. `.context-ring-dot` — a status lamp.
+
+     Anything else is square. There is still no `--r-full` to generalise
+     this into, and adding a third entry means arguing for it here. */
+  --r-circle: 50%;
+
+  /* PANES AND KEYCAPS (2026-08-24, operator ruling). `--r-pane` is the
+     "pronounced corner radius" of a floating canvas pane — 16px, i.e.
+     Tailwind's `rounded-2xl`, named as such by the ruling. `--r-keycap`
+     is smaller than `--r-control` on purpose: a keycap is a 15px-tall
+     glyph holder, and 6px on that height reads as a lozenge rather than
+     as a key. */
+  --r-pane: 16px;
+  --r-keycap: 4px;
+
+  /* ---- ELEVATION -------------------------------------------------
+     One token, three layers: a contact shadow, a mid lift, and a wide
+     ambient. Layering is what separates this from the single blurred
+     blob that made LAW 3 ban shadows in the first place. Light only —
+     see LAW 3's caveat. */
+  --shadow-pane:
+    0 1px 2px rgba(16, 24, 40, 0.04),
+    0 4px 8px -2px rgba(16, 24, 40, 0.06),
+    0 12px 24px -6px rgba(16, 24, 40, 0.08);
+
+  /* THE SUNKEN COMPOSER (2026-08-24, operator ruling — the Grok/Gemini
+     reference: "recessed/sunken — an inner shadow, not a raised drop
+     shadow"). This is the SECOND shadow token, and unlike `--shadow-pane`
+     it is NOT light-only: an inset shadow darkens the surface's own top
+     edge, and there is always something to darken.
+
+     The alpha is themed, not shared. `rgba(0,0,0,0.08)` — the value the
+     reference implies — is essentially invisible on a #17171b composer;
+     dark needs roughly seven times the alpha to read as the same dent.
+     One token, two values, so the dark theme gets the same affordance
+     rather than a flat box. */
+  --shadow-inset: inset 0 1px 3px rgba(16, 24, 40, 0.08);
+
+  /* FLOATING OVERLAYS — menus, popovers, the command dialog. The third
+     and last shadow token. Unlike `--shadow-pane` this one is NOT
+     light-only: an overlay is the one thing that genuinely leaves the
+     plane stack, and in dark it floats over `--plane-edge` (#050506)
+     where a pure-black shadow still separates it from the ground the way
+     a stroke alone cannot at that contrast. */
+  --shadow-overlay:
+    0 4px 12px -2px rgba(16, 24, 40, 0.10),
+    0 16px 32px -8px rgba(16, 24, 40, 0.14);
 
   /* Spacing scale */
   --sp-0: 0px;
@@ -99,6 +214,10 @@
   --rail-width: 40px;
   --rail-expanded: 208px;
   --tool-panel-width: 280px;
+  /* `--pane-composer-w` is RETIRED (2026-08-24). The panes inverted: the
+     composer flexes and the QUEUE holds the fixed basis, which the
+     operator now drags at runtime (280–480px, `pane-resize.ts`). A
+     stylesheet cannot own a value the operator sets with a pointer. */
   --control-h: 26px;
 
   /* Tile floors — the application's real minimums, not a guess. The
@@ -106,6 +225,63 @@
      the geometry problem visible instead of silent. */
   --tile-min-session: 784px;
   --tile-min-table: 520px;
+
+  /* ---- PLANES ----------------------------------------------------
+     THE INVERSION (2026-08-24, operator ruling): "the dark display
+     goes to the outside edges, not the middle." Before this, the well
+     — the centre, where the data lives — carried `--bg-canvas`, the
+     darkest value in the palette, and the chrome around it carried the
+     lightest. That is backwards for a workbench: the operator looks at
+     the middle all day and the middle was the dimmest thing on screen.
+
+     There are exactly TWO planes now, and every structural surface in
+     the shell picks one:
+
+       --plane-edge   the frame — beam, rails, tool panel, the document
+                      ground, and the gutter either side of the well.
+                      RECESSED. Dark in dark, dimmed in light.
+       --plane-stage  the centre — the well, and whatever tiles live in
+                      it. RAISED. Lifted in dark, white in light.
+
+     The relationship is what carries the meaning, so it holds in BOTH
+     themes: the stage is always lighter than the edge. Light theme
+     mirrors the inversion rather than repeating dark's literal values.
+
+     `-raised` / `-sunken` are the one step up and one step down from
+     each plane. Deeper ramps stay in the `--surface-container*` scale,
+     which `.well` re-anchors to the stage (see shell.css) so a card
+     inside the centre lifts off the CENTRE, not off the frame. */
+  /* Light values are the operator's own, given as hex 2026-08-24:
+     "#FFFFFF for the canvas, #F9FAFB for the rails". That is a far
+     QUIETER plane step than the one shipped hours earlier (#e4e4e8) —
+     deliberately so. The step no longer has to carry the separation on
+     its own, because the same ruling asked for "subtle 1px borders to
+     neatly separate the left rail, top header, and the main canvas":
+     the stroke does the dividing and the fill only sets the mood. Dark
+     keeps its wider step, where a 1px stroke has less to work with. */
+  --plane-edge: #f9fafb;
+  --plane-edge-raised: #f3f4f6;
+  --plane-edge-sunken: #e5e7eb;
+  --plane-stage: #ffffff;
+  --plane-stage-raised: #f9fafb;
+  --plane-stage-sunken: #f3f4f6;
+
+  /* The seam. The only stroke entitled to separate the two planes; a
+     plane change this large needs one hairline to read as deliberate
+     rather than as a rendering artefact. */
+  --stroke-plane: #e5e7eb;
+
+  /* Ramp the stage re-anchors to. Declared here, not inside the media
+     query, so the light values exist unconditionally (see the theme
+     note above — a colour defined only under a media query has no
+     light value). */
+  --stage-containerLowest: #ffffff;
+  --stage-containerLow: #f9fafb;
+  --stage-container: #f3f4f6;
+  --stage-containerHigh: #e5e7eb;
+  --stage-containerHighest: #d1d5db;
+  --stage-subtle: #f9fafb;
+  --stage-sunken: #f3f4f6;
 
   /* LIGHT THEME — semantic tokens */
   --text-primary: #111111;
@@ -151,6 +327,26 @@
 /* DARK — explicit stamp. Wins over the system preference in both
    directions, which is what makes the settings toggle a real control. */
 :root[data-theme="dark"] {
+
+  --plane-edge: #050506;
+  --plane-edge-raised: #131317;
+  --plane-edge-sunken: #000000;
+  --plane-stage: #17171b;
+  --plane-stage-raised: #202026;
+  --plane-stage-sunken: #101013;
+
+  --stroke-plane: #2b2b31;
+  --shadow-pane: none;
+  --shadow-inset: inset 0 1px 3px rgba(0, 0, 0, 0.55);
+  --shadow-overlay: 0 4px 12px -2px rgba(0, 0, 0, 0.55), 0 16px 32px -8px rgba(0, 0, 0, 0.45);
+
+  --stage-containerLowest: #17171b;
+  --stage-containerLow: #1e1e23;
+  --stage-container: #26262b;
+  --stage-containerHigh: #33333a;
+  --stage-containerHighest: #45454e;
+  --stage-subtle: #1e1e23;
+  --stage-sunken: #101013;
   --text-primary: #f4f4f5;
   --text-secondary: #a1a1aa;
   --text-muted: #7c7c86;
@@ -195,6 +391,26 @@
    nothing on <html> and only this block separates dark from light. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
+
+    --plane-edge: #050506;
+    --plane-edge-raised: #131317;
+    --plane-edge-sunken: #000000;
+    --plane-stage: #17171b;
+    --plane-stage-raised: #202026;
+    --plane-stage-sunken: #101013;
+
+    --stroke-plane: #2b2b31;
+    --shadow-pane: none;
+    --shadow-inset: inset 0 1px 3px rgba(0, 0, 0, 0.55);
+    --shadow-overlay: 0 4px 12px -2px rgba(0, 0, 0, 0.55), 0 16px 32px -8px rgba(0, 0, 0, 0.45);
+
+    --stage-containerLowest: #17171b;
+    --stage-containerLow: #1e1e23;
+    --stage-container: #26262b;
+    --stage-containerHigh: #33333a;
+    --stage-containerHighest: #45454e;
+    --stage-subtle: #1e1e23;
+    --stage-sunken: #101013;
     --text-primary: #f4f4f5;
     --text-secondary: #a1a1aa;
     --text-muted: #7c7c86;

@@ -701,3 +701,24 @@ test('interop.read gates every standards-projection route', () => {
     );
   }
 });
+
+test('regression: placement.record / placement.view gate the unit↔location spine routes', () => {
+  // 00-endgame D1/D10 (2026-08-24): the spine's writes are floor actions gated
+  // by their own permission pair, not by the sku_stock/bin families. The AI has
+  // no mutation_kind mapping to these routes — a permission regression here
+  // would be the first crack in "a location is a fact created by a scan".
+  const recordPaths = routesGatedBy('placement.record').map((r) => r.path);
+  const viewPaths = routesGatedBy('placement.view').map((r) => r.path);
+  assert.ok(
+    recordPaths.includes('/api/inventory/placements/route.ts'),
+    'placement.record should gate the put-away write',
+  );
+  assert.ok(
+    recordPaths.includes('/api/inventory/part-pulls/route.ts'),
+    'placement.record should gate the part-pull write',
+  );
+  assert.ok(
+    viewPaths.includes('/api/inventory/spine/route.ts'),
+    'placement.view should gate the capstone lookup',
+  );
+});

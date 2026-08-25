@@ -20,7 +20,7 @@ import { usePathname } from 'next/navigation';
 import { Well } from '@/shell/Well';
 import { GlobalHeader } from '@/shell/GlobalHeader';
 import { Launcher } from '@/shell/Launcher';
-import { ContextMenu, OfflineBanner, SessionPopover, SettingsPopover } from '@/shell/Overlays';
+import { ContextMenu, OfflineBanner, SettingsPopover } from '@/shell/Overlays';
 import { RailSessions } from '@/shell/RailSessions';
 import { RailTools } from '@/shell/RailTools';
 import { ShellIconSprite } from '@/shell/icons';
@@ -38,6 +38,9 @@ const CHROMELESS = [
   /^\/invite(?:$|\/)/,
   /^\/not-authorized(?:$|\/)/,
   /^\/offline(?:$|\/)/,
+  // The phone put-away surface (00-endgame D4/D5): a one-handed browser page
+  // at the shelf, not a workspace tenant — the shell frame has no business here.
+  /^\/putaway(?:$|\/)/,
   /^\/01(?:$|\/)/,
   /^\/414(?:$|\/)/,
   /^\/gs1(?:$|\/)/,
@@ -58,36 +61,23 @@ function ShellFrame() {
     cutSession,
     openLauncher,
     setContextMenu,
-    setSessionPopoverOpen,
-    setSettingsPopoverOpen,
     closeTile,
     focusedTileId,
-    toggleLeftRailOpen,
-    toggleRightRailOpen,
     toggleOffline,
   } = shell;
 
-  /* A click anywhere dismisses the two surfaces that are anchored to a
-     corner rather than to a control. The launcher owns its own backdrop and
-     the session popover is dismissed by its own control, as in the prototype. */
-  useEffect(() => {
-    const onClick = () => {
-      setContextMenu(null);
-      setSettingsPopoverOpen(false);
-    };
-    document.addEventListener('click', onClick);
-    return () => document.removeEventListener('click', onClick);
-  }, [setContextMenu, setSettingsPopoverOpen]);
+  /* NO document click-to-dismiss (removed 2026-08-24 with the shadcn
+     migration). Radix dismisses its own surfaces on outside pointerdown,
+     and this listener actively BROKE them: it fired on the very click
+     that opened a menu, closing it in the same tick. Every
+     `stopPropagation` in `Overlays.tsx` existed only to survive it, and
+     they are gone too. */
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        closeLauncher();
-        setContextMenu(null);
-        setSessionPopoverOpen(false);
-        setSettingsPopoverOpen(false);
-        return;
-      }
+      /* Escape is Radix's too now — the launcher, the context menu and
+         both popovers each close themselves. A second handler here would
+         race them and could close a surface the operator had reopened. */
       if (!(e.metaKey || e.ctrlKey) || e.altKey) return;
       const k = e.key.toLowerCase();
       if (k === 'n') {
@@ -101,10 +91,10 @@ function ShellFrame() {
       } else if (k === 'o' && e.shiftKey) {
         e.preventDefault();
         toggleOffline();
-      } else if (k === 'b') {
-        e.preventDefault();
-        if (e.shiftKey) toggleRightRailOpen();
-        else toggleLeftRailOpen();
+        // ⌘⇧B died with the rail rebuild (2026-08-25): the tools rail is
+        // always mounted now, so the chord had nothing left to toggle —
+        // the same argument that unbound ⌘B when the left rail became
+        // permanent.
       } else if (k === 'w' && !e.shiftKey) {
         e.preventDefault();
         if (focusedTileId) closeTile(focusedTileId);
@@ -119,11 +109,7 @@ function ShellFrame() {
     focusedTileId,
     openLauncher,
     setContextMenu,
-    setSessionPopoverOpen,
-    setSettingsPopoverOpen,
-    toggleLeftRailOpen,
     toggleOffline,
-    toggleRightRailOpen,
   ]);
 
   return (
@@ -132,7 +118,13 @@ function ShellFrame() {
       <OfflineBanner shell={shell} />
       <GlobalHeader shell={shell} />
 
-      <div className="wos-body">
+      {/* THE BODY IS THE CANVAS GROUND (operator, 2026-08-25 — §4 of the
+          session-composer handoff): no left inset, no top inset below the
+          beam, no plane strip behind either rail. The shell's only chrome
+          is the global header; both icon stacks float directly on the
+          canvas ground. (`.wos-body` left shell.css for Tailwind here —
+          F11 shrink-only.) */}
+      <div className="relative flex min-h-0 flex-1 overflow-hidden bg-plane-stage-sunken">
         <RailSessions shell={shell} />
         <Well shell={shell} />
         <ToolPanel shell={shell} />
@@ -141,7 +133,6 @@ function ShellFrame() {
       </div>
 
       <ContextMenu shell={shell} />
-      <SessionPopover shell={shell} />
       <Launcher shell={shell} />
     </div>
   );

@@ -15,6 +15,7 @@
  * results land on the rows.
  */
 
+import { Button } from '@/components/ui/button';
 import { useCallback, useState } from 'react';
 import {
   desktopFilesAvailable,
@@ -161,10 +162,10 @@ export function FilesBody() {
 
   if (!desktopFilesAvailable()) {
     return (
-      <div className="tool-empty">
+      <div className="flex flex-col items-center gap-1 py-6 text-center text-sm text-muted-foreground">
         Native files need the desktop app
         <br />
-        <span className="tool-empty-sub">
+        <span className="text-xs text-muted-foreground">
           Open Cycle Forge Desktop — the browser cannot reach your folders.
         </span>
       </div>
@@ -173,15 +174,15 @@ export function FilesBody() {
 
   if (!root || !cwd) {
     return (
-      <div className="tool-block">
-        <div className="tool-copy">
+      <div className="flex flex-col gap-2">
+        <div className="text-xs leading-relaxed text-muted-foreground">
           Open a folder as a workspace — your FBA downloads, a batch of manuals, a photos dump.
           Organize it here, then upload the keepers to the workspace tables.
         </div>
-        <button type="button" className="btn btn-primary" onClick={openFolder} disabled={busy}>
+        <Button size="sm" onClick={openFolder} disabled={busy}>
           Open folder…
-        </button>
-        {note ? <div className="files-note">{note}</div> : null}
+        </Button>
+        {note ? <div className="text-xs leading-relaxed text-muted-foreground">{note}</div> : null}
       </div>
     );
   }
@@ -189,25 +190,25 @@ export function FilesBody() {
   const dirs = entries.filter((e) => e.kind === 'dir');
 
   return (
-    <div className="tool-block files-tool">
-      <div className="files-crumbs mono" title={cwd}>
+    <div className="flex min-h-0 flex-1 flex-col gap-2">
+      <div className="mono flex flex-wrap items-center gap-1 text-xs text-muted-foreground" title={cwd}>
         {relTo(root, cwd) || root.split(sep(root)).pop()}
       </div>
 
-      <div className="files-list" aria-label="Files">
+      <div className="flex min-h-0 flex-1 flex-col gap-px overflow-y-auto" aria-label="Files">
         {cwd !== root ? (
-          <button type="button" className="files-row" onClick={() => refresh(parentOf(cwd))}>
+          <button type="button" className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs transition-colors hover:bg-accent" onClick={() => refresh(parentOf(cwd))}>
             <Icon name="folder" size={12} />
-            <span className="files-name">..</span>
+            <span className="min-w-0 flex-1 truncate">..</span>
           </button>
         ) : null}
         {entries.map((entry) =>
           renaming?.path === entry.path ? (
-            <div className="files-row" key={entry.path}>
+            <div className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs transition-colors hover:bg-accent" key={entry.path}>
               <Icon name={entry.kind === 'dir' ? 'folder' : 'file'} size={12} />
               <input
                 autoFocus
-                className="files-rename"
+                className="min-w-0 flex-1"
                 value={renaming.draft}
                 aria-label={`Rename ${entry.name}`}
                 onChange={(e) => setRenaming({ path: entry.path, draft: e.target.value })}
@@ -227,17 +228,17 @@ export function FilesBody() {
               />
               <button
                 type="button"
-                className="files-open"
+                className="shrink-0"
                 title={entry.kind === 'dir' ? 'Open folder' : entry.name}
                 onClick={() => (entry.kind === 'dir' ? void refresh(entry.path) : toggle(entry.path))}
               >
                 <Icon name={entry.kind === 'dir' ? 'folder' : 'file'} size={12} />
-                <span className="files-name">{entry.name}</span>
+                <span className="min-w-0 flex-1 truncate">{entry.name}</span>
               </button>
-              {entry.kind === 'file' ? <span className="files-size mono">{fmtSize(entry.size)}</span> : null}
+              {entry.kind === 'file' ? <span className="mono shrink-0 text-muted-foreground">{fmtSize(entry.size)}</span> : null}
               <button
                 type="button"
-                className="files-act"
+                className="shrink-0"
                 title="Rename"
                 onClick={() => setRenaming({ path: entry.path, draft: entry.name })}
               >
@@ -246,10 +247,10 @@ export function FilesBody() {
             </div>
           ),
         )}
-        {entries.length === 0 ? <div className="tool-empty-sub">Empty folder</div> : null}
+        {entries.length === 0 ? <div className="text-xs text-muted-foreground">Empty folder</div> : null}
       </div>
 
-      <div className="files-newfolder">
+      <div className="flex items-center gap-2">
         <input
           type="text"
           placeholder="New folder name…"
@@ -258,13 +259,13 @@ export function FilesBody() {
           onChange={(e) => setCreatingFolder(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && void makeFolder()}
         />
-        <button type="button" className="btn btn-sm" onClick={makeFolder} disabled={busy}>
+        <Button variant="outline" size="sm" onClick={makeFolder} disabled={busy}>
           New folder
-        </button>
+        </Button>
       </div>
 
       {selected.size > 0 ? (
-        <div className="files-actions">
+        <div className="flex flex-wrap gap-2 border-t border-border pt-2">
           <span className="mono">{selected.size} selected</span>
           {dirs
             .filter((d) => !selected.has(d.path))
@@ -274,25 +275,25 @@ export function FilesBody() {
                 → {d.name}
               </button>
             ))}
-          <button type="button" className="btn btn-sm" onClick={trashSelected} disabled={busy}>
+          <Button variant="outline" size="sm" onClick={trashSelected} disabled={busy}>
             Trash
-          </button>
-          <button type="button" className="btn btn-sm btn-primary" onClick={uploadSelected} disabled={busy}>
+          </Button>
+          <Button size="sm" onClick={uploadSelected} disabled={busy}>
             Upload to workspace
-          </button>
+          </Button>
         </div>
       ) : null}
 
-      <div className="files-actions">
-        <button type="button" className="btn btn-sm" onClick={openFolder} disabled={busy}>
+      <div className="flex flex-wrap gap-2 border-t border-border pt-2">
+        <Button variant="outline" size="sm" onClick={openFolder} disabled={busy}>
           Open another folder…
-        </button>
-        <button type="button" className="btn btn-sm" onClick={() => refresh(cwd)} disabled={busy}>
+        </Button>
+        <Button variant="outline" size="sm" onClick={() => refresh(cwd)} disabled={busy}>
           Refresh
-        </button>
+        </Button>
       </div>
 
-      {note ? <div className="files-note">{note}</div> : null}
+      {note ? <div className="text-xs leading-relaxed text-muted-foreground">{note}</div> : null}
     </div>
   );
 }

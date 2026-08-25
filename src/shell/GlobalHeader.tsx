@@ -1,151 +1,225 @@
 'use client';
 
 /**
- * THE BEAM. SIMPLIFIED (2026-08-24, operator ruling): left-rail toggle ·
- * identity · timer · overflow · right-rail toggle — the two toggles are
- * the outermost elements, flush at the true top-left and top-right
- * corners (no header padding, no hairline). The corner cluster (armed
- * pill, carton chip) and the context line (global context, session
- * narration) are gone — both were restating facts the well already carries
- * as the chronology's own line items and its armed-block header (Phase 2),
- * 700px away in centred chrome for a second read.
+ * THE BEAM. Identity on the left, last-hovered entity readout in the middle,
+ * kebab on the right. Composer and assistant never steal the readout.
+ *
+ * What left, and why it could leave:
+ *   · BOTH RAIL TOGGLES — the left rail is always mounted now, so its
+ *     toggle had nothing to toggle. The right rail keeps ⌘⇧B and its
+ *     hover hot-zone (see the flagged consequence in the handoff).
+ *   · THE TIMER FACE — "remove any time displays". Elapsed still rides
+ *     every parked block in the queue, which is where it is actually read.
+ *   · SEARCH AND ADD — gone one ruling earlier, down to the rail.
+ *
+ * NO BOTTOM HAIRLINE (2026-08-24). This REVERSES the border added one
+ * ruling earlier ("subtle 1px borders to neatly separate the left rail,
+ * top header, and the main canvas"). The beam now blends into the edge
+ * plane; with the light palette at #F9FAFB the plane step is 1.05:1, so
+ * "seamless" here means genuinely invisible, not merely quiet.
+ *
+ * THE SESSION TITLE STAYS. "Top Left: ONLY a single, circular staff
+ * avatar" reads as an exclusion list for CHROME CONTROLS — it names
+ * sign-in text, workspace names and toggles, not the session title, which
+ * the immediately preceding ruling put here on purpose. It also cannot go
+ * anywhere else: the same ruling bars it from the canvas, and the rail is
+ * now icons-only. Removing it would delete the active session's name from
+ * the entire interface, so it stays until that is ruled explicitly.
  */
 
+import { useState } from 'react';
+import { CalendarDaysIcon, MoreHorizontalIcon, PlusIcon } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { IdentityMenu } from '@/shell/IdentityMenu';
+import { HeaderEntityReadout } from '@/shell/HeaderEntityReadout';
 import { Icon } from '@/shell/icons';
-import { mmss, useClock } from '@/shell/clock';
-import { PIPELINE, STAGE_TARGETS } from '@/shell/model';
+import { TOOLS, blockElapsedSeconds, toolAvailable, type SessionBlock } from '@/shell/model';
+import { railIconPlate } from '@/shell/rail-icon';
+import { hhmmss } from '@/shell/clock';
 import type { ShellApi } from '@/shell/useShell';
+import { cn } from '@/utils/_cn';
+
+/** The chronology's blocks that STARTED today, newest first — the session
+ *  dropdown's rows (operator, 2026-08-24: click the session name for
+ *  "your previous sessions for the current day"). */
+function todaysBlocks(shell: ShellApi): readonly SessionBlock[] {
+  const dayStart = new Date().setHours(0, 0, 0, 0);
+  return shell.feed
+    .filter(
+      (e): e is SessionBlock => e.kind === 'block' && (e.intervals[0]?.start ?? 0) >= dayStart,
+    )
+    .reverse();
+}
 
 /**
- * THE HEADER FACE — one slot, fixed width, readouts only. It is
- * `elapsed / target`, not two counters: "how long am I taking" and "is there a
- * limit" are the same question and one pair answers both at a glance. It is
- * also its own button — a readout behind a dropdown is not a readout.
+ * THE SESSIONS CLUSTER (operator, 2026-08-24/25): staff icon · a `+` that
+ * appears ON HOVER of the session name and cuts a new session · the name
+ * itself as a DROPDOWN of today's sessions (single click), an INLINE
+ * RENAME (double click — the popover's name field moved here), and the
+ * week's sessions opening as a TILE (C8 — triage happens on a tile,
+ * never in a menu).
  */
-function HeaderFace({ shell }: { shell: ShellApi }) {
-  const { faceMode, sessionState, currentStage, toggleTool } = shell;
-  const clock = useClock();
+function SessionSwitcher({ shell }: { shell: ShellApi }) {
+  const blocks = todaysBlocks(shell);
+  const now = Date.now();
+  const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState<string | null>(null);
 
-  if (faceMode === 'off') return null;
+  const commitRename = () => {
+    if (draft && draft.trim()) shell.renameArmedSession(draft);
+    setDraft(null);
+  };
 
-  const armed = sessionState === 'armed';
-  const paced = faceMode === 'pace';
-  const target = armed && paced ? STAGE_TARGETS[PIPELINE[currentStage]] : null;
-
-  // `elapsed` mode is NEVER coloured. Colour is the verdict, and this mode
-  // exists precisely for the operator who wants the clock without one.
-  let tone = 'idle';
-  if (armed && target) {
-    const ratio = clock.elapsed / target;
-    tone = ratio >= 1 ? 'over' : ratio >= 0.8 ? 'near' : 'on-target';
+  if (draft !== null) {
+    return (
+      <Input
+        autoFocus
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commitRename}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') commitRename();
+          if (e.key === 'Escape') setDraft(null);
+        }}
+        aria-label="Rename this session"
+        className="h-7 w-44"
+      />
+    );
   }
 
   return (
-    <button
-      type="button"
-      className={`header-face ${paced ? tone : 'idle'}`}
-      style={{ width: paced ? '128px' : '78px' }}
-      onClick={() => toggleTool('timer')}
-      title={
-        paced
-          ? 'Session elapsed against the target for this task type. Click for the timer.'
-          : 'Session elapsed. No target shown. Click for the timer.'
-      }
-    >
-      <span className="mono">{armed ? mmss(clock.elapsed % 3600) : '--:--'}</span>
-      {/* In `elapsed` mode the target half is not blanked — it is REMOVED, so
-          the slot narrows and stops implying a hidden number. */}
-      {target ? <span className="face-sep">/</span> : null}
-      {target ? <span className="mono">{mmss(target)}</span> : null}
-    </button>
+    /* `modal={false}`: the modal overlay would swallow the second click of
+       a double-click before the trigger ever saw it — rename depends on
+       the trigger staying clickable while the menu is up. */
+    <DropdownMenu open={open} onOpenChange={setOpen} modal={false}>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          className="header-session cursor-pointer"
+          title="Click: today's sessions · double-click: rename"
+          onDoubleClick={(e) => {
+            e.preventDefault();
+            if (!shell.sessionName) return; // nothing armed to rename
+            setOpen(false);
+            setDraft(shell.sessionName);
+          }}
+        >
+          {shell.sessionName || 'No session'}
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start">
+        <DropdownMenuLabel>Today</DropdownMenuLabel>
+        {blocks.length === 0 ? (
+          <DropdownMenuItem disabled>No sessions yet — + starts one</DropdownMenuItem>
+        ) : (
+          blocks.map((b) => (
+            <DropdownMenuItem
+              key={b.id}
+              disabled={b.state === 'ended'}
+              onSelect={() => {
+                if (b.state === 'parked') shell.resumeBlock(b.ref);
+              }}
+            >
+              <span className="flex-1 truncate">{b.title}</span>
+              <span className="mono text-xs text-muted-foreground">
+                {b.state === 'armed' ? 'current' : b.state} ·{' '}
+                {hhmmss(blockElapsedSeconds(b.intervals, now))}
+              </span>
+            </DropdownMenuItem>
+          ))
+        )}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onSelect={shell.openSessionsWeekTile}>
+          <CalendarDaysIcon />
+          This week&apos;s sessions…
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
 export function GlobalHeader({ shell }: { shell: ShellApi }) {
   return (
     <header className="wos-header">
-      {/* THE LEFT-RAIL TOGGLE — the true top-left corner (2026-08-24):
-          the outermost element on the beam, ahead of identity, so nothing
-          sits closer to the corner than it. The mirror of the right
-          rail's button — same control, same icon, other side. PINS the
-          rail open or fully closed; `RailSessions`'s hover hot-zone at
-          the viewport's left edge can also peek it open without pinning,
-          but this click always works, hover-capable device or not. */}
-      <button
-        type="button"
-        className={`cluster-btn${shell.leftRailOpen ? ' active' : ''}`}
-        title="Open or close the sessions panel (Ctrl+B)"
-        aria-label="Open or close the sessions panel"
-        aria-expanded={shell.leftRailOpen}
-        aria-pressed={shell.leftRailOpen}
-        onClick={shell.toggleLeftRailOpen}
-      >
-        <Icon name="split" size={15} />
-      </button>
-
-      {/* SEARCH + ADD — ALWAYS accessible (2026-08-24), regardless of
-          whether the sessions rail is open or closed. The rail's own "+"
-          disappears with it when closed; these two live in the beam
-          instead, so the one launcher (T11, R2) never goes more than a
-          click away. Both open the same launcher — a second "+" here
-          isn't a second index, it's the one index reachable from a
-          second place. */}
-      <button
-        type="button"
-        className="cluster-btn"
-        title="Search (Ctrl+K)"
-        onClick={() => shell.openLauncher('')}
-      >
-        <Icon name="search" size={15} />
-      </button>
-      <button
-        type="button"
-        className="cluster-btn"
-        title="Add a session or table (Ctrl+K)"
-        onClick={() => shell.openLauncher('')}
-      >
-        <Icon name="plus" size={15} />
-      </button>
-
-      {/* Identity sits right after the corner controls now. */}
       <IdentityMenu shell={shell} />
 
-      {/* No fixed content claims the middle — nothing here is genuinely
-          global enough to earn centred chrome (the well already narrates
-          the session). The spacer keeps the right-anchored group pinned
-          to the corner regardless. */}
-      <div className="header-spacer" />
+      {/* The `+` between the staff icon and the session name — a click
+          twin of ⌘N. THE NAME MAKES ROOM (operator, 2026-08-25, superseding
+          the opacity-in-place reveal): idle is staff icon then name with no
+          gap; hovering the session cluster renders the `+` to the name's
+          LEFT and the name shifts right to make room. A conditional
+          `display` swap — the shift is an INSTANT layout change, never a
+          tween (M1). `group-focus-within` keeps it reachable when the
+          cluster holds keyboard focus; ⌘N remains the keyboard twin. */}
+      <span className="group/session flex items-center gap-1">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className={cn(
+                'hidden size-7 group-hover/session:inline-flex group-focus-within/session:inline-flex',
+                railIconPlate,
+              )}
+              aria-label="New session (Ctrl+N) — parks the current one"
+              onClick={shell.cutSession}
+            >
+              <PlusIcon />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">New session — parks the current one</TooltipContent>
+        </Tooltip>
 
-      <HeaderFace shell={shell} />
+        <SessionSwitcher shell={shell} />
+      </span>
 
-      <div className="header-overflow">
-        <button
-          type="button"
-          className="cluster-btn"
-          title="Session · settings · everything else"
-          onClick={() => shell.setSessionPopoverOpen(!shell.sessionPopoverOpen)}
-        >
-          <Icon name="more" size={15} />
-        </button>
-        {/* THE RIGHT-RAIL TOGGLE — the outermost, top-right corner. It
-            PINS the rail open or fully closed (2026-08-24) — closed means
-            gone, not just icon-only; `RailTools`'s hover hot-zone can also
-            peek it open without pinning, but this click always works,
-            hover-capable device or not. It sits last so it is the single
-            furthest-right thing on the beam. */}
-        <button
-          type="button"
-          className={`cluster-btn${shell.rightRailOpen ? ' active' : ''}`}
-          title="Open or close the tools panel (Ctrl+Shift+B)"
-          aria-label="Open or close the tools panel"
-          aria-expanded={shell.rightRailOpen}
-          aria-pressed={shell.rightRailOpen}
-          onClick={shell.toggleRightRailOpen}
-        >
-          <Icon name="split" size={15} />
-        </button>
-      </div>
+      <HeaderEntityReadout entity={shell.headerEntity} />
+
+      {/* THE TOOLS ENTRY (operator, 2026-08-25 — supersedes B22's "no tool
+          overflow in the beam", struck per X3). The ⋯ used to open the
+          SessionPopover (session facts + park/close); those verbs moved to
+          the composer's session header, so this corner is free to be what
+          the operator asked for: the way into the tools — readout · timer ·
+          stopwatch and the rest of the roster. Session-scoped tools appear
+          only while a session is armed (T6). */}
+      <DropdownMenu>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className={cn('size-7', railIconPlate)}
+                aria-label="Tools"
+              >
+                <MoreHorizontalIcon />
+              </Button>
+            </DropdownMenuTrigger>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">Tools — timer · stopwatch · readout</TooltipContent>
+        </Tooltip>
+        <DropdownMenuContent align="end">
+          <DropdownMenuLabel>Tools</DropdownMenuLabel>
+          {TOOLS.filter((tool) => toolAvailable(tool, shell.sessionState, shell.activeRef)).map(
+            (tool) => (
+              <DropdownMenuItem key={tool.key} onSelect={() => shell.toggleTool(tool.key)}>
+                <Icon name={tool.icon} size={14} />
+                {tool.label}
+              </DropdownMenuItem>
+            ),
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
     </header>
   );
 }

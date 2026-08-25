@@ -20,19 +20,22 @@
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
-  /* LAW 1, enforced as a DEFAULT rather than as an absolute (amended
-     2026-08-24, operator ruling): everything is square unless it is an
-     interactive control, and a control opts in explicitly below in
-     CONTROL SURFACES. The zeroing reset stays exactly as it was — it is
-     what makes the radius opt-in instead of ambient, so a radius on
-     screen is always a decision somebody wrote down. `border-radius:0` alone is not
-     enough: Safari (and some Chrome/OS combinations) paints a NATIVE
-     rounded control chrome on `<button>`/`<input>`/`<textarea>` that
-     ignores the CSS box-model radius entirely — `getComputedStyle` can
-     read `border-radius: 0px` while the control still visibly rounds.
-     `appearance: none` is what actually turns that native rendering off;
-     the border-radius reset alone was never sufficient on its own, it
-     just happened to be enough on non-WebKit engines to hide the gap. */
+  /* LAW 1 / F9 / F10, enforced as a DEFAULT rather than as an absolute
+     (amended 2026-08-24, then optically 2026-08-25): viewport-flush
+     planes stay square; everything else opts in below. The zeroing
+     reset stays — a radius on screen is always a decision somebody
+     wrote down. `border-radius:0` alone is not enough: Safari (and some
+     Chrome/OS combinations) paints a NATIVE rounded control chrome on
+     `<button>`/`<input>`/`<textarea>` that ignores the CSS box-model
+     radius entirely — `getComputedStyle` can read `border-radius: 0px`
+     while the control still visibly rounds. `appearance: none` is what
+     actually turns that native rendering off; the border-radius reset
+     alone was never sufficient on its own, it just happened to be
+     enough on non-WebKit engines to hide the gap.
+
+     F10: a radius you cannot see is still square. Hairline tracks and
+     dashed wells conceal the curve; filled strips and solid strokes
+     are what make the ladder read. */
   *, *::before, *::after { border-radius: var(--r-none); }
   button, input, textarea, select {
     appearance: none;
@@ -111,337 +114,94 @@
     white-space: nowrap;
     flex-shrink: 1;
     min-width: 0;
-  }
-
-  /* --- identity pin (Linear / Vercel) — first thing on the beam --- */
-  .identity-slot {
-    position: relative;
-    display: flex;
-    align-items: stretch;
-    height: var(--control-h);
-    flex-shrink: 0;
-    z-index: 2;
-  }
-
-  /* No border, no resting fill (2026-08-24) — a permanent background one
-     shade off the header's own is the same seam a border draws, just
-     painted instead of stroked. Transparent at rest, tinted only on
-     hover/open, the same pattern as every other unboxed chip on this
-     beam. */
-  /* Just the circle now — no name, no org line, no chevron — so the face
-     is a 28px square plate around a 24px round mark, not a 220px text
-     block that truncated at any real window width. */
-  .identity-face {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 28px;
-    height: 28px;
-    padding: 0;
-    background: transparent;
-    color: var(--text-primary);
-    cursor: pointer;
-    font: inherit;
-    transition: background-color var(--t-tint), color var(--t-tint);
-  }
-
-  .identity-face:hover,
-  .identity-face.open {
-    background: var(--surface-container);
-  }
-
-  /* THE ONE CIRCLE — the single sanctioned use of `--r-avatar` (see
-     tokens.css). 24px so the crop reads as a face rather than as a dot,
-     and it is the only round thing in the shell. */
-  .identity-mark {
-    width: 24px;
-    height: 24px;
-    border-radius: var(--r-avatar);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    background: var(--text-primary);
-    color: var(--text-inverse);
-    font-family: var(--font-condensed);
-    font-size: 9px;
-    font-weight: 700;
-    letter-spacing: 0.04em;
-  }
-
-  .identity-mark.sm {
-    width: 16px;
-    height: 16px;
-    font-size: 8px;
-  }
-
-  .identity-copy {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    min-width: 0;
-    line-height: 1.15;
-  }
-
-  .identity-name {
-    max-width: 148px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-size: var(--sz-xs);
-    font-weight: 600;
-  }
-
-  .identity-org {
-    max-width: 148px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-family: var(--font-condensed);
-    font-size: var(--sz-technical-label);
-    font-weight: 600;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--text-muted);
-  }
-
-  .identity-chevron {
-    display: flex;
-    color: var(--text-muted);
-    flex-shrink: 0;
-  }
-
-  .identity-face.open .identity-chevron { color: var(--text-primary); }
-
-  .identity-menu {
-    position: absolute;
-    top: calc(100% + 1px);
-    left: 0;
-    width: 248px;
-    background: var(--surface-containerLowest);
-    border: 1px solid var(--border-hud);
-    z-index: var(--z-dropdown);
-    display: flex;
-    flex-direction: column;
-  }
-
-  .identity-menu-header {
-    padding: var(--sp-2) var(--sp-3);
-    border-bottom: 1px solid var(--border-strong);
-    background: var(--surface-containerLow);
-  }
-
-  .identity-menu-header-row {
-    display: flex;
-    align-items: center;
-    gap: var(--sp-2);
-    font-family: var(--font-condensed);
-    font-size: var(--sz-technical-label);
-    font-weight: 700;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--text-secondary);
-  }
-
-  .identity-menu-org {
-    font-family: var(--font-condensed);
-    font-size: var(--sz-technical-label);
-    font-weight: 700;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--text-muted);
-  }
-
-  .identity-menu-title {
-    font-size: var(--sz-sm);
-    font-weight: 600;
-    color: var(--text-primary);
-  }
-
-  .identity-menu-meta {
-    font-size: var(--sz-xs);
-    color: var(--text-muted);
-  }
-
-  .identity-item {
-    display: flex;
-    align-items: center;
-    gap: var(--sp-2);
-    width: 100%;
-    padding: 7px var(--sp-3);
-    background: transparent;
-    border: none;
-    color: var(--text-primary);
-    cursor: pointer;
-    font: inherit;
-    font-size: var(--sz-xs);
-    text-align: left;
-    transition: background-color var(--t-tint);
-  }
-
-  .identity-item:hover { background: var(--surface-container); }
-  .identity-item.current { background: var(--surface-containerLow); }
-  .identity-item.danger { color: var(--text-danger); }
-  .identity-item svg { flex-shrink: 0; color: var(--text-secondary); }
-  .identity-item.danger svg { color: var(--text-danger); }
-
-  .identity-item-copy {
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-    flex: 1;
-    line-height: 1.2;
-  }
-
-  .identity-item-title {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-weight: 600;
-  }
-
-  .identity-item-meta {
-    color: var(--text-muted);
-    font-size: var(--sz-technical-label);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    font-family: var(--font-condensed);
-  }
-
-  .identity-divider { height: 1px; background: var(--border-strong); }
-
-  .identity-back {
-    width: 22px;
-    height: 22px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 1px solid var(--border-subtle);
-    background: transparent;
-    color: inherit;
-    cursor: pointer;
-    font: inherit;
-  }
-
-  .identity-staff-list {
-    max-height: 240px;
-    overflow-y: auto;
-  }
-
-  .identity-empty {
-    padding: var(--sp-3);
-    font-size: var(--sz-xs);
-    color: var(--text-muted);
-  }
-
-  .identity-empty.danger { color: var(--text-danger); }
-
-  .identity-pin {
-    display: flex;
-    flex-direction: column;
-    gap: var(--sp-2);
-    padding: var(--sp-3);
-  }
-
-  .identity-pin label {
-    font-size: var(--sz-technical-label);
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    color: var(--text-muted);
-    font-family: var(--font-condensed);
-    font-weight: 700;
-  }
-
-  .identity-pin input {
-    border: 1px solid var(--border-strong);
-    padding: 4px var(--sp-2);
-    font: inherit;
-    font-size: var(--sz-xs);
-    background: var(--surface-containerLowest);
-    color: var(--text-primary);
-    outline: none;
-  }
-
-  .identity-pin input:focus { border-color: var(--border-accent); }
-
-  .identity-facts {
-    display: flex;
-    flex-direction: column;
-    gap: var(--sp-2);
-    padding: var(--sp-3);
-  }
-
-  .identity-facts > div {
-    display: flex;
-    justify-content: space-between;
-    gap: var(--sp-3);
-    font-size: var(--sz-xs);
-  }
-
-  .identity-facts dt {
-    font-family: var(--font-condensed);
-    font-size: var(--sz-technical-label);
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--text-muted);
-  }
-
-  .identity-facts dd { color: var(--text-primary); text-align: right; }
-
-  /* The corner cluster, the carton chip and the context line (armed pill ·
+  }  /* The corner cluster, the carton chip and the context line (armed pill ·
      C-8842-A chip · RECEIVING/narration text) are GONE (2026-08-24,
      operator ruling) — the beam is identity · timer · rail toggle ·
      overflow now (`GlobalHeader`'s own docblock has the why). */
   .header-spacer { flex: 1; min-width: 0; }
 
-  /* Last-hovered entity readout — icons and numbers, one row, no controls. */
+  /* Last-hovered entity readout — CartonContextCard three-zone face:
+     identity left · classify absolutely centered · actions right.
+     Color lives on the classify dots and the right-side glyphs, not as
+     a left-packed grey run. */
   .header-entity {
     flex: 1;
     min-width: 0;
+    position: relative;
     display: flex;
-    align-items: center;
-    gap: var(--sp-2);
+    align-items: stretch;
     overflow: hidden;
     height: 100%;
-    padding: 0 var(--sp-2);
+    container-type: inline-size;
+    container-name: header-entity;
   }
 
-  .header-entity-slot {
+  .header-entity-middle {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: stretch;
+    justify-content: center;
+    pointer-events: none;
+    gap: 0;
+  }
+
+  .header-entity-left,
+  .header-entity-right {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: stretch;
+    background: var(--plane-edge);
+    pointer-events: auto;
+  }
+
+  .header-entity-right { margin-left: auto; }
+
+  .header-entity-slot,
+  .header-entity-pill {
     display: inline-flex;
     align-items: center;
     gap: 4px;
     min-width: 0;
     flex-shrink: 1;
-    color: var(--text-secondary);
+    padding: 0 var(--sp-2);
+    color: var(--text-primary);
     text-decoration: none;
     font-size: var(--sz-xs);
-    font-family: var(--font-mono);
     white-space: nowrap;
+    pointer-events: auto;
   }
 
-  .header-entity-slot.danger { color: var(--text-danger); }
+  .header-entity-slot { font-family: var(--font-mono); }
+  .header-entity-pill { font-family: var(--font-sans); font-weight: 500; }
+
+  .header-entity-slot.tone-tracking { color: var(--text-accent); }
+  .header-entity-slot.tone-price { color: var(--text-success); }
+  .header-entity-slot.tone-claim { color: var(--text-warning); }
+  .header-entity-slot.tone-photos { color: var(--text-accent); }
+  .header-entity-slot.tone-danger,
+  .header-entity-pill.tone-danger { color: var(--text-danger); }
+  .header-entity-slot.tone-muted { color: var(--text-muted); }
 
   a.header-entity-slot:hover { color: var(--text-primary); }
 
   .header-entity-value {
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 14ch;
+    max-width: 18ch;
   }
 
-  .header-entity-mark {
-    font-weight: 600;
-    letter-spacing: 0.02em;
-    color: var(--text-primary);
-  }
-
-  .header-entity-urgent {
-    display: block;
-    width: 8px;
-    height: 8px;
-    background: var(--text-danger);
+  .header-entity-dot {
+    width: 7px;
+    height: 7px;
+    display: inline-block;
     flex-shrink: 0;
+    background: currentColor;
+  }
+
+  @container header-entity (max-width: 52rem) {
+    .header-entity-pill-label { display: none; }
   }
 
   .zone-scan {
@@ -470,685 +230,52 @@
     letter-spacing: 0.01em;
   }
 
-  .scan-input-wrap input::placeholder { color: var(--text-muted); }
-
-  /* The 2x2 mode matrix — two axes, drawn as two square segment pairs */
-  .mode-toggle {
-    display: flex;
-    align-items: stretch;
-    font-size: var(--sz-technical-label);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--text-muted);
-    flex-shrink: 0;
-    font-family: var(--font-condensed);
-    font-weight: 600;
-    border: 1px solid var(--border-subtle);
-    height: 16px;
-    align-self: center;
-  }
-
-  .mode-toggle span,
-  .mode-toggle button {
-    cursor: pointer;
-    padding: 0 var(--sp-1);
-    display: flex;
-    align-items: center;
-    transition: background-color var(--t-tint), color var(--t-tint);
-    user-select: none;
-  }
-
-  .mode-toggle span + span,
-  .mode-toggle button + button { border-left: 1px solid var(--border-subtle); }
-  .mode-toggle span:hover,
-  .mode-toggle button:hover { color: var(--text-secondary); background: var(--surface-containerLow); }
-  .mode-toggle span.active,
-  .mode-toggle button.active {
-    background: var(--text-primary);
-    color: var(--text-inverse);
-  }
-  /* The two axes are separated by a heavier rule so the matrix reads
-     as input-mode | query-mode and not as one four-way switch. */
-  .mode-toggle .axis-gap { border-left: 3px solid var(--text-primary); }
-
-  /* ===== CONTROL SURFACES ===========================================
-     LAW 1 as amended: a control's states are a ROUNDED PLATE PAINTED
-     BEHIND THE GLYPH. Three states, three fills, one radius:
-
-       rest    transparent — the plate is absent, not merely faint
-       hover   --surface-container      (the plate arrives)
-       press   --surface-containerHigh  (:active, one step firmer)
-       on      --text-primary inverse   (.active — a TOGGLE that is on,
-                                         which is a fact, not a gesture)
-
-     `:active` is listed before `.active` on purpose. Both selectors
-     weigh the same (0,2,0), so source order decides, and a toggle that
-     is ON must keep reading as on while the operator is pressing it.
-
-     HEIGHT IS EXPLICIT. It was not before, so `.cluster-btn` collapsed
-     to its 15px icon and the hover plate painted 28x15 — a letterbox
-     behind a square glyph, which is precisely the artefact that made
-     the square-plate treatment look broken. 28x28 also lifts the target
-     off the old 28x26, though it is still short of the 44px touch floor
-     the kiosk iPad wants; that is a separate pass. */
-  .cluster-btn {
-    width: 28px;
-    height: 28px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: transparent;
-    border: none;
-    border-radius: var(--r-control);
-    color: var(--text-secondary);
-    cursor: pointer;
-    transition: background-color var(--t-tint), color var(--t-tint);
-    flex-shrink: 0;
-    font: inherit;
-  }
-
-  .cluster-btn:hover { background: var(--surface-container); color: var(--text-primary); }
-  .cluster-btn:active { background: var(--surface-containerHigh); color: var(--text-primary); }
-  .cluster-btn.active { background: var(--text-primary); color: var(--text-inverse); }
-
-  /* Every other chip in the shell runs the same grammar, so the plate
+  .scan-input-wrap input::placeholder { color: var(--text-muted); }  /* Every other chip in the shell runs the same grammar, so the plate
      means the same thing wherever the operator meets it. Radius only —
-     each rule keeps its own fills, which were already on this ramp. */
-  .rail-btn,
-  .rail-label,
-  .tab,
-  .pin,
-  .recent-item,
-  .identity-face,
-  .identity-item,
-  .context-item,
-  .launcher-item,
+     each rule keeps its own fills, which were already on this ramp.
+     (Trimmed 2026-08-25: the rail/tab/pin/recent, launcher, identity,
+     context and popover selectors left with their components — every one
+     is Tailwind + shadcn now, and F11 says the css shrinks with them.) */
   .files-row,
-  .composer-mode,
-  .composer-mode-item,
   .btn,
-  .header-face,
   .feed-collapse-all {
     border-radius: var(--r-control);
   }
 
   /* Floating surfaces — over the frame, never butted against the
      viewport, so the notch argument does not reach them. */
-  .identity-menu,
-  .context-menu,
-  .launcher-box,
-  .settings-popover,
-  .composer-mode-menu {
+  .occ-typeahead {
     border-radius: var(--r-surface);
   }
 
   /* Text controls are controls too — a square field beside a rounded
      button is the mismatch you notice without being able to name it. */
-  .launcher-input,
-  .composer textarea,
-  .session-field input,
-  .identity-pin input,
-  .files-newfolder input,
   .zone-scan {
     border-radius: var(--r-control);
+  }
+
+  /* Status marks — a 4px soften, never a pill, never `--r-circle`. */
+  .occ-chip {
+    border-radius: var(--r-keycap);
   }
 
   /* The press step, for the chips that had a hover but no pressed
      state. A control that tints on hover and then does nothing at all
      under the finger reads as not having fired. */
-  .rail-btn:active,
-  .tab:active,
-  .pin:active,
-  .recent-item:active,
-  .identity-face:active,
-  .btn:active,
-  .header-face:active { background: var(--surface-containerHigh); }
+  .btn:active { background: var(--surface-containerHigh); }
 
-  .pipeline { display: flex; align-items: stretch; height: 14px; border: 1px solid var(--border-subtle); }
-
-  .pipeline-step {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    padding: 0 5px;
-    font-size: var(--sz-technical-label);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--text-muted);
-    font-family: var(--font-condensed);
-    font-weight: 600;
-  }
-
-  .pipeline-step + .pipeline-step { border-left: 1px solid var(--border-subtle); }
-
-  .pipeline-mark {
-    width: 5px;
-    height: 5px;
-    background: var(--surface-containerHighest);
-    flex-shrink: 0;
-  }
-
-  .pipeline-step.done { color: var(--text-success); }
-  .pipeline-step.done .pipeline-mark { background: var(--text-success); }
-  .pipeline-step.current {
-    color: var(--text-inverse);
-    background: var(--text-primary);
-  }
-  .pipeline-step.current .pipeline-mark { background: var(--text-accent); }
-
-  /* Segment 2 — the session title, renamed in place, right here. */
-  .ctx-session {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    min-width: 0;
-  }
-
-  .session-title {
-    font-weight: 600;
-    font-size: var(--sz-xs);
-    color: var(--text-primary);
-    background: transparent;
-    border: none;
-    border-bottom: 1px dashed transparent;
-    padding: 1px 4px;
-    cursor: text;
-    font-family: inherit;
-    max-width: 260px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    transition: background-color var(--t-tint), border-color var(--t-tint);
-  }
-
-  .session-title:hover { border-bottom-color: var(--border-strong); }
-  .session-title.unnamed { color: var(--text-muted); font-weight: 500; font-style: italic; }
-
-  .session-title-input {
-    font: inherit;
-    font-size: var(--sz-xs);
-    font-weight: 600;
-    color: var(--text-primary);
-    background: var(--surface-containerLowest);
-    border: 1px solid var(--border-accent);
-    outline: none;
-    padding: 1px 4px;
-    width: 200px;
-  }
-
-  .session-state {
-    font-family: var(--font-condensed);
-    font-size: var(--sz-technical-label);
-    font-weight: 600;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    padding: 1px 5px;
-    border: 1px solid var(--border-success);
-    background: var(--surfaceSubtle-success);
-    color: var(--text-success);
-    flex-shrink: 0;
-  }
-
-  .session-state.parked { border-color: var(--border-warning); background: var(--surfaceSubtle-warning); color: var(--text-warning); }
-  .session-state.ended  { border-color: var(--border-strong); background: var(--surface-container); color: var(--text-muted); }
-  .session-state.error  { border-color: var(--border-danger); background: var(--surfaceSubtle-danger); color: var(--text-danger); }
-
-  .ctx-fallback { display: flex; align-items: center; gap: 5px; }
-  .ctx-fallback[hidden] { display: none; }
-  .ctx-fallback #ctxFallbackHint { font-size: var(--sz-technical-label); color: var(--text-muted); }
-
-  /* ===== SESSION TILE SPINE =========================================
-     The session's identity now lives ON the session, which is where the
-     operator is already looking. Full tile width buys the pipeline a real
-     strip instead of four squeezed segments in shared chrome — and it is
-     the level the procedure STEPS slot into later (A7 / P1). */
-  .tile-spine {
-    display: flex;
-    flex-direction: column;
-    gap: var(--sp-2);
-    border-bottom: 1px solid var(--border-strong);
-    padding-bottom: var(--sp-2);
-    margin-bottom: var(--sp-2);
-  }
-
-  .tile-spine-identity {
-    display: flex;
-    align-items: center;
-    gap: var(--sp-2);
-    flex-wrap: wrap;
-  }
-
-  .tile-spine .pipeline { height: 20px; width: 100%; }
-  .tile-spine .pipeline-step { flex: 1; justify-content: center; }
-
-  /* Fixed width, so the context line's budget is a constant and not a
-     lottery. Everything here is tabular so the digits do not jitter. */
-  /* UNBOXED, matching the corner cluster: state is the background tint,
-     not a bordered frame around it (`.scan-armed` proved the pattern
-     first). idle keeps no tint at all, which is the point — a resting
-     readout should not read as a control waiting to be pressed. */
-  .header-face {
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    height: var(--control-h);
-    width: 128px;
-    justify-content: center;
-    padding: 0 var(--sp-2);
-    color: var(--text-secondary);
-    font: inherit;
-    font-size: var(--sz-xs);
-    cursor: pointer;
-    transition: background-color var(--t-tint), color var(--t-tint);
-  }
-
-  .header-face:hover { background: var(--surface-container); }
-  .header-face .face-sep { color: var(--text-muted); }
-  .header-face .mono { color: inherit; }
-
-  /* State is carried by the pair, not by a separate badge. */
-  .header-face.on-target { color: var(--text-success); background: var(--surfaceSubtle-success); }
-  .header-face.near      { color: var(--text-warning); background: var(--surfaceSubtle-warning); }
-  .header-face.over      { color: var(--text-danger);  background: var(--surfaceSubtle-danger); }
-  .header-face.idle      { color: var(--text-muted); }
-
-  .header-overflow { flex-shrink: 0; display: flex; align-items: center; }
-
-  /* ===== BODY ===== */
-  .wos-body {
-    display: flex;
-    flex: 1;
-    overflow: hidden;
-    position: relative;
-  }
-
-  /* ===== BOTH RAILS' HOT-ZONES =======================================
-     Both rails are fully closeable (2026-08-24, left joined right for
-     parity) — the nav UNMOUNTS rather than hiding, so there is no
-     invisible-but-focusable trap for keyboard/screen-reader users. This
-     wrapper is what stays mounted either way: it is the hover surface
-     (`RailSessions` / `RailTools` schedule the peek open/close on it via
-     `useRailPeek`) and, closed, the only thing left at its edge — a bare
-     10px sliver, no background, no border, wide enough to catch a
-     pointer and nothing else. Open, it hugs whatever width the nav
-     inside declares (40 or 208px) rather than sizing itself.
-
-     ROW, not column — the single child (`.rail`) needs the CROSS axis
-     (vertical) stretched to fill height, and stretch only ever applies
-     cross-axis. A column here would make height the MAIN axis, and a
-     child with no `flex-grow` sits at its content height on that axis
-     regardless of `align-items` — which is exactly the bug this row
-     avoids. */
-  .rail-left-zone,
-  .rail-right-zone {
-    display: flex;
-    flex-shrink: 0;
-    height: 100%;
-    min-width: 10px;
-    position: relative;
-  }
+  /* `.session-state` left with the SessionTile placeholder (2026-08-25):
+     the armed session's face is the composer's SessionHeader, on shadcn
+     `Badge`. `.wos-body` converted to Tailwind in ShellRoot the same day. */
 
   /* ===== RAILS ======================================================
-     Persistent icon strips. Expanding is a width change and therefore
-     is INSTANT — no transition. A rail that tweens open occupies the
-     canvas for the length of the tween while handing nothing back. */
-  /* RIGHT carries no background (2026-08-24, operator ruling) — falls
-     through to `body`'s own `--bg-canvas` (globals.css), the well's own
-     colour, so it and the well share one plane with no seam painted
-     between them. LEFT keeps its own plane, per the same ruling. */
-  .rail {
-    width: var(--rail-width);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: var(--sp-1) 0;
-    gap: 2px;
-    flex-shrink: 0;
-    overflow: hidden;
-    position: relative;
-    z-index: var(--z-panel);
-  }
-
-  /* Both rails now sit on the EDGE plane — left declares it, right
-     falls through to `.wos`, which is the same value. The 2026-08-24
-     "one chrome plane, no seam between rail and well" ruling survives
-     the inversion: what changed is WHICH plane the chrome is, not that
-     the chrome is one plane. */
-  /* NO BACKGROUND CONTAINER, NO BORDER (2026-08-24, operator ruling:
-     "Just the icons"). Reverses both the fill and the hairline ruled one
-     message earlier. The rail is now a bare column of glyphs sitting
-     directly on the edge plane — what separates it from the canvas is
-     the canvas's own plane change, not any chrome of the rail's own. */
-  .rail.left { background: transparent; }
-
-  /* UNBOXED (2026-08-24, operator ruling): both rails already share the
-     well-ground's own background token — they ARE one chrome plane by
-     design (see the Well's docblock), so the 1px seam here was drawing a
-     boundary between two things declared identical. The rail-edge grip
-     still marks where the drag control lives. */
-  .rail.expanded {
-    width: var(--rail-expanded);
-    align-items: stretch;
-    padding: var(--sp-1);
-  }
-
-  .rail-btn {
-    width: 28px;
-    height: 28px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    color: var(--text-secondary);
-    transition: background-color var(--t-tint), color var(--t-tint);
-    flex-shrink: 0;
-    border: none;
-    background: transparent;
-    font: inherit;
-  }
-
-  .rail.expanded .rail-btn { width: 100%; justify-content: flex-start; padding: 0 var(--sp-2); gap: var(--sp-2); font-size: var(--sz-xs); }
-  .rail-btn:hover { background: var(--surface-container); color: var(--text-primary); }
-  .rail-btn.active { background: var(--text-primary); color: var(--text-inverse); }
-  .rail-btn svg { width: 16px; height: 16px; flex-shrink: 0; }
-  .rail-btn .rail-btn-label { display: none; }
-  .rail.expanded .rail-btn .rail-btn-label { display: inline; }
-
-  /* A queued proposal is a fact the operator must see WITHOUT opening the
-     panel — so it badges the icon. Square, like every other mark. */
-  .rail-badge {
-    position: absolute;
-    top: 1px;
-    right: 1px;
-    min-width: 12px;
-    height: 12px;
-    padding: 0 2px;
-    background: var(--text-warning);
-    color: var(--text-inverse);
-    font-family: var(--font-condensed);
-    font-size: 9px;
-    font-weight: 700;
-    line-height: 12px;
-    text-align: center;
-  }
-
-  .rail-btn { position: relative; }
-  .rail.expanded .rail-badge { position: static; margin-left: auto; }
-
-  /* UNBOXED: spacing does the separating job now, not a drawn rule — the
-     rail's own gradient (PERMANENCE DECREASES DOWNWARD) already orders the
-     groups; a line between them was restating an order the layout states
-     on its own. */
-  .rail-divider {
-    width: 24px;
-    height: 0;
-    margin: var(--sp-2) 0;
-    flex-shrink: 0;
-  }
-
-  .rail.expanded .rail-divider { width: 100%; }
-
-  /* The rail's own name, and its collapse control once it is open.
-     COLLAPSED IT IS NOT SHOWN AT ALL — a 40px strip of icons has no room
-     for prose, and a vertical word is prose read sideways. What the label
-     was also doing collapsed, separating pins from tabs, a 1px divider
-     does better and silently. */
-  .rail-label {
-    writing-mode: vertical-rl;
-    text-orientation: mixed;
-    font-size: var(--sz-technical-label);
-    letter-spacing: 0.24em;
-    text-transform: uppercase;
-    color: var(--text-muted);
-    padding: var(--sp-2) 0;
-    font-weight: 700;
-    font-family: var(--font-condensed);
-    user-select: none;
-    cursor: pointer;
-    background: transparent;
-    border: none;
-    width: 100%;
-    display: flex;
-    justify-content: center;
-    flex-shrink: 0;
-    transition: background-color var(--t-tint), color var(--t-tint);
-  }
-
-  .rail:not(.expanded) .rail-label { display: none; }
-  .rail.expanded .rail-divider-collapsed { display: none; }
-  .rail-label:hover { background: var(--surface-container); color: var(--text-primary); }
-
-  .rail.expanded .rail-label {
-    writing-mode: horizontal-tb;
-    text-orientation: initial;
-    padding: var(--sp-1) var(--sp-2);
-    justify-content: flex-start;
-    font-size: 10px;
-    letter-spacing: 0.16em;
-  }
-
-  /* THE TOGGLE. The inner-edge drag handle is gone (2026-08-24) — it was
-     a 6px sliver only findable by touch. `.rail-slack`, the full-width
-     strip that replaced it, is ALSO gone (2026-08-24) — it was a flex:1
-     filler that pushed Recents to the bottom of an otherwise-empty rail,
-     spending "remove the padding" as a literal instruction. `.rail-label`
-     is the rail's one toggle now; the right rail also has an explicit
-     header button (`GlobalHeader`'s `.cluster-btn`), because a rail that
-     is not always visible earns a discoverable, not just a reachable,
-     toggle. */
-
-  /* THE BOTTOM-LEFT CORNER's gear button — and `.rail-footer`, its wrapper
-     — are gone (settings moved into the identity dropdown, 2026-08-24). */
-
-  .rail-group {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 2px;
-    width: 100%;
-    flex-shrink: 0;
-  }
-
-  .rail.expanded .rail-group { align-items: stretch; }
-
-  .tab-list {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    overflow-y: auto;
-    overflow-x: hidden;
-    width: 100%;
-    align-items: center;
-    /* Rail overflow (open question 6) answered as SCROLL: the strip is
-       a fixed-width vertical column, so the tab list is the part that
-       shrinks and scrolls. Pins and recents keep their height. */
-    flex: 0 1 auto;
-    min-height: 0;
-  }
-
-  .rail.expanded .tab-list { align-items: stretch; }
-
-  .tab, .pin, .recent-item {
-    width: 28px;
-    height: 26px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    position: relative;
-    color: var(--text-secondary);
-    transition: background-color var(--t-tint), color var(--t-tint);
-    flex-shrink: 0;
-    border: none;
-    background: transparent;
-    font: inherit;
-  }
-
-  .rail.expanded .tab,
-  .rail.expanded .pin,
-  .rail.expanded .recent-item {
-    width: 100%;
-    justify-content: flex-start;
-    padding: 0 var(--sp-2) 0 var(--sp-3);
-    gap: var(--sp-2);
-    font-size: var(--sz-xs);
-  }
-
-  /* Collapsed, a rail is icons only — labels would spill past 40px. */
-  .rail:not(.expanded) .tab-name,
-  .rail:not(.expanded) .recents-header span { display: none; }
-
-  .tab:hover, .pin:hover, .recent-item:hover { background: var(--surface-container); color: var(--text-primary); }
-  .tab.active { background: var(--surface-containerHigh); color: var(--text-primary); font-weight: 600; }
-
-  /* The active tab's lit cell — a square 3px edge bar, not a pill */
-  .tab.active::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 3px;
-    background: var(--text-primary);
-  }
-
-  .pin { color: var(--text-primary); }
-
-  /* Per-tab colour is a 3px edge stripe, not a dot: it stays legible
-     at rail width, it never becomes confetti because it is structural,
-     and it reads the same expanded or collapsed. */
-  .tab-color {
-    width: 3px;
-    height: 100%;
-    position: absolute;
-    right: 0;
-    top: 0;
-    flex-shrink: 0;
-  }
-
-  .rail.expanded .tab-color { right: 0; }
-
-  .tab-name {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    flex: 1;
-    text-align: left;
-  }
-
-  /* A label, not a button (2026-08-24) — Recents has no collapse state to
-     toggle any more, so it carries no cursor:pointer and no hover tint. */
-  .recents-header {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    padding: 2px var(--sp-1);
-    font-size: var(--sz-technical-label);
-    text-transform: uppercase;
-    letter-spacing: 0.14em;
-    color: var(--text-muted);
-    font-family: var(--font-condensed);
-    font-weight: 700;
-    user-select: none;
-    width: 100%;
-    justify-content: center;
-    /* It is a row in the rail's one column, so it holds its row height
-       instead of being the thing that gives way when the rail is tight —
-       the tab list is the designated scroller, not this. */
-    flex-shrink: 0;
-  }
-
-  .rail:not(.expanded) .recents-header { height: 26px; }
-  .rail.expanded .recents-header { justify-content: flex-start; padding: 2px var(--sp-2); }
-  .recents-header svg { flex-shrink: 0; }
-  .rail.expanded .recents-icon { display: none; }
-
-  /* Bottom-anchored and BOUNDED. Two independent scroll ports — a long tab
-     list cannot starve recents and a long history cannot starve the tabs.
-     That is a fuller answer to rail overflow than "the tab list scrolls". */
-  .recents-list {
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-    width: 100%;
-    align-items: center;
-    /* Bounded tighter than half the rail: the bottom-left corner is a
-       trail, not a second workspace. */
-    max-height: 34vh;
-    overflow-y: auto;
-    overflow-x: hidden;
-    flex-shrink: 0;
-  }
-  .rail.expanded .recents-list { align-items: stretch; }
-
-  /* ===== RECENTS — scoped to the current session (H1a). =============
-     Banded by kind in a FIXED order, MRU within a band. The band is what
-     makes the list reachable by muscle memory: cartons sit at the same
-     offset from the top whatever you did at another bench. Recency is
-     not lost to the banding — it is carried by the marker instead, which
-     is why the marker exists. */
-  .recent-band { display: flex; flex-direction: column; width: 100%; align-items: center; }
-  .rail.expanded .recent-band { align-items: stretch; }
-
-  .recent-band-label {
-    display: none;
-    font-family: var(--font-condensed);
-    font-size: var(--sz-technical-label);
-    font-weight: 700;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-    color: var(--text-muted);
-    padding: 4px var(--sp-2) 2px;
-  }
-
-  .rail.expanded .recent-band-label { display: block; }
-  /* Collapsed, a band is separated by SPACE, never by a rule.
-     A hairline in this column already has a meaning — it is what divides
-     pins from tabs from recents from the footer, i.e. "a different kind of
-     thing starts here". Spending that same ink on "same kind of thing,
-     next group" made five bands of one list read as five separate
-     displays. Proximity groups them for free and adds no ink. */
-  .rail:not(.expanded) .recent-band + .recent-band { margin-top: 5px; }
-
-  /* A recent is a row in the same column as a tab and a pin, so it is the
-     same cell: 28 x 26, glyph centred, glyph at 15px. It used to be 24px
-     tall with a left-aligned 12px glyph, because the cell also had to fit
-     the most-recent caret on its trailing edge without the two touching.
-     That caret is gone, and with it the reason for a second row size. */
-  .recent-item {
-    color: var(--text-secondary);
-    position: relative;
-  }
-
-  .rail.expanded .recent-item { height: auto; min-height: 26px; padding: 2px var(--sp-3) 2px var(--sp-3); }
-
-  .recent-text { display: none; min-width: 0; flex: 1; text-align: left; }
-  .rail.expanded .recent-text { display: block; }
-  .recent-title { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--sz-xs); }
-  .recent-sub {
-    display: block;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-size: var(--sz-technical-label);
-    color: var(--text-muted);
-    font-family: var(--font-mono);
-  }
-
-  /* The leading-edge "touched by the live session" mark is gone
-     (2026-08-24): every row rendered here already IS from the current
-     session — the filter does that job now, not a stripe on top of an
-     unscoped list (H1 superseded). */
-
-  /* The single most recent selection, anywhere in the list. One per
-     rail, by definition. */
-  /* The most recent selection is marked by the ROW, not by a caret beside
-     it. A 9px triangle hung off the right edge of a 40px rail had to be
-     absolutely positioned to avoid shoving the label, and it still crowded
-     the row it was pointing at. The tint says the same thing and costs no
-     space. */
-  .recent-item.is-last { color: var(--text-primary); background: var(--surfaceSubtle-accent); }
+     DELETED 2026-08-25. The whole `.rail` / `.rail-btn` / `.tab` /
+     `.pin` / `.recent-item` / `.recent-band` family matched nothing:
+     `RailSessions` and `RailTools` are Tailwind + shadcn icon stacks
+     floating on the canvas ground — no bar, no fill, no width token.
+     Removed rather than left orphaned (F11: a dead block that still
+     matches nothing is what makes the next reader think the CSS is the
+     source of truth). ============================================== */
 
   /* ===== THE WELL ===================================================
      The inversion (HANDOFF-ai-centre §1): the feed IS the surface. The
@@ -1261,21 +388,33 @@
      THE ONE OUTER SHADOW IN THE SHELL (LAW 3, as amended) stays on the
      work surface. It is `none` in dark, where there is nothing behind it
      left to darken — the 1px stroke above carries the pane there. */
-  /* NOT ELEVATED (2026-08-24, operator ruling: "remove the white
-     elevated look for the ai chat — the text will be elevated itself").
-     `--shadow-pane` came off. The pane still floats in the gutter on its
-     radius and its 1px stroke, which is the Firefox inset the earlier
-     ruling asked for; what it no longer does is read as a raised white
-     CARD. A conversation is not a control, and the thing that should
-     stand out inside it is the text — which is why the bubbles went at
-     the same time.
+  /* NO WRAPPER TILE AT ALL (2026-08-24, operator ruling, third pass:
+     "remove the component from behind the composer … the composer
+     display should be the only one without a wrapper tile for it").
 
-     The shell now spends its elevation budget only where something
-     genuinely leaves the plane: `--shadow-overlay` on menus and
-     popovers, and `--shadow-inset` on the sunken composer. */
+     Removing the shadow was not enough — the pane still painted
+     `--plane-stage` inside a 1px stroke at a 16px radius, which IS a
+     tile, just an unlit one. So `.pane-composer` now un-declares
+     everything `.pane` gives it: no fill, no stroke, no radius. The chat
+     sits directly on the canvas ground.
+
+     This is the asymmetry the ruling asks for, and it is meaningful
+     rather than decorative. A TILE IS A THING YOU CAN CLOSE, MOVE AND
+     RESIZE — the queue is one, and every future data tile will be one.
+     The composer is none of those: it is permanent and unremovable (D2).
+     Giving it the same chrome as a tile said it was one. Now the shell
+     has exactly one un-tiled region, and that region is the one thing
+     that never goes away.
+
+     What still carries treatment inside it is the ENTRY — sunken, per
+     the Grok reference — and nothing else. The conversation is text on
+     the ground, which is the same ruling that removed the bubbles. */
   .pane-composer {
     flex: 1;
     min-width: 0;
+    background: transparent;
+    border: none;
+    border-radius: var(--r-none);
   }
 
   /* No `flex` at all — width comes from the inline style Well.tsx sets,
@@ -1287,282 +426,31 @@
     overflow: hidden;
   }
 
+  /* Idle-invisible resize cue. The queue card's left edge can still read
+     as a splitter at rest; keep the other three sides and light the left
+     stroke with the Well hairline (separator hover / focus / drag). Color
+     only. The tiles pane keeps the full box — it is not a resize target. */
+  .pane-queue:not(.canvas-tiles) {
+    border-left-color: transparent;
+  }
+  .canvas-split:has([role='separator']:hover) .pane-queue:not(.canvas-tiles),
+  .canvas-split:has([role='separator']:focus-visible) .pane-queue:not(.canvas-tiles),
+  .canvas-split[data-queue-resize] .pane-queue:not(.canvas-tiles) {
+    border-left-color: var(--stroke-plane);
+  }
+  @media (hover: none) {
+    .pane-queue:not(.canvas-tiles) {
+      border-left-color: var(--stroke-plane);
+    }
+  }
+
   /* ===== TILES ======================================================
-     UNMOUNTED since the inversion — the canvas was demoted off the
-     default screen; these rules wait for the panel phases, where what
-     a tile used to show becomes right-panel detail.
-     Four states, four distinct treatments — because in a tiling
-     manager hover and focus are different facts and one of them
-     decides where the keystrokes go.
-       hover       1px grey inset ring, no fill
-       focused     2px accent inset ring + accent header + edge bar
-       dragging    dashed ring + 40% opacity
-       snap-target dashed accent ring + accent wash
-     All four are `outline` or `background`, so none of them reflow. */
-  .tile {
-    flex: 1 1 0;
-    display: flex;
-    flex-direction: column;
-    border-right: 1px solid var(--border-strong);
-    position: relative;
-    min-width: var(--tile-min-table);
-    background: var(--surface-containerLowest);
-  }
-
-  .tile[data-type="session"] { min-width: var(--tile-min-session); }
-  .tile:last-child { border-right: none; }
-
-  .tile:hover { outline: 1px solid var(--border-strong); outline-offset: -1px; }
-
-  .tile.focused {
-    outline: 2px solid var(--border-accent);
-    outline-offset: -2px;
-  }
-  .tile.focused .tile-header {
-    background: var(--surfaceSubtle-accent);
-    color: var(--text-primary);
-    border-bottom-color: var(--border-accent);
-  }
-  .tile.focused .tile-header::before {
-    content: '';
-    position: absolute;
-    left: 0; top: 0; bottom: 0;
-    width: 3px;
-    background: var(--border-accent);
-  }
-
-  .tile.dragging {
-    opacity: 0.4;
-    outline: 2px dashed var(--border-strong);
-    outline-offset: -2px;
-  }
-
-  .tile.snap-target {
-    background: var(--surfaceSubtle-accent);
-    outline: 2px dashed var(--border-accent);
-    outline-offset: -2px;
-  }
-
-  .tile-header {
-    height: 26px;
-    border-bottom: 1px solid var(--border-strong);
-    display: flex;
-    align-items: center;
-    padding: 0 var(--sp-2);
-    gap: var(--sp-2);
-    font-size: 11px;
-    color: var(--text-secondary);
-    flex-shrink: 0;
-    background: var(--surface-containerLow);
-    position: relative;
-    transition: background-color var(--t-tint), color var(--t-tint);
-  }
-
-  .tile-header .tile-identity {
-    display: flex;
-    align-items: center;
-    gap: var(--sp-2);
-    flex: 1;
-    min-width: 0;
-  }
-
-  .tile-header .tile-color { width: 8px; height: 8px; flex-shrink: 0; }
-
-  .tile-header .tile-title {
-    font-weight: 600;
-    color: var(--text-primary);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .tile-header .tile-type {
-    font-size: var(--sz-technical-label);
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    color: var(--text-muted);
-    font-family: var(--font-condensed);
-    font-weight: 700;
-    border: 1px solid var(--border-subtle);
-    padding: 0 4px;
-  }
-
-  /* Tile actions are always present — an opacity reveal is a hover
-     dependency, and a mounted tablet has no hover. */
-  .tile-header .tile-actions { display: flex; gap: 2px; flex-shrink: 0; }
-
-  /* Close is the last thing in the header and the only red thing in it.
-     Destructive, so it reads destructive before it is pressed — and it is
-     always present, because a mounted tablet has no hover to reveal it. */
-  .tile-header .tile-close:hover {
-    background: var(--surfaceSubtle-danger);
-    color: var(--text-danger);
-  }
-
-  .tile-body {
-    flex: 1;
-    overflow: auto;
-    padding: var(--sp-3);
-    font-size: var(--sz-data-value);
-    line-height: 1.45;
-    position: relative;
-  }
-
-  .tile-split-handle {
-    position: absolute;
-    right: -3px;
-    top: 0;
-    bottom: 0;
-    width: 6px;
-    cursor: col-resize;
-    z-index: var(--z-raised);
-    background: transparent;
-    transition: background-color var(--t-tint);
-  }
-
-  .tile-split-handle:hover { background: var(--border-accent); }
-
-  /* ===== EMPTY SLATE ===== */
-  .empty-slate {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    width: 100%;
-    gap: var(--sp-4);
-    color: var(--text-muted);
-    text-align: center;
-    padding: var(--sp-6);
-  }
-
-  .empty-slate h2 {
-    font-size: var(--sz-xl);
-    font-weight: 600;
-    letter-spacing: 0.02em;
-    text-transform: uppercase;
-    font-family: var(--font-condensed);
-    color: var(--text-secondary);
-  }
-
-  .empty-slate p { font-size: var(--sz-sm); max-width: 380px; line-height: 1.55; }
-  .empty-slate-actions { display: flex; gap: var(--sp-2); flex-wrap: wrap; justify-content: center; }
-  .empty-slate-hints {
-    margin-top: var(--sp-2);
-    font-size: var(--sz-xs);
-    color: var(--text-muted);
-    display: flex;
-    gap: var(--sp-3);
-    flex-wrap: wrap;
-    justify-content: center;
-  }
-
-  /* ===== TOOL PANEL =================================================
-     It PUSHES. `position: absolute` + a shadow was the easy answer and
-     the wrong one: on a bench a panel over the work is a panel you
-     cannot read past. It is a flex sibling in normal flow, it appears
-     and disappears instantly, and the canvas simply gets narrower. */
-  .tool-panel {
-    width: var(--tool-panel-width);
-    flex-shrink: 0;
-    background: var(--plane-edge);
-    border-left: 1px solid var(--stroke-plane);
-    z-index: var(--z-panel);
-    display: none;
-    flex-direction: column;
-    overflow: hidden;
-  }
-
-  .tool-panel.open { display: flex; }
-
-  .tool-panel-header {
-    height: 26px;
-    border-bottom: 1px solid var(--border-strong);
-    display: flex;
-    align-items: center;
-    padding: 0 var(--sp-1) 0 var(--sp-3);
-    font-size: var(--sz-technical-label);
-    font-family: var(--font-condensed);
-    font-weight: 700;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--text-secondary);
-    justify-content: space-between;
-    flex-shrink: 0;
-    background: var(--plane-edge-raised);
-  }
-
-  .tool-panel-body { padding: var(--sp-3); font-size: var(--sz-xs); overflow: auto; flex: 1; }
-
-  .tool-panel-footer {
-    border-top: 1px solid var(--border-subtle);
-    padding: var(--sp-1) var(--sp-3);
-    font-size: var(--sz-technical-label);
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    font-family: var(--font-condensed);
-    font-weight: 600;
-    color: var(--text-muted);
-    flex-shrink: 0;
-  }
-
-  /* ===== SETTINGS — anchored to the corner that opens it ===== */
-  .settings-popover {
-    position: absolute;
-    left: var(--sp-1);
-    bottom: var(--sp-1);
-    width: 248px;
-    background: var(--surface-containerLowest);
-    border: 1px solid var(--border-hud);
-    z-index: var(--z-panelPopover);
-    display: none;
-    flex-direction: column;
-    overflow: hidden;
-  }
-
-  .settings-popover.open { display: flex; }
-
-  .settings-note {
-    font-size: var(--sz-technical-label);
-    line-height: 1.6;
-    color: var(--text-muted);
-  }
-
-  /* ===== CONTEXT MENU ===== */
-  .context-menu {
-    position: fixed;
-    background: var(--surface-containerLowest);
-    border: 1px solid var(--border-strong);
-    z-index: var(--z-dropdown);
-    min-width: 184px;
-    display: none;
-    flex-direction: column;
-    padding: 0;
-  }
-
-  .context-menu.open { display: flex; }
-
-  .context-item {
-    padding: 6px var(--sp-3);
-    font-size: var(--sz-xs);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: var(--sp-2);
-    color: var(--text-primary);
-    border: none;
-    background: transparent;
-    font: inherit;
-    width: 100%;
-    text-align: left;
-    transition: background-color var(--t-tint);
-  }
-
-  .context-item:hover { background: var(--surface-container); }
-  .context-item.danger { color: var(--text-danger); }
-  .context-item.danger:hover { background: var(--surfaceSubtle-danger); }
-  .context-item svg { width: 14px; height: 14px; flex-shrink: 0; }
-  .context-divider { height: 1px; background: var(--border-subtle); }
+     DELETED 2026-08-25. The legacy `.tile` block was a DEAD SELECTOR —
+     `Tile.tsx` is Tailwind + shadcn (`rounded-lg border …`) and nothing
+     rendered `className="tile"` any more. It was also §6's first suspect
+     for the square-corner bug; removed so the next reader cannot mistake
+     it for the source of truth. The four-state treatment lives in
+     `Tile.tsx` with its own docblock. ================================ */
 
   /* ===== BUTTONS =====
      A press is a colour swap. The old translateY(1px) moved the label
@@ -1586,32 +474,7 @@
   }
 
   .btn:hover { background: var(--surface-containerHigh); }
-  .btn:active { background: var(--surface-containerHighest); }
-
-  .btn-primary { background: var(--text-primary); color: var(--text-inverse); border-color: var(--text-primary); }
-  .btn-primary:hover { background: var(--text-accent); border-color: var(--text-accent); color: #ffffff; }
-  .btn-primary:active { background: var(--text-accent); }
-  .btn-sm { padding: 3px 10px; font-size: 11px; }
-  .btn-icon { padding: 0; width: 26px; height: 26px; border-radius: var(--r-control); }
-
-  /* ===== BADGES ===== */
-  .badge {
-    display: inline-flex;
-    align-items: center;
-    padding: 0 5px;
-    font-size: var(--sz-technical-label);
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    font-family: var(--font-condensed);
-    border: 1px solid currentColor;
-    line-height: 15px;
-  }
-
-  .badge-success { background: var(--surfaceSubtle-success); color: var(--text-success); }
-  .badge-warning { background: var(--surfaceSubtle-warning); color: var(--text-warning); }
-  .badge-danger  { background: var(--surfaceSubtle-danger);  color: var(--text-danger); }
-  .badge-accent  { background: var(--surfaceSubtle-accent);  color: var(--text-accent); }
+  .btn:active { background: var(--surface-containerHighest); }  .btn-sm { padding: 3px 10px; font-size: 11px; }  /* `.badge` deleted 2026-08-25 — every badge is shadcn `Badge` now. */
 
   /* ===== UTILITIES ===== */
   .mono {
@@ -1623,41 +486,9 @@
     letter-spacing: -0.01em;
   }
 
-  /* KEYCAPS (2026-08-24, operator ruling: "tactile, rounded keycaps",
-     "strictly NO squared-off, flat buttons"). The 2px bottom border is
-     the tactility — a key has a lip, and one extra pixel of stroke says
-     so without a shadow or a gradient. `--r-keycap` is deliberately
-     tighter than `--r-control`: at 15px tall, 6px would read as a
-     lozenge. */
-  .kbd {
-    display: inline-flex;
-    align-items: center;
-    padding: 0 5px;
-    background: var(--surface-containerLowest);
-    border: 1px solid var(--border-strong);
-    border-bottom-width: 2px;
-    border-radius: var(--r-keycap);
-    font-size: 10px;
-    font-family: var(--font-mono);
-    color: var(--text-secondary);
-    line-height: 15px;
-  }
-
-  /* The linear keybind preview strip — cap + what it does, repeated. */
-  .keycap {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--sp-1);
-    padding: 2px var(--sp-2) 2px 2px;
-    border-radius: var(--r-control);
-    background: var(--surface-containerLow);
-    color: var(--text-muted);
-    font-size: var(--sz-technical-label);
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    font-family: var(--font-condensed);
-    font-weight: 600;
-  }
+  /* `.kbd` / `.keycap` deleted 2026-08-25 — the keycap legend left the
+     composer on 2026-08-24 and the last consumers rendered the chip in
+     Tailwind (`rounded-keycap border-b-2 …`) instead. */
 
   /* Data table — a grid, with column rules and zebra banding, because
      the job is reading one row across without losing it. */
@@ -1695,10 +526,7 @@
   .data-table tbody tr:nth-child(even) td { background: var(--surface-containerLow); }
   .data-table tbody tr:hover td { background: var(--surfaceSubtle-accent); }
   .data-table .col-xs { width: 22px; }
-  .data-table .col-s { width: 108px; }
-  .data-table .col-m { width: 168px; }
-
-  /* Status marks are squares. At 7px a square is more legible than a
+  .data-table .col-s { width: 108px; }  /* Status marks are squares. At 7px a square is more legible than a
      circle and it matches everything else in the frame. */
   .status-dot { width: 7px; height: 7px; display: inline-block; flex-shrink: 0; }
   .status-dot.ok { background: var(--text-success); }
@@ -1706,231 +534,10 @@
   .status-dot.err { background: var(--text-danger); }
   .status-dot.info { background: var(--text-accent); }
 
-  /* Composer */
-  .composer {
-    border-top: 1px solid var(--border-strong);
-    padding: var(--sp-2);
-    display: flex;
-    gap: var(--sp-2);
-    align-items: flex-end;
-    background: var(--surface-containerLow);
-  }
-
-  .composer-wrap { flex: 1; display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; }
-
-  .composer-toggle {
-    display: flex;
-    align-self: flex-start;
-    border: 1px solid var(--border-subtle);
-    font-size: var(--sz-technical-label);
-    font-family: var(--font-condensed);
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-  }
-
-  .composer-toggle span,
-  .composer-toggle button {
-    padding: 1px var(--sp-2);
-    cursor: pointer;
-    color: var(--text-muted);
-    transition: background-color var(--t-tint), color var(--t-tint);
-    user-select: none;
-  }
-
-  .composer-toggle span + span,
-  .composer-toggle button + button { border-left: 1px solid var(--border-subtle); }
-  .composer-toggle span:hover,
-  .composer-toggle button:hover { color: var(--text-secondary); background: var(--surface-container); }
-  .composer-toggle span.active,
-  .composer-toggle button.active { background: var(--text-primary); color: var(--text-inverse); }
-
-  .composer textarea {
-    width: 100%;
-    border: 1px solid var(--border-strong);
-    padding: 5px var(--sp-2);
-    font: inherit;
-    font-size: var(--sz-xs);
-    background: var(--surface-containerLowest);
-    color: var(--text-primary);
-    resize: none;
-    outline: none;
-    min-height: 28px;
-    max-height: 80px;
-    line-height: 1.4;
-  }
-
-  .composer textarea:focus { border-color: var(--border-accent); }
-
-  /* Offline banner — in the beam's flow band, appears instantly. */
-  .offline-banner {
-    height: 24px;
-    background: var(--surfaceSubtle-warning);
-    border-bottom: 1px solid var(--border-warning);
-    display: none;
-    align-items: center;
-    justify-content: center;
-    gap: var(--sp-2);
-    font-size: var(--sz-technical-label);
-    font-family: var(--font-condensed);
-    font-weight: 700;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--text-warning);
-    z-index: var(--z-banner);
-    flex-shrink: 0;
-  }
-
-  .offline-banner.open { display: flex; }
-
-  /* Launcher */
-  .launcher {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.35);
-    z-index: var(--z-command);
-    display: none;
-    align-items: flex-start;
-    justify-content: center;
-    padding-top: 14vh;
-  }
-
-  .launcher.open { display: flex; }
-
-  .launcher-box {
-    width: 560px;
-    max-width: 92vw;
-    background: var(--surface-containerLowest);
-    border: 2px solid var(--border-hud);
-    overflow: hidden;
-  }
-
-  .launcher-input {
-    width: 100%;
-    border: none;
-    border-bottom: 1px solid var(--border-strong);
-    padding: var(--sp-3) var(--sp-4);
-    font: inherit;
-    font-size: var(--sz-md);
-    background: var(--surface-containerLowest);
-    color: var(--text-primary);
-    outline: none;
-  }
-
-  .launcher-input::placeholder { color: var(--text-muted); }
-  .launcher-results { max-height: 340px; overflow: auto; }
-  .launcher-group + .launcher-group { border-top: 1px solid var(--border-subtle); }
-
-  .launcher-group-label {
-    padding: 4px var(--sp-4);
-    font-size: var(--sz-technical-label);
-    text-transform: uppercase;
-    letter-spacing: 0.16em;
-    color: var(--text-secondary);
-    font-family: var(--font-condensed);
-    font-weight: 700;
-    background: var(--surface-containerLow);
-  }
-
-  .launcher-item {
-    padding: 6px var(--sp-4);
-    display: flex;
-    align-items: center;
-    gap: var(--sp-3);
-    cursor: pointer;
-    transition: background-color var(--t-tint), color var(--t-tint);
-    border-left: 3px solid transparent;
-  }
-
-  .launcher-item:hover { background: var(--surface-containerLow); }
-  .launcher-item.selected {
-    background: var(--surfaceSubtle-accent);
-    border-left-color: var(--border-accent);
-  }
-
-  .launcher-item-icon {
-    width: 24px;
-    height: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 1px solid var(--border-subtle);
-    background: var(--surface-container);
-    color: var(--text-secondary);
-    flex-shrink: 0;
-  }
-
-  .launcher-item-title { font-size: var(--sz-sm); font-weight: 600; }
-  .launcher-item-meta { font-size: var(--sz-xs); color: var(--text-muted); }
-  .launcher-item-kbd { margin-left: auto; font-size: 10px; color: var(--text-muted); font-family: var(--font-mono); }
-
-  /* Session popover */
-  .session-popover {
-    position: absolute;
-    top: var(--header-height);
-    right: var(--sp-1);
-    width: 296px;
-    background: var(--surface-containerLowest);
-    border: 1px solid var(--border-hud);
-    z-index: var(--z-panelPopover);
-    display: none;
-    flex-direction: column;
-    overflow: hidden;
-  }
-
-  .session-popover.open { display: flex; }
-
-  .session-popover-header {
-    padding: var(--sp-1) var(--sp-1) var(--sp-1) var(--sp-3);
-    border-bottom: 1px solid var(--border-strong);
-    background: var(--surface-containerLow);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    font-family: var(--font-condensed);
-    font-size: var(--sz-technical-label);
-    font-weight: 700;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--text-secondary);
-  }
-
-  .session-popover-body {
-    padding: var(--sp-3);
-    font-size: var(--sz-xs);
-    display: flex;
-    flex-direction: column;
-    gap: var(--sp-3);
-  }
-
-  .session-field { display: flex; flex-direction: column; gap: 3px; }
-
-  .session-field label {
-    font-size: var(--sz-technical-label);
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    color: var(--text-muted);
-    font-family: var(--font-condensed);
-    font-weight: 700;
-  }
-
-  .session-field input {
-    border: 1px solid var(--border-strong);
-    padding: 4px var(--sp-2);
-    font: inherit;
-    font-size: var(--sz-xs);
-    background: var(--surface-containerLowest);
-    color: var(--text-primary);
-    outline: none;
-  }
-
-  .session-field input:focus { border-color: var(--border-accent); }
-
-  /* Responsive — the beam has one segment left to degrade: the stage
-     strip. */
-  @media (max-width: 1180px) {
-    .pipeline { display: none; }
-  }
+  /* The legacy `.composer` / `.composer-toggle` family and the
+     `.pipeline` media query are deleted (2026-08-25) — the docked
+     per-tile composer died with the session tile, and the stage strip is
+     Tailwind inside `SessionHeader`. */
 
   /* Reduced motion — near-empty by construction. Colour tints are the
      only thing left to shorten, and they already do not move anything. */
@@ -1948,161 +555,13 @@
   ::-webkit-scrollbar-thumb { background: var(--surface-containerHighest); border: 2px solid var(--surface-containerLow); }
   ::-webkit-scrollbar-thumb:hover { background: var(--surface-dim); }
 
-  /* ================================================================
-     PORT ADDITIONS
-     The prototype built most tile / panel bodies as `innerHTML` strings
-     with inline styles. React has no innerHTML here, so each of those
-     inline declarations became a class. Every value below is copied
-     from the prototype string it replaces — nothing was restyled, and
-     nothing here introduces a colour, a radius or a geometry
-     transition that the prototype did not already have.
-     ================================================================ */
-
-  /* rail-btn at the two smaller cells the prototype hard-coded:
-     22px for a panel's close control, 20px for a tile-header action. */
-  .rail-btn.rail-btn-sm { width: 22px; height: 22px; }
-  .rail-btn.rail-btn-xs { width: 20px; height: 20px; }
-
   .btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
-  /* `.recent-band-label` doubles as the house section label; the
-     prototype reused it with `display:block` inline everywhere it did. */
-  .recent-band-label.standalone { display: block; padding: 0 0 4px; }
-  .recent-band-label.stage-head {
-    display: block;
-    padding: 2px 0 4px;
-    border-bottom: 1px solid var(--border-strong);
-  }
-
-  .session-field input.readonly { color: var(--text-muted); }
-
-  /* ---- session tile ---- */
-  .session-tile { display: flex; flex-direction: column; gap: var(--sp-3); height: 100%; }
-  .spine-title { font-weight: 600; font-size: var(--sz-sm); }
-
-  .scan-await {
-    padding: var(--sp-4);
-    border: 1.5px dashed var(--border-strong);
-    text-align: center;
-    color: var(--text-muted);
-  }
-
-  .scan-await-label {
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.14em;
-    font-family: var(--font-condensed);
-    font-weight: 700;
-    color: var(--text-secondary);
-  }
-
-  .scan-await-line { margin-top: 6px; }
-  .scan-await-next { font-size: 11px; margin-top: 6px; }
-  .tile-hint { font-size: 11px; color: var(--text-muted); }
-  .tile-note { margin-top: 10px; font-size: 11px; color: var(--text-muted); }
-  .tile-placeholder { color: var(--text-muted); font-size: var(--sz-xs); padding: var(--sp-5); }
-
-  /* The docked composer sits flush to the tile's three inner edges, so
-     it cancels the tile body's padding rather than floating inside it. */
-  .composer.docked {
-    margin-top: auto;
-    margin-left: calc(var(--sp-3) * -1);
-    margin-right: calc(var(--sp-3) * -1);
-    margin-bottom: calc(var(--sp-3) * -1);
-  }
-
-  .composer.framed { border: 1px solid var(--border-hud); }
-  .composer.inset { margin: 0; border: 1px solid var(--border-strong); }
-
-  /* ---- empty slate ---- */
-  .empty-slate-ask { width: min(520px, 90%); }
-
-  /* ---- settings tile ---- */
-  .settings-tile { display: flex; flex-direction: column; gap: var(--sp-4); max-width: 620px; }
-  .settings-copy { font-size: 11px; color: var(--text-muted); line-height: 1.5; }
-  .settings-copy.spaced { margin-bottom: var(--sp-3); }
-  .settings-row { display: flex; align-items: center; gap: 10px; margin-bottom: var(--sp-2); }
-  .settings-row-label { width: 92px; font-size: var(--sz-xs); }
-  .pref-range { flex: 1; max-width: 200px; }
-  .accent-swatches { display: flex; gap: var(--sp-1); flex-wrap: wrap; }
-  .status-legend { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 6px; }
-  .status-legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; }
-
-  /* ---- tool panel bodies ---- */
-  .tool-block { display: flex; flex-direction: column; gap: 10px; }
-  .tool-copy { font-size: 11px; color: var(--text-secondary); line-height: 1.5; }
-  .tool-empty { color: var(--text-muted); text-align: center; padding: var(--sp-6) 0; }
-  .tool-empty-sub { font-size: 11px; }
-  .tool-actions { display: flex; gap: var(--sp-2); justify-content: center; }
-  .tool-readout { text-align: center; padding: 10px 0; }
-
-  .tool-readout-value {
-    font-size: 34px;
-    font-weight: 600;
-    font-variant-numeric: tabular-nums;
-    font-feature-settings: "tnum" 1;
-    font-family: var(--font-mono);
-  }
-
-  .tool-readout-label {
-    font-size: 11px;
-    color: var(--text-muted);
-    margin-top: var(--sp-1);
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-  }
-
-  .tool-section { margin-top: 14px; }
-  .tool-note { font-size: 11px; color: var(--text-muted); margin-top: 6px; line-height: 1.45; }
-  .agent-card { border: 1px solid var(--border-strong); padding: 6px; margin-bottom: var(--sp-1); }
-  .agent-card-title { font-weight: 600; }
-  .agent-card-kind { font-size: 10px; color: var(--text-muted); }
-  .agent-card-why { font-size: 11px; color: var(--text-secondary); margin-top: 3px; }
-  .agent-card-actions { display: flex; gap: var(--sp-1); margin-top: 6px; }
-  .calc-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px; }
-  .calc-grid .btn { padding: 10px var(--sp-1); }
-  .pair-arrow { text-align: center; color: var(--text-muted); font-size: var(--sz-md); }
-
-  /* ---- popovers ---- */
-  .session-popover-actions { display: flex; gap: var(--sp-2); margin-top: 2px; }
-
-  /* A segment is a real <button> here, not a <span> with an onclick: it has to
-     take the keyboard and the focus ring. These two lines are the whole
-     difference — every other declaration is shared with the `span` rules
-     above, which is why they were widened rather than duplicated. */
-  .mode-toggle button,
-  .composer-toggle button {
-    font: inherit;
-    color: inherit;
-    border: none;
-    background: transparent;
-  }
-
-  /* `.launcher-item` is a real <button> here (the prototype made it a div
-     with an onclick), so it needs the element reset. The `border-left`
-     accent edge is set by the rule above and must survive. */
-  .launcher-item {
-    width: 100%;
-    text-align: left;
-    font: inherit;
-    color: inherit;
-    background: transparent;
-    border-top: none;
-    border-right: none;
-    border-bottom: none;
-  }
-
-  /* `.session-field label` styles the field's caption; a segmented control
-     is not labelled by a <label> (it has no single control to point at), so
-     the same caption on a <span> gets the same treatment. */
-  .settings-field-label {
-    font-size: var(--sz-technical-label);
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    color: var(--text-muted);
-    font-family: var(--font-condensed);
-    font-weight: 700;
-  }
+  /* The session-tile family — `.session-tile`, `.scan-await`,
+     `.tile-hint`, `.tile-note`, the docked `.composer` variants,
+     `.settings-copy`, `.mode-toggle` — deleted 2026-08-25 with the
+     SessionTile placeholder. The session's face is `SessionHeader` in
+     the composer, Tailwind + shadcn throughout. */
 
   /* ===== ASSISTANT FEED =============================================
      THE SURFACE. AI-first: the feed is a conversation, not a menu, and
@@ -2129,10 +588,27 @@
     display: flex;
     flex-direction: column;
     gap: var(--sp-3);
-    padding: var(--sp-3);
+    /* 8px pad so `.feed-entry` / bubbles can take `--r-surface` inside
+       a 16px pane (16 − 8 = 8). Matching `--r-pane` on the composer was
+       inverted concentric: the inner well was rounder than the hole. */
+    padding: var(--sp-2);
   }
 
-  .feed-composer { margin-top: auto; }
+  /* `margin-top: auto` IS REQUIRED — restored 2026-08-25 after it was
+     removed on a wrong assumption. The reasoning for dropping it was that
+     `.feed-scroll` is `flex: 1` and therefore always absorbs the slack,
+     leaving the composer pinned at the bottom for free. That holds only
+     while the scroller EXISTS: `AssistantFeed` renders it conditionally
+     (`feed.length === 0 ? null : …`), so on an empty feed — which is the
+     first thing every operator sees — nothing took the slack and the
+     composer sat at the TOP of the pane.
+
+     The auto margin is correct in both states and costs nothing in
+     either. Flexbox resolves flexible lengths BEFORE distributing free
+     space to auto margins (Flexbox §9.7 then §9.5), so with the scroller
+     mounted there is no free space left and the margin computes to 0;
+     with it absent the margin takes all of it and pushes the composer
+     down. One declaration, both cases, no conditional. */
 
   /* ===== THE QUEUE COLUMN ==========================================
      MIGRATED OUT (2026-08-24). Every `.stage-*` rule that lived here is
@@ -2144,6 +620,36 @@
 
   /* The feed — industry-standard bubbles: operator right, assistant
      left, a condensed micro-label naming each turn's author. */
+  /* BOTTOM-ANCHORED (2026-08-25). The newest turn sits directly above the
+     composer; history runs off the top. Two reasons beyond convention:
+
+       · The operator's gaze is fixed on the composer — it is where they
+         type and where the wedge lands a scan. Anchoring the newest turn
+         there puts every confirmation inside the existing gaze locus
+         instead of ~950px away at the top of a 1080px pane, which at a
+         few hundred scans a shift is a saccade tax on the whole loop.
+       · `model.ts` already rules the direction: "scrolling up is
+         scrolling back in time — never visiting a page." Newest-at-top
+         would invert the chronology the blocks and parking model assume.
+
+     `margin-top: auto` ON THE FIRST CHILD is what does it — NOT
+     `justify-content: flex-end`, which was the obvious answer and is
+     broken. MEASURED 2026-08-25 on :3051 at a 250px port: with
+     `flex-end`, content taller than the scroller overflows the START
+     edge, and overflow at the start edge is UNREACHABLE — the first turn
+     sat 449px above the port while the scroller still reported
+     `scrollHeight === clientHeight`, `scrollTop: 0` and `canScrollUp:
+     false`. The whole transcript above the fold was unscrollable.
+
+     An auto margin has neither problem: with slack it absorbs all of it
+     and pushes the turns to the bottom; with none it resolves to zero and
+     the scroller overflows the END edge like any normal block. Same
+     visual result, no unreachable history.
+
+     `overflow-anchor` is left at its default (`auto`) deliberately: the
+     browser's own scroll anchoring keeps the reading position stable when
+     content is inserted ABOVE the viewport, which is exactly the history
+     case. Turning it off would make loading older turns jump the view. */
   .feed-scroll {
     flex: 1;
     min-height: 0;
@@ -2153,6 +659,14 @@
     gap: var(--sp-3);
     padding-top: var(--sp-2);
   }
+
+  .feed-scroll > *:first-child { margin-top: auto; }
+
+  /* A flex child in a `justify-content: flex-end` column will not shrink
+     past its content, but it CAN be squeezed by `min-height: auto` when
+     the transcript is long. Turns opt out so the scroller scrolls instead
+     of compressing them. */
+  .feed-scroll > * { flex-shrink: 0; }
 
   /* ===== FEED TURNS ================================================
      DELETED 2026-08-24. `.feed-msg` / `.feed-role` / `.feed-bubble` /
@@ -2166,10 +680,11 @@
   .feed-composer {
     display: flex;
     flex-direction: column;
-    gap: var(--sp-2);
+    gap: var(--sp-1);
+    margin-top: auto;
   }
 
-  /* THE SUNKEN COMPOSER (2026-08-24, operator ruling — the Grok/Gemini
+  /*      THE SUNKEN COMPOSER (2026-08-24, operator ruling — the Grok/Gemini
      reference). Three things make it read as pressed-IN rather than
      raised, and all three are needed:
 
@@ -2179,57 +694,81 @@
           `--plane-stage`; the entry takes `--plane-stage-sunken`, so the
           dent exists in colour as well as in shading — which is what
           keeps it legible when a shadow is imperceptible.
-       3. `--r-pane`, matching the pane's own 16px, so the recess reads as
-          a well cut into the panel rather than as a foreign chip resting
-          on it.
+       3. `--r-surface`, concentric with the 16px pane at 8px pad
+          (16 − 8 = 8). Matching `--r-pane` was argued as "a well cut
+          into the panel" — that only holds if the field is flush to the
+          pane edge. With a gutter it is a nested card, rounder than the
+          hole.
 
      Point 2 is load-bearing for dark. The reference's `rgba(0,0,0,0.08)`
      is invisible on a #17171b surface; the token carries ~7x the alpha
      there (tokens.css), and the fill step covers what is left. */
+  /* A ROW, not a column (2026-08-25, operator ruling): a leading `+`, the
+     one field, and send — all inside the well itself.
+
+     `align-items: flex-end` rather than `center`: the field grows
+     downward as it wraps, and centred flanking buttons would drift down
+     with it, leaving the `+` floating beside line three of a paragraph.
+     Anchored to the bottom edge they stay on the baseline of the line
+     being typed, which is where the operator is looking.
+
+     `padding: 2px` gives the 28px buttons a 2px inset from the stroke so
+     their hover plates never collide with it — the concentric clamp
+     (8px well − 2px pad = 6px legal inner radius) is exactly
+     `--r-control`, which is what the buttons already use. */
   .feed-entry {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
+    align-items: flex-end;
+    gap: 2px;
+    padding: 2px;
     border: 1px solid var(--border-subtle);
-    border-radius: var(--r-pane);
+    border-radius: var(--r-surface);
     background: var(--plane-stage-sunken);
     box-shadow: var(--shadow-inset);
     transition: border-color var(--t-tint);
   }
 
+  /* The field takes the row; the two buttons are fixed. */
+  .feed-entry .occ-root { flex: 1; min-width: 0; }
+
   .feed-entry:focus-within { border-color: var(--border-accent); }
 
+  /* The textarea fallback follows the contenteditable's geometry so the
+     row does not change height depending on which one mounts. */
   .feed-entry textarea {
     width: 100%;
-    border-radius: var(--r-pane);
+    border-radius: var(--r-surface);
     border: none;
     background: transparent;
-    padding: var(--sp-2) var(--sp-3);
+    padding: 4px var(--sp-2);
     font: inherit;
     font-size: var(--sz-sm);
     color: var(--text-primary);
     resize: none;
     outline: none;
-    min-height: 44px;
+    min-height: 28px;
     max-height: 140px;
     line-height: 1.45;
   }
 
-  .feed-entry-meta {
+  /* THE COMPOSER ROW — OUTSIDE the well (2026-08-25). It used to live
+     inside `.feed-entry`, which meant the sunken stroke wrapped the text
+     field AND its controls, saying they were part of the field. They act
+     on it; they are not in it. The well now holds the input alone.
+
+     Padding is asymmetric on purpose: `2px` at the leading edge lines the
+     tools label up with the field's own text inset above it, and `4px`
+     trailing lets the send button's 24px hover plate sit flush with the
+     well's right edge rather than 4px shy of it. `align-items: center`
+     is what puts the ring on the send button's own centre line. */
+  .composer-row {
     display: flex;
     align-items: center;
-    gap: var(--sp-2);
-    padding: 0 var(--sp-2) var(--sp-2) var(--sp-3);
-  }
-
-  .feed-hint {
-    margin-right: auto;
-    display: inline-flex;
-    align-items: center;
-    flex-wrap: wrap;
     gap: var(--sp-1);
+    padding: 0 var(--sp-1) 0 2px;
+    min-height: 26px;
   }
-
-  .feed-send:disabled { color: var(--text-muted); cursor: default; }
 
   /* ===== THE OMNI-COMMAND COMPOSER (occ) =============================
      The one field. A Lexical contenteditable inside `.feed-entry`; chips
@@ -2240,14 +779,26 @@
      only, nothing tweens geometry (M1). */
   .occ-root { position: relative; }
 
+  /* ONE ROW (2026-08-25). `min-height: 44px` with `padding: 8px` held a
+     single 20.3px line (14px x 1.45) at the TOP of a 44px box, leaving
+     ~16px of dead space beneath it. `.feed-entry` bottom-aligns its
+     children, so the `+` and send buttons landed in that gap — MEASURED
+     8px below the text's own centre line, which is the misalignment.
+
+     The box now hugs one line: 20.3px of text + 4px + 4px = 28.3px,
+     which is the buttons' own 28px height. Everything on the row shares a
+     centre because they are all the same height, not because three rules
+     agree about alignment. `max-height` is untouched, so wrapping still
+     grows the field downward and `align-items: flex-end` keeps the
+     buttons on the line being typed. */
   .occ-editor {
     width: 100%;
-    padding: var(--sp-2) var(--sp-3);
+    padding: 4px var(--sp-2);
     font: inherit;
     font-size: var(--sz-sm);
     color: var(--text-primary);
     outline: none;
-    min-height: 44px;
+    min-height: 28px;
     max-height: 140px;
     overflow-y: auto;
     line-height: 1.45;
@@ -2358,76 +909,12 @@
     font-family: var(--font-mono);
   }
 
-  /* ===== THE TOOLS COMBOBOX (2026-08-24) =============================
-     A dropdown, not six spelled-out labels — Files / Import orders /
-     Calculator / Photo library / Manuals / Label printer collapse into
-     one pill naming whichever tool is open (or "Tools" when none is),
-     the same shape as a Claude-Code-style "Bypass permissions ▾" mode
-     selector. Same unboxed pattern as every other chip on the beam:
-     quiet at rest, tinted on hover/open. */
-  .composer-mode-slot { position: relative; flex-shrink: 0; }
-
-  .composer-mode {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 3px var(--sp-2);
-    background: transparent;
-    border: none;
-    color: var(--text-secondary);
-    font-size: var(--sz-xs);
-    font-family: var(--font-condensed);
-    font-weight: 600;
-    cursor: pointer;
-    transition: background-color var(--t-tint), color var(--t-tint);
-  }
-
-  .composer-mode:hover,
-  .composer-mode.open { background: var(--surface-container); color: var(--text-primary); }
-  .composer-mode.open svg { transform: rotate(180deg); }
-
-  /* Opens UPWARD — the composer sits at the well's own bottom edge, so a
-     panel opening down would run straight off-screen. */
-  .composer-mode-menu {
-    position: absolute;
-    bottom: calc(100% + var(--sp-1));
-    left: 0;
-    width: 220px;
-    background: var(--surface-containerLowest);
-    border: 1px solid var(--border-hud);
-    z-index: var(--z-dropdown);
-    display: flex;
-    flex-direction: column;
-    padding: var(--sp-1) 0;
-  }
-
-  .composer-mode-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--sp-2);
-    width: 100%;
-    padding: 6px var(--sp-3);
-    background: transparent;
-    border: none;
-    color: var(--text-primary);
-    text-align: left;
-    cursor: pointer;
-    transition: background-color var(--t-tint);
-  }
-
-  .composer-mode-item:hover { background: var(--surface-container); }
-  .composer-mode-item svg { flex-shrink: 0; color: var(--text-success); }
-
-  .composer-mode-item-copy { display: flex; flex-direction: column; min-width: 0; }
-  .composer-mode-item-title { font-size: var(--sz-xs); font-weight: 600; }
-  .composer-mode-item-hint {
-    font-size: var(--sz-technical-label);
-    color: var(--text-muted);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
+  /* ===== THE TOOLS COMBOBOX ==========================================
+     DELETED 2026-08-25 (operator ruling — HANDOFF-session-composer-ux
+     §5/§8): tools do not live beneath the composer. The row's successor
+     is the planned contextual MODE ROW (PLAN-composer-modes.md); the
+     tools themselves are the right rail and the beam's ⋯.
+     ================================================================ */
 
   /* ===== THE CONTEXT RING (2026-08-24) ===============================
      Replaces the plain-text "what the assistant can see" readout — a
@@ -2439,33 +926,35 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 20px;
-    height: 20px;
+    width: 24px;
+    height: 24px;
     cursor: default;
   }
 
+  /* A RING IS HOLLOW (2026-08-25, second correction). Rounding the dot
+     made it a circle and it was still a DOT — a filled disc with a halo,
+     which is a bullet, not a ring. A ring is an ANNULUS: the fill is
+     absent and the stroke is the whole mark.
+
+     So: transparent centre, 2px border, colour on the BORDER rather than
+     the background. The halo outline is gone with it — it existed to fake
+     the ring the fill was preventing, and two concentric strokes at this
+     size just read as a thicker blur. */
   .context-ring-dot {
-    width: 8px;
-    height: 8px;
-    background: var(--text-muted);
-    outline: 2px solid var(--surface-container);
-    outline-offset: 2px;
+    width: 12px;
+    height: 12px;
+    border-radius: var(--r-circle);
+    border: 2px solid var(--text-muted);
+    background: transparent;
+    transition: border-color var(--t-tint);
   }
 
-  .context-ring.armed .context-ring-dot { background: var(--text-success); }
-  .context-ring.parked .context-ring-dot { background: var(--text-warning); }
-  .context-ring.error .context-ring-dot { background: var(--text-danger); }
+  /* State lands on the STROKE now — the fill has to stay absent or the
+     mark stops being a ring the moment a session arms. */
+  .context-ring.armed .context-ring-dot { border-color: var(--text-success); }
+  .context-ring.parked .context-ring-dot { border-color: var(--text-warning); }
+  .context-ring.error .context-ring-dot { border-color: var(--text-danger); }
 
-  /* The tool row — its own row, BELOW the composer box (2026-08-24,
-     corrected: not folded into the composer's meta line). Six labels
-     collapsed into one combobox (`ToolsCombobox`), same row it always
-     sat in. The context ring joined it here too — tools on the left,
-     the ring pushed to the right by the same row, not a second one. */
-  .feed-tools-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
 
   /* ── Blocks of time (Phase 2) ──────────────────────────────────────
      A session is a bounded stretch of the chronology. The header line is
@@ -2495,6 +984,7 @@
     display: flex;
     flex-direction: column;
     border: 1px solid var(--border-subtle);
+    border-radius: var(--r-surface);
     border-left: 2px solid var(--border-strong);
   }
   .feed-block[data-state="armed"] { border-left-color: var(--border-accent); }
@@ -2554,28 +1044,7 @@
     gap: var(--sp-3);
     padding: var(--sp-2);
     border-top: 1px solid var(--border-subtle);
-  }
-
-  /* ===== FILES TOOL (N6 — native file workspaces) ==================== */
-  .files-tool { min-height: 0; }
-
-  .files-crumbs {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    padding-bottom: var(--sp-1);
-    border-bottom: 1px solid var(--border-subtle);
-  }
-
-  .files-list {
-    display: flex;
-    flex-direction: column;
-    max-height: 260px;
-    overflow-y: auto;
-    border: 1px solid var(--border-subtle);
-  }
-
-  .files-row {
+  }  .files-row {
     display: flex;
     align-items: center;
     gap: var(--sp-1);
@@ -2593,260 +1062,16 @@
   .files-row:last-child { border-bottom: none; }
   .files-row.selected { background: var(--surfaceSubtle-accent); color: var(--text-primary); }
   button.files-row { cursor: pointer; }
-  button.files-row:hover { background: var(--surface-container); }
-
-  .files-open {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--sp-1);
-    flex: 1;
-    min-width: 0;
-    background: transparent;
-    border: none;
-    color: inherit;
-    font: inherit;
-    cursor: pointer;
-    text-align: left;
-  }
-
-  .files-name {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .files-size { flex-shrink: 0; }
-
-  .files-act {
-    background: transparent;
-    border: none;
-    color: var(--text-muted);
-    cursor: pointer;
-    padding: 2px;
-    transition: color var(--t-tint);
-  }
-
-  .files-act:hover { color: var(--text-primary); }
-
-  .files-rename,
-  .files-newfolder input {
-    flex: 1;
-    min-width: 0;
-    border: 1px solid var(--border-strong);
-    background: var(--surface-containerLowest);
-    color: var(--text-primary);
-    font: inherit;
-    font-size: var(--sz-xs);
-    padding: 2px var(--sp-1);
-    outline: none;
-  }
-
-  .files-rename:focus,
-  .files-newfolder input:focus { border-color: var(--border-accent); }
-
-  .files-newfolder {
-    display: flex;
-    gap: var(--sp-1);
-    align-items: center;
-  }
-
-  .files-actions {
-    display: flex;
-    gap: var(--sp-1);
-    flex-wrap: wrap;
-    align-items: center;
-  }
-
-  .files-note {
-    font-size: var(--sz-xs);
-    color: var(--text-warning);
-    border: 1px solid var(--border-warning);
-    background: var(--surfaceSubtle-warning);
-    padding: var(--sp-1) var(--sp-2);
-    overflow-wrap: anywhere;
-  }
-
-  /* ===== ORDERS-FIRST DATA TILES (HANDOFF-orders-first) =============
-     The first real tiles on the D2 canvas: the Orders queue/detail and
-     the Product card. The `.canvas-tiles` variant of the data pane lays
-     the ported `.tile` frames back out in a row — the rules above
-     ("UNMOUNTED since the inversion") are live again as of this
-     section. Wide content scrolls INSIDE its tile; the pane never
-     scrolls horizontally itself unless the floors force it. */
+  button.files-row:hover { background: var(--surface-container); }  /* ===== THE TILES ROW =================================================
+     The `.canvas-tiles` variant of the data pane lays open tiles out in
+     a row (HANDOFF-orders-first). The tiles themselves are Tailwind +
+     shadcn (operator, 2026-08-25) — this rule is pane plumbing only.
+     Wide content scrolls INSIDE its tile; the pane scrolls horizontally
+     only when the floors force it. */
   .canvas-tiles {
     flex-direction: row;
+    gap: var(--sp-3);
     overflow-x: auto;
     background: var(--plane-stage);
   }
 
-  .orders-tile {
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-    height: 100%;
-    min-width: 0;
-  }
-
-  .orders-tile-bar {
-    display: flex;
-    align-items: center;
-    gap: var(--sp-2);
-    padding: var(--sp-2);
-    border-bottom: 1px solid var(--border-subtle);
-    flex-shrink: 0;
-  }
-
-  /* Tile-local filter — I6's carve-out: INSIDE a mounted queue surface
-     only. Deliberately quieter than the One Field. */
-  .orders-tile-filter {
-    flex: 1;
-    min-width: 60px;
-    border: 1px solid var(--border-subtle);
-    background: var(--surface-containerLow);
-    color: var(--text-primary);
-    font-size: var(--sz-xs);
-    padding: 3px var(--sp-2);
-  }
-  .orders-tile-filter:focus {
-    outline: none;
-    border-color: var(--border-accent);
-  }
-
-  .orders-tile-count {
-    font-size: var(--sz-technical-label);
-    color: var(--text-muted);
-    flex-shrink: 0;
-  }
-
-  .orders-tile-scroll {
-    flex: 1;
-    min-height: 0;
-    overflow: auto;
-  }
-
-  .orders-tile-scroll .data-table td { cursor: pointer; }
-
-  .orders-detail {
-    padding: var(--sp-3);
-    display: flex;
-    flex-direction: column;
-    gap: var(--sp-3);
-  }
-
-  .orders-detail-id { font-weight: 700; }
-
-  .orders-detail-title {
-    font-size: var(--sz-md);
-    font-weight: 600;
-    color: var(--text-primary);
-  }
-
-  .orders-facts {
-    display: grid;
-    grid-template-columns: max-content 1fr;
-    gap: 3px var(--sp-3);
-    font-size: var(--sz-xs);
-  }
-  .orders-facts dt {
-    color: var(--text-secondary);
-    font-family: var(--font-condensed);
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    font-size: var(--sz-technical-label);
-    align-self: baseline;
-  }
-  .orders-facts dd { min-width: 0; overflow-wrap: anywhere; }
-
-  /* Verdict chips. Colour is the accelerator; the WORD is the fact. */
-  .orders-chip {
-    display: inline-block;
-    padding: 0 var(--sp-1);
-    font-size: var(--sz-technical-label);
-    font-family: var(--font-condensed);
-    font-weight: 700;
-    letter-spacing: 0.08em;
-  }
-  .orders-chip.warn {
-    color: var(--text-warning);
-    background: var(--surfaceSubtle-warning);
-    border: 1px solid var(--border-warning);
-  }
-  .orders-chip.urgent {
-    color: var(--text-danger);
-    background: var(--surfaceSubtle-danger);
-    border: 1px solid var(--border-danger);
-  }
-
-  .orders-verbs { display: flex; gap: var(--sp-2); }
-
-  .orders-band { display: flex; flex-direction: column; gap: var(--sp-1); }
-
-  .orders-trail {
-    list-style: none;
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-    font-size: var(--sz-xs);
-  }
-  .orders-trail li {
-    border-left: 2px solid var(--border-subtle);
-    padding-left: var(--sp-2);
-  }
-  .orders-trail-meta {
-    display: block;
-    color: var(--text-muted);
-    font-size: var(--sz-technical-label);
-  }
-
-  .orders-link {
-    background: none;
-    border: none;
-    padding: 0;
-    color: var(--text-accent);
-    cursor: pointer;
-    text-decoration: underline;
-    font-size: inherit;
-  }
-
-  .product-tile-photo {
-    max-width: 100%;
-    max-height: 220px;
-    object-fit: contain;
-    align-self: flex-start;
-    border: 1px solid var(--border-subtle);
-  }
-
-  /* The composer's write-target readout — a status chip, never an input
-     (I6). Colour/opacity only; appearing and leaving are conditional
-     renders (M1). */
-  .feed-target-row {
-    display: flex;
-    align-items: center;
-    gap: var(--sp-1);
-    padding: 0 var(--sp-2) var(--sp-1);
-  }
-  .feed-target-chip {
-    display: inline-flex;
-    align-items: baseline;
-    gap: var(--sp-1);
-    font-size: var(--sz-xs);
-    color: var(--text-accent);
-    background: var(--surfaceSubtle-accent);
-    border: 1px solid var(--border-accent);
-    padding: 1px var(--sp-2);
-    min-width: 0;
-  }
-  .feed-target-what {
-    color: var(--text-muted);
-    font-size: var(--sz-technical-label);
-  }
-
-  /* EVERY TILE SCROLLS ITS OWN BODY (operator, 2026-08-24 — "add the
-     scrolling back for all the tiles themselves"). The ported rule
-     already says `overflow: auto`, but as a `flex: 1` column child its
-     min-height defaults to `auto` = content height, so the body could
-     never get SHORTER than its content — it pushed the tile past the
-     pane's clip instead of scrolling. `min-height: 0` is what arms the
-     ported overflow for every tile body, whatever it mounts. */
-  .tile-body { min-height: 0; }
