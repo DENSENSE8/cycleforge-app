@@ -29,6 +29,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   closeTab as closeWorkspaceTab,
   focusTab as focusWorkspaceTab,
+  getWorkspaceSnapshot,
   openTab as openWorkspaceTab,
   setTabParams,
 } from '@/lib/workspace/store';
@@ -251,25 +252,12 @@ export function useShell() {
     });
   }, []);
 
-  /* rails */
-  const [leftExpanded, setLeftExpanded] = useState(false);
-  const [rightExpanded, setRightExpanded] = useState(false);
-  /**
-   * WHETHER EACH RAIL EXISTS AT ALL — independent of `leftExpanded` /
-   * `rightExpanded` (icons vs labels, which only matter once a rail does).
-   * Default CLOSED, both sides (2026-08-24, operator ruling — the left
-   * rail joined the right's ruling by explicit request for full parity).
-   * A header button PINS each one open or closed (top-left for the left
-   * rail, top-right for the right); a hover hot-zone at the matching
-   * viewport edge (`RailSessions` / `RailTools`) PEEKS it open WITHOUT
-   * pinning, on top of — never instead of — the click control, so a
-   * `(hover: none)` tablet always has the click path. R1 ("rails are
-   * persistent narrow icon strips") is amended by this ruling: neither
-   * rail is always present any more, in exchange for both always being
-   * reachable by an explicit click.
-   */
-  const [leftRailOpen, setLeftRailOpen] = useState(false);
-  const [rightRailOpen, setRightRailOpen] = useState(false);
+  /* rails — NO STATE LEFT (2026-08-25, operator ruling). Both rails are
+     always-mounted floating icon stacks now: the left lost its expanded
+     mode with the icons-only ruling, and the right lost peek/pin/expand
+     when it was rebuilt as the left's mirror (HANDOFF-session-composer-ux
+     §5). `leftExpanded` / `rightExpanded` / `leftRailOpen` /
+     `rightRailOpen` and their toggles died with `useRailPeek`. */
 
   /* Pins are per staff, per org. Recents are SCOPED TO THE CURRENT SESSION
      since 2026-08-24 (H1 superseded — see LAWS.md) — the rail shows the
@@ -304,7 +292,8 @@ export function useShell() {
   const [offline, setOffline] = useState(false);
   const [theme, setThemeState] = useState<ShellTheme>('light');
   const [prefs, setPrefs] = useState<ShellPrefs>({ density: 'default', radius: 4, accent: 'blue' });
-  const [sessionPopoverOpen, setSessionPopoverOpen] = useState(false);
+  /* `sessionPopoverOpen` is gone (2026-08-25): the beam's ⋯ is the TOOLS
+     entry now, and park/end live on the composer's session header. */
   const [settingsPopoverOpen, setSettingsPopoverOpen] = useState(false);
   const [launcherQuery, setLauncherQuery] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; tileId: string | null } | null>(null);
@@ -379,13 +368,30 @@ export function useShell() {
 
   /* ── blocks of time — the session verbs ────────────────────────────── */
 
+  /* ── PAGES PER SESSION — the Spaces model (operator, 2026-08-24) ──────
+     "The pages would work per session… think mission control, macOS —
+     windows or pages per desktop." Every session owns its own set of open
+     tiles. Parking stows the WHOLE canvas under the session's ref and
+     restores the no-session space (key ''); resuming restores that
+     session's pages exactly (same descriptors, same ids). In-memory like
+     the chronology it mirrors — durability rides D8. */
+  const spacesRef = useRef<Map<string, readonly TabDescriptor[]>>(new Map());
+
+  /** Stow the live canvas under `fromKey`, then mount `toKey`'s pages. */
+  const switchSpace = useCallback((fromKey: string, toKey: string) => {
+    const live = getWorkspaceSnapshot().openTabs;
+    spacesRef.current.set(fromKey, live);
+    for (const tab of live) closeWorkspaceTab(tab.id);
+    for (const tab of spacesRef.current.get(toKey) ?? []) {
+      openWorkspaceTab({ id: tab.id, kind: tab.kind, ref: tab.ref, params: tab.params });
+    }
+  }, []);
+
   /**
    * Park the armed block: its interval closes, it collapses to one line
-   * (title · state · elapsed) in place, and its rail tab closes. S3: parking
-   * is a work event, never a lookup. S4: lossless — the items and the
-   * elapsed survive. Resuming it is the block's own "Resume" control in the
-   * well (2026-08-24) — recents no longer double as a cross-session
-   * bookmark list; see the ruling on `recents` below.
+   * (title · state · elapsed) in place, and its PAGES stow with it — the
+   * canvas returns to the no-session space. S3: parking is a work event,
+   * never a lookup. S4: lossless — items, elapsed, and pages all survive.
    */
   const parkArmedBlock = useCallback((): void => {
     const block = armedBlock;
@@ -398,10 +404,10 @@ export function useShell() {
           : e,
       ),
     );
-    for (const tile of tiles) if (tile.ref === block.ref) closeWorkspaceTab(tile.id);
+    switchSpace(block.ref, '');
     syncElapsed(blockElapsedSeconds(closeIntervals(block.intervals, at), at), false);
     setSessionState('parked');
-  }, [armedBlock, tiles]);
+  }, [armedBlock, switchSpace]);
 
   /**
    * Resume a parked block IN PLACE: a new interval opens (the UI twin of a
@@ -431,22 +437,16 @@ export function useShell() {
             : e,
         ),
       );
-      openWorkspaceTab({
-        kind: 'session',
-        ref,
-        params: {
-          title: block.title,
-          color: PALETTE[tiles.length % PALETTE.length],
-          icon: 'box',
-          sessionKind: block.sessionKind,
-        },
-      });
+      // Spaces: the parked session's pages come back exactly as stowed.
+      // No session tile to re-open — the session's face is the composer
+      // header (HANDOFF-session-composer-ux §1).
+      switchSpace('', ref);
       setSessionName(block.title);
       setSessionState('armed');
       setCurrentStage(Math.max(0, PIPELINE.indexOf(ref)));
       syncElapsed(blockElapsedSeconds(block.intervals, at), true);
     },
-    [feed, parkArmedBlock, tiles],
+    [feed, parkArmedBlock, switchSpace, tiles],
   );
 
   /**
@@ -490,11 +490,14 @@ export function useShell() {
             collapsed: false,
           },
         ]);
-        openWorkspaceTab({
-          kind: 'session',
-          ref,
-          params: { title, color: PALETTE[tiles.length % PALETTE.length], icon: 'box', sessionKind: kind },
-        });
+        // Spaces: a NEW block starts with an empty desktop — including when
+        // it reuses an ended block's ref (S5: a new session, never the old
+        // one's leftovers). NO SESSION TILE (operator ruling, 2026-08-25 —
+        // HANDOFF-session-composer-ux §1): the session's face mounts in the
+        // composer, so arming opens no canvas tile and the canvas stays
+        // free for data tiles (C8).
+        spacesRef.current.delete(ref);
+        switchSpace('', ref);
         setSessionName(title);
         setSessionState('armed');
         setCurrentStage(Math.max(0, PIPELINE.indexOf(ref)));
@@ -553,15 +556,35 @@ export function useShell() {
         collapsed: false,
       },
     ]);
-    openWorkspaceTab({
-      kind: 'session',
-      ref,
-      params: { title, color: PALETTE[tiles.length % PALETTE.length], icon: 'box', sessionKind: 'scan' },
-    });
+    // Spaces: a fresh desktop for a fresh session. The session's face is
+    // the composer header, never a tile (HANDOFF-session-composer-ux §1).
+    switchSpace('', ref);
     setSessionName(title);
     setSessionState('armed');
     syncElapsed(0, true);
-  }, [parkArmedBlock, tiles]);
+  }, [parkArmedBlock, switchSpace]);
+
+  /**
+   * Rename the ARMED session — double-click on the beam's session name
+   * (operator, 2026-08-25; the popover's name field left with it). One
+   * fact, three mirrors: the beam string, the block's title in the
+   * chronology, and the session tile's face.
+   */
+  const renameArmedSession = useCallback(
+    (title: string) => {
+      const next = title.trim();
+      const block = armedBlock;
+      if (!next || !block) return;
+      setSessionName(next);
+      setFeed((prev) =>
+        prev.map((e) => (e.kind === 'block' && e.id === block.id ? { ...e, title: next } : e)),
+      );
+      for (const tab of getWorkspaceSnapshot().openTabs) {
+        if (tab.ref === block.ref) setTabParams(tab.id, { title: next });
+      }
+    },
+    [armedBlock],
+  );
 
   const focusTile = useCallback((id: string) => {
     focusWorkspaceTab(id);
@@ -675,14 +698,13 @@ export function useShell() {
 
   /* ── session ───────────────────────────────────────────────────────── */
 
-  const parkSession = useCallback(() => {
-    parkArmedBlock();
-    setSessionState('parked');
-    setSessionPopoverOpen(false);
-  }, [parkArmedBlock]);
+  /* `parkSession` is gone (2026-08-25): it was `parkArmedBlock` plus a
+     popover-close for the deleted SessionPopover. The session header in the
+     composer calls `parkArmedBlock` directly — one park verb, not two. */
 
   /** End seals the block: interval closed, collapsed to one line, no recents
-      row — an ended session is history, not a resumable (S5). */
+      row — an ended session is history, not a resumable (S5). The canvas is
+      left as the operator had it; only the block's own state changes. */
   const endSession = useCallback(() => {
     const block = armedBlock;
     if (block) {
@@ -697,11 +719,7 @@ export function useShell() {
       syncElapsed(blockElapsedSeconds(closeIntervals(block.intervals, at), at), false);
     }
     setSessionState('ended');
-    for (const tile of tiles) {
-      if (tile.type === 'session') closeWorkspaceTab(tile.id);
-    }
-    setSessionPopoverOpen(false);
-  }, [armedBlock, tiles]);
+  }, [armedBlock]);
 
   /* ── tools ─────────────────────────────────────────────────────────── */
 
@@ -846,6 +864,63 @@ export function useShell() {
     [openTile],
   );
 
+  /* ── tile filters — set through the MAIN COMPOSER only ─────────────────
+     (Operator, 2026-08-24: the queue's own filter box is gone; I8 as
+     amended.) `filter: bose` narrows the queue tile; `filter:` clears.
+     Keyed by tile ref so a second filterable tile costs one map entry. */
+  const [tileFilters, setTileFilters] = useState<Readonly<Record<string, string>>>({});
+
+  /** The refs that actually consume a filter — a filter landing on a tile
+      with no rows is a silent lie, so anything else narrates a refusal. */
+  const FILTERABLE_REFS = useMemo(() => new Set(['orders']), []);
+
+  /** Returns true when the prose WAS a filter command and got consumed. */
+  const applyComposerFilter = useCallback(
+    (raw: string): boolean => {
+      const m = /^(?:filter|flt)\s*:\s*(.*)$/i.exec(raw.trim());
+      if (!m) return false;
+      const text = m[1].trim();
+      const targetRef =
+        focusedTile && FILTERABLE_REFS.has(focusedTile.ref)
+          ? focusedTile.ref
+          : (tiles.find((t) => FILTERABLE_REFS.has(t.ref))?.ref ?? null);
+      if (!targetRef) {
+        narrate('Nothing filterable is open — the orders queue takes filter:.');
+        return true;
+      }
+      setTileFilters((prev) => ({ ...prev, [targetRef]: text }));
+      narrate(text ? `Filtering ${targetRef} — “${text}”.` : `Filter cleared on ${targetRef}.`);
+      return true;
+    },
+    [FILTERABLE_REFS, focusedTile, narrate, tiles],
+  );
+
+  /** `?` (bottom-left, the Linear pattern) — help opens as a TILE (C8),
+      placed LEFTMOST so it is the most prominent surface while open. */
+  const openHelpTile = useCallback(() => {
+    const existing = getWorkspaceSnapshot().openTabs.find((t) => t.ref === 'help');
+    let id: string | null;
+    if (existing) {
+      focusWorkspaceTab(existing.id);
+      id = existing.id;
+    } else {
+      id = openWorkspaceTab({
+        kind: 'table',
+        ref: 'help',
+        params: { title: 'Help', color: PALETTE[0], icon: 'book' },
+      });
+    }
+    if (id) {
+      const rest = orderedTiles.map((t) => t.id).filter((x) => x !== id);
+      setOrder([id, ...rest]);
+    }
+  }, [orderedTiles]);
+
+  /** The beam's session dropdown footer — the week's sessions as a tile. */
+  const openSessionsWeekTile = useCallback(() => {
+    openTile('sessions-week', 'Sessions', 'table');
+  }, [openTile]);
+
   /* ── the omni-command composer's commit sink ───────────────────────────
      One hydration point (docs/omni-command-composer.md): a chip paints the
      feed summary AND opens the orders tile — commit is an OS event, never a
@@ -855,6 +930,11 @@ export function useShell() {
     (commit: ComposerCommit) => {
       switch (commit.kind) {
         case 'order': {
+          // QUEUED TASK (operator ruling, 2026-08-25 — docs/warehouse-os/
+          // HANDOFF-order-in-composer.md): with NO session armed, an order
+          // search must EMBED in the composer instead of opening tiles;
+          // only an armed session opens the tile pair below. Not built —
+          // open questions in the task file need the operator first.
           if (commit.source === 'human') recordFieldInput(commit.token, 'human');
           const { order } = commit;
           const platform = getOrderPlatformLabel(order.order_id, order.account_source);
@@ -890,6 +970,10 @@ export function useShell() {
           break;
         }
         case 'prose': {
+          // `filter: …` outranks everything — it is a command about a tile,
+          // not words for anyone (operator: filtering goes through the main
+          // composer).
+          if (applyComposerFilter(commit.text)) break;
           // Phase 7's target: prose with a write-target set is a COMMENT ON
           // THE ORDER — an append-only `order_notes` row through the existing
           // gated route — not a turn to the assistant.
@@ -914,6 +998,7 @@ export function useShell() {
     },
     [
       appendItem,
+      applyComposerFilter,
       composerTarget,
       narrate,
       openOrderDetailTile,
@@ -988,18 +1073,6 @@ export function useShell() {
     cycleTileIcon,
     cycleTileColor,
 
-    /* rails */
-    leftExpanded,
-    rightExpanded,
-    leftRailOpen,
-    rightRailOpen,
-    toggleLeftRail: useCallback(() => setLeftExpanded((v) => !v), []),
-    toggleRightRail: useCallback(() => setRightExpanded((v) => !v), []),
-    toggleLeftRailOpen: useCallback(() => setLeftRailOpen((v) => !v), []),
-    toggleRightRailOpen: useCallback(() => setRightRailOpen((v) => !v), []),
-    setLeftRailOpen,
-    setRightRailOpen,
-
     /* pins + recents */
     pins,
     recents,
@@ -1015,7 +1088,6 @@ export function useShell() {
     setScanMode,
     faceMode,
     setFaceMode,
-    parkSession,
     endSession,
     globalContext: PROTOTYPE_SEED.globalContext,
     contextValue: PROTOTYPE_SEED.contextValue,
@@ -1034,8 +1106,14 @@ export function useShell() {
     clearComposerTarget,
     openOrderDetailTile,
     openProductTile,
+
+    /* composer-driven tile filters · help · the week's sessions */
+    tileFilters,
+    openHelpTile,
+    openSessionsWeekTile,
     runFeedAction,
     cutSession,
+    renameArmedSession,
     resumeBlock,
     parkArmedBlock,
     toggleBlockCollapsed,
@@ -1069,8 +1147,6 @@ export function useShell() {
         setPrefs((prev) => ({ ...prev, [key]: value })),
       [],
     ),
-    sessionPopoverOpen,
-    setSessionPopoverOpen,
     settingsPopoverOpen,
     setSettingsPopoverOpen,
     launcherQuery,

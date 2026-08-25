@@ -555,6 +555,10 @@ export const AUDIT_ACTION = {
   UNIT_PACK_PLACE: 'unit.pack_place',
   UNIT_PACK_MOVE: 'unit.pack_move',
   UNIT_PACK_CLEAR: 'unit.pack_clear',
+  /** The unit↔location spine (unit_placements / part_pulls — 00-endgame D1/D10).
+   *  Scan-created facts only; same strings as the ops_events chronology. */
+  UNIT_PLACED: 'unit.placed',
+  UNIT_PART_PULLED: 'unit.part_pulled',
   // Unshipped governing events — first time a carrier tracking number is added to
   // an order, and when its shipping label is printed/attached. Feed the order
   // timeline (EventTimeline) on the dashboard details panel.

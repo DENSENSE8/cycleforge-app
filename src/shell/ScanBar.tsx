@@ -21,6 +21,7 @@
  * where this field's contents are going.
  */
 
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useRef } from 'react';
 import { Icon } from '@/shell/icons';
 import type { ScanMode } from '@/shell/model';
@@ -65,44 +66,24 @@ export function ScanBar({
           }}
         />
       </div>
-      <div
-        className="mode-toggle"
-        role="group"
-        aria-label="Typing: auto = searches · key = counts as a scan | find = search org · flt = filter focused tile"
-      >
-        <button
-          type="button"
-          className={mode.input === 'auto' ? 'active' : undefined}
-          aria-pressed={mode.input === 'auto'}
-          onClick={() => onModeChange({ ...mode, input: 'auto' })}
-        >
+      {/* Two axes, one strip — input mode | query mode. The heavier
+          divider before `find` is what stops it reading as one four-way
+          switch (it was a `border-left: 3px` rule named `.axis-gap`). */}
+      <ToggleGroup aria-label="Typing: auto = searches · key = counts as a scan | find = search org · flt = filter focused tile">
+        <ToggleGroupItem active={mode.input === 'auto'} onClick={() => onModeChange({ ...mode, input: 'auto' })}>
           auto
-        </button>
-        <button
-          type="button"
-          className={mode.input === 'manual' ? 'active' : undefined}
-          aria-pressed={mode.input === 'manual'}
-          onClick={() => onModeChange({ ...mode, input: 'manual' })}
-        >
+        </ToggleGroupItem>
+        <ToggleGroupItem active={mode.input === 'manual'} onClick={() => onModeChange({ ...mode, input: 'manual' })}>
           key
-        </button>
-        <button
-          type="button"
-          className={`axis-gap${mode.action === 'search' ? ' active' : ''}`}
-          aria-pressed={mode.action === 'search'}
-          onClick={() => onModeChange({ ...mode, action: 'search' })}
-        >
+        </ToggleGroupItem>
+        <span aria-hidden className="mx-0.5 h-4 w-px bg-border" />
+        <ToggleGroupItem active={mode.action === 'search'} onClick={() => onModeChange({ ...mode, action: 'search' })}>
           find
-        </button>
-        <button
-          type="button"
-          className={mode.action === 'filter' ? 'active' : undefined}
-          aria-pressed={mode.action === 'filter'}
-          onClick={() => onModeChange({ ...mode, action: 'filter' })}
-        >
+        </ToggleGroupItem>
+        <ToggleGroupItem active={mode.action === 'filter'} onClick={() => onModeChange({ ...mode, action: 'filter' })}>
           flt
-        </button>
-      </div>
+        </ToggleGroupItem>
+      </ToggleGroup>
     </div>
   );
 }

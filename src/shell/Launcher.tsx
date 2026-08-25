@@ -3,10 +3,18 @@
 /**
  * THE LAUNCHER — the one index. There is no second "+".
  *
- * `Ctrl+K` (S12 gave ⌘N to the session block); the scan field also opens it in place once two
- * characters are typed, without parking the session. ↑/↓ move across grouped
- * results, Enter runs, Escape closes, and the selected row carries a 3px
- * accent edge and a `↵` marker.
+ * `Ctrl+K` (S12 gave ⌘N to the session block); the scan field also opens it
+ * in place once two characters are typed, without parking the session.
+ *
+ * ON SHADCN `CommandDialog` (cmdk) SINCE 2026-08-24. The hand-rolled
+ * version kept a `flat` array, an `index` integer, modulo arithmetic for
+ * ↑/↓, a `scrollIntoView` ref on the selected row, and a substring filter
+ * — every one of those is cmdk's job and cmdk does them better. It also
+ * had two real defects this removes: the results list was a pile of
+ * `<button>`s with no listbox semantics (a screen reader was told nothing
+ * about position or count), and `index` was reset to 0 on each keystroke
+ * while `flat` changed underneath it, so the highlight could land on a
+ * different row than the one Enter would run.
  *
  * The work QUEUES live here now, not in a rail. A queue is a table: it wants
  * width, columns, sort and virtualization, none of which a 208px strip can
@@ -17,7 +25,14 @@
  * language belongs HERE, not behind a second input.
  */
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  CommandDialog,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
 import { Icon, type IconName } from '@/shell/icons';
 import type { ShellApi } from '@/shell/useShell';
 
@@ -96,129 +111,48 @@ function buildGroups(shell: ShellApi): readonly LauncherGroup[] {
 }
 
 export function Launcher({ shell }: { shell: ShellApi }) {
+  const groups = buildGroups(shell);
   const open = shell.launcherQuery !== null;
-  const [query, setQuery] = useState('');
-  const [index, setIndex] = useState(0);
-  const input = useRef<HTMLInputElement>(null);
-  const selected = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    setQuery(shell.launcherQuery ?? '');
-    setIndex(0);
-    input.current?.focus();
-  }, [open, shell.launcherQuery]);
-
-  const groups = useMemo(() => buildGroups(shell), [shell]);
-
-  const { visible, flat } = useMemo(() => {
-    const q = query.toLowerCase().trim();
-    const vis: LauncherGroup[] = [];
-    const list: LauncherItem[] = [];
-    for (const group of groups) {
-      const items = group.items.filter(
-        (i) =>
-          !q ||
-          i.title.toLowerCase().includes(q) ||
-          i.meta.toLowerCase().includes(q) ||
-          group.label.toLowerCase().includes(q),
-      );
-      if (items.length === 0) continue;
-      vis.push({ label: group.label, items });
-      list.push(...items);
-    }
-    if (list.length === 0 && q) {
-      const ask: LauncherItem = {
-        title: 'Ask the assistant',
-        meta: `“${query}” — no exact match`,
-        icon: 'assistant',
-        run: () => shell.toggleTool('ai'),
-      };
-      vis.push({ label: 'Assistant', items: [ask] });
-      list.push(ask);
-    }
-    return { visible: vis, flat: list };
-  }, [groups, query, shell]);
-
-  useEffect(() => {
-    selected.current?.scrollIntoView({ block: 'nearest' });
-  }, [index]);
-
-  if (!open) return null;
-
-  const run = (item: LauncherItem | undefined) => {
-    if (!item) return;
-    item.run();
-    shell.closeLauncher();
-  };
-
-  let cursor = -1;
 
   return (
-    <div className="launcher open" onClick={shell.closeLauncher} role="presentation">
-      <div className="launcher-box" onClick={(e) => e.stopPropagation()} role="presentation">
-        <input
-          ref={input}
-          type="text"
-          className="launcher-input"
-          autoComplete="off"
-          aria-label="Search sessions, tables, tools"
-          placeholder="Search sessions, tables, tools…"
-          value={query}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            setIndex(0);
-          }}
-          onKeyDown={(e) => {
-            if (flat.length === 0) return;
-            if (e.key === 'ArrowDown') {
-              e.preventDefault();
-              setIndex((i) => (i + 1) % flat.length);
-            } else if (e.key === 'ArrowUp') {
-              e.preventDefault();
-              setIndex((i) => (i - 1 + flat.length) % flat.length);
-            } else if (e.key === 'Enter') {
-              e.preventDefault();
-              run(flat[index]);
-            }
-          }}
-        />
-        <div className="launcher-results">
-          {visible.length === 0 ? (
-            <div className="tool-empty">Type to search</div>
-          ) : (
-            visible.map((group) => (
-              <div className="launcher-group" key={group.label}>
-                <div className="launcher-group-label">{group.label}</div>
-                {group.items.map((item) => {
-                  cursor += 1;
-                  const i = cursor;
-                  const isSelected = i === index;
-                  return (
-                    <button
-                      type="button"
-                      key={`${group.label}:${item.title}`}
-                      ref={isSelected ? selected : undefined}
-                      className={`launcher-item${isSelected ? ' selected' : ''}`}
-                      onMouseEnter={() => setIndex(i)}
-                      onClick={() => run(item)}
-                    >
-                      <div className="launcher-item-icon">
-                        <Icon name={item.icon} size={13} />
-                      </div>
-                      <div>
-                        <div className="launcher-item-title">{item.title}</div>
-                        <div className="launcher-item-meta">{item.meta}</div>
-                      </div>
-                      {isSelected ? <span className="launcher-item-kbd">↵</span> : null}
-                    </button>
-                  );
-                })}
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-    </div>
+    <CommandDialog
+      open={open}
+      onOpenChange={(next) => { if (!next) shell.closeLauncher(); }}
+      className="max-w-xl"
+      title="Launcher"
+      description="Search sessions, tables and tools"
+    >
+      {/* No `value`/`onValueChange`: cmdk owns the query. `shell.launcherQuery`
+          is still the OPEN signal and still carries the prefill the scan
+          field hands over, but the keystroke-by-keystroke state does not
+          need to round-trip through the shell store to filter a static list. */}
+      <CommandInput
+        placeholder="Search sessions, tables, tools…"
+        defaultValue={shell.launcherQuery ?? ''}
+      />
+      <CommandList>
+        <CommandEmpty>No match. Try a session, a table or a tool.</CommandEmpty>
+        {groups.map((group) => (
+          <CommandGroup key={group.label} heading={group.label}>
+            {group.items.map((item) => (
+              <CommandItem
+                key={`${group.label}:${item.title}`}
+                /* `value` is what cmdk scores against. Title alone would
+                   miss "Was: pickup sidebar rail" — the meta line is how an
+                   operator who knows the OLD navigation finds the new one. */
+                value={`${item.title} ${item.meta}`}
+                onSelect={() => { item.run(); shell.closeLauncher(); }}
+              >
+                <Icon name={item.icon} size={14} />
+                <span className="flex min-w-0 flex-col">
+                  <span className="truncate">{item.title}</span>
+                  <span className="truncate text-xs text-muted-foreground">{item.meta}</span>
+                </span>
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        ))}
+      </CommandList>
+    </CommandDialog>
   );
 }

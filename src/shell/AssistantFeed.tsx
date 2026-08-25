@@ -15,6 +15,8 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { PlusIcon, SendIcon, XIcon } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useReducedMotion } from 'motion/react';
 import { playFeedback } from '@/shell/feedback';
@@ -25,14 +27,16 @@ import {
 } from '@/components/composer/OmniCommandComposer';
 import { hhmmss, useClock } from '@/shell/clock';
 import { Icon } from '@/shell/icons';
+import { SessionHeader } from '@/shell/SessionHeader';
 import {
-  TOOLS,
   blockElapsedSeconds,
   type AssistantFeedMessage,
   type FeedAction,
   type SessionBlock,
 } from '@/shell/model';
+import { railIconPlate, railIconPlateDisabled } from '@/shell/rail-icon';
 import type { ShellApi } from '@/shell/useShell';
+import { cn } from '@/utils/_cn';
 
 /** One turn — the same bubble whether it sits between blocks or inside one. */
 /**
@@ -140,82 +144,13 @@ function BlockView({ block, shell }: { block: SessionBlock; shell: ShellApi }) {
   );
 }
 
-/** The bottom tool row: global-scope tools only. Session tools need an armed
- *  session (T6) and live on the right rail; the composer's row stays global. */
-const GLOBAL_TOOLS = TOOLS.filter((tool) => tool.scope === 'global');
-
-/**
- * THE TOOLS COMBOBOX (2026-08-24, corrected). This IS the row the operator
- * meant: six spelled-out labels (Files, Import orders, Calculator, Photo
- * library, Manuals, Label printer) sitting in the composer's bottom row —
- * exactly the "all the modes text in the bottom row" a Claude-Code-style
- * "Bypass permissions ▾" pill collapses into one control. The pill's own
- * label follows whichever tool is currently open; "Tools" when none is.
- */
-function ToolsCombobox({ shell }: { shell: ShellApi }) {
-  const [open, setOpen] = useState(false);
-  const wrapRef = useRef<HTMLDivElement | null>(null);
-
-  const close = useCallback(() => setOpen(false), []);
-
-  useEffect(() => {
-    if (!open) return;
-    const onPointer = (e: MouseEvent) => {
-      if (!wrapRef.current?.contains(e.target as Node)) close();
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') close();
-    };
-    document.addEventListener('mousedown', onPointer);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onPointer);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [close, open]);
-
-  const activeTool = GLOBAL_TOOLS.find((t) => shell.toolPanelOpen && shell.openTool === t.key);
-
-  return (
-    <div ref={wrapRef} className="composer-mode-slot">
-      <button
-        type="button"
-        className={`composer-mode${open ? ' open' : ''}`}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        title="Tools"
-        onClick={() => setOpen((v) => !v)}
-      >
-        <span>{activeTool?.label ?? 'Tools'}</span>
-        <Icon name="chevron-down" size={10} />
-      </button>
-      {open ? (
-        <div className="composer-mode-menu" role="menu">
-          {GLOBAL_TOOLS.map((tool) => (
-            <button
-              type="button"
-              key={tool.key}
-              role="menuitemradio"
-              aria-checked={activeTool?.key === tool.key}
-              className="composer-mode-item"
-              onClick={() => {
-                shell.toggleTool(tool.key);
-                close();
-              }}
-            >
-              <span className="composer-mode-item-copy">
-                <span className="composer-mode-item-title">
-                  <Icon name={tool.icon} size={13} /> {tool.label}
-                </span>
-              </span>
-              {activeTool?.key === tool.key ? <Icon name="check" size={12} /> : null}
-            </button>
-          ))}
-        </div>
-      ) : null}
-    </div>
-  );
-}
+/* THE TOOLS COMBOBOX IS DEAD (operator ruling, 2026-08-25 —
+   HANDOFF-session-composer-ux §5/§8): "the composer would need to be …
+   contextually based modes — not tools beneath the composer." Tools live
+   on the right rail and behind the beam's ⋯; what replaces this row is a
+   CONTEXTUAL MODE ROW, planned before it is built — see
+   docs/warehouse-os/PLAN-composer-modes.md. Until that plan is ruled on,
+   the row below the field carries only the context ring. */
 
 /** THE CONTEXT RING — bottom-right, a coloured dot standing in for the
  *  plain-text readout it replaces (2026-08-24). Session-state colour, same
@@ -272,10 +207,44 @@ export function AssistantFeed({ shell }: { shell: ShellApi }) {
     onPaste: (paste) => handleFieldPaste(paste),
   });
 
-  /* Pin the newest turn into view. Instant — nothing animates. */
+  /* STICK TO BOTTOM, BUT ONLY IF ALREADY THERE (2026-08-25).
+   *
+   * The old rule was `scrollTop = scrollHeight` on every feed change,
+   * unconditionally. That yanks an operator who has scrolled up to read
+   * history back to the present the moment anything lands — and in this
+   * app something lands on every scan, so reading history during an
+   * active session was effectively impossible.
+   *
+   * `atBottom` is sampled on scroll rather than computed at append time,
+   * because by the time the effect runs the new content is already in the
+   * DOM and the measurement would always say "not at bottom".
+   */
+  const atBottom = useRef(true);
+
+  const onScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    // 24px of slack: a scroller sitting one subpixel off the floor after a
+    // reflow is still, to the operator, at the bottom.
+    atBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 24;
+  }, []);
+
   useEffect(() => {
     const el = scrollRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
+    if (!el || !atBottom.current) return;
+
+    /* PIN TO THE BOTTOM (2026-08-25, operator ruling). An earlier pass
+       aimed at the newest turn's TOP edge so a long answer would start at
+       its first line. The operator overruled it, and on this surface they
+       are right: the assistant's turns are short operational confirmations
+       ("Opened Orders."), so top-pinning almost never changed what was on
+       screen — but when it did fire it left a gap of dead space between
+       the newest turn and the composer, which is the exact void the
+       bottom-anchor was introduced to close. One rule, always the floor.
+
+       Instant assignment, never `smooth`: a scroll animation delays the
+       paint that tells a scanning operator the scan landed. */
+    el.scrollTop = el.scrollHeight;
   }, [feed]);
 
   /* What the assistant can see, in the corner where coding assistants put
@@ -294,7 +263,7 @@ export function AssistantFeed({ shell }: { shell: ShellApi }) {
     <div className="assistant-feed" data-last-input-source={lastInput?.source}>
       <div className="feed-column">
         {feed.length === 0 ? null : (
-          <div className="feed-scroll" ref={scrollRef} aria-label="Conversation">
+          <div className="feed-scroll" ref={scrollRef} onScroll={onScroll} aria-label="Conversation">
             {hasBlocks ? (
               <button
                 type="button"
@@ -316,27 +285,61 @@ export function AssistantFeed({ shell }: { shell: ShellApi }) {
         )}
 
         <div className="feed-composer">
+          {/* THE SESSION'S FACE (2026-08-25, operator ruling): the armed
+              session mounts at the TOP of the composer display — chronology
+              above, field below — never as a canvas tile. The parked-block
+              rows pin to the bottom of the chronology; this slots between
+              them and the field. */}
+          <SessionHeader shell={shell} />
           {/* THE WRITE TARGET (Phase 7's `target`, first landing): while an
               order is focused, prose in the One Field is a comment ON THAT
               ORDER. The chip is a status readout, never an input (I6); the ✕
               releases prose back to the assistant. */}
           {shell.composerTarget ? (
-            <div className="feed-target-row">
-              <span className="feed-target-chip">
+            <div className="flex items-center gap-1 px-2 pb-1">
+              <Badge
+                variant="outline"
+                className="min-w-0 gap-1 border-edge-accent text-ink-accent"
+              >
                 → <span className="mono">#{shell.composerTarget.orderKey}</span>
-                <span className="feed-target-what">prose writes an internal note</span>
-              </span>
-              <button
-                type="button"
-                className="rail-btn rail-btn-xs"
+                <span className="text-technical text-muted-foreground">
+                  prose writes an internal note
+                </span>
+              </Badge>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-5"
+                aria-label="Stop writing to this order — prose returns to the assistant"
                 title="Stop writing to this order — prose returns to the assistant"
                 onClick={shell.clearComposerTarget}
               >
-                <Icon name="close" size={10} />
-              </button>
+                <XIcon />
+              </Button>
             </div>
           ) : null}
           <div className="feed-entry" ref={entryRef}>
+            {/* LEADING `+` (2026-08-25, operator ruling). It opens the FILES
+                tool, which is the only "add something to this session"
+                verb the shell has — the universal composer meaning of `+`.
+
+                FLAGGED: this is the third `+` in the application. The left
+                rail's is New Session and the tools rail's is Add Tool.
+                Three glyphs, three verbs. Each is unambiguous in its own
+                container, but "the plus button" is now an ambiguous phrase
+                between us, and a fourth would make the icon meaningless.
+                Worth a distinct glyph (paperclip) if you disagree. */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className={cn('size-7 shrink-0', railIconPlate)}
+              aria-label="Attach a file to this session"
+              title="Attach a file to this session"
+              onClick={() => shell.toggleTool('files')}
+            >
+              <PlusIcon />
+            </Button>
+
             {/* THE ONE FIELD (HANDOFF-ai-centre): identifiers chip, `/` runs
                 actions, prose talks, and the gun lands here too. */}
             <OmniCommandComposer
@@ -345,35 +348,25 @@ export function AssistantFeed({ shell }: { shell: ShellApi }) {
               handleRef={composerHandle}
               attachScanCapture={scanCapture}
             />
-            <div className="feed-entry-meta">
-              {/* A LINEAR KEYBIND PREVIEW, not buttons (2026-08-24
-                  ruling). These were never clickable and are not made
-                  clickable now — a tactile keycap that does nothing when
-                  pressed is a worse lie than a flat label. They are the
-                  legend for chords the ONE FIELD already accepts. */}
-              <span className="feed-hint">
-                <span className="keycap"><span className="kbd">#</span> order</span>
-                <span className="keycap"><span className="kbd">/</span> action</span>
-                <span className="keycap"><span className="kbd">Enter</span> send</span>
-              </span>
-              <button
-                type="button"
-                className="btn btn-icon feed-send"
-                title="Send"
-                disabled={!hasDraft}
-                onClick={() => composerHandle.current?.submit()}
-              >
-                <Icon name="send" size={14} />
-              </button>
-            </div>
+
+            <Button
+              variant="ghost"
+              size="icon"
+              className={cn('size-7 shrink-0', railIconPlate, railIconPlateDisabled)}
+              aria-label="Send"
+              disabled={!hasDraft}
+              onClick={() => composerHandle.current?.submit()}
+            >
+              <SendIcon />
+            </Button>
           </div>
 
-          {/* Its own row, BELOW the composer box — not folded into
-              `.feed-entry-meta` (2026-08-24, corrected three times: the
-              tools combobox, its placement, and now the context ring
-              joining it here too — same row, tools left, ring right). */}
-          <div className="feed-tools-row" role="toolbar" aria-label="Tools">
-            <ToolsCombobox shell={shell} />
+            {/* THE ROW BELOW THE WELL (amended 2026-08-25): the tools
+              combobox is gone by ruling — tools live on the right rail and
+              behind the beam's ⋯. Until the contextual MODE ROW is planned
+              and ruled on (PLAN-composer-modes.md), the row carries only
+              the context ring, right-aligned where it always sat. */}
+          <div className="composer-row justify-end" role="toolbar" aria-label="Composer context">
             <ContextRing shell={shell} label={contextLabel} />
           </div>
         </div>

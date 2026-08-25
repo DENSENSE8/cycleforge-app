@@ -18,9 +18,187 @@
    lane's.
    ================================================================ */
 
+/* LAYER ORDER — declared before the imports, which is the one thing CSS
+   lets precede `@import` besides `@charset`.
+
+   MEASURED BUG, 2026-08-24 on :3051. Tailwind v4 emits every utility into
+   `@layer utilities`. `shell.css` was UNLAYERED, and an unlayered rule
+   beats ANY layered rule regardless of specificity — so shell.css's
+   `*, *::before, *::after { border-radius: var(--r-none) }` was silently
+   defeating every `rounded-*` utility in the shell. `.rounded-surface`
+   was present in the emitted CSS and still computed to 0px, which is the
+   signature of a layer conflict rather than a missing class.
+
+   Putting shell.css in its own `shell` layer, ordered BEFORE `utilities`,
+   makes the relationship what everyone already assumed it was: shell.css
+   is the baseline, a Tailwind utility is the override. This is what makes
+   the migration off shell.css possible at all — without it every
+   converted component silently loses to the block it is replacing.
+
+   `tokens.css` stays UNLAYERED on purpose: it redefines `--font-sans` /
+   `--font-mono`, and it must keep beating Tailwind's own `@layer theme`
+   defaults of the same names (see the bridge below). */
+@layer theme, base, components, shell, utilities;
+
 @import 'tailwindcss';
+/* shadcn's animation utilities (`animate-in`, `fade-in-0`, `zoom-in-95`,
+   `slide-in-from-*`). Every one of them animates OPACITY or TRANSFORM on
+   an OUT-OF-FLOW overlay — composited, displacing no neighbour — so they
+   clear the amended M1. The one preset deliberately NOT used anywhere is
+   the accordion pair, which animates `height`. */
+@import 'tw-animate-css';
 @import '../shell/tokens.css';
-@import '../shell/shell.css';
+@import '../shell/shell.css' layer(shell);
+
+/* ================================================================
+   THE TAILWIND BRIDGE (2026-08-24, operator ruling: "pin all to the
+   tailwind").
+
+   Until now Tailwind was ACTIVE but UNTHEMED: `@import 'tailwindcss'`
+   plus `@source` over `src/shell`, so stock utilities (`flex`, `p-3`)
+   worked in shell components while every project token resolved to
+   nothing. `tailwind.config.mjs` still exists but is loaded by NOBODY —
+   globals.css dropped its `@config` line when the design-system tree was
+   deleted, and v4's PostCSS plugin does not auto-discover a JS config.
+   That file is legacy for cherry-picks; this block is the live theme.
+
+   `@theme inline` is the load-bearing word. A plain `@theme` COPIES the
+   value, which would freeze whichever palette happened to be active and
+   break theme switching outright. `inline` emits `var(--plane-edge)`
+   into the utility instead, so `bg-plane-edge` keeps resolving through
+   tokens.css's own light / [data-theme] / prefers-color-scheme cascade.
+   One source of truth, three viewer states, no duplication.
+
+   NAMESPACE WARNING, learned the hard way: v4's `--text-*` namespace is
+   FONT SIZE, not colour. The shell's `--text-primary` is a colour, so
+   bridging it under its own name would have generated `text-primary` as
+   a font-size utility and silently produced no colour at all. Text
+   colours are bridged as `--color-ink-*` → `text-ink-primary`.
+   ================================================================ */
+@theme inline {
+  /* Planes */
+  --color-plane-edge: var(--plane-edge);
+  --color-plane-edge-raised: var(--plane-edge-raised);
+  --color-plane-edge-sunken: var(--plane-edge-sunken);
+  --color-plane-stage: var(--plane-stage);
+  --color-plane-stage-raised: var(--plane-stage-raised);
+  --color-plane-stage-sunken: var(--plane-stage-sunken);
+  --color-stroke-plane: var(--stroke-plane);
+
+  /* Ink — NOT `--text-*`; see the namespace warning above. */
+  --color-ink-primary: var(--text-primary);
+  --color-ink-secondary: var(--text-secondary);
+  --color-ink-muted: var(--text-muted);
+  --color-ink-inverse: var(--text-inverse);
+  --color-ink-accent: var(--text-accent);
+  --color-ink-success: var(--text-success);
+  --color-ink-warning: var(--text-warning);
+  --color-ink-danger: var(--text-danger);
+
+  /* Surfaces — the ramp `.well` re-anchors to the stage. */
+  --color-surface-lowest: var(--surface-containerLowest);
+  --color-surface-low: var(--surface-containerLow);
+  --color-surface: var(--surface-container);
+  --color-surface-high: var(--surface-containerHigh);
+  --color-surface-highest: var(--surface-containerHighest);
+  --color-surface-success: var(--surfaceSubtle-success);
+  --color-surface-warning: var(--surfaceSubtle-warning);
+  --color-surface-danger: var(--surfaceSubtle-danger);
+  --color-surface-accent: var(--surfaceSubtle-accent);
+
+  /* Strokes */
+  --color-edge-subtle: var(--border-subtle);
+  --color-edge-strong: var(--border-strong);
+  --color-edge-hud: var(--border-hud);
+  --color-edge-accent: var(--border-accent);
+  --color-edge-success: var(--border-success);
+  --color-edge-warning: var(--border-warning);
+  --color-edge-danger: var(--border-danger);
+
+  /* Radius — the amended LAW 1 scale, and nothing else. There is no
+     `rounded-md`/`lg`/`xl` in this vocabulary because there is no
+     `--radius-md` here; stock Tailwind radii still exist, which is a
+     known gap the ESLint rule below is meant to close. */
+  --radius-none: var(--r-none);
+  --radius-control: var(--r-control);
+  --radius-surface: var(--r-surface);
+  --radius-pane: var(--r-pane);
+  --radius-keycap: var(--r-keycap);
+  --radius-circle: var(--r-circle);
+
+
+  /* ---- SHADCN VOCABULARY, MAPPED ONTO THE PLANES -----------------
+     shadcn/ui components are written against a fixed set of names —
+     `background`, `foreground`, `card`, `muted`, `accent`, `border`,
+     `input`, `ring`, `destructive`. They are adopted here as PRIMITIVES,
+     not as a design system: every one of those names is aliased to a
+     token this shell already owns, so a shadcn `Card` or `Button`
+     inherits the plane inversion, the amended radius scale and the
+     light/dark cascade for free.
+
+     The direction matters. Mapping shadcn ONTO our tokens keeps one
+     source of truth; letting shadcn's own palette win would have meant
+     `bg-neutral-100` hardcoded into every component — which does not
+     theme, and which is exactly what `components.json`'s old
+     `"cssVariables": false` would have generated.
+
+     `card` maps to the STAGE and `background` to the EDGE, so a shadcn
+     surface lands on the lifted centre and shadcn chrome recedes to the
+     frame — the inversion, expressed in someone else's nouns. */
+  --color-background: var(--plane-edge);
+  --color-foreground: var(--text-primary);
+  --color-card: var(--plane-stage);
+  --color-card-foreground: var(--text-primary);
+  --color-popover: var(--surface-containerLowest);
+  --color-popover-foreground: var(--text-primary);
+  --color-primary: var(--text-primary);
+  --color-primary-foreground: var(--text-inverse);
+  --color-secondary: var(--surface-container);
+  --color-secondary-foreground: var(--text-primary);
+  --color-muted: var(--surface-containerLow);
+  --color-muted-foreground: var(--text-muted);
+  --color-accent: var(--surface-container);
+  --color-accent-foreground: var(--text-primary);
+  --color-destructive: var(--text-danger);
+  --color-destructive-foreground: var(--text-inverse);
+  --color-border: var(--border-subtle);
+  --color-input: var(--border-strong);
+  --color-ring: var(--border-accent);
+
+  /* shadcn's own radius knob. Pointed at `--r-control`, so `rounded-md`
+     — which every stock shadcn component hardcodes — resolves to the
+     amended LAW 1 control radius instead of Tailwind's stock 6px-by-
+     coincidence. One knob, and the law still owns the value. */
+  --radius-sm: var(--r-keycap);
+  --radius-md: var(--r-control);
+  --radius-lg: var(--r-surface);
+  --radius-xl: var(--r-pane);
+
+  /* Type. The FAMILIES are deliberately absent — same circularity trap.
+     tokens.css already defines `--font-sans` / `--font-condensed` /
+     `--font-mono` on a bare `:root`, which is UNLAYERED and therefore
+     beats Tailwind's own `@layer theme` defaults of the same names. So
+     `font-sans` already emits the shell's stack with no bridge at all;
+     re-declaring it here would only break it.
+
+     `condensed` is the exception, and a compile probe is what caught it:
+     it is NOT a stock Tailwind family name, so nothing generates
+     `font-condensed` unless this block does. It cannot say
+     `var(--font-condensed)` — that is the same circular reference — so it
+     points one level DOWN at the next/font variable that tokens.css also
+     points at. The fallback stack is duplicated; the actual face is
+     single-sourced, which is the half that can drift. */
+  --font-condensed: var(--font-ibm-plex-condensed), "IBM Plex Sans Condensed", "Inter", sans-serif;
+
+  --text-technical: var(--sz-technical-label);
+  --text-data: var(--sz-data-value);
+
+  /* NO duration token. v4 4.3.3 has no `--duration-*` theme namespace —
+     the compile probe rejected `duration-tint` — and `duration-*` takes
+     bare numbers instead. A call site that needs the tint budget writes
+     `duration-[var(--t-tint)]`, which keeps the single source of truth
+     without inventing a namespace Tailwind will not read. */
+}
 
 /* Explicit sources. The deleted trees (`components`, `design-system`,
    `features`) are gone from this list; the shell is added. */
@@ -54,7 +232,7 @@ body {
   font-size: 16px;
   line-height: 1.45;
   color: var(--text-primary);
-  background: var(--bg-canvas);
+  background: var(--plane-edge);
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
   font-variant-numeric: tabular-nums;
@@ -71,4 +249,33 @@ kbd,
 samp,
 pre {
   font-variant-ligatures: none;
+}
+
+
+/* ================================================================
+   SHADOW UTILITIES — `@utility`, not `@theme`.
+
+   MEASURED BUG, 2026-08-24 on :3051. Registering these under `@theme`
+   (`--shadow-elevated: var(--shadow-overlay)`) compiled fine and rendered
+   NOTHING: `shadow-elevated` computed to `rgba(0,0,0,0) 0 0 0 0`. Tailwind
+   v4 does not treat a theme shadow as an opaque string — it PARSES the
+   layers to splice in a `--tw-shadow-color` slot so `shadow-black/20`
+   can work. A value that is a bare `var()` has no parseable layers, so
+   the rewrite degrades to the empty shadow.
+
+   `@utility` emits `box-shadow` directly, with no colour machinery in
+   between. The cost is that `shadow-elevated/50` is not a thing — which
+   is correct here anyway: these are three fixed, themed depth roles, not
+   a colour ramp to modulate.
+   ================================================================ */
+@utility shadow-float {
+  box-shadow: var(--shadow-pane);
+}
+
+@utility shadow-sunken {
+  box-shadow: var(--shadow-inset);
+}
+
+@utility shadow-elevated {
+  box-shadow: var(--shadow-overlay);
 }

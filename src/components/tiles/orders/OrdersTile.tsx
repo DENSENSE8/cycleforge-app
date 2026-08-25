@@ -32,6 +32,11 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { OrderIdChip, PlatformChip, TrackingChip } from '@/components/ui/id-chip';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { getLast8 } from '@/lib/copy-chip-format';
 import { getOrderPlatformLabel } from '@/utils/order-platform';
 import { getExternalUrlByItemNumber } from '@/utils/external-item-url';
 import {
@@ -82,15 +87,19 @@ function rowMatches(row: OrdersQueueRow, needle: string): boolean {
 
 export function OrdersQueueTile({
   onOpenOrder,
+  filter,
 }: {
   /** Row click — the host opens (or refocuses) the order's OWN tile. */
   onOpenOrder: (orderKey: string) => void;
+  /** Narrowing text, SET THROUGH THE MAIN COMPOSER (`filter: …` — operator
+   *  hard rule 2026-08-24: the tile-local filter input is gone; the main
+   *  composer is the input method for everything, filtering included). */
+  filter: string;
 }) {
   const [stage, setStage] = useState<OrdersQueueStage>('pending');
   const [rows, setRows] = useState<readonly OrdersQueueRow[] | null>(null);
   const [count, setCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState('');
 
   useEffect(() => {
     let alive = true;
@@ -114,52 +123,50 @@ export function OrdersQueueTile({
   const visible = rows?.filter((r) => rowMatches(r, filter.trim())) ?? [];
 
   return (
-    <div className="orders-tile">
-      <div className="orders-tile-bar">
-        <div className="composer-toggle" role="tablist" aria-label="Stage">
+    <div className="flex h-full min-h-0 min-w-0 flex-col">
+      <div className="flex shrink-0 items-center gap-2 border-b border-border p-2">
+        <ToggleGroup aria-label="Stage">
           {STAGES.map((s) => (
-            <button
+            <ToggleGroupItem
               key={s.key}
-              type="button"
-              role="tab"
-              aria-selected={stage === s.key}
-              className={stage === s.key ? 'active' : undefined}
+              active={stage === s.key}
               onClick={() => setStage(s.key)}
             >
               {s.label}
-            </button>
+            </ToggleGroupItem>
           ))}
-        </div>
-        {/* Tile-local filter — I6's carve-out: inside a mounted queue
-            surface only. It narrows THIS tile; the org search stays in
-            the One Field. */}
-        <input
-          className="orders-tile-filter"
-          type="search"
-          placeholder="Filter this queue…"
-          aria-label="Filter this queue"
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-        />
-        <span className="orders-tile-count mono">
+        </ToggleGroup>
+        {/* The filter READOUT — never an input. `filter: …` in the main
+            composer narrows this queue; `filter:` alone clears it. */}
+        {filter ? (
+          <Badge
+            variant="outline"
+            className="mono min-w-0 truncate border-edge-accent text-ink-accent"
+            title="Set via the composer — filter: …"
+          >
+            filter: {filter}
+          </Badge>
+        ) : null}
+        <span className="mono ml-auto shrink-0 text-technical text-muted-foreground">
           {rows ? `${visible.length}/${count}` : '…'}
         </span>
       </div>
 
       {error ? (
-        <div className="tile-note">Queue failed to load ({error}) — retry by switching stage.</div>
+        <div className="p-2 text-xs text-muted-foreground">Queue failed to load ({error}) — retry by switching stage.</div>
       ) : rows === null ? (
-        <div className="tile-note">Loading the queue…</div>
+        <div className="p-2 text-xs text-muted-foreground">Loading the queue…</div>
       ) : visible.length === 0 ? (
-        <div className="tile-note">No orders match.</div>
+        <div className="p-2 text-xs text-muted-foreground">No orders match.</div>
       ) : (
-        <div className="orders-tile-scroll">
+        <div className="min-h-0 flex-1 overflow-auto">
           <table className="data-table">
             <thead>
               <tr>
                 <th className="col-xs" />
                 <th className="col-s">order</th>
                 <th>product</th>
+                <th className="col-s">tracking</th>
                 <th className="col-xs">qty</th>
                 <th className="col-xs">cond</th>
                 <th className="col-s">ship by</th>
@@ -175,7 +182,7 @@ export function OrdersQueueTile({
                     ? 'warn'
                     : 'ok';
                 return (
-                  <tr key={row.id} onClick={() => onOpenOrder(row.order_id)}>
+                  <tr key={row.id} className="cursor-pointer" onClick={() => onOpenOrder(row.order_id)}>
                     <td>
                       <span
                         className={`status-dot ${mark}`}
@@ -190,8 +197,19 @@ export function OrdersQueueTile({
                         }
                       />
                     </td>
-                    <td className="mono">{row.order_id}</td>
+                    {/* Q4: typed ids render by their LAST 8 — the chip owns
+                        the face, the copy verb, and the platform ink; a
+                        chip click never opens the row. */}
+                    <td>
+                      <OrderIdChip
+                        orderId={row.order_id}
+                        platformLabel={getOrderPlatformLabel(row.order_id, row.account_source)}
+                      />
+                    </td>
                     <td title={row.product_title ?? undefined}>{row.product_title ?? '—'}</td>
+                    <td>
+                      <TrackingChip value={row.tracking_number} carrier={row.carrier} />
+                    </td>
                     <td className="mono">{row.quantity ?? '1'}</td>
                     <td className="mono">{row.condition ?? '—'}</td>
                     <td className="mono">
@@ -303,9 +321,9 @@ export function OrderDetailTile({
     return () => window.removeEventListener(ORDERS_TILE_NOTE_EVENT, onNote);
   }, [orderPk]);
 
-  if (vm === null) return <div className="tile-note">Loading #{orderKey}…</div>;
+  if (vm === null) return <div className="p-2 text-xs text-muted-foreground">Loading #{orderKey}…</div>;
   if (vm === 'missing') {
-    return <div className="tile-note">No order matched “{orderKey}”.</div>;
+    return <div className="p-2 text-xs text-muted-foreground">No order matched “{orderKey}”.</div>;
   }
 
   const { order, activity, isUrgent, isOutOfStock } = vm;
@@ -342,17 +360,38 @@ export function OrderDetailTile({
   };
 
   return (
-    <div className="orders-tile">
-      <div className="orders-tile-scroll orders-detail">
-        <div className="orders-detail-title">{order.product_title ?? 'Untitled order'}</div>
+    <div className="flex h-full min-h-0 min-w-0 flex-col">
+      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-auto p-3">
+        <div className="text-base font-semibold text-foreground">{order.product_title ?? 'Untitled order'}</div>
 
-        <dl className="orders-facts">
+        <dl className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1 text-xs [&_dd]:min-w-0 [&_dd]:[overflow-wrap:anywhere] [&_dt]:self-baseline [&_dt]:font-condensed [&_dt]:text-technical [&_dt]:font-bold [&_dt]:uppercase [&_dt]:tracking-[0.1em] [&_dt]:text-muted-foreground">
+          {/* Q4 last-8 faces: order # with the platform's ink, tracking in
+              accent — full values ride the title and the click copies. */}
+          <dt>Order</dt>
+          <dd className="flex items-center gap-2">
+            <OrderIdChip
+              orderId={order.order_id}
+              platformLabel={getOrderPlatformLabel(order.order_id, order.account_source)}
+            />
+            <PlatformChip label={getOrderPlatformLabel(order.order_id, order.account_source)} />
+          </dd>
+          {order.tracking_numbers.length > 0 ? (
+            <>
+              <dt>Tracking</dt>
+              <dd className="flex flex-wrap items-center gap-1">
+                {order.tracking_numbers.map((t) => (
+                  <TrackingChip key={t} value={t} />
+                ))}
+              </dd>
+            </>
+          ) : null}
           <dt>SKU</dt>
           <dd>
             {order.sku || order.item_number ? (
-              <button
-                type="button"
-                className="orders-link mono"
+              <Button
+                variant="link"
+                size="sm"
+                className="mono h-auto p-0 text-ink-accent"
                 title="Open this product as its own tile"
                 onClick={() =>
                   onOpenProduct({
@@ -363,7 +402,7 @@ export function OrderDetailTile({
                 }
               >
                 {order.sku || order.item_number}
-              </button>
+              </Button>
             ) : (
               '—'
             )}
@@ -376,7 +415,7 @@ export function OrderDetailTile({
           <dt>Stock</dt>
           <dd>
             {isOutOfStock ? (
-              <span className="orders-chip warn">OUT OF STOCK — resolve before shipping</span>
+              <Badge variant="outline" className="border-edge-warning font-condensed text-technical font-bold uppercase tracking-[0.08em] text-ink-warning">OUT OF STOCK — resolve before shipping</Badge>
             ) : (
               'in stock'
             )}
@@ -389,7 +428,15 @@ export function OrderDetailTile({
           {order.serials.length > 0 ? (
             <>
               <dt>Serials</dt>
-              <dd className="mono">{order.serials.join(' · ')}</dd>
+              {/* Q4: last-8 faces; the full serial rides the title. */}
+              <dd className="mono">
+                {order.serials.map((s, i) => (
+                  <span key={s} title={s}>
+                    {i > 0 ? ' · ' : ''}
+                    {getLast8(s)}
+                  </span>
+                ))}
+              </dd>
             </>
           ) : null}
           {order.customer_name ? (
@@ -400,19 +447,19 @@ export function OrderDetailTile({
           ) : null}
         </dl>
 
-        <div className="orders-verbs">
-          <button
-            type="button"
-            className="btn btn-sm"
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
             disabled={busy !== null}
             onClick={toggleUrgent}
             title="orders.is_urgent — the whole floor sees this"
           >
             {isUrgent ? 'Clear urgency' : 'Flag urgent'}
-          </button>
-          <button
-            type="button"
-            className="btn btn-sm"
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
             disabled={busy !== null || testWorkLive}
             onClick={spawnWo}
             title={
@@ -422,13 +469,13 @@ export function OrderDetailTile({
             }
           >
             {testWorkLive ? 'Work queued' : 'Work order'}
-          </button>
+          </Button>
         </div>
 
         {activity.length > 0 ? (
-          <div className="orders-band">
-            <div className="recent-band-label standalone">Activity</div>
-            <ul className="orders-trail">
+          <div className="flex flex-col gap-1">
+            <div className="font-condensed text-technical font-bold uppercase tracking-[0.14em] text-muted-foreground">Activity</div>
+            <ul className="flex list-none flex-col gap-1 text-xs [&_li]:border-l-2 [&_li]:border-border [&_li]:pl-2">
               {activity.map((a, i) => (
                 <li key={i}>
                   <span className="mono">{a.work_type}</span> {a.status.toLowerCase()}
@@ -447,20 +494,20 @@ export function OrderDetailTile({
           </div>
         ) : null}
 
-        <div className="orders-band">
-          <div className="recent-band-label standalone">Notes</div>
+        <div className="flex flex-col gap-1">
+          <div className="font-condensed text-technical font-bold uppercase tracking-[0.14em] text-muted-foreground">Notes</div>
           {notes === null ? (
-            <div className="tile-note">Loading notes…</div>
+            <div className="p-2 text-xs text-muted-foreground">Loading notes…</div>
           ) : notes.length === 0 ? (
-            <div className="tile-note">
+            <div className="p-2 text-xs text-muted-foreground">
               No notes yet — type in the composer to add one; this order is its write target.
             </div>
           ) : (
-            <ul className="orders-trail">
+            <ul className="flex list-none flex-col gap-1 text-xs [&_li]:border-l-2 [&_li]:border-border [&_li]:pl-2">
               {notes.map((n) => (
                 <li key={n.id}>
                   {n.noteText}
-                  <span className="orders-trail-meta">
+                  <span className="block text-technical text-muted-foreground">
                     {n.authorName ?? 'unknown'}
                     {n.createdAt
                       ? ` · ${new Date(n.createdAt).toLocaleString(undefined, {
@@ -475,7 +522,7 @@ export function OrderDetailTile({
               ))}
             </ul>
           )}
-          <div className="tile-hint">Comment via the composer — prose lands on this order.</div>
+          <div className="text-xs text-muted-foreground">Comment via the composer — prose lands on this order.</div>
         </div>
       </div>
     </div>

@@ -16,75 +16,40 @@
  * task-session stepper. See `followUps`.
  */
 
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useCallback } from 'react';
+import { HelpTile } from '@/components/tiles/help/HelpTile';
 import { OrderDetailTile, OrdersQueueTile } from '@/components/tiles/orders/OrdersTile';
 import type { OrderHeaderFacts } from '@/components/tiles/orders/orders-tile-data';
 import { ProductTile } from '@/components/tiles/product/ProductTile';
-import { ACCENTS, DENSITY, PIPELINE, TILE_FLOOR_SESSION_PX, TILE_FLOOR_TABLE_PX, pipelineLabel, type AccentKey, type DensityKey, type ShellTile } from '@/shell/model';
+import { SessionsWeekTile, type WeekTileBlock } from '@/components/tiles/sessions/SessionsWeekTile';
+import { ACCENTS, DENSITY, TILE_FLOOR_SESSION_PX, TILE_FLOOR_TABLE_PX, blockElapsedSeconds, type AccentKey, type DensityKey, type ShellTile } from '@/shell/model';
 import type { ShellApi } from '@/shell/useShell';
 
-/**
- * The stage strip. Scan type IS the process stage, so it renders on the
- * SESSION — full tile width buys it a real strip instead of four squeezed
- * segments in shared chrome, and it is the level the procedure STEPS slot into.
- */
-function Pipeline({ currentStage }: { currentStage: number }) {
-  return (
-    <div className="pipeline">
-      {PIPELINE.map((stage, i) => (
-        <div
-          key={stage}
-          className={`pipeline-step${i < currentStage ? ' done' : i === currentStage ? ' current' : ''}`}
-        >
-          <div className="pipeline-mark" />
-          <span>{pipelineLabel(stage)}</span>
-        </div>
-      ))}
-    </div>
-  );
+/** The chronology's blocks, shaped for the week tile (host adapter half). */
+function weekTileBlocks(shell: ShellApi): readonly WeekTileBlock[] {
+  const now = Date.now();
+  return shell.feed
+    .filter((e): e is Extract<(typeof shell.feed)[number], { kind: 'block' }> => e.kind === 'block')
+    .map((b) => ({
+      id: b.id,
+      ref: b.ref,
+      title: b.title,
+      state: b.state,
+      startedAt: b.intervals[0]?.start ?? now,
+      elapsedSeconds: blockElapsedSeconds(b.intervals, now),
+    }))
+    .reverse();
 }
 
-/** THE SPINE — identity, stage, carton. On the object, not in the beam. */
-function SessionTile({ tile, shell }: { tile: ShellTile; shell: ShellApi }) {
-  const task = tile.sessionKind === 'task';
-  return (
-    <div className="session-tile">
-      <div className="tile-spine">
-        <div className="tile-spine-identity">
-          <span
-            className={`session-state${shell.sessionState === 'armed' ? '' : ` ${shell.sessionState}`}`}
-          >
-            {task ? 'building' : shell.sessionState}
-          </span>
-          <span className="spine-title">{tile.title}</span>
-          <span className="badge badge-accent">{task ? 'task' : 'carton'}</span>
-          <span className="mono">
-            {task ? 'batch is the unit of work' : `${shell.contextValue} · unit 3 of 12`}
-          </span>
-        </div>
-        {task ? null : <Pipeline currentStage={shell.currentStage} />}
-      </div>
-
-      <div className="scan-await">
-        <div className="scan-await-label">Awaiting scan</div>
-        <div className="scan-await-line">Scan a unit to pack</div>
-        <div className="scan-await-next">
-          Next expected: <span className="mono">SN-8842-X</span>
-        </div>
-      </div>
-
-      <div className="tile-hint">
-        Last scan landed in this tile · <span className="kbd">Enter</span> to confirm
-      </div>
-
-      {/* HARD RULE (operator, 2026-08-24): the shell has ONE composer.
-          The prototype's docked per-tile composer was deleted here — a
-          session's notes enter through the main composer like every other
-          text, so a tile never mounts its own input surface. */}
-      <div className="tile-hint">Notes go through the main composer — it is the one input.</div>
-    </div>
-  );
-}
+/* THE SESSION TILE IS DEAD (operator ruling, 2026-08-25 —
+   HANDOFF-session-composer-ux §1/§2). The 2023-prototype placeholder —
+   ARMED chip, pipeline strip, "AWAITING SCAN" box, hard-coded
+   `C-8842-A · unit 3 of 12` — rendered fake facts in a full-height boxy
+   frame. The session's real face (identity · stage · elapsed · verbs) is
+   `SessionHeader` in the composer now: the wedge lands in the composer, so
+   the session that owns the wedge lives on the composer. `useShell` no
+   longer mounts `'session'`-type tabs for scan sessions at all. */
 
 /**
  * What a work queue looks like once it stops being a rail: real columns, a
@@ -103,16 +68,16 @@ const DEMO_ROWS: readonly (readonly [string, string, string, string, string, str
 function TableTile() {
   return (
     <>
-      <table className="data-table">
+      <table className="w-full border-collapse text-xs">
         <thead>
           <tr>
-            <th className="col-xs" />
-            <th className="col-s">carton</th>
+            <th className="w-12" />
+            <th className="w-20">carton</th>
             <th>carrier</th>
-            <th className="col-m">tracking</th>
-            <th className="col-xs">gr</th>
-            <th className="col-s">stage</th>
-            <th className="col-s">age</th>
+            <th className="w-32">tracking</th>
+            <th className="w-12">gr</th>
+            <th className="w-20">stage</th>
+            <th className="w-20">age</th>
           </tr>
         </thead>
         <tbody>
@@ -131,7 +96,7 @@ function TableTile() {
           ))}
         </tbody>
       </table>
-      <div className="tile-note">Placeholder rows — the table host mounts here.</div>
+      <div className="text-xs leading-relaxed text-muted-foreground">Placeholder rows — the table host mounts here.</div>
     </>
   );
 }
@@ -144,10 +109,10 @@ function TableTile() {
 function SettingsTile({ shell }: { shell: ShellApi }) {
   const floorScale = DENSITY[shell.prefs.density].floorScale;
   return (
-    <div className="settings-tile">
+    <div className="flex flex-col gap-2">
       <div>
-        <div className="recent-band-label standalone">Arrangement — yours, unrestricted</div>
-        <div className="settings-copy">
+        <div className="font-condensed text-technical font-bold uppercase tracking-[0.14em] text-muted-foreground">Arrangement — yours, unrestricted</div>
+        <div className="text-xs leading-relaxed text-muted-foreground">
           Tabs, pins, tools, canvas layout, saved workspaces, keybindings, the header readout.
           Per staff, per org. Nothing here is bounded, because none of it changes what anything{' '}
           <b>means</b>.
@@ -155,39 +120,37 @@ function SettingsTile({ shell }: { shell: ShellApi }) {
       </div>
 
       <div>
-        <div className="recent-band-label standalone">Comfort — yours, bounded</div>
+        <div className="font-condensed text-technical font-bold uppercase tracking-[0.14em] text-muted-foreground">Comfort — yours, bounded</div>
 
-        <div className="settings-row">
-          <span className="settings-row-label">Density</span>
-          <div className="composer-toggle">
+        <div className="flex items-center justify-between gap-3 py-1.5">
+          <span className="shrink-0 text-xs text-muted-foreground">Density</span>
+          <ToggleGroup aria-label="Density">
             {(['compact', 'default', 'roomy'] as DensityKey[]).map((d) => (
-              <button
-                type="button"
+              <ToggleGroupItem
                 key={d}
-                className={shell.prefs.density === d ? 'active' : undefined}
-                aria-pressed={shell.prefs.density === d}
+                active={shell.prefs.density === d}
                 onClick={() => shell.setPref('density', d)}
               >
                 {d}
-              </button>
+              </ToggleGroupItem>
             ))}
-          </div>
-          <span className="mono tool-empty-sub">floors ×{floorScale.toFixed(2)}</span>
+          </ToggleGroup>
+          <span className="mono text-xs text-muted-foreground">floors ×{floorScale.toFixed(2)}</span>
         </div>
-        <div className="settings-copy spaced">
+        <div className="mt-2 text-xs leading-relaxed text-muted-foreground">
           One scale, not separate padding knobs. The tile floors were measured against a density,
           so they scale with it — session {Math.round(TILE_FLOOR_SESSION_PX * floorScale)}px, table{' '}
           {Math.round(TILE_FLOOR_TABLE_PX * floorScale)}px. Separate knobs would be an untested
           combination with silently wrong floors.
         </div>
 
-        <div className="settings-row">
-          <label className="settings-row-label" htmlFor="pref-radius">
+        <div className="flex items-center justify-between gap-3 py-1.5">
+          <label className="shrink-0 text-xs text-muted-foreground" htmlFor="pref-radius">
             Frame radius
           </label>
           <input
             id="pref-radius"
-            className="pref-range"
+            className="h-1 flex-1 cursor-pointer appearance-none rounded-full bg-surface-high accent-[var(--border-accent)]"
             type="range"
             min={0}
             max={16}
@@ -197,15 +160,16 @@ function SettingsTile({ shell }: { shell: ShellApi }) {
           />
           <span className="mono">{shell.prefs.radius}px</span>
         </div>
-        <div className="settings-copy spaced">
-          Safe to expose <i>because</i> the control radius tokens do not exist. Radius appears in
-          exactly one place — the workspace frame — so this parameterizes that place instead of
-          reopening the question.
+        <div className="mt-2 text-xs leading-relaxed text-muted-foreground">
+          Comfort radius is the control / surface / pane ladder in{' '}
+          <code>tokens.css</code> — not a second scale. This slider still
+          writes <code>--r-hud</code> (orphaned since the canvas deletion);
+          structural planes stay square against the viewport.
         </div>
 
-        <div className="settings-row">
-          <span className="settings-row-label">Accent</span>
-          <div className="accent-swatches">
+        <div className="flex items-center justify-between gap-3 py-1.5">
+          <span className="shrink-0 text-xs text-muted-foreground">Accent</span>
+          <div className="flex flex-wrap gap-1">
             {(Object.keys(ACCENTS) as AccentKey[]).map((name) => (
               <button
                 type="button"
@@ -228,8 +192,8 @@ function SettingsTile({ shell }: { shell: ShellApi }) {
       </div>
 
       <div>
-        <div className="recent-band-label standalone">Meaning — locked</div>
-        <div className="status-legend">
+        <div className="font-condensed text-technical font-bold uppercase tracking-[0.14em] text-muted-foreground">Meaning — locked</div>
+        <div className="flex flex-wrap items-center gap-3 pt-2 text-xs text-muted-foreground">
           {(
             [
               ['ok', 'packed / on target'],
@@ -238,13 +202,13 @@ function SettingsTile({ shell }: { shell: ShellApi }) {
               ['info', 'received'],
             ] as const
           ).map(([k, l]) => (
-            <span className="status-legend-item" key={k}>
+            <span className="inline-flex items-center gap-1" key={k}>
               <span className={`status-dot ${k}`} />
               {l}
             </span>
           ))}
         </div>
-        <div className="settings-copy">
+        <div className="text-xs leading-relaxed text-muted-foreground">
           Not a preference. Semantic colour is a <b>shared vocabulary</b>: if two staff recolour
           their own, they read the same screen differently, and a lead walking the floor cannot
           read anyone&apos;s. Org-level only, and only for accessibility — never taste.
@@ -281,7 +245,18 @@ export function TileBody({ tile, shell }: { tile: ShellTile; shell: ShellApi }) 
   // rule (2026-08-24): the queue tile and an order's detail tile are
   // SEPARATE tiles — a display never overrides another tile's surface.
   if (tile.ref === 'orders') {
-    return <OrdersQueueTile onOpenOrder={shell.openOrderDetailTile} />;
+    // The narrowing text is SET THROUGH THE MAIN COMPOSER (`filter: …`,
+    // I8 as amended 2026-08-24) — `useShell.tileFilters` is its one home.
+    return (
+      <OrdersQueueTile
+        onOpenOrder={shell.openOrderDetailTile}
+        filter={shell.tileFilters[tile.ref] ?? ''}
+      />
+    );
+  }
+  if (tile.ref === 'help') return <HelpTile />;
+  if (tile.ref === 'sessions-week') {
+    return <SessionsWeekTile blocks={weekTileBlocks(shell)} onResume={shell.resumeBlock} />;
   }
   if (tile.ref.startsWith('order:')) {
     return <OrderDetailHost tile={tile} shell={shell} />;
@@ -289,7 +264,6 @@ export function TileBody({ tile, shell }: { tile: ShellTile; shell: ShellApi }) 
   if (tile.ref.startsWith('product:')) {
     return <ProductTile sku={tile.ref.slice('product:'.length)} />;
   }
-  if (tile.type === 'session') return <SessionTile tile={tile} shell={shell} />;
   if (tile.type === 'table') return <TableTile />;
-  return <div className="tile-placeholder">Tile content</div>;
+  return <div className="flex flex-col items-center gap-1 py-6 text-center text-sm text-muted-foreground">Tile content</div>;
 }

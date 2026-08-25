@@ -1,21 +1,45 @@
 'use client';
 
 /**
- * Top-left identity — Linear / Vercel style.
+ * TOP-LEFT IDENTITY — on shadcn `DropdownMenu` + `Avatar` (2026-08-24).
  *
- * The beam used to open with SCAN · TYPE TO SEARCH. That cluster is gone.
- * The signed-in name is pinned here; the click is workspace identity
- * (switch staff · settings · more), not a page readout.
+ * The hand-rolled version this replaces was the surface the operator
+ * pointed at: a square panel, hard 1px rules between every row, a grey
+ * header block, and cramped 13px items. It also hand-built things Radix
+ * already does correctly — an outside-click listener, an Escape handler,
+ * `role="menu"` stamped on a div, and roving focus that never existed.
  *
- * Scan is still the floor verb — it lives on Ctrl+K via the launcher
- * (⌘N cuts a session block, S12), not as a 300px header field.
+ * What Radix brings that the hand-rolled menu did not have at all:
+ * focus is trapped and returned to the trigger on close, arrow keys and
+ * type-ahead move between items, the menu flips and shifts when it would
+ * cross a viewport edge, and it is portalled so no rail's stacking
+ * context can clip it (the old one needed `--z-panelPopover` on the beam
+ * to escape `.rail`; that hack is now unnecessary).
+ *
+ * The multi-VIEW structure survives, deliberately. Radix sub-menus fly
+ * out sideways, which is wrong for "switch staff" — a list of people with
+ * a PIN step is a DRILL-DOWN, and it must not be dismissed by moving the
+ * pointer. `view` state inside one Content keeps that.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
+import { ArrowLeftIcon, CheckIcon, InfoIcon, LogOutIcon, SettingsIcon, UsersIcon } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { writeRecentSignin } from '@/lib/auth/recent-signins';
-import { Icon } from '@/shell/icons';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { railIconBare } from '@/shell/rail-icon';
 import type { ShellApi } from '@/shell/useShell';
+import { cn } from '@/utils/_cn';
 
 type StaffRow = {
   id: number;
@@ -39,7 +63,6 @@ function roleLabel(role: string): string {
 
 export function IdentityMenu({ shell }: { shell: ShellApi }) {
   const { user, refresh, signOut } = useAuth();
-  const wrapRef = useRef<HTMLDivElement>(null);
   const pinRef = useRef<HTMLInputElement>(null);
 
   const [open, setOpen] = useState(false);
@@ -63,27 +86,6 @@ export function IdentityMenu({ shell }: { shell: ShellApi }) {
     setPinError(null);
     setStaffError(null);
   }, []);
-
-  useEffect(() => {
-    if (!open) return;
-    const onPointer = (event: MouseEvent) => {
-      if (!wrapRef.current?.contains(event.target as Node)) close();
-    };
-    document.addEventListener('mousedown', onPointer);
-    return () => document.removeEventListener('mousedown', onPointer);
-  }, [close, open]);
-
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.stopPropagation();
-        close();
-      }
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [close, open]);
 
   useEffect(() => {
     if (view === 'pin') pinRef.current?.focus();
@@ -113,34 +115,17 @@ export function IdentityMenu({ shell }: { shell: ShellApi }) {
     }
   }, []);
 
-  const openMenu = () => {
-    setOpen((was) => {
-      if (was) {
-        setView('root');
-        return false;
-      }
-      setView('root');
-      return true;
-    });
-  };
-
   const openSwitch = () => {
     setView('switch');
-    setPicked(null);
-    setPin('');
-    setPinError(null);
     void loadStaff();
   };
 
   const pickStaff = (row: StaffRow) => {
-    if (user && row.id === user.staffId) {
-      close();
-      return;
-    }
     setPicked(row);
     setPin('');
     setPinError(null);
-    setView('pin');
+    setView(row.has_pin ? 'pin' : 'switch');
+    if (!row.has_pin) setPinError('This account has no PIN.');
   };
 
   const submitSwitch = async () => {
@@ -183,205 +168,177 @@ export function IdentityMenu({ shell }: { shell: ShellApi }) {
     }
   };
 
-  const openSettings = () => {
-    close();
-    shell.setSettingsPopoverOpen(true);
-  };
-
-  const openMore = () => setView('more');
+  /* A drill-down header: back arrow + where you are. */
+  const Drill = ({ label, onBack }: { label: string; onBack: () => void }) => (
+    <div className="flex items-center gap-1 px-1 pb-1 pt-0.5">
+      <Button variant="ghost" size="icon" className="size-6" onClick={onBack} aria-label="Back">
+        <ArrowLeftIcon />
+      </Button>
+      <span className="text-xs font-medium text-muted-foreground">{label}</span>
+    </div>
+  );
 
   return (
-    <div ref={wrapRef} className={`identity-slot${open ? ' open' : ''}`}>
-      <button
-        type="button"
-        className={`identity-face${open ? ' open' : ''}`}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        aria-label={`${displayName} — account menu`}
-        title={`${displayName} · ${orgName}`}
-        onClick={openMenu}
+    <DropdownMenu
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (!next) close();
+      }}
+    >
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className={cn('size-7 rounded-circle', railIconBare)}
+          aria-label={`${displayName} — account menu`}
+        >
+          <Avatar className="size-6">
+            <AvatarFallback>{initials(displayName)}</AvatarFallback>
+          </Avatar>
+        </Button>
+      </DropdownMenuTrigger>
+
+      <DropdownMenuContent
+        align="start"
+        className="w-64"
+        /* The drill-down views own the keyboard (a PIN field, a staff
+           list). Radix's type-ahead would swallow digits typed into the
+           PIN input, so it is off while a view other than root is up. */
+        loop
+        onCloseAutoFocus={(e) => { if (view !== 'root') e.preventDefault(); }}
       >
-        <span className="identity-mark" aria-hidden>
-          {initials(displayName)}
-        </span>
-        <span className="identity-copy">
-          <span className="identity-name">{displayName}</span>
-          <span className="identity-org">{orgName}</span>
-        </span>
-        <span className="identity-chevron" aria-hidden>
-          <Icon name="chevron-down" size={10} />
-        </span>
-      </button>
+        {view === 'root' ? (
+          <>
+            <DropdownMenuLabel className="pb-2">
+              <span className="block truncate text-sm font-medium text-foreground">{displayName}</span>
+              <span className="block truncate text-xs font-normal text-muted-foreground">
+                {orgName}
+                {user ? ` · ${roleLabel(user.role)}` : ''}
+              </span>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onSelect={(e) => { e.preventDefault(); openSwitch(); }}>
+              <UsersIcon />
+              Switch staff
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onSelect={() => {
+                close();
+                shell.setSettingsPopoverOpen(true);
+              }}
+            >
+              <SettingsIcon />
+              Settings
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setView('more'); }}>
+              <InfoIcon />
+              More information
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              variant="destructive"
+              onSelect={() => {
+                close();
+                void signOut();
+              }}
+            >
+              <LogOutIcon />
+              Sign out
+            </DropdownMenuItem>
+          </>
+        ) : null}
 
-      {open ? (
-        <div className="identity-menu" role="menu" aria-label="Account">
-          {view === 'root' ? (
-            <>
-              <div className="identity-menu-header">
-                <div className="identity-menu-org">{orgName}</div>
-                <div className="identity-menu-title">{displayName}</div>
-                <div className="identity-menu-meta">
-                  {user ? `${user.organizationSlug ?? '—'} · ${roleLabel(user.role)}` : 'Not signed in'}
-                </div>
-              </div>
-              <button type="button" className="identity-item" role="menuitem" onClick={openSwitch}>
-                <Icon name="refresh" size={13} />
-                Switch staff
-              </button>
-              <button type="button" className="identity-item" role="menuitem" onClick={openSettings}>
-                <Icon name="settings" size={13} />
-                Settings
-              </button>
-              <button type="button" className="identity-item" role="menuitem" onClick={openMore}>
-                <Icon name="info" size={13} />
-                More information
-              </button>
-              <div className="identity-divider" />
-              <button
-                type="button"
-                className="identity-item danger"
-                role="menuitem"
-                onClick={() => {
-                  close();
-                  void signOut();
-                }}
-              >
-                <Icon name="close" size={13} />
-                Sign out
-              </button>
-            </>
-          ) : null}
-
-          {view === 'switch' ? (
-            <>
-              <div className="identity-menu-header identity-menu-header-row">
-                <button
-                  type="button"
-                  className="identity-back"
-                  onClick={() => setView('root')}
-                  aria-label="Back"
+        {view === 'switch' ? (
+          <>
+            <Drill label="Switch staff" onBack={() => setView('root')} />
+            <DropdownMenuSeparator />
+            {staffLoading ? (
+              <p className="px-2 py-3 text-xs text-muted-foreground">Loading…</p>
+            ) : null}
+            {staffError ? <p className="px-2 py-3 text-xs text-destructive">{staffError}</p> : null}
+            {!staffLoading && !staffError && staff.length === 0 ? (
+              <p className="px-2 py-3 text-xs text-muted-foreground">No active staff.</p>
+            ) : null}
+            {staff.map((row) => {
+              const current = user?.staffId === row.id;
+              return (
+                <DropdownMenuItem
+                  key={row.id}
+                  onSelect={(e) => { e.preventDefault(); pickStaff(row); }}
+                  className="gap-2"
                 >
-                  ←
-                </button>
-                <span>Switch staff</span>
-              </div>
-              <div className="identity-staff-list">
-                {staffLoading ? <div className="identity-empty">Loading…</div> : null}
-                {staffError ? <div className="identity-empty">{staffError}</div> : null}
-                {!staffLoading && !staffError && staff.length === 0 ? (
-                  <div className="identity-empty">No active staff.</div>
-                ) : null}
-                {staff.map((row) => {
-                  const current = user?.staffId === row.id;
-                  return (
-                    <button
-                      key={row.id}
-                      type="button"
-                      className={`identity-item${current ? ' current' : ''}`}
-                      role="menuitem"
-                      onClick={() => pickStaff(row)}
-                    >
-                      <span className="identity-mark sm" aria-hidden>
-                        {initials(row.name || `Staff #${row.id}`)}
-                      </span>
-                      <span className="identity-item-copy">
-                        <span className="identity-item-title">{row.name || `Staff #${row.id}`}</span>
-                        <span className="identity-item-meta">{roleLabel(row.role)}</span>
-                      </span>
-                      {current ? <Icon name="check" size={12} /> : null}
-                    </button>
-                  );
-                })}
-              </div>
-            </>
-          ) : null}
+                  <Avatar className="size-5">
+                    <AvatarFallback className="text-[8px]">
+                      {initials(row.name || `Staff #${row.id}`)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="flex min-w-0 flex-col">
+                    <span className="truncate text-sm">{row.name || `Staff #${row.id}`}</span>
+                    <span className="truncate text-xs text-muted-foreground">{roleLabel(row.role)}</span>
+                  </span>
+                  {current ? <CheckIcon className="ml-auto size-3.5" /> : null}
+                </DropdownMenuItem>
+              );
+            })}
+          </>
+        ) : null}
 
-          {view === 'pin' && picked ? (
-            <>
-              <div className="identity-menu-header identity-menu-header-row">
-                <button
-                  type="button"
-                  className="identity-back"
-                  onClick={() => {
-                    setView('switch');
-                    setPin('');
-                    setPinError(null);
-                  }}
-                  aria-label="Back"
-                >
-                  ←
-                </button>
-                <span>PIN · {picked.name}</span>
-              </div>
-              <form
-                className="identity-pin"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  void submitSwitch();
-                }}
-              >
-                <label htmlFor="identity-pin">PIN for {picked.name}</label>
-                <input
-                  ref={pinRef}
-                  id="identity-pin"
-                  type="password"
-                  inputMode="numeric"
-                  autoComplete="off"
-                  value={pin}
-                  onChange={(event) => setPin(event.target.value)}
-                  disabled={switching}
-                />
-                {pinError ? <div className="identity-empty danger">{pinError}</div> : null}
-                <button type="submit" className="btn btn-sm btn-primary" disabled={switching}>
-                  {switching ? 'Switching…' : 'Switch'}
-                </button>
-              </form>
-            </>
-          ) : null}
+        {view === 'pin' && picked ? (
+          <>
+            <Drill
+              label={`PIN · ${picked.name}`}
+              onBack={() => { setView('switch'); setPin(''); setPinError(null); }}
+            />
+            <DropdownMenuSeparator />
+            <form
+              className="flex flex-col gap-2 p-2"
+              onSubmit={(event) => { event.preventDefault(); void submitSwitch(); }}
+            >
+              <label htmlFor="identity-pin" className="text-xs text-muted-foreground">
+                PIN for {picked.name}
+              </label>
+              <Input
+                ref={pinRef}
+                id="identity-pin"
+                type="password"
+                inputMode="numeric"
+                autoComplete="off"
+                value={pin}
+                onChange={(event) => setPin(event.target.value)}
+                onKeyDown={(e) => e.stopPropagation()}
+                disabled={switching}
+              />
+              {pinError ? <p className="text-xs text-destructive">{pinError}</p> : null}
+              <Button type="submit" size="sm" disabled={switching}>
+                {switching ? 'Switching…' : 'Switch'}
+              </Button>
+            </form>
+          </>
+        ) : null}
 
-          {view === 'more' ? (
-            <>
-              <div className="identity-menu-header identity-menu-header-row">
-                <button
-                  type="button"
-                  className="identity-back"
-                  onClick={() => setView('root')}
-                  aria-label="Back"
-                >
-                  ←
-                </button>
-                <span>More information</span>
-              </div>
-              <dl className="identity-facts">
-                <div>
-                  <dt>Staff</dt>
-                  <dd>{displayName}</dd>
-                </div>
-                <div>
-                  <dt>Role</dt>
-                  <dd>{user ? roleLabel(user.role) : '—'}</dd>
-                </div>
-                <div>
-                  <dt>Workspace</dt>
-                  <dd>{orgName}</dd>
-                </div>
-                <div>
-                  <dt>Slug</dt>
-                  <dd className="mono">{user?.organizationSlug ?? '—'}</dd>
-                </div>
-                <div>
-                  <dt>Plan</dt>
-                  <dd>{user?.organizationPlan ?? '—'}</dd>
-                </div>
-                <div>
-                  <dt>Staff id</dt>
-                  <dd className="mono">{user?.staffId ?? '—'}</dd>
-                </div>
-              </dl>
-            </>
-          ) : null}
-        </div>
-      ) : null}
-    </div>
+        {view === 'more' ? (
+          <>
+            <Drill label="More information" onBack={() => setView('root')} />
+            <DropdownMenuSeparator />
+            <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 p-2 text-xs">
+              {([
+                ['Staff', displayName],
+                ['Role', user ? roleLabel(user.role) : '—'],
+                ['Workspace', orgName],
+                ['Slug', user?.organizationSlug ?? '—'],
+                ['Plan', user?.organizationPlan ?? '—'],
+                ['Staff id', String(user?.staffId ?? '—')],
+              ] as const).map(([k, v]) => (
+                <Fragment key={k}>
+                  <dt className="text-muted-foreground">{k}</dt>
+                  <dd className={k === 'Slug' || k === 'Staff id' ? 'mono truncate' : 'truncate'}>{v}</dd>
+                </Fragment>
+              ))}
+            </dl>
+          </>
+        ) : null}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

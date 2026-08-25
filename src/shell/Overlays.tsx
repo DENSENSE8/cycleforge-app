@@ -1,222 +1,147 @@
 'use client';
 
 /**
- * The three floating surfaces and the one banner, all of which are defined by
- * a 1–2px stroke alone: with no radius and no elevation there is nothing else
- * to separate one surface from the next.
+ * THE FLOATING SURFACES — on shadcn primitives (2026-08-24).
  *
- * Each appears and disappears INSTANTLY. Nothing here animates geometry.
+ * These were four hand-rolled surfaces "defined by a 1–2px stroke alone:
+ * with no radius and no elevation there is nothing else to separate one
+ * surface from the next." Both halves of that sentence are now obsolete:
+ * LAW 1 grants controls a radius and LAW 3 grants overlays one shadow
+ * token, so a floating surface can look floating.
+ *
+ * What each became, and what it gained:
+ *   · ContextMenu   → `DropdownMenu` anchored to a virtual point. Radix
+ *     owns collision flipping, so it no longer needs the hand-written
+ *     `Math.min(x, innerWidth - 200)` clamp that guessed its own width.
+ *   · SessionPopover → `Popover`. Focus is trapped and restored; the old
+ *     one was a div that could be tabbed straight through.
+ *   · SettingsPopover → `Popover` + `ToggleGroup`.
+ *   · OfflineBanner → `Alert`.
+ *
+ * `stopPropagation` disappears everywhere. Every one of those calls
+ * existed to survive `ShellRoot`'s document-level click-to-dismiss —
+ * Radix dismisses on its own, so the workaround and the listener it
+ * fought are both gone.
  */
 
-import { Icon } from '@/shell/icons';
-import { hhmmss, useClock } from '@/shell/clock';
+import { BoxIcon, PaletteIcon, PencilIcon, Trash2Icon, WifiOffIcon, XIcon } from 'lucide-react';
+import { Alert } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Popover, PopoverContent, PopoverAnchor } from '@/components/ui/popover';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import type { ShellApi } from '@/shell/useShell';
 
 /** In the beam's flow band, not floating. */
 export function OfflineBanner({ shell }: { shell: ShellApi }) {
+  if (!shell.offline) return null;
   return (
-    <div className={`offline-banner${shell.offline ? ' open' : ''}`} role="status">
-      <Icon name="wifi-off" size={12} />
+    <Alert variant="warning" className="rounded-none border-x-0 border-t-0">
+      <WifiOffIcon />
       <span>Offline — changes queued locally</span>
-    </div>
-  );
-}
-
-export function ContextMenu({ shell }: { shell: ShellApi }) {
-  const menu = shell.contextMenu;
-  if (!menu) return null;
-
-  const close = () => shell.setContextMenu(null);
-  const tileId = menu.tileId;
-
-  return (
-    <div
-      className="context-menu open"
-      style={{
-        left: Math.min(menu.x, typeof window === 'undefined' ? menu.x : window.innerWidth - 200),
-        top: Math.min(menu.y, typeof window === 'undefined' ? menu.y : window.innerHeight - 180),
-      }}
-      onClick={(e) => e.stopPropagation()}
-      role="menu"
-    >
-      <button
-        type="button"
-        className="context-item"
-        role="menuitem"
-        onClick={() => {
-          if (tileId) {
-            const tile = shell.tiles.find((t) => t.id === tileId);
-            // The prototype renames through `prompt`. Replacing it with the
-            // in-place editor the session title already uses is a followUp,
-            // not a redesign to make here.
-            const next = tile ? window.prompt('Rename tab:', tile.title) : null;
-            if (next) shell.renameTile(tileId, next);
-          }
-          close();
-        }}
-      >
-        <Icon name="edit" size={14} /> Rename
-      </button>
-      <button
-        type="button"
-        className="context-item"
-        role="menuitem"
-        onClick={() => {
-          if (tileId) shell.cycleTileIcon(tileId);
-          close();
-        }}
-      >
-        <Icon name="box" size={14} /> Change icon
-      </button>
-      <button
-        type="button"
-        className="context-item"
-        role="menuitem"
-        onClick={() => {
-          if (tileId) shell.cycleTileColor(tileId);
-          close();
-        }}
-      >
-        <Icon name="palette" size={14} /> Change color
-      </button>
-      <div className="context-divider" />
-      <button
-        type="button"
-        className="context-item danger"
-        role="menuitem"
-        onClick={() => {
-          if (tileId) shell.closeTile(tileId);
-          close();
-        }}
-      >
-        <Icon name="trash" size={14} /> Close
-      </button>
-    </div>
-  );
-}
-
-export function SessionPopover({ shell }: { shell: ShellApi }) {
-  const clock = useClock();
-  return (
-    <div
-      className={`session-popover${shell.sessionPopoverOpen ? ' open' : ''}`}
-      onClick={(e) => e.stopPropagation()}
-      role="presentation"
-    >
-      <div className="session-popover-header">
-        <span>Session</span>
-        <button
-          type="button"
-          className="rail-btn rail-btn-sm"
-          title="Close"
-          onClick={() => shell.setSessionPopoverOpen(false)}
-        >
-          <Icon name="close" size={12} />
-        </button>
-      </div>
-      <div className="session-popover-body">
-        <div className="session-field">
-          <label htmlFor="session-name">Session name</label>
-          <input
-            id="session-name"
-            type="text"
-            value={shell.sessionName}
-            onChange={(e) => shell.setSessionName(e.target.value)}
-          />
-        </div>
-        <div className="session-field">
-          <label htmlFor="session-type">Type</label>
-          <input id="session-type" className="readonly" type="text" readOnly value="scan — packing" />
-        </div>
-        <div className="session-field">
-          <label htmlFor="session-started">Elapsed</label>
-          <input id="session-started" className="readonly" type="text" readOnly value={hhmmss(clock.elapsed)} />
-        </div>
-        <div className="session-popover-actions">
-          <button type="button" className="btn btn-sm" onClick={shell.parkSession}>
-            Park session
-          </button>
-          <button type="button" className="btn btn-sm btn-primary" onClick={shell.endSession}>
-            Close
-          </button>
-        </div>
-      </div>
-    </div>
+    </Alert>
   );
 }
 
 /**
- * SETTINGS — the bottom-left corner's one panel. Theme lives here (a palette
- * swap is a preference, not a floor control), and so does a second way to
- * expand either rail, for an operator who found the preference before they
- * found the rail edge.
+ * The tab context menu. Anchored to a zero-size element parked at the
+ * click point, which is Radix's documented way to attach a menu to a
+ * coordinate rather than to a trigger.
+ */
+export function ContextMenu({ shell }: { shell: ShellApi }) {
+  const menu = shell.contextMenu;
+  const close = () => shell.setContextMenu(null);
+  const tileId = menu?.tileId ?? null;
+
+  return (
+    <DropdownMenu open={menu !== null} onOpenChange={(next) => { if (!next) close(); }}>
+      <DropdownMenuTrigger asChild>
+        <span
+          aria-hidden
+          className="pointer-events-none fixed size-0"
+          style={{ left: menu?.x ?? 0, top: menu?.y ?? 0 }}
+        />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-44">
+        <DropdownMenuItem
+          onSelect={() => {
+            if (!tileId) return;
+            const tile = shell.tiles.find((t) => t.id === tileId);
+            // Still `window.prompt`. Replacing it with the in-place editor
+            // the session title uses is a follow-up, not this migration.
+            const next = tile ? window.prompt('Rename tab:', tile.title) : null;
+            if (next) shell.renameTile(tileId, next);
+          }}
+        >
+          <PencilIcon /> Rename
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => { if (tileId) shell.cycleTileIcon(tileId); }}>
+          <BoxIcon /> Change icon
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => { if (tileId) shell.cycleTileColor(tileId); }}>
+          <PaletteIcon /> Change color
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem variant="destructive" onSelect={() => { if (tileId) shell.closeTile(tileId); }}>
+          <Trash2Icon /> Close
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+function PanelHeader({ title, onClose }: { title: string; onClose: () => void }) {
+  return (
+    <div className="mb-3 flex items-center justify-between">
+      <span className="text-sm font-medium">{title}</span>
+      <Button variant="ghost" size="icon" className="size-6" aria-label={`Close ${title}`} onClick={onClose}>
+        <XIcon />
+      </Button>
+    </div>
+  );
+}
+
+/* `SessionPopover` is DELETED (operator ruling, 2026-08-25 —
+   HANDOFF-session-composer-ux §5). Its facts were half hardcoded
+   ("scan — packing") and its verbs (park/close) belong on the session's
+   face — the composer's `SessionHeader` — while the beam's ⋯ becomes the
+   tools entry. One session mouth, not two. */
+
+/**
+ * SETTINGS — the bottom-left corner's one panel. Theme lives here (a
+ * palette swap is a preference, not a floor control), and so does a
+ * second way to expand the tools rail.
  */
 export function SettingsPopover({ shell }: { shell: ShellApi }) {
   return (
-    <div
-      className={`settings-popover${shell.settingsPopoverOpen ? ' open' : ''}`}
-      onClick={(e) => e.stopPropagation()}
-      role="presentation"
-    >
-      <div className="session-popover-header">
-        <span>Settings</span>
-        <button
-          type="button"
-          className="rail-btn rail-btn-sm"
-          title="Close settings"
-          onClick={() => shell.setSettingsPopoverOpen(false)}
-        >
-          <Icon name="close" size={12} />
-        </button>
-      </div>
-      <div className="session-popover-body">
-        <div className="session-field">
-          <span className="settings-field-label">Theme</span>
-          <div className="mode-toggle">
-            <button
-              type="button"
-              className={shell.theme === 'light' ? 'active' : undefined}
-              aria-pressed={shell.theme === 'light'}
-              onClick={() => shell.setTheme('light')}
-            >
-              light
-            </button>
-            <button
-              type="button"
-              className={shell.theme === 'dark' ? 'active' : undefined}
-              aria-pressed={shell.theme === 'dark'}
-              onClick={() => shell.setTheme('dark')}
-            >
-              dark
-            </button>
+    <Popover open={shell.settingsPopoverOpen} onOpenChange={shell.setSettingsPopoverOpen}>
+      <PopoverAnchor className="fixed bottom-2 left-11" />
+      <PopoverContent align="start" side="top" className="w-64">
+        <PanelHeader title="Settings" onClose={() => shell.setSettingsPopoverOpen(false)} />
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-1.5">
+            <span className="text-xs font-medium text-muted-foreground">Theme</span>
+            <ToggleGroup aria-label="Theme">
+              <ToggleGroupItem active={shell.theme === 'light'} onClick={() => shell.setTheme('light')}>
+                Light
+              </ToggleGroupItem>
+              <ToggleGroupItem active={shell.theme === 'dark'} onClick={() => shell.setTheme('dark')}>
+                Dark
+              </ToggleGroupItem>
+            </ToggleGroup>
           </div>
+          {/* The Rails segment is gone (2026-08-25): both rails are
+              always-mounted icon stacks now — the tools rail lost its
+              labelled mode when it was rebuilt as the left rail's mirror,
+              so there is no rail state left to switch. */}
         </div>
-        <div className="session-field">
-          <span className="settings-field-label">Rails</span>
-          <div className="mode-toggle">
-            <button
-              type="button"
-              className={shell.leftExpanded ? 'active' : undefined}
-              aria-pressed={shell.leftExpanded}
-              onClick={shell.toggleLeftRail}
-            >
-              sessions
-            </button>
-            <button
-              type="button"
-              className={shell.rightExpanded ? 'active' : undefined}
-              aria-pressed={shell.rightExpanded}
-              onClick={shell.toggleRightRail}
-            >
-              tools
-            </button>
-          </div>
-        </div>
-        <div className="settings-note">
-          An expanded rail shows every icon with its label. The rail&apos;s inner edge, its empty
-          slack and the vertical PAGES / TOOLS label all do the same thing.
-        </div>
-      </div>
-    </div>
+      </PopoverContent>
+    </Popover>
   );
 }

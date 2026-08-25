@@ -179,6 +179,10 @@ export const TOOLS: readonly ToolDescriptor[] = [
   { key: 'photos', label: 'Photo library', icon: 'image', scope: 'global', cls: 'library' },
   { key: 'manuals', label: 'Manuals', icon: 'book', scope: 'global', cls: 'library' },
   { key: 'printer', label: 'Label printer', icon: 'printer', scope: 'global', cls: 'actuator' },
+  // The timer had a panel body (session elapsed + the header-readout face
+  // modes) but no registry row, so nothing could open it. Session-scoped
+  // like the stopwatch: its number IS the armed block's elapsed (T6).
+  { key: 'timer', label: 'Timer', icon: 'timer', scope: 'session', cls: 'readout' },
   { key: 'stopwatch', label: 'Stopwatch', icon: 'stopwatch', scope: 'session', cls: 'readout' },
   {
     key: 'pairing',
@@ -440,13 +444,78 @@ export function blockElapsedSeconds(intervals: readonly BlockInterval[], now: nu
 }
 
 /**
- * The centred welcome. AI-first: the empty feed is a conversation, not a
- * menu of things to open — and since the inversion it is the surface itself.
+ * THE EMPTY STAGE — WORK, NOT A GREETING.
+ *
+ * `FEED_WELCOME` ("Welcome back" + a sentence about the feed) was deleted
+ * 2026-08-24. It was the last artifact of the 2026-08-23 inversion — "the
+ * feed is the ground, always the AI" — which D2 OVERTURNED the next day:
+ * the data takes the centre. A salutation is not data, and it was holding
+ * the one piece of screen the ruling reserved for work.
+ *
+ * What replaces it is the queue, ranked by the operator's own ordering
+ * (2026-08-24): QUEUED WORK ORDERS FIRST, then parked sessions. Nothing
+ * greets anybody; the work is simply already there when you look.
+ *
+ * SEED DATA. The work-order queue API does not exist yet — this lane is
+ * building the surface ahead of it, the same way `PROTOTYPE_SEED` does for
+ * pins and recents. When the endpoint lands, this constant is what it
+ * replaces; the shape is the contract.
  */
-export const FEED_WELCOME = {
-  title: 'Welcome back',
-  body: 'Tell me the work in front of you, or scan — everything runs through this feed.',
-} as const;
+export type WorkOrderUrgency = 'now' | 'today' | 'queued';
+
+export interface WorkOrder {
+  readonly id: string;
+  /** The printed reference — mono, never re-wrapped, never ligated. */
+  readonly ref: string;
+  readonly title: string;
+  readonly sub: string;
+  /** D16's urgency marker. Colour is the verdict; the word is the fact. */
+  readonly urgency: WorkOrderUrgency;
+  readonly age: string;
+}
+
+export const WORK_ORDER_URGENCY: Readonly<
+  Record<WorkOrderUrgency, { readonly label: string; readonly tone: string }>
+> = {
+  now: { label: 'Now', tone: 'danger' },
+  today: { label: 'Today', tone: 'warning' },
+  queued: { label: 'Queued', tone: 'muted' },
+};
+
+export const WORK_ORDER_QUEUE: readonly WorkOrder[] = [
+  {
+    id: 'wo-4471',
+    ref: 'WO-4471',
+    title: 'Warranty claim — cracked frame',
+    sub: 'M. Okonkwo · SN-9912-D',
+    urgency: 'now',
+    age: '18m',
+  },
+  {
+    id: 'wo-4468',
+    ref: 'WO-4468',
+    title: 'Rebuild rear hub',
+    sub: 'R. Delacroix · SN-8830-K',
+    urgency: 'today',
+    age: '2h',
+  },
+  {
+    id: 'wo-4465',
+    ref: 'WO-4465',
+    title: 'Pickup hold — awaiting payment',
+    sub: 'T. Bergström · Pack #2210',
+    urgency: 'today',
+    age: '4h',
+  },
+  {
+    id: 'wo-4459',
+    ref: 'WO-4459',
+    title: 'Recheck grade after photos',
+    sub: 'Unassigned · C-8830-K',
+    urgency: 'queued',
+    age: 'yesterday',
+  },
+] as const;
 
 /**
  * The one scripted assistant turn. The agent loop is not wired in this

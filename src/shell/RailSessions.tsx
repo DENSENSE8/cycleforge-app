@@ -1,164 +1,127 @@
 'use client';
 
 /**
- * LEFT RAIL — SESSIONS (renamed from Pages, 2026-08-24 operator ruling).
- * 40px collapsed, 208px expanded, INSTANTLY: a rail that tweens its width
- * holds the well hostage for the length of the tween and hands back nothing
- * during it.
+ * LEFT RAIL — ICONS ONLY, ALWAYS MOUNTED (2026-08-24, operator ruling),
+ * now on shadcn `Button` + `Tooltip`.
  *
- * Order is meaningful — add · pins · label · tabs · recents. A pin is
- * always-there; a tab is currently-open. Both rails run the same gradient:
- * PERMANENCE DECREASES DOWNWARD.
+ * The rail is exclusively "a vertical stack of minimalist, outlined
+ * icons": no text labels, no expand control, no background container.
  *
- * FULLY CLOSEABLE (2026-08-24, operator ruling — parity with the right
- * rail, amends R1). `shell.leftRailOpen` PINS it open or closed; the
- * header's top-left button is the click path and always works. This
- * component adds a hover hot-zone at the viewport's left edge
- * (`useRailPeek`) that PEEKS it open without pinning — a preview, never
- * the only way in, so a `(hover: none)` tablet is unaffected.
+ * TOOLTIPS REPLACE `title=`. A native `title` is browser chrome — a fixed
+ * ~1s delay, unstyleable, and it never appears for a keyboard user at
+ * all. On a rail where the ICON IS THE ONLY LABEL, that made every
+ * control unnameable without a pointer. `Tooltip` renders the same string
+ * on hover AND on focus, and `aria-label` still carries it for a screen
+ * reader.
+ *
+ * Consequences of the icons-only ruling, still true:
+ *   · `useRailPeek` / `leftRailOpen` no longer drive this rail; ⌘B is
+ *     unbound for the left side.
+ *   · Recents are gone — they were a banded list of titles and subtitles,
+ *     which the ruling excludes. `shell.recents` still holds the data.
  */
 
+import { CircleHelpIcon, SearchIcon } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Icon } from '@/shell/icons';
-import { RECENT_KINDS, type RecentEntry } from '@/shell/model';
+import { railIconActive, railIconBare, railIconPlate } from '@/shell/rail-icon';
 import type { ShellApi } from '@/shell/useShell';
-import { useRailPeek } from '@/shell/useRailPeek';
+import { cn } from '@/utils/_cn';
 
-/**
- * RECENTS — scoped to the CURRENT SESSION (2026-08-24 ruling; H1's "per
- * staff, per org, never per session" is struck through in LAWS.md). Only
- * rows tagged to the armed block's own ref render; park that block and the
- * trail clears with it — the next session starts on a clean list, and a
- * parked session is resumed from its own "Resume" control in the well, not
- * bookmarked here.
- */
-function Recents({ shell }: { shell: ShellApi }) {
-  const currentSessionRef = shell.armedBlock?.ref ?? null;
-  const scoped = currentSessionRef
-    ? shell.recents.filter((r) => r.sessionId === currentSessionRef)
-    : [];
-  const newest = scoped.reduce<RecentEntry | null>(
-    (best, r) => (best === null || r.at > best.at ? r : best),
-    null,
-  );
-
+function RailButton({
+  label,
+  onClick,
+  onContextMenu,
+  active,
+  children,
+}: {
+  label: string;
+  onClick: () => void;
+  onContextMenu?: (e: React.MouseEvent) => void;
+  active?: boolean;
+  children: React.ReactNode;
+}) {
   return (
-    <div className="recents-list">
-      {RECENT_KINDS.map((band) => {
-        const rows = scoped
-          .filter((r) => r.kind === band.kind)
-          .sort((a, b) => b.at - a.at)
-          .slice(0, band.cap);
-        if (rows.length === 0) return null;
-
-        return (
-          <div className="recent-band" key={band.kind} data-kind={band.kind}>
-            <div className="recent-band-label">{band.label}</div>
-            {rows.map((r) => {
-              const isLast = newest !== null && r.id === newest.id;
-              return (
-                <button
-                  type="button"
-                  key={r.id}
-                  className={`recent-item${isLast ? ' is-last' : ''}`}
-                  title={`${isLast ? 'Most recent selection · ' : ''}${band.label.replace(/s$/, '')} · ${r.title} — ${r.sub}`}
-                  onClick={() => shell.touchRecent(r.id)}
-                >
-                  <Icon name={band.icon} size={15} />
-                  <span className="recent-text">
-                    <span className="recent-title">{r.title}</span>
-                    <span className="recent-sub">{r.sub}</span>
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        );
-      })}
-    </div>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className={cn('size-8', railIconPlate, active && railIconActive)}
+          aria-label={label}
+          onClick={onClick}
+          onContextMenu={onContextMenu}
+        >
+          {children}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent side="right">{label}</TooltipContent>
+    </Tooltip>
   );
 }
 
 export function RailSessions({ shell }: { shell: ShellApi }) {
-  const expanded = shell.leftExpanded;
-  const { visible, handleEnter, handleLeave } = useRailPeek(shell.leftRailOpen);
-
   return (
-    <div className="rail-left-zone" onMouseEnter={handleEnter} onMouseLeave={handleLeave}>
-      {visible ? (
-        <nav className={`rail left${expanded ? ' expanded' : ''}`} aria-label="Sessions">
-          <button
-            type="button"
-            className="rail-btn"
-            onClick={() => shell.openLauncher('')}
-            title="Add a session or table (Ctrl+K)"
-          >
-            <Icon name="plus" size={16} />
-            <span className="rail-btn-label">Add session or table</span>
-          </button>
-          <div className="rail-divider" />
+    /* Order (operator, 2026-08-24): SEARCH sits at the top, directly
+       under the beam's staff icon — the `+` moved up INTO the beam,
+       between that icon and the session name. Then the pins, then this
+       session's open pages (pages are per session — the Spaces model). */
+    <nav className="flex w-10 shrink-0 flex-col items-center gap-0.5 py-1" aria-label="Sessions">
+      <RailButton label="Search (Ctrl+K)" onClick={() => shell.openLauncher('')}>
+        <SearchIcon />
+      </RailButton>
 
-          {/* PINNED — above the tabs, and that ordering is the point. */}
-          <div className="rail-group">
-            {shell.pins.map((pin) => (
-              <button
-                type="button"
-                key={pin.id}
-                className="pin"
-                title={`${pin.title} — pinned`}
-                onClick={() => shell.openTile(pin.id, pin.title, 'table')}
-              >
-                <Icon name={pin.icon} size={15} />
-                <span className="tab-name">{pin.title}</span>
-              </button>
-            ))}
-          </div>
+      {shell.pins.map((pin) => (
+        <RailButton
+          key={pin.id}
+          label={`${pin.title} — pinned`}
+          onClick={() => shell.openTile(pin.id, pin.title, 'table')}
+        >
+          <Icon name={pin.icon} size={16} />
+        </RailButton>
+      ))}
 
-          <div className="rail-divider rail-divider-collapsed" />
-          <button
-            type="button"
-            className="rail-label"
-            onClick={shell.toggleLeftRail}
-            title="Switch between icon-only and labelled"
-          >
-            Sessions
-          </button>
+      {shell.tabs.map((tab) => (
+        <RailButton
+          key={tab.ref}
+          label={tab.title}
+          active={tab.ref === shell.activeRef}
+          onClick={() => shell.focusRef(tab.ref)}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            const tile = shell.tiles.find((t) => t.ref === tab.ref);
+            shell.setContextMenu({ x: e.clientX, y: e.clientY, tileId: tile?.id ?? null });
+          }}
+        >
+          <Icon name={tab.icon} size={16} />
+        </RailButton>
+      ))}
 
-          <div className="tab-list">
-            {shell.tabs.map((tab) => (
-              <button
-                type="button"
-                key={tab.ref}
-                className={`tab${tab.ref === shell.activeRef ? ' active' : ''}`}
-                title={tab.title}
-                onClick={() => shell.focusRef(tab.ref)}
-                onContextMenu={(e) => {
-                  e.preventDefault();
-                  const tile = shell.tiles.find((t) => t.ref === tab.ref);
-                  shell.setContextMenu({ x: e.clientX, y: e.clientY, tileId: tile?.id ?? null });
-                }}
-              >
-                <Icon name={tab.icon} size={15} />
-                <span className="tab-name">{tab.title}</span>
-                {tab.color ? <span className="tab-color" style={{ background: tab.color }} /> : null}
-              </button>
-            ))}
-          </div>
-
-          {/* No slack, no gap — `.tab-list` is a `flex: 0 1 auto` strip, so
-              with no tabs open the rail sits tight: pins, then Recents, no
-              empty flex-filled void between them. `.rail-label` above is
-              the rail's icon/label control now; the header's top-left
-              button is the open/close one. */}
-          <div className="rail-divider" />
-          <div className="recents-header" title="Recents — this session's own trail. Banded by kind; the tint marks your most recent selection.">
-            <span className="recents-icon">
-              <Icon name="history" size={15} />
-            </span>
-            <span>Recents</span>
-          </div>
-          <Recents shell={shell} />
-        </nav>
-      ) : null}
-    </div>
+      {/* `?` — PINNED MOST BOTTOM-LEFT (operator, 2026-08-24), the Linear
+          pattern. Hover: the quick basics. Click: the Help TILE, placed
+          leftmost on the canvas (C8 — help is a tile like everything
+          else). It replaced the keycap legend that rode the composer. */}
+      <div className="mt-auto">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className={cn('size-8 rounded-full', railIconBare)}
+              aria-label="Help — keys and the one field"
+              onClick={shell.openHelpTile}
+            >
+              <CircleHelpIcon />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="right">
+            <span className="mono">#</span> order · <span className="mono">/</span> action ·{' '}
+            <span className="mono">filter:</span> narrow the queue · scans always land in the
+            field — click for the full legend
+          </TooltipContent>
+        </Tooltip>
+      </div>
+    </nav>
   );
 }

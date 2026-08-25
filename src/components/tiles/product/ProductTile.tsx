@@ -12,6 +12,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { Badge } from '@/components/ui/badge';
 
 interface ProductVM {
   readonly sku: string;
@@ -58,26 +59,26 @@ export function ProductTile({ sku }: { sku: string }) {
     };
   }, [sku]);
 
-  if (vm === null) return <div className="tile-note">Resolving {sku}…</div>;
+  if (vm === null) return <div className="p-2 text-xs text-muted-foreground">Resolving {sku}…</div>;
   if (vm === 'missing') {
-    return <div className="tile-note">Nothing in the catalog matched “{sku}”.</div>;
+    return <div className="p-2 text-xs text-muted-foreground">Nothing in the catalog matched “{sku}”.</div>;
   }
 
   const stockN = Number(vm.stock);
   const inStock = Number.isFinite(stockN) && stockN > 0;
 
   return (
-    <div className="orders-tile">
-      <div className="orders-tile-scroll orders-detail">
-        <div className="orders-detail-title">{vm.title}</div>
+    <div className="flex h-full min-h-0 min-w-0 flex-col">
+      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-auto p-3">
+        <div className="text-base font-semibold text-foreground">{vm.title}</div>
 
         {vm.imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element -- catalog
           // image hosts vary by platform; next/image needs a domain allowlist.
-          <img className="product-tile-photo" src={vm.imageUrl} alt={vm.title} />
+          <img className="max-h-56 max-w-full self-start border border-border object-contain" src={vm.imageUrl} alt={vm.title} />
         ) : null}
 
-        <dl className="orders-facts">
+        <dl className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1 text-xs [&_dd]:min-w-0 [&_dd]:[overflow-wrap:anywhere] [&_dt]:self-baseline [&_dt]:font-condensed [&_dt]:text-technical [&_dt]:font-bold [&_dt]:uppercase [&_dt]:tracking-[0.1em] [&_dt]:text-muted-foreground">
           <dt>SKU</dt>
           <dd className="mono">{vm.sku}</dd>
           <dt>Stock</dt>
@@ -85,7 +86,7 @@ export function ProductTile({ sku }: { sku: string }) {
             {inStock ? (
               <span className="mono">{vm.stock}</span>
             ) : (
-              <span className="orders-chip warn">NONE ON HAND</span>
+              <Badge variant="outline" className="border-edge-warning font-condensed text-technical font-bold uppercase tracking-[0.08em] text-ink-warning">NONE ON HAND</Badge>
             )}
             {vm.location ? <span className="mono"> · {vm.location}</span> : null}
           </dd>
@@ -104,7 +105,7 @@ export function ProductTile({ sku }: { sku: string }) {
           <dt>Sticker</dt>
           <dd>
             <a
-              className="orders-link mono"
+              className="mono cursor-pointer text-ink-accent underline underline-offset-4"
               href={`/s/${encodeURIComponent(vm.sku)}`}
               target="_blank"
               rel="noreferrer"
@@ -116,20 +117,20 @@ export function ProductTile({ sku }: { sku: string }) {
         </dl>
 
         {vm.packNotes ? (
-          <div className="orders-band">
-            <div className="recent-band-label standalone">Pack notes</div>
-            <div className="settings-copy">{vm.packNotes}</div>
+          <div className="flex flex-col gap-1">
+            <div className="font-condensed text-technical font-bold uppercase tracking-[0.14em] text-muted-foreground">Pack notes</div>
+            <div className="text-xs leading-relaxed text-muted-foreground">{vm.packNotes}</div>
           </div>
         ) : null}
 
         {vm.qcFlags.length > 0 ? (
-          <div className="orders-band">
-            <div className="recent-band-label standalone">QC checks</div>
-            <ul className="orders-trail">
+          <div className="flex flex-col gap-1">
+            <div className="font-condensed text-technical font-bold uppercase tracking-[0.14em] text-muted-foreground">QC checks</div>
+            <ul className="flex list-none flex-col gap-1 text-xs [&_li]:border-l-2 [&_li]:border-border [&_li]:pl-2">
               {vm.qcFlags.map((f) => (
                 <li key={f.id}>
                   {f.label}
-                  {f.category ? <span className="orders-trail-meta">{f.category}</span> : null}
+                  {f.category ? <span className="block text-technical text-muted-foreground">{f.category}</span> : null}
                 </li>
               ))}
             </ul>
@@ -137,13 +138,13 @@ export function ProductTile({ sku }: { sku: string }) {
         ) : null}
 
         {vm.kitParts.length > 0 ? (
-          <div className="orders-band">
-            <div className="recent-band-label standalone">Kit parts</div>
-            <ul className="orders-trail">
+          <div className="flex flex-col gap-1">
+            <div className="font-condensed text-technical font-bold uppercase tracking-[0.14em] text-muted-foreground">Kit parts</div>
+            <ul className="flex list-none flex-col gap-1 text-xs [&_li]:border-l-2 [&_li]:border-border [&_li]:pl-2">
               {vm.kitParts.map((p) => (
                 <li key={p.id}>
                   <span className="mono">{p.qty}×</span> {p.name}
-                  {p.critical ? <span className="orders-chip warn">CRITICAL</span> : null}
+                  {p.critical ? <Badge variant="outline" className="ml-1 border-edge-warning font-condensed text-technical font-bold uppercase tracking-[0.08em] text-ink-warning">CRITICAL</Badge> : null}
                 </li>
               ))}
             </ul>

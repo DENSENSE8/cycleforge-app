@@ -47,6 +47,7 @@ test('hover on composer/assistant tile refs leaves the previous entity', () => {
   const payload = order('assist', '26-9');
   assert.equal(applyHeaderTileHover(prev, 'assistant', payload), prev);
   assert.equal(applyHeaderTileHover(prev, 'composer', payload), prev);
+  assert.equal(applyHeaderTileHover(prev, 'chronology', payload), prev);
 });
 
 test('hover on a tile with no payload yet keeps the previous entity', () => {

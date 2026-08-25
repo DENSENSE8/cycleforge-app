@@ -13,9 +13,16 @@
  * - **auth**, because permission reads have to be synchronous everywhere and
  *   `AuthProvider` is what makes them so. It hydrates from the server session
  *   handed in by `layout.tsx`, so there is no signed-in flash.
+ * - **MotionConfig**, added 2026-08-24 with the feedback-motion ruling. It
+ *   exists for exactly one prop: `reducedMotion="user"`, which makes
+ *   `prefers-reduced-motion` a SHELL-WIDE fact rather than something each
+ *   call site has to remember. See `src/shell/feedback.ts` for what motion
+ *   is and is not allowed to do here.
  */
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MotionConfig } from 'motion/react';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { useState } from 'react';
 import { AuthProvider } from '@/contexts/AuthContext';
 import type { AuthSessionUser } from '@/contexts/AuthContext';
@@ -44,7 +51,15 @@ export function ShellProviders({
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider initial={initialUser}>{children}</AuthProvider>
+      <MotionConfig reducedMotion="user">
+        {/* One provider for every tooltip in the shell. Radix shares a
+            delay timer across it, so crossing an icon rail shows the
+            second and third label immediately instead of re-waiting the
+            300ms on each — the behaviour a native `title` can never have. */}
+        <TooltipProvider>
+          <AuthProvider initial={initialUser}>{children}</AuthProvider>
+        </TooltipProvider>
+      </MotionConfig>
     </QueryClientProvider>
   );
 }

@@ -21,11 +21,14 @@
  * sweep of the pointer.
  */
 
+import { MoreHorizontalIcon, XIcon } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { useState } from 'react';
-import { Icon } from '@/shell/icons';
 import { TileBody } from '@/shell/TileBody';
+import { splitHairline } from '@/shell/rail-icon';
 import type { ShellTile } from '@/shell/model';
 import type { ShellApi } from '@/shell/useShell';
+import { cn } from '@/utils/_cn';
 
 export function Tile({
   tile,
@@ -45,11 +48,22 @@ export function Tile({
 
   return (
     <div
-      className={`tile${focused ? ' focused' : ''}${dragging ? ' dragging' : ''}${snapTarget ? ' snap-target' : ''}`}
+      /* FOUR STATES, FOUR TREATMENTS — in a tiling manager hover and
+         focus are different facts and one of them decides where the
+         keystrokes go. All four are `outline` or colour, so none reflow:
+         `outline` does not participate in layout (LAW 4), which is what
+         lets the focus ring be 2px without nudging a pixel. */
+      className={[
+        'relative flex min-w-0 flex-col overflow-hidden rounded-lg border border-border bg-card transition-colors',
+        'hover:border-input',
+        focused ? 'outline outline-2 -outline-offset-2 outline-edge-accent' : '',
+        dragging ? 'opacity-50' : '',
+        snapTarget ? 'outline outline-2 -outline-offset-2 outline-edge-accent bg-surface-accent' : '',
+      ].filter(Boolean).join(' ')}
       data-id={tile.id}
       data-type={tile.type}
-      onMouseEnter={() => shell.focusTile(tile.id)}
-      onMouseDown={() => shell.focusTile(tile.id)}
+      onMouseEnter={() => shell.hoverTile(tile.id, tile.ref)}
+      onMouseDown={() => shell.hoverTile(tile.id, tile.ref)}
       onContextMenu={(e) => {
         e.preventDefault();
         openMenu(e);
@@ -67,7 +81,7 @@ export function Tile({
       }}
     >
       <div
-        className="tile-header"
+        className="flex h-7 shrink-0 cursor-grab items-center gap-2 border-b border-border px-2 active:cursor-grabbing"
         draggable
         onDragStart={(e) => {
           setDragging(true);
@@ -76,47 +90,59 @@ export function Tile({
         }}
         onDragEnd={() => setDragging(false)}
       >
-        <div className="tile-identity">
-          <span className="tile-color" style={{ background: tile.color }} />
-          <span className="tile-title">{tile.title}</span>
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <span className="size-2 shrink-0 rounded-sm" style={{ background: tile.color }} />
+          <span className="truncate text-xs font-medium text-card-foreground">{tile.title}</span>
         </div>
-        <span className="tile-type">{tile.type}</span>
+        <span className="shrink-0 font-condensed text-technical font-bold uppercase tracking-[0.12em] text-muted-foreground">
+          {tile.type}
+        </span>
         {/* Always present — an opacity reveal is a hover dependency, and a
             mounted tablet has no hover. */}
-        <div className="tile-actions">
-          <button
-            type="button"
-            className="rail-btn rail-btn-xs"
-            title="Tile menu"
+        <div className="flex shrink-0 items-center gap-0.5">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-5"
+            aria-label="Tile menu"
             onClick={(e) => {
               e.stopPropagation();
               openMenu(e);
             }}
           >
-            <Icon name="more" size={12} />
-          </button>
-          <button
-            type="button"
-            className="rail-btn rail-btn-xs tile-close"
-            title="Close this tile and its tab (Ctrl+W)"
+            <MoreHorizontalIcon />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-5 hover:bg-destructive/10 hover:text-destructive"
+            aria-label="Close this tile and its tab (Ctrl+W)"
             onClick={(e) => {
               e.stopPropagation();
               shell.closeTile(tile.id);
             }}
           >
-            <Icon name="close" size={12} />
-          </button>
+            <XIcon />
+          </Button>
         </div>
       </div>
 
-      <div className="tile-body">
+      <div className="min-h-0 flex-1 overflow-auto p-3">
         <TileBody tile={tile} shell={shell} />
       </div>
 
       {/* The prototype draws this handle and does not wire it — resize is
           still a `needsOutsideLane` question (the canvas store owns split
           ratios). Kept so the seam is visible rather than forgotten. */}
-      {isLast ? null : <div className="tile-split-handle" title="Drag to resize" />}
+      {isLast ? null : (
+        <div
+          className={cn(
+            'absolute inset-y-0 right-0 w-1 cursor-col-resize',
+            splitHairline,
+          )}
+          title="Drag to resize"
+        />
+      )}
     </div>
   );
 }

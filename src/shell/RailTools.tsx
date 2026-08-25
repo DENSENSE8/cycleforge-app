@@ -1,116 +1,113 @@
 'use client';
 
 /**
- * RIGHT RAIL — TOOLS. The mirror of the left: add · global tools · session
- * tools.
+ * RIGHT RAIL — TOOLS, the left rail's MIRROR (operator ruling, 2026-08-25 —
+ * HANDOFF-session-composer-ux §5). Icon plates on the canvas ground: no bar,
+ * no fill, no peek, no pin, no expanded mode. Border chrome is hover-only.
+ * operator who learns one rail has learned both (R3), and the rebuild makes
+ * that literal — same always-mounted column, same plate grammar, mirrored.
  *
- * Rendered from the TOOL REGISTRY, banded by `scope`. A session band with no
- * available tools renders NOTHING — a heading over an empty band spends the
- * rail's scarcest resource on saying there is nothing to say.
+ * What LEFT with the rebuild, and why:
+ *   · `useRailPeek` / `rightRailOpen` / ⌘⇧B — a rail that is always
+ *     mounted has nothing to peek, pin, or toggle (the same argument that
+ *     unbound ⌘B when the left rail became permanent).
+ *   · The expanded/labelled mode and its Collapse footer — R8: a rail is
+ *     icons only. `Tooltip` names every control on hover AND focus.
  *
- * NO `agent` BAND (2026-08-24, operator ruling): the well IS the assistant
- * now (the inversion, HANDOFF-ai-centre §1) — a second "Assistant" entry
- * here opened a tool panel standing in for the one surface that is already
- * permanently mounted and pinned centre. Two assistants was the bug.
- *
- * Both rails run the same gradient, PERMANENCE DECREASES DOWNWARD: left is
- * pins → tabs → recents, right is global tools → session tools. An operator
- * who learns one has learned both.
- *
- * There is ONE overflow in the application and it is the header's. A second
- * three-dots in the top-right corner is two menus claiming the same job;
- * unpinned tools are reachable from the launcher, which is the one index.
- *
- * FULLY CLOSEABLE (2026-08-24, operator ruling — amends R1 for this rail;
- * the left rail joined it for parity, see `RailSessions`). `shell.
- * rightRailOpen` PINS it open or closed; the header's button is the click
- * path and always works. This component adds a hover hot-zone at the
- * viewport's right edge (`useRailPeek`) that PEEKS it open without pinning
- * — a preview, never the only way in (R1's own clause), which is what keeps
- * a `(hover: none)` tablet unaffected: the click path is untouched by any
- * of this.
+ * Rendered from the TOOL REGISTRY, banded by scope, permanence decreasing
+ * downward (R9): add/search · assistant (the fixed head, T18) · global
+ * tools · then session tools BOTTOM-anchored — the volatile band renders
+ *  nothing when no session is armed (T9). A queued agent proposal still
+ * badges the assistant icon (T12). The pushing `ToolPanel` stays the mount
+ * for a tool's body, summoned from these icons and from the beam's ⋯.
  */
 
+import { PlusIcon } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Icon } from '@/shell/icons';
 import { TOOLS, toolAvailable, type ToolDescriptor } from '@/shell/model';
+import { railIconActive, railIconPlate } from '@/shell/rail-icon';
 import type { ShellApi } from '@/shell/useShell';
-import { useRailPeek } from '@/shell/useRailPeek';
+import { cn } from '@/utils/_cn';
 
-function ToolBand({
-  shell,
-  tools,
-  label,
-}: {
-  shell: ShellApi;
-  tools: readonly ToolDescriptor[];
-  label?: string;
-}) {
-  if (tools.length === 0) return null;
+function ToolButton({ shell, tool }: { shell: ShellApi; tool: ToolDescriptor }) {
+  const active = shell.toolPanelOpen && shell.openTool === tool.key;
+  // A queued proposal is a fact the operator must see WITHOUT opening the
+  // panel — so it badges the icon (T12).
+  const badge = tool.key === 'ai' && shell.agentQueue.length > 0 ? shell.agentQueue.length : 0;
+
   return (
-    <div className="rail-group">
-      {label ? <div className="recent-band-label">{label}</div> : null}
-      {tools.map((tool) => {
-        const active = shell.toolPanelOpen && shell.openTool === tool.key;
-        // A queued proposal is a fact the operator must see WITHOUT opening
-        // the panel — so it badges the icon.
-        const badge = tool.key === 'ai' && shell.agentQueue.length > 0 ? shell.agentQueue.length : 0;
-        return (
-          <button
-            type="button"
-            key={tool.key}
-            className={`rail-btn${active ? ' active' : ''}`}
-            title={`${tool.label} — ${tool.scope} · ${tool.cls}`}
-            aria-pressed={active}
-            onClick={() => shell.toggleTool(tool.key)}
-          >
-            <Icon name={tool.icon} size={15} />
-            <span className="rail-btn-label">{tool.label}</span>
-            {badge > 0 ? <span className="rail-badge">{badge}</span> : null}
-          </button>
-        );
-      })}
-    </div>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className={cn('relative size-8', railIconPlate, active && railIconActive)}
+          aria-pressed={active}
+          aria-label={tool.label}
+          onClick={() => shell.toggleTool(tool.key)}
+        >
+          <Icon name={tool.icon} size={16} />
+          {badge > 0 ? (
+            <Badge
+              variant="destructive"
+              className="absolute -right-0.5 -top-0.5 min-w-4 justify-center px-1 py-0 text-[9px] leading-4"
+            >
+              {badge}
+            </Badge>
+          ) : null}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent side="left">
+        {tool.label} — {tool.scope} · {tool.cls}
+      </TooltipContent>
+    </Tooltip>
   );
 }
 
 export function RailTools({ shell }: { shell: ShellApi }) {
-  const expanded = shell.rightExpanded;
-  const { visible, handleEnter, handleLeave } = useRailPeek(shell.rightRailOpen);
   const sessionTools = TOOLS.filter(
     (t) => t.scope === 'session' && toolAvailable(t, shell.sessionState, shell.activeRef),
   );
 
   return (
-    <div className="rail-right-zone" onMouseEnter={handleEnter} onMouseLeave={handleLeave}>
-      {visible ? (
-        <nav className={`rail right${expanded ? ' expanded' : ''}`} aria-label="Tools">
-          <button
-            type="button"
-            className="rail-btn"
+    <nav className="flex w-10 shrink-0 flex-col items-center gap-0.5 py-1" aria-label="Tools">
+      {/* One add control per rail (R2) — the mirror of the left rail's
+          Search plate, opening the same launcher pre-scoped to tools. */}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className={cn('size-8', railIconPlate)}
+            aria-label="Add or search tools"
             onClick={() => shell.openLauncher('tool')}
-            title="Add or search tools"
           >
-            <Icon name="plus" size={16} />
-            <span className="rail-btn-label">Add tool</span>
-          </button>
-          <div className="rail-divider" />
+            <PlusIcon />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="left">Add or search tools</TooltipContent>
+      </Tooltip>
 
-          <ToolBand shell={shell} tools={TOOLS.filter((t) => t.scope === 'global')} />
+      {/* The fixed head (T18), then the global band. */}
+      {TOOLS.filter((t) => t.scope === 'agent').map((tool) => (
+        <ToolButton key={tool.key} shell={shell} tool={tool} />
+      ))}
+      {TOOLS.filter((t) => t.scope === 'global').map((tool) => (
+        <ToolButton key={tool.key} shell={shell} tool={tool} />
+      ))}
 
-          {/* THE VOLATILE BAND, bottom-anchored — the mirror of the left
-              rail's recents. It renders nothing at all when no session is
-              armed. */}
-          <ToolBand shell={shell} tools={sessionTools} label="Session" />
-          <button
-            type="button"
-            className="rail-label"
-            onClick={shell.toggleRightRail}
-            title="Switch between icon-only and labelled"
-          >
-            Tools
-          </button>
-        </nav>
+      {/* THE VOLATILE BAND, bottom-anchored (R9) — the mirror of the left
+          rail's `?`. It renders nothing when no session is armed (T9). */}
+      {sessionTools.length > 0 ? (
+        <div className="mt-auto flex flex-col items-center gap-0.5">
+          {sessionTools.map((tool) => (
+            <ToolButton key={tool.key} shell={shell} tool={tool} />
+          ))}
+        </div>
       ) : null}
-    </div>
+    </nav>
   );
 }
