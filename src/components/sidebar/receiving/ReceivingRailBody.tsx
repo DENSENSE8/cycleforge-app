@@ -59,7 +59,7 @@ export function ReceivingRailBody({
   if (mode === 'history') return null;
 
   if (mode === 'triage') {
-    // Eyebrow (Triage · N + pencil dismiss) matches Unbox rail chrome.
+    // Bulk dismiss enters via the row ⋮ menu's Select verb, matching Unbox rail chrome.
     // Right-pane table left-gutter owns multi-select, not rail dismiss.
     return (
       <TriageSidebarBody
@@ -74,7 +74,7 @@ export function ReceivingRailBody({
 
   // Unbox (and any other non-triage/history mode that still mounts this rail):
   // short Unboxed recent dock only — browse tabs are right-pane table.
-  // Eyebrow (Unboxed · N + pencil dismiss) stays on the sidebar rail; the
+  // Bulk dismiss (row ⋮ menu Select) stays on the sidebar rail; the
   // right-pane table left-gutter owns multi-select, not rail dismiss.
   return (
     <ReceivingFeedRail

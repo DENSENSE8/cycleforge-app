@@ -13,14 +13,14 @@ const keys = (cols: readonly { key: string }[]) => cols.map((c) => c.key);
 
 describe('compound column model', () => {
   it('is the two-row layout from the brief, in order', () => {
-    assert.deepEqual(keys(RECEIVING_COMPOUND_COLUMNS), ['select', 'thumb', 'fulfillment', 'item', 'state', 'open', '_fill']);
+    assert.deepEqual(keys(RECEIVING_COMPOUND_COLUMNS), ['select', 'thumb', 'fulfillment', 'item', 'state', 'amount', 'actions', '_fill']);
   });
 
   it('is a separate array, not a filter of the flat model', () => {
     // The compound tracks must not leak into the spreadsheet layout — the same
     // rule INCOMING_GRID_COLUMNS follows.
     const flat = new Set(keys(RECEIVING_GRID_COLUMNS));
-    for (const k of ['thumb', 'item', 'fulfillment', 'state', 'open']) {
+    for (const k of ['thumb', 'item', 'fulfillment', 'state', 'amount', 'actions']) {
       assert.ok(!flat.has(k), `${k} must not appear in RECEIVING_GRID_COLUMNS`);
     }
   });
@@ -60,11 +60,11 @@ describe('compound column model', () => {
     // gutter beside a short order chip with no way for the floor to close it.
     // The two gutters are excluded on purpose — see the width test above.
     const resizable = RECEIVING_COMPOUND_COLUMNS.filter((c) => c.resizable).map((c) => c.key);
-    assert.deepEqual(resizable, ['fulfillment', 'item', 'state']);
+    assert.deepEqual(resizable, ['fulfillment', 'item', 'state', 'amount']);
   });
 
   it('never offers sort on chrome tracks', () => {
-    for (const key of ['select', 'thumb', 'open']) {
+    for (const key of ['select', 'thumb', 'actions']) {
       const col = RECEIVING_COMPOUND_COLUMNS.find((c) => c.key === key)!;
       assert.equal(col.sortable, false, `${key} is chrome, not a fact`);
     }

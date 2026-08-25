@@ -24,7 +24,7 @@ import {
   DEFAULT_FOCUS_SCAN_HOTKEY,
   FOCUS_SCAN_ALWAYS_AVAILABLE_RE,
   isBindableFocusScanHotkey,
-} from '@/lib/schemas/staff-preferences';
+} from '@/lib/schemas/staff-preferences-constants';
 
 const STORAGE_KEY = 'scan:focus-hotkey';
 

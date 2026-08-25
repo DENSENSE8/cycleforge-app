@@ -5,6 +5,7 @@ import type { NavRegionId } from '@/lib/keyboard/nav-keys';
 import { formatLaneAgeCompact } from '@/utils/date';
 import type { RefreshDomain } from '@/lib/refresh/domains';
 import type { RailPeekFact } from './RailPeekCard';
+import type { RailRowActionsResolver } from './rail-row-actions';
 
 export function railRelativeTime(iso: string | null | undefined): string {
   return formatLaneAgeCompact(iso) ?? '—';
@@ -91,6 +92,16 @@ export interface SidebarRailShellProps<TRow> {
    */
   deleteGroupEvent?: string;
   /**
+   * Undo channel for {@link deleteEvent} ({ id }). A delete/dismiss is sticky —
+   * the engine suppresses the id for the rail's lifetime so an in-flight
+   * refetch cannot resurrect it — which is correct for a real delete and wrong
+   * for a REVERSIBLE one. This event clears that suppression, so an Undo's
+   * refetch is allowed to bring the row back.
+   */
+  restoreEvent?: string;
+  /** Undo channel for {@link deleteGroupEvent} (detail = group id). */
+  restoreGroupEvent?: string;
+  /**
    * Domain-specific events that trigger a full query invalidation — the rail's
    * OWN vocabulary (`fba-print-shipped`, `packer-log-updated`, …), not a
    * cross-app broadcast.
@@ -169,15 +180,12 @@ export interface SidebarRailShellProps<TRow> {
    */
   preserveServerOrder?: boolean;
 
-  eyebrowTitle: string;
-  eyebrowSuffix?: string;
-  /** Right-aligned eyebrow slot (e.g. a refresh button). Takes precedence over `eyebrowSuffix`. */
-  eyebrowAction?: ReactNode;
   /**
-   * When true, hides the "TITLE · N" eyebrow band (and its inline edit pencil).
-   * Used when the workbench chrome already owns tabs + select toggle.
+   * The rail's name. **Not painted** — the `TITLE · N` eyebrow band was removed
+   * 2026-08-22. It is the listbox's accessible name and the key the first-load
+   * reveal registry dedupes on, so it must stay unique per rail.
    */
-  hideEyebrow?: boolean;
+  eyebrowTitle: string;
   emptyText?: string;
   /**
    * When true, selects the first row once data loads if nothing is selected yet.
@@ -264,6 +272,14 @@ export interface SidebarRailShellProps<TRow> {
     row: TRow,
     ctx: { groupSize: number; openWorkspace: () => void; dismiss: () => void },
   ) => ReactNode;
+  /**
+   * Per-row overflow (⋮) menu. Resolved per row so a rail never offers a verb
+   * its rows cannot perform — a Recently-searched row has no carton to delete,
+   * a Triage stub has no label to print. Unset (or returning `[]`) paints no
+   * trigger, which is why every rail that has not opted in is unchanged.
+   * Accessible name uses {@link getCollapsePinLabel} / {@link getStatusDotLabel}.
+   */
+  rowActions?: RailRowActionsResolver<TRow>;
   /**
    * Opt this rail into the leader-armed selection keyboard as a nav-keys region
    * (typically `'left'`). Off by default — a rail without this prop registers no

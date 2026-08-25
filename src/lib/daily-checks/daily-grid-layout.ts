@@ -11,14 +11,12 @@
  * text-vs-glyph answer all come from the shared helpers.
  */
 
+import { compoundColumnsFor } from '@/components/tables/compound/compound-columns';
 import {
   GRID_FILL_COLUMN,
-  gridFrozenKeys,
 } from '@/design-system/components/grid';
-import {
-  gridFrozenLeft,
-  gridTemplate,
-} from '@/design-system/components/grid/grid-column-geometry';
+
+
 import type { ColumnType } from '@/lib/tables/table-columns';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
@@ -28,6 +26,13 @@ export type DailyGridColumnKey =
   | 'status'
   | 'team'
   | 'marked'
+  /** Compound (two-row) presentation tracks — see {@link DAILY_COMPOUND_COLUMNS}. */
+  | 'thumb'
+  | 'item'
+  | 'fulfillment'
+  | 'state'
+  | 'amount'
+  | 'actions'
   | '_fill';
 
 export interface DailyGridColumn {
@@ -99,8 +104,21 @@ export const DAILY_GRID_COLUMNS: readonly DailyGridColumn[] = [
   GRID_FILL_COLUMN,
 ] as const;
 
-/** Frozen identity pane — `select · task`, derived from the model's own flag. */
-const DAILY_GRID_LOCKED_KEYS = gridFrozenKeys(DAILY_GRID_COLUMNS);
+/**
+ * COMPOUND (two-row) Daily columns.
+ *
+ * The SAME tracks Receiving, Incoming, To-Ship and Tasks mount — derived from
+ * `COMPOUND_TRACKS`, not copied. This line only narrows the key type.
+ *
+ * Daily is the second checklist on the layout (Tasks is the first), and it
+ * keeps the same reading: the gutter is the surface's primary VERB — ticking it
+ * marks the item done for the viewer — not a selection. The compound model
+ * governs that track's geometry and its face; it has never governed what
+ * clicking it does.
+ */
+export const DAILY_COMPOUND_COLUMNS: readonly DailyGridColumn[] =
+  compoundColumnsFor<DailyGridColumn>();
+
 
 /** Data columns that support click-to-sort (`_fill` carries `sortable: false`). */
 const DAILY_GRID_SORTABLE_KEYS: readonly DailyGridColumnKey[] = DAILY_GRID_COLUMNS.filter(
@@ -111,27 +129,25 @@ export function isDailyGridSortable(key: string): key is DailyGridColumnKey {
   return (DAILY_GRID_SORTABLE_KEYS as readonly string[]).includes(key);
 }
 
-export function isDailyGridFrozen(key: string): boolean {
-  return (DAILY_GRID_LOCKED_KEYS as readonly string[]).includes(key);
-}
 
-export function dailyGridTemplate(
-  columns: readonly DailyGridColumn[] = DAILY_GRID_COLUMNS,
-): string {
-  return gridTemplate(columns);
-}
 
-export function dailyGridFrozenLeft(key: string): string {
-  return gridFrozenLeft(DAILY_GRID_COLUMNS, key as DailyGridColumnKey);
-}
 
 /** Recency opens newest-first; everything else ascends. */
 export function defaultDirForDailyGridSort(key: DailyGridColumnKey): GridSortDir {
   return key === 'marked' ? 'desc' : 'asc';
 }
 
-export {
-  LEDGER_GRID_FROZEN_CELL as DAILY_GRID_FROZEN_CELL,
-  ledgerGridCell as dailyGridCell,
-  ledgerGridRowShellClass as dailyGridRowShellClass,
-} from '@/design-system/components/grid/grid-cell-chrome';
+/**
+ * The per-family geometry aliases were DELETED (2026-08-22).
+ *
+ * `isTasksGridFrozen`, `tasksGridTemplate`, `tasksGridFrozenLeft` and the
+ * `TASKS_GRID_FROZEN_CELL` / `tasksGridCell` / `tasksGridRowShellClass`
+ * re-exports were each a family-flavoured name for a shared implementation
+ * (`gridFrozenLeft`, `gridTemplate`, `ledgerGridCell`, …). Six families did the
+ * same rename, which is a fork whether or not the bodies agree today: it is not
+ * a decision, it is six places for the next fix to miss.
+ *
+ * Their consumers are gone — the row is `CompoundRow` and the header derives
+ * freeze, offsets and template from the MOUNTED column model — so the aliases
+ * went with them rather than standing as dead API.
+ */

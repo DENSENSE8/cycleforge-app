@@ -21,7 +21,7 @@ export default async function TriagePage() {
       <SurfaceParamHygiene />
       <HydrationBoundary state={seed.state}>
         <SurfaceGate surfaceKey="triage">
-          <ReceivingSurfacePage mobileTitle="Arrival" surface="triage" />
+          <ReceivingSurfacePage />
         </SurfaceGate>
       </HydrationBoundary>
     </>

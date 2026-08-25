@@ -1,5 +1,4 @@
 export * from './DetailsPanelRow';
-export * from './PipelineStageRow';
 export * from './DateTimeValue';
 export * from './LedgerValue';
 export * from './PanelSection';
@@ -44,3 +43,5 @@ export * from './document-preview-mime';
 export * from './HorizontalEdgeResizeHandle';
 export * from './capture-stack';
 export * from './procedure';
+export * from './item-record';
+export * from './milestone-pipeline';

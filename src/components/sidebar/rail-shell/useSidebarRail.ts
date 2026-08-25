@@ -41,6 +41,7 @@ const RAIL_REFRESH_DEBOUNCE_MS = 350;
  */
 export function useSidebarRail<TRow>({
   queryKey, fetchFn, updateEvent, deleteEvent, deleteGroupEvent, refreshEvents, refreshDomains,
+  restoreEvent, restoreGroupEvent,
   navigateEvent,
   excludedIds = EMPTY_EXCLUDED, includeRow, loadSnapshot, persistSnapshot,
   selectedId, selectedRow = null, leadingRow = null, limit = 25,
@@ -223,6 +224,43 @@ export function useSidebarRail<TRow>({
     window.addEventListener(deleteGroupEvent, handleGroupDelete);
     return () => window.removeEventListener(deleteGroupEvent, handleGroupDelete);
   }, [deleteGroupEvent, getGroupId]);
+
+  // Undo. The suppression above is deliberately sticky, which is right for a
+  // real delete and wrong for a reversible one (a per-staff dismiss): with the
+  // id still suppressed, the refetch that follows an Undo would fetch the row
+  // and then filter it straight back out. These clear the sticky set so the
+  // row is allowed to return; the refetch itself is the caller's job.
+  useEffect(() => {
+    if (!restoreEvent) return;
+    const handleRestore = (event: Event) => {
+      const detail = (event as CustomEvent<{ id?: number }>).detail;
+      if (!detail || typeof detail.id !== 'number') return;
+      setDeletedIds((prev) => {
+        if (!prev.has(detail.id as number)) return prev;
+        const next = new Set(prev);
+        next.delete(detail.id as number);
+        return next;
+      });
+    };
+    window.addEventListener(restoreEvent, handleRestore);
+    return () => window.removeEventListener(restoreEvent, handleRestore);
+  }, [restoreEvent]);
+
+  useEffect(() => {
+    if (!restoreGroupEvent) return;
+    const handleRestoreGroup = (event: Event) => {
+      const groupId = Number((event as CustomEvent<unknown>).detail);
+      if (!Number.isFinite(groupId)) return;
+      setDeletedGroupIds((prev) => {
+        if (!prev.has(groupId)) return prev;
+        const next = new Set(prev);
+        next.delete(groupId);
+        return next;
+      });
+    };
+    window.addEventListener(restoreGroupEvent, handleRestoreGroup);
+    return () => window.removeEventListener(restoreGroupEvent, handleRestoreGroup);
+  }, [restoreGroupEvent]);
 
   // Optimistic prepend — scan apply dispatches this with the freshly-matched rows
   // so the rail shows the new carton instantly instead of waiting for a full

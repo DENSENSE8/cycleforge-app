@@ -20,7 +20,6 @@ export function TriageFeedBody({
   leadingRow = null,
   filterText = '',
   includeRow,
-  hideEyebrow = false,
 }: {
   view: TriageWorkspaceTab;
   selectedLineId: number | null;
@@ -29,7 +28,6 @@ export function TriageFeedBody({
   leadingRow?: ReceivingLineRow | null;
   filterText?: string;
   includeRow?: (row: ReceivingLineRow) => boolean;
-  hideEyebrow?: boolean;
 }) {
   if (view === 'unfound') {
     return (
@@ -38,7 +36,6 @@ export function TriageFeedBody({
         selectedLineId={selectedLineId}
         filterText={filterText}
         includeRow={includeRow}
-        hideEyebrow={hideEyebrow}
       />
     );
   }
@@ -49,7 +46,6 @@ export function TriageFeedBody({
         selectedLineId={selectedLineId}
         filterText={filterText}
         includeRow={includeRow}
-        hideEyebrow={hideEyebrow}
       />
     );
   }
@@ -61,7 +57,6 @@ export function TriageFeedBody({
         selectedRow={selectedRow}
         filterText={filterText}
         includeRow={includeRow}
-        hideEyebrow={hideEyebrow}
       />
     );
   }
@@ -74,7 +69,6 @@ export function TriageFeedBody({
       isRowDisabled={isPendingTriageScanRow}
       filterText={filterText}
       includeRow={includeRow}
-      hideEyebrow={hideEyebrow}
     />
   );
 }

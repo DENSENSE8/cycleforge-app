@@ -6,21 +6,13 @@ import {
 } from '@/design-system/components/grid';
 import {
   RECEIVING_GRID_COLUMNS,
-  RECEIVING_GRID_FROZEN_CELL,
   RECEIVING_GRID_FROZEN_EDGE_KEY,
-  receivingGridCell,
-  receivingGridRowShellClass,
-  receivingGridTemplate,
   isReceivingGridSortable,
   type ReceivingGridColumn,
   type ReceivingGridColumnKey,
 } from '@/lib/receiving/receiving-grid-layout';
 
-const RECEIVING_HEADER_LAYOUT: LedgerHeaderLayoutApi<ReceivingGridColumn> = {
-  template: receivingGridTemplate,
-  cellClass: receivingGridCell,
-  rowShellClass: receivingGridRowShellClass,
-  frozenCellClass: RECEIVING_GRID_FROZEN_CELL,
+const RECEIVING_HEADER_LAYOUT: LedgerHeaderLayoutApi = {
   isSortable: isReceivingGridSortable,
   // Trailing frozen identity cell (`order`) owns the scroll-edge shadow.
   frozenEdgeKey: RECEIVING_GRID_FROZEN_EDGE_KEY,

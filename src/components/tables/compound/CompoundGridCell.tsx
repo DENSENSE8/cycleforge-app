@@ -47,14 +47,15 @@ import { cn } from '@/utils/_cn';
 import {
   CompoundFulfillment,
   CompoundItem,
-  CompoundOpen,
+  CompoundActions,
+  CompoundAmount,
   CompoundSelect,
   CompoundState,
   CompoundThumb,
 } from './CompoundCells';
 import { isCompoundColumnModel } from './compound-columns';
 import { COMPOUND_ROW_PX } from './compound-row-chrome';
-import type { CompoundRowView } from './compound-row-model';
+import type { CompoundRowAction, CompoundRowView } from './compound-row-model';
 
 /**
  * Structural, dependency-free by design — the same reason
@@ -80,8 +81,15 @@ export interface CompoundGridCellParams<C extends CompoundCellColumn> {
   columnDisplay?: Readonly<Record<string, GridColumnDisplayPref>>;
   /** Present ⇒ the note line edits in place. Absent ⇒ read-only. */
   onCommitNote?: (next: string) => void;
-  /** Present ⇒ the trailing chevron renders. Absent ⇒ empty track. */
+  /** Present ⇒ the ⋮ menu carries an "Open" item. */
   onOpen?: () => void;
+  /**
+   * Extra verbs for this row's ⋮ menu, after "Open".
+   *
+   * Presentational entries only (label + callback). A family cannot pass JSX,
+   * which is what stops a bespoke control reappearing inside the shared row.
+   */
+  actions?: readonly CompoundRowAction[];
   /**
    * The SELECTION capability for this row.
    *
@@ -117,7 +125,8 @@ export function isCompoundCellKey(key: string): boolean {
     key === 'item' ||
     key === 'fulfillment' ||
     key === 'state' ||
-    key === 'open'
+    key === 'amount' ||
+    key === 'actions'
   );
 }
 
@@ -143,6 +152,7 @@ export function renderCompoundGridCell<C extends CompoundCellColumn>({
   columnDisplay,
   onCommitNote,
   onOpen,
+  actions,
   select,
 }: CompoundGridCellParams<C>): ReactNode {
   // `select` is only ours when a COMPOUND model is mounted — see
@@ -214,9 +224,20 @@ export function renderCompoundGridCell<C extends CompoundCellColumn>({
         data-frozen-edge={frozenEdge}
         className={className}
         style={style}
-        // The face owns the toggle; a click on the flush plane AROUND it must
-        // not fall through to the row and open the record instead.
-        onClick={(event) => event.stopPropagation()}
+        // Stopped ONLY when this gutter owns a real control.
+        //
+        // Where it does, a click on the flush plane around the button must not
+        // also reach the row and open the record. But on CLICK-SELECT surfaces
+        // (Incoming, Unbox History) the row IS the checkbox and owns the toggle
+        // — the gutter is a painted face there — so the click has to bubble to
+        // it. Swallowing it unconditionally made the leftmost column inert on
+        // exactly those surfaces: a prominent checkmark that did nothing.
+        //
+        // `ReceivingSelectCell`, the flat cell this replaced, carried the same
+        // warning in prose: "the ROW click still ticks the box, so this stays a
+        // painted indicator and must not swallow the click that does the
+        // ticking."
+        onClick={select?.onToggle ? (event) => event.stopPropagation() : undefined}
       >
         {select ? (
           <CompoundSelect
@@ -255,10 +276,16 @@ export function renderCompoundGridCell<C extends CompoundCellColumn>({
           <CompoundState view={view} />
         </div>
       );
+    case 'amount':
+      return (
+        <div data-col="amount" data-frozen-edge={frozenEdge} className={cn(className, 'justify-end')} style={style}>
+          <CompoundAmount view={view} />
+        </div>
+      );
     default:
       return (
-        <div data-col="open" data-frozen-edge={frozenEdge} className={cn(className, 'justify-end')} style={style}>
-          <CompoundOpen onOpen={onOpen} />
+        <div data-col="actions" data-frozen-edge={frozenEdge} className={cn(className, 'justify-end')} style={style}>
+          <CompoundActions onOpen={onOpen} actions={actions} label={view.title} />
         </div>
       );
   }

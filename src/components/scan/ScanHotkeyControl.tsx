@@ -10,7 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '@/design-system/primitives/DropdownMenu';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { isBindableFocusScanHotkey } from '@/lib/schemas/staff-preferences';
+import { isBindableFocusScanHotkey } from '@/lib/schemas/staff-preferences-constants';
 import {
   NEXT_SCAN_CHORD_LABEL,
   requestScanFocus,

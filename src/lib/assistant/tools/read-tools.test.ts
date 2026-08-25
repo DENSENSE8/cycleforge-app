@@ -3,6 +3,15 @@
  * Fake `deps.query` captures every SQL + params; asserts org threading,
  * permission gating, Zod validation, and graceful tool-error surfacing.
  * Search/ticket tools use injectable deps (no SQL).
+ *
+ * As of 2026-08-22 the registry is no longer read-only: the four tool-forge
+ * gateway tools live in the same map, because that map is what MCP's
+ * tools/list and tools/call are built from. They are swept by the composition
+ * and permission assertions below like everything else, and skipped by the
+ * SQL-threading sweep for the same reason the domain adapters are — they reach
+ * their own injectable collaborators rather than deps.query. Their behaviour
+ * (denial, org handling, fail-closed) is proven in
+ * src/lib/tool-forge/gateway-denial.test.ts.
  * Run: npm run test:assistant
  */
 
@@ -44,6 +53,19 @@ const DOMAIN_TOOL_NAMES = new Set([
   'list_receiving_line_photos',
 ]);
 
+/**
+ * Tool-forge gateway tools. Skipped by the SQL-threading sweep because they
+ * reach toolForgeDedupe / toolForgeDecide / toolForgeValidate / toolForgeHandoff
+ * rather than deps.query — the same reason DOMAIN_TOOL_NAMES are skipped. They
+ * are NOT skipped by the composition or permission assertions.
+ */
+const GATEWAY_TOOL_NAMES = new Set([
+  'search_tool_registry',
+  'submit_approval_decision',
+  'execute_build_sandbox',
+  'commit_to_git',
+]);
+
 const ALLOWED_TOOL_PERMISSIONS = new Set([
   'dashboard.view',
   'studio.view',
@@ -53,6 +75,13 @@ const ALLOWED_TOOL_PERMISSIONS = new Set([
   'work_orders.view',
   'photos.view',
   'receiving.view',
+  // Tool forge — one permission per gateway tool, deliberately NOT assistant.chat
+  // (see the header of src/lib/mcp/tool-server.ts for why that distinction is
+  // what keeps a write-capable gateway safe behind a read-scoped route gate).
+  'tool_forge.search',
+  'tool_forge.decide',
+  'tool_forge.build',
+  'tool_forge.commit',
 ]);
 
 interface CapturedQuery {
@@ -85,8 +114,8 @@ function fakes(rowsFor?: (text: string) => Array<Record<string, unknown>>) {
   return { deps, cap };
 }
 
-test('registry: 28 tools, unique names, model-grade descriptions, valid permissions', () => {
-  assert.equal(ASSISTANT_TOOLS.size, 28);
+test('registry: 32 tools (28 read + 4 gateway), unique names, model-grade descriptions, valid permissions', () => {
+  assert.equal(ASSISTANT_TOOLS.size, 32);
   const expected = [
     'get_signals_by_node', 'get_top_reasons', 'get_unit_journey', 'get_feed_state',
     'get_graph', 'get_node_detail', 'get_benchmarks', 'get_kpis',
@@ -98,6 +127,9 @@ test('registry: 28 tools, unique names, model-grade descriptions, valid permissi
     'search_photos', 'get_receiving_by_tracking', 'get_ticket_entities',
     'get_packing_kpi',
     'resolve_receiving_line_for_order', 'list_receiving_line_photos',
+    // The tool-forge gateway — exactly four, per the pipeline spec.
+    'search_tool_registry', 'submit_approval_decision',
+    'execute_build_sandbox', 'commit_to_git',
   ];
   assert.deepEqual([...ASSISTANT_TOOLS.keys()].sort(), [...expected].sort());
   for (const t of ASSISTANT_TOOLS.values()) {
@@ -117,7 +149,7 @@ test('every SQL tool threads ctx.organizationId as $1 into every query (never mo
     get_feed_state: { feedKey: 'receiving_triage' },
   };
   for (const name of ASSISTANT_TOOLS.keys()) {
-    if (SEARCH_TOOL_NAMES.has(name) || DOMAIN_TOOL_NAMES.has(name)) continue;
+    if (SEARCH_TOOL_NAMES.has(name) || DOMAIN_TOOL_NAMES.has(name) || GATEWAY_TOOL_NAMES.has(name)) continue;
     const { deps, cap } = fakes((text) =>
       // give resolveDefinition/get_unit_journey a row so dependent queries run
       text.includes('FROM workflow_definitions') || text.includes('FROM serial_units')

@@ -35,7 +35,7 @@
  *
  * The four CHROME tracks stay fixed: `select` and `thumb` (the two equal
  * gutters — see `COMPOUND_GUTTER_TRACK_REM` for why a drag there would break
- * the equality), `open` (a 2.5rem chevron) and `_fill` (structural slack).
+ * the equality), `actions` (a 2.5rem ⋮ button) and `_fill` (structural slack).
  * None of their contents has a variable length, so a drag could only add or
  * steal whitespace around a fixed mark.
  *
@@ -52,7 +52,7 @@ import { COMPOUND_GUTTER_TRACK_REM, COMPOUND_ROW_PX } from './compound-row-chrom
 /**
  * The compound track keys, in canonical order.
  *
- * HARD RULE — image · ids · title · status · open. The photo is leftmost
+ * HARD RULE — image · ids · title · status · money · actions. The photo is leftmost
  * because it is what an operator's eye lands on when scanning a shelf list
  * against a physical box.
  */
@@ -62,7 +62,8 @@ export const COMPOUND_COLUMN_KEYS = [
   'fulfillment',
   'item',
   'state',
-  'open',
+  'amount',
+  'actions',
   '_fill',
 ] as const;
 
@@ -110,7 +111,8 @@ const GUTTER_TRACK = `minmax(${COMPOUND_GUTTER_TRACK_REM}rem, ${COMPOUND_GUTTER_
  * | `fulfillment` | 6.5rem | yes    | order / PO over carrier tracking     |
  * | `item`        | 18rem  | yes    | title over the operator note         |
  * | `state`       | 10rem  | yes    | state pill over lateness             |
- * | `open`        | 2.5rem | no     | chevron → the record                 |
+ * | `amount`      | 7rem   | yes    | money (end-aligned) over its working |
+ * | `actions`     | 2.5rem | no     | ⋮ row menu (opens the record first)  |
  * | `_fill`       | 1fr    | no     | sole slack track                     |
  *
  * The two gutters are EQUAL BY CONSTRUCTION — both read
@@ -202,9 +204,26 @@ export const COMPOUND_TRACKS: readonly CompoundTrack[] = [
     labelFitRem: 5,
   },
   {
-    key: 'open',
+    key: 'amount',
+    // Right-aligned tabular money. 7rem holds `-$12,345.67` — the widest thing
+    // a line can be worth — without the column ever reflowing as figures grow.
+    width: 'minmax(7rem, 7rem)',
+    label: 'Amount',
+    gridLabel: 'Amount',
+    type: 'price',
+    // END-aligned, and that is the whole point of a money column: figures line
+    // up on their last digit so an operator can scan a column and see which row
+    // is the big one without reading any of them.
+    align: 'end',
+    hideKey: 'price',
+    resizable: true,
+    minTrackRem: 5,
+    labelFitRem: 4.5,
+  },
+  {
+    key: 'actions',
     width: 'minmax(2.5rem, 2.5rem)',
-    label: 'Open',
+    label: 'Actions',
     gridLabel: '',
     align: 'end',
     sortable: false,

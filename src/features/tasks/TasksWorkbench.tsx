@@ -63,7 +63,9 @@ import {
 } from '@/lib/staff-todos/tasks-grid-layout';
 import { TASKS_TABLE_BINDING } from './grid/tasks-table-definition';
 import { TasksGridColumnHeader } from './grid/TasksGridColumnHeader';
-import { TasksGridRow } from './grid/TasksGridRow';
+import { CompoundRow } from '@/components/tables/compound/CompoundRow';
+import { staffTaskCompoundView } from './grid/staff-task-compound-view';
+import { TASKS_GRID_CAPABILITIES } from './grid/tasks-grid-descriptor';
 import type { StaffTaskRow } from './grid/staff-task-row';
 import { StaffTaskInspectorRail } from './StaffTaskInspector';
 import { TasksComposerRow } from './TasksComposerRow';
@@ -336,29 +338,69 @@ export function TasksWorkbench() {
               renderGroup={(group, _stripe, { columns: visible }) => (
                 <>
                   {group.rows.map((row) => (
-                    <TasksGridRow
-                      key={row.id}
-                      row={row}
-                      columns={visible}
-                      nowMs={tasks.nowMs}
-                      selected={selectedId === row.id}
-                      togglePending={tasks.pending}
-                      onToggle={(r) => tasks.toggle(r, !r.done)}
-                      onSelect={(r) => selectTask(r.id)}
-                    />
+                  <CompoundRow
+                    key={row.id}
+                    data-staff-task-id={row.id}
+                    role="button"
+                    tabIndex={0}
+                    aria-pressed={selectedId === row.id}
+                    aria-label={`Task ${row.text}`}
+                    className="group/row cursor-pointer"
+                    onClick={() => selectTask(row.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        selectTask(row.id);
+                      }
+                    }}
+                    columns={visible}
+                    capabilities={TASKS_GRID_CAPABILITIES}
+                    selected={selectedId === row.id}
+                    // The family's only contribution: its DATA.
+                    view={staffTaskCompoundView(row, { nowMs: tasks.nowMs })}
+                    onOpen={() => selectTask(row.id)}
+                    // The tick means "this task is done", not "this row is
+                    // selected" — same control, same picture, a different handler.
+                    select={{
+                      checked: row.done,
+                      onToggle: () => tasks.toggle(row, !row.done),
+                      disabled: row.archived || tasks.pending,
+                      label: `Mark "${row.text}" ${row.done ? 'not done' : 'done'}`,
+                    }}
+                  />
                   ))}
                 </>
               )}
               renderRow={(row, _stripe, { columns: visible }) => (
-                <TasksGridRow
+                <CompoundRow
                   key={row.id}
-                  row={row}
+                  data-staff-task-id={row.id}
+                  role="button"
+                  tabIndex={0}
+                  aria-pressed={selectedId === row.id}
+                  aria-label={`Task ${row.text}`}
+                  className="group/row cursor-pointer"
+                  onClick={() => selectTask(row.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      selectTask(row.id);
+                    }
+                  }}
                   columns={visible}
-                  nowMs={tasks.nowMs}
+                  capabilities={TASKS_GRID_CAPABILITIES}
                   selected={selectedId === row.id}
-                  togglePending={tasks.pending}
-                  onToggle={(r) => tasks.toggle(r, !r.done)}
-                  onSelect={(r) => selectTask(r.id)}
+                  // The family's only contribution: its DATA.
+                  view={staffTaskCompoundView(row, { nowMs: tasks.nowMs })}
+                  onOpen={() => selectTask(row.id)}
+                  // The tick means "this task is done", not "this row is
+                  // selected" — same control, same picture, a different handler.
+                  select={{
+                    checked: row.done,
+                    onToggle: () => tasks.toggle(row, !row.done),
+                    disabled: row.archived || tasks.pending,
+                    label: `Mark "${row.text}" ${row.done ? 'not done' : 'done'}`,
+                  }}
                 />
               )}
             />

@@ -1,7 +1,8 @@
 'use client';
 
 /**
- * Rail edit-mode (the eyebrow pencil) for the triage/unbox sidebar rails.
+ * Rail edit-mode (entered via a row ⋮ menu's "Select") for the triage/unbox
+ * sidebar rails.
  *
  * Flips the rails from open-on-click to checkbox multi-select (see
  * RailEditModeProvider / SidebarRailShell) so rows can be bulk DISMISSED.
@@ -22,10 +23,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/lib/toast';
 import { requestConfirm } from '@/design-system/components/confirm';
 import { onToggleAll } from '@/lib/selection/table-selection';
-import {
-  removeReceivingRailByCarton,
-  removeReceivingRailByLine,
-} from '@/lib/queries/receiving-queries';
+import { dropRailRows, railExclusionItems } from './rail-dismiss';
 
 /** table-selection scope for the rail edit-mode bulk action bar. */
 export const RAIL_EDIT_SCOPE = 'receiving-rail-edit';
@@ -120,14 +118,10 @@ export function useRailEditMode({
       if (!ok) return;
       setRailBulkDismissing(true);
       try {
-        // Rail id encoding → (entity_type, entity_id): negative = unfound carton
-        // stub (-receiving_id → RECEIVING), positive = a receiving line. One
-        // batched POST writes a staff_rail_exclusions row per item (idempotent).
-        const items = ids.map((id) =>
-          id < 0
-            ? { entityType: 'RECEIVING', entityId: -id }
-            : { entityType: 'RECEIVING_LINE', entityId: id },
-        );
+        // One batched POST writes a staff_rail_exclusions row per item
+        // (idempotent). Rail-id → entity encoding is shared with the per-row ⋮
+        // dismiss so the two paths cannot drift.
+        const items = railExclusionItems(ids);
         const res = await fetch('/api/receiving/rail-exclusions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -141,34 +135,7 @@ export function useRailEditMode({
           // events the engine already listens for). The rows still exist — the
           // read filter keeps them hidden from THIS staffer on the next refetch,
           // so no global refresh is fired (which would un-hide them).
-          for (const id of ids) {
-            if (id < 0) {
-              const receivingId = -id;
-              removeReceivingRailByCarton(queryClient, receivingId);
-              window.dispatchEvent(new CustomEvent('receiving-entry-deleted', { detail: receivingId }));
-            } else {
-              // Prefer carton-level remove + sticky group suppress so Unboxed
-              // (listenLineDelete: false) still exits the row via cache mirror.
-              let receivingId: number | null = null;
-              for (const [, rows] of queryClient.getQueriesData<{ id: number; receiving_id?: number | null }[]>({
-                queryKey: ['receiving-lines-table', 'rail'],
-              })) {
-                if (!Array.isArray(rows)) continue;
-                const hit = rows.find((r) => r.id === id);
-                if (hit?.receiving_id != null && Number.isFinite(hit.receiving_id)) {
-                  receivingId = hit.receiving_id;
-                  break;
-                }
-              }
-              if (receivingId != null) {
-                removeReceivingRailByCarton(queryClient, receivingId);
-                window.dispatchEvent(new CustomEvent('receiving-entry-deleted', { detail: receivingId }));
-              } else {
-                removeReceivingRailByLine(queryClient, id);
-              }
-              window.dispatchEvent(new CustomEvent('receiving-line-deleted', { detail: { id } }));
-            }
-          }
+          dropRailRows(queryClient, ids);
           toast.success(ids.length === 1 ? 'Row dismissed' : `${ids.length} rows dismissed`);
           // Refresh the exclusion set so the rail's read filter (which rides the
           // queryKey) picks up the new dismissals on its next refetch.

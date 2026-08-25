@@ -30,6 +30,8 @@ import {
 } from '@/lib/receiving/receiving-grid-layout';
 import { ORDERS_COMPOUND_COLUMNS } from '@/lib/dashboard-order-row-layout';
 import { TASKS_COMPOUND_COLUMNS } from '@/lib/staff-todos/tasks-grid-layout';
+import { DAILY_COMPOUND_COLUMNS } from '@/lib/daily-checks/daily-grid-layout';
+import { CART_COMPOUND_COLUMNS } from '@/lib/kiosk/cart-grid-layout';
 
 const keys = (c: readonly { key: string }[]) => c.map((x) => x.key);
 const widths = (c: readonly { key: string; width?: string }[]) =>
@@ -45,6 +47,7 @@ const FAMILIES = [
   ['Orders / To-Ship', ORDERS_COMPOUND_COLUMNS],
   ['Incoming', INCOMING_COMPOUND_COLUMNS],
   ['Tasks', TASKS_COMPOUND_COLUMNS],
+  ['Daily', DAILY_COMPOUND_COLUMNS],
 ] as const;
 
 describe('compound layout is shared, not forked', () => {
@@ -56,7 +59,8 @@ describe('compound layout is shared, not forked', () => {
       'fulfillment',
       'item',
       'state',
-      'open',
+      'amount',
+      'actions',
       '_fill',
     ]);
     for (const [name, model] of FAMILIES) {
@@ -139,14 +143,14 @@ describe('column widths are operator-adjustable', () => {
     // gutter between a short order chip and the item title on every row, and no
     // operator could close it. Width is now a default, not a ceiling.
     const resizable = COMPOUND_TRACKS.filter((c) => c.resizable !== false).map((c) => c.key);
-    assert.deepEqual(resizable, ['fulfillment', 'item', 'state']);
+    assert.deepEqual(resizable, ['fulfillment', 'item', 'state', 'amount']);
   });
 
   it('leaves only fixed-content chrome un-draggable', () => {
-    // The two 48px gutters, `open` (a 2.5rem chevron) and `_fill` (structural
-    // slack). Dragging any of them could only add or steal whitespace.
+    // The two 48px gutters, `actions` (a 2.5rem ⋮ button) and `_fill`
+    // (structural slack). Dragging any could only add or steal whitespace.
     const fixed = COMPOUND_TRACKS.filter((c) => c.resizable === false).map((c) => c.key);
-    assert.deepEqual(fixed, ['select', 'thumb', 'open', '_fill']);
+    assert.deepEqual(fixed, ['select', 'thumb', 'actions', '_fill']);
   });
 
   it('gives every draggable track a content floor', () => {

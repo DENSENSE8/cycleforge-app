@@ -40,7 +40,7 @@ export default async function UnboxPage() {
       <SurfaceParamHygiene />
       <UnboxBrowseShell>
         <SurfaceGate surfaceKey="unbox">
-          <ReceivingSurfacePage mobileTitle="Unbox" surface="unbox" />
+          <ReceivingSurfacePage />
         </SurfaceGate>
       </UnboxBrowseShell>
     </>

@@ -28,6 +28,7 @@ import {
   getLabelPrintStatusDotLabel,
   labelPrintFeedToRailVM,
 } from '@/components/labels/product-labels-rail-vm';
+import type { RailPeekFact } from '@/components/sidebar/rail-shell/RailPeekIdentityFacts';
 import type { LabelPrintFeedItem } from '@/hooks/useLabelPrintFeed';
 import type { RefreshDomain } from '@/lib/refresh/domains';
 
@@ -67,6 +68,14 @@ function filterLabelPrintRows(
     return hay.includes(q);
   });
 }
+
+/** Copyable identity of a printed unit — SKU · serial · bin. Module scope so
+ *  the peek, the strip pin and the row menu read one list. */
+const labelPrintFacts = (row: LabelPrintFeedItem): RailPeekFact[] => [
+  { tone: 'sku', value: row.sku ?? '' },
+  { tone: 'serial', value: row.serial_number ?? '' },
+  { tone: 'bin', value: row.current_location ?? '' },
+];
 
 export function ProductLabelsRecentRail() {
   const { historyId, setHistoryId } = useLabelsHistoryIdParam();
@@ -152,6 +161,11 @@ export function ProductLabelsRecentRail() {
             if (unit && loc) return `${unit} · ${loc}`;
             return unit || loc || null;
           }}
+          // The row's copyable identities — one list, three consumers: the
+          // parked-strip peek card, the hover peek below, and the row ⋮ menu
+          // (see SidebarRecentRailBase). It was previously inlined in
+          // `renderPopover` only, so the strip peek and the menu had nothing.
+          getCollapsePinFacts={labelPrintFacts}
           renderRowMain={(row) => (
             <RailRowBody className="flex-1" vm={labelPrintFeedToRailVM(row)} />
           )}
@@ -161,11 +175,7 @@ export function ProductLabelsRecentRail() {
               statusLabel={getLabelPrintStatusDotLabel(row)}
               statusDotClass={getLabelPrintStatusDot(row)}
               meta={row.staff_name ?? undefined}
-              facts={[
-                { tone: 'sku', value: row.sku ?? '' },
-                { tone: 'serial', value: row.serial_number ?? '' },
-                { tone: 'bin', value: row.current_location ?? '' },
-              ]}
+              facts={labelPrintFacts(row)}
               age={railRelativeTime(row.printed_at)}
               onOpen={() => {
                 openWorkspace();

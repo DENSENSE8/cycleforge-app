@@ -54,7 +54,8 @@ export type ReceivingGridColumnKey =
   | 'item'
   | 'fulfillment'
   | 'state'
-  | 'open'
+  | 'amount'
+  | 'actions'
   | '_fill'
   /** Org-defined custom columns (`custom:<defKey>`). */
   | CustomFieldColumnKey;
@@ -309,7 +310,8 @@ export type IncomingGridColumnKey =
   | 'item'
   | 'fulfillment'
   | 'state'
-  | 'open'
+  | 'amount'
+  | 'actions'
   | '_fill';
 
 /** Extends the house model — see {@link LedgerGridColumnModel}; only `key` narrows. */

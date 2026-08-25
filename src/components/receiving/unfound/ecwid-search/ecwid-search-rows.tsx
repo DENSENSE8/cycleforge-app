@@ -2,9 +2,11 @@ import { microBadge } from '@/design-system/tokens/typography/presets';
 import {
   PairingCandidateRow,
 } from '@/components/receiving/workspace/line-edit/PairingLinkButton';
+import { ItemRecordThumb } from '@/design-system/components/item-record';
 import { PlatformMark } from '@/components/ui/PlatformMark';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { sourcePlatformMeta } from '@/lib/source-platform';
+import { OrderIdChip, SkuScanRefChip, getLast8 } from '@/components/ui/CopyChip';
 import type { SearchItem } from './ecwid-search-shared';
 
 interface ModeButtonProps {
@@ -50,35 +52,25 @@ export function ResultRow({
   suggestedLabel = 'Suggested (Tracking match)',
 }: ResultRowProps) {
   const platforms = item.platform_ids?.filter((p) => p?.platform) ?? [];
-  const displaySku = item.sku ?? item.zoho_sku ?? '—';
+  const displaySku = item.sku ?? item.zoho_sku ?? '';
 
-  const media = (
-    <div className="h-10 w-10 shrink-0 overflow-hidden rounded-none border border-border-hairline bg-surface-canvas">
-      {item.image_url ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={item.image_url}
-          alt=""
-          className="h-full w-full object-cover"
-          loading="lazy"
-        />
-      ) : (
-        <div className="flex h-full w-full items-center justify-center text-role-micro text-text-faint">
-          —
-        </div>
-      )}
-    </div>
-  );
+  // Same media primitive as the PO line row (ItemRecordThumb) — flush left,
+  // full row height, thin right divider. Used to be a bespoke 40px bordered
+  // square boxed away from the row edge (2026-08-24 fix).
+  const media = <ItemRecordThumb imageUrl={item.image_url} />;
 
   const meta = (
+    // Order · SKU — same left-to-right identity order and the same chip
+    // family (CopyChip) as the receiving rail peek (RailPeekIdentityFacts):
+    // order is the primary identifier and reads first; SKU follows. Used to
+    // be raw styled spans (SKU first) — a fork of the house chip vocabulary
+    // (2026-08-24 fix).
     <div className="flex flex-wrap items-center gap-1">
-      <span className="font-mono text-role-micro tracking-wide text-text-soft">
-        {displaySku}
-      </span>
       {showOrderMeta && item.order_id ? (
-        <span className="text-role-micro font-semibold normal-case text-sky-600">
-          Order #{item.order_id}
-        </span>
+        <OrderIdChip value={item.order_id} display={getLast8(item.order_id)} dense />
+      ) : null}
+      {displaySku ? (
+        <SkuScanRefChip value={displaySku} display={getLast8(displaySku)} dense />
       ) : null}
       {!showOrderMeta &&
         platforms.slice(0, 4).map((p, i) => {

@@ -1,0 +1,76 @@
+'use client';
+
+import type { ReactNode } from 'react';
+import { cn } from '@/utils/_cn';
+import { EmptyState } from '../../primitives';
+import { Package } from '@/components/Icons';
+import { ItemRecordFactList } from './ItemRecordFactList';
+import { ItemRecordRow } from './ItemRecordRow';
+import type { ItemRecord } from './item-record-types';
+
+/**
+ * The shared item surface: a flat list of item rows, each followed by its
+ * reference facts.
+ *
+ * This is the SoT face for "what is this item" anywhere in the app. One item
+ * or twenty, a purchase order or a sales order — the caller maps its records
+ * onto {@link ItemRecord} and gets the same ledger the scan stations paint in
+ * the middle context display.
+ *
+ * Flat by construction: rows carry a hairline floor and no card radius, so the
+ * card sits inside whatever block host owns the padding. Nothing here fetches,
+ * mutates, or knows a route.
+ */
+export function ItemRecordCard({
+  items,
+  activeId,
+  onSelect,
+  serialsLoading = false,
+  emptyTitle = 'No items',
+  emptyDescription = 'Nothing is recorded against this record.',
+  footer,
+  className,
+}: {
+  items: ItemRecord[];
+  /** Which row is the surface's current context. */
+  activeId?: string | number | null;
+  onSelect?: (item: ItemRecord) => void;
+  serialsLoading?: boolean;
+  emptyTitle?: string;
+  emptyDescription?: string;
+  /** Trailing slot under the last item — extra panels the caller owns. */
+  footer?: ReactNode;
+  className?: string;
+}) {
+  if (items.length === 0) {
+    return (
+      <EmptyState
+        icon={<Package className="h-6 w-6 text-text-faint" />}
+        title={emptyTitle}
+        description={emptyDescription}
+      />
+    );
+  }
+
+  return (
+    <div className={cn('min-w-0 space-y-3', className)} data-item-record-card>
+      <ul className="min-w-0 list-none border-t border-border-soft p-0">
+        {items.map((item) => (
+          <ItemRecordRow
+            key={item.id}
+            item={item}
+            active={activeId != null && String(activeId) === String(item.id)}
+            onSelect={onSelect}
+            serialsLoading={serialsLoading}
+          />
+        ))}
+      </ul>
+      {items.map((item) =>
+        item.facts?.length ? (
+          <ItemRecordFactList key={`facts-${item.id}`} facts={item.facts} />
+        ) : null,
+      )}
+      {footer}
+    </div>
+  );
+}

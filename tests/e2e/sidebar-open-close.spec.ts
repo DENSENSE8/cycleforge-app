@@ -210,9 +210,8 @@ test.describe('sidebar spine — open and close', () => {
     // The staff footer is the spine's identity chrome now. The org control that
     // used to sit in the 40px top band was deleted 2026-08-03 — single-org is
     // the norm, so a permanent row naming it restated something that never
-    // changes. The BAND stays and is deliberately empty (it is the seam that
-    // puts the spine's bottom hairline on the header's Y), so asserting on it
-    // would pin dead space; assert the footer, which is real content.
+    // changes. The BAND stays (it keeps the spine's 40px face on the header's
+    // Y); asserting on it would pin empty space. Assert the footer.
     await expect(
       page.locator(`${NAV_COLUMN} [data-staff-account-footer]`),
       'the staff account footer is missing from the spine',

@@ -14,15 +14,13 @@ import { isMobileAllowedPath } from '@/lib/sidebar-navigation';
 import { SIDEBAR_SPINE_WIDTH } from '@/components/sidebar/sidebar-spine';
 import { ContextPanelLayout } from '@/components/sidebar/ContextPanelLayout';
 import { RightRailHost } from '@/components/right-rail/RightRailHost';
+import { GlobalWedgeScannerMount, PhoneScanBridgeMount } from '@/components/layout/scan-mounts';
 import { setRightRailFrameWidth } from '@/lib/right-rail/frame';
 import { isClientPublicPath } from '@/contexts/AuthContext';
 import { GlobalHeader } from '@/components/layout/GlobalHeader';
 import { appContentShellClass } from '@/components/layout/header-shell';
 import { appChromeClass } from '@/design-system/tokens/app-surface';
 import { cn } from '@/utils/_cn';
-import { usePhoneScanBridge } from '@/hooks/usePhoneScanBridge';
-import { useGlobalWedgeScanner } from '@/hooks/useGlobalWedgeScanner';
-import { useCommandAliasHydration } from '@/hooks/useCommandAliasHydration';
 import { warmSpineChunk } from '@/components/sidebar/preload-spine';
 
 // The sidebar is its own chunk: desktop mounts it immediately (the whole shell
@@ -89,34 +87,7 @@ const GlobalDesktopSkuScanner = dynamic(
   () => import('@/components/layout/GlobalDesktopSkuScanner').then((m) => m.GlobalDesktopSkuScanner),
   { ssr: false },
 );
-const ReceivingPhoneBridgeMount = dynamic(
-  () => import('@/components/mobile/receiving/ReceivingPhoneBridgeMount').then((m) => m.ReceivingPhoneBridgeMount),
-  { ssr: false },
-);
 
-/**
- * Mount-only component. Subscribes to phone-originated scans on
- * `phone:{staffId}` for the signed-in user and echoes lookups back on
- * `staffstation:{staffId}`. Runs on both desktop and mobile so either side can
- * service a scan from the other.
- */
-function PhoneScanBridgeMount() {
-  usePhoneScanBridge();
-  return null;
-}
-
-/**
- * Mount-only component. Listens for HID wedge / Bluetooth ring-scanner
- * keystrokes anywhere in the app. URL-shaped scans navigate; bare codes
- * fire a `wedge-scan` CustomEvent for page-level handlers.
- */
-function GlobalWedgeScannerMount() {
-  useGlobalWedgeScanner();
-  // Aliases must be resolvable in the same tick a trigger is pulled, so they
-  // hydrate here rather than being fetched on the scan path.
-  useCommandAliasHydration();
-  return null;
-}
 
 /**
  * Slim fallback shown when the sidebar subtree throws. It must be narrow chrome,
@@ -449,30 +420,15 @@ export function ResponsiveLayout({ children, kioskHost = false }: ResponsiveLayo
   // paths reach this far now, and `/m` is always mobile-allowed, so it could
   // never fire. The redirect effect above still bounces a phone off a
   // desktop-only path — that is routing, and it is unchanged.)
-
-  // ── Mobile layout: content only ──
   //
-  // Chrome-light: bottom nav lives in /m/layout.tsx (admin-gated). No global
-  // overlay FABs — scan is the centre tab; quick access lives in page headers
-  // where a route ships its own mobile chrome.
-  return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      {/* Mirror of desktop: subscribe to phone:{staffId} so any device the
-          user is signed in on can service the lookup. */}
-      <PhoneScanBridgeMount />
-      <ReceivingPhoneBridgeMount />
-
-      {/* Same wedge scanner listener as desktop — works for HID-over-USB on
-          tablets and Bluetooth ring scanners paired to a phone. */}
-      <GlobalWedgeScannerMount />
-
-      <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-        {children}
-      </main>
-
-      {/* Mobile is explicitly overlay-only: it has no horizontal content row.
-          Desktop width pressure never invokes this branch. */}
-      <RightRailHost inline={false} />
-    </div>
-  );
+  // There is no `/m/*` branch below either, and there must not be one again.
+  // The handheld frame is its own module (`MobileRouteShell`), picked by
+  // `WarehouseShell` from the pathname. A runtime branch here shipped this
+  // file's whole import graph — header, spine, command bar, context panel,
+  // desktop scanner — to every phone that loaded a `/m/*` route.
+  //
+  // `onMobileRoute` therefore only ever describes a route this shell does NOT
+  // own; it survives because the drawer and the width-published frame still
+  // read it while a desk route is displayed narrow.
+  return null;
 }

@@ -18,9 +18,15 @@ import { Button } from '@/design-system/primitives';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 
-/** Outer chrome for a link-style pairing candidate — flush on Displays plane. */
+/**
+ * Outer chrome for a link-style pairing candidate — flush on Displays plane.
+ * No `inset-field` here — a media row needs its thumb to bleed to the shell
+ * edge, so the inset is applied per-variant in `shellClass` instead (never
+ * stacked with a second inset on the inner flex row, which is how the old
+ * media layout doubled up and boxed the thumb away from the edge).
+ */
 const PAIRING_CANDIDATE_ROW_CLASS = cn(
-  'min-w-0 border border-border-soft bg-surface-card inset-field transition-colors hover:border-border-default hover:bg-surface-hover',
+  'min-w-0 border border-border-soft bg-surface-card transition-colors hover:border-border-default hover:bg-surface-hover',
   cornerClass('flush'),
 );
 
@@ -64,39 +70,62 @@ export function PairingCandidateRow({
   linked = false,
 }: PairingCandidateRowProps) {
   const useSlots = title != null || media != null || meta != null || action != null;
+  const hasMedia = media != null;
 
   const shellClass = cn(
     PAIRING_CANDIDATE_ROW_CLASS,
+    // `media` rows bleed their own thumb edge-to-edge (ItemRecordThumb — same
+    // primitive the PO line row uses) — the shell carries no inset of its own
+    // for them. `inset-field`'s uniform padding stacked with the body row's
+    // own gutter is what boxed the thumb away from the edge before
+    // (2026-08-24 fix). Media-less rows (PoLinkTab) keep `inset-field`, unchanged.
+    !hasMedia && 'inset-field',
     linked && 'border-emerald-300 bg-emerald-50 ring-1 ring-inset ring-emerald-400',
     suggested && !linked && 'border-violet-200 bg-violet-50/60',
     onSelect && 'w-full text-left',
     className,
   );
 
-  const body = useSlots ? (
-    <div className="flex w-full min-w-0 items-center gap-2.5 px-2.5 py-2">
-      {media ? <div className="shrink-0">{media}</div> : null}
-      <div className="min-w-0 flex-1">
-        {suggested ? (
-          <div className="mb-0.5 flex items-center gap-1 text-role-eyebrow uppercase tracking-widest text-violet-700">
-            <Star className="h-3 w-3" aria-hidden />
-            {suggestedLabel}
-          </div>
-        ) : null}
-        {title != null ? (
-          typeof title === 'string' || typeof title === 'number' ? (
-            <div className="truncate text-sm font-semibold text-text-default">{title}</div>
-          ) : (
-            <div className="min-w-0">{title}</div>
-          )
-        ) : null}
-        {meta != null ? <div className="mt-0.5 min-w-0">{meta}</div> : null}
-      </div>
-      {action != null ? <div className="shrink-0">{action}</div> : null}
+  const content = (
+    <div className="min-w-0 flex-1">
+      {suggested ? (
+        <div className="mb-0.5 flex items-center gap-1 text-role-eyebrow uppercase tracking-widest text-violet-700">
+          <Star className="h-3 w-3" aria-hidden />
+          {suggestedLabel}
+        </div>
+      ) : null}
+      {title != null ? (
+        typeof title === 'string' || typeof title === 'number' ? (
+          <div className="truncate text-sm font-semibold text-text-default">{title}</div>
+        ) : (
+          <div className="min-w-0">{title}</div>
+        )
+      ) : null}
+      {meta != null ? <div className="mt-0.5 min-w-0">{meta}</div> : null}
     </div>
-  ) : (
-    children
   );
+
+  const body = !useSlots
+    ? children
+    : hasMedia ? (
+      // Thumb flush left, full row height (ItemRecordThumb is self-stretch) —
+      // content column carries the inset-field padding the thumb bled past.
+      // `py-1.5` (not `py-2`): the thumb's own `min-h-20` sets row height, so
+      // this is pure top/bottom air around a two-line title+meta stack — kept
+      // tight rather than centered with slack (2026-08-24 fix).
+      <div className="flex w-full min-w-0 items-stretch gap-2.5">
+        {media}
+        <div className="flex min-w-0 flex-1 items-center gap-2.5 py-1.5 pr-2.5">
+          {content}
+          {action != null ? <div className="shrink-0">{action}</div> : null}
+        </div>
+      </div>
+    ) : (
+      <div className="flex w-full min-w-0 items-center gap-2.5 px-2.5 py-2">
+        {content}
+        {action != null ? <div className="shrink-0">{action}</div> : null}
+      </div>
+    );
 
   if (onSelect) {
     return (

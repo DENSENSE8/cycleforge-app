@@ -6,20 +6,12 @@ import {
 } from '@/design-system/components/grid';
 import {
   ORDERS_QUEUE_COLUMNS,
-  ORDERS_QUEUE_FROZEN_CELL,
-  ordersQueueGridCell,
-  ordersQueueGridTemplateFor,
-  ordersQueueRowShellClass,
   type OrdersQueueColumn,
   type OrdersQueueColumnKey,
 } from '@/lib/dashboard-order-row-layout';
 import { isQueueColumnSort } from '@/utils/queue-display-sort';
 
-const ORDERS_HEADER_LAYOUT: LedgerHeaderLayoutApi<OrdersQueueColumn> = {
-  template: ordersQueueGridTemplateFor,
-  cellClass: ordersQueueGridCell,
-  rowShellClass: ordersQueueRowShellClass,
-  frozenCellClass: ORDERS_QUEUE_FROZEN_CELL,
+const ORDERS_HEADER_LAYOUT: LedgerHeaderLayoutApi = {
   isSortable: isQueueColumnSort,
   // Trailing frozen identity cell (`title`) owns the scroll-edge shadow.
   frozenEdgeKey: 'title',

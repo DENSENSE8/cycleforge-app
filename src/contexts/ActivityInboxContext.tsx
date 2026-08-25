@@ -57,6 +57,13 @@ export interface ActivityInboxItem {
   // tech-queue (return_pending_test / order_ready_ship) deep-link + detail
   lineId?: number;
   orderNumber?: string;
+  /**
+   * Raw platform key (`source_platform` / pill / inbound type — same ladder
+   * as {@link listTechQueueItemsForStaff}'s `sourcePlatform`), so the
+   * popover's `OrderIdChip` paints the same platform icon/color/tooltip the
+   * carton-context peek does instead of the flat unstyled fallback.
+   */
+  sourcePlatform?: string;
   productTitle?: string;
   // work_task — the durable row lives in staff_inbox_items; this is its mirror,
   // so `inboxItemId` is what a triage verb would act on.
@@ -204,6 +211,7 @@ export function ActivityInboxProvider({
           lineId: number | null;
           trackingNumber: string | null;
           orderNumber: string | null;
+          sourcePlatform: string | null;
           productTitle: string | null;
           unboxedAt: string | null;
         }>;
@@ -226,6 +234,7 @@ export function ActivityInboxProvider({
           lineId: it.lineId ?? undefined,
           trackingNumber: it.trackingNumber ?? undefined,
           orderNumber: it.orderNumber ?? undefined,
+          sourcePlatform: it.sourcePlatform ?? undefined,
           productTitle: it.productTitle ?? undefined,
         };
       });
@@ -343,11 +352,18 @@ export function ActivityInboxProvider({
       });
       if (fetchGen !== inboxFetchGenRef.current || inboxSuppressedRef.current) return;
       setStaffMessageItems(mapped);
-      if (!inboxSuppressedRef.current) void refreshSupportFollowups();
+      // Deliberately does NOT chain `refreshSupportFollowups()`. It used to, and
+      // that made `/api/inbox/support` fetch twice on every load — once from its
+      // own idle effect, once again 6ms after this response landed, serially
+      // behind it. Support assignments are already covered from both ends: the
+      // idle effect seeds them on mount, and the `staff_message` Ably handler
+      // below routes `kind === 'support_assignment'` straight to
+      // `refreshSupportFollowups` (which is why THIS mapper filters that kind
+      // out). Re-adding the chain re-adds the duplicate request.
     } catch {
       /* best-effort — next push or reload retries */
     }
-  }, [user?.staffId, refreshSupportFollowups]);
+  }, [user?.staffId]);
 
   useEffect(() => {
     if (!idleReady) return;

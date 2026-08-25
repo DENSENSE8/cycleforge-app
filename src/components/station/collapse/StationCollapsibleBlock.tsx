@@ -29,15 +29,18 @@
  *
  * Collapse is driven by the host (`useAutoCollapse`), never by local state —
  * the whole point is that several blocks collapse together on one signal.
+ *
+ * **The collapse is INSTANT — no height animation** (operator rule,
+ * 2026-08-22; see AGENTS.md → "No layout animations"). It used to tween height
+ * through `AnimatePresence`, and on a tall body that tween is exactly the wrong
+ * thing twice over: it costs a multi-hundred-millisecond reflow storm on the
+ * one interaction whose entire purpose is to GIVE BACK space in a hurry, and
+ * for the duration of it the block still occupies its full height — so an
+ * operator who collapses a 1100px Status block watches it slide instead of
+ * getting their thread back. Show it or do not.
  */
 
 import type { ReactNode } from 'react';
-import { AnimatePresence, motion } from '@/design-system/motion';
-import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
-import {
-  useMotionPresence,
-  useMotionTransition,
-} from '@/design-system/foundations/motion-framer-hooks';
 import { ChevronDown } from '@/components/Icons';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
@@ -128,11 +131,11 @@ export function StationCollapsibleBlock({
   bodyClassName?: string;
   testId?: string;
 }) {
-  const presence = useMotionPresence(framerPresence.collapseHeight);
-  const transition = useMotionTransition(framerTransition.stationCollapse);
-
   return (
-    <section data-testid={testId} data-collapsed={collapsed || undefined}>
+    // `shrink-0` unconditionally: in a bounded centre column the flexible
+    // sibling (a thread) must absorb the slack, never this block. Every host
+    // wants that, so it is not a prop.
+    <section data-testid={testId} data-collapsed={collapsed || undefined} className="shrink-0">
       <StationBlockLabel
         label={label}
         count={count}
@@ -141,20 +144,7 @@ export function StationCollapsibleBlock({
         onToggle={onToggle}
       />
 
-      <AnimatePresence initial={false}>
-        {collapsed ? null : (
-          <motion.div
-            key="body"
-            initial={presence.initial}
-            animate={presence.animate}
-            exit={presence.exit}
-            transition={transition}
-            className="overflow-hidden"
-          >
-            <div className={bodyClassName}>{children}</div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {collapsed ? null : <div className={bodyClassName}>{children}</div>}
     </section>
   );
 }

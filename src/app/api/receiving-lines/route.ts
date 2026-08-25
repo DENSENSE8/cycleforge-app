@@ -19,7 +19,11 @@ import { sortSerialUnitToParts } from '@/lib/inventory/parts-sort';
 import { isTestingApiView } from '@/lib/surface-isolation';
 import { recomputeCartonSourceLink } from '@/lib/receiving/carton-source-link';
 import { isIncomingUniversal } from '@/lib/feature-flags';
-import { isReceivingPhysicalStateFirst, isUnboxRailColumnRead } from '@/lib/feature-flags';
+import {
+  isReceivingPhysicalStateFirst,
+  isSerialProjectionDriftProbe,
+  isUnboxRailColumnRead,
+} from '@/lib/feature-flags';
 import {
   parseReceivingLinesQuery,
   QA_STATUSES,
@@ -264,6 +268,83 @@ export async function handleReceivingLinesGet(
       });
     }
 
+    // ── `?count_only=1` — the total, without the list ───────────────────────
+    //
+    // A tab badge needs ONE integer and used to get it with `?limit=1`, which
+    // is not a cheap request: this route always runs the list SQL alongside the
+    // count, and for the views whose ORDER BY key lives on a joined table
+    // Postgres must run ~15 display laterals over the whole candidate set
+    // before it can sort and limit — see the pre-limit note directly below,
+    // where a `limit=1` request measured 5.4s. On a cold `/unbox` the two Unbox
+    // badges cost 3513ms and 5767ms, the second being the slowest request on
+    // the page, to learn two numbers.
+    //
+    // This arm runs the COUNT queries ONLY — the same three the full path sums
+    // into `total` (list count + unmatched placeholders + unbox-opened
+    // placeholders), so the number is identical by construction rather than by
+    // a second implementation of the rules.
+    //
+    // Deliberately placed BEFORE `maybePreLimitUnboxOpened`: that narrows
+    // `query` to a pre-ranked first-page carton set, which is correct for a
+    // page of rows and wrong for a total.
+    //
+    // NOT honoured for `WRONG_DESTINATION`, whose total is derived from the
+    // filtered ROWS far below and cannot be answered by a count query; that
+    // request falls through to the full path unchanged.
+    //
+    // ONE view disagrees with `?limit=1`, and deliberately so. Verified against
+    // the dogfood org, `count_only` matches `?limit=1` exactly on `scanned`
+    // (15), `viewed` (765), `activity` (2899), `all` (3147) and `incoming`
+    // (122) — but on `unbox_opened` it returns 968 where `?limit=1` returns 1.
+    // That is because `maybePreLimitUnboxOpened` narrows `query.receivingIdIn`
+    // to a ranked window of `limit` cartons and the full path's count then
+    // counts INSIDE that window, so `?limit=N` on that view reports the page
+    // size, not the collection size. `count_only` reports the collection size,
+    // which is the only thing a total is useful for. Do not "fix" this arm to
+    // agree with the pre-limited number — fix the pre-limited number.
+    const countOnly =
+      searchParams.get('count_only') === '1'
+      && query.deliveryStateFilter !== 'WRONG_DESTINATION';
+    if (countOnly) {
+      const countBuilt = buildReceivingLinesListSql({
+        query,
+        orgId,
+        viewerStaffId,
+        universalIncoming,
+        applyScannedZohoExclusion,
+        unboxRailColumnRead,
+      });
+      const unmatched = shouldIncludeUnmatchedPlaceholders(query)
+        ? buildUnmatchedPlaceholdersSql(query, orgId)
+        : null;
+      const unboxOpened = shouldIncludeUnboxOpenedPlaceholders(query)
+        ? buildUnboxOpenedPlaceholdersSql(query, orgId, unboxRailColumnRead)
+        : null;
+      const [listCntRes, unmatchedCntRes, unboxCntRes] = await withTenantConnection(
+        orgId,
+        (client) => Promise.all([
+          client.query(countBuilt.count.sql, countBuilt.count.params),
+          unmatched
+            ? client.query(unmatched.count.sql, unmatched.count.params)
+            : Promise.resolve({ rows: [] as Record<string, unknown>[] }),
+          unboxOpened
+            ? client.query(unboxOpened.count.sql, unboxOpened.count.params)
+            : Promise.resolve({ rows: [] as Record<string, unknown>[] }),
+        ]),
+      );
+      const countOnlyTotal =
+        Number(listCntRes.rows[0]?.total ?? 0)
+        + Number(unmatchedCntRes.rows[0]?.n ?? 0)
+        + Number(unboxCntRes.rows[0]?.n ?? 0);
+      return NextResponse.json({
+        success: true,
+        receiving_lines: [],
+        total: countOnlyTotal,
+        limit,
+        offset,
+      });
+    }
+
     // Pre-limit the Unbox recents rail before the display laterals run.
     //
     // `view=unbox_opened` sorts on `receiving_unbox.opened_at` — a column on a
@@ -305,6 +386,33 @@ export async function handleReceivingLinesGet(
     let total = Number(countRes.rows[0]?.total ?? 0);
     if (includeSerials) {
       const serialsByLine = await fetchSerialsForLines(normalizedList.map((r) => r.id), orgId);
+      // Free drift probe: at THIS point `row.serials` still holds the
+      // `serial_projection` value the cheap `?phase=spine` tier serves, and
+      // `serialsByLine` holds the authoritative resolve that is about to
+      // overwrite it. Comparing them here costs no extra query and answers the
+      // only open question blocking the retirement of the second fetch tier.
+      // Off by default — see isSerialProjectionDriftProbe.
+      if (isSerialProjectionDriftProbe()) {
+        for (const row of normalizedList) {
+          const projected = Array.isArray(row.serials)
+            ? row.serials.map((s) => s.serial_number).sort()
+            : null;
+          // `undefined` means the SELECT omitted the column, which is not drift.
+          if (projected == null) continue;
+          const authoritative = (serialsByLine.get(row.id) ?? [])
+            .map((s) => s.serial_number)
+            .sort();
+          if (JSON.stringify(projected) !== JSON.stringify(authoritative)) {
+            console.warn('[serial-projection-drift]', {
+              orgId,
+              view,
+              lineId: row.id,
+              projected,
+              authoritative,
+            });
+          }
+        }
+      }
       for (const row of normalizedList) {
         (row as Record<string, unknown>).serials = serialsByLine.get(row.id) ?? [];
       }

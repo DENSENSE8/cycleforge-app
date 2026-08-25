@@ -9,7 +9,7 @@ import { SurfaceGate } from '@/components/surfaces/SurfaceGate';
 export default function ReceivingHistoryPage() {
   return (
     <SurfaceGate surfaceKey="history">
-      <ReceivingSurfacePage mobileTitle="History" />
+      <ReceivingSurfacePage />
     </SurfaceGate>
   );
 }

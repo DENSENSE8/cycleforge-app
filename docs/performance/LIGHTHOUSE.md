@@ -106,6 +106,67 @@ route. Re-mint and re-run; redirected rows are excluded from baseline writes.
   landing is flagged `⚠ redirected` and excluded from baseline writes.
   `POST /api/kiosk/dev-autopair` 404s in production — do not rely on it here.
 
+## Auditing a Vercel preview (and why you should)
+
+**Local numbers are not the app's numbers.** On a developer machine the database
+is remote — measured from this checkout, a trivial authenticated API call costs
+~1.3s and a receiving-lines read 1.9–2.5s — so every route's server time swamps
+the metric the audit is trying to read. `/test` measured a 5.0s TTFB locally and
+1.4s the next request; `/unbox` swung 92 → 79 between runs of the SAME build on
+DB latency alone. A preview deployment has the database next to the server and
+is the honest environment for anything LCP-shaped.
+
+```bash
+# 1. Deploy a preview (never --prod)
+npx vercel deploy --yes
+
+# 2. Deployment Protection: Project Settings → Deployment Protection →
+#    "Protection Bypass for Automation" → Add Secret. Then:
+export LH_BYPASS_SECRET="<the project's automation bypass secret>"
+export LH_BASE_URL=https://<deployment>.vercel.app
+
+# 3. Authenticated routes need AUTH_PINLESS_SIGNIN=true in the PREVIEW env
+#    (`vercel env add AUTH_PINLESS_SIGNIN preview`) and a redeploy, then:
+export LH_COOKIE="$(node scripts/lighthouse-mint-session.mjs)"
+npm run lighthouse:audit -- --tier 1 --runs 3
+```
+
+Three traps, all of which produce numbers that look fine and mean nothing:
+
+- **Protection blocks the server from itself.** `serverSelfFetch` is how the
+  shell seeds (`/unbox`, `/test`, `/m/*`) load their first collection, and on a
+  protected deployment those same-origin calls hit the SSO gate, so every seed
+  degrades to `null` **silently** — the page renders, the client fetches, and the
+  seeded content is simply missing from the first HTML. `/m/home` measured LCP
+  ~9s that way while the identical code seeded correctly on localhost. The helper
+  now forwards `VERCEL_AUTOMATION_BYPASS_SECRET` when the deployment has one.
+- **Do not send `x-vercel-set-bypass-cookie`.** Once Chrome's cookie jar holds an
+  entry for the origin it wins over the `Cookie` header Lighthouse injects, so
+  the minted `cf_sid` stops being sent and every authenticated route lands on
+  `/signin` — while `curl` with the same cookie returns 200. The bypass header
+  alone is applied to every request, subresources included.
+- **SEO scores ~54 on a preview and that is not a regression.** Vercel serves
+  previews with `X-Robots-Tag: noindex`, which Lighthouse scores as "page blocked
+  from indexing". **Never `--update-baseline` from a preview run** — it would
+  write that artifact in as a floor.
+
+## Simulated LCP is not observed LCP
+
+`throttlingMethod: 'simulate'` records an UNTHROTTLED trace and has Lantern
+predict the throttled result. The two can differ by 3x, and on the mobile profile
+this app they systematically do: `/m/home` reports a simulated LCP of ~6.7s while
+the same page under REAL 4x-CPU / 1.6Mbps throttling paints its largest element
+at 2.1s (verified with a Playwright probe reading `largest-contentful-paint`
+entries directly).
+
+The gap is not noise, and chasing it with data-layer work is wasted effort.
+Lantern charges the LCP paint against the script graph that ran before it, so on
+these routes simulated LCP tracks **time-to-interactive**, which tracks total
+JavaScript. `/m/*` ships ~848KB across ~60 chunks; until that number moves, the
+mobile routes cannot score above the low 70s no matter how early the HTML
+arrives. Confirm which element is actually painting, and when, before treating a
+simulated LCP as a data problem.
+
 ## The ratchet
 
 `lighthouse-baseline.json` records the accepted per-route category floors

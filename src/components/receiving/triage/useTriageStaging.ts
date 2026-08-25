@@ -13,27 +13,18 @@ import { dispatchLineUpdated } from '@/components/station/receiving-lines-table-
 import { invalidateReceivingFeeds } from '@/lib/queries/receiving-queries';
 import { resolveTriageLane } from '@/lib/receiving/triage-lane-policy';
 import { qk } from '@/queries/keys';
+import { locationsListQueryOptions, selectScannableBins } from '@/hooks/useLocations';
 import { isReturnIntake } from '@/lib/receiving/triage-intake-kind';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
-import type { Location } from '@/lib/neon/location-queries';
-
-interface LocationsResponse {
-  locations: Location[];
-}
 
 export function useTriageStaging(row: ReceivingLineRow) {
   const queryClient = useQueryClient();
 
-  const locationsQuery = useQuery<Location[]>({
-    queryKey: ['locations', 'active'] as const,
-    staleTime: 60_000,
-    queryFn: async () => {
-      const res = await fetch('/api/locations', { cache: 'no-store' });
-      if (!res.ok) return [];
-      const data = (await res.json()) as LocationsResponse;
-      // Real bins only — a room/zone parent (no row/col) isn't a scannable shelf.
-      return (data.locations ?? []).filter((l) => l.row_label != null && l.col_label != null);
-    },
+  // Shares the ONE `/api/locations` query with `useLocations` and the station
+  // location port; the bin filter is a `select`, not a second request.
+  const locationsQuery = useQuery({
+    ...locationsListQueryOptions(),
+    select: selectScannableBins,
   });
   const locations = locationsQuery.data ?? [];
 

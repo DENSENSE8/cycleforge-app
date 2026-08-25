@@ -26,7 +26,7 @@ import { useState } from 'react';
 import Image from 'next/image';
 import { LedgerCellEditor } from '@/design-system/components/grid';
 import { focusRing } from '@/design-system/tokens/focus-ring';
-import { ChevronRight, Package } from '@/components/Icons';
+import { ChevronRight, MoreHorizontal, Package } from '@/components/Icons';
 import { BrandIdentityDot, GridCellDash } from '@/components/ui/grid-cells';
 import { GridClickSelectFace, GridRowCheckbox } from '@/components/ui/GridRowCheckbox';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
@@ -37,14 +37,30 @@ import { platformMetaBrandDot, sourcePlatformMeta } from '@/lib/source-platform'
 import { cn } from '@/utils/_cn';
 import { CompoundCell, CompoundLine } from './CompoundCell';
 import { COMPOUND_GUTTER_PX, COMPOUND_ROW_PX } from './compound-row-chrome';
-import type { CompoundRowView, CompoundStateTone } from './compound-row-model';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/design-system/primitives/DropdownMenu';
+import type {
+  CompoundRowAction,
+  CompoundRowView,
+  CompoundStateTone,
+} from './compound-row-model';
 
 /**
  * Column 2 — the photo, EDGE TO EDGE.
  *
  * It fills its cell corner to corner: no inset, no border, no centring slack.
- * The cell is a square of the row box (`COMPOUND_GUTTER_TRACK_REM`), so a
- * square source lands unscaled and uncropped.
+ * The cell is a square of the row box (`COMPOUND_GUTTER_TRACK_REM`).
+ *
+ * Very nearly a true square: the airtable skin paints a 1px bottom rule on every
+ * direct child of a row, and the cell is border-box, so the painted area is
+ * 48×47. That last pixel is the row SEAM, not padding — removing it for these
+ * two tracks would break the continuous hairline down the grid — so a square
+ * source is scaled by 48/S and loses half a pixel top and bottom. Named here
+ * because "square" is the kind of claim that quietly stops being true.
  *
  * It used to be a 32px chip with a hairline border floating in a 64px track —
  * 9px of gap on three sides and 25px on the fourth, which read as a column of
@@ -361,6 +377,119 @@ export function CompoundState({ view }: { view: CompoundRowView }) {
         )
       }
     />
+  );
+}
+
+/**
+ * AMOUNT column — the money, end-aligned, over the arithmetic behind it.
+ *
+ * End-aligned and `tabular-nums` because that is what a money column is FOR: a
+ * digit lines up under a digit, so an operator scanning a cart or a queue can
+ * see which row is the big one without reading any of them. Left-aligned
+ * currency in a ragged column defeats the only reason to have the column.
+ *
+ * A CREDIT (a trade-in, a refund) paints differently as well as carrying its
+ * minus sign. One character of difference at the head of a tabular figure is
+ * exactly the thing a tired eye slides over, and mistaking a −$120 trade-in for
+ * a $120 sale is the expensive direction to be wrong in.
+ *
+ * `null` renders an empty track. A checklist item has no money, and an empty
+ * cell is the honest answer — a `$0.00` would be a number nobody entered.
+ */
+export function CompoundAmount({ view }: { view: CompoundRowView }) {
+  return (
+    <CompoundCell
+      align="end"
+      primary={
+        view.amount ? (
+          <CompoundLine
+            mono
+            className={cn(
+              'font-semibold',
+              view.amountCredit ? 'text-text-success' : 'text-text-default',
+            )}
+          >
+            {view.amount}
+          </CompoundLine>
+        ) : null
+      }
+      secondary={
+        view.amountNote ? <CompoundLine mono>{view.amountNote}</CompoundLine> : null
+      }
+    />
+  );
+}
+
+/**
+ * ACTIONS column — the row's ⋮ menu.
+ *
+ * Replaces the bare chevron that used to sit here. The chevron could say only
+ * one thing ("open"), so every other per-row verb had to live somewhere else:
+ * Receiving hid its triage verbs behind a right-click context menu that nothing
+ * on screen advertised, and the kiosk cart grew a naked ✕ that voided a line the
+ * customer had already been shown. A ⋮ is discoverable, holds as many verbs as
+ * a family has, and keeps "Open" as its first item so nothing regressed.
+ *
+ * `tabIndex={-1}`: the ROW is already the keyboard target, so a focusable
+ * control on every row would double the tab stops in a 500-row grid. The menu
+ * is reachable from the row's own context menu and from the record plane.
+ *
+ * Renders nothing when a family passes neither an open handler nor actions — an
+ * affordance that looks clickable and does nothing is worse than an empty track.
+ */
+export function CompoundActions({
+  onOpen,
+  actions,
+  label,
+}: {
+  onOpen?: () => void;
+  actions?: readonly CompoundRowAction[];
+  /** Names WHICH row the menu belongs to, for screen readers. */
+  label?: string;
+}) {
+  const items: CompoundRowAction[] = [
+    ...(onOpen ? [{ key: 'open', label: 'Open', onSelect: onOpen }] : []),
+    ...(actions ?? []),
+  ];
+  if (items.length === 0) return null;
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          tabIndex={-1}
+          aria-label={label ? `Actions for ${label}` : 'Row actions'}
+          data-row-actions
+          className={cn(
+            'inline-flex h-6 w-6 items-center justify-center text-text-faint',
+            // Quiet until the row is hovered — a column of ⋮ on every row is
+            // ink competing with the data. Opacity composites off the main
+            // thread, so this costs no layout on a scrolling grid.
+            'opacity-0 transition-opacity group-hover/row:opacity-100',
+            'hover:text-text-default focus-visible:opacity-100',
+            focusRing('control'),
+          )}
+          // The row's own click would select or open — this is "show me the
+          // verbs", which is a third thing.
+          onClick={(event) => event.stopPropagation()}
+        >
+          <MoreHorizontal className="h-4 w-4" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        {items.map((action) => (
+          <DropdownMenuItem
+            key={action.key}
+            disabled={action.disabled}
+            onSelect={() => action.onSelect()}
+            className={cn(action.tone === 'danger' && 'text-text-danger')}
+          >
+            {action.label}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 

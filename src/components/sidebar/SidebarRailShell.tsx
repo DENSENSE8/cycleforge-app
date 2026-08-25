@@ -5,12 +5,7 @@ import { motion, AnimatePresence, useReducedMotion, type Variants } from '@/desi
 import { markSurfacePainted } from '@/lib/observability/paint-timing';
 import {
   SIDEBAR_GUTTER,
-  SIDEBAR_RAIL_DOT_TRACK,
-  SIDEBAR_RAIL_INSET_LEFT,
   SIDEBAR_RAIL_INSET_X,
-  SIDEBAR_RAIL_TRAILING_TRACK_CLASS,
-  SIDEBAR_SCAN_DOCK_LEADING_ROW,
-  STATION_SECONDARY_BAND_FACE,
 } from '@/components/layout/header-shell';
 import { CONTEXT_PANEL_COLLAPSE } from '@/components/sidebar/context-panel-column';
 import {
@@ -30,7 +25,6 @@ import {
 } from '@/design-system/primitives/StaggerReveal';
 import { RailPeekCard } from './rail-shell/RailPeekCard';
 import { useSidebarRail } from './rail-shell/useSidebarRail';
-import { RailEditPencil } from './rail-shell/RailEditPencil';
 import { RailRow } from './rail-shell/RailRow';
 import { PkgGroupHeader } from './rail-shell/PkgGroupHeader';
 import {
@@ -70,7 +64,7 @@ export function SidebarRailShell<TRow>(props: SidebarRailShellProps<TRow>) {
   const {
     // `queryKey` is consumed by the engine hook via `props`; not destructured here.
     selectedId,
-    eyebrowTitle, eyebrowSuffix, eyebrowAction, hideEyebrow = false,
+    eyebrowTitle,
     emptyText = 'No recent activity yet.',
     staggerReveal = false,
     // House default for every recent-activity rail: the left→right slide that
@@ -85,7 +79,7 @@ export function SidebarRailShell<TRow>(props: SidebarRailShellProps<TRow>) {
     getCollapsePinMeta,
     getCollapsePinFacts,
     getId, getReconcileId, getActivityAt, onSelect, getStatusDot, getStatusDotLabel,
-    renderRowMain, renderPopover, navRegionId,
+    renderRowMain, renderPopover, rowActions, navRegionId,
     selectedRow, getGroupId,
   } = props;
 
@@ -113,9 +107,15 @@ export function SidebarRailShell<TRow>(props: SidebarRailShellProps<TRow>) {
   // optimistic stub and its resolved row as the SAME element so the swap is an
   // in-place update, not a remount. Defaults to the numeric id.
   const rowKey = (row: TRow): string | number => (getReconcileId ? getReconcileId(row) : getId(row));
+  // Operator-facing row identity — the SAME chain the parked collapse-pin peek
+  // uses, so the ⋮ trigger's accessible name ("Actions for …") and an action's
+  // own feedback name the row the way every other surface names it. Never a
+  // bare "More", which hands a screen-reader user twenty-five identical buttons.
+  const rowLabel = (row: TRow): string =>
+    getCollapsePinLabel?.(row) ?? getStatusDotLabel?.(row) ?? String(getId(row));
 
   const {
-    editMode, showSkeleton, isFetching, rows, topCount, grouped,
+    editMode, showSkeleton, isFetching, rows, grouped,
     collapsedGroups, toggleGroup, listRef, focusIndex, setFocusIndex,
     handleKeyDown, handleEditClick, getRowDisabled,
   } = useSidebarRail(props);
@@ -264,52 +264,35 @@ export function SidebarRailShell<TRow>(props: SidebarRailShellProps<TRow>) {
     [reduceMotion],
   );
   // scanDock: list host is flush (`SIDEBAR_RAIL_INSET_X` = px-0) so selection
-  // washes edge-to-edge; eyebrow matches. Content column pad lives inside each
-  // RailRow / the dense scan bar (gutter + SIDEBAR_SCAN_DOCK_LEADING_ROW).
+  // washes edge-to-edge. Content column pad lives inside each RailRow / the
+  // dense scan bar (gutter + SIDEBAR_SCAN_DOCK_LEADING_ROW).
   const listInsetX = railInset === 'scanDock' ? SIDEBAR_RAIL_INSET_X : SIDEBAR_GUTTER;
-  const eyebrowOuterX = railInset === 'scanDock' ? SIDEBAR_RAIL_INSET_X : SIDEBAR_GUTTER;
+  // scanDock rails sit directly under a scan band (`receivingScanBandClass`),
+  // which already paints its own bottom hairline (`receivingHeaderHairlineClass`
+  // — an inset shadow in `--ds-color-border-default`). This section's own
+  // `border-t` used a DIFFERENT token (`--ds-color-border-hairline`), so the two
+  // stacked into a visible double line right under the band (2026-08-24). Drop
+  // it for scanDock only — every other `railInset` still needs its own top rule,
+  // since nothing above those rails is guaranteed to paint one.
+  const sectionTopRule = railInset === 'scanDock' ? null : 'border-t border-border-hairline';
+  // HARD CONSTRAINTS (2026-08-24): (1) zero padding between the scan band and
+  // the first row — the list carries no top pad of its own; (2) every row
+  // (RailRow / PkgGroupHeader) renders identical `py-1` regardless of position
+  // or selection — no row is ever a special shape. Together that means there
+  // is exactly ONE gutter under the band: the first row's own (uniform) top
+  // pad, same as every other row's. Nothing here adds a second one on top of
+  // it — that was the mistake in the last two passes.
 
   return (
-    <section className={cn('min-w-0 border-t border-border-hairline', appSurfaceFillClass('chrome'))}>
-      {!hideEyebrow ? (
-        <div
-          className={cn(
-            'flex items-center justify-between',
-            STATION_SECONDARY_BAND_FACE,
-            eyebrowOuterX,
-          )}
-        >
-          {/* Nested gutter + leading track — same content column as RailRow. */}
-          <div className={cn(railInset === 'scanDock' ? SIDEBAR_RAIL_INSET_LEFT : null, 'min-w-0')}>
-            <div className={SIDEBAR_SCAN_DOCK_LEADING_ROW}>
-              <span className={cn(SIDEBAR_RAIL_DOT_TRACK, 'shrink-0')} aria-hidden />
-              <p data-rail-eyebrow className="text-role-eyebrow uppercase tracking-widest text-text-soft">
-                {eyebrowTitle} · {topCount}
-              </p>
-            </div>
-          </div>
-          <div
-            className={cn(
-              'flex items-center gap-2',
-              railInset === 'scanDock' ? SIDEBAR_RAIL_TRAILING_TRACK_CLASS : null,
-            )}
-          >
-            {eyebrowAction
-              ? eyebrowAction
-              : eyebrowSuffix && (
-                  // leading-none: without it the 8.5px suffix inherits the base
-                  // line-height (1.5 ≈ 12.75px), taller than the 9px/lh-1.2 eyebrow
-                  // title — which made the suffixed rail (Unfound) ~2px taller than
-                  // the action-button rail (Found). Tight leading lets the title
-                  // govern the row height so both eyebrows align.
-                  <p className="text-role-micro uppercase leading-none tracking-widest text-text-faint">{eyebrowSuffix}</p>
-                )}
-            {editMode.enabled ? (
-              <RailEditPencil active={editMode.active} onToggle={editMode.toggleActive} />
-            ) : null}
-          </div>
-        </div>
-      ) : null}
+    // No eyebrow band. Every rail used to open with a `TITLE · N` strip carrying
+    // an edit pencil at its right; the operator removed it 2026-08-22. It spent a
+    // full `h-6` of a scrolling column on a label the surrounding chrome already
+    // gives (the station names its own rail) and a count nobody acts on, and it
+    // was the last home of the pencil — which moved up into the scan band, where
+    // the rail's other controls already live. `eyebrowTitle` survives as the
+    // listbox's ACCESSIBLE name (below) and the reveal-registry key; it is no
+    // longer painted.
+    <section className={cn('min-w-0', sectionTopRule, appSurfaceFillClass('chrome'))}>
       {showSkeleton ? (
         // Column-scoped: the field sizes to the rail, so the rail sweeps on its
         // own clock instead of showing a slice of the middle's pass. It replaced
@@ -330,7 +313,10 @@ export function SidebarRailShell<TRow>(props: SidebarRailShellProps<TRow>) {
           {listPainted || rows.length > 0 ? (
           <motion.ul
             ref={listRef}
-            className={`${listInsetX} overflow-x-clip py-0.5 outline-none ${isFetching ? 'opacity-90' : ''}`}
+            // No vertical pad on the list itself — see the hard-constraints
+            // note above. The first row's own uniform `py-1` is the only
+            // clearance under the scan band.
+            className={`${listInsetX} overflow-x-clip outline-none ${isFetching ? 'opacity-90' : ''}`}
             role="listbox"
             aria-label={`${eyebrowTitle} activity`}
             aria-busy={isFetching || undefined}
@@ -380,6 +366,11 @@ export function SidebarRailShell<TRow>(props: SidebarRailShellProps<TRow>) {
                     getActivityAt={getActivityAt}
                     renderRowMain={renderRowMain}
                     renderPopover={renderPopover}
+                    rowLabel={rowLabel(row)}
+                    rowActions={rowActions?.(row, {
+                      openWorkspace: () => onSelect(row),
+                      rowLabel: rowLabel(row),
+                    })}
                     onClick={(e) => {
                       if (getRowDisabled?.(row)) return;
                       setFocusIndex(idx);

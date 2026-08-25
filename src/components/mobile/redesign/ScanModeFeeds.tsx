@@ -168,8 +168,14 @@ export function ReceivingTriagePanel() {
   const prioritize = useQuery<ScanFeedItem[]>({
     queryKey: ['receiving-lines-table', 'rail', 'scanned', 'triage', 'priority', ''],
     queryFn: async () => {
+      // No `include=serials`. Nothing this panel renders reads a serial —
+      // `lineToScanItem` uses sku / item_name / tracking / quantities, and the
+      // status helpers read `workflow_status`. Asking for them cost a second
+      // server-side query and a per-row array on a 500-row response, on the
+      // fetch that decides this screen's LCP. The Testing panel below keeps its
+      // own `include=serials` request, because it genuinely lists them.
       const res = await fetch(
-        '/api/receiving-lines?view=scanned&sort=priority&include=serials&limit=500&offset=0',
+        '/api/receiving-lines?view=scanned&sort=priority&limit=500&offset=0',
       );
       if (!res.ok) throw new Error('fetch failed');
       const data = (await res.json()) as { receiving_lines?: ReceivingLineRow[] };

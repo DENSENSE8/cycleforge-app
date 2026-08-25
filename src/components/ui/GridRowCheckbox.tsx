@@ -183,16 +183,23 @@ export function GridRowCheckbox({
       data-select-chrome={chrome}
       disabled={disabled}
       // The row underneath opens the record — a check must never do both.
-      // Propagation stops even when disabled: a dead control must not fall
-      // through to "open the record", which would make a greyed box look like
-      // it did something unrelated.
+      //
+      // A natively-disabled button fires no click at all, so this handler simply
+      // does not run when `disabled` — no guard needed, and none pretended. The
+      // cell wrapper is what keeps a click on the surrounding plane off the row.
       onClick={(event) => {
         event.stopPropagation();
-        if (!disabled) onToggle();
+        onToggle();
       }}
       onKeyDown={(event) => {
         if (event.key === 'Enter' || event.key === ' ') event.stopPropagation();
       }}
+      // `dblclick` is a SEPARATE event from `click` — stopping the latter does
+      // nothing for it. Rows bind dblclick to "open the record", so two quick
+      // ticks used to toggle twice AND open. Latent while the target was a 16px
+      // square; reachable now that the hit plane is the whole 48px cell and the
+      // control tells operators they never have to aim.
+      onDoubleClick={(event) => event.stopPropagation()}
       className={cn(
         // ds-raw-button: gutter check — DS Button has no glyph-square variant.
         // Full-track hit plane for every chrome — the 16px square is the face,
@@ -200,7 +207,12 @@ export function GridRowCheckbox({
         'ds-raw-button flex h-full w-full shrink-0 items-center justify-center self-stretch rounded-none border-0 bg-transparent',
         fullBleedFace && 'relative overflow-hidden',
         disabled && 'cursor-not-allowed opacity-50',
-        focusRing('control'),
+        // A full-bleed face fills its cell exactly and the cell clips, so an
+        // OFFSET ring (what `'control'` paints) lands outside the border box and
+        // is scissored away — the keyboard user gets no focus indicator at all.
+        // `'cell'` is the inset ring the focus-ring SoT documents for precisely
+        // this: "an offset ring would paint outside the cell and be clipped".
+        focusRing(fullBleedFace ? 'cell' : 'control'),
         className,
       )}
     >

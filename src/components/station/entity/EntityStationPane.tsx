@@ -111,6 +111,12 @@ export interface EntityStationPaneProps {
    * drops the ambient wash with it. Default keeps the scan-station sunken plane.
    */
   surface?: 'sunken' | 'card';
+  /**
+   * The centre claims the port height rather than being sized by its content.
+   * Pass this when the centre's last block is a conversation whose composer
+   * belongs on the floor of the pane. See `StationWorkbench` → `bodyFill`.
+   */
+  centreFill?: boolean;
 }
 
 export function EntityStationPane({
@@ -132,6 +138,7 @@ export function EntityStationPane({
   scrollClassName,
   onCentreScroll,
   surface = 'sunken',
+  centreFill = false,
 }: EntityStationPaneProps) {
   const { presence: paneMotion, transition: paneTransition } = useMotionRole(
     motionRole.swap.focus,
@@ -202,6 +209,7 @@ export function EntityStationPane({
                 // stacked pt clearance.
                 reserveIdentityClearance={false}
                 bodyGap="none"
+                bodyFill={centreFill}
                 scrollClassName={scrollClassName}
                 onScroll={onCentreScroll}
                 footer={resolvedDock}

@@ -1,7 +1,11 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { skipToken, useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
+import {
+  UNBOX_DEFAULT_PINS_QUERY_KEY,
+  useStaffPreferences,
+} from '@/hooks/useStaffPreferences';
 import {
   sanitizeUnboxPinnedExtraTabs,
   type UnboxExtraTabId,
@@ -14,23 +18,28 @@ import {
  * so a fresh staffer inherits the org/role template without a personal pin click
  * (Gemini D9).
  *
- * Deliberately its OWN query key — the shared `STAFF_PREFERENCES_QUERY_KEY` cache
- * is read/written directly as raw `StaffPreferences` by many surfaces
+ * Keeps its OWN cache entry — the shared `STAFF_PREFERENCES_QUERY_KEY` value is
+ * read/written directly as raw `StaffPreferences` by many surfaces
  * (TableColumnConfigProvider, useGridColumnVisibility, …), so widening its shape
- * is unsafe. Long staleTime + auth-gated ⇒ effectively one fetch per session.
+ * is unsafe — but it no longer costs its own REQUEST. `useStaffPreferences`
+ * parks `unboxDefaultPins` from the same response into
+ * {@link UNBOX_DEFAULT_PINS_QUERY_KEY}; this hook mounts that query to schedule
+ * the one shared fetch, then observes the side-car with `skipToken` so it never
+ * issues a second GET of a body it already has.
+ *
+ * No side-car (fetch failed, or the entry was evicted) resolves to `[]`, which
+ * is what a failed fetch already did.
  */
 export function useUnboxDefaultPins(): UnboxExtraTabId[] {
   const { user } = useAuth();
-  const query = useQuery({
-    queryKey: ['unbox-default-pins'],
+  // Mount the shared preferences query — this is what schedules the single
+  // `/api/staff-preferences` GET whose response fills the side-car below.
+  useStaffPreferences();
+  const { data } = useQuery<string[]>({
+    queryKey: UNBOX_DEFAULT_PINS_QUERY_KEY,
+    queryFn: skipToken,
     enabled: !!user?.staffId,
     staleTime: 10 * 60 * 1000,
-    queryFn: async (): Promise<UnboxExtraTabId[]> => {
-      const res = await fetch('/api/staff-preferences');
-      if (!res.ok) return [];
-      const data = (await res.json()) as { unboxDefaultPins?: string[] };
-      return sanitizeUnboxPinnedExtraTabs(data.unboxDefaultPins);
-    },
   });
-  return query.data ?? [];
+  return sanitizeUnboxPinnedExtraTabs(data);
 }

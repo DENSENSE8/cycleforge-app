@@ -58,6 +58,33 @@ async function fetchLocations(): Promise<LocationsListData> {
   };
 }
 
+/**
+ * The ONE `/api/locations` read. Anything that needs the shelf catalog composes
+ * its options from here rather than opening a second key over the same endpoint
+ * — `['locations','active']` used to do exactly that, and cold `/triage` paid
+ * for the identical 8165-byte body twice (plus twice more on every window-focus
+ * refetch). `qk.locations.all` is a prefix of this key, so every existing
+ * mutation invalidation still reaches every consumer.
+ */
+export function locationsListQueryOptions() {
+  return {
+    queryKey: qk.locations.list(),
+    queryFn: fetchLocations,
+    staleTime: 30_000,
+  };
+}
+
+/**
+ * Scannable shelves only — a room/zone parent row carries no `row_label` /
+ * `col_label` and is not a place a carton can be put. Applied as a `select` so
+ * the filtered view costs a derivation, never a request.
+ */
+export function selectScannableBins(data: LocationsListData): LocationRecord[] {
+  return (data.locations ?? []).filter(
+    (l) => l.row_label != null && l.col_label != null,
+  );
+}
+
 async function postLocation(payload: CreateLocationPayload): Promise<LocationRecord> {
   const res = await fetch('/api/locations', {
     method: 'POST',

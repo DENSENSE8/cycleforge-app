@@ -291,6 +291,10 @@ function PlainWordmark({
         {/*
           `italic` resolves to Inter's REAL italic cut, loaded for this one
           consumer in src/lib/fonts.ts — never a browser-synthesised oblique.
+          The cut is its own non-preloaded `next/font` call (`cfSansItalic`), so
+          the wordmark below names that family explicitly; the app's sans var
+          carries the upright faces only and every other document stops paying
+          for three italic files it never renders.
           Inter is also the tenant's own face: usavshop.com serves it, and it is
           already the house sans, so the brand's exact type needs no new family.
 
@@ -302,7 +306,7 @@ function PlainWordmark({
           <span
             ref={headRef}
             className="-mr-[0.08em] text-[1em] font-semibold italic tracking-[0.08em]"
-            style={{ color: ink }}
+            style={{ color: ink, fontFamily: 'var(--font-cf-sans-italic)' }}
           >
             {headline}
           </span>

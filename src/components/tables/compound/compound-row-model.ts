@@ -93,6 +93,51 @@ export interface CompoundRowView {
   delay: CompoundDelay | null;
   /** Hover detail for the delay (the actual deadline instant). */
   delayTip?: string;
+
+  /**
+   * AMOUNT column, top — the money this row is worth, already formatted.
+   *
+   * Pre-formatted by the adapter on purpose. The view model is strings and
+   * enums by contract, and currency is a locale/tenant decision that belongs to
+   * whatever SoT the family already uses — not to a table cell that would have
+   * to grow an opinion about minor units and signs.
+   *
+   * `null` renders an empty track, which is the honest answer for a checklist
+   * item. A row that HAS money and shows nothing would be the bug.
+   */
+  amount: string | null;
+  /**
+   * AMOUNT column, bottom — the arithmetic behind it (`×3 @ $49.99`).
+   *
+   * The second line is the WORKING, not a timestamp: a cart line's total is a
+   * number somebody will be asked to justify at the counter, and showing the
+   * multiplication under it answers the question before it is asked.
+   */
+  amountNote?: string | null;
+  /**
+   * Is this amount a CREDIT (money going the other way)?
+   *
+   * A trade-in is negative and must not read as a discount on a sale. The minus
+   * sign alone is easy to miss down a column of tabular figures, so the tone
+   * carries it too. Deliberately not a colour name — the cell owns the paint.
+   */
+  amountCredit?: boolean;
+}
+
+/**
+ * One entry in a row's three-dot menu.
+ *
+ * Presentational by the same rule as the view model: a label, a key and a
+ * callback. No icons and no JSX, so a family cannot smuggle bespoke markup into
+ * the shared row through its action list.
+ */
+export interface CompoundRowAction {
+  key: string;
+  label: string;
+  onSelect: () => void;
+  /** `'danger'` paints destructive (void, delete). Default is ordinary. */
+  tone?: 'default' | 'danger';
+  disabled?: boolean;
 }
 
 /**

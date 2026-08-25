@@ -46,6 +46,20 @@ const SIDEBAR_RAIL_LEADING_GAP = 'gap-1.5';
  * The eyebrow ({@link SidebarRailShell}), rail rows, and dense scan bar
  * (`leadingColumn="rail"`) all compose {@link SIDEBAR_SCAN_DOCK_LEADING_ROW}
  * so icon/dot track + typed text share one clean column — never a magic rem twin.
+ *
+ * **The `pl-2` (8px) is not a free choice — it is the one gutter token
+ * shared with {@link GlobalHeader}'s nav icon (2026-08-24).** GlobalHeader's
+ * `SidebarCollapseControl` centers a `h-4 w-4` (16px) glyph in an
+ * {@link HEADER_ICON_WRAP} (`w-8`, 32px) box, which lands the glyph's left
+ * edge exactly 8px off the header's flush (`px-0`) left edge. The scan
+ * station and recent rail sit in the same left-edge column as the header
+ * (siblings under one un-padded content shell — see `ContextPanelLayout` /
+ * `appContentShellClass`), so their leading dot/checkbox track has to start
+ * at the same 8px or the sidebar reads as indented under its own header.
+ * {@link SIDEBAR_RAIL_INSET_LEFT} used to add another `pl-1.5` (6px) in
+ * front of this pad — a second, undocumented gutter stacking to 14px that
+ * nothing upstream asked for. It is zeroed now: this `pl-2` is the ONLY
+ * left pad between the sidebar's flush host edge and its content.
  */
 /** Leading pad before the dot track (`pl-2`) — internal to {@link SIDEBAR_SCAN_DOCK_LEADING_ROW}. */
 const SIDEBAR_RAIL_LEADING_PAD = 'pl-2';
@@ -65,12 +79,21 @@ export const SIDEBAR_SCAN_DOCK_LEADING_ROW = cn(
 );
 
 /**
- * Left content gutter for scan-dock chrome (dense scan bar, row inner pad).
- * Same value as {@link SIDEBAR_GUTTER}'s horizontal pad. Nested *inside* the
- * full-bleed selection host so titles / scan text share one column without
- * insetting the blue wash from the pane edge.
+ * Left content gutter for scan-dock chrome (dense scan bar, row inner pad) —
+ * OUTER wrapper around {@link SIDEBAR_SCAN_DOCK_LEADING_ROW}. Nested *inside*
+ * the full-bleed selection host so titles / scan text share one column
+ * without insetting the blue wash from the pane edge.
+ *
+ * **Zero (2026-08-24), deliberately.** This used to carry its own `pl-1.5`
+ * (6px) on top of the leading row's `pl-2` (8px), stacking to a 14px gutter
+ * that read as indented under the flush 8px {@link GlobalHeader} nav icon
+ * sitting directly above it in the same left-edge column. The leading row's
+ * `pl-2` is now the ONE gutter token for this whole column (see the
+ * `SIDEBAR_RAIL_LEADING_PAD` doc) — this constant stays as the named seam
+ * `RailRow` / `StationScanBar` compose so a future second pad has one place
+ * to land, but it must not itself carry width again.
  */
-export const SIDEBAR_RAIL_INSET_LEFT = 'pl-1.5';
+export const SIDEBAR_RAIL_INSET_LEFT = 'pl-0';
 
 /**
  * Horizontal inset for scan-dock recent-rail **list hosts** — flush (`px-0`).
@@ -106,7 +129,7 @@ export const PRIMARY_CHROME_ROW_FACE = 'h-7 shrink-0';
 
 /**
  * Navigation header height atom — GlobalHeader + MasterNav spine top band
- * (40px / `h-10`). Shares one bottom hairline Y via {@link TOP_CHROME_BAND_FACE}.
+ * (40px / `h-10`). Shares one band height via {@link TOP_CHROME_BAND_FACE}.
  * Never alias this to {@link PRIMARY_CHROME_ROW_FACE} — densifying the nav
  * header to match scan-station row 1 is a regression.
  * Kept file-local so knip does not flag an unused export; guards assert the
@@ -158,10 +181,9 @@ export const mainStickyHeaderCompactRowClass = `flex ${PRIMARY_CHROME_ROW_FACE} 
  * This used to be a `rounded-tl-2xl` cutout plus an `appWorkCanvasEdgeClass`
  * hairline all the way around, so chrome showed through the curve at the
  * sidebar × header join. That curve cut a notch out of the top-left of every
- * page; the canvas background now runs flat into that corner instead, and the
- * ONLY separator in the desktop frame is the flat hairline under
- * {@link GlobalHeader}. Keep it that way — re-adding a border here puts a
- * second line right beneath the header's.
+ * page. Do not put a border under {@link GlobalHeader} either — the inverted
+ * desktop frame is a raised card on recessed chrome, and a header hairline
+ * splits that card. Keep this host square and stroke-less.
  *
  * Chromeless / mobile routes skip this entirely.
  */
@@ -183,7 +205,7 @@ export const appContentShellClass = cn(
 /**
  * Shared hit-box for GlobalHeader icon actions (sidebar, goal ring, WO, right rail).
  * Pair with IconButton `size="md"` — wrappers stretch to the full {@link TOP_CHROME_BAND_FACE}
- * height so hover / open washes meet the top and bottom hairlines (never a floated
+ * height so hover / open washes meet the band edges (never a floated
  * h-8 island inside the nav beam).
  */
 export const HEADER_ICON_WRAP = 'relative flex h-full min-h-0 w-8 shrink-0 items-stretch justify-center';
@@ -197,17 +219,19 @@ export const SPINE_TOP_PIN_WRAP =
   'relative flex h-full min-h-0 min-w-0 flex-1 items-stretch justify-center';
 
 /**
- * Desktop navigation-header seam — GlobalHeader and the MasterNav spine top
- * band must share this box model so their bottom hairlines meet at one Y.
+ * Desktop navigation-header face — GlobalHeader and the MasterNav spine top
+ * band must share this box model so the 40px band is one height across the
+ * spine × header join. No bottom hairline: the inverted frame is a raised
+ * card, and a stroke under the nav splits it.
  *
  * Height comes from {@link TOP_CHROME_ROW_FACE} (40px), **not**
  * {@link PRIMARY_CHROME_ROW_FACE} (28px station/ops chrome under the header).
  *
  * Put {@link TOP_CHROME_BAND_FACE} on the **same** element as the band height.
  * Wrapping a height child in an outer `border-b` yields 41px (border outside
- * the height) and creates the 1px step at the spine × header T-junction.
+ * the height) and creates a 1px step at the spine × header T-junction.
  */
-export const TOP_CHROME_BAND_FACE = `${TOP_CHROME_ROW_FACE} border-b border-border-soft`;
+export const TOP_CHROME_BAND_FACE = TOP_CHROME_ROW_FACE;
 
 /** Flex row face for GlobalHeader (and any centered nav top-chrome band). */
 export const TOP_CHROME_BAND_CLASS = `flex items-stretch ${TOP_CHROME_BAND_FACE}`;

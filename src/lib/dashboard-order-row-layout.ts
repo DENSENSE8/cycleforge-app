@@ -49,7 +49,8 @@ export type OrdersQueueColumnKey =
   | 'item'
   | 'fulfillment'
   | 'state'
-  | 'open'
+  | 'amount'
+  | 'actions'
   | 'title'
   /** Derived days past ship-by (`0d` / `3d` / …). Replaced fused `sla` / `date`. */
   | 'age'

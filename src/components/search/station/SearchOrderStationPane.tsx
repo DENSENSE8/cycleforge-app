@@ -195,9 +195,11 @@ export function SearchOrderStationPane({
    *
    * `editableShippingFields` is genuinely absent from every read path in this
    * file. Note what that does and does not buy: it makes the SHIPPING editors
-   * inert, and nothing more. The centre's read-only-ness is carried by
-   * `canEditProduct={false}` in {@link SearchOrderCentre} — until 2026-08-21
-   * the product section's condition editor consulted neither prop and this
+   * inert, and nothing more. The centre's read-only-ness is no longer carried
+   * by a capability prop at all: since 2026-08-22 the Items block composes the
+   * shared `item-record` surface, which mounts no editor to gate. The prop it
+   * replaced (`canEditProduct={false}`) existed because the product section's
+   * condition editor consulted neither prop until 2026-08-21, and this
    * "preview" surface committed re-grades.
    */
   const centre = useMemo(
@@ -437,6 +439,12 @@ export function SearchOrderStationPane({
         }
         centre={centre}
         surface="card"
+        // The centre's last block is the warehouse thread, and a thread's
+        // composer belongs on the floor of the pane — not wherever the message
+        // list happens to end. Without this the scroll column is content-sized,
+        // so the thread's `flex-1` divides nothing and both the thread and its
+        // composer float directly under Items on a short order.
+        centreFill
         onCentreScroll={collapse.onScroll}
         displayTabs={displayTabs}
         displayIndexRows={displayIndexRows}

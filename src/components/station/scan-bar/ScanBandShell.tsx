@@ -13,12 +13,9 @@
  * compose this shell; they must not re-declare band geometry.
  */
 
-import { motion } from '@/design-system/motion';
 import { cn } from '@/utils/_cn';
 import { receivingScanBandClass } from '@/components/layout/header-shell';
 import { ScanBandGlowHost } from '@/components/station/scan-bar/ScanBandGlowHost';
-import { framerTransition } from '@/design-system/foundations/motion-framer';
-import { useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
 import type { StationTheme } from '@/hooks/useStationTheme';
 import type { ReactNode } from 'react';
 
@@ -29,14 +26,13 @@ export function ScanBandShell({
   themeColor: StationTheme;
   children: ReactNode;
 }) {
-  const mountTransition = useMotionTransition(framerTransition.scanBandGlow);
-
   return (
-    <motion.div
+    // NO mount fade. This band server-renders at the top of every station
+    // bench, so a framer enter animation SSRs it at `opacity: 0` and reveals it
+    // only once hydration runs — which is what made LCP track hydration instead
+    // of the HTML on /unbox, /triage, /search and /test. Show it or do not.
+    <div
       data-station-scan-band
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={mountTransition}
       // `shrink-0` on the wrapper, not just the inner band: the shell is a flex
       // child of its host column, and in a height-capped host (the floating rail
       // dock) an auto-shrink wrapper squashes the 40px band even though the band
@@ -48,6 +44,6 @@ export function ScanBandShell({
       <ScanBandGlowHost themeColor={themeColor} className={cn(receivingScanBandClass)}>
         {children}
       </ScanBandGlowHost>
-    </motion.div>
+    </div>
   );
 }

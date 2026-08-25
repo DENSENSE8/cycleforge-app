@@ -6,20 +6,12 @@ import {
 } from '@/design-system/components/grid';
 import {
   DAILY_GRID_COLUMNS,
-  DAILY_GRID_FROZEN_CELL,
-  dailyGridCell,
-  dailyGridRowShellClass,
-  dailyGridTemplate,
   isDailyGridSortable,
   type DailyGridColumn,
   type DailyGridColumnKey,
 } from '@/lib/daily-checks/daily-grid-layout';
 
-const DAILY_HEADER_LAYOUT: LedgerHeaderLayoutApi<DailyGridColumn> = {
-  template: dailyGridTemplate,
-  cellClass: dailyGridCell,
-  rowShellClass: dailyGridRowShellClass,
-  frozenCellClass: DAILY_GRID_FROZEN_CELL,
+const DAILY_HEADER_LAYOUT: LedgerHeaderLayoutApi = {
   isSortable: isDailyGridSortable,
 };
 

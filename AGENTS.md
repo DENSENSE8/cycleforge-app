@@ -54,6 +54,18 @@ These are security / correctness / process, not design taste:
   `scripts/tenancy-guard.ts` is a live RLS-bypass check and stays.
 - **Migrations land before the code that reads them** (expand → code → contract).
   A nullable `ADD COLUMN` is always safe to ship early; the reverse never is.
+- **No layout animations. This is WMS software and it has to be fast.**
+  Nothing may tween a property that triggers reflow — `height`, `width`, `top`,
+  `left`, margin, padding, or framer's `layout` / `layoutScroll` position
+  tracking. Show it or do not. A collapse that animates its height still
+  occupies the space for the length of the tween, which is backwards for an
+  interaction whose only purpose is to hand space back; a row that springs into
+  its new position delays the paint that tells a scanning operator the scan
+  landed. Opacity and colour are fine — they composite off the main thread and
+  never move a neighbour. This applies to new code and to anything you touch;
+  a full sweep of the pre-existing offenders (e.g. the orders-queue row's
+  `layout` / `layoutScroll`) is still outstanding.
+
 - **`npm run verify` before done** — lint · typecheck · unit. That is the whole
   automated gate set.
 

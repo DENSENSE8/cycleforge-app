@@ -109,6 +109,35 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
     )`);
   }
 
+  // ── `?count_only=1` — how many, not which ────────────────────────────────
+  //
+  // The `total` this route returns below is `result.rows.length`: the PAGE
+  // size, not the collection size. So `?limit=1` answers `total: 1` whenever
+  // anything at all matches, and the triage Unfound badge — which fetched
+  // exactly that and read `body.total` — showed **1** for any non-empty queue.
+  // Measured on the dogfood org: limit=1 → total 1, limit=5 → total 5,
+  // limit=200 → total 151.
+  //
+  // Changing `total`'s meaning under every existing caller is the riskier fix,
+  // so this is an explicit arm instead: same WHERE, no SELECT list, no
+  // LIMIT/OFFSET. Note `params` deliberately does NOT yet carry limit/offset
+  // here — that push happens directly below, after this returns.
+  if (searchParams.get('count_only') === '1') {
+    const countRes = await tenantQuery<{ total: number }>(
+      ctx.organizationId,
+      `SELECT COUNT(*)::int AS total FROM v_unfound_queue vq WHERE ${conditions.join(' AND ')}`,
+      params,
+    );
+    return NextResponse.json({
+      success: true,
+      rows: [],
+      total: Number(countRes.rows[0]?.total ?? 0),
+      limit,
+      offset,
+      filters: { kind, checked, q },
+    });
+  }
+
   params.push(limit, offset);
 
   const sql = `

@@ -14,7 +14,7 @@
  *   - useTrackingScan .............. the tracking/PO/handle scan orchestration
  *   - usePhoneScanBridge ........... phone-paired scan round-trip
  *   - usePhotoRequestPublisher ..... nudge the paired phone's camera open
- *   - useRailEditMode .............. pencil bulk-select + bulk delete
+ *   - useRailEditMode .............. bulk-select (via row ⋮ "Select") + bulk delete
  *
  * The render is pure composition of presentational subcomponents. Nothing here
  * fetches, mutates, or computes — it only wires hooks to UI.
@@ -188,7 +188,7 @@ export function ReceivingSidebarPanel() {
   // replaced the always-mounted footer search bar under the list.
   const scanStance = useScanStance();
   const previewFiltering = scanStance === 'preview';
-  const receivingFilterSlot = previewFiltering ? (
+  const receivingFacetSlot = previewFiltering ? (
     <ReceivingRecentRailFilters
       facets={receivingRailFacets.facets}
       onChange={receivingRailFacets.setFacets}
@@ -437,9 +437,10 @@ export function ReceivingSidebarPanel() {
     },
   });
 
-  // ── Rail edit mode (pencil bulk select / dismiss) — Unbox Unboxed dock +
-  // thin combined Triage rail. Right-pane workbench Select is table multi-select
-  // (separate); the sidebar pencil dismisses rows from this staffer's rail.
+  // ── Rail edit mode (row-menu "Select" bulk select / dismiss) — Unbox Unboxed
+  // dock + thin combined Triage rail. Right-pane workbench Select is table
+  // multi-select (separate); this rail's Select dismisses rows from this
+  // staffer's rail.
   const {
     railEditMode,
     railSelectedIds,
@@ -455,6 +456,18 @@ export function ReceivingSidebarPanel() {
     unboxView,
     triageView: 'triage',
   });
+
+  /**
+   * The scan band's right rail — the rail's controls, one band ABOVE the list.
+   *
+   * The resident pencil that used to live here (and, before that, in each
+   * rail's own `TITLE · N` eyebrow) is gone (2026-08-24): entering bulk
+   * multi-select is now the row ⋮ menu's "Select" verb — one hover
+   * affordance per row instead of a permanently-resident second one above
+   * the list. `toggleRailEditMode` / `railEditMode` still drive the
+   * provider below; only their trigger moved.
+   */
+  const receivingRailBandSlot = receivingFacetSlot;
 
   // External focus trigger — Quick Access chips dispatch `receiving-focus-scan`
   // after navigating so the input is hot even when the panel was already mounted.
@@ -566,7 +579,7 @@ export function ReceivingSidebarPanel() {
                     // `?triq=` on a debounce so the view stays deep-linkable).
                     if (previewFiltering) setTriageRailFilter(next);
                   }}
-                  filterSlot={receivingFilterSlot}
+                  filterSlot={receivingRailBandSlot}
                   onSubmit={submitTriageScan}
                   inputRef={scanInputRef}
                   staffId={staffId}
@@ -591,7 +604,7 @@ export function ReceivingSidebarPanel() {
                   setBulkTracking(next);
                   if (previewFiltering) setUnboxRailFilter(next);
                 }}
-                filterSlot={receivingFilterSlot}
+                filterSlot={receivingRailBandSlot}
                 previewLookup={(raw, m) => openUnboxPreview(raw, m)}
                 onSubmit={(m) => {
                   // Preview stance resolves + opens READ-ONLY through the

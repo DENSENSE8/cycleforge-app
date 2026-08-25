@@ -7,8 +7,18 @@
  * ZERO tool rework — org + permissions come from the authenticated request via
  * the injected ctx, never from the MCP client.
  *
- * Read-only: only the read-tool registry is exposed (never the AI write tools).
- * Every tools/call re-checks the tool's own permission inside runAssistantTool.
+ * NOT read-only any more (2026-08-22). It was, and the original note here said
+ * so; the tool-forge gateway added four entries to the same registry, three of
+ * which write. What keeps that safe is NOT the transport — it is that every
+ * entry declares its own permission and both `listAssistantTools` (tools/list)
+ * and `runAssistantTool` (tools/call) filter on it. The /api/mcp route gate
+ * (`assistant.chat`) decides who reaches the gateway; it decides nothing about
+ * what they may do once here. A caller holding only `assistant.chat` sees the
+ * read tools and neither sees nor can invoke the writers.
+ *
+ * The corollary matters more than the note: a new tool that omits a distinct
+ * permission, or reuses `assistant.chat`, silently widens that route gate to
+ * whatever the tool can do.
  *
  * Transport: Streamable-HTTP request/response — one JSON-RPC message (or batch)
  * per POST, answered with application/json. No SSE streaming (the read tools are

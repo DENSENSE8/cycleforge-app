@@ -41,12 +41,6 @@ interface ShippedDetailsPanelContentProps {
   /** Prefer in-place create when already on Support Orders. */
   onReportIssue?: () => void;
   editableShippingFields?: EditableShippingFields;
-  /**
-   * May this surface mutate the order's PRODUCT facts (condition re-grade,
-   * Amazon reimport)? Required and undefaulted — see {@link ProductDetailsSection}.
-   * A read surface passes `false`; a work surface passes `true`.
-   */
-  canEditProduct: boolean;
   /** When set, gates section rendering to just the active tab. Undefined = render all (legacy single-scroll view). */
   activeSection?: ShippedActiveSection;
   /**
@@ -79,7 +73,6 @@ export function ShippedDetailsPanelContent({
   showSupportActions = true,
   onReportIssue,
   editableShippingFields,
-  canEditProduct,
   activeSection,
   replaceTrackingNonce = 0,
   variant = 'flat',
@@ -128,7 +121,6 @@ export function ShippedDetailsPanelContent({
     <ProductDetailsSection
       shipped={shipped}
       editableShippingFields={editableShippingFields}
-      canEditProduct={canEditProduct}
     />
   );
 

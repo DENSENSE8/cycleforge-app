@@ -6007,3 +6007,107 @@ export const dailyCheckItemLinks = pgTable('daily_check_item_links', {
 
 export type DailyCheckItemLinkRow = typeof dailyCheckItemLinks.$inferSelect;
 export type NewDailyCheckItemLinkRow = typeof dailyCheckItemLinks.$inferInsert;
+
+// ─── Tool Forge: the self-evolving capability pipeline (2026-08-22c) ─────────
+// Three tables, one rule: a request that duplicates an existing tool cannot be
+// approved. That rule is enforced by CHECK constraints in the birth migration
+// (build_requests_duplicate_is_denied, approval_reviews_duplicate_must_deny),
+// not only by src/lib/tool-forge/triage.ts — so no code path, agent-authored or
+// otherwise, can record a contradictory outcome.
+
+/**
+ * The capabilities an org already has. `description` is the corpus a new
+ * build_request's prompt is semantically matched against, so it reads as a
+ * statement of what the tool does, not how it does it.
+ *
+ * embedding is the 768-dim entity_search_docs space (NOT the 1536-dim
+ * rag_document_chunks space). NULL = not embedded yet, which the triage path
+ * treats as unmeasurable (deny), never as "no match" (approve).
+ */
+export const toolRegistry = pgTable('tool_registry', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  organizationId: orgIdCol(),
+  /** Stable machine name; matches AssistantToolDef.name for registered tools. */
+  toolKey: text('tool_key').notNull(),
+  name: text('name').notNull(),
+  /** THE MATCH TEXT — what gets embedded and compared. */
+  description: text('description').notNull(),
+  sourcePath: text('source_path'),
+  /** active | deprecated | retired (named CHECK in SQL). */
+  status: text('status').notNull().default('active'),
+  embedding: pgVector768('embedding'),
+  embeddedAt: timestamp('embedded_at', { withTimezone: true }),
+  createdByStaffId: integer('created_by_staff_id').references(() => staff.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  orgKeyUx: uniqueIndex('tool_registry_org_key_unique').on(t.organizationId, t.toolKey),
+  orgStatusIdx: index('idx_tool_registry_org_status').on(t.organizationId, t.status),
+}));
+
+/**
+ * One staff request for a new capability, and where it stands.
+ *
+ * `duplicateToolId` is only writable on a row whose status is 'denied'
+ * (CHECK build_requests_duplicate_is_denied). `similarity` is the MEASURED
+ * cosine in [0,1]; NULL means the dedupe search could not run and is never
+ * interchangeable with 0.
+ */
+export const buildRequests = pgTable('build_requests', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  organizationId: orgIdCol(),
+  requestedByStaffId: integer('requested_by_staff_id').references(() => staff.id, { onDelete: 'set null' }),
+  /** Which surface the capability is for — the panel's scope selector. */
+  targetScope: text('target_scope').notNull(),
+  prompt: text('prompt').notNull(),
+  /** pending_triage | denied | approved | building | build_failed | committed | deployed | failed */
+  status: text('status').notNull().default('pending_triage'),
+  duplicateToolId: bigint('duplicate_tool_id', { mode: 'number' }).references(() => toolRegistry.id, { onDelete: 'set null' }),
+  exactReason: text('exact_reason'),
+  /** Measured cosine [0,1]. NULL = could not measure (deny), NOT zero. */
+  similarity: numeric('similarity', { precision: 6, scale: 5 }),
+  idempotencyKey: text('idempotency_key'),
+  codePayload: jsonb('code_payload'),
+  branchName: text('branch_name'),
+  /** Where the change went for review (issue / PR url). */
+  externalRef: text('external_ref'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  orgStatusTimeIdx: index('idx_build_requests_org_status_time').on(t.organizationId, t.status, t.createdAt),
+  orgRequesterIdx: index('idx_build_requests_org_requester').on(t.organizationId, t.requestedByStaffId, t.createdAt),
+}));
+
+/**
+ * Append-only triage ledger, one row per decision on a build_request.
+ * reason_code 'duplicate_tool' is structurally forced to be a denial carrying
+ * its duplicate pointer; 'could_not_measure' likewise (fail closed);
+ * 'manual_override' requires decided_by 'human' with a staff id.
+ */
+export const approvalReviews = pgTable('approval_reviews', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  organizationId: orgIdCol(),
+  buildRequestId: bigint('build_request_id', { mode: 'number' }).notNull().references(() => buildRequests.id, { onDelete: 'cascade' }),
+  /** approved | denied (named CHECK in SQL). */
+  decision: text('decision').notNull(),
+  /** duplicate_tool | could_not_measure | out_of_scope | unsafe | insufficient_detail | approved_novel | manual_override */
+  reasonCode: text('reason_code').notNull(),
+  /** Required in BOTH directions — an approval with no stated reason is a rubber stamp. */
+  exactReason: text('exact_reason').notNull(),
+  duplicateToolId: bigint('duplicate_tool_id', { mode: 'number' }).references(() => toolRegistry.id, { onDelete: 'set null' }),
+  similarity: numeric('similarity', { precision: 6, scale: 5 }),
+  /** system (deterministic gate) | agent (model-authored) | human (operator). */
+  decidedBy: text('decided_by').notNull(),
+  decidedByStaffId: integer('decided_by_staff_id').references(() => staff.id, { onDelete: 'set null' }),
+  decidedAt: timestamp('decided_at', { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  orgRequestIdx: index('idx_approval_reviews_org_request').on(t.organizationId, t.buildRequestId, t.decidedAt),
+  orgDecisionTimeIdx: index('idx_approval_reviews_org_decision_time').on(t.organizationId, t.decision, t.decidedAt),
+}));
+
+export type ToolRegistryRow = typeof toolRegistry.$inferSelect;
+export type NewToolRegistryRow = typeof toolRegistry.$inferInsert;
+export type BuildRequestRow = typeof buildRequests.$inferSelect;
+export type NewBuildRequestRow = typeof buildRequests.$inferInsert;
+export type ApprovalReviewRow = typeof approvalReviews.$inferSelect;
+export type NewApprovalReviewRow = typeof approvalReviews.$inferInsert;

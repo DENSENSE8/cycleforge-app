@@ -45,9 +45,16 @@ export function EcwidProductSearchInline({
 }: EcwidProductSearchInlineProps) {
   const c = useEcwidProductSearch(props);
 
+  // `bare` (Package Pairing / right-rail Displays): fills whatever height its
+  // flex host gives it — `h-full min-h-0` — so the results list's own
+  // `overflow-y-auto` scrolls inside the available column instead of the
+  // panel stopping at a fixed viewport fraction and leaving dead space below
+  // it. `card` (floating popover-style hosts — Local-Pickup add-item, triage
+  // Smart-Matching) keeps the `max-h-[60vh]` cap; those aren't full-height
+  // flex columns and never were.
   const shell =
     chrome === 'bare'
-      ? 'flex min-w-0 max-w-full max-h-[60vh] flex-col'
+      ? 'flex h-full min-h-0 min-w-0 max-w-full flex-col'
       : 'flex min-w-0 max-w-full max-h-[60vh] flex-col rounded-xl border border-border-soft bg-surface-card';
 
   return (

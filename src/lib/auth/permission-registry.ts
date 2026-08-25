@@ -159,6 +159,20 @@ export const PERMISSIONS = [
   { id: 'home.subscriptions.manage', category: 'ops', label: 'Manage personal subscriptions (follow / mute)' },
   { id: 'ai.search',                category: 'ops', label: 'AI search retrieval (assistant tools)' },
   { id: 'assistant.chat',           category: 'ops', label: 'Use the operations assistant (global AI dock)' },
+  // ─ Tool Forge (self-evolving capability pipeline, 2026-08-22c) ─
+  // Deliberately FOUR permissions, not one. /api/mcp is gated on
+  // `assistant.chat`, which today grants the whole read-tool registry; hanging
+  // git and deploy authority off that same string would hand it to every
+  // operator who can open the assistant. The route gate gets a caller TO the
+  // gateway; these decide what they may do once there, re-checked per call
+  // inside runAssistantTool.
+  { id: 'tool_forge.search',        category: 'ops', label: 'Search the tool registry for existing capabilities' },
+  { id: 'tool_forge.request',       category: 'ops', label: 'Request a new tool (submit for triage)' },
+  { id: 'tool_forge.decide',        category: 'ops', label: 'Record a triage decision on a build request' },
+  // Separate from `decide` because validating generated code and handing a
+  // change to review are the two steps that reach outside the database.
+  { id: 'tool_forge.build',         category: 'ops', label: 'Validate generated tool code in a sandbox' },
+  { id: 'tool_forge.commit',        category: 'ops', label: 'Hand a validated tool change to code review' },
   { id: 'photos.view',              category: 'ops', label: 'View media' },
   { id: 'photos.share',             category: 'ops', label: 'Create media share links' },
   { id: 'photos.manage',            category: 'ops', label: 'Manage media (labels, folders, organize)' },

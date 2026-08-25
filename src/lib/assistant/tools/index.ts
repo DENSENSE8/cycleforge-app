@@ -44,6 +44,7 @@ import {
   listReceivingLinePhotosTool,
   resolveReceivingLineForOrderTool,
 } from './receiving-photo-tools';
+import { TOOL_FORGE_GATEWAY_TOOLS } from '@/lib/tool-forge/gateway-tools';
 
 const READ_TOOLS: ReadonlyArray<AssistantToolDef<any, unknown>> = [
   getSignalsByNode,
@@ -79,12 +80,28 @@ const READ_TOOLS: ReadonlyArray<AssistantToolDef<any, unknown>> = [
   listReceivingLinePhotosTool,
 ];
 
+/**
+ * The four tool-forge gateway tools (search_tool_registry,
+ * submit_approval_decision, execute_build_sandbox, commit_to_git).
+ *
+ * Registered HERE rather than behind a second gateway, because this map is
+ * what src/lib/mcp/tool-server.ts builds tools/list from and dispatches
+ * tools/call through — one registry, one chokepoint, one permission check per
+ * call. Three of them write, which the read-only registry above does not, so
+ * they are kept in a named list: the separation is visible at a glance, and
+ * `listAssistantTools` filtering on each tool's OWN permission means a caller
+ * holding only `assistant.chat` neither sees them nor can invoke them.
+ */
+const GATEWAY_TOOLS: ReadonlyArray<AssistantToolDef<any, unknown>> = TOOL_FORGE_GATEWAY_TOOLS;
+
+const ALL_TOOLS: ReadonlyArray<AssistantToolDef<any, unknown>> = [...READ_TOOLS, ...GATEWAY_TOOLS];
+
 export const ASSISTANT_TOOLS: ReadonlyMap<string, AssistantToolDef<any, unknown>> = new Map(
-  READ_TOOLS.map((t) => [t.name, t]),
+  ALL_TOOLS.map((t) => [t.name, t]),
 );
 
 export function listAssistantTools(ctx?: Pick<AssistantToolCtx, 'permissions'>) {
-  return READ_TOOLS.filter((t) => !ctx || ctx.permissions.has(t.permission)).map((t) => ({
+  return ALL_TOOLS.filter((t) => !ctx || ctx.permissions.has(t.permission)).map((t) => ({
     name: t.name,
     description: t.description,
     permission: t.permission,

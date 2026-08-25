@@ -15,7 +15,6 @@ export function TriageSidebarBody({
   leadingRow = null,
   filterText = '',
   includeRow,
-  hideEyebrow = false,
 }: {
   selectedLineId: number | null;
   selectedRow: ReceivingLineRow | null;
@@ -25,8 +24,7 @@ export function TriageSidebarBody({
   filterText?: string;
   /** Client-side facet keep-filter (priority / type / platform). */
   includeRow?: (row: ReceivingLineRow) => boolean;
-  /** Hide rail title + pencil when workbench chrome owns Select. */
-  hideEyebrow?: boolean;
+  /** Hide rail title when workbench chrome owns Select. */
 }) {
   return (
     <TriageFeedBody
@@ -36,7 +34,6 @@ export function TriageSidebarBody({
       leadingRow={leadingRow}
       filterText={filterText}
       includeRow={includeRow}
-      hideEyebrow={hideEyebrow}
     />
   );
 }

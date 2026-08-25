@@ -38,9 +38,13 @@ import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import { compareGridValues } from '@/design-system/components/grid';
 import { DAILY_TABLE_BINDING } from './grid/daily-table-definition';
 import { DailyGridColumnHeader } from './grid/DailyGridColumnHeader';
-import { DailyGridRow } from './grid/DailyGridRow';
+import { formatDateTimePST } from '@/utils/date';
+import { CompoundRow } from '@/components/tables/compound/CompoundRow';
+import { dailyTaskCompoundView } from './grid/daily-task-compound-view';
+import { DAILY_GRID_CAPABILITIES } from './grid/daily-grid-descriptor';
 import { buildDailyTaskRows, type DailyTaskRow } from './grid/daily-task-row';
 import {
+  DAILY_COMPOUND_COLUMNS,
   DAILY_GRID_COLUMNS,
   defaultDirForDailyGridSort,
   isDailyGridSortable,
@@ -277,7 +281,12 @@ export function HomeDailyMode() {
             <NonlinearTableHost<DailyTaskRow, DailyGridColumnKey, DailyGridColumn>
               binding={DAILY_TABLE_BINDING}
               tableId="daily"
-              columns={DAILY_GRID_COLUMNS}
+              // COMPOUND (two-row) WMS layout — the SAME tracks Unbox,
+              // History, Testing, Incoming, To-Ship and Tasks mount. A shift
+              // checklist item has no photo, no order and no carrier, so those
+              // tracks read empty: a data difference, and the only kind of
+              // difference between two of these tables there is meant to be.
+              columns={DAILY_COMPOUND_COLUMNS}
               orderGroupsByDate={taskGroups}
               rows={taskRows}
               getRowId={(r) => String(r.id)}
@@ -310,29 +319,81 @@ export function HomeDailyMode() {
               renderGroup={(group, _stripe, { columns: visible }) => (
                 <>
                   {group.rows.map((row) => (
-                    <DailyGridRow
-                      key={row.id}
-                      row={row}
-                      columns={visible}
-                      selected={selectedId === row.id}
-                      canToggle={isToday}
-                      togglePending={toggle.isPending}
-                      onToggle={(r) => toggle.mutate({ itemId: r.id, checked: !r.done })}
-                      onSelect={(r) => selectItem(r.id)}
-                    />
+                  <CompoundRow
+                    key={row.id}
+                    data-daily-task-id={row.id}
+                    role="button"
+                    tabIndex={0}
+                    aria-pressed={selectedId === row.id}
+                    aria-label={`Task ${row.title}`}
+                    className="group/row cursor-pointer"
+                    onClick={() => selectItem(row.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        selectItem(row.id);
+                      }
+                    }}
+                    columns={visible}
+                    capabilities={DAILY_GRID_CAPABILITIES}
+                    selected={selectedId === row.id}
+                    // The family's only contribution: its DATA.
+                    view={dailyTaskCompoundView(row, {
+                      markedTip: row.done
+                        ? row.markedAt
+                          ? `You checked this off ${formatDateTimePST(row.markedAt)}`
+                          : 'You checked this off today'
+                        : 'Not checked off yet today',
+                    })}
+                    onOpen={() => selectItem(row.id)}
+                    // The tick means "I did this today", not "this row is
+                    // selected". Disabled on a day the viewer may not mark.
+                    select={{
+                      checked: row.done,
+                      onToggle: () => toggle.mutate({ itemId: row.id, checked: !row.done }),
+                      disabled: !isToday || toggle.isPending,
+                      label: `Mark "${row.title}" ${row.done ? 'not done' : 'done'}`,
+                    }}
+                  />
                   ))}
                 </>
               )}
               renderRow={(row, _stripe, { columns: visible }) => (
-                <DailyGridRow
+                <CompoundRow
                   key={row.id}
-                  row={row}
+                  data-daily-task-id={row.id}
+                  role="button"
+                  tabIndex={0}
+                  aria-pressed={selectedId === row.id}
+                  aria-label={`Task ${row.title}`}
+                  className="group/row cursor-pointer"
+                  onClick={() => selectItem(row.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      selectItem(row.id);
+                    }
+                  }}
                   columns={visible}
+                  capabilities={DAILY_GRID_CAPABILITIES}
                   selected={selectedId === row.id}
-                  canToggle={isToday}
-                  togglePending={toggle.isPending}
-                  onToggle={(r) => toggle.mutate({ itemId: r.id, checked: !r.done })}
-                  onSelect={(r) => selectItem(r.id)}
+                  // The family's only contribution: its DATA.
+                  view={dailyTaskCompoundView(row, {
+                    markedTip: row.done
+                      ? row.markedAt
+                        ? `You checked this off ${formatDateTimePST(row.markedAt)}`
+                        : 'You checked this off today'
+                      : 'Not checked off yet today',
+                  })}
+                  onOpen={() => selectItem(row.id)}
+                  // The tick means "I did this today", not "this row is
+                  // selected". Disabled on a day the viewer may not mark.
+                  select={{
+                    checked: row.done,
+                    onToggle: () => toggle.mutate({ itemId: row.id, checked: !row.done }),
+                    disabled: !isToday || toggle.isPending,
+                    label: `Mark "${row.title}" ${row.done ? 'not done' : 'done'}`,
+                  }}
                 />
               )}
             />

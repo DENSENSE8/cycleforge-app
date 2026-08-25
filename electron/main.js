@@ -34,6 +34,7 @@ const {
   ipcMain,
   dialog,
   globalShortcut,
+  nativeTheme,
 } = require('electron');
 const path = require('path');
 const {
@@ -42,6 +43,7 @@ const {
   isVendorViewOpen,
 } = require('./vendor-view');
 const { startBuildWatch, stopBuildWatch } = require('./build-watch');
+const { attachInsetCanvas, chromeFileUrl } = require('./inset-canvas');
 
 // A logging dependency must never be able to stop the app from launching.
 let log;
@@ -123,6 +125,26 @@ app.commandLine.appendSwitch('enable-smooth-scrolling');
 app.commandLine.appendSwitch('disk-cache-size', String(256 * 1024 * 1024));
 
 let mainWindow = null;
+/** Hosted-app webContents (the raised canvas). Falls back to the window. */
+let getAppWebContents = () => mainWindow?.webContents ?? null;
+
+function chromeBackground() {
+  return nativeTheme.shouldUseDarkColors ? '#0b1220' : '#e8eaed';
+}
+
+function registerChromeWindowHandlers() {
+  ipcMain.on('cf:chrome-window', (event, action) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (!win || win.isDestroyed()) return;
+    // Chrome page only — the hosted app must not drive window buttons.
+    if (event.sender !== win.webContents) return;
+    if (action === 'min') win.minimize();
+    else if (action === 'max') {
+      if (win.isMaximized()) win.unmaximize();
+      else win.maximize();
+    } else if (action === 'close') win.close();
+  });
+}
 
 // ---------------------------------------------------------------------------
 // N1 + N2 — printing
@@ -283,7 +305,7 @@ function registerScanHotkey() {
       if (mainWindow.isMinimized()) mainWindow.restore();
       mainWindow.show();
       mainWindow.focus();
-      const wc = mainWindow.webContents;
+      const wc = getAppWebContents() || mainWindow.webContents;
       wc.sendInputEvent({ type: 'keyDown', keyCode: SCAN_HOTKEY });
       wc.sendInputEvent({ type: 'keyUp', keyCode: SCAN_HOTKEY });
     });
@@ -309,6 +331,7 @@ function unregisterScanHotkey() {
 // Menu
 // ---------------------------------------------------------------------------
 function createMenu(win) {
+  const appWc = () => getAppWebContents() || win.webContents;
   const isMac = process.platform === 'darwin';
   const template = [
     ...(isMac
@@ -348,8 +371,8 @@ function createMenu(win) {
     {
       label: 'View',
       submenu: [
-        { label: 'Reload', accelerator: 'CmdOrCtrl+R', click: () => win.webContents.reload() },
-        { label: 'Open in browser', click: () => shell.openExternal(win.webContents.getURL()) },
+        { label: 'Reload', accelerator: 'CmdOrCtrl+R', click: () => appWc().reload() },
+        { label: 'Open in browser', click: () => shell.openExternal(appWc().getURL()) },
         { type: 'separator' },
         { role: 'resetZoom' },
         { role: 'zoomIn' },
@@ -360,7 +383,7 @@ function createMenu(win) {
               {
                 label: 'Toggle DevTools',
                 accelerator: 'CmdOrCtrl+Shift+I',
-                click: () => win.webContents.toggleDevTools(),
+                click: () => appWc().toggleDevTools(),
               },
             ]
           : []),

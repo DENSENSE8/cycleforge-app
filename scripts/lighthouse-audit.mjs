@@ -112,6 +112,28 @@ if (typeof routesArg === 'string') {
   routes = wanted.map((p) => ROUTES.find((r) => r.path === p) ?? { path: p, tier: 0, auth: true });
 }
 
+/**
+ * Vercel Deployment Protection bypass, for auditing a PREVIEW deployment.
+ *
+ * A preview URL behind Vercel Authentication answers every request with a 302 to
+ * the SSO gate, so Lighthouse measures the redirect and every route reports the
+ * same meaningless numbers. Project Settings → Deployment Protection →
+ * "Protection Bypass for Automation" issues a secret; sending it as this header
+ * lets automation through while the preview stays closed to everyone else.
+ *
+ * Deliberately WITHOUT `x-vercel-set-bypass-cookie`. That header asks Vercel to
+ * set a bypass cookie on the first response — and the moment Chrome's cookie jar
+ * has an entry for the origin, the jar wins over the `Cookie` we inject through
+ * `extraHeaders`, so the minted `cf_sid` stopped being sent and every
+ * authenticated route landed on `/signin` while curl with the same cookie
+ * returned 200. The header below is applied by Chrome to EVERY request
+ * (subresources included), so the cookie buys nothing and costs the session.
+ */
+const bypassSecret = process.env.LH_BYPASS_SECRET || '';
+const bypassHeaders = bypassSecret
+  ? { 'x-vercel-protection-bypass': bypassSecret }
+  : {};
+
 const staffCookie = process.env.LH_COOKIE || '';
 /** Device-principal cookie for `/kiosk*`. Staff `cf_sid` lands on the pair screen. */
 const kioskCookie =
@@ -165,7 +187,9 @@ function lhOptions(port, routeFormFactor, cookie) {
         : { mobile: true, width: 412, height: 823, deviceScaleFactor: 1.75, disabled: false },
     throttlingMethod: 'simulate',
     throttling: THROTTLING[ff],
-    extraHeaders: cookie ? { Cookie: cookie } : undefined,
+    extraHeaders: cookie || bypassSecret
+      ? { ...(cookie ? { Cookie: cookie } : {}), ...bypassHeaders }
+      : undefined,
     onlyCategories: ['performance', 'accessibility', 'best-practices', 'seo'],
   };
 }
@@ -178,7 +202,7 @@ async function isKioskPairScreen(route, cookie) {
   if (!String(route.path).startsWith('/kiosk')) return false;
   try {
     const r = await fetch(`${BASE_URL}/api/kiosk/settings`, {
-      headers: cookie ? { Cookie: cookie } : {},
+      headers: { ...(cookie ? { Cookie: cookie } : {}), ...bypassHeaders },
     });
     return r.status === 401;
   } catch {

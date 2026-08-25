@@ -19,7 +19,7 @@ export default function PickupPage() {
     <>
       <SurfaceParamHygiene />
       <SurfaceGate surfaceKey="pickup">
-        <ReceivingSurfacePage mobileTitle="Local Pickup" />
+        <ReceivingSurfacePage />
       </SurfaceGate>
     </>
   );

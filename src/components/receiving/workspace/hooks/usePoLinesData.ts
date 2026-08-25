@@ -172,9 +172,10 @@ export function usePoLinesData({
     staleTime: 15_000,
     // Do NOT refetch on window focus. The Pass+Print flow opens a print
     // popup / silent-print window, which bounces focus and would otherwise
-    // refetch and wipe the optimistic verdict the operator just set. The
-    // global QueryClient default is `refetchOnWindowFocus: 'always'`, so this
-    // override is load-bearing for the testing workspace.
+    // refetch and wipe the optimistic verdict the operator just set. Still
+    // load-bearing now that the global default is `true` rather than
+    // `'always'`: `true` only suppresses a refetch INSIDE `staleTime`, and a
+    // print round-trip routinely outlasts the 15s below.
     refetchOnWindowFocus: false,
   });
 

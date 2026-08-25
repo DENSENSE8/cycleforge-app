@@ -681,7 +681,23 @@ export function ThreadPanel({
       </div>
 
       {canPost ? (
-        <div className={cn('shrink-0 border-t border-border-hairline bg-surface-card py-3', dense ? 'px-3' : 'px-4')}>
+        /**
+         * The entry band does NOT fork on `dense`, and that is deliberate
+         * (2026-08-22). It used to: `px-3` on a dense host (the Unbox
+         * Conversation tab, via `SupportContextHub variant="station"`) and
+         * `px-4` everywhere else, with the field itself flipping compact →
+         * default underneath. So the same composer sat at two different insets
+         * and two different densities depending on which surface happened to
+         * mount it, and `/search` drifted a notch looser than the station the
+         * operator compares it to.
+         *
+         * `dense` still governs the READING half above — a side panel wants a
+         * tighter message list than a full centre column. It has no business
+         * governing the writing half: the entry is one instrument, and an
+         * operator who types a note on the bench and types one on the find
+         * surface must be typing into the same box.
+         */
+        <div className="shrink-0 border-t border-border-hairline bg-surface-card px-3 py-3">
           <ThreadNoteComposer
             value={body}
             onChange={setBody}
@@ -690,7 +706,8 @@ export function ThreadPanel({
             onSubmit={submit}
             loading={postMessage.isPending}
             disabled={!canPost}
-            dense={dense}
+            // One entry face for every host — see the band comment above.
+            dense
             externalSubmit={externalSubmit}
             errorMessage={postMessage.isError ? 'Couldn’t send — try again.' : null}
             textareaRef={composerRef}

@@ -16,6 +16,14 @@ import { railRelativeTime, type SidebarRailRowContext } from '@/components/sideb
 import { SidebarRecentRailBase } from '@/components/sidebar/rail-shell/SidebarRecentRailBase';
 import type { SidebarRailShellProps } from '@/components/sidebar/rail-shell/sidebar-rail-shared';
 import { RailRowBody } from '@/components/sidebar/rail-shell/RailRowBody';
+import type { RailRowActionsResolver } from '@/components/sidebar/rail-shell/rail-row-actions';
+import { buildRailRowActions } from '@/lib/receiving/rail/row-actions';
+import { shareRailLink } from '@/components/sidebar/rail-shell/rail-row-copy';
+import { receivingShareUrl } from '@/components/sidebar/receiving/receiving-sidebar-shared';
+import {
+  RAIL_ENTRY_RESTORED_EVENT,
+  RAIL_LINE_RESTORED_EVENT,
+} from '@/components/sidebar/receiving/rail-dismiss';
 import {
   RailPeekIdentityFacts,
   type RailPeekFact,
@@ -86,13 +94,16 @@ export interface RecentActivityRailBaseProps {
   refreshEvents: string[];
   /** prev/next CustomEvent name that steps rail selection — drives header chevrons. */
   navigateEvent?: string;
+  /**
+   * Per-row ⋮ menu. Unset falls back to the receiving verbs WITHOUT Dismiss —
+   * see {@link readOnlyReceivingRowActions}. `ReceivingFeedRail` passes its own,
+   * because it is the one node that knows whether the mounted rail has a
+   * `staff_rail_exclusions` feed key to dismiss into.
+   */
+  rowActions?: RailRowActionsResolver<ReceivingLineRow>;
 
+  /** Rail name — the listbox's accessible name; no longer painted as a band. */
   eyebrowTitle: string;
-  eyebrowSuffix?: string;
-  /** Right-aligned eyebrow slot (e.g. a refresh button); takes precedence over suffix. */
-  eyebrowAction?: ReactNode;
-  /** Hide the TITLE · N eyebrow when workbench chrome owns tabs + select. */
-  hideEyebrow?: boolean;
   emptyText?: string;
   autoSelectFirstWhenEmpty?: boolean;
   /**
@@ -155,15 +166,24 @@ function railTicketNumber(row: ReceivingLineRow): string | null {
 }
 
 /**
- * Compact ticket flag on the META (qty) row — inline after qty, same h-4
- * hit-box as when it lived on the title line so ticket vs non-ticket rows
- * keep identical height (no padded chip).
+ * Compact ticket flag on the META (qty) row — inline after qty.
+ *
+ * Boxed at `h-3` (12px) to match `text-role-micro`'s own computed line-height
+ * (`0.625rem` / 1.2 ≈ 12px) — the meta line's actual content height. It used
+ * to carry the `h-4` (16px) hit-box sized for the TITLE line's
+ * `text-role-caption` (line-height ≈ 16px), a leftover from before the flag
+ * moved down to the meta row; a 16px box inline with 12px text stretched
+ * every ticketed row 4px taller than its ticket-less neighbours (confirmed in
+ * DevTools 2026-08-24: 32.2px vs 28.2px). Every rail row must render at the
+ * same height regardless of content — see {@link RailRowBody}'s "one tight
+ * recent-rail scale" — so the flag now fits the line it sits on instead of
+ * growing it.
  */
 function TicketRailFlag({ ticket }: { ticket: string }) {
   return (
     <HoverTooltip label={`Claim ticket ${ticket} filed`} asChild focusable={false}>
-      <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded text-orange-700">
-        <Ticket className="h-3 w-3" />
+      <span className="inline-flex h-3 w-3 shrink-0 items-center justify-center rounded text-orange-700">
+        <Ticket className="h-2.5 w-2.5" />
       </span>
     </HoverTooltip>
   );
@@ -195,6 +215,32 @@ function railStatusBadgeTone(dot: string, fallbackWorkflowStatus: string): strin
   if (dot.includes('purple')) return 'bg-purple-100 text-purple-700';
   if (dot.includes('slate')) return 'bg-surface-strong text-text-muted';
   return WORKFLOW_BADGE[fallbackWorkflowStatus] ?? 'bg-surface-sunken text-text-muted';
+}
+
+/**
+ * Receiving row verbs for a rail mounted OUTSIDE `ReceivingFeedRail` — today
+ * just the Testing dock. Read verbs only: Hide needs a
+ * `staff_rail_exclusions` feed key (`railExclusionFeedKey` covers the two scan
+ * surfaces only) and Delete needs the permission gate that lives one level up,
+ * so neither is offered here rather than offered broken.
+ */
+const readOnlyReceivingRowActions: RailRowActionsResolver<ReceivingLineRow> = (row) => {
+  const cartonId = Number(row.receiving_id);
+  const hasCarton = Number.isFinite(cartonId) && cartonId > 0;
+  return buildRailRowActions('receiving', {
+    select: null,
+    share: hasCarton
+      ? () => void shareRailLink(receivingShareUrl(cartonId, row.id), rowShareTitle(row))
+      : null,
+    hide: null,
+    remove: null,
+  });
+};
+
+/** Share-sheet title for a row — the PO when it has one, else the package id. */
+function rowShareTitle(row: ReceivingLineRow): string {
+  const po = (row.zoho_purchaseorder_number || '').trim();
+  return `Receiving — ${po || `Package #${row.receiving_id}`}`;
 }
 
 function canAutoSelectReceivingRailFirst(): boolean {
@@ -231,10 +277,8 @@ export function RecentActivityRailBase({
   refreshEvents,
   refreshDomains,
   navigateEvent,
+  rowActions,
   eyebrowTitle,
-  eyebrowSuffix,
-  eyebrowAction,
-  hideEyebrow = false,
   emptyText,
   autoSelectFirstWhenEmpty = false,
   pinSelectedLead = true,
@@ -277,9 +321,15 @@ export function RecentActivityRailBase({
       updateEvent={updateEvent}
       deleteEvent={deleteEvent}
       deleteGroupEvent={deleteGroupEvent}
+      // Undo channels, paired 1:1 with the delete channels above: a dismiss is
+      // REVERSIBLE, so the engine's sticky delete-suppression has to be
+      // clearable or the row would be refetched and filtered straight back out.
+      restoreEvent={deleteEvent ? RAIL_LINE_RESTORED_EVENT : undefined}
+      restoreGroupEvent={deleteGroupEvent ? RAIL_ENTRY_RESTORED_EVENT : undefined}
       refreshEvents={refreshEvents}
       refreshDomains={refreshDomains}
       navigateEvent={navigateEvent}
+      rowActions={rowActions ?? readOnlyReceivingRowActions}
       selectedId={selectedLineId}
       selectedRow={selectedRow}
       leadingRow={leadingRow}
@@ -299,9 +349,6 @@ export function RecentActivityRailBase({
         return sku || null;
       }}
       eyebrowTitle={eyebrowTitle}
-      eyebrowSuffix={eyebrowSuffix}
-      eyebrowAction={eyebrowAction}
-      hideEyebrow={hideEyebrow}
       emptyText={emptyText}
       autoSelectFirstWhenEmpty={autoSelectFirstWhenEmpty}
       canAutoSelectFirst={
@@ -369,7 +416,8 @@ function ReceivingRowMain({
         titleAttr: title,
         titleAccessory: ctx.pkgChip,
         // Ticket sits on the qty line (right of qty), not the title — keeps the
-        // title clean while the compact h-4 flag preserves row height.
+        // title clean. The flag itself is boxed to the qty line's own height
+        // (see TicketRailFlag) so a ticketed row is not taller than its peers.
         meta: (
           <span className="flex min-w-0 items-center gap-1 font-semibold uppercase tracking-widest text-text-soft">
             <span className="truncate">

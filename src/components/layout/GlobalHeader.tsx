@@ -39,10 +39,10 @@ import { cn } from '@/utils/_cn';
  *   - **Actions** — {@link GlobalHeaderActions}: search · pace-and-next
  *     ({@link HeaderGoalChip}) · inbox · assistant (far-right)
  *
- * This bar shares the desktop top-chrome seam with the MasterNav spine band
- * ({@link TOP_CHROME_BAND_CLASS}) — one flat `border-b` hairline at one Y.
+ * This bar shares the desktop top-chrome face with the MasterNav spine band
+ * ({@link TOP_CHROME_BAND_CLASS}) — one 40px height, no bottom hairline.
  * `<main>` ({@link appContentShellClass}) is square-cornered and border-less;
- * do NOT re-add a border there, or the join doubles up.
+ * do NOT re-add a stroke under this bar, or it splits the raised canvas.
  *
  * Mobile keeps its own chrome (MobileAppHeader); this bar is desktop-only.
  */

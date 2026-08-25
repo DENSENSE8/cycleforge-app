@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Search, Loader2, Check, Link2, Plus, AlertCircle } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
+import { SearchableSelectField } from '@/design-system/components';
 import {
   Dialog,
   DialogContent,
@@ -15,6 +16,7 @@ import { PlatformMark } from '@/components/ui/PlatformMark';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { sourcePlatformMeta } from '@/lib/source-platform';
 import type { UnmappedPlatformId } from './types';
+import { useSegmentChords } from '@/lib/keyboard/useSegmentChords';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 
@@ -40,6 +42,23 @@ interface Props {
 
 type Mode = 'create' | 'existing';
 
+const MODE_TAB_IDS = ['create', 'existing'] as const;
+
+const MODE_OPTIONS = [
+  {
+    value: 'create',
+    label: 'Create new SKU',
+    meta: 'Add a new inventory SKU',
+    group: 'Pairing mode',
+  },
+  {
+    value: 'existing',
+    label: 'Pair to existing',
+    meta: 'Match an existing catalog SKU',
+    group: 'Pairing mode',
+  },
+] as const;
+
 /**
  * Closes the two gaps the canonical pairing queue can't:
  *   1. Add an inventory SKU that isn't in sku_catalog yet (POST /api/sku-catalog).
@@ -49,6 +68,11 @@ type Mode = 'create' | 'existing';
  */
 export function AddOrPairSkuModal({ open, onClose, query, pending, onDone }: Props) {
   const [mode, setMode] = useState<Mode>('create');
+  // ⌥1 / ⌥2 jump modes directly — same chord the ticket claim's Create|Link
+  // picker binds (ClaimModeSelect), so the shortcut means the same thing
+  // everywhere it appears. Stands down in the search box itself.
+  const onModeChord = useCallback((id: string) => setMode(id as Mode), []);
+  useSegmentChords({ enabled: !!pending, tabIds: MODE_TAB_IDS, onTabChange: onModeChord });
 
   // Create-form fields.
   const identifier = pending?.platformItemId || pending?.platformSku || '';
@@ -223,11 +247,26 @@ export function AddOrPairSkuModal({ open, onClose, query, pending, onDone }: Pro
           </div>
         )}
 
-        {/* Mode tabs (only meaningful when pairing an identifier) */}
+        {/* Create | Link mode (only meaningful when pairing an identifier) —
+            same flush combobox grammar as the ticket claim's Create|Link
+            picker (ClaimModeSelect): keyboard-searchable, filters the option
+            list as you type. Never a hand-rolled segment-tab twin. Flush
+            select owns its own bottom hairline — no wrapper border-b. */}
         {pending && (
-          <div className="flex shrink-0 gap-1 border-b border-border-hairline px-3 py-2">
-            <ModeTab active={mode === 'create'} onClick={() => setMode('create')} icon={<Plus className="h-3.5 w-3.5" />} label="Create new SKU" />
-            <ModeTab active={mode === 'existing'} onClick={() => setMode('existing')} icon={<Link2 className="h-3.5 w-3.5" />} label="Pair to existing" />
+          <div className="shrink-0 pt-2" data-testid="pair-mode-select">
+            <SearchableSelectField
+              appearance="flush"
+              value={mode}
+              onChange={(id) => {
+                if (id == null) return;
+                setMode(id as Mode);
+              }}
+              options={MODE_OPTIONS}
+              placeholder="Create or Pair…"
+              searchPlaceholder="Type to filter…"
+              emptyMessage="No modes match"
+              ariaLabel="SKU pairing mode"
+            />
           </div>
         )}
 
@@ -342,20 +381,6 @@ export function AddOrPairSkuModal({ open, onClose, query, pending, onDone }: Pro
   );
 }
 
-function ModeTab({ active, onClick, icon, label }: { active: boolean; onClick: () => void; icon: ReactNode; label: string }) {
-  return (
-    // ds-raw-button: segmented mode toggle (conditional active fill), not a single DS variant
-    <button
-      type="button"
-      onClick={onClick}
-      className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-role-micro font-semibold uppercase tracking-wider transition-colors ${
-        active ? 'bg-surface-inverse text-white' : 'text-text-soft hover:bg-surface-sunken'
-      }`}
-    >
-      {icon}{label}
-    </button>
-  );
-}
 
 function Field({ label, required, children }: { label: string; required?: boolean; children: ReactNode }) {
   return (

@@ -1,7 +1,11 @@
 'use client';
 
+import { useCallback } from 'react';
 import { SidebarRailShell } from '@/components/sidebar/SidebarRailShell';
 import type { SidebarRailShellProps } from '@/components/sidebar/rail-shell/sidebar-rail-shared';
+import type { RailRowActionsResolver } from '@/components/sidebar/rail-shell/rail-row-actions';
+import { railIdentityActions } from '@/components/sidebar/rail-shell/rail-row-verbs';
+import { copyRailValue } from '@/components/sidebar/rail-shell/rail-row-copy';
 
 export type SidebarRecentRailBaseProps<TRow> = SidebarRailShellProps<TRow>;
 
@@ -38,6 +42,19 @@ export type SidebarRecentRailBaseProps<TRow> = SidebarRailShellProps<TRow>;
  * **Never Framer `layout` / `popLayout` on this feed.** Column resize (sash ·
  * Displays dual-rail) must snap like the right panel — layout projection was
  * the wrapper that lagged and rubber-banded every row.
+ *
+ * ## Every recent rail gets a row menu, for free
+ *
+ * A rail that does not pass `rowActions` gets a default built from the identity
+ * facts it ALREADY publishes for the parked-strip peek (`getCollapsePinFacts`):
+ * one Copy per identity the row carries. That is deliberate — the alternative
+ * is nine rails each hand-rolling the same verbs against the same data, which
+ * is how the row menu would end up meaning something slightly different on
+ * every station. A rail with a fuller vocabulary (receiving, which can also
+ * Share, Hide and Delete) passes `rowActions` and wins.
+ *
+ * A rail that publishes NO facts gets no menu at all. Give it facts and it
+ * gains both — the peek card and the menu — in one edit.
  */
 export function SidebarRecentRailBase<TRow>({
   staggerReveal = false,
@@ -46,14 +63,22 @@ export function SidebarRecentRailBase<TRow>({
   railInset = 'scanDock',
   // Parked mid-strip peek — every recent-activity rail publishes by default.
   publishCollapseMru = true,
+  rowActions,
+  getCollapsePinFacts,
   ...rest
 }: SidebarRecentRailBaseProps<TRow>) {
+  const factActions = useCallback<RailRowActionsResolver<TRow>>(
+    (row) => railIdentityActions({ copy: copyRailValue }, getCollapsePinFacts?.(row)),
+    [getCollapsePinFacts],
+  );
   return (
     <SidebarRailShell<TRow>
       staggerReveal={staggerReveal}
       pinSelectedLead={pinSelectedLead}
       railInset={railInset}
       publishCollapseMru={publishCollapseMru}
+      getCollapsePinFacts={getCollapsePinFacts}
+      rowActions={rowActions ?? (getCollapsePinFacts ? factActions : undefined)}
       {...rest}
     />
   );

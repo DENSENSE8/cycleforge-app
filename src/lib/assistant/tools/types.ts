@@ -62,6 +62,18 @@ export interface AssistantToolDeps {
     subjectCache: string | null;
     statusCache: string | null;
   } | null>;
+
+  /**
+   * Tool-forge collaborators. Same optional-collaborator pattern as above:
+   * defaults live on each tool, so a caller that only fakes `query` stays
+   * valid, and the unit tests can drive the four gateway tools through the
+   * real runAssistantTool chokepoint without a DB, a sandbox VM, or a GitHub
+   * token.
+   */
+  toolForgeDedupe?: (orgId: OrgId, prompt: string) => Promise<unknown>;
+  toolForgeDecide?: (orgId: OrgId, input: unknown) => Promise<unknown>;
+  toolForgeValidate?: (orgId: OrgId, files: ReadonlyArray<{ path: string; contents: string }>) => Promise<unknown>;
+  toolForgeHandoff?: (orgId: OrgId, input: unknown) => Promise<unknown>;
 }
 
 export interface AssistantToolDef<Schema extends z.ZodTypeAny = z.ZodTypeAny, Out = unknown> {

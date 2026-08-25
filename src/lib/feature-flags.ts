@@ -182,6 +182,28 @@ export function isUnboxRailColumnRead(): boolean {
 }
 
 /**
+ * Drift probe for retiring the lines table's `full` fetch tier.
+ *
+ * `useReceivingLinesQuery` paints from `?phase=spine` (serial chips off the
+ * `serial_projection` read-model) and then runs a SECOND, serialized fetch of
+ * the same rows with `?include=serials` (the authoritative resolve). Measured
+ * on a cold `/unbox` that pair cost 6697ms strictly serial and 87.9KB for the
+ * same 50 rows, and a direct payload diff on the dogfood org found the two
+ * serial sets IDENTICAL on all 15 `view=scanned` rows.
+ *
+ * One org at one moment is not proof the projection never drifts, so this flag
+ * turns on a comparison of the two sets on the `include=serials` path — where
+ * the route already holds BOTH, so it costs no extra query — and logs any
+ * divergence. Leave it on for a week; if nothing logs, the `full` tier can go.
+ *
+ * Default OFF: this is a measurement, not behaviour, and it must never be the
+ * reason a request does more work.
+ */
+export function isSerialProjectionDriftProbe(): boolean {
+  return readBoolEnv('RECEIVING_SERIAL_PROJECTION_DRIFT_PROBE');
+}
+
+/**
  * Unified inbound model (receiving-triage streamline Phase 3). Default ON:
  * delivered-unscanned always enriches via receiving_line.shipment_id; lookup-po
  * stamps LPN / shipment_id. Set RECEIVING_UNIFIED_INBOUND=false only as a

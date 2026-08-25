@@ -155,7 +155,6 @@ export function TestingRecentRail({
         refreshDomains={TESTING_TESTED_REFRESH_DOMAINS}
         navigateEvent="testing-navigate-rail"
         eyebrowTitle="Recent"
-        eyebrowSuffix="You"
         getActivityAt={getTestingActivityAt}
         getStatusDot={getTestingStatusDot}
         getStatusDotLabel={getTestingStatusDotLabel}

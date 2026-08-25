@@ -9,8 +9,12 @@
 
 import { useMemo } from 'react';
 import type { ReceivingDetailsLog } from '@/components/station/receiving-details-log';
-import { LinearWorkflowStepper, type LinearStep } from '@/components/receiving/workspace/ReceivingProgressStepper';
-import { PipelineStageRow } from '@/design-system/components';
+import { Barcode, ClipboardList, Inbox, PackageOpen } from '@/components/Icons';
+import {
+  MilestonePipeline,
+  type Milestone,
+  type MilestoneScan,
+} from '@/design-system/components/milestone-pipeline';
 import { triageLaneLabel } from '@/lib/receiving/triage-lane-policy';
 import { hasTriageBeenCompleted } from '@/lib/receiving/triage-complete-local';
 import {
@@ -18,21 +22,9 @@ import {
   deriveArrivalPipelineStates,
   isArrivalClassified,
   isArrivalStaged,
-  type ArrivalPipelineKey,
 } from '@/lib/receiving/arrival-journey';
 
-const ARRIVAL_STEPS: ReadonlyArray<LinearStep> = [
-  { key: 'door', label: 'Door' },
-  { key: 'classified', label: 'Classified' },
-  { key: 'staged', label: 'Staged' },
-  { key: 'ready', label: 'Ready' },
-];
-
-function toStepperStates(
-  states: Record<ArrivalPipelineKey, 'done' | 'active' | 'pending'>,
-): Record<string, 'done' | 'active' | 'pending'> {
-  return states;
-}
+const GLYPH = 'h-[15px] w-[15px]';
 export function ArrivalCartonPipeline({ log }: { log: ReceivingDetailsLog }) {
   const receivingId = Number(log.id);
   const isReady =
@@ -79,49 +71,58 @@ export function ArrivalCartonPipeline({ log }: { log: ReceivingDetailsLog }) {
         .join(' · ')
     : '';
 
+  /**
+   * Only the door scan has a PERSON. Classified / Staged / Ready are states the
+   * record reached, not things a named operator signed for — so they carry a
+   * `detail` instead of an actor. They used to be passed as `staffName`, which
+   * put "Shelf set" and "Saved for unbox" in a person's slot; on the shared
+   * anatomy that would have minted an avatar out of a location label.
+   */
+  const milestones: Milestone[] = [
+    {
+      key: 'door',
+      label: 'Door',
+      icon: <Inbox className={GLYPH} />,
+      at: doorAt,
+      actor: { staffId: log.tracking_scanned_by ?? null, name: doorName },
+      // The door scan reads the carrier label — through the house chip, not a
+      // hand-rolled `slice(-8)`.
+      scans: tracking ? ([{ kind: 'tracking', value: tracking }] as MilestoneScan[]) : [],
+      readyLabel: 'Pending door scan',
+    },
+    {
+      key: 'classified',
+      label: 'Classified',
+      icon: <ClipboardList className={GLYPH} />,
+      at: classified ? doorAt : null,
+      detail: classifyLabel || null,
+      scans: pairNote ? ([{ kind: 'note', value: pairNote }] as MilestoneScan[]) : [],
+      readyLabel: 'Pending classify',
+    },
+    {
+      key: 'staged',
+      label: 'Staged',
+      icon: <PackageOpen className={GLYPH} />,
+      at: staged ? (log.triage_completed_at ?? doorAt) : null,
+      detail: staged ? (log.staging_location_label ?? 'Shelf set') : null,
+      scans: lane ? ([{ kind: 'note', value: lane }] as MilestoneScan[]) : [],
+      readyLabel: 'Pending shelf / lane',
+    },
+    {
+      key: 'ready',
+      label: 'Ready',
+      icon: <Barcode className={GLYPH} />,
+      at: isReady ? (log.triage_completed_at ?? null) : null,
+      detail: isReady ? 'Saved for unbox' : null,
+      scans: [],
+      readyLabel: 'Not saved for unbox',
+    },
+  ];
+
   return (
     <div className="space-y-3">
       <p className="text-sm font-semibold text-text-default">{arrivalReadinessHeadline(states)}</p>
-
-      <LinearWorkflowStepper
-        steps={ARRIVAL_STEPS}
-        states={toStepperStates(states)}
-        ariaLabel="Arrival progress"
-        className="w-full"
-        size="compact"
-      />
-
-      <div className="divide-y divide-border-hairline">
-        <PipelineStageRow
-          label="Door scanned"
-          at={doorAt}
-          staffName={doorName}
-          emptyFallback="Pending door scan"
-          note={tracking ? `TRK · ${tracking.slice(-8)}` : undefined}
-        />
-        <PipelineStageRow
-          label="Classified"
-          at={classified ? doorAt : null}
-          staffName={classifyLabel}
-          emptyFallback="Pending classify"
-          note={pairNote}
-          muted={classified}
-        />
-        <PipelineStageRow
-          label="Staged"
-          at={staged ? (log.triage_completed_at ?? doorAt) : null}
-          staffName={staged ? (log.staging_location_label ?? 'Shelf set') : ''}
-          emptyFallback="Pending shelf / lane"
-          note={lane ?? undefined}
-          muted={staged && !log.triage_completed_at}
-        />
-        <PipelineStageRow
-          label="Ready for unbox"
-          at={isReady ? (log.triage_completed_at ?? null) : null}
-          staffName={isReady ? 'Saved for unbox' : ''}
-          emptyFallback="Not saved for unbox"
-        />
-      </div>
+      <MilestonePipeline milestones={milestones} ariaLabel="Arrival progress" className="w-full" />
     </div>
   );
 }

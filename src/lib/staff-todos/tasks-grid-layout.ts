@@ -16,8 +16,7 @@
  */
 
 import { compoundColumnsFor } from '@/components/tables/compound/compound-columns';
-import { GRID_FILL_COLUMN, gridFrozenKeys } from '@/design-system/components/grid';
-import { gridFrozenLeft, gridTemplate } from '@/design-system/components/grid/grid-column-geometry';
+import { GRID_FILL_COLUMN } from '@/design-system/components/grid';
 import type { ColumnType } from '@/lib/tables/table-columns';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
@@ -34,7 +33,8 @@ export type TasksGridColumnKey =
   | 'item'
   | 'fulfillment'
   | 'state'
-  | 'open'
+  | 'amount'
+  | 'actions'
   | '_fill';
 
 export interface TasksGridColumn {
@@ -143,8 +143,6 @@ export const TASKS_GRID_COLUMNS: readonly TasksGridColumn[] = [
 export const TASKS_COMPOUND_COLUMNS: readonly TasksGridColumn[] =
   compoundColumnsFor<TasksGridColumn>();
 
-/** Frozen identity pane — `select · task`, derived from the model's own flag. */
-const TASKS_GRID_LOCKED_KEYS = gridFrozenKeys(TASKS_GRID_COLUMNS);
 
 /** Data columns that support click-to-sort (`_fill` carries `sortable: false`). */
 const TASKS_GRID_SORTABLE_KEYS: readonly TasksGridColumnKey[] = TASKS_GRID_COLUMNS.filter(
@@ -155,27 +153,25 @@ export function isTasksGridSortable(key: string): key is TasksGridColumnKey {
   return (TASKS_GRID_SORTABLE_KEYS as readonly string[]).includes(key);
 }
 
-export function isTasksGridFrozen(key: string): boolean {
-  return (TASKS_GRID_LOCKED_KEYS as readonly string[]).includes(key);
-}
 
-export function tasksGridTemplate(
-  columns: readonly TasksGridColumn[] = TASKS_GRID_COLUMNS,
-): string {
-  return gridTemplate(columns);
-}
 
-export function tasksGridFrozenLeft(key: string): string {
-  return gridFrozenLeft(TASKS_GRID_COLUMNS, key as TasksGridColumnKey);
-}
 
 /** Recency opens newest-first; everything else ascends. */
 export function defaultDirForTasksGridSort(key: TasksGridColumnKey): GridSortDir {
   return key === 'updated' || key === 'due' ? 'desc' : 'asc';
 }
 
-export {
-  LEDGER_GRID_FROZEN_CELL as TASKS_GRID_FROZEN_CELL,
-  ledgerGridCell as tasksGridCell,
-  ledgerGridRowShellClass as tasksGridRowShellClass,
-} from '@/design-system/components/grid/grid-cell-chrome';
+/**
+ * The per-family geometry aliases were DELETED (2026-08-22).
+ *
+ * `isTasksGridFrozen`, `tasksGridTemplate`, `tasksGridFrozenLeft` and the
+ * `TASKS_GRID_FROZEN_CELL` / `tasksGridCell` / `tasksGridRowShellClass`
+ * re-exports were each a family-flavoured name for a shared implementation
+ * (`gridFrozenLeft`, `gridTemplate`, `ledgerGridCell`, …). Six families did the
+ * same rename, which is a fork whether or not the bodies agree today: it is not
+ * a decision, it is six places for the next fix to miss.
+ *
+ * Their consumers are gone — the row is `CompoundRow` and the header derives
+ * freeze, offsets and template from the MOUNTED column model — so the aliases
+ * went with them rather than standing as dead API.
+ */

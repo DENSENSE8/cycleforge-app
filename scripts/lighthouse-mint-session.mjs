@@ -17,7 +17,19 @@ const TENANT = process.env.LH_TENANT_SLUG || 'usav';
 const STAFF_NAME = process.env.LH_STAFF_NAME || 'Michael';
 const PIN = process.env.LH_STAFF_PIN;
 
-const tenantHeaders = { 'x-tenant-slug': TENANT, 'content-type': 'application/json' };
+/**
+ * Deployment Protection bypass — set `LH_BYPASS_SECRET` when minting against a
+ * Vercel PREVIEW URL, or every request here lands on the SSO gate and the
+ * staff-picker parse fails with a confusing error. See the same block in
+ * `lighthouse-audit.mjs`.
+ */
+const BYPASS = process.env.LH_BYPASS_SECRET;
+
+const tenantHeaders = {
+  'x-tenant-slug': TENANT,
+  'content-type': 'application/json',
+  ...(BYPASS ? { 'x-vercel-protection-bypass': BYPASS } : {}),
+};
 
 async function main() {
   const pickerRes = await fetch(`${BASE_URL}/api/auth/staff-picker`, { headers: tenantHeaders });

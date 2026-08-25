@@ -14,9 +14,19 @@ export type LinearStep = { key: string; label: string };
 export { deriveReceivingStepStates } from './derive-receiving-step-states';
 
 /**
- * Shared dot + connector stepper — used by ReceivingDetailsStack carton
- * pipeline, claim modal, Repair intake, and Shipped order pipeline. Not mounted
- * in the Unbox/Triage workspace chrome.
+ * Wizard stepper — position in a FORM, and nothing else. Repair intake is the
+ * caller (Service → Issue → Contact → Review): steps are clickable, carry no
+ * actor and no timestamp, and the walk is navigation rather than history.
+ *
+ * The milestone pipelines (order · carton · arrival) are NOT this component.
+ * They were, briefly, with `marker` / `body` / `connectorPadClass` slots
+ * bending a wizard into a timeline — which is how a component ends up with a
+ * prop that replaces its own rendering. They now compose
+ * `design-system/components/milestone-pipeline`, whose every stage carries a
+ * person and an instant. Two nouns, two components, neither with a slot.
+ *
+ * (The old docblock also claimed a claim-modal caller. There has never been
+ * one.)
  */
 export function LinearWorkflowStepper({
   steps,
@@ -61,7 +71,7 @@ export function LinearWorkflowStepper({
 
           const stepContent = (
             <>
-              <StepDot state={s} index={idx + 1} compact={compact} />
+              <StepDot state={s} compact={compact} />
               <span className={`whitespace-nowrap text-center ${labelClass} ${labelTone}`}>
                 {step.label}
               </span>
@@ -71,10 +81,15 @@ export function LinearWorkflowStepper({
           return (
             <Fragment key={step.key}>
               {idx > 0 ? (
-                <li aria-hidden className={`min-w-0 flex-1 self-start ${connectorPt}`}>
+                // `min-w-6`, not `min-w-0`: a `flex-1` rail with no floor
+                // collapses to nothing the moment the column is narrow, and the
+                // stepper silently becomes three detached blocks. The rail is
+                // the thing that makes them one progression — it must survive
+                // the squeeze even if the labels have to.
+                <li aria-hidden className={`min-w-6 flex-1 self-start ${connectorPt}`}>
                   <span
-                    className={`block h-px w-full ${
-                      prevState === 'done' ? 'bg-blue-300' : 'bg-surface-strong'
+                    className={`block h-0.5 w-full rounded-full ${
+                      prevState === 'done' ? 'bg-blue-500' : 'bg-border-soft'
                     }`}
                   />
                 </li>
@@ -117,11 +132,9 @@ export function LinearWorkflowStepper({
  */
 function StepDot({
   state,
-  index,
   compact = false,
 }: {
   state: LinearStepState;
-  index: number;
   compact?: boolean;
 }) {
   const sizeClass = compact ? 'h-3.5 w-3.5' : 'h-4 w-4';
@@ -136,14 +149,16 @@ function StepDot({
     );
   }
   if (state === 'active') {
+    // A hollow blue dot, not the step's ordinal. The number was answering a
+    // question nobody asks — the position is already given by where the marker
+    // sits on the bar — while making the live stage the one marker that renders
+    // a glyph instead of a state. Ring + empty centre reads as "here, not yet
+    // done" against the filled check to its left and the grey fill to its right.
     return (
       <span
-        className={`flex shrink-0 items-center justify-center rounded-full bg-surface-card font-semibold text-blue-700 ring-2 ring-blue-500 ${sizeClass} ${
-          compact ? 'text-role-micro' : 'text-role-eyebrow'
-        }`}
-      >
-        {index}
-      </span>
+        className={`flex shrink-0 items-center justify-center rounded-full bg-surface-card ring-2 ring-blue-500 ${sizeClass}`}
+        aria-hidden
+      />
     );
   }
   return (

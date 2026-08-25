@@ -1,4 +1,6 @@
+import { useEffect, useRef } from 'react';
 import { SearchBar } from '@/components/ui/SearchBar';
+import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Button } from '@/design-system/primitives';
 import {
@@ -20,6 +22,17 @@ export function EcwidSearchInputs({
 }) {
   const { popoverMode, manualTitleMode } = c;
   const pad = flush ? 'pt-0' : 'px-2 pt-1';
+
+  // TechRailSearchBar has no `autoFocus` prop (it is a rail/chrome footer
+  // SoT, not a form field) — focus it imperatively via `inputRef` instead,
+  // same effect the old `autoFocus={autoFocusSearch}` had on the raw SearchBar.
+  const repairSearchInputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (popoverMode === 'repair_service' && autoFocusSearch) {
+      repairSearchInputRef.current?.focus();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- focus-once on mode entry, not every keystroke
+  }, [popoverMode]);
 
   if (popoverMode === 'search' && !manualTitleMode) {
     return (
@@ -91,19 +104,24 @@ export function EcwidSearchInputs({
   if (popoverMode === 'repair_service') {
     return (
       <div className={`flex items-center gap-1.5 ${pad}`}>
-        <div className="min-w-0 flex-1">
-          <SearchBar
-            value={c.repairFilter}
-            onChange={c.setRepairFilter}
-            placeholder="Filter by order #, title, or SKU…"
-            autoFocus={autoFocusSearch}
-            variant="blue"
-            size="compact"
-            hideUnderline
-            // Scope filter after paste — paste-left SoT (trailingSuffix).
-            trailingSuffix={<EcwidOrderScopeFilters c={c} />}
-          />
-        </div>
+        {/* Same SoT search bar as every rail footer AND workbench chrome
+            header (TechRailSearchBar — "Filter queue…" on Unbox, "Filter
+            lines…" on the recent rails, etc.) — never a raw SearchBar hand-
+            rolled with its own border/variant. `variant="chrome"` is the
+            flush-sunken face this component is built for; `flush` drops its
+            last horizontal pad so it sits edge-to-edge with the chrome
+            (2026-08-24 fix). */}
+        <TechRailSearchBar
+          value={c.repairFilter}
+          onChange={c.setRepairFilter}
+          placeholder="Filter by order #, title, or SKU…"
+          variant="chrome"
+          flush={flush}
+          inputRef={repairSearchInputRef}
+          // Scope filter after paste — paste-left SoT (trailingSuffix).
+          trailingSuffix={<EcwidOrderScopeFilters c={c} />}
+          className="min-w-0 flex-1"
+        />
         <EcwidOrderScopeHotChip c={c} />
       </div>
     );
