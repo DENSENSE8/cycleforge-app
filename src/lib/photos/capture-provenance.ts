@@ -25,7 +25,7 @@
  *
  * This module is intentionally pure and dependency-free so a client bundle can
  * import the field name and the normalizer without dragging any server graph
- * along (`.claude/rules/build-gotchas.md` → bundle altitude).
+ * along (bundle altitude).
  */
 
 /**

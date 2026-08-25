@@ -49,7 +49,7 @@ export const EBAY_CLAIM_WINDOW_DAYS = 30;
  * the actual carrier delivery instant, converted to the WAREHOUSE civil day.
  * Never a bare `stn.delivered_at::date`: that buckets by UTC and shifts every
  * late-afternoon Pacific delivery a day forward, which on a 30-day deadline is a
- * silent off-by-one (`.claude/rules/source-of-truth.md` → Dates & times).
+ * silent off-by-one (Dates & times).
  *
  * An eBay line normally has no `zoho_po_mirror` row, so in practice this resolves
  * to delivered-day + N; the COALESCE keeps the estimated-delivery preference
@@ -110,7 +110,7 @@ export interface DeliveredNotUnboxedItem {
 export async function getDeliveredNotUnboxedCount(orgId: OrgId): Promise<number> {
   // Lazy, like the delivered-unscanned sibling: keeps this module's pure SQL
   // fragments importable without instantiating the Neon pool at module load
-  // (`.claude/rules/build-gotchas.md` → bundle altitude).
+ // (bundle altitude).
   const { tenantQuery } = await import('@/lib/tenancy/db');
   const { rows } = await tenantQuery<{ n: number }>(
     orgId,

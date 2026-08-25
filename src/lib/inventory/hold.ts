@@ -18,7 +18,7 @@
  * Phase 1.3 (unified engine): the serial_units.current_status write + its
  * lifecycle event now go through the guarded transition() chokepoint
  * (src/lib/inventory/state-machine.ts) instead of a hand-rolled UPDATE +
- * INSERT — the source-of-truth rule (.claude/rules/source-of-truth.md). It runs
+ * INSERT — the source-of-truth rule. It runs
  * on the helper's own transaction client (executor pattern), so the writes stay
  * atomic within this tx. transition() emits the HELD / RELEASED_HOLD event
  * itself, so there is no separate INSERT. The conversion is unconditional (not

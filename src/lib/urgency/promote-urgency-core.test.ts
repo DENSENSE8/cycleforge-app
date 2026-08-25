@@ -11,7 +11,7 @@ import {
 /**
  * Capturing fakes — no database, no helpdesk. What is asserted is BOTH the
  * returned result and what got threaded into the injected deps, per
- * `.claude/rules/backend-patterns.md` → Dependency injection for testability.
+ * Dependency injection for testability.
  */
 function fakes(outcome: UrgencyWriteOutcome = 'updated') {
   const calls: Array<{ method: keyof UrgencyDeps; args: UrgencyWriteArgs }> = [];

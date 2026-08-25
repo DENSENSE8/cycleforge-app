@@ -13,7 +13,7 @@ import { completeTriage } from '@/lib/receiving/complete-triage';
  * Body: { receiving_id, client_event_id? }
  *
  * House route skeleton: validate → domain helper → map status (withAuth) →
- * audit → after() side-effects (.claude/rules/backend-patterns.md).
+ * audit → after() side-effects.
  */
 export const POST = withAuth(async (request: NextRequest, ctx) => {
   const body = await request.json().catch(() => null);

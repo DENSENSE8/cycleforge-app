@@ -30,11 +30,33 @@ const baselinePath = path.join(repoRoot, 'lighthouse-baseline.json');
 
 const BASE_URL = process.env.LH_BASE_URL || 'http://localhost:3000';
 
-/** Route manifest — tiers per docs/performance/LIGHTHOUSE.md. */
+/**
+ * Route manifest (tiers per docs/performance/LIGHTHOUSE.md).
+ * `formFactor` is the device the surface actually ships on —
+ * it drives viewport AND throttling (see THROTTLING below), so it is a claim
+ * about deployment, not a rendering preference.
+ *
+ * Policy (2026-08-22): this is a warehouse management system, so the profile
+ * follows the hardware. Desk workbenches — the dense sheet/grid surfaces an
+ * operator works from a workstation on the warehouse LAN — are `desktop`.
+ * `/m/*` is the handheld/phone tree and stays `mobile`. `/kiosk*` is a mounted
+ * landscape tablet. `/signin` stays `mobile` deliberately: it is the one public
+ * route, it is reached from every device including handhelds, and it is the
+ * cheapest page in the app, so it is the honest worst-case canary.
+ *
+ * Before this, every desk workbench was scored as a budget phone on simulated
+ * slow-4G — a scenario none of them ever run in.
+ */
 export const ROUTES = [
-  { path: '/signin', tier: 1, auth: false },
-  { path: '/dashboard', tier: 1, auth: true },
-  { path: '/receiving', tier: 1, auth: true },
+  { path: '/signin', tier: 1, auth: false, formFactor: 'mobile' },
+  { path: '/dashboard', tier: 1, auth: true, formFactor: 'desktop' },
+  // Fulfillment To-ship desk — the canonical outbound queue, and tier 1 because
+  // it is where the shipper spends the day. Bare `/dashboard` 308s HERE
+  // (`resolveDashboardOutboundRedirect` in `src/proxy.ts`), so the row above has
+  // been measuring this surface plus a redirect hop under the wrong name; this
+  // entry measures it directly.
+  { path: '/shipping/orders', tier: 1, auth: true, formFactor: 'desktop' },
+  { path: '/receiving', tier: 1, auth: true, formFactor: 'desktop' },
   // Desktop `/unbox` is the operator's real Unbox surface (the seeded
   // `UnboxBrowseShell` first-paint path). It is pinned `formFactor: 'desktop'`
   // because on MOBILE the proxy rewrites `/unbox` → `/m/receiving` (the mobile
@@ -42,8 +64,8 @@ export const ROUTES = [
   // exact gap that hid the `/unbox` LCP work from this tooling. `/receiving`
   // (legacy) and `/m/unbox` (tier 2) still cover the other two surfaces.
   { path: '/unbox', tier: 1, auth: true, formFactor: 'desktop' },
-  { path: '/triage', tier: 1, auth: true },
-  { path: '/packer', tier: 1, auth: true },
+  { path: '/triage', tier: 1, auth: true, formFactor: 'desktop' },
+  { path: '/packer', tier: 1, auth: true, formFactor: 'desktop' },
   // Testing station (the old `/tech` redirects here). Pinned `formFactor:
   // 'desktop'` for the same reason as `/unbox`: this is a standing scan bench on
   // a warehouse monitor, and its default landing (Ready to Pack) is a workbench
@@ -51,18 +73,18 @@ export const ROUTES = [
   // so a mobile audit measured the right TREE at the wrong form factor —
   // throttled 3x-mobile CPU against a desk surface no phone ever loads.
   { path: '/test', tier: 1, auth: true, formFactor: 'desktop' },
-  { path: '/search', tier: 1, auth: true },
-  { path: '/m/receive', tier: 1, auth: true },
-  { path: '/m/scan', tier: 1, auth: true },
-  { path: '/m/home', tier: 1, auth: true },
-  { path: '/shipping', tier: 2, auth: true },
-  { path: '/support', tier: 2, auth: true },
-  { path: '/inventory', tier: 2, auth: true },
-  { path: '/settings', tier: 2, auth: true },
-  { path: '/incoming', tier: 2, auth: true },
-  { path: '/m/pack', tier: 2, auth: true },
-  { path: '/m/triage', tier: 2, auth: true },
-  { path: '/m/unbox', tier: 2, auth: true },
+  { path: '/search', tier: 1, auth: true, formFactor: 'desktop' },
+  { path: '/m/receive', tier: 1, auth: true, formFactor: 'mobile' },
+  { path: '/m/scan', tier: 1, auth: true, formFactor: 'mobile' },
+  { path: '/m/home', tier: 1, auth: true, formFactor: 'mobile' },
+  { path: '/shipping', tier: 2, auth: true, formFactor: 'desktop' },
+  { path: '/support', tier: 2, auth: true, formFactor: 'desktop' },
+  { path: '/inventory', tier: 2, auth: true, formFactor: 'desktop' },
+  { path: '/settings', tier: 2, auth: true, formFactor: 'desktop' },
+  { path: '/incoming', tier: 2, auth: true, formFactor: 'desktop' },
+  { path: '/m/pack', tier: 2, auth: true, formFactor: 'mobile' },
+  { path: '/m/triage', tier: 2, auth: true, formFactor: 'mobile' },
+  { path: '/m/unbox', tier: 2, auth: true, formFactor: 'mobile' },
   // Tablet POS is landscape — desktop form factor, same reason as /unbox.
   // Auth is the device principal (`cf_kiosk`), not staff `cf_sid`. Mint with
   // `scripts/lighthouse-mint-kiosk.mjs`. A pair-screen landing is discarded.
@@ -107,10 +129,28 @@ const median = (nums) => {
 };
 
 /**
- * Lighthouse config: simulated slow-4G mobile (LH defaults) or desktop preset.
- * A route may pin its own `formFactor` (e.g. desktop `/unbox`) — that override
- * wins over the run-wide default so a mixed run still measures each surface on
- * the device its operator actually uses.
+ * Network + CPU throttling, matched to the form factor.
+ *
+ * Lighthouse only derives `screenEmulation` from `formFactor` — throttling has
+ * its own default, and that default is `mobileSlow4G` (1.6 Mbps, 150 ms RTT,
+ * 4x CPU slowdown) REGARDLESS of form factor. Until 2026-08-22 this file set
+ * `formFactor: 'desktop'` on `/unbox`, `/test` and `/kiosk*` without touching
+ * throttling, so those surfaces were measured at desktop viewport on a budget
+ * phone's cellular link — a device combination that does not exist. Their
+ * scores were not comparable to anything.
+ *
+ * `desktopDense4G` is Lighthouse's own desktop preset (10 Mbps, 40 ms RTT, no
+ * CPU slowdown) and models a workstation on the warehouse LAN.
+ */
+const THROTTLING = {
+  desktop: { rttMs: 40, throughputKbps: 10 * 1024, cpuSlowdownMultiplier: 1 },
+  mobile: { rttMs: 150, throughputKbps: 1.6 * 1024, cpuSlowdownMultiplier: 4 },
+};
+
+/**
+ * Lighthouse config. A route may pin its own `formFactor` — that override wins
+ * over the run-wide default so a mixed run measures each surface on the device
+ * its operator actually uses, at that device's network and CPU.
  */
 function lhOptions(port, routeFormFactor, cookie) {
   const ff = routeFormFactor ?? formFactor;
@@ -124,10 +164,14 @@ function lhOptions(port, routeFormFactor, cookie) {
         ? { mobile: false, width: 1350, height: 940, deviceScaleFactor: 1, disabled: false }
         : { mobile: true, width: 412, height: 823, deviceScaleFactor: 1.75, disabled: false },
     throttlingMethod: 'simulate',
+    throttling: THROTTLING[ff],
     extraHeaders: cookie ? { Cookie: cookie } : undefined,
     onlyCategories: ['performance', 'accessibility', 'best-practices', 'seo'],
   };
 }
+
+/** The form factor a route is actually measured at (route pin wins). */
+const formFactorFor = (route) => route.formFactor ?? formFactor;
 
 /** Kiosk pair screen (no `cf_kiosk`) is the same class of miss as /signin. */
 async function isKioskPairScreen(route, cookie) {
@@ -186,7 +230,15 @@ async function auditRoute(route) {
   if (lastLhr) {
     fs.writeFileSync(path.join(outDir, `${slug(route.path)}.json`), JSON.stringify(lastLhr));
   }
-  return { route: route.path, tier: route.tier, runs, median: med, redirected, pairScreen };
+  return {
+    route: route.path,
+    tier: route.tier,
+    formFactor: formFactorFor(route),
+    runs,
+    median: med,
+    redirected,
+    pairScreen,
+  };
 }
 
 function writeSummary(results) {
@@ -219,7 +271,25 @@ function checkBaseline(results) {
   let failed = false;
   for (const r of results) {
     const b = baseline.routes?.[r.route];
-    if (!b || r.redirected) continue;
+    if (r.redirected) continue;
+    // An unpinned route is a coverage hole, not a pass. Silently skipping it is
+    // how a new surface ships with no floor at all.
+    if (!b) {
+      console.error(`NO BASELINE ${r.route} — run --update-baseline to pin a floor.`);
+      failed = true;
+      continue;
+    }
+    // Scores are only comparable within one device profile. A floor recorded on
+    // mobile slow-4G says nothing about a desktop-LAN run (and vice versa), so a
+    // profile change must force a reseed rather than quietly pass every route.
+    if (b.formFactor !== r.formFactor) {
+      console.error(
+        `STALE BASELINE ${r.route}: floor was measured at ${b.formFactor ?? 'an unrecorded form factor'}, ` +
+          `this run is ${r.formFactor}. Re-seed with --update-baseline.`,
+      );
+      failed = true;
+      continue;
+    }
     for (const key of ['performance', 'accessibility', 'bestPractices', 'seo']) {
       const min = b.min?.[key];
       if (typeof min === 'number' && r.median[key] < min - (baseline.tolerance ?? 3)) {
@@ -240,6 +310,7 @@ function writeBaseline(results) {
     if (r.redirected) continue;
     existing.routes[r.route] = {
       tier: r.tier,
+      formFactor: r.formFactor,
       min: {
         performance: r.median.performance,
         accessibility: r.median.accessibility,
@@ -258,7 +329,7 @@ async function main() {
   fs.mkdirSync(outDir, { recursive: true });
   const results = [];
   for (const route of routes) {
-    process.stdout.write(`Auditing ${route.path} (${runsPerRoute}x ${formFactor})… `);
+    process.stdout.write(`Auditing ${route.path} (${runsPerRoute}x ${formFactorFor(route)})… `);
     try {
       const r = await auditRoute(route);
       results.push(r);
@@ -281,4 +352,9 @@ async function main() {
   if (check) checkBaseline(results.filter((r) => !r.error));
 }
 
-main();
+// `ROUTES` is exported, so this file is importable — run the audit only when it
+// is the entry point. Without this, merely reading the manifest launches Chrome
+// and audits all 22 routes.
+if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url))) {
+  main();
+}

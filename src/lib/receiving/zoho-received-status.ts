@@ -6,7 +6,7 @@
  * DB-free paste check, and the client rail row. That is the whole reason this
  * file exists — the constant previously lived in `zoho-received-reconcile.ts`,
  * which imports the Neon pool at module top level, so a client bundle could not
- * reach it (`.claude/rules/build-gotchas.md` → bundle altitude). Two call sites
+ * reach it (bundle altitude). Two call sites
  * therefore shipped hand-typed copies, each carrying a "keep in sync" comment:
  *
  *   - `check-zoho-received.ts`  → re-exports `ZOHO_RECEIVED_LIKE_STATUSES`

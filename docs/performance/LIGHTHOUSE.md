@@ -6,15 +6,47 @@ the committed floor is `lighthouse-baseline.json`.
 
 ## Targets
 
-| Category | Target |
-|---|---|
-| Performance | ≥ 70 Tier-1 · ≥ 50 Tier-2 heavy workspaces (Studio/canvas best-effort) |
-| Accessibility | ≥ 90 everywhere |
-| Best Practices | ≥ 90 everywhere |
-| SEO | ≥ 80 public routes only (`/signin`, `/signup`, `/share/photos/*`) |
-| LCP | ≤ 2.5 s Tier-1 (stretch ≤ 2.0 s on `/signin`, `/m/receive`) |
-| TBT | ≤ 600 ms on every route |
-| CLS | ≤ 0.1 (critical on scan-floor mobile UI) |
+**The goal is 90 in every category on every route.** As of the 2026-07 audit only
+Performance is short — Accessibility 93–95, Best Practices 96, SEO 91, CLS ~0 and
+TBT 22–158 ms already clear it everywhere.
+
+| Category | Target | Status (2026-07) |
+|---|---|---|
+| Performance | ≥ 90 | **67–78** — the whole gap |
+| Accessibility | ≥ 90 | 93–95 ✅ |
+| Best Practices | ≥ 90 | 96 ✅ |
+| SEO | ≥ 90 public routes (`/signin`, `/signup`, `/share/photos/*`) | 91 ✅ |
+| LCP | ≤ 2.5 s | **5.9–12.3 s** — the whole of Performance |
+| TBT | ≤ 600 ms | 22–158 ms ✅ |
+| CLS | ≤ 0.1 | ~0 ✅ |
+
+So "Lighthouse 90" is not a hundred small fixes. It is **one** problem: the
+data-heavy workbenches (`/dashboard`, `/unbox`, `/triage`, `/search`, `/test`)
+render a shell, hydrate, and only *then* fetch their first collection, so LCP
+waits on a post-hydration round trip. Streaming that first payload server-side
+is the single lever that moves all five. Bundle weight was already cut 61–68% in
+the 2026-07 initiative and is no longer the constraint.
+
+### Form factor is a deployment claim, not a preference
+
+Every route pins `formFactor` in the `ROUTES` manifest, and it drives **viewport
+and throttling together**. This is a warehouse management system: the dense
+sheet/grid workbenches run on workstations on the warehouse LAN, `/m/*` is the
+handheld tree, `/kiosk*` is a mounted landscape tablet. Scoring a desk workbench
+as a budget phone on simulated slow-4G measures a scenario that never happens.
+
+Two bugs here were fixed on 2026-08-22, and both had been quietly distorting
+every number:
+
+- `lhOptions` set `formFactor: 'desktop'` without setting `throttling`.
+  Lighthouse derives only `screenEmulation` from form factor — throttling
+  defaults to `mobileSlow4G` regardless. So `/unbox`, `/test` and `/kiosk*` were
+  measured at desktop viewport on a phone's cellular link and 4× CPU slowdown.
+- The other five desk workbenches were never repinned at all.
+
+Because scores are only comparable within one profile, `lighthouse-baseline.json`
+now records `formFactor` per route and `--check` **fails loudly** when a floor was
+measured under a different profile, instead of silently passing.
 
 Route tiers are declared in the `ROUTES` manifest inside `scripts/lighthouse-audit.mjs`.
 Tier 1 = operator-critical floors (`/signin`, `/dashboard`, `/receiving`, `/triage`,
@@ -84,17 +116,53 @@ pnpm lighthouse:check          # Tier-1 medians vs baseline (tolerance ±3)
 ```
 
 A route failing `min - tolerance` exits non-zero. After a genuine improvement,
-re-run with `--update-baseline` to raise the floors — floors only move up, the
-same discipline as the DS ratchet guards. The check is a local/PR tool today
-(not wired into `npm run verify`): Lighthouse needs a running production server,
-which the verify pipeline doesn't have.
+re-run with `--update-baseline` to raise the floors — floors only move up. A route
+with no baseline entry now fails too: an unpinned surface is a coverage hole, not
+a pass.
+
+It is deliberately **not** in `npm run verify` — Lighthouse needs a running
+production server and a browser, and the whole manifest is 30–60 min.
+
+## CI (`.github/workflows/performance.yml`)
+
+Two tiers, because they cost very different amounts:
+
+| Job | Runs on | Cost | Gates |
+|---|---|---|---|
+| `bundle-budget` | every PR + push to main | one build | per-route First Load JS vs `bundle-budget.json` |
+| `lighthouse` | nightly 08:00 UTC + `workflow_dispatch` | build + browser, 30–60 min | Tier-1 medians vs `lighthouse-baseline.json` |
+
+Payload weight is deterministic, needs no browser, and is the input to most of
+what Lighthouse then measures — so it is the part worth gating continuously.
+
+```bash
+npx next build 2>&1 | tee build.log
+npm run perf:budget            # ratchet check
+npm run perf:budget:update     # re-seed (ceilings only move DOWN)
+```
+
+Budgets come from Next's printed route table, not `.next/app-build-manifest.json`
+— this repo builds with Turbopack, which does not emit that manifest.
+
+Both jobs **skip with a warning** rather than fail when their secrets are absent,
+so an unconfigured repo does not carry a permanently red check. To turn them on,
+set the `PERF_DATABASE_URL` repository secret (the Lighthouse job needs a seeded
+database — without one, every authenticated route redirects to `/signin` and the
+numbers are meaningless). Re-seed either ratchet by dispatching the workflow with
+`update_baseline: true`, then committing the updated JSON.
 
 ## Method
 
-- Mobile emulation (412×823 @1.75), simulated slow-4G throttling — Lighthouse
-  defaults, matching field-like conditions on floor devices.
-- Median of 3 runs per route; single runs swing ±10 points.
+- Per-route profile, from the `formFactor` pin (see *Form factor* above):
+  - `mobile` — 412×823 @1.75, 1.6 Mbps / 150 ms RTT / 4× CPU. Handhelds (`/m/*`)
+    and `/signin`.
+  - `desktop` — 1350×940 @1, 10 Mbps / 40 ms RTT / no CPU slowdown. Workstation
+    workbenches and the mounted kiosk tablet.
+- `throttlingMethod: 'simulate'`; median of 3 runs per route (single runs swing
+  ±10 points).
 - Categories: Performance, Accessibility, Best Practices, SEO.
+- Always audit a **production build** — dev/Turbopack numbers are not
+  representative.
 
 ## What moved the numbers (history)
 

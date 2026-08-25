@@ -118,3 +118,15 @@ vision/data/
 
 # Machine-local CLI state — an absolute symlink into the developer's home.
 .antigravitycli/
+
+# ── Warehouse OS refactor (2026-08-21) ───────────────────────────────────────
+# The house-law corpus (rules, SoT manifest, design-law guards, Cursor tree)
+# was deleted on purpose. These paths must not silently return.
+.cursor/
+.claude/rules/
+.claude/agents/
+.claude/hooks/
+docs/rules/
+sot-manifest.json
+# local-only agent worktrees — never belong in the repo
+.claude/worktrees/

@@ -11,7 +11,7 @@
  * (`@/lib/receiving/workflow-stages`). This module imports all three and
  * restates none of them. A CBV map that hardcoded its own copy of the status
  * strings would be a second status vocabulary, and it would drift the first
- * time a lifecycle changed — which is the failure `.claude/rules/source-of-truth.md`
+ * time a lifecycle changed — which is the failure
  * exists to prevent.
  *
  * The two `Record<>` maps below are TOTAL over their key types, so adding a

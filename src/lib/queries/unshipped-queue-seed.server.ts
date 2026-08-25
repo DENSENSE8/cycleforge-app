@@ -75,25 +75,41 @@ async function fetchUnshippedCounts(): Promise<UnshippedQueueCounts | null> {
 /**
  * Prefetch unshipped list (+ counts when available). Failures are soft — the
  * client desk still hydrates via `/api/orders`.
+ *
+ * The two fetches are INDEPENDENT and run CONCURRENTLY. They used to be two
+ * sequential `await`s, which serialized two full HTTP round trips back into
+ * this same process and put their sum on the RSC's critical path for no
+ * ordering reason — neither reads the other's result, and they write different
+ * cache keys.
+ *
+ * `allSettled`, never `all`: the per-call soft-failure contract is load-bearing
+ * here. `Promise.all` short-circuits on the first rejection, so a failing list
+ * would discard an already-resolved counts payload (and vice versa) and hand
+ * the desk an emptier seed than the one it actually paid for. Each result is
+ * still consumed under its own branch, so one failing seeds the other.
  */
 export async function seedUnshippedQueue(): Promise<UnshippedQueueSeed> {
   const queryClient = new QueryClient();
   let rows: ShippedOrder[] = [];
 
-  try {
-    rows = await fetchUnshippedRows();
+  const [listResult, countsResult] = await Promise.allSettled([
+    fetchUnshippedRows(),
+    fetchUnshippedCounts(),
+  ]);
+
+  if (listResult.status === 'fulfilled') {
+    rows = listResult.value;
     queryClient.setQueryData(unshippedListKey(), rows);
-  } catch (error) {
-    console.error('seedUnshippedQueue list failed; client will fetch', error);
+  } else {
+    console.error('seedUnshippedQueue list failed; client will fetch', listResult.reason);
   }
 
-  try {
-    const counts = await fetchUnshippedCounts();
-    if (counts != null) {
-      queryClient.setQueryData(unshippedCountsKey(), counts);
+  if (countsResult.status === 'fulfilled') {
+    if (countsResult.value != null) {
+      queryClient.setQueryData(unshippedCountsKey(), countsResult.value);
     }
-  } catch (error) {
-    console.error('seedUnshippedQueue counts failed; client will fetch', error);
+  } else {
+    console.error('seedUnshippedQueue counts failed; client will fetch', countsResult.reason);
   }
 
   return { state: dehydrate(queryClient), rows };

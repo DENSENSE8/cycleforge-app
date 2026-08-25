@@ -12,7 +12,7 @@ import { toPSTDateKey, warehouseDayUtcBounds } from '@/utils/date';
  *
  * This module is deliberately dependency-free (pure types + pure grouping) so a
  * client bundle that touches an order type never inherits the Sheets client,
- * the Ecwid fetcher, or `tenancy/db` — see `.claude/rules/build-gotchas.md`
+ * the Ecwid fetcher, or `tenancy/db` —
  * (bundle altitude).
  *
  * ## What belongs here vs. in the writer

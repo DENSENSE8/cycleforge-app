@@ -196,7 +196,7 @@ async function realDeps(): Promise<ClaimsEscalationDeps> {
 interface ClaimsEscalationOptions {
   /**
    * Master switch — REQUIRED, never defaulted
-   * (`.claude/rules/backend-patterns.md` → "a safety classification is a REQUIRED
+ * ("a safety classification is a REQUIRED
    * parameter"). This is the difference between reporting and filing real tickets in
    * a tenant's helpdesk, so every caller must state it; a default would arm the
    * outward-facing path for any call site that forgot.

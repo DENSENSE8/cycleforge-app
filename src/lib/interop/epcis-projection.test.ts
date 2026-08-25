@@ -3,7 +3,7 @@
  *
  * `projectEpcisPage` takes its read surface as an injected dep, so this runs
  * against a captured fake with zero Postgres — the house `Deps`-injection
- * pattern (`.claude/rules/backend-patterns.md`).
+ * pattern.
  *
  * Run: `node --require ./scripts/register-server-only-shim.cjs --import tsx \
  *        --test src/lib/interop/epcis-projection.test.ts`

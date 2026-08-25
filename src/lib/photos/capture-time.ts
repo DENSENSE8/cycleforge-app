@@ -25,7 +25,7 @@
  * WHY NOT A CLIENT-SIDE EXIF PARSE EITHER (the considered tradeoff): a correct
  * `DateTimeOriginal` read means walking JPEG APP1 segments, a TIFF header with
  * either endianness, and two IFDs — ~1.5 KB into every station bundle that can
- * reach a capture surface (`.claude/rules/build-gotchas.md` → bundle altitude).
+ * reach a capture surface (bundle altitude).
  * The decisive problem is not size, though: **EXIF `DateTimeOriginal` carries no
  * timezone.** It is local wall-clock text (`2026:07:29 11:04:11`), so turning it
  * into the instant a TIMESTAMPTZ column stores requires ASSUMING a zone — and a

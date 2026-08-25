@@ -11,7 +11,7 @@ import type { UrgencyDeps, UrgencyWriteArgs, UrgencyWriteOutcome } from './promo
  *
  * Held apart from `promote-urgency-core.ts` so the routing and refusal rules
  * test with zero database and zero helpdesk network, per
- * `.claude/rules/backend-patterns.md` → Dependency injection for testability.
+ * Dependency injection for testability.
  *
  * ## Every binding is COMPARE-AND-SET, and that is load-bearing twice over
  *

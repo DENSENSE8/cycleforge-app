@@ -25,7 +25,7 @@ export const dynamic = 'force-dynamic';
  *   (2026-08-08b) precisely so two people can be handed the same record for
  *   different reasons — routing through the upsert would silently hijack an
  *   existing task instead of creating a second. Same table, genuinely different
- *   job: a sibling, not a fork (.claude/rules/pattern-evolution.md).
+ * job: a sibling, not a fork.
  *
  * PERMISSION — `work_orders.claim`, the same gate `POST /api/assignments`
  *   already uses, and one every floor role holds (scripts/seed-roles.mjs).

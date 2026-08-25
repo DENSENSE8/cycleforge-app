@@ -4,7 +4,7 @@
  * Deliberately dependency-free: the shape lives in the light `./types` module,
  * never `outbound-documents.ts` (which imports the tenant DB layer). A client
  * component needing only this predicate must not pull a server-only graph into
- * its bundle — the bundle-altitude rule in `.claude/rules/build-gotchas.md`.
+ * its bundle — the bundle-altitude rule in.
  */
 
 import type { OutboundDocument } from './types';
