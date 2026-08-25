@@ -1,0 +1,539 @@
+{
+  "url": "http://localhost:3100/triage",
+  "ttfb": 1914,
+  "isDev": false,
+  "rows": [
+    {
+      "url": "/api/station-commands/aliases",
+      "start": 2221,
+      "end": 2786,
+      "ms": 565,
+      "bytes": 324
+    },
+    {
+      "url": "/api/nav",
+      "start": 2222,
+      "end": 2758,
+      "ms": 536,
+      "bytes": 349
+    },
+    {
+      "url": "/api/staff-goals/me",
+      "start": 2224,
+      "end": 3910,
+      "ms": 1686,
+      "bytes": 488
+    },
+    {
+      "url": "/api/work-orders/mine",
+      "start": 2225,
+      "end": 3835,
+      "ms": 1610,
+      "bytes": 624
+    },
+    {
+      "url": "/api/receiving-lines?limit=50&offset=0&view=scanned&sort=priority",
+      "start": 2229,
+      "end": 4327,
+      "ms": 2098,
+      "bytes": 43781
+    },
+    {
+      "url": "/api/receiving/unfound-queue?kind=unmatched_receiving&checked=false&limit=200&exclude_unbox_intake=true",
+      "start": 2229,
+      "end": 3514,
+      "ms": 1285,
+      "bytes": 13258
+    },
+    {
+      "url": "/api/receiving/rail-snapshot?feed=triageCombined%3Adefault%3Aall",
+      "start": 2230,
+      "end": 2954,
+      "ms": 724,
+      "bytes": 341
+    },
+    {
+      "url": "/api/catalog/platforms",
+      "start": 2232,
+      "end": 3834,
+      "ms": 1602,
+      "bytes": 2632
+    },
+    {
+      "url": "/api/integrations/capability-label?cap=inventory",
+      "start": 2234,
+      "end": 3810,
+      "ms": 1576,
+      "bytes": 380
+    },
+    {
+      "url": "/api/receiving/rail-exclusions?feedKey=receiving_triage",
+      "start": 2235,
+      "end": 4327,
+      "ms": 2092,
+      "bytes": 1681
+    },
+    {
+      "url": "/api/receiving/triage/staging-map",
+      "start": 2236,
+      "end": 4358,
+      "ms": 2123,
+      "bytes": 8235
+    },
+    {
+      "url": "/api/settings?page=receiving",
+      "start": 2237,
+      "end": 4407,
+      "ms": 2170,
+      "bytes": 4654
+    },
+    {
+      "url": "/api/staff-preferences",
+      "start": 2241,
+      "end": 4442,
+      "ms": 2201,
+      "bytes": 1943
+    },
+    {
+      "url": "/api/staff?active=false",
+      "start": 2294,
+      "end": 4771,
+      "ms": 2477,
+      "bytes": 3734
+    },
+    {
+      "url": "/api/inbox/tech-queue",
+      "start": 2296,
+      "end": 5579,
+      "ms": 3283,
+      "bytes": 2208
+    },
+    {
+      "url": "/api/inbox/support",
+      "start": 2296,
+      "end": 4919,
+      "ms": 2623,
+      "bytes": 322
+    },
+    {
+      "url": "/api/staff-messages?unread=1",
+      "start": 2297,
+      "end": 4981,
+      "ms": 2684,
+      "bytes": 312
+    },
+    {
+      "url": "/api/staff-todos?station=TECH",
+      "start": 3914,
+      "end": 5010,
+      "ms": 1096,
+      "bytes": 793
+    },
+    {
+      "url": "/api/receiving-lines?receiving_id=51764",
+      "start": 4358,
+      "end": 5787,
+      "ms": 1428,
+      "bytes": 3672
+    },
+    {
+      "url": "/api/receiving/pending-work",
+      "start": 4792,
+      "end": 5502,
+      "ms": 710,
+      "bytes": 312
+    },
+    {
+      "url": "/api/receiving/rail-snapshot",
+      "start": 5148,
+      "end": 5327,
+      "ms": 180,
+      "bytes": 327
+    },
+    {
+      "url": "/api/catalog/types",
+      "start": 7491,
+      "end": 8178,
+      "ms": 688,
+      "bytes": 1999
+    },
+    {
+      "url": "/api/receiving/unfound-queue?kind=unmatched_receiving&count_only=1&limit=1&offset=0",
+      "start": 7492,
+      "end": 8343,
+      "ms": 851,
+      "bytes": 425
+    },
+    {
+      "url": "/api/receiving/triage/metrics",
+      "start": 7492,
+      "end": 8344,
+      "ms": 852,
+      "bytes": 458
+    },
+    {
+      "url": "/api/surfaces/triage/resolve",
+      "start": 7494,
+      "end": 8335,
+      "ms": 841,
+      "bytes": 430
+    },
+    {
+      "url": "/api/realtime/token?rnd=6525064918341407",
+      "start": 7664,
+      "end": 8834,
+      "ms": 1169,
+      "bytes": 1855
+    },
+    {
+      "url": "/api/receiving-photos?receivingId=51764&photoIntent=package",
+      "start": 7836,
+      "end": 9435,
+      "ms": 1599,
+      "bytes": 440
+    },
+    {
+      "url": "/api/catalog/priorities",
+      "start": 7836,
+      "end": 8937,
+      "ms": 1101,
+      "bytes": 332
+    },
+    {
+      "url": "/api/receiving-lines?receiving_id=51764",
+      "start": 7837,
+      "end": 9654,
+      "ms": 1816,
+      "bytes": 3672
+    },
+    {
+      "url": "/api/receiving-lines?receiving_id=51764&include=serials",
+      "start": 7838,
+      "end": 11025,
+      "ms": 3187,
+      "bytes": 3815
+    },
+    {
+      "url": "/api/locations",
+      "start": 7839,
+      "end": 9542,
+      "ms": 1703,
+      "bytes": 8165
+    },
+    {
+      "url": "/api/org/gs1",
+      "start": 7840,
+      "end": 9355,
+      "ms": 1516,
+      "bytes": 329
+    },
+    {
+      "url": "/api/receiving/recent-staged-location?excludeLineId=31719",
+      "start": 7840,
+      "end": 9894,
+      "ms": 2054,
+      "bytes": 435
+    },
+    {
+      "url": "/api/receiving/recent-label-note?excludeLineId=31719",
+      "start": 7841,
+      "end": 9996,
+      "ms": 2155,
+      "bytes": 455
+    },
+    {
+      "url": "/api/receiving-photos?receivingId=51764&photoIntent=package",
+      "start": 7842,
+      "end": 10496,
+      "ms": 2654,
+      "bytes": 440
+    },
+    {
+      "url": "/api/support/tickets/by-entity?lineId=31719&receivingId=51764",
+      "start": 7843,
+      "end": 11456,
+      "ms": 3613,
+      "bytes": 330
+    },
+    {
+      "url": "/api/sku-catalog/resolve?sku=00339&platform=ebay",
+      "start": 7844,
+      "end": 10576,
+      "ms": 2732,
+      "bytes": 427
+    },
+    {
+      "url": "/api/zoho/purchase-orders?purchaseorder_id=5623409000003370081",
+      "start": 7845,
+      "end": 10092,
+      "ms": 2247,
+      "bytes": 466
+    },
+    {
+      "url": "/api/receiving-lines/view",
+      "start": 7846,
+      "end": 10528,
+      "ms": 2682,
+      "bytes": 332
+    },
+    {
+      "url": "/api/zoho/items/5623409000001874957/image",
+      "start": 7854,
+      "end": 8026,
+      "ms": 172,
+      "bytes": 115171
+    },
+    {
+      "url": "/api/receiving/rail-snapshot",
+      "start": 8293,
+      "end": 10278,
+      "ms": 1985,
+      "bytes": 327
+    }
+  ],
+  "focus": [
+    {
+      "count": 0,
+      "bytes": 0,
+      "rows": []
+    },
+    {
+      "count": 9,
+      "bytes": 69052,
+      "rows": [
+        {
+          "url": "/api/receiving/triage/staging-map",
+          "ms": 1354,
+          "bytes": 8235
+        },
+        {
+          "url": "/api/receiving/rail-exclusions?feedKey=receiving_triage",
+          "ms": 1331,
+          "bytes": 1681
+        },
+        {
+          "url": "/api/receiving-lines?limit=50&offset=0&view=scanned&sort=priority",
+          "ms": 2554,
+          "bytes": 43781
+        },
+        {
+          "url": "/api/receiving/unfound-queue?kind=unmatched_receiving&checked=false&limit=200&exclude_unbox_intake=true",
+          "ms": 1446,
+          "bytes": 13258
+        },
+        {
+          "url": "/api/receiving-photos?receivingId=51764&photoIntent=package",
+          "ms": 1762,
+          "bytes": 440
+        },
+        {
+          "url": "/api/receiving/recent-label-note?excludeLineId=31719",
+          "ms": 1834,
+          "bytes": 455
+        },
+        {
+          "url": "/api/receiving/recent-staged-location?excludeLineId=31719",
+          "ms": 1873,
+          "bytes": 435
+        },
+        {
+          "url": "/api/receiving-photos?receivingId=51764&photoIntent=package",
+          "ms": 2006,
+          "bytes": 440
+        },
+        {
+          "url": "/api/receiving/rail-snapshot",
+          "ms": 188,
+          "bytes": 327
+        }
+      ]
+    }
+  ],
+  "analysis": {
+    "duplicates": [
+      {
+        "url": "/api/receiving-lines?receiving_id=51764",
+        "count": 2,
+        "wastedBytes": 3672
+      },
+      {
+        "url": "/api/receiving-photos?receivingId=51764&photoIntent=package",
+        "count": 2,
+        "wastedBytes": 440
+      },
+      {
+        "url": "/api/receiving/rail-snapshot",
+        "count": 2,
+        "wastedBytes": 327
+      }
+    ],
+    "multiShape": [
+      {
+        "endpoint": "/api/receiving-lines",
+        "shapes": [
+          "/api/receiving-lines?limit=50&offset=0&view=scanned&sort=priority",
+          "/api/receiving-lines?receiving_id=51764",
+          "/api/receiving-lines?receiving_id=51764&include=serials"
+        ],
+        "totalBytes": 54940
+      },
+      {
+        "endpoint": "/api/receiving/unfound-queue",
+        "shapes": [
+          "/api/receiving/unfound-queue?kind=unmatched_receiving&checked=false&limit=200&exclude_unbox_intake=true",
+          "/api/receiving/unfound-queue?kind=unmatched_receiving&count_only=1&limit=1&offset=0"
+        ],
+        "totalBytes": 13683
+      },
+      {
+        "endpoint": "/api/receiving/rail-snapshot",
+        "shapes": [
+          "/api/receiving/rail-snapshot?feed=triageCombined%3Adefault%3Aall",
+          "/api/receiving/rail-snapshot"
+        ],
+        "totalBytes": 995
+      }
+    ],
+    "chains": [
+      {
+        "from": "/api/receiving/triage/staging-map",
+        "to": "/api/receiving-lines?receiving_id=51764",
+        "gapMs": 0,
+        "tailEnd": 5787
+      },
+      {
+        "from": "/api/staff?active=false",
+        "to": "/api/receiving/pending-work",
+        "gapMs": 21,
+        "tailEnd": 5502
+      },
+      {
+        "from": "/api/staff-goals/me",
+        "to": "/api/staff-todos?station=TECH",
+        "gapMs": 4,
+        "tailEnd": 5010
+      }
+    ],
+    "peakConcurrency": 19,
+    "countProbes": [],
+    "heaviest": [
+      {
+        "url": "/api/zoho/items/5623409000001874957/image",
+        "start": 7854,
+        "end": 8026,
+        "ms": 172,
+        "bytes": 115171
+      },
+      {
+        "url": "/api/receiving-lines?limit=50&offset=0&view=scanned&sort=priority",
+        "start": 2229,
+        "end": 4327,
+        "ms": 2098,
+        "bytes": 43781
+      },
+      {
+        "url": "/api/receiving/unfound-queue?kind=unmatched_receiving&checked=false&limit=200&exclude_unbox_intake=true",
+        "start": 2229,
+        "end": 3514,
+        "ms": 1285,
+        "bytes": 13258
+      },
+      {
+        "url": "/api/receiving/triage/staging-map",
+        "start": 2236,
+        "end": 4358,
+        "ms": 2123,
+        "bytes": 8235
+      },
+      {
+        "url": "/api/locations",
+        "start": 7839,
+        "end": 9542,
+        "ms": 1703,
+        "bytes": 8165
+      },
+      {
+        "url": "/api/settings?page=receiving",
+        "start": 2237,
+        "end": 4407,
+        "ms": 2170,
+        "bytes": 4654
+      },
+      {
+        "url": "/api/receiving-lines?receiving_id=51764&include=serials",
+        "start": 7838,
+        "end": 11025,
+        "ms": 3187,
+        "bytes": 3815
+      },
+      {
+        "url": "/api/staff?active=false",
+        "start": 2294,
+        "end": 4771,
+        "ms": 2477,
+        "bytes": 3734
+      }
+    ],
+    "slowest": [
+      {
+        "url": "/api/support/tickets/by-entity?lineId=31719&receivingId=51764",
+        "start": 7843,
+        "end": 11456,
+        "ms": 3613,
+        "bytes": 330
+      },
+      {
+        "url": "/api/inbox/tech-queue",
+        "start": 2296,
+        "end": 5579,
+        "ms": 3283,
+        "bytes": 2208
+      },
+      {
+        "url": "/api/receiving-lines?receiving_id=51764&include=serials",
+        "start": 7838,
+        "end": 11025,
+        "ms": 3187,
+        "bytes": 3815
+      },
+      {
+        "url": "/api/sku-catalog/resolve?sku=00339&platform=ebay",
+        "start": 7844,
+        "end": 10576,
+        "ms": 2732,
+        "bytes": 427
+      },
+      {
+        "url": "/api/staff-messages?unread=1",
+        "start": 2297,
+        "end": 4981,
+        "ms": 2684,
+        "bytes": 312
+      },
+      {
+        "url": "/api/receiving-lines/view",
+        "start": 7846,
+        "end": 10528,
+        "ms": 2682,
+        "bytes": 332
+      },
+      {
+        "url": "/api/receiving-photos?receivingId=51764&photoIntent=package",
+        "start": 7842,
+        "end": 10496,
+        "ms": 2654,
+        "bytes": 440
+      },
+      {
+        "url": "/api/inbox/support",
+        "start": 2296,
+        "end": 4919,
+        "ms": 2623,
+        "bytes": 322
+      }
+    ]
+  },
+  "route": "/triage",
+  "base": "http://localhost:3100",
+  "capturedAt": "2026-08-25T06:07:20.147Z"
+}

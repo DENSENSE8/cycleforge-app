@@ -1,7 +1,17 @@
 {
-  "generatedAt": "2026-08-25T04:48:47.951Z",
+  "generatedAt": "2026-08-25T06:01:39.867Z",
   "count": 198,
   "commits": [
+    {
+      "sha": "724ac94a9091d2ba3fded836cd2aa4c62bd9212f",
+      "shortSha": "724ac94a9",
+      "date": "2026-08-24T22:23:38-07:00",
+      "author": "DENSENSE8",
+      "subject": "checkpoint before checking out claude/warehouse-os-refactor-8f2dc3",
+      "body": "",
+      "type": "other",
+      "title": "checkpoint before checking out claude/warehouse-os-refactor-8f2dc3"
+    },
     {
       "sha": "2f6dcd784ae985a31c8a8d6a21135b54ffc156a2",
       "shortSha": "2f6dcd784",
@@ -1971,16 +1981,6 @@
       "body": "Ship the accumulated warehouse-ops surface work: typed column tracks and drill hosts on LedgerGrid, unbox compare/sheets and procedure-stack layout, incoming bulk-tracking triage, kiosk order pickup, shipping orders desk (retire /shipping/ready), locations/bins workspace, support vision-lane + ticket watch, GS1/GTIN catalog fields, motion skill/agent tooling, schema migrations, and broad E2E coverage.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
       "type": "feature",
       "title": "LedgerGrid drill/sheets, unbox procedure deck, kiosk pickup, and spine nav pass"
-    },
-    {
-      "sha": "e627e3d3eb7d827844f6a518b5e1f331b0d28afd",
-      "shortSha": "e627e3d3e",
-      "date": "2026-08-02T21:23:58-07:00",
-      "author": "DENSENSE8",
-      "subject": "refactor(nav): a page's \"modes\" are CHILD PAGES — spine vocabulary + label pass",
-      "body": "Phase B of the spine work. The answer was already in the code: every child\ncarries `to(): { pathname, params }` and every parent a `resolveChild(location)`,\nand the two round-trip — so they are distinct, deep-linkable, reload-safe URLs.\n`nav-destinations.ts` said it outright (\"/products?view=qc is a place, not a\nsetting\"); the flatten made it structural, since a child is now an ordinary\nspine row beside its parent. \"Mode\" named a drill that no longer exists.\n\nB1 — renamed across 22 nav files, compiler-guarded one symbol at a time:\n  SidebarModeItem      → SidebarChildPage       .modes        → .children\n  resolveMode          → resolveChild           modeId        → childId\n  filterPageModes      → filterPageChildren     applyModeTarget → applyChildTarget\n  resolveSidebarMode   → resolveSidebarChild    useRecentModes  → useRecentPages\n  useSidebarModeNav    → useSidebarChildNav     useActiveSidebarMode → useActiveSidebarChild\n  HeaderModeSwitcher   → HeaderPageSwitcher     MODE_ICON_GLYPH_KEYS → STATION_GLYPH_KEYS\n  RECEIVING/TECH/SHIPPING_MODE_ICONS → *_NAV_ICONS\n\nThe wire is UNTOUCHED and must stay so: `?mode=` is bookmarked\n(/dashboard?mode=sales, /support?mode=voicemail, /review?mode=catalog-link) and\n`getSidebarNavPageId` parses it. Proven, not eyeballed — all 74 param\nexpressions byte-identical to HEAD. The `sidebar.recentModes` localStorage key\nis deliberately kept for the same reason; renaming it would silently empty every\noperator's recents.\n\nTwo names deliberately NOT changed: `PACKING_MODE_ICONS` (packing styles —\nstandard/fragile/multi — are a genuine mode vocabulary, not child pages, and\n/pack declares no children), and SettingsSidebarPanel's page-local resolveMode.\n\nThe §2 fork settled as KEEP, on a measured fact rather than taste:\nResponsiveLayout holds `navOpen` in an unpersisted useState(false) — the spine\nis closed on every cold load (sidebar-open-close.spec.ts asserts it). Deleting\nthe header control would leave a bench operator with no visible way to switch a\npage's children. The master-detail law now bans a twin RAIL rather than\nasserting the spine cannot reach a child, which the flatten retired.\n\nB2 — 8 of 10 labels. The three-way `Labels` collision is gone:\n  Catalog › Labels    → SKU Barcodes      Fulfillment › Labels → Postage\n  Locations › Labels  → Bin Tags          Catalog link         → Listing match\n  Fulfillment › Orders → To ship          Support › Orders     → Inquiries\n  Analytics Monitor   → Live Ops          Fulfillment          → Outbound\n\"To ship\", not the brief's \"Queue\" — Sourcing already owns a Queue, which is\nexactly why an overloaded word cannot identify one list. Zero ids, hrefs or\npermissions moved: 180/180 literals identical to HEAD.\n\nDeclined two, with reasons rather than silently:\n  · Scan Stations → Workstations — loses the scanner-driven meaning that defines\n    the section and that the whole Station region contract rests on.\n  · Local Pickup → Will Call — resolves no collision, and the nav is 1 of 7\n    surfaces naming that destination, so renaming only the nav splits the\n    vocabulary while renaming all 7 exceeds \"labels only\" and reaches the\n    receiving-kind registry.\n\nknip baseline SHRANK by 2: the two dead barrel re-exports the rename surfaced\nwere deleted rather than re-baselined — the file's own comment already argued\n`MasterNav` is the only thing that barrel owes the app.\n\nVerify green (lint · typecheck · unit+DS guards · route-auth · schema · doc\ncatalog); 24/24 nav E2E pass. Remaining knip findings belong to a concurrent\nsession's Support work and are untracked files, not this change.\n\nRule-file prose for this phase is written but left uncommitted — those .md files\nare ~90% another session's in-flight edits and cannot be split without\ninteractive staging.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
-      "type": "refactor",
-      "title": "a page's \"modes\" are CHILD PAGES — spine vocabulary + label pass"
     }
   ]
 }
