@@ -19,6 +19,7 @@
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useCallback } from 'react';
 import { HelpTile } from '@/components/tiles/help/HelpTile';
+import { PackedTodayTile } from '@/components/tiles/packing/PackedTodayTile';
 import { OrderDetailTile, OrdersQueueTile } from '@/components/tiles/orders/OrdersTile';
 import type { OrderHeaderFacts } from '@/components/tiles/orders/orders-tile-data';
 import { ProductTile } from '@/components/tiles/product/ProductTile';
@@ -255,6 +256,7 @@ export function TileBody({ tile, shell }: { tile: ShellTile; shell: ShellApi }) 
     );
   }
   if (tile.ref === 'help') return <HelpTile />;
+  if (tile.ref === 'packed-today') return <PackedTodayTile />;
   if (tile.ref === 'sessions-week') {
     return <SessionsWeekTile blocks={weekTileBlocks(shell)} onResume={shell.resumeBlock} />;
   }

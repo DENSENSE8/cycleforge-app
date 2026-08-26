@@ -183,6 +183,22 @@ export function GlobalHeader({ shell }: { shell: ShellApi }) {
 
       <HeaderEntityReadout entity={shell.headerEntity} />
 
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            className={cn('h-7 gap-1 px-2', railIconPlate)}
+            aria-label="Boxes packed today"
+            onClick={shell.openPackedTodayTile}
+          >
+            <Icon name="box" size={14} />
+            Packed
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">Boxes packed by packer</TooltipContent>
+      </Tooltip>
+
       {/* THE TOOLS ENTRY (operator, 2026-08-25 — supersedes B22's "no tool
           overflow in the beam", struck per X3). The ⋯ used to open the
           SessionPopover (session facts + park/close); those verbs moved to

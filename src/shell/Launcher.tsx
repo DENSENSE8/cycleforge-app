@@ -83,6 +83,12 @@ function buildGroups(shell: ShellApi): readonly LauncherGroup[] {
         { title: 'Units', meta: 'All inventory units', icon: 'table', run: t('units', 'Units') },
         { title: 'Orders', meta: 'Open orders', icon: 'table', run: t('orders', 'Orders') },
         { title: 'Returns', meta: 'Return merchandise', icon: 'table', run: t('returns', 'Returns') },
+        {
+          title: 'Boxes packed',
+          meta: "Today's count by packer — PACK_COMPLETED",
+          icon: 'box',
+          run: t('packed-today', 'Packed'),
+        },
       ],
     },
     {
