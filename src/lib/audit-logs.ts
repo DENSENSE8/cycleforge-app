@@ -191,6 +191,7 @@ export const AUDIT_ACTION = {
   WORK_SESSION_PARK:   'work_session.park',
   WORK_SESSION_RESUME: 'work_session.resume',
   WORK_SESSION_END:    'work_session.end',
+  WORK_SESSION_RENAME: 'work_session.rename',
   // Kiosk device principal (/kiosk — FOH/BOH surface split doc 06)
   KIOSK_ENROLLED: 'kiosk.enrolled',   // manager minted a pairing code for a new tablet
   KIOSK_PAIRED:   'kiosk.paired',     // a tablet exchanged its code for a device token

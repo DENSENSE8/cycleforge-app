@@ -413,8 +413,9 @@ export type BlockState = 'armed' | 'parked' | 'ended';
  * items (`ops_events` is the durable twin), and parks or ends. Elapsed is
  * the SUM OF ITS INTERVALS, never wall time — parking closes the interval
  * and stops the clock, which is what makes one-armed-block-at-a-time cost
- * nothing (S2/S3/S4). A parked block collapses to one line — title · state
- * · elapsed — and reopens in place.
+ * nothing (S2/S3/S4). A parked block collapses to one line — title · purpose
+ * · elapsed — and reopens in place. Wrap-up (from → to, why) is on the block
+ * after end; it is not a second clock.
  */
 export interface SessionBlock {
   readonly kind: 'block';
@@ -426,6 +427,16 @@ export interface SessionBlock {
   readonly intervals: readonly BlockInterval[];
   readonly items: readonly AssistantFeedMessage[];
   readonly collapsed: boolean;
+  /** Durable `work_sessions.id` once the row exists. */
+  readonly workSessionId?: number;
+  /** L1 bucket label. Reporting groups by purposeId, not this string. */
+  readonly purposeLabel?: string;
+  readonly purposeId?: number;
+  readonly notes?: string;
+  readonly wrapUp?: string;
+  readonly staffName?: string;
+  /** False = another staffer's block; Park/Resume/End stay on mine. */
+  readonly mine?: boolean;
 }
 
 /**
