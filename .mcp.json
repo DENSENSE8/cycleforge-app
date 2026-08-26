@@ -19,6 +19,11 @@
     "figma": {
       "type": "http",
       "url": "https://mcp.figma.com/mcp"
+    },
+    "design-mcp": {
+      "type": "stdio",
+      "command": "./tools/design-mcp/run-mcp.sh",
+      "args": []
     }
   }
 }
