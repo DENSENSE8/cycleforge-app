@@ -28,7 +28,7 @@ is permitted.
 
 ## Two primitive homes
 
-`src/design-system/primitives` (40) and `src/components/ui` (16) both hold
+`src/design-system/primitives` (36 `.tsx`) and `src/components/ui` (16) both hold
 primitives — there are two Buttons. That duplication is a real open question and
 this server does **not** resolve it: it reports both, labelled, so an agent sees
 the choice instead of picking whichever it grepped first.

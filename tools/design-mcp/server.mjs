@@ -23,7 +23,7 @@
  *
  * ## The two primitive homes
  *
- * `src/design-system/primitives` (40 files) and `src/components/ui` (16) both
+ * `src/design-system/primitives` (36 `.tsx`) and `src/components/ui` (16) both
  * hold primitives. That duplication is a real open question in this repo and
  * NOT something this server resolves — it reports both, labelled, so an agent
  * sees the choice instead of picking whichever it happened to grep first.
