@@ -138,7 +138,7 @@ export function insertUnshippedOrderIntoCache(
 ): void {
   const orderId = Number(row?.id);
   if (!Number.isFinite(orderId) || orderId <= 0) return;
-  const normalized = toOrderRecord(row) as OrderRow;
+  const normalized = toOrderRecord(row) as unknown as OrderRow;
   queryClient.setQueriesData({ queryKey: UNSHIPPED_LIST_KEY }, (current: unknown) => {
     if (!Array.isArray(current)) return current;
     const without = current.filter((existing: OrderRow) => Number(existing?.id) !== orderId);

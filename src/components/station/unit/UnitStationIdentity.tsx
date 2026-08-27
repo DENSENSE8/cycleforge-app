@@ -40,6 +40,7 @@ export function UnitStationIdentity({
   tracking,
   onExitToList,
   exitLabel = 'Back to results',
+  onOpenPhotosDisplay,
 }: {
   /** Built by `buildUnitStationIdentityVM` — the one unit mapping. */
   vm: UnitStationIdentityVM;

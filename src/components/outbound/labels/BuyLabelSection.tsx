@@ -7,6 +7,8 @@ import { Truck, Check, Loader2, RefreshCw, Clock, AlertTriangle, Trash2 } from '
 import { Button } from '@/design-system/primitives';
 import type { ShippingRateOption } from '@/lib/shipping/shipstation/types';
 import { safeRandomUUID } from '@/lib/safe-uuid';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
 
 interface RatesResponse {
   ok: boolean;
@@ -227,7 +229,7 @@ export function BuyLabelSection({
                   value={voidReason}
                   onChange={(e) => setVoidReason(e.target.value)}
                   placeholder="e.g. wrong service selected"
-                  className={`w-full ${faceSm} border border-rose-200 bg-surface-card px-2.5 py-1.5 text-role-caption text-text-default outline-none focus:border-rose-400`}
+                  className={cn('w-full', faceSm, 'border border-rose-200 bg-surface-card px-2.5 py-1.5 text-role-caption text-text-default outline-none', focusRing('field', 'danger'))}
                 />
                 {voidMutation.isError ? (
                   <p className="text-role-eyebrow text-rose-600">{voidMutation.error.message}</p>
