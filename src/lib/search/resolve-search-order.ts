@@ -1,5 +1,6 @@
 /**
- * Resolve a Dashboard Search `openOrderId` (numeric pk or human order # /
+ * Resolve a Search identifier (human order # or carrier tracking) to a
+ * ShippedOrder. Typed digits are marketplace order numbers, never `orders.id`.
  * tracking token) to a ShippedOrder. Lookup success must not collapse to
  * "not found" when the dashboard queue row is missing — Search detail is an
  * overall order display, not a queue-scoped view.
@@ -125,10 +126,6 @@ async function fetchOrderByNumericId(id: number): Promise<ResolvedSearchOrder> {
 export async function resolveSearchOrder(orderId: string): Promise<ResolvedSearchOrder> {
   const raw = decodeURIComponent(orderId || '').trim();
   if (!raw) return { status: 'notfound' };
-
-  if (/^\d+$/.test(raw)) {
-    return fetchOrderByNumericId(Number(raw));
-  }
 
   try {
     const res = await fetch(`/api/orders/lookup/${encodeURIComponent(raw)}`, {

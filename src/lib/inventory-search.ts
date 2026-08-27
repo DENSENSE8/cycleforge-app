@@ -211,7 +211,7 @@ export const INVENTORY_BUCKETS: Record<InventoryTab, InventoryBucketConfig[]> = 
 
 // ─── Bucket → serial_status / condition_grade mapping (Units tab) ────────────
 
-import { SERIAL_STATUS_VALUES, CONDITION_GRADE_VALUES } from '@/lib/inventory/view-types';
+import { SERIAL_STATUS_VALUES, CONDITION_GRADE_VALUES } from '@/components/inventory/types';
 
 /** Map a UnitBucket to the serial_status_enum values it covers. */
 export const UNIT_BUCKET_STATES: Record<UnitBucket, ReadonlyArray<(typeof SERIAL_STATUS_VALUES)[number]>> = {

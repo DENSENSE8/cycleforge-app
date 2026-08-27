@@ -1,4 +1,5 @@
 import type { QueryClient } from '@tanstack/react-query';
+import { toOrderRecord } from '@/lib/orders/order-record-normalize';
 
 /**
  * Dashboard-order cache surgery — one place for the incremental patches that keep
@@ -62,11 +63,9 @@ export function patchUnshippedOrderCache(
  *
  * It lives here rather than in a component because more than one surface reads
  * the unshipped cache and only one of them used to subscribe: `UnshippedTable`
- * owned this patch inline, so the drill host (`OrdersDrillHost`) — which queries
- * the same cache without mounting that table — went stale on a scan until
- * something else invalidated it. (The compare panes were a second such reader
- * until they were deleted on 2026-08-21; one consumer is still one too many for
- * a patch to hide inside a table.)
+ * owned this patch inline, so the compare panes (`OrdersPaneTable`) and the
+ * drill host (`OrdersDrillHost`) — which query the same cache without mounting
+ * that table — went stale on a scan until something else invalidated them.
  *
  * Never clobbers an existing `tested_by` with a null: the event carries the
  * tester only when the scan resolved one.
@@ -126,4 +125,23 @@ export function removeUnshippedOrderFromCache(queryClient: QueryClient, orderId:
  */
 export function invalidateUnshippedCounts(queryClient: QueryClient): void {
   queryClient.invalidateQueries({ queryKey: UNSHIPPED_COUNTS_KEY });
+}
+
+/**
+ * Insert a newly created order onto every cached unshipped list (Pending).
+ * Patch helpers only UPDATE rows already in cache — add-order stayed invisible
+ * until staleTime expired and `/api/orders` could still HIT Upstash.
+ */
+export function insertUnshippedOrderIntoCache(
+  queryClient: QueryClient,
+  row: OrderRow,
+): void {
+  const orderId = Number(row?.id);
+  if (!Number.isFinite(orderId) || orderId <= 0) return;
+  const normalized = toOrderRecord(row) as unknown as OrderRow;
+  queryClient.setQueriesData({ queryKey: UNSHIPPED_LIST_KEY }, (current: unknown) => {
+    if (!Array.isArray(current)) return current;
+    const without = current.filter((existing: OrderRow) => Number(existing?.id) !== orderId);
+    return [normalized, ...without];
+  });
 }

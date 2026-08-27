@@ -38,7 +38,6 @@ import pool from '@/lib/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { isBuyerNoteSignals } from '@/lib/feature-flags';
 import { recordEntitySignal, type RecordEntitySignalInput, type RecordEntitySignalResult } from './record-entity-signal';
-import { NO_SESSION } from '@/lib/sessions/attribution';
 
 export interface BuyerNoteCandidateRow {
   id: number;
@@ -112,7 +111,6 @@ export async function deriveBuyerNoteSignals(
     if (!note) continue;
     try {
       const result = await deps.recordSignal({
-        session: NO_SESSION,
         organizationId: orgId,
         entityType: 'ORDER',
         entityId: row.id,

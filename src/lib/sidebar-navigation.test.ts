@@ -149,6 +149,7 @@ test('prod nav ships every unparked page; only redirect surfaces stay off', () =
     'repair',
     'incoming',
     'outbound',
+    'scan-out',
     'tech',
     'packer',
     'products',
@@ -157,11 +158,6 @@ test('prod nav ships every unparked page; only redirect surfaces stay off', () =
     assert.equal(navIds.has(id), true, `${id} should stay on dogfood nav`);
   }
   assert.equal(navIds.has('warehouse'), false, 'Locations folded under Inventory L2');
-  assert.equal(
-    navIds.has('scan-out'),
-    false,
-    'Scan out lost its page (2026-08-21) — a floor row pointing at a 404 is worse than none',
-  );
   assert.equal(navIds.has('receiving'), false, 'parent Receiving L1 is gone — modes are L1');
   // Dashboard + the print hub dissolved into domain homes (D2 / D5): the routes
   // still resolve, the L1 rows do not exist.
@@ -169,7 +165,12 @@ test('prod nav ships every unparked page; only redirect surfaces stay off', () =
     assert.equal(navIds.has(id), false, `${id} must not own a spine row`);
   }
   assert.equal(navIds.has('sales'), true, 'Sales is its own root section (D4)');
-  assert.equal(navIds.has('counter'), false, 'the counter desk was removed with the kiosk product');
+  assert.equal(navIds.has('counter'), false, 'Counter is a Sales child, not an L1 spine row');
+  assert.equal(
+    getSidebarPageNav('sales')?.children?.some((m) => m.id === 'counter'),
+    true,
+    'Counter lives under Sales',
+  );
 });
 
 test('isSidebarRouteMobileRestricted only flags mobile-blocked routes', () => {
@@ -459,13 +460,11 @@ test('resolver matches existing panel derivations for known deep-links', () => {
   assert.equal(resolveSidebarChild('fba', at('/shipping', 'mode=fba')), 'combine');
   assert.equal(resolveSidebarChild('fba', at('/shipping', 'mode=fba&fbaMode=plan')), 'plan');
   assert.equal(resolveSidebarChild('fba', at('/fba', 'mode=plan')), 'plan');
-  // Desk Shipping children: To ship / FBA. Ready is an FBA stage tab. Labels and
-  // Scan out lost their pages on 2026-08-21 and are redirects now, so the desk's
-  // default child is To ship and a residual legacy path resolves there too.
-  assert.equal(resolveSidebarChild('outbound', at('/shipping')), 'orders');
+  // Desk Shipping children: Labels / FBA. Ready is an FBA stage tab. Scan out is its own floor L1.
+  assert.equal(resolveSidebarChild('outbound', at('/shipping')), 'labels');
   assert.equal(resolveSidebarChild('outbound', at('/shipping', 'mode=ready')), 'fba');
   assert.equal(resolveSidebarChild('outbound', at('/shipping', 'mode=fba')), 'fba');
-  assert.equal(resolveSidebarChild('outbound', at('/shipping/labels')), 'orders');
+  assert.equal(resolveSidebarChild('outbound', at('/shipping/labels')), 'labels');
   assert.equal(resolveSidebarChild('outbound', at('/shipping/ready')), 'fba');
   assert.equal(resolveSidebarChild('outbound', at('/shipping/fba')), 'fba');
   assert.equal(resolveSidebarChild('outbound', at('/shipping/fba', 'fbaMode=ready')), 'fba');
@@ -477,8 +476,8 @@ test('resolver matches existing panel derivations for known deep-links', () => {
   assert.equal(getSidebarNavPageId('/shipping/labels'), 'outbound');
   assert.equal(getSidebarNavPageId('/shipping/ready'), 'outbound');
   assert.equal(getSidebarNavPageId('/shipping/fba'), 'outbound');
-  assert.equal(getSidebarNavPageId('/shipping/scan-out'), 'outbound');
-  assert.equal(getSidebarPageNav('scan-out'), undefined, 'Scan out has no page nav');
+  assert.equal(getSidebarNavPageId('/shipping/scan-out'), 'scan-out');
+  assert.equal(resolveSidebarChild('scan-out', at('/shipping/scan-out')), null);
   // Dashboard: Shipping (id `outbound`) is the default — `?shipped`,
   // `?unshipped`, legacy `?pending`, and bare all resolve to it. Receiving
   // rides `?mode=inbound` (canonical) or the `?mode=receiving` alias. Sales /
@@ -504,14 +503,20 @@ test('resolver matches existing panel derivations for known deep-links', () => {
     'support',
   );
   assert.equal(getSidebarPageNav('dashboard'), undefined, 'no dashboard L1 page nav');
-  // The `/review` page was deleted on 2026-08-21 along with its three grids, so
-  // the D10 split it carried (packing QA under Fulfillment, pairing /
-  // catalog-link under Catalog) has nothing left to claim. Nothing in nav names
-  // it, and the route key no longer resolves — a key with no page would mount a
-  // context panel beside a 404.
+  // Review split (D10): packing QA is Fulfillment, pairing / catalog-link are
+  // Catalog. Every `/review` URL still resolves — the page never moved.
+  const reviewPage = (search = '') =>
+    getSidebarNavPageId('/review', new URLSearchParams(search));
+  assert.equal(reviewPage(), 'outbound');
+  assert.equal(reviewPage('rtab=flagged'), 'outbound');
+  assert.equal(reviewPage('mode=pairing'), 'products');
+  assert.equal(reviewPage('mode=catalog-link'), 'products');
   assert.equal(getSidebarPageNav('review'), undefined, 'no review L1 page nav');
-  assert.equal(getSidebarRouteKey('/review'), 'unknown');
-  assert.equal(resolveSidebarChild('outbound', at('/review')), 'orders');
+  assert.equal(resolveSidebarChild('outbound', at('/review')), 'review');
+  assert.equal(resolveSidebarChild('products', at('/review', 'mode=pairing')), 'pairing');
+  assert.equal(resolveSidebarChild('products', at('/review', 'mode=catalog-link')), 'catalog-link');
+  // The route key is untouched, so the Review surface still mounts its own panel.
+  assert.equal(getSidebarRouteKey('/review'), 'review');
   assert.equal(resolveSidebarChild('outbound', at('/dashboard')), 'orders');
   assert.equal(resolveSidebarChild('outbound', at('/shipping/orders')), 'orders');
   // Inbound is a leaf desk — no L2 children; dashboard inbound bookmarks still
@@ -521,6 +526,8 @@ test('resolver matches existing panel derivations for known deep-links', () => {
   assert.equal(resolveSidebarChild('sales', at('/dashboard', 'mode=sales')), 'sales');
   assert.equal(resolveSidebarChild('sales', at('/dashboard', 'mode=pickup')), 'pickup');
   assert.equal(resolveSidebarChild('sales', at('/dashboard', 'mode=repairs')), 'repairs');
+  assert.equal(getSidebarNavPageId('/counter'), 'sales');
+  assert.equal(resolveSidebarChild('sales', at('/counter')), 'counter');
   assert.equal(resolveSidebarChild('support', at('/support', 'mode=warranty')), 'warranty');
   assert.equal(resolveSidebarChild('support', at('/support', 'mode=orders')), 'orders');
   // Support › Inquiries aliases the To-ship desk — Support owns the pin.

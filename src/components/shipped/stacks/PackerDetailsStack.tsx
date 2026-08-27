@@ -1,0 +1,116 @@
+'use client';
+
+import { useEffect, useRef, useState } from 'react';
+import { Trash2 } from '@/components/Icons';
+import { ShippedDetailsPanelContent } from '../ShippedDetailsPanelContent';
+import { DetailsStackProps } from './types';
+import { dispatchCloseShippedDetails, dispatchDashboardAndStationRefresh } from '@/utils/events';
+import { Button } from '@/design-system/primitives';
+import { toast } from '@/lib/toast';
+
+export function PackerDetailsStack({
+  shipped,
+  durationData,
+  onUpdate,
+  actionBar: _actionBar,
+  activeSection,
+  showQuickLinks,
+  flush = false,
+}: DetailsStackProps) {
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isDeleteArmed, setIsDeleteArmed] = useState(false);
+  const deleteArmTimeoutRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (deleteArmTimeoutRef.current) {
+        window.clearTimeout(deleteArmTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const deletePackerLog = async () => {
+    if (!isDeleteArmed) {
+      setIsDeleteArmed(true);
+      if (deleteArmTimeoutRef.current) {
+        window.clearTimeout(deleteArmTimeoutRef.current);
+      }
+      deleteArmTimeoutRef.current = window.setTimeout(() => {
+        setIsDeleteArmed(false);
+      }, 3000);
+      return;
+    }
+
+    if (deleteArmTimeoutRef.current) {
+      window.clearTimeout(deleteArmTimeoutRef.current);
+      deleteArmTimeoutRef.current = null;
+    }
+    setIsDeleteArmed(false);
+
+    setIsDeleting(true);
+    try {
+      const packerLogId = Number((shipped as any).packer_log_id);
+      const activityLogId = Number((shipped as any).station_activity_log_id);
+      const deleteUrl =
+        Number.isFinite(packerLogId) && packerLogId > 0
+          ? `/api/packerlogs?id=${encodeURIComponent(String(packerLogId))}`
+          : Number.isFinite(activityLogId) && activityLogId > 0
+            ? `/api/packerlogs?activityLogId=${encodeURIComponent(String(activityLogId))}`
+            : null;
+      if (!deleteUrl) {
+        throw new Error('Missing packer or activity log id for delete');
+      }
+
+      const response = await fetch(deleteUrl, {
+        method: 'DELETE',
+      });
+
+      const data = await response.json().catch(() => null);
+      if (!response.ok || !data?.success) {
+        throw new Error(data?.error || 'Failed to delete packer log');
+      }
+
+      onUpdate?.();
+      dispatchDashboardAndStationRefresh();
+      dispatchCloseShippedDetails();
+    } catch (error) {
+      console.error('Failed to delete packer log:', error);
+      toast.error('Failed to delete packer log. Please try again.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  return (
+    <div className={flush ? 'flex min-h-full flex-col pb-6 pt-3' : 'flex min-h-full flex-col pb-8 pt-4'}>
+      <div className={flush ? 'flex-1 px-4' : 'flex-1'}>
+      <ShippedDetailsPanelContent
+        shipped={shipped}
+        durationData={durationData}
+        onUpdate={onUpdate}
+        activeSection={activeSection}
+        showQuickLinks={showQuickLinks}
+        flush={flush}
+      />
+      </div>
+
+      <section className={flush ? 'px-4 pt-2' : 'mx-8 pt-2'}>
+        <Button
+          type="button"
+          variant="danger"
+          size="lg"
+          onClick={deletePackerLog}
+          disabled={isDeleting}
+          icon={<Trash2 className="w-3.5 h-3.5" />}
+          className="w-full"
+        >
+          {isDeleting
+            ? 'Deleting...'
+            : isDeleteArmed
+              ? 'Click Again To Confirm'
+              : 'Delete'}
+        </Button>
+      </section>
+    </div>
+  );
+}

@@ -207,6 +207,8 @@ export function normalizeRow(row: Record<string, unknown>) {
     // Unboxed rail + History `unboxed_newest` read THIS for label + sort — same
     // axis. Selected on view=unbox_opened / activity / all; null elsewhere.
     unbox_opened_at:          asStampText(row.unbox_opened_at),
+    testing_opened_at:        asStampText(row.testing_opened_at),
+    tested_at:                asStampText(row.tested_at),
     unbox_only_intake:        row.unbox_only_intake === true,
     triage_complete:          row.triage_complete === true,
     triage_completed_at:      asStampText(row.triage_completed_at),
@@ -219,11 +221,12 @@ export function normalizeRow(row: Record<string, unknown>) {
     // the unbox_activity sort's tiebreak in the placeholder merge.
     updated_at:               asStampText(row.updated_at),
     // Most-recent activity timestamp matching the server's sort order. For
-    // view=testing this leads with tested_at (the verdict time the feed is
-    // ordered by); for view=all/activity it's the last scan. Falls through to
+    // view=testing_opened this leads with QC-open time; for view=testing it
+    // leads with tested_at; for view=viewed, viewed_at. Falls through to
     // received_at / created_at so the rail can render a single "last touched"
     // field regardless of view.
-    last_activity_at:         asStampText(row.viewed_at)
+    last_activity_at:         asStampText(row.testing_opened_at)
+                              ?? asStampText(row.viewed_at)
                               ?? asStampText(row.tested_at)
                               ?? asStampText(row.needs_test_at)
                               ?? asStampText(row.last_scan_at)

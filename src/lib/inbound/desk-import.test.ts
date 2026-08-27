@@ -42,6 +42,7 @@ function mockDeps(opts: {
       assert.equal(input.skuCatalogId, catalog?.id ?? null);
       return {
         receivingLineId: 1001,
+        receivingId: 55,
         created: opts.ingestCreated ?? true,
         platformAccountId: null,
         sourceType: 'amazon',
@@ -91,6 +92,7 @@ describe('importDeskInboundRow — Amazon returns ingest', () => {
           assert.equal(input.trackingNumber, '1Z999');
           return {
             receivingLineId: 1001,
+            receivingId: null,
             created: true,
             platformAccountId: null,
             sourceType: 'amazon',
@@ -119,6 +121,7 @@ describe('importDeskInboundRow — Amazon returns ingest', () => {
         assert.equal(input.sourceLineItemId, 'RMA1:B0HITSKU01');
         return {
           receivingLineId: 1001,
+          receivingId: 55,
           created: true,
           platformAccountId: null,
           sourceType: 'amazon',
@@ -163,6 +166,7 @@ describe('importDeskInboundRow — Amazon returns ingest', () => {
         seenName = input.itemName ?? null;
         return {
           receivingLineId: 2,
+          receivingId: null,
           created: true,
           platformAccountId: null,
           sourceType: 'amazon',
@@ -197,6 +201,7 @@ describe('importDeskInboundRow — Amazon returns ingest', () => {
       },
       ingestPurchase: async () => ({
         receivingLineId: 9,
+        receivingId: null,
         created: true,
         platformAccountId: null,
         sourceType: 'amazon',
@@ -212,5 +217,44 @@ describe('importDeskInboundRow — Amazon returns ingest', () => {
     });
     assert.equal(resolveCalled, false);
     assert.equal(isDeskImportSkip(outcome), false);
+  });
+
+  it('stamps explicit skuCatalogId from Add Return picker', async () => {
+    const row = {
+      kind: 'return' as const,
+      sourceType: 'amazon',
+      orderId: '111-222-333',
+      sku: 'LEGACY-SKU',
+      itemName: 'Legacy title',
+      trackingNumber: '1Z999',
+      skuCatalogId: 99,
+    };
+    let seenCatalogId: number | null | undefined;
+    await importDeskInboundRow(ORG, row, {
+      resolveCatalogById: async (_org, id) => {
+        assert.equal(id, 99);
+        return { id: 99, sku: 'CAT-SKU', product_title: 'Catalog title' };
+      },
+      ingestPurchase: async (_org, input) => {
+        seenCatalogId = input.skuCatalogId ?? null;
+        assert.equal(input.sku, 'CAT-SKU');
+        return {
+          receivingLineId: 11,
+          receivingId: 5,
+          created: true,
+          platformAccountId: null,
+          sourceType: 'amazon',
+          sourceOrderId: '111-222-333',
+        };
+      },
+      tagInboundAsReturn: async () => {},
+      stampClassify: async () => ({
+        sourcePlatform: 'amazon',
+        receivingType: null,
+        priorityTier: null,
+      }),
+      receiveIfCartonUnboxed: async () => null,
+    });
+    assert.equal(seenCatalogId, 99);
   });
 });

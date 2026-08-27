@@ -1,0 +1,33 @@
+'use client';
+
+interface AdminFilterChipsProps<T extends string> {
+  options: ReadonlyArray<{ value: T; label: string }>;
+  value: T;
+  onChange: (next: T) => void;
+}
+
+export function AdminFilterChips<T extends string>({
+  options,
+  value,
+  onChange,
+}: AdminFilterChipsProps<T>) {
+  return (
+    <>
+      {options.map((opt) => (
+        // ds-raw-button
+        <button
+          key={opt.value}
+          type="button"
+          onClick={() => onChange(opt.value)}
+          className={`flex-1 rounded-lg px-2 py-1 text-role-micro font-semibold uppercase tracking-wider transition ${
+            value === opt.value
+              ? 'bg-blue-600 text-white shadow-sm shadow-blue-200'
+              : 'bg-surface-sunken text-text-muted hover:bg-surface-strong'
+          }`}
+        >
+          {opt.label}
+        </button>
+      ))}
+    </>
+  );
+}

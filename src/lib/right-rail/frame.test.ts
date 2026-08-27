@@ -10,13 +10,13 @@
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { CONTEXT_PANEL_RESIZE } from '@/lib/sidebar/context-panel-column';
+import { CONTEXT_PANEL_RESIZE } from '@/components/sidebar/context-panel-column';
 import {
   STATION_COLUMN_BUDGET,
   STATION_DISPLAYS_AUTO_CLOSE_FRAME_PX,
   STATION_DISPLAYS_MIN_WIDTH_PX,
   STATION_WORKBENCH_LOCK_PX,
-} from '@/lib/station/workbench-layout';
+} from '@/components/station/workbench/workbench-layout';
 import {
   CONTEXT_RAIL_PARKED_PX,
   MIN_WORK_SURFACE_PX,
@@ -83,6 +83,7 @@ describe('desk inspector budget — left rail stays open', () => {
     const r = resolveRightRailFrame({ ...desk, frameWidthPx: 1920 });
     assert.equal(r.mode, 'push');
     assert.equal(r.capPx, 776);
+    assert.equal(r.coverPx, 1920 - 360);
   });
 
   it('1440: pushes without parking the context rail; right caps to panel min', () => {
@@ -90,6 +91,7 @@ describe('desk inspector budget — left rail stays open', () => {
     const r = resolveRightRailFrame({ ...desk, frameWidthPx: 1440 });
     assert.equal(r.mode, 'push');
     assert.equal(r.capPx, 360);
+    assert.equal(r.coverPx, 1440 - 360);
   });
 
   it('1440 with no route rail: wider cap (full frame minus floor)', () => {
@@ -159,10 +161,12 @@ describe('the resize cap', () => {
     assert.equal(noRail.capPx, 656);
   });
 
-  it('never caps below the panel’s own minimum, however narrow the frame', () => {
-    const r = resolveRightRailFrame({ ...desk, frameWidthPx: 900 });
-    assert.equal(r.mode, 'push');
-    assert.equal(r.capPx, 360);
+  it('fullscreen cover yields the center while leaving the left rail', () => {
+    const open = resolveRightRailFrame({ ...desk, frameWidthPx: 1440 });
+    assert.equal(open.coverPx, 1080);
+    assert.ok(open.coverPx > open.capPx);
+    const noRail = resolveRightRailFrame({ ...desk, frameWidthPx: 1440, railCostOpenPx: 0 });
+    assert.equal(noRail.coverPx, 1440);
   });
 });
 

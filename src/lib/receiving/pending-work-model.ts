@@ -75,14 +75,3 @@ export function orderPendingWork(items: PendingWorkItem[]): PendingWorkItem[] {
     a.latestAt < b.latestAt ? 1 : a.latestAt > b.latestAt ? -1 : 0,
   );
 }
-
-/**
- * Unbox is a focus-locked scan bench. The corner card (open exceptions /
- * archive-pending) must never paint there — the carton already carries those
- * facts in ticket/exception chrome, and a viewport overlay sits on the Displays
- * column.
- */
-export function isPendingWorkPromptHidden(pathname: string | null | undefined): boolean {
-  if (!pathname) return false;
-  return pathname === '/unbox' || pathname.startsWith('/unbox/');
-}

@@ -20,7 +20,7 @@ import {
   PhoneIncoming,
   PhoneMissed,
   PhoneOutgoing,
-} from '@/lib/icons';
+} from '@/components/Icons';
 import type { HorizontalSliderItem } from '@/lib/ui/horizontal-slider-item';
 import { shippingOrdersHref } from '@/lib/shipping/orders-desk';
 

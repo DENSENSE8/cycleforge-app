@@ -10,7 +10,7 @@
  * same object on screen.
  */
 
-import type { WorkStatus } from '@/lib/work-orders/types';
+import type { WorkStatus } from '@/components/work-orders/types';
 
 const LABEL: Record<WorkStatus, string> = {
   OPEN: 'Open',

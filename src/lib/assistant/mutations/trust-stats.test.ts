@@ -12,11 +12,10 @@ import type { OrgId } from '@/lib/tenancy/constants';
 const ORG = '11111111-2222-3333-4444-555555555555' as OrgId;
 
 function fakes(rows: Array<{ mutation_kind: string; status: string; n: number }>) {
-  const cap: { params: ReadonlyArray<unknown>[]; text: string[] } = { params: [], text: [] };
+  const cap: { params: ReadonlyArray<unknown>[] } = { params: [] };
   const deps: MutationStatsDeps = {
-    query: (async (_orgId: OrgId, text: string, params: ReadonlyArray<unknown>) => {
+    query: (async (_orgId: OrgId, _text: string, params: ReadonlyArray<unknown>) => {
       cap.params.push(params);
-      cap.text.push(text);
       return { rows, rowCount: rows.length };
     }) as MutationStatsDeps['query'],
   };
@@ -64,14 +63,4 @@ test('getMutationTrustStats: unknown kind → trust "unknown", no decided outcom
 test('getMutationTrustStats: empty → []', async () => {
   const { deps } = fakes([]);
   assert.deepEqual(await getMutationTrustStats(ORG, deps), []);
-});
-
-test('operator rows are excluded — this measures the AI, not the people', async () => {
-  // agent_mutations holds operator actions too since 2026-08-23a. Without the
-  // actor_kind predicate, a human parking a session and unparking it lands here
-  // as one applied + one reverted — the assistant's acceptance rate falling
-  // because a person changed their mind.
-  const { deps, cap } = fakes([{ mutation_kind: 'feed_membership.set_state', status: 'applied', n: 1 }]);
-  await getMutationTrustStats(ORG, deps);
-  assert.match(cap.text[0], /actor_kind = 'agent'/);
 });

@@ -9,6 +9,8 @@ import { SHIPMENT_STATUS_CATEGORIES } from '@/lib/order-lifecycle';
 import { PACK_ACTIVITY_TYPES, sqlInList } from '@/lib/station-activity';
 import { sqlOrderHasPackScan, sqlOrderHasTechScan } from '@/lib/orders/order-grain-sql';
 import { withAuth } from '@/lib/auth/withAuth';
+import { WAREHOUSE_TIME_ZONE } from '@/utils/date';
+import { parsePackedDateKey } from '@/lib/packed/packed-filters';
 
 let replenishmentSchemaCheck:
   | { value: boolean; checkedAt: number }
@@ -72,6 +74,8 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     const hasSearchQuery     = Boolean(String(query || '').trim());
     const weekStart          = searchParams.get('weekStart') || '';
     const weekEnd            = searchParams.get('weekEnd') || '';
+    const packedDateFrom     = parsePackedDateKey(searchParams.get('dateFrom')) ?? '';
+    const packedDateTo       = parsePackedDateKey(searchParams.get('dateTo')) ?? '';
     const assignmentStatus   = searchParams.get('assignmentStatus') || '';
     const shipByDate         = searchParams.get('shipByDate') || '';
     const packedBy           = searchParams.get('packedBy');
@@ -123,8 +127,12 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     const stageFilter = stageRaw === 'pending' || stageRaw === 'tested' ? stageRaw : '';
     const limitRaw = Number(searchParams.get('limit'));
     const pageLimit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.min(Math.floor(limitRaw), 500) : null;
-    // Keyset cursor over the ORDER BY (deadline_at ASC NULLS LAST, id ASC),
-    // base64(JSON{ d: iso|null, id }).
+    // Keyset cursor over the ORDER BY.
+    // Fulfillment (To Ship) is newest-first (`o.id DESC`) so manual add-order
+    // and fresh imports paint at the head of Pending instead of under a
+    // virtualized deadline-sorted backlog. Other `/api/orders` callers keep
+    // `deadline_at ASC NULLS LAST, id ASC`.
+    // Cursor payload stays base64(JSON{ d: iso|null, id }).
     const cursorRaw = searchParams.get('cursor');
     let cursor: { d: string | null; id: number } | null = null;
     if (cursorRaw) {
@@ -155,6 +163,8 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       awaitingOnly,
       fulfillmentScope,
       stagedOnly,
+      packedDateFrom,
+      packedDateTo,
       exceptionsOnly,
       stallHours,
       carrierFilter,
@@ -633,6 +643,17 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       )`;
       sql += ` AND NOT ${shippedByCarrierOrLatestStatusSql}`;
       sql += ` AND COALESCE(o.fulfillment_channel, '') <> 'AFN'`;
+      if (packedDateFrom || packedDateTo) {
+        const packedDaySql = `timezone('${WAREHOUSE_TIME_ZONE}', COALESCE(pl_latest.packed_at, pack_activity.created_at))::date`;
+        if (packedDateFrom) {
+          sql += ` AND ${packedDaySql} >= $${paramCount++}::date`;
+          params.push(packedDateFrom);
+        }
+        if (packedDateTo) {
+          sql += ` AND ${packedDaySql} <= $${paramCount++}::date`;
+          params.push(packedDateTo);
+        }
+      }
     }
 
     if (carrierFilter) {
@@ -786,10 +807,13 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       params.push(orderIdFilter);
     }
 
-    // Keyset cursor: rows AFTER (d, id) in `deadline_at ASC NULLS LAST, id ASC`.
-    // A non-null cursor also sweeps in the NULL-deadline tail (it sorts last).
+    // Keyset cursor: fulfillment is `o.id DESC`; everything else is
+    // `deadline_at ASC NULLS LAST, id ASC`.
     if (cursor) {
-      if (cursor.d != null) {
+      if (fulfillmentScope) {
+        sql += ` AND o.id < $${paramCount++}`;
+        params.push(cursor.id);
+      } else if (cursor.d != null) {
         sql += ` AND (
           wa_deadline.deadline_at > $${paramCount}::timestamptz
           OR (wa_deadline.deadline_at = $${paramCount}::timestamptz AND o.id > $${paramCount + 1})
@@ -803,7 +827,9 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       }
     }
 
-    sql += ` ORDER BY wa_deadline.deadline_at ASC NULLS LAST, o.id ASC`;
+    sql += fulfillmentScope
+      ? ` ORDER BY o.id DESC`
+      : ` ORDER BY wa_deadline.deadline_at ASC NULLS LAST, o.id ASC`;
 
     // Fetch one extra row to detect truncation + mint the next keyset cursor.
     // Only when an explicit limit is set — unlimited callers are unchanged.

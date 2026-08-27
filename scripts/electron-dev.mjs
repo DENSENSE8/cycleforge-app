@@ -1,30 +1,45 @@
 #!/usr/bin/env node
 /**
- * Launch the Cycle Forge desktop shell against the ALREADY-RUNNING dev server.
+ * Launch the Cycle Forge desktop shell against the ALREADY-RUNNING main
+ * dogfood server on :3050.
  *
- * HARD LAW (AGENTS.md): the user owns the dev server.
- * This script ATTACHES to it and never starts, restarts, or kills one — the
- * legacy shell's dev harness spawned `npm run dev` itself, which is exactly the
- * behaviour that rule forbids. If :3050 is not up, we say so and exit; we do not
- * "helpfully" boot a second server that would fight for the port.
+ * This checkout is MAIN. The Claude / Warehouse OS worktree owns :3051 and
+ * its own Electron. Never probe :3051 from here — that would load the
+ * worktree origin into the dogfood desktop. The Cloudflare tunnel
+ * (usav-dev) is browser-only and also fronts :3050; this shell stays on
+ * loopback.
  *
- *   pnpm dev            # you, in your own terminal (port 3050)
- *   pnpm desktop:dev    # this script, in another
- *
- * Override the target with ELECTRON_START_URL to attach to a deployed
- * environment instead (e.g. a Vercel preview).
+ *   pnpm dev            # cycleforge-dev.service — :3050
+ *   pnpm desktop:dev    # this script, attaches to :3050
  */
 
 import { spawn } from 'node:child_process';
 
-/**
- * Attach order: an explicit ELECTRON_START_URL wins; otherwise probe the
- * Warehouse OS worktree server (:3051) first, then the main checkout (:3050).
- * Both are the operator's servers — this script still never starts one.
- */
-const CANDIDATES = process.env.ELECTRON_START_URL
-  ? [process.env.ELECTRON_START_URL.replace(/\/+$/, '')]
-  : ['http://127.0.0.1:3051', 'http://127.0.0.1:3050'];
+const PINNED = 'http://127.0.0.1:3050';
+
+function isPinnedLocal(url) {
+  try {
+    const u = new URL(url);
+    const host = u.hostname === '127.0.0.1' || u.hostname === 'localhost' || u.hostname === '[::1]';
+    return host && u.port === '3050' && u.protocol === 'http:';
+  } catch {
+    return false;
+  }
+}
+
+const requested = (process.env.ELECTRON_START_URL || PINNED).replace(/\/+$/, '');
+if (!isPinnedLocal(requested)) {
+  console.error(
+    [
+      '',
+      `  Refusing ELECTRON_START_URL=${requested}`,
+      `  Main desktop is pinned to ${PINNED} (local dogfood).`,
+      '  The worktree Electron owns :3051. The usav-dev tunnel is browser-only.',
+      '',
+    ].join('\n'),
+  );
+  process.exit(1);
+}
 
 /** Probe without failing the process — any HTTP answer means something is listening. */
 async function isUp(url) {
@@ -40,34 +55,21 @@ async function isUp(url) {
   }
 }
 
-let TARGET = null;
-for (const candidate of CANDIDATES) {
-  if (await isUp(candidate)) {
-    TARGET = candidate;
-    break;
-  }
-}
-
-if (!TARGET) {
+if (!(await isUp(PINNED))) {
   console.error(
     [
       '',
-      `  Nothing is answering at ${CANDIDATES.join(' or ')}.`,
+      `  Nothing is answering at ${PINNED}.`,
       '',
-      '  This script attaches to your dev server — it will not start one.',
-      '  Start it yourself in another terminal:',
-      '',
-      '      pnpm dev',
-      '',
-      '  …then re-run `pnpm desktop:dev`.',
-      '  (Attaching somewhere else? Set ELECTRON_START_URL.)',
+      '  Main dogfood is cycleforge-dev.service on :3050 — this script will not start it.',
+      '  Check: systemctl --user status cycleforge-dev.service',
       '',
     ].join('\n'),
   );
   process.exit(1);
 }
 
-console.log(`[desktop] attaching to ${TARGET}`);
+console.log(`[desktop] attaching to ${PINNED} (main dogfood)`);
 
 const electron = spawn(
   process.platform === 'win32' ? 'npx.cmd' : 'npx',
@@ -75,11 +77,10 @@ const electron = spawn(
   {
     stdio: 'inherit',
     shell: process.platform === 'win32',
-    env: { ...process.env, ELECTRON_START_URL: TARGET, NODE_ENV: 'development' },
+    env: { ...process.env, ELECTRON_START_URL: PINNED, NODE_ENV: 'development' },
   },
 );
 
-// Only ever signal the child we started. The dev server is not ours to touch.
 const stop = () => {
   if (!electron.killed) electron.kill('SIGTERM');
 };

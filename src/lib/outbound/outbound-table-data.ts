@@ -54,15 +54,22 @@ export async function fetchAwaitingLabelsData({
 export async function fetchStagedOrdersData({
   searchQuery = '',
   staffId,
+  dateFrom,
+  dateTo,
 }: {
   searchQuery?: string;
   /** Universal staff filter (P1-WORK-02): packer/tester match. */
   staffId?: number;
+  /** Packed-at civil window (warehouse YYYY-MM-DD). */
+  dateFrom?: string;
+  dateTo?: string;
 } = {}): Promise<ShippedOrder[]> {
   const params = new URLSearchParams();
   if (searchQuery.trim()) params.set('q', searchQuery.trim());
   params.set('stagedOnly', 'true');
   if (staffId != null && staffId > 0) params.set('staff', String(staffId));
+  if (dateFrom) params.set('dateFrom', dateFrom);
+  if (dateTo) params.set('dateTo', dateTo);
 
   const res = await fetch(`/api/orders?${params.toString()}`, FRESH_FETCH_OPTIONS);
   if (!res.ok) throw new Error('Failed to fetch staged orders');

@@ -20,7 +20,6 @@ import type { AnonymousAuthContext } from '@/lib/auth/withAuth';
 import { getCurrentUserBySid } from '@/lib/auth/current-user';
 import { readSessionSid } from '@/lib/auth/session';
 import type { OrgId } from '@/lib/tenancy/constants';
-import { NO_SESSION } from '@/lib/sessions/attribution';
 
 /**
  * Build a lightweight AuthContext from the session cookie without going
@@ -538,7 +537,6 @@ export async function PATCH(
       // tenant so the inventory_events row stamps + GUC-isolates correctly.
       try {
         await recordInventoryEvent({
-          session: NO_SESSION,
           event_type: 'NOTE',
           actor_staff_id: staffId ?? null,
           station: 'MOBILE',

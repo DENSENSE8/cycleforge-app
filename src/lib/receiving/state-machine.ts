@@ -45,7 +45,6 @@ import {
   type ReceivingLineStatus,
 } from '@/lib/receiving/workflow-stages';
 import type { InboundWorkflowStatus } from '@/lib/drizzle/schema';
-import { NO_SESSION } from '@/lib/sessions/attribution';
 
 // ─── Transition allow-list (inbound_workflow_status_enum) ────────────────────
 // Forward lifecycle + the rewinds/branches the receiving + testing flows really
@@ -234,7 +233,6 @@ async function runReceivingLineTransition(
       ? { id: -1 }
       : await deps.recordEvent(
           {
-            session: NO_SESSION,
             event_type: input.eventType ?? 'NOTE',
             actor_staff_id: input.actorStaffId ?? null,
             station: input.station ?? 'RECEIVING',

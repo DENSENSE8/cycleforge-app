@@ -1,4 +1,4 @@
-import type { MetricIntent } from '@/lib/design/metric-intent';
+import type { MetricIntent } from '@/design-system/components/monitor';
 import type { ComputedMetric } from '@/lib/dashboard/outbound-metrics';
 import type { TestingWorkspaceTab } from '@/utils/testing-workspace-state';
 

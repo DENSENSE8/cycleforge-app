@@ -4,7 +4,7 @@ import { withAuth } from '@/lib/auth/withAuth';
 import { db } from '@/lib/drizzle/db';
 import { workflowTemplates } from '@/lib/drizzle/schema';
 import type { TemplateGraph } from '@/lib/studio/templates';
-import type { StudioTemplateSummary } from '@/lib/studio/studio-types';
+import type { StudioTemplateSummary } from '@/components/studio/studio-types';
 
 /**
  * GET /api/studio/templates

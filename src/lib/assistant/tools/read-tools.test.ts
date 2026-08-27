@@ -51,11 +51,6 @@ const DOMAIN_TOOL_NAMES = new Set([
   // than the injectable tenantQuery dep, same as every entry above.
   'resolve_receiving_line_for_order',
   'list_receiving_line_photos',
-  // Session reflection: the series readers go through the injected rollup
-  // (`SessionToolDeps`), not tenantQuery. `get_session_throughput` is NOT here
-  // — its ownership probe is real SQL and must stay in the org-threading sweep.
-  'get_my_session_stats',
-  'get_team_session_stats',
 ]);
 
 /**
@@ -119,8 +114,8 @@ function fakes(rowsFor?: (text: string) => Array<Record<string, unknown>>) {
   return { deps, cap };
 }
 
-test('registry: 35 tools (31 read + 4 gateway), unique names, model-grade descriptions, valid permissions', () => {
-  assert.equal(ASSISTANT_TOOLS.size, 35);
+test('registry: 32 tools (28 read + 4 gateway), unique names, model-grade descriptions, valid permissions', () => {
+  assert.equal(ASSISTANT_TOOLS.size, 32);
   const expected = [
     'get_signals_by_node', 'get_top_reasons', 'get_unit_journey', 'get_feed_state',
     'get_graph', 'get_node_detail', 'get_benchmarks', 'get_kpis',
@@ -132,7 +127,6 @@ test('registry: 35 tools (31 read + 4 gateway), unique names, model-grade descri
     'search_photos', 'get_receiving_by_tracking', 'get_ticket_entities',
     'get_packing_kpi',
     'resolve_receiving_line_for_order', 'list_receiving_line_photos',
-    'get_my_session_stats', 'get_session_throughput', 'get_team_session_stats',
     // The tool-forge gateway — exactly four, per the pipeline spec.
     'search_tool_registry', 'submit_approval_decision',
     'execute_build_sandbox', 'commit_to_git',
@@ -153,9 +147,6 @@ test('every SQL tool threads ctx.organizationId as $1 into every query (never mo
     get_node_detail: { nodeId: 'n-abc' },
     search_notes: { query: 'no audio' },
     get_feed_state: { feedKey: 'receiving_triage' },
-    // The ownership probe runs first and short-circuits on an empty result, so
-    // this reaches the SQL sweep without the rollup ever being loaded.
-    get_session_throughput: { sessionId: 41 },
   };
   for (const name of ASSISTANT_TOOLS.keys()) {
     if (SEARCH_TOOL_NAMES.has(name) || DOMAIN_TOOL_NAMES.has(name) || GATEWAY_TOOL_NAMES.has(name)) continue;
@@ -253,7 +244,7 @@ test('resolve_support_ticket: found path returns receiving href', async () => {
   assert.equal(data.found, true);
   assert.equal(data.receivingId, 99);
   assert.equal(data.label, '#4821');
-  assert.equal(data.href, '/carton/99');
+  assert.equal(data.href, '/search?sel=receiving:99');
 });
 
 test('permission gating: studio tools refused without studio.view; search needs assistant.chat', async () => {
@@ -267,11 +258,8 @@ test('permission gating: studio tools refused without studio.view; search needs 
   assert.ok(!names.includes('hybrid_entity_search'));
   assert.ok(!names.includes('get_operations_journey'));
   assert.ok(!names.includes('lookup_warranty_coverage'));
-  // dashboard.view core (9) + order/serial/queue domain tools (4) + the org-wide
-  // session rollup (1). The two PERSONAL session tools are assistant.chat.
-  assert.equal(names.length, 14);
-  assert.ok(names.includes('get_team_session_stats'));
-  assert.ok(!names.includes('get_my_session_stats'));
+  // dashboard.view core (9) + order/serial/queue domain tools (4)
+  assert.equal(names.length, 13);
   assert.ok(names.includes('get_order_lookup'));
   assert.ok(names.includes('lookup_serial'));
   assert.ok(names.includes('get_my_tech_queue'));

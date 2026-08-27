@@ -5,9 +5,11 @@
  * - `hlayout=list` (default when omitted) — flat leaf LedgerGrid (no in-grid fold)
  * - `hlayout=drill` — linked dual panes; parent rollups live only here
  * - `drillPo` — durable selected {@link ReceivingPoGroup} key
+ *
+ * Orthogonal to TradingView compare (`clayout` / `c0`…`c3`).
  */
 
-import type { ReceivingPoGroup } from '@/lib/receiving/receiving-lines-table-helpers';
+import type { ReceivingPoGroup } from '@/components/station/receiving-lines-table-helpers';
 import {
   flattenSectionedParents,
   parseLedgerDrillLayout,
@@ -15,7 +17,7 @@ import {
   writeLedgerDrillParams,
   type LedgerDrillLayout,
   type LedgerDrillUrlContract,
-} from '@/lib/grid/ledger-drill-layout';
+} from '@/design-system/components/grid';
 
 export const HISTORY_DRILL_LAYOUT_PARAM = 'hlayout';
 export const HISTORY_DRILL_PO_PARAM = 'drillPo';

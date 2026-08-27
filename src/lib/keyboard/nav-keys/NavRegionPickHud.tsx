@@ -7,7 +7,7 @@
  */
 
 import { useSyncExternalStore } from 'react';
-import { elevationClass } from '@/lib/design/shadows';
+import { elevationClass } from '@/design-system/tokens/shadows';
 import { cn } from '@/utils/_cn';
 import { NAV_KEY_HINT_CLASS } from './nav-key-face';
 import { NAV_REGIONS } from './nav-regions';

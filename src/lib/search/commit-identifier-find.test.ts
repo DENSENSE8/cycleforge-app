@@ -32,10 +32,17 @@ test('hrefForPreviewHit: orders use feedback sel href', () => {
   );
 });
 
-test('hrefForPreviewHit: non-orders keep hit.href', () => {
+test('hrefForPreviewHit: non-orders keep desktop hit.href', () => {
   assert.equal(
     hrefForPreviewHit({ entityType: 'unit', id: 3, href: '/inventory/units?unit=3' }),
     '/inventory/units?unit=3',
+  );
+});
+
+test('hrefForPreviewHit: never returns a mobile Digital Link', () => {
+  assert.equal(
+    hrefForPreviewHit({ entityType: 'receiving', id: 99, href: '/m/r/99' }),
+    '/search?sel=receiving:99',
   );
 });
 

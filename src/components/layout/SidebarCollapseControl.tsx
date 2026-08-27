@@ -1,0 +1,69 @@
+'use client';
+
+/**
+ * GlobalHeader sidebar toggle — click opens/closes the MasterNav spine.
+ *
+ * Click-only. When collapsed, Home · Media stay in the open spine's
+ * 40px band (`SpineTopPins`) and via ⌘K — no hover peek from this control.
+ * Hover/focus still warms the spine chunk so the first open lands warm.
+ */
+
+import { useCallback } from 'react';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { IconButton } from '@/design-system/primitives';
+import { warmSpineChunk } from '@/components/sidebar/preload-spine';
+import { cn } from '@/utils/_cn';
+import {
+  HEADER_ICON_BTN_CLASS,
+  HEADER_ICON_WRAP,
+  TOP_CHROME_ICON_FACE,
+} from './header-shell';
+
+const SidebarGlyph = (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={TOP_CHROME_ICON_FACE}
+    aria-hidden
+  >
+    <rect width="18" height="18" x="3" y="3" rx="2" />
+    <path d="M9 3v18" />
+  </svg>
+);
+
+export function SidebarCollapseControl({
+  sidebarCollapsed,
+  onToggleSidebar,
+}: {
+  sidebarCollapsed: boolean;
+  onToggleSidebar: () => void;
+}) {
+  const onPointerEnter = useCallback(() => warmSpineChunk(), []);
+  const onFocus = useCallback(() => warmSpineChunk(), []);
+
+  // Noun = navigation (MasterNav spine) — not the context-rail "sidebar" that
+  // owns ⌘B. Spine stays click-only; never advertise a layout chord here.
+  const label = sidebarCollapsed ? 'Show navigation' : 'Hide navigation';
+
+  return (
+    <div className={cn(HEADER_ICON_WRAP, '-ml-px')} data-testid="sidebar-collapse-control">
+      <HoverTooltip label={label} asChild>
+        <IconButton
+          size="md"
+          onClick={onToggleSidebar}
+          onPointerEnter={onPointerEnter}
+          onFocus={onFocus}
+          ariaLabel={label}
+          aria-pressed={!sidebarCollapsed}
+          aria-expanded={!sidebarCollapsed}
+          className={HEADER_ICON_BTN_CLASS}
+          icon={SidebarGlyph}
+        />
+      </HoverTooltip>
+    </div>
+  );
+}

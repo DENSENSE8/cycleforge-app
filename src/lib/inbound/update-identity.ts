@@ -11,12 +11,14 @@ import { linkShipment } from '@/lib/shipping/shipment-links';
 import { ensureReceivingForInboundOrder } from '@/lib/receiving/attach-box';
 import { INBOUND_SOURCE_FACT_KIND, assertRegisteredInboundSource } from './source-registry';
 import { readLineFact, writeLineFact } from '@/lib/receiving/facts/store';
+import { resolveCatalogById } from './desk-import';
 
 interface UpdateInboundIdentityInput {
   receivingLineId: number;
   trackingNumber?: string | null;
   listingUrl?: string | null;
   orderNumber?: string | null;
+  skuCatalogId?: number | null;
 }
 
 interface UpdateInboundIdentityResult {
@@ -78,6 +80,35 @@ export async function updateInboundIdentity(
       input.listingUrl === undefined ? undefined : input.listingUrl?.trim() || null;
     const orderNumber =
       input.orderNumber === undefined ? undefined : input.orderNumber?.trim() || null;
+    const skuCatalogId =
+      input.skuCatalogId === undefined
+        ? undefined
+        : input.skuCatalogId != null && Number.isFinite(Number(input.skuCatalogId))
+          ? Number(input.skuCatalogId)
+          : null;
+
+    if (skuCatalogId !== undefined) {
+      if (skuCatalogId == null) {
+        await client.query(
+          `UPDATE receiving_line
+              SET sku_catalog_id = NULL, updated_at = NOW()
+            WHERE id = $1 AND organization_id = $2::uuid`,
+          [receivingLineId, orgId],
+        );
+      } else {
+        const catalog = await resolveCatalogById(orgId, skuCatalogId);
+        if (!catalog) throw new Error('inbound: sku_catalog_id is not an active catalog row');
+        await client.query(
+          `UPDATE receiving_line
+              SET sku_catalog_id = $2,
+                  sku = COALESCE($3, sku),
+                  item_name = COALESCE($4, item_name),
+                  updated_at = NOW()
+            WHERE id = $1 AND organization_id = $5::uuid`,
+          [receivingLineId, catalog.id, catalog.sku, catalog.product_title, orgId],
+        );
+      }
+    }
 
     if (tracking !== undefined || orderNumber !== undefined) {
       const txQuery = {

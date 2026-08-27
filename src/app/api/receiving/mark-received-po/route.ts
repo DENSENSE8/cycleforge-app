@@ -57,7 +57,6 @@ import { conditionLabel } from '@/lib/conditions';
 import { mergeSerialNoteIntoLineDescription } from '@/lib/zoho';
 import { recordOpsEvent } from '@/lib/ops-events';
 import { resolveSurfaceWorkflowNodeId } from '@/lib/stations/surface-workflow-node';
-import { NO_SESSION } from '@/lib/sessions/attribution';
 
 function normalizeSkuKey(s: string | null | undefined): string {
   return String(s ?? '').trim().toLowerCase();
@@ -469,10 +468,6 @@ export const POST = withAuth(async (request, ctx) => {
               entityType: 'receiving',
               entityId: receivingId,
               eventType: 'UNBOX_CONFIRMED',
-              // The unbox surface does not open a work session yet. When it
-              // does, this is one of the two events that must carry it — it is
-              // the confirmation the whole unbox session exists to produce.
-              session: NO_SESSION,
               actorStaffId: staffId,
               clientEventId: clientEventId ? `${clientEventId}:unbox` : `receiving:${receivingId}:unbox:${now}`,
               occurredAt: now,
@@ -559,7 +554,6 @@ export const POST = withAuth(async (request, ctx) => {
 
       if (isUnreceive) {
         const result = await unreceiveLineUnits({
-          session: NO_SESSION,
           organizationId: ctx.organizationId,
           receiving_line_id: lineRow.id,
           staff_id: staffId,
@@ -600,7 +594,6 @@ export const POST = withAuth(async (request, ctx) => {
       // Even when unitsToAdd is 0 (line already complete) we still call the
       // helper so QA/disp/cond/workflow_status get set.
       const result = await receiveLineUnits({
-        session: NO_SESSION,
         organizationId: ctx.organizationId,
         receiving_line_id: lineRow.id,
         units: unitsToAdd,
@@ -688,8 +681,6 @@ export const POST = withAuth(async (request, ctx) => {
         entityType: 'receiving',
         entityId: receivingId,
         eventType: 'UNBOX_CONFIRMED',
-        // See the sibling emit above — same event, same pending session wiring.
-        session: NO_SESSION,
         actorStaffId: staffId,
         clientEventId: clientEventId ? `${clientEventId}:unbox` : `receiving:${receivingId}:unbox:${now}`,
         occurredAt: now,

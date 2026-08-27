@@ -133,7 +133,7 @@ const nextConfig: NextConfig = {
     // Allow cross-device dev access through Cloudflare quick tunnels
     // (pnpm dev:tunnel) and LAN IPs. Without this, Next 15+ blocks HMR and
     // dev asset requests from origins other than localhost.
-    allowedDevOrigins: ['*.trycloudflare.com', '*.ngrok-free.app', '192.168.*', '*.michaelgarisek.com'],
+    allowedDevOrigins: ['*.trycloudflare.com', '*.ngrok-free.app', '192.168.*', '*.michaelgarisek.com', '127.0.0.1', 'localhost'],
     experimental: {
         webpackMemoryOptimizations: true,
         // Cap static/page-data workers. Vercel Enhanced is 8 cores / 16 GB;
@@ -178,6 +178,26 @@ const nextConfig: NextConfig = {
     // Re-add a rule only when its destination exists again in the new shell.
     async redirects() {
         return [];
+    },
+    async headers() {
+        // Cloudflare was honouring a 4h cache on the committed Workbox file.
+        // A stale sw.js keeps CacheFirst `/_next/static` alive on usav-dev.
+        return [
+            {
+                source: '/sw.js',
+                headers: [
+                    { key: 'Cache-Control', value: 'no-store, must-revalidate' },
+                    { key: 'CDN-Cache-Control', value: 'no-store' },
+                ],
+            },
+            {
+                source: '/workbox-:hash.js',
+                headers: [
+                    { key: 'Cache-Control', value: 'no-store, must-revalidate' },
+                    { key: 'CDN-Cache-Control', value: 'no-store' },
+                ],
+            },
+        ];
     },
     serverExternalPackages: [
         '@anthropic-ai/sdk',

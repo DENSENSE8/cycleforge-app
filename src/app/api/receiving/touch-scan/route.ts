@@ -6,7 +6,6 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import { recordReceivingScan } from '@/lib/receiving/record-scan';
 import { recordUnboxScanOpened } from '@/lib/receiving/unbox-scan-opened';
 import { classifyScanKind } from '@/lib/receiving/unbox-scan-kind';
-import { NO_SESSION } from '@/lib/sessions/attribution';
 import { recordUnboxLookupScan } from '@/lib/receiving/unbox-lookup-scan';
 import { publishReceivingLogChanged } from '@/lib/realtime/publish';
 
@@ -80,10 +79,6 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
         receivingId,
         actorStaffId: ctx.staffId,
         trackingNumber,
-        // NO SESSION YET. Touch-scan is the client short-circuit rung of the
-        // Unbox bench; when that surface opens a work session it arrives here
-        // and replaces all three `NO_SESSION`s in this file.
-        session: NO_SESSION,
       });
       return NextResponse.json({
         success: true,
@@ -104,7 +99,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
       carrier,
       ctx.staffId,
       source,
-      { intakeSurface, scanKind, session: NO_SESSION },
+      { intakeSurface, scanKind },
     );
 
     if (intakeSurface === 'unbox') {
@@ -113,7 +108,6 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
         receivingId,
         ctx.staffId,
         scanId,
-        NO_SESSION,
         trackingNumber,
       );
       // First open only: the carton just left triage membership, so other

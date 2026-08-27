@@ -136,9 +136,34 @@ export async function resolveCatalogByAsinSku(
   return r.rows[0] ?? null;
 }
 
+/** Resolve an active catalog row by primary key (Add Return picker). */
+export async function resolveCatalogById(
+  orgId: OrgId,
+  catalogId: number,
+): Promise<{ id: number; sku: string; product_title: string } | null> {
+  const id = Number(catalogId);
+  if (!Number.isFinite(id) || id <= 0) return null;
+  const r = await tenantQuery<{
+    id: number;
+    sku: string;
+    product_title: string;
+  }>(
+    orgId,
+    `SELECT id, sku, product_title
+       FROM sku_catalog
+      WHERE organization_id = $1::uuid
+        AND id = $2
+        AND is_active = true
+      LIMIT 1`,
+    [orgId, id],
+  );
+  return r.rows[0] ?? null;
+}
+
 /** Optional deps for unit tests (catalog gate without a live DB). */
 export interface ImportDeskInboundRowDeps {
   resolveCatalogByAsinSku?: typeof resolveCatalogByAsinSku;
+  resolveCatalogById?: typeof resolveCatalogById;
   ingestPurchase?: typeof ingestPurchase;
   tagInboundAsReturn?: typeof tagInboundAsReturn;
   stampClassify?: typeof stampClassify;
@@ -156,6 +181,7 @@ export async function importDeskInboundRow(
   deps: ImportDeskInboundRowDeps = {},
 ): Promise<DeskImportOutcome> {
   const resolveCatalog = deps.resolveCatalogByAsinSku ?? resolveCatalogByAsinSku;
+  const resolveCatalogId = deps.resolveCatalogById ?? resolveCatalogById;
   const doIngest = deps.ingestPurchase ?? ingestPurchase;
   const doTagReturn = deps.tagInboundAsReturn ?? tagInboundAsReturn;
   const doStamp = deps.stampClassify ?? stampClassify;
@@ -184,6 +210,16 @@ export async function importDeskInboundRow(
   let itemName = row.itemName?.trim() || null;
   let skuCatalogId: number | null = null;
 
+  if (row.skuCatalogId != null && Number.isFinite(Number(row.skuCatalogId))) {
+    const picked = await resolveCatalogId(orgId, Number(row.skuCatalogId));
+    if (!picked) {
+      throw new Error('inbound: sku_catalog_id is not an active catalog row');
+    }
+    skuCatalogId = picked.id;
+    sku = picked.sku;
+    if (!itemName) itemName = picked.product_title?.trim() || null;
+  }
+
   // Native Amazon returns: catalog by Merchant SKU, then ASIN.
   if (row.amazonNativeReturn && row.kind === 'return' && sourceType === 'amazon') {
     const asin = row.amazonAsin?.trim() || null;
@@ -196,6 +232,13 @@ export async function importDeskInboundRow(
         if (!itemName) itemName = catalog.product_title?.trim() || null;
         break;
       }
+    }
+  } else if (!skuCatalogId && sku && row.kind !== 'return') {
+    const catalog = await resolveCatalog(orgId, sku);
+    if (catalog) {
+      skuCatalogId = catalog.id;
+      sku = catalog.sku;
+      if (!itemName) itemName = catalog.product_title?.trim() || null;
     }
   }
 

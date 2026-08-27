@@ -50,7 +50,9 @@ export function warmActiveView(
   }
   // Packed uses the first-class stagedOnly orders path (not week packerlogs).
   if (view === 'packed') {
-    return queryClient.prefetchQuery(packedOrdersQuery({ searchQuery, staffId }));
+    const dateFrom = String(sp.get('dateFrom') || '').trim() || undefined;
+    const dateTo = String(sp.get('dateTo') || '').trim() || undefined;
+    return queryClient.prefetchQuery(packedOrdersQuery({ searchQuery, staffId, dateFrom, dateTo }));
   }
   if (view === 'shipped') {
     const week = getWeekRangeForOffset(0);

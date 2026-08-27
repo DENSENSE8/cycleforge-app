@@ -38,7 +38,7 @@
  * `docs/todo/inbound-history-one-table-family-GEMINI-RESEARCH-BRIEFING.md`.
  */
 
-import type { LedgerGridColumnModel } from '@/lib/grid/grid-surface-descriptor';
+import type { LedgerGridColumnModel } from '@/design-system/components/grid/grid-surface-descriptor';
 
 /** Column keys whose header grammar is identical across expected + landed views. */
 export type SharedLineTrackKey =

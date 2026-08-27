@@ -4,10 +4,10 @@ import { QA_FIXTURE_ZOHO_ITEM } from '@/lib/tenancy/qa-org';
 /**
  * Manual Add inbound → pair to Zoho inventory by title → lands on Incoming.
  *
- * Proves the operator flow: on /incoming, Add a purchase order, classify it as
- * an Amazon RETURN, search the Zoho `items` mirror by TITLE and pair a real
- * catalog SKU (not free text), give it an order # + tracking #, and see the row
- * arrive on the Incoming pipeline with the paired identity + classification.
+ * Proves the operator flow: on /incoming, Add a return via the index leaf,
+ * search the Zoho `items` mirror by TITLE and pair a real catalog SKU (not free
+ * text), give it an order # + tracking #, and see the row arrive on the Incoming
+ * pipeline with the paired identity + classification.
  *
  * Two layers of proof:
  *   1. Pairing (the core ask) — the import POST carries the picked item's real
@@ -36,25 +36,24 @@ test.describe('Add inbound + Zoho pairing', () => {
     await page.goto('/incoming');
     await listReq;
 
-    // Open the Add rail (green Add CTA → RightRailHost overlay, platform=amazon).
+    // Open the Add rail (green Add CTA → Root Index).
     await page.getByRole('button', { name: 'Add inbound purchase or return' }).click();
     const overlay = page.locator(OVERLAY);
     await expect(overlay).toBeVisible();
 
-    // Classify → Type = RETURN (Platform defaults to Amazon on the Add CTA).
-    await overlay.getByRole('combobox', { name: 'Type' }).click();
-    await page.keyboard.type('return');
-    await page.getByRole('option', { name: /return/i }).first().click();
+    // Index → Add return (Platform defaults to Amazon on the leaf).
+    await overlay.getByTestId('station-displays-index-add-return').click();
 
     // Pair the item — search the Zoho items mirror by TITLE, then pick.
     const searchResp = page.waitForResponse(
       (r) => /\/api\/sku-catalog\/search\?/.test(r.url()) && r.url().includes('zoho_catalog'),
     );
-    await overlay.getByRole('combobox', { name: 'Product' }).click();
+    await overlay.getByRole('combobox', { name: 'Product' }).focus();
+    await page.keyboard.press('ArrowDown');
     // A distinctive fragment of QA_FIXTURE_ZOHO_ITEM.title ("QA Bose SoundLink…").
     await page.keyboard.type('SoundLink');
     await searchResp;
-    await page.getByRole('option', { name: /SoundLink/i }).first().click();
+    await page.keyboard.press('Enter');
 
     // Identity — a unique order # so the pipeline row is unambiguous.
     const orderId = `QAADD-${Date.now()}`;

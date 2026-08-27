@@ -1,0 +1,176 @@
+'use client';
+
+import Link from 'next/link';
+import { useCallback, useEffect, useState } from 'react';
+import { listNasDir, nasConfigured, type NasEntry } from '@/lib/nas-photos';
+import { NasBreadcrumb, NasFolderCard, NasSectionLabel } from '@/components/nas/NasBrowserChrome';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
+
+/**
+ * /photos — standalone PREVIEW of the NAS photo source.
+ *
+ * Read-only: it browses the NAS file server (Caddy on the Ugreen) and renders
+ * the images directly, so you can confirm the app ↔ NAS path works end to end
+ * without going through a receiving package. This is a testing surface — it
+ * does NOT attach anything to the database. The real picker
+ * (NasPhotoPicker / "NAS" button) is what attaches photos to a PO/item.
+ *
+ * Requires NEXT_PUBLIC_NAS_PHOTOS_BASE_URL to be set (e.g. in .env.local).
+ */
+export default function NasPhotosPreviewPage() {
+  const [dir, setDir] = useState('');
+  const [entries, setEntries] = useState<NasEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [zoom, setZoom] = useState<NasEntry | null>(null);
+
+  const configured = nasConfigured();
+  const base = process.env.NEXT_PUBLIC_NAS_PHOTOS_BASE_URL || '(unset)';
+
+  const load = useCallback(async (relDir: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      setEntries(await listNasDir(relDir));
+    } catch (e) {
+      setEntries([]);
+      setError(e instanceof Error ? e.message : 'Failed to load folder.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (configured) void load(dir);
+    else setLoading(false);
+  }, [dir, load, configured]);
+
+  const folders = entries.filter((e) => e.type === 'directory');
+  const files = entries.filter((e) => e.type === 'file');
+
+  return (
+    <div className="min-h-screen bg-stage text-white">
+      <div className="border-b border-amber-500/30 bg-amber-950/40 px-4 py-2 text-center text-sm text-amber-100">
+        NAS preview only — photos here are not attached to POs. For searchable attached photos, use{' '}
+        <Link href="/ops/photos" className="font-semibold underline underline-offset-2">
+          Media
+        </Link>
+        .
+      </div>
+      {/* Header */}
+      <header className="sticky top-0 z-10 border-b border-glass/10 bg-scrim/90 px-4 py-3 backdrop-blur">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-role-micro uppercase tracking-[0.22em] text-amber-400">
+              NAS Photos · Preview (read-only, no attach)
+            </p>
+            <p className="truncate text-sm font-semibold">/{dir || 'Photos'}</p>
+          </div>
+          <code className="hidden shrink-0 rounded bg-glass/10 px-2 py-1 text-role-caption text-white/70 sm:block">
+            {base}
+          </code>
+        </div>
+        {dir ? (
+          <div className="mt-2">
+            <NasBreadcrumb dir={dir} onNavigate={setDir} tone="dark" />
+          </div>
+        ) : null}
+      </header>
+
+      {/* Body */}
+      {!configured ? (
+        <div className="px-6 py-16 text-center">
+          <p className="text-lg font-semibold">NAS base URL not set</p>
+          <p className="mx-auto mt-2 max-w-md text-sm text-white/60">
+            Add{' '}
+            <code className="rounded bg-glass/10 px-1.5 py-0.5">
+              NEXT_PUBLIC_NAS_PHOTOS_BASE_URL
+            </code>{' '}
+            to <code className="rounded bg-glass/10 px-1.5 py-0.5">.env.local</code> and restart the
+            dev server.
+          </p>
+        </div>
+      ) : loading ? (
+        <div className="grid grid-cols-3 gap-1 p-1 sm:grid-cols-4 md:grid-cols-6">
+          {Array.from({ length: 12 }).map((_, i) => (
+            <div key={i} className="aspect-square animate-pulse rounded bg-glass/5" />
+          ))}
+        </div>
+      ) : error ? (
+        <div className="px-6 py-16 text-center">
+          <p className="text-role-caption font-semibold text-rose-400">{error}</p>
+          {/* ds-raw-button: dark-theme translucent pill on the fixed stage backdrop — light-surface DS variants don't fit */}
+          <button
+            type="button"
+            onClick={() => void load(dir)}
+            className="mt-4 rounded-full bg-glass/10 px-4 py-2 text-role-caption font-semibold uppercase tracking-widest active:bg-glass/20"
+          >
+            Retry
+          </button>
+        </div>
+      ) : entries.length === 0 ? (
+        <p className="px-6 py-16 text-center text-role-caption font-semibold text-white/60">
+          This folder is empty.
+        </p>
+      ) : (
+        <div className="space-y-4 p-3">
+          {/* Folders */}
+          {folders.length > 0 ? (
+            <div className="space-y-1.5">
+              <NasSectionLabel tone="dark">Folders · {folders.length}</NasSectionLabel>
+              {folders.map((f) => (
+                <NasFolderCard key={f.relPath} name={f.name} onOpen={() => setDir(f.relPath)} tone="dark" />
+              ))}
+            </div>
+          ) : null}
+
+          {/* Files */}
+          {files.length > 0 ? (
+            <div className="space-y-1.5">
+              <NasSectionLabel tone="dark">Photos · {files.length}</NasSectionLabel>
+              <div className="grid grid-cols-3 gap-1 sm:grid-cols-4 md:grid-cols-6">
+              {files.map((f) => (
+                <HoverTooltip key={f.relPath} label={f.name} asChild>
+                  {/* ds-raw-button: image card tile + HoverTooltip asChild trigger */}
+                  <button
+                    type="button"
+                    onClick={() => setZoom(f)}
+                    className="group relative aspect-square overflow-hidden rounded bg-glass/5"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={f.url}
+                      alt={f.name}
+                      loading="lazy"
+                      className="absolute inset-0 h-full w-full object-cover transition group-active:scale-95"
+                    />
+                    <span className="absolute inset-x-0 bottom-0 truncate bg-scrim/60 px-1.5 py-0.5 text-role-micro text-white/80">
+                      {f.name}
+                    </span>
+                  </button>
+                </HoverTooltip>
+              ))}
+              </div>
+            </div>
+          ) : null}
+        </div>
+      )}
+
+      {/* Lightbox */}
+      {zoom ? (
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setZoom(null)}
+          className="fixed inset-0 z-modal grid place-items-center bg-scrim/95 p-4"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={zoom.url} alt={zoom.name} className="max-h-full max-w-full object-contain" />
+          <p className="absolute bottom-5 left-1/2 -translate-x-1/2 rounded-full bg-glass/10 px-4 py-1.5 text-role-caption font-semibold">
+            {zoom.name}
+          </p>
+        </div>
+      ) : null}
+    </div>
+  );
+}

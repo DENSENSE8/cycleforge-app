@@ -78,7 +78,7 @@ function pretty(eventType: string): string {
 }
 
 function binHref(barcode: string): string {
-  return `/inventory?bin=${encodeURIComponent(barcode)}`;
+  return `/inventory/location/${encodeURIComponent(barcode)}`;
 }
 
 /**
@@ -87,8 +87,8 @@ function binHref(barcode: string): string {
  * prev→next status transition when present, so a verdict reads
  * "Tested — Pass · IN_TEST → TESTED · SERIAL123".
  *
- * PUTAWAY / MOVED prefer a bin chip (deep-link to the inventory shell's bin
- * view) when a barcode is present — the serial already bands the Trace.
+ * PUTAWAY / MOVED prefer a bin chip (deep-link to the location page) when a
+ * barcode is present — the serial already bands the Trace.
  */
 export function inventoryEventsToTimeline(rows: InventoryTimelineRow[]): TimelineItem[] {
   return rows.map((r) => {

@@ -9,23 +9,6 @@
  * the pinned registry test (see registry.ts "Widening protocol") — this readout
  * only surfaces the evidence.
  *
- * ── AGENT ROWS ONLY, AND WHY THAT PREDICATE IS LOAD-BEARING ─────────────────
- *
- * Since 2026-08-23a, `agent_mutations` also holds OPERATOR actions — a person
- * parking a session, ending one, moving a unit's status. They belong in the same
- * ledger (one Process tool, one undo path) and they must NOT be in this number.
- *
- * Read what this function actually computes: applied / (applied + reverted +
- * rejected), presented as "the kinds the AI gets RIGHT". An operator who parks a
- * session and then unparks it produces one applied row and one reverted row —
- * a human changing their mind, arriving here as evidence the assistant is
- * unreliable. The trust class it argues about is the AI's, so the population it
- * measures has to be the AI's too.
- *
- * `actor_kind = 'agent'` is the whole fix, and `idx_agent_mutations_org_actor_kind_time`
- * exists so it costs nothing. Legacy rows default to 'agent', which is correct:
- * every row that predates the column was written by the assistant.
- *
  * Deps-injected (default tenantQuery) so it unit-tests DB-free.
  */
 
@@ -82,7 +65,6 @@ export async function getMutationTrustStats(
     `SELECT mutation_kind, status, COUNT(*)::int AS n
        FROM agent_mutations
       WHERE organization_id = $1
-        AND actor_kind = 'agent'
       GROUP BY mutation_kind, status`,
     [orgId],
   );

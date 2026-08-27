@@ -1,0 +1,118 @@
+'use client';
+
+/**
+ * Support · Tickets identity — the dense identity block in the thread's
+ * {@link PaneHeader} (Workbench branch `service-workspace`).
+ *
+ * Status · subject · priority on row 1; ticket `#` on row 2 via
+ * {@link StackedRowIdentity} + {@link SupportTicketIdMark}. Open / details /
+ * close are the header's icon actions.
+ *
+ * **The status dot became the status control on 2026-08-02.** Status is the most
+ * load-bearing fact on a ticket and it was being told twice, quietly, in two
+ * places: an 8px dot here, and a dropdown in the chat header's field band one
+ * row below. The band is gone; the fact kept the position operators already
+ * scan and gained the weight — and the editing — it had been missing. Priority
+ * rides beside it because it is the same kind of fact and had the same second
+ * home. Do not restore either as a read-only echo elsewhere on this surface.
+ *
+ * **Ticket # is never trailing on the subject row.** Long subjects already
+ * fight for width; parking `#9693` on the far right invented a third identity
+ * grammar beside Move photos / Orders import stacked keys. The short durable
+ * key sits on its own second row — same SoT as those displays
+ * (`StackedRowIdentity`).
+ *
+ * Composes {@link TicketSubjectField} rather than hand-rolling the type ladder —
+ * the right-rail inspector law caps rail identity at caption density and bans a
+ * wrapping hero title, and that rule belongs in one place. Until 2026-08-01 this
+ * was a `StationContextBar` bookmark and had to be allowlisted in the station
+ * chrome guard as the one sanctioned non-carton identity fork; it is not a fork
+ * of anything now, because a ticket header and a carton header are simply
+ * different SoTs.
+ */
+
+import { useZendeskTicketBundle } from '@/hooks/useZendeskQueries';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { StackedRowIdentity } from '@/components/ui/StackedRowIdentity';
+import { TicketSubjectField } from '@/components/support/zendesk/chat/TicketSubjectField';
+import {
+  TicketPrioritySelect,
+  TicketStatusSelect,
+} from '@/components/support/zendesk/chat/SupportTicketFields';
+import { resolveSupportTicketDisplayLabel } from '@/lib/support/ticket-refs';
+import type { SupportContextTicket } from '@/lib/support/context-types';
+import { cn } from '@/utils/_cn';
+import { SupportTicketIdMark } from './SupportTicketIdMark';
+
+/** Helpdesk status → semantic dot tone (mirrors the lifecycle-dot discipline). */
+const STATUS_DOT: Record<string, { cls: string; label: string }> = {
+  new: { cls: 'bg-blue-500', label: 'New' },
+  open: { cls: 'bg-rose-500', label: 'Open' },
+  pending: { cls: 'bg-amber-500', label: 'Pending' },
+  hold: { cls: 'bg-violet-500', label: 'On hold' },
+  solved: { cls: 'bg-emerald-500', label: 'Solved' },
+  closed: { cls: 'bg-border-emphasis', label: 'Closed' },
+};
+
+export function SupportTicketIdentity({
+  ticket,
+  fallbackId,
+}: {
+  /** Resolved ticket identity from the SupportContext bundle (both ids + provider). */
+  ticket: SupportContextTicket | null;
+  /** `?ticket=` value — provider/display id while the bundle loads. */
+  fallbackId: number;
+}) {
+  // The `?ticket=` value IS the provider ticket id on `/support` — fall back to
+  // it rather than waiting on the context bundle. Without this the identity row
+  // read "(no subject)" for the whole first paint, and since the chat header
+  // below no longer restates the subject, that was the operator's only copy of
+  // it. Same resolution `SupportTicketFocus` uses for its own live bundle, so
+  // both read one cache entry.
+  const providerTicketId = ticket?.providerTicketId ?? fallbackId;
+  const { data: liveBundle } = useZendeskTicketBundle(providerTicketId);
+  const live = liveBundle?.ticket;
+
+  const status = String(live?.status ?? ticket?.status ?? '').toLowerCase();
+  const dot = STATUS_DOT[status] ?? { cls: 'bg-border-soft', label: ticket ? 'Unknown' : 'Loading…' };
+  const subject = (live?.subject ?? ticket?.subject ?? '').trim();
+  const displayLabel = resolveSupportTicketDisplayLabel({
+    id: ticket?.id,
+    label: ticket?.label,
+    provider: ticket?.provider,
+    externalTicketId: ticket?.externalTicketId,
+    providerTicketId: ticket?.providerTicketId,
+    fallbackId,
+  });
+
+  return (
+    <StackedRowIdentity
+      className="px-0.5"
+      title={
+        <div className="flex min-w-0 w-full items-center gap-2">
+          {/* Status leads — the dot's old position, now the control itself. The
+              dot survives only as the loading/unknown face, where there is no
+              ticket to set a status on. */}
+          {live ? (
+            <div className="shrink-0">
+              <TicketStatusSelect ticket={live} size="rail" />
+            </div>
+          ) : (
+            <HoverTooltip label={dot.label} focusable={false}>
+              <span className={cn('h-2 w-2 shrink-0 rounded-full', dot.cls)} aria-hidden />
+            </HoverTooltip>
+          )}
+          {/* The subject's ONE home on `/support`. Never a second renderer in
+              the Ticket tab chat header (`hideTitle`). */}
+          <TicketSubjectField ticketId={providerTicketId} subject={subject} compact />
+          {live ? (
+            <div className="shrink-0">
+              <TicketPrioritySelect ticket={live} size="rail" />
+            </div>
+          ) : null}
+        </div>
+      }
+      keys={<SupportTicketIdMark label={displayLabel} />}
+    />
+  );
+}

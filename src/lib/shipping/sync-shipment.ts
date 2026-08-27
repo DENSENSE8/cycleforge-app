@@ -202,6 +202,9 @@ export async function registerAndSyncShipment(params: {
 export async function registerShipmentPermissive(params: {
   trackingNumber: string | null | undefined;
   sourceSystem: string;
+  /** Default true. Manual add-order passes false so a filler/test STN is not
+   *  carrier-synced into EXCEPTION/IN_TRANSIT and dropped from To Ship pending. */
+  syncCarrier?: boolean;
 }, orgId?: OrgId): Promise<ShipmentRow | null> {
   const raw = (params.trackingNumber ?? '').trim();
   if (!raw) return null;
@@ -225,7 +228,9 @@ export async function registerShipmentPermissive(params: {
   }, orgId);
 
   // Best-effort carrier sync for known carriers only. Never throw into the caller.
-  if (detected && !shipment.last_checked_at) {
+  // Skip when creating an outbound work-queue row: a live UPS lookup on a test
+  // 1Z… number marks EXCEPTION and To Ship pending treats that as already shipped.
+  if (params.syncCarrier !== false && detected && !shipment.last_checked_at) {
     void syncShipment({ shipmentId: shipment.id }, orgId).catch(() => {});
   }
 

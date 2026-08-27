@@ -130,3 +130,7 @@ docs/rules/
 sot-manifest.json
 # local-only agent worktrees — never belong in the repo
 .claude/worktrees/
+
+# Playwright signed-in storage state for visual baselines — a REAL session.
+tests/visual/.auth.json
+tests/visual/**/*-snapshots/

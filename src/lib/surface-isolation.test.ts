@@ -37,7 +37,9 @@ test('resolveLiveReceivingMode falls back to ?mode= on legacy /receiving', () =>
 test('isTestingApiView recognises testing feeds only', () => {
   assert.equal(isTestingApiView('testing'), true);
   assert.equal(isTestingApiView('needs-test'), true);
+  assert.equal(isTestingApiView('testing_opened'), true);
   assert.equal(isTestingApiView('recent'), false);
+  assert.equal(isTestingApiView('viewed'), false);
 });
 
 // The receiving direction moved to the route-param specs — a graduated surface

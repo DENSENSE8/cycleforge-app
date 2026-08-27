@@ -9,7 +9,7 @@ import { withTenantConnection } from '@/lib/tenancy/db';
 import { isIncomingUniversal, isUnboxRailColumnRead } from '@/lib/feature-flags';
 import { buildReceivingLinesListSql } from '@/lib/receiving/lines/build-sql';
 import { parseReceivingLinesQuery } from '@/lib/receiving/lines/query';
-import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import type { UnboxWorkspaceTab } from '@/utils/unbox-workspace-state';
 import {
   buildUnboxKpiCards,

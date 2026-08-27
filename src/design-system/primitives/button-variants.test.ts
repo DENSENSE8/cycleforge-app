@@ -19,8 +19,12 @@ describe('Button semantic intents (2a)', () => {
   it('success is the emerald Add fill; execute is the shared Check face', () => {
     assert.match(BUTTON_VARIANTS.success, /bg-emerald-600/);
     assert.match(BUTTON_VARIANTS.success, /hover:bg-emerald-500/);
-    assert.match(BUTTON_VARIANTS.execute, /bg-surface-card/);
-    assert.match(BUTTON_VARIANTS.execute, /ring-1 ring-border-soft/);
+    assert.match(BUTTON_VARIANTS.execute, /bg-surface-hover/);
+    assert.doesNotMatch(
+      BUTTON_VARIANTS.execute,
+      /ring-1/,
+      'Check is flush on the chrome band — no cell hairline',
+    );
   });
 
   it('warning is the amber recoverable intent', () => {

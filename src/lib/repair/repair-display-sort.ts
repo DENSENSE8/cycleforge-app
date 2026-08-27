@@ -8,7 +8,7 @@
  * carry `?dir=` only when it differs from that column's default direction.
  */
 
-import type { GridSortDir } from '@/lib/grid/grid-sort-dir';
+import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
 /**
  * The sortable column vocabulary, declared here rather than derived from a

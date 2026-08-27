@@ -15,6 +15,7 @@ import {
   getScanLogChannelName,
   getStaffChannelName,
   getStationChannelName,
+  getKioskBridgeChannelName,
 } from '@/lib/realtime/channels';
 import { createStationActivityLog } from '@/lib/station-activity';
 import { getPrimaryTechStaffIds } from '@/lib/neon/staff-stations-queries';
@@ -1118,4 +1119,36 @@ export async function publishStockLedgerEvent(input: StockLedgerEventInput) {
     dimension: input.dimension,
     reason: input.reason,
   });
+}
+
+// ── Counter session (desk↔tablet bridge) ────────────────────────────────────
+
+/**
+ * Fan out one counter-session event to the device bridge.
+ *
+ * **Published by the SERVER, not by whichever peer mutated.** The mutating
+ * client already has its answer in the HTTP response (P2 returns the new
+ * snapshot AND the event), so a client-side publish would only help the *other*
+ * peer — and it would stop helping precisely when that client's own socket
+ * dropped, which is exactly when the other screen still needs the update. From
+ * the server, a desk with a dead websocket still drives the tablet.
+ *
+ * Best-effort by design: `publishEvent` swallows its own failures, and the
+ * mutation has already been committed and answered. A dropped publish costs one
+ * poll interval on the far screen (D7), never a lost write.
+ *
+ * No-ops when the session has no bound tablet — the bridge is keyed by DEVICE,
+ * so a desk-only session has no second screen to notify.
+ */
+export async function publishCounterSessionEvent(payload: {
+  organizationId: string;
+  kioskDeviceId: number | null;
+  event: { type: string; sessionId: number; version: number; actor: string } & Record<string, unknown>;
+}) {
+  if (payload.kioskDeviceId === null) return;
+  await publishEvent(
+    getKioskBridgeChannelName(payload.organizationId, payload.kioskDeviceId),
+    payload.event.type,
+    { ...payload.event, timestamp: formatPSTTimestamp() },
+  );
 }

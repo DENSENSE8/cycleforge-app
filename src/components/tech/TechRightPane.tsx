@@ -1,0 +1,181 @@
+'use client';
+
+/**
+ * The tech dashboard's right pane, swapped by sidebar mode:
+ *   - receiving ........ the inbound receiving feed
+ *   - testing .......... Testing workbench (Pending · Returns | History) with
+ *                        the focused line panel crossfading over it
+ *   - history (default)  Shipping workspace (Pending · FBA | History), OVER which a
+ *     scanned/active order — or an Up Next preview — crossfades and back.
+ * Pure presentational; state comes from the dashboard's hooks.
+ *
+ * Shipping motion matches Unbox / Pack: browse underlay stays mounted; overlay
+ * uses `motionRole.swap.scan` (exit instant). Order→order while open hard-cuts
+ * (`mode="sync"`) so the host never flashes empty between entities.
+ */
+
+import React from 'react';
+import {
+  AnimatePresence,
+  motion,
+  motionRole,
+  useMotionRole,
+  useOverlaySwapHardCut,
+} from '@/design-system/motion';
+import { ShippingWorkspaceView } from '@/components/tech/shipping/ShippingWorkspaceView';
+import { ReceivingInboundFeed } from '@/components/station/ReceivingInboundFeed';
+import { ActiveOrderWorkspace } from '@/components/tech/ActiveOrderWorkspace';
+import { TestingLineWorkspace } from '@/components/tech/TestingLineWorkspace';
+import { previewOrderToActiveShape } from '@/components/tech/tech-dashboard-helpers';
+import { zIndex } from '@/design-system/tokens/z-index';
+import { appWorkCanvasClass } from '@/design-system/tokens/app-surface';
+import { appSurfaceFillClass } from '@/design-system/components/AppSurfaceFill';
+import { cn } from '@/utils/_cn';
+import type { Order } from '@/components/station/upnext/upnext-types';
+import type { TechActiveOrderPane } from '@/components/tech/useTechOrderPanes';
+import type { TechRightViewMode } from '@/components/tech/useTechRightView';
+
+interface TechRightPaneProps {
+  rightViewMode: TechRightViewMode;
+  techId: string;
+  testingLineId: number | null;
+  onTestingLineChange: React.Dispatch<React.SetStateAction<number | null>>;
+  testingSelectMode: boolean;
+  onOpenTestingLine: () => void;
+  activeOrderPane: TechActiveOrderPane | null;
+  onCloseActiveOrder: () => void;
+  /** Sync condition (and other local fields) after Displays edits. */
+  onActiveOrderChange?: (next: TechActiveOrderPane['activeOrder']) => void;
+  previewOrder: Order | null;
+  onClosePreview: () => void;
+}
+
+export function TechRightPane({
+  rightViewMode,
+  techId,
+  testingLineId,
+  onTestingLineChange,
+  testingSelectMode,
+  onOpenTestingLine,
+  activeOrderPane,
+  onCloseActiveOrder,
+  onActiveOrderChange,
+  previewOrder,
+  onClosePreview,
+}: TechRightPaneProps) {
+  if (rightViewMode === 'receiving') {
+    return <ReceivingInboundFeed />;
+  }
+
+  if (rightViewMode === 'testing') {
+    // Testing mode → queue/history workbench; focused line crossfades over it.
+    return (
+      <TestingLineWorkspace
+        staffId={techId}
+        selectedLineId={testingLineId}
+        onSelectedLineChange={onTestingLineChange}
+        testingSelectMode={testingSelectMode}
+        onOpenTestingLine={onOpenTestingLine}
+      />
+    );
+  }
+
+  return (
+    <ShippingOrderWorkspace
+      techId={techId}
+      activeOrderPane={activeOrderPane}
+      onCloseActiveOrder={onCloseActiveOrder}
+      onActiveOrderChange={onActiveOrderChange}
+      previewOrder={previewOrder}
+      onClosePreview={onClosePreview}
+    />
+  );
+}
+
+function ShippingOrderWorkspace({
+  techId,
+  activeOrderPane,
+  onCloseActiveOrder,
+  onActiveOrderChange,
+  previewOrder,
+  onClosePreview,
+}: {
+  techId: string;
+  activeOrderPane: TechActiveOrderPane | null;
+  onCloseActiveOrder: () => void;
+  onActiveOrderChange?: (next: TechActiveOrderPane['activeOrder']) => void;
+  previewOrder: Order | null;
+  onClosePreview: () => void;
+}) {
+  const { presence: panePresence, transition: paneTransition } = useMotionRole(
+    motionRole.swap.scan,
+  );
+  const showOverlay = !!activeOrderPane || !!previewOrder;
+
+  const entitySwapHardCut = useOverlaySwapHardCut(showOverlay);
+
+  const overlayKey = activeOrderPane
+    ? `active-${activeOrderPane.activeOrder.tracking || activeOrderPane.activeOrder.orderId}`
+    : previewOrder
+      ? `preview-${previewOrder.id}`
+      : 'none';
+
+  return (
+    <div className={cn(appWorkCanvasClass, 'relative h-full')}>
+      <div
+        className={`flex h-full min-h-0 w-full flex-col ${showOverlay ? 'pointer-events-none' : ''}`}
+        aria-hidden={showOverlay ? true : undefined}
+        inert={showOverlay ? true : undefined}
+        style={{ visibility: showOverlay ? 'hidden' : 'visible' }}
+      >
+        <ShippingWorkspaceView techId={techId} />
+      </div>
+
+      <AnimatePresence
+        initial={false}
+        mode={entitySwapHardCut ? 'sync' : 'wait'}
+      >
+        {activeOrderPane ? (
+          <motion.div
+            key={overlayKey}
+            initial={entitySwapHardCut ? false : panePresence.initial}
+            animate={panePresence.animate}
+            exit={panePresence.exit}
+            transition={paneTransition}
+            style={{ zIndex: zIndex.panel + (entitySwapHardCut ? 1 : 0) }}
+            className={cn('absolute inset-0 flex min-h-0 flex-col', appSurfaceFillClass('canvas'))}
+          >
+            <ActiveOrderWorkspace
+              activeOrder={activeOrderPane.activeOrder}
+              onClose={onCloseActiveOrder}
+              setActiveOrder={(next) => {
+                if (!next) {
+                  onCloseActiveOrder();
+                  return;
+                }
+                onActiveOrderChange?.(next);
+              }}
+            />
+          </motion.div>
+        ) : previewOrder ? (
+          <motion.div
+            key={overlayKey}
+            initial={entitySwapHardCut ? false : panePresence.initial}
+            animate={panePresence.animate}
+            exit={panePresence.exit}
+            transition={paneTransition}
+            style={{ zIndex: zIndex.panel + (entitySwapHardCut ? 1 : 0) }}
+            className={cn('absolute inset-0 flex min-h-0 flex-col', appSurfaceFillClass('canvas'))}
+          >
+            <ActiveOrderWorkspace
+              activeOrder={previewOrderToActiveShape(previewOrder)}
+              mode="preview"
+              previewOrder={previewOrder}
+              onClose={onClosePreview}
+            />
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+    </div>
+  );
+}

@@ -1,4 +1,4 @@
-import type { WorkOrderRow } from '@/lib/work-orders/types';
+import type { WorkOrderRow } from '@/components/work-orders/types';
 
 export type MyDayInterruptKind =
   | 'return_pending_test'

@@ -12,8 +12,7 @@ import {
 } from '@/lib/inventory/events';
 import { attachTechSerial } from '@/lib/inventory/tech-serial';
 import { upsertReceivingUnbox } from '@/lib/receiving/streets/carton-street-write';
-import { parseReturnSerialTitle } from '@/lib/receiving/receiving-line-serials';
-import { NO_SESSION } from '@/lib/sessions/attribution';
+import { parseReturnSerialTitle } from '@/components/station/receiving-line-serials';
 
 /**
  * Serial numbers as a SIDECAR. A `serial_units` row IS the item identity
@@ -227,7 +226,6 @@ export async function attachSerialToLine(
       // serial attach is not a stock movement.
       const event = await recordInventoryEvent(
         {
-          session: NO_SESSION,
           event_type: 'RECEIVED',
           actor_staff_id: input.staff_id ?? null,
           station,
@@ -404,7 +402,6 @@ export async function detachSerialFromLine(
       try {
         await recordInventoryEvent(
           {
-            session: NO_SESSION,
             event_type: 'NOTE',
             actor_staff_id: input.staff_id ?? null,
             station,

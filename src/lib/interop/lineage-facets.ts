@@ -121,6 +121,13 @@ export interface CycleforgeProcedureJobFacet extends BaseFacet {
   label: string;
   summary: string;
   phase: string;
+  /**
+   * True when the station registry drives the step; false when it is
+   * hand-coded UI over a hand-coded route. Published because it tells a
+   * consumer how much of this map is machine-verified declaration versus
+   * hand-maintained claim.
+   */
+  composed: boolean;
   endpoint?: { method: string; path: string };
   sourceIds?: string[];
   actionIds?: string[];
@@ -138,8 +145,12 @@ export const LINEAGE_JOB_NAMESPACE = 'cycleforge';
 /**
  * Project one procedure step into an OpenLineage job.
  *
- * Returns `null` for a step that declares no lineage at all — emitting an empty
- * job for one would publish a node that appears to touch nothing.
+ * Returns `null` for a step that declares no lineage at all. A composed step
+ * INHERITS its lineage from the registered source/action it binds
+ * (`ProcedureStep.reads`/`.writes` are documented as "omit on a composed step
+ * — inherited"), so emitting an empty job for one would publish a node that
+ * appears to touch nothing — the phantom edge `data-lineage.guard.test.ts`
+ * rejects in the other direction.
  */
 export function jobForStep(
   procedure: ProcedureDefinition,
@@ -156,6 +167,7 @@ export function jobForStep(
     label: step.label,
     summary: step.summary,
     phase: step.phase,
+    composed: step.composed,
     ...(step.endpoint ? { endpoint: step.endpoint } : {}),
     ...(step.sourceIds?.length ? { sourceIds: step.sourceIds } : {}),
     ...(step.actionIds?.length ? { actionIds: step.actionIds } : {}),
@@ -192,7 +204,7 @@ export interface LineageDocument {
     /** Stated so nobody mistakes this for column-level lineage. */
     granularity: 'table';
     granularityReason: string;
-    /** Steps skipped because they declare no lineage (UI-only). */
+    /** Steps skipped because they declare no lineage (composed / UI-only). */
     stepsWithoutLineage: number;
   };
 }

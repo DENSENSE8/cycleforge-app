@@ -15,10 +15,10 @@
  * declaration (`GRID_FILL_COLUMN`). Nothing here re-derives geometry.
  */
 
-import { compoundColumnsFor } from '@/lib/tables/compound-columns';
-import { GRID_FILL_COLUMN } from '@/lib/grid/grid-fill-column';
+import { compoundColumnsFor } from '@/components/tables/compound/compound-columns';
+import { GRID_FILL_COLUMN } from '@/design-system/components/grid';
 import type { ColumnType } from '@/lib/tables/table-columns';
-import type { GridSortDir } from '@/lib/grid/grid-sort-dir';
+import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
 export type TasksGridColumnKey =
   | 'select'

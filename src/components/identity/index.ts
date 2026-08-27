@@ -5,3 +5,4 @@
 
 export { IdentityMark } from './IdentityMark';
 export { StaffAvatar } from './StaffAvatar';
+export { StaffAvatarEditor } from './StaffAvatarEditor';

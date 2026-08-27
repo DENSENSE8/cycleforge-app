@@ -8,7 +8,7 @@ import {
   parseHistoryDrillPo,
   writeHistoryDrillParams,
 } from './history-drill-layout';
-import type { ReceivingPoGroup } from '@/lib/receiving/receiving-lines-table-helpers';
+import type { ReceivingPoGroup } from '@/components/station/receiving-lines-table-helpers';
 
 describe('history-drill-layout', () => {
   it('defaults omitted / unknown to list', () => {

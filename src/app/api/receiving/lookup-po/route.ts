@@ -21,7 +21,6 @@ import {
 } from '@/lib/receiving/intake-classification';
 import { registerShipmentPermissive } from '@/lib/shipping/sync-shipment';
 import { isReceivingUnifiedInbound } from '@/lib/feature-flags';
-import { NO_SESSION } from '@/lib/sessions/attribution';
 import { recordReceivingScan, type ReceivingIntakeSurface } from '@/lib/receiving/record-scan';
 import { recordUnboxScanOpened } from '@/lib/receiving/unbox-scan-opened';
 import {
@@ -235,12 +234,6 @@ async function memoizeLookupHit(
   return recordReceivingScan(receivingId, trackingNumber, carrier, staffId, scanSource, {
     intakeSurface,
     scanKind,
-    // NO SESSION YET. The Unbox and Triage surfaces do not open a work session
-    // (Warehouse-OS phases 4-6); when they do, this route receives it and every
-    // `NO_SESSION` in this file becomes that value. Until then the scan is real
-    // and the attribution is honestly absent — `grep -rn NO_SESSION src/` is the
-    // work list.
-    session: NO_SESSION,
   });
 }
 
@@ -695,7 +688,6 @@ async function createUnmatchedReceiving(
   // Carton-level "why" signal (plan §2.3 emitter #2 — unfound / carrier
   // mismatch, decided right here). Fire-and-forget; never breaks the scan.
   await emitEntitySignalSafe({
-    session: NO_SESSION,
     organizationId,
     entityType: 'RECEIVING',
     entityId: receivingId,
@@ -760,9 +752,7 @@ async function createOrGetTestReceiving(
   const zohoLineItemId = `TEST-LINE-${key}`;
 
   const { receivingId, preexisting } = await upsertMatchedReceiving(poId, carrier, staffId, organizationId);
-  const scanId = await recordReceivingScan(receivingId, trackingNumber, carrier, staffId, 'zoho_po', {
-    session: NO_SESSION,
-  });
+  const scanId = await recordReceivingScan(receivingId, trackingNumber, carrier, staffId, 'zoho_po');
 
   // A scanned test carton belongs in receiving triage as a SCANNED line — NOT
   // the tech testing queue. The testing queue (/api/work-orders) keys on the
@@ -852,7 +842,6 @@ async function recordScan(
     intakeSurface,
     scanKind,
     registerTracking,
-    session: NO_SESSION,   // see the sibling wrapper above
   });
 }
 
@@ -1025,13 +1014,10 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
           receivingId,
           actorStaffId: staffId,
           trackingNumber: tracking,
-          session: NO_SESSION,   // see the wrapper above
         });
         return;
       }
-      await recordUnboxScanOpened(
-        ctx.organizationId, receivingId, staffId, scanId, NO_SESSION, tracking,
-      );
+      await recordUnboxScanOpened(ctx.organizationId, receivingId, staffId, scanId, tracking);
     };
 
     if (!trackingNumber) {
@@ -1090,7 +1076,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
             carrier,
             staffId,
             recvSource === 'zoho_po' ? 'zoho_po' : 'unmatched',
-            { intakeSurface, scanKind: hitScanKind, session: NO_SESSION },
+            { intakeSurface, scanKind: hitScanKind },
           );
           await stampUnboxOpened(hit.receivingId, scanId, rawTracking, hitScanKind);
           const poIdsSet = new Set<string>();
@@ -1352,7 +1338,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
           carrier,
           staffId,
           recvSource === 'zoho_po' ? 'zoho_po' : 'unmatched',
-          { intakeSurface, scanKind: dedupScanKind, session: NO_SESSION },
+          { intakeSurface, scanKind: dedupScanKind },
         );
         await stampUnboxOpened(existingScan.receiving_id, dedupScanId, trackingNumber, dedupScanKind);
         const poIdsSet = new Set<string>();

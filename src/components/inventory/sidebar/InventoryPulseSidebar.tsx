@@ -1,0 +1,178 @@
+'use client';
+
+import { useCallback, useMemo, useState } from 'react';
+import { motion } from '@/design-system/motion';
+import { useQuery } from '@tanstack/react-query';
+import { useDebounce } from '@/hooks';
+import { SidebarShell } from '@/components/layout/SidebarShell';
+import { getLast8, SerialChip, SkuScanRefChip } from '@/components/ui/CopyChip';
+import {
+  joinStackedIdentityKeys,
+  StackedRowIdentity,
+} from '@/components/ui/StackedRowIdentity';
+import { microBadge } from '@/design-system/tokens/typography/presets';
+import { unitStatusBadgeClass } from '@/lib/unit-status';
+import type { UnitListRow, UnitListResponse } from '@/components/inventory/types';
+import { cn } from '@/utils/_cn';
+import { SearchBar } from '@/components/ui/SearchBar';
+import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
+import { useInventoryUrlState } from '@/components/inventory/useInventoryUrlState';
+
+function useUnitsList(q: string) {
+    return useQuery<UnitListRow[]>({
+        queryKey: ['pulse-units', q],
+        queryFn: async ({ signal }) => {
+            const sp = new URLSearchParams({ limit: '50' });
+            if (q) sp.set('q', q);
+            const res = await fetch(`/api/inventory/units?${sp.toString()}`, {
+                signal,
+                credentials: 'same-origin',
+            });
+            if (!res.ok) throw new Error(`inventory/units ${res.status}`);
+            const data = (await res.json()) as UnitListResponse;
+            return data.items ?? [];
+        },
+        staleTime: 15_000,
+    });
+}
+
+/**
+ * Sidebar for the inventory Pulse mode (`/inventory/pulse`). Lists real
+ * `serial_units` (most-recently-touched first). Selecting one writes
+ * `?open=<serialUnitId>`, which `PulseWorkspace` reads to load that unit's
+ * chain-of-custody (`/api/inventory-events?serial_unit_id=`) in the right pane.
+ */
+export function InventoryPulseSidebar() {
+    const { sidebar, setSidebarUrl } = useInventoryUrlState();
+    const openId = sidebar.open;
+
+    const [inputValue, setInputValue] = useState('');
+    const trimmed = useDebounce(inputValue, 250).trim();
+
+    const { data: rows = [], isFetching, isError } = useUnitsList(trimmed);
+
+    const select = useCallback(
+        (id: number) => {
+            setSidebarUrl({ open: String(id) });
+        },
+        [setSidebarUrl],
+    );
+
+    const containerVariants = useMemo(
+        () => ({
+            hidden: { opacity: 0 },
+            visible: { opacity: 1, transition: { staggerChildren: 0.03, delayChildren: 0.03 } },
+        }),
+        [],
+    );
+
+    return (
+        <SidebarShell
+            as={motion.div}
+            containerProps={{ initial: 'hidden', animate: 'visible', variants: containerVariants }}
+            headerAbove={
+                // In-context list filter — local base SearchBar over the pulse unit
+                // list. The global header pill stays global (search app-wide).
+                <div className={`${SIDEBAR_GUTTER} pt-3 pb-2`}>
+                    <SearchBar
+                        size="compact"
+                        variant="blue"
+                        value={inputValue}
+                        onChange={setInputValue}
+                        onClear={() => setInputValue('')}
+                        placeholder="Filter serial, SKU, or title…"
+                        isSearching={isFetching}
+                    />
+                </div>
+            }
+            bodyClassName="scrollbar-hide pb-5 space-y-2"
+        >
+            <p className={`${microBadge} px-1 text-text-soft`}>
+                {rows.length > 0
+                    ? `${rows.length} unit${rows.length !== 1 ? 's' : ''} · newest activity first`
+                    : 'Pick a unit to trace its full chain of custody'}
+            </p>
+
+            {isError ? (
+                <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-6 text-center">
+                    <p className={`${microBadge} text-rose-600`}>Couldn’t load units.</p>
+                </div>
+            ) : null}
+
+            {!isError && rows.length === 0 && !isFetching ? (
+                <div className="rounded-xl border border-dashed border-border-soft bg-surface-canvas px-4 py-6 text-center">
+                    <p className={`${microBadge} text-text-soft`}>No units match.</p>
+                </div>
+            ) : null}
+
+            <ul className="space-y-1">
+                {rows.map((row) => {
+                    const active = String(row.id) === openId;
+                    const meta = row.current_location || row.condition_grade || '';
+                    return (
+                        <li key={row.id}>
+                            {/* Clickable div (not a <button>) so the copy chips —
+                                themselves <button>s — can nest without invalid markup. */}
+                            <div
+                                role="button"
+                                tabIndex={0}
+                                onClick={() => select(row.id)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                        e.preventDefault();
+                                        select(row.id);
+                                    }
+                                }}
+                                className={cn(
+                                    'w-full cursor-pointer rounded-lg px-2.5 py-2 text-left transition-colors',
+                                    active ? 'bg-blue-50 ring-1 ring-inset ring-blue-200' : 'hover:bg-surface-hover',
+                                )}
+                            >
+                                <StackedRowIdentity
+                                    title={
+                                        <span
+                                            className={cn(
+                                                'min-w-0 truncate text-role-data font-semibold',
+                                                active ? 'text-blue-900' : 'text-text-default',
+                                            )}
+                                        >
+                                            {row.product_title || row.sku || row.serial_number}
+                                        </span>
+                                    }
+                                    keys={joinStackedIdentityKeys([
+                                        meta ? (
+                                            <span
+                                                key="meta"
+                                                className="min-w-0 truncate font-mono text-role-caption text-text-faint"
+                                            >
+                                                {meta}
+                                            </span>
+                                        ) : null,
+                                        row.sku ? (
+                                            <SkuScanRefChip
+                                                key="sku"
+                                                value={row.sku}
+                                                display={getLast8(row.sku)}
+                                            />
+                                        ) : null,
+                                        <SerialChip key="serial" value={row.serial_number} />,
+                                    ])}
+                                    trailing={
+                                        <span
+                                            className={cn(
+                                                'shrink-0 rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-wide',
+                                                unitStatusBadgeClass(row.current_status),
+                                            )}
+                                        >
+                                            {row.current_status}
+                                        </span>
+                                    }
+                                />
+                            </div>
+                        </li>
+                    );
+                })}
+            </ul>
+        </SidebarShell>
+    );
+}

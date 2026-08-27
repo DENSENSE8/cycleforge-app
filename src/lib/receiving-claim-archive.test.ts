@@ -6,8 +6,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   archiveReceivingClaimPhotos,
+  archiveAndStampReceivingClaimPhotos,
+  autoArchiveClaimPhotosAfterCapture,
   claimArchiveResponseFields,
+  nasArchiveFolderName,
   type ArchiveReceivingClaimPhotosDeps,
+  type StampReceivingNasArchiveArgs,
 } from './receiving-claim-archive';
 import { parseOrgSettings, type OrgSettings } from '@/lib/tenancy/settings';
 import { claimAttachmentFileLabel } from '@/lib/zendesk-claim-template';
@@ -25,6 +29,7 @@ interface Captured {
   nasTargets: Array<{ key: string }>;
   agent: AgentCall[];
   folder: FolderCall[];
+  stamps: StampReceivingNasArchiveArgs[];
 }
 
 function fakes(opts: {
@@ -35,6 +40,7 @@ function fakes(opts: {
   folderResult?: { folder: string; copied: number; total: number } | null;
   agentEnv?: { hasUrl: boolean; hasToken: boolean };
   orgThrow?: Error;
+  stampThrow?: Error;
 }): { deps: ArchiveReceivingClaimPhotosDeps; cap: Captured } {
   const photoIds = opts.photoIds ?? [11, 12, 13];
   const cap: Captured = {
@@ -44,6 +50,7 @@ function fakes(opts: {
     nasTargets: [],
     agent: [],
     folder: [],
+    stamps: [],
   };
   const deps: ArchiveReceivingClaimPhotosDeps = {
     listPhotoIds: async (orgId, receivingId) => {
@@ -81,6 +88,10 @@ function fakes(opts: {
         : opts.folderResult;
     },
     agentEnv: () => opts.agentEnv ?? { hasUrl: true, hasToken: true },
+    stamp: async (input) => {
+      cap.stamps.push(input);
+      if (opts.stampThrow) throw opts.stampThrow;
+    },
   };
   return { deps, cap };
 }
@@ -211,4 +222,57 @@ test('claimAttachmentFileLabel: PO wins, then tracking, then receiving id', () =
     claimAttachmentFileLabel({ poNumber: 'PO 99/A', tracking: null }, 1),
     'PO-PO-99-A',
   );
+});
+
+test('nasArchiveFolderName strips # and illegal path chars', () => {
+  assert.equal(nasArchiveFolderName(4821), '4821');
+  assert.equal(nasArchiveFolderName('#4821'), '4821');
+  assert.equal(nasArchiveFolderName('  #96/01  '), '96-01');
+});
+
+test('archiveAndStampReceivingClaimPhotos: stamps the carton after a real copy', async () => {
+  const { deps, cap } = fakes({});
+  const out = await archiveAndStampReceivingClaimPhotos(baseArgs, deps);
+
+  assert.equal(out.archiveOk, true);
+  assert.equal(out.folder, '/nas/4821');
+  assert.deepEqual(cap.stamps, [
+    { orgId: ORG, receivingId: 88, folderName: '4821', copied: 3 },
+  ]);
+});
+
+test('archiveAndStampReceivingClaimPhotos: does not stamp when the copy fails', async () => {
+  const { deps, cap } = fakes({ agentThrow: new Error('tunnel down') });
+  const out = await archiveAndStampReceivingClaimPhotos(baseArgs, deps);
+
+  assert.equal(out.archiveOk, false);
+  assert.equal(out.folder, null);
+  assert.equal(cap.stamps.length, 0);
+});
+
+test('archiveAndStampReceivingClaimPhotos: stamp throw does not fail the copy', async () => {
+  const { deps, cap } = fakes({ stampThrow: new Error('stamp column missing') });
+  const out = await archiveAndStampReceivingClaimPhotos(baseArgs, deps);
+
+  assert.equal(out.archiveOk, true);
+  assert.equal(out.folder, '/nas/4821');
+  assert.equal(cap.stamps.length, 1);
+});
+
+test('autoArchiveClaimPhotosAfterCapture: archives under the filed ticket', async () => {
+  const { deps, cap } = fakes({});
+  const out = await autoArchiveClaimPhotosAfterCapture(
+    { orgId: ORG, receivingId: 88, ticketId: 4821 },
+    deps,
+  );
+
+  assert.equal(out.archiveOk, true);
+  assert.equal(cap.agent[0]?.ticketId, 4821);
+  assert.match(cap.agent[0]?.info ?? '', /Auto-archive after unbox photo/);
+  assert.deepEqual(cap.stamps[0], {
+    orgId: ORG,
+    receivingId: 88,
+    folderName: '4821',
+    copied: 3,
+  });
 });

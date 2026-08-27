@@ -5,7 +5,7 @@
  * existing imports keep working; new stations import from this module.
  */
 
-import { STATION_COLUMN_FOOTER_BAND_FACE } from '@/lib/station/station-column-footer-face';
+import { STATION_COLUMN_FOOTER_BAND_FACE } from '@/components/layout/header-shell';
 import { CONTEXT_PANEL_RESIZE } from '@/lib/sidebar/context-panel-column';
 import { cn } from '@/utils/_cn';
 

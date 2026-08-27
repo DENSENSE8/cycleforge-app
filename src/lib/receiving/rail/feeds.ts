@@ -15,23 +15,25 @@
  *   - triageUnfound  → Unfound     (unfound-queue stubs)
  *   - triageDone     → Done        (triage_complete stubs)
  *   - searchRecent   → Recently searched (`/search` rail; same view=viewed feed)
+ *   - testingRecent  → QC Recent (view=testing_opened, testing_opened_at axis,
+ *                                   preserveServerOrder; Testing API only)
  *
  * Stable identity matters: `refreshEvents` arrays and the `getActivityAt` fns are
  * module-scope so the rail shell's listener effects subscribe once (a fresh
  * array/arrow each render risked a dropped optimistic event mid-swap).
  *
- * Scope: the receiving page only. Testing + the mobile scan feeds keep their own
- * fetchers.
+ * Scope: receiving rails plus QC Recent (`testingRecent`). Mobile scan feeds
+ * share the QC endpoint via the same view.
  */
 
-import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import type { ReceivingRailRowTitleMode } from '@/lib/receiving/po-group-title';
-import type { ApiResponse } from '@/lib/receiving/rail/recent-activity-response';
+import type { ApiResponse } from '@/components/sidebar/receiving/RecentActivityRailBase';
 import {
   transformUnboxOpenedRows,
   UNBOX_SIDEBAR_LIMIT,
 } from '@/lib/receiving/rail/unbox-opened-rows';
-import { getViewedAt, type RailStatusId } from './status';
+import { getViewedAt, getTestingOpenedAt, type RailStatusId } from './status';
 import type { RailQtyId } from './quantity';
 import type { RailRowActionsId } from './row-actions';
 import {
@@ -44,9 +46,11 @@ import {
   matchesDoneQuery,
   type TriageDoneRow,
 } from './done-stub';
+import { TESTING_RECEIVING_LINES_API } from '@/lib/surface-isolation';
+import { TESTING_LINE_OPENED_EVENT } from '@/lib/testing/testing-line-opened-event';
 import type { RefreshDomain } from '@/lib/refresh/domains';
 
-type ReceivingLinesView = 'activity' | 'scanned' | 'viewed' | 'unbox_opened';
+type ReceivingLinesView = 'activity' | 'scanned' | 'viewed' | 'unbox_opened' | 'testing_opened';
 type ReceivingLinesSort = 'unboxed_newest' | 'priority';
 
 /** Runtime inputs the rail supplies to a fetcher (URL-derived). */
@@ -83,6 +87,8 @@ interface ReceivingRailFeed {
   /** Refresh domains this rail renders (see `@/lib/refresh/domains`). */
   refreshDomains?: readonly RefreshDomain[];
   autoSelectFirstWhenEmpty?: boolean;
+  /** Gate for auto-select — omit to use the receiving-page default. */
+  canAutoSelectFirst?: () => boolean;
   /** false ONLY for the unbox Recent feed (strict unboxed_at order, no pin bounce). */
   pinSelectedLead?: boolean;
   /**
@@ -140,8 +146,11 @@ const TRIAGE_REFRESH: string[] = [
 
 const UNBOX_REFRESH: string[] = ['receiving-unbox-refresh'];
 
+const TESTING_REFRESH: string[] = ['testing-result-recorded', TESTING_LINE_OPENED_EVENT];
+
 /** Both receiving rails render the lines list. */
 const RECEIVING_RAIL_DOMAINS = ['receiving.lines'] as const satisfies readonly RefreshDomain[];
+const TESTING_RAIL_DOMAINS = ['orders.outbound'] as const satisfies readonly RefreshDomain[];
 
 const notUnmatched = (r: ReceivingLineRow) => r.receiving_source !== 'unmatched';
 
@@ -352,6 +361,25 @@ function buildDoneFetcher(rt: RailFetchRuntime): () => Promise<ApiResponse> {
   };
 }
 
+const TESTING_SIDEBAR_LIMIT = 50;
+
+function buildTestingOpenedFetcher(rt: RailFetchRuntime): () => Promise<ApiResponse> {
+  return async () => {
+    const params = new URLSearchParams({
+      limit: String(TESTING_SIDEBAR_LIMIT),
+      offset: '0',
+      view: 'testing_opened',
+    });
+    const res = await fetch(`${TESTING_RECEIVING_LINES_API}?${params.toString()}`);
+    if (!res.ok) throw new Error('testing opened fetch failed');
+    const data = (await res.json()) as ApiResponse;
+    let rows = data.receiving_lines ?? [];
+    const q = (rt.query ?? '').trim().toLowerCase();
+    if (q) rows = rows.filter((r) => matchesReceivingLine(r, q));
+    return { success: true, receiving_lines: rows, total: rows.length };
+  };
+}
+
 const FEEDS = {
   /**
    * Unbox "Unboxed" rail — cartons scanned on the Unbox surface only
@@ -496,7 +524,14 @@ const FEEDS = {
     rowActions: 'searchRecent',
     view: 'viewed',
     getActivityAt: getViewedAt,
-    autoSelectFirstWhenEmpty: false,
+    autoSelectFirstWhenEmpty: true,
+    canAutoSelectFirst: () => {
+      if (typeof window === 'undefined') return false;
+      const params = new URLSearchParams(window.location.search);
+      if ((params.get('sel') ?? '').trim()) return false;
+      if ((params.get('q') ?? '').trim()) return false;
+      return window.location.pathname.startsWith('/search');
+    },
     // The server orders by this viewer's `viewed_at DESC` — "most recently
     // opened" is the axis, so a client re-sort could only fight it.
     preserveServerOrder: true,
@@ -520,6 +555,27 @@ const FEEDS = {
     limit: 200,
     refreshEvents: [...TRIAGE_REFRESH, 'receiving-triage-completed'],
     refreshDomains: RECEIVING_RAIL_DOMAINS,
+  },
+  /**
+   * Quality Control "Recent" — lines this operator opened on Testing
+   * (`view=testing_opened`). Age = last QC-open only. Not career verdicts.
+   */
+  testingRecent: {
+    segment: 'tested',
+    eyebrowTitle: 'Recent',
+    qty: 'tested',
+    status: 'testing',
+    buildFetcher: buildTestingOpenedFetcher,
+    getActivityAt: getTestingOpenedAt,
+    pinSelectedLead: false,
+    preserveServerOrder: true,
+    staggerRevealMotion: 'slide',
+    acceptLineUpdateBus: false,
+    autoSelectFirstWhenEmpty: false,
+    limit: TESTING_SIDEBAR_LIMIT,
+    refreshEvents: TESTING_REFRESH,
+    refreshDomains: TESTING_RAIL_DOMAINS,
+    rowTitleMode: 'adaptive-po',
   },
 } satisfies Record<string, ReceivingRailFeed>;
 

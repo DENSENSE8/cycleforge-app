@@ -18,7 +18,6 @@ import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import { invalidateReceivingViews } from '@/lib/receiving/invalidation';
 import { publishReceivingLogChanged } from '@/lib/realtime/publish';
 import type { InventoryEventStation } from '@/lib/inventory/events';
-import { NO_SESSION } from '@/lib/sessions/attribution';
 
 const INBOUND_STATUSES: ReadonlySet<string> = new Set([
   'EXPECTED', 'ARRIVED', 'MATCHED', 'UNBOXED', 'AWAITING_TEST',
@@ -91,7 +90,6 @@ export async function POST(
     if (exceptionCode) {
       try {
         await recordReceivingException(orgId, {
-          session: NO_SESSION,
           receivingLineId: lineId,
           receivingId: result.receivingId,
           exceptionCode,

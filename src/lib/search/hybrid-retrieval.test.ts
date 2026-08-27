@@ -89,42 +89,29 @@ test('identifier heuristic: serials/tracking/ids yes, natural language no', () =
 
 // ── exact bypass ────────────────────────────────────────────────────────────
 
-test('exact hit ranks first but does NOT short-circuit keyword (no embed/vector)', async () => {
+test('exact identifier hit ranks first and skips keyword/embed (no fuzzy)', async () => {
   const { deps, cap } = fakes({ exact: [exactHit(42)] });
   const res = await hybridSearch(ORG, '1Z999AA10123456784', {}, deps);
 
   assert.equal(res.hits[0].id, 42);
-  assert.equal(res.hits[0].score, 1000); // exact pinned above any fuzzy score
+  assert.equal(res.hits[0].score, 1000);
   assert.equal(res.usedSemantic, false);
   assert.deepEqual(cap.exactCalls, ['1Z999AA10123456784']);
-  // Keyword arm STILL runs in parallel (so serial units can surface) — but the
-  // embed/vector arms are skipped for identifier queries (latency win).
-  assert.equal(cap.keywordCalls.length, 1);
+  assert.equal(cap.keywordCalls.length, 0);
   assert.equal(cap.embedCalls.length, 0);
   assert.equal(cap.vectorCalls, 0);
 });
 
-test('identifier query merges the serial-unit keyword hit under the exact hit', async () => {
-  // When exact finds an order (e.g. TSN / tracking substring) and keyword
-  // finds the real SERIAL_UNIT, both must surface — never short-circuit away
-  // the keyword unit. (Exact also has searchSerialUnits now; this locks the
-  // merge path when the unit arrives only via docs.)
-  const { deps, cap } = fakes({
-    exact: [exactHit(42)], // an order the parent searcher found
-    keyword: [doc('SERIAL_UNIT', 1840, '3476')],
-  });
-  const res = await hybridSearch(ORG, '3476', {}, deps);
+test('identifier exact miss is empty — keyword fuzzy must not fill in', async () => {
+  const { deps, cap } = fakes({ exact: [], keyword: [doc('ORDER', 4989, '02-14684-13689')] });
+  const res = await hybridSearch(ORG, '4989', {}, deps);
 
   assert.equal(cap.exactCalls.length, 1);
-  assert.equal(cap.keywordCalls.length, 1);
-  // Exact hit first, the serial unit merged in second.
-  assert.equal(res.hits[0].id, 42);
-  const unit = res.hits.find((h) => h.entityType === 'unit');
-  assert.ok(unit, 'the serial unit must surface alongside the exact hit');
-  assert.equal(unit?.id, 1840);
+  assert.equal(cap.keywordCalls.length, 0);
+  assert.equal(res.hits.length, 0);
 });
 
-test('exact-arm unit hit ranks first and de-dupes keyword SERIAL_UNIT', async () => {
+test('exact-arm unit hit ranks first without a keyword twin', async () => {
   const { deps } = fakes({
     exact: [
       {
@@ -145,24 +132,23 @@ test('exact-arm unit hit ranks first and de-dupes keyword SERIAL_UNIT', async ()
   assert.equal(res.hits[0].id, 1840);
 });
 
-test('exact + keyword merge de-dupes an entity present in both arms', async () => {
+test('identifier exact hit does not merge extra keyword docs', async () => {
   const { deps } = fakes({
-    exact: [exactHit(7)], // entityType 'order' id 7
+    exact: [exactHit(7)],
     keyword: [doc('ORDER', 7), doc('SERIAL_UNIT', 9)],
   });
-  const res = await hybridSearch(ORG, '7', {}, deps);
-  // Order 7 appears once (exact wins), the unit is additive.
+  const res = await hybridSearch(ORG, '4989', {}, deps);
   assert.equal(res.hits.filter((h) => h.entityType === 'order' && h.id === 7).length, 1);
-  assert.ok(res.hits.some((h) => h.entityType === 'unit' && h.id === 9));
+  assert.equal(res.hits.some((h) => h.entityType === 'unit' && h.id === 9), false);
 });
 
-test('identifier query with NO exact hits falls through to hybrid arms', async () => {
+test('identifier query with NO exact hits stays empty (no keyword fallback)', async () => {
   const { deps, cap } = fakes({ exact: [], keyword: [doc('SKU', 1)] });
   const res = await hybridSearch(ORG, 'SN99999', {}, deps);
 
   assert.equal(cap.exactCalls.length, 1);
-  assert.equal(cap.keywordCalls.length, 1);
-  assert.equal(res.hits.length, 1);
+  assert.equal(cap.keywordCalls.length, 0);
+  assert.equal(res.hits.length, 0);
 });
 
 test('natural-language query never calls the exact arm', async () => {
@@ -279,7 +265,7 @@ test('hits map facets to chips and carry machine-readable facets', async () => {
 
   const hit = res.hits[0];
   assert.equal(hit.entityType, 'receiving');
-  assert.equal(hit.href, '/carton/7');
+  assert.equal(hit.href, '/search?sel=receiving:7');
   assert.deepEqual(hit.chips.map((c) => c.label).sort(), ['ACTIVE', 'USED_GOOD', 'ebay'].sort());
   assert.equal(hit.facets?.condition_grade, 'USED_GOOD');
   // Phase E: tracking/carrier pass through to the machine-readable facets so

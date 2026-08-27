@@ -22,7 +22,8 @@ import { test, expect } from '@playwright/test';
  * The recents rule is the other half. Testing shares the receiving selection
  * BUS but not its record surface — no `ReceivingLineWorkspace` mounts here — so
  * opening a tested line must never stamp `receiving_line_views`, which is the
- * Unbox operator's own Recent feed.
+ * Unbox operator's own Recent feed. QC recents stamp
+ * `/api/testing/receiving-lines/open` instead.
  *
  * Run against the QA org (`.claude/rules/verify.md`):
  *   npx playwright test tests/e2e/testing-history-opens-line.spec.ts --project=qa-desktop

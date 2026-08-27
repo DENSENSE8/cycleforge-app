@@ -29,20 +29,6 @@ import { decodedHandle } from '@/lib/barcode-routing';
 import type { ScanRoute } from '@/lib/barcode-routing';
 import { WEDGE_MAX_INTER_KEY_MS, WEDGE_MIN_LENGTH } from '@/lib/keyboard/wedge-scan-machine';
 
-/**
- * Where a field input came from — the truth layer's whole vocabulary.
- *
- * The three paths have three DIFFERENT DOM signatures, so nothing downstream
- * ever guesses: a scanner is N keydowns at sub-{@link WEDGE_MAX_INTER_KEY_MS}
- * gaps ending in a terminator; a paste is exactly one ClipboardEvent and ZERO
- * per-character keydowns; a human is keydowns at human gaps. Speed never
- * classifies a paste — paste is an event kind, not a fast human.
- *
- * Stamped by `useFindFieldScan` (the DOM adapter) and carried on every value
- * a field emits, so the session record can say HOW each value arrived.
- */
-export type FindFieldSource = 'scanner' | 'paste' | 'human';
-
 /** Running burst state for one field. Reset on every non-burst keystroke. */
 export interface FindFieldBurst {
   buffer: string;

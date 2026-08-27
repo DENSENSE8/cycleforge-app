@@ -36,7 +36,7 @@ test('DB↔UI vocabulary round-trips for every discriminator value', () => {
 test('searchHitHref: every entity type deep-links to its record surface', () => {
   assert.equal(searchHitHref('ORDER', 42), '/search?sel=order:42');
   assert.equal(searchHitHref('SERIAL_UNIT', 9), '/inventory/units?unit=9');
-  assert.equal(searchHitHref('RECEIVING', 3), '/carton/3');
+  assert.equal(searchHitHref('RECEIVING', 3), '/search?sel=receiving:3');
   assert.equal(searchHitHref('SKU', 11), '/products?view=qc&skuId=11');
   assert.equal(searchHitHref('REPAIR', 5), '/repair?tab=active&openRepair=5');
   assert.equal(searchHitHref('FBA_SHIPMENT', 2), '/fba?openShipmentId=2');
@@ -66,7 +66,7 @@ test('shouldAutoOpenSearchOrder: exact sole ORDER hit only', () => {
   );
 });
 
-test('soleMatchingOrderHit: sole ORDER whose subtitle/title contains the query', () => {
+test('soleMatchingOrderHit: sole ORDER whose order # equals the query', () => {
   assert.deepEqual(
     soleMatchingOrderHit(
       [
@@ -100,10 +100,38 @@ test('soleMatchingOrderHit: sole ORDER whose subtitle/title contains the query',
     ),
     { id: 5436 },
   );
-  // Numeric pk as query
-  assert.deepEqual(
+  // Numeric pk as query is not an order number
+  assert.equal(
     soleMatchingOrderHit([{ id: 5436, entityType: 'order', subtitle: 'x' }], '5436'),
-    { id: 5436 },
+    null,
+  );
+  assert.equal(
+    soleMatchingOrderHit(
+      [{ id: 4989, entityType: 'order', subtitle: '02-14684-13689 · EBAY' }],
+      '4989',
+    ),
+    null,
+  );
+  assert.deepEqual(
+    soleMatchingOrderHit(
+      [{ id: 77, entityType: 'order', facets: { order_id: '02-14684-13689' } }],
+      '68413689',
+    ),
+    { id: 77 },
+  );
+  assert.deepEqual(
+    soleMatchingOrderHit(
+      [{ id: 77, entityType: 'order', facets: { order_id: '02-14684-13689' } }],
+      '021468413689',
+    ),
+    { id: 77 },
+  );
+  assert.deepEqual(
+    soleMatchingOrderHit(
+      [{ id: 77, entityType: 'order', facets: { order_id: '02-14684-13689' } }],
+      '84-13689',
+    ),
+    { id: 77 },
   );
   // Zoho PO / receiving-only → null (never force openOrderId)
   assert.equal(
@@ -310,7 +338,7 @@ test('soleHitHref: one hit of ANY type opens; a real list never does', () => {
   // list. One row is not a choice.
   assert.equal(
     soleHitHref([{ id: 50200, entityType: 'receiving' }]),
-    '/carton/50200',
+    '/search?sel=receiving:50200',
   );
   assert.equal(soleHitHref([{ id: 12, entityType: 'unit' }]), '/inventory/units?unit=12');
   assert.equal(soleHitHref([{ id: 9, entityType: 'repair' }]), '/repair?tab=active&openRepair=9');

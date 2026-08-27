@@ -6,11 +6,16 @@ import {
   type ReactNode,
   type Ref,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
 } from 'react';
 import { Clipboard, Loader2, Search, X } from '@/components/Icons';
 import { FIELD_ACTION_CLASS, FIELD_ACTION_GLYPH_CLASS } from './field-action';
+import {
+  resolveSearchInlineCompact,
+  resolveSearchTrailingCompact,
+} from './search-field-inline-collapse';
 
 export type SearchFieldTone =
   | 'blue'
@@ -85,6 +90,13 @@ export interface SearchFieldProps {
    * outside the field. Prefer the in-field glyph for scoped search chrome.
    */
   hideLeadingIcon?: boolean;
+  /**
+   * Makes the leading glyph a button. Header find uses this to open the
+   * search-by picker; other fields omit it and keep a decorative glyph.
+   */
+  onLeadingAction?: () => void;
+  leadingActionLabel?: string;
+  leadingActionExpanded?: boolean;
   autoFocus?: boolean;
   /** Debounce delay in ms before onChange fires. Default 320ms. */
   debounceMs?: number;
@@ -101,8 +113,22 @@ export interface SearchFieldProps {
    */
   customTrailingSlot?: ReactNode;
   /**
+   * Full-height content in the input well (between the leading glyph and the
+   * trailing actions). Fills the field when the draft is empty — not a chip
+   * outside the bar. Clicks pass through to the input except on interactive
+   * children (clear). Hidden while the operator is typing a query.
+   */
+  inlineContent?: ReactNode;
+  /**
+   * Stable key for in-field filter status (Packed staff / date chips). The
+   * field re-measures when this changes so a longer window can collapse to
+   * the funnel dot without waiting on a resize.
+   */
+  inlineContentKey?: string;
+  /**
    * Renders immediately before the default trailing control (inside the search field row).
-   * Use for compact actions that should sit left of paste (e.g. “product not in catalog”).
+   * Use for compact actions that should sit left of paste (Packed exact date /
+   * staff chips + funnel, Ecwid “product not in catalog”).
    */
   trailingPrefix?: ReactNode;
   /**
@@ -112,6 +138,12 @@ export interface SearchFieldProps {
   trailingSuffix?: ReactNode;
   /** When true, trailing slot shows only paste (clipboard); never the clear (X) button when the field has text. */
   pasteOnlyTrailing?: boolean;
+  /**
+   * Stretch the input and trailing slot to the host row instead of the compact
+   * `h-7` box. Workbench chrome / MasterNav find pass this so the field fills a
+   * pinned 28px ops chrome host edge-to-edge.
+   */
+  fillHost?: boolean;
   /**
    * Where the paste affordance lives in the trailing row.
    *
@@ -156,15 +188,21 @@ export function SearchField({
   rightElement,
   leadingIcon,
   hideLeadingIcon = false,
+  onLeadingAction,
+  leadingActionLabel = 'Change search type',
+  leadingActionExpanded,
   autoFocus = false,
   debounceMs = 320,
   hideUnderline = false,
   hideClear = false,
   customTrailingSlot,
+  inlineContent,
+  inlineContentKey,
   trailingPrefix,
   trailingSuffix,
   pasteOnlyTrailing = false,
   pasteVisibility = 'hover',
+  fillHost = false,
 }: SearchFieldProps) {
   // Internal draft — avoid churn from async parent updates during typing.
   const [draft, setDraft] = useState(value);
@@ -232,21 +270,93 @@ export function SearchField({
   }, [draft, debounceMs, onChange]);
 
   const hasValue = Boolean(draft.trim());
+  const hasOverlay = inlineContent != null;
+  const hasTrailingLabel = Boolean(inlineContentKey) && !hasOverlay;
+  const hasInline = hasOverlay || hasTrailingLabel;
+  const formRef = useRef<HTMLFormElement | null>(null);
+  const wellRef = useRef<HTMLDivElement | null>(null);
+  const inlineContentWidthRef = useRef(0);
+  const inlineCollapsedRef = useRef(false);
+  const inlineKeyRef = useRef(inlineContentKey);
+  const [inlineCollapsed, setInlineCollapsed] = useState(false);
+  const showInline = hasOverlay && !hasValue && !inlineCollapsed;
+
+  useLayoutEffect(() => {
+    const form = formRef.current;
+    const well = wellRef.current;
+    if (!form || !well || !hasInline) {
+      inlineCollapsedRef.current = false;
+      inlineContentWidthRef.current = 0;
+      setInlineCollapsed(false);
+      return;
+    }
+
+    if (inlineKeyRef.current !== inlineContentKey) {
+      inlineKeyRef.current = inlineContentKey;
+      inlineContentWidthRef.current = 0;
+      if (inlineCollapsedRef.current) {
+        inlineCollapsedRef.current = false;
+        setInlineCollapsed(false);
+        return;
+      }
+    }
+
+    const apply = () => {
+      const labelEl = form.querySelector<HTMLElement>('[data-search-inline-label]');
+      const clearEl = form.querySelector<HTMLElement>('[data-search-inline-clear]');
+      if (labelEl && !inlineCollapsedRef.current) {
+        inlineContentWidthRef.current =
+          labelEl.scrollWidth + (clearEl?.offsetWidth ?? 0) + 6;
+      }
+      const chipsWidth = inlineContentWidthRef.current;
+      const next = hasOverlay
+        ? resolveSearchInlineCompact({
+            wellWidth: well.clientWidth,
+            contentWidth: chipsWidth,
+            currentlyCompact: inlineCollapsedRef.current,
+          })
+        : resolveSearchTrailingCompact({
+            hostWidth: well.clientWidth + (inlineCollapsedRef.current ? 0 : chipsWidth),
+            chipsWidth,
+            currentlyCompact: inlineCollapsedRef.current,
+          });
+      if (next === inlineCollapsedRef.current) return;
+      inlineCollapsedRef.current = next;
+      setInlineCollapsed(next);
+    };
+
+    apply();
+    if (typeof ResizeObserver === 'undefined') return;
+    let raf = 0;
+    const ro = new ResizeObserver(() => {
+      if (raf) return;
+      raf = window.requestAnimationFrame(() => {
+        raf = 0;
+        apply();
+      });
+    });
+    ro.observe(hasOverlay ? well : form);
+    return () => {
+      if (raf) window.cancelAnimationFrame(raf);
+      ro.disconnect();
+    };
+  }, [hasInline, hasOverlay, inlineContentKey, hasValue, inlineCollapsed]);
   // Spinner means "this query is resolving" — never replace paste on an empty open field.
   const showSearchSpinner = isSearching && hasValue;
   // Pending = user has typed but debounce hasn't fired yet — show a subtle dot.
   const isPending = draft !== committedRef.current && !showSearchSpinner;
 
+  const rowFill = fillHost ? 'h-full min-h-0' : 'h-7';
   const sizeClasses = size === 'compact'
     ? {
         field: hideUnderline ? '' : 'border-b pb-1',
-        input: 'h-8 text-sm',
-        rightSlot: 'h-8',
+        input: `${rowFill} text-sm`,
+        rightSlot: rowFill,
       }
     : {
         field: hideUnderline ? '' : 'border-b-2',
-        input: 'h-8 text-sm',
-        rightSlot: 'h-8',
+        input: `${rowFill} text-sm`,
+        rightSlot: rowFill,
       };
 
   const fieldGapClass = size === 'compact' ? 'gap-1' : 'gap-2';
@@ -373,29 +483,59 @@ export function SearchField({
     );
 
   return (
-    <div className={`flex w-full min-w-0 items-center ${fieldGapClass} ${className}`.trim()}>
+    <div className={`flex w-full min-w-0 items-center ${fillHost ? 'h-full' : ''} ${fieldGapClass} ${className}`.trim()}>
       <form
+        ref={formRef}
         onSubmit={handleSubmit}
-        className={`group flex min-w-0 flex-1 items-center ${fieldGapClass} transition-colors duration-150 ease-out ${sizeClasses.field} ${
+        className={`group flex min-w-0 flex-1 items-center ${fillHost ? 'h-full' : ''} ${fieldGapClass} transition-colors duration-150 ease-out ${sizeClasses.field} ${
           hideUnderline ? 'border-transparent' : toneClassName[tone]
-        }`.trim()}
+        } ${inlineCollapsed ? '[&_[data-search-inline-label]]:hidden [&_[data-search-inline-clear]]:hidden' : ''}`.trim()}
       >
-        {hideLeadingIcon ? null : (
+        {hideLeadingIcon ? null : onLeadingAction ? (
+          <button
+            type="button"
+            data-testid="search-field-leading-action"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={onLeadingAction}
+            className={FIELD_ACTION_CLASS}
+            aria-label={leadingActionLabel}
+            title={leadingActionLabel}
+            aria-haspopup="listbox"
+            aria-expanded={leadingActionExpanded}
+          >
+            {icon}
+          </button>
+        ) : (
           <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center text-text-faint transition-colors duration-100 ease-out group-focus-within:text-text-default">
             {icon}
           </span>
         )}
 
-        <input
-          ref={setInputRef}
-          type="text"
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onPaste={handleNativePaste}
-          placeholder={placeholder}
-          autoFocus={autoFocus}
-          className={`w-full border-0 bg-transparent px-0 font-semibold text-text-default outline-none placeholder:font-medium placeholder:text-text-faint ${sizeClasses.input}`.trim()}
-        />
+        <div
+          ref={wellRef}
+          data-search-field-well=""
+          className={`relative min-w-0 flex-1 ${fillHost ? 'h-full' : ''}`}
+        >
+          <input
+            ref={setInputRef}
+            type="text"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onPaste={handleNativePaste}
+            placeholder={showInline ? undefined : placeholder}
+            autoFocus={autoFocus}
+            className={`w-full border-0 bg-transparent px-0 font-semibold text-text-default outline-none placeholder:font-medium placeholder:text-text-faint ${sizeClasses.input}`.trim()}
+          />
+          {showInline ? (
+            <div
+              data-search-field-inline=""
+              data-testid="search-field-inline"
+              className="pointer-events-none absolute inset-0 flex min-w-0 items-stretch"
+            >
+              {inlineContent}
+            </div>
+          ) : null}
+        </div>
 
         {/* Trailing row: prefix → [persistent paste] → spinner/pending/clear/paste → suffix */}
         <span

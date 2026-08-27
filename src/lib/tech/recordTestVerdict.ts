@@ -45,7 +45,6 @@ import { getPrimarySupportTicketForReceiving } from '@/lib/support/tickets';
 import { isUnifiedEngineApplyTransition, isUnifiedEngineVerdictConfig, isTestingAutoLinkTicket } from '@/lib/feature-flags';
 import { parseOrgSettings } from '@/lib/tenancy/settings';
 import type { SerialState } from '@/lib/inventory/state-machine';
-import { NO_SESSION } from '@/lib/sessions/attribution';
 
 /**
  * Thrown when the unified-engine chokepoint refuses a verdict's status
@@ -204,7 +203,6 @@ export async function recordTestVerdict(
 
   if (useChokepoint) {
     const applied = await applyTransition({
-      session: NO_SESSION,
       unitId: serialUnitId,
       to: mapping.nextStatus as SerialState,
       eventType: mapping.eventType,
@@ -360,9 +358,6 @@ export async function recordTestVerdict(
         entityId: unit.id,
         signalKind: 'test_fail_reason',
         notes: notes ?? null,
-        // The Test bench has a 'test' scan session type but no surface wiring
-        // yet — this is the emit that will carry it.
-        session: NO_SESSION,
         severity: verdict === 'TESTING_FAILED' ? 2 : 1,
         actorStaffId,
         meta: {

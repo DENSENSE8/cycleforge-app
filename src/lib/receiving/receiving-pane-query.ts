@@ -15,7 +15,7 @@ import {
   type ReceivingModeDescriptor,
   type ReceivingTableMode,
 } from '@/lib/receiving/receiving-modes';
-import type { ReceivingActivityAxis } from '@/lib/receiving/receiving-lines-table-helpers';
+import type { ReceivingActivityAxis } from '@/components/station/receiving-lines-table-helpers';
 import type { UnboxWorkspaceTab } from '@/utils/unbox-workspace-state';
 import {
   normalizeReceivingHistorySearchField,

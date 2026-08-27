@@ -46,7 +46,7 @@ import {
   notLineInboundMirrorTerminalPredicate,
 } from '@/lib/inbound/mirror';
 import { sqlReceivingPhotoCount } from '@/lib/photos/queries/receiving-list';
-import { unboxOpenedPredicateSql } from '@/lib/receiving/unbox-scan-opened';
+import { unboxOpenedPredicateSql } from '@/lib/receiving/unbox-scan-opened-sql';
 import { priorityRankSql, laneRankSql } from '@/lib/receiving/display/precedence';
 import { receivingHistorySkipsUnmatchedPlaceholders } from '@/lib/receiving-history-search';
 import {
@@ -931,6 +931,21 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
       values.push(testerId);
       idx++;
     }
+  } else if (view === 'testing_opened') {
+    // QC Recent = lines THIS operator opened on Quality Control
+    // (receiving_line_testing_opens, upserted on open). Isolated from Unbox
+    // receiving_line_views. Unknown viewer → empty feed.
+    if (Number.isFinite(viewerStaffId) && viewerStaffId > 0) {
+      viewedParamIdx = idx;
+      values.push(viewerStaffId);
+      idx++;
+      conditions.push(
+        `EXISTS (SELECT 1 FROM receiving_line_testing_opens o
+                    WHERE o.receiving_line_id = rl.id AND o.staff_id = $${viewedParamIdx})`,
+      );
+    } else {
+      conditions.push('FALSE');
+    }
   } else if (view === 'viewed') {
     // "Viewed" = lines THIS operator recently opened in the receiving
     // workspace (receiving_line_views, upserted on open). Scoped to one staff;
@@ -1223,6 +1238,11 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
             // "just arrived for testing" axis; fall back to the door scan,
             // then the line's own write/create time.
             ? `ORDER BY COALESCE(ru.unboxed_at, rt.door_received_at, rl.updated_at, rl.created_at)::text DESC NULLS LAST, rl.id DESC`
+          : view === 'testing_opened'
+            // Newest QC-open first — recents, not career verdicts.
+            ? (viewedParamIdx > 0
+                ? `ORDER BY (SELECT o.opened_at FROM receiving_line_testing_opens o WHERE o.receiving_line_id = rl.id AND o.staff_id = $${viewedParamIdx}) DESC NULLS LAST, rl.id DESC`
+                : `ORDER BY rl.id DESC`)
           : view === 'viewed'
             // Newest-opened first — your recents read like a back button.
             ? (viewedParamIdx > 0
@@ -1285,9 +1305,12 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
   // testerId is a validated finite integer (>0) so it's safe to inline as a
   // literal — this keeps the count query's positional params unchanged.
   const scopeTester = view === 'testing' && Number.isFinite(testerId) && testerId > 0;
-  const testedAggSelect = view === 'testing'
-    ? `, tr_agg.tested_at::text AS tested_at, tr_agg.tested_count::int AS tested_count`
-    : '';
+  const testingOpenedScope =
+    view === 'testing_opened' && Number.isFinite(viewerStaffId) && viewerStaffId > 0;
+  const testedAggSelect =
+    view === 'testing' || view === 'testing_opened'
+      ? `, tr_agg.tested_at::text AS tested_at, tr_agg.tested_count::int AS tested_count`
+      : '';
   // Needs-test (testing to-do) sort axis: surface the same received-time the
   // feed is ordered by so the rail renders "received Xm ago" matching the sort
   // order (mapRow folds needs_test_at into last_activity_at first).
@@ -1312,6 +1335,13 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
             FROM testing_results tr
             WHERE tr.receiving_line_id = rl.id
               ${scopeTester ? `AND tr.tested_by = ${Math.trunc(testerId)}` : ''}
+         ) tr_agg ON TRUE`
+    : view === 'testing_opened'
+      ? `LEFT JOIN LATERAL (
+            SELECT MAX(tr.created_at) AS tested_at, COUNT(*) AS tested_count
+            FROM testing_results tr
+            WHERE tr.receiving_line_id = rl.id
+              ${testingOpenedScope ? `AND tr.tested_by = ${Math.trunc(viewerStaffId)}` : ''}
          ) tr_agg ON TRUE`
     : '';
 
@@ -1441,6 +1471,9 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
     view === 'viewed' && viewedParamIdx > 0
       ? `, (SELECT v.viewed_at FROM receiving_line_views v
                WHERE v.receiving_line_id = rl.id AND v.staff_id = $${viewedParamIdx})::text AS viewed_at`
+      : view === 'testing_opened' && viewedParamIdx > 0
+        ? `, (SELECT o.opened_at FROM receiving_line_testing_opens o
+               WHERE o.receiving_line_id = rl.id AND o.staff_id = $${viewedParamIdx})::text AS testing_opened_at`
       : '';
   const incomingExtrasJoin = needsZohoMirror
     ? `LEFT JOIN zoho_po_mirror mirror ON mirror.zoho_purchaseorder_id = rz.zoho_purchaseorder_id

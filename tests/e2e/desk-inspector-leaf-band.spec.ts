@@ -16,6 +16,7 @@ import { test, expect } from '@playwright/test';
  */
 test.describe('desk inspector leaf header', () => {
   test.skip(({ browserName }) => browserName === 'webkit', 'desk rail is a desktop layout');
+  test.skip(({ isMobile }) => !!isMobile, 'desk rail is a desktop layout');
 
   test('leaf chrome stays a chrome row and the body starts under it', async ({ page }) => {
     await page.goto('/shipping/orders');
@@ -51,6 +52,50 @@ test.describe('desk inspector leaf header', () => {
     const field = body.locator('input, button').first();
     const fieldBox = (await field.boundingBox())!;
     expect(fieldBox.y - bodyBox.y).toBeLessThan(80);
+  });
+
+  test('host expand and close are the top hit and both fire', async ({ page }) => {
+    await page.goto('/shipping/orders?new=true');
+    // Default `desktop` mints `tests/.auth/admin.json` from USAV creds; when
+    // that mint 401s the worker lands on sign-in and the rail never appears.
+    // `qa-desktop` is the session that actually exercises this chrome.
+    if (/signin|login|account\/sign/i.test(page.url())) {
+      test.skip(true, 'no desktop session — run against qa-desktop');
+    }
+
+    const rail = page.getByTestId('order-ingest-rail');
+    await expect(rail).toBeVisible({ timeout: 30_000 });
+
+    const column = page.locator('aside[data-right-rail-column]');
+    await expect(column).toBeVisible();
+
+    const expand = page.getByTestId('right-rail-host-fullscreen');
+    const close = page.getByTestId('right-rail-host-close');
+    await expect(expand).toBeVisible();
+    await expect(close).toBeVisible();
+
+    const hitAt = async (testid: string) =>
+      page.evaluate((id) => {
+        const el = document.querySelector(`[data-testid="${id}"]`);
+        if (!el) return { testid: null as string | null };
+        const r = el.getBoundingClientRect();
+        const top = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+        return {
+          testid: top?.closest('[data-testid]')?.getAttribute('data-testid') ?? null,
+        };
+      }, testid);
+
+    expect((await hitAt('right-rail-host-fullscreen')).testid).toBe('right-rail-host-fullscreen');
+    expect((await hitAt('right-rail-host-close')).testid).toBe('right-rail-host-close');
+
+    const widthBefore = (await column.boundingBox())!.width;
+    await expand.click();
+    await expect
+      .poll(async () => (await column.boundingBox())?.width ?? 0)
+      .toBeGreaterThan(widthBefore + 80);
+
+    await close.click();
+    await expect(rail).toBeHidden({ timeout: 10_000 });
   });
 
   test('support context rail opens its leaf under a chrome band', async ({ page }) => {

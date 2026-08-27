@@ -303,11 +303,22 @@ describe('§2 wiring · the route edge and the service thread the value through'
     const route = read('src/app/api/receiving-photos/route.ts');
     assert.match(route, /clientCapturedAt: row\.clientCapturedAt \?\? null/);
 
-    /* The gallery meta-builder and upload-queue halves of this wiring left
-       with their subjects (merge, 2026-08-25): `photo-gallery-utils` /
-       `PhotoContextPanel` / `PhotoUploadQueue` were deleted by the
-       warehouse-os zero-base. The server read paths above are the
-       surviving contract; the rebuilt photo surfaces re-earn their wiring
-       pins when they land. */
+    // …and the meta builder the viewer panel actually reads. `unboxingPhotoMeta`
+    // is the ONE place receiving photo meta is built; omitting the field here
+    // nulls it for every carton surface at once.
+    const utils = read('src/components/shipped/photo-gallery/photo-gallery-utils.ts');
+    assert.match(utils, /clientCapturedAt: fields\.clientCapturedAt \?\? null/);
+    const panel = read('src/components/shipped/photo-gallery/PhotoContextPanel.tsx');
+    assert.match(panel, /meta\?\.clientCapturedAt/);
+  });
+
+  it('the receiving upload queue carries it on `scope`, so localStorage persists it', () => {
+    // `PersistedEntry.meta` is `Omit<UploadEntry,'previewUrl'>` — it carries the
+    // whole scope. A field moved off `scope` would be dropped by persist() and
+    // the capture time would die on a tab kill.
+    const src = read('src/components/mobile/receiving/PhotoUploadQueue.ts');
+    assert.match(src, /export interface PhotoScope[\s\S]*?capturedAtMs\?: number \| null;[\s\S]*?\n\}/);
+    assert.match(src, /clientCapturedAtMs: entry\.scope\.capturedAtMs \?\? null/);
+    assert.match(src, /meta: Omit<UploadEntry, 'previewUrl'>/);
   });
 });

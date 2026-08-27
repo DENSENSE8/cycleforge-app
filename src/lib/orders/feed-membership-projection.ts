@@ -65,6 +65,72 @@ const defaultDeps: FeedProjectionDeps = { execute: (q) => db.execute(q) };
 /** Bulk-upsert batch size — keeps a single VALUES list well under param limits. */
 const UPSERT_CHUNK = 500;
 
+export interface OrderUnshippedMembershipWrite {
+  orgId: string;
+  orderPk: number;
+  shipmentId: number | null;
+  title: string;
+  occurredAt?: Date;
+  hasTechScan?: boolean;
+  isOutOfStock?: boolean;
+}
+
+/**
+ * Incremental `orders_unshipped` upsert for one order — same row the bulk
+ * projector writes, without scanning the whole queue. Manual add-order uses
+ * this so Pending metrics (`feed_memberships` lane `pending`) move on commit
+ * instead of waiting for the cron projector.
+ *
+ * No `shipment_id` → skip (awaiting-label, not the fulfillment pending lane).
+ */
+export function planOrderUnshippedMembership(args: OrderUnshippedMembershipWrite): {
+  skip: true;
+  state: null;
+} | {
+  skip: false;
+  state: LaneState;
+  tone: 'default' | 'success' | 'danger';
+  occurredAt: Date;
+  title: string;
+} {
+  if (args.shipmentId == null) return { skip: true, state: null };
+  const lane = deriveFulfillmentState({
+    shipmentId: args.shipmentId,
+    hasTechScan: Boolean(args.hasTechScan),
+    isOutOfStock: Boolean(args.isOutOfStock),
+  });
+  const state = lane.toLowerCase() as LaneState;
+  const title = String(args.title || '').trim() || `Order ${args.orderPk}`;
+  return {
+    skip: false,
+    state,
+    tone: LANE_TONE[lane],
+    occurredAt: args.occurredAt ?? new Date(),
+    title,
+  };
+}
+
+export async function upsertOrderUnshippedMembership(
+  client: { query: (text: string, params?: unknown[]) => Promise<unknown> },
+  args: OrderUnshippedMembershipWrite,
+): Promise<{ upserted: boolean; state: LaneState | null }> {
+  const plan = planOrderUnshippedMembership(args);
+  if (plan.skip) return { upserted: false, state: null };
+  await client.query(
+    `INSERT INTO feed_memberships
+       (organization_id, feed_key, entity_type, entity_id, state, occurred_at, title, tone)
+     VALUES ($1::uuid, 'orders_unshipped', 'ORDER', $2::bigint, $3, $4::timestamptz, $5, $6)
+     ON CONFLICT (organization_id, feed_key, entity_type, entity_id)
+     DO UPDATE SET state = EXCLUDED.state,
+                   occurred_at = EXCLUDED.occurred_at,
+                   title = EXCLUDED.title,
+                   tone = EXCLUDED.tone,
+                   updated_at = NOW()`,
+    [args.orgId, args.orderPk, plan.state, plan.occurredAt, plan.title, plan.tone],
+  );
+  return { upserted: true, state: plan.state };
+}
+
 interface RawOrderRow {
   id: number | string;
   organization_id: string;

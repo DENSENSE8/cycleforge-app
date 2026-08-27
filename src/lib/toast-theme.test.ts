@@ -18,7 +18,8 @@ describe('toast theme', () => {
   it('uses light semantic fills (not solid richColors paint)', () => {
     assert.match(TOAST_CLASSNAMES.success, /bg-surface-success/);
     assert.match(TOAST_CLASSNAMES.error, /bg-surface-danger/);
-    assert.match(TOAST_CLASSNAMES.toast, /bg-surface-card/);
+    assert.match(TOAST_CLASSNAMES.toast, /bg-card/);
+    assert.match(TOAST_CLASSNAMES.success, /text-ink-success/);
     assert.doesNotMatch(TOAST_CLASSNAMES.success, /bg-emerald-500|bg-green-500/);
     assert.doesNotMatch(TOAST_CLASSNAMES.error, /bg-red-500|bg-red-600/);
   });

@@ -144,7 +144,7 @@ test('testing week params: camel-case ISO dates parse and malformed values no-op
 });
 
 test('view: known views parse; unknown → null (default scoping)', () => {
-  for (const v of ['all', 'received', 'incoming', 'activity', 'scanned', 'unbox_opened', 'testing', 'needs-test', 'viewed']) {
+  for (const v of ['all', 'received', 'incoming', 'activity', 'scanned', 'unbox_opened', 'testing', 'needs-test', 'testing_opened', 'viewed']) {
     const q = parse(`view=${v}`);
     assert.equal(q.view, v);
     assert.equal(q.viewRaw, v);

@@ -219,6 +219,11 @@ export const SHARED_OWNED_KEYS: Readonly<Record<string, string>> = {
   rh_field: 'Receiving-history search field. Shared by `/receiving/history` and `/incoming?lane=docked` (Inbound desk Docked), which mount the same History search chrome over the activity feed.',
   rh_scope: 'Receiving-history search scope; shares its owner set with `rh_field`.',
   ticket: 'Focused ticket identity — Support\'s Zendesk ticket id and `/forge`\'s master-plan ticketId. Different id spaces, same question ("which ticket is selected"); the two routes cannot both be current.',
+  clayout: 'Compare multi-pane layout (single|split|quad). Same question on Unbox History and To-ship Orders — independent surfaces that cannot both be current; pane recipes differ per route.',
+  c0: 'Compare pane-0 recipe; shares its owner set with `clayout`.',
+  c1: 'Compare pane-1 recipe; shares its owner set with `clayout`.',
+  c2: 'Compare pane-2 recipe; shares its owner set with `clayout`.',
+  c3: 'Compare pane-3 recipe; shares its owner set with `clayout`.',
 };
 
 /** One route's param contract. */
