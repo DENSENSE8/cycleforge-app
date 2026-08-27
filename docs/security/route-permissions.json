@@ -1,9 +1,9 @@
 {
   "version": 1,
   "generatedAt": "2026-08-21T01:05:42Z",
-  "totalRoutes": 967,
+  "totalRoutes": 966,
   "summary": {
-    "permissionGated": 827,
+    "permissionGated": 826,
     "authenticatedNoPermission": 51,
     "anonymousIntentional": 87,
     "serviceToService": 2,
@@ -4311,15 +4311,6 @@
       ],
       "gate": "withAuth",
       "permission": "packing.view",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/packing/box-counts/route.ts",
-      "methods": [
-        "GET"
-      ],
-      "gate": "withAuth",
-      "permission": "operations.view",
       "exemptReason": null
     },
     {
