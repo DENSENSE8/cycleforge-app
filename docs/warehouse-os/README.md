@@ -27,6 +27,7 @@ staff member.
 | [`HANDOFF-ux-fighting.md`](HANDOFF-ux-fighting.md) | **The UX/UI expert brief.** Paste into a fresh session — what the interface is, how the operator wants to be argued with, six worked fights, and the measurement snippets |
 | [`prototype/warehouse-os.html`](prototype/warehouse-os.html) | The clickable shell. Where rulings get discovered before they get written down |
 | [`HANDOFF-motion-sweep.md`](HANDOFF-motion-sweep.md) | **Executable.** Paste into a fast-model session — the mechanical half of law M1 in `src/` |
+| [`PLAN-packed-by-packer.md`](PLAN-packed-by-packer.md) | **Daily boxes packed by packer.** Tile + launcher/session tool — not a beam button. Build only when the operator says to |
 
 ## The five pillars
 

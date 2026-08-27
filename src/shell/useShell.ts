@@ -1210,10 +1210,6 @@ export function useShell() {
     openTile('sessions-week', 'Sessions', 'table');
   }, [openTile]);
 
-  const openPackedTodayTile = useCallback(() => {
-    openTile('packed-today', 'Packed', 'table');
-  }, [openTile]);
-
   /* ── the omni-command composer's commit sink ───────────────────────────
      One hydration point (docs/omni-command-composer.md): a chip paints the
      feed summary AND opens the orders tile — commit is an OS event, never a
@@ -1404,7 +1400,6 @@ export function useShell() {
     tileFilters,
     openHelpTile,
     openSessionsWeekTile,
-    openPackedTodayTile,
     runFeedAction,
     cutSession,
     renameArmedSession,
