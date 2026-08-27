@@ -39,6 +39,8 @@ export interface WorkSessionFake {
   rows: Row[];
   /** `work_session_intervals` rows, live and in insertion order. */
   intervals: Row[];
+  /** `work_session_purposes` rows, live. */
+  purposes: Row[];
   /** Every statement issued, in order — for assertions about ordering. */
   sql: string[];
   /** Move the fake clock forward. */
@@ -51,9 +53,11 @@ export interface WorkSessionFake {
 export function fakes(seed: Row[] = []): WorkSessionFake {
   const rows: Row[] = seed.map((r) => ({ ...r }));
   const intervals: Row[] = [];
+  const purposes: Row[] = [];
   const sql: string[] = [];
   let nextId = rows.reduce((max, r) => Math.max(max, Number(r.id)), 0) + 1;
   let nextIntervalId = 1;
+  let nextPurposeId = 1;
   let clock = EPOCH;
 
   const nowIso = () => new Date(clock).toISOString();
@@ -112,6 +116,73 @@ export function fakes(seed: Row[] = []): WorkSessionFake {
         return { rows: [], rowCount: 0 };
       }
 
+      if (text.includes('INSERT INTO work_session_purposes')) {
+        const custom = /false,\s*1000/.test(text);
+        const orgId = p[0];
+        const key = p[1];
+        const label = p[2];
+        const defaultKind = custom ? 'task' : p[3];
+        const defaultSurfaceKey = custom ? null : p[4];
+        const sortOrder = custom ? 1000 : p[5];
+        const dupKey = purposes.find((r) => r.organization_id === orgId && r.key === key);
+        if (dupKey) {
+          if (text.includes('RETURNING')) return { rows: [{ ...dupKey }], rowCount: 0 };
+          return { rows: [], rowCount: 0 };
+        }
+        const row: Row = {
+          id: nextPurposeId++,
+          organization_id: orgId,
+          key,
+          label,
+          default_kind: defaultKind,
+          default_surface_key: defaultSurfaceKey ?? null,
+          is_system: !custom,
+          sort_order: sortOrder ?? 1000,
+          archived_at: null,
+        };
+        purposes.push(row);
+        return { rows: [{ ...row }], rowCount: 1 };
+      }
+
+      if (text.includes('UPDATE work_session_purposes')) {
+        const [orgId, id] = p;
+        const row = purposes.find((r) => r.organization_id === orgId && r.id === id);
+        if (!row) return { rows: [], rowCount: 0 };
+        row.archived_at = nowIso();
+        return { rows: [{ ...row }], rowCount: 1 };
+      }
+
+      if (text.includes('FROM work_session_purposes')) {
+        const [orgId] = p;
+        if (text.includes('lower(label)')) {
+          const label = String(p[1] ?? '');
+          const hit = purposes
+            .filter(
+              (r) =>
+                r.organization_id === orgId && String(r.label).toLowerCase() === label.toLowerCase(),
+            )
+            .sort((a, b) => Number(a.id) - Number(b.id));
+          const row = hit[0];
+          return { rows: row ? [{ ...row }] : [], rowCount: row ? 1 : 0 };
+        }
+        if (text.includes('AND id = $2')) {
+          const id = p[1];
+          const row = purposes.find((r) => r.organization_id === orgId && r.id === id);
+          return { rows: row ? [{ ...row }] : [], rowCount: row ? 1 : 0 };
+        }
+        if (text.includes('SELECT key FROM')) {
+          return {
+            rows: purposes.filter((r) => r.organization_id === orgId).map((r) => ({ key: r.key })),
+            rowCount: purposes.length,
+          };
+        }
+        const archived = !text.includes('archived_at IS NULL');
+        const rows = purposes.filter(
+          (r) => r.organization_id === orgId && (archived || r.archived_at == null),
+        );
+        return { rows: rows.map((r) => ({ ...r })), rowCount: rows.length };
+      }
+
       // ── work_session_intervals ──────────────────────────────────────────
       // Matched BEFORE the generic `FOR UPDATE` branch below: the open-interval
       // read is also a FOR UPDATE, and the looser pattern would swallow it.
@@ -152,7 +223,19 @@ export function fakes(seed: Row[] = []): WorkSessionFake {
 
       // ── work_sessions ───────────────────────────────────────────────────
       if (text.includes('INSERT INTO work_sessions')) {
-        const [orgId, kind, scanType, surfaceKey, staffId, deviceId, clientEventId, state] = p;
+        const [
+          orgId,
+          kind,
+          scanType,
+          surfaceKey,
+          staffId,
+          deviceId,
+          clientEventId,
+          state,
+          title,
+          purposeId,
+          notes,
+        ] = p;
         const dup = rows.find(
           (r) => r.organization_id === orgId && r.client_event_id === clientEventId,
         );
@@ -174,6 +257,11 @@ export function fakes(seed: Row[] = []): WorkSessionFake {
           started_at: nowIso(),
           ended_at: null,
           state: JSON.parse(String(state)),
+          title: title ?? null,
+          purpose_id: purposeId ?? null,
+          notes: notes ?? null,
+          wrap_up: null,
+          wrap_up_source: null,
         };
         rows.push(row);
         assertOneArmed();
@@ -246,15 +334,26 @@ export function fakes(seed: Row[] = []): WorkSessionFake {
       }
 
       if (text.includes("SET status = 'ended'")) {
-        const [orgId, id] = p;
+        const [orgId, id, wrapUp, wrapUpSource] = p;
         const row = rows.find((r) => r.organization_id === orgId && r.id === id)!;
         row.status = 'ended';
         row.armed = false;
         row.ended_at = nowIso();
         row.claimed_by_staff_id = null;
         row.claim_expires_at = null;
+        if (wrapUp != null) row.wrap_up = wrapUp;
+        if (wrapUpSource != null) row.wrap_up_source = wrapUpSource;
         row.version = Number(row.version) + 1;
         assertOneArmed();
+        return { rows: [{ ...row }], rowCount: 1 };
+      }
+
+      if (text.includes('SET title = COALESCE')) {
+        const [orgId, id, title, notes] = p;
+        const row = rows.find((r) => r.organization_id === orgId && r.id === id)!;
+        if (title != null) row.title = title;
+        if (notes != null) row.notes = notes;
+        row.version = Number(row.version) + 1;
         return { rows: [{ ...row }], rowCount: 1 };
       }
 
@@ -275,7 +374,7 @@ export function fakes(seed: Row[] = []): WorkSessionFake {
         return { rows: row ? [{ ...row }] : [], rowCount: row ? 1 : 0 };
       }
 
-      if (text.includes('FOR UPDATE')) {
+      if (text.includes('FOR UPDATE') || (text.includes('FROM work_sessions') && text.includes('AND id = $2'))) {
         const [orgId, id] = p;
         const row = rows.find((r) => r.organization_id === orgId && r.id === id);
         return { rows: row ? [{ ...row }] : [], rowCount: row ? 1 : 0 };
@@ -289,6 +388,7 @@ export function fakes(seed: Row[] = []): WorkSessionFake {
   return {
     rows,
     intervals,
+    purposes,
     sql,
     advance: (ms: number) => {
       clock += ms;

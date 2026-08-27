@@ -38,8 +38,11 @@ import { withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { mapWorkSession, type SessionQueryable } from './work-sessions';
 import {
+  activeDuration,
+  parkedDuration,
   sessionSeries,
   seriesTotals,
+  type Duration,
   type SessionMetric,
   type SessionSeriesTotals,
   type TimePunchWindow,
@@ -434,12 +437,25 @@ export interface SessionListFilters {
   sessionType?: SessionEventType;
   status?: SessionStatus;
   surfaceKey?: string;
+  purposeId?: number;
+  /** Search title, notes, wrap_up, purpose label. Never groups by title. */
+  q?: string;
   limit?: number;
+}
+
+export interface SessionPurposeRef {
+  id: number;
+  key: string;
+  label: string;
 }
 
 export interface WorkSessionWithMetrics {
   session: WorkSession;
+  purpose: SessionPurposeRef | null;
+  staffName: string | null;
   metric: SessionMetric;
+  /** Park/resume stretches — timestamps + kind + staffId. */
+  intervals: WorkSessionInterval[];
 }
 
 export interface SessionSeriesResult {
@@ -460,9 +476,9 @@ export const defaultSessionRollupDeps: SessionRollupDeps = {
 };
 
 const SESSION_COLUMNS = `
-  id, organization_id, kind, scan_type, armed, surface_key, status, version,
-  staff_id, claimed_by_staff_id, claim_expires_at, device_id, client_event_id,
-  started_at, ended_at, state
+  ws.id, ws.organization_id, ws.kind, ws.scan_type, ws.armed, ws.surface_key, ws.status, ws.version,
+  ws.staff_id, ws.claimed_by_staff_id, ws.claim_expires_at, ws.device_id, ws.client_event_id,
+  ws.started_at, ws.ended_at, ws.state, ws.title, ws.purpose_id, ws.notes, ws.wrap_up, ws.wrap_up_source
 `;
 
 function mapInterval(row: Record<string, unknown>): WorkSessionInterval {
@@ -498,7 +514,7 @@ async function readSeries(
 ): Promise<SessionSeriesResult> {
   const cap = clamp(filters.limit, SESSION_LIST_CAP, SESSION_LIST_CAP);
 
-  const where: string[] = ['organization_id = $1', 'started_at >= $2::timestamptz', 'started_at < $3::timestamptz'];
+  const where: string[] = ['ws.organization_id = $1', 'ws.started_at >= $2::timestamptz', 'ws.started_at < $3::timestamptz'];
   const params: unknown[] = [orgId, range.from, range.to];
   const push = (sql: string, value: unknown) => {
     params.push(value);
@@ -506,33 +522,52 @@ async function readSeries(
   };
 
   if (staffId != null) {
-    // The session belongs to them OR they hold its lease — a lead who resumed
-    // someone else's session did work that must appear in their day. One
-    // placeholder, referenced twice.
     params.push(staffId);
-    where.push(`(staff_id = $${params.length} OR claimed_by_staff_id = $${params.length})`);
+    where.push(`(ws.staff_id = $${params.length} OR ws.claimed_by_staff_id = $${params.length})`);
   }
-  if (filters.kind) push('kind = $?', filters.kind);
-  if (filters.status) push('status = $?', filters.status);
-  if (filters.surfaceKey) push('surface_key = $?', filters.surfaceKey);
+  if (filters.kind) push('ws.kind = $?', filters.kind);
+  if (filters.status) push('ws.status = $?', filters.status);
+  if (filters.surfaceKey) push('ws.surface_key = $?', filters.surfaceKey);
+  if (filters.purposeId) push('ws.purpose_id = $?', filters.purposeId);
+  if (filters.q?.trim()) {
+    params.push(`%${filters.q.trim()}%`);
+    const i = params.length;
+    where.push(
+      `(ws.title ILIKE $${i} OR ws.notes ILIKE $${i} OR ws.wrap_up ILIKE $${i} OR p.label ILIKE $${i})`,
+    );
+  }
   if (filters.sessionType === 'task') {
-    // 'task' is not a scan_type — it is the absence of one. Filtering
-    // `scan_type = 'task'` would match nothing and look like "no task work".
-    where.push(`kind = 'task'`);
+    where.push(`ws.kind = 'task'`);
   } else if (filters.sessionType) {
-    push('scan_type = $?', filters.sessionType);
+    push('ws.scan_type = $?', filters.sessionType);
   }
 
   params.push(cap);
   const sessionRows = await db.query(
-    `SELECT ${SESSION_COLUMNS} FROM work_sessions
+    `SELECT ${SESSION_COLUMNS},
+            p.key AS purpose_key, p.label AS purpose_label,
+            st.name AS staff_name
+       FROM work_sessions ws
+       LEFT JOIN work_session_purposes p ON p.id = ws.purpose_id
+       LEFT JOIN staff st ON st.id = ws.staff_id
       WHERE ${where.join(' AND ')}
-      ORDER BY started_at DESC, id DESC
+      ORDER BY ws.started_at DESC, ws.id DESC
       LIMIT $${params.length}`,
     params,
   );
 
-  const sessions = (sessionRows.rows as Array<Record<string, unknown>>).map(mapWorkSession);
+  const extras = new Map<number, { purpose: SessionPurposeRef | null; staffName: string | null }>();
+  const sessions = (sessionRows.rows as Array<Record<string, unknown>>).map((row) => {
+    const session = mapWorkSession(row);
+    extras.set(session.id, {
+      purpose:
+        session.purposeId != null && row.purpose_key != null
+          ? { id: session.purposeId, key: String(row.purpose_key), label: String(row.purpose_label ?? '') }
+          : null,
+      staffName: row.staff_name == null ? null : String(row.staff_name),
+    });
+    return session;
+  });
   const ids = sessions.map((s) => s.id);
 
   const intervalRows = ids.length
@@ -571,14 +606,26 @@ async function readSeries(
 
   const series = sessionSeries({ sessions, intervals, punches, dbNow });
   const byId = new Map(series.map((m) => [m.sessionId, m]));
+  const intervalsBySession = new Map<number, WorkSessionInterval[]>();
+  for (const interval of intervals) {
+    const list = intervalsBySession.get(interval.sessionId) ?? [];
+    list.push(interval);
+    intervalsBySession.set(interval.sessionId, list);
+  }
 
   return {
     // Oldest-first, matching the series: a report reads down the day, and
     // `gapBefore` on the first row is null only if the order agrees.
-    sessions: series.map((metric) => ({
-      session: sessions.find((s) => s.id === metric.sessionId)!,
-      metric: byId.get(metric.sessionId)!,
-    })),
+    sessions: series.map((metric) => {
+      const extra = extras.get(metric.sessionId);
+      return {
+        session: sessions.find((s) => s.id === metric.sessionId)!,
+        purpose: extra?.purpose ?? null,
+        staffName: extra?.staffName ?? null,
+        metric: byId.get(metric.sessionId)!,
+        intervals: intervalsBySession.get(metric.sessionId) ?? [],
+      };
+    }),
     totals: seriesTotals(series),
     dbNow,
     truncated: sessions.length >= cap,
@@ -658,4 +705,71 @@ export async function countUnattributedEvents(
       to: range.to,
     };
   });
+}
+
+export interface SessionReport {
+  session: WorkSession;
+  purpose: SessionPurposeRef | null;
+  staffName: string | null;
+  active: Duration;
+  parked: Duration;
+  /** Σ active ms — the timesheet number. Same value as `active.ms`. */
+  activeMs: number;
+  parkedMs: number;
+  intervals: WorkSessionInterval[];
+  contents: SessionContents;
+  dbNow: string;
+}
+
+/** One session as a timesheet row: title, purpose, Σ active, entities touched. */
+export async function getSessionReport(
+  orgId: OrgId,
+  sessionId: number,
+  deps: SessionRollupDeps = defaultSessionRollupDeps,
+): Promise<SessionReport | null> {
+  const header = await deps.withTenantTransaction(orgId, async (db) => {
+    const { rows } = await db.query(
+      `SELECT ${SESSION_COLUMNS},
+              p.key AS purpose_key, p.label AS purpose_label,
+              st.name AS staff_name
+         FROM work_sessions ws
+         LEFT JOIN work_session_purposes p ON p.id = ws.purpose_id
+         LEFT JOIN staff st ON st.id = ws.staff_id
+        WHERE ws.organization_id = $1 AND ws.id = $2`,
+      [orgId, sessionId],
+    );
+    const row = rows[0] as Record<string, unknown> | undefined;
+    if (!row) return null;
+
+    const session = mapWorkSession(row);
+    const intervalRows = await db.query(
+      `SELECT id, organization_id, session_id, kind, started_at, ended_at, staff_id
+         FROM work_session_intervals
+        WHERE organization_id = $1 AND session_id = $2
+        ORDER BY started_at`,
+      [orgId, sessionId],
+    );
+    const intervals = (intervalRows.rows as Array<Record<string, unknown>>).map(mapInterval);
+    const clockRow = await db.query('SELECT now() AS db_now', []);
+    const dbNow = iso((clockRow.rows[0] as Record<string, unknown>).db_now);
+
+    const active = activeDuration(session, intervals, dbNow);
+    const parked = parkedDuration(session, intervals, dbNow);
+    return {
+      session,
+      purpose:
+        session.purposeId != null && row.purpose_key != null
+          ? { id: session.purposeId, key: String(row.purpose_key), label: String(row.purpose_label ?? '') }
+          : null,
+      staffName: row.staff_name == null ? null : String(row.staff_name),
+      active,
+      parked,
+      activeMs: active.ms,
+      parkedMs: parked.ms,
+      intervals,
+      dbNow,
+    };
+  });
+  if (!header) return null;
+  return { ...header, contents: await sessionContents(orgId, sessionId, {}, deps) };
 }
