@@ -153,6 +153,7 @@ export const STATION_CARTON_IDENTITY_ADAPTERS = [
   'components/packer/PackOrderIdentity.tsx',
   'features/review/packer/ReviewOrderIdentity.tsx',
   'components/station/order/OrderStationIdentity.tsx',
+  'components/search/station/SearchReceivingIdentity.tsx',
 ] as const;
 /**
  * Documented adoption gaps (port follow-ups) — station chrome but not yet on

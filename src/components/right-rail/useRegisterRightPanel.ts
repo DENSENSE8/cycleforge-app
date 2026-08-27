@@ -46,6 +46,8 @@ export function useRegisterRightPanel(opts: {
   edgeCollapse?: boolean;
   /** Defaults to `true`. Pass `false` when workbench chrome owns reopen. */
   collapsedStrip?: boolean;
+  /** Defaults to `true`. Pass `false` for ephemeral desk tools (Add inbound). */
+  resumeOnDismiss?: boolean;
   /** Accessible name for the aside — pass one when `modal` is false. */
   ariaLabel?: string;
   /** When false the component makes no claim (e.g. an unopened dock). */
@@ -63,6 +65,7 @@ export function useRegisterRightPanel(opts: {
     push,
     edgeCollapse,
     collapsedStrip,
+    resumeOnDismiss,
     ariaLabel,
     enabled = true,
   } = opts;
@@ -86,9 +89,10 @@ export function useRegisterRightPanel(opts: {
       push,
       edgeCollapse,
       collapsedStrip,
+      resumeOnDismiss,
       ariaLabel,
     });
-  }, [id, priority, enabled, elevated, modal, closeOnOutsideClick, push, edgeCollapse, collapsedStrip, ariaLabel]);
+  }, [id, priority, enabled, elevated, modal, closeOnOutsideClick, push, edgeCollapse, collapsedStrip, resumeOnDismiss, ariaLabel]);
 
   // Keep the live occupant's node fresh (no-ops if the claim isn't active).
   useEffect(() => {
@@ -104,7 +108,8 @@ export function useRegisterRightPanel(opts: {
       push,
       edgeCollapse,
       collapsedStrip,
+      resumeOnDismiss,
       ariaLabel,
     });
-  }, [id, node, onClose, canClose, elevated, modal, closeOnOutsideClick, push, edgeCollapse, collapsedStrip, ariaLabel, enabled]);
+  }, [id, node, onClose, canClose, elevated, modal, closeOnOutsideClick, push, edgeCollapse, collapsedStrip, resumeOnDismiss, ariaLabel, enabled]);
 }

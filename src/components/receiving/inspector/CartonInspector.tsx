@@ -3,7 +3,8 @@
 /**
  * Carton inspector — thin re-export of the read assembly.
  *
- * Route `/carton/[id]` and `/search?sel=receiving:` mount this.
+ * `/carton/[id]` redirects to `/search?sel=receiving:` — the read assembly
+ * in `inspection/` remains for other mounts until fully retired.
  *
  * **D6 retired 2026-08-20.** This docblock used to say the assembly lives under
  * `inspection/` "so the read job can evolve without dragging Unbox layout

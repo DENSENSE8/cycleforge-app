@@ -88,7 +88,7 @@ export function MyDayDueHorizonChips({
               aria-pressed={isActive}
               onClick={() => onToggle(horizon)}
               className={cn(
-                'ds-raw-button inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg px-2 transition-colors',
+                'ds-raw-button inline-flex h-7 shrink-0 items-center gap-1.5 rounded-none px-2 transition-colors',
                 focusRing('control', 'accent'),
                 isActive
                   ? 'bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-400'

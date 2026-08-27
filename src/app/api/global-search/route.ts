@@ -28,7 +28,7 @@ import { parseSearchByScope } from '@/lib/search/search-by';
 function buildHandler(orgId: OrgId) {
   return createCrudHandler<GlobalSearchResult>({
     name: 'global-search',
-    cacheNamespace: `api:global-search:${orgId}`,
+    cacheNamespace: `api:global-search:v3:${orgId}`,
     cacheTTL: 60,
     cacheTags: ['global-search', 'orders', 'repair-service', 'fba', 'receiving-logs', 'sku-catalog'],
 

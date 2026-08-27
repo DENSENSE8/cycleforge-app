@@ -39,6 +39,7 @@ import { ToolbarButton } from '@/components/ui/ToolbarButton';
 import type { TableId } from '@/lib/tables/table-columns';
 import type { LedgerGridColumnModel } from './grid-surface-descriptor';
 import {
+  GRID_COLUMN_DETAILS_CLOSE_EVENT,
   GRID_COLUMN_DETAILS_OPEN_EVENT,
 } from './grid-column-details-open';
 import { useGridFields } from './useGridColumnVisibility';
@@ -113,8 +114,16 @@ export function GridColumnGutter<C extends LedgerGridColumnModel>({
   useEffect(() => {
     if (triggerPortalTarget) return;
     const onOpen = () => openDetails(null);
+    const onClose = () => {
+      setOpen(false);
+      setSeedKey(null);
+    };
     window.addEventListener(GRID_COLUMN_DETAILS_OPEN_EVENT, onOpen);
-    return () => window.removeEventListener(GRID_COLUMN_DETAILS_OPEN_EVENT, onOpen);
+    window.addEventListener(GRID_COLUMN_DETAILS_CLOSE_EVENT, onClose);
+    return () => {
+      window.removeEventListener(GRID_COLUMN_DETAILS_OPEN_EVENT, onOpen);
+      window.removeEventListener(GRID_COLUMN_DETAILS_CLOSE_EVENT, onClose);
+    };
   }, [openDetails, triggerPortalTarget]);
   const { fields, setFieldVisible } = useGridFields(tableId, columns);
   const fieldsApi = useMemo<GridColumnFieldsApi>(

@@ -251,7 +251,7 @@ export function TabSwitch({
     >
       <div
         ref={trackRef}
-        className={`relative flex gap-1 ${trackWidthClass}${compact ? ' h-full items-stretch' : ''}`}
+        className={`relative flex ${compact ? 'gap-0 h-full items-stretch' : 'gap-1'} ${trackWidthClass}`}
       >
         <motion.div
           aria-hidden

@@ -12,10 +12,11 @@
  *   `A` = clear filters · `1`/`2` = Pending/Tested tabs · `3` = Blocked · `4`/`U` = Urgent
  */
 
-import { useCallback, useEffect, useState, startTransition } from 'react';
+import { useCallback, useDeferredValue, useEffect, useMemo, useState, startTransition, type ReactNode } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { Zap } from '@/components/Icons';
+import type { DateRange } from 'react-day-picker';
+import { X, Zap } from '@/components/Icons';
 import { ToolbarButton } from '@/components/ui/ToolbarButton';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import {
@@ -24,15 +25,17 @@ import {
   WorkbenchFilterMenuRow,
   WorkbenchFilterPopover,
 } from '@/components/dashboard/workbench-filter-popover';
+import { SearchableSelectField } from '@/design-system/components/SearchableSelectField';
+import { DateRangePickerField } from '@/design-system/components/DateRangePickerField';
 import {
   FULFILLMENT_STATE_META,
   fulfillmentLaneTotals,
 } from '@/lib/unshipped-state';
 import { OUTBOUND_STATE_META, type OutboundState } from '@/lib/outbound-state';
-import { unshippedQueueCountsQuery } from '@/lib/queries/dashboard-queries';
+import { packedOrdersQuery, unshippedQueueCountsQuery } from '@/lib/queries/dashboard-queries';
 import { PACK_PLACED_PARAM, PACK_STATION_PARAM } from '@/lib/packing/pack-station-arm';
 import { useShippedScanOutData } from '@/hooks/useShippedScanOutData';
-import { parseStaffParam } from '@/hooks/useStaffFilter';
+import { parseStaffParam, useStaffFilter } from '@/hooks/useStaffFilter';
 import { useOutboundStatusFilter } from '@/components/shipped/useOutboundStatusFilter';
 import { useToShipStatusFilter } from '@/components/unshipped/useToShipStatusFilter';
 import {
@@ -40,6 +43,20 @@ import {
   normalizeDashboardOrderViewParams,
   type DashboardOrderView,
 } from '@/utils/dashboard-search-state';
+import { dateKeyToLocalDate, localDateToDateKey } from '@/utils/date';
+import {
+  PACKED_ALL_DATES_PARAM,
+  PACKED_DATE_FROM_PARAM,
+  PACKED_DATE_TO_PARAM,
+  packedAllDatesActive,
+  packedCurrentWeekKeys,
+  packedDateExactLabel,
+  packedFiltersHot,
+  packedFiltersHotLabel,
+  packedShouldSeedCurrentWeek,
+  packedStaffFilterOptions,
+  parsePackedDateKey,
+} from '@/lib/packed/packed-filters';
 import { cn } from '@/utils/_cn';
 
 type FilterMode = 'unshipped' | 'tested' | 'packed' | 'shipped';
@@ -61,6 +78,27 @@ function isTypingTarget(el: EventTarget | null): boolean {
   const role = el.getAttribute('role');
   if (role === 'textbox' || role === 'searchbox' || role === 'combobox') return true;
   return false;
+}
+
+function isPackedStaffTypeInput(el: EventTarget | null): boolean {
+  if (!(el instanceof HTMLElement)) return false;
+  if (el.getAttribute('placeholder') === 'Type a name…') return true;
+  return Boolean(el.closest('[cmdk-input-wrapper]'));
+}
+
+function isPackedFindInput(el: EventTarget | null): boolean {
+  return el instanceof HTMLInputElement && el.placeholder === 'Filter orders…';
+}
+
+/** `F` opens the Packed funnel even from the find field; not while typing a staff name. */
+function packedFilterShortcutBlocked(el: EventTarget | null): boolean {
+  if (isPackedStaffTypeInput(el)) return true;
+  if (!isTypingTarget(el)) return false;
+  if (isPackedFindInput(el)) return false;
+  if (el instanceof HTMLElement && el.closest('[data-testid="packed-find-filters"]')) {
+    return false;
+  }
+  return true;
 }
 
 /**
@@ -266,6 +304,307 @@ export function useToShipFilterHotkeys(enabled: boolean) {
   }, [enabled, selectAll, toggleUrgent, toggleBlocked, selectLifecycleTab]);
 }
 
+type PackedFindFocus = 'staff' | 'date' | null;
+
+/**
+ * Packed Band-3 find chrome — exact staff / date chips + funnel **left of paste**
+ * (`trailingPrefix`), same left-of-paste grammar as the sheet week pill.
+ * Starting window is the warehouse current week; `allDates=1` is the intentional
+ * clear so dismiss does not re-seed. Click a chip to edit that facet; X dismisses.
+ */
+export function usePackedFindFieldChrome(): {
+  trailingPrefix: ReactNode;
+  inlineContentKey: string | undefined;
+} {
+  const [open, setOpen] = useState(false);
+  const [focusSection, setFocusSection] = useState<PackedFindFocus>(null);
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  const { staffId, selectedName, setStaff } = useStaffFilter();
+  const dateFrom = parsePackedDateKey(searchParams.get(PACKED_DATE_FROM_PARAM));
+  const dateTo = parsePackedDateKey(searchParams.get(PACKED_DATE_TO_PARAM));
+  const allDates = packedAllDatesActive(searchParams.get(PACKED_ALL_DATES_PARAM));
+  const searchQuery = String(searchParams.get('search') || '').trim();
+  const deferredSearchQuery = useDeferredValue(searchQuery);
+  const rosterQuery = useQuery({
+    ...packedOrdersQuery({
+      searchQuery: deferredSearchQuery,
+      dateFrom: dateFrom ?? undefined,
+      dateTo: dateTo ?? undefined,
+    }),
+  });
+  const packedStaffOptions = useMemo(
+    () => packedStaffFilterOptions(rosterQuery.data ?? []),
+    [rosterQuery.data],
+  );
+  const staffName =
+    packedStaffOptions.find((option) => option.value === staffId)?.label ?? selectedName;
+  const dateRange: DateRange | undefined = dateFrom
+    ? {
+        from: dateKeyToLocalDate(dateFrom),
+        to: dateKeyToLocalDate(dateTo ?? dateFrom),
+      }
+    : undefined;
+
+  const replaceParams = useCallback(
+    (mutator: (params: URLSearchParams) => void) => {
+      const params = new URLSearchParams(searchParams.toString());
+      mutator(params);
+      const qs = params.toString();
+      startTransition(() => {
+        router.replace(
+          qs ? `${pathname || '/shipping/orders'}?${qs}` : pathname || '/shipping/orders',
+          { scroll: false },
+        );
+      });
+    },
+    [router, pathname, searchParams],
+  );
+
+  // Seed current week on Packed landing (no range, not intentionally cleared).
+  useEffect(() => {
+    if (!packedShouldSeedCurrentWeek({ dateFrom, dateTo, allDates })) return;
+    const week = packedCurrentWeekKeys();
+    replaceParams((p) => {
+      p.delete(PACKED_ALL_DATES_PARAM);
+      p.set(PACKED_DATE_FROM_PARAM, week.dateFrom);
+      p.set(PACKED_DATE_TO_PARAM, week.dateTo);
+    });
+  }, [allDates, dateFrom, dateTo, replaceParams]);
+
+  const setDateRange = useCallback(
+    (next: DateRange | undefined) => {
+      replaceParams((p) => {
+        const from = localDateToDateKey(next?.from);
+        const to = localDateToDateKey(next?.to ?? next?.from);
+        if (from) {
+          p.delete(PACKED_ALL_DATES_PARAM);
+          p.set(PACKED_DATE_FROM_PARAM, from);
+        } else {
+          p.delete(PACKED_DATE_FROM_PARAM);
+        }
+        if (to) p.set(PACKED_DATE_TO_PARAM, to);
+        else p.delete(PACKED_DATE_TO_PARAM);
+        if (!from && !to) p.set(PACKED_ALL_DATES_PARAM, '1');
+      });
+    },
+    [replaceParams],
+  );
+
+  const clearPackedFilters = useCallback(() => {
+    setStaff(null);
+    replaceParams((p) => {
+      p.delete(PACKED_DATE_FROM_PARAM);
+      p.delete(PACKED_DATE_TO_PARAM);
+      p.set(PACKED_ALL_DATES_PARAM, '1');
+    });
+  }, [replaceParams, setStaff]);
+
+  const openSection = useCallback((section: PackedFindFocus) => {
+    setFocusSection(section);
+    setOpen(true);
+  }, []);
+
+  const handleOpenChange = useCallback((next: boolean) => {
+    setOpen(next);
+    if (!next) setFocusSection(null);
+  }, []);
+
+  const hot = packedFiltersHot({ staffId, dateFrom, dateTo });
+  const hotLabel = packedFiltersHotLabel({
+    staffName,
+    dateFrom,
+    dateTo,
+  });
+  const exactLabel = packedFiltersHotLabel({
+    staffName,
+    dateFrom,
+    dateTo,
+    exactDates: true,
+  });
+  const dateExact = packedDateExactLabel(dateFrom, dateTo);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey || e.repeat) return;
+      if (e.code === 'KeyF') {
+        if (
+          packedFilterShortcutBlocked(e.target)
+          || packedFilterShortcutBlocked(document.activeElement)
+        ) {
+          return;
+        }
+        e.preventDefault();
+        e.stopPropagation();
+        openSection('staff');
+        return;
+      }
+      if (isTypingTarget(e.target) || isTypingTarget(document.activeElement)) return;
+      if (e.code === 'KeyA') {
+        e.preventDefault();
+        e.stopPropagation();
+        clearPackedFilters();
+        handleOpenChange(false);
+      }
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [clearPackedFilters, handleOpenChange, openSection]);
+
+  useEffect(() => {
+    if (!rosterQuery.isSuccess || staffId == null) return;
+    if (!packedStaffOptions.some((option) => option.value === staffId)) {
+      setStaff(null);
+    }
+  }, [packedStaffOptions, rosterQuery.isSuccess, setStaff, staffId]);
+
+  // Chip / F → staff: open the type-in list once the funnel is mounted.
+  useEffect(() => {
+    if (!open || focusSection !== 'staff') return;
+    const id = window.requestAnimationFrame(() => {
+      const trigger = document.querySelector<HTMLElement>(
+        '[data-testid="packed-staff-combobox"]',
+      );
+      trigger?.click();
+    });
+    return () => window.cancelAnimationFrame(id);
+  }, [open, focusSection]);
+
+  const staffOptions = [{ value: 0, label: 'All staff' }, ...packedStaffOptions];
+
+  const filterChips = exactLabel ? (
+    <>
+      <span
+        data-testid="packed-filter-status"
+        data-search-inline-label=""
+        className="flex h-full min-w-0 items-center gap-1"
+      >
+        {staffName ? (
+          <button
+            type="button"
+            data-testid="packed-filter-staff-chip"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => openSection('staff')}
+            className="max-w-[9rem] truncate whitespace-nowrap text-sm font-semibold text-text-default hover:text-blue-700"
+            aria-label={`Edit staff filter (${staffName})`}
+          >
+            {staffName}
+          </button>
+        ) : null}
+        {staffName && dateExact ? (
+          <span className="text-sm font-semibold text-text-faint" aria-hidden>
+            ·
+          </span>
+        ) : null}
+        {dateExact ? (
+          <button
+            type="button"
+            data-testid="packed-filter-date-chip"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => openSection('date')}
+            className="whitespace-nowrap text-sm font-semibold uppercase tracking-wide text-text-default hover:text-blue-700"
+            aria-label={`Edit date filter (${dateExact})`}
+          >
+            {dateExact}
+          </button>
+        ) : null}
+      </span>
+      <button
+        type="button"
+        data-search-inline-clear=""
+        data-testid="packed-filter-clear"
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={clearPackedFilters}
+        aria-label="Clear packed filters"
+        className="inline-flex h-full w-5 shrink-0 items-center justify-center text-text-faint hover:text-text-default"
+      >
+        <X className="h-3.5 w-3.5" />
+      </button>
+    </>
+  ) : null;
+
+  const trailingPrefix = (
+    <span data-testid="packed-find-filters" className="flex h-full items-center gap-0.5">
+      {filterChips}
+      <WorkbenchFilterPopover
+        open={open}
+        onOpenChange={handleOpenChange}
+        hot={hot}
+        hotActiveLabel={hotLabel}
+        label="Filters (F)"
+        density="field"
+        retainSearchFocus={false}
+        contentClassName="w-72 max-h-[min(70vh,32rem)] overflow-y-auto"
+      >
+        <WorkbenchFilterGroupLabel>Staff</WorkbenchFilterGroupLabel>
+        <div className="px-2 pb-2">
+          <SearchableSelectField
+            key={focusSection === 'staff' ? 'staff-focus' : 'staff'}
+            value={staffId ?? 0}
+            onChange={(value) => {
+              const id = typeof value === 'number' ? value : Number(value);
+              setStaff(Number.isFinite(id) && id > 0 ? id : null);
+            }}
+            options={staffOptions}
+            placeholder="All staff"
+            searchPlaceholder="Type a name…"
+            emptyMessage="No matching staff"
+            ariaLabel="Staff"
+            className="h-9"
+            testId="packed-staff-combobox"
+            autoFocus={focusSection === 'staff' || focusSection == null}
+          />
+        </div>
+        <WorkbenchFilterDivider />
+        <WorkbenchFilterGroupLabel>Packed between</WorkbenchFilterGroupLabel>
+        <div className="px-2 pb-2" data-testid="packed-date-range">
+          <DateRangePickerField
+            key={focusSection === 'date' ? 'date-focus' : 'date'}
+            value={dateRange}
+            onChange={setDateRange}
+            placeholder="Any date"
+            autoOpen={focusSection === 'date'}
+          />
+        </div>
+        {hot ? (
+          <>
+            <WorkbenchFilterDivider />
+            <WorkbenchFilterMenuRow
+              label="Clear filters"
+              active={false}
+              shortcut="A"
+              onClick={() => {
+                clearPackedFilters();
+                handleOpenChange(false);
+              }}
+            />
+          </>
+        ) : null}
+      </WorkbenchFilterPopover>
+    </span>
+  );
+
+  return {
+    trailingPrefix,
+    inlineContentKey: exactLabel,
+  };
+}
+
+/** Packed staff / exact date window — glanceable measurement key. */
+export function usePackedFindHotLabel(): string | undefined {
+  const searchParams = useSearchParams();
+  const { selectedName } = useStaffFilter();
+  const dateFrom = parsePackedDateKey(searchParams.get(PACKED_DATE_FROM_PARAM));
+  const dateTo = parsePackedDateKey(searchParams.get(PACKED_DATE_TO_PARAM));
+  return packedFiltersHotLabel({
+    staffName: selectedName,
+    dateFrom,
+    dateTo,
+    exactDates: true,
+  });
+}
+
 /** Icon-only Urgent + Filter popover (Blocked + clear). */
 export function OutboundExactFilters({ mode }: { mode: FilterMode }) {
   if (mode === 'packed') return null;
@@ -297,6 +636,7 @@ function ToShipExactFilters({ mode }: { mode: 'unshipped' | 'tested' }) {
           aria-pressed={urgentOnly}
           onClick={toggleUrgent}
           aria-label="Urgent"
+          className="h-7 w-7"
         >
           <Zap className={cn('h-3.5 w-3.5 shrink-0 text-amber-500', urgentOnly && 'fill-current text-inherit')} />
         </ToolbarButton>

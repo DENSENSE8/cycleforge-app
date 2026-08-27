@@ -9,8 +9,7 @@
  * {@link SearchPendingBar} — the body never invents “Opening…” / gray overlay
  * holds. Sole hits set `?sel=`; multi-hit browse is full-bleed under the header.
  *
- * No idle teach: with no `?q=` the body is the recents landing (opened from
- * the header picker's first row). A typed query keeps prior results or mounts
+ * No idle teach: with no `?q=` the recent rail auto-selects the latest find.
  * the results surface as soon as retrieve is armed; warm resolve cache opens
  * `?sel=` synchronously.
  */
@@ -47,7 +46,6 @@ import {
 } from '@/lib/global-search-pending';
 import { dispatchGlobalSearchFocus } from '@/lib/global-search-focus';
 import { useSearchPrimaryPaintOptional } from '@/components/search/search-primary-paint-context';
-import { SearchRecentsLanding } from '@/components/search/SearchRecentsLanding';
 
 export function SearchBrowseShell({
   setSel,
@@ -254,13 +252,9 @@ export function SearchBrowseShell({
     setRetrieveSettled(true);
   }, []);
 
-  const hasQuery = q.length > 0;
-
   return (
     <div className="relative flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden bg-surface-card">
-      {!hasQuery ? (
-        <SearchRecentsLanding />
-      ) : mountRetrieve ? (
+      {mountRetrieve ? (
         <div className="relative flex min-h-0 w-full flex-1 flex-col overflow-hidden">
           {showRefineChrome ? (
             <div className="flex shrink-0 items-center justify-end gap-2 border-b border-border-hairline bg-surface-card px-3 py-1.5">

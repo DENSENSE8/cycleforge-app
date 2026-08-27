@@ -47,9 +47,6 @@ const RECEIVING_FEED_ROOTS: ReadonlyArray<ReadonlyArray<string>> = [
   ['receiving'],
   ['incoming-delivered-unscanned'],
   ['receiving-lines-incoming-summary'],
-  // Incoming to-do list seeded from unmatched shipping-email order numbers —
-  // refetches when an email rescan / Zoho refresh / scan changes the worklist.
-  ['receiving-lines-incoming-todo'],
   // Inventory Displays / Incoming details dossier — receive · unreceive · notes
   // must refresh the trust trail without a manual F5.
   ['incoming-details'],

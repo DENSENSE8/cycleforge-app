@@ -5,8 +5,8 @@
  *
  * Contract:
  *   • Find lives in {@link GlobalHeaderSearch} only (never a locked-width stage).
- *   • No `?sel=` and no `?q=` → recents landing ({@link SearchBrowseShell}).
- *   • No `?sel=` + `?q=` → browse list.
+ *   • `?q=` + no `?sel=` → browse list ({@link SearchBrowseShell}).
+ *   • No `?q=` → detail workspace (recent rail auto-selects the latest find).
  *   • `?sel=type:id` → full-bleed {@link SearchDetailWorkspace} entity shell.
  *     ORDER renders the scan-station composition in preview stance.
  *   • `?q=` is the query; client refine: `?etype=` / `?hstat=` / `?colsort=`.
@@ -31,7 +31,7 @@ function SearchPageContent() {
   const q = (searchParams.get('q') ?? '').trim();
   const { sel, setSel } = useSearchSelParam();
 
-  if (!sel) {
+  if (q && !sel) {
     return <SearchBrowseShell setSel={setSel} />;
   }
 

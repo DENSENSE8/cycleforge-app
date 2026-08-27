@@ -1,21 +1,17 @@
 /**
- * `?incview=` — which right-pane sub-view Incoming is showing.
+ * `?incview=` — leftover Incoming right-pane tokens.
  *
- * Its own leaf module (2026-08-02) because the vocabulary had multiple values
- * and TWO readers were each re-deriving it with an inline ternary. One parser,
- * imported. `removed` (Recently removed) was deleted 2026-08-10 — wire tokens
- * coerce to `pos`.
+ * Email Triage (`email`) and Recently removed (`removed`) were deleted.
+ * Unknown / retired tokens coerce to `pos` so bookmarked URLs land on the
+ * POS table. Hygiene strips anything that is not a live value.
  *
  * Dependency-free so `useReceivingModeContext` can compose it without pulling
- * `EmailTriagePanel` into its graph.
+ * Incoming chrome into its graph.
  */
 
-export const INCOMING_VIEWS = ['pos', 'email'] as const;
+export const INCOMING_VIEWS = ['pos'] as const;
 
-/**
- * - `pos`   — the default Incoming lane (expected, untouched).
- * - `email` — the unmatched shipping-email worklist.
- */
+/** Only live collection face — the Incoming POS table. */
 export type IncomingView = (typeof INCOMING_VIEWS)[number];
 
 const VIEW_SET: ReadonlySet<string> = new Set(INCOMING_VIEWS);

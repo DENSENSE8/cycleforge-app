@@ -39,7 +39,7 @@ test('searchSupportTickets: hit maps to receiving SearchHit shape', async () => 
   assert.equal(hits.length, 1);
   assert.equal(hits[0].entityType, 'receiving');
   assert.equal(hits[0].id, 55);
-  assert.equal(hits[0].href, '/carton/55');
+  assert.equal(hits[0].href, '/search?sel=receiving:55');
   assert.equal(hits[0].matchField, 'support_ticket');
   assert.ok(hits[0].title.includes('#4821'));
 });

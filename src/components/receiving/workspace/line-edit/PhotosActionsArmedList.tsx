@@ -12,7 +12,7 @@
  *
  * **Mount budget:** this module paints the nine verb rows + photo-count query
  * only. Gallery viewer · dropzone · Ably phone ride
- * {@link PhotosActionsToolRuntime} via `dynamic()` — first View / Phone /
+ * {@link PhotosActionsToolRuntime} via `dynamic()` — first count / Phone /
  * Upload / Download / Details commit mounts that chunk and runs the verb.
  *
  * Verbs: View · Phone · Upload · Download · Media · Move · Send · Compare ·
@@ -221,7 +221,7 @@ export function PhotosActionsArmedList({
     () => [
       {
         id: 'view',
-        label: 'View',
+        label: String(photos.length),
         icon: (p) => <ImageIcon className={p.className} />,
         disabled: !hasPhotos,
       },
@@ -294,6 +294,7 @@ export function PhotosActionsArmedList({
       hasPhotos,
       libraryHref,
       phonePending,
+      photos.length,
       uploading,
     ],
   );

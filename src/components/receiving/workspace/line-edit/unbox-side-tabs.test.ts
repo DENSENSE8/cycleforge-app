@@ -30,7 +30,6 @@ const MATCHED: UnboxSideTabGates = {
   hasUnits: true,
   hasPoNoteTab: true,
   hasTrackingTab: true,
-  hasTimelineTab: true,
 };
 
 /** Unfound local-pickup carton with nothing scanned yet — the sparsest lane. */
@@ -41,7 +40,6 @@ const SPARSE: UnboxSideTabGates = {
   hasUnits: false,
   hasPoNoteTab: false,
   hasTrackingTab: false,
-  hasTimelineTab: false,
 };
 
 test('null in → null out: the Displays column is closed, not defaulted open', () => {
@@ -63,7 +61,7 @@ test('a request gated off falls back to first visible strip leaf', () => {
   assert.equal(resolveUnboxSideTab('tracking', SPARSE), 'linkage');
 });
 
-test('ticket · photos · prebox · checklist · support survive every gate', () => {
+test('ticket · photos · prebox · checklist survive every gate', () => {
   const nothing: UnboxSideTabGates = {
     hasLinkageTab: false,
     hasInventoryTab: false,
@@ -71,13 +69,11 @@ test('ticket · photos · prebox · checklist · support survive every gate', ()
     hasUnits: false,
     hasPoNoteTab: false,
     hasTrackingTab: false,
-    hasTimelineTab: false,
   };
   assert.equal(isUnboxSideTabVisible('ticket', nothing), true);
   assert.equal(isUnboxSideTabVisible('photos', nothing), true);
   assert.equal(isUnboxSideTabVisible('prebox', nothing), true);
   assert.equal(isUnboxSideTabVisible('checklist', nothing), true);
-  assert.equal(isUnboxSideTabVisible('support', nothing), true);
   assert.equal(resolveUnboxSideTab('checklist', nothing), 'checklist');
   assert.equal(resolveUnboxSideTab('units', nothing), 'prebox');
 });
@@ -99,6 +95,10 @@ test('strip order is Listings · Pairing · Inventory · Units · … — no Cla
   // menus on the carton identity bar, so a leaf here was a second editor.
   assert.equal(UNBOX_STRIP_TAB_ORDER.includes('classify' as never), false);
   assert.equal(UNBOX_SIDE_TAB_ORDER.includes('classify' as never), false);
+  assert.equal(UNBOX_STRIP_TAB_ORDER.includes('timeline' as never), false);
+  assert.equal(UNBOX_STRIP_TAB_ORDER.includes('support' as never), false);
+  assert.equal(UNBOX_SIDE_TAB_ORDER.includes('timeline' as never), false);
+  assert.equal(UNBOX_SIDE_TAB_ORDER.includes('support' as never), false);
   assert.equal(
     UNBOX_SIDE_TAB_ORDER.includes('claim' as never),
     false,
@@ -122,12 +122,16 @@ test('inventory is gated on having a carton (same door as Linkage)', () => {
   );
 });
 
-test('legacy pairing / po-note / claim canonicalize', () => {
+test('legacy pairing / po-note / claim canonicalize; timeline / support open index', () => {
   assert.equal(canonicalizeUnboxSideTab('pairing'), 'linkage');
   assert.equal(canonicalizeUnboxSideTab('po-note'), 'linkage');
   assert.equal(canonicalizeUnboxSideTab('claim'), 'ticket');
   assert.equal(canonicalizeUnboxSideTab('ticket'), 'ticket');
   assert.equal(canonicalizeUnboxSideTab('not-a-tab'), null);
+  assert.equal(canonicalizeUnboxSideTab('timeline'), null);
+  assert.equal(canonicalizeUnboxSideTab('support'), null);
+  assert.equal(parseUnboxDisplayNav('timeline'), UNBOX_DISPLAY_INDEX);
+  assert.equal(parseUnboxDisplayNav('support'), UNBOX_DISPLAY_INDEX);
 });
 
 test('photo / linkage / ticket nested action parsers', () => {

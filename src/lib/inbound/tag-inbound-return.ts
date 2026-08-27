@@ -72,11 +72,17 @@ export async function tagInboundAsReturn(
         input.sourceType === 'ebay' || input.sourceType === 'amazon' || input.sourceType === 'manual'
           ? input.sourceType
           : null;
+      const reason = input.returnReason?.trim() || null;
+      const rma = input.rmaRef?.trim() || null;
+      // Carton inspector paints `return_reason` — keep RMA visible when reason is blank.
+      const cartonReason =
+        reason && rma ? `${reason} · RMA ${rma}` : reason || (rma ? `RMA ${rma}` : null);
       await client.query(
         `UPDATE receiving_carton
             SET intake_type = 'RETURN',
                 is_return = true,
                 return_platform = COALESCE($3, return_platform),
+                return_reason = COALESCE($6, return_reason),
                 source = CASE
                   WHEN source = 'unmatched' AND $4::text IS NOT NULL THEN $4
                   ELSE source
@@ -90,6 +96,7 @@ export async function tagInboundAsReturn(
           returnPlatform,
           inboundSource,
           inboundSource === 'amazon' || inboundSource === 'ebay' ? inboundSource : null,
+          cartonReason,
         ],
       );
     }

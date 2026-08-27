@@ -8,7 +8,7 @@
 
 import { ReceivingModePickup } from '@/components/icons/stations';
 import { Button } from '@/design-system/primitives';
-import { WORKBENCH_CHROME_PILL_CLASS } from '@/components/dashboard/workbench-shell';
+import { WORKBENCH_CHROME_PILL_CLASS, WorkbenchChromeActionRow } from '@/components/dashboard/workbench-shell';
 import { cn } from '@/utils/_cn';
 
 export function PickupChromeActions({
@@ -21,6 +21,7 @@ export function PickupChromeActions({
   busy?: boolean;
 }) {
   return (
+    <WorkbenchChromeActionRow>
     <Button
       size="sm"
       variant="primary"
@@ -35,5 +36,6 @@ export function PickupChromeActions({
     >
       {busy ? 'Creating…' : 'New Pickup'}
     </Button>
+    </WorkbenchChromeActionRow>
   );
 }

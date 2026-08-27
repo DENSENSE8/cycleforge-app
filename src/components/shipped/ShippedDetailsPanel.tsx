@@ -55,7 +55,7 @@ interface ShippedDetailsPanelProps {
   onClose: () => void;
   onUpdate: () => void;
   /** Inspector capability lane — not a body layout switch. */
-  context?: 'dashboard' | 'queue' | 'fulfillment' | 'labels' | 'staged' | 'shipped' | 'station' | 'packer';
+  context?: 'dashboard' | 'queue' | 'fulfillment' | 'labels' | 'staged' | 'shipped' | 'station' | 'packer' | 'packed';
 }
 
 export function ShippedDetailsPanel({
@@ -71,6 +71,8 @@ export function ShippedDetailsPanel({
    */
   const inspectorContext = resolveOrderInspectorContext({ panelContext: context });
   const showDocumentsTab = inspectorContext.showDocumentsTab;
+  const openOnIndex = inspectorContext.openOnIndex;
+  const defaultTab = inspectorContext.defaultTab;
   const showDashboardExtras = inspectorContext.showDispatchExtras;
   const meta = deriveShippedHeaderMeta(initialShipped);
   const showAssign =
@@ -110,21 +112,24 @@ export function ShippedDetailsPanel({
     setActiveInput,
   } = useShippedPanelViewState({
     initialShipped,
-    defaultSection: inspectorContext.defaultTab,
+    defaultSection: defaultTab,
     showDocumentsTab,
   });
 
-  /** Index | leaf nav — opens on the contextual default leaf; Back → topics. */
+  /** Index | leaf nav — Packed opens on the Root Index; others seed a leaf. */
   const [navId, setNavId] = useState<string>(() => {
-    const seed = resolveOrderInspectorTopicState(inspectorContext.defaultTab);
+    if (openOnIndex) return DESK_INSPECTOR_INDEX;
+    const seed = resolveOrderInspectorTopicState(defaultTab);
     return resolveOrderInspectorDisplayTopic(seed.topic, { showDocumentsTab });
   });
   useEffect(() => {
-    const seed = resolveOrderInspectorTopicState(inspectorContext.defaultTab);
-    setNavId(
-      resolveOrderInspectorDisplayTopic(seed.topic, { showDocumentsTab }),
-    );
-  }, [initialShipped.id, inspectorContext.defaultTab, showDocumentsTab]);
+    if (openOnIndex) {
+      setNavId(DESK_INSPECTOR_INDEX);
+      return;
+    }
+    const seed = resolveOrderInspectorTopicState(defaultTab);
+    setNavId(resolveOrderInspectorDisplayTopic(seed.topic, { showDocumentsTab }));
+  }, [initialShipped.id, defaultTab, openOnIndex, showDocumentsTab]);
 
   const [replaceTrackingNonce, setReplaceTrackingNonce] = useState(0);
   useEffect(() => {

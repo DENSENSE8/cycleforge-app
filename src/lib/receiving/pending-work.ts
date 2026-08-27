@@ -5,6 +5,7 @@ import {
 } from '@/lib/receiving/pending-work-model';
 import { receivingExceptionLabel } from '@/lib/receiving/exception-codes';
 import { listPendingNasArchives } from '@/lib/receiving/nas-archive-pending';
+import { cartonReadHref } from '@/lib/receiving/surface-path';
 
 
 /**
@@ -116,7 +117,7 @@ async function listOpenReceivingExceptions(
       latestAt: String(r.latest_at),
       action: 'navigate' as const,
       actionLabel: 'Open carton',
-      href: `/carton/${Number(r.receiving_id)}`,
+      href: cartonReadHref(Number(r.receiving_id)),
     };
   });
 }

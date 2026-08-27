@@ -69,5 +69,5 @@ export function openInUnboxHref(receivingId: number, lineId?: number): string {
  * Keep in sync with `searchHitHref('RECEIVING', id)`.
  */
 export function cartonReadHref(receivingId: number): string {
-  return `/carton/${receivingId}`;
+  return `/search?sel=receiving:${receivingId}`;
 }

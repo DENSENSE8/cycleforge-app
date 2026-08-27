@@ -132,13 +132,26 @@ export function unshippedQueueCountsQuery({ staffId }: { staffId?: number } = {}
 export function packedOrdersQuery({
   searchQuery = '',
   staffId,
+  dateFrom,
+  dateTo,
 }: {
   searchQuery?: string;
   staffId?: number;
+  dateFrom?: string;
+  dateTo?: string;
 } = {}) {
   return queryOptions({
-    queryKey: ['dashboard-table', 'packed', { searchQuery, staffId: staffId ?? null }],
-    queryFn: () => fetchStagedOrdersData({ searchQuery, staffId }),
+    queryKey: [
+      'dashboard-table',
+      'packed',
+      {
+        searchQuery,
+        staffId: staffId ?? null,
+        dateFrom: dateFrom ?? null,
+        dateTo: dateTo ?? null,
+      },
+    ],
+    queryFn: () => fetchStagedOrdersData({ searchQuery, staffId, dateFrom, dateTo }),
     staleTime: 60_000,
     gcTime: 15 * 60 * 1000,
   });

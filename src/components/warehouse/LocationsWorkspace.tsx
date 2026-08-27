@@ -8,9 +8,14 @@
  * Rooms / Map) keep their bodies; any data table mounts flush.
  */
 
-import { useCallback, useMemo, useState, type Ref } from 'react';
+import { useCallback, useEffect, useMemo, useState, type Ref } from 'react';
 import { Plus } from '@/components/Icons';
 import { LocationCrudDialog } from '@/components/locations/LocationCrudDialog';
+import {
+  GLOBAL_ADD_INTENT_EVENT,
+  consumeGlobalAddIntent,
+  type GlobalAddIntent,
+} from '@/lib/global-add/catalog';
 import {
   WorkbenchBandControl,
   WORKBENCH_BAND_CONTROL_GLYPH_CLASS,
@@ -105,6 +110,22 @@ function LocationsBinsChrome({
   // match on the prefix rather than a fixed string.
   const railTopId = useRightRailTopId();
   const binInspectorOpen = (railTopId ?? '').startsWith('detail:bin:');
+
+  useEffect(() => {
+    const openIfLocations = (intent: GlobalAddIntent | null) => {
+      if (intent?.kind !== 'locations-new') return;
+      setCrudOpen(true);
+    };
+    openIfLocations(consumeGlobalAddIntent());
+    const onGlobalAdd = (event: Event) => {
+      const intent = (event as CustomEvent<GlobalAddIntent>).detail;
+      if (intent?.kind !== 'locations-new') return;
+      consumeGlobalAddIntent();
+      setCrudOpen(true);
+    };
+    window.addEventListener(GLOBAL_ADD_INTENT_EVENT, onGlobalAdd);
+    return () => window.removeEventListener(GLOBAL_ADD_INTENT_EVENT, onGlobalAdd);
+  }, []);
 
   const onSelectStatus = useCallback(
     (next: BinFilterStatus) => {

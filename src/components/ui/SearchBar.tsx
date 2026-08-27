@@ -27,6 +27,10 @@ export interface SearchBarProps {
   hideLeadingIcon?: boolean;
   /** Passed through to {@link SearchField}; pairs with {@link rightElement} for paste-after-remove rows. */
   customTrailingSlot?: React.ReactNode;
+  /** Full-height in-field status (passed to {@link SearchField}). */
+  inlineContent?: React.ReactNode;
+  /** Stable key so the field re-measures when the in-field label changes. */
+  inlineContentKey?: string;
   /** Icons / actions rendered just left of paste inside the field (passed to SearchField). */
   trailingPrefix?: React.ReactNode;
   /** Icons / actions after paste/clear in the same trailing row (passed to SearchField). */
@@ -39,6 +43,7 @@ export interface SearchBarProps {
    * Passed through to {@link SearchField}; chrome-band find bars use `always`.
    */
   pasteVisibility?: SearchFieldProps['pasteVisibility'];
+  fillHost?: SearchFieldProps['fillHost'];
 }
 
 function toSearchFieldTone(variant: SearchBarProps['variant']): SearchFieldTone {
@@ -82,10 +87,13 @@ export function SearchBar({
   hideClear = false,
   hideLeadingIcon = false,
   customTrailingSlot,
+  inlineContent,
+  inlineContentKey,
   trailingPrefix,
   trailingSuffix,
   pasteOnlyTrailing,
   pasteVisibility,
+  fillHost,
 }: SearchBarProps) {
   const isMobile = useIsMobile();
   const internalRef = useRef<HTMLInputElement>(null);
@@ -104,7 +112,7 @@ export function SearchBar({
 
   return (
     // eslint-disable-next-line jsx-a11y/no-static-element-interactions
-    <div onFocus={handleFocus} className="w-full">
+    <div onFocus={handleFocus} className="h-full w-full">
       <SearchField
         value={value}
         onChange={onChange}
@@ -124,10 +132,13 @@ export function SearchBar({
         hideClear={hideClear}
         hideLeadingIcon={hideLeadingIcon}
         customTrailingSlot={customTrailingSlot}
+        inlineContent={inlineContent}
+        inlineContentKey={inlineContentKey}
         trailingPrefix={trailingPrefix}
         trailingSuffix={trailingSuffix}
         pasteOnlyTrailing={pasteOnlyTrailing}
         pasteVisibility={pasteVisibility}
+        fillHost={fillHost}
       />
     </div>
   );

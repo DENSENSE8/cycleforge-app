@@ -147,7 +147,6 @@ export function ListingApprovalSection({
           label="Listing URL"
           value={urlInput}
           onChange={setUrlInput}
-          tone="blue"
           autoFocus
           disabled={disabled}
           inputClassName="text-role-caption"

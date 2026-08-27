@@ -47,7 +47,7 @@ export interface ShippedEditableFields {
 }
 
 export interface ShippedDetailsBodyProps {
-  context: NonNullable<'dashboard' | 'queue' | 'fulfillment' | 'labels' | 'staged' | 'shipped' | 'station' | 'packer'>;
+  context: NonNullable<'dashboard' | 'queue' | 'fulfillment' | 'labels' | 'staged' | 'shipped' | 'station' | 'packer' | 'packed'>;
   /**
    * The ONE descriptor this body reads for plane availability — documents mode,
    * record CTAs, dispatch extras, delete, editor dock. It used to be five

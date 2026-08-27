@@ -255,10 +255,12 @@ export const STATION_SECONDARY_BAND_FACE = 'h-6 shrink-0';
 const STATION_COLUMN_FOOTER_SEAM_CLASS = 'border-t border-border-hairline';
 
 /**
- * Shared `h-8` footer band + {@link STATION_COLUMN_FOOTER_SEAM_CLASS}.
+ * Shared station-column footer band — same 28px as {@link PRIMARY_CHROME_ROW_FACE}
+ * (To ship tabs · Band 1/3 · spine find) plus {@link STATION_COLUMN_FOOTER_SEAM_CLASS}.
  * Pad / justify are consumer-local (`mt-auto`, `justify-center`, `px-2`, …).
+ * Never alias to the 40px nav beam ({@link TOP_CHROME_BAND_FACE}).
  */
-export const STATION_COLUMN_FOOTER_BAND_FACE = `flex h-8 w-full shrink-0 items-center ${STATION_COLUMN_FOOTER_SEAM_CLASS}`;
+export const STATION_COLUMN_FOOTER_BAND_FACE = `flex ${PRIMARY_CHROME_ROW_FACE} w-full items-center ${STATION_COLUMN_FOOTER_SEAM_CLASS}`;
 
 /**
  * Horizontal inset for GlobalHeader — flush to both edges (no left/right pad).
@@ -307,7 +309,8 @@ export const TOP_CHROME_ICON_FACE = cn(TOP_CHROME_ICON_GLYPH, NAV_ICON_STROKE_CL
  * Shared IconButton chrome for GlobalHeader — square hit wash filling the beam
  * cell (never a circle, never a floated h-8 island), sunken hover.
  * `h-full w-full` overrides IconButton `size="md"` box so the wash meets the
- * header hairlines. Page face adds `w-auto` for icon+label width.
+ * header hairlines. Page identity uses this wash inside a fixed
+ * {@link HEADER_PAGE_FACE_WIDTH} chip, not a beam-filling flex child.
  *
  * **Ink is `text-text-default` (2026-08-16), not the previous mute tone.**
  * `HeaderPageSwitcher`'s `PAGE_FACE_CLASS` had already overridden this same
@@ -319,6 +322,12 @@ export const TOP_CHROME_ICON_FACE = cn(TOP_CHROME_ICON_GLYPH, NAV_ICON_STROKE_CL
  * (`spine-section-accent.ts` — ink constant, no dimming) on the other side
  * of the toggle: header and sidebar read as one ink system, not two.
  */
+/**
+ * Page-identity face and its child menu — one compact width. Find sits
+ * flush to this chip; neither stretches across the beam.
+ */
+export const HEADER_PAGE_FACE_WIDTH = 'w-[11rem]';
+
 export const HEADER_ICON_BTN_CLASS =
   'h-full min-h-8 w-full rounded-none text-text-default hover:bg-surface-sunken';
 

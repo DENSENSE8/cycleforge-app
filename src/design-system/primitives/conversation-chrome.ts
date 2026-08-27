@@ -31,17 +31,15 @@ export const CONVERSATION_HEADER_ACTION_GLYPH = 'h-3.5 w-3.5 shrink-0';
 /**
  * Composer pad under a thread — Displays gutter + bottom clearance.
  *
- * The pad itself paints NO fill: the dock is a floating card on the white
- * conversation plane. A short top fade dissolves the last message under the
- * card instead of a hard band edge, so the composer reads as floating over the
- * thread rather than as a docked footer strip.
+ * The pad paints no fill and no top-edge fade. The dock is a bordered card on
+ * the conversation plane; dissolving the last row under it read as a shadow
+ * strip on Totals / notes in every Ticket Displays and right-rail host.
  */
 export const CONVERSATION_COMPOSER_PAD = cn(
   DISPLAYS_BODY_INSET,
   'relative min-w-0 shrink-0 bg-transparent pt-2 font-sans',
   // Same floating-dock clearance as the Unbox notes dock on the centre column.
   FLOATING_DOCK_BOTTOM_PAD,
-  'before:pointer-events-none before:absolute before:inset-x-0 before:-top-5 before:h-5 before:bg-gradient-to-t before:from-surface-card before:to-transparent',
 );
 
 /**

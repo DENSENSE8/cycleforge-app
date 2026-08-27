@@ -7,11 +7,14 @@
 
 import * as React from 'react';
 import * as DropdownMenuPrimitive from '@radix-ui/react-dropdown-menu';
+import { ChevronRight } from '@/components/Icons';
 import { cn } from '@/utils/_cn';
 import { elevationClass } from '@/design-system/tokens/shadows';
 
 const DropdownMenu = DropdownMenuPrimitive.Root;
 const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
+const DropdownMenuGroup = DropdownMenuPrimitive.Group;
+const DropdownMenuSub = DropdownMenuPrimitive.Sub;
 
 const DropdownMenuContent = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Content>,
@@ -54,6 +57,24 @@ const DropdownMenuItem = React.forwardRef<
 ));
 DropdownMenuItem.displayName = DropdownMenuPrimitive.Item.displayName;
 
+const DropdownMenuLabel = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.Label>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Label> & {
+    inset?: boolean;
+  }
+>(({ className, inset, ...props }, ref) => (
+  <DropdownMenuPrimitive.Label
+    ref={ref}
+    className={cn(
+      'px-2 py-1.5 text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft',
+      inset && 'pl-8',
+      className,
+    )}
+    {...props}
+  />
+));
+DropdownMenuLabel.displayName = DropdownMenuPrimitive.Label.displayName;
+
 const DropdownMenuSeparator = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Separator>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Separator>
@@ -66,10 +87,57 @@ const DropdownMenuSeparator = React.forwardRef<
 ));
 DropdownMenuSeparator.displayName = DropdownMenuPrimitive.Separator.displayName;
 
+const DropdownMenuSubTrigger = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.SubTrigger>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubTrigger> & {
+    inset?: boolean;
+  }
+>(({ className, inset, children, ...props }, ref) => (
+  <DropdownMenuPrimitive.SubTrigger
+    ref={ref}
+    className={cn(
+      'flex cursor-default select-none items-center gap-2 rounded-none px-2 py-1.5 text-sm outline-none',
+      'focus:bg-surface-canvas data-[state=open]:bg-surface-canvas',
+      '[&>svg]:size-4 [&>svg]:shrink-0',
+      inset && 'pl-8',
+      className,
+    )}
+    {...props}
+  >
+    {children}
+    <ChevronRight className="ml-auto size-4 shrink-0 text-text-soft" />
+  </DropdownMenuPrimitive.SubTrigger>
+));
+DropdownMenuSubTrigger.displayName = DropdownMenuPrimitive.SubTrigger.displayName;
+
+const DropdownMenuSubContent = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.SubContent>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubContent>
+>(({ className, sideOffset = 0, ...props }, ref) => (
+  <DropdownMenuPrimitive.Portal>
+    <DropdownMenuPrimitive.SubContent
+      ref={ref}
+      sideOffset={sideOffset}
+      className={cn(
+        'z-popover max-h-[var(--radix-dropdown-menu-content-available-height)] min-w-[12rem] overflow-y-auto overflow-x-hidden rounded-none border border-border-soft bg-surface-card p-1 text-text-default',
+        elevationClass('overlay'),
+        className,
+      )}
+      {...props}
+    />
+  </DropdownMenuPrimitive.Portal>
+));
+DropdownMenuSubContent.displayName = DropdownMenuPrimitive.SubContent.displayName;
+
 export {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuGroup,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
 };

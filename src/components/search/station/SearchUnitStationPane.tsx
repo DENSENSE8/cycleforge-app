@@ -249,6 +249,10 @@ export function SearchUnitStationPane({
     [],
   );
 
+  const handleViewPhotos = useCallback(() => {
+    setActiveSideTab('photos');
+  }, []);
+
   if (!settled) {
     // The page-level `SearchPrimaryPaintShell` field covers this plane — hold a
     // transparent box so it has geometry, never a second loading face under it.
@@ -278,6 +282,7 @@ export function SearchUnitStationPane({
           tracking={unit.shipping_tracking_number ?? null}
           onExitToList={onExit}
           exitLabel="Back to results"
+          onOpenPhotosDisplay={handleViewPhotos}
         />
       }
       centre={centre}

@@ -186,10 +186,11 @@ export interface CopyChipProps {
    */
   fitDisplayWidth?: boolean;
   /**
-   * Fixed label footprint for last-8 identity faces. Keeps adjacent chips
-   * stationary when a short / empty / editing value replaces eight digits.
+   * Fixed label footprint. `last8` keeps identity chips stationary at eight
+   * digits. `price` reserves six tabular columns (`###.##` / `—`) so a
+   * neighbouring ticket chip does not jump when the amount is missing or short.
    */
-  displayWidth?: 'content' | 'last8';
+  displayWidth?: 'content' | 'last8' | 'price';
   /** Called after a successful clipboard write. Use for side-effects (e.g. dispatch a custom event). */
   onCopy?: (value: string) => void;
   /**
@@ -318,9 +319,14 @@ export function CopyChip({
    * and leaving it on only re-arms the same clipping if the metrics shift.
    */
   const isLastEight = displayWidth === 'last8';
+  const isPriceFace = displayWidth === 'price';
   const displayOverflowClass =
-    isLastEight || !truncateDisplay ? 'whitespace-nowrap' : 'truncate';
-  const displayWidthClass = isLastEight ? 'w-[8.25ch] shrink-0' : '';
+    isLastEight || isPriceFace || !truncateDisplay ? 'whitespace-nowrap' : 'truncate';
+  const displayWidthClass = isLastEight
+    ? 'w-[8.25ch] shrink-0'
+    : isPriceFace
+      ? 'w-[6ch] shrink-0 tabular-nums'
+      : '';
   const outerPx = outerPad === 'flush' ? 'px-0' : 'px-1.5';
   const hoverTooltipEnabled = !disableTooltip && !editing && tooltipTrigger === 'hover';
 
@@ -390,7 +396,7 @@ export function CopyChip({
         ) : null}
         <span
           className={`${dense ? chipText : `${monoValue} tracking-tight leading-none`} ${displayWidthClass} text-left ${displayOverflowClass} ${
-            isLastEight ? '' : fitDisplayWidth ? 'min-w-0 shrink-0' : 'min-w-0 flex-1'
+            isLastEight || isPriceFace ? '' : fitDisplayWidth ? 'min-w-0 shrink-0' : 'min-w-0 flex-1'
           } ${
             isEmptyChipDisplay(faceDisplay) ? 'text-text-faint' : dense ? 'text-text-default' : ''
           }${editing ? ' text-text-muted' : ''}`}
@@ -563,6 +569,11 @@ export const TrackingChip = ({
   truncateDisplay = false,
   dense,
   disableTooltip = false,
+  /**
+   * Default `chip` (`px-1.5`). Pass `flush` when the chip sits under plain text
+   * (e.g. a milestone timestamp) so the MapPin shares that text's left edge.
+   */
+  outerPad,
 }: {
   value: string;
   /** @deprecated Tracking labels are always derived from `value` as last eight. */
@@ -579,6 +590,7 @@ export const TrackingChip = ({
   dense?: boolean;
   /** Skip the site hover copy bubble — click still copies. */
   disableTooltip?: boolean;
+  outerPad?: 'chip' | 'flush';
 }) => {
   const brand = resolveCarrierBrand(value, carrierHint);
   const brandPaint = hasCarrierBrandPaint(brand);
@@ -605,7 +617,7 @@ export const TrackingChip = ({
       // instead of the no-value disabled fade.
       disableCopy={disableCopy || isEmptyDisplayValue(value)}
       disableTooltip={disableTooltip}
-      outerPad={showIcon ? 'chip' : 'flush'}
+      outerPad={outerPad ?? (showIcon ? 'chip' : 'flush')}
       fitDisplayWidth={fitDisplayWidth}
       displayWidth={displayWidth}
       truncateDisplay={truncateDisplay}
@@ -751,6 +763,7 @@ export const UnitPriceChip = ({
         icon={showIcon ? undefined : null}
         truncateDisplay={false}
         fitDisplayWidth
+        displayWidth="price"
         dense={dense}
         disableCopy
       />
@@ -766,6 +779,7 @@ export const UnitPriceChip = ({
       icon={showIcon ? undefined : null}
       truncateDisplay={false}
       fitDisplayWidth
+      displayWidth="price"
       dense={dense}
     />
   );
@@ -868,6 +882,7 @@ export const SerialChip = ({
   displayWidth = 'content',
   fitDisplayWidth = true,
   plain,
+  outerPad,
 }: {
   value: string;
   /** Optional label override; normally derived from `value`. When set, used
@@ -894,6 +909,8 @@ export const SerialChip = ({
    * theirs.
    */
   plain?: boolean;
+  /** Pass `flush` under plain text so the barcode shares that text's left edge. */
+  outerPad?: 'chip' | 'flush';
 }) => (
   <CopyChip
     value={value}
@@ -910,6 +927,7 @@ export const SerialChip = ({
     disableTooltip={disableTooltip}
     disableCopy={pending != null}
     dense={dense}
+    outerPad={outerPad}
     icon={plain ? null : undefined}
     iconClass={
       plain
@@ -993,6 +1011,7 @@ export const TicketChip = ({
   display,
   dense = false,
   disableTooltip = false,
+  displayWidth = 'content',
 }: {
   value: string;
   display: string;
@@ -1000,6 +1019,8 @@ export const TicketChip = ({
   dense?: boolean;
   /** Skip the site hover copy bubble — click still copies. */
   disableTooltip?: boolean;
+  /** Fixed last-8 footprint, left-aligned (`w-[8.25ch]`). */
+  displayWidth?: 'content' | 'last8';
 }) => (
   <CopyChip
     value={value}
@@ -1007,6 +1028,9 @@ export const TicketChip = ({
     tone="ticket"
     dense={dense}
     disableTooltip={disableTooltip}
+    displayWidth={displayWidth}
+    truncateDisplay={displayWidth === 'last8' ? false : undefined}
+    fitDisplayWidth
   />
 );
 /** Bin / location barcode chip (teal / Tags). Prefer last-8 display for long barcodes. */

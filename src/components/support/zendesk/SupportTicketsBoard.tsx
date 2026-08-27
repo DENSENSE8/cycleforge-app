@@ -12,7 +12,12 @@
 
 import { useCallback, useEffect, useMemo, useState, startTransition } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
+import {
+  GLOBAL_ADD_INTENT_EVENT,
+  consumeGlobalAddIntent,
+  type GlobalAddIntent,
+} from '@/lib/global-add/catalog';
 import { useQueryClient } from '@tanstack/react-query';
 import { Link2, RefreshCw } from '@/components/Icons';
 import { useAuth } from '@/contexts/AuthContext';
@@ -139,6 +144,9 @@ function useSupportTicketsUrl() {
 
 export function SupportTicketsBoard() {
   const queryClient = useQueryClient();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
   const { has, isLoaded } = useAuth();
   const canCreateTicket = !isLoaded || has('integrations.zendesk');
   const claim = useSupportTicketClaimHost();
@@ -154,6 +162,37 @@ export function SupportTicketsBoard() {
   useEffect(() => {
     setPage(1);
   }, [status, searchQuery, sort]);
+
+  // Global Header Add · `?createTicket=1` → New ticket modal.
+  useEffect(() => {
+    if (!canCreateTicket) return;
+    const raw = searchParams.get('createTicket');
+    if (raw === '1' || raw === 'true') {
+      claim.openCreate();
+      consumeGlobalAddIntent();
+      const sp = new URLSearchParams(searchParams.toString());
+      sp.delete('createTicket');
+      const qs = sp.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname || '/support', { scroll: false });
+      return;
+    }
+    const parked = consumeGlobalAddIntent();
+    if (parked?.kind === 'support-create-ticket') {
+      claim.openCreate();
+    }
+  }, [canCreateTicket, searchParams, pathname, router]); // eslint-disable-line react-hooks/exhaustive-deps -- openCreate is stable enough; claim identity churns
+
+  useEffect(() => {
+    if (!canCreateTicket) return;
+    const onGlobalAdd = (event: Event) => {
+      const intent = (event as CustomEvent<GlobalAddIntent>).detail;
+      if (intent?.kind !== 'support-create-ticket') return;
+      consumeGlobalAddIntent();
+      claim.openCreate();
+    };
+    window.addEventListener(GLOBAL_ADD_INTENT_EVENT, onGlobalAdd);
+    return () => window.removeEventListener(GLOBAL_ADD_INTENT_EVENT, onGlobalAdd);
+  }, [canCreateTicket, claim.openCreate]);
 
   const params = useMemo<TicketListParams>(
     () => ({

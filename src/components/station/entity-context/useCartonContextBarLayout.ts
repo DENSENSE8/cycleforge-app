@@ -8,7 +8,8 @@ export type CartonContextActionId = 'listing' | 'claim' | 'photos';
 /**
  * Responsive layout for {@link CartonContextCard}'s one-row chrome — classify
  * pills collapse to dot-only / shortLabel faces when they collide with
- * identity or actions, and trailing verbs park in `⋯` before the bar wraps.
+ * identity or actions. Listing, price, and photos stay on the top-right;
+ * only Claim parks in `⋯` on a narrow bar.
  *
  * ## Two rules that keep this from oscillating
  *
@@ -50,15 +51,10 @@ export function useCartonContextBarLayout(
 
     const apply = (width: number) => {
       if (frozenRef.current) return;
-      setOverflowActions(
-        width < 520
-          ? ['listing', 'claim', 'photos']
-          : width < 580
-            ? ['claim', 'photos']
-            : width < 640
-              ? ['photos']
-              : [],
-      );
+      // Photos, listing, and price stay on the top-right of the bar even
+      // when the strip is narrow — they are identity chrome, not overflow
+      // verbs. Only Claim parks in ⋯.
+      setOverflowActions(width < 520 ? ['claim'] : []);
 
       const identity = bar.querySelector<HTMLElement>('[data-carton-bar-slot="identity"]');
       const classify = bar.querySelector<HTMLElement>('[data-carton-bar-slot="classify"]');

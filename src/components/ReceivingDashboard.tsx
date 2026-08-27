@@ -49,7 +49,7 @@ export default function ReceivingDashboard() {
   const { user } = useAuth();
   const staffId = String(user?.staffId ?? '');
 
-  const { mode, isTriageMode, isIncomingMode, isRepairMode, isTableOnlyMode, incomingView } =
+  const { mode, isTriageMode, isIncomingMode, isRepairMode, isTableOnlyMode } =
     useReceivingDashboardMode();
 
   const {
@@ -71,7 +71,7 @@ export default function ReceivingDashboard() {
     historyTriage,
     setHistoryTriage,
     enrichOverlayLog,
-  } = useReceivingDetailOverlays(isIncomingMode, incomingView);
+  } = useReceivingDetailOverlays(isIncomingMode);
 
   const {
     selectMode,
@@ -160,7 +160,6 @@ export default function ReceivingDashboard() {
         isTableOnlyMode={isTableOnlyMode}
         isTriageMode={isTriageMode}
         isIncomingMode={isIncomingMode}
-        incomingView={incomingView}
         selectMode={selectMode}
         workspace={workspace}
         nav={nav}

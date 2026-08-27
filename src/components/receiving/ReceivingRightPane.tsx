@@ -13,15 +13,12 @@
  * `ReceivingLineRailShell` on `RightRailHost` instead.
  */
 
-import { AnimatePresence, motion, motionRole, useMotionRole } from '@/design-system/motion';
 import { useSearchParams } from 'next/navigation';
 import ReceivingLinesTable from '@/components/station/ReceivingLinesTable';
 import { RightPaneOverlayHost } from '@/components/ui/RightPaneOverlay';
 import { UnboxLineWorkspace } from '@/components/receiving/unbox/UnboxLineWorkspace';
 import { TriageLineWorkspace } from '@/components/receiving/triage/TriageLineWorkspace';
 import { IncomingDetailsPanel } from '@/components/sidebar/receiving/IncomingDetailsPanel';
-import { EmailTriagePanel } from '@/components/receiving/EmailTriagePanel';
-import type { IncomingView } from '@/components/receiving/EmailTriagePanel';
 import { RepairTable } from '@/components/repair';
 import { PickupWorkspace } from '@/components/receiving/pickup/PickupWorkspace';
 import { ReceivingLineRailShell } from '@/components/receiving/rail/ReceivingLineRailShell';
@@ -190,10 +187,6 @@ interface ReceivingRightPaneProps {
   isTableOnlyMode: boolean;
   isTriageMode: boolean;
   isIncomingMode: boolean;
-  /** Incoming right-pane sub-view (`?incview=`): the POS table or Email Triage.
-   *  The toggle control lives in IncomingWorkspaceHeader (Pipeline facet strip);
-   *  here we only read it to pick which sub-view to render. */
-  incomingView: IncomingView;
   selectMode: boolean;
   workspace: WorkspaceState | null;
   nav: NavState | null;
@@ -216,7 +209,6 @@ export function ReceivingRightPane({
   isTableOnlyMode,
   isTriageMode,
   isIncomingMode,
-  incomingView,
   selectMode,
   workspace,
   nav,
@@ -233,10 +225,8 @@ export function ReceivingRightPane({
 }: ReceivingRightPaneProps) {
   const searchParams = useSearchParams();
   const isUnboxMode = mode === 'receive';
-  const { presence: emailPane, transition: emailTransition } = useMotionRole(motionRole.swap.focus);
 
-  const showEmailTriage = isIncomingMode && incomingView === 'email';
-  const showTable = isTableOnlyMode && !showEmailTriage && mode !== 'repair';
+  const showTable = isTableOnlyMode && mode !== 'repair';
   const showSelectionRail = showTable;
 
   if (mode === 'repair') {
@@ -301,21 +291,6 @@ export function ReceivingRightPane({
           selectMode={selectMode}
         />
       </div>
-
-      <AnimatePresence initial={false}>
-        {showEmailTriage ? (
-          <motion.div
-            key="incoming-email-triage"
-            initial={emailPane.initial}
-            animate={emailPane.animate}
-            exit={emailPane.exit}
-            transition={emailTransition}
-            className="absolute inset-0 z-10 overflow-hidden"
-          >
-            <EmailTriagePanel />
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
 
       <IncomingDetailsMount target={incomingDetails} onClose={onCloseIncoming} />
 

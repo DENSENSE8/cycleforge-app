@@ -47,7 +47,13 @@ export function DashboardOrderDetails({
         ) : (
           <ShippedDetailsPanel
             shipped={selectedShipped}
-            context={selectedContext === 'shipped' ? 'shipped' : 'dashboard'}
+            context={
+              selectedContext === 'shipped'
+                ? 'shipped'
+                : selectedContext === 'packed'
+                  ? 'packed'
+                  : 'dashboard'
+            }
             onClose={onClose}
             onUpdate={onUpdate}
           />

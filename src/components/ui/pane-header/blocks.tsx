@@ -381,8 +381,9 @@ interface PaneHeaderActionBarProps {
   closeTitle?: string;
   /**
    * Card = rounded pill with subtle border + shadow. Flat = no chrome.
-   * Header = full-width 30px band with a top hairline, matching the house
-   * header rows (e.g. the workspace toolbar pinned beneath the stepper).
+   * Header = full-width 28px ops chrome band (`h-7`) with a top hairline,
+   * matching house header rows (e.g. the workspace toolbar pinned beneath
+   * the stepper).
    */
   variant?: 'card' | 'flat' | 'header';
   /** Icon-only mode — hides text labels but preserves them as aria-label/title for accessibility. */

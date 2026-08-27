@@ -18,18 +18,15 @@ const MATCHED: UnboxSideTabGates = {
   hasUnits: true,
   hasPoNoteTab: true,
   hasTrackingTab: true,
-  hasTimelineTab: true,
 };
 
 const BASE_SIGNALS: UnboxDisplayIndexSignals = {
   hasTicketId: false,
   photoCount: 0,
-  classifyLabel: null,
   serialCount: 0,
   linkagePaired: false,
   isUnfound: false,
   trackingPresent: false,
-  isReturnIntake: false,
 };
 
 test('checklist appears on the Root Index (floor % ring deleted)', () => {
@@ -62,10 +59,12 @@ test('Unbox rows carry PO-identity · stock · context groups', () => {
   assert.equal(rows.find((r) => r.id === 'units')?.group, 'assets');
   assert.equal(rows.find((r) => r.id === 'prebox')?.group, 'assets');
   assert.equal(rows.find((r) => r.id === 'ticket')?.group, 'context');
-  assert.equal(rows.find((r) => r.id === 'timeline')?.group, 'context');
+  assert.equal(rows.find((r) => r.id === 'tracking')?.group, 'context');
+  assert.equal(rows.some((r) => r.id === 'timeline'), false);
+  assert.equal(rows.some((r) => r.id === 'support'), false);
 });
 
-test('sparse gates hide units · listings · tracking · timeline — Prebox stays', () => {
+test('sparse gates hide units · listings · tracking — Prebox stays', () => {
   const sparse: UnboxSideTabGates = {
       hasLinkageTab: true,
     hasInventoryTab: true,
@@ -73,7 +72,6 @@ test('sparse gates hide units · listings · tracking · timeline — Prebox sta
     hasUnits: false,
     hasPoNoteTab: false,
     hasTrackingTab: false,
-    hasTimelineTab: false,
   };
   const ids = buildUnboxDisplayIndexRows(sparse, BASE_SIGNALS).map((r) => r.id);
   assert.ok(ids.includes('ticket'));
@@ -84,6 +82,7 @@ test('sparse gates hide units · listings · tracking · timeline — Prebox sta
   assert.equal(ids.includes('listings'), false);
   assert.equal(ids.includes('tracking'), false);
   assert.equal(ids.includes('timeline'), false);
+  assert.equal(ids.includes('support'), false);
 });
 
 test('ticket / photos / linkage subtitles + tones', () => {
@@ -115,15 +114,6 @@ test('Prebox with serials is quiet (no unit-ready chip / no action tone)', () =>
   const ready = buildUnboxDisplayIndexRows(MATCHED, { ...BASE_SIGNALS, serialCount: 1 });
   assert.equal(ready.find((r) => r.id === 'prebox')?.subtitle, '');
   assert.equal(ready.find((r) => r.id === 'prebox')?.tone, 'ok');
-});
-
-test('return intake marks Timeline as action', () => {
-  const rows = buildUnboxDisplayIndexRows(MATCHED, {
-    ...BASE_SIGNALS,
-    isReturnIntake: true,
-  });
-  assert.equal(rows.find((r) => r.id === 'timeline')?.subtitle, 'Return history');
-  assert.equal(rows.find((r) => r.id === 'timeline')?.tone, 'action');
 });
 
 test('unfound unpaired Linkage is action', () => {
@@ -171,5 +161,6 @@ test('filterDisplayIndexRows matches label · subtitle · id on Unbox rows', () 
   assert.equal(photo[0]?.id, 'photos');
   const noTicket = filterDisplayIndexRows(rows, 'no ticket');
   assert.ok(noTicket.some((r) => r.id === 'ticket'));
-  assert.ok(filterDisplayIndexRows(rows, 'timeline').some((r) => r.id === 'timeline'));
+  assert.equal(filterDisplayIndexRows(rows, 'timeline').length, 0);
+  assert.equal(filterDisplayIndexRows(rows, 'support').length, 0);
 });

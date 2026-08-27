@@ -58,8 +58,8 @@ function resolveTableMode(
     return resolveUnboxReceivingTableMode(getUnboxWorkspaceTabFromSearch(searchParams));
   }
   const base = getReceivingModeDescriptor(resolveLiveReceivingMode(pathname, searchParams)).id;
-  // Incoming `?incview=email` is a right-pane overlay (Email Triage), not a
-  // table mode. Recently removed (`incview=removed`) was deleted 2026-08-10.
+  // Retired Incoming `?incview=` tokens (`email`, `removed`) are not table
+  // modes — hygiene coerces them off the desk.
   return base;
 }
 

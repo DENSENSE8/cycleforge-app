@@ -10,9 +10,9 @@ import { test, expect, type Page } from '@playwright/test';
  * Asserts the four things a reader of that recipe would otherwise have to take
  * on trust, and that a refactor can silently break:
  *   1. three columns, one white sheet, zero padding on the structural shells
- *   2. the centre order — context (pinned) → Status → Items → thread
+ *   2. the centre order — context (pinned) → Status → Items (no warehouse thread)
  *   3. the stepper is in the centre AND on the `timeline` leaf (see below)
- *   4. auto-collapse fires on composer focus and on scroll
+ *   4. auto-collapse fires on scroll (composer removed from preview search)
  *
  * QA org only (`.claude/rules/verify.md`) — the fixture order ids are minted by
  * the provisioner, so they are resolved by ORDER NUMBER here rather than
@@ -103,12 +103,14 @@ test.describe('Search & Details station layout', () => {
     expect(await paintedBg(DISPLAYS), 'right column plane').toBe('rgb(255, 255, 255)');
   });
 
-  test('the centre is context → Status → Items → thread', async ({ page }) => {
+  test('the centre is context → Status → Items', async ({ page }) => {
     await openOrder(page);
 
     const centre = page.locator(CENTRE);
     await expect(centre.locator(STATUS)).toBeVisible();
     await expect(centre.locator(ITEMS)).toBeVisible();
+    await expect(centre.getByText('WAREHOUSE THREAD', { exact: false })).toHaveCount(0);
+    await expect(centre.locator('textarea')).toHaveCount(0);
 
     // Status is BACK in the centre (operator ruling 2026-08-22), reversing the
     // 2026-08-21 ruling that moved both halves to the right-edge `timeline`
@@ -117,26 +119,26 @@ test.describe('Search & Details station layout', () => {
     const identityBox = await page.locator('[data-testid="station-context-bar"]').boundingBox();
     const statusBox = await centre.locator(STATUS).boundingBox();
     const itemsBox = await centre.locator(ITEMS).boundingBox();
-    const composerBox = await centre.locator('textarea').last().boundingBox();
 
     expect(identityBox!.y, 'carton context leads').toBeLessThan(statusBox!.y);
     expect(statusBox!.y, 'Status precedes Items').toBeLessThan(itemsBox!.y);
-    expect(itemsBox!.y, 'Items precedes the thread').toBeLessThan(composerBox!.y);
   });
 
   test('Status and Items share one collapse controller', async ({ page }) => {
     await openOrder(page);
 
     // They are the pair `auto-collapse.ts` was written for. Both must yield
-    // together when the operator starts writing — that shared fold is the only
-    // thing standing between a centre with a full audit trail in it and the
-    // 2026-08-21 failure mode (a wall of machine events, thread below the fold).
+    // together on centre scroll — that shared fold keeps the audit trail from
+    // pushing Items below the fold.
     const statusToggle = page.locator(`${STATUS} [data-collapse-toggle]`);
     const itemsToggle = page.locator(`${ITEMS} [data-collapse-toggle]`);
     await expect(statusToggle).toHaveAttribute('aria-expanded', 'true');
     await expect(itemsToggle).toHaveAttribute('aria-expanded', 'true');
 
-    await page.locator(`${CENTRE} textarea`).last().focus();
+    await page.locator(CENTRE).evaluate((el) => {
+      el.scrollTop = el.scrollHeight;
+      el.dispatchEvent(new Event('scroll', { bubbles: true }));
+    });
     await expect(statusToggle).toHaveAttribute('aria-expanded', 'false');
     await expect(itemsToggle).toHaveAttribute('aria-expanded', 'false');
   });
@@ -156,7 +158,8 @@ test.describe('Search & Details station layout', () => {
     await page.locator(DISPLAYS).getByText('Timeline', { exact: false }).first().click();
 
     const leaf = page.locator(DISPLAYS);
-    // Stepper — `OrderPipelineSection` mounts all three milestone rows always.
+    // Stepper — `OrderPipelineSection` maps the packout path; visible count
+    // follows stamps (skipped Tested does not pad a blank third node).
     await expect(leaf.getByText('Packed', { exact: false }).first()).toBeVisible({ timeout: 15_000 });
     // The trail. It is `OrderTimelineSection` now (the order-record SoT), which
     // passes no `title`, so `TimelineSection` falls back to its default
@@ -192,21 +195,16 @@ test.describe('Search & Details station layout', () => {
     await expect(displays).toBeVisible();
   });
 
-  test('Items auto-collapses when the composer takes focus', async ({ page }) => {
+  test('Items auto-collapses when the centre scrolls', async ({ page }) => {
     await openOrder(page);
 
     const itemsToggle = page.locator(`${ITEMS} [data-collapse-toggle]`);
     await expect(itemsToggle).toHaveAttribute('aria-expanded', 'true');
 
-    // Trigger 2 — focus the thread composer.
-    const composer = page.locator(`${CENTRE} textarea`).last();
-    const present = await composer
-      .waitFor({ state: 'visible', timeout: 15_000 })
-      .then(() => true)
-      .catch(() => false);
-    if (!present) test.skip(true, 'thread composer not mounted (permission-gated)');
-
-    await composer.focus();
+    await page.locator(CENTRE).evaluate((el) => {
+      el.scrollTop = el.scrollHeight;
+      el.dispatchEvent(new Event('scroll', { bubbles: true }));
+    });
     await expect(itemsToggle).toHaveAttribute('aria-expanded', 'false');
   });
 
@@ -237,7 +235,7 @@ test.describe('Search & Details station layout', () => {
    * so its band is the station scan band — no rail-footer collapse affordance.
    *
    * `TechRailSearchBar variant="rail"` used to sit here: it resolves the column
-   * FOOTER face (`h-8` + `border-t`, a floor seam) at the HEAD of the column,
+   * FOOTER face (`h-7` + `border-t`, a floor seam) at the HEAD of the column,
    * and auto-mounts a "Hide sidebar" collapse button under
    * `ContextPanelCollapseProvider`. Unbox's band has neither, so the two
    * stations read as different surfaces at the one place they should match.
@@ -368,12 +366,12 @@ test.describe('Search & Details station layout', () => {
       .toMatch(/^(order|unit|receiving|sku|repair|fba):\d+$/);
   });
 
-  test('Items AND the composer both fit on first paint', async ({ page }) => {
+  test('Items fits on first paint', async ({ page }) => {
     await openOrder(page);
 
     // Regression: the centre rendered the FULL audit log (25 rows on the QA
-    // fixture), which pushed Items and the thread below the fold — the surface
-    // opened on a wall of audit.
+    // fixture), which pushed Items below the fold — the surface opened on a
+    // wall of audit.
     //
     // The audit trail is back in the centre as of 2026-08-22 (operator ruling),
     // so this guard is live again rather than historical. It is deliberately
@@ -382,11 +380,9 @@ test.describe('Search & Details station layout', () => {
     // the fix is to open the centre with Status collapsed — not to delete the
     // assertion that noticed.
     const viewport = page.viewportSize()?.height ?? 900;
-    for (const sel of [ITEMS, `${CENTRE} textarea`]) {
-      const box = await page.locator(sel).last().boundingBox();
-      expect(box, `${sel} must render`).not.toBeNull();
-      expect(box!.y, `${sel} must be above the fold on first paint`).toBeLessThan(viewport);
-    }
+    const box = await page.locator(ITEMS).boundingBox();
+    expect(box, 'Items must render').not.toBeNull();
+    expect(box!.y, 'Items must be above the fold on first paint').toBeLessThan(viewport);
   });
 
   test('the Photos leaf lands on a real empty state, not a bare sentence', async ({ page }) => {

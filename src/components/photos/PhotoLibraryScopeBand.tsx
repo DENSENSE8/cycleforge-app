@@ -136,9 +136,9 @@ export function PhotoLibraryScopeBand({ className }: { className?: string }) {
 }
 
 /**
- * The leading cube — same shape as Unbox's Band-1 pin-list cube: a boxed
- * control abutting the tab rail (`gap-0`, no host air), never a naked header
- * glyph and never a soft pill.
+ * The leading cube — same flush whisper face as Unbox's Band-1 pin-list cube:
+ * abutting the tab rail (`gap-0`, no host air, no rest-state box), never a
+ * naked header glyph and never a soft pill.
  *
  * Seven built-in scopes plus N operator-defined types cannot all be tabs — the
  * facets overflowing this row and clipping its own right controls is recorded
@@ -203,7 +203,7 @@ function PhotoMediaTypePopover({
             className={cn(
               STATION_CONTEXT_BOXED_CUBE_CLASS,
               'h-full aspect-square',
-              (open || customActive) && 'bg-surface-hover text-text-muted',
+              (open || customActive) && 'bg-surface-sunken text-text-muted',
             )}
           >
             <Folder className="block h-3.5 w-3.5 shrink-0" aria-hidden />

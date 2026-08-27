@@ -33,8 +33,10 @@ import { WorkbenchFilterPopover } from '@/components/dashboard/workbench-filter-
 import { STAFF_FILTER_PARAM } from '@/hooks/useStaffFilter';
 import { ReceivingModeArrival } from '@/components/icons/stations';
 import { ReceivingBoxChromeActions } from '@/components/receiving/ReceivingBoxChromeActions';
-import { IncomingBulkTrackingPanel } from '@/components/sidebar/receiving/incoming/IncomingBulkTrackingPanel';
-import { IncomingAddInboundOverlay } from '@/components/sidebar/receiving/incoming/IncomingAddInboundOverlay';
+import {
+  IncomingDeskRightRail,
+  type IncomingDeskRailTool,
+} from '@/components/sidebar/receiving/incoming/IncomingDeskRightRail';
 import { emitReceiving } from '@/components/receiving/receiving-events';
 import {
   TRIAGE_WORKSPACE_TAB_LABEL,
@@ -56,8 +58,7 @@ export function TriageWorkspaceHeader({
   onSelectTab: (tab: TriageWorkspaceTab) => void;
   className?: string;
 }) {
-  const [checkOrdersOpen, setCheckOrdersOpen] = useState(false);
-  const [addInboundOpen, setAddInboundOpen] = useState(false);
+  const [deskRail, setDeskRail] = useState<IncomingDeskRailTool | null>(null);
 
   const { data: unfoundCount } = useQuery({
     queryKey: ['triage-unfound-badge'] as const,
@@ -118,8 +119,8 @@ export function TriageWorkspaceHeader({
           <WorkbenchTrailingCluster
             actions={
               <ReceivingBoxChromeActions
-                onCheck={() => setCheckOrdersOpen(true)}
-                onAdd={() => setAddInboundOpen(true)}
+                onCheck={() => setDeskRail({ kind: 'check', checkOnly: true })}
+                onAdd={() => setDeskRail({ kind: 'add', platform: 'amazon', leaf: 'index' })}
                 resumeLabel="Arrival"
                 resumeAriaLabel="Arrival"
                 resumeIcon={<ReceivingModeArrival />}
@@ -129,18 +130,7 @@ export function TriageWorkspaceHeader({
           />
         }
       />
-      <IncomingBulkTrackingPanel
-        open={checkOrdersOpen}
-        initialAction="check"
-        checkOnly
-        onClose={() => setCheckOrdersOpen(false)}
-      />
-      <IncomingAddInboundOverlay
-        open={addInboundOpen}
-        onClose={() => setAddInboundOpen(false)}
-        initialPlatform="amazon"
-        initialType="PO"
-      />
+      <IncomingDeskRightRail tool={deskRail} onClose={() => setDeskRail(null)} />
     </>
   );
 }

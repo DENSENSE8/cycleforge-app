@@ -106,6 +106,7 @@ export interface RecentActivityRailBaseProps {
   eyebrowTitle: string;
   emptyText?: string;
   autoSelectFirstWhenEmpty?: boolean;
+  canAutoSelectFirst?: () => boolean;
   /**
    * Forwarded to the shell. False = strict sort order, no selected-row hoist
    * (the unbox rail sets this so a receive can't bounce a row to the top and
@@ -281,6 +282,7 @@ export function RecentActivityRailBase({
   eyebrowTitle,
   emptyText,
   autoSelectFirstWhenEmpty = false,
+  canAutoSelectFirst: canAutoSelectFirstProp,
   pinSelectedLead = true,
   preserveServerOrder = false,
   staggerRevealMotion,
@@ -352,7 +354,8 @@ export function RecentActivityRailBase({
       emptyText={emptyText}
       autoSelectFirstWhenEmpty={autoSelectFirstWhenEmpty}
       canAutoSelectFirst={
-        autoSelectFirstWhenEmpty ? canAutoSelectReceivingRailFirst : undefined
+        canAutoSelectFirstProp
+          ?? (autoSelectFirstWhenEmpty ? canAutoSelectReceivingRailFirst : undefined)
       }
       getId={getRowId}
       getReconcileId={getRowReconcileId}

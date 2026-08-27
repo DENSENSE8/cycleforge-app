@@ -34,6 +34,7 @@ export function SearchOrderItems({ order }: { order: ShippedOrder }) {
   return (
     <ItemRecordCard
       items={items}
+      topRule={false}
       emptyTitle="No item"
       emptyDescription="This order carries no product facts."
       footer={

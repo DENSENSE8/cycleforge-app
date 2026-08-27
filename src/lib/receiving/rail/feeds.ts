@@ -87,6 +87,8 @@ interface ReceivingRailFeed {
   /** Refresh domains this rail renders (see `@/lib/refresh/domains`). */
   refreshDomains?: readonly RefreshDomain[];
   autoSelectFirstWhenEmpty?: boolean;
+  /** Gate for auto-select — omit to use the receiving-page default. */
+  canAutoSelectFirst?: () => boolean;
   /** false ONLY for the unbox Recent feed (strict unboxed_at order, no pin bounce). */
   pinSelectedLead?: boolean;
   /**
@@ -522,7 +524,14 @@ const FEEDS = {
     rowActions: 'searchRecent',
     view: 'viewed',
     getActivityAt: getViewedAt,
-    autoSelectFirstWhenEmpty: false,
+    autoSelectFirstWhenEmpty: true,
+    canAutoSelectFirst: () => {
+      if (typeof window === 'undefined') return false;
+      const params = new URLSearchParams(window.location.search);
+      if ((params.get('sel') ?? '').trim()) return false;
+      if ((params.get('q') ?? '').trim()) return false;
+      return window.location.pathname.startsWith('/search');
+    },
     // The server orders by this viewer's `viewed_at DESC` — "most recently
     // opened" is the axis, so a client re-sort could only fight it.
     preserveServerOrder: true,

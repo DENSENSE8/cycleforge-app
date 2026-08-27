@@ -16,8 +16,9 @@
  *
  * Trigger: flush **Bookmark + name** on the shared band face
  * ({@link WorkbenchBandControl}) — one rung, one resting tone and one lit fill
- * with its KPI / inspector peers. The label carries the ACTIVE VIEW'S NAME,
- * falling back to `Views` when none is applied, because the one thing an
+ * with its KPI / inspector peers. Abuts the find plane at `gap-0` (no white
+ * seam between paste/refine and Views). The label carries the ACTIVE VIEW'S
+ * NAME, falling back to `Views` when none is applied, because the one thing an
  * operator needs from this control while it is closed is *which view am I
  * looking at* — and a name that lives only in a tooltip answers that for nobody
  * scanning the band. Truncated at 14ch with the full name still in the tooltip

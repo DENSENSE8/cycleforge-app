@@ -1,9 +1,9 @@
 'use client';
 
 /**
- * GlobalHeaderSearch — icon-rail chrome for the global header. Resting state
- * matches sibling header IconButtons (search glyph only); click / focus
- * expands {@link GlobalFindCombobox}.
+ * GlobalHeaderSearch — find cell in the global header, mounted immediately
+ * right of page identity. Icon at rest on every page except `/search`, where
+ * the field stays expanded.
  *
  * Sole find surface app-wide — including on `/search`. Pending pulse while
  * browse resolve/retrieve runs comes from {@link subscribeGlobalSearchPending}.

@@ -127,7 +127,6 @@ export function FbaCreateShipmentForm({
           }}
           required
           mono
-          tone="neutral"
         />
         <div className="space-y-1">
           {derivedRef && derivedRef !== 'FBA-00/00/00' ? (
@@ -164,7 +163,6 @@ export function FbaCreateShipmentForm({
         label="FC code"
         value={form.destination_fc}
         onChange={(next) => setForm((f) => ({ ...f, destination_fc: next }))}
-        tone="neutral"
       />
 
       <FormField label="Due date">
@@ -210,7 +208,6 @@ export function FbaCreateShipmentForm({
         label="Notes (optional)"
         value={form.notes}
         onChange={(next) => setForm((f) => ({ ...f, notes: next }))}
-        tone="neutral"
       />
 
       <div className="space-y-3 border-t border-border-hairline pt-4">
@@ -251,7 +248,6 @@ export function FbaCreateShipmentForm({
                   value={item.fnsku}
                   onChange={(next) => updateItem(i, 'fnsku', next)}
                   mono
-                  tone="neutral"
                 />
               </div>
               <div className="w-14 shrink-0">

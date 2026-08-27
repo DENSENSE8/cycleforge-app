@@ -48,6 +48,7 @@ export function UnitStationIdentity({
   /** Identity ◁ — host must clear the focused unit. */
   onExitToList: () => void;
   exitLabel?: string;
+  onOpenPhotosDisplay?: () => void;
 }) {
   const trackingValue = String(tracking ?? '').trim();
 
@@ -67,7 +68,6 @@ export function UnitStationIdentity({
       listingLink=""
       listingOpenHref={null}
       listingLinks={[]}
-      showListing={false}
       poOpenHref={null}
       trackingOpenHref={trackingValue ? getTrackingUrl(trackingValue) : null}
       // The lead identifier: the serial, or the minted uid when the unit never
@@ -88,6 +88,7 @@ export function UnitStationIdentity({
       onTypeSelect={() => {}}
       onExitToList={onExitToList}
       exitLabel={exitLabel}
+      onOpenPhotosDisplay={onOpenPhotosDisplay}
     />
   );
 }

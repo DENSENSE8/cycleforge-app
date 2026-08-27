@@ -34,6 +34,20 @@ test('station-family panels keep the shipping-first body and no Documents tab', 
     assert.equal(ctx.defaultTab, 'shipping');
     assert.equal(ctx.showDocumentsTab, false);
     assert.equal(ctx.documentsMode, 'hidden');
+    assert.equal(ctx.openOnIndex, false);
+  }
+});
+
+test('Packed opens the Root Index and hides Documents', () => {
+  for (const ctx of [
+    resolveOrderInspectorContext({ panelContext: 'packed' }),
+    resolveOrderInspectorContext({ panelContext: 'dashboard', orderView: 'packed' }),
+    resolveOrderInspectorContext({ panelContext: 'fulfillment', orderView: 'packed' }),
+  ]) {
+    assert.equal(ctx.showDocumentsTab, false);
+    assert.equal(ctx.documentsMode, 'hidden');
+    assert.equal(ctx.openOnIndex, true);
+    assert.equal(ctx.showDispatchExtras, true);
   }
 });
 
@@ -46,6 +60,13 @@ test('journeyFirst (search deep-link) wins over the context default', () => {
     resolveOrderInspectorContext({ panelContext: 'dashboard', journeyFirst: true }).defaultTab,
     'timeline',
   );
+  const packedJourney = resolveOrderInspectorContext({
+    panelContext: 'packed',
+    journeyFirst: true,
+  });
+  assert.equal(packedJourney.defaultTab, 'timeline');
+  assert.equal(packedJourney.openOnIndex, false);
+  assert.equal(packedJourney.showDocumentsTab, false);
 });
 
 test('pre-pack lanes prep the unit; post-pack lanes reprint the shipping document', () => {
@@ -116,6 +137,7 @@ test('every context mounts the editor dock — the old 5-way disjunction was a t
     'station',
     'packer',
     'shipped',
+    'packed',
   ] as const) {
     assert.equal(
       resolveOrderInspectorContext({ panelContext }).showEditorDock,

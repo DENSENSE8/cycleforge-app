@@ -3,7 +3,8 @@
 /**
  * Top-of-strip mini scan cell for the parked left-dock.
  *
- * Height matches the open-rail scan band / StationContextBar top row (`h-10`).
+ * Height matches the open-rail scan band / StationContextBar top row
+ * ({@link PRIMARY_CHROME_ROW_FACE} / `h-7`).
  * Idle: Plus face with staff-themed hover wash.
  * Focused: same bottom-up {@link ScanBandGlowHost} chromatic glow as the
  * open-rail band + visible caret (no placeholder text in the w-8 strip).
@@ -78,8 +79,8 @@ export function CollapseStripScanCell({ scan }: { scan: CollapseStripScan }) {
             type="button"
             aria-label="New scan"
             data-collapse-strip-scan-idle=""
-            // Full-bleed h-10 hit target — matches scan band / carton context
-            // top row; not an IconButton size token (those top out at h-9).
+            // Full-bleed h-7 hit target — matches scan band / carton context
+            // top row ({@link PRIMARY_CHROME_ROW_FACE}).
             className={cn(
               'ds-raw-button ds-allow-control-size',
               'flex w-full items-center justify-center border-0 border-b-2 border-b-transparent',

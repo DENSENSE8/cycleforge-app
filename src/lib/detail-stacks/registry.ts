@@ -14,6 +14,7 @@
 import type { ComponentType } from 'react';
 import { Box, Camera, FileText, Layers, Package, Truck, Wrench } from '@/components/Icons';
 import { shippingOrdersHref } from '@/lib/shipping/orders-desk';
+import { cartonReadHref } from '@/lib/receiving/surface-path';
 
 export type DetailStackKind = 'shipment' | 'receiving' | 'order' | 'claim' | 'photo' | 'plan' | 'po';
 
@@ -65,7 +66,7 @@ export function detailStackHref(entry: {
   // Receiving cartons: read inspector owns "look up this carton" (decision 2a).
   // Do not remount editable ReceivingDetailsStack via openReceivingId.
   if (entry.kind === 'receiving') {
-    return `/carton/${encodeURIComponent(entry.id)}`;
+    return cartonReadHref(Number(entry.id));
   }
 
   const def = DETAIL_STACK_DEFS[entry.kind];

@@ -18,7 +18,9 @@ function stamp(value: string | null | undefined): string | null {
 const GLYPH = 'h-[15px] w-[15px]';
 
 /**
- * The order's packout pipeline — Tested · Packed · Scanned Out.
+ * The order's packout pipeline — Tested · Packed · Scanned Out when those
+ * stamps exist. {@link MilestonePipeline} drops skipped / future stages so a
+ * pack+ship order paints two nodes edge to edge.
  *
  * A thin mapper onto {@link MilestonePipeline}, which owns the anatomy this
  * shares with the carton and arrival pipelines. Everything specific to an ORDER

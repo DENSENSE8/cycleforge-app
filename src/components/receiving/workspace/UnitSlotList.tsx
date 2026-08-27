@@ -749,7 +749,6 @@ function ExpandedRow({
                 appearance={joined ? "flush" : "default"}
                 value={scan}
                 onChange={setScan}
-                tone="neutral"
                 mono
                 // Never disable for in-flight writes — a disabled input blurs
                 // and drops the barcode wedge mid-lot.

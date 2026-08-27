@@ -58,7 +58,7 @@ export const WORKBENCH_SHEET_CHROME = 'relative w-full min-w-0';
  * |---|---|---|---|
  * | 1 (`band` density) | `p-0` | tab rail `p-0` | **0** |
  * | 2 (KPI card) | `px-3` | tile `px-2 py-1` | **12px** |
- * | 3 (triage row) | `pl-0 pr-0.5` | field plane `px-2` | **0 / 2px** |
+ * | 3 (triage row) | `p-0` | field plane `pl-2 pr-0` | **0** |
  *
  * So a stack read 0 · 12 · 0 down the left and 0 · 12 · 2 down the right. The
  * right-hand raggedness was already known and already patched in the wrong
@@ -105,9 +105,10 @@ export const WORKBENCH_BAND_INSET_X = 'px-0';
  * ran three rungs and three tones until 2026-08-20. A new band control composes
  * that face; it does not hand-roll a fourth.
  *
- * Views moved out of the find group 2026-08-10: it is a page-scoped *control*,
- * not part of the query, so abutting the search field read as chrome belonging
- * to find. On the lean cohort the row is exactly four controls —
+ * Views is a page-scoped *control*, not part of the query — it sits in the
+ * right cluster, not inside the find field. The find plane and that cluster
+ * abut at `gap-0` (no white air between paste/refine and Views / table
+ * controls). On the lean cohort the row is exactly four controls —
  * `search · Views · KPI · inspector` — and the right three read as peers.
  * Never Band-1 beside lifecycle tabs (that promotes an inner refinement to an
  * outer scope). SoT: source-of-truth.md → Left-edge occupant.
@@ -163,7 +164,9 @@ export function WorkbenchTriageBand({
   return (
     <div
       className={cn(
-        'flex min-w-0 items-stretch justify-between gap-2 border-r border-border-soft bg-surface-card shadow-sm',
+        // `gap-0` — find plane abuts Views / table controls. A positive gap
+        // reopened the white seam between paste/refine and the right cluster.
+        'flex min-w-0 items-stretch justify-between gap-0 border-r border-border-soft bg-surface-card shadow-sm',
         WORKBENCH_BAND_INSET_X,
         PRIMARY_CHROME_ROW_FACE,
         className,
@@ -173,18 +176,16 @@ export function WorkbenchTriageBand({
       <div className="flex min-w-0 flex-1 items-stretch">{search}</div>
       {/*
         `empty:hidden` on both boxes below: a flex item with no content is still
-        an ITEM, so the row's `gap-2` reserves 8px beside it. A surface that
-        passes a `controlsSlotRef` its grid never portals into (Arrival, and any
-        band whose ▦ has no host) paid that gap on every paint, and a band with
-        no controls at all paid it twice — dead space that reads as a broken
-        right edge rather than as an absent control.
+        an ITEM, so a row `gap-*` would reserve air beside it. Peer Band-3
+        controls abut at `gap-0` (flush chrome grammar), and the find host
+        abuts this cluster the same way — one continuous Band-3 strip.
       */}
-      <div className="flex shrink-0 items-center gap-2 self-center empty:hidden">
+      <div className="flex shrink-0 items-center gap-0 self-stretch empty:hidden">
         {right}
         {controlsSlotRef !== undefined || controlsSlotProps ? (
           <div
             ref={controlsSlotRef}
-            className="flex shrink-0 items-center gap-2 empty:hidden"
+            className="flex shrink-0 items-center gap-0 empty:hidden"
             {...controlsSlotProps}
           />
         ) : null}
@@ -263,6 +264,27 @@ export function withScopeDivider<T extends { id: string }>(
 export const WORKBENCH_CHROME_PILL_CLASS = cornerClass('flush');
 
 /**
+ * Flush Band-1 CTA strip. Check / Import / Add (and every regional fork of
+ * that cluster) must sit in this row — never as a fragment in a `gap-*`
+ * parent, or the gutters reopen. `contents` wrappers around Radix roots
+ * keep the trigger as the flex item so a Popover cannot insert a box.
+ */
+export const WORKBENCH_CHROME_ACTION_ROW_CLASS =
+  'flex h-full min-h-0 items-stretch gap-0 [&>*]:h-full [&>*]:min-h-0 [&>*]:shrink-0 [&_button]:shadow-none [&_button]:ring-inset';
+
+export function WorkbenchChromeActionRow({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={cn(WORKBENCH_CHROME_ACTION_ROW_CLASS, className)}>{children}</div>
+  );
+}
+
+/**
  * Band-1 host face — primary row height, **zero pad / zero gap**. Leading boxed
  * cubes (Unbox pin-list · same face as carton Exit) abut the tab rail flush;
  * never `gap-2` or `p-0.5` air between pin and first tab. TabSwitch solid/sm
@@ -284,14 +306,9 @@ interface WorkbenchTrailingClusterProps {
   /** Escapes that follow CTAs (e.g. Catalog Refresh). */
   after?: ReactNode;
   /**
-   * Leading hairline before this cluster. Default **only when `actions` are
-   * present** — solid Import/Add CTAs need a wall from the quiet icon rail
-   * (search / filters / week). A lone Sort sits flush with those peer icon
-   * controls; a hairline between Calendar and Sort reads as a broken pair of
-   * display icons.
-   *
-   * Neighbors of this hairline are flush-square ({@link WORKBENCH_CHROME_PILL_CLASS}
-   * = `cornerClass('flush')`). Law: `source-of-truth.md` → Workbench chrome flush.
+   * Leading hairline before this cluster. Default **off** — Band-1 CTAs
+   * (Check · Import · Add) sit flush on the band with no wall to their left.
+   * Pass `true` only if a quiet icon rail must be visually separated.
    */
   divide?: boolean;
   className?: string;
@@ -307,7 +324,7 @@ export function WorkbenchTrailingCluster({
 }: WorkbenchTrailingClusterProps) {
   const hasContent = Boolean(before || sort || actions || after);
   if (!hasContent) return null;
-  const showDivide = divide ?? Boolean(actions);
+  const showDivide = divide ?? false;
   return (
     <div className={cn('flex h-full shrink-0 items-stretch gap-0', className)}>
       {showDivide ? (
@@ -319,7 +336,7 @@ export function WorkbenchTrailingCluster({
       {before}
       {sort}
       {actions ? (
-        <div className="flex h-full items-stretch gap-0">{actions}</div>
+        <WorkbenchChromeActionRow>{actions}</WorkbenchChromeActionRow>
       ) : null}
       {after}
     </div>
@@ -486,16 +503,19 @@ export function WorkbenchChromeHeader({
       */}
       <div
         className={cn(
-          'flex shrink-0 gap-2',
-          band ? 'items-stretch' : 'items-center',
+          'flex shrink-0',
+          band ? 'items-stretch gap-0' : 'items-center gap-2',
         )}
       >
         {search}
         {right}
-        {/* Empty portal = a gap-2 item with nothing in it. See Band 3 above. */}
+        {/* Empty portal = a flex item with nothing in it. See Band 3 above. */}
         <div
           ref={controlsSlotRef}
-          className="flex shrink-0 items-center gap-2 empty:hidden"
+          className={cn(
+            'flex shrink-0 items-center empty:hidden',
+            band ? 'gap-0' : 'gap-2',
+          )}
           {...controlsSlotProps}
         />
         {trailing}

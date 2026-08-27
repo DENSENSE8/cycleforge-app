@@ -2,8 +2,6 @@ import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
 import {
   SEARCH_BY_SCOPES,
-  SEARCH_BY_RECENTS_INDEX,
-  SEARCH_BY_RECENTS_VALUE,
   filterHitsBySearchBy,
   parseSearchByScope,
   searchByPickerCount,
@@ -25,13 +23,12 @@ describe('search-by scope', () => {
     ]);
   });
 
-  it('empty-field picker leads with Recents, then the five methods', () => {
-    assert.equal(searchByPickerCount(), 6);
-    assert.equal(searchByPickerScope(SEARCH_BY_RECENTS_INDEX), null);
-    assert.equal(searchByPickerValue(0), SEARCH_BY_RECENTS_VALUE);
-    assert.equal(searchByPickerScope(1), 'internal');
-    assert.equal(searchByPickerScope(2), 'order');
-    assert.equal(searchByPickerScope(6), null);
+  it('picker index maps 1:1 to the five methods', () => {
+    assert.equal(searchByPickerCount(), 5);
+    assert.equal(searchByPickerScope(0), 'internal');
+    assert.equal(searchByPickerScope(1), 'order');
+    assert.equal(searchByPickerScope(5), null);
+    assert.equal(searchByPickerValue(2), 'tracking');
   });
 
   it('parseSearchByScope accepts methods; unknown and legacy All become Internal ID', () => {
@@ -88,10 +85,10 @@ describe('filterHitsBySearchBy', () => {
     );
   });
 
-  it('order keeps only orders', () => {
+  it('order keeps orders and receiving cartons matched by marketplace #', () => {
     assert.deepEqual(
-      filterHitsBySearchBy(hits, 'order').map((h) => h.entityType),
-      ['order', 'order'],
+      filterHitsBySearchBy(hits, 'order').map((h) => `${h.entityType}:${h.matchField}`),
+      ['order:order', 'order:id', 'receiving:receiving'],
     );
   });
 

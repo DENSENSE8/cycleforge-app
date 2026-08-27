@@ -88,7 +88,6 @@ export function CustomerInfoForm(props: CustomerInfoFormProps) {
             onChange={(value) => onCustomerChange('name', value)}
             autoComplete="name"
             autoFocus={!showAll}
-            tone="neutral"
         />
     );
 
@@ -102,7 +101,6 @@ export function CustomerInfoForm(props: CustomerInfoFormProps) {
             autoComplete="tel"
             maxLength={12}
             autoFocus={!showAll}
-            tone="neutral"
         />
     );
 
@@ -115,7 +113,6 @@ export function CustomerInfoForm(props: CustomerInfoFormProps) {
             autoComplete="email"
             inputClassName="lowercase"
             autoFocus={!showAll}
-            tone="neutral"
         />
     );
 
@@ -127,7 +124,6 @@ export function CustomerInfoForm(props: CustomerInfoFormProps) {
                 onChange={onSerialNumberChange}
                 mono
                 autoFocus={!showAll}
-                tone="neutral"
             />
 
             <TextField
@@ -136,7 +132,6 @@ export function CustomerInfoForm(props: CustomerInfoFormProps) {
                 onChange={onPriceChange}
                 inputMode="decimal"
                 required
-                tone="emerald"
                 inputClassName="font-semibold text-emerald-600"
             />
 
@@ -146,7 +141,6 @@ export function CustomerInfoForm(props: CustomerInfoFormProps) {
                 onChange={onNotesChange}
                 multiline
                 rows={3}
-                tone="neutral"
             />
         </div>
     );

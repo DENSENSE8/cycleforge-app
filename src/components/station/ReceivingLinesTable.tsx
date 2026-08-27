@@ -32,6 +32,8 @@ import { useUnboxPrimaryPaintOptional } from '@/components/receiving/unbox/unbox
 import { useUIModeOptional } from '@/design-system/providers/UIModeProvider';
 import { DateRangePickerPill } from '@/components/ui/DateRangeHeader';
 import { IncomingWorkspaceHeader } from '@/components/sidebar/receiving/incoming/IncomingWorkspaceHeader';
+import { IncomingReturnsImportStagingHost } from '@/components/sidebar/receiving/incoming/IncomingReturnsImportStagingHost';
+import { IncomingReturnsImportStagingRail } from '@/components/sidebar/receiving/incoming/IncomingReturnsImportStagingRail';
 import {
   HistoryWorkspaceHeader,
   HistoryTriageBand,
@@ -40,6 +42,12 @@ import {
   WorkbenchSheetView,
   useWorkbenchSheetChrome,
 } from '@/components/dashboard/WorkbenchSheetView';
+import { useTableImportParam } from '@/hooks/useTableImportParam';
+import { INBOUND_RETURNS_IMPORT_DESCRIPTOR } from '@/lib/inbound/inbound-returns-import-descriptor';
+import {
+  clearTableImportDraft,
+  useTableImportDraft,
+} from '@/lib/tables/import/staging-store';
 import {
   INCOMING_COMPOUND_COLUMNS,
   defaultDirForIncomingGridSort,
@@ -232,6 +240,46 @@ export default function ReceivingLinesTable({
   // nest HistoryWorkspaceHeader there.
   const isInboundDeskHost = pathname.startsWith(INCOMING_SURFACE_ROUTE);
   const isInboundDocked = isInboundDeskHost && parseInboundLane(searchParams.get('lane')) === 'docked';
+
+  // Returns CSV/TSV staging — session draft + `?import=csv` (Orders golden path).
+  const returnsImportDraft = useTableImportDraft(
+    INBOUND_RETURNS_IMPORT_DESCRIPTOR.surfaceId,
+  );
+  const { active: returnsImportActive, setActive: setReturnsImportActive } =
+    useTableImportParam(INBOUND_RETURNS_IMPORT_DESCRIPTOR);
+  const showReturnsImportStaging =
+    isIncomingMode && returnsImportActive && Boolean(returnsImportDraft);
+
+  useEffect(() => {
+    if (!isIncomingMode) return;
+    if (returnsImportDraft) return;
+    // Session draft is gone — only clear a stale `?import=csv` deep link / refresh.
+    // Do not call setActive(false) on every draft-null frame; that races Confirm's
+    // soft-replace to `?inkind=return` and can wipe the post-commit filter.
+    if (searchParams.get('import') !== 'csv') return;
+    setReturnsImportActive(false);
+  }, [
+    isIncomingMode,
+    returnsImportDraft,
+    searchParams,
+    setReturnsImportActive,
+  ]);
+
+  const returnsStagingWasOpen = useRef(false);
+  useEffect(() => {
+    if (!isIncomingMode) return;
+    if (!returnsImportDraft) {
+      returnsStagingWasOpen.current = false;
+      return;
+    }
+    if (returnsImportActive) {
+      returnsStagingWasOpen.current = true;
+      return;
+    }
+    if (!returnsStagingWasOpen.current) return;
+    returnsStagingWasOpen.current = false;
+    clearTableImportDraft(INBOUND_RETURNS_IMPORT_DESCRIPTOR.surfaceId);
+  }, [isIncomingMode, returnsImportDraft, returnsImportActive]);
 
   // `mode.id === 'history'` is shared by THREE hosts — `/receiving/history`, the
   // Unbox workbench's default tab (`embedded`), and `/incoming?lane=docked`
@@ -872,28 +920,36 @@ export default function ReceivingLinesTable({
   // IncomingWorkspaceHeader for both lanes so Docked never double-mounts
   // HistoryWorkspaceHeader. IncomingWorkspaceHeader already paints Band 1 +
   // Band 3 (no KPI); the sheet shell owns the chrome stack + host.
+  // Returns CSV staging swaps the Pipeline centre (Orders golden path).
   if (isIncomingMode || isInboundDocked) {
     return (
       <TableColumnConfigProvider tableId={isIncomingMode ? 'incoming' : 'receiving'}>
+        {showReturnsImportStaging ? <IncomingReturnsImportStagingRail /> : null}
         <WorkbenchSheetView
           chrome={sheetChrome}
           className="h-full bg-transparent"
-          tabs={({ className }) => (
-            <IncomingWorkspaceHeader
-              className={className}
-              total={
-                isIncomingMode
-                  ? isDeliveredUnscannedFacet || isDeliveredNotUnboxedFacet
-                    ? localRows.length
-                    : Number(data?.total ?? 0)
-                  : Number(data?.total ?? localRows.length)
-              }
-              page={isIncomingMode ? incomingPage : 1}
-            />
-          )}
+          tabs={
+            showReturnsImportStaging
+              ? undefined
+              : ({ className }) => (
+                  <IncomingWorkspaceHeader
+                    className={className}
+                    total={
+                      isIncomingMode
+                        ? isDeliveredUnscannedFacet || isDeliveredNotUnboxedFacet
+                          ? localRows.length
+                          : Number(data?.total ?? 0)
+                        : Number(data?.total ?? localRows.length)
+                    }
+                    page={isIncomingMode ? incomingPage : 1}
+                  />
+                )
+          }
         >
           {() =>
-            isIncomingMode ? (
+            showReturnsImportStaging ? (
+              <IncomingReturnsImportStagingHost />
+            ) : isIncomingMode ? (
               incomingDegraded ? (
                 <div className="p-3">
                   <GridDegradedBox onRetry={refetch} />

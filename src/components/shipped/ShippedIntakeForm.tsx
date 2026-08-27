@@ -312,7 +312,6 @@ export function ShippedIntakeForm({
               onChange={handleOrderIdChange}
               onBlur={handleOrderIdBlur}
               required
-              tone="neutral"
               appearance="flush"
             />
             {lookupStatus !== 'idle' ? (
@@ -346,7 +345,6 @@ export function ShippedIntakeForm({
               }
               required
               mono
-              tone="neutral"
               appearance="flush"
             />
 
@@ -355,7 +353,6 @@ export function ShippedIntakeForm({
               value={replacementData.reason}
               onChange={(next) => setReplacementData((prev) => ({ ...prev, reason: next }))}
               required
-              tone="neutral"
               appearance="flush"
             />
             {replacementData.reason.trim() || replacementData.product_title.trim() ? (
@@ -375,7 +372,6 @@ export function ShippedIntakeForm({
               required
               disabled={isProductTitleLocked}
               readOnly={isProductTitleLocked}
-              tone="neutral"
               appearance="flush"
               trailing={
                 isProductTitleLocked ? (
@@ -402,7 +398,6 @@ export function ShippedIntakeForm({
               value={replacementData.sku}
               onChange={(next) => setReplacementData((prev) => ({ ...prev, sku: next }))}
               mono
-              tone="neutral"
               appearance="flush"
             />
           </div>
@@ -413,7 +408,6 @@ export function ShippedIntakeForm({
               value={addOrderData.order_id}
               onChange={(next) => setAddOrderData((prev) => ({ ...prev, order_id: next }))}
               required
-              tone="neutral"
               appearance="flush"
             />
             {trackingNumbers.map((value, index) => (
@@ -461,7 +455,6 @@ export function ShippedIntakeForm({
               value={addOrderData.product_title}
               onChange={(next) => setAddOrderData((prev) => ({ ...prev, product_title: next }))}
               required
-              tone="neutral"
               appearance="flush"
             />
             <div className="flex h-11 w-full min-w-0 items-stretch gap-0">
@@ -481,7 +474,6 @@ export function ShippedIntakeForm({
               value={addOrderData.sku}
               onChange={(next) => setAddOrderData((prev) => ({ ...prev, sku: next }))}
               mono
-              tone="neutral"
               appearance="flush"
             />
           </div>
@@ -545,7 +537,6 @@ function FlushTrackingField({
       required={index === 0}
       autoFocus={autoFocus}
       mono
-      tone="neutral"
       appearance="flush"
       trailing={
         <span className="flex items-center">
@@ -553,7 +544,6 @@ function FlushTrackingField({
             <IconButton
               type="button"
               size="xs"
-              tone="neutral"
               ariaLabel="Add shipping tracking number"
               title="Add another tracking number"
               onClick={onAdd}
@@ -564,7 +554,6 @@ function FlushTrackingField({
             <IconButton
               type="button"
               size="xs"
-              tone="neutral"
               ariaLabel={`Remove shipping tracking number ${index + 1}`}
               title="Remove this tracking number"
               onClick={onRemove}

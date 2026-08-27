@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import * as Popover from '@radix-ui/react-popover';
 import type { DateRange } from 'react-day-picker';
 import { format } from 'date-fns';
 import { Calendar as CalendarPicker } from './Calendar';
 import { Calendar as CalendarIcon, X } from '@/components/Icons';
 import { cn } from '@/utils/_cn';
+import { computeWeekRange, dateKeyToLocalDate } from '@/utils/date';
 
 export interface DateRangePickerFieldProps {
   /** Current value. `undefined` = nothing picked yet. `{from, to: undefined}` = first endpoint only. */
@@ -16,7 +17,7 @@ export interface DateRangePickerFieldProps {
   placeholder?: string;
   /** Disable the whole control. */
   disabled?: boolean;
-  /** Optional shortcut chips below the calendar (Today / Last 7 days / Last 30). */
+  /** Optional shortcut chips below the calendar (Today / This week / Last 7 / …). */
   presets?: ReadonlyArray<{ label: string; range: () => DateRange }>;
   /** Earliest selectable day. */
   fromDate?: Date;
@@ -24,6 +25,8 @@ export interface DateRangePickerFieldProps {
   toDate?: Date;
   /** Extra classes on the trigger button. */
   className?: string;
+  /** When true, open the calendar popover on mount (find-field chip → edit date). */
+  autoOpen?: boolean;
 }
 
 const DEFAULT_PRESETS: ReadonlyArray<{ label: string; range: () => DateRange }> = [
@@ -32,6 +35,16 @@ const DEFAULT_PRESETS: ReadonlyArray<{ label: string; range: () => DateRange }> 
     range: () => {
       const d = new Date();
       return { from: d, to: d };
+    },
+  },
+  {
+    label: 'This week',
+    range: () => {
+      const week = computeWeekRange(0);
+      return {
+        from: dateKeyToLocalDate(week.startStr) ?? week.start,
+        to: dateKeyToLocalDate(week.endStr) ?? week.end,
+      };
     },
   },
   {
@@ -69,13 +82,13 @@ const DEFAULT_PRESETS: ReadonlyArray<{ label: string; range: () => DateRange }> 
  * via {@link DateRangePickerFieldProps.value} + onChange.
  *
  * Layout (popover open):
- *   ┌──────────────────────────────┐
- *   │ Today | 7 days | 30d | Month │  presets row
- *   ├──────────────────────────────┤
- *   │      [ inline calendar ]      │  react-day-picker, range mode
- *   ├──────────────────────────────┤
- *   │       Clear        Apply      │  footer
- *   └──────────────────────────────┘
+ *   ┌──────────────────────────────────────┐
+ *   │ Today | Week | 7 days | 30d | Month │  presets row
+ *   ├──────────────────────────────────────┤
+ *   │      [ inline calendar ]              │  react-day-picker, range mode
+ *   ├──────────────────────────────────────┤
+ *   │       Clear        Apply              │  footer
+ *   └──────────────────────────────────────┘
  */
 export function DateRangePickerField({
   value,
@@ -86,11 +99,19 @@ export function DateRangePickerField({
   fromDate,
   toDate,
   className,
+  autoOpen = false,
 }: DateRangePickerFieldProps) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(autoOpen);
   // Local working copy — only commits to parent on "Apply" or preset click
   // so a half-picked range doesn't fire useEffect chains on every click.
   const [draft, setDraft] = useState<DateRange | undefined>(value);
+
+  useEffect(() => {
+    if (!autoOpen) return;
+    setDraft(value);
+    setOpen(true);
+    // Re-arm when the parent remounts with a fresh autoOpen key.
+  }, [autoOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sync draft when the popover opens (parent may have changed value).
   const handleOpenChange = (next: boolean) => {

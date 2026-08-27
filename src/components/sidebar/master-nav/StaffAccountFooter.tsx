@@ -85,7 +85,7 @@ type OpenMenu = 'none' | 'more' | 'history' | 'feedback' | 'phone-qr';
  * load-bearing. The avatar is a separate click target
  * ({@link StaffAvatarEditor}) for colour + photo — Settings is not required.
  *
- * Floor band = {@link STATION_COLUMN_FOOTER_BAND_FACE} (`h-8` · full spine
+ * Floor band = {@link STATION_COLUMN_FOOTER_BAND_FACE} (`h-7` · full spine
  * width · shared hairline with context-rail filters / Displays `→|`). Identity
  * is one truncated name line inside the flex-1 ⋯ hit target; role stays in the
  * ⋯ menu — a two-line stack cannot share the station floor height. Sign-out

@@ -41,6 +41,6 @@ test('detailStackHref: receiving deep-links to the read carton inspector', () =>
       path: '/unbox',
       search: 'mode=receive&openReceivingId=12',
     }),
-    '/carton/99',
+    '/search?sel=receiving:99',
   );
 });

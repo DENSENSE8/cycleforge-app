@@ -93,6 +93,12 @@ test('count is a ReactNode, so a header can count in words', () => {
   assert.doesNotMatch(renderLabel({ count: null }), /tabular-nums/);
 });
 
+test('the header bar paints a full-width bottom hairline', () => {
+  const html = renderLabel();
+  assert.match(html, /after:bg-border-hairline/, html);
+  assert.match(html, /after:inset-x-0/, html);
+});
+
 test('the block composes the label — one header face, not two', () => {
   // If these ever diverge, the promotion has been undone again.
   const blockHeader = render({ collapsed: false, count: 7 });

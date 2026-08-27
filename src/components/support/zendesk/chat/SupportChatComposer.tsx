@@ -378,7 +378,12 @@ export function SupportChatComposer({
         trailingAction={trailingAction}
         textareaRef={composerRef}
         animateMount={stationDock}
-        className={!isPublic ? CONVERSATION_COMPOSER_DOCK_INTERNAL : undefined}
+        className={cn(
+          // Ambient `shadow-elev-raised` paints a strip above the field onto
+          // Totals / last-message in every Ticket Displays / right-rail host.
+          'shadow-none',
+          !isPublic ? CONVERSATION_COMPOSER_DOCK_INTERNAL : undefined,
+        )}
       />
     </div>
   );
@@ -387,8 +392,7 @@ export function SupportChatComposer({
     return <div className="w-full">{dock}</div>;
   }
 
-  // Floating composer: elevated card on transparent air. Pad + gutter live in
-  // {@link CONVERSATION_COMPOSER_PAD} (shared with every Ticket Displays host).
-  // Internal channel tints the dock shell (Zendesk yellow composer).
+  // Pad + gutter live in {@link CONVERSATION_COMPOSER_PAD} (every Ticket
+  // Displays / right-rail host). Internal channel tints the dock hairline.
   return <div className={CONVERSATION_COMPOSER_PAD}>{dock}</div>;
 }

@@ -102,11 +102,8 @@ function preloadSearchOrderLeafChunks(): void {
 
 export function SearchOrderStationPane({
   orderId,
-  onExit,
 }: {
   orderId: string | number;
-  /** Identity ◁ — clears `?sel=` back to the results the operator came from. */
-  onExit: () => void;
 }) {
   const router = useRouter();
   const [activeSideTab, setActiveSideTab] = useState<StationDisplayNav | null>(null);
@@ -125,7 +122,7 @@ export function SearchOrderStationPane({
   const resolveQuery = useQuery(searchOrderResolveQuery(token));
   const resolved = resolveQuery.data;
   const resolveStatus =
-    resolveQuery.isPending || resolveQuery.isLoading
+    (resolveQuery.isPending || resolveQuery.isLoading) && !resolved
       ? 'loading'
       : resolved?.status === 'ok'
         ? 'ok'
@@ -187,11 +184,9 @@ export function SearchOrderStationPane({
   );
 
   /**
-   * Centre = the Search & Details Zone 2 stack: a collapsible **Items** block
-   * over the warehouse thread. Status — both the stepper and the activity
-   * trail — is NOT here; it is the right-edge `timeline` leaf (ruling
-   * 2026-08-21), and this docblock still said "Status & timeline" long after
-   * that block left the centre.
+   * Centre = the Search & Details Zone 2 stack: Status then collapsible
+   * **Items**. Preview search does not mount a warehouse thread. The activity
+   * trail also lives on the right-edge `timeline` leaf.
    *
    * `editableShippingFields` is genuinely absent from every read path in this
    * file. Note what that does and does not buy: it makes the SHIPPING editors
@@ -393,6 +388,10 @@ export function SearchOrderStationPane({
     [],
   );
 
+  const handleViewPhotos = useCallback(() => {
+    setActiveSideTab('photos');
+  }, []);
+
   if (resolveStatus === 'loading') {
     // The page-level `SearchPrimaryPaintShell` field is covering this plane —
     // hold a transparent box so it has geometry to cover, and never a second
@@ -431,19 +430,12 @@ export function SearchOrderStationPane({
         // Read surface: no dock, centre fields inert. Displays still write.
         stance="preview"
         identity={
-          <OrderStationIdentity
-            order={order}
-            onExitToList={onExit}
-            exitLabel="Back to results"
-          />
+          <OrderStationIdentity order={order} onOpenPhotosDisplay={handleViewPhotos} />
         }
         centre={centre}
         surface="card"
-        // The centre's last block is the warehouse thread, and a thread's
-        // composer belongs on the floor of the pane — not wherever the message
-        // list happens to end. Without this the scroll column is content-sized,
-        // so the thread's `flex-1` divides nothing and both the thread and its
-        // composer float directly under Items on a short order.
+        // Fill the centre column so short orders don't leave a dead band
+        // under Items on a tall pane.
         centreFill
         onCentreScroll={collapse.onScroll}
         displayTabs={displayTabs}

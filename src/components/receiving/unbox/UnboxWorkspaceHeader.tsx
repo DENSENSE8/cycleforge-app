@@ -25,8 +25,10 @@ import {
 import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 import { ReceivingModeUnbox } from '@/components/icons/stations';
 import { ReceivingBoxChromeActions } from '@/components/receiving/ReceivingBoxChromeActions';
-import { IncomingBulkTrackingPanel } from '@/components/sidebar/receiving/incoming/IncomingBulkTrackingPanel';
-import { IncomingAddInboundOverlay } from '@/components/sidebar/receiving/incoming/IncomingAddInboundOverlay';
+import {
+  IncomingDeskRightRail,
+  type IncomingDeskRailTool,
+} from '@/components/sidebar/receiving/incoming/IncomingDeskRightRail';
 import { parseStaffParam, useStaffFilter } from '@/hooks/useStaffFilter';
 import { useWorkbenchSearchParam } from '@/hooks/useWorkbenchSearchParam';
 import { useStaffPreferences } from '@/hooks/useStaffPreferences';
@@ -444,10 +446,8 @@ export function UnboxWorkspaceHeader({
   const [refineFacet, setRefineFacet] = useState<HistoryRefineFacetId>('staff');
   /** Active facet inside the non-History Refine funnel (Staff · Readiness · Lane). */
   const [triageFacet, setTriageFacet] = useState<'staff' | 'readiness' | 'lane'>('staff');
-  /** Band 1 Check → same push panel as Incoming (check-only). */
-  const [checkOrdersOpen, setCheckOrdersOpen] = useState(false);
-  /** Band 1 Add → manual inbound rail (box stations only). */
-  const [addInboundOpen, setAddInboundOpen] = useState(false);
+  /** Band 1 desk tools — one right-rail occupant (Check · Add). */
+  const [deskRail, setDeskRail] = useState<IncomingDeskRailTool | null>(null);
   const historyFilterHot = isHistoryTab && isHistoryCommandFilterHot(historyFilter);
   const queueFilterHot = isQueueTab && (queueStage != null || queueLane != null);
 
@@ -923,8 +923,8 @@ export function UnboxWorkspaceHeader({
                     the only tab a spreadsheet pull makes sense from. It rides
                     as a TAB of the one data cube, never its own glyph. */}
                 <ReceivingBoxChromeActions
-                  onCheck={() => setCheckOrdersOpen(true)}
-                  onAdd={() => setAddInboundOpen(true)}
+                  onCheck={() => setDeskRail({ kind: 'check', checkOnly: true })}
+                  onAdd={() => setDeskRail({ kind: 'add', platform: 'amazon', leaf: 'index' })}
                   onExport={
                     tab === 'history'
                       ? () => emitReceiving('receiving-export-history')
@@ -997,18 +997,7 @@ export function UnboxWorkspaceHeader({
         />
       )}
 
-      <IncomingBulkTrackingPanel
-        open={checkOrdersOpen}
-        initialAction="check"
-        checkOnly
-        onClose={() => setCheckOrdersOpen(false)}
-      />
-      <IncomingAddInboundOverlay
-        open={addInboundOpen}
-        onClose={() => setAddInboundOpen(false)}
-        initialPlatform="amazon"
-        initialType="PO"
-      />
+      <IncomingDeskRightRail tool={deskRail} onClose={() => setDeskRail(null)} />
     </div>
   );
 }

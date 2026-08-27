@@ -7,14 +7,18 @@
  * solid TabSwitch beside search. Used by Pending (To Ship) and Testing.
  * Options grow from {@link QUEUE_DISPLAY_SORT_OPTIONS}.
  *
- * The panel composes `ToolbarListbox*` (`@/design-system/primitives`) — the
- * same rows as the other trailing-cluster dropdowns, so they read as
- * one control. Selection is a leading checkmark, never a `bg-blue-50` fill.
+ * Trigger is {@link WorkbenchBandControl} (28px ops chrome face) — never
+ * {@link ToolbarButton}'s `h-8` soft pill, which overflows Band 3.
+ * Panel: `ToolbarListbox*` so trailing-cluster dropdowns share one list
+ * grammar. Selection is a leading checkmark, never a `bg-blue-50` fill.
  */
 
 import { useMemo, useRef, useState } from 'react';
 import { ArrowUpDown, ChevronDown } from '@/components/Icons';
-import { ToolbarButton } from '@/components/ui/ToolbarButton';
+import {
+  WorkbenchBandControl,
+  WORKBENCH_BAND_CONTROL_GLYPH_CLASS,
+} from '@/components/dashboard/workbench-band-control';
 import { Popover } from '@/design-system';
 import {
   TOOLBAR_LISTBOX_PANEL_CLASS,
@@ -45,7 +49,7 @@ export function QueueSortSwitch<T extends string = QueueDisplaySort>({
   ariaLabel?: string;
   className?: string;
   /**
-   * `label` — icon + shortLabel + caret (Incoming / Testing trailing).
+   * `label` — shortLabel + caret (Incoming / Testing trailing).
    * `icon` — ArrowUpDown only (To-ship triage; Unbox-parity quiet chrome).
    */
   variant?: 'label' | 'icon';
@@ -69,27 +73,34 @@ export function QueueSortSwitch<T extends string = QueueDisplaySort>({
   };
 
   const iconOnly = variant === 'icon';
+  const sortLabel = `Sort by: ${activeOption.label}`;
 
   return (
     <div className={cn('shrink-0', className)} data-queue-sort-switch="" data-variant={variant}>
-      <ToolbarButton
+      <WorkbenchBandControl
         ref={buttonRef}
-        type="button"
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        aria-label={`Sort by: ${activeOption.label}`}
+        label={sortLabel}
+        ariaLabel={sortLabel}
+        text={iconOnly ? undefined : activeOption.shortLabel}
         onClick={() => setOpen((o) => !o)}
         onKeyDown={(event) => toolbarListboxTriggerKeyDown(event, () => setOpen(true))}
-        className={iconOnly ? undefined : 'normal-case tracking-wide'}
-      >
-        <ArrowUpDown className="h-3.5 w-3.5 shrink-0" />
-        {iconOnly ? null : (
-          <>
-            <span className="whitespace-nowrap">{activeOption.shortLabel}</span>
-            <ChevronDown className={cn('h-3 w-3 shrink-0 opacity-70 transition-transform', open && 'rotate-180')} />
-          </>
-        )}
-      </ToolbarButton>
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        icon={
+          iconOnly ? (
+            <ArrowUpDown className={WORKBENCH_BAND_CONTROL_GLYPH_CLASS} aria-hidden />
+          ) : (
+            <ChevronDown
+              className={cn(
+                WORKBENCH_BAND_CONTROL_GLYPH_CLASS,
+                'opacity-70 transition-transform',
+                open && 'rotate-180',
+              )}
+              aria-hidden
+            />
+          )
+        }
+      />
 
       <Popover
         open={open}

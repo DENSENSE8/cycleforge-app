@@ -28,6 +28,7 @@ import {
 } from '@/components/sidebar/sidebar-spine';
 import { cn } from '@/utils/_cn';
 import { StaffAccountFooter } from './StaffAccountFooter';
+import { PRIMARY_CHROME_ROW_FACE } from '@/components/layout/header-shell';
 
 /**
  * The page list inside the sidebar spine — **ONE flat scrolling map**.
@@ -974,7 +975,10 @@ export function SidebarNavList({
           not a new one to introduce. */}
       <div
         data-spine-find
-        className="w-full shrink-0 border-b border-border-hairline"
+        className={cn(
+          'w-full shrink-0 overflow-hidden border-b border-border-hairline',
+          PRIMARY_CHROME_ROW_FACE,
+        )}
       >
         <TechRailSearchBar
           variant="chrome"

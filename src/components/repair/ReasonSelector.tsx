@@ -91,7 +91,6 @@ export function ReasonSelector({
           onChange={onNotesChange}
           multiline
           rows={3}
-          tone="neutral"
           appearance="flush"
           className="border-b border-border-hairline"
         />
@@ -145,7 +144,6 @@ export function ReasonSelector({
             onChange={onNotesChange}
             multiline
             rows={3}
-            tone="neutral"
             appearance="flush"
             className="border-b border-border-hairline"
           />
@@ -190,7 +188,6 @@ export function ReasonSelector({
             onChange={onNotesChange}
             multiline
             rows={3}
-            tone="neutral"
           />
         </>
       )}

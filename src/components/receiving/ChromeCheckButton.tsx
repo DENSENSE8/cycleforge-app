@@ -46,7 +46,7 @@ export function ChromeCheckButton({
       icon={<ClipboardList />}
       ariaLabel={ariaLabel}
       onClick={onClick}
-      className={cn(CHROME_CTA_FACE, className)}
+      className={cn(CHROME_CTA_FACE, 'ring-0', className)}
       data-testid={testId}
     >
       Check

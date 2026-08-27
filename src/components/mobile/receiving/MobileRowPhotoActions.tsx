@@ -3,7 +3,6 @@
 import type { MouseEvent } from 'react';
 import Link from 'next/link';
 import { Camera, Image as ImageIcon } from '@/components/Icons';
-import { Button } from '@/design-system/primitives';
 import { cn } from '@/utils/_cn';
 
 interface MobileRowPhotoActionsProps {
@@ -16,14 +15,37 @@ interface MobileRowPhotoActionsProps {
 }
 
 const BTN =
-  'inline-flex h-8 min-w-8 shrink-0 items-center justify-center gap-0.5 rounded-none border px-2 transition-colors active:scale-[0.97]';
+  'inline-flex h-8 min-w-8 shrink-0 items-center justify-center gap-0.5 rounded-lg px-2 outline-none ring-0 transition-colors focus:outline-none focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 active:scale-[0.97]';
 
-/** Match filled width (icon + xN) so empty and filled gallery buttons align in every row. */
-const GALLERY_BTN = cn(BTN, 'min-w-11');
+/** Fixed to icon + two tabular digits so 1 and 11 do not resize the chip. */
+const GALLERY_BTN = cn(
+  BTN,
+  'w-12 border-0 bg-blue-50 text-blue-700 hover:bg-blue-100 active:bg-blue-100',
+);
+
+/** Always occupies two digit columns (`1` and `11` are the same width). */
+export function GalleryPhotoCount({
+  count,
+  className,
+  prefix,
+}: {
+  count: number;
+  className?: string;
+  prefix?: string;
+}) {
+  const n = Math.max(0, count);
+  return (
+    <span className={cn('inline-flex items-baseline justify-center tabular-nums', className)}>
+      {prefix}
+      <span className="inline-block w-[2ch] text-center font-semibold">{n}</span>
+    </span>
+  );
+}
 
 /**
  * Collapsed-row photo affordances: gallery (left) and capture (right).
- * `pointer-events-auto` + click stopPropagation so row tap doesn't open the sheet.
+ * Newest expanded cards keep their own bottom bar. `pointer-events-auto` +
+ * click stopPropagation so row tap doesn't open the sheet.
  */
 export function MobileRowPhotoActions({
   photoCount,
@@ -46,26 +68,20 @@ export function MobileRowPhotoActions({
     onOpenGallery?.();
   };
 
-  const galleryClass = cn(
-    GALLERY_BTN,
-    hasPhotos
-      ? 'border-border-soft bg-surface-sunken text-text-default active:bg-surface-sunken'
-      : 'border-border-soft bg-surface-canvas text-text-faint active:bg-surface-sunken',
-  );
+  const galleryClass = cn(GALLERY_BTN, !hasPhotos && 'text-blue-600');
 
   return (
     <div className={cn('pointer-events-auto flex shrink-0 items-center gap-1', className)}>
       {onOpenGallery ? (
-        <Button
-          size="sm"
-          variant="ghost"
-          icon={<ImageIcon />}
+        <button
+          type="button"
           onClick={openGallery}
-          ariaLabel={hasPhotos ? `View ${safeCount} photos` : 'Open photo gallery'}
-          className={galleryClass}
+          aria-label={hasPhotos ? `View ${safeCount} photos` : 'Open photo gallery'}
+          className={cn('ds-raw-button', galleryClass)}
         >
-          {hasPhotos ? <span className="text-role-caption font-semibold tabular-nums">{safeCount}</span> : undefined}
-        </Button>
+          <ImageIcon className="h-3.5 w-3.5" />
+          <GalleryPhotoCount count={safeCount} className="text-role-caption" />
+        </button>
       ) : (
         <Link
           href={galleryHref}
@@ -75,7 +91,7 @@ export function MobileRowPhotoActions({
           className={galleryClass}
         >
           <ImageIcon className="h-3.5 w-3.5" />
-          {hasPhotos ? <span className="text-role-caption font-semibold tabular-nums">{safeCount}</span> : null}
+          <GalleryPhotoCount count={safeCount} className="text-role-caption" />
         </Link>
       )}
       <Link
@@ -83,7 +99,7 @@ export function MobileRowPhotoActions({
         prefetch={false}
         onClick={stop}
         aria-label="Take more photos"
-        className={cn(BTN, 'border-blue-600 bg-blue-600 text-white active:bg-blue-700')}
+        className={cn(BTN, 'bg-blue-600 text-white active:bg-blue-700')}
       >
         <Camera className="h-3.5 w-3.5" />
       </Link>

@@ -121,7 +121,6 @@ export function KioskCustomerIntake({
             inputMode="tel"
             autoComplete="tel"
             maxLength={12}
-            tone="blue"
             inputClassName="rounded-none"
             data-testid="kiosk-customer-phone"
           />
@@ -132,7 +131,6 @@ export function KioskCustomerIntake({
             value={current.name}
             onChange={(v) => patch({ name: v })}
             autoComplete="name"
-            tone="blue"
             inputClassName="rounded-none"
             data-testid="kiosk-customer-name"
           />
@@ -145,7 +143,6 @@ export function KioskCustomerIntake({
             type="email"
             inputMode="email"
             autoComplete="email"
-            tone="blue"
             inputClassName="rounded-none lowercase"
             data-testid="kiosk-customer-email"
           />

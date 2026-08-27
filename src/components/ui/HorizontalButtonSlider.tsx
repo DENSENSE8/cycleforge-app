@@ -166,14 +166,13 @@ export function HorizontalButtonSlider({
   const sizeCls =
     size === 'lg'
       ? 'min-h-10 px-3.5 py-2 text-role-micro tracking-wide'
-      : 'h-8 px-3 text-role-eyebrow tracking-wide';
+      : 'h-7 px-3 text-role-eyebrow tracking-wide';
 
   // The `nav` variant uses scale-up + shadow on the active pill. Setting
   // overflow-x-auto forces overflow-y to compute as auto too (CSS spec), so
   // drop shadows get clipped unless the scroller has extra bottom padding.
-  // Dense nav: pt-1 + h-8 pills + pb-2 = 44px band — extra bottom pad so the
-  // active pill's shadow-md isn't clipped by overflow-x-auto (which forces
-  // overflow-y:auto per spec). Non-dense keeps more bottom pad for scale-up bleed.
+  // Dense nav: pt-1 + h-7 pills + pb-2 sits inside PRIMARY_CHROME_ROW_FACE
+  // sidebar pill bands; non-dense keeps more bottom pad for scale-up bleed.
   const scrollerPadY =
     variant === 'nav' ? (dense ? 'pt-1 pb-2' : 'pt-2 pb-3') : 'pb-0.5';
 
@@ -197,8 +196,8 @@ export function HorizontalButtonSlider({
       ? // Full-bleed chrome band: no bottom hairline (join is the desktop
         // content shell radius stroke, not stacked chrome rules).
         cn('h-full rounded-none p-0', appChromeClass)
-      : // Recessed gray track (canvas + inset ring) so the active blue
-        // pill reads as raised. p-1 + h-8 tabs = 40px in a fixed 40px band.
+      :         // Recessed gray track (canvas + inset ring) so the active blue
+        // pill reads as raised. p-1 + h-7 tabs = ops chrome row height.
         // Flush-square (zero-radius ops chrome).
         cn('rounded-none p-1 ring-1 ring-inset ring-border-soft', appCanvasClass)
     : useScroller
@@ -287,12 +286,13 @@ export function HorizontalButtonSlider({
             if (variant === 'nav') {
               const Icon = item.icon;
               const isDisabled = !!item.disabled;
-              // `dense` pills lock to a flat 32px (h-8) with no active scale-up
-              // so they sit cleanly inside a compact band (32 + pt-1 + pb-2).
+              // `dense` pills lock to ops chrome height (h-7) with no active
+              // scale-up so they sit cleanly inside PRIMARY_CHROME_ROW_FACE
+              // sidebar / workbench pill bands.
               const navSizeCls = navIconOnly
-                ? 'h-8 w-8 min-w-8 shrink-0 justify-center p-0'
+                ? 'h-7 w-7 min-w-7 shrink-0 justify-center p-0'
                 : dense
-                  ? 'h-8 shrink-0 px-3 text-role-eyebrow tracking-wide'
+                  ? 'h-7 shrink-0 px-3 text-role-eyebrow tracking-wide'
                   : sizeCls;
               const labelClass = Icon ? 'ml-1.5 max-w-[160px]' : 'max-w-[160px]';
               const stateClass = isDisabled

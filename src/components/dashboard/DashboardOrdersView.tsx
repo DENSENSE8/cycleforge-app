@@ -96,11 +96,10 @@ export function DashboardOrdersView({
 
   /**
    * To-ship supplies its OWN chrome controller instead of the shell's local one:
-   * its `controlsEl` + KPI collapse live in `useOrdersViewChrome` because the
-   * View cluster sits on the pushing right inspector, not on Band 3
-   * (`workbench-ops-queue.md` → To-ship three-band flush). `controlsSlotRef` is
-   * `null` for the same reason — Band 3 hosts no controls here, so there is
-   * nothing to portal into.
+   * `controlsEl` lives in `useOrdersViewChrome` because the View cluster sits on
+   * the pushing right inspector, not on Band 3. KPI collapse state is shared
+   * from the same context so Band 3's `kpiToggle` and Band 2 stay in sync.
+   * `controlsSlotRef` is `null` — Band 3 hosts no ▦ portal here.
    */
   const sheetChrome: WorkbenchSheetChrome = useMemo(
     () => ({ controlsEl, controlsSlotRef: null, kpiOpen, toggleKpi: onToggleKpi }),
@@ -159,11 +158,13 @@ export function DashboardOrdersView({
   const showDrill = !showCompare && drillLayout === 'drill';
 
   const kpiMode =
-    orderView === 'packed' || orderView === 'shipped'
-      ? 'shipped'
-      : orderView === 'tested'
-        ? 'tested'
-        : 'unshipped';
+    orderView === 'packed'
+      ? 'packed'
+      : orderView === 'shipped'
+        ? 'shipped'
+        : orderView === 'tested'
+          ? 'tested'
+          : 'unshipped';
 
   const listBody =
     orderView === 'shipped' ? (

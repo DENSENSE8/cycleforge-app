@@ -30,6 +30,7 @@ export function ItemRecordCard({
   emptyDescription = 'Nothing is recorded against this record.',
   footer,
   className,
+  topRule = true,
 }: {
   items: ItemRecord[];
   /** Which row is the surface's current context. */
@@ -41,6 +42,11 @@ export function ItemRecordCard({
   /** Trailing slot under the last item — extra panels the caller owns. */
   footer?: ReactNode;
   className?: string;
+  /**
+   * Top hairline on the list. Off when a section bar already paints that
+   * seam (`StationBlockLabel`) so the two rules do not stack.
+   */
+  topRule?: boolean;
 }) {
   if (items.length === 0) {
     return (
@@ -54,7 +60,12 @@ export function ItemRecordCard({
 
   return (
     <div className={cn('min-w-0 space-y-3', className)} data-item-record-card>
-      <ul className="min-w-0 list-none border-t border-border-soft p-0">
+      <ul
+        className={cn(
+          'min-w-0 list-none p-0',
+          topRule && 'border-t border-border-soft',
+        )}
+      >
         {items.map((item) => (
           <ItemRecordRow
             key={item.id}

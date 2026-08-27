@@ -168,26 +168,10 @@ export const STATION_IDENTITY_LEAD_COL_CLASS =
   'flex h-full aspect-square shrink-0 items-stretch justify-stretch';
 
 /**
- * The ONE vertical rule the carton bar draws at rest — between the back
- * control and the first identity cell.
- *
- * Every other cell boundary on this strip is deliberately unruled:
- * {@link STATION_CHROME_CELL_CLASS} says so explicitly ("no `border-l` /
- * `divide-x` between cells"), because order # · status · tracking # are all
- * facts about one carton and ruling between them would read as separate
- * widgets. This divider is the exception because it does not separate two
- * facts — it separates NAVIGATION from identity. Leaving this carton is a
- * different kind of act from anything the bar states about it, and without the
- * rule the first entity cell reads as the second half of the back control.
- *
- * Same ink as {@link STATION_CHROME_SEAM_HAIRLINE} (`border-hairline`) so the
- * bar's horizontal seam and its single vertical one are one hairline family,
- * not two greys. Full row height via `h-full` under the identity group's
- * `items-stretch`; `w-px` rather than a `border-l` so it cannot eat a cell's
- * box the way a border-box border would.
+ * Identity cells after back are unruled — same flush abut as Band-1 CTAs.
+ * Order # · tracking # are facts about one carton; a vertical rule between
+ * back and the first cell is retired so navigation and identity sit as one row.
  */
-export const STATION_IDENTITY_LEAD_DIVIDER_CLASS =
-  'block h-full w-px shrink-0 self-stretch bg-border-hairline';
 
 /**
  * House inset for identity / action cells that are not a chip face.

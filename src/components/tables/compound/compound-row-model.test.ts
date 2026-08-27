@@ -32,6 +32,8 @@ import { ORDERS_COMPOUND_COLUMNS } from '@/lib/dashboard-order-row-layout';
 import { TASKS_COMPOUND_COLUMNS } from '@/lib/staff-todos/tasks-grid-layout';
 import { DAILY_COMPOUND_COLUMNS } from '@/lib/daily-checks/daily-grid-layout';
 import { CART_COMPOUND_COLUMNS } from '@/lib/kiosk/cart-grid-layout';
+import { CATALOG_LINK_COMPOUND_COLUMNS } from '@/features/review/catalog-link/grid/catalog-link-grid-layout';
+import { IMPORT_EXCEPTION_COMPOUND_COLUMNS } from '@/features/review/catalog-link/grid/import-exception-grid-layout';
 
 const keys = (c: readonly { key: string }[]) => c.map((x) => x.key);
 const widths = (c: readonly { key: string; width?: string }[]) =>
@@ -48,6 +50,8 @@ const FAMILIES = [
   ['Incoming', INCOMING_COMPOUND_COLUMNS],
   ['Tasks', TASKS_COMPOUND_COLUMNS],
   ['Daily', DAILY_COMPOUND_COLUMNS],
+  ['Review · Listing match', CATALOG_LINK_COMPOUND_COLUMNS],
+  ['Review · Missing item number', IMPORT_EXCEPTION_COMPOUND_COLUMNS],
 ] as const;
 
 describe('compound layout is shared, not forked', () => {

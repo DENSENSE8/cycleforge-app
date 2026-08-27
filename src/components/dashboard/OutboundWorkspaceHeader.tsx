@@ -6,7 +6,7 @@
  *   Band 1 — fixed lifecycle system tabs + Add (ingest methods on the right rail)
 
  *   Band 2 — KPI (DashboardOrdersView)
- *   Band 3 — find-only command row + Views + Show/Hide inspector (View topics on rail)
+ *   Band 3 — find · Views · Hide/Show metrics · Show/Hide inspector (View topics on rail)
  *
  * House Band-1 law (Unbox is golden; To-ship is the first desk exemplar):
  * fixed process tabs for every staffer · Pin-list cube omitted (honest absence —
@@ -24,13 +24,17 @@ import {
   isPrePackOrderView,
   type DashboardOrderView,
 } from '@/utils/dashboard-search-state';
-import { useToShipFilterHotkeys } from '@/components/dashboard/OutboundFilterStrip';
+import {
+  usePackedFindFieldChrome,
+  useToShipFilterHotkeys,
+} from '@/components/dashboard/OutboundFilterStrip';
 import {
   WorkbenchChromeHeader,
   WorkbenchTrailingCluster,
   WorkbenchTriageBand,
 } from '@/components/dashboard/workbench-shell';
 import { OutboundOrderChromeActions } from '@/components/dashboard/OutboundOrderChromeActions';
+import { PackedExportButton } from '@/components/dashboard/PackedExportButton';
 import { OutboundViewsMenu } from '@/components/dashboard/OutboundViewsMenu';
 import { PackBenchRefineFacet } from '@/components/packing/PackBenchRefineFacet';
 import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
@@ -41,6 +45,7 @@ import { fulfillmentLaneTotals } from '@/lib/unshipped-state';
 import { useOrdersViewChrome } from '@/components/outbound/orders/orders-view-chrome-context';
 import { useRailActionSnapshot } from '@/components/dashboard/rail/OrderRailActions';
 import { WorkbenchInspectorToggle } from '@/components/dashboard/workbench-inspector-toggle';
+import { WorkbenchKpiCollapseToggle } from '@/components/dashboard/workbench-kpi-collapse';
 
 const LIFECYCLE_VIEWS = ['unshipped', 'tested', 'packed', 'shipped'] as const;
 type LifecycleView = (typeof LIFECYCLE_VIEWS)[number];
@@ -111,7 +116,13 @@ export function OutboundWorkspaceHeader({
           // Band 1 trailing is one Add — ingest methods live on the right rail.
           // No sort rail here — Priority / refine live on the inspector View cluster.
           divide={false}
-          actions={<OutboundOrderChromeActions layout="ingest" onNewOrder={openIngestIndex} />}
+          actions={
+            <OutboundOrderChromeActions
+              layout="ingest"
+              onNewOrder={openIngestIndex}
+              leading={active === 'packed' ? <PackedExportButton /> : null}
+            />
+          }
         />
       }
     />
@@ -119,12 +130,33 @@ export function OutboundWorkspaceHeader({
 }
 
 /**
- * Band 3 — find (+ in-field bench refine) + Views (Bookmark; page-scoped inner
- * refinement) + far-right Show/Hide inspector. Sheet LAYOUT chrome (paint,
- * List|Drill, compare, ▦, KPI) stays on the pushing right inspector View
- * cluster; row-narrowing facets ride in the field. Never a Band-1 peer of
- * lifecycle tabs.
+ * Band 3 — find (+ in-field bench refine) + Views + Hide/Show metrics +
+ * far-right Show/Hide inspector. KPI sits immediately left of the inspector
+ * (house Band-3 grammar). Sheet LAYOUT chrome (paint, List|Drill, compare, ▦)
+ * stays on the pushing right inspector View cluster; row-narrowing facets ride
+ * in the field. Never a Band-1 peer of lifecycle tabs.
  */
+function OutboundPackedFindBar({
+  searchQuery,
+  onSearchChange,
+}: {
+  searchQuery: string;
+  onSearchChange: (next: string) => void;
+}) {
+  const packedFind = usePackedFindFieldChrome();
+  return (
+    <TechRailSearchBar
+      variant="chrome"
+      value={searchQuery}
+      onChange={onSearchChange}
+      placeholder="Filter orders…"
+      className="min-w-0 flex-1"
+      inlineContentKey={packedFind.inlineContentKey}
+      trailingPrefix={packedFind.trailingPrefix}
+    />
+  );
+}
+
 export function OutboundTriageBand({
   orderView,
   className,
@@ -134,7 +166,8 @@ export function OutboundTriageBand({
 }) {
   const active = isLifecycleView(orderView) ? orderView : 'unshipped';
   const { searchQuery, setSearch } = useDashboardSearchController();
-  const { viewShellOpen, setViewShellOpen } = useOrdersViewChrome();
+  const { viewShellOpen, setViewShellOpen, kpiOpen, onToggleKpi } =
+    useOrdersViewChrome();
   const searchParams = useSearchParams();
   const { rows } = useRailActionSnapshot();
   const openOrderId = searchParams.get('openOrderId');
@@ -160,16 +193,28 @@ export function OutboundTriageBand({
     <WorkbenchTriageBand
       className={className}
       search={
-        <TechRailSearchBar
-          variant="chrome"
-          value={searchQuery}
-          onChange={setSearch}
-          placeholder="Filter orders…"
-          className="min-w-0 flex-1"
-          trailingSuffix={showBenchFacet ? <PackBenchRefineFacet /> : undefined}
-        />
+        active === 'packed' ? (
+          <OutboundPackedFindBar
+            searchQuery={searchQuery}
+            onSearchChange={setSearch}
+          />
+        ) : (
+          <TechRailSearchBar
+            variant="chrome"
+            value={searchQuery}
+            onChange={setSearch}
+            placeholder="Filter orders…"
+            className="min-w-0 flex-1"
+            trailingSuffix={
+              showBenchFacet ? <PackBenchRefineFacet /> : undefined
+            }
+          />
+        )
       }
       views={<OutboundViewsMenu />}
+      kpiToggle={
+        <WorkbenchKpiCollapseToggle open={kpiOpen} onToggle={onToggleKpi} />
+      }
       trailing={inspectorToggle}
     />
   );

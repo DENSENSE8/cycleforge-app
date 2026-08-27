@@ -1160,7 +1160,6 @@ export function ProductSelector({
               value={otherModelText}
               onChange={setOtherModelText}
               className="flex-1"
-              tone="blue"
               appearance={flush ? 'flush' : 'default'}
               onKeyDown={(e) => { if (e.key === 'Enter') handleOtherSubmit(); }}
             />

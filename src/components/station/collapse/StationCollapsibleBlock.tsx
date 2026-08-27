@@ -24,8 +24,8 @@
  *     wrapping it in the block would delete the one row it exists to show.
  *
  * **Carries no outer padding.** The block is a structural wrapper in a
- * zero-padding shell; its header owns its own row height and the body's padding
- * belongs to whatever is rendered inside it.
+ * zero-padding shell; its header is a full-width bar with the station chrome
+ * bottom hairline. Body padding belongs to whatever is rendered inside it.
  *
  * Collapse is driven by the host (`useAutoCollapse`), never by local state —
  * the whole point is that several blocks collapse together on one signal.
@@ -42,6 +42,7 @@
 
 import type { ReactNode } from 'react';
 import { ChevronDown } from '@/components/Icons';
+import { STATION_CHROME_SEAM_HAIRLINE } from '@/components/station/entity-context/station-identity-chrome';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 
@@ -74,7 +75,12 @@ export function StationBlockLabel({
   onToggle?: () => void;
 }) {
   return (
-    <div className="flex min-h-6 items-center justify-between gap-2">
+    <div
+      className={cn(
+        'flex w-full min-h-6 items-center justify-between gap-2',
+        STATION_CHROME_SEAM_HAIRLINE,
+      )}
+    >
       {onToggle ? (
         <button
           type="button"

@@ -55,7 +55,7 @@ export function useTableImportFilePicker<TField extends string, TRowView>(
       ref={inputRef}
       id={inputId}
       type="file"
-      accept=".csv,text/csv"
+      accept=".csv,.tsv,text/csv,text/tab-separated-values"
       className="hidden"
       onChange={(e) => {
         const file = e.target.files?.[0];

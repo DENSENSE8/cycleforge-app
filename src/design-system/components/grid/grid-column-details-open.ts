@@ -15,9 +15,16 @@
 export const GRID_COLUMN_DETAILS_RAIL_ID = 'detail:grid-column-details';
 
 export const GRID_COLUMN_DETAILS_OPEN_EVENT = 'cf:grid-column-details-open';
+export const GRID_COLUMN_DETAILS_CLOSE_EVENT = 'cf:grid-column-details-close';
 
 /** Ask the mounted grid gutter to push Column display onto the right rail. */
 export function requestOpenGridColumnDetails(): void {
   if (typeof window === 'undefined') return;
   window.dispatchEvent(new Event(GRID_COLUMN_DETAILS_OPEN_EVENT));
+}
+
+/** Drop Column display when a desk occupant claims the right edge. */
+export function requestCloseGridColumnDetails(): void {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new Event(GRID_COLUMN_DETAILS_CLOSE_EVENT));
 }

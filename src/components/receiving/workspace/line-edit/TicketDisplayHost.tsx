@@ -71,7 +71,7 @@ export function TicketDisplayHost({
               receivingId={row.receiving_id ?? undefined}
               embedded
               hideRequesterBand={false}
-              // Messages only — floor spine lives on the Timeline Displays tab.
+              // Ticket chat is messages-only (no floor timeline merge).
               mergeFloorTimeline={false}
               showReplyPresets={showReplyPresets}
             />

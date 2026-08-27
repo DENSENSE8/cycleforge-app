@@ -11,8 +11,8 @@
  *   - `display === <leaf>` → full-height leaf body
  *   - `null` → column CLOSED
  *
- * Index / leaf order (PO-identity first): Listings · Classify · Pairing · Inventory ·
- * Units · Prebox · Photos · Ticket · Tracking · Timeline · Support. Ticket is
+ * Index / leaf order (PO-identity first): Listings · Pairing · Inventory ·
+ * Units · Prebox · Photos · Ticket · Tracking. Ticket is
  * presence-exclusive (Claim vs Chat). Inventory is a **secondary vertical drill**
  * (Information · Lines · PO notes · Activity) via `useDisplaysLeafChrome` — never
  * a nested switcher strip and never a second LeafHeader. Photos · Linkage are
@@ -20,7 +20,8 @@
  * nested under Units). `checklist` is a Displays leaf (never a floor % ring).
  *
  * Legacy aliases (one release): `pairing` / `po-note` → `linkage`;
- * `claim` → `ticket` (with `ticketAction=claim`).
+ * `claim` → `ticket` (with `ticketAction=claim`);
+ * `timeline` / `support` → Root Index (leaves removed).
  */
 
 import { STATION_DISPLAY_INDEX } from '@/components/station/displays/display-index';
@@ -45,9 +46,7 @@ export type UnboxSideTab =
   | 'units'
   | 'prebox'
   | 'checklist'
-  | 'support'
   | 'tracking'
-  | 'timeline'
   | 'locations';
 
 /** Nav id: closed is `null`; open is index or a content leaf. */
@@ -112,8 +111,6 @@ export const UNBOX_SIDE_TAB_ORDER: readonly UnboxSideTab[] = [
   'photos',
   'ticket',
   'tracking',
-  'timeline',
-  'support',
   'locations',
 ];
 
@@ -131,8 +128,6 @@ export const UNBOX_STRIP_TAB_ORDER: readonly UnboxSideTab[] = [
   'photos',
   'ticket',
   'tracking',
-  'timeline',
-  'support',
   // Locations is a TOOL (place · reprint · mint), so it sits below the
   // carton's own leaves; Checklist still trails as the procedure summary.
   'locations',
@@ -159,8 +154,6 @@ export interface UnboxSideTabGates {
   hasPoNoteTab: boolean;
   /** Hidden for local-pickup fulfilment (no carrier leg to track). */
   hasTrackingTab: boolean;
-  /** Tracking, serials, or a carton id — anything with a history to show. */
-  hasTimelineTab: boolean;
 }
 
 /** Map retired strip ids → current vocabulary (compat deep links). Never `index`. */
@@ -178,6 +171,8 @@ export function canonicalizeUnboxSideTab(raw: string): UnboxSideTab | null {
 export function parseUnboxDisplayNav(raw: string | null): UnboxDisplayNav | null {
   if (!raw) return null;
   if (raw === UNBOX_DISPLAY_INDEX) return UNBOX_DISPLAY_INDEX;
+  // Retired Displays leaves (2026-08-27) — keep the column open on the index.
+  if (raw === 'timeline' || raw === 'support') return UNBOX_DISPLAY_INDEX;
   return canonicalizeUnboxSideTab(raw);
 }
 
@@ -252,9 +247,7 @@ export function isUnboxSideTabVisible(tab: UnboxSideTab, gates: UnboxSideTabGate
       return gates.hasUnits;
     case 'tracking':
       return gates.hasTrackingTab;
-    case 'timeline':
-      return gates.hasTimelineTab;
-    // Ticket · Photos · Prebox · Checklist · Support — always on an open carton.
+    // Ticket · Photos · Prebox · Checklist — always on an open carton.
     // Prebox is an Assets peer leaf (empty body when no serials — never gated off).
     // Locations is a TOOL, not a beat of the carton's procedure — always
     // reachable so the putaway pill's New location has somewhere to land.
@@ -262,7 +255,6 @@ export function isUnboxSideTabVisible(tab: UnboxSideTab, gates: UnboxSideTabGate
     case 'photos':
     case 'prebox':
     case 'checklist':
-    case 'support':
     case 'locations':
       return true;
   }
