@@ -11,7 +11,7 @@ import {
   resolveWash,
   WASH_NAMES,
   type WashName,
-} from '@/lib/design/app-surface';
+} from '@/design-system/tokens/app-surface';
 
 const KEY = 'cf.appearance';
 const LEGACY_KEY = 'usav.appearance';

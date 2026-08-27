@@ -3,34 +3,18 @@ import { ApiError, errorResponse } from '@/lib/api';
 import { withAuth } from '@/lib/auth/withAuth';
 import {
   buildReceivingClaimTemplate,
-  claimAttachmentFileLabel,
-  claimBodyToHtml,
   CLAIM_TYPE_LABEL,
   type ClaimType,
 } from '@/lib/zendesk-claim-template';
-import { ZendeskNotConfiguredError } from '@/lib/zendesk';
 import {
   getHelpdeskProvider,
   HELPDESK_CONNECT_HINT,
   HELPDESK_NOT_CONNECTED_MESSAGE,
 } from '@/lib/integrations/helpdesk';
 import { poReceivingLink } from '@/lib/receiving-claim-photos';
-import {
-  archiveReceivingClaimPhotos,
-  claimArchiveResponseFields,
-} from '@/lib/receiving-claim-archive';
-import { uploadClaimPhotosToHelpdesk } from '@/lib/receiving-claim-attach';
-import { listAllReceivingPhotoIds } from '@/lib/photos/queries/receiving-list';
-import { createSharePack } from '@/lib/photos/share-packs';
-import { linkPhoto } from '@/lib/photos/service';
-import { buildExternalId, linkTicket } from '@/lib/zendesk-links';
-import { zendeskTicketUrl } from '@/lib/zendesk-ticket-url';
 import { readIdempotencyKey, withIdempotentResponse } from '@/lib/api-idempotency';
-import { upsertClaimSellerMessage } from '@/lib/receiving-claim-seller-message';
-import { claimTicketLinkEntity } from '@/lib/support/tickets';
-import { pairTicketShipmentFromReceiving } from '@/lib/support/ticket-link';
+import { fileReceivingClaim } from '@/lib/receiving/file-receiving-claim';
 import pool from '@/lib/db';
-import { tenantQuery } from '@/lib/tenancy/db';
 
 export const dynamic = 'force-dynamic';
 
@@ -65,9 +49,6 @@ interface ClaimRequest {
   dryRun?: boolean;
 }
 
-/** Loose email shape — Zendesk validates for real; this just drops obvious junk. */
-const CLAIM_CC_EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
 /**
  * Create a Zendesk ticket for a receiving claim (damage / missing / wrong
  * item / vendor defect) directly via the Zendesk REST API
@@ -96,23 +77,8 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
 
     const editedSubject = typeof body.subject === 'string' ? body.subject.trim() : '';
     const editedDescription = typeof body.description === 'string' ? body.description.trim() : '';
-
-    // Recipients: default is an internal note. When the operator opts into a
-    // public reply, the opening comment is public and any CC'd emails are added
-    // as collaborators (Zendesk only emails CCs on a public comment).
     const notePublic = body.notePublic === true;
-    const ccEmails = notePublic && Array.isArray(body.ccEmails)
-      ? Array.from(
-          new Set(
-            body.ccEmails
-              .map((e) => String(e).trim())
-              .filter((e) => CLAIM_CC_EMAIL_RE.test(e)),
-          ),
-        )
-      : [];
 
-    // Always build the template — even when the operator edited the subject/body
-    // — so we have the PO#/tracking to name the photo attachments after the PO.
     const template = await buildReceivingClaimTemplate({
       receivingId,
       lineId,
@@ -123,18 +89,12 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     const subject = editedSubject || template.subject;
     const description = editedDescription || template.description;
 
-    // Label every uploaded image with the PO# (falls back to tracking, then the
-    // receiving id) so the attachments in Zendesk read e.g. "PO-06-14788_001.jpg".
-    const fileLabel = claimAttachmentFileLabel(template, receivingId);
-
-    const { entityType, entityId } = claimTicketLinkEntity(lineId, receivingId);
-
-    // Dry-run ("Test create"): we've assembled the exact subject/body that would
-    // be filed; now short-circuit before any side-effect — no Zendesk ticket, no
-    // NAS archive, no DB writes, no share pack. Lets staff rehearse the flow.
     if (body.dryRun === true) {
       const attachCount = Array.isArray(body.attachPhotoIds)
         ? body.attachPhotoIds.map(Number).filter((n) => Number.isFinite(n) && n > 0).length
+        : 0;
+      const ccEmails = notePublic && Array.isArray(body.ccEmails)
+        ? body.ccEmails.filter((e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(e).trim())).length
         : 0;
       return NextResponse.json({
         success: true,
@@ -144,12 +104,10 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         description,
         attachCount,
         notePublic,
-        ccCount: ccEmails.length,
+        ccCount: ccEmails,
       });
     }
 
-    // Capability gate: filing a claim needs a connected helpdesk. Surfaces the
-    // assembled body as a copyable draft, mirroring the in-flight error path.
     const helpdesk = await getHelpdeskProvider(ctx.organizationId);
     if (!helpdesk) {
       return NextResponse.json(
@@ -162,208 +120,52 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       );
     }
 
-    // Idempotency: a per-submit key (client UUID via Idempotency-Key header)
-    // dedupes double-clicks / network retries so we never file two tickets for
-    // the same submission. Cached responses are replayed verbatim.
     const idempotencyKey = readIdempotencyKey(req);
     const result = await withIdempotentResponse(
       pool,
       { orgId: ctx.organizationId, idempotencyKey, route: 'POST /api/receiving/zendesk-claim', staffId: ctx.staffId },
       async (): Promise<{ status: number; body: Record<string, unknown> }> => {
-        // Upload the operator's selected photos to Zendesk as real file
-        // attachments (not links). Scoped to this carton's photos for safety;
-        // best-effort per file so one unreadable photo never blocks the claim.
-        const ids = Array.isArray(body.attachPhotoIds)
-          ? body.attachPhotoIds.map(Number).filter((n) => Number.isFinite(n) && n > 0)
-          : [];
-        const uploads = await uploadClaimPhotosToHelpdesk({
-          helpdesk,
-          organizationId: ctx.organizationId,
-          receivingId,
-          photoIds: ids,
-          fileLabel,
-        });
-
-        // Create the ticket directly via the Zendesk REST API. external_id is set
-        // at creation so the support workspace can resolve this claim. Selected
-        // photos ride along as `comment.uploads` (real attachments).
-        let ticket;
-        try {
-          ticket = await helpdesk.createTicket(
-            {
-              subject,
-              comment: {
-                body: description,
-                html_body: claimBodyToHtml(description),
-                public: notePublic,
-                uploads: uploads.length ? uploads : undefined,
-              },
-              type: 'task',
-              tags: ['receiving_claim', `claim_${claimType}`],
-              external_id: buildExternalId(entityType, entityId),
-              ...(ccEmails.length
-                ? { email_ccs: ccEmails.map((user_email) => ({ user_email, action: 'put' as const })) }
-                : {}),
-            },
-            { idempotencyKey: idempotencyKey ?? undefined },
-          );
-        } catch (err: unknown) {
-          if (err instanceof ZendeskNotConfiguredError) {
-            return {
-              status: 503,
-              body: {
-                success: false,
-                error: `${HELPDESK_NOT_CONNECTED_MESSAGE} — ${HELPDESK_CONNECT_HINT}`,
-                draftBody: description,
-              },
-            };
-          }
-          return {
-            status: 502,
-            body: { success: false, error: err instanceof Error ? err.message : 'Helpdesk request failed', draftBody: description },
-          };
-        }
-
-        const ticketNumber = `#${ticket.id}`;
-
-        // Archive ALL of the PO's photos into a folder named after the ticket
-        // (".../2 Zendesk 2026/<ticket#>/") so we keep the full set even though
-        // only the selected subset was uploaded to Zendesk. Best-effort — the
-        // ticket already exists, so a hiccup never fails the claim — but we DO
-        // surface a warning so a claim whose photos silently didn't archive is
-        // visible to the operator.
-        const archived = await archiveReceivingClaimPhotos({
-          orgId: ctx.organizationId,
-          receivingId,
-          ticketId: ticket.id,
-          logTag: 'zendesk-claim',
-          info: ({ photoIdCount, resolvedCount }) =>
-            [
-              `Zendesk Ticket: ${ticketNumber}`,
-              `URL: ${zendeskTicketUrl(ticket.id)}`,
-              `Subject: ${subject}`,
-              `Claim type: ${CLAIM_TYPE_LABEL[claimType]}`,
-              `Filed: ${new Date().toISOString()}`,
-              `Photos uploaded to Zendesk: ${uploads.length}`,
-              `Photos on claim record: ${photoIdCount}`,
-              `Photos resolved for NAS archive: ${resolvedCount}`,
-              '',
-              '--- Ticket body ---',
-              description,
-            ].join('\n'),
-        });
-        const archiveFields = claimArchiveResponseFields(archived);
-
-        // Write the ticket→entity link row. Prefer RECEIVING_LINE / RECEIVING as
-        // the primary anchor when the carton is open; also reference the carton's
-        // STN (non-primary) so tracking↔ticket pairing is durable. Pre-intake
-        // SHIPMENT primaries promote to RECEIVING on first dock scan
-        // (promoteShipmentTicketToReceiving).
-        try {
-          await linkTicket({
+        const filed = await fileReceivingClaim(
+          {
             orgId: ctx.organizationId,
-            zendeskTicketId: ticket.id,
-            entityType,
-            entityId,
             staffId: ctx.staffId,
-          });
-        } catch (linkErr) {
-          console.warn('[POST /api/receiving/zendesk-claim] ticket link backfill failed', linkErr);
-        }
-
-        try {
-          await pairTicketShipmentFromReceiving({
-            orgId: ctx.organizationId,
-            ticketId: ticket.id,
             receivingId,
-            staffId: ctx.staffId,
-          });
-        } catch (pairErr) {
-          console.warn('[POST /api/receiving/zendesk-claim] STN pair failed', pairErr);
-        }
+            lineId,
+            claimType,
+            reason: body.reason,
+            subject: editedSubject || undefined,
+            description: editedDescription || undefined,
+            sellerMessage: body.sellerMessage,
+            attachPhotoIds: body.attachPhotoIds,
+            ccEmails: body.ccEmails,
+            notePublic,
+            poReceivingLink: poReceivingLink(req, receivingId),
+            idempotencyKey,
+            sharePackOrigin: req.nextUrl.origin,
+          },
+          { getHelpdesk: async () => helpdesk },
+        );
 
-        // Persist the human-visible ticket # onto the record so it shows back on
-        // the line (or carton for package-level claims). Best-effort.
-        try {
-          if (lineId != null) {
-            await tenantQuery(ctx.organizationId, `UPDATE receiving_line SET zendesk_ticket = $1 WHERE id = $2 AND organization_id = $3`, [ticketNumber, lineId, ctx.organizationId]);
-          } else {
-            await tenantQuery(ctx.organizationId, `UPDATE receiving_carton SET zendesk_ticket = $1 WHERE id = $2 AND organization_id = $3`, [ticketNumber, receivingId, ctx.organizationId]);
-          }
-        } catch (colErr) {
-          console.warn('[POST /api/receiving/zendesk-claim] zendesk_ticket column update failed', colErr);
-        }
-
-        const sellerDraft = typeof body.sellerMessage === 'string' ? body.sellerMessage.trim() : '';
-        if (sellerDraft) {
-          try {
-            await upsertClaimSellerMessage({
-              orgId: ctx.organizationId,
-              receivingId,
-              lineId,
-              sellerMessage: sellerDraft,
-              subjectSnapshot: subject,
-              zendeskTicketId: ticket.id,
-              staffId: ctx.staffId ?? null,
-            });
-          } catch (sellerErr) {
-            console.warn('[POST /api/receiving/zendesk-claim] seller message persist failed', sellerErr);
-          }
-        }
-
-        let sharePackUrl: string | null = null;
-        try {
-          const sharePhotoIds =
-            ids.length > 0
-              ? ids
-              : await listAllReceivingPhotoIds(ctx.organizationId, receivingId);
-
-          if (sharePhotoIds.length > 0) {
-            const pack = await createSharePack(
-              {
-                organizationId: ctx.organizationId,
-                staffId: ctx.staffId,
-                photoIds: sharePhotoIds,
-                title: `Claim ${ticketNumber}`,
-                packType: 'claim',
-                receivingId,
-                zendeskTicketId: ticket.id,
-                filenamePrefix: `Claim_${ticket.id}`,
-              },
-              req.nextUrl.origin,
-            );
-            sharePackUrl = pack.shareUrl;
-            for (const photoId of sharePhotoIds) {
-              await linkPhoto({
-                organizationId: ctx.organizationId,
-                photoId,
-                entityType: 'ZENDESK_TICKET',
-                entityId: ticket.id,
-                linkRole: 'claim_evidence',
-              });
-            }
-            try {
-              await helpdesk.addComment(ticket.id, {
-                body: `Photo share pack: ${sharePackUrl}`,
-                html_body: `<p>Photo share pack: <a href="${sharePackUrl}">${sharePackUrl}</a></p>`,
-                public: false,
-              });
-            } catch (commentErr) {
-              console.warn('[zendesk-claim] share pack comment failed', commentErr);
-            }
-          }
-        } catch (shareErr) {
-          console.warn('[zendesk-claim] share pack failed', shareErr);
+        if (!filed.success) {
+          return {
+            status: filed.status,
+            body: {
+              success: false,
+              error: filed.error,
+              draftBody: filed.draftBody,
+            },
+          };
         }
 
         return {
           status: 200,
           body: {
             success: true,
-            ticketNumber,
-            ticketUrl: zendeskTicketUrl(ticket.id),
-            ...archiveFields,
-            sharePackUrl,
+            ticketNumber: filed.ticketNumber,
+            ticketUrl: filed.ticketUrl,
+            reusedExisting: filed.reusedExisting,
+            ...(filed.archiveWarning ? { archiveWarning: filed.archiveWarning } : {}),
+            ...(filed.sharePackUrl ? { sharePackUrl: filed.sharePackUrl } : {}),
           },
         };
       },

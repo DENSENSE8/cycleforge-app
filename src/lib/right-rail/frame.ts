@@ -62,28 +62,6 @@
  * {@link resolveRightRailFrame}; its budget is proved by `frame.test.ts`, which
  * also proves the station caps + collapse.
  *
- * ## The cap arithmetic now lives in the N-pane solver (2026-08-22)
- *
- * All three cap functions here were computing the same thing by hand —
- * `frame − what the other panes hold − the center floor`, floored at the pane's
- * own minimum. The tiling canvas needs that answer for N panes, not three, so it
- * moved to `@/lib/canvas/geometry`'s {@link paneCapPx} and these three call it.
- *
- * Nothing about the budget changed: the 22 cases in `frame.test.ts` pass
- * unchanged, which is the entire point of moving it this way round. What the
- * three functions still own — and what a generic solver must never learn — is
- * **which** width to feed it: a peer's MIN (a loose cap, "grow until they are at
- * their floor") or a peer's ACTUAL width (a tight cap, "grow into the leftover").
- * That choice is the station cascade, and only the caller knows which sash the
- * operator has hold of.
- *
- * One behaviour did change, deliberately: a non-finite `frameWidthPx` now reads
- * as `0` instead of poisoning the subtraction and returning `NaN` as a cap. The
- * two station functions already sanitized exactly this way; the desk resolver
- * did not, so a `NaN` frame produced a `NaN` ceiling that a consumer's
- * `Math.min(width, cap)` would silently turn into a `NaN` width. The unmeasured
- * frame (`0` on first paint) reaches the same floor by both routes.
- *
  * ## Why the inputs cannot oscillate
  *
  * `frameWidthPx` is measured on the content ROW, whose width is invariant under
@@ -100,15 +78,14 @@ import {
   CONTEXT_PANEL_COLLAPSE,
   CONTEXT_PANEL_RESIZE,
   CONTEXT_PANEL_WIDTH_PX,
-} from '@/lib/sidebar/context-panel-column';
+} from '@/components/sidebar/context-panel-column';
 import {
   STATION_DISPLAYS_AUTO_CLOSE_FRAME_PX,
   STATION_DISPLAYS_AUTO_CLOSE_HYSTERESIS_PX,
   STATION_DISPLAYS_MIN_WIDTH_PX,
   STATION_WORKBENCH_LOCK_PX,
-} from '@/lib/station/workbench-layout';
-import { DETAIL_STACK_RESIZE } from '@/lib/design/detail-stack-resize';
-import { paneCapPx } from '@/lib/canvas/geometry';
+} from '@/components/station/workbench/workbench-layout';
+import { DETAIL_STACK_RESIZE } from '@/design-system/shells/detail-stack';
 
 /** Flush planes — no outer gutter island between rail / center / push (2026-08-03). */
 export const RIGHT_RAIL_GUTTER_PX = 0;
@@ -155,8 +132,14 @@ interface RightRailFrameInput {
 
 interface RightRailFrameResolution {
   mode: 'push' | 'overlay';
-  /** Ceiling for the panel's drag-resize while pushing. */
+  /** Ceiling for the panel's drag-resize while pushing (center floor kept). */
   capPx: number;
+  /**
+   * Fullscreen maximize width — frame minus the left rail, **no** center floor.
+   * The work surface yields so an intake form can be read; restore returns to
+   * {@link capPx}. Still in-flow push, not a floating overlay.
+   */
+  coverPx: number;
 }
 
 /**
@@ -214,9 +197,6 @@ function restingLeftPx(input: Pick<RightRailFrameInput, 'railCostOpenPx' | 'rail
 /**
  * Pure. Every worked number in the unit test comes from here, so the budget is
  * provable without mounting anything.
- *
- * Three panes — the route rail, the center, the inspector — expressed as the
- * N-pane solver's question: "how wide may the inspector be, beside these two?"
  */
 export function resolveRightRailFrame(input: RightRailFrameInput): RightRailFrameResolution {
   const { frameWidthPx, wantsPush, centerFloorPx } = input;
@@ -226,23 +206,25 @@ export function resolveRightRailFrame(input: RightRailFrameInput): RightRailFram
   // Cap against the ACTUAL left cost so the operator can keep the context rail
   // open while the right panel grows. Station push passes
   // STATION_PUSH_CENTER_FLOOR_PX (720); desk inspectors pass MIN_WORK_SURFACE_PX.
-  const capPx = paneCapPx({
-    framePx: frameWidthPx,
-    minPx: DETAIL_STACK_RESIZE.minWidthPx,
-    reservedPx: [leftPx, floor],
-    gutterPx: RIGHT_RAIL_GUTTER_PX,
-    gutters: 2,
-  });
+  const capPx = Math.max(
+    DETAIL_STACK_RESIZE.minWidthPx,
+    frameWidthPx - leftPx - floor - RIGHT_RAIL_GUTTER_PX * 2,
+  );
+  // Maximize covers the middle: same left cost, zero center floor.
+  const coverPx = Math.max(
+    DETAIL_STACK_RESIZE.minWidthPx,
+    frameWidthPx - leftPx - RIGHT_RAIL_GUTTER_PX * 2,
+  );
 
   if (!wantsPush) {
-    return { mode: 'overlay', capPx };
+    return { mode: 'overlay', capPx, coverPx };
   }
 
   // A resident non-modal inspector never flashes through the historical
   // floating-card geometry while the content row is still being measured.
   // Whether the preferred width fits the surplus or not, we still PUSH and let
   // `capPx` / the flex center constrain — never park the left donor, never overlay.
-  return { mode: 'push', capPx };
+  return { mode: 'push', capPx, coverPx };
 }
 
 /**
@@ -302,11 +284,9 @@ export function stationDisplaysSashMaxPx(
   centerFloorPx = STATION_PUSH_CENTER_FLOOR_PX,
   displaysMinPx = STATION_DISPLAYS_MIN_WIDTH_PX,
 ): number {
-  return paneCapPx({
-    framePx: frameWidthPx,
-    minPx: displaysMinPx,
-    reservedPx: [centerFloorPx, leftCostPx],
-  });
+  const frame = Number.isFinite(frameWidthPx) ? Math.max(0, frameWidthPx) : 0;
+  const left = Number.isFinite(leftCostPx) ? Math.max(0, leftCostPx) : 0;
+  return Math.max(displaysMinPx, frame - centerFloorPx - left);
 }
 
 /**
@@ -324,11 +304,9 @@ export function stationContextSashMaxPx(
   centerFloorPx = STATION_PUSH_CENTER_FLOOR_PX,
   leftMinPx = CONTEXT_PANEL_RESIZE.minWidthPx,
 ): number {
-  return paneCapPx({
-    framePx: frameWidthPx,
-    minPx: leftMinPx,
-    reservedPx: [centerFloorPx, displaysWidthPx],
-  });
+  const frame = Number.isFinite(frameWidthPx) ? Math.max(0, frameWidthPx) : 0;
+  const displays = Number.isFinite(displaysWidthPx) ? Math.max(0, displaysWidthPx) : 0;
+  return Math.max(leftMinPx, frame - centerFloorPx - displays);
 }
 
 // ── The store ────────────────────────────────────────────────────────────────
@@ -391,6 +369,7 @@ let snapshot: RightRailFrameSnapshot = {
 const SERVER_SNAPSHOT: RightRailFrameSnapshot = {
   mode: 'overlay',
   capPx: DETAIL_STACK_RESIZE.defaultWidthPx,
+  coverPx: DETAIL_STACK_RESIZE.defaultWidthPx,
   stationDisplaysCollapsed: false,
   stationDisplaysCapPx: DETAIL_STACK_RESIZE.defaultWidthPx,
   stationContextCapPx: CONTEXT_PANEL_RESIZE.minWidthPx,
@@ -477,6 +456,7 @@ function recompute() {
   if (
     next.mode === snapshot.mode &&
     next.capPx === snapshot.capPx &&
+    next.coverPx === snapshot.coverPx &&
     collapsed === snapshot.stationDisplaysCollapsed &&
     stationDisplaysCapPx === snapshot.stationDisplaysCapPx &&
     stationContextCapPx === snapshot.stationContextCapPx &&

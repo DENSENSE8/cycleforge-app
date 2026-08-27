@@ -9,13 +9,14 @@
  *   - `scanned`  → Queue / Prioritize: door scan = whole carton
  *   - `unfound`  → Unfound stubs: same counted/expected as `received`
  *   - `combined` → Triage union: unmatched→unfound, else→scanned
+ *   - `tested`   → QC Recent: recorded verdicts / received
  *
  * Row anatomy + popover live in RecentActivityRailBase — they call
  * `getPreviewQty` / `RAIL_QTY`.
  */
 
 import type { ReactNode } from 'react';
-import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { isOperatorReceived } from '@/lib/receiving/rail/status';
 
 /** { current, total } for the hover-popover progress meter. */
@@ -84,6 +85,26 @@ function renderCombinedQty(row: ReceivingLineRow): ReactNode {
   return row.receiving_source === 'unmatched' ? renderUnfoundQty(row) : renderScannedQty(row);
 }
 
+/** Recorded-verdict count for the QC rail — prefers API `tested_count`. */
+export function getTestedQty(row: ReceivingLineRow): number {
+  if (typeof row.tested_count === 'number') {
+    return Math.min(row.tested_count, row.quantity_received);
+  }
+  const v = String(row.workflow_status || '').trim().toUpperCase();
+  const isTested = ['PASSED', 'DONE', 'FAILED', 'SCRAP', 'RTV'].some((s) => v.startsWith(s));
+  return isTested ? row.quantity_received : 0;
+}
+
+function renderTestedQty(row: ReceivingLineRow): ReactNode {
+  const tested = getTestedQty(row);
+  const received = row.quantity_received;
+  return (
+    <span className={tested >= received && received > 0 ? 'text-text-success' : 'text-text-muted'}>
+      {tested}/{received}
+    </span>
+  );
+}
+
 const receivedPreview = (row: ReceivingLineRow): RailPreviewQty =>
   inventoryReceivedDisplayQty(row);
 const scannedPreview = (row: ReceivingLineRow): RailPreviewQty => ({
@@ -112,6 +133,14 @@ export const RAIL_QTY = {
     renderQuantity: renderCombinedQty,
     getPreviewQty: (row: ReceivingLineRow): RailPreviewQty =>
       row.receiving_source === 'unmatched' ? receivedPreview(row) : scannedPreview(row),
+  },
+  tested: {
+    previewQtyLabel: 'Tested',
+    renderQuantity: renderTestedQty,
+    getPreviewQty: (row: ReceivingLineRow): RailPreviewQty => ({
+      current: getTestedQty(row),
+      total: row.quantity_received,
+    }),
   },
 } as const;
 

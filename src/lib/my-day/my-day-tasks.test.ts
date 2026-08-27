@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import type { WorkOrderRow } from '@/lib/work-orders/types';
+import type { WorkOrderRow } from '@/components/work-orders/types';
 import {
   filterMyDayTasksByHorizon,
   myDayDueHorizon,

@@ -1,8 +1,8 @@
-import { ADMIN_SECTION_OPTIONS, getAdminSection } from '@/lib/admin/admin-sections';
+import { ADMIN_SECTION_OPTIONS, getAdminSection } from '@/components/admin/admin-sections';
 import {
   SETTINGS_SECTION_OPTIONS,
   resolveSettingsSectionFromPath,
-} from '@/lib/settings/settings-sections';
+} from '@/components/settings/settings-sections';
 import { PRODUCT_NAME } from '@/lib/branding/constants';
 import { getSidebarTitle } from '@/lib/sidebar-titles';
 

@@ -1,9 +1,12 @@
 # PLAN — Boxes packed by packer (daily count)
 
-**Written 2026-08-27.** Plan of record for putting the daily packer box-count
-into Warehouse OS. **No UI ships from this file.** The premature surface that
-landed on `main` as `ad4c2fa1d` (header **Packed** button, launcher row, tile,
-`GET /api/packing/box-counts`) is **reverted in the same commit as this plan.**
+**Written 2026-08-27, revised the same day after `main` restored the Operations
+master page.** Plan of record for putting the daily packer box-count **into
+Operations**. **No UI ships from this file.**
+
+The premature Warehouse OS beam **Packed** button (`ad4c2fa1d`) is **reverted**
+in the same change-set as this plan. Do not put this count on
+`src/components/layout/GlobalHeader` (nav · scan · goal · inbox · assistant).
 
 Paste this whole file into a fresh session when the operator says to build it.
 
@@ -15,9 +18,10 @@ The operator asked the same question three days in a row from chat:
 
 > how many boxes were packed by each packer on &lt;day&gt;
 
-The answer they want is a **two-column table plus a total**, not packing KPI
-(tiers, weighted minutes, FBA fill). Example of the grain that was already
-proven against production:
+Then: **a button in Operations** that displays **exactly that table** — packer,
+count, total — not packing KPI (tiers, weighted minutes, FBA fill).
+
+Example of the grain already proven against production:
 
 | Packer | Boxes packed |
 |---|---|
@@ -25,42 +29,57 @@ proven against production:
 | Thuy | 1 |
 | **Total** | **30** |
 
-They then asked for **a button in Operations**. That request is real. The first
-implementation was wrong: it bolted a **Packed** verb onto the beam. That
-violates beam law **B2** (the beam reports identity, never verbs) and **B23**
-(top-right `⋯` is the tools door). This plan puts the count where Warehouse OS
-puts data: **a tile**, opened from the launcher (and, later, from a packing
-session), not as permanent header chrome.
+---
 
-The old `/operations` page (modes: live / checks / analytics / …) is **dead**.
-Do not rebuild it as a URL. Nav strings that still say `/operations` are
-legacy. The product surface is the Electron / shell canvas (`00-endgame` D2 / D4).
+## 2 · Where it lives in the product (this is the UX)
+
+Operations is `/operations` (`src/app/operations/page.tsx` →
+`OperationsWorkspace`). L2 modes are the GlobalHeader **page-child switcher**
+(`SIDEBAR_PAGE_NAV` operations children) plus `?mode=` as the single source of
+truth (`parseOperationsMode`).
+
+**Ship a new Operations mode: `packed`.**
+
+| Surface | What to add |
+|---|---|
+| Header L2 (the “button”) | Child next to **Checks**: label **Packed**, icon `Boxes` (already used in `PackingKpiSection`). Target `/operations?mode=packed`. This is the control the operator asked for — one click from Operations. |
+| Right pane | `OperationsPackedView` — clone the **Checks** day-strip pattern (`OperationsChecksView`): prev / civil-day title / next, `?date=YYYY-MM-DD` in the URL, Monitor page shell. Body is **only** the two-column table + total. |
+| Live dashboard | Optional later: a compact **Packed today** card that **navigates** to `?mode=packed` (does not duplicate the table on Live). Not required for v1 if the L2 child is obvious. |
+| Analytics → Packer productivity | Leave it. That is the KPI (tiers, capacity, by-item). This mode is the chat-parity count. |
+
+**Do not:**
+
+- Add Packed to `GlobalHeaderActions`.
+- Rebuild this as a Warehouse OS canvas tile / launcher row (that shell is not
+  the current `/operations` product).
+- Hide this inside Analytics tabs (the operator has to hunt; they asked for a
+  button).
+- Override another mode’s pane (Checks stays Checks).
+
+URL: `/operations?mode=packed` today; `/operations?mode=packed&date=2026-08-24`
+for Monday. Switching away from `packed` clears `date` (sidebar-mode law: mode
+owns its params).
 
 ---
 
-## 2 · The report contract (do not invent a second grain)
+## 3 · The report contract (do not invent a second grain)
 
-One row in the table = one completed pack for that staffer on that warehouse
-civil day.
+One table row = one completed pack for that staffer on that warehouse civil day.
 
 | Axis | Rule |
 |---|---|
 | Fact | `station_activity_logs` where `station = 'PACK'` and `activity_type = 'PACK_COMPLETED'` |
-| Day | `(timezone('America/Los_Angeles', created_at))::date` — same as `getCurrentPSTDateKey()` / packing KPI |
+| Day | `(timezone('America/Los_Angeles', created_at))::date` — same as `getCurrentPSTDateKey()` |
 | Packer | `staff.name` via `sal.staff_id`; missing staff → `'(unassigned)'` |
-| Count | `COUNT(*)` of those rows, not distinct orders, not `packer_logs` alone |
-| Org | `sal.organization_id = ctx.organizationId` through `tenantQuery` |
+| Count | `COUNT(*)` of those rows — not distinct orders, not `packer_logs` alone |
+| Org | `tenantQuery` + `ctx.organizationId` |
 | Sort | boxes desc, then packer name asc |
-| Total | sum of the per-packer counts |
+| Total | sum of per-packer counts |
 
-**Do not** substitute `packer_logs` as the primary grain unless the operator
-re-rules. The chat reports and `buildPackingReportRows` already treat
-`PACK_COMPLETED` as the box.
+**Do not** use packing KPI as the display grain. `getPackingKpisForDay` drops
+`staff_id IS NULL` and adds tier/capacity/FBA. Keep KPI for Analytics.
 
-**Do not** hide unassigned packs. KPI (`getPackingKpisForDay`) currently drops
-`staff_id IS NULL`. This report must not.
-
-SQL shape (domain helper, not the route):
+SQL (domain helper, not the route):
 
 ```sql
 SELECT
@@ -78,152 +97,105 @@ ORDER BY 2 DESC, 1 ASC
 
 ---
 
-## 3 · What already exists (reuse, do not fork)
+## 4 · What already exists (copy the Checks pattern)
 
-| Piece | Path | Use it? |
+| Piece | Path | Role |
 |---|---|---|
-| Packing KPI (tiers + capacity + FBA) | `src/lib/packing/packer-kpi-queries.ts`, `GET /api/packing/kpi` | **No** for this table. Heavier query, drops unassigned, extra columns the operator did not ask for. Keep KPI as the manager capacity view. |
-| Line-item packing export | `src/lib/packing/packing-report.ts`, `GET /api/packing/reports/export` | Optional drill-down later (click a packer → CSV/JSON of that day's rows). Not v1 of this tile. |
-| Civil-day helpers | `src/utils/date.ts` (`isDateKey`, `addDaysToDateKey`, `getCurrentPSTDateKey`, `formatDateKeyMedium`) | **Yes.** Never parse `YYYY-MM-DD` as host-local midnight. |
-| Tile host pattern | `OrdersQueueTile` / `SessionsWeekTile` + `TileBody` adapter | **Yes.** Host-agnostic tile, shell only maps `ref`. |
-| Launcher | `src/shell/Launcher.tsx` | **Yes.** This is the open door (T11). |
-| Permission | `operations.view` already gates `/api/packing/kpi` and packing export | **Yes.** Same gate. Do not invent `packing.boxes.view`. |
+| Mode router | `OperationsWorkspace.tsx` | `if (mode === 'packed') return <OperationsPackedView />` |
+| Checks view (clone chrome) | `OperationsChecksView.tsx` | Day pager, `MonitorPageShell`, `?date=` |
+| Mode SoT | `src/lib/operations/operations-sidebar-shared.ts` **and** `src/components/sidebar/operations/operations-sidebar-shared.ts` | Add `'packed'` to `OperationsMode`, `OPERATIONS_MODES`, `parseOperationsMode`, `parseOperationsModeWire`. Keep both files in lockstep (or delete the duplicate in the same PR if already planned). |
+| Header L2 | `src/lib/sidebar-navigation.ts` operations `children` + `resolveChild` | `{ id: 'packed', label: 'Packed', … params: { mode: 'packed' } }` |
+| Route param hygiene | `src/lib/routing/query-mode-routes.ts` | Already round-trips `parseOperationsModeWire` — extending the mode union is enough if that helper is the SoT. |
+| Sidebar panel | `OperationsSidebarPanel.tsx` | Empty or a one-line “today’s total” list; Checks has a small sidebar — match that density, do not invent a second table. |
+| Packing KPI | `GET /api/packing/kpi`, `PackingKpiSection` | Do **not** power this table. |
+| Line-item export | `GET /api/packing/reports/export` | Optional later: click a packer → that day’s rows. Not v1. |
+| Civil day | `src/utils/date.ts` | `isDateKey`, `addDaysToDateKey`, `getCurrentPSTDateKey`, `formatDateKeyMedium` / `formatDateKeyShort` |
+| Permission | `operations.view` | Same as KPI and packing export. |
+| Checks e2e | `tests/e2e/operations-daily-checks.spec.ts` | Clone: heading visible, table `data-testid="packed-by-packer"`. |
 
-Reverted (do not resurrect as-is): `GET /api/packing/box-counts`,
-`src/lib/packing/packer-box-counts.ts`, `PackedTodayTile`, beam **Packed**
-button, `openPackedTodayTile`. The **query and table layout** in those files
-were correct; the **placement** was not. Copy the grain from §2, not the chrome.
-
----
-
-## 4 · Target UX (Warehouse OS)
-
-### 4.1 What the operator sees
-
-A **table tile** (not a modal, not a popover, not a page). Title: **Packed**.
-Type chip: `table`.
-
-Body:
-
-1. Day strip: previous · civil-day label (`formatDateKeyMedium` with weekday +
-   year) · next. Next is disabled when `day === getCurrentPSTDateKey()`.
-2. If viewing a past day, a **Today** outline button (instant swap, M1 — no
-   tween).
-3. Table: **Packer** | **Boxes**. Footer row **Total**.
-4. Empty: `No boxes packed this day.` Loading / error copy, no skeleton
-   geometry animation.
-
-Same numbers they got from chat. Day paging exists so they stop asking an
-agent to re-run Monday vs Tuesday vs Wednesday.
-
-### 4.2 How they open it (ordered)
-
-1. **Launcher (required).** Tables group: **Boxes packed** — meta: today's
-   count by packer. `Ctrl+K` / scan-field launcher. This is the Operations
-   “button”: the OS index, not a second header verb.
-2. **Packing session tool (required once packing sessions are real).**
-   `scope: 'session'`, `appliesTo: ['packing']`. Right rail + beam `⋯` only
-   while a packing session is armed (T5/T6/B23). Label: **Boxes packed**.
-   Opens the same tile (`ref` stable — C8: re-open focuses the existing tile).
-3. **Composer / assistant (later, not blocking).** A read tool that returns
-   the same JSON and, on operator confirm, `openTile('packed-today', …)`.
-   Do not auto-open tiles from chat without a commit.
-
-### 4.3 What must not happen
-
-- Do **not** put **Packed** on the beam next to identity / entity readout.
-- Do **not** restore `/operations?mode=…` as the home for this.
-- Do **not** override the orders queue tile with this table (C8).
-- Do **not** animate height/width of the table or day strip (M1).
-- Do **not** use native `title=` on new controls (tooltip / `aria-label`).
-- Do **not** start, restart, or kill `:3050` / `:3051` to “verify.” Attach.
-
-### 4.4 Layout on the canvas
-
-Default: open as a **narrow table tile** beside whatever is focused (Hyprland
-grammar already on the shell). The operator can grow it. Show-mode (one
-maximised tile) is allowed; this report is a natural “show the floor the
-count” surface.
+Reverted leftover on some `main` histories: `GET /api/packing/box-counts` +
+`packer-box-counts.ts`. If those files are present when building, **reuse the
+query**; do not leave an orphan API without a view. If absent, recreate them
+as Step A.
 
 ---
 
-## 5 · Implementation sequence (when building)
+## 5 · UI spec (the pane)
 
-Do these in order. Each step is shippable alone.
+`MonitorPageShell`.
 
-### Step A — Domain + GET (no UI)
+1. **Eyebrow** `Boxes packed` (uppercase / `text-role-eyebrow`, same as Checks’
+   “Daily checks”).
+2. **Title** today → `Today` or weekday+date via `formatDateKeyMedium`; past →
+   that civil label.
+3. **Prev / next** — next disabled on today. Writes `?mode=packed&date=`.
+4. **Table** — Packer (left) · Boxes (right, mono). Footer **Total**.
+5. Empty: `No boxes packed this day.` Loading: same spinner row as Checks.
+   Error: same dashed rose panel pattern as Checks.
+6. **No layout animation** (M1). Instant day swap.
 
-1. `src/lib/packing/packer-box-counts.ts`
-   - `assemblePackerBoxCountReport(day, rows)` — pure sort + total (unit test).
-   - `getPackerBoxCountsForDay(orgId, day)` — `tenantQuery`, SQL from §2.
-2. `GET /api/packing/box-counts?day=YYYY-MM-DD`
-   - `withAuth` + `permission: 'operations.view'`.
-   - `day` optional → `getCurrentPSTDateKey()`.
-   - Invalid day → 400 (`isDateKey`).
-   - Body: `{ ok: true, day, rows: [{ packer, boxesPacked }], total }`.
-3. `docs/security/route-permissions.json` — add the route, bump
-   `totalRoutes` / `permissionGated` (emit script is gone; edit by hand).
-4. `npm run verify`.
-
-### Step B — Tile (no chrome on the beam)
-
-1. `src/components/tiles/packing/packed-today-tile-data.ts` — fetch only.
-2. `src/components/tiles/packing/PackedTodayTile.tsx` — host-agnostic, shadcn
-   `Button` + table. Day state local to the tile.
-3. `TileBody`: `if (tile.ref === 'packed-today') return <PackedTodayTile />`.
-4. `useShell.openPackedTodayTile` → `openTile('packed-today', 'Packed', 'table')`
-   (dedupe by `ref` already in `openTile`).
-
-### Step C — Open doors (still no beam verb)
-
-1. Launcher Tables item as in §4.2.1.
-2. Register a packing-session tool in `src/shell/model.ts` `TOOLS` that calls
-   `openPackedTodayTile` (not `toggleTool` for a panel — this is a **tile**,
-   not a pushing tool body). If the tool registry cannot open tiles yet,
-   add a one-line `run: 'open-tile'` kind rather than stuffing a fake tool
-   panel with a nested table.
-
-### Step D — Verify in the running app
-
-Operator-owned server. Exercise: sign in → launcher → Boxes packed → table
-matches a live SQL check for today → previous day → Today. Armed packing
-session → `⋯` / right rail shows the tool → opens/focuses the same tile.
+That is the whole view. No gauges, no small/medium/large, no FBA fill.
 
 ---
 
-## 6 · Acceptance
+## 6 · Implementation sequence
 
-- [ ] For a known warehouse day, the tile matches a direct SQL count of
-      `PACK_COMPLETED` grouped by packer (including unassigned).
-- [ ] Total equals the sum of rows.
-- [ ] Future days cannot be selected via Next.
-- [ ] Second open does not stack a duplicate tile.
-- [ ] Beam has no Packed button.
-- [ ] `operations.view` required; unauthenticated → 401.
-- [ ] `npm run verify` green.
-- [ ] Clicked through on the operator's running shell (not a screenshot-only
-      check).
+### Step A — Domain + GET
+
+1. `assemblePackerBoxCountReport` (pure, unit test) + `getPackerBoxCountsForDay`.
+2. `GET /api/packing/box-counts?day=` — `withAuth` / `operations.view`; default
+   day = `getCurrentPSTDateKey()`; invalid day 400.
+3. Body `{ ok, day, rows: [{ packer, boxesPacked }], total }`.
+4. Update `docs/security/route-permissions.json` counts by hand.
+
+### Step B — Operations mode (the button + pane)
+
+1. Extend mode types in **both** sidebar-shared modules.
+2. `OperationsPackedView.tsx` + `usePackerBoxCounts(day)` (react-query, mirror
+   `useDailyChecks` / `usePackingKpi`).
+3. Wire `OperationsWorkspace`, `sidebar-navigation` child + `resolveChild`,
+   `OperationsSidebarPanel`, assistant `page-skills` URL list.
+4. Playwright: `/operations?mode=packed` shows the heading and testid table
+   (desktop project; skip mobile like Checks).
+
+### Step C — Verify
+
+Operator-owned `:3050`. Click **Operations → Packed**. Confirm counts vs SQL
+for today and a past day. Header child stays selected. Analytics packing
+section still loads.
+
+`npm run verify`.
 
 ---
 
-## 7 · Open questions (do not guess)
+## 7 · Acceptance
 
-1. **Should a packer see only their own row?** Default in this plan: **everyone
-   with `operations.view` sees all packers**, because the operator asked for
-   the floor total. If packers must be scoped to self, that is a second
-   permission or a client filter — ask before coding.
-2. **Live refresh while the tile is open?** v1: fetch on day change / mount
-   only. Polling is a later request-shape decision (`perf:requests`).
-3. **Row click → that packer's line-item export** (`/api/packing/reports/export`)?
-   Useful, not required for the chat-parity table.
+- [ ] Header L2 **Packed** is visible whenever Operations is the current page.
+- [ ] Table matches SQL `PACK_COMPLETED` grouped by packer, including
+      `(unassigned)`.
+- [ ] Total = sum of rows.
+- [ ] Next is disabled on today; `date` omitted from the URL on today.
+- [ ] GlobalHeader actions rail is unchanged (no Packed icon there).
+- [ ] `operations.view` required on the GET.
+- [ ] Checks / Analytics / Live still work.
+- [ ] Clicked through on the running app, not screenshot-only.
 
 ---
 
-## 8 · Out of scope
+## 8 · Open questions (ask before coding)
 
-- Restoring Operations Live / Analytics / Checks as Next routes.
-- Packing KPI dashboard (already has an API; different question).
-- Changing how `PACK_COMPLETED` is written at the pack station.
-- Leaderboards, colour-as-verdict on counts (B10: ranking is not HUD chrome
-  on the person being ranked). This table is a fact display, not a scoreboard
-  with red/green vs target.
+1. **Packers see only themselves?** Default: **all packers** for anyone with
+   `operations.view` (the operator asked for the floor total).
+2. **Live poll while the pane is open?** v1: fetch on mount / date change only.
+3. **Live dashboard card?** Only if the L2 child is not findable enough after
+   one week of use.
+
+---
+
+## 9 · Out of scope
+
+- Packing KPI redesign.
+- Changing how pack station writes `PACK_COMPLETED`.
+- Colour-as-ranking vs a daily target on this table (that belongs in Analytics
+  KPI, not this fact view).
+- Warehouse OS tiles / beam verbs.

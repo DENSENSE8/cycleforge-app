@@ -18,7 +18,7 @@ import {
   ticketHandle,
   type LocationSegments,
 } from '@/lib/barcode-routing';
-import { staffOriginForSlug } from '@/lib/tenancy/staff-host';
+import { staffOriginForSlug } from '@/lib/tenancy/kiosk-host';
 
 /** Origin for printed QR codes for a tenant slug (no trailing slash). */
 export function platformQrOriginForSlug(orgSlug: string | null | undefined): string | null {

@@ -1,6 +1,6 @@
 import { tenantQuery } from '@/lib/tenancy/db';
 import { normalizePSTTimestamp } from '@/utils/date';
-import type { WorkOrderRow, WorkStatus } from '@/lib/work-orders/types';
+import type { WorkOrderRow, WorkStatus } from '@/components/work-orders/types';
 
 function normalizeStatus(raw: unknown): WorkStatus {
   const value = String(raw || '').trim().toUpperCase();

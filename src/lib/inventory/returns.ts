@@ -33,7 +33,6 @@ import { withTenantTransaction } from '@/lib/tenancy/db';
 import { resolvePriorOutbound } from '@/lib/neon/serial-units-queries';
 import { transition } from '@/lib/inventory/state-machine';
 import { tapWorkflow } from '@/lib/workflow/tap';
-import { NO_SESSION } from '@/lib/sessions/attribution';
 
 export interface ReturnsIntakeInput {
   /** Normalized serial strings (already upper-cased, GS1 URLs extracted). */
@@ -186,7 +185,6 @@ export async function processReturnsIntake(input: ReturnsIntakeInput): Promise<R
       const perUnitKey = input.clientEventId ? `${input.clientEventId}:return:${u.id}` : null;
       const moved = await transition(
         {
-          session: NO_SESSION,
           unitId: u.id,
           to: 'RETURNED',
           eventType: 'RETURNED',

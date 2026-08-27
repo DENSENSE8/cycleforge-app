@@ -3,7 +3,6 @@ import { invalidateReceivingViews } from '@/lib/receiving/invalidation';
 import { requireRoutePerm } from '@/lib/auth/dynamic-route-guard';
 import { transition, type SerialState } from '@/lib/inventory/state-machine';
 import { withTenantTransaction } from '@/lib/tenancy/db';
-import { NO_SESSION } from '@/lib/sessions/attribution';
 
 /** States a unit can be STOCKED from — un-putaway restores it to whichever it came from. */
 const PRE_STOCK_STATES = new Set<SerialState>(['RECEIVED', 'TESTED', 'GRADED']);
@@ -78,7 +77,6 @@ export async function POST(
       // fails the guard; a cross-tenant unit id reads as 404.
       const result = await transition(
         {
-          session: NO_SESSION,
           unitId: serialUnitId,
           to: target,
           eventType: 'ADJUSTED',

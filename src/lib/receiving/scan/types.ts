@@ -14,7 +14,7 @@
  * their own variants to {@link ScanResolution} as they move out of the hook.
  */
 
-import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import type { ResolvedTestingScan, ResolvedVia } from '@/lib/testing/resolve-testing-scan';
 
 /**

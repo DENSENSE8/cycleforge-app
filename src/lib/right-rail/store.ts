@@ -22,21 +22,6 @@
  * while rendering nothing — used to hand the slot to a not-yet-migrated detail
  * panel that still renders its own fixed element (see the migration note below).
  *
- * ## The occupancy read API is FOUR functions, and that is the seam
- *
- * `RightRailHost` reads this store through exactly `subscribeRightRail`,
- * `getRightRailTop`, `getRightRailTopSkipping` and `getServerRightRailTop`.
- * Nothing else in that 547-line component touches occupancy. That is what lets
- * the whole host be replaced — by the N-tile
- * `@/components/workspace/tools/RightRailTileHost` — without any of the 43
- * registrants changing a line: the replacement reads the same seam, in its
- * N-ary form (`getRightRailOccupants` / `…Skipping` / `getServerRightRailOccupants`,
- * plus the same `subscribeRightRail`).
- *
- * The single-occupant functions are now SHIMS over the head of an ordered list.
- * They are not deprecated: "the top occupant" is still the right answer for a
- * one-slot host, and keeping them means the swap is a flag, not a migration.
- *
  * MIGRATION PATH (strangler)
  * The URL-driven `external-detail` YIELD claim (`node: null`) is **retired** —
  * desk record peeks register real nodes at `RIGHT_RAIL_PRIORITY.detail` via
@@ -155,19 +140,11 @@ export interface RightRailPanel {
    *  (`role="region"` needs a name); the host falls back to a generic label. */
   ariaLabel?: string;
   /**
-   * Which TOOL this occupant is, when it is one.
-   *
-   * `DetailStackRailRegistrar` requires a `toolKey` with no default, so every
-   * one of its 37 mount sites has answered "which tool am I" and the compiler
-   * named the ones that had not. The palette reads it to highlight the active
-   * tool's icon, and the N-tile host reads it for a tile identity that survives
-   * a record swap inside one tile.
-   *
-   * Optional on the record itself: `useRegisterRightPanel` has four callers
-   * that are not tools at all (the assistant dock, three task inspectors), and
-   * an ambient chat surface has no tool key to invent.
+   * When false, host dismiss runs teardown only — no draft cache, no Resume
+   * toast, no dismissed latch. Desk tools (Add inbound, paste panels) that
+   * unmount on close and reopen fresh.
    */
-  toolKey?: string;
+  resumeOnDismiss?: boolean;
   /** Insertion order, for deterministic tie-breaking. */
   seq: number;
 }
@@ -175,39 +152,20 @@ export interface RightRailPanel {
 const panels = new Map<string, RightRailPanel>();
 const listeners = new Set<() => void>();
 let seq = 0;
+let topSnapshot: RightRailPanel | null = null;
 
-const EMPTY_OCCUPANTS: readonly RightRailPanel[] = Object.freeze([]);
-
-/**
- * Every occupant, highest precedence FIRST. Replaced the single `topSnapshot`
- * when the rail stopped being one slot: a tiling host needs the whole ordered
- * list, and a one-slot host needs its head, so one list serves both.
- *
- * Recomputed only on mutation and handed out by identity —
- * `useSyncExternalStore` compares with `Object.is`, so a freshly sorted array
- * per `getSnapshot()` call is an infinite render loop.
- */
-let orderedSnapshot: readonly RightRailPanel[] = EMPTY_OCCUPANTS;
-
-/**
- * Memo for {@link getRightRailOccupantsSkipping}. It has to FILTER, so it
- * cannot hand back `orderedSnapshot` itself — and an unmemoized filter is the
- * same infinite-loop hazard one level down. One slot is enough: the host asks
- * for exactly one skip id (the parked occupant) per render.
- */
-let skipCache: { skipId: string; value: readonly RightRailPanel[] } | null = null;
-
-function byPrecedence(a: RightRailPanel, b: RightRailPanel): number {
-  if (a.priority !== b.priority) return b.priority - a.priority;
-  // Ties break to the most recently registered — unchanged from the single-top
-  // rule, so a re-registration still takes the slot from its predecessor.
-  return b.seq - a.seq;
-}
-
-function recomputeOrder(): void {
-  orderedSnapshot = Object.freeze([...panels.values()].sort(byPrecedence));
-  skipCache = null;
-  const top = orderedSnapshot[0] ?? null;
+function recomputeTop(): void {
+  let top: RightRailPanel | null = null;
+  for (const p of panels.values()) {
+    if (
+      !top ||
+      p.priority > top.priority ||
+      (p.priority === top.priority && p.seq > top.seq)
+    ) {
+      top = p;
+    }
+  }
+  topSnapshot = top;
   syncPanelOccupant(top && top.node != null ? top.id : null);
 }
 
@@ -240,7 +198,7 @@ export function registerRightRailPanel(input: {
   edgeCollapse?: boolean;
   collapsedStrip?: boolean;
   ariaLabel?: string;
-  toolKey?: string;
+  resumeOnDismiss?: boolean;
 }): () => void {
   seq += 1;
   const mySeq = seq;
@@ -257,16 +215,16 @@ export function registerRightRailPanel(input: {
     edgeCollapse: input.edgeCollapse,
     collapsedStrip: input.collapsedStrip,
     ariaLabel: input.ariaLabel,
-    toolKey: input.toolKey,
+    resumeOnDismiss: input.resumeOnDismiss,
     seq: mySeq,
   });
-  recomputeOrder();
+  recomputeTop();
   emit();
   return () => {
     const current = panels.get(input.id);
     if (current && current.seq === mySeq) {
       panels.delete(input.id);
-      recomputeOrder();
+      recomputeTop();
       emit();
     }
   };
@@ -290,7 +248,7 @@ export function updateRightRailPanelNode(input: {
   edgeCollapse?: boolean;
   collapsedStrip?: boolean;
   ariaLabel?: string;
-  toolKey?: string;
+  resumeOnDismiss?: boolean;
 }): void {
   const {
     id,
@@ -304,7 +262,7 @@ export function updateRightRailPanelNode(input: {
     edgeCollapse,
     collapsedStrip,
     ariaLabel,
-    toolKey,
+    resumeOnDismiss,
   } = input;
   const current = panels.get(id);
   if (
@@ -322,7 +280,7 @@ export function updateRightRailPanelNode(input: {
       current.edgeCollapse === edgeCollapse &&
       current.collapsedStrip === collapsedStrip &&
       current.ariaLabel === ariaLabel &&
-      current.toolKey === toolKey)
+      current.resumeOnDismiss === resumeOnDismiss)
   )
     return;
   panels.set(id, {
@@ -337,9 +295,9 @@ export function updateRightRailPanelNode(input: {
     edgeCollapse,
     collapsedStrip,
     ariaLabel,
-    toolKey,
+    resumeOnDismiss,
   });
-  recomputeOrder();
+  recomputeTop();
   emit();
 }
 
@@ -348,23 +306,8 @@ export function subscribeRightRail(listener: () => void): () => void {
   return () => listeners.delete(listener);
 }
 
-/**
- * The winning occupant — the head of the ordered list. A shim since the rail
- * gained tiling, kept because a one-slot host asking "who is on top" is still
- * asking the right question.
- */
 export function getRightRailTop(): RightRailPanel | null {
-  return orderedSnapshot[0] ?? null;
-}
-
-/** Every occupant, highest precedence first. The N-tile host's read. */
-export function getRightRailOccupants(): readonly RightRailPanel[] {
-  return orderedSnapshot;
-}
-
-/** One occupant by id — what `closeRightPanel(instanceId)` targets. */
-export function getRightRailPanel(id: string): RightRailPanel | null {
-  return panels.get(id) ?? null;
+  return topSnapshot;
 }
 
 /**
@@ -373,34 +316,22 @@ export function getRightRailPanel(id: string): RightRailPanel | null {
  * without unregistering the cached view.
  */
 export function getRightRailTopSkipping(skipId: string | null): RightRailPanel | null {
-  if (!skipId) return getRightRailTop();
-  return orderedSnapshot.find((p) => p.id !== skipId) ?? null;
-}
-
-/**
- * The N-ary twin of {@link getRightRailTopSkipping} — every occupant except the
- * parked one. Memoized on `skipId` because it must build a new array, and a new
- * array identity per `getSnapshot()` call loops `useSyncExternalStore` forever.
- */
-export function getRightRailOccupantsSkipping(
-  skipId: string | null,
-): readonly RightRailPanel[] {
-  if (!skipId) return orderedSnapshot;
-  if (skipCache && skipCache.skipId === skipId) return skipCache.value;
-  const value = Object.freeze(orderedSnapshot.filter((p) => p.id !== skipId));
-  skipCache = { skipId, value };
-  return value;
+  if (!skipId) return topSnapshot;
+  let top: RightRailPanel | null = null;
+  for (const p of panels.values()) {
+    if (p.id === skipId) continue;
+    if (
+      !top ||
+      p.priority > top.priority ||
+      (p.priority === top.priority && p.seq > top.seq)
+    ) {
+      top = p;
+    }
+  }
+  return top;
 }
 
 /** Server snapshot: the rail is client-only chrome, so nothing renders on SSR. */
 export function getServerRightRailTop(): RightRailPanel | null {
   return null;
-}
-
-/**
- * Server snapshot for the N-tile host. A frozen constant, never a fresh array —
- * React re-invokes this on every server render.
- */
-export function getServerRightRailOccupants(): readonly RightRailPanel[] {
-  return EMPTY_OCCUPANTS;
 }

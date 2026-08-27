@@ -3,9 +3,16 @@ import { test } from 'node:test';
 
 import {
   ORDER_EXPORT_COLUMNS,
+  PACKED_EXPORT_COLUMNS,
   buildOrderExportCsv,
   buildOrderExportRow,
+  buildPackedOrderExportCsv,
+  buildPackedOrderExportRow,
+  formatExportCivilDate,
+  formatExportDateTime24h,
   orderExportFilename,
+  packedExportRangeLabel,
+  packedOrderExportFilename,
 } from './order-export-csv';
 
 test('header is the full column list, even for an empty selection', () => {
@@ -79,4 +86,61 @@ test('commas, quotes and newlines in a title survive the round trip', () => {
 test('filename carries the lane and the warehouse civil day', () => {
   assert.equal(orderExportFilename('pending', '2026-07-31'), 'pending-orders-2026-07-31.csv');
   assert.match(orderExportFilename('pending'), /^pending-orders-\d{4}-\d{2}-\d{2}\.csv$/);
+});
+
+test('packed export uses staff columns, 24h stamps, and the selected window', () => {
+  const window = { dateFrom: '2026-08-21', dateTo: '2026-08-27' };
+  assert.equal(packedExportRangeLabel(window), '08/21/26 – 08/27/26');
+  assert.equal(formatExportCivilDate('2026-08-27'), '08/27/26');
+  assert.equal(formatExportDateTime24h('2026-08-27 16:05:00'), '08/27/26 16:05');
+  assert.equal(packedOrderExportFilename(window), 'packed-orders-08-21-26-to-08-27-26.csv');
+  assert.equal(
+    packedOrderExportFilename({ dateFrom: '2026-08-27', dateTo: '2026-08-27' }),
+    'packed-orders-08-27-26.csv',
+  );
+  assert.equal(packedOrderExportFilename({}), 'packed-orders-all-dates.csv');
+
+  const row = buildPackedOrderExportRow(
+    {
+      id: 7,
+      order_id: 'A-1',
+      product_title: 'Bose SoundLink Mini II',
+      sku: 'BOSE-SLM2-BK',
+      condition: 'USED_A',
+      quantity: '1',
+      ship_by_date: '2026-08-28',
+      packed_at: '2026-08-27 16:05:00',
+      packed_by_name: 'Ada',
+      shipment_id: 99,
+    },
+    window,
+  );
+  assert.equal(row.length, PACKED_EXPORT_COLUMNS.length);
+  assert.deepEqual(row, [
+    '08/21/26 – 08/27/26',
+    '08/27/26 16:05',
+    'Ada',
+    'A-1',
+    'Bose SoundLink Mini II',
+    'BOSE-SLM2-BK',
+    'Used — A',
+    '1',
+    '08/28/26',
+    '',
+    '',
+    '',
+  ]);
+  assert.ok(!row.includes('7'));
+  assert.ok(!row.includes('99'));
+  assert.ok(!row.includes('USED_A'));
+
+  const csv = buildPackedOrderExportCsv(
+    [{ order_id: 'A-1', packed_at: '2026-08-27 16:05:00', packed_by_name: 'Ada' }],
+    window,
+  );
+  assert.ok(csv.startsWith(PACKED_EXPORT_COLUMNS.join(',')));
+  assert.ok(csv.includes('08/21/26 – 08/27/26'));
+  assert.ok(csv.includes('08/27/26 16:05'));
+  assert.ok(!csv.includes('record_id'));
+  assert.ok(!csv.includes('shipment_id'));
 });

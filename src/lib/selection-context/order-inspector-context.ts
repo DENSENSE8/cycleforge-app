@@ -16,7 +16,7 @@
  * dashboard only previews (`'preview'`).
  */
 
-import type { ShippedActiveSection } from '@/lib/shipped/stack-types';
+import type { ShippedActiveSection } from '@/components/shipped/stacks/types';
 import type { DashboardOrderView } from '@/utils/dashboard-search-state';
 
 /** Every context the shared order inspector is mounted under. */
@@ -28,7 +28,8 @@ export type OrderInspectorPanelContext =
   | 'staged'
   | 'shipped'
   | 'station'
-  | 'packer';
+  | 'packer'
+  | 'packed';
 
 /**
  * How the Documents plane behaves:
@@ -68,13 +69,18 @@ export interface OrderInspectorContext {
   showDelete: boolean;
   /** Whether the footer editor dock mounts at all. */
   showEditorDock: boolean;
+  /**
+   * Open on the Root Index (Orders golden) instead of jumping into a leaf.
+   * Packed uses this — Documents is hidden; the operator picks a topic.
+   */
+  openOnIndex: boolean;
 }
 
 export interface ResolveOrderInspectorContextInput {
   panelContext: OrderInspectorPanelContext;
   /**
-   * Present when the inspector is mounted over a dashboard lane. Reserved for
-   * lane-specific divergence; the panel context alone decides today.
+   * Present when the inspector is mounted over a dashboard lane. Packed
+   * diverges from fulfillment (no Documents tab; open on the Root Index).
    */
   orderView?: DashboardOrderView;
   /**
@@ -96,6 +102,7 @@ const FULFILLMENT_CONTEXT: OrderInspectorContext = {
   showDispatchExtras: true,
   showDelete: true,
   showEditorDock: true,
+  openOnIndex: false,
 };
 
 /** The Labels station owns document lifecycle — the only `manage` surface. */
@@ -107,6 +114,7 @@ const LABELS_CONTEXT: OrderInspectorContext = {
   showDispatchExtras: true,
   showDelete: true,
   showEditorDock: true,
+  openOnIndex: false,
 };
 
 const DASHBOARD_CONTEXT: OrderInspectorContext = {
@@ -117,6 +125,7 @@ const DASHBOARD_CONTEXT: OrderInspectorContext = {
   showDispatchExtras: true,
   showDelete: true,
   showEditorDock: true,
+  openOnIndex: false,
 };
 
 const STAGED_CONTEXT: OrderInspectorContext = {
@@ -129,6 +138,7 @@ const STAGED_CONTEXT: OrderInspectorContext = {
   showDispatchExtras: false,
   showDelete: false,
   showEditorDock: true,
+  openOnIndex: false,
 };
 
 /** Station / packer / shipped panels keep the legacy shipping-first body. */
@@ -140,13 +150,33 @@ const STATION_CONTEXT: OrderInspectorContext = {
   showDispatchExtras: false,
   showDelete: false,
   showEditorDock: true,
+  openOnIndex: false,
+};
+
+/**
+ * To-ship Packed — post-pack staged list. Documents live on Labels; row
+ * click opens the Root Index (Order · Timeline · Conversation).
+ */
+const PACKED_CONTEXT: OrderInspectorContext = {
+  defaultTab: 'shipping',
+  showDocumentsTab: false,
+  documentsMode: 'hidden',
+  recordCtas: [],
+  showDispatchExtras: true,
+  showDelete: true,
+  showEditorDock: true,
+  openOnIndex: true,
 };
 
 export function resolveOrderInspectorContext({
   panelContext,
+  orderView,
   journeyFirst = false,
 }: ResolveOrderInspectorContextInput): OrderInspectorContext {
   const base = (() => {
+    if (orderView === 'packed' || panelContext === 'packed') {
+      return PACKED_CONTEXT;
+    }
     switch (panelContext) {
       case 'queue':
       case 'fulfillment':
@@ -162,7 +192,7 @@ export function resolveOrderInspectorContext({
     }
   })();
 
-  return journeyFirst ? { ...base, defaultTab: 'timeline' } : base;
+  return journeyFirst ? { ...base, defaultTab: 'timeline', openOnIndex: false } : base;
 }
 
 /**

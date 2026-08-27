@@ -13,7 +13,7 @@ import { getTicketEntity } from '@/lib/zendesk-links';
 import { zendeskTicketUrl } from '@/lib/zendesk-ticket-url';
 import { uploadClaimPhotosToHelpdesk } from '@/lib/receiving-claim-attach';
 import {
-  archiveReceivingClaimPhotos,
+  archiveAndStampReceivingClaimPhotos,
   claimArchiveResponseFields,
 } from '@/lib/receiving-claim-archive';
 import {
@@ -222,7 +222,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     // same request (Create parity). Seller-step replies omit receivingId and
     // skip the copy. Best-effort — the comment already landed.
     const archived = receivingId
-      ? await archiveReceivingClaimPhotos({
+      ? await archiveAndStampReceivingClaimPhotos({
           orgId: ctx.organizationId,
           receivingId,
           ticketId: parsed.ticketId,

@@ -1,0 +1,86 @@
+'use client';
+
+import { useCallback, useEffect, useState } from 'react';
+import { useEventBridge } from '@/hooks';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+
+/**
+ * Carton-level default receiving type (receiving.intake_type) — the mirror of
+ * useSourcePlatform, for the carton TYPE pill. Type is now carton-default +
+ * line-override: this hook owns the carton DEFAULT; per-line overrides stay on
+ * receiving_lines.receiving_type. See migration 2026-06-13b.
+ *
+ * Seeds synchronously from the row so the pill never flashes 'PO', falls back to
+ * the active line's override when no carton default is set yet (so a freshly
+ * tagged line still reads correctly), and persists via PATCH /api/receiving/:id
+ * (`intake_type` + `is_return` so claim subjects / classification stay coherent),
+ * broadcasting `receiving-package-updated` so sibling surfaces stay in sync.
+ *
+ * Deliberately carton-first — the OPPOSITE precedence of `effectiveIntakeKind`
+ * (src/lib/receiving/kinds/registry.ts). That SoT answers "what's this LINE's
+ * effective type" (line override wins) for display; this hook answers "what
+ * should the CARTON's own type field show/edit" for an editor seeding from the
+ * record it's actually about to PATCH. Not a duplicate to consolidate.
+ */
+export function useReceivingType(row: ReceivingLineRow) {
+  // Carton default first; fall back to the line's own type so a carton that
+  // pre-dates the carton-default column (or was just tagged on one line) still
+  // shows a meaningful value instead of defaulting to 'PO'.
+  const seed = () =>
+    (row.carton_intake_type || row.receiving_type || 'PO').toUpperCase();
+  const [intakeType, setIntakeType] = useState<string>(seed);
+  const [typeSaving, setTypeSaving] = useState(false);
+
+  // Re-seed synchronously on carton/line change — no empty frame.
+  useEffect(() => {
+    setIntakeType(seed());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [row.receiving_id, row.carton_intake_type, row.receiving_type]);
+
+  // Mirror type edits from Classify / claim compose (same carton).
+  useEventBridge({
+    'receiving-package-updated': (e) => {
+      if (row.receiving_id == null) return;
+      const detail = (
+        e as CustomEvent<{
+          receiving_id?: number;
+          intake_type?: string | null;
+        }>
+      ).detail;
+      if (!detail || detail.receiving_id !== row.receiving_id) return;
+      if (detail.intake_type === undefined) return;
+      setIntakeType((detail.intake_type || 'PO').toUpperCase());
+    },
+  });
+
+  const saveType = useCallback(
+    async (next: string) => {
+      if (row.receiving_id == null) return;
+      const norm = (next || 'PO').toUpperCase();
+      setTypeSaving(true);
+      try {
+        // Keep is_return coherent with the type pill so claim subjects /
+        // columnsToClassification see a return carton (not type-only RETURN
+        // with is_return still false → "Return // Return" subjects).
+        const payload = { intake_type: norm, is_return: norm === 'RETURN' };
+        await fetch(`/api/receiving/${row.receiving_id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        window.dispatchEvent(
+          new CustomEvent('receiving-package-updated', {
+            detail: { receiving_id: row.receiving_id, ...payload },
+          }),
+        );
+      } catch {
+        /* silent — pill already reflects the optimistic value */
+      } finally {
+        setTypeSaving(false);
+      }
+    },
+    [row.receiving_id],
+  );
+
+  return { intakeType, setIntakeType, typeSaving, saveType };
+}

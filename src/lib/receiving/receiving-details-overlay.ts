@@ -1,4 +1,4 @@
-import type { ReceivingDetailsLog } from '@/lib/receiving/receiving-details-log';
+import type { ReceivingDetailsLog } from '@/components/station/receiving-details-log';
 
 type CartonApiRow = ReceivingDetailsLog & {
   id?: number | string;

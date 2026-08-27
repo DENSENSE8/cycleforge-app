@@ -1,0 +1,507 @@
+'use client';
+
+/**
+ * Sidebar body for `?tab=rooms`. Renders the full list of rooms (matching
+ * the cards from RoomsBoard), a contextual rooms-search bar, and an
+ * edit-mode toggle. Selecting a room sets `?room=<name>` so the right pane
+ * (RoomDetailForm) can drive its form state from the URL.
+ */
+
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { AnimatePresence, motion, Reorder, useReducedMotion } from '@/design-system/motion';
+import { toast } from '@/lib/toast';
+import { useLocations } from '@/hooks/useLocations';
+import { shouldClearUnknownRoomSelection } from '@/hooks/locations-cache';
+import { useBinsOverview } from '@/hooks/useBinsOverview';
+import { useRoomFinder } from './roomFinderContext';
+import { Check, GripVertical, Pencil, Plus, Trash2, X } from '@/components/Icons';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { Button, IconButton } from '@/design-system/primitives';
+import { requestConfirm } from '@/design-system/components/confirm';
+
+interface RoomSummary {
+  key: string;
+  room: string;
+  letter: string | null;
+  binCount: number;
+  totalQty: number;
+  alerts: number;
+}
+
+export function RoomsSidebarList() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const selectedRoom = searchParams.get('room') ?? null;
+  const editMode = searchParams.get('edit') === '1';
+  const creating = searchParams.get('new') === '1';
+
+  const {
+    rooms,
+    roomNames,
+    loading: roomsLoading,
+    fetching: roomsFetching,
+    removeRoom,
+    reorderRooms,
+    roomMutating,
+  } = useLocations();
+  const { rows: bins, loading: binsLoading } = useBinsOverview({ pollMs: 0 });
+
+  const { query } = useRoomFinder();
+  const [localOrder, setLocalOrder] = useState<string[] | null>(null);
+  const [pendingDeletes, setPendingDeletes] = useState<Set<string>>(new Set());
+
+  const setParam = useCallback(
+    (mutate: (params: URLSearchParams) => void) => {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set('tab', 'rooms');
+      mutate(params);
+      router.replace(`/warehouse?${params.toString()}`);
+    },
+    [router, searchParams],
+  );
+
+  const selectRoom = useCallback(
+    (name: string | null) => {
+      setParam((p) => {
+        if (name) p.set('room', name);
+        else p.delete('room');
+        p.delete('new');
+      });
+    },
+    [setParam],
+  );
+
+  const setEditMode = useCallback(
+    (next: boolean) => {
+      setParam((p) => {
+        if (next) p.set('edit', '1');
+        else p.delete('edit');
+      });
+    },
+    [setParam],
+  );
+
+  const startCreate = useCallback(() => {
+    setParam((p) => {
+      p.set('new', '1');
+      p.delete('room');
+    });
+  }, [setParam]);
+
+  // Zone letters from server (parent rows).
+  const zoneMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const r of rooms) {
+      const key = (r.room || r.name)?.trim();
+      if (!key) continue;
+      if (r.zone_letter && /^[A-Z]$/.test(r.zone_letter)) map[key] = r.zone_letter;
+    }
+    return map;
+  }, [rooms]);
+
+  const allRoomNames = useMemo(() => {
+    const set = new Set<string>();
+    for (const r of rooms) {
+      const key = (r.room || r.name)?.trim();
+      if (key) set.add(key);
+    }
+    for (const n of roomNames) if (n) set.add(n);
+    return Array.from(set);
+  }, [rooms, roomNames]);
+
+  const summaries: RoomSummary[] = useMemo(() => {
+    const byRoom = new Map<string, RoomSummary>();
+    for (const name of allRoomNames) {
+      byRoom.set(name, {
+        key: name,
+        room: name,
+        letter: zoneMap[name] ?? null,
+        binCount: 0,
+        totalQty: 0,
+        alerts: 0,
+      });
+    }
+    for (const b of bins) {
+      const name = (b.room || '').trim();
+      if (!name) continue;
+      let s = byRoom.get(name);
+      if (!s) {
+        s = { key: name, room: name, letter: b.zone_letter, binCount: 0, totalQty: 0, alerts: 0 };
+        byRoom.set(name, s);
+      }
+      s.binCount += 1;
+      s.totalQty += b.total_qty;
+      if (b.is_over_capacity) s.alerts += 1;
+      if (b.has_low_stock) s.alerts += 1;
+      if (b.is_stale) s.alerts += 1;
+    }
+    return Array.from(byRoom.values());
+  }, [allRoomNames, zoneMap, bins]);
+
+  const orderedSummaries = useMemo(() => {
+    const base = localOrder
+      ? localOrder.filter((n) => summaries.some((s) => s.room === n))
+      : summaries
+          .slice()
+          .sort((a, b) => {
+            const sa = rooms.find((r) => (r.room || r.name) === a.room)?.sort_order ?? 0;
+            const sb = rooms.find((r) => (r.room || r.name) === b.room)?.sort_order ?? 0;
+            if (sa !== sb) return sa - sb;
+            return a.room.localeCompare(b.room);
+          })
+          .map((s) => s.room);
+    for (const s of summaries) if (!base.includes(s.room)) base.push(s.room);
+    const map = new Map(summaries.map((s) => [s.room, s]));
+    return base
+      .filter((n) => !pendingDeletes.has(n))
+      .map((n) => map.get(n))
+      .filter((s): s is RoomSummary => Boolean(s));
+  }, [summaries, localOrder, rooms, pendingDeletes]);
+
+  // Apply search filter to the display list (DB lookup is just the global
+  // /api/locations fetch; the rooms search filters that result client-side
+  // since the dataset is small and already in memory).
+  const filteredSummaries = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return orderedSummaries;
+    return orderedSummaries.filter(
+      (s) =>
+        s.room.toLowerCase().includes(q) ||
+        (s.letter && s.letter.toLowerCase().includes(q)),
+    );
+  }, [orderedSummaries, query]);
+
+  // If the URL points at a room that no longer exists, clear the selection
+  // gracefully so the right pane shows the empty state. Skip while a room
+  // mutation or shared-cache refetch is in flight (rename race).
+  useEffect(() => {
+    if (
+      !shouldClearUnknownRoomSelection({
+        selectedRoom,
+        allRoomNames,
+        roomsLoading,
+        roomMutating,
+        isFetching: roomsFetching,
+      })
+    ) {
+      return;
+    }
+    selectRoom(null);
+  }, [selectedRoom, allRoomNames, roomsLoading, roomMutating, roomsFetching, selectRoom]);
+
+  const handleReorder = useCallback((order: string[]) => {
+    setLocalOrder(order);
+  }, []);
+
+  const exitEdit = useCallback(async () => {
+    if (localOrder) {
+      try {
+        const order = localOrder.filter((n) => !pendingDeletes.has(n));
+        await reorderRooms(order);
+        toast.success('Room order saved');
+        setLocalOrder(null);
+      } catch (err: any) {
+        toast.error(err?.message || 'Could not save order');
+      }
+    }
+    setEditMode(false);
+  }, [localOrder, pendingDeletes, reorderRooms, setEditMode]);
+
+  const handleDelete = useCallback(
+    async (name: string) => {
+      const ok = await requestConfirm({
+        description: `Delete room "${name}"? Bins are preserved in history.`,
+        tone: 'danger',
+        confirmLabel: 'Delete',
+      });
+      if (!ok) return;
+      setPendingDeletes((s) => new Set(s).add(name));
+      try {
+        const result = await removeRoom(name);
+        if (!result) throw new Error('Delete failed');
+        setLocalOrder((cur) => cur?.filter((n) => n !== name) ?? cur);
+        if (selectedRoom === name) selectRoom(null);
+        toast.success(`Room "${name}" deleted`);
+      } catch (err: any) {
+        setPendingDeletes((s) => {
+          const next = new Set(s);
+          next.delete(name);
+          return next;
+        });
+        toast.error(err?.message || 'Could not delete');
+      }
+    },
+    [removeRoom, selectedRoom, selectRoom],
+  );
+
+  const loading = roomsLoading || binsLoading;
+  const orderedNames = filteredSummaries.map((s) => s.room);
+
+  const totals = useMemo(
+    () =>
+      orderedSummaries.reduce(
+        (acc, s) => {
+          acc.bins += s.binCount;
+          acc.qty += s.totalQty;
+          return acc;
+        },
+        { bins: 0, qty: 0 },
+      ),
+    [orderedSummaries],
+  );
+
+  return (
+    <div className="flex h-full min-h-0 flex-col">
+      {/* ── Header band: title + edit/add controls ─────────────────────── */}
+      <div className="border-b border-border-hairline bg-gradient-to-b from-white to-gray-50/50 px-4 pt-4 pb-3">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <h2 className="text-lg font-semibold tracking-tight text-text-default">Rooms</h2>
+            <p className="mt-0.5 text-role-caption font-medium text-text-soft">
+              {loading
+                ? 'Loading…'
+                : `${orderedSummaries.length} room${orderedSummaries.length === 1 ? '' : 's'} · ${totals.bins} bin${totals.bins === 1 ? '' : 's'} · ${totals.qty} unit${totals.qty === 1 ? '' : 's'}`}
+            </p>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <HoverTooltip label="Add a new room" asChild>
+              {/* ds-raw-button: conditional active-fill (creating) gradient toggle — no DS variant models the two-state fill */}
+              <button
+                type="button"
+                onClick={() => startCreate()}
+                aria-label="Add a new room"
+                className={`flex h-9 items-center gap-1 rounded-full px-3 text-role-caption font-semibold transition-all active:scale-[0.97] ${
+                  creating
+                    ? 'bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow-md shadow-blue-600/30'
+                    : 'border border-border-soft bg-surface-card text-text-muted hover:bg-surface-hover'
+                }`}
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Add
+              </button>
+            </HoverTooltip>
+            <HoverTooltip label={editMode ? 'Finish editing' : 'Edit rooms'} asChild>
+              {/* ds-raw-button: two-state edit toggle (aria-pressed) with conditional gradient fill + icon swap */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (editMode) exitEdit();
+                  else setEditMode(true);
+                }}
+                aria-pressed={editMode}
+                aria-label={editMode ? 'Finish editing' : 'Edit rooms'}
+                className={`flex h-9 w-9 items-center justify-center rounded-full transition-all active:scale-95 ${
+                  editMode
+                    ? 'bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow-md shadow-blue-600/30'
+                    : 'border border-border-soft bg-surface-card text-text-muted hover:bg-surface-hover'
+                }`}
+              >
+                {editMode ? <Check className="h-3.5 w-3.5" /> : <Pencil className="h-3.5 w-3.5" />}
+              </button>
+            </HoverTooltip>
+          </div>
+        </div>
+
+        {/* Edit-mode hint */}
+        <AnimatePresence>
+          {editMode && (
+            <motion.p
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="mt-2 overflow-hidden rounded-none bg-blue-50/70 px-2.5 py-1.5 text-role-micro leading-snug text-blue-700 ring-1 ring-blue-100"
+            >
+              Drag rooms to reorder · trash deletes (bins preserved). Tap any
+              room to open it in the form on the right.
+            </motion.p>
+          )}
+        </AnimatePresence>
+
+        {/* Contextual rooms search lives in the sidebar's header band
+            (WarehouseSidebarPanel). One bar per surface — writes into the
+            shared RoomFinderContext which this list reads via
+            useRoomFinder(). */}
+      </div>
+
+      {/* ── Scrolling list of room cards ───────────────────────────────── */}
+      <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-6 pt-3 scrollbar-hide">
+        {loading ? (
+          <SkeletonList />
+        ) : filteredSummaries.length === 0 ? (
+          <EmptyState query={query} onAdd={startCreate} />
+        ) : (
+          <Reorder.Group
+            axis="y"
+            values={orderedNames}
+            onReorder={handleReorder}
+            className="flex flex-col gap-2"
+            as="div"
+          >
+            <AnimatePresence initial={false}>
+              {filteredSummaries.map((s) => (
+                <Reorder.Item
+                  key={s.key}
+                  value={s.room}
+                  dragListener={editMode}
+                  whileDrag={{ scale: 1.02, zIndex: 20 }}
+                  className="touch-none"
+                  as="div"
+                >
+                  <RoomRow
+                    summary={s}
+                    selected={selectedRoom === s.room}
+                    editMode={editMode}
+                    mutating={roomMutating}
+                    onSelect={() => selectRoom(s.room)}
+                    onDelete={() => handleDelete(s.room)}
+                  />
+                </Reorder.Item>
+              ))}
+            </AnimatePresence>
+          </Reorder.Group>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── List row ──────────────────────────────────────────────────────────────
+
+interface RoomRowProps {
+  summary: RoomSummary;
+  selected: boolean;
+  editMode: boolean;
+  mutating: boolean;
+  onSelect: () => void;
+  onDelete: () => void;
+}
+
+function RoomRow({ summary, selected, editMode, mutating, onSelect, onDelete }: RoomRowProps) {
+  const reduceMotion = useReducedMotion();
+  return (
+    <motion.div
+      layout={!reduceMotion}
+      transition={{ type: 'spring', damping: 28, stiffness: 320 }}
+      className={`relative overflow-hidden rounded-none bg-surface-card shadow-sm transition-all ${
+        selected
+          ? 'ring-2 ring-blue-500 shadow-blue-600/10'
+          : 'ring-1 ring-border-soft/70 hover:ring-blue-200'
+      }`}
+    >
+      <div className="flex items-stretch gap-2 p-3">
+        {editMode && (
+          <div
+            aria-hidden
+            className="flex w-5 shrink-0 cursor-grab items-center justify-center text-text-faint active:cursor-grabbing"
+          >
+            <GripVertical className="h-4 w-4" />
+          </div>
+        )}
+
+        {/* ds-raw-button: master-detail list row (zone tile + multi-line title/meta), text-left — not a standard action button */}
+        <button
+          type="button"
+          onClick={onSelect}
+          className="flex min-w-0 flex-1 items-center gap-3 text-left"
+        >
+          <ZoneTile letter={summary.letter} active={selected} />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-role-body font-semibold leading-snug tracking-tight text-text-default">
+              {summary.room}
+            </p>
+            <p className="mt-0.5 truncate text-role-micro text-text-soft">
+              {summary.binCount} bin{summary.binCount === 1 ? '' : 's'} · {summary.totalQty} unit{summary.totalQty === 1 ? '' : 's'}
+              {summary.alerts > 0 ? (
+                <span className="ml-1 font-semibold text-amber-600">· {summary.alerts} alert{summary.alerts === 1 ? '' : 's'}</span>
+              ) : null}
+            </p>
+          </div>
+        </button>
+
+        {editMode && (
+          <IconButton
+            onClick={onDelete}
+            disabled={mutating}
+            ariaLabel={`Delete ${summary.room}`}
+            icon={<Trash2 className="h-3.5 w-3.5" />}
+            className="flex h-8 w-8 shrink-0 items-center justify-center self-center rounded-full bg-red-50 text-red-600 hover:bg-red-100 disabled:opacity-50"
+          />
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
+function ZoneTile({ letter, active }: { letter: string | null; active: boolean }) {
+  if (letter) {
+    return (
+      <div
+        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl font-mono text-base font-semibold ring-1 transition-colors ${
+          active
+            ? 'bg-gradient-to-br from-blue-500 to-blue-700 text-white ring-blue-700/20 shadow-sm shadow-blue-600/30'
+            : 'bg-gradient-to-br from-blue-50 to-blue-100/70 text-blue-700 ring-blue-200'
+        }`}
+      >
+        {letter}
+      </div>
+    );
+  }
+  return (
+    <HoverTooltip label="No zone letter assigned" asChild focusable={false}>
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-50 font-mono text-sm font-semibold text-amber-700 ring-1 ring-amber-200">
+        ?
+      </div>
+    </HoverTooltip>
+  );
+}
+
+function SkeletonList() {
+  return (
+    <div className="flex flex-col gap-2">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <div
+          key={i}
+          className="h-[60px] animate-pulse rounded-2xl bg-gradient-to-r from-gray-100 via-gray-50 to-gray-100"
+        />
+      ))}
+    </div>
+  );
+}
+
+function EmptyState({ query, onAdd }: { query: string; onAdd: () => void }) {
+  if (query.trim()) {
+    return (
+      <div className="flex flex-col items-center gap-2 px-4 py-10 text-center">
+        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-surface-canvas ring-1 ring-border-soft">
+          <X className="h-5 w-5 text-text-faint" />
+        </div>
+        <p className="text-role-caption font-semibold text-text-muted">No rooms match “{query}”</p>
+        <p className="max-w-[240px] text-role-caption text-text-soft">
+          Try a different name or zone letter.
+        </p>
+      </div>
+    );
+  }
+  return (
+    <div className="flex flex-col items-center gap-2 px-4 py-10 text-center">
+      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-50 to-blue-100 ring-1 ring-blue-200">
+        <Plus className="h-5 w-5 text-blue-500" />
+      </div>
+      <p className="text-role-caption font-semibold text-text-muted">No rooms yet</p>
+      <p className="max-w-[240px] text-role-caption text-text-soft">
+        Add your first room. Each room gets a zone letter that prints on every
+        label.
+      </p>
+      <Button
+        variant="primary"
+        size="sm"
+        onClick={onAdd}
+        icon={<Plus className="h-3.5 w-3.5" />}
+        className="mt-1 h-9 rounded-full px-3 shadow-md shadow-blue-600/30"
+      >
+        Add a room
+      </Button>
+    </div>
+  );
+}

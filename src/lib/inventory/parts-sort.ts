@@ -12,7 +12,6 @@ import type { DecisionRule } from '@/lib/workflow/decision-eval';
 import { observePlacementParity } from '@/lib/workflow/placement-parity';
 import { resolveSitePlacementBin } from '@/lib/workflow/placement-policy';
 import { isPlacementStranglePartsSort } from '@/lib/feature-flags';
-import { NO_SESSION } from '@/lib/sessions/attribution';
 
 /**
  * Auto-sort to the Parts bin.
@@ -220,7 +219,6 @@ export async function sortSerialUnitToParts(
   const runMove = async (txc: Pick<PoolClient, 'query'>): Promise<boolean> => {
     const moved = await transition(
       {
-        session: NO_SESSION,
         unitId: unit.id,
         to: 'STOCKED',
         eventType: 'PUTAWAY',

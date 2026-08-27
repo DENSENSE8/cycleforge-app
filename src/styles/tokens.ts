@@ -1,0 +1,109 @@
+import { motionDurations, motionEasings } from '@/design-system/foundations/motion';
+import { designSystemCssVariables } from '@/design-system/tokens/css-variables';
+import { baseColors, semanticColors } from '@/design-system/tokens/colors';
+import { fontFamilies } from '@/design-system/tokens/typography/families';
+import { fontSizes } from '@/design-system/tokens/typography/sizes';
+import { fontWeights } from '@/design-system/tokens/typography/weights';
+
+type TokenValue = string;
+
+export const designTokens = {
+  colors: {
+    brandPrimary: semanticColors.gradient.primary,
+    brandLight: baseColors.blue[50],
+    neutral50: semanticColors.background.canvas,
+    neutral100: semanticColors.background.subtle,
+    neutral200: semanticColors.border.subtle,
+    neutral700: semanticColors.text.secondary,
+    neutral900: semanticColors.text.primary,
+    statusActive: semanticColors.status.active,
+    statusInactive: semanticColors.status.inactive,
+    statusConfirmed: semanticColors.status.confirmed,
+    statusShipped: semanticColors.status.shipped,
+    statusDelivered: semanticColors.status.delivered,
+    statusInvoiced: semanticColors.status.invoiced,
+    statusPaid: semanticColors.status.paid,
+    statusOverdue: semanticColors.status.overdue,
+    statusVoid: semanticColors.status.void,
+    statusDraft: semanticColors.status.draft,
+    statusOutOfStock: semanticColors.status.outOfStock,
+    statusLowStock: semanticColors.status.lowStock,
+    error: semanticColors.text.danger,
+    warning: semanticColors.text.warning,
+    success: semanticColors.text.success,
+    info: semanticColors.functional.logistics,
+  },
+  typography: {
+    fontSans: fontFamilies.sans,
+    fontMono: fontFamilies.mono,
+    textXs: fontSizes.xs,
+    textSm: fontSizes.sm,
+    textBase: fontSizes.md,
+    textLg: fontSizes.lg,
+    textXl: fontSizes.xl,
+    text2xl: fontSizes['2xl'],
+    fontNormal: String(fontWeights.regular),
+    fontMedium: String(fontWeights.medium),
+    // 600 is the ceiling — there is no `fontBold`/`fontBlack`; 700+ is not a weight
+    // (see typography/weights.ts).
+    fontSemibold: String(fontWeights.semibold),
+  },
+  // spacing intentionally absent: the density-aware scale (spacing.mjs) is
+  // consumed by Tailwind directly; the old --space-* var emission had zero
+  // readers and its values disagreed with the rendered Tailwind scale.
+} as const;
+
+export const designTokenCssVariables: Record<string, TokenValue> = {
+  ...designSystemCssVariables,
+  '--color-brand-primary': designTokens.colors.brandPrimary,
+  '--color-brand-light': designTokens.colors.brandLight,
+  '--color-neutral-50': designTokens.colors.neutral50,
+  '--color-neutral-100': designTokens.colors.neutral100,
+  '--color-neutral-200': designTokens.colors.neutral200,
+  '--color-neutral-700': designTokens.colors.neutral700,
+  '--color-neutral-900': designTokens.colors.neutral900,
+  '--color-status-active': designTokens.colors.statusActive,
+  '--color-status-inactive': designTokens.colors.statusInactive,
+  '--color-status-confirmed': designTokens.colors.statusConfirmed,
+  '--color-status-shipped': designTokens.colors.statusShipped,
+  '--color-status-delivered': designTokens.colors.statusDelivered,
+  '--color-status-invoiced': designTokens.colors.statusInvoiced,
+  '--color-status-paid': designTokens.colors.statusPaid,
+  '--color-status-overdue': designTokens.colors.statusOverdue,
+  '--color-status-void': designTokens.colors.statusVoid,
+  '--color-status-draft': designTokens.colors.statusDraft,
+  '--color-status-out-of-stock': designTokens.colors.statusOutOfStock,
+  '--color-status-low-stock': designTokens.colors.statusLowStock,
+  '--color-error': designTokens.colors.error,
+  '--color-warning': designTokens.colors.warning,
+  '--color-success': designTokens.colors.success,
+  '--color-info': designTokens.colors.info,
+  // NOTE: the condensed cut is deliberately absent here. `--font-condensed` /
+  // `--ds-font-condensed` are declared ONLY in src/styles/globals.css, so the
+  // duplicated font chain this module still owns shrinks instead of growing
+  // (see FONT_CHAIN_EXCEPTION in src/app/head-token-order.guard.test.ts).
+  '--font-sans': designTokens.typography.fontSans,
+  '--font-mono': designTokens.typography.fontMono,
+  '--text-xs': designTokens.typography.textXs,
+  '--text-sm': designTokens.typography.textSm,
+  '--text-base': designTokens.typography.textBase,
+  '--text-lg': designTokens.typography.textLg,
+  '--text-xl': designTokens.typography.textXl,
+  '--text-2xl': designTokens.typography.text2xl,
+  '--font-normal': designTokens.typography.fontNormal,
+  '--font-medium': designTokens.typography.fontMedium,
+  // 600 is the ceiling — there is no `--font-bold`; 700 is not a weight (weights.ts).
+  '--font-semibold': designTokens.typography.fontSemibold,
+  '--ds-motion-fast': motionDurations.fast,
+  '--ds-motion-normal': motionDurations.normal,
+  '--ds-ease-standard': motionEasings.standard,
+  // Theme-varying --ds-color-* variables (text-primary, background-surface, …)
+  // are OWNED by the theme registry (src/design-system/themes/registry.ts),
+  // injected as <style id="app-theme-palettes"> — never redeclare them here.
+  '--ds-font-sans': 'var(--font-sans)',
+  '--ds-font-mono': 'var(--font-mono)',
+};
+
+export const designTokenStyleText = `:root {\n${Object.entries(designTokenCssVariables)
+  .map(([key, value]) => `  ${key}: ${value};`)
+  .join('\n')}\n}`;

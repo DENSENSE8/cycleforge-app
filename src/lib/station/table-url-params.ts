@@ -11,7 +11,7 @@
  */
 
 import { DENSITY_PARAM } from '@/lib/tables/table-density';
-import { STAFF_FILTER_PARAM } from '@/lib/station/useStaffFilter';
+import { STAFF_FILTER_PARAM } from '@/hooks/useStaffFilter';
 
 export { DENSITY_PARAM, STAFF_FILTER_PARAM };
 

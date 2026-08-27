@@ -1,15 +1,19 @@
 import { NextRequest, NextResponse, after } from 'next/server';
 import pool from '@/lib/db';
-import { tenantQuery } from '@/lib/tenancy/db';
+import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import { recomputeEnrichmentForOrders } from '@/lib/neon/packer-log-enrichment';
-import { invalidateAllOrdersApiCaches } from '@/lib/orders/invalidation';
-import { publishOrderChanged } from '@/lib/realtime/publish';
+import { invalidateOrderViews } from '@/lib/orders/invalidation';
+import { upsertOrderUnshippedMembership } from '@/lib/orders/feed-membership-projection';
 import { resolveOrCreateSkuCatalogId } from '@/lib/neon/sku-catalog-queries';
-import { resolveShipmentId } from '@/lib/shipping/resolve';
+import { WORK_ASSIGNMENTS_ACTIVE_ON_CONFLICT } from '@/lib/neon/work-assignments-conflict';
+import { registerShipmentPermissive } from '@/lib/shipping/sync-shipment';
+import { linkShipment } from '@/lib/shipping/shipment-links';
+import { parseTrackingPaste } from '@/lib/receiving/tracking-paste';
 import { CONDITION_GRADES } from '@/lib/conditions';
 import { withAuth } from '@/lib/auth/withAuth';
 import { wouldExceedPlanCeiling, planLimitResponseBody } from '@/lib/billing/plan-ceilings';
 import { readIdempotencyKey, withIdempotencyClaim } from '@/lib/api-idempotency';
+import { getOrgTypes } from '@/lib/catalog/org-catalog';
 
 /**
  * POST /api/orders/add - Add a new order to the system
@@ -53,7 +57,10 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         // tracking number and condition grade were accepted and silently dropped
         // (order landed with shipment_id NULL → unscannable at every station).
         shippingTrackingNumber,
+        shippingTrackingNumbers,
         condition,
+        typeSlug,
+        isUrgent,
       } = body;
 
       // Validate required fields
@@ -88,6 +95,14 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
 
       const orgId = ctx.organizationId;
 
+      const typeSlugRaw = typeof typeSlug === 'string' ? typeSlug.trim().toUpperCase() : '';
+      let typeId: number | null = null;
+      if (typeSlugRaw) {
+        const types = await getOrgTypes(orgId);
+        typeId = types.find((t) => t.slug.toUpperCase() === typeSlugRaw)?.id ?? null;
+      }
+      const isUrgentValue = Boolean(isUrgent);
+
       // Soft plan ceiling: manual order creation checks maxMonthlyOrders.
       // Dormant until PLAN_FEATURE_ENFORCED; dogfood org exempt; fail-open
       // (see plan-ceilings.ts). High-volume webhook/cron ingestion is NOT gated.
@@ -120,18 +135,36 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         orderId,
       }, ctx.organizationId);
 
-      // Link the tracking number to a shipment BEFORE the insert, so a resolver
+      // Link tracking numbers to shipments BEFORE the insert, so a resolver
       // failure aborts cleanly instead of leaving a half-created order that can
       // never be scanned. `shipment_id` stays NULL when no tracking is supplied —
       // that is the modeled "awaiting label" state (see the `awaitingOnly` scope
-      // in /api/orders), not an error.
-      const trackingRaw =
-        typeof shippingTrackingNumber === 'string' ? shippingTrackingNumber.trim() : '';
-      let shipmentId: number | null = null;
-      if (trackingRaw) {
+      // in /api/orders), not an error. Extra rows paste into `shipment_links`.
+      const trackingBlobs: string[] = [];
+      if (Array.isArray(shippingTrackingNumbers)) {
+        for (const item of shippingTrackingNumbers) {
+          if (typeof item === 'string' && item.trim()) trackingBlobs.push(item);
+        }
+      }
+      if (typeof shippingTrackingNumber === 'string' && shippingTrackingNumber.trim()) {
+        trackingBlobs.push(shippingTrackingNumber);
+      }
+      const parsedTrackings = trackingBlobs.length
+        ? parseTrackingPaste(trackingBlobs)
+        : { ok: false as const, error: 'empty' };
+      const trackingList = parsedTrackings.ok ? parsedTrackings.trackings : [];
+
+      const shipmentIds: number[] = [];
+      for (const trackingRaw of trackingList) {
         try {
-          const resolved = await resolveShipmentId(trackingRaw, orgId);
-          shipmentId = resolved.shipmentId;
+          // Permissive register, no live carrier sync. resolveShipmentId would
+          // UPS-sync a 1Z test number into EXCEPTION and SHIPPED_BY_CARRIER_SQL
+          // would hide the row from To Ship pending.
+          const permissive = await registerShipmentPermissive(
+            { trackingNumber: trackingRaw, sourceSystem: 'orders.add', syncCarrier: false },
+            orgId,
+          );
+          if (permissive?.id != null) shipmentIds.push(permissive.id);
         } catch (err) {
           console.error('[orders/add] shipment resolution failed', err);
           return {
@@ -143,41 +176,82 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
           };
         }
       }
+      const shipmentId = shipmentIds[0] ?? null;
 
-      const result = await tenantQuery(
-        orgId,
-        `INSERT INTO orders (
-          order_id,
-          product_title,
-          sku,
-          account_source,
-          status,
-          created_at,
-          sku_catalog_id,
-          sale_amount,
-          currency,
-          organization_id,
-          shipment_id,
-          condition
-        ) VALUES ($1, $2, $3, $4, $5, NOW(), $6, $7, $8, $9::uuid, $10, $11)
-        RETURNING id, order_id, product_title, sku, shipment_id, condition`,
-        [
-          orderId,
-          productTitle,
-          sku || null,
-          accountSource,
-          status,
-          skuCatalogId,
-          saleAmountValue,
-          currencyValue,
-          ctx.organizationId,
+      const result = await withTenantTransaction(orgId, async (client) => {
+        const inserted = await client.query(
+          `INSERT INTO orders (
+            order_id,
+            product_title,
+            sku,
+            account_source,
+            status,
+            created_at,
+            sku_catalog_id,
+            sale_amount,
+            currency,
+            organization_id,
+            shipment_id,
+            condition,
+            type_id,
+            is_urgent
+          ) VALUES ($1, $2, $3, $4, $5, NOW(), $6, $7, $8, $9::uuid, $10, $11, $12, $13)
+          RETURNING id, order_id, product_title, sku, shipment_id, condition, created_at`,
+          [
+            orderId,
+            productTitle,
+            sku || null,
+            accountSource,
+            status,
+            skuCatalogId,
+            saleAmountValue,
+            currencyValue,
+            ctx.organizationId,
+            shipmentId,
+            conditionValue,
+            typeId,
+            isUrgentValue,
+          ],
+        );
+        const orderPk = Number(inserted.rows[0].id);
+        for (let i = 0; i < shipmentIds.length; i += 1) {
+          await linkShipment(
+            orgId,
+            {
+              ownerType: 'ORDER',
+              ownerId: orderPk,
+              shipmentId: shipmentIds[i],
+              direction: 'OUTBOUND',
+              isPrimary: i === 0,
+              role: i === 0 ? 'ORDER_PRIMARY' : 'ORDER_EXTRA',
+              source: 'orders.add',
+              linkedBy: ctx.staffId ?? null,
+            },
+            client,
+          );
+        }
+        await client.query(
+          `INSERT INTO work_assignments
+             (organization_id, entity_type, entity_id, work_type, assigned_tech_id, status, priority, deadline_at)
+           VALUES ($1, 'ORDER', $2, 'TEST', NULL, 'OPEN', 100, NULL)
+           ON CONFLICT ${WORK_ASSIGNMENTS_ACTIVE_ON_CONFLICT} DO NOTHING`,
+          [orgId, orderPk],
+        );
+        await upsertOrderUnshippedMembership(client, {
+          orgId,
+          orderPk,
           shipmentId,
-          conditionValue,
-        ]
-      );
+          title: String(inserted.rows[0].product_title ?? productTitle),
+        });
+        return inserted;
+      });
 
-      await invalidateAllOrdersApiCaches(['shipped'], ctx.organizationId);
-      await publishOrderChanged({ organizationId: ctx.organizationId, orderIds: [result.rows[0].id], source: 'orders.add' });
+      await invalidateOrderViews({
+        organizationId: ctx.organizationId,
+        orderIds: [Number(result.rows[0].id)],
+        source: 'orders.add',
+        extraTags: ['shipped', 'unshipped'],
+      });
       // A new order can newly match an already-packed scan by tracking — refresh
       // the shipped-table read model for any affected PACK scans (best-effort).
       after(() =>
@@ -190,7 +264,18 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         body: {
           success: true,
           message: 'Order added successfully',
-          order: result.rows[0],
+          order: {
+            ...result.rows[0],
+            shipping_tracking_number: trackingList[0] ?? null,
+            tracking_number: trackingList[0] ?? null,
+            created_at: new Date().toISOString(),
+            deadline_at: null,
+            has_tech_scan: false,
+            is_out_of_stock: false,
+            is_urgent: isUrgentValue,
+            account_source: accountSource,
+            status,
+          },
         },
       };
     });

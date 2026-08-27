@@ -7,7 +7,7 @@
  *   rollups live only here
  * - `drillOrder` — durable selected order-group key
  *
- * Orthogonal to the inspector (`openOrderId`).
+ * Orthogonal to compare (`clayout` / `c0`…`c3`) and inspector (`openOrderId`).
  */
 
 import {
@@ -16,7 +16,7 @@ import {
   writeLedgerDrillParams,
   type LedgerDrillLayout,
   type LedgerDrillUrlContract,
-} from '@/lib/grid/ledger-drill-layout';
+} from '@/design-system/components/grid';
 
 export const ORDERS_DRILL_LAYOUT_PARAM = 'olayout';
 export const ORDERS_DRILL_ORDER_PARAM = 'drillOrder';

@@ -363,25 +363,18 @@ export async function hybridSearch(
   const limit = Math.min(Math.max(opts.limit ?? 20, 1), 50);
   if (!q) return { hits: [], usedSemantic: false };
 
-  // 1) Exact/ID/serial bypass — deterministic parent-table truth. It runs in
-  //    PARALLEL with the keyword arm and, on a hit, ranks first — but it no
-  //    longer SHORT-CIRCUITS. The bypass fans out to the global-search parent
-  //    searchers (order/receiving/sku/repair/fba/unit). Keyword docs still
-  //    MERGE under exact hits so any doc the parent searchers miss (stale
-  //    index lag, or types without a parent searcher) can still surface.
-  //    Identifier queries still skip the EMBED (the keystroke-latency win);
-  //    only natural-language queries pay for the vector arm. The bypass is
-  //    SKIPPED under a hard entityTypes scope (a scoped tool must hit the docs
-  //    arms, never return cross-type parent hits).
+  // 1) Exact/ID/serial bypass — deterministic parent-table truth.
+  //    Identifier queries skip keyword + embed: a miss is a miss (no pg_trgm
+  //    / contains fuzzy). Natural-language queries use keyword + vector.
   const isIdentifier = !opts.entityTypes && looksLikeIdentifier(q);
 
-  // 2+3) Keyword (always) + exact (identifier only) + vector (NL only). The
-  //      vector arm quietly drops out when the embedding isn't available.
   const [exact, keywordRows, queryVec] = await Promise.all([
     isIdentifier
       ? deps.exactSearch(orgId, q, limit).catch(() => [] as GlobalSearchResult[])
       : Promise.resolve([] as GlobalSearchResult[]),
-    deps.keywordSearch(orgId, q, opts.entityTypes, ARM_LIMIT).catch(() => [] as DocHitRow[]),
+    isIdentifier
+      ? Promise.resolve([] as DocHitRow[])
+      : deps.keywordSearch(orgId, q, opts.entityTypes, ARM_LIMIT).catch(() => [] as DocHitRow[]),
     isIdentifier ? Promise.resolve(null) : deps.embedQuery(orgId, q),
   ]);
 

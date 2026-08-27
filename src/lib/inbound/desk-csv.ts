@@ -43,6 +43,8 @@ export interface DeskImportRow {
   returnReason?: string | null;
   rmaId?: string | null;
   conditionGrade?: string | null;
+  /** Explicit sku_catalog.id from the Add Return inventory picker. */
+  skuCatalogId?: number | null;
   /**
    * True when the row came from a native Amazon Manage Returns export.
    * Desk-import gates these on sku_catalog.sku = ASIN.

@@ -9,7 +9,6 @@ import {
   requireHelpdeskProvider,
 } from '@/lib/integrations/helpdesk';
 import { recordOpsEvent } from '@/lib/ops-events';
-import { NO_SESSION } from '@/lib/sessions/attribution';
 import { unlinkReceivingClaimPhotosFromTicket } from '@/lib/photos/claim-link';
 import { listAllReceivingPhotoIds } from '@/lib/photos/queries/receiving-list';
 import { registerShipmentPermissive } from '@/lib/shipping/sync-shipment';
@@ -353,9 +352,6 @@ async function recordTicketLinkEvent(args: {
   if (!opsEntityType) return;
   try {
     await recordOpsEvent({
-      // Support desk work has no scan session and no task session wired yet.
-      // When the Support surface starts one, thread it through `args`.
-      session: NO_SESSION,
       organizationId: args.orgId,
       entityType: opsEntityType,
       entityId: args.entityId,

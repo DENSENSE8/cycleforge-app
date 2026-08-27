@@ -22,6 +22,7 @@ import {
   buildTrackingJourneyHref,
   buildUnitJourneyHref,
 } from '@/lib/serial/serial-journey';
+import { orderNumberEqualsQuery } from '@/lib/search/order-number-match';
 
 export type SearchHitEntityType = 'order' | 'unit' | 'receiving' | 'sku' | 'repair' | 'fba';
 
@@ -155,11 +156,7 @@ export function searchHitHref(dbType: SearchEntityType, entityId: number): strin
     case 'SERIAL_UNIT':
       return `/inventory/units?unit=${entityId}`;
     case 'RECEIVING':
-      // The READ view (plan D4). This used to be `/unbox?openReceivingId=`,
-      // which meant every search hit — and every sole-hit auto-open — dropped
-      // the operator into the WORK editor, the exact surface a lookup is trying
-      // to avoid. `/unbox` is still one click away from the inspector.
-      return `/carton/${entityId}`;
+      return `/search?sel=receiving:${entityId}`;
     case 'SKU':
       return `/products?view=qc&skuId=${entityId}`;
     case 'REPAIR':
@@ -178,7 +175,9 @@ export function searchHitHref(dbType: SearchEntityType, entityId: number): strin
  * without pulling the server-only pool/tenancy graph into the bundle.
  */
 export function looksLikeIdentifier(query: string): boolean {
-  const q = query.trim();
+  const q = String(query ?? '')
+    .trim()
+    .replace(/[\u2010-\u2015\u2212]/g, '-');
   if (!q || /\s/.test(q)) return false;
   if (/^\d{3,}$/.test(q)) return true; // bare numeric id / tracking fragment
   // Alphanumeric token with digits (serials, FNSKUs, order ids, LPNs, RS-#).
@@ -295,10 +294,9 @@ type SoleOrderMatchHit = {
 
 /**
  * Identifier lookup miss → retrieve bridge: auto-open when retrieve settled to
- * **exactly one ORDER** whose display identity contains the query (human order
- * # lives in subtitle; numeric pk may match `id`). Other entity types
- * (receiving PO siblings, units) are ignored — eBay-style ids often return
- * ORDER + RECEIVING together; that must still open the order.
+ * **exactly one ORDER** whose marketplace order # equals the query (dash-
+ * insensitive; last-8 when the paste has ≥8 digits). Numeric `orders.id` is
+ * not an order number.
  *
  * Returns null for Zoho PO / multi-order / true miss — callers must fall
  * through to the cross-entity results list, never force a dead `openOrderId`.
@@ -307,17 +305,18 @@ export function soleMatchingOrderHit(
   hits: ReadonlyArray<SoleOrderMatchHit>,
   query: string,
 ): { id: number } | null {
-  const q = query.trim().toLowerCase();
+  const q = query.trim();
   if (!q) return null;
 
   const matched = hits.filter((hit) => {
     if (hit.entityType !== 'order' || !Number.isFinite(hit.id) || hit.id <= 0) return false;
-    if (String(hit.id) === q) return true;
-    const hay = [hit.subtitle, hit.title, hit.facets?.order_id]
-      .filter(Boolean)
-      .join(' ')
-      .toLowerCase();
-    return hay.includes(q);
+    const orderId =
+      hit.facets?.order_id?.trim() ||
+      String(hit.subtitle ?? '')
+        .split('·')[0]
+        ?.trim() ||
+      null;
+    return orderNumberEqualsQuery(orderId, q);
   });
 
   if (matched.length === 1) return { id: matched[0].id };

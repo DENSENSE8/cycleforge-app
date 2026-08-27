@@ -108,6 +108,13 @@ const TABLE_ENTITY_FAMILIES = [
    *  a view of it — different store, different question, different row shape. */
   'tasks',
   'catalog-link',
+  /**
+   * Review → Missing item number. Sibling of `catalog-link`, never a merge:
+   * different store (`order_import_exceptions` vs `order_catalog_link_chores`)
+   * and a different question (sheet row never became an order vs listing
+   * unmatched to a catalog SKU).
+   */
+  'import-exception',
   'station-history',
   'fba',
   'units',

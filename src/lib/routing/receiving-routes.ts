@@ -39,7 +39,7 @@ import { isRepairColumnSort } from '@/lib/repair/repair-display-sort';
 import { parseRepairTab } from '@/lib/walk-in/history-modes';
 import { resolveTriageView } from '@/utils/triage-workspace-state';
 import { parseUnboxViewWire } from '@/utils/unbox-workspace-state';
-import type { ReceivingMode } from '@/lib/receiving/receiving-sidebar-shared';
+import type { ReceivingMode } from '@/components/sidebar/receiving/receiving-sidebar-shared';
 import {
   defineRouteParams,
   paramDateKey,
@@ -141,8 +141,18 @@ export const UNBOX_ROUTE_PARAMS = defineRouteParams({
     /** Band 2 KPI canvas viz mode — tiles · bars · pie · line. Default pie. */
     uviz: paramEnum(['tiles', 'bars', 'pie', 'line'] as const),
     /**
+     * TradingView-like compare layout — `single` (default, omitted) · `split`
+     * · `quad`. Pane recipes ride `c0`…`c3`.
+     */
+    clayout: paramEnum(['single', 'split', 'quad'] as const),
+    c0: paramText,
+    c1: paramText,
+    c2: paramText,
+    c3: paramText,
+    /**
      * History linked parent→child drill vs folded list. Default (omitted) =
      * list (classic single PO-fold grid). `drill` opts into linked dual panes.
+     * Orthogonal to `clayout` compare.
      */
     hlayout: paramEnum(['drill', 'list'] as const),
     /** Selected PO-group key while History drill is active (`po:…` / `src:…` / `line:…`). */
@@ -184,7 +194,7 @@ export const INCOMING_ROUTE_PARAMS = defineRouteParams({
   owns: {
     /** Desk lane (`pipeline` default, omitted | `docked`). */
     lane: paramEnum(['pipeline', 'docked'] as const),
-    /** Right-pane sub-view (`pos` default | `email` | `removed`) — Pipeline only. */
+    /** Retired Incoming collection face (`pos` only). Hygiene strips leftovers. */
     incview: paramRoundTrip(parseIncomingViewWire),
     /**
      * Bulk tracking paste filter — canonical keys, comma-joined. Names specific
@@ -198,6 +208,8 @@ export const INCOMING_ROUTE_PARAMS = defineRouteParams({
     inbound: paramEnum(['all', 'zoho', 'ebay', 'amazon', 'manual'] as const),
     /** Intake kind filter (`all` omitted | `purchase` | `return`) — Pipeline. */
     inkind: paramEnum(['all', 'purchase', 'return'] as const),
+    /** Returns CSV/TSV staging owns the desk centre while set. */
+    import: paramEnum(['csv'] as const),
     /**
      * Server ORDER BY — Pipeline ∪ Docked union so hygiene does not strip the
      * other lane’s sort on a deep link. Lane switch clears the incompatible id

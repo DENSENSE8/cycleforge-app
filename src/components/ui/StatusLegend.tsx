@@ -1,0 +1,161 @@
+'use client';
+
+import type { ReactNode } from 'react';
+import { Loader2 } from '@/components/Icons';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
+
+/** Minimal shape a legend needs from a state-meta map (dot color + tooltip copy). */
+export interface StatusLegendMeta {
+  label: string;
+  description: string;
+  /** Tailwind bg class for the status dot. */
+  dot: string;
+}
+
+/** One chip in the legend. `fold` rolls a second state's count into this one. */
+export interface StatusLegendItem<K extends string = string> {
+  state: K;
+  /** Short uppercase label shown next to the dot. */
+  short: string;
+  /** Optional second state whose count is added to this chip's. */
+  fold?: K;
+}
+
+/**
+ * Compact "dot-color → meaning" legend that doubles as live counts — one wrapped
+ * chip strip (dot + short label + count) shared by BOTH the outbound (shipped)
+ * and pre-dock (unshipped) status models. Each mode passes its own `meta` map +
+ * `items` subset, so the two legends render identically while showing only the
+ * states reachable in that mode. Mounting it adds no fetch; counts are computed
+ * by the caller from the table's existing query.
+ *
+ * Industry pattern: optional leading **All** chip (clear status filter) matches
+ * Gmail/Shopify/Zendesk status filters; optional `endSlot` holds a More chevron
+ * that expands secondary refinements.
+ */
+export function StatusLegend<K extends string>({
+  items,
+  meta,
+  counts,
+  isFetching = false,
+  activeState = null,
+  onSelectState,
+  onSelectAll,
+  allCount,
+  allLabel = 'All',
+  endSlot,
+  inline = false,
+}: {
+  items: StatusLegendItem<K>[];
+  meta: Record<K, StatusLegendMeta>;
+  counts: Record<K, number>;
+  isFetching?: boolean;
+  /** When `onSelectState` is set, chips become quiet toggle filters; this is the lit one. */
+  activeState?: K | null;
+  /** Click a chip to filter the table to that state (click the lit one again to clear). */
+  onSelectState?: (state: K) => void;
+  /**
+   * Leading "All" chip — industry standard for status filters. When set, lit when
+   * `activeState` is null; click clears the status filter (show every state).
+   */
+  onSelectAll?: () => void;
+  /** Optional total for the All chip (sum of state counts when omitted). */
+  allCount?: number;
+  allLabel?: string;
+  /** Trailing slot (e.g. More chevron that expands secondary filters). */
+  endSlot?: ReactNode;
+  /** Toolbar embedding: drop the boxed container + wrap; render a single flat row. */
+  inline?: boolean;
+}) {
+  const interactive = Boolean(onSelectState);
+  const totalAll =
+    allCount ??
+    items.reduce((sum, { state, fold }) => sum + counts[state] + (fold ? counts[fold] : 0), 0);
+  const allActive = interactive && activeState == null && Boolean(onSelectAll);
+
+  return (
+    <div
+      className={
+        inline
+          ? 'flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5'
+          : 'flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-xl bg-surface-canvas/70 px-3 py-2 ring-1 ring-inset ring-border-hairline'
+      }
+    >
+      {onSelectAll ? (
+        <HoverTooltip
+          label={allActive ? 'Showing all · click a status to filter' : 'Show all statuses'}
+          className={cn("inline-flex shrink-0 rounded", focusRing('control', 'accent'))}
+        >
+          <button
+            type="button"
+            aria-pressed={allActive}
+            onClick={onSelectAll}
+            className={`ds-raw-button inline-flex shrink-0 items-center gap-1 rounded-full px-1.5 py-0.5 transition-colors ${
+              allActive
+                ? 'bg-surface-card ring-1 ring-border-default shadow-sm'
+                : 'hover:bg-surface-sunken'
+            }`}
+          >
+            <span
+              className={`text-role-micro font-semibold uppercase tracking-wide ${
+                allActive ? 'text-text-default' : 'text-text-soft'
+              }`}
+            >
+              {allLabel}
+            </span>
+            <span
+              className={`text-xs font-semibold tabular-nums ${
+                allActive ? 'text-text-default' : 'text-text-muted'
+              }`}
+            >
+              {totalAll}
+            </span>
+          </button>
+        </HoverTooltip>
+      ) : null}
+      {items.map(({ state, short, fold }) => {
+        const m = meta[state];
+        const value = counts[state] + (fold ? counts[fold] : 0);
+        const active = activeState === state;
+        // Dimming the un-selected chips when a filter is live keeps the lit one
+        // unmistakable without adding loud color — true to the flat/quiet system.
+        const dimmed = interactive && activeState != null && !active;
+        const inner = (
+          <>
+            <span className={`h-2 w-2 shrink-0 rounded-full ${m.dot} ${dimmed ? 'opacity-40' : ''}`} />
+            <span className={`text-role-micro font-semibold uppercase tracking-wide ${active ? 'text-text-default' : 'text-text-soft'} ${dimmed ? 'opacity-60' : ''}`}>{short}</span>
+            <span className={`text-xs font-semibold tabular-nums ${active ? 'text-text-default' : 'text-text-default'} ${dimmed ? 'opacity-60' : ''}`}>{value}</span>
+          </>
+        );
+        return (
+          <HoverTooltip
+            key={state}
+            label={`${m.label} — ${m.description}${interactive ? (active ? ' · click to clear' : ' · click to filter') : ''}`}
+            className={cn("inline-flex shrink-0 rounded", focusRing('control', 'accent'))}
+          >
+            {interactive ? (
+              <button
+                type="button"
+                aria-pressed={active}
+                onClick={() => onSelectState?.(state)}
+                className={`ds-raw-button inline-flex shrink-0 items-center gap-1 rounded px-0.5 py-0.5 transition-colors ${
+                  active ? 'bg-surface-card ring-1 ring-border-default shadow-sm' : 'hover:bg-surface-sunken'
+                }`}
+              >
+                {inner}
+              </button>
+            ) : (
+              <span className="inline-flex cursor-help items-center gap-1.5">{inner}</span>
+            )}
+          </HoverTooltip>
+        );
+      })}
+      {endSlot}
+      {isFetching ? <Loader2 className="ml-auto h-3 w-3 animate-spin text-blue-400" /> : null}
+    </div>
+  );
+}

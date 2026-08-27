@@ -4,8 +4,8 @@
  * and Incoming 1-check → inspect (selection occupancy).
  */
 
-import { shipmentIdFromDeliveredUnscannedRow } from '@/lib/receiving/receiving-delivered-unscanned';
-import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
+import { shipmentIdFromDeliveredUnscannedRow } from '@/components/station/receiving-delivered-unscanned';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 
 export interface IncomingDetailsTarget {
   poId: string | null;

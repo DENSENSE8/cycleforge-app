@@ -6,8 +6,8 @@
  * vendor product sentences in operator-facing labels beyond the helpdesk noun
  * resolved at the call site).
  *
- * Unbox Ticket Displays opt out (`showReplyPresets={false}`) — intake chat is
- * not the QC shortcut surface. Testing · Arrival · `/support` keep them on.
+ * Unbox and Testing Ticket Displays opt out (`showReplyPresets={false}`).
+ * Arrival · `/support` keep them on.
  */
 
 export type TicketReplyPreset = {

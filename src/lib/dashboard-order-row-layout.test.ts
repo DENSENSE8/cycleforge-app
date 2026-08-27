@@ -3,8 +3,8 @@ import { describe, it } from 'node:test';
 import {
   LEDGER_GRID_CELL_INSET,
   ledgerGridCell,
-} from '@/lib/grid/grid-cell-chrome';
-import { gridTemplate } from '@/lib/grid/grid-column-geometry';
+} from '@/design-system/components/grid/grid-cell-chrome';
+import { gridTemplate } from '@/design-system/components/grid/grid-column-geometry';
 import {
   ORDERS_QUEUE_CELL_INSET,
   ORDERS_QUEUE_COLUMNS,

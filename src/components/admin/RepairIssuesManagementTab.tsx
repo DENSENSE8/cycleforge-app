@@ -1,0 +1,355 @@
+'use client';
+
+import { useMemo, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { qk } from '@/queries/keys';
+import { Edit, Plus, Trash2, X } from '@/components/Icons';
+import { Button, Checkbox, IconButton } from '@/design-system/primitives';
+import {
+  Dialog,
+  DialogContent,
+} from '@/design-system/components/Dialog';
+import { requestConfirm } from '@/design-system/components/confirm';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { mainStickyHeaderClass, mainStickyHeaderShellRowClass } from '@/components/layout/header-shell';
+import { toast } from '@/lib/toast';
+import { sectionLabel, fieldLabel, tableHeader, tableCell } from '@/design-system/tokens/typography/presets';
+import { cn } from '@/utils/_cn';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+
+
+/** Mirrors a row from GET /api/repair/issues (RepairIssueTemplate). */
+interface RepairIssueRecord {
+  id: number;
+  favorite_sku_id: number | null;
+  label: string;
+  category: string | null;
+  sort_order: number;
+  active: boolean;
+  created_at: string;
+}
+
+interface IssueFormState {
+  label: string;
+  category: string;
+  sortOrder: string;
+  active: boolean;
+}
+
+const DEFAULT_FORM_STATE: IssueFormState = {
+  label: '',
+  category: '',
+  sortOrder: '0',
+  active: true,
+};
+
+const inputClass =
+  cn('h-10 w-full border border-border-soft bg-surface-card px-3 text-sm font-semibold text-text-default transition-colors', focusRing('field', 'neutral'));
+
+/**
+ * Manage GLOBAL repair issue templates (favorite_sku_id IS NULL) — the default
+ * checklist shown for every repair. SKU-specific templates are managed inline
+ * per-favorite in the repair workspace, not here.
+ */
+export function RepairIssuesManagementTab() {
+  const queryClient = useQueryClient();
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [form, setForm] = useState<IssueFormState>(DEFAULT_FORM_STATE);
+  const [filter, setFilter] = useState('');
+
+  const { data, isLoading } = useQuery<{ issues: RepairIssueRecord[] }>({
+    queryKey: qk.repairIssues.list(),
+    queryFn: async () => {
+      const res = await fetch('/api/repair/issues');
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body?.details || body?.error || 'Failed to load issue templates');
+      return body;
+    },
+  });
+
+  // GET returns global + SKU-specific; this admin view manages globals only.
+  const rows = useMemo(
+    () => (data?.issues ?? []).filter((r) => r.favorite_sku_id == null),
+    [data],
+  );
+
+  const filtered = useMemo(() => {
+    const q = filter.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter(
+      (r) => r.label.toLowerCase().includes(q) || (r.category ?? '').toLowerCase().includes(q),
+    );
+  }, [rows, filter]);
+
+  const createMutation = useMutation({
+    mutationFn: async (payload: IssueFormState) => {
+      const res = await fetch('/api/repair/issues', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          label: payload.label.trim(),
+          category: payload.category.trim() || null,
+          sortOrder: Number(payload.sortOrder || 0),
+        }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body?.details || body?.error || 'Failed to create issue template');
+      return body;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: qk.repairIssues.all });
+      toast.success('Issue template created');
+      closeForm();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, payload }: { id: number; payload: IssueFormState }) => {
+      const res = await fetch(`/api/repair/issues/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          label: payload.label.trim(),
+          category: payload.category.trim() || null,
+          sortOrder: Number(payload.sortOrder || 0),
+          active: payload.active,
+        }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body?.details || body?.error || 'Failed to update issue template');
+      return body;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: qk.repairIssues.all });
+      toast.success('Issue template updated');
+      closeForm();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/repair/issues/${id}`, { method: 'DELETE' });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body?.details || body?.error || 'Failed to delete issue template');
+      return body;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: qk.repairIssues.all });
+      toast.success('Issue template removed');
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const closeForm = () => {
+    setIsFormOpen(false);
+    setEditingId(null);
+    setForm(DEFAULT_FORM_STATE);
+  };
+
+  const openAdd = () => {
+    setEditingId(null);
+    setForm(DEFAULT_FORM_STATE);
+    setIsFormOpen(true);
+  };
+
+  const openEdit = (row: RepairIssueRecord) => {
+    setEditingId(row.id);
+    setForm({
+      label: row.label,
+      category: row.category ?? '',
+      sortOrder: String(row.sort_order ?? 0),
+      active: row.active,
+    });
+    setIsFormOpen(true);
+  };
+
+  const handleSubmit = () => {
+    if (!form.label.trim()) return toast.error('Label is required');
+    if (editingId != null) {
+      updateMutation.mutate({ id: editingId, payload: form });
+      return;
+    }
+    createMutation.mutate(form);
+  };
+
+  const handleDelete = async (row: RepairIssueRecord) => {
+    const ok = await requestConfirm({
+      description: `Permanently delete issue template "${row.label}"? To hide it without deleting, edit it and turn off Active.`,
+      tone: 'danger',
+      confirmLabel: 'Remove',
+    });
+    if (!ok) return;
+    deleteMutation.mutate(row.id);
+  };
+
+  const isSaving = createMutation.isPending || updateMutation.isPending;
+  const tableGridClass = 'grid grid-cols-[minmax(220px,2fr)_180px_90px_90px_108px] gap-x-3';
+
+  return (
+    <section className={cn('flex h-full min-h-0 w-full flex-col',)}>
+      <div className={mainStickyHeaderClass}>
+        <div className={`${mainStickyHeaderShellRowClass} flex-wrap gap-y-2 px-4`}>
+          <p className={`${sectionLabel} truncate text-text-default`}>Repair Issues</p>
+          <div className={`${sectionLabel} flex flex-wrap items-center gap-4`}>
+            <span>Total {rows.length}</span>
+            <input
+              type="text"
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              placeholder="Filter label / category"
+              className={cn("h-8 w-64 border border-border-soft bg-surface-card px-3 text-xs font-medium text-text-default", focusRing('field', 'neutral'))}
+            />
+            <Button variant="secondary" size="sm" onClick={openAdd} icon={<Plus />}>
+              Add Issue
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      <div className="min-h-0 flex-1 overflow-hidden">
+        <div className="flex h-full min-h-0 flex-col overflow-hidden border-y border-border-soft bg-surface-card">
+          <div className="min-h-0 flex-1 overflow-auto">
+            <div className="min-w-[760px]">
+              <div className={`${tableGridClass} ${tableHeader} border-b border-border-soft px-4 py-3`}>
+                <p>Label</p>
+                <p>Category</p>
+                <p>Sort</p>
+                <p>Status</p>
+                <p className="text-right">Actions</p>
+              </div>
+
+              {isLoading ? (
+                <div className="px-6 py-10 text-sm font-medium text-text-soft">Loading issue templates...</div>
+              ) : filtered.length === 0 ? (
+                <div className="px-6 py-10 text-center">
+                  <p className={sectionLabel}>No Issue Templates</p>
+                  <p className="mt-2 text-sm font-medium text-text-soft">
+                    {rows.length === 0 ? 'Add the first global repair issue template.' : 'No templates match your filter.'}
+                  </p>
+                </div>
+              ) : (
+                filtered.map((row) => (
+                  <div key={row.id} className={`${tableGridClass} items-center border-b border-border-hairline px-4 py-3 text-sm last:border-b-0`}>
+                    {/* ds-allow-title: truncation-only title on a non-interactive <p> */}
+                    <p className={`${tableCell} truncate`} title={row.label}>{row.label}</p>
+                    <p className={`${tableCell} truncate uppercase tracking-[0.16em] text-text-muted`}>{row.category || '-'}</p>
+                    <p className={`${tableCell} text-text-muted`}>{row.sort_order}</p>
+                    <p className={`${tableHeader} ${row.active ? 'text-emerald-700' : 'text-text-faint'}`}>
+                      {row.active ? 'Active' : 'Hidden'}
+                    </p>
+                    <div className="flex items-center justify-end gap-2">
+                      <HoverTooltip label="Edit issue template" asChild>
+                        <IconButton
+                          onClick={() => openEdit(row)}
+                          className="inline-flex h-8 w-8 items-center justify-center border border-border-soft text-text-muted hover:bg-surface-hover hover:text-text-default"
+                          ariaLabel={`Edit ${row.label}`}
+                          icon={<Edit className="h-3.5 w-3.5" />}
+                        />
+                      </HoverTooltip>
+                      <HoverTooltip label="Delete issue template" asChild>
+                        <IconButton
+                          onClick={() => handleDelete(row)}
+                          disabled={deleteMutation.isPending}
+                          className="inline-flex h-8 w-8 items-center justify-center border border-rose-200 text-rose-600 hover:bg-rose-50"
+                          ariaLabel={`Delete ${row.label}`}
+                          icon={<Trash2 className="h-3.5 w-3.5" />}
+                        />
+                      </HoverTooltip>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <Dialog
+        open={isFormOpen}
+        onOpenChange={(next) => {
+          if (!next) closeForm();
+        }}
+      >
+        <DialogContent hideClose className="max-w-xl gap-0 overflow-hidden p-0 sm:rounded-xl">
+          <div className="flex w-full flex-col overflow-hidden">
+            <div className="flex items-center justify-between border-b border-border-soft px-5 py-4">
+              <div>
+                <p className={sectionLabel}>{editingId != null ? 'Edit Issue Template' : 'New Issue Template'}</p>
+                <h3 className="mt-1 text-base font-semibold text-text-default">
+                  {editingId != null ? `Update ${form.label}` : 'Add a global repair issue'}
+                </h3>
+              </div>
+              <IconButton
+                onClick={closeForm}
+                ariaLabel="Close"
+                className="inline-flex h-9 w-9 items-center justify-center border border-border-soft text-text-soft hover:bg-surface-hover hover:text-text-default"
+                icon={<X className="h-4 w-4" />}
+              />
+            </div>
+
+            <div className="grid gap-4 border-b border-border-soft px-5 py-5 md:grid-cols-2">
+              <label className="space-y-1 md:col-span-2">
+                <span className={`block ${sectionLabel}`}>Label</span>
+                <input
+                  type="text"
+                  value={form.label}
+                  onChange={(e) => setForm((c) => ({ ...c, label: e.target.value }))}
+                  placeholder="e.g. No power"
+                  className={inputClass}
+                />
+              </label>
+
+              <label className="space-y-1">
+                <span className={`block ${sectionLabel}`}>Category</span>
+                <input
+                  type="text"
+                  value={form.category}
+                  onChange={(e) => setForm((c) => ({ ...c, category: e.target.value }))}
+                  placeholder="Optional"
+                  className={inputClass}
+                />
+              </label>
+
+              <label className="space-y-1">
+                <span className={`block ${sectionLabel}`}>Sort Order</span>
+                <input
+                  type="number"
+                  min={0}
+                  value={form.sortOrder}
+                  onChange={(e) => setForm((c) => ({ ...c, sortOrder: e.target.value }))}
+                  className={inputClass}
+                />
+              </label>
+
+              {editingId != null && (
+                <label className="flex items-center gap-3 border border-border-soft px-3 py-3 md:col-span-2">
+                  <Checkbox
+                    checked={form.active}
+                    onCheckedChange={(v) => setForm((c) => ({ ...c, active: v === true }))}
+                    aria-label="Active"
+                  />
+                  <span className={`${sectionLabel} text-text-muted`}>Active (shown in repair checklists)</span>
+                </label>
+              )}
+              {editingId == null && (
+                <p className={`md:col-span-2 ${fieldLabel} text-text-faint`}>New templates are active by default.</p>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end gap-2 px-5 py-4">
+              <Button variant="secondary" size="md" onClick={closeForm}>
+                Cancel
+              </Button>
+              <Button variant="brand" size="md" onClick={handleSubmit} disabled={isSaving}>
+                {isSaving ? 'Saving...' : editingId != null ? 'Save Changes' : 'Create Issue'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </section>
+  );
+}

@@ -45,11 +45,6 @@ import {
   resolveReceivingLineForOrderTool,
 } from './receiving-photo-tools';
 import { TOOL_FORGE_GATEWAY_TOOLS } from '@/lib/tool-forge/gateway-tools';
-import {
-  getMySessionStats,
-  getSessionThroughput,
-  getTeamSessionStats,
-} from './session-tools';
 
 const READ_TOOLS: ReadonlyArray<AssistantToolDef<any, unknown>> = [
   getSignalsByNode,
@@ -83,11 +78,6 @@ const READ_TOOLS: ReadonlyArray<AssistantToolDef<any, unknown>> = [
   // itself stays behind propose_mutation.
   resolveReceivingLineForOrderTool,
   listReceivingLinePhotosTool,
-  // Session reflection — "how long did that take, what can I improve". These
-  // read `work_sessions` AFTER the fact; nothing here is in the scan path.
-  getMySessionStats,
-  getSessionThroughput,
-  getTeamSessionStats,
 ];
 
 /**

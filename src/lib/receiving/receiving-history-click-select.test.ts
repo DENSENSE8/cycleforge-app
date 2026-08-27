@@ -9,7 +9,7 @@ import {
   GRID_HIGHLIGHT_PRESETS,
   LEGACY_GRID_COLUMN_HIGHLIGHT_HEX,
   normalizeGridColumnHighlight,
-} from '@/lib/grid/grid-column-display';
+} from '@/design-system/components/grid/grid-column-display';
 
 describe('Unbox History click-select column model', () => {
   it('keeps frozen select · order identity pane for header select-all + PO', () => {

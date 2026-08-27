@@ -13,7 +13,6 @@ import {
   attachSupportTicket,
   getOrCreateThread,
   listThreadMessages,
-  postEntityMessage,
   postThreadMessage,
   resolveThreadForEntity,
   type ThreadsDeps,
@@ -308,74 +307,4 @@ test('attachSupportTicket: missing ticket → 404, no UPDATE', async () => {
   assert.equal(out.ok, false);
   if (!out.ok) assert.equal(out.status, 404);
   assert.equal(cap.queries.filter((q) => /UPDATE/.test(q.text)).length, 0);
-});
-
-// ─── postEntityMessage ───────────────────────────────────────────────────────
-
-test('postEntityMessage: get-or-creates the thread, then posts into it', async () => {
-  const { deps, cap } = fakes([
-    { match: /FROM orders WHERE/, rows: [{ '?column?': 1 }] },
-    {
-      match: /INSERT INTO entity_threads/,
-      rows: [{ ...threadRow({ entity_type: 'ORDER', entity_id: 41 }), inserted: true }],
-    },
-    { match: /FROM entity_threads\s+WHERE id/s, rows: [{ id: 7, entity_type: 'ORDER', entity_id: 41 }] },
-    { match: /INSERT INTO thread_messages/, rows: [messageRow({ visibility: 'internal' })] },
-  ]);
-
-  const out = await postEntityMessage(
-    {
-      orgId: ORG,
-      entityType: 'ORDER',
-      entityId: 41,
-      authorStaffId: 5,
-      body: 'box arrived damaged',
-      clientEventId: 'ce-1',
-    },
-    deps,
-  );
-
-  assert.ok(out.ok);
-  assert.equal(out.thread.id, 7);
-  assert.equal(out.message.id, 100);
-  assert.equal(out.idempotent, false);
-  // Both halves run org-scoped; nothing reads an org from the caller's body.
-  assert.deepEqual(cap.transactions, [ORG, ORG]);
-  // The ops_events emission comes free from postThreadMessage — the whole
-  // reason the ORDER note store is threads and not a purpose-built table.
-  assert.equal(cap.queries.filter((q) => /INSERT INTO ops_events/.test(q.text)).length, 1);
-});
-
-test('postEntityMessage: a bad anchor fails before any transaction', async () => {
-  const { deps, cap } = fakes([]);
-  const out = await postEntityMessage(
-    { orgId: ORG, entityType: 'sales_order', entityId: 1, body: 'hi' },
-    deps,
-  );
-  assert.equal(out.ok, false);
-  if (!out.ok) assert.equal(out.status, 400);
-  assert.equal(cap.transactions.length, 0);
-});
-
-test('postEntityMessage: a blank body never opens the thread transaction', async () => {
-  // An empty note must not leave an empty thread row behind as a side-effect.
-  const { deps, cap } = fakes([]);
-  const out = await postEntityMessage(
-    { orgId: ORG, entityType: 'ORDER', entityId: 41, body: '   ' },
-    deps,
-  );
-  assert.equal(out.ok, false);
-  if (!out.ok) assert.equal(out.status, 400);
-  assert.equal(cap.transactions.length, 0);
-});
-
-test('postEntityMessage: a missing parent 404s and posts nothing', async () => {
-  const { deps, cap } = fakes([{ match: /FROM orders WHERE/, rows: [] }]);
-  const out = await postEntityMessage(
-    { orgId: ORG, entityType: 'ORDER', entityId: 999, body: 'hi' },
-    deps,
-  );
-  assert.equal(out.ok, false);
-  if (!out.ok) assert.equal(out.status, 404);
-  assert.equal(cap.queries.filter((q) => /INSERT INTO thread_messages/.test(q.text)).length, 0);
 });

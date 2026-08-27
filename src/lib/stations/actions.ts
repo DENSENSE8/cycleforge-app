@@ -105,8 +105,8 @@ const attachTracking: ActionDefinition = {
   label: 'Attach tracking',
   icon: 'Link2',
   endpoint: { method: 'POST', path: '/api/receiving/po/:id/attach-box' },
-  // body is omitted — `station:attach-tracking` is an EVENT action: the caller
-  // dispatches the window event instead of calling fetch directly.
+  // body is omitted — BlockRenderer detects `station:attach-tracking` event actions
+  // and dispatches the window event instead of calling fetch directly.
   permission: 'receiving.mark_received',
   appliesTo: ['po_ref'],
   integration: 'receiving',

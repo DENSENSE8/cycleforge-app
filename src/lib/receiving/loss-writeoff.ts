@@ -54,7 +54,6 @@ import {
   RECEIVING_EXCEPTION_META,
   isLossExceptionCode,
 } from './exception-codes';
-import { NO_SESSION } from '@/lib/sessions/attribution';
 
 /** Exported for the resolution route's 400 discriminator and its test. */
 export const LOSS_WRITEOFF_INVALID_CODE = 'INVALID_LOSS_CODE';
@@ -159,7 +158,6 @@ export async function recordLossWriteoff(
 ): Promise<{ exceptionId: number }> {
   const d = deps ?? (await realDeps());
   const { id } = await d.recordException(orgId, {
-    session: NO_SESSION,
     receivingLineId: input.receivingLineId,
     receivingId: input.receivingId ?? null,
     exceptionCode: input.code,

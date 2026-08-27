@@ -3,7 +3,7 @@
  * History context menu + {@link HistoryCartonTriagePanel}.
  */
 
-import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import type { ReceivingGridColumnKey } from '@/lib/receiving/receiving-grid-layout';
 
 /** Intake carton with no linked PO (ORDER: —, QTY: 0/?, …). */

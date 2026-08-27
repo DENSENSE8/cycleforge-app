@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { ApiError, errorResponse } from '@/lib/api';
 import { withAuth } from '@/lib/auth/withAuth';
 import { tenantQuery } from '@/lib/tenancy/db';
@@ -15,6 +15,7 @@ import { resolvePoRef } from '@/lib/photos/resolve-po-ref';
 import { resolvePhotoAccessUrl } from '@/lib/photos/resolve-access-url';
 import { attachPhotoWithLegacyUrl, deletePhoto } from '@/lib/photos/service';
 import { linkReceivingPhotoToClaim } from '@/lib/photos/claim-link';
+import { autoArchiveClaimPhotosAfterCapture } from '@/lib/receiving-claim-archive';
 import { publishReceivingPhotoChanged } from '@/lib/realtime/publish';
 import {
   RECEIVING_PHOTO_ITEM,
@@ -407,6 +408,19 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       source: 'receiving-photos.post',
     });
 
+    if (claimTicketId) {
+      const ticketId = claimTicketId;
+      after(() =>
+        autoArchiveClaimPhotosAfterCapture({
+          orgId: ctx.organizationId,
+          receivingId,
+          ticketId,
+        }).catch((err) => {
+          console.warn('[receiving-photos.post] auto NAS archive failed', err);
+        }),
+      );
+    }
+
     return NextResponse.json(
       {
         success: true,
@@ -414,6 +428,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
           ...photo,
           photoUrl: await resolvePhotoAccessUrl(photo.id, ctx.organizationId, 'full'),
         },
+        claimTicketId,
       },
       {
         headers: {

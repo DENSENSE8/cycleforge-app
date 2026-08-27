@@ -123,6 +123,28 @@ function isRepairServiceSku(value: unknown): boolean {
   return String(value || '').trim().toUpperCase().endsWith(REPAIR_SUFFIX);
 }
 
+async function fetchEcwidOrdersByKeywords(
+  storeId: string,
+  token: string,
+  keywords: string,
+  limit: number,
+): Promise<EcwidOrder[]> {
+  const url = new URL(`${ECWID_BASE_URL}/${storeId}/orders`);
+  url.searchParams.set('keywords', keywords);
+  url.searchParams.set('limit', String(Math.min(Math.max(limit, 1), PAGE_LIMIT)));
+
+  const res = await fetch(url, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`Ecwid orders API ${res.status}: ${text}`);
+  }
+  const data = (await res.json()) as { items?: EcwidOrder[] };
+  return Array.isArray(data.items) ? data.items : [];
+}
+
 async function fetchRecentEcwidOrders(
   storeId: string,
   token: string,
@@ -181,6 +203,7 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
   const includeNormal = ['1', 'true', 'yes'].includes(
     (url.searchParams.get('include_normal') ?? '').toLowerCase(),
   );
+  const keywords = (url.searchParams.get('q') ?? '').trim().replace(/^#/, '');
 
   let storeId: string;
   let token: string;
@@ -210,7 +233,12 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
 
   let ecwidOrders: EcwidOrder[];
   try {
-    ecwidOrders = await fetchRecentEcwidOrders(storeId, token, lookbackDays);
+    // Typed order # / keyword: search Ecwid live (no 30-day window) so an
+    // older repair like #4996 is still pairable. Empty q keeps the recent list.
+    ecwidOrders =
+      keywords.length >= 2
+        ? await fetchEcwidOrdersByKeywords(storeId, token, keywords, limit)
+        : await fetchRecentEcwidOrders(storeId, token, lookbackDays);
   } catch (err) {
     return NextResponse.json(
       {
@@ -221,8 +249,24 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
     );
   }
 
-  // Walk orders newest-first; first time we see a SKU wins (= most recent order).
+  // Walk newest-first; first time we see a SKU wins (= most recent order).
+  // Typed `q` floats an exact order-number hit to the top and keys buckets
+  // per order so #4996 is not dropped because a newer order shares its SKU.
+  const wantOrder = keywords.replace(/^#/, '').toLowerCase();
   ecwidOrders.sort((a, b) => {
+    if (wantOrder.length >= 2) {
+      const aId = String(a.orderNumber ?? a.id ?? '')
+        .trim()
+        .replace(/^#/, '')
+        .toLowerCase();
+      const bId = String(b.orderNumber ?? b.id ?? '')
+        .trim()
+        .replace(/^#/, '')
+        .toLowerCase();
+      const aExact = aId === wantOrder ? 0 : 1;
+      const bExact = bId === wantOrder ? 0 : 1;
+      if (aExact !== bExact) return aExact - bExact;
+    }
     const ad = String(a.createDate ?? a.created ?? a.date ?? '');
     const bd = String(b.createDate ?? b.created ?? b.date ?? '');
     return bd.localeCompare(ad);
@@ -247,11 +291,16 @@ export const GET = withAuth(async (request: NextRequest, ctx) => {
     for (const item of items) {
       const sku = String(item.sku || '').trim();
       if (!sku) continue;
-      // -RS-only by default; relaxed to all SKUs when include_normal is set.
-      if (!includeNormal && !isRepairServiceSku(sku)) continue;
+      const orderIsExact =
+        wantOrder.length >= 2 &&
+        orderId.replace(/^#/, '').toLowerCase() === wantOrder;
+      // -RS-only by default; typed exact order # includes every line on that
+      // order so a repair without a -RS SKU is still pairable.
+      if (!includeNormal && !isRepairServiceSku(sku) && !orderIsExact) continue;
       const upper = sku.toUpperCase();
-      if (bySku.has(upper)) continue;
-      bySku.set(upper, {
+      const bucketKey = wantOrder.length >= 2 ? `${orderId}::${upper}` : upper;
+      if (bySku.has(bucketKey)) continue;
+      bySku.set(bucketKey, {
         sku,
         sku_upper: upper,
         name: String(item.name || '').trim() || sku,

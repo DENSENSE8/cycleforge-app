@@ -20,17 +20,6 @@
  * permission, or reuses `assistant.chat`, silently widens that route gate to
  * whatever the tool can do.
  *
- * ## The Warehouse OS verbs are deliberately NOT here
- *
- * `UI_TOOLS` (agent-loop.ts → workspace-tools.ts) are CLIENT tools: the chat
- * loop emits an SSE frame and the operator's browser executes it against the
- * workspace store. An MCP request is a bare HTTP POST with no browser attached
- * to it, so `open_tile` over this transport would have nowhere to land —
- * advertising it would be advertising a tool that silently does nothing. The
- * read half is different and DOES arrive for free: registering a tool in
- * `tools/index.ts` (the session-reflection tools, for instance) exposes it here
- * with no rework, which is the whole point of the shared registry.
- *
  * Transport: Streamable-HTTP request/response — one JSON-RPC message (or batch)
  * per POST, answered with application/json. No SSE streaming (the read tools are
  * single-shot). Deps-injected so the dispatch unit-tests DB-free.

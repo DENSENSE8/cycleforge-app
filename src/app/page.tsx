@@ -1,11 +1,23 @@
+import { Suspense } from 'react';
+import { HomeWorkspace } from '@/features/home/HomeWorkspace';
+
 /**
- * The root route. Renders NOTHING on purpose: `ShellRoot` in `layout.tsx`
- * mounts the whole Warehouse-OS frame for every non-chromeless path and
- * deliberately ignores route children — the canvas, not the URL, decides what
- * is on screen (the URL names at most the focused tile, D2). This file exists
- * so "/" is a real route with a 200 instead of the framework's not-found
- * rendering inside the frame.
+ * Home (`/`) — the start-of-shift workbench. Two modes over `?mode=` URL state:
+ * `daily` (the checklist + the day's report, and the bare-`/` landing) and
+ * `today` (the My Day triage feed).
+ *
+ * Unparked: bare `/` mounts the workspace instead of redirecting to the
+ * dashboard, and the row ships in the Overview drill. Inbox, Tasks and Plan
+ * were removed on 2026-08-19 — Plan (the forge console) kept working at its own
+ * `/forge` route, which is where its bookmark already pointed.
+ *
+ * `Suspense` wraps the client workspace because it reads `useSearchParams` for
+ * the `?mode=` state (same mount shape as the Operations page).
  */
-export default function Root() {
-  return null;
+export default function Home() {
+  return (
+    <Suspense>
+      <HomeWorkspace />
+    </Suspense>
+  );
 }

@@ -25,6 +25,10 @@ test('railExclusionFeedKey: the shared Scanned feed splits by scope', () => {
   assert.equal(railExclusionFeedKey('scanned'), 'receiving_unbox'); // default (Queue)
 });
 
+test('railExclusionFeedKey: QC Recent has no dismiss feed', () => {
+  assert.equal(railExclusionFeedKey('testingRecent'), null);
+});
+
 test('exclusionToRailId: carton negates, line stays positive (matches getRowId = row.id)', () => {
   assert.equal(exclusionToRailId('RECEIVING', 88), -88); // unfound carton stub id < 0
   assert.equal(exclusionToRailId('RECEIVING_LINE', 41), 41); // real line id > 0

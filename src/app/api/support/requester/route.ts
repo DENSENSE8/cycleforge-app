@@ -5,7 +5,7 @@ import { withAuth } from '@/lib/auth/withAuth';
 import { getHelpdeskProvider } from '@/lib/integrations/helpdesk';
 import { resolveRequesterProfile } from '@/lib/support/requester-profile';
 import { requesterProfileDeps } from '@/lib/support/requester-profile-deps';
-import { requesterFrom } from '@/lib/support/support-chat-utils';
+import { requesterFrom } from '@/components/support/zendesk/chat/support-chat-utils';
 
 export const dynamic = 'force-dynamic';
 

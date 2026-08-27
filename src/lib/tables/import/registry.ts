@@ -25,7 +25,10 @@
  * `orders-import` is the golden: it is where the chrome, the inline editing and
  * the rail were proven end to end (`tests/e2e/csv-import-staging.spec.ts`).
  */
-export const TABLE_IMPORT_LIVE_SURFACES = ['orders-import'] as const;
+export const TABLE_IMPORT_LIVE_SURFACES = [
+  'orders-import',
+  'receiving-returns-import',
+] as const;
 
 export function isTableImportLive(
   surfaceId: string,

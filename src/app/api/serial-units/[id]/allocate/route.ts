@@ -6,7 +6,6 @@ import type { OrderUnitAllocation } from '@/lib/drizzle/schema';
 import { findByNormalizedSerial } from '@/lib/neon/serial-units-queries';
 import { recordInventoryEvent } from '@/lib/inventory/events';
 import { transition } from '@/lib/inventory/state-machine';
-import { NO_SESSION } from '@/lib/sessions/attribution';
 
 /**
  * POST /api/serial-units/[id]/allocate — pair a unit with an order.
@@ -103,7 +102,6 @@ export const POST = withAuth(
       await releaseAllocationOrg(prior.id, 'REASSIGNED', orgId);
       try {
         await recordInventoryEvent({
-          session: NO_SESSION,
           event_type: 'RELEASED',
           actor_staff_id: ctx.staffId ?? null,
           station: 'MOBILE',
@@ -154,7 +152,6 @@ export const POST = withAuth(
     let t: Awaited<ReturnType<typeof transition>> | null = null;
     try {
       t = await transition({
-        session: NO_SESSION,
         unitId: unit.id,
         to: 'ALLOCATED',
         eventType: 'ALLOCATED',
@@ -186,7 +183,6 @@ export const POST = withAuth(
       // transition): record the pairing event best-effort and keep the allocation.
       try {
         await recordInventoryEvent({
-          session: NO_SESSION,
           event_type: 'ALLOCATED',
           actor_staff_id: ctx.staffId ?? null,
           station: 'MOBILE',

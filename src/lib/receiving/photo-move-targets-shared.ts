@@ -3,7 +3,7 @@
  * Server search lives in `photo-move-targets.ts`.
  */
 
-import { formatReturnSerialProductTitle } from '@/lib/receiving/receiving-line-serials';
+import { formatReturnSerialProductTitle } from '@/components/station/receiving-line-serials';
 import { parsePoListSearch } from '@/lib/receiving/po-list-search';
 
 /** Parsed search intent — pure so unit tests stay DB-free. */

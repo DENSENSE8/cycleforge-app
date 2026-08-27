@@ -1,4 +1,4 @@
-import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 
 /** Client-only flag on a serial_units snapshot while add/remove is in flight. */
 export type OptimisticSerialFlag = 'adding' | 'removing';

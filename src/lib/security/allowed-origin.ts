@@ -1,3 +1,5 @@
+import { isBareKioskPlatformHost, isKioskHost } from '@/lib/tenancy/kiosk-host';
+
 function normalizeHost(value: string | null | undefined): string {
   if (!value) return '';
   let host = String(value).trim().toLowerCase();
@@ -66,6 +68,10 @@ export function isAllowedAdminOrigin(req: Request): boolean {
   if (localhostHosts.has(originHost)) return true;
 
   if (originHost.endsWith('.vercel.app')) return true;
+
+  // Kiosk hosts are FOH device surfaces — never treat them as admin sync origins
+  // (Zoho/eBay/etc.). Staff enroll/revoke stays on the staff app host.
+  if (isKioskHost(originHost) || isBareKioskPlatformHost(originHost)) return false;
 
   const envHosts = getEnvHosts();
   return envHosts.includes(originHost);

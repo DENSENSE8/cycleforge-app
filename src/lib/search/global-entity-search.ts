@@ -14,13 +14,20 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { looksLikeTicketScan } from '@/lib/support/ticket-scan';
 import { searchSupportTickets } from '@/lib/search/support-ticket-search';
-import { searchHitHref } from '@/lib/search/search-hit';
+import { looksLikeIdentifier, searchHitHref } from '@/lib/search/search-hit';
 import {
   receivingOrderIdFromParts,
   receivingSearchTitle,
 } from '@/lib/search/receiving-search-title';
 import { orderTrackingMatchKeys } from '@/lib/tracking-format';
 import { sqlOrderHasMatchingTracking } from '@/lib/search/order-tracking-match-sql';
+import type { SearchByScope } from '@/lib/search/search-by';
+import { sqlIdentifierEqualsQuery } from '@/lib/search/order-number-match';
+import {
+  hasInternalIdKeys,
+  isPrintedHandlePayload,
+  parseInternalIdQuery,
+} from '@/lib/search/internal-id';
 
 /** Match `serial_units.normalized_serial` (trim + upper) without pulling neon queries. */
 function normalizeSerialQuery(raw: string): string {
@@ -66,20 +73,14 @@ export interface GlobalSearchResult {
 }
 
 async function searchOrders(orgId: OrgId, query: string, limit: number): Promise<GlobalSearchResult[]> {
-  // Mirror the unshipped/shipped order search: match order_id, title, SKU, the
-  // order's serial number(s) (tech_serial_numbers, order-grain join) and
-  // the carrier tracking number, plus a last-8-digit fallback so a partial
-  // order/tracking number still resolves. Serials are aggregated per order so a
-  // single row comes back even when an order has many tested units.
-  // Tenant scope: the org lock is `o.organization_id`; the tech_serial_numbers /
-  // shipping_tracking_numbers joins reach only rows tied to that org-scoped order
-  // (the GUC set by tenantQuery is the backstop) — same pattern as searchReceiving.
-  //
-  // Tracking match is relaxed: `orders.shipment_id` (packer-set primary cache)
-  // OR `shipment_links` (ingest / tech / split). Packer_logs are not required.
+  // Marketplace order # / tracking identifier: exact (dash-insensitive) or
+  // last-8 when the paste has ≥8 digits. Never ILIKE-substring a longer id,
+  // and never treat the query as `orders.id` (that is Internal ID).
+  const identifier = looksLikeIdentifier(query);
   const digits = query.replace(/\D/g, '');
   const last8 = digits.length >= 8 ? digits.slice(-8) : '';
   const keys = orderTrackingMatchKeys(query);
+  const like = identifier ? query : `%${query}%`;
   const trackingMatch = sqlOrderHasMatchingTracking({
     orderAlias: 'o',
     likeParam: '$2',
@@ -87,6 +88,18 @@ async function searchOrders(orgId: OrgId, query: string, limit: number): Promise
     key18Param: '$7',
     last8Param: '$4',
   });
+  const orderNumberExact = sqlIdentifierEqualsQuery('o.order_id', '$3');
+  const broadMatch = `(
+            o.order_id ILIKE $2
+         OR o.product_title ILIKE $2
+         OR o.sku ILIKE $2
+         OR tsn.serial_number ILIKE $2
+         OR ${trackingMatch}
+  )`;
+  const identifierMatch = `(
+            ${orderNumberExact}
+         OR ${trackingMatch}
+  )`;
   const result = await tenantQuery(
     orgId,
     `SELECT o.id,
@@ -126,19 +139,11 @@ async function searchOrders(orgId: OrgId, query: string, limit: number): Promise
       AND sl.organization_id = o.organization_id
      LEFT JOIN shipping_tracking_numbers stn_link ON stn_link.id = sl.shipment_id
      WHERE o.organization_id = $1
-       AND (
-            o.order_id ILIKE $2
-         OR o.product_title ILIKE $2
-         OR o.sku ILIKE $2
-         OR tsn.serial_number ILIKE $2
-         OR CAST(o.id AS TEXT) = $3
-         OR ($4 <> '' AND RIGHT(regexp_replace(COALESCE(o.order_id, ''), '[^0-9]', '', 'g'), 8) = $4)
-         OR ${trackingMatch}
-       )
+       AND ${identifier ? identifierMatch : broadMatch}
      GROUP BY o.id
      ORDER BY o.created_at DESC NULLS LAST
      LIMIT $5`,
-    [orgId, `%${query}%`, query, last8, limit, keys.exact, keys.key18],
+    [orgId, like, query, last8, limit, keys.exact, keys.key18],
   );
 
   return result.rows.map((row: any) => {
@@ -237,7 +242,56 @@ async function searchReceiving(orgId: OrgId, query: string, limit: number): Prom
   // shipping_tracking_numbers join (`stn`) has NO organization_id column yet
   // (NEEDS-COL) — it is reachable only through this org-scoped receiving row,
   // so the GUC-wrapped tenantQuery is the isolation backstop for it.
+  const identifier = looksLikeIdentifier(query);
   const normalizedQuery = query.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+  const lineOrderMatch = sqlIdentifierEqualsQuery('rl.source_order_id', '$2');
+  const linkOrderMatch = sqlIdentifierEqualsQuery('l.source_order_id', '$2');
+  const cartonOrderMatch = `(
+            ${sqlIdentifierEqualsQuery('r.source_order_id', '$2')}
+         OR ${sqlIdentifierEqualsQuery('r.zoho_purchaseorder_number', '$2')}
+         OR EXISTS (
+              SELECT 1 FROM receiving_line rl
+              WHERE rl.receiving_id = r.id
+                AND rl.organization_id = r.organization_id
+                AND ${lineOrderMatch}
+            )
+         OR EXISTS (
+              SELECT 1
+              FROM inbound_purchase_order_links l
+              JOIN receiving_line rl ON rl.id = l.receiving_line_id
+               AND rl.organization_id = l.organization_id
+              WHERE rl.receiving_id = r.id
+                AND l.organization_id = r.organization_id
+                AND ${linkOrderMatch}
+            )
+  )`;
+  const identifierMatch = cartonOrderMatch;
+  const broadMatch = `(
+            stn.tracking_number_raw ILIKE $1
+         OR stn.tracking_number_normalized = $3
+         OR CAST(r.id AS TEXT) = $2
+         OR r.zoho_purchaseorder_number ILIKE $1
+         OR r.source_order_id ILIKE $1
+         OR ($3 <> '' AND regexp_replace(UPPER(COALESCE(r.zoho_purchaseorder_number, '')), '[^A-Z0-9]', '', 'g') = $3)
+         OR ($3 <> '' AND regexp_replace(UPPER(COALESCE(r.source_order_id, '')), '[^A-Z0-9]', '', 'g') = $3)
+         OR EXISTS (
+              SELECT 1 FROM receiving_line rl
+              WHERE rl.receiving_id = r.id
+                AND rl.organization_id = r.organization_id
+                AND (rl.source_order_id ILIKE $1
+                  OR ($3 <> '' AND regexp_replace(UPPER(COALESCE(rl.source_order_id, '')), '[^A-Z0-9]', '', 'g') = $3))
+            )
+         OR EXISTS (
+              SELECT 1
+              FROM inbound_purchase_order_links l
+              JOIN receiving_line rl ON rl.id = l.receiving_line_id
+               AND rl.organization_id = l.organization_id
+              WHERE rl.receiving_id = r.id
+                AND l.organization_id = r.organization_id
+                AND (l.source_order_id ILIKE $1
+                  OR ($3 <> '' AND regexp_replace(UPPER(COALESCE(l.source_order_id, '')), '[^A-Z0-9]', '', 'g') = $3))
+            )
+  )`;
   const result = await tenantQuery(
     orgId,
     `SELECT r.id,
@@ -253,7 +307,8 @@ async function searchReceiving(orgId: OrgId, query: string, limit: number): Prom
             COALESCE(r.is_return, false) AS is_return,
             lines.line_count,
             lines.distinct_sku_count,
-            lines.first_item_name
+            lines.first_item_name,
+            lines.line_source_order_id
      FROM receiving_carton r
      LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id
      LEFT JOIN LATERAL (
@@ -261,17 +316,13 @@ async function searchReceiving(orgId: OrgId, query: string, limit: number): Prom
               COUNT(DISTINCT COALESCE(NULLIF(TRIM(rl.sku), ''), NULLIF(TRIM(rl.item_name), ''), rl.id::text))::int
                 AS distinct_sku_count,
               (ARRAY_AGG(rl.item_name ORDER BY rl.id)
-                FILTER (WHERE NULLIF(TRIM(rl.item_name), '') IS NOT NULL))[1] AS first_item_name
+                FILTER (WHERE NULLIF(TRIM(rl.item_name), '') IS NOT NULL))[1] AS first_item_name,
+              (ARRAY_AGG(rl.source_order_id ORDER BY rl.id)
+                FILTER (WHERE NULLIF(TRIM(rl.source_order_id), '') IS NOT NULL))[1] AS line_source_order_id
        FROM receiving_line rl WHERE rl.receiving_id = r.id
      ) lines ON TRUE
      WHERE r.organization_id = $5
-       AND (stn.tracking_number_raw ILIKE $1
-        OR stn.tracking_number_normalized = $3
-        OR CAST(r.id AS TEXT) = $2
-        OR r.zoho_purchaseorder_number ILIKE $1
-        OR r.source_order_id ILIKE $1
-        OR ($3 <> '' AND regexp_replace(UPPER(COALESCE(r.zoho_purchaseorder_number, '')), '[^A-Z0-9]', '', 'g') = $3)
-        OR ($3 <> '' AND regexp_replace(UPPER(COALESCE(r.source_order_id, '')), '[^A-Z0-9]', '', 'g') = $3))
+       AND ${identifier ? identifierMatch : broadMatch}
      ORDER BY r.id DESC
      LIMIT $4`,
     [`%${query}%`, query, normalizedQuery, limit, orgId],
@@ -279,7 +330,10 @@ async function searchReceiving(orgId: OrgId, query: string, limit: number): Prom
 
   return result.rows.map((row: any) => {
     const poNumber = row.po_number != null ? String(row.po_number) : null;
-    const sourceOrderId = row.source_order_id != null ? String(row.source_order_id) : null;
+    const sourceOrderId =
+      (row.source_order_id != null && String(row.source_order_id).trim()) ||
+      (row.line_source_order_id != null && String(row.line_source_order_id).trim()) ||
+      null;
     const sourcePlatform = row.source_platform != null ? String(row.source_platform) : null;
     const firstItemName = row.first_item_name != null ? String(row.first_item_name) : null;
     const orderId = receivingOrderIdFromParts(poNumber, sourceOrderId);
@@ -360,6 +414,7 @@ async function searchSerialUnits(
 ): Promise<GlobalSearchResult[]> {
   const normalized = normalizeSerialQuery(query);
   if (!normalized) return [];
+  const identifier = looksLikeIdentifier(query);
   const result = await tenantQuery(
     orgId,
     `SELECT su.id,
@@ -372,9 +427,12 @@ async function searchSerialUnits(
      WHERE su.organization_id = $4
        AND (
             su.normalized_serial = $2
-         OR su.serial_number ILIKE $1
+         OR UPPER(TRIM(su.serial_number)) = $2
+         OR ${sqlIdentifierEqualsQuery('su.serial_number', '$3')}
+         OR ${sqlIdentifierEqualsQuery('su.normalized_serial', '$3')}
+         ${identifier ? '' : `OR su.serial_number ILIKE $1
          OR su.normalized_serial ILIKE $1
-         OR CAST(su.id AS TEXT) = $3
+         OR CAST(su.id AS TEXT) = $3`}
        )
      ORDER BY CASE
                 WHEN su.normalized_serial = $2 THEN 0
@@ -419,7 +477,8 @@ async function searchTrackingHolds(
 ): Promise<GlobalSearchResult[]> {
   const keys = orderTrackingMatchKeys(query);
   const last8 = /^\d{8}$/.test(keys.last8) ? keys.last8 : '';
-  const like = `%${query}%`;
+  const identifier = looksLikeIdentifier(query);
+  const like = identifier ? query : `%${query}%`;
 
   const [scanHolds, importHolds] = await Promise.all([
     tenantQuery(
@@ -430,7 +489,7 @@ async function searchTrackingHolds(
        WHERE organization_id = $1
          AND status = 'open'
          AND (
-              shipping_tracking_number ILIKE $2
+              ${identifier ? 'shipping_tracking_number = $2' : 'shipping_tracking_number ILIKE $2'}
            OR regexp_replace(UPPER(COALESCE(shipping_tracking_number, '')), '[^A-Z0-9]', '', 'g') = $3
            OR ($4 <> '' AND RIGHT(regexp_replace(UPPER(COALESCE(shipping_tracking_number, '')), '[^A-Z0-9]', '', 'g'), 18) = $4)
            OR ($5 <> '' AND RIGHT(regexp_replace(COALESCE(shipping_tracking_number, ''), '[^0-9]', '', 'g'), 8) = $5)
@@ -448,9 +507,11 @@ async function searchTrackingHolds(
          AND status = 'open'
          AND ignored_at IS NULL
          AND (
+              ${identifier ? '(tracking = $2 OR account_order_id = $2)' : `(
               tracking ILIKE $2
            OR account_order_id ILIKE $2
            OR product_title ILIKE $2
+              )`}
            OR regexp_replace(UPPER(COALESCE(tracking, '')), '[^A-Z0-9]', '', 'g') = $3
            OR ($4 <> '' AND RIGHT(regexp_replace(UPPER(COALESCE(tracking, '')), '[^A-Z0-9]', '', 'g'), 18) = $4)
            OR ($5 <> '' AND RIGHT(regexp_replace(COALESCE(tracking, ''), '[^0-9]', '', 'g'), 8) = $5)
@@ -506,19 +567,267 @@ async function searchTrackingHolds(
 }
 
 /**
- * Fan out across entity searchers — the same shape global-search's handler
- * uses (per-entity cap, degrade-not-fail per searcher). Ticket-shaped queries
- * (`#4821` / `4821`) resolve via support_tickets FIRST so numeric ids do not
- * false-positive on receiving/repair/order rows.
+ * Cycle Forge keys only — shipment id, receiving PK / R-id, unit PK, and
+ * printed QR / Digital Link payloads decoded to those keys. Never ILIKE
+ * titles, tracking, or marketplace order numbers.
+ */
+async function searchInternalIds(
+  orgId: OrgId,
+  query: string,
+  limit: number,
+): Promise<GlobalSearchResult[]> {
+  const keys = parseInternalIdQuery(query);
+  if (!hasInternalIdKeys(keys)) return [];
+  const internalStartedAt = Date.now();
+
+  let receivingIds = [...keys.receivingIds];
+  if (keys.receivingLineIds.length > 0) {
+    const lines = await tenantQuery(
+      orgId,
+      `SELECT receiving_id
+       FROM receiving_line
+       WHERE organization_id = $1
+         AND id = ANY($2::bigint[])
+         AND receiving_id IS NOT NULL`,
+      [orgId, keys.receivingLineIds],
+    ).catch(() => ({ rows: [] as Array<Record<string, unknown>> }));
+    for (const row of lines.rows) {
+      const id = Number(row.receiving_id);
+      if (Number.isSafeInteger(id) && id > 0) receivingIds.push(id);
+    }
+  }
+  receivingIds = [...new Set(receivingIds)];
+
+  const receivingPromise =
+    receivingIds.length > 0 || keys.shipmentIds.length > 0
+      ? tenantQuery(
+          orgId,
+          `SELECT r.id,
+                  r.shipment_id,
+                  stn.tracking_number_raw AS tracking_number,
+                  COALESCE(NULLIF(stn.carrier, 'UNKNOWN'), r.carrier) AS carrier,
+                  r.zoho_purchaseorder_number AS po_number,
+                  r.source_order_id,
+                  r.source_platform
+           FROM receiving_carton r
+           LEFT JOIN shipping_tracking_numbers stn ON stn.id = r.shipment_id
+           WHERE r.organization_id = $1
+             AND (
+                  (cardinality($2::bigint[]) > 0 AND r.id = ANY($2::bigint[]))
+               OR (cardinality($3::bigint[]) > 0 AND r.shipment_id = ANY($3::bigint[]))
+             )
+           ORDER BY r.id DESC
+           LIMIT $4`,
+          [orgId, receivingIds, keys.shipmentIds, limit],
+        ).catch(() => ({ rows: [] as Array<Record<string, unknown>> }))
+      : Promise.resolve({ rows: [] as Array<Record<string, unknown>> });
+
+  const orderPromise =
+    keys.orderPks.length > 0 || keys.shipmentIds.length > 0
+      ? tenantQuery(
+          orgId,
+          `SELECT o.id,
+                  o.order_id,
+                  o.product_title,
+                  o.sku,
+                  o.account_source,
+                  o.shipment_id,
+                  o.status
+           FROM orders o
+           WHERE o.organization_id = $1
+             AND (
+                  (cardinality($2::bigint[]) > 0 AND o.id = ANY($2::bigint[]))
+               OR (cardinality($3::bigint[]) > 0 AND o.shipment_id = ANY($3::bigint[]))
+             )
+           ORDER BY o.id DESC
+           LIMIT $4`,
+          [orgId, keys.orderPks, keys.shipmentIds, limit],
+        ).catch(() => ({ rows: [] as Array<Record<string, unknown>> }))
+      : Promise.resolve({ rows: [] as Array<Record<string, unknown>> });
+
+  const unitPromise =
+    keys.unitKeys.length > 0
+      ? tenantQuery(
+          orgId,
+          `SELECT su.id,
+                  su.serial_number,
+                  su.normalized_serial,
+                  su.sku,
+                  su.current_status::text AS current_status
+           FROM serial_units su
+           WHERE su.organization_id = $1
+             AND (
+                  CAST(su.id AS TEXT) = ANY($2::text[])
+               OR su.normalized_serial = ANY($3::text[])
+               OR su.unit_uid = ANY($2::text[])
+             )
+           ORDER BY su.id DESC
+           LIMIT $4`,
+          [
+            orgId,
+            keys.unitKeys,
+            keys.unitKeys.map((k) => k.toUpperCase()),
+            limit,
+          ],
+        ).catch(() => ({ rows: [] as Array<Record<string, unknown>> }))
+      : Promise.resolve({ rows: [] as Array<Record<string, unknown>> });
+
+  const timed = async <T,>(name: string, promise: Promise<T>): Promise<{ name: string; ms: number; result: T }> => {
+    const t0 = Date.now();
+    const result = await promise;
+    return { name, ms: Date.now() - t0, result };
+  };
+  const [receivingTimed, ordersTimed, unitsTimed] = await Promise.all([
+    timed('receiving', receivingPromise),
+    timed('orders', orderPromise),
+    timed('units', unitPromise),
+  ]);
+  const receiving = receivingTimed.result;
+  const orders = ordersTimed.result;
+  const units = unitsTimed.result;
+  // #region agent log
+  fetch('http://127.0.0.1:7905/ingest/963a9b6c-b9e1-4ea4-8873-db315c94d962',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'05d676'},body:JSON.stringify({sessionId:'05d676',hypothesisId:'C',location:'global-entity-search.ts:searchInternalIds',message:'internal id queries finished',data:{totalMs:Date.now()-internalStartedAt,receivingMs:receivingTimed.ms,ordersMs:ordersTimed.ms,unitsMs:unitsTimed.ms,receivingRows:receiving.rows.length,orderRows:orders.rows.length,unitRows:units.rows.length,exactHandle:keys.exactHandle,receivingIds:keys.receivingIds.length,shipmentIds:keys.shipmentIds.length,orderPks:keys.orderPks.length,unitKeys:keys.unitKeys.length},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
+
+  const receivingHits: GlobalSearchResult[] = receiving.rows.map((row) => {
+    const id = Number(row.id);
+    const shipmentId = row.shipment_id != null ? Number(row.shipment_id) : null;
+    const matchedShipment =
+      shipmentId != null && keys.shipmentIds.includes(shipmentId) && !receivingIds.includes(id);
+    const poNumber = row.po_number != null ? String(row.po_number) : null;
+    const sourceOrderId = row.source_order_id != null ? String(row.source_order_id) : null;
+    return {
+      id,
+      entityType: 'receiving' as const,
+      title: `R-${id}`,
+      subtitle: [poNumber || sourceOrderId, row.tracking_number, row.carrier]
+        .filter(Boolean)
+        .join(' · '),
+      href: searchHitHref('RECEIVING', id),
+      matchField: matchedShipment ? 'shipment' : 'receiving',
+      facets: {
+        source_platform: row.source_platform != null ? String(row.source_platform) : null,
+        tracking_number: row.tracking_number != null ? String(row.tracking_number) : null,
+        carrier: row.carrier != null ? String(row.carrier) : null,
+        po_number: poNumber,
+        source_order_id: sourceOrderId,
+      },
+    };
+  });
+
+  const orderHits: GlobalSearchResult[] = orders.rows.map((row) => {
+    const id = Number(row.id);
+    const shipmentId = row.shipment_id != null ? Number(row.shipment_id) : null;
+    const matchedShipment =
+      shipmentId != null && keys.shipmentIds.includes(shipmentId) && !keys.orderPks.includes(id);
+    return {
+      id,
+      entityType: 'order' as const,
+      title: String(row.product_title || `Order #${id}`),
+      subtitle: [row.order_id, shipmentId != null ? `shipment ${shipmentId}` : null, row.sku]
+        .filter(Boolean)
+        .join(' · '),
+      href: searchHitHref('ORDER', id),
+      matchField: matchedShipment ? 'shipment' : 'id',
+      facets: {
+        status: row.status != null ? String(row.status) : null,
+        source_platform: row.account_source != null ? String(row.account_source) : null,
+        order_id: row.order_id != null ? String(row.order_id) : null,
+      },
+    };
+  });
+
+  const unitHits: GlobalSearchResult[] = units.rows.map((row) => {
+    const id = Number(row.id);
+    const serial = String(row.serial_number || row.normalized_serial || '').trim();
+    return {
+      id,
+      entityType: 'unit' as const,
+      title: serial || `Unit #${id}`,
+      subtitle: [`U-${id}`, row.sku].filter(Boolean).join(' · '),
+      href: searchHitHref('SERIAL_UNIT', id),
+      matchField: 'id',
+      facets: {
+        status: row.current_status != null ? String(row.current_status) : null,
+        serial_number: serial || null,
+      },
+    };
+  });
+
+  return [...receivingHits, ...orderHits, ...unitHits].slice(0, limit);
+}
+
+/**
+ * Axis-scoped searchers. Header Internal ID never fans out. Callers that
+ * omit `axis` (hybrid exact arm, CommandBar) keep the cross-entity bypass.
+ * A printed QR / handle always resolves as Internal ID — same decode as
+ * the station scan bar — so a carton Digital Link is never ILIKE'd as text.
  */
 export async function searchAllEntities(
   orgId: OrgId,
   query: string,
   limit: number,
+  axis?: SearchByScope,
 ): Promise<GlobalSearchResult[]> {
+  const startedAt = Date.now();
+  const printed = isPrintedHandlePayload(query);
+  const branch =
+    printed || axis === 'internal'
+      ? 'internal'
+      : axis === 'ticket'
+        ? 'ticket'
+        : axis === 'order'
+          ? 'order'
+          : axis === 'serial'
+            ? 'serial'
+            : axis === 'tracking'
+              ? 'tracking'
+              : 'fanout';
+  const finish = (rows: GlobalSearchResult[]) => {
+    // #region agent log
+    fetch('http://127.0.0.1:7905/ingest/963a9b6c-b9e1-4ea4-8873-db315c94d962',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'05d676'},body:JSON.stringify({sessionId:'05d676',hypothesisId:'C,D',location:'global-entity-search.ts:searchAllEntities',message:'searchAllEntities finished',data:{branch,axis:axis ?? null,printed,qLen:query.length,limit,rowCount:rows.length,ms:Date.now()-startedAt},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
+    return rows;
+  };
+  if (printed || axis === 'internal') {
+    return searchInternalIds(orgId, query, limit).catch(() => []).then(finish);
+  }
+  if (axis === 'ticket') {
+    const [tickets, repairs] = await Promise.all([
+      searchSupportTickets(orgId, query).catch(() => []),
+      searchRepairs(orgId, query, limit).catch(() => []),
+    ]);
+    return finish([...tickets, ...repairs].slice(0, limit));
+  }
+  if (axis === 'order') {
+    const [orders, receiving] = await Promise.all([
+      searchOrders(orgId, query, limit).catch(() => []),
+      searchReceiving(orgId, query, limit).catch(() => []),
+    ]);
+    return finish([...orders, ...receiving].slice(0, limit));
+  }
+  if (axis === 'serial') {
+    return finish(await searchSerialUnits(orgId, query, limit).catch(() => []));
+  }
+  if (axis === 'tracking') {
+    const [orders, holds] = await Promise.all([
+      searchOrders(orgId, query, limit).catch(() => []),
+      searchTrackingHolds(orgId, query, limit).catch(() => []),
+    ]);
+    return finish([...holds, ...orders].slice(0, limit));
+  }
   if (looksLikeTicketScan(query)) {
     const tickets = await searchSupportTickets(orgId, query).catch(() => []);
-    if (tickets.length > 0) return tickets.slice(0, limit);
+    if (tickets.length > 0) return finish(tickets.slice(0, limit));
+  }
+  if (looksLikeIdentifier(query)) {
+    const [orders, units, holds, receiving] = await Promise.all([
+      searchOrders(orgId, query, limit).catch(() => []),
+      searchSerialUnits(orgId, query, limit).catch(() => []),
+      searchTrackingHolds(orgId, query, limit).catch(() => []),
+      searchReceiving(orgId, query, limit).catch(() => []),
+    ]);
+    return finish([...orders, ...receiving, ...holds, ...units].slice(0, limit));
   }
   const perEntity = Math.ceil(limit / 7);
   const [orders, repairs, fba, receiving, skus, units, holds] = await Promise.all([
@@ -530,5 +839,5 @@ export async function searchAllEntities(
     searchSerialUnits(orgId, query, perEntity).catch(() => []),
     searchTrackingHolds(orgId, query, perEntity).catch(() => []),
   ]);
-  return [...orders, ...holds, ...repairs, ...fba, ...receiving, ...skus, ...units].slice(0, limit);
+  return finish([...orders, ...holds, ...repairs, ...fba, ...receiving, ...skus, ...units].slice(0, limit));
 }

@@ -2,7 +2,7 @@
  * Connector registry — the BEHAVIOR source of truth for integrations (auth
  * kind, capabilities, and — added per-phase — refresh/validate/sync).
  *
- * The catalog at src/lib/integrations/provider-catalog.ts stays the DISPLAY
+ * The catalog at src/app/settings/integrations/registry.ts stays the DISPLAY
  * SoT (labels, badges, categories, modal copy). Phase 2 reconciles the two so
  * the display catalog derives its behavior bits from here instead of
  * duplicating them. For now this is additive and self-contained.

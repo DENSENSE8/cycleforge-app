@@ -14,9 +14,9 @@
  * non-`newest` sorts — see `useOrdersQueueRows`).
  */
 
-import type { QueueRowRecord } from '@/lib/dashboard/orders-queue-helpers';
-import type { TechRecord } from '@/lib/station/useTechLogs';
-import type { PackerRecord } from '@/lib/station/usePackerLogs';
+import type { QueueRowRecord } from '@/components/dashboard/orders-queue/helpers';
+import type { TechRecord } from '@/hooks/useTechLogs';
+import type { PackerRecord } from '@/hooks/usePackerLogs';
 
 /** Key under which the original domain record rides along on the mapped row. */
 export const STATION_SOURCE_RECORD_KEY = '__stationSourceRecord';

@@ -11,9 +11,9 @@ import {
   incomingRowDateSource,
   type IncomingGridColumnKey,
 } from '@/lib/receiving/receiving-grid-layout';
-import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { getDaysLateNullable } from '@/utils/date';
-import type { GridSortDir } from '@/lib/grid/grid-sort-dir';
+import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
 const CONDITION_RANK = new Map<string, number>(
   CONDITION_GRADES.map((g, i) => [g, i]),
