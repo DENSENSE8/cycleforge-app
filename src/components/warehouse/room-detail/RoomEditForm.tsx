@@ -65,7 +65,7 @@ export function RoomEditForm({ c }: { c: RoomDetailController }) {
           onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
           placeholder="e.g. Zone 1 – New"
           autoComplete="off"
-          className={`h-12 w-full rounded-2xl border bg-surface-canvas px-4 text-base font-semibold text-text-default outline-none transition-colors focus:bg-surface-card focus:ring-2 ${
+          className={`h-12 w-full rounded-2xl border bg-surface-canvas px-4 text-base font-semibold text-text-default outline-none transition-colors focus:bg-surface-card ${
             (nameTaken || renameTaken)
               ? cn('border-red-300', focusRing('field', 'danger'))
               : cn('border-border-soft', focusRing('field', 'accent'))

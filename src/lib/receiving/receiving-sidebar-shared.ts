@@ -407,7 +407,7 @@ import {
   receivingRailRowKey,
   receivingRailShipmentKey,
 } from '@/lib/receiving/rail/rail-carton-key';
-import { focusRing } from '@/lib/design/focus-ring';
+import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 
 

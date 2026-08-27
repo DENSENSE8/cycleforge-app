@@ -10,7 +10,7 @@
  * Pure data only — no JSX.
  */
 
-import { Barcode, MapPin, PackageCheck } from '@/lib/icons';
+import { Barcode, MapPin, PackageCheck } from '@/components/Icons';
 import type { HorizontalSliderItem } from '@/lib/ui/horizontal-slider-item';
 import type { JourneyDimension } from '@/lib/timeline/journey';
 

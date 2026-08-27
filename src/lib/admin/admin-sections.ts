@@ -16,7 +16,7 @@ import {
   Tags,
   User,
   Wrench,
-} from '@/lib/icons';
+} from '@/components/Icons';
 
 export type AdminSection =
   | 'overview'

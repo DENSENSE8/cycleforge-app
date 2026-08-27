@@ -87,9 +87,9 @@ test.describe('To-ship Packed sheet', () => {
 
     const dateTrigger = page.getByTestId('packed-date-range').locator('button').first();
     const staffBox = await staffCombo.boundingBox();
-    const dateBox = await dateTrigger.boundingBox();
-    expect(staffBox && dateBox, 'staff and date triggers share a box').toBeTruthy();
-    expect(Math.abs((staffBox?.width ?? 0) - (dateBox?.width ?? 0))).toBeLessThan(2);
+    const dateTriggerBox = await dateTrigger.boundingBox();
+    expect(staffBox && dateTriggerBox, 'staff and date triggers share a box').toBeTruthy();
+    expect(Math.abs((staffBox?.width ?? 0) - (dateTriggerBox?.width ?? 0))).toBeLessThan(2);
 
     await page.keyboard.press('Escape');
     await page.keyboard.press('Escape');
