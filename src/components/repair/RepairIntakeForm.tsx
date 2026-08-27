@@ -719,7 +719,6 @@ export function RepairIntakeForm({ onClose, onSubmit, initialData, favoriteSkuId
                                         label="Search customer"
                                         value={customerQuery}
                                         onChange={setCustomerQuery}
-                                        tone="neutral"
                                     />
                                     <div className="overflow-hidden rounded-xl border border-border-soft">
                                         <div className="grid grid-cols-[1fr_1fr_0.55fr] gap-2 border-b border-border-hairline bg-surface-canvas px-3 py-2 text-role-eyebrow uppercase tracking-[0.12em] text-text-soft">

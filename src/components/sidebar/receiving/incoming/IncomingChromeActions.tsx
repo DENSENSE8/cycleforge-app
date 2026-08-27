@@ -15,7 +15,7 @@ import {
   WorkbenchFilterGroupLabel,
   WorkbenchFilterMenuRow,
 } from '@/components/dashboard/workbench-filter-popover';
-import { WORKBENCH_CHROME_PILL_CLASS } from '@/components/dashboard/workbench-shell';
+import { WORKBENCH_CHROME_PILL_CLASS, WorkbenchChromeActionRow } from '@/components/dashboard/workbench-shell';
 import { ChromeCheckButton } from '@/components/receiving/ChromeCheckButton';
 import { cn } from '@/utils/_cn';
 import { focusRing } from '@/design-system/tokens/focus-ring';
@@ -64,7 +64,7 @@ export function IncomingChromeActions({
   };
 
   return (
-    <>
+    <WorkbenchChromeActionRow>
       {canCheckZoho ? (
         <ChromeCheckButton
           onClick={onCheckZoho}
@@ -73,7 +73,8 @@ export function IncomingChromeActions({
         />
       ) : null}
       {hasAnyImport ? (
-        <Popover.Root open={menuOpen} onOpenChange={setMenuOpen}>
+        <div className="contents">
+          <Popover.Root open={menuOpen} onOpenChange={setMenuOpen}>
           <Popover.Trigger asChild>
             <Button
               size="sm"
@@ -147,6 +148,7 @@ export function IncomingChromeActions({
             </Popover.Content>
           </Popover.Portal>
         </Popover.Root>
+        </div>
       ) : null}
       {canAdd ? (
         <Button
@@ -160,6 +162,6 @@ export function IncomingChromeActions({
           Add
         </Button>
       ) : null}
-    </>
+    </WorkbenchChromeActionRow>
   );
 }

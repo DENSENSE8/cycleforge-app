@@ -10,10 +10,13 @@
  * `splitOutboundAttention`. Click-to-filter via shared URL hooks.
  */
 
-import type { ReactNode } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useShippedScanOutData, ZERO_OUTBOUND_METRICS } from '@/hooks/useShippedScanOutData';
 import { unshippedQueueCountsQuery } from '@/lib/queries/dashboard-queries';
+import { usePackedOrdersFeed } from '@/hooks/usePackedOrdersFeed';
+import { packedDateWindowLabel, summarizePackedFilter } from '@/lib/packed/packed-filters';
+import { useStaffFilter } from '@/hooks/useStaffFilter';
 import {
   KpiTile,
   metricIntentTextClass,
@@ -291,10 +294,67 @@ function UnshippedStrip() {
   });
 }
 
-export function OutboundKpiStrip({ mode }: { mode: 'unshipped' | 'tested' | 'shipped' }) {
+function PackedStrip() {
+  const { records, query, staffId, dateFrom, dateTo } = usePackedOrdersFeed();
+  const { selectedName } = useStaffFilter();
+  const summary = useMemo(() => summarizePackedFilter(records), [records]);
+  const staffTiles = staffId
+    ? summary.byStaff.filter((s) => s.staffId === staffId)
+    : summary.byStaff.slice(0, 5);
+  const windowLabel = packedDateWindowLabel(dateFrom ?? null, dateTo ?? null);
+  const filterLabel = selectedName
+    ? windowLabel
+      ? `${selectedName} · ${windowLabel}`
+      : selectedName
+    : windowLabel ?? 'Packed';
+
+  const metrics: ComputedMetric[] = [
+    {
+      id: 'packed-filter',
+      label: filterLabel,
+      value: summary.packages.toLocaleString(),
+      fraction: 1,
+      intent: 'neutral',
+      severity: 1,
+      tooltip: selectedName
+        ? `${summary.packages} package${summary.packages === 1 ? '' : 's'} packed by ${selectedName}${windowLabel ? ` (${windowLabel})` : ''}. ${summary.orders} order row${summary.orders === 1 ? '' : 's'}.`
+        : `${summary.packages} package${summary.packages === 1 ? '' : 's'} in the Packed filter${windowLabel ? ` (${windowLabel})` : ''}. ${summary.orders} order row${summary.orders === 1 ? '' : 's'}.`,
+    },
+    ...staffTiles.map((staff) => ({
+      id: `packer-${staff.staffId ?? 'none'}`,
+      label: staff.name,
+      value: staff.packages.toLocaleString(),
+      fraction: summary.packages > 0 ? staff.packages / summary.packages : 0,
+      intent: 'neutral' as const,
+      severity: 1,
+      tooltip: `${staff.packages} package${staff.packages === 1 ? '' : 's'} packed by ${staff.name} in this filter.`,
+    })),
+  ];
+
+  // When a staff is selected, the headline tile IS their count — don't repeat it.
+  const tiles = staffId
+    ? metrics.slice(0, 1)
+    : metrics.filter((m, i) => i === 0 || m.id !== 'packed-filter');
+
+  return OutboundStripLayout({
+    mode: 'shipped',
+    metrics: tiles,
+    reservedSlots: staffId ? 1 : Math.min(6, 1 + staffTiles.length),
+    isPending: query.isPending,
+    isError: query.isError,
+    refetch: query.refetch,
+  });
+}
+
+export function OutboundKpiStrip({ mode }: { mode: 'unshipped' | 'tested' | 'shipped' | 'packed' }) {
   return (
-    <section aria-label="Outbound attention" data-strip-rev="attention-band-1" className="shrink-0">
-      {mode === 'shipped' ? <ShippedStrip /> : <UnshippedStrip />}
+    <section
+      aria-label="Outbound attention"
+      data-strip-rev="attention-band-1"
+      data-testid={mode === 'packed' ? 'packed-kpi-band' : undefined}
+      className="shrink-0"
+    >
+      {mode === 'packed' ? <PackedStrip /> : mode === 'shipped' ? <ShippedStrip /> : <UnshippedStrip />}
     </section>
   );
 }

@@ -72,16 +72,6 @@ const ThrowTaskHost = dynamic(
   () => import('@/components/quick-access/ThrowTaskHost').then((m) => m.ThrowTaskHost),
   { ssr: false },
 );
-// Persistent follow-up-work card (un-synced ticket photos, open receiving
-// exceptions). Mounted here so it can survive a carton swap on non-Unbox
-// routes. Unbox itself never paints it (`isPendingWorkPromptHidden`) — the
-// scan bench already carries those facts on the carton, and a corner overlay
-// sits on Displays.
-// P3 — deferred, never in the first-paint path.
-const PendingWorkPrompt = dynamic(
-  () => import('@/components/receiving/pending-work/PendingWorkPrompt').then((m) => m.PendingWorkPrompt),
-  { ssr: false },
-);
 import { VendorViewMaskHost } from '@/components/desktop/VendorViewMaskHost';
 const GlobalDesktopSkuScanner = dynamic(
   () => import('@/components/layout/GlobalDesktopSkuScanner').then((m) => m.GlobalDesktopSkuScanner),
@@ -406,7 +396,6 @@ export function ResponsiveLayout({ children, kioskHost = false }: ResponsiveLayo
         <CommandBar />
         <ClipboardHistoryHost />
         <ThrowTaskHost />
-        <PendingWorkPrompt />
         <VendorViewMaskHost />
         <Suspense fallback={null}>
           <GlobalDesktopSkuScanner />

@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation';
 import { useHeader } from '@/contexts/HeaderContext';
 import { useAuth, isClientPublicPath } from '@/contexts/AuthContext';
 import { GlobalHeaderActions } from './GlobalHeaderActions';
+import { GlobalHeaderSearch } from './GlobalHeaderSearch';
 import { GlobalScanDock } from './GlobalScanDock';
 import { HeaderPageSwitcher } from './HeaderPageSwitcher';
 import { HeaderPinsSwitcher } from './HeaderPinsSwitcher';
@@ -23,20 +24,22 @@ import { cn } from '@/utils/_cn';
  *
  * Zone contract (left → right) — facts drive chrome; empty middle is OK when
  * the station/workbench band below already owns surface context:
- *   - **Nav** — toggle · Pins · Recents · page identity (one
- *     {@link HEADER_ICON_CLUSTER}). Page face is the only worded slot.
- *     Modeful pages open a child menu; Receiving benches compose peers via
- *     {@link stationSubgroupMembers}. Data = {@link SIDEBAR_PAGE_NAV} (+
- *     {@link APP_SIDEBAR_NAV} fallback) / `useQuickAccess` — never a sidebar
- *     pill twin or avatar pin list. **Never** goal / inbox / search / assistant
- *     here.
+ *   - **Nav** — toggle · Pins · Recents · page chip · Find in one
+ *     {@link HEADER_ICON_CLUSTER} (`gap-0` — Recents abuts the page face).
+ *     Page identity is a compact {@link HEADER_PAGE_FACE_WIDTH} chip matching
+ *     its child menu. Modeful pages open a child menu; Receiving benches
+ *     compose peers via {@link stationSubgroupMembers}. Data =
+ *     {@link SIDEBAR_PAGE_NAV} (+ {@link APP_SIDEBAR_NAV} fallback) /
+ *     `useQuickAccess`. Find is {@link GlobalHeaderSearch} (icon at rest off
+ *     `/search`; field on click / focus / a live query, and always on `/search`).
+ *     **Never** goal / inbox / assistant here.
  *   - **Scan** — {@link GlobalScanDock}: the persistent station scan input.
  *     Renders only when a surface published a policy (`useScanDock`). It is a
  *     zone of its own and NOT part of `panelContent` on purpose: `panelContent`
  *     is republished by each page, which is exactly the per-route churn the
  *     dock exists to escape.
  *   - **Context** — page `panelContent` via {@link useHeader}
- *   - **Actions** — {@link GlobalHeaderActions}: search · pace-and-next
+ *   - **Actions** — {@link GlobalHeaderActions}: pace-and-next
  *     ({@link HeaderGoalChip}) · inbox · assistant (far-right)
  *
  * This bar shares the desktop top-chrome face with the MasterNav spine band
@@ -79,7 +82,7 @@ export function GlobalHeader({
         appChromeMutedClass,
       )}
     >
-      {/* Nav — toggle · Pins · Recents · page. */}
+      {/* Toggle · Pins · Recents · page chip · Find — one gap-0 cluster. */}
       <div className={HEADER_ICON_CLUSTER} data-header-zone="nav">
         {canCollapseSidebar && onToggleSidebar ? (
           <SidebarCollapseControl
@@ -87,18 +90,19 @@ export function GlobalHeader({
             onToggleSidebar={onToggleSidebar}
           />
         ) : null}
-        {/* Home · Media live in the open spine band (`SpineTopPins`). Search
-            is GlobalHeaderSearch. The toggle is click-only — no collapsed hover peek. */}
+        {/* Home · Media live in the open spine band (`SpineTopPins`). The
+            toggle is click-only — no collapsed hover peek. */}
         <HeaderPinsSwitcher />
         <HeaderRecentsSwitcher />
         <HeaderPageSwitcher />
+        <GlobalHeaderSearch />
       </div>
 
       <GlobalScanDock />
 
       <div className="flex min-w-0 flex-1 items-center">{panelContent}</div>
 
-      {/* Beam-height so expanded find + icon washes lock flush top/bottom. */}
+      {/* Beam-height so icon washes lock flush top/bottom. */}
       <div className="flex h-full shrink-0 items-stretch">
         <GlobalHeaderActions />
       </div>

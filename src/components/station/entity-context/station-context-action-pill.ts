@@ -40,10 +40,11 @@ const STATION_CONTEXT_CLAIM_TONE =
 
 /**
  * Quiet chrome face — exit, overflow, boxed cube. Glyph-only, so it carries no
- * type token at all.
+ * type token at all. Whisper `surface-hover` fill (same recipe as Band-1 Check
+ * `execute`) so the cell reads as a control without a rest-state hairline box.
  */
 const STATION_CONTEXT_QUIET_TONE =
-  `bg-surface-card text-text-soft ${STATION_CHROME_CELL_HOVER_FILL} hover:text-text-muted`;
+  `bg-surface-hover text-text-soft ${STATION_CHROME_CELL_HOVER_FILL} hover:text-text-muted`;
 
 /**
  * Local-pickup tone — a solid emerald fill, the one carton-bar cell that states
@@ -159,25 +160,28 @@ function stationContextFace({
 }
 
 /**
- * Boxed flush cube on a primary chrome row — carton Exit / Back-to-list and
- * Unbox Band-1 pin-list share this face. Height/width come from the host
- * (`h-full w-full` lead col, or `h-full aspect-square` on the workbench band).
- * Pair glyph with `h-3.5 w-3.5` — never IconButton.
+ * Flush cube on a primary chrome row — Unbox Band-1 pin-list, Photo Library
+ * scope cube, and workbench chrome cubes share this face. **No rest-state
+ * border** — same flush grammar as Check / Band-1 CTAs (hover seam only).
+ * Height/width come from the host (`h-full w-full` lead col, or
+ * `h-full aspect-square` on the workbench band). Pair glyph with `h-3.5 w-3.5`
+ * — never IconButton.
  */
 export const STATION_CONTEXT_BOXED_CUBE_CLASS = stationContextFace({
   box: 'cube',
   tone: 'quiet',
-  bordered: true,
+  bordered: false,
 });
 
 /**
  * Exit / back-to-list — fills the lead square
- * ({@link STATION_IDENTITY_LEAD_COL_CLASS}). Same hover/focus as the boxed
- * cube, but borderless so the carton bar reads as one continuous strip.
+ * ({@link STATION_IDENTITY_LEAD_COL_CLASS}). White rest like identity IDs
+ * ({@link STATION_CONTEXT_NEUTRAL_TONE}); shared chrome hover fill — never
+ * the quiet `surface-hover` slab.
  */
 export const STATION_CONTEXT_EXIT_PILL_CLASS = stationContextFace({
   box: 'lead',
-  tone: 'quiet',
+  tone: 'neutral',
 });
 
 /**

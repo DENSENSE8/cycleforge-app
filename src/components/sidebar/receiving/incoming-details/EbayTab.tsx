@@ -194,19 +194,16 @@ export function EbayTab({ data }: { data: DetailsResponse }) {
             label="Display order #"
             value={orderNumber}
             onChange={setOrderNumber}
-            tone="neutral"
           />
           <TextField
             label="Tracking #"
             value={trackingNumber}
             onChange={setTrackingNumber}
-            tone="neutral"
           />
           <TextField
             label="Listing URL"
             value={listingUrl}
             onChange={setListingUrl}
-            tone="neutral"
           />
           <Button
             size="sm"

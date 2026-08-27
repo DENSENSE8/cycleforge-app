@@ -4,14 +4,15 @@
  * To Ship inspector **View** topic cluster — sheet layout / refine chrome that
  * used to live on Band 3. Composes existing controls (no forks).
  *
- * Order: paint · drill · compare · filters · Priority · staff · portal · KPI
+ * Order: paint · drill · compare · filters · Priority · staff · portal.
+ * Hide/Show metrics lives on Band 3 (`OutboundTriageBand` `kpiToggle`),
+ * immediately left of Show inspector — not here.
  */
 
 import { useSearchParams } from 'next/navigation';
 import { isPrePackOrderView, type DashboardOrderView } from '@/utils/dashboard-search-state';
 import { OutboundExactFilters } from '@/components/dashboard/OutboundFilterStrip';
 import { QueueSortSwitch } from '@/components/dashboard/QueueSortSwitch';
-import { WorkbenchKpiCollapseToggle } from '@/components/dashboard/workbench-kpi-collapse';
 import { StaffFilterButton } from '@/components/ui/StaffFilterButton';
 import { OrdersRowPaintChrome } from '@/components/outbound/orders/OrdersRowPaintChrome';
 import { OrdersDrillChrome } from '@/components/outbound/orders/OrdersDrillChrome';
@@ -38,7 +39,7 @@ export function OrdersViewTopicsCluster({
   className?: string;
   hidePaint?: boolean;
 }) {
-  const { setControlsEl, kpiOpen, onToggleKpi } = useOrdersViewChrome();
+  const { setControlsEl } = useOrdersViewChrome();
   const { orderView } = useDashboardSearchController();
   const { sort, setSort } = useQueueDisplaySort();
   const searchParams = useSearchParams();
@@ -71,7 +72,6 @@ export function OrdersViewTopicsCluster({
         className="contents"
         data-orders-view-controls=""
       />
-      <WorkbenchKpiCollapseToggle open={kpiOpen} onToggle={onToggleKpi} />
     </div>
   );
 }

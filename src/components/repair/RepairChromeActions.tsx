@@ -12,6 +12,7 @@ import {
   WorkbenchChromeCubeButton,
   WORKBENCH_CHROME_CUBE_GLYPH_CLASS,
 } from '@/components/dashboard/workbench-chrome-cube';
+import { WorkbenchChromeActionRow } from '@/components/dashboard/workbench-shell';
 
 export function RepairChromeActions({
   onAdd,
@@ -21,6 +22,7 @@ export function RepairChromeActions({
   disabled?: boolean;
 }) {
   return (
+    <WorkbenchChromeActionRow>
     <WorkbenchChromeCubeButton
       label="New repair order"
       icon={<Plus className={WORKBENCH_CHROME_CUBE_GLYPH_CLASS} />}
@@ -28,5 +30,6 @@ export function RepairChromeActions({
       disabled={disabled}
       data-testid="repair-chrome-add"
     />
+    </WorkbenchChromeActionRow>
   );
 }

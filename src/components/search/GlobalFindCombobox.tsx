@@ -4,12 +4,23 @@
  * GlobalFindCombobox — the find field + WAI-ARIA combobox for the global
  * header. One presentation, one mount ({@link GlobalHeaderSearch}).
  *
+ * Presentation:
+ *   • Off `/search` — magnifying-glass icon at rest. The 24rem field paints
+ *     only while find is open (focus, a typed query, or the search-by picker).
+ *   • On `/search` (and `/search/…`) — the field stays expanded so the page
+ *     that *is* find does not hide its own surface behind an icon.
+ *
  * Enter / paste contract (number / identifier find):
  *   • Pulse {@link SearchPendingBar} while {@link commitIdentifierFind} runs.
  *   • Hit → seed resolve cache → navigate to `/search?sel=…` only.
  *   • Miss → “No matches” dropdown on the current page (URL unchanged).
  *   • Never open `/search?q=` or auto-commit a preview “best hit” on Enter.
  * Explicit arrow+Enter / click still opens a highlighted preview row.
+ *
+ * The leading search glyph is always a button that opens the search-by
+ * picker (Internal ID · order · tracking · serial · ticket), including when
+ * the field already has a query or a method chip would previously have
+ * replaced it.
  *
  * **The `stage` presentation is gone (2026-08-21).** `/search` stopped mounting
  * a page-local field when the header became the sole find surface, and the
@@ -33,11 +44,17 @@ import {
   useState,
   type MouseEvent as ReactMouseEvent,
 } from 'react';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { IconButton, SearchField } from '@/design-system/primitives';
-import { Hash, MapPin, QrCode, ScanBarcode, Search, Ticket } from '@/components/Icons';
+import { FIELD_ACTION_GLYPH_CLASS } from '@/design-system/primitives/field-action';
+import { Hash, MapPin, ScanBarcode, Search, Ticket } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import {
+  HEADER_ICON_BTN_CLASS,
+  HEADER_ICON_WRAP,
+  TOP_CHROME_ICON_FACE,
+} from '@/components/layout/header-shell';
 import {
   GlobalSearchDropdown,
   type GlobalSearchDropdownState,
@@ -53,7 +70,7 @@ import {
   setGlobalHeaderSearchDraft,
 } from '@/lib/global-header-search-query';
 import { type SearchRecentEntry } from '@/lib/search/search-recents';
-import { searchRerunHref, SEARCH_RECENTS_PAGE_HREF } from '@/lib/search/search-page-recents';
+import { searchRerunHref } from '@/lib/search/search-page-recents';
 import {
   journeyHandoffHref,
   looksLikeIdentifier,
@@ -70,30 +87,27 @@ import { desktopSearchHref, searchPageHrefForScanRoute } from '@/lib/search/inte
 import {
   SEARCH_BY_METHOD_LABEL,
   filterHitsBySearchBy,
+  headerFindEmptyMessage,
+  headerFindSearchAxis,
   searchByPickerCount,
   searchByPickerScope,
   searchByPlaceholder,
   type SearchByScope,
 } from '@/lib/search/search-by';
-import {
-  HEADER_ICON_BTN_CLASS,
-  HEADER_ICON_WRAP,
-  TOP_CHROME_ICON_FACE,
-} from '@/components/layout/header-shell';
-
-const SEARCH_BY_CHIP_ICON: Record<SearchByScope, typeof Hash> = {
-  internal: QrCode,
+/** Leading find-field glyph — search by default, method icon once scoped. */
+const SEARCH_BY_LEADING_ICON: Record<SearchByScope, typeof Hash> = {
+  internal: Search,
   order: Hash,
   tracking: MapPin,
   serial: ScanBarcode,
   ticket: Ticket,
 };
 
-/** Expanded search field width — shrink-0 so header siblings cannot crush it. */
+/** Open find-cell width — shrink-0 so header siblings cannot crush it. */
 const GLOBAL_FIND_FIELD_WIDTH = 'w-[24rem] shrink-0';
 
-/** Free-text typeahead wait — identifiers fire immediately (0ms). */
-const NL_DEBOUNCE_MS = 80;
+/** Preview typeahead wait — 0 so hits paint with the keystroke (identifiers and NL). */
+const NL_DEBOUNCE_MS = 0;
 
 /**
  * The listbox id. A module constant rather than a prop: there is exactly one
@@ -135,9 +149,6 @@ function navigateSearchHref(
   pathname: string | null,
 ) {
   const dest = desktopSearchHref(href);
-  // #region agent log
-  fetch('http://127.0.0.1:7905/ingest/963a9b6c-b9e1-4ea4-8873-db315c94d962',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'05d676'},body:JSON.stringify({sessionId:'05d676',runId:'post-fix',hypothesisId:'F',location:'GlobalFindCombobox.tsx:navigateSearchHref',message:'desktop search navigation',data:{from:href,to:dest,isMobile:dest.startsWith('/m/')||dest.startsWith('/01/')},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion
   if (pathname === '/dashboard' && dest.startsWith('/dashboard')) {
     router.replace(dest);
     return;
@@ -160,15 +171,9 @@ export function GlobalFindCombobox({
 }: GlobalFindComboboxProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
-  const recentsPageOpen =
-    pathname === '/search' &&
-    !(searchParams.get('sel') ?? '').trim() &&
-    !(searchParams.get('q') ?? '').trim();
 
   const [query, setQuery] = useState(initialQuery);
-  const [expanded, setExpanded] = useState(Boolean(initialQuery.trim()));
   const [focused, setFocused] = useState(false);
   const [hoverHeld, setHoverHeld] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
@@ -177,25 +182,23 @@ export function GlobalFindCombobox({
   const [resolvePending, setResolvePending] = useState(false);
   const [axisScope, setAxisScope] = useState<SearchByScope>('internal');
   const [methodChosen, setMethodChosen] = useState(false);
+  const [methodsPickerOpen, setMethodsPickerOpen] = useState(false);
   const showPendingBar = pending || resolvePending;
 
   const anchorRef = useRef<HTMLDivElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const blurTimerRef = useRef<number>();
-  const collapseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hoverLeaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchAbortRef = useRef<AbortController | null>(null);
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout>>();
-  const queryRef = useRef(query);
-  queryRef.current = query;
 
   const trimmedQuery = query.trim();
-  const hasValue = trimmedQuery.length > 0;
+  const previewAxis = headerFindSearchAxis(methodChosen, axisScope, trimmedQuery);
   // Identifiers (serials, tracking, order #) get the same preview dropdown as
   // free text — hits or “No matches…”. Enter still prefers resolveSearchOrder
   // for order/tracking fast-open; miss re-focuses so this dropdown stays open.
-  const hasPreviewQuery = expanded && focused && trimmedQuery.length >= 2;
+  const hasPreviewQuery = focused && trimmedQuery.length >= 2;
 
   // Classic cross-entity find only — GET /api/global-search. Keep last hits
   // while the next request is in flight; clear only when the query drops
@@ -213,42 +216,33 @@ export function GlobalFindCombobox({
     clearTimeout(searchDebounceRef.current);
     const isIdentifier = looksLikeIdentifier(trimmedQuery);
     const waitMs = isIdentifier ? 0 : NL_DEBOUNCE_MS;
-    // #region agent log
-    fetch('http://127.0.0.1:7905/ingest/963a9b6c-b9e1-4ea4-8873-db315c94d962',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'05d676'},body:JSON.stringify({sessionId:'05d676',hypothesisId:'A',location:'GlobalFindCombobox.tsx:fetch-schedule',message:'header preview fetch scheduled',data:{waitMs,isIdentifier,qLen:trimmedQuery.length,axis:axisScope,qPrefix:trimmedQuery.slice(0,24)},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
     searchDebounceRef.current = setTimeout(async () => {
       searchAbortRef.current?.abort();
       const controller = new AbortController();
       searchAbortRef.current = controller;
-      const fetchStartedAt = Date.now();
       try {
+        const axisQs = previewAxis ? `&axis=${encodeURIComponent(previewAxis)}` : '';
         const res = await fetch(
-          `/api/global-search?q=${encodeURIComponent(trimmedQuery)}&limit=6&axis=${encodeURIComponent(axisScope)}`,
+          `/api/global-search?q=${encodeURIComponent(trimmedQuery)}&limit=6${axisQs}`,
           { signal: controller.signal },
         );
         if (!res.ok) throw new Error('Search failed');
         const data = await res.json();
         if (!controller.signal.aborted) {
           const rows = (data.rows ?? []) as AiSearchHit[];
-          const filtered = filterHitsBySearchBy(rows, axisScope);
-          // #region agent log
-          fetch('http://127.0.0.1:7905/ingest/963a9b6c-b9e1-4ea4-8873-db315c94d962',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'05d676'},body:JSON.stringify({sessionId:'05d676',hypothesisId:'A,B,E',location:'GlobalFindCombobox.tsx:fetch-done',message:'header preview fetch settled',data:{fetchMs:Date.now()-fetchStartedAt,status:res.status,cache:res.headers.get('x-cache'),rowCount:rows.length,filteredCount:filtered.length,axis:axisScope,waitMs},timestamp:Date.now()})}).catch(()=>{});
-          // #endregion
+          const filtered = previewAxis ? filterHitsBySearchBy(rows, previewAxis) : rows;
           setPreviewHits(filtered);
           setPreviewSearching(false);
         }
       } catch {
         if (!controller.signal.aborted) {
-          // #region agent log
-          fetch('http://127.0.0.1:7905/ingest/963a9b6c-b9e1-4ea4-8873-db315c94d962',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'05d676'},body:JSON.stringify({sessionId:'05d676',hypothesisId:'A,E',location:'GlobalFindCombobox.tsx:fetch-error',message:'header preview fetch failed or aborted',data:{fetchMs:Date.now()-fetchStartedAt,aborted:controller.signal.aborted,axis:axisScope},timestamp:Date.now()})}).catch(()=>{});
-          // #endregion
           setPreviewHits([]);
           setPreviewSearching(false);
         }
       }
     }, waitMs);
     return () => clearTimeout(searchDebounceRef.current);
-  }, [trimmedQuery, hasPreviewQuery, axisScope]);
+  }, [trimmedQuery, hasPreviewQuery, axisScope, methodChosen]);
 
   useEffect(() => {
     if (!syncAssistantDraft) return;
@@ -262,45 +256,21 @@ export function GlobalFindCombobox({
     };
   }, [syncAssistantDraft]);
 
-  // Expand while the field has a value.
-  useEffect(() => {
-    if (hasValue) setExpanded(true);
-  }, [hasValue]);
-
-  // Pending pulse is painted on the expanded field — never leave it icon-only
-  // while resolve/retrieve is in flight.
-  useEffect(() => {
-    if (pending || resolvePending) setExpanded(true);
-  }, [pending, resolvePending]);
-
-  useEffect(() => {
-    return () => {
-      if (collapseTimerRef.current) clearTimeout(collapseTimerRef.current);
-      if (hoverLeaveTimerRef.current) clearTimeout(hoverLeaveTimerRef.current);
-    };
-  }, []);
-
-  // Layout-persistent chrome: adopt URL seed, or return to icon-rail rest.
-  // Leaving `/search?q=` used to clear the seed but leave `expanded` true —
-  // and `autoFocus={expanded}` then re-focused the field on the next page.
+  // Adopt URL seed on route change. A non-empty `?q=` keeps the bar open;
+  // an empty seed returns to the icon without stealing focus.
   useEffect(() => {
     setQuery(initialQuery);
     setAxisScope('internal');
     setMethodChosen(false);
-    if (initialQuery.trim()) {
-      setExpanded(true);
-    } else {
-      setExpanded(false);
-      setFocused(false);
-    }
+    setMethodsPickerOpen(false);
+    if (!initialQuery.trim()) setFocused(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- sync seed / route rest
   }, [initialQuery, pathname]);
 
-  const clearCollapseTimer = useCallback(() => {
-    if (collapseTimerRef.current) {
-      clearTimeout(collapseTimerRef.current);
-      collapseTimerRef.current = null;
-    }
+  useEffect(() => {
+    return () => {
+      if (hoverLeaveTimerRef.current) clearTimeout(hoverLeaveTimerRef.current);
+    };
   }, []);
 
   const clearHoverLeaveTimer = useCallback(() => {
@@ -312,9 +282,8 @@ export function GlobalFindCombobox({
 
   const holdHover = useCallback(() => {
     clearHoverLeaveTimer();
-    clearCollapseTimer();
     setHoverHeld(true);
-  }, [clearCollapseTimer, clearHoverLeaveTimer]);
+  }, [clearHoverLeaveTimer]);
 
   const releaseHoverSoon = useCallback(() => {
     clearHoverLeaveTimer();
@@ -324,44 +293,32 @@ export function GlobalFindCombobox({
     }, 160);
   }, [clearHoverLeaveTimer]);
 
-  const tryCollapse = useCallback(() => {
-    if (pending || resolvePending) return;
-    const root = rootRef.current;
-    if (root?.contains(document.activeElement)) return;
-    if (queryRef.current.trim()) return;
-    setHoverHeld(false);
-    setExpanded(false);
-    setFocused(false);
-  }, [pending, resolvePending]);
-
-  const scheduleCollapse = useCallback(() => {
-    clearCollapseTimer();
-    collapseTimerRef.current = setTimeout(tryCollapse, 160);
-  }, [clearCollapseTimer, tryCollapse]);
-
-  const expandAndFocus = useCallback(() => {
-    holdHover();
-    setExpanded(true);
+  const focusField = useCallback(() => {
     setFocused(true);
-    requestAnimationFrame(() => {
+    const aim = () => {
       const el = inputRef.current;
       if (!el) return;
       el.focus();
       if (document.activeElement === el) el.select();
+    };
+    requestAnimationFrame(() => {
+      if (inputRef.current) aim();
+      else requestAnimationFrame(aim);
     });
-  }, [holdHover]);
+  }, []);
 
   // Sole find surface, so this listener is unconditional — `ownsFocusEvent`
   // existed to arbitrate with the `/search` stage field, which is gone.
   useEffect(() => {
-    const handleFocusRequest = () => expandAndFocus();
+    const handleFocusRequest = () => focusField();
     window.addEventListener(GLOBAL_SEARCH_FOCUS_EVENT, handleFocusRequest);
     return () => window.removeEventListener(GLOBAL_SEARCH_FOCUS_EVENT, handleFocusRequest);
-  }, [expandAndFocus]);
+  }, [focusField]);
 
   const handleChange = useCallback(
     (next: string) => {
       setQuery(next);
+      setMethodsPickerOpen(false);
     },
     [setQuery],
   );
@@ -370,7 +327,6 @@ export function GlobalFindCombobox({
     setQuery('');
     window.clearTimeout(blurTimerRef.current);
     setFocused(true);
-    setExpanded(true);
     inputRef.current?.focus();
   }, [setQuery]);
 
@@ -379,7 +335,6 @@ export function GlobalFindCombobox({
 
   const keepPreviewOpen = useCallback(() => {
     window.clearTimeout(blurTimerRef.current);
-    setExpanded(true);
     setFocused(true);
     inputRef.current?.focus();
   }, []);
@@ -394,12 +349,19 @@ export function GlobalFindCombobox({
   );
 
   const emptyQuery = trimmedQuery.length === 0;
-  const fieldOpen = expanded;
-  const showMethods = fieldOpen && emptyQuery && !methodChosen && (focused || hoverHeld);
+  const onSearchPage =
+    pathname === '/search' || Boolean(pathname?.startsWith('/search/'));
+  // Search page owns find — keep the field painted even with an empty query
+  // and no focus. Everywhere else the beam stays an icon until the operator
+  // opens it.
+  const fieldOpen =
+    onSearchPage || focused || methodsPickerOpen || !emptyQuery;
+  const showMethods =
+    methodsPickerOpen || (emptyQuery && !methodChosen && (focused || hoverHeld));
   const showRecents =
-    enableRecents && fieldOpen && emptyQuery && methodChosen && recents.length > 0 && (focused || hoverHeld);
+    enableRecents && emptyQuery && methodChosen && recents.length > 0 && (focused || hoverHeld);
   const showFirstUse =
-    enableRecents && fieldOpen && emptyQuery && methodChosen && recents.length === 0 && (focused || hoverHeld);
+    enableRecents && emptyQuery && methodChosen && recents.length === 0 && (focused || hoverHeld);
   // Open preview when there are hits, or when search settled empty. Never open
   // a loading diary with zero hits — the field spinner is enough.
   const showPreviewPanel =
@@ -431,27 +393,25 @@ export function GlobalFindCombobox({
   const pickSearchBy = useCallback((scope: SearchByScope) => {
     setAxisScope(scope);
     setMethodChosen(true);
+    setMethodsPickerOpen(false);
     window.clearTimeout(blurTimerRef.current);
-    setExpanded(true);
     setFocused(true);
     inputRef.current?.focus();
   }, []);
 
-  const openRecentsPage = useCallback(() => {
-    setFocused(false);
-    setExpanded(false);
-    // #region agent log
-    fetch('http://127.0.0.1:7905/ingest/963a9b6c-b9e1-4ea4-8873-db315c94d962',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'05d676'},body:JSON.stringify({sessionId:'05d676',runId:'recents-picker',hypothesisId:'G',location:'GlobalFindCombobox.tsx:openRecentsPage',message:'open recents landing',data:{pathname,alreadyThere:recentsPageOpen,dest:SEARCH_RECENTS_PAGE_HREF},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
-    if (recentsPageOpen) return;
-    navigateSearchHref(router, SEARCH_RECENTS_PAGE_HREF, pathname);
-  }, [recentsPageOpen, router, pathname]);
+  const openSearchByPicker = useCallback(() => {
+    window.clearTimeout(blurTimerRef.current);
+    holdHover();
+    setMethodsPickerOpen(true);
+    setFocused(true);
+    inputRef.current?.focus();
+  }, [holdHover]);
 
   const clearSearchBy = useCallback(() => {
     setAxisScope('internal');
     setMethodChosen(false);
+    setMethodsPickerOpen(false);
     window.clearTimeout(blurTimerRef.current);
-    setExpanded(true);
     setFocused(true);
     inputRef.current?.focus();
   }, []);
@@ -467,7 +427,7 @@ export function GlobalFindCombobox({
   // Same decode as the station scan bar, but the destination is `/search?sel=`
   // (header find contract) — never the Digital Link `/m/` page.
   useFindFieldScan(inputRef, {
-    enabled: expanded,
+    enabled: true,
     onHandle: (route) => {
       const dest = searchPageHrefForScanRoute(route);
       if (!dest) return false;
@@ -488,14 +448,52 @@ export function GlobalFindCombobox({
     [router, pathname],
   );
 
+  // Sole settled hit → open the record. One answer is not a list worth reading.
+  // Keyed so a return trip to the same query does not re-fire in a loop.
+  // Identifier / order-number finds stay in the dropdown (Ecwid 4989 must
+  // paint as a row; a miss must paint “No order number found”) — never a
+  // silent page switch to a different marketplace id.
+  const soleCommittedKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!focused || previewSearching) return;
+    if (looksLikeIdentifier(trimmedQuery) || previewAxis === 'order') {
+      soleCommittedKeyRef.current = null;
+      return;
+    }
+    if (flatPreviewHits.length !== 1) {
+      soleCommittedKeyRef.current = null;
+      return;
+    }
+    const hit = flatPreviewHits[0];
+    const key = `${trimmedQuery}\0${hit.entityType}:${hit.id}`;
+    if (soleCommittedKeyRef.current === key) return;
+    soleCommittedKeyRef.current = key;
+    onPushRecent?.({
+      query: trimmedQuery,
+      scope: 'global',
+      scopeHref: hrefForPreviewHit(hit),
+      topHit: {
+        title: hit.title,
+        href: hrefForPreviewHit(hit),
+        entityType: hit.entityType,
+      },
+    });
+    commitHit(hit);
+  }, [
+    focused,
+    previewSearching,
+    flatPreviewHits,
+    trimmedQuery,
+    commitHit,
+    onPushRecent,
+    previewAxis,
+  ]);
+
   const navigateActive = useCallback((): boolean => {
     const { dropdownState: st, recents: rec, flatPreviewHits: hits } = navRef.current;
     if (st === 'methods') {
       const scope = searchByPickerScope(activeIndex);
-      if (!scope) {
-        openRecentsPage();
-        return true;
-      }
+      if (!scope) return false;
       pickSearchBy(scope);
       return true;
     }
@@ -513,10 +511,9 @@ export function GlobalFindCombobox({
       return true;
     }
     return false;
-  }, [activeIndex, pickSearchBy, openRecentsPage, rerunRecentInField, commitHit]);
+  }, [activeIndex, pickSearchBy, rerunRecentInField, commitHit]);
 
   useEffect(() => {
-    if (!fieldOpen) return;
     const el = inputRef.current;
     if (!el) return;
     const onKeyDown = (e: KeyboardEvent) => {
@@ -539,7 +536,7 @@ export function GlobalFindCombobox({
         else {
           el.blur();
           setFocused(false);
-          setExpanded(false);
+          setMethodsPickerOpen(false);
         }
         return;
       }
@@ -566,7 +563,7 @@ export function GlobalFindCombobox({
     };
     el.addEventListener('keydown', onKeyDown);
     return () => el.removeEventListener('keydown', onKeyDown);
-  }, [fieldOpen, query, handleClear, activeIndex, router, pathname, methodChosen, clearSearchBy]);
+  }, [query, handleClear, activeIndex, router, pathname, methodChosen, clearSearchBy]);
 
   const handleSearchSubmit = useCallback(
     (raw: string) => {
@@ -588,9 +585,12 @@ export function GlobalFindCombobox({
       if (!trimmed) return;
 
       // ── Identifier (order # / tracking / serial): pulse → hit or miss dropdown ──
-      // Internal ID never uses the order resolver — a bare number is a
-      // shipment / R-id / unit PK, not a marketplace order.
-      if (axisScope !== 'internal' && looksLikeIdentifier(trimmed)) {
+      // Internal ID (explicit chip) never uses the order resolver — a bare
+      // number is a shipment / R-id / unit PK. Unscoped typing is order #.
+      // Miss and hit both stay on this page until the operator picks a row
+      // (arrow+Enter / click). Auto-opening the lookup result was a page
+      // switch — Ecwid 4989 never painted in the dropdown.
+      if (previewAxis !== 'internal' && looksLikeIdentifier(trimmed)) {
         setFocused(false);
         void (async () => {
           setResolvePending(true);
@@ -607,7 +607,7 @@ export function GlobalFindCombobox({
                   entityType: 'order',
                 },
               });
-              navigateSearchHref(router, result.href, pathname);
+              keepPreviewOpen();
               return;
             }
             onPushRecent?.({
@@ -667,26 +667,25 @@ export function GlobalFindCombobox({
       previewSearching,
       commitHit,
       openPrintedHandle,
-      axisScope,
+      previewAxis,
     ],
   );
 
   const handleFocusIn = () => {
     window.clearTimeout(blurTimerRef.current);
     holdHover();
-    setExpanded(true);
     setFocused(true);
   };
 
   const handleFocusOut = () => {
     blurTimerRef.current = window.setTimeout(() => {
       setFocused(false);
-      tryCollapse();
+      setHoverHeld(false);
+      setMethodsPickerOpen(false);
     }, 160);
   };
 
   useEffect(() => {
-    if (!fieldOpen) return;
     const el = inputRef.current;
     if (!el) return;
     el.setAttribute('role', 'combobox');
@@ -698,127 +697,121 @@ export function GlobalFindCombobox({
     } else {
       el.removeAttribute('aria-activedescendant');
     }
-  }, [fieldOpen, dropdownOpen, activeIndex]);
+  }, [dropdownOpen, activeIndex]);
 
-  const ChipIcon = methodChosen ? SEARCH_BY_CHIP_ICON[axisScope] : null;
+  const LeadingTypeIcon = SEARCH_BY_LEADING_ICON[axisScope];
 
-  const field = (
-    <div
-      ref={anchorRef}
-      className={cn(
-        // Kinetic Ledger find cell — square, zero radius. Never a pill.
-        // overflow-hidden so the absolute pending sweep stays inside the cell
-        // (dropdown is portaled).
-        'group/search relative flex items-center overflow-hidden rounded-none',
-        // Fill the header beam top→bottom; vertical hairlines lock the cell
-        // into the header geometry. Active focus = bottom rule (always
-        // border-b-2 so focus doesn't grow the beam height). The pending sweep
-        // replaces that rule — drop border-b while SearchPendingBar owns the
-        // bottom edge.
-        'h-full self-stretch border-x border-b-2 border-border-hairline bg-transparent',
-        showPendingBar
-          ? 'border-b-0'
-          : focused
-            ? 'border-b-border-strong'
-            : 'border-b-transparent',
-        GLOBAL_FIND_FIELD_WIDTH,
-        className,
-      )}
-      onMouseEnter={holdHover}
-      onMouseLeave={() => {
-        releaseHoverSoon();
-        scheduleCollapse();
-      }}
-      onFocusCapture={handleFocusIn}
-      onBlurCapture={handleFocusOut}
-    >
-      {ChipIcon ? (
-        <button
-          type="button"
-          aria-label={`Scoped to ${SEARCH_BY_METHOD_LABEL[axisScope]} — click to clear`}
-          title={`${SEARCH_BY_METHOD_LABEL[axisScope]} — click to clear`}
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={clearSearchBy}
-          className="ml-2 inline-flex h-6 shrink-0 items-center justify-center rounded-none border border-border-hairline bg-surface-sunken px-1.5 text-text-muted hover:bg-surface-hover hover:text-text-default"
-        >
-          <ChipIcon className="h-3.5 w-3.5" />
-        </button>
-      ) : null}
-
-      <SearchField
-        inputRef={inputRef}
-        value={query}
-        onChange={handleChange}
-        onSearch={handleSearchSubmit}
-        onClear={handleClear}
-        placeholder={searchByPlaceholder(axisScope)}
-        // 0 = track keystrokes straight into `query`. The typeahead debounce
-        // (0ms identifier / 80ms NL) lives in the fetch effect above.
-        debounceMs={0}
-        isSearching={previewSearching}
-        tone="neutral"
-        size="compact"
-        hideUnderline
-        hideLeadingIcon={methodChosen}
-        autoFocus={expanded}
-        className={cn(
-          'min-w-0 flex-1 border-0 bg-transparent',
-          methodChosen ? 'py-0 pl-1 pr-3' : 'px-3',
-        )}
-      />
-
-      {showPendingBar ? <SearchPendingBar /> : null}
-
-      <GlobalSearchDropdown
-        open={dropdownOpen}
-        anchorRef={anchorRef}
-        listboxId={LISTBOX_ID}
-        optionId={(index) => optionIdFor(LISTBOX_ID, index)}
-        activeIndex={activeIndex}
-        state={dropdownState}
-        query={trimmedQuery}
-        recents={recents}
-        previewGroups={previewGroups}
-        onClose={() => setFocused(false)}
-        onHoverStart={holdHover}
-        onHoverEnd={() => {
-          releaseHoverSoon();
-          scheduleCollapse();
-        }}
-        searchByScope={axisScope}
-        onSelectSearchBy={pickSearchBy}
-        onSelectRecents={openRecentsPage}
-        recentsPageOpen={recentsPageOpen}
-        onSelectRecent={rerunRecentInField}
-        onRemoveRecent={onRemoveRecent}
-        onClearRecents={() => onClearRecents()}
-        onNavigateHit={(hit, event: ReactMouseEvent) => {
-          event.preventDefault();
-          commitHit(hit);
-        }}
-      />
-    </div>
-  );
+  if (!fieldOpen) {
+    return (
+      <div
+        ref={rootRef}
+        className={cn(HEADER_ICON_WRAP, className)}
+        data-testid="global-find-field"
+        data-find-collapsed=""
+      >
+        <HoverTooltip label="Search" asChild>
+          <IconButton
+            size="md"
+            ariaLabel="Search"
+            className={HEADER_ICON_BTN_CLASS}
+            icon={<Search className={TOP_CHROME_ICON_FACE} aria-hidden />}
+            onClick={focusField}
+          />
+        </HoverTooltip>
+      </div>
+    );
+  }
 
   return (
     <div ref={rootRef} className="contents">
-      {!expanded ? (
-        <div className={HEADER_ICON_WRAP} onFocusCapture={expandAndFocus}>
-          <HoverTooltip label="Search" asChild>
-            <IconButton
-              type="button"
-              size="md"
-              ariaLabel="Search"
-              aria-expanded={false}
-              onClick={expandAndFocus}
-              className={HEADER_ICON_BTN_CLASS}
-              icon={<Search className={TOP_CHROME_ICON_FACE} />}
-            />
-          </HoverTooltip>
-        </div>
-      ) : (
-        field
-      )}
+      <div
+        ref={anchorRef}
+        data-testid="global-find-field"
+        data-find-expanded=""
+        className={cn(
+          // Kinetic Ledger find cell — square, zero radius. Never a pill.
+          // overflow-hidden so the absolute pending sweep stays inside the cell
+          // (dropdown is portaled).
+          'group/search relative flex items-center overflow-hidden rounded-none',
+          // Fill the header beam top→bottom; vertical hairlines lock the cell
+          // into the header geometry. Active focus = bottom rule (always
+          // border-b-2 so focus doesn't grow the beam height). The pending sweep
+          // replaces that rule — drop border-b while SearchPendingBar owns the
+          // bottom edge.
+          'h-full self-stretch border-x border-b-2 border-border-hairline bg-transparent',
+          showPendingBar
+            ? 'border-b-0'
+            : focused
+              ? 'border-b-border-strong'
+              : 'border-b-transparent',
+          GLOBAL_FIND_FIELD_WIDTH,
+          className,
+        )}
+        onMouseEnter={holdHover}
+        onMouseLeave={() => {
+          releaseHoverSoon();
+        }}
+        onFocusCapture={handleFocusIn}
+        onBlurCapture={handleFocusOut}
+      >
+        <SearchField
+          inputRef={inputRef}
+          value={query}
+          onChange={handleChange}
+          onSearch={handleSearchSubmit}
+          onClear={handleClear}
+          placeholder={searchByPlaceholder(axisScope)}
+          // 0 = track keystrokes straight into `query`. The typeahead debounce
+          // (0ms identifier / 80ms NL) lives in the fetch effect above.
+          debounceMs={0}
+          isSearching={previewSearching}
+          tone="neutral"
+          size="compact"
+          hideUnderline
+          leadingIcon={<LeadingTypeIcon className={FIELD_ACTION_GLYPH_CLASS} aria-hidden />}
+          onLeadingAction={openSearchByPicker}
+          leadingActionLabel={`Search by ${SEARCH_BY_METHOD_LABEL[axisScope]} — click to change`}
+          leadingActionExpanded={showMethods}
+          className="min-w-0 flex-1 border-0 bg-transparent px-3"
+        />
+
+        {showPendingBar ? <SearchPendingBar /> : null}
+
+        <GlobalSearchDropdown
+          open={dropdownOpen}
+          anchorRef={anchorRef}
+          listboxId={LISTBOX_ID}
+          optionId={(index) => optionIdFor(LISTBOX_ID, index)}
+          activeIndex={activeIndex}
+          state={dropdownState}
+          query={trimmedQuery}
+          emptyMessage={headerFindEmptyMessage(trimmedQuery, previewAxis)}
+          recents={recents}
+          previewGroups={previewGroups}
+          onClose={() => {
+            // Outside-click / Escape must drop BOTH gates — `showMethods` /
+            // recents stay open while either `focused` or `hoverHeld` is true, so
+            // clearing only focus left the panel up for the hover-leave delay
+            // (and forever if mouseleave never fired).
+            setFocused(false);
+            setHoverHeld(false);
+            setMethodsPickerOpen(false);
+          }}
+          onHoverStart={holdHover}
+          onHoverEnd={() => {
+            releaseHoverSoon();
+          }}
+          searchByScope={axisScope}
+          onSelectSearchBy={pickSearchBy}
+          onSelectRecent={rerunRecentInField}
+          onRemoveRecent={onRemoveRecent}
+          onClearRecents={() => onClearRecents()}
+          onNavigateHit={(hit, event: ReactMouseEvent) => {
+            event.preventDefault();
+            commitHit(hit);
+          }}
+        />
+      </div>
     </div>
   );
 }

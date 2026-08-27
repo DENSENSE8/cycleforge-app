@@ -6,6 +6,7 @@ import {
   ChevronLeft,
   ExternalLink,
   MessageSquare,
+  Minus,
   MoreHorizontal,
   Receipt,
   Ticket,
@@ -23,12 +24,10 @@ import {
 } from '@/components/ui/ChipHoverMenuSurface';
 import { ReceivingPhotoButton } from '@/components/receiving/workspace/line-edit/ReceivingPhotoButton';
 import {
-  LISTING_MENU_ICONS,
   StationContextClaimCell,
   StationContextIconCell,
   StationContextListingCell,
 } from './StationContextActionCell';
-import { listingMenuRows } from './carton-bar-menu-rows';
 import { IdentityLinkChip } from '@/components/receiving/workspace/line-edit/IdentityLinkChip';
 import { type CatalogKind } from '@/components/receiving/workspace/line-edit/CatalogManagerList';
 import { ReceivingTicketChip } from '@/components/receiving/workspace/line-edit/ReceivingTicketChip';
@@ -59,6 +58,7 @@ import { platformMetaIconTone } from '@/lib/source-platform';
 import { cn } from '@/utils/_cn';
 import {
   STATION_CONTEXT_EXIT_PILL_CLASS,
+  STATION_CONTEXT_PHOTO_CHROME_CLASS,
 } from './station-context-action-pill';
 import {
   STATION_CHROME_CELL_CLASS,
@@ -71,7 +71,6 @@ import {
   STATION_CHROME_SEAM_HAIRLINE,
   STATION_IDENTITY_GROUP_CLASS,
   STATION_IDENTITY_LEAD_COL_CLASS,
-  STATION_IDENTITY_LEAD_DIVIDER_CLASS,
 } from './station-identity-chrome';
 import {
   useCartonContextBarLayout,
@@ -95,10 +94,9 @@ import {
  * Pair hosts with `StationWorkbench reserveIdentityClearance={false}` (in-flow)
  * or legacy overlay clearance.
  *
- *   Left — navigation: back, then a hairline
- *            ({@link STATION_IDENTITY_LEAD_DIVIDER_CLASS}) — the one rule the
- *            bar draws at rest, because leaving this carton is a different
- *            KIND of thing from the facts about it.
+ *   Left — navigation: back, then identity flush against it (order# ·
+ *            tracking#). No vertical rule between back and the first fact —
+ *            the strip is one abutting row, same as Band-1 CTAs.
  *   Left — identity: order# · tracking#. **No lifecycle chip.** The stage is
  *            already on every row of the sidebar rail the operator selected
  *            this carton from, so a copy of it here spent bar width — on a
@@ -199,7 +197,7 @@ export function CartonContextCard({
   onExitToList,
   exitLabel = 'Back to list',
   poTotal = null,
-  showPoTotal = false,
+  showPoTotal = true,
   qty = null,
   onSendToTicket,
   onOpenMovePhotosExternal,
@@ -213,14 +211,13 @@ export function CartonContextCard({
   /**
    * Purchase-order money total, resolved by the adapter via `cartonPoTotal`
    * (`src/lib/receiving/po-total.ts`) — never summed in a view. `null` renders
-   * the honest `—` (no line on this carton carries a mirrored price).
+   * a dash icon (no line on this carton carries a mirrored price).
    * Displayed under Photos (before listing · Claim, gap-0 abut) when {@link showPoTotal}.
    */
   poTotal?: number | null;
   /**
-   * Show the PO-total slot at all. Off by default so a station whose active
-   * entity is not a purchase order (Shipping / Pack / Review / Support order
-   * identity) never grows a money column it cannot fill.
+   * Show the PO-total / price slot. Default on — the top-right chrome always
+   * paints price (honest `—` when unknown), listing, and photos.
    */
   showPoTotal?: boolean;
   /**
@@ -497,9 +494,8 @@ export function CartonContextCard({
   });
   const typeOptions = typeClassifyOptions({ catalogOptions: typeCatalog.options });
 
-  // Exit chevron — boxed flush face filling chrome row (h-full square).
-  // It is followed by the lead divider, then the identity run (order #,
-  // tracking); the carton's classifications sit centered in the bar.
+  // Exit chevron — flush cube filling chrome row. Identity run (order #,
+  // tracking) abuts it with no hairline.
   const exitControl = onExitToList ? (
     <HoverTooltip label={exitLabel} asChild>
       {/* Boxed flush cube — own carton-context face (not scan-bar mode chrome). */}
@@ -675,28 +671,27 @@ export function CartonContextCard({
     </div>
   );
 
-  const listingIconButton =
-    showListing && !overflowSet.has('listing') ? (
-      <StationContextListingCell
-        label={listingChipDisplay}
-        ariaLabel={listingOpenTitle}
-        disabled={!listingHasTarget}
-        onClick={() => {
-          if (listingOpenHref) window.open(listingOpenHref, '_blank', 'noopener,noreferrer');
-        }}
-        iconClass={
-          listingHasTarget && platformIconTone
-            ? platformIconTone.className
-            : 'text-text-faint'
-        }
-        iconStyle={listingHasTarget && platformIconTone ? platformIconTone.style : undefined}
-        openHref={listingOpenHref}
-        copyValue={listingLink || listingOpenHref || ''}
-        links={formatListingLinkMenuOptions(listingLinks) ?? listingLinks}
-        onEdit={onEditListing}
-        editLabel="Edit listing"
-      />
-    ) : null;
+  const listingIconButton = showListing ? (
+    <StationContextListingCell
+      label={listingChipDisplay}
+      ariaLabel={listingOpenTitle}
+      disabled={!listingHasTarget}
+      onClick={() => {
+        if (listingOpenHref) window.open(listingOpenHref, '_blank', 'noopener,noreferrer');
+      }}
+      iconClass={
+        listingHasTarget && platformIconTone
+          ? platformIconTone.className
+          : 'text-text-faint'
+      }
+      iconStyle={listingHasTarget && platformIconTone ? platformIconTone.style : undefined}
+      openHref={listingOpenHref}
+      copyValue={listingLink || listingOpenHref || ''}
+      links={formatListingLinkMenuOptions(listingLinks) ?? listingLinks}
+      onEdit={onEditListing}
+      editLabel="Edit listing"
+    />
+  ) : null;
 
   const claimIconButton =
     showStaffPhotoRow && !zendeskTrimmed && onMakeClaim && !overflowSet.has('claim') ? (
@@ -730,12 +725,26 @@ export function CartonContextCard({
       </div>
     ) : null;
 
-  // Custom `photosCell` always stays on the bar (Pack has no Displays Photos
-  // leaf to park in ⋯). Receiving photos still overflow with listing / claim.
+  // Photos stay on the bar even at 0 and even without a receiving id —
+  // listing · price · photos are top-right chrome, never parked in ⋯.
+  const emptyPhotosCell = (
+    <button
+      type="button"
+      onClick={onOpenPhotosDisplay}
+      disabled={!onOpenPhotosDisplay}
+      className={STATION_CONTEXT_PHOTO_CHROME_CLASS}
+      data-testid="carton-context-photos"
+      aria-label="Photos"
+    >
+      <Camera className={STATION_CHROME_GLYPH_CLASS} aria-hidden />
+      <span className="leading-none tabular-nums">0</span>
+    </button>
+  );
+
   const photosCellNode =
     photosCell != null
       ? photosCell
-      : showStaffPhotoRow && receivingId != null && !overflowSet.has('photos') ? (
+      : receivingId != null ? (
           <ReceivingPhotoButton
             receivingId={receivingId}
             staffId={Number(staffId) || 0}
@@ -748,29 +757,15 @@ export function CartonContextCard({
             onOpenPhotosDisplay={onOpenPhotosDisplay}
             suppressHoverGallery={suppressPhotoHoverGallery}
           />
-        ) : null;
+        ) : (
+          emptyPhotosCell
+        );
 
   /**
    * Overflow rows — the SAME verbs the inline cells offer, never a second list.
    * Spillover changes where a verb lives, not which verbs exist.
    */
   const overflowItems: ChipHoverMenuRow[] = [];
-  if (showListing && overflowSet.has('listing')) {
-    overflowItems.push(
-      ...listingMenuRows({
-        label: listingChipDisplay,
-        ariaLabel: listingOpenTitle,
-        openHref: listingOpenHref,
-        copyValue: listingLink || listingOpenHref || '',
-        links: formatListingLinkMenuOptions(listingLinks) ?? listingLinks,
-        onEdit: onEditListing,
-        editLabel: 'Edit listing',
-        onDone: () => setOverflowOpen(false),
-        icons: LISTING_MENU_ICONS,
-        qualify: true,
-      }),
-    );
-  }
   if (showStaffPhotoRow && !zendeskTrimmed && onMakeClaim && overflowSet.has('claim')) {
     overflowItems.push({
       id: 'claim',
@@ -805,22 +800,6 @@ export function CartonContextCard({
       });
     }
   }
-  if (
-    photosCell == null &&
-    showStaffPhotoRow &&
-    receivingId != null &&
-    overflowSet.has('photos')
-  ) {
-    overflowItems.push({
-      id: 'photos',
-      label: 'Photos',
-      icon: <Camera className="h-3.5 w-3.5" />,
-      onSelect: () => {
-        if (onOpenPhotosDisplay) onOpenPhotosDisplay();
-        setOverflowOpen(false);
-      },
-    });
-  }
 
   const overflowMenu =
     overflowItems.length > 0 ? (
@@ -848,6 +827,7 @@ export function CartonContextCard({
       </div>
     ) : null;
 
+  const priceMissing = poTotal == null || !Number.isFinite(poTotal) || poTotal <= 0;
   const priceFace = showPoTotal ? (
     <span
       className={cn(
@@ -856,11 +836,16 @@ export function CartonContextCard({
         `gap-0.5 ${STATION_CHROME_CELL_TEXT} ${STATION_CHROME_CELL_INK}`,
       )}
       data-testid="carton-context-price"
+      aria-label={priceMissing ? 'No price' : `Price ${poTotal.toFixed(2)}`}
     >
       <span className={CHIP_TONES.price.iconClass} aria-hidden>
         <Receipt className={STATION_CHROME_GLYPH_CLASS} />
       </span>
-      {poTotal == null || !Number.isFinite(poTotal) ? '—' : poTotal.toFixed(2)}
+      {priceMissing ? (
+        <Minus className={STATION_CHROME_GLYPH_CLASS} aria-hidden />
+      ) : (
+        poTotal.toFixed(2)
+      )}
     </span>
   ) : null;
 
@@ -884,16 +869,10 @@ export function CartonContextCard({
       {/* Left — identity (always visible) */}
       <div
         data-carton-bar-slot="identity"
-        className="relative flex min-w-0 shrink-0 items-stretch"
+        className="relative flex min-w-0 shrink-0 items-stretch gap-0"
       >
         {exitControl ? (
-          <>
-            <div className={STATION_IDENTITY_LEAD_COL_CLASS}>{exitControl}</div>
-            {/* Navigation is not identity — the one rule the bar draws at rest
-                (see STATION_IDENTITY_LEAD_DIVIDER_CLASS). Without it the first
-                entity cell reads as the second half of the back control. */}
-            <span className={STATION_IDENTITY_LEAD_DIVIDER_CLASS} aria-hidden />
-          </>
+          <div className={STATION_IDENTITY_LEAD_COL_CLASS}>{exitControl}</div>
         ) : null}
         <div className="flex h-full min-w-0 shrink items-stretch [&_[data-chip-face]]:rounded-none">
           {/* Order # is a copy/menu target, so it gets the same cell box as

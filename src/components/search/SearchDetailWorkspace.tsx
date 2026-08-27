@@ -7,7 +7,8 @@
  * {@link SearchBrowseShell}). ORDER → {@link SearchOrderStationPane} and UNIT →
  * {@link SearchUnitStationPane} — the real scan-station composition in preview
  * stance, not a desk inspector and no longer a hand-rolled `order-feedback`
- * twin (retired 2026-08-20). Receiving / sku still embed their inspectors.
+ * twin (retired 2026-08-20). RECEIVING uses the same preview station chrome.
+ * SKU still embeds its inspector.
  * Repair / FBA show an in-pane preview + deep-link CTA. `/o` is retired.
  *
  * **`sku` is deliberately still `SkuDetailView variant="page"`** (2026-08-21):
@@ -46,7 +47,7 @@ import {
 import { ExternalLink, Package, Search } from '@/components/Icons';
 import { SearchOrderStationPane } from '@/components/search/station/SearchOrderStationPane';
 import { SearchUnitStationPane } from '@/components/search/station/SearchUnitStationPane';
-import { CartonInspector } from '@/components/receiving/inspector/CartonInspector';
+import { SearchReceivingStationPane } from '@/components/search/station/SearchReceivingStationPane';
 import { loadDetailStack } from '@/lib/detail-stacks/load-detail-stack';
 import {
   searchHitHref,
@@ -244,7 +245,10 @@ export function SearchDetailWorkspace({
    * the cover has nothing left to wait for and must lift on mount.
    */
   const primaryPaint = useSearchPrimaryPaintOptional();
-  const branchOwnsPaint = sel?.entityType !== 'order' && sel?.entityType !== 'unit';
+  const branchOwnsPaint =
+    sel?.entityType !== 'order' &&
+    sel?.entityType !== 'unit' &&
+    sel?.entityType !== 'receiving';
   useEffect(() => {
     if (branchOwnsPaint) primaryPaint?.onPrimaryPainted();
   }, [branchOwnsPaint, primaryPaint]);
@@ -255,37 +259,32 @@ export function SearchDetailWorkspace({
 
   let body: ReactNode;
   if (!sel) {
-    // Prefer SearchBrowseShell at the page level; this is a defensive fallback.
-    body = (
+    // Rail auto-selects the most recent find when `?q=` is absent — hold the
+    // plane until that lands rather than painting a teach card.
+    body = hasQuery ? (
       <PaneCentre>
-        {hasQuery ? (
-          <EmptyState
-            icon={<Search className="h-6 w-6 text-text-faint" />}
-            title="Select a result"
-            description="Pick a hit under the search bar to open its record. An exact sole match opens automatically."
-          />
-        ) : (
-          <EmptyState
-            icon={<Search className="h-6 w-6 text-text-faint" />}
-            title="Search everything"
-            description="Type an order #, PO, tracking, serial, SKU, or customer in the search bar."
-          />
-        )}
+        <EmptyState
+          icon={<Search className="h-6 w-6 text-text-faint" />}
+          title="Select a result"
+          description="Pick a hit under the search bar to open its record. An exact sole match opens automatically."
+        />
       </PaneCentre>
+    ) : (
+      <div className="min-h-0 flex-1 bg-surface-card" aria-busy />
     );
   } else {
     switch (sel.entityType) {
       case 'order':
         body = (
           <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
-            <SearchOrderStationPane orderId={sel.id} onExit={onExit} />
+            <SearchOrderStationPane orderId={sel.id} />
           </div>
         );
         break;
       case 'receiving':
         body = (
           <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
-            <CartonInspector receivingId={sel.id} />
+            <SearchReceivingStationPane receivingId={sel.id} />
           </div>
         );
         break;

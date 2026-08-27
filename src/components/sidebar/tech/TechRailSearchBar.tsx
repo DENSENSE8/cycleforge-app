@@ -8,10 +8,10 @@
  *
  * - `variant="rail"` (default) — bottom-anchored band for MasterNav / station
  *   rails (Testing / Shipping / Unbox / Packer / Triage) and LedgerDrill
- *   parent-map footers. Owns {@link STATION_COLUMN_FOOTER_BAND_FACE} (`h-8` +
+ *   parent-map footers. Owns {@link STATION_COLUMN_FOOTER_BAND_FACE} (`h-7` +
  *   floor hairline) + card surface + density padding — same Y as Displays
- *   `→|` / utility `←|` / Unbox dock Band 2 / spine sign-in. Pins
- *   `--cf-density: 1` so spreadsheet zoom on a wrapping grid host cannot
+ *   `→|` / utility `←|` / Unbox dock Band 2 / spine sign-in / To ship tabs.
+ *   Pins `--cf-density: 1` so spreadsheet zoom on a wrapping grid host cannot
  *   shrink the band below sibling footers.
  * - `variant="chrome"` — workbench header / triage band. Same in-field Search
  *   glyph as rail (`SearchBar` → `SearchField`); flush sunken plane (no rounded
@@ -25,7 +25,9 @@
  *
  * **Trailing icon grammar (rail footers):**
  * 1. Empty-field **paste** — hover-reveal only (`SearchField` + `group/search-bar`)
- * 2. In-field **filters** — `trailingSuffix` (after paste; paste leads the cluster)
+ * 2. In-field **filters** — usually `trailingSuffix` (after paste). Packed puts
+ *    exact staff / date chips + the funnel in `trailingPrefix` (left of paste) —
+ *    same left-of-paste grammar as the sheet week pill.
  * 3. Age-column **collapse** — auto from {@link useContextPanelCollapse} when
  *    mounted under `ContextPanelCollapseProvider`; override via `trailingAction`
  *    (LedgerDrill parent map, Incoming list-paste, etc.)
@@ -79,6 +81,8 @@ export function TechRailSearchBar({
   isSearching = false,
   trailingPrefix,
   trailingSuffix,
+  inlineContent,
+  inlineContentKey,
   pasteVisibility,
   trailingAction,
   inputRef,
@@ -121,9 +125,10 @@ export function TechRailSearchBar({
    * so a host never stacks a raw `p-*` on the `inset-field` intent (both survive
    * `cn()` and the intent wins in CSS order, so the override silently no-ops).
    *
-   * - `row` (default) — horizontal `px-3` only so the band measures one nav row
-   *   (~33px). Shared by MasterNav spine and station recent rails.
-   * - `default` — escape hatch: `inset-field` + the 32px field = 49px dock.
+   * - `row` (default) — horizontal `px-3` only so the band measures one ops
+   *   chrome row ({@link PRIMARY_CHROME_ROW_FACE} / 28px). Shared by station
+   *   recent rails (MasterNav find uses `variant="chrome"` instead).
+   * - `default` — escape hatch: `inset-field` + the 28px field = taller dock.
    *
    * Ignored when `variant="chrome"`.
    */
@@ -142,15 +147,21 @@ export function TechRailSearchBar({
    */
   isSearching?: boolean;
   /**
-   * In-field actions **left of** paste/clear — non-filter CTAs that must lead
-   * the trailing cluster (e.g. Ecwid “Product not added yet?”). Field-density
-   * {@link WorkbenchFilterPopover} filters use {@link trailingSuffix} instead
-   * so hover-reveal paste stays leftmost.
+   * In-field actions **left of** paste/clear — Packed filter funnel, Ecwid
+   * “Product not added yet?”, etc. Field-density peers of paste.
    */
   trailingPrefix?: ReactNode;
   /**
+   * Full-height status in the trailing cluster (Packed staff / exact date).
+   * Collapses to the funnel hot-dot when the field cannot fit the label.
+   */
+  inlineContent?: ReactNode;
+  /** Stable key so the field re-measures when the in-field label changes. */
+  inlineContentKey?: string;
+  /**
    * In-field actions **after** paste/clear — field-density filters (Unbox rail
    * facets, `/search` refine, Ecwid order scope). Paste leads; filter follows.
+   * Packed prefers {@link trailingPrefix} so the funnel sits left of paste.
    */
   trailingSuffix?: ReactNode;
   /**
@@ -285,12 +296,15 @@ export function TechRailSearchBar({
       onSearch={onSearch}
       onClear={clear}
       placeholder={placeholder}
-      size="compact"
-      isSearching={chrome ? false : isSearching}
-      leadingIcon={<Search className="h-3.5 w-3.5" />}
-      hideUnderline
-      pasteVisibility={pasteVisibility ?? (chrome ? 'always' : 'hover')}
+        size="compact"
+        isSearching={chrome ? false : isSearching}
+        leadingIcon={<Search className="h-3.5 w-3.5" />}
+        hideUnderline
+        fillHost={chrome}
+        pasteVisibility={pasteVisibility ?? (chrome ? 'always' : 'hover')}
       trailingPrefix={trailingPrefix}
+      inlineContent={inlineContent}
+      inlineContentKey={inlineContentKey}
       trailingSuffix={
         navKeyHint ? (
           <>
@@ -342,10 +356,12 @@ export function TechRailSearchBar({
         <div
           className={cn(
             'flex h-full min-w-0 flex-1 items-center bg-surface-sunken',
-            chromeFlush ? 'gap-0 px-0' : 'gap-0.5 px-2',
+            // Leading pad only when not flush — trailing edge abuts Views /
+            // table controls on Band 3 (`WorkbenchTriageBand` gap-0). Bilateral
+            // `px-2` left a soft gray pad that read as air before the cluster.
+            chromeFlush ? 'gap-0 px-0' : 'gap-0.5 pl-2 pr-0',
           )}
-        >
-          <div className="min-w-0 flex-1">{field}</div>
+        >          <div className="h-full min-w-0 flex-1">{field}</div>
           {resolvedTrailingAction}
         </div>
       ) : (

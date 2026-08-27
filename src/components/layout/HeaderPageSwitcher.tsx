@@ -4,6 +4,8 @@
  * House page identity + CHILD-PAGE / station-subgroup switcher for GlobalHeader.
  *
  * Closed face = icon + display name for the current page (or active child).
+ * Compact {@link HEADER_PAGE_FACE_WIDTH} chip — same width as the open menu.
+ * Find sits flush to its right. Never a beam-filling bar.
  * On modeful pages (≥2 children) the face opens an {@link AnchoredLayer} over
  * this page's {@link SIDEBAR_PAGE_NAV} children and navigates via
  * {@link useSidebarChildNav}. First-class Receiving benches compose peers from
@@ -28,7 +30,8 @@
  */
 
 import { useMemo, useRef, useState } from 'react';
-import { AnchoredLayer, Button } from '@/design-system/primitives';
+import { AnchoredLayer } from '@/design-system/primitives';
+import { focusRing } from '@/design-system/tokens/focus-ring';
 import { useAuth } from '@/contexts/AuthContext';
 import { useActiveSidebarChild } from '@/components/sidebar/master-nav/useActiveSidebarChild';
 import { useSidebarChildNav } from '@/components/sidebar/master-nav/useSidebarChildNav';
@@ -50,11 +53,12 @@ import {
 import {
   HEADER_ICON_BTN_CLASS,
   HEADER_ICON_BTN_OPEN_CLASS,
+  HEADER_PAGE_FACE_WIDTH,
   TOP_CHROME_ICON_FACE,
 } from './header-shell';
 
 /**
- * Shared face chrome — interactive Button and static chip stay pixel-matched.
+ * Shared face chrome — menu trigger and static chip stay pixel-matched.
  *
  * **Quiet label, `role-body` (2026-08-20).** This face names the page you
  * are already ON — a READOUT, not a destination — so the LABEL alone stays
@@ -67,21 +71,18 @@ import {
  * the beam's shared full-ink token from {@link HEADER_ICON_BTN_CLASS}
  * unchanged, so only the label is quiet, never the icon.
  */
+/** Host that owns the face width — the dropdown anchors to this box. */
+const PAGE_FACE_WRAP_CLASS = cn(
+  'relative flex h-full shrink-0 items-stretch',
+  HEADER_PAGE_FACE_WIDTH,
+);
+
 const PAGE_FACE_CLASS = cn(
   HEADER_ICON_BTN_CLASS,
-  // Beam-height face; w-auto so icon+label is not crushed to the icon-cell width.
-  'inline-flex h-full min-h-8 w-auto shrink-0 select-none justify-center gap-1 px-1.5',
-  // The face stays CENTRED in the beam so its glyph sits on the same row as
-  // Panel · Pin · History beside it. Bottom-alignment is an INNER concern —
-  // the icon+label group aligns on its own bottom edge (see PageFaceContent)
-  // and that group is then centred as a unit. Bottom-aligning the face itself
-  // pushed the glyph off the shared icon row, which is worse than the
-  // misalignment it was fixing.
-  'items-center',
-  // `font-medium` is explicit because ONE branch is a `Button`, whose base
-  // carries `font-semibold`; without it the interactive face would sit a weight
-  // above its own static twin. Emphasis on this beam is contrast, not weight.
-  'text-role-body font-medium leading-none transition-colors duration-150 ease-out',
+  'flex h-full min-h-8 min-w-0 w-full select-none items-center justify-start gap-1 px-1.5',
+  'bg-surface-card',
+  'text-role-body font-medium leading-none',
+  focusRing('control', 'accent'),
 );
 
 /** The face's content — ONE render for the static chip and the menu trigger. */
@@ -96,17 +97,11 @@ function PageFaceContent({ Icon, label }: { Icon: SidebarIconComponent; label: s
         overrode the size token, which is why "the icon sizing doesn't match"
         survived a pass that set the token correctly.
       */}
-      <span className="flex min-w-0 items-center gap-1">
+      <span className="flex min-w-0 flex-1 items-center gap-1">
         <span className={cn(TOP_CHROME_ICON_FACE, 'flex shrink-0 items-center justify-center')}>
           <Icon className="h-full w-full" aria-hidden />
         </span>
-        {/*
-          `items-center` on the pair, `leading-none` on the word: the label
-          sits vertically centred against the glyph rather than pinned to its
-          floor. The pair is 16px tall either way, so the beam still centres
-          it on the same row as every other header glyph.
-        */}
-        <span className="max-w-[10rem] truncate text-text-muted" title={label}>{label}</span>
+        <span className="min-w-0 flex-1 truncate text-left text-text-muted" title={label}>{label}</span>
       </span>
     </>
   );
@@ -238,7 +233,7 @@ export function HeaderPageSwitcher() {
 
   if (!switchable) {
     return (
-      <div className="relative flex h-full shrink-0 items-stretch">
+      <div className={PAGE_FACE_WRAP_CLASS}>
         <span className={PAGE_FACE_CLASS} aria-label={page.label}>
           <PageFaceContent Icon={FaceIcon} label={faceLabel} />
         </span>
@@ -247,27 +242,29 @@ export function HeaderPageSwitcher() {
   }
 
   return (
-    <div ref={wrapRef} className="relative flex h-full shrink-0 items-stretch">
-      <Button
-        variant="ghost"
-        size="sm"
-        ariaLabel={`${page.menuAriaLabel ?? page.label} — ${faceLabel}`}
+    <div ref={wrapRef} className={PAGE_FACE_WRAP_CLASS}>
+      <button
+        type="button"
+        aria-label={`${page.menuAriaLabel ?? page.label} — ${faceLabel}`}
         aria-expanded={open}
         aria-haspopup="menu"
         onClick={() => setOpen((o) => !o)}
         className={cn(PAGE_FACE_CLASS, open && HEADER_ICON_BTN_OPEN_CLASS)}
       >
         <PageFaceContent Icon={FaceIcon} label={faceLabel} />
-      </Button>
+      </button>
 
       <AnchoredLayer
         open={open}
         onClose={() => setOpen(false)}
         anchorRef={wrapRef}
-        placement="bottom-start"
+        placement="bottom-stretch"
         gap={0}
       >
-        <HeaderChromeMenu ariaLabel={page.menuAriaLabel ?? `${page.label} pages`}>
+        <HeaderChromeMenu
+          ariaLabel={page.menuAriaLabel ?? `${page.label} pages`}
+          className={cn(HEADER_PAGE_FACE_WIDTH, 'min-w-0')}
+        >
           {menuRows!.map((item) => {
             const Icon = item.icon;
             const isActive = item.id === (resolvedRowId ?? activeRow?.id);

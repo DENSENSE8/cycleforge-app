@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS receiving_line_testing_opens (
   id                BIGSERIAL PRIMARY KEY,
   organization_id   UUID NOT NULL,
   staff_id          INTEGER NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
-  receiving_line_id INTEGER NOT NULL REFERENCES receiving_lines(id) ON DELETE CASCADE,
+  receiving_line_id INTEGER NOT NULL REFERENCES receiving_line(id) ON DELETE CASCADE,
   receiving_id      INTEGER,
   opened_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   CONSTRAINT receiving_line_testing_opens_org_staff_line_unique

@@ -33,7 +33,7 @@
  * decoration, not state.
  */
 
-import type { ButtonHTMLAttributes, ReactNode } from 'react';
+import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
 import { PRIMARY_CHROME_ROW_FACE } from '@/components/layout/header-shell';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { cornerClass } from '@/design-system/tokens/radius';
@@ -64,53 +64,51 @@ export interface WorkbenchBandControlProps
   lit?: boolean;
 }
 
-export function WorkbenchBandControl({
-  icon,
-  label,
-  ariaLabel,
-  text,
-  lit = false,
-  className,
-  ...rest
-}: WorkbenchBandControlProps) {
-  return (
-    // Tooltip survives a visible label: the name truncates at 14ch, and 14ch is
-    // not every view name.
-    <HoverTooltip label={label} asChild>
-      {/*
-        ds-raw-button: `IconButton` is icon-only by contract so it cannot hold
-        the name, and `ToolbarButton` is a soft `rounded-lg` uppercase-eyebrow
-        pill — wrong corner and wrong type role for flush ops chrome. One hit
-        target over glyph + name, so the name is part of the control rather
-        than decoration parked beside it.
-      */}
-      <button
-        type="button"
-        aria-label={ariaLabel ?? label}
-        className={cn(
-          'ds-raw-button inline-flex items-center justify-center gap-1 text-role-caption transition-colors duration-100 ease-out active:scale-95',
-          PRIMARY_CHROME_ROW_FACE,
-          text ? 'px-1.5' : 'aspect-square',
-          cornerClass('flush'),
-          focusRing('control'),
-          lit
-            ? 'bg-blue-600 text-white hover:bg-blue-600 hover:text-white'
-            : 'text-text-muted hover:bg-surface-hover hover:text-text-default',
-          className,
-        )}
-        {...rest}
-      >
+export const WorkbenchBandControl = forwardRef<HTMLButtonElement, WorkbenchBandControlProps>(
+  function WorkbenchBandControl(
+    { icon, label, ariaLabel, text, lit = false, className, ...rest },
+    ref,
+  ) {
+    return (
+      // Tooltip survives a visible label: the name truncates at 14ch, and 14ch is
+      // not every view name.
+      <HoverTooltip label={label} asChild>
         {/*
-          Text LEADS, glyph TRAILS. A named control is read as a value — the
-          view you are in — and the glyph is the affordance that says it opens.
-          Leading the glyph made the name look like a caption hung off an icon
-          button; trailing it makes the row read `Recent ▾`, the way every other
-          value-bearing control in the product reads. Icon-only cells are
-          unaffected: with no text the order cannot show.
+          ds-raw-button: `IconButton` is icon-only by contract so it cannot hold
+          the name, and `ToolbarButton` is a soft `rounded-lg` uppercase-eyebrow
+          pill — wrong corner and wrong type role for flush ops chrome. One hit
+          target over glyph + name, so the name is part of the control rather
+          than decoration parked beside it.
         */}
-        {text ? <span className="max-w-[14ch] truncate">{text}</span> : null}
-        {icon}
-      </button>
-    </HoverTooltip>
-  );
-}
+        <button
+          ref={ref}
+          type="button"
+          aria-label={ariaLabel ?? label}
+          className={cn(
+            'ds-raw-button inline-flex items-center justify-center gap-1 text-role-caption transition-colors duration-100 ease-out active:scale-95',
+            PRIMARY_CHROME_ROW_FACE,
+            text ? 'px-1.5' : 'aspect-square',
+            cornerClass('flush'),
+            focusRing('control'),
+            lit
+              ? 'bg-blue-600 text-white hover:bg-blue-600 hover:text-white'
+              : 'text-text-muted hover:bg-surface-hover hover:text-text-default',
+            className,
+          )}
+          {...rest}
+        >
+          {/*
+            Text LEADS, glyph TRAILS. A named control is read as a value — the
+            view you are in — and the glyph is the affordance that says it opens.
+            Leading the glyph made the name look like a caption hung off an icon
+            button; trailing it makes the row read `Recent ▾`, the way every other
+            value-bearing control in the product reads. Icon-only cells are
+            unaffected: with no text the order cannot show.
+          */}
+          {text ? <span className="max-w-[14ch] truncate">{text}</span> : null}
+          {icon}
+        </button>
+      </HoverTooltip>
+    );
+  },
+);

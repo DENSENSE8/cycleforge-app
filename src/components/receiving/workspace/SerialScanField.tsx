@@ -244,7 +244,6 @@ export const SerialScanField = forwardRef<
               setScan(next);
               if (inlineNotice) setNotice(null);
             }}
-            tone={embedded ? 'neutral' : 'blue'}
             mono
             disabled={disabled}
             autoComplete="off"

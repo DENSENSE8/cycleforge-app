@@ -13,7 +13,6 @@
  */
 
 import { useSearchParams, usePathname } from 'next/navigation';
-import { parseIncomingView, type IncomingView } from '@/lib/receiving/incoming-view';
 import { parseInboundLane } from '@/lib/receiving/inbound-lane';
 import {
   UNBOX_SURFACE_ROUTE,
@@ -31,8 +30,6 @@ export interface ReceivingDashboardMode {
   isIncomingMode: boolean;
   isRepairMode: boolean;
   isTableOnlyMode: boolean;
-  /** Incoming right-pane sub-view from `?incview=` (`pos` default | `email`). */
-  incomingView: IncomingView;
 }
 
 export function useReceivingDashboardMode(): ReceivingDashboardMode {
@@ -58,7 +55,6 @@ export function useReceivingDashboardMode(): ReceivingDashboardMode {
   const isHistoryMode = mode === 'history';
   const isIncomingMode = mode === 'incoming';
   const isRepairMode = mode === 'repair';
-  const incomingView: IncomingView = parseIncomingView(searchParams.get('incview'));
   return {
     mode,
     isTriageMode: mode === 'triage',
@@ -66,6 +62,5 @@ export function useReceivingDashboardMode(): ReceivingDashboardMode {
     isIncomingMode,
     isRepairMode,
     isTableOnlyMode: isHistoryMode || isIncomingMode || isRepairMode,
-    incomingView,
   };
 }

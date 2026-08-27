@@ -196,7 +196,6 @@ export function KioskRepairPane({ selectedProduct, price, onBack }: KioskRepairP
             icon={<ChevronLeft className="h-5 w-5" />}
             ariaLabel="Back to catalog"
             size="touch"
-            tone="neutral"
             onClick={onBack}
             className="shrink-0 hover:bg-surface-hover"
             data-testid="kiosk-repair-back"
@@ -261,7 +260,6 @@ export function KioskRepairPane({ selectedProduct, price, onBack }: KioskRepairP
                       label="Serial number"
                       value={formData.serialNumber}
                       mono
-                      tone="blue"
                       inputClassName="rounded-none"
                       onChange={(value) =>
                         setFormData((prev) => ({ ...prev, serialNumber: value }))
@@ -271,7 +269,6 @@ export function KioskRepairPane({ selectedProduct, price, onBack }: KioskRepairP
                       label="Price ($)"
                       value={formData.price}
                       inputMode="decimal"
-                      tone="emerald"
                       inputClassName="rounded-none font-semibold text-text-success"
                       onChange={(value) =>
                         setFormData((prev) => ({ ...prev, price: value }))
@@ -282,7 +279,6 @@ export function KioskRepairPane({ selectedProduct, price, onBack }: KioskRepairP
                       value={formData.notes}
                       multiline
                       rows={3}
-                      tone="blue"
                       inputClassName="rounded-none"
                       onChange={(value) =>
                         setFormData((prev) => ({ ...prev, notes: value }))

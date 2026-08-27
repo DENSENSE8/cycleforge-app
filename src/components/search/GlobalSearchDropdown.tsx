@@ -9,10 +9,14 @@
  * hover):
  *   methods · recents · first-use · preview · empty
  *
- * `methods` is the search-by picker (internal id / order / serial / tracking / ticket) and is
- * ONLY shown on an empty focused field before a method is chosen — never
- * stacked above results (warehouse-os worktree ruling). Backspace on an empty
- * scoped field returns here.
+ * `methods` is the search-by picker (internal id / order / serial / tracking / ticket).
+ * It opens from the leading search-by button (always) and on an empty focused
+ * field before a method is chosen — never stacked above results. Backspace on
+ * an empty scoped field returns here.
+ *
+ * Preview rows are **title only** — product / item name, no entity group
+ * headers, glyphs, id chips, or photo counts. Pack-photo batch reads used to
+ * hang the panel open; they are gone so the list paints with the search response.
  *
  * Pending is the field spinner — never a query-trace diary panel.
  *
@@ -27,11 +31,7 @@
  * column is the card — never a floating glass bubble. Motion via the canonical
  * dropdownPanel preset.
  *
- * Width MATCHES the find field exactly (`bottom-stretch` + `matchWidth`) — the
- * panel is the field's own column continued downward, never a wider slab
- * hanging off one edge. That budget (24rem) is what sizes the row's tracks:
- * Status · Id · Match · Tracking · Photos, with relative age dropped because
- * six tracks cannot share 24rem without crushing the title.
+ * Width MATCHES the find field exactly (`bottom-stretch` + `matchWidth`).
  */
 
 import type { MouseEvent as ReactMouseEvent, RefObject } from 'react';
@@ -49,7 +49,6 @@ import { cn } from '@/utils/_cn';
 import { SearchResultRow } from './SearchResultRow';
 import { SearchRecentsDropdown } from './SearchRecentsDropdown';
 import { SearchByMethods } from './SearchByMethods';
-import { usePackPhotoCounts } from '@/hooks/usePackPhotoCounts';
 import type { PreviewGroup } from './search-tabs';
 import { SEARCH_BY_METHOD_LABEL, type SearchByScope } from '@/lib/search/search-by';
 
@@ -68,6 +67,7 @@ export interface GlobalSearchDropdownProps {
   activeIndex: number;
   state: GlobalSearchDropdownState;
   query: string;
+  emptyMessage?: string;
   recents: SearchRecentEntry[];
   previewGroups: PreviewGroup[];
   onClose: () => void;
@@ -81,7 +81,7 @@ export interface GlobalSearchDropdownProps {
    */
   onHoverStart?: () => void;
   onHoverEnd?: () => void;
-  /** Search-by picker (empty field, before a method is chosen). */
+  /** Search-by picker (leading button, or empty field before a method is chosen). */
   searchByScope?: SearchByScope;
   onSelectSearchBy?: (scope: SearchByScope) => void;
   onSelectRecents?: () => void;
@@ -94,8 +94,6 @@ const FLUSH_PANEL = cn(
   elevationClass('raised', 'soft'),
 );
 const SCROLL = 'max-h-[min(420px,55vh)] overflow-y-auto';
-const GROUP_HEADER =
-  'px-3 pb-0.5 pt-1.5 text-role-micro font-semibold uppercase tracking-widest text-text-faint';
 /**
  * Dropdown density for the recents section. The `.text-role-eyebrow` clause is
  * gone: the recents row now wears `CompactActivityRow` + `RailRowBody`, whose
@@ -111,6 +109,7 @@ export function GlobalSearchDropdown({
   activeIndex,
   state,
   query,
+  emptyMessage,
   recents,
   previewGroups,
   onClose,
@@ -128,19 +127,15 @@ export function GlobalSearchDropdown({
   const presence = useMotionPresence(framerPresence.dropdownPanel);
   const transition = useMotionTransition(framerTransition.dropdownOpen);
 
-  // One batched pack-photo count per preview render — the CTA on every row
-  // shows a real number (0 included), so it cannot be inferred per row.
-  const packPhotoCount = usePackPhotoCounts(
-    previewGroups.flatMap((g) => g.hits.map((h) => h.facets?.tracking_number ?? null)),
-  );
-
-  // Base flat index of each group's first hit (option 0 = the first hit).
+  // Flat option index — same order the host keyboard-navs.
   let running = 0;
-  const groupsWithBase = previewGroups.map((group) => {
-    const base = running;
-    running += group.hits.length;
-    return { group, base };
-  });
+  const flatHits: Array<{ hit: AiSearchHit; idx: number }> = [];
+  for (const group of previewGroups) {
+    for (const hit of group.hits) {
+      flatHits.push({ hit, idx: running });
+      running += 1;
+    }
+  }
 
   return (
     <AnchoredLayer
@@ -171,16 +166,14 @@ export function GlobalSearchDropdown({
               e.preventDefault();
             }}
           >
-            {state === 'methods' && onSelectSearchBy && onSelectRecents ? (
+            {state === 'methods' && onSelectSearchBy ? (
               <div className={SCROLL}>
                 <SearchByMethods
                   listboxId={listboxId}
                   optionId={optionId}
                   activeIndex={activeIndex}
                   selected={searchByScope}
-                  recentsActive={recentsPageOpen}
                   onSelect={onSelectSearchBy}
-                  onSelectRecents={onSelectRecents}
                 />
               </div>
             ) : (
@@ -204,39 +197,24 @@ export function GlobalSearchDropdown({
               )}
 
               {state === 'preview' && (
-                <>
-                  {groupsWithBase.map(({ group, base }) => (
-                    <section key={group.label}>
-                      <p className={GROUP_HEADER} role="presentation">
-                        {group.label}
-                      </p>
-                      <ul className="divide-y divide-border-hairline">
-                        {group.hits.map((hit, j) => {
-                          const idx = base + j;
-                          return (
-                            <li key={`${hit.entityType}:${hit.id}`}>
-                              <SearchResultRow
-                                hit={hit}
-                                density="dropdown"
-                                active={idx === activeIndex}
-                                optionId={optionId(idx)}
-                                onNavigate={onNavigateHit}
-                                packPhotoCount={packPhotoCount(
-                                  hit.facets?.tracking_number ?? null,
-                                )}
-                              />
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    </section>
+                <ul className="divide-y divide-border-hairline">
+                  {flatHits.map(({ hit, idx }) => (
+                    <li key={`${hit.entityType}:${hit.id}`}>
+                      <SearchResultRow
+                        hit={hit}
+                        density="dropdown"
+                        active={idx === activeIndex}
+                        optionId={optionId(idx)}
+                        onNavigate={onNavigateHit}
+                      />
+                    </li>
                   ))}
-                </>
+                </ul>
               )}
 
               {state === 'empty' && (
                 <p className="px-3 py-3 text-center text-role-caption font-semibold text-text-danger">
-                  No matches for &ldquo;{query}&rdquo;
+                  {emptyMessage ?? `No matches for “${query}”`}
                 </p>
               )}
             </div>

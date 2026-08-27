@@ -13,7 +13,7 @@ import {
   type ResolvedSearchOrder,
 } from '@/lib/search/resolve-search-order';
 import { setSearchOrderResolveCache } from '@/lib/search/search-order-resolve-query';
-import { orderRecordHref } from '@/lib/search/search-hit';
+import { orderRecordHref, searchHitHref } from '@/lib/search/search-hit';
 import { desktopSearchHref } from '@/lib/search/internal-id';
 
 export type CommitIdentifierFindResult =
@@ -58,6 +58,11 @@ export function hrefForPreviewHit(hit: {
   id: number;
   href: string;
 }): string {
-  const raw = hit.entityType === 'order' ? orderRecordHref(hit.id) : hit.href;
+  const raw =
+    hit.entityType === 'order'
+      ? orderRecordHref(hit.id)
+      : hit.entityType === 'receiving'
+        ? searchHitHref('RECEIVING', hit.id)
+        : hit.href;
   return desktopSearchHref(raw);
 }

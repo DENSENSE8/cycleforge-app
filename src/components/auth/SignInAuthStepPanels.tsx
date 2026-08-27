@@ -73,7 +73,6 @@ export function SignInAuthStepPanels({
         autoFocus
         value={email}
         onChange={onEmailChange}
-        tone="blue"
       />
 
       <AnimatePresence initial={false}>
@@ -100,7 +99,6 @@ export function SignInAuthStepPanels({
                 autoComplete="current-password"
                 value={password}
                 onChange={onPasswordChange}
-                tone="blue"
                 trailing={
                   <button
                     type="button"

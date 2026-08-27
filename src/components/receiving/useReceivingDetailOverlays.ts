@@ -8,7 +8,6 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { IncomingView } from '@/lib/receiving/incoming-view';
 import { toast } from '@/lib/toast';
 import { useAblyChannel } from '@/hooks/useAblyChannel';
 import { getStationChannelName, safeChannelName } from '@/lib/realtime/channels';
@@ -30,7 +29,6 @@ import {
 } from '@/lib/receiving/incoming-details-target';
 import type { HistoryTriageTarget } from '@/lib/receiving/history-triage-row';
 import { useReceivingEvents } from '@/hooks/useReceivingEvents';
-import { emitReceiving } from '@/components/receiving/receiving-events';
 import { setDetailInspectorCollapsed } from '@/design-system/shells/detail-stack';
 
 export type { IncomingDetailsTarget } from '@/lib/receiving/incoming-details-target';
@@ -48,12 +46,6 @@ export interface ReceivingDetailOverlays {
 
 export function useReceivingDetailOverlays(
   isIncomingMode: boolean,
-  /**
-   * Incoming right-pane sub-view (`?incview=`). Any lane other than the default
-   * POS table must not keep a stale PO panel open behind it — Email Triage has
-   * no PO context, and the removed lane's rows are departures, not work.
-   */
-  incomingView: IncomingView = 'pos',
 ): ReceivingDetailOverlays {
   const [overlayLog, setOverlayLog] = useState<ReceivingDetailsLog | null>(null);
   // Incoming-mode details panel — populated when a row is selected in
@@ -136,16 +128,6 @@ export function useReceivingDetailOverlays(
     window.addEventListener('receiving-select-line', handler);
     return () => window.removeEventListener('receiving-select-line', handler);
   }, [isIncomingMode]);
-
-  // Mode flip cleanup: Email Triage has no PO context — close any open panel.
-  // Do NOT clear solely because mode ≠ Incoming: Unbox/Triage order-chip
-  // Details opens the same panel via RECEIVING_OPEN_INCOMING_DETAILS_EVENT.
-  useEffect(() => {
-    if (isIncomingMode && incomingView === 'email') {
-      setIncomingDetails(null);
-      emitReceiving('receiving-clear-line');
-    }
-  }, [isIncomingMode, incomingView]);
 
   // Unbox / Triage order-chip "Details" → same Incoming connection inspector.
   useEffect(() => {

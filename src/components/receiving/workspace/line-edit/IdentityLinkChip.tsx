@@ -119,7 +119,7 @@ export function IdentityLinkChip({
   menuFirstAction?: 'open' | 'copy';
   /**
    * Rows after the first action (Open/Copy) — e.g. the ticket chip's
-   * Message / Seller / Archive / Unlink cluster. **Data, not markup:** these
+   * Message / Seller / Unlink cluster. **Data, not markup:** these
    * used to be a `menuBetween: ReactNode` where each caller hand-spelled the
    * menuitem classes, which is a row renderer forked per host. Edit (when
    * `editInMenu`) still renders after them.

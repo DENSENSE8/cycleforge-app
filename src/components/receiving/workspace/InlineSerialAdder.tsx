@@ -268,7 +268,6 @@ export function InlineSerialAdder({
           label="Serial"
           value={scan}
           onChange={setScan}
-          tone="blue"
           mono
           disabled={disabled}
           autoComplete="off"

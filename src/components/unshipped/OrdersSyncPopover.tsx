@@ -156,7 +156,7 @@ export function OrdersSyncPopover({ onRefresh }: { onRefresh?: () => void }) {
         }
         labeledTrigger={{
           children: 'Import',
-          variant: 'secondary',
+          variant: 'execute',
           className: CTA_FACE,
           icon: sync.isTransferring ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />

@@ -17,11 +17,9 @@ import {
   Barcode,
   ClipboardList,
   ExternalLink,
-  History,
   Images,
   Link2,
   MapPin,
-  MessageSquare,
   Boxes,
   Package,
   Ticket,
@@ -37,12 +35,11 @@ import { TrackingNumbersTab } from '../TrackingNumbersTab';
 import { ListingLinksTab } from '../ListingLinksTab';
 import { UnboxLocationsLeaf } from '../UnboxLocationsLeaf';
 import type { ClaimModalMode } from '../../claim/claim-types';
-import { isReturnIntake } from '@/lib/receiving/triage-intake-kind';
 import { UniversalLoader } from '@/design-system/components/UniversalLoader';
 
 /**
  * P3 Displays bodies — deferred chunks. Topic strip labels stay in this module;
- * Ticket / Photos / Timeline / Support chat must not ride the P1 paint path.
+ * Ticket / Photos must not ride the P1 paint path.
  * (ssr OK — they only mount when the topic is selected.)
  *
  * **Triage speed:** cold `import()` used to paint ← over an empty body
@@ -60,12 +57,6 @@ const loadTicketDisplayHost = () =>
   import('../TicketDisplayHost').then((m) => m.TicketDisplayHost);
 const loadPhotosDisplayHost = () =>
   import('../PhotosDisplayHost').then((m) => m.PhotosDisplayHost);
-const loadWorkspaceTimelineTab = () =>
-  import('@/components/station/workbench').then((m) => m.WorkspaceTimelineTab);
-const loadSupportContextHub = () =>
-  import('@/components/support/context').then((m) => m.SupportContextHub);
-const loadReceivingAuditPanel = () =>
-  import('../../ReceivingAuditPanel').then((m) => m.ReceivingAuditPanel);
 
 function LeafBodyLoading() {
   return <UniversalLoader isLoading label="Loading display" />;
@@ -77,23 +68,11 @@ const TicketDisplayHost = dynamic(loadTicketDisplayHost, {
 const PhotosDisplayHost = dynamic(loadPhotosDisplayHost, {
   loading: LeafBodyLoading,
 });
-const WorkspaceTimelineTab = dynamic(loadWorkspaceTimelineTab, {
-  loading: LeafBodyLoading,
-});
-const SupportContextHub = dynamic(loadSupportContextHub, {
-  loading: LeafBodyLoading,
-});
-const ReceivingAuditPanel = dynamic(loadReceivingAuditPanel, {
-  loading: LeafBodyLoading,
-});
 
 /** Warm deferred Displays leaf chunks once the push column is open. */
 export function preloadUnboxDisplayLeafChunks(): void {
   void loadTicketDisplayHost();
   void loadPhotosDisplayHost();
-  void loadWorkspaceTimelineTab();
-  void loadSupportContextHub();
-  void loadReceivingAuditPanel();
 }
 
 /**
@@ -106,18 +85,16 @@ export interface BuildUnboxTabsInput {
   staffId: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- unbox controller return
   c: any;
-  /** Which side tab is showing — gates the lazily-mounted Support hub / ticket. */
+  /** Which side tab is showing — gates the lazily-mounted ticket. */
   activeSideTab: UnboxSideTab | null;
   hasUnits: boolean;
   serialCount: number;
-  hasTimelineTab: boolean;
   hasTrackingTab: boolean;
   hasListingsTab: boolean;
   /** Linkage (Pairing + Zoho note) needs a carton record. */
   hasLinkageTab: boolean;
   /** Inventory dossier — same carton gate as Linkage. */
   hasInventoryTab: boolean;
-  poIdForTracking: string;
   hasPoNoteTab: boolean;
   poNote: PoNoteTabState;
   photoAction: UnboxPhotoAction;
@@ -164,11 +141,6 @@ export interface BuildUnboxTabsInput {
   }) => void;
   /** Serials cell click → Units Displays. */
   onViewAllUnits?: (line: ReceivingLineRow) => void;
-  /**
-   * RETURN match band → Displays Timeline (full serial genealogy).
-   * Wired from LineEditPanel `openDisplays('timeline')`.
-   */
-  onOpenReturnHistory?: () => void;
 }
 
 /**
@@ -187,7 +159,6 @@ export function buildUnboxOverview(
     | 'accordionBootstrap'
     | 'onEditFilledSerial'
     | 'onViewAllUnits'
-    | 'onOpenReturnHistory'
   > & {
     /** Click ledger chips → focus the matching procedure step in the dock. */
     onFocusCaptureStep?: (key: 'serial' | 'condition' | 'item_photos') => void;
@@ -207,7 +178,6 @@ export function buildUnboxOverview(
     accordionBootstrap = 'default',
     onEditFilledSerial,
     onViewAllUnits,
-    onOpenReturnHistory,
     onFocusCaptureStep,
     activeStep = null,
   } = input;
@@ -230,7 +200,6 @@ export function buildUnboxOverview(
         accordionBootstrap={accordionBootstrap}
         onEditFilledSerial={onEditFilledSerial}
         onViewAllUnits={onViewAllUnits}
-        onOpenReturnHistory={onOpenReturnHistory}
       />
       <UnboxLabelPreview row={row} c={c} />
       <UnboxPlacementSection row={row} />
@@ -242,7 +211,7 @@ export function buildUnboxOverview(
  * Build the Unbox side displays for the Displays push column.
  *
  * Strip (PO-identity first): Listings · Pairing · Inventory · Units ·
- * Photos · Ticket · Tracking · Timeline · Support. Ticket is presence-exclusive
+ * Photos · Ticket · Tracking. Ticket is presence-exclusive
  * (Claim vs Chat — no nested tabs). Inventory is one stacked dossier (no nested
  * tabs). Photos is armed-row Actions + URL drills. Units · Linkage still nest
  * parent underline (debt — migrate to armed rows).
@@ -256,12 +225,10 @@ export function buildUnboxSideTabs(input: BuildUnboxTabsInput): SectionTab[] {
     activeSideTab,
     hasUnits,
     serialCount,
-    hasTimelineTab,
     hasTrackingTab,
     hasListingsTab,
     hasLinkageTab,
     hasInventoryTab,
-    poIdForTracking,
     hasPoNoteTab,
     poNote,
     photoAction,
@@ -282,11 +249,9 @@ export function buildUnboxSideTabs(input: BuildUnboxTabsInput): SectionTab[] {
     pairingFocusTab = null,
     pairingFocusRequestId = 0,
     onFindTicket,
-    onOpenReturnHistory,
   } = input;
 
   const ticketId = c.providerTicketId as number | null | undefined;
-  const timelineOnStrip = hasTimelineTab && isReturnIntake(row);
 
   return buildSectionTabs([
     {
@@ -385,7 +350,6 @@ export function buildUnboxSideTabs(input: BuildUnboxTabsInput): SectionTab[] {
             commitSerialAbsent: c.commitSerialAbsent,
             serialRef: c.serialRef,
             handleFileReturnClaim: c.handleFileReturnClaim,
-            handleOpenReturnHistory: onOpenReturnHistory,
             serialLookup: c.serialLookup,
           }}
         />
@@ -469,32 +433,6 @@ export function buildUnboxSideTabs(input: BuildUnboxTabsInput): SectionTab[] {
       ),
     },
     {
-      id: 'timeline',
-      label: 'Timeline',
-      icon: History,
-      // Return intake: strip-visible so Full history is one click when Displays
-      // is already open. PO/found keeps Timeline in overflow.
-      priority: timelineOnStrip ? 'primary' : 'overflow',
-      visible: hasTimelineTab,
-      content: (
-        <div className="space-y-4">
-          <WorkspaceTimelineTab
-            poId={poIdForTracking || null}
-            tracking={row.tracking_number ?? null}
-            receivingId={row.receiving_id ?? null}
-          />
-          {row.receiving_id != null && activeSideTab === 'timeline' ? (
-            <ReceivingAuditPanel
-              open
-              receivingId={row.receiving_id}
-              onClose={() => undefined}
-              hideHeader
-            />
-          ) : null}
-        </div>
-      ),
-    },
-    {
       id: 'locations',
       label: 'Locations',
       icon: MapPin,
@@ -508,29 +446,6 @@ export function buildUnboxSideTabs(input: BuildUnboxTabsInput): SectionTab[] {
             stagedLocationId={row.staged_location_id ?? null}
             onPlaced={onCloseTicket}
           />
-        ) : null,
-    },
-    {
-      id: 'support',
-      label: 'Support',
-      icon: MessageSquare,
-      priority: 'overflow',
-      content:
-        activeSideTab === 'support' && (row.id != null || row.receiving_id != null) ? (
-          <div className="flex h-[68vh] min-h-[460px] flex-col overflow-hidden">
-            <SupportContextHub
-              anchor={{
-                receivingId: row.receiving_id ?? null,
-                lineId: row.id ?? null,
-                tracking: row.tracking_number ?? null,
-              }}
-              variant="station"
-              defaultSegment="team"
-              hideCustomerSegment
-              hideLinkage
-              className="h-full min-h-0 rounded-2xl"
-            />
-          </div>
         ) : null,
     },
   ]);

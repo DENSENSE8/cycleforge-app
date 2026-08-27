@@ -15,9 +15,10 @@
 
 import { Plus } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
-import { WORKBENCH_CHROME_PILL_CLASS } from '@/components/dashboard/workbench-shell';
+import { WORKBENCH_CHROME_PILL_CLASS, WorkbenchChromeActionRow } from '@/components/dashboard/workbench-shell';
 import { OrdersSyncPopover } from '@/components/unshipped/OrdersSyncPopover';
 import { cn } from '@/utils/_cn';
+import type { ReactNode } from 'react';
 
 const CTA_FACE = cn(
   WORKBENCH_CHROME_PILL_CLASS,
@@ -31,29 +32,35 @@ const INGEST_CTA_FACE = cn(WORKBENCH_CHROME_PILL_CLASS, 'font-semibold');
 export function OutboundOrderChromeActions({
   onNewOrder,
   layout = 'pair',
+  leading,
 }: {
   onNewOrder: () => void;
   /** `ingest` = single Add that opens the ingest index. Default pair for sibling desks. */
   layout?: 'pair' | 'ingest';
+  /** Quiet control immediately left of Add (Packed filtered export). */
+  leading?: ReactNode;
 }) {
   if (layout === 'ingest') {
     return (
-      <Button
-        size="sm"
-        variant="primary"
-        icon={<Plus className="h-3.5 w-3.5" />}
-        ariaLabel="Add orders"
-        onClick={onNewOrder}
-        className={INGEST_CTA_FACE}
-        data-testid="outbound-chrome-add"
-      >
-        Add
-      </Button>
+      <WorkbenchChromeActionRow>
+        {leading}
+        <Button
+          size="sm"
+          variant="primary"
+          icon={<Plus className="h-3.5 w-3.5" />}
+          ariaLabel="Add orders"
+          onClick={onNewOrder}
+          className={INGEST_CTA_FACE}
+          data-testid="outbound-chrome-add"
+        >
+          Add
+        </Button>
+      </WorkbenchChromeActionRow>
     );
   }
 
   return (
-    <>
+    <WorkbenchChromeActionRow>
       <OrdersSyncPopover />
       <Button
         size="sm"
@@ -66,6 +73,6 @@ export function OutboundOrderChromeActions({
       >
         Add
       </Button>
-    </>
+    </WorkbenchChromeActionRow>
   );
 }

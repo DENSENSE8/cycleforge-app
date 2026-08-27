@@ -1,20 +1,20 @@
 'use client';
 
 /**
- * Inbound desk chrome — Pipeline collection (POS | Email) + Docked history.
+ * Inbound desk chrome — Pipeline POS table + Docked history.
  *
  * Unbox Sheets recipe (Incoming consumer):
  *   House Band-1 law: fixed process tabs · Pin-list omitted (L1 desk) · Views on
  *   Band 3 (`WorkbenchViewsMenu`) · page-pin in GlobalHeader.
  *
- *   Band 1 — Pipeline: Incoming POS | Email Triage + Check / Import / Add
- *            Docked (`?lane=docked`): Arrival | Unbox (no Pipeline|Docked parent)
+ *   Band 1 — Pipeline: Check / Import / Add (no collection pills — POS is the
+ *            only face). Docked (`?lane=docked`): Arrival | Unbox
  *   Band 2 — omitted (KPI strip deleted 2026-08-10)
- *   Band 3 — triage find + Views (POS) + inspector
+ *   Band 3 — triage find + Views + inspector
  *
- * Pipeline|Docked big tabs, the retired removed-lane facet, and KPI tiles were
- * deleted 2026-08-10 (rail-less ops-queue chrome). Docked remains URL-reachable
- * for legacy redirects.
+ * Pipeline|Docked big tabs, Email Triage, the retired removed-lane facet, and
+ * KPI tiles were deleted (rail-less ops-queue chrome). Docked remains
+ * URL-reachable for legacy redirects.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -67,9 +67,10 @@ import { useIncomingSummary } from './useIncomingSummary';
 import { useIncomingFilters } from './useIncomingFilters';
 import { useIncomingSyncActions } from './useIncomingSyncActions';
 import { IncomingChromeActions } from './IncomingChromeActions';
-import { IncomingAddInboundOverlay } from './IncomingAddInboundOverlay';
-import { IncomingImportCsvOverlay } from './IncomingImportCsvOverlay';
-import { IncomingBulkTrackingPanel } from './IncomingBulkTrackingPanel';
+import {
+  IncomingDeskRightRail,
+  type IncomingDeskRailTool,
+} from './IncomingDeskRightRail';
 import {
   IncomingSourceHotChip,
   IncomingSourceRows,
@@ -87,20 +88,10 @@ import {
   SAVED_VIEW_STORAGE_KEY,
 } from '@/lib/station/table-url-params';
 import {
-  parseIncomingView,
-  type IncomingView,
-} from '@/lib/receiving/incoming-view';
-import { useIncomingEmailCount } from '@/components/receiving/incoming-todo-shared';
-
-/** Band-1 collection faces — only writer of `?incview=` (Pipeline desk). */
-const PIPELINE_VIEW_TABS: {
-  id: IncomingView;
-  label: string;
-  color: 'blue';
-}[] = [
-  { id: 'pos', label: 'Incoming POS', color: 'blue' },
-  { id: 'email', label: 'Email Triage', color: 'blue' },
-];
+  GLOBAL_ADD_INTENT_EVENT,
+  consumeGlobalAddIntent,
+  type GlobalAddIntent,
+} from '@/lib/global-add/catalog';
 
 const SCOPE_ITEMS: {
   id: ReceivingHistorySearchScope;
@@ -138,29 +129,56 @@ export function IncomingWorkspaceHeader({
 
   const lane: InboundLane = parseInboundLane(searchParams.get('lane'));
   const isPipeline = lane === 'pipeline';
-  const incomingView = parseIncomingView(searchParams.get('incview'));
-  /** Saved views only refine the POS collection — not Email Triage. */
-  const showIncomingViews = isPipeline && incomingView === 'pos';
-  const emailCount = useIncomingEmailCount();
   const incomingDetailOpen = useRightRailOccupantOpen(INCOMING_DETAILS_RAIL_ID);
 
-  const [addOpen, setAddOpen] = useState(false);
-  const [addOrderId, setAddOrderId] = useState('');
-  const [addPlatform, setAddPlatform] = useState('amazon');
-  const [csvOpen, setCsvOpen] = useState(false);
-  const [pasteAction, setPasteAction] = useState<'filter' | 'check' | null>(null);
+  const [deskRail, setDeskRail] = useState<IncomingDeskRailTool | null>(null);
+
+  const closeDeskRail = useCallback(() => {
+    setDeskRail(null);
+  }, []);
 
   useEffect(() => {
     const onStationImport = (event: Event) => {
       const detail = (event as CustomEvent<{ orderId?: string; order_id?: string }>).detail;
       const prefill = (detail?.orderId || detail?.order_id || '').trim();
-      setAddOrderId(prefill);
-      setAddPlatform('ebay');
-      setAddOpen(true);
+      setDeskRail({
+        kind: 'add',
+        orderId: prefill,
+        platform: 'ebay',
+        leaf: 'add-po',
+      });
     };
     window.addEventListener('station:import-ebay-order', onStationImport);
     return () => window.removeEventListener('station:import-ebay-order', onStationImport);
   }, []);
+
+  useEffect(() => {
+    const applyIntent = (intent: GlobalAddIntent | null) => {
+      if (!intent) return;
+      if (intent.kind === 'incoming-add') {
+        setDeskRail({ kind: 'add', platform: 'amazon', leaf: intent.leaf });
+        return;
+      }
+      if (intent.kind === 'incoming-import-zoho') {
+        void sync.refreshZoho();
+        return;
+      }
+      if (intent.kind === 'incoming-import-ebay') {
+        void sync.refreshMarketplace();
+      }
+    };
+
+    applyIntent(consumeGlobalAddIntent());
+
+    const onGlobalAdd = (event: Event) => {
+      const intent = (event as CustomEvent<GlobalAddIntent>).detail;
+      if (!intent) return;
+      consumeGlobalAddIntent();
+      applyIntent(intent);
+    };
+    window.addEventListener(GLOBAL_ADD_INTENT_EVENT, onGlobalAdd);
+    return () => window.removeEventListener(GLOBAL_ADD_INTENT_EVENT, onGlobalAdd);
+  }, [sync]);
 
   const replaceParams = useCallback(
     (next: URLSearchParams) => {
@@ -168,18 +186,6 @@ export function IncomingWorkspaceHeader({
       router.replace(qs ? `${base}?${qs}` : base, { scroll: false });
     },
     [router, base],
-  );
-
-  const setIncomingView = useCallback(
-    (id: string) => {
-      const next = id as IncomingView;
-      const params = new URLSearchParams(searchParams.toString());
-      if (next === 'pos') params.delete('incview');
-      else params.set('incview', next);
-      params.delete('page');
-      replaceParams(params);
-    },
-    [replaceParams, searchParams],
   );
 
   const activeSource: IncomingSource = (() => {
@@ -290,24 +296,6 @@ export function IncomingWorkspaceHeader({
         color: 'blue' as const,
       })),
     [],
-  );
-
-  const pipelineViewTabs = useMemo(
-    () =>
-      PIPELINE_VIEW_TABS.map((t) => ({
-        ...t,
-        count:
-          t.id === 'pos'
-            ? total > 0
-              ? total
-              : undefined
-            : t.id === 'email'
-              ? emailCount > 0
-                ? emailCount
-                : undefined
-              : undefined,
-      })),
-    [total, emailCount],
   );
 
   /*
@@ -463,34 +451,34 @@ export function IncomingWorkspaceHeader({
   return (
     <>
       {/*
-        Inbound chrome (Pipeline-only Band-1 faces · Docked URL keeps Arrival|Unbox):
-          Band 1 — POS | Email (+ CTAs) · or Docked Arrival | Unbox
+        Inbound chrome (Pipeline Band 1 is CTAs only · Docked URL keeps Arrival|Unbox):
+          Band 1 — Check / Import / Add · or Docked Arrival | Unbox
           Band 3 — triage find · Views · inspector
       */}
       <WorkbenchChromeHeader
         density="band"
         className={className}
-        tabs={isPipeline ? pipelineViewTabs : dockedSubTabs}
-        activeTab={isPipeline ? incomingView : dockedTab}
-        onTabChange={isPipeline ? setIncomingView : setDockedTab}
+        tabs={isPipeline ? undefined : dockedSubTabs}
+        activeTab={isPipeline ? undefined : dockedTab}
+        onTabChange={isPipeline ? undefined : setDockedTab}
         solidTone="accent"
         trailing={
           isPipeline ? (
             <WorkbenchTrailingCluster
               actions={
                 <IncomingChromeActions
-                  onCheckZoho={() => setPasteAction('check')}
+                  onCheckZoho={() => setDeskRail({ kind: 'check' })}
                   onImportZoho={() => {
                     void sync.refreshZoho();
                   }}
                   onImportEbay={() => {
                     void sync.refreshMarketplace();
                   }}
-                  onImportCsv={() => setCsvOpen(true)}
+                  onImportCsv={() =>
+                    setDeskRail({ kind: 'add', platform: 'amazon', leaf: 'import-returns' })
+                  }
                   onAdd={() => {
-                    setAddOrderId('');
-                    setAddPlatform('amazon');
-                    setAddOpen(true);
+                    setDeskRail({ kind: 'add', platform: 'amazon', leaf: 'index' });
                   }}
                   importingZoho={sync.zohoRefreshing}
                   importingEbay={sync.marketplaceRefreshing}
@@ -509,7 +497,7 @@ export function IncomingWorkspaceHeader({
       {/* Band 3 — find + Views ▾ (POS) + view toggles. */}
       <WorkbenchTriageBand
         views={
-          showIncomingViews ? (
+          isPipeline ? (
             <WorkbenchViewsMenu
               storageKey={SAVED_VIEW_STORAGE_KEY.receiving_incoming}
               paramKeys={SAVED_VIEW_PARAM_KEYS.receiving_incoming}
@@ -546,7 +534,8 @@ export function IncomingWorkspaceHeader({
                     <ToolbarButton
                       iconOnly
                       aria-label="Paste a list of tracking numbers"
-                      onClick={() => setPasteAction('filter')}
+                      onClick={() => setDeskRail({ kind: 'filter' })}
+                      className="h-7 w-7"
                     >
                       <ExternalLink className="h-3.5 w-3.5" />
                     </ToolbarButton>
@@ -593,28 +582,7 @@ export function IncomingWorkspaceHeader({
 
       {isPipeline ? (
         <>
-          <IncomingBulkTrackingPanel
-            open={pasteAction != null}
-            initialAction={pasteAction ?? 'filter'}
-            onClose={() => setPasteAction(null)}
-          />
-
-          <IncomingAddInboundOverlay
-            open={addOpen}
-            onClose={() => {
-              setAddOpen(false);
-              setAddOrderId('');
-              setAddPlatform('amazon');
-            }}
-            initialOrderId={addOrderId}
-            initialPlatform={addPlatform}
-            initialType="PO"
-          />
-
-          <IncomingImportCsvOverlay
-            open={csvOpen}
-            onClose={() => setCsvOpen(false)}
-          />
+          <IncomingDeskRightRail tool={deskRail} onClose={closeDeskRail} />
 
           <IncomingSyncDialog
             open={sync.incSyncOpen}

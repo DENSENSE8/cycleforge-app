@@ -194,7 +194,7 @@ export const INCOMING_ROUTE_PARAMS = defineRouteParams({
   owns: {
     /** Desk lane (`pipeline` default, omitted | `docked`). */
     lane: paramEnum(['pipeline', 'docked'] as const),
-    /** Right-pane sub-view (`pos` default | `email` | `removed`) — Pipeline only. */
+    /** Retired Incoming collection face (`pos` only). Hygiene strips leftovers. */
     incview: paramRoundTrip(parseIncomingViewWire),
     /**
      * Bulk tracking paste filter — canonical keys, comma-joined. Names specific
@@ -208,6 +208,8 @@ export const INCOMING_ROUTE_PARAMS = defineRouteParams({
     inbound: paramEnum(['all', 'zoho', 'ebay', 'amazon', 'manual'] as const),
     /** Intake kind filter (`all` omitted | `purchase` | `return`) — Pipeline. */
     inkind: paramEnum(['all', 'purchase', 'return'] as const),
+    /** Returns CSV/TSV staging owns the desk centre while set. */
+    import: paramEnum(['csv'] as const),
     /**
      * Server ORDER BY — Pipeline ∪ Docked union so hygiene does not strip the
      * other lane’s sort on a deep link. Lane switch clears the incompatible id

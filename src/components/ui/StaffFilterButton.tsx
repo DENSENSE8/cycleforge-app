@@ -60,7 +60,9 @@ export function StaffFilterButton({
   /** Trigger label when param is absent and {@link allToken} is set (Me default). */
   meLabel?: string;
   /**
-   * `toolbar` (default) — h-8 {@link ToolbarButton} for chrome right clusters.
+   * `toolbar` (default) — {@link ToolbarButton} densified to ops chrome `h-7`
+   * for Band 3 / View-topic clusters. Soft `rounded-lg` stays; height matches
+   * {@link WorkbenchBandControl}.
    * `field` — paste-sized glyph for a `SearchField` `trailingSuffix` slot, the
    * same trigger geometry {@link WorkbenchFilterPopover} `density="field"` uses.
    */
@@ -136,7 +138,7 @@ export function StaffFilterButton({
             active={fieldActive}
             iconOnly
             aria-label={`Filter by staff: ${label}`}
-            className={className}
+            className={cn('h-7 w-7', className)}
           >
             <HoverTooltip label={`Staff filter — ${label}`} focusable={false}>
               <User className="h-3.5 w-3.5 shrink-0" />
@@ -146,7 +148,7 @@ export function StaffFilterButton({
           <ToolbarButton
             active={fieldActive}
             aria-label={`Filter by staff: ${label}`}
-            className={`max-w-[160px] ${className ?? ''}`}
+            className={cn('h-7 max-w-[160px]', className)}
           >
             <User className="h-3.5 w-3.5 shrink-0 opacity-70" />
             <span className="min-w-0 truncate">{label}</span>

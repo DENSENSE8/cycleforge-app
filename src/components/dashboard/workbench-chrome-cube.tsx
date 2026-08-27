@@ -3,11 +3,10 @@
 /**
  * Band-1 chrome CUBE — the one face for a workbench chrome-row icon cell.
  *
- * The leading pin-list and every trailing utility CTA wear the SAME boxed cube
- * as the station identity bar's Exit / Back-to-list
- * ({@link STATION_CONTEXT_BOXED_CUBE_CLASS}), so a scan station's Band 1 reads
- * as one row of peer cells instead of a pin on the left and a parade of
- * coloured pills on the right.
+ * The leading pin-list and every trailing utility CTA wear the SAME flush cube
+ * ({@link STATION_CONTEXT_BOXED_CUBE_CLASS} — whisper fill, no rest-state box),
+ * so a scan station's Band 1 reads as one row of peer cells instead of a pin
+ * on the left and a parade of coloured pills on the right.
  *
  * ```text
  * Band 1   [📌] [ Recent | Queue | History ] ……………  [⇩] [☑] [+] [ UNBOX ]
@@ -73,7 +72,7 @@ export function WorkbenchChromeCubeButton({
         data-testid={testId}
         className={cn(
           WORKBENCH_CHROME_CUBE_CLASS,
-          active && 'bg-surface-hover text-text-muted',
+          active && 'bg-surface-sunken text-text-muted',
           'disabled:opacity-40',
         )}
       >

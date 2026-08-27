@@ -45,6 +45,7 @@ import { Box } from '@/components/Icons';
 import { useRequesterProfile } from '@/hooks/useRequesterProfile';
 import type { SupportContextBundle } from '@/lib/support/context-types';
 import { supportOrdersHref } from '@/components/sidebar/support/support-sidebar-shared';
+import { cartonReadHref } from '@/lib/receiving/surface-path';
 import { cn } from '@/utils/_cn';
 
 /** House honest-absence mark — never `N/A`, never a fabricated `0`. */
@@ -163,7 +164,7 @@ export function RequesterDetailBand({
             {receivingId ? (
               <HoverTooltip label="Open the carton record" asChild>
                 <Link
-                  href={`/carton/${receivingId}`}
+                  href={cartonReadHref(receivingId)}
                   className="inline-flex items-center gap-1 rounded bg-surface-sunken px-1.5 py-0.5 text-role-micro font-semibold uppercase tracking-widest text-text-muted ring-1 ring-inset ring-border-soft transition-colors hover:text-text-default"
                 >
                   <Box className="h-3 w-3" />

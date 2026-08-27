@@ -8,12 +8,10 @@
  *
  * Densities:
  *   • compact  — sidebar quick-jumps / rails. Title-first; no chip wall.
- *   • dropdown — header combobox preview. Strict CSS Grid tracks
- *     (Status · Id · Match · Tracking · Photos), sized to the 24rem find field
- *     the panel matches. Status leads so the eye reads state → identity →
- *     what → where across one line; the trailing cell is the pack-photo CTA
- *     (tracking-scoped media library). Relative age is comfortable-only —
- *     a sixth track leaves Match unreadably narrow at 24rem.
+ *   • dropdown — header combobox preview. **Title only** (product / item name).
+ *     No entity glyph, id chips, tracking, photos, or group headers — the
+ *     24rem find field is too narrow for a triage grid, and the operator is
+ *     picking a record by name.
  *   • comfortable — full /search Monitor feed. Strict CSS Grid tracks
  *     (Glyph · Id · Match · Tracking · Age). Glyph = blue Package /
  *     PackageOpen leftmost. Id = OrderIdChip last-8. Match = title only.
@@ -22,9 +20,7 @@
  * Narrow law (compact): title + subtitle own the width; status is a leading
  * dot when known; trailing EntityTag and status/platform chips stay off;
  * optional tracking last-8 only. Viewport `md:` must never gate rail chrome
- * (sidebar is narrow on desktop too). `dropdown` still counts as narrow for
- * TITLE abbreviation (identifier titles show last-8) but is laid out on the
- * aligned grid above, not the free-flowing narrow row.
+ * (sidebar is narrow on desktop too).
  *
  * Variants (narrow), chosen internally by entityType (callers never pass a flag):
  *   • order — status dot · title · meta · last-8 · when
@@ -59,12 +55,9 @@ import {
   type ChipTone,
 } from './search-result-chips';
 import {
-  SEARCH_RESULT_DROPDOWN_GRID,
-  SEARCH_RESULT_DROPDOWN_ROW_PAD,
   SEARCH_RESULT_GRID,
   SEARCH_RESULT_ROW_PAD,
 } from './search-result-grid';
-import { packPhotosLibraryHref } from '@/lib/photos/library-filter-state';
 import {
   identityKindFor,
   orderIdFromHit,
@@ -234,95 +227,49 @@ function TrackingMeta({
 }
 
 /**
- * Leading status cell (dropdown) — dot + word, so state reads without a
- * tooltip. Falls back to the entity glyph when the doc arm carried no status,
- * so the leftmost track is never an empty hole that breaks the column.
- */
-function StatusLead({ hit }: { hit: AiSearchHit }) {
-  const raw =
-    hit.facets?.status ??
-    hit.chips?.find((c) => c.tone === 'blue' || c.tone === 'amber' || c.tone === 'rose')?.label ??
-    null;
-  if (!raw) {
-    return (
-      <span className="flex items-center justify-center">
-        <HoverTooltip label={hit.entityType} focusable={false}>
-          <span className="flex items-center justify-center">
-            <EntityTile entityType={hit.entityType} density="dropdown" />
-          </span>
-        </HoverTooltip>
-      </span>
-    );
-  }
-  const tone = orderStatusTone(raw);
-  return (
-    <HoverTooltip label={tone.label} focusable={false}>
-      <span
-        className={cn(
-          'flex min-w-0 items-center gap-1 rounded px-1 py-0.5 ring-1 ring-inset',
-          CHIP_TONE_CLASSES[tone.tone] ?? CHIP_TONE_CLASSES.gray,
-        )}
-      >
-        <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', tone.dot)} />
-        <span className="truncate text-role-micro uppercase">{tone.label}</span>
-      </span>
-    </HoverTooltip>
-  );
-}
-
-/**
- * Trailing pack-photo CTA (dropdown) — painted on EVERY row, always, with a
- * real count. An affordance that appears only when photos exist forces the
- * operator to infer absence from a missing control; showing `0` says it.
+ * Header find preview — order # when this is an order (Ecwid 4989, eBay
+ * dashed ids), otherwise the product / item title.
  *
- * Scope is the tracking number: the media library resolves PACKER_LOG photos
- * through `packer_logs.shipment_id`, so no packerLogId lookup stands between
- * the row and the photos. `count === null` means the batch read has not
- * settled — the cell holds the number back rather than flashing a wrong 0.
- *
- * A row without tracking cannot be scoped, so its CTA renders inert at 0.
+ * The 24rem find cell has no room for Status · Id · Tracking · Photos; those
+ * tracks crushed titles into unreadable mash. Comfortable (/search feed) keeps
+ * the aligned grid; the header picker is a name list.
  */
-function PackPhotosAction({
-  tracking,
-  count,
-}: {
-  tracking: string | null;
-  count: number | null;
-}) {
-  const router = useRouter();
-  const settled = count != null;
-  const has = settled && count > 0;
-  const label = !settled
-    ? 'Counting packing photos…'
-    : count === 0
-      ? tracking
-        ? 'No packing photos'
-        : 'No packing photos (row has no tracking)'
-      : `${count} packing photo${count === 1 ? '' : 's'}`;
-
+function TitleOnlyDropdownRow({
+  hit,
+  active,
+  optionId,
+  onNavigate,
+}: SearchResultRowProps) {
+  const marketplaceId =
+    hit.entityType === 'receiving'
+      ? (hit.facets?.source_order_id?.trim() || orderIdFromHit(hit))
+      : hit.entityType === 'order'
+        ? orderIdFromHit(hit)
+        : '';
+  const title = marketplaceId || String(hit.title ?? '').trim() || 'Untitled';
   return (
-    <HoverTooltip label={label} asChild>
-      <button
-        type="button"
-        aria-label={label}
-        disabled={!tracking}
-        className={cn(
-          'inline-flex shrink-0 items-center gap-0.5 rounded px-1 py-0.5 tabular-nums',
-          'text-role-micro transition-colors',
-          has ? 'text-emerald-600' : 'text-text-faint',
-          tracking ? 'hover:bg-surface-hover' : 'cursor-default',
-        )}
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          if (!tracking) return;
-          router.push(packPhotosLibraryHref(tracking));
-        }}
-      >
-        <Camera className="h-3.5 w-3.5" />
-        {settled ? count : '·'}
-      </button>
-    </HoverTooltip>
+    <Link
+      href={hit.href}
+      onClick={(e) => {
+        if (!onNavigate) return;
+        e.preventDefault();
+        onNavigate(hit, e);
+      }}
+      role="option"
+      id={optionId}
+      aria-selected={active || undefined}
+      data-testid="global-find-hit"
+      data-hit-title={title}
+      data-hit-entity={hit.entityType}
+      className={cn(
+        'group flex min-w-0 items-center px-3 py-2 text-left transition-colors hover:bg-surface-hover',
+        active && ROW_ACTIVE,
+      )}
+    >
+      <span className="min-w-0 flex-1 truncate text-role-caption font-semibold text-text-default">
+        {title}
+      </span>
+    </Link>
   );
 }
 
@@ -330,12 +277,9 @@ function PackPhotosAction({
  * The aligned row — ONE renderer for both column-aligned densities.
  *
  *   comfortable (/search Monitor feed):  Glyph  | Id | Match | Tracking | Age
- *   dropdown    (header find preview):   Status | Id | Match | Tracking | Photos
  *
- * The middle three tracks are identical in both, which is exactly why this is
- * one component and not two: only the LEAD cell (glyph vs status) and the TAIL
- * (journey overlay vs pack-photo CTA) differ. `compact` rails are genuinely a
- * different anatomy (free-flowing, stacked subtitle) and keep their own rows.
+ * Dropdown used to share this grid; it now renders {@link TitleOnlyDropdownRow}
+ * so the header find field stays a clean title list.
  */
 function AlignedRow({
   hit,
@@ -344,10 +288,8 @@ function AlignedRow({
   onNavigate,
   packout,
   showJourneyAction,
-  packPhotoCount,
   density,
-}: SearchResultRowProps & { density: 'comfortable' | 'dropdown' }) {
-  const isDropdown = density === 'dropdown';
+}: SearchResultRowProps & { density: 'comfortable' }) {
   const orderChannelLabel = useOrderChannelLabel();
   const facets = hit.facets ?? {};
   const tracking = facets.tracking_number?.trim() || null;
@@ -367,7 +309,7 @@ function AlignedRow({
   const whenSource = packout?.timeAt ?? facets.happened_at ?? null;
   const when = whenSource ? formatRelativeTime(whenSource) : null;
   const whenLabel = packout?.timeAt ? packout.timeLabel : null;
-  const journey = isDropdown ? null : journeyActionFor(hit, density, showJourneyAction);
+  const journey = journeyActionFor(hit, density, showJourneyAction);
 
   return (
     <Link
@@ -384,23 +326,19 @@ function AlignedRow({
       aria-selected={active || undefined}
       className={cn(
         'group relative text-left transition-colors hover:bg-surface-hover',
-        isDropdown ? SEARCH_RESULT_DROPDOWN_GRID : SEARCH_RESULT_GRID,
-        isDropdown ? SEARCH_RESULT_DROPDOWN_ROW_PAD : SEARCH_RESULT_ROW_PAD,
+        SEARCH_RESULT_GRID,
+        SEARCH_RESULT_ROW_PAD,
         active && ROW_ACTIVE,
       )}
     >
-      {/* 1. Lead — status word (dropdown) / entity glyph (comfortable) */}
-      {isDropdown ? (
-        <StatusLead hit={hit} />
-      ) : (
-        <span className="flex items-center justify-center">
-          <HoverTooltip label={hit.entityType} focusable={false}>
-            <span className="flex items-center justify-center">
-              <EntityTile entityType={hit.entityType} density={density} />
-            </span>
-          </HoverTooltip>
-        </span>
-      )}
+      {/* 1. Lead — entity glyph */}
+      <span className="flex items-center justify-center">
+        <HoverTooltip label={hit.entityType} focusable={false}>
+          <span className="flex items-center justify-center">
+            <EntityTile entityType={hit.entityType} density={density} />
+          </span>
+        </HoverTooltip>
+      </span>
 
       {/* 2. Id — order/PO last-8 (never tracking); platform via chip tooltip */}
       <span className="flex min-w-0 items-center justify-start">
@@ -429,7 +367,7 @@ function AlignedRow({
             forceFull={hit.entityType === 'order' || hit.entityType === 'receiving'}
           />
         </span>
-        {!isDropdown && packout && packout.photoCount > 0 ? (
+        {packout && packout.photoCount > 0 ? (
           <span className="inline-flex shrink-0 items-center gap-0.5 tabular-nums text-role-micro uppercase text-emerald-600">
             <Camera className="h-3 w-3" />
             {packout.photoCount}
@@ -447,24 +385,15 @@ function AlignedRow({
         ) : null}
       </span>
 
-      {/* 5. Age (+ journey overlay) — comfortable only; 24rem has no room */}
-      {!isDropdown && (
-        <span className="relative flex min-w-0 items-center justify-end gap-1">
-          {when ? (
-            <span className="truncate text-role-eyebrow uppercase tabular-nums text-text-faint">
-              {whenLabel ? `${whenLabel} · ${when}` : when}
-            </span>
-          ) : null}
-          {journey}
-        </span>
-      )}
-
-      {/* 6. Packing photos CTA — dropdown only; always painted, count included */}
-      {isDropdown && (
-        <span className="flex items-center justify-end">
-          <PackPhotosAction tracking={tracking} count={packPhotoCount ?? null} />
-        </span>
-      )}
+      {/* 5. Age (+ journey overlay) */}
+      <span className="relative flex min-w-0 items-center justify-end gap-1">
+        {when ? (
+          <span className="truncate text-role-eyebrow uppercase tabular-nums text-text-faint">
+            {whenLabel ? `${whenLabel} · ${when}` : when}
+          </span>
+        ) : null}
+        {journey}
+      </span>
     </Link>
   );
 }
@@ -742,10 +671,12 @@ function GenericRow({
 
 export function SearchResultRow(props: SearchResultRowProps) {
   const density = props.density ?? 'compact';
-  // Both column-aligned densities share one renderer; only `compact` rails keep
-  // the free-flowing narrow rows below.
-  if (density === 'comfortable' || density === 'dropdown') {
-    return <AlignedRow {...props} density={density} />;
+  if (density === 'dropdown') {
+    return <TitleOnlyDropdownRow {...props} />;
+  }
+  // Column-aligned Monitor feed.
+  if (density === 'comfortable') {
+    return <AlignedRow {...props} density="comfortable" />;
   }
   // Order variant when the doc arm gave us facets to render richly, OR when the
   // rep workbench rail hydrated packout proof for it (so an exact-identifier

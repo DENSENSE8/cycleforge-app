@@ -1,14 +1,11 @@
 /**
  * Every table SURFACE BINDING in the product, in migration order — the one list.
  *
- * **Reduced to two surfaces (2026-08-20).** Every other collection grid was
- * deleted while its display is rewritten; each route it served still mounts and
- * renders `TableRebuildPlaceholder`, so the routes, their permissions, their
- * nav positions and their data are untouched and a rewritten display drops back
- * into a seam that still exists. Re-register a surface here as it is rebuilt —
- * this list and the registry are cross-asserted by
- * `table-record-plane.guard.test.ts`, so a binding that is not here is not in
- * the product.
+ * Re-register a surface here as it is rebuilt. Routes that still render
+ * `TableRebuildPlaceholder` keep their permissions, nav position and data;
+ * a rewritten display drops back into a seam that still exists. This list
+ * and the registry are the product's table catalog — a binding that is not
+ * here is not in the product.
  *
  * ## Why this is its own module
  *
@@ -44,6 +41,8 @@ import {
   ORDERS_DEFAULT_TABLE_BINDING,
   ORDERS_TESTED_TABLE_BINDING,
 } from '@/components/dashboard/orders-queue/orders-table-definition';
+import { CATALOG_LINK_TABLE_BINDING } from '@/features/review/catalog-link/grid/catalog-link-table-definition';
+import { IMPORT_EXCEPTION_TABLE_BINDING } from '@/features/review/catalog-link/grid/import-exception-table-definition';
 
 export const REGISTERED_BINDINGS = [
   // Unbox / History / Testing — the golden spreadsheet.
@@ -67,4 +66,8 @@ export const REGISTERED_BINDINGS = [
   // stores answering two questions (personal list vs the org's rostered shift
   // checklist), sharing this engine and nothing else.
   TASKS_TABLE_BINDING,
+  // Review · Listing match + Missing item number — two queues on one page,
+  // two prefs buckets, two record planes.
+  CATALOG_LINK_TABLE_BINDING,
+  IMPORT_EXCEPTION_TABLE_BINDING,
 ] as const;

@@ -1,7 +1,5 @@
 'use client';
 
-import Link from 'next/link';
-import { Camera, Image as ImageIcon } from '@/components/Icons';
 import {
   conditionGradeTableLabel,
   workflowStatusTableLabel,
@@ -12,7 +10,7 @@ import {
 } from '@/components/station/receiving-constants';
 import { RowTitle, RowMetaColumns, META_COL } from '@/components/ui/RowMetaColumns';
 import { ReceivingIdentityChips } from '@/components/receiving/ReceivingIdentityChips';
-import { MobileRowPhotoActions } from '@/components/mobile/receiving/MobileRowPhotoActions';
+import { GalleryPhotoCount, MobileRowPhotoActions } from '@/components/mobile/receiving/MobileRowPhotoActions';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { CaptureStackRow } from '@/design-system/components/capture-stack';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
@@ -27,6 +25,8 @@ import {
 } from '@/components/station/receiving-lines-table-helpers';
 import { RowStageTimeMeta } from '@/components/ui/RowStageTimeMeta';
 import { formatDateTimePST } from '@/utils/date';
+import Link from 'next/link';
+import { Camera, Image as ImageIcon } from '@/components/Icons';
 
 interface MobileReceivingRowProps {
   row: ReceivingLineRow;
@@ -191,39 +191,33 @@ export function MobileReceivingRow({
                 onOpenGallery();
               }}
               aria-label={photoCount > 0 ? `View ${photoCount} photos` : 'Open photo gallery'}
-              className={
-                photoCount > 0
-                  ? 'ds-raw-button inline-flex h-full w-14 shrink-0 flex-col items-center justify-center gap-0.5 rounded-none border border-border-soft bg-surface-sunken text-text-default active:bg-surface-sunken'
-                  : 'ds-raw-button inline-flex h-full w-14 shrink-0 flex-col items-center justify-center gap-0.5 rounded-none border border-border-soft bg-surface-canvas text-text-faint active:bg-surface-sunken'
-              }
+              className={cn(
+                'ds-raw-button inline-flex h-full w-14 shrink-0 flex-col items-center justify-center gap-0.5 rounded-xl border border-blue-200 bg-blue-50 active:bg-blue-100',
+                photoCount > 0 ? 'text-blue-700' : 'text-blue-600',
+              )}
             >
               <ImageIcon className="h-5 w-5" />
-              {photoCount > 0 ? (
-                <span className="text-role-micro leading-none tabular-nums">x{photoCount}</span>
-              ) : null}
+              <GalleryPhotoCount count={photoCount} prefix="x" className="text-role-micro leading-none" />
             </button>
           ) : (
             <Link
               href={galleryHref}
               prefetch={false}
               aria-label={photoCount > 0 ? `View ${photoCount} photos` : 'Open photo gallery'}
-              className={
-                photoCount > 0
-                  ? 'inline-flex h-full w-14 shrink-0 flex-col items-center justify-center gap-0.5 rounded-none border border-border-soft bg-surface-sunken text-text-default active:bg-surface-sunken'
-                  : 'inline-flex h-full w-14 shrink-0 flex-col items-center justify-center gap-0.5 rounded-none border border-border-soft bg-surface-canvas text-text-faint active:bg-surface-sunken'
-              }
+              className={cn(
+                'inline-flex h-full w-14 shrink-0 flex-col items-center justify-center gap-0.5 rounded-xl border border-blue-200 bg-blue-50 active:bg-blue-100',
+                photoCount > 0 ? 'text-blue-700' : 'text-blue-600',
+              )}
             >
               <ImageIcon className="h-5 w-5" />
-              {photoCount > 0 ? (
-                <span className="text-role-micro leading-none tabular-nums">x{photoCount}</span>
-              ) : null}
+              <GalleryPhotoCount count={photoCount} prefix="x" className="text-role-micro leading-none" />
             </Link>
           )}
           <Link
             href={captureHref}
             prefetch={false}
             aria-label={`Take photos${photoCount > 0 ? ` (${photoCount} so far)` : ''}`}
-            className="inline-flex h-full min-w-0 flex-1 items-center justify-center rounded-none bg-blue-600 text-white shadow-[0_6px_14px_-6px_rgba(37,99,235,0.55)] transition-transform active:scale-[0.98] active:bg-blue-700"
+            className="inline-flex h-full min-w-0 flex-1 items-center justify-center rounded-xl bg-blue-600 text-white shadow-[0_6px_14px_-6px_rgba(37,99,235,0.55)] transition-transform active:scale-[0.98] active:bg-blue-700"
           >
             <Camera className="h-6 w-6" />
           </Link>

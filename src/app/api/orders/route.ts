@@ -9,6 +9,8 @@ import { SHIPMENT_STATUS_CATEGORIES } from '@/lib/order-lifecycle';
 import { PACK_ACTIVITY_TYPES, sqlInList } from '@/lib/station-activity';
 import { sqlOrderHasPackScan, sqlOrderHasTechScan } from '@/lib/orders/order-grain-sql';
 import { withAuth } from '@/lib/auth/withAuth';
+import { WAREHOUSE_TIME_ZONE } from '@/utils/date';
+import { parsePackedDateKey } from '@/lib/packed/packed-filters';
 
 let replenishmentSchemaCheck:
   | { value: boolean; checkedAt: number }
@@ -72,6 +74,8 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     const hasSearchQuery     = Boolean(String(query || '').trim());
     const weekStart          = searchParams.get('weekStart') || '';
     const weekEnd            = searchParams.get('weekEnd') || '';
+    const packedDateFrom     = parsePackedDateKey(searchParams.get('dateFrom')) ?? '';
+    const packedDateTo       = parsePackedDateKey(searchParams.get('dateTo')) ?? '';
     const assignmentStatus   = searchParams.get('assignmentStatus') || '';
     const shipByDate         = searchParams.get('shipByDate') || '';
     const packedBy           = searchParams.get('packedBy');
@@ -159,6 +163,8 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       awaitingOnly,
       fulfillmentScope,
       stagedOnly,
+      packedDateFrom,
+      packedDateTo,
       exceptionsOnly,
       stallHours,
       carrierFilter,
@@ -637,6 +643,17 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       )`;
       sql += ` AND NOT ${shippedByCarrierOrLatestStatusSql}`;
       sql += ` AND COALESCE(o.fulfillment_channel, '') <> 'AFN'`;
+      if (packedDateFrom || packedDateTo) {
+        const packedDaySql = `timezone('${WAREHOUSE_TIME_ZONE}', COALESCE(pl_latest.packed_at, pack_activity.created_at))::date`;
+        if (packedDateFrom) {
+          sql += ` AND ${packedDaySql} >= $${paramCount++}::date`;
+          params.push(packedDateFrom);
+        }
+        if (packedDateTo) {
+          sql += ` AND ${packedDaySql} <= $${paramCount++}::date`;
+          params.push(packedDateTo);
+        }
+      }
     }
 
     if (carrierFilter) {

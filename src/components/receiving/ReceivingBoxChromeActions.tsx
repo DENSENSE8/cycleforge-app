@@ -24,7 +24,7 @@
 import type { ReactNode } from 'react';
 import { Download, Plus } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
-import { WORKBENCH_CHROME_PILL_CLASS } from '@/components/dashboard/workbench-shell';
+import { WORKBENCH_CHROME_PILL_CLASS, WorkbenchChromeActionRow } from '@/components/dashboard/workbench-shell';
 import { ChromeCheckButton } from './ChromeCheckButton';
 import { cn } from '@/utils/_cn';
 
@@ -54,7 +54,7 @@ export function ReceivingBoxChromeActions({
   onResume: () => void;
 }) {
   return (
-    <>
+    <WorkbenchChromeActionRow>
       <ChromeCheckButton onClick={onCheck} testId="receiving-box-check" />
       <Button
         size="sm"
@@ -70,7 +70,7 @@ export function ReceivingBoxChromeActions({
       {onExport ? (
         <Button
           size="sm"
-          variant="secondary"
+          variant="execute"
           icon={<Download className="h-3.5 w-3.5" />}
           ariaLabel="Export History view as CSV"
           onClick={onExport}
@@ -91,6 +91,6 @@ export function ReceivingBoxChromeActions({
       >
         Add
       </Button>
-    </>
+    </WorkbenchChromeActionRow>
   );
 }

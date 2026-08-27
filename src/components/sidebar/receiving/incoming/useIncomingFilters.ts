@@ -29,7 +29,7 @@ const parseISODate = (raw: string | null): Date | undefined => {
  * filter change drops `?page=` so the right pane lands on page 1.
  *
  * Writers: Band-3 search-field source filter owns `?inbound=` (All / Zoho /
- * eBay); filter popover owns `?state=` + date; sidebar owns `incview` only.
+ * eBay); filter popover owns `?state=` + date.
  */
 export function useIncomingFilters() {
   const router = useRouter();

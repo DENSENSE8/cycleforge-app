@@ -24,10 +24,10 @@
  *
  * **The chrome controller is injectable, and that is the load-bearing part.**
  * Most surfaces want the local one ({@link useWorkbenchSheetChrome}). To-ship
- * takes its `controlsEl` / KPI state from `useOrdersViewChrome` **context**,
- * because its View cluster lives on the pushing right inspector rather than on
- * Band 3 — a ruled SoT split (`workbench-ops-queue.md`), not drift. A shell that
- * always owned the state would have forced that surface to fork.
+ * takes its `controlsEl` / KPI state from `useOrdersViewChrome` **context**:
+ * View-topic controls portal into the pushing right inspector, while KPI hide
+ * still renders on Band 3 left of Show inspector. A shell that always owned
+ * the state would have forced that surface to fork.
  *
  * **What it deliberately does NOT own:** the outer positioning wrapper (each
  * surface's overlay/bulk-bar needs differ) and the band components themselves.

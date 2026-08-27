@@ -63,7 +63,8 @@ export function WorkbenchChromeCubeMenu({
    */
   labeledTrigger?: {
     children: string;
-    variant?: 'primary' | 'secondary';
+    /** Chrome peer of Check — prefer `execute` (whisper fill, no ring). */
+    variant?: 'primary' | 'secondary' | 'execute';
     className?: string;
     icon?: ReactNode;
   };
@@ -99,7 +100,7 @@ export function WorkbenchChromeCubeMenu({
           data-testid={testId}
           className={cn(
             WORKBENCH_CHROME_CUBE_CLASS,
-            open && 'bg-surface-hover text-text-muted',
+            open && 'bg-surface-sunken text-text-muted',
           )}
         >
           {icon}
@@ -109,6 +110,7 @@ export function WorkbenchChromeCubeMenu({
   );
 
   return (
+    <div className="contents">
     <Popover.Root
       open={open}
       onOpenChange={(next) => {
@@ -151,5 +153,6 @@ export function WorkbenchChromeCubeMenu({
         </Popover.Content>
       </Popover.Portal>
     </Popover.Root>
+    </div>
   );
 }

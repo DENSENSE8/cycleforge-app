@@ -3,7 +3,7 @@
  *
  * After Displays unify: **Displays** (local React state via
  * `useUnboxDisplayView`) ∪ `detail:receiving` ∪ AI ∪ desk Add inbound
- * (`detail:incoming-import-*`). Root Index → leaf drill-down; Ticket nests
+ * (`detail:incoming-desk-tools`). Root Index → leaf drill-down; Ticket nests
  * Chat · Claim; photo tools nest under Photos — not peer push columns.
  *
  * Stale URL keys (`display`, nest actions, legacy `ticketView` / `claimView`)
@@ -24,6 +24,7 @@ import {
   dispatchReceivingDetailsOverlayClose,
   dispatchStationDisplaysClose,
 } from '@/utils/events';
+import { requestCloseGridColumnDetails } from '@/design-system/components/grid/grid-column-details-open';
 import { readLiveSearchParams } from '@/lib/routing/optimistic-url-param';
 
 /**
@@ -139,4 +140,5 @@ export function yieldStationRightEdgeForDeskOccupant(replaceUrl?: (qs: string) =
   dispatchReceivingDetailsOverlayClose();
   dispatchAssistantDockClose();
   dispatchStationDisplaysClose();
+  requestCloseGridColumnDetails();
 }

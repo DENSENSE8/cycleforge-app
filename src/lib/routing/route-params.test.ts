@@ -357,6 +357,10 @@ test('/shipping/orders declares the params its own components read', () => {
   assert.equal(parse('attention=1'), '1');
   assert.equal(parse('ustatus=TESTED'), 'TESTED');
   assert.equal(parse('context=support'), 'support');
+  assert.equal(parse('dateFrom=2026-08-01'), '2026-08-01');
+  assert.equal(parse('dateTo=2026-08-27'), '2026-08-27');
+  // Packed dismiss writes `allDates=1` so current-week seed does not re-apply.
+  assert.equal(parse('allDates=1'), '1');
 });
 
 test('routeParamsFor resolves the longest route first', () => {

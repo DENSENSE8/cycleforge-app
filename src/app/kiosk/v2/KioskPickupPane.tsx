@@ -174,7 +174,6 @@ export function KioskPickupPane({ onReset }: KioskPickupPaneProps) {
                 value={orderNumber}
                 onChange={setOrderNumber}
                 autoComplete="off"
-                tone="blue"
                 inputClassName="rounded-none"
                 data-testid="kiosk-pickup-order"
               />

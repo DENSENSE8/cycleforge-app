@@ -7,14 +7,13 @@ import { formatDatePST, formatStageClockTimePST } from '@/utils/date';
 import { useTimeFormat } from '@/lib/time-format/useTimeFormat';
 import { cn } from '@/utils/_cn';
 import type { Milestone, MilestoneScan } from './milestone-pipeline-types';
+import {
+  hasMilestoneStamp,
+  selectVisibleMilestones,
+} from './select-visible-milestones';
 
 /** Title line offset — the height the rail threads on every stage. */
 const RAIL_TOP = 'top-[29px]';
-
-function hasStamp(value: string | null | undefined): boolean {
-  const raw = value == null ? '' : String(value).trim();
-  return Boolean(raw) && raw !== '1';
-}
 
 /**
  * What the station read, as a trail.
@@ -31,27 +30,41 @@ function hasStamp(value: string | null | undefined): boolean {
  */
 function ScanTrail({ scans }: { scans: MilestoneScan[] }) {
   if (scans.length === 0) return null;
+  const threaded = scans.length > 1;
   return (
     <span className="mt-1 block">
       {scans.map((scan, i) => (
-        <span key={`${scan.kind}-${scan.value}-${i}`} className="flex items-stretch gap-1">
-          <span className="flex w-2 shrink-0 flex-col items-center">
-            {i < scans.length - 1 ? (
-              <span
-                className="mt-4 w-px flex-1 border-l border-dashed border-border-soft"
-                aria-hidden
-              />
-            ) : null}
-          </span>
+        <span
+          key={`${scan.kind}-${scan.value}-${i}`}
+          className={cn('flex items-stretch', threaded && 'gap-1')}
+        >
+          {threaded ? (
+            <span className="flex w-2 shrink-0 flex-col items-center">
+              {i < scans.length - 1 ? (
+                <span
+                  className="mt-4 w-px flex-1 border-l border-dashed border-border-soft"
+                  aria-hidden
+                />
+              ) : null}
+            </span>
+          ) : null}
           <span className="min-w-0">
             {scan.kind === 'serial' ? (
-              <SerialChip value={scan.value} width="w-fit max-w-full" dense />
+              <SerialChip
+                value={scan.value}
+                width="w-fit max-w-full"
+                dense
+                // Flush with the timestamp above — default chip `px-1.5` would
+                // indent the barcode past the date's left edge.
+                outerPad="flush"
+              />
             ) : scan.kind === 'tracking' ? (
               <TrackingChip
                 value={scan.value}
                 carrierHint={scan.carrier ?? null}
                 width="w-fit max-w-full"
                 dense
+                outerPad="flush"
               />
             ) : (
               <span className="block text-role-eyebrow uppercase tracking-widest text-text-faint">
@@ -71,6 +84,10 @@ function ScanTrail({ scans }: { scans: MilestoneScan[] }) {
  * Every stage is the same four things: WHO did it (their face), WHAT stage it
  * was (past tense + the station's glyph), WHEN, and WHAT they read to stamp it.
  * A stage that has not happened shows the queue it is waiting in instead.
+ *
+ * Callers may pass the full station path; only stamped stages plus the true
+ * next queue render — skipped holes and dim future stages are dropped, so a
+ * two-stamp order stretches edge to edge rather than padding a blank third.
  *
  * ## Why this is not the wizard stepper
  *
@@ -105,14 +122,15 @@ export function MilestonePipeline({
   // Re-render the instant the 12h/24h clock preference flips.
   useTimeFormat();
 
-  const done = milestones.map((m) => hasStamp(m.at));
+  const visible = selectVisibleMilestones(milestones);
+  const done = visible.map((m) => hasMilestoneStamp(m.at));
   /** The live stage is the first without a stamp — exactly one, ever. */
   const activeIdx = done.indexOf(false);
 
   return (
     <nav aria-label={ariaLabel} className={cn('min-w-0', className)}>
       <ol className="flex w-full items-start">
-        {milestones.map((m, idx) => {
+        {visible.map((m, idx) => {
           const isDone = done[idx];
           const isActive = idx === activeIdx;
           const dim = !isDone && !isActive;
@@ -125,7 +143,8 @@ export function MilestonePipeline({
                 // collapses to nothing the moment the column is narrow, and the
                 // run silently becomes detached blocks. The rail is what makes
                 // them one progression — it must survive the squeeze even if
-                // the labels have to.
+                // the labels have to. With two stages it is what stretches the
+                // run edge to edge.
                 <li aria-hidden className="min-w-6 flex-1 self-start pt-[29px]">
                   <span className={cn('block h-0.5 w-full rounded-full', rule(idx - 1))} />
                 </li>
@@ -199,7 +218,7 @@ export function MilestonePipeline({
                       >
                         {m.icon}
                       </span>
-                      {idx < milestones.length - 1 ? (
+                      {idx < visible.length - 1 ? (
                         <span
                           className={cn(
                             'ml-1 h-0.5 min-w-2 flex-1 rounded-full',

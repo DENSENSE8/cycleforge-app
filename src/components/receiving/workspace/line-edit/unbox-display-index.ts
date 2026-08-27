@@ -23,7 +23,6 @@ export interface UnboxDisplayIndexSignals {
   linkagePaired: boolean;
   isUnfound: boolean;
   trackingPresent: boolean;
-  isReturnIntake: boolean;
   /**
    * Received / expected across PO lines when known (`null` → generic subtitle).
    * Used for the Inventory index row.
@@ -41,9 +40,7 @@ const LABELS: Record<UnboxSideTab, string> = {
   listings: 'Listings',
   units: 'Units',
   prebox: 'Prebox',
-  support: 'Support',
   tracking: 'Tracking',
-  timeline: 'Timeline',
   locations: 'Locations',
 };
 
@@ -58,8 +55,6 @@ const GROUPS: Record<UnboxSideTab, DisplayIndexGroup> = {
   photos: 'assets',
   ticket: 'context',
   tracking: 'context',
-  timeline: 'context',
-  support: 'context',
   locations: 'context',
 };
 
@@ -129,22 +124,11 @@ function listingsRow(): Pick<DisplayIndexRow, 'subtitle' | 'tone'> {
   return { subtitle: 'Listing links', tone: 'neutral' };
 }
 
-function supportRow(): Pick<DisplayIndexRow, 'subtitle' | 'tone'> {
-  return { subtitle: 'Team context', tone: 'neutral' };
-}
-
 function trackingRow(signals: UnboxDisplayIndexSignals): Pick<DisplayIndexRow, 'subtitle' | 'tone'> {
   if (signals.trackingPresent) {
     return { subtitle: 'Tracking on file', tone: 'ok' };
   }
   return { subtitle: 'No tracking', tone: 'neutral' };
-}
-
-function timelineRow(signals: UnboxDisplayIndexSignals): Pick<DisplayIndexRow, 'subtitle' | 'tone'> {
-  if (signals.isReturnIntake) {
-    return { subtitle: 'Return history', tone: 'action' };
-  }
-  return { subtitle: 'Carton history', tone: 'neutral' };
 }
 
 function locationsRow(): Pick<DisplayIndexRow, 'subtitle' | 'tone'> {
@@ -177,12 +161,8 @@ function rowMeta(
       return unitsRow(signals);
     case 'prebox':
       return preboxRow(signals);
-    case 'support':
-      return supportRow();
     case 'tracking':
       return trackingRow(signals);
-    case 'timeline':
-      return timelineRow(signals);
     case 'locations':
       return locationsRow();
   }

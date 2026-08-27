@@ -80,6 +80,8 @@ interface SearchableSelectFieldProps<T = unknown> {
   onSearchChange?: (query: string) => void;
   /** Remote fetch in flight — shows a searching row instead of the empty state. */
   loading?: boolean;
+  /** Stable e2e / test hook on the combobox trigger. */
+  testId?: string;
 }
 
 const TONE_TRIGGER: Record<NonNullable<SearchableSelectFieldProps['tone']>, string> = {
@@ -124,6 +126,34 @@ function groupOptions<T>(options: ReadonlyArray<SearchableSelectOption<T>>) {
   return order.map((heading) => ({ heading, items: map.get(heading)! }));
 }
 
+const FOCUSABLE_TAB_SELECTOR = [
+  'a[href]',
+  'button:not([disabled])',
+  'input:not([disabled])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  '[tabindex]:not([tabindex="-1"])',
+].join(', ');
+
+/** Walk Tab order inside the inspector/form that owns the trigger — not the portaled list. */
+function focusAdjacentTabStop(origin: HTMLElement, backward: boolean) {
+  const scope =
+    origin.closest('aside')
+    ?? origin.closest('[role="dialog"]')
+    ?? origin.closest('form')
+    ?? document.body;
+  const items = Array.from(scope.querySelectorAll<HTMLElement>(FOCUSABLE_TAB_SELECTOR)).filter(
+    (el) => el.getClientRects().length > 0,
+  );
+  const idx = items.indexOf(origin);
+  if (idx === -1) {
+    origin.focus();
+    return;
+  }
+  const next = items[idx + (backward ? -1 : 1)];
+  next?.focus({ preventScroll: true });
+}
+
 /**
  * House **searchable combobox** (shadcn/cmdk list + DS Popover).
  * Fully controlled via `value` + `onChange`; owns open + query only.
@@ -152,6 +182,7 @@ export function SearchableSelectField<T = unknown>({
   filter,
   onSearchChange,
   loading = false,
+  testId,
 }: SearchableSelectFieldProps<T>) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -239,9 +270,18 @@ export function SearchableSelectField<T = unknown>({
       close(true);
       return;
     }
-    // Tab leaves the list — close so focus can walk the next form control.
+    // The list portals to <body>, so native Tab would wander the page. Close and
+    // hand focus to the next/previous trigger in the owning form instead.
     if (e.key === 'Tab') {
+      e.preventDefault();
+      e.stopPropagation();
+      const trigger = triggerRef.current;
+      if (!trigger) {
+        close(false);
+        return;
+      }
       close(false);
+      requestAnimationFrame(() => focusAdjacentTabStop(trigger, e.shiftKey));
     }
   };
 
@@ -259,6 +299,7 @@ export function SearchableSelectField<T = unknown>({
         disabled={disabled}
         autoFocus={autoFocus}
         aria-label={ariaLabel ?? label ?? placeholder}
+        data-testid={testId}
         onClick={() => (open ? close(true) : openList())}
         onKeyDown={onTriggerKeyDown}
         className={cn(

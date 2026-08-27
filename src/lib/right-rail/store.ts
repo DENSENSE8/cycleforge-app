@@ -139,6 +139,12 @@ export interface RightRailPanel {
   /** Accessible name for the aside. Required in spirit for non-modal occupants
    *  (`role="region"` needs a name); the host falls back to a generic label. */
   ariaLabel?: string;
+  /**
+   * When false, host dismiss runs teardown only — no draft cache, no Resume
+   * toast, no dismissed latch. Desk tools (Add inbound, paste panels) that
+   * unmount on close and reopen fresh.
+   */
+  resumeOnDismiss?: boolean;
   /** Insertion order, for deterministic tie-breaking. */
   seq: number;
 }
@@ -192,6 +198,7 @@ export function registerRightRailPanel(input: {
   edgeCollapse?: boolean;
   collapsedStrip?: boolean;
   ariaLabel?: string;
+  resumeOnDismiss?: boolean;
 }): () => void {
   seq += 1;
   const mySeq = seq;
@@ -208,6 +215,7 @@ export function registerRightRailPanel(input: {
     edgeCollapse: input.edgeCollapse,
     collapsedStrip: input.collapsedStrip,
     ariaLabel: input.ariaLabel,
+    resumeOnDismiss: input.resumeOnDismiss,
     seq: mySeq,
   });
   recomputeTop();
@@ -240,6 +248,7 @@ export function updateRightRailPanelNode(input: {
   edgeCollapse?: boolean;
   collapsedStrip?: boolean;
   ariaLabel?: string;
+  resumeOnDismiss?: boolean;
 }): void {
   const {
     id,
@@ -253,6 +262,7 @@ export function updateRightRailPanelNode(input: {
     edgeCollapse,
     collapsedStrip,
     ariaLabel,
+    resumeOnDismiss,
   } = input;
   const current = panels.get(id);
   if (
@@ -269,7 +279,8 @@ export function updateRightRailPanelNode(input: {
       current.push === push &&
       current.edgeCollapse === edgeCollapse &&
       current.collapsedStrip === collapsedStrip &&
-      current.ariaLabel === ariaLabel)
+      current.ariaLabel === ariaLabel &&
+      current.resumeOnDismiss === resumeOnDismiss)
   )
     return;
   panels.set(id, {
@@ -284,6 +295,7 @@ export function updateRightRailPanelNode(input: {
     edgeCollapse,
     collapsedStrip,
     ariaLabel,
+    resumeOnDismiss,
   });
   recomputeTop();
   emit();

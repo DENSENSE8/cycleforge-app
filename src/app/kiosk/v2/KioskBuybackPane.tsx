@@ -81,7 +81,6 @@ export function KioskBuybackPane() {
                 label="IMEI"
                 value={imei}
                 onChange={setImei}
-                tone="blue"
                 inputClassName="rounded-none"
                 data-testid="kiosk-buyback-imei"
               />
@@ -89,21 +88,18 @@ export function KioskBuybackPane() {
                 label="Offer ($)"
                 value={offerDollars}
                 onChange={setOfferDollars}
-                tone="blue"
                 inputClassName="rounded-none"
               />
               <TextField
                 label="Grade"
                 value={grade}
                 onChange={setGrade}
-                tone="blue"
                 inputClassName="rounded-none"
               />
               <TextField
                 label="Notes"
                 value={notes}
                 onChange={setNotes}
-                tone="blue"
                 inputClassName="rounded-none"
               />
               {error && (

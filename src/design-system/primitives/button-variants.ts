@@ -3,8 +3,9 @@
  * shipped source without pulling React / motion.
  *
  * `success` is the Add intent (emerald). `execute` is the Check intent (the
- * shared Check face: card + ring — same paint 2b unified onto, now a named
- * semantic rather than a `secondary` reuse). `primarySoft` is the LIGHT blue
+ * shared Check face: barely-there `surface-hover` fill, no cell ring — chrome
+ * Check reads as a quiet gray peer of Import / Add, not empty card and not a
+ * solid gray slab). `primarySoft` is the LIGHT blue
  * face of `primary` — same accent, quiet enough to sit as a reference verb
  * inside a Displays leaf without reading as the surface's commit CTA.
  *
@@ -34,7 +35,7 @@ export const BUTTON_VARIANTS = {
   success:
     'bg-emerald-600 text-white shadow-sm shadow-emerald-600/25 hover:bg-emerald-500 active:bg-emerald-700',
   execute:
-    'bg-surface-card text-text-default ring-1 ring-border-soft hover:bg-surface-canvas active:bg-surface-canvas',
+    'bg-surface-hover text-text-default hover:bg-surface-sunken active:bg-surface-sunken',
 } as const;
 
 export type ButtonVariant = keyof typeof BUTTON_VARIANTS;

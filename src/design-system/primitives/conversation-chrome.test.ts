@@ -85,8 +85,9 @@ describe('floating composer', () => {
     assert.match(conversationShell(true), /bg-amber-50/);
   });
 
-  it('composer pad paints no band fill and fades the thread under the card', () => {
+  it('composer pad paints no band fill and no top-edge fade', () => {
     assert.match(CONVERSATION_COMPOSER_PAD, /bg-transparent/);
-    assert.match(CONVERSATION_COMPOSER_PAD, /before:bg-gradient-to-t/);
+    assert.doesNotMatch(CONVERSATION_COMPOSER_PAD, /before:bg-gradient-to-t/);
+    assert.doesNotMatch(CONVERSATION_COMPOSER_PAD, /before:-top-/);
   });
 });

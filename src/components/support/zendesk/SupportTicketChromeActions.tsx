@@ -7,7 +7,7 @@
 
 import { Plus } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
-import { WORKBENCH_CHROME_PILL_CLASS } from '@/components/dashboard/workbench-shell';
+import { WORKBENCH_CHROME_PILL_CLASS, WorkbenchChromeActionRow } from '@/components/dashboard/workbench-shell';
 import { cn } from '@/utils/_cn';
 
 export function SupportTicketChromeActions({
@@ -18,6 +18,7 @@ export function SupportTicketChromeActions({
   disabled?: boolean;
 }) {
   return (
+    <WorkbenchChromeActionRow>
     <Button
       size="sm"
       variant="success"
@@ -29,5 +30,6 @@ export function SupportTicketChromeActions({
     >
       Add
     </Button>
+    </WorkbenchChromeActionRow>
   );
 }

@@ -1,595 +1,243 @@
 'use client';
 
 /**
- * Manual Add Inbound — flush right-rail create form.
+ * Manual Add Inbound — index → leaf right-rail create form.
  *
- * Platform · Type · Priority use the house flush combobox
- * (`SearchableSelectField` — same import + `appearance="flush"` as receiving
- * Claim compose). Goodwill / other → ingest `manual` + stamp `source_platform`.
- * Macro floor = the Add CTA, and nothing else — the dismiss is the host's.
+ * Root Index lists **Add PO**, **Add return**, and **Import returns (CSV/TSV)**
+ * (Unbox Displays index grammar via {@link DeskInspectorIndexShell}). Form leaves
+ * mount {@link IncomingAddInboundForm}; the import leaf starts table-import
+ * staging on the Incoming desk centre.
  *
- * **The band is the shell's** (2026-08-21). The panel used to lead with
- * `PaneHeaderLabel eyebrow="Add inbound"` over `PO intake`, a stacked
- * eyebrow+title pair where the band contract wants ONE current segment. It now
- * mounts {@link DeskInspectorIndexShell} in the `standalone` stance — the
- * Incoming / Unbox / Triage chrome opens this form directly, with no index
- * above it, so it owes no Back and declares that rather than defaulting into
- * it. The receiving type rides the band as a read-only metric (it is the one
- * fact the old second line carried), and the shell reserves the cell the host
- * paints its singleton `X` into.
+ * Sibling pattern: {@link OrderIngestRail} (Add order methods index).
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { useQueryClient } from '@tanstack/react-query';
+import { FileText, Package, RotateCcw } from '@/components/Icons';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
-import { DeskInspectorIndexShell } from '@/components/right-rail/DeskInspectorIndexShell';
-import { SearchableSelectField } from '@/design-system/components';
-import { Button, FlushTerminalFooter, TextField } from '@/design-system/primitives';
-import { useDebounce } from '@/hooks';
-import { usePlatformCatalog, useReceivingTypeCatalog } from '@/hooks/useCatalog';
-import { useSkuCatalogSearch, type SkuCatalogItem } from '@/hooks/useSkuCatalogSearch';
-import { yieldStationRightEdgeForDeskOccupant } from '@/components/receiving/workspace/line-edit/unbox-right-edge';
-import { priorityOverrideTiersForPicker } from '@/lib/receiving/priority-override';
-import { invalidateReceivingFeeds } from '@/lib/queries/receiving-queries';
-import { toast } from '@/lib/toast';
-import { STATION_DESK_OCCUPANT_CLOSE_EVENT } from '@/utils/events';
 import {
-  buildAddInboundImportBody,
-  canSubmitAddInbound,
-} from '@/lib/inbound/build-add-inbound-payload';
+  DESK_INSPECTOR_INDEX,
+  DeskInspectorIndexShell,
+  type DeskInspectorLeaf,
+} from '@/components/right-rail/DeskInspectorIndexShell';
+import { useTableImportFilePicker } from '@/components/tables/import/TableImportFileButton';
+import { useTableImportParam } from '@/hooks/useTableImportParam';
+import { Button } from '@/design-system/primitives';
+import { yieldStationRightEdgeForDeskOccupant } from '@/components/receiving/workspace/line-edit/unbox-right-edge';
+import { requestCloseGridColumnDetails } from '@/design-system/components/grid/grid-column-details-open';
+import { setDetailInspectorCollapsed } from '@/design-system/shells/detail-stack';
+import { openPanel } from '@/lib/right-rail/panel-store';
+import { INBOUND_RETURNS_IMPORT_DESCRIPTOR } from '@/lib/inbound/inbound-returns-import-descriptor';
+import { STATION_DESK_OCCUPANT_CLOSE_EVENT } from '@/utils/events';
+import { IncomingAddInboundForm } from './IncomingAddInboundForm';
 
-/** Prefer purchase sources operators fix unfound cartons with. */
-const INBOUND_PLATFORM_PRIORITY = ['amazon', 'goodwill', 'ebay', 'walmart', 'shopify'] as const;
+const ADD_INBOUND_RAIL_ID = 'detail:incoming-import-ebay';
 
-const PRIORITY_AUTO = 'auto';
+const ADD_PO_LEAF = 'add-po';
+const ADD_RETURN_LEAF = 'add-return';
+const IMPORT_RETURNS_LEAF = 'import-returns';
+
+export type IncomingAddInitialLeaf =
+  | 'index'
+  | typeof ADD_PO_LEAF
+  | typeof ADD_RETURN_LEAF
+  | typeof IMPORT_RETURNS_LEAF;
+
+function initialLeafToActiveId(leaf: IncomingAddInitialLeaf): string {
+  if (
+    leaf === ADD_PO_LEAF
+    || leaf === ADD_RETURN_LEAF
+    || leaf === IMPORT_RETURNS_LEAF
+  ) {
+    return leaf;
+  }
+  return DESK_INSPECTOR_INDEX;
+}
+
+function ReturnsFileImportLeaf({
+  error,
+  onClearError,
+  onChoose,
+}: {
+  error: string | null;
+  onClearError: () => void;
+  onChoose: () => void;
+}) {
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <p className="border-b border-border-hairline px-4 py-3 text-role-caption text-text-soft">
+        Opens desk staging — triage Ready / Action required, then confirm into Incoming
+        returns.
+      </p>
+      <div className="px-4 py-3">
+        <Button
+          variant="primary"
+          size="sm"
+          icon={<FileText className="h-3.5 w-3.5" />}
+          onClick={onChoose}
+          className="font-semibold"
+          data-testid="incoming-returns-choose-csv"
+        >
+          Choose CSV / TSV
+        </Button>
+      </div>
+      {error ? (
+        <p className="px-4 py-2 text-role-caption text-rose-700" role="alert">
+          {error}{' '}
+          <button type="button" className="underline" onClick={onClearError}>
+            Dismiss
+          </button>
+        </p>
+      ) : null}
+    </div>
+  );
+}
 
 export function IncomingAddInboundOverlay({
   open,
   onClose,
   initialOrderId = '',
   initialPlatform = 'amazon',
-  initialType = 'PO',
+  initialLeaf = 'index',
+  embedded = false,
 }: {
   open: boolean;
   onClose: () => void;
   initialOrderId?: string;
   /** `source_platform` value (amazon · ebay · goodwill · …). */
   initialPlatform?: string;
-  /** Catalog receiving_type (PO · RETURN · …). */
-  initialType?: string;
+  /** Land on Root Index, or jump straight to a leaf (e.g. eBay import → add-po). */
+  initialLeaf?: IncomingAddInitialLeaf;
+  /** Body only — registrar lives on {@link IncomingDeskRightRail}. */
+  embedded?: boolean;
 }) {
-  const queryClient = useQueryClient();
   const router = useRouter();
   const pathname = usePathname();
-  const platformCatalog = usePlatformCatalog();
-  const typeCatalog = useReceivingTypeCatalog();
-  const [platform, setPlatform] = useState(initialPlatform);
-  const [receivingType, setReceivingType] = useState(initialType);
-  const [priority, setPriority] = useState<string>(PRIORITY_AUTO);
-  const [orderId, setOrderId] = useState('');
-  const [sku, setSku] = useState('');
-  const [itemName, setItemName] = useState('');
-  // Zoho-inventory pairing: the picked catalog item binds the real sku +
-  // canonical title onto the spine. `manualMode` is the honest off-catalog escape.
-  const [pickedItem, setPickedItem] = useState<SkuCatalogItem | null>(null);
-  const [itemQuery, setItemQuery] = useState('');
-  const [manualMode, setManualMode] = useState(false);
-  const [quantity, setQuantity] = useState('1');
-  const [trackingNumber, setTrackingNumber] = useState('');
-  const [listingUrl, setListingUrl] = useState('');
-  const [seller, setSeller] = useState('');
-  const [accountName, setAccountName] = useState('');
-  const [returnReason, setReturnReason] = useState('');
-  const [rmaId, setRmaId] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [ticketDraftBody, setTicketDraftBody] = useState<string | null>(null);
 
-  const formInput = useMemo(
-    () => ({
-      platform,
-      receivingType,
-      priority,
-      orderId,
-      sku,
-      itemName,
-      pickedCatalogId: pickedItem?.id ?? null,
-      quantity,
-      trackingNumber,
-      listingUrl,
-      seller,
-      accountName,
-      returnReason,
-      rmaId,
-    }),
-    [
-      platform,
-      receivingType,
-      priority,
-      orderId,
-      sku,
-      itemName,
-      pickedItem,
-      quantity,
-      trackingNumber,
-      listingUrl,
-      seller,
-      accountName,
-      returnReason,
-      rmaId,
-    ],
-  );
+  const [activeId, setActiveId] = useState(() => initialLeafToActiveId(initialLeaf));
+  const csv = useTableImportFilePicker(INBOUND_RETURNS_IMPORT_DESCRIPTOR);
+  const { active: importActive } = useTableImportParam(INBOUND_RETURNS_IMPORT_DESCRIPTOR);
 
-  const platformOptions = useMemo(() => {
-    const catalog = platformCatalog.options ?? [];
-    const ranked = [...catalog].sort((a, b) => {
-      const ai = INBOUND_PLATFORM_PRIORITY.indexOf(
-        a.value.toLowerCase() as (typeof INBOUND_PLATFORM_PRIORITY)[number],
-      );
-      const bi = INBOUND_PLATFORM_PRIORITY.indexOf(
-        b.value.toLowerCase() as (typeof INBOUND_PLATFORM_PRIORITY)[number],
-      );
-      const ar = ai === -1 ? 99 : ai;
-      const br = bi === -1 ? 99 : bi;
-      return ar - br || a.label.localeCompare(b.label);
-    });
-    return ranked.map((o) => ({
-      value: o.value,
-      label: o.label,
-      group: 'Platforms',
-    }));
-  }, [platformCatalog.options]);
-
-  const typeOptions = useMemo(
-    () =>
-      (typeCatalog.options ?? [])
-        .filter((o) => o.value !== 'PICKUP')
-        .map((o) => ({
-          value: o.value,
-          label: o.label,
-          group: 'Standard types',
-        })),
-    [typeCatalog.options],
-  );
-
-  const priorityOptions = useMemo(
-    () => [
-      {
-        value: PRIORITY_AUTO,
-        label: 'Auto',
-        meta: 'Follows platform',
-        group: 'Platform',
-      },
-      // Escalate Low → Priority (bottom); default heat is platform/org policy.
-      ...priorityOverrideTiersForPicker().map((t) => ({
-        value: String(t.value),
-        label: t.label,
-        meta: t.title,
-        group: 'Manual override',
-      })),
-    ],
-    [],
-  );
-
-  // Zoho-inventory item search — the picker pairs a real catalog SKU + title.
-  // Debounce the field query into the shared search hook (Zoho items mirror).
-  const debouncedItemQuery = useDebounce(itemQuery, 250);
-  const itemSearch = useSkuCatalogSearch(debouncedItemQuery, {
-    searchField: 'zoho_catalog',
-    limit: 20,
-  });
-
-  const itemOptions = useMemo(() => {
-    const rows = itemSearch.data ?? [];
-    // Keep the currently-paired item present so the trigger label resolves even
-    // after the query clears (remote mode does not re-fetch on empty).
-    const merged =
-      pickedItem && !rows.some((r) => r.id === pickedItem.id)
-        ? [pickedItem, ...rows]
-        : rows;
-    return merged.map((it) => ({
-      value: String(it.id),
-      label: it.product_title || it.sku,
-      meta: it.sku,
-      group: 'Zoho inventory',
-      data: it,
-    }));
-  }, [itemSearch.data, pickedItem]);
+  const handleClose = useCallback(() => {
+    requestCloseGridColumnDetails();
+    onClose();
+  }, [onClose]);
 
   useEffect(() => {
-    if (!open) return;
-    setPlatform(initialPlatform || 'amazon');
-    setReceivingType(initialType || 'PO');
-    setPriority(PRIORITY_AUTO);
-    setOrderId(initialOrderId.trim());
-    setSku('');
-    setItemName('');
-    setPickedItem(null);
-    setItemQuery('');
-    setManualMode(false);
-    setQuantity('1');
-    setTrackingNumber('');
-    setListingUrl('');
-    setSeller(initialPlatform === 'goodwill' ? 'Goodwill' : '');
-    setAccountName('');
-    setReturnReason('');
-    setRmaId('');
-    setError(null);
-    setTicketDraftBody(null);
-    setSubmitting(false);
-    // One right-edge wrapper: yield Station Displays (+ details / AI) before
-    // this RightRailHost claim paints — never stack two push columns.
+    if (!open || embedded) return;
+    setActiveId(initialLeafToActiveId(initialLeaf));
+    setDetailInspectorCollapsed(false);
+    openPanel({ id: ADD_INBOUND_RAIL_ID });
     yieldStationRightEdgeForDeskOccupant((qs) => {
       router.replace(qs ? `${pathname}?${qs}` : pathname || '/', { scroll: false });
     });
-  }, [open, initialOrderId, initialPlatform, initialType, router, pathname]);
+  }, [open, embedded, initialLeaf, router, pathname]);
+
+  useEffect(() => {
+    if (!open || embedded) return;
+    const onPeerOpen = () => handleClose();
+    window.addEventListener(STATION_DESK_OCCUPANT_CLOSE_EVENT, onPeerOpen);
+    return () => window.removeEventListener(STATION_DESK_OCCUPANT_CLOSE_EVENT, onPeerOpen);
+  }, [open, embedded, handleClose]);
+
+  // Staging armed → release Add rail so Map columns / Confirm own the edge.
+  useEffect(() => {
+    if (!open || !importActive) return;
+    handleClose();
+  }, [open, importActive, handleClose]);
+
+  const leaves = useMemo((): DeskInspectorLeaf[] => {
+    const formLeaves: DeskInspectorLeaf[] = [
+      {
+        id: ADD_PO_LEAF,
+        label: 'Add PO',
+        subtitle: 'Purchase or marketplace order',
+        icon: Package,
+        group: 'context',
+        tone: 'neutral',
+        content: (
+          <IncomingAddInboundForm
+            receivingType="PO"
+            initialOrderId={initialOrderId}
+            initialPlatform={initialPlatform}
+            autoFocus
+            onClose={handleClose}
+          />
+        ),
+      },
+      {
+        id: ADD_RETURN_LEAF,
+        label: 'Add return',
+        subtitle: 'Return with linked support ticket',
+        icon: RotateCcw,
+        group: 'context',
+        tone: 'neutral',
+        content: (
+          <IncomingAddInboundForm
+            receivingType="RETURN"
+            initialOrderId={initialOrderId}
+            initialPlatform={initialPlatform}
+            autoFocus
+            onClose={handleClose}
+          />
+        ),
+      },
+    ];
+    if (csv.live) {
+      formLeaves.push({
+        id: IMPORT_RETURNS_LEAF,
+        label: 'Import returns (CSV/TSV)',
+        subtitle: 'Amazon Manage Returns · desk CSV',
+        icon: FileText,
+        group: 'assets',
+        tone: 'neutral',
+        content: (
+          <ReturnsFileImportLeaf
+            error={csv.error}
+            onClearError={csv.clearError}
+            onChoose={csv.open}
+          />
+        ),
+      });
+    }
+    return formLeaves;
+  }, [initialOrderId, initialPlatform, handleClose, csv]);
 
   useEffect(() => {
     if (!open) return;
-    const onPeerOpen = () => onClose();
-    window.addEventListener(STATION_DESK_OCCUPANT_CLOSE_EVENT, onPeerOpen);
-    return () => window.removeEventListener(STATION_DESK_OCCUPANT_CLOSE_EVENT, onPeerOpen);
-  }, [open, onClose]);
-
-  useEffect(() => {
-    if (receivingType === 'RETURN' && manualMode) {
-      setManualMode(false);
-    }
-  }, [receivingType, manualMode]);
-
-  const isReturn = receivingType === 'RETURN';
-  const canSubmit = canSubmitAddInbound(formInput) && !submitting;
-
-  const handleSubmit = async () => {
-    if (!canSubmit) return;
-    setSubmitting(true);
-    setError(null);
-    setTicketDraftBody(null);
-    try {
-      const res = await fetch('/api/receiving/inbound/import-purchase', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(buildAddInboundImportBody(formInput)),
-      });
-      const data = (await res.json().catch(() => null)) as {
-        success?: boolean;
-        error?: string;
-        created?: boolean;
-        draftBody?: string;
-        ticket?: {
-          success?: boolean;
-          error?: string;
-          draftBody?: string;
-          ticketNumber?: string;
-        };
-        ticket_number?: string;
-      } | null;
-      if (!res.ok || !data?.success) {
-        throw new Error(data?.error || data?.draftBody || `Import failed (${res.status})`);
-      }
-      invalidateReceivingFeeds(queryClient);
-      const label = isReturn ? 'Return' : 'Purchase';
-      toast.success(data.created ? `${label} added to Incoming` : `${label} refreshed on Incoming`);
-      if (isReturn && data.ticket && !data.ticket.success) {
-        const draft = data.ticket.draftBody ?? data.draftBody ?? null;
-        if (draft) setTicketDraftBody(draft);
-        toast.error(data.ticket.error ?? 'Return saved — ticket could not be filed');
-        return;
-      }
-      if (isReturn && data.ticket?.success && data.ticket_number) {
-        toast.success(`Ticket ${data.ticket_number} linked`);
-      }
-      onClose();
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Import failed';
-      setError(message);
-      toast.error(message);
-    } finally {
-      setSubmitting(false);
-    }
-  };
+    setActiveId(initialLeafToActiveId(initialLeaf));
+  }, [open, initialLeaf]);
 
   if (!open) return null;
 
-  const orderLabel =
-    platform === 'ebay'
-      ? 'eBay order #'
-      : platform === 'amazon' || platform === 'fba'
-        ? 'Amazon order #'
-        : platform === 'goodwill'
-          ? 'Goodwill order / PO #'
-          : 'Order / PO #';
+  const body = (
+    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-surface-card">
+      {csv.input}
+      <DeskInspectorIndexShell
+        stance="index"
+        title="Add inbound"
+        leaves={leaves}
+        activeId={activeId}
+        onActiveIdChange={setActiveId}
+        ariaLabel="Add inbound purchase or return"
+        testId="add-inbound-inspector"
+        backLabel="Back to methods"
+      />
+    </div>
+  );
 
-  const typeLabel =
-    typeOptions.find((o) => o.value === receivingType)?.label ?? receivingType;
+  if (embedded) return body;
 
   return (
     <DetailStackRailRegistrar
-      id="detail:incoming-import-ebay"
-      onClose={onClose}
+      id={ADD_INBOUND_RAIL_ID}
+      onClose={handleClose}
       modal={false}
+      edgeCollapse={false}
+      resumeOnDismiss={false}
       ariaLabel="Add inbound purchase or return"
     >
-      <div className="flex h-full min-h-0 flex-col overflow-hidden bg-surface-card">
-        <DeskInspectorIndexShell
-          // No index routes here — the workspace chrome opens this form
-          // directly — so it owes no Back, and the stance says so out loud.
-          stance="standalone"
-          title="Inbound"
-          ariaLabel="Add inbound purchase or return"
-          testId="add-inbound-inspector"
-          // Read-only metric, not a control: the Type combobox in the body is
-          // still the only way to change it.
-          headerRightSlot={
-            <span className="flex h-full items-center px-2 text-role-caption font-semibold uppercase tracking-wide text-text-soft">
-              {typeLabel}
-            </span>
-          }
-          body={
-            <>
-              {/* One card plane — flush combobox cells (floating labels), no canvas
-                  gutters between Platform · Type · Priority. Keyboard: Tab walks
-                  triggers; ArrowDown/Enter/typeahead open; Escape returns focus. */}
-              <div
-                className="divide-y divide-border-hairline border-b border-border-hairline"
-                data-testid="add-inbound-classify"
-              >
-                <SearchableSelectField
-                  appearance="flush"
-                  label="Platform"
-                  autoFocus
-                  value={platform}
-                  onChange={(id) => {
-                    if (id == null) return;
-                    const next = String(id);
-                    setPlatform(next);
-                    if (next === 'goodwill' && !seller.trim()) setSeller('Goodwill');
-                  }}
-                  options={platformOptions}
-                  placeholder="Search or select…"
-                  searchPlaceholder="Type to filter…"
-                  emptyMessage="No platforms match"
-                  ariaLabel="Platform"
-                />
-                <SearchableSelectField
-                  appearance="flush"
-                  label="Type"
-                  value={receivingType}
-                  onChange={(id) => {
-                    if (id == null) return;
-                    setReceivingType(String(id));
-                  }}
-                  options={typeOptions}
-                  placeholder="Search or select…"
-                  searchPlaceholder="Type to filter…"
-                  emptyMessage="No types match"
-                  ariaLabel="Type"
-                />
-                <SearchableSelectField
-                  appearance="flush"
-                  label="Priority"
-                  value={priority}
-                  onChange={(id) => {
-                    if (id == null) return;
-                    setPriority(String(id));
-                  }}
-                  options={priorityOptions}
-                  placeholder="Search or select…"
-                  searchPlaceholder="Type to filter…"
-                  emptyMessage="No priorities match"
-                  ariaLabel="Priority"
-                />
-              </div>
-
-              <div className="divide-y divide-border-hairline">
-                <TextField
-                  label={orderLabel}
-                  value={orderId}
-                  onChange={setOrderId}
-                  required
-                  tone="amber"
-                  appearance="flush"
-                />
-                {manualMode && !isReturn ? (
-                  <>
-                    <TextField
-                      label="SKU"
-                      value={sku}
-                      onChange={setSku}
-                      tone="neutral"
-                      appearance="flush"
-                    />
-                    <TextField
-                      label="Item title"
-                      value={itemName}
-                      onChange={setItemName}
-                      tone="neutral"
-                      appearance="flush"
-                    />
-                    <div className="flex items-center justify-between inset-cozy">
-                      <span className="text-role-caption text-text-faint">
-                        Manual item — not paired to inventory.
-                      </span>
-                      {/* ds-raw-button: inline text toggle, not a padded Button */}
-                      <button
-                        type="button"
-                        className="shrink-0 text-role-caption font-medium text-blue-600 hover:underline"
-                        onClick={() => setManualMode(false)}
-                      >
-                        Search inventory
-                      </button>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <SearchableSelectField
-                      appearance="flush"
-                      label="Product (Zoho inventory)"
-                      value={pickedItem ? String(pickedItem.id) : null}
-                      onChange={(_id, opt) => {
-                        const it = (opt?.data ?? null) as SkuCatalogItem | null;
-                        if (!it) return;
-                        setPickedItem(it);
-                        setSku(it.sku ?? '');
-                        setItemName(it.product_title ?? '');
-                      }}
-                      options={itemOptions}
-                      onSearchChange={setItemQuery}
-                      loading={itemSearch.isFetching}
-                      placeholder="Search inventory by title or SKU…"
-                      searchPlaceholder="Type a product title…"
-                      emptyMessage={
-                        debouncedItemQuery.trim() ? 'No inventory matches' : 'Type to search inventory'
-                      }
-                      ariaLabel="Product"
-                    />
-                    <div className="flex items-center justify-between inset-cozy">
-                      {pickedItem ? (
-                        <span className="min-w-0 truncate text-role-caption text-text-muted">
-                          Paired · <span className="font-mono">{pickedItem.sku}</span>
-                        </span>
-                      ) : (
-                        <span className="text-role-caption text-text-faint">
-                          {isReturn
-                            ? 'Required — search Zoho inventory to pair the return SKU.'
-                            : 'Search Zoho inventory to pair a SKU.'}
-                        </span>
-                      )}
-                      {!isReturn ? (
-                        <button
-                          type="button"
-                          className="shrink-0 text-role-caption font-medium text-blue-600 hover:underline"
-                          onClick={() => {
-                            setManualMode(true);
-                            setPickedItem(null);
-                            setSku('');
-                            setItemName('');
-                          }}
-                        >
-                          Not in inventory?
-                        </button>
-                      ) : null}
-                    </div>
-                  </>
-                )}
-                <TextField
-                  label="Quantity"
-                  type="number"
-                  min={1}
-                  value={quantity}
-                  onChange={setQuantity}
-                  tone="neutral"
-                  appearance="flush"
-                />
-                <TextField
-                  label="Tracking #"
-                  value={trackingNumber}
-                  onChange={setTrackingNumber}
-                  required={isReturn}
-                  tone={isReturn ? 'amber' : 'neutral'}
-                  appearance="flush"
-                />
-                <TextField
-                  label="Listing URL"
-                  value={listingUrl}
-                  onChange={setListingUrl}
-                  tone="neutral"
-                  appearance="flush"
-                />
-                <TextField
-                  label="Seller / vendor"
-                  value={seller}
-                  onChange={setSeller}
-                  tone="neutral"
-                  appearance="flush"
-                />
-                {platform === 'ebay' ? (
-                  <TextField
-                    label="Buyer account"
-                    value={accountName}
-                    onChange={setAccountName}
-                    tone="neutral"
-                    appearance="flush"
-                  />
-                ) : null}
-                {isReturn ? (
-                  <>
-                    <TextField
-                      label="RMA / return id"
-                      value={rmaId}
-                      onChange={setRmaId}
-                      tone="neutral"
-                      appearance="flush"
-                    />
-                    <TextField
-                      label="Return reason"
-                      value={returnReason}
-                      onChange={setReturnReason}
-                      tone="neutral"
-                      appearance="flush"
-                    />
-                  </>
-                ) : null}
-              </div>
-
-              <div className="inset-cozy space-y-2">
-                {error ? (
-                  <p className="text-role-caption font-medium text-red-600" role="alert">
-                    {error}
-                  </p>
-                ) : null}
-                {ticketDraftBody ? (
-                  <div className="space-y-1">
-                    <p className="text-role-caption font-medium text-amber-700">
-                      Return saved — copy this ticket draft if filing failed:
-                    </p>
-                    <textarea
-                      readOnly
-                      value={ticketDraftBody}
-                      className="min-h-24 w-full resize-y rounded border border-border-soft bg-surface-sunken p-2 font-mono text-role-caption text-text-muted"
-                    />
-                  </div>
-                ) : null}
-                {!error && !ticketDraftBody ? (
-                  <p className="text-role-caption text-text-faint">
-                    {isReturn
-                      ? 'Return Add files an internal support ticket with order, tracking, and SKU context.'
-                      : 'Amazon / Goodwill CSV bulk upload lives under Import → Upload CSV. Priority applies when a carton is linked (e.g. tracking).'}
-                  </p>
-                ) : null}
-              </div>
-            </>
-          }
-        />
-
-        {/* The dismiss is the host's singleton `X` at the column's
-            top-right (`closeRightPanel`) — never a second `→|` down here
-            beside the commit. A floor is for committing. */}
-        <FlushTerminalFooter layout="bleed">
-            <Button
-              type="button"
-              variant="primary"
-              disabled={!canSubmit}
-              onClick={() => void handleSubmit()}
-              ariaLabel={
-                submitting
-                  ? 'Saving inbound'
-                  : isReturn
-                    ? 'Add return and ticket'
-                    : 'Add to Incoming'
-              }
-              className="min-h-9 w-full flex-1"
-              data-testid="add-inbound-submit"
-            >
-              {submitting
-                ? 'Saving…'
-                : isReturn
-                  ? 'Add return + ticket'
-                  : 'Add to Incoming'}
-            </Button>
-        </FlushTerminalFooter>
-      </div>
+      {body}
     </DetailStackRailRegistrar>
   );
 }

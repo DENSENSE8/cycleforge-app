@@ -65,6 +65,12 @@ export function closeRightPanel(): void {
     return;
   }
 
+  // Ephemeral desk tools unmount on close — no draft park / Resume toast.
+  if (top.resumeOnDismiss === false) {
+    top.onClose?.();
+    return;
+  }
+
   closeAndCachePanel();
   top.onClose?.();
 }

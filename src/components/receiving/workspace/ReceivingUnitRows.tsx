@@ -385,7 +385,6 @@ export function ReceivingUnitRows({
               appearance="flush"
               value={lineScan}
               onChange={setLineScan}
-              tone="neutral"
               mono
               disabled={disabled}
               autoComplete="off"

@@ -245,6 +245,7 @@ export function ReceivingFeedRail({
       eyebrowTitle={feed.eyebrowTitle}
       emptyText={emptyText}
       autoSelectFirstWhenEmpty={feed.autoSelectFirstWhenEmpty}
+      canAutoSelectFirst={feed.canAutoSelectFirst}
       pinSelectedLead={feed.pinSelectedLead}
       preserveServerOrder={feed.preserveServerOrder}
       staggerRevealMotion={feed.staggerRevealMotion}

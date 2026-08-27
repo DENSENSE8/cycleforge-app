@@ -202,7 +202,7 @@ export function SectionTabsSlider({
   const iconSizeClass = 'h-4 w-4';
   const headerRowMinClass = PRIMARY_CHROME_ROW_FACE;
   const headerRowAlignClass = 'items-stretch';
-  const rightClusterMinClass = iconRail ? PRIMARY_CHROME_ROW_FACE : 'min-h-8';
+  const rightClusterMinClass = PRIMARY_CHROME_ROW_FACE;
   const bodyGapClass = iconRail ? 'space-y-0' : 'space-y-4';
   const stripTabs = tabs.filter((t) => !t.stripHidden);
   const activeId = resolveActiveTabId(

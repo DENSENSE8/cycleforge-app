@@ -74,8 +74,8 @@ const SHIPPED_VIEW_PARAMS = [
   'exceptions',
 ] as const;
 
-/** Packed tab — staff only (exact staged list). */
-const PACKED_VIEW_PARAMS = ['staff'] as const;
+/** Packed tab — staff + packed-at window (exact staged list). */
+const PACKED_VIEW_PARAMS = ['staff', 'dateFrom', 'dateTo', 'allDates'] as const;
 
 export const UNSHIPPED_SAVED_VIEWS_KEY = 'unshipped_saved_views';
 export const SHIPPED_SAVED_VIEWS_KEY = 'shipped_saved_views';

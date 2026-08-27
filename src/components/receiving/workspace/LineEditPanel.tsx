@@ -105,7 +105,6 @@ import {
   type UnboxTicketAction,
 } from './line-edit/unbox-side-tabs';
 import { buildUnboxDisplayIndexRows } from './line-edit/unbox-display-index';
-import { isReturnIntake } from '@/lib/receiving/triage-intake-kind';
 import { StationDisplaysUtilityRail } from '@/components/station/displays';
 
 export function LineEditPanel({
@@ -174,9 +173,6 @@ export function LineEditPanel({
 
   const hasUnits = serialCount > 0 || (row.quantity_expected ?? 0) > 0;
   const trackingNumber = String(row.tracking_number ?? '').trim();
-  const poIdForTracking = String(row.zoho_purchaseorder_id ?? '').trim();
-  const hasTimelineTab =
-    trackingNumber.length > 0 || hasUnits || row.receiving_id != null;
   const hasPoNoteTab = !c.isUnfound && row.receiving_id != null;
   const isLocalPickup = isLocalPickupFulfillment(row);
   const hasTrackingTab = !isLocalPickup;
@@ -190,14 +186,13 @@ export function LineEditPanel({
     hasUnits,
     hasPoNoteTab,
     hasTrackingTab,
-    hasTimelineTab,
   };
   const { open: showDisplays, leaf: activeSideTab } = resolveUnboxDisplayNav(
     requestedSideTab,
     sideGates,
   );
 
-  // Warm deferred Photos / Ticket / Timeline / Support / Audit chunks while the
+  // Warm deferred Photos / Ticket chunks while the
   // operator is on the index — cold dynamic() otherwise paints leaf ← with an
   // empty body until the import lands (mouse/keyboard triage lag).
   useEffect(() => {
@@ -266,7 +261,6 @@ export function LineEditPanel({
   );
 
   const displaysHistoryScopeKey = row.receiving_id ?? row.id;
-  const returnIntake = isReturnIntake(row);
   const linkagePaired =
     Boolean(String(row.zoho_purchaseorder_id ?? '').trim()) ||
     Boolean(String(row.source_order_id ?? '').trim());
@@ -283,7 +277,6 @@ export function LineEditPanel({
         linkagePaired,
         isUnfound: Boolean(c.isUnfound),
         trackingPresent: trackingNumber.length > 0,
-        isReturnIntake: returnIntake,
         inventoryReceived,
         inventoryExpected,
       }),
@@ -295,7 +288,6 @@ export function LineEditPanel({
       linkagePaired,
       c.isUnfound,
       trackingNumber,
-      returnIntake,
       inventoryReceived,
       inventoryExpected,
     ],
@@ -760,7 +752,6 @@ export function LineEditPanel({
           }
           openDisplays('units');
         },
-        onOpenReturnHistory: () => openDisplays('timeline'),
       }),
     [
       row,
@@ -782,12 +773,10 @@ export function LineEditPanel({
         activeSideTab,
         hasUnits,
         serialCount,
-        hasTimelineTab,
         hasTrackingTab,
         hasListingsTab,
         hasLinkageTab,
         hasInventoryTab,
-        poIdForTracking,
         hasPoNoteTab,
         poNote,
         photoAction,
@@ -809,7 +798,6 @@ export function LineEditPanel({
         pairingFocusTab: pairingFocus?.tab ?? null,
         pairingFocusRequestId: pairingFocus?.requestId ?? 0,
         onFindTicket: openFindTicketDisplay,
-        onOpenReturnHistory: () => openDisplays('timeline'),
       }),
     [
       row,
@@ -818,12 +806,10 @@ export function LineEditPanel({
       activeSideTab,
       hasUnits,
       serialCount,
-      hasTimelineTab,
       hasTrackingTab,
       hasListingsTab,
       hasLinkageTab,
       hasInventoryTab,
-      poIdForTracking,
       hasPoNoteTab,
       poNote,
       photoAction,
@@ -840,7 +826,6 @@ export function LineEditPanel({
       pairingFocus,
       photoLinkTarget,
       openFindTicketDisplay,
-      openDisplays,
     ],
   );
 
@@ -1060,13 +1045,9 @@ export function LineEditPanel({
                           }}
                           primaryActionDisabled={Boolean(terminalVm.disabled)}
                           onOpenLocations={openLocationsDisplay}
-                          // ⓘ → Displays → Timeline, the leaf that already
-                          // carries these stamps plus the carton's audit rows.
-                          // The dialog stayed for surfaces with no right edge.
-                          onOpenStatusHistory={() => openDisplays('timeline')}
                           // The corner is ONE slot. When this line has a
                           // receive to re-read, the glyph offers it; otherwise
-                          // it keeps its Timeline job above. Never both, and
+                          // ⓘ opens the local status stamps dialog. Never both, and
                           // never a second glyph beside it.
                           headerAction={
                             recentVerdict && !liveReceiveFeedback

@@ -430,11 +430,14 @@ export function IncomingBulkTrackingPanel({
    * Check is the only question; the title is always "Checking unreceived orders".
    */
   checkOnly = false,
+  /** Body only — registrar lives on {@link IncomingDeskRightRail}. */
+  embedded = false,
 }: {
   open: boolean;
   onClose: () => void;
   initialAction?: PasteAction;
   checkOnly?: boolean;
+  embedded?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -471,28 +474,27 @@ export function IncomingBulkTrackingPanel({
     setFilterResult(null);
     setBusy(null);
     setAction(checkOnly ? 'check' : initialAction);
-    // One right-edge wrapper: yield Station Displays (+ details / AI) before
-    // this RightRailHost claim paints — never stack two push columns. Mounted
-    // on Unbox/Arrival Band 1, this panel outlives the browse it opened from
-    // (the workbench header stays mounted under a carton, `visibility: hidden`),
-    // so without this it painted BESIDE the cockpit's Displays column.
+    if (embedded) return;
     yieldStationRightEdgeForDeskOccupant((qs) => {
       const base = receivingSurfaceBasePath(pathname);
       router.replace(qs ? `${base}?${qs}` : base, { scroll: false });
     });
-    // The operator opened this to paste — put the caret where their hands are.
+  }, [open, embedded, initialAction, checkOnly, pathname, router]);
+
+  useEffect(() => {
+    if (!open) return;
     const id = window.setTimeout(() => dockRef.current?.focus(), 0);
     return () => window.clearTimeout(id);
-  }, [open, initialAction, checkOnly, pathname, router]);
+  }, [open, initialAction, checkOnly]);
 
   // The other half of the wrapper — Displays (or a peer desk occupant) opening
   // takes the edge back.
   useEffect(() => {
-    if (!open) return;
+    if (!open || embedded) return;
     const onPeerOpen = () => onClose();
     window.addEventListener(STATION_DESK_OCCUPANT_CLOSE_EVENT, onPeerOpen);
     return () => window.removeEventListener(STATION_DESK_OCCUPANT_CLOSE_EVENT, onPeerOpen);
-  }, [open, onClose]);
+  }, [open, embedded, onClose]);
 
   /** The split, done once, client-side — same parser the server re-runs. */
   const selection = useMemo(() => parseTrackingKeys(paste), [paste]);
@@ -842,15 +844,8 @@ export function IncomingBulkTrackingPanel({
 
   if (!open) return null;
 
-  return (
-    <>
-    <DetailStackRailRegistrar
-      id="detail:incoming-bulk-tracking"
-      onClose={onClose}
-      modal={false}
-      ariaLabel={panelTitle}
-    >
-      <div className="flex h-full min-h-0 flex-col bg-surface-card">
+  const panelBody = (
+    <div className="flex h-full min-h-0 flex-col bg-surface-card">
         {/*
           ONE band, and it is the TOP row of the card.
 
@@ -967,7 +962,24 @@ export function IncomingBulkTrackingPanel({
           />
         </div>
       </div>
-    </DetailStackRailRegistrar>
+  );
+
+  return (
+    <>
+      {embedded ? (
+        panelBody
+      ) : (
+        <DetailStackRailRegistrar
+          id="detail:incoming-bulk-tracking"
+          onClose={onClose}
+          modal={false}
+          edgeCollapse={false}
+          resumeOnDismiss={false}
+          ariaLabel={panelTitle}
+        >
+          {panelBody}
+        </DetailStackRailRegistrar>
+      )}
 
       <RightPaneOverlay
         open={pasteExpanded}

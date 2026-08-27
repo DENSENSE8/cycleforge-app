@@ -10,8 +10,6 @@ import {
 import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 
-export type TextFieldTone = 'blue' | 'amber' | 'emerald' | 'neutral';
-
 /**
  * `default` — soft card field (`rounded-xl` + border).
  * `flush` — joined industrial bar cell (`rounded-none`, no outer border); host
@@ -19,54 +17,16 @@ export type TextFieldTone = 'blue' | 'amber' | 'emerald' | 'neutral';
  */
 type TextFieldAppearance = 'default' | 'flush';
 
-const toneClass: Record<
-  TextFieldTone,
-  { input: string; floatLabel: string; focusLabel: string }
-> = {
-  blue: {
-    input: 'border-border-soft focus:border-blue-500 focus:ring-blue-500/20',
-    floatLabel: 'text-blue-600',
-    focusLabel: 'peer-focus:text-blue-600',
-  },
-  amber: {
-    input: 'border-amber-400 focus:border-amber-500 focus:ring-amber-500/25',
-    floatLabel: 'text-amber-600',
-    focusLabel: 'peer-focus:text-amber-600',
-  },
-  emerald: {
-    input: 'border-emerald-500 focus:border-emerald-600 focus:ring-emerald-500/25',
-    floatLabel: 'text-emerald-600',
-    focusLabel: 'peer-focus:text-emerald-600',
-  },
-  neutral: {
-    input: 'border-border-soft focus:border-border-strong focus:ring-border-strong/10',
-    floatLabel: 'text-text-soft',
-    focusLabel: 'peer-focus:text-text-default',
-  },
+const defaultFieldClass = {
+  input: 'border-border-soft focus:border-border-strong focus:ring-border-strong/10',
+  floatLabel: 'text-text-soft',
+  focusLabel: 'peer-focus:text-text-default',
 };
 
-/** Flush cell — no own border; inset ring on focus so the join seam stays. */
-const flushToneClass: Record<TextFieldTone, { input: string; floatLabel: string; focusLabel: string }> = {
-  blue: {
-    input: 'border-0 focus:ring-inset focus:ring-blue-500/30',
-    floatLabel: 'text-blue-600',
-    focusLabel: 'peer-focus:text-blue-600',
-  },
-  amber: {
-    input: 'border-0 focus:ring-inset focus:ring-amber-500/30',
-    floatLabel: 'text-amber-600',
-    focusLabel: 'peer-focus:text-amber-600',
-  },
-  emerald: {
-    input: 'border-0 focus:ring-inset focus:ring-emerald-500/30',
-    floatLabel: 'text-emerald-600',
-    focusLabel: 'peer-focus:text-emerald-600',
-  },
-  neutral: {
-    input: 'border-0 focus:ring-inset focus:ring-border-strong/15',
-    floatLabel: 'text-text-soft',
-    focusLabel: 'peer-focus:text-text-default',
-  },
+const flushFieldClass = {
+  input: 'border-0 focus:ring-inset focus:ring-border-strong/15',
+  floatLabel: 'text-text-soft',
+  focusLabel: 'peer-focus:text-text-default',
 };
 
 export interface TextFieldProps
@@ -82,8 +42,6 @@ export interface TextFieldProps
   value: string;
   /** Receives the next raw string value. */
   onChange: (value: string) => void;
-  /** Accent for the focused border + floated label. */
-  tone?: TextFieldTone;
   /**
    * `flush` = joined scan-bar cell (square, borderless); host owns the outer
    * hairline. Label + fill stay inside the field width — no L/R bleed.
@@ -118,7 +76,6 @@ export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(
       label,
       value,
       onChange,
-      tone = 'blue',
       appearance = 'default',
       mono = false,
       trailing,
@@ -136,7 +93,7 @@ export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(
     const fieldId = id ?? autoId;
     const float = value.length > 0;
     const flush = appearance === 'flush';
-    const t = flush ? flushToneClass[tone] : toneClass[tone];
+    const t = flush ? flushFieldClass : defaultFieldClass;
 
     // Shared chrome — flush joins a host bar (no own radius/border); default keeps soft card.
     const sharedClass = cn(

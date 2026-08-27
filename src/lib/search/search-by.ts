@@ -13,6 +13,9 @@
  * DB-free, React-free.
  */
 
+import { looksLikeMarketplaceOrderNumber } from '@/lib/search/looks-like-marketplace-order-number';
+import { looksLikeIdentifier } from '@/lib/search/search-hit';
+
 export const SEARCH_BY_SCOPES = [
   'internal',
   'order',
@@ -22,26 +25,16 @@ export const SEARCH_BY_SCOPES = [
 ] as const;
 export type SearchByScope = (typeof SEARCH_BY_SCOPES)[number];
 
-/**
- * Empty-field picker option 0 is Recent searches (not an axis). Methods
- * follow at index 1… so Enter on an unmoved highlight opens history.
- */
-export const SEARCH_BY_RECENTS_INDEX = 0;
-export const SEARCH_BY_RECENTS_VALUE = 'recents';
-
 export function searchByPickerCount(): number {
-  return SEARCH_BY_SCOPES.length + 1;
+  return SEARCH_BY_SCOPES.length;
 }
 
-/** Axis at a picker index, or null when the row is Recents. */
 export function searchByPickerScope(index: number): SearchByScope | null {
-  if (index <= SEARCH_BY_RECENTS_INDEX) return null;
-  return SEARCH_BY_SCOPES[index - 1] ?? null;
+  return SEARCH_BY_SCOPES[index] ?? null;
 }
 
 export function searchByPickerValue(index: number): string {
-  const scope = searchByPickerScope(index);
-  return scope ?? SEARCH_BY_RECENTS_VALUE;
+  return searchByPickerScope(index) ?? 'internal';
 }
 
 const SEARCH_BY_SCOPE_SET = new Set<string>(SEARCH_BY_SCOPES);
@@ -81,6 +74,42 @@ export function searchByShortcut(scope: SearchByScope): string | null {
   return SEARCH_BY_SHORTCUT[scope];
 }
 
+/**
+ * Axis sent to `/api/global-search` from the header field.
+ *
+ * Typing without picking a method is identifier fanout (order # · receiving
+ * source # · serial · tracking) — never Internal ID `orders.id`. A dashed
+ * marketplace # is never Internal ID even if that chip is on — it is not a
+ * PK / R-id. Internal ID is only the chip for bare digits / printed QR / R-id.
+ */
+export function headerFindSearchAxis(
+  methodChosen: boolean,
+  axisScope: SearchByScope,
+  query: string,
+): SearchByScope | undefined {
+  if (looksLikeMarketplaceOrderNumber(query)) {
+    if (methodChosen && (axisScope === 'serial' || axisScope === 'tracking' || axisScope === 'ticket')) {
+      return axisScope;
+    }
+    if (methodChosen && axisScope === 'order') return 'order';
+    return undefined;
+  }
+  if (methodChosen) return axisScope;
+  return undefined;
+}
+
+export function headerFindEmptyMessage(
+  query: string,
+  axis: SearchByScope | undefined,
+): string {
+  const q = query.trim();
+  if (axis === 'serial') return 'No serial number found in the system';
+  if (axis === 'order' || (axis == null && looksLikeIdentifier(q))) {
+    return 'No order number found in the system';
+  }
+  return `No matches for “${q}”`;
+}
+
 export function parseSearchByScope(raw: string | null | undefined): SearchByScope {
   if (!raw) return 'internal';
   const v = raw.trim().toLowerCase();
@@ -115,7 +144,13 @@ export function filterHitsBySearchBy<T extends { entityType: string; matchField?
         h.matchField === 'receiving',
     );
   }
-  if (scope === 'order') return hits.filter((h) => h.entityType === 'order');
+  if (scope === 'order') {
+    return hits.filter(
+      (h) =>
+        h.entityType === 'order' ||
+        (h.entityType === 'receiving' && h.matchField === 'receiving'),
+    );
+  }
   if (scope === 'serial') {
     return hits.filter((h) => h.entityType === 'unit' || h.matchField === 'serial');
   }

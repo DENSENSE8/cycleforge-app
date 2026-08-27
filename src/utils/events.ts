@@ -44,7 +44,7 @@ export function dispatchCloseShippedDetails(): void {
   window.dispatchEvent(new CustomEvent('close-shipped-details'));
 }
 
-export type ShippedDetailsContext = 'shipped' | 'queue';
+export type ShippedDetailsContext = 'shipped' | 'queue' | 'packed';
 
 export interface OpenShippedDetailsPayload {
   order: ShippedOrder;

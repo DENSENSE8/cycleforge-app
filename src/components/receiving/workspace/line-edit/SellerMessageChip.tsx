@@ -106,7 +106,7 @@ function useSellerMessage(
 
 /**
  * Seller-facing claim message draft — opened from the ticket chip hover menu
- * (Open → Message → Seller → Archive → Unlink). Panel + Neon persistence live
+ * (Open → Message → Seller → Unlink). Panel + Neon persistence live
  * here; the menu ROW is data on `ReceivingTicketChip`'s `menuRows`, not a
  * component of its own — a per-host menuitem component is a row renderer fork.
  */

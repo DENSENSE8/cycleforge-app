@@ -236,8 +236,9 @@ test.describe('Incoming · recently removed (retired)', () => {
     await openIncoming(page, `?incview=removed&${TRACKING_IN_PARAM}=QAE2E0000000001`);
 
     await expect(page.getByRole('button', { name: /Recently removed/i })).toHaveCount(0);
-    // Wire token is stripped / ignored — POS is the default collection face.
+    await expect(page.getByRole('button', { name: /Email Triage/i })).toHaveCount(0);
+    // Wire token is stripped / ignored — Pipeline POS is the only collection face.
     await expect.poll(() => new URL(page.url()).searchParams.get('incview')).not.toBe('removed');
-    await expect(page.getByRole('button', { name: /Incoming POS/i }).first()).toBeVisible();
+    await expect(pasteEntry(page)).toBeVisible();
   });
 });

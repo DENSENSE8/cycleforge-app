@@ -100,6 +100,12 @@ const ORDERS_ROUTE_PARAMS = defineRouteParams({
     testedBy: paramPositiveInt,
     dateFrom: paramDateKey,
     dateTo: paramDateKey,
+    /**
+     * Packed intentional "no date window". MUST stay declared: hygiene drops
+     * undeclared keys, the current-week seed would re-apply, and dismiss (X)
+     * would no-op.
+     */
+    allDates: paramFlag,
     /** List | Drill layout (omit when list). Orthogonal to openOrderId. */
     olayout: paramEnum(['list', 'drill'] as const),
     drillOrder: paramText,

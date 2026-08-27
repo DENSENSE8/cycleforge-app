@@ -10,9 +10,9 @@
  * is exactly the closed-catalog job. Popover copy stays catalog label +
  * description — no "Create…" verbs (Gemini D6 / D12 · C14).
  *
- * Face: the Band-1 cube ({@link WORKBENCH_CHROME_CUBE_CLASS}) — the same boxed
- * face as carton Exit / Back-to-list and as every trailing utility CTA on the
- * row, so the band reads as one set of peer cells. Never a naked header glyph.
+ * Face: the Band-1 cube ({@link WORKBENCH_CHROME_CUBE_CLASS}) — whisper fill,
+ * no rest-state box — same flush peer face as every trailing utility CTA on
+ * the row. Never a naked header glyph.
  *
  * Plan: `docs/todo/unbox-pinned-inbound-tab-PLAN.md`.
  */
@@ -59,7 +59,7 @@ export function UnboxAddListPopover({
             data-testid="unbox-pin-list"
             className={cn(
               WORKBENCH_CHROME_CUBE_CLASS,
-              open && 'bg-surface-hover text-text-muted',
+              open && 'bg-surface-sunken text-text-muted',
             )}
           >
             <Pin className={WORKBENCH_CHROME_CUBE_GLYPH_CLASS} aria-hidden />

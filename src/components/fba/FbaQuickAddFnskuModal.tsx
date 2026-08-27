@@ -113,7 +113,6 @@ export function FbaQuickAddFnskuModal({ stationTheme = 'blue' }: { stationTheme?
             label="Product title (optional)"
             value={productTitle}
             onChange={setProductTitle}
-            tone="neutral"
           />
 
           <FormField label="Condition" optionalHint="optional">
@@ -138,7 +137,6 @@ export function FbaQuickAddFnskuModal({ stationTheme = 'blue' }: { stationTheme?
               onChange={(next) => setFnsku(normalizeTrackingCanonical(next))}
               required
               mono
-              tone="neutral"
             />
             <p className="text-role-micro leading-snug text-text-soft">
               Save the FNSKU now and fill in more catalog details later if needed.
@@ -150,7 +148,6 @@ export function FbaQuickAddFnskuModal({ stationTheme = 'blue' }: { stationTheme?
             value={asin}
             onChange={(next) => setAsin(next.toUpperCase())}
             mono
-            tone="neutral"
           />
 
           <TextField
@@ -158,7 +155,6 @@ export function FbaQuickAddFnskuModal({ stationTheme = 'blue' }: { stationTheme?
             value={sku}
             onChange={setSku}
             mono
-            tone="neutral"
           />
 
           {error ? <p className="text-xs font-semibold text-red-600">{error}</p> : null}

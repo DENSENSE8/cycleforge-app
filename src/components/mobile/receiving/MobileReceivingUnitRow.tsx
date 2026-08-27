@@ -4,21 +4,22 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Camera, ChevronDown, Image as ImageIcon } from '@/components/Icons';
 import { getStatusDotBg, workflowStatusTableLabel } from '@/components/station/receiving-constants';
-import { ConditionGradeChip, UnitPriceChip } from '@/components/ui/CopyChip';
+import { ConditionGradeChip, TicketChip, UnitPriceChip, getLast8 } from '@/components/ui/CopyChip';
 import { ReceivingIdentityChips } from '@/components/receiving/ReceivingIdentityChips';
-import { MobileRowPhotoActions } from '@/components/mobile/receiving/MobileRowPhotoActions';
+import { GalleryPhotoCount, MobileRowPhotoActions } from '@/components/mobile/receiving/MobileRowPhotoActions';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { useCapabilityProviderLabel } from '@/hooks/useCapabilityProviderLabel';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { receivingUnboxedSyncTooltip } from '@/lib/receiving/unboxed-sync-tooltip';
 import { buildUnitFields, unitTitle } from '@/components/mobile/receiving/receiving-feed-entries';
+import { chipText } from '@/design-system/tokens/typography/presets';
+import { cn } from '@/utils/_cn';
 
 /**
- * Force a chip cluster's mono value to the meta-row qty size (`text-base`).
- * CopyChip hard-codes its value span to `text-sm`/`text-caption`; the descendant
- * selector outspecifies that without touching the shared primitive.
+ * One face for the meta row (qty · price · ticket). Dense chips already use
+ * {@link chipText}; qty must share it or the figures read as two sizes.
  */
-const CHIP_SCALE = '[&_span]:text-base';
+const META_FACE = chipText;
 
 interface MobileReceivingUnitRowProps {
   row: ReceivingLineRow;
@@ -49,10 +50,10 @@ interface MobileReceivingUnitRowProps {
  * and the standalone card.
  *
  * - **Expanded** (newest row only): title · meta row · a big photo row (gallery
- *   tile as status + full-width camera).
+ *   tile as status + full-width camera). The gallery count uses the same
+ *   two-digit slot as recents.
  * - **Compact** (everything else): title · meta row whose far right holds small
  *   gallery + camera icons (priority placement); no third row.
- *
  * All identifiers render through the shared CopyChip family (last-8 + copy on
  * tap), never as raw text. Tapping the dot/qty or the chevron toggles the
  * config-driven detail panel.
@@ -93,6 +94,8 @@ export function MobileReceivingUnitRow({
   const hasPhotos = photoCount > 0;
 
   const price = (row.unit_price || '').toString().trim();
+  const ticketDigits = (row.zendesk_ticket ?? '').trim().replace(/^#/, '');
+  const hasTicket = ticketDigits.length > 0;
   const detailFields = buildUnitFields(row);
 
   return (
@@ -111,8 +114,8 @@ export function MobileReceivingUnitRow({
         <p className="text-base font-semibold leading-snug text-text-default">{title}</p>
       </button>
 
-      {/* Meta row. */}
-      <div className="mt-2 flex items-center gap-2">
+      {/* Meta row. Qty + price/ticket can shrink; photo actions never move. */}
+      <div className="mt-2 flex min-w-0 items-center gap-2 overflow-hidden">
         <button
           type="button"
           onClick={toggle}
@@ -122,17 +125,27 @@ export function MobileReceivingUnitRow({
           <HoverTooltip label={statusDotTip} asChild focusable={false}>
             <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${dot}`} aria-hidden />
           </HoverTooltip>
-          <span className={`shrink-0 text-base font-semibold tabular-nums ${qtyColor}`}>{qtyText}</span>
+          <span className={cn('shrink-0', META_FACE, qtyColor)}>{qtyText}</span>
         </button>
 
-        {/* Main row shows ONLY the price (sized to match the qty). SKU + condition
-            move to the "more information" dropdown so the gallery/camera actions
-            keep their right-edge slot and never get pushed off the row. */}
-        {price ? (
-          <div className={`flex shrink-0 items-center ${CHIP_SCALE}`}>
-            <UnitPriceChip amount={price} />
-          </div>
-        ) : null}
+        {/* Price (always) + reserved ticket slot: a filed ticket fills the
+            slot instead of growing the row, so gallery/camera stay pinned.
+            Qty · price · ticket all use {@link chipText}. */}
+        <div className={cn('flex min-w-0 flex-1 items-center gap-1 overflow-hidden', META_FACE)}>
+          <UnitPriceChip amount={price || null} dense />
+          <span
+            className={hasTicket ? 'shrink-0' : 'invisible pointer-events-none shrink-0'}
+            aria-hidden={!hasTicket}
+          >
+            <TicketChip
+              value={hasTicket ? ticketDigits : '00000000'}
+              display={hasTicket ? getLast8(ticketDigits) : '00000000'}
+              displayWidth="last8"
+              dense
+              disableTooltip={!hasTicket}
+            />
+          </span>
+        </div>
 
         <div className="ml-auto flex shrink-0 items-center gap-1">
           {/* Expand chevron sits LEFT of the gallery/camera; photo actions stay
@@ -167,7 +180,7 @@ export function MobileReceivingUnitRow({
           {/* The "more information" cluster: SKU + condition (moved off the main
               row) plus PO + tracking + serial. PO + tracking are omitted for
               package items (shown once on the package header) so nothing dupes. */}
-          <div className={`flex flex-wrap items-center gap-2 px-0.5 pb-1 ${CHIP_SCALE}`}>
+          <div className="flex flex-wrap items-center gap-2 px-0.5 pb-1">
             {/* No serial chip: a line's serials render as ONE comma-joined
                 value, so a multi-unit carton turns this row into a wall of
                 digits. Serials stay on the per-unit surfaces that can show
@@ -198,7 +211,7 @@ export function MobileReceivingUnitRow({
         </div>
       </div>
 
-      {/* Photo row — expanded (newest) only: gallery tile (status) + full-width camera. */}
+      {/* Photo row — expanded (newest) only: gallery tile + full-width camera. */}
       {expanded ? (
         <div className="mt-3 flex h-16 gap-2">
           {onOpenGallery ? (
@@ -208,13 +221,13 @@ export function MobileReceivingUnitRow({
               aria-label={hasPhotos ? `View ${photoCount} photos` : 'No photos yet'}
               className={
                 hasPhotos
-                  ? 'ds-raw-button inline-flex h-16 w-16 shrink-0 items-center justify-center rounded-none border border-border-soft bg-surface-sunken text-text-muted active:bg-surface-sunken'
-                  : 'ds-raw-button inline-flex h-16 w-16 shrink-0 items-center justify-center rounded-none border border-dashed border-border-soft bg-surface-canvas text-text-faint'
+                  ? 'ds-raw-button inline-flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border border-blue-200 bg-blue-50 text-blue-700 active:bg-blue-100'
+                  : 'ds-raw-button inline-flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border border-dashed border-blue-200 bg-blue-50/80 text-blue-600'
               }
             >
               <span className="inline-flex items-center gap-1.5 leading-none">
                 <ImageIcon className="h-7 w-7" />
-                <span className="text-xl font-semibold tabular-nums">{photoCount}</span>
+                <GalleryPhotoCount count={photoCount} className="text-xl leading-none" />
               </span>
             </button>
           ) : (
@@ -224,13 +237,13 @@ export function MobileReceivingUnitRow({
               aria-label={hasPhotos ? `View ${photoCount} photos` : 'No photos yet'}
               className={
                 hasPhotos
-                  ? 'inline-flex h-16 w-16 shrink-0 items-center justify-center rounded-none border border-border-soft bg-surface-sunken text-text-muted active:bg-surface-sunken'
-                  : 'inline-flex h-16 w-16 shrink-0 items-center justify-center rounded-none border border-dashed border-border-soft bg-surface-canvas text-text-faint'
+                  ? 'inline-flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border border-blue-200 bg-blue-50 text-blue-700 active:bg-blue-100'
+                  : 'inline-flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border border-dashed border-blue-200 bg-blue-50/80 text-blue-600'
               }
             >
               <span className="inline-flex items-center gap-1.5 leading-none">
                 <ImageIcon className="h-7 w-7" />
-                <span className="text-xl font-semibold tabular-nums">{photoCount}</span>
+                <GalleryPhotoCount count={photoCount} className="text-xl leading-none" />
               </span>
             </Link>
           )}
@@ -238,7 +251,7 @@ export function MobileReceivingUnitRow({
             href={captureHref}
             prefetch={false}
             aria-label={`Take photos${photoCount > 0 ? ` (${photoCount} so far)` : ''}`}
-            className="inline-flex h-16 min-w-0 flex-1 items-center justify-center rounded-none bg-blue-600 text-white shadow-[0_6px_14px_-6px_rgba(37,99,235,0.55)] transition-transform active:scale-[0.99] active:bg-blue-700"
+            className="inline-flex h-16 min-w-0 flex-1 items-center justify-center rounded-xl bg-blue-600 text-white shadow-[0_6px_14px_-6px_rgba(37,99,235,0.55)] transition-transform active:scale-[0.99] active:bg-blue-700"
           >
             <Camera className="h-7 w-7" />
           </Link>

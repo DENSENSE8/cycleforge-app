@@ -21,6 +21,7 @@ export function DetailStackRailRegistrar({
   push,
   edgeCollapse,
   collapsedStrip,
+  resumeOnDismiss,
   ariaLabel,
   children,
 }: {
@@ -48,8 +49,10 @@ export function DetailStackRailRegistrar({
   /** Defaults to `true`. Pass `false` to refuse host park (Band 3 /
    *  DETAIL_STACK_COLLAPSE — Unbox parity; header `→|` is the only dismiss). */
   edgeCollapse?: boolean;
-  /** Defaults to `true`. Pass `false` when a resident workbench icon reopens it. */
+  /** Defaults to `true`. Pass `false` when workbench chrome owns reopen. */
   collapsedStrip?: boolean;
+  /** Defaults to `true`. Pass `false` for ephemeral desk tools (Add inbound). */
+  resumeOnDismiss?: boolean;
   /** Accessible name for the aside — pass one whenever `modal` is false. */
   ariaLabel?: string;
   children: ReactNode;
@@ -66,6 +69,7 @@ export function DetailStackRailRegistrar({
     push,
     edgeCollapse,
     collapsedStrip,
+    resumeOnDismiss,
     ariaLabel,
     enabled,
   });

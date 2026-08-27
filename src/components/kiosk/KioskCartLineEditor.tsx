@@ -68,7 +68,6 @@ export function KioskCartLineEditor({
         label="Description"
         value={line.title}
         onChange={(v) => actions.updateLine(line.id, { title: v })}
-        tone="blue"
         inputClassName="rounded-none"
       />
 
@@ -83,7 +82,6 @@ export function KioskCartLineEditor({
             }}
             inputMode="numeric"
             autoFocus={focusField === 'quantity'}
-            tone="blue"
             className="w-20 shrink-0"
             inputClassName="rounded-none tabular-nums"
             data-testid="kiosk-line-qty"
@@ -103,7 +101,6 @@ export function KioskCartLineEditor({
           }}
           inputMode="decimal"
           autoFocus={focusField === 'price'}
-          tone="emerald"
           className="min-w-0 flex-1"
           inputClassName="rounded-none font-semibold tabular-nums text-text-success"
           data-testid="kiosk-line-price"
@@ -118,7 +115,6 @@ export function KioskCartLineEditor({
             onChange={(v) => patchPayload({ serialNumber: v })}
             mono
             autoFocus={focusField === 'serial'}
-            tone="blue"
             inputClassName="rounded-none"
             data-testid="kiosk-line-serial"
           />
@@ -128,7 +124,6 @@ export function KioskCartLineEditor({
             onChange={(v) => patchPayload({ repairNotes: v })}
             multiline
             rows={2}
-            tone="blue"
             inputClassName="rounded-none"
           />
         </>
@@ -142,7 +137,6 @@ export function KioskCartLineEditor({
             onChange={(v) => patchPayload({ imei: v })}
             mono
             autoFocus={focusField === 'imei'}
-            tone="blue"
             inputClassName="rounded-none"
             data-testid="kiosk-line-imei"
           />
@@ -150,7 +144,6 @@ export function KioskCartLineEditor({
             label="Grade"
             value={buyback.grade ?? ''}
             onChange={(v) => patchPayload({ grade: v })}
-            tone="blue"
             inputClassName="rounded-none"
           />
         </>

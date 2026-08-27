@@ -60,11 +60,12 @@ export function WorkbenchFilterPopover({
    */
   icon,
   /**
-   * `toolbar` (default) — h-8 ToolbarButton for chrome right clusters.
+   * `toolbar` (default) — densified `h-7` ToolbarButton for chrome right clusters.
    * `field` — paste-sized glyph for SearchField trailing slots
    * (`trailingPrefix` left of paste, or `trailingSuffix` after paste/clear).
    */
   density = 'toolbar',
+  retainSearchFocus = true,
 }: {
   open: boolean;
   onOpenChange: (next: boolean) => void;
@@ -76,6 +77,11 @@ export function WorkbenchFilterPopover({
   contentClassName?: string;
   icon?: ReactNode;
   density?: 'toolbar' | 'field';
+  /**
+   * Field density: keep the find/scan input focused when opening (Station).
+   * Packed passes false so the staff type-in field can take the caret.
+   */
+  retainSearchFocus?: boolean;
 }) {
   const triggerRef = useRef<HTMLButtonElement>(null);
   const wasOpenRef = useRef(open);
@@ -126,8 +132,9 @@ export function WorkbenchFilterPopover({
             type="button"
             aria-expanded={open}
             aria-label={ariaLabel}
-            // Keep focus in the search field when opening the menu.
-            onMouseDown={(e) => e.preventDefault()}
+            // Keep focus in the search field when opening the menu (Station
+            // scan bar). Skip when the menu must steal focus for type-in.
+            onMouseDown={retainSearchFocus ? (e) => e.preventDefault() : undefined}
             // `relative` hosts the hot dot; the rest is the shared in-field
             // action cell, so refine and paste stay peers by construction.
             className={cn(
@@ -155,6 +162,7 @@ export function WorkbenchFilterPopover({
             active={open || hot}
             aria-expanded={open}
             aria-label={ariaLabel}
+            className="h-7 w-7"
           >
             <HoverTooltip label={ariaLabel} focusable={false}>
               <span className="relative inline-flex">
@@ -169,11 +177,38 @@ export function WorkbenchFilterPopover({
         <Popover.Content
           align="end"
           sideOffset={6}
+          onOpenAutoFocus={(e) => {
+            if (!retainSearchFocus) e.preventDefault();
+          }}
           onCloseAutoFocus={(e) => {
             // We restore focus ourselves so field-density doesn't yank the
             // Station scan bar — prevent Radix default, then focus trigger.
             e.preventDefault();
             triggerRef.current?.focus({ preventScroll: true });
+          }}
+          onInteractOutside={(event) => {
+            const node = event.target;
+            if (!(node instanceof Element)) return;
+            if (
+              node.closest('[cmdk-root]')
+              || node.closest('[role="listbox"]')
+              || node.closest('[data-radix-popper-content-wrapper]')
+              || node.closest('.rdp')
+            ) {
+              event.preventDefault();
+            }
+          }}
+          onFocusOutside={(event) => {
+            const node = event.target;
+            if (!(node instanceof Element)) return;
+            if (
+              node.closest('[cmdk-root]')
+              || node.closest('[role="listbox"]')
+              || node.closest('[data-radix-popper-content-wrapper]')
+              || node.closest('.rdp')
+            ) {
+              event.preventDefault();
+            }
           }}
           className={cn(
             // Panel chrome matches the house `Popover` the sibling toolbar

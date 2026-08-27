@@ -479,7 +479,7 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
       className={STATION_CONTEXT_PHOTO_CHROME_CLASS}
     >
       <Camera className={STATION_CHROME_GLYPH_CLASS} aria-hidden />
-      <span className="leading-none tabular-nums">{count}</span>
+      <span className="leading-none tabular-nums">{String(count)}</span>
     </button>
   ) : (
     <Button
