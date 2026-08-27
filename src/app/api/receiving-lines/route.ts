@@ -127,7 +127,7 @@ export async function handleReceivingLinesGet(
         {
           success: false,
           error: 'INVALID_TESTING_VIEW',
-          message: 'Testing endpoint requires view=testing or view=needs-test.',
+          message: 'Testing endpoint requires view=testing, view=needs-test, or view=testing_opened.',
         },
         { status: 400 },
       );

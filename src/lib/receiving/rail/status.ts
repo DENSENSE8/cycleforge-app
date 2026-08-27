@@ -10,11 +10,11 @@
  * longer import status logic from a component (the coupling that forced the
  * `unfound-stub` circular-import workaround) and so the logic is unit-testable.
  *
- * Scope: the receiving page only. Testing (TestingRecentRail) and the mobile
- * scan feeds keep their own scope-appropriate dot logic.
+ * Scope: receiving rails plus the QC Recent feed (`testing` status id). The
+ * mobile scan feeds keep their own mappers.
  */
 
-import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import {
   receivingCoarseUnboxedSyncTooltip,
   receivingProviderPendingTooltip,
@@ -22,6 +22,8 @@ import {
 import {
   deriveReceivingLineStatus,
   type ReceivingLineStatus,
+  workflowStage,
+  workflowStageDot,
 } from '@/lib/receiving/workflow-stages';
 import { isZohoReceivedLikeStatus } from '@/lib/receiving/zoho-received-status';
 
@@ -205,11 +207,25 @@ export function getViewedAt(r: ReceivingLineRow): string | null {
   return r.last_activity_at ?? r.updated_at ?? r.created_at ?? null;
 }
 
+/** QC Recent age axis — last open on Testing only. Never verdict / carton age. */
+export function getTestingOpenedAt(r: ReceivingLineRow): string | null {
+  return r.testing_opened_at ?? null;
+}
+
+export function getTestingStatusDot(row: ReceivingLineRow): string {
+  return workflowStageDot(row.workflow_status);
+}
+
+function getTestingStatusDotLabel(row: ReceivingLineRow): string {
+  return workflowStage(row.workflow_status).label;
+}
+
 /**
  * Status-dot strategy registry. A rail feed selects one by id; the dot + tooltip
  * are resolved here so feeds stay declarative.
  *   - `receiving`    → shared lifecycle dot (Queue / Viewed / Triage / Unfound).
  *   - `unbox-recent` → Unboxed rail (all rows read Received; Scanned is Queue-only).
+ *   - `testing`      → QC Recent (fine workflow stage, not coarse receive).
  */
 export const RAIL_STATUS = {
   receiving: {
@@ -219,6 +235,10 @@ export const RAIL_STATUS = {
   'unbox-recent': {
     getStatusDot: getUnboxRecentStatusDot,
     getStatusDotLabel: getUnboxRecentStatusDotLabel,
+  },
+  testing: {
+    getStatusDot: getTestingStatusDot,
+    getStatusDotLabel: getTestingStatusDotLabel,
   },
 } as const;
 

@@ -46,12 +46,14 @@ const procedure: ProcedureDefinition = {
       key: 'pick',
       label: 'Pick',
       summary: 'Pick from the queue.',
+      composed: true,
       sourceIds: ['demo.queue'],
     },
     {
       key: 'stamp',
       label: 'Stamp',
       summary: 'Stamp the line.',
+      composed: false,
       endpoint: { method: 'POST', path: '/api/demo/stamp' },
       reads: [{ table: 'demo_line' }],
       writes: [{ table: 'demo_line_testing' }],
@@ -60,23 +62,26 @@ const procedure: ProcedureDefinition = {
       key: 'finish',
       label: 'Finish',
       summary: 'Close it out.',
+      composed: true,
       actionIds: ['demo.finish'],
     },
   ],
 };
 
-test('a step naming registry ids inherits their lineage, endpoint and channel', () => {
+test('a composed step inherits its lineage, endpoint and channel from the registry', () => {
   const map = buildStationProcedureMap(procedure, registries);
   const pick = map.steps[0];
+  assert.equal(pick.composed, true);
   assert.deepEqual(pick.reads.map((r) => r.table), ['demo_carton', 'demo_line']);
   assert.deepEqual(pick.endpoints, [{ method: 'GET', path: '/api/demo/queue' }]);
   assert.deepEqual(pick.channels, ['station:changes']);
   assert.deepEqual(pick.sources.map((s) => s.id), ['demo.queue']);
 });
 
-test('a step declaring its own lineage keeps its declared method', () => {
+test('a code-only step carries its own lineage and keeps its declared method', () => {
   const map = buildStationProcedureMap(procedure, registries);
   const stamp = map.steps[1];
+  assert.equal(stamp.composed, false);
   assert.deepEqual(stamp.endpoints, [{ method: 'POST', path: '/api/demo/stamp' }]);
   assert.deepEqual(stamp.writes.map((w) => w.table), ['demo_line_testing']);
 });
@@ -96,7 +101,8 @@ test('a table is deduped per step but keeps a distinct `via` attribution', () =>
           key: 'dupe',
           label: 'Dupe',
           summary: '',
-              endpoint: { method: 'POST', path: '/x' },
+          composed: false,
+          endpoint: { method: 'POST', path: '/x' },
           reads: [
             { table: 'demo_line' },
             { table: 'demo_line' },
@@ -126,6 +132,8 @@ test('the map rolls up the union of tables, channels and step kinds', () => {
   ]);
   assert.deepEqual(map.channels, ['station:changes']);
   assert.equal(map.counts.steps, 3);
+  assert.equal(map.counts.composed, 2);
+  assert.equal(map.counts.codeOnly, 1);
   assert.equal(map.counts.unresolved, 0);
 });
 
@@ -138,7 +146,8 @@ test('an unregistered id surfaces as a gap instead of throwing or vanishing', ()
           key: 'broken',
           label: 'Broken',
           summary: '',
-              sourceIds: ['demo.missing'],
+          composed: true,
+          sourceIds: ['demo.missing'],
           actionIds: ['demo.also_missing'],
         },
       ],
@@ -169,9 +178,11 @@ test('the declared Unbox procedure projects with real registries', async () => {
     actions: new Map(),
   });
 
-  // Correct with zero traffic: the whole bench procedure.
+  // Correct with zero traffic: the whole bench procedure, not just the one
+  // step the station registry happens to drive today.
   assert.ok(map.counts.steps >= 7, `expected the full bench procedure, got ${map.counts.steps} steps`);
   assert.equal(map.counts.unresolved, 0, 'every registry id the procedure names must resolve');
   assert.ok(map.tables.writes.includes('serial_units'), 'capturing serials must show as a write');
   assert.ok(map.tables.reads.includes('receiving_carton'), 'the carton spine must show as a read');
+  assert.ok(map.counts.codeOnly > 0, 'the map must admit which steps are still hand-coded');
 });

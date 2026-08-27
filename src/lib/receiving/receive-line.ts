@@ -22,7 +22,6 @@ import {
   UNRECEIVE_BLOCKING_SERIAL_STATUSES,
   isUnreceiveSerialBlocking,
 } from '@/lib/receiving/unreceive-serial-guard';
-import { NO_SESSION, type SessionAttribution } from '@/lib/sessions/attribution';
 
 // Re-export pure guard for server/test callers that historically imported it
 // from this module. Definition stays in unreceive-serial-guard so Client
@@ -32,17 +31,6 @@ export { UNRECEIVE_BLOCKING_SERIAL_STATUSES, isUnreceiveSerialBlocking };
 // ── Types ──────────────────────────────────────────────────────────────────
 
 export interface ReceiveLineUnitsInput {
-  /**
-   * WHICH WORK SESSION THIS HAPPENED INSIDE. Required, un-defaulted — this is a
-   * SHARED chokepoint called from many places, and a hard-coded `NO_SESSION`
-   * inside it would write unattributed rows on behalf of every caller, silently.
-   * That is the exact "shared resolver writes before the branch that was
-   * supposed to decide" failure this repo has already paid for once.
-   *
-   * Pass {@link NO_SESSION} when the caller genuinely has no session.
-   */
-  session: SessionAttribution;
-
   /** Owning tenant (from ctx.organizationId) — required so the realtime stock
    *  ledger event is published on this org's channel. */
   organizationId: string;
@@ -547,7 +535,6 @@ export async function receiveLineUnits(
       // grab a second pool connection — see comment above the tech_serial
       // insert.
       const event = await recordInventoryEvent({
-        session: input.session,
         event_type: 'RECEIVED',
         actor_staff_id: input.staff_id ?? null,
         station,
@@ -575,7 +562,6 @@ export async function receiveLineUnits(
       // RECEIVED inventory event with `supplemental: true` so the audit
       // timeline records the touch.
       const event = await recordInventoryEvent({
-        session: input.session,
         event_type: 'RECEIVED',
         actor_staff_id: input.staff_id ?? null,
         station,
@@ -602,7 +588,6 @@ export async function receiveLineUnits(
       // Already known serial (re-scan). Still emit an event so the timeline
       // shows the touch — but skip the ledger delta.
       const event = await recordInventoryEvent({
-        session: input.session,
         event_type: 'RECEIVED',
         actor_staff_id: input.staff_id ?? null,
         station,
@@ -669,7 +654,6 @@ export async function receiveLineUnits(
       }
 
       const event = await recordInventoryEvent({
-        session: input.session,
         event_type: 'RECEIVED',
         actor_staff_id: input.staff_id ?? null,
         station,
@@ -867,8 +851,6 @@ export async function receiveLineUnits(
 
 export interface UnreceiveLineUnitsInput {
   organizationId: string;
-  /** See {@link ReceiveLineUnitsInput.session}. Required, un-defaulted. */
-  session: SessionAttribution;
   receiving_line_id: number;
   staff_id?: number | null;
   station?: InventoryEventStation;
@@ -971,7 +953,6 @@ export async function unreceiveLineUnits(
       if (String(su.current_status).toUpperCase() !== 'STOCKED') continue;
       const tr = await transition(
         {
-          session: input.session,
           unitId: su.id,
           to: 'RECEIVED' as SerialState,
           eventType: 'ADJUSTED',
@@ -1069,7 +1050,6 @@ export async function unreceiveLineUnits(
       }
       const event = await recordInventoryEvent(
         {
-          session: input.session,
           event_type: 'ADJUSTED',
           actor_staff_id: input.staff_id ?? null,
           station,

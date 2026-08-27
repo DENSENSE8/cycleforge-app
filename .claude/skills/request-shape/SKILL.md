@@ -29,7 +29,36 @@ Writes `docs/performance/request-shape/<route>.json` plus a table on stdout.
 you did not measure twice is a guess.
 
 Flags: `--base=` (default `http://localhost:3100`), `--settle=` ms before
-capture, `--no-focus` to skip the warm pass, `--allow-dev` (don't).
+capture, `--runs=N` for a median, `--no-focus` to skip the warm pass,
+`--allow-dev` (don't).
+
+## The hard rule — `request-budget.json`
+
+```bash
+npm run perf:requests:check  -- --route=/unbox   # gate; non-zero on regression
+npm run perf:requests:update -- --route=/unbox   # seed / tighten the ceiling
+```
+
+Ceilings **ratchet down only**, same contract as `bundle-budget.json` and the
+Lighthouse baseline: finishing an optimization tightens the budget so the win
+cannot be quietly spent again. `--update` never raises one. If a route genuinely
+needs more, hand-edit the JSON and say why in the commit message.
+
+**What it gates on, and why not everything.** Three metrics are deterministic
+and gate exactly:
+
+| Metric | Meaning |
+|---|---|
+| `duplicateRequests` | identical URL fired more than once in one load |
+| `countProbes` | `?limit=1` with no `count_only` — still runs the list SQL |
+| `focusRefetch` | requests fired by the **second** focus cycle |
+
+`requests` (the cold-load total) is the fourth, and it is **soft**: measured 43
+then 51 on `/unbox` across back-to-back runs of one build. It is seeded with 20%
+headroom from a median and is a smoke alarm, not a precision instrument. Both
+`--check` and `--update` force `--runs=3` for that reason. Do not tighten it by
+hand to a number a single run produced — you will spend the next session
+debugging a flake instead of a regression.
 
 **Keep the flags identical across a before/after pair.** Viewport and settle
 time decide which components mount, so the harness and a hand-driven DevTools

@@ -3,8 +3,8 @@
  * Composes existing feeds; does not invent a second search engine.
  */
 
-import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
-import type { PickupLine } from '@/lib/receiving/pickup-lines';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { PickupLine } from '@/components/receiving/pickup/pickup-lines';
 import type { RSRecord } from '@/lib/neon/repair-service-queries';
 import type { ShippedOrder } from '@/types/orders';
 import {

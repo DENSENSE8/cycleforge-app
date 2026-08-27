@@ -14,7 +14,7 @@
 import {
   OUTBOUND_MODE_PATHS,
   type OutboundMode,
-} from '@/lib/outbound/outbound-sidebar-shared';
+} from '@/components/outbound/outbound-sidebar-shared';
 import { parseFbaModeWire } from '@/lib/fba/fba-modes';
 import { SHIPPING_ORDERS_PATH } from '@/lib/shipping/orders-desk';
 import { parseShippedSearchFieldWire } from '@/lib/shipped-search';
@@ -103,6 +103,12 @@ const ORDERS_ROUTE_PARAMS = defineRouteParams({
     /** List | Drill layout (omit when list). Orthogonal to openOrderId. */
     olayout: paramEnum(['list', 'drill'] as const),
     drillOrder: paramText,
+    /** Compare multi-pane (omit when single). Mutually exclusive with drill. */
+    clayout: paramEnum(['single', 'split', 'quad'] as const),
+    c0: paramText,
+    c1: paramText,
+    c2: paramText,
+    c3: paramText,
   },
   carries: SHIPPING_CARRIES,
 });

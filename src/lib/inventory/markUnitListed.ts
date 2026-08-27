@@ -22,7 +22,6 @@ import type { PoolClient } from 'pg';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import { recordInventoryEvent, type RecordInventoryEventInput } from './events';
-import { NO_SESSION } from '@/lib/sessions/attribution';
 
 export interface MarkUnitListedArgs {
   /** serial_units.id */
@@ -130,7 +129,6 @@ export async function markUnitListed(
     try {
       const ev = await deps.recordEvent(
         {
-          session: NO_SESSION,
           event_type: 'LISTED',
           actor_staff_id: args.actorStaffId ?? null,
           station: null,

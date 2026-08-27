@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { errorResponse } from '@/lib/api';
 import { withAuth } from '@/lib/auth/withAuth';
-import { archiveReceivingClaimPhotos } from '@/lib/receiving-claim-archive';
+import { archiveAndStampReceivingClaimPhotos } from '@/lib/receiving-claim-archive';
 import { CLAIM_TYPE_LABEL, type ClaimType } from '@/lib/zendesk-claim-template';
 import { getTicketEntity } from '@/lib/zendesk-links';
 import { tenantQuery } from '@/lib/tenancy/db';
@@ -129,7 +129,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       if (lineId == null && resolved.lineId != null) lineId = resolved.lineId;
     }
 
-    const archived = await archiveReceivingClaimPhotos({
+    const archived = await archiveAndStampReceivingClaimPhotos({
       orgId: ctx.organizationId,
       receivingId,
       ticketId: folderName,
@@ -168,32 +168,6 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
           details: details || undefined,
         },
         { status: 503 },
-      );
-    }
-
-    // Stamp the carton with WHAT was copied and WHERE (2026-08-18a). Without
-    // this the "photos taken since the last sync" state is underivable, which
-    // is why the archive prompt could never exist. Written only on a real
-    // copy — the 503 above returns before it.
-    //
-    // Failure to stamp must NOT fail the archive: the photos are already on the
-    // NAS, and reporting an error for a copy that succeeded would send the
-    // operator to re-run it. Worst case the carton reads as still-pending and
-    // a second sync is an idempotent re-copy of the same folder.
-    try {
-      await tenantQuery(
-        ctx.organizationId,
-        `UPDATE receiving_carton
-            SET nas_archived_at = now(),
-                nas_archived_ticket = $1,
-                nas_archived_photo_count = $2
-          WHERE id = $3 AND organization_id = $4`,
-        [folderName, archived.copied, receivingId, ctx.organizationId],
-      );
-    } catch (stampErr) {
-      console.warn(
-        '[POST /api/receiving/zendesk-claim/archive-only] archive succeeded but stamp failed',
-        stampErr,
       );
     }
 

@@ -3,7 +3,6 @@ import { withTenantTransaction } from '@/lib/tenancy/db';
 import { withAuth } from '@/lib/auth/withAuth';
 import { parseScannedUrl } from '@/lib/scan-resolver';
 import { guard, transition, SERIAL_STATES, type SerialState } from '@/lib/inventory/state-machine';
-import { NO_SESSION } from '@/lib/sessions/attribution';
 
 /**
  * POST /api/returns/undo — reverse a returns-intake mistake.
@@ -108,7 +107,6 @@ export const POST = withAuth(async (request, ctx) => {
       // (same shape as the legacy raw pair: prev RETURNED → next priorStatus,
       // ledger linkage, idempotent client_event_id suffix).
       const tr = await transition({
-        session: NO_SESSION,
         unitId: unit.id,
         to: priorStatus,
         eventType: 'ADJUSTED',

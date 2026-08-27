@@ -9,7 +9,6 @@ import { photoContentUrl } from '@/lib/photos/display-url';
 import { attachPhotoWithLegacyUrl, linkPhoto, listPhotosForEntity } from '@/lib/photos/service';
 import { resolveUnitPhotoTypeFromStage } from '@/lib/photos/types';
 import type { OrgId } from '@/lib/tenancy/constants';
-import { NO_SESSION } from '@/lib/sessions/attribution';
 
 export const dynamic = 'force-dynamic';
 
@@ -219,7 +218,6 @@ export const POST = withAuth(
       if (insertedIds.length > 0) {
         try {
           await recordInventoryEvent({
-            session: NO_SESSION,
             event_type: 'NOTE',
             actor_staff_id: ctx.staffId ?? null,
             station: 'PACK',

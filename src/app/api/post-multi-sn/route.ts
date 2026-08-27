@@ -10,7 +10,6 @@ import {
   resolveLabelIssueSerials,
   type LabelPrintClass,
 } from '@/lib/labels/auto-unit-labels';
-import { NO_SESSION } from '@/lib/sessions/attribution';
 
 /**
  * POST /api/post-multi-sn — issue label(s) for a SKU + record the audit trail.
@@ -265,7 +264,6 @@ export const POST = withAuth(
         (async () => {
           try {
             await recordInventoryEvent({
-              session: NO_SESSION,
               event_type: 'LABELED',
               actor_staff_id: actorId,
               station: 'SYSTEM',

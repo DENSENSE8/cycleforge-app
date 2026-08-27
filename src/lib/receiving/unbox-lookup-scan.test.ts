@@ -12,7 +12,6 @@ import {
   resolveUnboxScanState,
   type UnboxLookupScanDeps,
 } from './unbox-lookup-scan';
-import { NO_SESSION } from '@/lib/sessions/attribution';
 
 interface Captured {
   queries: Array<{ text: string; params: unknown[] }>;
@@ -142,7 +141,6 @@ test('recordUnboxLookupScan writes ONLY an append-only ops event', async () => {
       receivingId: 482,
       actorStaffId: 7,
       trackingNumber: '1Z999',
-      session: NO_SESSION,
       occurredAt: new Date('2026-07-28T10:00:00.000Z'),
     },
     deps,
@@ -171,7 +169,7 @@ test('recordUnboxLookupScan never throws on a writer failure', async () => {
     }) as unknown as UnboxLookupScanDeps['recordOpsEvent'],
   };
   await recordUnboxLookupScan(
-    { organizationId: 'org-1', receivingId: 482, actorStaffId: 7, trackingNumber: '1Z999', session: NO_SESSION },
+    { organizationId: 'org-1', receivingId: 482, actorStaffId: 7, trackingNumber: '1Z999' },
     boom,
   );
 });

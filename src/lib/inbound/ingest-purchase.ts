@@ -85,6 +85,8 @@ export interface IngestPurchaseInput {
 
 export interface IngestPurchaseResult {
   receivingLineId: number;
+  /** Carton id after tracking attach; null when no tracking or pre-carton line. */
+  receivingId: number | null;
   created: boolean;
   platformAccountId: number | null;
   sourceType: string;
@@ -432,6 +434,22 @@ export async function ingestPurchase(
       }
     }
 
-    return { receivingLineId, created, platformAccountId, sourceType, sourceOrderId };
+    const lineCarton = await client.query<{ receiving_id: number | null }>(
+      `SELECT receiving_id
+         FROM receiving_line
+        WHERE id = $1 AND organization_id = $2::uuid
+        LIMIT 1`,
+      [receivingLineId, orgId],
+    );
+    const receivingId = lineCarton.rows[0]?.receiving_id ?? null;
+
+    return {
+      receivingLineId,
+      receivingId: receivingId != null ? Number(receivingId) : null,
+      created,
+      platformAccountId,
+      sourceType,
+      sourceOrderId,
+    };
   });
 }

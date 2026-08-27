@@ -38,6 +38,7 @@ const step = (over: Partial<ProcedureStep> = {}): ProcedureStep => ({
   label: 'Scan serial',
   summary: 'Scan the unit serial.',
   phase: 'capture',
+  composed: false,
   ...over,
 });
 
@@ -138,13 +139,15 @@ test('reads become inputs and writes become outputs', () => {
 
   const facet = job.job.facets['cycleforge_procedure'] as CycleforgeProcedureJobFacet;
   assert.deepEqual(facet.endpoint, { method: 'POST', path: '/api/receiving/serial' });
+  assert.equal(facet.composed, false);
   assert.equal(facet.stepKey, 'serial');
   assert.equal(facet.surface, 'receiving.unbox');
 });
 
 test('a step with no declared lineage yields no job, rather than a phantom node', () => {
-  // A step that declares neither reads nor writes has no lineage to publish; an
-  // empty job would claim it touches nothing — a phantom edge.
+  // Composed steps inherit lineage from the source/action they bind, so an
+  // empty job would claim they touch nothing — the phantom edge that
+  // data-lineage.guard.test.ts rejects from the other direction.
   assert.equal(jobForStep(procedure([step()]), step()), null);
   assert.equal(jobForStep(procedure([step({ reads: [] })]), step({ reads: [] })), null);
 

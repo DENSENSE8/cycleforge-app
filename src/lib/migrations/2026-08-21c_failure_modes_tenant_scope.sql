@@ -50,19 +50,22 @@ BEGIN
   END IF;
 END $$;
 
--- 4. GUC default + FORCE RLS + canonical policy, matching every other
---    tenant-owned table. enforce_tenant_isolation(regclass) installs all three
---    in one shot (2026-06-14_rls_enforcement_infra.sql) — it is a helper you
---    call per table, NOT a trigger function. (The original version of this file
---    tried `CREATE TRIGGER … EXECUTE FUNCTION enforce_tenant_isolation()`,
---    which invokes it with zero args and fails; caught on first apply
---    2026-08-24, fixed before any ledger row existed.)
+-- 4. GUC default + isolation trigger, matching every other tenant-owned table.
+ALTER TABLE failure_modes
+  ALTER COLUMN organization_id SET DEFAULT current_setting('app.current_org', true)::uuid;
+
 DO $$
 BEGIN
-  IF EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'enforce_tenant_isolation') THEN
-    PERFORM enforce_tenant_isolation('failure_modes');
-  ELSE
-    RAISE NOTICE 'enforce_tenant_isolation absent — failure_modes left without FORCE RLS';
+  IF EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'enforce_tenant_isolation')
+     AND NOT EXISTS (
+       SELECT 1 FROM pg_trigger
+        WHERE tgrelid = 'failure_modes'::regclass
+          AND tgname = 'failure_modes_tenant_isolation'
+     )
+  THEN
+    CREATE TRIGGER failure_modes_tenant_isolation
+      BEFORE INSERT OR UPDATE ON failure_modes
+      FOR EACH ROW EXECUTE FUNCTION enforce_tenant_isolation();
   END IF;
 END $$;
 

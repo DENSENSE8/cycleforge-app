@@ -1,0 +1,158 @@
+'use client';
+
+import { useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
+import { motion } from '@/design-system/motion';
+import { RefreshCw } from '@/components/Icons';
+import { Button } from '@/design-system/primitives';
+import { refreshDomains } from '@/lib/refresh/bus';
+import { REFRESH_BUNDLES } from '@/lib/refresh/domains';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
+
+export function ZohoSyncCard({ embedded = false }: { embedded?: boolean }) {
+  const [status, setStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [purchaseReceiveId, setPurchaseReceiveId] = useState('');
+
+  const zohoRefreshMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch('/api/zoho/refresh-token', { method: 'POST' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.success) throw new Error(data?.error || data?.message || `Zoho refresh failed (HTTP ${res.status})`);
+      return data;
+    },
+  });
+
+  const zohoSyncMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch('/api/zoho/purchase-orders/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ per_page: 200, max_pages: 5, max_items: 800, days_back: 30 }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.success) throw new Error(data?.error || data?.message || `Zoho sync failed (HTTP ${res.status})`);
+      return data;
+    },
+  });
+
+  const zohoImportOneMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch('/api/zoho/purchase-receives/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ purchase_receive_id: id }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.success) throw new Error(data?.error || data?.message || `Zoho import failed (HTTP ${res.status})`);
+      return data;
+    },
+  });
+
+  const handleRefresh = async () => {
+    setStatus(null);
+    try {
+      const data = await zohoRefreshMutation.mutateAsync();
+      setStatus({ type: 'success', message: data?.message || 'Zoho token refreshed.' });
+    } catch (error: any) {
+      setStatus({ type: 'error', message: error?.message || 'Zoho token refresh failed.' });
+    }
+  };
+
+  const handleSync = async () => {
+    setStatus(null);
+    try {
+      const data = await zohoSyncMutation.mutateAsync();
+      setStatus({
+        type: 'success',
+        message: `Zoho sync finished. Processed ${data?.totals?.processed || 0}, synced ${data?.totals?.line_items_synced || 0} line items, created ${data?.totals?.created || 0}, updated ${data?.totals?.updated || 0}, failed ${data?.totals?.failed || 0}.`,
+      });
+      refreshDomains(REFRESH_BUNDLES.receivingWrite);
+    } catch (error: any) {
+      setStatus({ type: 'error', message: error?.message || 'Zoho sync failed.' });
+    }
+  };
+
+  const handleImportOne = async () => {
+    const id = purchaseReceiveId.trim();
+    if (!id) return;
+    setStatus(null);
+    try {
+      const data = await zohoImportOneMutation.mutateAsync(id);
+      setStatus({
+        type: 'success',
+        message: `Imported purchase receive ${data?.purchase_receive_id || id}. Receiving #${data?.receiving_id || '-'} has ${data?.line_items_imported || 0} line item(s).`,
+      });
+      refreshDomains(REFRESH_BUNDLES.receivingWrite);
+    } catch (error: any) {
+      setStatus({ type: 'error', message: error?.message || 'Zoho import failed.' });
+    }
+  };
+
+  const anyPending = zohoRefreshMutation.isPending || zohoSyncMutation.isPending || zohoImportOneMutation.isPending;
+
+  return (
+    <div className={embedded ? 'space-y-4' : 'space-y-4 border border-border-soft bg-surface-card p-5'}>
+      <div className={`flex items-center justify-between gap-3 ${embedded ? 'border-b border-border-soft pb-3' : ''}`}>
+        <div>
+          <h2 className="text-sm font-semibold uppercase tracking-widest text-text-default">Zoho Receiving Sync</h2>
+          <p className="text-role-eyebrow text-text-soft mt-1">Refresh the Zoho token, sync expected PO lines, or import one purchase receive.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="md"
+            icon={<RefreshCw />}
+            loading={zohoRefreshMutation.isPending}
+            disabled={anyPending}
+            onClick={() => void handleRefresh()}
+            className="bg-surface-sunken hover:bg-surface-strong text-role-micro uppercase tracking-widest text-text-muted"
+          >
+            {zohoRefreshMutation.isPending ? 'Refreshing...' : 'Refresh Token'}
+          </Button>
+          {/* ds-raw-button */}
+          <button
+            onClick={() => void handleSync()}
+            disabled={anyPending}
+            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-all text-role-micro uppercase tracking-widest text-white shadow-sm disabled:opacity-50"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${zohoSyncMutation.isPending ? 'animate-spin' : ''}`} />
+            {zohoSyncMutation.isPending ? 'Syncing...' : 'Sync Expected POs'}
+          </button>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <input
+          value={purchaseReceiveId}
+          onChange={(e) => setPurchaseReceiveId(e.target.value)}
+          placeholder="Enter purchase receive ID"
+          className={cn("flex-1 rounded-xl border border-border-soft bg-surface-canvas inset-field text-role-micro uppercase tracking-widest text-text-default", focusRing('field', 'success'))}
+        />
+        <Button
+          variant="primary"
+          size="md"
+          disabled={!purchaseReceiveId.trim() || anyPending}
+          onClick={() => void handleImportOne()}
+          className="text-role-micro uppercase tracking-widest"
+        >
+          {zohoImportOneMutation.isPending ? 'Importing...' : 'Import Receive'}
+        </Button>
+      </div>
+
+      {status && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className={`border-l-2 px-4 py-3 text-role-micro uppercase tracking-widest ${
+            status.type === 'success' ? 'border-l-green-500 bg-green-50/70 text-green-700' : 'border-l-red-500 bg-red-50/70 text-red-700'
+          }`}
+        >
+          {status.message}
+        </motion.div>
+      )}
+    </div>
+  );
+}

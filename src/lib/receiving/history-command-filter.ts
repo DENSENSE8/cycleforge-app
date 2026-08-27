@@ -6,7 +6,7 @@
  * Layout prefs (`hlayout`, `ukpi`, column prefs, …) stay out of this bag.
  */
 
-import { parseStaffParam, STAFF_FILTER_PARAM } from '@/lib/station/useStaffFilter';
+import { parseStaffParam, STAFF_FILTER_PARAM } from '@/hooks/useStaffFilter';
 import {
   HISTORY_DEFAULT_SORT,
   normalizeHistorySort,

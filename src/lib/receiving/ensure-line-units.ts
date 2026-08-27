@@ -50,7 +50,7 @@
 
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
-import type { ReceivingLineUnitView } from '@/lib/receiving/receiving-line-row';
+import type { ReceivingLineUnitView } from '@/components/station/receiving-line-row';
 
 /** A `receiving_line_unit` row as the planner needs it. */
 export interface ExistingLineUnit {

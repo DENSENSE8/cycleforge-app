@@ -1,19 +1,17 @@
 /**
  * Station builder — core contract (Operations Studio layer 2).
  *
- * DATA SOURCES and ACTIONS: typed descriptors over routes that already exist,
- * so an integration ships a feed and a verb without owning a query path or a
- * mutation. Everything here is CODE — registered, typed, PR-reviewed.
+ * Stations (receiving Incoming, Unbox, FBA Combine…) are composed from
+ * registered BLOCKS bound to DATA SOURCES and ACTIONS; the composition is
+ * saved as data in `station_definitions.config`. The split that keeps
+ * integrations cheap: blocks are generic (a Checklist doesn't know Gmail
+ * exists), integrations ship sources + actions.
  *
- * The BLOCK half of this contract (BlockDefinition · BlockProps · BlockRole ·
- * ConfigField · BoundAction) was deleted 2026-08-22 with the slot renderer:
- * slots carried no geometry, so they could never express a tile layout, and the
- * renderer was flag-gated off in every deployment. What survives of that half is
- * the SHAPE of the `station_definitions.config` JSON already in tenant rows —
- * kept honest below because those rows still exist, not because anything renders
- * from them. The one field live code reads off a definition row is
- * `workflowNodeId` (see `surface-workflow-node.ts`).
+ * Everything here is CODE — registered, typed, PR-reviewed. The config rows
+ * the Studio edits are DATA. See docs/operations-studio/station-builder-ui-plan.md.
  */
+
+import type { ComponentType } from 'react';
 
 // ─── Slots ───────────────────────────────────────────────────
 //
@@ -161,6 +159,75 @@ export interface ActionDefinition {
 
 export type ActionMeta = Omit<ActionDefinition, 'body'>;
 
+// ─── Blocks ──────────────────────────────────────────────────
+
+/** A display-config knob; the Config Sheet's Display tab renders from these. */
+export interface ConfigField {
+  key: string;
+  label: string;
+  kind: 'select' | 'text' | 'toggle';
+  options?: Array<{ value: string; label: string }>;
+  default?: unknown;
+}
+
+/**
+ * A named role the block needs mapped to a source field (Checklist: title,
+ * ref, meta). `kind` pre-selects the matching source field in the Config
+ * Sheet's mapping dropdowns.
+ */
+export interface BlockRole {
+  key: string;
+  label: string;
+  kind?: FieldKind;
+  required?: boolean;
+}
+
+/** An action resolved + bound for a block instance: the renderer owns the fetch. */
+export interface BoundAction {
+  def: ActionMeta;
+  /** Run the action against one row. Resolves true on 2xx. */
+  run: (row: SourceRow) => Promise<boolean>;
+  /** True while `run` is in flight for the given row id. */
+  pendingRowId: string | null;
+}
+
+/** Props every block component receives — blocks never fetch on their own. */
+export interface BlockProps {
+  rows: SourceRow[];
+  isLoading: boolean;
+  /** role key → source field key, from the saved binding. */
+  mapping: Record<string, string>;
+  /** Field key → kind, from the bound source's shape. */
+  fieldKinds: Record<string, FieldKind>;
+  display: Record<string, unknown>;
+  actions: BoundAction[];
+  /** Action id whose success marks a row complete (or null = manual tick). */
+  doneWhen: string | null;
+}
+
+export interface BlockDefinition {
+  /** Registry key, e.g. 'checklist'. Stored in station config. */
+  type: string;
+  label: string;
+  /** lucide icon name (resolved client-side). */
+  icon: string;
+  category: 'trigger' | 'list' | 'workspace_step' | 'action_bar' | 'integration';
+  /** Slots this block may be dropped into. */
+  slots: SlotId[];
+  /** Shape of data it consumes; the palette greys out incompatible sources. */
+  accepts: 'rows' | 'single' | 'none';
+  /** Field-mapping roles the Config Sheet's Source tab binds. */
+  roles: BlockRole[];
+  /** Display knobs the Config Sheet's Display tab renders. */
+  configSchema: ConfigField[];
+  /** Permissions implied by mounting it (palette card chips). */
+  requiredPermissions: string[];
+  /** The actual component, lazy-loaded client-side. */
+  component: () => Promise<ComponentType<BlockProps>>;
+}
+
+export type BlockMeta = Omit<BlockDefinition, 'component'>;
+
 // ─── Station config (the DATA stored in station_definitions.config) ──────────
 
 export interface BlockInstanceConfig {
@@ -182,10 +249,8 @@ export interface BlockInstanceConfig {
 }
 
 /**
- * The persisted shape of `station_definitions.config`. Both arms occur in live
- * tenant rows (`'legacy'` was the hard-coded-tree escape hatch), but nothing
- * renders from either since the slot renderer was deleted — this type exists so
- * the column is still typed where it is read back.
+ * `slots: 'legacy'` is the explicit escape hatch: render the original
+ * hard-coded component tree for this mode. Migrate modes one at a time.
  */
 export interface StationConfig {
   slots: Partial<Record<SlotId, BlockInstanceConfig[]>> | 'legacy';

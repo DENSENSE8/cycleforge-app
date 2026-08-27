@@ -1,7 +1,7 @@
 import { tenantQuery } from '@/lib/tenancy/db';
 import { SHIPPED_BY_CARRIER_SQL } from '@/lib/sql-fragments';
 import { normalizePSTTimestamp } from '@/utils/date';
-import type { WorkOrderRow, WorkStatus } from '@/lib/work-orders/types';
+import type { WorkOrderRow, WorkStatus } from '@/components/work-orders/types';
 
 /**
  * Server-side work-order queue queries.

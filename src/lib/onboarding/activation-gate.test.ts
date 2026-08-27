@@ -44,6 +44,7 @@ test('exempt paths never block and skip the probe', async () => {
     '/signin',
     '/signup',
     '/not-authorized',
+    '/kiosk',
   ]) {
     const d = deps();
     strictEqual(await isActivationBlocked(ORG, path, d), false, path);

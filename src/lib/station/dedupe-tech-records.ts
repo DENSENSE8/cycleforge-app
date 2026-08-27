@@ -1,5 +1,5 @@
 import { normalizeTrackingKey } from '@/lib/tracking-format';
-import type { TechRecord } from '@/lib/station/useTechLogs';
+import type { TechRecord } from '@/hooks/useTechLogs';
 
 function normalizeProductTitle(value: string | null | undefined): string {
   return String(value || '').trim();

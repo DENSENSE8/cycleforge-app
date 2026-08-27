@@ -10,7 +10,6 @@ import {
 } from '@/lib/inventory/events';
 import { transition } from '@/lib/inventory/state-machine';
 import { requireRoutePerm } from '@/lib/auth/dynamic-route-guard';
-import { NO_SESSION } from '@/lib/sessions/attribution';
 
 /**
  * Stash all (or some) units of a receiving line into a physical bin.
@@ -158,7 +157,6 @@ export async function POST(
           // current_status). transition() emits the event atomically on this client.
           const tr = await transition(
             {
-              session: NO_SESSION,
               unitId: serialUnitId,
               to: 'STOCKED',
               eventType: 'PUTAWAY',
@@ -184,7 +182,6 @@ export async function POST(
           // Already STOCKED → location-only move; emit a PUTAWAY event (no status change).
           const ev = await recordInventoryEvent(
             {
-              session: NO_SESSION,
               event_type: 'PUTAWAY',
               actor_staff_id: staffId,
               station,
@@ -217,7 +214,6 @@ export async function POST(
         for (let i = 1; i < qty; i++) {
           const ev = await recordInventoryEvent(
             {
-              session: NO_SESSION,
               event_type: 'PUTAWAY',
               actor_staff_id: staffId,
               station,
@@ -243,7 +239,6 @@ export async function POST(
         for (let i = 0; i < qty; i++) {
           const ev = await recordInventoryEvent(
             {
-              session: NO_SESSION,
               event_type: 'PUTAWAY',
               actor_staff_id: staffId,
               station,

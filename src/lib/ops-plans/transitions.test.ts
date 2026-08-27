@@ -14,7 +14,7 @@ import {
   planTaskToInboxItem,
 } from './inbox';
 import type { TaskRow } from './types';
-import type { WorkOrderRow } from '@/lib/work-orders/types';
+import type { WorkOrderRow } from '@/components/work-orders/types';
 
 function task(partial: Partial<TaskRow> & Pick<TaskRow, 'id' | 'title' | 'status'>): TaskRow {
   return {

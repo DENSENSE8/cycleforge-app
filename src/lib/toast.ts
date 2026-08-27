@@ -15,7 +15,7 @@ import type { ReactNode } from 'react';
 import {
   TOAST_DURATION,
   type ToastKind,
-} from '@/lib/toast-theme';
+} from '@/design-system/components/toast-theme';
 
 type Title = (() => ReactNode) | ReactNode;
 

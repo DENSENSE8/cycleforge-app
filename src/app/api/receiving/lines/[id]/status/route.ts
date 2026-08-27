@@ -15,7 +15,6 @@ import { isUnifiedEngineApplyTransition } from '@/lib/feature-flags';
 import type { SerialState } from '@/lib/inventory/state-machine';
 import { requireRoutePerm } from '@/lib/auth/dynamic-route-guard';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
-import { NO_SESSION } from '@/lib/sessions/attribution';
 
 const ALLOWED_EVENT_TYPES: ReadonlySet<InventoryEventType> = new Set([
   'TEST_START',
@@ -213,7 +212,6 @@ export async function POST(
 
     if (serialUnitId && nextSerialStatus && useChokepoint) {
       const applied = await applyTransition({
-        session: NO_SESSION,
         unitId: serialUnitId,
         to: nextSerialStatus as SerialState,
         eventType,
@@ -255,7 +253,6 @@ export async function POST(
       }
       event = await recordInventoryEvent(
         {
-          session: NO_SESSION,
           event_type: eventType,
           actor_staff_id: staffId,
           station,

@@ -9,7 +9,7 @@
  * alone (returns masquerade as `source = 'zoho_po'` with a null Zoho PO id).
  */
 
-import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { isReturnIntake } from '@/lib/receiving/triage-intake-kind';
 
 type RowSlice = Pick<

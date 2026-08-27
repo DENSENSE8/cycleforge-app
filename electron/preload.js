@@ -5,7 +5,7 @@
  * is limited to Electron's own subset. `contextBridge` + `ipcRenderer` are
  * available, which is the whole reason `sandbox: false` was not needed.
  *
- * ONE global. Every entry maps to a named capability (N1–N6). The filesystem
+ * ONE global. Every entry maps to a named capability (N1–N7). The filesystem
  * arrived with N6 (operator ruling 2026-08-23, desktop-first pivot) and is
  * scoped in MAIN to operator-opened workspace roots — there is still no
  * `require`, no generic `invoke`, and no `executeJavaScript` macro channel:
@@ -110,6 +110,19 @@ contextBridge.exposeInMainWorld('cycleForgeDesktop', {
     move: (from, to) => ipcRenderer.invoke('cf:files-move', { from, to }),
     /** Delete = OS trash. Recoverable, like every other D on this bench. */
     trash: (p) => ipcRenderer.invoke('cf:files-trash', { path: p }),
+  },
+
+  /**
+   * N7 — paired device grants (WebUSB / Web Serial thermal printers).
+   *
+   * Pairing itself needs no bridge: `navigator.usb.requestDevice()` works from
+   * the renderer once MAIN registers a chooser. What the renderer cannot do is
+   * REVOKE — the grant lives in the main process so it can outlive the page —
+   * so deleting a printer profile calls this to drop the matching grant and
+   * keep the two halves of the pairing in step.
+   */
+  devices: {
+    forget: (match) => ipcRenderer.invoke('cf:forget-paired-device', match),
   },
 
   /** Surfaced read-only in Settings → About. */

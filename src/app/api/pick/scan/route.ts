@@ -3,7 +3,6 @@ import { withTenantTransaction } from '@/lib/tenancy/db';
 import { withAuth } from '@/lib/auth/withAuth';
 import { parseScannedUrl } from '@/lib/scan-resolver';
 import { transition, type SerialState } from '@/lib/inventory/state-machine';
-import { NO_SESSION } from '@/lib/sessions/attribution';
 
 /**
  * POST /api/pick/scan
@@ -153,7 +152,6 @@ export const POST = withAuth(async (request, ctx) => {
         // event's bin_id matches the old behavior instead of falling back to
         // the unit's current_location.
         const tr = await transition({
-          session: NO_SESSION,
           unitId: unit.id,
           to: 'PICKED',
           eventType: 'PICKED',
@@ -229,7 +227,6 @@ export const POST = withAuth(async (request, ctx) => {
           eventId = ev.rows[0]?.id ?? null;
         } else {
           const tr = await transition({
-            session: NO_SESSION,
             unitId: unit.id,
             to: 'PICKED',
             eventType: 'FORCE_PICK',

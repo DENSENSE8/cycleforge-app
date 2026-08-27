@@ -31,6 +31,7 @@ const EXEMPT_PREFIXES = [
   '/signup',
   '/signout',
   '/not-authorized',
+  '/kiosk',
 ];
 
 export function isActivationPathExempt(pathname: string): boolean {

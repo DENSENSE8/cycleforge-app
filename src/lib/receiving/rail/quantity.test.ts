@@ -4,7 +4,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import {
   floorQtyFractionTip,
   inventoryReceivedDisplayQty,
@@ -103,4 +103,14 @@ test('floorQtyFractionTip uses counted, never received', () => {
   assert.equal(floorQtyFractionTip(1, 1), '1 of 1 counted');
   assert.match(floorQtyFractionTip(2, null), /2 counted/);
   assert.doesNotMatch(floorQtyFractionTip(1, 1), /received/i);
+});
+
+test('tested qty prefers tested_count and never uses carton created_at', () => {
+  const r = row({
+    tested_count: 1,
+    quantity_received: 3,
+    workflow_status: 'IN_TEST',
+  });
+  assert.equal(RAIL_QTY.tested.getPreviewQty(r).current, 1);
+  assert.equal(RAIL_QTY.tested.getPreviewQty(r).total, 3);
 });

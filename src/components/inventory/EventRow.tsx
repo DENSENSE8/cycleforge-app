@@ -1,0 +1,123 @@
+'use client';
+
+import Link from 'next/link';
+import { getLast8, OrderIdChip, SerialChip, SkuScanRefChip } from '@/components/ui/CopyChip';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import type { PulseEventRow } from './types';
+import { unitStatusBadgeClass } from '@/lib/unit-status';
+
+interface EventRowProps {
+    event: PulseEventRow;
+}
+
+function statusBadgeClass(status: string | null): string {
+    if (!status) return 'bg-surface-sunken text-text-soft';
+    return unitStatusBadgeClass(status);
+}
+
+// Legacy rows stored extra serials as "Supplemental serial <SN> (beyond
+// expected qty)". Multiple serials per line/qty is normal, so display them as
+// a plain "Serial <SN>" — matches how new scans are recorded.
+function displayNotes(notes: string): string {
+    const match = notes.match(/^Supplemental serial (\S+) \(beyond expected qty\)$/i);
+    if (match) return `Serial ${match[1]}`;
+    return notes;
+}
+
+function relativeTime(iso: string): string {
+    const date = new Date(iso);
+    const diffMs = Date.now() - date.getTime();
+    const diffMin = Math.floor(diffMs / 60_000);
+    if (Number.isNaN(diffMin)) return '—';
+    if (diffMin < 1) return 'just now';
+    if (diffMin < 60) return `${diffMin}m ago`;
+    if (diffMin < 1440) return `${Math.floor(diffMin / 60)}h ago`;
+    if (diffMin < 10080) return `${Math.floor(diffMin / 1440)}d ago`;
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+export function EventRow({ event }: EventRowProps) {
+    const occurred = new Date(event.occurred_at);
+    const absoluteTime = Number.isNaN(occurred.getTime())
+        ? ''
+        : occurred.toLocaleString('en-US', {
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric',
+              hour: 'numeric',
+              minute: '2-digit',
+              hour12: true,
+          });
+
+    const binHref = event.bin_name ? `/inventory?bin=${encodeURIComponent(event.bin_name)}` : null;
+
+    return (
+        <li className="flex items-start gap-3 border-b border-border-hairline px-4 py-2.5 hover:bg-blue-50/40 sm:px-6">
+            <HoverTooltip label={absoluteTime} asChild>
+                <div className="w-16 shrink-0 text-right text-role-caption text-text-faint">
+                    {relativeTime(event.occurred_at)}
+                </div>
+            </HoverTooltip>
+
+            <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2 text-xs">
+                    <span className="rounded bg-surface-sunken px-1.5 py-0.5 font-mono text-role-micro uppercase tracking-wide text-text-muted">
+                        {event.event_type}
+                    </span>
+                    {event.prev_status || event.next_status ? (
+                        <span className="flex items-center gap-1 text-role-caption text-text-soft">
+                            {event.prev_status ? (
+                                <span className={`rounded px-1.5 py-0.5 ${statusBadgeClass(event.prev_status)}`}>
+                                    {event.prev_status}
+                                </span>
+                            ) : null}
+                            {event.prev_status && event.next_status ? <span>→</span> : null}
+                            {event.next_status ? (
+                                <span className={`rounded px-1.5 py-0.5 ${statusBadgeClass(event.next_status)}`}>
+                                    {event.next_status}
+                                </span>
+                            ) : null}
+                        </span>
+                    ) : null}
+                </div>
+
+                {/* Identifiers as copy chips (click to copy the full value) — SKU
+                    + internal unit id + serial — instead of dumping raw strings. */}
+                <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+                    {event.sku ? (
+                        <SkuScanRefChip value={event.sku} display={getLast8(event.sku)} />
+                    ) : null}
+                    {event.serial_unit_id != null ? (
+                        <OrderIdChip
+                            value={String(event.serial_unit_id)}
+                            display={getLast8(String(event.serial_unit_id))}
+                        />
+                    ) : null}
+                    {event.serial_number ? (
+                        <SerialChip value={event.serial_number} width="w-auto shrink-0" />
+                    ) : null}
+                    {binHref ? (
+                        <Link
+                            href={binHref}
+                            className="text-xs text-text-muted hover:underline"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            {event.bin_name}
+                            {event.prev_bin_name && event.prev_bin_name !== event.bin_name
+                                ? ` (from ${event.prev_bin_name})`
+                                : ''}
+                        </Link>
+                    ) : null}
+                </div>
+
+                {event.notes ? (
+                    <div className="mt-1 truncate text-xs text-text-soft">{displayNotes(event.notes)}</div>
+                ) : null}
+            </div>
+
+            <div className="hidden shrink-0 text-right text-role-caption text-text-faint sm:block">
+                {event.actor_name || (event.station ? `[${event.station}]` : '')}
+            </div>
+        </li>
+    );
+}

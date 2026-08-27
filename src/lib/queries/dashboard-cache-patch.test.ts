@@ -6,6 +6,7 @@ import {
   patchUnshippedOrderTested,
   removeUnshippedOrderFromCache,
   invalidateUnshippedCounts,
+  insertUnshippedOrderIntoCache,
 } from './dashboard-cache-patch';
 
 const listKey = (extra: Record<string, unknown>) => ['dashboard-table', 'unshipped', extra];
@@ -131,6 +132,28 @@ test('order.tested patch ignores a payload with no usable order id', () => {
   assert.equal(patchUnshippedOrderTested(qc, { orderId: undefined }), false);
   assert.equal(patchUnshippedOrderTested(qc, { orderId: 'not-a-number' }), false);
   assert.equal(qc.getQueryData(listKey({ stage: null })), rows, 'cache untouched');
+});
+
+test('insertUnshippedOrderIntoCache prepends a new row and promotes an existing one', () => {
+  const qc = new QueryClient();
+  qc.setQueryData(listKey({ stage: null }), [{ id: 1, order_id: 'OLD' }]);
+  qc.setQueryData(listKey({ stage: 'pending', limit: 200 }), [{ id: 1, order_id: 'OLD' }]);
+
+  const created = {
+    id: 99,
+    order_id: 'CFLOOP-1',
+    shipping_tracking_number: 'CFLOOPTRACK01',
+    tracking_number: 'CFLOOPTRACK01',
+    has_tech_scan: false,
+  };
+  insertUnshippedOrderIntoCache(qc, created);
+  qc.setQueryData(listKey({ stage: null }), [{ id: 1, order_id: 'OLD' }, created]);
+  insertUnshippedOrderIntoCache(qc, created);
+
+  const a = qc.getQueryData(listKey({ stage: null })) as Array<{ id: number }>;
+  const b = qc.getQueryData(listKey({ stage: 'pending', limit: 200 })) as Array<{ id: number }>;
+  assert.deepEqual(a.map((r) => r.id), [99, 1]);
+  assert.deepEqual(b.map((r) => r.id), [99, 1]);
 });
 
 test('order.tested patch carries the pack bench the event already published', () => {

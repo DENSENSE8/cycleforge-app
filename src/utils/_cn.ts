@@ -30,11 +30,6 @@ const CUSTOM_FONT_SIZES = [
   'role-caption',
   'role-eyebrow',
   'role-micro',
-  // Warehouse OS shell (globals.css `@theme inline`). Same failure mode as
-  // the roles above: unregistered, twMerge reads `text-technical` as a
-  // COLOUR and silently drops it beside any `text-ink-*`.
-  'technical',
-  'data',
 ] as const;
 
 const twMerge = extendTailwindMerge<'cf-inset' | 'cf-stack' | 'cf-row'>({
@@ -55,13 +50,6 @@ const twMerge = extendTailwindMerge<'cf-inset' | 'cf-stack' | 'cf-row'>({
             'elev-overlay',
             'elev-overlay-left',
             'elev-overlay-right',
-            // Shell elevation (globals.css). `--shadow-pane` is light-only
-            // and `--shadow-inset` is the sunken composer; both are box-
-            // SHADOWS, so they need the same registration as `elev-*` or
-            // twMerge lumps them into the shadow-COLOR group.
-            'float',
-            'sunken',
-            'elevated',
           ],
         },
       ],
@@ -75,11 +63,6 @@ const twMerge = extendTailwindMerge<'cf-inset' | 'cf-stack' | 'cf-row'>({
       'cf-inset': ['inset-chip', 'inset-field', 'inset-cozy', 'inset-card', 'inset-empty'],
       'cf-stack': ['stack-tight', 'stack-row', 'stack-section'],
       'cf-row': ['row-gap', 'row-tight'],
-      // The amended LAW 1 radius scale (tokens.css). twMerge validates
-      // `rounded-*` against Tailwind's own scale, so these named values
-      // are unknown to it and two of them on one element would BOTH
-      // survive, letting stylesheet order pick silently.
-      'rounded': [{ rounded: ['none', 'control', 'surface', 'pane', 'keycap', 'circle'] }],
     },
   },
 });

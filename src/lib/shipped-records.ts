@@ -1,5 +1,5 @@
-import type { PackerRecord } from '@/lib/station/usePackerLogs';
-import { isStalled } from '@/lib/shipping/shipment-status';
+import type { PackerRecord } from '@/hooks/usePackerLogs';
+import { isStalled } from '@/components/shipping/ShipmentStatusBadge';
 import {
   deriveOutboundState,
   hasLeftWarehouse,

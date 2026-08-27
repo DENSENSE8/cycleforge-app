@@ -1,0 +1,82 @@
+'use client';
+
+import type { ReactNode } from 'react';
+import { X } from '@/components/Icons';
+import {
+  SIDEBAR_INTAKE_CLOSE_BUTTON_CLASS,
+  SIDEBAR_INTAKE_SUBTITLE_ACCENT,
+} from './intakeFormClasses';
+
+export interface SidebarIntakeFormShellProps {
+  title: string;
+  /** Small uppercase line under title (e.g. “Order Information”, “Plan mode”). */
+  subtitle: string;
+  subtitleAccent?: keyof typeof SIDEBAR_INTAKE_SUBTITLE_ACCENT;
+  onClose: () => void;
+  /**
+   * Skip the hero title + close row when a leaf header already names the job
+   * (`DeskInspectorIndexShell` / `StationDisplayLeafHeader`).
+   */
+  hideHeader?: boolean;
+  /** e.g. mode `TabSwitch` under the title row (shipped intake). */
+  bandBelowHeader?: ReactNode;
+  children: ReactNode;
+  footer: ReactNode;
+}
+
+/**
+ * Chrome for sidebar **intake / create / import / prefs** flows — matches
+ * {@link ShippedIntakeForm} layout (left-circle close + uppercase title +
+ * accent subtitle).
+ *
+ * **Not for record inspectors.** A picked-row right-rail peek must compose
+ * `PaneHeader` + `PaneHeaderLabel` (short durable key) + icon action row —
+ * never this shell with a product title in `title`. SoT:
+ * `.claude/rules/display/right-rail-inspector.md` + source-of-truth → Panel
+ * header grammar. Guard: `right-rail-inspector-header.guard.test.ts`.
+ */
+export function SidebarIntakeFormShell({
+  title,
+  subtitle,
+  subtitleAccent = 'green',
+  onClose,
+  hideHeader = false,
+  bandBelowHeader,
+  children,
+  footer,
+}: SidebarIntakeFormShellProps) {
+  return (
+    <div className="flex h-full min-h-0 flex-col bg-surface-card">
+      {hideHeader ? null : (
+        <div className="relative z-20 flex shrink-0 items-center justify-between border-b border-border-soft bg-surface-card p-4">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onClose();
+              }}
+              className={SIDEBAR_INTAKE_CLOSE_BUTTON_CLASS}
+              aria-label="Close form"
+            >
+              <X className="h-4 w-4 text-text-muted" />
+            </button>
+            <div>
+              <h2 className="text-sm font-semibold uppercase tracking-tight text-text-default">{title}</h2>
+              <p className={SIDEBAR_INTAKE_SUBTITLE_ACCENT[subtitleAccent]}>{subtitle}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {bandBelowHeader ? (
+        <div className="border-b border-border-hairline bg-surface-card px-4 pt-4">{bandBelowHeader}</div>
+      ) : null}
+
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto bg-surface-card p-4 scrollbar-hide">{children}</div>
+
+      <div className="border-t border-border-soft bg-surface-card p-4">{footer}</div>
+    </div>
+  );
+}

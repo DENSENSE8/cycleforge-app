@@ -13,14 +13,14 @@ import {
   isCustomFieldColumnKey,
   parseCustomFieldDefKey,
 } from '@/lib/tables/custom-field-keys';
-import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import {
   resolveReceivingRowStageStamp,
   type ReceivingActivityAxis,
-} from '@/lib/receiving/receiving-lines-table-helpers';
-import { resolveReceivingLineSerialsCsv } from '@/lib/receiving/receiving-line-serials';
-import type { GridSortDir } from '@/lib/grid/grid-sort-dir';
-import { compareGridValues, type GridSortValue } from '@/lib/grid/grid-column-sort';
+} from '@/components/station/receiving-lines-table-helpers';
+import { resolveReceivingLineSerialsCsv } from '@/components/station/receiving-line-serials';
+import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
+import { compareGridValues, type GridSortValue } from '@/design-system/components/grid';
 
 const CONDITION_RANK = new Map<string, number>(
   CONDITION_GRADES.map((g, i) => [g, i]),

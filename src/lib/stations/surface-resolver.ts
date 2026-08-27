@@ -1,13 +1,18 @@
 /**
- * Surface → the org's active `station_definitions` row.
+ * Surface resolver — given a surface key + an org, decide whether to render the
+ * surface from a published `station_definitions` composition or fall back to the
+ * hard-coded legacy tree (the `'legacy'` escape hatch every migrated surface
+ * keeps until data parity).
  *
- * Loads the tenant's published row for a surface so event writers can stamp the
- * customizable "where" axis (`ops_events.workflow_node_id`). Deps-injectable so
- * unit tests run DB-free.
+ * The DECISION is pure and DB-free (`decideSurfaceRender`) so it is unit-tested
+ * without a database. The LOAD is a thin injectable wrapper (`resolveSurface`)
+ * that defaults to the real `tenantQuery` but takes fakes in tests — the same
+ * `Deps`-injection contract as applyTransition / studio/definitions.
  *
- * The legacy-vs-composed render decision this module used to own was deleted
- * on 2026-08-22 with the composition renderer — every surface renders its own
- * component tree now, and a tile layout is not expressible as slots.
+ * Phase 0 ships the resolver as the foundation; the production render host that
+ * consumes a `'composed'` result is Phase 3a. Until an org publishes a real
+ * composition for a surface, every resolve returns `'legacy'`, so wiring this in
+ * is a no-op for behavior — exactly the safe-by-default cutover the plan wants.
  */
 
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -20,8 +25,37 @@ export interface ResolvedSurface {
   key: SurfaceKey;
   surface: SurfaceDefinition;
   archetype: ArchetypeId;
-  /** The org's active `station_definitions` row, when one exists (else null). */
+  /**
+   * `'legacy'` → render the original hard-coded component tree.
+   * `'composed'` → render via the SurfaceRenderer from `definition.config`.
+   */
+  render: 'legacy' | 'composed';
+  /** The active published composition, when one exists (else null). */
   definition: StationDefinitionRow | null;
+}
+
+/** True when a config explicitly opts into the hard-coded tree. */
+function isLegacyConfig(config: StationConfig | null | undefined): boolean {
+  return !config || config.slots === 'legacy';
+}
+
+/**
+ * Pure decision: given the surface's static definition and the org's active
+ * `station_definitions` row (or null), decide legacy-vs-composed. Composed only
+ * when there is an active row whose config is a real slot map (not `'legacy'`).
+ */
+export function decideSurfaceRender(
+  surface: SurfaceDefinition,
+  activeRow: StationDefinitionRow | null,
+): ResolvedSurface {
+  const composed = activeRow != null && activeRow.isActive && !isLegacyConfig(activeRow.config);
+  return {
+    key: surface.key,
+    surface,
+    archetype: surface.archetype,
+    render: composed ? 'composed' : 'legacy',
+    definition: activeRow,
+  };
 }
 
 /** Injectable collaborators (real impls by default; fakes in tests). */
@@ -85,9 +119,9 @@ const defaultDeps: ResolveSurfaceDeps = {
 };
 
 /**
- * Resolve `key` for `orgId`, carrying the org's active `station_definitions`
- * row when one is published (else `null`). The only field live code reads off
- * it is `workflowNodeId` — see `surface-workflow-node.ts`.
+ * Resolve how to render `key` for `orgId`. Loads the active composition and
+ * runs the pure decision. Returns `'legacy'` whenever nothing is published or
+ * the active config opts into the hatch — the safe default.
  */
 export async function resolveSurface(
   key: SurfaceKey,
@@ -96,5 +130,5 @@ export async function resolveSurface(
 ): Promise<ResolvedSurface> {
   const surface = getSurface(key);
   const activeRow = await deps.loadActiveDefinition(orgId, surface.pageKey, surface.modeKey);
-  return { key: surface.key, surface, archetype: surface.archetype, definition: activeRow };
+  return decideSurfaceRender(surface, activeRow);
 }

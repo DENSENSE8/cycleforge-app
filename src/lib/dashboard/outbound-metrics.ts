@@ -12,8 +12,8 @@
  * Pure + isomorphic (no React, no fetch): unit-testable in isolation.
  */
 
-import type { MetricIntent } from '@/lib/design/metric-intent';
-import type { OperationsRoiData } from '@/lib/operations/useOperationsRoi';
+import type { MetricIntent } from '@/design-system/components/monitor';
+import type { OperationsRoiData } from '@/features/operations/workspace/useOperationsRoi';
 import type { OutboundState } from '@/lib/outbound-state';
 import type { FulfillmentState } from '@/lib/unshipped-state';
 

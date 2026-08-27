@@ -77,12 +77,7 @@ async function createAuditLog(
 // dashboards key off these constants.
 
 export const AUDIT_ENTITY = {
-  // Operator work session (work_sessions) — one bench occupancy from start to end.
-  WORK_SESSION: 'work_session',
-  // Shared desk↔tablet counter cart (counter_sessions — the front-desk sale).
   COUNTER_SESSION: 'counter_session',
-  // Enrolled customer-facing kiosk tablet (device principal — kiosk_devices).
-  KIOSK_DEVICE: 'kiosk_device',
   PO: 'purchase_order',
   RECEIVING: 'receiving',
   RECEIVING_LINE: 'receiving_line',
@@ -105,6 +100,8 @@ export const AUDIT_ENTITY = {
   ORDERS_EXCEPTION: 'orders_exception',
   PACKER_LOG: 'PACKER_LOG',
   STAFF: 'staff',
+  // Enrolled customer-facing kiosk tablet (device principal — kiosk_devices).
+  KIOSK_DEVICE: 'kiosk_device',
   PHOTO: 'photo',
   PHOTO_FOLDER: 'photo_folder',
   PHOTO_IMAGE_TYPE: 'photo_image_type',
@@ -184,13 +181,6 @@ export const AUDIT_ENTITY = {
 } as const;
 
 export const AUDIT_ACTION = {
-  // Operator work session lifecycle (work_sessions). `arm` is the scan-ownership
-  // claim; park/resume bracket a suspension; end is terminal.
-  WORK_SESSION_START:  'work_session.start',
-  WORK_SESSION_ARM:    'work_session.arm',
-  WORK_SESSION_PARK:   'work_session.park',
-  WORK_SESSION_RESUME: 'work_session.resume',
-  WORK_SESSION_END:    'work_session.end',
   // Kiosk device principal (/kiosk — FOH/BOH surface split doc 06)
   KIOSK_ENROLLED: 'kiosk.enrolled',   // manager minted a pairing code for a new tablet
   KIOSK_PAIRED:   'kiosk.paired',     // a tablet exchanged its code for a device token
@@ -555,10 +545,6 @@ export const AUDIT_ACTION = {
   UNIT_PACK_PLACE: 'unit.pack_place',
   UNIT_PACK_MOVE: 'unit.pack_move',
   UNIT_PACK_CLEAR: 'unit.pack_clear',
-  /** The unit↔location spine (unit_placements / part_pulls — 00-endgame D1/D10).
-   *  Scan-created facts only; same strings as the ops_events chronology. */
-  UNIT_PLACED: 'unit.placed',
-  UNIT_PART_PULLED: 'unit.part_pulled',
   // Unshipped governing events — first time a carrier tracking number is added to
   // an order, and when its shipping label is printed/attached. Feed the order
   // timeline (EventTimeline) on the dashboard details panel.

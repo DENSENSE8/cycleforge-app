@@ -34,7 +34,6 @@ import pool from '@/lib/db';
 import { transition } from '@/lib/inventory/state-machine';
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
-import { NO_SESSION } from '@/lib/sessions/attribution';
 
 export interface MirrorInput {
   /** Source packer_logs row id (used for deterministic idempotency key). */
@@ -163,7 +162,6 @@ export async function mirrorLegacyPackToAllocations(
 
         const txResult = await transition(
           {
-            session: NO_SESSION,
             unitId: alloc.serial_unit_id,
             to: 'SHIPPED',
             eventType: 'SHIPPED',

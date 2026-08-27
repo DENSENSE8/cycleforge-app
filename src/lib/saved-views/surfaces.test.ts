@@ -7,7 +7,7 @@ import {
   PACKED_SAVED_VIEWS_KEY,
   SHIPPED_SAVED_VIEWS_KEY,
   UNSHIPPED_SAVED_VIEWS_KEY,
-} from '@/lib/outbound/unshipped-sidebar-shared';
+} from '@/components/unshipped/outbound-sidebar-shared';
 import { SAVED_VIEW_STORAGE_KEY } from '@/lib/station/table-url-params';
 import { MY_DAY_SAVED_VIEWS_KEY } from '@/lib/my-day/my-day-saved-views';
 import {

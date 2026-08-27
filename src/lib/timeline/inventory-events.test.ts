@@ -25,7 +25,7 @@ test('PUTAWAY with bin_barcode emits a bin ref + location href', () => {
   assert.equal(item.title, 'Put away');
   assert.equal(item.ref?.kind, 'bin');
   assert.equal(item.ref?.value, 'BIN-A4');
-  assert.equal(item.ref?.href, '/inventory?bin=BIN-A4');
+  assert.equal(item.ref?.href, '/inventory/location/BIN-A4');
   assert.match(item.subtitle ?? '', /Aisle A \/ Bin 4/);
   assert.equal(item.sourceEventType, 'PUTAWAY');
 });

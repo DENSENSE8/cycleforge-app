@@ -22,7 +22,6 @@
 
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
-import { isAttributed, type SessionAttribution } from '@/lib/sessions/attribution';
 import {
   SIGNAL_KINDS,
   SURFACE_ENTITY_TYPES,
@@ -57,20 +56,6 @@ export interface RecordEntitySignalInput {
   meta?: Record<string, unknown> | null;
   /** Actor stamped on the ops_events emission. */
   actorStaffId?: number | null;
-  /**
-   * WHICH WORK SESSION THIS SIGNAL WAS RAISED IN. Required, no default.
-   *
-   * THIS MODULE IS THE SECOND WRITER TO `ops_events` — it hand-rolls its own
-   * INSERT rather than calling `recordOpsEvent`, so making the field required
-   * over there does nothing for the rows produced here. Without it,
-   * `sessionContents`'s exception count (src/lib/sessions/session-rollup.ts,
-   * which reads `signal_recorded` events by `session_id`) is structurally always
-   * zero — a session that raised six exceptions would report none, and the
-   * number would look like good news.
-   *
-   * Pass `NO_SESSION` where no session is in scope yet.
-   */
-  session: SessionAttribution;
   /**
    * Caller-owned client (already inside withTenantTransaction, GUC set).
    * When present the signal + ops_event ride the caller's transaction;
@@ -168,12 +153,10 @@ async function writeSignal(
   await client.query(
     `INSERT INTO ops_events (
        organization_id, occurred_at, event_type, entity_type, entity_id,
-       actor_staff_id, client_event_id, workflow_node_id, payload,
-       session_id, session_type
+       actor_staff_id, client_event_id, workflow_node_id, payload
      ) VALUES (
        $1::uuid, COALESCE($2::timestamptz, NOW()), 'signal_recorded', $3, $4::bigint,
-       $5::int, $6, $7, $8::jsonb,
-       $9::bigint, $10
+       $5::int, $6, $7, $8::jsonb
      )
      ON CONFLICT (client_event_id) DO NOTHING`,
     [
@@ -190,10 +173,6 @@ async function writeSignal(
         reasonCode: input.reasonCode ?? null,
         nodeId: input.nodeId ?? null,
       }),
-      // Real columns, matching recordOpsEvent — the session rollup indexes
-      // (organization_id, session_id, occurred_at) and cannot see a payload key.
-      isAttributed(input.session) ? input.session.sessionId : null,
-      isAttributed(input.session) ? input.session.sessionType : null,
     ],
   );
 

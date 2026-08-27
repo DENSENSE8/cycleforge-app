@@ -303,6 +303,48 @@ test('unbox_opened sort prefers first-open column over ops MAX / triage door tim
   assert.doesNotMatch(orderByChunk, /rt\.door_received_at/);
 });
 
+test('view=testing_opened membership and age use receiving_line_testing_opens', () => {
+  const built = buildReceivingLinesListSql({
+    query: parseReceivingLinesQuery(new URLSearchParams('view=testing_opened')),
+    orgId: ORG,
+    viewerStaffId: 42,
+    universalIncoming: false,
+    applyScannedZohoExclusion: true,
+  });
+  assert.match(
+    built.list.sql,
+    /FROM receiving_line_testing_opens o/,
+    'membership must read QC opens, not testing_results or receiving_line_views',
+  );
+  assert.doesNotMatch(
+    built.list.sql,
+    /FROM receiving_line_views/,
+    'QC recents must not share Unbox receiving_line_views',
+  );
+  assert.match(
+    built.list.sql,
+    /AS testing_opened_at/,
+    'select must expose testing_opened_at for the rail age label',
+  );
+  assert.match(
+    built.list.sql,
+    /ORDER BY \(SELECT o\.opened_at FROM receiving_line_testing_opens o/,
+    'ORDER BY must be last QC-open',
+  );
+  assert.equal(built.list.params.includes(42), true);
+});
+
+test('view=testing_opened without viewer is an empty feed', () => {
+  const built = buildReceivingLinesListSql({
+    query: parseReceivingLinesQuery(new URLSearchParams('view=testing_opened')),
+    orgId: ORG,
+    viewerStaffId: NaN,
+    universalIncoming: false,
+    applyScannedZohoExclusion: true,
+  });
+  assert.match(built.list.sql, /\bFALSE\b/);
+});
+
 test('History unboxed_newest matches Unboxed sidebar first-open axis', () => {
   const built = buildReceivingLinesListSql({
     query: parseReceivingLinesQuery(

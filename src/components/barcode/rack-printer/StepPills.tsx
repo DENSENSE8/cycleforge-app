@@ -1,0 +1,78 @@
+import React, { useRef } from 'react';
+import { useHorizontalWheelScroll } from '@/hooks/useHorizontalWheelScroll';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { noPad, pad2 } from '@/lib/barcode-routing';
+import { LABEL_BUILDER_SELECTED } from '../label-builder-layout';
+import { STEPS, type Step } from './rack-printer-config';
+
+interface StepPillsProps {
+  activeStep: Step;
+  zoneLetter?: string;
+  roomName?: string;
+  aisle?: number;
+  bay?: number;
+  level?: number;
+  onPillClick: (step: Step) => void;
+}
+
+/** Horizontal zone → aisle → bay → level breadcrumb pills. */
+export function StepPills({ activeStep, zoneLetter, roomName, aisle, bay, level, onPillClick }: StepPillsProps) {
+  const values: Record<Step, string | undefined> = {
+    zone: zoneLetter,
+    aisle: aisle != null ? pad2(aisle) : undefined,
+    bay: bay != null ? pad2(bay) : undefined,
+    level: level != null ? noPad(level) : undefined,
+  };
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useHorizontalWheelScroll(scrollRef);
+
+  return (
+    <div
+      ref={scrollRef}
+      className="flex w-full min-w-0 overflow-x-scroll overflow-y-hidden overscroll-x-contain rounded-xl bg-surface-card px-2 py-1.5 ring-1 ring-border-soft/60 [-ms-overflow-style:none] [scrollbar-width:none] [-webkit-overflow-scrolling:touch] [&::-webkit-scrollbar]:hidden"
+      role="navigation"
+      aria-label="Rack location steps"
+    >
+      <div className="flex w-max max-w-none flex-none flex-nowrap items-center gap-1">
+        {STEPS.map(({ id, label }, idx) => {
+          const value = values[id];
+          const isDone = !!value;
+          const isActive = activeStep === id;
+          const isClickable = isDone || isActive;
+          const showChevron = idx < STEPS.length - 1;
+          const tip = id === 'zone' && roomName ? roomName : '';
+          const pill = (
+            <button
+              type="button"
+              onClick={() => onPillClick(id)}
+              disabled={!isClickable}
+              aria-current={isActive ? 'step' : undefined}
+              className={`ds-raw-button flex h-7 shrink-0 items-center gap-1.5 rounded-full px-2.5 text-role-caption font-semibold transition-colors ${
+                isActive
+                  ? LABEL_BUILDER_SELECTED.solid
+                  : isDone
+                    ? `${LABEL_BUILDER_SELECTED.done} cursor-pointer`
+                    : 'bg-surface-sunken text-text-faint cursor-not-allowed'
+              }`}
+            >
+              <span className="text-role-micro uppercase tracking-wider opacity-80">{label}</span>
+              <span className="font-mono text-role-micro font-semibold tabular-nums">{value ?? '—'}</span>
+            </button>
+          );
+          return (
+            <React.Fragment key={id}>
+              {tip ? (
+                <HoverTooltip label={tip} asChild>
+                  {pill}
+                </HoverTooltip>
+              ) : (
+                pill
+              )}
+              {showChevron && <span className="shrink-0 text-role-micro text-text-faint">›</span>}
+            </React.Fragment>
+          );
+        })}
+      </div>
+    </div>
+  );
+}

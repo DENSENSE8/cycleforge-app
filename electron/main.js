@@ -46,6 +46,7 @@ const {
 const { registerFileHandlers, runFilesSelftest } = require('./files');
 const { startBuildWatch, stopBuildWatch } = require('./build-watch');
 const { attachInsetCanvas, chromeFileUrl } = require('./inset-canvas');
+const { registerDeviceAccess, registerDeviceHandlers } = require('./device-access');
 
 // A logging dependency must never be able to stop the app from launching.
 let log;
@@ -79,7 +80,31 @@ const isDev =
 /** The operator's dev server (attach-only — the shell never spawns one). */
 const DEV_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
 
+/** Main dogfood Next on loopback — never :3051 (worktree), never the tunnel. */
+const MAIN_DEV_URL = 'http://127.0.0.1:3050';
+
+function isMainLocal(url) {
+  try {
+    const parsed = new URL(url);
+    const host =
+      parsed.hostname === '127.0.0.1' ||
+      parsed.hostname === 'localhost' ||
+      parsed.hostname === '[::1]';
+    return parsed.protocol === 'http:' && host && parsed.port === '3050';
+  } catch {
+    return false;
+  }
+}
+
 function getStartUrl() {
+  if (isDev) {
+    const configured = (process.env.ELECTRON_START_URL || MAIN_DEV_URL).replace(/\/+$/, '');
+    if (isMainLocal(configured)) return configured;
+    log.warn(
+      `[desktop] refusing ${configured} — main desktop is pinned to ${MAIN_DEV_URL} (tunnel is browser-only)`,
+    );
+    return MAIN_DEV_URL;
+  }
   const configured =
     process.env.ELECTRON_START_URL ||
     process.env.NEXT_PUBLIC_APP_URL ||
@@ -538,10 +563,20 @@ function createWindow() {
 
   // Refuse permission prompts the station has no use for. Serial/HID stay
   // ALLOWED — that is the WebUSB / Web Serial thermal print path.
+  //
+  // Allowing the permission is only half of that path. This handler answers
+  // "may this origin use USB?"; it never picks a device, and a session with no
+  // `select-usb-device` listener cancels the request outright — measured on
+  // Electron 41: `requestDevice()` rejected with NotFoundError while eight
+  // devices were attached. `registerDeviceAccess` below supplies the chooser
+  // and the persistence that make pairing actually work; neither half is
+  // sufficient alone.
   mainWindow.webContents.session.setPermissionRequestHandler((_wc, permission, callback) => {
     const allowed = new Set(['clipboard-read', 'clipboard-sanitized-write', 'media', 'serial', 'hid', 'usb']);
     callback(allowed.has(permission));
   });
+
+  registerDeviceAccess(mainWindow.webContents.session, () => mainWindow);
 
   mainWindow.webContents.on('did-fail-load', (_e, code, desc, url, isMainFrame) => {
     // Sub-resource failures and in-flight navigations are not an offline app.
@@ -627,6 +662,7 @@ if (!app.requestSingleInstanceLock()) {
       registerPrintHandlers();
       registerVendorViewHandlers(ipcMain, () => mainWindow);
       registerFileHandlers(ipcMain, () => mainWindow, log);
+      registerDeviceHandlers(ipcMain, () => getAppWebContents());
       createWindow();
       initAutoUpdater();
 

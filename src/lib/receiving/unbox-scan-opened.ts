@@ -9,7 +9,6 @@ export {
 } from '@/lib/receiving/unbox-scan-opened-sql';
 
 import { UNBOX_SCAN_OPENED_EVENT } from '@/lib/receiving/unbox-scan-opened-sql';
-import type { SessionAttribution } from '@/lib/sessions/attribution';
 
 /**
  * Record that this carton entered the operator's Unbox work queue via a scan.
@@ -38,14 +37,6 @@ export async function recordUnboxScanOpened(
   receivingId: number,
   actorStaffId: number | null,
   scanId: number | null,
-  /**
-   * The unbox session this open happened inside. Required and positioned
-   * BEFORE the optional `trackingNumber` — TypeScript forbids a required
-   * parameter after an optional one, and making it optional to keep the old
-   * order would be the silent opt-out this threading exists to remove. The two
-   * are an object and a string, so a call site that swaps them fails to compile.
-   */
-  session: SessionAttribution,
   trackingNumber?: string,
 ): Promise<{ firstOpen: boolean }> {
   let firstOpen = false;
@@ -78,7 +69,6 @@ export async function recordUnboxScanOpened(
       organizationId,
       entityType: 'receiving',
       entityId: receivingId,
-      session,
       eventType: UNBOX_SCAN_OPENED_EVENT,
       actorStaffId,
       clientEventId,

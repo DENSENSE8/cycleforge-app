@@ -1,0 +1,384 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { Loader2 } from '@/components/Icons';
+import { PhotoGallery } from '@/components/shipped/PhotoGallery';
+import { SerialJourneySection } from '@/components/serial/SerialJourneySection';
+import { unitStatusBadgeClass } from '@/lib/unit-status';
+import type {
+    SerialUnitDetailPayload,
+    TimelineEventRow,
+    ConditionHistoryRow,
+    AllocationRow,
+    TsnLinkRow,
+    UnitPhotoRow,
+} from './types';
+import { Panel } from '@/design-system/primitives';
+
+
+interface ByUnitViewProps {
+    /** Either a numeric serial_units.id or a serial_number string. */
+    ref: string;
+}
+
+export function ByUnitView({ ref }: ByUnitViewProps) {
+    const [payload, setPayload] = useState<SerialUnitDetailPayload | null>(null);
+    const [error, setError] = useState<string | null>(null);
+    const [loading, setLoading] = useState(true);
+    // Bumped after a photo delete so the detail refetches the server truth.
+    const [reloadKey, setReloadKey] = useState(0);
+
+    useEffect(() => {
+        let cancelled = false;
+        setLoading(true);
+        setError(null);
+
+        const run = async () => {
+            try {
+                const res = await fetch(
+                    `/api/serial-units/${encodeURIComponent(ref)}?include=full`,
+                    { credentials: 'same-origin' },
+                );
+                if (!res.ok) {
+                    let message = `HTTP ${res.status}`;
+                    try {
+                        const body = await res.json();
+                        if (body?.error) message = body.error;
+                    } catch {
+                        // ignore JSON parse failure
+                    }
+                    throw new Error(message);
+                }
+                const data: SerialUnitDetailPayload = await res.json();
+                if (!cancelled) setPayload(data);
+            } catch (err: unknown) {
+                const message = err instanceof Error ? err.message : 'Failed to load unit';
+                if (!cancelled) setError(message);
+            } finally {
+                if (!cancelled) setLoading(false);
+            }
+        };
+
+        run();
+        return () => {
+            cancelled = true;
+        };
+    }, [ref, reloadKey]);
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center py-16 text-text-faint">
+                <Loader2 className="h-5 w-5 animate-spin" />
+                <span className="ml-2 text-sm">Loading unit {ref}…</span>
+            </div>
+        );
+    }
+
+    if (error || !payload?.success) {
+        return (
+            <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6">
+                <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                    {error || `Unit "${ref}" not found.`}
+                </div>
+            </div>
+        );
+    }
+
+    const { serial_unit: unit } = payload;
+    const events: TimelineEventRow[] = payload.events_full ?? [];
+    const conditions: ConditionHistoryRow[] = payload.conditions ?? [];
+    const allocations: AllocationRow[] = payload.allocations ?? [];
+    const tsnLinks: TsnLinkRow[] = payload.tsn_links ?? [];
+    const photos: UnitPhotoRow[] = payload.photos ?? [];
+    // Cross-reference photos to their capture event by payload.photo_ids so the
+    // shots render inline on that timeline row (a deleted photo drops too).
+    const photosById = new Map<number, UnitPhotoRow>(photos.map((p) => [p.id, p]));
+    const eventPhotos = (ev: TimelineEventRow): UnitPhotoRow[] => {
+        const raw = ev.payload?.photo_ids;
+        if (!Array.isArray(raw)) return [];
+        return raw
+            .map((x) => photosById.get(Number(x)))
+            .filter((p): p is UnitPhotoRow => !!p);
+    };
+
+    return (
+        <div className="mx-auto max-w-5xl space-y-8 px-4 py-6 sm:px-6">
+            <header className="space-y-2">
+                <div className="flex flex-wrap items-baseline gap-4">
+                    <h1 className="font-mono text-2xl font-semibold text-text-default">
+                        {unit.serial_number}
+                    </h1>
+                    <StatusBadge status={unit.current_status} />
+                    {unit.condition_grade ? (
+                        <span className="rounded bg-surface-sunken px-2 py-0.5 text-xs text-text-muted">
+                            {unit.condition_grade}
+                        </span>
+                    ) : null}
+                </div>
+                {unit.product_title ? (
+                    <p className="text-sm text-text-muted">{unit.product_title}</p>
+                ) : null}
+                <p className="text-xs text-text-soft">
+                    serial_units.id = <code>{unit.id}</code> · normalized = <code>{unit.normalized_serial}</code>
+                </p>
+            </header>
+
+            {/* Current state */}
+            <Panel radius="lg" padding="none">
+                <header className="border-b border-border-hairline px-6 py-4">
+                    <h2 className="text-lg font-medium text-text-default">Current state</h2>
+                </header>
+                <dl className="grid grid-cols-2 gap-x-6 gap-y-3 px-6 py-4 text-sm md:grid-cols-3">
+                    <Field label="SKU">
+                        {unit.sku ? (
+                            <Link
+                                href={`/inventory?sku=${encodeURIComponent(unit.sku)}`}
+                                className="text-blue-600 hover:underline"
+                            >
+                                {unit.sku}
+                            </Link>
+                        ) : (
+                            '—'
+                        )}
+                    </Field>
+                    <Field label="Location">{unit.current_location ?? '—'}</Field>
+                    <Field label="Origin">{unit.origin_source ?? '—'}</Field>
+                    <Field label="Received at">
+                        {unit.received_at ? new Date(unit.received_at).toLocaleString() : '—'}
+                    </Field>
+                    <Field label="Receiving line">{unit.origin_receiving_line_id ?? '—'}</Field>
+                    <Field label="Origin TSN">{unit.origin_tsn_id ?? '—'}</Field>
+                    <Field label="Shipment id">{unit.shipment_id ?? '—'}</Field>
+                    <Field label="Tracking">{unit.shipping_tracking_number ?? '—'}</Field>
+                    <Field label="Updated at">{new Date(unit.updated_at).toLocaleString()}</Field>
+                </dl>
+                {unit.notes ? (
+                    <div className="border-t border-border-hairline px-6 py-3 text-sm text-text-muted">
+                        <span className="text-xs uppercase tracking-wide text-text-soft">Notes</span>
+                        <p className="mt-1 whitespace-pre-wrap">{unit.notes}</p>
+                    </div>
+                ) : null}
+            </Panel>
+
+            {/* Item Journey — shared cross-spine trail (search deep-link target). */}
+            {unit.serial_number ? (
+                <SerialJourneySection
+                    serialNumber={unit.serial_number}
+                    title="Item Journey"
+                    density="comfortable"
+                />
+            ) : null}
+
+            {/* Raw inventory_events ledger (debug / full payload) */}
+            <Panel radius="lg" padding="none">
+                <header className="flex items-center justify-between border-b border-border-hairline px-6 py-4">
+                    <h2 className="text-lg font-medium text-text-default">inventory_events ledger</h2>
+                    <span className="text-xs text-text-soft">{events.length} events</span>
+                </header>
+                {events.length === 0 ? (
+                    <p className="px-6 py-4 text-sm text-text-muted">
+                        No events recorded yet. Events land when a flagged path writes for this unit.
+                    </p>
+                ) : (
+                    <ol className="divide-y divide-border-hairline">
+                        {events.map((e) => (
+                            <li key={e.id} className="px-6 py-3">
+                                <div className="flex flex-wrap items-baseline gap-3">
+                                    <code className="rounded bg-surface-sunken px-1.5 py-0.5 text-xs font-medium text-text-muted">
+                                        {e.event_type}
+                                    </code>
+                                    <span className="text-xs text-text-soft">
+                                        {new Date(e.occurred_at).toLocaleString()}
+                                    </span>
+                                    {e.station ? (
+                                        <span className="text-xs text-text-muted">{e.station}</span>
+                                    ) : null}
+                                    {e.prev_status || e.next_status ? (
+                                        <span className="text-xs">
+                                            <StatusBadge status={e.prev_status} /> →{' '}
+                                            <StatusBadge status={e.next_status} />
+                                        </span>
+                                    ) : null}
+                                    {e.bin_name ? (
+                                        <span className="text-xs text-text-muted">bin {e.bin_name}</span>
+                                    ) : null}
+                                    <span className="ml-auto text-xs text-text-soft">
+                                        {e.actor_name ??
+                                            (e.actor_staff_id ? `#${e.actor_staff_id}` : 'system')}
+                                    </span>
+                                </div>
+                                {e.notes ? (
+                                    <p className="mt-1 text-sm text-text-muted">{e.notes}</p>
+                                ) : null}
+                                {eventPhotos(e).length > 0 ? (
+                                    <div className="mt-2">
+                                        <PhotoGallery
+                                            photos={eventPhotos(e).map((p) => ({ id: p.id, url: p.url }))}
+                                            launcherLayout="thumbnails"
+                                            onPhotoDeleted={() => setReloadKey((k) => k + 1)}
+                                        />
+                                    </div>
+                                ) : null}
+                                {e.payload && Object.keys(e.payload).length > 0 ? (
+                                    <pre className="mt-2 overflow-x-auto rounded bg-surface-canvas px-3 py-2 text-xs text-text-muted">
+                                        {JSON.stringify(e.payload, null, 2)}
+                                    </pre>
+                                ) : null}
+                                {e.client_event_id ? (
+                                    <p className="mt-1 text-role-micro text-text-faint">
+                                        client_event_id: <code>{e.client_event_id}</code>
+                                        {e.stock_ledger_id ? ` · stock_ledger_id: ${e.stock_ledger_id}` : ''}
+                                    </p>
+                                ) : null}
+                            </li>
+                        ))}
+                    </ol>
+                )}
+            </Panel>
+
+            {/* Condition history */}
+            {conditions.length > 0 ? (
+                <Panel radius="lg" padding="none">
+                    <header className="border-b border-border-hairline px-6 py-4">
+                        <h2 className="text-lg font-medium text-text-default">Condition history</h2>
+                    </header>
+                    <ol className="divide-y divide-border-hairline text-sm">
+                        {conditions.map((c) => (
+                            <li key={c.id} className="flex flex-wrap items-baseline gap-3 px-6 py-3">
+                                <span className="text-xs text-text-soft">
+                                    {new Date(c.assessed_at).toLocaleString()}
+                                </span>
+                                <span className="text-xs text-text-muted">
+                                    <code className="rounded bg-surface-sunken px-1.5 py-0.5">
+                                        {c.prev_grade ?? '—'}
+                                    </code>{' '}
+                                    →{' '}
+                                    <code className="rounded bg-surface-sunken px-1.5 py-0.5">{c.new_grade}</code>
+                                </span>
+                                <span className="ml-auto text-xs text-text-soft">
+                                    {c.assessed_by_name ??
+                                        (c.assessed_by_staff_id ? `#${c.assessed_by_staff_id}` : 'system')}
+                                </span>
+                                {c.cosmetic_notes || c.functional_notes ? (
+                                    <div className="basis-full text-sm text-text-muted">
+                                        {c.cosmetic_notes ? <p>cosmetic: {c.cosmetic_notes}</p> : null}
+                                        {c.functional_notes ? <p>functional: {c.functional_notes}</p> : null}
+                                    </div>
+                                ) : null}
+                            </li>
+                        ))}
+                    </ol>
+                </Panel>
+            ) : null}
+
+            {/* Allocations */}
+            {allocations.length > 0 ? (
+                <Panel radius="lg" padding="none">
+                    <header className="border-b border-border-hairline px-6 py-4">
+                        <h2 className="text-lg font-medium text-text-default">Order allocations</h2>
+                    </header>
+                    <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-border-hairline text-sm">
+                            <thead className="bg-surface-canvas text-xs uppercase tracking-wide text-text-soft">
+                                <tr>
+                                    <th className="px-6 py-2 text-left font-medium">Order</th>
+                                    <th className="px-6 py-2 text-left font-medium">Allocated</th>
+                                    <th className="px-6 py-2 text-left font-medium">State</th>
+                                    <th className="px-6 py-2 text-left font-medium">Released</th>
+                                    <th className="px-6 py-2 text-left font-medium">Reason</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border-hairline">
+                                {allocations.map((a) => (
+                                    <tr key={a.id}>
+                                        <td className="px-6 py-2 font-mono text-xs">#{a.order_id}</td>
+                                        <td className="px-6 py-2 text-xs text-text-soft">
+                                            {new Date(a.allocated_at).toLocaleString()}
+                                        </td>
+                                        <td className="px-6 py-2">
+                                            <StatusBadge status={a.state} />
+                                        </td>
+                                        <td className="px-6 py-2 text-xs text-text-soft">
+                                            {a.released_at
+                                                ? new Date(a.released_at).toLocaleString()
+                                                : '—'}
+                                        </td>
+                                        <td className="px-6 py-2 text-xs text-text-muted">
+                                            {a.released_reason ?? '—'}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </Panel>
+            ) : null}
+
+            {/* TSN cross-refs */}
+            {tsnLinks.length > 0 ? (
+                <Panel radius="lg" padding="none">
+                    <header className="border-b border-border-hairline px-6 py-4">
+                        <h2 className="text-lg font-medium text-text-default">tech_serial_numbers links</h2>
+                        <p className="mt-1 text-xs text-text-soft">
+                            Legacy audit table. Helpful when joining v1 tech-station logs to v2 lifecycle.
+                        </p>
+                    </header>
+                    <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-border-hairline text-sm">
+                            <thead className="bg-surface-canvas text-xs uppercase tracking-wide text-text-soft">
+                                <tr>
+                                    <th className="px-6 py-2 text-left font-medium">TSN id</th>
+                                    <th className="px-6 py-2 text-left font-medium">When</th>
+                                    <th className="px-6 py-2 text-left font-medium">Station</th>
+                                    <th className="px-6 py-2 text-left font-medium">Type</th>
+                                    <th className="px-6 py-2 text-left font-medium">Shipment</th>
+                                    <th className="px-6 py-2 text-left font-medium">Tested by</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border-hairline">
+                                {tsnLinks.map((t) => (
+                                    <tr key={t.id}>
+                                        <td className="px-6 py-2 font-mono text-xs">{t.id}</td>
+                                        <td className="px-6 py-2 text-xs text-text-soft">
+                                            {new Date(t.created_at).toLocaleString()}
+                                        </td>
+                                        <td className="px-6 py-2 text-xs">{t.station_source ?? '—'}</td>
+                                        <td className="px-6 py-2 text-xs">{t.serial_type}</td>
+                                        <td className="px-6 py-2 text-xs">{t.shipment_id ?? '—'}</td>
+                                        <td className="px-6 py-2 text-xs">{t.tested_by_name ?? '—'}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </Panel>
+            ) : null}
+        </div>
+    );
+}
+
+interface FieldProps {
+    label: string;
+    children: React.ReactNode;
+}
+
+function Field({ label, children }: FieldProps) {
+    return (
+        <div>
+            <dt className="text-xs uppercase tracking-wide text-text-soft">{label}</dt>
+            <dd className="mt-0.5 text-sm text-text-default">{children}</dd>
+        </div>
+    );
+}
+
+function StatusBadge({ status }: { status: string | null }) {
+    if (!status) return <span className="text-xs text-text-faint">—</span>;
+    return (
+        <span
+            className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${unitStatusBadgeClass(status)}`}
+        >
+            {status}
+        </span>
+    );
+}

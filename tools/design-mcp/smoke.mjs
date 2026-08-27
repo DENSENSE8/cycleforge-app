@@ -8,10 +8,22 @@
  * Run: node tools/design-mcp/smoke.mjs
  */
 import { spawn } from 'node:child_process'
+import { rmSync, symlinkSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
+const REPO = path.resolve(HERE, '..', '..')
+
+// A link that lives inside the repo and points out of it. `path.resolve` calls
+// this in-repo, so containment that never realpaths reads /etc/passwd happily.
+const LINK_REL = 'src/shell/__ds_smoke_link.tsx'
+const LINK_ABS = path.join(REPO, LINK_REL)
+try { rmSync(LINK_ABS) } catch {}
+symlinkSync('/etc/passwd', LINK_ABS)
+const cleanup = () => { try { rmSync(LINK_ABS) } catch {} }
+process.on('exit', cleanup)
+
 const child = spawn(path.join(HERE, 'run-mcp.sh'), [], { stdio: ['pipe', 'pipe', 'pipe'] })
 let out = ''
 child.stdout.on('data', (d) => (out += d))
@@ -26,6 +38,7 @@ send({ jsonrpc: '2.0', id: 4, method: 'tools/call', params: { name: 'ds_tokens',
 send({ jsonrpc: '2.0', id: 5, method: 'tools/call', params: { name: 'ds_critique', arguments: { file_path: 'src/shell/AssistantFeed.tsx' } } })
 send({ jsonrpc: '2.0', id: 6, method: 'tools/call', params: { name: 'ds_critique', arguments: { file_path: '../Garisek-OS/package.json' } } })
 send({ jsonrpc: '2.0', id: 7, method: 'tools/call', params: { name: 'ds_critique', arguments: { file_path: 'src/design-system/primitives/Button.tsx' } } })
+send({ jsonrpc: '2.0', id: 8, method: 'tools/call', params: { name: 'ds_critique', arguments: { file_path: LINK_REL } } })
 
 await new Promise((r) => setTimeout(r, 6000))
 child.kill()
@@ -66,6 +79,8 @@ check('ds_critique finds a real fork in AssistantFeed',
 
 check('ds_critique refuses to read outside the repo', byId(6)?.result?.isError === true,
   byId(6)?.result?.content?.[0]?.text?.slice(0, 55))
+check('ds_critique refuses a symlink that leaves the repo', byId(8)?.result?.isError === true,
+  byId(8)?.result?.content?.[0]?.text?.slice(0, 55))
 
 const prim = body(7)
 check('fork detection is OFF where primitives are defined',

@@ -9,7 +9,7 @@ import {
   shouldUseUnmatchedItemsSurface,
   isSalesOrderDerivedCarton,
 } from './intake-items-routing';
-import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 
 function row(partial: Partial<ReceivingLineRow>): ReceivingLineRow {
   return {

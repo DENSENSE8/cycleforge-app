@@ -41,12 +41,15 @@
 import { Server } from '@modelcontextprotocol/sdk/server/index.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js'
-import { readFileSync, readdirSync, existsSync } from 'node:fs'
+import { readFileSync, readdirSync, existsSync, realpathSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const REPO = path.resolve(HERE, '..', '..')
+// Compared against, never REPO itself: a checkout reached through a symlinked
+// parent would otherwise fail its own containment check.
+const REPO_REAL = realpathSync(REPO)
 
 /** Where primitives legitimately live. Order is reporting order, not preference. */
 const PRIMITIVE_HOMES = [
@@ -291,15 +294,52 @@ function score(entry, q, override) {
 
 // ── path safety ──────────────────────────────────────────────────────────────
 
+/**
+ * `realpathSync` for a path that may not exist yet: resolve the longest
+ * existing prefix and re-attach the rest. A link one directory up is the same
+ * escape as a link on the leaf, so the walk cannot stop at the first miss.
+ */
+function realOf(abs) {
+  let head = abs
+  const tail = []
+  for (;;) {
+    try {
+      return path.join(realpathSync(head), ...tail)
+    } catch (e) {
+      if (e?.code !== 'ENOENT') throw e
+      const parent = path.dirname(head)
+      if (parent === head) return abs
+      tail.unshift(path.basename(head))
+      head = parent
+    }
+  }
+}
+
+/**
+ * Resolve a caller-supplied path INSIDE the repo, or throw.
+ *
+ * The path arrives from a model, so it is untrusted input: `../../.ssh/id_rsa`
+ * is a perfectly plausible hallucination. Two things must hold before the read
+ * is safe, and `path.resolve` only delivers the first:
+ *
+ *   1. traversal is collapsed — `path.resolve` does this, which is why a `..`
+ *      denylist over the raw string is both weaker and unnecessary;
+ *   2. no symlink leaves the repo — `path.resolve` does NOT do this. It is
+ *      string arithmetic and never touches the filesystem, so a link sitting
+ *      inside the tree (`tools/x/link -> /etc/passwd`) satisfies (1) and is
+ *      read anyway. That was a real hole here, not a hypothetical one.
+ *
+ * So containment is decided on the REAL path of both ends.
+ */
 function resolveInRepo(input) {
   const raw = String(input ?? '').trim()
   if (!raw) throw new Error('file_path is required')
-  const abs = path.resolve(REPO, raw)
-  const rel = path.relative(REPO, abs)
-  // Checked after resolve so traversal is already collapsed; a `..` denylist
-  // over the raw string misses symlinks and encoded forms.
-  if (rel.startsWith('..') || path.isAbsolute(rel)) throw new Error(`refusing to read outside the repo: ${raw}`)
-  return { abs, rel }
+  const real = realOf(path.resolve(REPO, raw))
+  const rel = path.relative(REPO_REAL, real)
+  if (rel.startsWith('..') || path.isAbsolute(rel)) {
+    throw new Error(`refusing to read outside the repo: ${raw}`)
+  }
+  return { abs: real, rel }
 }
 
 const FORK_SIGNALS = [

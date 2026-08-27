@@ -1,4 +1,5 @@
 import { CLIENT_CAPTURED_AT_FIELD } from './capture-provenance';
+import { notifyClaimPhotosArchiving } from './claim-archive-feedback';
 import type { PhotoEntityType } from './types';
 
 export interface ClientUploadInput {
@@ -35,6 +36,8 @@ export interface ClientUploadResult {
   id: number;
   url: string;
   thumbUrl: string;
+  /** Present when the carton already has a filed Zendesk claim. */
+  claimTicketId?: number | null;
 }
 
 /** Browser multipart upload to the unified photos endpoint. */
@@ -61,6 +64,7 @@ export async function uploadPhotoClient(input: ClientUploadInput): Promise<Clien
   // Prefer `details` — for a 500 the route returns { error: 'Internal server
   // error', details: '<real cause>' }, so the operator sees the actual reason.
   if (!res.ok) throw new Error(data?.details || data?.error || `Upload failed (${res.status})`);
+  notifyClaimPhotosArchiving(data.claimTicketId);
   return data;
 }
 

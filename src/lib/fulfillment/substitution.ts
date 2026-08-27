@@ -33,7 +33,6 @@ import type { PoolClient } from 'pg';
 import { transition as defaultTransition } from '@/lib/inventory/state-machine';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
-import { NO_SESSION } from '@/lib/sessions/attribution';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -219,7 +218,6 @@ export async function runSubstituteOrderUnit(
   //    allocation RELEASED. Mirrors the short-pick release in picking/sessions.
   const releaseResult = await deps.transition(
     {
-      session: NO_SESSION,
       unitId: origAlloc.serial_unit_id,
       to: 'STOCKED',
       eventType: 'NOTE',
@@ -255,7 +253,6 @@ export async function runSubstituteOrderUnit(
   //    pick/pack flow treats it as any other allocation.
   const allocResult = await deps.transition(
     {
-      session: NO_SESSION,
       unitId: input.substituteUnitId,
       to: 'ALLOCATED',
       eventType: 'ALLOCATED',
@@ -421,7 +418,6 @@ export async function runDecideAmendment(
     if (amend.substitute_unit_id != null) {
       const rel = await deps.transition(
         {
-          session: NO_SESSION,
           unitId: amend.substitute_unit_id,
           to: 'STOCKED',
           eventType: 'NOTE',
@@ -452,7 +448,6 @@ export async function runDecideAmendment(
     if (amend.original_unit_id != null) {
       const realloc = await deps.transition(
         {
-          session: NO_SESSION,
           unitId: amend.original_unit_id,
           to: 'ALLOCATED',
           eventType: 'ALLOCATED',

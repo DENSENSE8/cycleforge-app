@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import type { LibraryPhoto } from '@/lib/photos/photo-library-types';
+import type { LibraryPhoto } from '@/components/photos/photo-library-types';
 import { groupPhotosByCaptureDay } from '@/lib/photos/capture-day-groups';
 
 /** Minimal LibraryPhoto — only `id` + `createdAt` matter to the grouper. */

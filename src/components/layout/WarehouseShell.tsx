@@ -1,0 +1,134 @@
+'use client';
+
+/**
+ * The warehouse client — every provider, sync and host that makes this app an
+ * operator workstation, in ONE lazily-loadable boundary.
+ *
+ * ## Why it is a component and not inline in the root layout
+ *
+ * It used to be inline. The root layout then *statically imported* the whole
+ * stack — auth, realtime, the activity inbox, staff colours, the assistant dock,
+ * the responsive layout and its nav spine — which put all of it in the client
+ * bundle of every route the layout renders, including the signed-out `/signin`
+ * card that references none of it. Rendering the public branch conditionally did
+ * not help: a static import is in the module graph whether or not the branch
+ * runs, so the public route still downloaded and parsed the operator client
+ * (measured: 857KB of script, 76 requests, ~700ms of script evaluation on the
+ * mobile profile it is scored at).
+ *
+ * Behind `next/dynamic` the stack is its own chunk, requested only by the branch
+ * that renders it. Public chrome asks for none of it.
+ *
+ * It still server-renders — this is a code-split, NOT `ssr: false`. Turning SSR
+ * off here would blank the app's first paint, which is the exact regression the
+ * pre-hydration gate in `ResponsiveLayout` was deleted for.
+ */
+
+import type { ReactNode } from 'react';
+import type { DehydratedState } from '@tanstack/react-query';
+import dynamic from 'next/dynamic';
+import Providers from '@/components/Providers';
+
+/**
+ * The two route frames, each in its own chunk.
+ *
+ * `mobileTree` is decided on the SERVER from the request path, so the pick is
+ * deterministic — mobile is a routing decision in this app, not a width one, so
+ * there is no device detection and no desktop→mobile flash. Both server-render;
+ * neither is `ssr: false`.
+ *
+ * Note this split did not measurably shrink the phone's payload — see the
+ * ruling in `MobileRouteShell`.
+ */
+const ResponsiveLayout = dynamic(() =>
+  import('@/components/layout/ResponsiveLayout').then((m) => m.ResponsiveLayout),
+);
+const MobileRouteShell = dynamic(() =>
+  import('@/components/layout/MobileRouteShell').then((m) => m.MobileRouteShell),
+);
+import { HeaderProvider } from '@/contexts/HeaderContext';
+import { FbaWorkspaceProvider } from '@/contexts/FbaWorkspaceContext';
+import { StudioWorkspaceProvider } from '@/components/studio/StudioWorkspaceContext';
+import { AuthProvider, type AuthSessionUser } from '@/contexts/AuthContext';
+import { ActivityInboxProvider } from '@/contexts/ActivityInboxContext';
+import { StaffColorsProvider } from '@/contexts/StaffColorsProvider';
+import { StaffSwitcherProvider } from '@/contexts/StaffSwitcherContext';
+import { SwitchStaffSheet } from '@/components/auth/SwitchStaffSheet';
+import { ScanHotkeySync } from '@/components/scan/ScanHotkeySync';
+import { ThemeSync } from '@/components/theme/ThemeSync';
+import { TimeFormatSync } from '@/components/time-format/TimeFormatSync';
+import { QuickAccessSync } from '@/components/quick-access/QuickAccessSync';
+import { AuthenticatedAblyProvider } from '@/components/providers/AuthenticatedAblyProvider';
+import { AssistantProvider } from '@/components/assistant/AssistantProvider';
+import { InstallPrompt } from '@/components/station/InstallPrompt';
+import { AppearanceApplier } from '@/components/settings/AppearanceApplier';
+import { ReceivingZohoSyncToaster } from '@/components/receiving/ReceivingZohoSyncToaster';
+import { UserIssueResolvedToaster } from '@/components/providers/UserIssueResolvedToaster';
+import { PostHogProvider } from '@/components/analytics/PostHogProvider';
+import { ShellQuerySeed } from '@/components/providers/ShellQuerySeed';
+
+export function WarehouseShell({
+  initialUser,
+  kioskHost,
+  mobileTree,
+  shellSeed,
+  children,
+}: {
+  initialUser: AuthSessionUser | null;
+  kioskHost: boolean;
+  mobileTree: boolean;
+  shellSeed: DehydratedState | null;
+  children: ReactNode;
+}) {
+  return (
+    <>
+      <div id="app-root" className="fixed inset-0 flex min-h-0 flex-col overflow-hidden">
+        <PostHogProvider>
+          <Providers>
+            <AuthProvider initial={initialUser} kioskHost={kioskHost}>
+              <AuthenticatedAblyProvider>
+                <ActivityInboxProvider>
+                  <StaffColorsProvider>
+                    <StaffSwitcherProvider>
+                      <HeaderProvider>
+                        <FbaWorkspaceProvider>
+                          <StudioWorkspaceProvider>
+                            <AssistantProvider>
+                              {/* Station paint seed. It wraps the SHELL, not the
+                                  page, because the route's rail is a sibling of
+                                  `children` and renders first — see
+                                  `maybeSeedUnboxShell`. Null on every other
+                                  route, where this renders nothing. */}
+                              <ShellQuerySeed state={shellSeed}>
+                                {mobileTree ? (
+                                  <MobileRouteShell>{children}</MobileRouteShell>
+                                ) : (
+                                  <ResponsiveLayout kioskHost={kioskHost}>
+                                    {children}
+                                  </ResponsiveLayout>
+                                )}
+                              </ShellQuerySeed>
+                            </AssistantProvider>
+                          </StudioWorkspaceProvider>
+                        </FbaWorkspaceProvider>
+                      </HeaderProvider>
+                      <ReceivingZohoSyncToaster />
+                      <UserIssueResolvedToaster />
+                      <SwitchStaffSheet />
+                      <ScanHotkeySync />
+                      <ThemeSync />
+                      <TimeFormatSync />
+                      <QuickAccessSync />
+                    </StaffSwitcherProvider>
+                  </StaffColorsProvider>
+                </ActivityInboxProvider>
+              </AuthenticatedAblyProvider>
+            </AuthProvider>
+          </Providers>
+        </PostHogProvider>
+      </div>
+      <InstallPrompt />
+      <AppearanceApplier />
+    </>
+  );
+}

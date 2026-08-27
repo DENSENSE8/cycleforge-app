@@ -1,12 +1,9 @@
 /**
  * Desktop host seam — the ONLY module in `src/` that names the Electron bridge.
  *
- * THE DESKTOP IS THE PRODUCT (operator ruling 2026-08-23, LAWS.md T30 — the
- * earlier browser-first framing is superseded). The desktop app (`electron/`)
- * carries the native capabilities N1–N6, N6 being the file workspaces that
- * make it a real desktop application; a plain browser remains a degraded
- * reader (printed GS1 resolvers still open anywhere), which is why every
- * wrapper here stays null-safe rather than assuming the bridge.
+ * Cycle Forge is browser-first (`docs/todo/saas-commercialization-plan.md` §0).
+ * The desktop shell (`electron/`) is an OPTIONAL station-PC host for the SAME
+ * hosted app — N1–N5 in `docs/todo/electron-desktop-shell-PLAN.md`.
  *
  * Feature code must never read `window.cycleForgeDesktop` directly: one module
  * per concern, so the browser fallback can never drift per call site and a
@@ -80,101 +77,6 @@ interface DesktopBridge {
   pingVendorView?: () => void;
   isVendorViewOpen: () => Promise<{ open: boolean; partition: string | null }>;
   onVendorViewHidden: (listener: () => void) => () => void;
-  /**
-   * Mirror the operator's keybindings to the SHELL, so a chord fires while the
-   * window does not have focus. Optional: an older shell build has no such
-   * channel, and a renderer that assumed it would throw on every start-up.
-   */
-  setKeybindings?: (
-    list: readonly { id: string; accelerator: string }[],
-  ) => Promise<{ success: boolean; error?: string }> | void;
-  /**
-   * N6 — native file workspaces. Optional for the same reason as
-   * `setKeybindings`: an older shell build has no such channel.
-   */
-  files?: {
-    openFolder: () => Promise<DesktopFilesOpenResult>;
-    roots: () => Promise<{ ok: boolean; roots?: string[]; error?: string }>;
-    scan: (dir: string) => Promise<DesktopFilesScanResult>;
-    read: (path: string) => Promise<{ ok: boolean; base64?: string; size?: number; error?: string }>;
-    write: (path: string, base64: string) => Promise<DesktopFilesResult>;
-    mkdir: (path: string) => Promise<DesktopFilesResult>;
-    move: (from: string, to: string) => Promise<DesktopFilesResult>;
-    trash: (path: string) => Promise<DesktopFilesResult>;
-  };
-}
-
-/* ── N6 · native file workspaces ─────────────────────────────────────────── */
-
-export interface DesktopFileEntry {
-  name: string;
-  path: string;
-  kind: 'file' | 'dir';
-  size: number;
-  mtimeMs: number;
-}
-
-export interface DesktopFilesResult {
-  ok: boolean;
-  error?: string;
-}
-
-export interface DesktopFilesScanResult extends DesktopFilesResult {
-  entries?: DesktopFileEntry[];
-}
-
-export interface DesktopFilesOpenResult extends DesktopFilesResult {
-  /** `null` when the operator cancelled the picker. */
-  root?: string | null;
-  entries?: DesktopFileEntry[];
-}
-
-/** True when this build of the shell carries the N6 file layer. */
-export function desktopFilesAvailable(): boolean {
-  return bridge()?.files != null;
-}
-
-const NO_DESKTOP: DesktopFilesResult = {
-  ok: false,
-  error: 'Native files need the Cycle Forge desktop app.',
-};
-
-/** OS folder picker → workspace root + first listing. `root: null` = cancelled. */
-export function desktopOpenFolder(): Promise<DesktopFilesOpenResult> {
-  const files = bridge()?.files;
-  return files ? files.openFolder() : Promise.resolve({ ...NO_DESKTOP });
-}
-
-export function desktopScanDir(dir: string): Promise<DesktopFilesScanResult> {
-  const files = bridge()?.files;
-  return files ? files.scan(dir) : Promise.resolve({ ...NO_DESKTOP });
-}
-
-export function desktopReadFile(
-  path: string,
-): Promise<{ ok: boolean; base64?: string; size?: number; error?: string }> {
-  const files = bridge()?.files;
-  return files ? files.read(path) : Promise.resolve({ ...NO_DESKTOP });
-}
-
-export function desktopWriteFile(path: string, base64: string): Promise<DesktopFilesResult> {
-  const files = bridge()?.files;
-  return files ? files.write(path, base64) : Promise.resolve({ ...NO_DESKTOP });
-}
-
-export function desktopMkdir(path: string): Promise<DesktopFilesResult> {
-  const files = bridge()?.files;
-  return files ? files.mkdir(path) : Promise.resolve({ ...NO_DESKTOP });
-}
-
-export function desktopMoveFile(from: string, to: string): Promise<DesktopFilesResult> {
-  const files = bridge()?.files;
-  return files ? files.move(from, to) : Promise.resolve({ ...NO_DESKTOP });
-}
-
-export function desktopTrashFile(path: string): Promise<DesktopFilesResult> {
-  const files = bridge()?.files;
-  return files ? files.trash(path) : Promise.resolve({ ...NO_DESKTOP });
 }
 
 function bridge(): DesktopBridge | null {
@@ -403,38 +305,3 @@ export async function openHelpdeskTicketUrl(
 }
 
 export { VENDOR_PARTITION_ZENDESK, VENDOR_VIEW_CHROME_PX };
-
-/**
- * Mirror the operator's keybindings into the Electron shell.
- *
- * ## Why this cannot live in `@/lib/keybindings`
- *
- * This module's own docblock makes it the ONLY module in `src/` allowed to name
- * the Electron bridge, so the serializer (`serializeKeybindingsForDesktop`) can
- * produce the list but cannot deliver it. This is the delivery half.
- *
- * ## Why mirroring matters at all
- *
- * The renderer's own `keydown` listener only fires while the window has focus.
- * On a bench that is a minority of the shift: a vendor listing opens in a native
- * `WebContentsView` ABOVE the page, a print dialog takes focus, another app is
- * in front. `globalShortcut` in the main process is what makes a chord work
- * anyway — and it currently binds exactly one hard-coded key, so every operator
- * override dies the moment focus leaves.
- *
- * No-ops in a plain browser and on a shell build without the channel, following
- * this module's existing null-safe capability pattern: a missing capability is a
- * quieter, more truthful outcome than a thrown error for something the web build
- * legitimately cannot do.
- */
-export function setDesktopKeybindings(
-  list: readonly { id: string; accelerator: string }[],
-): void {
-  const host = bridge();
-  if (!host?.setKeybindings) return;
-  try {
-    void host.setKeybindings(list);
-  } catch {
-    /* a shell that refused the channel must not take the renderer down */
-  }
-}

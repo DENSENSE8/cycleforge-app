@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { compareReceivingGridRows } from '@/lib/receiving/receiving-grid-compare';
-import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 
 function row(partial: Partial<ReceivingLineRow> & { id: number }): ReceivingLineRow {
   return {
