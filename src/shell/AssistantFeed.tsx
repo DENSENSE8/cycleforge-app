@@ -5,7 +5,7 @@
  * HANDOFF-ai-centre §1). The conversation is the workspace, and since Phase 2
  * the chronology is BLOCKS OF TIME: a session block opens (⌘N, a scan, an
  * assistant action), carries what happened as line items, and parks or ends —
- * a parked block collapses to one line (title · state · elapsed) and reopens
+ * a parked block collapses to one line (title · purpose · elapsed) and reopens
  * in place. Scrolling up is scrolling back in time, never visiting a page.
  *
  * The feed's turns and blocks live in `useShell` (`feed` / `sendToAssistant` /
@@ -35,6 +35,7 @@ import {
   type SessionBlock,
 } from '@/shell/model';
 import { railIconPlate, railIconPlateDisabled } from '@/shell/rail-icon';
+import { SessionComposer } from '@/shell/SessionComposer';
 import type { ShellApi } from '@/shell/useShell';
 import { cn } from '@/utils/_cn';
 
@@ -95,11 +96,14 @@ function BlockClock({ block }: { block: SessionBlock }) {
 /**
  * A block of time: one condensed header line — title · state · elapsed — and
  * the turns that happened inside it. Collapse is a conditional render:
- * instant, no geometry tween (M1). Parked blocks resume IN PLACE.
+ * instant, no geometry tween (M1). Parked blocks resume IN PLACE. Header
+ * reads title · purpose · elapsed. Park/Resume/End stay on *mine*.
  */
 function BlockView({ block, shell }: { block: SessionBlock; shell: ShellApi }) {
+  const mine = block.mine !== false;
+  const hasBody = block.items.length > 0 || Boolean(block.notes) || Boolean(block.wrapUp);
   return (
-    <section className="feed-block" data-state={block.state}>
+    <section className="feed-block" data-state={block.state} data-mine={mine ? '1' : '0'}>
       <div className="feed-block-line">
         <button
           type="button"
@@ -111,9 +115,16 @@ function BlockView({ block, shell }: { block: SessionBlock; shell: ShellApi }) {
           <Icon name="chevron-down" size={10} />
         </button>
         <span className="feed-block-title">{block.title}</span>
-        <span className="feed-block-state">{block.state}</span>
+        {block.purposeLabel ? (
+          <span className="feed-block-purpose">{block.purposeLabel}</span>
+        ) : (
+          <span className="feed-block-state">{block.state}</span>
+        )}
+        {!mine && block.staffName ? (
+          <span className="feed-block-staff">{block.staffName}</span>
+        ) : null}
         <BlockClock block={block} />
-        {block.state === 'parked' ? (
+        {mine && block.state === 'parked' ? (
           <button
             type="button"
             className="btn feed-block-act"
@@ -122,19 +133,37 @@ function BlockView({ block, shell }: { block: SessionBlock; shell: ShellApi }) {
           >
             Resume
           </button>
-        ) : block.state === 'armed' ? (
-          <button
-            type="button"
-            className="btn feed-block-act"
-            onClick={shell.parkArmedBlock}
-            title="Park — lossless, one keystroke's worth (⌘N also parks and cuts a new block)"
-          >
-            Park
-          </button>
+        ) : null}
+        {mine && block.state === 'armed' ? (
+          <>
+            <button
+              type="button"
+              className="btn feed-block-act"
+              onClick={shell.parkArmedBlock}
+              title="Park — lossless, one keystroke's worth (⌘N also parks and cuts a new block)"
+            >
+              Park
+            </button>
+            <button
+              type="button"
+              className="btn feed-block-act"
+              onClick={shell.openEndComposer}
+              title="End — wrap up with from → to, why"
+            >
+              End
+            </button>
+          </>
         ) : null}
       </div>
-      {!block.collapsed && block.items.length > 0 ? (
+      {!block.collapsed && hasBody ? (
         <div className="feed-block-items">
+          {block.notes ? <p className="feed-block-notes">{block.notes}</p> : null}
+          {block.wrapUp ? (
+            <p className="feed-block-wrap">
+              <span className="feed-block-wrap-label">Wrap-up</span>
+              {block.wrapUp}
+            </p>
+          ) : null}
           {block.items.map((msg) => (
             <Turn key={msg.id} msg={msg} run={shell.runFeedAction} />
           ))}
@@ -269,7 +298,7 @@ export function AssistantFeed({ shell }: { shell: ShellApi }) {
                 type="button"
                 className="feed-collapse-all"
                 onClick={shell.collapseAllBlocks}
-                title="Collapse every block to one line — title · state · elapsed"
+                title="Collapse every block to one line — title · purpose · elapsed"
               >
                 Collapse all
               </button>
@@ -291,6 +320,24 @@ export function AssistantFeed({ shell }: { shell: ShellApi }) {
               rows pin to the bottom of the chronology; this slots between
               them and the field. */}
           <SessionHeader shell={shell} />
+          {shell.composerMode === 'start' ? (
+            <SessionComposer
+              mode="start"
+              purposes={shell.purposes}
+              busy={shell.composerBusy}
+              onCancel={shell.closeSessionComposer}
+              onConfirm={shell.confirmStart}
+            />
+          ) : null}
+          {shell.composerMode === 'end' ? (
+            <SessionComposer
+              mode="end"
+              title={shell.armedBlock?.title ?? shell.sessionName}
+              busy={shell.composerBusy}
+              onCancel={shell.closeSessionComposer}
+              onConfirm={shell.confirmEnd}
+            />
+          ) : null}
           {/* THE WRITE TARGET (Phase 7's `target`, first landing): while an
               order is focused, prose in the One Field is a comment ON THAT
               ORDER. The chip is a status readout, never an input (I6); the ✕

@@ -46,6 +46,8 @@ const Query = z.object({
   sessionType: z.enum(SESSION_EVENT_TYPES).optional(),
   status: z.enum(SESSION_STATUSES).optional(),
   surfaceKey: z.string().min(1).max(64).optional(),
+  purposeId: z.coerce.number().int().positive().optional(),
+  q: z.string().min(1).max(200).optional(),
   limit: z.coerce.number().int().positive().max(SESSION_LIST_CAP).optional(),
   /**
    * Include the unattributed-event counts for the same window. Off by default:

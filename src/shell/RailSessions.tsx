@@ -26,6 +26,7 @@ import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Icon } from '@/shell/icons';
 import { railIconActive, railIconBare, railIconPlate } from '@/shell/rail-icon';
+import type { SessionBlock } from '@/shell/model';
 import type { ShellApi } from '@/shell/useShell';
 import { cn } from '@/utils/_cn';
 
@@ -61,6 +62,14 @@ function RailButton({
   );
 }
 
+function lastFeedBlock(feed: ShellApi['feed'], ref: string): SessionBlock | null {
+  for (let i = feed.length - 1; i >= 0; i--) {
+    const e = feed[i];
+    if (e.kind === 'block' && e.ref === ref) return e;
+  }
+  return null;
+}
+
 export function RailSessions({ shell }: { shell: ShellApi }) {
   return (
     /* Order (operator, 2026-08-24): SEARCH sits at the top, directly
@@ -82,21 +91,26 @@ export function RailSessions({ shell }: { shell: ShellApi }) {
         </RailButton>
       ))}
 
-      {shell.tabs.map((tab) => (
-        <RailButton
-          key={tab.ref}
-          label={tab.title}
-          active={tab.ref === shell.activeRef}
-          onClick={() => shell.focusRef(tab.ref)}
-          onContextMenu={(e) => {
-            e.preventDefault();
-            const tile = shell.tiles.find((t) => t.ref === tab.ref);
-            shell.setContextMenu({ x: e.clientX, y: e.clientY, tileId: tile?.id ?? null });
-          }}
-        >
-          <Icon name={tab.icon} size={16} />
-        </RailButton>
-      ))}
+      {shell.tabs.map((tab) => {
+        const block = lastFeedBlock(shell.feed, tab.ref);
+        const purpose = block?.purposeLabel;
+        const label = purpose ? `${tab.title} · ${purpose}` : tab.title;
+        return (
+          <RailButton
+            key={tab.ref}
+            label={label}
+            active={tab.ref === shell.activeRef}
+            onClick={() => shell.focusRef(tab.ref)}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              const tile = shell.tiles.find((t) => t.ref === tab.ref);
+              shell.setContextMenu({ x: e.clientX, y: e.clientY, tileId: tile?.id ?? null });
+            }}
+          >
+            <Icon name={tab.icon} size={16} />
+          </RailButton>
+        );
+      })}
 
       {/* `?` — PINNED MOST BOTTOM-LEFT (operator, 2026-08-24), the Linear
           pattern. Hover: the quick basics. Click: the Help TILE, placed
