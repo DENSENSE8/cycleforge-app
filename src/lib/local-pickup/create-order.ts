@@ -1,6 +1,6 @@
 /**
- * Shared LCPU create client — the staff `/pickup` CTA calls this. UI chrome
- * stays in each surface; the POST contract lives here.
+ * Shared LCPU create client — staff `/pickup` CTA and (later) kiosk intake
+ * both call this. UI chrome stays in each surface; the POST contract lives here.
  */
 
 interface CreateLocalPickupOrderInput {

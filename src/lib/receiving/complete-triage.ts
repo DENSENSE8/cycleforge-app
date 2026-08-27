@@ -34,7 +34,6 @@ import type { PoolClient } from 'pg';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import { emitEntitySignalSafe } from '@/lib/surfaces/record-entity-signal';
 import { upsertReceivingTriage } from '@/lib/receiving/streets/carton-street-write';
-import { NO_SESSION } from '@/lib/sessions/attribution';
 
 export interface CompleteTriageInput {
   receivingId: number;
@@ -183,9 +182,6 @@ export async function completeTriage(
         entityId: receivingId,
         signalKind: 'triage_outcome',
         notes: 'triage complete — staged for unbox',
-        // The Triage surface does not open a work session yet; when it does,
-        // this signal is what makes "cartons triaged this session" countable.
-        session: NO_SESSION,
         actorStaffId: staffId,
         client,
       });

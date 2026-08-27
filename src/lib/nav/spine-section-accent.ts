@@ -87,7 +87,7 @@
  *   current fill, never `aria-current`. Two strengths, one location.
  */
 
-import { appCanvasClass } from '@/lib/design/app-surface';
+import { appCanvasClass } from '@/design-system/tokens/app-surface';
 import { cn } from '@/utils/_cn';
 
 export type SpineAccentClasses = {

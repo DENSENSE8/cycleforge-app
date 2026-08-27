@@ -1,7 +1,7 @@
 import { NextResponse, after } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
-import { CONDITION_GRADE_VALUES } from '@/lib/inventory/view-types';
+import { CONDITION_GRADE_VALUES } from '@/components/inventory/types';
 import { sortSerialUnitToParts } from '@/lib/inventory/parts-sort';
 import { resolveCurrentReceivingLineIds } from '@/lib/neon/serial-units-queries';
 import { refreshLineSerialProjectionSafe } from '@/lib/receiving/serial-projection';

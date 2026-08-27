@@ -489,25 +489,26 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
     // Capture tracking for the post-tx repair upsert (upsertEcwidIncomingRepair
     // opens its own tenant tx — never nest it inside this one).
     if (isRepairService && sourceOrderId) {
-      try {
-        const trackingRes = await client.query<{ tracking_number: string | null }>(
-          `SELECT stn.tracking_number
-             FROM shipment_links sl
-             JOIN shipping_tracking_numbers stn ON stn.id = sl.shipment_id
-            WHERE sl.owner_type = 'RECEIVING'
-              AND sl.owner_id = $1
-              AND sl.organization_id = $2::uuid
-            ORDER BY sl.id ASC
-            LIMIT 1`,
-          [receivingId, ctx.organizationId],
-        );
-        repairTracking =
-          trackingRes.rows[0]?.tracking_number != null
-            ? String(trackingRes.rows[0].tracking_number).trim() || null
-            : null;
-      } catch (err) {
-        console.warn('add-unmatched-line: repair tracking lookup failed', err);
-      }
+      // STN identity is tracking_number_raw / _normalized — there is no
+      // tracking_number column. A miss here used to throw inside this tenant
+      // tx; the catch left Postgres aborted, so the later idempotency write
+      // surfaced as a generic INTERNAL toast and rolled back the line insert.
+      const trackingRes = await client.query<{ tracking_number: string | null }>(
+        `SELECT COALESCE(
+                  NULLIF(btrim(stn.tracking_number_raw), ''),
+                  NULLIF(btrim(stn.tracking_number_normalized), '')
+                ) AS tracking_number
+           FROM receiving_carton rc
+           JOIN shipping_tracking_numbers stn ON stn.id = rc.shipment_id
+          WHERE rc.id = $1
+            AND rc.organization_id = $2
+          LIMIT 1`,
+        [receivingId, ctx.organizationId],
+      );
+      repairTracking =
+        trackingRes.rows[0]?.tracking_number != null
+          ? String(trackingRes.rows[0].tracking_number).trim() || null
+          : null;
     }
 
     // Envelope frozen: condition_grade used to ride the spine RETURNING; it now

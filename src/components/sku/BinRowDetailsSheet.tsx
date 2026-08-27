@@ -1,0 +1,494 @@
+'use client';
+
+import { useCallback, useEffect, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { Panel, Button, IconButton } from '@/design-system/primitives';
+import { useAuth } from '@/contexts/AuthContext';
+import { useStaffRole } from '@/hooks/useStaffRole';
+import { safeRandomUUID } from '@/lib/safe-uuid';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
+
+function randomId(): string {
+  return safeRandomUUID();
+}
+
+// ─── Types ──────────────────────────────────────────────────────────────────
+
+export interface BinRowDetailsData {
+  sku: string;
+  qty: number;
+  productTitle: string | null;
+  /** display_name_override from sku_stock — empty string when unset. */
+  displayNameOverride: string | null;
+  minQty: number | null;
+  maxQty: number | null;
+  /** Version token from the bin_contents row — used for optimistic concurrency. */
+  updatedAt?: string | null;
+}
+
+interface BinRowDetailsSheetProps {
+  open: boolean;
+  onClose: () => void;
+  binBarcode: string;
+  row: BinRowDetailsData | null;
+  /** Invalidate the parent bin-contents query after any write. */
+  invalidateKey: readonly unknown[];
+}
+
+// ─── Component ──────────────────────────────────────────────────────────────
+
+/**
+ * Reached from the stock numpad's "⋯ details" button. Lets the receiver:
+ *  • rename the product title (writes sku_stock.display_name_override)
+ *  • change the SKU (atomic transfer via /api/locations/[barcode]/swap)
+ *  • adjust min/max thresholds
+ *
+ * The override is non-destructive — clearing it falls back to Ecwid/catalog.
+ */
+export function BinRowDetailsSheet({
+  open,
+  onClose,
+  binBarcode,
+  row,
+  invalidateKey,
+}: BinRowDetailsSheetProps) {
+  const { user } = useAuth();
+  const staffId = user?.staffId ?? 0;
+  const { isAdmin, role } = useStaffRole();
+  const queryClient = useQueryClient();
+
+  const [titleDraft, setTitleDraft] = useState('');
+  const [transferToDraft, setTransferToDraft] = useState('');
+  const [transferQtyDraft, setTransferQtyDraft] = useState('');
+  const [skuDraft, setSkuDraft] = useState('');
+  const [minDraft, setMinDraft] = useState('');
+  const [maxDraft, setMaxDraft] = useState('');
+  const [busy, setBusy] = useState<'rename' | 'swap' | 'limits' | 'transfer' | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open || !row) return;
+    setTitleDraft((row.displayNameOverride || '').trim());
+    setSkuDraft(row.sku);
+    setMinDraft(row.minQty != null ? String(row.minQty) : '');
+    setMaxDraft(row.maxQty != null ? String(row.maxQty) : '');
+    setTransferToDraft('');
+    setTransferQtyDraft('');
+    setError(null);
+    setInfo(null);
+  }, [open, row]);
+
+  useEffect(() => {
+    if (!info) return;
+    const t = setTimeout(() => setInfo(null), 1800);
+    return () => clearTimeout(t);
+  }, [info]);
+
+  const invalidate = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: invalidateKey }),
+    [invalidateKey, queryClient],
+  );
+
+  const saveTitle = useCallback(async () => {
+    if (!row || busy) return;
+    const next = titleDraft.trim();
+    setBusy('rename');
+    setError(null);
+    try {
+      const idempotencyKey = randomId();
+      const res = await fetch(
+        `/api/sku-stock/${encodeURIComponent(row.sku)}`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Idempotency-Key': idempotencyKey,
+          },
+          body: JSON.stringify(
+            next
+              ? { action: 'rename', productTitle: next, staffId, clientEventId: idempotencyKey }
+              : { action: 'rename', clearOverride: true, staffId, clientEventId: idempotencyKey },
+          ),
+        },
+      );
+      const data = await res.json().catch(() => null);
+      if (!res.ok || data?.success === false) {
+        throw new Error(data?.error || `HTTP ${res.status}`);
+      }
+      await invalidate();
+      setInfo(next ? 'Title saved' : 'Title cleared');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Rename failed');
+    } finally {
+      setBusy(null);
+    }
+  }, [busy, invalidate, row, staffId, titleDraft]);
+
+  const swapSku = useCallback(async () => {
+    if (!row || busy) return;
+    const next = skuDraft.trim();
+    if (!next) {
+      setError('Enter a SKU');
+      return;
+    }
+    if (next.toUpperCase() === row.sku.toUpperCase()) {
+      setError('SKU is unchanged');
+      return;
+    }
+    setBusy('swap');
+    setError(null);
+    try {
+      const idempotencyKey = randomId();
+      const res = await fetch(
+        `/api/locations/${encodeURIComponent(binBarcode)}/swap`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Idempotency-Key': idempotencyKey,
+          },
+          body: JSON.stringify({
+            oldSku: row.sku,
+            newSku: next,
+            staffId,
+            clientEventId: idempotencyKey,
+          }),
+        },
+      );
+      const data = await res.json().catch(() => null);
+      if (!res.ok || data?.success === false) {
+        throw new Error(data?.error || `HTTP ${res.status}`);
+      }
+      await invalidate();
+      setInfo(`Moved ${data.qty_transferred ?? row.qty} → ${next}`);
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Swap failed');
+    } finally {
+      setBusy(null);
+    }
+  }, [binBarcode, busy, invalidate, onClose, row, skuDraft, staffId]);
+
+  const transfer = useCallback(async () => {
+    if (!row || busy) return;
+    const toBin = transferToDraft.trim();
+    const qtyNum = Number(transferQtyDraft);
+    if (!toBin) {
+      setError('Scan or type the destination bin');
+      return;
+    }
+    if (!Number.isFinite(qtyNum) || qtyNum <= 0) {
+      setError('Quantity must be > 0');
+      return;
+    }
+    if (qtyNum > row.qty) {
+      setError(`Only ${row.qty} on hand`);
+      return;
+    }
+    setBusy('transfer');
+    setError(null);
+    try {
+      const idempotencyKey = randomId();
+      const res = await fetch('/api/transfers', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': idempotencyKey,
+        },
+        body: JSON.stringify({
+          fromBinBarcode: binBarcode,
+          toBinBarcode: toBin,
+          sku: row.sku,
+          qty: Math.floor(qtyNum),
+          staffId,
+          clientEventId: idempotencyKey,
+        }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || data?.success === false) {
+        throw new Error(data?.error || `HTTP ${res.status}`);
+      }
+      await invalidate();
+      setInfo(`Moved ${data.qty} → ${toBin}`);
+      setTransferToDraft('');
+      setTransferQtyDraft('');
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Transfer failed');
+    } finally {
+      setBusy(null);
+    }
+  }, [binBarcode, busy, invalidate, onClose, row, staffId, transferQtyDraft, transferToDraft]);
+
+  const saveLimits = useCallback(async () => {
+    if (!row || busy) return;
+    const minQty = minDraft.trim() === '' ? null : Number(minDraft);
+    const maxQty = maxDraft.trim() === '' ? null : Number(maxDraft);
+    if (minQty != null && !Number.isFinite(minQty)) {
+      setError('Min must be a number');
+      return;
+    }
+    if (maxQty != null && !Number.isFinite(maxQty)) {
+      setError('Max must be a number');
+      return;
+    }
+    setBusy('limits');
+    setError(null);
+    try {
+      const idempotencyKey = randomId();
+      const res = await fetch(
+        `/api/locations/${encodeURIComponent(binBarcode)}`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Idempotency-Key': idempotencyKey,
+          },
+          body: JSON.stringify({
+            action: 'set',
+            sku: row.sku,
+            qty: row.qty,
+            minQty: minQty ?? undefined,
+            maxQty: maxQty ?? undefined,
+            staffId,
+            clientEventId: idempotencyKey,
+            // Optimistic concurrency: server rejects if the row moved.
+            expectedUpdatedAt: row.updatedAt ?? undefined,
+          }),
+        },
+      );
+      const data = await res.json().catch(() => null);
+      if (res.status === 409 && data?.error === 'STALE') {
+        setError(
+          typeof data?.message === 'string'
+            ? data.message
+            : 'Another device updated this row. Refresh and try again.',
+        );
+        await invalidate();
+        return;
+      }
+      if (!res.ok || data?.success === false) {
+        throw new Error(data?.error || `HTTP ${res.status}`);
+      }
+      await invalidate();
+      setInfo('Limits saved');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Limits update failed');
+    } finally {
+      setBusy(null);
+    }
+  }, [binBarcode, busy, invalidate, maxDraft, minDraft, row, staffId]);
+
+  if (!open || !row) return null;
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Edit row details"
+      className="fixed inset-0 z-panelOverlay flex flex-col bg-surface-canvas"
+    >
+      <header className="flex items-center gap-2 border-b border-border-soft bg-surface-card px-3 py-3">
+        <IconButton
+          icon={<span className="text-sm font-semibold">←</span>}
+          ariaLabel="Back"
+          onClick={onClose}
+          className="h-11 w-11 rounded-md border border-border-default bg-surface-card text-text-muted active:bg-surface-hover"
+        />
+        <div className="min-w-0 flex-1 text-center">
+          <p className="text-role-micro uppercase tracking-[0.18em] text-text-soft">
+            Row details
+          </p>
+          <p className="truncate font-mono text-sm font-semibold text-text-default">
+            {row.sku}
+          </p>
+        </div>
+        <span className="h-11 w-11" />
+      </header>
+
+      <main className="flex-1 overflow-auto px-4 py-4 space-y-5 pb-32">
+        {!isAdmin && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-role-caption font-semibold text-amber-800">
+            Product title and SKU swap require <span className="uppercase">admin</span> role.
+            You&apos;re signed in as <span className="uppercase">{role}</span>. Limits + counts are still editable.
+          </div>
+        )}
+
+        {/* Title override */}
+        <section
+          aria-disabled={!isAdmin}
+          className={`rounded-lg border border-border-soft bg-surface-card p-3 shadow-sm space-y-2 ${
+            isAdmin ? '' : 'opacity-50 pointer-events-none'
+          }`}
+        >
+          <p className="text-role-micro uppercase tracking-[0.16em] text-text-soft">
+            Product title
+          </p>
+          {row.productTitle && (
+            <p className="text-role-micro leading-snug text-text-soft">
+              <span className="font-semibold">Catalog:</span>{' '}
+              <span className="font-mono">{row.productTitle}</span>
+            </p>
+          )}
+          <textarea
+            rows={2}
+            value={titleDraft}
+            onChange={(e) => setTitleDraft(e.target.value)}
+            placeholder="Short label (overrides catalog/storefront)"
+            className={cn("w-full resize-none rounded-md border border-border-default px-3 py-2 text-sm font-semibold text-text-default", focusRing('field', 'accent'))}
+          />
+          <div className="flex gap-2">
+            <Button
+              variant="primary"
+              size="md"
+              onClick={saveTitle}
+              loading={busy === 'rename'}
+              disabled={busy !== null}
+              className="flex-1"
+            >
+              {titleDraft.trim() === '' ? 'Clear override' : 'Save title'}
+            </Button>
+          </div>
+          <p className="text-role-micro uppercase tracking-widest text-text-faint">
+            Stored in sku_stock.display_name_override · wins over the storefront title
+          </p>
+        </section>
+
+        {/* SKU swap */}
+        <section
+          aria-disabled={!isAdmin}
+          className={`rounded-lg border border-border-soft bg-surface-card p-3 shadow-sm space-y-2 ${
+            isAdmin ? '' : 'opacity-50 pointer-events-none'
+          }`}
+        >
+          <p className="text-role-micro uppercase tracking-[0.16em] text-text-soft">
+            Change SKU
+          </p>
+          <p className="text-role-micro leading-snug text-text-soft">
+            Move{' '}
+            <span className="font-mono font-semibold">{row.qty}</span> from{' '}
+            <span className="font-mono">{row.sku}</span> to the SKU below.
+          </p>
+          <input
+            type="text"
+            autoCapitalize="characters"
+            autoComplete="off"
+            value={skuDraft}
+            onChange={(e) => setSkuDraft(e.target.value)}
+            placeholder="New SKU"
+            className={cn("w-full rounded-md border border-border-default px-3 py-3 text-center font-mono text-base font-semibold text-text-default", focusRing('field', 'accent'))}
+          />
+          <Button
+            variant="brand"
+            size="md"
+            onClick={swapSku}
+            loading={busy === 'swap'}
+            disabled={busy !== null || !skuDraft.trim()}
+            className="w-full"
+          >
+            {`Swap → ${skuDraft.trim() || '…'}`}
+          </Button>
+        </section>
+
+        {/* Transfer to another bin */}
+        <Panel radius="lg" padding="sm" className="space-y-2">
+          <p className="text-role-micro uppercase tracking-[0.16em] text-text-soft">
+            Move to another bin
+          </p>
+          <p className="text-role-micro leading-snug text-text-soft">
+            Scan or type the destination bin and how many to move.
+          </p>
+          <div className="grid grid-cols-[1fr_5rem] gap-2">
+            <input
+              type="text"
+              autoCapitalize="characters"
+              autoComplete="off"
+              value={transferToDraft}
+              onChange={(e) => setTransferToDraft(e.target.value)}
+              placeholder="To bin"
+              className={cn("rounded-md border border-border-default px-3 py-2.5 text-center font-mono text-sm font-semibold text-text-default", focusRing('field', 'accent'))}
+            />
+            <input
+              type="number"
+              inputMode="numeric"
+              min={1}
+              max={row.qty}
+              value={transferQtyDraft}
+              onChange={(e) => setTransferQtyDraft(e.target.value)}
+              placeholder={`≤ ${row.qty}`}
+              className={cn("rounded-md border border-border-default px-2 py-2.5 text-center font-mono text-sm font-semibold text-text-default", focusRing('field', 'accent'))}
+            />
+          </div>
+          <Button
+            variant="primary"
+            size="md"
+            onClick={transfer}
+            loading={busy === 'transfer'}
+            disabled={
+              busy !== null || !transferToDraft.trim() || !transferQtyDraft.trim()
+            }
+            className="w-full"
+          >
+            {`Move ${transferQtyDraft || '…'} → ${transferToDraft.trim() || '…'}`}
+          </Button>
+        </Panel>
+
+        {/* Min / max */}
+        <Panel radius="lg" padding="sm" className="space-y-2">
+          <p className="text-role-micro uppercase tracking-[0.16em] text-text-soft">
+            Min / max
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            <label className="block">
+              <span className="text-role-eyebrow uppercase tracking-widest text-text-soft">
+                Min
+              </span>
+              <input
+                type="number"
+                inputMode="numeric"
+                placeholder="—"
+                value={minDraft}
+                onChange={(e) => setMinDraft(e.target.value)}
+                className={cn("mt-1 w-full rounded-md border border-border-default px-2 py-2 text-center font-mono text-base font-semibold text-text-default", focusRing('field', 'accent'))}
+              />
+            </label>
+            <label className="block">
+              <span className="text-role-eyebrow uppercase tracking-widest text-text-soft">
+                Max
+              </span>
+              <input
+                type="number"
+                inputMode="numeric"
+                placeholder="—"
+                value={maxDraft}
+                onChange={(e) => setMaxDraft(e.target.value)}
+                className={cn("mt-1 w-full rounded-md border border-border-default px-2 py-2 text-center font-mono text-base font-semibold text-text-default", focusRing('field', 'accent'))}
+              />
+            </label>
+          </div>
+          <Button
+            variant="secondary"
+            size="md"
+            onClick={saveLimits}
+            loading={busy === 'limits'}
+            disabled={busy !== null}
+            className="w-full"
+          >
+            Save limits
+          </Button>
+        </Panel>
+
+        {error && (
+          <p className="text-center text-sm font-semibold text-rose-600">{error}</p>
+        )}
+        {info && !error && (
+          <p className="text-center text-sm font-semibold text-emerald-600">{info}</p>
+        )}
+      </main>
+    </div>
+  );
+}

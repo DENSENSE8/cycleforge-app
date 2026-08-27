@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useState } from 'react';
-import { requestConfirm } from '@/lib/overlay/confirm-bus';
+import { requestConfirm } from '@/design-system/components/confirm';
 import { requestSwitchOrg } from '@/lib/identity/switch-org';
 
 /**

@@ -1,5 +1,5 @@
-import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
-import { buildUnmatchedStubRow } from '@/lib/receiving/receiving-sidebar-shared';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import { buildUnmatchedStubRow } from '@/components/sidebar/receiving/receiving-sidebar-shared';
 import { classifyInput, parseScannedUrl } from '@/lib/scan-resolver';
 import { routeScan, scannedReceivingId } from '@/lib/barcode-routing';
 import {

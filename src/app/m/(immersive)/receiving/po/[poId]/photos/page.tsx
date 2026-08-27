@@ -1,0 +1,91 @@
+'use client';
+
+import { Suspense, use as useUnwrap } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
+import { MobileReceivingPhotoStudio } from '@/components/mobile/photos/MobileReceivingPhotoStudio';
+import { parseReceivingCartonPhotoStage } from '@/lib/receiving/photo-scope';
+
+interface DetailResponse {
+  header: { po_number: string; po_id: string; receiving_id: number | null };
+}
+
+function PoPhotoPageInner(props: { params: Promise<{ poId: string }> }) {
+  const { poId: rawPoId } = useUnwrap(props.params);
+  const poId = decodeURIComponent(rawPoId || '');
+  const searchParams = useSearchParams();
+  const mode = searchParams.get('mode') === 'gallery' ? 'gallery' : 'capture';
+  // Carton capture stage (?stage=arrival_package for the door pass); default
+  // unbox_carton — the safe default, since this generic PO capture page is
+  // reached from the bench far more often than the dock.
+  const stage = parseReceivingCartonPhotoStage(searchParams.get('stage'));
+
+  const { data, isLoading, error } = useQuery<DetailResponse>({
+    queryKey: ['receiving-po-detail', poId],
+    queryFn: async () => {
+      const res = await fetch(`/api/receiving/po/${encodeURIComponent(poId)}`, {
+        cache: 'no-store',
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    },
+    enabled: !!poId,
+  });
+
+  const receivingId = data?.header.receiving_id ?? null;
+  const poDetailHref = `/m/receiving/po/${encodeURIComponent(poId)}`;
+  const headerLabel = `PO ${data?.header.po_number || data?.header.po_id || poId}`;
+  const poRef = data?.header.po_number || data?.header.po_id || null;
+
+  if (isLoading) {
+    return (
+      <div className="grid min-h-[100dvh] place-items-center text-role-caption font-semibold uppercase tracking-widest text-white/60">
+        Opening camera…
+      </div>
+    );
+  }
+
+  if (error || !receivingId) {
+    return (
+      <div className="grid min-h-[100dvh] place-items-center px-6 text-center">
+        <p className="text-sm font-semibold uppercase tracking-wider text-white/80">
+          No receiving package yet
+        </p>
+        <p className="mt-1 text-role-caption font-semibold text-white/50">
+          Scan the package tracking on the desktop first, then come back.
+        </p>
+      </div>
+    );
+  }
+
+  // Stage-typed carton scope — PO-level gallery only (no item-shot mixing).
+  const scope = {
+    receivingId,
+    receivingLineId: null as number | null,
+    poRef,
+    stage,
+    photosListScope: 'po' as const,
+  };
+
+  return (
+    <MobileReceivingPhotoStudio
+      mode={mode}
+      scope={scope}
+      headerLabel={headerLabel}
+      galleryTitle="PO photos"
+      gallerySubtitle={headerLabel}
+      backHref={poDetailHref}
+      returnHref={poDetailHref}
+    />
+  );
+}
+
+export default function MobilePoPhotoCapturePage(
+  props: { params: Promise<{ poId: string }> },
+) {
+  return (
+    <Suspense fallback={<div className="min-h-[100dvh] bg-stage" />}>
+      <PoPhotoPageInner params={props.params} />
+    </Suspense>
+  );
+}

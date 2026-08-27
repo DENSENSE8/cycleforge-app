@@ -20,7 +20,7 @@ import {
   GRID_COLUMN_DIR_PARAM,
   GRID_COLUMN_SORT_PARAM,
 } from '@/lib/tables/grid-column-sort-params';
-import type { ReceivingMode } from '@/lib/receiving/receiving-sidebar-shared';
+import type { ReceivingMode } from '@/components/sidebar/receiving/receiving-sidebar-shared';
 
 /** Dashboard route — hosts the inbound-cartons mode (`?mode=inbound`). */
 const DASHBOARD_SURFACE_ROUTE = '/dashboard';
@@ -32,13 +32,13 @@ const TESTING_SURFACE_ROUTE = '/test';
 const TESTING_SURFACE_LEGACY_ROUTE = '/tech';
 
 /** API `view=` values that belong on `/api/testing/receiving-lines` only. */
-const TESTING_API_VIEWS = ['testing', 'needs-test'] as const;
+const TESTING_API_VIEWS = ['testing', 'needs-test', 'testing_opened'] as const;
 
 type TestingApiView = (typeof TESTING_API_VIEWS)[number];
 
 export function isTestingApiView(view: string | null | undefined): view is TestingApiView {
   const v = String(view ?? '').trim().toLowerCase();
-  return v === 'testing' || v === 'needs-test';
+  return v === 'testing' || v === 'needs-test' || v === 'testing_opened';
 }
 
 export function isTestingSurfacePath(pathname: string | null | undefined): boolean {

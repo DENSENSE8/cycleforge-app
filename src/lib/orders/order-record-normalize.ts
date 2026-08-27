@@ -64,6 +64,27 @@ export function dedupeByOrderId(records: ShippedOrder[]): ShippedOrder[] {
   return Array.from(seen.values());
 }
 
+/** Parse `/api/orders` `created_at` (ISO or `YYYY-MM-DD HH:MM:SS`). */
+export function orderCreatedAtMs(row: { created_at?: unknown }): number {
+  const raw = String(row.created_at ?? '').trim();
+  if (!raw) return 0;
+  const iso = raw.includes('T') ? raw : raw.replace(' ', 'T');
+  const parsed = Date.parse(iso);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+/**
+ * Pending paints newest ingest first. The fulfillment SQL is `o.id DESC`; this
+ * matches that when a stale cache still holds deadline-sorted rows that already
+ * include the new pk.
+ */
+export function pinRecentlyCreatedUnshipped<T extends { id?: unknown; created_at?: unknown }>(
+  rows: T[],
+): T[] {
+  if (rows.length < 2) return rows;
+  return [...rows].sort((a, b) => Number(b.id) - Number(a.id));
+}
+
 function productKeyOf(record: ShippedOrder): string {
   const cat = (record as { sku_catalog_id?: unknown }).sku_catalog_id;
   if (cat != null && String(cat).trim() !== '') return `cat:${String(cat).trim()}`;

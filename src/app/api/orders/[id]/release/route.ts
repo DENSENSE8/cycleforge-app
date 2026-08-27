@@ -3,7 +3,6 @@ import { withAuth } from '@/lib/auth/withAuth';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import { transition } from '@/lib/inventory/state-machine';
 import { recordInventoryEvent } from '@/lib/inventory/events';
-import { NO_SESSION } from '@/lib/sessions/attribution';
 
 /**
  * POST /api/orders/[id]/release
@@ -109,7 +108,6 @@ export const POST = withAuth(async (request, ctx) => {
         if (stockedReturn) {
           const moved = await transition(
             {
-              session: NO_SESSION,
               unitId: row.serial_unit_id,
               to: 'STOCKED',
               eventType: 'RELEASED',
@@ -133,7 +131,6 @@ export const POST = withAuth(async (request, ctx) => {
         } else {
           const ev = await recordInventoryEvent(
             {
-              session: NO_SESSION,
               event_type: 'RELEASED',
               actor_staff_id: actorStaffId,
               station: 'SYSTEM',

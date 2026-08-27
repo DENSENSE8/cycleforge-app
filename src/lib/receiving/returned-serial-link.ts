@@ -45,7 +45,6 @@ import { getExternalUrlByItemNumber, getPlatformKeyByItemNumber } from '@/utils/
 import { columnsToClassification, classificationToColumns } from '@/lib/receiving/intake-classification';
 import { tapWorkflow } from '@/lib/workflow/tap';
 import { emitEntitySignalSafe } from '@/lib/surfaces/record-entity-signal';
-import { NO_SESSION } from '@/lib/sessions/attribution';
 
 // ─── Shared types ────────────────────────────────────────────────────────────
 
@@ -442,7 +441,6 @@ export async function linkReturnedSerial(
     try {
       await deps.recordInventoryEvent(
         {
-          session: NO_SESSION,
           event_type: 'RETURNED',
           actor_staff_id: input.staffId ?? null,
           station: 'RECEIVING',
@@ -512,7 +510,6 @@ export async function linkReturnedSerial(
   // fires for both outcomes (a physical return happened either way — the
   // sales-order match just enriches meta). Never fails the scan.
   await (deps.emitSignal ?? emitEntitySignalSafe)({
-    session: NO_SESSION,
     organizationId: orgId,
     entityType: 'SERIAL_UNIT',
     entityId: input.serialUnitId,
@@ -537,7 +534,6 @@ export async function linkReturnedSerial(
   if (!result.linked) {
     try {
       await (deps.recordException ?? recordReceivingException)(orgId, {
-        session: NO_SESSION,
         receivingLineId: input.receivingLineId,
         receivingId: input.receivingId ?? null,
         exceptionCode: 'RETURN_NO_ORDER',
@@ -668,7 +664,6 @@ export async function importSalesOrderByNumber(
       try {
         await deps.recordInventoryEvent(
           {
-            session: NO_SESSION,
             event_type: 'NOTE',
             actor_staff_id: input.staffId ?? null,
             station: 'RECEIVING',
@@ -690,7 +685,6 @@ export async function importSalesOrderByNumber(
       // caller transaction via `client` (SAVEPOINT-guarded); never throws.
       // Gated on first/changed link — a repeat of the same order# is a no-op.
       if (priorSourceOrderId !== o.order_id) await emitEntitySignalSafe({
-        session: NO_SESSION,
         organizationId: orgId,
         entityType: 'RECEIVING_LINE',
         entityId: input.receivingLineId,
@@ -1047,7 +1041,6 @@ export async function logUnmatchedReturnSerial(
     // Unfound/triage queue). Best-effort — the pairing already succeeded.
     try {
       await deps.recordReceivingException(orgId, {
-        session: NO_SESSION,
         receivingLineId: input.receivingLineId,
         receivingId: input.receivingId ?? null,
         exceptionCode: 'RETURN_NO_ORDER',
@@ -1072,7 +1065,6 @@ export async function logUnmatchedReturnSerial(
     try {
       await deps.recordInventoryEvent(
         {
-          session: NO_SESSION,
           event_type: 'NOTE',
           actor_staff_id: input.staffId ?? null,
           station: 'RECEIVING',
@@ -1123,7 +1115,6 @@ export async function logUnmatchedReturnSerial(
     try {
       await deps.recordInventoryEvent(
         {
-          session: NO_SESSION,
           event_type: 'NOTE',
           actor_staff_id: input.staffId ?? null,
           station: 'RECEIVING',
@@ -1147,7 +1138,6 @@ export async function logUnmatchedReturnSerial(
     }
 
     await (deps.emitSignal ?? emitEntitySignalSafe)({
-      session: NO_SESSION,
       organizationId: orgId,
       entityType: 'SERIAL_UNIT',
       entityId: serialUnitId,

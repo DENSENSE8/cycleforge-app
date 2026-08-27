@@ -1,0 +1,95 @@
+'use client';
+
+import { useMemo, useState } from 'react';
+import type { ReceivingDetailsLog } from '@/components/station/receiving-details-log';
+import type { ReceivingDetailFormActions } from '@/hooks/useReceivingDetailForm';
+import type { CartonReadiness } from '@/lib/receiving/carton-readiness';
+import { CopyableValueFieldBlock } from '@/components/shipped/details-panel/blocks/CopyableValueFieldBlock';
+import { ReceivingPhotosSection } from './ReceivingPhotosSection';
+import { ReceivingReadinessCallout } from './ReceivingReadinessCallout';
+import { ReceivingCartonPipeline } from './ReceivingCartonPipeline';
+import { ArrivalCartonPipeline } from './ArrivalCartonPipeline';
+import { ReceivingInventoryLinkageSection } from './ReceivingInventoryLinkageSection';
+
+/** Progress journey — Arrival (triage details) vs Unbox carton lifecycle. */
+type ReceivingProgressJourney = 'arrival' | 'unbox';
+
+function resolveOptionalRows(log: ReceivingDetailsLog): Array<{ label: string; value: string }> {
+  const rows: Array<{ label: string; value: string }> = [];
+  if (log.qa_status && log.qa_status !== 'PENDING') rows.push({ label: 'QA', value: log.qa_status.replace(/_/g, ' ') });
+  if (log.disposition_code) rows.push({ label: 'Disposition', value: log.disposition_code.replace(/_/g, ' ') });
+  if (log.condition_grade) rows.push({ label: 'Condition', value: log.condition_grade.replace(/_/g, ' ') });
+  if (log.return_platform) rows.push({ label: 'Return platform', value: log.return_platform.replace(/_/g, ' ') });
+  if (log.return_reason) rows.push({ label: 'Return reason', value: log.return_reason });
+  if (log.target_channel) rows.push({ label: 'Target channel', value: log.target_channel });
+  return rows;
+}
+
+export function ReceivingProgressTab({
+  log,
+  readiness,
+  form,
+  journey = 'unbox',
+}: {
+  log: ReceivingDetailsLog;
+  readiness: CartonReadiness;
+  form: ReceivingDetailFormActions;
+  /**
+   * `arrival` — Door→Classified→Staged→Ready (triage `/triage` details only).
+   * `unbox` — Scanned→Unboxed→Received (default Unbox / History details).
+   */
+  journey?: ReceivingProgressJourney;
+}) {
+  const [showMore, setShowMore] = useState(false);
+  const extraRows = useMemo(() => resolveOptionalRows(log), [log]);
+  const isArrival = journey === 'arrival';
+
+  return (
+    <div className="space-y-4">
+      {isArrival ? (
+        <ArrivalCartonPipeline log={log} />
+      ) : (
+        <>
+          <ReceivingReadinessCallout readiness={readiness} />
+          <ReceivingCartonPipeline log={log} readiness={readiness} />
+        </>
+      )}
+
+      <ReceivingPhotosSection
+        receivingId={log.id}
+        poRef={log.zoho_purchaseorder_number || log.zoho_purchaseorder_id || null}
+        downloadLabel={`recv-${log.id}`}
+        sectionTitle="Receiving photos"
+      />
+
+      <ReceivingInventoryLinkageSection log={log} form={form} />
+
+      {extraRows.length > 0 ? (
+        <section className="space-y-2">
+          {/* ds-raw-button: simple disclosure toggle for optional carton metadata. */}
+          <button
+            type="button"
+            className="ds-raw-button text-left text-role-eyebrow uppercase tracking-widest text-text-soft hover:text-text-default"
+            onClick={() => setShowMore((v) => !v)}
+          >
+            {showMore ? 'Hide carton details' : 'More carton details'}
+          </button>
+          {showMore ? (
+            <div className="space-y-0">
+              {extraRows.map((r, idx) => (
+                <CopyableValueFieldBlock
+                  key={`${r.label}-${idx}`}
+                  label={r.label}
+                  value={r.value}
+                  variant="flat"
+                  keepBottomDivider={idx < extraRows.length - 1}
+                />
+              ))}
+            </div>
+          ) : null}
+        </section>
+      ) : null}
+    </div>
+  );
+}
+

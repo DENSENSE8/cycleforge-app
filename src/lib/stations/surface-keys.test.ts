@@ -1,6 +1,7 @@
 /**
  * Guard + unit tests for the operator-surface registry (Phase 0).
- * Pure / DB-free: the registry and the archetype decision are in-memory CODE.
+ * Pure / DB-free: the registry, archetype decision, and resolver decision core
+ * are all in-memory CODE.
  *
  *   node --import tsx --test src/lib/stations/surface-keys.test.ts
  */
@@ -18,6 +19,8 @@ import {
   surfaceForRoute,
 } from './surface-keys';
 import { ARCHETYPE_IDS, pickArchetype, isArchetypeId } from './archetype';
+import { decideSurfaceRender } from './surface-resolver';
+import type { StationConfig, StationDefinitionRow } from './contract';
 
 // ─── Guard: every key has a complete, valid registry entry ───────────────────
 
@@ -173,3 +176,46 @@ test('incoming / pickup / repair declare ops-queue Workbench branch', () => {
   assert.equal(getSurface('repair').workbenchBranch, 'ops-queue');
 });
 
+// ─── decideSurfaceRender (resolver decision core) ────────────────────────────
+
+function fakeRow(config: StationConfig, isActive = true): StationDefinitionRow {
+  return {
+    id: 1,
+    pageKey: 'receiving',
+    modeKey: 'receive',
+    label: 'Unbox',
+    workflowNodeId: null,
+    config,
+    version: 1,
+    isActive,
+    updatedBy: null,
+    updatedAt: '2026-07-05T00:00:00.000Z',
+  };
+}
+
+test('decideSurfaceRender: no active row → legacy', () => {
+  const r = decideSurfaceRender(getSurface('unbox'), null);
+  assert.equal(r.render, 'legacy');
+  assert.equal(r.definition, null);
+  assert.equal(r.archetype, 'station');
+  assert.equal(r.key, 'unbox');
+});
+
+test('decideSurfaceRender: active row whose config is the legacy hatch → legacy', () => {
+  const r = decideSurfaceRender(getSurface('unbox'), fakeRow({ slots: 'legacy' }));
+  assert.equal(r.render, 'legacy');
+  assert.ok(r.definition, 'the row is still returned even when we render legacy');
+});
+
+test('decideSurfaceRender: active row with a real slot map → composed', () => {
+  const composedConfig: StationConfig = { slots: { queue: [{ id: 'blk_1', block: 'checklist' }] } };
+  const r = decideSurfaceRender(getSurface('unbox'), fakeRow(composedConfig));
+  assert.equal(r.render, 'composed');
+  assert.equal(r.definition?.config, composedConfig);
+});
+
+test('decideSurfaceRender: an inactive row is never composed (safe default)', () => {
+  const composedConfig: StationConfig = { slots: { queue: [{ id: 'blk_1', block: 'checklist' }] } };
+  const r = decideSurfaceRender(getSurface('unbox'), fakeRow(composedConfig, /* isActive */ false));
+  assert.equal(r.render, 'legacy');
+});

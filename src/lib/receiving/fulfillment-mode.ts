@@ -3,7 +3,7 @@
  * arrived (carrier shipment vs local pickup). Pure SoT for chip + tracking display.
  */
 
-import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { effectiveIntakeKind } from '@/lib/receiving/kinds/registry';
 
 /** Zoho PO whose reference#/number/id contains LCPU or LOCALPICKUP. */

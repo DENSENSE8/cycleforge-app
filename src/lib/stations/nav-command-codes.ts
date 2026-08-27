@@ -71,15 +71,14 @@ export const NAV_COMMAND_CODES: readonly NavCommandDef[] = [
   { code: 'CMD-GO-QC',      label: 'Go · Quality Control', pageId: 'tech',     childId: 'testing',  sortOrder: 30 },
   { code: 'CMD-GO-READY',   label: 'Go · Ready to Pack',   pageId: 'tech',     childId: 'shipping', sortOrder: 40 },
   { code: 'CMD-GO-PACK',    label: 'Go · Packing',         pageId: 'packer',   childId: null,       sortOrder: 50 },
+  { code: 'CMD-GO-SCANOUT', label: 'Go · Scan out',        pageId: 'scan-out', childId: null,       sortOrder: 60 },
   { code: 'CMD-GO-PICKUP',  label: 'Go · Local Pickup',    pageId: 'pickup',   childId: null,       sortOrder: 70 },
   { code: 'CMD-GO-REPAIR',  label: 'Go · Repair',          pageId: 'repair',   childId: null,       sortOrder: 80 },
-  // CMD-GO-COUNTER left with the counter desk (merge, 2026-08-25): the
-  // warehouse-os zero-base removed /counter, so the code had no
-  // destination. Re-add the row when the desk is rebuilt — a printed card
-  // scanning to a 404 is worse than one scanning to "unknown command".
+  { code: 'CMD-GO-COUNTER', label: 'Go · Counter',         pageId: 'sales',    childId: 'counter',  sortOrder: 90 },
 
   // ── Desks the floor hands off to ──────────────────────────────────────────
   { code: 'CMD-GO-INBOUND',  label: 'Go · Inbound',    pageId: 'incoming',  childId: null,      sortOrder: 110 },
+  { code: 'CMD-GO-LABELS',   label: 'Go · Labels',     pageId: 'outbound',  childId: 'labels',  sortOrder: 120 },
   { code: 'CMD-GO-ORDERS',   label: 'Go · Orders',     pageId: 'outbound',  childId: 'orders',  sortOrder: 130 },
   { code: 'CMD-GO-FBA',      label: 'Go · Amazon prep',pageId: 'outbound',  childId: 'fba',     sortOrder: 140 },
   { code: 'CMD-GO-INVENTORY',label: 'Go · Inventory',  pageId: 'inventory', childId: 'ledger',  sortOrder: 150 },
@@ -90,14 +89,6 @@ export const NAV_COMMAND_CODES: readonly NavCommandDef[] = [
   { code: 'CMD-GO-HOME',     label: 'Go · Home',       pageId: 'home',      childId: 'daily',   sortOrder: 200 },
 ] as const;
 
-// RETIRED 2026-08-21, with their surfaces:
-//   • `CMD-GO-SCANOUT` — `/shipping/scan-out` was deleted; the path is a redirect
-//     to the To-ship desk now. Retargeting the code would have made a printed
-//     sticker land somewhere its label does not say, and it would have collided
-//     with `CMD-GO-ORDERS`, so the code is gone instead. Its seeded
-//     `reason_codes` row is the operator's to retire (2026-08-20d).
-//   • `CMD-GO-LABELS` — same story for `/shipping/labels`.
-//
 // Deliberately ABSENT, so the omissions read as decisions rather than oversights:
 //   • `/receiving/history` — has no `SIDEBAR_PAGE_NAV` entry, so a sticker for it
 //     would have to carry a literal URL. That is the exact fork this registry

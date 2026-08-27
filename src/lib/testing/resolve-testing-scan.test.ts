@@ -17,7 +17,7 @@ import {
   resolveReceivingCodeToLine,
   stubRowFromCartonHeader,
 } from './resolve-testing-scan';
-import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 
 test('canonical handles are recognised as codes (resolve even in Order# mode)', () => {
   for (const v of [

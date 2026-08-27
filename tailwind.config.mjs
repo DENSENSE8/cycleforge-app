@@ -1,26 +1,16 @@
 import plugin from "tailwindcss/plugin";
-// NOTE (2026-08-22, Warehouse OS reconcile): NOTHING CURRENTLY LOADS THIS FILE.
-// `src/app/globals.css` dropped its `@config "…/tailwind.config.mjs"` line when
-// the design-system tree was deleted, and Tailwind v4's PostCSS plugin does not
-// auto-discover a JS config — so the CSS build runs on v4's stock theme and this
-// file contributes nothing to it today. It is kept, and kept *loadable*, for one
-// reason: the operator's stated workflow is to cherry-pick components back from
-// `main`, and a restored component's themed classes (`text-role-*`,
-// `bg-surface-*`, `shadow-elev-*`, the CF Type plugin) only resolve through this
-// config. Re-add the `@config` line to `globals.css` to bridge it back.
-//
-// This file is itself `.mjs`, not `.ts`. Tailwind's config loader runs under
-// plain Node with no "type": "module" in package.json, so a `.ts` file
-// containing ESM `import` syntax triggers Node's MODULE_TYPELESS_PACKAGE_JSON
-// reparsing warning on every dev-server request. Same reasoning applies to the
-// value modules below — `.mjs`, never a `.ts` twin.
-//
-// Those two value modules used to live at `src/design-system/tokens/`. That tree
-// was deleted; they were rescued verbatim into `src/lib/design/tailwind/`, which
-// is inside the kept `src/lib` tree, so this config no longer has a dangling
-// import into a deleted directory.
-import { zIndex } from "./src/lib/design/tailwind/z-index.mjs";
-import { spacingScale } from "./src/lib/design/tailwind/spacing.mjs";
+// NOTE: this config file is itself `.mjs`, not `.ts`. Tailwind's config
+// loader runs under plain Node with no "type": "module" in package.json, so
+// a `.ts` file containing ESM `import` syntax triggers Node's
+// MODULE_TYPELESS_PACKAGE_JSON reparsing warning (perf overhead + build
+// noise) on every dev-server request. `.mjs` is unambiguous ESM to Node, so
+// no reparse guess is needed. Same reasoning applies one level down to the
+// values modules this file imports — `.mjs` twins, never their `.ts`
+// counterparts. Turbopack dev also resolves `.mjs` cleanly here. Values +
+// types SoT pairs: `src/design-system/tokens/z-index.mjs` + `z-index.ts`,
+// `spacing.mjs` + `spacing.ts`.
+import { zIndex } from "./src/design-system/tokens/z-index.mjs";
+import { spacingScale } from "./src/design-system/tokens/spacing.mjs";
 
 // Expose the centralized z-index scale as semantic Tailwind utilities
 // (z-panel, z-modal, z-popover, z-toast, z-tooltip, …) so components stop
@@ -37,8 +27,11 @@ const zIndexScale = Object.fromEntries(
 
 const config = {
     content: [
+        "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
+        "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
+        "./src/design-system/**/*.{js,ts,jsx,tsx,mdx}",
         "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
-        "./src/shell/**/*.{js,ts,jsx,tsx,mdx}",
+        "./src/features/**/*.{js,ts,jsx,tsx,mdx}",
         "./src/utils/**/*.{js,ts,jsx,tsx,mdx}",
         // src/lib holds styling SoTs (e.g. outbound-state.ts's status dot/pill
         // classes). Without this, classes used ONLY here (e.g. orphan's color)

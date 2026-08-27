@@ -66,6 +66,17 @@ const STAFF = flag('staff', process.env.RS_STAFF_NAME || 'Michael');
 const SETTLE_MS = Number(flag('settle', '10000'));
 const ALLOW_DEV = has('allow-dev');
 const SKIP_FOCUS = has('no-focus');
+const CHECK = has('check');
+const UPDATE = has('update');
+/**
+ * Repeat count. Cold-load totals are NOISY — back-to-back runs of one build
+ * measured 43 and then 51 requests on /unbox, because image loading and mount
+ * timing move which components ever render. The duplicate and count-probe
+ * columns were identical every time. So: gate on the deterministic metrics,
+ * and take a median before believing the total. --check forces at least 3.
+ */
+const RUNS = Math.max(Number(flag('runs', CHECK || UPDATE ? '3' : '1')), CHECK || UPDATE ? 3 : 1);
+const BUDGET_PATH = path.join(REPO, 'request-budget.json');
 
 if (ROUTES.length === 0) {
   console.error('Usage: npm run perf:requests -- --route=/unbox [--route=/triage] [--base=http://localhost:3100]');
@@ -230,6 +241,47 @@ function classify(rows) {
   return { duplicates, multiShape, chains: chains.slice(0, 10), peakConcurrency: peak, countProbes, heaviest, slowest };
 }
 
+// ── budget ──────────────────────────────────────────────────────────────────
+/**
+ * The gate, and what it may and may not gate on.
+ *
+ * HARD (deterministic — a violation is a real regression, every time):
+ *   duplicateRequests  identical URL fired more than once in one load
+ *   countProbes        `?limit=1` with no `count_only` — still runs the list SQL
+ *   focusRefetch       requests fired by the SECOND focus cycle, seconds after
+ *                      the first; anything here is ignoring its own staleTime
+ *
+ * SOFT (noisy — median of --runs, and seeded with headroom):
+ *   requests           total API calls on cold load
+ *
+ * Ceilings ratchet DOWN only, exactly like `bundle-budget.json` and the
+ * Lighthouse baseline: finishing an optimization tightens the budget so the win
+ * cannot be quietly spent again. `--update` never raises a ceiling. If a route
+ * legitimately needs more, edit the JSON by hand and say why in the commit.
+ */
+const HARD = ['duplicateRequests', 'countProbes', 'focusRefetch'];
+const SOFT = ['requests'];
+/** Seed headroom for the noisy metric — the spread measured on this app. */
+const SOFT_HEADROOM = 1.2;
+
+const median = (xs) => {
+  const a = [...xs].sort((x, y) => x - y);
+  return a.length % 2 ? a[(a.length - 1) / 2] : Math.round((a[a.length / 2 - 1] + a[a.length / 2]) / 2);
+};
+
+/** One run's gate-relevant numbers. */
+function metricsOf(cap) {
+  return {
+    requests: cap.rows.length,
+    duplicateRequests: cap.analysis.duplicates.reduce((a, d) => a + (d.count - 1), 0),
+    countProbes: cap.analysis.countProbes.length,
+    focusRefetch: cap.focus ? cap.focus[1].count : 0,
+  };
+}
+
+const readBudget = () =>
+  (fs.existsSync(BUDGET_PATH) ? JSON.parse(fs.readFileSync(BUDGET_PATH, 'utf8')) : { routes: {} });
+
 // ── report ──────────────────────────────────────────────────────────────────
 const kb = (b) => `${(b / 1024).toFixed(1)}KB`;
 const pad = (s, n) => String(s).slice(0, n).padEnd(n);
@@ -287,6 +339,50 @@ function report(route, cap) {
 }
 
 // ── main ────────────────────────────────────────────────────────────────────
+/** One cold load of one route, on a fresh page. */
+async function captureRoute(ctx, route) {
+  const page = await ctx.newPage();
+  try {
+    await page.goto(`${BASE}${route}`, { waitUntil: 'load' });
+    await page.waitForTimeout(SETTLE_MS);
+    const cap = await page.evaluate(COLLECT);
+    if (cap.isDev && !ALLOW_DEV) {
+      throw new Error(
+        `${route} is being served by a DEV build.\n` +
+          'React StrictMode double-invokes effects there, so every raw fetch-in-effect\n' +
+          'appears twice and the REDUNDANCY column is fiction. Build and serve a\n' +
+          'production bundle on an isolated distDir + port (see the header of this\n' +
+          'file), or pass --allow-dev if you truly only want the slow-path shape.',
+      );
+    }
+    if (!SKIP_FOCUS) {
+      cap.focus = [await page.evaluate(focusCycle(7000)), await page.evaluate(focusCycle(7000))];
+    }
+    cap.analysis = classify(cap.rows);
+    return cap;
+  } finally {
+    await page.close();
+  }
+}
+
+function gate(route, metrics, budget) {
+  const ceilings = budget.routes?.[route];
+  if (!ceilings) {
+    return { route, status: 'unbudgeted', lines: [`  ${route}  no ceiling yet — run --update to seed one`] };
+  }
+  const lines = [];
+  let failed = false;
+  for (const key of [...HARD, ...SOFT]) {
+    const max = ceilings[key];
+    if (typeof max !== 'number') continue;
+    const got = metrics[key];
+    const bad = got > max;
+    if (bad) failed = true;
+    lines.push(`  ${bad ? 'FAIL' : 'ok  '}  ${route}  ${key.padEnd(18)} ${String(got).padStart(4)} / ${max}${HARD.includes(key) ? '' : '  (soft, median)'}`);
+  }
+  return { route, status: failed ? 'fail' : 'pass', lines };
+}
+
 async function main() {
   // `@playwright/test` is the devDependency this repo actually carries (the e2e
   // suite); it re-exports the same `chromium` driver. Fall back to the bare
@@ -310,46 +406,87 @@ async function main() {
   await ctx.addCookies([{ ...cookie, domain: hostname, path: '/' }]);
 
   fs.mkdirSync(OUT_DIR, { recursive: true });
-  const out = [];
+  const budget = readBudget();
+  const written = [];
+  const gates = [];
+  let anyFail = false;
 
-  for (const route of ROUTES) {
-    const page = await ctx.newPage();
-    await page.goto(`${BASE}${route}`, { waitUntil: 'load' });
-    await page.waitForTimeout(SETTLE_MS);
+  try {
+    for (const route of ROUTES) {
+      const caps = [];
+      for (let run = 0; run < RUNS; run += 1) caps.push(await captureRoute(ctx, route));
 
-    const cap = await page.evaluate(COLLECT);
-    if (cap.isDev && !ALLOW_DEV) {
-      console.error(
-        `\n${route} is being served by a DEV build.\n` +
-          'React StrictMode double-invokes effects there, so every raw fetch-in-effect\n' +
-          'appears twice and the REDUNDANCY column is fiction. Build and serve a\n' +
-          'production bundle on an isolated distDir + port (see the header of this\n' +
-          'file), or pass --allow-dev if you truly only want the slow-path shape.',
+      // Report the median run so the printed table matches the gated numbers.
+      const per = caps.map(metricsOf);
+      const metrics = Object.fromEntries(
+        [...HARD, ...SOFT].map((k) => [k, median(per.map((m) => m[k]))]),
       );
-      await browser.close();
-      process.exit(1);
-    }
+      const mid = caps[per.findIndex((m) => m.requests === metrics.requests)] ?? caps[0];
+      mid.route = route;
+      mid.base = BASE;
+      mid.runs = RUNS;
+      mid.metrics = metrics;
+      mid.capturedAt = new Date().toISOString();
 
-    if (!SKIP_FOCUS) {
-      cap.focus = [
-        await page.evaluate(focusCycle(7000)),
-        await page.evaluate(focusCycle(7000)),
-      ];
-    }
-    cap.analysis = classify(cap.rows);
-    cap.route = route;
-    cap.base = BASE;
-    cap.capturedAt = new Date().toISOString();
+      console.log(report(route, mid));
+      if (RUNS > 1) {
+        console.log(`   (median of ${RUNS} runs — requests: ${per.map((m) => m.requests).join(', ')})`);
+      }
 
-    console.log(report(route, cap));
-    const file = path.join(OUT_DIR, `${route.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '') || 'root'}.json`);
-    fs.writeFileSync(file, `${JSON.stringify(cap, null, 2)}\n`);
-    out.push(path.relative(REPO, file));
-    await page.close();
+      const file = path.join(OUT_DIR, `${route.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '') || 'root'}.json`);
+      fs.writeFileSync(file, `${JSON.stringify(mid, null, 2)}\n`);
+      written.push(path.relative(REPO, file));
+
+      if (UPDATE) {
+        const prev = budget.routes[route] ?? {};
+        const next = { ...prev };
+        for (const k of HARD) {
+          // Ratchet down only. A hard metric seeds at exactly what was measured.
+          next[k] = typeof prev[k] === 'number' ? Math.min(prev[k], metrics[k]) : metrics[k];
+        }
+        for (const k of SOFT) {
+          const seeded = Math.ceil(metrics[k] * SOFT_HEADROOM);
+          next[k] = typeof prev[k] === 'number' ? Math.min(prev[k], seeded) : seeded;
+        }
+        budget.routes[route] = next;
+      }
+      if (CHECK) {
+        const g = gate(route, metrics, budget);
+        gates.push(g);
+        if (g.status === 'fail') anyFail = true;
+      }
+    }
+  } finally {
+    await browser.close();
   }
 
-  await browser.close();
-  console.log(`\nwrote:\n${out.map((f) => `  ${f}`).join('\n')}`);
+  if (UPDATE) {
+    budget.$comment =
+      'Request-shape ceilings. Written by `npm run perf:requests -- --update`. '
+      + 'Ceilings ratchet DOWN only — finishing an optimization tightens them so the win '
+      + 'cannot be quietly spent again. duplicateRequests / countProbes / focusRefetch are '
+      + 'deterministic and gate exactly. `requests` is noisy (43 vs 51 measured across '
+      + 'back-to-back runs of one build), so it is a median of --runs seeded with headroom '
+      + 'and is a smoke alarm, not a precision instrument. Raising a ceiling is a hand edit '
+      + 'with a reason in the commit message.';
+    const ordered = { $comment: budget.$comment, routes: budget.routes };
+    fs.writeFileSync(BUDGET_PATH, `${JSON.stringify(ordered, null, 2)}\n`);
+    console.log(`\nupdated ${path.relative(REPO, BUDGET_PATH)}`);
+  }
+
+  console.log(`\nwrote:\n${written.map((f) => `  ${f}`).join('\n')}`);
+
+  if (CHECK) {
+    console.log('\nBUDGET');
+    for (const g of gates) for (const l of g.lines) console.log(l);
+    if (anyFail) {
+      console.error('\nrequest-shape budget EXCEEDED. Fix the regression — do not re-seed around it.');
+      process.exit(1);
+    }
+    console.log('\nrequest-shape budget OK.');
+    return;
+  }
+
   console.log('\nRe-run after a change and diff these files. That diff is the claim.\n');
 }
 

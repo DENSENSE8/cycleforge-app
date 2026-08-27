@@ -1,5 +1,4 @@
 import pool from '@/lib/db';
-import { isAttributed, type SessionAttribution } from '@/lib/sessions/attribution';
 
 /**
  * The `ops_events.entity_type` vocabulary — code source of truth.
@@ -47,29 +46,6 @@ export interface RecordOpsEventInput {
    * in the 2026-07-06 migration.
    */
   workflowNodeId?: string | null;
-  /**
-   * WHICH WORK SESSION THIS HAPPENED INSIDE, and at which bench. Persisted to
-   * `ops_events.session_id` / `session_type` (2026-08-23b).
-   *
-   * ONE OBJECT rather than two sibling fields, because the two facts always
-   * travel together and a row with an id but no type (or the reverse) is not a
-   * state any writer should be able to express. `sessionType` is denormalized
-   * beside the id on purpose: `ON DELETE SET NULL` clears `session_id` when the
-   * session row goes, and which BENCH the work happened at has to outlive it.
-   *
-   * REQUIRED, WITH NO DEFAULT — unlike `workflowNodeId` above, and deliberately
-   * so. An optional field compiles at every existing call site and writes NULL
-   * at all of them, and the compiler stays silent about precisely the ones that
-   * were missed. Required, {@link NO_SESSION} is a visible token in the source:
-   * `grep -rn NO_SESSION src/` is the work list for threading sessions through
-   * the rest of the app, and it only shrinks.
-   *
-   * This matches `RecordInventoryEventInput.session` on the other spine. The
-   * two event spines have different shapes — this one polymorphic, that one
-   * explicit-FK — but attribution means the same thing on both, so it is
-   * spelled the same way on both.
-   */
-  session: SessionAttribution;
   payload?: unknown;
 }
 
@@ -98,16 +74,13 @@ export async function recordOpsEvent(
   const actorStaffId = input.actorStaffId ?? null;
   const clientEventId = input.clientEventId ?? null;
   const workflowNodeId = input.workflowNodeId ?? null;
-  const sessionId = isAttributed(input.session) ? input.session.sessionId : null;
-  const sessionType = isAttributed(input.session) ? input.session.sessionType : null;
   const payload = input.payload ?? {};
 
   await deps.query(
     `INSERT INTO ops_events (
        organization_id, occurred_at, event_type,
        entity_type, entity_id,
-       actor_staff_id, client_event_id, workflow_node_id, payload,
-       session_id, session_type
+       actor_staff_id, client_event_id, workflow_node_id, payload
      )
      VALUES (
        $1::uuid,
@@ -118,9 +91,7 @@ export async function recordOpsEvent(
        $6::int,
        $7,
        $8,
-       $9::jsonb,
-       $10::bigint,
-       $11
+       $9::jsonb
      )
      ON CONFLICT (client_event_id) DO NOTHING`,
     [
@@ -133,8 +104,6 @@ export async function recordOpsEvent(
       clientEventId,
       workflowNodeId,
       JSON.stringify(payload),
-      sessionId,
-      sessionType,
     ],
   );
 }

@@ -6,7 +6,6 @@
  * second nav map or section labels.
  */
 
-import type { NavLaunchTarget } from '@/lib/nav/nav-destinations';
 import { searchNav } from '@/lib/nav/nav-search';
 import {
   spineAccentFor,
@@ -29,15 +28,7 @@ import {
 
 export type CommandBarNavBandId = SpineSectionId | 'pin' | 'footer';
 
-/**
- * A page row carries an optional {@link NavLaunchTarget} so a band built here
- * can be rendered by the rail's launch index without a second row shape. Every
- * row this module emits today leaves it absent, which means "navigate" — the
- * behaviour ⌘K has always had. The field exists so the launch index can UNION
- * these bands with session / table / tool bands and hand the result to one
- * renderer, instead of forking the palette's group type.
- */
-export type CommandBarNavPageRow = NavLaunchTarget & {
+type CommandBarNavPageRow = {
   type: 'page';
   id: string;
   label: string;

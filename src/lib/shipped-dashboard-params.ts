@@ -4,7 +4,7 @@ import {
   readShippedCarrierFilter,
   readShippedExceptionsFilter,
   readShippedStatusFilter,
-} from '@/lib/shipping/shipped-filter/shipped-filter-params';
+} from '@/components/shipping/ShippedFilterToolbar';
 
 type ParamsLike = { get(name: string): string | null };
 

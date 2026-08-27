@@ -1,5 +1,5 @@
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
-import type { JourneyUrlFilters } from '@/lib/operations/useOperationsTimelineUrlState';
+import type { JourneyUrlFilters } from '@/components/sidebar/operations/useOperationsTimelineUrlState';
 import type { JourneyEvent, JourneyDimension } from '@/lib/timeline/journey';
 
 /**

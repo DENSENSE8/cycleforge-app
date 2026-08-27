@@ -1,5 +1,5 @@
 import { toast } from '@/lib/toast';
-import { TOAST_DURATION } from '@/lib/toast-theme';
+import { TOAST_DURATION } from '@/design-system/components/toast-theme';
 
 type ZohoVerdict = 'ok' | 'failed' | 'skipped';
 

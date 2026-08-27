@@ -1,0 +1,37 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
+
+export function InlineEdit({ value, onSave, displayClassName }: { value: string; onSave: (next: string) => void; displayClassName: string }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+  useEffect(() => { setDraft(value); }, [value]);
+
+  if (!editing) {
+    return (
+      // ds-raw-button
+      <button type="button" onClick={() => setEditing(true)} className={`group ${displayClassName} text-left hover:underline`}>
+        {value}
+      </button>
+    );
+  }
+  return (
+    <div className="flex items-center gap-2">
+      <input
+        autoFocus
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={() => { onSave(draft.trim() || value); setEditing(false); }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') { onSave(draft.trim() || value); setEditing(false); }
+          if (e.key === 'Escape') { setDraft(value); setEditing(false); }
+        }}
+        className={cn("h-9 min-w-[200px] flex-1 rounded-md border border-border-default px-2 text-base font-semibold", focusRing('field', 'accent'))}
+      />
+    </div>
+  );
+}

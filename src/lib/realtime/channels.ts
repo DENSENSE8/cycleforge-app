@@ -153,6 +153,21 @@ export const getPackerBridgeChannelName = (orgId: string, staffId: number | stri
 export const getStaffStationBridgeChannelName = (orgId: string, staffId: number | string) =>
   `${orgChannelPrefix(orgId)}:staffstation:${normalizeChannelName(String(staffId), 'none')}`;
 
+/**
+ * Desk↔tablet counter-session bridge, keyed by the KIOSK DEVICE — the one
+ * channel family in this file that is not per-staff.
+ *
+ * It cannot be per-staff: the two peers are a staff desktop and a device
+ * principal that has no staffId at all, and the lease holder changes during a
+ * shift while the tablet stays put. The device is the stable end of the pair,
+ * so it names the channel; the desk is granted this channel only for devices it
+ * has actually claimed (see the token routes), never a `kiosk:*` wildcard.
+ *
+ * Both peers subscribe AND publish here, like the per-staff bridges above.
+ */
+export const getKioskBridgeChannelName = (orgId: string, deviceId: number | string) =>
+  `${orgChannelPrefix(orgId)}:kiosk:${normalizeChannelName(String(deviceId), 'none')}`;
+
 /** Phone→desktop scan-history feed (read-only; never writes receiving_*). */
 export const getScanLogChannelName = (orgId: string, staffId: number | string) =>
   `${orgChannelPrefix(orgId)}:scanlog:${normalizeChannelName(String(staffId), 'none')}`;

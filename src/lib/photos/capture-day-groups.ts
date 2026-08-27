@@ -18,7 +18,7 @@
  * evening capture into the wrong day for anyone outside the warehouse zone.
  */
 
-import type { LibraryPhoto } from '@/lib/photos/photo-library-types';
+import type { LibraryPhoto } from '@/components/photos/photo-library-types';
 import { toPSTDateKey } from '@/utils/date';
 
 export interface PhotoCaptureDayGroup {

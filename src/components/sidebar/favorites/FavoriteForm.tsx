@@ -1,0 +1,146 @@
+import { Check, Loader2, Trash2 } from '@/components/Icons';
+import { Button, IconButton } from '@/design-system/primitives';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { tableHeader } from '@/design-system/tokens/typography/presets';
+import { matchesSkuSuffix } from './favorites-search';
+import type { FavoritesWorkspaceController } from './useFavoritesWorkspace';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+
+
+/** Shared create/edit form: Ecwid product search + selection + label/notes. */
+export function FavoriteForm({ f }: { f: FavoritesWorkspaceController }) {
+  const { allowRepairDefaults = false, searchSkuSuffixFilter, searchResultsMaxHeightClass = 'max-h-44' } = f.props;
+  const { draft, setDraft, selectedProduct, setSelectedProduct, searchValue, setSearchValue, searchingProducts, searchResults, editingFavoriteId, isSaving } = f;
+
+  return (
+    <div className="space-y-2 border-y border-border-soft py-3">
+      {/* Ecwid product search */}
+      <div className="rounded-none border border-border-soft bg-surface-card">
+        <input
+          value={searchValue}
+          onChange={(e) => setSearchValue(e.target.value)}
+          placeholder="Search storefront products by name or SKU"
+          className="w-full rounded-xl border-0 bg-transparent px-3 py-2.5 text-role-caption font-semibold text-text-default outline-none placeholder:text-text-soft"
+        />
+        {searchingProducts ? (
+          <div className="flex items-center gap-2 border-t border-border-hairline px-3 py-2.5 text-text-soft">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            <p className={tableHeader}>Searching…</p>
+          </div>
+        ) : searchResults.length > 0 ? (
+          <div className={`${searchResultsMaxHeightClass} divide-y divide-border-hairline overflow-y-auto border-t border-border-hairline`}>
+            {searchResults.map((product) => {
+              const isSelected = selectedProduct?.id === product.id;
+              return (
+                <button
+                  key={product.id}
+                  type="button"
+                  onClick={() => {
+                    setSelectedProduct(product);
+                    if (!draft.label.trim()) setDraft((prev) => ({ ...prev, label: product.name }));
+                  }}
+                  /* ds-raw-button: multi-line text-left product result row (name + price + sku, selection bg) — not a Button shape */
+                  className={`ds-raw-button flex w-full items-start gap-2 inset-field text-left transition-colors ${isSelected ? 'bg-blue-50' : 'hover:bg-surface-hover'}`}
+                >
+                  {isSelected && <Check className="mt-0.5 h-3 w-3 shrink-0 text-blue-600" />}
+                  <div className="min-w-0 flex-1">
+                    <p className={`text-role-caption font-semibold leading-snug tracking-tight ${isSelected ? 'text-blue-700' : 'text-text-default'}`}>
+                      {product.name}
+                    </p>
+                    <div className="mt-0.5 flex w-full min-w-0 items-center justify-start gap-2">
+                      <span className="shrink-0 text-role-micro tabular-nums text-emerald-600">
+                        {product.price != null ? `$${product.price.toFixed(2)}` : ''}
+                      </span>
+                      <span className={`min-w-0 truncate text-role-micro font-semibold uppercase tracking-[0.14em] ${isSelected ? 'text-blue-500' : 'text-text-soft'}`}>
+                        {product.sku || 'No SKU'}
+                      </span>
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        ) : searchValue.trim() ? (
+          <div className={`border-t border-border-hairline px-3 py-2.5 ${tableHeader}`}>
+            {searchSkuSuffixFilter ? `No ${searchSkuSuffixFilter.toUpperCase()} SKUs found` : 'No products found'}
+          </div>
+        ) : null}
+      </div>
+
+      {/* Selected product — two rows */}
+      {selectedProduct && (
+        <div className="rounded-none border border-blue-200 bg-surface-card inset-field">
+          <p className="text-role-caption font-semibold leading-snug text-blue-900">{selectedProduct.name}</p>
+          <div className="mt-0.5 flex w-full min-w-0 items-center justify-start gap-2">
+            <span className="shrink-0 text-role-micro tabular-nums text-emerald-600">
+              {selectedProduct.price != null ? `$${selectedProduct.price.toFixed(2)}` : ''}
+            </span>
+            <span className="min-w-0 truncate text-role-micro uppercase tracking-[0.14em] text-blue-500">
+              {selectedProduct.sku || 'No SKU'}
+            </span>
+          </div>
+        </div>
+      )}
+
+      <input
+        value={draft.label}
+        onChange={(e) => setDraft((prev) => ({ ...prev, label: e.target.value }))}
+        placeholder="Label"
+        className={cn("w-full rounded-xl border border-border-soft bg-surface-card px-3 py-2.5 text-role-caption font-semibold text-text-default", focusRing('field', 'accent'))}
+      />
+
+      {allowRepairDefaults && (
+        <input
+          value={draft.issueTemplate}
+          onChange={(e) => setDraft((prev) => ({ ...prev, issueTemplate: e.target.value }))}
+          placeholder="Issue template"
+          className={cn("w-full rounded-xl border border-border-soft bg-surface-card px-3 py-2.5 text-role-caption font-semibold text-text-default", focusRing('field', 'accent'))}
+        />
+      )}
+
+      <textarea
+        value={draft.notes}
+        onChange={(e) => setDraft((prev) => ({ ...prev, notes: e.target.value }))}
+        placeholder="Notes"
+        rows={2}
+        className={cn("w-full resize-none rounded-xl border border-border-soft bg-surface-card px-3 py-2.5 text-role-caption font-semibold text-text-default", focusRing('field', 'accent'))}
+      />
+
+      {/* Footer */}
+      <div className="flex items-center justify-between gap-2 pt-1">
+        <Button variant="secondary" size="md" onClick={f.resetDraft}>
+          Cancel
+        </Button>
+        <div className="flex items-center gap-2">
+          {editingFavoriteId !== null && (
+            <HoverTooltip label="Delete favorite" asChild>
+              <IconButton
+                icon={<Trash2 className="h-3.5 w-3.5 text-red-400 hover:text-red-600" />}
+                ariaLabel="Delete favorite"
+                onClick={() => void f.handleDelete(editingFavoriteId)}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-red-100 bg-red-50 hover:border-red-300 hover:bg-red-100"
+              />
+            </HoverTooltip>
+          )}
+          <Button
+            variant="primary"
+            size="md"
+            icon={<Check className="h-4 w-4" />}
+            onClick={f.handleSave}
+            disabled={
+              isSaving
+              || !selectedProduct
+              || !selectedProduct.sku.trim()
+              || !draft.label.trim()
+              || (searchSkuSuffixFilter ? !matchesSkuSuffix(selectedProduct.sku, searchSkuSuffixFilter) : false)
+            }
+          >
+            {isSaving ? 'Saving…' : editingFavoriteId !== null ? 'Update' : 'Save Favorite'}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}

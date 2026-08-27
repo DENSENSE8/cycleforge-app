@@ -23,9 +23,10 @@ export const PATCH = withAuth(async (request: NextRequest, ctx) => {
     parsed.tracking_number === undefined
     && parsed.listing_url === undefined
     && parsed.order_number === undefined
+    && parsed.sku_catalog_id === undefined
   ) {
     return NextResponse.json(
-      { success: false, error: 'provide at least one of: tracking_number, listing_url, order_number' },
+      { success: false, error: 'provide at least one of: tracking_number, listing_url, order_number, sku_catalog_id' },
       { status: 400 },
     );
   }
@@ -37,6 +38,7 @@ export const PATCH = withAuth(async (request: NextRequest, ctx) => {
       trackingNumber: parsed.tracking_number,
       listingUrl: parsed.listing_url,
       orderNumber: parsed.order_number,
+      skuCatalogId: parsed.sku_catalog_id,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'update failed';
@@ -60,6 +62,7 @@ export const PATCH = withAuth(async (request: NextRequest, ctx) => {
       tracking_number: parsed.tracking_number,
       listing_url: parsed.listing_url,
       order_number: parsed.order_number,
+      sku_catalog_id: parsed.sku_catalog_id,
     },
   });
 

@@ -9,7 +9,7 @@ import {
   resolveSettingsSectionFromPath,
   SETTINGS_SECTION_OPTIONS as SETTINGS_REGISTRY,
   type SettingsSection,
-} from '@/lib/settings/settings-sections';
+} from '@/components/settings/settings-sections';
 import {
   getDashboardOrderViewFromSearch,
   normalizeDashboardOrderViewParams,

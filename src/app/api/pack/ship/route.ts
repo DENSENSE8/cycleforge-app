@@ -9,7 +9,6 @@ import { tapWorkflow } from '@/lib/workflow/tap';
 import { isUnifiedEngineFulfillmentTaps, isFulfillmentSubstitution } from '@/lib/feature-flags';
 import { clearOrderPackPlacement } from '@/lib/packing/pack-placement';
 import { clearUnitPackPlacement } from '@/lib/packing/unit-pack-placement';
-import { NO_SESSION } from '@/lib/sessions/attribution';
 
 /**
  * Thrown when a unit's guarded SHIPPED transition is rejected (it isn't in a
@@ -309,7 +308,6 @@ export const POST = withAuth(async (request, ctx) => {
         const shippedKey = clientEventId ? `${clientEventId}:${u.id}:SHIPPED` : null;
         const t = await transition(
           {
-            session: NO_SESSION,
             unitId: u.id,
             to: 'SHIPPED',
             eventType: 'SHIPPED',

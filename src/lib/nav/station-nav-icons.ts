@@ -1,6 +1,6 @@
 /**
  * Station nav icon registry — maps sidebar page / child-page ids to semantic
- * icon components from `@/lib/icons`. Single write path for
+ * icon components from `@/components/Icons`. Single write path for
  * SIDEBAR_PAGE_NAV data, the receiving rail, tech top pills, and shipping.
  *
  * MasterNav renders {@link STATION_PAGE_ICONS} (and other page SoT icons).
@@ -34,7 +34,7 @@ import {
   StationTesting,
   TechModeShippingQueue,
   TechModeTesting,
-} from '@/lib/icons';
+} from '@/components/Icons';
 
 type NavIconComponent = (props: { className?: string }) => JSX.Element;
 

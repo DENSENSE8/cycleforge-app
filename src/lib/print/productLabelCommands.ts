@@ -12,26 +12,10 @@ import {
 import {
   packMonochromeBitmap,
 } from '@/lib/print/labelCommands';
-import {
-  cellsForDots,
-  drawFittedText,
-  ESCPOS_FONT_A_COLUMNS,
-  labelFont,
-  TSPL_FONT_CELL_WIDTH,
-  wrapMonospace,
-  wrapToWidth,
-  zplCellsForDots,
-} from '@/lib/print/labelText';
 
 const DPI = 203;
 const MM_PER_INCH = 25.4;
 const LABEL_FACE_FONT_SIZE = Math.round((9 * DPI) / 96);
-const LABEL_TITLE_WEIGHT = 700;
-const TITLE_MAX_LINES = 2;
-/** Gutter between the info column and the 2D code, in dots. */
-const MATRIX_GUTTER = 8;
-/** `^A0N,h,w` cell for the title rows. */
-const ZPL_TITLE_CHAR_WIDTH = 22;
 
 function inchesToMillimeters(inches: number): string {
   return (inches * MM_PER_INCH).toFixed(1);
@@ -42,6 +26,24 @@ function sanitize(s: string): string {
     .replace(/[\r\n\t]+/g, ' ')
     .replace(/["~^]/g, ' ')
     .trim();
+}
+
+function wrap(text: string, maxChars: number, maxLines: number): string[] {
+  const words = text.split(/\s+/).filter(Boolean);
+  const lines: string[] = [];
+  let cur = '';
+  for (const w of words) {
+    const candidate = cur ? `${cur} ${w}` : w;
+    if (candidate.length > maxChars) {
+      if (cur) lines.push(cur);
+      cur = w;
+    } else {
+      cur = candidate;
+    }
+    if (lines.length >= maxLines) break;
+  }
+  if (cur && lines.length < maxLines) lines.push(cur);
+  return lines.slice(0, maxLines);
 }
 
 function asciiBytes(value: string): Uint8Array {
@@ -59,12 +61,26 @@ function joinBytes(parts: Uint8Array[]): Uint8Array {
   return result;
 }
 
+function drawFittedText(
+  context: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  maxWidth: number,
+  initialSize: number,
+  weight = 700,
+): void {
+  let size = initialSize;
+  do {
+    context.font = `${weight} ${size}px Arial, sans-serif`;
+    if (context.measureText(text).width <= maxWidth || size <= 8) break;
+    size -= 1;
+  } while (size > 8);
+  context.fillText(text, x, y);
+}
+
 interface ProductLabelFields {
-  /**
-   * Raw, sanitized title. Wrapped per RENDERER: the raster face measures real
-   * Arial, the native languages count cells in a printer-resident font.
-   */
-  title: string;
+  titleLines: string[];
   cond: string;
   color: string;
   data: string;
@@ -95,7 +111,7 @@ function productFieldsFor(input: PrintProductLabelInput): ProductLabelFields {
   });
   const title = sanitize(face.topLeft || sku);
   return {
-    title,
+    titleLines: wrap(title, 24, 2),
     cond: sanitize(face.bottomLeft),
     color: sanitize(face.bottomRight),
     data: sanitize(matrix.value),
@@ -126,12 +142,7 @@ function productTspl(f: ProductLabelFields, size: PaperSize, copies: number): st
   const padding = 10;
   const dm = Math.min(hDots - padding * 2, Math.round(0.84 * DPI));
   const dmX = Math.max(wDots - dm - padding, padding);
-  const infoRight = dmX - MATRIX_GUTTER;
-  // Font "2" is a 12-dot fixed-pitch firmware font, so the budget is exact.
-  const titleLines = wrapMonospace(f.title, {
-    maxCells: cellsForDots(infoRight - padding, TSPL_FONT_CELL_WIDTH['2']),
-    maxLines: TITLE_MAX_LINES,
-  }).lines;
+  const infoRight = dmX - 8;
 
   const L: string[] = [
     `SIZE ${inchesToMillimeters(size.widthIn)} mm,${inchesToMillimeters(heightIn)} mm`,
@@ -143,7 +154,7 @@ function productTspl(f: ProductLabelFields, size: PaperSize, copies: number): st
     'CLS',
   ];
   let y = 10;
-  for (const line of titleLines) {
+  for (const line of f.titleLines) {
     L.push(`TEXT ${padding},${y},"2",0,1,1,"${line}"`);
     y += 26;
   }
@@ -160,15 +171,11 @@ function productZpl(f: ProductLabelFields, size: PaperSize, copies: number): str
   const wDots = Math.round(size.widthIn * DPI);
   const hDots = Math.round(heightIn * DPI);
   const dmX = Math.max(wDots - 170, 12);
-  const titleLines = wrapMonospace(f.title, {
-    maxCells: zplCellsForDots(dmX - 12 - MATRIX_GUTTER, ZPL_TITLE_CHAR_WIDTH),
-    maxLines: TITLE_MAX_LINES,
-  }).lines;
 
   const L: string[] = ['^XA', `^PW${wDots}`, `^LL${hDots}`, '^CI28'];
   let y = 12;
-  for (const line of titleLines) {
-    L.push(`^FO12,${y}^A0N,${ZPL_TITLE_CHAR_WIDTH},${ZPL_TITLE_CHAR_WIDTH}^FD${line}^FS`);
+  for (const line of f.titleLines) {
+    L.push(`^FO12,${y}^A0N,22,22^FD${line}^FS`);
     y += 26;
   }
   L.push(`^FO12,${hDots - 43}^A0N,30,30^FD${f.cond}^FS`);
@@ -180,16 +187,10 @@ function productZpl(f: ProductLabelFields, size: PaperSize, copies: number): str
 }
 
 function productEscpos(f: ProductLabelFields, copies: number): string {
-  // The title prints at `ESC ! 0x18` — double width AND height — so it gets
-  // half the roll's Font A columns, not all of them.
-  const titleLines = wrapMonospace(f.title, {
-    maxCells: Math.floor(ESCPOS_FONT_A_COLUMNS / 2),
-    maxLines: TITLE_MAX_LINES,
-  }).lines;
   const body =
     `${ESC}@` +
     `${ESC}a\x01` +
-    `${ESC}!\x18${titleLines.join('\n')}\n` +
+    `${ESC}!\x18${f.titleLines.join('\n')}\n` +
     `${ESC}!\x10${f.cond}   ${f.color}\n` +
     `${ESC}!\x00\n` +
     escposQr(f.data) +
@@ -241,21 +242,8 @@ export function buildProductLabelBitmapCommands(
   const infoWidth = matrixX - padding - 8;
 
   let titleY = 8;
-  const titleLines = wrapToWidth(f.title, {
-    font: labelFont(LABEL_TITLE_WEIGHT, LABEL_FACE_FONT_SIZE),
-    maxWidth: infoWidth,
-    maxLines: TITLE_MAX_LINES,
-  }).lines;
-  for (const line of titleLines) {
-    drawFittedText(
-      context,
-      line,
-      padding,
-      titleY,
-      infoWidth,
-      LABEL_FACE_FONT_SIZE,
-      LABEL_TITLE_WEIGHT,
-    );
+  for (const line of f.titleLines) {
+    drawFittedText(context, line, padding, titleY, infoWidth, LABEL_FACE_FONT_SIZE, 700);
     titleY += 22;
   }
 

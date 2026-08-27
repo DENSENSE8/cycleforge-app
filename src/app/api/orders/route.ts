@@ -123,8 +123,12 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     const stageFilter = stageRaw === 'pending' || stageRaw === 'tested' ? stageRaw : '';
     const limitRaw = Number(searchParams.get('limit'));
     const pageLimit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.min(Math.floor(limitRaw), 500) : null;
-    // Keyset cursor over the ORDER BY (deadline_at ASC NULLS LAST, id ASC),
-    // base64(JSON{ d: iso|null, id }).
+    // Keyset cursor over the ORDER BY.
+    // Fulfillment (To Ship) is newest-first (`o.id DESC`) so manual add-order
+    // and fresh imports paint at the head of Pending instead of under a
+    // virtualized deadline-sorted backlog. Other `/api/orders` callers keep
+    // `deadline_at ASC NULLS LAST, id ASC`.
+    // Cursor payload stays base64(JSON{ d: iso|null, id }).
     const cursorRaw = searchParams.get('cursor');
     let cursor: { d: string | null; id: number } | null = null;
     if (cursorRaw) {
@@ -786,10 +790,13 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       params.push(orderIdFilter);
     }
 
-    // Keyset cursor: rows AFTER (d, id) in `deadline_at ASC NULLS LAST, id ASC`.
-    // A non-null cursor also sweeps in the NULL-deadline tail (it sorts last).
+    // Keyset cursor: fulfillment is `o.id DESC`; everything else is
+    // `deadline_at ASC NULLS LAST, id ASC`.
     if (cursor) {
-      if (cursor.d != null) {
+      if (fulfillmentScope) {
+        sql += ` AND o.id < $${paramCount++}`;
+        params.push(cursor.id);
+      } else if (cursor.d != null) {
         sql += ` AND (
           wa_deadline.deadline_at > $${paramCount}::timestamptz
           OR (wa_deadline.deadline_at = $${paramCount}::timestamptz AND o.id > $${paramCount + 1})
@@ -803,7 +810,9 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       }
     }
 
-    sql += ` ORDER BY wa_deadline.deadline_at ASC NULLS LAST, o.id ASC`;
+    sql += fulfillmentScope
+      ? ` ORDER BY o.id DESC`
+      : ` ORDER BY wa_deadline.deadline_at ASC NULLS LAST, o.id ASC`;
 
     // Fetch one extra row to detect truncation + mint the next keyset cursor.
     // Only when an explicit limit is set — unlimited callers are unchanged.

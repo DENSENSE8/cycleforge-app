@@ -1,4 +1,4 @@
-import type { JourneyUrlFilters } from '@/lib/operations/useOperationsTimelineUrlState';
+import type { JourneyUrlFilters } from '@/components/sidebar/operations/useOperationsTimelineUrlState';
 
 /**
  * Code-defined SYSTEM saved-views — the former `/audit-log` sections re-expressed

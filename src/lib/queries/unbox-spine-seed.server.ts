@@ -15,7 +15,7 @@ import {
 } from '@/lib/receiving/receiving-modes';
 import { DEFAULT_UNBOX_CONTEXT } from '@/lib/receiving/default-unbox-context';
 import { serverSelfFetch } from '@/lib/observability/server-self-fetch';
-import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { RECEIVING_RAIL_FEEDS } from '@/lib/receiving/rail/feeds';
 import { receivingRailQueryKey } from '@/lib/receiving/rail/rail-query-key';
 import {

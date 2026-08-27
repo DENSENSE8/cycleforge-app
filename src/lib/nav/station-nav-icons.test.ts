@@ -15,7 +15,7 @@ import {
   StationReceiving,
   StationShipping,
   TechModeShippingQueue,
-} from '@/lib/icons';
+} from '@/components/Icons';
 
 test('STATION_PAGE_ICONS covers every floor station nav id', () => {
   assert.deepEqual(Object.keys(STATION_PAGE_ICONS).sort(), ['outbound', 'packer', 'receiving', 'tech']);

@@ -7,15 +7,14 @@ import {
   shouldCollapseFromEdgeDrag,
   widthFromEdgeDrag,
 } from '@/design-system/hooks/useHorizontalEdgeResize';
-/* Merge 2026-08-25: both constant homes moved with the warehouse-os
-   zero-base — the sidebar column spec to `@/lib/sidebar`, the detail-stack
-   resize contract to `@/lib/design` (the `DETAIL_STACK_LAYOUT` shell it
-   used to mirror was deleted; the mirrored width is inlined there). */
 import {
   CONTEXT_PANEL_RESIZE,
   CONTEXT_PANEL_WIDTH_PX,
-} from '@/lib/sidebar/context-panel-column';
-import { DETAIL_STACK_RESIZE } from '@/lib/design/detail-stack-resize';
+} from '@/components/sidebar/context-panel-column';
+import {
+  DETAIL_STACK_LAYOUT,
+  DETAIL_STACK_RESIZE,
+} from '@/design-system/shells/detail-stack';
 
 test('widthFromEdgeDrag: leading edge — drag left grows (right-anchored pane)', () => {
   assert.equal(widthFromEdgeDrag(420, 100, 80, 'leading'), 440);
@@ -112,12 +111,10 @@ test('CONTEXT_PANEL_RESIZE defaults match the fixed column width token', () => {
   assert.ok(CONTEXT_PANEL_RESIZE.maxWidthPadPx > CONTEXT_PANEL_WIDTH_PX);
 });
 
-test('DETAIL_STACK_RESIZE keeps a sane default/min ordering', () => {
-  // The LAYOUT shell it used to mirror is gone (zero-base); the surviving
-  // contract is the resize spec's own internal consistency.
-  assert.equal(DETAIL_STACK_RESIZE.defaultWidthPx, 420);
-  assert.ok(DETAIL_STACK_RESIZE.minWidthPx < DETAIL_STACK_RESIZE.defaultWidthPx);
-  assert.ok(DETAIL_STACK_RESIZE.maxWidthPadPx > DETAIL_STACK_RESIZE.defaultWidthPx);
+test('DETAIL_STACK_RESIZE defaults track DETAIL_STACK_LAYOUT', () => {
+  assert.equal(DETAIL_STACK_RESIZE.defaultWidthPx, DETAIL_STACK_LAYOUT.widthPx);
+  assert.ok(DETAIL_STACK_RESIZE.minWidthPx < DETAIL_STACK_LAYOUT.widthPx);
+  assert.ok(DETAIL_STACK_LAYOUT.insetPx > 0);
 });
 
 test('edgeResizeWidthCap: absolute maxWidth wins over a loose viewport pad', () => {

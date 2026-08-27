@@ -12,7 +12,7 @@
  * dependency-free `rail-carton-key`, and `po-group-title` is type-only), so the
  * server seed can call this without pulling client-reference proxies.
  */
-import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { stampCartonRailTitleContext } from '@/lib/receiving/po-group-title';
 import {
   receivingRailCartonKey,

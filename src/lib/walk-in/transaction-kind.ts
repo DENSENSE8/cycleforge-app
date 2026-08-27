@@ -8,7 +8,7 @@
  * a component.
  */
 
-import { Package, SalesPrice, Wrench } from '@/lib/icons';
+import { Package, SalesPrice, Wrench } from '@/components/Icons';
 import type { TransactionKind } from './transactions';
 
 interface TransactionKindMeta {

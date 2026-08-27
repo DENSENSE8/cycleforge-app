@@ -29,6 +29,8 @@ export const InboundImportPurchaseBody = z.object({
   return_reason: z.string().trim().max(500).optional().nullable(),
   rma_id: z.string().trim().max(200).optional().nullable(),
   condition_grade: z.string().trim().max(40).optional().nullable(),
+  /** Resolved sku_catalog.id from the Zoho inventory picker (Add Return). */
+  sku_catalog_id: z.coerce.number().int().positive().optional().nullable(),
 }).refine((v) => Boolean(v.sku?.trim() || v.item_name?.trim()), {
   message: 'must provide at least one of: sku, item_name',
   path: ['sku'],
@@ -47,6 +49,7 @@ export const InboundUpdateIdentityBody = z.object({
   tracking_number: z.string().trim().max(200).optional().nullable(),
   listing_url: z.string().trim().max(2000).optional().nullable(),
   order_number: z.string().trim().max(200).optional().nullable(),
+  sku_catalog_id: z.coerce.number().int().positive().optional().nullable(),
 });
 
 export type InboundUpdateIdentityBody = z.infer<typeof InboundUpdateIdentityBody>;

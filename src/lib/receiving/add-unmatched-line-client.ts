@@ -10,7 +10,7 @@ import { toast } from '@/lib/toast';
 import { writeReceivingSiblingLine } from '@/lib/queries/receiving-queries';
 import { refreshDomains } from '@/lib/refresh/bus';
 import { REFRESH_BUNDLES } from '@/lib/refresh/domains';
-import type { EcwidProductSelection } from '@/lib/receiving/ecwid-search-shared';
+import type { EcwidProductSelection } from '@/components/receiving/unfound/ecwid-search/ecwid-search-shared';
 
 type AddUnmatchedLineSelection = EcwidProductSelection;
 
@@ -106,7 +106,11 @@ export async function addUnmatchedLine(
   });
   const body = await res.json().catch(() => ({}));
   if (!res.ok || !body.success) {
-    toast.error(body.error ?? `add line failed (${res.status})`);
+    const detail =
+      typeof body.message === 'string' && body.message.trim()
+        ? body.message
+        : body.error;
+    toast.error(detail ?? `add line failed (${res.status})`);
     return null;
   }
 

@@ -40,6 +40,10 @@
  *                top for real-time pickup. Distinct from `testing` (the
  *                already-tested log). Optional `?tester=` filters to a tech's
  *                own assigned units (assigned_tech_id).
+ * - `testing_opened` — lines THIS staffer recently OPENED on Quality Control,
+ *                newest-opened first. Per-staff, backed by
+ *                receiving_line_testing_opens (upserted on open). Powers the
+ *                Testing sidebar Recent rail. Isolated from Unbox `viewed`.
  * - `viewed`   — lines the requesting staff recently OPENED in the receiving
  *                workspace, newest-opened first. Per-staff, backed by
  *                receiving_line_views (upserted on open). Powers the unbox
@@ -58,6 +62,7 @@ export const RECEIVING_VIEWS = [
   'unbox_opened',
   'testing',
   'needs-test',
+  'testing_opened',
   'viewed',
 ] as const;
 

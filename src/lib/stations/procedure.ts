@@ -23,12 +23,14 @@
  *
  * Honesty rules, in order of importance:
  *
- *   1. Every step declares its own `reads`/`writes`, and every one of them is
- *      verified against the route's SQL by `data-lineage.guard.test.ts`. A map
- *      that quietly omits a step is a worse SOP than a document, because it
- *      reads as complete.
- *   2. A step that names registry ids (`sourceIds` / `actionIds`) INHERITS
- *      their lineage rather than restating it (one module per concern).
+ *   1. A step declares `composed: true` ONLY when the station registry really
+ *      drives it. Everything else is `composed: false` — hand-coded UI over a
+ *      hand-coded route. A map that quietly omits the code-only steps is a
+ *      worse SOP than a document, because it reads as complete.
+ *   2. A composed step names its registry ids and INHERITS their lineage — it
+ *      never restates it (one module per concern).
+ *   3. A code-only step declares its own `reads`/`writes`, and every one of them
+ *      is verified against the route's SQL by `data-lineage.guard.test.ts`.
  *
  * This file is CODE (PR-reviewed capability declaration). Which surfaces a given
  * org actually publishes stays DATA in `station_definitions`.
@@ -184,18 +186,25 @@ export interface ProcedureStep {
    * un-completable for them.
    */
   photoAspectSet?: readonly PhotoAspect[];
+  /**
+   * True when the station registry drives this step (a composed block bound to
+   * a registered source/action). False when it is hand-coded UI over a
+   * hand-coded route — the state most of Unbox is still in.
+   */
+  composed: boolean;
   /** Registered `DataSourceDefinition` ids this step reads through. */
   sourceIds?: string[];
   /** Registered `ActionDefinition` ids this step fires. */
   actionIds?: string[];
   /**
    * The route this step drives when it is NOT expressed through a registered
-   * source/action — it is what the lineage guard parses.
+   * source/action. Required for a code-only step — it is what the lineage guard
+   * parses.
    */
   endpoint?: { method: 'GET' | 'POST' | 'PATCH' | 'DELETE'; path: string };
-  /** Relations `endpoint` reads. Omit when `sourceIds`/`actionIds` supply them. */
+  /** Relations `endpoint` reads. Omit on a composed step — inherited. */
   reads?: TableRef[];
-  /** Relations `endpoint` writes. Omit when `sourceIds`/`actionIds` supply them. */
+  /** Relations `endpoint` writes. Omit on a composed step — inherited. */
   writes?: TableRef[];
   /** Ably channel this step publishes on, when it has one. */
   realtimeChannel?: string;
@@ -362,6 +371,7 @@ const UNBOX_STEP_CATALOG: Record<string, ProcedureStep> = {
     summary:
       'Scan the tracking number at the bench. Resolves the carton against its PO, or opens an unfound carton when nothing matches.',
     phase: 'intake',
+    composed: false,
     endpoint: { method: 'POST', path: '/api/receiving/lookup-po' },
     reads: [
       { table: 'receiving_carton' },
@@ -385,6 +395,7 @@ const UNBOX_STEP_CATALOG: Record<string, ProcedureStep> = {
     summary:
       'Name what this carton is (PO / return / trade-in / pickup) before anything else can be recorded against it.',
     phase: 'capture',
+    composed: false,
     endpoint: { method: 'PATCH', path: '/api/receiving/:id' },
     reads: [
       { table: 'items' },
@@ -413,6 +424,7 @@ const UNBOX_STEP_CATALOG: Record<string, ProcedureStep> = {
     phase: 'capture',
     photoStage: 'arrival_package',
     photoAspect: 'shipping_label',
+    composed: false,
     endpoint: { method: 'POST', path: '/api/receiving-photos' },
     reads: RECEIVING_PHOTO_READS,
     writes: RECEIVING_PHOTO_WRITES,
@@ -425,6 +437,7 @@ const UNBOX_STEP_CATALOG: Record<string, ProcedureStep> = {
     phase: 'capture',
     photoStage: 'arrival_package',
     photoAspect: 'box_exterior',
+    composed: false,
     endpoint: { method: 'POST', path: '/api/receiving-photos' },
     reads: RECEIVING_PHOTO_READS,
     writes: RECEIVING_PHOTO_WRITES,
@@ -437,6 +450,7 @@ const UNBOX_STEP_CATALOG: Record<string, ProcedureStep> = {
     phase: 'capture',
     photoStage: 'unbox_carton',
     photoAspect: 'shipping_label',
+    composed: false,
     endpoint: { method: 'POST', path: '/api/receiving-photos' },
     reads: RECEIVING_PHOTO_READS,
     writes: RECEIVING_PHOTO_WRITES,
@@ -449,6 +463,7 @@ const UNBOX_STEP_CATALOG: Record<string, ProcedureStep> = {
     phase: 'capture',
     photoStage: 'unbox_carton',
     photoAspect: 'box_exterior',
+    composed: false,
     endpoint: { method: 'POST', path: '/api/receiving-photos' },
     reads: RECEIVING_PHOTO_READS,
     writes: RECEIVING_PHOTO_WRITES,
@@ -461,6 +476,7 @@ const UNBOX_STEP_CATALOG: Record<string, ProcedureStep> = {
     phase: 'capture',
     photoStage: 'unbox_carton',
     photoAspect: 'packing_material',
+    composed: false,
     endpoint: { method: 'POST', path: '/api/receiving-photos' },
     reads: RECEIVING_PHOTO_READS,
     writes: RECEIVING_PHOTO_WRITES,
@@ -471,6 +487,7 @@ const UNBOX_STEP_CATALOG: Record<string, ProcedureStep> = {
     summary:
       'Confirm what is actually in this box against the line list. Nothing recorded that a human had read the manifest before working it \u2014 this step is that fact.',
     phase: 'capture',
+    composed: false,
     endpoint: { method: 'POST', path: '/api/receiving/:id/contents-confirm' },
     reads: [{ table: 'receiving_unbox', via: '@/lib/receiving/streets/carton-street-write' }],
     writes: [{ table: 'receiving_unbox', via: '@/lib/receiving/streets/carton-street-write' }],
@@ -482,6 +499,7 @@ const UNBOX_STEP_CATALOG: Record<string, ProcedureStep> = {
       'Grade the unit \u2014 one tap or one scanned condition code. The stored default pre-selects the chip, so this is a confirmation rather than a decision from scratch; it is still an explicit act, and `condition_graded_at` is what records that it happened.',
     phase: 'capture',
     perUnit: true,
+    composed: false,
     endpoint: { method: 'POST', path: '/api/receiving/lines/:id/condition' },
     reads: [{ table: 'receiving_line' }],
     writes: [{ table: 'receiving_line_testing' }],
@@ -495,6 +513,7 @@ const UNBOX_STEP_CATALOG: Record<string, ProcedureStep> = {
     photoStage: 'unbox_item',
     photoAspectSet: ASPECTS_BY_STAGE.unbox_item,
     perUnit: true,
+    composed: false,
     endpoint: { method: 'POST', path: '/api/receiving-photos' },
     reads: RECEIVING_PHOTO_READS,
     writes: RECEIVING_PHOTO_WRITES,
@@ -506,6 +525,7 @@ const UNBOX_STEP_CATALOG: Record<string, ProcedureStep> = {
       'Scan each unit\u2019s serial, or waive it for a line that genuinely has none. This is what turns a quantity into tracked units.',
     phase: 'capture',
     perUnit: true,
+    composed: false,
     endpoint: { method: 'POST', path: '/api/receiving/scan-serial' },
     reads: [
       { table: 'receiving_line' },
@@ -524,6 +544,7 @@ const UNBOX_STEP_CATALOG: Record<string, ProcedureStep> = {
     summary:
       'Read the face this carton is about to print — the title, the condition and the code the shelf will be found by — and confirm it. A capture step, never the print itself: the printed face is the last thing an operator can still correct for free, and once the sticker is on the box a wrong one costs a re-label at the shelf.',
     phase: 'capture',
+    composed: false,
     endpoint: { method: 'POST', path: '/api/receiving/lines/:id/label-previewed' },
     reads: [{ table: 'receiving_line' }],
     writes: [{ table: 'receiving_line_testing' }],
@@ -533,6 +554,7 @@ const UNBOX_STEP_CATALOG: Record<string, ProcedureStep> = {
     label: 'Print the label',
     summary: 'Print the carton or item label. First print wins \u2014 the stamp survives a refresh and another device.',
     phase: 'commit',
+    composed: false,
     endpoint: { method: 'POST', path: '/api/receiving/lines/:id/label-printed' },
     reads: [{ table: 'receiving_line' }],
     writes: [{ table: 'receiving_line_testing' }],
@@ -543,6 +565,7 @@ const UNBOX_STEP_CATALOG: Record<string, ProcedureStep> = {
     summary:
       'Scan the putaway bin barcode where this unit will live after receive. Dock Band 1 owns the wedge; the middle Placement panel confirms room · bin · barcode. Distinct from Arrival door carton staging.',
     phase: 'commit',
+    composed: false,
     endpoint: { method: 'POST', path: '/api/receiving/lines/:id/stage' },
     reads: [
       { table: 'receiving_line' },
@@ -557,6 +580,7 @@ const UNBOX_STEP_CATALOG: Record<string, ProcedureStep> = {
     summary:
       'Commit the received quantities: units become inventory, the line advances, and the receipt is pushed to the inventory provider. Prefer the staged location when present; otherwise org default putaway.',
     phase: 'commit',
+    composed: false,
     endpoint: { method: 'POST', path: '/api/receiving/mark-received-po' },
     reads: [
       { table: 'receiving_carton' },

@@ -1,0 +1,399 @@
+'use client';
+
+/**
+ * PhotoPeekFan — presentational, data-free photo "peek" gesture + Quick Look.
+ *
+ * A hover-driven, multi-state Motion gesture meant to be layered over a
+ * `relative` surface (e.g. the unbox LineEditPanel):
+ *
+ *   rest      → only the top-left CORNER of the newest photo pokes from the edge
+ *   fan       → on hover, the recent photos fan out (staggered spring)
+ *   expand    → hold the hover (~holdMs) or click/tap → the fan flies into a
+ *               bigger display over a dark-gray backdrop
+ *   viewer    → click a fan card (or press Space) → the shared fullscreen
+ *               {@link PhotoViewerModal} (zoom/pan, ←/→ nav, filmstrip). This is
+ *               the SAME viewer the shipped/packing/receiving galleries use —
+ *               there is no separate lightbox to maintain.
+ *
+ * Pure: give it `cards` (newest first) and it renders. Data/realtime lives in the
+ * `ReceivingPhotoPeek` wrapper. It was Playwright-tested in isolation at
+ * /design-demo/photo-peek until that harness was deleted (2026-08-20); it is
+ * currently UNCOVERED — see docs/kill-list/01-tier1-provably-dead.md.
+ */
+
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import { createPortal } from 'react-dom';
+import { motion, AnimatePresence, type Variants } from '@/design-system/motion';
+import { motionBezier } from '@/design-system/foundations/motion-framer';
+import { zIndex as zLayer } from '@/design-system/tokens/z-index';
+import { useEscapeClose } from '@/design-system/hooks';
+import { X } from '@/components/Icons';
+import { IconButton } from '@/design-system/primitives';
+import { buildUnboxingCartonLibraryHref } from '@/components/shipped/photo-gallery/photo-context-provenance';
+import { MovePhotosBetweenPoRail } from '@/components/receiving/workspace/line-edit/MovePhotosBetweenPoRail';
+import { usePhotoGallery } from '@/components/shipped/photo-gallery/usePhotoGallery';
+import { PhotoViewerPortal } from '@/components/shipped/photo-gallery/PhotoViewerPortal';
+import type { PhotoGalleryInput } from '@/components/shipped/photo-gallery/photo-gallery-utils';
+import SocialCards, { type CardItem } from '@/components/ui/card-fan-carousel';
+import { useUIModeOptional } from '@/design-system/providers/UIModeProvider';
+import { MobileSwipePhotoViewer, type SwipePhotoSlide } from '@/components/mobile/station/MobileSwipePhotoViewer';
+import { type PeekCard } from './photo-peek-pending';
+
+export type { PeekCard };
+
+const PEEK_COUNT = 4; // cards in the corner/fan
+
+/** Tiny sunken tile for expanded SocialCards (avoids empty img + carousel SoT edits). */
+const PENDING_FAN_IMG =
+  'data:image/svg+xml,' +
+  encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="560">' +
+      '<rect width="100%" height="100%" fill="#e8e8e8"/>' +
+      '<circle cx="200" cy="280" r="28" fill="#c8c8c8"/>' +
+      '</svg>',
+  );
+
+const FAN_SPRING = { type: 'spring', stiffness: 320, damping: 26 } as const;
+
+// Background set via inline style (not Tailwind) so brand-new arbitrary opacity
+// utilities don't silently no-op under the turbopack/JIT regen gotcha.
+const FAN_BG = 'rgba(78,78,78,0.95)'; // darker gray for viewing
+
+// Peek geometry (i = 0 is the front/newest card). Rest tucks all but a corner
+// past the right edge; fan pulls them in and spreads them into a small arc.
+const peekCardVariants: Variants = {
+  rest: (i: number) => ({
+    x: 64 + i * 7,
+    y: i * 3,
+    rotate: -5 - i * 2,
+    scale: 1 - i * 0.05,
+    opacity: i === 0 ? 1 : 0.85 - i * 0.18,
+    transition: FAN_SPRING,
+  }),
+  fan: (i: number) => ({
+    x: 12 - i * 12,
+    y: -i * 13,
+    rotate: -6 - i * 9,
+    scale: 1 - i * 0.03,
+    opacity: 1,
+    transition: FAN_SPRING,
+  }),
+};
+
+const CTRL_BTN =
+  'grid place-items-center rounded-full bg-scrim/40 text-white backdrop-blur-md transition-colors hover:bg-scrim/65 disabled:opacity-30';
+
+// ── Peek + fan ────────────────────────────────────────────────────────────────
+
+export function PhotoPeekFan({
+  cards,
+  holdMs = 480,
+  receivingId,
+  poRef,
+  onPhotoDeleted,
+  onOpenMovePhotosExternal,
+}: {
+  cards: PeekCard[];
+  holdMs?: number;
+  /** Scopes delete broadcasts to this carton (desktop camera ×N + mobile feed). */
+  receivingId?: number;
+  /** PO#/order ref for the unboxing media-library deep link. */
+  poRef?: string | null;
+  /** Wired so the viewer's delete affordance can refresh the source list. */
+  onPhotoDeleted?: (photoId: number) => void;
+  /** Unbox: open Move photos in the station tool push instead of a center overlay. */
+  onOpenMovePhotosExternal?: () => void;
+}) {
+  const count = cards.length;
+  const pendingCount = useMemo(() => cards.filter((c) => c.pending).length, [cards]);
+  const peekCards = cards.slice(0, PEEK_COUNT);
+  // The expanded fan + the viewer both show ALL photos chronologically: first
+  // (oldest) on the left, newest on the right — the reverse of the newest-first
+  // peek/fan ordering. The fan card index lines up 1:1 with the gallery index
+  // for committed cards; pending tiles are not openable.
+  const chronoCards = useMemo(() => [...cards].reverse(), [cards]);
+  const fanItems = useMemo<CardItem[]>(
+    () =>
+      chronoCards.map((c) =>
+        c.pending
+          ? { imgUrl: PENDING_FAN_IMG, alt: c.alt || 'Uploading photo' }
+          : { imgUrl: c.imgUrl, alt: c.alt },
+      ),
+    [chronoCards],
+  );
+  const viewableCards = useMemo(() => chronoCards.filter((c) => !c.pending && !!c.imgUrl), [chronoCards]);
+  // Build gallery inputs with numeric ids when available so the viewer's delete
+  // affordance shows here too (parity with the top-bar ReceivingPhotoButton).
+  // Demo cards use non-numeric ids → those stay read-only. Pending excluded.
+  const chronoPhotos = useMemo<PhotoGalleryInput[]>(
+    () =>
+      viewableCards.map((c) => {
+        const idNum = Number(c.id);
+        // The viewer zooms/pans — it takes the full-resolution source, never the
+        // downscaled tile the fan renders (`imgUrl` may be a thumb variant).
+        const url = c.fullUrl || c.imgUrl;
+        const base = Number.isFinite(idNum) ? { id: idNum, url } : { url };
+        return c.meta ? { ...base, meta: c.meta } : base;
+      }),
+    [viewableCards],
+  );
+
+  const cartonLibraryHref = receivingId
+    ? buildUnboxingCartonLibraryHref({ receivingId, poRef: poRef ?? null })
+    : undefined;
+
+  // Reuse the shared gallery's fullscreen viewer (zoom/pan/nav/filmstrip + delete)
+  // instead of a bespoke lightbox.
+  const gallery = usePhotoGallery({
+    photos: chronoPhotos,
+    receivingId,
+    allowReassign: !!receivingId,
+    libraryHref: cartonLibraryHref,
+    onPhotoDeleted,
+    onPhotoReassigned: onPhotoDeleted,
+    onOpenMovePhotosExternal,
+  });
+  const { viewerOpen, openViewer } = gallery;
+
+  const [peekState, setPeekState] = useState<'rest' | 'fan'>('rest');
+  const [expanded, setExpanded] = useState(false);
+  const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Escape on the bare fan (no viewer) fully closes back to the resting peek.
+  // The viewer owns Esc while it's open (usePhotoGallery), returning to the fan.
+  useEscapeClose(expanded && !viewerOpen, () => {
+    setExpanded(false);
+    setPeekState('rest');
+  });
+
+  const openFanCard = useCallback(
+    (chronoIndex: number) => {
+      const card = chronoCards[chronoIndex];
+      if (!card || card.pending) return;
+      const viewIndex = viewableCards.findIndex((c) => c.id === card.id);
+      if (viewIndex >= 0) openViewer(viewIndex);
+    },
+    [chronoCards, viewableCards, openViewer],
+  );
+
+  // Space opens the newest committed photo in the viewer while the fan is up.
+  useEffect(() => {
+    if (!expanded || viewerOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === ' ' || e.key === 'Spacebar') {
+        e.preventDefault();
+        if (viewableCards.length === 0) return;
+        openViewer(viewableCards.length - 1); // newest committed is right-most among viewable
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [expanded, viewerOpen, openViewer, viewableCards.length]);
+
+  // Dismissing the viewer (Esc / X / backdrop) collapses the whole peek too —
+  // one dismiss closes BOTH the photo viewer and the expanded fan behind it.
+  const prevViewerOpenRef = useRef(false);
+  useEffect(() => {
+    if (prevViewerOpenRef.current && !viewerOpen) {
+      setExpanded(false);
+      setPeekState('rest');
+    }
+    prevViewerOpenRef.current = viewerOpen;
+  }, [viewerOpen]);
+
+  const clearHold = () => {
+    if (holdTimer.current) clearTimeout(holdTimer.current);
+    holdTimer.current = null;
+  };
+  const onPeekEnter = () => {
+    setPeekState('fan');
+    clearHold();
+    holdTimer.current = setTimeout(() => setExpanded(true), holdMs);
+  };
+  const onPeekLeave = () => {
+    setPeekState('rest');
+    clearHold();
+  };
+  const openNow = () => {
+    clearHold();
+    setExpanded(true);
+  };
+  const close = () => {
+    setExpanded(false);
+    setPeekState('rest');
+  };
+
+  useEffect(() => () => clearHold(), []);
+
+  const { isMobile } = useUIModeOptional();
+
+  const swipeSlides = useMemo<SwipePhotoSlide[]>(
+    () =>
+      gallery.photoItems.map((p, idx) => ({
+        id: String(p.id ?? idx),
+        previewUrl: p.url,
+        deletable: typeof p.id === 'number' && Number.isFinite(p.id),
+      })),
+    [gallery.photoItems],
+  );
+
+  const handleDelete = useCallback(
+    async (slide: SwipePhotoSlide, index: number) => {
+      gallery.setCurrentIndex(index);
+      await gallery.deletePhotoDirect();
+    },
+    [gallery],
+  );
+
+  if (count === 0) return null;
+
+  return (
+    <>
+      {/* Peek — right-edge corner → fan, parked just above the floating
+          notes/send (OmnichannelComposerDock) / terminal dock band. Fixed rem
+          clearance (not %-of-pane) so Unbox / Triage / Testing stay
+          dock-adjacent instead of drifting mid-canvas on tall panes.
+          Hidden while expanded (no edge peek when the display is open). */}
+      {!expanded ? (
+        <div className="pointer-events-none absolute inset-y-0 right-0 z-20 flex items-end">
+          <motion.div
+            data-testid="photo-peek"
+            className="pointer-events-auto relative mb-[calc(env(safe-area-inset-bottom,0px)+10rem)] h-36 w-28"
+            initial="rest"
+            animate={peekState}
+            variants={{ rest: {}, fan: { transition: { staggerChildren: 0.04 } } }}
+            onHoverStart={onPeekEnter}
+            onHoverEnd={onPeekLeave}
+            onClick={openNow}
+            role="button"
+            tabIndex={0}
+            aria-label={
+              pendingCount > 0
+                ? `Photos ${count} · ${pendingCount} uploading`
+                : `Photos ${count}`
+            }
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                openNow();
+              }
+            }}
+          >
+            <span className="sr-only" aria-live="polite">
+              {pendingCount > 0 ? `Uploading ${pendingCount}…` : null}
+            </span>
+            {peekCards.map((card, i) => (
+              <motion.div
+                key={card.id}
+                custom={i}
+                variants={peekCardVariants}
+                style={{ zIndex: PEEK_COUNT - i }}
+                className="absolute inset-0 origin-top-left overflow-hidden rounded-xl shadow-[0_8px_24px_rgba(0,0,0,0.22)] ring-1 ring-black/10 will-change-transform"
+                data-pending={card.pending ? 'true' : undefined}
+              >
+                {card.pending ? (
+                  <div
+                    className="flex h-full w-full items-center justify-center bg-surface-sunken"
+                    data-testid="photo-peek-pending"
+                    aria-hidden
+                  >
+                    <span className="h-6 w-6 animate-pulse rounded-full bg-border-soft" />
+                  </div>
+                ) : (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={card.imgUrl}
+                    alt={card.alt}
+                    loading={i === 0 ? 'eager' : 'lazy'}
+                    fetchPriority={i === 0 ? 'high' : undefined}
+                    decoding="async"
+                    className="h-full w-full object-cover"
+                  />
+                )}
+                {/* Count badge rides the FRONT card's visible corner. */}
+                {i === 0 && count > 1 ? (
+                  <span className="absolute left-1.5 top-1.5 rounded-full bg-scrim/60 inset-chip text-role-micro leading-none text-white tabular-nums backdrop-blur-sm">
+                    {count}
+                  </span>
+                ) : null}
+              </motion.div>
+            ))}
+          </motion.div>
+        </div>
+      ) : null}
+
+      {/* Expanded display — a full-viewport overlay portaled to <body> (like the
+          photo viewer), so the fan centers on the absolute middle of the PAGE and
+          sits above the unbox panels/sidebars — not boxed into the right pane.
+          Click backdrop / press Escape / hit × to close. Click a card → viewer. */}
+      {gallery.mounted && typeof document !== 'undefined'
+        ? createPortal(
+            <AnimatePresence>
+              {expanded ? (
+                <motion.div
+                  key="photo-fan-expanded"
+                  data-testid="photo-peek-expanded"
+                  initial={{ opacity: 0, pointerEvents: 'auto' }}
+                  animate={{ opacity: 1, pointerEvents: 'auto' }}
+                  exit={{ opacity: 0, pointerEvents: 'none' }}
+                  transition={{ duration: 0.2, ease: motionBezier.easeOut }}
+                  onClick={viewerOpen ? undefined : close}
+                  style={{ backgroundColor: FAN_BG, zIndex: zLayer.modalBackdrop }}
+                  className={`fixed inset-0 flex items-center justify-center overflow-hidden backdrop-blur-sm ${viewerOpen ? 'pointer-events-none' : ''}`}
+                >
+                  {/* Fan's own close — hidden while the fullscreen viewer is open so
+                      its button doesn't stack a second X above the viewer. */}
+                  {!viewerOpen ? (
+                    <IconButton
+                      onClick={(e) => { e.stopPropagation(); close(); }}
+                      ariaLabel="Close"
+                      icon={<X className="h-4 w-4 text-white" />}
+                      className={`${CTRL_BTN} absolute right-3 top-3 z-50 h-9 w-9`}
+                    />
+                  ) : null}
+
+                  {/* Fan stage — the shared GSAP card-fan carousel (hover to spread,
+                      arrows/dots to page when >7 photos). `isolate` keeps card
+                      stacking in its own context so a mid-hover card can't bleed
+                      above the viewer; `stopPropagation` keeps card/arrow clicks
+                      from closing the backdrop; pointer-events off while the viewer
+                      is up. */}
+                  <div
+                    className={`isolate w-full ${viewerOpen ? 'pointer-events-none' : ''}`}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <SocialCards cards={fanItems} onCardClick={openFanCard} cardTestId="fan-card" />
+                  </div>
+                </motion.div>
+              ) : null}
+            </AnimatePresence>,
+            document.body,
+          )
+        : null}
+
+      {/* Shared fullscreen viewer — SoT portal; X / Esc / backdrop close
+          (usePhotoGallery), returning to the fan underneath. */}
+      {isMobile ? (
+        <MobileSwipePhotoViewer
+          open={viewerOpen}
+          initialIndex={gallery.currentIndex}
+          slides={swipeSlides}
+          onClose={gallery.closeViewer}
+          onDelete={handleDelete}
+        />
+      ) : (
+        <PhotoViewerPortal g={gallery} />
+      )}
+
+      {!onOpenMovePhotosExternal && gallery.canReassignCurrent && receivingId != null ? (
+        <MovePhotosBetweenPoRail
+          key={gallery.movePhotosKey}
+          open={gallery.movePhotosOpen}
+          receivingId={receivingId}
+          onClose={gallery.closeMovePhotos}
+          onMoved={() => onPhotoDeleted?.(0)}
+        />
+      ) : null}
+    </>
+  );
+}

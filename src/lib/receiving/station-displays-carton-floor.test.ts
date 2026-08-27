@@ -7,7 +7,10 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
 import {
+  cartonDeleteFace,
+  cartonDeleteLabels,
   cartonFloorPeerOrder,
+  cartonInventoryRefreshFeedback,
   stationDisplaysFloorMoreItems,
   stationDisplaysFloorPrimaryAction,
 } from './station-displays-carton-floor';

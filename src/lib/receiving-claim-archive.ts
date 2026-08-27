@@ -1,9 +1,10 @@
 /**
  * Shared NAS archive for receiving claims.
  *
- * Create, Link & send (thread), and manual Sync-to-NAS all copy EVERY carton
- * photo into `…/2 Zendesk 2026/<ticket#>/`. Zendesk itself only gets the
- * operator-selected subset; the folder is the full local record.
+ * Create, Link & send (thread), auto-archive after a claimed unbox photo, and
+ * manual Sync-to-NAS all copy EVERY carton photo into
+ * `…/2 Zendesk 2026/<ticket#>/`. Zendesk itself only gets the operator-selected
+ * subset; the folder is the full local record.
  *
  * Best-effort: never throws. Callers surface `archiveWarning` / `failReason`.
  */
@@ -15,6 +16,7 @@ import {
   resolveClaimArchivePhotoUrl,
 } from '@/lib/receiving-claim-photos';
 import type { OrgId } from '@/lib/tenancy/constants';
+import { tenantQuery } from '@/lib/tenancy/db';
 import { getOrganization } from '@/lib/tenancy/organizations';
 import { getNasStorageTarget, type OrgSettings } from '@/lib/tenancy/settings';
 
@@ -36,7 +38,7 @@ interface ArchiveReceivingClaimPhotosArgs {
   logTag?: string;
 }
 
-interface ArchiveReceivingClaimPhotosResult {
+export interface ArchiveReceivingClaimPhotosResult {
   copied: number;
   total: number;
   folder: string | null;
@@ -49,6 +51,13 @@ interface ArchiveReceivingClaimPhotosResult {
   usedAgent: boolean;
   hasAgentUrl: boolean;
   hasAgentToken: boolean;
+}
+
+export interface StampReceivingNasArchiveArgs {
+  orgId: string;
+  receivingId: number;
+  folderName: string;
+  copied: number;
 }
 
 export interface ArchiveReceivingClaimPhotosDeps {
@@ -73,6 +82,7 @@ export interface ArchiveReceivingClaimPhotosDeps {
     info: string;
   }) => Promise<ArchiveClaimCopyResult>;
   agentEnv: () => { hasUrl: boolean; hasToken: boolean };
+  stamp?: (args: StampReceivingNasArchiveArgs) => Promise<void>;
 }
 
 const defaultDeps: ArchiveReceivingClaimPhotosDeps = {
@@ -86,6 +96,7 @@ const defaultDeps: ArchiveReceivingClaimPhotosDeps = {
     hasUrl: Boolean((process.env.NAS_AGENT_URL || '').trim()),
     hasToken: Boolean((process.env.NAS_AGENT_TOKEN || '').trim()),
   }),
+  stamp: stampReceivingNasArchive,
 };
 
 const UNAVAILABLE_WARNING =
@@ -275,4 +286,84 @@ export async function archiveReceivingClaimPhotos(
     hasAgentUrl: env.hasUrl,
     hasAgentToken: env.hasToken,
   };
+}
+
+/** Ticket folder name the NAS agent and the carton stamp both use (no leading `#`). */
+export function nasArchiveFolderName(ticketId: number | string): string {
+  return String(ticketId).trim().replace(/^#/, '').replace(/[\\/:*?"<>|]+/g, '-').trim();
+}
+
+/**
+ * Record that this carton was copied to a ticket folder. Failure must not undo
+ * a copy that already landed — the worst case is the carton still reads as
+ * pending and a second sync is an idempotent re-copy.
+ */
+export async function stampReceivingNasArchive(
+  args: StampReceivingNasArchiveArgs,
+): Promise<void> {
+  await tenantQuery(
+    args.orgId,
+    `UPDATE receiving_carton
+        SET nas_archived_at = now(),
+            nas_archived_ticket = $1,
+            nas_archived_photo_count = $2
+      WHERE id = $3 AND organization_id = $4`,
+    [args.folderName, args.copied, args.receivingId, args.orgId],
+  );
+}
+
+/**
+ * Archive then stamp. Same never-throw contract as
+ * {@link archiveReceivingClaimPhotos}: a stamp failure is logged, not thrown.
+ */
+export async function archiveAndStampReceivingClaimPhotos(
+  args: ArchiveReceivingClaimPhotosArgs,
+  deps: ArchiveReceivingClaimPhotosDeps = defaultDeps,
+): Promise<ArchiveReceivingClaimPhotosResult> {
+  const archived = await archiveReceivingClaimPhotos(args, deps);
+  if (!archived.folder) return archived;
+  const folderName = nasArchiveFolderName(args.ticketId);
+  if (!folderName) return archived;
+  try {
+    await (deps.stamp ?? stampReceivingNasArchive)({
+      orgId: args.orgId,
+      receivingId: args.receivingId,
+      folderName,
+      copied: archived.copied,
+    });
+  } catch (stampErr) {
+    console.warn(
+      `[${args.logTag ?? 'zendesk-claim-archive'}] archive succeeded but stamp failed`,
+      stampErr,
+    );
+  }
+  return archived;
+}
+
+/**
+ * After an unbox/receiving photo lands on a carton that already has a Zendesk
+ * claim, copy the full photo set into that ticket's NAS folder. Used from
+ * `after()` so the upload response is not held open for the copy.
+ */
+export async function autoArchiveClaimPhotosAfterCapture(
+  args: { orgId: OrgId; receivingId: number; ticketId: number },
+  deps: ArchiveReceivingClaimPhotosDeps = defaultDeps,
+): Promise<ArchiveReceivingClaimPhotosResult> {
+  return archiveAndStampReceivingClaimPhotos(
+    {
+      orgId: args.orgId,
+      receivingId: args.receivingId,
+      ticketId: args.ticketId,
+      logTag: 'unbox-photo-auto-archive',
+      info: ({ photoIdCount, resolvedCount }) =>
+        [
+          `Zendesk Ticket: #${args.ticketId}`,
+          'Mode: Auto-archive after unbox photo (claim already filed)',
+          `Captured: ${new Date().toISOString()}`,
+          `Photos on claim record: ${photoIdCount}`,
+          `Photos resolved for NAS archive: ${resolvedCount}`,
+        ].join('\n'),
+    },
+    deps,
+  );
 }

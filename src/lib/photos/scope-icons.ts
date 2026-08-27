@@ -27,7 +27,7 @@ import {
   ReceivingModeRepair,
   ReceivingModeUnbox,
   Ticket,
-} from '@/lib/icons';
+} from '@/components/Icons';
 import type { PhotoLibrarySourceScope } from '@/lib/photos/library-filter-state';
 
 type IconComponent = (props: { className?: string }) => JSX.Element;

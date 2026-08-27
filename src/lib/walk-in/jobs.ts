@@ -5,8 +5,8 @@
  * Pickup / Repair share a counter shell and diverge on process.
  */
 
-import { Package, SalesPrice, Wrench } from '@/lib/icons';
-import type { HorizontalSliderItem } from '@/lib/ui/horizontal-slider-item';
+import { Package, SalesPrice, Wrench } from '@/components/Icons';
+import type { HorizontalSliderItem } from '@/components/ui/HorizontalButtonSlider';
 import type { PermissionString } from '@/lib/auth/permissions-shared';
 
 export const WALK_IN_JOBS = ['sales', 'pickup', 'repair'] as const;

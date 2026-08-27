@@ -9,7 +9,7 @@ import type {
   ReceivingModeContext,
   ReceivingModeDescriptor,
 } from '@/lib/receiving/receiving-modes';
-import type { ReceivingLineRow } from '@/lib/receiving/receiving-line-row';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import {
   isReceivingRailShipmentKey,
   receivingRailCartonKey,
@@ -91,7 +91,7 @@ export function invalidateReceivingFeeds(queryClient: QueryClient): void {
 export const UNBOX_RAIL_SEGMENT = 'received' as const;
 
 /**
- * Testing "You / Recent" rail segment (`TestingRecentRail` query key[2]).
+ * Testing "You / Recent" rail segment (`testingRecent` / TestingRecentRail query key[2]).
  * Line-keyed (not carton) — use {@link patchTestingRailByLine}, not carton merge.
  */
 export const TESTING_RAIL_SEGMENT = 'tested' as const;
@@ -685,8 +685,8 @@ export function patchReceivingRailTicketByCarton(
  *
  * TestingRecentRail does not subscribe to `receiving-line-updated`. Verdict /
  * qty upgrades must call this instead of dumping a by-id GET row onto the bus.
- * Age (`tested_at` / `last_activity_at`) and serials are never written —
- * membership reconciles via `testing-result-recorded` refresh.
+ * Age (`testing_opened_at`) is never written — membership reconciles via
+ * `testing-line-opened` / `testing-result-recorded` refresh.
  */
 type TestingRailPatch = {
   workflow_status?: string | null;
