@@ -21,6 +21,8 @@
     "verify:fast": "node scripts/verify.mjs --fast",
     "prepare": "git config core.hooksPath .githooks || true",
     "dev": "next dev --turbopack -p 3050",
+    "lane": "node scripts/lane.mjs",
+    "lanes": "node scripts/lane.mjs status",
     "dev:next": "next dev --turbopack",
     "worklog": "node scripts/worklog.mjs",
     "worklog:tail": "node scripts/worklog.mjs tail",

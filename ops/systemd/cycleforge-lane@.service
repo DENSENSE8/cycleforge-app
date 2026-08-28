@@ -1,0 +1,59 @@
+# CycleForge feature lane — Next.js dev server for ONE worktree.
+#
+# A templated --user unit: `%i` is the lane name, and every path is derived from
+# it, so adding the twentieth lane costs one EnvironmentFile and no new unit.
+#
+#   systemctl --user enable --now cycleforge-lane@packed-pie
+#   journalctl --user -u cycleforge-lane@packed-pie -f
+#
+# The port comes from the lane's EnvironmentFile (written by `pnpm lane new`),
+# NOT from this file. WorkingDirectory cannot expand an EnvironmentFile
+# variable, which is exactly why the lane directory is derived from the name
+# instead of being configurable.
+#
+# This unit never touches :3050 — that is `cycleforge-dev.service`, the
+# operator's, and it stays attach-only per AGENTS.md.
+
+[Unit]
+Description=CycleForge lane %i (Next.js dev)
+After=network-online.target
+Wants=network-online.target
+
+# Crash-loop backstop, same shape as cycleforge-dev.service: 5 failures in 5
+# minutes then stay failed, so the problem is visible in `systemctl --user
+# status` instead of burning CPU.
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Service]
+Type=simple
+EnvironmentFile=%h/.config/cycleforge/lanes/%i.env
+WorkingDirectory=%h/Projects/cycleforge-lanes/%i
+
+Environment=NODE_ENV=development
+Environment=NODE_OPTIONS=--max-old-space-size=8192
+Environment=NEXT_TELEMETRY_DISABLED=1
+Environment=PATH=/home/michaelgarisek/.nvm/versions/node/v24.14.1/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# next via its real JS entrypoint — node_modules/.bin/next is a /bin/sh shim
+# node cannot execute. Node pinned absolutely: nvm does not load in
+# non-interactive shells. Both notes carried over from cycleforge-dev.service.
+ExecStart=/home/michaelgarisek/.nvm/versions/node/v24.14.1/bin/node \
+  %h/Projects/cycleforge-lanes/%i/node_modules/next/dist/bin/next dev --turbopack -p ${LANE_PORT}
+
+Restart=always
+RestartSec=5
+# Next.js dev cold start can be slow.
+TimeoutStartSec=300
+
+# next dev spawns workers; kill the whole tree so a restart does not leave an
+# orphan holding the lane port.
+KillMode=control-group
+TimeoutStopSec=20
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=cf-lane-%i
+
+[Install]
+WantedBy=default.target
