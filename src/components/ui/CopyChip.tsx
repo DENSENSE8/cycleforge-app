@@ -38,6 +38,7 @@ import {
   resolveChipDisplay,
   resolveSerialDisplay,
 } from '@/lib/copy-chip-format';
+import { resolveMarketplaceChipIdentity } from '@/lib/marketplace-order-id';
 
 // EMPTY_CHIP_DISPLAY / QUIET_CHIP_EMPTY: import from `@/lib/copy-chip-format`
 // (SoT). Do not re-export here — knip flags unused barrel re-exports.
@@ -263,6 +264,19 @@ export function CopyChip({
 }: CopyChipProps) {
   const resolvedTooltipAction = tooltipAction ?? (onActivate ? 'external-link' : 'copy');
   const faceDisplay = editing ? 'editing' : display;
+  /**
+   * Id chips: eBay 2-5-5 / Amazon 3-7-7 paint from the number itself
+   * (yellow `#` + "eBay …" tooltip, orange `#` + "Amazon …") — not from a
+   * listing link or account_source. Caller `platformLabel` / icon paint still
+   * apply when the value is not one of those shapes.
+   */
+  const marketplace =
+    tone === 'id' ? resolveMarketplaceChipIdentity(value, platformLabel) : null;
+  const resolvedPlatformLabel = marketplace
+    ? marketplace.platformLabel
+    : tone === 'id'
+      ? platformLabel
+      : null;
   const {
     chipRef,
     hasTooltipProvider,
@@ -286,12 +300,17 @@ export function CopyChip({
     historyDisplay: faceDisplay,
     tooltipAction: resolvedTooltipAction,
     carrierHint: tone === 'tracking' ? carrierHint : null,
-    platformLabel: tone === 'id' ? platformLabel : null,
+    platformLabel: tone === 'id' ? resolvedPlatformLabel : null,
   });
 
   const toneDef = tone ? CHIP_TONES[tone] : undefined;
   const resolvedIcon = icon === undefined ? toneDef?.icon : icon;
-  const resolvedIconClass = iconClass ?? toneDef?.iconClass;
+  const resolvedIconClass = marketplace?.fromFormat
+    ? (marketplace.iconClass ?? toneDef?.iconClass)
+    : (iconClass ?? marketplace?.iconClass ?? toneDef?.iconClass);
+  const resolvedIconStyle = marketplace?.fromFormat
+    ? marketplace.iconStyle
+    : (iconStyle ?? marketplace?.iconStyle);
 
   // The site tooltip anchors to this wrapper's bounding rect. A block `div` with
   // `w-auto` stretches to the parent row, so the bubble centers on the row —
@@ -389,7 +408,7 @@ export function CopyChip({
                 ? 'h-3.5 w-3.5 [&_svg]:h-3.5 [&_svg]:w-3.5'
                 : 'h-4 w-4 [&_svg]:h-4 [&_svg]:w-4'
             } ${resolvedIconClass ?? ''}`}
-            style={iconStyle}
+            style={resolvedIconStyle}
           >
             {resolvedIcon}
           </span>
@@ -411,7 +430,8 @@ export function CopyChip({
 // --- Pre-configured chips ---
 
 /**
- * Internal order ID. Gray / Hash icon. Do NOT use for tracking numbers or FNSKUs.
+ * Internal order ID. Gray / Hash icon — except eBay 2-5-5 (yellow `#`) and
+ * Amazon 3-7-7 (orange `#`), which paint from the number itself.
  * `plain` drops the leading hash glyph (Sheets-like queue grid, where the column
  * header already labels "Order") while keeping copy + last-8 mono value.
  */

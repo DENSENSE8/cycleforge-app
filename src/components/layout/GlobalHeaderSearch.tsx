@@ -1,91 +1,50 @@
 'use client';
 
 /**
- * GlobalHeaderSearch — find cell in the global header, mounted immediately
- * right of page identity. Icon at rest on every page except `/search`, where
- * the field stays expanded.
- *
- * Sole find surface app-wide — including on `/search`. Pending pulse while
- * browse resolve/retrieve runs comes from {@link subscribeGlobalSearchPending}.
- *
- * It does NOT own ⌘K. That chord belongs to {@link CommandBar}.
- *
- * Guard: `./cmdk-owner.guard.test.ts`.
+ * Global header Find — icon-only trigger on the right rail (left of Add).
+ * Opens the centered {@link CommandBar} palette via {@link COMMAND_BAR_OPEN_EVENT}.
+ * Does not own ⌘K — that chord lives on CommandBar.
  */
 
-import { useEffect, useMemo, useState } from 'react';
-import { usePathname, useSearchParams } from 'next/navigation';
-import { GlobalFindCombobox } from '@/components/search/GlobalFindCombobox';
-import { useSearchRecents } from '@/hooks/useSearchRecents';
-import { subscribeGlobalSearchPending } from '@/lib/global-search-pending';
-import { isUnifiedHeaderSearchEnabled } from '@/lib/search/unified-header-search';
-import { useQueryClient } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
+import { Search } from '@/components/Icons';
+import { IconButton } from '@/design-system/primitives';
 import {
-  pushStaffRecentClient,
-  SEARCH_RECENTS_RAIL_KEY_PREFIX,
-} from '@/lib/search/staff-recents-client';
+  COMMAND_BAR_OPEN_CHANGE_EVENT,
+  COMMAND_BAR_OPEN_EVENT,
+} from '@/lib/app-events';
+import { cn } from '@/utils/_cn';
+import {
+  HEADER_ICON_BTN_CLASS,
+  HEADER_ICON_BTN_OPEN_CLASS,
+  HEADER_ICON_WRAP,
+  TOP_CHROME_ICON_FACE,
+} from './header-shell';
 
 export function GlobalHeaderSearch() {
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const [browsePending, setBrowsePending] = useState(false);
+  const [open, setOpen] = useState(false);
 
-  useEffect(() => subscribeGlobalSearchPending(setBrowsePending), []);
-
-  const onSearchPage = pathname === '/search' || Boolean(pathname?.startsWith('/search/'));
-
-  const queryClient = useQueryClient();
-  const unifiedOn = isUnifiedHeaderSearchEnabled();
-  const {
-    recents,
-    push: pushRecent,
-    remove: removeRecent,
-    clear: clearRecents,
-  } = useSearchRecents({ migrateLegacy: unifiedOn, limit: 6 });
-
-  // Two-way sync: `/search?q=` and legacy dashboard search mode seed the field.
-  const syncedQuery = useMemo(() => {
-    if (onSearchPage) return searchParams.get('q') ?? '';
-    if (pathname === '/dashboard' && searchParams.get('mode') === 'search') {
-      return searchParams.get('q') ?? '';
-    }
-    return '';
-  }, [onSearchPage, pathname, searchParams]);
+  useEffect(() => {
+    const onChange = (event: Event) => {
+      const detail = (event as CustomEvent<{ open?: boolean }>).detail;
+      if (typeof detail?.open === 'boolean') setOpen(detail.open);
+    };
+    window.addEventListener(COMMAND_BAR_OPEN_CHANGE_EVENT, onChange);
+    return () => window.removeEventListener(COMMAND_BAR_OPEN_CHANGE_EVENT, onChange);
+  }, []);
 
   return (
-    <GlobalFindCombobox
-      initialQuery={syncedQuery}
-      pending={browsePending}
-      recents={recents}
-      enableRecents={unifiedOn}
-      onRemoveRecent={removeRecent}
-      onClearRecents={() => clearRecents()}
-      onPushRecent={
-        unifiedOn
-          ? (entry) => {
-              pushRecent({
-                query: entry.query,
-                scope: entry.scope,
-                scopeHref: entry.scopeHref,
-                topHit: entry.topHit,
-              });
-              // …and the DB store the `/search` rail reads. Restored 2026-08-21:
-              // `POST /api/search/recents` had no caller at all, so the rail
-              // could only ever show rows a deleted code path left behind.
-              // Fire-and-forget — never gate the navigation on bookkeeping.
-              pushStaffRecentClient({
-                query: entry.query,
-                scope: entry.scope,
-                scopeHref: entry.scopeHref,
-                topHit: entry.topHit,
-              });
-              void queryClient.invalidateQueries({
-                queryKey: [SEARCH_RECENTS_RAIL_KEY_PREFIX],
-              });
-            }
-          : undefined
-      }
-      syncAssistantDraft
-    />
+    <div className={HEADER_ICON_WRAP} data-testid="global-find-field">
+      <IconButton
+        type="button"
+        size="md"
+        ariaLabel="Search"
+        title="Search (⌘K)"
+        aria-expanded={open}
+        onClick={() => window.dispatchEvent(new Event(COMMAND_BAR_OPEN_EVENT))}
+        className={cn(HEADER_ICON_BTN_CLASS, open && HEADER_ICON_BTN_OPEN_CLASS)}
+        icon={<Search className={TOP_CHROME_ICON_FACE} aria-hidden />}
+      />
+    </div>
   );
 }

@@ -25,9 +25,8 @@ const CMDK_ROOT = '[cmdk-root]';
 async function boot(page: Page, route = '/reports') {
   await page.goto(route, { waitUntil: 'domcontentloaded' });
   await page.locator('main').first().waitFor({ state: 'visible', timeout: 45_000 });
-  // The palette is a `ssr:false` dynamic chunk — its listener attaches when the
-  // split chunk lands, not at hydration.
-  await page.waitForTimeout(4_000);
+  // The palette lives in the global header (right-rail Find). Wait for chrome.
+  await page.getByTestId('global-find-field').waitFor({ state: 'visible', timeout: 45_000 });
 }
 
 const paletteOpen = (page: Page) => page.locator(CMDK_ROOT).count();
@@ -101,7 +100,7 @@ test.describe('⌘K palette', () => {
     await expect(page.locator('[role="dialog"][aria-label="Quick access"]')).toHaveCount(0);
   });
 
-  test('identifier-shaped query switches to find mode (no spine page titles)', async ({
+  test('identifier-shaped query switches to find mode (records, not pages)', async ({
     page,
   }) => {
     await boot(page);
@@ -109,8 +108,6 @@ test.describe('⌘K palette', () => {
     const root = page.locator(CMDK_ROOT).first();
     await expect(root).toBeVisible();
 
-    // Empty / word mode shows spine bands (e.g. Receiving). Identifier mode
-    // must hide those and lead with Find triage instead.
     const input = root.locator('[cmdk-input]');
     await input.fill('1Z999AA10123456784');
     await expect(root.getByText('Find', { exact: true }).first()).toBeVisible({
@@ -119,7 +116,6 @@ test.describe('⌘K palette', () => {
     await expect(
       root.getByText('See all results for', { exact: false }).first(),
     ).toBeVisible();
-    // Spine section headings should not compete with identifier triage.
     await expect(root.getByText('Child pages', { exact: true })).toHaveCount(0);
   });
 });

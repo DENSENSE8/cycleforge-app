@@ -23,8 +23,13 @@ export function CatalogSection() {
       </div>
 
       <div className="rounded-none border border-border-soft bg-surface-card p-5 shadow-sm">
-        <h3 className="mb-3 text-sm font-semibold text-text-default">Platforms</h3>
-        <CatalogManagerList kind="platform" />
+        <h3 className="mb-1 text-sm font-semibold text-text-default">Platforms</h3>
+        <p className="mb-3 text-xs text-text-soft">
+          Use the <span className="font-semibold">gear</span> on a platform to restrict which
+          receiving types it accepts (e.g. FBA only ever arrives as a Return). A platform with
+          no rules accepts every type.
+        </p>
+        <CatalogManagerList kind="platform" enablePlatformRules />
       </div>
 
       <div className="rounded-none border border-border-soft bg-surface-card p-5 shadow-sm">

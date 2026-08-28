@@ -20,9 +20,10 @@ import { countOpenPlacementsByLocation } from '@/lib/packing/pack-placement';
  * `src/lib/order-lifecycle.ts`, Decision 8) and is applied CLIENT-side over the
  * returned `combos`. SQL only aggregates facts; TS owns the lane rule.
  *
- * Scope mirrors the fulfillment slice of `/api/orders`: labeled (shipment_id)
- * with a non-empty tracking number (blank-tracking stays on Labels), not
- * carrier-shipped, not Amazon-fulfilled, and not yet packed (no PACK event).
+ * Scope mirrors the in-warehouse To-ship desk: labeled (shipment_id) with a
+ * non-empty tracking number (blank-tracking stays on Labels), not
+ * carrier-shipped, not Amazon-fulfilled, and not yet dock-scanned (no
+ * SHIP_CONFIRM). Includes packed-staged rows still sitting on a rack.
  * Optional `?staff=` narrows to one staff's assigned work (packer OR tech).
  *
  * "Mirrors" is now literal: the tech-scan and pack facts come from the shared
@@ -45,7 +46,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       staff: staffId ?? '',
       shipmentStatusRuleVersion: 'latest_status_relaxed_v2',
       // Bump when membership SQL / payload shape changes so stale tallies cannot outlive the fix.
-      queueScope: 'labeled_tracked_order_grain_v2',
+      queueScope: 'in_warehouse_order_grain_v1',
     });
 
     const CACHE_HEADERS = { 'Cache-Control': 'private, max-age=60, stale-while-revalidate=30' };
@@ -95,46 +96,73 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     const sql = `
       SELECT
         ${sqlOrderHasTechScan('o')} AS has_tech_scan,
+        ${sqlOrderHasPackScan('o')} AS has_pack_scan,
         o.is_out_of_stock AS blocked,
         COUNT(*)::int AS n,
-        COUNT(*) FILTER (WHERE o.is_urgent)::int AS urgent_n
+        COUNT(*) FILTER (WHERE o.is_urgent)::int AS urgent_n,
+        COUNT(*) FILTER (
+          WHERE COALESCE(wa_d.deadline_at, NULL) IS NOT NULL
+            AND timezone('America/Los_Angeles', wa_d.deadline_at)::date
+              <= timezone('America/Los_Angeles', NOW())::date
+        )::int AS must_ship_n
       FROM orders o
       LEFT JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
+      LEFT JOIN LATERAL (
+        SELECT wa.deadline_at
+        FROM work_assignments wa
+        WHERE wa.entity_type = 'ORDER' AND wa.entity_id = o.id
+          AND wa.status <> 'CANCELED'
+          AND wa.deadline_at IS NOT NULL
+        ORDER BY wa.deadline_at ASC
+        LIMIT 1
+      ) wa_d ON true
       WHERE o.organization_id = $1
         AND o.shipment_id IS NOT NULL
         AND COALESCE(TRIM(stn.tracking_number_raw), '') <> ''
         AND NOT ${SHIPPED_BY_CARRIER_SQL}
         AND COALESCE(o.fulfillment_channel, '') <> 'AFN'
-        AND NOT ${sqlOrderHasPackScan('o')}${staffClause}
-      GROUP BY 1, 2
+        AND NOT EXISTS (
+          SELECT 1 FROM station_activity_logs sal_out
+          WHERE sal_out.shipment_id = o.shipment_id
+            AND sal_out.organization_id = o.organization_id
+            AND sal_out.activity_type = 'SHIP_CONFIRM'
+        )${staffClause}
+      GROUP BY 1, 2, 3
     `;
 
     const result = await tenantQuery(ctx.organizationId, sql, params);
-    const combos = result.rows.map((r) => ({
-      hasTechScan: Boolean(r.has_tech_scan),
-      blocked: Boolean(r.blocked),
-      count: Number(r.n) || 0,
-    }));
-    const total = combos.reduce((sum, c) => sum + c.count, 0);
+    // Lane combos stay pre-pack only (PENDING/TESTED/BLOCKED); packed-staged
+    // is a separate stage counted via byStage.packed.
+    const combos = result.rows
+      .filter((r) => !r.has_pack_scan)
+      .map((r) => ({
+        hasTechScan: Boolean(r.has_tech_scan),
+        blocked: Boolean(r.blocked),
+        count: Number(r.n) || 0,
+      }));
+    const packedCount = result.rows
+      .filter((r) => r.has_pack_scan)
+      .reduce((s, r) => s + (Number(r.n) || 0), 0);
+    const prePackTotal = combos.reduce((sum, c) => sum + c.count, 0);
+    const total = prePackTotal + packedCount;
     const testedRaw = combos.filter((c) => c.hasTechScan).reduce((s, c) => s + c.count, 0);
-    // Operator-flagged urgent tally (orders.is_urgent) — a flat count of the same
-    // scoped rows, orthogonal to the PENDING/TESTED/BLOCKED lane mapping.
     const urgent = result.rows.reduce((s, r) => s + (Number(r.urgent_n) || 0), 0);
+    const mustShip = result.rows.reduce((s, r) => s + (Number(r.must_ship_n) || 0), 0);
 
     const packPlacementCounts = await countOpenPlacementsByLocation(ctx.organizationId);
     const packPlacementPlaced = packPlacementCounts.reduce((s, r) => s + r.count, 0);
 
     const payload = {
       total,
-      // Coarse `?stage` facet (has_tech_scan raw split) — safe to compute here
-      // (it is NOT the fulfillment-lane mapping).
-      byStage: { all: total, tested: testedRaw, pending: total - testedRaw },
-      // Operator urgent count for the sidebar "Urgent" segment.
+      byStage: {
+        all: total,
+        tested: testedRaw,
+        pending: prePackTotal - testedRaw,
+        packed: packedCount,
+      },
       urgent,
-      // Raw combos for the PENDING/TESTED/BLOCKED legend, mapped client-side via
-      // deriveFulfillmentState (Decision 8).
+      mustShip,
       combos,
-      /** Packing DESK/STAGING open-package counts (Ready-to-Pack placement). */
       packPlacement: {
         counts: packPlacementCounts,
         totalPlaced: packPlacementPlaced,
@@ -153,8 +181,9 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     return NextResponse.json(
       {
         total: 0,
-        byStage: { all: 0, tested: 0, pending: 0 },
+        byStage: { all: 0, tested: 0, pending: 0, packed: 0 },
         urgent: 0,
+        mustShip: 0,
         combos: [],
         packPlacement: { counts: [], totalPlaced: 0 },
         degraded: true,

@@ -1,7 +1,11 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { StationTerminalDock, useStationTerminalAction } from '@/components/station/terminal';
+import { OmnichannelComposerDock } from '@/design-system/primitives';
+import { slicedActionDockWrapperClass } from '@/design-system/primitives/SlicedActionDock';
+import { STATION_WORKBENCH_COLUMN } from '@/components/station/workbench';
+import { useAppendOrderNote } from '@/hooks/useOrderNotes';
 import {
   dispatchUpNextActionStart,
   dispatchUpNextActionOos,
@@ -22,10 +26,21 @@ interface UpNextActionDockProps {
 }
 
 /**
- * Terminal action surface for the shipping preview workspace — Start CTA with
- * an optional split menu for Out of Stock. Routes through
- * {@link STATION_TERMINAL_REGISTRY}.shipping + {@link StationTerminalDock}
- * (Unbox-family waist) instead of a raw SlicedActionDock.
+ * Ready-to-Pack preview waist — the Unbox/Triage/Testing shape: ONE raised
+ * {@link OmnichannelComposerDock} for the order note, with Start (+ the Out of
+ * Stock split menu) mounted as the embedded pill on its trailing edge.
+ *
+ * It used to be a bare bottom-of-page `StationTerminalDock` float. That green
+ * capsule was the old page chrome — the verb now rides the composer, the same
+ * slot Unbox's Receive and Triage's "Save for unbox" occupy.
+ *
+ * Enter commits the NOTE (the composer's own primary); Start is the pill click.
+ * Two different consequences never share one key here — starting an order kicks
+ * the scan resolver, which is not something a stray Enter in a text field
+ * should do.
+ *
+ * Notes land in `order_notes` via {@link useAppendOrderNote} — the append-only
+ * trail. The scalar `orders.notes` is read-only history and has no writer.
  *
  * Events out:
  *  - `tech-upnext-action-start` → starts the previewed order
@@ -33,6 +48,8 @@ interface UpNextActionDockProps {
  */
 export function UpNextActionDock({ order }: UpNextActionDockProps) {
   const hasOutOfStock = orderIsOutOfStock(order);
+  const [note, setNote] = useState('');
+  const appendNote = useAppendOrderNote(order.id);
 
   const handleStart = useCallback(() => {
     dispatchUpNextActionStart({
@@ -66,5 +83,48 @@ export function UpNextActionDock({ order }: UpNextActionDockProps) {
     build: buildTerminal,
   });
 
-  return <StationTerminalDock vm={terminalVm} />;
+  const commitNote = useCallback(() => {
+    const text = note.trim();
+    if (!text || appendNote.isPending) return;
+    appendNote.mutate(text, { onSuccess: () => setNote('') });
+  }, [note, appendNote]);
+
+  const bubbleTerminal = terminalVm ? (
+    <div className="shrink-0" data-upnext-dock-terminal>
+      <StationTerminalDock
+        embedded
+        embeddedChrome="pill"
+        vm={terminalVm}
+        assignedTechId={order.packer_id ?? order.tester_id ?? null}
+      />
+    </div>
+  ) : null;
+
+  return (
+    <div
+      className={slicedActionDockWrapperClass({ docked: false })}
+      data-upnext-dock-float
+    >
+      <div className={`pointer-events-auto w-full min-w-0 ${STATION_WORKBENCH_COLUMN}`}>
+        {terminalVm?.disabled && terminalVm.disabledReason ? (
+          <p
+            role="status"
+            className="mb-1.5 text-right text-role-caption font-semibold text-amber-700"
+          >
+            {terminalVm.disabledReason}
+          </p>
+        ) : null}
+        <OmnichannelComposerDock
+          value={note}
+          onChange={setNote}
+          onCommit={commitNote}
+          disabled={appendNote.isPending}
+          placeholder="Add a note for this order…"
+          ariaLabel="Order note"
+          trailingAction={bubbleTerminal}
+          chrome="raised"
+        />
+      </div>
+    </div>
+  );
 }

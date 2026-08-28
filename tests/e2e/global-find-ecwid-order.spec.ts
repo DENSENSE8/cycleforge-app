@@ -42,9 +42,9 @@ async function stubFindApis(
 async function typeInHeaderFind(page: Page, q: string): Promise<void> {
   await page.goto('/search');
   await expect(page.locator('main').first()).toBeVisible({ timeout: 30_000 });
-  const field = page.getByTestId('global-find-field').locator('input');
+  await page.getByTestId('global-find-field').click();
+  const field = page.getByTestId('global-find-input');
   await expect(field).toBeVisible({ timeout: 15_000 });
-  await field.click();
   await field.fill(q);
 }
 
@@ -52,13 +52,13 @@ test.describe('header find Ecwid order number', () => {
   test('miss stays on this page and uses the dropdown empty copy', async ({ page }) => {
     await stubFindApis(page, []);
     await typeInHeaderFind(page, ECWID_ORDER);
-    await page.getByTestId('global-find-field').locator('input').click();
+    await page.getByTestId('global-find-input').click();
 
     await expect(page.getByText(EMPTY)).toBeVisible({ timeout: 10_000 });
     await expect(page.locator(HIT)).toHaveCount(0);
 
     const urlBeforeEnter = page.url();
-    await page.getByTestId('global-find-field').locator('input').press('Enter');
+    await page.getByTestId('global-find-input').press('Enter');
     await expect(page.getByText(EMPTY)).toBeVisible();
     await expect(page).toHaveURL(urlBeforeEnter);
   });

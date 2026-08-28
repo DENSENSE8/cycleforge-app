@@ -1,28 +1,26 @@
 'use client';
 
 /**
- * Outbound workspace chrome — To-ship Sheets flush stack (Unbox History recipe):
+ * Outbound workspace chrome — To-ship Sheets flush stack:
  *
- *   Band 1 — fixed lifecycle system tabs + Add (ingest methods on the right rail)
-
+ *   Band 1 — triage facets (All · Must ship · Urgent · OOS · Awaiting customer) + Add
  *   Band 2 — KPI (DashboardOrdersView)
- *   Band 3 — find · Views · Hide/Show metrics · Show/Hide inspector (View topics on rail)
+ *   Band 3 — find · Views · Hide/Show metrics · Show/Hide inspector
  *
- * House Band-1 law (Unbox is golden; To-ship is the first desk exemplar):
- * fixed process tabs for every staffer · Pin-list cube omitted (honest absence —
- * no closed outbound foreign-collection catalog yet) · Views on Band 3 · page-pin
- * in GlobalHeader. Never Chrome-style unpin of Pending · Tested · Packed · Shipped;
- * never embed Unbox receiving here. SoT: source-of-truth.md → Workbench Band-1 strip
- * · Left-edge occupant → SCOPE decides its home.
+ * Lifecycle tabs (Pending · Tested · Packed · Shipped) were retired — stage is a
+ * row fact on the in-warehouse list. Facets filter the same list.
  */
 
 import { useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
-  DASHBOARD_ORDER_VIEW_LABEL,
+  TO_SHIP_TRIAGE_FACET_LABEL,
+  applyToShipTriageFacet,
+  getToShipTriageFacetFromSearch,
   isPrePackOrderView,
   type DashboardOrderView,
+  type ToShipTriageFacet,
 } from '@/utils/dashboard-search-state';
 import {
   usePackedFindFieldChrome,
@@ -34,7 +32,6 @@ import {
   WorkbenchTriageBand,
 } from '@/components/dashboard/workbench-shell';
 import { OutboundOrderChromeActions } from '@/components/dashboard/OutboundOrderChromeActions';
-import { PackedExportButton } from '@/components/dashboard/PackedExportButton';
 import { OutboundViewsMenu } from '@/components/dashboard/OutboundViewsMenu';
 import { PackBenchRefineFacet } from '@/components/packing/PackBenchRefineFacet';
 import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
@@ -47,14 +44,13 @@ import { useRailActionSnapshot } from '@/components/dashboard/rail/OrderRailActi
 import { WorkbenchInspectorToggle } from '@/components/dashboard/workbench-inspector-toggle';
 import { WorkbenchKpiCollapseToggle } from '@/components/dashboard/workbench-kpi-collapse';
 
-const LIFECYCLE_VIEWS = ['unshipped', 'tested', 'packed', 'shipped'] as const;
-type LifecycleView = (typeof LIFECYCLE_VIEWS)[number];
-
-function isLifecycleView(view: DashboardOrderView): view is LifecycleView {
-  return (
-    view === 'unshipped' || view === 'tested' || view === 'packed' || view === 'shipped'
-  );
-}
+const TRIAGE_FACETS = [
+  'all',
+  'must_ship',
+  'urgent',
+  'blocked',
+  'awaiting_customer',
+] as const satisfies readonly ToShipTriageFacet[];
 
 export interface OutboundWorkspaceHeaderProps {
   orderView: DashboardOrderView;
@@ -63,64 +59,75 @@ export interface OutboundWorkspaceHeaderProps {
 }
 
 /**
- * Band 1 — fixed lifecycle tabs + trailing CTAs. No Pin-list `leading` (honest
- * absence). Find / Views / inspector park live on {@link OutboundTriageBand}.
+ * Band 1 — triage facets + trailing Add. Find / Views / inspector on
+ * {@link OutboundTriageBand}.
  */
 export function OutboundWorkspaceHeader({
-  orderView,
-  onSelectView,
+  onSelectView: _onSelectView,
   className,
 }: OutboundWorkspaceHeaderProps) {
-  const active = isLifecycleView(orderView) ? orderView : 'unshipped';
   const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const router = useRouter();
   const staffId = parseStaffParam(searchParams.get('staff')) ?? undefined;
   const { data: queueCounts } = useQuery(unshippedQueueCountsQuery({ staffId }));
   const { openIngestIndex } = useDashboardSearchController();
+  const active = getToShipTriageFacetFromSearch(searchParams);
 
-  // Lane totals come from the shared SoT so a tab number always equals the rows
-  // that tab shows (Pending = PENDING + BLOCKED). See `fulfillmentLaneTotals`.
-  const { pending: pendingCount, tested: testedCount } = fulfillmentLaneTotals(queueCounts);
+  const { pending: pendingCount, blocked: blockedCount } = fulfillmentLaneTotals(queueCounts);
+  const urgentCount = queueCounts?.urgent ?? 0;
 
   const tabs = useMemo(
     () =>
-      LIFECYCLE_VIEWS.map((id) => ({
+      TRIAGE_FACETS.map((id) => ({
         id,
-        label: DASHBOARD_ORDER_VIEW_LABEL[id],
-        count: id === 'unshipped' ? pendingCount : id === 'tested' ? testedCount : undefined,
-        color: (id === 'unshipped'
+        label: TO_SHIP_TRIAGE_FACET_LABEL[id],
+        count:
+          id === 'all'
+            ? (queueCounts?.total ?? pendingCount)
+            : id === 'urgent'
+              ? urgentCount || undefined
+              : id === 'blocked'
+                ? blockedCount || undefined
+                : undefined,
+        color: (id === 'all'
           ? 'blue'
-          : id === 'tested'
-            ? 'teal'
-            : id === 'packed'
+          : id === 'must_ship'
+            ? 'red'
+            : id === 'urgent'
               ? 'orange'
-              : 'emerald') as 'blue' | 'teal' | 'orange' | 'emerald',
+              : id === 'blocked'
+                ? 'red'
+                : 'gray') as 'blue' | 'red' | 'orange' | 'gray',
       })),
-    [pendingCount, testedCount],
+    [queueCounts?.total, pendingCount, urgentCount, blockedCount],
+  );
+
+  const onTabChange = useCallback(
+    (id: string) => {
+      const next = new URLSearchParams(searchParams.toString());
+      applyToShipTriageFacet(next, id as ToShipTriageFacet);
+      const qs = next.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    },
+    [pathname, router, searchParams],
   );
 
   return (
     <WorkbenchChromeHeader
       density="band"
-      // Three pin scopes (never merge):
-      //   WEBSITE-WIDE page-pin → GlobalHeader `HeaderPinsSwitcher`
-      //   STATION Band-1 list-pin → omitted here (no closed outbound catalog)
-      //   PAGE-WIDE Views → Band 3 `OutboundTriageBand` → `OutboundViewsMenu`
-      // SoT: source-of-truth.md → Workbench Band-1 strip · SCOPE decides its home.
       tabs={tabs}
       activeTab={active}
-      onTabChange={(id) => onSelectView(id as DashboardOrderView)}
+      onTabChange={onTabChange}
       solidTone="accent"
       className={className}
       trailing={
         <WorkbenchTrailingCluster
-          // Band 1 trailing is one Add — ingest methods live on the right rail.
-          // No sort rail here — Priority / refine live on the inspector View cluster.
           divide={false}
           actions={
             <OutboundOrderChromeActions
               layout="ingest"
               onNewOrder={openIngestIndex}
-              leading={active === 'packed' ? <PackedExportButton /> : null}
             />
           }
         />
@@ -131,10 +138,7 @@ export function OutboundWorkspaceHeader({
 
 /**
  * Band 3 — find (+ in-field bench refine) + Views + Hide/Show metrics +
- * far-right Show/Hide inspector. KPI sits immediately left of the inspector
- * (house Band-3 grammar). Sheet LAYOUT chrome (paint, List|Drill, compare, ▦)
- * stays on the pushing right inspector View cluster; row-narrowing facets ride
- * in the field. Never a Band-1 peer of lifecycle tabs.
+ * far-right Show/Hide inspector.
  */
 function OutboundPackedFindBar({
   searchQuery,
@@ -164,7 +168,6 @@ export function OutboundTriageBand({
   orderView: DashboardOrderView;
   className?: string;
 }) {
-  const active = isLifecycleView(orderView) ? orderView : 'unshipped';
   const { searchQuery, setSearch } = useDashboardSearchController();
   const { viewShellOpen, setViewShellOpen, kpiOpen, onToggleKpi } =
     useOrdersViewChrome();
@@ -174,7 +177,7 @@ export function OutboundTriageBand({
   const inspectorOpen =
     Boolean(openOrderId) || rows.length > 0 || viewShellOpen;
 
-  useToShipFilterHotkeys(isPrePackOrderView(active));
+  useToShipFilterHotkeys(isPrePackOrderView(orderView));
 
   const openViewShell = useCallback(() => setViewShellOpen(true), [setViewShellOpen]);
 
@@ -186,14 +189,16 @@ export function OutboundTriageBand({
     />
   );
 
-  // Bench placement is a pre-pack concern — Packed / Shipped lanes have left it.
-  const showBenchFacet = isPrePackOrderView(active);
+  // Bench placement is an in-warehouse concern.
+  const showBenchFacet = isPrePackOrderView(orderView);
+  const stageParam = String(searchParams.get('stage') || '').toLowerCase();
+  const showPackedFind = stageParam === 'packed';
 
   return (
     <WorkbenchTriageBand
       className={className}
       search={
-        active === 'packed' ? (
+        showPackedFind ? (
           <OutboundPackedFindBar
             searchQuery={searchQuery}
             onSearchChange={setSearch}

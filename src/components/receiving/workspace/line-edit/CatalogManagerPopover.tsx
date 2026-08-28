@@ -57,7 +57,15 @@ export function CatalogManagerPopover({
         />
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
-        <CatalogManagerList kind={kind} enabled={open} autoFocusAdd={focusAdd} />
+        <CatalogManagerList
+          kind={kind}
+          enabled={open}
+          autoFocusAdd={focusAdd}
+          // The pill's Edit is where an operator lands after hitting a
+          // constraint at the bench, so the rules that caused it are editable
+          // here too — not only in Settings.
+          enablePlatformRules
+        />
       </div>
     </RightPaneOverlay>
   );

@@ -182,13 +182,8 @@ export interface CartonResponse {
 }
 
 /**
- * Infer the sales platform from an order number's shape — Amazon order ids
- * are 3-7-7 digit groups, eBay's are 2-5-5. Anything else returns null (the
- * operator keeps whatever pill they set). Used to tag a return-matched carton
- * without a server round-trip; the order # itself is the authoritative link.
+ * Infer the sales platform from an order number's shape — Amazon 3-7-7,
+ * eBay 2-5-5. Anything else returns null (the operator keeps whatever pill
+ * they set). The order # itself is the authoritative link; listing URL is not.
  */
-export function inferPlatformFromOrderId(orderId: string): string | null {
-  if (/^\d{3}-\d{7}-\d{7}$/.test(orderId)) return 'amazon';
-  if (/^\d{2}-\d{5}-\d{5}$/.test(orderId)) return 'ebay';
-  return null;
-}
+export { inferMarketplaceFromOrderId as inferPlatformFromOrderId } from '@/lib/marketplace-order-id';

@@ -1,8 +1,8 @@
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cornerClass } from '@/design-system/tokens/radius';
 import {
-  STATION_CHROME_CELL_HOVER_FILL,
-  STATION_CHROME_CELL_HOVER_SEAM,
+  STATION_CHROME_CELL_CLASS_MARK,
+  STATION_CHROME_TONE_CLASS_MARK,
   STATION_CHROME_CELL_INK,
   STATION_CHROME_CELL_LABEL,
   STATION_CHROME_CELL_TEXT,
@@ -44,7 +44,7 @@ const STATION_CONTEXT_CLAIM_TONE =
  * `execute`) so the cell reads as a control without a rest-state hairline box.
  */
 const STATION_CONTEXT_QUIET_TONE =
-  `bg-surface-hover text-text-soft ${STATION_CHROME_CELL_HOVER_FILL} hover:text-text-muted`;
+  'bg-surface-hover text-text-soft hover:text-text-muted';
 
 /**
  * Local-pickup tone — a solid emerald fill, the one carton-bar cell that states
@@ -56,7 +56,7 @@ const STATION_CONTEXT_PICKUP_TONE = 'border-emerald-600 bg-emerald-600 text-whit
 
 /** Neutral WORD face — listing: default ink on the house card surface. */
 const STATION_CONTEXT_NEUTRAL_TONE =
-  `bg-surface-card ${STATION_CHROME_CELL_INK} ${STATION_CHROME_CELL_HOVER_FILL} disabled:text-text-faint`;
+  `bg-surface-card ${STATION_CHROME_CELL_INK} disabled:text-text-faint`;
 
 /** Cell geometry. Type + surface come from the tone, never from the box. */
 const FACE_BOX = {
@@ -88,6 +88,13 @@ const FACE_TONE = {
   claim: STATION_CONTEXT_CLAIM_TONE,
   pickup: STATION_CONTEXT_PICKUP_TONE,
 } as const;
+
+/**
+ * Tones that paint their OWN hover wash and must not take the neutral one on
+ * top of it — Photos stays blue, Claim stays orange, Pickup stays emerald.
+ * Everything else takes the house fill from the row rule.
+ */
+const TONE_OWNS_WASH = new Set<keyof typeof FACE_TONE>(['photo', 'claim', 'pickup']);
 
 /**
  * Type face for a cell's CONTENT. `glyph` cells carry none — declaring a type
@@ -151,7 +158,12 @@ function stationContextFace({
     FACE_TEXT[text],
     FACE_TONE[tone],
     'shadow-none',
-    STATION_CHROME_CELL_HOVER_SEAM,
+    // The row owns the hover display (see `.cf-chrome-row` in globals.css).
+    STATION_CHROME_CELL_CLASS_MARK,
+    // Photos blue / Claim orange / Pickup emerald keep their own wash; the
+    // marker tells the row rule to leave the background alone. They still take
+    // the box, so the strip delineates uniformly under a pointer sweep.
+    TONE_OWNS_WASH.has(tone) ? STATION_CHROME_TONE_CLASS_MARK : '',
     interactive ? focusRing('control', 'accent') : '',
     interactive ? 'outline-none' : '',
   ]

@@ -246,7 +246,23 @@ function TitleOnlyDropdownRow({
       : hit.entityType === 'order'
         ? orderIdFromHit(hit)
         : '';
-  const title = marketplaceId || String(hit.title ?? '').trim() || 'Untitled';
+  const tracking = hit.facets?.tracking_number?.trim() || '';
+  const serial =
+    hit.entityType === 'unit'
+      ? String(hit.facets?.serial_number ?? hit.title ?? '').trim()
+      : '';
+  const title =
+    marketplaceId ||
+    serial ||
+    tracking ||
+    String(hit.title ?? '').trim() ||
+    'Untitled';
+  const primaryIsId = Boolean(marketplaceId || serial || tracking);
+  const detail = primaryIsId
+    ? [hit.entityType === 'order' ? hit.title : null, hit.subtitle]
+        .map((s) => String(s ?? '').trim())
+        .find((s) => s && s !== title) || ''
+    : '';
   return (
     <Link
       href={hit.href}
@@ -262,13 +278,16 @@ function TitleOnlyDropdownRow({
       data-hit-title={title}
       data-hit-entity={hit.entityType}
       className={cn(
-        'group flex min-w-0 items-center px-3 py-2 text-left transition-colors hover:bg-surface-hover',
+        'group flex min-w-0 flex-col gap-0.5 px-3 py-2 text-left transition-colors hover:bg-surface-hover',
         active && ROW_ACTIVE,
       )}
     >
-      <span className="min-w-0 flex-1 truncate text-role-caption font-semibold text-text-default">
+      <span className="min-w-0 truncate text-role-caption font-semibold text-text-default">
         {title}
       </span>
+      {detail ? (
+        <span className="min-w-0 truncate text-role-micro text-text-muted">{detail}</span>
+      ) : null}
     </Link>
   );
 }

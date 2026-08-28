@@ -6,6 +6,7 @@ import {
   catalogKeys,
   platformsQuery,
   platformAccountsQuery,
+  platformTypeRulesQuery,
   prioritiesQuery,
   typesQuery,
   workflowNodesQuery,
@@ -19,6 +20,7 @@ import type {
 import { SOURCE_PLATFORMS, sourcePlatformMeta, type SourcePlatformMeta } from '@/lib/source-platform';
 import { RECEIVING_TYPE_OPTS } from '@/components/sidebar/receiving/receiving-sidebar-shared';
 import { PRIORITY_OVERRIDE_TIERS } from '@/lib/receiving/priority-override';
+import type { PlatformTypeRule } from '@/lib/receiving/platform-type-rules';
 import { receivingLabelTypeDisplay } from '@/lib/receiving/receiving-type-display';
 import { getOrderPlatformLabel } from '@/utils/order-platform';
 
@@ -64,6 +66,19 @@ export function usePlatformCatalog() {
       }))
     : BUILTIN_PLATFORMS;
   return { ...q, rows, options };
+}
+
+/**
+ * The org's platform → receiving-type dependency matrix (dependent picklist).
+ *
+ * Returns `[]` while loading, which reads as "no platform is constrained" — the
+ * safe direction: the picker shows every type for a beat rather than briefly
+ * hiding the operator's real answer. The PATCH route re-checks server-side, so
+ * a stale client can never write an illegal pair.
+ */
+export function usePlatformTypeRules(): PlatformTypeRule[] {
+  const q = useQuery(platformTypeRulesQuery());
+  return q.data ?? [];
 }
 
 /**
@@ -228,13 +243,18 @@ function buildOrderChannelLabelResolver(
   const accountBySlug = new Map(accounts.map((a) => [a.slug.toLowerCase(), a]));
   const platformBySlug = new Map(platforms.map((p) => [p.slug.toLowerCase(), p]));
   return (orderId: string | null | undefined, accountSource: string | null | undefined): string => {
+    // Exact Amazon 3-7-7 / eBay 2-5-5 shapes identify the channel from the
+    // number itself — catalog account_source (often a Zoho slug) must not
+    // paint a marketplace order as a different platform.
+    const fromId = getOrderPlatformLabel(orderId, accountSource);
+    if (fromId === 'eBay' || fromId === 'Amazon') return fromId;
     const key = String(accountSource ?? '').trim().toLowerCase();
     if (key) {
       const acct = accountBySlug.get(key);
       const platform = acct ? platformById.get(acct.platform_id) : platformBySlug.get(key);
       if (platform) return platform.label;
     }
-    return getOrderPlatformLabel(orderId, accountSource);
+    return fromId;
   };
 }
 

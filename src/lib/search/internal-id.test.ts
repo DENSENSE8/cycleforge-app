@@ -1,6 +1,7 @@
 import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
 import {
+  directOpenForTypedHandle,
   hasInternalIdKeys,
   isPrintedHandlePayload,
   parseInternalIdQuery,
@@ -106,5 +107,34 @@ describe('searchPageHrefForScanRoute', () => {
     assert.equal(desktopSearchHref('/m/scan'), '/search');
     assert.ok(!desktopSearchHref('/m/r/99').startsWith('/m/'));
     assert.ok(!desktopSearchHref('/01/00012345678905/21/ABC').startsWith('/01/'));
+  });
+});
+
+describe('directOpenForTypedHandle', () => {
+  it('offers non-/search landings: line QC, support ticket, locations', () => {
+    assert.equal(directOpenForTypedHandle('L-900')?.href, '/receiving/lines/900');
+    assert.equal(directOpenForTypedHandle('T-9395')?.href, '/support?ticket=9395');
+    assert.equal(directOpenForTypedHandle('A0101101')?.href, '/inventory?bin=A0101101');
+    assert.equal(directOpenForTypedHandle('A-01-01-1-01')?.href, '/inventory?bin=A0101101');
+  });
+
+  it('routes a rack code (position 00) to the rack view, not the bin view', () => {
+    const rack = directOpenForTypedHandle('A-01-01-1-00');
+    assert.ok(rack);
+    assert.match(rack.href, /tab=racks/);
+    assert.match(rack.href, /code=A0101100/);
+  });
+
+  it('stays quiet for /search-rooted handles — their record hits land there', () => {
+    assert.equal(directOpenForTypedHandle('R-99'), null);
+    assert.equal(directOpenForTypedHandle('U-451'), null);
+    assert.equal(directOpenForTypedHandle('REP-33'), null);
+    assert.equal(directOpenForTypedHandle('H-12'), null);
+  });
+
+  it('stays quiet for typed text and guessed (redirect-less) routes', () => {
+    assert.equal(directOpenForTypedHandle('Bose Wave Radio'), null);
+    assert.equal(directOpenForTypedHandle('12-34567-89012'), null);
+    assert.equal(directOpenForTypedHandle('KIT-IPH13-2635-000042'), null);
   });
 });

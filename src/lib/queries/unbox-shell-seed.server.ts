@@ -35,6 +35,7 @@ import 'server-only';
 import type { DehydratedState } from '@tanstack/react-query';
 import { seedUnboxStation } from '@/lib/queries/unbox-spine-seed.server';
 import { seedReadyToPackStation } from '@/lib/queries/ready-to-pack-shell-seed.server';
+import { seedSearchRecentRail } from '@/lib/queries/search-recent-shell-seed.server';
 import { shouldSeedReadyToPackQueue } from '@/lib/queries/unshipped-seed-gate';
 import { UNBOX_SURFACE_ROUTE } from '@/lib/receiving/surface-path';
 
@@ -76,6 +77,9 @@ export async function maybeSeedUnboxShell(
  * SHELL (a rail that is a sibling of `children`, and therefore renders first):
  *
  * - `/unbox` — the recents rail owns the largest contentful element.
+ * - `/search` — the "Recently searched" rail is the same shell-sibling shape,
+ *   and bare `/search` additionally auto-selects its top row, so an unseeded
+ *   rail is a two-hop LCP chain (rail fetch → sel write → record fetch).
  * - `/test` — the left rail's `ShippingScanBand` mounts `packPlacementQuery`
  *   before the page renders, so a page-level seed of that key lands in
  *   `HydrationBoundary`'s deferred path and never reaches SSR. (Measured: the
@@ -89,6 +93,15 @@ export async function maybeSeedShell(
   pathname: string,
   search: string,
 ): Promise<DehydratedState | null> {
+  if (pathname === '/search') {
+    try {
+      const seed = await seedSearchRecentRail();
+      return seed.mruReceivingId == null ? null : seed.state;
+    } catch (error) {
+      console.error('maybeSeedShell(search) failed; client will fetch', error);
+      return null;
+    }
+  }
   if (TESTING_SURFACE_ROUTES.has(pathname)) {
     const params = Object.fromEntries(new URLSearchParams(search));
     if (!shouldSeedReadyToPackQueue(params)) return null;

@@ -2,6 +2,7 @@
 
 import { GlobalHeaderAssistantButton } from '@/components/layout/GlobalHeaderAssistantButton';
 import { GlobalHeaderAddMenu } from '@/components/layout/GlobalHeaderAddMenu';
+import { GlobalHeaderSearch } from '@/components/layout/GlobalHeaderSearch';
 import { HeaderGoalChip } from '@/components/layout/HeaderGoalChip';
 import { useAuth } from '@/contexts/AuthContext';
 import { ActivityInboxButton } from '@/components/quick-access/ActivityInboxButton';
@@ -10,21 +11,15 @@ import { HEADER_ICON_CLUSTER, HEADER_ICON_GAP } from './header-shell';
 
 /**
  * Matches `RightRailHost` at rest — min width keeps icons column-aligned with
- * the detail panel. Find lives left of page context ({@link GlobalHeaderSearch}),
- * not in this rail.
+ * the detail panel.
  */
 const HEADER_RAIL_WIDTH = 'min-w-[420px]';
 
 /**
  * Persistent **actions** zone of the {@link GlobalHeader} (far-right).
  *
- * Desktop order (left → right): **add · goal · inbox · assistant (far-right)**.
- * Sparkles opens the assistant right-rail occupant, so it sits at the edge it
- * owns (mirror of MasterNav collapse on the far left). Staff identity + org
- * live on the MasterNav spine — no avatar here.
- *
- * Find ({@link GlobalHeaderSearch}) mounts immediately right of page identity
- * in {@link GlobalHeader}, not here — icon at rest, field when open.
+ * Desktop order (left → right): **find · add · goal · inbox · assistant**.
+ * Find is {@link GlobalHeaderSearch} / {@link CommandBar} (⌘K).
  *
  * Clipboard history, phone sign-in QR, and kiosk preview stay in the spine
  * account overflow ({@link StaffAccountFooter} ⋯) — earned by frequency, not
@@ -59,7 +54,8 @@ export function GlobalHeaderActions() {
         data-header-zone="actions"
         data-global-add="mounted"
       >
-        {/* Add must stay first — left of goal / work-orders. */}
+        {/* Find · add · pace-and-next · inbox · assistant (far-right). */}
+        <GlobalHeaderSearch />
         <GlobalHeaderAddMenu />
         <HeaderGoalChip />
         <ActivityInboxButton />

@@ -10,9 +10,7 @@ import {
   type UnfoundLine,
   type UnmatchedItemsSectionProps,
 } from './unmatched-items-shared';
-import { useReceivingCartonUnlink } from './useReceivingCartonUnlink';
 import { requestConfirm } from '@/design-system/components/confirm';
-import { isSalesOrderDerivedCarton } from '@/lib/receiving/intake-items-routing';
 import { getLast8Serial } from '@/lib/copy-chip-format';
 import {
   classificationToColumns,
@@ -61,15 +59,9 @@ export function useUnmatchedItems({
   listingUrlHint,
   onActiveConditionChange,
   onLinked,
-  onUnlinked,
-  linkedOrderHint,
-  activeLineId,
 }: UnmatchedItemsSectionProps) {
   const queryClient = useQueryClient();
   const [lines, setLines] = useState<UnfoundLine[]>([]);
-  const [cartonHeader, setCartonHeader] = useState(linkedOrderHint ?? null);
-  const [linkError, setLinkError] = useState<string | null>(null);
-  const { unlinkCarton, unlinking } = useReceivingCartonUnlink();
   /** Unified add popover (Item · Web · Box). */
   const [addOpen, setAddOpen] = useState(false);
   /** Box this carton's units last landed in — shows as a chip in the header. */
@@ -124,11 +116,6 @@ export function useUnmatchedItems({
       // effect as skipping apply while returnScanBusy during mid-create.
       setLines((prev) => mergeUnfoundLinesWithPreserve(prev, body.lines ?? []));
       if (body.receiving) {
-        setCartonHeader({
-          source: body.receiving.source ?? null,
-          zoho_purchaseorder_id: body.receiving.zoho_purchaseorder_id ?? null,
-          zoho_purchaseorder_number: body.receiving.zoho_purchaseorder_number ?? null,
-        });
         // intake_type maps onto the SoT's `receiving_type` slot.
         setClassification(
           columnsToClassification({
@@ -219,51 +206,10 @@ export function useUnmatchedItems({
     return () => window.removeEventListener('receiving-line-updated', handler);
   }, []);
 
-  useEffect(() => {
-    if (linkedOrderHint) setCartonHeader(linkedOrderHint);
-  }, [
-    linkedOrderHint?.source,
-    linkedOrderHint?.zoho_purchaseorder_id,
-    linkedOrderHint?.zoho_purchaseorder_number,
-  ]);
-
   // Serial-unit ids across the carton's lines — the atoms the Box tab groups.
   const cartonUnitIds = useMemo(
     () => lines.flatMap((l) => (l.serials ?? []).map((s) => s.id)),
     [lines],
-  );
-
-  const orderLinked = useMemo(() => {
-    if (!cartonHeader) return false;
-    if (isSalesOrderDerivedCarton(cartonHeader)) return true;
-    const poNum = (cartonHeader.zoho_purchaseorder_number || '').trim();
-    return cartonHeader.source === 'zoho_po' && Boolean(poNum);
-  }, [cartonHeader]);
-
-  const linkedOrderNumber = (cartonHeader?.zoho_purchaseorder_number || '').trim() || null;
-
-  const showUnlinkPrompt =
-    orderLinked && (lines.length === 0 || Boolean(linkError));
-
-  const handleUnlinkOrder = useCallback(
-    async () => {
-      const ok = await unlinkCarton({
-        receivingId,
-        lineId: activeLineId,
-        onSuccess: () => {
-          setLinkError(null);
-          setLines([]);
-          setCartonHeader({
-            source: 'unmatched',
-            zoho_purchaseorder_id: null,
-            zoho_purchaseorder_number: null,
-          });
-          onUnlinked?.();
-        },
-      });
-      return ok;
-    },
-    [activeLineId, onUnlinked, receivingId, unlinkCarton],
   );
 
   // Scan a returned serial against the whole carton. Optimistic line + chip on
@@ -275,7 +221,6 @@ export function useUnmatchedItems({
       const serial = rawSerial.trim();
       if (!serial || returnScanBusy) return;
       setReturnScanBusy(true);
-      setLinkError(null);
 
       const tempLineId = mintOptimisticLineId();
       const tempSerialId = mintOptimisticSerialId();
@@ -319,7 +264,6 @@ export function useUnmatchedItems({
         const addBody = await addRes.json().catch(() => ({}));
         if (!addRes.ok || !addBody?.success || !addBody?.line?.id) {
           const msg = addBody?.error || 'Could not create the return line';
-          setLinkError(msg);
           toast.error(msg);
           setLines((prev) => rollbackOptimisticReturnLine(prev, tempLineId));
           removeReceivingSiblingLine(queryClient, receivingId, tempLineId);
@@ -688,12 +632,6 @@ export function useUnmatchedItems({
     handleAddLine,
     handleRemoveLine,
     handleConditionChange,
-    orderLinked,
-    linkedOrderNumber,
-    showUnlinkPrompt,
-    linkError,
-    unlinking,
-    handleUnlinkOrder,
   };
 }
 

@@ -2,6 +2,7 @@
 
 import { BrandIdentityDot, GridCellDash } from '@/components/ui/grid-cells';
 import { OrderNumberMenuChip } from '@/components/ui/OrderNumberMenuChip';
+import { resolveMarketplacePlatformMeta } from '@/lib/marketplace-order-id';
 import { resolveReceivingOrderOpenUrl } from '@/lib/receiving/resolve-receiving-order-open-url';
 import { platformMetaBrandDot } from '@/lib/source-platform';
 import { isEmptyDisplayValue } from '@/utils/empty-display-value';
@@ -21,7 +22,8 @@ import {
 export function ReceivingOrderCell({ col, rule, ctx }: ReceivingGridCellProps) {
   const { poValue, platformLabel, platformMeta, row, onEditOrder } = ctx;
   const empty = isEmptyDisplayValue(poValue);
-  const brandDot = platformMetaBrandDot(platformMeta);
+  const brandMeta = resolveMarketplacePlatformMeta(poValue, platformMeta);
+  const brandDot = platformMetaBrandDot(brandMeta);
   const openHref = empty ? null : resolveReceivingOrderOpenUrl(row, poValue);
   return (
     <div
@@ -37,7 +39,7 @@ export function ReceivingOrderCell({ col, rule, ctx }: ReceivingGridCellProps) {
           <BrandIdentityDot className={brandDot.className} style={brandDot.style} />
           <OrderNumberMenuChip
             value={poValue}
-            platformLabel={platformLabel || null}
+            platformLabel={brandMeta.value ? brandMeta.label : platformLabel || null}
             openHref={openHref}
             onEdit={onEditOrder}
             // Declared, not hardcoded — see `omitCellIcon` on the `order`

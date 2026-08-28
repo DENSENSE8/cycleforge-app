@@ -4,7 +4,6 @@ import { usePathname } from 'next/navigation';
 import { useHeader } from '@/contexts/HeaderContext';
 import { useAuth, isClientPublicPath } from '@/contexts/AuthContext';
 import { GlobalHeaderActions } from './GlobalHeaderActions';
-import { GlobalHeaderSearch } from './GlobalHeaderSearch';
 import { GlobalScanDock } from './GlobalScanDock';
 import { HeaderPageSwitcher } from './HeaderPageSwitcher';
 import { HeaderPinsSwitcher } from './HeaderPinsSwitcher';
@@ -24,15 +23,15 @@ import { cn } from '@/utils/_cn';
  *
  * Zone contract (left → right) — facts drive chrome; empty middle is OK when
  * the station/workbench band below already owns surface context:
- *   - **Nav** — toggle · Pins · Recents · page chip · Find in one
+ *   - **Nav** — toggle · Pins · Recents · page chip in one
  *     {@link HEADER_ICON_CLUSTER} (`gap-0` — Recents abuts the page face).
  *     Page identity is a compact {@link HEADER_PAGE_FACE_WIDTH} chip matching
  *     its child menu. Modeful pages open a child menu; Receiving benches
  *     compose peers via {@link stationSubgroupMembers}. Data =
  *     {@link SIDEBAR_PAGE_NAV} (+ {@link APP_SIDEBAR_NAV} fallback) /
- *     `useQuickAccess`. Find is {@link GlobalHeaderSearch} (icon at rest off
- *     `/search`; field on click / focus / a live query, and always on `/search`).
- *     **Never** goal / inbox / assistant here.
+ *     `useQuickAccess`. Find is **not** here.
+ *   - **Find** — {@link GlobalHeaderSearch} / {@link CommandBar} on the
+ *     right rail (⌘K). Icon opens a records popover.
  *   - **Scan** — {@link GlobalScanDock}: the persistent station scan input.
  *     Renders only when a surface published a policy (`useScanDock`). It is a
  *     zone of its own and NOT part of `panelContent` on purpose: `panelContent`
@@ -82,7 +81,7 @@ export function GlobalHeader({
         appChromeMutedClass,
       )}
     >
-      {/* Toggle · Pins · Recents · page chip · Find — one gap-0 cluster. */}
+      {/* Toggle · Pins · Recents · page chip — one gap-0 cluster. */}
       <div className={HEADER_ICON_CLUSTER} data-header-zone="nav">
         {canCollapseSidebar && onToggleSidebar ? (
           <SidebarCollapseControl
@@ -90,12 +89,11 @@ export function GlobalHeader({
             onToggleSidebar={onToggleSidebar}
           />
         ) : null}
-        {/* Home · Media live in the open spine band (`SpineTopPins`). The
+        {/* Home · Media Library are ordinary spine map rows. The
             toggle is click-only — no collapsed hover peek. */}
         <HeaderPinsSwitcher />
         <HeaderRecentsSwitcher />
         <HeaderPageSwitcher />
-        <GlobalHeaderSearch />
       </div>
 
       <GlobalScanDock />

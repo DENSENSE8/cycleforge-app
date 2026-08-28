@@ -53,7 +53,10 @@ import { UniversalLoader } from '@/design-system/components/UniversalLoader';
 import { useSearchPrimaryPaintOptional } from '@/components/search/search-primary-paint-context';
 import { buildSearchOrderDisplayIndexRows } from './search-order-display-index';
 import { useSearchOrderPhotos } from './use-search-order-photos';
-import { searchOrderResolveQuery } from '@/lib/search/search-order-resolve-query';
+import {
+  searchOrderByIdResolveQuery,
+  searchOrderResolveQuery,
+} from '@/lib/search/search-order-resolve-query';
 import {
   clearGlobalSearchPending,
   setGlobalSearchPending,
@@ -117,9 +120,19 @@ export function SearchOrderStationPane({
   const collapse = useAutoCollapse();
 
   const token = String(orderId ?? '').trim();
-  // One key shape — header seeds token + numeric-string aliases so
-  // `sel=order:{id}` hits memory without a ternary of incompatible options.
-  const resolveQuery = useQuery(searchOrderResolveQuery(token));
+  const orderPk = Number(orderId);
+  const resolveByPk = Number.isSafeInteger(orderPk) && orderPk > 0;
+  // `?sel=order:{pk}` must resolve by primary key. Marketplace lookup treats
+  // bare digits as order #s (Ecwid `5006`), so pk `12882` would 404 as a #.
+  const byIdQuery = useQuery({
+    ...searchOrderByIdResolveQuery(resolveByPk ? orderPk : 0),
+    enabled: resolveByPk,
+  });
+  const byTokenQuery = useQuery({
+    ...searchOrderResolveQuery(token),
+    enabled: !resolveByPk && token.length > 0,
+  });
+  const resolveQuery = resolveByPk ? byIdQuery : byTokenQuery;
   const resolved = resolveQuery.data;
   const resolveStatus =
     (resolveQuery.isPending || resolveQuery.isLoading) && !resolved

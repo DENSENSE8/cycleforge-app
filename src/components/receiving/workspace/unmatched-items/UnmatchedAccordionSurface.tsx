@@ -25,10 +25,10 @@
 
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Loader2, PackageOpen, Pencil, Unlink } from '@/components/Icons';
+import { PackageOpen, Pencil } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Button, IconButton } from '@/design-system/primitives';
-import { WorkspaceCard, InlineNotice } from '@/design-system/components';
+import { WorkspaceCard } from '@/design-system/components';
 import { toast } from '@/lib/toast';
 import { HandlingUnitChip } from '@/components/receiving/HandlingUnitChip';
 import { LabelIdentifyButton } from '@/components/receiving/label-identify/LabelIdentifyButton';
@@ -558,53 +558,6 @@ export function UnmatchedAccordionSurface(props: UnmatchedItemsSectionProps) {
           onOpenInUnbox CTA); the unbox workspace shows the read-only banner. */}
       {onOpenInUnbox ? (
         <IntakeClassifyRow value={c.classification} onSelect={c.saveClassification} />
-      ) : null}
-
-      {c.showUnlinkPrompt ? (
-        <InlineNotice
-          tone="warning"
-          size="sm"
-          title={c.linkError ? 'Could not import — order already linked' : 'Order linked — no items yet'}
-        >
-          <div className="space-y-2">
-            <p className="text-role-caption text-amber-900">
-              {c.linkError ? (
-                <>
-                  {c.linkError}
-                  {c.linkedOrderNumber ? (
-                    <>
-                      {' '}This carton is still paired to order{' '}
-                      <span className="font-mono font-semibold">{c.linkedOrderNumber}</span>.
-                    </>
-                  ) : null}
-                </>
-              ) : c.linkedOrderNumber ? (
-                <>
-                  Order <span className="font-mono font-semibold">{c.linkedOrderNumber}</span> is paired to this
-                  carton but no line items were imported. Unlink to clear the pairing and scan the serial again.
-                </>
-              ) : (
-                'This carton has an order pairing but no line items. Unlink to clear it and try again.'
-              )}
-            </p>
-            <HoverTooltip
-              label="Clears the order#, platform, return flags, and per-line source linkage"
-              asChild
-              focusable={false}
-            >
-              <Button
-                variant="secondary"
-                size="sm"
-                icon={c.unlinking ? <Loader2 className="h-4 w-4 animate-spin" /> : <Unlink />}
-                onClick={() => void c.handleUnlinkOrder()}
-                disabled={c.unlinking}
-                className="h-7 border-rose-200 bg-rose-50 px-2.5 text-rose-700 hover:bg-rose-100"
-              >
-                {c.unlinking ? 'Unlinking…' : 'Unlink order'}
-              </Button>
-            </HoverTooltip>
-          </div>
-        </InlineNotice>
       ) : null}
 
       {/* Identify an item by photographing its printed label — same add path the

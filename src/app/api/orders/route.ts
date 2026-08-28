@@ -96,11 +96,17 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     const awaitingOnly       = searchParams.get('awaitingOnly') === 'true';
     /**
      * fulfillmentScope=true → labeled + tracked, not-yet-packed fulfillment queue
-     * (Dashboard Unshipped / To-ship Pending·Tested). Requires shipment_id with a
-     * non-empty tracking number (blank-tracking stays on Labels) and excludes PACK
-     * facts — the mirror of awaitingOnly (no label) and stagedOnly (already packed).
+     * (legacy Pending·Tested). Requires shipment_id with a non-empty tracking
+     * number (blank-tracking stays on Labels) and excludes PACK facts — the
+     * mirror of awaitingOnly (no label) and stagedOnly (already packed).
      */
     const fulfillmentScope   = searchParams.get('fulfillmentScope') === 'true';
+    /**
+     * inWarehouse=true → labeled + tracked, still in the building (To-ship desk).
+     * Union of pre-pack + packed-staged: no SHIP_CONFIRM / carrier leave.
+     * Labels (awaitingOnly) and Scan-out history stay on their own routes.
+     */
+    const inWarehouse        = searchParams.get('inWarehouse') === 'true';
     /** stagedOnly=true → packed (PACK event) but not yet dock scan-out (no SHIP_CONFIRM) */
     const stagedOnly         = searchParams.get('stagedOnly') === 'true';
     /** exceptionsOnly=true → only orders whose shipment has an exception or has been stalled (no carrier scan in >stallHours, default 72h) */
@@ -124,7 +130,8 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     // /api/orders callers, so their query + payload are byte-for-byte unchanged. ---
     const queueShape = searchParams.get('listShape') === 'queue' && !hasSearchQuery && !singleOrderMode;
     const stageRaw = String(searchParams.get('stage') || '').toLowerCase();
-    const stageFilter = stageRaw === 'pending' || stageRaw === 'tested' ? stageRaw : '';
+    const stageFilter =
+      stageRaw === 'pending' || stageRaw === 'tested' || stageRaw === 'packed' ? stageRaw : '';
     const limitRaw = Number(searchParams.get('limit'));
     const pageLimit = Number.isFinite(limitRaw) && limitRaw > 0 ? Math.min(Math.floor(limitRaw), 500) : null;
     // Keyset cursor over the ORDER BY.
@@ -629,6 +636,18 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       sql += ` AND NOT ${sqlOrderHasPackScan('o')}`;
     }
 
+    if (inWarehouse) {
+      sql += ` AND o.shipment_id IS NOT NULL`;
+      sql += ` AND COALESCE(TRIM(stn.tracking_number_raw), '') <> ''`;
+      // Still here = no dock scan-out on this shipment.
+      sql += ` AND NOT EXISTS (
+        SELECT 1 FROM station_activity_logs sal_out
+        WHERE sal_out.shipment_id = o.shipment_id
+          AND sal_out.organization_id = o.organization_id
+          AND sal_out.activity_type = 'SHIP_CONFIRM'
+      )`;
+    }
+
     if (stagedOnly) {
       sql += ` AND EXISTS (
         SELECT 1 FROM station_activity_logs sal_pack
@@ -667,10 +686,15 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     }
 
     // CF-04 / CF-03: stage facet is order-grain (not any SAL on the shared carton).
+    // `packed` is only meaningful under inWarehouse (packed-staged still here).
     if (stageFilter === 'tested') {
       sql += ` AND ${sqlOrderHasTechScan('o')}`;
+      sql += ` AND NOT ${sqlOrderHasPackScan('o')}`;
     } else if (stageFilter === 'pending') {
       sql += ` AND NOT ${sqlOrderHasTechScan('o')}`;
+      sql += ` AND NOT ${sqlOrderHasPackScan('o')}`;
+    } else if (stageFilter === 'packed') {
+      sql += ` AND ${sqlOrderHasPackScan('o')}`;
     }
 
     if (exceptionsOnly) {

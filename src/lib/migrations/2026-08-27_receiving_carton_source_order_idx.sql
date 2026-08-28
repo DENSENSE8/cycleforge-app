@@ -1,0 +1,44 @@
+-- Partial index: receiving_carton (organization_id, source_order_id)
+--
+-- WHAT / WHY
+-- The receiving-lines carton-pick LATERAL (the D1 wrong-shipment guard in
+-- src/lib/receiving/lines/build-sql.ts — list query, by-id, and the scanned
+-- candidate query) resolves a line's carton through three OR-arms: direct FK,
+-- zoho_po PO#-fallback, and the marketplace fallback
+-- (source IN inbound-marketplace sources AND source_order_id = rl.source_order_id).
+-- The first two arms have usable indexes (receiving_pkey,
+-- ux_receiving_zoho_po_matched). The marketplace arm has none that covers it —
+-- ux_receiving_ebay_order is partial on source='ebay' only, so the planner's
+-- BitmapOr falls back to idx_receiving_organization: it fetches the WHOLE
+-- org's cartons and filters them away, per line, every line.
+--
+-- Measured 2026-08-27 (EXPLAIN ANALYZE, dogfood org, view=scanned&sort=priority):
+--   Bitmap Heap Scan on receiving_carton: 3,111 rows matched by the org arm,
+--   3,003 removed by filter, ~147 shared buffers and ~1.05ms PER LINE probed —
+--   27,368 of the query's 31,896 total buffers. The same LATERAL dominates the
+--   full list query's 54,985 buffers / 368ms for 19 rows.
+--
+-- With this index the marketplace arm becomes an index probe and the org-wide
+-- bitmap arm disappears from the OR. Broader than the current source list on
+-- purpose: pinning the predicate to today's INBOUND_MARKETPLACE_CARTON_SOURCES
+-- ('ebay','amazon','manual') would silently unfit the index the day a source
+-- is added; `source_order_id = ?` implies IS NOT NULL, so this predicate
+-- always qualifies.
+--
+-- SAFETY GATING
+-- Pure additive index on an existing tenant-scoped table — no schema shape
+-- change, no writer changes, no RLS interaction (indexes are policy-neutral).
+-- receiving_carton is ~3k rows per org; a plain (non-CONCURRENT) build takes
+-- milliseconds and the runner's transaction wrapper is safe.
+--
+-- ROLLBACK
+--   DROP INDEX IF EXISTS idx_receiving_org_source_order;
+--
+-- VERIFY
+--   EXPLAIN (ANALYZE, BUFFERS) any /api/receiving-lines list SQL: the carton
+--   LATERAL's BitmapOr should show idx_receiving_org_source_order instead of
+--   idx_receiving_organization, and its per-loop buffers drop from ~147 to <10.
+
+CREATE INDEX IF NOT EXISTS idx_receiving_org_source_order
+  ON receiving_carton (organization_id, source_order_id)
+  WHERE source_order_id IS NOT NULL;

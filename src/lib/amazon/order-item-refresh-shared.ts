@@ -2,6 +2,7 @@
  * Pure Amazon order-item helpers — safe for client + server.
  * I/O lives in `order-item-refresh.ts`.
  */
+import { inferMarketplaceFromOrderId } from '@/lib/marketplace-order-id';
 import { getOrderPlatformLabel } from '@/utils/order-platform';
 
 /** Minimal item shape for ASIN/title/SKU extraction (matches SP-API OrderItem). */
@@ -24,7 +25,7 @@ export function isAmazonOrderForItemRefresh(
   if (!oid) return false;
   const label = getOrderPlatformLabel(oid, accountSource).toLowerCase();
   if (label === 'amazon' || label === 'fba') return true;
-  if (/^\d{3}-\d+-\d+$/.test(oid)) return true;
+  if (inferMarketplaceFromOrderId(oid) === 'amazon') return true;
   if (src.includes('amazon') || src === 'fba') return true;
   return false;
 }

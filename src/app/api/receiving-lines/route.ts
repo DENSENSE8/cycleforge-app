@@ -34,6 +34,7 @@ import {
   buildReceivingLineByIdSql,
   buildReceivingLinesByReceivingIdSql,
   buildReceivingLinesListSql,
+  buildScannedCandidateSql,
   buildUnmatchedPlaceholdersSql,
   buildUnboxOpenedPlaceholdersSql,
   shouldIncludeUnmatchedPlaceholders,
@@ -292,16 +293,19 @@ export async function handleReceivingLinesGet(
     // filtered ROWS far below and cannot be answered by a count query; that
     // request falls through to the full path unchanged.
     //
-    // ONE view disagrees with `?limit=1`, and deliberately so. Verified against
-    // the dogfood org, `count_only` matches `?limit=1` exactly on `scanned`
-    // (15), `viewed` (765), `activity` (2899), `all` (3147) and `incoming`
-    // (122) — but on `unbox_opened` it returns 968 where `?limit=1` returns 1.
-    // That is because `maybePreLimitUnboxOpened` narrows `query.receivingIdIn`
-    // to a ranked window of `limit` cartons and the full path's count then
-    // counts INSIDE that window, so `?limit=N` on that view reports the page
-    // size, not the collection size. `count_only` reports the collection size,
-    // which is the only thing a total is useful for. Do not "fix" this arm to
-    // agree with the pre-limited number — fix the pre-limited number.
+    // TWO views disagree with `?limit=1`, and deliberately so: `unbox_opened`
+    // (via `maybePreLimitUnboxOpened`) and, since 2026-08-27, `scanned` (via
+    // `maybePreLimitScannedLineIds` — same mechanism, line-grained). Both
+    // narrow the query to a ranked first-page window, and the full path's
+    // count then counts INSIDE that window, so `?limit=N` on those views
+    // reports the page size, not the collection size. `count_only` reports the
+    // collection size, which is the only thing a total is useful for — the
+    // badges were moved onto it in the 2026-08-24 audit for exactly this
+    // reason. (Pre-pre-limit verification, dogfood org: `count_only` matched
+    // `?limit=1` on `scanned` (15), `viewed` (765), `activity` (2899), `all`
+    // (3147), `incoming` (122); `unbox_opened` diverged 968 vs 1.) Do not
+    // "fix" this arm to agree with the pre-limited numbers — fix the
+    // pre-limited numbers.
     const countOnly =
       searchParams.get('count_only') === '1'
       && query.deliveryStateFilter !== 'WRONG_DESTINATION';
@@ -365,6 +369,19 @@ export async function handleReceivingLinesGet(
     // or past the first page.
     query = await maybePreLimitUnboxOpened(query, orgId, offset);
 
+    // Gate-before-decorate for `view=scanned` (the /triage rail's cold-load
+    // shape): rank the qualifying line ids with the gates alone, so the ~15
+    // display laterals below only decorate rows that can reach the page.
+    // Measured 2026-08-27: the unrestricted list decorated 317 candidates to
+    // keep 19 rows (368ms / 54,985 buffers warm). Null = run unrestricted.
+    const scannedLineIdIn = await maybePreLimitScannedLineIds(
+      query,
+      orgId,
+      offset,
+      applyScannedZohoExclusion,
+      unboxRailColumnRead,
+    );
+
     // Paginated list — all lines, optionally filtered. The dynamic WHERE /
     // ORDER BY / SELECT assembly lives in the extracted builder
     // (src/lib/receiving/lines/build-sql.ts), pinned byte-identical to the old
@@ -376,6 +393,7 @@ export async function handleReceivingLinesGet(
       universalIncoming,
       applyScannedZohoExclusion,
       unboxRailColumnRead,
+      ...(scannedLineIdIn ? { scannedLineIdIn } : {}),
     });
     const [rowsRes, countRes] = await withTenantConnection(orgId, (client) => Promise.all([
       client.query(built.list.sql, built.list.params),
@@ -1297,6 +1315,72 @@ export const DELETE = withAuth(async (request: NextRequest, ctx) => {
  * Soft-fails to the unrestricted query: this is a plan optimisation, and a
  * ranking hiccup must never turn into an empty rail.
  */
+/**
+ * Gate-before-decorate for `view=scanned&sort=priority` — the /triage rail's
+ * cold-load shape.
+ *
+ * The unrestricted list runs ~15 display laterals over every candidate the
+ * join graph admits and only then applies the scanned gates: measured
+ * 2026-08-27 (EXPLAIN ANALYZE, warm, dogfood org), 317 candidates decorated
+ * for 19 survivors — 368ms / 54,985 shared buffers. This runs the SAME gates
+ * and the same priority rank with zero decorations
+ * ({@link buildScannedCandidateSql}) and returns the winning LINE ids; the
+ * caller narrows the real list query to them via `scannedLineIdIn`.
+ *
+ * LINE-grained, not carton-grained: `rl.receiving_id` is NULL for
+ * PO#-fallback lines (the Incoming-sync pre-created `zoho_po` carton case the
+ * scanned WHERE exists to catch), so narrowing through `receivingIdIn` would
+ * silently drop them.
+ *
+ * Bails (returns null → unrestricted) for anything but the plain first-page
+ * priority-sorted shape — a refinement param changes which lines qualify, and
+ * pre-ranking under one would silently drop matches. Soft-fails the same way:
+ * a ranking hiccup must never turn into an empty rail.
+ */
+async function maybePreLimitScannedLineIds(
+  query: ReceivingLinesQuery,
+  orgId: OrgId,
+  offset: number,
+  applyScannedZohoExclusion: boolean,
+  unboxRailColumnRead: boolean,
+): Promise<readonly number[] | null> {
+  if (query.view !== 'scanned') return null;
+  if (!query.wantsPrioritySort) return null;
+  if (!Number.isFinite(offset) || offset > 0) return null;
+  if (query.receivingIdIn.length > 0) return null;
+  if (Number.isFinite(query.receivingId) && query.receivingId > 0) return null;
+  if (query.trackingIn.length > 0) return null;
+  if (query.search) return null;
+  if (query.staffFilterRaw) return null;
+  if (query.priorityOnly) return null;
+  if (query.qaFilter || query.dispFilter || query.workflowFilter) return null;
+  if (query.deliveryStateFilter) return null;
+  if (query.poFrom || query.poTo) return null;
+  if (query.weekStart || query.weekEnd) return null;
+  if (query.unboxQueueStage || query.unboxQueueLane) return null;
+
+  const limit =
+    Number.isFinite(query.limit) && query.limit > 0 ? Math.min(query.limit, 200) : 50;
+  try {
+    const built = buildScannedCandidateSql({
+      orgId,
+      limit,
+      applyScannedZohoExclusion,
+      unboxRailColumnRead,
+    });
+    const res = await tenantQuery<{ id: number }>(orgId, built.sql, built.params);
+    const ids = res.rows
+      .map((r) => Number(r.id))
+      .filter((n) => Number.isFinite(n) && n > 0);
+    // No candidates → leave the query alone; an absent pre-limit is the
+    // "run unrestricted" signal, not "match nothing".
+    return ids.length > 0 ? ids : null;
+  } catch (error) {
+    console.error('maybePreLimitScannedLineIds failed; running unrestricted', error);
+    return null;
+  }
+}
+
 async function maybePreLimitUnboxOpened(
   query: ReceivingLinesQuery,
   orgId: OrgId,

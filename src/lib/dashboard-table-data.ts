@@ -111,9 +111,10 @@ export async function fetchDashboardOrderRowById(orderId: number): Promise<Shipp
 }
 
 /**
- * Fulfillment queue = labeled orders still in test/pack (Dashboard · Unshipped).
- * Excludes awaiting-label rows (Outbound · Labels) and packed/staged rows
- * (Outbound · Scan-out). Uses `fulfillmentScope=true` on `/api/orders`.
+ * In-warehouse To-ship queue = labeled + tracked, still in the building.
+ * Includes awaiting-test, tested, packed-staged, and blocked. Excludes
+ * awaiting-label (Labels) and dock-scanned / carrier-left (Scan-out history).
+ * Uses `inWarehouse=true` on `/api/orders`.
  */
 export async function fetchUnshippedOrdersData({
   searchQuery = '',
@@ -129,7 +130,7 @@ export async function fetchUnshippedOrdersData({
   testedBy?: number;
   staffId?: number;
   strictSearchScope?: boolean;
-  stage?: 'pending' | 'tested';
+  stage?: 'pending' | 'tested' | 'packed';
   limit?: number;
 }) {
   const params = new URLSearchParams();
@@ -138,7 +139,7 @@ export async function fetchUnshippedOrdersData({
   if (testedBy !== undefined) params.set('testedBy', String(testedBy));
   if (staffId !== undefined) params.set('staff', String(staffId));
   const scoped = !searchQuery.trim() || strictSearchScope;
-  if (scoped) params.set('fulfillmentScope', 'true');
+  if (scoped) params.set('inWarehouse', 'true');
   // Phase 1: on the scoped, non-search fulfillment load, request the thin queue
   // projection and push the coarse stage facet to SQL. A search stays full-shape
   // (the route ignores listShape when `q` is present) for match highlighting.

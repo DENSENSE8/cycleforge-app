@@ -1,7 +1,147 @@
 {
-  "generatedAt": "2026-08-25T06:01:39.867Z",
+  "generatedAt": "2026-08-28T07:01:06.374Z",
   "count": 198,
   "commits": [
+    {
+      "sha": "46c70fed2de140e0fb0c08816608a0b25cf8a93e",
+      "shortSha": "46c70fed2",
+      "date": "2026-08-27T21:18:42-07:00",
+      "author": "DENSENSE8",
+      "subject": "Feature lanes — isolated worktree + port + hostname, one command each",
+      "body": "One machine is the source of truth and is reached over SSH from several\ncomputers, so a preview lane cannot belong to a shell session and cannot be\nidentified by \"the one on 3051\". A lane's name derives all of it:\n\n  packed-pie -> ~/Projects/cycleforge-lanes/packed-pie   (detached at main)\n             -> :3071                                    (allocated once)\n             -> https://packed-pie.michaelgarisek.com\n             -> cycleforge-lane@packed-pie{,-tunnel}.service\n             -> ~/.config/cycleforge/lanes/packed-pie.env\n\n`~/.config/cycleforge/lanes/` IS the registry — systemd reads those files\nnatively as EnvironmentFile, so there is no second copy to drift. Two templated\nunits serve every lane forever; `pnpm lane doctor` reinstalls them from\n`ops/systemd/`.\n\nDeliberate choices:\n\n- **systemd --user, not tmux.** Survives the SSH disconnect, returns after a\n  reboot (lingering is already on), and `pnpm lanes` reads identically from\n  every machine. Crash-loop backstop matches cycleforge-dev.service.\n- **A locally-managed tunnel per lane.** `usav-dev` is REMOTELY managed — its\n  ingress lives in the Cloudflare dashboard and wins over any local file — so a\n  lane gets its own named tunnel and its own config. The explicit `--config` in\n  the unit is load-bearing: without it cloudflared reads usav-dev's.\n- **No branches.** Lane worktrees are detached at main; `lane land` is\n  `merge --ff-only` + push, guarded on: lane committed, lane ahead of main,\n  verify green IN THE LANE, and the MAIN checkout clean (other sessions edit\n  that tree).\n- **Nothing here touches :3050 or cloudflared.service.** `lane up`/`down` act\n  only on `cycleforge-lane*@<name>`.\n\nKnown gap, documented rather than hidden: `cloudflared` can create a DNS route\nbut not delete one, so `lane rm` tears down the tunnel and worktree and then\ntells you to remove the CNAME by hand.\n\nAlso lands PLAN-filter-well-sot.md — the one-feed/two-faces filter contract,\nits port waves, and the nine steps to verify Wave 0.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "type": "feature",
+      "title": "Feature lanes — isolated worktree + port + hostname, one command each"
+    },
+    {
+      "sha": "7a401b7dcd7be58ba4a9ab4a062d99137f481fd7",
+      "shortSha": "7a401b7dc",
+      "date": "2026-08-27T16:21:30-07:00",
+      "author": "usavsolutionsinc",
+      "subject": "Revert the Packed header chrome and record how the daily packer count should land.",
+      "body": "The beam is not the place for this verb; the plan specifies a data tile opened from the launcher and packing session, with the same PACK_COMPLETED grain.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "other",
+      "title": "Revert the Packed header chrome and record how the daily packer count should land."
+    },
+    {
+      "sha": "a4179bb3f691b52a97e980aee9e80a12857a7c37",
+      "shortSha": "a4179bb3f",
+      "date": "2026-08-27T14:38:23-07:00",
+      "author": "DENSENSE8",
+      "subject": "Repair the tree the sweep left red — restore live modules, drop stale twins",
+      "body": "`ccf9137cb` (\"Sweep working-tree changes into main\") committed 207 deletions,\nsome of which were still imported. `npm run verify` has been red since. This\nmakes it green without inventing new surface.\n\nRestored from `ccf9137cb^` — deleted, still imported:\n  lib/design/radius.ts (its test survived the delete), lib/design/shadows.ts\n  (same), lib/design/section-tab.ts, lib/panels/panel-action.ts,\n  lib/repair/repair-intake-types.ts, lib/shipping/shipment-status.ts,\n  lib/shipping/staff-option.ts, lib/ui/horizontal-slider-item.ts.\n  lib/sessions/types.ts comes from 4708c18f4 instead — the `ccf9137cb^` copy\n  predates `WorkSessionPurpose`, which purposes.ts imports.\n\nRepointed rather than restored — the deletion was right, the importer was\nmissed:\n  - `@/lib/icons` never existed in this repo; three sidebar/section modules\n    imported it. They now use `@/components/Icons`, the actual barrel.\n  - `@/lib/design/focus-ring` was a byte-identical copy of the design-system\n    token SoT. Its one importer now imports `@/design-system/tokens/focus-ring`.\n\nDeleted — stale twins of modules that moved:\n  - `lib/tables/compound-*` (+ its test) duplicated\n    `components/tables/compound/*`, differing only in one import line that\n    still pointed at the pre-sweep `lib/grid/grid-fill-column`. Every one of\n    the five families already imports the components copy, whose test passes\n    22/22; the lib copy's test asserted object identity and so could never\n    pass while both existed.\n  - `components/tiles/packing/*` — the last orphan of the tile set the sweep\n    removed (Help, Orders, Product, SessionsWeek all went); nothing imported\n    it, and it was the only consumer of the shadcn `components/ui/button`.\n\nTwo real type errors and two focus-ratchet recipes fixed in passing:\n  - `UnitStationIdentity` declared `onOpenPhotosDisplay` in its props type but\n    never destructured it.\n  - `insertUnshippedOrderIntoCache` cast ShippedOrder → OrderRow directly.\n  - `RoomEditForm` carried a raw `focus:ring-2` next to a `focusRing()` call\n    that already emits one; `BuyLabelSection`'s void-reason input now uses\n    `focusRing('field', 'danger')`.\n  - `to-ship-packed-sheet.spec.ts` redeclared `dateBox` in one scope.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "type": "other",
+      "title": "Repair the tree the sweep left red — restore live modules, drop stale twins"
+    },
+    {
+      "sha": "a1c94870559ae28a31b2ba2c224a4eb51004b2c2",
+      "shortSha": "a1c948705",
+      "date": "2026-08-27T14:24:58-07:00",
+      "author": "DENSENSE8",
+      "subject": "Land outstanding tree; fix two migration defects; add To Ship probes",
+      "body": "Migrations (ledger now 564 on record, 0 pending):\n\n- `2026-08-21c_failure_modes_tenant_scope.sql` — restore the text that was\n  actually applied on 2026-08-25. A sweep commit (ccf9137cb) reintroduced the\n  older `CREATE TRIGGER … EXECUTE FUNCTION enforce_tenant_isolation()` form,\n  which invokes the helper with zero args and fails; the applied version calls\n  `PERFORM enforce_tenant_isolation('failure_modes')`. Its sha256 matches the\n  ledger row exactly, so the runner stops refusing on a checksum mismatch.\n- `2026-08-26_receiving_line_testing_opens.sql` — the FK targeted\n  `receiving_lines`, which is a VIEW; Postgres rejected it with \"referenced\n  relation is not a table\". Point it at the base table `receiving_line(id)`,\n  matching the sibling `receiving_line_views`. Never applied before this, so\n  no ledger row was disturbed.\n\nTests:\n\n- `global-header-add-button-visible.spec.ts` — the header Add trigger paints in\n  the actions zone across desks (display only; the menu spec owns open/close).\n- `toship-pending-parity.spec.ts` — mints its own session so it runs against\n  dev or prod, and prints server queue-counts next to what the tabs render.\n  Used to establish that both hosts return an identical Pending lane.\n\nPlus the outstanding working-tree changes across the dashboard/outbound\nworkbench, receiving, kiosk and layout surfaces.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "type": "other",
+      "title": "Land outstanding tree; fix two migration defects; add To Ship probes"
+    },
+    {
+      "sha": "ccf9137cbd076581cc7366a7594ececa0ff12990",
+      "shortSha": "ccf9137cb",
+      "date": "2026-08-27T09:34:01-07:00",
+      "author": "DENSENSE8",
+      "subject": "Sweep working-tree changes into main",
+      "body": "Commits all outstanding working-tree changes (session state per operator\ninstruction) ahead of reconciling with origin/main.\n\nCo-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>",
+      "type": "other",
+      "title": "Sweep working-tree changes into main"
+    },
+    {
+      "sha": "ad4c2fa1da11f0ea328d8272387bb973ce1587f9",
+      "shortSha": "ad4c2fa1d",
+      "date": "2026-08-26T16:59:22-07:00",
+      "author": "usavsolutionsinc",
+      "subject": "Add a Packed header control that shows today's boxes by packer.",
+      "body": "The floor kept asking for this count in chat; surface the same PACK_COMPLETED tally as a tile with day paging.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "other",
+      "title": "Add a Packed header control that shows today's boxes by packer."
+    },
+    {
+      "sha": "240d9dc600c0da9e79c1c689dab3392bbef1ac64",
+      "shortSha": "240d9dc60",
+      "date": "2026-08-25T22:01:08-07:00",
+      "author": "DENSENSE8",
+      "subject": "Add an adversarial verification prompt for the design-system MCP",
+      "body": "Written for a fresh agent told to assume this work is wrong. Every check names\nan exact expected value, and the one most likely to pass vacuously requires\nplanting a regression first.\n\n§4 is the important one. The variant extractor has been wrong in BOTH directions\n— once anchoring on the `_VARIANTS` import rather than its declaration (flagship\nprimitive reported zero variants), once understanding only the cva shape and\nmissing flat maps entirely — so the prompt hands the verifier the exact one-line\nbreak to apply and states that the smoke test MUST fail on \"flat variant map\nread exactly (9)\". If it still passes with that break in place, the assertion is\nvacuous and the extractor is unverified.\n\nThat instruction was executed before shipping, not just written: planted the\nregression, watched the smoke test fail on precisely that assertion, restored,\nwatched 11/11 return.\n\n§7 lists claims that should NOT verify — no ds_adjudicate, no pinned.json (so\n`curated_entries: 0`, and that absence means nobody has written the law yet\nrather than that anything is permitted), two primitive homes reported but not\nresolved, nothing blocking a write, and the visual spec uncommitted and never\nrun. §8 confirms the CSS migration was deliberately not performed and that\nsot-lookup is still absent from main.\n\nScope is pinned to this repo: the sibling Garisek-OS has a different\ndesign-system MCP and findings must not be copied across.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "type": "other",
+      "title": "Add an adversarial verification prompt for the design-system MCP"
+    },
+    {
+      "sha": "437e8bb83736bd9ec7a2b0c02ec0680cb7ef2dfc",
+      "shortSha": "437e8bb83",
+      "date": "2026-08-25T21:59:51-07:00",
+      "author": "DENSENSE8",
+      "subject": "Correct the primitive count: 36 .tsx, not 40",
+      "body": "40 was a find(1) count that included .ts files such as button-variants.ts.\nA verification prompt was about to inherit the wrong number as an expected\nvalue, which would have failed a correct system.",
+      "type": "other",
+      "title": "Correct the primitive count: 36 .tsx, not 40"
+    },
+    {
+      "sha": "3877536a7c9d4315d0424bc2a8dabeddf96c59dc",
+      "shortSha": "3877536a7",
+      "date": "2026-08-25T21:27:56-07:00",
+      "author": "DENSENSE8",
+      "subject": "Add a design-system MCP server for CycleForge",
+      "body": "Three tools over stdio, auto-discovered via .mcp.json: ds_contract (what\nalready exists for this job), ds_tokens (what values are allowed), ds_critique\n(why is this component bad).\n\n## The contract is derived, not written\n\nGarisek's server reads a hand-curated pin map with useWhen/doNot per entry. This\nrepo has no such file and its primitives carry no docblocks to derive those\nsentences from — Button.tsx opens straight into imports. Writing 56 doNot rules\nfrom outside would be inventing law and serving it with authority, which is the\none failure a design-system oracle must not commit.\n\nSo ds_contract reports what the repo can prove: all 56 primitives, where they\nlive, their real variant options read from source, and the interaction states\nthey declare. Curated prose layers on from src/design-system/pinned.json when it\nexists — optional, absent today, grown one justified entry at a time. The\nresponse states explicitly that an absent useWhen means nobody has written the\nlaw yet, NOT that anything is permitted.\n\n## Two primitive homes are reported, not resolved\n\nsrc/design-system/primitives (40) and src/components/ui (16) both hold\nprimitives — there are two Buttons with different variant surfaces. That is a\nreal open question in this repo; the server labels both so an agent sees the\nchoice rather than picking whichever it grepped first.\n\n## No ds_adjudicate\n\nGarisek's shares a rule module with a PreToolUse hook, so its verdict is the one\nthat blocks a write. Nothing equivalent exists here, and a tool answering\n\"allowed\" while nothing enforces anything manufactures confidence. ESLint is the\ngate; the header says where an adjudicator would plug in.\n\n## The extractor was wrong twice before it was right\n\nBoth are now pinned as exact counts in the smoke test:\n\n- It anchored on `_VARIANTS`, which also matches Button.tsx's own IMPORT line,\n  sending the brace-matcher into the import braces — the flagship primitive\n  reported zero variants while a sibling file declared nine.\n- It understood only the cva `variants: { axis: { opt } }` shape and missed flat\n  maps (`BUTTON_VARIANTS = { primary: '…' }`) entirely. Now a key is an axis\n  only when its value opens a block; if none do, the map is one axis.\n\nGround truth checked by hand: 9 flat variants on the design-system Button,\n6 variants x 4 sizes on the ui button. Smoke test is 11 assertions over real\nstdio, including a refused path traversal and fork detection staying off inside\nthe primitive homes.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "type": "other",
+      "title": "Add a design-system MCP server for CycleForge"
+    },
+    {
+      "sha": "bbb023444dcf06e57f2b774d6038ee284a984ee0",
+      "shortSha": "bbb023444",
+      "date": "2026-08-25T09:40:59-07:00",
+      "author": "usavsolutionsinc",
+      "subject": "Assert keybinding hint faces against the current platform formatter.",
+      "body": "Hard-coded Ctrl/Alt strings failed the Darwin glyph faces and blocked the local main push gate.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "other",
+      "title": "Assert keybinding hint faces against the current platform formatter."
+    },
+    {
+      "sha": "c7e08fdedeffd37c167dde0f2b7c9af8bbc21fcf",
+      "shortSha": "c7e08fded",
+      "date": "2026-08-25T09:35:18-07:00",
+      "author": "usavsolutionsinc",
+      "subject": "Restore the global header bottom hairline so the beam separates from the canvas.",
+      "body": "Co-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "other",
+      "title": "Restore the global header bottom hairline so the beam separates from the canvas."
+    },
+    {
+      "sha": "99fcccf5a9ed685c1d8ee88497a52d5bfbef2d86",
+      "shortSha": "99fcccf5a",
+      "date": "2026-08-25T08:46:53-07:00",
+      "author": "DENSENSE8",
+      "subject": "feat(shell): the session lives in the composer — plus mirrored rails, last-8 id chips, and parallel-lane WIP",
+      "body": "Executes the 2026-08-25 operator ruling (HANDOFF-session-composer-ux):\n\n- §1/§2 The armed session's face is SessionHeader, mounted in the composer\n  above the field — real state only (badge · title · elapsed · park/end,\n  stage strip only for pipeline refs). The SessionTile placeholder and its\n  fake carton/serial facts are deleted; arming opens no canvas tile.\n- §3 The beam's + is a conditional display swap: the name makes room on\n  hover instead of an opacity-in-place reveal.\n- §4 The dead .rail/.tab/.pin/.recent/.tile CSS families are deleted;\n  .wos-body converted to Tailwind and the body ground unified with the\n  canvas so both icon stacks float on it (shell.css 1440 → ~1050 lines).\n- §5 RailTools rebuilt as the left rail's always-mounted mirror (peek/pin/\n  expand/⌘⇧B removed with useRailPeek); the beam's ⋯ is the tools entry;\n  SessionPopover deleted; a missing timer registry row added.\n- §6 Tile corner radius measured (8px idle AND focused on :3051) and\n  pinned the X1 way: tests/e2e/shell-tile-corner-radius.spec.ts.\n- §7 Q4 last-8 law recorded in LAWS.md; a 200-line id-chip family\n  (OrderIdChip · TrackingChip · PlatformChip · SkuScanRefChip) against the\n  copy-chip-format SoT, wired into queue rows, detail facts and the beam\n  readout. B22 struck for B23 (the ⋯ tools entry), per X3.\n- §8 PLAN-composer-modes.md — the mode map, planned not built.\n- Queued task: HANDOFF-order-in-composer.md (order search embeds in the\n  composer when no session is armed).\n\nAlso carries the parallel lanes' concurrent work in this worktree\n(putaway/inventory-spine APIs, label printing, shadcn ui set, rail-icon\nplate grammar, tile families) committed together because the shell files\ninterleave.\n\nCo-Authored-By: Claude Fable 5 <noreply@anthropic.com>",
+      "type": "feature",
+      "title": "the session lives in the composer — plus mirrored rails, last-8 id chips, and parallel-lane WIP"
+    },
+    {
+      "sha": "9ad0817c3e8f55bba4a06eca10ea7a4e612a255a",
+      "shortSha": "9ad0817c3",
+      "date": "2026-08-25T00:41:16-07:00",
+      "author": "DENSENSE8",
+      "subject": "perf(tooling): make the request-shape audit repeatable",
+      "body": "The receiving/unbox network audit landed as a one-off. This turns the method\ninto something any route can be put through.\n\n`npm run perf:requests -- --route=/x` signs in via the pinless flow, drives\nPlaywright against a production build, and reports the four axes the audit was\norganised around: depth (serially dependent round trips), width (peak\nconcurrency), redundancy (identical URL, or one endpoint under several param\nshapes), and poll-vs-push (what a window-focus regain re-fetches). It writes a\nJSON baseline per route so a before/after is a file diff rather than a\nrecollection.\n\nThree things the tool had to learn the hard way, all encoded:\n\n- It refuses to run against a dev server. Dev does not report a slower shape,\n  it reports a DIFFERENT one — StrictMode double-invokes effects, so every raw\n  fetch-in-useEffect appears twice and the redundancy column is fiction. The\n  two detection signals were verified positive on :3050 and negative on the\n  live production build, because a false positive would refuse a real run.\n- The depth column is labelled DEPTH? and pairs each request with only its\n  closest candidate parent. The first version reported one photo request\n  chained to three unrelated parents: from outside the app, co-timing is\n  indistinguishable from causation.\n- Totals are noisy (43 vs 51 requests across back-to-back runs of one build);\n  the duplicate and count-probe columns were identical every time. The skill\n  says to quote those as findings and treat the headline as order-of-magnitude.\n\nThe skill also carries the suspects already ruled out on this codebase (Ably\nconnection count, catalog hook dedup, the retired serial-hydration N+1) so they\nare not re-derived, the RSC-seed gate that /triage failed, and the two misses\nfrom the original audit: that a caller which exists is not a caller that fired,\nand that reporting a failed gate is completing the item.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "type": "performance",
+      "title": "make the request-shape audit repeatable"
+    },
+    {
+      "sha": "73d8a6fce1a10013e4013559719a573b15c54207",
+      "shortSha": "73d8a6fce",
+      "date": "2026-08-24T23:29:10-07:00",
+      "author": "DENSENSE8",
+      "subject": "feat(orders): orders and products manipulable as tiles, under two new hard rules",
+      "body": "HANDOFF-orders-first Steps 1-3, verified live in the Electron window on the\ndogfood org:\n\n- Orders queue tile (listShape=queue, stage facets, tile-local filter) and\n  the order-detail tile as SEPARATE tiles; Product tile resolves via\n  get-title-by-sku. All writes ride existing gated routes - no new API.\n- Verbs: flag/clear urgency (orders/assign), append-only notes THROUGH the\n  main composer (Phase 7 write-target follows the focused detail), and a\n  guarded work-order spawn - gated on the order's own activity strip, after\n  the work-orders queue feed proved a false oracle and let one spawn null a\n  live tech assignment (restored same day).\n\nTwo operator hard rules landed with it (2026-08-24):\n- LAWS C8: a display never overrides a tile - it opens as its own tile, or\n  goes to the most relevant tile already showing that display (same ref ->\n  focus; different order -> retarget the one detail tile). Pure policy in\n  order-tile-policy.ts, pinned by unit test.\n- LAWS I8: one composer, ever. The prototype's per-tile \"Add a note\" and the\n  tool panel's \"Ask the assistant\" textareas are deleted; every text job\n  enters the main composer. Tile-local queue FILTERS stay (I6 carve-out).\n\nAlso: .tile-body gets min-height:0 so the ported overflow:auto actually\nscrolls every tile body (\"add the scrolling back for all the tiles\").\n\nShared-worktree note: useShell/AssistantFeed/shell.css carry the UX-overhaul\nlane's interleaved in-flight hunks (header-entity readout, feedback, ui kit);\ntheir standalone modules land with that lane's commit - same checkpoint\nconvention as Well -> StageQueue. header-entity.ts (+test) rides along here\nbecause useShell imports it.\n\nCo-Authored-By: Claude Fable 5 <noreply@anthropic.com>",
+      "type": "feature",
+      "title": "orders and products manipulable as tiles, under two new hard rules"
+    },
     {
       "sha": "724ac94a9091d2ba3fded836cd2aa4c62bd9212f",
       "shortSha": "724ac94a9",
@@ -11,6 +151,106 @@
       "body": "",
       "type": "other",
       "title": "checkpoint before checking out claude/warehouse-os-refactor-8f2dc3"
+    },
+    {
+      "sha": "980f98e40f2acdb0e992001e31b60f42145befe1",
+      "shortSha": "980f98e40",
+      "date": "2026-08-24T21:32:14-07:00",
+      "author": "DENSENSE8",
+      "subject": "feat(spine): the unit↔location spine — expand migration + domain writer",
+      "body": "The v1 build named by 00-endgame §6: serial_units.location_id (the pointer),\nunit_placements (scan-created put-away facts), part_pulls (disassembly facts,\n\"what's been pulled from it\"). D10 is in the DDL — location_scan_source is\nCHECK-limited to scanner/camera, so a typed location cannot be written at the\nSQL layer. No backfill from the legacy current_location TEXT, deliberately:\nthat column was never scan-created and stays a visible legacy claim until\nre-scanned. Both tables tenant-from-birth (FORCE RLS verified live).\n\nrecordUnitPlacement / recordPartPull (house Deps shape): fact + pointer in one\ntransaction, ops_events chronology after commit, idempotent on a per-org\nclient_event_id, law refused by name before IO. 11/11 DB-free unit tests.\n\nAlso fixes 2026-08-21c (unapplied until today): it used\nenforce_tenant_isolation() as a trigger function — zero-arg call, cannot\nexist. Replaced with the canonical per-table PERFORM before its first apply.\n\nAll 11 pending migrations applied to the dev DB; tenancy coverage regenerated.\n\nCo-Authored-By: Claude Fable 5 <noreply@anthropic.com>",
+      "type": "feature",
+      "title": "the unit↔location spine — expand migration + domain writer"
+    },
+    {
+      "sha": "d1acdfef06905c3d2908eb4ffb883343a0779a66",
+      "shortSha": "d1acdfef0",
+      "date": "2026-08-24T21:21:45-07:00",
+      "author": "DENSENSE8",
+      "subject": "docs(warehouse-os): 00-endgame — the plan of record from the scope interview",
+      "body": "22 questions, 2026-08-24. One sentence at the top (\"a warehouse OS where\ninventory is never lost\"), sixteen numbered decisions under it: the location\nspine as v1, data takes the centre (the 2026-08-23 inversion struck), the\ngenuine model-loop composer, Electron-everywhere delivery, the verb-by-verb\nAI leash, the Black Friday ship gate. §10 + the appendix quote all 146 lines\nthis file overrules across 15 documents — scheduled, not silently edited.\n\nCo-Authored-By: Claude Fable 5 <noreply@anthropic.com>",
+      "type": "docs",
+      "title": "00-endgame — the plan of record from the scope interview"
+    },
+    {
+      "sha": "4adda929a59a2063ebb4c507f0ebad24fd11d563",
+      "shortSha": "4adda929a",
+      "date": "2026-08-24T20:27:54Z",
+      "author": "Cursor Agent",
+      "subject": "feat(sessions): close remaining purpose-catalog plan gaps",
+      "body": "Archive a purpose without rewriting sessions that used it. Summary rows\nnow carry their interval list; the session report exposes activeMs and\nparkedMs. Rail tabs show title · purpose · Σ active. Unknown surface\nkeys are refused at start; parking the armed block uses POST /park.",
+      "type": "feature",
+      "title": "close remaining purpose-catalog plan gaps"
+    },
+    {
+      "sha": "e11befa7387cc2e8d702cb99d2f19b6a163e9430",
+      "shortSha": "e11befa73",
+      "date": "2026-08-24T20:19:54Z",
+      "author": "Cursor Agent",
+      "subject": "fix(sessions): restore command-book import and narrow scan purpose keys",
+      "body": "Keep listSeedableCommandCodes in seedOrgCatalog (it was dropped when the\npurpose seed landed) and pass purpose.key through the scan-type guard so\nbeginSession typechecks.",
+      "type": "fix",
+      "title": "restore command-book import and narrow scan purpose keys"
+    },
+    {
+      "sha": "831a265d980f4cdc8429a4638daac061b07ff6f3",
+      "shortSha": "831a265d9",
+      "date": "2026-08-24T20:14:13Z",
+      "author": "Cursor Agent",
+      "subject": "feat(sessions): purpose catalog, wrap-up log, and session composer",
+      "body": "Org-scoped work_session_purposes is the reporting bucket (L1); title is\nthe instance (L2). Operators start a named block from a seed purpose or\na custom label created inline — no new scan_type. Wrap-up is from→to,\nwhy prose on the session row, searchable, staff or assistant. Seed\ncovers front desk, kiosk, staff assist, product triage, listing, and\nthe existing scan benches.\n\nCo-authored-by: DENSENSE8 <DENSENSE8@users.noreply.github.com>",
+      "type": "feature",
+      "title": "purpose catalog, wrap-up log, and session composer"
+    },
+    {
+      "sha": "ec0b5d1321f00c86fa74e12c7cabb0e47aa27495",
+      "shortSha": "ec0b5d132",
+      "date": "2026-08-24T08:54:16-07:00",
+      "author": "DENSENSE8",
+      "subject": "feat(shell): the omni-command composer — one field, chips, and the rail peek",
+      "body": "Two interleaved lanes of the Warehouse OS shell, committed together as the\nrunning state measured live on :3051.\n\nOmni-Command Composer (docs/omni-command-composer.md): the one field on the\ndefault screen is now a Lexical editor speaking the operator's grammar —\n'#' orders, '@' reserved, '/' actions (the launcher's own destinations),\nbare identifier = the scanner path. Deterministic auto-commit: a chip only\non an exact /api/orders/lookup hit, so a unique prefix can never chip.\nCommit is an OS event — feed summary + orders tile via\nuseShell.onComposerCommit — and the wedge lands in the same contenteditable\n(useFindFieldScan ref widened to HTMLElement). Domain layer in\nsrc/lib/composer (21 unit tests, DB-free); e2e in\ntests/e2e/omni-command-composer.spec.ts, 9/9 against real QA-org lookups on\n:3051. electron-dev.mjs probes :3051 then :3050; pnpm desktop:dev:os pins it.\n\nAI-centre lane (HANDOFF-ai-centre §1-2, logged in that doc): the well\ninversion measured live, blocks-of-time verbs, RailSessions/useRailPeek\n(hover peek + pinned rails), RailPages retired, S12 law row in LAWS.md.\n\nKnown-red carried forward: src/lib/canvas/*.test.ts and\nuseHorizontalEdgeResize.test.ts fail on modules the Canvas→Well inversion\ndeleted — the shell lane's outstanding sweep, untouched here.\n\nCo-Authored-By: Claude Fable 5 <noreply@anthropic.com>",
+      "type": "feature",
+      "title": "the omni-command composer — one field, chips, and the rail peek"
+    },
+    {
+      "sha": "d57d3eedd634d8721e5fef71002578aa94cb061c",
+      "shortSha": "d57d3eedd",
+      "date": "2026-08-23T22:56:40-07:00",
+      "author": "DENSENSE8",
+      "subject": "shell: Canvas -> Well, the AI-centre inversion (HANDOFF-ai-centre §1)",
+      "body": "The feed is no longer the canvas's zero-tile fallback; it IS the surface —\npinned centre, always mounted. One sunken column on --bg-canvas under the\napplication's one radius token (--r-hud), replacing src/shell/Canvas.tsx.\n\nTiles no longer mount on the default screen; what a tile used to show becomes\na block in the feed or detail in the right panel (later phases). The\nworkspace store still owns \"what is open\" and the left rail still lists it —\nthe canvas was demoted, the model was not.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "type": "other",
+      "title": "shell: Canvas -> Well, the AI-centre inversion (HANDOFF-ai-centre §1)"
+    },
+    {
+      "sha": "61f0b688578e3b372df8e783ed359f036439ed8c",
+      "shortSha": "61f0b6885",
+      "date": "2026-08-23T22:44:56-07:00",
+      "author": "DENSENSE8",
+      "subject": "Warehouse OS: reconcile the 83 typecheck errors",
+      "body": "Full reconcile pass over the zero-base cut. tsc --noEmit and eslint src both\nexit 0 now.\n\nFixed by category, not by blanket restore:\n\nRESCUE MISS — receiving-events.ts (pure logic, no JSX) was left behind in the\nUI tree; 11 lib files depend on it transitively through utils/events.ts. Moved\nto src/lib/receiving/receiving-events.ts; inlined its two UI-coupled event\npayload types instead of chasing them further.\n\nORPHANED SCAFFOLDING, deleted — a tile/tool/panel registry cluster\n(lib/nav/launch-index, lib/canvas/{session,table}-tiles + table-tile-views,\nlib/tools/descriptors, lib/workspace/{process-descriptor,panel-registry})\nassumed a @/components/workspace/** layout that was never built — the shell\nagent built src/shell/ instead, per the prototype. Nothing in src/app,\nsrc/app/api, or src/shell imported any of it. Also deleted: two dead contexts\n(ActivityInboxContext, FbaWorkspaceContext) and a keyboard cheat-sheet\ncomponent orphaned by the same old-provider-stack removal, and two e2e specs\nthat drove pages (/dashboard, the receiving workspace deck) which no longer\nexist.\n\nSCOPED RESTORE — design-system, 87 of 285 files (8,602 of 29,675 LOC). /signin\nis the only way into the app and is on the keep-list; it needs a real\ndependency closure from design-system + a handful of auth components + the\nstaff-color chain. Restored file-by-file, checking each file's own imports as\nit went (design-system is NOT self-contained — 60 files reach into deleted\n@/components). Where a restored file's only consumer was itself dead weight\n(AppTopBar, the conversation/composer primitives, the root design-system\nbarrel, StaffAvatarEditor), deleted it a second time rather than chasing its\ntransitive imports. Full accounting, restore commands, and the one behavioral\ngap (StaffColorsProvider is restored but not mounted in ShellProviders, so\nstaff avatars render a default theme until it is) are in\ndocs/warehouse-os/DELETED-MANIFEST.md under \"Restored during reconcile\".\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "type": "other",
+      "title": "Warehouse OS: reconcile the 83 typecheck errors"
+    },
+    {
+      "sha": "56b7db203ed022fc4c045f21614eb29dd3bcaa39",
+      "shortSha": "56b7db203",
+      "date": "2026-08-23T22:34:10-07:00",
+      "author": "DENSENSE8",
+      "subject": "docs(warehouse-os): update AI centre handoff",
+      "body": "Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "type": "docs",
+      "title": "update AI centre handoff"
+    },
+    {
+      "sha": "0924403929ca75d0d201340b603a872becf0b2a3",
+      "shortSha": "092440392",
+      "date": "2026-08-23T22:31:20-07:00",
+      "author": "DENSENSE8",
+      "subject": "Warehouse OS: zero-base the UI, keep the domain, build the shell from prototype",
+      "body": "Complete architectural reset of the UI layer. Deletes the entire page-oriented\nSaaS surface — components, design system, page tree, kiosk, mobile — and keeps\neverything the warehouse actually runs on: domain logic, the 969 API routes,\nmigrations, and the printed-label resolvers.\n\nWHAT DIED (~517k LOC net):\n  - src/design-system/**        deleted   (29,675 LOC)\n  - src/components/**           deleted  (327,208 LOC)\n  - src/features/**             deleted   (11,971 LOC)\n  - src/hooks/** (UI-only)      deleted   (20,749 LOC)\n  - src/components/mobile/**    deleted   (15,941 LOC) — parallel mobile product\n  - src/app/m/**                deleted    (3,550 LOC) — parallel mobile product\n  - kiosk/counter product       deleted   (18,494 LOC across app+lib+api, 4 layers)\n  - ~120 of 142 page routes     deleted\n  - old house-law constitution  deleted   (195 files, ~99,564 LOC — AGENTS.md,\n    .claude/rules/**, docs/rules/**, .cursor/**, sot-manifest.json)\n\nWHAT SURVIVED, untouched:\n  - src/lib/**                  (261k LOC domain)\n  - src/app/api/**               (939 routes)\n  - src/lib/migrations/**\n  - GS1 / short-URL label resolvers: /01 /414 /l /p /s /q — printed on stickers\n    already on boxes in the warehouse. Verified intact and unchanged.\n\nWHAT'S NEW:\n  - src/shell/**                 — the Warehouse OS shell, ported from the\n    operator's own HTML prototype (docs/warehouse-os/prototype/warehouse-os.html):\n    scan-first header, PAGES/TOOLS icon rails, tiling canvas, launcher.\n  - src/lib/sessions/**           — work_sessions domain: kind 'scan'|'task',\n    one armed scan session per org enforced by a partial unique index.\n  - src/lib/workspace/**          — tab store + panel registry.\n  - src/lib/canvas/**, src/lib/tools/**, src/lib/reversibility/** — tile\n    registries, tool descriptors, the Process/undo tool (scaffolded).\n  - src/lib/assistant/workspace-tools.ts, session-tools.ts — AI-first verbs:\n    open_tile, split_tile, save_layout, start_session. The assistant owns\n    arrangement and reflection; the scanner owns throughput — no scan handler\n    awaits a model call.\n  - 7 new migrations (work_sessions, ops_events/inventory_events session\n    columns, work_session_intervals, agent_mutations operator actor). WRITTEN,\n    NOT APPLIED — the operator applies migrations.\n  - docs/warehouse-os/DELETED-MANIFEST.md — the cherry-pick index. Every\n    deleted feature grouped with LOC and the exact `git checkout main -- <path>`\n    to bring it back. main is a strict superset of this worktree's base.\n\nKNOWN STATE: NOT GREEN. tsc --noEmit currently reports 83 errors, all of the\nsame shape — dangling imports from surviving code (auth pages, workspace tile\nregistries, the sidebar panel registry) into components deleted in this pass.\nThe manifest already documents the fix for the sharpest one: /signin needs 7\nfiles restored from src/components/auth + src/components/boot, or rewritten\nagainst the new shell — it is the only way into the app right now. Reconcile\npass did not complete before this commit; that is the next work.\n\nThis is a WIP worktree by explicit operator instruction: cherry-pick components\nback from main as needed, iterate on the shell against the prototype. main is\nuntouched.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "type": "other",
+      "title": "Warehouse OS: zero-base the UI, keep the domain, build the shell from prototype"
     },
     {
       "sha": "2f6dcd784ae985a31c8a8d6a21135b54ffc156a2",
@@ -1741,246 +1981,6 @@
       "body": "The handoff explained HOW but never WHY, which is the part that decides\nwhether the next session judges this worth continuing. Five reasons, in\nplain language, with the counter-argument stated rather than hidden:\n\n1. A dead export looks like a supported API — it is a wrong turn left on\n   the map, and \"compose from the named SoT\" only works if the named\n   thing is the real one.\n2. Duplicates hide inside the dead set. Roughly half of what was deleted\n   here was a SECOND COPY of something that already had one home\n   (SOURCE_PLATFORM_LABELS, ClaimSeverity, canTransition,\n   CONDITION_GRADES ×3). Those drift, and then one fact reads two ways on\n   two screens.\n3. Barrels hide corpses — a dead `export *` kept the whole retired DS\n   shell family reachable, and DESIGN_SYSTEM.md documenting it.\n4. Every dead export is an imaginary contract you must not break.\n5. It is the only cleanup that is provably safe — zero callers means\n   tsc + tests prove it in minutes, unlike the DS ratchets' 1,677 real\n   call-site migrations.\n\nCounter-argument kept in the doc: un-exporting a useful-but-unused symbol\nmakes it harder to pick up later, which is why the classification has\nthree buckets and why §6 (parked) exists at all.\n\nAlso synced §0/§4 to reality: 366 findings cleaned, 11 commits, ~780\nvalue exports left, allocateNextUnitId added to the parked list, and the\nthree barrels finished in 6fb705618 marked done.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
       "type": "docs",
       "title": "add \"why this matters\" to the dead-export handoff; sync progress"
-    },
-    {
-      "sha": "9a1f2b0c72457aa2c987953748b5542dd9af0212",
-      "shortSha": "9a1f2b0c7",
-      "date": "2026-08-08T09:45:13-07:00",
-      "author": "DENSENSE8",
-      "subject": "chore: prune dead staff-goal, role-store, FBA event and unit-id exports",
-      "body": "Tenth dead-code pass. knip 2451 -> 2429. tsc + eslint clean on these files.\n\n- neon/staff-goals-queries: deleted getGoalByStaffId, getDailyGoal,\n  upsertStaffGoal, deleteStaffGoal; 4 row types un-exported.\n- auth/role-store: deleted loadAllRoles, loadRoleById, loadRoleByKey,\n  primaryRoleForStaff; loadStaffRoleIds un-exported.\n- fba/events: deleted 5 unused event-name consts (FBA_PLAN_CREATED,\n  FBA_PRINT_FOCUS_PLAN, FBA_PRINT_SIDEBAR_READY, ADMIN_FBA_OPEN_ADD,\n  ADMIN_FBA_OPEN_UPLOAD). The registry itself is very live.\n- inventory/unit-id: the back-compat re-export line kept 5 names alive\n  through this path; only parseUnitId is still reached that way (the\n  rest import from ./unit-id-format directly, which is the split the\n  module's own docblock describes). Trimmed to parseUnitId.\n\nNOT deleted, deliberately: allocateNextUnitId has zero code callers, but\ndocs/todo/serial-label-pairing-split-combine-plan.md names it as the\nunit-UID mint step of an in-flight plan. Parked, not dead.\n\neslint (now step 2 of the loop per the handoff §3.9) caught an orphaned\n`describeUnitId` import that the re-export trim left behind — an ERROR,\nwhich tsc and knip both pass over. That is the whole reason the step\nexists.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
-      "type": "chore",
-      "title": "prune dead staff-goal, role-store, FBA event and unit-id exports"
-    },
-    {
-      "sha": "aeaa1218541564af7584746d5455ff3bc7d9daa5",
-      "shortSha": "aeaa12185",
-      "date": "2026-08-08T09:37:51-07:00",
-      "author": "DENSENSE8",
-      "subject": "chore: delete 26 unused locals left behind by un-exporting",
-      "body": "Follow-up pass closing a real gap in the method: un-exporting a symbol\nmakes it invisible to knip (which reports unused EXPORTS), and tsc does\nnot run noUnusedLocals — so a symbol un-exported on a bad \"used\ninternally\" read becomes dead code that neither tool can see.\n\nRoot cause: the in-file occurrence heuristic counted a symbol's own\ndocblock and {@link} mentions as internal usage. Those symbols should\nhave been deleted outright, not un-exported.\n\neslint found 20 unused-imports/no-unused-vars warnings across the files\ntouched in this initiative; deleting them cascaded through two more\nrounds (removing a function orphans its Input/Result types and its\nimports) for 26 symbols total across 12 files:\n\n  po-triage/types, ai/search-tools, beta/apply-schema, fba/status,\n  packing/packer-kpi-queries, queries/receiving-queries,\n  receiving/display/precedence, receiving/rail/feeds, vision-identify,\n  utils/date, utils/staff-colors, utils/staff\n\nknip is unchanged at 2451 — by construction, since these were already\nun-exported and had dropped off its radar. That divergence is the point.\n\nTwo warnings deliberately remain: TRIAGE_PILES and TESTING_API_VIEWS are\n`as const` arrays that source a union type. The code is correct; eslint\ncannot see type-only usage of a value.\n\nHandoff updated: eslint added to the verify loop (§1) and the whole trap\nwritten up as §3.9, since it is the one failure mode the other three\ngates are all blind to.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
-      "type": "chore",
-      "title": "delete 26 unused locals left behind by un-exporting"
-    },
-    {
-      "sha": "6fb705618631294ba7b0b43d9b39141b35745f57",
-      "shortSha": "6fb705618",
-      "date": "2026-08-08T09:30:32-07:00",
-      "author": "DENSENSE8",
-      "subject": "chore: trim two dead barrel surfaces and po-triage helpers",
-      "body": "Ninth dead-code pass. knip 2478 -> 2457. No errors in these files.\n\n- components/support/context/index.ts: reduced to SupportContextHub +\n  SupportContextDetailPanel, the only two reached THROUGH the barrel.\n  LinkageStrip, DashedLinkChip, TicketLinkPopover, parseTicketIdQuery,\n  resolveTicketIdForLink and invalidateSupportContextCaches are all live\n  — consumers import them from their own modules, so the barrel lines\n  were pure dead weight.\n- lib/stations/index.ts: dropped registerBlock, hasBlock, listBlocks,\n  registerDataSource, registerAction, listActions from the three\n  re-export lists (the register* fns are called by ./registry and\n  ./data-sources internally). This is the barrel's own stated\n  philosophy — its docblock already refuses to re-export the procedure\n  registry because \"a second, unused path to the same module\" would ship\n  in every station bundle.\n- components/po-triage/types.ts: deleted TRIAGE_PILE_META,\n  isFieldConfirmed, getSuggestedPile, emptyPiles; 7 pile types/consts\n  un-exported.\n\nNeither barrel trim produced a new finding — the re-exported symbols are\nreachable at their source, which is what made the barrel lines dead.\n\nBaseline updated shrink-only; the 10 findings the gate reports are a\nconcurrent session's in-flight nav-keys/ and usePoLinesData work.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
-      "type": "chore",
-      "title": "trim two dead barrel surfaces and po-triage helpers"
-    },
-    {
-      "sha": "ac3d66ca2c37de0eac4d5b330586c8a811465e63",
-      "shortSha": "ac3d66ca2",
-      "date": "2026-08-08T09:25:52-07:00",
-      "author": "DENSENSE8",
-      "subject": "docs: handoff for the dead-export cleanup (tier 2)",
-      "body": "Captures the repeatable loop, the classification buckets, what is left,\nand the parked items — so the next session does not re-derive any of it.\n\nThe load-bearing section is §3 (Traps). Every entry is a mistake that was\nactually made and cost time: prefix collisions in string-replace edits\n(stripping `export` from ReceivingRailFeedId while targeting\nReceivingRailFeed), knip's project globs missing scripts/, brace-matching\non a default-param object or a return-type annotation, source-scanning\nguard tests, and barrels hiding corpses.\n\n§0 records the finding that reframes the remaining work: ~1,085 of the\n1,704 \"dead types\" are Input/Result types for live functions, used inside\ntheir own file. Un-exporting them is knip-appeasement that degrades the\nmodule API — the real surface is the ~947 dead value exports.\n\n§8 documents the live concurrency hazard: a second session plus GitButler\nreverted edits four times this session, a deletion only stuck once staged\nin the index, and `git checkout --` on a shared tree is the same class of\ndestructive operation as `git stash`.\n\nDOC-CATALOG.md is deliberately NOT regenerated here: the generator scans\nthe working tree, so it would index 14 of the other session's untracked\ndocs and ship rows pointing at files nobody else has. Run\n`node scripts/portfolio-sot-sync.mjs` once the tree settles.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
-      "type": "docs",
-      "title": "handoff for the dead-export cleanup (tier 2)"
-    },
-    {
-      "sha": "a491291a866d808193403308068e876800e4e7fc",
-      "shortSha": "a491291a8",
-      "date": "2026-08-08T09:15:37-07:00",
-      "author": "DENSENSE8",
-      "subject": "chore(tables): register the topic/tables lane (WS-TABLES · :3150)",
-      "body": "Follow-up #3 from the nonlinear-data-table-engine handoff — add the lane to\nthe worktree registry so the initiative has a named home.\n\nCo-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>",
-      "type": "chore",
-      "title": "register the topic/tables lane (WS-TABLES · :3150)"
-    },
-    {
-      "sha": "058b1eccffb3cf085d7ae0d91184c136f6dbe6ef",
-      "shortSha": "058b1eccf",
-      "date": "2026-08-08T09:12:29-07:00",
-      "author": "DENSENSE8",
-      "subject": "chore: narrow ai-search / global-entity-search / sku-catalog surfaces",
-      "body": "Eighth dead-code pass. knip 2500 -> 2478. Typecheck clean.\n\n- lib/ai/search-tools: 3 tool defs + result type un-exported; deleted\n  SEARCH_TOOLS, runSearchUnits, and runExactIdSerialSearch (the live one\n  is a local fn in lib/assistant/tools/read-tools.ts, injected via\n  deps.exactIdSerialSearch).\n- lib/search/global-entity-search: 5 per-entity searchers un-exported —\n  internal to the exact-path dispatcher. The live searchRepairs is in\n  lib/neon/repair-service-queries.\n- lib/neon/sku-catalog-queries: 8 row/option types un-exported; deleted\n  getSkuPlatformIds and getVerifications. Module stays live (routes\n  import getSkuCatalogById et al).\n\nBaseline again updated shrink-only so the concurrent nav-keys/ and\nitemDesc work in the tree is not absorbed here.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
-      "type": "chore",
-      "title": "narrow ai-search / global-entity-search / sku-catalog surfaces"
-    },
-    {
-      "sha": "c80acda75a64b5c75923bddfc22a0aed0fd9353e",
-      "shortSha": "c80acda75",
-      "date": "2026-08-08T09:08:04-07:00",
-      "author": "DENSENSE8",
-      "subject": "chore: prune dead orders-queries and failure-modes exports",
-      "body": "Seventh dead-code pass. knip 2517 -> 2500. Typecheck clean for these\nfiles; batch verified against the full suite.\n\n- neon/orders-queries: deleted getShippedOrdersCount, trackingNumberExists,\n  skipOrder, getActiveOrders (only a doc-comment reference in\n  api/orders/route.ts), createOrder + CreateOrderParams (the live\n  createOrder is a local fn in scripts/seed-unshipped-tracking-test.ts).\n  4 option/result types un-exported.\n- schemas/failure-modes: 5 vocab consts un-exported.\n\nBaseline updated shrink-only (HEAD baseline intersected with current\nfindings) rather than regenerated, so a concurrent session's in-flight\ndead code (src/lib/keyboard/nav-keys/*, the itemDesc handoff cluster)\nis not absorbed into this commit's baseline.\n\nKnown SoT finding, NOT fixed here: CONDITION_GRADES is declared three\ntimes — lib/conditions.ts (the SoT per .claude/rules), a copy in\nschemas/failure-modes.ts, and a third in\napi/receiving/add-unmatched-line/route.ts. Consolidating touches\nvalidation schemas, so it needs its own change.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
-      "type": "chore",
-      "title": "prune dead orders-queries and failure-modes exports"
-    },
-    {
-      "sha": "45edfdcc3b416bc83fb85176da546359d8da60a1",
-      "shortSha": "45edfdcc3",
-      "date": "2026-08-08T09:03:14-07:00",
-      "author": "DENSENSE8",
-      "subject": "chore: prune dead date/staff-colors/ai-context/plans exports",
-      "body": "Sixth dead-code pass. knip 2548 -> 2517. Typecheck + 6536 tests green.\n\n- utils/date: deleted getCurrentPSTTime, toISOStringPST, formatTimePST,\n  isSamePSTDate, formatShortDate (the live one is a local fn in\n  admin/GoalsAnalyticsTab.tsx) and formatMonthDay — NOT the dense-ledger\n  SoT formatMonthDayTimePST, which is a superstring and survives.\n  formatClockTimePST + DateKeyParts un-exported. The civil-date guard\n  scans other files for banned reparse patterns; it does not read this\n  module, so it is unaffected.\n- utils/staff-colors: deleted 5 unmounted theme/chrome builders\n  (print-queue, FBA scan chrome); 5 theme types/consts un-exported.\n- lib/ai/context-fetchers: all 6 per-domain fetchers un-exported —\n  internal to this module's dispatcher.\n- sidebar/operations/plans-shared: reduced to TASK_STATUS_DOT, its only\n  importer (features/home/HomeTasksMode.tsx). Dropped the query keys,\n  both fetchers, agenticLoopLiveHref, PLAN_STATUS_TONE, and a bare\n  re-export of MASTER_PLAN_OPS_TITLE whose one home is\n  lib/master-plan/ops-plans-bridge-constants. PlansSidebar.tsx, which\n  owned these, was deleted in an earlier pass.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
-      "type": "chore",
-      "title": "prune dead date/staff-colors/ai-context/plans exports"
-    },
-    {
-      "sha": "6e11ddd04955eebda3b93a6f710f1a49432c72af",
-      "shortSha": "6e11ddd04",
-      "date": "2026-08-08T09:02:23-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat(tables): waves 4-5 — Review catalog-link + Orders onto the registry host",
-      "body": "Wave 4 (Review · Catalog-link): two definitions under one shared capabilities bag\n(`review.catalog-link` + `review.missing-item-number`); both mounts on\nNonlinearTableHost. `inCellEdit: false` preserved (Item-number resolve creates an\norder — record plane, not a cell).\n\nWave 5 (Orders): the shared parametric grid (9 consumers) stripped to a thin\nadapter. Two column-mode definitions (`fulfillment.default`/`.tested`) via\n`ordersTableBindingFor`; the rail-selection SoT + record cursor + inspector\nopen/close + Labels replace-tracking moved VERBATIM into `useOrdersQueuePlane`\n(it encodes ≥4 documented race bug-fixes). Host extended with the legitimate grid\nprops (ariaLabel override, forceHidden, shellRef, scrollParentRef). The 9\nconsumers are unchanged — the strip is internal. OrdersGridView 652 → ~380 lines.\n\nEvery workbench grid surface now mounts through NonlinearTableHost; the only\nremaining direct <LedgerGridSurface> mount is the host itself. Guards re-pointed\nat the definition SoT; grid-view-plumbing + capability discovery count the host.\n\nLand the SoT one-liner in AGENTS.md + source-of-truth.md now that it is true for\nthe first time: Workbench spreadsheets mount via the definition registry + host.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
-      "type": "feature",
-      "title": "waves 4-5 — Review catalog-link + Orders onto the registry host"
-    },
-    {
-      "sha": "e4d5ec79c3f1c1d054bf42102d424418b8c7b820",
-      "shortSha": "e4d5ec79c",
-      "date": "2026-08-08T08:59:00-07:00",
-      "author": "DENSENSE8",
-      "subject": "chore: narrow replenishment/scan-resolver/vision-identify surfaces",
-      "body": "Fifth dead-code pass. knip 2573 -> 2548. Typecheck clean.\n\n- replenishment: 6 stock/PO helpers un-exported (internal to this\n  module); deleted backfillLegacyOutOfStockOrders.\n- scan-resolver: regexes + classify types un-exported; deleted\n  buildInternalEntityUrl and buildGs1UnitUrl (only a doc-comment\n  reference in lib/print/zpl-templates.ts). Dropped the dead\n  `export { TRACKING_PATTERNS } from '@/utils/carrier-patterns'`\n  re-export — its comment offered it \"for any downstream consumers\"\n  and there were none; the import on line 2 stays (used internally).\n  The live SerialMatchResult is the component in\n  components/receiving/workspace/, not this type.\n- vision-identify: candidate/label types + helpers un-exported;\n  deleted setVisionBaseUrl and identifyAndEnrich. The live\n  EnrichedCandidate is the local interface in\n  api/receiving/visual-identify/route.ts.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
-      "type": "chore",
-      "title": "narrow replenishment/scan-resolver/vision-identify surfaces"
-    },
-    {
-      "sha": "831669c18994453ae6eee8a1b339eafc9c6606b0",
-      "shortSha": "831669c18",
-      "date": "2026-08-07T23:46:09-07:00",
-      "author": "DENSENSE8",
-      "subject": "chore: prune dead FBA/packing/precedence/isolation exports",
-      "body": "Fourth dead-code pass. knip 2600 -> 2573. Typecheck + 6522 tests green.\n\n- fba/status: deleted FBA_LIFECYCLE, isTerminalFbaStatus,\n  FBA_COMBINE_QUEUE_STATUSES and the local canTransition (the live\n  canTransition is warranty/transitions.ts; this one had no callers).\n  FBA_STATUS / _PILL / _ALLOWED_TRANSITIONS / FbaStatus un-exported —\n  internal to this module; the live FbaStatus type is the one declared\n  in components/fba/shared/FbaStatusBadge.tsx. Closes the prune list in\n  docs/audit/fable5-ds-prune-report.md line 70.\n- receiving/display/precedence: 7 rank consts un-exported.\n- packing/packer-kpi-queries: 5 helpers un-exported; deleted\n  getPackingKpisForPeriod.\n- surface-isolation: deleted TESTING_SCOPED_PARAMS and\n  isReceivingSurfacePath; 4 route consts un-exported.\n\nDeliberately skipped src/lib/pipeline/config.ts: knip reports 5 consts\nunused, but scripts/jetson/{trainer.py,setup.sh} read the same env vars\nand .env.example + context/PIPELINE*.md document them. Those consts are\nthe TypeScript side of a cross-language contract, as the module's own\ndocblock states — not dead.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
-      "type": "chore",
-      "title": "prune dead FBA/packing/precedence/isolation exports"
-    },
-    {
-      "sha": "4ada5997757336b6ded31eb96fd49dea0a612d98",
-      "shortSha": "4ada59977",
-      "date": "2026-08-07T23:41:52-07:00",
-      "author": "DENSENSE8",
-      "subject": "chore: narrow four lib modules' public surface; drop 6 dead helpers",
-      "body": "Third dead-code pass, all inside live modules. knip 2645 -> 2600.\n\n- beta/apply-schema: the 13 question-set consts + answer schemas are\n  internals of BetaApplySchema (the only thing routes import); un-exported.\n  Deleted 3 z.infer types with no declaration site but their own.\n- queries/receiving-queries: invalidation helpers + feed roots un-exported.\n  Deleted UNBOX_RAIL_SEGMENTS, dispatchReceivingUnboxRefresh, and\n  deferInvalidateUnboxReceivingFeeds — the last exists only to be banned by\n  scan-apply.guard.test.ts, which asserts its ABSENCE and still passes.\n  ReceivingIntakeSurface here duplicates the union in lib/receiving/record-scan\n  (what the routes actually import); un-exported rather than re-pointed to\n  avoid dragging a server module into a client import graph.\n- receiving/rail/feeds: fetchers/builders un-exported; deleted\n  fetchReceivingLinesWithPoTitleContext and fetchActivityRows.\n- integrations/helpdesk/zendesk-ticket-cache: TTLs + key builders\n  un-exported; deleted invalidateZendeskOverviewCache.\n\nZENDESK_CACHE_NS and zendeskBundleCacheKey stay exported: knip reports them\nunused, but scripts/zendesk-bundle-cache-bench.ts imports them — knip's\nproject globs miss that file, tsc does not. Verified via typecheck, not knip.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
-      "type": "chore",
-      "title": "narrow four lib modules' public surface; drop 6 dead helpers"
-    },
-    {
-      "sha": "b73a49b5355e389632815327d19dff9f7c21f8aa",
-      "shortSha": "b73a49b53",
-      "date": "2026-08-07T23:34:36-07:00",
-      "author": "DENSENSE8",
-      "subject": "chore: remove dead exports, the DS shell family, and a deprecated route",
-      "body": "Second dead-code tier: dead exports/types inside otherwise-live files,\nplus the pre-flush-square shell family the barrels were hiding.\nknip baseline 2795 -> 2641 (154 findings cleaned).\n\nDeleted (12 files)\n- design-system/components/{ResponsiveShell,desktop/*,mobile/*} — the\n  pre-flush-square shell generation. Zero real consumers; the parent\n  barrel's three `export *` lines were the only thing keeping them\n  reachable. Superseded by RedesignedMobileShell (+ MobileTopBar,\n  MobileSidebarDrawer, ScanInput) and ResponsiveLayout + MasterNav.\n- utils/tracking.ts — a back-compat shim with one live re-export;\n  order-links.ts now imports getTrackingUrl from lib/tracking-format.\n- api/home/feed/route.ts — @deprecated, its only client (TaskInbox)\n  was deleted last session. Manifest regenerated (917 -> 916).\n\nNarrowed / removed\n- receiving-sidebar-shared: 31 dead symbols, incl. two SoT twins\n  (SOURCE_PLATFORM_LABELS, ClaimSeverity) duplicating lib/source-platform\n  and lib/receiving-claim-type.\n- credential-schemas, realtime/channels: registry internals un-exported\n  (consumed only by their own maps) — API narrowed, nothing deleted.\n- themes/index: 8 palette re-exports; registry.ts imports each directly.\n- tracking-format, receiving-constants, utils/{_date,_dom,staff}: dead\n  helpers deleted, internal-only ones un-exported.\n\nDESIGN_SYSTEM.md scrubbed to the live components rather than just\nemptied, plus a dated retirement note. The adjacent \"Mobile Touch\nTokens (tokens/touch.ts)\" section documented a module that no longer\nexists (touchTarget/mobileDensity/safeArea/MobileActionButton: zero\nrefs); rewritten around IconButton size=\"touch\", which says outright it\nfolded in that job. Three comments naming deleted components fixed.\n\nNot included: hooks/_ui.ts and _lifecycle.ts (15 confirmed-dead exports)\nkept reverting mid-session and stay baselined as dead.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
-      "type": "chore",
-      "title": "remove dead exports, the DS shell family, and a deprecated route"
-    },
-    {
-      "sha": "3f7edbba88f457bca47d8b057c5b1ba28ce79b78",
-      "shortSha": "3f7edbba8",
-      "date": "2026-08-07T23:15:50-07:00",
-      "author": "DENSENSE8",
-      "subject": "fix(station): provable yield-ladder for the 3-column frame resize — no jitter, no gray band",
-      "body": "The Station frame (Context rail | locked-720 Primary | Displays) jittered on\nsash drag and detached with a gray band near the frame budget: the Displays\nwidth was decided three conflicting ways at once (CSS flex-1, the sash's JS\nwidth, and imperative context-rail writes), fighting across render passes.\n\n- Add STATION_COLUMN_BUDGET (sourced tuples) + a pure resolveStationYieldLadder\n  enforcing invariants I1-I7, and route the drag coupling through it (one\n  distributor for the coupling and the proof).\n- Reactive stationDisplaysCollapsed store slice (frame.ts) with asymmetric\n  hysteresis: Displays yields FIRST to an overlay below the ~1300px budget\n  (Fiori/M3 collapse hierarchy), the centre FILLS instead of leaving a band, and\n  the deadband stops it flapping. Threshold drops when the rail is parked.\n- Kill the drag jitter: feed each sash the ladder-consistent max so the coupling\n  never clamps it back, and paint the context rail from the live coupled value\n  during a Displays drag (closes the ~2-frame lag). flex-1 stays the leftover\n  filler (the guard requires it; it is the deterministic fill).\n\nProven: 67-assertion I1-I7 unit sweep + reactive-store hysteresis test, and a\nPlaywright spec on the QA org (8/8 stable) measuring real drags + viewport\nsweeps — flush columns, locked middle, monotonic inverse-coupled widths, one\nclean hysteresis collapse.\n\nCo-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>",
-      "type": "fix",
-      "title": "provable yield-ladder for the 3-column frame resize — no jitter, no gray band"
-    },
-    {
-      "sha": "e8795764eec617cc74f5ed00e81357a2bd17c90d",
-      "shortSha": "e8795764e",
-      "date": "2026-08-07T23:14:22-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat(tables): registry-driven table engine — bind Receiving/Incoming + 10 GridViews to NonlinearTableHost",
-      "body": "Introduce the table DEFINITION registry (plan Phase 1): a Zod-validated\ndefinition (columns + capabilities + shell recipe + prefs bucket) paired with\nits typed column model as a TableSurfaceBinding, mounted through\nNonlinearTableHost over the unchanged LedgerGridSurface engine.\n\nPages become bindings: feed + intents + renderers only; the shell recipe,\naria name, testid and prefs bucket resolve from the definition, never a mount\nliteral. 12 surfaces migrated — Receiving, Incoming, Ready, Pickup, Unfound,\nTechAll, TrackingExceptions, Warranty, MyDay, Catalog, Repair, Bins. Bins'\ndead `surface=\"framed\"` override chain removed (definition owns surface).\n\nGuards re-pointed at the definition SoT rather than the retired mount literal;\ncapability discovery now counts <NonlinearTableHost mounts. Also repairs a\nbroken HEAD: a prior commit had swept the receiving sheet guard in without its\nreceiving-table-definition.ts, leaving a committed import of an untracked file.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
-      "type": "feature",
-      "title": "registry-driven table engine — bind Receiving/Incoming + 10 GridViews to NonlinearTableHost"
-    },
-    {
-      "sha": "a759e9a02faa68c71f65860f2c53923602c6c5db",
-      "shortSha": "a759e9a02",
-      "date": "2026-08-07T22:39:19-07:00",
-      "author": "DENSENSE8",
-      "subject": "fix(displays): make every declared Station Display reachable; one nav grammar",
-      "body": "`navMode=\"leaf\"` rendered a single leaf and no switcher — `onTabChange` was\nthreaded in but nothing inside the column ever called it — so Pack (4 displays)\n· Shipping (2) · Packer review (3) shipped with every display but the one the\n`←|` toggle guessed unreachable from anywhere in the app. Pack had no\ncontextual opener at all, so its `support` and `timeline` leaves could not be\nopened by any path.\n\nEvery per-station guard was green throughout, because they asserted the MODE\n(`navMode=\"leaf\"` is present) rather than the operator-facing contract. The\nmode is now deleted outright rather than kept for a hypothetical one-display\nstation: an untested branch in a shared waist is where the next regression\nhides, and a one-display station is already served by a contextual\n`openDisplays(<leaf>)` that skips the index (Arrival · Pairing).\n\n- All six stations drill index → leaf; Esc pops leaf → index → close\n- A gated-away leaf resolves to the INDEX, never `displayTabs[0]` — silently\n  swapping in an unrelated display is the failure the index exists to prevent\n- `←|` lands the index on any 2+ display station (Testing was landing `ticket`)\n- New `station-displays-reachability.guard.test.ts` asserts the contract —\n  every declared display is reachable — not the mode string\n\nAlso in the Displays SoT:\n\n- `StationDisplaysEdgeToggle` moved out of `receiving/workspace/` into the\n  shared module; its `layoutId` was literally named `unbox-…` while all six\n  stations shared it\n- `STATION_DISPLAY_INDEX` exported; Unbox/Arrival/Testing now derive the\n  sentinel instead of re-typing `'index'`\n- Slim eyebrow: per-group Collapse buttons put COLLAPSE on screen three times\n  over ten rows; the `kbd` chips advertised a Digit1–3 chord that only fired\n  after tabbing in (a false shortcut hint). Both removed — bare digits cannot\n  be bound where a wedge scan types digits into the page\n- Group trailer speaks only for ACTION rows. `Incomplete` was false: Context\n  holds Support · Tracking · Timeline, reference rows that can never BE complete\n- Row anatomy frozen at icon · label · tone chip, flush left, one control per\n  row; the armed marker is an out-of-flow `layoutId` overlay that travels\n  between rows, so nothing reflows when a row arms (measured: one icon-left\n  value across all rows, 2px rail transparent→accent, 44px hit height)\n- Empty state answers no-match vs absence instead of rendering blank\n- Testing declared two displays both labelled \"Pairing\" with the same glyph;\n  now SKU pairing (`Barcode`) and Linkage (`Link2`, the name Unbox uses)\n- Deprecated `filterUnboxDisplayIndexRows` deleted (no production callers)\n\nCarries the concurrent Action Plane work in the same directory\n(`StationActionDossierShell` · `StationDenseFactStrip` · `StationActionKeyLegend`\n· `displays-toggle-hotkey` · `lib/keyboard/list-key-scope`) because the module\nis untracked as a unit and these files hard-import it.\n\nnpm run verify passes.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
-      "type": "fix",
-      "title": "make every declared Station Display reachable; one nav grammar"
-    },
-    {
-      "sha": "8730184722fcdd6548bb4facd2026a009c2912d1",
-      "shortSha": "873018472",
-      "date": "2026-08-07T22:30:16-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat(receiving): saved-views rail on /incoming; guard the regional sidebar split",
-      "body": "Mount the generic SavedViewsList on the /incoming (Workbench ops-queue) POS\nview, composing the already-wired receiving_incoming saved-view surface\n(SAVED_VIEW_STORAGE_KEY / SAVED_VIEW_PARAM_KEYS). Applying a view writes URL\nparams only — no tableId mutation, no second store, no Band-1 tab. The /unbox\nscan station keeps its ephemeral MRU/scan periphery with no saved-views rail.\n\n- IncomingSidebarPanel: mount SavedViewsList (POS view only)\n- regional-sidebar-split.guard.test.ts: pin the split + no-tableId invariant\n- regional-sidebar-split.spec.ts: qa-desktop floor simulation (both routes)\n\nCo-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>",
-      "type": "feature",
-      "title": "saved-views rail on /incoming; guard the regional sidebar split"
-    },
-    {
-      "sha": "853e713152f3158502c50be1860dddf9e15202d4",
-      "shortSha": "853e71315",
-      "date": "2026-08-07T22:29:33-07:00",
-      "author": "DENSENSE8",
-      "subject": "chore: remove confirmed-dead UI/UX debris (39 files)",
-      "body": "knip-verified orphans — zero live importers, each individually confirmed\nagainst import paths (not just symbol-name grep) before removal:\n\n- Pre-GS1 CODE128 barcode preview pair (barcode.ts + ReceivingProductLabelPreview)\n- Superseded hooks/SoTs: useEscapeKey (→ overlay-stack/store), useStationStaffScope\n  (→ SCOPE_PARAM/table-url-params), useWalkInJob (`/pickup?job=` is legacy per\n  the page's own comment — Sales-hub `?mode=` replaced it), useSquareCatalog\n  (abandoned integration exploration, superseded by Ecwid)\n- agent-status.ts / staff-goal-status.ts — tone SoTs for OperationsAgentsRow /\n  StaffGoalsRail, both consumer surfaces already gone\n- TaskInbox.tsx — earlier My Day inbox, replaced by HomeInboxMode/HomeTasksMode\n- SyncStatusPopover, ManifestChip, RepairAgreement, InventoryFulfillmentSyncDialog,\n  ShippedActionsButton, OutboundStatusLegend, OutOfStockField, QtyBadge,\n  SlideOverBackdrop (StationDrawer, its only consumer, was already gone)\n- Barrel files nobody imports through: lib/inbound, lib/receiving/facts,\n  lib/receiving/spine (submodules are imported directly elsewhere)\n- order-intake.ts (ingestOrder) — superseded by ingestCanonicalOrders\n- load-org-nav.ts — /api/nav/route.ts duplicated the query inline instead\n- Explicitly @deprecated re-exports: LineLabelPreviewCard, LineReceiveActionBar,\n  resolve-ticket-scan.ts\n- ZohoPoPairTab — pre-CartonMatchHub Package Pairing UI\n- zoho-serial-sync.ts — only referenced by leak-guard tests asserting it's NOT called\n- Tech-serial Unified Engine strangler chain (insertTechSerialForTracking +\n  resolveStaffIdFromTechParam + resolveTechSerialInsertContextFromSal) — never\n  plugged into the live tech-scan route\n- OperationsFlowsDisplay/OperationsSidebarPanel (admin) — no route ever mounted them\n- NasPhotoPicker, RedesignedBottomNav — abandoned mobile-shell directions\n- Pickup-report chain (printPickupReport, pickup-report, printPickupReportForDate)\n  — only reachable through the dead ShippedActionsButton\n- SupportLinkedContext — pre-service-workspace ticket linkage panel\n\nKept ListingPhotoGallery.tsx + useListingGallery.ts: explicitly parked for a\nfuture SKU/unit detail-page gallery, not superseded by anything live.\n\nFixed the one real breakage: tech-serial.test.ts's source-scanning CALL_SITES\nguard read insertTechSerialForTracking.ts by path — removed the entry with a\ndated note matching its existing style.\n\nRegenerated knip-baseline.json (2877 → 2791 findings).\n\nVerified: tsc --noEmit clean, full unit suite 6408/6408 pass, knip gate green.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
-      "type": "chore",
-      "title": "remove confirmed-dead UI/UX debris (39 files)"
-    },
-    {
-      "sha": "8ecc85f8c2f6ba6895fe7b7dd2e89c472b6532b6",
-      "shortSha": "8ecc85f8c",
-      "date": "2026-08-06T14:23:10-07:00",
-      "author": "DENSENSE8",
-      "subject": "chore: land workspace polish on main for production",
-      "body": "Ship Units serial row delete/photo chrome, search/order feedback flush surfaces, Displays paint-order work, and related station desk polish so Vercel production can pick up the dogfood tree.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
-      "type": "chore",
-      "title": "land workspace polish on main for production"
-    },
-    {
-      "sha": "fca8b4ce4f4d6dd1f4e84fac319c1ed53631b9fd",
-      "shortSha": "fca8b4ce4",
-      "date": "2026-08-06T10:02:50-07:00",
-      "author": "DENSENSE8",
-      "subject": "chore: follow-up workspace polish onto main",
-      "body": "Catch remaining station/display edits that landed after the bulk commit.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
-      "type": "chore",
-      "title": "follow-up workspace polish onto main"
-    },
-    {
-      "sha": "10ef110005ea9237c23fd76d484ee6eaf90734b1",
-      "shortSha": "10ef11000",
-      "date": "2026-08-06T10:01:02-07:00",
-      "author": "DENSENSE8",
-      "subject": "chore: land in-progress workspace on main",
-      "body": "Fold the outstanding station flush, display, dashboard, and receiving work\nonto main with the PO line header thumb enlargement.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
-      "type": "chore",
-      "title": "land in-progress workspace on main"
-    },
-    {
-      "sha": "c19e0da29134e188857ed19c2723b15f9ebfc666",
-      "shortSha": "c19e0da29",
-      "date": "2026-08-06T09:58:09-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat(unbox): enlarge PO line header thumb in title+details band",
-      "body": "Grow the product image to size-20 in the accordion header so title/details\nrows read taller, without placing a condition square between image and copy.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
-      "type": "feature",
-      "title": "enlarge PO line header thumb in title+details band"
-    },
-    {
-      "sha": "20dfe0e60e99a8a487c81894c38608d6af6635b4",
-      "shortSha": "20dfe0e60",
-      "date": "2026-08-04T12:19:43-07:00",
-      "author": "DENSENSE8",
-      "subject": "fix(ui): tracking chip hover menu flush + SoT copy-chip law",
-      "body": "Align TrackingNumberMenuChip with CopyChipHoverMenu grid-flush contract and document the chip hover SoT invariant.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
-      "type": "fix",
-      "title": "tracking chip hover menu flush + SoT copy-chip law"
-    },
-    {
-      "sha": "729f330e909a824137fcffc95adc01674fff3228",
-      "shortSha": "729f330e9",
-      "date": "2026-08-04T12:17:58-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat: LedgerGrid drill/sheets, unbox procedure deck, kiosk pickup, and spine nav pass",
-      "body": "Ship the accumulated warehouse-ops surface work: typed column tracks and drill hosts on LedgerGrid, unbox compare/sheets and procedure-stack layout, incoming bulk-tracking triage, kiosk order pickup, shipping orders desk (retire /shipping/ready), locations/bins workspace, support vision-lane + ticket watch, GS1/GTIN catalog fields, motion skill/agent tooling, schema migrations, and broad E2E coverage.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
-      "type": "feature",
-      "title": "LedgerGrid drill/sheets, unbox procedure deck, kiosk pickup, and spine nav pass"
     }
   ]
 }

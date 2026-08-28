@@ -182,14 +182,18 @@ async function cmdStatus() {
     const tun = unitState(`cycleforge-lane-tunnel@${lane.name}.service`);
     const head = existsSync(dir) ? gitHead(dir) : { sha: 'MISSING', dirty: 0 };
 
+    // Pad on VISIBLE width — colour codes are zero-width, so padEnd() on a
+    // coloured string leaves the next column short by the escape length.
+    const pad = (cell, width) => cell + ' '.repeat(Math.max(1, width - cell.replace(/\x1b\[[0-9;]*m/g, '').length));
+
     const devCell = dev === 'active'
       ? (listening ? `${C.green}up${C.reset}` : `${C.yellow}starting${C.reset}`)
       : `${C.dim}${dev}${C.reset}`;
     const tunCell = tun === 'active' ? `${C.green}up${C.reset}` : `${C.dim}${tun}${C.reset}`;
     const headCell = head.dirty > 0 ? `${head.sha}${C.yellow}+${head.dirty}${C.reset}` : head.sha;
 
-    log(`  ${lane.name.padEnd(18)}${String(port).padEnd(7)}${headCell.padEnd(head.dirty > 0 ? 20 : 11)}` +
-        `${devCell.padEnd(dev === 'active' ? 19 : 20)}${tunCell.padEnd(tun === 'active' ? 19 : 20)}` +
+    log(`  ${pad(lane.name, 18)}${pad(String(port), 7)}${pad(headCell, 11)}` +
+        `${pad(devCell, 10)}${pad(tunCell, 10)}` +
         `${C.cyan}https://${lane.LANE_HOST}${C.reset}`);
   }
   log('');
@@ -220,13 +224,19 @@ function cmdDoctor({ dry = false } = {}) {
 
 /* --------------------------------------------------------------------- new */
 
-function cmdNew(name, { dry = false, tunnel = true } = {}) {
+function cmdNew(name, { dry = false, tunnel = true, ref = 'main' } = {}) {
   if (!/^[a-z][a-z0-9-]{1,19}$/.test(name)) {
     die('lane name must be kebab-case, 2–20 chars, starting with a letter (e.g. packed-pie)');
   }
   if (readLane(name)) die(`lane "${name}" already exists — pnpm lanes`);
   const dir = laneDir(name);
   if (existsSync(dir)) die(`${dir} already exists`);
+
+  /* RESOLVE THE REF FIRST — before a port, a worktree or a DNS record exists.
+     A typo'd ref must cost nothing; discovering it at `git worktree add` would
+     leave an allocated port and a half-built lane behind. */
+  const baseSha = shQuiet('git', ['-C', MAIN, 'rev-parse', '--verify', `${ref}^{commit}`]);
+  if (!baseSha) die(`ref "${ref}" does not resolve in ${MAIN}`);
 
   const port = allocatePort();
   const host = `${name}.${DOMAIN}`;
@@ -236,6 +246,7 @@ function cmdNew(name, { dry = false, tunnel = true } = {}) {
   log('');
   log(`${C.bold}${C.blue}━━━ new lane: ${name} ━━━${C.reset}`);
   log(`  worktree   ${dir}`);
+  log(`  base       ${ref}${ref === 'main' ? '' : `  ${C.yellow}(off main — cannot land until rebased)${C.reset}`}`);
   log(`  port       ${port}`);
   log(`  hostname   https://${host}`);
   log(`  tunnel     ${tunnelName}`);
@@ -243,10 +254,18 @@ function cmdNew(name, { dry = false, tunnel = true } = {}) {
   log('');
   if (dry) log(`${C.yellow}--dry-run: nothing below is executed${C.reset}\n`);
 
-  // 1 · worktree, DETACHED at main — no branch is created, ever (AGENTS.md).
-  step(dry, `git worktree add --detach ${dir} main`, () => {
+  /* 1 · worktree, DETACHED at `ref` (default `main`) — no branch is created,
+     ever (AGENTS.md). DETACHED is what lets a lane open at a commit that a
+     branch worktree already has checked out: git refuses two worktrees on one
+     BRANCH, never two at one commit.
+
+     `--ref` exists for work that predates the lane system — an in-flight
+     refactor sitting on an older commit can be viewed at its own hostname
+     without first resolving how it merges. Such a lane CANNOT land until it
+     is rebased, and `cmdLand`'s ancestor check already refuses it by name. */
+  step(dry, `git worktree add --detach ${dir} ${ref}`, () => {
     mkdirSync(LANES_ROOT, { recursive: true });
-    if (!run('git', ['-C', MAIN, 'worktree', 'add', '--detach', dir, 'main'])) die('git worktree add failed');
+    if (!run('git', ['-C', MAIN, 'worktree', 'add', '--detach', dir, ref])) die('git worktree add failed');
   });
 
   // 2 · env — .env is gitignored, so a fresh worktree has no database URL at all.
@@ -273,6 +292,10 @@ function cmdNew(name, { dry = false, tunnel = true } = {}) {
       `LANE_METRICS_PORT=${metrics}`,
       `LANE_HOST=${host}`,
       `LANE_TUNNEL=${tunnelName}`,
+      // What this lane was opened at. `main` is the ordinary case; anything
+      // else is a lane that cannot land until it is rebased.
+      `LANE_REF=${ref}`,
+      `LANE_BASE=${baseSha}`,
       `LANE_DIR=${dir}`,
       `LANE_CREATED=${new Date().toISOString().slice(0, 10)}`,
       '',
@@ -287,15 +310,29 @@ function cmdNew(name, { dry = false, tunnel = true } = {}) {
       const already = existing && JSON.parse(existing).some((t) => t.name === tunnelName);
       if (!already && !run('cloudflared', ['tunnel', 'create', tunnelName])) die('cloudflared tunnel create failed');
     });
-    step(dry, `cloudflared tunnel route dns ${tunnelName} ${host}`, () => {
-      if (!run('cloudflared', ['tunnel', 'route', 'dns', tunnelName, host])) {
-        die(`DNS route failed — the CNAME for ${host} may already point elsewhere`);
+    /* ROUTE BY UUID, NEVER BY NAME — learned the hard way, 2026-08-28.
+       `cloudflared tunnel route dns <name> <host>` does NOT resolve the name
+       against the account; it falls back to the `tunnel:` in the default
+       config, which on this box is ~/.cloudflared/config.yml and belongs to
+       usav-dev. The first real lane got a CNAME pointing at usav-dev's tunnel
+       while the lane's own config pointed at the new one — a hostname that
+       resolves, serves main's app, and looks like it works.
+
+       `--overwrite-dns` is what makes a re-run REPAIR that instead of failing
+       on "record already exists", which is the state a half-built lane leaves
+       behind. */
+    let uuid;
+    step(dry, `resolve UUID for ${tunnelName}`, () => {
+      const list = JSON.parse(sh('cloudflared', ['tunnel', 'list', '--output', 'json']));
+      uuid = list.find((t) => t.name === tunnelName)?.id;
+      if (!uuid) die(`could not resolve the UUID for tunnel ${tunnelName}`);
+    });
+    step(dry, `cloudflared tunnel route dns --overwrite-dns <uuid> ${host}`, () => {
+      if (!run('cloudflared', ['tunnel', 'route', 'dns', '--overwrite-dns', uuid, host])) {
+        die(`DNS route failed for ${host}`);
       }
     });
     step(dry, `write ${laneYmlPath(name)}`, () => {
-      const list = JSON.parse(sh('cloudflared', ['tunnel', 'list', '--output', 'json']));
-      const uuid = list.find((t) => t.name === tunnelName)?.id;
-      if (!uuid) die(`could not resolve the UUID for tunnel ${tunnelName}`);
       writeFileSync(laneYmlPath(name), [
         `# CycleForge lane "${name}" — locally-managed tunnel.`,
         `# Explicit config: cloudflared would otherwise read ~/.cloudflared/config.yml,`,
@@ -437,10 +474,17 @@ const [, , cmd = 'status', arg, ...rest] = process.argv;
 const flags = new Set(rest.concat(arg?.startsWith('--') ? [arg] : []));
 const name = arg && !arg.startsWith('--') ? arg : undefined;
 
+/** `--ref <value>`. The boolean Set above cannot carry a value. */
+function flagValue(flag) {
+  const i = rest.indexOf(flag);
+  return i >= 0 ? rest[i + 1] : undefined;
+}
+
 switch (cmd) {
   case 'status': case 'ls': case 'list': await cmdStatus(); break;
-  case 'new': cmdNew(name ?? die('usage: pnpm lane new <name>'), {
+  case 'new': cmdNew(name ?? die('usage: pnpm lane new <name> [--ref <commit-ish>]'), {
     dry: flags.has('--dry-run'), tunnel: !flags.has('--no-tunnel'),
+    ref: flagValue('--ref'),
   }); break;
   case 'up': cmdUp(name ?? die('usage: pnpm lane up <name>')); break;
   case 'down': cmdDown(name ?? die('usage: pnpm lane down <name>')); break;

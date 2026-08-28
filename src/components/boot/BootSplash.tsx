@@ -1,6 +1,9 @@
 'use client';
 
-import { motion } from '@/design-system/motion';
+// No motion import: BootSplash sits on `/signin`'s critical JS graph (the one
+// public route), and the motion barrel statically carries the whole engine.
+// The two ambient loops here (breathing ring, indeterminate sweep) are CSS
+// keyframes in globals.css — transform/opacity only, compositor-safe.
 
 /**
  * Full-screen sign-in splash. Shown by {@link BootGate} from first paint after
@@ -29,31 +32,27 @@ export function BootSplash({ label = 'Loading your workspace' }: { label?: strin
       />
 
       {/*
-        `initial={false}` — paint settled (opacity 1), never fade the whole panel
-        in. This splash brackets a HARD navigation (sign-in → window.location.assign
-        → destination), so two separate BootSplash instances exist: one on the
-        sign-in page, one on the destination. A mount-entrance (opacity 0 → 1) would
-        replay on the second instance, flashing the panel back to transparent right
-        after the first one finished — the "Loading your workspace appears twice"
-        flicker. Painting settled makes every instance identical and idempotent
-        across the document swap, so the handoff is seamless. The breathing ring and
-        sweep below stay animated (an ambient loop restart is imperceptible; a
-        whole-panel re-fade is not). The fade-OUT on reveal is owned by BootGate's
-        AnimatePresence wrapper, not here.
+        Paint settled (opacity 1), never fade the whole panel in. This splash
+        brackets a HARD navigation (sign-in → window.location.assign →
+        destination), so two separate BootSplash instances exist: one on the
+        sign-in page, one on the destination. A mount-entrance (opacity 0 → 1)
+        would replay on the second instance, flashing the panel back to
+        transparent right after the first one finished — the "Loading your
+        workspace appears twice" flicker. Painting settled makes every instance
+        identical and idempotent across the document swap, so the handoff is
+        seamless. The breathing ring and sweep below stay animated as pure CSS
+        loops (an ambient loop restart is imperceptible; a whole-panel re-fade
+        is not). The fade-OUT on reveal is owned by BootGate, not here.
       */}
-      <motion.div
-        initial={false}
-        animate={{ opacity: 1, y: 0 }}
+      <div
         className="relative flex flex-col items-center gap-6"
         role="status"
         aria-live="polite"
       >
         {/* breathing ring around the site favicon */}
         <div className="relative flex h-16 w-16 items-center justify-center">
-          <motion.span
-            className="absolute inset-0 rounded-2xl border-2 border-border-soft"
-            animate={{ scale: [1, 1.12, 1], opacity: [0.6, 0.15, 0.6] }}
-            transition={{ duration: 1.8, ease: 'easeInOut', repeat: Infinity }}
+          <span
+            className="cf-boot-breathe absolute inset-0 rounded-2xl border-2 border-border-soft"
             aria-hidden
           />
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -69,17 +68,13 @@ export function BootSplash({ label = 'Loading your workspace' }: { label?: strin
 
         {/* indeterminate sweep */}
         <div className="h-1 w-40 overflow-hidden rounded-full bg-surface-sunken">
-          <motion.div
-            className="h-full w-1/3 rounded-full bg-surface-inverse"
-            animate={{ x: ['-120%', '320%'] }}
-            transition={{ duration: 1.1, ease: 'easeInOut', repeat: Infinity }}
-          />
+          <div className="cf-boot-sweep h-full w-1/3 rounded-full bg-surface-inverse" />
         </div>
 
         <p className="text-role-caption font-semibold uppercase tracking-widest text-text-faint">
           {label}…
         </p>
-      </motion.div>
+      </div>
     </div>
   );
 }

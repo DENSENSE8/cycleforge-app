@@ -35,6 +35,8 @@ const LABELED_PATTERNS: RegExp[] = [
   // treat as high-confidence (labeled tier) even when printed bare, because
   // eBay "Order delivered" emails often show the order# without a label word.
   /\b(\d{2}-\d{5}-\d{5})\b/g,
+  // Amazon SP-API AmazonOrderId — official 3-7-7 (e.g. 111-1234567-1234567).
+  /\b(\d{3}-\d{7}-\d{7})\b/g,
 ];
 
 // Unlabeled fallbacks. Only run if labeled patterns found nothing, to

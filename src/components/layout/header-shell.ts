@@ -211,9 +211,8 @@ export const appContentShellClass = cn(
 export const HEADER_ICON_WRAP = 'relative flex h-full min-h-0 w-8 shrink-0 items-stretch justify-center';
 
 /**
- * Equal-fill hit-box for the MasterNav spine top pin band ({@link SpineTopPins}).
- * `flex-1` cells abut so hover / active washes run edge-to-edge across the seam —
- * never fixed `w-8` islands with `justify-between` air between them.
+ * Equal-fill hit-box formerly used by the MasterNav spine top pin band.
+ * Kept for Displays parked-rail commentary; no live spine consumer.
  */
 export const SPINE_TOP_PIN_WRAP =
   'relative flex h-full min-h-0 min-w-0 flex-1 items-stretch justify-center';
@@ -323,8 +322,8 @@ export const TOP_CHROME_ICON_FACE = cn(TOP_CHROME_ICON_GLYPH, NAV_ICON_STROKE_CL
  * of the toggle: header and sidebar read as one ink system, not two.
  */
 /**
- * Page-identity face and its child menu — one compact width. Find sits
- * flush to this chip; neither stretches across the beam.
+ * Page-identity face and its child menu — one compact width. Find lives on
+ * the right rail ({@link CommandBar}), not beside this chip.
  */
 export const HEADER_PAGE_FACE_WIDTH = 'w-[11rem]';
 

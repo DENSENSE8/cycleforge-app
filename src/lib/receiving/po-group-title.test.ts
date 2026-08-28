@@ -66,6 +66,35 @@ test('getReceivingPoGroupTitle — platform prefix when source_platform set', ()
   assert.equal(getReceivingPoGroupTitle(r, (p) => (p === 'amazon' ? 'Amazon' : p)), 'Amazon · PO 63598685');
 });
 
+test('getReceivingPoIdentityParts — eBay 2-5-5 fills platform when source_platform empty', () => {
+  const r = row({
+    zoho_purchaseorder_number: '03-15100-78272',
+    source_platform: null,
+  });
+  const parts = getReceivingPoIdentityParts(r, (p) => (p === 'ebay' ? 'eBay' : p));
+  assert.equal(parts.platformLabel, 'eBay');
+  assert.equal(parts.poValue, '03-15100-78272');
+});
+
+test('getReceivingPoIdentityParts — Amazon 3-7-7 on source_order_id fills platform', () => {
+  const r = row({
+    source_order_id: '111-1234567-1234567',
+    source_platform: null,
+    inbound_source_type: null,
+  });
+  const parts = getReceivingPoIdentityParts(r, (p) => (p === 'amazon' ? 'Amazon' : p));
+  assert.equal(parts.platformLabel, 'Amazon');
+});
+
+test('getReceivingPoIdentityParts — stored source_platform is not overwritten by order-id shape', () => {
+  const r = row({
+    zoho_purchaseorder_number: '03-15100-78272',
+    source_platform: 'amazon',
+  });
+  const parts = getReceivingPoIdentityParts(r, (p) => p);
+  assert.equal(parts.platformLabel, 'amazon');
+});
+
 test('getReceivingPoGroupTitle — Amazon RETURN is AMZ – return – last8, not Order + full id', () => {
   const orderId = '111-6986570-4552201';
   const r = row({

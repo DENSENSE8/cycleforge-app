@@ -215,7 +215,11 @@ export function ChipHoverMenuSurface({
       anchorRef={anchorRef}
       placement="bottom-center"
       level="panelPopover"
-      gap={6}
+      // Flush to the cell — no dead band between the hovered face and the panel
+      // it opened. The 6px gap it replaced was the only reason the hover engine
+      // needed its close delay to "bridge the physical pixel gap"; with the
+      // panel abutting the trigger the pointer never crosses dead space.
+      gap={0}
       className="w-max"
     >
       <ChipHoverMenuPanel

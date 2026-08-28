@@ -199,9 +199,6 @@ export function LinePoItemsSection({
         activeLineId={row.id}
         dockOwnsCapture={dockOwnsCapture}
         onViewAllUnits={unitsChrome ? onViewAllUnits : undefined}
-        onUnlinked={() => {
-          invalidateReceivingFeeds(queryClient);
-        }}
         onLinked={({ carton, line }) => {
           const cartonPatch = {
             zoho_purchaseorder_number: carton.zoho_purchaseorder_number,

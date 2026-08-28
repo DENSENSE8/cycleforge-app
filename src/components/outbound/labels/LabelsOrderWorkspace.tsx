@@ -4,7 +4,8 @@
  * Focused Labels order workspace — flush Unbox-family Station column:
  *   StationPanelRoot + StationContextBar (flow) + StationWorkbench
  *   Centre tabs: Print · Documents · Timeline (pinned strip — not Displays push)
- *   StationTerminalDock (Print CTA)
+ *
+ * No station dock: printing lives on the Print tab / Documents slide-over.
  *
  * Soft pad / canvas islands deleted — host `p-0`, `bodyGap="none"`, flush
  * faces so the pane matches Unbox's pinned display chrome.
@@ -19,7 +20,6 @@ import {
   buildSectionTabs,
 } from '@/components/station/workbench';
 import { StationContextBar } from '@/components/station/entity-context';
-import { StationTerminalDock } from '@/components/station/terminal';
 import { SectionTabsSlider } from '@/design-system/components/SectionTabsSlider';
 import {
   DocumentSlideOver,
@@ -41,7 +41,6 @@ import {
   type PrintableOutboundDocument,
 } from '@/lib/print/printOutboundDocuments';
 import type { OutboundDocument, OutboundDocumentsResponse } from '@/lib/documents/types';
-import type { TerminalActionVm } from '@/lib/station-terminal';
 import type { ActiveStationOrder } from '@/hooks/station/types';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 
@@ -221,21 +220,6 @@ export function LabelsOrderWorkspace({ orderId, onClose }: LabelsOrderWorkspaceP
     };
   }, [order, docsFetched, slip, orderId, queryClient]);
 
-  const printDockVm = useMemo((): TerminalActionVm => {
-    return {
-      label: printableDocs.length === 2 ? 'Print both' : 'Print',
-      icon: <Printer className="h-5 w-5" />,
-      disabled: printableDocs.length === 0,
-      disabledReason:
-        printableDocs.length === 0
-          ? 'Attach a shipping label or packing slip first'
-          : undefined,
-      onClick: () => {
-        printOutboundDocuments(printableDocs);
-      },
-    };
-  }, [printableDocs]);
-
   const tabs = useMemo(
     () =>
       buildSectionTabs([
@@ -251,21 +235,36 @@ export function LabelsOrderWorkspace({ orderId, onClose }: LabelsOrderWorkspaceP
                     Outbound documents
                   </h3>
                   <p className="mt-1 text-role-caption text-text-faint">
-                    Preview shipping label and packing slip. Print from the dock when ready.
+                    Preview shipping label and packing slip, then print from here or
+                    the document viewer.
                   </p>
                 </div>
-                <Button
-                  variant="primary"
-                  size="sm"
-                  icon={<FileText className="h-4 w-4" />}
-                  onClick={() => {
-                    setDocsPanelActiveId(label ? 'shipping_label' : 'packing_slip');
-                    setDocsPanelOpen(true);
-                  }}
-                  data-testid="open-document-slide-over"
-                >
-                  View documents
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    icon={<Printer className="h-4 w-4" />}
+                    disabled={printableDocs.length === 0}
+                    onClick={() => {
+                      printOutboundDocuments(printableDocs);
+                    }}
+                    data-testid="labels-print-documents"
+                  >
+                    {printableDocs.length === 2 ? 'Print both' : 'Print'}
+                  </Button>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    icon={<FileText className="h-4 w-4" />}
+                    onClick={() => {
+                      setDocsPanelActiveId(label ? 'shipping_label' : 'packing_slip');
+                      setDocsPanelOpen(true);
+                    }}
+                    data-testid="open-document-slide-over"
+                  >
+                    View documents
+                  </Button>
+                </div>
               </div>
               <div className="flex flex-col gap-0">
                 <DocTypeStatusRow label="Shipping Label" attached={Boolean(label)} />
@@ -299,7 +298,7 @@ export function LabelsOrderWorkspace({ orderId, onClose }: LabelsOrderWorkspaceP
           content: <OrderTimelineSection orderId={orderId} flush />,
         },
       ]),
-    [label, slip, documents.length, order, orderId, slipAutoFetching],
+    [label, slip, documents.length, order, orderId, slipAutoFetching, printableDocs],
   );
 
   if (isLoading) {
@@ -337,7 +336,6 @@ export function LabelsOrderWorkspace({ orderId, onClose }: LabelsOrderWorkspaceP
       <StationWorkbench
         ambientWash={false}
         className="relative z-0 flex-1 bg-transparent"
-        reserveScrollClearance
         reserveIdentityClearance={false}
         bodyGap="none"
         tabs={
@@ -349,7 +347,6 @@ export function LabelsOrderWorkspace({ orderId, onClose }: LabelsOrderWorkspaceP
             density="icon"
           />
         }
-        dock={<StationTerminalDock vm={printDockVm} />}
       />
       <DocumentSlideOver
         open={docsPanelOpen}

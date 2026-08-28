@@ -4,7 +4,7 @@
  * `/search` — cross-entity find workbench.
  *
  * Contract:
- *   • Find lives in {@link GlobalHeaderSearch} only (never a locked-width stage).
+ *   • Find lives in {@link CommandBar} (header icon / ⌘K popover).
  *   • `?q=` + no `?sel=` → browse list ({@link SearchBrowseShell}).
  *   • No `?q=` → detail workspace (recent rail auto-selects the latest find).
  *   • `?sel=type:id` → full-bleed {@link SearchDetailWorkspace} entity shell.
@@ -19,7 +19,7 @@
 
 import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { RouteLoading } from '@/design-system/components/RouteLoading';
+import { UniversalLoader } from '@/design-system/components/UniversalLoader';
 import { SurfaceParamHygiene } from '@/components/routing/SurfaceParamHygiene';
 import { SearchBrowseShell } from '@/components/search/SearchBrowseShell';
 import { SearchDetailWorkspace } from '@/components/search/SearchDetailWorkspace';
@@ -53,7 +53,7 @@ export default function SearchPage() {
           q · sel · etype · hstat and carries staff · colsort · coldir, which
           is every key this surface reads. */}
       <SurfaceParamHygiene />
-      <Suspense fallback={<RouteLoading label="Loading search…" />}>
+      <Suspense fallback={<UniversalLoader isLoading label="Loading search" className="h-full" />}>
         <SearchPrimaryPaintShell>
           <SearchPageContent />
         </SearchPrimaryPaintShell>

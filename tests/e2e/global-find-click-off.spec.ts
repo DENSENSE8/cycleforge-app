@@ -1,44 +1,39 @@
 import { test, expect } from '@playwright/test';
 
 /**
- * Header find — click-off dismisses the Search-by picker.
- *
- * The panel stays open while either `focused` or `hoverHeld` is true. Outside
- * click used to clear only focus, so the hover-leave delay (or a stuck
- * hoverHeld) left "Search by" painted over the page. Pins that both gates
- * clear on dismiss.
+ * Header find — outside click / Escape dismisses the centered ⌘K dialog.
  *
  *   npx playwright test tests/e2e/global-find-click-off.spec.ts --project=qa-desktop
  */
 
 const FIND = '[data-testid="global-find-field"]';
-const METHODS = '[data-testid="global-search-by-methods"]';
+const INPUT = '[data-testid="global-find-input"]';
+const CMDK = '[cmdk-root]';
 
-test.describe('header find — click-off closes Search by', () => {
+test.describe('header find — click-off closes the dialog', () => {
   test.skip(({ isMobile }) => Boolean(isMobile), 'header find is desktop chrome');
 
-  test('Search by opens on focus and closes on outside click', async ({ page }) => {
+  test('opens on icon click and closes on outside click', async ({ page }) => {
     await page.goto('/unbox', { waitUntil: 'domcontentloaded' });
     await expect(page.locator(FIND)).toBeVisible({ timeout: 45_000 });
 
-    await page.locator(FIND).locator('input').click();
-    await expect(page.locator(METHODS)).toBeVisible();
-    await expect(page.getByText('Search by', { exact: true })).toBeVisible();
+    await page.locator(FIND).click();
+    await expect(page.locator(INPUT)).toBeVisible();
+    await expect(page.locator(CMDK).first()).toBeVisible();
 
-    // Click the main work surface — not the find cell or the portaled panel.
-    await page.locator('main').first().click({ position: { x: 40, y: 40 }, force: true });
+    await page.locator('[data-radix-dialog-overlay]').click({ position: { x: 8, y: 8 } });
 
-    await expect(page.locator(METHODS)).toHaveCount(0);
+    await expect(page.locator(INPUT)).toHaveCount(0);
   });
 
-  test('Escape also closes Search by', async ({ page }) => {
+  test('Escape also closes the dialog', async ({ page }) => {
     await page.goto('/unbox', { waitUntil: 'domcontentloaded' });
     await expect(page.locator(FIND)).toBeVisible({ timeout: 45_000 });
 
-    await page.locator(FIND).locator('input').click();
-    await expect(page.locator(METHODS)).toBeVisible();
+    await page.locator(FIND).click();
+    await expect(page.locator(INPUT)).toBeVisible();
 
     await page.keyboard.press('Escape');
-    await expect(page.locator(METHODS)).toHaveCount(0);
+    await expect(page.locator(INPUT)).toHaveCount(0);
   });
 });

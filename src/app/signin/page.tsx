@@ -43,13 +43,14 @@ const startAuthentication: StartAuthentication = async (...args) => {
   return mod.startAuthentication(...args);
 };
 import { flushSync } from 'react-dom';
-import { AnimatePresence, motion } from '@/design-system/motion';
+// Deliberately NO `@/design-system/motion` import here. `/signin` is the one
+// public route, and the motion barrel statically carries the whole engine
+// (`motion/react`) — ~48KB gz on the critical JS graph of a password card.
+// Under the mobile profile Lantern charges simulated LCP/TBT against that
+// graph (measured 2026-08-28: LCP 4975ms simulated vs ~2.0s observed, TBT
+// 320-426ms, Perf 73). Section/step swaps render conditionally and cut —
+// house law: show it or do not.
 import { useRouter, useSearchParams } from 'next/navigation';
-import {
-  framerPresence,
-  framerTransition,
-} from '@/design-system/foundations/motion-framer';
-import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
 import { SignInAuthStepPanels } from '@/components/auth/SignInAuthStepPanels';
 const QRCode = dynamic(() => import('react-qr-code'), {
   ssr: false,
@@ -204,10 +205,6 @@ export default function SignInPage() {
   // Apple-style flow: email step → password step. One animated panel swaps at a
   // time (chip + password travel together); see SignInAuthStepPanels.
   const [authStep, setAuthStep] = useState<'email' | 'password'>('email');
-  const alternatePresence = useMotionPresence(framerPresence.signInAlternateSection);
-  const alternateTransition = useMotionTransition(framerTransition.signInAlternateFade);
-  const messagePresence = useMotionPresence(framerPresence.statusMessage);
-  const messageTransition = useMotionTransition(framerTransition.dropdownOpen);
   // Default checked — personal devices are the common SMB case; station mode
   // (shared) has its own uncheck-on-shared affordance below.
   const [rememberMe, setRememberMe] = useState(true);
@@ -714,41 +711,32 @@ export default function SignInPage() {
         <SignInTitle workspaceName={workspaceName} />
 
         {/* Tier 1 — one tap, no typing. Above the form because it's faster. */}
-        <AnimatePresence initial={false}>
-          {authStep === 'email' && hasFederated && (
-            <motion.div
-              key="federated"
-              initial={alternatePresence.initial}
-              animate={alternatePresence.animate}
-              exit={alternatePresence.exit}
-              transition={alternateTransition}
-              className="space-y-2"
-            >
-              {providers.map((p) => (
-                <ProviderSignInButton
-                  key={p}
-                  provider={p}
-                  disabled={busy}
-                  lastUsed={lastMethod === p}
-                  onClick={() => startProvider(p)}
-                />
-              ))}
-              {sso && (
-                <Button
-                  variant="secondary"
-                  size="lg"
-                  className="w-full justify-between"
-                  disabled={busy}
-                  onClick={() => startSso(sso.slug)}
-                >
-                  {sso.label}
-                  {lastMethod === 'sso' && <LastUsedMarker />}
-                </Button>
-              )}
-              <Divider>or</Divider>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {authStep === 'email' && hasFederated && (
+          <div key="federated" className="space-y-2">
+            {providers.map((p) => (
+              <ProviderSignInButton
+                key={p}
+                provider={p}
+                disabled={busy}
+                lastUsed={lastMethod === p}
+                onClick={() => startProvider(p)}
+              />
+            ))}
+            {sso && (
+              <Button
+                variant="secondary"
+                size="lg"
+                className="w-full justify-between"
+                disabled={busy}
+                onClick={() => startSso(sso.slug)}
+              >
+                {sso.label}
+                {lastMethod === 'sso' && <LastUsedMarker />}
+              </Button>
+            )}
+            <Divider>or</Divider>
+          </div>
+        )}
 
         {/* Tier 2 — the default path. */}
         <form
@@ -781,44 +769,14 @@ export default function SignInPage() {
           </Button>
         </form>
 
-        <AnimatePresence mode="popLayout" initial={false}>
-          {error && (
-            <motion.div
-              key="error"
-              initial={messagePresence.initial}
-              animate={messagePresence.animate}
-              exit={messagePresence.exit}
-              transition={messageTransition}
-            >
-              <StatusBox tone="danger">{error}</StatusBox>
-            </motion.div>
-          )}
-          {notice && (
-            <motion.div
-              key="notice"
-              initial={messagePresence.initial}
-              animate={messagePresence.animate}
-              exit={messagePresence.exit}
-              transition={messageTransition}
-            >
-              <StatusBox tone="accent">{notice}</StatusBox>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {error && <StatusBox tone="danger">{error}</StatusBox>}
+        {notice && <StatusBox tone="accent">{notice}</StatusBox>}
 
 
         {/* Tier 3 — one promoted option (what you used last) + a quiet drawer.
             Hidden on the password step so that stays a single focused action. */}
-        <AnimatePresence initial={false}>
-          {authStep === 'email' && (
-            <motion.div
-              key="more"
-              initial={alternatePresence.initial}
-              animate={alternatePresence.animate}
-              exit={alternatePresence.exit}
-              transition={alternateTransition}
-              className="space-y-2"
-            >
+        {authStep === 'email' && (
+          <div key="more" className="space-y-2">
               {promotedOption && (
                 <Button
                   variant="secondary"
@@ -850,9 +808,8 @@ export default function SignInPage() {
               ) : (
                 <TextLink onClick={() => setMoreOpen(true)}>More sign-in options</TextLink>
               )}
-            </motion.div>
-          )}
-        </AnimatePresence>
+          </div>
+        )}
 
         <p className="text-role-caption text-text-soft">
           New here? <a href="/signup" className="font-semibold text-blue-600 hover:text-blue-700">Create a workspace</a>
@@ -1051,24 +1008,12 @@ function PhoneSigninQrDialog({ open, onClose }: { open: boolean; onClose: () => 
 }
 
 function SignInTitle({ workspaceName }: { workspaceName: string | null }) {
-  const titlePresence = useMotionPresence(framerPresence.signInTitle);
-  const titleTransition = useMotionTransition(framerTransition.signInTitle);
-
   return (
     <div className="space-y-1">
       <h1 className="min-h-[1.5rem] text-role-title text-text-default">
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.span
-            key={workspaceName ?? '__generic__'}
-            className="block"
-            initial={titlePresence.initial}
-            animate={titlePresence.animate}
-            exit={titlePresence.exit}
-            transition={titleTransition}
-          >
-            {workspaceName ? `Sign in to ${workspaceName}` : 'Sign in to Cycle Forge'}
-          </motion.span>
-        </AnimatePresence>
+        <span key={workspaceName ?? '__generic__'} className="block">
+          {workspaceName ? `Sign in to ${workspaceName}` : 'Sign in to Cycle Forge'}
+        </span>
       </h1>
       <p className="text-role-caption text-text-soft">Use the account you signed up with.</p>
     </div>
@@ -1100,8 +1045,9 @@ function Shell({ children }: { children: React.ReactNode }) {
           `opacity: 0` and only reveals it once hydration runs the animation, so
           LCP stopped tracking the HTML (~0.4s) and started tracking hydration
           (~8.7s simulated on the mobile profile) — a 24-point Lighthouse hit
-          for a 260ms fade. First-paint content shows immediately; see
-          `framerPresence.signInCard`, which is now exit-only.
+          for a 260ms fade. First-paint content shows immediately. (2026-08-28:
+          the motion engine itself was evicted from this page's whole graph —
+          see the import note at the top of the file.)
         */}
         <div className="flex w-full justify-center">{children}</div>
       </div>

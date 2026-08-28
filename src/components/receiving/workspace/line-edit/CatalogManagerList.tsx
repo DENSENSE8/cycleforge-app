@@ -55,6 +55,7 @@ import { SOURCE_PLATFORM_OPTS, RECEIVING_TYPE_OPTS } from '@/components/sidebar/
 import { PRIORITY_OVERRIDE_TIERS } from '@/lib/receiving/priority-override';
 import { catalogIdentityDot } from './classify-pill-options';
 import { TypeBindingsEditor } from './TypeBindingsEditor';
+import { PlatformTypeRulesEditor } from './PlatformTypeRulesEditor';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 
@@ -137,12 +138,20 @@ export function CatalogManagerList({
   kind,
   enabled = true,
   enableTypeBindings = false,
+  enablePlatformRules = false,
   autoFocusAdd = false,
 }: {
   kind: CatalogKind;
   enabled?: boolean;
   /** Show the per-type account + workflow-node binding editor (settings page). */
   enableTypeBindings?: boolean;
+  /**
+   * Expand a PLATFORM row into {@link PlatformTypeRulesEditor} — which receiving
+   * types that platform allows. Sibling of {@link enableTypeBindings}; the
+   * compact pill popover gets it too, because an operator who just hit the
+   * constraint at the bench should land on the thing that explains it.
+   */
+  enablePlatformRules?: boolean;
   /** Focus the "New platform/type" field — hover-menu Add platform / Add type. */
   autoFocusAdd?: boolean;
 }) {
@@ -180,6 +189,12 @@ export function CatalogManagerList({
     kind === 'type' ? (rawRows as TypeRow[]).map((r) => [r.id, r]) : [],
   );
   const bindingsOn = enableTypeBindings && kind === 'type';
+  const rulesOn = enablePlatformRules && kind === 'platform';
+  // The rules editor needs the TYPE pool while sitting on a platform row.
+  const rulesTypeQ = useQuery({ ...typesQuery(), enabled: enabled && rulesOn });
+  const platformRowById = new Map<number, PlatformRow>(
+    kind === 'platform' ? (rawRows as PlatformRow[]).map((r) => [r.id, r]) : [],
+  );
 
   const entries: Entry[] = isPriority
     ? // The ladder merged with any org skin — `id` IS the tier, which is what
@@ -321,7 +336,7 @@ export function CatalogManagerList({
           {active.map((e, i) => {
             const rowBusy = busyId === e.id;
             const isEditing = editingId === e.id;
-            const expanded = bindingsOn && expandedId === e.id;
+            const expanded = (bindingsOn || rulesOn) && expandedId === e.id;
             const colorOpen = supportsColor && colorEditingId === e.id;
             // Same resolver the classify pills use — manager and bar cannot disagree.
             const identityDot = catalogIdentityDot({
@@ -406,12 +421,15 @@ export function CatalogManagerList({
                   </>
                 ) : (
                   <>
-                    {bindingsOn ? (
-                      <HoverTooltip label="Account & workflow bindings" asChild>
+                    {bindingsOn || rulesOn ? (
+                      <HoverTooltip
+                        label={rulesOn ? 'Allowed receiving types' : 'Account & workflow bindings'}
+                        asChild
+                      >
                         <IconButton
                           type="button"
                           onClick={() => setExpandedId(expanded ? null : e.id)}
-                          ariaLabel={`${expanded ? 'Hide' : 'Edit'} bindings for ${e.label}`}
+                          ariaLabel={`${expanded ? 'Hide' : 'Edit'} ${rulesOn ? 'allowed types' : 'bindings'} for ${e.label}`}
                           aria-expanded={expanded}
                           icon={<Settings className="h-3.5 w-3.5" />}
                           className={`rounded p-1 hover:bg-surface-sunken ${expanded ? 'text-blue-600' : 'text-text-faint hover:text-text-muted'}`}
@@ -496,9 +514,18 @@ export function CatalogManagerList({
                   />
                 </div>
               ) : null}
-              {expanded && typeRowById.get(e.id) ? (
+              {expanded && bindingsOn && typeRowById.get(e.id) ? (
                 <div className="px-2.5 pb-2.5">
                   <TypeBindingsEditor type={typeRowById.get(e.id)!} onChanged={invalidate} />
+                </div>
+              ) : null}
+              {expanded && rulesOn && platformRowById.get(e.id) ? (
+                <div className="px-2.5 pb-2.5">
+                  <PlatformTypeRulesEditor
+                    platform={platformRowById.get(e.id)!}
+                    types={rulesTypeQ.data ?? []}
+                    onChanged={invalidate}
+                  />
                 </div>
               ) : null}
               </li>

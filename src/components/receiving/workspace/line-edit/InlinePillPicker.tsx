@@ -26,8 +26,7 @@ import { AnimatePresence, motion, useReducedMotion } from '@/design-system/motio
 import { Pencil } from '@/components/Icons';
 import { HEADER_ICON_WRAP } from '@/components/layout/header-shell';
 import {
-  STATION_CHROME_CELL_HOVER_FILL,
-  STATION_CHROME_CELL_HOVER_SEAM,
+  STATION_CHROME_CELL_CLASS_MARK,
 } from '@/components/station/entity-context/station-identity-chrome';
 import { useHoverSurface } from '@/hooks/useHoverSurface';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
@@ -70,17 +69,28 @@ export interface InlinePillOption {
 }
 
 /** Carton-context flush face — square corners; fills station chrome row (h-full). */
+/**
+ * **Geometry only — no chrome.** These faces carry size, pitch and type; the
+ * border and the hover box belong to the PRESENTATION, and are added below.
+ *
+ * They used to bake in a four-side `border`, which the carton-bar branch then
+ * cancelled with a later `border-0` in the same `cn()`. That worked only
+ * because tailwind-merge happens to resolve border-width last-wins — the rest
+ * state of the identity bar was decided by class ORDER, not by intent, and
+ * reading the constant told you the opposite of what rendered. A face is
+ * borderless until a presentation asks for a border.
+ */
 const PILL_BASE =
-  `inline-flex box-border h-full shrink-0 items-center gap-1.5 whitespace-nowrap rounded-none border px-1.5 ${chipLabel} transition-colors shadow-none`;
+  `inline-flex box-border h-full shrink-0 items-center gap-1.5 whitespace-nowrap rounded-none px-1.5 ${chipLabel} transition-colors shadow-none`;
 /**
  * Locked equal-width icon-only faces — square peer of carton exit
  * ({@link STATION_CONTEXT_EXIT_PILL_CLASS}); height from the chrome row.
  */
 const INLINE_PILL_ICON_FACE =
-  'inline-flex box-border h-full aspect-square shrink-0 items-center justify-center rounded-none border transition-colors shadow-none';
+  'inline-flex box-border h-full aspect-square shrink-0 items-center justify-center rounded-none transition-colors shadow-none';
 /** Icon + full name — expanded option pads / default collapsed. */
 const INLINE_PILL_ICON_LABEL =
-  `inline-flex box-border h-full shrink-0 items-center gap-1.5 whitespace-nowrap rounded-none border pl-1.5 pr-2.5 ${chipLabel} transition-colors shadow-none`;
+  `inline-flex box-border h-full shrink-0 items-center gap-1.5 whitespace-nowrap rounded-none pl-1.5 pr-2.5 ${chipLabel} transition-colors shadow-none`;
 /**
  * Carton bookmark — equal-width quiet shell. Short SoT label + identity face;
  * full name lives in HoverTooltip. Compact lock sized to icon + ≤4-char short
@@ -92,7 +102,7 @@ const INLINE_PILL_ICON_LABEL =
  * lock follows the face — if the face changes again, re-measure this.
  */
 const INLINE_PILL_ICON_LABEL_BOOKMARK =
-  `inline-flex box-border h-full w-16 min-w-16 max-w-16 shrink-0 items-center justify-center gap-0.5 overflow-hidden rounded-none border px-1 ${chipLabel} transition-colors shadow-none`;
+  `inline-flex box-border h-full w-16 min-w-16 max-w-16 shrink-0 items-center justify-center gap-0.5 overflow-hidden rounded-none px-1 ${chipLabel} transition-colors shadow-none`;
 
 const DEFAULT_ACTIVE = 'border-blue-200 bg-blue-50 text-blue-700 shadow-none';
 const DEFAULT_INACTIVE =
@@ -304,7 +314,12 @@ export function InlinePillPicker({
     onOpenChange(next);
   };
 
-  const active = options.find((o) => o.value === value) ?? null;
+  const valueKey = String(value ?? '').trim().toLowerCase();
+  const active =
+    options.find((o) => o.value === value) ??
+    (valueKey
+      ? (options.find((o) => String(o.value).trim().toLowerCase() === valueKey) ?? null)
+      : null);
   const showOpen = open && !readOnly && !isMenu;
   const fullLabel =
     collapsedFullLabel ?? active?.label ?? collapsedLabel ?? placeholder;
@@ -348,15 +363,19 @@ export function InlinePillPicker({
     // Flat face — classify pills match Photos · Claim (`shadow-none`), even if a
     // tone SoT regresses to `shadow-sm`.
     'shadow-none',
-    'relative z-base hover:z-raised focus-visible:z-raised',
+    // Stacking is the row rule's job now (`.cf-chrome-row .cf-chrome-cell`),
+    // which pins every cell to one layer so none can lift above the seam. Only
+    // the focus ring keeps a lift, because `ring-offset-1` paints OUTSIDE the
+    // box and would be clipped.
+    'focus-visible:z-raised',
     focusRing('control', 'accent'),
-    // Carton-context menu face is borderless so the identity bar reads as one
-    // strip (no boxed dots / vertical pill seams). Inline expand keeps borders.
-    // On hover the cell draws its own inset box — the same seam every other
-    // carton-bar cell uses, so the strip delineates consistently under the
-    // pointer instead of only under the action cells.
-    isMenu && `border-0 bg-transparent ${STATION_CHROME_CELL_HOVER_FILL}`,
-    isMenu && !readOnly && STATION_CHROME_CELL_HOVER_SEAM,
+    // Off the carton bar the face is its own boxed control and draws a border.
+    !isMenu && 'border',
+    // On the bar it is a CELL: no border of its own (the row is one flush strip
+    // and owns the seam), and it opts into the row's hover display rather than
+    // composing one — which is how this face ended up with the fill and the box
+    // on different conditions.
+    isMenu && `bg-transparent ${STATION_CHROME_CELL_CLASS_MARK}`,
     readOnly && 'pointer-events-none',
   );
 
@@ -572,7 +591,7 @@ export function InlinePillPicker({
                       onSelect(opt.value);
                       onOpenChange(false);
                     }}
-                    className={cn(faceClass, tone, focusRing('control', 'accent'))}
+                    className={cn(faceClass, 'border', tone, focusRing('control', 'accent'))}
                     style={toneStyle}
                   >
                     {expandedFace === 'icon' ? (

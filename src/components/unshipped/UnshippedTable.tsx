@@ -17,6 +17,8 @@ import { Button } from '@/design-system/primitives';
 import { useAblyChannel } from '@/hooks/useAblyChannel';
 import { useAuth } from '@/contexts/AuthContext';
 import { deriveFulfillmentState, fulfillmentLaneTotals, type FulfillmentState } from '@/lib/unshipped-state';
+import { resolveOrderLifecycleStage } from '@/lib/order-lifecycle';
+import { getCurrentPSTDateKey, toPSTDateKey } from '@/utils/date';
 import { pinRecentlyCreatedUnshipped } from '@/lib/orders/order-record-normalize';
 import {
   patchUnshippedOrderCache,
@@ -148,10 +150,11 @@ export function UnshippedTable({
     router.replace(qs ? `${SHIPPING_PATH}?${qs}` : SHIPPING_PATH, { scroll: false });
   }, [stageParam, searchQuery, router]);
 
-  const stageFilter: 'all' | 'pending' | 'tested' =
+  const stageFilter: 'all' | 'pending' | 'tested' | 'packed' =
     stageParam === 'pending' ? 'pending'
       : stageParam === 'tested' ? 'tested'
-        : 'all';
+        : stageParam === 'packed' ? 'packed'
+          : 'all';
   // Click-to-filter from the status legend (`?ustatus`) — exact derived pre-dock
   // state. Composes on top of the coarse `?stage` facet.
   const statusFilter = String(searchParams.get('ustatus') || '').trim().toUpperCase() as FulfillmentState | '';
@@ -160,6 +163,11 @@ export function UnshippedTable({
   // its meaning is now "urgent only", not the legacy blocked ∪ late fire queue.
   const urgentOnly =
     searchParams.get('attention') === '1' || searchParams.get('attention') === 'true';
+  /** Must-ship / overdue — days past ship-by ≥ 0 (due today or late). */
+  const lateOnly =
+    searchParams.get('late') === '1' || searchParams.get('late') === 'true';
+  /** Exception row flag refine (`?rowFlag=awaiting_customer`). */
+  const rowFlagFilter = String(searchParams.get('rowFlag') || '').trim().toLowerCase();
   /** Packing-station placement: any placed package or one bench id. */
   const packPlacedOnly =
     searchParams.get(PACK_PLACED_PARAM) === '1' ||
@@ -177,7 +185,17 @@ export function UnshippedTable({
   const [rowLimit, setRowLimit] = useState(200);
   useEffect(() => {
     setRowLimit(200);
-  }, [stageFilter, staffId, searchQuery, statusFilter, urgentOnly, packPlacedOnly, packStationId]);
+  }, [
+    stageFilter,
+    staffId,
+    searchQuery,
+    statusFilter,
+    urgentOnly,
+    lateOnly,
+    rowFlagFilter,
+    packPlacedOnly,
+    packStationId,
+  ]);
 
   const query = useQuery({
     ...unshippedOrdersQuery({
@@ -339,17 +357,13 @@ export function UnshippedTable({
   );
 
   const allRecords = query.data ?? EMPTY_UNSHIPPED_ROWS;
-  // `?stage` (pending/tested) is filtered SERVER-side now (Phase 1), so the query
-  // data already reflects it. Dashboard tabs force the lane via `fulfillmentLane`;
-  // stations still honor `?ustatus`. `?attention=1` keeps urgent-only rows.
+  // `?stage` is filtered SERVER-side; dashboard tabs no longer force a lane —
+  // stage is a row fact. Optional `fulfillmentLane` remains for station embeds.
+  // Facets: `?attention=1` (urgent), `?late=1` (must ship), `?ustatus`, `?rowFlag`.
   //
   // Memoized because this list is the input to the grouped row model below it —
-  // an unmemoized re-derive here re-identifies every row on every render (a
-  // keystroke, an Ably patch, a parent re-render) and the whole grid re-groups.
-  // The dep array is the COMPLETE set of free variables the predicate reads:
-  // `allRecords` plus the five filter facets. Do not trim it — a stale row model
-  // here means an operator looks at rows that no longer match their filter.
-  // (`deriveFulfillmentState` is a module import, so it is not a dep.)
+  // an unmemoized re-derive here re-identifies every row on every render.
+  const todayKey = getCurrentPSTDateKey();
   const laneRecords = useMemo(
     () =>
       allRecords.filter((r) => {
@@ -360,28 +374,59 @@ export function UnshippedTable({
           tracking_number?: string | null;
           shipping_tracking_number?: string | null;
           pack_location_id?: number | null;
+          packed_at?: string | null;
+          pack_activity_at?: string | null;
+          shipment_id?: number | string | null;
+          deadline_at?: string | null;
+          ship_by_date?: string | null;
+          row_flag?: string | null;
         };
-        // Pre-pack board is labeled + tracked only — no-tracking rows belong on Labels.
-        // Server fulfillmentScope / queue-counts already require non-empty tracking_number_raw;
-        // keep this client gate as defense-in-depth for cached / legacy payloads.
+        // Pre-pack / in-warehouse board is labeled + tracked only.
         const tracking = String(row.tracking_number || row.shipping_tracking_number || '').trim();
         if (!tracking) return false;
+
+        const packedAt = row.packed_at || row.pack_activity_at || null;
+        const lifecycle = resolveOrderLifecycleStage({
+          shipmentId: row.shipment_id,
+          hasTechScan: Boolean(row.has_tech_scan),
+          isOutOfStock: Boolean(row.is_out_of_stock),
+          packedAt,
+        });
         const state = deriveFulfillmentState({
           hasTechScan: Boolean(row.has_tech_scan),
           isOutOfStock: Boolean(row.is_out_of_stock),
         });
+
         if (fulfillmentLane === 'tested') {
+          if (lifecycle === 'PACKED_STAGED') return false;
           if (state !== 'TESTED') return false;
         } else if (fulfillmentLane === 'pending') {
-          // Pending tab = awaiting test + OOS; never TESTED (that's the Tested tab).
+          if (lifecycle === 'PACKED_STAGED') return false;
           if (state === 'TESTED') return false;
-          // Optional Blocked-only refine within Pending.
           if (statusFilter === 'BLOCKED' && state !== 'BLOCKED') return false;
           if (statusFilter && statusFilter !== 'BLOCKED' && state !== statusFilter) return false;
-        } else if (statusFilter && state !== statusFilter) {
-          return false;
+        } else if (statusFilter) {
+          if (statusFilter === 'BLOCKED') {
+            if (state !== 'BLOCKED') return false;
+          } else if (lifecycle === 'PACKED_STAGED') {
+            return false;
+          } else if (state !== statusFilter) {
+            return false;
+          }
         }
+
         if (urgentOnly && !row.is_urgent) return false;
+
+        if (lateOnly) {
+          const deadlineKey = toPSTDateKey(row.deadline_at || row.ship_by_date || null);
+          // Must ship = ship-by is today or past (PST civil). No deadline → not must-ship.
+          if (!deadlineKey || !todayKey || deadlineKey > todayKey) return false;
+        }
+
+        if (rowFlagFilter) {
+          if (String(row.row_flag || '').trim().toLowerCase() !== rowFlagFilter) return false;
+        }
+
         const placedId = row.pack_location_id != null ? Number(row.pack_location_id) : null;
         if (packStationId != null) {
           if (placedId !== packStationId) return false;
@@ -390,7 +435,17 @@ export function UnshippedTable({
         }
         return true;
       }),
-    [allRecords, fulfillmentLane, statusFilter, urgentOnly, packStationId, packPlacedOnly],
+    [
+      allRecords,
+      fulfillmentLane,
+      statusFilter,
+      urgentOnly,
+      lateOnly,
+      rowFlagFilter,
+      packStationId,
+      packPlacedOnly,
+      todayKey,
+    ],
   );
   const records = useMemo(
     () => pinRecentlyCreatedUnshipped(laneRecords),
@@ -436,7 +491,10 @@ export function UnshippedTable({
           ? (queueCounts?.byStage.pending ?? 0)
           : stageFilter === 'tested'
             ? (queueCounts?.byStage.tested ?? 0)
-            : (queueCounts?.total ?? 0);
+            : stageFilter === 'packed'
+              ? (queueCounts?.byStage as { packed?: number } | undefined)?.packed ??
+                records.length
+              : (queueCounts?.total ?? 0);
   const showLoadMore = !searchQuery && stageTotal > rowLimit;
   const footer = showLoadMore ? (
     <div className="flex flex-col items-center gap-1 py-4">

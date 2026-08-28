@@ -14,6 +14,7 @@ import {
   resolveReceivingLinePrimarySerial,
 } from '@/components/station/receiving-line-serials';
 import { formatMarketplaceReturnIdentityTitle } from '@/lib/receiving/marketplace-return-identity';
+import { storedOrInferredSourcePlatform } from '@/lib/marketplace-order-id';
 
 /** DB / wire sentinel for an unmatched carton line — never paint this raw. */
 export const UNFOUND_PO_SENTINEL = 'Unfound PO';
@@ -39,19 +40,26 @@ export function getReceivingPoIdentityParts(
   resolvePlatformLabel: (raw: string) => string,
 ): ReceivingPoIdentityParts {
   const inboundSource = (row.inbound_source_type || '').trim().toLowerCase();
-  const platformRaw = (row.source_platform || inboundSource || '').trim().toLowerCase();
   const isMarketplacePurchase = inboundSource !== '' && inboundSource !== 'zoho';
   // Ecwid repair-service / store pairing writes the order # into
   // zoho_purchaseorder_number with source_platform='ecwid' and no Zoho PO id —
   // that must read as Order, not PO (repair-service identify display contract).
+  const storedPlatform = (row.source_platform || inboundSource || '').trim();
   const isEcwidOrderIdentity =
-    platformRaw === 'ecwid' && !(row.zoho_purchaseorder_id || '').trim();
+    storedPlatform.toLowerCase() === 'ecwid' && !(row.zoho_purchaseorder_id || '').trim();
   const poValue = (
     row.zoho_purchaseorder_number ||
     row.zoho_purchaseorder_id ||
     (isMarketplacePurchase || isEcwidOrderIdentity ? row.source_order_id : '') ||
     ''
   ).trim();
+  const platformRaw = storedOrInferredSourcePlatform(
+    storedPlatform,
+    poValue,
+    row.zoho_purchaseorder_number,
+    row.zoho_purchaseorder_id,
+    row.source_order_id,
+  );
   const idPrefix: 'PO' | 'Order' =
     !row.zoho_purchaseorder_id && (isMarketplacePurchase || isEcwidOrderIdentity)
       ? 'Order'
@@ -64,7 +72,11 @@ export function getReceivingPoIdentityParts(
 function marketplaceReturnTitleFromRow(row: ReceivingLineRow, poValue: string): string | null {
   return formatMarketplaceReturnIdentityTitle({
     orderId: poValue,
-    sourcePlatform: row.source_platform || row.inbound_source_type,
+    sourcePlatform: storedOrInferredSourcePlatform(
+      row.source_platform || row.inbound_source_type,
+      poValue,
+      row.source_order_id,
+    ),
     receivingType: row.receiving_type,
     cartonIntakeType: row.carton_intake_type,
     intakeType: row.intake_type,

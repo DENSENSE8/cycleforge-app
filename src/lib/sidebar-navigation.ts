@@ -282,22 +282,23 @@ type SidebarNavItemFields = {
   requires?: string;
   /**
    * `kind: 'top'` only. When `false`, the pin stays in the registry (⌘K,
-   * dest search, deep links) but is not painted in the spine's 40px band.
-   * Omit / `true` = paint. Parked surfaces (Search, Plans, Chat) use `false`.
+   * dest search, deep links) but is not painted as a spine map row.
+   * Omit / `true` = paint Home / Media Library at the top of the map.
+   * Parked surfaces (Search, Plans, Chat) use `false`.
    */
   spineBand?: boolean;
 };
 
 /**
- * Flat spine row. `kind: 'top'` = Home/Media (and parked Search/Plans/Chat)
- * header pin; `kind: 'bottom'` = Settings/Admin footer pin; `kind: 'main'` requires
+ * Flat spine row. `kind: 'top'` = Home/Media Library (and parked Search/Plans/Chat);
+ * `kind: 'bottom'` = Settings/Admin footer pin; `kind: 'main'` requires
  * `mainGroup` (Monitor / Studio); `kind: 'station'` requires `stationGroup`
  * (Scan Stations) and may set `stationSubgroup` (Receiving page-style header);
  * `kind: 'domain'` requires `domainGroup` (Inbound · Catalog · Inventory ·
  * Fulfillment · Sales · Support). Section order: {@link SPINE_SECTIONS}.
  *
  * Top pins with {@link SidebarNavItemFields.spineBand} `false` stay in ⌘K /
- * dest search but are not painted by {@link SpineTopPins}.
+ * dest search but are not painted as map rows.
  *
  * The retired `stock` / `products` / `labels` / `documents` kinds were membership
  * by *page shape* rather than by domain, which is why they all had to be
@@ -354,30 +355,30 @@ export function isMobileAllowedPath(pathname: string | null | undefined): boolea
 /**
  * Dogfood prod surface (stations + shipping + inventory + warehouse + thin support).
  *
- * Dogfood parking is retired: Home · Media paint in the spine band.
- * Search / Plans / Chat stay `kind: 'top'` with `spineBand: false` (⌘K +
- * routes, no glyph). Operations / Sourcing / Studio ship live. `/fba` stays off the spine
- * because it permanently redirects into Shipping (no second front door). Routes +
- * SIDEBAR_PAGE_NAV modes may still resolve for deep-links — do not delete those
- * until a surface is archived.
+ * Dogfood parking is retired: Home · Media Library paint as map rows at the
+ * top of the spine. Search / Plans / Chat stay `kind: 'top'` with `spineBand: false`
+ * (⌘K + routes, no row). Operations / Sourcing / Studio ship live. `/fba` stays
+ * off the spine because it permanently redirects into Shipping (no second front
+ * door). Routes + SIDEBAR_PAGE_NAV modes may still resolve for deep-links — do
+ * not delete those until a surface is archived.
  *
  * Studio ships as a FOOTER PIN (2026-08-02); its `/studio/catalog` sub-route rides
  * along as an L2 mode rather than a second flat row.
  */
 export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
-  // Top pin — Home → Media paint in the spine band. Search / Plans / Chat stay
-  // registry rows (`spineBand: false`) so ⌘K, `/search`, `/ai-chat` / forge still
-  // work. Search lives in GlobalHeader (`GlobalHeaderSearch`); the spine pin
-  // would duplicate that control. Plans deep-links Home forge
+  // Top map rows — Home → Media Library. Search / Plans / Chat stay registry
+  // rows (`spineBand: false`) so ⌘K, `/search`, `/ai-chat` / forge still work.
+  // Search lives in GlobalHeader (`GlobalHeaderSearch`); a spine row would
+  // duplicate that control. Plans deep-links Home forge
   // (`/?mode=forge&view=live`); active state is query-aware via
   // {@link isSidebarTopPinActive} if the glyph returns.
-  { id: 'home',              label: 'Home',        href: '/',                   icon: Home,            kind: 'top' },
-  { id: 'search',            label: 'Search',      href: '/search',             icon: Search,          kind: 'top', spineBand: false },
-  { id: 'ops-photos',        label: 'Media',       href: '/ops/photos',         icon: Images,          kind: 'top', requires: 'photos.view' },
+  { id: 'home',              label: 'Home',           href: '/',                   icon: Home,            kind: 'top' },
+  { id: 'search',            label: 'Search',         href: '/search',             icon: Search,          kind: 'top', spineBand: false },
+  { id: 'ops-photos',        label: 'Media Library',  href: '/ops/photos',         icon: Images,          kind: 'top', requires: 'photos.view' },
   // Plans — live master-plan console (Home forge). Same landing as `/forge`.
-  { id: 'plans-live',        label: 'Plans',       href: '/?mode=forge&view=live', icon: Zap,           kind: 'top', spineBand: false, requires: 'operations.plans.view' },
+  { id: 'plans-live',        label: 'Plans',          href: '/?mode=forge&view=live', icon: Zap,           kind: 'top', spineBand: false, requires: 'operations.plans.view' },
   // Chat — streaming assistant workspace; `/ai` shares it.
-  { id: 'ai-chat',           label: 'Chat',        href: '/ai-chat',            icon: MessageSquare,   kind: 'top', spineBand: false, requires: 'dashboard.view' },
+  { id: 'ai-chat',           label: 'Chat',           href: '/ai-chat',            icon: MessageSquare,   kind: 'top', spineBand: false, requires: 'dashboard.view' },
   // Monitor — TV / observe-only Operations Live (+ Analytics / History / …).
   { id: 'operations',        label: 'Operations',  href: '/operations',         icon: Monitor,         kind: 'main', mainGroup: 'monitor', requires: 'operations.view' },
   // Scan Stations — scan-first benches (former Receiving modes + Testing /
@@ -784,12 +785,16 @@ export function isSidebarTopPinActive(
 }
 
 /**
- * Whether a `kind: 'top'` pin paints in {@link SpineTopPins}. Registry
- * rows with `spineBand: false` (Search, Plans, Chat) stay reachable via ⌘K / URL.
+ * Whether a `kind: 'top'` pin paints as an ordinary L1 row at the top of the
+ * spine map. Registry rows with `spineBand: false` (Search, Plans, Chat) stay
+ * reachable via ⌘K / URL only.
  */
-export function isSpineBandTopPin(item: SidebarNavItem): boolean {
+export function isSpineMapTopRow(item: SidebarNavItem): boolean {
   return item.kind === 'top' && item.spineBand !== false;
 }
+
+/** @deprecated Prefer {@link isSpineMapTopRow} — the spine band icons are gone. */
+export const isSpineBandTopPin = isSpineMapTopRow;
 
 /**
  * Route → required permission map. Used by middleware to redirect users to

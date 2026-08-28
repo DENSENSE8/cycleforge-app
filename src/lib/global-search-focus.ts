@@ -1,9 +1,5 @@
-/** Dispatched to hand focus to the global header find field (re-click Search,
- *  or a surface that wants to delegate to it). {@link GlobalHeaderSearch} is
- *  the sole owner on every route — including `/search`.
- *
- *  NOT a ⌘K path — that chord opens the CommandBar palette and has exactly one
- *  owner (`src/components/layout/cmdk-owner.guard.test.ts`). */
+/** Dispatched to open header Find / ⌘K ({@link CommandBar}). Same surface as
+ *  the right-rail search icon. The chord itself stays owned by CommandBar. */
 export const GLOBAL_SEARCH_FOCUS_EVENT = 'cf-global-search-focus';
 
 export function dispatchGlobalSearchFocus(): void {

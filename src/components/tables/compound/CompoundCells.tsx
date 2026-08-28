@@ -33,7 +33,9 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { OrderNumberMenuChip } from '@/components/ui/OrderNumberMenuChip';
 import { TrackingNumberMenuChip } from '@/components/ui/TrackingNumberMenuChip';
 import { carrierBrandDotPaint, resolveCarrierBrand } from '@/lib/carrier-brand';
-import { platformMetaBrandDot, sourcePlatformMeta } from '@/lib/source-platform';
+import { resolveMarketplacePlatformMeta } from '@/lib/marketplace-order-id';
+import { platformMetaBrandDot } from '@/lib/source-platform';
+import { marketplaceOrderUrl } from '@/utils/order-platform';
 import { cn } from '@/utils/_cn';
 import { CompoundCell, CompoundLine } from './CompoundCell';
 import { COMPOUND_GUTTER_PX, COMPOUND_ROW_PX } from './compound-row-chrome';
@@ -269,7 +271,11 @@ export function CompoundItem({
  * Copy / Open / Edit verbs are not hand-rolled — the two menu chips own them.
  */
 export function CompoundFulfillment({ view }: { view: CompoundRowView }) {
-  const platformDot = platformMetaBrandDot(sourcePlatformMeta(view.platformValue));
+  const orderMeta = resolveMarketplacePlatformMeta(view.orderId, view.platformValue);
+  const platformDot = platformMetaBrandDot(orderMeta);
+  const orderOpenHref = view.orderId
+    ? marketplaceOrderUrl(view.orderId, view.platformValue)
+    : null;
   const carrierDot = view.tracking
     ? carrierBrandDotPaint(resolveCarrierBrand(view.tracking, view.carrier))
     : null;
@@ -280,7 +286,13 @@ export function CompoundFulfillment({ view }: { view: CompoundRowView }) {
         view.orderId ? (
           <span className="inline-flex min-w-0 items-center gap-1.5">
             <BrandIdentityDot className={platformDot.className} style={platformDot.style} />
-            <OrderNumberMenuChip value={view.orderId} plain dense />
+            <OrderNumberMenuChip
+              value={view.orderId}
+              platformLabel={orderMeta.value ? orderMeta.label : null}
+              openHref={orderOpenHref}
+              plain
+              dense
+            />
           </span>
         ) : (
           <GridCellDash />

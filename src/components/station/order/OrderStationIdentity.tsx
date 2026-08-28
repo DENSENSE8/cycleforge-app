@@ -17,6 +17,7 @@
 
 import { CartonContextCard } from '@/components/station/entity-context';
 import { packListingIdentity } from '@/components/packer/pack-listing-identity';
+import { displayPlatformSlugFromOrderId } from '@/lib/marketplace-order-id';
 import { getTrackingUrl } from '@/utils/order-links';
 import type { ShippedOrder } from '@/types/orders';
 
@@ -41,9 +42,15 @@ export function OrderStationIdentity({
 }) {
   const tracking = String(order.shipping_tracking_number || '').trim();
   const orderId = String(order.order_id || '').trim();
-  const poDisplay = orderId || tracking || '—';
+  // Unresolved order# is a DASH. Tracking has its own chip one cell over, so
+  // falling back to it printed the same string twice and claimed an order#
+  // the row never had. Same rule as `resolvePackOrderIdentityChips`.
+  const poDisplay = orderId || '—';
   const listing = packListingIdentity(order.item_number || order.sku || orderId);
-  const platformValue = String(order.account_source || listing.platformValue || '').trim();
+  const platformValue = displayPlatformSlugFromOrderId(
+    orderId,
+    order.account_source || listing.platformValue,
+  );
 
   return (
     <CartonContextCard

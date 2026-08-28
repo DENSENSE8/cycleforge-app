@@ -18,6 +18,7 @@ import { listingLinksForReceivingRow } from '@/lib/receiving/listing-links';
 import { normalizeListingHref } from '@/lib/receiving/listing-href';
 import { resolveTrackingOpenUrl } from '@/lib/tracking-format';
 import { useAuth } from '@/contexts/AuthContext';
+import { storedOrInferredSourcePlatform } from '@/lib/marketplace-order-id';
 import type { ShippedOrder } from '@/types/orders';
 
 function receivingIsUnmatched(receiving: CartonInspectorReceiving): boolean {
@@ -107,7 +108,12 @@ export function SearchReceivingIdentity({
       filledExtraTrackingsCount={0}
       carrierHint={receiving.carrier}
       isLocalPickup={Boolean(String(receiving.local_pickup_order_id ?? '').trim())}
-      platformValue={String(receiving.source_platform ?? '').trim()}
+      platformValue={storedOrInferredSourcePlatform(
+        receiving.source_platform,
+        receiving.zoho_purchaseorder_number,
+        receiving.zoho_purchaseorder_id,
+        header.poNumber,
+      )}
       onPlatformSelect={() => {}}
       receivingType={String(receiving.intake_type ?? '').trim()}
       onTypeSelect={() => {}}

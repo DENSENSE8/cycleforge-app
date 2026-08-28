@@ -4,17 +4,14 @@
  * waterfall.
  *
  * - {@link seedUnboxStation} — bare `/unbox` (rail + MRU carton lines).
- * - {@link seedUnboxSpine} — History spine for Arrival (`/triage`) warm cache.
+ *
+ * `seedUnboxSpine` (History spine warm cache for `/triage`) was deleted
+ * 2026-08-27, operator ruling: it blocked Arrival's TTFB on a `serverSelfFetch`
+ * (full `withAuth` re-entry, ~150 rows) to warm a table that surface never
+ * paints, and the soft-nav hop it existed for was already warm client-side.
  */
 import 'server-only';
 import { dehydrate, QueryClient, type DehydratedState } from '@tanstack/react-query';
-import {
-  RECEIVING_MODES,
-  type ReceivingModeContext,
-  type ReceivingModeDescriptor,
-} from '@/lib/receiving/receiving-modes';
-import { DEFAULT_UNBOX_CONTEXT } from '@/lib/receiving/default-unbox-context';
-import { serverSelfFetch } from '@/lib/observability/server-self-fetch';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { RECEIVING_RAIL_FEEDS } from '@/lib/receiving/rail/feeds';
 import { receivingRailQueryKey } from '@/lib/receiving/rail/rail-query-key';
@@ -39,49 +36,10 @@ import { isUnboxRailColumnRead } from '@/lib/feature-flags';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { getCurrentUser } from '@/lib/auth/current-user';
 
-/** Spine paint window — lockstep with `SPINE_PAINT_LIMIT` in receiving-queries. */
-const SPINE_PAINT_LIMIT = 150;
-
 interface UnboxStationSeed {
   state: DehydratedState;
   /** MRU carton id — the row the rail shows selected on a cold load. */
   mruReceivingId: number | null;
-}
-
-interface UnboxSpineSeed {
-  state: DehydratedState;
-}
-
-type SpineListPayload = {
-  success: boolean;
-  receiving_lines: ReceivingLineRow[];
-  total: number;
-  limit: number;
-  offset: number;
-};
-
-function buildSpineParams(
-  mode: ReceivingModeDescriptor,
-  ctx: ReceivingModeContext,
-): URLSearchParams {
-  const params = mode.buildParams(ctx);
-  params.delete('include');
-  params.set('phase', 'spine');
-  const limit = Number(params.get('limit'));
-  if (Number.isFinite(limit) && limit > SPINE_PAINT_LIMIT) {
-    params.set('limit', String(SPINE_PAINT_LIMIT));
-  }
-  return params;
-}
-
-async function fetchSpine(
-  mode: ReceivingModeDescriptor,
-  ctx: ReceivingModeContext,
-): Promise<SpineListPayload | null> {
-  const params = buildSpineParams(mode, ctx);
-  const res = await serverSelfFetch(`/api/receiving-lines?${params.toString()}`);
-  if (!res.ok) return null;
-  return (await res.json()) as SpineListPayload;
 }
 
 /**
@@ -329,27 +287,4 @@ export async function seedUnboxStation(): Promise<UnboxStationSeed> {
   ]);
 
   return { state: dehydrate(queryClient), mruReceivingId };
-}
-
-/**
- * Prefetch History spine (`?phase=spine`) for Arrival warm cache.
- * Soft-fail — client still fetches.
- */
-export async function seedUnboxSpine(
-  ctx = DEFAULT_UNBOX_CONTEXT,
-): Promise<UnboxSpineSeed> {
-  const queryClient = new QueryClient();
-  const mode = RECEIVING_MODES.history;
-  const spineKey = [...mode.queryKey(ctx), 'spine'] as const;
-
-  try {
-    const data = await fetchSpine(mode, ctx);
-    if (data) {
-      queryClient.setQueryData(spineKey, data);
-    }
-  } catch (error) {
-    console.error('seedUnboxSpine failed; client will fetch', error);
-  }
-
-  return { state: dehydrate(queryClient) };
 }
