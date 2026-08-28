@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useMemo, useState } from 'react';
-import { ExternalLink, FileText, Plus, Printer, Unlink } from '@/components/Icons';
+import { ExternalLink, FileText, Plus, Unlink } from '@/components/Icons';
 import { Button, IconButton } from '@/design-system/primitives';
 import {
   DocumentSlideOver,
@@ -13,7 +13,12 @@ import { unpairManual } from './sku-testing-api';
 import { EYEBROW, SECTION, type Bundle } from './sku-testing-types';
 import { ManualPicker } from './ManualPicker';
 
-/** Paired SKU manuals — open/print in DocumentSlideOver, unpair, and pair from library. */
+/**
+ * Paired SKU manuals — view in DocumentSlideOver, unpair, and pair from library.
+ *
+ * View only: the tech reads the manual to test the unit. Paper output is a
+ * pack-time concern, so the viewer is opened with `showPrint={false}`.
+ */
 export function ManualsSection({
   receivingLineId,
   bundle,
@@ -87,7 +92,7 @@ export function ManualsSection({
             <Button
               variant="ghost"
               size="sm"
-              icon={<Printer />}
+              icon={<FileText />}
               onClick={() => openViewer()}
               data-testid="open-manuals-slide-over"
               className="text-text-soft hover:bg-blue-50 hover:text-blue-700"
@@ -141,11 +146,11 @@ export function ManualsSection({
                 </div>
                 <div className="flex shrink-0 items-center gap-0.5">
                   {m.source_url || m.document_id ? (
-                    <HoverTooltip label="View / print manual" asChild>
+                    <HoverTooltip label="View manual" asChild>
                       <IconButton
-                        icon={<Printer className="h-4 w-4" />}
+                        icon={<FileText className="h-4 w-4" />}
                         onClick={() => openViewer(m.id)}
-                        ariaLabel="View / print manual"
+                        ariaLabel="View manual"
                         className="rounded-md p-1.5 text-text-soft hover:bg-blue-50 hover:text-blue-600"
                       />
                     </HoverTooltip>
@@ -185,6 +190,7 @@ export function ManualsSection({
         items={slideItems}
         activeId={viewerActiveId}
         onActiveIdChange={setViewerActiveId}
+        showPrint={false}
         storageKey="testing-manuals-slide-over-width"
         aria-label="SKU manuals preview"
       />

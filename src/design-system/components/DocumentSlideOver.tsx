@@ -39,6 +39,12 @@ type DocumentSlideOverProps = {
   onActiveIdChange?: (id: string) => void;
   /** Extra header actions (call-site Print, etc.). */
   headerActions?: ReactNode;
+  /**
+   * Show the built-in print header action. Default `true`. Surfaces where
+   * printing does not belong (Testing manuals — printing inserts happens at
+   * pack) pass `false` to drop the printer affordance entirely.
+   */
+  showPrint?: boolean;
   /** Width persistence key. Default `document-slide-over-width`. */
   storageKey?: string;
   /** Seed width when nothing persisted. Default 640. */
@@ -66,6 +72,7 @@ export function DocumentSlideOver({
   activeId: activeIdProp,
   onActiveIdChange,
   headerActions,
+  showPrint = true,
   storageKey = 'document-slide-over-width',
   defaultWidth = 640,
   minWidth = 360,
@@ -110,7 +117,7 @@ export function DocumentSlideOver({
   );
 
   const canOpenExternal = Boolean(active?.src);
-  const canPrint = Boolean(active?.src);
+  const canPrint = showPrint && Boolean(active?.src);
 
   return (
     <RightPaneOverlay
