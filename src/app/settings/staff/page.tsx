@@ -47,7 +47,7 @@ export default async function StaffPage() {
 
   return (
     <div className="min-h-screen bg-surface-canvas antialiased">
-      <PageHeader title="Team" maxWidth="5xl" />
+      <PageHeader eyebrow="Settings" value="Team" maxWidth="5xl" />
       <div className="mx-auto max-w-5xl space-y-6 px-6 py-6">
         <p className="text-role-caption text-text-soft">
           Invite teammates, change roles, deactivate access. Active sessions are revoked the moment you deactivate.

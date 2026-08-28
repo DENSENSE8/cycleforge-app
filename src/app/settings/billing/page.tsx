@@ -48,7 +48,7 @@ export default async function BillingPage() {
 
   return (
     <Shell>
-      <PageHeader title="Billing" maxWidth="5xl" />
+      <PageHeader eyebrow="Settings" value="Billing" maxWidth="5xl" />
       <div className="mx-auto max-w-5xl space-y-6 px-6 py-6">
         <p className="text-role-caption text-text-soft">Workspace: <span className="font-medium text-text-muted">{org.name}</span></p>
 
