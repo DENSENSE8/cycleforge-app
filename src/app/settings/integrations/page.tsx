@@ -167,7 +167,7 @@ export default async function IntegrationsPage({
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-surface-canvas antialiased">
-      <PageHeader title="Integrations" maxWidth="5xl" />
+      <PageHeader eyebrow="Settings" value="Integrations" maxWidth="5xl" />
       <main className="min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto max-w-5xl space-y-6 px-6 py-6">
         <div className="flex flex-wrap items-center justify-between gap-2">
