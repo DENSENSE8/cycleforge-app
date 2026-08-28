@@ -12,11 +12,15 @@ test('getDashboardPendingLayoutFromSearch: always grid (board|grid retired)', ()
   assert.equal(getDashboardPendingLayoutFromSearch(new URLSearchParams('unshipped=')), 'grid');
 });
 
-test('normalizeDashboardOrderViewParams: strips stale ?view= on every tab', () => {
+test('normalizeDashboardOrderViewParams: strips stale ?view=; desk stays unshipped', () => {
   for (const view of ['unshipped', 'tested', 'packed', 'shipped', 'fba'] as const) {
     const params = new URLSearchParams('view=grid');
-    normalizeDashboardOrderViewParams(params, view);
+    const next = normalizeDashboardOrderViewParams(params, view as 'unshipped' | 'tested' | 'packed' | 'shipped');
     assert.equal(params.has('view'), false, `view should be cleared for ${view}`);
-    assert.equal(params.has(view), true);
+    assert.equal(next, 'unshipped');
+    assert.equal(params.has('unshipped'), true);
+    assert.equal(params.has('shipped'), false);
+    assert.equal(params.has('tested'), false);
+    assert.equal(params.has('packed'), false);
   }
 });

@@ -79,10 +79,16 @@ describe('ORDERS_QUEUE_COLUMNS — the column model header + template share', ()
         'order',
         'age',
         'title',
+        'stage',
+        'tester',
+        'testedAt',
+        'packer',
+        'packedAt',
+        'packStation',
+        'urgent',
         'condition',
         'qty',
         'tracking',
-        'packStation',
         '_fill',
       ],
     );
@@ -133,10 +139,15 @@ describe('ORDERS_QUEUE_COLUMNS — the column model header + template share', ()
       ORDERS_QUEUE_COLUMNS.filter((c) => c.hideKey).map((c) => [c.key, c.hideKey]),
     );
     assert.deepEqual(hide, {
+      tester: 'tester',
+      testedAt: 'testedAt',
+      packer: 'packer',
+      packedAt: 'packedAt',
+      packStation: 'packStation',
+      urgent: 'urgent',
       condition: 'condition',
       qty: 'qty',
       tracking: 'tracking',
-      packStation: 'packStation',
     });
   });
 });

@@ -15,25 +15,25 @@ import {
   parseDashboardOpenOrderId,
 } from '@/utils/dashboard-search-state';
 
-test('getDashboardOrderViewFromSearch prefers explicit view params', () => {
-  assert.equal(getDashboardOrderViewFromSearch(new URLSearchParams('shipped=')), 'shipped');
-  assert.equal(getDashboardOrderViewFromSearch(new URLSearchParams('packed=')), 'packed');
+test('getDashboardOrderViewFromSearch always resolves to the in-warehouse desk', () => {
+  // Lifecycle tabs retired — presence flags / ustatus refine do not change the desk view.
+  assert.equal(getDashboardOrderViewFromSearch(new URLSearchParams('shipped=')), 'unshipped');
+  assert.equal(getDashboardOrderViewFromSearch(new URLSearchParams('packed=')), 'unshipped');
   assert.equal(getDashboardOrderViewFromSearch(new URLSearchParams('unshipped=')), 'unshipped');
-  assert.equal(getDashboardOrderViewFromSearch(new URLSearchParams('tested=')), 'tested');
-  // Legacy ?pending resolves to the merged 'unshipped' mode (Pending).
+  assert.equal(getDashboardOrderViewFromSearch(new URLSearchParams('tested=')), 'unshipped');
   assert.equal(getDashboardOrderViewFromSearch(new URLSearchParams('pending=')), 'unshipped');
-  // Vestigial ?fba deleted (IA row L) — falls through to Pending.
   assert.equal(getDashboardOrderViewFromSearch(new URLSearchParams('fba=')), 'unshipped');
+  assert.equal(getDashboardOrderViewFromSearch(new URLSearchParams('search=abc')), 'unshipped');
 });
 
-test('getDashboardOrderViewFromSearch rewrites legacy ustatus=TESTED to tested tab', () => {
+test('getDashboardOrderViewFromSearch ignores ustatus=TESTED as a tab (facet only)', () => {
   assert.equal(
     getDashboardOrderViewFromSearch(new URLSearchParams('unshipped=&ustatus=TESTED')),
-    'tested',
+    'unshipped',
   );
   assert.equal(
     getDashboardOrderViewFromSearch(new URLSearchParams('ustatus=TESTED')),
-    'tested',
+    'unshipped',
   );
 });
 
@@ -49,33 +49,40 @@ test('buildSupportWarrantyRedirectSearch preserves claim open + filters', () => 
   assert.equal(params.get('search'), 'ORD-1');
 });
 
-test('getDashboardOrderViewFromSearch falls back to unshipped', () => {
-  assert.equal(getDashboardOrderViewFromSearch(new URLSearchParams('search=abc')), 'unshipped');
-});
-
-test('normalizeDashboardOrderViewParams clears competing view params', () => {
+test('normalizeDashboardOrderViewParams collapses every legacy tab onto unshipped', () => {
   const params = new URLSearchParams('pending=&search=abc&unshipped=&layout=board&ustatus=PENDING');
   const next = normalizeDashboardOrderViewParams(params, 'shipped');
 
-  assert.equal(next, 'shipped');
+  assert.equal(next, 'unshipped');
   assert.equal(params.has('pending'), false);
-  assert.equal(params.has('unshipped'), false);
   assert.equal(params.has('packed'), false);
   assert.equal(params.has('fba'), false);
-  assert.equal(params.has('shipped'), true);
+  assert.equal(params.has('shipped'), false);
+  assert.equal(params.has('tested'), false);
+  assert.equal(params.has('unshipped'), true);
   assert.equal(params.has('layout'), false);
-  assert.equal(params.has('ustatus'), false);
+  // Lane refine is left alone — only lifecycle presence flags are collapsed.
+  assert.equal(params.get('ustatus'), 'PENDING');
   assert.equal(params.get('search'), 'abc');
 });
 
-test('normalizeDashboardOrderViewParams for tested sets ?tested and clears lane params', () => {
+test('normalizeDashboardOrderViewParams for tested maps to ?stage=tested on the desk', () => {
   const params = new URLSearchParams('unshipped=&ustatus=PENDING&stage=pending');
   const next = normalizeDashboardOrderViewParams(params, 'tested');
-  assert.equal(next, 'tested');
-  assert.equal(params.has('tested'), true);
-  assert.equal(params.has('unshipped'), false);
-  assert.equal(params.has('ustatus'), false);
-  assert.equal(params.has('stage'), false);
+  assert.equal(next, 'unshipped');
+  assert.equal(params.has('tested'), false);
+  assert.equal(params.has('unshipped'), true);
+  // Existing stage wins; when absent, tested → stage=tested (see other case below).
+  assert.equal(params.get('stage'), 'pending');
+  assert.equal(params.get('ustatus'), 'PENDING');
+});
+
+test('normalizeDashboardOrderViewParams sets stage=tested when legacy tested has no stage', () => {
+  const params = new URLSearchParams('ustatus=PENDING');
+  const next = normalizeDashboardOrderViewParams(params, 'tested');
+  assert.equal(next, 'unshipped');
+  assert.equal(params.get('stage'), 'tested');
+  assert.equal(params.has('unshipped'), true);
 });
 
 test('normalizeDashboardOrderViewParams preserves BLOCKED on Pending', () => {
