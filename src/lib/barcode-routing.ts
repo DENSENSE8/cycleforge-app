@@ -36,7 +36,7 @@ export interface ScanRoute {
 // DEFAULT_GLN used to live. Pure + client-safe, so this stays a client module.
 import { isLicensedGln } from '@/lib/interop/gs1-keys';
 
-const MOBILE_PATH_RE = /\/m\/(r|l|u)\/([^/?#\s]+)/i;
+const MOBILE_PATH_RE = /\/m\/(r|l|u|h)\/([^/?#\s]+)/i;
 const SKU_STOCK_LOCATION_RE = /\/sku-stock\/location\/([^/?#\s]+)/i;
 // GS1 Digital Link — capture gtin and optional serial after /21/.
 // Exported so the GS1 resolver (src/lib/gs1/parser.ts) can reuse the
@@ -82,7 +82,7 @@ const LOCATION_FLAT_RE = /^[A-Z]\d{7,8}$/i;
 // Punctuation-stripped platform Digital Link — see the RECOVERY branch in
 // `routeScan`. Right-anchored so a tenant slug containing `m` ("mycompany")
 // cannot be mistaken for the `/m/` path segment.
-const FLATTENED_MOBILE_LINK_RE = /^https?.*m([rlu])(\d+)$/i;
+const FLATTENED_MOBILE_LINK_RE = /^https?.*m([rluh])(\d+)$/i;
 
 function pathToRoute(path: string, value: string): ScanRoute | null {
   const m = MOBILE_PATH_RE.exec(path);
@@ -96,6 +96,8 @@ function pathToRoute(path: string, value: string): ScanRoute | null {
         return { type: 'receiving-line', value, redirect: `/m/l/${id}` };
       case 'u':
         return { type: 'serial-unit',    value, redirect: `/m/u/${id}` };
+      case 'h':
+        return { type: 'handling-unit',  value, redirect: `/m/h/${id}` };
       default:
         return null;
     }
