@@ -24,16 +24,27 @@ import {
  */
 
 describe('orders-queue mode column sets (TanStack ColumnDefs)', () => {
-  it('fulfillment.default matches the canonical triage scan order', () => {
+  const CANONICAL_KEYS = [
+    'select',
+    'order',
+    'age',
+    'title',
+    'stage',
+    'tester',
+    'testedAt',
+    'packer',
+    'packedAt',
+    'packStation',
+    'urgent',
+    'condition',
+    'qty',
+    'tracking',
+    '_fill',
+  ] as const;
+
+  it('fulfillment.default matches the canonical in-warehouse scan order', () => {
     const defs = ordersQueueColumnDefsFor('fulfillment.default');
-    assert.deepEqual(
-      defs.map((d) => d.id),
-      // `packStation` joined 2026-08-10 as `tier: 'optional'` — it is in the
-      // canonical ORDER but OFF by default, opted in from the ▦ column display
-      // (Unbox History treats Serial / Vendor the same way). The def list is the
-      // full model; `useGridColumnVisibility` is what resolves the visible set.
-      ['select', 'order', 'age', 'title', 'condition', 'qty', 'tracking', 'packStation', '_fill'],
-    );
+    assert.deepEqual(defs.map((d) => d.id), [...CANONICAL_KEYS]);
     assert.deepEqual(
       defs.map((d) => d.id),
       ORDERS_QUEUE_COLUMNS.map((c) => c.key),
@@ -41,17 +52,9 @@ describe('orders-queue mode column sets (TanStack ColumnDefs)', () => {
     );
   });
 
-  it('fulfillment.tested surfaces Tester + Tested at after Product, then Cond', () => {
+  it('fulfillment.tested shares the same in-warehouse column model', () => {
     const defs = ordersQueueColumnDefsFor('fulfillment.tested');
-    assert.deepEqual(
-      defs.map((d) => d.id),
-      ['select', 'order', 'age', 'title', 'tester', 'testedAt', 'packStation', 'condition', 'qty', 'tracking', '_fill'],
-    );
-    // The `deepEqual` above IS the assertion: it pins the exact scan order, so
-    // any track that is not in that list already fails. Absence claims about
-    // individual keys were archaeology — they described what the vocabulary
-    // used to contain rather than what it is, and they go stale silently
-    // because nothing fails when the thing they name stops existing.
+    assert.deepEqual(defs.map((d) => d.id), [...CANONICAL_KEYS]);
   });
 
   it('defs are stable references per mode (safe hook deps)', () => {
@@ -92,13 +95,13 @@ describe('orders-queue mode column sets (TanStack ColumnDefs)', () => {
   });
 });
 
-describe('ORDERS_QUEUE_TESTED_COLUMNS — house geometry for the TESTED lane', () => {
+describe('ORDERS_QUEUE_TESTED_COLUMNS — house geometry for staff tracks', () => {
   it('tester + testedAt carry labels, types, and hard minmax tracks', () => {
     const byKey = Object.fromEntries(ORDERS_QUEUE_TESTED_COLUMNS.map((c) => [c.key, c]));
     assert.equal(byKey.tester.label, 'Tester');
     assert.equal(byKey.tester.type, 'text');
     assert.match(byKey.tester.width, /^minmax\([\d.]+rem, [\d.]+rem\)$/);
-    assert.equal(byKey.testedAt.label, 'Tested at');
+    assert.equal(byKey.testedAt.label, 'Tested');
     assert.equal(byKey.testedAt.type, 'date');
     assert.match(byKey.testedAt.width, /^minmax\([\d.]+rem, [\d.]+rem\)$/);
   });

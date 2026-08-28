@@ -1,5 +1,6 @@
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
-import { deriveFulfillmentState, FULFILLMENT_STATE_META, UNSHIPPED_STATE_META } from '@/lib/unshipped-state';
+import { resolveOrderLifecycleStage } from '@/lib/order-lifecycle';
+import { UNSHIPPED_STATE_META } from '@/lib/unshipped-state';
 import { OUTBOUND_STATE_META } from '@/lib/outbound-state';
 import {
   formatDateKeyMedium,
@@ -179,15 +180,20 @@ export function resolveRowStatus(record: QueueRowRecord, queueMode: OrdersQueueM
         : OUTBOUND_STATE_META.SCANNED_OUT;
     return { dot: meta.dot, label: meta.label, description: meta.description, pill: meta.pill };
   }
-  const state = deriveFulfillmentState({
+  // To-ship in-warehouse list: full pre-dock stage (incl. PACKED_STAGED), not
+  // the three-lane fulfillment bucket that hid packed rows as "Tested".
+  const stage = resolveOrderLifecycleStage({
     shipmentId: record.shipment_id,
     hasTechScan: Boolean(record.has_tech_scan),
+    packedAt:
+      nonSentinelTimestamp(record.packed_at) ??
+      nonSentinelTimestamp((record as QueueRowRecord).pack_activity_at),
     isOutOfStock: Boolean(
       (record as QueueRowRecord).is_out_of_stock
         ?? (record as QueueRowRecord).isOutOfStock,
     ),
   });
-  const meta = FULFILLMENT_STATE_META[state];
+  const meta = UNSHIPPED_STATE_META[stage];
   return { dot: meta.dot, label: meta.label, description: meta.description, pill: meta.pill };
 }
 

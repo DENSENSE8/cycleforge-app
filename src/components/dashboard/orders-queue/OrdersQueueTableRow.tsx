@@ -970,7 +970,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   isChecked,
   useAlternateStripe,
   testerDisplay,
-  packerDisplay: _packerDisplay,
+  packerDisplay,
   testerId: _testerId,
   packerId: _packerId,
   rowStatus,
@@ -1068,6 +1068,20 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
         // disagree about whether a row is behind.
         delayDays: daysLate,
         delayTip: rowStatus.description,
+        testerDisplay,
+        packerDisplay,
+        flagMark: rowFlag
+          ? {
+              label: rowFlag.label,
+              tip: [
+                `${rowFlag.label} — ${rowFlag.hint}`,
+                record.row_flag?.by ? `Set by ${record.row_flag.by}` : null,
+              ]
+                .filter(Boolean)
+                .join(' · '),
+              dotClass: rowFlag.dotClass,
+            }
+          : null,
       })
     : null;
 
@@ -1228,8 +1242,12 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
       gridTemplate || rowFillHex
         ? {
             ...(gridTemplate ? { gridTemplateColumns: gridTemplate } : undefined),
-            // Selection wash wins; custom paint only when not checked.
-            ...((clickSelect || selectMode || gridSkin ? isChecked : isSelected) || !rowFillHex
+            // Sheets paint precedence: selection wash → org triage flag → personal
+            // paint hex. Selection and flag both suppress the inline fill so the
+            // shared tint stays readable (and selection always wins the class).
+            ...((clickSelect || selectMode || gridSkin ? isChecked : isSelected) ||
+            rowFlag?.rowClass ||
+            !rowFillHex
               ? undefined
               : { backgroundColor: rowFillHex }),
           }
@@ -1288,8 +1306,13 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   if (prev.record.item_number !== next.record.item_number) return false;
   // TESTED-lane cells (tester + tested-at) render these — compare or go stale.
   if (prev.testerDisplay !== next.testerDisplay) return false;
+  if (prev.packerDisplay !== next.packerDisplay) return false;
   if (prev.record.test_date_time !== next.record.test_date_time) return false;
   if (prev.record.test_activity_at !== next.record.test_activity_at) return false;
+  if (prev.record.packed_at !== next.record.packed_at) return false;
+  if (prev.record.pack_activity_at !== next.record.pack_activity_at) return false;
+  if (prev.record.pack_location_name !== next.record.pack_location_name) return false;
+  if (prev.record.pack_location_kind !== next.record.pack_location_kind) return false;
   // Live fields the COMPOUND `fulfillment` / `item` tracks paint. A label
   // landing on an open To-ship desk changes `shipping_tracking_number` and
   // nothing else on this list — compared nowhere, the row kept the empty

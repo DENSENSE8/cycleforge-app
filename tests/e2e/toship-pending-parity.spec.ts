@@ -1,16 +1,7 @@
 /**
- * To Ship · Pending — dev vs prod parity probe.
+ * To Ship · in-warehouse desk — server counts vs painted Band-1 facets.
  *
- * Same Neon database backs both (`/api/auth/staff-picker` returns an identical
- * roster), so any difference in the Pending lane is CODE or CLIENT CACHE, never
- * data. This drives the real board on whichever host `PW_BASE_URL` names and
- * prints, side by side:
- *   - the server truth (`/api/orders/queue-counts` → lane totals)
- *   - what the Pending tab badge actually renders
- *   - how many rows the table paints, and the first ids in paint order
- *
- * Run against dev:   npx playwright test tests/e2e/toship-pending-parity.spec.ts --project=desktop
- * Run against prod:  PW_BASE_URL=https://usav-dev.michaelgarisek.com npx playwright test tests/e2e/toship-pending-parity.spec.ts --project=desktop
+ * Lifecycle Pending/Tested tabs retired; Band-1 is All · Must ship · Urgent · …
  */
 
 import { test, expect } from '@playwright/test';
@@ -20,9 +11,7 @@ const STAFF = process.env.PW_STAFF_NAME || 'Michael';
 
 test.use({ storageState: { cookies: [], origins: [] } });
 
-test('Pending lane: server counts vs painted board', async ({ page, baseURL }) => {
-  // Mint a session in THIS context (works on dev and prod alike — pinless
-  // station sign-in), so neither run depends on a stored cookie jar.
+test('To-ship desk: queue-counts vs Band-1 triage chrome', async ({ page, baseURL }) => {
   const picker = await page.request.get('/api/auth/staff-picker', {
     headers: { 'x-tenant-slug': TENANT },
   });
@@ -50,25 +39,29 @@ test('Pending lane: server counts vs painted board', async ({ page, baseURL }) =
   const rowsCall = seen.find((s) => s.url.includes('/api/orders?'));
   const orders = rowsCall?.body?.orders ?? [];
 
-  // What the tab strip actually renders.
-  const tabText = await page
-    .locator('button', { hasText: /^Pending/ })
+  const chrome = page.locator('[data-dashboard-chrome]').first();
+  const allTab = await chrome
+    .getByRole('button', { name: /^All/ })
     .first()
     .innerText()
-    .catch(() => '(no Pending tab)');
-  const testedTab = await page
-    .locator('button', { hasText: /^Tested/ })
+    .catch(() => '(no All facet)');
+  const mustShipTab = await chrome
+    .locator('button', { hasText: /Must ship/i })
     .first()
     .innerText()
-    .catch(() => '(no Tested tab)');
+    .catch(() => '(no Must ship facet)');
 
   console.log('\n================ ' + baseURL + ' ================');
   console.log('queue-counts byStage :', JSON.stringify(counts?.byStage));
-  console.log('queue-counts combos  :', JSON.stringify(counts?.combos));
+  console.log('queue-counts mustShip:', counts?.mustShip);
+  console.log('queue-counts urgent  :', counts?.urgent);
   console.log('rows request         :', rowsCall?.url);
   console.log('rows returned        :', orders.length);
   console.log('first 8 ids in paint order:', orders.slice(0, 8).map((o: any) => o.id));
-  console.log('Pending tab renders  :', JSON.stringify(tabText));
-  console.log('Tested  tab renders  :', JSON.stringify(testedTab));
+  console.log('All facet renders    :', JSON.stringify(allTab));
+  console.log('Must ship renders    :', JSON.stringify(mustShipTab));
   console.log('==========================================================\n');
+
+  await expect(chrome.getByRole('button', { name: /^All/ }).first()).toBeVisible();
+  await expect(chrome.locator('button', { hasText: /Must ship/i }).first()).toBeVisible();
 });

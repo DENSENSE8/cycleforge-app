@@ -39,6 +39,7 @@ import { parseStaffParam, useStaffFilter } from '@/hooks/useStaffFilter';
 import { useOutboundStatusFilter } from '@/components/shipped/useOutboundStatusFilter';
 import { useToShipStatusFilter } from '@/components/unshipped/useToShipStatusFilter';
 import {
+  applyToShipTriageFacet,
   isPrePackOrderView,
   normalizeDashboardOrderViewParams,
   type DashboardOrderView,
@@ -150,35 +151,30 @@ export function useToShipFilterActions() {
 
   const selectAll = useCallback(() => {
     replaceParams((p) => {
-      p.delete('ustatus');
-      p.delete('stage');
-      p.delete('late');
-      p.delete('attention');
+      applyToShipTriageFacet(p, 'all');
     });
   }, [replaceParams]);
 
-  /** Full Pending tab — lifecycle view + clear OOS / urgent refines in one write. */
+  /** Clear triage facets — same as Band-1 All (in-warehouse list, no refine). */
   const selectPendingTab = useCallback(() => {
     replaceParams((p) => {
-      normalizeDashboardOrderViewParams(p, 'unshipped');
-      p.delete('ustatus');
-      p.delete('stage');
-      p.delete('late');
-      p.delete('attention');
+      applyToShipTriageFacet(p, 'all');
+    });
+  }, [replaceParams]);
+
+  /** Must ship = ship-by today or past (PST). Same as Band-1 Must ship. */
+  const toggleMustShip = useCallback(() => {
+    replaceParams((p) => {
+      const on = p.get('late') === '1' || p.get('late') === 'true';
+      applyToShipTriageFacet(p, on ? 'all' : 'must_ship');
     });
   }, [replaceParams]);
 
   /** Urgent = operator-flagged expedited rows (orders.is_urgent). */
   const toggleUrgent = useCallback(() => {
     replaceParams((p) => {
-      if (p.get('attention') === '1' || p.get('attention') === 'true') {
-        p.delete('attention');
-        return;
-      }
-      p.set('attention', '1');
-      p.delete('ustatus');
-      p.delete('stage');
-      p.delete('late');
+      const on = p.get('attention') === '1' || p.get('attention') === 'true';
+      applyToShipTriageFacet(p, on ? 'all' : 'urgent');
     });
   }, [replaceParams]);
 
@@ -228,27 +224,24 @@ export function useToShipFilterActions() {
   }, [replaceParams]);
 
   const toggleBlocked = useCallback(() => {
-    // Blocked lives under Pending — jump there if needed, then toggle.
     replaceParams((p) => {
-      normalizeDashboardOrderViewParams(p, 'unshipped');
-      if (p.get('ustatus') === 'BLOCKED') p.delete('ustatus');
-      else {
-        p.set('ustatus', 'BLOCKED');
-        p.delete('stage');
-        p.delete('attention');
-      }
+      const on = p.get('ustatus') === 'BLOCKED';
+      applyToShipTriageFacet(p, on ? 'all' : 'blocked');
     });
   }, [replaceParams]);
 
   return {
     active,
     urgentOnly,
+    lateOnly:
+      searchParams.get('late') === '1' || searchParams.get('late') === 'true',
     packStationId,
     packPlacedOnly,
     selectAll,
     selectPendingTab,
     toggle,
     toggleUrgent,
+    toggleMustShip,
     toggleBlocked,
     togglePackStation,
     togglePackPlaced,

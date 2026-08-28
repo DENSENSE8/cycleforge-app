@@ -4,6 +4,11 @@
  * The second family adapter into the shared compound renderer. It exists so
  * Orders can join the one layout WITHOUT copying a cell — which is the whole
  * point of the view-model seam.
+ *
+ * Dense identity (To-ship): stage stays on the state pill; tester / station /
+ * packer ride the item secondary when there is no operator note — so the
+ * compound grid answers “where is this / who touched it” without mounting
+ * ORDERS_QUEUE_COLUMNS.
  */
 
 import {
@@ -11,8 +16,11 @@ import {
   type CompoundRowView,
   type CompoundStateTone,
 } from '@/components/tables/compound/compound-row-model';
+import { packBenchShortLabel } from '@/lib/packing/pack-bench-display';
 import type { ShippedOrder } from '@/types/orders';
 import { formatCurrency } from '@/utils/_number';
+import { formatMonthDayTimePST } from '@/utils/date';
+import { nonSentinelTimestamp } from '@/components/dashboard/orders-queue/helpers';
 
 /**
  * Fulfillment lane → the three-tone vocabulary.
@@ -28,7 +36,7 @@ export function ordersStateTone(stateLabel: string | null | undefined): Compound
   if (s.includes('BLOCK') || s.includes('OUT OF STOCK') || s.includes('EXCEPTION') || s.includes('HOLD')) {
     return 'alert';
   }
-  if (s.includes('TESTED') || s.includes('PACKED') || s.includes('SHIPPED') || s.includes('SCANNED')) {
+  if (s.includes('TESTED') || s.includes('PACKED') || s.includes('SHIPPED') || s.includes('SCANNED') || s.includes('READY')) {
     return 'done';
   }
   return 'neutral';
@@ -40,6 +48,62 @@ export interface OrdersCompoundParts {
   /** Whole days past ship-by; null when the order has no deadline. */
   delayDays: number | null;
   delayTip?: string;
+  /** Normalized tester face (`---` when missing). */
+  testerDisplay?: string | null;
+  /** Normalized packer face (`---` when missing). */
+  packerDisplay?: string | null;
+  /**
+   * Org triage flag mark — shown next to the title so the wash has a
+   * non-colour carrier on the dense compound grid (selection still wins fill).
+   */
+  flagMark?: CompoundRowView['flagMark'];
+}
+
+/**
+ * Compact identity line for the item secondary: tester · tested stamp · station · packer.
+ * Empty parts are omitted; returns null when nothing to show.
+ */
+export function ordersIdentityLine(
+  record: ShippedOrder,
+  parts: Pick<OrdersCompoundParts, 'testerDisplay' | 'packerDisplay'>,
+): string | null {
+  const row = record as ShippedOrder & {
+    pack_location_name?: string | null;
+    pack_location_kind?: string | null;
+    test_date_time?: string | null;
+    test_activity_at?: string | null;
+    packed_at?: string | null;
+    pack_activity_at?: string | null;
+  };
+  const bits: string[] = [];
+
+  const tester = String(parts.testerDisplay || '').trim();
+  if (tester && tester !== '---') {
+    const testedRaw =
+      nonSentinelTimestamp(row.test_date_time) ?? nonSentinelTimestamp(row.test_activity_at);
+    const stamp = testedRaw ? formatMonthDayTimePST(testedRaw) : null;
+    bits.push(stamp && stamp !== '—' ? `${tester} · ${stamp}` : tester);
+  }
+
+  const benchName = String(row.pack_location_name || '').trim();
+  if (benchName) {
+    bits.push(
+      packBenchShortLabel({
+        locationName: benchName,
+        locationKind: String(row.pack_location_kind || ''),
+      }),
+    );
+  }
+
+  const packer = String(parts.packerDisplay || '').trim();
+  if (packer && packer !== '---') {
+    const packedRaw =
+      nonSentinelTimestamp(row.packed_at) ?? nonSentinelTimestamp(row.pack_activity_at);
+    const stamp = packedRaw ? formatMonthDayTimePST(packedRaw) : null;
+    bits.push(stamp && stamp !== '—' ? `Pack ${packer} · ${stamp}` : `Pack ${packer}`);
+  }
+
+  return bits.length > 0 ? bits.join(' · ') : null;
 }
 
 export function ordersCompoundView(
@@ -52,6 +116,11 @@ export function ordersCompoundView(
     carrier?: string | null;
   };
   const tracking = String(row.shipping_tracking_number || row.tracking_number || '').trim();
+  const opNote = firstNote([record.notes]);
+  const identity = ordersIdentityLine(record, parts);
+  // Operator note wins the secondary line; identity fills it when the note is empty.
+  // When both exist, identity rides the state tip so nothing is lost.
+  const stateTipParts = [parts.delayTip, opNote && identity ? identity : null].filter(Boolean);
 
   return {
     id: String(record.id),
@@ -61,7 +130,8 @@ export function ordersCompoundView(
     // column is an honest empty rather than a fabricated thumbnail.
     thumbUrl: null,
     title: record.product_title || '',
-    note: firstNote([record.notes]),
+    note: opNote ?? identity,
+    flagMark: parts.flagMark ?? null,
     orderId: String(record.order_id || '').trim() || null,
     tracking: tracking || null,
     // Marketplace/channel the order came from — the platform SoT resolves the mark.
@@ -69,6 +139,7 @@ export function ordersCompoundView(
     carrier: row.carrier || null,
     stateLabel: parts.stateLabel,
     stateTone: ordersStateTone(parts.stateLabel),
+    stateTip: stateTipParts.length > 0 ? stateTipParts.join(' · ') : undefined,
     delay:
       parts.delayDays == null ? null : { days: parts.delayDays, overdue: parts.delayDays > 0 },
     delayTip: parts.delayTip,
