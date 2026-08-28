@@ -1,0 +1,47 @@
+# CycleForge feature lane — Cloudflare tunnel fronting ONE lane's dev server.
+#
+#   https://<lane>.michaelgarisek.com  ->  http://127.0.0.1:<LANE_PORT>
+#
+# Each lane owns a LOCALLY-managed named tunnel (`lane-<name>`) with its own
+# config file, written by `pnpm lane new`. That is the whole reason a lane can
+# have a stable public hostname without touching `usav-dev`, which is
+# REMOTELY-managed (its ingress lives in the Cloudflare dashboard and wins over
+# any local file) and is main-only per AGENTS.md.
+#
+# The explicit --config is load-bearing: cloudflared reads
+# ~/.cloudflared/config.yml by default, which is usav-dev's. A lane must never
+# inherit it.
+#
+#   systemctl --user enable --now cycleforge-lane-tunnel@packed-pie
+#   journalctl --user -u cycleforge-lane-tunnel@packed-pie -f
+
+[Unit]
+Description=CycleForge lane %i tunnel (Cloudflare)
+After=network-online.target cycleforge-lane@%i.service
+Wants=network-online.target
+
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Service]
+Type=simple
+EnvironmentFile=%h/.config/cycleforge/lanes/%i.env
+
+# --metrics on loopback: /ready is 200 only while edge connections are actually
+# established. The public hostname keeps answering from Cloudflare's edge even
+# when the tunnel is down, so it cannot be used to prove liveness. Port is
+# derived from the lane port so two lanes never collide on the metrics socket.
+ExecStart=/usr/bin/cloudflared --no-autoupdate \
+  --config %h/.config/cycleforge/lanes/%i.yml \
+  --metrics 127.0.0.1:${LANE_METRICS_PORT} \
+  --loglevel info tunnel run
+
+Restart=always
+RestartSec=5
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=cf-lane-tunnel-%i
+
+[Install]
+WantedBy=default.target
