@@ -313,16 +313,15 @@ test.describe('To Ship · Pending Sheets-like grid', () => {
     await expect(qtyCell).toContainText(before || '1');
   });
 
-  test('lifecycle tabs render; the bounded host keeps the KPI pinned and the card fully on screen', async ({
+  test('triage facets + dense compound grid; KPI stays pinned chrome', async ({
     page,
   }) => {
     /**
-     * Sheets flush chrome (2026-08-04): tabs + KPI share one pinned
-     * `WORKBENCH_SHEET_CHROME` stack (Unbox recipe). The grid owns Y scroll
-     * via `WORKBENCH_TABLE_VIEWPORT` so row COUNT never grows the page. KPI
-     * is not a body island — it is chrome, so page scroll cannot carry it away.
+     * Sheets flush chrome: Band-1 triage facets + KPI share one pinned
+     * stack. Lifecycle tabs (Pending · Tested · Packed · Shipped) retired —
+     * stage is a row fact; facets filter the in-warehouse list.
      */
-    await page.goto('/dashboard?unshipped');
+    await page.goto('/shipping/orders');
 
     const chrome = page.locator('[data-dashboard-chrome]').first();
     const pageScroll = page.locator('[data-testid="dashboard-scroll"]').first();
@@ -331,15 +330,21 @@ test.describe('To Ship · Pending Sheets-like grid', () => {
     const row = table.locator('[data-order-row-id]').first();
     await expect(row).toBeVisible({ timeout: 20_000 });
 
-    // Pending · Tested · Packed · Shipped — Status column retired in favor of tabs.
-    // Scoped to the chrome band: the KPI strip also exposes a "Pending <n>"
-    // drill button, so an unscoped name match is a strict-mode violation.
-    const lifecycleTabs = chrome.getByRole('button');
-    await expect(lifecycleTabs.filter({ hasText: /^Pending/ }).first()).toBeVisible();
-    await expect(lifecycleTabs.filter({ hasText: /^Tested/ }).first()).toBeVisible();
-    await expect(lifecycleTabs.filter({ hasText: /^Packed/ }).first()).toBeVisible();
-    await expect(lifecycleTabs.filter({ hasText: /^Shipped/ }).first()).toBeVisible();
+    // Band-1 triage: All · Must ship · Urgent · OOS · Awaiting customer
+    const triage = chrome.getByRole('button');
+    await expect(triage.filter({ hasText: /^All/ }).first()).toBeVisible();
+    await expect(triage.filter({ hasText: /Must ship/i }).first()).toBeVisible();
+    await expect(triage.filter({ hasText: /^Urgent/ }).first()).toBeVisible();
+    await expect(triage.filter({ hasText: /Out of stock|OOS/i }).first()).toBeVisible();
+    await expect(triage.filter({ hasText: /Awaiting customer/i }).first()).toBeVisible();
+    // Lifecycle tabs retired — must not reappear as Band-1 peers.
+    await expect(chrome.getByRole('button', { name: /^Pending$/ })).toHaveCount(0);
+    await expect(chrome.getByRole('button', { name: /^Tested$/ })).toHaveCount(0);
     await expect(row.locator('[data-col="status"]')).toHaveCount(0);
+
+    // Must-ship facet deep-links `?late=1` in one click (filter budget ≤2).
+    await triage.filter({ hasText: /Must ship/i }).first().click();
+    await expect(page).toHaveURL(/[?&]late=1/);
 
     const kpi = chrome.locator('[aria-label="Outbound attention"]').first();
     await expect(kpi).toBeVisible();

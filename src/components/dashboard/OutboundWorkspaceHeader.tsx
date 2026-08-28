@@ -76,6 +76,7 @@ export function OutboundWorkspaceHeader({
 
   const { pending: pendingCount, blocked: blockedCount } = fulfillmentLaneTotals(queueCounts);
   const urgentCount = queueCounts?.urgent ?? 0;
+  const mustShipCount = queueCounts?.mustShip ?? 0;
 
   const tabs = useMemo(
     () =>
@@ -85,11 +86,13 @@ export function OutboundWorkspaceHeader({
         count:
           id === 'all'
             ? (queueCounts?.total ?? pendingCount)
-            : id === 'urgent'
-              ? urgentCount || undefined
-              : id === 'blocked'
-                ? blockedCount || undefined
-                : undefined,
+            : id === 'must_ship'
+              ? mustShipCount || undefined
+              : id === 'urgent'
+                ? urgentCount || undefined
+                : id === 'blocked'
+                  ? blockedCount || undefined
+                  : undefined,
         color: (id === 'all'
           ? 'blue'
           : id === 'must_ship'
@@ -100,7 +103,7 @@ export function OutboundWorkspaceHeader({
                 ? 'red'
                 : 'gray') as 'blue' | 'red' | 'orange' | 'gray',
       })),
-    [queueCounts?.total, pendingCount, urgentCount, blockedCount],
+    [queueCounts?.total, pendingCount, mustShipCount, urgentCount, blockedCount],
   );
 
   const onTabChange = useCallback(

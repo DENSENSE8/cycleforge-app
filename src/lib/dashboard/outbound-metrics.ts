@@ -76,6 +76,8 @@ export interface OutboundMetricCtx {
     blocked: number;
     /** Operator-flagged expedited rows (`orders.is_urgent`). */
     urgent: number;
+    /** Ship-by today or past (PST) — Must-ship facet. */
+    mustShip?: number;
     /** Open ready-to-pack packages currently at a packing DESK/STAGING. */
     atStations?: number;
   };
@@ -126,6 +128,11 @@ export interface ComputedMetric {
    */
   filterAttention?: boolean;
   /**
+   * When set, the tile toggles Must-ship (`?late=1` — ship-by today or past, PST).
+   * Same facet as Band-1 Must ship. Mutually exclusive with the other To-ship filters.
+   */
+  filterLate?: boolean;
+  /**
    * When set, the tile toggles packing-station placement filter (`?packPlaced=1`).
    * Mutually exclusive with lifecycle filters.
    */
@@ -133,7 +140,7 @@ export interface ComputedMetric {
 }
 
 /** Pinned left queue cluster on the unshipped strip — fixed display order. */
-const OUTBOUND_QUEUE_ZONE_IDS = ['pending', 'urgent', 'blocked'] as const;
+const OUTBOUND_QUEUE_ZONE_IDS = ['pending', 'mustShip', 'urgent', 'blocked'] as const;
 
 export interface OutboundMetricDef {
   id: string;
@@ -311,7 +318,7 @@ export const OUTBOUND_METRICS: OutboundMetricDef[] = [
     label: 'Pending',
     modes: ['unshipped'],
     compute: ({ unshipped }) => {
-      // Pending tab total = awaiting-test lane + out-of-stock (matches tab badge).
+      // Awaiting-test lane + out-of-stock — the open in-warehouse pressure.
       const tabTotal = unshipped.pending + unshipped.blocked;
       if (tabTotal <= 0) return null;
       return {
@@ -324,8 +331,28 @@ export const OUTBOUND_METRICS: OutboundMetricDef[] = [
         // kept > 0 so empty-queue all-clear still works when nothing else shows.
         severity: 1,
         status: 'In queue',
-        tooltip: `Pending tab (awaiting test + out of stock) · ${tabTotal}. Click to show the full Pending tab.`,
+        tooltip: `In-warehouse awaiting test + out of stock · ${tabTotal}. Click to clear triage facets (All).`,
         filterUstatus: 'PENDING',
+      };
+    },
+  },
+  {
+    id: 'mustShip',
+    label: 'Must ship',
+    modes: ['unshipped'],
+    compute: ({ unshipped }) => {
+      const n = unshipped.mustShip ?? 0;
+      if (n <= 0) return null;
+      return {
+        id: 'mustShip',
+        label: 'Must ship',
+        value: n.toLocaleString(),
+        fraction: share(n, unshipped.total || n),
+        intent: 'bad',
+        severity: 3,
+        status: 'Ship by today',
+        tooltip: `Ship-by today or past (PST) · ${n}. Click to filter Must ship (?late=1).`,
+        filterLate: true,
       };
     },
   },
@@ -385,7 +412,7 @@ export const OUTBOUND_METRICS: OutboundMetricDef[] = [
         // cluster) so Pending / Urgent / OOS stay leftmost.
         severity: 1,
         status: 'In queue',
-        tooltip: `Tested & ready to pack ÷ open queue · ${unshipped.tested}/${denom}. Click to filter the board.`,
+        tooltip: `Tested & ready to pack ÷ open queue · ${unshipped.tested}/${denom}. Click to filter Ready (?ustatus=TESTED).`,
         filterUstatus: 'TESTED',
       };
     },

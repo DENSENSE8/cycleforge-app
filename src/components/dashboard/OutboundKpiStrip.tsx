@@ -51,6 +51,7 @@ const EMPTY_UNSHIPPED = {
   tested: 0,
   blocked: 0,
   urgent: 0,
+  mustShip: 0,
   atStations: 0,
 };
 
@@ -60,11 +61,13 @@ type ToShipFilter = {
   active: FulfillmentState | null;
   orderView: DashboardOrderView;
   urgentOnly: boolean;
+  lateOnly: boolean;
   packPlacedOnly: boolean;
   toggle: (state: FulfillmentState) => void;
   selectView: (view: DashboardOrderView) => void;
   toggleBlocked: () => void;
   toggleUrgent: () => void;
+  toggleMustShip: () => void;
   togglePackPlaced: () => void;
   selectPendingTab: () => void;
 };
@@ -93,20 +96,25 @@ function MetricKpiTile({
   const shippedClickable = Boolean(metric.filterState && filter);
   const toShipClickable = Boolean(
     toShipFilter &&
-      (metric.filterUstatus || metric.filterAttention || metric.filterPackPlaced),
+      (metric.filterUstatus ||
+        metric.filterAttention ||
+        metric.filterLate ||
+        metric.filterPackPlaced),
   );
   const clickable = shippedClickable || toShipClickable;
   const lane = metric.filterUstatus;
   const active = Boolean(
     (metric.filterState && filter?.active === metric.filterState) ||
       (metric.filterAttention && toShipFilter?.urgentOnly) ||
+      (metric.filterLate && toShipFilter?.lateOnly) ||
       (metric.filterPackPlaced && toShipFilter?.packPlacedOnly) ||
       (lane === 'BLOCKED' && toShipFilter?.active === 'BLOCKED') ||
-      (lane === 'TESTED' && toShipFilter?.orderView === 'tested') ||
+      (lane === 'TESTED' && toShipFilter?.active === 'TESTED') ||
       (lane === 'PENDING' &&
-        toShipFilter?.orderView === 'unshipped' &&
         toShipFilter?.active !== 'BLOCKED' &&
-        !toShipFilter?.urgentOnly),
+        toShipFilter?.active !== 'TESTED' &&
+        !toShipFilter?.urgentOnly &&
+        !toShipFilter?.lateOnly),
   );
 
   const toneHero = metric.intent === 'warn' || metric.intent === 'bad';
@@ -119,13 +127,17 @@ function MetricKpiTile({
             toShipFilter.togglePackPlaced();
             return;
           }
+          if (metric.filterLate) {
+            toShipFilter.toggleMustShip();
+            return;
+          }
           if (metric.filterAttention) {
             toShipFilter.toggleUrgent();
             return;
           }
           if (lane === 'TESTED') {
-            if (toShipFilter.orderView === 'tested') toShipFilter.selectView('unshipped');
-            else toShipFilter.selectView('tested');
+            // Same list, `?ustatus=TESTED` — not a lifecycle tab swap.
+            toShipFilter.toggle('TESTED');
             return;
           }
           if (lane === 'PENDING') {
@@ -235,9 +247,11 @@ function UnshippedStrip() {
   const {
     active,
     urgentOnly,
+    lateOnly,
     toggle,
     toggleBlocked,
     toggleUrgent,
+    toggleMustShip,
     selectPendingTab,
     selectLifecycleTab,
     togglePackPlaced,
@@ -251,6 +265,7 @@ function UnshippedStrip() {
     active,
     orderView,
     urgentOnly,
+    lateOnly,
     packPlacedOnly,
     toggle,
     selectView: (view) => {
@@ -258,6 +273,7 @@ function UnshippedStrip() {
     },
     toggleBlocked,
     toggleUrgent,
+    toggleMustShip,
     togglePackPlaced,
     selectPendingTab,
   };
@@ -269,6 +285,7 @@ function UnshippedStrip() {
     tested: data?.byStage.tested ?? 0,
     blocked: (data?.combos ?? []).reduce((s, c) => s + (c.blocked ? c.count : 0), 0),
     urgent: data?.urgent ?? 0,
+    mustShip: data?.mustShip ?? 0,
     atStations: data?.packPlacement?.totalPlaced ?? 0,
   };
 

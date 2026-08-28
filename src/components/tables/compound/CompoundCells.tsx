@@ -197,15 +197,29 @@ export function CompoundItem({
     <CompoundLine className="text-text-faint italic">Add note…</CompoundLine>
   ) : null;
 
+  const flagMark = view.flagMark ?? null;
+  const titleLine = view.title ? (
+    <HoverTooltip label={view.title} asChild>
+      <CompoundLine>{view.title}</CompoundLine>
+    </HoverTooltip>
+  ) : (
+    <span className="text-text-faint">Untitled</span>
+  );
+
   return (
     <CompoundCell
       primary={
-        view.title ? (
-          <HoverTooltip label={view.title} asChild>
-            <CompoundLine>{view.title}</CompoundLine>
-          </HoverTooltip>
+        flagMark ? (
+          <span className="flex min-w-0 items-center gap-1.5">
+            <HoverTooltip label={flagMark.tip} focusable={false}>
+              <span className={cn('h-2 w-2 shrink-0 rounded-full', flagMark.dotClass)}>
+                <span className="sr-only">{`Flagged ${flagMark.label}`}</span>
+              </span>
+            </HoverTooltip>
+            {titleLine}
+          </span>
         ) : (
-          <span className="text-text-faint">Untitled</span>
+          titleLine
         )
       }
       secondary={

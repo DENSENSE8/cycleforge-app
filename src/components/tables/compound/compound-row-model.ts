@@ -56,6 +56,15 @@ export interface CompoundRowView {
    * under a title is what somebody wrote about this specific row.
    */
   note: string | null;
+  /**
+   * Optional triage flag mark beside the title — the wash's non-colour carrier
+   * (Orders row flags). Presentational only: label + tip + solid-dot class.
+   */
+  flagMark?: {
+    label: string;
+    tip: string;
+    dotClass: string;
+  } | null;
 
   /** Column 3 top — the fulfillment handle (order #, PO). */
   orderId: string | null;
