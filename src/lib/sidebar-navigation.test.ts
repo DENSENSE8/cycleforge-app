@@ -6,7 +6,7 @@ import {
   isSidebarRouteMobileRestricted,
   isSidebarNavActive,
   isSidebarTopPinActive,
-  isSpineBandTopPin,
+  isSpineMapTopRow,
   SIDEBAR_PAGE_NAV,
   getSidebarPageNav,
   getSidebarHref,
@@ -82,10 +82,10 @@ test('plans-live pin requires operations.plans.view', () => {
   );
 });
 
-test('Search, Plans, and Chat stay in the registry but stay off the spine band', () => {
+test('Search, Plans, and Chat stay in the registry but stay off the spine map', () => {
   const items = getSidebarNavItems();
-  const bandIds = items.filter(isSpineBandTopPin).map((item) => item.id);
-  assert.deepEqual(bandIds, ['home', 'ops-photos']);
+  const mapTopIds = items.filter(isSpineMapTopRow).map((item) => item.id);
+  assert.deepEqual(mapTopIds, ['home', 'ops-photos']);
 
   const search = items.find((item) => item.id === 'search');
   const plans = items.find((item) => item.id === 'plans-live');
@@ -95,9 +95,12 @@ test('Search, Plans, and Chat stay in the registry but stay off the spine band',
   assert.equal(search.spineBand, false);
   assert.equal(plans.spineBand, false);
   assert.equal(chat.spineBand, false);
-  assert.equal(isSpineBandTopPin(search), false);
-  assert.equal(isSpineBandTopPin(plans), false);
-  assert.equal(isSpineBandTopPin(chat), false);
+  assert.equal(isSpineMapTopRow(search), false);
+  assert.equal(isSpineMapTopRow(plans), false);
+  assert.equal(isSpineMapTopRow(chat), false);
+
+  const media = items.find((item) => item.id === 'ops-photos');
+  assert.equal(media?.label, 'Media Library');
 });
 
 test('getSidebarNavItems omits mobile-restricted routes in mobile mode', () => {

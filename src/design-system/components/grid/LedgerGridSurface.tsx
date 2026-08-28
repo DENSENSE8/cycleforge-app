@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, type ReactNode, type Ref, type RefObject } from 'react';
 import type { ColumnOrderState, OnChangeFn, SortingState } from '@tanstack/react-table';
-import { SkeletonList } from '@/design-system/components/Skeletons';
+import { LedgerGridSkeleton } from '@/design-system/components/grid/LedgerGridSkeleton';
 import { GridColumnGutter } from '@/design-system/components/grid/GridColumnDetailsTrigger';
 import { LedgerGrid } from '@/design-system/components/grid/LedgerGrid';
 import { useGridColumnWidths } from '@/components/ui/table-column-config/useGridColumnWidths';
@@ -468,6 +468,12 @@ export function LedgerGridSurface<Row, K extends string, C extends LedgerGridCol
           ref={shellRef as Ref<HTMLDivElement> | undefined}
           data-testid={testId}
           data-table-surface={surface === 'sheet' ? 'sheet' : ''}
+          // A ledger grid is a data-collection REGION, so it carries Band 2
+          // regardless of the page around it (a table tile is Band 2 even on a
+          // station canvas; the scan path never runs through this component).
+          // Resolves --cf-motion-status for the cold-start skeleton — see the
+          // motion-band block in src/styles/globals.css.
+          data-motion="2"
           className={cn(
             'flex min-w-0 w-full flex-col',
             // Ancestor-scroll hosts grow with content; self-scroll hosts fill.
@@ -477,9 +483,10 @@ export function LedgerGridSurface<Row, K extends string, C extends LedgerGridCol
           )}
         >
           {showSkeleton ? (
-            <div className="p-3">
-              <SkeletonList count={12} type="row" />
-            </div>
+            // Full-bleed, geometry-true stand-in: same row box as the grid it
+            // becomes (no `p-3` — padding on a flush sheet broke the L1
+            // repaint-not-reflow contract).
+            <LedgerGridSkeleton rowEstimate={rowEstimate} />
           ) : (
             <LedgerGrid<Row>
               scrollX

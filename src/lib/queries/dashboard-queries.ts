@@ -38,9 +38,9 @@ export interface OrderQueryParams {
   /** Universal staff filter (P1-WORK-02): one staff's assigned work, or all. */
   staffId?: number;
   strictSearchScope?: boolean;
-  /** Coarse stage facet (?stage), filtered SERVER-side in Phase 1; absent = all
-   *  stages. Fulfillment STATE / lane (?ustatus) stays a client filter (Decision 8). */
-  stage?: 'pending' | 'tested';
+  /** Coarse stage facet (?stage), filtered SERVER-side; absent = all
+   *  in-warehouse stages. Fulfillment STATE / lane (?ustatus) stays a client filter. */
+  stage?: 'pending' | 'tested' | 'packed';
   /** Row ceiling for the fulfillment page (Phase 2). Grows on "Load more"; the
    *  server truncates + the counts endpoint's total drives whether more exist. */
   limit?: number;

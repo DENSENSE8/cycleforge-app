@@ -1,7 +1,11 @@
-import { sourcePlatformMetaFromLabel } from '@/lib/source-platform';
+import {
+  inferMarketplaceFromOrderId,
+  normalizeMarketplaceOrderId,
+} from '@/lib/marketplace-order-id';
+import { sourcePlatformMeta, sourcePlatformMetaFromLabel } from '@/lib/source-platform';
 
 export function getOrderPlatformLabel(orderId: string | null | undefined, accountSource: string | null | undefined): string {
-  const oid = String(orderId ?? '').trim();
+  const oid = normalizeMarketplaceOrderId(orderId);
   if (oid === 'Not available' || oid === 'N/A') return ''; // ds-allow-na: legacy protocol empty reader
 
   /** Pack/tech rows often lack a linked marketplace order id; still show channel from account_source. */
@@ -13,16 +17,13 @@ export function getOrderPlatformLabel(orderId: string | null | undefined, accoun
     return String(accountSource || '').trim();
   }
 
+  // Exact marketplace shapes win over account_source / listing — a Zoho-imported
+  // eBay 2-5-5 or Amazon 3-7-7 is still that marketplace's order number.
+  const inferred = inferMarketplaceFromOrderId(oid);
+  if (inferred) return sourcePlatformMeta(inferred).label;
+
   if (isFbaOrder(oid, accountSource)) {
     return 'FBA';
-  }
-
-  if (/^\d{3}-\d+-\d+$/.test(oid)) {
-    return 'Amazon';
-  }
-
-  if (/^\d{2}-\d+-\d+$/.test(oid)) {
-    return 'ebay';
   }
 
   if (/^\d{15}$/.test(oid)) {
@@ -78,19 +79,20 @@ export function marketplaceOrderUrl(
   orderId: string | null | undefined,
   accountSource: string | null | undefined,
 ): string | null {
-  const oid = String(orderId ?? '').trim();
+  const oid = normalizeMarketplaceOrderId(orderId);
   if (!oid || oid === 'Not available' || oid === 'N/A') return null; // ds-allow-na: legacy protocol empty reader
   if (isFbaOrder(oid, accountSource)) return null;
 
+  const inferred = inferMarketplaceFromOrderId(oid);
   const label = getOrderPlatformLabel(oid, accountSource).toLowerCase();
   const src = String(accountSource || '').trim().toLowerCase();
 
-  // Amazon MFN order id shape 123-1234567-1234567
-  if (label === 'amazon' || /^\d{3}-\d+-\d+$/.test(oid)) {
+  // Amazon SP-API AmazonOrderId — official 3-7-7
+  if (inferred === 'amazon' || label === 'amazon') {
     return `https://sellercentral.amazon.com/orders-v3/order/${encodeURIComponent(oid)}`;
   }
-  // eBay order id 12-12345-12345 (or longer legacy forms)
-  if (label === 'ebay' || src === 'ebay' || /^\d{2}-\d+-\d+$/.test(oid)) {
+  // eBay Seller Hub / receipt order number — 2-5-5
+  if (inferred === 'ebay' || label === 'ebay' || src === 'ebay') {
     return `https://www.ebay.com/mesh/ord/details?orderid=${encodeURIComponent(oid)}`;
   }
   // Walmart 15-digit

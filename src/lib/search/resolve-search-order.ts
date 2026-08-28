@@ -120,6 +120,16 @@ async function fetchOrderByNumericId(id: number): Promise<ResolvedSearchOrder> {
 }
 
 /**
+ * `/search?sel=order:{pk}` — resolve by primary key only.
+ * Typed marketplace #s / tracking stay on {@link resolveSearchOrder}; never
+ * treat a selection pk as an Ecwid/Amazon order_id string.
+ */
+export async function resolveSearchOrderByPk(orderPk: number): Promise<ResolvedSearchOrder> {
+  if (!Number.isSafeInteger(orderPk) || orderPk <= 0) return { status: 'notfound' };
+  return fetchOrderByNumericId(orderPk);
+}
+
+/**
  * Resolve Search / `/o` openOrderId — numeric pk, human order #, or carrier
  * tracking (`/api/orders/lookup` falls through to tracking when order_id misses).
  */
@@ -132,22 +142,36 @@ export async function resolveSearchOrder(orderId: string): Promise<ResolvedSearc
       credentials: 'include',
       cache: 'no-store',
     });
-    if (!res.ok) return { status: 'notfound' };
-    const payload = (await res.json())?.order as Record<string, unknown> | undefined;
-    if (!payload) return { status: 'notfound' };
-    if (isFbaOrder(asString(payload.order_id), asNullableString(payload.account_source))) {
-      return { status: 'fba' };
+    if (res.ok) {
+      const payload = (await res.json())?.order as Record<string, unknown> | undefined;
+      if (payload) {
+        if (isFbaOrder(asString(payload.order_id), asNullableString(payload.account_source))) {
+          return { status: 'fba' };
+        }
+
+        const lookupId = Number(payload.id);
+        if (Number.isFinite(lookupId) && lookupId > 0) {
+          const fromNumeric = await fetchOrderByNumericId(lookupId);
+          if (fromNumeric.status !== 'notfound') return fromNumeric;
+        }
+
+        // Lookup found the order but queue/single-order fetches missed — still show detail.
+        const fromLookup = toShippedOrderFromApi(payload);
+        if (fromLookup) return { status: 'ok', order: fromLookup };
+      }
     }
 
-    const lookupId = Number(payload.id);
-    if (Number.isFinite(lookupId) && lookupId > 0) {
-      const fromNumeric = await fetchOrderByNumericId(lookupId);
-      if (fromNumeric.status !== 'notfound') return fromNumeric;
+    // `?sel=order:{pk}` and cache aliases pass the numeric pk as a string. Lookup
+    // treats bare digits as marketplace order #s — if that misses, try pk.
+    if (/^\d+$/.test(raw)) {
+      const asPk = Number(raw);
+      if (Number.isSafeInteger(asPk) && asPk > 0) {
+        const byPk = await fetchOrderByNumericId(asPk);
+        if (byPk.status !== 'notfound') return byPk;
+      }
     }
 
-    // Lookup found the order but queue/single-order fetches missed — still show detail.
-    const fromLookup = toShippedOrderFromApi(payload);
-    return fromLookup ? { status: 'ok', order: fromLookup } : { status: 'notfound' };
+    return { status: 'notfound' };
   } catch {
     return { status: 'notfound' };
   }

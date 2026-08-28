@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { CartonContextCard } from '@/components/station/entity-context';
 import { getTrackingUrl } from '@/utils/order-links';
 import type { ActiveStationOrder } from '@/hooks/useStationTestingController';
+import { displayPlatformSlugFromOrderId } from '@/lib/marketplace-order-id';
 import { resolveShippingListingLinks } from './shipping-listing-links';
 
 /**
@@ -33,13 +34,14 @@ export function ShippingEntityContextHeader({
     [activeOrder.itemNumber, activeOrder.sku],
   );
 
+  const resolvedPlatform = displayPlatformSlugFromOrderId(orderId, platformKey);
   const [listingLink, setListingLink] = useState(listingUrl ?? '');
-  const [platformValue, setPlatformValue] = useState(platformKey);
+  const [platformValue, setPlatformValue] = useState(resolvedPlatform);
 
   useEffect(() => {
     setListingLink(listingUrl ?? '');
-    setPlatformValue(platformKey);
-  }, [activeOrder.orderId, activeOrder.tracking, listingItemKey, listingUrl, platformKey]);
+    setPlatformValue(resolvedPlatform);
+  }, [activeOrder.orderId, activeOrder.tracking, listingItemKey, listingUrl, resolvedPlatform]);
 
   return (
     <CartonContextCard

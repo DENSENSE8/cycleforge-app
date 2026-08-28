@@ -23,6 +23,7 @@ import { SERIAL_ABSENT_REASONS } from '@/lib/receiving/serial-absent-reasons';
 import { STATION_COMMAND_FLOW_CONTEXT } from '@/lib/stations/station-command-codes';
 import { listSeedableCommandCodes } from '@/lib/stations/command-book';
 import { SYSTEM_PURPOSES } from '@/lib/sessions/purpose-catalog';
+import type { PlatformTypeRule } from '@/lib/receiving/platform-type-rules';
 
 export interface PlatformRow {
   id: number;
@@ -660,4 +661,133 @@ export async function updatePlatformAccount(
     [organizationId, id, data.label ?? null, setScope, data.integrationScope ?? null, data.isActive ?? null],
   );
   return res.rows[0] ?? null;
+}
+
+/**
+ * The org's platform → receiving-type dependency matrix, joined to slugs.
+ *
+ * Inactive platforms/types are filtered out here rather than in the resolver:
+ * a rule pointing at a retired catalog row is not a constraint anyone meant to
+ * keep, and leaving it in would narrow a picker to an option that no longer
+ * exists. Pairs with the pure helpers in `@/lib/receiving/platform-type-rules`.
+ */
+export async function listPlatformTypeRules(
+  organizationId: OrgId,
+): Promise<PlatformTypeRule[]> {
+  const { rows } = await tenantQuery<{
+    id: number;
+    platform_id: number;
+    type_id: number;
+    platform: string;
+    type: string;
+    type_label: string;
+    is_default: boolean;
+  }>(
+    organizationId,
+    `SELECT r.id, r.platform_id, r.type_id,
+            p.slug AS platform, t.slug AS type, t.label AS type_label, r.is_default
+       FROM platform_type_rules r
+       JOIN platforms p ON p.id = r.platform_id
+       JOIN types     t ON t.id = r.type_id
+      WHERE p.is_active AND t.is_active
+      ORDER BY p.slug, t.sort_order, t.slug`,
+  );
+  return rows.map((r) => ({
+    id: Number(r.id),
+    platformId: Number(r.platform_id),
+    typeId: Number(r.type_id),
+    platform: String(r.platform).toLowerCase(),
+    type: String(r.type).trim().toUpperCase(),
+    typeLabel: String(r.type_label),
+    isDefault: Boolean(r.is_default),
+  }));
+}
+
+/**
+ * Add one platform → type rule.
+ *
+ * Both ids are re-checked against THIS org's catalogs inside the statement, so
+ * a body carrying another tenant's id inserts nothing rather than linking
+ * across orgs. `ON CONFLICT DO NOTHING` makes a double-submit idempotent.
+ */
+export async function createPlatformTypeRule(
+  organizationId: OrgId,
+  data: { platformId: number; typeId: number; isDefault?: boolean },
+): Promise<{ ok: true; id: number } | { ok: false; reason: 'not_found' | 'exists' }> {
+  return withTenantTransaction(organizationId, async (client) => {
+    if (data.isDefault) {
+      await client.query(
+        `UPDATE platform_type_rules SET is_default = false, updated_at = now()
+          WHERE organization_id = $1 AND platform_id = $2 AND is_default`,
+        [organizationId, data.platformId],
+      );
+    }
+    const res = await client.query<{ id: number }>(
+      `INSERT INTO platform_type_rules (organization_id, platform_id, type_id, is_default)
+       SELECT $1, p.id, t.id, $4
+         FROM platforms p
+         JOIN types t ON t.organization_id = p.organization_id
+        WHERE p.organization_id = $1 AND p.id = $2 AND t.id = $3
+       ON CONFLICT (organization_id, platform_id, type_id) DO NOTHING
+       RETURNING id`,
+      [organizationId, data.platformId, data.typeId, Boolean(data.isDefault)],
+    );
+    if (res.rows.length) return { ok: true as const, id: Number(res.rows[0]!.id) };
+    const exists = await client.query(
+      `SELECT 1 FROM platform_type_rules
+        WHERE organization_id = $1 AND platform_id = $2 AND type_id = $3`,
+      [organizationId, data.platformId, data.typeId],
+    );
+    return { ok: false as const, reason: exists.rows.length ? 'exists' : 'not_found' };
+  });
+}
+
+/**
+ * Make one rule the platform's default.
+ *
+ * Clearing the old default and setting the new one happen in ONE transaction
+ * because `uq_platform_type_rules_org_platform_default` makes two defaults
+ * unrepresentable — two sequential requests from the client would collide on
+ * that index the moment anyone changes their mind. Passing `isDefault: false`
+ * just clears this row's flag, leaving the platform with no pre-selection.
+ */
+export async function setPlatformTypeRuleDefault(
+  organizationId: OrgId,
+  id: number,
+  isDefault: boolean,
+): Promise<boolean> {
+  return withTenantTransaction(organizationId, async (client) => {
+    const target = await client.query<{ platform_id: number }>(
+      `SELECT platform_id FROM platform_type_rules
+        WHERE organization_id = $1 AND id = $2`,
+      [organizationId, id],
+    );
+    if (!target.rows.length) return false;
+    if (isDefault) {
+      await client.query(
+        `UPDATE platform_type_rules SET is_default = false, updated_at = now()
+          WHERE organization_id = $1 AND platform_id = $2 AND is_default AND id <> $3`,
+        [organizationId, target.rows[0]!.platform_id, id],
+      );
+    }
+    await client.query(
+      `UPDATE platform_type_rules SET is_default = $3, updated_at = now()
+        WHERE organization_id = $1 AND id = $2`,
+      [organizationId, id, isDefault],
+    );
+    return true;
+  });
+}
+
+/** Drop one rule. Removing a platform's LAST rule reopens it to every type. */
+export async function deletePlatformTypeRule(
+  organizationId: OrgId,
+  id: number,
+): Promise<boolean> {
+  const res = await tenantQuery(
+    organizationId,
+    `DELETE FROM platform_type_rules WHERE organization_id = $1 AND id = $2`,
+    [organizationId, id],
+  );
+  return (res.rowCount ?? 0) > 0;
 }

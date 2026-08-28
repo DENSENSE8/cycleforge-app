@@ -115,7 +115,7 @@ test('the guess-vs-decode rule has ONE home, and callers compose it', () => {
     'src/lib/receiving/history-command-scan.ts',
     'src/lib/keyboard/find-field-scan.ts',
     'src/lib/search/internal-id.ts',
-    'src/components/search/GlobalFindCombobox.tsx',
+    'src/components/CommandBar.tsx',
   ]) {
     assert.match(read(path), /decodedHandle/, path);
   }

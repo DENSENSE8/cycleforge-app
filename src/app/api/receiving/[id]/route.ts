@@ -9,6 +9,12 @@ import { publishReceivingLogChanged } from '@/lib/realtime/publish';
 import { registerShipmentPermissive } from '@/lib/shipping/sync-shipment';
 import { readTimeline } from '@/lib/inventory/events';
 import { requireRoutePerm } from '@/lib/auth/dynamic-route-guard';
+import {
+  allowedTypesForPlatform,
+  isPairAllowed,
+  reconcileTypeForPlatform,
+} from '@/lib/receiving/platform-type-rules';
+import { getOrgPlatformTypeRules } from '@/lib/catalog/org-catalog';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import { getOrgPlatforms, getOrgTypes } from '@/lib/catalog/org-catalog';
 import { getReceivingSchema } from '@/lib/receiving-schema-cache';
@@ -483,6 +489,13 @@ export async function PATCH(
     }
 
     const updates: string[] = [];
+
+    // Platform→type dependency needs the pair the row will HAVE, so both
+    // sides are captured as they are handled. `undefined` = not in this body.
+    let nextPlatform: string | null | undefined;
+    let nextIntakeType: string | null | undefined;
+    let intakeProvided = false;
+    const norm = (v: string | null | undefined) => String(v ?? '').trim().toUpperCase();
     const values: unknown[] = [];
     let idx = 1;
 
@@ -555,6 +568,7 @@ export async function PATCH(
           );
         }
       }
+      nextPlatform = next;
       updates.push(`source_platform = $${idx++}`);
       values.push(next);
     }
@@ -586,21 +600,11 @@ export async function PATCH(
 
     // Carton-level default receiving type (PO|RETURN|TRADE_IN + org custom).
     // Per-line receiving_lines.receiving_type overrides this; null clears it.
-    if (Object.prototype.hasOwnProperty.call(body, 'intake_type')) {
-      const raw = body.intake_type;
-      const next = raw == null || raw === '' ? null : String(raw).trim().toUpperCase();
-      if (next != null) {
-        const allowed = new Set([
-          ...INTAKE_TYPES,
-          ...(await getOrgTypes(ctx.organizationId)).map((t) => t.slug.toUpperCase()),
-        ]);
-        if (!allowed.has(next)) {
-          return NextResponse.json(
-            { success: false, error: `Invalid intake_type. Allowed: ${Array.from(allowed).join(', ')}` },
-            { status: 400 },
-          );
-        }
-      }
+    //
+    // Shared with the platform→type reconcile below, which writes the same two
+    // columns when a platform change orphans the type. One writer, so the
+    // normalized `type_id` link can never drift from the `intake_type` cache.
+    const writeIntakeType = async (next: string | null) => {
       updates.push(`intake_type = $${idx++}`);
       values.push(next);
 
@@ -618,6 +622,103 @@ export async function PATCH(
         updates.push(`type_id = $${idx++}`);
         values.push(typeId);
       }
+    };
+
+    if (Object.prototype.hasOwnProperty.call(body, 'intake_type')) {
+      const raw = body.intake_type;
+      const next = raw == null || raw === '' ? null : String(raw).trim().toUpperCase();
+      if (next != null) {
+        const allowed = new Set([
+          ...INTAKE_TYPES,
+          ...(await getOrgTypes(ctx.organizationId)).map((t) => t.slug.toUpperCase()),
+        ]);
+        if (!allowed.has(next)) {
+          return NextResponse.json(
+            { success: false, error: `Invalid intake_type. Allowed: ${Array.from(allowed).join(', ')}` },
+            { status: 400 },
+          );
+        }
+      }
+      intakeProvided = true;
+      nextIntakeType = next;
+    }
+
+    /**
+     * Platform → type dependency (`platform_type_rules`).
+     *
+     * This is the layer that matters: the classify pill already narrows its
+     * options, but a scan, an import, or any other client can set
+     * `source_platform` without ever touching the type pill. Validate the pair
+     * the row will HAVE, not the field that happened to arrive — that is the
+     * dependent-picklist failure mode where each value is fine alone and the
+     * combination is not.
+     *
+     * Two different answers, deliberately:
+     *  - the caller NAMED a type the platform forbids → 400. They said
+     *    something wrong, and guessing past it would hide the mistake.
+     *  - otherwise the rule answers: an orphaned type is switched, and an
+     *    ABSENT one (including an explicit clear) is filled in. On a platform
+     *    with one legal answer "no type" is not a state anyone means — it
+     *    renders through the effective-type fallback, spelled `?? 'PO'` in six
+     *    separate modules, so a typeless FBA carton reads as a purchase order.
+     *    An FBA carton is a return. Storing the value beats teaching those six
+     *    fallbacks about rules: one write is right everywhere, exports and
+     *    anything added later included.
+     *
+     * Rejecting the platform move instead would make the platform pill unusable
+     * on a mis-filed carton — you would have to clear the type first, then set
+     * the platform, to say one thing.
+     */
+    if (nextPlatform !== undefined || intakeProvided) {
+      const rules = await getOrgPlatformTypeRules(ctx.organizationId);
+      if (rules.length > 0) {
+        let platform = nextPlatform;
+        let intake = nextIntakeType;
+        let currentIntake: string | null = null;
+        if (platform === undefined || !intakeProvided) {
+          const cur = await tenantQuery<{
+            source_platform: string | null;
+            intake_type: string | null;
+          }>(
+            ctx.organizationId,
+            `SELECT source_platform, intake_type FROM receiving_carton
+              WHERE id = $1 AND organization_id = $2 LIMIT 1`,
+            [id, ctx.organizationId],
+          );
+          const cr = cur.rows[0];
+          currentIntake = cr?.intake_type ?? null;
+          if (platform === undefined) platform = cr?.source_platform ?? null;
+          if (!intakeProvided) intake = currentIntake;
+        }
+
+        if (intakeProvided && !isPairAllowed(rules, platform, intake)) {
+          const allowed = allowedTypesForPlatform(rules, platform) ?? [];
+          return NextResponse.json(
+            {
+              success: false,
+              error:
+                `Invalid intake_type for platform "${platform ?? ''}". ` +
+                `Allowed: ${allowed.join(', ') || '(none)'}`,
+            },
+            { status: 400 },
+          );
+        }
+
+        const settled = reconcileTypeForPlatform(rules, platform, intake);
+        if (norm(settled) !== norm(intake)) {
+          nextIntakeType = settled;
+          intakeProvided = true;
+        }
+      }
+    }
+
+    // ONE assignment to intake_type / type_id per UPDATE. The rules block above
+    // can revise what the caller sent (or supply a value they never sent), so
+    // the column is written here, once, after everything has had its say —
+    // pushing inside each branch produced two `SET intake_type = …` clauses in
+    // the same statement, which Postgres rejects outright.
+    if (intakeProvided) {
+      await writeIntakeType(nextIntakeType ?? null);
     }
 
     // PO# linkage — writing either field with a non-null value flips

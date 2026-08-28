@@ -60,8 +60,9 @@ async function mockGlobalSearch(page: Page, rows: typeof MULTI_ROWS) {
 async function openFindAndQuery(page: Page, query: string) {
   await page.goto('/search', { waitUntil: 'domcontentloaded' });
   await expect(page.locator(FIND)).toBeVisible({ timeout: 45_000 });
-  const input = page.locator(FIND).locator('input');
-  await input.click();
+  await page.locator(FIND).click();
+  const input = page.getByTestId('global-find-input');
+  await expect(input).toBeVisible();
   const response = page.waitForResponse(
     (res) => res.url().includes('/api/global-search') && res.ok(),
     { timeout: 15_000 },
@@ -95,10 +96,11 @@ test.describe('header find — title-only + sole match', () => {
     await expect(page.locator(HIT).first()).toHaveText('Bose Wave Radio AWR1-1W');
   });
 
-  test('sole matching result opens the searched page instantly', async ({ page }) => {
+  test('sole matching result opens the searched page when chosen', async ({ page }) => {
     await mockGlobalSearch(page, SOLE_ROW);
     await openFindAndQuery(page, 'Bose TV Speaker');
 
+    await page.locator('[cmdk-item]').filter({ has: page.locator(HIT) }).click();
     await expect(page).toHaveURL(/\/search\?sel=receiving:51908/, { timeout: 15_000 });
   });
 });

@@ -555,6 +555,115 @@ export interface ReceivingLinesListSqlInput {
    * defaults false so the flag-off SQL stays byte-identical (build-sql.test.ts).
    */
   unboxRailColumnRead?: boolean;
+  /**
+   * Gate-before-decorate pre-limit for `view=scanned` (2026-08-27): the route
+   * ranked the qualifying LINE ids with {@link buildScannedCandidateSql}
+   * (gates only, no display laterals) and narrows this query to them. Line-
+   * grained on purpose — `rl.receiving_id` is NULL for PO#-fallback lines, so
+   * the carton-grained `receivingIdIn` arm would silently drop them. Optional /
+   * absent keeps the SQL byte-identical to the fixture (build-sql.test.ts).
+   */
+  scannedLineIdIn?: readonly number[];
+}
+
+/**
+ * `view=scanned` membership — door-scanned and physically in, but NOT yet
+ * unboxed: the triage to-do between the door scan and the unbox step, the
+ * inverse of `activity`. Shared by the main list WHERE arm and
+ * {@link buildScannedCandidateSql} so the gate cannot drift between the two.
+ * Alias contract: `rl` · `r` · `rt` · `ru`; interpolates the caller's
+ * flag-dependent `unboxOpenedPredicate` at the tail.
+ */
+export function scannedViewPredicateSql(unboxOpenedPredicate: string): string {
+  return `(rt.door_received_at IS NOT NULL
+          OR EXISTS (SELECT 1 FROM receiving_scans rs_scanned WHERE rs_scanned.receiving_id = r.id))
+         AND ru.unboxed_at IS NULL
+         -- Ops event spine: a carton that's been unboxed must never leak back
+         -- into the triage "to unbox" queue even if legacy stamps (unboxed_at /
+         -- qty_received / workflow_status) failed to roll up.
+         AND NOT EXISTS (
+           SELECT 1 FROM ops_events oe_unbox
+            WHERE oe_unbox.organization_id = rl.organization_id
+              AND oe_unbox.entity_type = 'receiving'
+              AND oe_unbox.entity_id = r.id
+              AND oe_unbox.event_type = 'UNBOX_CONFIRMED'
+         )
+         AND COALESCE(rl.quantity_received, 0) = 0
+         AND (rl.workflow_status IS NULL
+              OR rl.workflow_status IN ('EXPECTED','ARRIVED','MATCHED'))
+         -- …and the line has produced NO units. A serial_unit means the carton
+         -- was already unboxed/labeled/received at the unit level — but a
+         -- unit-level receive doesn't always roll up to the line's
+         -- quantity_received / workflow_status / receiving_carton.unboxed_at, so those
+         -- alone let an already-unboxed carton leak back into the "to unbox"
+         -- queue. Origin-line existence is the authoritative "this was opened"
+         -- signal, so exclude it here.
+         AND NOT EXISTS (
+           SELECT 1 FROM serial_unit_provenance p
+            WHERE p.origin_type = 'RECEIVING_LINE' AND p.origin_id = rl.id
+              AND p.organization_id = rl.organization_id
+         )
+         -- Unbox-surface scans belong in view=unbox_opened only — never triage.
+         AND NOT ${unboxOpenedPredicate}`;
+}
+
+/**
+ * Gate-before-decorate candidate ranking for `view=scanned&sort=priority` —
+ * the /triage rail's cold-load shape.
+ *
+ * The full list query runs ~15 display laterals over EVERY candidate its join
+ * graph admits and only then applies the scanned gates. Measured 2026-08-27
+ * (EXPLAIN ANALYZE, warm, dogfood org): 317 candidates decorated, 19
+ * survivors — 368ms / 54,985 shared buffers to return 19 rows. This query is
+ * the SAME gates ({@link scannedViewPredicateSql} — one predicate, two
+ * consumers, no drift) and the same priority ORDER BY with zero decorations;
+ * the caller narrows the real list query to the ids it names
+ * (`scannedLineIdIn`), so the laterals only decorate rows that can reach the
+ * page. Same mechanism as `maybePreLimitUnboxOpened`, line-grained.
+ */
+export function buildScannedCandidateSql(input: {
+  orgId: string;
+  limit: number;
+  applyScannedZohoExclusion: boolean;
+  unboxRailColumnRead: boolean;
+}): BuiltSql {
+  const unboxOpenedPredicate = unboxOpenedPredicateSql(input.unboxRailColumnRead === true);
+  const zohoArm = input.applyScannedZohoExclusion
+    ? `\n          AND ${NOT_ZOHO_RECEIVED_PREDICATE}`
+    : '';
+  return {
+    sql: `SELECT rl.id
+         FROM receiving_line rl
+         LEFT JOIN receiving_line_zoho rz     ON rz.receiving_line_id = rl.id AND rz.organization_id = rl.organization_id
+         LEFT JOIN zoho_po_mirror mirror
+           ON mirror.zoho_purchaseorder_id = rz.zoho_purchaseorder_id
+          AND mirror.organization_id = rl.organization_id
+         -- D1 wrong-shipment guard, verbatim from the list query: direct FK
+         -- wins, else prefer a row that carries a shipment, else the newest.
+         LEFT JOIN LATERAL (
+           SELECT r.* FROM receiving_carton r
+            WHERE r.organization_id = rl.organization_id
+              AND (r.id = rl.receiving_id
+               OR (rl.receiving_id IS NULL
+                   AND r.source = 'zoho_po'
+                   AND r.zoho_purchaseorder_id = rz.zoho_purchaseorder_id)
+               OR (rl.receiving_id IS NULL
+                   AND ${INBOUND_MARKETPLACE_CARTON_SOURCES_SQL}
+                   AND r.source_order_id = rl.source_order_id
+                   AND r.organization_id = rl.organization_id))
+            ORDER BY (r.id = rl.receiving_id) DESC,
+                     (r.shipment_id IS NOT NULL) DESC,
+                     r.id DESC
+            LIMIT 1
+         ) r ON TRUE
+         LEFT JOIN receiving_triage rt ON rt.receiving_id = r.id AND rt.organization_id = r.organization_id
+         LEFT JOIN receiving_unbox ru  ON ru.receiving_id = r.id AND ru.organization_id = r.organization_id
+        WHERE rl.organization_id = $1
+          AND ${scannedViewPredicateSql(unboxOpenedPredicate)}${zohoArm}
+        ORDER BY ${RECEIVING_PRIORITY_RANK_SQL} ASC, ${RECEIVING_LANE_RANK_SQL} ASC, rt.door_received_at::text DESC NULLS LAST, rl.id DESC
+        LIMIT $2`,
+    params: [input.orgId, input.limit],
+  };
 }
 
 /**
@@ -626,6 +735,18 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
   if (receivingIdIn.length > 0) {
     conditions.push(`rl.receiving_id = ANY($${idx++}::int[])`);
     values.push(receivingIdIn);
+  }
+
+  // Gate-before-decorate pre-limit (view=scanned): the route ranked the
+  // qualifying LINE ids with buildScannedCandidateSql (the same gates, no
+  // display laterals) and narrows this query to them. Line-grained on purpose
+  // — rl.receiving_id is NULL for PO#-fallback lines, so the carton-grained
+  // arm above would silently drop them. Omitted when absent, so the no-param
+  // SQL stays byte-identical to `legacy-route-sql.fixture.ts`.
+  const scannedLineIdIn = input.scannedLineIdIn ?? [];
+  if (scannedLineIdIn.length > 0) {
+    conditions.push(`rl.id = ANY($${idx++}::int[])`);
+    values.push([...scannedLineIdIn]);
   }
 
   if (search) {
@@ -812,46 +933,16 @@ export function buildReceivingLinesListSql(input: ReceivingLinesListSqlInput): B
     // but no unbox stamp and nothing received on the line yet. A line drops
     // off the instant it's unboxed (unboxed_at set, qty>0, or workflow
     // advances), where it surfaces in the unbox/activity rail instead.
-    conditions.push(
-      // "Scanned" = physically at the dock. received_at is the intended signal,
-      // but the Incoming sync pre-creates a zoho_po receiving row (received_at
-      // NULL) for every issued PO, and historically the door scan's upsert hit
-      // ON CONFLICT and never stamped it — so keying solely on received_at left
-      // the whole Prioritize / unbox Queue empty. The door scan ALWAYS writes a
-      // receiving_scans row, so treat an existing scan as proof of arrival too.
-      // Self-healing for rows scanned before the upsert was fixed; new scans now
-      // stamp received_at directly.
-      `(rt.door_received_at IS NOT NULL
-          OR EXISTS (SELECT 1 FROM receiving_scans rs_scanned WHERE rs_scanned.receiving_id = r.id))
-         AND ru.unboxed_at IS NULL
-         -- Ops event spine: a carton that's been unboxed must never leak back
-         -- into the triage "to unbox" queue even if legacy stamps (unboxed_at /
-         -- qty_received / workflow_status) failed to roll up.
-         AND NOT EXISTS (
-           SELECT 1 FROM ops_events oe_unbox
-            WHERE oe_unbox.organization_id = rl.organization_id
-              AND oe_unbox.entity_type = 'receiving'
-              AND oe_unbox.entity_id = r.id
-              AND oe_unbox.event_type = 'UNBOX_CONFIRMED'
-         )
-         AND COALESCE(rl.quantity_received, 0) = 0
-         AND (rl.workflow_status IS NULL
-              OR rl.workflow_status IN ('EXPECTED','ARRIVED','MATCHED'))
-         -- …and the line has produced NO units. A serial_unit means the carton
-         -- was already unboxed/labeled/received at the unit level — but a
-         -- unit-level receive doesn't always roll up to the line's
-         -- quantity_received / workflow_status / receiving_carton.unboxed_at, so those
-         -- alone let an already-unboxed carton leak back into the "to unbox"
-         -- queue. Origin-line existence is the authoritative "this was opened"
-         -- signal, so exclude it here.
-         AND NOT EXISTS (
-           SELECT 1 FROM serial_unit_provenance p
-            WHERE p.origin_type = 'RECEIVING_LINE' AND p.origin_id = rl.id
-              AND p.organization_id = rl.organization_id
-         )
-         -- Unbox-surface scans belong in view=unbox_opened only — never triage.
-         AND NOT ${unboxOpenedPredicate}`,
-    );
+    // "Scanned" = physically at the dock. received_at is the intended signal,
+    // but the Incoming sync pre-creates a zoho_po receiving row (received_at
+    // NULL) for every issued PO, and historically the door scan's upsert hit
+    // ON CONFLICT and never stamped it — so keying solely on received_at left
+    // the whole Prioritize / unbox Queue empty. The door scan ALWAYS writes a
+    // receiving_scans row, so treat an existing scan as proof of arrival too.
+    // Self-healing for rows scanned before the upsert was fixed; new scans now
+    // stamp received_at directly. The predicate text lives in
+    // scannedViewPredicateSql, shared with buildScannedCandidateSql.
+    conditions.push(scannedViewPredicateSql(unboxOpenedPredicate));
     // Phase 2: only hide Zoho-received POs when the physical-state-first flag
     // is off OR the operator opted in via the "Hide Zoho-received" toggle
     // (?zohoStatus=open). By default a physically-present box stays in the

@@ -61,22 +61,24 @@
     },
     "/triage": {
       "tier": 1,
+      "formFactor": "desktop",
       "min": {
-        "performance": 69,
+        "performance": 92,
         "accessibility": 94,
         "bestPractices": 96,
         "seo": 91
       },
       "measured": {
-        "performance": 69,
+        "performance": 92,
         "accessibility": 94,
         "bestPractices": 96,
         "seo": 91,
-        "lcpMs": 12323,
-        "tbtMs": 30,
+        "lcpMs": 1480,
+        "siMs": 1835,
+        "tbtMs": 0,
         "cls": 0
       },
-      "updatedAt": "2026-07-19T09:30:00.000Z"
+      "updatedAt": "2026-08-28T06:07:24.776Z"
     },
     "/packer": {
       "tier": 1,

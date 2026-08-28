@@ -6,13 +6,14 @@ the committed floor is `lighthouse-baseline.json`.
 
 ## Targets
 
-**The goal is 90 in every category on every route.** As of the 2026-07 audit only
-Performance is short — Accessibility 93–95, Best Practices 96, SEO 91, CLS ~0 and
-TBT 22–158 ms already clear it everywhere.
+**The goal is Performance ≥ 92 on every route** (operator ruling 2026-08-27,
+raised from 90), **and ≥ 90 in every other category.** As of the 2026-07 audit
+only Performance is short — Accessibility 93–95, Best Practices 96, SEO 91,
+CLS ~0 and TBT 22–158 ms already clear it everywhere.
 
 | Category | Target | Status (2026-07) |
 |---|---|---|
-| Performance | ≥ 90 | **67–78** — the whole gap |
+| Performance | ≥ 92 | **67–78** — the whole gap |
 | Accessibility | ≥ 90 | 93–95 ✅ |
 | Best Practices | ≥ 90 | 96 ✅ |
 | SEO | ≥ 90 public routes (`/signin`, `/signup`, `/share/photos/*`) | 91 ✅ |

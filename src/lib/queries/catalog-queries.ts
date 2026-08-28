@@ -1,4 +1,5 @@
 import { queryOptions } from '@tanstack/react-query';
+import type { PlatformTypeRule } from '@/lib/receiving/platform-type-rules';
 import type {
   PlatformRow,
   PlatformAccountRow,
@@ -35,6 +36,7 @@ export const catalogKeys = {
     ['catalog', 'platform-accounts', includeInactive, platformId ?? null] as const,
   workflowNodes: () => ['catalog', 'workflow-nodes'] as const,
   priorities: () => ['catalog', 'priorities'] as const,
+  platformTypeRules: () => ['catalog', 'platform-type-rules'] as const,
 };
 
 /**
@@ -51,6 +53,23 @@ export function prioritiesQuery() {
       fetchJson<{ success: boolean; priorities: PriorityTierRow[] }>('/api/catalog/priorities'),
     staleTime: 5 * 60_000,
     select: (d) => d.priorities ?? [],
+  });
+}
+
+/**
+ * The org's platform → receiving-type dependency matrix. One subscription feeds
+ * every classify pill, so the narrowing is the same on Unbox, Triage, Testing
+ * and the search/support panes.
+ */
+export function platformTypeRulesQuery() {
+  return queryOptions({
+    queryKey: catalogKeys.platformTypeRules(),
+    queryFn: () =>
+      fetchJson<{ success: boolean; rules: PlatformTypeRule[] }>(
+        '/api/catalog/platform-type-rules',
+      ),
+    staleTime: 5 * 60_000,
+    select: (d) => d.rules ?? [],
   });
 }
 

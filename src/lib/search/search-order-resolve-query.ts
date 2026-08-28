@@ -12,6 +12,7 @@ import {
 } from '@tanstack/react-query';
 import {
   resolveSearchOrder,
+  resolveSearchOrderByPk,
   type ResolvedSearchOrder,
 } from '@/lib/search/resolve-search-order';
 
@@ -39,6 +40,19 @@ export function searchOrderResolveQuery(token: string | number) {
     queryFn: () => resolveSearchOrder(key),
     staleTime: SEARCH_ORDER_RESOLVE_STALE_MS,
     enabled: key.length > 0,
+  });
+}
+
+/**
+ * `/search?sel=order:{pk}` — resolve by primary key. Do not route through
+ * marketplace lookup (bare digits are order #s there, not `orders.id`).
+ */
+export function searchOrderByIdResolveQuery(orderId: number) {
+  return queryOptions({
+    queryKey: searchOrderResolveByIdQueryKey(orderId),
+    queryFn: () => resolveSearchOrderByPk(orderId),
+    staleTime: SEARCH_ORDER_RESOLVE_STALE_MS,
+    enabled: Number.isSafeInteger(orderId) && orderId > 0,
   });
 }
 

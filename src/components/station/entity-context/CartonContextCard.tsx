@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, type ReactNode } from 'react';
+import { useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   Camera,
   ChevronLeft,
@@ -45,7 +45,12 @@ import {
 } from '@/components/receiving/workspace/line-edit/receiving-priority';
 import { priorityOverrideTier } from '@/lib/receiving/priority-override';
 import {
+  allowedTypesForPlatform,
+  isTypeSettledForPlatform,
+} from '@/lib/receiving/platform-type-rules';
+import {
   usePlatformCatalog,
+  usePlatformTypeRules,
   usePriorityCatalog,
   useReceivingTypeCatalog,
   usePlatformMeta,
@@ -67,6 +72,7 @@ import {
   STATION_CHROME_CELL_TEXT,
   STATION_CHROME_GLYPH_CLASS,
   STATION_CHROME_HOVER_CELL_CLASS,
+  STATION_CHROME_ROW_CLASS,
   STATION_CHROME_ROW_FACE,
   STATION_CHROME_SEAM_HAIRLINE,
   STATION_IDENTITY_GROUP_CLASS,
@@ -419,6 +425,7 @@ export function CartonContextCard({
   // the catalog too, so a renamed or custom platform reads correctly here.
   const platformCatalog = usePlatformCatalog();
   const typeCatalog = useReceivingTypeCatalog();
+  const platformTypeRules = usePlatformTypeRules();
   const priorityCatalog = usePriorityCatalog();
   const resolvePlatformMeta = usePlatformMeta();
   const platformMeta = resolvePlatformMeta(platformValue);
@@ -492,7 +499,40 @@ export function CartonContextCard({
     catalogOptions: platformCatalog.options,
     isUnmatched,
   });
-  const typeOptions = typeClassifyOptions({ catalogOptions: typeCatalog.options });
+  /**
+   * Type is a DEPENDENT picklist: platform controls which types are offered
+   * (`platform_type_rules`). An unconstrained platform keeps the full list, so
+   * this narrows nothing until an org authors a rule.
+   *
+   * The current value is always kept in the list even when a rule would now
+   * forbid it. Rules are validated on WRITE, never on read — a carton filed
+   * before the rule existed still shows what it actually is, instead of the
+   * pill rendering blank on a value the row genuinely holds.
+   */
+  const allowedTypes = allowedTypesForPlatform(platformTypeRules, platformValue);
+  const typeOptions = useMemo(() => {
+    const all = typeClassifyOptions({ catalogOptions: typeCatalog.options });
+    if (!allowedTypes) return all;
+    const keep = new Set(allowedTypes.map((t) => t.toUpperCase()));
+    const current = receivingType.trim().toUpperCase();
+    return all.filter((o) => {
+      const v = String(o.value ?? '').trim().toUpperCase();
+      return !v || keep.has(v) || v === current;
+    });
+  }, [typeCatalog.options, allowedTypes, receivingType]);
+
+  /**
+   * One legal answer left AND the carton already says it → the pill is not a
+   * question. Show it, do not ask. That is the ergonomic payoff of the
+   * dependency: picking FBA files the carton as a Return without the operator
+   * reaching for the type pill.
+   *
+   * The second half of that condition is load-bearing. A carton filed before
+   * the rule existed can be sitting on a value the rule now forbids; locking
+   * THAT pill would show the operator a wrong answer and take away the control
+   * that fixes it. A rule may remove a choice — it must never strand a carton.
+   */
+  const typeLocked = isTypeSettledForPlatform(platformTypeRules, platformValue, receivingType);
 
   // Exit chevron — flush cube filling chrome row. Identity run (order #,
   // tracking) abuts it with no hairline.
@@ -524,6 +564,7 @@ export function CartonContextCard({
     <div
       data-testid="carton-context-classify-pills"
       data-carton-bar-slot="classify"
+      data-type-locked={typeLocked ? 'true' : 'false'}
       className={cn(STATION_IDENTITY_GROUP_CLASS, 'shrink-0')}
     >
       {showStaffPhotoRow ? (
@@ -568,7 +609,7 @@ export function CartonContextCard({
         presentation="menu"
         open={openPicker === 'type'}
         onOpenChange={(o) => setClassifyMenu('type', o)}
-        readOnly={!classifyInteractive}
+        readOnly={!classifyInteractive || typeLocked}
         placeholder="Type"
         onEditCatalog={classifyInteractive ? () => setCatalogManager('type') : undefined}
       />
@@ -856,6 +897,9 @@ export function CartonContextCard({
         'relative flex w-full min-w-0 flex-nowrap items-stretch overflow-visible',
         STATION_CHROME_ROW_FACE,
         STATION_CHROME_SEAM_HAIRLINE,
+        // Owns the hover display for every cell inside it — see
+        // `.cf-chrome-row` in styles/globals.css.
+        STATION_CHROME_ROW_CLASS,
       )}
       data-testid="carton-context-one-row"
     >

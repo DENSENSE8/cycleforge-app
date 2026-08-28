@@ -61,9 +61,9 @@ interface ActiveOrderWorkspaceProps {
   /**
    * `active` — order has been scanned and is in progress (default).
    * `preview` — user clicked an Up Next card to inspect it; nothing has been
-   *  scanned yet. Header changes to "Preview" and the action dock mounts at
-   *  the bottom so Start / Out of Stock are reachable here (they no longer
-   *  live on the sidebar card).
+   *  scanned yet. Header changes to "Preview" and the notes composer mounts at
+   *  the waist with Start / Out of Stock on its trailing edge (they no longer
+   *  live on the sidebar card, and never as a floating bottom CTA).
    */
   mode?: 'active' | 'preview';
   /**
@@ -432,6 +432,9 @@ export function ActiveOrderWorkspace({
                   previewOrder={isPreview ? previewOrder : undefined}
                 />
               }
+              // Notes composer + embedded Start pill (Unbox/Testing waist
+              // shape). Not a floating terminal dock — that green capsule was
+              // the old page chrome.
               dock={isPreview && previewOrder ? <UpNextActionDock order={previewOrder} /> : null}
             >
               {substitution.show && substitution.orderId !== null ? (

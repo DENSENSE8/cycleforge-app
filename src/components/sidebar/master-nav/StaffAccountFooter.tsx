@@ -14,7 +14,7 @@ import {
   Settings,
   Smartphone,
 } from '@/components/Icons';
-import { STATION_COLUMN_FOOTER_BAND_FACE } from '@/components/layout/header-shell';
+import { PRIMARY_CHROME_ROW_FACE } from '@/components/layout/header-shell';
 import {
   SIDEBAR_SPINE_MENU_ACTION_CLASS,
   SIDEBAR_SPINE_MENU_ACTION_LABEL_CLASS,
@@ -85,12 +85,13 @@ type OpenMenu = 'none' | 'more' | 'history' | 'feedback' | 'phone-qr';
  * load-bearing. The avatar is a separate click target
  * ({@link StaffAvatarEditor}) for colour + photo — Settings is not required.
  *
- * Floor band = {@link STATION_COLUMN_FOOTER_BAND_FACE} (`h-7` · full spine
- * width · shared hairline with context-rail filters / Displays `→|`). Identity
- * is one truncated name line inside the flex-1 ⋯ hit target; role stays in the
- * ⋯ menu — a two-line stack cannot share the station floor height. Sign-out
- * is a flush trailing square — idle muted like the ⋯ peer; the full hit
- * square (wash + glyph + glow) turns danger-red on hover, never idle.
+ * Floor band = {@link PRIMARY_CHROME_ROW_FACE} (`h-7` · full spine width). No
+ * top hairline — the map already has zero horizontal rules, and a seam above
+ * the account row was the last one left. Identity is one truncated name line
+ * inside the flex-1 ⋯ hit target; role stays in the ⋯ menu — a two-line stack
+ * cannot share the station floor height. Sign-out is a flush trailing square —
+ * idle muted like the ⋯ peer; the full hit square (wash + glyph + glow) turns
+ * danger-red on hover, never idle.
  */
 export function StaffAccountFooter({ className }: { className?: string }) {
   const pathname = usePathname();
@@ -123,7 +124,11 @@ export function StaffAccountFooter({ className }: { className?: string }) {
     <div className={cn('w-full shrink-0', className)} data-staff-account-footer>
       <div
         ref={rowRef}
-        className={cn(STATION_COLUMN_FOOTER_BAND_FACE, 'gap-0 pl-2 pr-0')}
+        className={cn(
+          'flex w-full items-center',
+          PRIMARY_CHROME_ROW_FACE,
+          'gap-0 pl-2 pr-0',
+        )}
       >
         {/* Click the mark to change colour / photo — not Settings. */}
         <StaffAvatarEditor markSize="xs" />

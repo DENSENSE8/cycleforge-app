@@ -58,7 +58,13 @@ export type OrdersQueueColumnKey =
   | 'qty'
   | 'tester'
   | 'testedAt'
+  | 'packer'
+  | 'packedAt'
   | 'packStation'
+  /** In-warehouse lifecycle stage (awaiting test / tested / packed / blocked). */
+  | 'stage'
+  /** Operator expedite toggle (`orders.is_urgent`). */
+  | 'urgent'
   | 'order'
   | 'tracking'
   /** Trailing structural filler — absorbs leftover sheet width (`1fr`). */
@@ -88,65 +94,24 @@ export interface OrdersQueueColumn extends Omit<LedgerGridColumnModel, 'key'> {
 }
 
 /**
- * Canonical Pending-tab column model, in strict scan order:
- *   select · order · late · product · cond · qty · tracking · _fill
- * Never mix `auto`/`fr` for the same slot across rows, or columns drift (the
- * uneven look the Sheets rewrite exists to kill).
+ * Canonical in-warehouse To-ship column model, in strict scan order:
+ *   select · order · late · product · stage · tester · testedAt · packer · packedAt ·
+ *   station · urgent · cond · qty · tracking · _fill
  *
- * **Order** (`order`) is the lead identity track, not a fact column: it is the
- * container the operator scans a dispatch queue by, so it is frozen beside
- * select and carries **no `hideKey`** — the Fields menu can never take the
- * row's identity away. (It previously hid under the legacy `orderid` key; a
- * persisted `hidden: ['orderid']` delta is now inert, because
- * `isGridColumnVisible` short-circuits on a missing `hideKey`. That is the
- * whole migration — no pref rewrite needed.)
+ * One model for the whole desk — stage is a row fact, not a tab that swaps
+ * columns. Empty tester/packer/location cells are the truth until those events
+ * land. Status + Platform columns stay retired; listing open stays on the
+ * product-cell hover link.
  *
- * **Late** (`age`) sits immediately after Order (urgency before the long
- * product title) and is frozen with the identity pane so sanitize cannot shove
- * Product ahead of it. Face = derived days past ship-by via
- * {@link GridAgeCellValue} (`0d` / `3d` / …); the civil ship-by date stays in
- * the hover tooltip only. Display-only — no in-cell edit.
- *
- * **Product-only resize (2026-08-05):** only `title` is `resizable: true`. It
- * is a **hard** `minmax(12rem, 12rem)` track — drag writes `--cf-col-title` as
- * a real width. Trailing `_fill` (`minmax(0rem, 1fr)`) absorbs leftover sheet
- * width so narrowing Product is visible (a flex Product floor had no effect
- * while the card still fit). Deterministic fact tracks stay content-hard
- * `minmax(X,X)` + `resizable: false`.
- *
- * Status + Platform columns retired — lifecycle tabs (Pending · Tested) own the
- * lane; listing open stays on the product-cell hover link.
- * **Cond** (`condition`) sits after Product (Unbox adjacency) — Unbox flush
- * grade face (`conditionGradeTextClass` + table label). `tier: 'optional'`
- * (2026-08-10, operator ruling): the grade is a receiving-side fact that an
- * outbound picker does not act on, so it must not spend a default track on the
- * main To-ship lane. This is the alignment Unbox History already had — it marks
- * `condition` optional too — and it applies to BOTH lanes, since the default
- * and TESTED tabs share one `orders` prefs bucket and a column that appeared on
- * one tab and not the other would read as a bug. Opted back in from the ▦
- * column display, same door as Serial / Vendor / Station.
- * Note / OOS corners stay on Product. Fused `sla` / civil-date face retired
- * 2026-08-05 in favor of this compact days-late track.
+ * **Order** (`order`) is the lead identity track: frozen beside select, no
+ * `hideKey`. **Late** (`age`) sits immediately after Order. Product-only resize
+ * with trailing `_fill` as the sole `1fr` track.
  */
 export const ORDERS_QUEUE_COLUMNS: readonly OrdersQueueColumn[] = [
   { key: 'select', width: 'minmax(2rem, 2rem)', frozen: true, resizable: false },
-  // `align: 'start'` — text/ID law (`type: 'id'` already starts as of 2026-08-04).
-  // 2026-08-02): an ORDER number is the row's own transaction identity — a name
-  // you read, and the first thing scanned on an order-anchored surface — not a
-  // magnitude compared down the column. A catalog SKU / serial / ticket stays
-  // end-aligned, which is why this is an override here and never a change to
-  // the type map. See `source-of-truth.md` → Grid column justification.
   {
     key: 'order',
-    // Identity language: brand dot, not the `#`/MapPin type glyph — the header
-    // already names this column (`display/workbench-ops-queue.md`, ruled
-    // 2026-08-20). This one flag is the whole switch: `OrdersQueueTableRow`
-    // derives its chip `variant` from it, and the shared painter swaps the
-    // glyph for the platform/carrier dot.
     omitCellIcon: true,
-    // Same track as Unbox History ORDER (`RECEIVING_GRID_COLUMNS`) so last-8 +
-    // brand-dot identity fits without ellipsis. 4.5rem was the to-ship fork
-    // clipping marketplace ids into `66-47…`.
     width: 'minmax(5.5rem, 5.5rem)',
     label: 'Order',
     type: 'id',
@@ -157,7 +122,6 @@ export const ORDERS_QUEUE_COLUMNS: readonly OrdersQueueColumn[] = [
   },
   {
     key: 'age',
-    // Compact `Nd` face — 4rem clears header "Late" (3.5rem clips to glyph).
     width: 'minmax(4rem, 4rem)',
     label: 'Late',
     type: 'number',
@@ -167,7 +131,6 @@ export const ORDERS_QUEUE_COLUMNS: readonly OrdersQueueColumn[] = [
   },
   {
     key: 'title',
-    // Hard width + resizable — `_fill` owns the 1fr slack (see module doc).
     width: 'minmax(12rem, 12rem)',
     label: 'Product',
     type: 'text',
@@ -176,131 +139,63 @@ export const ORDERS_QUEUE_COLUMNS: readonly OrdersQueueColumn[] = [
     labelFitRem: 8,
   },
   {
-    key: 'condition',
+    key: 'stage',
     width: 'minmax(5.5rem, 5.5rem)',
-    label: 'Cond',
+    label: 'Stage',
     type: 'tag',
     align: 'start',
-    hideKey: 'condition',
-    tier: 'optional',
     resizable: false,
     labelFitRem: 4.5,
-  },
-  {
-    key: 'qty',
-    // 3.5rem is the floor for Sentence-case "Qty" under header chrome budget.
-    width: 'minmax(3.5rem, 3.5rem)',
-    label: 'Qty',
-    type: 'number',
-    hideKey: 'qty',
-    resizable: false,
-    labelFitRem: 3.5,
-  },
-  {
-    key: 'tracking',
-    // Identity language: brand dot, not the `#`/MapPin type glyph — the header
-    // already names this column (`display/workbench-ops-queue.md`, ruled
-    // 2026-08-20). This one flag is the whole switch: `OrdersQueueTableRow`
-    // derives its chip `variant` from it, and the shared painter swaps the
-    // glyph for the platform/carrier dot.
-    omitCellIcon: true,
-    width: 'minmax(5.5rem, 5.5rem)',
-    label: 'Tracking',
-    type: 'tracking',
-    hideKey: 'tracking',
-    resizable: false,
-    labelFitRem: 5.5,
-  },
-  // Which packing bench this order is staged at (`order_pack_placements`).
-  // `tier: 'optional'` — off by default, opted in from the ▦ column display,
-  // the same way Unbox History treats Serial / Vendor. The bench is a real
-  // per-row fact (the data already rides on every row), but it only matters
-  // once someone is working the pack floor, so it must not spend a track on
-  // the default To-ship lane. The Tested lane keeps it always-on.
-  {
-    key: 'packStation',
-    width: 'minmax(7rem, 7rem)',
-    label: 'Station',
-    type: 'location',
-    align: 'start',
-    hideKey: 'packStation',
-    tier: 'optional',
-    resizable: false,
-    labelFitRem: 5,
-  },
-  { key: '_fill', width: 'minmax(0rem, 1fr)', resizable: false },
-] as const;
-
-/**
- * TESTED-tab column model (`?tested` / fulfillment.tested): every row is TESTED,
- * so the lane surfaces **who tested** + **when** instead of a redundant Status
- * pill — Tester · Tested at dock after Product, then Cond. Field contract (plan
- * §9): tester name resolves `tested_by_name → tester_name → getStaffName(id)`
- * via `normalizePersonName`; tested-at prefers `test_date_time` then
- * `test_activity_at`, ignores the legacy `'1'` sentinel, formats via
- * `formatDateTimePST`.
- */
-export const ORDERS_QUEUE_TESTED_COLUMNS: readonly OrdersQueueColumn[] = [
-  { key: 'select', width: 'minmax(2rem, 2rem)', frozen: true, resizable: false },
-  {
-    key: 'order',
-    // Identity language: brand dot, not the `#`/MapPin type glyph — the header
-    // already names this column (`display/workbench-ops-queue.md`, ruled
-    // 2026-08-20). This one flag is the whole switch: `OrdersQueueTableRow`
-    // derives its chip `variant` from it, and the shared painter swaps the
-    // glyph for the platform/carrier dot.
-    omitCellIcon: true,
-    width: 'minmax(5.5rem, 5.5rem)',
-    label: 'Order',
-    type: 'id',
-    align: 'start',
-    frozen: true,
-    resizable: false,
-    labelFitRem: 4.5,
-  },
-  {
-    key: 'age',
-    width: 'minmax(4rem, 4rem)',
-    label: 'Late',
-    type: 'number',
-    frozen: true,
-    resizable: false,
-    labelFitRem: 4,
-  },
-  {
-    key: 'title',
-    width: 'minmax(12rem, 12rem)',
-    label: 'Product',
-    type: 'text',
-    frozen: true,
-    resizable: true,
-    labelFitRem: 8,
   },
   {
     key: 'tester',
-    width: 'minmax(6rem, 6rem)',
+    width: 'minmax(5.5rem, 5.5rem)',
     label: 'Tester',
     type: 'text',
     resizable: false,
     labelFitRem: 4.5,
   },
-  // Full `formatDateTimePST` string (MM/DD/YYYY h:mm:ss AM/PM) needs the widest track.
   {
     key: 'testedAt',
-    width: 'minmax(10rem, 10rem)',
-    label: 'Tested at',
+    width: 'minmax(7rem, 7rem)',
+    label: 'Tested',
+    type: 'date',
+    resizable: false,
+    labelFitRem: 4.5,
+  },
+  {
+    key: 'packer',
+    width: 'minmax(5.5rem, 5.5rem)',
+    label: 'Packer',
+    type: 'text',
+    resizable: false,
+    labelFitRem: 4.5,
+  },
+  {
+    key: 'packedAt',
+    width: 'minmax(7rem, 7rem)',
+    label: 'Packed',
     type: 'date',
     resizable: false,
     labelFitRem: 4.5,
   },
   {
     key: 'packStation',
-    width: 'minmax(7rem, 7rem)',
+    width: 'minmax(6rem, 6rem)',
     label: 'Station',
-    type: 'text',
+    type: 'location',
     align: 'start',
     resizable: false,
-    labelFitRem: 4.5,
+    labelFitRem: 5,
+  },
+  {
+    key: 'urgent',
+    width: 'minmax(4rem, 4rem)',
+    label: 'Urgent',
+    type: 'tag',
+    align: 'start',
+    resizable: false,
+    labelFitRem: 4,
   },
   {
     key: 'condition',
@@ -324,11 +219,6 @@ export const ORDERS_QUEUE_TESTED_COLUMNS: readonly OrdersQueueColumn[] = [
   },
   {
     key: 'tracking',
-    // Identity language: brand dot, not the `#`/MapPin type glyph — the header
-    // already names this column (`display/workbench-ops-queue.md`, ruled
-    // 2026-08-20). This one flag is the whole switch: `OrdersQueueTableRow`
-    // derives its chip `variant` from it, and the shared painter swaps the
-    // glyph for the platform/carrier dot.
     omitCellIcon: true,
     width: 'minmax(5.5rem, 5.5rem)',
     label: 'Tracking',
@@ -340,14 +230,21 @@ export const ORDERS_QUEUE_TESTED_COLUMNS: readonly OrdersQueueColumn[] = [
   { key: '_fill', width: 'minmax(0rem, 1fr)', resizable: false },
 ] as const;
 
-/** Mode ids for the orders-queue column model (per-lane layouts, plan Phase A). */
+/**
+ * @deprecated Prefer {@link ORDERS_QUEUE_COLUMNS} — the desk is one in-warehouse
+ * model. Kept as an alias so older `fulfillment.tested` bindings keep compiling
+ * until callers finish migrating.
+ */
+export const ORDERS_QUEUE_TESTED_COLUMNS: readonly OrdersQueueColumn[] = ORDERS_QUEUE_COLUMNS;
+
+/** Mode ids for the orders-queue column model. Both modes share one SoT. */
 export type OrdersQueueColumnMode = 'fulfillment.default' | 'fulfillment.tested';
 
-/** Column model per mode — the SoT `ordersQueueColumnsFor(mode)` reads. */
+/** Column model per mode — both resolve to the in-warehouse SoT. */
 export function ordersQueueColumnsFor(
-  mode: OrdersQueueColumnMode,
+  _mode: OrdersQueueColumnMode,
 ): readonly OrdersQueueColumn[] {
-  return mode === 'fulfillment.tested' ? ORDERS_QUEUE_TESTED_COLUMNS : ORDERS_QUEUE_COLUMNS;
+  return ORDERS_QUEUE_COLUMNS;
 }
 
 /** Parse the rem floor from a track (`minmax(3rem, 3rem)` / `3rem` / `minmax(12rem, 1fr)`). */

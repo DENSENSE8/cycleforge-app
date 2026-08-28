@@ -80,8 +80,9 @@ describe('sqlIdentifierEqualsQuery', () => {
 });
 
 describe('looksLikeMarketplaceOrderNumber', () => {
-  it('accepts eBay dashed ids and compact digit pastes', () => {
+  it('accepts eBay 2-5-5, Amazon 3-7-7, and compact digit pastes', () => {
     assert.equal(looksLikeMarketplaceOrderNumber('11-15067-72584'), true);
+    assert.equal(looksLikeMarketplaceOrderNumber('111-1234567-1234567'), true);
     assert.equal(looksLikeMarketplaceOrderNumber('111506772584'), true);
     assert.equal(looksLikeMarketplaceOrderNumber('R-99'), false);
     assert.equal(looksLikeMarketplaceOrderNumber('4989'), false);

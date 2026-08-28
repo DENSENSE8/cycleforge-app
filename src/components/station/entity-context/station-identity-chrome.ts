@@ -230,48 +230,35 @@ export const STATION_CHROME_CELL_INK = 'text-text-default';
 export const STATION_CHROME_GLYPH_CLASS = 'block h-3.5 w-3.5 shrink-0';
 
 
-/**
- * Hover seam — the carton bar is one flush strip (`gap-0`, no `divide-x`), so
- * at rest a cell has no edges of its own. On hover it draws its OWN box:
- * an inset hairline on all four sides, which is what gives the vertical rules
- * between neighbouring cells and the horizontal rules top and bottom.
- *
- * `ring-inset`, not `border`: a border is in the box model and would shift the
- * whole row by 1px on hover; an inset ring paints inside the existing box, so
- * nothing moves. Variant-scoped (`hover:`), so it never collides with
- * `focusRing('control', …)`, which is `focus-visible:`-scoped.
- *
- * **One ink — NOT `currentColor`.** This token was briefly `ring-current/30`,
- * on the theory that a cell drawing its box in its own text colour would give
- * every cell the same optical WEIGHT. It does the opposite: the box comes out
- * blue on Photos, orange on Claim, `text-soft` on Back-to-list / Listing /
- * overflow, and `text-default` on the classify pills — four different boxes on
- * one 28px strip, which is precisely the inconsistency this token exists to
- * remove.
- *
- * `text-default/30` is the classify-pill value (their face is
- * `text-text-default`), and the pills are the reference the row is tuned to:
- * dark enough to read over the Photos blue-50 and Claim orange-50 washes, quiet
- * enough not to cage the white neutral cells. The complaint that first motivated
- * `ring-current` — a hairline that disappeared on the colour washes — was true
- * of `border-hairline` (≈ gray-100) specifically, not of a fixed ink as such.
- *
- * EVERY cell on the bar draws this box on hover — the read-only facts (status
- * dot, qty, price) compose the base {@link STATION_CHROME_CELL_CLASS}, which
- * carries the seam + fill, so the strip reads as one uniform set under a
- * pointer sweep rather than splitting into "control" and "fact" cells.
- */
-export const STATION_CHROME_CELL_HOVER_SEAM =
-  'hover:ring-1 hover:ring-inset hover:ring-text-default/30';
 
 /**
- * Hover FILL that pairs with {@link STATION_CHROME_CELL_HOVER_SEAM}. The box and
- * the wash are one gesture: a cell that rings without filling (or fills without
- * ringing) reads as a different kind of control under the same pointer. Every
- * neutral cell uses this; the tone cells (Photos, Claim) step their own wash
- * instead and must NOT stack this on top of it.
+ * **The hover display for a station chrome row — opt in, don't compose.**
+ *
+ * `STATION_CHROME_ROW_CLASS` on the row, {@link STATION_CHROME_CELL_CLASS_MARK}
+ * on each cell. The display itself — wash, box, and the cell's stacking — lives
+ * in ONE unlayered rule in `styles/globals.css` (`.cf-chrome-row .cf-chrome-cell`).
+ *
+ * This replaced a Tailwind string that every face composed for itself. A string
+ * cannot stop a call site re-spelling half of it, gating the halves apart, or
+ * adding a `z-index` that changes how it paints without touching the token, and
+ * all three shipped. Marker in, whole display out — there is no half of this to
+ * compose.
+ *
+ * Change the look in that one CSS block and every station follows: Unbox,
+ * Triage, Testing, Labels, Ready-to-Pack, Pack, search, support, review.
  */
-export const STATION_CHROME_CELL_HOVER_FILL = 'hover:bg-surface-hover/50';
+export const STATION_CHROME_ROW_CLASS = 'cf-chrome-row';
+
+/** Cell opt-in. Rides inside the shared cell classes below — see the CSS. */
+export const STATION_CHROME_CELL_CLASS_MARK = 'cf-chrome-cell';
+
+/**
+ * Cell that steps its OWN wash (Photos blue, Claim orange, Pickup emerald) and
+ * therefore skips the neutral fill. It still takes the box — the strip
+ * delineates uniformly; only the colour of the wash is the tone's business.
+ */
+export const STATION_CHROME_TONE_CLASS_MARK = 'cf-chrome-tone';
+
 
 /**
  * Interactive cell on the carton bar that is NOT one of the button faces in
@@ -288,8 +275,7 @@ export const STATION_CHROME_CELL_HOVER_FILL = 'hover:bg-surface-hover/50';
  */
 export const STATION_CHROME_HOVER_CELL_CLASS = [
   'flex h-full min-h-0 shrink-0 items-stretch',
-  STATION_CHROME_CELL_HOVER_FILL,
-  STATION_CHROME_CELL_HOVER_SEAM,
+  STATION_CHROME_CELL_CLASS_MARK,
 ].join(' ');
 
 /**
@@ -301,8 +287,7 @@ export const STATION_CHROME_HOVER_CELL_CLASS = [
  */
 export const STATION_CHROME_CELL_CLASS = [
   'flex h-full min-h-0 shrink-0 items-center',
-  STATION_CHROME_CELL_HOVER_FILL,
-  STATION_CHROME_CELL_HOVER_SEAM,
+  STATION_CHROME_CELL_CLASS_MARK,
 ].join(' ');
 
 /** Gap between icons / chips — same integer as GlobalHeader. */

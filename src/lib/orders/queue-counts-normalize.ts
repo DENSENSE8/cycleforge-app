@@ -38,9 +38,11 @@ export interface QueueCountsPackPlacement {
 
 export interface UnshippedQueueCounts {
   total: number;
-  byStage: { all: number; pending: number; tested: number };
+  byStage: { all: number; pending: number; tested: number; packed?: number };
   /** Operator-flagged urgent tally (orders.is_urgent) for the "Urgent" segment. */
   urgent: number;
+  /** Ship-by today or past (PST) — Must-ship facet. */
+  mustShip?: number;
   combos: QueueCountsCombo[];
   /** Packing DESK/STAGING open-package counts (Ready-to-Pack placement). */
   packPlacement?: QueueCountsPackPlacement;
@@ -48,8 +50,9 @@ export interface UnshippedQueueCounts {
 
 export const ZERO_QUEUE_COUNTS: UnshippedQueueCounts = {
   total: 0,
-  byStage: { all: 0, pending: 0, tested: 0 },
+  byStage: { all: 0, pending: 0, tested: 0, packed: 0 },
   urgent: 0,
+  mustShip: 0,
   combos: [],
   packPlacement: { counts: [], totalPlaced: 0 },
 };
@@ -83,6 +86,7 @@ export function normalizeQueueCountsPayload(raw: unknown): UnshippedQueueCounts 
     byStage:
       (data.byStage as UnshippedQueueCounts['byStage']) ?? ZERO_QUEUE_COUNTS.byStage,
     urgent: typeof data.urgent === 'number' ? data.urgent : 0,
+    mustShip: typeof data.mustShip === 'number' ? data.mustShip : 0,
     combos: Array.isArray(data.combos) ? (data.combos as QueueCountsCombo[]) : [],
     packPlacement,
   };

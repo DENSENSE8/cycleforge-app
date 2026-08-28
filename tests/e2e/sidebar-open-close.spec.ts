@@ -210,12 +210,15 @@ test.describe('sidebar spine — open and close', () => {
     // The staff footer is the spine's identity chrome now. The org control that
     // used to sit in the 40px top band was deleted 2026-08-03 — single-org is
     // the norm, so a permanent row naming it restated something that never
-    // changes. The BAND stays (it keeps the spine's 40px face on the header's
-    // Y); asserting on it would pin empty space. Assert the footer.
+    // changes. Home · Media Library are ordinary map rows (2026-08-28).
+    // Assert the footer.
     await expect(
       page.locator(`${NAV_COLUMN} [data-staff-account-footer]`),
       'the staff account footer is missing from the spine',
     ).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Go to Home' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Go to Media Library' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Open Scan Stations' })).toBeVisible();
   });
 
   /**
@@ -274,28 +277,8 @@ test.describe('sidebar spine — open and close', () => {
       const childRow = heights.length ? Math.min(...heights) : 0;
       const pageRow = heights.length ? Math.max(...heights) : 0;
 
-      // Price the two-line pattern by RENDERING one, not by assuming 44–48px.
-      // The search results already draw it: bold label over a muted parent line.
-      // It must be a result that actually HAS the second line — `contextFor`
-      // returns null when the parent would merely repeat the label, and
-      // measuring one of those prices a single-line row as if it were two.
-      await page.getByPlaceholder('Go to…').fill('a');
-      await expect(page.locator('[role="listbox"] [role="option"]').first()).toBeVisible();
-      const twoLine = await page.evaluate(() => {
-        const opts = Array.from(document.querySelectorAll<HTMLElement>('[role="option"]'));
-        const withContext = opts.filter((o) => o.querySelectorAll('span.block').length >= 2);
-        const without = opts.filter((o) => o.querySelectorAll('span.block').length === 1);
-        const h = (els: HTMLElement[]) =>
-          els.length ? Math.round(Math.max(...els.map((e) => e.getBoundingClientRect().height))) : 0;
-        return { withContext: h(withContext), without: h(without), n: withContext.length };
-      });
-      await page.getByPlaceholder('Go to…').fill('');
-
-      // 73 of 81 destinations carry a context line (buildNavDestinations over
-      // the live registry), so "every row gains a line" is the honest model,
-      // not a worst case.
-      const delta = twoLine.withContext - pageRow;
-      const projected = map!.contentHeight + map!.rows.length * delta;
+      // In-spine "Go to…" was removed 2026-08-28 — destination find is ⌘K.
+      // Geometry here is the map as built (no projected two-line search rows).
       /* eslint-disable no-console */
       console.log(
         `\n=== SPINE MAP GEOMETRY @ 1440x900 — ${surface.name} (${surface.route}) ===\n` +
@@ -304,9 +287,6 @@ test.describe('sidebar spine — open and close', () => {
           `headroom             : ${map!.portHeight - map!.contentHeight}px\n` +
           `rows                 : ${map!.rows.length}\n` +
           `page row / child row : ${pageRow}px / ${childRow}px\n` +
-          `two-line row         : ${twoLine.withContext}px (measured on ${twoLine.n} rows` +
-          `, 1-line peer ${twoLine.without}px) → delta +${delta}px\n` +
-          `projected all-2-line : ${projected}px  (${projected <= map!.portHeight ? 'FITS' : `OVERFLOWS by ${projected - map!.portHeight}px`})\n` +
           `below the fold (${belowFold.length}) : ${belowFold.map((r) => r.label).join(' | ') || '—'}\n` +
           '==========================================================\n',
       );

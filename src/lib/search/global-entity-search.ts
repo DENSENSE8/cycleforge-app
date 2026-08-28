@@ -20,14 +20,18 @@ import {
   receivingSearchTitle,
 } from '@/lib/search/receiving-search-title';
 import { orderTrackingMatchKeys } from '@/lib/tracking-format';
-import { sqlOrderHasMatchingTracking } from '@/lib/search/order-tracking-match-sql';
+import {
+  sqlOrderHasMatchingTracking,
+  sqlTrackingNumberMatches,
+} from '@/lib/search/order-tracking-match-sql';
 import type { SearchByScope } from '@/lib/search/search-by';
 import { sqlIdentifierEqualsQuery } from '@/lib/search/order-number-match';
 import {
   hasInternalIdKeys,
-  isPrintedHandlePayload,
   parseInternalIdQuery,
 } from '@/lib/search/internal-id';
+import { routeScan } from '@/lib/barcode-routing';
+import { formatSearchSel } from '@/lib/search/search-selection';
 
 /** Match `serial_units.normalized_serial` (trim + upper) without pulling neon queries. */
 function normalizeSerialQuery(raw: string): string {
@@ -72,37 +76,7 @@ export interface GlobalSearchResult {
   };
 }
 
-async function searchOrders(orgId: OrgId, query: string, limit: number): Promise<GlobalSearchResult[]> {
-  // Marketplace order # / tracking identifier: exact (dash-insensitive) or
-  // last-8 when the paste has ≥8 digits. Never ILIKE-substring a longer id,
-  // and never treat the query as `orders.id` (that is Internal ID).
-  const identifier = looksLikeIdentifier(query);
-  const digits = query.replace(/\D/g, '');
-  const last8 = digits.length >= 8 ? digits.slice(-8) : '';
-  const keys = orderTrackingMatchKeys(query);
-  const like = identifier ? query : `%${query}%`;
-  const trackingMatch = sqlOrderHasMatchingTracking({
-    orderAlias: 'o',
-    likeParam: '$2',
-    canonicalParam: '$6',
-    key18Param: '$7',
-    last8Param: '$4',
-  });
-  const orderNumberExact = sqlIdentifierEqualsQuery('o.order_id', '$3');
-  const broadMatch = `(
-            o.order_id ILIKE $2
-         OR o.product_title ILIKE $2
-         OR o.sku ILIKE $2
-         OR tsn.serial_number ILIKE $2
-         OR ${trackingMatch}
-  )`;
-  const identifierMatch = `(
-            ${orderNumberExact}
-         OR ${trackingMatch}
-  )`;
-  const result = await tenantQuery(
-    orgId,
-    `SELECT o.id,
+const ORDER_SEARCH_SELECT = `SELECT o.id,
             o.order_id,
             o.product_title,
             o.sku,
@@ -137,16 +111,10 @@ async function searchOrders(orgId: OrgId, query: string, limit: number): Promise
        ON sl.owner_type = 'ORDER'
       AND sl.owner_id = o.id
       AND sl.organization_id = o.organization_id
-     LEFT JOIN shipping_tracking_numbers stn_link ON stn_link.id = sl.shipment_id
-     WHERE o.organization_id = $1
-       AND ${identifier ? identifierMatch : broadMatch}
-     GROUP BY o.id
-     ORDER BY o.created_at DESC NULLS LAST
-     LIMIT $5`,
-    [orgId, like, query, last8, limit, keys.exact, keys.key18],
-  );
+     LEFT JOIN shipping_tracking_numbers stn_link ON stn_link.id = sl.shipment_id`;
 
-  return result.rows.map((row: any) => {
+function mapOrderSearchRows(rows: any[]): GlobalSearchResult[] {
+  return rows.map((row: any) => {
     const serial = String(row.serial_number || '').trim() || null;
     const happened =
       row.order_date || row.created_at
@@ -175,6 +143,133 @@ async function searchOrders(orgId: OrgId, query: string, limit: number): Promise
       },
     };
   });
+}
+
+/** True when the paste is long enough / shaped enough to try tracking → order. */
+function looksLikeTrackingIdentifier(
+  query: string,
+  last8: string,
+  keys: { exact: string; key18: string },
+): boolean {
+  const q = query.trim().replace(/[\u2010-\u2015\u2212]/g, '-');
+  // Dashed marketplace order #s are never carrier tracking.
+  if (/^\d{2}-\d{4,}-\d{4,}$/.test(q)) return false;
+  if (/^\d{3}-\d{7}-\d{7}$/.test(q)) return false;
+  if (/^1Z[A-Z0-9]/i.test(q)) return true;
+  if (keys.key18) return true;
+  // FedEx / USPS / raw tracking — short Ecwid ids like `5006` stay out.
+  if (last8 && q.length >= 10) return true;
+  if (keys.exact.length >= 10) return true;
+  return false;
+}
+
+async function searchOrders(orgId: OrgId, query: string, limit: number): Promise<GlobalSearchResult[]> {
+  // Marketplace order # / tracking identifier: exact (dash-insensitive) or
+  // last-8 when the paste has ≥8 digits. Never ILIKE-substring a longer id,
+  // and never treat the query as `orders.id` (that is Internal ID).
+  //
+  // Identifier path MUST NOT OR order-number equality with a correlated
+  // tracking EXISTS — that plan seq-scans every order's shipment and times
+  // out, then `.catch(() => [])` leaves Find showing only "See all results".
+  const identifier = looksLikeIdentifier(query);
+  const digits = query.replace(/\D/g, '');
+  const last8 = digits.length >= 8 ? digits.slice(-8) : '';
+  const keys = orderTrackingMatchKeys(query);
+  const like = identifier ? query : `%${query}%`;
+  const trackingMatch = sqlOrderHasMatchingTracking({
+    orderAlias: 'o',
+    likeParam: '$2',
+    canonicalParam: '$6',
+    key18Param: '$7',
+    last8Param: '$4',
+  });
+  const orderNumberExact = sqlIdentifierEqualsQuery('o.order_id', '$2');
+
+  if (identifier) {
+    const byNumber = await tenantQuery(
+      orgId,
+      `${ORDER_SEARCH_SELECT}
+     WHERE o.organization_id = $1
+       AND ${orderNumberExact}
+     GROUP BY o.id
+     ORDER BY o.created_at DESC NULLS LAST
+     LIMIT $3`,
+      [orgId, query, limit],
+    );
+    const numberHits = mapOrderSearchRows(byNumber.rows);
+    if (numberHits.length >= limit || !looksLikeTrackingIdentifier(query, last8, keys)) {
+      return numberHits.slice(0, limit);
+    }
+
+    // STN-first: resolve matching shipment ids, then join to orders. Cheap for
+    // carrier ids; never correlated from every order row.
+    const byTracking = await tenantQuery(
+      orgId,
+      `${ORDER_SEARCH_SELECT}
+     WHERE o.organization_id = $1
+       AND (
+            o.shipment_id IN (
+              SELECT stn_trk.id
+              FROM shipping_tracking_numbers stn_trk
+              WHERE ${sqlTrackingNumberMatches({
+                stnAlias: 'stn_trk',
+                likeParam: '$2',
+                canonicalParam: '$3',
+                key18Param: '$4',
+                last8Param: '$5',
+              })}
+            )
+         OR EXISTS (
+              SELECT 1
+              FROM shipment_links sl_trk
+              JOIN shipping_tracking_numbers stn_trk ON stn_trk.id = sl_trk.shipment_id
+              WHERE sl_trk.owner_type = 'ORDER'
+                AND sl_trk.owner_id = o.id
+                AND sl_trk.organization_id = o.organization_id
+                AND ${sqlTrackingNumberMatches({
+                  stnAlias: 'stn_trk',
+                  likeParam: '$2',
+                  canonicalParam: '$3',
+                  key18Param: '$4',
+                  last8Param: '$5',
+                })}
+            )
+       )
+     GROUP BY o.id
+     ORDER BY o.created_at DESC NULLS LAST
+     LIMIT $6`,
+      [orgId, like, keys.exact, keys.key18, last8, limit],
+    );
+    const seen = new Set(numberHits.map((h) => h.id));
+    const merged = [...numberHits];
+    for (const hit of mapOrderSearchRows(byTracking.rows)) {
+      if (seen.has(hit.id)) continue;
+      seen.add(hit.id);
+      merged.push(hit);
+      if (merged.length >= limit) break;
+    }
+    return merged;
+  }
+
+  const broadMatch = `(
+            o.order_id ILIKE $2
+         OR o.product_title ILIKE $2
+         OR o.sku ILIKE $2
+         OR tsn.serial_number ILIKE $2
+         OR ${trackingMatch}
+  )`;
+  const result = await tenantQuery(
+    orgId,
+    `${ORDER_SEARCH_SELECT}
+     WHERE o.organization_id = $1
+       AND ${broadMatch}
+     GROUP BY o.id
+     ORDER BY o.created_at DESC NULLS LAST
+     LIMIT $5`,
+    [orgId, like, query, last8, limit, keys.exact, keys.key18],
+  );
+
+  return mapOrderSearchRows(result.rows);
 }
 
 async function searchRepairs(orgId: OrgId, query: string, limit: number): Promise<GlobalSearchResult[]> {
@@ -244,57 +339,12 @@ async function searchReceiving(orgId: OrgId, query: string, limit: number): Prom
   // so the GUC-wrapped tenantQuery is the isolation backstop for it.
   const identifier = looksLikeIdentifier(query);
   const normalizedQuery = query.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
-  const lineOrderMatch = sqlIdentifierEqualsQuery('rl.source_order_id', '$2');
-  const linkOrderMatch = sqlIdentifierEqualsQuery('l.source_order_id', '$2');
-  const cartonOrderMatch = `(
-            ${sqlIdentifierEqualsQuery('r.source_order_id', '$2')}
-         OR ${sqlIdentifierEqualsQuery('r.zoho_purchaseorder_number', '$2')}
-         OR EXISTS (
-              SELECT 1 FROM receiving_line rl
-              WHERE rl.receiving_id = r.id
-                AND rl.organization_id = r.organization_id
-                AND ${lineOrderMatch}
-            )
-         OR EXISTS (
-              SELECT 1
-              FROM inbound_purchase_order_links l
-              JOIN receiving_line rl ON rl.id = l.receiving_line_id
-               AND rl.organization_id = l.organization_id
-              WHERE rl.receiving_id = r.id
-                AND l.organization_id = r.organization_id
-                AND ${linkOrderMatch}
-            )
-  )`;
-  const identifierMatch = cartonOrderMatch;
-  const broadMatch = `(
-            stn.tracking_number_raw ILIKE $1
-         OR stn.tracking_number_normalized = $3
-         OR CAST(r.id AS TEXT) = $2
-         OR r.zoho_purchaseorder_number ILIKE $1
-         OR r.source_order_id ILIKE $1
-         OR ($3 <> '' AND regexp_replace(UPPER(COALESCE(r.zoho_purchaseorder_number, '')), '[^A-Z0-9]', '', 'g') = $3)
-         OR ($3 <> '' AND regexp_replace(UPPER(COALESCE(r.source_order_id, '')), '[^A-Z0-9]', '', 'g') = $3)
-         OR EXISTS (
-              SELECT 1 FROM receiving_line rl
-              WHERE rl.receiving_id = r.id
-                AND rl.organization_id = r.organization_id
-                AND (rl.source_order_id ILIKE $1
-                  OR ($3 <> '' AND regexp_replace(UPPER(COALESCE(rl.source_order_id, '')), '[^A-Z0-9]', '', 'g') = $3))
-            )
-         OR EXISTS (
-              SELECT 1
-              FROM inbound_purchase_order_links l
-              JOIN receiving_line rl ON rl.id = l.receiving_line_id
-               AND rl.organization_id = l.organization_id
-              WHERE rl.receiving_id = r.id
-                AND l.organization_id = r.organization_id
-                AND (l.source_order_id ILIKE $1
-                  OR ($3 <> '' AND regexp_replace(UPPER(COALESCE(l.source_order_id, '')), '[^A-Z0-9]', '', 'g') = $3))
-            )
-  )`;
-  const result = await tenantQuery(
-    orgId,
-    `SELECT r.id,
+  const digits = query.replace(/\D/g, '');
+  const last8 = digits.length >= 8 ? digits.slice(-8) : '';
+  const trackKeys = orderTrackingMatchKeys(query);
+  const trackingShaped = looksLikeTrackingIdentifier(query, last8, trackKeys);
+
+  const selectSql = `SELECT r.id,
             stn.tracking_number_raw AS tracking_number,
             COALESCE(NULLIF(stn.carrier, 'UNKNOWN'), r.carrier)             AS carrier,
             r.zoho_purchaseorder_number AS po_number,
@@ -320,13 +370,93 @@ async function searchReceiving(orgId: OrgId, query: string, limit: number): Prom
               (ARRAY_AGG(rl.source_order_id ORDER BY rl.id)
                 FILTER (WHERE NULLIF(TRIM(rl.source_order_id), '') IS NOT NULL))[1] AS line_source_order_id
        FROM receiving_line rl WHERE rl.receiving_id = r.id
-     ) lines ON TRUE
+     ) lines ON TRUE`;
+
+  let result;
+  if (identifier) {
+    // Params: $1=query $2=normalized $3=limit $4=org — never leave an unused
+    // `$1` (Postgres: "could not determine data type of parameter").
+    const q = '$1';
+    const norm = '$2';
+    const lineOrderMatch = sqlIdentifierEqualsQuery('rl.source_order_id', q);
+    const linkOrderMatch = sqlIdentifierEqualsQuery('l.source_order_id', q);
+    const cartonOrderMatch = `(
+            ${sqlIdentifierEqualsQuery('r.source_order_id', q)}
+         OR ${sqlIdentifierEqualsQuery('r.zoho_purchaseorder_number', q)}
+         OR EXISTS (
+              SELECT 1 FROM receiving_line rl
+              WHERE rl.receiving_id = r.id
+                AND rl.organization_id = r.organization_id
+                AND ${lineOrderMatch}
+            )
+         OR EXISTS (
+              SELECT 1
+              FROM inbound_purchase_order_links l
+              JOIN receiving_line rl ON rl.id = l.receiving_line_id
+               AND rl.organization_id = l.organization_id
+              WHERE rl.receiving_id = r.id
+                AND l.organization_id = r.organization_id
+                AND ${linkOrderMatch}
+            )
+    )`;
+    const cartonTrackingMatch = `(
+            stn.tracking_number_raw = ${q}
+         OR stn.tracking_number_normalized = ${norm}
+         OR (${norm} <> '' AND regexp_replace(UPPER(COALESCE(stn.tracking_number_normalized, '')), '[^A-Z0-9]', '', 'g') = ${norm})
+         OR (
+              length(regexp_replace(${q}, '[^0-9]', '', 'g')) >= 8
+              AND RIGHT(regexp_replace(COALESCE(stn.tracking_number_normalized, ''), '[^0-9]', '', 'g'), 8)
+                = RIGHT(regexp_replace(${q}, '[^0-9]', '', 'g'), 8)
+            )
+    )`;
+    // Tracking pastes must not OR into the per-carton line EXISTS (timeout).
+    const whereClause = trackingShaped ? cartonTrackingMatch : cartonOrderMatch;
+    result = await tenantQuery(
+      orgId,
+      `${selectSql}
+     WHERE r.organization_id = $4
+       AND ${whereClause}
+     ORDER BY r.id DESC
+     LIMIT $3`,
+      [query, normalizedQuery, limit, orgId],
+    );
+  } else {
+    const broadMatch = `(
+            stn.tracking_number_raw ILIKE $1
+         OR stn.tracking_number_normalized = $3
+         OR CAST(r.id AS TEXT) = $2
+         OR r.zoho_purchaseorder_number ILIKE $1
+         OR r.source_order_id ILIKE $1
+         OR ($3 <> '' AND regexp_replace(UPPER(COALESCE(r.zoho_purchaseorder_number, '')), '[^A-Z0-9]', '', 'g') = $3)
+         OR ($3 <> '' AND regexp_replace(UPPER(COALESCE(r.source_order_id, '')), '[^A-Z0-9]', '', 'g') = $3)
+         OR EXISTS (
+              SELECT 1 FROM receiving_line rl
+              WHERE rl.receiving_id = r.id
+                AND rl.organization_id = r.organization_id
+                AND (rl.source_order_id ILIKE $1
+                  OR ($3 <> '' AND regexp_replace(UPPER(COALESCE(rl.source_order_id, '')), '[^A-Z0-9]', '', 'g') = $3))
+            )
+         OR EXISTS (
+              SELECT 1
+              FROM inbound_purchase_order_links l
+              JOIN receiving_line rl ON rl.id = l.receiving_line_id
+               AND rl.organization_id = l.organization_id
+              WHERE rl.receiving_id = r.id
+                AND l.organization_id = r.organization_id
+                AND (l.source_order_id ILIKE $1
+                  OR ($3 <> '' AND regexp_replace(UPPER(COALESCE(l.source_order_id, '')), '[^A-Z0-9]', '', 'g') = $3))
+            )
+    )`;
+    result = await tenantQuery(
+      orgId,
+      `${selectSql}
      WHERE r.organization_id = $5
-       AND ${identifier ? identifierMatch : broadMatch}
+       AND ${broadMatch}
      ORDER BY r.id DESC
      LIMIT $4`,
-    [`%${query}%`, query, normalizedQuery, limit, orgId],
-  );
+      [`%${query}%`, query, normalizedQuery, limit, orgId],
+    );
+  }
 
   return result.rows.map((row: any) => {
     const poNumber = row.po_number != null ? String(row.po_number) : null;
@@ -415,9 +545,35 @@ async function searchSerialUnits(
   const normalized = normalizeSerialQuery(query);
   if (!normalized) return [];
   const identifier = looksLikeIdentifier(query);
-  const result = await tenantQuery(
-    orgId,
-    `SELECT su.id,
+  const result = identifier
+    ? await tenantQuery(
+        orgId,
+        `SELECT su.id,
+            su.serial_number,
+            su.normalized_serial,
+            su.sku,
+            su.current_status::text AS current_status,
+            su.condition_grade
+     FROM serial_units su
+     WHERE su.organization_id = $3
+       AND (
+            su.normalized_serial = $1
+         OR UPPER(TRIM(su.serial_number)) = $1
+         OR ${sqlIdentifierEqualsQuery('su.serial_number', '$2')}
+         OR ${sqlIdentifierEqualsQuery('su.normalized_serial', '$2')}
+       )
+     ORDER BY CASE
+                WHEN su.normalized_serial = $1 THEN 0
+                WHEN UPPER(TRIM(su.serial_number)) = $1 THEN 0
+                ELSE 1
+              END,
+              su.id DESC
+     LIMIT $4`,
+        [normalized, query, orgId, limit],
+      )
+    : await tenantQuery(
+        orgId,
+        `SELECT su.id,
             su.serial_number,
             su.normalized_serial,
             su.sku,
@@ -430,9 +586,9 @@ async function searchSerialUnits(
          OR UPPER(TRIM(su.serial_number)) = $2
          OR ${sqlIdentifierEqualsQuery('su.serial_number', '$3')}
          OR ${sqlIdentifierEqualsQuery('su.normalized_serial', '$3')}
-         ${identifier ? '' : `OR su.serial_number ILIKE $1
+         OR su.serial_number ILIKE $1
          OR su.normalized_serial ILIKE $1
-         OR CAST(su.id AS TEXT) = $3`}
+         OR CAST(su.id AS TEXT) = $3
        )
      ORDER BY CASE
                 WHEN su.normalized_serial = $2 THEN 0
@@ -441,8 +597,8 @@ async function searchSerialUnits(
               END,
               su.id DESC
      LIMIT $5`,
-    [`%${normalized}%`, normalized, query, orgId, limit],
-  );
+        [`%${normalized}%`, normalized, query, orgId, limit],
+      );
 
   return result.rows.map((row: any) => {
     const serial = String(row.serial_number || row.normalized_serial || '').trim();
@@ -672,19 +828,43 @@ async function searchInternalIds(
         ).catch(() => ({ rows: [] as Array<Record<string, unknown>> }))
       : Promise.resolve({ rows: [] as Array<Record<string, unknown>> });
 
+  // H-class LPN — the box has no /search entity of its own; the designed
+  // landing is its membership ("testing fans out units"), so Find lists the
+  // units currently IN the box, each painting on `/search?sel=unit:{id}`.
+  const boxUnitsPromise =
+    keys.handlingUnitIds.length > 0
+      ? tenantQuery(
+          orgId,
+          `SELECT su.id,
+                  su.serial_number,
+                  su.normalized_serial,
+                  su.sku,
+                  su.current_status::text AS current_status,
+                  su.handling_unit_id
+           FROM serial_units su
+           WHERE su.organization_id = $1
+             AND su.handling_unit_id = ANY($2::bigint[])
+           ORDER BY su.id DESC
+           LIMIT $3`,
+          [orgId, keys.handlingUnitIds, limit],
+        ).catch(() => ({ rows: [] as Array<Record<string, unknown>> }))
+      : Promise.resolve({ rows: [] as Array<Record<string, unknown>> });
+
   const timed = async <T,>(name: string, promise: Promise<T>): Promise<{ name: string; ms: number; result: T }> => {
     const t0 = Date.now();
     const result = await promise;
     return { name, ms: Date.now() - t0, result };
   };
-  const [receivingTimed, ordersTimed, unitsTimed] = await Promise.all([
+  const [receivingTimed, ordersTimed, unitsTimed, boxUnitsTimed] = await Promise.all([
     timed('receiving', receivingPromise),
     timed('orders', orderPromise),
     timed('units', unitPromise),
+    timed('box-units', boxUnitsPromise),
   ]);
   const receiving = receivingTimed.result;
   const orders = ordersTimed.result;
   const units = unitsTimed.result;
+  const boxUnits = boxUnitsTimed.result;
   // #region agent log
   fetch('http://127.0.0.1:7905/ingest/963a9b6c-b9e1-4ea4-8873-db315c94d962',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'05d676'},body:JSON.stringify({sessionId:'05d676',hypothesisId:'C',location:'global-entity-search.ts:searchInternalIds',message:'internal id queries finished',data:{totalMs:Date.now()-internalStartedAt,receivingMs:receivingTimed.ms,ordersMs:ordersTimed.ms,unitsMs:unitsTimed.ms,receivingRows:receiving.rows.length,orderRows:orders.rows.length,unitRows:units.rows.length,exactHandle:keys.exactHandle,receivingIds:keys.receivingIds.length,shipmentIds:keys.shipmentIds.length,orderPks:keys.orderPks.length,unitKeys:keys.unitKeys.length},timestamp:Date.now()})}).catch(()=>{});
   // #endregion
@@ -754,7 +934,127 @@ async function searchInternalIds(
     };
   });
 
-  return [...receivingHits, ...orderHits, ...unitHits].slice(0, limit);
+  const boxUnitHits: GlobalSearchResult[] = boxUnits.rows.map((row) => {
+    const id = Number(row.id);
+    const serial = String(row.serial_number || row.normalized_serial || '').trim();
+    const huId = row.handling_unit_id != null ? Number(row.handling_unit_id) : null;
+    return {
+      id,
+      entityType: 'unit' as const,
+      title: serial || `Unit #${id}`,
+      subtitle: [huId != null ? `H-${huId}` : null, `U-${id}`, row.sku]
+        .filter(Boolean)
+        .join(' · '),
+      href: searchHitHref('SERIAL_UNIT', id),
+      matchField: 'handling_unit',
+      facets: {
+        status: row.current_status != null ? String(row.current_status) : null,
+        serial_number: serial || null,
+      },
+    };
+  });
+
+  // A bare number keys every PK at once, so unit #n can arrive both as itself
+  // and as a member of box #n — one row per record.
+  const merged: GlobalSearchResult[] = [];
+  const seenHits = new Set<string>();
+  for (const hit of [...receivingHits, ...orderHits, ...unitHits, ...boxUnitHits]) {
+    const key = `${hit.entityType}:${hit.id}`;
+    if (seenHits.has(key)) continue;
+    seenHits.add(key);
+    merged.push(hit);
+  }
+  return merged.slice(0, limit);
+}
+
+/**
+ * KIT master label → the kit's member units. `routeScan` types `KIT-…` as
+ * `manifest` with NO redirect (the manifest detail is a /test workbench panel,
+ * not a URL), so Find fans out the membership instead — each unit paints on
+ * `/search?sel=unit:{id}` and carries the manifest uid in its subtitle.
+ */
+async function searchManifestUnits(
+  orgId: OrgId,
+  query: string,
+  limit: number,
+): Promise<GlobalSearchResult[]> {
+  const uid = query.trim();
+  if (!/^KIT-/i.test(uid)) return [];
+  const result = await tenantQuery(
+    orgId,
+    `SELECT m.manifest_uid,
+            m.status AS manifest_status,
+            su.id,
+            su.serial_number,
+            su.normalized_serial,
+            su.sku,
+            su.current_status::text AS current_status
+     FROM label_manifests m
+     JOIN label_manifest_items i
+       ON i.manifest_id = m.id
+      AND i.organization_id = m.organization_id
+     JOIN serial_units su
+       ON su.id = i.serial_unit_id
+      AND su.organization_id = m.organization_id
+     WHERE m.organization_id = $1
+       AND UPPER(m.manifest_uid) = UPPER($2)
+     ORDER BY i.ordinal ASC, i.id ASC
+     LIMIT $3`,
+    [orgId, uid, limit],
+  );
+
+  return result.rows.map((row: any) => {
+    const id = Number(row.id);
+    const serial = String(row.serial_number || row.normalized_serial || '').trim();
+    return {
+      id,
+      entityType: 'unit' as const,
+      title: serial || `Unit #${id}`,
+      subtitle: [String(row.manifest_uid), row.manifest_status, row.sku]
+        .filter(Boolean)
+        .join(' · '),
+      href: searchHitHref('SERIAL_UNIT', id),
+      matchField: 'manifest',
+      facets: {
+        status: row.current_status != null ? String(row.current_status) : null,
+        serial_number: serial || null,
+      },
+    };
+  });
+}
+
+/**
+ * Printed REP-{id} label → its repair by pk. Lands on `/search?sel=repair:{id}`
+ * — the same surface the ⌘K scan-gun path opens (`desktopSearchHref` of
+ * `/m/rs/{id}`) — so typing the sticker and scanning it agree.
+ */
+async function searchRepairByPk(
+  orgId: OrgId,
+  repairId: number,
+  limit: number,
+): Promise<GlobalSearchResult[]> {
+  if (!Number.isSafeInteger(repairId) || repairId <= 0) return [];
+  const result = await tenantQuery(
+    orgId,
+    `SELECT id, ticket_number, product_title, serial_number, status
+     FROM repair_service
+     WHERE organization_id = $1
+       AND id = $2
+     LIMIT $3`,
+    [orgId, repairId, limit],
+  );
+  return result.rows.map((row: any) => ({
+    id: Number(row.id),
+    entityType: 'repair' as const,
+    title: String(row.product_title || `Repair #${row.id}`),
+    subtitle: [row.ticket_number, row.status].filter(Boolean).join(' · '),
+    href: `/search?sel=${formatSearchSel('repair', Number(row.id))}`,
+    matchField: 'repair',
+    facets: {
+      status: row.status != null ? String(row.status) : null,
+      serial_number: row.serial_number != null ? String(row.serial_number) : null,
+    },
+  }));
 }
 
 /**
@@ -770,7 +1070,12 @@ export async function searchAllEntities(
   axis?: SearchByScope,
 ): Promise<GlobalSearchResult[]> {
   const startedAt = Date.now();
-  const printed = isPrintedHandlePayload(query);
+  // One decode for the whole dispatch — same decoder the station scan bar uses.
+  // `printed` follows the `decodedHandle` rule: a route WITH a redirect is a
+  // genuine label decode; a redirect-less route is a guess (or, for `manifest`,
+  // an anchored type with no URL of its own — handled explicitly below).
+  const scanRoute = routeScan(query);
+  const printed = Boolean(scanRoute?.redirect);
   const branch =
     printed || axis === 'internal'
       ? 'internal'
@@ -789,6 +1094,29 @@ export async function searchAllEntities(
     // #endregion
     return rows;
   };
+  // Printed classes that are NOT internal PK keys must be routed before the
+  // Internal ID branch, which knows no ticket / repair / manifest keys and
+  // would answer them with an empty list:
+  //   T-{id}   → /support?ticket={id} — resolve the provider ticket id.
+  //   REP-{id} → /m/rs/{id}           — a repair, not a carton (routeScan types
+  //                                     it `receiving`; the redirect is the tell).
+  //   KIT-…    → type `manifest`, no redirect — fan out the kit's units.
+  if (printed && scanRoute?.type === 'support-ticket') {
+    const ticketId = /^\/support\?ticket=(\d+)/.exec(scanRoute.redirect ?? '')?.[1];
+    const tickets = ticketId
+      ? await searchSupportTickets(orgId, ticketId).catch(() => [])
+      : [];
+    return finish(tickets.slice(0, limit));
+  }
+  const repairPk = printed
+    ? /^\/m\/rs\/(\d+)/.exec(scanRoute?.redirect ?? '')?.[1]
+    : undefined;
+  if (repairPk) {
+    return finish(await searchRepairByPk(orgId, Number(repairPk), limit).catch(() => []));
+  }
+  if (scanRoute?.type === 'manifest') {
+    return finish(await searchManifestUnits(orgId, query, limit).catch(() => []));
+  }
   if (printed || axis === 'internal') {
     return searchInternalIds(orgId, query, limit).catch(() => []).then(finish);
   }

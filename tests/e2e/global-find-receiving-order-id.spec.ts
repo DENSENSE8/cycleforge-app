@@ -36,12 +36,10 @@ async function stubFindApis(
 async function typeInHeaderFind(page: Page, q: string): Promise<void> {
   await page.goto('/search');
   await expect(page.locator('main').first()).toBeVisible({ timeout: 30_000 });
-  const field = page.getByTestId('global-find-field').locator('input');
+  await page.getByTestId('global-find-field').click();
+  const field = page.getByTestId('global-find-input');
   await expect(field).toBeVisible({ timeout: 15_000 });
-  await field.click();
   await field.fill(q);
-  await expect(field).toHaveValue(q);
-  await field.click();
 }
 
 const receivingHit = {
@@ -98,7 +96,7 @@ test.describe('header find receiving marketplace order id', () => {
   test('undashed paste still paints the dashed receiving #', async ({ page }) => {
     await stubFindApis(page, [receivingHit]);
     await typeInHeaderFind(page, ORDER_ID);
-    const field = page.getByTestId('global-find-field').locator('input');
+    const field = page.getByTestId('global-find-input');
     const receiving = page.locator(`${HIT}[data-hit-entity="receiving"]`);
     await expect(receiving).toHaveCount(1);
     await field.fill('111506772584');

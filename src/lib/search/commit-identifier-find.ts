@@ -15,6 +15,7 @@ import {
 import { setSearchOrderResolveCache } from '@/lib/search/search-order-resolve-query';
 import { orderRecordHref, searchHitHref } from '@/lib/search/search-hit';
 import { desktopSearchHref } from '@/lib/search/internal-id';
+import { formatSearchSel } from '@/lib/search/search-selection';
 
 export type CommitIdentifierFindResult =
   | {
@@ -52,7 +53,7 @@ export async function commitIdentifierFind(
   return { kind: 'stay', resolved };
 }
 
-/** Preview-hit href — orders always land on search feedback (same as header find). */
+/** Preview-hit href — always land on `/search?sel=` for findable entity types. */
 export function hrefForPreviewHit(hit: {
   entityType: string;
   id: number;
@@ -63,6 +64,8 @@ export function hrefForPreviewHit(hit: {
       ? orderRecordHref(hit.id)
       : hit.entityType === 'receiving'
         ? searchHitHref('RECEIVING', hit.id)
-        : hit.href;
+        : hit.entityType === 'unit'
+          ? `/search?sel=${formatSearchSel('unit', hit.id)}`
+          : hit.href;
   return desktopSearchHref(raw);
 }

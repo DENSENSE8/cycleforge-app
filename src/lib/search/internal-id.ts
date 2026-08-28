@@ -10,6 +10,7 @@ import {
   decodedHandle,
   scannedReceivingId,
   scannedUnitKey,
+  type ScanRoute,
 } from '@/lib/barcode-routing';
 import { formatSearchSel } from '@/lib/search/search-selection';
 
@@ -210,4 +211,27 @@ export function searchPageHrefForScanRoute(route: {
   const redirect = String(route.redirect ?? '').trim();
   if (!redirect) return null;
   return desktopSearchHref(redirect);
+}
+
+/**
+ * Direct-open destination for a TYPED printed handle whose desktop landing is
+ * NOT `/search` — a location (`/inventory?bin=`), a QC line
+ * (`/receiving/lines/{id}`), a support ticket (`/support?ticket=`). The record
+ * list cannot represent those, so ⌘K renders one "Open …" row that goes
+ * exactly where the scan-gun path ({@link searchPageHrefForScanRoute}) goes.
+ *
+ * `/search`-rooted handles return null: their record hits already land there,
+ * and a duplicate row above them would be noise.
+ */
+export function directOpenForTypedHandle(
+  raw: string,
+): { href: string; route: ScanRoute } | null {
+  const route = decodedHandle(raw);
+  if (!route) return null;
+  const href = searchPageHrefForScanRoute(route);
+  if (!href) return null;
+  const q = href.indexOf('?');
+  const pathname = q >= 0 ? href.slice(0, q) : href;
+  if (pathname === '/search') return null;
+  return { href, route };
 }

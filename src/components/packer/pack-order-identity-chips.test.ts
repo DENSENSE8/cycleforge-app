@@ -29,7 +29,7 @@ test('order# stays in poDisplay — SKU never fills the order chip', () => {
   assert.notEqual(chips.poDisplay, 'SKU-999');
 });
 
-test('missing order# falls back to tracking, still never SKU', () => {
+test('missing order# is a dash — never tracking, still never SKU', () => {
   const chips = resolvePackOrderIdentityChips(
     pane({
       orderId: '',
@@ -38,8 +38,11 @@ test('missing order# falls back to tracking, still never SKU', () => {
       scanType: 'SKU',
     }),
   );
-  assert.equal(chips.poDisplay, '9400111899223344556677');
+  assert.equal(chips.poDisplay, '\u2014');
+  assert.notEqual(chips.poDisplay, '9400111899223344556677');
   assert.notEqual(chips.poDisplay, 'SKU-ONLY');
+  // Tracking keeps its own chip — the dash replaces the fallback, not the fact.
+  assert.equal(chips.tracking, '9400111899223344556677');
 });
 
 test('canSendToPhone only when packerLogId is a positive id', () => {
@@ -55,4 +58,18 @@ test('canSendToPhone only when packerLogId is a positive id', () => {
     resolvePackOrderIdentityChips(pane({ packerLogId: 0 })).canSendToPhone,
     false,
   );
+});
+
+test('eBay 2-5-5 order# fills platform even without a listing-derived key', () => {
+  const chips = resolvePackOrderIdentityChips(
+    pane({ orderId: '03-15100-78272', sku: '' }),
+  );
+  assert.equal(chips.platformValue, 'ebay');
+});
+
+test('Amazon 3-7-7 order# fills platform over a listing fallback', () => {
+  const chips = resolvePackOrderIdentityChips(
+    pane({ orderId: '111-1234567-1234567', sku: '' }),
+  );
+  assert.equal(chips.platformValue, 'amazon');
 });

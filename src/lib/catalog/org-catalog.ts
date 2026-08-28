@@ -14,11 +14,13 @@
 import {
   listPlatforms,
   listPlatformAccounts,
+  listPlatformTypeRules,
   listTypes,
   type PlatformAccountRow,
   type PlatformRow,
   type TypeRow,
 } from '@/lib/neon/catalog-queries';
+import type { PlatformTypeRule } from '@/lib/receiving/platform-type-rules';
 import { getOrSet, invalidateCacheTags } from '@/lib/cache/upstash-cache';
 import { CACHE_NS, CACHE_TAGS } from '@/lib/cache/tags';
 
@@ -58,6 +60,29 @@ export async function getOrgTypes(orgId: string): Promise<TypeRow[]> {
   );
   typeCache.set(orgId, { value: rows, expiresAt: Date.now() + CACHE_TTL_MS });
   return rows;
+}
+
+/**
+ * The org's platform → receiving-type dependency matrix.
+ *
+ * **Deliberately UNCACHED — do not "fix" this to match its siblings.**
+ *
+ * It lives here for one import site, but it is the one catalog read that sits on
+ * a WRITE path: every carton PATCH touching platform or type reads it to
+ * validate the resulting pair. Behind the shared 5-minute cache that means an
+ * admin's rule edit does not take effect for five minutes, and — worse — a rule
+ * they just DELETED keeps rejecting operator writes for the same window. The
+ * lists above are display/validation vocabularies that change once a quarter;
+ * this one is a live gate an admin edits and expects to bind immediately.
+ *
+ * The cost is one indexed query on a table with a handful of rows, joined to two
+ * small catalogs, on a route that already runs several. That is the right side
+ * of this trade. If it ever shows up in a profile, cache it with an AWAITED
+ * invalidation — not the fire-and-forget tag clear, which is what let a deleted
+ * rule keep being served here in the first place.
+ */
+export async function getOrgPlatformTypeRules(orgId: string): Promise<PlatformTypeRule[]> {
+  return listPlatformTypeRules(orgId);
 }
 
 /** Active storefront accounts for the org, cached 5 min. */

@@ -17,6 +17,7 @@ import { OrderNumberMenuChip } from '@/components/ui/OrderNumberMenuChip';
 import { PlatformMark } from '@/components/ui/PlatformMark';
 import { TrackingNumberMenuChip } from '@/components/ui/TrackingNumberMenuChip';
 import { useIsColumnHidden } from '@/components/ui/table-column-config/TableColumnConfig';
+import { resolveMarketplaceChipIdentity } from '@/lib/marketplace-order-id';
 import { sourcePlatformMetaFromLabel } from '@/lib/source-platform';
 import { dashboardOrderRowChipsClass } from '@/lib/dashboard-order-row-layout';
 import { cn } from '@/utils/_cn';
@@ -298,7 +299,8 @@ export function useOrderIdentityCellNodes({
    * `omitCellIcon` — declaring that flag flips a surface to this language with
    * no component edit.
    */
-  const orderBrandDot = platformMetaBrandDot(sourcePlatformMetaFromLabel(platformLabel));
+  const orderIdentity = resolveMarketplaceChipIdentity(orderId, platformLabel);
+  const orderBrandDot = platformMetaBrandDot(orderIdentity.meta);
 
   const orderChipNode = hideOrderId ? (
     <OrderIdChipPlaceholder plain={plain} />
@@ -309,7 +311,7 @@ export function useOrderIdentityCellNodes({
       ) : null}
       <OrderNumberMenuChip
         value={orderId}
-        platformLabel={platformLabel || null}
+        platformLabel={orderIdentity.platformLabel}
         openHref={marketplaceOrderUrl}
         onMenuOpenChange={handleMenuOpenChange}
         plain={plain}

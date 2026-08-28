@@ -38,12 +38,10 @@ async function stubFindApis(
 async function typeInHeaderFind(page: Page, q: string): Promise<void> {
   await page.goto('/search');
   await expect(page.locator('main').first()).toBeVisible({ timeout: 30_000 });
-  const field = page.getByTestId('global-find-field').locator('input');
+  await page.getByTestId('global-find-field').click();
+  const field = page.getByTestId('global-find-input');
   await expect(field).toBeVisible({ timeout: 15_000 });
-  await field.click();
   await field.fill(q);
-  await expect(field).toHaveValue(q);
-  await field.click();
 }
 
 const ebayHit = {
@@ -71,7 +69,7 @@ test.describe('header find last-8 order number', () => {
     await stubFindApis(page, [ebayHit]);
     const queries = ['68413689', '6841-3689', '021468413689', EBAY, '84-13689'];
     await typeInHeaderFind(page, queries[0]);
-    const field = page.getByTestId('global-find-field').locator('input');
+    const field = page.getByTestId('global-find-input');
     const hit = page.locator(HIT);
     for (const q of queries) {
       await field.fill(q);
@@ -87,10 +85,10 @@ test.describe('header find last-8 order number', () => {
   test('last-8 miss stays in the dropdown', async ({ page }) => {
     await stubFindApis(page, []);
     await typeInHeaderFind(page, '68413689');
-    await page.getByTestId('global-find-field').locator('input').click();
+    await page.getByTestId('global-find-input').click();
     await expect(page.getByText(EMPTY_ORDER)).toBeVisible({ timeout: 10_000 });
     const urlBeforeEnter = page.url();
-    await page.getByTestId('global-find-field').locator('input').press('Enter');
+    await page.getByTestId('global-find-input').press('Enter');
     await expect(page.getByText(EMPTY_ORDER)).toBeVisible();
     await expect(page).toHaveURL(urlBeforeEnter);
   });
@@ -101,7 +99,7 @@ test.describe('header find last-8 serial', () => {
     await stubFindApis(page, [serialHit]);
     const queries = ['12345678', '1234-5678', 'C02XMH12345678', SERIAL];
     await typeInHeaderFind(page, queries[0]);
-    const field = page.getByTestId('global-find-field').locator('input');
+    const field = page.getByTestId('global-find-input');
     const hit = page.locator(HIT);
     for (const q of queries) {
       await field.fill(q);

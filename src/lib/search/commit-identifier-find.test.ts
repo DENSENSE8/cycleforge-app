@@ -32,10 +32,10 @@ test('hrefForPreviewHit: orders use feedback sel href', () => {
   );
 });
 
-test('hrefForPreviewHit: non-orders keep desktop hit.href', () => {
+test('hrefForPreviewHit: units open search unit station', () => {
   assert.equal(
     hrefForPreviewHit({ entityType: 'unit', id: 3, href: '/inventory/units?unit=3' }),
-    '/inventory/units?unit=3',
+    '/search?sel=unit:3',
   );
 });
 

@@ -1,29 +1,27 @@
-import { HydrationBoundary } from '@tanstack/react-query';
 import { ReceivingSurfacePage } from '@/components/receiving/ReceivingSurfacePage';
 import { SurfaceGate } from '@/components/surfaces/SurfaceGate';
 import { SurfaceParamHygiene } from '@/components/routing/SurfaceParamHygiene';
-import { seedUnboxSpine } from '@/lib/queries/unbox-spine-seed.server';
 
 /**
  * `/triage` — the Arrival operator surface (dock scan/identify before
  * unboxing). Shares the scan-bar + recent-rail sidebar body with Unbox; only
  * the right pane differs. Bare `/triage` derives the `triage` mode path-first.
  *
- * Paint: reuses History spine seed (`seedUnboxSpine`) for the shared
- * receiving-lines cache root so the station does not cold-start the feed after
- * a To-ship → Arrival hop. Centre LCP remains scan + carton work (not a table).
+ * Paint: NO server seed (removed 2026-08-27, operator ruling). The History
+ * spine seed this page carried (`seedUnboxSpine`) blocked TTFB on a self-fetch
+ * — up to 150 rows through `/api/receiving-lines?phase=spine`, paying a full
+ * `withAuth` re-entry — to warm a table Arrival never paints. The To-ship →
+ * Arrival hop it existed for was already warm client-side (the QueryClient
+ * survives soft navigation), and History cold-starts its own feed when it is
+ * actually opened. Centre LCP remains scan + carton work (not a table).
  */
-export default async function TriagePage() {
-  const seed = await seedUnboxSpine();
-
+export default function TriagePage() {
   return (
     <>
       <SurfaceParamHygiene />
-      <HydrationBoundary state={seed.state}>
-        <SurfaceGate surfaceKey="triage">
-          <ReceivingSurfacePage />
-        </SurfaceGate>
-      </HydrationBoundary>
+      <SurfaceGate surfaceKey="triage">
+        <ReceivingSurfacePage />
+      </SurfaceGate>
     </>
   );
 }

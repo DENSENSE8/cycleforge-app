@@ -32,16 +32,16 @@ These are security / correctness / process, not design taste:
 
 - **Never commit `.env`.** A PreToolUse hook in `.claude/settings.json` blocks
   writes to secret paths. Do not bypass it.
-- **Never start, restart, or kill a dev server.** The operator owns `:3050` —
-  attach to it, never spawn one (`pnpm dev` = `next dev --turbopack -p 3050`).
-  A broken dev server is a **report, not a repair**: a stale Turbopack
-  transform, a poisoned Tailwind cache, a port already bound — say what it is
-  and ask. Restarting costs the operator one keystroke and costs you the one
-  surface they were watching. Never delete `.next/` or `.next/dev/lock` to
-  "fix" a server you did not start.
-- **The tunnel is the operator's too.** `pnpm dev:tunnel` (named) /
-  `dev:tunnel:quick` / `dev:phone` expose `:3050` for mobile testing, and are
-  main-only. Never start, rotate, or kill one. A dead tunnel URL is a report.
+- **Lanes are yours to run; `:3050` and `usav-dev` are not.** Removed
+  2026-08-28 at the operator's instruction: the blanket "never start, restart,
+  or kill a dev server" is struck, and an agent may `pnpm lane up` / `down` a
+  lane and its tunnel freely. What survives is the narrow case the rule was
+  really about — **the main checkout's `:3050` dev server and the `usav-dev`
+  tunnel stay the operator's.** Those are the surface they are watching and a
+  remotely-managed tunnel whose ingress lives in the Cloudflare dashboard; a
+  restart there costs them their session and can take the public hostname
+  down. A broken `:3050` is still a **report, not a repair**, and never delete
+  `.next/` or `.next/dev/lock` to "fix" a server you did not start.
 - **Never create a branch. Always work on `main`.** No `git branch`,
   `git checkout -b`, or `git switch -c` — not to isolate work, not to keep
   `main` clean. If you need an isolated lane it is a separate **worktree**
@@ -69,11 +69,31 @@ These are security / correctness / process, not design taste:
 - **`npm run verify` before done** — lint · typecheck · unit. That is the whole
   automated gate set.
 
+## Interaction budget (operator's standing rule, 2026-08-28)
+
+Every surface must let its user VIEW the information it exists for and ACT on
+it within a fixed budget, measured from the surface's entry point:
+
+- **See the primary information: ≤ 2 interactions.** Opening the page counts
+  as one; a tab or row-expand is the second. If the answer needs a third
+  click, the page is hiding its own point.
+- **Take the primary action: ≤ 3 interactions**, confirmation included.
+- **Status overviews: ≤ 1** — the truth is on screen when the page opens,
+  never behind a filter someone must rebuild by hand.
+
+"Interaction" = a click, tap, or keystroke chord; scrolling is free and typing
+a value is one. A change that adds a fourth click to an existing flow is a
+regression even when the feature works. Deep-linkable state (the URL carries
+the tab/filter) is the cheapest way to hit these budgets — prefer it over
+modal nesting. The loop's verifier judges diffs against this rule.
+
 ## Performance
 
-**Target: Lighthouse ≥ 90 in every category, every route.** Only Performance is
-short — A11y 93–95, Best Practices 96, SEO 91, CLS ~0 and TBT 22–158 ms already
-clear it. Performance sits at 67–78 and the entire gap is **LCP (5.9–12.3 s)**.
+**Target: Lighthouse Performance ≥ 92 on every route** (operator ruling
+2026-08-27; raised from 90 — "test until it hits ninety two, that is the law
+throughout the entire codebase"). The other categories keep the ≥ 90 floor —
+A11y 93–95, Best Practices 96, SEO 91, CLS ~0 and TBT 22–158 ms already clear
+it. Performance sits at 67–78 and the entire gap is **LCP (5.9–12.3 s)**.
 
 The cause is one thing, not many: the data-heavy workbenches (`/dashboard`,
 `/unbox`, `/triage`, `/search`, `/test`) render a shell, hydrate, and only then

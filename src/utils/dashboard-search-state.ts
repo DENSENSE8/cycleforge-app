@@ -3,21 +3,36 @@
 import type { ShippedOrder } from '@/types/orders';
 import type { ShippedDetailsContext } from '@/utils/events';
 
-// 'pending' removed — Awaiting+Pending merged into 'unshipped' (2026-06-13).
-// getDashboardOrderViewFromSearch never returns 'pending'; all legacy ?pending
-// URLs resolve to 'unshipped' at the URL-read layer.
-//
-// Lifecycle tabs (ops names → industry labels in the UI):
-//   unshipped → "Pending"  (awaiting test + OOS; excludes TESTED)
-//   tested    → "Tested"   (ready to pack — has tech scan)
-//   packed    → "Packed"   (PACKED_STAGED — staged, not yet left the dock)
-//   shipped   → "Shipped"  (left warehouse / in carrier custody / delivered)
-//
-// Vestigial `?fba` was deleted as a lifecycle tab 2026-07-29 (IA row L): FBA owns
-// `/shipping/fba`. Old bookmarks client-redirect there (ratified 2026-07-30), they
-// do not fall through to Pending.
+/**
+ * To-ship desk view.
+ *
+ * Lifecycle tabs (Pending · Tested · Packed · Shipped) were retired — the desk
+ * is one in-warehouse list and stage is a row fact. `DashboardOrderView` stays
+ * the URL presence-flag type for bookmark compatibility; the desk always
+ * normalizes to `unshipped` and uses facets (`?late`, `?attention`, `?ustatus`,
+ * `?stage`, `?rowFlag`) for triage.
+ *
+ * Vestigial `?fba` was deleted as a lifecycle tab 2026-07-29 (IA row L): FBA owns
+ * `/shipping/fba`. Old bookmarks client-redirect there (ratified 2026-07-30).
+ */
 export type DashboardOrderView = 'unshipped' | 'tested' | 'packed' | 'shipped';
 export type DashboardCacheEntry = readonly [unknown, unknown];
+
+/** Band-1 / Band-3 triage facets on the in-warehouse desk. */
+export type ToShipTriageFacet =
+  | 'all'
+  | 'must_ship'
+  | 'urgent'
+  | 'blocked'
+  | 'awaiting_customer';
+
+export const TO_SHIP_TRIAGE_FACET_LABEL: Record<ToShipTriageFacet, string> = {
+  all: 'All',
+  must_ship: 'Must ship',
+  urgent: 'Urgent',
+  blocked: 'Out of stock',
+  awaiting_customer: 'Awaiting customer',
+};
 
 export interface DashboardSelectionSnapshot {
   order: ShippedOrder;
@@ -39,18 +54,13 @@ export interface DashboardAssignmentUpdateDetail {
 }
 
 /**
- * Build the Support warranty deep-link from a legacy `/dashboard?warranty=` URL.
- * Preserves open claim + filters + search for bookmark compatibility.
- */
-/**
  * Params the legacy `?warranty=` redirect forwards to Support.
  *
  * Named rather than inline so `dashboard-search-state.test.ts` can assert every
  * one is declared by DASHBOARD_ROUTE_PARAMS. They are **hand-off** keys — read on
  * `/dashboard` only to be forwarded — and an undeclared hand-off key is dropped
  * the moment `/dashboard` mounts `useSurfaceParamHygiene()`, which would quietly
- * strip an old bookmark's open claim and filters on the way to Support. Same
- * defect class as `/walk-in`'s legacy deep-links and the `/fba` redirect.
+ * strip an old bookmark's open claim and filters on the way to Support.
  */
 export const SUPPORT_WARRANTY_FORWARDED_PARAMS = [
   'open',
@@ -71,23 +81,14 @@ export function buildSupportWarrantyRedirectSearch(
   return next.toString();
 }
 
+/**
+ * Resolve the desk view from the URL. Legacy `?tested` / `?packed` / `?shipped`
+ * presence flags collapse to the single in-warehouse desk (`unshipped`); stage
+ * refine rides `?stage=` instead of a tab.
+ */
 export function getDashboardOrderViewFromSearch(
-  searchParams: Pick<URLSearchParams, 'has' | 'get'>
+  _searchParams: Pick<URLSearchParams, 'has' | 'get'>
 ): DashboardOrderView {
-  if (searchParams.has('shipped')) return 'shipped';
-  if (searchParams.has('packed')) return 'packed';
-  if (searchParams.has('tested')) return 'tested';
-  // Legacy bookmark: Pending tab + `?ustatus=TESTED` → Tested lifecycle tab.
-  const ustatus = String(searchParams.get('ustatus') || '').trim().toUpperCase();
-  if (ustatus === 'TESTED' && (searchParams.has('unshipped') || searchParams.has('pending') || !searchParams.has('shipped'))) {
-    // Only rewrite when we're on the pre-pack surface (default / unshipped / pending).
-    if (!searchParams.has('packed') && !searchParams.has('shipped')) {
-      return 'tested';
-    }
-  }
-  // Legacy `?warranty` is redirected to Support by the dashboard page; treat as unshipped.
-  // The Pending (awaiting test) mode. `?unshipped`, the legacy `?pending`, and the
-  // bare default all resolve here. Legacy `?fba` also falls through here.
   return 'unshipped';
 }
 
@@ -101,24 +102,93 @@ export function getDashboardPendingLayoutFromSearch(
   return 'grid';
 }
 
-/** Display labels for the outbound lifecycle slider (industry-standard wording). */
+/** Display labels — legacy tab names kept for saved-view copy / tests. */
 export const DASHBOARD_ORDER_VIEW_LABEL: Record<DashboardOrderView, string> = {
-  unshipped: 'Pending',
+  unshipped: 'To ship',
   tested: 'Tested',
   packed: 'Packed',
   shipped: 'Shipped',
 };
 
-/** Pre-pack lifecycle tabs (Pending + Tested) share the unshipped queue + sort. */
+/** The in-warehouse desk is always the To-ship surface. */
 export function isPrePackOrderView(view: DashboardOrderView): boolean {
-  return view === 'unshipped' || view === 'tested';
+  return view === 'unshipped' || view === 'tested' || view === 'packed';
+}
+
+/**
+ * Read the active triage facet from URL params.
+ * Precedence: awaiting customer → blocked → urgent → must ship → all.
+ */
+export function getToShipTriageFacetFromSearch(
+  searchParams: Pick<URLSearchParams, 'get' | 'has'>,
+): ToShipTriageFacet {
+  const rowFlag = String(searchParams.get('rowFlag') || '').trim().toLowerCase();
+  if (rowFlag === 'awaiting_customer') return 'awaiting_customer';
+  const ustatus = String(searchParams.get('ustatus') || '').trim().toUpperCase();
+  if (ustatus === 'BLOCKED') return 'blocked';
+  if (
+    searchParams.get('attention') === '1' ||
+    searchParams.get('attention') === 'true'
+  ) {
+    return 'urgent';
+  }
+  if (searchParams.get('late') === '1' || searchParams.get('late') === 'true') {
+    return 'must_ship';
+  }
+  return 'all';
+}
+
+/** Apply a triage facet onto a copy of search params (mutates + returns). */
+export function applyToShipTriageFacet(
+  params: URLSearchParams,
+  facet: ToShipTriageFacet,
+): URLSearchParams {
+  params.delete('late');
+  params.delete('attention');
+  params.delete('ustatus');
+  params.delete('rowFlag');
+  // Facets own the refine; clear lifecycle presence flags + stage tab leftovers.
+  params.delete('tested');
+  params.delete('packed');
+  params.delete('shipped');
+  params.delete('pending');
+  params.delete('stage');
+  switch (facet) {
+    case 'must_ship':
+      params.set('late', '1');
+      break;
+    case 'urgent':
+      params.set('attention', '1');
+      break;
+    case 'blocked':
+      params.set('ustatus', 'BLOCKED');
+      break;
+    case 'awaiting_customer':
+      params.set('rowFlag', 'awaiting_customer');
+      break;
+    case 'all':
+    default:
+      break;
+  }
+  params.set('unshipped', '');
+  return params;
 }
 
 export function normalizeDashboardOrderViewParams(
   params: URLSearchParams,
   preferredView?: DashboardOrderView
 ): DashboardOrderView {
-  const nextView = preferredView ?? getDashboardOrderViewFromSearch(params);
+  // Legacy tab bookmarks → stage facet on the unified desk.
+  const fromLegacy =
+    preferredView ??
+    (params.has('shipped')
+      ? 'shipped'
+      : params.has('packed')
+        ? 'packed'
+        : params.has('tested')
+          ? 'tested'
+          : 'unshipped');
+
   params.delete('unshipped');
   params.delete('pending');
   params.delete('tested');
@@ -126,44 +196,24 @@ export function normalizeDashboardOrderViewParams(
   params.delete('shipped');
   params.delete('fba');
   params.delete('warranty');
-  // Clear residual warranty params if any still ride on dashboard URLs.
   params.delete('open');
   params.delete('wstatus');
   params.delete('wexp');
-  // Nested board layout was retired — lists only on lifecycle tabs.
   params.delete('layout');
-  // Board|Grid switcher retired — Pending/Tested are always the spreadsheet grid.
-  // Strip stale `?view=` from every tab (including Pending bookmarks).
   params.delete('view');
-  // Cross-tab status filters are view-specific; clear so they don't bleed.
-  // Pre-pack tabs (Pending + Tested) keep sort / urgent; lane is the tab itself.
-  if (!isPrePackOrderView(nextView)) {
-    params.delete('ustatus');
-    params.delete('stage');
-    params.delete('late');
-    params.delete('attention');
-    params.delete('surface');
-    // Display-sort (`?sort=`) stays Pending/Tested–scoped.
-    params.delete('sort');
-  } else {
-    // Tabs own Pending vs Tested. Drop TESTED/PENDING lane params that duplicate
-    // the tab; keep BLOCKED on Pending so the OOS filter still works.
-    const lane = String(params.get('ustatus') || '').trim().toUpperCase();
-    if (nextView === 'tested' || lane !== 'BLOCKED') {
-      params.delete('ustatus');
-    }
-    params.delete('stage');
+  params.delete('ostatus');
+  params.delete('exceptions');
+
+  // Map retired tabs onto stage refine (not a second list).
+  if (fromLegacy === 'tested' && !params.get('stage')) {
+    params.set('stage', 'tested');
+  } else if (fromLegacy === 'packed' && !params.get('stage')) {
+    params.set('stage', 'packed');
   }
-  if (nextView === 'packed') {
-    // Packed is the exact staged list — status chips don't apply.
-    params.delete('ostatus');
-    params.delete('exceptions');
-  }
-  if (nextView !== 'shipped' && nextView !== 'packed') {
-    params.delete('ostatus');
-  }
-  params.set(nextView, '');
-  return nextView;
+  // `?shipped` bookmarks land on the in-warehouse desk; dock history is Scan-out.
+
+  params.set('unshipped', '');
+  return 'unshipped';
 }
 
 export function parseDashboardOpenOrderId(raw: string | null | undefined): number | null {

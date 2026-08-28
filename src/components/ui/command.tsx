@@ -2,13 +2,13 @@
 
 /**
  * shadcn/ui Command (new-york / cmdk), restyled to house tokens.
- * No CommandDialog — ⌘K belongs to CommandBar
- * (`src/components/layout/cmdk-owner.guard.test.ts`).
+ * {@link CommandDialog} is the centered find palette shell for {@link CommandBar}.
  */
 
 import * as React from 'react';
 import { Command as CommandPrimitive } from 'cmdk';
 import { Search } from '@/components/Icons';
+import { Dialog, DialogContent, DialogTitle } from '@/design-system/components/Dialog';
 import { cn } from '@/utils/_cn';
 
 function Command({ className, ...props }: React.ComponentProps<typeof CommandPrimitive>) {
@@ -24,7 +24,10 @@ function Command({ className, ...props }: React.ComponentProps<typeof CommandPri
   );
 }
 
-function CommandInput({ className, ...props }: React.ComponentProps<typeof CommandPrimitive.Input>) {
+const CommandInput = React.forwardRef<
+  React.ComponentRef<typeof CommandPrimitive.Input>,
+  React.ComponentPropsWithoutRef<typeof CommandPrimitive.Input>
+>(function CommandInput({ className, ...props }, ref) {
   return (
     <div
       data-slot="command-input-wrapper"
@@ -32,6 +35,7 @@ function CommandInput({ className, ...props }: React.ComponentProps<typeof Comma
     >
       <Search className="size-4 shrink-0 text-text-faint" />
       <CommandPrimitive.Input
+        ref={ref}
         data-slot="command-input"
         className={cn(
           'flex h-9 w-full bg-transparent py-2 text-sm outline-none placeholder:text-text-faint disabled:opacity-50',
@@ -41,7 +45,8 @@ function CommandInput({ className, ...props }: React.ComponentProps<typeof Comma
       />
     </div>
   );
-}
+});
+CommandInput.displayName = 'CommandInput';
 
 function CommandList({ className, ...props }: React.ComponentProps<typeof CommandPrimitive.List>) {
   return (
@@ -122,8 +127,44 @@ function CommandShortcut({ className, ...props }: React.ComponentProps<'span'>) 
   );
 }
 
+function CommandDialog({
+  open,
+  onOpenChange,
+  children,
+  className,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        hideClose
+        overlayClassName="z-command bg-scrim/40 backdrop-blur-md"
+        onOpenAutoFocus={(e) => {
+          // cmdk owns focus; prevent Radix from focusing the dialog chrome.
+          e.preventDefault();
+        }}
+        onCloseAutoFocus={(e) => {
+          e.preventDefault();
+        }}
+        className={cn(
+          'left-1/2 top-[12vh] z-command max-h-[70vh] w-[calc(100%-2rem)] max-w-[560px] -translate-x-1/2 translate-y-0 gap-0 overflow-hidden rounded-2xl border-border-soft p-0 md:top-[16vh]',
+          className,
+        )}
+      >
+        <DialogTitle className="sr-only">Find records</DialogTitle>
+        {children}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export {
   Command,
+  CommandDialog,
   CommandInput,
   CommandList,
   CommandEmpty,

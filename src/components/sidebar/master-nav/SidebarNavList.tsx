@@ -1,11 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { ChevronDown, ChevronLeft, ChevronsRight } from '@/components/Icons';
 import { navIconStrokeClass } from '@/components/icons/nav-weight';
-import { buildNavDestinations, type NavDestination } from '@/lib/nav/nav-destinations';
-import { searchNav, splitNavHighlight, type NavMatch } from '@/lib/nav/nav-search';
-import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 import {
   spineAccentFor,
   spineRailLineClass,
@@ -14,6 +11,7 @@ import {
 import {
   SPINE_SECTIONS,
   getStationSubgroupDef,
+  isSpineMapTopRow,
   spineSectionIdForPage,
   stationSubgroupMembers,
   type SidebarPageNav,
@@ -28,21 +26,18 @@ import {
 } from '@/components/sidebar/sidebar-spine';
 import { cn } from '@/utils/_cn';
 import { StaffAccountFooter } from './StaffAccountFooter';
-import { PRIMARY_CHROME_ROW_FACE } from '@/components/layout/header-shell';
 
 /**
  * The page list inside the sidebar spine — **ONE flat scrolling map**.
  *
  * The body is every reachable destination in {@link SPINE_SECTIONS} order —
- * **Scan Stations first (2026-08-03)**, because the benches are what this
- * product is for — grouped by spacing/order alone, no rule between sections
- * (2026-08-16, the map has zero horizontal hairlines top to bottom, matching
- * the context rail beside it); a TOP-pinned {@link TechRailSearchBar}
- * (`variant="chrome"`) sits directly under the 40px top band and directly
- * above the first section row, so find is above the list it searches — the
- * same seat Displays row 2 and the Unbox sheet's Band 3 use. Below the map:
- * the footer band — Operations Studio · Admin · Settings — then
- * {@link StaffAccountFooter}.
+ * **Home · Media Library first**, then **Scan Stations** and the domains —
+ * grouped by spacing/order alone, no rule between sections (2026-08-16, the
+ * map has zero horizontal hairlines top to bottom, matching the context rail
+ * beside it — including no seam above the staff account footer). Record /
+ * destination find is ⌘K (header Find) — the in-spine "Go to…" field was
+ * removed 2026-08-28. Below the map: the footer band — Operations Studio ·
+ * Admin · Settings — then {@link StaffAccountFooter}.
  *
  * ## The drill is gone (2026-08-02)
  *
@@ -157,11 +152,7 @@ function pagesForSection(pages: SidebarPageNav[], sectionId: SpineSectionId): Si
   return pages.filter((p) => spineSectionIdForPage(p) === sectionId);
 }
 
-// There is deliberately NO local matcher here. A query switches the body to the
-// flat destination list, which ranks through `searchNav` — the one nav matcher.
-// Two unranked `includes()` helpers used to live at this spot: one narrowed the
-// root's section BUTTONS, the other the drill's pages. That split is what made
-// typing a page's exact name return a category.
+// Destination ranking lives in ⌘K (`searchNav` / CommandBar), not in this map.
 
 export function SidebarNavList({
   activePage,
@@ -177,72 +168,8 @@ export function SidebarNavList({
   // There is no motion state here, because there is no motion here. See the
   // "this component has NO motion" note above for the four treatments that
   // were tried and why each one lost.
-  const [navFilter, setNavFilter] = useState('');
 
-  /**
-   * A non-empty query switches the body from HIERARCHY to a flat ranked list.
-   *
-   * Categories answer "what exists" (recognition); search answers "take me to
-   * the thing I named" (recall). Filtering the *category* buttons served
-   * neither: typing a page's exact name returned a section that did not contain
-   * the word, and the operator still had to drill and re-scan. Tree at rest,
-   * flat while searching — the same switch VS Code / Linear / Notion make.
-   */
-  const searching = navFilter.trim().length > 0;
-
-  const destinations = useMemo(
-    // `otherPages` is misnamed upstream — MasterNav passes the FULL page list,
-    // active page included. Merging by id rather than spreading keeps this
-    // correct under either contract; spreading duplicated every destination of
-    // the active page under an identical key, so the keyboard cursor lit two
-    // rows at once and React saw duplicate children.
-    () => {
-      const seen = new Set(otherPages.map((p) => p.id));
-      const pages = seen.has(activePage.id) ? otherPages : [activePage, ...otherPages];
-      return buildNavDestinations(pages);
-    },
-    [activePage, otherPages],
-  );
-  const results = useMemo(
-    () => (searching ? searchNav(destinations, navFilter) : []),
-    [searching, destinations, navFilter],
-  );
-
-  /** Keyboard cursor into `results`. Reset whenever the result set changes. */
-  const [cursor, setCursor] = useState(0);
-  useEffect(() => {
-    setCursor(0);
-  }, [navFilter]);
-  const activeResultKey = results[cursor]?.item.key ?? null;
-
-  const goToDestination = (destination: NavDestination) => {
-    onNavigate(destination.pageId, destination.childId);
-  };
-
-  /**
-   * ↓/↑/Enter from the filter box. A filter with results and no keyboard makes
-   * the operator type, lift, and aim — which is the whole cost the box was
-   * meant to remove. Escape clears (and only then blurs), so one key gets back
-   * to the map.
-   */
-  const handleFilterKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    if (!searching || results.length === 0) return;
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      setCursor((i) => (i + 1) % results.length);
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      setCursor((i) => (i - 1 + results.length) % results.length);
-    } else if (e.key === 'Enter') {
-      e.preventDefault();
-      const picked = results[cursor]?.item;
-      if (picked) {
-        goToDestination(picked);
-        setNavFilter('');
-      }
-    }
-  };
-
+  const topPages = otherPages.filter(isSpineMapTopRow);
   const bottomPages = otherPages.filter((p) => (p.kind ?? 'bottom') === 'bottom');
   const neutralAccent = spineAccentFor(null);
 
@@ -803,6 +730,15 @@ export function SidebarNavList({
 
     return (
       <ul role="group" aria-label="Sections" className="list-none p-0">
+        {topPages.length > 0 ? (
+          <li aria-label="Pinned">
+            <div id="spine-section-top">
+              {topPages.map((page) => (
+                <div key={page.id}>{renderRow(page, 'top', neutralAccent)}</div>
+              ))}
+            </div>
+          </li>
+        ) : null}
         {groups.map(({ section, pages }) => {
           const accent = spineAccentFor(section.id);
           /**
@@ -841,157 +777,21 @@ export function SidebarNavList({
     );
   };
 
-  /**
-   * One flat destination row. Deliberately NOT the section/page/child row chrome
-   * from the hierarchy: those encode depth (indent, child count, chevron), and
-   * depth is exactly what a flat result list has thrown away. Reusing them here
-   * would draw a tree that no longer exists.
-   */
-  const renderResultRow = (destination: NavDestination, match: NavMatch) => {
-    const Icon = destination.icon;
-    const accent = spineAccentFor(destination.sectionId);
-    const isCursor = destination.key === activeResultKey;
-    return (
-      <li key={destination.key}>
-        <button
-          type="button"
-          role="option"
-          aria-selected={isCursor}
-          onClick={() => {
-            goToDestination(destination);
-            setNavFilter('');
-          }}
-          onMouseEnter={() => {
-            const page = destination.pageId === activePage.id
-              ? activePage
-              : otherPages.find((pg) => pg.id === destination.pageId);
-            if (page) onRowHover?.(page);
-          }}
-          className={cn(
-            'ds-raw-button group flex w-full items-center gap-2 rounded-none px-2 py-1 text-left transition-colors duration-150',
-            isCursor ? accent.activePage : accent.idlePage,
-          )}
-        >
-          <Icon
-            className={navIconStrokeClass(cn(
-                SPINE_ROW_ICON_CLASS,
-                isCursor ? accent.activePageIcon : accent.idlePageIcon,
-              ),
-            )}
-          />
-          <span className="min-w-0 flex-1">
-            {/* Rail-matched title role (2026-08-16) — see renderPageHeader.
-                `title` carries the raw label — the truncated content here is
-                highlight spans, not plain text, so the tooltip can't just
-                read the DOM like the other rows; it needs the source string. */}
-            <span className={cn('block truncate', SPINE_LABEL_CLASS)} title={destination.label}>
-              {splitNavHighlight(destination.label, match.ranges).map((part, i) =>
-                part.hit ? (
-                  // Marks the characters that justified the row. Underline, not
-                  // a fill: a background chip inside a 12px label at this
-                  // density reads as a second chip beside the section eyebrow.
-                  <span key={i} className="underline decoration-2 underline-offset-2">
-                    {part.text}
-                  </span>
-                ) : (
-                  <span key={i}>{part.text}</span>
-                ),
-              )}
-            </span>
-            {destination.context ? (
-              <span
-                // The cursor row no longer fills saturated, so the old
-                // `text-white/70` here would render white-on-white. It steps
-                // up one ink rung instead, same as the label above it.
-                className={cn(
-                  'block truncate text-role-micro uppercase tracking-widest',
-                  isCursor ? 'text-text-soft' : 'text-text-faint',
-                )}
-              >
-                {destination.context}
-              </span>
-            ) : null}
-          </span>
-        </button>
-      </li>
-    );
-  };
-
-  const renderSearchResults = () => (
-    <ul role="listbox" aria-label="Matching destinations" className="list-none p-0">
-      {results.length === 0 ? (
-        // Names the query back. "No results" leaves the operator unsure whether
-        // the place does not exist or the box simply is not working.
-        <li className="px-2 py-1 text-role-caption text-text-soft">
-          No destination matches “{navFilter.trim()}”
-        </li>
-      ) : (
-        results.map(({ item, match }) => renderResultRow(item, match))
-      )}
-    </ul>
-  );
-
   return (
     <div role="menu" aria-label="Pages" className={cn('flex h-full min-h-0 flex-col', className)}>
-      {/* Home / Media used to pin here as full rows. They are icons in
-          the spine's 40px top band (`SpineTopPins`) when open. Search / Plans /
-          Chat stay `kind:'top'` with `spineBand: false` so ⌘K and dest search
-          still rank them without painting glyphs. */}
+      {/* Home / Media Library are ordinary L1 rows at the top of the map
+          (`isSpineMapTopRow`). Search / Plans / Chat stay `kind:'top'` with
+          `spineBand: false` so ⌘K still ranks them without painting rows. */}
       {/* `data-spine-scrollport` is the geometry probe's handle. The map's
           height against THIS box is the question every spine layout change has
           to answer, and `.claude/rules/verify.md` requires that answer to come
           from the real runner — so the port names itself rather than making a
           spec guess at a class chain that will drift. */}
-      {/* The body swaps between three KINDS of list — the map, the Scan
-          Stations drill, and ranked search results — and it swaps INSTANTLY
-          (2026-08-08). It used to crossfade through `spineBodySwap`
-          (opacity-only, 120ms, `AnimatePresence mode="wait"`).
-          `mode="wait"` is what made that expensive: the outgoing list had to
-          finish fading before the incoming one mounted, so entering Scan
-          Stations cost ~240ms of round trip and briefly showed an EMPTY
-          column between two lists. On a bench navigator that is time between
-          a click and the bench being reached for.
-          Nothing is keyed or wrapped now: the three branches render different
-          elements, so React swaps them on the same frame. */}
-      {/* Find sits ABOVE the list it searches (ruled 2026-08-19), directly under
-          the 40px top band and directly above the first section row (Scan
-          Stations). It was footer-pinned above Settings/Admin until then.
-
-          Two reasons it moved, and the second is the one that generalises:
-          a find field below its own results asks the operator to look down to
-          type and up to read; and this app now answers "where is the find box"
-          the same way on every surface that has one — Displays row 2, the Unbox
-          sheet's Band 3, and this spine all put it at the top, so an operator
-          never hunts for it.
-
-          `variant="chrome"` is the same face those two surfaces use. The rail
-          variant is deliberately NOT reused: it owns
-          `STATION_COLUMN_FOOTER_BAND_FACE`, whose hairline is on TOP for a
-          floor band — at the head of a column that rule would draw against the
-          band above it and leave the list below unseparated.
-
-          `shrink-0` and outside the scrollport, so it stays put while the map
-          scrolls. A find field that scrolls away is the defect this move fixes,
-          not a new one to introduce. */}
-      <div
-        data-spine-find
-        className={cn(
-          'w-full shrink-0 overflow-hidden border-b border-border-hairline',
-          PRIMARY_CHROME_ROW_FACE,
-        )}
-      >
-        <TechRailSearchBar
-          variant="chrome"
-          flush
-          value={navFilter}
-          onChange={setNavFilter}
-          onKeyDown={handleFilterKeyDown}
-          placeholder="Go to…"
-          className="min-w-0 flex-1"
-        />
-      </div>
+      {/* The body swaps between the map and the Scan Stations drill INSTANTLY
+          (2026-08-08). Ranked dest search used to be a third body; that is ⌘K
+          now (2026-08-28). */}
       <div data-spine-scrollport className="min-h-0 flex-1 overflow-y-auto p-0">
-        {searching ? renderSearchResults() : renderMap()}
+        {renderMap()}
       </div>
 
       <div className="flex w-full shrink-0 flex-col">

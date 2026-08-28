@@ -45,6 +45,12 @@
      into denser data by setting `data-density="compact"` on itself — weight
      and tracking do NOT scale (Carbon principle). */
   --cf-density: 1;
+  /* Motion bands (LAWS §M amendment, proposed 2026-08-27): components never
+     name a duration — they consume these two tokens, and the region's band
+     resolves them. :root is Band 1 (benches + chrome): 80ms colour/opacity
+     feedback, NO indeterminate status motion. */
+  --cf-motion-feedback: 80ms;
+  --cf-motion-status: 0s;
 }
 
 /* Ops/floor regions opt into denser data by scoping this on a container
@@ -79,6 +85,37 @@
 [data-density='floor'] [data-cf-control] {
   min-block-size: var(--cf-control-min);
   min-inline-size: var(--cf-control-min);
+}
+
+/* ─── Motion bands ─────────────────────────────────────────────────────────
+   A band is a CEILING on what a region may animate, stamped `data-motion` on
+   the region root — same mechanics as `data-density` above. Geometry never
+   animates on ANY band; what varies is only status motion (skeleton pulse
+   while a collection is in flight).
+
+     Band 0 — station scan paths: nothing moves, feedback is a hard swap.
+     Band 1 — benches + chrome (:root default above): 80ms feedback only.
+     Band 2 — data-collection regions (LedgerGridSurface stamps its own
+              shell): adds opacity-only indeterminate status motion.
+
+   The floor-density comment above says motion tokens could never live in CSS —
+   that stays true for Framer ROLES (JS objects); these are the CSS half, and
+   a component consuming them is inert-by-arithmetic outside its band. */
+[data-motion='0'] {
+  --cf-motion-feedback: 0ms;
+  --cf-motion-status: 0s;
+}
+[data-motion='2'] {
+  --cf-motion-status: 1200ms;
+}
+/* Reduced motion collapses every band to 0 — skeletons hold as static marks. */
+@media (prefers-reduced-motion: reduce) {
+  :root,
+  [data-motion='0'],
+  [data-motion='2'] {
+    --cf-motion-feedback: 0ms;
+    --cf-motion-status: 0s;
+  }
 }
 
 /* ─── Elevation ladder (--ds-elev-*) ───────────────────────────────────────
@@ -703,6 +740,83 @@ html[data-color-scheme='dark'] .react-flow__attribution a { color: #94a3b8; }
    Tailwind utility regardless of specificity order. */
 [data-cf-grid] [data-chip-face] {
   padding-inline: 0;
+}
+
+/* ── Station chrome row — the ONE hover display ─────────────────────────────
+   Every cell on a station chrome row (the carton identity bar and its kin)
+   delineates the same way under the pointer, and it is defined HERE, once.
+
+   It used to be a Tailwind string each face composed for itself
+   (`STATION_CHROME_CELL_HOVER_BOX`). A shared string cannot stop a call site
+   from re-spelling half of it, gating the halves apart, or adding a `z-index`
+   that changes how it paints without touching the token — and all three
+   happened: the Listing face re-spelled the fill and never carried the box,
+   the classify pills applied fill and box on different conditions, and
+   `hover:z-raised` on the classify face lifted it above the row's `after:`
+   seam so its bottom edge painted OVER the hairline while every other cell's
+   painted under. Same intent, four assembly paths, three different results.
+
+   Owning it on the ROW ends that: a cell opts in with one marker class and
+   gets the whole display, including its stacking. Same reasoning (and the same
+   unlayered-so-it-beats-the-utility trick) as `[data-chip-face]` above.
+
+   `:not(:focus-visible)` on both rules — the focus ring is also a box-shadow
+   and also wants the lift, so a focused cell keeps its ring and its z. */
+:root {
+  --cf-chrome-cell-hover-fill: color-mix(in oklab, var(--ds-color-surface-hover) 50%, transparent);
+  --cf-chrome-cell-hover-ink: color-mix(in oklab, var(--ds-color-text-primary) 30%, transparent);
+}
+
+/* Keep every cell in the row's own stacking layer so the seam always paints
+   last. This is the structural half of the fix — a face can no longer lift
+   itself out of the row's paint order by carrying a hover z-index. */
+.cf-chrome-row .cf-chrome-cell:not(:focus-visible) {
+  position: relative;
+  z-index: 0;
+}
+
+/* Three sides. The ROW owns the bottom hairline
+   (`STATION_CHROME_SEAM_HAIRLINE`), so a cell that draws its own either doubles
+   it or is hidden by it depending on paint order — which is not a design, it is
+   whichever z-index the face happened to carry. The box says where the cell
+   starts and stops on a flush `gap-0` strip; that is its vertical edges.
+   Change these three lines and every station follows.
+
+   The shadow is written HERE rather than pre-composed into a `--…-hover-box`
+   var on `:root`, and that is load-bearing: a `var()` nested inside a custom
+   property resolves against the element the property is DECLARED on. Composed
+   at `:root`, the ink resolved to the neutral value once and inherited down
+   already-resolved, so the tone override below silently did nothing. Resolving
+   it on the cell is what lets a tone repaint its own box. */
+.cf-chrome-row .cf-chrome-cell:hover:not(:focus-visible) {
+  box-shadow:
+    inset 1px 0 0 0 var(--cf-chrome-cell-hover-ink),
+    inset -1px 0 0 0 var(--cf-chrome-cell-hover-ink),
+    inset 0 1px 0 0 var(--cf-chrome-cell-hover-ink);
+}
+
+/* Neutral cells take the house wash. TONE cells (Photos blue, Claim orange,
+   Pickup emerald) step their own and are marked so this rule skips them —
+   the exception is declared here, beside the rule, instead of being a token a
+   call site quietly composed half of. */
+.cf-chrome-row .cf-chrome-cell:not(.cf-chrome-tone):hover {
+  background-color: var(--cf-chrome-cell-hover-fill);
+}
+
+/* A tone cell's box is its OWN colour: Photos boxes blue, Claim boxes orange.
+   `currentColor` is the tone's text ink (`text-blue-700` / `text-orange-700`),
+   so the wash and the hairline are the same hue and no face has to name it —
+   add a tone tomorrow and its box follows for free.
+
+   Scoped to tone cells ONLY. The neutral run keeps the fixed
+   `--ds-color-text-primary` ink above, because those faces carry several
+   different text colours (`text-soft`, `text-muted`, default) and letting
+   `currentColor` loose across all of them is what put four different boxes on
+   one 28px strip the last time it was tried. Tones are the case where the hue
+   IS the identity, so there it reads as the cell's colour rather than as
+   drift. */
+.cf-chrome-row .cf-chrome-cell.cf-chrome-tone {
+  --cf-chrome-cell-hover-ink: color-mix(in oklab, currentColor 30%, transparent);
 }
 
 /* Sticky header band — card-white (table-surface SoT); borders carry hierarchy.

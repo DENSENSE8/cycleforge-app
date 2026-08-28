@@ -53,14 +53,15 @@ const SidebarNavColumn = dynamic(
   { ssr: false },
 );
 
-// On-demand chrome, split out of the shell chunk. All three render nothing
-// until triggered (⌘K, scan event, Ably push), so deferring their JS past
-// hydration changes no behavior — the listeners attach as soon as the split
-// chunk lands, which is still within the first idle moments.
-const CommandBar = dynamic(() => import('@/components/CommandBar').then((m) => m.CommandBar), { ssr: false });
-// Owns the ⌘⇧V chord + the single desktop clipboard-panel mount. Must be here
-// rather than in the spine footer: that footer mounts lazily on first spine
-// open, so a chord bound there would be dead on every fresh page load.
+// On-demand chrome, split out of the shell chunk. Find / clipboard / throw /
+// scanner render nothing until triggered, so deferring their JS past hydration is safe.
+const CommandBar = dynamic(
+  () => import('@/components/CommandBar').then((m) => m.CommandBar),
+  { ssr: false },
+);
+// Clipboard host owns the ⌘⇧V chord + the single desktop clipboard-panel mount.
+// Must be here rather than in the spine footer: that footer mounts lazily on
+// first spine open, so a chord bound there would be dead on every fresh page load.
 const ClipboardHistoryHost = dynamic(
   () => import('@/components/quick-access/ClipboardHistoryHost').then((m) => m.ClipboardHistoryHost),
   { ssr: false },
