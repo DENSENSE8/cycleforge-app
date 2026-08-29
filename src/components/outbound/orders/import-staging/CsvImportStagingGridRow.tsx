@@ -30,7 +30,6 @@ import { GridCellDash, GridPlatformMarkValue, GridStatusCellValue } from '@/comp
 import { sourcePlatformMeta } from '@/lib/source-platform';
 import { GridRowCheckbox } from '@/components/ui/GridRowCheckbox';
 import {
-  LedgerCellEditor,
   LedgerGridLeafRow,
   gridCellAlignClass,
 } from '@/design-system/components/grid';
@@ -39,10 +38,8 @@ import {
   type CsvOrderCanonicalKey,
 } from '@/lib/orders/csv-order-import';
 import {
-  ORDER_IMPORT_DESCRIPTOR,
   type OrderImportRowView,
 } from '@/lib/orders/order-import-descriptor';
-import { updateTableImportRow } from '@/lib/tables/import/staging-store';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 import { CSV_IMPORT_STAGING_GRID_CAPABILITIES } from './csv-import-staging-grid-descriptor';
@@ -292,22 +289,6 @@ export const CsvImportStagingGridRow = memo(function CsvImportStagingGridRow({
             {...(editable ? cellTriggerProps(key, editLabel) : {})}
           >
             {renderValue(key)}
-            {editable && editing === key ? (
-              <LedgerCellEditor
-                variant={key === 'qty' ? 'number' : 'text'}
-                initialValue={cellValue(key)}
-                replaceWith={editSeed}
-                ariaLabel={editLabel}
-                placeholder="—"
-                onCommit={(next) => {
-                  if (!field) return;
-                  updateTableImportRow(ORDER_IMPORT_DESCRIPTOR, row.index, {
-                    [field]: next,
-                  });
-                }}
-                onClose={closeEditor}
-              />
-            ) : null}
           </div>
         );
       }}

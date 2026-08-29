@@ -14,10 +14,6 @@
 import { SkeletonBase, SkeletonList } from '@/design-system/components/Skeletons';
 import { MONITOR_KPI_TILE_CLASS } from '@/design-system/components/monitor';
 import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
-import {
-  WORKBENCH_SHEET_CHROME,
-  WORKBENCH_SHEET_HOST,
-} from '@/components/dashboard/workbench-shell';
 import { PRIMARY_CHROME_ROW_FACE } from '@/components/layout/header-shell';
 import { cn } from '@/utils/_cn';
 
@@ -27,7 +23,7 @@ const TABLE_ROW_COUNT = 8;
 export function UnboxTableCardSkeleton() {
   return (
     <div
-      className={cn(WORKBENCH_SHEET_HOST, 'overflow-hidden bg-surface-card')}
+      className={cn('relative flex min-h-0 min-w-0 flex-1 flex-col', 'overflow-hidden bg-surface-card')}
       aria-busy="true"
     >
       <div className="p-3">
@@ -48,7 +44,7 @@ export function UnboxWorkbenchSkeleton() {
       <DashboardScrollShell
         className="h-full bg-transparent"
         chrome={
-          <div className={cn(WORKBENCH_SHEET_CHROME, 'flex flex-col gap-0')}>
+          <div className={cn('relative w-full min-w-0', 'flex flex-col gap-0')}>
             {/* Row 1 — tabs · CTA — flush to context rail */}
             <div
               className={cn(
@@ -95,7 +91,7 @@ export function UnboxWorkbenchSkeleton() {
           </div>
         }
       >
-        <div className={WORKBENCH_SHEET_HOST}>
+        <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
           <UnboxTableCardSkeleton />
         </div>
       </DashboardScrollShell>

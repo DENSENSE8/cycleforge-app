@@ -4,9 +4,8 @@
  * Review · Listing match — unmatched listings and sheet rows missing an item
  * number, as a flush workbench sheet.
  *
- * Chrome is the Daily / Tasks stack ({@link WorkbenchSheetView} + Band 1
- * {@link WorkbenchChromeHeader} + Band 3 {@link WorkbenchTriageBand}). The body
- * is {@link NonlinearTableHost} over the two registered bindings.
+ * There is no page chrome: {@link DataTable} draws the find field and the
+ * section strip from data, over the two registered bindings.
  *
  * A row click opens {@link CatalogLinkFormRail} or {@link ImportExceptionFormRail}
  * in the single `RightRailHost` slot. `?choreId=` / `?exceptionId=` carry the
@@ -15,18 +14,8 @@
 
 import { useCallback, useMemo } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import {
-  WorkbenchSheetView,
-  useWorkbenchSheetChrome,
-} from '@/components/dashboard/WorkbenchSheetView';
-import {
-  WorkbenchChromeHeader,
-  WorkbenchTriageBand,
-} from '@/components/dashboard/workbench-shell';
-import { WorkbenchInspectorToggle } from '@/components/dashboard/workbench-inspector-toggle';
-import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
+import { DataTable } from '@/components/tables/DataTable';
 import { CompoundRow } from '@/components/tables/compound/CompoundRow';
-import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 import { compareGridValues } from '@/design-system/components/grid';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import { rowGroupTotals, singleBand, type RowGroup } from '@/lib/group-rows';
@@ -35,7 +24,6 @@ import {
   ImportExceptionFormRail,
 } from '@/features/review/catalog-link/CatalogLinkFormRail';
 import { catalogLinkCompoundView } from '@/features/review/catalog-link/grid/catalog-link-compound-view';
-import { CatalogLinkGridColumnHeader } from '@/features/review/catalog-link/grid/CatalogLinkGridColumnHeader';
 import { CATALOG_LINK_GRID_CAPABILITIES } from '@/features/review/catalog-link/grid/catalog-link-grid-descriptor';
 import {
   CATALOG_LINK_COMPOUND_COLUMNS,
@@ -47,7 +35,6 @@ import {
 } from '@/features/review/catalog-link/grid/catalog-link-grid-layout';
 import { CATALOG_LINK_TABLE_BINDING } from '@/features/review/catalog-link/grid/catalog-link-table-definition';
 import { importExceptionCompoundView } from '@/features/review/catalog-link/grid/import-exception-compound-view';
-import { ImportExceptionGridColumnHeader } from '@/features/review/catalog-link/grid/ImportExceptionGridColumnHeader';
 import { IMPORT_EXCEPTION_GRID_CAPABILITIES } from '@/features/review/catalog-link/grid/import-exception-grid-descriptor';
 import {
   IMPORT_EXCEPTION_COMPOUND_COLUMNS,
@@ -77,11 +64,18 @@ function parsePositiveId(raw: string | null): number | null {
   return Number.isFinite(id) && id > 0 ? id : null;
 }
 
+/**
+ * The section strip. `catalog-link` (Listing match) is the default, so it IS
+ * the unfiltered view and lights no tab — see {@link DataTable}.
+ */
+const REVIEW_SECTION_TABS = [
+  { id: 'missing-item-number', label: 'Missing item number' },
+] as const;
+
 export function ReviewCatalogLinkTable(_props: Record<string, unknown>) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const sheetChrome = useWorkbenchSheetChrome();
 
   const section = parseSection(searchParams.get('section'));
   const query = searchParams.get('search') ?? '';
@@ -250,91 +244,31 @@ export function ReviewCatalogLinkTable(_props: Record<string, unknown>) {
   const selectedChore = choreRows.find((r) => r.id === choreId) ?? null;
   const selectedException = exceptionRows.find((r) => r.id === exceptionId) ?? null;
   const missingSection = section === 'missing-item-number';
-  const selectedOpen = missingSection ? selectedException != null : selectedChore != null;
 
   return (
     <div className="flex h-full min-h-0 w-full min-w-0 flex-col bg-surface-card">
-      <WorkbenchSheetView
-        chrome={sheetChrome}
-        className="h-full w-full min-w-0 bg-surface-card"
-        sheetHostClassName="bg-surface-card"
-        tabs={({ className }) => (
-          <WorkbenchChromeHeader
-            density="band"
-            className={className}
-            tabs={[
-              { id: 'catalog-link', label: 'Listing match', color: 'blue' },
-              { id: 'missing-item-number', label: 'Missing item number', color: 'orange' },
-            ]}
-            activeTab={section}
-            onTabChange={(id) =>
-              setSection(id === 'missing-item-number' ? 'missing-item-number' : 'catalog-link')
-            }
-            solidTone="accent"
-          />
-        )}
-        triage={() => (
-          <WorkbenchTriageBand
-            search={
-              <TechRailSearchBar
-                variant="chrome"
-                value={query}
-                onChange={setQuery}
-                placeholder={
-                  missingSection ? 'Filter sheet rows…' : 'Filter listings…'
-                }
-                className="min-w-0 flex-1"
-              />
-            }
-            right={
-              missingSection
-                ? exceptionTotals.count > 0
-                  ? (
-                      <span className="text-role-caption tabular-nums text-text-muted">
-                        <span className="font-semibold text-text-default">
-                          {exceptionTotals.count}
-                        </span>
-                        {` row${exceptionTotals.count === 1 ? '' : 's'}`}
-                      </span>
-                    )
-                  : null
-                : choreTotals.count > 0
-                  ? (
-                      <span className="text-role-caption tabular-nums text-text-muted">
-                        <span className="font-semibold text-text-default">
-                          {choreTotals.measures.orders}
-                        </span>
-                        {` order${choreTotals.measures.orders === 1 ? '' : 's'} · ${choreTotals.count} listing${choreTotals.count === 1 ? '' : 's'}`}
-                      </span>
-                    )
-                  : null
-            }
-            trailing={
-              <WorkbenchInspectorToggle
-                open={selectedOpen}
-                onOpenEmpty={() => {
-                  if (missingSection) {
-                    const first = exceptionRows[0];
-                    if (first) selectException(first.id);
-                  } else {
-                    const first = choreRows[0];
-                    if (first) selectChore(first.id);
-                  }
-                }}
-              />
-            }
-          />
-        )}
-      >
-        {() =>
+      {
           missingSection ? (
-            <NonlinearTableHost<
+            <DataTable<
               ImportExceptionRow,
               ImportExceptionGridColumnKey,
               ImportExceptionGridColumn
             >
               binding={IMPORT_EXCEPTION_TABLE_BINDING}
-              tableId="import-exception"
+              search={{
+                value: query,
+                onChange: setQuery,
+                placeholder: missingSection ? 'Filter sheet rows…' : 'Filter listings…',
+              }}
+              tabs={REVIEW_SECTION_TABS}
+              activeTab={missingSection ? 'missing-item-number' : undefined}
+              onTabChange={(id) =>
+                setSection(
+                  id === 'missing-item-number' && !missingSection
+                    ? 'missing-item-number'
+                    : 'catalog-link',
+                )
+              }
               columns={IMPORT_EXCEPTION_COMPOUND_COLUMNS}
               orderGroupsByDate={exceptionGroups}
               rows={exceptionRows}
@@ -350,17 +284,6 @@ export function ReviewCatalogLinkTable(_props: Record<string, unknown>) {
                     ? 'No sheet row matches that search.'
                     : 'No sheet rows are missing an item number.'
               }
-              renderColumnHeader={({ onResizeColumn, onResetColumn, columns: visible }) => (
-                <ImportExceptionGridColumnHeader
-                  columns={visible}
-                  activeSort={exceptionSort.sort}
-                  sortDir={exceptionSort.dir}
-                  onSortColumn={exceptionSort.toggleColumnSort}
-                  onResizeColumn={onResizeColumn}
-                  onResetColumn={onResetColumn}
-                  tableId="import-exception"
-                />
-              )}
               renderGroup={(group, _stripe, { columns: visible }) => (
                 <>
                   {group.rows.map((row) => (
@@ -413,13 +336,26 @@ export function ReviewCatalogLinkTable(_props: Record<string, unknown>) {
               )}
             />
           ) : (
-            <NonlinearTableHost<
+            <DataTable<
               CatalogLinkChoreRow,
               CatalogLinkGridColumnKey,
               CatalogLinkGridColumn
             >
               binding={CATALOG_LINK_TABLE_BINDING}
-              tableId="catalog-link"
+              search={{
+                value: query,
+                onChange: setQuery,
+                placeholder: missingSection ? 'Filter sheet rows…' : 'Filter listings…',
+              }}
+              tabs={REVIEW_SECTION_TABS}
+              activeTab={missingSection ? 'missing-item-number' : undefined}
+              onTabChange={(id) =>
+                setSection(
+                  id === 'missing-item-number' && !missingSection
+                    ? 'missing-item-number'
+                    : 'catalog-link',
+                )
+              }
               columns={CATALOG_LINK_COMPOUND_COLUMNS}
               orderGroupsByDate={choreGroups}
               rows={choreRows}
@@ -435,17 +371,6 @@ export function ReviewCatalogLinkTable(_props: Record<string, unknown>) {
                     ? 'No listing matches that search.'
                     : 'Every imported listing already has a catalog SKU.'
               }
-              renderColumnHeader={({ onResizeColumn, onResetColumn, columns: visible }) => (
-                <CatalogLinkGridColumnHeader
-                  columns={visible}
-                  activeSort={choreSort.sort}
-                  sortDir={choreSort.dir}
-                  onSortColumn={choreSort.toggleColumnSort}
-                  onResizeColumn={onResizeColumn}
-                  onResetColumn={onResetColumn}
-                  tableId="catalog-link"
-                />
-              )}
               renderGroup={(group, _stripe, { columns: visible }) => (
                 <>
                   {group.rows.map((row) => (
@@ -497,9 +422,7 @@ export function ReviewCatalogLinkTable(_props: Record<string, unknown>) {
                 />
               )}
             />
-          )
-        }
-      </WorkbenchSheetView>
+          )}
 
       <CatalogLinkFormRail
         chore={selectedChore}

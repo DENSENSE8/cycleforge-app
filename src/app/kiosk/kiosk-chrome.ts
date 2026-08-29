@@ -32,7 +32,6 @@ export const KIOSK_PANE_HEADER_BAND = cn(
   // Full-bleed host — title type owns its own in-band inset (px-3), never a page margin.
   'flex h-14 shrink-0 items-center gap-3 bg-surface-card pl-0 pr-0',
   'border-b border-border-soft',
-  cornerClass('flush'),
 );
 
 /**
@@ -44,7 +43,6 @@ export const KIOSK_PANE_HEADER_BAND = cn(
 export const KIOSK_PANE_FOOTER_BAND = cn(
   'flex h-14 shrink-0 items-stretch bg-surface-card p-0',
   'border-t border-border-soft',
-  cornerClass('flush'),
 );
 
 /** Pane title face inside {@link KIOSK_PANE_HEADER_BAND}. */
@@ -68,7 +66,6 @@ export const KIOSK_PANE_HEADER_TITLE =
 export const KIOSK_BAND_SEARCH_ROW = cn(
   'flex h-14 shrink-0 items-stretch gap-0 bg-surface-card px-0',
   'border-b border-border-soft',
-  cornerClass('flush'),
 );
 
 /**
@@ -158,7 +155,6 @@ export const KIOSK_MODE_SPINE_EXPANDED_W_PX = 256;
 export const KIOSK_MODE_SPINE_FACE = cn(
   'flex h-full flex-col bg-surface-card',
   'border-r border-border-soft',
-  cornerClass('flush'),
 );
 
 /**
@@ -167,7 +163,6 @@ export const KIOSK_MODE_SPINE_FACE = cn(
 export const KIOSK_MODE_SPINE_ROW = cn(
   'ds-raw-button flex w-full shrink-0 transition-colors duration-150',
   'min-h-14',
-  cornerClass('flush'),
 );
 
 /** Collapsed cell — centered glyph, no visible label. */
@@ -225,14 +220,12 @@ export const KIOSK_CART_COUNT_BADGE = cn(
 export const KIOSK_UTILITY_SPINE_FACE = cn(
   'flex h-full w-14 shrink-0 flex-col items-center gap-0 bg-surface-card py-0',
   'border-l border-border-soft',
-  cornerClass('flush'),
 );
 
 /** Utility glyph cell — same touch height + states as the command spine row. */
 export const KIOSK_UTILITY_SPINE_ROW = cn(
   'ds-raw-button relative flex h-14 w-14 shrink-0 items-center justify-center',
   'transition-colors duration-150',
-  cornerClass('flush'),
 );
 
 /**
@@ -245,13 +238,11 @@ export const KIOSK_UTILITY_SPINE_ROW = cn(
  */
 export const KIOSK_UTILITY_PANEL_FACE = cn(
   'flex h-full min-h-0 w-full min-w-0 flex-col bg-surface-card',
-  cornerClass('flush'),
 );
 
 export const KIOSK_CART_FACE = cn(
   'flex h-full w-80 shrink-0 flex-col bg-surface-card',
   'border-l border-border-soft',
-  cornerClass('flush'),
 );
 
 /** Cart line row — horizontal hairline only, no inner card padding balloon. */
@@ -261,5 +252,4 @@ export const KIOSK_CART_LINE_ROW =
 /** Customer-face shell — same card plane, no operational chrome. */
 export const KIOSK_CUSTOMER_FACE = cn(
   'flex h-full w-full flex-col bg-surface-card text-text-default',
-  cornerClass('flush'),
 );

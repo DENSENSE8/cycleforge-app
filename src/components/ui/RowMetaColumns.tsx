@@ -3,7 +3,6 @@
 import type { ReactNode } from 'react';
 import { cn } from '@/utils/_cn';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { useIsColumnHidden } from '@/components/ui/table-column-config/TableColumnConfig';
 import { EMPTY_META_DASH, conditionGradeTableLabel, isEmptyMetaDash } from '@/lib/conditions';
 import { orderRowConditionTone } from '@/lib/condition-tone';
 
@@ -269,7 +268,9 @@ export function RowMetaColumns({
 }) {
   // Per-staff hidden slots (no-op outside a TableColumnConfigProvider). A hidden
   // slot drops its grid track + cell; chip side uses the same drop + layout animation.
-  const isHidden = useIsColumnHidden();
+  // Per-staff column hiding went with the column-display rail (2026-08-29):
+  // every declared slot paints.
+  const isHidden = (_key?: string) => false;
   const showQty = !isHidden('qty');
   const showCondition = !isHidden('condition');
   const showRest = rest != null && !isHidden('rest');

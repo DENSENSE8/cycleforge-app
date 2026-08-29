@@ -12,8 +12,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/design-system/primitives';
-import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
-import { WorkbenchFilterPopover } from '@/components/dashboard/workbench-filter-popover';
+import { SearchField } from '@/design-system/primitives/SearchField';
+import { FilterMenu } from '@/components/ui/FilterMenu';
 import {
   INBOUND_RETURNS_IMPORT_DESCRIPTOR,
   type InboundReturnsImportRowView,
@@ -190,7 +190,7 @@ export function IncomingReturnsImportStagingHost() {
             {summary.total} total
           </p>
         </div>
-        <WorkbenchFilterPopover
+        <FilterMenu
           open={refineOpen}
           onOpenChange={setRefineOpen}
           hot={draft.filter !== 'all'}
@@ -216,9 +216,8 @@ export function IncomingReturnsImportStagingHost() {
               </button>
             ))}
           </div>
-        </WorkbenchFilterPopover>
-        <TechRailSearchBar
-          variant="chrome"
+        </FilterMenu>
+        <SearchField
           value={draft.query}
           onChange={(q) => setTableImportQuery(SURFACE, q)}
           placeholder="Filter staging rows…"

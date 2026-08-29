@@ -3,7 +3,6 @@
 import { useCallback, useEffect } from 'react';
 import { Download } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
-import { WORKBENCH_CHROME_PILL_CLASS } from '@/components/dashboard/workbench-shell';
 import { usePackedOrdersFeed } from '@/hooks/usePackedOrdersFeed';
 import {
   buildPackedOrderExportCsv,
@@ -12,8 +11,9 @@ import {
 } from '@/lib/dashboard/order-export-csv';
 import { toast } from '@/lib/toast';
 import { cn } from '@/utils/_cn';
+import { cornerClass } from '@/design-system/tokens/radius';
 
-const EXPORT_FACE = cn(WORKBENCH_CHROME_PILL_CLASS, 'font-semibold');
+const EXPORT_FACE = cn(cornerClass('flush'), 'font-semibold');
 
 function isTypingTarget(el: EventTarget | null): boolean {
   if (!(el instanceof HTMLElement)) return false;

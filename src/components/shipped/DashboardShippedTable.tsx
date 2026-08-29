@@ -13,11 +13,9 @@
  */
 
 import { useCallback, useMemo } from 'react';
-import { createPortal } from 'react-dom';
 import { Button } from '@/design-system/primitives';
 import type { DashboardSearchSectionProps } from '@/components/dashboard/DashboardSearchSectionProps';
 import { DASHBOARD_ORDERS_SELECTION_SCOPE } from '@/lib/selection/dashboard-scopes';
-import { formatWeekRangeCompact } from '@/utils/date';
 import { Loader2 } from '@/components/Icons';
 import type { OutboundState } from '@/lib/outbound-state';
 import { useShippedTableFilters } from '@/components/shipped/dashboard-table/useShippedTableFilters';
@@ -27,9 +25,7 @@ import { useShippedDetailsSelection } from '@/components/shipped/dashboard-table
 import { useShippedPeriodControls } from '@/components/shipped/dashboard-table/useShippedPeriodControls';
 import { useRecordCursorKeyboard } from '@/hooks/useRecordCursorKeyboard';
 import { ShippedTableEmptyState } from '@/components/shipped/dashboard-table/ShippedTableEmptyState';
-import { DateRangePickerPill } from '@/components/ui/DateRangeHeader';
 import { OrdersGridHost } from '@/components/dashboard/orders-queue/OrdersGridHost';
-import { WORKBENCH_SHEET_HOST } from '@/components/dashboard/workbench-shell';
 import {
   derivedPackerRecordToQueueRow,
 } from '@/components/shipped/shipped-record-mappers';
@@ -76,7 +72,7 @@ export function DashboardShippedTable({
   const filters = useShippedTableFilters({ packedBy, testedBy, lockedOutboundStatus });
   const { query, derivedRecords, searchMeta, pagination } = useShippedTableRecords(filters);
   const { orderedRecords, totalCount } = useShippedTableGrouping(derivedRecords);
-  const { selectedDetailId, handleRowClick } = useShippedDetailsSelection();
+  const { handleRowClick } = useShippedDetailsSelection();
 
   // The OrdersGridHost below publishes the cursor (it owns grouping + folds);
   // this lane only turns the keyboard on. `embedded` still gates it so a nested
@@ -85,7 +81,6 @@ export function DashboardShippedTable({
 
   const period = useShippedPeriodControls(filters);
   const periodRange = period.activeRange ?? filters.weekRange;
-  const periodLabel = formatWeekRangeCompact(periodRange.startStr, periodRange.endStr);
 
   const byId = useMemo(() => {
     const map = new Map<number, DerivedPackerRecord>();
@@ -151,33 +146,15 @@ export function DashboardShippedTable({
     </div>
   ) : null;
 
-  const shippedToolbarControls = (
-    <div className="flex items-center gap-2">
-      <DateRangePickerPill
-        label={periodLabel}
-        count={totalCount}
-        presets={period.presets}
-        onSelectCustomRange={period.onSelectCustomRange}
-        activeRange={period.activeRange}
-        onClear={period.onClear}
-      />
-    </div>
-  );
-
-  const portaledToolbar =
-    !embedded && toolbarPortalTarget
-      ? createPortal(shippedToolbarControls, toolbarPortalTarget)
-      : null;
-
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-surface-canvas">
-      {portaledToolbar}
-      {/* Staff / period chrome portals into View topics — no inline strip twin. */}
-      <div className={WORKBENCH_SHEET_HOST} data-testid="column-table-body">
+      {/* The period picker sits with the rows it scopes, not on a chrome row. */}
+      <div className="relative flex min-h-0 min-w-0 flex-1 flex-col" data-testid="column-table-body">
         <OrdersGridHost
           ariaLabel="Shipped orders"
           records={gridRecords}
           loading={query.isLoading}
+          search={{ value: filters.search, onChange: filters.setSearch, placeholder: 'Filter shipped…' }}
           searchValue={filters.search}
           onClearSearch={filters.clearSearch}
           emptyMessage="No shipped orders"
@@ -192,7 +169,6 @@ export function DashboardShippedTable({
           selectionScope={DASHBOARD_ORDERS_SELECTION_SCOPE}
           railSelection={railSelection}
           data-testid="shipped-grid-body"
-          columnTriggerPortalTarget={toolbarPortalTarget ?? null}
           onOpenRecord={onOpenRecord}
           onCloseRecord={() => undefined}
         />

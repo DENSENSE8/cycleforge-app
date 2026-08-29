@@ -21,7 +21,6 @@
 
 import type { ReactNode } from 'react';
 import { ChevronLeft, ColumnsTwo, ExternalLink } from '@/components/Icons';
-import { WorkbenchChromeCubeButton } from '@/components/dashboard/workbench-chrome-cube';
 import {
   ConversationHeaderActionButton,
   Panel,
@@ -62,7 +61,7 @@ export function SupportTicketPaneHeader({
     <Panel padding="none" radius="none" elevation="none" className="shrink-0 overflow-hidden">
       {/* One chrome plane — actions + identity; no hairline split. */}
       <div className="flex items-center justify-between gap-2 px-1.5 pt-1">
-        <WorkbenchChromeCubeButton
+        <ConversationHeaderActionButton
           label="Back to tickets queue"
           icon={<ChevronLeft className="h-3.5 w-3.5" aria-hidden />}
           onClick={onClose}

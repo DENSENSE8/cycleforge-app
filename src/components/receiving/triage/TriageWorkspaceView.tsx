@@ -1,15 +1,15 @@
 'use client';
 
 /**
- * Triage (Arrival) browse workbench — Sheets flush chrome (Unbox recipe): tabs ·
- * KPI · triage in one pinned sheet-chrome stack; feed body is WORKBENCH_SHEET_HOST.
+ * Triage (Arrival) browse workbench.
+ *
+ * The desk draws no header. Its four bodies are rail lists rather than tables,
+ * so the one thing it still owns is which body is on screen — and that strip is
+ * the same {@link TableStatusBar} every table foots itself with, minus a row
+ * count it has no honest way to know.
  */
 
 import { useSearchParams } from 'next/navigation';
-import {
-  WorkbenchSheetView,
-  useWorkbenchSheetChrome,
-} from '@/components/dashboard/WorkbenchSheetView';
 import { RailEditModeProvider } from '@/components/sidebar/rail-edit-mode';
 import { ReceivingBulkActionBar } from '@/components/sidebar/receiving/ReceivingBulkActionBar';
 import { useRailEditMode } from '@/components/sidebar/receiving/useRailEditMode';
@@ -17,12 +17,16 @@ import {
   isPendingTriageScanRow,
 } from '@/components/sidebar/receiving/receiving-sidebar-shared';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
-import {
-  TriageTriageBand,
-  TriageWorkspaceHeader,
-} from '@/components/receiving/triage/TriageWorkspaceHeader';
 import { TriageFeedBody } from '@/components/receiving/triage/TriageFeedBody';
 import { useTriageWorkspaceTab } from '@/hooks/useTriageWorkspaceTab';
+import {
+  TRIAGE_WORKSPACE_TAB_LABEL,
+  type TriageWorkspaceTab,
+} from '@/utils/triage-workspace-state';
+import {
+  TableStatusBar,
+  type DataTableTabStrip,
+} from '@/components/tables/TableStatusBar';
 
 export function TriageWorkspaceView({
   selectedLine,
@@ -35,7 +39,18 @@ export function TriageWorkspaceView({
   const { triageView, setTriageView } = useTriageWorkspaceTab();
   const searchParams = useSearchParams();
   const filterText = searchParams.get('triq') ?? '';
-  const chrome = useWorkbenchSheetChrome('triage');
+
+  // `triage` is the default view, so it IS the unfiltered body and lights no
+  // tab — the same rule every other strip follows.
+  const tabStrip: DataTableTabStrip = {
+    tabs: (['found', 'unfound', 'done'] as const).map((id) => ({
+      id,
+      label: TRIAGE_WORKSPACE_TAB_LABEL[id],
+    })),
+    activeTab: triageView === 'triage' ? undefined : triageView,
+    onTabChange: (id) =>
+      setTriageView(id === triageView ? 'triage' : (id as TriageWorkspaceTab)),
+  };
 
   const selectedLineId = selectedLine?.id ?? null;
   const selectedRow =
@@ -71,30 +86,17 @@ export function TriageWorkspaceView({
       toggleActive={toggleRailEditMode}
     >
       <div className="relative flex h-full min-h-0 w-full flex-col">
-        <WorkbenchSheetView
-          chrome={chrome}
-          className="h-full bg-transparent"
-          tabs={({ className }) => (
-            <TriageWorkspaceHeader
-              tab={triageView}
-              onSelectTab={setTriageView}
-              className={className}
-            />
-          )}
-          // Arrival's Band 3 owns no controls portal — its ▦ has no host here.
-          triage={() => <TriageTriageBand />}
-        >
-          {() => (
-            <TriageFeedBody
-              key={triageView}
-              view={triageView}
-              selectedLineId={selectedLineId}
-              selectedRow={selectedRow}
-              leadingRow={triageView === 'triage' ? leadingRow : null}
-              filterText={filterText}
-            />
-          )}
-        </WorkbenchSheetView>
+        <TriageFeedBody
+          key={triageView}
+          view={triageView}
+          selectedLineId={selectedLineId}
+          selectedRow={selectedRow}
+          leadingRow={triageView === 'triage' ? leadingRow : null}
+          filterText={filterText}
+        />
+        {/* The bodies here are rails, not tables, so the desk draws the strip
+            its tabs belong to. There is no row count to print. */}
+        <TableStatusBar {...tabStrip} />
 
         {railEditMode ? (
           <ReceivingBulkActionBar

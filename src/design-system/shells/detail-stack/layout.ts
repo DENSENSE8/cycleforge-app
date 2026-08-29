@@ -1,6 +1,5 @@
 import type { CSSProperties } from 'react';
 import { TOP_CHROME_ROW_PX } from '@/components/layout/header-shell';
-import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 
 /** Shared layout tokens — one place to tune inset / width / header offset. */
@@ -139,7 +138,6 @@ export const DETAIL_STACK_PUSH_STRIP_CLASS =
  */
 export const DISPLAYS_FLUSH_HOST = cn(
   'flex h-full min-h-0 flex-col overflow-hidden px-0 pt-0',
-  cornerClass('flush'),
 );
 
 /**

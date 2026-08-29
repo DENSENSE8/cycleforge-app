@@ -14,7 +14,7 @@
  *
  * Band 1 carries identity plus ONE primary CTA and one quiet exit. Ready /
  * Action-required is a facet that narrows ROWS, so it rides IN the find field
- * (`WorkbenchFilterPopover density="field"`), not as a chip band. `▦` is
+ * (`FilterMenu density="field"`), not as a chip band. `▦` is
  * portal-or-nothing — it mounts into the Band-3 controls slot. Everything else
  * (row fix · column mapping · batch facts · selection verbs) lives on the right
  * rail (`CsvImportStagingRail`).
@@ -27,20 +27,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button } from '@/design-system/primitives';
 import { requestConfirm } from '@/design-system/components/confirm';
 import { FileText, Loader2, Upload, X } from '@/components/Icons';
-import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
-import {
-  WORKBENCH_CHROME_PILL_CLASS,
-  WORKBENCH_SHEET_CHROME,
-  WorkbenchChromeHeader,
-  WorkbenchTrailingCluster,
-  WorkbenchTriageBand,
-} from '@/components/dashboard/workbench-shell';
-import {
-  WorkbenchFilterMenuRow,
-  WorkbenchFilterPopover,
-} from '@/components/dashboard/workbench-filter-popover';
-import { WorkbenchInspectorToggle } from '@/components/dashboard/workbench-inspector-toggle';
-import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
+import { DataTable } from '@/components/tables/DataTable';
+
+
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import {
   emitSelection,
@@ -69,7 +58,6 @@ import {
 } from '@/lib/tables/import/staging-store';
 import { CsvImportStagingRail } from '@/components/outbound/orders/CsvImportStagingRail';
 import { CSV_IMPORT_STAGING_TABLE_BINDING } from '@/components/outbound/orders/import-staging/csv-import-staging-table-definition';
-import { CsvImportStagingGridColumnHeader } from '@/components/outbound/orders/import-staging/CsvImportStagingGridColumnHeader';
 import {
   CsvImportStagingGridRow,
   csvImportStagingRowKey,
@@ -83,6 +71,7 @@ import {
 import { useTableImportParam } from '@/hooks/useTableImportParam';
 import { refreshDomain } from '@/lib/refresh/bus';
 import { cn } from '@/utils/_cn';
+import { cornerClass } from '@/design-system/tokens/radius';
 
 /**
  * Selection scope for the grid header's select-all. The staging store stays the
@@ -133,7 +122,6 @@ export function CsvImportStagingHost() {
   const { setActive: setStagingActive } = useTableImportParam(ORDER_IMPORT_DESCRIPTOR);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [controlsEl, setControlsEl] = useState<HTMLDivElement | null>(null);
   const [filterOpen, setFilterOpen] = useState(false);
 
   const {
@@ -255,109 +243,53 @@ export function CsvImportStagingHost() {
   }
 
   const filter = draft.filter;
-  const filterHot = filter !== 'all';
   const activeFilterLabel =
     STATUS_FILTERS.find((f) => f.id === filter)?.label ?? 'All rows';
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col bg-surface-card">
-      <div className={cn(WORKBENCH_SHEET_CHROME, 'flex shrink-0 flex-col gap-0')}>
-        <WorkbenchChromeHeader
-          density="band"
-          className="border-l-0 border-t-0 shadow-sm"
-          leading={
-            <div
-              className="flex min-w-0 items-center gap-2 self-stretch px-3"
-              data-testid="csv-import-staging-identity"
-            >
-              <FileText className="shrink-0 h-4 w-4 text-text-soft" />
-              <span className="truncate text-role-caption font-semibold text-text-default">
-                {draft.fileName}
-              </span>
-              <span className="shrink-0 text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
-                {draft.rows.length} rows
-              </span>
-            </div>
-          }
-          trailing={
-            <WorkbenchTrailingCluster
-              className="pr-1.5"
-              actions={
-                <>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    icon={<X className="h-3.5 w-3.5" />}
-                    onClick={() => void handleCancelDraft()}
-                    className={cn(WORKBENCH_CHROME_PILL_CLASS, 'h-full')}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    disabled={submitting || confirmCount === 0}
-                    icon={
-                      submitting ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <Upload className="h-3.5 w-3.5" />
-                      )
-                    }
-                    onClick={() => void handleConfirm()}
-                    className={cn(
-                      WORKBENCH_CHROME_PILL_CLASS,
-                      'h-full font-semibold uppercase tracking-widest',
-                    )}
-                    data-testid="csv-import-staging-confirm"
-                  >
-                    {submitting ? 'Importing…' : `Confirm ${confirmCount} ready`}
-                  </Button>
-                </>
-              }
-            />
-          }
-        />
-        <WorkbenchTriageBand
-          search={
-            <TechRailSearchBar
-              variant="chrome"
-              value={draft.query}
-              onChange={(next) => setTableImportQuery(SURFACE, next)}
-              placeholder="Find staged rows…"
-              className="min-w-0 flex-1"
-              trailingSuffix={
-                <WorkbenchFilterPopover
-                  open={filterOpen}
-                  onOpenChange={setFilterOpen}
-                  hot={filterHot}
-                  label="Refine"
-                  hotActiveLabel={activeFilterLabel}
-                  density="field"
-                >
-                  {STATUS_FILTERS.map((option) => (
-                    <WorkbenchFilterMenuRow
-                      key={option.id}
-                      label={option.label}
-                      active={filter === option.id}
-                      onClick={() => {
-                        setTableImportFilter(SURFACE, option.id);
-                        setFilterOpen(false);
-                      }}
-                    />
-                  ))}
-                </WorkbenchFilterPopover>
-              }
-            />
-          }
-          controlsSlotRef={setControlsEl}
-          trailing={
-            <WorkbenchInspectorToggle
-              open
-              testId="csv-import-staging-inspector-toggle"
-            />
-          }
-        />
+      <div className="flex min-w-0 shrink-0 items-center justify-between gap-2 border-b border-border-soft bg-surface-card px-3 py-1">
+        <div className="flex min-w-0 items-center gap-2" data-testid="csv-import-staging-identity">
+          <FileText className="h-4 w-4 shrink-0 text-text-soft" />
+          <span className="truncate text-role-caption font-semibold text-text-default">
+            {draft.fileName}
+          </span>
+          <span className="shrink-0 text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+            {draft.rows.length} rows
+          </span>
+        </div>
+        {/* The two verbs that COMMIT the draft. Not a toolbar — the staging
+            host is a decision, and these are the decision. */}
+        <div className="flex shrink-0 items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            icon={<X className="h-3.5 w-3.5" />}
+            onClick={() => void handleCancelDraft()}
+            className={cornerClass('flush')}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            disabled={submitting || confirmCount === 0}
+            icon={
+              submitting ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Upload className="h-3.5 w-3.5" />
+              )
+            }
+            onClick={() => void handleConfirm()}
+            className={cn(cornerClass('flush'), 'font-semibold uppercase tracking-widest')}
+            data-testid="csv-import-staging-confirm"
+          >
+            {submitting ? 'Importing…' : `Confirm ${confirmCount} ready`}
+          </Button>
+        </div>
+      </div>
+      <div className="shrink-0">
         {submitError ? (
           <p className="border-t border-rose-200 bg-rose-50 px-4 py-2 text-role-micro font-semibold text-rose-700">
             {submitError}
@@ -366,7 +298,7 @@ export function CsvImportStagingHost() {
       </div>
 
       <div className="min-h-0 flex-1 overflow-hidden">
-        <NonlinearTableHost<
+        <DataTable<
           OrderImportRowView,
           CsvImportStagingGridColumnKey,
           CsvImportStagingGridColumn
@@ -381,24 +313,22 @@ export function CsvImportStagingHost() {
           loading={false}
           emptyMessage="This file has no rows left to import."
           searchEmptyMessage="No rows match this filter."
-          isSearching={filterHot || draft.query.trim().length > 0}
-          columnTriggerPortalTarget={null}
-          renderColumnHeader={({
-            toggleColumnSort,
-            onResizeColumn,
-            onResetColumn,
-            columns: visible,
-          }) => (
-            <CsvImportStagingGridColumnHeader
-              columns={visible}
-              selectionScope={CSV_IMPORT_STAGING_SELECTION_SCOPE}
-              activeSort={columnSort}
-              sortDir={sortDir}
-              onSortColumn={toggleColumnSort}
-              onResizeColumn={onResizeColumn}
-              onResetColumn={onResetColumn}
-            />
-          )}
+          selectionScope={CSV_IMPORT_STAGING_SELECTION_SCOPE}
+          search={{
+            value: draft.query,
+            onChange: (next) => setTableImportQuery(SURFACE, next),
+            placeholder: 'Find staged rows…',
+          }}
+          filter={{
+            options: STATUS_FILTERS.filter((o) => o.id !== 'all').map((o) => ({
+              id: o.id,
+              label: o.label,
+              active: filter === o.id,
+            })),
+            onToggle: (id) =>
+              setTableImportFilter(SURFACE, id === filter ? 'all' : (id as typeof filter)),
+            onClearAll: () => setTableImportFilter(SURFACE, 'all'),
+          }}
           renderGroup={(group, _stripe, { columns: visible }) => (
             <>
               {group.rows.map((row) => (

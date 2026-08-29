@@ -32,7 +32,6 @@ export const KIOSK_POS_SIDEBAR_BODY = cn(KIOSK_POS_CANVAS, 'p-0');
  */
 export const KIOSK_POS_CATEGORY = cn(
   'ds-raw-button flex w-full items-start gap-3 px-4 py-2.5 text-left transition-colors',
-  cornerClass('flush'),
 );
 
 export const KIOSK_POS_CATEGORY_ACTIVE = KIOSK_PILL_ACTIVE;
@@ -62,7 +61,6 @@ export const KIOSK_POS_GRID = 'grid w-full gap-0 bg-surface-card';
 export const KIOSK_POS_CARD = cn(
   'relative flex flex-col overflow-hidden text-left transition-colors',
   'bg-surface-card border-b border-r border-border-hairline',
-  cornerClass('flush'),
   'hover:bg-surface-hover',
 );
 
@@ -82,7 +80,6 @@ export const KIOSK_POS_CARD_SELECTED = 'bg-surface-accent';
  */
 export const KIOSK_POS_CARD_SELECTED_FRAME = cn(
   'pointer-events-none absolute inset-0 z-10 border-2 border-blue-500',
-  cornerClass('flush'),
 );
 
 /**

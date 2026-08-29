@@ -14,7 +14,7 @@ import { useQuery } from '@tanstack/react-query';
 import { SidebarRecentRailBase } from '@/components/sidebar/rail-shell/SidebarRecentRailBase';
 import { RailRowBody, type RailRowVM } from '@/components/sidebar/rail-shell/RailRowBody';
 import { SidebarRailScrollport } from '@/components/sidebar/rail-shell/SidebarRailScrollport';
-import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
+import { SearchField } from '@/design-system/primitives/SearchField';
 import {
   EMPTY_STATION_HISTORY_RAIL_FACETS,
   matchesStationHistoryRailFacets,
@@ -168,14 +168,14 @@ export function LabelsRecentRail() {
           renderRowMain={(row) => <RailRowBody className="flex-1" vm={orderRowVM(row)} />}
         />
       </SidebarRailScrollport>
-      <TechRailSearchBar
+      <SearchField
         value={filterText}
         onChange={setFilterText}
         placeholder="Filter printed…"
-        trailingSuffix={
+        rightElement={
           <StationHistoryRailFilters facets={facets} onChange={setFacets} />
         }
-      />
+        />
     </div>
   );
 }

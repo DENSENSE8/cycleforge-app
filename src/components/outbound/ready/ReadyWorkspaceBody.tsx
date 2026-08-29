@@ -2,9 +2,9 @@
 
 /**
  * Ready stage body for the FBA inbound workbench — the allocation history grid.
- * Stage tabs + search live in `FbaWorkspaceHeader`; the disposition KPI tiles
- * live in the pinned chrome (`ReadyKpiBand`, Band 2) — this component owns only
- * the scroll body (the sheet grid), never a body KPI island.
+ *
+ * It resolves the feed and hands the table its find field as DATA; the table
+ * draws it. Nothing here is chrome.
  */
 
 import { useMemo } from 'react';
@@ -15,15 +15,8 @@ import { useOutboundUrlState } from '@/hooks/useOutboundUrlState';
 import { useReadyWorkspaceTab } from '@/hooks/useReadyWorkspaceTab';
 import { readyTabDisposition } from '@/utils/ready-workspace-state';
 
-interface ReadyWorkspaceBodyProps {
-  /** Portal target for the grid's column-display (▦) trigger (triage band slot). */
-  columnTriggerPortalTarget?: HTMLElement | null;
-}
-
-export function ReadyWorkspaceBody({
-  columnTriggerPortalTarget = null,
-}: ReadyWorkspaceBodyProps = {}) {
-  const { q } = useOutboundUrlState();
+export function ReadyWorkspaceBody() {
+  const { q, setQ } = useOutboundUrlState();
   const { readyTab } = useReadyWorkspaceTab();
   const query = useQuery({
     queryKey: readyHistoryQueryKey(q),
@@ -49,7 +42,7 @@ export function ReadyWorkspaceBody({
       // Both refinements narrow the list, so both must flip the empty answer
       // from "nothing tested yet" to "nothing matches this view".
       isFiltered={Boolean(q.trim()) || readyTab !== 'all'}
-      columnTriggerPortalTarget={columnTriggerPortalTarget}
+      search={{ value: q, onChange: setQ, placeholder: 'Filter tested units…' }}
     />
   );
 }

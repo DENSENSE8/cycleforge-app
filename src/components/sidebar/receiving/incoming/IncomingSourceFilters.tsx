@@ -4,18 +4,18 @@
  * Pipeline purchasing-source filter — All / Zoho / eBay / Amazon / Manual.
  *
  * Lives in the Band-3 search field trailing cluster (`trailingSuffix`, after
- * paste) via {@link WorkbenchFilterPopover} `density="field"`.
+ * paste) via {@link FilterMenu} `density="field"`.
  *
  * Default is All (`?inbound=` omitted). Sources write `?inbound=<slug>`.
  */
 
 import { useState } from 'react';
 import {
-  WorkbenchFilterGroupLabel,
-  WorkbenchFilterHotChip,
-  WorkbenchFilterMenuRow,
-  WorkbenchFilterPopover,
-} from '@/components/dashboard/workbench-filter-popover';
+  FilterMenuGroupLabel,
+  FilterHotChip,
+  FilterMenuRow,
+  FilterMenu,
+} from '@/components/ui/FilterMenu';
 import { PlatformMark } from '@/components/ui/PlatformMark';
 
 export type IncomingSource = 'all' | 'zoho' | 'ebay' | 'amazon' | 'manual';
@@ -59,14 +59,14 @@ export function IncomingSourceRows({
   };
   return (
     <>
-      <WorkbenchFilterGroupLabel>Source</WorkbenchFilterGroupLabel>
-      <WorkbenchFilterMenuRow
+      <FilterMenuGroupLabel>Source</FilterMenuGroupLabel>
+      <FilterMenuRow
         label="All sources"
         active={source === 'all'}
         onClick={() => pick('all')}
       />
       {SOURCE_OPTIONS.filter((o) => o.id !== 'all').map((opt) => (
-        <WorkbenchFilterMenuRow
+        <FilterMenuRow
           key={opt.id}
           label={opt.label}
           active={source === opt.id}
@@ -102,16 +102,15 @@ export function IncomingSourceFilters({
   const hotLabel = hot ? sourceLabel(source) : undefined;
 
   return (
-    <WorkbenchFilterPopover
+    <FilterMenu
       open={open}
       onOpenChange={setOpen}
       hot={hot}
       label="Source"
       hotActiveLabel={hotLabel}
-      density="field"
       contentClassName="w-48"
     >
-      <WorkbenchFilterMenuRow
+      <FilterMenuRow
         label="All sources"
         active={source === 'all'}
         sectionHeader
@@ -121,7 +120,7 @@ export function IncomingSourceFilters({
         }}
       />
       {SOURCE_OPTIONS.filter((o) => o.id !== 'all').map((opt) => (
-        <WorkbenchFilterMenuRow
+        <FilterMenuRow
           key={opt.id}
           label={opt.label}
           active={source === opt.id}
@@ -136,7 +135,7 @@ export function IncomingSourceFilters({
           }}
         />
       ))}
-    </WorkbenchFilterPopover>
+    </FilterMenu>
   );
 }
 
@@ -149,5 +148,5 @@ export function IncomingSourceHotChip({
   onClear: () => void;
 }) {
   if (source === 'all') return null;
-  return <WorkbenchFilterHotChip label={sourceLabel(source)} onClear={onClear} />;
+  return <FilterHotChip label={sourceLabel(source)} onClear={onClear} />;
 }

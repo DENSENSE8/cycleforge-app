@@ -38,7 +38,6 @@
 
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
 import { DeskInspectorIndexShell } from '@/components/right-rail/DeskInspectorIndexShell';
-import { InspectorColumnDisplayButton } from '@/components/right-rail/InspectorColumnDisplayButton';
 import type {
   InventoryDetailKind,
   OpenInventoryDetailsPayload,
@@ -127,7 +126,6 @@ export function InventoryInspectorRail({
               >
                 {recordRef}
               </span>
-              <InspectorColumnDisplayButton />
             </>
           }
           // Remount the body on record change so it re-fetches server truth.

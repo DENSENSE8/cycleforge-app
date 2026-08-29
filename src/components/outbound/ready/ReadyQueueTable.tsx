@@ -3,12 +3,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { RefreshCw } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
-import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
+import { DataTable, type DataTableSearch } from '@/components/tables/DataTable';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import type { RowGroup } from '@/lib/group-rows';
 import type { AllocationHit } from '@/lib/channel-allocation';
 import { READY_TABLE_BINDING } from '@/components/outbound/ready/grid/ready-table-definition';
-import { ReadyGridColumnHeader } from '@/components/outbound/ready/grid/ReadyGridColumnHeader';
 import {
   ReadyGridRow,
   readyFallbackStateLabel,
@@ -31,8 +30,8 @@ interface ReadyQueueTableProps {
   onRetry: () => void;
   /** True while a search or a non-`all` tab is narrowing the hits. */
   isFiltered?: boolean;
-  /** Portal target for the grid's column-display (▦) trigger (triage band slot). */
-  columnTriggerPortalTarget?: HTMLElement | null;
+  /** The find field, as data — the workspace above owns the URL it writes. */
+  search: DataTableSearch;
 }
 
 /**
@@ -92,7 +91,7 @@ export function ReadyQueueTable({
   isFetching,
   onRetry,
   isFiltered = false,
-  columnTriggerPortalTarget = null,
+  search,
 }: ReadyQueueTableProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -151,7 +150,7 @@ export function ReadyQueueTable({
 
   return (
     <div className="flex min-h-[240px] min-w-0 flex-col" aria-busy={isFetching}>
-      <NonlinearTableHost<AllocationHit, ReadyGridColumnKey, ReadyGridColumn>
+      <DataTable<AllocationHit, ReadyGridColumnKey, ReadyGridColumn>
         binding={READY_TABLE_BINDING}
         orderGroupsByDate={orderGroupsByDate}
         rows={hits}
@@ -162,19 +161,8 @@ export function ReadyQueueTable({
         loading={isLoading}
         emptyMessage="No tested units yet — completed verdicts appear here newest first."
         searchEmptyMessage="No tested units match this view. Clear the search or choose All tested."
-        isSearching={isFiltered}
+        search={search}
         scrollRef={scrollRef}
-        columnTriggerPortalTarget={columnTriggerPortalTarget}
-        renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
-          <ReadyGridColumnHeader
-            columns={visible}
-            activeSort={columnSort}
-            sortDir={sortDir}
-            onSortColumn={toggleColumnSort}
-            onResizeColumn={onResizeColumn}
-            onResetColumn={onResetColumn}
-          />
-        )}
         renderGroup={(group, _stripe, { columns: visible }) => (
           <>{group.rows.map((hit) => renderLeaf(hit, visible))}</>
         )}

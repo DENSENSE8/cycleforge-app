@@ -156,6 +156,18 @@ export function useShippedTableFilters({
     replaceParams((params) => { params.delete('search'); });
   }, [replaceParams]);
 
+  /** The find field writes here — same param the rest of the desk reads. */
+  const setSearch = useCallback(
+    (next: string) => {
+      replaceParams((params) => {
+        const trimmed = next.trim();
+        if (trimmed) params.set('search', trimmed);
+        else params.delete('search');
+      });
+    },
+    [replaceParams],
+  );
+
   const applyShippedFilter = useCallback(
     (filter: string) => {
       replaceParams((params) => { params.set('shippedFilter', filter); });
@@ -232,6 +244,7 @@ export function useShippedTableFilters({
     layout,
     setWeekOffset,
     clearSearch,
+    setSearch,
     applyShippedFilter,
     setLayout,
     setPeriodWeek,

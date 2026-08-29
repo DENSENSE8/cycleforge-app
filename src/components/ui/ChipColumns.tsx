@@ -3,7 +3,6 @@
 import type { ReactNode } from 'react';
 import { AnimatePresence, LayoutGroup, motion } from '@/design-system/motion';
 import { cn } from '@/utils/_cn';
-import { useIsColumnHidden } from '@/components/ui/table-column-config/TableColumnConfig';
 import { framerTransition } from '@/design-system/foundations/motion-framer';
 import { useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
 
@@ -56,7 +55,9 @@ export function ChipColumns({
   columns: ChipColumn[];
   className?: string;
 }) {
-  const isHidden = useIsColumnHidden();
+  // Per-staff column hiding went with the column-display rail (2026-08-29):
+  // every declared slot paints.
+  const isHidden = (_key?: string) => false;
   const layoutTransition = useMotionTransition(framerTransition.chipColumnLayout);
   const presenceTransition = useMotionTransition(framerTransition.dropdownOpen);
 

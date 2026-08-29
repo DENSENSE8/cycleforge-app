@@ -1,17 +1,21 @@
 'use client';
 
 /**
- * Sticky LedgerGrid column-header row — shared outer chrome for Receiving /
- * Incoming / Pickup / Catalog / Repair. Inner label/chevron lives in
- * {@link GridHeaderLabel}; this owns select-all, frozen tracks, sort click,
- * aria-sort, HoverTooltip tips, and the optional per-column drag-resize grip.
+ * Sticky LedgerGrid column-header row — the ONE header every table draws.
  *
- * Column DISPLAY is not here: its control lives in a gutter beside the card
- * ({@link GridColumnGutter}), because a control parked at the band's right edge
- * either reserves a permanent track or covers the last column's label.
+ * It owns select-all, frozen tracks, sort click, aria-sort and HoverTooltip
+ * tips. The inner label/chevron lives in {@link GridHeaderLabel}.
  *
- * Domain wrappers supply a {@link LedgerHeaderLayoutApi} + optional glyph /
- * label overrides. Resize / reorder stay out of v1 (Orders header fork).
+ * ## What is deliberately not here any more
+ *
+ * Drag-resize grips, the right-click column menu and the column-display rail
+ * were deleted 2026-08-29 (`docs/todo/one-table-sot-teardown-HANDOFF.md` § 4.2).
+ * They were the interactive layer that made a header a surface each desk could
+ * fork; the header is now geometry + sort + select-all and nothing else. If a
+ * verb earns its way back it comes back once, here, asked for.
+ *
+ * Callers reach this through {@link DataTable}, which draws it from the
+ * binding's columns — no page supplies header chrome.
  */
 
 import { type ReactNode } from 'react';
@@ -34,33 +38,16 @@ import {
   ledgerGridCell,
   ledgerGridRowShellClass,
 } from './grid-cell-chrome';
-import { ColumnResizeHandle } from './ColumnResizeHandle';
 import { GridHeaderLabel, gridHeaderAriaSort } from './GridHeaderLabel';
 import {
-  isGridColumnResizable,
   isGridColumnFillTrack,
   isGridColumnFlushTrack,
   isGridColumnPaintTrack,
 } from './grid-column-editability';
 import { gridFrozenLeft, gridTemplate } from './grid-column-geometry';
-import {
-  resolveColumnResizeEdges,
-  type GridColumnResizeEdge,
-} from './grid-column-resize-edges';
 import { gridHeaderCellAlignClass, resolveGridColumnAlign } from './grid-header-align';
 import type { GridSortDir } from './grid-sort-dir';
 import type { LedgerGridColumnModel } from './grid-surface-descriptor';
-import { resolveColumnWidthClamp } from '@/components/ui/table-column-config/useColumnWidths';
-import { useGridColumnWidthBoundsContext } from './grid-column-width-bounds-context';
-import {
-  gridTrackRemToPx,
-  resolveGridColumnMinTrackRem,
-} from './grid-column-type-track';
-import {
-  LedgerGridColumnContextMenu,
-  type LedgerGridColumnMenuApi,
-} from './LedgerGridColumnContextMenu';
-
 
 export type LedgerHeaderLayoutApi = {
   /**
@@ -78,17 +65,10 @@ export type LedgerHeaderLayoutApi = {
    * What is left is the one field that genuinely differs per surface: which
    * columns offer click-to-sort.
    *
-   * Both used to be family closures over the family's FLAT column constant, and
-   * the header called them by key. That silently broke the moment a family
-   * mounted a SECOND column model: Receiving's compound layout freezes
-   * `select · thumb`, but `isReceivingGridFrozen` answered for `select · order`,
-   * so the pinned photo track resolved `left` as if it were the first frozen
-   * column and pinned on top of the checkbox under horizontal scroll.
-   *
-   * The header already receives the columns actually mounted. Freeze membership
-   * (`column.frozen`) and the sticky offset (`gridFrozenLeft(columns, key)`) now
-   * derive from THAT array, so a header cannot disagree with the model beneath
-   * it — whichever model a surface swaps in.
+   * Freeze membership (`column.frozen`) and the sticky offset
+   * (`gridFrozenLeft(columns, key)`) derive from the MOUNTED array, so a header
+   * cannot disagree with the model beneath it — whichever model a surface
+   * swaps in.
    */
   isSortable: (key: string) => boolean;
   /** Column key that draws `data-frozen-edge`. Default `title`. */
@@ -102,9 +82,8 @@ export type LedgerGridColumnHeaderProps<C extends LedgerGridColumnModel> = {
   selectMode?: boolean;
   selectionScope?: string;
   /**
-   * Select-all chrome. Defaults to `'always'`. Unbox History / Incoming /
-   * Orders sheets pass `'sheets'` — full-cell hit plane; paints
-   * {@link GridClickSelectFace} when all/mixed so top-left matches body checks.
+   * Select-all chrome. Defaults to `'always'`. Sheets surfaces pass `'sheets'`
+   * — full-cell hit plane, so top-left matches the body checks.
    */
   selectGutterChrome?: GridSelectGutterChrome;
   className?: string;
@@ -113,22 +92,6 @@ export type LedgerGridColumnHeaderProps<C extends LedgerGridColumnModel> = {
   onSortColumn?: (key: string) => void;
   /** Runtime label override (e.g. Unbox stage → Unboxed / Scanned / Tested). */
   labelFor?: (column: C) => string | undefined;
-  /**
-   * Commit a column's drag-resized width (px). Presence enables the grips on
-   * every resizable track ({@link isGridColumnResizable} — variable-content
-   * columns; not `select`, and not fixed-format `number` tracks).
-   */
-  onResizeColumn?: (key: string, px: number) => void;
-  /**
-   * Drop a column's persisted width (SoT default). Wired with
-   * {@link onResizeColumn}; double-click / Enter on the grip call it.
-   */
-  onResetColumn?: (key: string) => void;
-  /**
-   * Sheets-class header context menu. When set, every data header cell wraps
-   * in {@link LedgerGridColumnContextMenu}.
-   */
-  columnMenu?: LedgerGridColumnMenuApi<C>;
   /**
    * Leading chrome for a `_paint` track (Unbox History click-select) — paint
    * bucket only. Ignored when the column list still has `select`.
@@ -148,12 +111,8 @@ export function LedgerGridColumnHeader<C extends LedgerGridColumnModel>({
   sortDir = null,
   onSortColumn,
   labelFor,
-  onResizeColumn,
-  onResetColumn,
-  columnMenu,
   leadingChrome,
 }: LedgerGridColumnHeaderProps<C>) {
-  const widthBoundsByKey = useGridColumnWidthBoundsContext();
   const scope = selectionScope ?? '__idle__';
   const selectedRows = useTableSelection<{ id?: number | string }>(scope, (r) => Number(r.id));
   const total = useTableSelectionTotal(scope);
@@ -172,16 +131,10 @@ export function LedgerGridColumnHeader<C extends LedgerGridColumnModel>({
   const template = gridTemplate(columns);
   const dataColumns = columns.filter((c) => c.key !== 'select');
   // The frozen edge IS the last frozen track, so derive it from the MOUNTED
-  // model. A family constant (`RECEIVING_GRID_FROZEN_EDGE_KEY = 'order'`) names
-  // a key the compound model does not have, so the scroll-edge shadow simply
-  // never painted on a compound table — the same class of bug as the sticky
-  // offsets above, and the same fix. `layout.frozenEdgeKey` remains the
-  // fallback for a model with no frozen tracks at all.
+  // model. `layout.frozenEdgeKey` remains the fallback for a model with no
+  // frozen tracks at all.
   const frozenEdgeKey =
     [...columns].reverse().find((c) => c.frozen)?.key ?? layout.frozenEdgeKey ?? 'title';
-  const resizeEdges = onResizeColumn
-    ? resolveColumnResizeEdges(dataColumns, frozenEdgeKey)
-    : null;
 
   const onToggleAll = () => {
     if (!selectionScope || !selectActive) return;
@@ -270,10 +223,6 @@ export function LedgerGridColumnHeader<C extends LedgerGridColumnModel>({
           labelOverride != null
             ? ({ ...column, label: labelOverride, gridLabel: labelOverride } as C)
             : column;
-        const edges =
-          onResizeColumn && isGridColumnResizable(column)
-            ? (resizeEdges?.get(column.key) ?? ['end'])
-            : undefined;
         return (
           <LedgerHeaderCell
             key={column.key}
@@ -285,19 +234,6 @@ export function LedgerGridColumnHeader<C extends LedgerGridColumnModel>({
             isActiveSort={isActiveSort}
             sortDir={isActiveSort ? sortDir : null}
             onSort={sortable ? () => onSortColumn?.(column.key) : undefined}
-            resizeEdges={edges}
-            onResize={
-              edges && onResizeColumn
-                ? (px) => onResizeColumn(column.key, px)
-                : undefined
-            }
-            onReset={
-              edges && onResetColumn
-                ? () => onResetColumn(column.key)
-                : undefined
-            }
-            columnMenu={columnMenu}
-            widthBound={widthBoundsByKey[column.key]}
           />
         );
       })}
@@ -314,11 +250,6 @@ function LedgerHeaderCell<C extends LedgerGridColumnModel>({
   isActiveSort = false,
   sortDir = null,
   onSort,
-  onResize,
-  onReset,
-  resizeEdges,
-  columnMenu,
-  widthBound,
 }: {
   column: C;
   last: boolean;
@@ -329,11 +260,6 @@ function LedgerHeaderCell<C extends LedgerGridColumnModel>({
   isActiveSort?: boolean;
   sortDir?: GridSortDir | null;
   onSort?: () => void;
-  onResize?: (px: number) => void;
-  onReset?: () => void;
-  resizeEdges?: readonly GridColumnResizeEdge[];
-  columnMenu?: LedgerGridColumnMenuApi<C>;
-  widthBound?: { min?: number; max?: number };
 }) {
   const frozen = Boolean(column.frozen);
   const flushTrack = isGridColumnFlushTrack(column);
@@ -343,15 +269,8 @@ function LedgerHeaderCell<C extends LedgerGridColumnModel>({
     isActiveSort && sortDir
       ? `${label} · sorted ${sortDir === 'asc' ? 'A→Z / ascending' : 'Z→A / descending'}`
       : sortActive
-        ? `${label} · click to sort · right-click for more`
-        : `${label} · right-click for column options`;
-  const minTrackRem = resolveGridColumnMinTrackRem(column);
-  const typedFloorPx = minTrackRem > 0 ? gridTrackRemToPx(minTrackRem) : undefined;
-  const { minPx: minWidthPx, maxPx: maxWidthPx } = resolveColumnWidthClamp({
-    typedFloorPx,
-    staffMin: widthBound?.min,
-    staffMax: widthBound?.max,
-  });
+        ? `${label} · click to sort`
+        : label;
 
   const cell = (
     <div
@@ -377,35 +296,12 @@ function LedgerHeaderCell<C extends LedgerGridColumnModel>({
       style={frozen ? { left: gridFrozenLeft(columns, column.key) } : undefined}
     >
       <GridHeaderLabel column={column} sortDir={isActiveSort ? sortDir : null} />
-      {onResize && onReset && resizeEdges
-        ? resizeEdges.map((edge) => (
-            <ColumnResizeHandle
-              key={edge}
-              colKey={column.key}
-              label={label}
-              onCommit={onResize}
-              onReset={onReset}
-              edge={edge}
-              flush={edge === 'end' && column.key === frozenEdgeKey}
-              minWidthPx={minWidthPx}
-              maxWidthPx={maxWidthPx}
-            />
-          ))
-        : null}
     </div>
   );
 
-  const tipped = (
+  return (
     <HoverTooltip label={tip} focusable={false} asChild>
       {cell}
     </HoverTooltip>
-  );
-
-  if (!columnMenu) return tipped;
-
-  return (
-    <LedgerGridColumnContextMenu column={column} menu={columnMenu}>
-      {tipped}
-    </LedgerGridColumnContextMenu>
   );
 }

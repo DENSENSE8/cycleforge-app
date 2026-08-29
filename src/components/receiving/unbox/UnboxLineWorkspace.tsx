@@ -36,8 +36,6 @@
  * *remount* needs those resets first.
  */
 
-import { StationDeck } from '@/components/station/StationDeck';
-import { UnboxHistoryDock } from '@/components/station/UnboxHistoryDock';
 import { useEffect, useRef } from 'react';
 // useRef carries the render-time pane slot below (see `paneSlotRef`)
 import dynamic from 'next/dynamic';
@@ -180,7 +178,7 @@ export function UnboxLineWorkspace({
       than none: it teaches the bench not to look there.
       `station-history-dock.spec.ts` caught it.
     */
-    <StationDeck history={<UnboxHistoryDock station="Unbox" />}>
+    <div className="flex h-full min-h-0 w-full min-w-0 flex-col">
     <div className={cn(appWorkCanvasLayoutClass, 'h-full')}>
       <div
         className={`flex h-full min-h-0 w-full flex-col ${showOverlay ? 'pointer-events-none' : ''}`}
@@ -279,6 +277,6 @@ export function UnboxLineWorkspace({
         ) : null}
       </AnimatePresence>
     </div>
-    </StationDeck>
+    </div>
   );
 }

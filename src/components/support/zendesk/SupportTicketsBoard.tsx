@@ -3,7 +3,8 @@
 /**
  * Support · Tickets primary surface — Orders/Unbox workbench recipe.
  *
- * Chrome: WorkbenchChromeHeader status tabs + TechRailSearchBar + sort
+ * Chrome: a find row with sort beside it, and the shared {@link TableTabs}
+ * status strip at the foot
  * Body:   full ticket queue (SupportTicketRow) + pagination
  *
  * URL: `/support` (+ `tstatus` / `tq`). Row open writes `?ticket=` for Station focus.
@@ -22,21 +23,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Link2, RefreshCw } from '@/components/Icons';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button, EmptyState } from '@/design-system/primitives';
-import {
-  WorkbenchBandControl,
-  WORKBENCH_BAND_CONTROL_GLYPH_CLASS,
-} from '@/components/dashboard/workbench-band-control';
 import { SkeletonList } from '@/design-system/components/Skeletons';
-import {
-  WorkbenchSheetView,
-  useWorkbenchSheetChrome,
-} from '@/components/dashboard/WorkbenchSheetView';
-import {
-  WorkbenchChromeHeader,
-  WorkbenchTrailingCluster,
-  WorkbenchTriageBand,
-} from '@/components/dashboard/workbench-shell';
-import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
+import { SearchField } from '@/design-system/primitives/SearchField';
 import {
   DEFAULT_TICKET_STATUS,
   parseTicketStatus,
@@ -54,8 +42,9 @@ import { SupportCreateTicketModal } from '@/components/support/service-workspace
 import { useSupportTicketClaimHost } from '@/components/support/service-workspace/useSupportTicketClaimHost';
 import { cn } from '@/utils/_cn';
 import { ZendeskSelect } from './ZendeskSelect';
-import { SupportTicketChromeActions } from './SupportTicketChromeActions';
 import { SupportTicketRow } from './queue/SupportTicketRow';
+import { TableTabs } from '@/components/tables/TableStatusBar';
+import { IconButton } from '@/design-system/primitives/IconButton';
 
 const SUPPORT_PATH = '/support';
 
@@ -156,7 +145,6 @@ export function SupportTicketsBoard() {
 
   const [sort, setSort] = useState<SortKey>('recent');
   // Ticket board has no KPI band and no Band-3 controls portal (honest absence).
-  const chrome = useWorkbenchSheetChrome();
   const [page, setPage] = useState(1);
 
   useEffect(() => {
@@ -211,10 +199,9 @@ export function SupportTicketsBoard() {
 
   const tabs = useMemo(
     () =>
-      TICKET_STATUS_ITEMS.map((item) => ({
+      TICKET_STATUS_ITEMS.filter((item) => item.id !== DEFAULT_TICKET_STATUS).map((item) => ({
         id: item.id,
         label: item.label,
-        color: TAB_COLOR[item.id as TicketStatusFilter],
         count: item.id === status && data?.count != null ? data.count : undefined,
       })),
     [status, data?.count],
@@ -232,69 +219,34 @@ export function SupportTicketsBoard() {
 
   return (
     <>
-    <WorkbenchSheetView
-      chrome={chrome}
-      sheetHostClassName="border-t border-border-soft bg-surface-card"
-      tabs={({ className }) => (
-          <WorkbenchChromeHeader
-            density="band"
-            className={className}
-            tabs={tabs}
-            activeTab={status}
-            onTabChange={(id) => setStatus(parseTicketStatus(id))}
-            solidTone="accent"
-            trailing={
-              <WorkbenchTrailingCluster
-                actions={
-                  canCreateTicket ? (
-                    <SupportTicketChromeActions onAdd={() => claim.openCreate()} />
-                  ) : null
-                }
-              />
-            }
-          />
-      )}
-      // Band 3 — find left; refresh · sort right. No KPI band (no metrics).
-      triage={() => (
-          <WorkbenchTriageBand
-            search={
-              <TechRailSearchBar
-                variant="chrome"
-                value={searchQuery}
-                onChange={setSearch}
-                placeholder="Search tickets…"
-                className="min-w-0 flex-1"
-              />
-            }
-            right={
-              <>
-                {/* Was a `rounded-md p-1.5` IconButton — a soft cell on a flush
-                    ops row, and the only band control in the product that did
-                    not track the row. */}
-                <WorkbenchBandControl
-                  label="Refresh tickets"
-                  icon={
-                    <RefreshCw
-                      className={cn(
-                        WORKBENCH_BAND_CONTROL_GLYPH_CLASS,
-                        isFetching && 'animate-spin',
-                      )}
-                    />
-                  }
-                  onClick={() => void queryClient.invalidateQueries({ queryKey: ['zendesk'] })}
-                />
-                <ZendeskSelect
-                  value={sort}
-                  options={SORT_OPTIONS}
-                  onChange={(v) => setSort(v as SortKey)}
-                />
-              </>
-            }
-          />
-      )}
-    >
-      {() => (
-        <>
+    <>
+      {/* Find + refresh sit with the list they act on, not on a chrome band. */}
+      <div className="flex min-w-0 shrink-0 items-center gap-2 border-b border-border-soft bg-surface-card px-2 py-1">
+        <SearchField
+          value={searchQuery}
+          onChange={setSearch}
+          placeholder="Search tickets…"
+          className="min-w-0 flex-1"
+          tone="neutral"
+          hideUnderline
+        />
+        <IconButton
+          ariaLabel="Refresh tickets"
+          title="Refresh tickets"
+          icon={<RefreshCw className={cn('h-3.5 w-3.5 shrink-0', isFetching && 'animate-spin')} />}
+          onClick={() => void queryClient.invalidateQueries({ queryKey: ['zendesk'] })}
+        />
+        <ZendeskSelect
+          value={sort}
+          options={SORT_OPTIONS}
+          onChange={(v) => setSort(v as SortKey)}
+        />
+        {canCreateTicket ? (
+          <Button variant="primary" size="sm" onClick={() => claim.openCreate()}>
+            New ticket
+          </Button>
+        ) : null}
+      </div>
         <div className="min-h-0 flex-1 overflow-y-auto">
             {isLoading ? (
               <div className="p-3">
@@ -392,9 +344,15 @@ export function SupportTicketsBoard() {
               Next
             </Button>
           </div>
-        </>
-      )}
-    </WorkbenchSheetView>
+      <TableTabs
+        tabs={tabs}
+        activeTab={status === DEFAULT_TICKET_STATUS ? undefined : status}
+        onTabChange={(id) =>
+          setStatus(parseTicketStatus(id === status ? DEFAULT_TICKET_STATUS : id))
+        }
+        className="border-t border-border-soft bg-surface-card"
+      />
+    </>
 
       <SupportCreateTicketModal
         open={claim.createOpen}

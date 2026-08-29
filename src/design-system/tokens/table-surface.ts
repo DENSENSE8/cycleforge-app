@@ -3,7 +3,7 @@
  *
  * **Framed card** ({@link TABLE_SURFACE_CLIP_CLASS}): rounded-xl + raised lift +
  * `overflow-hidden` so cell grid lines clip at the corners. Use for admin
- * `DataTable`, Orders hand-compose, and any surface that still needs a raised
+ * `AdminTable`, Orders hand-compose, and any surface that still needs a raised
  * island inside gutters.
  *
  * **Sheets plane** ({@link TABLE_SURFACE_SHEET_CLASS}): hairline perimeter only —
@@ -45,7 +45,7 @@ export const TABLE_SURFACE_CLIP_CLASS = `${TABLE_SURFACE_CLASS} overflow-hidden`
  * - `overflow-hidden` clips airtable paints at the sheet edge; sticky header
  *   still docks inside the LedgerGrid scrollport.
  *
- * Pair with `WORKBENCH_SHEET_HOST` (`workbench-shell.tsx`) so the host does
+ * Pair with `'relative flex min-h-0 min-w-0 flex-1 flex-col'` (`workbench-shell.tsx`) so the host does
  * not re-introduce side/bottom gutters around this shell.
  */
 export const TABLE_SURFACE_SHEET_CLASS = [

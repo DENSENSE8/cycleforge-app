@@ -1,7 +1,7 @@
 'use client';
 
 import { ChevronDown, ChevronUp } from '@/components/Icons';
-import { ColumnTypeGlyph } from '@/components/ui/table-column-config/column-type-glyph';
+import { ColumnTypeGlyph } from './column-type-glyph';
 import { gridHeaderShowsLabel } from './grid-column-geometry';
 import type { LedgerGridColumnModel } from './grid-surface-descriptor';
 

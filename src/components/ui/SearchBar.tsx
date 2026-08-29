@@ -28,13 +28,9 @@ export interface SearchBarProps {
   /** Passed through to {@link SearchField}; pairs with {@link rightElement} for paste-after-remove rows. */
   customTrailingSlot?: React.ReactNode;
   /** Full-height in-field status (passed to {@link SearchField}). */
-  inlineContent?: React.ReactNode;
   /** Stable key so the field re-measures when the in-field label changes. */
-  inlineContentKey?: string;
   /** Icons / actions rendered just left of paste inside the field (passed to SearchField). */
-  trailingPrefix?: React.ReactNode;
   /** Icons / actions after paste/clear in the same trailing row (passed to SearchField). */
-  trailingSuffix?: React.ReactNode;
   /** Trailing slot shows clipboard paste only (no clear X when filled). */
   pasteOnlyTrailing?: boolean;
   /**
@@ -87,10 +83,6 @@ export function SearchBar({
   hideClear = false,
   hideLeadingIcon = false,
   customTrailingSlot,
-  inlineContent,
-  inlineContentKey,
-  trailingPrefix,
-  trailingSuffix,
   pasteOnlyTrailing,
   pasteVisibility,
   fillHost,
@@ -132,10 +124,6 @@ export function SearchBar({
         hideClear={hideClear}
         hideLeadingIcon={hideLeadingIcon}
         customTrailingSlot={customTrailingSlot}
-        inlineContent={inlineContent}
-        inlineContentKey={inlineContentKey}
-        trailingPrefix={trailingPrefix}
-        trailingSuffix={trailingSuffix}
         pasteOnlyTrailing={pasteOnlyTrailing}
         pasteVisibility={pasteVisibility}
         fillHost={fillHost}

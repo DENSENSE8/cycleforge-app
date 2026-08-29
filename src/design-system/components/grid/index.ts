@@ -4,7 +4,6 @@ export type {
   LedgerGridLeafCellMeta,
   LedgerGridLeafRowProps,
 } from './LedgerGridLeafRow';
-export { LedgerCellEditor } from './LedgerCellEditor';
 export { LedgerGridColumnHeader } from './LedgerGridColumnHeader';
 export type {
   LedgerHeaderLayoutApi,
@@ -12,34 +11,12 @@ export type {
 } from './LedgerGridColumnHeader';
 /** The one column-sort direction — see `grid-sort-dir.ts` for why there is only one. */
 export type { GridSortDir } from './grid-sort-dir';
-export { makeLedgerGridColumnHeader } from './makeLedgerGridColumnHeader';
-export type {
-  GridColumnHeaderBaseProps,
-  GridColumnHeaderProps,
-  GridHeaderSelectMode,
-  MakeLedgerGridColumnHeaderConfig,
-} from './makeLedgerGridColumnHeader';
 export { useGridSurface } from './useGridSurface';
 export { GridFillCell, GRID_FILL_COLUMN } from './GridFillCell';
 export { gridDataCellClass } from './grid-data-cell-class';
 export { compareGridValues, type GridSortValue } from './grid-column-sort';
 export { LedgerGridSurface } from './LedgerGridSurface';
 export type { LedgerGridColumnHeaderApi } from './LedgerGridSurface';
-export { ColumnResizeHandle } from './ColumnResizeHandle';
-export {
-  resolveColumnResizeEdges,
-} from './grid-column-resize-edges';
-export type { GridColumnResizeEdge } from './grid-column-resize-edges';
-export {
-  GridColumnDetailsTrigger,
-  GridColumnGutter,
-  useOpenGridColumnDetails,
-  useGridColumnFieldsApi,
-} from './GridColumnDetailsTrigger';
-export {
-  LedgerGridColumnContextMenu,
-} from './LedgerGridColumnContextMenu';
-export type { LedgerGridColumnMenuApi } from './LedgerGridColumnContextMenu';
 export {
   buildLedgerColumnDefs,
   makeGridSurfaceDescriptor,
@@ -49,10 +26,6 @@ export type {
   GridSurfaceDescriptor,
   LedgerGridColumnModel,
 } from './grid-surface-descriptor';
-// The pure resolvers (`isGridColumnVisible` / `resolveGridColumns`) stay on the
-// module, not the barrel — they exist for the guard tests and for anything that
-// needs the rule without React. Surfaces compose the two hooks.
-export { useGridColumnVisibility, useGridFields } from './useGridColumnVisibility';
 export { useGridColumnDisplay } from './useGridColumnDisplay';
 export { useGridRowFills } from './useGridRowFills';
 export { GridRowPaintTrigger } from './GridRowPaintTrigger';
@@ -74,16 +47,6 @@ export type {
   GridColumnTextEmphasis,
   LegacyGridColumnHighlight,
 } from './grid-column-display';
-export {
-  GRID_ZOOM_DEFAULT,
-  GRID_ZOOM_LEVELS,
-  gridZoomStyle,
-  parseGridZoom,
-  readStoredGridZoom,
-  stepGridZoom,
-  writeStoredGridZoom,
-} from './grid-zoom';
-export type { GridZoomPercent } from './grid-zoom';
 export {
   gridCellAlignClass,
   gridHeaderCellAlignClass,
@@ -134,21 +97,3 @@ export { useSyncedHorizontalScrollbar } from './useSyncedHorizontalScrollbar';
 export { TableStickyXScroll } from './TableStickyXScroll';
 /** The house DEGRADED (fourth settled) state — dashed rose box + Retry. */
 export { GridDegradedBox } from './GridDegradedBox';
-/** Parent→child linked dual-pane drill (WMS-wide). Not fold; not compare. */
-export { LedgerDrillHost, useLedgerDrillCollapse } from './LedgerDrillHost';
-export type { LedgerDrillHostProps } from './LedgerDrillHost';
-export { LedgerDrillParentMap } from './LedgerDrillParentMap';
-export type {
-  LedgerDrillParentRow,
-  LedgerDrillParentSection,
-} from './LedgerDrillParentMap';
-export {
-  flattenSectionedParents,
-  parseLedgerDrillLayout,
-  parseLedgerDrillParentKey,
-  writeLedgerDrillParams,
-} from './ledger-drill-layout';
-export type {
-  LedgerDrillLayout,
-  LedgerDrillUrlContract,
-} from './ledger-drill-layout';

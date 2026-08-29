@@ -7,7 +7,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/design-system/primitives';
-import { DataTable, type DataTableColumn } from '@/design-system/components/DataTable';
+import { AdminTable, type AdminTableColumn } from '@/design-system/components/AdminTable';
 
 interface SessionRow {
   sid: string;
@@ -63,7 +63,7 @@ export function SessionsSection() {
     await refresh();
   }, [refresh]);
 
-  const columns: DataTableColumn<SessionRow>[] = [
+  const columns: AdminTableColumn<SessionRow>[] = [
     {
       key: 'staff',
       header: 'Staff',
@@ -120,7 +120,7 @@ export function SessionsSection() {
 
       {err && <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div>}
 
-      <DataTable
+      <AdminTable
         columns={columns}
         rows={rows}
         rowKey={(row) => row.sid}

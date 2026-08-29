@@ -8,7 +8,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Button } from '@/design-system/primitives';
-import { DataTable, type DataTableColumn } from '@/design-system/components/DataTable';
+import { AdminTable, type AdminTableColumn } from '@/design-system/components/AdminTable';
 
 export const dynamic = 'force-dynamic';
 
@@ -237,7 +237,7 @@ export default async function CycleCountDetailPage({
   const totalLines = statusCounts.reduce((sum, s) => sum + s.count, 0);
   const varianceTol = Number(campaign.variance_tol);
 
-  const lineColumns: DataTableColumn<LineRow>[] = [
+  const lineColumns: AdminTableColumn<LineRow>[] = [
     {
       key: 'bin',
       header: 'Bin',
@@ -447,7 +447,7 @@ export default async function CycleCountDetailPage({
               Pending lines accept a count submission. Pending review needs an admin decision.
             </p>
           </header>
-          <DataTable
+          <AdminTable
             columns={lineColumns}
             rows={lines}
             rowKey={(l) => l.id}

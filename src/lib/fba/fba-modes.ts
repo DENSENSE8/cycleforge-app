@@ -11,8 +11,8 @@
  *   combine — combiner pulls PACKED items and combines under one FBA shipment ID
  *   shipped — shipped / history
  *
- * Pure data — no JSX. The facet tab UI lives in `FbaWorkspaceHeader`
- * (content-chrome `TabSwitch` via `WorkbenchChromeHeader`).
+ * Pure data — no JSX. The facet tab UI is the shared `TableTabs` strip that
+ * `FbaOutboundWorkspace` foots its body with.
  */
 
 export type FbaMode = 'ready' | 'plan' | 'combine' | 'shipped';

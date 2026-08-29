@@ -13,7 +13,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { qk } from '@/queries/keys';
 import { Layers } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
-import { DataTable, type DataTableColumn } from '@/design-system/components/DataTable';
+import { AdminTable, type AdminTableColumn } from '@/design-system/components/AdminTable';
 
 interface EdgeRow {
   id: number;
@@ -62,7 +62,7 @@ export function CompatibilityManagementTab() {
 
   const rows = useMemo(() => data?.items ?? [], [data]);
 
-  const columns: DataTableColumn<EdgeRow>[] = useMemo(
+  const columns: AdminTableColumn<EdgeRow>[] = useMemo(
     () => [
       {
         key: 'model',
@@ -136,7 +136,7 @@ export function CompatibilityManagementTab() {
           Compatibility edges{' '}
           {!isLoading ? <span className="text-text-faint">({rows.length})</span> : null}
         </h2>
-        <DataTable
+        <AdminTable
           columns={columns}
           rows={rows}
           rowKey={(r) => r.id}

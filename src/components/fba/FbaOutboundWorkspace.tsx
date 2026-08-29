@@ -19,12 +19,7 @@ import { FbaBoardTable } from '@/components/fba/FbaBoardTable';
 import { FbaShippedTable } from '@/components/fba/FbaShippedTable';
 import { FbaErrorState } from '@/components/fba/FbaStateShells';
 import { FbaCombineWorkspace } from '@/components/fba/sidebar/FbaCombineWorkspace';
-import { FbaTriageBand, FbaWorkspaceHeader } from '@/components/fba/FbaWorkspaceHeader';
 import { ReadyWorkspaceBody } from '@/components/outbound/ready/ReadyWorkspaceBody';
-import {
-  WorkbenchSheetView,
-  useWorkbenchSheetChrome,
-} from '@/components/dashboard/WorkbenchSheetView';
 import { SlicedActionDock } from '@/design-system/primitives';
 import { Package, X } from '@/components/Icons';
 import { framerPresence, framerTransition, motionBezier } from '@/design-system/foundations/motion-framer';
@@ -46,6 +41,18 @@ import { useFbaWeekFilter } from '@/app/fba/useFbaWeekFilter';
 import { useFbaCombine } from '@/app/fba/useFbaCombine';
 import { useFbaDetailPanel } from '@/app/fba/useFbaDetailPanel';
 import { useFbaWorkspaceUrlState } from '@/components/fba/sidebar/fba-workspace-hooks';
+import { TableTabs } from '@/components/tables/TableStatusBar';
+import { SearchField } from '@/design-system/primitives/SearchField';
+
+/**
+ * The desk strip. `combine` is what an unset `?mode=` resolves to, so it IS the
+ * default body and lights no tab — the same rule every other strip follows.
+ */
+const FBA_MODE_TABS = [
+  { id: 'ready', label: 'Ready' },
+  { id: 'plan', label: 'Plan' },
+  { id: 'shipped', label: 'Shipped' },
+] as const;
 
 export function FbaOutboundWorkspace() {
   const searchParams = useSearchParams();
@@ -76,7 +83,6 @@ export function FbaOutboundWorkspace() {
   // the triage band controls slot instead of the sheet card corner.
   // Band 2 here is a raw strip, not a snap-collapsible KPI band, so there is no
   // per-staff collapse preference to read — see the `band2` slot below.
-  const chrome = useWorkbenchSheetChrome();
 
   const handleSelectTab = useCallback(
     (tab: FbaMode) => {
@@ -130,8 +136,7 @@ export function FbaOutboundWorkspace() {
     }
   }, [searchParams, board.pending, setDetailItem]);
 
-  const isBoard = activeMode === 'plan' || activeMode === 'combine';
-  const { weekRange, weekOffset, setWeekOffset, filteredPendingItems, boardEmptyMessage } =
+  const { filteredPendingItems, boardEmptyMessage } =
     weekFilter;
   const { boardSelection, selectedUnits, workspaceActive, showCombineBar, handleStartCombine } =
     combine;
@@ -144,70 +149,56 @@ export function FbaOutboundWorkspace() {
 
   return (
     <div className="relative flex h-full min-h-0 w-full flex-col">
-      <WorkbenchSheetView
-        chrome={chrome}
-        className="h-full bg-surface-canvas"
-        tabs={({ className }) => (
-          <FbaWorkspaceHeader
-            tab={activeMode}
-            onSelectTab={handleSelectTab}
-            className={className}
-          />
-        )}
-        // Band 2 — KPI. Board modes (Plan · Combine) show stage counts; Ready
-        // shows the disposition tiles pinned in chrome (folded out of the scroll
-        // body); Shipped is honest absence. `band2`, not `kpi`: this is a plain
-        // flush strip with no snap-collapse, because it is mode-scoped rather
-        // than a per-staff preference.
-        triage={({ controlsSlotRef }) => (
-          <FbaTriageBand
-            tab={activeMode}
-            search={isReady ? readySearch : search}
-            onSearchChange={handleSearchChange}
-            weekRange={isBoard ? weekRange : undefined}
-            weekOffset={weekOffset}
-            onPrevWeek={isBoard ? () => setWeekOffset((o) => o - 1) : undefined}
-            onNextWeek={isBoard ? () => setWeekOffset((o) => Math.min(0, o + 1)) : undefined}
-            visibleCount={filteredPendingItems.length}
-            controlsSlotRef={controlsSlotRef ?? undefined}
-          />
-        )}
-      >
-        {() => (
-          <AnimatePresence mode="wait" initial={false}>
-            <motion.div
-              key={activeMode}
-              {...paneMotionProps}
-              className="relative flex min-w-0 flex-col"
-            >
-              {isReady ? (
-                <ReadyWorkspaceBody columnTriggerPortalTarget={null} />
-              ) : error ? (
-                <FbaErrorState message={error} onRetry={fetchBoard} theme={stationTheme} />
-              ) : activeMode === 'shipped' ? (
-                <FbaShippedTable
-                  stationTheme={stationTheme}
-                  searchQuery={search}
-                  embedded={false}
-                />
-              ) : (
-                <FbaBoardTable
-                  items={filteredPendingItems}
-                  loading={loading && board.pending.length === 0}
-                  stationTheme={stationTheme}
-                  emptyMessage={boardEmptyMessage}
-                  onDetailOpen={setDetailItem}
-                  statusFilter={statusFilter}
-                  query={search}
-                  onResetFilters={handleResetFilters}
-                  // Reserve space so the last rows clear the floating combine pill.
-                  contentClassName={showCombineBar ? 'pb-28' : undefined}
-                />
-              )}
-            </motion.div>
-          </AnimatePresence>
-        )}
-      </WorkbenchSheetView>
+      {/* The find field sits with the rows it narrows, not on a chrome band. */}
+      <div className="flex min-w-0 shrink-0 items-center gap-2 border-b border-border-soft bg-surface-card px-2 py-1">
+        <SearchField
+          value={isReady ? readySearch : search}
+          onChange={handleSearchChange}
+          placeholder="Filter shipments…"
+          className="min-w-0 max-w-[22rem] flex-1"
+          tone="neutral"
+          hideUnderline
+        />
+      </div>
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.div
+          key={activeMode}
+          {...paneMotionProps}
+          className="relative flex min-w-0 flex-col"
+        >
+          {isReady ? (
+            <ReadyWorkspaceBody />
+          ) : error ? (
+            <FbaErrorState message={error} onRetry={fetchBoard} theme={stationTheme} />
+          ) : activeMode === 'shipped' ? (
+            <FbaShippedTable
+              stationTheme={stationTheme}
+              searchQuery={search}
+              embedded={false}
+            />
+          ) : (
+            <FbaBoardTable
+              items={filteredPendingItems}
+              loading={loading && board.pending.length === 0}
+              stationTheme={stationTheme}
+              emptyMessage={boardEmptyMessage}
+              onDetailOpen={setDetailItem}
+              statusFilter={statusFilter}
+              query={search}
+              onResetFilters={handleResetFilters}
+              // Reserve space so the last rows clear the floating combine pill.
+              contentClassName={showCombineBar ? 'pb-28' : undefined}
+            />
+          )}
+        </motion.div>
+      </AnimatePresence>
+      {/* The desk switches BODY on a tab; each body foots its own strip. */}
+      <TableTabs
+        tabs={FBA_MODE_TABS}
+        activeTab={activeMode === 'combine' ? undefined : activeMode}
+        onTabChange={(id) => handleSelectTab(id === activeMode ? 'combine' : (id as FbaMode))}
+        className="border-t border-border-soft bg-surface-card"
+      />
 
       {/* Bottom-edge sliced dock (same family as station terminal) —
           pinned to the pane, not the scroll content. */}

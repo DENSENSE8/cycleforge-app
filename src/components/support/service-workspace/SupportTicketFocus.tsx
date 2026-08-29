@@ -40,7 +40,6 @@
  */
 
 import { useMemo } from 'react';
-import { WORKBENCH_SHEET_CHROME } from '@/components/dashboard/workbench-shell';
 import { STATION_TERMINAL_SCROLL_CLEARANCE } from '@/components/station/terminal';
 import { WorkspaceCard } from '@/design-system/components';
 import type { ThreadComposerBridge } from '@/components/threads/ThreadPanel';
@@ -142,7 +141,7 @@ export function SupportTicketFocus({
             is a service-workspace THREAD (workbench-service.md), not a lifecycle
             grid, so it keeps its PaneHeader + glass conversation rather than
             taking the five-row Sheets stack. */}
-        <div className={WORKBENCH_SHEET_CHROME}>
+        <div className="relative w-full min-w-0">
           <SupportTicketPaneHeader
             ticket={ticket}
             ticketId={ticketId}

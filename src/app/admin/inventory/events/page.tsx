@@ -4,7 +4,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import Link from 'next/link';
 import { PageHeader } from '@/components/ui/pane-header';
 import { Button } from '@/design-system/primitives';
-import { DataTable, type DataTableColumn } from '@/design-system/components/DataTable';
+import { AdminTable, type AdminTableColumn } from '@/design-system/components/AdminTable';
 
 export const dynamic = 'force-dynamic';
 
@@ -237,7 +237,7 @@ export default async function EventsExplorerPage({
     eventType || station || sku || unitId != null || actorId != null || since || until,
   );
 
-  const eventColumns: DataTableColumn<EventRow>[] = [
+  const eventColumns: AdminTableColumn<EventRow>[] = [
     {
       key: 'when',
       header: 'When',
@@ -399,7 +399,7 @@ export default async function EventsExplorerPage({
               </nav>
             ) : null}
           </header>
-          <DataTable
+          <AdminTable
             columns={eventColumns}
             rows={rows}
             rowKey={(e) => e.id}

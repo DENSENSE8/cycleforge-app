@@ -3,7 +3,7 @@
 /**
  * Pack browse workbench — Queue (TESTED Unshipped SoT) · History (packer logs).
  * Sheets flush chrome (Unbox recipe): tabs · KPI · triage in one pinned
- * sheet-chrome stack; body is WORKBENCH_SHEET_HOST. Band 2 uses Unbox SoT
+ * sheet-chrome stack; body is 'relative flex min-h-0 min-w-0 flex-1 flex-col'. Band 2 uses Unbox SoT
  *
  * Multi-select opens the order right-rail plane (History / dashboard SoT) —
  * no bottom ContextualSelectionBar capsule.
@@ -14,14 +14,6 @@ import { AnimatePresence, motion, motionRole, useMotionRole } from '@/design-sys
 import { UnshippedTable } from '@/components/unshipped/UnshippedTable';
 import { PackerTable } from '@/components/PackerTable';
 import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
-import {
-  PackTriageBand,
-  PackWorkspaceHeader,
-} from '@/components/packer/PackWorkspaceHeader';
-import {
-  WORKBENCH_SHEET_CHROME,
-  WORKBENCH_SHEET_HOST,
-} from '@/components/dashboard/workbench-shell';
 import { OrderRailCompare } from '@/components/dashboard/rail/OrderRailCompare';
 import { OrderRailShell } from '@/components/dashboard/rail/OrderRailShell';
 import { useOrderRailSelection } from '@/hooks/useOrderRailSelection';
@@ -31,17 +23,22 @@ import { NewOrderEntryOverlay } from '@/components/orders/NewOrderEntryOverlay';
 import { dispatchPackActiveOrder } from '@/components/packer/usePackerOrderPane';
 import { shippedOrderToPackPane } from '@/components/packer/shipped-order-to-pack-pane';
 import type { ShippedOrder } from '@/types/orders';
-import { StationDeck } from '@/components/station/StationDeck';
-import { PackHistoryDock } from '@/components/station/PackHistoryDock';
-import { cn } from '@/utils/_cn';
+import { TableStatusBar } from '@/components/tables/TableStatusBar';
+import type { PackWorkspaceTab } from '@/utils/pack-workspace-state';
 
 function TableFallback() {
   return <div className="min-h-[240px] flex-1 bg-surface-canvas" aria-hidden />;
 }
 
+/**
+ * The bench strip. `queue` is the default body, so it lights no tab — the same
+ * rule every other strip follows.
+ */
+const PACK_VIEW_TABS = [{ id: 'history', label: 'History' }] as const;
+
 export function PackWorkspaceView({ packerId }: { packerId: number }) {
   const { packView, setPackView } = usePackWorkspaceTab();
-  const { newOpen, openNew, closeNew } = useNewOrderParam();
+  const { newOpen, closeNew } = useNewOrderParam();
   const [controlsEl, setControlsEl] = useState<HTMLDivElement | null>(null);
   const queueActive = packView === 'queue';
   const { selectionEnabled, selectMode, selectionOverlays } = useOrderRailSelection(
@@ -57,28 +54,9 @@ export function PackWorkspaceView({ packerId }: { packerId: number }) {
   };
 
   return (
-    // This week's packs, leftmost and always on screen — the bench's own answer
-    // to "did that pack land?". See `StationHistoryDock`.
-    <StationDeck history={<PackHistoryDock packerId={packerId} />}>
     <div className="relative flex h-full min-h-0 w-full flex-col overflow-hidden">
-      <DashboardScrollShell
-        className="h-full bg-transparent"
-        chrome={
-          <div className={cn(WORKBENCH_SHEET_CHROME, 'flex flex-col gap-0')}>
-            <PackWorkspaceHeader
-              tab={packView}
-              onSelectTab={setPackView}
-              onNewOrder={openNew}
-              className="rounded-none border-l-0 border-t-0 shadow-sm"
-            />
-            <PackTriageBand
-              tab={packView}
-              controlsSlotRef={setControlsEl}
-            />
-          </div>
-        }
-      >
-        <div className={WORKBENCH_SHEET_HOST}>
+      <DashboardScrollShell className="h-full bg-transparent">
+        <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
               key={packView}
@@ -89,14 +67,12 @@ export function PackWorkspaceView({ packerId }: { packerId: number }) {
                 {packView === 'history' ? (
                   <PackerTable
                     packedBy={Number.isFinite(packerId) ? packerId : 0}
-                    toolbarPortalTarget={controlsEl}
                   />
                 ) : (
                   <UnshippedTable
                     strictSearchScope
                     selectMode={selectMode}
                     railSelection
-                    toolbarPortalTarget={controlsEl}
                     onOpenRecord={handleOpenQueueRecord}
                     searchEmptyTitle="No ready-to-pack orders"
                     searchResultLabel="orders ready to pack"
@@ -117,7 +93,12 @@ export function PackWorkspaceView({ packerId }: { packerId: number }) {
         ) : null}
       </DashboardScrollShell>
       <NewOrderEntryOverlay open={newOpen} onClose={closeNew} />
+      {/* The bench switches body on a tab; the table below foots its own strip. */}
+      <TableStatusBar
+        tabs={PACK_VIEW_TABS}
+        activeTab={packView === 'queue' ? undefined : packView}
+        onTabChange={(id) => setPackView(id === packView ? 'queue' : (id as PackWorkspaceTab))}
+      />
     </div>
-    </StationDeck>
   );
 }

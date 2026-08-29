@@ -5,7 +5,7 @@
  *
  * L2 modes (Local Pickup · Sales) live in GlobalHeader (`HeaderPageSwitcher` →
  * `?mode=`). Per-mode **table tabs** live in the page chrome
- * (`WalkInDeskHeader` → `WorkbenchChromeHeader`) — modes ≠ tabs.
+ * (`WalkInDeskHeader` → `TableTabs`) — modes ≠ tabs.
  *
  * Below sits the one thing a history Monitor can't do — start work.
  * Sales is observe-only; every action here hands off to the station (Repair

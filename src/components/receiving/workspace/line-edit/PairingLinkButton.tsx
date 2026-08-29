@@ -15,7 +15,6 @@
 import type { ReactNode } from 'react';
 import { Check, Link2, Star } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
-import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 
 /**
@@ -27,7 +26,6 @@ import { cn } from '@/utils/_cn';
  */
 const PAIRING_CANDIDATE_ROW_CLASS = cn(
   'min-w-0 border border-border-soft bg-surface-card transition-colors hover:border-border-default hover:bg-surface-hover',
-  cornerClass('flush'),
 );
 
 type PairingCandidateRowProps = {

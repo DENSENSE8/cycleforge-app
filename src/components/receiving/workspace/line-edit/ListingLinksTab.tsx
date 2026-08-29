@@ -71,7 +71,6 @@ const LISTING_LINE_GRID =
 const LISTING_COMBO_GRID = cn(LISTING_LINE_GRID, 'border-b border-border-hairline');
 const LISTING_TRAIL_SQUARE = cn(
   BUTTON_VARIANTS.secondary,
-  cornerClass('flush'),
   'h-full w-full [&>svg]:h-3.5 [&>svg]:w-3.5',
 );
 /**
@@ -81,7 +80,6 @@ const LISTING_TRAIL_SQUARE = cn(
  * the same wherever they meet it.
  */
 const LISTING_DELETE_SQUARE = cn(
-  cornerClass('flush'),
   'flex h-full w-full items-center justify-center bg-surface-card p-0',
   'text-text-muted hover:bg-rose-50 hover:text-rose-600',
   'disabled:cursor-not-allowed disabled:opacity-60',

@@ -208,10 +208,17 @@ export function CommandBar() {
     };
   }, [setDialogOpen]);
 
+  // Close on an *actual* route change. The guard has to be the pathname, not
+  // `open`: this effect also re-runs when the palette opens, and it used to
+  // schedule the close on that run too — so ⌘K painted for one frame and shut
+  // itself. That was the flash.
+  const lastPathRef = useRef(pathname);
   useEffect(() => {
-    // Close without racing a portal unmount against the route swap that
-    // often triggers this (hit → /search?sel=…). Defer one frame.
+    if (lastPathRef.current === pathname) return;
+    lastPathRef.current = pathname;
     if (!open) return;
+    // Defer one frame so the portal unmount does not race the route swap that
+    // triggered it (hit → /search?sel=…).
     const id = window.requestAnimationFrame(() => setDialogOpen(false));
     return () => window.cancelAnimationFrame(id);
   }, [pathname, open, setDialogOpen]);

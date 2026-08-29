@@ -6,16 +6,11 @@ import {
   type ReactNode,
   type Ref,
   useEffect,
-  useLayoutEffect,
   useRef,
   useState,
 } from 'react';
 import { Clipboard, Loader2, Search, X } from '@/components/Icons';
 import { FIELD_ACTION_CLASS, FIELD_ACTION_GLYPH_CLASS } from './field-action';
-import {
-  resolveSearchInlineCompact,
-  resolveSearchTrailingCompact,
-} from './search-field-inline-collapse';
 
 export type SearchFieldTone =
   | 'blue'
@@ -112,30 +107,6 @@ export interface SearchFieldProps {
    * Use with {@link rightElement} when paste/clear should sit outside the form (e.g. row remove X left of paste).
    */
   customTrailingSlot?: ReactNode;
-  /**
-   * Full-height content in the input well (between the leading glyph and the
-   * trailing actions). Fills the field when the draft is empty — not a chip
-   * outside the bar. Clicks pass through to the input except on interactive
-   * children (clear). Hidden while the operator is typing a query.
-   */
-  inlineContent?: ReactNode;
-  /**
-   * Stable key for in-field filter status (Packed staff / date chips). The
-   * field re-measures when this changes so a longer window can collapse to
-   * the funnel dot without waiting on a resize.
-   */
-  inlineContentKey?: string;
-  /**
-   * Renders immediately before the default trailing control (inside the search field row).
-   * Use for compact actions that should sit left of paste (Packed exact date /
-   * staff chips + funnel, Ecwid “product not in catalog”).
-   */
-  trailingPrefix?: ReactNode;
-  /**
-   * Renders after the default trailing control in the same row (compact
-   * field-adjacent actions that must stay inside the search form).
-   */
-  trailingSuffix?: ReactNode;
   /** When true, trailing slot shows only paste (clipboard); never the clear (X) button when the field has text. */
   pasteOnlyTrailing?: boolean;
   /**
@@ -196,10 +167,6 @@ export function SearchField({
   hideUnderline = false,
   hideClear = false,
   customTrailingSlot,
-  inlineContent,
-  inlineContentKey,
-  trailingPrefix,
-  trailingSuffix,
   pasteOnlyTrailing = false,
   pasteVisibility = 'hover',
   fillHost = false,
@@ -270,77 +237,8 @@ export function SearchField({
   }, [draft, debounceMs, onChange]);
 
   const hasValue = Boolean(draft.trim());
-  const hasOverlay = inlineContent != null;
-  const hasTrailingLabel = Boolean(inlineContentKey) && !hasOverlay;
-  const hasInline = hasOverlay || hasTrailingLabel;
   const formRef = useRef<HTMLFormElement | null>(null);
-  const wellRef = useRef<HTMLDivElement | null>(null);
-  const inlineContentWidthRef = useRef(0);
-  const inlineCollapsedRef = useRef(false);
-  const inlineKeyRef = useRef(inlineContentKey);
-  const [inlineCollapsed, setInlineCollapsed] = useState(false);
-  const showInline = hasOverlay && !hasValue && !inlineCollapsed;
 
-  useLayoutEffect(() => {
-    const form = formRef.current;
-    const well = wellRef.current;
-    if (!form || !well || !hasInline) {
-      inlineCollapsedRef.current = false;
-      inlineContentWidthRef.current = 0;
-      setInlineCollapsed(false);
-      return;
-    }
-
-    if (inlineKeyRef.current !== inlineContentKey) {
-      inlineKeyRef.current = inlineContentKey;
-      inlineContentWidthRef.current = 0;
-      if (inlineCollapsedRef.current) {
-        inlineCollapsedRef.current = false;
-        setInlineCollapsed(false);
-        return;
-      }
-    }
-
-    const apply = () => {
-      const labelEl = form.querySelector<HTMLElement>('[data-search-inline-label]');
-      const clearEl = form.querySelector<HTMLElement>('[data-search-inline-clear]');
-      if (labelEl && !inlineCollapsedRef.current) {
-        inlineContentWidthRef.current =
-          labelEl.scrollWidth + (clearEl?.offsetWidth ?? 0) + 6;
-      }
-      const chipsWidth = inlineContentWidthRef.current;
-      const next = hasOverlay
-        ? resolveSearchInlineCompact({
-            wellWidth: well.clientWidth,
-            contentWidth: chipsWidth,
-            currentlyCompact: inlineCollapsedRef.current,
-          })
-        : resolveSearchTrailingCompact({
-            hostWidth: well.clientWidth + (inlineCollapsedRef.current ? 0 : chipsWidth),
-            chipsWidth,
-            currentlyCompact: inlineCollapsedRef.current,
-          });
-      if (next === inlineCollapsedRef.current) return;
-      inlineCollapsedRef.current = next;
-      setInlineCollapsed(next);
-    };
-
-    apply();
-    if (typeof ResizeObserver === 'undefined') return;
-    let raf = 0;
-    const ro = new ResizeObserver(() => {
-      if (raf) return;
-      raf = window.requestAnimationFrame(() => {
-        raf = 0;
-        apply();
-      });
-    });
-    ro.observe(hasOverlay ? well : form);
-    return () => {
-      if (raf) window.cancelAnimationFrame(raf);
-      ro.disconnect();
-    };
-  }, [hasInline, hasOverlay, inlineContentKey, hasValue, inlineCollapsed]);
   // Spinner means "this query is resolving" — never replace paste on an empty open field.
   const showSearchSpinner = isSearching && hasValue;
   // Pending = user has typed but debounce hasn't fired yet — show a subtle dot.
@@ -489,7 +387,7 @@ export function SearchField({
         onSubmit={handleSubmit}
         className={`group flex min-w-0 flex-1 items-center ${fillHost ? 'h-full' : ''} ${fieldGapClass} transition-colors duration-150 ease-out ${sizeClasses.field} ${
           hideUnderline ? 'border-transparent' : toneClassName[tone]
-        } ${inlineCollapsed ? '[&_[data-search-inline-label]]:hidden [&_[data-search-inline-clear]]:hidden' : ''}`.trim()}
+        }`.trim()}
       >
         {hideLeadingIcon ? null : onLeadingAction ? (
           <button
@@ -512,7 +410,6 @@ export function SearchField({
         )}
 
         <div
-          ref={wellRef}
           data-search-field-well=""
           className={`relative min-w-0 flex-1 ${fillHost ? 'h-full' : ''}`}
         >
@@ -522,29 +419,23 @@ export function SearchField({
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onPaste={handleNativePaste}
-            placeholder={showInline ? undefined : placeholder}
+            placeholder={placeholder}
             autoFocus={autoFocus}
             className={`w-full border-0 bg-transparent px-0 font-semibold text-text-default outline-none placeholder:font-medium placeholder:text-text-faint ${sizeClasses.input}`.trim()}
           />
-          {showInline ? (
-            <div
-              data-search-field-inline=""
-              data-testid="search-field-inline"
-              className="pointer-events-none absolute inset-0 flex min-w-0 items-stretch"
-            >
-              {inlineContent}
-            </div>
-          ) : null}
         </div>
 
-        {/* Trailing row: prefix → [persistent paste] → spinner/pending/clear/paste → suffix */}
+        {/*
+          Trailing row: [persistent paste] → spinner / pending / clear / paste.
+          There is no prefix or suffix slot — the field holds TEXT and nothing
+          else. A control that narrows the list belongs beside the field, not
+          inside it (teardown handoff § 2.1: two funnels, one job).
+        */}
         <span
           className={`flex shrink-0 items-center gap-0.5 ${sizeClasses.rightSlot}`.trim()}
         >
-          {trailingPrefix}
           {persistentPaste ? pasteButton(true) : null}
           {trailingControl}
-          {trailingSuffix}
         </span>
       </form>
 

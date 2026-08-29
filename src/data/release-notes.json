@@ -1,7 +1,27 @@
 {
-  "generatedAt": "2026-08-29T12:36:31.220Z",
+  "generatedAt": "2026-08-29T23:13:06.167Z",
   "count": 198,
   "commits": [
+    {
+      "sha": "baae7db21210f0e300bf66c8f437a424b73db971",
+      "shortSha": "baae7db21",
+      "date": "2026-08-29T10:46:34-07:00",
+      "author": "DENSENSE8",
+      "subject": "Add one-table SoT teardown handoff doc",
+      "body": "Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>",
+      "type": "other",
+      "title": "Add one-table SoT teardown handoff doc"
+    },
+    {
+      "sha": "423a8385752ee02c3283750c0dccbed9a4806654",
+      "shortSha": "423a83857",
+      "date": "2026-08-29T10:24:50-07:00",
+      "author": "DENSENSE8",
+      "subject": "Land the one-sheet table catalog: shared grid hosts, org column formats, and station history docks.",
+      "body": "Drop per-workbench KPI strips and the old src/lib/grid helpers now that surfaces read the rebuilt sheet SoT.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "other",
+      "title": "Land the one-sheet table catalog: shared grid hosts, org column formats, and station history docks."
+    },
     {
       "sha": "7643ecb6c3ed4baa5c18460213023ad92f4092f4",
       "shortSha": "7643ecb6c",
@@ -1961,26 +1981,6 @@
       "body": "Twelfth dead-code pass. tsc + eslint + 6667 tests green.\n\n- design-system/providers/index.ts DELETED. Zero direct importers, and\n  its one referrer was `export * from './providers'` in the DS top\n  barrel — which no consumer of `@/design-system` used either. Every\n  real consumer imports @/design-system/providers/UIModeProvider by\n  path. Removed the top-barrel line in the same change.\n- utils/_number: deleted formatNumber, formatPercent, clamp, round,\n  formatBytes. Only formatCurrency is imported from this module\n  (HistoryCartonTriagePanel); parsePositiveInt stays live. The huge ext\n  counts on `clamp` (99) and `round` (755) were other modules' own\n  helpers and `Math.round` — a word-boundary grep still matches the\n  member name after a dot.\n- components/receiving/zoho-po-types: reduced to CONDITION_OPTIONS +\n  conditionLabel, the only two anything imports. The ZohoPO/ZohoPOLine/\n  POStatus shapes and the fmt*/statusColor helpers had no consumers.\n- lib/repositories/inventory/locations: deleted 5 bin/location readers\n  and ListBinsOptions.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
       "type": "chore",
       "title": "delete the DS providers barrel and prune number/zoho/locations"
-    },
-    {
-      "sha": "fe18a6f825083f5b6b87621b4eaf2c3d36ca6ff4",
-      "shortSha": "fe18a6f82",
-      "date": "2026-08-08T12:01:42-07:00",
-      "author": "DENSENSE8",
-      "subject": "docs: sync dead-export handoff — trio landed, shipping/repository parked",
-      "body": "408 findings cleaned across 14 commits. Adds src/lib/shipping/repository.ts\nto the parked list: its 5 subscription helpers read a column shipped by\nmigration 2026-06-02_carrier_webhook_subscription.sql with no caller yet —\nunplugged, not dead.\n\nRecords what finally beat the revert loop: cut and `git add` in the same\ncommand, before verifying. A staged deletion survived; an unstaged one did\nnot, five times running.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
-      "type": "docs",
-      "title": "sync dead-export handoff — trio landed, shipping/repository parked"
-    },
-    {
-      "sha": "d453252f79cc36b04373ec03a0cd94eaa4358a62",
-      "shortSha": "d453252f7",
-      "date": "2026-08-08T12:01:16-07:00",
-      "author": "DENSENSE8",
-      "subject": "chore: cut the hooks/_ui, _lifecycle and nas-photos dead exports",
-      "body": "The three files that resisted four earlier attempts — each cut correctly\nand then reverted by the concurrent session / GitButler. They held this\ntime after 40 minutes of quiet in that part of the tree, staged into the\nindex immediately (staging is what made the earlier DS-shell deletion\nstick). tsc + eslint + 6667 tests green.\n\n- hooks/_lifecycle: deleted useMount, useUnmount, usePrevious,\n  useThrottle, useIsMounted, useRenderCount, useUpdateEffect. Only\n  useDebounce survives — it is the one thing imported through @/hooks.\n- hooks/_ui: deleted useScrollPosition, useWindowSize, useToggle,\n  useInView, useClickOutside, useCopyToClipboard, useInputValue;\n  MOBILE_BREAKPOINT + DeviceInfo un-exported. Leaves exactly the three\n  hooks with real importers: useIsMobile, useDeviceMode, useMediaQuery.\n  (The live useInView is motion's, not this one.)\n- lib/nas-photos: deleted getClientNasProxyBase and attachNasPhoto, plus\n  a dead `export { normalizePhotoDisplayUrl, isSameOriginNasProxyUrl }`\n  re-export — consumers import both from lib/nas-photo-url, the module\n  that owns them.\n\neslint again caught what tsc and knip could not: five orphaned imports\nand an AttachResult type left behind by the deletions. It also caught me\nover-removing a PhotoScope import that buildNasPhotoUrl still needs.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
-      "type": "chore",
-      "title": "cut the hooks/_ui, _lifecycle and nas-photos dead exports"
     }
   ]
 }

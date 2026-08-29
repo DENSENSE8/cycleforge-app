@@ -1,92 +1,98 @@
 'use client';
 
 /**
- * `OrdersGridHost` — mount the outbound orders spreadsheet for ONE lane.
+ * `OrdersGridHost` — mount the outbound orders table for ONE lane.
  *
  * ```tsx
- * <OrdersGridHost ariaLabel="Shipped orders" records={rows} … />
+ * <OrdersGridHost ariaLabel="Shipped orders" records={rows} search={…} … />
  * ```
  *
- * This is not a second table. `useOrdersSpreadsheet` already resolves the whole
- * `NonlinearTableHost` prop bag; the three lines that spread it onto the host
- * were being re-typed at every lane, and with them two things that must not be
- * per-lane and kept being forgotten:
+ * This is not a second table. `useOrdersSpreadsheet` resolves the FEED half of
+ * a {@link DataTable} mount; this host adds the two things that are properties
+ * of "an outbound lane is on screen" rather than of any one lane, and which
+ * kept being forgotten when each lane spread the bag itself:
  *
- *  1. the Sheets **status counts** — so "200 of 922 · 12 selected" is right on
- *     Packed and Shipped, not only on To-ship;
- *  2. the Sheets **data source** — so Copy, Export and Print act on the lane's
- *     filtered rows rather than being absent on every lane but one.
+ *  1. the lane **total**, so the status bar reads "200 of 922" and not
+ *     "200 of 200", which would quietly claim the queue was fully loaded;
+ *  2. the **copy shape**, so selecting rows and copying works on every lane
+ *     rather than on one.
  *
- * Both are properties of "an outbound lane is on screen", so they belong to the
- * one component that means exactly that. A lane that needs a richer count than
- * the row length (To-ship knows its server-side lane total) reports its own and
- * this host's numbers are merged under it.
- *
- * Restored 2026-08-29 as part of Phase 4a (`docs/todo/one-sheet-table-sot-PLAN.md`);
- * the pre-teardown component of this name mounted the same hook.
+ * The chrome half — search, filter, tabs — stays with the lane, because the
+ * lane is the only thing that knows which URL those controls write to.
  */
 
 import { useMemo } from 'react';
-import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
+import {
+  DataTable,
+  type DataTableFilterOption,
+  type DataTableSearch,
+} from '@/components/tables/DataTable';
 import {
   useOrdersSpreadsheet,
   type UseOrdersSpreadsheetOptions,
 } from '@/components/dashboard/orders-queue/useOrdersSpreadsheet';
-import {
-  useReportSheetCounts,
-  useSheetDataSource,
-} from '@/components/sheet/sheet-chrome-context';
-import { useTableSelection } from '@/hooks/useTableSelection';
+import type { DataTableTab } from '@/components/tables/TableStatusBar';
 import {
   ORDER_EXPORT_COLUMNS,
   buildOrderExportRow,
 } from '@/lib/dashboard/order-export-csv';
+import type { ShippedOrder } from '@/lib/neon/orders-queries';
 
 export interface OrdersGridHostProps extends UseOrdersSpreadsheetOptions {
+  /** The one find field, as data. */
+  search: DataTableSearch;
+  /** The one filter control, as data. Omit on a lane with nothing to refine. */
+  filter?: {
+    options: readonly DataTableFilterOption[];
+    onToggle: (id: string) => void;
+    onClearAll: () => void;
+  };
+  tabs?: readonly DataTableTab[];
+  activeTab?: string;
+  onTabChange?: (id: string) => void;
   /**
    * Server-side total for the lane, when the lane knows one.
    *
-   * Omitted, the status bar reports `records.length` — honest for a lane that
-   * has everything it will ever show. To-ship and Shipped page their feeds, so
-   * they pass the real total and the bar reads "200 of 922" instead of
-   * "200 of 200", which would quietly claim the queue was fully loaded.
+   * Omitted, the status bar reports the rendered row count — honest for a lane
+   * that has everything it will ever show. To-ship and Shipped page their
+   * feeds, so they pass the real total.
    */
   totalCount?: number;
-  /** Refinements narrowing WITHIN the lane — lights the toolbar's funnel. */
-  activeFilterCount?: number;
 }
 
 export function OrdersGridHost({
   totalCount,
-  activeFilterCount = 0,
+  search,
+  filter,
+  tabs,
+  activeTab,
+  onTabChange,
   ...options
 }: OrdersGridHostProps) {
   const sheet = useOrdersSpreadsheet(options);
-  const selectedRows = useTableSelection<{ id?: number | string }>(options.selectionScope);
 
-  useReportSheetCounts({
-    shown: options.records.length,
-    total: totalCount ?? options.records.length,
-    selected: selectedRows.length,
-    // The lane's own search counts as a refinement — it is the operator
-    // narrowing what is on screen, which is exactly what the funnel reports.
-    activeFilters: activeFilterCount + (options.searchValue ? 1 : 0),
-  });
-
-  useSheetDataSource(
-    useMemo(
-      () => ({
-        title: options.ariaLabel,
-        // The shipped ORDER-export shape, not the on-screen column set: a
-        // pasted or printed row has to carry the identity fields (record id,
-        // SKU, platform) that make it useful away from the app, and half the
-        // visible tracks are chips and icons with no text to copy.
-        columns: () => [...ORDER_EXPORT_COLUMNS],
-        rows: () => options.records.map((row) => buildOrderExportRow(row)),
-      }),
-      [options.ariaLabel, options.records],
-    ),
+  // The shipped ORDER-export shape, not the on-screen column set: a pasted row
+  // has to carry the identity fields (record id, SKU, platform) that make it
+  // useful away from the app, and half the visible tracks are chips and icons
+  // with no text to copy.
+  const copyExport = useMemo(
+    () => ({
+      columns: [...ORDER_EXPORT_COLUMNS],
+      toRow: (row: ShippedOrder) => buildOrderExportRow(row),
+    }),
+    [],
   );
 
-  return <NonlinearTableHost {...sheet} />;
+  return (
+    <DataTable
+      {...sheet}
+      search={search}
+      filter={filter}
+      tabs={tabs}
+      activeTab={activeTab}
+      onTabChange={onTabChange}
+      totalCount={totalCount}
+      copyExport={copyExport}
+    />
+  );
 }

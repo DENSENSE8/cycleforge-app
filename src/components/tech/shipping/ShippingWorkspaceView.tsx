@@ -3,7 +3,7 @@
 /**
  * Shipping mode Workbench on `/test` — Sheets flush chrome (Unbox recipe):
  * tabs · KPI · triage in one pinned sheet-chrome stack; body is
- * WORKBENCH_SHEET_HOST. Sidebar keeps Station scan / Up Next I/O.
+ * 'relative flex min-h-0 min-w-0 flex-1 flex-col'. Sidebar keeps Station scan / Up Next I/O.
  *
  * Multi-select opens the order right-rail plane (History / dashboard SoT) —
  * no bottom ContextualSelectionBar capsule.
@@ -14,24 +14,15 @@ import dynamic from 'next/dynamic';
 import { AnimatePresence, motion, motionRole, useMotionRole } from '@/design-system/motion';
 import { UnshippedTable } from '@/components/unshipped/UnshippedTable';
 import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
-import {
-  ShippingTriageBand,
-  ShippingWorkspaceHeader,
-} from '@/components/tech/shipping/ShippingWorkspaceHeader';
 import { TechAllTriageTable } from '@/components/tech/all/TechAllTriageTable';
-import {
-  WORKBENCH_SHEET_CHROME,
-  WORKBENCH_SHEET_HOST,
-} from '@/components/dashboard/workbench-shell';
 import { OrderRailCompare } from '@/components/dashboard/rail/OrderRailCompare';
 import { OrderRailShell } from '@/components/dashboard/rail/OrderRailShell';
 import { useOrderRailSelection } from '@/hooks/useOrderRailSelection';
 import { useShippingWorkspaceTab } from '@/hooks/useShippingWorkspaceTab';
 import { useNewOrderParam } from '@/hooks/useNewOrderParam';
 import { NewOrderEntryOverlay } from '@/components/orders/NewOrderEntryOverlay';
-import { StationDeck } from '@/components/station/StationDeck';
-import { ShippingHistoryDock } from '@/components/station/ShippingHistoryDock';
-import { cn } from '@/utils/_cn';
+import { TableStatusBar } from '@/components/tables/TableStatusBar';
+import type { ShippingWorkspaceTab } from '@/utils/shipping-workspace-state';
 
 function TableFallback() {
   return <div className="min-h-[240px] flex-1 bg-surface-canvas" aria-hidden />;
@@ -49,9 +40,19 @@ export interface ShippingWorkspaceViewProps {
   techId: string;
 }
 
+/**
+ * The bench strip. `pending` is the default body, so it lights no tab — the
+ * same rule every other strip follows.
+ */
+const SHIPPING_VIEW_TABS = [
+  { id: 'urgent', label: 'Urgent' },
+  { id: 'all', label: 'All' },
+  { id: 'history', label: 'History' },
+] as const;
+
 export function ShippingWorkspaceView({ techId }: ShippingWorkspaceViewProps) {
   const { shipTab, setShipTab } = useShippingWorkspaceTab();
-  const { newOpen, openNew, closeNew } = useNewOrderParam();
+  const { newOpen, closeNew } = useNewOrderParam();
   const [controlsEl, setControlsEl] = useState<HTMLDivElement | null>(null);
   const parsedTechId = parseInt(techId, 10);
   const queueTab = shipTab === 'pending' || shipTab === 'urgent';
@@ -65,29 +66,9 @@ export function ShippingWorkspaceView({ techId }: ShippingWorkspaceViewProps) {
   const paneMotionProps = { ...presence, transition };
 
   return (
-    // History is the leftmost column of the bench and is always on screen —
-    // "did that scan land?" is the question this station is asked most, and the
-    // interaction budget puts a status overview at ≤ 1 interaction.
-    <StationDeck history={<ShippingHistoryDock station="Shipping" />}>
     <div className="relative flex h-full min-h-0 w-full flex-col overflow-hidden">
-      <DashboardScrollShell
-        className="h-full bg-transparent"
-        chrome={
-          <div className={cn(WORKBENCH_SHEET_CHROME, 'flex flex-col gap-0')}>
-            <ShippingWorkspaceHeader
-              tab={shipTab}
-              onSelectTab={setShipTab}
-              onNewOrder={openNew}
-              className="rounded-none border-l-0 border-t-0 shadow-sm"
-            />
-            <ShippingTriageBand
-              tab={shipTab}
-              controlsSlotRef={setControlsEl}
-            />
-          </div>
-        }
-      >
-        <div className={WORKBENCH_SHEET_HOST}>
+      <DashboardScrollShell className="h-full bg-transparent">
+        <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
               key={shipTab}
@@ -99,16 +80,14 @@ export function ShippingWorkspaceView({ techId }: ShippingWorkspaceViewProps) {
                   <TechTable
                     testedBy={Number.isFinite(parsedTechId) ? parsedTechId : 0}
                     staffScope="url-or-self"
-                    toolbarPortalTarget={controlsEl}
                   />
                 ) : shipTab === 'all' ? (
-                  <TechAllTriageTable scope="shipping" columnTriggerPortalTarget={controlsEl} />
+                  <TechAllTriageTable scope="shipping" />
                 ) : (
                   <UnshippedTable
                     strictSearchScope
                     selectMode={selectMode}
                     railSelection
-                    toolbarPortalTarget={controlsEl}
                   />
                 )}
               </Suspense>
@@ -125,7 +104,14 @@ export function ShippingWorkspaceView({ techId }: ShippingWorkspaceViewProps) {
         ) : null}
       </DashboardScrollShell>
       <NewOrderEntryOverlay open={newOpen} onClose={closeNew} />
+      {/* The bench switches body on a tab; each body foots its own strip. */}
+      <TableStatusBar
+        tabs={SHIPPING_VIEW_TABS}
+        activeTab={shipTab === 'pending' ? undefined : shipTab}
+        onTabChange={(id) =>
+          setShipTab(id === shipTab ? 'pending' : (id as ShippingWorkspaceTab))
+        }
+      />
     </div>
-    </StationDeck>
   );
 }

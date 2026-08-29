@@ -27,7 +27,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
-import { InspectorColumnDisplayButton } from '@/components/right-rail/InspectorColumnDisplayButton';
 import { DeskInspectorIndexShell } from '@/components/right-rail/DeskInspectorIndexShell';
 import {
   FLOOR_DELETE_PEER_CLASS,
@@ -489,7 +488,6 @@ export function CsvImportStagingRail({
             beside back + title (`chrome`), the Displays-column contract. */}
         <DeskInspectorIndexShell
           stance="index"
-          chrome={<InspectorColumnDisplayButton />}
           leaves={leaves}
           activeId={activeId}
           onActiveIdChange={setActiveId}

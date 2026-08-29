@@ -39,19 +39,14 @@ import * as Popover from '@radix-ui/react-popover';
 import { Check, Folder, Loader2, Plus } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import {
-  WorkbenchChromeHeader,
-  WORKBENCH_CHROME_PILL_CLASS,
-} from '@/components/dashboard/workbench-shell';
-import {
-  WorkbenchFilterGroupLabel,
-  WorkbenchFilterMenuRow,
-} from '@/components/dashboard/workbench-filter-popover';
+  FilterMenuGroupLabel,
+  FilterMenuRow,
+} from '@/components/ui/FilterMenu';
 import { STATION_CONTEXT_BOXED_CUBE_CLASS } from '@/components/station/entity-context/station-context-action-pill';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { useImageTypes } from '@/hooks/useImageTypes';
 import { usePhotoLibraryUrlState } from '@/hooks/usePhotoLibraryUrlState';
 import { BUILTIN_IMAGE_TYPE_KEYS } from '@/lib/photos/image-type-defs';
-import { PHOTO_SCOPE_ICONS } from '@/lib/photos/scope-icons';
 import {
   applySourceScopeTab,
   PHOTO_LIBRARY_SCOPE_TABS,
@@ -62,6 +57,7 @@ import {
 import { toast } from '@/lib/toast';
 import { cn } from '@/utils/_cn';
 import { focusRing } from '@/design-system/tokens/focus-ring';
+import { TableTabs } from '@/components/tables/TableStatusBar';
 
 
 export function PhotoLibraryScopeBand({ className }: { className?: string }) {
@@ -108,30 +104,27 @@ export function PhotoLibraryScopeBand({ className }: { className?: string }) {
   const tabs = PHOTO_LIBRARY_SCOPE_TABS.map((id) => ({
     id,
     label: PHOTO_LIBRARY_SCOPE_TAB_LABEL[id],
-    icon: PHOTO_SCOPE_ICONS[id],
   }));
 
   return (
-    <WorkbenchChromeHeader
-      density="band"
-      className={cn('rounded-none border-l-0 border-t-0 shadow-sm', className)}
-      leading={
-        <PhotoMediaTypePopover
-          custom={custom}
-          isLoading={typesLoading}
-          activeKey={activeSection}
-          onSelect={selectSection}
-          onCreate={async (label) => {
-            const created = await createType.mutateAsync({ label });
-            selectSection(created.key);
-          }}
-        />
-      }
-      tabs={tabs}
-      activeTab={activeTab}
-      onTabChange={selectSection}
-      solidTone="accent"
-    />
+    <div
+      className={cn(
+        'flex min-w-0 items-stretch border-b border-border-soft bg-surface-card',
+        className,
+      )}
+    >
+      <PhotoMediaTypePopover
+        custom={custom}
+        isLoading={typesLoading}
+        activeKey={activeSection}
+        onSelect={selectSection}
+        onCreate={async (label) => {
+          const created = await createType.mutateAsync({ label });
+          selectSection(created.key);
+        }}
+      />
+      <TableTabs tabs={tabs} activeTab={activeTab} onTabChange={selectSection} />
+    </div>
   );
 }
 
@@ -219,7 +212,7 @@ function PhotoMediaTypePopover({
             cornerClass('flush'),
           )}
         >
-          <WorkbenchFilterGroupLabel>Media types</WorkbenchFilterGroupLabel>
+          <FilterMenuGroupLabel>Media types</FilterMenuGroupLabel>
 
           {isLoading && custom.length === 0 ? (
             <p className="flex items-center gap-2 px-2.5 py-1.5 text-role-caption text-text-faint">
@@ -231,7 +224,7 @@ function PhotoMediaTypePopover({
             </p>
           ) : (
             custom.map((type) => (
-              <WorkbenchFilterMenuRow
+              <FilterMenuRow
                 key={type.key}
                 label={type.label}
                 active={activeKey === type.key}
@@ -311,7 +304,7 @@ function PhotoMediaTypePopover({
               data-testid="photo-media-type-add"
               className={cn(
                 'mt-1 flex w-full items-center gap-1.5 px-2.5 py-1.5 text-left text-role-caption font-medium text-blue-700 hover:bg-surface-hover',
-                WORKBENCH_CHROME_PILL_CLASS,
+                cornerClass('flush'),
               )}
             >
               <Plus className="h-3.5 w-3.5" /> Add media type

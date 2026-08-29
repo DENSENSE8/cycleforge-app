@@ -11,7 +11,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button } from '@/design-system/primitives';
-import { DataTable, type DataTableColumn } from '@/design-system/components/DataTable';
+import { AdminTable, type AdminTableColumn } from '@/design-system/components/AdminTable';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { useAuth } from '@/contexts/AuthContext';
 import { resolveKioskDogfoodUrl } from '@/lib/tenancy/kiosk-host';
@@ -155,7 +155,7 @@ export function KioskDevicesSection() {
     [refresh],
   );
 
-  const deviceColumns: DataTableColumn<KioskDeviceRow>[] = [
+  const deviceColumns: AdminTableColumn<KioskDeviceRow>[] = [
     {
       key: 'tablet',
       header: 'Tablet',
@@ -272,7 +272,7 @@ export function KioskDevicesSection() {
       </div>
 
       {/* List */}
-      <DataTable
+      <AdminTable
         columns={deviceColumns}
         rows={rows}
         rowKey={(row) => row.id}

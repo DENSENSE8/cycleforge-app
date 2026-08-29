@@ -39,7 +39,7 @@ export const RECEIVING_BROWSE_DEFINITION = parseTableDefinition({
   ariaLabel: 'Receiving carton lines',
   testId: 'receiving-grid-body',
   // Flush Sheets plane — the Workbench spreadsheet recipe. Hosts pair it with
-  // `WORKBENCH_SHEET_HOST`.
+  // `'relative flex min-h-0 min-w-0 flex-1 flex-col'`.
   surface: 'sheet',
   // Date is a per-row column on this family; Testing History opts back in via
   // the host's `showDayHeaders` override.

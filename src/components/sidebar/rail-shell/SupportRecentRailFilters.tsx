@@ -7,10 +7,10 @@
 
 import { useState } from 'react';
 import {
-  WorkbenchFilterDivider,
-  WorkbenchFilterMenuRow,
-  WorkbenchFilterPopover,
-} from '@/components/dashboard/workbench-filter-popover';
+  FilterMenuDivider,
+  FilterMenuRow,
+  FilterMenu,
+} from '@/components/ui/FilterMenu';
 import type { RecentTicket } from '@/hooks/useRecentTickets';
 
 export interface SupportRecentRailFacets {
@@ -62,16 +62,15 @@ export function SupportRecentRailFilters({
   const hotLabel = supportRecentRailFacetsHotLabel(facets);
 
   return (
-    <WorkbenchFilterPopover
+    <FilterMenu
       open={open}
       onOpenChange={setOpen}
       hot={hot}
       label="Rail filters"
       hotActiveLabel={hotLabel}
-      density="field"
       contentClassName="w-56"
     >
-      <WorkbenchFilterMenuRow
+      <FilterMenuRow
         label="All statuses"
         active={facets.status == null}
         sectionHeader
@@ -81,7 +80,7 @@ export function SupportRecentRailFilters({
         }}
       />
       {STATUS_OPTIONS.map((status) => (
-        <WorkbenchFilterMenuRow
+        <FilterMenuRow
           key={status}
           label={status}
           active={facets.status === status}
@@ -92,8 +91,8 @@ export function SupportRecentRailFilters({
         />
       ))}
 
-      <WorkbenchFilterDivider />
-      <WorkbenchFilterMenuRow
+      <FilterMenuDivider />
+      <FilterMenuRow
         label="All priorities"
         active={facets.priority == null}
         sectionHeader
@@ -103,7 +102,7 @@ export function SupportRecentRailFilters({
         }}
       />
       {PRIORITY_OPTIONS.map((priority) => (
-        <WorkbenchFilterMenuRow
+        <FilterMenuRow
           key={priority}
           label={priority}
           active={facets.priority === priority}
@@ -113,6 +112,6 @@ export function SupportRecentRailFilters({
           }}
         />
       ))}
-    </WorkbenchFilterPopover>
+    </FilterMenu>
   );
 }

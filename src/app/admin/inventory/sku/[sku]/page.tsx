@@ -3,7 +3,7 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { unitStatusBadgeClass } from '@/lib/unit-status';
 import Link from 'next/link';
-import { DataTable, type DataTableColumn } from '@/design-system/components/DataTable';
+import { AdminTable, type AdminTableColumn } from '@/design-system/components/AdminTable';
 import { Panel } from '@/design-system/primitives';
 
 
@@ -290,7 +290,7 @@ export default async function SkuDetailPage({ params }: { params: Promise<{ sku:
 
   const totalUnits = statusCounts.reduce((sum, r) => sum + Number(r.count || 0), 0);
 
-  const binColumns: DataTableColumn<BinRow>[] = [
+  const binColumns: AdminTableColumn<BinRow>[] = [
     {
       key: 'bin',
       header: 'Bin',
@@ -331,7 +331,7 @@ export default async function SkuDetailPage({ params }: { params: Promise<{ sku:
     },
   ];
 
-  const unitColumns: DataTableColumn<RecentUnitRow>[] = [
+  const unitColumns: AdminTableColumn<RecentUnitRow>[] = [
     {
       key: 'serial',
       header: 'Serial',
@@ -373,7 +373,7 @@ export default async function SkuDetailPage({ params }: { params: Promise<{ sku:
     },
   ];
 
-  const allocationColumns: DataTableColumn<AllocationRow>[] = [
+  const allocationColumns: AdminTableColumn<AllocationRow>[] = [
     {
       key: 'order',
       header: 'Order',
@@ -417,7 +417,7 @@ export default async function SkuDetailPage({ params }: { params: Promise<{ sku:
     },
   ];
 
-  const ledgerColumns: DataTableColumn<LedgerRow>[] = [
+  const ledgerColumns: AdminTableColumn<LedgerRow>[] = [
     {
       key: 'when',
       header: 'When',
@@ -477,7 +477,7 @@ export default async function SkuDetailPage({ params }: { params: Promise<{ sku:
     },
   ];
 
-  const eventColumns: DataTableColumn<EventRow>[] = [
+  const eventColumns: AdminTableColumn<EventRow>[] = [
     {
       key: 'when',
       header: 'When',
@@ -611,7 +611,7 @@ export default async function SkuDetailPage({ params }: { params: Promise<{ sku:
             <h2 className="text-lg font-medium text-text-default">Bin distribution</h2>
             <span className="text-xs text-text-soft">{bins.length} bins</span>
           </header>
-          <DataTable
+          <AdminTable
             columns={binColumns}
             rows={bins}
             rowKey={(b) => b.location_id}
@@ -626,7 +626,7 @@ export default async function SkuDetailPage({ params }: { params: Promise<{ sku:
               <h2 className="text-lg font-medium text-text-default">Recent serial units</h2>
               <span className="text-xs text-text-soft">last 25 of {totalUnits}</span>
             </header>
-            <DataTable columns={unitColumns} rows={recentUnits} rowKey={(u) => u.id} />
+            <AdminTable columns={unitColumns} rows={recentUnits} rowKey={(u) => u.id} />
           </section>
         ) : null}
 
@@ -636,7 +636,7 @@ export default async function SkuDetailPage({ params }: { params: Promise<{ sku:
             <header>
               <h2 className="text-lg font-medium text-text-default">Open allocations</h2>
             </header>
-            <DataTable columns={allocationColumns} rows={allocations} rowKey={(a) => a.id} />
+            <AdminTable columns={allocationColumns} rows={allocations} rowKey={(a) => a.id} />
           </section>
         ) : null}
 
@@ -646,7 +646,7 @@ export default async function SkuDetailPage({ params }: { params: Promise<{ sku:
             <h2 className="text-lg font-medium text-text-default">Stock ledger</h2>
             <span className="text-xs text-text-soft">last 100</span>
           </header>
-          <DataTable
+          <AdminTable
             columns={ledgerColumns}
             rows={ledger}
             rowKey={(l) => l.id}
@@ -660,7 +660,7 @@ export default async function SkuDetailPage({ params }: { params: Promise<{ sku:
             <h2 className="text-lg font-medium text-text-default">Recent inventory events</h2>
             <span className="text-xs text-text-soft">last 50</span>
           </header>
-          <DataTable
+          <AdminTable
             columns={eventColumns}
             rows={events}
             rowKey={(e) => e.id}

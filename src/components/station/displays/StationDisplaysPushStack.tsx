@@ -77,7 +77,7 @@ import {
   DisplaysIndexLeafStage,
   type StationDisplayIndexFilterKeys,
 } from './DisplaysIndexLeafStage';
-import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
+import { SearchField } from '@/design-system/primitives/SearchField';
 import { StationDisplaysParkedRail } from './StationDisplaysParkedRail';
 import { StationDisplayLeafHeader } from './StationDisplayLeafHeader';
 import { StationDisplaysPushColumn } from './StationDisplaysPushColumn';
@@ -462,15 +462,17 @@ export function StationDisplaysPushStack({
                 operator types into above a list is one component and one
                 rhythm on both surfaces. Index only — a leaf inherits no
                 list-filter chrome. */}
-            <TechRailSearchBar
-              variant="chrome"
-              value={filterQuery}
-              onChange={applyFilterQuery}
-              onClear={() => applyFilterQuery('')}
-              onKeyDown={(e) => indexFilterKeysRef.current?.onFilterKeyDown(e)}
-              placeholder="Filter displays…"
-              className="min-w-0 flex-1"
-            />
+            {/* The index's ↑↓/Enter/Esc nav belongs to the ROW that hosts the
+                field, not to the field: a text input owns text. */}
+            <div className="flex min-w-0 flex-1 items-center" onKeyDown={(e) => indexFilterKeysRef.current?.onFilterKeyDown(e)}>
+              <SearchField
+                value={filterQuery}
+                onChange={applyFilterQuery}
+                onClear={() => applyFilterQuery('')}
+                placeholder="Filter displays…"
+                className="min-w-0 flex-1"
+              />
+            </div>
           </div>
         ) : null
       }

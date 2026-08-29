@@ -3,9 +3,8 @@
 /**
  * Home → Daily — shift checklist as a flush workbench sheet.
  *
- * Chrome is the Unbox History stack: {@link WorkbenchSheetView} + Band 1
- * {@link WorkbenchChromeHeader} (density `band`) + Band 3
- * {@link WorkbenchTriageBand}. The body is a Reminders-shaped list on a
+ * There is no page chrome: {@link DataTable} draws the find field and the
+ * status strip from data. The body is a Reminders-shaped list on a
  * permanent white sheet (`bg-surface-card`) — Unbox History gets that white
  * from the table surface class; Daily has no grid, so the host itself paints
  * it. The roster report stays on Operations (`?mode=checks`).
@@ -13,31 +12,17 @@
 
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Plus } from '@/components/Icons';
-import { Button } from '@/design-system/primitives';
 import { useAuth } from '@/contexts/AuthContext';
 import {
-  formatDateKeyShort,
   getCurrentPSTDateKey,
   parseDateKey,
 } from '@/utils/date';
-import {
-  WorkbenchSheetView,
-  useWorkbenchSheetChrome,
-} from '@/components/dashboard/WorkbenchSheetView';
-import {
-  WorkbenchChromeHeader,
-  WorkbenchTrailingCluster,
-  WorkbenchTriageBand,
-} from '@/components/dashboard/workbench-shell';
-import { WorkbenchInspectorToggle } from '@/components/dashboard/workbench-inspector-toggle';
 import { DailyCheckItemInspector } from '@/features/daily-checks/DailyCheckItemInspector';
-import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
+import { DataTable } from '@/components/tables/DataTable';
 import { rowGroupTotals, singleBand, type RowGroup } from '@/lib/group-rows';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import { compareGridValues } from '@/design-system/components/grid';
 import { DAILY_TABLE_BINDING } from './grid/daily-table-definition';
-import { DailyGridColumnHeader } from './grid/DailyGridColumnHeader';
 import { formatDateTimePST } from '@/utils/date';
 import { CompoundRow } from '@/components/tables/compound/CompoundRow';
 import { dailyTaskCompoundView } from './grid/daily-task-compound-view';
@@ -52,19 +37,23 @@ import {
   type DailyGridColumnKey,
 } from '@/lib/daily-checks/daily-grid-layout';
 import { DailyComposerRow } from './DailyComposerRow';
-import { DailyTriageSearch } from './DailyTriageSearch';
 import {
   filterDailyCheckItems,
   parseDailyStatusFilter,
 } from './daily-check-filter';
 import { useDailyChecks, useItemActions, useToggleCheck } from './useDailyChecks';
 
+/**
+ * The day strip. `checks` (open) is the default, so it IS the unfiltered list
+ * and lights no tab — see {@link DataTable}.
+ */
+const DAILY_STATUS_TABS = [{ id: 'completed', label: 'Completed' }] as const;
+
 export function HomeDailyMode() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { has } = useAuth();
   const canManage = has('admin.manage_staff');
-  const sheetChrome = useWorkbenchSheetChrome();
   const composerRef = useRef<HTMLInputElement>(null);
 
   const todayKey = getCurrentPSTDateKey();
@@ -198,7 +187,6 @@ export function HomeDailyMode() {
     });
   }, [addItem, draft]);
 
-  const dayLabel = isToday ? 'Today' : formatDateKeyShort(dateKey);
 
   const focusComposer = useCallback(() => {
     if (status === 'done') setStatus('open');
@@ -211,204 +199,126 @@ export function HomeDailyMode() {
 
   return (
     <div className="flex h-full min-h-0 w-full min-w-0 flex-col bg-surface-card">
-      <WorkbenchSheetView
-        chrome={sheetChrome}
-        className="h-full w-full min-w-0 bg-surface-card"
-        sheetHostClassName="bg-surface-card"
-        tabs={({ className }) => (
-          <WorkbenchChromeHeader
-            density="band"
-            className={className}
-            tabs={[
-              { id: 'checks', label: dayLabel, color: 'blue' },
-              { id: 'completed', label: 'Completed', color: 'gray' },
-            ]}
-            activeTab={status === 'done' ? 'completed' : 'checks'}
-            onTabChange={(id) => setStatus(id === 'completed' ? 'done' : 'open')}
-            solidTone="accent"
-            trailing={
-              <WorkbenchTrailingCluster
-                divide={false}
-                actions={
-                  canManage && isToday ? (
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      className="shrink-0"
-                      onClick={focusComposer}
-                      icon={<Plus className="h-4 w-4" />}
-                    >
-                      Add
-                    </Button>
-                  ) : undefined
-                }
-              />
-            }
-          />
-        )}
-        triage={() => (
-          <WorkbenchTriageBand
-            search={
-              <DailyTriageSearch
-                query={query}
-                onQueryChange={setQuery}
-              />
-            }
-            right={
-              dayTotals.count > 0 ? (
-                <span className="text-role-caption tabular-nums text-text-muted">
-                  <span className="font-semibold text-text-default">
-                    {dayTotals.measures.done}
-                  </span>
-                  {` / ${dayTotals.count} done`}
-                </span>
-              ) : null
-            }
-            trailing={
-              <WorkbenchInspectorToggle
-                open={selected != null}
-                onOpenEmpty={() => {
-                  const first = visibleItems[0] ?? data?.items[0];
-                  if (first) selectItem(first.id);
-                }}
-              />
-            }
-          />
-        )}
-      >
-        {() => (
+      <DataTable<DailyTaskRow, DailyGridColumnKey, DailyGridColumn>
+        binding={DAILY_TABLE_BINDING}
+        // COMPOUND (two-row) WMS layout — the SAME tracks Unbox,
+        // History, Testing, Incoming, To-Ship and Tasks mount. A shift
+        // checklist item has no photo, no order and no carrier, so those
+        // tracks read empty: a data difference, and the only kind of
+        // difference between two of these tables there is meant to be.
+        columns={DAILY_COMPOUND_COLUMNS}
+        orderGroupsByDate={taskGroups}
+        rows={taskRows}
+        getRowId={(r) => String(r.id)}
+        sort={columnSort}
+        dir={sortDir}
+        onSortChange={setSort}
+        loading={isLoading}
+        search={{ value: query, onChange: setQuery, placeholder: 'Filter checks…' }}
+        tabs={DAILY_STATUS_TABS}
+        activeTab={status === 'done' ? 'completed' : undefined}
+        onTabChange={(id) => setStatus(id === 'completed' && status !== 'done' ? 'done' : 'open')}
+        emptyMessage={
+          isError
+            ? 'Could not load the checklist.'
+            : query.trim() !== ''
+              ? 'No task matches that search.'
+              : status === 'done'
+                ? 'Nothing checked off yet today.'
+                : 'No tasks for this day.'
+        }
+        // One band, one row per group — the group IS the task, so the
+        // group renderer and the leaf renderer are the same row.
+        renderGroup={(group, _stripe, { columns: visible }) => (
           <>
-            <NonlinearTableHost<DailyTaskRow, DailyGridColumnKey, DailyGridColumn>
-              binding={DAILY_TABLE_BINDING}
-              tableId="daily"
-              // COMPOUND (two-row) WMS layout — the SAME tracks Unbox,
-              // History, Testing, Incoming, To-Ship and Tasks mount. A shift
-              // checklist item has no photo, no order and no carrier, so those
-              // tracks read empty: a data difference, and the only kind of
-              // difference between two of these tables there is meant to be.
-              columns={DAILY_COMPOUND_COLUMNS}
-              orderGroupsByDate={taskGroups}
-              rows={taskRows}
-              getRowId={(r) => String(r.id)}
-              sort={columnSort}
-              dir={sortDir}
-              onSortChange={setSort}
-              loading={isLoading}
-              emptyMessage={
-                isError
-                  ? 'Could not load the checklist.'
-                  : query.trim() !== ''
-                    ? 'No task matches that search.'
-                    : status === 'done'
-                      ? 'Nothing checked off yet today.'
-                      : 'No tasks for this day.'
-              }
-              renderColumnHeader={({ onResizeColumn, onResetColumn, columns: visible }) => (
-                <DailyGridColumnHeader
-                  columns={visible}
-                  activeSort={columnSort}
-                  sortDir={sortDir}
-                  onSortColumn={toggleColumnSort}
-                  onResizeColumn={onResizeColumn}
-                  onResetColumn={onResetColumn}
-                  tableId="daily"
-                />
-              )}
-              // One band, one row per group — the group IS the task, so the
-              // group renderer and the leaf renderer are the same row.
-              renderGroup={(group, _stripe, { columns: visible }) => (
-                <>
-                  {group.rows.map((row) => (
-                  <CompoundRow
-                    key={row.id}
-                    data-daily-task-id={row.id}
-                    role="button"
-                    tabIndex={0}
-                    aria-pressed={selectedId === row.id}
-                    aria-label={`Task ${row.title}`}
-                    className="group/row cursor-pointer"
-                    onClick={() => selectItem(row.id)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        selectItem(row.id);
-                      }
-                    }}
-                    columns={visible}
-                    capabilities={DAILY_GRID_CAPABILITIES}
-                    selected={selectedId === row.id}
-                    // The family's only contribution: its DATA.
-                    view={dailyTaskCompoundView(row, {
-                      markedTip: row.done
-                        ? row.markedAt
-                          ? `You checked this off ${formatDateTimePST(row.markedAt)}`
-                          : 'You checked this off today'
-                        : 'Not checked off yet today',
-                    })}
-                    onOpen={() => selectItem(row.id)}
-                    // The tick means "I did this today", not "this row is
-                    // selected". Disabled on a day the viewer may not mark.
-                    select={{
-                      checked: row.done,
-                      onToggle: () => toggle.mutate({ itemId: row.id, checked: !row.done }),
-                      disabled: !isToday || toggle.isPending,
-                      label: `Mark "${row.title}" ${row.done ? 'not done' : 'done'}`,
-                    }}
-                  />
-                  ))}
-                </>
-              )}
-              renderRow={(row, _stripe, { columns: visible }) => (
-                <CompoundRow
-                  key={row.id}
-                  data-daily-task-id={row.id}
-                  role="button"
-                  tabIndex={0}
-                  aria-pressed={selectedId === row.id}
-                  aria-label={`Task ${row.title}`}
-                  className="group/row cursor-pointer"
-                  onClick={() => selectItem(row.id)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      selectItem(row.id);
-                    }
-                  }}
-                  columns={visible}
-                  capabilities={DAILY_GRID_CAPABILITIES}
-                  selected={selectedId === row.id}
-                  // The family's only contribution: its DATA.
-                  view={dailyTaskCompoundView(row, {
-                    markedTip: row.done
-                      ? row.markedAt
-                        ? `You checked this off ${formatDateTimePST(row.markedAt)}`
-                        : 'You checked this off today'
-                      : 'Not checked off yet today',
-                  })}
-                  onOpen={() => selectItem(row.id)}
-                  // The tick means "I did this today", not "this row is
-                  // selected". Disabled on a day the viewer may not mark.
-                  select={{
-                    checked: row.done,
-                    onToggle: () => toggle.mutate({ itemId: row.id, checked: !row.done }),
-                    disabled: !isToday || toggle.isPending,
-                    label: `Mark "${row.title}" ${row.done ? 'not done' : 'done'}`,
-                  }}
-                />
-              )}
+            {group.rows.map((row) => (
+            <CompoundRow
+              key={row.id}
+              data-daily-task-id={row.id}
+              role="button"
+              tabIndex={0}
+              aria-pressed={selectedId === row.id}
+              aria-label={`Task ${row.title}`}
+              className="group/row cursor-pointer"
+              onClick={() => selectItem(row.id)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  selectItem(row.id);
+                }
+              }}
+              columns={visible}
+              capabilities={DAILY_GRID_CAPABILITIES}
+              selected={selectedId === row.id}
+              // The family's only contribution: its DATA.
+              view={dailyTaskCompoundView(row, {
+                markedTip: row.done
+                  ? row.markedAt
+                    ? `You checked this off ${formatDateTimePST(row.markedAt)}`
+                    : 'You checked this off today'
+                  : 'Not checked off yet today',
+              })}
+              onOpen={() => selectItem(row.id)}
+              // The tick means "I did this today", not "this row is
+              // selected". Disabled on a day the viewer may not mark.
+              select={{
+                checked: row.done,
+                onToggle: () => toggle.mutate({ itemId: row.id, checked: !row.done }),
+                disabled: !isToday || toggle.isPending,
+                label: `Mark "${row.title}" ${row.done ? 'not done' : 'done'}`,
+              }}
             />
-            {canManage && isToday ? (
-              <DailyComposerRow
-                draft={draft}
-                onDraftChange={setDraft}
-                onSubmit={submitDraft}
-                pending={addItem.isPending}
-                inputRef={composerRef}
-              />
-            ) : null}
+            ))}
           </>
         )}
-      </WorkbenchSheetView>
+        renderRow={(row, _stripe, { columns: visible }) => (
+          <CompoundRow
+            key={row.id}
+            data-daily-task-id={row.id}
+            role="button"
+            tabIndex={0}
+            aria-pressed={selectedId === row.id}
+            aria-label={`Task ${row.title}`}
+            className="group/row cursor-pointer"
+            onClick={() => selectItem(row.id)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                selectItem(row.id);
+              }
+            }}
+            columns={visible}
+            capabilities={DAILY_GRID_CAPABILITIES}
+            selected={selectedId === row.id}
+            // The family's only contribution: its DATA.
+            view={dailyTaskCompoundView(row, {
+              markedTip: row.done
+                ? row.markedAt
+                  ? `You checked this off ${formatDateTimePST(row.markedAt)}`
+                  : 'You checked this off today'
+                : 'Not checked off yet today',
+            })}
+            onOpen={() => selectItem(row.id)}
+            // The tick means "I did this today", not "this row is
+            // selected". Disabled on a day the viewer may not mark.
+            select={{
+              checked: row.done,
+              onToggle: () => toggle.mutate({ itemId: row.id, checked: !row.done }),
+              disabled: !isToday || toggle.isPending,
+              label: `Mark "${row.title}" ${row.done ? 'not done' : 'done'}`,
+            }}
+          />
+        )}
+      />
+      {canManage && isToday ? (
+        <DailyComposerRow
+          draft={draft}
+          onDraftChange={setDraft}
+          onSubmit={submitDraft}
+          pending={addItem.isPending}
+          inputRef={composerRef}
+        />
+      ) : null}
 
       <DailyCheckItemInspector
         item={selected}

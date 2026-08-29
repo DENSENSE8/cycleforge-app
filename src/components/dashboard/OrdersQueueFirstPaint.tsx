@@ -2,18 +2,18 @@
  * SSR first-paint stand-in for the To-ship Unshipped queue.
  *
  * Owns LCP when the interactive LedgerGrid has not hydrated yet. Geometry
- * mirrors `WORKBENCH_SHEET_HOST` + dense queue rows so the swap to
+ * mirrors `'relative flex min-h-0 min-w-0 flex-1 flex-col'` + dense queue rows so the swap to
  * `UnshippedTable` does not register as a layout shift.
  *
  * Server-safe — no `'use client'`, no motion, no TanStack. Class string is
- * inlined (same as `WORKBENCH_SHEET_HOST`) so this module stays RSC-importable
+ * inlined (same as `'relative flex min-h-0 min-w-0 flex-1 flex-col'`) so this module stays RSC-importable
  * without pulling the client workbench-shell graph.
  */
 
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import { cn } from '@/utils/_cn';
 
-/** Byte-identical to `WORKBENCH_SHEET_HOST` in workbench-shell.tsx. */
+/** Byte-identical to `'relative flex min-h-0 min-w-0 flex-1 flex-col'` in workbench-shell.tsx. */
 const SHEET_HOST = 'relative flex min-h-0 min-w-0 flex-1 flex-col';
 
 const FIRST_PAINT_ROW_CAP = 24;
