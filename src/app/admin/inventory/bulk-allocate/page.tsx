@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { PageHeader } from '@/components/ui/pane-header';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Button } from '@/design-system/primitives';
-import { DataTable, type DataTableColumn } from '@/design-system/components/DataTable';
+import { AdminTable, type AdminTableColumn } from '@/design-system/components/AdminTable';
 
 export const dynamic = 'force-dynamic';
 
@@ -152,7 +152,7 @@ export default async function BulkAllocatePage({
     return { ...r, qty, eligible: r.available_stocked >= qty };
   });
 
-  const candidateColumns: DataTableColumn<CandidateView>[] = [
+  const candidateColumns: AdminTableColumn<CandidateView>[] = [
     {
       key: 'order_id',
       header: 'Order id',
@@ -272,7 +272,7 @@ export default async function BulkAllocatePage({
             ) : null}
           </header>
 
-          <DataTable
+          <AdminTable
             columns={candidateColumns}
             rows={viewRows}
             rowKey={(r) => r.order_id}

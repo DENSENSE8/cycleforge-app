@@ -73,12 +73,7 @@ import {
 import { TrackingNumberMenuChip } from '@/components/ui/TrackingNumberMenuChip';
 import { ReceivingPhotosSection } from '@/components/station/receiving/ReceivingPhotosSection';
 import { ReceivingAuditPanel } from '@/components/receiving/workspace/ReceivingAuditPanel';
-import { HistoryViewTopicsCluster } from '@/components/receiving/history/HistoryViewTopicsCluster';
 import { buildHistoryInspectorLeaves } from '@/components/receiving/history/build-history-inspector-leaves';
-import {
-  HistoryViewChromeBridge,
-  useHistoryViewChromeOptional,
-} from '@/components/receiving/history/history-view-chrome-context';
 import { IconButton } from '@/design-system/primitives';
 import { SkeletonList } from '@/design-system/components/Skeletons';
 import type { HistoryTriageTarget } from '@/lib/receiving/history-triage-row';
@@ -175,8 +170,6 @@ export function HistoryCartonTriagePanel({
 }) {
   const router = useRouter();
   const queryClient = useQueryClient();
-  // Read here (inside the provider) — the rail body renders under RightRailHost.
-  const viewChrome = useHistoryViewChromeOptional();
   const [opening, setOpening] = useState(false);
   /** Index | leaf nav — opens on Details; Back → topics. */
   const [navId, setNavId] = useState<string>('summary');
@@ -471,7 +464,6 @@ export function HistoryCartonTriagePanel({
   const location =
     (line?.staging_location_label || carton?.location_name || '').trim() || null;
 
-  const viewStripOpen = viewOnly || viewTopicsOpen;
   // Parked (Band 3 `Hide inspector` / ⌘\) keeps this panel MOUNTED but inert at
   // zero width, so `viewStripOpen` alone cannot tell the cluster whether it is
   // reachable. Read the collapse SoT the toggle writes.
@@ -718,23 +710,6 @@ export function HistoryCartonTriagePanel({
             />
         ) : null}
 
-        {/* View topics cluster — a disclosure docked under the work, never a
-            second header band. Mounted in BOTH stances so its ▦ portal target
-            never detaches; `active` is what gates publishing it. */}
-        <div
-          className={cn(
-            'shrink-0 border-t border-border-soft px-2 py-1',
-            !viewStripOpen && 'hidden',
-          )}
-          data-testid="history-triage-view-strip"
-        >
-          <HistoryViewChromeBridge value={viewChrome}>
-            <HistoryViewTopicsCluster
-              hidePaint={viewOnly}
-              active={viewStripOpen && !inspectorParked}
-            />
-          </HistoryViewChromeBridge>
-        </div>
 
         {/* Icons-first Macro floor (n=1) — the record's edit gravity:
             `⋯` More · 🖨 Print · ✏️ Edit (Open in Unbox) · 🗑 Delete as equal

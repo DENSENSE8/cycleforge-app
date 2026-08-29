@@ -8,9 +8,9 @@ import { ToolbarButton } from '@/components/ui/ToolbarButton';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { STAFF_FILTER_PARAM, useStaffFilter } from '@/hooks/useStaffFilter';
 import {
-  WorkbenchFilterGroupLabel,
-  WorkbenchFilterMenuRow,
-} from '@/components/dashboard/workbench-filter-popover';
+  FilterMenuGroupLabel,
+  FilterMenuRow,
+} from '@/components/ui/FilterMenu';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 
@@ -25,7 +25,7 @@ import { cn } from '@/utils/_cn';
  * is set (absent = Me default for the caller; token = explicit all).
  *
  * Workbench toolbar SoT: popover `align="end"` (opens left — right edge flush
- * with the trigger), matching {@link WorkbenchFilterPopover} lane filters.
+ * with the trigger), matching {@link FilterMenu} lane filters.
  * Do not pass `align="start"` in right-side chrome slots.
  *
  * **Band 3 hosts this in-field, not on the right.** Pass `density="field"` and
@@ -64,7 +64,7 @@ export function StaffFilterButton({
    * for Band 3 / View-topic clusters. Soft `rounded-lg` stays; height matches
    * {@link WorkbenchBandControl}.
    * `field` — paste-sized glyph for a `SearchField` `trailingSuffix` slot, the
-   * same trigger geometry {@link WorkbenchFilterPopover} `density="field"` uses.
+   * same trigger geometry {@link FilterMenu} `density="field"` uses.
    */
   density?: 'toolbar' | 'field';
   className?: string;
@@ -175,7 +175,7 @@ export function StaffFilterButton({
 
 /**
  * The staff facet as MENU ROWS, for hosting inside the find field's one
- * {@link WorkbenchFilterPopover} — no trigger, no glyph, no popover of its own.
+ * {@link FilterMenu} — no trigger, no glyph, no popover of its own.
  *
  * **Why this exists.** `density="field"` gave the facet its own 24px cell with a
  * `User` glyph in it, so a find bar that also had a refine funnel showed two
@@ -216,14 +216,14 @@ export function StaffFilterRows({
 
   return (
     <>
-      <WorkbenchFilterGroupLabel>{groupLabel}</WorkbenchFilterGroupLabel>
-      <WorkbenchFilterMenuRow
+      <FilterMenuGroupLabel>{groupLabel}</FilterMenuGroupLabel>
+      <FilterMenuRow
         label={allLabel}
         active={token ? isExplicitAll : !active}
         onClick={() => pick(null)}
       />
       {options.map((option) => (
-        <WorkbenchFilterMenuRow
+        <FilterMenuRow
           key={option.id}
           label={option.name}
           active={option.id === staffId}

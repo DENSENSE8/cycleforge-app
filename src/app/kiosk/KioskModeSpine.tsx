@@ -15,7 +15,7 @@
 import { useRouter } from 'next/navigation';
 import { X } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
+import { SearchField } from '@/design-system/primitives/SearchField';
 import { motion, motionRole, useMotionRole } from '@/design-system/motion';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { KIOSK_SERVICES, type KioskServiceId } from '@/lib/kiosk/services';
@@ -79,17 +79,16 @@ export function KioskModeSpine({
           transition={transition}
         >
           {/* One house find bar everywhere — same SoT as MasterNav / Band-3 / To Ship. */}
-          <TechRailSearchBar
-            variant="chrome"
+          <SearchField
             placeholder={searchLabel}
             value={searchValue}
             onChange={onSearchChange}
             className="min-w-0 flex-1"
-            trailingAction={
+            rightElement={
               <KioskSpineToggle expanded={expanded} onExpandedChange={onExpandedChange} />
             }
             data-testid="kiosk-spine-search"
-          />
+        />
         </motion.div>
       ) : (
         <div className="flex h-14 shrink-0 items-center justify-center">

@@ -62,7 +62,6 @@ import {
   DeskInspectorIndexShell,
   type DeskInspectorLeaf,
 } from '@/components/right-rail/DeskInspectorIndexShell';
-import { InspectorColumnDisplayButton } from '@/components/right-rail/InspectorColumnDisplayButton';
 import {
   FLOOR_DELETE_PEER_CLASS,
   InspectorActionFloor,
@@ -138,7 +137,6 @@ export function WarrantyClaimDetailPanel({ claimId, onClose }: WarrantyClaimDeta
           <WarrantyClockChip daysRemaining={claim.daysRemaining} basis={claim.clockBasis} />
         </span>
       ) : null}
-      <InspectorColumnDisplayButton />
     </>
   );
 

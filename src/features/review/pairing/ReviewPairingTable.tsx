@@ -9,16 +9,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { OrdersGridHost } from '@/components/dashboard/orders-queue/OrdersGridHost';
-import {
-  WORKBENCH_SHEET_CHROME,
-  WORKBENCH_SHEET_HOST,
-  WorkbenchChromeHeader,
-  WorkbenchTriageBand,
-} from '@/components/dashboard/workbench-shell';
 import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
-import { StaffFilterButton } from '@/components/ui/StaffFilterButton';
-import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
-import { cn } from '@/utils/_cn';
 import { packedOrdersQuery } from '@/lib/queries/dashboard-queries';
 import { awaitingLabelsQuery } from '@/lib/queries/outbound-queries';
 import { parseStaffParam } from '@/hooks/useStaffFilter';
@@ -74,35 +65,10 @@ export function ReviewPairingTable({ onOpenOrder, onCloseOrder }: ReviewPairingT
 
   return (
     <div className="relative flex h-full min-w-0 flex-1 overflow-hidden bg-surface-canvas">
-      <DashboardScrollShell
-        className="h-full"
-        chrome={
-          <div className={cn(WORKBENCH_SHEET_CHROME, 'flex flex-col gap-0')}>
-            <WorkbenchChromeHeader
-              density="band"
-              tabs={[{ id: 'pairing', label: 'Needs allocation' }]}
-              activeTab="pairing"
-              onTabChange={() => undefined}
-              className="rounded-none border-l-0 border-t-0 shadow-sm"
-            />
-            <WorkbenchTriageBand
-              search={
-                <TechRailSearchBar
-                  variant="chrome"
-                  value={searchQuery}
-                  onChange={setSearch}
-                  placeholder="Filter order #, SKU, title…"
-                  className="min-w-0 flex-1"
-                  trailingSuffix={<StaffFilterButton density="field" align="end" />}
-                />
-              }
-              controlsSlotRef={setControlsEl}
-            />
-          </div>
-        }
-      >
-        <div className={WORKBENCH_SHEET_HOST}>
+      <DashboardScrollShell className="h-full">
+        <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
           <OrdersGridHost
+            search={{ value: searchQuery, onChange: setSearch, placeholder: 'Filter order #, SKU, title…' }}
             ariaLabel="Orders awaiting pairing review"
             records={records}
             loading={loading}
@@ -115,7 +81,6 @@ export function ReviewPairingTable({ onOpenOrder, onCloseOrder }: ReviewPairingT
             queueMode="staged"
             sort="newest"
             selectionScope={DASHBOARD_ORDERS_SELECTION_SCOPE}
-            columnTriggerPortalTarget={controlsEl}
             data-testid="review-pairing-grid-body"
             onOpenRecord={onOpenOrder}
             onCloseRecord={() => onCloseOrder()}

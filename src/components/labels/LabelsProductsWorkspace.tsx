@@ -9,19 +9,16 @@
 import { useCallback, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter, useSearchParams } from 'next/navigation';
-import {
-  WorkbenchSheetView,
-  useWorkbenchSheetChrome,
-} from '@/components/dashboard/WorkbenchSheetView';
 import { MONITOR_SECTION_CARD_SCROLL_CLASS } from '@/design-system/components/monitor';
+import { TableStatusBar } from '@/components/tables/TableStatusBar';
 import { cn } from '@/utils/_cn';
-import { LabelsProductsWorkspaceHeader } from '@/components/labels/LabelsProductsWorkspaceHeader';
 import { ProductCatalogList } from '@/components/labels/ProductCatalogList';
 import { UnitHistoryFinder } from '@/components/labels/UnitHistoryFinder';
 import {
   parseLabelsView,
   type LabelsSubView,
 } from '@/components/labels/labels-view';
+import { SearchField } from '@/design-system/primitives/SearchField';
 
 const MultiSkuSnBarcode = dynamic(() => import('@/components/MultiSkuSnBarcode'), {
   ssr: false,
@@ -39,12 +36,20 @@ const UnitDetailWorkspace = dynamic(
   },
 );
 
+/**
+ * The body strip. `recent` is the default view, so it IS the unfiltered body
+ * and lights no tab — the same rule every other strip follows.
+ */
+const LABELS_PRODUCT_TABS = [
+  { id: 'print', label: 'Print' },
+  { id: 'history', label: 'History' },
+] as const;
+
 export function LabelsProductsWorkspace() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const tab = parseLabelsView(searchParams.get('labelsView'));
   // Band-1 only: no KPI band, no Band-3 triage (find rides the header here).
-  const chrome = useWorkbenchSheetChrome();
   const catalogQuery = searchParams.get('q') || '';
   const [historyDraft, setHistoryDraft] = useState('');
 
@@ -94,26 +99,22 @@ export function LabelsProductsWorkspace() {
 
   return (
     <div className="relative flex h-full min-h-0 w-full flex-col overflow-hidden bg-surface-canvas">
-      <WorkbenchSheetView
-        chrome={chrome}
-        className={cn('h-full', tab === 'print' || tab === 'history' ? 'overflow-hidden' : undefined)}
-        sheetHostClassName={cn(
-          'px-3 pt-3',
-          (tab === 'print' || tab === 'history') && 'h-full overflow-hidden pb-4',
-        )}
-        tabs={({ className }) => (
-          <LabelsProductsWorkspaceHeader
-            tab={tab}
-            onSelectTab={handleSelectTab}
-            search={tab === 'history' ? historyDraft : catalogQuery}
-            onSearch={tab === 'history' ? setHistoryDraft : handleCatalogSearch}
-            onHistorySubmit={handleHistorySubmit}
-            className={className}
+      {/* The find field sits with what it narrows: the catalog on Print, the
+          unit lookup on History. Neither tab has one on Detail. */}
+      {tab === 'print' || tab === 'history' ? (
+        <div className="flex min-w-0 shrink-0 items-center gap-2 border-b border-border-soft bg-surface-card px-2 py-1">
+          <SearchField
+            value={tab === 'history' ? historyDraft : catalogQuery}
+            onChange={tab === 'history' ? setHistoryDraft : handleCatalogSearch}
+            onSearch={tab === 'history' ? handleHistorySubmit : undefined}
+            placeholder={tab === 'history' ? 'Look up a unit…' : 'Filter catalog…'}
+            className="min-w-0 max-w-[22rem] flex-1"
+            tone="neutral"
+            hideUnderline
           />
-        )}
-      >
-        {() => (
-          <>
+        </div>
+      ) : null}
+      <>
           {tab === 'print' ? (
             <div className="flex min-h-0 min-w-0 flex-1 gap-4 overflow-hidden">
               <div
@@ -147,9 +148,12 @@ export function LabelsProductsWorkspace() {
               <UnitDetailWorkspace />
             </div>
           )}
-          </>
-        )}
-      </WorkbenchSheetView>
+      </>
+      <TableStatusBar
+        tabs={LABELS_PRODUCT_TABS}
+        activeTab={tab === 'recent' ? undefined : tab}
+        onTabChange={(id) => handleSelectTab(id === tab ? 'recent' : (id as LabelsSubView))}
+      />
     </div>
   );
 }

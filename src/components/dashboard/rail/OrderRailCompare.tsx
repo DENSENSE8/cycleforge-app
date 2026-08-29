@@ -62,7 +62,6 @@ import {
   RailSelectionBand,
   useRailActionSnapshot,
 } from './OrderRailActions';
-import { OrdersViewTopicsCluster } from '@/components/outbound/orders/OrdersViewTopicsCluster';
 import {
   OrdersViewChromeBridge,
   useOrdersViewChromeOptional,
@@ -242,7 +241,6 @@ export function OrderRailCompare() {
                   role="toolbar"
                   aria-label="Orders view topics"
                 >
-                  <OrdersViewTopicsCluster />
                 </div>
               ) : null}
 

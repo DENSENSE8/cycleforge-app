@@ -9,7 +9,6 @@
  * - {@link MONITOR_KPI_BAND_CLASS} — workbench Band 2 **instrument** (flush, no card shell)
  */
 
-import { cornerClass } from '@/design-system/tokens/radius';
 
 /** Outer bubble — raised card on `bg-surface-canvas`. */
 export const MONITOR_SECTION_CARD_CLASS =
@@ -33,7 +32,6 @@ export const MONITOR_KPI_TILE_CLASS = `${MONITOR_SECTION_CARD_CLASS} p-4`;
  * Compose via {@link KpiTile} `density="band"`; do not use inside Monitor dashboards.
  */
 export const MONITOR_KPI_BAND_CLASS = [
-  cornerClass('flush'),
   'border-0 bg-transparent p-0 shadow-none',
   'px-2 py-1',
 ].join(' ');

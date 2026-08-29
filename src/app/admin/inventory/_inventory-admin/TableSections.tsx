@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { DataTable, type DataTableColumn } from '@/design-system/components/DataTable';
+import { AdminTable, type AdminTableColumn } from '@/design-system/components/AdminTable';
 import type {
   AllocationRow,
   DriftAlertRow,
@@ -7,7 +7,7 @@ import type {
   RecentEventRow,
 } from './inventory-admin-data';
 
-const DRIFT_ALERT_COLUMNS: DataTableColumn<DriftAlertRow>[] = [
+const DRIFT_ALERT_COLUMNS: AdminTableColumn<DriftAlertRow>[] = [
   {
     key: 'sku',
     header: 'SKU',
@@ -58,7 +58,7 @@ export function DriftAlertsSection({ openDriftAlerts }: { openDriftAlerts: Drift
           {openDriftAlerts.length} open
         </span>
       </header>
-      <DataTable
+      <AdminTable
         columns={DRIFT_ALERT_COLUMNS}
         rows={openDriftAlerts}
         rowKey={(a) => a.id}
@@ -67,7 +67,7 @@ export function DriftAlertsSection({ openDriftAlerts }: { openDriftAlerts: Drift
   );
 }
 
-const DRIFT_COLUMNS: DataTableColumn<DriftRow>[] = [
+const DRIFT_COLUMNS: AdminTableColumn<DriftRow>[] = [
   {
     key: 'sku',
     header: 'SKU',
@@ -121,13 +121,13 @@ export function DriftSection({ drift, driftClean }: { drift: DriftRow[]; driftCl
           sku_stock.stock equals SUM(sku_stock_ledger.delta) for every SKU. The trigger is working.
         </p>
       ) : (
-        <DataTable columns={DRIFT_COLUMNS} rows={drift} rowKey={(d) => d.sku} />
+        <AdminTable columns={DRIFT_COLUMNS} rows={drift} rowKey={(d) => d.sku} />
       )}
     </section>
   );
 }
 
-const ALLOCATION_COLUMNS: DataTableColumn<AllocationRow>[] = [
+const ALLOCATION_COLUMNS: AdminTableColumn<AllocationRow>[] = [
   {
     key: 'state',
     header: 'State',
@@ -156,7 +156,7 @@ export function AllocationsSection({ allocations }: { allocations: AllocationRow
           Bulk allocate →
         </Link>
       </header>
-      <DataTable
+      <AdminTable
         columns={ALLOCATION_COLUMNS}
         rows={allocations}
         rowKey={(a) => a.state}
@@ -166,7 +166,7 @@ export function AllocationsSection({ allocations }: { allocations: AllocationRow
   );
 }
 
-const RECENT_EVENT_COLUMNS: DataTableColumn<RecentEventRow>[] = [
+const RECENT_EVENT_COLUMNS: AdminTableColumn<RecentEventRow>[] = [
   {
     key: 'when',
     header: 'When',
@@ -252,7 +252,7 @@ export function RecentEventsSection({ events }: { events: RecentEventRow[] }) {
           Open explorer →
         </Link>
       </header>
-      <DataTable
+      <AdminTable
         columns={RECENT_EVENT_COLUMNS}
         rows={events}
         rowKey={(e) => e.id}

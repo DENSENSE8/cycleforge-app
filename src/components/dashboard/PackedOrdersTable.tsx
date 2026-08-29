@@ -3,15 +3,14 @@
 /**
  * Dashboard · Packed — staged queue (PACK event, no dock scan-out).
  * `/api/orders?stagedOnly=true` via {@link packedOrdersQuery}, same outbound
- * spreadsheet as Pending / Tested (`useOrdersSpreadsheet` → NonlinearTableHost).
+ * spreadsheet as Pending / Tested (`useOrdersSpreadsheet` → {@link DataTable}).
  */
 
 import { useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
+import { DataTable } from '@/components/tables/DataTable';
 import { useOrdersSpreadsheet } from '@/components/dashboard/orders-queue/useOrdersSpreadsheet';
-import { WORKBENCH_SHEET_HOST } from '@/components/dashboard/workbench-shell';
 import { DASHBOARD_ORDERS_SELECTION_SCOPE } from '@/lib/selection/dashboard-scopes';
 import { dispatchOpenShippedDetails, dispatchCloseShippedDetails } from '@/utils/events';
 import { usePackedOrdersFeed } from '@/hooks/usePackedOrdersFeed';
@@ -30,13 +29,11 @@ export interface PackedOrdersTableProps {
   /** Rail-selection model: the check-set is the single selection SoT and drives
    *  the right-rail inspector (History / order-rail SoT). */
   railSelection?: boolean;
-  toolbarPortalTarget?: HTMLElement | null;
 }
 
 export function PackedOrdersTable({
   selectMode = false,
   railSelection = false,
-  toolbarPortalTarget,
 }: PackedOrdersTableProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -49,6 +46,22 @@ export function PackedOrdersTable({
   });
 
   useRecordCursorKeyboard({ enabled: true, scope: 'record' });
+
+  /** The find field writes the same `?search` the feed reads. */
+  const setPackedSearch = useCallback(
+    (next: string) => {
+      const params = new URLSearchParams(searchParams.toString());
+      const trimmed = next.trim();
+      if (trimmed) params.set('search', trimmed);
+      else params.delete('search');
+      const qs = params.toString();
+      router.replace(
+        qs ? `${pathname || '/shipping/orders'}?${qs}` : pathname || '/shipping/orders',
+        { scroll: false },
+      );
+    },
+    [pathname, router, searchParams],
+  );
 
   const clearSearch = useCallback(() => {
     const params = new URLSearchParams(searchParams.toString());
@@ -94,7 +107,6 @@ export function PackedOrdersTable({
     selectionScope: DASHBOARD_ORDERS_SELECTION_SCOPE,
     railSelection,
     'data-testid': 'packed-grid-body',
-    columnTriggerPortalTarget: toolbarPortalTarget ?? null,
     onOpenRecord: (record) => {
       dispatchOpenShippedDetails(record, 'packed');
     },
@@ -105,9 +117,10 @@ export function PackedOrdersTable({
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-surface-canvas">
-      <div className={WORKBENCH_SHEET_HOST}>
-        <NonlinearTableHost<ShippedOrder, OrdersQueueColumnKey, OrdersQueueColumn>
+      <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
+        <DataTable<ShippedOrder, OrdersQueueColumnKey, OrdersQueueColumn>
           {...sheet}
+          search={{ value: searchQuery, onChange: setPackedSearch, placeholder: 'Filter packed…' }}
         />
       </div>
     </div>

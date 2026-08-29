@@ -2,7 +2,6 @@
 
 import { LayoutDashboard, List, Loader2, Pencil, RefreshCw } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { WORKBENCH_CHROME_CUBE_GLYPH_CLASS } from '@/components/dashboard/workbench-chrome-cube';
 import {
   PHOTO_GRID_DENSITY_LABELS,
   PHOTO_GRID_DENSITY_ORDER,
@@ -84,7 +83,7 @@ export function PhotoDisplayControls({
                   onClick={() => onDensityChange(id)}
                   className={mediaBandCellClass(active)}
                 >
-                  <Icon className={WORKBENCH_CHROME_CUBE_GLYPH_CLASS} />
+                  <Icon className={'block h-3.5 w-3.5 shrink-0'} />
                 </button>
               </HoverTooltip>
             );
@@ -107,9 +106,9 @@ export function PhotoDisplayControls({
             className={mediaBandCellClass(false, 'disabled:cursor-not-allowed disabled:opacity-60')}
           >
             {isRefreshing ? (
-              <Loader2 className={cn(WORKBENCH_CHROME_CUBE_GLYPH_CLASS, 'animate-spin')} />
+              <Loader2 className={cn('block h-3.5 w-3.5 shrink-0', 'animate-spin')} />
             ) : (
-              <RefreshCw className={WORKBENCH_CHROME_CUBE_GLYPH_CLASS} />
+              <RefreshCw className={'block h-3.5 w-3.5 shrink-0'} />
             )}
           </button>
         </HoverTooltip>
@@ -126,7 +125,7 @@ export function PhotoDisplayControls({
             onClick={onStartSelect}
             className={mediaBandCellClass(selectionActive)}
           >
-            <Pencil className={WORKBENCH_CHROME_CUBE_GLYPH_CLASS} />
+            <Pencil className={'block h-3.5 w-3.5 shrink-0'} />
           </button>
         </HoverTooltip>
       </div>
@@ -153,7 +152,7 @@ export function PhotoDisplayControls({
                 onClick={() => onViewChange(id === 'list' ? 'list' : DEFAULT_PHOTO_LIBRARY_VIEW)}
                 className={mediaBandCellClass(active)}
               >
-                <Icon className={WORKBENCH_CHROME_CUBE_GLYPH_CLASS} />
+                <Icon className={'block h-3.5 w-3.5 shrink-0'} />
               </button>
             </HoverTooltip>
           );

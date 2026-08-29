@@ -7,7 +7,6 @@ import {
   type LedgerGridColumnModel,
 } from '@/design-system/components/grid';
 import type { RowGroup } from '@/lib/group-rows';
-import type { TableId } from '@/lib/tables/table-columns';
 import { compoundRowEstimateFor } from './compound/compound-columns';
 import type { TableSurfaceBinding } from './table-surface-binding';
 
@@ -48,12 +47,6 @@ export interface NonlinearTableHostProps<Row, K extends string, C extends Ledger
   binding: TableSurfaceBinding<Row, C>;
 
   // ── Definition overrides (a real second mount, never a preference) ──────────
-  /**
-   * Per-staff prefs identity. Defaults to the definition's `tableId`; Testing
-   * History passes `testing` so its Fields selection stays independent of
-   * Unbox / History.
-   */
-  tableId?: TableId;
   /** Outer shell testid. Defaults to the definition's. */
   testId?: string;
   /**
@@ -105,13 +98,6 @@ export interface NonlinearTableHostProps<Row, K extends string, C extends Ledger
   ) => ReactNode;
 
   // ── Grid geometry passthrough (real LedgerGridSurface features) ─────────────
-  /**
-   * Ephemeral viewport priority-collapse, keyed by column key — never persisted,
-   * always beats staff intent. Orders drives this via `useViewportForcedHidden`.
-   * A grid feature, not a page leak: the surface's own docblock names Orders as
-   * its consumer.
-   */
-  forceHidden?: ReadonlySet<string>;
   /** Outer-shell ref (Orders observes viewport force-hide against it). */
   shellRef?: RefObject<HTMLDivElement | null>;
   /** Page scroll ancestor — grid virtualizes against it (Pending / To-ship). */
@@ -122,12 +108,10 @@ export interface NonlinearTableHostProps<Row, K extends string, C extends Ledger
   // ── Page chrome passthrough ────────────────────────────────────────────────
   scrollRef?: RefObject<HTMLDivElement | null>;
   className?: string;
-  columnTriggerPortalTarget?: HTMLElement | null;
 }
 
 export function NonlinearTableHost<Row, K extends string, C extends LedgerGridColumnModel>({
   binding,
-  tableId,
   testId,
   ariaLabel,
   showDayHeaders,
@@ -147,13 +131,11 @@ export function NonlinearTableHost<Row, K extends string, C extends LedgerGridCo
   renderColumnHeader,
   renderGroup,
   renderRow,
-  forceHidden,
   shellRef,
   scrollParentRef,
   scrollToKey,
   scrollRef,
   className,
-  columnTriggerPortalTarget = null,
 }: NonlinearTableHostProps<Row, K, C>) {
   const { definition } = binding;
   const mounted = columns ?? binding.columns;
@@ -184,16 +166,13 @@ export function NonlinearTableHost<Row, K extends string, C extends LedgerGridCo
       searchEmptyState={searchEmptyState}
       isSearching={isSearching}
       showDayHeaders={showDayHeaders ?? definition.showDayHeaders}
-      forceHidden={forceHidden}
       shellRef={shellRef}
       scrollParentRef={scrollParentRef}
       scrollToKey={scrollToKey}
       scrollRef={scrollRef}
       className={className}
       testId={testId ?? definition.testId}
-      tableId={tableId ?? definition.tableId}
       surface={definition.surface}
-      columnTriggerPortalTarget={columnTriggerPortalTarget}
       renderColumnHeader={renderColumnHeader}
       renderGroup={renderGroup}
       renderRow={renderRow}

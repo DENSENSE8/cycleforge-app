@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight } from '../Icons';
 import { Button, IconButton, TextField } from '@/design-system/primitives';
-import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
+import { SearchField } from '@/design-system/primitives/SearchField';
 import { KIOSK_BAND_SEARCH_ROW } from '@/app/kiosk/kiosk-chrome';
 import { StackedRowIdentity } from '@/components/ui/StackedRowIdentity';
 import { cornerClass } from '@/design-system/tokens/radius';
@@ -713,14 +713,13 @@ export function ProductSelector({
       : 'Search products';
 
   const chromeFindBar = (
-    <TechRailSearchBar
-      variant="chrome"
+    <SearchField
       placeholder={searchLabel}
       value={search}
       onChange={setSearch}
       className="min-w-0 flex-1"
       data-testid={pos ? 'kiosk-catalog-search' : undefined}
-    />
+        />
   );
 
   const renderSearchBar = () => (
@@ -1281,7 +1280,7 @@ export function ProductSelector({
               )}
               {!hideBrowseSearch ? (
                 /*
-                 * The kiosk band, NOT `WorkbenchTriageBand`.
+                 * The kiosk band, NOT a desk chrome row.
                  *
                  * That component is desk chrome: it carries `gap-2`, `pr-0.5`,
                  * a `border-r`, a `shadow-sm` and the `h-7`

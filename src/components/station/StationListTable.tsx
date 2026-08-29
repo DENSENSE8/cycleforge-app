@@ -9,7 +9,6 @@ import DateRangeHeader from '@/components/ui/DateRangeHeader';
 import { DateGroupHeader } from '@/components/ui/DateGroupHeader';
 import { OrderSearchEmptyState } from '@/components/dashboard/OrderSearchEmptyState';
 import { QueueTableBanner } from '@/components/dashboard/orders-queue/QueueTableBanner';
-import { StationRowColumnHeader } from '@/components/dashboard/queue-table';
 import {
   LedgerGrid,
   TableStickyXScroll,
@@ -184,15 +183,9 @@ export function StationListTable<TRecord>({
   // A surface that did not declare multi-select must not render the select
   // gutter — the gutter is the affordance, so drawing it on a surface with no
   // selection wiring is the "inert gutter" the workbench law bans.
-  const canSelect = selectMode && capabilities.multiSelect;
-  const columnHeader =
-    showStationColumnHeader && !isMobile ? (
-      <StationRowColumnHeader
-        selectMode={canSelect}
-        includeSerial={columnHeaderIncludeSerial}
-        stageLabel={columnHeaderStageLabel}
-      />
-    ) : null;
+  // The station list's own header fork went with the display teardown; this
+  // body is a rail list, and a rail list has no column header.
+  const columnHeader = null;
 
   if (loading) {
     return (

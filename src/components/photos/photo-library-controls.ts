@@ -1,6 +1,6 @@
-import { WORKBENCH_CHROME_CUBE_CLASS } from '@/components/dashboard/workbench-chrome-cube';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
+import { STATION_CONTEXT_BOXED_CUBE_CLASS } from '@/components/station/entity-context/station-context-action-pill';
 
 /**
  * Bordered control cluster — shared by view toggles and sort pills in the 40px
@@ -10,7 +10,6 @@ import { cn } from '@/utils/_cn';
  */
 export const photoLibraryControlGroupClass = cn(
   'flex items-center border border-border-soft bg-surface-card p-0.5',
-  cornerClass('flush'),
 );
 
 export function photoLibraryControlButtonClass(active: boolean, extra?: string) {
@@ -48,7 +47,7 @@ export const photoAttachDensityButtonClass = '!rounded-none shadow-none';
  * carried its own inner rhythm (`p-0.5` inside, `gap-1` around, `gap-1.5`
  * between) so nothing lined up with anything.
  *
- * The house already answers this: {@link WORKBENCH_CHROME_CUBE_CLASS} is the
+ * The house already answers this: {@link cn(STATION_CONTEXT_BOXED_CUBE_CLASS, 'self-stretch aspect-square')} is the
  * face for a workbench chrome-row icon cell, and it is `self-stretch
  * aspect-square` precisely so a cell tracks the row instead of pinning a size
  * that overflows it. These two exports are that token applied to this surface —
@@ -66,7 +65,7 @@ export const mediaBandCellGroupClass = 'flex shrink-0 items-stretch self-stretch
 /** One chrome-row cell. `active` is the selected segment of a toggle group. */
 export function mediaBandCellClass(active = false, extra?: string) {
   return cn(
-    WORKBENCH_CHROME_CUBE_CLASS,
+    cn(STATION_CONTEXT_BOXED_CUBE_CLASS, 'self-stretch aspect-square'),
     active && 'bg-blue-600 text-white hover:bg-blue-600 hover:text-white',
     extra,
   );

@@ -40,8 +40,6 @@ const PACKER_LANES: SwimlaneLaneDef<PackerHistoryLane>[] = PACKER_HISTORY_BOARD_
 
 interface PackerTableProps {
   packedBy: number;
-  /** Portal week / column controls into the pack workbench chrome slot. */
-  toolbarPortalTarget?: HTMLElement | null;
 }
 
 /** Newest-first by pack time (created_at). */
@@ -49,7 +47,7 @@ function byNewestCreated(a: PackerRecord, b: PackerRecord): number {
   return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
 }
 
-export function PackerTable({ packedBy, toolbarPortalTarget = null }: PackerTableProps) {
+export function PackerTable({ packedBy }: PackerTableProps) {
   // Shared `?staff=` header filter (P1-WORK-02) — the pack scan column header's
   // StaffFilterButton writes it; when set it swaps whose pack history renders.
   // Absent (the default) = the signed-in packer's own logs, unchanged.
@@ -111,7 +109,6 @@ export function PackerTable({ packedBy, toolbarPortalTarget = null }: PackerTabl
       daySections={daySections}
       getRowKey={(record, index) => (record.id != null ? `pkr-${record.id}` : `pkr-${index}`)}
       tableId="packer"
-      toolbarPortalTarget={toolbarPortalTarget}
       savedViewsStorageKey={SAVED_VIEW_STORAGE_KEY.packer_history}
       savedViewsParamKeys={SAVED_VIEW_PARAM_KEYS.packer_history}
       // History is WEEK-scoped, so an empty view is a no-results state, not a

@@ -14,30 +14,29 @@
 
 import { useCallback, useState } from 'react';
 import { AnimatePresence } from '@/design-system/motion';
-import {
-  WorkbenchSheetView,
-  useWorkbenchSheetChrome,
-} from '@/components/dashboard/WorkbenchSheetView';
-import {
-  LabelsTriageBand,
-  LabelsWorkspaceHeader,
-} from '@/components/outbound/labels/LabelsWorkspaceHeader';
 import { LabelsQueueTable } from '@/components/outbound/labels/LabelsQueueTable';
 import { StagedQueueTable } from '@/components/outbound/scan-out/StagedQueueTable';
 import { StagedOrderDetail } from '@/components/outbound/shared/StagedOrderDetail';
 import { useLabelsWorkspaceTab } from '@/hooks/useLabelsWorkspaceTab';
 import { useOutboundUrlState } from '@/hooks/useOutboundUrlState';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
+import { TableStatusBar } from '@/components/tables/TableStatusBar';
+import type { LabelsWorkspaceTab } from '@/utils/labels-workspace-state';
 
 interface LabelsWorkspaceViewProps {
   /** Open the label print/attach flow for a Queue-tab order (writes `?open=`). */
   onOpenLabelOrder: (order: ShippedOrder) => void;
 }
 
+/**
+ * The desk strip. `queue` is the default body, so it lights no tab — the same
+ * rule every other strip follows.
+ */
+const LABELS_VIEW_TABS = [{ id: 'recent', label: 'Recent' }] as const;
+
 export function LabelsWorkspaceView({ onOpenLabelOrder }: LabelsWorkspaceViewProps) {
   const { labelsTab, setLabelsTab } = useLabelsWorkspaceTab();
-  const { q, sort, setQ, setSort, openNew } = useOutboundUrlState();
-  const chrome = useWorkbenchSheetChrome('labels');
+  const { q, sort, setSort } = useOutboundUrlState();
   // Recent (staged) detail is local — it must not touch the Queue tab's `?open=`
   // label-print flow.
   const [recentOpenId, setRecentOpenId] = useState<number | null>(null);
@@ -55,37 +54,13 @@ export function LabelsWorkspaceView({ onOpenLabelOrder }: LabelsWorkspaceViewPro
 
   return (
     <div className="relative flex h-full min-w-0 flex-1 overflow-hidden bg-surface-canvas">
-      <WorkbenchSheetView
-        chrome={chrome}
-        className="h-full"
-        tabs={({ className }) => (
-          <LabelsWorkspaceHeader
-            tab={labelsTab}
-            onSelectTab={setLabelsTab}
-            onNewOrder={openNew}
-            className={className}
-          />
-        )}
-        triage={(p) => (
-          <LabelsTriageBand
-            tab={labelsTab}
-            search={q}
-            onSearch={setQ}
-            sort={sort}
-            onToggleSort={toggleSort}
-            {...p}
-          />
-        )}
-      >
-        {({ controlsEl }) =>
+      {
           labelsTab === 'recent' ? (
             <StagedQueueTable
               searchQuery={q}
               onOpenOrder={openRecent}
               onCloseOrder={closeRecent}
-              hideHeader
               disableBackfill
-              columnTriggerPortalTarget={null}
             />
           ) : (
             <LabelsQueueTable
@@ -93,12 +68,16 @@ export function LabelsWorkspaceView({ onOpenLabelOrder }: LabelsWorkspaceViewPro
               sort={sort}
               onOpenOrder={onOpenLabelOrder}
               onCloseOrder={() => undefined}
-              hideHeader
-              columnTriggerPortalTarget={null}
             />
-          )
+          )}
+      {/* The desk switches body on a tab; each body foots its own strip. */}
+      <TableStatusBar
+        tabs={LABELS_VIEW_TABS}
+        activeTab={labelsTab === 'queue' ? undefined : labelsTab}
+        onTabChange={(id) =>
+          setLabelsTab(id === labelsTab ? 'queue' : (id as LabelsWorkspaceTab))
         }
-      </WorkbenchSheetView>
+      />
 
       <AnimatePresence>
         {recentOpenId ? (

@@ -10,7 +10,7 @@
  * is exactly the closed-catalog job. Popover copy stays catalog label +
  * description — no "Create…" verbs (Gemini D6 / D12 · C14).
  *
- * Face: the Band-1 cube ({@link WORKBENCH_CHROME_CUBE_CLASS}) — whisper fill,
+ * Face: the Band-1 cube ({@link cn(STATION_CONTEXT_BOXED_CUBE_CLASS, 'self-stretch aspect-square')}) — whisper fill,
  * no rest-state box — same flush peer face as every trailing utility CTA on
  * the row. Never a naked header glyph.
  *
@@ -21,11 +21,7 @@ import { useState } from 'react';
 import * as Popover from '@radix-ui/react-popover';
 import { Pin } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { WorkbenchFilterGroupLabel } from '@/components/dashboard/workbench-filter-popover';
-import {
-  WORKBENCH_CHROME_CUBE_CLASS,
-  WORKBENCH_CHROME_CUBE_GLYPH_CLASS,
-} from '@/components/dashboard/workbench-chrome-cube';
+import { FilterMenuGroupLabel } from '@/components/ui/FilterMenu';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 import {
@@ -33,6 +29,7 @@ import {
   type UnboxExtraTabDef,
 } from '@/lib/receiving/unbox-extra-tabs';
 import { focusRing } from '@/design-system/tokens/focus-ring';
+import { STATION_CONTEXT_BOXED_CUBE_CLASS } from '@/components/station/entity-context/station-context-action-pill';
 
 
 export function UnboxAddListPopover({
@@ -58,11 +55,11 @@ export function UnboxAddListPopover({
             aria-expanded={open}
             data-testid="unbox-pin-list"
             className={cn(
-              WORKBENCH_CHROME_CUBE_CLASS,
+              cn(STATION_CONTEXT_BOXED_CUBE_CLASS, 'self-stretch aspect-square'),
               open && 'bg-surface-sunken text-text-muted',
             )}
           >
-            <Pin className={WORKBENCH_CHROME_CUBE_GLYPH_CLASS} aria-hidden />
+            <Pin className={'block h-3.5 w-3.5 shrink-0'} aria-hidden />
           </button>
         </Popover.Trigger>
       </HoverTooltip>
@@ -75,7 +72,7 @@ export function UnboxAddListPopover({
             cornerClass('flush'),
           )}
         >
-          <WorkbenchFilterGroupLabel>Pin list</WorkbenchFilterGroupLabel>
+          <FilterMenuGroupLabel>Pin list</FilterMenuGroupLabel>
           {empty ? (
             <p className="px-2 py-1.5 text-role-caption text-text-faint">All lists pinned</p>
           ) : (

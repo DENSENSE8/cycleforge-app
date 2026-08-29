@@ -12,7 +12,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
+import { DataTable, type DataTableSearch } from '@/components/tables/DataTable';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import type { BinsOverviewRow } from '@/hooks/useBinsOverview';
 import type { RowGroup } from '@/lib/group-rows';
@@ -24,7 +24,6 @@ import {
 } from '@/lib/selection/table-selection';
 import { BINS_SELECTION_SCOPE } from './bins-grid/bins-grid-descriptor';
 import { BINS_TABLE_BINDING } from './bins-grid/bins-table-definition';
-import { BinsGridColumnHeader } from './bins-grid/BinsGridColumnHeader';
 import { BinsGridRow } from './bins-grid/BinsGridRow';
 import {
   defaultDirForBinsGridSort,
@@ -40,8 +39,8 @@ interface Props {
   selected: Set<number>;
   onSelectChange: (next: Set<number>) => void;
   onRowClick: (row: BinsOverviewRow) => void;
-  /** Band-3 controls slot for the column-display (▦) trigger. */
-  columnTriggerPortalTarget?: HTMLElement | null;
+  /** The find field, as data — the workspace above owns the URL it writes. */
+  search: DataTableSearch;
 }
 
 /**
@@ -93,7 +92,7 @@ export function BinsTable({
   selected,
   onSelectChange,
   onRowClick,
-  columnTriggerPortalTarget = null,
+  search,
 }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -176,7 +175,7 @@ export function BinsTable({
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-      <NonlinearTableHost<BinsOverviewRow, BinsGridColumnKey, BinsGridColumn>
+      <DataTable<BinsOverviewRow, BinsGridColumnKey, BinsGridColumn>
         binding={BINS_TABLE_BINDING}
         orderGroupsByDate={orderGroupsByDate}
         rows={rows}
@@ -187,18 +186,8 @@ export function BinsTable({
         loading={loading}
         emptyMessage="No bins match the current filters."
         scrollRef={scrollRef}
-        columnTriggerPortalTarget={columnTriggerPortalTarget}
-        renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
-          <BinsGridColumnHeader
-            selectionScope={BINS_SELECTION_SCOPE}
-            columns={visible}
-            activeSort={columnSort}
-            sortDir={sortDir}
-            onSortColumn={toggleColumnSort}
-            onResizeColumn={onResizeColumn}
-            onResetColumn={onResetColumn}
-          />
-        )}
+        search={search}
+        selectionScope={BINS_SELECTION_SCOPE}
         renderGroup={(group, _stripe, { columns: visible }) => (
           <>{group.rows.map((row) => renderLeaf(row, visible))}</>
         )}

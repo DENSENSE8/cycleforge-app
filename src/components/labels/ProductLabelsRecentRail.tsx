@@ -14,7 +14,7 @@ import { RailPeekCard } from '@/components/sidebar/rail-shell/RailPeekCard';
 import { RailRowBody } from '@/components/sidebar/rail-shell/RailRowBody';
 import { railRelativeTime } from '@/components/sidebar/SidebarRailShell';
 import { SidebarRailScrollport } from '@/components/sidebar/rail-shell/SidebarRailScrollport';
-import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
+import { SearchField } from '@/design-system/primitives/SearchField';
 import {
   EMPTY_LABEL_PRINT_RAIL_FACETS,
   LabelPrintRailFilters,
@@ -185,14 +185,14 @@ export function ProductLabelsRecentRail() {
           )}
         />
       </SidebarRailScrollport>
-      <TechRailSearchBar
+      <SearchField
         value={filterText}
         onChange={setFilterText}
         placeholder="Filter printed…"
-        trailingSuffix={
+        rightElement={
           <LabelPrintRailFilters facets={facets} onChange={setFacets} />
         }
-      />
+        />
     </div>
   );
 }

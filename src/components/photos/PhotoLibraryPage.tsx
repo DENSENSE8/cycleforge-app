@@ -32,10 +32,6 @@ import { ZendeskClaimModal } from '@/components/support/zendesk/claim/ZendeskCla
 import type { ClaimPhotoInput } from '@/components/support/zendesk/claim/claim-types';
 import { RightPaneOverlayHost } from '@/components/ui/RightPaneOverlay';
 import { DashboardScrollShell, useDashboardScrollParent } from '@/components/dashboard/DashboardScrollShell';
-import {
-  WORKBENCH_SHEET_CHROME,
-  WORKBENCH_SHEET_HOST,
-} from '@/components/dashboard/workbench-shell';
 import { Panel } from '@/design-system/primitives';
 import { cn } from '@/utils/_cn';
 import { PhotoContextMenu, type PhotoContextMenuItem } from './PhotoContextMenu';
@@ -45,7 +41,6 @@ import { PhotoLibraryGrid } from './PhotoLibraryGrid';
 import { PhotoLibraryHeader } from './PhotoLibraryHeader';
 import { PhotoBatchInspectorPanel } from './photo-inspector/PhotoBatchInspectorPanel';
 import { PhotoLibraryScopeBand } from './PhotoLibraryScopeBand';
-import { PhotoLibraryWorkspaceHeader } from './PhotoLibraryWorkspaceHeader';
 import { PhotoLibraryTicketNasBackup } from './PhotoLibraryTicketNasBackup';
 import { PhotoLabelEditor } from './PhotoLabelEditor';
 import { MediaLibraryShortcutsModal } from './MediaLibraryShortcutsModal';
@@ -695,9 +690,8 @@ export function PhotoLibraryPage() {
         // Bulk verbs are armed ROWS on the right edge now
         // (`PhotoBatchInspectorPanel`), which is where "what can I do to the
         // picked record" already lived at n = 1.
-        <div className={cn(WORKBENCH_SHEET_CHROME, 'flex flex-col gap-0')}>
+        <div className={cn('relative w-full min-w-0', 'flex flex-col gap-0')}>
           <PhotoLibraryScopeBand />
-          <PhotoLibraryWorkspaceHeader />
           <PhotoLibraryHeader
             breadcrumb={
               <PhotoDateBreadcrumb
@@ -734,7 +728,7 @@ export function PhotoLibraryPage() {
         </div>
       }
     >
-      <div className={WORKBENCH_SHEET_HOST}>
+      <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
         {resolvedTicketId ? (
           <PhotoLibraryTicketNasBackup ticketId={resolvedTicketId} />
         ) : null}

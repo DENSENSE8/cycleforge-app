@@ -3,7 +3,7 @@
 /**
  * Flush feed pane — the shared body for the Sales-hub modes that render a
  * day-banded transaction feed (Local Pickup · Sales), flush in
- * `WORKBENCH_SHEET_HOST` (no framed padded-card island).
+ * `'relative flex min-h-0 min-w-0 flex-1 flex-col'` (no framed padded-card island).
  *
  * **No history dock here, deliberately** (2026-08-29). Every scan station got a
  * leftmost history dock so an operator can answer "did that scan land?" without
@@ -18,10 +18,8 @@
  * boxed pane + richer row/detail model.
  */
 
-import { useMemo } from 'react';
-import { WORKBENCH_SHEET_HOST } from '@/components/dashboard/workbench-shell';
 import { SalesTransactionsFeed } from '@/components/walk-in/SalesTransactionsFeed';
-import { summarizeTransactions, type WalkInTransaction } from '@/lib/walk-in/transactions';
+import { type WalkInTransaction } from '@/lib/walk-in/transactions';
 
 interface WalkInFeedPaneProps {
   rows: WalkInTransaction[];
@@ -41,13 +39,12 @@ export function WalkInFeedPane({
   label,
   emptyMessage,
 }: WalkInFeedPaneProps) {
-  const rollup = useMemo(() => summarizeTransactions(rows), [rows]);
 
   return (
     <div className="flex min-h-0 w-full flex-1 flex-col bg-surface-canvas">
       {/* Feed flush in the sheet host; the scroll lives here so the day-band
           headers dock at top-0 of this region (RepairTable pattern). */}
-      <div className={WORKBENCH_SHEET_HOST}>
+      <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
         <div className="min-h-0 w-full flex-1 overflow-y-auto">
           <SalesTransactionsFeed
             rows={rows}

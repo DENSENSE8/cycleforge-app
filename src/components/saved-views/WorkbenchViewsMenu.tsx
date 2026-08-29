@@ -29,14 +29,13 @@
 import { useState } from 'react';
 import { AnchoredLayer } from '@/design-system/primitives';
 import { Bookmark } from '@/components/Icons';
-import {
-  WorkbenchBandControl,
-  WORKBENCH_BAND_CONTROL_GLYPH_CLASS,
-} from '@/components/dashboard/workbench-band-control';
 import { HeaderChromeMenu } from '@/components/layout/header-chrome-menu';
 import { SavedViewsList } from '@/components/saved-views/SavedViewsList';
 import { useSavedViews } from '@/hooks/useSavedViews';
 import { cn } from '@/utils/_cn';
+import { PRIMARY_CHROME_ROW_FACE } from '@/components/layout/header-shell';
+import { cornerClass } from '@/design-system/tokens/radius';
+import { focusRing } from '@/design-system/tokens/focus-ring';
 
 export function WorkbenchViewsMenu({
   storageKey,
@@ -113,17 +112,28 @@ export function ViewsMenuShell({
   const lit = open || active;
   return (
     <div ref={setWrapEl} className="relative inline-flex shrink-0 items-center p-0">
-      <WorkbenchBandControl
-        icon={<Bookmark className={WORKBENCH_BAND_CONTROL_GLYPH_CLASS} />}
-        label={tip}
-        ariaLabel={active ? `Saved view: ${tip}` : 'Saved views'}
-        text={tip}
-        lit={lit}
+      <button
+        type="button"
+        aria-label={active ? `Saved view: ${tip}` : 'Saved views'}
         aria-expanded={open}
         aria-haspopup="menu"
         aria-pressed={lit}
         onClick={onToggle}
-      />
+        className={cn(
+          'ds-raw-button inline-flex shrink-0 items-center gap-1 px-1.5 text-role-caption',
+          // Colour only — ops chrome never tweens a neighbour's position.
+          'transition-colors duration-100 ease-out',
+          PRIMARY_CHROME_ROW_FACE,
+          cornerClass('flush'),
+          focusRing('control'),
+          lit
+            ? 'bg-blue-600 text-white hover:bg-blue-600'
+            : 'text-text-muted hover:bg-surface-hover hover:text-text-default',
+        )}
+      >
+        <Bookmark className="h-3.5 w-3.5 shrink-0" />
+        <span className="max-w-[12ch] truncate">{tip}</span>
+      </button>
       <AnchoredLayer
         open={open}
         onClose={onClose}

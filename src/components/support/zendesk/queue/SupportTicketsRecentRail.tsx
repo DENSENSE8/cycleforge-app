@@ -13,7 +13,7 @@ import { History, TicketHelp } from '@/components/Icons';
 import { Button, EmptyState } from '@/design-system/primitives';
 import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
 import { SidebarRailScrollport } from '@/components/sidebar/rail-shell/SidebarRailScrollport';
-import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
+import { SearchField } from '@/design-system/primitives/SearchField';
 import {
   EMPTY_SUPPORT_RECENT_RAIL_FACETS,
   matchesSupportRecentRailFacets,
@@ -93,14 +93,14 @@ export function SupportTicketsRecentRail() {
         )}
       </SidebarRailScrollport>
 
-      <TechRailSearchBar
+      <SearchField
         value={filterText}
         onChange={setFilterText}
         placeholder="Filter recent…"
-        trailingSuffix={
+        rightElement={
           <SupportRecentRailFilters facets={facets} onChange={setFacets} />
         }
-      />
+        />
     </div>
   );
 }

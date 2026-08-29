@@ -31,17 +31,8 @@ import { useSurfacePaintMark } from '@/lib/observability/paint-timing';
 import { useUnboxPrimaryPaintOptional } from '@/components/receiving/unbox/unbox-primary-paint-context';
 import { useUIModeOptional } from '@/design-system/providers/UIModeProvider';
 import { DateRangePickerPill } from '@/components/ui/DateRangeHeader';
-import { IncomingWorkspaceHeader } from '@/components/sidebar/receiving/incoming/IncomingWorkspaceHeader';
 import { IncomingReturnsImportStagingHost } from '@/components/sidebar/receiving/incoming/IncomingReturnsImportStagingHost';
 import { IncomingReturnsImportStagingRail } from '@/components/sidebar/receiving/incoming/IncomingReturnsImportStagingRail';
-import {
-  HistoryWorkspaceHeader,
-  HistoryTriageBand,
-} from '@/components/sidebar/receiving/HistoryWorkspaceHeader';
-import {
-  WorkbenchSheetView,
-  useWorkbenchSheetChrome,
-} from '@/components/dashboard/WorkbenchSheetView';
 import { useTableImportParam } from '@/hooks/useTableImportParam';
 import { INBOUND_RETURNS_IMPORT_DESCRIPTOR } from '@/lib/inbound/inbound-returns-import-descriptor';
 import {
@@ -58,11 +49,9 @@ import {
 import { useQueryClient } from '@tanstack/react-query';
 import { commitReceivingLineNote } from '@/lib/receiving/commit-receiving-line-note';
 import { compareIncomingGridRows } from '@/lib/receiving/incoming-grid-compare';
-import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import { groupRowsBy, type RowGroup } from '@/lib/group-rows';
 import { INCOMING_TABLE_BINDING } from '@/components/station/incoming-grid/incoming-table-definition';
-import { IncomingGridColumnHeader } from '@/components/station/incoming-grid/IncomingGridColumnHeader';
 import { IncomingGridGroupRow } from '@/components/station/incoming-grid/IncomingGridGroupRow';
 import { computeWeekRange, formatWeekRangeCompact, toPSTDateKey } from '@/utils/date';
 import type { GroupedRenderOrder } from '@/lib/group-rows';
@@ -79,6 +68,8 @@ import {
   buildReceivingHistoryExportCsv,
   receivingHistoryExportFilename,
 } from '@/lib/receiving/history-export-csv';
+import { DataTable } from '@/components/tables/DataTable';
+import { RECEIVING_SEARCH_PARAM_KEY } from '@/lib/receiving/receiving-modes';
 
 import { useReceivingModeContext } from '@/components/station/useReceivingModeContext';
 import { useReceivingLinesData } from '@/components/station/useReceivingLinesData';
@@ -91,14 +82,12 @@ import { ReceivingLineOrderRow } from '@/components/station/ReceivingLineOrderRo
 import { GridDegradedBox } from '@/design-system/components/grid';
 import { ReceivingGridHost } from '@/components/station/receiving-grid/ReceivingGridHost';
 import { RECEIVING_COMPOUND_COLUMNS } from '@/lib/receiving/receiving-grid-layout';
-import { ReceivingDrillHost } from '@/components/station/receiving-grid/ReceivingDrillHost';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { StationPipelineBoard } from '@/components/station/StationPipelineBoard';
 import { STATION_PIPELINE_BOARDS } from '@/lib/station/flags';
 import { LAYOUT_PARAM, parseLayout, parseWeekOffset, WEEK_OFFSET_PARAM } from '@/lib/station/table-url-params';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { cartonReadHref, INCOMING_SURFACE_ROUTE } from '@/lib/receiving/surface-path';
-import { parseHistoryDrillLayout } from '@/lib/receiving/history-drill-layout';
 import { toast } from '@/lib/toast';
 import {
   dispatchReceivingOpenHistoryTriage,
@@ -126,7 +115,6 @@ import {
   type ReceivingHistoryLane,
   type ReceivingLaneIconKey,
 } from '@/lib/receiving/receiving-board-lanes';
-import { TableColumnConfigProvider } from '@/components/ui/table-column-config/TableColumnConfig';
 import { parseInboundLane } from '@/lib/receiving/inbound-lane';
 import { getUnboxWorkspaceTabFromSearch } from '@/utils/unbox-workspace-state';
 import { unboxKpiRowFilter, UNBOX_KPI_FILTER_PARAM } from '@/lib/receiving/unbox-metrics';
@@ -175,9 +163,9 @@ export { ReceivingLineOrderRow } from '@/components/station/ReceivingLineOrderRo
 export interface ReceivingLinesTableProps {
   selectMode?: boolean;
   /**
-   * Host owns WorkbenchChromeHeader (Unbox workbench). Suppresses the table's
-   * own History/Incoming chrome; week pill portals into `toolbarPortalTarget`
-   * (controls slot). Column display is neither the host's nor this portal's —
+   * Mounted inside the Unbox workbench rather than as its own desk. Suppresses
+   * the table's own History/Incoming framing; the week pill portals into
+   * `toolbarPortalTarget` (controls slot). Column display is gone —
    * it is the grid's own header lip — chrome never carries Fields.
    */
   embedded?: boolean;
@@ -196,7 +184,6 @@ export default function ReceivingLinesTable({
   const searchParams = useSearchParams();
   // Band-3 no longer hosts ▦ — Show inspector opens Column display.
   // Unbox embed still portals into the inspector View cluster.
-  const sheetChrome = useWorkbenchSheetChrome();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const {
@@ -683,9 +670,7 @@ export default function ReceivingLinesTable({
       // Board layout can fire inside the Unbox Inbound embed (`?layout=board`) —
       // keep it on the same `incoming_embed` bucket as the embed sheet so the
       // split from `/incoming` holds across both presentations (D13).
-      <TableColumnConfigProvider
-        tableId={isIncomingMode ? (embedded ? 'incoming_embed' : 'incoming') : 'receiving'}
-      >
+      <>
         <div className="flex h-full min-w-0 overflow-hidden bg-surface-card">
           {isIncomingMode ? (
             <StationPipelineBoard<ReceivingLineRow, ReceivingIncomingLane>
@@ -713,31 +698,41 @@ export default function ReceivingLinesTable({
             />
           )}
         </div>
-      </TableColumnConfigProvider>
+      </>
     );
   }
 
   // Unbox / History spreadsheet body — LedgerGrid via ReceivingGridHost (same
   // family as the Incoming grid). Date is a per-row column; no sticky day bands.
-  // History default is the folded list; Drill (`?hlayout=drill`) mounts linked
-  // dual panes via ReceivingDrillHost.
+  // The drill pane went with the display teardown (2026-08-29) — the folded
+  // list is the only History body now.
   const weekCount = getWeekCount();
-  const unboxTab = getUnboxWorkspaceTabFromSearch(searchParams);
-  const historyDrill =
-    embedded &&
-    unboxTab === 'history' &&
-    parseHistoryDrillLayout(searchParams.get('hlayout')) === 'drill';
+  /** The one find field for every receiving body — the URL is the state. */
+  const receivingSearch = {
+    value: searchParams.get(RECEIVING_SEARCH_PARAM_KEY) ?? '',
+    onChange: (next: string) => {
+      const params = new URLSearchParams(searchParams.toString());
+      const trimmed = next.trim();
+      if (trimmed) params.set(RECEIVING_SEARCH_PARAM_KEY, trimmed);
+      else params.delete(RECEIVING_SEARCH_PARAM_KEY);
+      const qs = params.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    },
+    placeholder: isIncomingMode ? 'Filter incoming…' : 'Filter cartons…',
+  };
 
-  // Unbox embed → inspector View cluster. Desk Incoming / standalone History
-  // open Column display from Show inspector (no Band-3 ▦).
-  const columnDisplayPortalTarget = embedded
-    ? (toolbarPortalTarget ?? null)
-    : null;
-
-  const receivingGrid = () =>
-    historyDrill ? (
-      <ReceivingDrillHost
+  const receivingGrid = () => (
+    // COMPOUND (two-row) WMS layout — the receiving spreadsheet's row shape,
+    // not a per-lane variant. Unbox, History and Testing all mount it: they
+    // are the same table read at different moments, so a lane-conditional
+    // column model would be exactly the fork this engine exists to prevent.
+    // Density is an operator control in Column display, not chrome here.
+    <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+      <ReceivingGridHost
+        search={receivingSearch}
+        columns={RECEIVING_COMPOUND_COLUMNS}
         filteredGroupedRecords={filteredGroupedRecords}
+        serverSorted={mode.serverSorted}
         loading={isLoading && localRows.length === 0}
         emptyMessage={emptyMessage}
         isMobile={isMobile}
@@ -756,42 +751,10 @@ export default function ReceivingLinesTable({
         onOpenWorkspace={isUnboxHistoryTriage ? openHistoryWorkspace : undefined}
         historyTriageMenu={isUnboxHistoryTriage}
         scrollRef={scrollRef}
-        columnTriggerPortalTarget={columnDisplayPortalTarget}
+        className="h-full min-h-0 flex-1"
       />
-    ) : (
-      // COMPOUND (two-row) WMS layout — the receiving spreadsheet's row shape,
-      // not a per-lane variant. Unbox, History and Testing all mount it: they
-      // are the same table read at different moments, so a lane-conditional
-      // column model would be exactly the fork this engine exists to prevent.
-      // Density is an operator control in Column display, not chrome here.
-      <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-        <ReceivingGridHost
-          columns={RECEIVING_COMPOUND_COLUMNS}
-          filteredGroupedRecords={filteredGroupedRecords}
-          serverSorted={mode.serverSorted}
-          loading={isLoading && localRows.length === 0}
-          emptyMessage={emptyMessage}
-          isMobile={isMobile}
-          selectMode={selectMode}
-          selectedId={selectedId}
-          selectedIds={selectedIds}
-          handleSelectRow={handleSelectRow}
-          handleToggleRow={
-            isHistorySurface || isUnboxWorkbench ? handleToggleRow : undefined
-          }
-          activityAxis={historyAxis}
-          isHistory={isHistoryMode}
-          statusVocabulary={isHistoryMode ? 'coarse' : 'fine'}
-          selectGutterChrome={selectGutterChrome}
-          clickSelect={false}
-          onOpenWorkspace={isUnboxHistoryTriage ? openHistoryWorkspace : undefined}
-          historyTriageMenu={isUnboxHistoryTriage}
-          scrollRef={scrollRef}
-          columnTriggerPortalTarget={columnDisplayPortalTarget}
-          className="h-full min-h-0 flex-1"
-        />
-      </div>
-    );
+    </div>
+  );
 
   // Unbox Queue / Viewed skip the week filter — do NOT portal a static
   // "Door queue · N" fact chip (duplicates the Queue tab badge; not actionable).
@@ -828,15 +791,16 @@ export default function ReceivingLinesTable({
   if (embedded) {
     if (isIncomingMode) {
       return (
-        <TableColumnConfigProvider tableId="incoming_embed">
+        <>
           {incomingDegraded ? (
             <div className="p-3">
               <GridDegradedBox onRetry={refetch} />
             </div>
           ) : (
-            <NonlinearTableHost<ReceivingLineRow, IncomingGridColumnKey, IncomingGridColumn>
+            <DataTable<ReceivingLineRow, IncomingGridColumnKey, IncomingGridColumn>
               binding={INCOMING_TABLE_BINDING}
-              tableId="incoming_embed"
+              search={receivingSearch}
+              selectionScope={RECEIVING_SELECTION_SCOPE}
               // COMPOUND (two-row) WMS layout — the SAME tracks Unbox, History,
               // Testing, To-Ship and Tasks mount. No lane variant: the
               // recently-removed lane's reason rides the STATE pill
@@ -851,22 +815,6 @@ export default function ReceivingLinesTable({
               loading={isLoading && localRows.length === 0}
               emptyMessage={emptyMessage}
               scrollRef={scrollRef}
-              columnTriggerPortalTarget={columnDisplayPortalTarget}
-              renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
-                <IncomingGridColumnHeader
-                  isMobile={isMobile}
-                  selectMode={selectMode}
-                  selectionScope={RECEIVING_SELECTION_SCOPE}
-                  selectGutterChrome={selectGutterChrome}
-                  columns={visible}
-                  activeSort={incomingColumnSort}
-                  sortDir={incomingSortDir}
-                  onSortColumn={toggleColumnSort}
-                  onResizeColumn={onResizeColumn}
-                  onResetColumn={onResetColumn}
-                  tableId="incoming_embed"
-                />
-              )}
               renderGroup={(group, baseStripeIndex, { columns: visible }) => (
                 <IncomingGridGroupRow
                   group={group}
@@ -901,7 +849,7 @@ export default function ReceivingLinesTable({
               )}
             />
           )}
-        </TableColumnConfigProvider>
+        </>
       );
     }
     const portaledToolbar =
@@ -909,10 +857,10 @@ export default function ReceivingLinesTable({
         ? createPortal(chromePill, toolbarPortalTarget)
         : null;
     return (
-      <TableColumnConfigProvider tableId="receiving">
+      <>
         {portaledToolbar}
         {receivingGrid()}
-      </TableColumnConfigProvider>
+      </>
     );
   }
 
@@ -923,30 +871,9 @@ export default function ReceivingLinesTable({
   // Returns CSV staging swaps the Pipeline centre (Orders golden path).
   if (isIncomingMode || isInboundDocked) {
     return (
-      <TableColumnConfigProvider tableId={isIncomingMode ? 'incoming' : 'receiving'}>
+      <>
         {showReturnsImportStaging ? <IncomingReturnsImportStagingRail /> : null}
-        <WorkbenchSheetView
-          chrome={sheetChrome}
-          className="h-full bg-transparent"
-          tabs={
-            showReturnsImportStaging
-              ? undefined
-              : ({ className }) => (
-                  <IncomingWorkspaceHeader
-                    className={className}
-                    total={
-                      isIncomingMode
-                        ? isDeliveredUnscannedFacet || isDeliveredNotUnboxedFacet
-                          ? localRows.length
-                          : Number(data?.total ?? 0)
-                        : Number(data?.total ?? localRows.length)
-                    }
-                    page={isIncomingMode ? incomingPage : 1}
-                  />
-                )
-          }
-        >
-          {() =>
+        {
             showReturnsImportStaging ? (
               <IncomingReturnsImportStagingHost />
             ) : isIncomingMode ? (
@@ -955,8 +882,10 @@ export default function ReceivingLinesTable({
                   <GridDegradedBox onRetry={refetch} />
                 </div>
               ) : (
-                <NonlinearTableHost<ReceivingLineRow, IncomingGridColumnKey, IncomingGridColumn>
+                <DataTable<ReceivingLineRow, IncomingGridColumnKey, IncomingGridColumn>
                   binding={INCOMING_TABLE_BINDING}
+                  search={receivingSearch}
+                  selectionScope={RECEIVING_SELECTION_SCOPE}
                   // COMPOUND (two-row) WMS layout — see the embedded mount above.
                   columns={INCOMING_COMPOUND_COLUMNS}
                   orderGroupsByDate={incomingGroups}
@@ -967,21 +896,6 @@ export default function ReceivingLinesTable({
                   loading={isLoading && localRows.length === 0}
                   emptyMessage={emptyMessage}
                   scrollRef={scrollRef}
-                  columnTriggerPortalTarget={null}
-                  renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
-                    <IncomingGridColumnHeader
-                      isMobile={isMobile}
-                      selectMode={selectMode}
-                      selectionScope={RECEIVING_SELECTION_SCOPE}
-                      selectGutterChrome={selectGutterChrome}
-                      columns={visible}
-                      activeSort={incomingColumnSort}
-                      sortDir={incomingSortDir}
-                      onSortColumn={toggleColumnSort}
-                      onResizeColumn={onResizeColumn}
-                      onResetColumn={onResetColumn}
-                    />
-                  )}
                   renderGroup={(group, baseStripeIndex, { columns: visible }) => (
                     <IncomingGridGroupRow
                       group={group}
@@ -1020,8 +934,7 @@ export default function ReceivingLinesTable({
               receivingGrid()
             )
           }
-        </WorkbenchSheetView>
-      </TableColumnConfigProvider>
+      </>
     );
   }
 
@@ -1030,33 +943,15 @@ export default function ReceivingLinesTable({
   // tabs + Band 3 triage; no KPI.
   if (isHistoryMode) {
     return (
-      <TableColumnConfigProvider tableId="receiving">
-        <WorkbenchSheetView
-          chrome={sheetChrome}
-          className="h-full bg-transparent"
-          tabs={({ className }) => <HistoryWorkspaceHeader className={className} />}
-          triage={({ controlsSlotRef }) => (
-            <HistoryTriageBand
-              controlsSlotRef={controlsSlotRef}
-              weekRange={weekRange}
-              weekOffset={weekOffset}
-              weekCount={getWeekCount()}
-              onPrevWeek={() => setWeekOffset(weekOffset + 1)}
-              onNextWeek={() => setWeekOffset(Math.max(0, weekOffset - 1))}
-            />
-          )}
-        >
-          {() => receivingGrid()}
-        </WorkbenchSheetView>
-      </TableColumnConfigProvider>
+      <>
+        {receivingGrid()}
+      </>
     );
   }
 
   return (
-    <TableColumnConfigProvider tableId="receiving">
-      <WorkbenchSheetView chrome={sheetChrome} className="h-full bg-transparent">
-        {() => receivingGrid()}
-      </WorkbenchSheetView>
-    </TableColumnConfigProvider>
+    <>
+      {receivingGrid()}
+    </>
   );
 }

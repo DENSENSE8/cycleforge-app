@@ -3,9 +3,8 @@
 /**
  * My Day — Home Today's Workbench, composed from the house shells.
  *
- *   chrome    → `WorkbenchChromeHeader` `density="band"` on `WORKBENCH_SHEET_CHROME`
- *               (Unbox flush — no side gutters) — lane tabs left, TechRailSearchBar,
- *               due-horizon refine in `right`, Add (watch ticket) in `trailing`
+ *   chrome    → none. `DataTable` draws the find field, the due-horizon filter
+ *               and the lane tabs from the data this workspace resolves.
  *   collection→ `LedgerGridSurface` `surface="sheet"` (mounted via NonlinearTableHost)
  *   record    → `RightRailHost` (non-modal) via `MyDayTaskInspectorRail`
  *               or `MyDayWatchRail` (`?watch=1` — ticket / tracking intake)
@@ -15,7 +14,7 @@
  * **No lane sidebar.** The lanes were a resident 280px column whose entire job
  * was a four-way filter over the table beside it — a facet that belongs in the
  * table's own chrome, where every other workbench puts it
- * (`WorkbenchChromeHeader` tabs: Unbox's Queue/Viewed/History, History's
+ * (the table's own tab strip: Unbox's Queue/Viewed/History, History's
  * All/Unfound). Deleting it gave the grid back ~280px, which is what the
  * Due/Status tracks needed. The rail Today has now holds SAVED VIEWS — operator-
  * defined combinations, which is the one thing chrome cannot own
@@ -43,24 +42,11 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { WorkbenchInspectorToggle } from '@/components/dashboard/workbench-inspector-toggle';
-import { useRightRailOccupantOpen } from '@/components/right-rail/useRightRailOccupant';
-import {
-  WORKBENCH_SHEET_CHROME,
-  WORKBENCH_SHEET_HOST,
-  WorkbenchChromeHeader,
-  WorkbenchTrailingCluster,
-  WorkbenchTriageBand,
-  withScopeDivider,
-} from '@/components/dashboard/workbench-shell';
-import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 import { cn } from '@/utils/_cn';
-import { MyDayDueHorizonChips } from './MyDayDueHorizonChips';
 import { MyDayOnboardingPanel } from './MyDayOnboardingPanel';
 import { MyDayTaskInspectorRail } from './MyDayTaskInspector';
 import { MyDayWatchRail } from './MyDayWatchRail';
-import { MyDayWatchTicketAction } from './MyDayWatchTicketAction';
-import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
+import { DataTable } from '@/components/tables/DataTable';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import type { RowGroup } from '@/lib/group-rows';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
@@ -71,7 +57,6 @@ import {
   type MyDayGridColumnKey,
 } from '@/lib/my-day/my-day-grid-layout';
 import { MY_DAY_TABLE_BINDING } from './grid/my-day-table-definition';
-import { MyDayGridColumnHeader } from './grid/MyDayGridColumnHeader';
 import { MyDayGridRow } from './grid/MyDayGridRow';
 import { useMyDayFeed } from './useMyDayFeed';
 import { useMyDayView } from './useMyDayView';
@@ -80,10 +65,11 @@ import {
   filterMyDayTasks,
   filterMyDayTasksByHorizon,
   myDayDueHorizonCounts,
+  MY_DAY_DUE_HORIZONS,
   myDayDueHorizonLabel,
+  type MyDayDueHorizon,
   myDayLaneCounts,
   myDayLaneLabel,
-  myDayLaneTabColor,
   myDayTasksFromFeed,
   searchMyDayTasks,
   type MyDayLaneFilter,
@@ -137,8 +123,6 @@ export function MyDayWorkspace() {
     closeWatch,
   } = useMyDayView();
 
-  const [controlsEl, setControlsEl] = useState<HTMLDivElement | null>(null);
-  const taskInspectorOpen = useRightRailOccupantOpen('detail:my-day');
 
   const tasks = useMemo(() => myDayTasksFromFeed(data), [data]);
   const counts = useMemo(() => myDayLaneCounts(tasks), [tasks]);
@@ -164,24 +148,41 @@ export function MyDayWorkspace() {
     [visibleTasks, taskId],
   );
 
-  const isFiltered = lane !== 'all' || query.trim().length > 0 || horizon !== null;
 
   // All first, then the specific lanes — the tab strip IS the filter, so the
   // unfiltered view has to be a tab rather than an implied empty state.
   // Same strip grammar as Unbox: the leading SCOPE tab (here "All", the
   // unfiltered view) is separated from the lanes that filter within it by one
   // hairline — `withScopeDivider` owns that placement for both surfaces.
+  // `all` is the absence of a lane filter, so it lights no tab — clicking the
+  // lit lane clears back to it.
   const tabs = useMemo(
     () =>
-      withScopeDivider(
-        MY_DAY_LANE_FILTERS.map((id) => ({
-          id,
-          label: myDayLaneLabel(id),
-          count: counts[id],
-          color: myDayLaneTabColor(id),
-        })),
-      ),
+      MY_DAY_LANE_FILTERS.filter((id) => id !== 'all').map((id) => ({
+        id,
+        label: myDayLaneLabel(id),
+        count: counts[id],
+      })),
     [counts],
+  );
+
+  // The due horizon is the desk's one refinement, and it is a genuinely
+  // different question from the lane — WHEN is this due, not WHOSE queue is it
+  // in. The two compose, which is why it is the filter and not a second strip.
+  const dueFilter = useMemo(
+    () => ({
+      options: MY_DAY_DUE_HORIZONS.map((id) => ({
+        id,
+        label: myDayDueHorizonLabel(id),
+        count: horizonCounts[id] || undefined,
+        active: horizon === id,
+      })),
+      onToggle: (id: string) => toggleHorizon(id as MyDayDueHorizon),
+      onClearAll: () => {
+        if (horizon) toggleHorizon(horizon);
+      },
+    }),
+    [horizon, horizonCounts, toggleHorizon],
   );
 
   // Grid adapter (was `MyDayGridView`): the workspace mounts the registry host
@@ -221,64 +222,6 @@ export function MyDayWorkspace() {
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-surface-canvas text-text-default">
-      <div className={cn(WORKBENCH_SHEET_CHROME, 'flex flex-col gap-0')}>
-        <WorkbenchChromeHeader
-          density="band"
-          className="rounded-none border-l-0 border-t-0 shadow-sm"
-          tabs={tabs}
-          activeTab={lane}
-          onTabChange={(id) => setLane(id as MyDayLaneFilter)}
-          solidTone="accent"
-          // Trailing = solid Add CTA (opens Watch rail — ticket or tracking).
-          // Sort stays on the grid header (`?colsort=`); column display stays on
-          // the grid lip — neither belongs in this cluster.
-          trailing={
-            <WorkbenchTrailingCluster
-              actions={<MyDayWatchTicketAction onOpen={openWatch} />}
-            />
-          }
-        />
-        {/*
-          Band 3 — find-only command row: dominant find LEFT (always-open
-          TechRailSearchBar — filter+paste, not icon-first expand), inspector
-          park far-right.
-
-          The due-horizon chips DO narrow the rows, so the 2026-08-08 find-only
-          rule would normally move them in-field. They stay in `right` as a
-          documented resident: they are a compound cluster carrying live counts
-          per horizon, not a single field-density glyph, and `trailingSuffix`
-          is a one-glyph slot (`display/workbench-ops-queue.md` → Find-only
-          Band 3: "Compound clusters that are not a single field-density glyph
-          stay in the right zone until they grow one"). Same standing as
-          `OutboundExactFilters` on Shipping / Pack / Labels.
-        */}
-        <WorkbenchTriageBand
-          search={
-            <TechRailSearchBar
-              variant="chrome"
-              value={query}
-              onChange={(v) => setQuery(v.trim())}
-              placeholder="Filter tasks…"
-              className="min-w-0 flex-1"
-            />
-          }
-          right={
-            !isError ? (
-              <MyDayDueHorizonChips
-                counts={horizonCounts}
-                loading={isLoading}
-                active={horizon}
-                onToggle={toggleHorizon}
-              />
-            ) : null
-          }
-          trailing={
-            <WorkbenchInspectorToggle open={taskInspectorOpen} testId="my-day-inspector-toggle" />
-          }
-          controlsSlotRef={setControlsEl}
-        />
-      </div>
-
       {/*
         The body is onboarding + the table. The due-horizon refine used to sit
         here as a KPI band; moving it into the chrome's `right` slot did NOT
@@ -287,7 +230,7 @@ export function MyDayWorkspace() {
         the chrome is still one non-scrolling layer outside the scroll port, and
         the grid still owns the only sticky layer inside it.
       */}
-      <div className={cn(WORKBENCH_SHEET_HOST, 'min-h-0')}>
+      <div className={cn('relative flex min-h-0 min-w-0 flex-1 flex-col', 'min-h-0')}>
         <MyDayOnboardingPanel />
 
         {isError ? (
@@ -297,7 +240,7 @@ export function MyDayWorkspace() {
             </p>
           </div>
         ) : (
-          <NonlinearTableHost<MyDayTask, MyDayGridColumnKey, MyDayGridColumn>
+          <DataTable<MyDayTask, MyDayGridColumnKey, MyDayGridColumn>
             binding={MY_DAY_TABLE_BINDING}
             orderGroupsByDate={orderGroupsByDate}
             rows={visibleTasks}
@@ -305,14 +248,13 @@ export function MyDayWorkspace() {
             sort={columnSort}
             dir={sortDir}
             onSortChange={setSort}
-            columnTriggerPortalTarget={controlsEl}
             loading={isLoading}
-            // Settled-with-nothing on a "what needs me" queue is an ALL-CLEAR,
-            // not an absence — say so rather than showing a create prompt.
+            search={{ value: query, onChange: setQuery, placeholder: 'Filter tasks…' }}
+            filter={dueFilter}
+            tabs={tabs}
+            activeTab={lane === 'all' ? undefined : lane}
+            onTabChange={(id) => setLane(id === lane ? 'all' : (id as MyDayLaneFilter))}
             emptyMessage="Nothing needs you right now."
-            // No-match is a THIRD answer, and it names the control that would
-            // widen it — narrowest first, because that is the one the operator
-            // most recently touched: KPI tile → query → lane.
             searchEmptyMessage={
               horizon
                 ? `Nothing ${myDayDueHorizonLabel(horizon).toLowerCase()} here — click the tile again to clear it.`
@@ -320,18 +262,7 @@ export function MyDayWorkspace() {
                   ? `No tasks match “${query.trim()}”. Clear the filter to see the rest.`
                   : `Nothing in ${myDayLaneLabel(lane)} right now — try All.`
             }
-            isSearching={isFiltered}
             scrollRef={gridScrollRef}
-            renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
-              <MyDayGridColumnHeader
-                columns={visible}
-                activeSort={columnSort}
-                sortDir={sortDir}
-                onSortColumn={toggleColumnSort}
-                onResizeColumn={onResizeColumn}
-                onResetColumn={onResetColumn}
-              />
-            )}
             renderGroup={(group, _stripe, { columns: visible }) => (
               <MyDayGridRow
                 key={group.rows[0].id}

@@ -22,35 +22,25 @@
 
 import { Suspense, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
-import { useSearchParams } from 'next/navigation';
 import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
-import {
-  WORKBENCH_SHEET_CHROME,
-  WORKBENCH_SHEET_HOST,
-} from '@/components/dashboard/workbench-shell';
 import { RECEIVING_SELECTION_SCOPE } from '@/components/station/receiving-lines-table-helpers';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { UnboxTableCardSkeleton } from '@/components/receiving/unbox/UnboxWorkbenchSkeleton';
-import { UnboxWorkspaceHeader } from '@/components/receiving/unbox/UnboxWorkspaceHeader';
 import { ReceivingLineRailShell } from '@/components/receiving/rail/ReceivingLineRailShell';
 import { ReceivingClaimModal } from '@/components/receiving/workspace/ReceivingClaimModal';
-import { UnboxCompareHost } from '@/components/receiving/unbox/compare/UnboxCompareHost';
-import { useHistoryViewChromeOptional } from '@/components/receiving/history/history-view-chrome-context';
 import { TechAllTriageTable } from '@/components/tech/all/TechAllTriageTable';
-import {
-  GRID_ZOOM_DEFAULT,
-  gridZoomStyle,
-} from '@/design-system/components/grid/grid-zoom';
-import {
-  parseUnboxCompareLayout,
-  UNBOX_COMPARE_LAYOUT_PARAM,
-} from '@/lib/receiving/unbox-compare-layout';
 import { useSurfacePaintMark } from '@/lib/observability/paint-timing';
 import { useUnboxWorkspaceTab } from '@/hooks/useUnboxWorkspaceTab';
 import { useReceivingLineRailSelection } from '@/hooks/useReceivingLineRailSelection';
 import { incomingDetailsTargetFromRow } from '@/lib/receiving/incoming-details-target';
 import { dispatchReceivingOpenIncomingDetails } from '@/utils/events';
 import { toast } from '@/lib/toast';
+import { TableTabs } from '@/components/tables/TableStatusBar';
+import {
+  UNBOX_WORKSPACE_TABS,
+  UNBOX_WORKSPACE_TAB_LABEL,
+  type UnboxWorkspaceTab,
+} from '@/utils/unbox-workspace-state';
 
 const ReceivingLinesTable = dynamic(
   () => import('@/components/station/ReceivingLinesTable'),
@@ -81,22 +71,10 @@ export function UnboxWorkspaceView(props: {
   inspectorOpen?: boolean;
 }) {
   const { unboxView, setUnboxView } = useUnboxWorkspaceTab();
-  const historyViewChrome = useHistoryViewChromeOptional();
   const isIncoming = unboxView === 'incoming';
-  const searchParams = useSearchParams();
-  const compareLayout = parseUnboxCompareLayout(
-    searchParams.get(UNBOX_COMPARE_LAYOUT_PARAM),
-  );
-  const isCompare = compareLayout !== 'single' && !isIncoming;
   const lineWorkspaceOpen = props.selectedLine != null;
   const recordInspectOpen = Boolean(props.recordInspectOpen);
 
-  // The ▦ portal host and the zoom value live on the inspector View cluster on
-  // EVERY tab now — Band 3 hosts neither. The provider wraps the whole Unbox
-  // subtree (ReceivingRightPane → UnboxHistoryHost), so the optional read is
-  // never null on /unbox; the fallbacks are for a stray mount elsewhere.
-  const controlsEl = historyViewChrome?.controlsEl ?? null;
-  const zoom = historyViewChrome?.zoom ?? GRID_ZOOM_DEFAULT;
 
   useSurfacePaintMark('unbox:chrome', true);
 
@@ -149,43 +127,33 @@ export function UnboxWorkspaceView(props: {
         // Sheet grids self-scroll (sticky X gutter pins to the sheet floor).
         // Page Y here would bury that gutter under the row stack.
         className="h-full overflow-y-hidden bg-transparent"
-        chrome={
-          <div className={WORKBENCH_SHEET_CHROME}>
-            <UnboxWorkspaceHeader
-              tab={unboxView}
-              onSelectTab={setUnboxView}
-              inspectorOpen={Boolean(props.inspectorOpen)}
-              // Middle region only while the browse is the middle. A carton
-              // covers this view (kept mounted, `visibility: hidden`), and the
-              // station bench is the other `middle` claimant —
-              // `registerNavRegion` keys by region id, so two live registrations
-              // would silently fight over `⌘; m`.
-              navRegionId={lineWorkspaceOpen ? null : 'middle'}
-            />
-          </div>
-        }
       >
-        <div
-          className={WORKBENCH_SHEET_HOST}
-          style={gridZoomStyle(zoom)}
-          data-grid-zoom={zoom}
-        >
+        <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
           <Suspense fallback={<UnboxTableCardSkeleton />}>
             {unboxView === 'all' ? (
-              <TechAllTriageTable scope="unbox" columnTriggerPortalTarget={controlsEl} />
-            ) : isCompare ? (
-              <UnboxCompareHost selectMode={selectMode} />
+              <TechAllTriageTable scope="unbox" />
             ) : (
               <ReceivingLinesTable
                 key={unboxView}
                 selectMode={selectMode}
                 embedded
-                toolbarPortalTarget={controlsEl}
               />
             )}
           </Suspense>
         </div>
       </DashboardScrollShell>
+      {/* The desk switches BODY on a tab; each body foots its own strip. */}
+      <TableTabs
+        tabs={UNBOX_WORKSPACE_TABS.filter((id) => id !== 'queue').map((id) => ({
+          id,
+          label: UNBOX_WORKSPACE_TAB_LABEL[id],
+        }))}
+        activeTab={unboxView === 'queue' ? undefined : unboxView}
+        onTabChange={(id) =>
+          setUnboxView(id === unboxView ? 'queue' : (id as UnboxWorkspaceTab))
+        }
+        className="border-t border-border-soft bg-surface-card"
+      />
 
       <ReceivingLineRailShell
         surface={isIncoming ? 'incoming' : 'lines'}

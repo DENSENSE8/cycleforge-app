@@ -24,12 +24,10 @@
 
 import { ClipboardList } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
-import { WORKBENCH_CHROME_PILL_CLASS } from '@/components/dashboard/workbench-shell';
 import { cn } from '@/utils/_cn';
 
 /** Flush workbench-chrome CTA face (soft pill + condensed uppercase). */
 const CHROME_CTA_FACE = cn(
-  WORKBENCH_CHROME_PILL_CLASS,
   // Fills the PRIMARY chrome row — never taller than the band it sits in.
   // Square: an icon-only cube, sized off the row rather than off its own text.
   'h-full aspect-square',

@@ -16,7 +16,6 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { OrderNumberMenuChip } from '@/components/ui/OrderNumberMenuChip';
 import { PlatformMark } from '@/components/ui/PlatformMark';
 import { TrackingNumberMenuChip } from '@/components/ui/TrackingNumberMenuChip';
-import { useIsColumnHidden } from '@/components/ui/table-column-config/TableColumnConfig';
 import { resolveMarketplaceChipIdentity } from '@/lib/marketplace-order-id';
 import { sourcePlatformMetaFromLabel } from '@/lib/source-platform';
 import { dashboardOrderRowChipsClass } from '@/lib/dashboard-order-row-layout';
@@ -365,7 +364,9 @@ export function OrderIdentityChips(props: OrderIdentityChipsProps) {
   // header "Hide field" actually drops platform/order/tracking (their hide-keys
   // in the `orders` registry: platform / orderid / tracking). No-op outside a
   // provider, so the `cluster`/mobile consumers are unaffected.
-  const isColumnHidden = useIsColumnHidden();
+  // Per-staff column hiding went with the column-display rail (2026-08-29):
+  // every declared slot paints.
+  const isColumnHidden = (_key?: string) => false;
   const nodes = useOrderIdentityCellNodes(props);
 
   // Sheets-like grid: three fixed-width cells the parent grid locks to its

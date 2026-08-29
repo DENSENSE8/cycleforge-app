@@ -29,7 +29,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Clock, Pencil, PrinterAlt, Receipt, ColumnsThree } from '../Icons';
+import { Clock, Pencil, PrinterAlt, Receipt } from '../Icons';
 import { RepairPickupFlow } from '@/components/repair/RepairPickupFlow';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
 import {
@@ -55,7 +55,6 @@ import { useRepairDetailsPanel } from './details-panel/useRepairDetailsPanel';
 import { RepairLinkageSection } from './details-panel/RepairLinkageSection';
 import { RepairOverviewTab } from './details-panel/RepairOverviewTab';
 import { ShippedNotesComposer } from '@/components/shipped/details-panel/ShippedNotesComposer';
-import { requestOpenGridColumnDetails } from '@/design-system/components/grid/grid-column-details-open';
 
 function getRepairStatusTone(status: string | null | undefined) {
   if (!status) return 'neutral' as const;
@@ -174,12 +173,6 @@ export function RepairDetailsPanel({
       variant="flat"
       className="py-0"
       actions={[
-        {
-          key: 'column-display',
-          label: 'Column display',
-          icon: <ColumnsThree className="h-3.5 w-3.5" />,
-          onClick: requestOpenGridColumnDetails,
-        },
         {
           key: 'edit-ticket',
           label: 'Edit ticket number',

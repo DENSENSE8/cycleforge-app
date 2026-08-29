@@ -31,10 +31,6 @@ import type {
 import type { IncomingDetailsTarget } from '@/components/receiving/useReceivingDetailOverlays';
 import type { UnboxLookupScanDetail } from '@/components/receiving/receiving-events';
 import { HistoryCartonTriagePanel } from '@/components/receiving/history/HistoryCartonTriagePanel';
-import {
-  HistoryViewChromeProvider,
-  useHistoryViewChrome,
-} from '@/components/receiving/history/history-view-chrome-context';
 import type { HistoryTriageTarget } from '@/lib/receiving/history-triage-row';
 
 /**
@@ -72,15 +68,11 @@ function HistoryTriageMount({
   target: HistoryTriageTarget | null;
   onClose: () => void;
 }) {
-  const { viewShellOpen, setViewShellOpen } = useHistoryViewChrome();
-  if (!target && !viewShellOpen) return null;
+  if (!target) return null;
   return (
     <HistoryCartonTriagePanel
       target={target}
-      onClose={() => {
-        setViewShellOpen(false);
-        onClose();
-      }}
+      onClose={onClose}
     />
   );
 }
@@ -112,8 +104,7 @@ function UnboxHistoryHost({
   onCloseHistoryTriage: () => void;
 }) {
   return (
-    <HistoryViewChromeProvider>
-      <UnboxHistoryHostInner
+    <UnboxHistoryHostInner
         staffId={staffId}
         workspace={workspace}
         nav={nav}
@@ -125,8 +116,7 @@ function UnboxHistoryHost({
         onCloseIncoming={onCloseIncoming}
         historyTriage={historyTriage}
         onCloseHistoryTriage={onCloseHistoryTriage}
-      />
-    </HistoryViewChromeProvider>
+    />
   );
 }
 
@@ -155,14 +145,11 @@ function UnboxHistoryHostInner({
   historyTriage: HistoryTriageTarget | null;
   onCloseHistoryTriage: () => void;
 }) {
-  const { viewShellOpen } = useHistoryViewChrome();
-  // TWO states, deliberately not one. `recordInspectOpen` gates the multi-select
-  // batch rail — only a PICKED carton may take that slot, or opening the
-  // View-only shell to reach ▦ would silently kill print / claim / copy on the
-  // rows an operator had selected. `inspectorOpen` is the Band 3 toggle's own
-  // open face, which must go pressed for either.
+  // The View-only shell existed to reach the column-display rail; with the rail
+  // deleted (2026-08-29) a PICKED carton is the only thing that opens the
+  // inspector, so the two states collapse to one.
   const recordInspectOpen = Boolean(historyTriage);
-  const inspectorOpen = recordInspectOpen || viewShellOpen;
+  const inspectorOpen = recordInspectOpen;
   return (
     <>
       <UnboxLineWorkspace

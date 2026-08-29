@@ -5,34 +5,20 @@
  * Chrome tabs = Zoho (inventory master) + sales channels. List = LedgerGrid
  * spreadsheet (dashboard SoT). Inventory chip when provider_item_id set.
  *
- * Chrome recipe matches Dashboard · Outbound / Labels: DashboardScrollShell +
- * workbench gutters + WorkbenchChromeHeader (tabs · search · filter · trailing).
+ * The desk draws no chrome: {@link DataTable} owns the find field, the one
+ * filter control and the platform tab strip, all from data this page resolves.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Loader2, RefreshCw } from '@/components/Icons';
+import { Loader2 } from '@/components/Icons';
 import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
-import {
-  WORKBENCH_SHEET_CHROME,
-  WORKBENCH_SHEET_HOST,
-  WorkbenchChromeHeader,
-  WorkbenchTrailingCluster,
-  WorkbenchTriageBand,
-} from '@/components/dashboard/workbench-shell';
-import {
-  WorkbenchFilterDivider,
-  WorkbenchFilterGroupLabel,
-  WorkbenchFilterMenuRow,
-  WorkbenchFilterPopover,
-} from '@/components/dashboard/workbench-filter-popover';
-import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
-import { Button } from '@/design-system/primitives';
+
+
 import type { CatalogListRow } from '@/components/products/catalog/types';
 import { productDetailHref } from '@/components/products/products-view';
-import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
+import { DataTable } from '@/components/tables/DataTable';
 import { CATALOG_TABLE_BINDING } from '@/components/products/catalog/catalog-grid/catalog-table-definition';
-import { CatalogGridColumnHeader } from '@/components/products/catalog/catalog-grid/CatalogGridColumnHeader';
 import { CatalogGridRow } from '@/components/products/catalog/catalog-grid/CatalogGridRow';
 import { CatalogBulkActionBar } from '@/components/products/catalog/CatalogBulkActionBar';
 import type { RowGroup } from '@/lib/group-rows';
@@ -82,7 +68,6 @@ export function ProductsCatalogWorkspace() {
   const [error, setError] = useState<string | null>(null);
   const [provider, setProvider] = useState<InventoryProviderMeta | null>(null);
   const [syncing, setSyncing] = useState(false);
-  const [catalogControlsEl, setCatalogControlsEl] = useState<HTMLDivElement | null>(null);
 
   // Column sort is DURABLE: `?colsort=`/`?coldir=` (workbench URL-as-state law),
   // so a reload or a shared catalog link reproduces the same ordering. NOT
@@ -202,6 +187,24 @@ export function ProductsCatalogWorkspace() {
     setFilterOpen(false);
   }, [updateParams]);
 
+  /**
+   * The one filter control: inventory-link scope. `zoho` is the default
+   * platform, so it is the unfiltered TAB and lights nothing; this narrows
+   * within whatever platform is showing.
+   */
+  const linkFilter = useMemo(
+    () => ({
+      options: [
+        { id: 'active_linked', label: 'Active & Linked' },
+        { id: 'unlinked_pending', label: 'Unlinked / pending' },
+      ].map((f) => ({ ...f, active: refine.linkFilter === f.id })),
+      // `setLinkRefine` already toggles off when the active scope is re-picked.
+      onToggle: (id: string) => setLinkRefine(id as CatalogLinkFilter),
+      onClearAll: clearRefine,
+    }),
+    [refine.linkFilter, setLinkRefine, clearRefine],
+  );
+
   const onOpenRow = useCallback(
     (row: CatalogListRow) => {
       router.push(productDetailHref(row.sku));
@@ -259,122 +262,8 @@ export function ProductsCatalogWorkspace() {
 
   return (
     <div className="relative flex h-full min-h-0 w-full flex-col overflow-hidden bg-surface-canvas">
-      <DashboardScrollShell
-        className="h-full"
-        chrome={
-          <div className={cn(WORKBENCH_SHEET_CHROME, 'flex flex-col gap-0')}>
-            <WorkbenchChromeHeader
-              density="band"
-              className="rounded-none border-l-0 border-t-0 shadow-sm"
-              tabs={PLATFORM_TABS.map((t) => ({
-                id: t.id,
-                label: t.label,
-              }))}
-              activeTab={platform}
-              onTabChange={(id) =>
-                updateParams({
-                  platform: id === 'zoho' ? null : id,
-                })
-              }
-              solidTone="accent"
-              trailing={
-                <WorkbenchTrailingCluster
-                  after={
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      disabled={syncing}
-                      onClick={() => void refreshInventory()}
-                      className="gap-1.5"
-                    >
-                      <RefreshCw className={cn('h-3.5 w-3.5', syncing && 'animate-spin')} />
-                      Refresh inventory
-                    </Button>
-                  }
-                />
-              }
-            />
-            {/* Band 3 — find-only: dominant find with catalog refine in-field.
-                No KPI band (no metrics), no desk peek (honest absence of the
-                inspector toggle — catalog rows navigate to the SKU page). */}
-            <WorkbenchTriageBand
-              controlsSlotRef={setCatalogControlsEl}
-              search={
-                <TechRailSearchBar
-                  variant="chrome"
-                  value={q}
-                  onChange={setCatalogSearch}
-                  placeholder="Filter SKU, title, inventory id…"
-                  isSearching={loading && Boolean(q.trim())}
-                  className="min-w-0 flex-1"
-                  trailingSuffix={
-                <WorkbenchFilterPopover
-                  open={filterOpen}
-                  onOpenChange={setFilterOpen}
-                  hot={refineHot}
-                  label="Filter catalog"
-                  density="field"
-                >
-                  <WorkbenchFilterGroupLabel>Inventory link</WorkbenchFilterGroupLabel>
-                  <WorkbenchFilterMenuRow
-                    label="Active & Linked"
-                    active={refine.linkFilter === 'active_linked'}
-                    onClick={() => setLinkRefine('active_linked')}
-                  />
-                  <WorkbenchFilterMenuRow
-                    label="Unlinked / Pending"
-                    active={refine.linkFilter === 'unlinked_pending'}
-                    onClick={() => setLinkRefine('unlinked_pending')}
-                  />
-                  <WorkbenchFilterDivider />
-                  <WorkbenchFilterGroupLabel>Status</WorkbenchFilterGroupLabel>
-                  <WorkbenchFilterMenuRow
-                    label="Pending only"
-                    active={refine.pendingOnly}
-                    onClick={() => toggleRefineFlag('pendingOnly')}
-                  />
-                  <WorkbenchFilterMenuRow
-                    label="Inactive only"
-                    active={refine.inactiveOnly}
-                    onClick={() => toggleRefineFlag('inactiveOnly')}
-                  />
-                  <WorkbenchFilterDivider />
-                  <WorkbenchFilterGroupLabel>Missing</WorkbenchFilterGroupLabel>
-                  <WorkbenchFilterMenuRow
-                    label="No channels"
-                    active={refine.missingChannels}
-                    onClick={() => toggleRefineFlag('missingChannels')}
-                  />
-                  <WorkbenchFilterMenuRow
-                    label="No manuals"
-                    active={refine.missingManuals}
-                    onClick={() => toggleRefineFlag('missingManuals')}
-                  />
-                  <WorkbenchFilterMenuRow
-                    label="No QC checklist"
-                    active={refine.missingQc}
-                    onClick={() => toggleRefineFlag('missingQc')}
-                  />
-                  {refineHot ? (
-                    <>
-                      <WorkbenchFilterDivider />
-                      <WorkbenchFilterMenuRow
-                        label="Clear filters"
-                        active={false}
-                        onClick={clearRefine}
-                      />
-                    </>
-                  ) : null}
-                </WorkbenchFilterPopover>
-                  }
-                />
-              }
-            />
-          </div>
-        }
-      >
-        <div className={cn(WORKBENCH_SHEET_HOST, 'min-h-0')}>
+      <DashboardScrollShell className="h-full">
+        <div className={cn('relative flex min-h-0 min-w-0 flex-1 flex-col', 'min-h-0')}>
           <div className="flex shrink-0 items-center justify-between px-0.5 text-role-micro font-medium uppercase tracking-wide text-text-soft">
             <span>{countLabel}</span>
             {provider ? (
@@ -396,8 +285,23 @@ export function ProductsCatalogWorkspace() {
               Loading catalog…
             </div>
           ) : (
-            <NonlinearTableHost<CatalogListRow, CatalogGridColumnKey, CatalogGridColumn>
+            <DataTable<CatalogListRow, CatalogGridColumnKey, CatalogGridColumn>
               binding={CATALOG_TABLE_BINDING}
+              search={{
+                value: q,
+                onChange: setCatalogSearch,
+                placeholder: 'Filter SKU, title, inventory id…',
+              }}
+              filter={linkFilter}
+              tabs={PLATFORM_TABS.filter((t) => t.id !== 'zoho').map((t) => ({
+                id: t.id,
+                label: t.label,
+              }))}
+              activeTab={platform === 'zoho' ? undefined : platform}
+              onTabChange={(id) =>
+                updateParams({ platform: id === platform || id === 'zoho' ? null : id })
+              }
+              selectionScope={CATALOG_SELECTION_SCOPE}
               orderGroupsByDate={orderGroupsByDate}
               rows={visibleItems}
               getRowId={(r) => String(r.id)}
@@ -407,18 +311,6 @@ export function ProductsCatalogWorkspace() {
               loading={loading}
               emptyMessage={emptyMessage}
               className="min-h-0 flex-1"
-              columnTriggerPortalTarget={catalogControlsEl}
-              renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
-                <CatalogGridColumnHeader
-                  selectionScope={CATALOG_SELECTION_SCOPE}
-                  columns={visible}
-                  activeSort={sort}
-                  sortDir={dir}
-                  onSortColumn={toggleColumnSort}
-                  onResizeColumn={onResizeColumn}
-                  onResetColumn={onResetColumn}
-                />
-              )}
               renderGroup={(group, _stripe, { columns: visible }) =>
                 renderCatalogLeaf(group.rows[0], visible)
               }

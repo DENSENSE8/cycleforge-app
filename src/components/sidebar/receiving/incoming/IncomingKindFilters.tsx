@@ -7,11 +7,11 @@
 
 import { useState } from 'react';
 import {
-  WorkbenchFilterGroupLabel,
-  WorkbenchFilterHotChip,
-  WorkbenchFilterMenuRow,
-  WorkbenchFilterPopover,
-} from '@/components/dashboard/workbench-filter-popover';
+  FilterMenuGroupLabel,
+  FilterHotChip,
+  FilterMenuRow,
+  FilterMenu,
+} from '@/components/ui/FilterMenu';
 
 export type IncomingKind = 'all' | 'purchase' | 'return';
 
@@ -41,14 +41,14 @@ export function IncomingKindRows({
   };
   return (
     <>
-      <WorkbenchFilterGroupLabel>Kind</WorkbenchFilterGroupLabel>
-      <WorkbenchFilterMenuRow
+      <FilterMenuGroupLabel>Kind</FilterMenuGroupLabel>
+      <FilterMenuRow
         label="All kinds"
         active={kind === 'all'}
         onClick={() => pick('all')}
       />
       {KIND_OPTIONS.filter((o) => o.id !== 'all').map((opt) => (
-        <WorkbenchFilterMenuRow
+        <FilterMenuRow
           key={opt.id}
           label={opt.label}
           active={kind === opt.id}
@@ -71,16 +71,15 @@ export function IncomingKindFilters({
   const hotLabel = hot ? kindLabel(kind) : undefined;
 
   return (
-    <WorkbenchFilterPopover
+    <FilterMenu
       open={open}
       onOpenChange={setOpen}
       hot={hot}
       label="Kind"
       hotActiveLabel={hotLabel}
-      density="field"
       contentClassName="w-48"
     >
-      <WorkbenchFilterMenuRow
+      <FilterMenuRow
         label="All kinds"
         active={kind === 'all'}
         sectionHeader
@@ -90,7 +89,7 @@ export function IncomingKindFilters({
         }}
       />
       {KIND_OPTIONS.filter((o) => o.id !== 'all').map((opt) => (
-        <WorkbenchFilterMenuRow
+        <FilterMenuRow
           key={opt.id}
           label={opt.label}
           active={kind === opt.id}
@@ -100,7 +99,7 @@ export function IncomingKindFilters({
           }}
         />
       ))}
-    </WorkbenchFilterPopover>
+    </FilterMenu>
   );
 }
 
@@ -112,5 +111,5 @@ export function IncomingKindHotChip({
   onClear: () => void;
 }) {
   if (kind === 'all') return null;
-  return <WorkbenchFilterHotChip label={kindLabel(kind)} onClear={onClear} />;
+  return <FilterHotChip label={kindLabel(kind)} onClear={onClear} />;
 }

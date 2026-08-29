@@ -2,15 +2,15 @@
 
 /**
  * Field-density facet popover for Pack / Scan-out history rails —
- * Platform (account_source). Same WorkbenchFilterPopover grammar as
+ * Platform (account_source). Same FilterMenu grammar as
  * {@link ReceivingRecentRailFilters}; seats in TechRailSearchBar trailingSuffix.
  */
 
 import { useState } from 'react';
 import {
-  WorkbenchFilterMenuRow,
-  WorkbenchFilterPopover,
-} from '@/components/dashboard/workbench-filter-popover';
+  FilterMenuRow,
+  FilterMenu,
+} from '@/components/ui/FilterMenu';
 import { PlatformMark } from '@/components/ui/PlatformMark';
 import { usePlatformCatalog } from '@/hooks/useCatalog';
 import { sourcePlatformLabel } from '@/lib/source-platform';
@@ -55,16 +55,15 @@ export function StationHistoryRailFilters({
   const hotLabel = stationHistoryRailFacetsHotLabel(facets);
 
   return (
-    <WorkbenchFilterPopover
+    <FilterMenu
       open={open}
       onOpenChange={setOpen}
       hot={hot}
       label="Rail filters"
       hotActiveLabel={hotLabel}
-      density="field"
       contentClassName="w-56"
     >
-      <WorkbenchFilterMenuRow
+      <FilterMenuRow
         label="All platforms"
         active={facets.platform == null}
         sectionHeader
@@ -74,7 +73,7 @@ export function StationHistoryRailFilters({
         }}
       />
       {platformOptions.map((opt) => (
-        <WorkbenchFilterMenuRow
+        <FilterMenuRow
           key={opt.value}
           label={opt.label}
           active={facets.platform === opt.value}
@@ -87,6 +86,6 @@ export function StationHistoryRailFilters({
           }}
         />
       ))}
-    </WorkbenchFilterPopover>
+    </FilterMenu>
   );
 }

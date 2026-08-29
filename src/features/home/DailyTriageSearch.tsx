@@ -7,7 +7,7 @@
  * Band 1 Completed tab, not a second in-field facet.
  */
 
-import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
+import { SearchField } from '@/design-system/primitives/SearchField';
 
 export function DailyTriageSearch({
   query,
@@ -17,12 +17,11 @@ export function DailyTriageSearch({
   onQueryChange: (next: string) => void;
 }) {
   return (
-    <TechRailSearchBar
-      variant="chrome"
+    <SearchField
       value={query}
       onChange={onQueryChange}
       placeholder="Filter checks…"
       className="min-w-0 flex-1"
-    />
+        />
   );
 }

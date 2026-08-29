@@ -109,10 +109,26 @@ GIT_DIFF=$(git -C "$REPO_ROOT" diff --stat 2>/dev/null || echo "no diff availabl
 hermes -p orchestrator chat "Cycle Forge state update. Implemented locally: $FEATURE. Git changes: $GIT_DIFF. Ensure the coder and logistics profiles are aware of this state change."
 _ingest runUid="$RUN_UID" stage=sync stageStatus=ok detail="memory updated" gitDiffStat="$GIT_DIFF"
 
-# ── [4/4] VERIFY ─ coder runs the manifest's declared test command ─────────────
-echo "✅ [4/4] VERIFY — running tests declared in the manifest's ### VERIFY section..."
+# ── [4/4] VERIFY ─ run the anchor authority's frozen verify commands ───────────
+echo "✅ [4/4] VERIFY — running the anchor authority's resolved verify commands..."
 _ingest runUid="$RUN_UID" stage=verify stageStatus=running
-VERIFY_CMD=$(awk '/^### VERIFY/{f=1;next} f&&/npm run|tsx|playwright/{print;exit}' "$MANIFEST" || true)
+
+# INV-07: the verify command set comes from Garisek's anchor authority (the
+# frozen hermes-forge pin, or THIS repo's real package.json scripts) — never
+# from the model-authored manifest. The old awk over the manifest's ### VERIFY
+# section executed any line that merely NAMED a command, with every
+# Hermes-managed secret already in the environment.
+GARISEK_OS_ROOT="${GARISEK_OS_ROOT:-$HOME/Projects/Garisek-OS}"
+VERIFY_RESOLVED=$( cd "$GARISEK_OS_ROOT" && npx tsx scripts/resolve-verify-command.ts --repo cycleforge-app --lines 2>/dev/null ) || VERIFY_RESOLVED=""
+if [ -z "$VERIFY_RESOLVED" ]; then
+  echo "   ⛔ anchor authority resolved no verify commands — ABORTING (never falling back to manifest text)"
+  _ingest runUid="$RUN_UID" stage=verify stageStatus=failed detail="anchor authority resolved no verify commands" runStatus=error
+  exit 1
+fi
+readarray -t VERIFY_CMDS <<< "$VERIFY_RESOLVED"
+# Joined form is a display/ingest label only — commands are executed one by
+# one from the array, never re-parsed out of this string.
+VERIFY_CMD=$(printf '%s && ' "${VERIFY_CMDS[@]}"); VERIFY_CMD="${VERIFY_CMD% && }"
 
 # ── Neon ephemeral branch sandbox (ALP-4.2..4.4 / ALP-6.2..6.4) ───────────────
 # When FORGE_NEON_VERIFY=1 (+ NEON_API_KEY/NEON_PROJECT_ID configured), VERIFY
@@ -144,20 +160,31 @@ if [ "${FORGE_NEON_VERIFY:-0}" = "1" ] && [ -n "$VERIFY_CMD" ]; then
   fi
 fi
 
+# Runs each resolved command in order, failing on the first non-zero exit.
+# With a Neon branch minted, EVERY DB pool env (src/lib/db.ts reads
+# DATABASE_URL / TENANT_APP_DATABASE_URL / ADMIN_DATABASE_URL) points at the
+# branch and the Control-Plane key is denied to the subshell. No `eval`
+# anywhere: each string is a pre-registered script invocation from the anchor
+# authority, run as-is via `bash -c`.
+_run_verify() {
+  local cmd
+  for cmd in "${VERIFY_CMDS[@]}"; do
+    echo "   → $cmd"
+    if [ -n "$BRANCH_DATABASE_URL" ]; then
+      ( cd "$REPO_ROOT" && env NEON_API_KEY= \
+          DATABASE_URL="$BRANCH_DATABASE_URL" \
+          DATABASE_URL_UNPOOLED="$BRANCH_DATABASE_URL" \
+          TENANT_APP_DATABASE_URL="$BRANCH_DATABASE_URL" \
+          ADMIN_DATABASE_URL="$BRANCH_DATABASE_URL" \
+          bash -c "$cmd" ) || return 1
+    else
+      ( cd "$REPO_ROOT" && bash -c "$cmd" ) || return 1
+    fi
+  done
+}
+
 if [ -n "$VERIFY_CMD" ]; then
-  echo "   → $VERIFY_CMD"
-  # Point ALL Neon pools (src/lib/db.ts reads DATABASE_URL / TENANT_APP_DATABASE_URL
-  # / ADMIN_DATABASE_URL) at the branch, and DENY the Control-Plane key to the
-  # VERIFY subshell so a hostile `### VERIFY` line can't exfiltrate it.
-  if ( cd "$REPO_ROOT" && \
-       if [ -n "$BRANCH_DATABASE_URL" ]; then \
-         env NEON_API_KEY= \
-             DATABASE_URL="$BRANCH_DATABASE_URL" \
-             DATABASE_URL_UNPOOLED="$BRANCH_DATABASE_URL" \
-             TENANT_APP_DATABASE_URL="$BRANCH_DATABASE_URL" \
-             ADMIN_DATABASE_URL="$BRANCH_DATABASE_URL" \
-             bash -c "$VERIFY_CMD"; \
-       else eval "$VERIFY_CMD"; fi ); then
+  if _run_verify; then
     echo "   ✅ tests passed"
     _ingest runUid="$RUN_UID" stage=verify stageStatus=ok \
       detail="$VERIFY_CMD${BRANCH_ID:+ [neon-branch:$BRANCH_ID]}" runStatus=passed
@@ -189,8 +216,11 @@ elif [ "$NEON_VERIFY_ABORT" = "1" ]; then
   # above. Do NOT re-record this as a passed/skipped run.
   echo "   ⛔ VERIFY not run (Neon sandbox unavailable) — run recorded as error."
 else
-  echo "   ⚠ no VERIFY command found in manifest; run targeted tests manually."
-  _ingest runUid="$RUN_UID" stage=verify stageStatus=skipped detail="no VERIFY command in manifest" runStatus=passed
+  # Unreachable: empty resolution aborts above, Neon-abort is the elif. Kept
+  # so a future edit that empties VERIFY_CMD fails loudly instead of passing.
+  echo "   ⛔ VERIFY_CMD empty outside the Neon-abort path — this is a bug in forge.sh"
+  _ingest runUid="$RUN_UID" stage=verify stageStatus=failed detail="VERIFY_CMD empty outside neon-abort" runStatus=error
+  exit 1
 fi
 
 echo ""

@@ -1,10 +1,9 @@
 'use client';
 
 /**
- * Local Pickup right pane — the LCPU product spreadsheet. Composes the SoT
- * Workbench chrome ({@link DashboardScrollShell} pinned band +
- * {@link WorkbenchChromeHeader} status tabs + scoped {@link TechRailSearchBar}
- * + {@link WorkbenchTrailingCluster} New Local Pickup CTA) over
+ * Local Pickup right pane — the LCPU product spreadsheet. The status tabs and
+ * the find field are {@link DataTable}'s, passed as data; the page owns only
+ * the feed and the record plane. Mounted over
  * the pickup-native {@link LedgerGridSurface} adapter (mounted via
  * {@link NonlinearTableHost}), products condensed under their LCPU order number
  * (one-to-many fold).
@@ -19,15 +18,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
-import {
-  WORKBENCH_SHEET_CHROME,
-  WORKBENCH_SHEET_HOST,
-  WorkbenchChromeHeader,
-  WorkbenchTrailingCluster,
-  WorkbenchTriageBand,
-} from '@/components/dashboard/workbench-shell';
 import { Button } from '@/design-system/primitives';
-import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 import {
   Dialog,
   DialogContent,
@@ -41,7 +32,6 @@ import { focusRing } from '@/design-system/tokens/focus-ring';
 import { createLocalPickupOrder } from '@/lib/local-pickup/create-order';
 import { pickupOrderIsDone } from '@/lib/local-pickup/order-status';
 import { cn } from '@/utils/_cn';
-import { PickupChromeActions } from './PickupChromeActions';
 import {
   parsePickupStatusTab,
   pickupLineMatchesStatus,
@@ -50,11 +40,10 @@ import {
   type PickupLine,
   type PickupStatusTab,
 } from './pickup-lines';
-import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
+import { DataTable } from '@/components/tables/DataTable';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import { groupRowsBy, type RowGroup } from '@/lib/group-rows';
 import { PICKUP_TABLE_BINDING } from './grid/pickup-table-definition';
-import { PickupGridColumnHeader } from './grid/PickupGridColumnHeader';
 import { PickupGridGroupRow } from './grid/PickupGridGroupRow';
 import {
   defaultDirForPickupGridSort,
@@ -127,7 +116,6 @@ export function PickupWorkspace({ selectedOrderId = null }: PickupWorkspaceProps
   const [customerName, setCustomerName] = useState('');
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
-  const [pickupControlsEl, setPickupControlsEl] = useState<HTMLDivElement | null>(null);
 
   const setParam = useCallback(
     (key: string, value: string | null) => {
@@ -269,41 +257,9 @@ export function PickupWorkspace({ selectedOrderId = null }: PickupWorkspaceProps
 
   return (
     <>
-      <DashboardScrollShell
-        chrome={
-          <div className={cn(WORKBENCH_SHEET_CHROME, 'flex flex-col gap-0')}>
-            <WorkbenchChromeHeader
-              density="band"
-              className="rounded-none border-l-0 border-t-0 shadow-sm"
-              tabs={tabs}
-              activeTab={statusTab}
-              onTabChange={(id) =>
-                setParam('status', (id as PickupStatusTab) === 'all' ? null : id)
-              }
-              trailing={
-                <WorkbenchTrailingCluster
-                  actions={<PickupChromeActions onNew={openCreate} busy={creating} />}
-                />
-              }
-            />
-            {/* Band 3 — find + ▦ column display. No KPI band (honest absence). */}
-            <WorkbenchTriageBand
-              controlsSlotRef={setPickupControlsEl}
-              search={
-                <TechRailSearchBar
-                  variant="chrome"
-                  value={query}
-                  onChange={(v) => setParam('q', v.trim() ? v : null)}
-                  placeholder="Filter pickup items…"
-                  className="min-w-0 flex-1"
-                />
-              }
-            />
-          </div>
-        }
-      >
-        <div className={WORKBENCH_SHEET_HOST}>
-          <NonlinearTableHost<PickupLine, PickupGridColumnKey, PickupGridColumn>
+      <DashboardScrollShell>
+        <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
+          <DataTable<PickupLine, PickupGridColumnKey, PickupGridColumn>
             binding={PICKUP_TABLE_BINDING}
             orderGroupsByDate={orderGroupsByDate}
             rows={visibleRows}
@@ -314,19 +270,17 @@ export function PickupWorkspace({ selectedOrderId = null }: PickupWorkspaceProps
             loading={isLoading}
             emptyMessage={emptyMessage}
             searchEmptyMessage={searchEmptyMessage}
-            isSearching={Boolean(normalizedQuery) && !isError}
+            search={{
+              value: query,
+              onChange: (v) => setParam('q', v.trim() ? v : null),
+              placeholder: 'Filter pickup items…',
+            }}
+            tabs={tabs.filter((t) => t.id !== 'all')}
+            activeTab={statusTab === 'all' ? undefined : statusTab}
+            onTabChange={(id) =>
+              setParam('status', id === statusTab ? null : (id as PickupStatusTab))
+            }
             scrollRef={scrollRef}
-            columnTriggerPortalTarget={pickupControlsEl}
-            renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
-              <PickupGridColumnHeader
-                columns={visible}
-                activeSort={columnSort}
-                sortDir={sortDir}
-                onSortColumn={toggleColumnSort}
-                onResizeColumn={onResizeColumn}
-                onResetColumn={onResetColumn}
-              />
-            )}
             renderGroup={(group, baseStripeIndex, { columns: visible }) => (
               <PickupGridGroupRow
                 group={group}

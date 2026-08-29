@@ -12,7 +12,6 @@ import { focusRing } from '@/design-system/tokens/focus-ring';
 
 const fieldClass = cn(
   cn('h-10 w-full border border-border-hairline bg-surface-canvas/50 px-3 text-role-caption font-semibold text-text-default focus:bg-surface-card', focusRing('field', 'accent')),
-  cornerClass('flush'),
 );
 const labelClass = 'mb-1.5 block text-role-caption font-semibold uppercase tracking-[0.2em] text-text-faint';
 

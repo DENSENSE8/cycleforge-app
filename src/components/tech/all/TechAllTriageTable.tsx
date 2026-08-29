@@ -21,12 +21,13 @@ import type { RSRecord } from '@/lib/neon/repair-service-queries';
 import type { ShippedOrder } from '@/types/orders';
 import { dispatchOpenShippedDetails } from '@/utils/events';
 import { useWorkbenchSearchParam } from '@/hooks/useWorkbenchSearchParam';
+import type { DataTableTabStrip } from '@/components/tables/DataTable';
 import {
   mergeTechAllTriageRows,
   type TechAllTriageRow,
   type TechAllTriageScope,
 } from '@/lib/tech/tech-all-triage';
-import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
+import { DataTable } from '@/components/tables/DataTable';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import type { RowGroup } from '@/lib/group-rows';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
@@ -37,7 +38,6 @@ import {
   type TechAllGridColumnKey,
 } from '@/lib/tech/tech-all-grid-layout';
 import { TECH_ALL_TABLE_BINDING } from './tech-all-table-definition';
-import { TechAllGridColumnHeader } from './TechAllGridColumnHeader';
 import { TechAllGridRow } from './TechAllGridRow';
 
 function compareTechAllRows(
@@ -67,11 +67,8 @@ interface TechAllTriageTableProps {
   onOpenTestingLine?: (row: ReceivingLineRow) => void;
   /** Unbox: open focused line in UnboxLineWorkspace (preferred over testing). */
   onOpenUnboxLine?: (row: ReceivingLineRow) => void;
-  /**
-   * Band-3 triage controls slot — portals the column-display (▦) trigger beside
-   * the lane's other refine icons instead of the card-corner hover-reveal.
-   */
-  columnTriggerPortalTarget?: HTMLElement | null;
+  /** The desk's mode strip, drawn on this table's own bottom bar. */
+  tabStrip?: DataTableTabStrip;
 }
 
 async function fetchNeedsTestLines(): Promise<ReceivingLineRow[]> {
@@ -121,10 +118,10 @@ export function TechAllTriageTable({
   scope,
   onOpenTestingLine,
   onOpenUnboxLine,
-  columnTriggerPortalTarget,
+  tabStrip,
 }: TechAllTriageTableProps) {
   const router = useRouter();
-  const { searchQuery } = useWorkbenchSearchParam();
+  const { searchQuery, setSearch } = useWorkbenchSearchParam();
 
   const needsTestQuery = useQuery({
     queryKey: ['tech-all-triage', 'needs-test'],
@@ -248,7 +245,7 @@ export function TechAllTriageTable({
   const emptyMessage = 'Nothing to triage';
 
   return (
-    <NonlinearTableHost<TechAllTriageRow, TechAllGridColumnKey, TechAllGridColumn>
+    <DataTable<TechAllTriageRow, TechAllGridColumnKey, TechAllGridColumn>
       binding={TECH_ALL_TABLE_BINDING}
       orderGroupsByDate={orderGroupsByDate}
       rows={rows}
@@ -266,20 +263,10 @@ export function TechAllTriageTable({
           </p>
         </div>
       }
+      search={{ value: searchQuery, onChange: setSearch, placeholder: 'Filter units…' }}
+      {...tabStrip}
       searchEmptyMessage="No matches for this search"
-      isSearching={Boolean(searchQuery.trim())}
       scrollRef={scrollRef}
-      columnTriggerPortalTarget={columnTriggerPortalTarget ?? null}
-      renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
-        <TechAllGridColumnHeader
-          columns={visible}
-          activeSort={columnSort}
-          sortDir={sortDir}
-          onSortColumn={toggleColumnSort}
-          onResizeColumn={onResizeColumn}
-          onResetColumn={onResetColumn}
-        />
-      )}
       renderGroup={(group, _stripe, { columns: visible }) => (
         <TechAllGridRow key={group.rows[0].id} row={group.rows[0]} onOpen={onOpen} columns={visible} />
       )}

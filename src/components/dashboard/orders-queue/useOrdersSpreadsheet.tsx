@@ -7,7 +7,7 @@ import { useStaffNameMap } from '@/hooks/useStaffNameMap';
 import { useUIModeOptional } from '@/design-system/providers/UIModeProvider';
 import { OrderSearchEmptyState } from '@/components/dashboard/OrderSearchEmptyState';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
-import type { NonlinearTableHostProps } from '@/components/tables/NonlinearTableHost';
+import type { DataTableProps } from '@/components/tables/DataTable';
 import type { TableId } from '@/lib/tables/table-columns';
 import { useQueueDisplaySort } from '@/hooks/useQueueDisplaySort';
 import { useToShipStatusFilter } from '@/components/unshipped/useToShipStatusFilter';
@@ -35,12 +35,10 @@ import {
   type QueueRowRecord,
 } from './helpers';
 import { OrdersQueueTableRow } from './OrdersQueueTableRow';
-import { OrdersQueueColumnHeader } from './OrdersQueueColumnHeader';
 import { QueueGroupRow } from './QueueGroupRow';
 import { useOrdersQueueRows } from './useOrdersQueueRows';
 import { useOrdersQueuePlane } from './useOrdersQueuePlane';
 import { AddTrackingPopover } from '@/components/outbound/labels/AddTrackingPopover';
-import { useViewportForcedHidden } from './ViewportForcedHidden';
 import { useGridColumnDisplay } from '@/design-system/components/grid/useGridColumnDisplay';
 
 /**
@@ -147,8 +145,18 @@ export interface UseOrdersSpreadsheetOptions {
    * Inspector View topics controls portal — when set, ▦ portals there. To Ship
    * always uses portal-only mode (no card-corner hover fallback).
    */
-  columnTriggerPortalTarget?: HTMLElement | null;
 }
+
+/**
+ * The FEED half of a {@link DataTable} mount: everything a lane resolves from
+ * its records, with the chrome half (search · filter · tabs · counts · copy)
+ * left to the page, which is the only place that knows the URL those controls
+ * write to.
+ */
+export type OrdersSpreadsheetFeed = Omit<
+  DataTableProps<ShippedOrder, OrdersQueueColumnKey, OrdersQueueColumn>,
+  'search' | 'filter' | 'tabs' | 'activeTab' | 'onTabChange' | 'totalCount' | 'copyExport'
+>;
 
 /**
  * **Outbound orders spreadsheet** — the family glue that resolves a
@@ -194,12 +202,7 @@ export function useOrdersSpreadsheet({
   className,
   'data-testid': dataTestId = 'orders-grid-body',
   scrollParentRef,
-  columnTriggerPortalTarget,
-}: UseOrdersSpreadsheetOptions): NonlinearTableHostProps<
-  ShippedOrder,
-  OrdersQueueColumnKey,
-  OrdersQueueColumn
-> {
+}: UseOrdersSpreadsheetOptions): OrdersSpreadsheetFeed {
   const { displayByKey: columnDisplay } = useGridColumnDisplay(tableId);
   // Resolved ONCE per table render and threaded into every row's lateness
   // lookup — see `daysLateOn`. Reading it per row is what made the civil-date
@@ -258,9 +261,6 @@ export function useOrdersSpreadsheet({
   });
 
   const shellRef = useRef<HTMLDivElement>(null);
-  // Viewport priority collapse (By → Qty · Cond) — house logic, ephemeral and
-  // never persisted to staff prefs. Observed on the surface shell.
-  const forceHidden = useViewportForcedHidden(shellRef);
 
   const handleSortChange = useCallback(
     (key: OrdersQueueColumnKey, nextDir: 'asc' | 'desc') => {
@@ -399,7 +399,7 @@ export function useOrdersSpreadsheet({
     orderGroupsByDate,
     rows: displayedRecords,
     getRowId: getTableRowId,
-    sort: columnSort,
+    sort: columnSort && isQueueSortableColumnKey(columnSort) ? columnSort : null,
     dir: columnSortDir,
     onSortChange: handleSortChange,
     loading,
@@ -414,38 +414,16 @@ export function useOrdersSpreadsheet({
         onClear={onClearSearch}
       />
     ),
-    isSearching,
     shellRef,
     scrollParentRef,
-    columnTriggerPortalTarget: columnTriggerPortalTarget ?? null,
     className,
     testId: dataTestId,
-    tableId,
-    forceHidden,
-    renderColumnHeader: ({
-      toggleColumnSort,
-      onResizeColumn,
-      onResetColumn,
-      columns: visible,
-    }) => (
-      <OrdersQueueColumnHeader
-        isMobile={isMobile}
-        selectionScope={selectionScope}
-        selectGutterChrome="always"
-        columns={visible}
-        tableId={tableId}
-        // `columnSort` is a TRACK key now (mapped back from the `?sort=` fact),
-        // so it is checked against the compound-aware predicate — the flat one
-        // rejected it and the sorted header rendered with no `aria-sort`.
-        activeSort={
-          columnSort && isQueueSortableColumnKey(columnSort) ? columnSort : undefined
-        }
-        sortDir={columnSortDir}
-        onSortColumn={urlDriven ? (key) => toggleColumnSort(key) : undefined}
-        onResizeColumn={onResizeColumn}
-        onResetColumn={onResetColumn}
-      />
-    ),
+    selectionScope,
+    // A header key on the compound row is a TRACK; the sort vocabulary is in
+    // FACTS. `queueSortForColumnKey` bridges them, and this predicate is what
+    // keeps the header offering the sorts the engine will actually perform.
+    isSortable: isQueueSortableColumnKey,
+    selectGutterChrome: 'always' as const,
     renderGroup: (group, baseStripeIndex, { columns: visible }) => (
       <QueueGroupRow
         group={group}

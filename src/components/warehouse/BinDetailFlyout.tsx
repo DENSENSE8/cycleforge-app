@@ -35,7 +35,6 @@ import type { BinsOverviewRow } from '@/hooks/useBinsOverview';
 import { AuditTimeline } from '@/components/audit/AuditTimeline';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
 import { DeskInspectorIndexShell } from '@/components/right-rail/DeskInspectorIndexShell';
-import { InspectorColumnDisplayButton } from '@/components/right-rail/InspectorColumnDisplayButton';
 import { PaneHeaderLabel } from '@/components/ui/pane-header';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { FillBar } from './FillBar';
@@ -131,7 +130,6 @@ export function BinDetailFlyout({ row, onClose, onDeleted }: Props) {
           testId="bin-detail-inspector"
           headerRightSlot={
             <>
-              <InspectorColumnDisplayButton testId="bin-detail-column-display" />
               {row.barcode ? (
                 <span className="flex h-full items-center gap-1">
                   {isSpecialBinBarcode(row.barcode) ? (

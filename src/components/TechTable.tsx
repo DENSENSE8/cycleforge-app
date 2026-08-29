@@ -51,8 +51,6 @@ interface TechTableProps {
    * narrows; `?staff=all` is explicit org-wide (Shipping History).
    */
   staffScope?: 'self' | 'url' | 'url-or-self';
-  /** Portal column / board controls into the shipping workspace header. */
-  toolbarPortalTarget?: HTMLElement | null;
 }
 
 /** Newest-first by pack/test time (created_at). */
@@ -63,7 +61,6 @@ function byNewestCreated(a: TechRecord, b: TechRecord): number {
 export function TechTable({
   testedBy,
   staffScope = 'self',
-  toolbarPortalTarget = null,
 }: TechTableProps) {
   const { staffId: urlStaffId } = useStaffFilter(
     staffScope === 'url-or-self' ? { allToken: 'all' } : undefined,
@@ -154,7 +151,6 @@ export function TechTable({
       savedViewsParamKeys={SAVED_VIEW_PARAM_KEYS.tech_history}
       emptyMessage="No tech records found"
       firstRunEmpty={<ContextualEmptyState state="no-work" />}
-      toolbarPortalTarget={toolbarPortalTarget}
       pipeline={{
         records: orderedRecords,
         lanes: TECH_LANES,

@@ -7,15 +7,11 @@ import { StationListTable } from '@/components/station/StationListTable';
 import { StationPipelineBoard } from '@/components/station/StationPipelineBoard';
 import { StationQueueRow } from '@/components/station/StationQueueRow';
 import { STATION_HISTORY_GRID_CAPABILITIES } from '@/components/station/station-history-capabilities';
-import { TableColumnConfigProvider } from '@/components/ui/table-column-config/TableColumnConfig';
-import { TableDensityProvider } from '@/components/ui/table-density/TableDensityProvider';
-import { TableOptionsMenu } from '@/components/ui/table-options/TableOptionsMenu';
 import { Copy, X } from '@/components/Icons';
 import { emitToggleAll } from '@/lib/selection/table-selection';
 import { useTableSelectMode } from '@/hooks/useTableSelectMode';
 import { useUIModeOptional } from '@/design-system/providers/UIModeProvider';
-import { useGridColumnVisibility } from '@/design-system/components/grid';
-import { ORDERS_QUEUE_COLUMNS, type OrdersQueueColumn } from '@/lib/dashboard-order-row-layout';
+import { ORDERS_QUEUE_COLUMNS } from '@/lib/dashboard-order-row-layout';
 import { toTsvBlock } from '@/lib/station/format-station-copy-row';
 import { getStationSourceRecord, type StationSourceKind } from '@/lib/station/record-to-queue-row';
 import type { QueueRowRecord } from '@/components/dashboard/orders-queue/helpers';
@@ -39,8 +35,9 @@ import { formatWeekRangeCompact } from '@/utils/date';
  * windowing, the week band, the ⋮ menu (row density + saved views), bulk
  * select, and a typed first-run empty.
  *
- * Wraps the per-staff `TableColumnConfigProvider` + `TableDensityProvider` (both
- * keyed by `tableId`) so density + hidden-column prefs stay wired for rows.
+ * Per-staff column visibility and the density toggle went with the display
+ * teardown (2026-08-29): the bench paints the canonical column model at one
+ * row box, so there is nothing left to key by `tableId` here.
  */
 export interface StationHistoryTableProps<T> {
   loading: boolean;
@@ -118,15 +115,9 @@ export function StationHistoryTable<T>({
   const { isMobile } = useUIModeOptional();
   const totalCount = sumDaySectionCounts(daySections);
 
-  // Per-staff visible tracks for the converged station rows. The ⋮ menu below
-  // writes `staff_preferences.tableColumns[tableId].hidden`; resolving it ONCE
-  // here (instead of per cell inside the row, as `useIsColumnHidden` used to)
-  // is what makes a hidden column lose its whole track — header, body and grid
-  // template all read this one list.
-  const { columns: visibleColumns } = useGridColumnVisibility<OrdersQueueColumn>({
-    columns: ORDERS_QUEUE_COLUMNS,
-    tableId,
-  });
+  // The canonical model IS what paints — per-staff hide/show went with the
+  // column-display rail, so there is no delta between the model and the grid.
+  const visibleColumns = ORDERS_QUEUE_COLUMNS;
 
   // Reconnect-only broad invalidate (the hot path is Ably/local cache patches).
   useStationReconnectSync();
@@ -234,17 +225,7 @@ export function StationHistoryTable<T>({
     [searchParams, router, pathname],
   );
 
-  const optionsMenu = (
-    <TableOptionsMenu
-      layout={boardEnabled ? { value: layout, onChange: setLayout } : undefined}
-      savedViews={{ storageKey: savedViewsStorageKey, paramKeys: savedViewsParamKeys }}
-    />
-  );
-  const headerControls = (
-    <div className="flex items-center gap-2">
-      {toolbarPortalTarget ? null : optionsMenu}
-    </div>
-  );
+  const headerControls = null;
   const weekPill = (
     <DateRangePickerPill
       label={formatWeekRangeCompact(weekRange.startStr, weekRange.endStr)}
@@ -258,10 +239,7 @@ export function StationHistoryTable<T>({
   // portal target keeps the in-table `DateRangeHeader`.
   const portaledControls = toolbarPortalTarget
     ? createPortal(
-        <div className="flex items-center gap-2">
-          {weekPill}
-          {optionsMenu}
-        </div>,
+        <div className="flex items-center gap-2">{weekPill}</div>,
         toolbarPortalTarget,
       )
     : null;
@@ -295,8 +273,7 @@ export function StationHistoryTable<T>({
     ) : null;
 
   return (
-    <TableColumnConfigProvider tableId={tableId}>
-      <TableDensityProvider tableId={tableId}>
+    <>
         {portaledControls}
         {boardEnabled && layout === 'board' && pipeline ? (
           <StationPipelineBoard<T, string>
@@ -351,7 +328,6 @@ export function StationHistoryTable<T>({
             {bulkBar}
           </div>
         )}
-      </TableDensityProvider>
-    </TableColumnConfigProvider>
+    </>
   );
 }

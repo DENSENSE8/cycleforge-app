@@ -32,7 +32,7 @@ import {
 } from '@/components/station/displays/DisplaysIndexLeafStage';
 import { STATION_DISPLAYS_PUSH_TOP_BAND } from '@/components/station/entity-context/station-identity-chrome';
 import { RIGHT_RAIL_HOST_CLOSE_SLOT_CLASS } from '@/components/right-rail/DeskRailChromeRow';
-import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
+import { SearchField } from '@/design-system/primitives/SearchField';
 import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
 import { StationDisplayLeafHeader } from '@/components/station/displays/StationDisplayLeafHeader';
 import { cn } from '@/utils/_cn';
@@ -232,15 +232,17 @@ export function DeskInspectorIndexShell({
         data-testid="unbox-displays-filter-row"
         className="shrink-0 border-b border-border-hairline"
       >
-        <TechRailSearchBar
-          variant="chrome"
-          value={filterQuery}
-          onChange={applyFilterQuery}
-          onClear={() => applyFilterQuery('')}
-          onKeyDown={(e) => indexFilterKeysRef.current?.onFilterKeyDown(e)}
-          placeholder="Filter displays…"
-          className="min-w-0 flex-1"
-        />
+        {/* The index's ↑↓/Enter/Esc nav belongs to the ROW that hosts the
+            field, not to the field: a text input owns text. */}
+        <div className="flex min-w-0 flex-1 items-center" onKeyDown={(e) => indexFilterKeysRef.current?.onFilterKeyDown(e)}>
+          <SearchField
+            value={filterQuery}
+            onChange={applyFilterQuery}
+            onClear={() => applyFilterQuery('')}
+            placeholder="Filter displays…"
+            className="min-w-0 flex-1"
+          />
+        </div>
       </div>
     ) : null;
 

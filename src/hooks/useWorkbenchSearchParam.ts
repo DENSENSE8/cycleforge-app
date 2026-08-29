@@ -9,8 +9,8 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
  * The one scoped-search waist for workbench pages that don't need the
  * dashboard's extra behavior (openOrderId reset, forced `/dashboard` target).
  * Reads/writes `?search=` on the *current* path via `router.replace`, so the
- * same `SearchField` in `WorkbenchChromeHeader`'s `search` slot works on any
- * page (e.g. `/test` Shipping). Tables read `?search=` off the URL directly
+ * same field works on any page (e.g. `/test` Shipping) — hand the pair to
+ * {@link DataTable}'s `search` prop. Tables read `?search=` off the URL directly
  * (see `UnshippedTable`), so no prop threading is needed.
  *
  * The dashboard keeps `useDashboardSearchController` for its richer semantics.

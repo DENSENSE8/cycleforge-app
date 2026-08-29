@@ -16,7 +16,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { RSRecord, type RepairTab } from '@/lib/neon/repair-service-queries';
 import { RepairDetailsPanel } from './RepairDetailsPanel';
-import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
+import { DataTable } from '@/components/tables/DataTable';
 import { useTableSelectMode } from '@/hooks/useTableSelectMode';
 import type { RowGroup } from '@/lib/group-rows';
 import {
@@ -24,7 +24,6 @@ import {
   type RepairGridColumnKey,
 } from '@/lib/repair/repair-grid-layout';
 import { REPAIR_TABLE_BINDING } from './repair-grid/repair-table-definition';
-import { RepairGridColumnHeader } from './repair-grid/RepairGridColumnHeader';
 import { RepairGridRow } from './repair-grid/RepairGridRow';
 import { RepairRailShell } from './rail/RepairRailShell';
 import { useRepairsTable } from '@/hooks/useRepairs';
@@ -34,12 +33,7 @@ import { isRepairColumnSort } from '@/lib/repair/repair-display-sort';
 import { REPAIR_SELECTION_SCOPE } from '@/lib/selection/repair-scopes';
 import { emitToggleAll } from '@/lib/selection/table-selection';
 import { compareRepairGridRows } from '@/lib/repair/repair-grid-compare';
-import {
-  WORKBENCH_SHEET_CHROME,
-  WORKBENCH_SHEET_HOST,
-} from '@/components/dashboard/workbench-shell';
-import { RepairTriageBand, RepairWorkspaceHeader } from './RepairWorkspaceHeader';
-import { cn } from '@/utils/_cn';
+import { useWorkbenchSearchParam } from '@/hooks/useWorkbenchSearchParam';
 
 interface RepairTableProps {
   filter: RepairTab;
@@ -49,7 +43,7 @@ export function RepairTable({ filter }: RepairTableProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const search = searchParams.get('search');
+  const { searchQuery: search, setSearch } = useWorkbenchSearchParam();
   const [selectedRepair, setSelectedRepair] = useState<RSRecord | null>(null);
   const [repairControlsEl, setRepairControlsEl] = useState<HTMLDivElement | null>(null);
 
@@ -194,14 +188,8 @@ export function RepairTable({ filter }: RepairTableProps) {
 
   return (
     <div className="relative flex h-full min-h-0 min-w-0 w-full flex-1 flex-col overflow-hidden bg-surface-canvas">
-      <div className={cn('relative z-header shrink-0 flex flex-col gap-0', WORKBENCH_SHEET_CHROME)}>
-        <RepairWorkspaceHeader className="rounded-none border-l-0 border-t-0 shadow-sm" />
-        <RepairTriageBand controlsSlotRef={setRepairControlsEl} />
-      </div>
-      {/* Grid mounts flush in the sheet host — the grid's own sheet surface is
-          the single plane (no gutter column, no nested card wrapper). */}
-      <div className={WORKBENCH_SHEET_HOST}>
-        <NonlinearTableHost<RSRecord, RepairGridColumnKey, RepairGridColumn>
+      <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
+        <DataTable<RSRecord, RepairGridColumnKey, RepairGridColumn>
           binding={REPAIR_TABLE_BINDING}
           orderGroupsByDate={orderGroupsByDate}
           rows={displayRepairs}
@@ -213,18 +201,8 @@ export function RepairTable({ filter }: RepairTableProps) {
           }}
           loading={loading}
           emptyMessage={search ? `No repairs match "${search}"` : 'No repairs found'}
-          columnTriggerPortalTarget={repairControlsEl}
-          renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
-            <RepairGridColumnHeader
-              selectionScope={REPAIR_SELECTION_SCOPE}
-              columns={visible}
-              activeSort={columnSort}
-              sortDir={dir}
-              onSortColumn={toggleColumnSort}
-              onResizeColumn={onResizeColumn}
-              onResetColumn={onResetColumn}
-            />
-          )}
+          search={{ value: search, onChange: setSearch, placeholder: 'Filter repairs…' }}
+          selectionScope={REPAIR_SELECTION_SCOPE}
           renderGroup={(group, _stripe, { columns: visible }) =>
             renderRepairLeaf(group.rows[0], visible)
           }

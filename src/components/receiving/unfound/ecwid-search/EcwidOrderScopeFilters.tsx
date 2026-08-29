@@ -4,22 +4,22 @@
  * Store order-scope filter — All orders vs Repair (-RS).
  *
  * Lives in the SearchField trailing cluster (`trailingSuffix`, after paste)
- * via {@link WorkbenchFilterPopover} `density="field"`. Paste leads the icon
+ * via {@link FilterMenu} `density="field"`. Paste leads the icon
  * cluster (hover-reveal). Replaces the old HorizontalButtonSlider tab row
  * under the search field.
  *
- * When scope ≠ `all`, callers also render {@link WorkbenchFilterHotChip}
+ * When scope ≠ `all`, callers also render {@link FilterHotChip}
  * beside the SearchField (floor glanceability — D1/D10).
  */
 
 import { useState } from 'react';
 import { ShoppingCart, Wrench } from '@/components/Icons';
 import {
-  WorkbenchFilterGroupLabel,
-  WorkbenchFilterHotChip,
-  WorkbenchFilterMenuRow,
-  WorkbenchFilterPopover,
-} from '@/components/dashboard/workbench-filter-popover';
+  FilterMenuGroupLabel,
+  FilterHotChip,
+  FilterMenuRow,
+  FilterMenu,
+} from '@/components/ui/FilterMenu';
 import type { EcwidOrderScope } from './ecwid-search-shared';
 import type { EcwidProductSearchController } from './useEcwidProductSearch';
 
@@ -43,20 +43,19 @@ export function EcwidOrderScopeFilters({ c }: { c: EcwidProductSearchController 
     : undefined;
 
   return (
-    <WorkbenchFilterPopover
+    <FilterMenu
       open={open}
       onOpenChange={setOpen}
       hot={hot}
       label="Order scope"
       hotActiveLabel={hotLabel}
-      density="field"
       contentClassName="w-48"
     >
-      <WorkbenchFilterGroupLabel>Scope</WorkbenchFilterGroupLabel>
+      <FilterMenuGroupLabel>Scope</FilterMenuGroupLabel>
       {SCOPE_OPTIONS.map((opt) => {
         const Icon = opt.icon;
         return (
-          <WorkbenchFilterMenuRow
+          <FilterMenuRow
             key={opt.id}
             label={opt.label}
             active={c.orderScope === opt.id}
@@ -68,7 +67,7 @@ export function EcwidOrderScopeFilters({ c }: { c: EcwidProductSearchController 
           />
         );
       })}
-    </WorkbenchFilterPopover>
+    </FilterMenu>
   );
 }
 
@@ -77,7 +76,7 @@ export function EcwidOrderScopeHotChip({ c }: { c: EcwidProductSearchController 
   if (c.popoverMode !== 'repair_service' || c.orderScope === 'all') return null;
   const label = SCOPE_OPTIONS.find((o) => o.id === c.orderScope)?.label ?? 'Filter';
   return (
-    <WorkbenchFilterHotChip
+    <FilterHotChip
       label={label}
       onClear={() => c.setOrderScope('all')}
     />

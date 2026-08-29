@@ -45,7 +45,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/design-system/primitives/DropdownMenu';
-import { cornerClass } from '@/design-system/tokens/radius';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 
@@ -62,7 +61,6 @@ const FLOOR_GLYPH_CLASS = FLUSH_TERMINAL_SPREAD_GLYPH_CLASS.split(' ')
   .join(' ');
 
 const FLOOR_CELL = cn(
-  cornerClass('flush'),
   FLUSH_TERMINAL_SPREAD_PEER_CLASS,
   FLOOR_GLYPH_CLASS,
   ICON_ACTION_FLOOR_CELL_CLASS,

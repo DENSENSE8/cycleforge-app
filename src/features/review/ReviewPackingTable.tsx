@@ -9,16 +9,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { OrdersGridHost } from '@/components/dashboard/orders-queue/OrdersGridHost';
-import {
-  WORKBENCH_SHEET_CHROME,
-  WORKBENCH_SHEET_HOST,
-  WorkbenchChromeHeader,
-  WorkbenchTriageBand,
-} from '@/components/dashboard/workbench-shell';
 import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
-import { StaffFilterButton } from '@/components/ui/StaffFilterButton';
-import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
-import { cn } from '@/utils/_cn';
 import { packedOrdersQuery, dashboardShippedQuery } from '@/lib/queries/dashboard-queries';
 import { usePackReviewQueue } from '@/features/review/usePackReviewQueue';
 import { packReviewRowToShippedOrder, type ReviewTableOrder } from '@/lib/packing/review-table-mappers';
@@ -33,6 +24,10 @@ import { DASHBOARD_ORDERS_SELECTION_SCOPE } from '@/lib/selection/dashboard-scop
 import type { ShippedOrder } from '@/types/orders';
 import type { PackerRecord } from '@/hooks/usePackerLogs';
 
+/**
+ * The lane strip. `packed` is the default lane, so it IS the unfiltered view
+ * and lights no tab — the same rule every other strip follows.
+ */
 const PACKING_TABS: Array<{ id: ReviewPackingTab; label: string }> = [
   { id: 'packed', label: 'Packed' },
   { id: 'shipped', label: 'Shipped' },
@@ -172,35 +167,13 @@ export function ReviewPackingTable({ onOpenRow, onCloseRow }: ReviewPackingTable
 
   return (
     <div className="relative flex h-full min-w-0 flex-1 overflow-hidden bg-surface-canvas">
-      <DashboardScrollShell
-        className="h-full"
-        chrome={
-          <div className={cn(WORKBENCH_SHEET_CHROME, 'flex flex-col gap-0')}>
-            <WorkbenchChromeHeader
-              density="band"
-              tabs={PACKING_TABS}
-              activeTab={tab}
-              onTabChange={setTab}
-              className="rounded-none border-l-0 border-t-0 shadow-sm"
-            />
-            <WorkbenchTriageBand
-              search={
-                <TechRailSearchBar
-                  variant="chrome"
-                  value={searchQuery}
-                  onChange={setSearch}
-                  placeholder="Filter order #, SKU, tracking…"
-                  className="min-w-0 flex-1"
-                  trailingSuffix={<StaffFilterButton density="field" align="end" />}
-                />
-              }
-              controlsSlotRef={setControlsEl}
-            />
-          </div>
-        }
-      >
-        <div className={WORKBENCH_SHEET_HOST}>
+      <DashboardScrollShell className="h-full">
+        <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
           <OrdersGridHost
+            tabs={PACKING_TABS.filter((t) => t.id !== 'packed')}
+            activeTab={tab === 'packed' ? undefined : tab}
+            onTabChange={(id) => setTab(id === tab ? 'packed' : id)}
+            search={{ value: searchQuery, onChange: setSearch, placeholder: 'Filter order #, SKU, tracking…' }}
             ariaLabel="Orders awaiting packing review"
             records={records as ShippedOrder[]}
             loading={loading}
@@ -213,7 +186,6 @@ export function ReviewPackingTable({ onOpenRow, onCloseRow }: ReviewPackingTable
             queueMode={tab === 'packed' ? 'staged' : 'fulfillment'}
             sort="newest"
             selectionScope={DASHBOARD_ORDERS_SELECTION_SCOPE}
-            columnTriggerPortalTarget={controlsEl}
             data-testid="review-packing-grid-body"
             onOpenRecord={(record) => onOpenRow(record as ReviewTableOrder)}
             onCloseRecord={() => onCloseRow()}

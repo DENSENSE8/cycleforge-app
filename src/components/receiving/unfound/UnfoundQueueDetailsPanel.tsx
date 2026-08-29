@@ -35,7 +35,6 @@ import {
   DeskInspectorIndexShell,
   type DeskInspectorLeaf,
 } from '@/components/right-rail/DeskInspectorIndexShell';
-import { InspectorColumnDisplayButton } from '@/components/right-rail/InspectorColumnDisplayButton';
 import {
   FLOOR_DELETE_PEER_CLASS,
   FloorIconButton,
@@ -177,7 +176,6 @@ export function UnfoundQueueDetailsPanel(props: UnfoundQueueDetailsPanelProps) {
           <DeskInspectorIndexShell
             stance="index"
             title="Unfound"
-            headerRightSlot={<InspectorColumnDisplayButton />}
             leaves={leaves}
             activeId={navId}
             onActiveIdChange={onNavChange}
@@ -193,7 +191,6 @@ export function UnfoundQueueDetailsPanel(props: UnfoundQueueDetailsPanelProps) {
           <DeskInspectorIndexShell
             stance="standalone"
             title="Unfound"
-            headerRightSlot={<InspectorColumnDisplayButton />}
             ariaLabel="Unfound row"
             testId="unfound-inspector-index"
             body={<div className="px-6 py-5">{overviewBody}</div>}

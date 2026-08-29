@@ -3,8 +3,8 @@
 /**
  * Inventory › Units browse workspace — the ops-queue Sheets golden applied to
  * the units collection (Wave 0 of the SoT page-violation migrate). Flush sheet
- * chrome (`WORKBENCH_SHEET_CHROME` Band 1) over `NonlinearTableHost` +
- * `UNITS_TABLE_BINDING` in `WORKBENCH_SHEET_HOST`, mounted at `/inventory/units`.
+ * chrome (`'relative w-full min-w-0'` Band 1) over `NonlinearTableHost` +
+ * `UNITS_TABLE_BINDING` in `'relative flex min-h-0 min-w-0 flex-1 flex-col'`, mounted at `/inventory/units`.
  *
  * Row click opens the unit in the `RightRailHost` push inspector
  * (`InventoryInspectorRail`, keyed on `?open=unit:<ref>` via
@@ -21,20 +21,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
-import {
-  WORKBENCH_SHEET_CHROME,
-  WORKBENCH_SHEET_HOST,
-  WorkbenchChromeHeader,
-} from '@/components/dashboard/workbench-shell';
-import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
+import { DataTable } from '@/components/tables/DataTable';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
+import { useWorkbenchSearchParam } from '@/hooks/useWorkbenchSearchParam';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 import type { RowGroup } from '@/lib/group-rows';
 import { serializeInventoryOpenKey } from '@/lib/inventory-events-channel';
 import { InventoryInspectorRail } from './InventoryInspectorRail';
 import { useInventoryOpenParam } from './useInventoryOpenParam';
 import { useUnitsOverview, type UnitsOverviewRow } from '@/hooks/useUnitsOverview';
-import { UnitsGridColumnHeader } from './units-grid/UnitsGridColumnHeader';
 import { UnitsGridRow } from './units-grid/UnitsGridRow';
 import { UNITS_TABLE_BINDING } from './units-grid/units-table-definition';
 import {
@@ -109,7 +104,6 @@ export function UnitsWorkspaceView() {
     [setOpen],
   );
 
-  const isSearching = q.length > 0 || states.length > 0 || conditions.length > 0;
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const {
@@ -130,6 +124,8 @@ export function UnitsWorkspaceView() {
     return () => cancelAnimationFrame(raf);
   }, [loading, hasRows]);
 
+  const { searchQuery, setSearch } = useWorkbenchSearchParam();
+
   const orderGroupsByDate = useMemo<[string, RowGroup<UnitsOverviewRow>[]][]>(() => {
     const ordered =
       columnSort && sortDir
@@ -146,22 +142,9 @@ export function UnitsWorkspaceView() {
 
   return (
     <div className="relative flex h-full min-h-0 w-full flex-col">
-      <DashboardScrollShell
-        className="h-full overflow-y-hidden bg-transparent"
-        chrome={
-          <div className={WORKBENCH_SHEET_CHROME}>
-            <WorkbenchChromeHeader
-              density="band"
-              tabs={[{ id: 'units', label: 'Units' }]}
-              activeTab="units"
-              onTabChange={() => {}}
-              controlsSlotRef={setControlsEl}
-            />
-          </div>
-        }
-      >
-        <div className={WORKBENCH_SHEET_HOST}>
-          <NonlinearTableHost<UnitsOverviewRow, UnitsGridColumnKey, UnitsGridColumn>
+      <DashboardScrollShell className="h-full overflow-y-hidden bg-transparent">
+        <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
+          <DataTable<UnitsOverviewRow, UnitsGridColumnKey, UnitsGridColumn>
             binding={UNITS_TABLE_BINDING}
             orderGroupsByDate={orderGroupsByDate}
             rows={rows}
@@ -172,19 +155,8 @@ export function UnitsWorkspaceView() {
             loading={loading}
             emptyMessage="No units match the current filters."
             searchEmptyMessage="No units match the current filters."
-            isSearching={isSearching}
             scrollRef={scrollRef}
-            columnTriggerPortalTarget={controlsEl}
-            renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
-              <UnitsGridColumnHeader
-                columns={visible}
-                activeSort={columnSort}
-                sortDir={sortDir}
-                onSortColumn={toggleColumnSort}
-                onResizeColumn={onResizeColumn}
-                onResetColumn={onResetColumn}
-              />
-            )}
+search={{ value: searchQuery, onChange: setSearch, placeholder: 'Filter units…' }}
             renderGroup={(group, _stripe, { columns: visible }) => (
               <>{group.rows.map((row) => renderLeaf(row, visible))}</>
             )}

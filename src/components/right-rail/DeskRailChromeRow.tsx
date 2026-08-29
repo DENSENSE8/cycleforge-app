@@ -46,7 +46,6 @@
  */
 
 import type { ReactNode } from 'react';
-import { InspectorColumnDisplayButton } from '@/components/right-rail/InspectorColumnDisplayButton';
 import { STATION_DISPLAYS_PUSH_TOP_BAND } from '@/components/station/entity-context/station-identity-chrome';
 import {
   STATION_CHROME_ROW_FACE,
@@ -115,7 +114,6 @@ export function DeskRailChromeRow({
     <div className={cn(DESK_RAIL_CHROME_ROW_CLASS, className)}>
       {columnDisplay ? (
         <div className="flex h-full shrink-0 items-stretch">
-          <InspectorColumnDisplayButton />
         </div>
       ) : null}
       {actions ? (

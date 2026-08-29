@@ -22,7 +22,6 @@
 
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
 import { DeskInspectorIndexShell } from '@/components/right-rail/DeskInspectorIndexShell';
-import { OrdersViewTopicsCluster } from '@/components/outbound/orders/OrdersViewTopicsCluster';
 import {
   OrdersViewChromeBridge,
   useOrdersViewChrome,
@@ -66,7 +65,6 @@ export function OrdersViewControlsRail() {
                 aria-label="Orders view topics"
               >
                 <div className="min-w-0 flex-1" />
-                <OrdersViewTopicsCluster hidePaint />
               </div>
             }
           />

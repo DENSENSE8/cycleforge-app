@@ -29,7 +29,6 @@ import { PaneHeaderActionBar, PaneHeaderLabel } from '@/components/ui/pane-heade
 import { FnskuCatalogInfoPanel } from './FnskuCatalogInfoPanel';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
 import { DeskInspectorIndexShell } from '@/components/right-rail/DeskInspectorIndexShell';
-import { InspectorColumnDisplayButton } from '@/components/right-rail/InspectorColumnDisplayButton';
 import { scanActionLabel, formatCreatedAt, type FbaBoardDetailPanelProps } from './board-detail/board-detail-shared';
 import { useFbaBoardDetail } from './board-detail/useFbaBoardDetail';
 import { PlanEntryCard } from './board-detail/PlanEntryCard';
@@ -79,7 +78,6 @@ export function FbaBoardDetailPanel({
                   <span className="tabular-nums">{totalActual}</span>
                 </span>
               </span>
-              <InspectorColumnDisplayButton testId="fba-board-column-display" />
               {panelActions.length ? (
                 <PaneHeaderActionBar
                   iconOnly

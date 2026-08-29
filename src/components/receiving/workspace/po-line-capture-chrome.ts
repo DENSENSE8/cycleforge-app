@@ -14,7 +14,6 @@
  */
 
 import { STATION_CONTEXT_PHOTO_TONE } from '@/components/station/entity-context/station-context-action-pill';
-import { cornerClass } from '@/design-system/tokens/radius';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 
@@ -37,7 +36,6 @@ export const PO_LINE_CAPTURE_ROW_CLASS = cn(
   'flex w-full min-w-0 items-stretch overflow-hidden',
   PO_LINE_CAPTURE_ROW_HEIGHT,
   'divide-x divide-border-soft border-y border-border-hairline bg-surface-card',
-  cornerClass('flush'),
 );
 
 /** Condition host — flex-1 when expanded, shrink-0 Tags when collapsed. */
@@ -53,7 +51,6 @@ export const PO_LINE_CAPTURE_CONDITION_CLASS =
 const PO_LINE_CAPTURE_SEGMENT_CLASS = cn(
   'ds-raw-button inline-flex h-full w-11 shrink-0 items-center justify-center',
   'transition-colors',
-  cornerClass('flush'),
   focusRing('control', 'accent'),
 );
 
@@ -81,7 +78,6 @@ export const PO_LINE_CAPTURE_GLYPH_CLASS = 'h-5 w-5 shrink-0';
  */
 export const PO_LINE_CAPTURE_COUNT_CLASS = cn(
   'pointer-events-none absolute right-1 top-1 min-w-3 px-0.5',
-  cornerClass('flush'),
   'text-role-micro font-semibold tabular-nums leading-none',
 );
 

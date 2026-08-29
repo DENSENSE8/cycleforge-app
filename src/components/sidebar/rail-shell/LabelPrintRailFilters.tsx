@@ -7,9 +7,9 @@
 
 import { useState } from 'react';
 import {
-  WorkbenchFilterMenuRow,
-  WorkbenchFilterPopover,
-} from '@/components/dashboard/workbench-filter-popover';
+  FilterMenuRow,
+  FilterMenu,
+} from '@/components/ui/FilterMenu';
 import type { LabelPrintFeedItem } from '@/hooks/useLabelPrintFeed';
 
 export interface LabelPrintRailFacets {
@@ -60,16 +60,15 @@ export function LabelPrintRailFilters({
   const hotLabel = labelPrintRailFacetsHotLabel(facets);
 
   return (
-    <WorkbenchFilterPopover
+    <FilterMenu
       open={open}
       onOpenChange={setOpen}
       hot={hot}
       label="Rail filters"
       hotActiveLabel={hotLabel}
-      density="field"
       contentClassName="w-56"
     >
-      <WorkbenchFilterMenuRow
+      <FilterMenuRow
         label="All statuses"
         active={facets.status == null}
         sectionHeader
@@ -79,7 +78,7 @@ export function LabelPrintRailFilters({
         }}
       />
       {STATUS_OPTIONS.map((status) => (
-        <WorkbenchFilterMenuRow
+        <FilterMenuRow
           key={status}
           label={status}
           active={facets.status === status}
@@ -89,6 +88,6 @@ export function LabelPrintRailFilters({
           }}
         />
       ))}
-    </WorkbenchFilterPopover>
+    </FilterMenu>
   );
 }

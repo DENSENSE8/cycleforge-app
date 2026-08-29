@@ -13,7 +13,7 @@ import { cn } from '@/utils/_cn';
  * `TechRailSearchBar` has described these as one grammar since it was written —
  * *"all three use a 24px control / 14px glyph box and one centered row"* — but
  * the cell was DECLARED in three places (`SearchField`'s paste button,
- * `WorkbenchFilterPopover`'s `density="field"` trigger, `RailFilterCollapseButton`)
+ * `FilterMenu`'s `density="field"` trigger, `RailFilterCollapseButton`)
  * and had already drifted: the two field cells hover blue, collapse hovered to
  * `text-text-default`. A sentence in a docblock cannot fail. A shared token can
  * only be broken on purpose.

@@ -41,7 +41,6 @@
  * Unbox centre (main) · Active-step outline.
  */
 
-import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 
 /**
@@ -54,7 +53,6 @@ import { cn } from '@/utils/_cn';
  */
 export const ACTIVE_STEP_RING_CLASS = cn(
   'outline-2 outline-accent-bg -outline-offset-2',
-  cornerClass('flush'),
 );
 
 /**

@@ -13,7 +13,6 @@ import { ChevronDown, Plus } from '@/components/Icons';
 import { useRouter } from 'next/navigation';
 import { useOrderIdentityCellNodes, OrderIdentityChips } from '@/components/ui/OrderIdentityChips';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { LedgerCellEditor } from '@/design-system/components/grid';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { ConditionSelectPopover } from './cell-editors';
 import {
@@ -74,8 +73,6 @@ import {
   packBenchShortLabel,
 } from '@/lib/packing/pack-bench-display';
 import { useOrderAssignment, type OrderAssignPayload } from '@/hooks/useOrderAssignment';
-import { useTableDensity } from '@/hooks/useTableDensity';
-import type { TableDensityClasses } from '@/lib/tables/table-density';
 import { toast } from '@/lib/toast';
 import { cn } from '@/utils/_cn';
 
@@ -352,7 +349,6 @@ interface OrdersQueueFlatRowCellsProps {
   testerDisplay: string;
   trackingAction?: React.ReactNode;
   serialChip?: React.ReactNode;
-  densityClasses: TableDensityClasses;
   onToggleSelect?: (record: ShippedOrder, event: { shiftKey: boolean }) => void;
   onRequestReplaceTracking?: (record: ShippedOrder) => void;
 }
@@ -374,7 +370,6 @@ function OrdersQueueFlatRowCells({
   testerDisplay,
   trackingAction,
   serialChip,
-  densityClasses,
   onToggleSelect,
   onRequestReplaceTracking,
 }: OrdersQueueFlatRowCellsProps) {
@@ -539,7 +534,6 @@ function OrdersQueueFlatRowCells({
     <GridDateCellValue
       label={dateCellData?.label}
       tooltip={dateCellData?.tooltip}
-      className={densityClasses.metaText}
     />
   ) : null;
 
@@ -551,7 +545,6 @@ function OrdersQueueFlatRowCells({
       laneAgeLabel={showLaneAge ? laneAgeLabel : null}
       laneAgeHours={laneAgeHours}
       tooltip={ageTooltip}
-      className={densityClasses.metaText}
     />
   ) : null;
 
@@ -754,8 +747,7 @@ function OrdersQueueFlatRowCells({
             <GridAgeCellValue
               daysLate={daysLate}
               tooltip={ageTooltip}
-              className={densityClasses.metaText}
-            />
+                    />
           </div>
         );
       case 'tester':
@@ -763,7 +755,7 @@ function OrdersQueueFlatRowCells({
         // normalized upstream into `testerDisplay` ('---' when truly missing).
         return (
           <div data-col="tester" className={dataCell(col, rule)}>
-            <GridStaffCellValue name={testerDisplay} className={densityClasses.metaText} />
+            <GridStaffCellValue name={testerDisplay} />
           </div>
         );
       case 'testedAt': {
@@ -773,7 +765,7 @@ function OrdersQueueFlatRowCells({
             {testedAtRaw ? (
               <GridMonthDayTimeCellValue
                 raw={testedAtRaw}
-                className={cn('text-text-muted', densityClasses.metaText)}
+                className="text-text-muted"
               />
             ) : (
               <GridCellDash />
@@ -818,24 +810,10 @@ function OrdersQueueFlatRowCells({
               className={cn(
                 'min-w-0 truncate tabular-nums normal-case tracking-normal',
                 orderRowQtyTone(qty),
-                densityClasses.metaText,
               )}
             >
               {qty}
             </span>
-            {editing === 'qty' && gridEditable ? (
-              <LedgerCellEditor
-                variant="number"
-                min={1}
-                initialValue={String(qty)}
-                replaceWith={editSeed}
-                ariaLabel="Edit quantity"
-                onCommit={(next) =>
-                  commitAssign({ quantity: next }, 'Quantity updated', 'Failed to update quantity')
-                }
-                onClose={closeEditor}
-              />
-            ) : null}
           </div>
         );
       case 'order':
@@ -1016,7 +994,6 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
    */
   const compoundLayout = !isMobile && isCompoundColumnModel(columns);
 
-  const { classes: densityClasses } = useTableDensity();
   const isStagedRow = queueMode === 'staged' || queueMode === 'shipped';
 
   // Zebra is OFF under the airtable skin. That skin already draws a full cell
@@ -1145,7 +1122,6 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
       testerDisplay={testerDisplay}
       trackingAction={trackingAction}
       serialChip={serialChip}
-      densityClasses={densityClasses}
       onToggleSelect={onToggleSelect}
       onRequestReplaceTracking={onRequestReplaceTracking}
     />
@@ -1216,7 +1192,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
             QUEUE_ROW.px,
             isStagedRow
               ? 'py-2.5 hover:bg-blue-50/50'
-              : cn('hover:bg-surface-hover', densityClasses.rowPadding),
+              : 'hover:bg-surface-hover py-1.5',
             // Idle zebra (off-grid only — see `stripeRow`): opaque canvas
             // where the caller asks, translucent otherwise. Selection
             // overrides stripe; triage flag beats zebra.

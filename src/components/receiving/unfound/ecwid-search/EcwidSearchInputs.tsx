@@ -1,10 +1,9 @@
 import { useEffect, useRef } from 'react';
 import { SearchBar } from '@/components/ui/SearchBar';
-import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
+import { SearchField } from '@/design-system/primitives/SearchField';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Button } from '@/design-system/primitives';
 import {
-  EcwidOrderScopeFilters,
   EcwidOrderScopeHotChip,
 } from './EcwidOrderScopeFilters';
 import type { EcwidProductSearchController } from './useEcwidProductSearch';
@@ -46,7 +45,7 @@ export function EcwidSearchInputs({
           variant="blue"
           size="compact"
           hideUnderline
-          trailingPrefix={
+          rightElement={
             <HoverTooltip label="Product not added yet?" asChild>
               <button
                 type="button"
@@ -111,16 +110,11 @@ export function EcwidSearchInputs({
             flush-sunken face this component is built for; `flush` drops its
             last horizontal pad so it sits edge-to-edge with the chrome
             (2026-08-24 fix). */}
-        <TechRailSearchBar
+        <SearchField
           value={c.repairFilter}
           onChange={c.setRepairFilter}
           placeholder="Filter by order #, title, or SKU…"
-          variant="chrome"
-          flush={flush}
           inputRef={repairSearchInputRef}
-          // Scope filter after paste — paste-left SoT (trailingSuffix).
-          trailingSuffix={<EcwidOrderScopeFilters c={c} />}
-          className="min-w-0 flex-1"
         />
         <EcwidOrderScopeHotChip c={c} />
       </div>

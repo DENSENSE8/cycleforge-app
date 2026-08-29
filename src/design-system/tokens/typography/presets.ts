@@ -64,7 +64,7 @@ export const ledgerCell = 'min-w-0 truncate text-role-caption text-text-default'
 export const cardTitle = 'text-base font-semibold text-text-default leading-tight' as const;
 
 /**
- * LedgerGrid / DataTable column headers — quiet label chrome (override
+ * LedgerGrid / AdminTable column headers — quiet label chrome (override
  * role-micro's 600 weight). Sentence case as authored (`label` / `gridLabel`);
  * never CSS `uppercase` (eyebrows · chips · field/section labels keep that).
  * Guard: `table-header-casing.guard.test.ts`.

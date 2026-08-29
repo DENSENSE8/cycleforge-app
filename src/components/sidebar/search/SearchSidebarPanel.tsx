@@ -12,7 +12,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { skipToken, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ScanBandShell } from '@/components/station/scan-bar';
-import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
+import { SearchField } from '@/design-system/primitives/SearchField';
 import { SidebarRailScrollport } from '@/components/sidebar/rail-shell/SidebarRailScrollport';
 import { ReceivingFeedRail } from '@/components/sidebar/receiving/ReceivingFeedRail';
 import { filterReceivingRailRows } from '@/components/sidebar/tech/filter-receiving-rail-rows';
@@ -76,9 +76,7 @@ export function SearchSidebarPanel() {
       data-testid="search-sidebar-panel"
     >
       <ScanBandShell themeColor={themeColor}>
-        <TechRailSearchBar
-          variant="chrome"
-          flush
+        <SearchField
           value={railFilter}
           onChange={setRailFilter}
           placeholder="Filter recent finds…"
