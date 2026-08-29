@@ -13,10 +13,10 @@
  * registry + {@link NonlinearTableHost} over `LedgerGridSurface`, like every
  * other operator queue. No `*GridView` twin.
  *
- * Chrome is the Home → Daily stack ({@link WorkbenchSheetView} + Band 1
- * {@link WorkbenchChromeHeader} + Band 3 {@link WorkbenchTriageBand}), because
- * it is the same shape of thing one page over — and reading two checklists that
- * look different is a tax paid on every shift.
+ * Chrome is {@link DataTable}'s, like every other table — the find field, the
+ * lane strip and the counts are drawn once by the table, from data this file
+ * hands it. Reading two checklists that look different is a tax paid on every
+ * shift, and the way to stop paying it is one display, not two matching ones.
  *
  * ## Two stores, still not merged
  *
@@ -38,18 +38,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Plus } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import { useAuth } from '@/contexts/AuthContext';
-import {
-  WorkbenchSheetView,
-  useWorkbenchSheetChrome,
-} from '@/components/dashboard/WorkbenchSheetView';
-import {
-  WorkbenchChromeHeader,
-  WorkbenchTrailingCluster,
-  WorkbenchTriageBand,
-} from '@/components/dashboard/workbench-shell';
-import { WorkbenchInspectorToggle } from '@/components/dashboard/workbench-inspector-toggle';
-import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
-import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
+import { DataTable } from '@/components/tables/DataTable';
+import { SearchField } from '@/design-system/primitives/SearchField';
 import { rowGroupTotals, singleBand, type RowGroup } from '@/lib/group-rows';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import { compareGridValues } from '@/design-system/components/grid';
@@ -62,7 +52,6 @@ import {
   type TasksGridColumnKey,
 } from '@/lib/staff-todos/tasks-grid-layout';
 import { TASKS_TABLE_BINDING } from './grid/tasks-table-definition';
-import { TasksGridColumnHeader } from './grid/TasksGridColumnHeader';
 import { CompoundRow } from '@/components/tables/compound/CompoundRow';
 import { staffTaskCompoundView } from './grid/staff-task-compound-view';
 import { TASKS_GRID_CAPABILITIES } from './grid/tasks-grid-descriptor';
@@ -85,6 +74,16 @@ type TasksLane = 'open' | 'done' | 'deleted';
 function parseLane(raw: string | null): TasksLane {
   return raw === 'done' || raw === 'deleted' ? raw : 'open';
 }
+
+/**
+ * The lanes. "View everything" is a lane, not a hidden menu item: a delete that
+ * archives is only honestly reversible if the archive is a place you can go.
+ */
+const TASK_LANE_TABS = [
+  { id: 'open', label: 'Open' },
+  { id: 'done', label: 'Done' },
+  { id: 'deleted', label: 'Deleted' },
+];
 
 export function TasksWorkbench() {
   const router = useRouter();
@@ -227,79 +226,9 @@ export function TasksWorkbench() {
 
   return (
     <div className="flex h-full min-h-0 w-full min-w-0 flex-col bg-surface-card">
-      <WorkbenchSheetView
-        chrome={sheetChrome}
-        className="h-full w-full min-w-0 bg-surface-card"
-        sheetHostClassName="bg-surface-card"
-        tabs={({ className }) => (
-          <WorkbenchChromeHeader
-            density="band"
-            className={className}
-            tabs={[
-              { id: 'open', label: 'Open', color: 'blue' },
-              { id: 'done', label: 'Done', color: 'green' },
-              // "View everything" as a lane, not a hidden menu item: a delete
-              // that archives is only honestly reversible if the archive is a
-              // place you can go.
-              { id: 'deleted', label: 'Deleted', color: 'gray' },
-            ]}
-            activeTab={lane}
-            onTabChange={(id) => setLane(parseLane(id))}
-            solidTone="accent"
-            trailing={
-              <WorkbenchTrailingCluster
-                divide={false}
-                actions={
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    className="shrink-0"
-                    onClick={() => setLane('open')}
-                    icon={<Plus className="h-4 w-4" />}
-                  >
-                    Add
-                  </Button>
-                }
-              />
-            }
-          />
-        )}
-        triage={() => (
-          <WorkbenchTriageBand
-            search={
-              <TechRailSearchBar
-                variant="chrome"
-                value={query}
-                onChange={setQuery}
-                placeholder="Filter tasks…"
-                className="min-w-0 flex-1"
-              />
-            }
-            right={
-              totals.count > 0 ? (
-                <span className="text-role-caption tabular-nums text-text-muted">
-                  <span className="font-semibold text-text-default">{totals.measures.done}</span>
-                  {` / ${totals.count} done`}
-                </span>
-              ) : null
-            }
-            trailing={
-              <WorkbenchInspectorToggle
-                open={selected != null}
-                onOpenEmpty={() => {
-                  const first = rows[0];
-                  if (first) selectTask(first.id);
-                }}
-              />
-            }
-          />
-        )}
-      >
-        {() => (
-          <>
-            <NonlinearTableHost<StaffTaskRow, TasksGridColumnKey, TasksGridColumn>
+      <div className="flex h-full w-full min-w-0 flex-col bg-surface-card">
+            <DataTable<StaffTaskRow, TasksGridColumnKey, TasksGridColumn>
               binding={TASKS_TABLE_BINDING}
-              tableId="tasks"
               // COMPOUND (two-row) WMS layout — the SAME tracks Unbox,
               // History, Testing, To-Ship and Incoming mount. A task has no
               // photo, no order and no carrier, so those tracks read empty:
@@ -324,17 +253,11 @@ export function TasksWorkbench() {
                         ? 'Nothing checked off yet.'
                         : 'No open tasks.'
               }
-              renderColumnHeader={({ onResizeColumn, onResetColumn, columns: visible }) => (
-                <TasksGridColumnHeader
-                  columns={visible}
-                  activeSort={columnSort}
-                  sortDir={sortDir}
-                  onSortColumn={toggleColumnSort}
-                  onResizeColumn={onResizeColumn}
-                  onResetColumn={onResetColumn}
-                  tableId="tasks"
-                />
-              )}
+              search={{ value: query, onChange: setQuery, placeholder: 'Filter tasks…' }}
+              tabs={TASK_LANE_TABS}
+              activeTab={lane}
+              onTabChange={(id) => setLane(parseLane(id))}
+              totalCount={totals.count}
               renderGroup={(group, _stripe, { columns: visible }) => (
                 <>
                   {group.rows.map((row) => (
@@ -413,9 +336,7 @@ export function TasksWorkbench() {
                 stationLabel={composerStation}
               />
             )}
-          </>
-        )}
-      </WorkbenchSheetView>
+      </div>
 
       <StaffTaskInspectorRail
         row={selected}

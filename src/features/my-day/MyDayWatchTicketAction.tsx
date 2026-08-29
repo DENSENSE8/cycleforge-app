@@ -8,7 +8,6 @@
 
 import { Plus } from '@/components/Icons';
 import { PRIMARY_CHROME_ROW_FACE } from '@/components/layout/header-shell';
-import { WORKBENCH_CHROME_PILL_CLASS } from '@/components/dashboard/workbench-shell';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/utils/_cn';
 

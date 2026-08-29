@@ -18,7 +18,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/design-system/components/Dialog';
-import { DataTable, type DataTableColumn } from '@/design-system/components/DataTable';
+import { AdminTable, type AdminTableColumn } from '@/design-system/components/AdminTable';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { toast } from '@/lib/toast';
 import { cn } from '@/utils/_cn';
@@ -131,7 +131,7 @@ export function StaffTable({ initialStaff }: StaffTableProps) {
 
   const isSearching = filter.trim().length > 0;
 
-  const columns: DataTableColumn<StaffRow>[] = [
+  const columns: AdminTableColumn<StaffRow>[] = [
     {
       key: 'name',
       header: 'Name',
@@ -231,7 +231,7 @@ export function StaffTable({ initialStaff }: StaffTableProps) {
         </Button>
       </div>
 
-      <DataTable
+      <AdminTable
         columns={columns}
         rows={filtered}
         rowKey={(s) => s.id}

@@ -24,27 +24,12 @@ import { Suspense, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { useSearchParams } from 'next/navigation';
 import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
-import {
-  WORKBENCH_SHEET_CHROME,
-  WORKBENCH_SHEET_HOST,
-} from '@/components/dashboard/workbench-shell';
 import { RECEIVING_SELECTION_SCOPE } from '@/components/station/receiving-lines-table-helpers';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { UnboxTableCardSkeleton } from '@/components/receiving/unbox/UnboxWorkbenchSkeleton';
-import { UnboxWorkspaceHeader } from '@/components/receiving/unbox/UnboxWorkspaceHeader';
 import { ReceivingLineRailShell } from '@/components/receiving/rail/ReceivingLineRailShell';
 import { ReceivingClaimModal } from '@/components/receiving/workspace/ReceivingClaimModal';
-import { UnboxCompareHost } from '@/components/receiving/unbox/compare/UnboxCompareHost';
-import { useHistoryViewChromeOptional } from '@/components/receiving/history/history-view-chrome-context';
 import { TechAllTriageTable } from '@/components/tech/all/TechAllTriageTable';
-import {
-  GRID_ZOOM_DEFAULT,
-  gridZoomStyle,
-} from '@/design-system/components/grid/grid-zoom';
-import {
-  parseUnboxCompareLayout,
-  UNBOX_COMPARE_LAYOUT_PARAM,
-} from '@/lib/receiving/unbox-compare-layout';
 import { useSurfacePaintMark } from '@/lib/observability/paint-timing';
 import { useUnboxWorkspaceTab } from '@/hooks/useUnboxWorkspaceTab';
 import { useReceivingLineRailSelection } from '@/hooks/useReceivingLineRailSelection';

@@ -19,7 +19,6 @@
  */
 
 import { useMemo } from 'react';
-import { WORKBENCH_SHEET_HOST } from '@/components/dashboard/workbench-shell';
 import { SalesTransactionsFeed } from '@/components/walk-in/SalesTransactionsFeed';
 import { summarizeTransactions, type WalkInTransaction } from '@/lib/walk-in/transactions';
 

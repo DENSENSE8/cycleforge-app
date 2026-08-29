@@ -9,30 +9,22 @@
  * workbench gutters + WorkbenchChromeHeader (tabs · search · filter · trailing).
  */
 
+import {
+  FilterMenu,
+  FilterMenuDivider,
+  FilterMenuGroupLabel,
+  FilterMenuRow,
+} from '@/design-system/primitives/FilterMenu';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Loader2, RefreshCw } from '@/components/Icons';
 import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
-import {
-  WORKBENCH_SHEET_CHROME,
-  WORKBENCH_SHEET_HOST,
-  WorkbenchChromeHeader,
-  WorkbenchTrailingCluster,
-  WorkbenchTriageBand,
-} from '@/components/dashboard/workbench-shell';
-import {
-  WorkbenchFilterDivider,
-  WorkbenchFilterGroupLabel,
-  WorkbenchFilterMenuRow,
-  WorkbenchFilterPopover,
-} from '@/components/dashboard/workbench-filter-popover';
-import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
+import { SearchField } from '@/design-system/primitives/SearchField';
 import { Button } from '@/design-system/primitives';
 import type { CatalogListRow } from '@/components/products/catalog/types';
 import { productDetailHref } from '@/components/products/products-view';
-import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
+import { DataTable } from '@/components/tables/DataTable';
 import { CATALOG_TABLE_BINDING } from '@/components/products/catalog/catalog-grid/catalog-table-definition';
-import { CatalogGridColumnHeader } from '@/components/products/catalog/catalog-grid/CatalogGridColumnHeader';
 import { CatalogGridRow } from '@/components/products/catalog/catalog-grid/CatalogGridRow';
 import { CatalogBulkActionBar } from '@/components/products/catalog/CatalogBulkActionBar';
 import type { RowGroup } from '@/lib/group-rows';
@@ -301,72 +293,71 @@ export function ProductsCatalogWorkspace() {
             <WorkbenchTriageBand
               controlsSlotRef={setCatalogControlsEl}
               search={
-                <TechRailSearchBar
-                  variant="chrome"
+                <SearchField
                   value={q}
                   onChange={setCatalogSearch}
                   placeholder="Filter SKU, title, inventory id…"
                   isSearching={loading && Boolean(q.trim())}
                   className="min-w-0 flex-1"
-                  trailingSuffix={
-                <WorkbenchFilterPopover
+                  rightElement={
+                <FilterMenu
                   open={filterOpen}
                   onOpenChange={setFilterOpen}
                   hot={refineHot}
                   label="Filter catalog"
-                  density="field"
                 >
-                  <WorkbenchFilterGroupLabel>Inventory link</WorkbenchFilterGroupLabel>
-                  <WorkbenchFilterMenuRow
+                  <FilterMenuGroupLabel>Inventory link</FilterMenuGroupLabel>
+                  <FilterMenuRow
                     label="Active & Linked"
                     active={refine.linkFilter === 'active_linked'}
                     onClick={() => setLinkRefine('active_linked')}
-                  />
-                  <WorkbenchFilterMenuRow
+                  
+        />
+                  <FilterMenuRow
                     label="Unlinked / Pending"
                     active={refine.linkFilter === 'unlinked_pending'}
                     onClick={() => setLinkRefine('unlinked_pending')}
                   />
-                  <WorkbenchFilterDivider />
-                  <WorkbenchFilterGroupLabel>Status</WorkbenchFilterGroupLabel>
-                  <WorkbenchFilterMenuRow
+                  <FilterMenuDivider />
+                  <FilterMenuGroupLabel>Status</FilterMenuGroupLabel>
+                  <FilterMenuRow
                     label="Pending only"
                     active={refine.pendingOnly}
                     onClick={() => toggleRefineFlag('pendingOnly')}
                   />
-                  <WorkbenchFilterMenuRow
+                  <FilterMenuRow
                     label="Inactive only"
                     active={refine.inactiveOnly}
                     onClick={() => toggleRefineFlag('inactiveOnly')}
                   />
-                  <WorkbenchFilterDivider />
-                  <WorkbenchFilterGroupLabel>Missing</WorkbenchFilterGroupLabel>
-                  <WorkbenchFilterMenuRow
+                  <FilterMenuDivider />
+                  <FilterMenuGroupLabel>Missing</FilterMenuGroupLabel>
+                  <FilterMenuRow
                     label="No channels"
                     active={refine.missingChannels}
                     onClick={() => toggleRefineFlag('missingChannels')}
                   />
-                  <WorkbenchFilterMenuRow
+                  <FilterMenuRow
                     label="No manuals"
                     active={refine.missingManuals}
                     onClick={() => toggleRefineFlag('missingManuals')}
                   />
-                  <WorkbenchFilterMenuRow
+                  <FilterMenuRow
                     label="No QC checklist"
                     active={refine.missingQc}
                     onClick={() => toggleRefineFlag('missingQc')}
                   />
                   {refineHot ? (
                     <>
-                      <WorkbenchFilterDivider />
-                      <WorkbenchFilterMenuRow
+                      <FilterMenuDivider />
+                      <FilterMenuRow
                         label="Clear filters"
                         active={false}
                         onClick={clearRefine}
                       />
                     </>
                   ) : null}
-                </WorkbenchFilterPopover>
+                </FilterMenu>
                   }
                 />
               }
@@ -396,7 +387,7 @@ export function ProductsCatalogWorkspace() {
               Loading catalog…
             </div>
           ) : (
-            <NonlinearTableHost<CatalogListRow, CatalogGridColumnKey, CatalogGridColumn>
+            <DataTable<CatalogListRow, CatalogGridColumnKey, CatalogGridColumn>
               binding={CATALOG_TABLE_BINDING}
               orderGroupsByDate={orderGroupsByDate}
               rows={visibleItems}
@@ -407,18 +398,6 @@ export function ProductsCatalogWorkspace() {
               loading={loading}
               emptyMessage={emptyMessage}
               className="min-h-0 flex-1"
-              columnTriggerPortalTarget={catalogControlsEl}
-              renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
-                <CatalogGridColumnHeader
-                  selectionScope={CATALOG_SELECTION_SCOPE}
-                  columns={visible}
-                  activeSort={sort}
-                  sortDir={dir}
-                  onSortColumn={toggleColumnSort}
-                  onResizeColumn={onResizeColumn}
-                  onResetColumn={onResetColumn}
-                />
-              )}
               renderGroup={(group, _stripe, { columns: visible }) =>
                 renderCatalogLeaf(group.rows[0], visible)
               }

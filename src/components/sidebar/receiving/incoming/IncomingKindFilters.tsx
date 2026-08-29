@@ -5,13 +5,12 @@
  * Band-3 search-field trailing cluster, same altitude as IncomingSourceFilters.
  */
 
-import { useState } from 'react';
 import {
-  WorkbenchFilterGroupLabel,
-  WorkbenchFilterHotChip,
-  WorkbenchFilterMenuRow,
-  WorkbenchFilterPopover,
-} from '@/components/dashboard/workbench-filter-popover';
+  FilterMenu,
+  FilterMenuGroupLabel,
+  FilterMenuRow,
+} from '@/design-system/primitives/FilterMenu';
+import { useState } from 'react';
 
 export type IncomingKind = 'all' | 'purchase' | 'return';
 
@@ -41,14 +40,14 @@ export function IncomingKindRows({
   };
   return (
     <>
-      <WorkbenchFilterGroupLabel>Kind</WorkbenchFilterGroupLabel>
-      <WorkbenchFilterMenuRow
+      <FilterMenuGroupLabel>Kind</FilterMenuGroupLabel>
+      <FilterMenuRow
         label="All kinds"
         active={kind === 'all'}
         onClick={() => pick('all')}
       />
       {KIND_OPTIONS.filter((o) => o.id !== 'all').map((opt) => (
-        <WorkbenchFilterMenuRow
+        <FilterMenuRow
           key={opt.id}
           label={opt.label}
           active={kind === opt.id}
@@ -71,16 +70,14 @@ export function IncomingKindFilters({
   const hotLabel = hot ? kindLabel(kind) : undefined;
 
   return (
-    <WorkbenchFilterPopover
+    <FilterMenu
       open={open}
       onOpenChange={setOpen}
       hot={hot}
       label="Kind"
-      hotActiveLabel={hotLabel}
-      density="field"
       contentClassName="w-48"
     >
-      <WorkbenchFilterMenuRow
+      <FilterMenuRow
         label="All kinds"
         active={kind === 'all'}
         sectionHeader
@@ -90,7 +87,7 @@ export function IncomingKindFilters({
         }}
       />
       {KIND_OPTIONS.filter((o) => o.id !== 'all').map((opt) => (
-        <WorkbenchFilterMenuRow
+        <FilterMenuRow
           key={opt.id}
           label={opt.label}
           active={kind === opt.id}
@@ -100,7 +97,7 @@ export function IncomingKindFilters({
           }}
         />
       ))}
-    </WorkbenchFilterPopover>
+    </FilterMenu>
   );
 }
 

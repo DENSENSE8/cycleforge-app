@@ -1,19 +1,20 @@
 /**
  * Station-table URL contract (station-table-unification-plan §6) — the SoT for
  * the shared params every station/history table reads: layout (Pipeline/All),
- * staff scope (mine/all), density, staff filter, and week offset. Keeping the
+ * staff scope (mine/all), staff filter, and week offset. Keeping the
  * param names + parsers here (not re-derived per surface) is the same
  * single-source discipline the design-system invariants enforce.
  *
- * Density (`?density=`) and staff (`?staff=`) already have their own SoT modules
- * (`table-density.ts`, `useStaffFilter.ts`); this module re-exports their param
- * names so a surface has one import for the whole contract.
+ * Staff (`?staff=`) has its own SoT module (`useStaffFilter.ts`); this module
+ * re-exports its param name so a surface has one import for the whole contract.
+ *
+ * `?density=` is gone — the comfortable ⇄ compact toggle went with the table
+ * toolbar on 2026-08-29. One row box, everywhere.
  */
 
-import { DENSITY_PARAM } from '@/lib/tables/table-density';
 import { STAFF_FILTER_PARAM } from '@/hooks/useStaffFilter';
 
-export { DENSITY_PARAM, STAFF_FILTER_PARAM };
+export { STAFF_FILTER_PARAM };
 
 /** Pipeline (board) ⇄ All (dense list) view toggle. */
 export const LAYOUT_PARAM = 'layout';
@@ -54,12 +55,11 @@ export type StationSurfaceKey =
  * per user decision #8 (search stays separate).
  */
 export const SAVED_VIEW_PARAM_KEYS: Record<StationSurfaceKey, readonly string[]> = {
-  tech_history: [LAYOUT_PARAM, SCOPE_PARAM, DENSITY_PARAM, STAFF_FILTER_PARAM, WEEK_OFFSET_PARAM],
-  packer_history: [LAYOUT_PARAM, SCOPE_PARAM, DENSITY_PARAM, STAFF_FILTER_PARAM, WEEK_OFFSET_PARAM],
+  tech_history: [LAYOUT_PARAM, SCOPE_PARAM, STAFF_FILTER_PARAM, WEEK_OFFSET_PARAM],
+  packer_history: [LAYOUT_PARAM, SCOPE_PARAM, STAFF_FILTER_PARAM, WEEK_OFFSET_PARAM],
   receiving_history: [
     LAYOUT_PARAM,
     SCOPE_PARAM,
-    DENSITY_PARAM,
     STAFF_FILTER_PARAM,
     'sort',
     'field',
@@ -68,14 +68,13 @@ export const SAVED_VIEW_PARAM_KEYS: Record<StationSurfaceKey, readonly string[]>
   ],
   receiving_incoming: [
     LAYOUT_PARAM,
-    DENSITY_PARAM,
     'incomingState',
     'sort',
     'incomingPoFrom',
     'incomingPoTo',
     'incomingFacet',
   ],
-  testing_history: [LAYOUT_PARAM, SCOPE_PARAM, DENSITY_PARAM, STAFF_FILTER_PARAM, WEEK_OFFSET_PARAM, 'view'],
+  testing_history: [LAYOUT_PARAM, SCOPE_PARAM, STAFF_FILTER_PARAM, WEEK_OFFSET_PARAM, 'view'],
 };
 
 /** localStorage key holding a surface's saved views. */

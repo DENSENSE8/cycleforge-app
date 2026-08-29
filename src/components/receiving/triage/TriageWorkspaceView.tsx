@@ -6,10 +6,6 @@
  */
 
 import { useSearchParams } from 'next/navigation';
-import {
-  WorkbenchSheetView,
-  useWorkbenchSheetChrome,
-} from '@/components/dashboard/WorkbenchSheetView';
 import { RailEditModeProvider } from '@/components/sidebar/rail-edit-mode';
 import { ReceivingBulkActionBar } from '@/components/sidebar/receiving/ReceivingBulkActionBar';
 import { useRailEditMode } from '@/components/sidebar/receiving/useRailEditMode';
@@ -17,10 +13,6 @@ import {
   isPendingTriageScanRow,
 } from '@/components/sidebar/receiving/receiving-sidebar-shared';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
-import {
-  TriageTriageBand,
-  TriageWorkspaceHeader,
-} from '@/components/receiving/triage/TriageWorkspaceHeader';
 import { TriageFeedBody } from '@/components/receiving/triage/TriageFeedBody';
 import { useTriageWorkspaceTab } from '@/hooks/useTriageWorkspaceTab';
 

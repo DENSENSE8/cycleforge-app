@@ -38,11 +38,8 @@ import {
   testingWorkspaceQueryKey,
 } from '@/lib/tech/testing-workspace-query';
 import { useQueueDisplaySort } from '@/hooks/useQueueDisplaySort';
-import { TableColumnConfigProvider } from '@/components/ui/table-column-config/TableColumnConfig';
-import { TableDensityProvider } from '@/components/ui/table-density/TableDensityProvider';
-import { TableOptionsMenu } from '@/components/ui/table-options/TableOptionsMenu';
+import { useWorkbenchSearchParam } from '@/hooks/useWorkbenchSearchParam';
 import { DateRangePickerPill } from '@/components/ui/DateRangeHeader';
-import { QueueTableToolbar } from '@/components/dashboard/queue-table';
 
 const TESTING_LANE_ICON: Record<TestingLaneIconKey, React.ComponentType<{ className?: string }>> = {
   check: Check,
@@ -77,7 +74,8 @@ interface TestingHistoryListProps {
   /** Non-select click → open the line in the testing workspace. */
   onOpenLine?: (row: ReceivingLineRow) => void;
   /** Portal display controls into the Testing workspace chrome. */
-  toolbarPortalTarget?: HTMLElement | null;
+  /** The desk's mode strip, drawn on this table's own bottom bar. */
+  tabStrip?: import('@/components/tables/DataTable').DataTableTabStrip;
 }
 
 /**
@@ -93,7 +91,7 @@ export function TestingHistoryList({
   mode = 'history',
   selectMode = false,
   onOpenLine,
-  toolbarPortalTarget = null,
+  tabStrip,
 }: TestingHistoryListProps) {
   const { isMobile } = useUIModeOptional();
   const pathname = usePathname();
@@ -113,7 +111,7 @@ export function TestingHistoryList({
     ownTesterId,
     explicitlyAll,
   });
-  const search = String(searchParams.get('search') || '').trim();
+  const { searchQuery: search, setSearch } = useWorkbenchSearchParam();
   const priorityOnly = mode === 'urgent';
   const weekOffset =
     mode === 'history'
@@ -268,44 +266,11 @@ export function TestingHistoryList({
     },
     [pathname, router, searchParams],
   );
-  // Saved views live on Testing Band-3 Views ▾ — ⋮ keeps layout only.
-  const optionsMenu = (
-    <TableOptionsMenu
-      layout={boardEnabled ? { value: layout, onChange: setLayout } : undefined}
-    />
-  );
-  const portaledControls =
-    mode === 'history' && toolbarPortalTarget
-      ? createPortal(optionsMenu, toolbarPortalTarget)
-      : null;
-  const localHeaderOptions =
-    mode === 'history' && !toolbarPortalTarget ? optionsMenu : undefined;
-
   const activityAxis = mode === 'history' ? 'tested' as const : 'unboxed' as const;
   const scopeLabel = mode === 'returns' ? 'Return queue' : mode === 'history' ? 'History' : 'Pending tests';
 
   const gridBody = (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-      {mode !== 'history' ? (
-        <QueueTableToolbar
-          left={<DateRangePickerPill label={scopeLabel} count={rows.length} />}
-        />
-      ) : !toolbarPortalTarget ? (
-        <QueueTableToolbar
-          left={
-            <DateRangePickerPill
-              label={formatWeekRangeCompact(weekRange.startStr, weekRange.endStr)}
-              count={rows.length}
-              weekNav={{
-                weekOffset,
-                onPrev: () => setWeekOffset(weekOffset + 1),
-                onNext: () => setWeekOffset(Math.max(0, weekOffset - 1)),
-              }}
-            />
-          }
-          right={localHeaderOptions}
-        />
-      ) : null}
       <ReceivingGridHost
         daySections={daySections}
         loading={isLoading && rows.length === 0}
@@ -322,7 +287,8 @@ export function TestingHistoryList({
         isHistory={mode === 'history'}
         selectionScope={TESTING_SELECTION_SCOPE}
         testId="testing-grid-body"
-        columnTriggerPortalTarget={null}
+        search={{ value: search, onChange: setSearch, placeholder: 'Filter tests…' }}
+        tabStrip={tabStrip}
       />
     </div>
   );
@@ -354,7 +320,6 @@ export function TestingHistoryList({
               />
             </div>
           }
-          headerEndSlot={localHeaderOptions}
         />
       </div>
     );
@@ -366,12 +331,5 @@ export function TestingHistoryList({
     );
   }
 
-  return (
-    <TableColumnConfigProvider tableId="testing">
-      <TableDensityProvider tableId={mode === 'history' ? 'testing-history' : 'testing-queue'}>
-        {mode === 'history' ? portaledControls : null}
-        {content}
-      </TableDensityProvider>
-    </TableColumnConfigProvider>
-  );
+  return content;
 }

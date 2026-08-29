@@ -30,7 +30,6 @@ import { GridCellDash, GridPlatformMarkValue, GridStatusCellValue } from '@/comp
 import { sourcePlatformMeta } from '@/lib/source-platform';
 import { GridRowCheckbox } from '@/components/ui/GridRowCheckbox';
 import {
-  LedgerCellEditor,
   LedgerGridLeafRow,
   gridCellAlignClass,
 } from '@/design-system/components/grid';
@@ -292,22 +291,6 @@ export const CsvImportStagingGridRow = memo(function CsvImportStagingGridRow({
             {...(editable ? cellTriggerProps(key, editLabel) : {})}
           >
             {renderValue(key)}
-            {editable && editing === key ? (
-              <LedgerCellEditor
-                variant={key === 'qty' ? 'number' : 'text'}
-                initialValue={cellValue(key)}
-                replaceWith={editSeed}
-                ariaLabel={editLabel}
-                placeholder="—"
-                onCommit={(next) => {
-                  if (!field) return;
-                  updateTableImportRow(ORDER_IMPORT_DESCRIPTOR, row.index, {
-                    [field]: next,
-                  });
-                }}
-                onClose={closeEditor}
-              />
-            ) : null}
           </div>
         );
       }}

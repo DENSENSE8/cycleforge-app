@@ -6,7 +6,7 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { PoChip, TrackingChip, SerialChip, CopyableCellValue, getLast8 } from '@/components/ui/CopyChip';
 import { GridCellDash } from '@/components/ui/grid-cells';
 import { ledgerRowFillClass } from '@/components/ui/queue-row-chrome';
-import { gridCellAlignClass, LedgerCellEditor } from '@/design-system/components/grid';
+import { gridCellAlignClass } from '@/design-system/components/grid';
 import { Button } from '@/design-system/primitives';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
@@ -224,21 +224,6 @@ export const UnfoundGridRow = memo(function UnfoundGridRow({
             ) : (
               <GridCellDash />
             )}
-            {editing === 'ticket' ? (
-              <LedgerCellEditor
-                initialValue={value}
-                replaceWith={editSeed}
-                ariaLabel="Edit ticket id"
-                placeholder="—"
-                onCommit={(next) => {
-                  const trimmed = next.trim() || null;
-                  if (trimmed !== (row.zendesk_ticket_id ?? null)) {
-                    void onPatch(row, { zendesk_ticket_id: trimmed });
-                  }
-                }}
-                onClose={closeEditor}
-              />
-            ) : null}
           </div>
         );
       }
@@ -255,21 +240,6 @@ export const UnfoundGridRow = memo(function UnfoundGridRow({
             ) : (
               <GridCellDash />
             )}
-            {editing === 'usaNote' ? (
-              <LedgerCellEditor
-                initialValue={value}
-                replaceWith={editSeed}
-                ariaLabel="Edit USA team note"
-                placeholder="—"
-                onCommit={(next) => {
-                  const trimmed = next.trim() || null;
-                  if (trimmed !== (row.usa_team_note ?? null)) {
-                    debouncedPatch({ usa_team_note: trimmed });
-                  }
-                }}
-                onClose={closeEditor}
-              />
-            ) : null}
           </div>
         );
       }
@@ -289,21 +259,6 @@ export const UnfoundGridRow = memo(function UnfoundGridRow({
             ) : (
               <GridCellDash />
             )}
-            {editing === 'vietnamNote' ? (
-              <LedgerCellEditor
-                initialValue={value}
-                replaceWith={editSeed}
-                ariaLabel="Edit Vietnam team note"
-                placeholder="—"
-                onCommit={(next) => {
-                  const trimmed = next.trim() || null;
-                  if (trimmed !== (row.vietnam_team_note ?? null)) {
-                    debouncedPatch({ vietnam_team_note: trimmed });
-                  }
-                }}
-                onClose={closeEditor}
-              />
-            ) : null}
           </div>
         );
       }

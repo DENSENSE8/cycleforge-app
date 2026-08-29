@@ -41,3 +41,4 @@ export * from './ScrollPane';
 export * from './Stack';
 export * from './Inset';
 export * from './Row';
+export * from './FilterMenu';

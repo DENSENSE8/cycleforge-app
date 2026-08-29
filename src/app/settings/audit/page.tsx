@@ -18,7 +18,7 @@ import { requirePermission } from '@/lib/auth/page-guard';
 import pool from '@/lib/db';
 import { PageHeader } from '@/components/ui/pane-header';
 import { Button } from '@/design-system/primitives';
-import { DataTable, type DataTableColumn } from '@/design-system/components/DataTable';
+import { AdminTable, type AdminTableColumn } from '@/design-system/components/AdminTable';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 
@@ -49,7 +49,7 @@ function fmtTs(d: Date): string {
   });
 }
 
-const AUDIT_COLUMNS: DataTableColumn<AuditRow>[] = [
+const AUDIT_COLUMNS: AdminTableColumn<AuditRow>[] = [
   {
     key: 'when',
     header: 'When',
@@ -172,7 +172,7 @@ export default async function AuditPage({ searchParams }: PageProps) {
           )}
         </form>
 
-        <DataTable
+        <AdminTable
           columns={AUDIT_COLUMNS}
           rows={rows}
           rowKey={(row) => row.id}

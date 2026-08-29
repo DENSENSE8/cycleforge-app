@@ -43,24 +43,15 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { WorkbenchInspectorToggle } from '@/components/dashboard/workbench-inspector-toggle';
 import { useRightRailOccupantOpen } from '@/components/right-rail/useRightRailOccupant';
-import {
-  WORKBENCH_SHEET_CHROME,
-  WORKBENCH_SHEET_HOST,
-  WorkbenchChromeHeader,
-  WorkbenchTrailingCluster,
-  WorkbenchTriageBand,
-  withScopeDivider,
-} from '@/components/dashboard/workbench-shell';
-import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
+import { SearchField } from '@/design-system/primitives/SearchField';
 import { cn } from '@/utils/_cn';
 import { MyDayDueHorizonChips } from './MyDayDueHorizonChips';
 import { MyDayOnboardingPanel } from './MyDayOnboardingPanel';
 import { MyDayTaskInspectorRail } from './MyDayTaskInspector';
 import { MyDayWatchRail } from './MyDayWatchRail';
 import { MyDayWatchTicketAction } from './MyDayWatchTicketAction';
-import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
+import { DataTable } from '@/components/tables/DataTable';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import type { RowGroup } from '@/lib/group-rows';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
@@ -71,7 +62,6 @@ import {
   type MyDayGridColumnKey,
 } from '@/lib/my-day/my-day-grid-layout';
 import { MY_DAY_TABLE_BINDING } from './grid/my-day-table-definition';
-import { MyDayGridColumnHeader } from './grid/MyDayGridColumnHeader';
 import { MyDayGridRow } from './grid/MyDayGridRow';
 import { useMyDayFeed } from './useMyDayFeed';
 import { useMyDayView } from './useMyDayView';
@@ -254,8 +244,7 @@ export function MyDayWorkspace() {
         */}
         <WorkbenchTriageBand
           search={
-            <TechRailSearchBar
-              variant="chrome"
+            <SearchField
               value={query}
               onChange={(v) => setQuery(v.trim())}
               placeholder="Filter tasks…"
@@ -297,7 +286,7 @@ export function MyDayWorkspace() {
             </p>
           </div>
         ) : (
-          <NonlinearTableHost<MyDayTask, MyDayGridColumnKey, MyDayGridColumn>
+          <DataTable<MyDayTask, MyDayGridColumnKey, MyDayGridColumn>
             binding={MY_DAY_TABLE_BINDING}
             orderGroupsByDate={orderGroupsByDate}
             rows={visibleTasks}
@@ -305,14 +294,8 @@ export function MyDayWorkspace() {
             sort={columnSort}
             dir={sortDir}
             onSortChange={setSort}
-            columnTriggerPortalTarget={controlsEl}
             loading={isLoading}
-            // Settled-with-nothing on a "what needs me" queue is an ALL-CLEAR,
-            // not an absence — say so rather than showing a create prompt.
             emptyMessage="Nothing needs you right now."
-            // No-match is a THIRD answer, and it names the control that would
-            // widen it — narrowest first, because that is the one the operator
-            // most recently touched: KPI tile → query → lane.
             searchEmptyMessage={
               horizon
                 ? `Nothing ${myDayDueHorizonLabel(horizon).toLowerCase()} here — click the tile again to clear it.`
@@ -320,18 +303,7 @@ export function MyDayWorkspace() {
                   ? `No tasks match “${query.trim()}”. Clear the filter to see the rest.`
                   : `Nothing in ${myDayLaneLabel(lane)} right now — try All.`
             }
-            isSearching={isFiltered}
             scrollRef={gridScrollRef}
-            renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
-              <MyDayGridColumnHeader
-                columns={visible}
-                activeSort={columnSort}
-                sortDir={sortDir}
-                onSortColumn={toggleColumnSort}
-                onResizeColumn={onResizeColumn}
-                onResetColumn={onResetColumn}
-              />
-            )}
             renderGroup={(group, _stripe, { columns: visible }) => (
               <MyDayGridRow
                 key={group.rows[0].id}

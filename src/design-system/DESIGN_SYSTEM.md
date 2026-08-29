@@ -153,7 +153,7 @@ Token density presets also exist as `compact` / `standard` / `spacious` in `toke
   - **Frozen-pane sticky offset:** `gridFrozenLeft(columns, key)` (`components/grid/grid-column-geometry.ts`) — one implementation, taking the SURFACE's own columns, with the width fallback as the track's rem FLOOR. Ten hand-rolled copies pushed `var(--cf-col-KEY, ${col.width})` instead, and `col.width` is a `minmax()` grid-track string: illegal inside `calc()`, so `left` computed to `auto` and the pane silently did not pin at all (invisible to review, because a staffer who had drag-resized the preceding column set the var to a real px and saw it work). Guard: `grid-frozen-left.guard.test.ts`.
   - **Do not** fork sticky header / scrollX / virtual body chrome for ops queues — compose `LedgerGrid` + a domain thin composer (`useOrdersSpreadsheet`, receiving/station wrappers). Domain cell registries stay out of DS.
   - **Two expand jobs (never merge):** Maximize2 / non-edit open = domain `onOpenRecord` (detail pane); parent→child collection drill = `LedgerDrillHost` / `LedgerDrillParentMap` (parent rollups only on the drill map; list sheets stay flat leaves via `groupRowsBy`).
-  - Sibling SoT for non-virtualized HTML tables: `components/DataTable/` (lifecycle/admin tables — `{ key, header, cell, align, width }` schema; **no TanStack, no virtualizer** — that simplicity is its job). Boards / pickers / rails stay their own surfaces.
+  - Sibling SoT for non-virtualized HTML tables: `components/AdminTable/` (lifecycle/admin tables — `{ key, header, cell, align, width }` schema; **no TanStack, no virtualizer** — that simplicity is its job). Boards / pickers / rails stay their own surfaces.
 - **New components:**
   - `DateGroupHeader.tsx` — sticky date group header for tables with variant-based tonal backgrounds
   - `FormField.tsx` — standardized form field wrapper (label, required indicator, hint)
@@ -353,7 +353,7 @@ Detection priority:
 
 | Desktop | Mobile |
 |---------|--------|
-| Full `DataTable` with columns, sticky headers | Card/list layout: primary text + secondary metadata |
+| Full `AdminTable` with columns, sticky headers | Card/list layout: primary text + secondary metadata |
 | Hover row highlight, inline actions | Tappable rows, swipe actions or overflow `...` menu |
 | `DateGroupHeader` for date grouping | Same component, full-width with larger touch targets |
 | Multi-column data rows | Single-column stacked layout |

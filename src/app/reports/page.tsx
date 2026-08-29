@@ -4,7 +4,7 @@ import { Suspense, useCallback, useEffect, useState } from 'react';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { PageHeader } from '@/components/ui/pane-header';
 import { Button } from '@/design-system/primitives';
-import { DataTable, type DataTableColumn } from '@/design-system/components/DataTable';
+import { AdminTable, type AdminTableColumn } from '@/design-system/components/AdminTable';
 
 type Tab = 'utilization' | 'velocity' | 'dead';
 
@@ -16,7 +16,7 @@ const TABS: ReadonlyArray<{ id: Tab; label: string }> = [
 
 type ReportRow = Record<string, unknown>;
 
-const UTILIZATION_COLUMNS: DataTableColumn<ReportRow>[] = [
+const UTILIZATION_COLUMNS: AdminTableColumn<ReportRow>[] = [
   {
     key: 'bin',
     header: 'Bin',
@@ -65,7 +65,7 @@ const UTILIZATION_COLUMNS: DataTableColumn<ReportRow>[] = [
   },
 ];
 
-const VELOCITY_COLUMNS: DataTableColumn<ReportRow>[] = [
+const VELOCITY_COLUMNS: AdminTableColumn<ReportRow>[] = [
   {
     key: 'tier',
     header: 'Tier',
@@ -112,7 +112,7 @@ const VELOCITY_COLUMNS: DataTableColumn<ReportRow>[] = [
   },
 ];
 
-const DEAD_COLUMNS: DataTableColumn<ReportRow>[] = [
+const DEAD_COLUMNS: AdminTableColumn<ReportRow>[] = [
   {
     key: 'sku',
     header: 'SKU',
@@ -228,7 +228,7 @@ function ReportTable({
 }) {
   if (tab === 'utilization') {
     return (
-      <DataTable
+      <AdminTable
         columns={UTILIZATION_COLUMNS}
         rows={rows}
         rowKey={(r) => String(r.bin_id)}
@@ -239,7 +239,7 @@ function ReportTable({
   }
   if (tab === 'velocity') {
     return (
-      <DataTable
+      <AdminTable
         columns={VELOCITY_COLUMNS}
         rows={rows}
         rowKey={(r) => String(r.sku)}
@@ -249,7 +249,7 @@ function ReportTable({
     );
   }
   return (
-    <DataTable
+    <AdminTable
       columns={DEAD_COLUMNS}
       rows={rows}
       rowKey={(r) => String(r.sku)}

@@ -40,7 +40,6 @@
  */
 
 import { useMemo } from 'react';
-import { WORKBENCH_SHEET_CHROME } from '@/components/dashboard/workbench-shell';
 import { STATION_TERMINAL_SCROLL_CLEARANCE } from '@/components/station/terminal';
 import { WorkspaceCard } from '@/design-system/components';
 import type { ThreadComposerBridge } from '@/components/threads/ThreadPanel';

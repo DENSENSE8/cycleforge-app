@@ -3,7 +3,6 @@
 import type { ReactNode } from 'react';
 import { cn } from '@/utils/_cn';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { useIsColumnHidden } from '@/components/ui/table-column-config/TableColumnConfig';
 import { EMPTY_META_DASH, conditionGradeTableLabel, isEmptyMetaDash } from '@/lib/conditions';
 import { orderRowConditionTone } from '@/lib/condition-tone';
 

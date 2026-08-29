@@ -21,7 +21,6 @@
 
 import type { ReactNode } from 'react';
 import { ChevronLeft, ColumnsTwo, ExternalLink } from '@/components/Icons';
-import { WorkbenchChromeCubeButton } from '@/components/dashboard/workbench-chrome-cube';
 import {
   ConversationHeaderActionButton,
   Panel,

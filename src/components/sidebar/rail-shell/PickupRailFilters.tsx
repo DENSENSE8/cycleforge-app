@@ -5,11 +5,11 @@
  * Same grammar as other recent-rail footers.
  */
 
-import { useState } from 'react';
 import {
-  WorkbenchFilterMenuRow,
-  WorkbenchFilterPopover,
-} from '@/components/dashboard/workbench-filter-popover';
+  FilterMenu,
+  FilterMenuRow,
+} from '@/design-system/primitives/FilterMenu';
+import { useState } from 'react';
 import {
   pickupOrderIsDone,
   pickupOrderNeedsProcess,
@@ -68,16 +68,14 @@ export function PickupRailFilters({
   const hotLabel = pickupRailFacetsHotLabel(facets);
 
   return (
-    <WorkbenchFilterPopover
+    <FilterMenu
       open={open}
       onOpenChange={setOpen}
       hot={hot}
       label="Rail filters"
-      hotActiveLabel={hotLabel}
-      density="field"
       contentClassName="w-56"
     >
-      <WorkbenchFilterMenuRow
+      <FilterMenuRow
         label="All statuses"
         active={facets.status == null}
         sectionHeader
@@ -87,7 +85,7 @@ export function PickupRailFilters({
         }}
       />
       {STATUS_OPTIONS.map((opt) => (
-        <WorkbenchFilterMenuRow
+        <FilterMenuRow
           key={opt.id}
           label={opt.label}
           active={facets.status === opt.id}
@@ -97,6 +95,6 @@ export function PickupRailFilters({
           }}
         />
       ))}
-    </WorkbenchFilterPopover>
+    </FilterMenu>
   );
 }

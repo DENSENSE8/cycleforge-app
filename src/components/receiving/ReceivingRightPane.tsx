@@ -31,10 +31,6 @@ import type {
 import type { IncomingDetailsTarget } from '@/components/receiving/useReceivingDetailOverlays';
 import type { UnboxLookupScanDetail } from '@/components/receiving/receiving-events';
 import { HistoryCartonTriagePanel } from '@/components/receiving/history/HistoryCartonTriagePanel';
-import {
-  HistoryViewChromeProvider,
-  useHistoryViewChrome,
-} from '@/components/receiving/history/history-view-chrome-context';
 import type { HistoryTriageTarget } from '@/lib/receiving/history-triage-row';
 
 /**

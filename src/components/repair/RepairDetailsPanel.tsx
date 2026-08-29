@@ -55,7 +55,6 @@ import { useRepairDetailsPanel } from './details-panel/useRepairDetailsPanel';
 import { RepairLinkageSection } from './details-panel/RepairLinkageSection';
 import { RepairOverviewTab } from './details-panel/RepairOverviewTab';
 import { ShippedNotesComposer } from '@/components/shipped/details-panel/ShippedNotesComposer';
-import { requestOpenGridColumnDetails } from '@/design-system/components/grid/grid-column-details-open';
 
 function getRepairStatusTone(status: string | null | undefined) {
   if (!status) return 'neutral' as const;

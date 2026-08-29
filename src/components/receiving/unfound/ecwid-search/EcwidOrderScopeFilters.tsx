@@ -4,7 +4,7 @@
  * Store order-scope filter — All orders vs Repair (-RS).
  *
  * Lives in the SearchField trailing cluster (`trailingSuffix`, after paste)
- * via {@link WorkbenchFilterPopover} `density="field"`. Paste leads the icon
+ * via {@link FilterMenu} `density="field"`. Paste leads the icon
  * cluster (hover-reveal). Replaces the old HorizontalButtonSlider tab row
  * under the search field.
  *
@@ -12,14 +12,13 @@
  * beside the SearchField (floor glanceability — D1/D10).
  */
 
+import {
+  FilterMenu,
+  FilterMenuGroupLabel,
+  FilterMenuRow,
+} from '@/design-system/primitives/FilterMenu';
 import { useState } from 'react';
 import { ShoppingCart, Wrench } from '@/components/Icons';
-import {
-  WorkbenchFilterGroupLabel,
-  WorkbenchFilterHotChip,
-  WorkbenchFilterMenuRow,
-  WorkbenchFilterPopover,
-} from '@/components/dashboard/workbench-filter-popover';
 import type { EcwidOrderScope } from './ecwid-search-shared';
 import type { EcwidProductSearchController } from './useEcwidProductSearch';
 
@@ -43,20 +42,18 @@ export function EcwidOrderScopeFilters({ c }: { c: EcwidProductSearchController 
     : undefined;
 
   return (
-    <WorkbenchFilterPopover
+    <FilterMenu
       open={open}
       onOpenChange={setOpen}
       hot={hot}
       label="Order scope"
-      hotActiveLabel={hotLabel}
-      density="field"
       contentClassName="w-48"
     >
-      <WorkbenchFilterGroupLabel>Scope</WorkbenchFilterGroupLabel>
+      <FilterMenuGroupLabel>Scope</FilterMenuGroupLabel>
       {SCOPE_OPTIONS.map((opt) => {
         const Icon = opt.icon;
         return (
-          <WorkbenchFilterMenuRow
+          <FilterMenuRow
             key={opt.id}
             label={opt.label}
             active={c.orderScope === opt.id}
@@ -68,7 +65,7 @@ export function EcwidOrderScopeFilters({ c }: { c: EcwidProductSearchController 
           />
         );
       })}
-    </WorkbenchFilterPopover>
+    </FilterMenu>
   );
 }
 

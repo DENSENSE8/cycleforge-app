@@ -17,14 +17,14 @@
  * would start writing a `coldir` key nothing here reads.
  */
 
+import {
+  FilterMenu,
+  FilterMenuDivider,
+  FilterMenuGroupLabel,
+  FilterMenuRow,
+} from '@/design-system/primitives/FilterMenu';
 import { useCallback, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import {
-  WorkbenchFilterDivider,
-  WorkbenchFilterGroupLabel,
-  WorkbenchFilterMenuRow,
-  WorkbenchFilterPopover,
-} from '@/components/dashboard/workbench-filter-popover';
 import {
   SEARCH_DISPLAY_SORT_OPTIONS,
   SEARCH_ENTITY_TYPES,
@@ -102,17 +102,16 @@ export function SearchRefineControls({
   }, [etype, hstat]);
 
   return (
-    <WorkbenchFilterPopover
+    <FilterMenu
       open={open}
       onOpenChange={setOpen}
       hot={hot}
       label="Filters"
-      hotActiveLabel={hotLabel}
       density="toolbar"
       contentClassName="w-52"
     >
-      <WorkbenchFilterGroupLabel>Type</WorkbenchFilterGroupLabel>
-      <WorkbenchFilterMenuRow
+      <FilterMenuGroupLabel>Type</FilterMenuGroupLabel>
+      <FilterMenuRow
         label="All types"
         active={etype === null}
         onClick={() => {
@@ -120,7 +119,7 @@ export function SearchRefineControls({
         }}
       />
       {SEARCH_ENTITY_TYPES.map((id) => (
-        <WorkbenchFilterMenuRow
+        <FilterMenuRow
           key={id}
           label={SEARCH_ENTITY_TYPE_LABELS[id]}
           active={etype === id}
@@ -132,9 +131,9 @@ export function SearchRefineControls({
 
       {statusOptions.length > 0 ? (
         <>
-          <WorkbenchFilterDivider />
-          <WorkbenchFilterGroupLabel>Status</WorkbenchFilterGroupLabel>
-          <WorkbenchFilterMenuRow
+          <FilterMenuDivider />
+          <FilterMenuGroupLabel>Status</FilterMenuGroupLabel>
+          <FilterMenuRow
             label="All statuses"
             active={hstat === null}
             onClick={() => {
@@ -142,7 +141,7 @@ export function SearchRefineControls({
             }}
           />
           {statusOptions.map((s) => (
-            <WorkbenchFilterMenuRow
+            <FilterMenuRow
               key={s}
               label={s}
               active={hstat === s}
@@ -154,10 +153,10 @@ export function SearchRefineControls({
         </>
       ) : null}
 
-      <WorkbenchFilterDivider />
-      <WorkbenchFilterGroupLabel>Sort</WorkbenchFilterGroupLabel>
+      <FilterMenuDivider />
+      <FilterMenuGroupLabel>Sort</FilterMenuGroupLabel>
       {SEARCH_DISPLAY_SORT_OPTIONS.map((opt) => (
-        <WorkbenchFilterMenuRow
+        <FilterMenuRow
           key={opt.id}
           label={opt.label}
           active={sort === opt.id}
@@ -169,8 +168,8 @@ export function SearchRefineControls({
 
       {hot ? (
         <>
-          <WorkbenchFilterDivider />
-          <WorkbenchFilterMenuRow
+          <FilterMenuDivider />
+          <FilterMenuRow
             label="Clear filters"
             active={false}
             onClick={() => {
@@ -180,6 +179,6 @@ export function SearchRefineControls({
           />
         </>
       ) : null}
-    </WorkbenchFilterPopover>
+    </FilterMenu>
   );
 }

@@ -18,7 +18,6 @@ import { useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { zIndex } from '@/design-system/tokens/z-index';
-import { WORKBENCH_SHEET_CHROME } from '@/components/dashboard/workbench-shell';
 import { WalkInDeskHeader } from '@/components/walk-in/WalkInDeskHeader';
 import { SalesHistoryTable } from '@/components/walk-in/SalesHistoryTable';
 import {

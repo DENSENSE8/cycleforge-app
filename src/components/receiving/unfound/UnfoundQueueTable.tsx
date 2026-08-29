@@ -16,12 +16,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { AnimatePresence } from '@/design-system/motion';
-import {
-  WORKBENCH_SHEET_CHROME,
-  WORKBENCH_SHEET_HOST,
-  WorkbenchChromeHeader,
-} from '@/components/dashboard/workbench-shell';
-import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
+import { DataTable } from '@/components/tables/DataTable';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import type { RowGroup } from '@/lib/group-rows';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
@@ -30,7 +25,6 @@ import { UnfoundQueueDetailsPanel } from './UnfoundQueueDetailsPanel';
 import { useUnfoundQueueTable } from './queue-table/useUnfoundQueueTable';
 import type { QueueRow } from './queue-table/unfound-queue-shared';
 import { UNFOUND_TABLE_BINDING } from './grid/unfound-table-definition';
-import { UnfoundGridColumnHeader } from './grid/UnfoundGridColumnHeader';
 import { UnfoundGridRow, unfoundRowKey, unfoundRowTitle } from './grid/UnfoundGridRow';
 import {
   defaultDirForUnfoundGridSort,
@@ -86,7 +80,6 @@ export function UnfoundQueueTable() {
   } = useUnfoundQueueTable();
 
   // ▦ portals into Band-1 controls (find / kind pills live in the admin sidebar).
-  const [controlsEl, setControlsEl] = useState<HTMLDivElement | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const {
@@ -141,17 +134,6 @@ export function UnfoundQueueTable() {
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-surface-canvas">
-      <div className={cn(WORKBENCH_SHEET_CHROME, 'flex flex-col gap-0')}>
-        <WorkbenchChromeHeader
-          density="band"
-          tabs={[{ id: 'queue', label: 'Queue' }]}
-          activeTab="queue"
-          onTabChange={() => undefined}
-          controlsSlotRef={setControlsEl}
-          className="rounded-none border-l-0 border-t-0 shadow-sm"
-        />
-      </div>
-
       {/* Loading rail under chrome — replaces the toolbar's spinner now that
           the toolbar lives in the sidebar. */}
       {loading && (
@@ -160,14 +142,14 @@ export function UnfoundQueueTable() {
         </div>
       )}
 
-      <div className={cn(WORKBENCH_SHEET_HOST, 'min-h-0 flex-1 overflow-hidden')}>
+      <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         {error && (
           <div className="mx-4 mt-4 rounded-md border border-red-200 bg-red-50 inset-field text-role-caption text-red-700">
             {error}
           </div>
         )}
 
-        <NonlinearTableHost<QueueRow, UnfoundGridColumnKey, UnfoundGridColumn>
+        <DataTable<QueueRow, UnfoundGridColumnKey, UnfoundGridColumn>
           binding={UNFOUND_TABLE_BINDING}
           orderGroupsByDate={orderGroupsByDate}
           rows={rows}
@@ -178,19 +160,8 @@ export function UnfoundQueueTable() {
           loading={loading}
           emptyMessage={error ? '—' : 'Nothing in the unfound queue. Nice.'}
           searchEmptyMessage="No unfound items match these filters."
-          isSearching={isSearching && !error}
+          search={{ value: search, onChange: setUnfoundSearch, placeholder: 'Filter queue…' }}
           scrollRef={scrollRef}
-          columnTriggerPortalTarget={controlsEl}
-          renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
-            <UnfoundGridColumnHeader
-              columns={visible}
-              activeSort={columnSort}
-              sortDir={sortDir}
-              onSortColumn={toggleColumnSort}
-              onResizeColumn={onResizeColumn}
-              onResetColumn={onResetColumn}
-            />
-          )}
           renderGroup={(group, _stripe, { columns: visible }) => (
             <>{group.rows.map((row) => renderLeaf(row, visible))}</>
           )}

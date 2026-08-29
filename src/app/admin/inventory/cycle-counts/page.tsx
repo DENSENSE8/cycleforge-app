@@ -8,7 +8,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { PageHeader } from '@/components/ui/pane-header';
 import { Panel, Button } from '@/design-system/primitives';
-import { DataTable, type DataTableColumn } from '@/design-system/components/DataTable';
+import { AdminTable, type AdminTableColumn } from '@/design-system/components/AdminTable';
 
 export const dynamic = 'force-dynamic';
 
@@ -108,7 +108,7 @@ export default async function CycleCountsAdminPage({
   const errorCode = params.error ?? null;
   const campaigns = await loadCampaigns(user.organizationId);
 
-  const campaignColumns: DataTableColumn<CampaignRow>[] = [
+  const campaignColumns: AdminTableColumn<CampaignRow>[] = [
     {
       key: 'campaign',
       header: 'Campaign',
@@ -256,7 +256,7 @@ export default async function CycleCountsAdminPage({
             <h2 className="text-lg font-medium text-text-default">Campaigns</h2>
             <span className="text-xs text-text-soft">last 50</span>
           </header>
-          <DataTable
+          <AdminTable
             columns={campaignColumns}
             rows={campaigns}
             rowKey={(c) => c.id}

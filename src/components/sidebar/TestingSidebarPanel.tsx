@@ -9,7 +9,7 @@ import { appChromeClass } from '@/design-system/tokens/app-surface';
 import { TestingScanBar } from '@/components/sidebar/receiving/TestingScanBar';
 import { ScanBandShell, isScanPreview, useScanModeRelease } from '@/components/station/scan-bar';
 import { TestingRecentRail } from '@/components/sidebar/receiving/TestingRecentRail';
-import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
+import { SearchField } from '@/design-system/primitives/SearchField';
 import { SidebarRailScrollport } from '@/components/sidebar/rail-shell/SidebarRailScrollport';
 import { ReceivingRecentRailFilters } from '@/components/sidebar/rail-shell/ReceivingRecentRailFilters';
 import { useReceivingRailFacets } from '@/components/sidebar/rail-shell/useReceivingRailFacets';
@@ -456,17 +456,17 @@ export function TestingSidebarPanel({
         />
       </SidebarRailScrollport>
 
-      <TechRailSearchBar
+      <SearchField
         value={railFilter}
         onChange={setRailFilter}
         placeholder="Filter recent…"
-        trailingSuffix={
+        rightElement={
           <ReceivingRecentRailFilters
             facets={receivingRailFacets.facets}
             onChange={receivingRailFacets.setFacets}
           />
         }
-      />
+        />
 
       {isMobile ? (
         <div className="flex-shrink-0 border-t border-border-hairline bg-surface-card pb-[max(0.5rem,env(safe-area-inset-bottom))]">

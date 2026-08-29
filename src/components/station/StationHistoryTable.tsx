@@ -4,17 +4,17 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react
 import { createPortal } from 'react-dom';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { StationListTable } from '@/components/station/StationListTable';
+import {
+  TableStatusBar,
+  type DataTableTabStrip,
+} from '@/components/tables/TableStatusBar';
 import { StationPipelineBoard } from '@/components/station/StationPipelineBoard';
 import { StationQueueRow } from '@/components/station/StationQueueRow';
 import { STATION_HISTORY_GRID_CAPABILITIES } from '@/components/station/station-history-capabilities';
-import { TableColumnConfigProvider } from '@/components/ui/table-column-config/TableColumnConfig';
-import { TableDensityProvider } from '@/components/ui/table-density/TableDensityProvider';
-import { TableOptionsMenu } from '@/components/ui/table-options/TableOptionsMenu';
 import { Copy, X } from '@/components/Icons';
 import { emitToggleAll } from '@/lib/selection/table-selection';
 import { useTableSelectMode } from '@/hooks/useTableSelectMode';
 import { useUIModeOptional } from '@/design-system/providers/UIModeProvider';
-import { useGridColumnVisibility } from '@/design-system/components/grid';
 import { ORDERS_QUEUE_COLUMNS, type OrdersQueueColumn } from '@/lib/dashboard-order-row-layout';
 import { toTsvBlock } from '@/lib/station/format-station-copy-row';
 import { getStationSourceRecord, type StationSourceKind } from '@/lib/station/record-to-queue-row';
@@ -63,7 +63,8 @@ export interface StationHistoryTableProps<T> {
   /** Teaching first-run empty (zero rows, no active filter). */
   firstRunEmpty?: ReactNode;
   /** Portal display controls into the owning workspace chrome. */
-  toolbarPortalTarget?: HTMLElement | null;
+  /** The desk's mode strip, drawn on this table's own status bar. */
+  tabStrip?: DataTableTabStrip;
   /** Pipeline (board) config — enables the Pipeline/All toggle (behind
    *  `NEXT_PUBLIC_STATION_PIPELINE_BOARDS`). Records are the flat, unbanded set;
    *  the board buckets + day-bands per lane. Omit → no board toggle. */
@@ -108,7 +109,7 @@ export function StationHistoryTable<T>({
   savedViewsParamKeys,
   emptyMessage,
   firstRunEmpty,
-  toolbarPortalTarget = null,
+  tabStrip,
   pipeline,
   selection,
 }: StationHistoryTableProps<T>) {
@@ -123,10 +124,9 @@ export function StationHistoryTable<T>({
   // here (instead of per cell inside the row, as `useIsColumnHidden` used to)
   // is what makes a hidden column lose its whole track — header, body and grid
   // template all read this one list.
-  const { columns: visibleColumns } = useGridColumnVisibility<OrdersQueueColumn>({
-    columns: ORDERS_QUEUE_COLUMNS,
-    tableId,
-  });
+  // Every staffer sees the same tracks: the per-staff hide/show delta went with
+  // the column rail on 2026-08-29. The model IS what the table draws.
+  const visibleColumns: readonly OrdersQueueColumn[] = ORDERS_QUEUE_COLUMNS;
 
   // Reconnect-only broad invalidate (the hot path is Ably/local cache patches).
   useStationReconnectSync();
@@ -234,17 +234,6 @@ export function StationHistoryTable<T>({
     [searchParams, router, pathname],
   );
 
-  const optionsMenu = (
-    <TableOptionsMenu
-      layout={boardEnabled ? { value: layout, onChange: setLayout } : undefined}
-      savedViews={{ storageKey: savedViewsStorageKey, paramKeys: savedViewsParamKeys }}
-    />
-  );
-  const headerControls = (
-    <div className="flex items-center gap-2">
-      {toolbarPortalTarget ? null : optionsMenu}
-    </div>
-  );
   const weekPill = (
     <DateRangePickerPill
       label={formatWeekRangeCompact(weekRange.startStr, weekRange.endStr)}
@@ -252,52 +241,8 @@ export function StationHistoryTable<T>({
       weekNav={{ weekOffset, onPrev: onPrevWeek, onNext: onNextWeek }}
     />
   );
-  // House chrome recipe (Unbox · Shipped · FBA · Testing history): the period
-  // calendar icon + ⋮ menu ride in the workbench chrome controls slot, so the
-  // table itself is a plain framed card with no second header band inside it. A caller with no
-  // portal target keeps the in-table `DateRangeHeader`.
-  const portaledControls = toolbarPortalTarget
-    ? createPortal(
-        <div className="flex items-center gap-2">
-          {weekPill}
-          {optionsMenu}
-        </div>,
-        toolbarPortalTarget,
-      )
-    : null;
-
-  // Bulk-action bar — pinned to the bottom of the table's relative region when
-  // rows are selected. Copy-TSV + clear (Phase 7 §5.4).
-  const bulkBar =
-    selectedCount > 0 ? (
-      <div className="absolute inset-x-0 bottom-3 z-toast flex justify-center">
-        <div className="flex items-center gap-2 rounded-full border border-border-soft bg-surface-card px-3 py-1.5 shadow-lg ring-1 ring-black/5">
-          <span className="text-role-caption font-semibold text-text-muted">{selectedCount} selected</span>
-          {/* ds-raw-button: compact bulk-action capsule button */}
-          <button
-            type="button"
-            onClick={() => void copySelected()}
-            className="inline-flex items-center gap-1 rounded-full bg-blue-600 px-2.5 py-1 text-role-caption font-semibold text-white transition-colors hover:bg-blue-700"
-          >
-            <Copy className="h-3.5 w-3.5" /> Copy
-          </button>
-          {/* ds-raw-button: clear-selection capsule button */}
-          <button
-            type="button"
-            aria-label="Clear selection"
-            onClick={() => emitToggleAll(selection.scope, 'none')}
-            className="inline-flex items-center rounded-full p-1 text-text-faint transition-colors hover:text-text-default"
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
-        </div>
-      </div>
-    ) : null;
-
   return (
-    <TableColumnConfigProvider tableId={tableId}>
-      <TableDensityProvider tableId={tableId}>
-        {portaledControls}
+    <>
         {boardEnabled && layout === 'board' && pipeline ? (
           <StationPipelineBoard<T, string>
             prefsKey={pipeline.prefsKey}
@@ -310,7 +255,6 @@ export function StationHistoryTable<T>({
             toDaySections={pipeline.toDaySections}
             getRowDate={pipeline.getRowDate}
             headerStartSlot={<div className="flex items-center gap-2">{weekPill}</div>}
-            headerEndSlot={headerControls}
           />
         ) : (
           <div
@@ -336,22 +280,25 @@ export function StationHistoryTable<T>({
               onNextWeek={onNextWeek}
               onResetWeek={onResetWeek}
               showWeekControls
-              hideHeader={Boolean(toolbarPortalTarget)}
+
               daySections={daySections}
               totalCount={totalCount}
               renderRow={renderRow}
               getRowKey={getRowKey}
               virtualized
               scrollToKey={focusedKey}
-              headerEndSlot={headerControls}
               emptyMessage={emptyMessage}
               firstRunEmpty={firstRunEmpty}
               capabilities={STATION_HISTORY_GRID_CAPABILITIES}
             />
-            {bulkBar}
+            <TableStatusBar
+              {...tabStrip}
+              shown={totalCount}
+              selected={selectedCount}
+              onCopySelection={() => void copySelected()}
+            />
           </div>
         )}
-      </TableDensityProvider>
-    </TableColumnConfigProvider>
+    </>
   );
 }

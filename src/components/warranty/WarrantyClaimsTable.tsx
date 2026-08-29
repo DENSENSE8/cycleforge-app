@@ -2,18 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import {
-  WORKBENCH_SHEET_CHROME,
-  WORKBENCH_SHEET_HOST,
-  WorkbenchChromeHeader,
-} from '@/components/dashboard/workbench-shell';
-import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
+import { DataTable } from '@/components/tables/DataTable';
 import { useWarrantyClaims, useWarrantyUrlState } from '@/hooks/useWarrantyClaims';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import type { RowGroup } from '@/lib/group-rows';
 import type { WarrantyClaimListRow } from '@/lib/warranty/types';
 import { WARRANTY_TABLE_BINDING } from '@/components/warranty/grid/warranty-table-definition';
-import { WarrantyGridColumnHeader } from '@/components/warranty/grid/WarrantyGridColumnHeader';
 import {
   WarrantyGridRow,
   warrantyClaimItemLabel,
@@ -88,7 +82,6 @@ export function WarrantyClaimsTable() {
   const { data: claims = [], isLoading, error } = useWarrantyClaims({ status, search, expiringSoon });
 
   // ▦ portals into Band-1 controls (find lives in Support sidebar — Units recipe).
-  const [controlsEl, setControlsEl] = useState<HTMLDivElement | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const {
@@ -142,10 +135,6 @@ export function WarrantyClaimsTable() {
     );
   }
 
-  // A filter is narrowing the list when any of the three refinements is on —
-  // that is what picks "no matches" over "nothing logged yet".
-  const isSearching = Boolean(search) || status != null || expiringSoon;
-
   const renderLeaf = (claim: WarrantyClaimListRow, visible: readonly WarrantyGridColumn[]) => (
     <WarrantyGridRow
       key={claim.id}
@@ -158,18 +147,8 @@ export function WarrantyClaimsTable() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-surface-canvas">
-      <div className={cn(WORKBENCH_SHEET_CHROME, 'flex flex-col gap-0')}>
-        <WorkbenchChromeHeader
-          density="band"
-          tabs={[{ id: 'claims', label: 'Claims' }]}
-          activeTab="claims"
-          onTabChange={() => undefined}
-          controlsSlotRef={setControlsEl}
-          className="rounded-none border-l-0 border-t-0 shadow-sm"
-        />
-      </div>
-      <div className={WORKBENCH_SHEET_HOST}>
-        <NonlinearTableHost<WarrantyClaimListRow, WarrantyGridColumnKey, WarrantyGridColumn>
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <DataTable<WarrantyClaimListRow, WarrantyGridColumnKey, WarrantyGridColumn>
           binding={WARRANTY_TABLE_BINDING}
           orderGroupsByDate={orderGroupsByDate}
           rows={claims}
@@ -180,19 +159,8 @@ export function WarrantyClaimsTable() {
           loading={isLoading}
           emptyMessage="No warranty claims logged yet."
           searchEmptyMessage="No warranty claims match these filters."
-          isSearching={isSearching}
           scrollRef={scrollRef}
-          columnTriggerPortalTarget={controlsEl}
-          renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
-            <WarrantyGridColumnHeader
-              columns={visible}
-              activeSort={columnSort}
-              sortDir={sortDir}
-              onSortColumn={toggleColumnSort}
-              onResizeColumn={onResizeColumn}
-              onResetColumn={onResetColumn}
-            />
-          )}
+          search={{ value: search, onChange: setSearch, placeholder: 'Search claims…' }}
           renderGroup={(group, _stripe, { columns: visible }) => (
             <>{group.rows.map((claim) => renderLeaf(claim, visible))}</>
           )}

@@ -6,6 +6,7 @@ import { type TechRecord } from '@/hooks/useTechLogs';
 import { useTechTableController } from '@/hooks/station/useTechTableController';
 import { useStationDetailsSelection } from '@/hooks/station/useStationDetailsSelection';
 import { StationHistoryTable } from '@/components/station/StationHistoryTable';
+import type { DataTableTabStrip } from '@/components/tables/TableStatusBar';
 import { techRecordToDetail, getTechDetailId } from '@/components/station/tech-record-mappers';
 import { SAVED_VIEW_PARAM_KEYS, SAVED_VIEW_STORAGE_KEY } from '@/lib/station/table-url-params';
 import { Calendar, Clock, Package } from '@/components/Icons';
@@ -52,7 +53,8 @@ interface TechTableProps {
    */
   staffScope?: 'self' | 'url' | 'url-or-self';
   /** Portal column / board controls into the shipping workspace header. */
-  toolbarPortalTarget?: HTMLElement | null;
+  /** The desk's mode strip, drawn on this table's own status bar. */
+  tabStrip?: DataTableTabStrip;
 }
 
 /** Newest-first by pack/test time (created_at). */
@@ -63,7 +65,7 @@ function byNewestCreated(a: TechRecord, b: TechRecord): number {
 export function TechTable({
   testedBy,
   staffScope = 'self',
-  toolbarPortalTarget = null,
+  tabStrip,
 }: TechTableProps) {
   const { staffId: urlStaffId } = useStaffFilter(
     staffScope === 'url-or-self' ? { allToken: 'all' } : undefined,
@@ -154,7 +156,7 @@ export function TechTable({
       savedViewsParamKeys={SAVED_VIEW_PARAM_KEYS.tech_history}
       emptyMessage="No tech records found"
       firstRunEmpty={<ContextualEmptyState state="no-work" />}
-      toolbarPortalTarget={toolbarPortalTarget}
+      tabStrip={tabStrip}
       pipeline={{
         records: orderedRecords,
         lanes: TECH_LANES,

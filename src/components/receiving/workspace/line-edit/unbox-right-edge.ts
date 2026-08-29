@@ -24,7 +24,6 @@ import {
   dispatchReceivingDetailsOverlayClose,
   dispatchStationDisplaysClose,
 } from '@/utils/events';
-import { requestCloseGridColumnDetails } from '@/design-system/components/grid/grid-column-details-open';
 import { readLiveSearchParams } from '@/lib/routing/optimistic-url-param';
 
 /**

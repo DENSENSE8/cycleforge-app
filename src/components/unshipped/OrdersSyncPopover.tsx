@@ -7,11 +7,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useOrdersSync } from '@/hooks/useOrdersSync';
 import { OrderSyncDialog } from '@/components/sidebar/OrderSyncDialog';
 import { AwaitingEbayPanel } from '@/components/unshipped/AwaitingEbayPanel';
-import { WORKBENCH_CHROME_PILL_CLASS } from '@/components/dashboard/workbench-shell';
-import {
-  WorkbenchChromeCubeMenu,
-  type WorkbenchChromeMenuTab,
-} from '@/components/dashboard/workbench-chrome-cube-menu';
 import { TableImportFileButton } from '@/components/tables/import/TableImportFileButton';
 import { ORDER_IMPORT_DESCRIPTOR } from '@/lib/orders/order-import-descriptor';
 import { cn } from '@/utils/_cn';

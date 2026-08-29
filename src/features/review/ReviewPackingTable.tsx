@@ -9,16 +9,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { OrdersGridHost } from '@/components/dashboard/orders-queue/OrdersGridHost';
-import {
-  WORKBENCH_SHEET_CHROME,
-  WORKBENCH_SHEET_HOST,
-  WorkbenchChromeHeader,
-  WorkbenchTriageBand,
-} from '@/components/dashboard/workbench-shell';
 import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
-import { StaffFilterButton } from '@/components/ui/StaffFilterButton';
-import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
-import { cn } from '@/utils/_cn';
 import { packedOrdersQuery, dashboardShippedQuery } from '@/lib/queries/dashboard-queries';
 import { usePackReviewQueue } from '@/features/review/usePackReviewQueue';
 import { packReviewRowToShippedOrder, type ReviewTableOrder } from '@/lib/packing/review-table-mappers';
@@ -172,39 +163,15 @@ export function ReviewPackingTable({ onOpenRow, onCloseRow }: ReviewPackingTable
 
   return (
     <div className="relative flex h-full min-w-0 flex-1 overflow-hidden bg-surface-canvas">
-      <DashboardScrollShell
-        className="h-full"
-        chrome={
-          <div className={cn(WORKBENCH_SHEET_CHROME, 'flex flex-col gap-0')}>
-            <WorkbenchChromeHeader
-              density="band"
-              tabs={PACKING_TABS}
-              activeTab={tab}
-              onTabChange={setTab}
-              className="rounded-none border-l-0 border-t-0 shadow-sm"
-            />
-            <WorkbenchTriageBand
-              search={
-                <TechRailSearchBar
-                  variant="chrome"
-                  value={searchQuery}
-                  onChange={setSearch}
-                  placeholder="Filter order #, SKU, tracking…"
-                  className="min-w-0 flex-1"
-                  trailingSuffix={<StaffFilterButton density="field" align="end" />}
-                />
-              }
-              controlsSlotRef={setControlsEl}
-            />
-          </div>
-        }
-      >
-        <div className={WORKBENCH_SHEET_HOST}>
+      <DashboardScrollShell className="h-full">
+        <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
           <OrdersGridHost
             ariaLabel="Orders awaiting packing review"
             records={records as ShippedOrder[]}
             loading={loading}
             searchValue={searchQuery}
+            search={{ value: searchQuery, onChange: setSearch, placeholder: 'Filter order #, SKU, tracking…' }}
+            tabStrip={{ tabs: PACKING_TABS, activeTab: tab, onTabChange: (id) => setTab(id as typeof tab) }}
             onClearSearch={clearSearch}
             emptyMessage={emptyCopy}
             searchEmptyTitle={`No ${tab} rows found`}

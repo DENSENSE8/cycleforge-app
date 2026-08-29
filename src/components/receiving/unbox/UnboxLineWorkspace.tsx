@@ -36,8 +36,6 @@
  * *remount* needs those resets first.
  */
 
-import { StationDeck } from '@/components/station/StationDeck';
-import { UnboxHistoryDock } from '@/components/station/UnboxHistoryDock';
 import { useEffect, useRef } from 'react';
 // useRef carries the render-time pane slot below (see `paneSlotRef`)
 import dynamic from 'next/dynamic';

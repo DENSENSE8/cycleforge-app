@@ -77,7 +77,7 @@ import {
   DisplaysIndexLeafStage,
   type StationDisplayIndexFilterKeys,
 } from './DisplaysIndexLeafStage';
-import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
+import { SearchField } from '@/design-system/primitives/SearchField';
 import { StationDisplaysParkedRail } from './StationDisplaysParkedRail';
 import { StationDisplayLeafHeader } from './StationDisplayLeafHeader';
 import { StationDisplaysPushColumn } from './StationDisplaysPushColumn';
@@ -462,8 +462,7 @@ export function StationDisplaysPushStack({
                 operator types into above a list is one component and one
                 rhythm on both surfaces. Index only — a leaf inherits no
                 list-filter chrome. */}
-            <TechRailSearchBar
-              variant="chrome"
+            <SearchField
               value={filterQuery}
               onChange={applyFilterQuery}
               onClear={() => applyFilterQuery('')}

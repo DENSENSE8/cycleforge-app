@@ -14,7 +14,7 @@ import { cn } from '@/utils/_cn';
 
 /**
  * RSC-safe sticky bottom X scrollbar wrapper for non-virtualized tables
- * ({@link DataTable}, dense {@link StationListTable} bodies).
+ * (dense {@link StationListTable} bodies).
  *
  * The scroll port keeps `no-scrollbar` (trackpad still pans on both axes); the
  * gutter is the always-reachable triage drag affordance — same contract as

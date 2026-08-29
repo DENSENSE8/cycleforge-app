@@ -4,7 +4,6 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useSearchParams } from 'next/navigation';
 import { OrdersGridHost } from '@/components/dashboard/orders-queue/OrdersGridHost';
-import { WORKBENCH_SHEET_HOST } from '@/components/dashboard/workbench-shell';
 import { OrdersFirstRunEmptyState } from '@/components/dashboard/OrdersFirstRunEmptyState';
 import { AddTrackingNavProvider } from '@/components/outbound/labels/add-tracking-context';
 import { awaitingLabelsQuery } from '@/lib/queries/outbound-queries';
@@ -12,16 +11,18 @@ import { deriveFulfillmentState, type FulfillmentState } from '@/lib/unshipped-s
 import { DASHBOARD_ORDERS_SELECTION_SCOPE } from '@/lib/selection/dashboard-scopes';
 import type { OutboundSort } from '@/components/outbound/outbound-sidebar-shared';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
+import type { DataTableSearch } from '@/components/tables/DataTable';
+import type { DataTableTabStrip } from '@/components/tables/TableStatusBar';
 
 interface LabelsQueueTableProps {
   searchQuery: string;
   sort: OutboundSort;
   onOpenOrder: (order: ShippedOrder) => void;
   onCloseOrder: () => void;
-  /** @deprecated Banner chrome removed — grid is headerless like Pending. */
-  hideHeader?: boolean;
-  /** Portal the grid's column-display ▦ trigger into this element (e.g. the triage-band controls slot). */
-  columnTriggerPortalTarget?: HTMLElement | null;
+  /** The find field, as data — the workspace above owns the URL it writes. */
+  search: DataTableSearch;
+  /** The desk's mode strip, drawn on this table's own status bar. */
+  tabStrip?: DataTableTabStrip;
 }
 
 export function LabelsQueueTable({
@@ -29,7 +30,8 @@ export function LabelsQueueTable({
   sort,
   onOpenOrder,
   onCloseOrder,
-  columnTriggerPortalTarget,
+  search,
+  tabStrip,
 }: LabelsQueueTableProps) {
   const searchParams = useSearchParams();
   const query = useQuery(awaitingLabelsQuery({ searchQuery, sort }));
@@ -78,14 +80,15 @@ export function LabelsQueueTable({
 
   return (
     <AddTrackingNavProvider orderedIds={awaitingOrderIds}>
-      <div className={WORKBENCH_SHEET_HOST}>
+      <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
         <OrdersGridHost
           ariaLabel="Labels queue"
           records={records}
           queueMode="labels"
           loading={query.isLoading}
           searchValue={searchQuery}
-          columnTriggerPortalTarget={columnTriggerPortalTarget ?? null}
+          search={search}
+          tabStrip={tabStrip}
           onClearSearch={() => undefined}
           emptyMessage="No orders awaiting labels"
           firstRunEmpty={

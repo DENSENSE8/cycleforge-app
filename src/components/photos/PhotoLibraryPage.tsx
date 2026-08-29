@@ -32,10 +32,6 @@ import { ZendeskClaimModal } from '@/components/support/zendesk/claim/ZendeskCla
 import type { ClaimPhotoInput } from '@/components/support/zendesk/claim/claim-types';
 import { RightPaneOverlayHost } from '@/components/ui/RightPaneOverlay';
 import { DashboardScrollShell, useDashboardScrollParent } from '@/components/dashboard/DashboardScrollShell';
-import {
-  WORKBENCH_SHEET_CHROME,
-  WORKBENCH_SHEET_HOST,
-} from '@/components/dashboard/workbench-shell';
 import { Panel } from '@/design-system/primitives';
 import { cn } from '@/utils/_cn';
 import { PhotoContextMenu, type PhotoContextMenuItem } from './PhotoContextMenu';
@@ -45,7 +41,6 @@ import { PhotoLibraryGrid } from './PhotoLibraryGrid';
 import { PhotoLibraryHeader } from './PhotoLibraryHeader';
 import { PhotoBatchInspectorPanel } from './photo-inspector/PhotoBatchInspectorPanel';
 import { PhotoLibraryScopeBand } from './PhotoLibraryScopeBand';
-import { PhotoLibraryWorkspaceHeader } from './PhotoLibraryWorkspaceHeader';
 import { PhotoLibraryTicketNasBackup } from './PhotoLibraryTicketNasBackup';
 import { PhotoLabelEditor } from './PhotoLabelEditor';
 import { MediaLibraryShortcutsModal } from './MediaLibraryShortcutsModal';

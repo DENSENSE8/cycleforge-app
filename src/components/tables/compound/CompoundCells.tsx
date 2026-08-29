@@ -24,7 +24,6 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
-import { LedgerCellEditor } from '@/design-system/components/grid';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { ChevronRight, MoreHorizontal, Package } from '@/components/Icons';
 import { BrandIdentityDot, GridCellDash } from '@/components/ui/grid-cells';
@@ -223,17 +222,7 @@ export function CompoundItem({
         )
       }
       secondary={
-        editing && onCommitNote ? (
-          <LedgerCellEditor
-            variant="text"
-            initialValue={noteText}
-            ariaLabel="Edit note"
-            placeholder="Note"
-            className="text-xs"
-            onCommit={(next) => onCommitNote(next)}
-            onClose={() => setEditing(false)}
-          />
-        ) : editable ? (
+        editable ? (
           <button
             type="button"
             // The ROW owns Enter/Space (open / select), so the note opens on

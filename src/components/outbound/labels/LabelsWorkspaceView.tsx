@@ -1,11 +1,10 @@
 'use client';
 
 /**
- * Labels-station Workbench on `/shipping` (labels mode) — the golden
- * DashboardScrollShell recipe: pinned chrome (Queue · Recent tabs + station
- * filters + Import) over one scroll body whose KPI strip scrolls away above the
- * grow-mode queue. Sibling of ShippingWorkspaceView / DashboardOrdersView
- * (docs/todo/display-convergence-log.md → Axis 5).
+ * Labels-station Workbench on `/shipping` (labels mode).
+ *
+ * The desk draws no chrome: it picks the BODY the `?labelsTab=` mode wants and
+ * hands it the find field and the mode strip as data. The table draws both.
  *
  * The Queue tab opens the label print/attach flow via `?open=` (owned by the
  * parent OutboundWorkspace); the Recent tab (recently-labeled / staged) opens a
@@ -14,20 +13,13 @@
 
 import { useCallback, useState } from 'react';
 import { AnimatePresence } from '@/design-system/motion';
-import {
-  WorkbenchSheetView,
-  useWorkbenchSheetChrome,
-} from '@/components/dashboard/WorkbenchSheetView';
-import {
-  LabelsTriageBand,
-  LabelsWorkspaceHeader,
-} from '@/components/outbound/labels/LabelsWorkspaceHeader';
 import { LabelsQueueTable } from '@/components/outbound/labels/LabelsQueueTable';
 import { StagedQueueTable } from '@/components/outbound/scan-out/StagedQueueTable';
 import { StagedOrderDetail } from '@/components/outbound/shared/StagedOrderDetail';
 import { useLabelsWorkspaceTab } from '@/hooks/useLabelsWorkspaceTab';
 import { useOutboundUrlState } from '@/hooks/useOutboundUrlState';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
+import type { DataTableTabStrip } from '@/components/tables/TableStatusBar';
 
 interface LabelsWorkspaceViewProps {
   /** Open the label print/attach flow for a Queue-tab order (writes `?open=`). */
@@ -36,16 +28,10 @@ interface LabelsWorkspaceViewProps {
 
 export function LabelsWorkspaceView({ onOpenLabelOrder }: LabelsWorkspaceViewProps) {
   const { labelsTab, setLabelsTab } = useLabelsWorkspaceTab();
-  const { q, sort, setQ, setSort, openNew } = useOutboundUrlState();
-  const chrome = useWorkbenchSheetChrome('labels');
+  const { q, sort, setQ } = useOutboundUrlState();
   // Recent (staged) detail is local — it must not touch the Queue tab's `?open=`
   // label-print flow.
   const [recentOpenId, setRecentOpenId] = useState<number | null>(null);
-
-  const toggleSort = useCallback(
-    () => setSort(sort === 'newest' ? 'priority' : 'newest'),
-    [sort, setSort],
-  );
 
   const openRecent = useCallback((order: ShippedOrder) => {
     const id = Number(order.id);
@@ -53,52 +39,37 @@ export function LabelsWorkspaceView({ onOpenLabelOrder }: LabelsWorkspaceViewPro
   }, []);
   const closeRecent = useCallback(() => setRecentOpenId(null), []);
 
+  const tabStrip: DataTableTabStrip = {
+    tabs: [
+      { id: 'queue', label: 'Queue' },
+      { id: 'recent', label: 'Recent' },
+    ],
+    activeTab: labelsTab,
+    onTabChange: (id) => setLabelsTab(id as typeof labelsTab),
+  };
+  const search = { value: q, onChange: setQ, placeholder: 'Filter labels…' };
+
   return (
     <div className="relative flex h-full min-w-0 flex-1 overflow-hidden bg-surface-canvas">
-      <WorkbenchSheetView
-        chrome={chrome}
-        className="h-full"
-        tabs={({ className }) => (
-          <LabelsWorkspaceHeader
-            tab={labelsTab}
-            onSelectTab={setLabelsTab}
-            onNewOrder={openNew}
-            className={className}
-          />
-        )}
-        triage={(p) => (
-          <LabelsTriageBand
-            tab={labelsTab}
-            search={q}
-            onSearch={setQ}
-            sort={sort}
-            onToggleSort={toggleSort}
-            {...p}
-          />
-        )}
-      >
-        {({ controlsEl }) =>
-          labelsTab === 'recent' ? (
-            <StagedQueueTable
-              searchQuery={q}
-              onOpenOrder={openRecent}
-              onCloseOrder={closeRecent}
-              hideHeader
-              disableBackfill
-              columnTriggerPortalTarget={null}
-            />
-          ) : (
-            <LabelsQueueTable
-              searchQuery={q}
-              sort={sort}
-              onOpenOrder={onOpenLabelOrder}
-              onCloseOrder={() => undefined}
-              hideHeader
-              columnTriggerPortalTarget={null}
-            />
-          )
-        }
-      </WorkbenchSheetView>
+      {labelsTab === 'recent' ? (
+        <StagedQueueTable
+          searchQuery={q}
+          search={search}
+          tabStrip={tabStrip}
+          onOpenOrder={openRecent}
+          onCloseOrder={closeRecent}
+          disableBackfill
+        />
+      ) : (
+        <LabelsQueueTable
+          searchQuery={q}
+          search={search}
+          tabStrip={tabStrip}
+          sort={sort}
+          onOpenOrder={onOpenLabelOrder}
+          onCloseOrder={() => undefined}
+        />
+      )}
 
       <AnimatePresence>
         {recentOpenId ? (

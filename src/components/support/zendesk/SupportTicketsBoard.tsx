@@ -22,21 +22,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Link2, RefreshCw } from '@/components/Icons';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button, EmptyState } from '@/design-system/primitives';
-import {
-  WorkbenchBandControl,
-  WORKBENCH_BAND_CONTROL_GLYPH_CLASS,
-} from '@/components/dashboard/workbench-band-control';
 import { SkeletonList } from '@/design-system/components/Skeletons';
-import {
-  WorkbenchSheetView,
-  useWorkbenchSheetChrome,
-} from '@/components/dashboard/WorkbenchSheetView';
-import {
-  WorkbenchChromeHeader,
-  WorkbenchTrailingCluster,
-  WorkbenchTriageBand,
-} from '@/components/dashboard/workbench-shell';
-import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
+import { SearchField } from '@/design-system/primitives/SearchField';
 import {
   DEFAULT_TICKET_STATUS,
   parseTicketStatus,
@@ -54,7 +41,6 @@ import { SupportCreateTicketModal } from '@/components/support/service-workspace
 import { useSupportTicketClaimHost } from '@/components/support/service-workspace/useSupportTicketClaimHost';
 import { cn } from '@/utils/_cn';
 import { ZendeskSelect } from './ZendeskSelect';
-import { SupportTicketChromeActions } from './SupportTicketChromeActions';
 import { SupportTicketRow } from './queue/SupportTicketRow';
 
 const SUPPORT_PATH = '/support';
@@ -258,13 +244,12 @@ export function SupportTicketsBoard() {
       triage={() => (
           <WorkbenchTriageBand
             search={
-              <TechRailSearchBar
-                variant="chrome"
+              <SearchField
                 value={searchQuery}
                 onChange={setSearch}
                 placeholder="Search tickets…"
                 className="min-w-0 flex-1"
-              />
+        />
             }
             right={
               <>

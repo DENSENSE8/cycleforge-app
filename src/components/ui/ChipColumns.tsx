@@ -3,7 +3,6 @@
 import type { ReactNode } from 'react';
 import { AnimatePresence, LayoutGroup, motion } from '@/design-system/motion';
 import { cn } from '@/utils/_cn';
-import { useIsColumnHidden } from '@/components/ui/table-column-config/TableColumnConfig';
 import { framerTransition } from '@/design-system/foundations/motion-framer';
 import { useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
 
