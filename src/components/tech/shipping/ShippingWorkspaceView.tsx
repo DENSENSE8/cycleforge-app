@@ -1,39 +1,47 @@
 'use client';
 
 /**
- * Shipping mode Workbench on `/test` — the three-band Sheets flush stack via
- * {@link WorkbenchSheetView}. Sidebar keeps Station scan / Up Next I/O.
+ * Shipping mode Workbench on `/test` — Sheets flush chrome (Unbox recipe):
+ * tabs · KPI · triage in one pinned sheet-chrome stack; body is
+ * WORKBENCH_SHEET_HOST. Sidebar keeps Station scan / Up Next I/O.
  *
  * Multi-select opens the order right-rail plane (History / dashboard SoT) —
  * no bottom ContextualSelectionBar capsule.
  */
 
+import { Suspense, useState } from 'react';
 import dynamic from 'next/dynamic';
+import { AnimatePresence, motion, motionRole, useMotionRole } from '@/design-system/motion';
 import { UnshippedTable } from '@/components/unshipped/UnshippedTable';
-import {
-  WorkbenchSheetFallback,
-  WorkbenchSheetView,
-  useWorkbenchSheetChrome,
-} from '@/components/dashboard/WorkbenchSheetView';
-import { ShippingKpiStrip } from '@/components/tech/shipping/ShippingKpiStrip';
+import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
 import {
   ShippingTriageBand,
   ShippingWorkspaceHeader,
 } from '@/components/tech/shipping/ShippingWorkspaceHeader';
-import { TableRebuildPlaceholder } from '@/components/tables/TableRebuildPlaceholder';
-import { WORKBENCH_KPI_SURFACE } from '@/components/dashboard/workbench-kpi-collapse';
+import { TechAllTriageTable } from '@/components/tech/all/TechAllTriageTable';
+import {
+  WORKBENCH_SHEET_CHROME,
+  WORKBENCH_SHEET_HOST,
+} from '@/components/dashboard/workbench-shell';
 import { OrderRailCompare } from '@/components/dashboard/rail/OrderRailCompare';
 import { OrderRailShell } from '@/components/dashboard/rail/OrderRailShell';
 import { useOrderRailSelection } from '@/hooks/useOrderRailSelection';
 import { useShippingWorkspaceTab } from '@/hooks/useShippingWorkspaceTab';
 import { useNewOrderParam } from '@/hooks/useNewOrderParam';
-import { OrderIngestRail } from '@/components/outbound/orders/OrderIngestRail';
+import { NewOrderEntryOverlay } from '@/components/orders/NewOrderEntryOverlay';
+import { StationDeck } from '@/components/station/StationDeck';
+import { ShippingHistoryDock } from '@/components/station/ShippingHistoryDock';
+import { cn } from '@/utils/_cn';
+
+function TableFallback() {
+  return <div className="min-h-[240px] flex-1 bg-surface-canvas" aria-hidden />;
+}
 
 const TechTable = dynamic(
   () => import('@/components/TechTable').then((m) => m.TechTable),
   // SSR allowed — shipping history is not `/test` LCP (Testing centre is).
   // Loading fallback is the stand-in while the chunk resolves.
-  { loading: WorkbenchSheetFallback },
+  { loading: TableFallback },
 );
 
 export interface ShippingWorkspaceViewProps {
@@ -44,7 +52,7 @@ export interface ShippingWorkspaceViewProps {
 export function ShippingWorkspaceView({ techId }: ShippingWorkspaceViewProps) {
   const { shipTab, setShipTab } = useShippingWorkspaceTab();
   const { newOpen, openNew, closeNew } = useNewOrderParam();
-  const chrome = useWorkbenchSheetChrome(WORKBENCH_KPI_SURFACE.shipping);
+  const [controlsEl, setControlsEl] = useState<HTMLDivElement | null>(null);
   const parsedTechId = parseInt(techId, 10);
   const queueTab = shipTab === 'pending' || shipTab === 'urgent';
   // Pending / Urgent reuse the dashboard To Ship selection scope + rail actions.
@@ -53,57 +61,71 @@ export function ShippingWorkspaceView({ techId }: ShippingWorkspaceViewProps) {
     { publish: queueTab },
   );
 
+  const { presence, transition } = useMotionRole(motionRole.swap.focus);
+  const paneMotionProps = { ...presence, transition };
+
   return (
+    // History is the leftmost column of the bench and is always on screen —
+    // "did that scan land?" is the question this station is asked most, and the
+    // interaction budget puts a status overview at ≤ 1 interaction.
+    <StationDeck history={<ShippingHistoryDock station="Shipping" />}>
     <div className="relative flex h-full min-h-0 w-full flex-col overflow-hidden">
-      <WorkbenchSheetView
-        chrome={chrome}
+      <DashboardScrollShell
         className="h-full bg-transparent"
-        swapKey={shipTab}
-        tabs={({ className }) => (
-          <ShippingWorkspaceHeader
-            tab={shipTab}
-            onSelectTab={setShipTab}
-            onNewOrder={openNew}
-            className={className}
-          />
-        )}
-        kpi={
-          <ShippingKpiStrip
-            mode={shipTab}
-            techId={Number.isFinite(parsedTechId) ? parsedTechId : undefined}
-          />
-        }
-        triage={(p) => <ShippingTriageBand tab={shipTab} {...p} />}
-        overlays={
-          queueTab && selectionEnabled ? (
-            <>
-              <OrderRailCompare />
-              <OrderRailShell />
-              {selectionOverlays}
-            </>
-          ) : null
+        chrome={
+          <div className={cn(WORKBENCH_SHEET_CHROME, 'flex flex-col gap-0')}>
+            <ShippingWorkspaceHeader
+              tab={shipTab}
+              onSelectTab={setShipTab}
+              onNewOrder={openNew}
+              className="rounded-none border-l-0 border-t-0 shadow-sm"
+            />
+            <ShippingTriageBand
+              tab={shipTab}
+              controlsSlotRef={setControlsEl}
+            />
+          </div>
         }
       >
-        {({ controlsEl }) =>
-          shipTab === 'history' ? (
-            <TechTable
-              testedBy={Number.isFinite(parsedTechId) ? parsedTechId : 0}
-              staffScope="url-or-self"
-              toolbarPortalTarget={controlsEl}
-            />
-          ) : shipTab === 'all' ? (
-            <TableRebuildPlaceholder surface="Shipping · All" />
-          ) : (
-            <UnshippedTable
-              strictSearchScope
-              selectMode={selectMode}
-              railSelection
-              toolbarPortalTarget={controlsEl}
-            />
-          )
-        }
-      </WorkbenchSheetView>
-      <OrderIngestRail open={newOpen} onClose={closeNew} initialLeaf="manual" />
+        <div className={WORKBENCH_SHEET_HOST}>
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={shipTab}
+              {...paneMotionProps}
+              className="flex min-h-0 min-w-0 flex-1 flex-col"
+            >
+              <Suspense fallback={<div className="min-h-[240px] bg-surface-canvas" aria-hidden />}>
+                {shipTab === 'history' ? (
+                  <TechTable
+                    testedBy={Number.isFinite(parsedTechId) ? parsedTechId : 0}
+                    staffScope="url-or-self"
+                    toolbarPortalTarget={controlsEl}
+                  />
+                ) : shipTab === 'all' ? (
+                  <TechAllTriageTable scope="shipping" columnTriggerPortalTarget={controlsEl} />
+                ) : (
+                  <UnshippedTable
+                    strictSearchScope
+                    selectMode={selectMode}
+                    railSelection
+                    toolbarPortalTarget={controlsEl}
+                  />
+                )}
+              </Suspense>
+            </motion.div>
+          </AnimatePresence>
+        </div>
+
+        {queueTab && selectionEnabled ? (
+          <>
+            <OrderRailCompare />
+            <OrderRailShell />
+            {selectionOverlays}
+          </>
+        ) : null}
+      </DashboardScrollShell>
+      <NewOrderEntryOverlay open={newOpen} onClose={closeNew} />
     </div>
+    </StationDeck>
   );
 }

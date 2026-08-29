@@ -21,6 +21,7 @@
  */
 
 import { Suspense, useEffect, useRef } from 'react';
+import dynamic from 'next/dynamic';
 import { useSearchParams } from 'next/navigation';
 import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
 import {
@@ -29,14 +30,13 @@ import {
 } from '@/components/dashboard/workbench-shell';
 import { RECEIVING_SELECTION_SCOPE } from '@/components/station/receiving-lines-table-helpers';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
-import ReceivingLinesTable from '@/components/station/ReceivingLinesTable';
-import { UniversalLoader } from '@/design-system/components/UniversalLoader';
+import { UnboxTableCardSkeleton } from '@/components/receiving/unbox/UnboxWorkbenchSkeleton';
 import { UnboxWorkspaceHeader } from '@/components/receiving/unbox/UnboxWorkspaceHeader';
 import { ReceivingLineRailShell } from '@/components/receiving/rail/ReceivingLineRailShell';
 import { ReceivingClaimModal } from '@/components/receiving/workspace/ReceivingClaimModal';
 import { UnboxCompareHost } from '@/components/receiving/unbox/compare/UnboxCompareHost';
 import { useHistoryViewChromeOptional } from '@/components/receiving/history/history-view-chrome-context';
-import { TableRebuildPlaceholder } from '@/components/tables/TableRebuildPlaceholder';
+import { TechAllTriageTable } from '@/components/tech/all/TechAllTriageTable';
 import {
   GRID_ZOOM_DEFAULT,
   gridZoomStyle,
@@ -51,6 +51,11 @@ import { useReceivingLineRailSelection } from '@/hooks/useReceivingLineRailSelec
 import { incomingDetailsTargetFromRow } from '@/lib/receiving/incoming-details-target';
 import { dispatchReceivingOpenIncomingDetails } from '@/utils/events';
 import { toast } from '@/lib/toast';
+
+const ReceivingLinesTable = dynamic(
+  () => import('@/components/station/ReceivingLinesTable'),
+  { loading: () => <UnboxTableCardSkeleton /> },
+);
 
 /** Copy line for a receiving carton/line: PO • SKU • tracking. */
 function formatReceivingCopyRow(r: ReceivingLineRow): string {
@@ -165,9 +170,9 @@ export function UnboxWorkspaceView(props: {
           style={gridZoomStyle(zoom)}
           data-grid-zoom={zoom}
         >
-          <Suspense fallback={<UniversalLoader isLoading label="Loading cartons" />}>
+          <Suspense fallback={<UnboxTableCardSkeleton />}>
             {unboxView === 'all' ? (
-              <TableRebuildPlaceholder surface="Unbox · All" />
+              <TechAllTriageTable scope="unbox" columnTriggerPortalTarget={controlsEl} />
             ) : isCompare ? (
               <UnboxCompareHost selectMode={selectMode} />
             ) : (

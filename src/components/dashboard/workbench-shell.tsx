@@ -22,10 +22,15 @@
  * sibling raised surfaces, not nested wrappers.
  */
 
+import { useMemo } from 'react';
 import type { HTMLAttributes, ReactNode, Ref } from 'react';
 import { PRIMARY_CHROME_ROW_FACE } from '@/components/layout/header-shell';
 import { WorkbenchInspectorToggle } from '@/components/dashboard/workbench-inspector-toggle';
-import { TabSwitch } from '@/design-system/components/TabSwitch';
+import {
+  usePublishSheetTabs,
+  useSheetChromeOptional,
+} from '@/components/sheet/sheet-chrome-context';
+import { SheetToolbar } from '@/components/sheet/SheetToolbar';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 
@@ -95,9 +100,8 @@ export const WORKBENCH_BAND_INSET_X = 'px-0';
  *   whole left at `min-w-0 flex-1`, flush to the sheet edge.
  * - **Right** — ONE control cluster, in order: refine (`right` + controls
  *   portal) → **Views** (`WorkbenchViewsMenu`, page-scoped saved views) →
- *   **view toggles** (`kpiToggle` → `trailing` inspector). KPI hide sits
- *   immediately left of the right-rail inspector so layout-modifying controls
- *   share one cluster.
+ *   the `trailing` inspector toggle. A KPI-hide control sat between the last
+ *   two until 2026-08-29; it went with its band.
  *
  * Every control in that right cluster wears ONE face —
  * `WorkbenchBandControl` (`workbench-band-control.tsx`): the row's own rung,
@@ -114,16 +118,12 @@ export const WORKBENCH_BAND_INSET_X = 'px-0';
  * outer scope). SoT: source-of-truth.md → Left-edge occupant.
  *
  * Consumers: Unbox (golden), Incoming, Locations, To-ship, cohort stations.
- * KPI snap-collapse: {@link WorkbenchKpiBand} + {@link WorkbenchKpiCollapseToggle}
- * (`workbench-kpi-collapse.tsx`) — `kpiToggle` hosts the toggle (never left of
- * search; never over the select gutter).
  */
 
 export function WorkbenchTriageBand({
   search,
   views,
   right,
-  kpiToggle,
   trailing,
   controlsSlotRef,
   controlsSlotProps,
@@ -132,23 +132,15 @@ export function WorkbenchTriageBand({
   search: ReactNode;
   /**
    * Page-scoped saved views — {@link WorkbenchViewsMenu}. Renders in the RIGHT
-   * control cluster, immediately before {@link kpiToggle}, so the row reads
-   * `search · Views · KPI · inspector`. It is a control, not part of the find
-   * field — never re-attach it to the search group.
+   * control cluster, so the row reads `search · Views · inspector`. It is a
+   * control, not part of the find field — never re-attach it to the search group.
    */
   views?: ReactNode;
   right?: ReactNode;
   /**
-   * View-toggle zone — {@link WorkbenchKpiCollapseToggle}. Renders after the
-   * controls portal and immediately before {@link trailing} so KPI hide and
-   * the right-rail inspector read as one layout-control cluster. Never left of
-   * search (scanner ingestion stays flush-left).
-   */
-  kpiToggle?: ReactNode;
-  /**
-   * Far-right of the band (after `kpiToggle`) — {@link WorkbenchInspectorToggle}.
-   * Defaults to Show inspector (opens Column display when the rail is empty).
-   * Pass `null` only for honest absence of any desk peek.
+   * Far-right of the band — {@link WorkbenchInspectorToggle}. Defaults to Show
+   * inspector (opens Column display when the rail is empty). Pass `null` only
+   * for honest absence of any desk peek.
    */
   trailing?: ReactNode;
   controlsSlotRef?: Ref<HTMLDivElement>;
@@ -156,44 +148,39 @@ export function WorkbenchTriageBand({
   className?: string;
 }) {
   const inspector =
-    trailing === undefined ? (
-      <WorkbenchInspectorToggle open={false} />
-    ) : (
-      trailing
-    );
+    trailing === undefined ? <WorkbenchInspectorToggle open={false} /> : trailing;
+  const hasSheetChrome = useSheetChromeOptional() != null;
   return (
-    <div
-      className={cn(
-        // `gap-0` — find plane abuts Views / table controls. A positive gap
-        // reopened the white seam between paste/refine and the right cluster.
-        'flex min-w-0 items-stretch justify-between gap-0 border-r border-border-soft bg-surface-card shadow-sm',
-        WORKBENCH_BAND_INSET_X,
-        PRIMARY_CHROME_ROW_FACE,
-        className,
-      )}
-    >
-      {/* Find owns the whole left — no control shares the search group. */}
-      <div className="flex min-w-0 flex-1 items-stretch">{search}</div>
-      {/*
-        `empty:hidden` on both boxes below: a flex item with no content is still
-        an ITEM, so a row `gap-*` would reserve air beside it. Peer Band-3
-        controls abut at `gap-0` (flush chrome grammar), and the find host
-        abuts this cluster the same way — one continuous Band-3 strip.
-      */}
-      <div className="flex shrink-0 items-center gap-0 self-stretch empty:hidden">
-        {right}
-        {controlsSlotRef !== undefined || controlsSlotProps ? (
-          <div
-            ref={controlsSlotRef}
-            className="flex shrink-0 items-center gap-0 empty:hidden"
-            {...controlsSlotProps}
-          />
-        ) : null}
-        {views}
-        {kpiToggle}
-        {inspector}
-      </div>
-    </div>
+    <SheetToolbar
+      className={className}
+      searchSlot={search}
+      extraControls={right}
+      controlsSlotRef={controlsSlotRef}
+      controlsSlotProps={controlsSlotProps}
+      viewActions={
+        <>
+          {views}
+          {inspector}
+        </>
+      }
+      /*
+        The capability follows the actual capability.
+
+        Copy/Export/Print need a registered `SheetDataSource` and the marks need
+        a formattable column list; a migrating surface has neither, so those
+        groups would be controls that cannot act. Zoom and fullscreen only need
+        the sheet CHROME — so they turn on for any surface whose host mounts a
+        `SheetChromeProvider`, and stay off for the ones that render this band
+        standalone. A surface gains them by adopting the provider, with no edit
+        here.
+      */
+      capabilities={{
+        data: false,
+        format: false,
+        zoom: hasSheetChrome,
+        fullscreen: hasSheetChrome,
+      }}
+    />
   );
 }
 
@@ -204,8 +191,24 @@ export function WorkbenchTriageBand({
 // sheet now self-scrolls via a flex-fill `WORKBENCH_SHEET_HOST` inside a
 // definite flex chain (Unbox golden) — one Y port, no absolute viewport calc.
 
-type TabSwitchTabs = React.ComponentProps<typeof TabSwitch>['tabs'];
-type TabSwitchSolidTone = React.ComponentProps<typeof TabSwitch>['solidTone'];
+/**
+ * The tab data shape, declared here rather than derived from `TabSwitch`.
+ *
+ * It used to read `ComponentProps<typeof TabSwitch>['tabs']`, which was right
+ * while this header drew the strip. It no longer draws it — the strip is
+ * published to `SheetBottomBar` — so deriving from a component this file does
+ * not mount would tie thirty-three call sites' prop type to a rendering detail
+ * that moved.
+ */
+type TabSwitchTabs = readonly {
+  id: string;
+  label?: string;
+  count?: number;
+  color?: string;
+  dividerBefore?: boolean;
+}[];
+/** Retained so call sites keep compiling; the bottom bar has one tab face. */
+type TabSwitchSolidTone = string;
 
 /**
  * Mark the hairline that separates a strip's leading **scope** tab from the
@@ -357,6 +360,14 @@ export interface WorkbenchChromeHeaderProps {
   tabs?: TabSwitchTabs;
   activeTab?: string;
   onTabChange?: (id: string) => void;
+  /**
+   * A control that ADDS to the tab strip (Unbox's pin-a-tab popover).
+   *
+   * Published to the bottom bar with the tabs, not drawn here. It used to sit in
+   * {@link leading} beside the rail; the rail moved, and a control whose job is
+   * "add one of these" reads as belonging to whatever it sits next to.
+   */
+  tabsAction?: ReactNode;
   /** Solid-pill accent (forwarded to `TabSwitch`); defaults to its `inverse`. */
   solidTone?: TabSwitchSolidTone;
   /**
@@ -420,6 +431,7 @@ export function WorkbenchChromeHeader({
   tabs,
   activeTab,
   onTabChange,
+  tabsAction,
   solidTone,
   search,
   right,
@@ -431,6 +443,36 @@ export function WorkbenchChromeHeader({
   className,
 }: WorkbenchChromeHeaderProps) {
   const band = density === 'band';
+  /*
+    The tab rail is no longer DRAWN here — it is PUBLISHED to the bottom bar
+    (operator ruling 2026-08-29; `docs/todo/one-sheet-table-sot-PLAN.md` § 4.3).
+
+    A spreadsheet puts its sheet tabs at the bottom, and this header sat above a
+    KPI band above a find row above the column header — four chrome rows before
+    the first datum. Publishing rather than deleting is what lets all
+    thirty-three surfaces move at once: they already pass `tabs` / `activeTab` /
+    `onTabChange` as structured data, `onTabChange` is still their own callback,
+    so every tab writes the same URL param it always did. The control moved; its
+    behaviour did not.
+  */
+  usePublishSheetTabs(
+    useMemo(
+      () =>
+        tabs && tabs.length > 0
+          ? {
+              tabs: tabs.map((t: TabSwitchTabs[number]) => ({
+                id: String(t.id),
+                label: String(t.label ?? t.id),
+                count: typeof t.count === 'number' ? t.count : undefined,
+              })),
+              activeTab: activeTab ?? '',
+              onTabChange: onTabChange ?? (() => {}),
+              action: tabsAction,
+            }
+          : null,
+      [tabs, activeTab, onTabChange, tabsAction],
+    ),
+  );
   return (
     <div
       className={cn(
@@ -466,32 +508,6 @@ export function WorkbenchChromeHeader({
         first. Surfaces whose header already fits are unaffected: `min-w-0` only
         engages once the row would otherwise overflow.
       */}
-      {tabs && tabs.length > 0 ? (
-      <TabSwitch
-        tabs={tabs}
-        activeTab={activeTab ?? ''}
-        onTabChange={onTabChange ?? (() => {})}
-        // `scrollable` is TabSwitch's own overflow mode — it sets the track to
-        // `w-max` so tabs keep their natural width instead of compressing, and
-        // scrolls the active tab into view. Hand-rolling `overflow-x-auto` here
-        // instead would leave the track at `w-full`, squeezing labels mid-word.
-        // Keep scrollable with hug so long rails (Media Library) still overflow
-        // safely; hug prevents `min-w-full` stretch on short rails (Incoming).
-        scrollable
-        fit={tabsFit}
-        size={band ? 'sm' : 'md'}
-        className={cn('w-auto min-w-0 shrink', band && 'h-full')}
-        variant="solid"
-        solidTone={solidTone}
-        countStyle="plain"
-        // Flat flush track — no soft pill rail (ops chrome flush law).
-        railClassName={
-          band
-            ? `h-full border-0 bg-transparent p-0 shadow-none ${cornerClass('flush')}`
-            : `border border-border-default bg-surface-card p-1 shadow-sm ${cornerClass('flush')}`
-        }
-      />
-      ) : null}
 
       <div className="min-w-0 flex-1" aria-hidden />
 

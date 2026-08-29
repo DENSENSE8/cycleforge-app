@@ -1,0 +1,55 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+
+import { PRODUCT_TABLES } from './table-catalog';
+import { REGISTERED_BINDINGS } from '@/components/tables/registered-bindings';
+
+/**
+ * `PRODUCT_TABLES` is a server-safe restatement of `REGISTERED_BINDINGS` (see
+ * `table-catalog.ts` for why the route cannot import the registry). The
+ * duplication is deliberate and this test is the price: a value in one list and
+ * not the other means either a sheet nobody can enable, or a picker entry that
+ * opens nothing.
+ */
+
+/** Distinct prefs buckets in the registry — two bindings may share one sheet. */
+function registryTableIds(): string[] {
+  return [...new Set(REGISTERED_BINDINGS.map((b) => b.definition.tableId))];
+}
+
+test('the catalog names exactly the registry\'s sheets', () => {
+  assert.deepEqual(
+    [...PRODUCT_TABLES.map((t) => t.tableId)].sort(),
+    registryTableIds().sort(),
+    'PRODUCT_TABLES and REGISTERED_BINDINGS disagree — a sheet in only one is ' +
+      'either unenableable or a picker entry that opens nothing. Add it to BOTH.',
+  );
+});
+
+test('every entry carries a human label', () => {
+  for (const entry of PRODUCT_TABLES) {
+    assert.ok(entry.label.trim().length > 0, `${entry.tableId} has no label`);
+    // The picker shows these; a raw prefs-bucket id ("tech-all") is not a name
+    // an operator can act on.
+    assert.notEqual(entry.label, entry.tableId, `${entry.tableId}'s label is just its id`);
+  }
+});
+
+test('no duplicate table ids', () => {
+  const ids = PRODUCT_TABLES.map((t) => t.tableId);
+  assert.equal(new Set(ids).size, ids.length, 'a duplicate would render twice in the picker');
+});
+
+test('the catalog imports nothing that would drag components into a server bundle', async () => {
+  // The whole reason this module exists. Reading its own source is the only way
+  // to assert an ABSENCE of imports, and the file is 70 lines of literals.
+  const { readFileSync } = await import('node:fs');
+  const src = readFileSync(new URL('./table-catalog.ts', import.meta.url), 'utf8');
+  const imports = [...src.matchAll(/^import .*from '([^']+)'/gm)].map((m) => m[1]);
+  assert.deepEqual(
+    imports,
+    [],
+    `table-catalog.ts must import nothing — it is imported by an API route, and a ` +
+      `component import there is what broke the production build. Found: ${imports.join(', ')}`,
+  );
+});

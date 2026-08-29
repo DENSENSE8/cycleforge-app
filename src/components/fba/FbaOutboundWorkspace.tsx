@@ -20,10 +20,7 @@ import { FbaShippedTable } from '@/components/fba/FbaShippedTable';
 import { FbaErrorState } from '@/components/fba/FbaStateShells';
 import { FbaCombineWorkspace } from '@/components/fba/sidebar/FbaCombineWorkspace';
 import { FbaTriageBand, FbaWorkspaceHeader } from '@/components/fba/FbaWorkspaceHeader';
-import { FbaKpiStrip } from '@/components/fba/FbaKpiStrip';
-import { WorkbenchBand2Card } from '@/components/dashboard/workbench-kpi-collapse';
 import { ReadyWorkspaceBody } from '@/components/outbound/ready/ReadyWorkspaceBody';
-import { ReadyKpiBand } from '@/components/outbound/ready/ReadyKpiBand';
 import {
   WorkbenchSheetView,
   useWorkbenchSheetChrome,
@@ -162,21 +159,6 @@ export function FbaOutboundWorkspace() {
         // body); Shipped is honest absence. `band2`, not `kpi`: this is a plain
         // flush strip with no snap-collapse, because it is mode-scoped rather
         // than a per-staff preference.
-        band2={
-          isBoard ? (
-            <WorkbenchBand2Card>
-              <FbaKpiStrip
-                counts={stageCounts}
-                activeFilter={statusFilter}
-                onToggleFilter={handleToggleFilter}
-              />
-            </WorkbenchBand2Card>
-          ) : isReady ? (
-            <WorkbenchBand2Card>
-              <ReadyKpiBand />
-            </WorkbenchBand2Card>
-          ) : undefined
-        }
         triage={({ controlsSlotRef }) => (
           <FbaTriageBand
             tab={activeMode}

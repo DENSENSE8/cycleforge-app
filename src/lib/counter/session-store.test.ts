@@ -30,7 +30,6 @@ import {
   getSession,
   holdsLease,
   releaseSession,
-  setCustomer,
   setSessionStatus,
   signLine,
   updateLine,

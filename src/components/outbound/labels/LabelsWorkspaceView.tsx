@@ -18,12 +18,10 @@ import {
   WorkbenchSheetView,
   useWorkbenchSheetChrome,
 } from '@/components/dashboard/WorkbenchSheetView';
-import { WORKBENCH_KPI_SURFACE } from '@/components/dashboard/workbench-kpi-collapse';
 import {
   LabelsTriageBand,
   LabelsWorkspaceHeader,
 } from '@/components/outbound/labels/LabelsWorkspaceHeader';
-import { LabelsKpiStrip } from '@/components/outbound/labels/LabelsKpiStrip';
 import { LabelsQueueTable } from '@/components/outbound/labels/LabelsQueueTable';
 import { StagedQueueTable } from '@/components/outbound/scan-out/StagedQueueTable';
 import { StagedOrderDetail } from '@/components/outbound/shared/StagedOrderDetail';
@@ -39,7 +37,7 @@ interface LabelsWorkspaceViewProps {
 export function LabelsWorkspaceView({ onOpenLabelOrder }: LabelsWorkspaceViewProps) {
   const { labelsTab, setLabelsTab } = useLabelsWorkspaceTab();
   const { q, sort, setQ, setSort, openNew } = useOutboundUrlState();
-  const chrome = useWorkbenchSheetChrome(WORKBENCH_KPI_SURFACE.labels);
+  const chrome = useWorkbenchSheetChrome('labels');
   // Recent (staged) detail is local — it must not touch the Queue tab's `?open=`
   // label-print flow.
   const [recentOpenId, setRecentOpenId] = useState<number | null>(null);
@@ -68,7 +66,6 @@ export function LabelsWorkspaceView({ onOpenLabelOrder }: LabelsWorkspaceViewPro
             className={className}
           />
         )}
-        kpi={<LabelsKpiStrip tab={labelsTab} />}
         triage={(p) => (
           <LabelsTriageBand
             tab={labelsTab}

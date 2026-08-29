@@ -29,7 +29,6 @@ import {
   WorkbenchTrailingCluster,
   WorkbenchTriageBand,
 } from '@/components/dashboard/workbench-shell';
-import { WorkbenchKpiCollapseToggle } from '@/components/dashboard/workbench-kpi-collapse';
 import { OutboundOrderChromeActions } from '@/components/dashboard/OutboundOrderChromeActions';
 import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 import { StaffFilterButton } from '@/components/ui/StaffFilterButton';
@@ -113,14 +112,10 @@ export function PackWorkspaceHeader({
 export function PackTriageBand({
   tab,
   controlsSlotRef,
-  kpiOpen,
-  onToggleKpi,
   className,
 }: {
   tab: PackWorkspaceTab;
   controlsSlotRef?: Ref<HTMLDivElement>;
-  kpiOpen: boolean;
-  onToggleKpi: () => void;
   className?: string;
 }) {
   const { searchQuery, setSearch } = useWorkbenchSearchParam();
@@ -155,9 +150,6 @@ export function PackTriageBand({
   return (
     <WorkbenchTriageBand
       className={className}
-      kpiToggle={
-        <WorkbenchKpiCollapseToggle open={kpiOpen} onToggle={onToggleKpi} />
-      }
       views={
         tab === 'history' ? (
           <WorkbenchViewsMenu

@@ -11,7 +11,6 @@
  * rows are laid out — or which named snapshot they came from — stays right.
  *
  * The row is `search · Views · inspector`. There is deliberately **no**
- * `kpiToggle`: this surface has no KPI band, and a toggle with no band behind
  * it is a dead control.
  *
  * ## The 2026-07-29 ban this file used to carry, and why it is lifted
@@ -405,8 +404,6 @@ export function PhotoLibraryWorkspaceHeader({ className }: { className?: string 
           onApply={(payload) => applyView(payload.filters, payload.view)}
         />
       }
-      // No `kpiToggle`: this surface has no KPI band. Honest absence — never
-      // mount one to make the row look symmetrical.
       trailing={
         <WorkbenchTrailingCluster
           divide={false}

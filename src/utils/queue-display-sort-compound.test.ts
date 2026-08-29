@@ -1,0 +1,62 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+
+import {
+  COMPOUND_TRACK_SORT_KEYS,
+  isQueueColumnSort,
+  isQueueSortableColumnKey,
+  queueSortForColumnKey,
+} from './queue-display-sort';
+import { ORDERS_COMPOUND_COLUMNS } from '@/lib/dashboard-order-row-layout';
+
+/**
+ * The compound header keys are TRACKS; `?sort=` is written in FACTS. Nothing
+ * bridged them after To-Ship moved to the two-row row, so every header click was
+ * a silent no-op — sorting was off on the desk and stayed off, because the e2e
+ * that would have caught it was still clicking a flat locator that resolved to
+ * zero elements.
+ */
+
+test('the compound tracks that carry a sortable fact resolve to it', () => {
+  assert.equal(queueSortForColumnKey('fulfillment'), 'order');
+  assert.equal(queueSortForColumnKey('item'), 'title');
+});
+
+test('a flat sort value still resolves to itself', () => {
+  // `?sort=` values in live bookmarks are facts, and must keep working.
+  for (const fact of ['title', 'age', 'qty', 'order', 'tracking'] as const) {
+    assert.ok(isQueueColumnSort(fact));
+    assert.equal(queueSortForColumnKey(fact), fact);
+  }
+});
+
+test('tracks with no sortable fact stay unsortable', () => {
+  // `state` and `amount` had no column sort in the flat model either — leaving
+  // them out preserves shipped behaviour rather than inventing an ordering.
+  for (const key of ['state', 'amount', 'select', 'thumb', 'actions', '_fill']) {
+    assert.equal(queueSortForColumnKey(key), null, `${key} must not sort`);
+    assert.equal(isQueueSortableColumnKey(key), false);
+  }
+});
+
+test('every mapped track is a real column of the mounted model', () => {
+  // A mapping naming a track the grid does not render is a header that can
+  // never be clicked — the same dead-locator failure this fixes, one level up.
+  const mounted = new Set(ORDERS_COMPOUND_COLUMNS.map((c) => c.key as string));
+  for (const track of Object.keys(COMPOUND_TRACK_SORT_KEYS)) {
+    assert.ok(mounted.has(track), `${track} is not a track of ORDERS_COMPOUND_COLUMNS`);
+  }
+});
+
+test('every mapped fact is a real sort value', () => {
+  for (const fact of Object.values(COMPOUND_TRACK_SORT_KEYS)) {
+    assert.ok(isQueueColumnSort(fact), `${fact} is not a QueueDisplaySortColumn`);
+  }
+});
+
+test('at least one visible track sorts — the desk is not inert', () => {
+  // The regression in one assertion: if this ever goes to zero, header clicks
+  // do nothing again.
+  const sortable = ORDERS_COMPOUND_COLUMNS.filter((c) => isQueueSortableColumnKey(c.key));
+  assert.ok(sortable.length > 0, 'no compound track sorts — header clicks are inert');
+});

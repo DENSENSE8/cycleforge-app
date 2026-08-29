@@ -9,10 +9,13 @@ import {
   type OrdersQueueColumn,
   type OrdersQueueColumnKey,
 } from '@/lib/dashboard-order-row-layout';
-import { isQueueColumnSort } from '@/utils/queue-display-sort';
+import { isQueueSortableColumnKey } from '@/utils/queue-display-sort';
 
 const ORDERS_HEADER_LAYOUT: LedgerHeaderLayoutApi = {
-  isSortable: isQueueColumnSort,
+  // Compound-aware: a header key is a TRACK, the sort vocabulary is in FACTS.
+  // `isQueueColumnSort` answered false for every compound track, so no header
+  // rendered as sortable and clicks did nothing — see `queueSortForColumnKey`.
+  isSortable: isQueueSortableColumnKey,
   // Trailing frozen identity cell (`title`) owns the scroll-edge shadow.
   frozenEdgeKey: 'title',
 };

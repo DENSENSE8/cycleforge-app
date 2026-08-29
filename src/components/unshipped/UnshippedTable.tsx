@@ -9,6 +9,15 @@ import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
 import { useOrdersSpreadsheet } from '@/components/dashboard/orders-queue/useOrdersSpreadsheet';
 import { WORKBENCH_SHEET_HOST } from '@/components/dashboard/workbench-shell';
 import { DASHBOARD_ORDERS_SELECTION_SCOPE } from '@/lib/selection/dashboard-scopes';
+import { useTableSelection } from '@/hooks/useTableSelection';
+import {
+  useReportSheetCounts,
+  useSheetDataSource,
+} from '@/components/sheet/sheet-chrome-context';
+import {
+  ORDER_EXPORT_COLUMNS,
+  buildOrderExportRow,
+} from '@/lib/dashboard/order-export-csv';
 import { useRecordCursorKeyboard } from '@/hooks/useRecordCursorKeyboard';
 import { OrdersFirstRunEmptyState } from '@/components/dashboard/OrdersFirstRunEmptyState';
 import { dispatchCloseShippedDetails, dispatchOpenShippedDetails } from '@/utils/events';
@@ -450,6 +459,52 @@ export function UnshippedTable({
   const records = useMemo(
     () => pinRecentlyCreatedUnshipped(laneRecords),
     [laneRecords],
+  );
+
+  // ── Sheets status counts ──────────────────────────────────────────────────
+  // Published upward so `SheetBottomBar` can print "12 selected · 200 of 922"
+  // bottom-right. Reported here rather than in the chrome because this is the
+  // only component that knows what SURVIVED the lane + facet filtering — the
+  // chrome knows what was asked for, not what came back.
+  //
+  // Computed before the first-run early return: hooks cannot run conditionally,
+  // and a first-run org still has counts worth reporting (all zero).
+  const selectedRows = useTableSelection<{ id?: number | string }>(
+    DASHBOARD_ORDERS_SELECTION_SCOPE,
+  );
+  const sheetLaneTotals = fulfillmentLaneTotals(queueCounts);
+  const sheetTotal =
+    fulfillmentLane === 'pending'
+      ? sheetLaneTotals.pending
+      : fulfillmentLane === 'tested'
+        ? sheetLaneTotals.tested
+        : (queueCounts?.total ?? records.length);
+  // The tab is the SCOPE, not a refinement — counting it here would leave the
+  // funnel lit on every load. Only what narrows within the tab counts.
+  const activeFilterCount =
+    (statusFilter ? 1 : 0) + (urgentOnly ? 1 : 0) + (searchQuery ? 1 : 0);
+  useReportSheetCounts({
+    shown: records.length,
+    total: sheetTotal,
+    selected: selectedRows.length,
+    activeFilters: activeFilterCount,
+  });
+
+  // Copy · Export · Print all read THIS producer, so the three verbs cannot
+  // disagree about which rows the operator meant. The shape is the shipped
+  // order-export shape (`ORDER_EXPORT_COLUMNS`) rather than the on-screen
+  // column set: a pasted or printed order row has to carry the identity fields
+  // (record id, SKU, platform) that make it useful away from the app, and half
+  // of the visible tracks are chips and icons with no text to copy.
+  useSheetDataSource(
+    useMemo(
+      () => ({
+        title: 'To-ship',
+        columns: () => [...ORDER_EXPORT_COLUMNS],
+        rows: () => records.map((row) => buildOrderExportRow(row)),
+      }),
+      [records],
+    ),
   );
 
   // First-run teaching state: a brand-new org with zero unshipped orders and no

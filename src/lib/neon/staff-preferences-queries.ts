@@ -171,6 +171,7 @@ export interface StaffPreferences {
    * Workbench KPI Band 2 snap-collapse per surface (`WORKBENCH_KPI_SURFACE`).
    * `true` = collapsed. Shallow JSONB merge — writers send the whole map.
    */
+  /** @deprecated Dead since 2026-08-29 — see the schema note. Stored rows keep it. */
   kpiCollapsed?: Record<string, boolean> | null;
   /**
    * Extra Unbox Band-1 tabs pinned via the Pin-list composer (catalog:

@@ -43,6 +43,20 @@ import {
 } from '@/components/dashboard/orders-queue/orders-table-definition';
 import { CATALOG_LINK_TABLE_BINDING } from '@/features/review/catalog-link/grid/catalog-link-table-definition';
 import { IMPORT_EXCEPTION_TABLE_BINDING } from '@/features/review/catalog-link/grid/import-exception-table-definition';
+import { UNITS_TABLE_BINDING } from '@/components/inventory/units-grid/units-table-definition';
+import { CSV_IMPORT_STAGING_TABLE_BINDING } from '@/components/outbound/orders/import-staging/csv-import-staging-table-definition';
+import { READY_TABLE_BINDING } from '@/components/outbound/ready/grid/ready-table-definition';
+import { CATALOG_TABLE_BINDING } from '@/components/products/catalog/catalog-grid/catalog-table-definition';
+import { PICKUP_TABLE_BINDING } from '@/components/receiving/pickup/grid/pickup-table-definition';
+import { UNFOUND_TABLE_BINDING } from '@/components/receiving/unfound/grid/unfound-table-definition';
+import { REPAIR_TABLE_BINDING } from '@/components/repair/repair-grid/repair-table-definition';
+import { TECH_ALL_TABLE_BINDING } from '@/components/tech/all/tech-all-table-definition';
+import { TRACKING_EXCEPTIONS_TABLE_BINDING } from '@/components/tracking-exceptions/grid/tracking-exceptions-table-definition';
+import { BINS_TABLE_BINDING } from '@/components/warehouse/bins-grid/bins-table-definition';
+import { WARRANTY_TABLE_BINDING } from '@/components/warranty/grid/warranty-table-definition';
+import { MY_DAY_TABLE_BINDING } from '@/features/my-day/grid/my-day-table-definition';
+import { FBA_BOARD_TABLE_BINDING } from '@/components/fba/fba-board-table-definition';
+
 
 export const REGISTERED_BINDINGS = [
   // Unbox / History / Testing — the golden spreadsheet.
@@ -70,4 +84,43 @@ export const REGISTERED_BINDINGS = [
   // two prefs buckets, two record planes.
   CATALOG_LINK_TABLE_BINDING,
   IMPORT_EXCEPTION_TABLE_BINDING,
+  // ── Rebuilt 2026-08-29 (one-sheet-table-sot-PLAN Phase 4) ────────────────
+  // Twenty-six surfaces were stubbed on `TableRebuildPlaceholder` while their
+  // displays were rewritten. Each is back on the binding waist rather than as a
+  // second view component with its own toolbar — the route, its permissions and
+  // its data were never removed, so what returned is the display and nothing
+  // else.
+  //
+  // Inventory › Units browse.
+  UNITS_TABLE_BINDING,
+  // To-Ship CSV import staging — its OWN prefs bucket, never `orders`: hiding a
+  // column while triaging a file must not change the live queue's density.
+  CSV_IMPORT_STAGING_TABLE_BINDING,
+  // Outbound › Ready / recently-tested history.
+  READY_TABLE_BINDING,
+  // Products › Catalog browse. Display-safe: no triage, no dispatch.
+  CATALOG_TABLE_BINDING,
+  // Receiving › Local pickup (read map).
+  PICKUP_TABLE_BINDING,
+  // Receiving › Unfound triage — in-cell edit, no fold, no day band.
+  UNFOUND_TABLE_BINDING,
+  // Repair queue.
+  REPAIR_TABLE_BINDING,
+  // Tech / Unbox `All` triage — one strip over several stores.
+  TECH_ALL_TABLE_BINDING,
+  // Ops › Tracking exceptions.
+  TRACKING_EXCEPTIONS_TABLE_BINDING,
+  // Warehouse › Bins overview.
+  BINS_TABLE_BINDING,
+  // Support › Warranty claims.
+  WARRANTY_TABLE_BINDING,
+  // Home › Today. Sibling of `home.daily`, never a merge with it — two stores
+  // answering two questions.
+  MY_DAY_TABLE_BINDING,
+  // Amazon Prep › shipment board. The LAST surface to reach `LedgerGrid`
+  // without a definition — it hand-rolled its track template and its header
+  // spans until 2026-08-29, so a column model here would have been a stale
+  // second declaration. Now that both derive from `FBA_BOARD_GRID_COLUMNS`, the
+  // descriptor describes what renders and the board joins the waist.
+  FBA_BOARD_TABLE_BINDING,
 ] as const;

@@ -31,7 +31,6 @@ import {
 import { ORDERS_COMPOUND_COLUMNS } from '@/lib/dashboard-order-row-layout';
 import { TASKS_COMPOUND_COLUMNS } from '@/lib/staff-todos/tasks-grid-layout';
 import { DAILY_COMPOUND_COLUMNS } from '@/lib/daily-checks/daily-grid-layout';
-import { CART_COMPOUND_COLUMNS } from '@/lib/kiosk/cart-grid-layout';
 import { CATALOG_LINK_COMPOUND_COLUMNS } from '@/features/review/catalog-link/grid/catalog-link-grid-layout';
 import { IMPORT_EXCEPTION_COMPOUND_COLUMNS } from '@/features/review/catalog-link/grid/import-exception-grid-layout';
 

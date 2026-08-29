@@ -160,6 +160,10 @@ export const AUDIT_ENTITY = {
   MEDIA_SAVED_VIEW: 'media_saved_view',
   // Polymorphic saved_views — dashboard/station generic API
   SAVED_VIEW: 'saved_view',
+  /** One sheet's per-column formatting (org-shared marks / colour / align). */
+  TABLE_COLUMN_FORMAT: 'table_column_format',
+  /** The org's sheet catalog — which tables this organization runs. */
+  ORG_TABLE_CATALOG: 'org_table_catalog',
   // Voice (Nextiva) — Support ▸ Voicemail / Calls
   VOICEMAIL: 'voicemail',
   CALL_EVENT: 'call_event',
@@ -634,6 +638,9 @@ export const AUDIT_ACTION = {
   MEDIA_SAVED_VIEW_UPDATE: 'media.saved_view.update',
   MEDIA_SAVED_VIEW_DELETE: 'media.saved_view.delete',
   // Polymorphic saved_views — dashboard/station generic API
+  ORG_TABLE_CATALOG_SET: 'org_table_catalog.set',
+  TABLE_COLUMN_FORMAT_SET: 'table_column_format.set',
+  TABLE_COLUMN_FORMAT_CLEAR: 'table_column_format.clear',
   SAVED_VIEW_CREATE: 'saved_view.create',
   SAVED_VIEW_UPDATE: 'saved_view.update',
   SAVED_VIEW_DELETE: 'saved_view.delete',

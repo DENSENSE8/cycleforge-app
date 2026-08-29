@@ -5,24 +5,24 @@
  * (Export when History earns it).
  *
  * ```text
- *   REQUIRED
- *   [ Check ] [ UNBOX ] [ Export? ] [ Add ]
- *                                    labeled global CTA (Plus + Add)
+ *   [⧉] [⊞] [ Export? ]
+ *  Check Unbox   labeled, History-only
  * ```
  *
- * **Add is pinned far-right on every tab.** It is the row's one create verb, so
- * it takes the fixed corner an operator reaches for without looking; Export is
- * History-only and would otherwise shift Add's position from tab to tab.
+ * **Add is gone** (operator ruling 2026-08-29). Creation lives in the global
+ * header's Add menu, which is on every route — so a per-desk copy of it was one
+ * more corner to learn and one more place for the two to disagree about what
+ * "add" means here.
  *
- * Check · resume · Add are labeled peer CTAs — everyday Band-1 verbs at button
- * altitude, not buried icon cubes. Export is browse-only (History) and stays a
- * labeled peer when earned; honest absence otherwise. Plus is the Add icon, not
- * a separate cell. Detail: `display/workbench-ops-queue.md` → Trailing Display &
- * Actions (`[ Check | Unbox ]` + Add CTA on Unbox Band 1).
+ * **Check and the resume CTA are icon-only.** Three condensed-uppercase words in
+ * a row shouted, and neither glyph is ambiguous at a receiving bench: a
+ * clipboard checks, the station mark returns to the station. Their accessible
+ * names are unchanged. Export keeps its label — it is browse-only (History), so
+ * it appears rarely enough that a glyph alone would not be learned.
  */
 
 import type { ReactNode } from 'react';
-import { Download, Plus } from '@/components/Icons';
+import { Download } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import { WORKBENCH_CHROME_PILL_CLASS, WorkbenchChromeActionRow } from '@/components/dashboard/workbench-shell';
 import { ChromeCheckButton } from './ChromeCheckButton';
@@ -35,9 +35,12 @@ const CTA_FACE = cn(
   'h-full font-semibold uppercase tracking-widest',
 );
 
+/** Icon-only cube — sized off the row, not off its own text. */
+const CTA_ICON_FACE = cn(WORKBENCH_CHROME_PILL_CLASS, 'h-full aspect-square');
+
 export function ReceivingBoxChromeActions({
   onCheck,
-  onAdd,
+  onAdd: _onAdd,
   onExport,
   resumeLabel,
   resumeAriaLabel,
@@ -45,6 +48,11 @@ export function ReceivingBoxChromeActions({
   onResume,
 }: {
   onCheck: () => void;
+  /**
+   * @deprecated Accepted and ignored — Add moved to the global header
+   * (2026-08-29). Kept in the signature so the four box-station call sites did
+   * not all have to change in the same pass as the chrome relocation.
+   */
   onAdd: () => void;
   /** Browse-only (History) — omit and Export is honestly absent. */
   onExport?: () => void;
@@ -62,11 +70,10 @@ export function ReceivingBoxChromeActions({
         icon={resumeIcon}
         ariaLabel={resumeAriaLabel}
         onClick={onResume}
-        className={CTA_FACE}
+        className={CTA_ICON_FACE}
         data-testid="receiving-box-resume"
-      >
-        {resumeLabel}
-      </Button>
+        title={resumeLabel}
+      />
       {onExport ? (
         <Button
           size="sm"
@@ -80,17 +87,6 @@ export function ReceivingBoxChromeActions({
           Export
         </Button>
       ) : null}
-      <Button
-        size="sm"
-        variant="success"
-        icon={<Plus className="h-3.5 w-3.5" />}
-        ariaLabel="Add inbound purchase or return"
-        onClick={onAdd}
-        className={CTA_FACE}
-        data-testid="receiving-box-add"
-      >
-        Add
-      </Button>
     </WorkbenchChromeActionRow>
   );
 }

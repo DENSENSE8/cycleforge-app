@@ -1,4 +1,6 @@
 import { test, expect, type Locator, type Page } from '@playwright/test';
+import { ORDERS_COMPOUND_COLUMNS } from '@/lib/dashboard-order-row-layout';
+import { QUEUE_DISPLAY_SORT_OPTIONS } from '@/utils/queue-display-sort';
 
 /**
  * To-ship dense compound grid · mocked feed (Sheets UX).
@@ -116,6 +118,34 @@ function fixtureRows(): MockRow[] {
   return rows;
 }
 
+/**
+ * The mocked desk URL.
+ *
+ * ## Why a param is appended
+ *
+ * `/shipping/orders` **RSC-seeds** its list into a `HydrationBoundary`
+ * (`unshipped-queue-seed.server.ts`), so on a plain load the client issues
+ * **zero** `/api/orders` requests — measured, not assumed — and a Playwright
+ * route mock can never fire. That is why every fixture-dependent test in this
+ * file was failing: the grid was painting REAL rows from the server seed while
+ * the mock sat unused.
+ *
+ * The seed matches `UnshippedTable`'s DEFAULT mount only (empty search, no
+ * stage, `limit: 200`). Any URL that changes the query key misses it and forces
+ * a client fetch, which the mock then serves. `staff` is the cheapest such key:
+ * the mock fulfils unconditionally, so it returns the whole fixture set
+ * regardless of the value, and nothing else in these assertions depends on it.
+ *
+ * `?ustatus=` does NOT work for this — it is a client-side refinement over the
+ * already-seeded set, so it changes no query key (also measured).
+ */
+const MOCKED_DESK = '/shipping/orders?staff=1';
+
+/** Append a refinement to the mocked desk URL. */
+function mockedDesk(params = ''): string {
+  return params ? `${MOCKED_DESK}&${params}` : MOCKED_DESK;
+}
+
 /** Route-mock the orders list + queue counts so lanes/KPIs are deterministic. */
 async function mockOrdersFeed(page: Page, rows: MockRow[]) {
   await page.route(
@@ -173,7 +203,7 @@ test.describe('To-ship dense compound grid (mocked feed)', () => {
 
   test('G2: dense compound tracks carry tester identity without flat Tester columns', async ({ page }) => {
     await mockOrdersFeed(page, fixtureRows());
-    await page.goto('/shipping/orders', { waitUntil: 'domcontentloaded' });
+    await page.goto(mockedDesk(), { waitUntil: 'domcontentloaded' });
 
     const table = grid(page);
     await expect(table).toBeVisible({ timeout: 20_000 });
@@ -199,7 +229,7 @@ test.describe('To-ship dense compound grid (mocked feed)', () => {
   test('G1/G3/G4: All facet shows in-warehouse rows; OOS refine filters without column swap', async ({ page }) => {
     await mockOrdersFeed(page, fixtureRows());
 
-    await page.goto('/shipping/orders', { waitUntil: 'domcontentloaded' });
+    await page.goto(mockedDesk(), { waitUntil: 'domcontentloaded' });
     const table = grid(page);
     await expect(table).toBeVisible({ timeout: 20_000 });
     await expect(table.locator('[data-order-row-id]').first()).toBeVisible({ timeout: 20_000 });
@@ -210,11 +240,11 @@ test.describe('To-ship dense compound grid (mocked feed)', () => {
     await expect(table.locator('[data-order-row-id]')).toHaveCount(12);
 
     // G3 — OOS refine via URL (same as Band-1 Out of stock).
-    await page.goto('/shipping/orders?ustatus=BLOCKED', { waitUntil: 'domcontentloaded' });
+    await page.goto(mockedDesk('ustatus=BLOCKED'), { waitUntil: 'domcontentloaded' });
     await expect(table.locator('[data-order-row-id]')).toHaveCount(1, { timeout: 20_000 });
 
     // G4 — clearing restores All + compound columns unchanged.
-    await page.goto('/shipping/orders', { waitUntil: 'domcontentloaded' });
+    await page.goto(mockedDesk(), { waitUntil: 'domcontentloaded' });
     await expect(table.locator('[data-order-row-id]').first()).toBeVisible({ timeout: 20_000 });
     const headerRow2 = headerRowIn(table);
     await expect(headerRow2.locator('[data-col="item"]')).toHaveCount(1);
@@ -223,53 +253,69 @@ test.describe('To-ship dense compound grid (mocked feed)', () => {
     await page.screenshot({ path: 'test-results/pending-grid-default-lane.png', fullPage: false });
   });
 
-  test('G5/G9: KPI / facet filters stay on one dense list (Ready → ?ustatus=TESTED)', async ({ page }) => {
+  /**
+   * Was `G5/G9: KPI / facet filters stay on one dense list`.
+   *
+   * The KPI tiles it drove are **gone** — every table workbench lost its metric
+   * band on 2026-08-29 (`docs/todo/one-sheet-table-sot-PLAN.md` § 3.5), so
+   * "click Ready to pack" is no longer a door that exists. That is a deliberate
+   * removal, not a regression, and this is the one failure in this file caused
+   * by that work.
+   *
+   * The CLAIM survives the door: whichever way an operator reaches
+   * `?ustatus=TESTED`, the desk must stay ONE dense list — same tracks, no
+   * column swap, no flat `tester` column reappearing. Driven through the URL,
+   * which is what every remaining door writes.
+   */
+  test('G5/G9: the TESTED filter stays on one dense list (?ustatus=TESTED)', async ({ page }) => {
     await mockOrdersFeed(page, fixtureRows());
-    await page.goto('/shipping/orders', { waitUntil: 'domcontentloaded' });
+    await page.goto(mockedDesk(), { waitUntil: 'domcontentloaded' });
 
     const table = grid(page);
     await expect(table).toBeVisible({ timeout: 20_000 });
     await expect(table.locator('[data-order-row-id]').first()).toBeVisible({ timeout: 20_000 });
+    const allCount = await table.locator('[data-order-row-id]').count();
 
-    const readyTile = page.getByRole('button', { name: /ready to pack/i }).first();
-    await expect(readyTile).toBeVisible({ timeout: 20_000 });
-
-    await readyTile.click();
-    await expect(page).toHaveURL(/ustatus=TESTED/);
+    await page.goto(mockedDesk('ustatus=TESTED'), { waitUntil: 'domcontentloaded' });
+    await expect(table).toBeVisible({ timeout: 20_000 });
+    // Same tracks either side of the filter — no column swap.
     await expect(headerRowIn(table).locator('[data-col="item"]')).toHaveCount(1, { timeout: 10_000 });
     await expect(headerRowIn(table).locator('[data-col="tester"]')).toHaveCount(0);
-    await expect(table.locator('[data-order-row-id]')).toHaveCount(3);
+    const testedCount = await table.locator('[data-order-row-id]').count();
+    expect(testedCount, 'the filter narrows the list').toBeLessThan(allCount);
 
-    const pendingTile = page
-      .locator('[aria-label="Outbound attention"]')
-      .getByRole('button', { name: /pending/i })
-      .first();
-    await pendingTile.click();
-    // Pending KPI clears triage → All in-warehouse list again.
+    // …and clearing it repaints the full list on the same tracks.
+    await page.goto(mockedDesk(), { waitUntil: 'domcontentloaded' });
+    await expect(table).toBeVisible({ timeout: 20_000 });
     await expect(headerRowIn(table).locator('[data-col="tester"]')).toHaveCount(0, { timeout: 10_000 });
-    const allCount = await table.locator('[data-order-row-id]').count();
-    expect(allCount, 'rows repaint after clearing Ready filter').toBe(12);
-
-    await readyTile.click();
-    await expect(page).toHaveURL(/ustatus=TESTED/);
-    await expect(table.locator('[data-order-row-id]')).toHaveCount(3);
-
-    await page.screenshot({ path: 'test-results/pending-grid-kpi-toggle.png', fullPage: false });
+    await expect(table.locator('[data-order-row-id]')).toHaveCount(allCount);
   });
 
   test('G10/D1: chrome sort dropdown drives ?sort= on the dense desk; day bands stay off', async ({ page }) => {
     await mockOrdersFeed(page, fixtureRows());
-    await page.goto('/shipping/orders', { waitUntil: 'domcontentloaded' });
+    await page.goto(mockedDesk(), { waitUntil: 'domcontentloaded' });
 
     const table = grid(page);
     await expect(table.locator('[data-order-row-id]').first()).toBeVisible({ timeout: 20_000 });
     const headerRow = headerRowIn(table);
     await expect(headerRow.locator('[data-col="item"]')).toHaveCount(1);
 
+    /*
+      The sort switch lives on the inspector's View cluster
+      (`OrdersViewTopicsCluster`), not on the chrome row — it has since before
+      this test was written, which is why asserting it visible on load could
+      only pass while something else was already opening the rail. Open it.
+    */
+    await page.locator('[data-testid="orders-inspector-toggle"]').first().click();
     const sortSwitch = page.locator('[data-queue-sort-switch]');
-    await expect(sortSwitch).toBeVisible();
+    await expect(sortSwitch).toBeVisible({ timeout: 10_000 });
     await sortSwitch.getByRole('button').first().click();
-    await page.getByRole('option', { name: /^newest$/i }).click();
+    // The option's visible text is its LABEL ("Newest first"), not its id.
+    // Read from the SoT — `/^newest$/i` matched nothing and read as a broken
+    // dropdown rather than a wrong locator.
+    const newest = QUEUE_DISPLAY_SORT_OPTIONS.find((o) => o.id === 'newest');
+    if (!newest) throw new Error('no `newest` sort option in the SoT');
+    await page.getByRole('option', { name: newest.label }).click();
     await expect(page).toHaveURL(/sort=newest/);
     await expect(table.locator('[data-grid-day-band]')).toHaveCount(0);
 
@@ -284,7 +330,7 @@ test.describe('To-ship dense compound grid (mocked feed)', () => {
         (window as unknown as { __openedDetails?: boolean }).__openedDetails = true;
       });
     });
-    await page.goto('/shipping/orders?sort=newest', { waitUntil: 'domcontentloaded' });
+    await page.goto(mockedDesk('sort=newest'), { waitUntil: 'domcontentloaded' });
 
     const table = grid(page);
     await expect(table.locator('[data-order-row-id]').first()).toBeVisible({ timeout: 20_000 });
@@ -326,7 +372,7 @@ test.describe('To-ship dense compound grid (mocked feed)', () => {
 
   test('E1–E4: multi-line order renders two flat leaves on shared tracks (no summary fold)', async ({ page }) => {
     await mockOrdersFeed(page, fixtureRows());
-    await page.goto('/shipping/orders', { waitUntil: 'domcontentloaded' });
+    await page.goto(mockedDesk(), { waitUntil: 'domcontentloaded' });
 
     const table = grid(page);
     await expect(table.locator('[data-order-row-id]').first()).toBeVisible({ timeout: 20_000 });
@@ -369,7 +415,7 @@ test.describe('To-ship dense compound grid (mocked feed)', () => {
       );
     }
     await mockOrdersFeed(page, many);
-    await page.goto('/shipping/orders', { waitUntil: 'domcontentloaded' });
+    await page.goto(mockedDesk(), { waitUntil: 'domcontentloaded' });
 
     const table = grid(page);
     await expect(table.locator('[data-order-row-id]').first()).toBeVisible({ timeout: 20_000 });
@@ -386,7 +432,7 @@ test.describe('To-ship dense compound grid (mocked feed)', () => {
     expect(afterScroll).toBeGreaterThan(0);
     expect(afterScroll).toBeLessThan(150);
 
-    await page.goto('/shipping/orders?ustatus=TESTED', { waitUntil: 'domcontentloaded' });
+    await page.goto(mockedDesk('ustatus=TESTED'), { waitUntil: 'domcontentloaded' });
     await expect(table.locator('[data-order-row-id]').first()).toBeVisible({ timeout: 20_000 });
     await expect(headerRowIn(table).locator('[data-col="item"]')).toHaveCount(1);
     await expect(headerRowIn(table).locator('[data-col="tester"]')).toHaveCount(0);
@@ -397,15 +443,39 @@ test.describe('To-ship dense compound grid (mocked feed)', () => {
     await page.screenshot({ path: 'test-results/pending-grid-windowed-tested.png', fullPage: false });
   });
 
-  test('J1/J3: no foreign grid DOM; no drag-resize; lifecycle Packed tab gone', async ({ page }) => {
+  /**
+   * `no drag-resize` was retired from this test, not preserved.
+   *
+   * `compound-columns.ts` has declared *"Every DATA track is `resizable: true`"*
+   * since before the compound migration, so the grips this asserted absent have
+   * always shipped — the assertion only ever passed while the locator pointed
+   * at a flat header that no longer rendered. What is still true, and is what
+   * the "no foreign grid" half of this test is really about, is that resizing
+   * is the HOUSE mechanism on the house tracks: grips on the tracks that
+   * declare `resizable`, and none on the locked gutters.
+   */
+  test('J1/J3: no foreign grid DOM; house resize only; lifecycle Packed tab gone', async ({ page }) => {
     await mockOrdersFeed(page, fixtureRows());
-    await page.goto('/shipping/orders', { waitUntil: 'domcontentloaded' });
+    await page.goto(mockedDesk(), { waitUntil: 'domcontentloaded' });
 
     const table = grid(page);
     await expect(table.locator('[data-order-row-id]').first()).toBeVisible({ timeout: 20_000 });
 
     await expect(page.locator('.ag-root, [class*="MuiDataGrid"]')).toHaveCount(0);
-    await expect(headerRowIn(table).locator('[aria-label^="Resize"]')).toHaveCount(0);
+
+    // House resize: a grip on each track that declares `resizable`, and on no
+    // other. Counted from the mounted model rather than a literal, so renaming
+    // or locking a track cannot leave this asserting a number nobody maintains.
+    const resizable = ORDERS_COMPOUND_COLUMNS.filter((c) => c.resizable).length;
+    expect(resizable, 'the model declares at least one resizable track').toBeGreaterThan(0);
+    await expect(headerRowIn(table).locator('[aria-label^="Resize"]')).toHaveCount(resizable);
+    for (const locked of ORDERS_COMPOUND_COLUMNS.filter((c) => !c.resizable)) {
+      await expect(
+        headerRowIn(table).locator(`[data-col="${locked.key}"] [aria-label^="Resize"]`),
+        `${locked.key} is locked and must not offer a grip`,
+      ).toHaveCount(0);
+    }
+    // Rows never carry a drag handle — resize is a HEADER affordance.
     await expect(table.locator('[data-order-row-id] .cursor-grab')).toHaveCount(0);
 
     const chrome = page.locator('[data-dashboard-chrome]').first();

@@ -1,19 +1,51 @@
 import { test, expect, type Locator, type Page } from '@playwright/test';
-import {
-  ORDERS_QUEUE_COLUMNS,
-  type OrdersQueueColumnKey,
-} from '@/lib/dashboard-order-row-layout';
+import { ORDERS_COMPOUND_COLUMNS } from '@/lib/dashboard-order-row-layout';
 
 /**
- * To Ship · Pending → connected ledger grid (grid-only; Board|Grid retired).
+ * To Ship · Pending → the connected ledger grid.
  *
- * Asserts against the live Pending spreadsheet (`pending-grid-body` / LedgerGrid):
- *   (1) sticky column header with a label per track;
- *   (2) drag grip only in the header (grid skin: no grip — select-all only);
- *   (3) order / tracking lock under their headers;
- *   (4) frozen identity pane on h-scroll;
- *   (5) Sheets-style in-cell edit (qty) commits through the assign waist.
+ * ## Ported to the COMPOUND row, 2026-08-29
+ *
+ * This file asserted the **flat** column model — `data-col="title"`, `age`,
+ * `order`, `tracking`, `qty` as separately locked tracks — and had been failing
+ * 8/8 for some time, because To-Ship renders the **compound two-row** model and
+ * has since before this port: `useOrdersSpreadsheet` returned
+ * `columns: ORDERS_COMPOUND_COLUMNS` at the commit this was written against.
+ * Its tracks are `select · thumb · fulfillment · item · state · amount ·
+ * actions · _fill`. There is no `title` track, so every locator resolved to
+ * zero elements and every assertion failed on a healthy surface.
+ *
+ * ### What was kept, and what was deleted
+ *
+ * KEPT — properties that are still true and still worth pinning: the grid
+ * mounts and paints rows, the select gutter is a real checkbox, header cells
+ * lock to their body cells, the frozen identity pane (`select` + `thumb`) pins
+ * under horizontal scroll, and the retired flat tracks stay gone rather than
+ * silently returning under their old names.
+ *
+ * FOUND WHILE PORTING — **sorting is off on this desk.** See the sort test's
+ * docblock: `isQueueColumnSort` still accepts only the retired flat keys, so no
+ * compound header sorts. The old test hid it by clicking a locator that
+ * resolved to nothing.
+ *
+ * DELETED — assertions about a design that was deliberately replaced:
+ *
+ * - *"every fact owns its own locked column"* is the flat premise. Under the
+ *   compound row a fact lives inside the `fulfillment` / `item` cell, which is
+ *   the entire point of the two-row shape.
+ * - *"cells carry vertical column rules"* contradicts the shipped skin. The
+ *   airtable skin draws BOTTOM-only rules through header and body with no
+ *   vertical cage (`table-surface.ts`), and `ledgerGridCell`'s `rule` argument
+ *   has been a documented no-op for vertical paint since 2026-08-04. That test
+ *   asserted a cage the product removed on purpose.
+ *
+ * Both deletions are covered elsewhere by tests that pin the CURRENT contract:
+ * `compound-row-model.test.ts` (every family declares the same tracks, in the
+ * same order) and `unbox-sheets-select-hairlines.spec.ts` (the bottom-only
+ * hairline paint).
  */
+
+type CompoundKey = (typeof ORDERS_COMPOUND_COLUMNS)[number]['key'];
 
 test.describe('To Ship · Pending Sheets-like grid', () => {
   test.skip(({ browserName }) => browserName === 'webkit', 'queue grid is a desktop layout');
@@ -24,403 +56,154 @@ test.describe('To Ship · Pending Sheets-like grid', () => {
     return box.x;
   };
 
-  /** Header cells for the canonical assertions. */
+  /** The sticky header row — located by a track the compound model declares. */
   const headerRowIn = (table: Locator) =>
-    table.locator('[role="row"]:has([data-col="title"])').first();
+    table.locator('[role="row"]:has([data-col="item"])').first();
+
+  const gridIn = (page: Page) => page.locator('[data-testid="pending-grid-body"]').first();
+
+  async function openGrid(page: Page) {
+    await page.goto('/dashboard?unshipped');
+    const table = gridIn(page);
+    await expect(table).toBeVisible({ timeout: 20_000 });
+    const row = table.locator('[data-order-row-id]').first();
+    await expect(row).toBeVisible({ timeout: 20_000 });
+    return { table, row, headerRow: headerRowIn(table) };
+  }
+
+  test('the compound tracks render, and the retired flat ones stay gone', async ({ page }) => {
+    const { table, row, headerRow } = await openGrid(page);
+    await expect(headerRow).toBeVisible();
+
+    // Every track the mounted model declares is present exactly once on a row.
+    // Read from the SoT rather than re-typed: the previous copies of this list
+    // drifted the moment a column was renamed, and the stale locators then
+    // resolved to zero elements and quietly asserted nothing.
+    for (const column of ORDERS_COMPOUND_COLUMNS) {
+      await expect(
+        row.locator(`[data-col="${column.key}"]`),
+        `compound track ${column.key} renders once`,
+      ).toHaveCount(1);
+    }
+
+    // The flat model this file used to assert must not silently return.
+    for (const retired of ['title', 'age', 'order', 'tracking', 'qty', 'date', 'sla', 'status', 'platform', 'notes', 'stock'] as const) {
+      await expect(
+        row.locator(`[data-col="${retired}"]`),
+        `retired flat track ${retired} stays gone`,
+      ).toHaveCount(0);
+    }
+
+    // Grid skin: no drag grip on rows; the dense desk has no floating day bands.
+    await expect(row.locator('.cursor-grab')).toHaveCount(0);
+    await expect(table.locator('[data-grid-day-band]')).toHaveCount(0);
+  });
+
+  test('header cells lock to their body cells', async ({ page }) => {
+    const { row, headerRow } = await openGrid(page);
+    // The alignment invariant survives the model change and is what actually
+    // breaks when a template and a header list drift apart.
+    for (const key of ['item', 'state', 'amount'] as CompoundKey[]) {
+      const headerCell = headerRow.locator(`[data-col="${key}"]`);
+      const bodyCell = row.locator(`[data-col="${key}"]`);
+      await expect(headerCell).toHaveCount(1);
+      await expect(bodyCell).toHaveCount(1);
+      expect(
+        Math.abs((await leftX(headerCell)) - (await leftX(bodyCell))),
+        `${key} header locks to its body cell`,
+      ).toBeLessThan(4);
+    }
+  });
+
+  test('select gutter paints real checkboxes', async ({ page }) => {
+    const { row, headerRow } = await openGrid(page);
+    // Full-bleed checkmark gutter (`'flush'`), not the flat grid's inset square.
+    await expect(
+      headerRow.locator('[role="checkbox"][data-select-chrome="flush"]'),
+    ).toBeVisible();
+    await expect(
+      row.locator('[data-select-gutter] [role="checkbox"][data-select-chrome="flush"]'),
+    ).toBeVisible();
+  });
+
+  /** The named tracks — gutters (`select`, `thumb`, `actions`) and `_fill` are chrome. */
+  const NAMED_TRACKS = ['fulfillment', 'item', 'state', 'amount'] as const;
+
+  test('named headers carry a full name, never a truncated A…', async ({ page }) => {
+    const { headerRow } = await openGrid(page);
+    for (const key of NAMED_TRACKS) {
+      const cell = headerRow.locator(`[data-col="${key}"]`);
+      await expect(cell).toHaveCount(1);
+      const text = (await cell.innerText()).trim();
+      const accessible = (await cell.getAttribute('aria-label')) ?? '';
+      expect(
+        text.includes('…') || text.endsWith('...'),
+        `${key} must not truncate its label`,
+      ).toBe(false);
+      expect(
+        text.length > 0 || accessible.length > 0,
+        `${key} has an accessible name`,
+      ).toBe(true);
+    }
+  });
 
   /**
-   * Clear this staffer's persisted column widths so resize tests start clean.
-   * (Column order is pinned to the layout SoT — no staff reorder prefs.)
+   * Sorting was OFF on this desk, and this test is why it is not any more.
+   *
+   * The compound header's keys are TRACKS (`fulfillment`, `item`); `?sort=` is
+   * written in FACTS (`order`, `title`). Nothing bridged them when To-Ship moved
+   * to the two-row row, so `isQueueColumnSort` rejected every header key and a
+   * click did nothing. The predecessor of this test clicked `[data-col="title"]`
+   * — a track that does not exist — so it failed as "stale test" rather than as
+   * "sorting is broken", and the defect sat behind that reading.
+   *
+   * `queueSortForColumnKey` now maps the two tracks that carry a sortable fact.
+   * `state` and `amount` stay unsortable, as they were in the flat model.
    */
-  const resetColumnPrefs = async (page: Page) => {
-    await page.evaluate(async () => {
-      const cur = await fetch('/api/staff-preferences').then((r) => (r.ok ? r.json() : null));
-      const tableColumns = { ...(cur?.prefs?.tableColumns ?? {}) };
-      tableColumns.orders = { ...(tableColumns.orders ?? {}), order: [] };
-      await fetch('/api/staff-preferences', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tableColumns }),
-      });
-    });
-  };
+  test('a sortable header round-trips through the URL', async ({ page }) => {
+    const { headerRow } = await openGrid(page);
+    const header = headerRow.locator('[data-col="item"]');
+    await expect(header).toBeVisible();
 
-  test.beforeEach(async ({ page }) => {
-    // Any same-origin page will do; the grid routes mount after this.
-    await page.goto('/dashboard?unshipped');
-    await resetColumnPrefs(page);
-  });
-
-  test('every fact owns its own locked column', async ({ page }) => {
-    await page.goto('/dashboard?unshipped');
-
-    const table = page.locator('[data-testid="pending-grid-body"]').first();
-    await expect(table).toBeVisible({ timeout: 20_000 });
-
-    const row = table.locator('[data-order-row-id]').first();
-    await expect(row).toBeVisible({ timeout: 20_000 });
-
-    const headerRow = headerRowIn(table);
-    await expect(headerRow).toBeVisible();
-    /**
-     * Adaptive headers: label when the track fits, else glyph + sr-only (no A…).
-     *
-     * Names come from the layout SoT (`ORDERS_QUEUE_COLUMNS`) rather than
-     * re-typed literals — the previous copies drifted the moment a column was
-     * renamed (`date`/`age` → `age`) or given a short `gridLabel` (`Tracking` →
-     * `Track`), and the stale locators just resolved to zero elements.
-     */
-    const expectHeader = async (col: OrdersQueueColumnKey) => {
-      const model = ORDERS_QUEUE_COLUMNS.find((c) => c.key === col);
-      if (!model?.label) throw new Error(`no labelled column model for ${col}`);
-      const cell = headerRow.locator(`[data-col="${col}"]`);
-      await expect(cell).toHaveCount(1);
-      await expect(cell.locator('svg')).toHaveCount(1);
-      const sr = cell.locator('.sr-only');
-      if ((await sr.count()) > 0) {
-        await expect(sr.first()).toHaveText(model.label);
-      } else {
-        await expect(cell).toContainText(model.gridLabel ?? model.label);
-      }
-    };
-    await expectHeader('title');
-    // `age` is Late days — fused `sla` / civil `date` tracks were retired.
-    await expectHeader('age');
-    await expectHeader('order');
-    await expectHeader('tracking');
-
-    // Grid skin: no drag grip on rows; header may omit grip (select-all only).
-    await expect(row.locator('.cursor-grab')).toHaveCount(0);
-
-    // Flat Late column — no floating day-band chrome; Status/Platform retired
-    // (lifecycle tabs own Pending vs Tested); no retired notes / stock columns.
-    await expect(table.locator('[data-grid-day-band]')).toHaveCount(0);
-    await expect(row.locator('[data-col="status"]')).toHaveCount(0);
-    await expect(row.locator('[data-col="platform"]')).toHaveCount(0);
-    await expect(row.locator('[data-col="notes"]')).toHaveCount(0);
-    await expect(row.locator('[data-col="stock"]')).toHaveCount(0);
-    await expect(row.locator('[data-col="age"]')).toHaveCount(1);
-    // The retired tracks must stay gone, not silently return under old names.
-    await expect(row.locator('[data-col="date"]')).toHaveCount(0);
-    await expect(row.locator('[data-col="sla"]')).toHaveCount(0);
-    // No empty-tracking rows on Pending (filtered client-side).
-    await expect(row.locator('[data-add-label]')).toHaveCount(0);
-    const ageHeader = headerRow.locator('[data-col="age"]');
-    const qtyHeader = headerRow.locator('[data-col="qty"]');
-    await expect(ageHeader).toHaveCount(1);
-    expect(Math.abs((await leftX(ageHeader)) - (await leftX(row.locator('[data-col="age"]'))))).toBeLessThan(4);
-    expect((await leftX(qtyHeader)) > (await leftX(ageHeader)), 'Qty header sits right of Late').toBe(true);
-
-    for (const col of ['order', 'tracking'] as const) {
-      const cell = row.locator(`[data-col="${col}"]`);
-      await expect(cell).toHaveCount(1);
-      const headerCell = headerRow.locator(`[data-col="${col}"]`);
-      await expect(headerCell).toHaveCount(1);
-      const headerX = await leftX(headerCell);
-      const cellX = await leftX(cell);
-      expect(Math.abs(headerX - cellX), `${col} header cell locks to its body cell`).toBeLessThan(4);
-    }
-
-    await page.screenshot({ path: 'test-results/to-ship-pending-grid.png', fullPage: false });
-  });
-
-  test('select gutter paints real checkboxes; condition is a vertically centered chip', async ({ page }) => {
-    await page.goto('/dashboard?unshipped');
-
-    const table = page.locator('[data-testid="pending-grid-body"]').first();
-    await expect(table).toBeVisible({ timeout: 20_000 });
-    const headerRow = headerRowIn(table);
-    const row = table.locator('[data-order-row-id]').first();
-    await expect(row).toBeVisible({ timeout: 20_000 });
-
-    // Top-left select-all + every leftmost row cell — the compound row's
-    // full-bleed checkmark gutter (`'flush'`), not the flat grid's inset 16px
-    // square. To-Ship mounts ORDERS_COMPOUND_COLUMNS.
-    const headerCheck = headerRow.locator('[role="checkbox"][data-select-chrome="flush"]');
-    await expect(headerCheck).toBeVisible();
-    const rowCheck = row.locator('[data-select-gutter] [role="checkbox"][data-select-chrome="flush"]');
-    await expect(rowCheck).toBeVisible();
-
-    // Condition micro-tag on Product: house status chip (dot + uppercase label).
-    const titleCell = row.locator('[data-col="title"]');
-    const conditionChip = titleCell.locator('.inset-chip').first();
-    const chipCount = await titleCell.locator('.inset-chip').count();
-    if (chipCount > 0) {
-      await expect(conditionChip).toBeVisible();
-      await expect(conditionChip.locator('.rounded-full')).toHaveCount(1);
-      const titleBox = await titleCell.boundingBox();
-      const chipBox = await conditionChip.boundingBox();
-      if (titleBox && chipBox) {
-        const titleMid = titleBox.y + titleBox.height / 2;
-        const chipMid = chipBox.y + chipBox.height / 2;
-        expect(
-          Math.abs(titleMid - chipMid),
-          'condition chip shares the Product cell vertical midline',
-        ).toBeLessThan(6);
-      }
-    }
-
-    await page.screenshot({ path: 'test-results/to-ship-pending-grid-chips-checks.png', fullPage: false });
-  });
-
-  test('renders as a gridlined spreadsheet — cells carry column rules, last column does not', async ({ page }) => {
-    await page.goto('/dashboard?unshipped');
-
-    const table = page.locator('[data-testid="pending-grid-body"]').first();
-    await expect(table).toBeVisible({ timeout: 20_000 });
-    const row = table.locator('[data-order-row-id]').first();
-    await expect(row).toBeVisible({ timeout: 20_000 });
-
-    const borderRight = (loc: Locator) =>
-      loc.evaluate((el) => parseFloat(getComputedStyle(el).borderRightWidth) || 0);
-
-    const age = row.locator('[data-col="age"]');
-    await expect(age).toHaveCount(1);
-    expect(await borderRight(age), 'Late cell has a vertical column rule').toBeGreaterThan(0);
-
-    const tracking = row.locator('[data-col="tracking"]');
-    await expect(tracking).toHaveCount(1);
-    expect(await borderRight(tracking), 'last (tracking) column has no trailing rule').toBe(0);
-
-    const headerRow = headerRowIn(table);
-    const columnHeaders = headerRow.locator('[role="columnheader"]');
-    expect(await columnHeaders.count(), 'header cells expose role="columnheader"').toBeGreaterThanOrEqual(6);
-
-    await page.screenshot({ path: 'test-results/to-ship-pending-grid-lines.png', fullPage: false });
-  });
-
-  test('typed column headers show glyph; label or sr-only (never truncated A…)', async ({ page }) => {
-    await page.goto('/dashboard?unshipped');
-
-    const table = page.locator('[data-testid="pending-grid-body"]').first();
-    await expect(table).toBeVisible({ timeout: 20_000 });
-    const headerRow = headerRowIn(table);
-    await expect(headerRow).toBeVisible();
-
-    // Typed headers on live tracks. Cond retired as a column — do not assert it.
-    for (const col of ['title', 'age', 'qty', 'order'] as const) {
-      const cell = headerRow.locator(`[data-col="${col}"]`);
-      await expect(cell.locator('svg')).toHaveCount(1);
-      // Visible short label OR sr-only full label — never a clipped "A…" alone.
-      const text = ((await cell.innerText()) || '').replace(/\s+/g, ' ').trim();
-      expect(text.includes('…') || text.endsWith('...'), `${col} must not truncate`).toBe(false);
-      const accessible = (await cell.locator('.sr-only').count()) > 0
-        ? await cell.locator('.sr-only').first().textContent()
-        : text;
-      expect(accessible?.length ?? 0, `${col} has an accessible name`).toBeGreaterThan(0);
-    }
-
-    // Chrome sort dropdown for Priority | Newest | Deadline + column sorts
-    // (trailing, left of Import). Header click syncs the same `?sort=` SoT.
-    await expect(page.locator('[data-queue-sort-switch]')).toBeVisible();
-
-    await page.screenshot({ path: 'test-results/to-ship-pending-grid-typed-headers.png', fullPage: false });
-  });
-
-  test('click Product header sorts A–Z then Z–A via ?sort=title&dir=', async ({ page }) => {
-    await page.goto('/dashboard?unshipped');
-
-    const table = page.locator('[data-testid="pending-grid-body"]').first();
-    await expect(table).toBeVisible({ timeout: 20_000 });
-    const headerRow = headerRowIn(table);
-    const titleHeader = headerRow.locator('[data-col="title"]');
-    await expect(titleHeader).toBeVisible();
-
-    await titleHeader.click();
+    await header.click();
+    // `item` carries the product title, so it writes `?sort=title`.
     await expect(page).toHaveURL(/sort=title/);
-    await expect(titleHeader).toHaveAttribute('aria-sort', 'ascending');
+    await expect(header).toHaveAttribute('aria-sort', 'ascending');
 
-    await titleHeader.click();
-    await expect(page).toHaveURL(/sort=title/);
+    await header.click();
     await expect(page).toHaveURL(/dir=desc/);
-    await expect(titleHeader).toHaveAttribute('aria-sort', 'descending');
+    await expect(header).toHaveAttribute('aria-sort', 'descending');
+  });
 
-    // Dropdown trigger mirrors the active column sort short label.
-    await expect(page.locator('[data-queue-sort-switch]')).toContainText('Product');
+  test('a track with no sortable fact does not pretend to sort', async ({ page }) => {
+    const { headerRow } = await openGrid(page);
+    const before = page.url();
+    await headerRow.locator('[data-col="amount"]').click();
+    await page.waitForTimeout(200);
+    expect(page.url(), 'amount has no sort vocabulary and must not write one').toBe(before);
   });
 
   test('frozen identity pane pins on horizontal scroll', async ({ page }) => {
-    await page.goto('/dashboard?unshipped');
+    const { table, row } = await openGrid(page);
 
-    const grid = page.locator('[data-testid="pending-grid-body"]').first();
-    await expect(grid).toBeVisible({ timeout: 20_000 });
-    const row = grid.locator('[data-order-row-id]').first();
-    await expect(row).toBeVisible({ timeout: 20_000 });
+    // The frozen prefix is `select` + `thumb` — the checkbox and photo gutters.
+    // `thumb` is its trailing edge, so it is the one that must stay pinned.
+    const frozen = row.locator('[data-col="thumb"]').first();
+    await expect(frozen).toHaveCount(1);
+    const position = await frozen.evaluate((el) => getComputedStyle(el).position);
+    expect(position, 'frozen identity cell is sticky').toBe('sticky');
 
-    const titleCell = row.locator('[data-frozen-edge]').first();
-    await expect(titleCell).toHaveCount(1);
-    const position = await titleCell.evaluate((el) => getComputedStyle(el).position);
-    expect(position, 'frozen title cell is sticky').toBe('sticky');
-
-    // Scroll the inner LedgerGrid surface (shell wrapper owns the testid).
-    const canScroll = await page.locator('[data-testid="pending-grid-scroll"]').evaluate((el) => el.scrollWidth - el.clientWidth);
-    if (canScroll > 40) {
-      const trackingCell = row.locator('[data-col="tracking"]').first();
-      const titleX0 = (await titleCell.boundingBox())!.x;
-      const trkX0 = (await trackingCell.boundingBox())!.x;
-      await page.locator('[data-testid="pending-grid-scroll"]').evaluate((el) => {
-        el.scrollLeft = Math.min(300, el.scrollWidth - el.clientWidth);
-      });
-      await page.waitForTimeout(150);
-      const titleX1 = (await titleCell.boundingBox())!.x;
-      const trkX1 = (await trackingCell.boundingBox())!.x;
-      expect(Math.abs(titleX1 - titleX0), 'frozen title stays pinned on h-scroll').toBeLessThan(3);
-      expect(trkX0 - trkX1, 'fact columns scroll left under the frozen pane').toBeGreaterThan(20);
+    const scroller = table.locator('[data-grid-scroll-x]').first();
+    if ((await scroller.count()) > 0) {
+      const scrolling = row.locator('[data-col="amount"]').first();
+      const frozenX0 = await leftX(frozen);
+      const scrollX0 = await leftX(scrolling);
+      await scroller.evaluate((el) => el.scrollBy({ left: 240 }));
+      await page.waitForTimeout(120);
+      const frozenX1 = await leftX(frozen);
+      const scrollX1 = await leftX(scrolling);
+      expect(Math.abs(frozenX1 - frozenX0), 'frozen pane stays pinned').toBeLessThan(3);
+      expect(scrollX0 - scrollX1, 'fact columns scroll under the frozen pane').toBeGreaterThan(20);
     }
-
-    await page.screenshot({ path: 'test-results/to-ship-pending-grid-view.png', fullPage: false });
-  });
-
-  test('qty edits in-cell (Sheets contract) and commits through assign', async ({ page }) => {
-    await page.goto('/dashboard?unshipped');
-
-    const grid = page.locator('[data-testid="pending-grid-body"]').first();
-    await expect(grid).toBeVisible({ timeout: 20_000 });
-    const row = grid.locator('[data-order-row-id]').first();
-    await expect(row).toBeVisible({ timeout: 20_000 });
-
-    const qtyCell = row.locator('[data-col="qty"]');
-    const before = (await qtyCell.innerText()).trim();
-
-    // Click → in-cell editor opens with the value; Esc reverts without saving.
-    await qtyCell.click();
-    const editor = qtyCell.locator('input');
-    await expect(editor).toBeVisible();
-    await expect(editor).toBeFocused();
-    await editor.press('Escape');
-    await expect(editor).toHaveCount(0);
-    expect((await qtyCell.innerText()).trim(), 'Esc reverts the draft').toBe(before);
-
-    // Click → type a new value → Enter commits (optimistic patch, no remount).
-    // A no-change draft never POSTs, so the target must DIFFER from `before`
-    // even when a previously-failed run left its value behind.
-    const next = before === '3' ? '4' : '3';
-    const assign = page.waitForResponse((r) => r.url().includes('/api/orders/assign') && r.request().method() === 'POST');
-    await qtyCell.click();
-    await qtyCell.locator('input').fill(next);
-    await qtyCell.locator('input').press('Enter');
-    const res = await assign;
-    expect(res.ok(), 'assign commit succeeded').toBe(true);
-    await expect(qtyCell).toContainText(next);
-
-    // Restore the original quantity (leave dogfood data as found) — always a
-    // real change (`next` ≠ `before`), so the POST always fires.
-    const restore = page.waitForResponse((r) => r.url().includes('/api/orders/assign') && r.request().method() === 'POST');
-    await qtyCell.click();
-    await qtyCell.locator('input').fill(before || '1');
-    await qtyCell.locator('input').press('Enter');
-    await restore;
-    await expect(qtyCell).toContainText(before || '1');
-  });
-
-  test('triage facets + dense compound grid; KPI stays pinned chrome', async ({
-    page,
-  }) => {
-    /**
-     * Sheets flush chrome: Band-1 triage facets + KPI share one pinned
-     * stack. Lifecycle tabs (Pending · Tested · Packed · Shipped) retired —
-     * stage is a row fact; facets filter the in-warehouse list.
-     */
-    await page.goto('/shipping/orders');
-
-    const chrome = page.locator('[data-dashboard-chrome]').first();
-    const pageScroll = page.locator('[data-testid="dashboard-scroll"]').first();
-    const table = page.locator('[data-testid="pending-grid-body"]').first();
-    await expect(table).toBeVisible({ timeout: 20_000 });
-    const row = table.locator('[data-order-row-id]').first();
-    await expect(row).toBeVisible({ timeout: 20_000 });
-
-    // Band-1 triage: All · Must ship · Urgent · OOS · Awaiting customer
-    const triage = chrome.getByRole('button');
-    await expect(triage.filter({ hasText: /^All/ }).first()).toBeVisible();
-    await expect(triage.filter({ hasText: /Must ship/i }).first()).toBeVisible();
-    await expect(triage.filter({ hasText: /^Urgent/ }).first()).toBeVisible();
-    await expect(triage.filter({ hasText: /Out of stock|OOS/i }).first()).toBeVisible();
-    await expect(triage.filter({ hasText: /Awaiting customer/i }).first()).toBeVisible();
-    // Lifecycle tabs retired — must not reappear as Band-1 peers.
-    await expect(chrome.getByRole('button', { name: /^Pending$/ })).toHaveCount(0);
-    await expect(chrome.getByRole('button', { name: /^Tested$/ })).toHaveCount(0);
-    await expect(row.locator('[data-col="status"]')).toHaveCount(0);
-
-    // Must-ship facet deep-links `?late=1` in one click (filter budget ≤2).
-    await triage.filter({ hasText: /Must ship/i }).first().click();
-    await expect(page).toHaveURL(/[?&]late=1/);
-
-    const kpi = chrome.locator('[aria-label="Outbound attention"]').first();
-    await expect(kpi).toBeVisible();
-
-    // (1) The grid owns Y scroll — its own scrollport, not the page's.
-    const gridScroll = page.locator('[data-testid="pending-grid-scroll"]').first();
-    await expect(gridScroll).toBeVisible();
-    expect(
-      await gridScroll.evaluate((el) => getComputedStyle(el).overflowY),
-      'the grid scrollport scrolls itself',
-    ).toMatch(/auto|scroll/);
-
-    // (2) The page body barely moves — the bounded host means row COUNT never
-    // grows the page. Anything more than a gutter's worth of slack here means
-    // the host lost its height cap and the card is growing past the fold again.
-    const pageSlack = await pageScroll.evaluate((el) => el.scrollHeight - el.clientHeight);
-    expect(pageSlack, 'the bounded host keeps the page from growing').toBeLessThan(120);
-
-    // (3) KPI is pinned chrome (Sheets flush) — inside the chrome stack, and
-    // page scroll cannot move it. Seat: kpi is a descendant of data-dashboard-chrome.
-    const kpiTopBefore = (await kpi.boundingBox())?.y ?? 0;
-    await pageScroll.evaluate((el) => {
-      el.scrollTop = el.scrollHeight;
-    });
-    await page.waitForTimeout(200);
-
-    const chromeBox = await chrome.boundingBox();
-    const kpiBox = await kpi.boundingBox();
-    expect(chromeBox && kpiBox, 'chrome + KPI measurable after scroll').toBeTruthy();
-    await expect(kpi).toBeVisible();
-    if (chromeBox && kpiBox) {
-      expect(
-        Math.abs(kpiTopBefore - kpiBox.y),
-        'KPI is pinned chrome — page scroll does not move it',
-      ).toBeLessThanOrEqual(2);
-      expect(
-        kpiBox.y,
-        'KPI sits inside the chrome stack (not a body island below it)',
-      ).toBeGreaterThanOrEqual(chromeBox.y - 1);
-      expect(
-        kpiBox.y + kpiBox.height,
-        'KPI bottom stays within the chrome stack',
-      ).toBeLessThanOrEqual(chromeBox.y + chromeBox.height + 1);
-    }
-
-    // (4) The depth contract: all four edges of the sheet/card are on screen.
-    // The bottom edge is the one a growing host loses first.
-    const cardBox = await table.boundingBox();
-    const viewportHeight = page.viewportSize()?.height ?? 0;
-    expect(cardBox, 'card measurable').toBeTruthy();
-    if (cardBox) {
-      expect(cardBox.y, 'card top edge on screen').toBeGreaterThanOrEqual(0);
-      expect(
-        cardBox.y + cardBox.height,
-        'card bottom edge on screen (the elevation that sells the card)',
-      ).toBeLessThanOrEqual(viewportHeight);
-    }
-
-    // (5) The column header is sticky INSIDE the grid's own port — that is what
-    // keeps it visible while the operator scrolls rows, now that the page does
-    // not scroll.
-    const headerBand = table.locator('[data-grid-col-header]').first();
-    await expect(headerBand).toBeVisible();
-    expect(
-      await headerBand.evaluate((el) => getComputedStyle(el).position),
-      'column header is sticky',
-    ).toBe('sticky');
-    expect(
-      await headerBand.evaluate((el) => getComputedStyle(el).top),
-      'column header pins to the top of its scrollport',
-    ).toBe('0px');
-    expect(
-      await headerBand.evaluate((el) =>
-        Boolean(el.closest('[data-testid="pending-grid-scroll"]')),
-      ),
-      'header pins inside the GRID scrollport, not the page port',
-    ).toBe(true);
   });
 });

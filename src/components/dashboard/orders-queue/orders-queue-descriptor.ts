@@ -13,7 +13,7 @@ import {
   type OrdersQueueColumnMode,
 } from '@/lib/dashboard-order-row-layout';
 import { getDaysLateNullable } from '@/utils/date';
-import { isQueueColumnSort } from '@/utils/queue-display-sort';
+import { isQueueSortableColumnKey } from '@/utils/queue-display-sort';
 import {
   queueRowTestedAtRaw,
   queueRowTesterNameRaw,
@@ -73,8 +73,13 @@ export function makeOrdersGridDescriptor(
     mode,
     columns,
     {
-      isSortable: isQueueColumnSort,
+      // Compound-aware: the header's key is a TRACK, the sort vocabulary is in
+      // FACTS. `isQueueColumnSort` alone answered false for every compound
+      // track, so no header offered the affordance and none of them sorted.
+      isSortable: isQueueSortableColumnKey,
       // Late column activates most-overdue-first (desc); other facts stay asc.
+      // `age` is days-late: most overdue first. Nothing else is a magnitude
+      // where "biggest first" is the useful default.
       sortDescFirst: (key) => key === 'age',
       isLocked: isOrdersQueueFrozen,
       accessorFor,

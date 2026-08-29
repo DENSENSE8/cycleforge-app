@@ -1,7 +1,87 @@
 {
-  "generatedAt": "2026-08-28T07:01:06.374Z",
+  "generatedAt": "2026-08-29T12:36:31.220Z",
   "count": 198,
   "commits": [
+    {
+      "sha": "7643ecb6c3ed4baa5c18460213023ad92f4092f4",
+      "shortSha": "7643ecb6c",
+      "date": "2026-08-28T12:17:44-07:00",
+      "author": "DENSENSE8",
+      "subject": "Fix unit tests for in-warehouse To-ship desk normalization.",
+      "body": "Lifecycle tabs collapsed to unshipped; update search-state and column-model expectations so pre-push verify can land.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "fix",
+      "title": "Fix unit tests for in-warehouse To-ship desk normalization."
+    },
+    {
+      "sha": "ed4a35dab00aa930098dd8ad251cb78338eb2ba9",
+      "shortSha": "ed4a35dab",
+      "date": "2026-08-28T09:58:40-07:00",
+      "author": "DENSENSE8",
+      "subject": "Fix To-ship column dense ceiling and facet counts for pre-push.",
+      "body": "Mark secondary staff tracks optional so the orders table definition stays under the 10-track default-visible cap, and finish must-ship / blocked count wiring on the triage band.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "fix",
+      "title": "Fix To-ship column dense ceiling and facet counts for pre-push."
+    },
+    {
+      "sha": "fa00e357588c2867223b58ef55f2117f84fbecb7",
+      "shortSha": "fa00e3575",
+      "date": "2026-08-28T09:43:23-07:00",
+      "author": "DENSENSE8",
+      "subject": "Ship centered ⌘K find, spine map rows, and warehouse OS workbench polish.",
+      "body": "Replace the header find field and spine icon band with a records palette and ordinary Home / Media Library rows; harden search resolve and platform-type rules; drop the staff-footer hairline and related loading/LCP groundwork.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "other",
+      "title": "Ship centered ⌘K find, spine map rows, and warehouse OS workbench polish."
+    },
+    {
+      "sha": "ff75d7bef812791dbba3535dc6136aa7055f8c95",
+      "shortSha": "ff75d7bef",
+      "date": "2026-08-28T03:19:59-07:00",
+      "author": "DENSENSE8",
+      "subject": "land(CYC-70): Billing header: switch to Settings eyebrow + value like Integrations",
+      "body": "Run: ack_a144a0d9\nAccepted by the operator via agent:accept.",
+      "type": "other",
+      "title": "land(CYC-70): Billing header: switch to Settings eyebrow + value like Integrations"
+    },
+    {
+      "sha": "2185921388d51692ce2aaae828095fda922b4279",
+      "shortSha": "218592138",
+      "date": "2026-08-28T02:05:18-07:00",
+      "author": "DENSENSE8",
+      "subject": "land(CYC-64): Fix license-plate/GS1 scan URLs: subdomain error, mobile/desktop resolution, DB-backed redirect",
+      "body": "Run: ack_655fc0f6\nAccepted by the operator via agent:accept.",
+      "type": "other",
+      "title": "land(CYC-64): Fix license-plate/GS1 scan URLs: subdomain error, mobile/desktop resolution, DB-backed redirect"
+    },
+    {
+      "sha": "4983809e505698ec627e2b2ed4870197583e355c",
+      "shortSha": "4983809e5",
+      "date": "2026-08-28T01:40:37-07:00",
+      "author": "DENSENSE8",
+      "subject": "land(CYC-69): Align /settings/audit header and body to the 5xl Settings column",
+      "body": "Run: ack_b19c0ac3\nAccepted by the operator via agent:accept.",
+      "type": "other",
+      "title": "land(CYC-69): Align /settings/audit header and body to the 5xl Settings column"
+    },
+    {
+      "sha": "6e4cb547a033c1bb3ebf7cb292db80b82de4106d",
+      "shortSha": "6e4cb547a",
+      "date": "2026-08-28T01:05:09-07:00",
+      "author": "DENSENSE8",
+      "subject": "land(CYC-55): Testing page: remove paperwork concerns, focus on test + ready-to-pack only",
+      "body": "Run: ack_3793c182\nAccepted by the operator via agent:accept.",
+      "type": "other",
+      "title": "land(CYC-55): Testing page: remove paperwork concerns, focus on test + ready-to-pack only"
+    },
+    {
+      "sha": "77dac8f5c765c7886bb99e987a4141839784a46e",
+      "shortSha": "77dac8f5c",
+      "date": "2026-08-28T00:07:37-07:00",
+      "author": "DENSENSE8",
+      "subject": "land(CYC-68): Integrations header: add Settings eyebrow via PageHeader eyebrow/value",
+      "body": "Run: ack_da7bcbab\nAccepted by the operator via agent:accept.",
+      "type": "other",
+      "title": "land(CYC-68): Integrations header: add Settings eyebrow via PageHeader eyebrow/value"
+    },
     {
       "sha": "46c70fed2de140e0fb0c08816608a0b25cf8a93e",
       "shortSha": "46c70fed2",
@@ -1901,86 +1981,6 @@
       "body": "The three files that resisted four earlier attempts — each cut correctly\nand then reverted by the concurrent session / GitButler. They held this\ntime after 40 minutes of quiet in that part of the tree, staged into the\nindex immediately (staging is what made the earlier DS-shell deletion\nstick). tsc + eslint + 6667 tests green.\n\n- hooks/_lifecycle: deleted useMount, useUnmount, usePrevious,\n  useThrottle, useIsMounted, useRenderCount, useUpdateEffect. Only\n  useDebounce survives — it is the one thing imported through @/hooks.\n- hooks/_ui: deleted useScrollPosition, useWindowSize, useToggle,\n  useInView, useClickOutside, useCopyToClipboard, useInputValue;\n  MOBILE_BREAKPOINT + DeviceInfo un-exported. Leaves exactly the three\n  hooks with real importers: useIsMobile, useDeviceMode, useMediaQuery.\n  (The live useInView is motion's, not this one.)\n- lib/nas-photos: deleted getClientNasProxyBase and attachNasPhoto, plus\n  a dead `export { normalizePhotoDisplayUrl, isSameOriginNasProxyUrl }`\n  re-export — consumers import both from lib/nas-photo-url, the module\n  that owns them.\n\neslint again caught what tsc and knip could not: five orphaned imports\nand an AttachResult type left behind by the deletions. It also caught me\nover-removing a PhotoScope import that buildNasPhotoUrl still needs.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
       "type": "chore",
       "title": "cut the hooks/_ui, _lifecycle and nas-photos dead exports"
-    },
-    {
-      "sha": "16d13846e12fc5790f9b86e3b132e18de5364706",
-      "shortSha": "16d13846e",
-      "date": "2026-08-08T11:56:31-07:00",
-      "author": "DENSENSE8",
-      "subject": "chore: trim the workflow barrel and receiving fact-kind exports",
-      "body": "Eleventh dead-code pass. tsc + eslint + 6667 tests green.\n\n- lib/workflow/index.ts: the barrel re-exported 9 names nothing reaches\n  through it — consumers import advanceItem from ./advance,\n  createDrizzleStore/enrollItem from ./store, registerNode/listNodes from\n  ./registry directly. Kept the three that ARE reached here\n  (listNodeMeta, getNode, hasNode) plus the real API, `advance`.\n  registerBuiltins is now module-private: it is a no-op called only by\n  advance(), and the file's own usage example advertised it as public —\n  that example is corrected in the same change rather than left lying.\n- lib/receiving/facts/registry.ts: 5 per-kind Zod schemas + FactKindDef\n  un-exported (all feed the registry map in-file); deleted the 5 z.infer\n  fact types, which had no reference but their own declaration.\n\nNOT touched: src/lib/shipping/repository.ts. Its 5 subscription helpers\nlook dead, but migration 2026-06-02_carrier_webhook_subscription.sql\nships the webhook_subscription_status column they read. That is an\nunplugged feature — a repository layer with no caller yet — not dead\ncode. Deleting it would strand the column and throw away the built half.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
-      "type": "chore",
-      "title": "trim the workflow barrel and receiving fact-kind exports"
-    },
-    {
-      "sha": "9ec5bc5ec37c2ed101fb382d15a9665c98a35040",
-      "shortSha": "9ec5bc5ec",
-      "date": "2026-08-08T11:51:03-07:00",
-      "author": "DENSENSE8",
-      "subject": "docs(tables): mark Deliverable 2 done; re-confirm D1 blocker (2026-08-08)",
-      "body": "Checklist marks → boxes landed as 377f74d05. Deliverable 1 (land the\nPhase-3 ratchet) still blocked: main tip 2133a7aa7 is red on the same 20\nconcurrent-session tsc errors; testing-ticket-context.ts still absent on\nmain. Ratchet 3e522a690 unchanged, ready to land once main goes green.\n\nCo-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>",
-      "type": "docs",
-      "title": "mark Deliverable 2 done; re-confirm D1 blocker (2026-08-08)"
-    },
-    {
-      "sha": "377f74d05e8940c3d398c6541119120cc37690a6",
-      "shortSha": "377f74d05",
-      "date": "2026-08-08T11:47:40-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat(procedure): step marks are flush boxes, not rounded-full circles",
-      "body": "Match the house checkbox language (GridRowCheckbox select gutter): the\nchecklist/deck step-state marks were rounded-full circles; they are now\nsmall square boxes via a shared StepStateBadge. Shape only — still a\nread-only, evidence-derived display, never a clickable checkbox; skipped\nkeeps its chevron (a waiver is never a check).\n\nCo-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>",
-      "type": "feature",
-      "title": "step marks are flush boxes, not rounded-full circles"
-    },
-    {
-      "sha": "d0e02fe8ff9fbf72f4a70451f2f6e9aa51777079",
-      "shortSha": "d0e02fe8f",
-      "date": "2026-08-08T11:20:37-07:00",
-      "author": "DENSENSE8",
-      "subject": "docs(tables): handoff to finish Phase-3 land + checklist→boxes update",
-      "body": "Two-track handoff for a fresh session: (1) land the table-registry Phase-3\nratchet (3e522a690 on topic/tables) — merge recipe + the main-red-CI blocker\n(committed consumers ahead of uncommitted unbox/testing/FBA impls) + push-from-\nclean-checkout rule; (2) convert the procedure checklist/deck step marks from\nrounded-full circles to flush-square READ-ONLY boxes to match the codebase's\ncheckbox language, with the hard-rule caveat (evidence-derived, never a\nhand-clickable checkbox) and the \"confirm the target surface\" note.\n\nCo-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>",
-      "type": "docs",
-      "title": "handoff to finish Phase-3 land + checklist→boxes update"
-    },
-    {
-      "sha": "2133a7aa74330a3b42eb081412b3d8441f51c7fb",
-      "shortSha": "2133a7aa7",
-      "date": "2026-08-08T10:59:17-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat(operations): honest realtime + degraded state on Ops dashboard (H1 A+B)",
-      "body": "Phase A — the Live pill no longer lies. OperationsDashboard hardcoded\nablyStatus=\"connected\", so the green Live dot showed even when realtime was\ndown. It now derives from the shared connection store (useRealtimeLink) via a\nthin realtimeLinkToAblyStatus adapter: only 'healthy' claims Live; a routine\nreconnect ('wobbling') or un-established link ('unknown') shows connecting; a\nheld degradation shows disconnected.\n\nPhase B — the snapshot fetch no longer swallows errors. useOperationsDashboardData\nsurfaces isError + refetch and bounds the fetch (AbortSignal.timeout 15s); the\ndashboard paints a localized, non-blocking GridDegradedBox with Retry instead of\nblank KPI tiles that read as a quiet warehouse. Nav + self-fetching sections\n(Exceptions / Pipeline) stay live.\n\nGuard: operations-dashboard-trust.guard.test (pure mapping + source assertions).\n\nCo-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>",
-      "type": "feature",
-      "title": "honest realtime + degraded state on Ops dashboard (H1 A+B)"
-    },
-    {
-      "sha": "42868ca073bb7a035117e4144680f987c11fefdd",
-      "shortSha": "42868ca07",
-      "date": "2026-08-08T10:48:38-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat(receiving): /incoming loading resilience — timeout, degraded-retry, SSR seed",
-      "body": "The Inbound desk gated a 12-row skeleton on a single un-timed, un-retryable,\nerror-swallowing client fetch with no SSR seed, so a slow/failing\n/api/receiving-lines pinned the skeleton indefinitely (the flagship 'feels\nbroken' symptom). This fixes the finish gap:\n\n- receiving-queries: bound the lines fetch with AbortSignal.timeout(15s) so it\n  can never hang forever — a stuck request settles isError.\n- useReceivingLinesData: stop swallowing errors; surface isError + refetch.\n- GridDegradedBox: reusable fourth-settled-state primitive (dashed rose + Retry).\n- incoming-seed.server + /incoming page: SSR-seed the bare-/incoming list\n  (mirrors /unbox), bounded 3s so a slow server fetch can't hang loading.tsx.\n- guard: incoming-resilience.guard.test pins all four parts.\n\nNote: the GridDegradedBox render wiring in ReceivingLinesTable.tsx is NOT in this\ncommit — that file currently holds another session's uncommitted incoming-details\nwork interleaved with mine, so it's left for that file's owner to avoid bundling\nunfinished work.\n\nCo-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>",
-      "type": "feature",
-      "title": "/incoming loading resilience — timeout, degraded-retry, SSR seed"
-    },
-    {
-      "sha": "3e522a69074341c7741c250008d1c6d995b38cf4",
-      "shortSha": "3e522a690",
-      "date": "2026-08-08T10:47:13-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat(tables): Phase-3 anti-regrowth ratchet — freeze the *GridView.tsx forest",
-      "body": "Second clause of the plan's Phase-3 ratchet (\"CI fails if a page ... adds a new\n*GridView.tsx\"). The capabilities guard's content-discovery already fails a\nmount outside the allowlist (clause 1); this freezes the 14-file *GridView.tsx\nwrapper set shrink-only so a new queue must bind <NonlinearTableHost> in the\npage + a registry entry instead of growing a new wrapper. Proven to bite\n(probe file fails the freeze). Filename-based on purpose, and the docblock says\nwhy that coexists with the deliberately content-based mount discovery beside it.\n\nSweep confirmed no ops-queue hand-rolled <table> twin survives: Ready/Warranty\nrender their GridView (docblock-only <table>), ByUnitView is unit-detail\nsub-tables (record plane), PackingKpiSection is Monitor analytics, ScannedMode\nis a Gmail reconcile preview. StationListTable/FbaBoardTable stay documented\nraw-mount exceptions.\n\nSoT: source-of-truth.md -> Table definition registry names the forest freeze.\nTable guard set 104/104 green.\n\nCo-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>",
-      "type": "feature",
-      "title": "Phase-3 anti-regrowth ratchet — freeze the *GridView.tsx forest"
-    },
-    {
-      "sha": "2c8f19910f4c5b19ae055975d8d17724c8d455a4",
-      "shortSha": "2c8f19910",
-      "date": "2026-08-08T09:46:16-07:00",
-      "author": "DENSENSE8",
-      "subject": "docs: add \"why this matters\" to the dead-export handoff; sync progress",
-      "body": "The handoff explained HOW but never WHY, which is the part that decides\nwhether the next session judges this worth continuing. Five reasons, in\nplain language, with the counter-argument stated rather than hidden:\n\n1. A dead export looks like a supported API — it is a wrong turn left on\n   the map, and \"compose from the named SoT\" only works if the named\n   thing is the real one.\n2. Duplicates hide inside the dead set. Roughly half of what was deleted\n   here was a SECOND COPY of something that already had one home\n   (SOURCE_PLATFORM_LABELS, ClaimSeverity, canTransition,\n   CONDITION_GRADES ×3). Those drift, and then one fact reads two ways on\n   two screens.\n3. Barrels hide corpses — a dead `export *` kept the whole retired DS\n   shell family reachable, and DESIGN_SYSTEM.md documenting it.\n4. Every dead export is an imaginary contract you must not break.\n5. It is the only cleanup that is provably safe — zero callers means\n   tsc + tests prove it in minutes, unlike the DS ratchets' 1,677 real\n   call-site migrations.\n\nCounter-argument kept in the doc: un-exporting a useful-but-unused symbol\nmakes it harder to pick up later, which is why the classification has\nthree buckets and why §6 (parked) exists at all.\n\nAlso synced §0/§4 to reality: 366 findings cleaned, 11 commits, ~780\nvalue exports left, allocateNextUnitId added to the parked list, and the\nthree barrels finished in 6fb705618 marked done.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
-      "type": "docs",
-      "title": "add \"why this matters\" to the dead-export handoff; sync progress"
     }
   ]
 }

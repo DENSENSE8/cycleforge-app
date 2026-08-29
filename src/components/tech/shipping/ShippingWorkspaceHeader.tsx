@@ -4,7 +4,6 @@
  * Shipping workspace chrome — Sheets flush stack (Unbox / Pack recipe):
  *
  *   Band 1 — tabs (Urgent · Pending · All · History) + New Order
- *   Band 2 — KPI (`WorkbenchKpiBand` in ShippingWorkspaceView)
  *   Band 3 — triage: search · filters / staff · portal
  *
  * Row select lives in the table left gutter (always on), not chrome.
@@ -28,7 +27,6 @@ import {
   WorkbenchTrailingCluster,
   WorkbenchTriageBand,
 } from '@/components/dashboard/workbench-shell';
-import { WorkbenchKpiCollapseToggle } from '@/components/dashboard/workbench-kpi-collapse';
 import { OutboundOrderChromeActions } from '@/components/dashboard/OutboundOrderChromeActions';
 import { PackBenchRefineFacet } from '@/components/packing/PackBenchRefineFacet';
 import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
@@ -110,15 +108,10 @@ export function ShippingWorkspaceHeader({
 export function ShippingTriageBand({
   tab,
   controlsSlotRef,
-  kpiOpen,
-  onToggleKpi,
   className,
 }: {
   tab: ShippingWorkspaceTab;
   controlsSlotRef?: Ref<HTMLDivElement>;
-  /** Band 2 open — drives {@link WorkbenchKpiCollapseToggle}. */
-  kpiOpen: boolean;
-  onToggleKpi: () => void;
   className?: string;
 }) {
   const { searchQuery, setSearch } = useWorkbenchSearchParam();
@@ -161,9 +154,6 @@ export function ShippingTriageBand({
   return (
     <WorkbenchTriageBand
       className={className}
-      kpiToggle={
-        <WorkbenchKpiCollapseToggle open={kpiOpen} onToggle={onToggleKpi} />
-      }
       views={
         tab === 'history' ? (
           <WorkbenchViewsMenu

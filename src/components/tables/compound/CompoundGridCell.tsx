@@ -79,6 +79,12 @@ export interface CompoundGridCellParams<C extends CompoundCellColumn> {
   view: CompoundRowView;
   /** Per-staff column display prefs, keyed by `hideKey`. */
   columnDisplay?: Readonly<Record<string, GridColumnDisplayPref>>;
+  /**
+   * Org-shared column formatting for THIS column, already resolved to classes
+   * by `columnFormatClass`. Supplied by {@link CompoundRow} (a component, so it
+   * can read the sheet's format context); this function stays pure.
+   */
+  formatClass?: string;
   /** Present ⇒ the note line edits in place. Absent ⇒ read-only. */
   onCommitNote?: (next: string) => void;
   /** Present ⇒ the ⋮ menu carries an "Open" item. */
@@ -154,6 +160,7 @@ export function renderCompoundGridCell<C extends CompoundCellColumn>({
   onOpen,
   actions,
   select,
+  formatClass,
 }: CompoundGridCellParams<C>): ReactNode {
   // `select` is only ours when a COMPOUND model is mounted — see
   // `isCompoundCellKey`'s docblock for the surfaces that would otherwise be
@@ -187,6 +194,7 @@ export function renderCompoundGridCell<C extends CompoundCellColumn>({
       inset: gutter ? 'none' : 'cell',
       columnDisplay,
       frozenClass: LEDGER_GRID_FROZEN_CELL,
+      formatClass,
     }),
     'overflow-hidden',
     // A full-bleed child must stretch to the box, not centre inside it.

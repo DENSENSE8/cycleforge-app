@@ -135,6 +135,22 @@ function findStaffIdFromList(staff: StaffRow[], staffName: string): number {
   return row.id;
 }
 
+/**
+ * Mint a staff session: owner email+password if configured, **falling back to
+ * pinless** when that fails.
+ *
+ * The fallback is the fix for a real outage (2026-08-29). `PW_OWNER_EMAIL` /
+ * `PW_OWNER_PASSWORD` are set in `.env` with credentials that no longer resolve,
+ * and this function used to `return` unconditionally after taking that branch —
+ * so a stale credential did not degrade to the working path, it *replaced* it.
+ * Every run reported `account signin failed (401): INVALID_CREDENTIALS` and left
+ * the default/desktop projects unauthenticated, while `AUTH_PINLESS_SIGNIN=true`
+ * sat there able to mint a session the whole time.
+ *
+ * The QA block below already had exactly this try/fallback shape; the USAV block
+ * did not, and the asymmetry is what hid it. Configuration that has gone stale
+ * should cost a warning, not a capability.
+ */
 async function signInStaff(
   baseURL: string,
   staffName: string,
@@ -143,11 +159,20 @@ async function signInStaff(
 ): Promise<void> {
   const ownerEmail = process.env.PW_OWNER_EMAIL?.trim();
   const ownerPassword = process.env.PW_OWNER_PASSWORD;
-  if (ownerEmail && ownerPassword) {
-    await signInOwnerActAs(baseURL, ownerEmail, ownerPassword, staffName, storagePath);
-    return;
-  }
   const pin = process.env.PW_STAFF_PIN?.trim();
+
+  if (ownerEmail && ownerPassword) {
+    try {
+      await signInOwnerActAs(baseURL, ownerEmail, ownerPassword, staffName, storagePath);
+      return;
+    } catch (err) {
+      console.warn(
+        `[global-setup] owner sign-in failed for "${staffName}" — falling back to pinless station sign-in. ` +
+          'Clear or fix PW_OWNER_EMAIL / PW_OWNER_PASSWORD to silence this.',
+        err instanceof Error ? err.message : err,
+      );
+    }
+  }
   await signInPinless(baseURL, tenantSlug, staffName, storagePath, pin);
 }
 

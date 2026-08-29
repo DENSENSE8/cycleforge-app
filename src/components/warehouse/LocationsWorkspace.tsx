@@ -8,24 +8,14 @@
  * Rooms / Map) keep their bodies; any data table mounts flush.
  */
 
-import { useCallback, useEffect, useMemo, useState, type Ref } from 'react';
-import { Plus } from '@/components/Icons';
-import { LocationCrudDialog } from '@/components/locations/LocationCrudDialog';
-import {
-  GLOBAL_ADD_INTENT_EVENT,
-  consumeGlobalAddIntent,
-  type GlobalAddIntent,
-} from '@/lib/global-add/catalog';
-import {
-  WorkbenchBandControl,
-  WORKBENCH_BAND_CONTROL_GLYPH_CLASS,
-} from '@/components/dashboard/workbench-band-control';
+import { useCallback, useMemo, useState, type Ref } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
 import {
-  WorkbenchSheetView,
-  useWorkbenchSheetChrome,
-} from '@/components/dashboard/WorkbenchSheetView';
-import { WorkbenchTriageBand } from '@/components/dashboard/workbench-shell';
+  WORKBENCH_SHEET_CHROME,
+  WORKBENCH_SHEET_HOST,
+  WorkbenchTriageBand,
+} from '@/components/dashboard/workbench-shell';
 import { WorkbenchInspectorToggle } from '@/components/dashboard/workbench-inspector-toggle';
 import {
   WorkbenchFilterMenuRow,
@@ -35,7 +25,7 @@ import { useRightRailTopId } from '@/components/right-rail/useRightRailOccupant'
 import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 import { useLocations } from '@/hooks/useLocations';
 import { useBinsOverview, type BinsOverviewRow } from '@/hooks/useBinsOverview';
-import { TableRebuildPlaceholder } from '@/components/tables/TableRebuildPlaceholder';
+import { BinsTable } from './BinsTable';
 import {
   useBinsFilterParams,
   filterRowsByStatus,
@@ -50,47 +40,41 @@ import { RackDetailView } from './RackDetailView';
 import { WarehouseMap, type MapViewMode } from './WarehouseMap';
 import { WarehouseFloorPlan } from './WarehouseFloorPlan';
 import { LocationsWorkspaceHeader } from './LocationsWorkspaceHeader';
-import { LocationsBinsKpiBand } from './LocationsBinsKpiBand';
 import { parseLocationsTab } from '@/lib/inventory/locations-path';
+import { cn } from '@/utils/_cn';
 
 export function LocationsWorkspace() {
   const searchParams = useSearchParams();
   const tab = parseLocationsTab(searchParams.get('tab'));
   const rackCodeParam = searchParams.get('code');
-  // Band-3 ▦ host — the shell lifts it so chrome (pinned) and BinsTabSheet
-  // (body) share one element by construction.
-  //
-  // No `surface` id: Bins DOES have a Band 2, but it is `LocationsBinsKpiBand`
-  // bundled inside `LocationsBinsChrome` — a tab-scoped strip, not the per-staff
-  // snap-collapsible `WorkbenchKpiBand`. There is no collapse control here, so
-  // there is no preference to read.
-  const chrome = useWorkbenchSheetChrome();
+  // Band-3 ▦ host — lifted so chrome (pinned) and BinsTabSheet (body) share it.
+  const [binsControlsEl, setBinsControlsEl] = useState<HTMLDivElement | null>(null);
 
   return (
     <div className="relative flex h-full min-h-0 w-full flex-col">
-      <WorkbenchSheetView
-        chrome={chrome}
+      <DashboardScrollShell
         className="h-full bg-transparent"
-        // LocationsWorkspaceHeader takes no className — it is flush at source.
-        tabs={() => <LocationsWorkspaceHeader />}
-        triage={({ controlsSlotRef }) =>
-          tab === 'bins' && controlsSlotRef ? (
-            <LocationsBinsChrome controlsSlotRef={controlsSlotRef} />
-          ) : null
+        chrome={
+          <div className={cn(WORKBENCH_SHEET_CHROME, 'flex flex-col gap-0')}>
+            <LocationsWorkspaceHeader />
+            {tab === 'bins' ? (
+              <LocationsBinsChrome controlsSlotRef={setBinsControlsEl} />
+            ) : null}
+          </div>
         }
       >
-        {({ controlsEl }) => (
-          <>
-            {tab === 'rooms' ? <RoomDetailForm /> : null}
-            {tab === 'labels' ? <LabelPrintWorkspace /> : null}
-            {tab === 'racks' ? (
-              rackCodeParam ? <RackDetailView code={rackCodeParam} /> : <RackLabelWorkspace />
-            ) : null}
-            {tab === 'map' ? <MapTabBody /> : null}
-            {tab === 'bins' ? <BinsTabSheet columnTriggerPortalTarget={null} /> : null}
-          </>
-        )}
-      </WorkbenchSheetView>
+        <div className={WORKBENCH_SHEET_HOST}>
+          {tab === 'rooms' ? <RoomDetailForm /> : null}
+          {tab === 'labels' ? <LabelPrintWorkspace /> : null}
+          {tab === 'racks' ? (
+            rackCodeParam ? <RackDetailView code={rackCodeParam} /> : <RackLabelWorkspace />
+          ) : null}
+          {tab === 'map' ? <MapTabBody /> : null}
+          {tab === 'bins' ? (
+            <BinsTabSheet columnTriggerPortalTarget={binsControlsEl} />
+          ) : null}
+        </div>
+      </DashboardScrollShell>
     </div>
   );
 }
@@ -105,27 +89,10 @@ function LocationsBinsChrome({
   const { rooms } = useLocations();
   const { counts } = useBinsOverview({ room, q });
   const [roomFilterOpen, setRoomFilterOpen] = useState(false);
-  const [crudOpen, setCrudOpen] = useState(false);
   // `BinDetailFlyout` registers `detail:bin:<identity>` — a per-entity id, so
   // match on the prefix rather than a fixed string.
   const railTopId = useRightRailTopId();
   const binInspectorOpen = (railTopId ?? '').startsWith('detail:bin:');
-
-  useEffect(() => {
-    const openIfLocations = (intent: GlobalAddIntent | null) => {
-      if (intent?.kind !== 'locations-new') return;
-      setCrudOpen(true);
-    };
-    openIfLocations(consumeGlobalAddIntent());
-    const onGlobalAdd = (event: Event) => {
-      const intent = (event as CustomEvent<GlobalAddIntent>).detail;
-      if (intent?.kind !== 'locations-new') return;
-      consumeGlobalAddIntent();
-      setCrudOpen(true);
-    };
-    window.addEventListener(GLOBAL_ADD_INTENT_EVENT, onGlobalAdd);
-    return () => window.removeEventListener(GLOBAL_ADD_INTENT_EVENT, onGlobalAdd);
-  }, []);
 
   const onSelectStatus = useCallback(
     (next: BinFilterStatus) => {
@@ -136,23 +103,10 @@ function LocationsBinsChrome({
 
   return (
     <>
-      <LocationsBinsKpiBand
-        counts={counts}
-        status={status}
-        onSelectStatus={onSelectStatus}
-      />
       <WorkbenchTriageBand
         controlsSlotRef={controlsSlotRef}
         trailing={
-          <>
-            <WorkbenchBandControl
-              label="New location"
-              icon={<Plus className={WORKBENCH_BAND_CONTROL_GLYPH_CLASS} />}
-              onClick={() => setCrudOpen(true)}
-            />
-            <WorkbenchInspectorToggle open={binInspectorOpen} testId="bins-inspector-toggle" />
-            <LocationCrudDialog open={crudOpen} onOpenChange={setCrudOpen} />
-          </>
+          <WorkbenchInspectorToggle open={binInspectorOpen} testId="bins-inspector-toggle" />
         }
         search={
           <TechRailSearchBar
@@ -236,7 +190,14 @@ function BinsTabSheet({
 
   return (
     <>
-      <TableRebuildPlaceholder surface="Locations" />
+      <BinsTable
+        rows={visibleRows}
+        loading={loading}
+        selected={reconciledSelected}
+        onSelectChange={setSelected}
+        onRowClick={(row) => setFlyoutRow(row)}
+        columnTriggerPortalTarget={columnTriggerPortalTarget}
+      />
 
       <BinsBulkActionBar
         selected={reconciledSelected}

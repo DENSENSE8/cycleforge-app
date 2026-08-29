@@ -13,6 +13,13 @@
  * (Inbound keeps its Import popover; box stations keep resume) — that split is
  * deliberate (`regional-sidebar-split.guard`). Guard for the shared face:
  * `receiving-box-chrome-actions.guard.test.ts`.
+ *
+ * **Icon-only since 2026-08-29** (operator ruling). The word "CHECK" in
+ * condensed uppercase next to "UNBOX" in condensed uppercase next to "ADD" read
+ * as a shouted row of three, and the label added nothing the glyph and its
+ * tooltip do not carry — a clipboard is not ambiguous at a receiving bench. The
+ * accessible name is unchanged, so nothing about how this is reached by keyboard
+ * or screen reader moved.
  */
 
 import { ClipboardList } from '@/components/Icons';
@@ -24,7 +31,8 @@ import { cn } from '@/utils/_cn';
 const CHROME_CTA_FACE = cn(
   WORKBENCH_CHROME_PILL_CLASS,
   // Fills the PRIMARY chrome row — never taller than the band it sits in.
-  'h-full font-semibold uppercase tracking-widest',
+  // Square: an icon-only cube, sized off the row rather than off its own text.
+  'h-full aspect-square',
 );
 
 export function ChromeCheckButton({
@@ -48,8 +56,6 @@ export function ChromeCheckButton({
       onClick={onClick}
       className={cn(CHROME_CTA_FACE, 'ring-0', className)}
       data-testid={testId}
-    >
-      Check
-    </Button>
+    />
   );
 }

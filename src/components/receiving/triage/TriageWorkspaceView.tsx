@@ -3,7 +3,6 @@
 /**
  * Triage (Arrival) browse workbench — Sheets flush chrome (Unbox recipe): tabs ·
  * KPI · triage in one pinned sheet-chrome stack; feed body is WORKBENCH_SHEET_HOST.
- * Band 2 uses Unbox SoT {@link WorkbenchKpiBand} (snap-collapse).
  */
 
 import { useSearchParams } from 'next/navigation';
@@ -11,7 +10,6 @@ import {
   WorkbenchSheetView,
   useWorkbenchSheetChrome,
 } from '@/components/dashboard/WorkbenchSheetView';
-import { WORKBENCH_KPI_SURFACE } from '@/components/dashboard/workbench-kpi-collapse';
 import { RailEditModeProvider } from '@/components/sidebar/rail-edit-mode';
 import { ReceivingBulkActionBar } from '@/components/sidebar/receiving/ReceivingBulkActionBar';
 import { useRailEditMode } from '@/components/sidebar/receiving/useRailEditMode';
@@ -19,7 +17,6 @@ import {
   isPendingTriageScanRow,
 } from '@/components/sidebar/receiving/receiving-sidebar-shared';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
-import { TriageKpiStrip } from '@/components/receiving/triage/TriageKpiStrip';
 import {
   TriageTriageBand,
   TriageWorkspaceHeader,
@@ -38,7 +35,7 @@ export function TriageWorkspaceView({
   const { triageView, setTriageView } = useTriageWorkspaceTab();
   const searchParams = useSearchParams();
   const filterText = searchParams.get('triq') ?? '';
-  const chrome = useWorkbenchSheetChrome(WORKBENCH_KPI_SURFACE.triage);
+  const chrome = useWorkbenchSheetChrome('triage');
 
   const selectedLineId = selectedLine?.id ?? null;
   const selectedRow =
@@ -84,11 +81,8 @@ export function TriageWorkspaceView({
               className={className}
             />
           )}
-          kpi={<TriageKpiStrip />}
           // Arrival's Band 3 owns no controls portal — its ▦ has no host here.
-          triage={({ kpiOpen, onToggleKpi }) => (
-            <TriageTriageBand kpiOpen={kpiOpen} onToggleKpi={onToggleKpi} />
-          )}
+          triage={() => <TriageTriageBand />}
         >
           {() => (
             <TriageFeedBody

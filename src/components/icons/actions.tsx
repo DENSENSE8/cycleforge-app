@@ -320,3 +320,66 @@ export const PaintBucket = ({ className = "w-6 h-6" }: { className?: string }) =
         <path d="M22 20a2 2 0 1 1-4 0c0-1.6 1.7-2.4 2-4 .3 1.6 2 2.4 2 4Z" />
     </svg>
 );
+
+// ── Spreadsheet formatting glyphs ───────────────────────────────────────────
+// The Sheets toolbar marks (§ `docs/todo/one-sheet-table-sot-PLAN.md` § 4.2).
+// Drawn as LETTERFORMS rather than outline paths: a bold "B" is the only glyph
+// an operator reads as bold without a tooltip, and the stroke-based house style
+// cannot express weight. `fill="currentColor"` + no stroke, so they inherit the
+// control's colour the same way the stroked glyphs do.
+
+/** Bold mark — the toolbar's B. */
+export const Bold = ({ className = "w-6 h-6" }: { className?: string }) => (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M7 5h6.5a3.5 3.5 0 010 7H7zm0 7h7.5a3.5 3.5 0 010 7H7z" />
+    </svg>
+);
+
+/** Italic mark — the toolbar's I. */
+export const Italic = ({ className = "w-6 h-6" }: { className?: string }) => (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 5h-5m4 14H9m4-14l-4 14" />
+    </svg>
+);
+
+/** Strikethrough mark — the toolbar's S. */
+export const Strikethrough = ({ className = "w-6 h-6" }: { className?: string }) => (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 12h16M8 7a3.5 3.5 0 013.5-2.5h1A3.5 3.5 0 0116 7m-8 9a3.5 3.5 0 003.5 2.5h1A3.5 3.5 0 0016 16" />
+    </svg>
+);
+
+/** Horizontal alignment — left. */
+export const AlignLeft = ({ className = "w-6 h-6" }: { className?: string }) => (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h10M4 14h16M4 18h10" />
+    </svg>
+);
+
+/** Horizontal alignment — centre. */
+export const AlignCenter = ({ className = "w-6 h-6" }: { className?: string }) => (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M7 10h10M4 14h16M7 18h10" />
+    </svg>
+);
+
+/** Horizontal alignment — right. */
+export const AlignRight = ({ className = "w-6 h-6" }: { className?: string }) => (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M10 10h10M4 14h16M10 18h10" />
+    </svg>
+);
+
+/** Enter fullscreen — four corners pushing out. */
+export const Maximize = ({ className = "w-6 h-6" }: { className?: string }) => (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />
+    </svg>
+);
+
+/** Leave fullscreen — four corners pulling in. */
+export const Minimize = ({ className = "w-6 h-6" }: { className?: string }) => (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 4v5H4m11-5v5h5M9 20v-5H4m11 5v-5h5" />
+    </svg>
+);

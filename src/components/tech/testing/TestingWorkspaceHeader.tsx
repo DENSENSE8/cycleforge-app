@@ -4,7 +4,6 @@
  * Testing workspace chrome — Sheets flush stack (Unbox / To-ship recipe):
  *
  *   Band 1 — tabs (Urgent · Returns · Pending · All · History)
- *   Band 2 — KPI (`WorkbenchKpiBand` in TestingWorkspaceView)
  *   Band 3 — triage: search · staff · icon-sort · portal
  *
  * House Band-1 law (Unbox golden · To-ship desk exemplar): fixed process tabs
@@ -21,7 +20,6 @@ import {
   WorkbenchChromeHeader,
   WorkbenchTriageBand,
 } from '@/components/dashboard/workbench-shell';
-import { WorkbenchKpiCollapseToggle } from '@/components/dashboard/workbench-kpi-collapse';
 import { QueueSortSwitch } from '@/components/dashboard/QueueSortSwitch';
 import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 import { StaffFilterRows } from '@/components/ui/StaffFilterButton';
@@ -124,14 +122,10 @@ export function TestingWorkspaceHeader({
 export function TestingTriageBand({
   tab,
   controlsSlotRef,
-  kpiOpen,
-  onToggleKpi,
   className,
 }: {
   tab: TestingWorkspaceTab;
   controlsSlotRef?: Ref<HTMLDivElement>;
-  kpiOpen: boolean;
-  onToggleKpi: () => void;
   className?: string;
 }) {
   const { searchQuery, setSearch } = useWorkbenchSearchParam();
@@ -179,9 +173,6 @@ export function TestingTriageBand({
   return (
     <WorkbenchTriageBand
       className={className}
-      kpiToggle={
-        <WorkbenchKpiCollapseToggle open={kpiOpen} onToggle={onToggleKpi} />
-      }
       views={
         tab === 'history' ? (
           <WorkbenchViewsMenu
