@@ -48,6 +48,48 @@ export function isQueueColumnSort(sort: string): sort is QueueDisplaySortColumn 
   return COLUMN_SORT_SET.has(sort);
 }
 
+/**
+ * COMPOUND track → the `?sort=` value it represents.
+ *
+ * ## Why this exists
+ *
+ * When To-Ship moved to the two-row compound row, its header keys changed from
+ * the flat facts (`title`, `order`, …) to the compound tracks
+ * (`fulfillment`, `item`, …). Nothing updated the sort vocabulary, so
+ * `isQueueColumnSort` rejected every header key and **clicking a header
+ * silently did nothing** — sorting was simply off on the desk, and stayed off
+ * because the e2e that would have caught it was itself still clicking a flat
+ * locator that resolved to zero elements.
+ *
+ * ## Why this is a restoration, not a new decision
+ *
+ * A compound track is a container for facts the flat model already sorted by:
+ * `fulfillment` carries the order identity (`order`), `item` carries the
+ * product title (`title`). Mapping them re-connects existing comparators —
+ * `queue-row-compare.ts` needs no new case.
+ *
+ * `state` and `amount` are deliberately ABSENT. Neither had a column sort in the
+ * flat model either (`QUEUE_COLUMN_SORTS` never listed `status` or `amount`), so
+ * leaving them out preserves the shipped behaviour exactly rather than inventing
+ * an ordering nobody has asked for. Adding one later means adding a comparator
+ * case too, which is the point at which it is a product decision.
+ */
+export const COMPOUND_TRACK_SORT_KEYS: Readonly<Record<string, QueueDisplaySortColumn>> = {
+  fulfillment: 'order',
+  item: 'title',
+};
+
+/** The `?sort=` value a header key drives, or null when it does not sort. */
+export function queueSortForColumnKey(key: string): QueueDisplaySortColumn | null {
+  if (isQueueColumnSort(key)) return key;
+  return COMPOUND_TRACK_SORT_KEYS[key] ?? null;
+}
+
+/** Header keys that sort — the descriptor's `isSortable` for this family. */
+export function isQueueSortableColumnKey(key: string): boolean {
+  return queueSortForColumnKey(key) != null;
+}
+
 function isQueueCompositeSort(sort: string): sort is QueueDisplaySortComposite {
   return sort === 'priority' || sort === 'newest' || sort === 'deadline';
 }

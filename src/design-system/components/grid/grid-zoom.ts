@@ -14,7 +14,24 @@ export type GridZoomPercent = (typeof GRID_ZOOM_LEVELS)[number];
 
 export const GRID_ZOOM_DEFAULT: GridZoomPercent = 100;
 
-const GRID_ZOOM_STORAGE_KEY = 'cf.gridZoom.receiving';
+/**
+ * Per-surface storage key.
+ *
+ * This was a single `cf.gridZoom.receiving` const until 2026-08-29 — zoom
+ * existed but only Unbox / History could reach it, and every other sheet would
+ * have shared receiving's level had one been wired up. Zoom is a property of the
+ * SHEET an operator is looking at (a dense orders queue and a photo-bearing
+ * receiving list want different levels on the same monitor), so the key carries
+ * the `tableId`.
+ *
+ * The old key is read as the fallback for `receiving` so nobody's existing zoom
+ * resets on deploy.
+ */
+export function gridZoomStorageKey(tableId: string): string {
+  return `cf.gridZoom.${tableId}`;
+}
+
+const LEGACY_RECEIVING_ZOOM_KEY = 'cf.gridZoom.receiving';
 
 export function parseGridZoom(
   raw: string | number | null | undefined,
@@ -52,19 +69,25 @@ export function stepGridZoom(
   return GRID_ZOOM_LEVELS[next]!;
 }
 
-export function readStoredGridZoom(): GridZoomPercent {
+export function readStoredGridZoom(tableId = 'receiving'): GridZoomPercent {
   if (typeof window === 'undefined') return GRID_ZOOM_DEFAULT;
   try {
-    return parseGridZoom(window.localStorage.getItem(GRID_ZOOM_STORAGE_KEY));
+    const stored = window.localStorage.getItem(gridZoomStorageKey(tableId));
+    if (stored != null) return parseGridZoom(stored);
+    // One-time fallback: receiving's zoom predates the per-surface key.
+    if (tableId === 'receiving') {
+      return parseGridZoom(window.localStorage.getItem(LEGACY_RECEIVING_ZOOM_KEY));
+    }
+    return GRID_ZOOM_DEFAULT;
   } catch {
     return GRID_ZOOM_DEFAULT;
   }
 }
 
-export function writeStoredGridZoom(percent: GridZoomPercent): void {
+export function writeStoredGridZoom(percent: GridZoomPercent, tableId = 'receiving'): void {
   if (typeof window === 'undefined') return;
   try {
-    window.localStorage.setItem(GRID_ZOOM_STORAGE_KEY, String(percent));
+    window.localStorage.setItem(gridZoomStorageKey(tableId), String(percent));
   } catch {
     /* ignore quota */
   }

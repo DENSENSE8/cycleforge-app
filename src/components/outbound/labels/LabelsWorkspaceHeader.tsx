@@ -4,8 +4,7 @@
  * Labels-station workspace chrome — Sheets flush stack (Unbox / To-ship recipe):
  *
  *   Band 1 — tabs (Queue · Recent) + solid Import / Add CTAs
- *   Band 2 — KPI (`WorkbenchKpiBand` in LabelsWorkspaceView)
- *   Band 3 — triage: search · Urgent/lane filters · icon-sort · KPI-collapse kpiToggle
+ *   Band 3 — triage: search · Urgent/lane filters · icon-sort
  *
  * House Band-1 law (Unbox golden · To-ship desk exemplar): fixed process tabs
  * for every staffer — never Chrome-style unpin of a system stage · Pin-list cube
@@ -18,7 +17,6 @@
 import { useMemo, type Ref } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { WorkbenchChromeHeader, WorkbenchTrailingCluster, WorkbenchTriageBand } from '@/components/dashboard/workbench-shell';
-import { WorkbenchKpiCollapseToggle } from '@/components/dashboard/workbench-kpi-collapse';
 import {
   OutboundExactFilters,
   useToShipFilterHotkeys,
@@ -121,8 +119,6 @@ export function LabelsTriageBand({
   onSearch,
   sort,
   onToggleSort,
-  kpiOpen,
-  onToggleKpi,
   controlsSlotRef,
   className,
 }: {
@@ -131,8 +127,6 @@ export function LabelsTriageBand({
   onSearch: (value: string) => void;
   sort: OutboundSort;
   onToggleSort: () => void;
-  kpiOpen: boolean;
-  onToggleKpi: () => void;
   controlsSlotRef?: Ref<HTMLDivElement>;
   className?: string;
 }) {
@@ -142,7 +136,6 @@ export function LabelsTriageBand({
     <WorkbenchTriageBand
       className={className}
       controlsSlotRef={controlsSlotRef}
-      kpiToggle={<WorkbenchKpiCollapseToggle open={kpiOpen} onToggle={onToggleKpi} />}
       search={
         <TechRailSearchBar
           variant="chrome"

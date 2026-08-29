@@ -21,8 +21,10 @@ import {
 import { ORDERS_GRID_CAPABILITIES } from '@/components/dashboard/orders-queue/orders-queue-descriptor';
 import { ordersTableBindingFor } from './orders-table-definition';
 import {
+  COMPOUND_TRACK_SORT_KEYS,
   isQueueColumnSort,
-  type QueueDisplaySortColumn,
+  isQueueSortableColumnKey,
+  queueSortForColumnKey,
   type QueueDisplaySortDir,
 } from '@/utils/queue-display-sort';
 import {
@@ -69,7 +71,7 @@ function daysLateOn(todayKey: string, deadlineAt: string | null | undefined): nu
   return value;
 }
 
-interface UseOrdersSpreadsheetOptions {
+export interface UseOrdersSpreadsheetOptions {
   records: ShippedOrder[];
   loading: boolean;
   searchValue: string;
@@ -262,8 +264,14 @@ export function useOrdersSpreadsheet({
 
   const handleSortChange = useCallback(
     (key: OrdersQueueColumnKey, nextDir: 'asc' | 'desc') => {
-      if (!urlDriven || !isQueueColumnSort(key)) return;
-      setSort(key as QueueDisplaySortColumn, nextDir);
+      if (!urlDriven) return;
+      // Resolve through the compound map: the header's key is a TRACK
+      // (`fulfillment`, `item`), and the `?sort=` vocabulary is in FACTS
+      // (`order`, `title`). This used to be a bare `isQueueColumnSort(key)`,
+      // which every compound key failed — so header clicks were a silent no-op.
+      const resolved = queueSortForColumnKey(key);
+      if (!resolved) return;
+      setSort(resolved, nextDir);
     },
     [urlDriven, setSort],
   );
@@ -272,8 +280,20 @@ export function useOrdersSpreadsheet({
   const showFirstRun =
     Boolean(firstRunEmpty) && !loading && !isSearching && records.length === 0;
 
+  /*
+    The header's ACTIVE key, mapped back from the `?sort=` fact.
+
+    `?sort=order` has to light the `fulfillment` header, not a flat `order`
+    header that no longer exists — otherwise a sorted column shows no
+    `aria-sort` and the operator cannot see what the list is ordered by.
+  */
+  const sortedTrack = Object.entries(COMPOUND_TRACK_SORT_KEYS).find(
+    ([, fact]) => fact === sort,
+  )?.[0];
   const columnSort =
-    urlDriven && isQueueColumnSort(sort) ? (sort as OrdersQueueColumnKey) : null;
+    urlDriven && isQueueColumnSort(sort)
+      ? ((sortedTrack ?? sort) as OrdersQueueColumnKey)
+      : null;
   const columnSortDir = urlDriven && columnSort ? dir : null;
 
   const renderLeaf = useCallback(
@@ -414,7 +434,12 @@ export function useOrdersSpreadsheet({
         selectGutterChrome="always"
         columns={visible}
         tableId={tableId}
-        activeSort={columnSort && isQueueColumnSort(columnSort) ? columnSort : undefined}
+        // `columnSort` is a TRACK key now (mapped back from the `?sort=` fact),
+        // so it is checked against the compound-aware predicate — the flat one
+        // rejected it and the sorted header rendered with no `aria-sort`.
+        activeSort={
+          columnSort && isQueueSortableColumnKey(columnSort) ? columnSort : undefined
+        }
         sortDir={columnSortDir}
         onSortColumn={urlDriven ? (key) => toggleColumnSort(key) : undefined}
         onResizeColumn={onResizeColumn}

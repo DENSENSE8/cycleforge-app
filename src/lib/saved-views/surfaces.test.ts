@@ -54,7 +54,17 @@ test('SAVED_VIEW_SURFACES includes ops, media, dashboard_*, and *_history', () =
   assert.ok(SAVED_VIEW_SURFACES.includes('receiving_incoming'));
   assert.ok(SAVED_VIEW_SURFACES.includes('testing_history'));
   assert.ok(SAVED_VIEW_SURFACES.includes('home_today'));
-  assert.equal(SAVED_VIEW_SURFACES.length, 11);
+  // No length assertion. It was `=== 11`, and it went red on 2026-08-29 when
+  // twelve legitimate surfaces were admitted — a count pins a snapshot, and the
+  // thing it was standing in for is already tested twice below: the set is
+  // compared to the effective DB CHECK, and no historical value may be dropped.
+  // What a count CAN still catch that those cannot is a duplicate, which would
+  // make one surface silently shadow another in the storage-key map.
+  assert.equal(
+    new Set(SAVED_VIEW_SURFACES).size,
+    SAVED_VIEW_SURFACES.length,
+    'a duplicate surface would shadow itself in STORAGE_KEY_TO_SURFACE',
+  );
 });
 
 /**
@@ -101,7 +111,11 @@ test('the effective CHECK never drops a value an earlier migration admitted', ()
 test('GENERIC_SAVED_VIEW_SURFACES excludes operations and media_library', () => {
   assert.ok(!GENERIC_SAVED_VIEW_SURFACES.includes('operations' as never));
   assert.ok(!GENERIC_SAVED_VIEW_SURFACES.includes('media_library' as never));
-  assert.equal(GENERIC_SAVED_VIEW_SURFACES.length, 9);
+  assert.equal(
+    new Set(GENERIC_SAVED_VIEW_SURFACES).size,
+    GENERIC_SAVED_VIEW_SURFACES.length,
+    'a duplicate generic surface would shadow itself',
+  );
   for (const s of GENERIC_SAVED_VIEW_SURFACES) {
     assert.ok(isSavedViewSurface(s));
     assert.ok(isGenericSavedViewSurface(s));

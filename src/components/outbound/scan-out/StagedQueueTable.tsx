@@ -1,20 +1,99 @@
 'use client';
 
-/**
- * `StagedQueueTable` — display removed pending a rewrite (2026-08-20).
- *
- * This surface had no column model of its own: it rendered the shared Orders
- * spreadsheet, whose engine is `NonlinearTableHost` and whose family glue is
- * `useOrdersSpreadsheet` — both still mounted by To-Ship. Deleting either would
- * have deleted To-Ship, so each of its other consumers is stubbed here at the
- * PAGE level instead — never at the shared engine.
- *
- * Props accepted and ignored so every call site keeps compiling; the route, its
- * permissions and its data are untouched.
- */
+import { useEffect, useMemo, useRef } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { OrdersGridHost } from '@/components/dashboard/orders-queue/OrdersGridHost';
+import { WORKBENCH_SHEET_HOST } from '@/components/dashboard/workbench-shell';
+import { cn } from '@/utils/_cn';
+import { OrdersFirstRunEmptyState } from '@/components/dashboard/OrdersFirstRunEmptyState';
+import { stagedOrdersQuery } from '@/lib/queries/outbound-queries';
+import { DASHBOARD_ORDERS_SELECTION_SCOPE } from '@/lib/selection/dashboard-scopes';
+import type { ShippedOrder } from '@/lib/neon/orders-queries';
 
-import { TableRebuildPlaceholder } from '@/components/tables/TableRebuildPlaceholder';
+const DOCK_STAGED_BACKFILL_KEY = 'outbound-dock-staged-mike-v1';
 
-export function StagedQueueTable(_props: Record<string, unknown>) {
-  return <TableRebuildPlaceholder surface="Staged orders" />;
+interface StagedQueueTableProps {
+  searchQuery: string;
+  onOpenOrder: (order: ShippedOrder) => void;
+  onCloseOrder: () => void;
+  /** @deprecated Banner chrome removed — grid is headerless like Pending. */
+  hideHeader?: boolean;
+  /**
+   * Skip the one-time "Mike" staging backfill effect. The scan-out dock keeps it
+   * (default); read-only consumers (Labels-station Recent) pass `true`.
+   */
+  disableBackfill?: boolean;
+  /**
+   * Band-3 / Band-1 controls slot — Labels Recent and Scan-out dock portal ▦
+   * here (portal-or-nothing; no card-corner fallback).
+   */
+  columnTriggerPortalTarget?: HTMLElement | null;
+}
+
+export function StagedQueueTable({
+  searchQuery,
+  onOpenOrder,
+  onCloseOrder,
+  disableBackfill = false,
+  columnTriggerPortalTarget = null,
+}: StagedQueueTableProps) {
+  const queryClient = useQueryClient();
+  const query = useQuery(stagedOrdersQuery({ searchQuery }));
+  const records = useMemo(() => query.data ?? [], [query.data]);
+  const backfillStarted = useRef(false);
+
+  useEffect(() => {
+    if (disableBackfill) return;
+    if (typeof window === 'undefined') return;
+    if (localStorage.getItem(DOCK_STAGED_BACKFILL_KEY)) return;
+    if (backfillStarted.current) return;
+    backfillStarted.current = true;
+
+    void fetch('/api/shipping/mark-staged', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ staffName: 'Mike' }),
+    })
+      .then(async (res) => {
+        if (!res.ok) return null;
+        return res.json() as Promise<{ ok?: boolean; marked?: number }>;
+      })
+      .then((data) => {
+        if (!data?.ok) return;
+        localStorage.setItem(DOCK_STAGED_BACKFILL_KEY, String(Date.now()));
+        if ((data.marked ?? 0) > 0) {
+          void queryClient.invalidateQueries({ queryKey: ['outbound', 'staged'] });
+        }
+      })
+      .catch(() => undefined);
+  }, [queryClient, disableBackfill]);
+
+  return (
+    <div className={cn(WORKBENCH_SHEET_HOST, 'flex h-full min-h-0 min-w-0 flex-1 flex-col')}>
+      <OrdersGridHost
+        ariaLabel="Orders staged for scan-out"
+        records={records}
+        queueMode="staged"
+        loading={query.isLoading}
+        searchValue={searchQuery}
+        onClearSearch={() => undefined}
+        emptyMessage="No packages staged at the dock"
+        firstRunEmpty={
+          <OrdersFirstRunEmptyState
+            title="Nothing staged to ship"
+            description="Packages staged at the dock appear here. Connect a sales channel so orders flow into fulfillment."
+          />
+        }
+        searchEmptyTitle="No matching staged packages"
+        searchResultLabel="staged packages"
+        clearSearchLabel="Show all staged"
+        sort="priority"
+        selectionScope={DASHBOARD_ORDERS_SELECTION_SCOPE}
+        data-testid="staged-grid-body"
+        onOpenRecord={(record) => onOpenOrder(record)}
+        onCloseRecord={() => onCloseOrder()}
+        columnTriggerPortalTarget={columnTriggerPortalTarget}
+      />
+    </div>
+  );
 }

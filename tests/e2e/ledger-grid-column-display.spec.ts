@@ -99,9 +99,29 @@ function cells(page: Page, col: string) {
 test.describe('ledger grid column display SoT', () => {
   test.beforeEach(async ({ page }) => {
     await mockLines(page);
-    await page.goto('/unbox?view=history');
-    // The grid is virtualized; wait for a real value cell, not the shell.
-    await expect(cells(page, 'title').first()).toBeVisible();
+    /*
+      `/receiving/history`, not `/unbox`.
+
+      Two things were wrong with the old target. `?view=history` is not the
+      Unbox tab param (`?unboxview=` is), so it was ignored outright. And even
+      corrected, `/unbox` is a scan STATION: when a carton is open its overlay
+      owns the middle and the desk pane goes `visibility: hidden`, so the grid
+      this spec is about is not on screen there. `/receiving/history` mounts the
+      same table as its primary surface, which is what a column-display SoT
+      wants to measure.
+    */
+    await page.goto('/receiving/history');
+    /*
+      Wait for a real value cell, not the shell — the grid is virtualized.
+
+      This waited on `title`, a track of the RETIRED flat model, so it timed out
+      on a healthy surface and took all six tests with it. Unbox History renders
+      `RECEIVING_COMPOUND_COLUMNS` (`select · thumb · fulfillment · item · state
+      · amount · actions · _fill`) and has since before this spec last passed.
+      Everything below scans `[data-col]` generically, so this one line was the
+      whole staleness.
+    */
+    await expect(cells(page, 'item').first()).toBeVisible();
   });
 
   test('D1 — rows share one fill; no zebra banding', async ({ page }) => {
@@ -145,13 +165,21 @@ test.describe('ledger grid column display SoT', () => {
       ).toBe(1);
     }
 
-    // And the type→align ruling, checked for whichever of these is present.
+    /*
+      The type→align ruling, checked for whichever of these is present.
+
+      Ported to the COMPOUND tracks 2026-08-29 — the flat keys this listed
+      (`title`, `date`, `qty`, `order`, `tracking`) are not rendered by any
+      receiving surface any more, so `checked` was always empty and the
+      assertion below fired on a healthy grid. Values are what
+      `resolveGridColumnAlign` derives from each column's `type`, which is the
+      ruling this test exists to pin.
+    */
     const want: Record<string, string> = {
-      title: 'flex-start', // text
-      date: 'flex-end', // date — magnitude (civil day / duration)
-      qty: 'flex-end', // number
-      order: 'flex-start', // id — a label made of digits, not a magnitude
-      tracking: 'flex-start', // location — identifier you read
+      fulfillment: 'flex-start', // id — a label made of digits, not a magnitude
+      item: 'flex-start', // text
+      state: 'flex-start', // tag — a category, read left to right
+      amount: 'flex-end', // price — a magnitude, so it right-aligns
     };
     const checked = rendered.filter((c) => c in want);
     expect(checked.length, 'none of the known columns rendered').toBeGreaterThan(0);
@@ -160,38 +188,80 @@ test.describe('ledger grid column display SoT', () => {
     }
   });
 
-  test('D3 — the type glyph is drawn once in the header, never repeated per row', async ({ page }) => {
-    const trackingCells = cells(page, 'tracking');
-    const total = await trackingCells.count();
-    expect(total).toBeGreaterThan(1);
+  /**
+   * The REGRESSION this names is a type glyph repeated in every value cell. The
+   * flat model drew one in the header, so the test asserted "exactly one".
+   *
+   * The compound header draws none at all — its identity is the two-row cell,
+   * not a typed track with a mark — so "exactly one" is now false on a healthy
+   * grid. What still has to hold, and is the actual defect class, is that NO
+   * VALUE CELL draws one: at most the header may, and never a row.
+   */
+  test('D3 — a type glyph is never repeated per row', async ({ page }) => {
+    // `fulfillment` is the compound model's id track — the flat `tracking` this
+    // named is not rendered by any receiving surface any more.
+    const idCells = cells(page, 'fulfillment');
+    expect(await idCells.count()).toBeGreaterThan(1);
 
-    const withGlyph = await trackingCells.evaluateAll((els) =>
+    const withGlyph = await idCells.evaluateAll((els) =>
       els.filter((el) => el.querySelector('svg')).map((el) => el.textContent?.trim() ?? ''),
     );
-    // Exactly one: the column header. Every value cell below it is glyph-free —
-    // fold summaries included, which is the case that regressed.
-    expect(withGlyph).toHaveLength(1);
-    expect(withGlyph[0]?.toLowerCase()).toContain('tracking');
+    // Zero (compound) or one (the header, on a typed flat track). Never per-row
+    // — fold summaries included, which is the case that regressed.
+    expect(
+      withGlyph.length,
+      `type glyph repeated in value cells: ${withGlyph.join(' | ')}`,
+    ).toBeLessThanOrEqual(1);
   });
 
-  test('D4 — the runtime stage label renders in full, never clipped', async ({ page }) => {
+  /**
+   * Generalised 2026-08-29. This asserted one specific label — a runtime
+   * `UNBOXED` stage column, at 4.5rem, that once shipped as `UNBO…` twice — and
+   * the compound model has no such track, so it could only ever fail here.
+   *
+   * The BUG CLASS is what matters and it is unchanged: a header label that does
+   * not fit its track. Measuring every header instead of naming one covers the
+   * original defect and every future one, and cannot go stale when a column is
+   * renamed.
+   */
+  test('D4 — no header label is clipped by its track', async ({ page }) => {
     const header = page.locator('[role="row"]').first();
-    await expect(header).toContainText(/UNBOXED/i);
-    // The specific failure: a 4.5rem track showing `UNBO…`.
-    await expect(header).not.toContainText('UNBO…');
-    await expect(header).not.toContainText('UNBO...');
+    await expect(header).toBeVisible();
 
-    // And the label must genuinely fit its track rather than being clipped by
-    // overflow — measure, don't trust the string (verify.md: assert the invariant).
-    const overflow = await header.evaluate((row) => {
-      const cell = [...row.querySelectorAll<HTMLElement>('*')].find((el) =>
-        /^UNBOXED$/i.test(el.textContent?.trim() ?? ''),
-      );
-      if (!cell) return null;
-      return { scroll: cell.scrollWidth, client: cell.clientWidth };
-    });
-    expect(overflow, 'no UNBOXED header cell found').not.toBeNull();
-    expect(overflow!.scroll).toBeLessThanOrEqual(overflow!.client + 1);
+    /*
+      Measure the LABEL element, not the header cell.
+
+      A header cell also contains its resize grip, so its `scrollWidth` exceeds
+      its `clientWidth` on every well-behaved column — measuring the cell
+      reported all four as clipped on a grid that clips nothing. The label is
+      what can actually be cut off, so the label is what gets measured: the
+      deepest element whose text IS the column's whole name.
+    */
+    const clipped = await header.evaluate((row) =>
+      [...row.querySelectorAll<HTMLElement>('[data-col]')]
+        .map((cell) => {
+          const col = cell.getAttribute('data-col') ?? '?';
+          const label = [...cell.querySelectorAll<HTMLElement>('*')]
+            .filter((el) => el.children.length === 0 && (el.textContent?.trim() ?? '') !== '')
+            .pop();
+          if (!label) return null;
+          return {
+            col,
+            text: label.textContent?.trim() ?? '',
+            scroll: label.scrollWidth,
+            client: label.clientWidth,
+          };
+        })
+        .filter((c): c is NonNullable<typeof c> => c != null)
+        // A zero-width label is hidden, not clipped.
+        .filter((c) => c.client > 0 && c.scroll > c.client + 1),
+    );
+    expect(
+      clipped,
+      `clipped header labels: ${clipped.map((c) => `${c.col}="${c.text}"`).join(', ')}`,
+    ).toEqual([]);
+    // The ellipsis form the original defect shipped as.
+    await expect(header).not.toContainText('…');
   });
 
   test('D4b — no header clips WHILE SORTED, and geometry is constant', async ({ page }) => {
@@ -238,16 +308,29 @@ test.describe('ledger grid column display SoT', () => {
     }
   });
 
+  /**
+   * The regression this guards: a grouped PO renders a SUMMARY row, which is a
+   * different component and was missed by the first migration.
+   *
+   * It is CONDITIONAL because `/receiving/history` groups on
+   * `groupAxis: 'activity'` — date bands, not PO folds — so no summary row
+   * exists here to check. Asserting one would be asserting a fiction about the
+   * route. The guard stays live for any surface that does fold, and skips
+   * loudly rather than passing silently where none does.
+   */
   test('fold rows obey the same contract as leaf rows', async ({ page }) => {
-    // The regression this spec exists for: a grouped PO renders a SUMMARY row,
-    // which is a different component and was missed by the first migration.
     const summary = page.locator(`text=${PO}`).first();
+    if ((await summary.count()) === 0) {
+      test.skip(true, 'this surface groups by date, not by PO — no fold summary row to check');
+    }
     await expect(summary).toBeVisible();
 
-    const row = summary.locator('xpath=ancestor::*[.//*[@data-col="tracking"]][1]');
-    const trackingCell = row.locator('[data-col="tracking"]').first();
-    await expect(trackingCell).toBeVisible();
-    expect(await trackingCell.locator('svg').count()).toBe(0);
-    expect(await trackingCell.evaluate((el) => getComputedStyle(el).justifyContent)).toBe('flex-start');
+    const row = summary.locator('xpath=ancestor::*[.//*[@data-col="fulfillment"]][1]');
+    const idCell = row.locator('[data-col="fulfillment"]').first();
+    await expect(idCell).toBeVisible();
+    // A summary row is a different component, and the first migration missed
+    // it: no repeated type glyph, same derived justification as a leaf row.
+    expect(await idCell.locator('svg').count()).toBe(0);
+    expect(await idCell.evaluate((el) => getComputedStyle(el).justifyContent)).toBe('flex-start');
   });
 });

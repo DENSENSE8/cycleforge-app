@@ -264,6 +264,17 @@ export const StaffPreferencesPutBody = z
      * (`unbox`, … — see `WORKBENCH_KPI_SURFACE`). `true` = collapsed (hidden).
      * Absent / false = open. Shallow JSONB merge: writers send the whole map.
      */
+    /**
+     * @deprecated Dead since 2026-08-29 — the workbench KPI bands were removed
+     * (`docs/todo/one-sheet-table-sot-PLAN.md` § 3.5) and nothing reads or
+     * writes this any more.
+     *
+     * The FIELD stays because existing `staff_preferences` rows still carry the
+     * key: this schema parses stored JSON, so dropping the member would make
+     * every one of those rows fail validation or get silently stripped on the
+     * next write. It costs nothing to keep and can be removed by a migration
+     * that clears the key first.
+     */
     kpiCollapsed: z.record(z.string().max(64), z.boolean()).nullable().optional(),
     /**
      * Extra Unbox Band-1 tabs pinned via the Pin-list composer

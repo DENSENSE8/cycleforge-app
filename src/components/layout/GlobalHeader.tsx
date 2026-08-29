@@ -6,7 +6,6 @@ import { useAuth, isClientPublicPath } from '@/contexts/AuthContext';
 import { GlobalHeaderActions } from './GlobalHeaderActions';
 import { GlobalScanDock } from './GlobalScanDock';
 import { HeaderPageSwitcher } from './HeaderPageSwitcher';
-import { HeaderPinsSwitcher } from './HeaderPinsSwitcher';
 import { HeaderRecentsSwitcher } from './HeaderRecentsSwitcher';
 import {
   HEADER_ICON_CLUSTER,
@@ -89,9 +88,16 @@ export function GlobalHeader({
             onToggleSidebar={onToggleSidebar}
           />
         ) : null}
-        {/* Home · Media Library are ordinary spine map rows. The
-            toggle is click-only — no collapsed hover peek. */}
-        <HeaderPinsSwitcher />
+        {/*
+          The PIN switcher was here and is gone (operator ruling 2026-08-29).
+          Quick-access pins duplicated navigation the spine already carries, and
+          the control sat in the top-left corner an operator scans for "where am
+          I" — answering "where could I go" instead. Recents and the page
+          switcher remain: those answer where you WERE and where you ARE.
+
+          The pin DATA (`cf.quickAccess`, ⌘/Ctrl+1–9) is untouched — this
+          removes the header door, not the feature.
+        */}
         <HeaderRecentsSwitcher />
         <HeaderPageSwitcher />
       </div>

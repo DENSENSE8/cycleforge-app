@@ -9,12 +9,6 @@ import {
   WorkbenchTriageBand,
 } from '@/components/dashboard/workbench-shell';
 import {
-  WorkbenchKpiBand,
-  WorkbenchKpiCollapseToggle,
-  WORKBENCH_KPI_SURFACE,
-} from '@/components/dashboard/workbench-kpi-collapse';
-import { useWorkbenchKpiCollapsed } from '@/hooks/useWorkbenchKpiCollapsed';
-import {
   WORKBENCH_REFINE_BODY_CLASS,
   WorkbenchFilterDivider,
   WorkbenchFilterGroupLabel,
@@ -91,7 +85,6 @@ import {
 import { emitReceiving } from '@/components/receiving/receiving-events';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import type { ScanRoute } from '@/lib/barcode-routing';
-import { UnboxChromeKpiCluster } from './UnboxChromeKpiCluster';
 import { UnboxAddListPopover } from './UnboxAddListPopover';
 
 // Order is the SoT's (`UNBOX_WORKSPACE_TABS`): Inbound · Queue · Recent ·
@@ -144,8 +137,6 @@ export function UnboxWorkspaceHeader({
   const searchParams = useSearchParams();
   const staffId = parseStaffParam(searchParams.get('staff') ?? searchParams.get('staffId'));
   const { searchQuery, setSearch } = useWorkbenchSearchParam();
-  const { collapsed: kpiCollapsed, setCollapsed: setKpiCollapsed, toggleCollapsed: toggleKpiCollapsed } =
-    useWorkbenchKpiCollapsed(WORKBENCH_KPI_SURFACE.unbox);
   const historyViewChrome = useHistoryViewChromeOptional();
   const { prefs, update: updatePrefs } = useStaffPreferences();
   // Effective non-staff default (role → org → []) folded server-side; the chrome
@@ -899,7 +890,10 @@ export function UnboxWorkspaceHeader({
       <WorkbenchChromeHeader
         density="band"
         className="rounded-none border-l-0 border-t-0 shadow-sm"
-        leading={
+        // Rides with the tabs to the bottom bar: a "pin another tab" control
+        // beside a rail that is no longer there reads as belonging to whatever
+        // it happens to sit next to.
+        tabsAction={
           <UnboxAddListPopover
             available={availableExtraTabs}
             atCap={pinCapReached}
@@ -941,28 +935,12 @@ export function UnboxWorkspaceHeader({
         }
       />
       {/*
-        KPI row — instant snap-collapsible Band 2 (`WorkbenchKpiBand` — no
-        height tween). Compact Usage strip via UnboxChromeKpiCluster;
-        `?ukpi=` still filters the table.
-        Persist collapse: staff_preferences.kpiCollapsed.unbox.
-        Honest absence on pinned Inbound (foreign collection — not Unbox KPI).
-      */}
-      {!isIncomingTab ? (
-        <WorkbenchKpiBand
-          open={!kpiCollapsed}
-          onSnapCollapse={() => setKpiCollapsed(true)}
-          onSnapExpand={() => setKpiCollapsed(false)}
-        >
-          <UnboxChromeKpiCluster mode={kpiFeedTab} />
-        </WorkbenchKpiBand>
-      ) : null}
-      {/*
         Band 3 — the LEAN row (ruled 2026-08-08). Exactly four things, on every
         receiving-sheet tab:
 
-            [ 🔍 find …………………………… ▽ refine ]      [ ^ KPI ] [ ▥ inspector ]
+            [ 🔍 find …………………………… ▽ refine ]                [ ▥ inspector ]
 
-        find · refine-INSIDE-the-find · KPI collapse · inspector park. Nothing
+        find · refine-INSIDE-the-find · inspector park. Nothing
         else — no `right`, no controls portal. Everything that used to sit here
         (compare layout, spreadsheet zoom, ▦ column display, the week pill) now
         lives on the inspector's View cluster, which the trailing toggle opens;
@@ -986,12 +964,6 @@ export function UnboxWorkspaceHeader({
                 emptyHint="No saved views yet — refine History, then save it here."
               />
             ) : null
-          }
-          kpiToggle={
-            <WorkbenchKpiCollapseToggle
-              open={!kpiCollapsed}
-              onToggle={toggleKpiCollapsed}
-            />
           }
           trailing={inspectorToggle}
         />

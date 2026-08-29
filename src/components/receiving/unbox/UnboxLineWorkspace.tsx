@@ -36,6 +36,8 @@
  * *remount* needs those resets first.
  */
 
+import { StationDeck } from '@/components/station/StationDeck';
+import { UnboxHistoryDock } from '@/components/station/UnboxHistoryDock';
 import { useEffect, useRef } from 'react';
 // useRef carries the render-time pane slot below (see `paneSlotRef`)
 import dynamic from 'next/dynamic';
@@ -168,6 +170,17 @@ export function UnboxLineWorkspace({
   }, [unboxPrimaryPaint, showOverlay, showRestoreSkeleton]);
 
   return (
+    /*
+      The history dock wraps BOTH the desk pane and the carton overlay.
+
+      It was briefly inside `UnboxWorkspaceView`, which is the pane below — and
+      that pane goes `visibility: hidden` whenever a carton is open, so the dock
+      disappeared exactly while an operator was unboxing. That is the one moment
+      "did that scan land?" is being asked, so a dock that hides then is worse
+      than none: it teaches the bench not to look there.
+      `station-history-dock.spec.ts` caught it.
+    */
+    <StationDeck history={<UnboxHistoryDock station="Unbox" />}>
     <div className={cn(appWorkCanvasLayoutClass, 'h-full')}>
       <div
         className={`flex h-full min-h-0 w-full flex-col ${showOverlay ? 'pointer-events-none' : ''}`}
@@ -266,5 +279,6 @@ export function UnboxLineWorkspace({
         ) : null}
       </AnimatePresence>
     </div>
+    </StationDeck>
   );
 }

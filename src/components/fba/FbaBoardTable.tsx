@@ -1,11 +1,17 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { CSSProperties } from 'react';
 import { ChevronRight } from '@/components/Icons';
 import { FnskuChip, CopyChip, getLast8 } from '@/components/ui/CopyChip';
 import { PrintTableCheckbox } from '@/components/fba/table/Checkbox';
 import { sectionLabel, SkeletonList } from '@/design-system';
 import { LedgerGrid } from '@/design-system/components/grid';
+import { gridTemplate } from '@/design-system/components/grid/grid-column-geometry';
+import {
+  FBA_BOARD_GRID_COLUMNS,
+  type FbaBoardGridColumn,
+} from '@/components/fba/fba-board-grid-layout';
 import { ledgerRowFillClass } from '@/components/ui/queue-row-chrome';
 import { FBA_BOARD_GRID_CAPABILITIES } from '@/components/fba/fba-board-capabilities';
 import { IconButton, Button } from '@/design-system/primitives';
@@ -33,8 +39,25 @@ import {
   FBA_BOARD_FNSKU_SELECT_RESULT,
 } from '@/lib/fba/events';
 
-const FBA_GRID =
-  'grid grid-cols-[2.5rem_5.5rem_minmax(12rem,1.4fr)_6.5rem_4.5rem_5.5rem_5rem_4rem_minmax(5rem,1fr)_2.5rem] items-center gap-x-1';
+/**
+ * The board's track template, DERIVED from its column model.
+ *
+ * This was a literal `grid-cols-[2.5rem_5.5rem_minmax(12rem,1.4fr)_…]` string
+ * beside a `columnHeader` of ten bare spans — two declarations of the same ten
+ * columns with nothing tying them together, so adding one meant editing a
+ * Tailwind arbitrary value AND a span list, and getting either wrong shifted
+ * every header one track out of line against its cells. It was the last surface
+ * in the product reaching `LedgerGrid` without a column model
+ * (`fba-board-capabilities.ts` recorded the debt and deferred it; this is that
+ * wave).
+ *
+ * Deriving also buys the board what every other sheet already had for free:
+ * density/zoom scaling through `--cf-density`, and per-column width vars.
+ */
+const FBA_GRID_STYLE: CSSProperties = {
+  gridTemplateColumns: gridTemplate(FBA_BOARD_GRID_COLUMNS),
+};
+const FBA_GRID = 'grid items-center gap-x-1';
 
 interface FbaBoardTableProps {
   items: FbaBoardItem[];
@@ -358,17 +381,20 @@ export function FbaBoardTable({
               FBA_GRID,
               'border-b border-border-soft bg-surface-card px-3 py-3 text-left text-role-micro uppercase tracking-widest text-text-soft',
             )}
+            style={FBA_GRID_STYLE}
           >
-            <span className="sr-only">Select</span>
-            <span>ASIN</span>
-            <span>Title</span>
-            <span>FNSKU</span>
-            <span>Qty</span>
-            <span>Status</span>
-            <span>Condition</span>
-            <span>Due</span>
-            <span>Plan</span>
-            <span className="sr-only">Details</span>
+            {/*
+              Labels come from the SAME array the template does, so a column
+              cannot be added to one and forgotten in the other. An unlabelled
+              track (the select gutter, the details chevron) keeps an sr-only
+              name — the header cell still has to exist or every following span
+              lands one track left of its column.
+            */}
+            {FBA_BOARD_GRID_COLUMNS.map((col: FbaBoardGridColumn) => (
+              <span key={col.key} className={col.label ? undefined : 'sr-only'}>
+                {col.label ?? col.key}
+              </span>
+            ))}
           </div>
         }
         getRowKey={(item) => String(item.item_id)}
@@ -408,6 +434,9 @@ export function FbaBoardTable({
                 'px-3 py-3',
                 ui.rowFocusRing,
               )}
+              // Same derived template as the header — that shared array is the
+              // whole point: a column added to one is added to both.
+              style={FBA_GRID_STYLE}
             >
               <div className="align-middle">
                 <PrintTableCheckbox

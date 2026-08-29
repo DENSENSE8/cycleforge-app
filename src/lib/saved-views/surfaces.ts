@@ -37,6 +37,21 @@ export const SAVED_VIEW_SURFACES = [
   // Home → Today (`/`). Added 2026-08-01 with the CHECK follow-up
   // `2026-08-01a_saved_views_home_today.sql`.
   'home_today',
+  // ── Phase 4 rebuilds (2026-08-29) ─────────────────────────────────────────
+  // The twelve surfaces `one-sheet-table-sot-PLAN` brought back onto the
+  // binding waist. CHECK follow-up: `2026-08-29b_saved_views_rebuilt_surfaces.sql`.
+  'products_catalog',
+  'inventory_units',
+  'warehouse_bins',
+  'repair_queue',
+  'warranty_claims',
+  'tracking_exceptions',
+  'outbound_ready',
+  'outbound_labels',
+  'outbound_staged',
+  'pickup_queue',
+  'unfound_queue',
+  'tech_all',
 ] as const;
 
 export type SavedViewSurface = (typeof SAVED_VIEW_SURFACES)[number];
@@ -56,9 +71,48 @@ export const GENERIC_SAVED_VIEW_SURFACES = [
   'receiving_incoming',
   'testing_history',
   'home_today',
+  // Every Phase-4 rebuild is served by the generic routes — none of them has a
+  // reason to grow a dedicated one, and the two that exist (ops, media) are
+  // being folded onto these.
+  'products_catalog',
+  'inventory_units',
+  'warehouse_bins',
+  'repair_queue',
+  'warranty_claims',
+  'tracking_exceptions',
+  'outbound_ready',
+  'outbound_labels',
+  'outbound_staged',
+  'pickup_queue',
+  'unfound_queue',
+  'tech_all',
 ] as const;
 
 type GenericSavedViewSurface = (typeof GENERIC_SAVED_VIEW_SURFACES)[number];
+
+/**
+ * Storage keys for the surfaces rebuilt in Phase 4.
+ *
+ * Declared here rather than beside each surface: `useSavedViews` takes a storage
+ * key and resolves it to a discriminator through the map below, so a key that
+ * exists only at its call site is a key nothing can resolve — the symptom is a
+ * Save button that silently does nothing, which is the same failure the CHECK
+ * follow-up exists to prevent, one layer up.
+ */
+export const SHEET_SAVED_VIEW_KEY = {
+  products_catalog: 'products_catalog_saved_views',
+  inventory_units: 'inventory_units_saved_views',
+  warehouse_bins: 'warehouse_bins_saved_views',
+  repair_queue: 'repair_queue_saved_views',
+  warranty_claims: 'warranty_claims_saved_views',
+  tracking_exceptions: 'tracking_exceptions_saved_views',
+  outbound_ready: 'outbound_ready_saved_views',
+  outbound_labels: 'outbound_labels_saved_views',
+  outbound_staged: 'outbound_staged_saved_views',
+  pickup_queue: 'pickup_queue_saved_views',
+  unfound_queue: 'unfound_queue_saved_views',
+  tech_all: 'tech_all_saved_views',
+} as const satisfies Record<string, string>;
 
 /** Storage key → DB surface (the `useSavedViews` consumers). */
 const STORAGE_KEY_TO_SURFACE: Readonly<Record<string, GenericSavedViewSurface>> = {
@@ -71,6 +125,19 @@ const STORAGE_KEY_TO_SURFACE: Readonly<Record<string, GenericSavedViewSurface>> 
   [SAVED_VIEW_STORAGE_KEY.receiving_history]: 'receiving_history',
   [SAVED_VIEW_STORAGE_KEY.receiving_incoming]: 'receiving_incoming',
   [SAVED_VIEW_STORAGE_KEY.testing_history]: 'testing_history',
+  // Phase 4 rebuilds — one entry per key above, or the surface saves nothing.
+  [SHEET_SAVED_VIEW_KEY.products_catalog]: 'products_catalog',
+  [SHEET_SAVED_VIEW_KEY.inventory_units]: 'inventory_units',
+  [SHEET_SAVED_VIEW_KEY.warehouse_bins]: 'warehouse_bins',
+  [SHEET_SAVED_VIEW_KEY.repair_queue]: 'repair_queue',
+  [SHEET_SAVED_VIEW_KEY.warranty_claims]: 'warranty_claims',
+  [SHEET_SAVED_VIEW_KEY.tracking_exceptions]: 'tracking_exceptions',
+  [SHEET_SAVED_VIEW_KEY.outbound_ready]: 'outbound_ready',
+  [SHEET_SAVED_VIEW_KEY.outbound_labels]: 'outbound_labels',
+  [SHEET_SAVED_VIEW_KEY.outbound_staged]: 'outbound_staged',
+  [SHEET_SAVED_VIEW_KEY.pickup_queue]: 'pickup_queue',
+  [SHEET_SAVED_VIEW_KEY.unfound_queue]: 'unfound_queue',
+  [SHEET_SAVED_VIEW_KEY.tech_all]: 'tech_all',
 };
 
 const SURFACE_SET = new Set<string>(SAVED_VIEW_SURFACES);

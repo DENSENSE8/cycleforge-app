@@ -5,13 +5,26 @@
  *
  * ```text
  * ┌ chrome (pinned, outside the scroll port) ─────────────────┐
- * │ Band 1  tabs + trailing CTAs                              │
- * │ Band 2  WorkbenchKpiBand (snap-collapse; omit ⇒ no band)   │
- * │ Band 3  triage — find · refine · KPI toggle · inspector    │
+ * │ Band 1  trailing CTAs (tabs PUBLISH to the bottom bar)     │
+ * │ Band 3  triage — find · refine · inspector                 │
  * ├ body (WORKBENCH_SHEET_HOST) ──────────────────────────────┤
  * │ the grid / feed, optionally crossfading on the tab         │
+ * ├ SheetBottomBar (sticky) ──────────────────────────────────┤
+ * │ tabs                                     counts            │
  * └───────────────────────────────────────────────────────────┘
  * ```
+ *
+ * **Band 2 (KPI) is gone** — operator ruling 2026-08-29,
+ * `docs/todo/one-sheet-table-sot-PLAN.md` § 3.5. Every table workbench lost its
+ * metric strip; `/signals`, `/reports` and the operations dashboard keep theirs,
+ * because those pages exist to show metrics and have no table to host. The `kpi`
+ * and `band2` slots are removed rather than deprecated, so a strip cannot grow
+ * back on a sheet by someone passing the prop.
+ *
+ * **Tabs moved to the bottom.** `WorkbenchChromeHeader` publishes them into the
+ * sheet chrome; this shell renders {@link SheetBottomBar} under the body. The
+ * strip's `onTabChange` is still the surface's own callback, so every deep link
+ * and every URL-driven test is unaffected.
  *
  * **Why a shell and not five more copies.** Testing · Pack · Shipping · Arrival ·
  * Labels each re-typed the same assembly: `cn(WORKBENCH_SHEET_CHROME, 'flex
@@ -23,11 +36,10 @@
  * where the fix is sameness by construction (briefing §1 / D1).
  *
  * **The chrome controller is injectable, and that is the load-bearing part.**
- * Most surfaces want the local one ({@link useWorkbenchSheetChrome}). To-ship
- * takes its `controlsEl` / KPI state from `useOrdersViewChrome` **context**:
- * View-topic controls portal into the pushing right inspector, while KPI hide
- * still renders on Band 3 left of Show inspector. A shell that always owned
- * the state would have forced that surface to fork.
+ * Most surfaces want the local one ({@link useWorkbenchSheetChrome}); To-ship
+ * takes its `controlsEl` from `useOrdersViewChrome` **context**, because its
+ * View-topic controls portal into the pushing right inspector. A shell that
+ * always owned the state would have forced that surface to fork.
  *
  * **What it deliberately does NOT own:** the outer positioning wrapper (each
  * surface's overlay/bulk-bar needs differ) and the band components themselves.
@@ -45,11 +57,11 @@ import {
   WORKBENCH_SHEET_CHROME,
   WORKBENCH_SHEET_HOST,
 } from '@/components/dashboard/workbench-shell';
+import { SheetBottomBar } from '@/components/sheet/SheetBottomBar';
 import {
-  WorkbenchKpiBand,
-  type WorkbenchKpiSurfaceId,
-} from '@/components/dashboard/workbench-kpi-collapse';
-import { useWorkbenchKpiCollapsed } from '@/hooks/useWorkbenchKpiCollapsed';
+  SheetChromeProvider,
+  useSheetChrome,
+} from '@/components/sheet/sheet-chrome-context';
 import { cn } from '@/utils/_cn';
 
 /**
@@ -68,12 +80,7 @@ const WORKBENCH_SHEET_TABS_CLASS = 'border-l-0 border-t-0 shadow-sm';
 /** The one chrome host: bands are static siblings in ONE pinned stack. */
 const WORKBENCH_SHEET_CHROME_STACK = cn(WORKBENCH_SHEET_CHROME, 'flex flex-col gap-0');
 
-/**
- * What the bands need from the surface. `kpiOpen` + `toggleKpi` is the only
- * shape both controller flavours share: the local hook exposes
- * `setCollapsed(true|false)` and To-ship's context exposes a bare `onToggleKpi`,
- * and a toggle expresses both without either side re-deriving the other.
- */
+/** What the bands need from the surface. */
 export interface WorkbenchSheetChrome {
   /**
    * Band-3 controls portal target (▦ column display, toolbars). `HTMLElement`,
@@ -87,27 +94,19 @@ export interface WorkbenchSheetChrome {
    * nothing to portal into) — honest absence, not a no-op stub the bands call.
    */
   controlsSlotRef: ((el: HTMLDivElement | null) => void) | null;
-  kpiOpen: boolean;
-  toggleKpi: () => void;
 }
 
 /**
- * Local chrome controller — per-staff KPI collapse + the Band-3 controls portal.
+ * Local chrome controller — the Band-3 controls portal, and nothing else.
  *
- * `surface` is **optional**: a two-band sheet (tabs + triage, no KPI — Pickup,
- * the Review family, Locations, …) has no collapse preference to read, and
- * passing a surface id there would persist a pref nothing can toggle. Omitted,
- * the KPI half is inert and only the controls portal is live.
+ * `surface` used to select a per-staff KPI collapse preference; the band is
+ * gone (2026-08-29). The parameter is still accepted and ignored because it is
+ * a surface's own identity string, harmless to pass, and eleven call sites read
+ * better naming which desk they are than not.
  */
-export function useWorkbenchSheetChrome(surface?: WorkbenchKpiSurfaceId): WorkbenchSheetChrome {
+export function useWorkbenchSheetChrome(_surface?: string): WorkbenchSheetChrome {
   const [controlsEl, setControlsEl] = useState<HTMLDivElement | null>(null);
-  const { collapsed, toggleCollapsed } = useWorkbenchKpiCollapsed(surface ?? null);
-  return {
-    controlsEl,
-    controlsSlotRef: setControlsEl,
-    kpiOpen: !collapsed,
-    toggleKpi: toggleCollapsed,
-  };
+  return { controlsEl, controlsSlotRef: setControlsEl };
 }
 
 /** Neutral stand-in at the grid's own geometry — never a spinner over a table. */
@@ -120,25 +119,12 @@ interface WorkbenchSheetViewProps<TTab extends string | number> {
   /** Band 1. Receives the flush face class so no surface re-types it. */
   tabs?: (p: { className: string }) => ReactNode;
   /**
-   * Band 2 body, wrapped in {@link WorkbenchKpiBand} — the per-staff,
-   * snap-collapsible KPI band. Omit for a surface with no KPI (honest absence).
+   * Bottom-bar status extras (a sync stamp, a lane note) — left of the counts.
    */
-  kpi?: ReactNode;
-  /**
-   * Band 2 as a RAW band — for a strip that is not a per-staff KPI preference
-   * and therefore must not be collapsible. FBA is the case: its stage counts are
-   * **mode-scoped** (they change with the tab, and toggling one filters the
-   * board), so a per-staff collapse pref would be the wrong control entirely.
-   *
-   * Mutually exclusive with `kpi`: a band is one or the other, and passing both
-   * would stack two Band 2s.
-   */
-  band2?: ReactNode;
-  /** Band 3. Gets exactly the controller values the bands take. */
+  bottomStatus?: ReactNode;
+  /** Band 3. Gets exactly the controller values the band takes. */
   triage?: (p: {
     controlsSlotRef: ((el: HTMLDivElement | null) => void) | null;
-    kpiOpen: boolean;
-    onToggleKpi: () => void;
   }) => ReactNode;
   /**
    * Crossfade the body when this changes (the lifecycle tab). Omit to render the
@@ -164,11 +150,14 @@ interface WorkbenchSheetViewProps<TTab extends string | number> {
   sheetHostStyle?: React.CSSProperties;
 }
 
-export function WorkbenchSheetView<TTab extends string | number>({
+/**
+ * Inner half — the parts that read the sheet chrome, which cannot be read in the
+ * same component that mounts its provider.
+ */
+function WorkbenchSheetViewBody<TTab extends string | number>({
   chrome,
   tabs,
-  kpi,
-  band2,
+  bottomStatus,
   triage,
   swapKey,
   children,
@@ -178,17 +167,14 @@ export function WorkbenchSheetView<TTab extends string | number>({
   sheetHostStyle,
 }: WorkbenchSheetViewProps<TTab>) {
   const { presence, transition } = useMotionRole(motionRole.swap.focus);
+  // Published by `WorkbenchChromeHeader` from the surface's own `tabs` props.
+  const { tabs: publishedTabs } = useSheetChrome();
 
   const body = (
     <Suspense fallback={<WorkbenchSheetFallback />}>{children({ controlsEl: chrome.controlsEl })}</Suspense>
   );
 
-  if (process.env.NODE_ENV !== 'production' && kpi && band2) {
-    throw new Error(
-      'WorkbenchSheetView: pass `kpi` (snap-collapsible KPI) OR `band2` (raw strip), never both — they are the same band.',
-    );
-  }
-  const hasChrome = Boolean(tabs || kpi || band2 || triage);
+  const hasChrome = Boolean(tabs || triage);
 
   return (
     <DashboardScrollShell
@@ -196,29 +182,11 @@ export function WorkbenchSheetView<TTab extends string | number>({
       chrome={
         hasChrome ? (
           <div className={WORKBENCH_SHEET_CHROME_STACK}>
+            {/* Band 1 still renders — it carries the surface's trailing CTAs
+                and its leading cluster. Its TAB RAIL no longer draws here; the
+                header publishes it and the bottom bar below picks it up. */}
             {tabs?.({ className: WORKBENCH_SHEET_TABS_CLASS })}
-            {kpi ? (
-              <WorkbenchKpiBand
-                open={chrome.kpiOpen}
-                // Snap is binary and instant; the controller only exposes a
-                // toggle, so guard each direction against a redundant flip.
-                onSnapCollapse={() => {
-                  if (chrome.kpiOpen) chrome.toggleKpi();
-                }}
-                onSnapExpand={() => {
-                  if (!chrome.kpiOpen) chrome.toggleKpi();
-                }}
-              >
-                {kpi}
-              </WorkbenchKpiBand>
-            ) : (
-              band2 ?? null
-            )}
-            {triage?.({
-              controlsSlotRef: chrome.controlsSlotRef,
-              kpiOpen: chrome.kpiOpen,
-              onToggleKpi: chrome.toggleKpi,
-            })}
+            {triage?.({ controlsSlotRef: chrome.controlsSlotRef })}
           </div>
         ) : undefined
       }
@@ -238,8 +206,40 @@ export function WorkbenchSheetView<TTab extends string | number>({
             </motion.div>
           </AnimatePresence>
         )}
+        {/*
+          Sheet tabs + status counts, bottom of the sheet host. Rendered only
+          when a strip was published or a surface supplied status: a sheet with
+          neither would otherwise reserve 28px to say nothing.
+        */}
+        {publishedTabs || bottomStatus ? (
+          <SheetBottomBar
+            tabsAction={publishedTabs?.action}
+            tabs={publishedTabs?.tabs}
+            activeTab={publishedTabs?.activeTab}
+            onTabChange={publishedTabs?.onTabChange}
+            status={bottomStatus}
+          />
+        ) : null}
       </div>
       {overlays}
     </DashboardScrollShell>
+  );
+}
+
+/**
+ * Mounts the sheet chrome (so `WorkbenchChromeHeader` has somewhere to publish
+ * its tabs, and grids have somewhere to report their counts) around the body.
+ *
+ * `tableId` is optional: this shell serves feeds and boards as well as grids,
+ * and a surface with no prefs bucket still wants the tab strip relocated.
+ */
+export function WorkbenchSheetView<TTab extends string | number>(
+  props: WorkbenchSheetViewProps<TTab> & { tableId?: string },
+) {
+  const { tableId = 'workbench', ...rest } = props;
+  return (
+    <SheetChromeProvider tableId={tableId}>
+      <WorkbenchSheetViewBody {...rest} />
+    </SheetChromeProvider>
   );
 }

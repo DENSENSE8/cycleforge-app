@@ -5,8 +5,8 @@
  * used to live on Band 3. Composes existing controls (no forks).
  *
  * Order: paint · drill · compare · filters · Priority · staff · portal.
- * Hide/Show metrics lives on Band 3 (`OutboundTriageBand` `kpiToggle`),
- * immediately left of Show inspector — not here.
+ * There is no Hide/Show metrics entry: the KPI band it toggled was removed on
+ * 2026-08-29 (`docs/todo/one-sheet-table-sot-PLAN.md` § 3.5).
  */
 
 import { useSearchParams } from 'next/navigation';

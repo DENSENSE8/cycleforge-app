@@ -129,7 +129,14 @@ export type TableId =
    * (personal list vs the org's shift checklist with a roster), and they share
    * only the word "task".
    */
-  | 'tasks';
+  | 'tasks'
+  /**
+   * Amazon Prep › shipment board (`FBA_BOARD_GRID_COLUMNS`).
+   *
+   * Registered 2026-08-29 with the board's column model. The bucket exists but
+   * its `TABLE_COLUMNS` entry is deliberately EMPTY — see the note there.
+   */
+  | 'fba';
 
 /** Canonical meta-slot keys (the left-side qty | condition | rest grid). */
 export const META_KEYS = {
@@ -249,6 +256,17 @@ export const TABLE_COLUMNS: Record<TableId, TableColumnSpec[]> = {
   // Keys are the `hideKey`s in
   // `src/components/outbound/ready/grid/ready-grid-layout.ts`. The `action`
   // track (Stage FBA) has no `hideKey` — structural, never offered.
+  /**
+   * Amazon Prep board — **deliberately empty**.
+   *
+   * This registry is the FIELDS-MENU vocabulary: which tracks a staffer may
+   * hide. `FBA_BOARD_GRID_CAPABILITIES` declares `fieldsMenu: false`, so the
+   * board has no menu and every one of its ten tracks is structural. Listing
+   * columns here would offer hides that nothing renders a door for — and an
+   * entry is still required, because `TableId`'s runtime vocabulary is derived
+   * from this record's keys.
+   */
+  fba: [],
   ready: [
     GRID_COL('verdict', 'Verdict', 'tag'),
     GRID_COL('destination', 'Destination', 'tag'),

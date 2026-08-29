@@ -42,7 +42,16 @@ export interface TableOptionsMenuProps {
     /** Fine-grain staff picker, revealed when scope=all. */
     staffFilter?: UseStaffFilterResult;
   };
-  /** Show the Row density toggle (reads/writes the nearest TableDensityProvider). */
+  /**
+   * @deprecated Row density is retired — **zoom replaces it**
+   * (`docs/todo/one-sheet-table-sot-PLAN.md` § 9). Defaults to `false` since
+   * 2026-08-29.
+   *
+   * Density only ever changed PADDING; the Sheets toolbar's zoom scales the
+   * type with the track through `--cf-density`, so it makes a desk denser in
+   * the way an operator actually means. Two controls for one intent, sitting in
+   * different places, is what this removes.
+   */
   showDensity?: boolean;
   /**
    * Full / Ops / Minimal column presets (orders + shipped outbound queues).
@@ -155,7 +164,7 @@ function ColumnPresetsSection() {
 export function TableOptionsMenu({
   layout,
   scope,
-  showDensity = true,
+  showDensity = false,
   showColumnPresets = false,
   savedViews,
   columnsSlot,

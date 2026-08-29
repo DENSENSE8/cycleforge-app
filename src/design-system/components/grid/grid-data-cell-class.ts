@@ -27,6 +27,13 @@ interface DataCellColumn extends Pick<LedgerGridColumnModel, 'type' | 'align'> {
  *     to muted/emphasis/warning saw it honoured on Unbox History and silently
  *     ignored on To-Ship — one preference, two answers.
  *  4. frozen sticky class — per-family token, passed in.
+ *  5. `formatClass` — the org-shared column formatting (bold / italic / strike /
+ *     text + fill colour) resolved by `columnFormatClass`. It lands HERE for
+ *     concern 3's reason, one level on: if each family applied it, the first
+ *     surface to forget would be a sheet where bold silently does nothing, and
+ *     nothing would notice because each family is only ever compared to itself.
+ *     Empty string when unformatted, so an unformatted grid emits byte-identical
+ *     classes to the ones it emitted before formatting existed.
  *
  * Concerns 1 and 2 were already one SoT each; what diverged was the ASSEMBLY.
  * That is the shape of most drift here: shared parts, forked composition.
@@ -40,14 +47,19 @@ export function gridDataCellClass(
     columnDisplay?: Record<string, GridColumnDisplayPref> | undefined;
     /** The family's frozen-cell token, applied when the column is frozen. */
     frozenClass?: string;
+    /** Org-shared column formatting from `columnFormatClass`. */
+    formatClass?: string;
   } = {},
 ): string {
-  const { rule = true, inset = 'grid', columnDisplay, frozenClass } = opts;
+  const { rule = true, inset = 'grid', columnDisplay, frozenClass, formatClass } = opts;
   const pref = col.hideKey && columnDisplay ? columnDisplay[col.hideKey] : undefined;
   return cn(
     ledgerGridCell({ rule, inset }),
     gridCellAlignClass(col),
     gridColumnTextEmphasisClass(pref?.text),
     col.frozen && frozenClass,
+    // Last, so an operator's explicit format wins over the derived emphasis —
+    // they painted this column on purpose.
+    formatClass,
   );
 }

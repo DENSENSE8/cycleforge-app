@@ -2,13 +2,14 @@
 
 /**
  * Incoming workbench-chrome CTAs — Check (Zoho received) · Import (blue platform
- * picker + CSV) · Add (green manual inbound). Labeled solid pills
+ * picker + CSV). Add retired 2026-08-29 — creation is the global header's.
+ * Labeled solid pills
  * (`WORKBENCH_CHROME_PILL_CLASS`) — Unbox Band 1 CTA altitude.
  */
 
 import { useState } from 'react';
 import * as Popover from '@radix-ui/react-popover';
-import { Plus, RefreshCw, Loader2, Package, Upload } from '@/components/Icons';
+import { RefreshCw, Loader2, Package, Upload } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import { PlatformMark } from '@/components/ui/PlatformMark';
 import {
@@ -26,20 +27,21 @@ export function IncomingChromeActions({
   onImportZoho,
   onImportEbay,
   onImportCsv,
-  onAdd,
+  onAdd: _onAdd,
   importingZoho = false,
   importingEbay = false,
   canCheckZoho = true,
   canImportZoho = true,
   canImportEbay = false,
   canImportCsv = true,
-  canAdd = true,
+  canAdd: _canAdd = true,
 }: {
   /** Opens the paste → Zoho received check rail. */
   onCheckZoho: () => void;
   onImportZoho: () => void;
   onImportEbay: () => void;
   onImportCsv: () => void;
+  /** @deprecated Accepted and ignored — Add moved to the global header (2026-08-29). */
   onAdd: () => void;
   importingZoho?: boolean;
   importingEbay?: boolean;
@@ -51,7 +53,7 @@ export function IncomingChromeActions({
   canImportEbay?: boolean;
   /** CSV batch import under Import popover. */
   canImportCsv?: boolean;
-  /** Manual Add inbound (purchase / return) — always on for desk operators. */
+  /** @deprecated Accepted and ignored — Add moved to the global header. */
   canAdd?: boolean;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -149,18 +151,6 @@ export function IncomingChromeActions({
           </Popover.Portal>
         </Popover.Root>
         </div>
-      ) : null}
-      {canAdd ? (
-        <Button
-          size="sm"
-          variant="success"
-          onClick={onAdd}
-          ariaLabel="Add inbound purchase or return"
-          icon={<Plus />}
-          className={cn(WORKBENCH_CHROME_PILL_CLASS, 'h-full font-semibold uppercase tracking-widest')}
-        >
-          Add
-        </Button>
       ) : null}
     </WorkbenchChromeActionRow>
   );

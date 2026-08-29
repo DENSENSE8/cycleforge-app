@@ -130,7 +130,10 @@ interface ReceivingRailFeed {
    */
   acceptLineUpdateBus?: boolean;
   // OR a custom multi-source fetch (combined / unfound-queue):
-  buildFetcher?: (rt: RailFetchRuntime) => () => Promise<ApiResponse>;
+  buildFetcher?: (
+    rt: RailFetchRuntime,
+    opts?: { limit?: number },
+  ) => () => Promise<ApiResponse>;
 }
 
 // NOTE: `receiving-entry-deleted` is deliberately NOT a refresh event. The rail
@@ -318,10 +321,21 @@ function buildTriageCombinedFetcher(rt: RailFetchRuntime): () => Promise<ApiResp
  * Unbox "Unboxed" feed — every carton scanned on the Unbox surface (found or
  * unfound). Order is SQL first-open only — do not client-re-sort.
  */
-function buildUnboxReceivedFetcher(rt: RailFetchRuntime): () => Promise<ApiResponse> {
+function buildUnboxReceivedFetcher(
+  rt: RailFetchRuntime,
+  opts?: { limit?: number },
+): () => Promise<ApiResponse> {
   return async () => {
+    // `limit` is overridable because a `ReceivingLineRow` is a FAT record —
+    // photos, serials, rail title context — and this feed's default page of 50
+    // was measured at 154.5KB / 2.2s, the heaviest request on `/unbox`. The
+    // sidebar rail wants all 50; the station history dock draws twelve. Anything
+    // fetched and not drawn is pure payload.
+    //
+    // Note the dedup below is by CARTON, so a caller asking for N lines can get
+    // fewer than N rows back — ask for headroom, not for exactly what you draw.
     const opened = await fetchReceivingLines(UNBOX_OPENED_SOURCE, rt, {
-      limit: UNBOX_SIDEBAR_LIMIT,
+      limit: opts?.limit ?? UNBOX_SIDEBAR_LIMIT,
       includeSerials: false,
     }).then((d) => d.receiving_lines);
 

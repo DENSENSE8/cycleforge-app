@@ -4,8 +4,7 @@
  * Triage (Arrival) workspace chrome — Sheets flush stack (Unbox / To-ship recipe):
  *
  *   Band 1 — tabs (Triage · Prioritize · Unfound · Done) · Check · Add · Arrival
- *   Band 2 — KPI (`WorkbenchKpiBand` in TriageWorkspaceView)
- *   Band 3 — triage: carton filter (`?triq=`) · staff · KPI-collapse kpiToggle
+ *   Band 3 — triage: carton filter (`?triq=`) · staff
  *
  * Box-station Add shares {@link ReceivingBoxChromeActions} with Unbox — between
  * Check and the return-to-scan CTA. Not the Incoming Import cluster.
@@ -26,7 +25,6 @@ import {
   WorkbenchTrailingCluster,
   WorkbenchTriageBand,
 } from '@/components/dashboard/workbench-shell';
-import { WorkbenchKpiCollapseToggle } from '@/components/dashboard/workbench-kpi-collapse';
 import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
 import { StaffFilterRows } from '@/components/ui/StaffFilterButton';
 import { WorkbenchFilterPopover } from '@/components/dashboard/workbench-filter-popover';
@@ -163,12 +161,8 @@ function useTriageFilterParam() {
  * (`workbench-filter-popover.tsx` → the one-icon law).
  */
 export function TriageTriageBand({
-  kpiOpen,
-  onToggleKpi,
   className,
 }: {
-  kpiOpen: boolean;
-  onToggleKpi: () => void;
   className?: string;
 }) {
   const { value, setValue } = useTriageFilterParam();
@@ -178,7 +172,6 @@ export function TriageTriageBand({
   return (
     <WorkbenchTriageBand
       className={className}
-      kpiToggle={<WorkbenchKpiCollapseToggle open={kpiOpen} onToggle={onToggleKpi} />}
       search={
         <TechRailSearchBar
           variant="chrome"

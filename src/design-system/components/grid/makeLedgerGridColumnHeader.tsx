@@ -139,7 +139,6 @@ export interface MakeLedgerGridColumnHeaderConfig<
   tableId?: TableId;
   /** Defaults to `'never'` (read-only browse). */
   selectMode?: M;
-  /** Family-wide glyph override (e.g. Repair's date / price / ticket icons). */
   /** Family-wide label override. */
   labelFor?: (column: C) => string | undefined;
 }
