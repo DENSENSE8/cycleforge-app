@@ -2,7 +2,6 @@
 
 import { LayoutDashboard, List, Loader2, Pencil, RefreshCw } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { WORKBENCH_CHROME_CUBE_GLYPH_CLASS } from '@/components/dashboard/workbench-chrome-cube';
 import {
   PHOTO_GRID_DENSITY_LABELS,
   PHOTO_GRID_DENSITY_ORDER,

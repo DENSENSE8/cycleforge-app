@@ -24,7 +24,7 @@ import { resolveAiProviderOrderForOrg } from '@/lib/ai/provider-order-deps';
 import { getAiUsageMarginPercent, summarizeAiUsage, type AiUsageSummaryRow } from '@/lib/ai/usage';
 import { applyMarginMicrocents, microcentsToUsd } from '@/lib/ai/model-pricing';
 import type { OrgId } from '@/lib/tenancy/constants';
-import { DataTable, type DataTableColumn } from '@/design-system/components/DataTable';
+import { AdminTable, type AdminTableColumn } from '@/design-system/components/AdminTable';
 import { AiProviderOrderCard } from '@/components/settings/sections/AiProviderOrderCard';
 
 export const dynamic = 'force-dynamic';
@@ -47,7 +47,7 @@ function contextLabel(context: string): string {
   return 'Index embedding';
 }
 
-const USAGE_COLUMNS: DataTableColumn<AiUsageSummaryRow>[] = [
+const USAGE_COLUMNS: AdminTableColumn<AiUsageSummaryRow>[] = [
   {
     key: 'use',
     header: 'Use',
@@ -215,7 +215,7 @@ export default async function AiSettingsPage() {
             </div>
           </div>
 
-          <DataTable
+          <AdminTable
             columns={USAGE_COLUMNS}
             rows={summary}
             rowKey={(row) => `${row.context}:${row.provider}:${row.model}`}

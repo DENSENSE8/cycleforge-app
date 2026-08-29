@@ -2,7 +2,11 @@
 
 import { useCallback, useMemo, type RefObject } from 'react';
 import { useGridColumnDisplay, useGridRowFills } from '@/design-system/components/grid';
-import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
+import {
+  DataTable,
+  type DataTableSearch,
+  type DataTableTabStrip,
+} from '@/components/tables/DataTable';
 import { useCapabilityProviderLabel } from '@/hooks/useCapabilityProviderLabel';
 import { useCustomFieldDefs } from '@/hooks/useCustomFieldDefs';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
@@ -24,7 +28,6 @@ import {
 } from '@/lib/receiving/receiving-grid-layout';
 import { RECEIVING_TABLE_BINDING } from './receiving-table-definition';
 import type { GridSelectGutterChrome } from '@/components/ui/GridRowCheckbox';
-import { ReceivingGridColumnHeader } from './ReceivingGridColumnHeader';
 import { ReceivingGridGroupRow } from './ReceivingGridGroupRow';
 import { mergeCustomFieldColumns } from '@/lib/custom-fields/column-model';
 import { commitCustomFieldValueClient } from '@/lib/custom-fields/commit-value-client';
@@ -125,11 +128,10 @@ interface ReceivingGridHostProps {
   linkedReceivingId?: number | null;
   /** Pointer enter/leave on a carton row (compare host only). */
   onCrosshairHover?: (receivingId: number | null) => void;
-  /**
-   * Unbox triage-band / History View topics host for the column-display
-   * trigger. When set, the Columns control portals there.
-   */
-  columnTriggerPortalTarget?: HTMLElement | null;
+  /** The find field, as data — the surface above owns the URL it writes. */
+  search: DataTableSearch;
+  /** The desk's mode strip, drawn on this table's own bottom bar. */
+  tabStrip?: DataTableTabStrip;
   /**
    * History View topics: never paint card-corner ▦ while the inspector host
    * is absent (same contract as To Ship).
@@ -185,7 +187,8 @@ export function ReceivingGridHost({
   historyTriageMenu = false,
   linkedReceivingId = null,
   onCrosshairHover,
-  columnTriggerPortalTarget = null,
+  search,
+  tabStrip,
 }: ReceivingGridHostProps) {
   // One fetch for the whole grid — History UNBOXED tips name the connected
   // inventory provider (falls back to capability title while loading).
@@ -316,7 +319,7 @@ export function ReceivingGridHost({
 
 
   return (
-    <NonlinearTableHost<ReceivingLineRow, ReceivingGridColumnKey, ReceivingGridColumn>
+    <DataTable<ReceivingLineRow, ReceivingGridColumnKey, ReceivingGridColumn>
       binding={RECEIVING_TABLE_BINDING}
       columns={allColumns}
       orderGroupsByDate={orderGroupsByDate}
@@ -326,43 +329,13 @@ export function ReceivingGridHost({
       onSortChange={applySort}
       loading={loading}
       emptyMessage={emptyMessage}
+      search={search}
+      {...tabStrip}
+      selectionScope={selectMode ? selectionScope : undefined}
       showDayHeaders={showDayHeaders}
       scrollRef={scrollRef}
       className={className}
       testId={testId}
-      tableId={tableId}
-      columnTriggerPortalTarget={columnTriggerPortalTarget}
-      renderColumnHeader={({ onResizeColumn, onResetColumn, columns: visible }) => (
-        <ReceivingGridColumnHeader
-          isMobile={isMobile}
-          selectMode={selectMode}
-          selectionScope={selectionScope}
-          selectGutterChrome={selectGutterChrome}
-          columns={visible}
-          activeSort={columnSort}
-          sortDir={sortDir}
-          onSortColumn={applyToggle}
-          onResizeColumn={onResizeColumn}
-          onResetColumn={onResetColumn}
-          // Prefs bucket is mount-resolved (History / Testing); keep an explicit
-          // menu so dir-aware sort + clear stay wired. `enableColumnMenu` gates
-          // the factory default so a false host prop cannot fall back on.
-          enableColumnMenu={enableColumnMenu}
-          columnMenu={
-            enableColumnMenu
-              ? {
-                  tableId: prefsTableId,
-                  allColumns: allColumns,
-                  activeSort: columnSort,
-                  sortDir,
-                  onSortColumn: (key, dir) =>
-                    applySort(key as ReceivingGridColumnKey, dir),
-                  onClearSort: applyClear,
-                }
-              : undefined
-          }
-        />
-      )}
       renderGroup={(group, baseStripeIndex, { columns: visible }) => (
         <ReceivingGridGroupRow
           group={group}

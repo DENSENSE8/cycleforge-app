@@ -27,20 +27,18 @@
  */
 
 import { useMemo } from 'react';
-import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
+import { DataTable } from '@/components/tables/DataTable';
 import {
   useOrdersSpreadsheet,
   type UseOrdersSpreadsheetOptions,
 } from '@/components/dashboard/orders-queue/useOrdersSpreadsheet';
 import {
-  useReportSheetCounts,
-  useSheetDataSource,
-} from '@/components/sheet/sheet-chrome-context';
-import { useTableSelection } from '@/hooks/useTableSelection';
-import {
   ORDER_EXPORT_COLUMNS,
   buildOrderExportRow,
 } from '@/lib/dashboard/order-export-csv';
+import type { DataTableSearch } from '@/components/tables/DataTable';
+import type { DataTableTabStrip } from '@/components/tables/TableStatusBar';
+import type { ShippedOrder } from '@/lib/neon/orders-queries';
 
 export interface OrdersGridHostProps extends UseOrdersSpreadsheetOptions {
   /**
@@ -52,41 +50,38 @@ export interface OrdersGridHostProps extends UseOrdersSpreadsheetOptions {
    * "200 of 200", which would quietly claim the queue was fully loaded.
    */
   totalCount?: number;
-  /** Refinements narrowing WITHIN the lane — lights the toolbar's funnel. */
-  activeFilterCount?: number;
+  /** The find field, as data — the lane above owns the URL it writes. */
+  search: DataTableSearch;
+  /** The desk's mode strip, when this lane is one body among several. */
+  tabStrip?: DataTableTabStrip;
 }
 
 export function OrdersGridHost({
   totalCount,
-  activeFilterCount = 0,
+  search,
+  tabStrip,
   ...options
 }: OrdersGridHostProps) {
   const sheet = useOrdersSpreadsheet(options);
-  const selectedRows = useTableSelection<{ id?: number | string }>(options.selectionScope);
-
-  useReportSheetCounts({
-    shown: options.records.length,
-    total: totalCount ?? options.records.length,
-    selected: selectedRows.length,
-    // The lane's own search counts as a refinement — it is the operator
-    // narrowing what is on screen, which is exactly what the funnel reports.
-    activeFilters: activeFilterCount + (options.searchValue ? 1 : 0),
-  });
-
-  useSheetDataSource(
-    useMemo(
-      () => ({
-        title: options.ariaLabel,
-        // The shipped ORDER-export shape, not the on-screen column set: a
-        // pasted or printed row has to carry the identity fields (record id,
-        // SKU, platform) that make it useful away from the app, and half the
-        // visible tracks are chips and icons with no text to copy.
-        columns: () => [...ORDER_EXPORT_COLUMNS],
-        rows: () => options.records.map((row) => buildOrderExportRow(row)),
-      }),
-      [options.ariaLabel, options.records],
-    ),
+  // Copy acts on the SELECTION, and it copies the shipped ORDER-export shape
+  // rather than the on-screen column set: a pasted row has to carry the
+  // identity fields (record id, SKU, platform) that make it useful away from
+  // the app, and half the visible tracks are chips and icons with no text.
+  const copyExport = useMemo(
+    () => ({
+      columns: [...ORDER_EXPORT_COLUMNS],
+      toRow: (row: ShippedOrder) => buildOrderExportRow(row),
+    }),
+    [],
   );
 
-  return <NonlinearTableHost {...sheet} />;
+  return (
+    <DataTable
+      {...sheet}
+      search={search}
+      {...tabStrip}
+      totalCount={totalCount}
+      copyExport={copyExport}
+    />
+  );
 }

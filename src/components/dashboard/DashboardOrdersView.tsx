@@ -1,57 +1,37 @@
 'use client';
 
 /**
- * The dashboard's main orders region — the To-ship sheet.
+ * The dashboard's main orders region — the To-ship desk.
  *
- * Ported to the Sheets shell 2026-08-29 (`docs/todo/one-sheet-table-sot-PLAN.md`
- * Phase 1). The three-band stack (tabs · KPI · triage) is gone: one toolbar row
- * above the grid, one tab + status strip below it. Chrome composition lives in
- * {@link useOutboundSheetChrome}; the body may be the list, `OrdersDrillHost`,
- * `OrdersCompareHost`, or the CSV import staging host.
+ * There is no chrome here any more. The three-band stack, then the Sheets
+ * toolbar that replaced it, were both deleted on 2026-08-29
+ * (`docs/todo/one-table-sot-teardown-HANDOFF.md`): a page does not draw a
+ * table's search box, its filters, its tabs or its counts — {@link DataTable}
+ * does, from data the surface hands it. This component is now what a page host
+ * should be: it picks the BODY (the queue, or the CSV import staging host) and
+ * mounts the overlays that live beside it.
+ *
+ * The drill and compare hosts went with the teardown — they were second and
+ * third table displays reachable from this one desk, which is the fork the
+ * rebuild exists to end.
  */
 
 import { useEffect, useRef, type ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { UnshippedTable } from '@/components/unshipped/UnshippedTable';
-import { SheetView } from '@/components/sheet/SheetView';
-import { useOutboundSheetChrome } from '@/components/dashboard/useOutboundSheetChrome';
-import { OutboundViewsMenu } from '@/components/dashboard/OutboundViewsMenu';
-import { WorkbenchInspectorToggle } from '@/components/dashboard/workbench-inspector-toggle';
 import { OrderRailCompare } from '@/components/dashboard/rail/OrderRailCompare';
 import { OrderRailShell } from '@/components/dashboard/rail/OrderRailShell';
-import { useRailActionSnapshot } from '@/components/dashboard/rail/OrderRailActions';
-import { OrdersDrillHost } from '@/components/outbound/orders/OrdersDrillHost';
-import { OrdersCompareHost } from '@/components/outbound/orders/OrdersCompareHost';
 import { OrdersViewControlsRail } from '@/components/outbound/orders/OrdersViewControlsRail';
 import { useOrdersViewChrome } from '@/components/outbound/orders/orders-view-chrome-context';
+import { useRailActionSnapshot } from '@/components/dashboard/rail/OrderRailActions';
 import { CsvImportStagingHost } from '@/components/outbound/orders/CsvImportStagingHost';
 import { type DashboardOrderView } from '@/utils/dashboard-search-state';
-import { parseOrdersDrillLayout, ORDERS_DRILL_LAYOUT_PARAM } from '@/lib/shipping/orders-drill-layout';
-import {
-  ORDERS_COMPARE_LAYOUT_PARAM,
-  parseOrdersCompareLayout,
-} from '@/lib/shipping/orders-compare-layout';
 import { ORDER_IMPORT_DESCRIPTOR } from '@/lib/orders/order-import-descriptor';
 import {
   clearTableImportDraft,
   useTableImportDraft,
 } from '@/lib/tables/import/staging-store';
 import { useTableImportParam } from '@/hooks/useTableImportParam';
-import { ORDERS_QUEUE_COLUMNS } from '@/lib/dashboard-order-row-layout';
-import type { SheetFormatColumn } from '@/components/sheet/useSheetFormat';
-import { useDashboardSearchController } from '@/hooks/useDashboardSearchController';
-
-/**
- * Columns an operator may paint on To-ship.
- *
- * The gutters are excluded on purpose: `select` is a checkbox and `_fill` is
- * slack — neither has text for bold to act on, and offering them would be a
- * picker entry that does nothing. Every remaining track is labelled, so the
- * picker reads as the column names an operator already sees in the header.
- */
-const TO_SHIP_FORMAT_COLUMNS: readonly SheetFormatColumn[] = ORDERS_QUEUE_COLUMNS
-  .filter((c) => Boolean(c.label) && c.key !== 'select')
-  .map((c) => ({ key: c.key, label: c.label as string }));
 
 interface DashboardOrdersViewProps {
   orderView: DashboardOrderView;
@@ -66,7 +46,6 @@ interface DashboardOrdersViewProps {
 }
 
 export function DashboardOrdersView({
-  orderView,
   selectMode,
   selectionEnabled,
   selectionOverlays,
@@ -77,11 +56,8 @@ export function DashboardOrdersView({
   const { active: importCsvActive, setActive: setImportCsvActive } =
     useTableImportParam(ORDER_IMPORT_DESCRIPTOR);
   const showCsvStaging = importCsvActive && Boolean(csvDraft);
-  const showOutboundChrome = !showCsvStaging;
-  const { controlsEl, setViewShellOpen, viewShellOpen } = useOrdersViewChrome();
+  const { setViewShellOpen } = useOrdersViewChrome();
   const { rows } = useRailActionSnapshot();
-  const chrome = useOutboundSheetChrome(orderView);
-  const { openIngestIndex } = useDashboardSearchController();
 
   useEffect(() => {
     if (!importCsvActive || csvDraft) return;
@@ -109,30 +85,13 @@ export function DashboardOrdersView({
     }
   }, [searchParams, rows.length, setViewShellOpen]);
 
-  const drillLayout = parseOrdersDrillLayout(
-    searchParams.get(ORDERS_DRILL_LAYOUT_PARAM),
-  );
-  const compareLayout = parseOrdersCompareLayout(
-    searchParams.get(ORDERS_COMPARE_LAYOUT_PARAM),
-  );
-  const showCompare = compareLayout !== 'single';
-  const showDrill = !showCompare && drillLayout === 'drill';
-
-  const openOrderId = searchParams.get('openOrderId');
-  const inspectorOpen = Boolean(openOrderId) || rows.length > 0 || viewShellOpen;
-
   const body = showCsvStaging ? (
     <CsvImportStagingHost />
-  ) : showCompare ? (
-    <OrdersCompareHost selectMode={selectMode} columnTriggerPortalTarget={controlsEl} />
-  ) : showDrill ? (
-    <OrdersDrillHost selectMode={selectMode} columnTriggerPortalTarget={controlsEl} />
   ) : (
     <UnshippedTable
       strictSearchScope
       selectMode={selectMode}
       railSelection
-      toolbarPortalTarget={controlsEl}
       onPrimaryPainted={onPrimaryPainted}
     />
   );
@@ -149,35 +108,9 @@ export function DashboardOrdersView({
   );
 
   return (
-    <SheetView
-      tableId="orders"
-      toolbar={{
-        searchSlot: chrome.searchSlot,
-        // The import staging host IS the sheet while it is open — refining or
-        // formatting a draft the operator is about to accept or discard would
-        // act on rows that do not exist yet.
-        filters: showOutboundChrome ? chrome.filters : undefined,
-        capabilities: { format: showOutboundChrome, data: showOutboundChrome },
-        // Import opens the ingest index (manual · platform · file · sync ·
-        // backfill) — the same rail the retired Band-1 `Add` opened. Add itself
-        // is gone from every desk; the global header owns creation now.
-        onImport: showOutboundChrome ? openIngestIndex : undefined,
-        viewActions: showOutboundChrome ? (
-          <>
-            <OutboundViewsMenu />
-            <WorkbenchInspectorToggle
-              open={inspectorOpen}
-              onOpenEmpty={() => setViewShellOpen(true)}
-              testId="orders-inspector-toggle"
-            />
-          </>
-        ) : undefined,
-      }}
-      bottomBar={showOutboundChrome ? chrome.bottomBar : undefined}
-      formatColumns={showOutboundChrome ? TO_SHIP_FORMAT_COLUMNS : undefined}
-      overlays={overlays}
-    >
+    <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
       {body}
-    </SheetView>
+      {overlays}
+    </div>
   );
 }

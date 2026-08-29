@@ -16,7 +16,6 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { OrderNumberMenuChip } from '@/components/ui/OrderNumberMenuChip';
 import { PlatformMark } from '@/components/ui/PlatformMark';
 import { TrackingNumberMenuChip } from '@/components/ui/TrackingNumberMenuChip';
-import { useIsColumnHidden } from '@/components/ui/table-column-config/TableColumnConfig';
 import { resolveMarketplaceChipIdentity } from '@/lib/marketplace-order-id';
 import { sourcePlatformMetaFromLabel } from '@/lib/source-platform';
 import { dashboardOrderRowChipsClass } from '@/lib/dashboard-order-row-layout';

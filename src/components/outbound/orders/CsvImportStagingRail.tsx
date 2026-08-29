@@ -27,7 +27,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
-import { InspectorColumnDisplayButton } from '@/components/right-rail/InspectorColumnDisplayButton';
 import { DeskInspectorIndexShell } from '@/components/right-rail/DeskInspectorIndexShell';
 import {
   FLOOR_DELETE_PEER_CLASS,

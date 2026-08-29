@@ -9,9 +9,8 @@
 import { useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
+import { DataTable, type DataTableSearch } from '@/components/tables/DataTable';
 import { useOrdersSpreadsheet } from '@/components/dashboard/orders-queue/useOrdersSpreadsheet';
-import { WORKBENCH_SHEET_HOST } from '@/components/dashboard/workbench-shell';
 import { DASHBOARD_ORDERS_SELECTION_SCOPE } from '@/lib/selection/dashboard-scopes';
 import { dispatchOpenShippedDetails, dispatchCloseShippedDetails } from '@/utils/events';
 import { usePackedOrdersFeed } from '@/hooks/usePackedOrdersFeed';
@@ -30,13 +29,14 @@ export interface PackedOrdersTableProps {
   /** Rail-selection model: the check-set is the single selection SoT and drives
    *  the right-rail inspector (History / order-rail SoT). */
   railSelection?: boolean;
-  toolbarPortalTarget?: HTMLElement | null;
+  /** The find field, as data — the desk above owns the URL it writes. */
+  search: DataTableSearch;
 }
 
 export function PackedOrdersTable({
   selectMode = false,
   railSelection = false,
-  toolbarPortalTarget,
+  search,
 }: PackedOrdersTableProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -94,7 +94,6 @@ export function PackedOrdersTable({
     selectionScope: DASHBOARD_ORDERS_SELECTION_SCOPE,
     railSelection,
     'data-testid': 'packed-grid-body',
-    columnTriggerPortalTarget: toolbarPortalTarget ?? null,
     onOpenRecord: (record) => {
       dispatchOpenShippedDetails(record, 'packed');
     },
@@ -105,11 +104,10 @@ export function PackedOrdersTable({
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-surface-canvas">
-      <div className={WORKBENCH_SHEET_HOST}>
-        <NonlinearTableHost<ShippedOrder, OrdersQueueColumnKey, OrdersQueueColumn>
-          {...sheet}
-        />
-      </div>
+      <DataTable<ShippedOrder, OrdersQueueColumnKey, OrdersQueueColumn>
+        {...sheet}
+        search={search}
+      />
     </div>
   );
 }

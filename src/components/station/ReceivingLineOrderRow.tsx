@@ -24,7 +24,6 @@ import {
   QUEUE_ROW,
   metaIndentFor,
 } from '@/components/ui/RowMetaColumns';
-import { useTableDensity } from '@/hooks/useTableDensity';
 import {
   IncomingTrackingStatusCluster,
 } from '@/components/station/ReceivingDeliveryStateIcon';
@@ -158,7 +157,6 @@ export function ReceivingLineOrderRow({
   // shows its last 6 chars. Return-intake fallback rows retain their scanned
   // identity in the generated title until the serial projection catches up.
   const serialsCsv = resolveReceivingLineSerialsCsv(row);
-  const { classes: densityClasses } = useTableDensity();
   // One flag on the legacy surfaces (checked === open); split where the caller
   // passes the two planes separately.
   const checked = isChecked ?? isSelected;
@@ -189,7 +187,7 @@ export function ReceivingLineOrderRow({
         dashboardOrderRowShellClass(isMobile),
         'border-b border-border-hairline transition-colors cursor-pointer hover:bg-blue-50/50',
         QUEUE_ROW.px,
-        densityClasses.rowPadding,
+        'py-1.5',
         isSelected
           ? QUEUE_ROW.selectedClass
           : index % 2 === 1

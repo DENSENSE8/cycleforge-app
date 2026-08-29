@@ -19,12 +19,7 @@ import { FbaBoardTable } from '@/components/fba/FbaBoardTable';
 import { FbaShippedTable } from '@/components/fba/FbaShippedTable';
 import { FbaErrorState } from '@/components/fba/FbaStateShells';
 import { FbaCombineWorkspace } from '@/components/fba/sidebar/FbaCombineWorkspace';
-import { FbaTriageBand, FbaWorkspaceHeader } from '@/components/fba/FbaWorkspaceHeader';
 import { ReadyWorkspaceBody } from '@/components/outbound/ready/ReadyWorkspaceBody';
-import {
-  WorkbenchSheetView,
-  useWorkbenchSheetChrome,
-} from '@/components/dashboard/WorkbenchSheetView';
 import { SlicedActionDock } from '@/design-system/primitives';
 import { Package, X } from '@/components/Icons';
 import { framerPresence, framerTransition, motionBezier } from '@/design-system/foundations/motion-framer';

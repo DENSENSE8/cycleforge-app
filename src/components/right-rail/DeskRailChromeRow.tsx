@@ -46,7 +46,6 @@
  */
 
 import type { ReactNode } from 'react';
-import { InspectorColumnDisplayButton } from '@/components/right-rail/InspectorColumnDisplayButton';
 import { STATION_DISPLAYS_PUSH_TOP_BAND } from '@/components/station/entity-context/station-identity-chrome';
 import {
   STATION_CHROME_ROW_FACE,

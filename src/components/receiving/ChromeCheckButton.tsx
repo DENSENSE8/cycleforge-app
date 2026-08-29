@@ -24,7 +24,6 @@
 
 import { ClipboardList } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
-import { WORKBENCH_CHROME_PILL_CLASS } from '@/components/dashboard/workbench-shell';
 import { cn } from '@/utils/_cn';
 
 /** Flush workbench-chrome CTA face (soft pill + condensed uppercase). */

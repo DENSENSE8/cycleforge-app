@@ -70,7 +70,7 @@ export function useSyncedHorizontalScrollbar(
       if (surfaceHeader instanceof HTMLElement) return surfaceHeader;
       const anyRow = port.querySelector('[role="row"]');
       if (anyRow instanceof HTMLElement) return anyRow;
-      // Dense / DataTable: first wide child (table or content wrapper).
+      // Dense / AdminTable: first wide child (table or content wrapper).
       const first = port.firstElementChild;
       return first instanceof HTMLElement ? first : null;
     };

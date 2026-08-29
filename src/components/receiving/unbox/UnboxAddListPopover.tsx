@@ -17,15 +17,13 @@
  * Plan: `docs/todo/unbox-pinned-inbound-tab-PLAN.md`.
  */
 
+import {
+  FilterMenuGroupLabel,
+} from '@/design-system/primitives/FilterMenu';
 import { useState } from 'react';
 import * as Popover from '@radix-ui/react-popover';
 import { Pin } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { WorkbenchFilterGroupLabel } from '@/components/dashboard/workbench-filter-popover';
-import {
-  WORKBENCH_CHROME_CUBE_CLASS,
-  WORKBENCH_CHROME_CUBE_GLYPH_CLASS,
-} from '@/components/dashboard/workbench-chrome-cube';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 import {
@@ -75,7 +73,7 @@ export function UnboxAddListPopover({
             cornerClass('flush'),
           )}
         >
-          <WorkbenchFilterGroupLabel>Pin list</WorkbenchFilterGroupLabel>
+          <FilterMenuGroupLabel>Pin list</FilterMenuGroupLabel>
           {empty ? (
             <p className="px-2 py-1.5 text-role-caption text-text-faint">All lists pinned</p>
           ) : (

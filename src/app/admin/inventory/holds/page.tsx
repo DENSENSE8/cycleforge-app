@@ -8,7 +8,7 @@ import Link from 'next/link';
 import { PageHeader } from '@/components/ui/pane-header';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Panel, Button } from '@/design-system/primitives';
-import { DataTable, type DataTableColumn } from '@/design-system/components/DataTable';
+import { AdminTable, type AdminTableColumn } from '@/design-system/components/AdminTable';
 
 export const dynamic = 'force-dynamic';
 
@@ -197,7 +197,7 @@ export default async function HoldsAdminPage({
   const errorCode = params.error ?? null;
   const held = await loadHeldUnits(user.organizationId);
 
-  const heldColumns: DataTableColumn<HeldUnitRow>[] = [
+  const heldColumns: AdminTableColumn<HeldUnitRow>[] = [
     {
       key: 'unit',
       header: 'Unit',
@@ -334,7 +334,7 @@ export default async function HoldsAdminPage({
             <h2 className="text-lg font-medium text-text-default">Units on hold</h2>
             <span className="text-xs text-text-soft">{held.length} held</span>
           </header>
-          <DataTable
+          <AdminTable
             columns={heldColumns}
             rows={held}
             rowKey={(h) => h.id}

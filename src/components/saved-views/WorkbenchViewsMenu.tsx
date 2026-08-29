@@ -29,10 +29,6 @@
 import { useState } from 'react';
 import { AnchoredLayer } from '@/design-system/primitives';
 import { Bookmark } from '@/components/Icons';
-import {
-  WorkbenchBandControl,
-  WORKBENCH_BAND_CONTROL_GLYPH_CLASS,
-} from '@/components/dashboard/workbench-band-control';
 import { HeaderChromeMenu } from '@/components/layout/header-chrome-menu';
 import { SavedViewsList } from '@/components/saved-views/SavedViewsList';
 import { useSavedViews } from '@/hooks/useSavedViews';

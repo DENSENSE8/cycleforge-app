@@ -14,7 +14,7 @@
  *
  * Band 1 carries identity plus ONE primary CTA and one quiet exit. Ready /
  * Action-required is a facet that narrows ROWS, so it rides IN the find field
- * (`WorkbenchFilterPopover density="field"`), not as a chip band. `▦` is
+ * (`FilterMenu density="field"`), not as a chip band. `▦` is
  * portal-or-nothing — it mounts into the Band-3 controls slot. Everything else
  * (row fix · column mapping · batch facts · selection verbs) lives on the right
  * rail (`CsvImportStagingRail`).
@@ -23,24 +23,16 @@
  * mounts a page-bottom capsule.
  */
 
+import {
+  FilterMenu,
+  FilterMenuRow,
+} from '@/design-system/primitives/FilterMenu';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button } from '@/design-system/primitives';
 import { requestConfirm } from '@/design-system/components/confirm';
 import { FileText, Loader2, Upload, X } from '@/components/Icons';
-import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
-import {
-  WORKBENCH_CHROME_PILL_CLASS,
-  WORKBENCH_SHEET_CHROME,
-  WorkbenchChromeHeader,
-  WorkbenchTrailingCluster,
-  WorkbenchTriageBand,
-} from '@/components/dashboard/workbench-shell';
-import {
-  WorkbenchFilterMenuRow,
-  WorkbenchFilterPopover,
-} from '@/components/dashboard/workbench-filter-popover';
-import { WorkbenchInspectorToggle } from '@/components/dashboard/workbench-inspector-toggle';
-import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
+import { DataTable } from '@/components/tables/DataTable';
+import { SearchField } from '@/design-system/primitives/SearchField';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import {
   emitSelection,
@@ -69,7 +61,6 @@ import {
 } from '@/lib/tables/import/staging-store';
 import { CsvImportStagingRail } from '@/components/outbound/orders/CsvImportStagingRail';
 import { CSV_IMPORT_STAGING_TABLE_BINDING } from '@/components/outbound/orders/import-staging/csv-import-staging-table-definition';
-import { CsvImportStagingGridColumnHeader } from '@/components/outbound/orders/import-staging/CsvImportStagingGridColumnHeader';
 import {
   CsvImportStagingGridRow,
   csvImportStagingRowKey,
@@ -320,23 +311,20 @@ export function CsvImportStagingHost() {
         />
         <WorkbenchTriageBand
           search={
-            <TechRailSearchBar
-              variant="chrome"
+            <SearchField
               value={draft.query}
               onChange={(next) => setTableImportQuery(SURFACE, next)}
               placeholder="Find staged rows…"
               className="min-w-0 flex-1"
               trailingSuffix={
-                <WorkbenchFilterPopover
+                <FilterMenu
                   open={filterOpen}
                   onOpenChange={setFilterOpen}
                   hot={filterHot}
                   label="Refine"
-                  hotActiveLabel={activeFilterLabel}
-                  density="field"
                 >
                   {STATUS_FILTERS.map((option) => (
-                    <WorkbenchFilterMenuRow
+                    <FilterMenuRow
                       key={option.id}
                       label={option.label}
                       active={filter === option.id}
@@ -346,7 +334,7 @@ export function CsvImportStagingHost() {
                       }}
                     />
                   ))}
-                </WorkbenchFilterPopover>
+                </FilterMenu>
               }
             />
           }
@@ -366,7 +354,7 @@ export function CsvImportStagingHost() {
       </div>
 
       <div className="min-h-0 flex-1 overflow-hidden">
-        <NonlinearTableHost<
+        <DataTable<
           OrderImportRowView,
           CsvImportStagingGridColumnKey,
           CsvImportStagingGridColumn
@@ -381,24 +369,7 @@ export function CsvImportStagingHost() {
           loading={false}
           emptyMessage="This file has no rows left to import."
           searchEmptyMessage="No rows match this filter."
-          isSearching={filterHot || draft.query.trim().length > 0}
-          columnTriggerPortalTarget={null}
-          renderColumnHeader={({
-            toggleColumnSort,
-            onResizeColumn,
-            onResetColumn,
-            columns: visible,
-          }) => (
-            <CsvImportStagingGridColumnHeader
-              columns={visible}
-              selectionScope={CSV_IMPORT_STAGING_SELECTION_SCOPE}
-              activeSort={columnSort}
-              sortDir={sortDir}
-              onSortColumn={toggleColumnSort}
-              onResizeColumn={onResizeColumn}
-              onResetColumn={onResetColumn}
-            />
-          )}
+          selectionScope={CSV_IMPORT_STAGING_SELECTION_SCOPE}
           renderGroup={(group, _stripe, { columns: visible }) => (
             <>
               {group.rows.map((row) => (

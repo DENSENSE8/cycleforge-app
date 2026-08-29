@@ -7,7 +7,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { PageHeader } from '@/components/ui/pane-header';
 import { Panel, Button } from '@/design-system/primitives';
-import { DataTable, type DataTableColumn } from '@/design-system/components/DataTable';
+import { AdminTable, type AdminTableColumn } from '@/design-system/components/AdminTable';
 
 export const dynamic = 'force-dynamic';
 
@@ -173,7 +173,7 @@ export default async function ReturnsIntakeAdminPage({
   const missing = params.missing ?? null;
   const recent = await loadRecentReturns(user.organizationId);
 
-  const returnColumns: DataTableColumn<RecentReturnRow>[] = [
+  const returnColumns: AdminTableColumn<RecentReturnRow>[] = [
     {
       key: 'when',
       header: 'When',
@@ -352,7 +352,7 @@ export default async function ReturnsIntakeAdminPage({
             <h2 className="text-lg font-medium text-text-default">Recent returns</h2>
             <span className="text-xs text-text-soft">last 50</span>
           </header>
-          <DataTable
+          <AdminTable
             columns={returnColumns}
             rows={recent}
             rowKey={(r) => r.id}

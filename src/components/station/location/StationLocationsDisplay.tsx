@@ -70,7 +70,7 @@ import {
   StationArmedVerbList,
   type StationArmedVerb,
 } from '@/components/station/displays/StationArmedVerbList';
-import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
+import { SearchField } from '@/design-system/primitives/SearchField';
 import { SearchableSelectField } from '@/design-system/components';
 import { DISPLAYS_BODY_INSET } from '@/design-system/shells/detail-stack';
 import { useOrgGs1 } from '@/hooks/useOrgGs1';
@@ -319,8 +319,7 @@ export function StationLocationsDisplay({
               width, hairline under): one component, one rhythm, wherever an
               operator types above a list. */}
           <div className="shrink-0 border-b border-border-hairline">
-            <TechRailSearchBar
-              variant="chrome"
+            <SearchField
               value={query}
               onChange={setQuery}
               onClear={() => setQuery('')}

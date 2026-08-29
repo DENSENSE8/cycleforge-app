@@ -8,21 +8,15 @@
  * Rooms / Map) keep their bodies; any data table mounts flush.
  */
 
+import {
+  FilterMenu,
+  FilterMenuRow,
+} from '@/design-system/primitives/FilterMenu';
 import { useCallback, useMemo, useState, type Ref } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
-import {
-  WORKBENCH_SHEET_CHROME,
-  WORKBENCH_SHEET_HOST,
-  WorkbenchTriageBand,
-} from '@/components/dashboard/workbench-shell';
-import { WorkbenchInspectorToggle } from '@/components/dashboard/workbench-inspector-toggle';
-import {
-  WorkbenchFilterMenuRow,
-  WorkbenchFilterPopover,
-} from '@/components/dashboard/workbench-filter-popover';
 import { useRightRailTopId } from '@/components/right-rail/useRightRailOccupant';
-import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
+import { SearchField } from '@/design-system/primitives/SearchField';
 import { useLocations } from '@/hooks/useLocations';
 import { useBinsOverview, type BinsOverviewRow } from '@/hooks/useBinsOverview';
 import { BinsTable } from './BinsTable';
@@ -39,7 +33,6 @@ import { RackLabelWorkspace } from './RackLabelWorkspace';
 import { RackDetailView } from './RackDetailView';
 import { WarehouseMap, type MapViewMode } from './WarehouseMap';
 import { WarehouseFloorPlan } from './WarehouseFloorPlan';
-import { LocationsWorkspaceHeader } from './LocationsWorkspaceHeader';
 import { parseLocationsTab } from '@/lib/inventory/locations-path';
 import { cn } from '@/utils/_cn';
 
@@ -109,7 +102,7 @@ function LocationsBinsChrome({
           <WorkbenchInspectorToggle open={binInspectorOpen} testId="bins-inspector-toggle" />
         }
         search={
-          <TechRailSearchBar
+          <SearchField
             value={q}
             onChange={(v) => onParamChange('q', v)}
             onClear={() => onParamChange('q', '')}
@@ -122,15 +115,13 @@ function LocationsBinsChrome({
             // `right` until 2026-08-08: a second filter grammar AND soft radius
             // on ops chrome.
             trailingSuffix={
-              <WorkbenchFilterPopover
+              <FilterMenu
                 open={roomFilterOpen}
                 onOpenChange={setRoomFilterOpen}
                 hot={Boolean(room)}
-                hotActiveLabel={room || undefined}
                 label="Filter by room"
-                density="field"
               >
-                <WorkbenchFilterMenuRow
+                <FilterMenuRow
                   label="All rooms"
                   active={!room}
                   onClick={() => {
@@ -141,7 +132,7 @@ function LocationsBinsChrome({
                 {rooms.map((r) => {
                   const name = r.room || r.name;
                   return (
-                    <WorkbenchFilterMenuRow
+                    <FilterMenuRow
                       key={r.id}
                       label={r.zone_letter ? `${name} (${r.zone_letter})` : name}
                       active={room === name}
@@ -152,7 +143,7 @@ function LocationsBinsChrome({
                     />
                   );
                 })}
-              </WorkbenchFilterPopover>
+              </FilterMenu>
             }
           />
         }

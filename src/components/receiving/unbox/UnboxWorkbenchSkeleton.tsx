@@ -14,10 +14,6 @@
 import { SkeletonBase, SkeletonList } from '@/design-system/components/Skeletons';
 import { MONITOR_KPI_TILE_CLASS } from '@/design-system/components/monitor';
 import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
-import {
-  WORKBENCH_SHEET_CHROME,
-  WORKBENCH_SHEET_HOST,
-} from '@/components/dashboard/workbench-shell';
 import { PRIMARY_CHROME_ROW_FACE } from '@/components/layout/header-shell';
 import { cn } from '@/utils/_cn';
 

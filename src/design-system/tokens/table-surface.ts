@@ -3,7 +3,7 @@
  *
  * **Framed card** ({@link TABLE_SURFACE_CLIP_CLASS}): rounded-xl + raised lift +
  * `overflow-hidden` so cell grid lines clip at the corners. Use for admin
- * `DataTable`, Orders hand-compose, and any surface that still needs a raised
+ * `AdminTable`, Orders hand-compose, and any surface that still needs a raised
  * island inside gutters.
  *
  * **Sheets plane** ({@link TABLE_SURFACE_SHEET_CLASS}): hairline perimeter only —

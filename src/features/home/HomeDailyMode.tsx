@@ -21,23 +21,12 @@ import {
   getCurrentPSTDateKey,
   parseDateKey,
 } from '@/utils/date';
-import {
-  WorkbenchSheetView,
-  useWorkbenchSheetChrome,
-} from '@/components/dashboard/WorkbenchSheetView';
-import {
-  WorkbenchChromeHeader,
-  WorkbenchTrailingCluster,
-  WorkbenchTriageBand,
-} from '@/components/dashboard/workbench-shell';
-import { WorkbenchInspectorToggle } from '@/components/dashboard/workbench-inspector-toggle';
 import { DailyCheckItemInspector } from '@/features/daily-checks/DailyCheckItemInspector';
-import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
+import { DataTable } from '@/components/tables/DataTable';
 import { rowGroupTotals, singleBand, type RowGroup } from '@/lib/group-rows';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import { compareGridValues } from '@/design-system/components/grid';
 import { DAILY_TABLE_BINDING } from './grid/daily-table-definition';
-import { DailyGridColumnHeader } from './grid/DailyGridColumnHeader';
 import { formatDateTimePST } from '@/utils/date';
 import { CompoundRow } from '@/components/tables/compound/CompoundRow';
 import { dailyTaskCompoundView } from './grid/daily-task-compound-view';
@@ -278,7 +267,7 @@ export function HomeDailyMode() {
       >
         {() => (
           <>
-            <NonlinearTableHost<DailyTaskRow, DailyGridColumnKey, DailyGridColumn>
+            <DataTable<DailyTaskRow, DailyGridColumnKey, DailyGridColumn>
               binding={DAILY_TABLE_BINDING}
               tableId="daily"
               // COMPOUND (two-row) WMS layout — the SAME tracks Unbox,

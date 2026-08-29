@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import PackScanColumn from '@/components/station/PackScanColumn';
 import { PackRecentPacksRail } from '@/components/sidebar/packer/PackRecentPacksRail';
-import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
+import { SearchField } from '@/design-system/primitives/SearchField';
 import {
   EMPTY_STATION_HISTORY_RAIL_FACETS,
   StationHistoryRailFilters,
@@ -48,14 +48,14 @@ export function PackerSidebarPanel() {
             />
           }
           railFooter={
-            <TechRailSearchBar
+            <SearchField
               value={railFilter}
               onChange={setRailFilter}
               placeholder="Filter recent packs…"
-              trailingSuffix={
+              rightElement={
                 <StationHistoryRailFilters facets={railFacets} onChange={setRailFacets} />
               }
-            />
+        />
           }
         />
       </div>

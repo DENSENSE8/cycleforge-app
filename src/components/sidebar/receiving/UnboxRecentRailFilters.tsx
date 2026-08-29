@@ -3,20 +3,20 @@
 /**
  * Field-density facet popover for ReceivingLineRow recent-rail footers —
  * Priority · Type · Platform (Unbox · Triage · Testing). Composes
- * {@link WorkbenchFilterPopover}; seats in TechRailSearchBar `trailingSuffix`
+ * {@link FilterMenu}; seats in TechRailSearchBar `trailingSuffix`
  * (after hover-reveal paste). Local state only (not workbench URL facets).
  *
  * Preferred import: {@link ReceivingRecentRailFilters} from
  * `@/components/sidebar/rail-shell/ReceivingRecentRailFilters`.
  */
 
-import { useState } from 'react';
 import {
-  WorkbenchFilterDivider,
-  WorkbenchFilterGroupLabel,
-  WorkbenchFilterMenuRow,
-  WorkbenchFilterPopover,
-} from '@/components/dashboard/workbench-filter-popover';
+  FilterMenu,
+  FilterMenuDivider,
+  FilterMenuGroupLabel,
+  FilterMenuRow,
+} from '@/design-system/primitives/FilterMenu';
+import { useState } from 'react';
 import { PlatformMark } from '@/components/ui/PlatformMark';
 import { ReceivingTypeMark } from '@/components/ui/ReceivingTypeMark';
 import { usePlatformCatalog, useReceivingTypeCatalog } from '@/hooks/useCatalog';
@@ -42,17 +42,15 @@ export function UnboxRecentRailFilters({
   const hotLabel = unboxRailFacetsHotLabel(facets);
 
   return (
-    <WorkbenchFilterPopover
+    <FilterMenu
       open={open}
       onOpenChange={setOpen}
       hot={hot}
       label="Rail filters"
-      hotActiveLabel={hotLabel}
-      density="field"
       contentClassName="w-56"
     >
-      <WorkbenchFilterGroupLabel>Priority</WorkbenchFilterGroupLabel>
-      <WorkbenchFilterMenuRow
+      <FilterMenuGroupLabel>Priority</FilterMenuGroupLabel>
+      <FilterMenuRow
         label="All priorities"
         active={facets.priorityTier == null}
         onClick={() => {
@@ -61,7 +59,7 @@ export function UnboxRecentRailFilters({
         }}
       />
       {PRIORITY_OVERRIDE_TIERS.map((tier) => (
-        <WorkbenchFilterMenuRow
+        <FilterMenuRow
           key={tier.value}
           label={tier.label}
           active={facets.priorityTier === tier.value}
@@ -72,8 +70,8 @@ export function UnboxRecentRailFilters({
         />
       ))}
 
-      <WorkbenchFilterDivider />
-      <WorkbenchFilterMenuRow
+      <FilterMenuDivider />
+      <FilterMenuRow
         label="All types"
         active={facets.receivingType == null}
         sectionHeader
@@ -83,7 +81,7 @@ export function UnboxRecentRailFilters({
         }}
       />
       {typeOptions.map((opt) => (
-        <WorkbenchFilterMenuRow
+        <FilterMenuRow
           key={opt.value}
           label={opt.label}
           active={facets.receivingType === opt.value}
@@ -95,8 +93,8 @@ export function UnboxRecentRailFilters({
         />
       ))}
 
-      <WorkbenchFilterDivider />
-      <WorkbenchFilterMenuRow
+      <FilterMenuDivider />
+      <FilterMenuRow
         label="All platforms"
         active={facets.platform == null}
         sectionHeader
@@ -106,7 +104,7 @@ export function UnboxRecentRailFilters({
         }}
       />
       {platformOptions.map((opt) => (
-        <WorkbenchFilterMenuRow
+        <FilterMenuRow
           key={opt.value}
           label={opt.label}
           active={facets.platform === opt.value}
@@ -122,8 +120,8 @@ export function UnboxRecentRailFilters({
 
       {hot ? (
         <>
-          <WorkbenchFilterDivider />
-          <WorkbenchFilterMenuRow
+          <FilterMenuDivider />
+          <FilterMenuRow
             label="Clear filters"
             active={false}
             onClick={() => {
@@ -133,6 +131,6 @@ export function UnboxRecentRailFilters({
           />
         </>
       ) : null}
-    </WorkbenchFilterPopover>
+    </FilterMenu>
   );
 }

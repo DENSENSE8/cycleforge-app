@@ -15,18 +15,9 @@
 
 import { useCallback, useMemo } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import {
-  WorkbenchSheetView,
-  useWorkbenchSheetChrome,
-} from '@/components/dashboard/WorkbenchSheetView';
-import {
-  WorkbenchChromeHeader,
-  WorkbenchTriageBand,
-} from '@/components/dashboard/workbench-shell';
-import { WorkbenchInspectorToggle } from '@/components/dashboard/workbench-inspector-toggle';
-import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
+import { DataTable } from '@/components/tables/DataTable';
 import { CompoundRow } from '@/components/tables/compound/CompoundRow';
-import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
+import { SearchField } from '@/design-system/primitives/SearchField';
 import { compareGridValues } from '@/design-system/components/grid';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import { rowGroupTotals, singleBand, type RowGroup } from '@/lib/group-rows';
@@ -35,7 +26,6 @@ import {
   ImportExceptionFormRail,
 } from '@/features/review/catalog-link/CatalogLinkFormRail';
 import { catalogLinkCompoundView } from '@/features/review/catalog-link/grid/catalog-link-compound-view';
-import { CatalogLinkGridColumnHeader } from '@/features/review/catalog-link/grid/CatalogLinkGridColumnHeader';
 import { CATALOG_LINK_GRID_CAPABILITIES } from '@/features/review/catalog-link/grid/catalog-link-grid-descriptor';
 import {
   CATALOG_LINK_COMPOUND_COLUMNS,
@@ -47,7 +37,6 @@ import {
 } from '@/features/review/catalog-link/grid/catalog-link-grid-layout';
 import { CATALOG_LINK_TABLE_BINDING } from '@/features/review/catalog-link/grid/catalog-link-table-definition';
 import { importExceptionCompoundView } from '@/features/review/catalog-link/grid/import-exception-compound-view';
-import { ImportExceptionGridColumnHeader } from '@/features/review/catalog-link/grid/ImportExceptionGridColumnHeader';
 import { IMPORT_EXCEPTION_GRID_CAPABILITIES } from '@/features/review/catalog-link/grid/import-exception-grid-descriptor';
 import {
   IMPORT_EXCEPTION_COMPOUND_COLUMNS,
@@ -276,15 +265,14 @@ export function ReviewCatalogLinkTable(_props: Record<string, unknown>) {
         triage={() => (
           <WorkbenchTriageBand
             search={
-              <TechRailSearchBar
-                variant="chrome"
+              <SearchField
                 value={query}
                 onChange={setQuery}
                 placeholder={
                   missingSection ? 'Filter sheet rows…' : 'Filter listings…'
                 }
                 className="min-w-0 flex-1"
-              />
+        />
             }
             right={
               missingSection
@@ -328,13 +316,12 @@ export function ReviewCatalogLinkTable(_props: Record<string, unknown>) {
       >
         {() =>
           missingSection ? (
-            <NonlinearTableHost<
+            <DataTable<
               ImportExceptionRow,
               ImportExceptionGridColumnKey,
               ImportExceptionGridColumn
             >
               binding={IMPORT_EXCEPTION_TABLE_BINDING}
-              tableId="import-exception"
               columns={IMPORT_EXCEPTION_COMPOUND_COLUMNS}
               orderGroupsByDate={exceptionGroups}
               rows={exceptionRows}
@@ -350,17 +337,6 @@ export function ReviewCatalogLinkTable(_props: Record<string, unknown>) {
                     ? 'No sheet row matches that search.'
                     : 'No sheet rows are missing an item number.'
               }
-              renderColumnHeader={({ onResizeColumn, onResetColumn, columns: visible }) => (
-                <ImportExceptionGridColumnHeader
-                  columns={visible}
-                  activeSort={exceptionSort.sort}
-                  sortDir={exceptionSort.dir}
-                  onSortColumn={exceptionSort.toggleColumnSort}
-                  onResizeColumn={onResizeColumn}
-                  onResetColumn={onResetColumn}
-                  tableId="import-exception"
-                />
-              )}
               renderGroup={(group, _stripe, { columns: visible }) => (
                 <>
                   {group.rows.map((row) => (
@@ -413,13 +389,12 @@ export function ReviewCatalogLinkTable(_props: Record<string, unknown>) {
               )}
             />
           ) : (
-            <NonlinearTableHost<
+            <DataTable<
               CatalogLinkChoreRow,
               CatalogLinkGridColumnKey,
               CatalogLinkGridColumn
             >
               binding={CATALOG_LINK_TABLE_BINDING}
-              tableId="catalog-link"
               columns={CATALOG_LINK_COMPOUND_COLUMNS}
               orderGroupsByDate={choreGroups}
               rows={choreRows}
@@ -435,17 +410,6 @@ export function ReviewCatalogLinkTable(_props: Record<string, unknown>) {
                     ? 'No listing matches that search.'
                     : 'Every imported listing already has a catalog SKU.'
               }
-              renderColumnHeader={({ onResizeColumn, onResetColumn, columns: visible }) => (
-                <CatalogLinkGridColumnHeader
-                  columns={visible}
-                  activeSort={choreSort.sort}
-                  sortDir={choreSort.dir}
-                  onSortColumn={choreSort.toggleColumnSort}
-                  onResizeColumn={onResizeColumn}
-                  onResetColumn={onResetColumn}
-                  tableId="catalog-link"
-                />
-              )}
               renderGroup={(group, _stripe, { columns: visible }) => (
                 <>
                   {group.rows.map((row) => (

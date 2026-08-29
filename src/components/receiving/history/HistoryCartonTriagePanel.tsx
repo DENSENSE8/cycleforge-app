@@ -73,12 +73,7 @@ import {
 import { TrackingNumberMenuChip } from '@/components/ui/TrackingNumberMenuChip';
 import { ReceivingPhotosSection } from '@/components/station/receiving/ReceivingPhotosSection';
 import { ReceivingAuditPanel } from '@/components/receiving/workspace/ReceivingAuditPanel';
-import { HistoryViewTopicsCluster } from '@/components/receiving/history/HistoryViewTopicsCluster';
 import { buildHistoryInspectorLeaves } from '@/components/receiving/history/build-history-inspector-leaves';
-import {
-  HistoryViewChromeBridge,
-  useHistoryViewChromeOptional,
-} from '@/components/receiving/history/history-view-chrome-context';
 import { IconButton } from '@/design-system/primitives';
 import { SkeletonList } from '@/design-system/components/Skeletons';
 import type { HistoryTriageTarget } from '@/lib/receiving/history-triage-row';

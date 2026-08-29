@@ -11,7 +11,6 @@ import { useCallback, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
 import { yieldStationRightEdgeForDeskOccupant } from '@/components/receiving/workspace/line-edit/unbox-right-edge';
-import { requestCloseGridColumnDetails } from '@/design-system/components/grid/grid-column-details-open';
 import { setDetailInspectorCollapsed } from '@/design-system/shells/detail-stack';
 import { openPanel } from '@/lib/right-rail/panel-store';
 import { STATION_DESK_OCCUPANT_CLOSE_EVENT } from '@/utils/events';

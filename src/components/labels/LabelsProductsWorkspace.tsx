@@ -9,13 +9,8 @@
 import { useCallback, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter, useSearchParams } from 'next/navigation';
-import {
-  WorkbenchSheetView,
-  useWorkbenchSheetChrome,
-} from '@/components/dashboard/WorkbenchSheetView';
 import { MONITOR_SECTION_CARD_SCROLL_CLASS } from '@/design-system/components/monitor';
 import { cn } from '@/utils/_cn';
-import { LabelsProductsWorkspaceHeader } from '@/components/labels/LabelsProductsWorkspaceHeader';
 import { ProductCatalogList } from '@/components/labels/ProductCatalogList';
 import { UnitHistoryFinder } from '@/components/labels/UnitHistoryFinder';
 import {

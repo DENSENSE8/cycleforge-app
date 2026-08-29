@@ -25,7 +25,6 @@
 
 import { z } from 'zod';
 
-import { isTableDensity } from '@/lib/tables/table-density';
 
 /** A param's value contract. Output must be a string — URLs hold strings. */
 export type ParamSchema = z.ZodType<string>;
@@ -153,7 +152,7 @@ export const AMBIENT_PARAMS = {
    * same reason `colsort`/`coldir` are.
    *
    * **These were dropped on arrival, which broke saved views outright.**
-   * `SAVED_VIEW_PARAM_KEYS` captures `layout` / `density` / `weekOffset` for
+   * `SAVED_VIEW_PARAM_KEYS` captures `layout` / `weekOffset` for
    * `tech_history`, `testing_history`, `receiving_history` and
    * `receiving_incoming`; applying a saved view wrote them and the hygiene hook
    * on `/receiving/history`, `/incoming` and `/test` stripped every one, so the
@@ -167,7 +166,6 @@ export const AMBIENT_PARAMS = {
    * different question with its own local parser.
    */
   layout: paramRoundTrip((raw) => (raw === 'board' || raw === 'all' ? raw : null)),
-  density: paramRoundTrip((raw) => (isTableDensity(raw) ? raw : null)),
   /** Week navigation offset. Only positive values are ever written (0 = deleted). */
   weekOffset: paramPositiveInt,
 } as const satisfies Record<string, ParamSchema>;

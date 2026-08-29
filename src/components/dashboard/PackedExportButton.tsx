@@ -3,7 +3,6 @@
 import { useCallback, useEffect } from 'react';
 import { Download } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
-import { WORKBENCH_CHROME_PILL_CLASS } from '@/components/dashboard/workbench-shell';
 import { usePackedOrdersFeed } from '@/hooks/usePackedOrdersFeed';
 import {
   buildPackedOrderExportCsv,

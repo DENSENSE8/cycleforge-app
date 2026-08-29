@@ -18,7 +18,6 @@
 import { RefreshCw } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import type { PaneHeaderActionBarAction } from '@/components/ui/pane-header';
-import { InspectorColumnDisplayButton } from '@/components/right-rail/InspectorColumnDisplayButton';
 import { IconButton } from '@/design-system/primitives';
 
 /**

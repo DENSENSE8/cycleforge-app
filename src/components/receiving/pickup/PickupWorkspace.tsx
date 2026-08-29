@@ -19,15 +19,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
-import {
-  WORKBENCH_SHEET_CHROME,
-  WORKBENCH_SHEET_HOST,
-  WorkbenchChromeHeader,
-  WorkbenchTrailingCluster,
-  WorkbenchTriageBand,
-} from '@/components/dashboard/workbench-shell';
 import { Button } from '@/design-system/primitives';
-import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
+import { SearchField } from '@/design-system/primitives/SearchField';
 import {
   Dialog,
   DialogContent,
@@ -41,7 +34,6 @@ import { focusRing } from '@/design-system/tokens/focus-ring';
 import { createLocalPickupOrder } from '@/lib/local-pickup/create-order';
 import { pickupOrderIsDone } from '@/lib/local-pickup/order-status';
 import { cn } from '@/utils/_cn';
-import { PickupChromeActions } from './PickupChromeActions';
 import {
   parsePickupStatusTab,
   pickupLineMatchesStatus,
@@ -50,11 +42,10 @@ import {
   type PickupLine,
   type PickupStatusTab,
 } from './pickup-lines';
-import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
+import { DataTable } from '@/components/tables/DataTable';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import { groupRowsBy, type RowGroup } from '@/lib/group-rows';
 import { PICKUP_TABLE_BINDING } from './grid/pickup-table-definition';
-import { PickupGridColumnHeader } from './grid/PickupGridColumnHeader';
 import { PickupGridGroupRow } from './grid/PickupGridGroupRow';
 import {
   defaultDirForPickupGridSort,
@@ -290,8 +281,7 @@ export function PickupWorkspace({ selectedOrderId = null }: PickupWorkspaceProps
             <WorkbenchTriageBand
               controlsSlotRef={setPickupControlsEl}
               search={
-                <TechRailSearchBar
-                  variant="chrome"
+                <SearchField
                   value={query}
                   onChange={(v) => setParam('q', v.trim() ? v : null)}
                   placeholder="Filter pickup items…"
@@ -303,7 +293,7 @@ export function PickupWorkspace({ selectedOrderId = null }: PickupWorkspaceProps
         }
       >
         <div className={WORKBENCH_SHEET_HOST}>
-          <NonlinearTableHost<PickupLine, PickupGridColumnKey, PickupGridColumn>
+          <DataTable<PickupLine, PickupGridColumnKey, PickupGridColumn>
             binding={PICKUP_TABLE_BINDING}
             orderGroupsByDate={orderGroupsByDate}
             rows={visibleRows}
@@ -314,19 +304,7 @@ export function PickupWorkspace({ selectedOrderId = null }: PickupWorkspaceProps
             loading={isLoading}
             emptyMessage={emptyMessage}
             searchEmptyMessage={searchEmptyMessage}
-            isSearching={Boolean(normalizedQuery) && !isError}
             scrollRef={scrollRef}
-            columnTriggerPortalTarget={pickupControlsEl}
-            renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
-              <PickupGridColumnHeader
-                columns={visible}
-                activeSort={columnSort}
-                sortDir={sortDir}
-                onSortColumn={toggleColumnSort}
-                onResizeColumn={onResizeColumn}
-                onResetColumn={onResetColumn}
-              />
-            )}
             renderGroup={(group, baseStripeIndex, { columns: visible }) => (
               <PickupGridGroupRow
                 group={group}

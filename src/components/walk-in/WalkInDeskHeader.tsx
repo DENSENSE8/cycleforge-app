@@ -11,7 +11,6 @@
  */
 
 import { type Ref } from 'react';
-import { WorkbenchChromeHeader } from '@/components/dashboard/workbench-shell';
 import { Button } from '@/design-system/primitives';
 import { ExternalLink } from '@/components/Icons';
 import type { WalkInModeTab } from '@/lib/walk-in/history-modes';

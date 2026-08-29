@@ -60,7 +60,7 @@ import {
 } from './route-params';
 
 /** Operator-level bits every workbench accepts on arrival. */
-const WORKBENCH_CARRIES = ['staff', 'staffId', 'colsort', 'coldir', 'pane', 'layout', 'density', 'weekOffset'] as const;
+const WORKBENCH_CARRIES = ['staff', 'staffId', 'colsort', 'coldir', 'pane', 'layout', 'weekOffset'] as const;
 
 /**
  * `/support` — Tickets · Orders · Voicemail · Calls · Warranty · Issues.

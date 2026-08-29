@@ -9,7 +9,6 @@ import DateRangeHeader from '@/components/ui/DateRangeHeader';
 import { DateGroupHeader } from '@/components/ui/DateGroupHeader';
 import { OrderSearchEmptyState } from '@/components/dashboard/OrderSearchEmptyState';
 import { QueueTableBanner } from '@/components/dashboard/orders-queue/QueueTableBanner';
-import { StationRowColumnHeader } from '@/components/dashboard/queue-table';
 import {
   LedgerGrid,
   TableStickyXScroll,

@@ -152,9 +152,18 @@ export function useShippedTableFilters({
     [replaceParams],
   );
 
-  const clearSearch = useCallback(() => {
-    replaceParams((params) => { params.delete('search'); });
-  }, [replaceParams]);
+  const setSearch = useCallback(
+    (next: string) => {
+      replaceParams((params) => {
+        const trimmed = next.trim();
+        if (trimmed) params.set('search', trimmed);
+        else params.delete('search');
+      });
+    },
+    [replaceParams],
+  );
+
+  const clearSearch = useCallback(() => setSearch(''), [setSearch]);
 
   const applyShippedFilter = useCallback(
     (filter: string) => {
@@ -231,6 +240,7 @@ export function useShippedTableFilters({
     normalizedSearch,
     layout,
     setWeekOffset,
+    setSearch,
     clearSearch,
     applyShippedFilter,
     setLayout,

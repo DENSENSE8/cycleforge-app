@@ -34,18 +34,14 @@
  *
  */
 
+import {
+  FilterMenuGroupLabel,
+  FilterMenuRow,
+} from '@/design-system/primitives/FilterMenu';
 import { useState } from 'react';
 import * as Popover from '@radix-ui/react-popover';
 import { Check, Folder, Loader2, Plus } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import {
-  WorkbenchChromeHeader,
-  WORKBENCH_CHROME_PILL_CLASS,
-} from '@/components/dashboard/workbench-shell';
-import {
-  WorkbenchFilterGroupLabel,
-  WorkbenchFilterMenuRow,
-} from '@/components/dashboard/workbench-filter-popover';
 import { STATION_CONTEXT_BOXED_CUBE_CLASS } from '@/components/station/entity-context/station-context-action-pill';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { useImageTypes } from '@/hooks/useImageTypes';
@@ -219,7 +215,7 @@ function PhotoMediaTypePopover({
             cornerClass('flush'),
           )}
         >
-          <WorkbenchFilterGroupLabel>Media types</WorkbenchFilterGroupLabel>
+          <FilterMenuGroupLabel>Media types</FilterMenuGroupLabel>
 
           {isLoading && custom.length === 0 ? (
             <p className="flex items-center gap-2 px-2.5 py-1.5 text-role-caption text-text-faint">
@@ -231,7 +227,7 @@ function PhotoMediaTypePopover({
             </p>
           ) : (
             custom.map((type) => (
-              <WorkbenchFilterMenuRow
+              <FilterMenuRow
                 key={type.key}
                 label={type.label}
                 active={activeKey === type.key}

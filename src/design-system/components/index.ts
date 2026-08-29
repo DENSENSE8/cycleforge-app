@@ -34,7 +34,7 @@ export * from './StickyActionBar';
 export * from './FilterRefinementBar';
 export * from './VerticalSplitStack';
 export * from './SearchableSelectField';
-export * from './DataTable';
+export * from './AdminTable';
 export * from './monitor';
 export * from './DocumentPreviewFrame';
 export * from './DocumentSlideOver';

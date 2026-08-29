@@ -24,7 +24,6 @@ import { useTableImportFilePicker } from '@/components/tables/import/TableImport
 import { useTableImportParam } from '@/hooks/useTableImportParam';
 import { Button } from '@/design-system/primitives';
 import { yieldStationRightEdgeForDeskOccupant } from '@/components/receiving/workspace/line-edit/unbox-right-edge';
-import { requestCloseGridColumnDetails } from '@/design-system/components/grid/grid-column-details-open';
 import { setDetailInspectorCollapsed } from '@/design-system/shells/detail-stack';
 import { openPanel } from '@/lib/right-rail/panel-store';
 import { INBOUND_RETURNS_IMPORT_DESCRIPTOR } from '@/lib/inbound/inbound-returns-import-descriptor';

@@ -22,7 +22,6 @@
 
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
 import { DeskInspectorIndexShell } from '@/components/right-rail/DeskInspectorIndexShell';
-import { OrdersViewTopicsCluster } from '@/components/outbound/orders/OrdersViewTopicsCluster';
 import {
   OrdersViewChromeBridge,
   useOrdersViewChrome,

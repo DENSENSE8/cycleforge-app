@@ -31,17 +31,8 @@ import { useSurfacePaintMark } from '@/lib/observability/paint-timing';
 import { useUnboxPrimaryPaintOptional } from '@/components/receiving/unbox/unbox-primary-paint-context';
 import { useUIModeOptional } from '@/design-system/providers/UIModeProvider';
 import { DateRangePickerPill } from '@/components/ui/DateRangeHeader';
-import { IncomingWorkspaceHeader } from '@/components/sidebar/receiving/incoming/IncomingWorkspaceHeader';
 import { IncomingReturnsImportStagingHost } from '@/components/sidebar/receiving/incoming/IncomingReturnsImportStagingHost';
 import { IncomingReturnsImportStagingRail } from '@/components/sidebar/receiving/incoming/IncomingReturnsImportStagingRail';
-import {
-  HistoryWorkspaceHeader,
-  HistoryTriageBand,
-} from '@/components/sidebar/receiving/HistoryWorkspaceHeader';
-import {
-  WorkbenchSheetView,
-  useWorkbenchSheetChrome,
-} from '@/components/dashboard/WorkbenchSheetView';
 import { useTableImportParam } from '@/hooks/useTableImportParam';
 import { INBOUND_RETURNS_IMPORT_DESCRIPTOR } from '@/lib/inbound/inbound-returns-import-descriptor';
 import {
@@ -58,11 +49,10 @@ import {
 import { useQueryClient } from '@tanstack/react-query';
 import { commitReceivingLineNote } from '@/lib/receiving/commit-receiving-line-note';
 import { compareIncomingGridRows } from '@/lib/receiving/incoming-grid-compare';
-import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
+import { DataTable } from '@/components/tables/DataTable';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import { groupRowsBy, type RowGroup } from '@/lib/group-rows';
 import { INCOMING_TABLE_BINDING } from '@/components/station/incoming-grid/incoming-table-definition';
-import { IncomingGridColumnHeader } from '@/components/station/incoming-grid/IncomingGridColumnHeader';
 import { IncomingGridGroupRow } from '@/components/station/incoming-grid/IncomingGridGroupRow';
 import { computeWeekRange, formatWeekRangeCompact, toPSTDateKey } from '@/utils/date';
 import type { GroupedRenderOrder } from '@/lib/group-rows';
@@ -91,14 +81,12 @@ import { ReceivingLineOrderRow } from '@/components/station/ReceivingLineOrderRo
 import { GridDegradedBox } from '@/design-system/components/grid';
 import { ReceivingGridHost } from '@/components/station/receiving-grid/ReceivingGridHost';
 import { RECEIVING_COMPOUND_COLUMNS } from '@/lib/receiving/receiving-grid-layout';
-import { ReceivingDrillHost } from '@/components/station/receiving-grid/ReceivingDrillHost';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { StationPipelineBoard } from '@/components/station/StationPipelineBoard';
 import { STATION_PIPELINE_BOARDS } from '@/lib/station/flags';
 import { LAYOUT_PARAM, parseLayout, parseWeekOffset, WEEK_OFFSET_PARAM } from '@/lib/station/table-url-params';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { cartonReadHref, INCOMING_SURFACE_ROUTE } from '@/lib/receiving/surface-path';
-import { parseHistoryDrillLayout } from '@/lib/receiving/history-drill-layout';
 import { toast } from '@/lib/toast';
 import {
   dispatchReceivingOpenHistoryTriage,
@@ -126,7 +114,6 @@ import {
   type ReceivingHistoryLane,
   type ReceivingLaneIconKey,
 } from '@/lib/receiving/receiving-board-lanes';
-import { TableColumnConfigProvider } from '@/components/ui/table-column-config/TableColumnConfig';
 import { parseInboundLane } from '@/lib/receiving/inbound-lane';
 import { getUnboxWorkspaceTabFromSearch } from '@/utils/unbox-workspace-state';
 import { unboxKpiRowFilter, UNBOX_KPI_FILTER_PARAM } from '@/lib/receiving/unbox-metrics';
@@ -834,14 +821,8 @@ export default function ReceivingLinesTable({
               <GridDegradedBox onRetry={refetch} />
             </div>
           ) : (
-            <NonlinearTableHost<ReceivingLineRow, IncomingGridColumnKey, IncomingGridColumn>
+            <DataTable<ReceivingLineRow, IncomingGridColumnKey, IncomingGridColumn>
               binding={INCOMING_TABLE_BINDING}
-              tableId="incoming_embed"
-              // COMPOUND (two-row) WMS layout — the SAME tracks Unbox, History,
-              // Testing, To-Ship and Tasks mount. No lane variant: the
-              // recently-removed lane's reason rides the STATE pill
-              // (`incomingStateFace`) instead of a sixth column only that lane
-              // can use.
               columns={INCOMING_COMPOUND_COLUMNS}
               orderGroupsByDate={incomingGroups}
               rows={incomingFlatRows}
@@ -851,22 +832,6 @@ export default function ReceivingLinesTable({
               loading={isLoading && localRows.length === 0}
               emptyMessage={emptyMessage}
               scrollRef={scrollRef}
-              columnTriggerPortalTarget={columnDisplayPortalTarget}
-              renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
-                <IncomingGridColumnHeader
-                  isMobile={isMobile}
-                  selectMode={selectMode}
-                  selectionScope={RECEIVING_SELECTION_SCOPE}
-                  selectGutterChrome={selectGutterChrome}
-                  columns={visible}
-                  activeSort={incomingColumnSort}
-                  sortDir={incomingSortDir}
-                  onSortColumn={toggleColumnSort}
-                  onResizeColumn={onResizeColumn}
-                  onResetColumn={onResetColumn}
-                  tableId="incoming_embed"
-                />
-              )}
               renderGroup={(group, baseStripeIndex, { columns: visible }) => (
                 <IncomingGridGroupRow
                   group={group}
@@ -955,9 +920,8 @@ export default function ReceivingLinesTable({
                   <GridDegradedBox onRetry={refetch} />
                 </div>
               ) : (
-                <NonlinearTableHost<ReceivingLineRow, IncomingGridColumnKey, IncomingGridColumn>
+                <DataTable<ReceivingLineRow, IncomingGridColumnKey, IncomingGridColumn>
                   binding={INCOMING_TABLE_BINDING}
-                  // COMPOUND (two-row) WMS layout — see the embedded mount above.
                   columns={INCOMING_COMPOUND_COLUMNS}
                   orderGroupsByDate={incomingGroups}
                   rows={incomingFlatRows}
@@ -967,21 +931,6 @@ export default function ReceivingLinesTable({
                   loading={isLoading && localRows.length === 0}
                   emptyMessage={emptyMessage}
                   scrollRef={scrollRef}
-                  columnTriggerPortalTarget={null}
-                  renderColumnHeader={({ toggleColumnSort, onResizeColumn, onResetColumn, columns: visible }) => (
-                    <IncomingGridColumnHeader
-                      isMobile={isMobile}
-                      selectMode={selectMode}
-                      selectionScope={RECEIVING_SELECTION_SCOPE}
-                      selectGutterChrome={selectGutterChrome}
-                      columns={visible}
-                      activeSort={incomingColumnSort}
-                      sortDir={incomingSortDir}
-                      onSortColumn={toggleColumnSort}
-                      onResizeColumn={onResizeColumn}
-                      onResetColumn={onResetColumn}
-                    />
-                  )}
                   renderGroup={(group, baseStripeIndex, { columns: visible }) => (
                     <IncomingGridGroupRow
                       group={group}

@@ -5,15 +5,12 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { getOrdersChannelName, safeChannelName } from '@/lib/realtime/channels';
 import type { DashboardSearchSectionProps } from '@/components/dashboard/DashboardSearchSectionProps';
-import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
+import { DataTable, type DataTableExport } from '@/components/tables/DataTable';
+import type { DataTableTabStrip } from '@/components/tables/TableStatusBar';
 import { useOrdersSpreadsheet } from '@/components/dashboard/orders-queue/useOrdersSpreadsheet';
-import { WORKBENCH_SHEET_HOST } from '@/components/dashboard/workbench-shell';
+import { useToShipChrome } from '@/components/unshipped/useToShipChrome';
 import { DASHBOARD_ORDERS_SELECTION_SCOPE } from '@/lib/selection/dashboard-scopes';
 import { useTableSelection } from '@/hooks/useTableSelection';
-import {
-  useReportSheetCounts,
-  useSheetDataSource,
-} from '@/components/sheet/sheet-chrome-context';
 import {
   ORDER_EXPORT_COLUMNS,
   buildOrderExportRow,
@@ -60,8 +57,6 @@ export interface UnshippedTableProps extends DashboardSearchSectionProps {
   /** Rail-selection model: the check-set is the single selection SoT and drives
    *  the right-rail inspector (History / order-rail SoT). */
   railSelection?: boolean;
-  /** Portal board toolbar controls into the dashboard outbound floating row. */
-  toolbarPortalTarget?: HTMLElement | null;
   /**
    * Override row open. Default opens shipped details (`dispatchOpenShippedDetails`).
    * Pack station passes this to open the pack overlay instead.
@@ -74,6 +69,13 @@ export interface UnshippedTableProps extends DashboardSearchSectionProps {
   fulfillmentLane?: 'pending' | 'tested';
   /** SSR stand-in handoff — primary queue has paintable rows (seed or fetch). */
   onPrimaryPainted?: () => void;
+  /**
+   * The DESK's mode strip, when this queue is one body among several (Pack:
+   * Queue ⇄ History; Shipping: Pending ⇄ Urgent ⇄ All ⇄ History). It replaces
+   * the desk's own triage tabs, because a strip that showed both would be two
+   * answers to "which list am I on".
+   */
+  tabStrip?: DataTableTabStrip;
 }
 
 /** Stable empty page. `query.data || []` minted a fresh array on every render
@@ -133,10 +135,10 @@ export function UnshippedTable({
   clearSearchLabel = 'Show All Pending Orders',
   selectMode = false,
   railSelection = false,
-  toolbarPortalTarget,
   onOpenRecord,
   fulfillmentLane,
   onPrimaryPainted,
+  tabStrip,
 }: UnshippedTableProps = {}) {
   const pathname = usePathname();
   const router = useRouter();
@@ -461,50 +463,17 @@ export function UnshippedTable({
     [laneRecords],
   );
 
-  // ── Sheets status counts ──────────────────────────────────────────────────
-  // Published upward so `SheetBottomBar` can print "12 selected · 200 of 922"
-  // bottom-right. Reported here rather than in the chrome because this is the
-  // only component that knows what SURVIVED the lane + facet filtering — the
-  // chrome knows what was asked for, not what came back.
-  //
-  // Computed before the first-run early return: hooks cannot run conditionally,
-  // and a first-run org still has counts worth reporting (all zero).
-  const selectedRows = useTableSelection<{ id?: number | string }>(
-    DASHBOARD_ORDERS_SELECTION_SCOPE,
-  );
-  const sheetLaneTotals = fulfillmentLaneTotals(queueCounts);
-  const sheetTotal =
-    fulfillmentLane === 'pending'
-      ? sheetLaneTotals.pending
-      : fulfillmentLane === 'tested'
-        ? sheetLaneTotals.tested
-        : (queueCounts?.total ?? records.length);
-  // The tab is the SCOPE, not a refinement — counting it here would leave the
-  // funnel lit on every load. Only what narrows within the tab counts.
-  const activeFilterCount =
-    (statusFilter ? 1 : 0) + (urgentOnly ? 1 : 0) + (searchQuery ? 1 : 0);
-  useReportSheetCounts({
-    shown: records.length,
-    total: sheetTotal,
-    selected: selectedRows.length,
-    activeFilters: activeFilterCount,
-  });
-
-  // Copy · Export · Print all read THIS producer, so the three verbs cannot
-  // disagree about which rows the operator meant. The shape is the shipped
-  // order-export shape (`ORDER_EXPORT_COLUMNS`) rather than the on-screen
-  // column set: a pasted or printed order row has to carry the identity fields
-  // (record id, SKU, platform) that make it useful away from the app, and half
-  // of the visible tracks are chips and icons with no text to copy.
-  useSheetDataSource(
-    useMemo(
-      () => ({
-        title: 'To-ship',
-        columns: () => [...ORDER_EXPORT_COLUMNS],
-        rows: () => records.map((row) => buildOrderExportRow(row)),
-      }),
-      [records],
-    ),
+  // Copy acts on the SELECTION, and the shape it copies is the shipped
+  // order-export shape rather than the on-screen column set: a pasted order row
+  // has to carry the identity fields (record id, SKU, platform) that make it
+  // useful away from the app, and half the visible tracks are chips and icons
+  // with no text to copy.
+  const copyExport = useMemo(
+    () => ({
+      columns: [...ORDER_EXPORT_COLUMNS],
+      toRow: (row: ShippedOrder) => buildOrderExportRow(row),
+    }),
+    [],
   );
 
   // First-run teaching state: a brand-new org with zero unshipped orders and no
@@ -575,7 +544,8 @@ export function UnshippedTable({
       searchResultLabel={searchResultLabel}
       clearSearchLabel={clearSearchLabel}
       footer={footer}
-      toolbarPortalTarget={toolbarPortalTarget}
+      copyExport={copyExport}
+      tabStrip={tabStrip}
     />
   );
 }
@@ -598,8 +568,7 @@ export function UnshippedTable({
  * Workbench contract: URL-addressable selection (`?openOrderId`) + right-pane
  * detail. Do not refactor onto SidebarRailShell (single-list rail engine).
  *
- * Scroll: KPI strip is pinned in `DashboardOrdersView` sheet chrome; the
- * table host is a flex-fill `WORKBENCH_SHEET_HOST` inside a definite flex chain
+ * Scroll: {@link DataTable} is a flex-fill column inside a definite flex chain
  * (Unbox golden) so the grid self-scrolls — one Y port, no absolute viewport
  * calc. Column header sticks inside the grid; no page-level sticky.
  */
@@ -615,7 +584,8 @@ function UnshippedSheet({
   selectMode = false,
   railSelection = false,
   footer,
-  toolbarPortalTarget,
+  copyExport,
+  tabStrip,
 }: {
   records: ShippedOrder[];
   loading: boolean;
@@ -630,7 +600,8 @@ function UnshippedSheet({
    *  the right-rail inspector (History / order-rail SoT). */
   railSelection?: boolean;
   footer?: React.ReactNode;
-  toolbarPortalTarget?: HTMLElement | null;
+  copyExport: DataTableExport<ShippedOrder>;
+  tabStrip?: DataTableTabStrip;
 }) {
   const sheet = useOrdersSpreadsheet({
     ariaLabel: 'Shelved unshipped orders',
@@ -650,8 +621,8 @@ function UnshippedSheet({
     searchResultLabel,
     clearSearchLabel,
     'data-testid': 'pending-grid-body',
-    columnTriggerPortalTarget: toolbarPortalTarget ?? null,
   });
+  const chrome = useToShipChrome();
 
   // The spreadsheet hook publishes the cursor (it owns grouping + folds);
   // this lane only turns the keyboard on.
@@ -659,12 +630,15 @@ function UnshippedSheet({
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-      {/* Flush sheet host — flex-fill self-scroll (Unbox golden), definite chain. */}
-      <div className={WORKBENCH_SHEET_HOST}>
-        <NonlinearTableHost<ShippedOrder, OrdersQueueColumnKey, OrdersQueueColumn>
-          {...sheet}
-        />
-      </div>
+      <DataTable<ShippedOrder, OrdersQueueColumnKey, OrdersQueueColumn>
+        {...sheet}
+        {...chrome}
+        copyExport={copyExport}
+        // A desk that switches BODIES on a tab owns the strip: showing its
+        // modes and this queue's triage facets at once would be two answers to
+        // "which list am I on".
+        {...(tabStrip ?? {})}
+      />
       {footer}
     </div>
   );

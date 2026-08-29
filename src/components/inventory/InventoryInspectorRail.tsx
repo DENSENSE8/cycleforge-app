@@ -38,7 +38,6 @@
 
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
 import { DeskInspectorIndexShell } from '@/components/right-rail/DeskInspectorIndexShell';
-import { InspectorColumnDisplayButton } from '@/components/right-rail/InspectorColumnDisplayButton';
 import type {
   InventoryDetailKind,
   OpenInventoryDetailsPayload,

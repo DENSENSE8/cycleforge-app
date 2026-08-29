@@ -4,7 +4,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import Link from 'next/link';
 import { PageHeader } from '@/components/ui/pane-header';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { DataTable, type DataTableColumn } from '@/design-system/components/DataTable';
+import { AdminTable, type AdminTableColumn } from '@/design-system/components/AdminTable';
 import { Panel } from '@/design-system/primitives';
 
 
@@ -175,7 +175,7 @@ export default async function ThroughputPage({
   const hourlyByCell = new Map(hourly.map((r) => [`${r.station}|${r.hour_bucket.toISOString()}`, r.count]));
   const hourlyBuckets = Array.from(new Set(hourly.map((r) => r.hour_bucket.toISOString()))).sort();
 
-  const actorColumns: DataTableColumn<ByActorRow>[] = [
+  const actorColumns: AdminTableColumn<ByActorRow>[] = [
     {
       key: 'actor',
       header: 'Actor',
@@ -279,7 +279,7 @@ export default async function ThroughputPage({
             {/*
               Intentional non-collection <table>: station × hour heatmap cells are a
               matrix visualization (dynamic hour columns + intensity tiles), not a
-              row/column collection list. DataTable is the wrong primitive here.
+              row/column collection list. AdminTable is the wrong primitive here.
             */}
             <div className="overflow-x-auto px-6 py-4">
               <table className="text-xs">
@@ -326,7 +326,7 @@ export default async function ThroughputPage({
           <header>
             <h2 className="text-lg font-medium text-text-default">By actor</h2>
           </header>
-          <DataTable
+          <AdminTable
             columns={actorColumns}
             rows={byActor}
             rowKey={(a) => String(a.actor_staff_id)}

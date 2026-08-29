@@ -43,8 +43,6 @@ import {
 } from '@/design-system/components/grid';
 import { gridTemplate } from '@/design-system/components/grid/grid-column-geometry';
 import { renderCompoundGridCell } from './CompoundGridCell';
-import { useSheetFormats } from '@/components/sheet/sheet-format-context';
-import { columnFormatClass } from '@/lib/tables/column-formats';
 import type { CompoundRowAction, CompoundRowView } from './compound-row-model';
 
 /** Structural — every family's column interface satisfies it. */
@@ -99,10 +97,6 @@ export function CompoundRow<C extends CompoundRowColumn>({
 }: CompoundRowProps<C>) {
   // The org-shared column formatting for this sheet. Read HERE — one component
   // that every compound family already mounts — rather than threaded as a prop
-  // through each family's row, which is how the per-staff `columnDisplay` pref
-  // ended up honoured on Unbox History and silently ignored on To-Ship (see
-  // `gridDataCellClass`'s docblock). Empty outside a sheet.
-  const sheetFormats = useSheetFormats();
 
   const renderCell = (col: C, last: boolean): ReactNode => {
     const rule = !last;
@@ -116,7 +110,6 @@ export function CompoundRow<C extends CompoundRowColumn>({
       onOpen,
       actions,
       onCommitNote,
-      formatClass: columnFormatClass(sheetFormats[col.key]),
     });
     if (cell) return cell;
 

@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { DataTable, type DataTableColumn } from '@/design-system/components/DataTable';
+import { AdminTable, type AdminTableColumn } from '@/design-system/components/AdminTable';
 import type {
   BackfillRow,
   FlagRow,
@@ -9,7 +9,7 @@ import type {
 import { Panel } from '@/design-system/primitives';
 
 
-const FLAG_COLUMNS: DataTableColumn<FlagRow>[] = [
+const FLAG_COLUMNS: AdminTableColumn<FlagRow>[] = [
   {
     key: 'env',
     header: 'Env var',
@@ -54,7 +54,7 @@ export function FlagsSection({ flags, allFlagsOff }: { flags: FlagRow[]; allFlag
             : `${flags.filter((f) => f.on).length} of ${flags.length} ON`}
         </span>
       </header>
-      <DataTable columns={FLAG_COLUMNS} rows={flags} rowKey={(f) => f.key} />
+      <AdminTable columns={FLAG_COLUMNS} rows={flags} rowKey={(f) => f.key} />
     </section>
   );
 }

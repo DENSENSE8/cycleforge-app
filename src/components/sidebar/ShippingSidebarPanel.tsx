@@ -5,7 +5,7 @@ import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
 import { appChromeClass } from '@/design-system/tokens/app-surface';
 import { ShippingScanBand } from '@/components/sidebar/tech/ShippingScanBand';
 import { ShippingStaffScanHistoryRail } from '@/components/sidebar/shipping/ShippingStaffScanHistoryRail';
-import { TechRailSearchBar } from '@/components/sidebar/tech/TechRailSearchBar';
+import { SearchField } from '@/design-system/primitives/SearchField';
 import { SidebarRailScrollport } from '@/components/sidebar/rail-shell/SidebarRailScrollport';
 import {
   EMPTY_STATION_HISTORY_RAIL_FACETS,
@@ -59,14 +59,14 @@ export function ShippingSidebarPanel({
         />
       </SidebarRailScrollport>
 
-      <TechRailSearchBar
+      <SearchField
         value={railFilter}
         onChange={setRailFilter}
         placeholder="Filter history…"
-        trailingSuffix={
+        rightElement={
           <StationHistoryRailFilters facets={railFacets} onChange={setRailFacets} />
         }
-      />
+        />
 
       {isMobile ? (
         <div className={`flex-shrink-0 border-t border-border-hairline bg-surface-card ${SIDEBAR_GUTTER} pb-[max(1.125rem,env(safe-area-inset-bottom))] pt-3`}>

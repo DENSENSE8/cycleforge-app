@@ -29,7 +29,6 @@ import { useRecordCursorKeyboard } from '@/hooks/useRecordCursorKeyboard';
 import { ShippedTableEmptyState } from '@/components/shipped/dashboard-table/ShippedTableEmptyState';
 import { DateRangePickerPill } from '@/components/ui/DateRangeHeader';
 import { OrdersGridHost } from '@/components/dashboard/orders-queue/OrdersGridHost';
-import { WORKBENCH_SHEET_HOST } from '@/components/dashboard/workbench-shell';
 import {
   derivedPackerRecordToQueueRow,
 } from '@/components/shipped/shipped-record-mappers';
@@ -164,21 +163,15 @@ export function DashboardShippedTable({
     </div>
   );
 
-  const portaledToolbar =
-    !embedded && toolbarPortalTarget
-      ? createPortal(shippedToolbarControls, toolbarPortalTarget)
-      : null;
-
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-surface-canvas">
-      {portaledToolbar}
-      {/* Staff / period chrome portals into View topics — no inline strip twin. */}
-      <div className={WORKBENCH_SHEET_HOST} data-testid="column-table-body">
+      <div className="relative flex min-h-0 min-w-0 flex-1 flex-col" data-testid="column-table-body">
         <OrdersGridHost
           ariaLabel="Shipped orders"
           records={gridRecords}
           loading={query.isLoading}
           searchValue={filters.search}
+          search={{ value: filters.search, onChange: filters.setSearch, placeholder: 'Filter shipped orders…' }}
           onClearSearch={filters.clearSearch}
           emptyMessage="No shipped orders"
           firstRunEmpty={idleEmptyNode}
@@ -192,7 +185,6 @@ export function DashboardShippedTable({
           selectionScope={DASHBOARD_ORDERS_SELECTION_SCOPE}
           railSelection={railSelection}
           data-testid="shipped-grid-body"
-          columnTriggerPortalTarget={toolbarPortalTarget ?? null}
           onOpenRecord={onOpenRecord}
           onCloseRecord={() => undefined}
         />

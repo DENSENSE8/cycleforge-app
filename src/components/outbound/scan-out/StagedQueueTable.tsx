@@ -3,12 +3,12 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { OrdersGridHost } from '@/components/dashboard/orders-queue/OrdersGridHost';
-import { WORKBENCH_SHEET_HOST } from '@/components/dashboard/workbench-shell';
-import { cn } from '@/utils/_cn';
 import { OrdersFirstRunEmptyState } from '@/components/dashboard/OrdersFirstRunEmptyState';
 import { stagedOrdersQuery } from '@/lib/queries/outbound-queries';
 import { DASHBOARD_ORDERS_SELECTION_SCOPE } from '@/lib/selection/dashboard-scopes';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
+import type { DataTableSearch } from '@/components/tables/DataTable';
+import type { DataTableTabStrip } from '@/components/tables/TableStatusBar';
 
 const DOCK_STAGED_BACKFILL_KEY = 'outbound-dock-staged-mike-v1';
 
@@ -16,18 +16,15 @@ interface StagedQueueTableProps {
   searchQuery: string;
   onOpenOrder: (order: ShippedOrder) => void;
   onCloseOrder: () => void;
-  /** @deprecated Banner chrome removed — grid is headerless like Pending. */
-  hideHeader?: boolean;
   /**
    * Skip the one-time "Mike" staging backfill effect. The scan-out dock keeps it
    * (default); read-only consumers (Labels-station Recent) pass `true`.
    */
   disableBackfill?: boolean;
-  /**
-   * Band-3 / Band-1 controls slot — Labels Recent and Scan-out dock portal ▦
-   * here (portal-or-nothing; no card-corner fallback).
-   */
-  columnTriggerPortalTarget?: HTMLElement | null;
+  /** The find field, as data — the workspace above owns the URL it writes. */
+  search: DataTableSearch;
+  /** The desk's mode strip, drawn on this table's own status bar. */
+  tabStrip?: DataTableTabStrip;
 }
 
 export function StagedQueueTable({
@@ -35,7 +32,8 @@ export function StagedQueueTable({
   onOpenOrder,
   onCloseOrder,
   disableBackfill = false,
-  columnTriggerPortalTarget = null,
+  search,
+  tabStrip,
 }: StagedQueueTableProps) {
   const queryClient = useQueryClient();
   const query = useQuery(stagedOrdersQuery({ searchQuery }));
@@ -69,7 +67,7 @@ export function StagedQueueTable({
   }, [queryClient, disableBackfill]);
 
   return (
-    <div className={cn(WORKBENCH_SHEET_HOST, 'flex h-full min-h-0 min-w-0 flex-1 flex-col')}>
+    <div className="relative flex h-full min-h-0 min-w-0 flex-1 flex-col">
       <OrdersGridHost
         ariaLabel="Orders staged for scan-out"
         records={records}
@@ -92,7 +90,8 @@ export function StagedQueueTable({
         data-testid="staged-grid-body"
         onOpenRecord={(record) => onOpenOrder(record)}
         onCloseRecord={() => onCloseOrder()}
-        columnTriggerPortalTarget={columnTriggerPortalTarget}
+        search={search}
+        tabStrip={tabStrip}
       />
     </div>
   );

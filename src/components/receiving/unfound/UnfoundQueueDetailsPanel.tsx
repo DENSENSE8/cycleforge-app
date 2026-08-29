@@ -35,7 +35,6 @@ import {
   DeskInspectorIndexShell,
   type DeskInspectorLeaf,
 } from '@/components/right-rail/DeskInspectorIndexShell';
-import { InspectorColumnDisplayButton } from '@/components/right-rail/InspectorColumnDisplayButton';
 import {
   FLOOR_DELETE_PEER_CLASS,
   FloorIconButton,

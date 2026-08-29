@@ -1,4 +1,3 @@
-import { WORKBENCH_CHROME_CUBE_CLASS } from '@/components/dashboard/workbench-chrome-cube';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 
