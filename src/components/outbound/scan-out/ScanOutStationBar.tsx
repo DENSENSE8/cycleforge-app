@@ -2,7 +2,8 @@
 
 /**
  * Dock scan-out bar (sidebar) — scan a carrier label to record SHIP_CONFIRM.
- * The one scan target for scan-out mode; the main pane shows the staged queue.
+ * Async: never blocks the next wedge on a prior POST. The center pane shows
+ * idle scan-await / carton context; the left rail lists recent ship-outs.
  * Scan loop + undo live in `useScanOutStation`; this is the compact bar + a
  * one-line active result.
  */
@@ -23,6 +24,7 @@ const FEEDBACK_TONE: Record<ActiveScanOut['status'], string> = {
   ok: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
   dup: 'bg-amber-50 text-amber-700 ring-amber-200',
   exc: 'bg-amber-50 text-amber-700 ring-amber-200',
+  pending: 'bg-surface-canvas text-text-muted ring-border-soft',
   miss: 'bg-rose-50 text-rose-700 ring-rose-200',
   err: 'bg-rose-50 text-rose-700 ring-rose-200',
 };
@@ -57,6 +59,8 @@ export function ScanOutStationBar({ autoFocus = true }: { autoFocus?: boolean } 
         >
           {active.status === 'ok' ? (
             <Check className="h-3.5 w-3.5 shrink-0" />
+          ) : active.status === 'pending' ? (
+            <Barcode className="h-3.5 w-3.5 shrink-0 animate-pulse" />
           ) : (
             <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
           )}

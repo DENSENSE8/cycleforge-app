@@ -1,8 +1,29 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+/**
+ * Scan-out station controller — the SHIP_CONFIRM scan loop shared by the dock
+ * Station body and any compact bar.
+ *
+ * ## Async / non-blocking (operator 2026-08-31)
+ *
+ * The gun must never wait on a prior POST. Each submit clears the input,
+ * refocuses, fires `POST /api/shipped/scan-out` in flight, and accepts the next
+ * wedge immediately. Concurrent confirms are fine — each shipment is
+ * idempotent server-side. The "active" carton follows the latest settled
+ * response (or an optimistic pending chip for the most recent fire).
+ */
+
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { bustScanOutCaches } from '@/lib/outbound/outbound-cache-keys';
+import {
+  SCAN_OUT_ACTIVE_EVENT,
+  dispatchScanOutActive,
+  dispatchScanOutConfirmed,
+  resultToScanOutPane,
+  type ScanOutActivePane,
+  type ScanOutFocusStatus,
+} from '@/components/outbound/scan-out/scan-out-active';
 
 export interface ScanOutResult {
   ok: boolean;
@@ -11,12 +32,18 @@ export interface ScanOutResult {
   alreadyDelivered?: boolean;
   shipmentId?: number;
   tracking?: string | null;
+  orderRowId?: number | null;
   orderId?: string | null;
   productTitle?: string | null;
+  sku?: string | null;
+  itemNumber?: string | null;
+  condition?: string | null;
+  quantity?: number | null;
+  accountSource?: string | null;
   message?: string | null;
 }
 
-export type ScanOutStatus = 'ok' | 'dup' | 'miss' | 'err' | 'exc';
+export type ScanOutStatus = ScanOutFocusStatus;
 
 /** The single active-package result — replaces on each scan (Station contract). */
 export interface ActiveScanOut {
@@ -24,20 +51,46 @@ export interface ActiveScanOut {
   result: ScanOutResult | null;
   /** Human-readable one-liner for compact readouts. */
   text: string;
+  /** Raw scanned value that produced this result. */
+  scanned: string;
+}
+
+function statusText(status: ScanOutStatus, result: ScanOutResult | null): string {
+  if (status === 'pending') return 'Scanning…';
+  if (status === 'miss') return result?.message || 'No shipment found for that label';
+  if (status === 'exc') return 'Delivered already';
+  if (status === 'dup') return 'Already scanned out';
+  if (status === 'err') return 'Scan-out failed — try again';
+  if (status === 'ok' && result?.productTitle) return result.productTitle;
+  return 'Shipped out';
+}
+
+async function postScanOut(tracking: string): Promise<ScanOutResult> {
+  const res = await fetch('/api/shipped/scan-out', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ trackingNumber: tracking }),
+  });
+  if (!res.ok) throw new Error(`scan-out failed (${res.status})`);
+  return res.json();
 }
 
 /**
- * Scan-out station controller — the SHIP_CONFIRM scan loop shared by the dock
- * Station body and any compact bar. Owns scan value + focus, the
- * `POST/DELETE /api/shipped/scan-out` mutations, the single active result, and
- * the undoable handle. Presentation stays in the view.
+ * Presentation stays in the view. This hook owns scan value + focus, concurrent
+ * POST fire-and-forget, the single active result, and the undoable handle.
  */
 export function useScanOutStation() {
   const queryClient = useQueryClient();
   const [scanValue, setScanValue] = useState('');
   const [active, setActive] = useState<ActiveScanOut | null>(null);
   const [undoable, setUndoable] = useState<{ shipmentId: number } | null>(null);
+  const [inFlight, setInFlight] = useState(0);
+  const [isUndoing, setIsUndoing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  /** Monotonic token so a slower older response cannot overwrite a newer one. */
+  const seqRef = useRef(0);
+  /** Last matched carton — a miss must not wipe a prior good focus. */
+  const lastGoodRef = useRef<ScanOutActivePane | null>(null);
 
   const refocus = useCallback(() => {
     requestAnimationFrame(() => inputRef.current?.focus());
@@ -47,68 +100,103 @@ export function useScanOutStation() {
     bustScanOutCaches(queryClient);
   }, [queryClient]);
 
-  const scanOut = useMutation({
-    mutationFn: async (tracking: string): Promise<ScanOutResult> => {
-      const res = await fetch('/api/shipped/scan-out', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ trackingNumber: tracking }),
-      });
-      if (!res.ok) throw new Error(`scan-out failed (${res.status})`);
-      return res.json();
-    },
-    onSuccess: (result) => {
-      setUndoable(null);
-      if (!result.matched) {
-        setActive({ status: 'miss', result, text: result.message || 'No shipment found for that label' });
-        return;
+  // External clear (identity ◁ / rail toggle) drops the undo handle.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      if ((e as CustomEvent<ScanOutActivePane | null>).detail == null) {
+        setUndoable(null);
+        lastGoodRef.current = null;
       }
-      if (result.alreadyDelivered) {
-        setActive({ status: 'exc', result, text: 'Delivered already' });
-        return;
-      }
-      if (result.duplicate) {
-        setActive({ status: 'dup', result, text: 'Already scanned out' });
-        return;
-      }
-      setActive({ status: 'ok', result, text: 'Shipped out' });
-      if (result.shipmentId) setUndoable({ shipmentId: result.shipmentId });
-      bustCaches();
-    },
-    onError: () => {
-      setActive({ status: 'err', result: null, text: 'Scan-out failed — try again' });
-    },
-  });
+    };
+    window.addEventListener(SCAN_OUT_ACTIVE_EVENT, handler);
+    return () => window.removeEventListener(SCAN_OUT_ACTIVE_EVENT, handler);
+  }, []);
 
-  const undoMutation = useMutation({
-    mutationFn: async (shipmentId: number): Promise<void> => {
-      const res = await fetch('/api/shipped/scan-out', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ shipmentId }),
-      });
-      if (!res.ok) throw new Error(`undo failed (${res.status})`);
+  const applySettled = useCallback(
+    (seq: number, scanned: string, result: ScanOutResult) => {
+      // Stale response — still bust caches / rail, but do not steal the focus
+      // carton from a newer scan.
+      const isLatest = seq === seqRef.current;
+
+      let status: ScanOutStatus;
+      if (!result.matched) status = 'miss';
+      else if (result.alreadyDelivered) status = 'exc';
+      else if (result.duplicate) status = 'dup';
+      else status = 'ok';
+
+      const pane = resultToScanOutPane(result, status, scanned);
+
+      if (isLatest) {
+        setActive({
+          status,
+          result,
+          text: statusText(status, result),
+          scanned,
+        });
+        if (status === 'ok' && result.shipmentId) {
+          setUndoable({ shipmentId: result.shipmentId });
+        } else if (status !== 'ok') {
+          setUndoable(null);
+        }
+        if (status === 'ok' || status === 'dup' || status === 'exc') {
+          lastGoodRef.current = pane;
+          dispatchScanOutActive(pane);
+        } else if (status === 'miss' || status === 'err') {
+          // Keep the prior good carton on screen; bar still shows the miss.
+          dispatchScanOutActive(lastGoodRef.current);
+        }
+      }
+
+      if (status === 'ok' || status === 'dup') {
+        dispatchScanOutConfirmed(pane);
+        bustCaches();
+      }
     },
-    onSuccess: () => {
-      setUndoable(null);
-      setActive(null);
-      bustCaches();
-      refocus();
-    },
-    onError: () => {
-      setActive({ status: 'err', result: null, text: 'Undo failed — try again' });
-    },
-  });
+    [bustCaches],
+  );
 
   const submitRaw = useCallback(
     (raw: string) => {
       const v = raw.trim();
-      if (!v || scanOut.isPending) return;
-      scanOut.mutate(v);
+      if (!v) return;
+
+      // Clear + refocus BEFORE the network — the next wedge must land now.
       setScanValue('');
       refocus();
+
+      const seq = ++seqRef.current;
+      setInFlight((n) => n + 1);
+      setUndoable(null);
+      setActive({
+        status: 'pending',
+        result: null,
+        text: 'Scanning…',
+        scanned: v,
+      });
+      // Optimistic focus so the center leaves idle immediately on a rapid pass.
+      dispatchScanOutActive(
+        resultToScanOutPane({ tracking: v, productTitle: 'Scanning…' }, 'pending', v),
+      );
+
+      void postScanOut(v)
+        .then((result) => applySettled(seq, v, result))
+        .catch(() => {
+          if (seq !== seqRef.current) return;
+          setActive({
+            status: 'err',
+            result: null,
+            text: 'Scan-out failed — try again',
+            scanned: v,
+          });
+          setUndoable(null);
+          dispatchScanOutActive(lastGoodRef.current);
+        })
+        .finally(() => {
+          setInFlight((n) => Math.max(0, n - 1));
+          refocus();
+        });
     },
-    [scanOut, refocus],
+    [applySettled, refocus],
   );
 
   const submit = useCallback(() => {
@@ -116,8 +204,34 @@ export function useScanOutStation() {
   }, [scanValue, submitRaw]);
 
   const undo = useCallback(() => {
-    if (undoable) undoMutation.mutate(undoable.shipmentId);
-  }, [undoable, undoMutation]);
+    if (!undoable || isUndoing) return;
+    const { shipmentId } = undoable;
+    setIsUndoing(true);
+    void fetch('/api/shipped/scan-out', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ shipmentId }),
+    })
+      .then(async (res) => {
+        if (!res.ok) throw new Error(`undo failed (${res.status})`);
+        setUndoable(null);
+        setActive(null);
+        dispatchScanOutActive(null);
+        bustCaches();
+        refocus();
+      })
+      .catch(() => {
+        setActive({
+          status: 'err',
+          result: null,
+          text: 'Undo failed — try again',
+          scanned: '',
+        });
+      })
+      .finally(() => {
+        setIsUndoing(false);
+      });
+  }, [undoable, isUndoing, bustCaches, refocus]);
 
   return {
     scanValue,
@@ -129,7 +243,22 @@ export function useScanOutStation() {
     submit,
     submitRaw,
     undo,
-    isScanning: scanOut.isPending,
-    isUndoing: undoMutation.isPending,
+    /** True while ANY confirm is in flight — never gates the gun. */
+    isScanning: inFlight > 0,
+    inFlight,
+    isUndoing,
   };
+}
+
+/** Subscribe to the focused carton from any scan-out tree. */
+export function useScanOutActivePane(): ScanOutActivePane | null {
+  const [pane, setPane] = useState<ScanOutActivePane | null>(null);
+  useEffect(() => {
+    const handler = (e: Event) => {
+      setPane((e as CustomEvent<ScanOutActivePane | null>).detail ?? null);
+    };
+    window.addEventListener(SCAN_OUT_ACTIVE_EVENT, handler);
+    return () => window.removeEventListener(SCAN_OUT_ACTIVE_EVENT, handler);
+  }, []);
+  return pane;
 }
